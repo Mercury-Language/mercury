@@ -81,7 +81,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -1741,7 +1740,7 @@ generate_var(Name, Type, Var, !VarInfo) :-
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 generate_var_2(Name, Type, Var, !VarSet, !VarTypes) :-
-    svvarset.new_named_var(Name, Var, !VarSet),
+    varset.new_named_var(Name, Var, !VarSet),
     map.det_insert(Var, Type, !VarTypes).
 
 :- pred maybe_generate_activation_ptr(bool::in, prog_var::in, prog_var::in,

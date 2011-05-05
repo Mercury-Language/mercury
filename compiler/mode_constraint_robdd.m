@@ -199,7 +199,7 @@ mci_set_pred_id(MCI, PredId) = MCI ^ mci_pred_id := PredId.
 
 init_mode_constraint_info(Simple) = MCI :-
     VarSet0 = varset.init,
-    varset.new_var(VarSet0, ZeroVar, VarSet),
+    varset.new_var(ZeroVar, VarSet0, VarSet),
     PredId = hlds_pred.initial_pred_id,
     MCI = mode_constraint_info(VarSet, bimap.init, PredId, stack.init,
         map.init, map.init, sparse_bitset.init, ZeroVar, Simple, map.init).
@@ -237,7 +237,7 @@ mode_constraint_var(PredId, RepVar0, RobddVar, !MCI) :-
         ( bimap.search(!.MCI ^ mci_varmap, Key, RobddVar0) ->
             RobddVar = RobddVar0
         ;
-            varset.new_var(!.MCI ^ mci_varset, RobddVar, NewVarSet),
+            varset.new_var(RobddVar, !.MCI ^ mci_varset, NewVarSet),
             bimap.set(Key, RobddVar, !.MCI ^ mci_varmap, NewVarMap),
             !MCI ^ mci_varset := NewVarSet,
             !MCI ^ mci_varmap := NewVarMap

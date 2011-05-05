@@ -1367,7 +1367,7 @@ lpr_info_init(Varset) = lpr_info(Varset, [], []).
 :- pred new_slack_var(lp_var::out, lpr_info::in, lpr_info::out) is det.
 
 new_slack_var(Var, !LPRInfo) :-
-    varset.new_var(!.LPRInfo ^ lpr_varset, Var, Varset),
+    varset.new_var(Var, !.LPRInfo ^ lpr_varset, Varset),
     !LPRInfo ^ lpr_varset := Varset,
     Vars = !.LPRInfo ^ lpr_slack_vars,
     !LPRInfo ^ lpr_slack_vars := [Var | Vars].
@@ -1375,7 +1375,7 @@ new_slack_var(Var, !LPRInfo) :-
 :- pred new_art_var(lp_var::out, lpr_info::in, lpr_info::out) is det.
 
 new_art_var(Var, !LPRInfo) :-
-    varset.new_var(!.LPRInfo ^ lpr_varset, Var, Varset),
+    varset.new_var(Var, !.LPRInfo ^ lpr_varset, Varset),
     !LPRInfo ^ lpr_varset := Varset,
     Vars = !.LPRInfo ^ lpr_art_vars,
     !LPRInfo ^ lpr_art_vars := [Var | Vars].

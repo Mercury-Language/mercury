@@ -798,7 +798,7 @@ generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     pred_info_set_markers(Markers, !PredInfo),
 
     % Generate `PredName = "<PredName>"'.
-    varset.new_named_var(!.VarSet, "PredName", PredNameVar, !:VarSet),
+    varset.new_named_var("PredName", PredNameVar, !VarSet),
     make_string_const_construction(PredNameVar, PredName, UnifyGoal),
 
     % Generate `private_builtin.no_clauses(PredName)'
@@ -1461,7 +1461,7 @@ ensure_vars_have_a_type(Vars, !Info) :-
         % each must have kind `star'.
         list.length(Vars, NumVars),
         varset.init(TypeVarSet0),
-        varset.new_vars(TypeVarSet0, NumVars, TypeVars, TypeVarSet),
+        varset.new_vars(NumVars, TypeVars, TypeVarSet0, TypeVarSet),
         prog_type.var_list_to_type_list(map.init, TypeVars, Types),
         empty_hlds_constraints(EmptyConstraints),
         typecheck_var_has_polymorphic_type_list(Vars, TypeVarSet, [],
@@ -1482,7 +1482,7 @@ ensure_vars_have_a_single_type(Vars, !Info) :-
         % variables. Since the type is the type of a program variable,
         % each must have kind `star'.
         varset.init(TypeVarSet0),
-        varset.new_var(TypeVarSet0, TypeVar, TypeVarSet),
+        varset.new_var(TypeVar, TypeVarSet0, TypeVarSet),
         Type = type_variable(TypeVar, kind_star),
         list.length(Vars, NumVars),
         list.duplicate(NumVars, Type, Types),
@@ -1520,7 +1520,7 @@ typecheck_higher_order_call(PredVar, Purity, Args, !Info) :-
 higher_order_pred_type(Purity, Arity, EvalMethod, TypeVarSet, PredType,
         ArgTypes) :-
     varset.init(TypeVarSet0),
-    varset.new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet),
+    varset.new_vars(Arity, ArgTypeVars, TypeVarSet0, TypeVarSet),
     % Argument types always have kind `star'.
     prog_type.var_list_to_type_list(map.init, ArgTypeVars, ArgTypes),
     construct_higher_order_type(Purity, pf_predicate, EvalMethod, ArgTypes,
@@ -1540,8 +1540,8 @@ higher_order_pred_type(Purity, Arity, EvalMethod, TypeVarSet, PredType,
 higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
         FuncType, ArgTypes, RetType) :-
     varset.init(TypeVarSet0),
-    varset.new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet1),
-    varset.new_var(TypeVarSet1, RetTypeVar, TypeVarSet),
+    varset.new_vars(Arity, ArgTypeVars, TypeVarSet0, TypeVarSet1),
+    varset.new_var(RetTypeVar, TypeVarSet1, TypeVarSet),
     % Argument and return types always have kind `star'.
     prog_type.var_list_to_type_list(map.init, ArgTypeVars, ArgTypes),
     RetType = type_variable(RetTypeVar, kind_star),
@@ -2283,7 +2283,7 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
             % Both X and Y are fresh variables - introduce a fresh type
             % variable with kind `star' to represent their type.
             type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
-            varset.new_var(TypeVarSet0, TypeVar, TypeVarSet),
+            varset.new_var(TypeVar, TypeVarSet0, TypeVarSet),
             type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign1),
             Type = type_variable(TypeVar, kind_star),
             map.det_insert(X, Type, VarTypes0, VarTypes1),
@@ -2488,7 +2488,7 @@ type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
         % Otherwise, introduce a fresh type variable with kind `star' to use
         % as the type of that variable.
         type_assign_get_typevarset(!.TypeAssign, TypeVarSet0),
-        varset.new_var(TypeVarSet0, TypeVar, TypeVarSet),
+        varset.new_var(TypeVar, TypeVarSet0, TypeVarSet),
         type_assign_set_typevarset(TypeVarSet, !TypeAssign),
         Type = type_variable(TypeVar, kind_star),
         map.det_insert(Var, Type, VarTypes0, VarTypes1),
@@ -2896,7 +2896,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                     TVarsInOtherArgs, TVarsOnlyInField0),
                 list.sort_and_remove_dups(TVarsOnlyInField0, TVarsOnlyInField),
                 list.length(TVarsOnlyInField, NumNewTVars),
-                varset.new_vars(TVarSet0, NumNewTVars, NewTVars, TVarSet),
+                varset.new_vars(NumNewTVars, NewTVars, TVarSet0, TVarSet),
                 map.from_corresponding_lists(TVarsOnlyInField,
                     NewTVars, TVarRenaming),
                 apply_variable_renaming_to_type(TVarRenaming, FieldType,
@@ -3105,8 +3105,8 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalId, ConsInfos,
         % tuple constructor) which have these types.
 
         varset.init(TupleConsTypeVarSet0),
-        varset.new_vars(TupleConsTypeVarSet0, TupleArity, TupleArgTVars,
-            TupleConsTypeVarSet),
+        varset.new_vars(TupleArity, TupleArgTVars,
+            TupleConsTypeVarSet0, TupleConsTypeVarSet),
         prog_type.var_list_to_type_list(map.init, TupleArgTVars,
             TupleArgTypes),
 

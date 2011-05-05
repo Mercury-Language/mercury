@@ -3150,7 +3150,7 @@ generate_error_goal(TableInfo, Context, Msg, !VarSet, !VarTypes, Goal) :-
     prog_var::out) is det.
 
 generate_new_table_var(Name, Type, !VarSet, !VarTypes, Var) :-
-    varset.new_named_var(!.VarSet, Name, Var, !:VarSet),
+    varset.new_named_var(Name, Var, !VarSet),
     map.set(Var, Type, !VarTypes).
 
 :- pred table_generate_call(string::in, determinism::in, list(prog_var)::in,
@@ -3736,7 +3736,7 @@ make_generator_c_attributes = Attrs :-
 
 dummy_type_var = Type :-
     varset.init(DummyTVarSet0),
-    varset.new_var(DummyTVarSet0, DummyTVar, _),
+    varset.new_var(DummyTVar, DummyTVarSet0, _),
     Type = type_variable(DummyTVar, kind_star).
 
 %-----------------------------------------------------------------------------%

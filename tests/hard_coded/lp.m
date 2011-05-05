@@ -111,12 +111,12 @@ normalize_equations([Eqn0|Eqns], NEqns0, NEqns, Varset0, Varset) :-
 		NEqns1 = [Eqn0|NEqns0]
 	;
 		Op0 = (=<),
-		varset__new_var(Varset0, Var, Varset1),
+		varset__new_var(Var, Varset0, Varset1),
 		Eqn1 = eqn([Var - 1.0|Coeffs0], (=), Const0),
 		NEqns1 = [Eqn1|NEqns0]
 	;
 		Op0 = (>=),
-		varset__new_var(Varset0, Var, Varset1),
+		varset__new_var(Var, Varset0, Varset1),
 		Eqn1 = eqn([Var - (-1.0)|Coeffs0], (=), Const0),
 		NEqns1 = [Eqn1|NEqns0]
 	),

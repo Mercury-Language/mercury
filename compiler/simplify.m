@@ -162,7 +162,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -436,7 +435,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     simplify_info_get_varset(Info, VarSet0),
     ( simplify_do_after_front_end(Info) ->
         proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
-        map.foldl(svvarset.name_var, VarNameRemap, VarSet0, VarSet),
+        map.foldl(varset.name_var, VarNameRemap, VarSet0, VarSet),
         proc_info_set_var_name_remap(map.init, !ProcInfo)
     ;
         VarSet = VarSet0
@@ -2301,7 +2300,7 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
         !Info) :-
     % Construct the variable to hold the comparison result.
     VarSet0 = !.Info ^ simp_varset,
-    varset.new_var(VarSet0, R, VarSet),
+    varset.new_var(R, VarSet0, VarSet),
     !Info ^ simp_varset := VarSet,
 
     % We have to add the type of R to the var_types.
@@ -2676,7 +2675,7 @@ simplify_library_call(ModuleName, PredName, _ModeNum, CrossCompiling,
 simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
-    varset.new_var(VarSet0, ConstVar, VarSet),
+    varset.new_var(ConstVar, VarSet0, VarSet),
     map.det_insert(ConstVar, int_type, VarTypes0, VarTypes),
     simplify_info_set_varset(VarSet, !Info),
     simplify_info_set_var_types(VarTypes, !Info),
@@ -3304,7 +3303,7 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
             list.reverse(RevGoals, Goals1),
             rename_vars_in_goals(need_not_rename, Subn, Goals1, Goals),
             map.keys(Subn0, RemovedVars),
-            varset.delete_vars(VarSet0, RemovedVars, VarSet),
+            varset.delete_vars(RemovedVars, VarSet0, VarSet),
             simplify_info_set_varset(VarSet, !Info),
             simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
             apply_substitutions_to_rtti_varmaps(map.init, map.init, Subn,
@@ -3492,7 +3491,7 @@ create_test_unification(Var, ConsId, ConsArity,
         hlds_goal(ExtraGoal, ExtraGoalInfo), !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
-    varset.new_vars(VarSet0, ConsArity, ArgVars, VarSet),
+    varset.new_vars(ConsArity, ArgVars, VarSet0, VarSet),
     map.lookup(VarTypes0, Var, VarType),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     type_util.get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes),

@@ -63,7 +63,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module svset.
-:- import_module svvarset.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.
@@ -1822,7 +1821,7 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             HOType = higher_order_type(ArgTypes, no, Purity, lambda_normal)
         ;
             Kind = pf_function,
-            svvarset.new_var(FunctionTVar, !.TCInfo ^ tconstr_tvarset,
+            varset.new_var(FunctionTVar, !.TCInfo ^ tconstr_tvarset,
                 NewTVarSet),
             !TCInfo ^ tconstr_tvarset := NewTVarSet,
             HOType = apply_n_type(FunctionTVar, ArgTypes, kind_star)
@@ -2192,7 +2191,7 @@ get_var_type(Var, TVar,
     ( bimap.search(!.VarMap, Var, TVar0) ->
         TVar = TVar0
     ;
-        svvarset.new_var(TVar, !TVarSet),
+        varset.new_var(TVar, !TVarSet),
         bimap.det_insert(Var, TVar, !VarMap)
     ).
 

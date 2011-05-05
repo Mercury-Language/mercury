@@ -1966,7 +1966,7 @@ add_c_mutable_preds(ItemMutableInfo, TargetMutableName, !Status, !ModuleInfo,
 add_ccsj_constant_mutable_access_preds(TargetMutableName,
         ModuleName, MutableName, Attrs, Inst, BoxPolicy, Context,
         !Status, !ModuleInfo, !QualInfo, !Specs) :-
-    varset.new_named_var(varset.init, "X", X, ProgVarSet),
+    varset.new_named_var("X", X, varset.init, ProgVarSet),
     InstVarSet = varset.init,
     set_purity(purity_pure, Attrs, ConstantGetAttrs0),
     set_thread_safe(proc_thread_safe, ConstantGetAttrs0, ConstantGetAttrs),
@@ -2078,7 +2078,7 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
 
     set_purity(purity_semipure, Attrs, UnsafeGetAttrs0),
     set_thread_safe(proc_thread_safe, UnsafeGetAttrs0, UnsafeGetAttrs),
-    varset.new_named_var(varset.init, "X", X, ProgVarSet),
+    varset.new_named_var("X", X, varset.init, ProgVarSet),
     (
         IsThreadLocal = mutable_not_thread_local,
         UnsafeGetCode = "X = " ++ TargetMutableName ++ ";\n"
@@ -2169,7 +2169,7 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
 
 add_ccsj_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
         Lang, Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
-    varset.new_named_var(varset.init, "X", X, ProgVarSet0),
+    varset.new_named_var("X", X, varset.init, ProgVarSet0),
 
     LockPredName   = mutable_lock_pred_sym_name(ModuleName, MutableName),
     UnlockPredName = mutable_unlock_pred_sym_name(ModuleName, MutableName),
@@ -2221,7 +2221,7 @@ add_ccsj_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
     IOStateInterface = mutable_var_attach_to_io_state(MutAttrs),
     (
         IOStateInterface = yes,
-        varset.new_named_var(ProgVarSet0, "IO", IO, ProgVarSet),
+        varset.new_named_var("IO", IO, ProgVarSet0, ProgVarSet),
 
         % Construct the pure get predicate.
         IOGetBody = promise_purity_expr(purity_pure, GetBody) - Context,
@@ -2516,7 +2516,7 @@ add_csharp_java_mutable_primitive_preds(Lang, TargetMutableName, ModuleName,
 
     set_purity(purity_semipure, Attrs, GetAttrs0),
     set_thread_safe(proc_thread_safe, GetAttrs0, GetAttrs),
-    varset.new_named_var(varset.init, "X", X, ProgVarSet),
+    varset.new_named_var("X", X, varset.init, ProgVarSet),
     (
         IsThreadLocal = mutable_not_thread_local,
         GetCode = "\tX = " ++ TargetMutableName ++ ";\n"
@@ -2675,7 +2675,7 @@ add_erlang_mutable_preds(ItemMutable, TargetMutableName,
 add_erlang_constant_mutable_access_preds(TargetMutableName,
         ModuleName, MutableName, Inst,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
-    varset.new_named_var(varset.init, "X", X, ProgVarSet),
+    varset.new_named_var("X", X, varset.init, ProgVarSet),
     InstVarSet = varset.init,
     Attrs = default_attributes(lang_erlang),
     set_purity(purity_pure, Attrs, ConstantGetAttrs0),
@@ -2727,7 +2727,7 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         !Status, !ModuleInfo, !QualInfo, !Specs) :-
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
     Attrs = default_attributes(lang_erlang),
-    varset.new_named_var(varset.init, "X", X, ProgVarSet0),
+    varset.new_named_var("X", X, varset.init, ProgVarSet0),
 
     % Construct the semipure get predicate.
     set_purity(purity_semipure, Attrs, GetAttrs0),
@@ -2787,7 +2787,7 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
     IOStateInterface = mutable_var_attach_to_io_state(MutAttrs),
     (
         IOStateInterface = yes,
-        varset.new_named_var(ProgVarSet0, "IO", IO, ProgVarSet),
+        varset.new_named_var("IO", IO, ProgVarSet0, ProgVarSet),
         Ctxt = context_init,
 
         % Construct the pure get predicate.

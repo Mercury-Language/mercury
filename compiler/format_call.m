@@ -158,9 +158,9 @@
 :- import_module set.
 :- import_module set_tree234.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module univ.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -1320,7 +1320,7 @@ make_result_var_if_needed(MaybeResultVar, ResultVar, !VarSet, !VarTypes) :-
         MaybeResultVar = yes(ResultVar)
     ;
         MaybeResultVar = no,
-        svvarset.new_var(ResultVar, !VarSet),
+        varset.new_var(ResultVar, !VarSet),
         map.det_insert(ResultVar, string_type, !VarTypes)
     ).
 

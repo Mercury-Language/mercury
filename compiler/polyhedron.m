@@ -188,7 +188,6 @@
 
 :- import_module pair.
 :- import_module require.
-:- import_module svvarset.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -410,7 +409,7 @@ transform_polyhedra(Polys, Eqns, !PolyInfo) :-
 transform_polyhedron(Poly, Polys0, Polys, !PolyInfo) :-
     some [!Varset] (
         !.PolyInfo = polyhedra_info(VarMaps, Sigmas, !:Varset),
-        svvarset.new_var(Sigma, !Varset),
+        varset.new_var(Sigma, !Varset),
         list.map_foldl2(transform_constraint(Sigma), Poly, NewEqns,
             map.init, VarMap, !Varset),
         Polys = NewEqns ++ Polys0,
@@ -449,7 +448,7 @@ change_var(!Term, !VarMap, !Varset) :-
         ( map.search(!.VarMap, !.Var, !:Var) ->
             true
         ;
-            svvarset.new_var(NewVar, !Varset),
+            varset.new_var(NewVar, !Varset),
             map.det_insert(!.Var, NewVar, !VarMap),
             !:Var = NewVar
         ),

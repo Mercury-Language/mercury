@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -89,38 +89,38 @@
 
 :- implementation.
 
-svvarset.new_var(Var, Varset0, Varset) :-
-    varset.new_var(Varset0, Var, Varset).
+svvarset.new_var(Var, !Varset) :-
+    varset.new_var(Var, !Varset).
 
-svvarset.new_named_var(Name, Var, Varset0, Varset) :-
-    varset.new_named_var(Varset0, Name, Var, Varset).
+svvarset.new_named_var(Name, Var, !Varset) :-
+    varset.new_named_var(Name, Var, !Varset).
 
-svvarset.new_maybe_named_var(MaybeName, Var, Varset0, Varset) :-
-    varset.new_maybe_named_var(Varset0, MaybeName, Var, Varset).
+svvarset.new_maybe_named_var(MaybeName, Var, !Varset) :-
+    varset.new_maybe_named_var(MaybeName, Var, !Varset).
 
-svvarset.new_uniquely_named_var(Name, Var, Varset0, Varset) :-
-    varset.new_uniquely_named_var(Varset0, Name, Var, Varset).
+svvarset.new_uniquely_named_var(Name, Var, !Varset) :-
+    varset.new_uniquely_named_var(Name, Var, !Varset).
 
-svvarset.new_vars(NumVars, NewVars, Varset0, Varset) :-
-    varset.new_vars(Varset0, NumVars, NewVars, Varset).
+svvarset.new_vars(NumVars, NewVars, !Varset) :-
+    varset.new_vars(NumVars, NewVars, !Varset).
 
-svvarset.delete_var(Var, Varset0, Varset) :-
-    varset.delete_var(Varset0, Var, Varset).
+svvarset.delete_var(Var, !Varset) :-
+    varset.delete_var(Var, !Varset).
 
-svvarset.delete_vars(Vars, Varset0, Varset) :-
-    varset.delete_vars(Varset0, Vars, Varset).
+svvarset.delete_vars(Vars, !Varset) :-
+    varset.delete_vars(Vars, !Varset).
 
-svvarset.name_var(Id, Name, Varset0, Varset) :-
-    varset.name_var(Varset0, Id, Name, Varset).
+svvarset.name_var(Id, Name, !Varset) :-
+    varset.name_var(Id, Name, !Varset).
 
-svvarset.bind_var(Id, Val, Varset0, Varset) :-
-    varset.bind_var(Varset0, Id, Val, Varset).
+svvarset.bind_var(Id, Val, !Varset) :-
+    varset.bind_var(Id, Val, !Varset).
 
-svvarset.bind_vars(Subst, Varset0, Varset) :-
-    varset.bind_vars(Varset0, Subst, Varset).
+svvarset.bind_vars(Subst, !Varset) :-
+    varset.bind_vars(Subst, !Varset).
 
-svvarset.select(Vars, Varset0, Varset) :-
-    varset.select(Varset0, Vars, Varset).
+svvarset.select(Vars, !Varset) :-
+    varset.select(Vars, !Varset).
 
 %-----------------------------------------------------------------------------%
 :- end_module svvarset.

@@ -352,10 +352,10 @@ new_saved_hp_var(Var, !Info) :-
 new_var(Name, Type, Var, !Info) :-
     VarSet0 = !.Info ^ heap_varset,
     VarTypes0 = !.Info ^ heap_var_types,
-    varset.new_named_var(VarSet0, Name, Var, VarSet),
+    varset.new_named_var(Name, Var, VarSet0, VarSet),
     map.det_insert(Var, Type, VarTypes0, VarTypes),
-    !:Info = !.Info ^ heap_varset := VarSet,
-    !:Info = !.Info ^ heap_var_types := VarTypes.
+    !Info ^ heap_varset := VarSet,
+    !Info ^ heap_var_types := VarTypes.
 
 %-----------------------------------------------------------------------------%
 

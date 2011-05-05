@@ -138,7 +138,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module unit.
 :- import_module varset.
@@ -569,7 +568,7 @@ make_tupling_proposal(ModuleInfo, CandidateHeadVars, MinArgsToTuple,
         % We need a new variable to act as the cell variable while
         % counting loads/stores for a proposed tupling, but we don't
         % add that variable to the varset permanently.
-        varset.new_named_var(VarSet, "DummyCellVar", DummyCellVar, _),
+        varset.new_named_var("DummyCellVar", DummyCellVar, VarSet, _),
         FieldVars = assoc_list.keys(FieldVarArgPos),
         TuplingProposal = tupling(DummyCellVar, FieldVars, FieldVarArgPos)
     ).
@@ -1735,7 +1734,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
             TransformedProc = transformed_proc(_, TupleConsType, ArgsToTuple,
                 hlds_goal(CallAux0, CallAuxInfo))
         ->
-            svvarset.new_named_var("TuplingCellVarForCall", CellVar, !VarSet),
+            varset.new_named_var("TuplingCellVarForCall", CellVar, !VarSet),
             map.det_insert(CellVar, TupleConsType, !VarTypes),
             extract_tupled_args_from_list(Args0, ArgsToTuple,
                 TupledArgs, UntupledArgs),

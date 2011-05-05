@@ -1822,7 +1822,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
-:- import_module svvarset.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -3532,31 +3531,31 @@ make_const_construction_alloc_in_proc(ConsId, Type, MaybeName, Goal, Var,
 
 make_int_const_construction_alloc(Int, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
-    svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
+    varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     map.det_insert(Var, int_type, !VarTypes),
     make_int_const_construction(Var, Int, Goal).
 
 make_string_const_construction_alloc(String, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
-    svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
+    varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     map.det_insert(Var, string_type, !VarTypes),
     make_string_const_construction(Var, String, Goal).
 
 make_float_const_construction_alloc(Float, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
-    svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
+    varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     map.det_insert(Var, float_type, !VarTypes),
     make_float_const_construction(Var, Float, Goal).
 
 make_char_const_construction_alloc(Char, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
-    svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
+    varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     map.det_insert(Var, char_type, !VarTypes),
     make_char_const_construction(Var, Char, Goal).
 
 make_const_construction_alloc(ConsId, Type, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
-    svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
+    varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     map.det_insert(Var, Type, !VarTypes),
     make_const_construction(Var, ConsId, Goal).
 

@@ -283,12 +283,12 @@ erl_gen_info_set_varset(VarSet, !Info) :-
 
 erl_gen_info_new_named_var(Name, NewVar, !Info) :-
     erl_gen_info_get_varset(!.Info, VarSet0),
-    varset.new_named_var(VarSet0, Name, NewVar, VarSet),
+    varset.new_named_var(Name, NewVar, VarSet0, VarSet),
     erl_gen_info_set_varset(VarSet, !Info).
 
 erl_gen_info_new_vars(Num, NewVars, !Info) :-
     erl_gen_info_get_varset(!.Info, VarSet0),
-    varset.new_vars(VarSet0, Num, NewVars, VarSet),
+    varset.new_vars(Num, NewVars, VarSet0, VarSet),
     erl_gen_info_set_varset(VarSet, !Info).
 
 erl_gen_info_new_anonymous_vars(Num, NewVars, !Info) :-
@@ -300,8 +300,8 @@ erl_gen_info_new_anonymous_vars(Num, NewVars, !Info) :-
 :- pred erl_gen_info_new_anonymous_var(int::in, prog_var::out,
     prog_varset::in, prog_varset::out) is det.
 
-erl_gen_info_new_anonymous_var(_Num, NewVar, VarSet0, VarSet) :-
-    varset.new_named_var(VarSet0, "_", NewVar, VarSet).
+erl_gen_info_new_anonymous_var(_Num, NewVar, !VarSet) :-
+    varset.new_named_var("_", NewVar, !VarSet).
 
 erl_variable_types(Info, Vars, Types) :-
     list.map(erl_variable_type(Info), Vars, Types).
@@ -541,11 +541,11 @@ erl_create_renaming(Vars, Subst, !Info) :-
 :- pred erl_create_renaming_2(prog_var::in, prog_varset::in, prog_varset::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
-erl_create_renaming_2(OldVar, VarSet0, VarSet, !Subst) :-
-    ( varset.search_name(VarSet0, OldVar, Name) ->
-        varset.new_named_var(VarSet0, Name, NewVar, VarSet)
+erl_create_renaming_2(OldVar, !VarSet, !Subst) :-
+    ( varset.search_name(!.VarSet, OldVar, Name) ->
+        varset.new_named_var(Name, NewVar, !VarSet)
     ;
-        varset.new_var(VarSet0, NewVar, VarSet)
+        varset.new_var(NewVar, !VarSet)
     ),
     map.det_insert(OldVar, NewVar, !Subst).
 

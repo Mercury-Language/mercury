@@ -198,7 +198,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module svset.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -1108,7 +1107,7 @@ create_shadow_vars([Arg | Args], VarsToExtract, !VarSet, !VarTypes,
 create_shadow_var(Arg, VarsToExtract, !VarSet, !VarTypes,
         !VarRename, !VoidRename) :-
     varset.lookup_name(!.VarSet, Arg, Name),
-    svvarset.new_named_var(Name, Shadow, !VarSet),
+    varset.new_named_var(Name, Shadow, !VarSet),
     map.lookup(!.VarTypes, Arg, Type),
     map.det_insert(Shadow, Type, !VarTypes),
     ( set.member(Arg, VarsToExtract) ->

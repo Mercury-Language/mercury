@@ -981,8 +981,8 @@ transform_orelse_goals(LocKind, [Goal | Goals], Renaming,
 transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
         Then0, Catches0, MaybeCatchAny0, Context, Renaming, TryGoal, NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    varset.new_named_var(!.VarSet, "TryResult", ResultVar, !:VarSet),
-    varset.new_var(!.VarSet, ExcpVar, !:VarSet),
+    varset.new_named_var("TryResult", ResultVar, !VarSet),
+    varset.new_var(ExcpVar, !VarSet),
 
     ResultVarTerm = variable(ResultVar, Context),
     ExcpVarTerm = variable(ExcpVar, Context),
@@ -1123,8 +1123,8 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
 transform_try_expr_without_io(LocKind, Goal0, Then0, MaybeElse0, Catches0,
         MaybeCatchAny0, Context, Renaming, TryGoal, NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    varset.new_named_var(!.VarSet, "TryResult", ResultVar, !:VarSet),
-    varset.new_var(!.VarSet, ExcpVar, !:VarSet),
+    varset.new_named_var("TryResult", ResultVar, !VarSet),
+    varset.new_var(ExcpVar, !VarSet),
 
     ResultVarTerm = variable(ResultVar, Context),
     ExcpVarTerm = variable(ExcpVar, Context),

@@ -215,8 +215,8 @@ unify(term__variable(X, _), term__variable(Y, _), VarSet0, VarSet) :-
 			 	VarSet = VarSet0
 			;
 				\+ occurs(SubstBindingOfX, Y, VarSet0),
-				varset__bind_var(VarSet0, Y, SubstBindingOfX,
-					VarSet)
+				varset__bind_var(Y, SubstBindingOfX,
+					VarSet0, VarSet)
 			)
 		)
 	;
@@ -230,8 +230,8 @@ unify(term__variable(X, _), term__variable(Y, _), VarSet0, VarSet) :-
 				VarSet = VarSet0
 			;
 				\+ occurs(SubstBindingOfY2, X, VarSet0),
-				varset__bind_var(VarSet0, X, SubstBindingOfY2,
-					VarSet)
+				varset__bind_var(X, SubstBindingOfY2,
+					VarSet0, VarSet)
 			)
 		;
 			% both X and Y are unbound variables -
@@ -239,8 +239,8 @@ unify(term__variable(X, _), term__variable(Y, _), VarSet0, VarSet) :-
 			( X = Y ->
 				VarSet = VarSet0
 			;
-				varset__bind_var(VarSet0, X,
-					term.variable(Y, context_init), VarSet)
+				varset__bind_var(X,
+					term.variable(Y, context_init), VarSet0, VarSet)
 			)
 		)
 	).
@@ -253,7 +253,7 @@ unify(term__variable(X, _), term__functor(F, As, C), VarSet0, VarSet) :-
 			VarSet)
 	;
 		\+ occurs_list(As, X, VarSet0),
-		varset__bind_var(VarSet0, X, term__functor(F, As, C), VarSet)
+		varset__bind_var(X, term__functor(F, As, C), VarSet0, VarSet)
 	).
 
 unify(term__functor(F, As, C), term__variable(X, _), VarSet0, VarSet) :-
@@ -264,7 +264,7 @@ unify(term__functor(F, As, C), term__variable(X, _), VarSet0, VarSet) :-
 			VarSet)
 	;
 		\+ occurs_list(As, X, VarSet0),
-		varset__bind_var(VarSet0, X, term__functor(F, As, C), VarSet)
+		varset__bind_var(X, term__functor(F, As, C), VarSet0, VarSet)
 	).
 
 unify(term__functor(F, AsX, _), term__functor(F, AsY, _)) -->

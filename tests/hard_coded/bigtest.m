@@ -33,7 +33,7 @@ main -->
 
 data(Eqns, max, Obj, Varset) :-
 	varset__init(Varset0 ),
-	varset__new_vars(Varset0, 80, Vars0, Varset),
+	varset__new_vars(80, Vars0, Varset0, Varset),
 	list__sort(Vars0, Vars),
 	list__map(mkeqn, Vars, Eqns),
 	list__map(mkobj, Vars, Obj).

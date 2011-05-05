@@ -562,7 +562,7 @@ add_constant_construction(ConstructVar, Construct0,
     ->
         VarSet0 = !.Info ^ constr_varset,
         VarTypes0 = !.Info ^ constr_vartypes,
-        varset.new_var(VarSet0, NewVar, VarSet),
+        varset.new_var(NewVar, VarSet0, VarSet),
         map.lookup(VarTypes0, ConstructVar, VarType),
         map.det_insert(NewVar, VarType, VarTypes0, VarTypes),
         !Info ^ constr_varset := VarSet,

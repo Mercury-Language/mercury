@@ -480,7 +480,7 @@ generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
 generate_new_var(Name, Type, !ProcInfo, Var) :-
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    varset.new_named_var(VarSet0, Name, Var, VarSet),
+    varset.new_named_var(Name, Var, VarSet0, VarSet),
     map.set(Var, Type, VarTypes0, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo).

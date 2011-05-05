@@ -205,58 +205,57 @@ rename_apart(NewVarSet, Terms0, Terms, VarSet0, VarSet) :-
 
 :- pred unify(term::in, term::in, varset::in, varset::out) is semidet.
 
-unify(term.variable(X, _), term.variable(Y, _), VarSet0, VarSet) :-
-    ( varset.search_var(VarSet0, X, BindingOfX) ->
-        ( varset.search_var(VarSet0, Y, BindingOfY) ->
+unify(term.variable(X, _), term.variable(Y, _), !VarSet) :-
+    ( varset.search_var(!.VarSet, X, BindingOfX) ->
+        ( varset.search_var(!.VarSet, Y, BindingOfY) ->
             % Both X and Y already have bindings - just
             % unify the terms they are bound to.
-            unify(BindingOfX, BindingOfY, VarSet0, VarSet)
+            unify(BindingOfX, BindingOfY, !VarSet)
         ;
             % Y is a variable which hasn't been bound yet
-            apply_rec_substitution(BindingOfX, VarSet0, SubstBindingOfX),
+            apply_rec_substitution(BindingOfX, !.VarSet, SubstBindingOfX),
             ( SubstBindingOfX = term.variable(Y, _) ->
-                VarSet = VarSet0
+                true
             ;
-                \+ occurs(SubstBindingOfX, Y, VarSet0),
-                varset.bind_var(VarSet0, Y, SubstBindingOfX, VarSet)
+                \+ occurs(SubstBindingOfX, Y, !.VarSet),
+                varset.bind_var(Y, SubstBindingOfX, !VarSet)
             )
         )
     ;
-        ( varset.search_var(VarSet0, Y, BindingOfY2) ->
+        ( varset.search_var(!.VarSet, Y, BindingOfY2) ->
             % X is a variable which hasn't been bound yet.
-            apply_rec_substitution(BindingOfY2, VarSet0, SubstBindingOfY2),
+            apply_rec_substitution(BindingOfY2, !.VarSet, SubstBindingOfY2),
             ( SubstBindingOfY2 = term.variable(X, _) ->
-                VarSet = VarSet0
+                true
             ;
-                \+ occurs(SubstBindingOfY2, X, VarSet0),
-                varset.bind_var(VarSet0, X, SubstBindingOfY2, VarSet)
+                \+ occurs(SubstBindingOfY2, X, !.VarSet),
+                varset.bind_var(X, SubstBindingOfY2, !VarSet)
             )
         ;
             % Both X and Y are unbound variables -
             % bind one to the other.
             ( X = Y ->
-                VarSet = VarSet0
+                true
             ;
-                varset.bind_var(VarSet0, X,
-                        term.variable(Y, context_init), VarSet)
+                varset.bind_var(X, term.variable(Y, context_init), !VarSet)
             )
         )
     ).
 
-unify(term.variable(X, _), term.functor(F, As, C), VarSet0, VarSet) :-
-    ( varset.search_var(VarSet0, X, BindingOfX) ->
-        unify(BindingOfX, term.functor(F, As, C), VarSet0, VarSet)
+unify(term.variable(X, _), term.functor(F, As, C), !VarSet) :-
+    ( varset.search_var(!.VarSet, X, BindingOfX) ->
+        unify(BindingOfX, term.functor(F, As, C), !VarSet)
     ;
-        \+ occurs_list(As, X, VarSet0),
-        varset.bind_var(VarSet0, X, term.functor(F, As, C), VarSet)
+        \+ occurs_list(As, X, !.VarSet),
+        varset.bind_var(X, term.functor(F, As, C), !VarSet)
     ).
 
-unify(term.functor(F, As, C), term.variable(X, _), VarSet0, VarSet) :-
-    ( varset.search_var(VarSet0, X, BindingOfX) ->
-        unify(term.functor(F, As, C), BindingOfX, VarSet0, VarSet)
+unify(term.functor(F, As, C), term.variable(X, _), !VarSet) :-
+    ( varset.search_var(!.VarSet, X, BindingOfX) ->
+        unify(term.functor(F, As, C), BindingOfX, !VarSet)
     ;
-        \+ occurs_list(As, X, VarSet0),
-        varset.bind_var(VarSet0, X, term.functor(F, As, C), VarSet)
+        \+ occurs_list(As, X, !.VarSet),
+        varset.bind_var(X, term.functor(F, As, C), !VarSet)
     ).
 
 unify(term.functor(F, AsX, _), term.functor(F, AsY, _)) -->

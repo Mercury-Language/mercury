@@ -85,7 +85,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -1080,7 +1079,7 @@ possibly_fix_sizevar_map([ProgVar | ProgVars], !SizeVarset, !SizeVarMap) :-
     ( map.search(!.SizeVarMap, ProgVar, _) ->
         possibly_fix_sizevar_map(ProgVars, !SizeVarset, !SizeVarMap)
     ;
-        svvarset.new_var(SizeVar, !SizeVarset),
+        varset.new_var(SizeVar, !SizeVarset),
         map.set(ProgVar, SizeVar, !SizeVarMap),
         possibly_fix_sizevar_map(ProgVars, !SizeVarset, !SizeVarMap)
     ).

@@ -1190,7 +1190,7 @@ acc_var_subst_init([Var | Vars], !VarSet, !VarTypes, Subst) :-
 create_new_var(OldVar, Prefix, NewVar, !VarSet, !VarTypes) :-
     varset.lookup_name(!.VarSet, OldVar, OldName),
     string.append(Prefix, OldName, NewName),
-    varset.new_named_var(!.VarSet, NewName, NewVar, !:VarSet),
+    varset.new_named_var(NewName, NewVar, !VarSet),
     map.lookup(!.VarTypes, OldVar, Type),
     map.det_insert(NewVar, Type, !VarTypes).
 

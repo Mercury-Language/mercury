@@ -596,7 +596,7 @@ final_slot_info(Varset, VarTypes, RttiVarMaps, SlotInfo) :-
 
 rename_var(Var, NewVar, Substitution, !SlotInfo) :-
     !.SlotInfo = slot_info(Varset0, VarTypes0, RttiVarMaps0, TypeInfoLiveness),
-    varset.new_var(Varset0, NewVar, Varset),
+    varset.new_var(NewVar, Varset0, Varset),
     map.from_assoc_list([Var - NewVar], Substitution),
     map.lookup(VarTypes0, Var, Type),
     map.det_insert(NewVar, Type, VarTypes0, VarTypes),

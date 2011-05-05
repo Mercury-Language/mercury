@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2010 The University of Melbourne.
+% Copyright (C) 2007-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1576,7 +1576,7 @@ erl_gen_foreign_export_defn(ProcDefns, PragmaExport, ForeignExportDefn) :-
         Arity = elds_body_arity(TargetBody),
 
         % ``Name(Vars, ...) -> PredProcId(Vars, ...)''
-        varset.new_vars(varset.init, Arity, Vars, VarSet),
+        varset.new_vars(Arity, Vars, varset.init, VarSet),
         Clause = elds_clause(terms_from_vars(Vars),
             elds_call(elds_call_plain(PredProcId), exprs_from_vars(Vars))),
         ForeignExportDefn = elds_foreign_export_defn(Name, VarSet, Clause)

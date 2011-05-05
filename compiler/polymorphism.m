@@ -421,7 +421,6 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
-:- import_module svvarset.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1699,7 +1698,7 @@ lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet) :-
 
 create_fresh_vars([], [], !VarSet, !VarTypes).
 create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
-    varset.new_var(!.VarSet, Var, !:VarSet),
+    varset.new_var(Var, !VarSet),
     map.det_insert(Var, Type, !VarTypes),
     create_fresh_vars(Types, Vars, !VarSet, !VarTypes).
 
@@ -3170,7 +3169,7 @@ make_head_vars([TypeVar | TypeVars], TypeVarSet, TypeInfoVars, !Info) :-
     ( varset.search_name(TypeVarSet, TypeVar, TypeVarName) ->
         poly_info_get_varset(!.Info, VarSet0),
         VarName = "TypeInfo_for_" ++ TypeVarName,
-        varset.name_var(VarSet0, Var, VarName, VarSet),
+        varset.name_var(Var, VarName, VarSet0, VarSet),
         poly_info_set_varset(VarSet, !Info)
     ;
         true
@@ -3192,7 +3191,7 @@ new_type_info_var(Type, Kind, Var, !Info) :-
 
 new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
     % Introduce new variable.
-    varset.new_var(!.VarSet, Var, !:VarSet),
+    varset.new_var(Var, !VarSet),
     term.var_to_int(Var, VarNum),
     string.int_to_string(VarNum, VarNumStr),
     (
@@ -3207,7 +3206,7 @@ new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
         % type_ctor_infos in the rtti_varmaps somewhere.
     ),
     Name = Prefix ++ VarNumStr,
-    svvarset.name_var(Var, Name, !VarSet),
+    varset.name_var(Var, Name, !VarSet),
     map.det_insert(Var, type_info_type, !VarTypes).
 
 %---------------------------------------------------------------------------%
@@ -3385,7 +3384,7 @@ new_typeclass_info_var(Constraint, VarKind, Var, !Info) :-
     ClassNameString = unqualify_name(ClassName),
 
     % Introduce new variable.
-    varset.new_var(VarSet0, Var, VarSet1),
+    varset.new_var(Var, VarSet0, VarSet1),
     (
         VarKind = base_typeclass_info_kind,
         Name = "BaseTypeClassInfo_for_" ++ ClassNameString
@@ -3393,7 +3392,7 @@ new_typeclass_info_var(Constraint, VarKind, Var, !Info) :-
         VarKind = typeclass_info_kind,
         Name = "TypeClassInfo_for_" ++ ClassNameString
     ),
-    varset.name_var(VarSet1, Var, Name, VarSet),
+    varset.name_var(Var, Name, VarSet1, VarSet),
     build_typeclass_info_type(Constraint, DictionaryType),
     map.set(Var, DictionaryType, VarTypes0, VarTypes),
     rtti_det_insert_typeclass_info_var(Constraint, Var,

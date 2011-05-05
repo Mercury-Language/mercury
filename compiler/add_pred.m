@@ -274,7 +274,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         Module = mercury_private_builtin_module,
         Name = "trace_get_io_state"
     ->
-        varset.new_var(VarSet0, ZeroVar, VarSet),
+        varset.new_var(ZeroVar, VarSet0, VarSet),
         ExtraVars = [ZeroVar],
         ExtraTypes = [int_type],
 

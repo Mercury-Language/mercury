@@ -169,7 +169,6 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -3043,7 +3042,7 @@ make_future_var(SharedVar, SharedVarType, !VarSet, !VarTypes,
         FutureVar, FutureVarType) :-
     FutureVarType = future_type(SharedVarType),
     varset.lookup_name(!.VarSet, SharedVar, SharedVarName),
-    svvarset.new_named_var("Future" ++ SharedVarName, FutureVar, !VarSet),
+    varset.new_named_var("Future" ++ SharedVarName, FutureVar, !VarSet),
     map.det_insert(FutureVar, FutureVarType, !VarTypes).
 
 :- pred make_wait_goal(module_info::in, vartypes::in,

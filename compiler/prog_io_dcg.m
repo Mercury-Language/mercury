@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2009 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -101,8 +101,8 @@ new_dcg_var(!VarSet, !Counter, DCG_0_Var) :-
     counter.allocate(N, !Counter),
     string.int_to_string(N, StringN),
     string.append("DCG_", StringN, VarName),
-    varset.new_var(!.VarSet, DCG_0_Var, !:VarSet),
-    varset.name_var(!.VarSet, DCG_0_Var, VarName, !:VarSet).
+    varset.new_var(DCG_0_Var, !VarSet),
+    varset.name_var(DCG_0_Var, VarName, !VarSet).
 
 %-----------------------------------------------------------------------------%
 

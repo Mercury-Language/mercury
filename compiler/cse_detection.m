@@ -709,7 +709,7 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
         Goal) :-
     VarSet0 = !.CseInfo ^ csei_varset,
     VarTypes0 = !.CseInfo ^ csei_vartypes,
-    varset.new_var(VarSet0, NFV, VarSet),
+    varset.new_var( NFV, VarSet0, VarSet),
     map.lookup(VarTypes0, OFV, Type),
     map.det_insert(NFV, Type, VarTypes0, VarTypes),
     !:OldNewVar = [OFV - NFV | !.OldNewVar],

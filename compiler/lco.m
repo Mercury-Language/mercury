@@ -203,7 +203,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module svbag.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -877,7 +876,7 @@ make_address_var(ConstInfo, Var, AddrVar, !Info) :-
     VarTypes0 = !.Info ^ lco_var_types,
     varset.lookup_name(VarSet0, Var, "SCCcallarg", Name),
     AddrName = "Addr" ++ Name,
-    varset.new_named_var(VarSet0, AddrName, AddrVar, VarSet),
+    varset.new_named_var(AddrName, AddrVar, VarSet0, VarSet),
     HighLevelData = ConstInfo ^ lci_highlevel_data,
     (
         HighLevelData = no,
@@ -1205,7 +1204,7 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
         ->
             varset.lookup_name(!.VarSet, HeadVar0, Name),
             AddrName = "AddrOf" ++ Name,
-            svvarset.new_named_var(AddrName, AddrVar, !VarSet),
+            varset.new_named_var(AddrName, AddrVar, !VarSet),
             HeadVar = AddrVar,
             map.lookup(!.VarTypes, HeadVar0, OldType),
             (

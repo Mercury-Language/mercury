@@ -1208,7 +1208,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     goal_util.goal_vars(Goal0, GoalVars0),
     set.insert_list(GoalVars0, ArgVars, GoalVars),
     map.select(VarTypes0, GoalVars, VarTypes),
-    varset.select(VarSet0, GoalVars, VarSet),
+    varset.select(GoalVars, VarSet0, VarSet),
 
     % Approximate the termination information for the new procedure.
     ( goal_cannot_loop(ModuleInfo0, Goal0) ->
@@ -2841,7 +2841,7 @@ proc_info_ensure_unique_names(!ProcInfo) :-
 proc_info_create_var_from_type(Type, MaybeName, NewVar, !ProcInfo) :-
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    varset.new_maybe_named_var(VarSet0, MaybeName, NewVar, VarSet),
+    varset.new_maybe_named_var(MaybeName, NewVar, VarSet0, VarSet),
     map.det_insert(NewVar, Type, VarTypes0, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo).
@@ -2850,7 +2850,7 @@ proc_info_create_vars_from_types(Types, NewVars, !ProcInfo) :-
     list.length(Types, NumVars),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    varset.new_vars(VarSet0, NumVars, NewVars, VarSet),
+    varset.new_vars(NumVars, NewVars, VarSet0, VarSet),
     map.det_insert_from_corresponding_lists(NewVars, Types,
         VarTypes0, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
@@ -3043,7 +3043,7 @@ ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
         true
     ;
         Name = "HeadVar__" ++ int_to_string(SeqNum),
-        varset.name_var(!.VarSet, Var, Name, !:VarSet)
+        varset.name_var(Var, Name, !VarSet)
     ),
     ensure_all_headvars_are_named_2(Vars, SeqNum + 1, !VarSet).
 
@@ -3196,7 +3196,7 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
 is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
     Arity =< 3,
     prog_varset_init(VarSet),
-    varset.new_vars(VarSet, Arity, Args, _),
+    varset.new_vars(Arity, Args, VarSet, _),
     builtin_ops.translate_builtin(ModuleName, PredName, ProcId, Args, _).
 
 :- pred prog_varset_init(prog_varset::out) is det.

@@ -87,7 +87,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -277,15 +276,14 @@ contains_nonpure_goal([Goal | Goals]) :-
 
 :- func set_arg_names(foreign_arg, prog_varset) = prog_varset.
 
-set_arg_names(Arg, Vars0) = Vars :-
+set_arg_names(Arg, !.Vars) = !:Vars :-
     Var = foreign_arg_var(Arg),
     MaybeNameMode = foreign_arg_maybe_name_mode(Arg),
     (
         MaybeNameMode = yes(Name - _),
-        varset.name_var(Vars0, Var, Name, Vars)
+        varset.name_var(Var, Name, !Vars)
     ;
-        MaybeNameMode = no,
-        Vars = Vars0
+        MaybeNameMode = no
     ).
 
 :- pred select_matching_clauses(list(clause)::in, proc_id::in,
@@ -572,10 +570,10 @@ maybe_add_type_info_locns([ArgType | ArgTypes], Var, Num, !RttiVarMaps) :-
     prog_varset::in, prog_varset::out) is det.
 
 make_new_exist_cast_var(InternalVar, ExternalVar, !VarSet) :-
-    svvarset.new_var(ExternalVar, !VarSet),
+    varset.new_var(ExternalVar, !VarSet),
     varset.lookup_name(!.VarSet, InternalVar, InternalName),
     string.append("ExistQ", InternalName, ExternalName),
-    svvarset.name_var(ExternalVar, ExternalName, !VarSet).
+    varset.name_var(ExternalVar, ExternalName, !VarSet).
 
 %-----------------------------------------------------------------------------%
 

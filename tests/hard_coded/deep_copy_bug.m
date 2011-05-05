@@ -20,7 +20,7 @@ main --> test1, test2, test3.
 test1 -->
 	{ Lambda = (pred(X::out) is nondet :-
 		varset__init(Varset0),
-		varset__new_vars(Varset0, 10, Vars, _),
+		varset__new_vars(10, Vars, Varset0, _),
 		list__member(X, Vars)
 	) },
 	{ solutions(Lambda, List) },
@@ -42,7 +42,7 @@ test2b(S) -->
 :- mode foo(in, out) is nondet.
 foo(Blah, X) :-
 	varset__init(Varset0),
-	varset__new_vars(Varset0, 10, Vars, _),
+	varset__new_vars(10, Vars, Varset0, _),
 	list__member(X, Vars).
 
 :- pred test3(io__state::di, io__state::uo) is det.

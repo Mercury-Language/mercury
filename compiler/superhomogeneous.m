@@ -141,7 +141,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module svset.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -494,7 +493,7 @@ classify_unravel_unification(TermX, TermY, Context, MainContext, SubContext,
         % away type errors.
         TermX = term.functor(_, _, _),
         TermY = term.functor(_, _, _),
-        varset.new_var(!.VarSet, TmpVar, !:VarSet),
+        varset.new_var(TmpVar, !VarSet),
         do_unravel_unification(term.variable(TmpVar, Context), TermX,
             Context, MainContext, SubContext, Purity, GoalX, no, NumAddedX,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
@@ -976,7 +975,7 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             % becoming lambda-quantified.
 
             list.length(Args, NumArgs),
-            svvarset.new_vars(NumArgs, LambdaVars, !VarSet),
+            varset.new_vars(NumArgs, LambdaVars, !VarSet),
 
             % Partition the arguments (and their corresponding lambda vars)
             % into two sets: those that are not output, i.e. input and unused,
@@ -1181,7 +1180,7 @@ make_fresh_arg_vars_loop([], !RevVars, !VarSet, !SVarState, !Specs).
 make_fresh_arg_vars_loop([Arg | Args], !RevVars, !VarSet, !SVarState,
         !Specs) :-
     make_fresh_arg_var(Arg, Var, !.RevVars, !VarSet, !SVarState, !Specs),
-    !:RevVars  =[Var | !.RevVars], 
+    !:RevVars = [Var | !.RevVars], 
     make_fresh_arg_vars_loop(Args, !RevVars, !VarSet, !SVarState, !Specs).
 
 make_fresh_arg_var(Arg0, Var, Vars0, !VarSet, !SVarState, !Specs) :-
@@ -1192,7 +1191,7 @@ make_fresh_arg_var(Arg0, Var, Vars0, !VarSet, !SVarState, !Specs) :-
     ->
         Var = ArgVar
     ;
-        varset.new_var(!.VarSet, Var, !:VarSet)
+        varset.new_var(Var, !VarSet)
     ).
 
 %-----------------------------------------------------------------------------%

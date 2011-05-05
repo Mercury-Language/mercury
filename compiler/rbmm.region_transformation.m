@@ -93,7 +93,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -773,7 +772,7 @@ region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes) :-
     ( map.search(!.NameToVar, Name, RegVar0) ->
         RegVar = RegVar0
     ;
-        svvarset.new_named_var(Name, RegVar, !VarSet),
+        varset.new_named_var(Name, RegVar, !VarSet),
         map.det_insert(RegVar, region_type, !VarTypes),
         map.det_insert(Name, RegVar, !NameToVar)
     ).

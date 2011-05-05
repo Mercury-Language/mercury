@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,7 +57,6 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
-:- import_module svvarset.
 :- import_module univ.
 :- import_module varset.
 
@@ -314,8 +313,8 @@ erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcLabel, WrapperFun,
     %       {Y1, Y2, ...}   /* may have additional outputs */
     %   end
 
-    svvarset.new_named_var("TypeClassInfo", TCIVar, !VarSet),
-    svvarset.new_vars(list.length(ArgTypes) - NumExtra, Ws, !VarSet),
+    varset.new_named_var("TypeClassInfo", TCIVar, !VarSet),
+    varset.new_vars(list.length(ArgTypes) - NumExtra, Ws, !VarSet),
 
     % Make the ``E<n> = element(<n>, TypeClassInfo)'' expressions.
     list.map2_foldl(extract_extra_arg(TCIVar), 1 .. NumExtra,
@@ -353,7 +352,7 @@ erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcLabel, WrapperFun,
         % model_non wrappers need an additional argument which is the success
         % continuation.  On success we call the success continuation with the
         % output arguments of the call.
-        svvarset.new_named_var("Succeed", SucceedVar, !VarSet),
+        varset.new_named_var("Succeed", SucceedVar, !VarSet),
         AllWrapperInputVars = [TCIVar | WrapperInputVars] ++ [SucceedVar],
         SuccessExpr0 = elds_call(elds_call_ho(expr_from_var(SucceedVar)),
             WrapperOutputVarsExprs)
@@ -378,7 +377,7 @@ erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcLabel, WrapperFun,
     prog_varset::in, prog_varset::out) is det.
 
 extract_extra_arg(TCIVar, Index, Var, ExtractStatement, !VarSet) :-
-    svvarset.new_named_var("Extra", Var, !VarSet),
+    varset.new_named_var("Extra", Var, !VarSet),
     % Erlang's `element' builtin counts from 1.
     ExtractStatement = elds_eq(expr_from_var(Var),
         elds_call_element(TCIVar, 1 + Index)).
@@ -672,7 +671,7 @@ erl_gen_special_pred_wrapper(ModuleInfo, RttiProcLabel, WrapperFun, !VarSet) :-
     Detism = RttiProcLabel ^ rpl_proc_interface_detism,
 
     % Create the variable list.
-    svvarset.new_vars(list.length(ArgTypes), Ws, !VarSet),
+    varset.new_vars(list.length(ArgTypes), Ws, !VarSet),
 
     % Figure out the input and output variables for the call to the actual
     % special pred implementation.
@@ -772,7 +771,7 @@ reduce_list_term_complexity(Expr0, Expr, !RevAssignments, !VarSet) :-
         unqualify_name(SymName) = "[|]"
     ->
         reduce_list_term_complexity(Tail0, Tail, !RevAssignments, !VarSet),
-        svvarset.new_var(V, !VarSet),
+        varset.new_var(V, !VarSet),
         Assign = elds_eq(expr_from_var(V), Tail),
         Expr = elds_term(elds_tuple([Functor, Head, expr_from_var(V)])),
         list.cons(Assign, !RevAssignments)

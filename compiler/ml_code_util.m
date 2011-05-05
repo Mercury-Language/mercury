@@ -816,7 +816,7 @@ ml_char_type =
 
 ml_make_boxed_types(Arity) = BoxedTypes :-
     varset.init(TypeVarSet0),
-    varset.new_vars(TypeVarSet0, Arity, BoxedTypeVars, _TypeVarSet),
+    varset.new_vars(Arity, BoxedTypeVars, TypeVarSet0, _TypeVarSet),
     prog_type.var_list_to_type_list(map.init, BoxedTypeVars, BoxedTypes).
 
 ml_java_mercury_type_interface = TypeInterfaceDefn :-

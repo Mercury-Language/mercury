@@ -201,7 +201,6 @@
 :- import_module multi_map.
 :- import_module require.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -1029,7 +1028,7 @@ ensure_prog_var_at_path(ProgVarset, PredId, GoalId, ProgVar,
         true
     ;
         MCVarName = rep_var_to_string(ProgVarset, RepVar),
-        svvarset.new_named_var(MCVarName, NewMCVar, !Varset),
+        varset.new_named_var(MCVarName, NewMCVar, !Varset),
         bimap.det_insert(RepVar, NewMCVar, !VarMap)
     ).
 

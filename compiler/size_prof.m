@@ -1055,11 +1055,11 @@ make_size_goal(TypeInfoVar, Arg, Context, SizeGoal,
 get_new_var(Type, Prefix, Var, !Info) :-
     VarSet0 = !.Info ^ spi_varset,
     VarTypes0 = !.Info ^ spi_vartypes,
-    varset.new_var(VarSet0, Var, VarSet1),
+    varset.new_var(Var, VarSet0, VarSet1),
     term.var_to_int(Var, VarNum),
     string.int_to_string(VarNum, VarNumStr),
     string.append(Prefix, VarNumStr, Name),
-    varset.name_var(VarSet1, Var, Name, VarSet),
+    varset.name_var(Var, Name, VarSet1,  VarSet),
     map.set(Var, Type, VarTypes0, VarTypes),
     !Info ^ spi_varset := VarSet,
     !Info ^ spi_vartypes := VarTypes.

@@ -454,7 +454,6 @@
 :- import_module solutions.
 :- import_module string.
 :- import_module svset.
-:- import_module svvarset.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -482,7 +481,7 @@ create_renaming_2([], _, !VarSet, !VarTypes, !RevUnifies, !RevNewVars,
         !Renaming).
 create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
         !RevUnifies, !RevNewVars, !Renaming) :-
-    svvarset.new_var(NewVar, !VarSet),
+    varset.new_var(NewVar, !VarSet),
     map.lookup(!.VarTypes, OrigVar, Type),
     map.det_insert(NewVar, Type, !VarTypes),
     ( instmap_delta_search_var(InstMapDelta, OrigVar, DeltaInst) ->
@@ -512,9 +511,9 @@ clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes, !Renaming,
     ( map.search(!.Renaming, Var, CloneVarPrime) ->
         CloneVar = CloneVarPrime
     ;
-        svvarset.new_var(CloneVar, !VarSet),
+        varset.new_var(CloneVar, !VarSet),
         ( varset.search_name(OldVarNames, Var, Name) ->
-            svvarset.name_var(CloneVar, Name, !VarSet)
+            varset.name_var(CloneVar, Name, !VarSet)
         ;
             true
         ),
@@ -1345,7 +1344,7 @@ switch_to_disjunction(Var, [Case | Cases], InstMap, Goals,
 case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
         !ModuleInfo) :-
     ConsArity = cons_id_arity(ConsId),
-    svvarset.new_vars(ConsArity, ArgVars, !VarSet),
+    varset.new_vars(ConsArity, ArgVars, !VarSet),
     map.lookup(!.VarTypes, Var, VarType),
     type_util.get_cons_id_arg_types(!.ModuleInfo, VarType, ConsId, ArgTypes),
     map.det_insert_from_corresponding_lists(ArgVars, ArgTypes, !VarTypes),

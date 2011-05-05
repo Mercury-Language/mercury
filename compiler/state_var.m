@@ -383,15 +383,15 @@ new_state_var_instance(StateVar, NameSource, Var, !VarSet) :-
     (
         NameSource = name_initial,
         ProgVarName = string.format("STATE_VARIABLE_%s_0", [s(SVarName)]),
-        varset.new_named_var(!.VarSet, ProgVarName, Var, !:VarSet)
+        varset.new_named_var(ProgVarName, Var, !VarSet)
     ;
         NameSource = name_middle,
         ProgVarBaseName = string.format("STATE_VARIABLE_%s", [s(SVarName)]),
-        varset.new_uniquely_named_var(!.VarSet, ProgVarBaseName, Var, !:VarSet)
+        varset.new_uniquely_named_var(ProgVarBaseName, Var, !VarSet)
     ;
         NameSource = name_final,
         ProgVarName = string.format("STATE_VARIABLE_%s", [s(SVarName)]),
-        varset.new_named_var(!.VarSet, ProgVarName, Var, !:VarSet)
+        varset.new_named_var(ProgVarName, Var, !VarSet)
     ).
 
 %-----------------------------------------------------------------------------%

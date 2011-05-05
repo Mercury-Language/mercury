@@ -97,7 +97,6 @@
 :- import_module solutions.
 :- import_module string.
 :- import_module svset.
-:- import_module svvarset.
 
 %-----------------------------------------------------------------------------%
 
@@ -823,8 +822,8 @@ get_basis_vars(Tab, Vars) :-
 lp_info_init(Varset0, URSVars, LPInfo) :-
     Introduce = (pred(Orig::in, VP0::in, VP::out) is det :-
         VP0 = VS0 - VM0,
-        varset.new_var(VS0, V1, VS1),
-        varset.new_var(VS1, V2, VS),
+        varset.new_var(V1, VS0, VS1),
+        varset.new_var(V2, VS1, VS),
         map.set(Orig, V1 - V2, VM0, VM),
         VP = VS - VM
     ),
@@ -837,7 +836,7 @@ lp_info_init(Varset0, URSVars, LPInfo) :-
 new_slack_var(Var, !Info) :-
     some [!Varset] (
         get_varset(!.Info, !:Varset),
-        svvarset.new_var(Var, !Varset),
+        varset.new_var(Var, !Varset),
         set_varset(!.Varset, !Info)
     ),
     get_slack_vars(!.Info, Vars),
@@ -848,7 +847,7 @@ new_slack_var(Var, !Info) :-
 new_art_var(Var, !Info) :-
     some [!Varset] (
         get_varset(!.Info, !:Varset),
-        svvarset.new_var(Var, !Varset),
+        varset.new_var(Var, !Varset),
         set_varset(!.Varset, !Info)
     ),
     get_art_vars(!.Info, Vars),

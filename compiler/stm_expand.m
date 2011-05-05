@@ -200,7 +200,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -1260,7 +1259,7 @@ apply_varset_to_preds(ProgVar, !NewPredVarSet, !NewPredVarTypes,
     map.lookup(!.OldPredVarTypes, ProgVar, ProgType),
 %   delete_var(!.OldPredVarSet, ProgVar, !:OldPredVarSet),
 %   map.delete(!.OldPredVarTypes, ProgVar, !:OldPredVarTypes),
-    new_var(NewProgVar, !NewPredVarSet),
+    varset.new_var(NewProgVar, !NewPredVarSet),
     map.det_insert(NewProgVar, ProgType, !NewPredVarTypes),
     map.det_insert(ProgVar, NewProgVar, !VarMapping).
 
@@ -2066,10 +2065,10 @@ rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
     proc_info_get_varset(NewProcInfo0, NewPredVarSet0),
     proc_info_get_vartypes(NewProcInfo0, NewPredVarTypes0),
     proc_info_get_headvars(NewProcInfo0, NewHeadVars0),
-    delete_var(NewPredVarSet0, ResultVar0, NewPredVarSet1),
+    varset.delete_var(ResultVar0, NewPredVarSet0, NewPredVarSet1),
     map.delete(ResultVar0, NewPredVarTypes0, NewPredVarTypes1),
 
-    new_named_var(Name, ResultVar, NewPredVarSet1, NewPredVarSet),
+    varset.new_named_var(Name, ResultVar, NewPredVarSet1, NewPredVarSet),
     map.det_insert(ResultVar, ResultType, NewPredVarTypes1, NewPredVarTypes),
 
     VarMapping0 = map.init,
@@ -2485,7 +2484,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
 set_head_vars(NewHeadVars, !NewPredInfo) :-
     ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
     proc_info_set_headvars(NewHeadVars, ProcInfo0, ProcInfo),
-    !:NewPredInfo = !.NewPredInfo ^ new_pred_proc_info := ProcInfo.
+    !NewPredInfo ^ new_pred_proc_info := ProcInfo.
 
     % Writes the changes made to the new predicate to the predicate table
     % and returns an updates the stm_info state.
@@ -2512,7 +2511,7 @@ commit_new_pred(NewPred, StmInfo0, StmInfo) :-
 
 update_new_pred_info(StmInfo, !NewPredInfo) :-
     ModuleInfo = StmInfo ^ stm_info_module_info,
-    !:NewPredInfo = !.NewPredInfo ^ new_pred_module_info := ModuleInfo.
+    !NewPredInfo ^ new_pred_module_info := ModuleInfo.
 
     % Runs quantification and recalculates the instmap-delta over the
     % new predicate.
@@ -2527,8 +2526,8 @@ run_quantification_over_pred(!NewPredInfo) :-
         ProcInfo0, ProcInfo1),
     recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
         ProcInfo1, ProcInfo, ModuleInfo0, ModuleInfo),
-    !:NewPredInfo = !.NewPredInfo ^ new_pred_module_info := ModuleInfo,
-    !:NewPredInfo = !.NewPredInfo ^ new_pred_proc_info := ProcInfo.
+    !NewPredInfo ^ new_pred_module_info := ModuleInfo,
+    !NewPredInfo ^ new_pred_proc_info := ProcInfo.
 
     % Sets the goal of the new predicate.
     %
@@ -2541,13 +2540,13 @@ new_pred_set_goal(HldsGoal, !NewPredInfo) :-
     proc_info_get_varset(ProcInfo0, ProcVarSet0),
     proc_info_get_vartypes(ProcInfo0, ProcVarTypes0),
 
-    varset.select(ProcVarSet0, GoalVars0, ProgVarSet),
+    varset.select(GoalVars0, ProcVarSet0, ProgVarSet),
     map.select(ProcVarTypes0, GoalVars0, ProcVarTypes),
 
     proc_info_set_varset(ProgVarSet, ProcInfo0, ProcInfo1),
     proc_info_set_goal(HldsGoal, ProcInfo1, ProcInfo2),
     proc_info_set_vartypes(ProcVarTypes, ProcInfo2, ProcInfo),
-    !:NewPredInfo = !.NewPredInfo ^ new_pred_proc_info := ProcInfo.
+    !NewPredInfo ^ new_pred_proc_info := ProcInfo.
 
     % Returns the pred_proc_id of the new predicate.
     %

@@ -46,7 +46,6 @@
 :- import_module set.
 :- import_module varset.
 :- import_module svset.
-:- import_module svvarset.
 
 maybe_improve_headvar_names(Globals, !PredInfo) :-
     globals.lookup_bool_option(Globals, make_optimization_interface, MakeOpt),
@@ -165,7 +164,7 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
                 \+ varset.search_name(!.VarSet, OtherVar, _),
                 varset.search_name(!.VarSet, HeadVar, HeadVarName)
             ->
-                svvarset.name_var(OtherVar, HeadVarName, !VarSet)
+                varset.name_var(OtherVar, HeadVarName, !VarSet)
             ;
                 true
             )
@@ -175,10 +174,10 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
             ( varset.search_name(!.VarSet, OtherVar, OtherVarName) ->
                 % The unification can't be eliminated,
                 % so just rename the head variable.
-                svvarset.name_var(HeadVar, OtherVarName, !VarSet)
+                varset.name_var(HeadVar, OtherVarName, !VarSet)
             ; varset.search_name(!.VarSet, HeadVar, HeadVarName) ->
                 % If the variable wasn't named, use the `HeadVar__n' name.
-                svvarset.name_var(OtherVar, HeadVarName, !VarSet)
+                varset.name_var(OtherVar, HeadVarName, !VarSet)
             ;
                 true
             )

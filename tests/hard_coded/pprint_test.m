@@ -18,8 +18,8 @@ line_length = 72.
 
 get_new_vars(Var1, Var2) :-
 	varset__init(VarSet0),
-	varset__new_var(VarSet0, Var1, VarSet1),
-	varset__new_var(VarSet1, Var2, _VarSet2).
+	varset__new_var(Var1, VarSet0, VarSet1),
+	varset__new_var(Var2, VarSet1, _VarSet2).
 
 main -->
 	{ get_new_vars(Var1, Var2) },

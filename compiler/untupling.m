@@ -122,7 +122,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -357,7 +356,7 @@ create_untuple_vars(_, _, [], [], !VarSet, !VarTypes).
 create_untuple_vars(ParentName, Num, [Type | Types], [NewVar | NewVars],
         !VarSet, !VarTypes) :-
     string.format("Untupled_%s_%d", [s(ParentName), i(Num)], Name),
-    svvarset.new_named_var(Name, NewVar, !VarSet),
+    varset.new_named_var(Name, NewVar, !VarSet),
     map.det_insert(NewVar, Type, !VarTypes),
     create_untuple_vars(ParentName, Num+1, Types, NewVars, !VarSet, !VarTypes).
 
@@ -659,7 +658,7 @@ expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
     (
         Expansion = expansion(ConsId, Types),
         NumVars = list.length(Types),
-        svvarset.new_vars(NumVars, ReplacementArgs, !VarSet),
+        varset.new_vars(NumVars, ReplacementArgs, !VarSet),
         map.det_insert_from_corresponding_lists(
             ReplacementArgs, Types, !VarTypes),
         list.duplicate(NumVars, ArgMode, ReplacementModes),

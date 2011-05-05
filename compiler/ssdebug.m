@@ -214,7 +214,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -981,7 +980,7 @@ make_retry_var(VarName, RetryVar, !VarSet, !VarTypes) :-
     SSDBModule = mercury_ssdb_builtin_module,
     TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_retry"), 0),
     construct_type(TypeCtor, [], RetryType),
-    svvarset.new_named_var(VarName, RetryVar, !VarSet),
+    varset.new_named_var(VarName, RetryVar, !VarSet),
     map.det_insert(RetryVar, RetryType, !VarTypes).
 
     % Create the goal for recursive call in the case of a retry.
@@ -1148,7 +1147,7 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar,
     SSDBModule = mercury_ssdb_builtin_module,
     TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_proc_id"), 0),
 
-    svvarset.new_named_var("ProcId", ProcIdVar, !VarSet),
+    varset.new_named_var("ProcId", ProcIdVar, !VarSet),
     ConsId = cons(qualified(SSDBModule, "ssdb_proc_id"), 2, TypeCtor),
     construct_type(TypeCtor, [], ProcIdType),
     map.det_insert(ProcIdVar, ProcIdType, !VarTypes),
@@ -1204,7 +1203,7 @@ check_arguments_modes(ModuleInfo, HeadModes) :-
 
 make_arg_list(_Pos, _InstMap, [], _Renaming, OutVar, [Goal], !ModuleInfo,
         !ProcInfo, !PredInfo, !VarSet, !VarTypes, !BoundVarDescs) :-
-    svvarset.new_named_var("EmptyVarList", OutVar, !VarSet),
+    varset.new_named_var("EmptyVarList", OutVar, !VarSet),
     map.det_insert(OutVar, list_var_value_type, !VarTypes),
     ListTypeSymName = qualified(mercury_list_module, "list"),
     ListTypeCtor = type_ctor(ListTypeSymName, 1),
@@ -1241,7 +1240,7 @@ make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar,
                 !VarTypes, !BoundVarDescs)
         ),
 
-        svvarset.new_named_var("FullListVar", OutVar, !VarSet),
+        varset.new_named_var("FullListVar", OutVar, !VarSet),
         map.det_insert(OutVar, list_var_value_type, !VarTypes),
         ListTypeSymName = qualified(mercury_list_module, "list"),
         ListTypeCtor = type_ctor(ListTypeSymName, 1),
@@ -1286,7 +1285,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
     make_int_const_construction_alloc(VarPos, yes("VarPos"),
         ConstructVarPos, VarPosVar, !VarSet, !VarTypes),
 
-    svvarset.new_named_var("VarDesc", VarDesc, !VarSet),
+    varset.new_named_var("VarDesc", VarDesc, !VarSet),
     ( var_is_ground_in_instmap(!.ModuleInfo, InstMap, VarToInspect) ->
         % Update proc_varset and proc_vartypes; without this,
         % polymorphism_make_type_info_var uses a prog_var which is

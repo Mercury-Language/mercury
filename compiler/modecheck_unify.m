@@ -934,7 +934,7 @@ make_complicated_sub_unify(Var0, Var, ExtraGoals0, !ModeInfo) :-
     % introduce a new variable `Var'
     mode_info_get_varset(!.ModeInfo, VarSet0),
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
-    varset.new_var(VarSet0, Var, VarSet),
+    varset.new_var(Var, VarSet0, VarSet),
     map.lookup(VarTypes0, Var0, VarType),
     map.set(Var, VarType, VarTypes0, VarTypes),
     mode_info_set_varset(VarSet, !ModeInfo),

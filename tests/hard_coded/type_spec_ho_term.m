@@ -13,7 +13,7 @@
 
 main -->
 	{ varset__init(VarSet0 `with_type` varset) },
-	{ varset__new_vars(VarSet0, 4, Vars, _VarSet) },
+	{ varset__new_vars(4, Vars, VarSet0, _VarSet) },
 	{ map__from_corresponding_lists(Vars, ["a", "b", "c", "d"], Map) },
 	{ lookup_list(Map,
 		[list__index1_det(Vars, 1), list__index1_det(Vars, 3)],

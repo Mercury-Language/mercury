@@ -202,7 +202,6 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -243,7 +242,7 @@ make_size_var_map(ProgVars, !SizeVarset, SizeVarMap) :-
     size_varset::in, size_varset::out) is det.
 
 make_size_var_map_2(ProgVar, !SizeVarMap, !SizeVarset) :-
-    svvarset.new_var(SizeVar, !SizeVarset),
+    varset.new_var(SizeVar, !SizeVarset),
     map.set(ProgVar, SizeVar, !SizeVarMap).
 
 prog_vars_to_size_vars(SizeVarMap, Vars)

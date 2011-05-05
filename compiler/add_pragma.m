@@ -176,7 +176,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svvarset.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -2662,9 +2661,9 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         set_purity(purity_pure, !Attrs),
         set_may_duplicate(yes(proc_may_not_duplicate), !Attrs),
         varset.init(!:VarSet),
-        svvarset.new_named_var("Stats", Stats, !VarSet),
-        svvarset.new_named_var("IO0", IO0, !VarSet),
-        svvarset.new_named_var("IO", IO, !VarSet),
+        varset.new_named_var("Stats", Stats, !VarSet),
+        varset.new_named_var("IO0", IO0, !VarSet),
+        varset.new_named_var("IO", IO, !VarSet),
         Arg1 = pragma_var(Stats, "Stats", out_mode, always_boxed),
         Arg2 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
         Arg3 = pragma_var(IO, "_IO", uo_mode, always_boxed),
@@ -2741,8 +2740,8 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         set_purity(purity_pure, !Attrs),
         set_may_duplicate(yes(proc_may_not_duplicate), !Attrs),
         varset.init(!:VarSet),
-        svvarset.new_named_var("IO0", IO0, !VarSet),
-        svvarset.new_named_var("IO", IO, !VarSet),
+        varset.new_named_var("IO0", IO0, !VarSet),
+        varset.new_named_var("IO", IO, !VarSet),
         Arg1 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
         Arg2 = pragma_var(IO, "_IO", uo_mode, always_boxed),
 
@@ -3033,7 +3032,7 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
         !Specs) :-
     map.lookup(ProcTable, ProcID, ProcInfo),
     varset.init(ProgVarSet0),
-    varset.new_vars(ProgVarSet0, Arity, Vars, ProgVarSet),
+    varset.new_vars(Arity, Vars, ProgVarSet0, ProgVarSet),
     proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     fact_table_pragma_vars(Vars, Modes, ProgVarSet, PragmaVars),

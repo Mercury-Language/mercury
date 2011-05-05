@@ -1030,7 +1030,7 @@ ml_type_as_field(ModuleInfo, HighLevelData, FieldType, BoxedFieldType) :-
         % other type variables (whether constructed the same way or not),
         % nor do I see any reason why such confusion would not lead to errors.
         varset.init(TypeVarSet0),
-        varset.new_var(TypeVarSet0, TypeVar, _TypeVarSet),
+        varset.new_var(TypeVar, TypeVarSet0, _TypeVarSet),
         % The kind is `star' since there are values with this type.
         BoxedFieldType = type_variable(TypeVar, kind_star)
     ;

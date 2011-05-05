@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006, 2008-2010 The University of Melbourne.
+% Copyright (C) 2006, 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -423,7 +423,7 @@ parse_structure_reuse_domain(Term) = ReuseDomain :-
 
 %-----------------------------------------------------------------------------%
 
-parse_user_annotated_sharing(Varset, Term, UserSharing) :- 
+parse_user_annotated_sharing(!.Varset, Term, UserSharing) :- 
     (
         Term = term.functor(term.atom("no_sharing"), [], _), 
         UserSharing = user_sharing(structure_sharing_bottom, no)
@@ -441,9 +441,9 @@ parse_user_annotated_sharing(Varset, Term, UserSharing) :-
             TypesTerm = term.functor(term.atom("yes"), ListTypeTerms, _),
             maybe_parse_types(ListTypeTerms, Types), 
             term.vars_list(ListTypeTerms, TypeVars),
-            varset.select(Varset, set.list_to_set(TypeVars), Varset0),
+            varset.select(set.list_to_set(TypeVars), !Varset),
             MaybeUserTypes = yes(user_type_info(Types, 
-                varset.coerce(Varset0)))
+                varset.coerce(!.Varset)))
         ;
             TypesTerm = term.functor(term.atom("no"), _, _), 
             MaybeUserTypes = no

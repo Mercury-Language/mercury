@@ -321,7 +321,7 @@ term_io.write_variable_2(Ops, Id, !VarSet, !N, !IO) :-
         term.var_to_int(Id, VarNum),
         string.int_to_string(VarNum, Num),
         string.append("_", Num, VarName),
-        varset.name_var(!.VarSet, Id, VarName, !:VarSet),
+        varset.name_var(Id, VarName, !VarSet),
         !:N = !.N + 1,
         io.write_string(VarName, !IO)
     ).

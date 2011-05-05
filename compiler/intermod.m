@@ -2038,7 +2038,7 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
             MaybeNameAndMode = yes(Name - _Mode2)
         ),
         PragmaVar = pragma_var(Var, Name, Mode, native_if_possible),
-        varset.name_var(!.VarSet, Var, Name, !:VarSet),
+        varset.name_var(Var, Name, !VarSet),
         get_pragma_foreign_code_vars(ArgsTail, ModesTail, !VarSet,
             PragmaVarsTail),
         PragmaVars = [PragmaVar | PragmaVarsTail]

@@ -366,7 +366,7 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
     ->
         VarSet0 = !.HI ^ hhfi_varset,
         VarTypes0 = !.HI ^ hhfi_vartypes,
-        varset.new_var(VarSet0, V, VarSet),
+        varset.new_var(V, VarSet0, VarSet),
         map.lookup(VarTypes0, A, Type),
         map.det_insert(V, Type, VarTypes0, VarTypes),
         map.init(Empty),
@@ -450,7 +450,7 @@ add_cons_id(Var, ModuleInfo, BaseVars, Arg, NewVar, !HI) :-
     ->
         NewVar = NewVar0
     ;
-        varset.new_var(VarSet0, NewVar, VarSet),
+        varset.new_var(NewVar, VarSet0, VarSet),
         map.det_insert(NewVar, ArgType, VarTypes0, VarTypes),
         map.init(Empty),
         map.det_insert(NewVar, node(Empty, parent(Var)),

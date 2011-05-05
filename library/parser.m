@@ -1069,7 +1069,7 @@ parser_peek_token_context(Token, Context, ParserState, ParserState) :-
 add_var(VarName, Var, ParserState0, ParserState) :-
     ( VarName = "_" ->
         VarSet0 = parser_state_get_varset(ParserState0),
-        varset.new_var(VarSet0, Var, VarSet),
+        varset.new_var(Var, VarSet0, VarSet),
         ParserState = parser_state_set_varset(ParserState0, VarSet)
     ;
         Names0 = parser_state_get_var_names(ParserState0),
@@ -1078,7 +1078,7 @@ add_var(VarName, Var, ParserState0, ParserState) :-
             ParserState = ParserState0
         ;
             VarSet0 = parser_state_get_varset(ParserState0),
-            varset.new_named_var(VarSet0, VarName, Var, VarSet),
+            varset.new_named_var(VarName, Var, VarSet0, VarSet),
             map.det_insert(VarName, Var, Names0, Names),
             ParserState1 = parser_state_set_varset(ParserState0, VarSet),
             ParserState = parser_state_set_var_names(ParserState1, Names)

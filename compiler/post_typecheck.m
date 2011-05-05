@@ -155,7 +155,6 @@
 :- import_module solutions.
 :- import_module string.
 :- import_module set_tree234.
-:- import_module svvarset.
 :- import_module term_io.
 :- import_module varset.
 
@@ -1415,7 +1414,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
         % Rename apart the existentially quantified type variables.
         list.length(ConsExistQVars, NumExistQVars),
         pred_info_get_typevarset(!.PredInfo, TVarSet0),
-        varset.new_vars(TVarSet0, NumExistQVars, ParentExistQVars, TVarSet),
+        varset.new_vars(NumExistQVars, ParentExistQVars, TVarSet0, TVarSet),
         pred_info_set_typevarset(TVarSet, !PredInfo),
         map.from_corresponding_lists(ConsExistQVars, ParentExistQVars,
             ConsToParentRenaming),
@@ -1594,14 +1593,14 @@ create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
 
 make_new_vars(Types, Vars, !VarTypes, !VarSet) :-
     list.length(Types, NumVars),
-    svvarset.new_vars(NumVars, Vars, !VarSet),
+    varset.new_vars(NumVars, Vars, !VarSet),
     map.det_insert_from_corresponding_lists(Vars, Types, !VarTypes).
 
 :- pred make_new_var(mer_type::in, prog_var::out, vartypes::in, vartypes::out,
     prog_varset::in, prog_varset::out) is det.
 
 make_new_var(Type, Var, !VarTypes, !VarSet) :-
-    svvarset.new_var(Var, !VarSet),
+    varset.new_var(Var, !VarSet),
     map.det_insert(Var, Type, !VarTypes).
 
 %-----------------------------------------------------------------------------%

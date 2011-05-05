@@ -1542,9 +1542,9 @@ rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
         VarSet0 = !.Info ^ fixup_varset,
         VarTypes0 = !.Info ^ fixup_vartypes,
         ( varset.search_name(VarSet0, OldVar, Name) ->
-            varset.new_named_var(VarSet0, Name, NewVar, VarSet)
+            varset.new_named_var(Name, NewVar, VarSet0, VarSet)
         ;
-            varset.new_var(VarSet0, NewVar, VarSet)
+            varset.new_var(NewVar, VarSet0, VarSet)
         ),
         map.lookup(VarTypes0, OldVar, Type),
         map.det_insert(NewVar, Type, VarTypes0, VarTypes),

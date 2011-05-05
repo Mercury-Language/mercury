@@ -383,7 +383,7 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
         % Build a hlds_type_body for the tuple constructor, which will
         % be used by generate_clause_info.
         varset.init(TVarSet0),
-        varset.new_vars(TVarSet0, TupleArity, TupleArgTVars, TVarSet),
+        varset.new_vars(TupleArity, TupleArgTVars, TVarSet0, TVarSet),
         prog_type.var_list_to_type_list(map.init, TupleArgTVars,
             TupleArgTypes),
 
@@ -1880,7 +1880,7 @@ make_fresh_vars(CtorArgs, ExistQTVars, Vars, !Info) :-
         % up to typecheck.m to infer their types.
         info_get_varset(!.Info, VarSet0),
         list.length(CtorArgs, NumVars),
-        varset.new_vars(VarSet0, NumVars, Vars, VarSet),
+        varset.new_vars(NumVars, Vars, VarSet0, VarSet),
         info_set_varset(VarSet, !Info)
     ).
 
@@ -2076,13 +2076,13 @@ info_init(ModuleInfo, UPI) :-
     UPI = unify_proc_info(VarSet, Types, RttiVarMaps, ModuleInfo).
 
 info_new_var(Type, Var, !UPI) :-
-    varset.new_var(!.UPI ^ upi_varset, Var, VarSet),
+    varset.new_var(Var, !.UPI ^ upi_varset, VarSet),
     map.det_insert(Var, Type, !.UPI ^ upi_vartypes, VarTypes),
     !UPI ^ upi_varset := VarSet,
     !UPI ^ upi_vartypes := VarTypes.
 
 info_new_named_var(Type, Name, Var, !UPI) :-
-    varset.new_named_var(!.UPI ^ upi_varset, Name, Var, VarSet),
+    varset.new_named_var(Name, Var, !.UPI ^ upi_varset, VarSet),
     map.det_insert(Var, Type, !.UPI ^ upi_vartypes, VarTypes),
     !UPI ^ upi_varset := VarSet,
     !UPI ^ upi_vartypes := VarTypes.

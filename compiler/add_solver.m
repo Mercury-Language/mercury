@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -194,8 +194,8 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     OutGroundMode     = out_mode(GroundInst),
 
     ProgVarSet0       = varset.init,
-    varset.new_var(ProgVarSet0, X, ProgVarSet1),
-    varset.new_var(ProgVarSet1, Y, ProgVarSet),
+    varset.new_var(X, ProgVarSet0, ProgVarSet1),
+    varset.new_var(Y, ProgVarSet1, ProgVarSet),
 
     InstVarSet = varset.init,
 

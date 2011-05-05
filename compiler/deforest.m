@@ -1352,7 +1352,7 @@ create_deforest_call_args([OldArg | OldArgs], [ArgType | ArgTypes],
         Arg = Arg0
     ;
         % The variable is local to the call. Create a fresh variable.
-        varset.new_var(!.VarSet, Arg, !:VarSet),
+        varset.new_var(Arg, !VarSet),
         apply_subst_to_type(TypeSubn, ArgType, SubnArgType),
         map.det_insert(Arg, SubnArgType, !VarTypes)
     ),

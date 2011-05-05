@@ -607,10 +607,10 @@ new_ticket_counter_var(Var, !Info) :-
 new_var(Name, Type, Var, !Info) :-
     VarSet0 = !.Info ^ trail_varset,
     VarTypes0 = !.Info ^ trail_var_types,
-    varset.new_named_var(VarSet0, Name, Var, VarSet),
+    varset.new_named_var(Name, Var, VarSet0, VarSet),
     map.det_insert(Var, Type, VarTypes0, VarTypes),
-    !:Info = !.Info ^ trail_varset := VarSet,
-    !:Info = !.Info ^ trail_var_types := VarTypes.
+    !Info ^ trail_varset := VarSet,
+    !Info ^ trail_var_types := VarTypes.
 
 %-----------------------------------------------------------------------------%
 

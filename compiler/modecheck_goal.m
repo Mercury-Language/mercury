@@ -892,7 +892,7 @@ modecheck_goal_make_ground_term_unique(TermVar, SubGoal0, GoalInfo0, GoalExpr,
         !ModeInfo) :-
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
     mode_info_get_varset(!.ModeInfo, VarSet0),
-    varset.new_var(VarSet0, CloneVar, VarSet),
+    varset.new_var(CloneVar, VarSet0, VarSet),
     map.lookup(VarTypes0, TermVar, TermVarType),
     map.det_insert(CloneVar, TermVarType, VarTypes0, VarTypes),
     mode_info_set_varset(VarSet, !ModeInfo),

@@ -661,10 +661,10 @@ make_n_fresh_vars_2(BaseName, N, Max, Vars, !VarSet) :-
         Vars = []
     ;
         N1 = N + 1,
-        varset.new_var(!.VarSet, Var, !:VarSet),
+        varset.new_var(Var, !VarSet),
         string.int_to_string(N1, Num),
         string.append(BaseName, Num, VarName),
-        varset.name_var(!.VarSet, Var, VarName, !:VarSet),
+        varset.name_var(Var, VarName, !VarSet),
         Vars = [Var | Vars1],
         make_n_fresh_vars_2(BaseName, N1, Max, Vars1, !VarSet)
     ).
@@ -713,13 +713,13 @@ get_new_tvars([TVar | TVars], VarSet, !TVarSet, !TVarNameMap, !TVarRenaming) :-
             ( map.search(!.TVarNameMap, TVarName, TVarSetVar) ->
                 map.det_insert(TVar, TVarSetVar, !TVarRenaming)
             ;
-                varset.new_var(!.TVarSet, NewTVar, !:TVarSet),
-                varset.name_var(!.TVarSet, NewTVar, TVarName, !:TVarSet),
+                varset.new_var(NewTVar, !TVarSet),
+                varset.name_var(NewTVar, TVarName, !TVarSet),
                 map.det_insert(TVarName, NewTVar, !TVarNameMap),
                 map.det_insert(TVar, NewTVar, !TVarRenaming)
             )
         ;
-            varset.new_var(!.TVarSet, NewTVar, !:TVarSet),
+            varset.new_var(NewTVar, !TVarSet),
             map.det_insert(TVar, NewTVar, !TVarRenaming)
         )
     ),

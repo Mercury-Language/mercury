@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2010 The University of Melbourne.
+% Copyright (C) 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -421,7 +421,7 @@ do_write_proc_stats(OutStream, Msg, Name, PredId, ProcId,
     write_proc_stat_components(OutStream, Msg, Name, PredId, ProcId, Stats,
         !IO),
 
-    varset.new_var(VarSet, Var, _UpdatedVarSet),
+    varset.new_var(Var, VarSet, _UpdatedVarSet),
     term.var_to_int(Var, VarInt),
     NumUsedVars = set_tree234.count(UsedVars),
     io.format(OutStream, "VARS %d %d\n", [i(VarInt), i(NumUsedVars)], !IO).

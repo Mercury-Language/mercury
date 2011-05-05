@@ -69,7 +69,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module svset.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -473,7 +472,7 @@ pred_proc_var(PPId, Var, !Varset, !PPVars) :-
     ( map.search(!.PPVars, PPId, Var0) ->
         Var = Var0
     ;
-        svvarset.new_var(Var, !Varset),
+        varset.new_var(Var, !Varset),
         map.det_insert(PPId, Var, !PPVars)
     ).
 

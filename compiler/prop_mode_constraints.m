@@ -94,7 +94,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module svset.
-:- import_module svvarset.
 :- import_module term.
 :- import_module varset.
 
@@ -438,7 +437,7 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
         OldVarName = varset.lookup_name(!.Varset, Var0),
         OldVarType = map.lookup(!.VarTypes, Var0),
         NewVarName = "Arg_" ++ OldVarName,
-        svvarset.new_uniquely_named_var(NewVarName, Var, !Varset),
+        varset.new_uniquely_named_var(NewVarName, Var, !Varset),
         map.set(Var, OldVarType, !VarTypes),
 
         % Make new unification.
