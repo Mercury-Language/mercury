@@ -1117,7 +1117,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 )
             ),
             solutions.solutions(FindBaseLvals, TypeInfoLvals),
-            set.insert_list(OutLvals, TypeInfoLvals, LiveLvals)
+            set.insert_list(TypeInfoLvals, OutLvals, LiveLvals)
         ;
             MaybeTraceInfo = no,
             TraceExitCode = empty,
@@ -1140,7 +1140,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             CodeModel = model_semi,
             expect(unify(MaybeSpecialReturn, no), this_file,
                 "generate_exit: semi special_return"),
-            set.insert(LiveLvals, reg(reg_r, 1), SuccessLiveRegs),
+            set.insert(reg(reg_r, 1), LiveLvals, SuccessLiveRegs),
             SuccessCode = from_list([
                 llds_instr(assign(reg(reg_r, 1), const(llconst_true)),
                     "Succeed"),
@@ -1204,7 +1204,7 @@ add_saved_succip([Instr0 | Instrs0], StackLoc, [Instr | Instrs]) :-
         % XXX We should also test for tailcalls
         % once we start generating them directly.
     ->
-        set.insert(LiveVals0, stackvar(StackLoc), LiveVals1),
+        set.insert(stackvar(StackLoc), LiveVals0, LiveVals1),
         Uinstr = livevals(LiveVals1),
         Instr = llds_instr(Uinstr, Comment)
     ;

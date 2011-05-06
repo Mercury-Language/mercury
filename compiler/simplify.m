@@ -1214,7 +1214,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 % Work out the nonlocals, instmap_delta
                 % and determinism of the entire conjunction.
                 NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-                set.insert(NonLocals0, Var, NonLocals),
+                set.insert(Var, NonLocals0, NonLocals),
                 InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
                 simplify_info_get_instmap(!.Info, InstMap),
                 instmap_delta_bind_var_to_functor(Var, Type, MainConsId,
@@ -2713,7 +2713,7 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
 
     OpGoalInfo0 = !.GoalInfo,
     OpNonLocals0 = goal_info_get_nonlocals(OpGoalInfo0),
-    set.insert(OpNonLocals0, ConstVar, OpNonLocals),
+    set.insert(ConstVar, OpNonLocals0, OpNonLocals),
     goal_info_set_nonlocals(OpNonLocals, OpGoalInfo0, OpGoalInfo),
     OpGoal = hlds_goal(OpGoalExpr, OpGoalInfo),
 
@@ -2966,7 +2966,7 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
 
     % Add the extra type_info vars to the nonlocals for the call.
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-    set.insert_list(NonLocals0, TypeInfoVars, NonLocals),
+    set.insert_list(TypeInfoVars, NonLocals0, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, CallGoalInfo).
 
 :- pred call_builtin_compound_eq(prog_var::in, prog_var::in, module_info::in,

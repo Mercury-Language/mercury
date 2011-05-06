@@ -641,15 +641,15 @@ assert_oracle_kb(unexpected_exception(_, Call, Exception),
     ),
     (
         Truth = truth_correct,
-        insert(KnownExceptions0 ^ possible, Exception, Possible),
+        set.insert(Exception, KnownExceptions0 ^ possible, Possible),
         KnownExceptions = KnownExceptions0 ^ possible := Possible
     ;
         Truth = truth_erroneous,
-        insert(KnownExceptions0 ^ impossible, Exception, Impossible),
+        set.insert(Exception, KnownExceptions0 ^ impossible, Impossible),
         KnownExceptions = KnownExceptions0 ^ impossible := Impossible
     ;
         Truth = truth_inadmissible,
-        insert(KnownExceptions0 ^ inadmissible, Exception, Inadmissible),
+        set.insert(Exception, KnownExceptions0 ^ inadmissible, Inadmissible),
         KnownExceptions = KnownExceptions0 ^ inadmissible := Inadmissible
     ),
     map.set(Call, KnownExceptions, Map0, Map),
@@ -676,9 +676,9 @@ retract_oracle_kb(unexpected_exception(_, InitAtom, Exception), !KB) :-
         map.search(ExceptionsMap0, InitAtom, KnownExceptions0),
         KnownExceptions0 = known_excp(Possible0, Impossible0, Inadmissible0)
     ->
-        set.delete(Possible0, Exception, Possible),
-        set.delete(Impossible0, Exception, Impossible),
-        set.delete(Inadmissible0, Exception, Inadmissible),
+        set.delete(Exception, Possible0, Possible),
+        set.delete(Exception, Impossible0, Impossible),
+        set.delete(Exception, Inadmissible0, Inadmissible),
         KnownExceptions = known_excp(Possible, Impossible, Inadmissible),
         map.set(InitAtom, KnownExceptions, ExceptionsMap0, ExceptionsMap)
     ;

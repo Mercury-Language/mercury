@@ -3460,7 +3460,7 @@ well_formed(Tree, WellFormed) :-
     set(int)::in, set(int)::out) is det.
 
 depth_levels(empty, Depth, !Depths) :-
-    set.insert(!.Depths, Depth, !:Depths).
+    set.insert(Depth, !Depths).
 depth_levels(two(_, _, T1, T2), Depth, !Depths) :-
     NextDepth = Depth + 1,
     depth_levels(T1, NextDepth, !Depths),

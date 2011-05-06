@@ -197,7 +197,6 @@
 :- import_module assoc_list.
 :- import_module pair.
 :- import_module require.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -622,7 +621,7 @@ reached_cond_then(GoalInfo, !IntervalInfo) :-
     record_interval_succ(CondTailId, ThenStartId, !IntervalInfo),
     set_cur_interval(CondTailId, !IntervalInfo),
     get_open_intervals(!.IntervalInfo, OpenIntervals0),
-    svset.insert(CondTailId, OpenIntervals0, OpenIntervals),
+    set.insert(CondTailId, OpenIntervals0, OpenIntervals),
     set_open_intervals(OpenIntervals, !IntervalInfo).
 
 :- pred leave_branch_start(branch_construct::in, anchor::in, interval_id::in,
@@ -785,7 +784,7 @@ record_interval_no_succ(Id, !IntervalInfo) :-
 record_interval_vars(Id, NewVars, !IntervalInfo) :-
     VarsMap0 = !.IntervalInfo ^ ii_interval_vars,
     ( map.search(VarsMap0, Id, Vars0) ->
-        svset.insert_list(NewVars, Vars0, Vars),
+        set.insert_list(NewVars, Vars0, Vars),
         map.det_update(Id, Vars, VarsMap0, VarsMap)
     ;
         set.list_to_set(NewVars, Vars),
@@ -833,7 +832,7 @@ require_flushed(Vars, !IntervalInfo) :-
 
 require_access(Vars, !IntervalInfo) :-
     AccessedLater0 = !.IntervalInfo ^ ii_accessed_later,
-    svset.insert_list(Vars, AccessedLater0, AccessedLater),
+    set.insert_list(Vars, AccessedLater0, AccessedLater),
     !IntervalInfo ^ ii_accessed_later := AccessedLater.
 
 :- pred record_branch_resume(goal_id::in, resume_save_status::in,
@@ -850,7 +849,7 @@ record_branch_resume(GoalId, ResumeSaveStatus, !IntervalInfo) :-
 
 record_model_non_anchor(Anchor, !IntervalInfo) :-
     ModelNonAnchors0 = !.IntervalInfo ^ ii_model_non_anchors,
-    svset.insert(Anchor, ModelNonAnchors0, ModelNonAnchors),
+    set.insert(Anchor, ModelNonAnchors0, ModelNonAnchors),
     !IntervalInfo ^ ii_model_non_anchors := ModelNonAnchors.
 
 %-----------------------------------------------------------------------------%

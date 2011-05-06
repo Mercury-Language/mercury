@@ -147,7 +147,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -400,9 +399,9 @@ apply_region_renaming(Graph, Renaming, Node, !Regions) :-
     RegionName = rptg_lookup_region_name(Graph, Node),
     ( map.search(Renaming, RegionName, RenamedRegionNameList) ->
         RenamedRegionName = list.det_last(RenamedRegionNameList),
-        svset.insert(RenamedRegionName, !Regions)
+        set.insert(RenamedRegionName, !Regions)
     ;
-        svset.insert(RegionName, !Regions)
+        set.insert(RegionName, !Regions)
     ).
 
 :- pred renaming_annotation_to_regions(region_instr::in,
@@ -418,8 +417,8 @@ renaming_annotation_to_regions(RenameAnnotation, !LeftRegions,
         unexpected($module, $pred, "annotation is not assignment")
     ;
         RenameAnnotation = rename_region(RightRegion, LeftRegion),
-        svset.insert(LeftRegion, !LeftRegions),
-        svset.insert(RightRegion, !RightRegions)
+        set.insert(LeftRegion, !LeftRegions),
+        set.insert(RightRegion, !RightRegions)
     ).
 
     % The non-local regions of an if-then-else will be attached to

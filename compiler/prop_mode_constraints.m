@@ -93,7 +93,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -454,7 +453,7 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
     ;
         Var = Var0
     ),
-    svset.insert(Var, !SeenSoFar).
+    set.insert(Var, !SeenSoFar).
 
     % replace_call_with_conjunction(NewCallGoalExpr, Unifications, NewArgs,
     %   GoalExpr, !GoalInfo):

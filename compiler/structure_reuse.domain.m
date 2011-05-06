@@ -281,7 +281,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -812,8 +811,8 @@ there_is_a_subsumption_relation(ModuleInfo, ProcInfo, [DataB0 | DataBs],
     set(prog_var)::in, set(prog_var)::out) is det.
 
 collect_aliased_vars(DataA - DataB, !Vars) :-
-    svset.insert(DataA ^ sc_var, !Vars),
-    svset.insert(DataB ^ sc_var, !Vars).
+    set.insert(DataA ^ sc_var, !Vars),
+    set.insert(DataB ^ sc_var, !Vars).
 
 %-----------------------------------------------------------------------------%
 

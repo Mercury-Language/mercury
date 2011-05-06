@@ -114,8 +114,8 @@ merge_clique(CliquePDs0, MergeInfo, !InitDeep, !Redirect) :-
 
 :- pred insert_pds(list(T)::in, set(T)::in, set(T)::out) is det.
 
-insert_pds(List, Set0, Set) :-
-    set.insert_list(Set0, List, Set).
+insert_pds(List, !Set) :-
+    set.insert_list(List, !Set).
 
     % find set of proc_statics in the CliquePDs
     % for all (first order) calls in CliquePDs, if call is to a procedure
@@ -482,7 +482,7 @@ union_cliques(MergeInfo, PDPtr, !CliqueUnion) :-
         lookup_clique_index(MergeInfo ^ merge_clique_index, PDPtr, CliquePtr),
         lookup_clique_members(MergeInfo ^ merge_clique_members, CliquePtr,
             Members),
-        set.insert_list(!.CliqueUnion, Members, !:CliqueUnion)
+        set.insert_list(Members, !CliqueUnion)
     ).
 
 :- pred lookup_normal_sites(list(array(call_site_array_slot))::in, int::in,

@@ -1,7 +1,7 @@
 %------------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -199,7 +199,7 @@ create_fresh_pred_proc_info_copy(PPId, NoClobbers, NewPPId, !ModuleInfo) :-
     module_info_set_predicate_table(PredTable, !ModuleInfo),
 
     module_info_get_structure_reuse_preds(!.ModuleInfo, ReusePreds0),
-    set.insert(ReusePreds0, ReusePredId, ReusePreds),
+    set.insert(ReusePredId, ReusePreds0, ReusePreds),
     module_info_set_structure_reuse_preds(ReusePreds, !ModuleInfo).
 
 :- pred create_fresh_pred_proc_info_copy_2(pred_id::in, pred_info::in,

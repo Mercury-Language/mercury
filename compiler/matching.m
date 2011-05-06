@@ -624,7 +624,7 @@ compute_via_cell_vars([FieldCostsBenefits | FieldsCostsBenefits],
     FieldCostsBenefits = field_costs_benefits(FieldVar, _, FieldBenefits),
     set.intersect(FieldBenefits, MarkedBenefits, MarkedFieldBenefits),
     ( set.empty(MarkedFieldBenefits) ->
-        set.insert(ViaCellVars1, FieldVar, ViaCellVars)
+        set.insert(FieldVar, ViaCellVars1, ViaCellVars)
     ; set.equal(MarkedFieldBenefits, FieldBenefits) ->
         ViaCellVars = ViaCellVars1
     ;

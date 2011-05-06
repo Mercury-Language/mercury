@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -89,23 +89,23 @@
 
 :- implementation.
 
-svset.insert(X, Set0, Set) :-
-    set.insert(Set0, X, Set).
+svset.insert(X, !Set) :-
+    set.insert(X, !Set).
 
-svset.insert_list(X, Set0, Set) :-
-    set.insert_list(Set0, X, Set).
+svset.insert_list(X, !Set) :-
+    set.insert_list(X, !Set).
 
-svset.delete(X, Set0, Set) :-
-    set.delete(Set0, X, Set).
+svset.delete(X, !Set) :-
+    set.delete(X, !Set).
 
-svset.delete_list(X, Set0, Set) :-
-    set.delete_list(Set0, X, Set).
+svset.delete_list(X, !Set) :-
+    set.delete_list(X, !Set).
 
-svset.remove(X, Set0, Set) :-
-    set.remove(Set0, X, Set).
+svset.remove(X, !Set) :-
+    set.remove(X, !Set).
 
-svset.remove_list(X, Set0, Set) :-
-    set.remove_list(Set0, X, Set).
+svset.remove_list(X, !Set) :-
+    set.remove_list(X, !Set).
 
-svset.remove_least(X, Set0, Set) :-
-    set.remove_least(Set0, X, Set).
+svset.remove_least(X, !Set) :-
+    set.remove_least(X, !Set).

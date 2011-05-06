@@ -412,7 +412,7 @@ find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
         io.flush_output(!IO)
     ),
 
-    ( set.remove_least(Solutions, BestParallelisation, _) ->
+    ( set.remove_least(BestParallelisation, Solutions, _) ->
         MaybeBestParallelisation = yes(BestParallelisation)
     ;
         % Solutions is empty.

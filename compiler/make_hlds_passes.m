@@ -2958,7 +2958,7 @@ add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !Specs) :-
             Name, Arity, PredIds)
     ->
         module_info_get_stratified_preds(!.ModuleInfo, StratPredIds0),
-        set.insert_list(StratPredIds0, PredIds, StratPredIds),
+        set.insert_list(PredIds, StratPredIds0, StratPredIds),
         module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
     ;
         string.append_list(["`:- pragma ", PragmaName, "' declaration"],

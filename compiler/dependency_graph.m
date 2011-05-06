@@ -130,7 +130,6 @@
 :- import_module pair.
 :- import_module set.
 :- import_module std_util.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -709,7 +708,7 @@ handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
         % is not merged into the current sub-module.
         (
             IsAgg = yes,
-            svset.insert(CalledSCCid, !NoMerge)
+            set.insert(CalledSCCid, !NoMerge)
         ;
             IsAgg = no
         ),

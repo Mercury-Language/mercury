@@ -258,7 +258,6 @@
 :- import_module dir.
 :- import_module require.
 :- import_module set.
-:- import_module svset.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -420,9 +419,9 @@ get_dependencies_implementation([Item | Items],
                 !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
         ;
             ( ModuleDefn = md_import(Modules) ->
-                svset.insert_list(Modules, !ImpImportDeps)
+                set.insert_list(Modules, !ImpImportDeps)
             ; ModuleDefn = md_use(Modules) ->
-                svset.insert_list(Modules, !ImpUseDeps)
+                set.insert_list(Modules, !ImpUseDeps)
             ;
                 true
             ),
@@ -451,9 +450,9 @@ get_dependencies_interface([Item | Items],
                 !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
         ;
             ( ModuleDefn = md_import(Modules) ->
-                svset.insert_list(Modules, !IntImportDeps)
+                set.insert_list(Modules, !IntImportDeps)
             ; ModuleDefn = md_use(Modules) ->
-                svset.insert_list(Modules, !IntUseDeps)
+                set.insert_list(Modules, !IntUseDeps)
             ;
                 true
             ),

@@ -93,7 +93,7 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
     (
         MaybeReservedVarInfo = yes(ResVar - _),
         set.singleton_set(ResVarSet, ResVar),
-        set.insert(LiveSets0, ResVarSet, LiveSets1)
+        set.insert(ResVarSet, LiveSets0, LiveSets1)
     ;
         MaybeReservedVarInfo = no,
         LiveSets1 = LiveSets0
@@ -133,7 +133,7 @@ filter_out_dummy_values_2(ModuleInfo, VarTypes,
     set.to_sorted_list(LiveSet0, LiveList0),
     list.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), LiveList0,
         DummyVars, NonDummyVars),
-    set.insert_list(!.Dummies, DummyVars, !:Dummies),
+    set.insert_list(DummyVars, !Dummies),
     (
         NonDummyVars = [],
         LiveSets = LiveSets1

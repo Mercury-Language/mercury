@@ -96,7 +96,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -208,7 +207,7 @@ get_vars_from_coeffs(Coeffs) = Vars :-
 
 get_vars_from_coeffs_2([], !SetVar).
 get_vars_from_coeffs_2([Var - _ | Coeffs], !SetVar) :-
-    svset.insert(Var, !SetVar),
+    set.insert(Var, !SetVar),
     get_vars_from_coeffs_2(Coeffs, !SetVar).
 
 %-----------------------------------------------------------------------------%

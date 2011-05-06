@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -226,7 +226,7 @@ only_constant_goals([Goal | Goals], !ToAssignVars) :-
         GoalExpr = scope(Reason, _),
         Reason = from_ground_term(Var, from_ground_term_construct)
     ),
-    set.delete(!.ToAssignVars, Var, !:ToAssignVars),
+    set.delete(Var, !ToAssignVars),
     only_constant_goals(Goals, !ToAssignVars).
 
 %-----------------------------------------------------------------------------%

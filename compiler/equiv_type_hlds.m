@@ -54,7 +54,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -120,7 +119,7 @@ add_type_to_eqv_map(TypeCtor, Defn, !EqvMap, !EqvExportTypes) :-
 
 add_type_ctors_to_set(Type, !Set) :-
     ( type_to_ctor_and_args(Type, TypeCtor, Args) ->
-        svset.insert(TypeCtor, !Set),
+        set.insert(TypeCtor, !Set),
         list.foldl(add_type_ctors_to_set, Args, !Set)
     ;
         true

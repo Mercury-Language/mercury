@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -253,9 +253,9 @@ module_index_set_to_plain_set(Info, ModuleIndices, Modules) :-
 :- pred module_index_set_to_plain_set_2(make_info::in, module_index::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-module_index_set_to_plain_set_2(Info, ModuleIndex, Set0, Set) :-
+module_index_set_to_plain_set_2(Info, ModuleIndex, !Set) :-
     module_index_to_name(Info, ModuleIndex, ModuleName),
-    set.insert(Set0, ModuleName, Set).
+    set.insert(ModuleName, !Set).
 
 :- pred dependency_file_to_index(dependency_file::in,
     dependency_file_index::out, make_info::in, make_info::out) is det.

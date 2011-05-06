@@ -317,7 +317,6 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
-:- import_module svset.
 :- import_module univ.
 :- import_module varset.
 
@@ -1457,7 +1456,7 @@ remove_directed_entry(FromData, ToData, SharingSet0, SharingSet) :-
     SelSharingSet0 = selector_sharing_set(SelSize0, SelSharingMap0),
     map.lookup(SelSharingMap0, FromSel, DataSet0),
     DataSet0 = datastructures(DataSize0, Data0),
-    ( set.remove(Data0, ToData, Data) ->
+    ( set.remove(ToData, Data0, Data) ->
         DataSize = DataSize0 - 1,
         SelSize = SelSize0 - 1,
         Size = Size0 - 1,
@@ -2095,14 +2094,14 @@ data_set_add(DataSetA, DataSetB, DataSet) :-
 data_set_new_entry(Datastruct, DataSet0, DataSet) :-
     DataSet0 = datastructures(Size0, Datastructs0),
     \+ set.member(Datastruct, Datastructs0),
-    set.insert(Datastructs0, Datastruct, Datastructs),
+    set.insert(Datastruct, Datastructs0, Datastructs),
     Size = Size0 + 1,
     DataSet = datastructures(Size, Datastructs).
 
 data_set_delete_entry(Datastruct, DataSet0, DataSet) :-
     DataSet0 = datastructures(Size0, Datastructs0),
     ( set.contains(Datastructs0, Datastruct) ->
-        set.delete(Datastructs0, Datastruct, Datastructs),
+        set.delete(Datastruct, Datastructs0, Datastructs),
         Size = Size0 - 1,
         DataSet = datastructures(Size, Datastructs)
     ;
@@ -2160,7 +2159,7 @@ data_set_add_datastruct(ModuleInfo, ProcInfo, Data, !Datastructs) :-
     ->
         true
     ;
-        svset.insert(Data, !Datastructs)
+        set.insert(Data, !Datastructs)
     ).
 
 data_set_apply_widening(ModuleInfo, ProcInfo, !DataSet):-

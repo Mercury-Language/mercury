@@ -2594,7 +2594,7 @@ convert_grade_option(GradeString, Options0, Options) :-
 
         % Check that the component isn't mentioned more than once.
         \+ set.member(Comp, CompSet0),
-        set.insert(CompSet0, Comp, CompSet),
+        set.insert(Comp, CompSet0, CompSet),
         add_option_list(CompOpts, Opts0, Opts1),
 
         % XXX Here the behaviour matches what used to happen and that is

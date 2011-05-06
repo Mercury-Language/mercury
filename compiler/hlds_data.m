@@ -1448,7 +1448,7 @@ add_redundant_constraint(Constraint, !Redundant) :-
     list.length(Args, Arity),
     ClassId = class_id(Name, Arity),
     ( map.search(!.Redundant, ClassId, Constraints0) ->
-        set.insert(Constraints0, Constraint, Constraints)
+        set.insert(Constraint, Constraints0, Constraints)
     ;
         Constraints = set.make_singleton_set(Constraint)
     ),

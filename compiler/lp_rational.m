@@ -334,7 +334,6 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2268,7 +2267,7 @@ get_vars_from_constraint(Constraint, !SetVar) :-
 
 get_vars_from_terms([], !SetVar).
 get_vars_from_terms([Var - _ | Coeffs], !SetVar) :-
-    svset.insert(Var, !SetVar),
+    set.insert(Var, !SetVar),
     get_vars_from_terms(Coeffs, !SetVar).
 
 %-----------------------------------------------------------------------------%

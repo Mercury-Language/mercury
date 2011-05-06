@@ -320,7 +320,7 @@ check_var_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
     ;
         type_vars(Type, TVars),
         set.list_to_set(TVars, TVarsSet0),
-        set.delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
+        set.delete_list(HeadTypeParams, TVarsSet0, TVarsSet1),
         ( set.empty(TVarsSet1) ->
             true
         ;
@@ -1354,7 +1354,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     DeconstructArgs = VarsBeforeField ++ [SingletonFieldVar | VarsAfterField],
     OldNonLocals = goal_info_get_nonlocals(OldGoalInfo),
     NonLocalArgs = VarsBeforeField ++ VarsAfterField,
-    set.insert_list(OldNonLocals, NonLocalArgs, DeconstructRestrictNonLocals),
+    set.insert_list(NonLocalArgs, OldNonLocals, DeconstructRestrictNonLocals),
 
     create_pure_atomic_unification_with_nonlocals(TermInputVar,
         rhs_functor(ConsId0, no, DeconstructArgs), OldGoalInfo,
@@ -1363,7 +1363,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
 
     % Build a goal to construct the output.
     ConstructArgs = VarsBeforeField ++ [FieldVar | VarsAfterField],
-    set.insert_list(OldNonLocals, NonLocalArgs, ConstructRestrictNonLocals),
+    set.insert_list(NonLocalArgs, OldNonLocals, ConstructRestrictNonLocals),
 
     % If the cons_id is existentially quantified, add a `new' prefix
     % so that polymorphism.m adds the appropriate type_infos.

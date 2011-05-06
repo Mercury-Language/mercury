@@ -785,8 +785,8 @@ set_upto(Case, K) = Set :-
     ( K =< 0 ->
         set.init(Set)
     ;
-        Set0 = set_upto(Case, K-1),
-        set.insert(Set0, accu_goal_id(Case, K), Set)
+        Set0 = set_upto(Case, K - 1),
+        set.insert(accu_goal_id(Case, K), Set0, Set)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -133,7 +133,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -1042,7 +1041,7 @@ find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
         ),
         Ancestors = ClassDefn0 ^ class_fundep_ancestors
     ;
-        svset.insert(ClassId, !Visited),
+        set.insert(ClassId, !Visited),
 
         % Make this class its own ancestor, but only if it has fundeps on it.
         FunDeps = ClassDefn0 ^ class_fundeps,
@@ -1339,7 +1338,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
         (
             Result = no_error,
-            svset.insert_list(Args, !SeenTypes)
+            set.insert_list(Args, !SeenTypes)
         ;
             ( Result = local_non_distinct
             ; Result = global_non_distinct
@@ -1356,7 +1355,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
         (
             Result = no_error,
-            svset.insert_list(Args, !SeenTypes),
+            set.insert_list(Args, !SeenTypes),
             ( type_to_type_defn(ModuleInfo, Type, TypeDefn) ->
                 list.length(Args, TypeArity),
                 is_visible_instance_type(TypeName, TypeArity, TypeDefn,

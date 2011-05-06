@@ -659,7 +659,7 @@ record_preds_used_in(Goal, AssertId, !Module) :-
 update_pred_info(AssertId, PredId, !Module) :-
     module_info_pred_info(!.Module, PredId, PredInfo0),
     pred_info_get_assertions(PredInfo0, Assertions0),
-    set.insert(Assertions0, AssertId, Assertions),
+    set.insert(AssertId, Assertions0, Assertions),
     pred_info_set_assertions(Assertions, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !Module).
 

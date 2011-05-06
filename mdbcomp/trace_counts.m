@@ -992,5 +992,5 @@ sum_trace_count_file_type(Type1, Type2) = UnionType :-
 
 insert_into_list_as_set(List0, Item) = List :-
     set.list_to_set(List0, Set0),
-    set.insert(Set0, Item, Set),
+    set.insert(Item, Set0, Set),
     set.to_sorted_list(Set, List).

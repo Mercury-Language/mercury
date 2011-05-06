@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2010 The University of Melbourne.
+% Copyright (C) 1999-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -472,7 +472,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
     term.var_to_int(TVar, TVarNum),
     NextSlot = CurSlot + 1,
     ( TVarNum = CurSlot ->
-        ( set.remove_least(Locns, LeastLocn, _) ->
+        ( set.remove_least(LeastLocn, Locns, _) ->
             Locn = LeastLocn
         ;
             unexpected(this_file, "tvar has empty set of locations")

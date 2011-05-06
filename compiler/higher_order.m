@@ -81,7 +81,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -1468,7 +1467,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
                 CanRequest = can_request,
                 Requests0 = !.Info ^ hoi_global_info ^ hogi_requests,
                 Changed0 = !.Info ^ hoi_changed,
-                set.insert(Requests0, Request, Requests),
+                set.insert(Request, Requests0, Requests),
                 update_changed_status(Changed0, ho_request, Changed),
                 !Info ^ hoi_global_info ^ hogi_requests := Requests,
                 !Info ^ hoi_changed := Changed
@@ -2300,7 +2299,7 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
         !Info ^ hoi_proc_info := ProcInfo2
     ;
         MaybeResult = yes(ComparisonResult),
-        set.insert(NonLocals0, ComparisonResult, NonLocals),
+        set.insert(ComparisonResult, NonLocals0, NonLocals),
         InstMapDelta = instmap_delta_bind_var(ComparisonResult),
         Detism = detism_det,
         % Build a new call with the unwrapped arguments.
@@ -2558,7 +2557,7 @@ create_new_preds([Request | Requests], !NewPredList, !PredsToFix, !Info,
         !IO) :-
     Request = ho_request(CallingPredProcId, CalledPredProcId, _HOArgs,
         _CallArgs, _, _CallerArgTypes, _, _, _, _),
-    set.insert(!.PredsToFix, CallingPredProcId, !:PredsToFix),
+    set.insert(CallingPredProcId, !PredsToFix),
     ( map.search(!.Info ^ hogi_new_preds, CalledPredProcId, SpecVersions0) ->
         (
             % Check that we aren't redoing the same pred.
@@ -2597,7 +2596,7 @@ check_loop_request(Info, Request, !PredsToFix) :-
                 Request, Version, _)
         )
     ->
-        svset.insert(CallingPredProcId, !PredsToFix)
+        set.insert(CallingPredProcId, !PredsToFix)
     ;
         true
     ).
@@ -2721,7 +2720,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 add_new_pred(CalledPredProcId, NewPred, !Info) :-
     NewPreds0 = !.Info ^ hogi_new_preds,
     ( map.search(NewPreds0, CalledPredProcId, SpecVersions0) ->
-        set.insert(SpecVersions0, NewPred, SpecVersions),
+        set.insert(NewPred, SpecVersions0, SpecVersions),
         map.det_update(CalledPredProcId, SpecVersions, NewPreds0, NewPreds)
     ;
         set.singleton_set(SpecVersions, NewPred),

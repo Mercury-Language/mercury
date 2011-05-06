@@ -1146,7 +1146,7 @@ module_info_set_model_non_pragma_counter(NewVal, !MI) :-
     !MI ^ mi_sub_info ^ msi_model_non_pragma_counter := NewVal.
 module_add_imported_module_specifiers(IStat, AddedModuleSpecifiers, !MI) :-
     ImportSpecifiers0 = !.MI ^ mi_sub_info ^ msi_imported_module_specifiers,
-    set.insert_list(ImportSpecifiers0, AddedModuleSpecifiers,
+    set.insert_list(AddedModuleSpecifiers, ImportSpecifiers0,
         ImportSpecifiers),
     !MI ^ mi_sub_info ^ msi_imported_module_specifiers := ImportSpecifiers,
 
@@ -1155,7 +1155,7 @@ module_add_imported_module_specifiers(IStat, AddedModuleSpecifiers, !MI) :-
         Exported = yes,
         InterfaceSpecifiers0 =
             !.MI ^ mi_sub_info ^ msi_interface_module_specifiers,
-        set.insert_list(InterfaceSpecifiers0, AddedModuleSpecifiers,
+        set.insert_list(AddedModuleSpecifiers, InterfaceSpecifiers0,
             InterfaceSpecifiers),
         !MI ^ mi_sub_info ^ msi_interface_module_specifiers :=
             InterfaceSpecifiers
@@ -1165,7 +1165,7 @@ module_add_imported_module_specifiers(IStat, AddedModuleSpecifiers, !MI) :-
 
 module_add_indirectly_imported_module_specifiers(AddedModules, !MI) :-
     Modules0 = !.MI ^ mi_sub_info ^ msi_indirectly_imported_module_specifiers,
-    set.insert_list(Modules0, AddedModules, Modules),
+    set.insert_list(AddedModules, Modules0, Modules),
     !MI ^ mi_sub_info ^ msi_indirectly_imported_module_specifiers := Modules.
 
 module_info_set_type_spec_info(NewVal, !MI) :-

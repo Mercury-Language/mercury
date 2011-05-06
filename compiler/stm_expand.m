@@ -622,12 +622,12 @@ calc_pred_variables(InitInstmap, FinalInstmap, HldsGoal,
     goal_vars(HldsGoal, GoalVars0),
     HldsGoal = hlds_goal(_, GoalInfo),
 
-    set.delete_list(GoalVars0, IgnoreVarList, GoalVars),
+    set.delete_list(IgnoreVarList, GoalVars0, GoalVars),
 
     GoalVarList = set.to_sorted_list(GoalVars),
 
     GoalNonLocalSet0 = goal_info_get_nonlocals(GoalInfo),
-    set.delete_list(GoalNonLocalSet0, IgnoreVarList, GoalNonLocalSet),
+    set.delete_list(IgnoreVarList, GoalNonLocalSet0, GoalNonLocalSet),
     GoalNonLocals = set.to_sorted_list(GoalNonLocalSet),
 
     order_vars_into_groups(ModuleInfo, GoalVarList, InitInstmap, FinalInstmap,
@@ -2175,15 +2175,16 @@ create_var_test(VarLHS, VarRHS, UnifyMode, HldsGoal, !NewPredInfo) :-
         ModuleInfo, InstmapDelta),
     HldsGoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
 
-    set.init(NonLocals0),
-    set.insert(NonLocals0, VarLHS, NonLocals1),
-    set.insert(NonLocals1, VarRHS, NonLocals),
+    some [!NonLocals] (
+        set.init(!:NonLocals),
+        set.insert(VarLHS, !NonLocals),
+        set.insert(VarRHS, !NonLocals),
 
-    Determism = detism_semi,
-    Purity = purity_pure,
-    goal_info_init(NonLocals, InstmapDelta, Determism, Purity, Context,
-        HldsGoalInfo),
-
+        Determism = detism_semi,
+        Purity = purity_pure,
+        goal_info_init(!.NonLocals, InstmapDelta, Determism, Purity, Context,
+            HldsGoalInfo)
+    ),
     HldsGoal = hlds_goal(HldsGoalExpr, HldsGoalInfo).
 
     % Creates a unification between two variables (using the unify goal)
@@ -2205,15 +2206,16 @@ create_var_unify_stm(VarLHS, VarRHS, UnifyMode, HldsGoal, !StmInfo) :-
         ModuleInfo, InstmapDelta),
     HldsGoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
 
-    set.init(NonLocals0),
-    set.insert(NonLocals0, VarLHS, NonLocals1),
-    set.insert(NonLocals1, VarRHS, NonLocals),
+    some [!NonLocals] (
+        set.init(!:NonLocals),
+        set.insert(VarLHS, !NonLocals),
+        set.insert(VarRHS, !NonLocals),
 
-    Determism = detism_det,
-    Purity = purity_pure,
-    goal_info_init(NonLocals, InstmapDelta, Determism, Purity, Context,
-        HldsGoalInfo),
-
+        Determism = detism_det,
+        Purity = purity_pure,
+        goal_info_init(!.NonLocals, InstmapDelta, Determism, Purity, Context,
+            HldsGoalInfo)
+    ),
     HldsGoal = hlds_goal(HldsGoalExpr, HldsGoalInfo).
 
     % Creates a unification between two variables (using the unify goal)
@@ -2234,15 +2236,16 @@ create_var_unify(VarLHS, VarRHS, UnifyMode, HldsGoal, !NewPredInfo) :-
         ModuleInfo, InstmapDelta),
     HldsGoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
 
-    set.init(NonLocals0),
-    set.insert(NonLocals0, VarLHS, NonLocals1),
-    set.insert(NonLocals1, VarRHS, NonLocals),
+    some [!NonLocals] (
+        set.init(!:NonLocals),
+        set.insert(VarLHS, !NonLocals),
+        set.insert(VarRHS, !NonLocals),
 
-    Determism = detism_det,
-    Purity = purity_pure,
-    goal_info_init(NonLocals, InstmapDelta, Determism, Purity, Context,
-        HldsGoalInfo),
-
+        Determism = detism_det,
+        Purity = purity_pure,
+        goal_info_init(!.NonLocals, InstmapDelta, Determism, Purity, Context,
+            HldsGoalInfo)
+    ),
     HldsGoal = hlds_goal(HldsGoalExpr, HldsGoalInfo).
 
     % Creates a simple call.  If the call is polymorphic, remember to add
@@ -2456,7 +2459,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
         NewPredName),
 
     set.init(CallNonLocals0),
-    set.insert_list(CallNonLocals0, ProcHeadVars, CallNonLocals),
+    set.insert_list(ProcHeadVars, CallNonLocals0, CallNonLocals),
     instmap_delta_from_mode_list(ProcHeadVars, ProcHeadModes, ModuleInfo0,
         CallInstmapDelta),
 

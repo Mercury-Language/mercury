@@ -707,7 +707,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
     ;
         PVars0 = [par_conj_mode_check(NonLocals, Bound0) | PVars1],
         ( set.member(Var0, NonLocals) ->
-            set.insert(Bound0, Var0, Bound),
+            set.insert(Var0, Bound0, Bound),
             PVars = [par_conj_mode_check(NonLocals, Bound) | PVars1]
         ;
             PVars = PVars0

@@ -74,7 +74,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 :- import_module term.
 
 read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
@@ -711,11 +710,11 @@ compute_prev_synth_attr_order(AttrNameMap, AttrName, Ancestors,
                 AttrTerm = event_attr_type_synthesized(_, SynthCall),
                 SynthCall = event_attr_synth_call_term(FuncAttrName,
                     ArgAttrNames),
-                set.insert(Ancestors, AttrName, SubAncestors),
+                set.insert(AttrName, Ancestors, SubAncestors),
                 compute_prev_synth_attr_order_for_args(AttrNameMap,
                     [FuncAttrName | ArgAttrNames], SubAncestors,
                     !AlreadyComputed, SubPrevSynthOrder),
-                svset.insert(AttrName, !AlreadyComputed),
+                set.insert(AttrName, !AlreadyComputed),
                 % This append at the end makes our algorithm O(n^2),
                 % but since n will always be small, this doesn't matter.
                 AttrNum = AttrInfo ^ attr_info_number,

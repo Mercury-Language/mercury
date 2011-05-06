@@ -426,7 +426,7 @@ update_style_control_map(ColumnClassStr, !HeaderGroupNumber,
     ( set.member(ColumnClassStr, !.ColouredClassStrs) ->
         unexpected($module, $pred, "repeated table_column_class")
     ;
-        set.insert(!.ColouredClassStrs, ColumnClassStr, !:ColouredClassStrs)
+        set.insert(ColumnClassStr, !ColouredClassStrs)
     ),
     ( map.search(!.StyleControlMap, StyleControl, StyleElementMap0) ->
         map.set(StyleElement, Colour, StyleElementMap0, StyleElementMap),

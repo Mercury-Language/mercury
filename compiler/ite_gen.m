@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -750,7 +750,7 @@ find_regions_removed_at_start_of_goals([Goal | Goals], ModuleInfo, !Removed) :-
         pred_info_name(PredInfo) = remove_region_pred_name,
         Args = [RegionVar]
     ->
-        set.insert(!.Removed, RegionVar, !:Removed),
+        set.insert(RegionVar, !Removed),
         find_regions_removed_at_start_of_goals(Goals, ModuleInfo, !Removed)
     ;
         true

@@ -685,7 +685,7 @@ stratify_process_proc(ProcId, ModuleInfo, PredId, ArgTypes, ProcTable,
     map.det_insert(PredProcId, ho_info(HaveAT, HOInOut), !HOInfo),
     (
         CallsHigherOrder = calls_higher_order,
-        set.insert(!.CallsHO, PredProcId, !:CallsHO)
+        set.insert(PredProcId, !CallsHO)
     ;
         CallsHigherOrder = does_not_calls_higher_order
     ).
@@ -770,7 +770,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
                 _EvalMethod, _NonLocals, _Vars, _Modes, _Determinism,
                 LambdaGoal),
             get_called_procs(LambdaGoal, [], CalledProcs),
-            set.insert_list(!.HasAT, CalledProcs, !:HasAT)
+            set.insert_list(CalledProcs, !HasAT)
         ;
             RHS = rhs_var(_)
         ;
@@ -783,7 +783,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             Unification = construct(_, ConsId, _, _, _, _, _),
             ( ConsId = closure_cons(ShroudedPredProcId, _) ->
                 PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
-                set.insert(!.HasAT, PredProcId, !:HasAT)
+                set.insert(PredProcId, !HasAT)
             ;
                 % Do nothing.
                 true
@@ -801,7 +801,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
     ;
         GoalExpr = plain_call(CPred, CProc, _Args, _Builtin, _UC, _Sym),
         % Add this call to the call list.
-        set.insert(!.Calls, proc(CPred, CProc), !:Calls)
+        set.insert(proc(CPred, CProc), !Calls)
     ;
         GoalExpr = call_foreign_proc(_Attrib, _CPred, _CProc, _, _, _, _)
         % Do nothing.

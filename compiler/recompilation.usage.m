@@ -1026,7 +1026,7 @@ find_items_used_by_instance(ClassId, Defn, !Info) :-
         ;
             set.init(ClassIds1)
         ),
-        set.insert(ClassIds1, ClassId, ClassIds),
+        set.insert(ClassId, ClassIds1, ClassIds),
         map.set(InstanceModuleName, ClassIds,
             ModuleInstances0, ModuleInstances),
         !Info ^ module_instances := ModuleInstances
@@ -1421,7 +1421,7 @@ find_items_used_by_class_constraint(constraint(ClassName, ArgTypes), !Info) :-
 maybe_record_item_to_process(ItemType, ItemName, !Info) :-
     ( ItemType = typeclass_item ->
         Classes0 = !.Info ^ used_typeclasses,
-        set.insert(Classes0, ItemName, Classes),
+        set.insert(ItemName, Classes0, Classes),
         !Info ^ used_typeclasses := Classes
     ;
         true
@@ -1478,7 +1478,7 @@ record_imported_item(ItemType, ItemName, !Info) :-
         ModuleItems1 = init_item_id_set(set.init)
     ),
     ModuleItemIds0 = extract_ids(ModuleItems1, ItemType),
-    set.insert(ModuleItemIds0, Name - Arity, ModuleItemIds),
+    set.insert(Name - Arity, ModuleItemIds0, ModuleItemIds),
     ModuleItems = update_ids(ModuleItems1, ItemType, ModuleItemIds),
     map.set(Module, ModuleItems, ImportedItems0, ImportedItems),
     !Info ^ imported_items := ImportedItems.

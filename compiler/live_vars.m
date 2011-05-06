@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008, 2010 The University of Melbourne.
+% Copyright (C) 1994-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -338,7 +338,7 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % The scope does not contain any calls, resume points or parallel
             % conjunctions, so there are no updates to !StackAlloc,
             % !NondetLiveness, or !ParStackVars.
-            set.insert(!.Liveness, TermVar, !:Liveness)
+            set.insert(TermVar, !Liveness)
         ;
             NondetLiveness0 = !.NondetLiveness,
             build_live_sets_in_goal(SubGoal0, SubGoal, ResumeVars0, AllocData,

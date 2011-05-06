@@ -69,7 +69,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -132,7 +131,7 @@ dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
     ),
     (
         MaybeFallThrough = yes(FallIntoLabel),
-        svset.insert(FallIntoLabel, !Fixed)
+        set.insert(FallIntoLabel, !Fixed)
     ;
         MaybeFallThrough = no
     ),
@@ -150,25 +149,25 @@ add_pragma_pref_labels(Instr, !FoldFixed) :-
     ->
         (
             MaybeFixedLabel = yes(FixedLabel),
-            svset.insert(FixedLabel, !FoldFixed)
+            set.insert(FixedLabel, !FoldFixed)
         ;
             MaybeFixedLabel = no
         ),
         (
             MaybeLayoutLabel = yes(LayoutLabel),
-            svset.insert(LayoutLabel, !FoldFixed)
+            set.insert(LayoutLabel, !FoldFixed)
         ;
             MaybeLayoutLabel = no
         ),
         (
             MaybeOnlyLayoutLabel = yes(OnlyLayoutLabel),
-            svset.insert(OnlyLayoutLabel, !FoldFixed)
+            set.insert(OnlyLayoutLabel, !FoldFixed)
         ;
             MaybeOnlyLayoutLabel = no
         ),
         (
             MaybeDefLabel = yes(DefLabel),
-            svset.insert(DefLabel, !FoldFixed)
+            set.insert(DefLabel, !FoldFixed)
         ;
             MaybeDefLabel = no
         )

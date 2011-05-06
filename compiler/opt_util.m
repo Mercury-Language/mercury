@@ -2173,7 +2173,7 @@ propagate_livevals_2([Instr0 | Instrs0], Livevals0,
     ;
         Instr = Instr0,
         ( Uinstr0 = assign(Lval, _) ->
-            set.delete(Livevals0, Lval, Livevals)
+            set.delete(Lval, Livevals0, Livevals)
         ; can_instr_fall_through(Uinstr0) = no ->
             set.init(Livevals)
         ;

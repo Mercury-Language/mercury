@@ -253,7 +253,7 @@ eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
         ;
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdA, PartitionA),
-            set.insert(PartitionA, ElementB, Partition),
+            set.insert(ElementB, PartitionA, Partition),
             map.det_update(IdA, Partition, PartitionMap0, PartitionMap),
             map.det_insert(ElementB, IdA, ElementMap0, ElementMap),
             NextId0 = EqvClass0 ^ next_id,
@@ -263,7 +263,7 @@ eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
         ( map.search(ElementMap0, ElementB, IdB) ->
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdB, PartitionB),
-            set.insert(PartitionB, ElementA, Partition),
+            set.insert(ElementA, PartitionB, Partition),
             map.det_update(IdB, Partition, PartitionMap0, PartitionMap),
             map.det_insert(ElementA, IdB, ElementMap0, ElementMap),
             NextId0 = EqvClass0 ^ next_id,
@@ -298,7 +298,7 @@ eqvclass.new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
         ;
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdA, PartitionA),
-            set.insert(PartitionA, ElementB, Partition),
+            set.insert(ElementB, PartitionA, Partition),
             map.det_update(IdA, Partition, PartitionMap0, PartitionMap),
             map.det_insert(ElementB, IdA, ElementMap0, ElementMap),
             NextId0 = EqvClass0 ^ next_id,
@@ -308,7 +308,7 @@ eqvclass.new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
         ( map.search(ElementMap0, ElementB, IdB) ->
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdB, PartitionB),
-            set.insert(PartitionB, ElementA, Partition),
+            set.insert(ElementA, PartitionB, Partition),
             map.det_update(IdB, Partition, PartitionMap0, PartitionMap),
             map.det_insert(ElementA, IdB, ElementMap0, ElementMap),
             NextId0 = EqvClass0 ^ next_id,
@@ -536,11 +536,11 @@ divide_equivalence_classes_3(F, MainId, Item, !Map, !Counter, !Partitions,
             true
         ;
             map.lookup(!.Partitions, MainId, MainSet0),
-            set.delete(MainSet0, Item, MainSet),
+            set.delete(Item, MainSet0, MainSet),
             map.det_update(MainId, MainSet, !Partitions),
 
             map.lookup(!.Partitions, Id, Set0),
-            set.insert(Set0, Item, Set),
+            set.insert(Item, Set0, Set),
             map.det_update(Id, Set, !Partitions),
 
             map.det_update(Item, Id, !Keys)
@@ -550,7 +550,7 @@ divide_equivalence_classes_3(F, MainId, Item, !Map, !Counter, !Partitions,
         map.det_insert(Value, NewId, !Map),
 
         map.lookup(!.Partitions, MainId, MainSet0),
-        set.delete(MainSet0, Item, MainSet),
+        set.delete(Item, MainSet0, MainSet),
         map.det_update(MainId, MainSet, !Partitions),
 
         Set = set.make_singleton_set(Item),

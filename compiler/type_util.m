@@ -362,7 +362,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module set.
-:- import_module svset.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -452,7 +451,7 @@ type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo, Type, !SeenTypes) :-
         % Don't loop on recursive types.
         true
     else
-        svset.insert(Type, !SeenTypes),
+        set.insert(Type, !SeenTypes),
         (
             Type = builtin_type(_)
         ;

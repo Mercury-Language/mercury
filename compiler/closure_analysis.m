@@ -53,7 +53,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 :- import_module varset.
 
 %----------------------------------------------------------------------------%
@@ -237,7 +236,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         % separately.
 
         ( Details = higher_order(CalledClosure0, _, _, _) ->
-            svset.insert(CalledClosure0, InputArgs0, InputArgs)
+            set.insert(CalledClosure0, InputArgs0, InputArgs)
         ;
             InputArgs = InputArgs0
         ),
@@ -403,9 +402,9 @@ partition_arguments(ModuleInfo, VarTypes, [ Var | Vars ], [ Mode | Modes ],
         !Inputs, !Outputs) :-
     ( var_has_ho_type(VarTypes, Var) ->
         ( mode_is_input(ModuleInfo, Mode) ->
-            svset.insert(Var, !Inputs)
+            set.insert(Var, !Inputs)
         ; mode_is_output(ModuleInfo, Mode) ->
-            svset.insert(Var, !Outputs)
+            set.insert(Var, !Outputs)
         ;
             true
         )

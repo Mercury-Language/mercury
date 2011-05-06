@@ -140,7 +140,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -1075,8 +1074,8 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             % to the proper set of nonlocal arguments.
             some [!LambdaGoalVars] (
                 goal_util.goal_vars(HLDS_Goal, !:LambdaGoalVars),
-                svset.delete_list(LambdaVars, !LambdaGoalVars),
-                svset.delete_list(QuantifiedVars, !LambdaGoalVars),
+                set.delete_list(LambdaVars, !LambdaGoalVars),
+                set.delete_list(QuantifiedVars, !LambdaGoalVars),
                 LambdaNonLocals = set.to_sorted_list(!.LambdaGoalVars)
             ),
 

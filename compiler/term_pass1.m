@@ -68,7 +68,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -454,7 +453,7 @@ convert_equations_2([Path | Paths], !PPVars, !Varset, !Eqns) :-
         Coeff = Var - (-1.0)
     ),
     list.map_foldl2(Convert, PPIds, RestCoeffs, !Varset, !PPVars),
-    svset.insert(Eqn, !Eqns),
+    set.insert(Eqn, !Eqns),
     convert_equations_2(Paths, !PPVars, !Varset, !Eqns).
 
 :- pred lookup_coeff(map(pred_proc_id, var)::in, map(var, float)::in,

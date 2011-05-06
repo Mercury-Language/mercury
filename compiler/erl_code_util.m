@@ -215,7 +215,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module set.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -312,7 +311,7 @@ erl_variable_type(Info, Var, Type) :-
 
 erl_gen_info_add_env_var_name(Name, !Info) :-
     EnvVarNames0 = !.Info ^ egi_env_var_names,
-    set.insert(EnvVarNames0, Name, EnvVarNames),
+    set.insert(Name, EnvVarNames0, EnvVarNames),
     !Info ^ egi_env_var_names := EnvVarNames.
 
 erl_gen_info_get_env_vars(Info, Info ^ egi_env_var_names).
@@ -823,7 +822,7 @@ erl_vars_in_term(Term, !Set) :-
         erl_vars_in_exprs(Exprs, !Set)
     ;
         Term = elds_var(Var),
-        svset.insert(Var, !Set)
+        set.insert(Var, !Set)
     ).
 
 :- pred erl_vars_in_call_target(elds_call_target::in,

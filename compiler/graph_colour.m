@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1996, 2004-2006, 2010 The University of Melbourne.
+% Copyright (C) 1995-1996, 2004-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,11 +38,11 @@
 
 %-----------------------------------------------------------------------------%
 
-group_elements(Constraints, Colours) :-
-    set.power_union(Constraints, AllVars),
+group_elements(!.Constraints, Colours) :-
+    set.power_union(!.Constraints, AllVars),
     set.init(EmptySet),
-    set.delete(Constraints, EmptySet, Constraints1),
-    set.to_sorted_list(Constraints1, ConstraintList),
+    set.delete(EmptySet, !Constraints),
+    set.to_sorted_list(!.Constraints, ConstraintList),
     find_all_colours(ConstraintList, AllVars, ColourList),
     set.list_to_set(ColourList, Colours).
 
@@ -110,7 +110,7 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
                 next_colour(RestVars, NotContaining, ResidueSets, SameColour0),
 
                 % Add this variable to the variables of the current colour.
-                set.insert(SameColour0, Var, SameColour)
+                set.insert(Var, SameColour0, SameColour)
             )
         ;
             NotContaining = [],
@@ -150,7 +150,7 @@ divide_constraints(_Var, [], [], [], !Vars).
 divide_constraints(Var, [S | Ss], C, NC, !Vars) :-
     divide_constraints(Var, Ss, C0, NC0, !Vars),
     ( set.member(Var, S) ->
-        set.delete(S, Var, T),
+        set.delete(Var, S, T),
         ( set.empty(T) ->
             C = C0
         ;
@@ -171,7 +171,7 @@ divide_constraints(Var, [S | Ss], C, NC, !Vars) :-
 :- pred choose_var(set(T)::in, T::out, set(T)::out) is det.
 
 choose_var(Vars0, Var, Vars) :-
-    ( set.remove_least(Vars0, VarPrime, VarsPrime) ->
+    ( set.remove_least(VarPrime, Vars0, VarsPrime) ->
         Var = VarPrime,
         Vars = VarsPrime
     ;

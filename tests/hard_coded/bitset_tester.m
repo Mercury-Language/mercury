@@ -136,13 +136,13 @@ delete_list(SetA - SetB, List) =
 
 remove(SetA0 - SetB0, Elem) = Result :-
 	( remove(SetA0, Elem, SetA1) ->
-		( remove(SetB0, Elem, SetB1) ->
+		( remove(Elem, SetB0, SetB1) ->
 			SetA = SetA1,
 			SetB = SetB1
 		;
 			error("remove succeeded unexpectedly")
 		)
-	; set__remove(SetB0, Elem, _) ->
+	; set__remove(Elem, SetB0, _) ->
 		error("remove failed unexpectedly")
 	;
 		fail
@@ -151,13 +151,13 @@ remove(SetA0 - SetB0, Elem) = Result :-
 
 remove_list(SetA0 - SetB0, List) = Result :-
 	( remove_list(SetA0, List, SetA1) ->
-		( set__remove_list(SetB0, List, SetB1) ->
+		( set__remove_list(List, SetB0, SetB1) ->
 			SetA = SetA1,
 			SetB = SetB1
 		;
 			error("remove succeeded unexpectedly")
 		)
-	; set__remove_list(SetB0, List, _) ->
+	; set__remove_list(List, SetB0, _) ->
 		error("remove failed unexpectedly")
 	;
 		fail
@@ -264,7 +264,7 @@ difference(SetA1 - SetB1, SetA2 - SetB2) =
 
 remove_least(SetA0 - SetB0, Least, SetA - SetB) :-
 	( remove_least(SetA0, LeastA, SetA1) ->
-		( remove_least(SetB0, LeastB, SetB1) ->
+		( remove_least(LeastB, SetB0, SetB1) ->
 			( LeastA = LeastB ->
 				SetA = SetA1,
 				SetB = SetB1,
@@ -275,7 +275,7 @@ remove_least(SetA0 - SetB0, Least, SetA - SetB) :-
 		;
 			error("remove_least: should be no least value")
 		)
-	; remove_least(SetB0, _, _) ->
+	; remove_least(_, SetB0, _) ->
 		error("remove_least: failed")
 	;
 		fail

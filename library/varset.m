@@ -613,10 +613,10 @@ varset.ensure_unique_names(AllVars, Suffix, !VarSet) :-
     map(var(T), string)::out) is det.
 
 varset.ensure_unique_names_2([], _, _, _, !VarNames).
-varset.ensure_unique_names_2([Var | Vars], Suffix, UsedNames0, OldVarNames,
+varset.ensure_unique_names_2([Var | Vars], Suffix, !.UsedNames, OldVarNames,
         !VarNames) :-
     ( map.search(OldVarNames, Var, OldName) ->
-        ( set.member(OldName, UsedNames0) ->
+        ( set.member(OldName, !.UsedNames) ->
             term.var_to_int(Var, VarNum),
             string.int_to_string(VarNum, NumStr),
             string.append("_", NumStr, NumSuffix),
@@ -629,10 +629,10 @@ varset.ensure_unique_names_2([Var | Vars], Suffix, UsedNames0, OldVarNames,
         string.int_to_string(VarNum, NumStr),
         string.append("Var_", NumStr, TrialName)
     ),
-    append_suffix_until_unique(TrialName, Suffix, UsedNames0, FinalName),
-    set.insert(UsedNames0, FinalName, UsedNames1),
+    append_suffix_until_unique(TrialName, Suffix, !.UsedNames, FinalName),
+    set.insert(FinalName, !UsedNames),
     map.det_insert(Var, FinalName, !VarNames),
-    varset.ensure_unique_names_2(Vars, Suffix, UsedNames1, OldVarNames,
+    varset.ensure_unique_names_2(Vars, Suffix, !.UsedNames, OldVarNames,
         !VarNames).
 
 :- pred append_suffix_until_unique(string::in, string::in, set(string)::in,

@@ -373,7 +373,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
     ExistQVars = [],
     LambdaGoal = hlds_goal(_, LambdaGoalInfo),
     LambdaGoalNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
-    set.insert_list(LambdaGoalNonLocals, Vars, LambdaNonLocals),
+    set.insert_list(Vars, LambdaGoalNonLocals, LambdaNonLocals),
     goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         LambdaNonLocals, ExtraTypeInfos),
     OrigVars = OrigNonLocals0,
@@ -389,7 +389,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         unexpected(this_file, "expand_lambda: unexpected unification")
     ),
 
-    set.delete_list(LambdaGoalNonLocals, Vars, NonLocals1),
+    set.delete_list(Vars, LambdaGoalNonLocals, NonLocals1),
 
     % We need all the typeinfos, including the ones that are not used,
     % for the layout structure describing the closure.

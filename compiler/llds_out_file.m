@@ -745,7 +745,7 @@ output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
         ( set.member(Code, !.AlreadyDone) ->
             true
         ;
-            set.insert(!.AlreadyDone, Code, !:AlreadyDone),
+            set.insert(Code, !AlreadyDone),
             AutoComments = Info ^ lout_auto_comments,
             LineNumbers = Info ^ lout_line_numbers,
             (

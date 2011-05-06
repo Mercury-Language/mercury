@@ -272,7 +272,7 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
             ;
                 true
             ),
-            set.insert(Preds0, PredId, Preds),
+            set.insert(PredId, Preds0, Preds),
             intermod_info_set_preds(Preds, !Info),
             intermod_info_set_module_info(ModuleInfo, !Info)
         ;
@@ -730,7 +730,7 @@ add_proc_2(PredId, DoWrite, !Info) :-
     ->
         DoWrite = yes,
         intermod_info_get_pred_decls(!.Info, PredDecls0),
-        set.insert(PredDecls0, PredId, PredDecls),
+        set.insert(PredId, PredDecls0, PredDecls),
         intermod_info_set_pred_decls(PredDecls, !Info)
     ;
         ( Status = status_imported(_)
@@ -742,7 +742,7 @@ add_proc_2(PredId, DoWrite, !Info) :-
         DoWrite = yes,
         PredModule = pred_info_module(PredInfo),
         intermod_info_get_modules(!.Info, Modules0),
-        set.insert(Modules0, PredModule, Modules),
+        set.insert(PredModule, Modules0, Modules),
         intermod_info_set_modules(Modules, !Info)
     ;
         unexpected(this_file, "add_proc: unexpected status")

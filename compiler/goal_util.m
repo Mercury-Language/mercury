@@ -453,7 +453,6 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
-:- import_module svset.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -547,11 +546,11 @@ goal_vars_2(Goal, !Set) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = unify(Var, RHS, _, Unif, _),
-        svset.insert(Var, !Set),
+        set.insert(Var, !Set),
         (
             Unif = construct(_, _, _, _, CellToReuse, _, _),
             ( CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) ->
-                svset.insert(Var, !Set)
+                set.insert(Var, !Set)
             ;
                 true
             )
@@ -568,11 +567,11 @@ goal_vars_2(Goal, !Set) :-
     ;
         GoalExpr = generic_call(GenericCall, ArgVars, _, _),
         generic_call_vars(GenericCall, GenericCallVars),
-        svset.insert_list(GenericCallVars, !Set),
-        svset.insert_list(ArgVars, !Set)
+        set.insert_list(GenericCallVars, !Set),
+        set.insert_list(ArgVars, !Set)
     ;
         GoalExpr = plain_call(_, _, ArgVars, _, _, _),
-        svset.insert_list(ArgVars, !Set)
+        set.insert_list(ArgVars, !Set)
     ;
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
@@ -580,22 +579,22 @@ goal_vars_2(Goal, !Set) :-
         goals_goal_vars(Goals, !Set)
     ;
         GoalExpr = switch(Var, _Det, Cases),
-        svset.insert(Var, !Set),
+        set.insert(Var, !Set),
         cases_goal_vars(Cases, !Set)
     ;
         GoalExpr = scope(Reason, SubGoal),
         (
             Reason = exist_quant(Vars),
-            svset.insert_list(Vars, !Set)
+            set.insert_list(Vars, !Set)
         ;
             Reason = promise_solutions(Vars, _),
-            svset.insert_list(Vars, !Set)
+            set.insert_list(Vars, !Set)
         ;
             Reason = from_ground_term(Var, _),
-            set.insert(!.Set, Var, !:Set)
+            set.insert(Var, !Set)
         ;
             Reason = require_complete_switch(Var),
-            set.insert(!.Set, Var, !:Set)
+            set.insert(Var, !Set)
         ;
             ( Reason = promise_purity(_)
             ; Reason = require_detism(_)
@@ -610,7 +609,7 @@ goal_vars_2(Goal, !Set) :-
         goal_vars_2(SubGoal, !Set)
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
-        svset.insert_list(Vars, !Set),
+        set.insert_list(Vars, !Set),
         goal_vars_2(Cond, !Set),
         goal_vars_2(Then, !Set),
         goal_vars_2(Else, !Set)
@@ -618,24 +617,24 @@ goal_vars_2(Goal, !Set) :-
         GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
         ArgVars = list.map(foreign_arg_var, Args),
         ExtraVars = list.map(foreign_arg_var, ExtraArgs),
-        svset.insert_list(ArgVars, !Set),
-        svset.insert_list(ExtraVars, !Set)
+        set.insert_list(ArgVars, !Set),
+        set.insert_list(ExtraVars, !Set)
     ;
         GoalExpr = shorthand(Shorthand),
         (
             Shorthand = atomic_goal(_, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, _),
             Outer = atomic_interface_vars(OuterDI, OuterUO),
-            svset.insert(OuterDI, !Set),
-            svset.insert(OuterUO, !Set),
+            set.insert(OuterDI, !Set),
+            set.insert(OuterUO, !Set),
             Inner = atomic_interface_vars(InnerDI, InnerUO),
-            svset.insert(InnerDI, !Set),
-            svset.insert(InnerUO, !Set),
+            set.insert(InnerDI, !Set),
+            set.insert(InnerUO, !Set),
             (
                 MaybeOutputVars = no
             ;
                 MaybeOutputVars = yes(OutputVars),
-                svset.insert_list(OutputVars, !Set)
+                set.insert_list(OutputVars, !Set)
             ),
             goal_vars_2(MainGoal, !Set),
             goals_goal_vars(OrElseGoals, !Set)
@@ -668,14 +667,14 @@ cases_goal_vars([case(_, _, Goal) | Cases], !Set) :-
 
 rhs_goal_vars(RHS, !Set) :-
     RHS = rhs_var(X),
-    svset.insert(X, !Set).
+    set.insert(X, !Set).
 rhs_goal_vars(RHS, !Set) :-
     RHS = rhs_functor(_Functor, _, ArgVars),
-    svset.insert_list(ArgVars, !Set).
+    set.insert_list(ArgVars, !Set).
 rhs_goal_vars(RHS, !Set) :-
     RHS = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal),
-    svset.insert_list(NonLocals, !Set),
-    svset.insert_list(LambdaVars, !Set),
+    set.insert_list(NonLocals, !Set),
+    set.insert_list(LambdaVars, !Set),
     goal_vars_2(Goal, !Set).
 
 generic_call_vars(higher_order(Var, _, _, _), [Var]).
@@ -1201,7 +1200,7 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
     ;
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
         ( list.member(proc(PredId, ProcId), PredProcIds) ->
-            svset.insert(proc(PredId, ProcId), !CalledSet)
+            set.insert(proc(PredId, ProcId), !CalledSet)
         ;
             true
         )
@@ -1382,7 +1381,7 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
     % of the entire conjunction.
     CaseGoal = hlds_goal(_, CaseGoalInfo),
     CaseNonLocals0 = goal_info_get_nonlocals(CaseGoalInfo),
-    set.insert(CaseNonLocals0, Var, CaseNonLocals),
+    set.insert(Var, CaseNonLocals0, CaseNonLocals),
     CaseInstMapDelta = goal_info_get_instmap_delta(CaseGoalInfo),
     instmap_delta_apply_instmap_delta(ExtraInstMapDelta, CaseInstMapDelta,
         test_size, InstMapDelta),

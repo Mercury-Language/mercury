@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -436,7 +436,7 @@ mercury_format_expanded_defined_inst(InstName, ExpandedInstInfo, !S) :-
         mercury_format_inst_name(InstName, ExpandedInstInfo, !S)
     ;
         inst_lookup(ExpandedInstInfo ^ eii_module_info, InstName, Inst),
-        set.insert(ExpandedInstInfo ^ eii_expansions, InstName, Expansions),
+        set.insert(InstName, ExpandedInstInfo ^ eii_expansions, Expansions),
         mercury_format_inst(Inst,
             ExpandedInstInfo ^ eii_expansions := Expansions, !S)
     ).

@@ -1557,7 +1557,7 @@ record_expanded_item_2(ItemId, ExpandedItemSet0, ExpandedItemSet) :-
         % We don't need to record local types.
         ExpandedItemSet = ExpandedItemSet0
     ;
-        set.insert(Items0, ItemId, Items),
+        set.insert(ItemId, Items0, Items),
         ExpandedItemSet = ModuleName - Items
     ).
 

@@ -2413,12 +2413,12 @@ goal_info_get_goal_purity(GoalInfo, Purity, ContainsTraceGoal) :-
 
 goal_info_add_feature(Feature, !GoalInfo) :-
     Features0 = goal_info_get_features(!.GoalInfo),
-    set.insert(Features0, Feature, Features),
+    set.insert(Feature, Features0, Features),
     goal_info_set_features(Features, !GoalInfo).
 
 goal_info_remove_feature(Feature, !GoalInfo) :-
     Features0 = goal_info_get_features(!.GoalInfo),
-    ( set.remove(Features0, Feature, Features) ->
+    ( set.remove(Feature, Features0, Features) ->
         goal_info_set_features(Features, !GoalInfo)
     ;
         % !.GoalInfo did not have Feature, so there is no need to allocate

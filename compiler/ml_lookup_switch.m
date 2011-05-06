@@ -65,7 +65,7 @@
 
 ml_gen_lookup_switch(SwitchVar, TaggedCases, NonLocals, CodeModel, Context,
         StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, Statement, !Info) :-
-    set.remove(NonLocals, SwitchVar, OtherNonLocals),
+    set.remove(SwitchVar, NonLocals, OtherNonLocals),
     set.to_sorted_list(OtherNonLocals, OutVars),
     ml_generate_constants_for_lookup_switch(CodeModel, OutVars, OtherNonLocals,
         TaggedCases, map.init, CaseSolnMap, !Info),

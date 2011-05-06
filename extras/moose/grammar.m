@@ -260,11 +260,11 @@ start_rule(Id, Rule) :-
 		error("epsilon start rule")
 	),
 	varset.init(VarSet0),
-	varset.new_vars(VarSet0, Arity, Vars, VarSet1),
+	varset.new_vars(Arity, Vars, VarSet0, VarSet1),
 	list.foldl((pred(V::in, VS0::in, VS::out) is det :-
 		term.var_to_int(V, I),
 		string.format("V%d", [i(I)], N),
-		varset.name_var(VS0, V, N, VS)
+		varset.name_var(V, N, VS0, VS)
 	), Vars, VarSet1, VarSet),
 	term.var_list_to_term_list(Vars, Args),
 	Context = context("foobie", 1),
@@ -463,7 +463,7 @@ compute_first(I, IMax, Elems, First, Set0, Set) :-
 				% it was there in the first place), since
 				% this rule is certainly not nullable.
 			Elem = terminal(Id),
-			set.insert(Set0, Id, Set1),
+			set.insert(Id, Set0, Set1),
 			set.difference(Set1, set.make_singleton_set(epsilon),
 				Set)
 		;

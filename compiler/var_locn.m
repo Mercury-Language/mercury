@@ -681,7 +681,7 @@ var_locn_assign_var_to_var(Var, OldVar, !VLI) :-
         MaybeExprRval = yes(_),
         State = var_state(Lvals, MaybeConstRval, yes(var(OldVar)), set.init,
             doa_alive),
-        set.insert(Using0, Var, Using),
+        set.insert(Var, Using0, Using),
         OldState = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,
             DeadOrAlive),
         map.det_update(OldVar, OldState, VarStateMap0, VarStateMap1)
@@ -802,7 +802,7 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
     map.lookup(!.VarStateMap, ContainedVar, State0),
     State0 = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using0,
         DeadOrAlive),
-    set.insert(Using0, UsingVar, Using),
+    set.insert(UsingVar, Using0, Using),
     State = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,
         DeadOrAlive),
     map.det_update(ContainedVar, State, !VarStateMap).
@@ -1184,7 +1184,7 @@ add_additional_lval_for_var(Var, Lval, !VLI) :-
     map.lookup(VarStateMap0, Var, State0),
     State0 = var_state(LvalSet0, MaybeConstRval, MaybeExprRval0,
         Using, DeadOrAlive),
-    set.insert(LvalSet0, Lval, LvalSet),
+    set.insert(Lval, LvalSet0, LvalSet),
     State = var_state(LvalSet, MaybeConstRval, no, Using, DeadOrAlive),
     map.det_update(Var, State, VarStateMap0, VarStateMap),
     var_locn_set_var_state_map(VarStateMap, !VLI),
@@ -1213,7 +1213,7 @@ remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
     map.lookup(VarStateMap0, ContainedVar, State0),
     State0 = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using0,
         DeadOrAlive),
-    ( set.remove(Using0, UsingVar, Using1) ->
+    ( set.remove(UsingVar, Using0, Using1) ->
         Using = Using1
     ;
         unexpected(this_file, "remove_use_refs_2: using ref not present")
@@ -1512,7 +1512,7 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
     (
         var_locn_get_loc_var_map(!.VLI, LocVarMap0),
         map.search(LocVarMap0, Lval, AffectedVarSet),
-        set.delete_list(AffectedVarSet, ToBeAssignedVars, EffAffectedVarSet),
+        set.delete_list(ToBeAssignedVars, AffectedVarSet, EffAffectedVarSet),
         set.to_sorted_list(EffAffectedVarSet, EffAffectedVars),
 
         var_locn_get_var_state_map(!.VLI, VarStateMap0),
@@ -1576,7 +1576,7 @@ find_one_occupying_var([Var | Vars], Lval, VarStateMap, OccupyingVar,
     State = var_state(LvalSet, _, _, _, _),
     ( set.member(Lval, LvalSet) ->
         OccupyingVar = Var,
-        set.delete(LvalSet, Lval, OtherSourceSet),
+        set.delete(Lval, LvalSet, OtherSourceSet),
         set.to_sorted_list(OtherSourceSet, OtherSources)
     ;
         find_one_occupying_var(Vars, Lval, VarStateMap, OccupyingVar,
@@ -1611,7 +1611,7 @@ ensure_copies_are_present_lval([], _, _, !LvalSet).
 ensure_copies_are_present_lval([OtherSource | OtherSources], OneSource, Lval,
         !LvalSet) :-
     SubstLval = substitute_lval_in_lval(OneSource, OtherSource, Lval),
-    set.insert(!.LvalSet, SubstLval, !:LvalSet),
+    set.insert(SubstLval, !LvalSet),
     ensure_copies_are_present_lval(OtherSources, OneSource, Lval, !LvalSet).
 
 %----------------------------------------------------------------------------%
@@ -2027,7 +2027,7 @@ reg_is_not_locked_for_var(VLI, RegNum, Var) :-
 var_locn_acquire_reg(Lval, !VLI) :-
     get_spare_reg(!.VLI, Lval),
     var_locn_get_acquired(!.VLI, Acquired0),
-    set.insert(Acquired0, Lval, Acquired),
+    set.insert(Lval, Acquired0, Acquired),
     var_locn_set_acquired(Acquired, !VLI).
 
 var_locn_acquire_reg_require_given(Lval, !VLI) :-
@@ -2037,7 +2037,7 @@ var_locn_acquire_reg_require_given(Lval, !VLI) :-
         true
     ),
     var_locn_get_acquired(!.VLI, Acquired0),
-    set.insert(Acquired0, Lval, Acquired),
+    set.insert(Lval, Acquired0, Acquired),
     var_locn_set_acquired(Acquired, !VLI).
 
 var_locn_acquire_reg_prefer_given(Pref, Lval, !VLI) :-
@@ -2048,7 +2048,7 @@ var_locn_acquire_reg_prefer_given(Pref, Lval, !VLI) :-
         Lval = PrefLval
     ),
     var_locn_get_acquired(!.VLI, Acquired0),
-    set.insert(Acquired0, Lval, Acquired),
+    set.insert(Lval, Acquired0, Acquired),
     var_locn_set_acquired(Acquired, !VLI).
 
 var_locn_acquire_reg_start_at_given(Start, Lval, !VLI) :-
@@ -2058,14 +2058,14 @@ var_locn_acquire_reg_start_at_given(Start, Lval, !VLI) :-
     ;
         Lval = StartLval,
         var_locn_get_acquired(!.VLI, Acquired0),
-        set.insert(Acquired0, Lval, Acquired),
+        set.insert(Lval, Acquired0, Acquired),
         var_locn_set_acquired(Acquired, !VLI)
     ).
 
 var_locn_release_reg(Lval, !VLI) :-
     var_locn_get_acquired(!.VLI, Acquired0),
     ( set.member(Lval, Acquired0) ->
-        set.delete(Acquired0, Lval, Acquired),
+        set.delete(Lval, Acquired0, Acquired),
         var_locn_set_acquired(Acquired, !VLI)
     ;
         unexpected(this_file, "release_reg: unacquired reg")
@@ -2368,7 +2368,7 @@ make_var_depend_on_root_lval(Var, Lval, !LocVarMap) :-
     expect(is_root_lval(Lval),
         this_file, "make_var_depend_on_root_lval: non-root lval"),
     ( map.search(!.LocVarMap, Lval, Vars0) ->
-        set.insert(Vars0, Var, Vars),
+        set.insert(Var, Vars0, Vars),
         map.det_update(Lval, Vars, !LocVarMap)
     ;
         set.singleton_set(Vars, Var),
@@ -2385,7 +2385,7 @@ make_var_not_depend_on_root_lval(Var, Lval, !LocVarMap) :-
     expect(is_root_lval(Lval), this_file,
         "make_var_depend_on_root_lval: non-root lval"),
     ( map.search(!.LocVarMap, Lval, Vars0) ->
-        set.delete(Vars0, Var, Vars),
+        set.delete(Var, Vars0, Vars),
         ( set.empty(Vars) ->
             map.det_remove(Lval, _, !LocVarMap)
         ;

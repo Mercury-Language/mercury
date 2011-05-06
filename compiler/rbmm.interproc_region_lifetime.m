@@ -75,7 +75,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 %
@@ -428,9 +427,9 @@ process_one_mapping(_Source, Target, !Candidates, !Targets) :-
     ( if
         set.contains(!.Candidates, Target)
       then
-        svset.insert(Target, !Targets)
+        set.insert(Target, !Targets)
       else
-        svset.insert(Target, !Candidates)
+        set.insert(Target, !Candidates)
     ).
 
     % This predicate propagates the removal of a region from a deadR or
@@ -528,11 +527,12 @@ remove_this_from_ep([ProgPoint - Goal|ProgPoint_Goals], PPId,
 
 :- pred find_alpha_source(rptg_node::in, rptg_node::in, rptg_node::in,
     set(rptg_node)::in, set(rptg_node)::out) is det.
+
 find_alpha_source(ToBeRemovedRegion, Source, Target, !Rs) :-
     ( if
         ToBeRemovedRegion = Target
       then
-        set.insert(!.Rs, Source, !:Rs)
+        set.insert(Source, !Rs)
       else
         true
     ).
@@ -583,7 +583,7 @@ retain_non_primitive_regions(ModuleInfo, Graph, Region, !RegionSet) :-
     ( type_not_stored_in_region(NodeType, ModuleInfo) ->
         true
     ;
-        svset.insert(Region, !RegionSet)
+        set.insert(Region, !RegionSet)
     ).
 
     % Eliminate regions of primitive types from the proc_pp_region_set_table.

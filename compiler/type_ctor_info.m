@@ -93,7 +93,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 :- import_module term.
 :- import_module univ.
 :- import_module varset.
@@ -411,10 +410,10 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         !:Flags = set.init,
         (
             TypeBody = hlds_du_type(_, _, _, _, _, BodyReservedTag, _, _),
-            svset.insert(kind_of_du_flag, !Flags),
+            set.insert(kind_of_du_flag, !Flags),
             (
                 BodyReservedTag = uses_reserved_tag,
-                svset.insert(reserve_tag_flag, !Flags)
+                set.insert(reserve_tag_flag, !Flags)
             ;
                 BodyReservedTag = does_not_use_reserved_tag
             )

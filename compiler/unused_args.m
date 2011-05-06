@@ -578,7 +578,7 @@ local_var_is_used(VarDep, Var) :-
 add_aliases(Var, Aliases, !VarDep) :-
     ( map.search(!.VarDep, Var, VarInf0) ->
         VarInf0 = unused(VarDep0, ArgDep),
-        set.insert_list(VarDep0, Aliases, VarDep),
+        set.insert_list(Aliases, VarDep0, VarDep),
         VarInf = unused(VarDep, ArgDep),
         map.det_update(Var, VarInf, !VarDep)
     ;
@@ -763,7 +763,7 @@ add_pred_call_arg_dep(PredProc, LocalArguments, HeadVarIds, !VarDep) :-
 add_arg_dep(Var, PredProc, Arg, !VarDep) :-
     ( lookup_local_var(!.VarDep, Var, VarUsage0) ->
         VarUsage0 = unused(VarDep, ArgDep0),
-        set.insert(ArgDep0, arg_var_in_proc(PredProc, Arg), ArgDep),
+        set.insert(arg_var_in_proc(PredProc, Arg), ArgDep0, ArgDep),
         VarUsage = unused(VarDep, ArgDep),
         map.det_update(Var, VarUsage, !VarDep)
     ;
@@ -832,7 +832,7 @@ add_construction_aliases(_, [], !VarDep).
 add_construction_aliases(Alias, [Var | Vars], !VarDep) :-
     ( lookup_local_var(!.VarDep, Var, VarInfo0) ->
         VarInfo0 = unused(VarDep0, ArgDep),
-        set.insert(VarDep0, Alias, VarDep),
+        set.insert(Alias, VarDep0, VarDep),
         VarInfo = unused(VarDep, ArgDep),
         map.set(Var, VarInfo, !VarDep)
     ;
@@ -1804,7 +1804,7 @@ maybe_warn_unused_args(yes, ModuleInfo, PredInfo, PredId, ProcId,
     ( set.member(PredId, !.WarnedPredIds) ->
         true
     ;
-        set.insert(!.WarnedPredIds, PredId, !:WarnedPredIds),
+        set.insert(PredId, !WarnedPredIds),
         pred_info_get_procedures(PredInfo, Procs),
         map.lookup(Procs, ProcId, Proc),
         proc_info_get_headvars(Proc, HeadVars),

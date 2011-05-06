@@ -449,7 +449,7 @@ record_known_lval_rval(TargetLval, SourceRval, !KnownContentsMap,
 
 make_not_dependent(Target, SubLval, !DepLvalMap) :-
     ( map.search(!.DepLvalMap, SubLval, DepLvals0) ->
-        set.delete(DepLvals0, Target, DepLvals),
+        set.delete(Target, DepLvals0, DepLvals),
         map.det_update(SubLval, DepLvals, !DepLvalMap)
     ;
         true
@@ -460,7 +460,7 @@ make_not_dependent(Target, SubLval, !DepLvalMap) :-
 
 make_dependent(Target, SubLval, !DepLvalMap) :-
     ( map.search(!.DepLvalMap, SubLval, DepLvals0) ->
-        set.insert(DepLvals0, Target, DepLvals),
+        set.insert(Target, DepLvals0, DepLvals),
         map.det_update(SubLval, DepLvals, !DepLvalMap)
     ;
         DepLvals = set.make_singleton_set(Target),

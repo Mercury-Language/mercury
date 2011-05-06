@@ -332,7 +332,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module set_tree234.
-:- import_module svset.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -1430,7 +1429,7 @@ inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
     ( set.member(Inst, !.Expansions) ->
         true
     ;
-        svset.insert(Inst, !Expansions),
+        set.insert(Inst, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst2),
         inst_is_ground_or_any_2(ModuleInfo, Inst2, !Expansions)
     ).
@@ -1464,7 +1463,7 @@ inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
     ( set.member(Inst, !.Expansions) ->
         true
     ;
-        svset.insert(Inst, !Expansions),
+        set.insert(Inst, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst2),
         inst_is_unique_2(ModuleInfo, Inst2, !Expansions)
     ).
@@ -1502,7 +1501,7 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
     ( set.member(Inst, !.Expansions) ->
         true
     ;
-        svset.insert(Inst, !Expansions),
+        set.insert(Inst, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst2),
         inst_is_mostly_unique_2(ModuleInfo, Inst2, !Expansions)
     ).
@@ -1536,7 +1535,7 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
     ( set.member(Inst, !.Expansions) ->
         true
     ;
-        svset.insert(Inst, !Expansions),
+        set.insert(Inst, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst2),
         inst_is_not_partly_unique_2(ModuleInfo, Inst2, !Expansions)
     ).
@@ -1579,7 +1578,7 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
     ( set.member(Inst, !.Expansions) ->
         true
     ;
-        svset.insert(Inst, !Expansions),
+        set.insert(Inst, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst2),
         inst_is_not_fully_unique_2(ModuleInfo, Inst2, !Expansions)
     ).
@@ -1857,7 +1856,7 @@ inst_contains_instname_2(defined_inst(InstName1), ModuleInfo, InstName,
             Result = no
         ;
             inst_lookup(ModuleInfo, InstName1, Inst1),
-            svset.insert(InstName1, !Expansions),
+            set.insert(InstName1, !Expansions),
             inst_contains_instname_2(Inst1, ModuleInfo, InstName, Result,
                 !Expansions)
         )

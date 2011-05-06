@@ -959,7 +959,7 @@ calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
                         ; Inst = ir_other_rep
                         ),
                         % This variable has become more instantiated.
-                        set.insert(Set0, Var, Set)
+                        set.insert(Var, Set0, Set)
                     )
                 ;
                     BeforeInst = ir_ground_rep,
@@ -997,7 +997,7 @@ calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
                     ; Inst = ir_other_rep
                     ),
                     % This variable has become more instantiated.
-                    set.insert(Set0, Var, Set)
+                    set.insert(Var, Set0, Set)
                 )
             )
         ), After ^ im_inst_map, set.init, DeltaVars).
@@ -1012,7 +1012,7 @@ atomic_goal_get_vars(AtomicGoal, Vars) :-
         ; AtomicGoal = method_call_rep(Var, _, VarsL)
         ),
         Vars0 = list_to_set(VarsL),
-        set.insert(Vars0, Var, Vars)
+        set.insert(Var, Vars0, Vars)
     ;
         ( AtomicGoal = partial_construct_rep(Var, _, MaybeVars)
         ; AtomicGoal = partial_deconstruct_rep(Var, _, MaybeVars)
@@ -1020,12 +1020,12 @@ atomic_goal_get_vars(AtomicGoal, Vars) :-
         list.foldl((pred(MaybeVar::in, Set0::in, Set::out) is det :-
                 (
                     MaybeVar = yes(VarI),
-                    set.insert(Set0, VarI, Set)
+                    set.insert(VarI, Set0, Set)
                 ;
                     MaybeVar = no,
                     Set = Set0
                 )), MaybeVars, set.init, Vars0),
-        set.insert(Vars0, Var, Vars)
+        set.insert(Var, Vars0, Vars)
     ;
         ( AtomicGoal = unify_assign_rep(VarA, VarB)
         ; AtomicGoal = cast_rep(VarA, VarB)

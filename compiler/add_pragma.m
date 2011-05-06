@@ -1537,8 +1537,8 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             list.map((pred(ProcId::in, PredProcId::out) is det :-
                     PredProcId = proc(PredId, ProcId)
                 ), ProcIds, PredProcIds),
-            set.insert_list(ProcsToSpec0, PredProcIds, ProcsToSpec),
-            set.insert(ForceVersions0, NewPredId, ForceVersions),
+            set.insert_list(PredProcIds, ProcsToSpec0, ProcsToSpec),
+            set.insert(NewPredId, ForceVersions0, ForceVersions),
 
             ( Status = status_opt_imported ->
                 % For imported predicates dead_proc_elim.m needs to know that
@@ -2416,7 +2416,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         % Do we have to make sure the tabled preds are stratified?
         ( eval_method_needs_stratification(EvalMethod) = yes ->
             module_info_get_stratified_preds(!.ModuleInfo, StratPredIds0),
-            set.insert(StratPredIds0, PredId, StratPredIds),
+            set.insert(PredId, StratPredIds0, StratPredIds),
             module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
         ;
             true

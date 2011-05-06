@@ -45,7 +45,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module varset.
-:- import_module svset.
 
 maybe_improve_headvar_names(Globals, !PredInfo) :-
     globals.lookup_bool_option(Globals, make_optimization_interface, MakeOpt),
@@ -221,7 +220,7 @@ find_headvar_names_in_clause(VarSet, HeadVars, Clause, VarNameInfoMap,
 find_headvar_names_in_goal(VarSet, HeadVars, Goal, !VarNameInfoMap,
         !VarsInMap) :-
     ( goal_is_headvar_unification(HeadVars, Goal, HeadVar, MaybeOtherVar) ->
-        svset.insert(HeadVar, !VarsInMap),
+        set.insert(HeadVar, !VarsInMap),
         (
             MaybeOtherVar = no,
             ( map.search(!.VarNameInfoMap, HeadVar, VarNameInfo0) ->
@@ -237,7 +236,7 @@ find_headvar_names_in_goal(VarSet, HeadVars, Goal, !VarNameInfoMap,
             ( varset.search_name(VarSet, OtherVar, OtherVarName) ->
                 ( map.search(!.VarNameInfoMap, HeadVar, VarNameInfo0) ->
                     VarNameInfo0 = var_name_info(UnifiedFunctor, VarNames0),
-                    set.insert(VarNames0, OtherVarName, VarNames),
+                    set.insert(OtherVarName, VarNames0, VarNames),
                     VarNameInfo = var_name_info(UnifiedFunctor, VarNames),
                     map.det_update(HeadVar, VarNameInfo, !VarNameInfoMap)
                 ;

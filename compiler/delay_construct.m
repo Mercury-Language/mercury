@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2010 The University of Melbourne.
+% Copyright (C) 2001-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -210,7 +210,7 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         instmap_lookup_var(InstMap1, Var, Inst1),
         inst_is_ground(DelayInfo ^ dci_module_info, Inst1)
     ->
-        set.insert(ConstructedVars0, Var, ConstructedVars1),
+        set.insert(Var, ConstructedVars0, ConstructedVars1),
         RevDelayedGoals1 = [Goal0 | RevDelayedGoals0],
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,
             ConstructedVars1, RevDelayedGoals1, Goals)

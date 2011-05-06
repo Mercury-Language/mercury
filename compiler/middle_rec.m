@@ -471,7 +471,7 @@ split_rec_code([Instr0 | Instrs1], Before, After) :-
 add_counter_to_livevals([], _Lval, []).
 add_counter_to_livevals([Instr0 | Instrs0], Lval, [Instr | Instrs]) :-
     ( Instr0 = llds_instr(livevals(Lives0), Comment) ->
-        set.insert(Lives0, Lval, Lives),
+        set.insert(Lval, Lives0, Lives),
         Instr = llds_instr(livevals(Lives), Comment)
     ;
         Instr = Instr0
@@ -632,7 +632,7 @@ find_used_registers_lvals([Lval | Lvals], !Used) :-
 find_used_registers_lval(Lval, !Used) :-
     ( Lval = reg(reg_r, N) ->
         copy(N, N1),
-        set.insert(!.Used, N1, !:Used)
+        set.insert(N1, !Used)
     ; Lval = field(_, Rval, FieldNum) ->
         find_used_registers_rval(Rval, !Used),
         find_used_registers_rval(FieldNum, !Used)

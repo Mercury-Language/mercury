@@ -393,7 +393,6 @@
 :- import_module solutions.
 :- import_module sparse_bitset.
 :- import_module string.
-:- import_module svset.
 :- import_module term.
 :- import_module unit.
 
@@ -1140,18 +1139,18 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
         TypeDefn = parse_tree_eqv_type(_RhsType),
         map.search(InterfaceTypeMap, TypeCtor, _)
     ->
-        svset.insert(TypeCtor, !AbsEqvLhsTypeCtors)
+        set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
     ;
         TypeDefn = parse_tree_foreign_type(_, _, _),
         map.search(InterfaceTypeMap, TypeCtor, _)
     ->
-        svset.insert(TypeCtor, !AbsEqvLhsTypeCtors)
+        set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
     ;
         TypeDefn = parse_tree_du_type(Ctors, MaybeEqCmp),
         constructor_list_represents_dummy_argument_type(BothTypesMap,
             Ctors, MaybeEqCmp)
     ->
-        svset.insert(TypeCtor, !DummyTypeCtors)
+        set.insert(TypeCtor, !DummyTypeCtors)
     ;
         true
     ).
@@ -1202,7 +1201,7 @@ accumulate_modules(TypeCtor, !Modules) :-
     % NOTE: This assumes that everything has been module qualified.
     TypeCtor = type_ctor(SymName, _Arity),
     ( sym_name_get_module_name(SymName, ModuleName) ->
-        svset.insert(ModuleName, !Modules)
+        set.insert(ModuleName, !Modules)
     ;
         unexpected($module, $pred, "unknown type encountered")
     ).
@@ -1238,7 +1237,7 @@ type_to_type_ctor_set(Type, !TypeCtors) :-
             % We don't need to import these modules as the types are builtin.
             true
         ;
-            svset.insert(TypeCtor, !TypeCtors)
+            set.insert(TypeCtor, !TypeCtors)
         ),
         list.foldl(type_to_type_ctor_set, Args, !TypeCtors)
     ;
@@ -1374,7 +1373,7 @@ get_requirements_of_impl_from_constraint(Constraint, !Modules) :-
     Constraint = constraint(ClassName, Args),
     % NOTE: This assumes that everything has been module qualified.
     ( sym_name_get_module_name(ClassName, ModuleName) ->
-        svset.insert(ModuleName, !Modules)
+        set.insert(ModuleName, !Modules)
     ;
         unexpected($module, $pred, "unknown typeclass in constraint")
     ),
@@ -1399,7 +1398,7 @@ get_modules_from_constraint_arg_type(ArgType, !Modules) :-
     ;
         ArgType = defined_type(TypeName, Args, _),
         ( sym_name_get_module_name(TypeName, ModuleName) ->
-            svset.insert(ModuleName, !Modules)
+            set.insert(ModuleName, !Modules)
         ;
             unexpected($module, $pred, "unknown type encountered")
         ),
@@ -3545,7 +3544,7 @@ get_foreign_self_imports(Items, Langs) :-
 
 accumulate_item_foreign_import_langs(Item, !LangSet) :-
     Langs = item_needs_foreign_imports(Item),
-    svset.insert_list(Langs, !LangSet).
+    set.insert_list(Langs, !LangSet).
 
 :- pred get_interface_and_implementation_2(bool::in, list(item)::in, bool::in,
     list(item)::in, list(item)::out,

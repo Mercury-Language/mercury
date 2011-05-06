@@ -501,7 +501,7 @@ expand_try_goal(Instmap, TryGoal, FinalGoal, !Info) :-
         GoalOutputVarsSet0),
     (
         MaybeIO = yes(try_io_state_vars(_IOStateVarInitial, IOStateVarFinal)),
-        set.delete(GoalOutputVarsSet0, IOStateVarFinal, GoalOutputVarsSet)
+        set.delete(IOStateVarFinal, GoalOutputVarsSet0, GoalOutputVarsSet)
     ;
         MaybeIO = no,
         GoalOutputVarsSet = GoalOutputVarsSet0
@@ -808,7 +808,7 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         LambdaParams = [OutputTupleVar, IOVarInitial, IOVarFinal],
         LambdaParamTypes = [OutputTupleType, io_state_type, io_state_type],
         LambdaParamModes = [out_mode, di_mode, uo_mode],
-        set.delete(NonLocals1, IOVarFinal, NonLocals)
+        set.delete(IOVarFinal, NonLocals1, NonLocals)
     ;
         MaybeIO = no,
         LambdaParams = [OutputTupleVar],

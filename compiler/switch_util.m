@@ -1234,7 +1234,7 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
         unexpected(this_file, "non-du tag in group_case_by_ptag")
     ),
     ( map.search(!.CaseNumPtagsMap, CaseNum, Ptags0) ->
-        set.insert(Ptags0, Primary, Ptags),
+        set.insert(Primary, Ptags0, Ptags),
         map.det_update(CaseNum, Ptags, !CaseNumPtagsMap)
     ;
         Ptags = set.make_singleton_set(Primary),

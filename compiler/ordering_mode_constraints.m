@@ -124,7 +124,6 @@
 :- import_module multi_map.
 :- import_module require.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 %
@@ -468,7 +467,7 @@ insert_lt_constraints(Bs, A, !Cs) :-
     is det.
 
 insert_lt_constraint(A, B, !Cs) :-
-    svset.insert(lt(A, B), !Cs).
+    set.insert(lt(A, B), !Cs).
 
 %-----------------------------------------------------------------------------%
 
@@ -666,11 +665,11 @@ constrain_if_possible([Constraint | Constraints], !OCI) :-
 
 topological_sort_min_reordering(Constraints0, Conjuncts0, Ordering) :-
     NotFirst = set.map(func(lt(_From, To)) = To, Constraints0),
-    CantidatesForFirst = set.difference(Conjuncts0, NotFirst),
+    CandidatesForFirst = set.difference(Conjuncts0, NotFirst),
 
-    ( set.remove_least(CantidatesForFirst, First, _) ->
+    ( set.remove_least(First, CandidatesForFirst, _) ->
         % Remove First from the system.
-        set.remove(Conjuncts0, First, Conjuncts),
+        set.remove(First, Conjuncts0, Conjuncts),
         Constraints = set.filter(
             (pred(lt(From, _To)::in) is semidet :- From \= First),
             Constraints0),

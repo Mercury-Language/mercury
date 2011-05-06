@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -610,7 +610,7 @@ dynamically_load_and_run(!IO) :-
             % Call the procedure whose address
             % we just obtained.
             %
-            call(QueryPred, !IO)
+            QueryPred(!IO)
         ),
         %
         % unload the object code in the libquery.so file

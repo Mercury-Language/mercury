@@ -4092,7 +4092,7 @@ which_variables_are_forward_live(CI, [Var | Vars], !DeadVars) :-
     ( variable_is_forward_live(CI, Var) ->
         true
     ;
-        set.insert(!.DeadVars, Var, !:DeadVars)
+        set.insert(Var, !DeadVars)
     ),
     which_variables_are_forward_live(CI, Vars, !DeadVars).
 
@@ -4218,7 +4218,7 @@ generate_call_stack_vn_livevals(CI, OutputArgs, LiveVals) :-
 generate_stack_var_vn(_, [], !Vals).
 generate_stack_var_vn(CI, [V | Vs], !Vals) :-
     get_variable_slot(CI, V, Lval),
-    set.insert(!.Vals, Lval, !:Vals),
+    set.insert(Lval, !Vals),
     generate_stack_var_vn(CI, Vs, !Vals).
 
 :- pred generate_call_temp_vn(assoc_list(lval, slot_contents)::in,
@@ -4226,7 +4226,7 @@ generate_stack_var_vn(CI, [V | Vs], !Vals) :-
 
 generate_call_temp_vn([], !Vals).
 generate_call_temp_vn([Lval - _ | Temps], !Vals) :-
-    set.insert(!.Vals, Lval, !:Vals),
+    set.insert(Lval, !Vals),
     generate_call_temp_vn(Temps, !Vals).
 
 :- pred generate_input_var_vn(list(arg_loc)::in,
@@ -4235,7 +4235,7 @@ generate_call_temp_vn([Lval - _ | Temps], !Vals) :-
 generate_input_var_vn([], !Vals).
 generate_input_var_vn([InputArgLoc | InputArgLocs], !Vals) :-
     code_util.arg_loc_to_register(InputArgLoc, Lval),
-    set.insert(!.Vals, Lval, !:Vals),
+    set.insert(Lval, !Vals),
     generate_input_var_vn(InputArgLocs, !Vals).
 
 %---------------------------------------------------------------------------%
@@ -4375,12 +4375,12 @@ acquire_temp_slot(Item, Persistence, StackVar, !CI) :-
     ;
         new_temp_slot(Item, StackVar, !CI)
     ),
-    set.insert(TempsInUse0, StackVar, TempsInUse),
+    set.insert(StackVar, TempsInUse0, TempsInUse),
     set_temps_in_use(TempsInUse, !CI),
     (
         Persistence = persistent_temp_slot,
         get_persistent_temps(!.CI, PersistentTemps0),
-        set.insert(PersistentTemps0, StackVar, PersistentTemps),
+        set.insert(StackVar, PersistentTemps0, PersistentTemps),
         set_persistent_temps(PersistentTemps, !CI)
     ;
         Persistence = non_persistent_temp_slot
@@ -4408,12 +4408,12 @@ acquire_several_temp_slots([HeadItem | TailItems], Persistence, StackVars,
         new_temp_slots([HeadItem | TailItems], StackVars,
             StackId, FirstSlotNum, LastSlotNum, !CI)
     ),
-    set.insert_list(TempsInUse0, StackVars, TempsInUse),
+    set.insert_list(StackVars, TempsInUse0, TempsInUse),
     set_temps_in_use(TempsInUse, !CI),
     (
         Persistence = persistent_temp_slot,
         get_persistent_temps(!.CI, PersistentTemps0),
-        set.insert_list(PersistentTemps0, StackVars, PersistentTemps),
+        set.insert_list(StackVars, PersistentTemps0, PersistentTemps),
         set_persistent_temps(PersistentTemps, !CI)
     ;
         Persistence = non_persistent_temp_slot
@@ -4536,7 +4536,7 @@ find_next_slots_for_items([Head | Tail], [HeadItem | TailItems], TempsInUse,
 
 release_temp_slot(StackVar, Persistence, !CI) :-
     get_temps_in_use(!.CI, TempsInUse0),
-    set.delete(TempsInUse0, StackVar, TempsInUse),
+    set.delete(StackVar, TempsInUse0, TempsInUse),
     set_temps_in_use(TempsInUse, !CI),
 
     get_persistent_temps(!.CI, PersistentTemps0),
@@ -4545,7 +4545,7 @@ release_temp_slot(StackVar, Persistence, !CI) :-
         Persistence = persistent_temp_slot,
         expect(unify(IsInPersistentTemps0, yes),
             this_file, "released stack slot should be persistent"),
-        set.delete(PersistentTemps0, StackVar, PersistentTemps),
+        set.delete(StackVar, PersistentTemps0, PersistentTemps),
         set_persistent_temps(PersistentTemps, !CI)
     ;
         Persistence = non_persistent_temp_slot,

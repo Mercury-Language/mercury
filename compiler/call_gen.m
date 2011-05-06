@@ -230,7 +230,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
         NonVarCode, !CI),
 
     extra_livevals(FirstImmInput, ExtraLiveVals),
-    set.insert_list(LiveVals0, ExtraLiveVals, LiveVals),
+    set.insert_list(ExtraLiveVals, LiveVals0, LiveVals),
 
     call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI),
 
@@ -575,23 +575,22 @@ handle_return(ArgsInfos, GoalInfo, _NonLiveOutputs, ReturnInstMap,
 :- pred find_nonlive_outputs(assoc_list(prog_var, arg_info)::in,
     set(prog_var)::in, set(prog_var)::in, set(prog_var)::out) is det.
 
-find_nonlive_outputs([], _, NonLiveOutputs, NonLiveOutputs).
+find_nonlive_outputs([], _, !NonLiveOutputs).
 find_nonlive_outputs([Var - arg_info(_ArgLoc, Mode) | Args],
-        Liveness, NonLiveOutputs0, NonLiveOutputs) :-
+        Liveness, !NonLiveOutputs) :-
     (
         Mode = top_out,
         ( set.member(Var, Liveness) ->
-            NonLiveOutputs1 = NonLiveOutputs0
+            true
         ;
-            set.insert(NonLiveOutputs0, Var, NonLiveOutputs1)
+            set.insert(Var, !NonLiveOutputs)
         )
     ;
         ( Mode = top_in
         ; Mode = top_unused
-        ),
-        NonLiveOutputs1 = NonLiveOutputs0
+        )
     ),
-    find_nonlive_outputs(Args, Liveness, NonLiveOutputs1, NonLiveOutputs).
+    find_nonlive_outputs(Args, Liveness, !NonLiveOutputs).
 
 :- pred rebuild_registers(assoc_list(prog_var, arg_info)::in,
     set(prog_var)::in, assoc_list(prog_var, arg_loc)::out,

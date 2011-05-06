@@ -1434,7 +1434,7 @@ add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo) :-
     % Insert the TypeInfoVars into the nonlocals field of the goal_info
     % for the unification goal.
     NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
-    set.insert_list(NonLocals0, TypeInfoVars, NonLocals),
+    set.insert_list(TypeInfoVars, NonLocals0, NonLocals),
     goal_info_set_nonlocals(NonLocals, !GoalInfo),
 
     % Also save those type_info vars into a field in the complicated_unify,
@@ -1555,7 +1555,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
             ExtraVars, ExtraGoals, !Info),
         ArgVars = ExtraVars ++ ArgVars0,
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        set.insert_list(NonLocals0, ExtraVars, NonLocals),
+        set.insert_list(ExtraVars, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
 
         % Some of the argument unifications may be complicated unifications,
@@ -1608,7 +1608,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % to compute constraint_ids correctly.
 
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
-    set.insert_list(NonLocals, LambdaVars, OutsideVars),
+    set.insert_list(LambdaVars, NonLocals, OutsideVars),
     set.list_to_set(Args, InsideVars),
     set.intersect(OutsideVars, InsideVars, LambdaNonLocals),
     GoalId = goal_info_get_goal_id(GoalInfo0),
@@ -2130,7 +2130,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
         % Update the nonlocals.
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        set.insert_list(NonLocals0, ExtraVars, NonLocals),
+        set.insert_list(ExtraVars, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo)
     ).
 
@@ -2276,8 +2276,8 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
         poly_info_get_var_types(!.Info, VarTypes0),
         !.Goal = hlds_goal(_, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        set.insert_list(NonLocals, ArgVars, NonLocalsPlusArgs0),
-        set.insert_list(NonLocalsPlusArgs0, LambdaVars, NonLocalsPlusArgs),
+        set.insert_list(ArgVars, NonLocals, NonLocalsPlusArgs0),
+        set.insert_list(LambdaVars, NonLocalsPlusArgs0, NonLocalsPlusArgs),
         goal_util.extra_nonlocal_typeinfos(RttiVarMaps0, VarTypes0,
             ExistQVars, NonLocalsPlusArgs, NewOutsideVars),
         set.union(NonLocals, NewOutsideVars, OutsideVars),

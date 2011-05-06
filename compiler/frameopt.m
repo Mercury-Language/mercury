@@ -167,7 +167,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -1676,7 +1675,7 @@ propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
             !:CanTransform = cannot_transform
         ; queue.get(Label, !Queue) ->
             !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
-            svset.insert(Label, !AlreadyProcessed),
+            set.insert(Label, !AlreadyProcessed),
             map.lookup(BlockMap, Label, BlockInfo),
             BlockType = BlockInfo ^ fb_type,
             (

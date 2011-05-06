@@ -687,7 +687,7 @@ pd_info.register_version(PredProcId, Version, !PDInfo) :-
     map.det_insert(PredProcId, Version, Versions0, Versions),
     pd_info_set_versions(Versions, !PDInfo),
     pd_info_get_created_versions(!.PDInfo, CreatedVersions0),
-    set.insert(CreatedVersions0, PredProcId, CreatedVersions),
+    set.insert(PredProcId, CreatedVersions0, CreatedVersions),
     pd_info_set_created_versions(CreatedVersions, !PDInfo).
 
 %-----------------------------------------------------------------------------%
@@ -704,7 +704,7 @@ pd_info.invalidate_version(PredProcId, !PDInfo) :-
         % Make sure we never create another version to deforest
         % this pair of calls.
         pd_info_get_useless_versions(!.PDInfo, Useless0),
-        set.insert(Useless0, FirstCall - LastCall, Useless),
+        set.insert(FirstCall - LastCall, Useless0, Useless),
         pd_info_set_useless_versions(Useless, !PDInfo)
     ;
         true
@@ -729,7 +729,7 @@ pd_info.remove_version(PredProcId, !PDInfo) :-
     ),
 
     pd_info_get_created_versions(!.PDInfo, CreatedVersions0),
-    set.delete(CreatedVersions0, PredProcId, CreatedVersions),
+    set.delete(PredProcId, CreatedVersions0, CreatedVersions),
     pd_info_set_created_versions(CreatedVersions, !PDInfo),
 
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),

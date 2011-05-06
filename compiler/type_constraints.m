@@ -62,7 +62,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.
@@ -931,7 +930,7 @@ unify_equal_tvars(TCInfo, Replaced, Replacement, Target,
         % those variables.
         list.foldl(update_replacement_map(VarMap, Replacement), UnifiedVars,
             !ReplacementMap),
-        svset.insert_list(UnifiedVars, Replaced, Replaced1),
+        set.insert_list(UnifiedVars, Replaced, Replaced1),
         list.foldl2(unify_equal_tvars(TCInfo, Replaced1, Replacement),
             UnifiedVars, !ReplacementMap, !DomainMap)
     ;
@@ -1510,7 +1509,7 @@ diagnose_unsatisfiability_error(TCInfo, Context, ProgVarSet, TypeVar, Msg) :-
     TCInfo = tconstr_info(VarMap, _, ConstraintMap, VarConstraints,
         TVarSet, _),
     map.lookup(VarConstraints, TypeVar, ConstraintIds),
-    svset.insert_list(ConstraintIds, set.init, ConstraintSet),
+    set.insert_list(ConstraintIds, set.init, ConstraintSet),
     min_unsat_constraints(TCInfo, set.init, ConstraintSet, [], MinUnsats),
     list.map(error_from_one_min_set(ConstraintMap), MinUnsats, MinUnsatPieces),
     zip_single([suffix(") or"), nl, prefix("(")],
@@ -1588,9 +1587,9 @@ min_unsat_constraints(TCInfo, D, P, !MinUnsats) :-
     list(type_constraint_set)::in, list(type_constraint_set)::out) is det.
 
 next_min_unsat(Constraint, C, !D, !P, !MinUnsats) :-
-    svset.delete(C, !P),
+    set.delete(C, !P),
     min_unsat_constraints(Constraint, !.D, !.P, !MinUnsats),
-    svset.insert(C, !D).
+    set.insert(C, !D).
 
 :- pred add_message_to_spec(error_msg::in, type_constraint_info::in,
     type_constraint_info::out) is det.

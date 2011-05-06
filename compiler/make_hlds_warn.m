@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -155,7 +155,7 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
                 set.init(EmptySet),
                 warn_singletons_goal_vars(Vars, GoalInfo, EmptySet, SubGoalVars,
                     VarSet, PredCallId, !Specs),
-                set.insert_list(QuantVars, Vars, SubQuantVars)
+                set.insert_list(Vars, QuantVars, SubQuantVars)
             ;
                 Vars = [],
                 SubQuantVars = QuantVars
@@ -198,7 +198,7 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
         ;
             Vars = []
         ),
-        set.insert_list(QuantVars, Vars, CondThenQuantVars),
+        set.insert_list(Vars, QuantVars, CondThenQuantVars),
         warn_singletons_in_goal(Cond, CondThenQuantVars, VarSet, PredCallId,
             ModuleInfo, !Specs),
         warn_singletons_in_goal(Then, CondThenQuantVars, VarSet, PredCallId,
@@ -237,7 +237,7 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
             ShortHand = atomic_goal(_GoalType, _Outer, Inner,
                 _MaybeOutputVars, MainGoal, OrElseGoals, _OrElseInners),
             Inner = atomic_interface_vars(InnerDI, InnerUO),
-            set.insert_list(QuantVars, [InnerDI, InnerUO], InsideQuantVars),
+            set.insert_list([InnerDI, InnerUO], QuantVars, InsideQuantVars),
             warn_singletons_in_goal(MainGoal, InsideQuantVars, VarSet,
                 PredCallId, ModuleInfo, !Specs),
             warn_singletons_in_goal_list(OrElseGoals, InsideQuantVars, VarSet,

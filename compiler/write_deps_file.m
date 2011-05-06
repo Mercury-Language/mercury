@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2010 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -141,10 +141,10 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         list.append(IntDeps, ImplDeps, LongDeps0),
         ShortDeps0 = IndirectDeps,
         set.list_to_set(LongDeps0, LongDepsSet0),
-        set.delete(LongDepsSet0, ModuleName, LongDepsSet),
+        set.delete(ModuleName, LongDepsSet0, LongDepsSet),
         set.list_to_set(ShortDeps0, ShortDepsSet0),
         set.difference(ShortDepsSet0, LongDepsSet, ShortDepsSet1),
-        set.delete(ShortDepsSet1, ModuleName, ShortDepsSet),
+        set.delete(ModuleName, ShortDepsSet1, ShortDepsSet),
         set.to_sorted_list(LongDepsSet, LongDeps),
         set.to_sorted_list(ShortDepsSet, ShortDeps),
         set.to_sorted_list(AllDepsSet, AllDeps),

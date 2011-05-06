@@ -1186,7 +1186,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes0,
             ExistQVars, NonLocals, ExtraTypeInfos0),
-        set.delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos1),
+        set.delete_list(ArgVars0, ExtraTypeInfos0, ExtraTypeInfos1),
         set.to_sorted_list(ExtraTypeInfos1, ExtraTypeInfos),
         list.append(ExtraTypeInfos, ArgVars0, ArgVars)
     ;
@@ -1206,7 +1206,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 
     % Remove unneeded variables from the vartypes and varset.
     goal_util.goal_vars(Goal0, GoalVars0),
-    set.insert_list(GoalVars0, ArgVars, GoalVars),
+    set.insert_list(ArgVars, GoalVars0, GoalVars),
     map.select(VarTypes0, GoalVars, VarTypes),
     varset.select(GoalVars, VarSet0, VarSet),
 

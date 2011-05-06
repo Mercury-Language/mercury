@@ -1822,12 +1822,12 @@ mercury_format_cons_id(ConsId, NeedsBrackets, !U) :-
     InstInfo::in, U::di, U::uo) is det
     <= (output(U), inst_info(InstInfo)).
 
-mercury_format_constrained_inst_vars(Vars0, Inst, InstInfo, !U) :-
-    ( set.remove_least(Vars0, Var, Vars1) ->
+mercury_format_constrained_inst_vars(!.Vars, Inst, InstInfo, !U) :-
+    ( set.remove_least(Var, !Vars) ->
         add_string("(", !U),
         mercury_format_var(InstInfo ^ instvarset, no, Var, !U),
         add_string(" =< ", !U),
-        mercury_format_constrained_inst_vars(Vars1, Inst, InstInfo, !U),
+        mercury_format_constrained_inst_vars(!.Vars, Inst, InstInfo, !U),
         add_string(")", !U)
     ;
         mercury_format_inst(Inst, InstInfo, !U)

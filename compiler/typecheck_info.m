@@ -535,7 +535,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 expand_types(TypeSubst, _Var, Type0, Type, !TypeVarsSet) :-
     apply_rec_subst_to_type(TypeSubst, Type0, Type),
     type_vars(Type, TypeVars),
-    set.insert_list(!.TypeVarsSet, TypeVars, !:TypeVarsSet).
+    set.insert_list(TypeVars, !TypeVarsSet).
 
     % We rename any existentially quantified type variables which get mapped
     % to other type variables, unless they are mapped to universally quantified

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -212,7 +212,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -587,8 +586,8 @@ detect_liveness_in_construct_goal_loop([Goal0 | Goals0], [Goal | Goals],
         Unification = construct(LHSVar, _ConsId, RHSVars, _ArgModes,
             construct_statically, cell_is_shared, no_construct_sub_info)
     ->
-        ( set.remove_list(!.LocalLiveVars, RHSVars, !:LocalLiveVars) ->
-            set.insert(!.LocalLiveVars, LHSVar, !:LocalLiveVars),
+        ( set.remove_list(RHSVars, !LocalLiveVars) ->
+            set.insert(LHSVar, !LocalLiveVars),
             PreBirths = set.make_singleton_set(LHSVar),
             set.init(PostBirths),
             set.init(PreDeaths),
@@ -1745,7 +1744,7 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
 initial_liveness_2([], [], [], _ModuleInfo, !Liveness).
 initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo, !Liveness) :-
     ( mode_to_arg_mode(ModuleInfo, M, T, top_in) ->
-        svset.insert(V, !Liveness)
+        set.insert(V, !Liveness)
     ;
         true
     ),
@@ -1817,7 +1816,7 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
         ModuleInfo = LiveInfo ^ li_module_info,
         mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out)
     ->
-        svset.insert(Var, !ValueVars)
+        set.insert(Var, !ValueVars)
     ;
         true
     ),

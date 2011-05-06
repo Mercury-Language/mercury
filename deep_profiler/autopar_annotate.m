@@ -70,7 +70,7 @@ goal_annotate_with_instmap(Goal, SeenDuplicateInstantiation, ConsumedVars,
         GoalExpr = switch_rep(Var, _CanFail, Cases),
         switch_annotate_with_instmap(Cases, SeenDuplicateInstantiation,
             ConsumedVars0, BoundVars, !InstMap, !InstMapArray),
-        set.insert(ConsumedVars0, Var, ConsumedVars)
+        set.insert(Var, ConsumedVars0, ConsumedVars)
     ;
         GoalExpr = ite_rep(Cond, Then, Else),
         ite_annotate_with_instmap(Cond, Then, Else,

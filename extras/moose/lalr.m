@@ -155,7 +155,7 @@ lr0items(Productions, Reaching, C, Gotos) :-
 :- mode lr0items1(in, in, in, in, out, in, out) is det.
 
 lr0items1(Pending0, Productions, Reaching, !Gotos, !C) :-
-	( set.remove_least(Pending0, J, Pending1) ->
+	( set.remove_least(J, Pending0, Pending1) ->
 		set.to_sorted_list(J, JList),
 		lr0items_1(JList, J, Productions, Reaching, !Gotos, set.init, 
 			NewSet),
@@ -343,8 +343,8 @@ closure1([AItem | AItems], Rules, First, Index, !I) :-
 		( BSym = nonterminal(Bn) ->
 			Bf0 = first(First, Asyms, Ad + 1),
 			( set.member(epsilon, Bf0) ->
-				set.delete(Bf0, epsilon, Bf1),
-				set.insert(Bf1, Asym, Bf)
+				set.delete(epsilon, Bf0, Bf1),
+				set.insert(Asym, Bf1, Bf)
 				%Bf = Bf1 \/ { Asym }
 			;
 				Bf = Bf0
@@ -468,7 +468,7 @@ add_propagated(I, B, Ia, A, L - P0, L - P) :-
 	;
 		set.init(As1)
 	),
-	set.insert(As1, A, As),
+	set.insert(A, As1, As),
 	map.set(Ia, As, Y1, Y),
 	map.set(B, Y, X1, X),
 	map.set(I, X, P0, P).
@@ -487,7 +487,7 @@ add_spontaneous(I, B, Alpha, L0 - P, L - P) :-
 	;
 		set.init(As1)
 	),
-	set.insert(As1, Alpha, As),
+	set.insert(Alpha, As1, As),
 	map.set(B, As, X1, X),
 	map.set(I, X, L0, L).
 

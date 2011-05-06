@@ -809,7 +809,7 @@ wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
     % OuterDI and OuterUO will definitely be used by the code inside the new
     % goal, and *should* be used by code outside the goal. However, even if
     % they are not, the nonlocals set is allowed to overapproximate.
-    set.insert_list(NonLocals0, [OuterDI, OuterUO], NonLocals),
+    set.insert_list([OuterDI, OuterUO], NonLocals0, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
     goal_info_add_feature(feature_contains_stm_inner_outer, GoalInfo1,
         GoalInfo),

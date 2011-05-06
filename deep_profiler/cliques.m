@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006, 2008, 2010 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006, 2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -72,7 +72,7 @@ init(graph(1, Array)) :-
 add_arc(graph(Size0, Array0), From, To, Graph) :-
     ( array.in_bounds(Array0, From) ->
         array.lookup(Array0, From, Tos0),
-        set.insert(Tos0, To, Tos),
+        set.insert(To, Tos0, Tos),
         array.set(u(Array0), From, Tos, Array),
         Size = int.max(int.max(From, To), Size0),
         Graph = graph(Size, Array)

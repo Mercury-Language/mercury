@@ -123,7 +123,7 @@ generate_deps_map(Globals, ModuleName, Search, !DepsMap, !IO) :-
     deps_map::in, deps_map::out, io::di, io::uo) is det.
 
 generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO) :-
-    ( set.remove_least(!.Modules, Module, !:Modules) ->
+    ( set.remove_least(Module, !Modules) ->
         generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap,
             !IO),
         generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO)

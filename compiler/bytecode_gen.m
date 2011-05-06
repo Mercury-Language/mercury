@@ -138,7 +138,7 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
     goal_util.goal_vars(Goal, GoalVars),
     proc_info_get_headvars(ProcInfo, ArgVars),
-    set.insert_list(GoalVars, ArgVars, Vars),
+    set.insert_list(ArgVars, GoalVars, Vars),
     set.to_sorted_list(Vars, VarList),
     map.init(VarMap0),
     create_varmap(VarList, VarSet, VarTypes, 0, VarMap0, VarMap, VarInfos),

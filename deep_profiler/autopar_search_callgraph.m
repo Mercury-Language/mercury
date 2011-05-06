@@ -501,8 +501,8 @@ insert_into_push_map(PushGoal, !Map) :-
             Lo = OldLo,
             Hi = OldHi
         ->
-            set.insert_list(OldTargetGoalPathStrSet, TargetGoalPathStrs,
-                NewTargetGoalPathStrSet),
+            set.insert_list(TargetGoalPathStrs,
+                OldTargetGoalPathStrSet, NewTargetGoalPathStrSet),
             NewTriple = {OldLo, OldHi, NewTargetGoalPathStrSet},
             map.det_update(GoalPathStr, NewTriple, !Map)
         ;

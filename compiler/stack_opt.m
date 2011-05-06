@@ -116,7 +116,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svset.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -579,7 +578,7 @@ record_cell_var_for_interval(CellVar, ViaCellVars, IntervalId,
     record_interval_vars(IntervalId, [CellVar], !IntervalInfo),
     delete_interval_vars(IntervalId, ViaCellVars, DeletedVars, !IntervalInfo),
     ( set.non_empty(DeletedVars) ->
-        svset.insert(IntervalId, !InsertIntervals)
+        set.insert(IntervalId, !InsertIntervals)
     ;
         true
     ).
@@ -606,7 +605,7 @@ add_anchor_inserts(Goal, ArgVarsViaCellVar, InsertIntervals, Anchor,
             map.det_insert(Anchor, Inserts, InsertMap0, InsertMap)
         ),
         !StackOptInfo ^ soi_left_anchor_inserts := InsertMap,
-        svset.insert(Anchor, !InsertAnchors)
+        set.insert(Anchor, !InsertAnchors)
     ;
         true
     ).
@@ -685,7 +684,7 @@ add_interval_to_path(IntervalId, Vars, !.Path) = !:Path :-
         CurSegment0 = !.Path ^ current_segment,
         CurSegment = set.union(Vars, CurSegment0),
         OccurringIntervals0 = !.Path ^ occurring_intervals,
-        svset.insert(IntervalId, OccurringIntervals0, OccurringIntervals),
+        set.insert(IntervalId, OccurringIntervals0, OccurringIntervals),
         !Path ^ current_segment := CurSegment,
         !Path ^ occurring_intervals := OccurringIntervals
     ).
@@ -694,7 +693,7 @@ add_interval_to_path(IntervalId, Vars, !.Path) = !:Path :-
 
 add_anchor_to_path(Anchor, !.Path) = !:Path :-
     Anchors0 = !.Path ^ flush_anchors,
-    svset.insert(Anchor, Anchors0, Anchors),
+    set.insert(Anchor, Anchors0, Anchors),
     !Path ^ flush_anchors := Anchors.
 
 :- func anchor_requires_close(interval_info, anchor) = bool.

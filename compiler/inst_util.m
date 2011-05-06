@@ -163,7 +163,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -1670,7 +1669,7 @@ merge_inst_uniq(defined_inst(InstName), UniqB, ModuleInfo,
     ( set.member(InstName, !.Expansions) ->
         Uniq = UniqB
     ;
-        svset.insert(InstName, !Expansions),
+        set.insert(InstName, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst),
         merge_inst_uniq(Inst, UniqB, ModuleInfo, !Expansions, Uniq)
     ).
@@ -1783,7 +1782,7 @@ inst_contains_nonstandard_func_mode_2(_, inst_var(_), _) :-
 inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions0) :-
     Inst = defined_inst(InstName),
     \+ set.member(Inst, Expansions0),
-    set.insert(Expansions0, Inst, Expansions1),
+    set.insert(Inst, Expansions0, Expansions1),
     inst_lookup(ModuleInfo, InstName, Inst2),
     inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst2, Expansions1).
 

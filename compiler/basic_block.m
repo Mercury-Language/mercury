@@ -98,7 +98,6 @@
 :- import_module ll_backend.opt_util.
 
 :- import_module require.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -128,7 +127,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
     ;
         counter.allocate(N, !C),
         Label = internal_label(N, ProcLabel),
-        svset.insert(Label, !NewLabels),
+        set.insert(Label, !NewLabels),
         LabelInstr = llds_instr(label(Label), ""),
         RestInstrs = [OrigInstr0 | OrigInstrs0]
     ),

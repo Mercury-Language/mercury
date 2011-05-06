@@ -1217,7 +1217,7 @@ count_load_stores_in_call_to_tupled(GoalExpr, GoalInfo, CountInfo,
         % In this case, the cell var is not being used to access field
         % variables, so it should not incur the cell var cost.
         cls_require_normal_var_in_reg(CountInfo, CellVar, !CountState),
-        set.delete_list(InputArgs0, FieldVars, InputArgs)
+        set.delete_list(FieldVars, InputArgs0, InputArgs)
     ;
         % The cell var cannot be used for the callee, so we must add
         % the cost of constructing a new tuple.
@@ -1386,10 +1386,10 @@ cls_require_field_var_in_reg(CountInfo, TuplingProposal, FieldVar,
         CvLoadCost = float(TuningParams ^ tp_cell_var_load_cost),
         FvLoadCost = float(TuningParams ^ tp_field_var_load_cost),
         ( set.member(CellVar, RegVars0) ->
-            set.insert(RegVars0, FieldVar, RegVars),
+            set.insert(FieldVar, RegVars0, RegVars),
             Loads = Loads0 + FvLoadCost
         ;
-            set.insert_list(RegVars0, [CellVar, FieldVar], RegVars),
+            set.insert_list([CellVar, FieldVar], RegVars0, RegVars),
             Loads = Loads0 + CvLoadCost + FvLoadCost
         ),
         CountState = count_state(RegVars, StackVars, Loads, Stores)
@@ -1403,7 +1403,7 @@ cls_require_var_in_reg_with_cost(LoadCost, Var, CountState0, CountState) :-
     ( set.member(Var, RegVars0) ->
         CountState = CountState0
     ;
-        set.insert(RegVars0, Var, RegVars),
+        set.insert(Var, RegVars0, RegVars),
         Loads = Loads0 + float(LoadCost),
         CountState = count_state(RegVars, StackVars, Loads, Stores)
     ).
@@ -1415,7 +1415,7 @@ cls_require_var_in_reg_with_cost(LoadCost, Var, CountState0, CountState) :-
 
 cls_put_in_regs(Vars, !CountState) :-
     RegVars0 = !.CountState ^ cs_reg_vars,
-    set.insert_list(RegVars0, Vars, RegVars),
+    set.insert_list(Vars, RegVars0, RegVars),
     !CountState ^ cs_reg_vars := RegVars.
 
 :- pred cls_put_in_regs_via_deconstruct(count_info::in, prog_var::in,

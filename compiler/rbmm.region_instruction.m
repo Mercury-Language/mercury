@@ -114,7 +114,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 
 introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,
@@ -420,7 +419,7 @@ process_mapping_rule_1(BecomeLive, CalleeBornR,
         set.contains(BecomeLive, TargetRegion),
         not set.contains(CalleeBornR, SourceRegion)
     ->
-        svset.insert(TargetRegion, !CreatedBeforeProgPoint)
+        set.insert(TargetRegion, !CreatedBeforeProgPoint)
     ;
         true
     ).
@@ -438,7 +437,7 @@ process_mapping_rule_3(BecomeDead, CalleeDeadR, SourceRegion,
         set.contains(BecomeDead, TargetRegion),
         not set.contains(CalleeDeadR, SourceRegion)
     ->
-        svset.insert(TargetRegion, !RemovedAfterProgPoint)
+        set.insert(TargetRegion, !RemovedAfterProgPoint)
     ;
         true
     ).

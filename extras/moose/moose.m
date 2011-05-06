@@ -549,7 +549,7 @@ terminal_to_term(epsilon, _, _) :-
     error("terminal_to_term: unexpected epsilon").
 terminal_to_term(Name/Arity, _, Term) :-
     varset.init(V0),
-    varset.new_vars(V0, Arity, Vars, _),
+    varset.new_vars(Arity, Vars, V0, _),
     term.context_init(Ctxt),
     list.map((pred(Var::in, T::out) is det :-
         T = variable(Var, Ctxt)
@@ -630,7 +630,7 @@ nonterminal_to_term(start, _) :-
     error("nonterminal_to_term: unexpected start").
 nonterminal_to_term(Name/Arity, Term) :-
     varset.init(V0),
-    varset.new_vars(V0, Arity, Vars, _),
+    varset.new_vars(Arity, Vars, V0, _),
     term.context_init(Ctxt),
     list.map((pred(Var::in, T::out) is det :-
         T = variable(Var, Ctxt)
@@ -740,7 +740,7 @@ mkstartargs(N, !Terms, !Varset) :-
         true
     ;
         string.format("V%d", [i(N)], VarName),
-        varset.new_named_var(!.Varset, VarName, Var, !:Varset),
+        varset.new_named_var(VarName, Var, !Varset),
         Term = term.variable(Var, context_init),
         list.append([Term], !Terms),
         mkstartargs(N - 1, !Terms, !Varset)
@@ -826,28 +826,28 @@ reduce0(%s, S0, S, T0, T, U0, U) :-
             !IO),
         Rule = rule(RNt, Head, _, Body, Actions, Varset0, _C),
         term.context_init(Ctxt),
-        varset.new_named_var(Varset0, "M_St0", St0v, Varset1),
+        varset.new_named_var("M_St0", St0v, Varset0, Varset1),
         St0 = variable(St0v, Ctxt),
-        varset.new_named_var(Varset1, "M_St1", St1v, Varset2),
+        varset.new_named_var("M_St1", St1v, Varset1, Varset2),
         St1 = variable(St1v, Ctxt),
-        varset.new_named_var(Varset2, "M_Sy0", Sy0v, Varset3),
+        varset.new_named_var("M_Sy0", Sy0v, Varset2, Varset3),
         Sy0 = variable(Sy0v, Ctxt),
-        varset.new_named_var(Varset3, "M_Sy1", Sy1v, Varset4),
+        varset.new_named_var("M_Sy1", Sy1v, Varset3, Varset4),
         Sy1 = variable(Sy1v, Ctxt),
-        varset.new_named_var(Varset4, "M_RedRes", Resv, Varset5),
+        varset.new_named_var("M_RedRes", Resv, Varset4, Varset5),
         Res = variable(Resv, Ctxt),
         ResS = functor(atom("n"), [variable(Resv, Ctxt)], Ctxt),
-        varset.new_named_var(Varset5, "M_D", Dv, Varset6),
+        varset.new_named_var("M_D", Dv, Varset5, Varset6),
         _D = variable(Dv, Ctxt),
-        varset.new_named_var(Varset6, "M_S", Sv, Varset7),
+        varset.new_named_var("M_S", Sv, Varset6, Varset7),
         _S = variable(Sv, Ctxt),
-        varset.new_named_var(Varset7, "M_St", Stv, Varset8),
+        varset.new_named_var("M_St", Stv, Varset7, Varset8),
         St = variable(Stv, Ctxt),
-        varset.new_named_var(Varset8, "M_Sy", Syv, Varset9),
+        varset.new_named_var("M_Sy", Syv, Varset8, Varset9),
         Sy = variable(Syv, Ctxt),
-        varset.new_named_var(Varset9, "M_Ts0", Ts0v, Varset10),
+        varset.new_named_var("M_Ts0", Ts0v, Varset9, Varset10),
         Ts0 = variable(Ts0v, Ctxt),
-        varset.new_named_var(Varset10, "M_Ts", Tsv, Varset11),
+        varset.new_named_var("M_Ts", Tsv, Varset10, Varset11),
         Ts = variable(Tsv, Ctxt),
         string.format("reduction 0x%x failed!", [i(Rn)], Err),
         mkstacks(Body, St1, Sts, Sy1, Sys, Varset11, Varset12),
@@ -923,7 +923,7 @@ reduce0_error(State) :-
 
 mkstacks([], !St, !Sy, !VS).
 mkstacks([E0 | Es], !St, !Sy, !VS) :-
-    varset.new_var(!.VS, U, !:VS),
+    varset.new_var(U, !VS),
     term.context_init(Ctxt),
     (
         E0 = terminal(ET),

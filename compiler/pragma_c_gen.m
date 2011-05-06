@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -395,7 +395,7 @@ generate_runtime_cond_code(Expr, CondRval, !CI) :-
     (
         Expr = trace_base(trace_envvar(EnvVar)),
         get_used_env_vars(!.CI, UsedEnvVars0),
-        set.insert(UsedEnvVars0, EnvVar, UsedEnvVars),
+        set.insert(EnvVar, UsedEnvVars0, UsedEnvVars),
         set_used_env_vars(UsedEnvVars, !CI),
         EnvVarRval = lval(global_var_ref(env_var_ref(EnvVar))),
         ZeroRval = const(llconst_int(0)),
@@ -896,7 +896,7 @@ find_dead_input_vars([], _, !DeadVars).
 find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
     Arg = c_arg(Var, _MaybeName, _Type, _BoxPolicy, _ArgInfo),
     ( set.member(Var, PostDeaths) ->
-        set.insert(!.DeadVars, Var, !:DeadVars)
+        set.insert(Var, !DeadVars)
     ;
         true
     ),

@@ -376,7 +376,7 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
     % is safe to bind the lambda goal itself.
     Goal0 = hlds_goal(_, GoalInfo0),
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-    set.delete_list(NonLocals0, Vars, NonLocals1),
+    set.delete_list(Vars, NonLocals0, NonLocals1),
     (
         Groundness = ho_ground,
         NonLocals = NonLocals1

@@ -416,7 +416,6 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -712,7 +711,7 @@ generate_resume_layout_for_vars([Var - LvalSet | VarLvals], InstMap,
     ;
         generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo,
             ModuleInfo, VarInfo, TypeVars),
-        set.insert_list(!.TVars, TypeVars, !:TVars),
+        set.insert_list(TypeVars, !TVars),
         !:VarInfos = [VarInfo | !.VarInfos]
     ),
     generate_resume_layout_for_vars(VarLvals, InstMap, VarTypes, ProcInfo,
@@ -817,7 +816,7 @@ build_closure_info([Var | Vars], [Type | Types],
     set.singleton_set(Locations, reg(reg_r, ArgLoc)),
     map.det_insert(Var, Locations, !VarLocs),
     type_vars(Type, VarTypeVars),
-    svset.insert_list(VarTypeVars, !TypeVars),
+    set.insert_list(VarTypeVars, !TypeVars),
     build_closure_info(Vars, Types, ArgInfos, Layouts, InstMap,
         !VarLocs, !TypeVars).
 
@@ -879,7 +878,7 @@ build_table_arg_info(VarSet, VarTypes, [Var - SlotNum | NumberedVars],
     map.lookup(VarTypes, Var, Type),
     ArgLayout = table_arg_info(VarNum, VarName, SlotNum, Type),
     type_vars(Type, VarTypeVars),
-    svset.insert_list(VarTypeVars, !TypeVars),
+    set.insert_list(VarTypeVars, !TypeVars),
     build_table_arg_info(VarSet, VarTypes, NumberedVars,
         ArgLayouts, !TypeVars).
 

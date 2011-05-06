@@ -99,7 +99,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -309,7 +308,7 @@ type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
             type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes,
                 Contains)
         ;
-            svset.insert(FromType, !SeenTypes),
+            set.insert(FromType, !SeenTypes),
             type_arg_types(ModuleInfo, FromType, ArgTypes),
             ( list.member(ToType, ArgTypes) ->
                 Contains = yes

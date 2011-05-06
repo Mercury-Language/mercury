@@ -597,7 +597,7 @@ ml_gen_info_add_closure_wrapper_defn(ClosureWrapperDefn, !Info) :-
 
 ml_gen_info_add_env_var_name(Name, !Info) :-
     ml_gen_info_get_env_var_names(!.Info, EnvVarNames0),
-    set.insert(EnvVarNames0, Name, EnvVarNames),
+    set.insert(Name, EnvVarNames0, EnvVarNames),
     ml_gen_info_set_env_var_names(EnvVarNames, !Info).
 
 %-----------------------------------------------------------------------------%

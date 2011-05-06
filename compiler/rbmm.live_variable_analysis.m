@@ -393,7 +393,7 @@ void_var(Varset, Var, !VoidVars) :-
     mercury_var_to_string(Varset, no, Var) = VarName,
     string.substring(VarName, 0, 1, FirstChar),
     ( FirstChar = "_" ->
-        set.insert(!.VoidVars, Var, !:VoidVars)
+        set.insert(Var, !VoidVars)
     ;
         true
     ).

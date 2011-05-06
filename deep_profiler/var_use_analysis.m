@@ -273,7 +273,7 @@ call_site_dynamic_var_use_info(ParentCliquePtr, CSDPtr, ArgNum,
                     % Don't follow this recursive call as normal, doing so
                     % would make this analysis take too long.  We can compute
                     % the cost of variable use time by the following formula:
-                    set.insert(CallStack0, CalleePDPtr, CallStack),
+                    set.insert(CalleePDPtr, CallStack0, CallStack),
                     proc_dynamic_recursive_var_use_info(ParentCliquePtr,
                         CalleePDPtr, ArgNum, RecursionType, Depth, Cost,
                         CallStack, VarUseOptions, MaybeVarUseInfo0),

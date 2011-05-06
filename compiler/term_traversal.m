@@ -115,7 +115,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -401,7 +400,7 @@ add_path(Path, Info0, Info) :-
         Info = Info0
     ;
         Info0 = term_traversal_ok(Paths0, CanLoop),
-        set.insert(Paths0, Path, Paths),
+        set.insert(Path, Paths0, Paths),
         Info = term_traversal_ok(Paths, CanLoop)
     ).
 
@@ -587,7 +586,7 @@ record_change_2([Path0 | Paths0], InVars, OutVars, CallGamma, CallPPIds,
         % The change produces no active variables.
         Path = Path0
     ),
-    svset.insert(Path, !PathSet),
+    set.insert(Path, !PathSet),
     record_change_2(Paths0, InVars, OutVars, CallGamma, CallPPIds, !PathSet).
 
 %-----------------------------------------------------------------------------%

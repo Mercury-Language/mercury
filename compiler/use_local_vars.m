@@ -404,7 +404,7 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             this_file, "opt_access: nonempty SubChosenLvals"),
         substitute_lval_in_instr_until_defn(ChosenLval, TempLval,
             [Instr0 | TailInstrs0], Instrs1, 0, NumReplacements),
-        set.insert(AlreadyTried0, ChosenLval, AlreadyTried1),
+        set.insert(ChosenLval, AlreadyTried0, AlreadyTried1),
         ( NumReplacements >= AccessThreshold ->
             TempAssign = llds_instr(assign(TempLval, lval(ChosenLval)),
                 "factor out common sub lval"),

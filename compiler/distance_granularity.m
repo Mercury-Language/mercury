@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -519,7 +519,7 @@ create_if_then_else_goal(GoalsInConj, ConjInfo, MaybeGranularityVar,
         % The non-locals of the hlds_goal_info of the if_then_else goal must
         % contain the variable controlling the granularity.
         NonLocals0 = goal_info_get_nonlocals(ConjInfo),
-        set.insert(NonLocals0, GranularityVar, NonLocals),
+        set.insert(GranularityVar, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, ConjInfo, IfThenElseInfo),
         IfThenElseGoal = hlds_goal(if_then_else([], Cond, Then, Else),
             IfThenElseInfo)
@@ -982,7 +982,7 @@ update_original_predicate_plain_call(!Goal, CallerPredId, CallerProcId,
         % Update the nonlocals and the instmap_delta of the hlds_goal_info
         % of the recursive plain call for Var.
         NonLocals0 = goal_info_get_nonlocals(CallInfo0),
-        set.insert(NonLocals0, Var, NonLocals),
+        set.insert(Var, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, CallInfo0, CallInfo1),
         InstMapDelta0 = goal_info_get_instmap_delta(CallInfo1),
         MerInst = ground(shared, none),

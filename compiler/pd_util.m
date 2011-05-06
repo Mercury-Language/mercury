@@ -177,7 +177,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module term.
-:- import_module svset.
 
 goal_get_calls(Goal0, CalledPreds) :-
     goal_to_conj_list(Goal0, GoalList),
@@ -352,7 +351,7 @@ get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals],
     ( inst_is_clobbered(ModuleInfo, FinalInst) ->
         true
     ;
-        svset.insert(NonLocal, !Vars)
+        set.insert(NonLocal, !Vars)
     ),
     get_goal_live_vars_2(ModuleInfo, NonLocals, InstMap, InstMapDelta, !Vars).
 
@@ -479,7 +478,7 @@ get_opaque_args(ModuleInfo, ArgNo, [ArgMode | ArgModes],
         mode_is_output(ModuleInfo, ArgMode),
         \+ map.contains(ExtraInfoArgs, ArgNo)
     ->
-        set.insert(!.OpaqueArgs, ArgNo, !:OpaqueArgs)
+        set.insert(ArgNo, !OpaqueArgs)
     ;
         true
     ),
@@ -505,7 +504,7 @@ get_extra_info_headvars([HeadVar | HeadVars], ArgNo,
         true
     ),
     ( set.member(HeadVar, LeftVars) ->
-        svset.insert(ArgNo, !ThisProcLeftVars)
+        set.insert(ArgNo, !ThisProcLeftVars)
     ;
         true
     ),
@@ -607,7 +606,7 @@ get_branch_instmap_deltas(Goal, InstMapDeltas) :-
 
 get_left_vars(Goal, Vars0, Vars) :-
     ( Goal = hlds_goal(switch(Var, _, _), _) ->
-        set.insert(Vars0, Var, Vars)
+        set.insert(Var, Vars0, Vars)
     ;
         Vars = Vars0
     ).
@@ -629,7 +628,7 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
                 \+ inst_is_bound_to_functors(ModuleInfo, VarInst, [_])
             ->
                 ( map.search(Vars0, ChangedVar, Set0) ->
-                    set.insert(Set0, BranchNo, Set)
+                    set.insert(BranchNo, Set0, Set)
                 ;
                     set.singleton_set(Set, BranchNo)
                 ),
@@ -646,7 +645,7 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
     % at the end of each branch.
     ( Goal = hlds_goal(switch(SwitchVar, _, _), _) ->
         ( map.search(!.ExtraVars, SwitchVar, SwitchVarSet0) ->
-            set.insert(SwitchVarSet0, BranchNo, SwitchVarSet)
+            set.insert(BranchNo, SwitchVarSet0, SwitchVarSet)
         ;
             set.singleton_set(SwitchVarSet, BranchNo)
         ),
@@ -780,7 +779,7 @@ examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
 combine_vars(_, [], !Vars).
 combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
     ( map.search(!.Vars, ExtraVar, Branches0) ->
-        set.insert(Branches0, BranchNo, Branches),
+        set.insert(BranchNo, Branches0, Branches),
         map.det_update(ExtraVar, Branches, !Vars)
     ;
         set.singleton_set(Branches, BranchNo),
@@ -826,20 +825,20 @@ inst_MSG(InstA, InstB, ModuleInfo, Inst) :-
 :- pred inst_MSG_1(mer_inst::in, mer_inst::in, expansions::in, module_info::in,
     mer_inst::out) is semidet.
 
-inst_MSG_1(InstA, InstB, Expansions, ModuleInfo, Inst) :-
+inst_MSG_1(InstA, InstB, !.Expansions, ModuleInfo, Inst) :-
     ( InstA = InstB ->
         Inst = InstA
     ;
         % We don't do recursive MSGs
         % (we could, but it's probably not worth it).
-        \+ set.member(InstA - InstB, Expansions),
+        \+ set.member(InstA - InstB, !.Expansions),
         inst_expand(ModuleInfo, InstA, InstA2),
         inst_expand(ModuleInfo, InstB, InstB2),
-        set.insert(Expansions, InstA - InstB, Expansions1),
+        set.insert(InstA - InstB, !Expansions),
         ( InstB2 = not_reached ->
             Inst = InstA2
         ;
-            inst_MSG_2(InstA2, InstB2, Expansions1, ModuleInfo, Inst)
+            inst_MSG_2(InstA2, InstB2, !.Expansions, ModuleInfo, Inst)
         )
     ).
 
@@ -942,13 +941,13 @@ inst_size_2(ModuleInfo, constrained_inst_vars(_, Inst), Expansions,
         Size) :-
     inst_size_2(ModuleInfo, Inst, Expansions, Size).
 inst_size_2(_, abstract_inst(_, _), _, 0).
-inst_size_2(ModuleInfo, defined_inst(InstName), Expansions0, Size) :-
-    ( set.member(InstName, Expansions0) ->
+inst_size_2(ModuleInfo, defined_inst(InstName), !.Expansions, Size) :-
+    ( set.member(InstName, !.Expansions) ->
         Size = 1
     ;
-        set.insert(Expansions0, InstName, Expansions),
+        set.insert(InstName, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst),
-        inst_size_2(ModuleInfo, Inst, Expansions, Size)
+        inst_size_2(ModuleInfo, Inst, !.Expansions, Size)
     ).
 inst_size_2(ModuleInfo, bound(_, Functors), Expansions, Size) :-
     bound_inst_size(ModuleInfo, Functors, Expansions, 1, Size).
@@ -996,7 +995,7 @@ goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
     list.map(Search, OldArgs, NewArgs),
     NewGoal = hlds_goal(_, NewGoalInfo),
     NewNonLocals = goal_info_get_nonlocals(NewGoalInfo),
-    set.delete_list(NewNonLocals, NewArgs, UnmatchedNonLocals),
+    set.delete_list(NewArgs, NewNonLocals, UnmatchedNonLocals),
     set.empty(UnmatchedNonLocals),
 
     % Check that argument types of NewGoal are subsumed by those of OldGoal.

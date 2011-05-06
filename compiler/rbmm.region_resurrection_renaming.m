@@ -159,7 +159,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -326,7 +325,7 @@ collect_join_points_path(Paths, Path, !JP2Name, !Counter, !JoinPoints,
                     map.set(PrevPoint, JPName, !JP2Name)
                 ),
                 map.set(ProgPoint, JPName, !JoinPointProc),
-                svset.insert(ProgPoint, !JoinPoints)
+                set.insert(ProgPoint, !JoinPoints)
             ;
                 true
             )
@@ -422,7 +421,7 @@ path_containing_join_point(JoinPointProc, PPId, ResurrectedRegionsProc,
 
 find_join_points_in_path(ProgPointsInPath, JoinPoint, _, !JoinPoints) :-
     ( list.member(JoinPoint, ProgPointsInPath) ->
-        svset.insert(JoinPoint, !JoinPoints)
+        set.insert(JoinPoint, !JoinPoints)
     ;
         true
     ).

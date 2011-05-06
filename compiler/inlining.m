@@ -172,7 +172,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svset.
 :- import_module term.
 :- import_module varset.
 
@@ -376,7 +375,7 @@ is_flat_simple_goal_list([Goal | Goals]) :-
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
 mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo, !InlinedProcs) :-
-    svset.insert(proc(PredId, ProcId), !InlinedProcs),
+    set.insert(proc(PredId, ProcId), !InlinedProcs),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ( pred_info_requested_inlining(PredInfo) ->
         true

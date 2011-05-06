@@ -119,7 +119,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module int.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 %
@@ -357,13 +356,13 @@ partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
     (
         ArgMode = top_in,
-        svset.insert(Var, !Inputs)
+        set.insert(Var, !Inputs)
     ;
         ArgMode = top_out,
-        svset.insert(Var, !Outputs)
+        set.insert(Var, !Outputs)
     ;
         ArgMode = top_unused,
-        svset.insert(Var, !Unuseds)
+        set.insert(Var, !Unuseds)
     ),
     partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
         !Inputs, !Outputs, !Unuseds).

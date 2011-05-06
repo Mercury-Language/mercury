@@ -13,8 +13,8 @@ Changes to the Mercury standard library:
 * We have improved Unicode support in the standard library.
 
 * We have changed the argument order of many of the predicates in the
-  bag, bimap, eqvclass, map, multi_map and queue modules in order to make
-  them more conducive to the use of state variable notation.
+  bag, bimap, eqvclass, map, multi_map, queue and set  modules in order
+  to make them more conducive to the use of state variable notation.
 
 
 DETAILED LISTING
@@ -28,6 +28,8 @@ Changes to the Mercury standard library:
       UTF-16 encodings, depending upon the backend.
 
     + Text I/O routines now read and write files in UTF-8 encoding.
+
+* We have added additional modes for set.map/3 and set.map_fold/5.
 
 * The argument order of the following predicates has been changed so as to
   make them more conducive to the use of state variable notation:
@@ -47,7 +49,8 @@ Changes to the Mercury standard library:
   multi_map.remove_smallest/4, queue.put/3, queue.put_list/3,
   queue.get/3, queue.delete_all/3, queue.put_on_front/3,
   queue.get_from_back/3, queue.put_list_on_front/3,
-  queue.get_from_back/3.
+  queue.get_from_back/3, set.insert/3, set.insert_list/3, set.delete/3,
+  set.delete_list/3, set.remove/3, set.remove_list/3 and  set.remove_least/3
 
 * We have add the following new functions for creating singleton
   maps: bimap.singleton/2, injection.singleton/2, map.singleton/2,

@@ -784,7 +784,7 @@ expand_sub_disj_process_conj(AllowMulti, Var, ConjGoals, !.RevUnifies,
                 % specific to each cons_id, so it could not be shared with
                 % other cons_ids.
                 NonLocals = goal_info_get_nonlocals(FirstGoalInfo),
-                set.delete(NonLocals, Var, OtherNonLocals),
+                set.delete(Var, NonLocals, OtherNonLocals),
                 set.empty(OtherNonLocals),
 
                 all_disjuncts_are_switch_var_unifies(Var, Disjuncts,

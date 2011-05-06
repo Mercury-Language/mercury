@@ -46,7 +46,6 @@
 :- import_module bool.
 :- import_module require.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -155,7 +154,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         % appears on the right hand side as well as the left, then we
         % want make_live to put it back into the liveval set.
 
-        svset.delete(Lval, !Livevals),
+        set.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals([Rval | Rvals], !Livevals)
     ;
@@ -200,7 +199,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         livemap_special_code_addr(CodeAddr, MaybeSpecial),
         (
             MaybeSpecial = yes(Special),
-            set.insert(!.Livevals, Special, !:Livevals)
+            set.insert(Special, !Livevals)
         ;
             MaybeSpecial = no
         )
@@ -234,13 +233,13 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         livemap_special_code_addr(CodeAddr, MaybeSpecial),
         (
             MaybeSpecial = yes(Special),
-            set.insert(!.Livevals, Special, !:Livevals)
+            set.insert(Special, !Livevals)
         ;
             MaybeSpecial = no
         )
     ;
         Uinstr0 = save_maxfr(Lval),
-        svset.delete(Lval, !Livevals),
+        set.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals(Rvals, !Livevals)
     ;
@@ -257,7 +256,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         % to lval, but the two should never have any variables in
         % common. This is why doing the deletion first works.
 
-        svset.delete(Lval, !Livevals),
+        set.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals(Rvals, !Livevals),
         livemap.make_live_in_rval(SizeRval, !Livevals),
@@ -276,14 +275,14 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
                 MaybeFlagLval = no
             ;
                 MaybeFlagLval = yes(FlagLval),
-                svset.delete(FlagLval, !Livevals),
+                set.delete(FlagLval, !Livevals),
                 opt_util.lval_access_rvals(FlagLval, FlagRvals),
                 livemap.make_live_in_rvals(FlagRvals, !Livevals)
             )
         )
     ;
         Uinstr0 = mark_hp(Lval),
-        svset.delete(Lval, !Livevals),
+        set.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals(Rvals, !Livevals)
     ;
@@ -317,7 +316,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         % as live would be redundant.
     ;
         Uinstr0 = store_ticket(Lval),
-        svset.delete(Lval, !Livevals),
+        set.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals(Rvals, !Livevals)
     ;
@@ -329,7 +328,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = prune_ticket
     ;
         Uinstr0 = mark_ticket_stack(Lval),
-        svset.delete(Lval, !Livevals),
+        set.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals(Rvals, !Livevals)
     ;
@@ -501,7 +500,7 @@ make_live_in_rval(lval(Lval), !Live) :-
     ( Lval = field(_, _, _) ->
         true
     ;
-        set.insert(!.Live, Lval, !:Live)
+        set.insert(Lval, !Live)
     ),
     opt_util.lval_access_rvals(Lval, AccessRvals),
     make_live_in_rvals(AccessRvals, !Live).
@@ -577,7 +576,7 @@ livemap_insert_proper_liveval(Live, !Livevals) :-
     ( Live = field(_, _, _) ->
         true
     ;
-        set.insert(!.Livevals, Live, !:Livevals)
+        set.insert(Live, !Livevals)
     ).
 
 %-----------------------------------------------------------------------------%

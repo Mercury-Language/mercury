@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -100,7 +100,7 @@ rpta_info_init(ProcInfo) = RptaInfo :-
 add_node_from_var(VarTypes, Var, Reg0, Reg, !Graph) :-
     map.lookup(VarTypes, Var, NodeType),
     set.init(Varset0),
-    set.insert(Varset0, Var, Varset),
+    set.insert(Var, Varset0, Varset),
     Reg = Reg0 + 1,
     string.append("R", string.int_to_string(Reg0), RegName),
     NodeInfo = rptg_node_content(Varset, RegName, set.init, NodeType, bool.no),

@@ -274,7 +274,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module solutions.
-:- import_module svset.
 :- import_module term.
 
     % A region points-to graph (rpt_graph) is a directed graph in which
@@ -981,7 +980,7 @@ reach_from_a_variable_2([Node_Selector | Node_Selectors0],
     Node_Selector = Node - Selector,
 
     % Add the "remembered" Node to reach_from_x set
-    svset.insert(Node, !Reach_X),
+    set.insert(Node, !Reach_X),
 
     % Add the Node to processed list so that we do not have to deal with
     % it more than once. (Node is not yet in Processed0 because if it

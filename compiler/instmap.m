@@ -485,11 +485,11 @@ instmap_bound_vars(reachable(InstMapping), ModuleInfo, BoundVars) :-
 :- pred instmap_bound_vars_2(module_info::in, prog_var::in, mer_inst::in,
     set(prog_var)::in, set(prog_var)::out) is det.
 
-instmap_bound_vars_2(ModuleInfo, Var, Inst, BoundVars0, BoundVars) :-
+instmap_bound_vars_2(ModuleInfo, Var, Inst, !BoundVars) :-
     ( inst_is_bound(ModuleInfo, Inst) ->
-        set.insert(BoundVars0, Var, BoundVars)
+        set.insert(Var, !BoundVars)
     ;
-        BoundVars = BoundVars0
+        true
     ).
 
 instmap_delta_changed_vars(unreachable, EmptySet) :-
@@ -523,7 +523,7 @@ instmap_changed_vars_2([VarB | VarBs], InstMapA, InstMapB, VarTypes,
     ( inst_matches_final_typed(InitialInst, FinalInst, Type, ModuleInfo) ->
         ChangedVars = ChangedVars0
     ;
-        set.insert(ChangedVars0, VarB, ChangedVars)
+        set.insert(VarB, ChangedVars0, ChangedVars)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1283,7 +1283,7 @@ merge_instmapping_delta(InstMap, NonLocals, VarTypes,
     map.keys(InstMappingA, VarsInA),
     map.keys(InstMappingB, VarsInB),
     set.sorted_list_to_set(VarsInA, SetofVarsInA),
-    set.insert_list(SetofVarsInA, VarsInB, SetofVars0),
+    set.insert_list(VarsInB, SetofVarsInA, SetofVars0),
     set.intersect(SetofVars0, NonLocals, SetofVars),
     set.to_sorted_list(SetofVars, ListofVars),
     merge_instmapping_delta_2(ListofVars, InstMap, VarTypes,
@@ -1361,7 +1361,7 @@ unify_instmapping_delta(InstMap, NonLocals, InstMappingA, InstMappingB,
     map.keys(InstMappingA, VarsInA),
     map.keys(InstMappingB, VarsInB),
     set.sorted_list_to_set(VarsInA, SetofVarsInA),
-    set.insert_list(SetofVarsInA, VarsInB, SetofVars0),
+    set.insert_list(VarsInB, SetofVarsInA, SetofVars0),
     set.intersect(SetofVars0, NonLocals, SetofVars),
     set.to_sorted_list(SetofVars, ListofVars),
     unify_instmapping_delta_2(ListofVars, InstMap, InstMappingA, InstMappingB,

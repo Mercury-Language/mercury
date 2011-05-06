@@ -1624,7 +1624,7 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
                 ), Args, ArgsGi0, !GCInfo),
             ArgsGi = list_to_set(ArgsGi0),
             get_var(LHSVar `at` GoalId, LHSVargi, !GCInfo),
-            ( remove_least(ArgsGi, Arg1gi, ArgsGi1) ->
+            ( set.remove_least(Arg1gi, ArgsGi, ArgsGi1) ->
                 !:Constraint = !.Constraint
                     ^ neq_vars(Arg1gi, LHSVargi)
                     ^ fold(eq_vars(Arg1gi), ArgsGi1)

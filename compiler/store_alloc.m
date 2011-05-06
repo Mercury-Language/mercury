@@ -244,7 +244,7 @@ store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
         GoalExpr0 = scope(Reason, SubGoal0),
         ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
             GoalExpr = GoalExpr0,
-            set.insert(!.Liveness, TermVar, !:Liveness)
+            set.insert(TermVar, !Liveness)
         ;
             store_alloc_in_goal(SubGoal0, SubGoal, !Liveness, !LastLocns,
                 ResumeVars0, StoreAllocInfo),
@@ -426,7 +426,7 @@ store_alloc_handle_conflicts_and_nonreal([Var | Vars], !N, !SeenLocns,
     ;
         FinalLocn = Locn
     ),
-    set.insert(!.SeenLocns, FinalLocn, !:SeenLocns),
+    set.insert(FinalLocn, !SeenLocns),
     store_alloc_handle_conflicts_and_nonreal(Vars, !N, !SeenLocns,
         !StoreMap).
 
@@ -458,7 +458,7 @@ store_alloc_allocate_extras([Var | Vars], !.N, !.SeenLocns, StoreAllocInfo,
             Locn = abs_reg(!.N)
         ),
         map.det_insert(Var, Locn, !StoreMap),
-        set.insert(!.SeenLocns, Locn, !:SeenLocns)
+        set.insert(Locn, !SeenLocns)
     ),
     store_alloc_allocate_extras(Vars, !.N, !.SeenLocns, StoreAllocInfo,
         !StoreMap).

@@ -406,8 +406,8 @@ collect_mq_info_item(Item, !Info) :-
               InstanceModule = ItemInstance ^ ci_module_containing_instance,
               mq_info_get_imported_instance_modules(!.Info,
                 ImportedInstanceModules0),
-              set.insert(ImportedInstanceModules0, InstanceModule,
-                ImportedInstanceModules),
+              set.insert(InstanceModule,
+                ImportedInstanceModules0, ImportedInstanceModules),
               mq_info_set_imported_instance_modules(ImportedInstanceModules,
                 !Info)
           ;
@@ -509,7 +509,7 @@ add_imports(Imports, !Info) :-
         )
     ->
         mq_info_get_imported_modules(!.Info, Modules0),
-        set.insert_list(Modules0, Imports, Modules),
+        set.insert_list(Imports, Modules0, Modules),
         mq_info_set_imported_modules(Modules, !Info)
     ;
         true
@@ -521,7 +521,7 @@ add_imports(Imports, !Info) :-
         Status = mq_status_exported
     ->
         mq_info_get_unused_interface_modules(!.Info, UnusedIntModules0),
-        set.insert_list(UnusedIntModules0, Imports, UnusedIntModules),
+        set.insert_list(Imports, UnusedIntModules0, UnusedIntModules),
         mq_info_set_unused_interface_modules(UnusedIntModules, !Info)
     ;
         true
@@ -535,7 +535,7 @@ add_imports(Imports, !Info) :-
         )
     ->
         mq_info_get_interface_visible_modules(!.Info, IntModules0),
-        set.insert_list(IntModules0, Imports, IntModules),
+        set.insert_list(Imports, IntModules0, IntModules),
         mq_info_set_interface_visible_modules(IntModules, !Info)
     ;
         true
@@ -1935,8 +1935,8 @@ init_mq_info(Items, Globals, ReportErrors, ModuleName, Info) :-
     set.list_to_set(ImportDeps `list.append` UseDeps, ImportedModules),
 
     % Ancestor modules are visible without being explicitly imported.
-    set.insert_list(ImportedModules,
-        [ModuleName | get_ancestors(ModuleName)], InterfaceVisibleModules),
+    set.insert_list([ModuleName | get_ancestors(ModuleName)],
+        ImportedModules, InterfaceVisibleModules),
 
     id_set_init(Empty),
     globals.lookup_bool_option(Globals, smart_recompilation,
@@ -2075,7 +2075,7 @@ mq_info_set_error_flag_2(class_id, !Info) :-
 mq_info_set_module_used(Module, !Info) :-
     ( mq_info_get_import_status(!.Info, mq_status_exported) ->
         mq_info_get_unused_interface_modules(!.Info, Modules0),
-        set.delete(Modules0, Module, Modules),
+        set.delete(Module, Modules0, Modules),
         mq_info_set_unused_interface_modules(Modules, !Info),
         (
             Module = qualified(ParentModule, _),
@@ -2129,11 +2129,11 @@ id_set_insert(NeedQualifier, mq_id(qualified(Module, Name), Arity), !IdSet) :-
     ),
     (
         NeedQualifier = must_be_qualified,
-        set.insert(UseModules1, Module, UseModules),
+        set.insert(Module, UseModules1, UseModules),
         ImportModules = ImportModules1
     ;
         NeedQualifier = may_be_unqualified,
-        set.insert(ImportModules1, Module, ImportModules),
+        set.insert(Module, ImportModules1, ImportModules),
         UseModules = UseModules1
     ),
     map.set(Name - Arity, ImportModules - UseModules, !IdSet).
