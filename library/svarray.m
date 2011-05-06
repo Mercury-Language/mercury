@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -78,21 +78,21 @@
 :- implementation.
 
 svarray.set(Index, Value, !Array) :-
-    array.set(!.Array, Index, Value, !:Array).
+    array.set(Index, Value, !Array).
 
 svarray.semidet_set(Index, Value, !Array) :-
-    array.semidet_set(!.Array, Index, Value, !:Array).
+    array.semidet_set(Index, Value, !Array).
 
 svarray.slow_set(Index, Value, !Array) :-
-    array.slow_set(!.Array, Index, Value, !:Array).
+    array.slow_set(Index, Value, !Array).
 
 svarray.semidet_slow_set(Index, Value, !Array) :-
-    array.semidet_slow_set(!.Array, Index, Value, !:Array).
+    array.semidet_slow_set(Index, Value, !Array).
 
 svarray.resize(Size, Init, !Array) :-
-    array.resize(!.Array, Size, Init, !:Array).
+    array.resize(Size, Init, !Array).
 
 svarray.shrink(Size, !Array) :-
-    array.shrink(!.Array, Size, !:Array).
+    array.shrink(Size, !Array).
 
 %-----------------------------------------------------------------------------%

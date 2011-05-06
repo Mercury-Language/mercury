@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003, 2005-2006, 2010 The University of Melbourne.
+% Copyright (C) 2001, 2003, 2005-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -80,12 +80,12 @@ member(I, A) :-
 insert(A0, I) = A :-
     max(A0, Max),
     ( word(I) > Max ->
-        resize(A0, (Max + 1) * 2, 0, A1),
+        resize((Max + 1) * 2, 0, A0, A1),
         A = insert(A1, I)
     ; I >= 0 ->
         lookup(A0, word(I), Word0),
         Word = Word0 \/ bit(I),
-        set(A0, word(I), Word, A)
+        set(word(I), Word, A0, A)
     ;
         unexpected($module, $pred, "cannot use indexes < 0")
     ).
@@ -97,7 +97,7 @@ delete(A0, I) = A :-
     ; I >= 0 ->
         lookup(A0, word(I), Word0),
         Word = Word0 /\ \ bit(I),
-        set(A0, word(I), Word, A)
+        set(word(I), Word, A0, A)
     ;
         unexpected($module, $pred, "cannot use indexes < 0")
     ).

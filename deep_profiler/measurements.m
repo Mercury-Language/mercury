@@ -925,7 +925,7 @@ add_coverage_arrays(NewArray, yes(!.Array), yes(!:Array)) :-
         array_foldl_from_0(
             (pred(Index::in, E::in, A0::array_di, A::array_uo) is det :-
                 lookup(A0, Index, Value),
-                set(A0, Index, Value + E, A)
+                set(Index, Value + E, A0, A)
             ), NewArray, !Array)
     ;
         unexpected($module, $pred, "arrays' bounds do not match")

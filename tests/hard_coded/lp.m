@@ -364,7 +364,7 @@ set_index(Tableau0, Rows0, Cols0, J, K, R, Tableau) :-
 	_Rows = Rows0 + 1, Cols = Cols0 + 1,
 	Index = J * Cols + K,
 	mkuniq(Tableau0, Tableau1),
-	array__set(Tableau1, Index, R, Tableau).
+	array__set(Index, R, Tableau1, Tableau).
 
 :- pred mkuniq(array(float)::in, array(float)::array_uo) is det.
 

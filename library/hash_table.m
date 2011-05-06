@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003-2006, 2010 The University of Melbourne
+% Copyright (C) 2001, 2003-2006, 2010-2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -309,7 +309,7 @@ set(!.HT, K, V) = !:HT :-
         AL = ht_cons(K, V, AL0),
         MayExpand = yes
     ),
-    array.unsafe_set(Buckets0, H, AL, Buckets),
+    array.unsafe_set(H, AL, Buckets0, Buckets),
     !HT ^ buckets := Buckets,
     (
         MayExpand = no
@@ -362,7 +362,7 @@ det_insert(!.HT, K, V) = !:HT :-
       else
         AL = ht_cons(K, V, AL0)
     ),
-    array.unsafe_set(Buckets0, H, AL, Buckets),
+    array.unsafe_set(H, AL, Buckets0, Buckets),
     !HT ^ buckets := Buckets,
     increase_occupants(!HT).
 
@@ -370,17 +370,17 @@ det_insert(K, V, HT, det_insert(HT, K, V)).
 
 %-----------------------------------------------------------------------------%
 
-det_update(HT0, K, V) = HT :-
-    H = find_slot(HT0, K),
-    Buckets0 = HT0 ^ buckets,
+det_update(!.HT, K, V) = !:HT :-
+    H = find_slot(!.HT, K),
+    Buckets0 = !.HT ^ buckets,
     array.unsafe_lookup(Buckets0, H, AL0),
     ( if alist_replace(AL0, K, V, AL1) then
         AL = AL1
       else
         throw(software_error("hash_table.det_update: key not found"))
     ),
-    array.unsafe_set(Buckets0, H, AL, Buckets),
-    HT = HT0 ^ buckets := Buckets.
+    array.unsafe_set(H, AL, Buckets0, Buckets),
+    !HT ^ buckets := Buckets.
 
 det_update(K, V, HT, det_update(HT, K, V)).
 
@@ -401,7 +401,7 @@ delete(HT0, K) = HT :-
     array.unsafe_lookup(HT0 ^ buckets, H, AL0),
     ( if alist_remove(AL0, K, AL) then
         HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0),
-        array.unsafe_set(Buckets0, H, AL, Buckets),
+        array.unsafe_set(H, AL, Buckets0, Buckets),
         NumOccupants = NumOccupants0 - 1,
         HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
       else
@@ -505,10 +505,10 @@ reinsert_alist(AL, HashPred, NumBuckets, !Buckets) :-
 :- pred unsafe_insert(K::in, V::in, hash_pred(K)::in(hash_pred), int::in,
     buckets(K, V)::array_di, buckets(K, V)::array_uo) is det.
 
-unsafe_insert(K, V, HashPred, NumBuckets, Buckets0, Buckets) :-
+unsafe_insert(K, V, HashPred, NumBuckets, !Buckets) :-
     find_slot_2(HashPred, K, NumBuckets, H),
-    array.unsafe_lookup(Buckets0, H, AL0),
-    array.unsafe_set(Buckets0, H, ht_cons(K, V, AL0), Buckets).
+    array.unsafe_lookup(!.Buckets, H, AL0),
+    array.unsafe_set(H, ht_cons(K, V, AL0), !Buckets).
 
 %-----------------------------------------------------------------------------%
 

@@ -18,7 +18,7 @@ do_some_stuff(X) :-
 
 some_array_stuff(X, Y) :-
 	array__init(40, 80, A0),
-	array__set(A0, 37, X, A1),
+	array__set(37, X, A0, A1),
 	array__lookup(A1, 37, Y).
 
 some_backtracking_stuff(X, Y, Z) :- Y = X + 1, p(Z).

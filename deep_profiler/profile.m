@@ -906,77 +906,76 @@ deep_lookup_ps_coverage(Deep, PSPtr, Coverage) :-
 
 %-----------------------------------------------------------------------------%
 
-update_call_site_dynamics(CSDPtr, CSD, CallSiteDynamics0, CallSiteDynamics) :-
+update_call_site_dynamics(CSDPtr, CSD, !CallSiteDynamics) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    array.set(CallSiteDynamics0, CSDI, CSD, CallSiteDynamics).
+    array.set(CSDI, CSD, !CallSiteDynamics).
 
-update_call_site_statics(CSSPtr, CSS, CallSiteStatics0, CallSiteStatics) :-
+update_call_site_statics(CSSPtr, CSS, !CallSiteStatics) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    array.set(CallSiteStatics0, CSSI, CSS, CallSiteStatics).
+    array.set(CSSI, CSS, !CallSiteStatics).
 
-update_proc_dynamics(PDPtr, PD, ProcDynamics0, ProcDynamics) :-
+update_proc_dynamics(PDPtr, PD, !ProcDynamics) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    array.set(ProcDynamics0, PDI, PD, ProcDynamics).
+    array.set(PDI, PD, !ProcDynamics).
 
-update_proc_statics(PSPtr, PS, ProcStatics0, ProcStatics) :-
+update_proc_statics(PSPtr, PS, !ProcStatics) :-
     PSPtr = proc_static_ptr(PSI),
-    array.set(ProcStatics0, PSI, PS, ProcStatics).
+    array.set(PSI, PS, !ProcStatics).
 
-update_call_site_static_map(CSDPtr, CSSPtr,
-        CallSiteStaticMap0, CallSiteStaticMap) :-
+update_call_site_static_map(CSDPtr, CSSPtr, !CallSiteStaticMap) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    array.set(CallSiteStaticMap0, CSDI, CSSPtr, CallSiteStaticMap).
+    array.set(CSDI, CSSPtr, !CallSiteStaticMap).
 
-update_proc_callers(PSPtr, CSDPtrs, ProcCallers0, ProcCallers) :-
+update_proc_callers(PSPtr, CSDPtrs, !ProcCallers) :-
     PSPtr = proc_static_ptr(PSI),
-    array.set(ProcCallers0, PSI, CSDPtrs, ProcCallers).
+    array.set(PSI, CSDPtrs, !ProcCallers).
 
-update_ps_own(PSPtr, Own, PSOwns0, PSOwns) :-
+update_ps_own(PSPtr, Own, !PSOwns) :-
     PSPtr = proc_static_ptr(PSI),
-    array.set(PSOwns0, PSI, Own, PSOwns).
+    array.set(PSI, Own, !PSOwns).
 
-update_ps_desc(PSPtr, Desc, PSDescs0, PSDescs) :-
+update_ps_desc(PSPtr, Desc, !PSDescs) :-
     PSPtr = proc_static_ptr(PSI),
-    array.set(PSDescs0, PSI, Desc, PSDescs).
+    array.set(PSI, Desc, !PSDescs).
 
-update_css_own(CSSPtr, Own, CSSOwns0, CSSOwns) :-
+update_css_own(CSSPtr, Own, !CSSOwns) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    array.set(CSSOwns0, CSSI, Own, CSSOwns).
+    array.set(CSSI, Own, !CSSOwns).
 
-update_css_desc(CSSPtr, Desc, CSSDescs0, CSSDescs) :-
+update_css_desc(CSSPtr, Desc, !CSSDescs) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    array.set(CSSDescs0, CSSI, Desc, CSSDescs).
+    array.set(CSSI, Desc, !CSSDescs).
 
 update_ps_coverage(PSPtr, Coverage, !Coverages) :-
     PSPtr = proc_static_ptr(PSI),
-    array.set(!.Coverages, PSI, Coverage, !:Coverages).
+    array.set(PSI, Coverage, !Coverages).
 
 %-----------------------------------------------------------------------------%
 
-deep_update_csd_desc(CSDPtr, CSDDesc, Deep0, Deep) :-
+deep_update_csd_desc(CSDPtr, CSDDesc, !Deep) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    array.set(u(Deep0 ^ csd_desc), CSDI, CSDDesc, CSDDescs),
-    Deep = Deep0 ^ csd_desc := CSDDescs.
+    array.set(CSDI, CSDDesc, u(!.Deep ^ csd_desc), CSDDescs),
+    !Deep ^ csd_desc := CSDDescs.
 
-deep_update_pd_desc(PDPtr, PDDesc, Deep0, Deep) :-
+deep_update_pd_desc(PDPtr, PDDesc, !Deep) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    array.set(u(Deep0 ^ pd_desc), PDI, PDDesc, PDDescs),
-    Deep = Deep0 ^ pd_desc := PDDescs.
+    array.set(PDI, PDDesc, u(!.Deep ^ pd_desc), PDDescs),
+    !Deep ^ pd_desc := PDDescs.
 
-deep_update_pd_own(PDPtr, PDOwn, Deep0, Deep) :-
+deep_update_pd_own(PDPtr, PDOwn, !Deep) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    array.set(u(Deep0 ^ pd_own), PDI, PDOwn, PDOwns),
-    Deep = Deep0 ^ pd_own := PDOwns.
+    array.set(PDI, PDOwn, u(!.Deep ^ pd_own), PDOwns),
+    !Deep ^ pd_own := PDOwns.
 
-deep_update_pd_comp_table(PDPtr, CompTable, Deep0, Deep) :-
+deep_update_pd_comp_table(PDPtr, CompTable, !Deep) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    array.set(u(Deep0 ^ pd_comp_table), PDI, CompTable, PDCompTables),
-    Deep = Deep0 ^ pd_comp_table := PDCompTables.
+    array.set(PDI, CompTable, u(!.Deep ^ pd_comp_table), PDCompTables),
+    !Deep ^ pd_comp_table := PDCompTables.
 
-deep_update_csd_comp_table(CSDPtr, CompTable, Deep0, Deep) :-
+deep_update_csd_comp_table(CSDPtr, CompTable, !Deep) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    array.set(u(Deep0 ^ csd_comp_table), CSDI, CompTable, CSDCompTables),
-    Deep = Deep0 ^ csd_comp_table := CSDCompTables.
+    array.set(CSDI, CompTable, u(!.Deep ^ csd_comp_table), CSDCompTables),
+    !Deep ^ csd_comp_table := CSDCompTables.
 
 %-----------------------------------------------------------------------------%
 

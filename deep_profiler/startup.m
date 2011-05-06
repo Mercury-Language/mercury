@@ -57,7 +57,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
-:- import_module svarray.
 
 %-----------------------------------------------------------------------------%
 
@@ -536,8 +535,8 @@ construct_clique_parents_2(InitDeep, CliqueIndex, ParentCliquePtr, CSDPtr,
             array.lookup(CliqueIndex, ChildPDI, ChildCliquePtr),
             ( ChildCliquePtr \= ParentCliquePtr ->
                 ChildCliquePtr = clique_ptr(ChildCliqueNum),
-                svarray.set(ChildCliqueNum, CSDPtr, !CliqueParents),
-                svarray.set(CSDI, yes(ChildCliquePtr), !CliqueMaybeChildren)
+                array.set(ChildCliqueNum, CSDPtr, !CliqueParents),
+                array.set(CSDI, yes(ChildCliquePtr), !CliqueMaybeChildren)
             ;
                 true
             )
@@ -693,7 +692,7 @@ construct_call_site_calls_3(CallSiteDynamics, ProcDynamics, CSSPtr,
             CallList = [CSDPtr],
             map.det_insert(PSPtr, CallList, CallMap0, CallMap)
         ),
-        svarray.set(CSSI, CallMap, !CallSiteCalls)
+        array.set(CSSI, CallMap, !CallSiteCalls)
     ;
         true
     ).
@@ -710,7 +709,7 @@ sum_call_sites_in_proc_dynamic(_, CSD, !PDOwnArray) :-
     ( PDI > 0 ->
         array.lookup(!.PDOwnArray, PDI, ProcOwn0),
         ProcOwn = add_own_to_own(CalleeOwn, ProcOwn0),
-        svarray.set(PDI, ProcOwn, !PDOwnArray)
+        array.set(PDI, ProcOwn, !PDOwnArray)
     ;
         error("sum_call_sites_in_proc_dynamic: invalid pdptr")
     ).
@@ -890,7 +889,7 @@ summarize_proc_static_coverage(Index, PS, !CoverageArray) :-
     (
         MaybeCoverage = yes(Coverage0),
         array_to_static_coverage(Coverage0, Coverage),
-        array.set(!.CoverageArray, Index, Coverage, !:CoverageArray)
+        array.set(Index, Coverage, !CoverageArray)
     ;
         MaybeCoverage = no,
         unexpected($module, $pred, "no coverage data in proc static")

@@ -37,7 +37,7 @@ main(!IO) :-
     % Struct2 can and should be reused instead.
     Struct3 = struct(3, dummy),
     impure addr(Struct3, Addr3),
-    array.unsafe_set(Array0, 3, Struct3, Array),
+    array.unsafe_set(3, Struct3, Array0, Array),
     unused(Struct3 ^ f),
 
     % Struct3 should NOT be reused for Struct4, as it is shared with Array.

@@ -20,7 +20,7 @@ main -->
 	{ set_bbbtree__init(Set0) },
 	(
 		{ set_bbbtree__empty(Set0) },
-		{ set_bbbtree__size(Set0, 0) }
+		{ set_bbbtree__count(Set0, 0) }
 	->
 		{ true }
 	;
@@ -72,7 +72,7 @@ main -->
 	),
 	{ set_bbbtree__list_to_set([-2, 10, 0, -1, 2, -2, -2, 0], Set50) },
 	(
-		{ set_bbbtree__size(Set50, 5) },
+		{ set_bbbtree__count(Set50, 5) },
 		{ set_bbbtree__remove_least(Set50, -2, TempSet) }
 	->
 		{ Set60 = TempSet },

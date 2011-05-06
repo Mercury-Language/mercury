@@ -1496,7 +1496,7 @@ deep_insert(A0, Ind, Item, A) :-
         % array.resize(u(A0), 2 * (Max + 1), X, A1),
         % deep_insert(A1, Ind, Item, A)
     ;
-        set(u(A0), Ind, Item, A)
+        set(Ind, Item, u(A0), A)
     ).
 
 %------------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2006 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -128,7 +128,7 @@
 :- import_module int.
 
 :- type random.supply
-    ---> rs(int). % I(j)
+    --->    rs(int). % I(j)
 
 :- pred random.params(int::out, int::out, int::out) is det.	% a, c, m
 
@@ -176,29 +176,28 @@ random.randcount(M, RS, RS) :-
 	% Index is mapped to, Next, to the permutation, and then ensures that
 	% Next is not generated again by swapping it with the image of I-1.
 
-random.permutation(List0, List, RS0, RS) :-
+random.permutation(List0, List, !RS) :-
 	Samples = array(List0),
 	Len = array.size(Samples),
-	perform_sampling(Len, Samples, [], List, RS0, RS).
+	perform_sampling(Len, Samples, [], List, !RS).
 
 :- pred perform_sampling(int, array(T), list(T), list(T),
 	random.supply, random.supply) is det.
 :- mode perform_sampling(in, array_di, in, out, mdi, muo) is det.
 :- mode perform_sampling(in, array_di, in, out, in, out) is det.
 
-perform_sampling(I, Record0, Order0, Order, RS0, RS) :-
+perform_sampling(I, !.Record, !Order, !RS) :-
 	( I =< 0 ->
-		Order = Order0,
-		RS = RS0
+        true
 	;
 		I1 = I - 1,
-		random.random(0, I, Index, RS0, RS1),
-		array.lookup(Record0, Index, Next),
-		array.lookup(Record0, I1, MaxImage),
-		Order1 = [Next | Order0],
-		array.set(Record0, Index, MaxImage, Record1),
-		array.set(Record1, I1, Next, Record2),
-		perform_sampling(I1, Record2, Order1, Order, RS1, RS)
+		random.random(0, I, Index, !RS),
+		array.lookup(!.Record, Index, Next),
+		array.lookup(!.Record, I1, MaxImage),
+		!:Order = [Next | !.Order],
+		array.set(Index, MaxImage, !Record),
+		array.set(I1, Next, !Record),
+		perform_sampling(I1, !.Record, !Order, !RS)
 	).
 
 %---------------------------------------------------------------------------%
@@ -212,15 +211,14 @@ random.test(Seed, N, Nums, Max) :-
 :- mode random.test_2(in, out, mdi, muo) is det.
 :- mode random.test_2(in, out, in, out) is det.
 
-random.test_2(N, Is, RS0, RS) :-
+random.test_2(N, Is, !RS) :-
 	( N > 0 ->
 		N1 = N - 1,
-		random.random(I, RS0, RS1),
-		random.test_2(N1, Is0, RS1, RS),
-		Is = [I|Is0]
+		random.random(I, !RS),
+		random.test_2(N1, Is0, !RS),
+		Is = [I | Is0]
 	;
-		Is = [],
-		RS = RS0
+		Is = []
 	).
 
 %---------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2005-2006, 2008, 2010 The University of Melbourne.
+% Copyright (C) 2001, 2005-2006, 2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -256,7 +256,7 @@ array_map(N, Size, Closure, !Array) :-
     ;
         array.lookup(!.Array, N, OldElem),
         Closure(OldElem, NewElem),
-        array.set(!.Array, N, NewElem, !:Array),
+        array.set(N, NewElem, !Array),
         array_map(N + 1, Size, Closure, !Array)
     ).
 

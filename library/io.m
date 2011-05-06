@@ -4144,7 +4144,7 @@ io.read_into_array(Stream, !Array, !Pos, Size, !IO) :-
         io.read_char(input_stream(Stream), CharResult, !IO),
         (
             CharResult = ok(Char),
-            array.set(!.Array, !.Pos, Char, !:Array),
+            array.set(!.Pos, Char, !Array),
             !:Pos = !.Pos + 1,
             io.read_into_array(Stream, !Array, !Pos, Size, !IO)
         ;

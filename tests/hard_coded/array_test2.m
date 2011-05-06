@@ -61,12 +61,12 @@ test(List, !IO) :-
     Elem = list.det_head(List),
 
     array.copy(Array, ArrayB),
-    ( semidet_set(Array, -1, Elem, _) ->
+    ( semidet_set(-1, Elem, Array, _) ->
         io.write_string("error: out of bounds set succeeded\n", !IO)
     ;
         io.write_string("good: out of bounds set averted\n", !IO)
     ),
-    ( semidet_set(ArrayB, 5, Elem, _) ->
+    ( semidet_set(5, Elem, ArrayB, _) ->
         io.write_string("error: out of bounds set succeeded\n", !IO)
     ;
         io.write_string("good: out of bounds set averted\n", !IO)
@@ -74,32 +74,32 @@ test(List, !IO) :-
 
     some [!A] (
         array.from_list(List, !:A),
-        array.resize(!.A, list.length(List), Elem, !:A),
+        array.resize(list.length(List), Elem, !A),
         io.write_string("resize without resizing: ", !IO),
         io.write(!.A, !IO),
         io.nl(!IO),
 
-        array.resize(!.A, 1 + list.length(List)//2, Elem, !:A),
+        array.resize(1 + list.length(List)//2, Elem, !A),
         io.write_string("shrink: ", !IO),
         io.write(!.A, !IO),
         io.nl(!IO),
 
-        array.resize(!.A, list.length(List), Elem, !:A),
+        array.resize(list.length(List), Elem, !A),
         io.write_string("enlarge: ", !IO), % embiggen
         io.write(!.A, !IO),
         io.nl(!IO),
 
-        array.resize(!.A, 0, Elem, !:A),
+        array.resize(0, Elem, !A),
         io.write_string("empty: ", !IO),
         io.write(!.A, !IO),
         io.nl(!IO),
 
-        array.resize(!.A, 0, Elem, !:A),
+        array.resize(0, Elem, !A),
         io.write_string("still empty: ", !IO),
         io.write(!.A, !IO),
         io.nl(!IO),
 
-        array.resize(!.A, 3, Elem, !:A),
+        array.resize(3, Elem, !A),
         io.write_string("nonempty from empty: ", !IO),
         io.write(!.A, !IO),
         io.nl(!IO)

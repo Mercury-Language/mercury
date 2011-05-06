@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2010 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -209,8 +209,8 @@
     % resulting array (good opportunity for destructive update ;-).
     % Throws an exception if the index is out of bounds.
     %
-:- pred array.set(array(T), int, T, array(T)).
-:- mode array.set(array_di, in, in, array_uo) is det.
+:- pred array.set(int, T, array(T), array(T)).
+:- mode array.set(in, in, array_di, array_uo) is det.
 
     % The same as array.set, except the arguments are in an order
     % that allows the use of state variables.
@@ -224,14 +224,14 @@
     % array.semidet_set sets the nth element of an array, and returns
     % the resulting array. It fails if the index is out of bounds.
     %
-:- pred array.semidet_set(array(T), int, T, array(T)).
-:- mode array.semidet_set(array_di, in, in, array_uo) is semidet.
+:- pred array.semidet_set(int, T, array(T), array(T)).
+:- mode array.semidet_set(in, in, array_di, array_uo) is semidet.
 
     % array.unsafe_set sets the nth element of an array, and returns the
     % resulting array.  It is an error if the index is out of bounds.
     %
-:- pred array.unsafe_set(array(T), int, T, array(T)).
-:- mode array.unsafe_set(array_di, in, in, array_uo) is det.
+:- pred array.unsafe_set(int, T, array(T), array(T)).
+:- mode array.unsafe_set(in, in, array_di, array_uo) is det.
 
     % The same as array.unsafe_set, except the arguments are in an order
     % that allows the use of state variables.
@@ -244,8 +244,8 @@
     % so the implementation may not be able to use destructive update.
     % It is an error if the index is out of bounds.
     %
-:- pred array.slow_set(array(T), int, T, array(T)).
-%:- mode array.slow_set(array_ui, in, in, array_uo) is det.
+:- pred array.slow_set(int, T, array(T), array(T)).
+%:- mode array.slow_set(in, in, array_ui, array_uo) is det.
 :- mode array.slow_set(in, in, in, array_uo) is det.
 
 :- func array.slow_set(array(T), int, T) = array(T).
@@ -257,8 +257,8 @@
     % so the implementation may not be able to use destructive update.
     % It fails if the index is out of bounds.
     %
-:- pred array.semidet_slow_set(array(T), int, T, array(T)).
-%:- mode array.semidet_slow_set(array_ui, in, in, array_uo) is semidet.
+:- pred array.semidet_slow_set(int, T, array(T), array(T)).
+%:- mode array.semidet_slow_set(in, in, array_ui, array_uo) is semidet.
 :- mode array.semidet_slow_set(in, in, in, array_uo) is semidet.
 
     % Field selection for arrays.
@@ -301,8 +301,8 @@
     % The array is expanded or shrunk to make it fit the new size `Size'.
     % Any new entries are filled with `Init'.
     %
-:- pred array.resize(array(T), int, T, array(T)).
-:- mode array.resize(array_di, in, in, array_uo) is det.
+:- pred array.resize(int, T, array(T), array(T)).
+:- mode array.resize(in, in, array_di, array_uo) is det.
 
 :- func array.resize(array(T), int, T) = array(T).
 :- mode array.resize(array_di, in, in) = array_uo is det.
@@ -311,8 +311,8 @@
     % The array is shrunk to make it fit the new size `Size'.
     % Throws an exception if `Size' is larger than the size of `Array0'.
     %
-:- pred array.shrink(array(T), int, array(T)).
-:- mode array.shrink(array_di, in, array_uo) is det.
+:- pred array.shrink(int, array(T), array(T)).
+:- mode array.shrink(in, array_di, array_uo) is det.
 
 :- func array.shrink(array(T), int) = array(T).
 :- mode array.shrink(array_di, in) = array_uo is det.
@@ -625,6 +625,9 @@ array.equal_elements(N, Size, Array1, Array2) :-
         N1 = N + 1,
         array.equal_elements(N1, Size, Array1, Array2)
     ).
+
+array_compare(A1, A2) = C :-
+    array_compare(C, A1, A2).
 
     % compare/3 for arrays
     %
@@ -977,6 +980,9 @@ ML_array_resize(Object Array0, int Size, Object Item)
 }
 ").
 
+array.init(N, X) = A :-
+    array.init(N, X, A).
+
 array.init(Size, Item, Array) :-
     ( Size < 0 ->
         error("array.init: negative size")
@@ -998,6 +1004,9 @@ array.init(Size, Item, Array) :-
     ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
     ML_init_array(Array, Size, Item);
 ").
+
+array.make_empty_array = A :-
+    array.make_empty_array(A).
 
 :- pragma foreign_proc("C",
     array.make_empty_array(Array::array_uo),
@@ -1057,6 +1066,9 @@ array.init(Size, Item, Array) :-
 
 %-----------------------------------------------------------------------------%
 
+array.min(A) = N :-
+    array.min(A, N).
+
 :- pragma foreign_proc("C",
     array.min(Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -1089,6 +1101,9 @@ array.init(Size, Item, Array) :-
     /* Array not used */
     Min = 0;
 ").
+
+array.max(A) = N :-
+    array.max(A, N).
 
 :- pragma foreign_proc("C",
     array.max(Array::in, Max::out),
@@ -1131,6 +1146,9 @@ array.bounds(Array, Min, Max) :-
 
 %-----------------------------------------------------------------------------%
 
+array.size(A) = N :-
+    array.size(A, N).
+
 :- pragma foreign_proc("C",
     array.size(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -1170,38 +1188,49 @@ array.in_bounds(Array, Index) :-
     array.bounds(Array, Min, Max),
     Min =< Index, Index =< Max.
 
-array.semidet_lookup(Array, Index, Item) :-
-    ( array.in_bounds(Array, Index) ->
-        array.unsafe_lookup(Array, Index, Item)
+array.semidet_set(Index, Item, !Array) :-
+    ( array.in_bounds(!.Array, Index) ->
+        array.unsafe_set(Index, Item, !Array)
     ;
         fail
     ).
 
-array.semidet_set(Array0, Index, Item, Array) :-
-    ( array.in_bounds(Array0, Index) ->
-        array.unsafe_set(Array0, Index, Item, Array)
+array.semidet_slow_set(Index, Item, !Array) :-
+    ( array.in_bounds(!.Array, Index) ->
+        array.slow_set(Index, Item, !Array)
     ;
         fail
     ).
 
-array.semidet_slow_set(Array0, Index, Item, Array) :-
-    ( array.in_bounds(Array0, Index) ->
-        array.slow_set(Array0, Index, Item, Array)
-    ;
-        fail
-    ).
+array.slow_set(!.Array, N, X) = !:Array :-
+    array.slow_set(N, X, !Array).
 
-array.slow_set(Array0, Index, Item, Array) :-
-    array.copy(Array0, Array1),
-    array.set(Array1, Index, Item, Array).
+array.slow_set(Index, Item, !Array) :-
+    array.copy(!Array),
+    array.set(Index, Item, !Array).
 
 %-----------------------------------------------------------------------------%
+
+array.elem(Index, Array) = array.lookup(Array, Index).
+
+array.unsafe_elem(Index, Array) = Elem :-
+    array.unsafe_lookup(Array, Index, Elem).
+
+array.lookup(Array, N) = X :-
+    array.lookup(Array, N, X).
 
 array.lookup(Array, Index, Item) :-
     ( bounds_checks, \+ array.in_bounds(Array, Index) ->
         out_of_bounds_error(Array, Index, "array.lookup")
     ;
         array.unsafe_lookup(Array, Index, Item)
+    ).
+
+array.semidet_lookup(Array, Index, Item) :-
+    ( array.in_bounds(Array, Index) ->
+        array.unsafe_lookup(Array, Index, Item)
+    ;
+        fail
     ).
 
 :- pragma foreign_proc("C",
@@ -1249,25 +1278,30 @@ array.lookup(Array, Index, Item) :-
 
 %-----------------------------------------------------------------------------%
 
-array.set(Array0, Index, Item, Array) :-
-    ( bounds_checks, \+ array.in_bounds(Array0, Index) ->
-        out_of_bounds_error(Array0, Index, "array.set")
+'elem :='(Index, Array, Value) = array.set(Array, Index, Value).
+
+array.set(A1, N, X) = A2 :-
+    array.set(N, X, A1, A2).
+
+array.set(Index, Item, !Array) :-
+    ( bounds_checks, \+ array.in_bounds(!.Array, Index) ->
+        out_of_bounds_error(!.Array, Index, "array.set")
     ;
-        array.unsafe_set(Array0, Index, Item, Array)
+        array.unsafe_set(Index, Item, !Array)
     ).
 
-array.svset(Index, Item, Array0, Array) :-
-    ( bounds_checks, \+ array.in_bounds(Array0, Index) ->
-        out_of_bounds_error(Array0, Index, "array.set")
+array.svset(Index, Item, !Array) :-
+    ( bounds_checks, \+ array.in_bounds(!.Array, Index) ->
+        out_of_bounds_error(!.Array, Index, "array.set")
     ;
-        array.unsafe_svset(Index, Item, Array0, Array)
+        array.unsafe_svset(Index, Item, !Array)
     ).
 
 :- pragma foreign_proc("C",
-    array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
+    array.unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
-        sharing(yes(array(T), int, T, array(T)), [
+        sharing(yes(int, T, array(T), array(T)), [
             cel(Array0, []) - cel(Array, []),
             cel(Item, [])   - cel(Array, [T])
         ])
@@ -1367,7 +1401,8 @@ array.svset(Index, Item, Array0, Array) :-
 % :- mode array.resize(in, in, in, out) is det.
 
 :- pragma foreign_decl("C", "
-void ML_resize_array(MR_ArrayPtr new_array, MR_ArrayPtr old_array,
+extern void
+ML_resize_array(MR_ArrayPtr new_array, MR_ArrayPtr old_array,
     MR_Integer array_size, MR_Word item);
 ").
 
@@ -1408,11 +1443,14 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 }
 ").
 
+array.resize(!.Array, N, X) = !:Array :-
+    array.resize(N, X, !Array).
+
 :- pragma foreign_proc("C",
-    array.resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
+    array.resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
-        sharing(yes(array(T), int, T, array(T)), [
+        sharing(yes(int, T, array(T), array(T)), [
             cel(Array0, []) - cel(Array, []),
             cel(Item, [])   - cel(Array, [T])
         ])
@@ -1460,7 +1498,8 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-void ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
+extern void
+ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
     MR_Integer array_size);
 ").
 
@@ -1491,24 +1530,27 @@ ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 }
 ").
 
-array.shrink(Array0, Size, Array) :-
-    OldSize = array.size(Array0),
+array.shrink(!.Array, N) = !:Array :-
+    array.shrink(N, !Array).
+
+array.shrink(Size, !Array) :-
+    OldSize = array.size(!.Array),
     ( Size > OldSize ->
         error("array.shrink: can't shrink to a larger size")
     ; Size = OldSize ->
-        Array = Array0
+        true
     ;
-        array.shrink_2(Array0, Size, Array)
+        array.shrink_2(Size, !Array)
     ).
 
-:- pred array.shrink_2(array(T)::array_di, int::in, array(T)::array_uo)
+:- pred array.shrink_2(int::in, array(T)::array_di, array(T)::array_uo)
     is det.
 
 :- pragma foreign_proc("C",
-    array.shrink_2(Array0::array_di, Size::in, Array::array_uo),
+    array.shrink_2(Size::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
-        sharing(yes(array(T), int, array(T)), [
+        sharing(yes(int, array(T), array(T)), [
             cel(Array0, []) - cel(Array, [])
         ])
     ],
@@ -1557,7 +1599,8 @@ array.shrink(Array0, Size, Array) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-void ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array);
+extern void
+ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array);
 ").
 
 :- pragma foreign_code("C", "
@@ -1584,6 +1627,9 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
     }
 }
 ").
+
+array.copy(A1) = A2 :-
+    array.copy(A1, A2).
 
 :- pragma foreign_proc("C",
     array.copy(Array0::in, Array::array_uo),
@@ -1648,6 +1694,9 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 array(List) = Array :-
     array.from_list(List, Array).
 
+array.from_list(List) = Array :-
+    array.from_list(List, Array).
+
 array.from_list([], Array) :-
     array.make_empty_array(Array).
 array.from_list(List, Array) :-
@@ -1661,18 +1710,24 @@ array.from_list(List, Array) :-
 :- pred array.unsafe_insert_items(list(T)::in, int::in,
     array(T)::array_di, array(T)::array_uo) is det.
 
-array.unsafe_insert_items([], _N, Array, Array).
-array.unsafe_insert_items([Head|Tail], N, Array0, Array) :-
-    array.unsafe_set(Array0, N, Head, Array1),
-    array.unsafe_insert_items(Tail, N + 1, Array1, Array).
+array.unsafe_insert_items([], _N, !Array).
+array.unsafe_insert_items([Head | Tail], N, !Array) :-
+    array.unsafe_set(N, Head, !Array),
+    array.unsafe_insert_items(Tail, N + 1, !Array).
 
 %-----------------------------------------------------------------------------%
+
+array.to_list(Array) = List :-
+    array.to_list(Array, List).
 
 array.to_list(Array, List) :-
     array.bounds(Array, Low, High),
     array.fetch_items(Array, Low, High, List).
 
 %-----------------------------------------------------------------------------%
+
+array.fetch_items(Array, Low, High) = List :-
+    array.fetch_items(Array, Low, High, List).
 
 array.fetch_items(Array, Low, High, List) :-
     ( High < Low ->
@@ -1691,6 +1746,10 @@ array.fetch_items(Array, Low, High, List) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+array.bsearch(A, X, F) = MN :-
+    P = (pred(X1::in, X2::in, C::out) is det :- C = F(X1, X2)),
+    array.bsearch(A, X, P, MN).
 
 array.bsearch(A, El, Compare, Result) :-
     array.bounds(A, Lo, Hi),
@@ -1739,6 +1798,10 @@ array.bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
 
 %-----------------------------------------------------------------------------%
 
+array.map(F, A1) = A2 :-
+    P = (pred(X::in, Y::out) is det :- Y = F(X)),
+    array.map(P, A1, A2).
+
 array.map(Closure, OldArray, NewArray) :-
     ( array.semidet_lookup(OldArray, 0, Elem0) ->
         array.size(OldArray, Size),
@@ -1752,87 +1815,23 @@ array.map(Closure, OldArray, NewArray) :-
 :- pred array.map_2(int::in, int::in, pred(T1, T2)::in(pred(in, out) is det),
     array(T1)::in, array(T2)::array_di, array(T2)::array_uo) is det.
 
-array.map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
+array.map_2(N, Size, Closure, OldArray, !NewArray) :-
     ( N >= Size ->
-        NewArray = NewArray0
+        true
     ;
         array.lookup(OldArray, N, OldElem),
         Closure(OldElem, NewElem),
-        array.set(NewArray0, N, NewElem, NewArray1),
-        array.map_2(N + 1, Size, Closure, OldArray,
-        NewArray1, NewArray)
+        array.set(N, NewElem, !NewArray),
+        array.map_2(N + 1, Size, Closure, OldArray, !NewArray)
     ).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%   Function forms added.
 
-array.make_empty_array = A :-
-    array.make_empty_array(A).
-
-array.init(N, X) = A :-
-    array.init(N, X, A).
-
-array.min(A) = N :-
-    array.min(A, N).
-
-array.max(A) = N :-
-    array.max(A, N).
-
-array.size(A) = N :-
-    array.size(A, N).
-
-array.lookup(A, N) = X :-
-    array.lookup(A, N, X).
-
-array.set(A1, N, X) = A2 :-
-    array.set(A1, N, X, A2).
-
-array.slow_set(A1, N, X) = A2 :-
-    array.slow_set(A1, N, X, A2).
-
-array.copy(A1) = A2 :-
-    array.copy(A1, A2).
-
-array.resize(A1, N, X) = A2 :-
-    array.resize(A1, N, X, A2).
-
-array.shrink(A1, N) = A2 :-
-    array.shrink(A1, N, A2).
-
-array.from_list(Xs) = A :-
-    array.from_list(Xs, A).
-
-array.to_list(A) = Xs :-
-    array.to_list(A, Xs).
-
-array.fetch_items(A, N1, N2) = Xs :-
-    array.fetch_items(A, N1, N2, Xs).
-
-array.bsearch(A, X, F) = MN :-
-    P = ( pred(X1::in, X2::in, C::out) is det :- C = F(X1, X2) ),
-    array.bsearch(A, X, P, MN).
-
-array.map(F, A1) = A2 :-
-    P = ( pred(X::in, Y::out) is det :- Y = F(X) ),
-    array.map(P, A1, A2).
-
-array_compare(A1, A2) = C :-
-    array_compare(C, A1, A2).
-
-array.elem(Index, Array) = array.lookup(Array, Index).
-
-array.unsafe_elem(Index, Array) = Elem :-
-    array.unsafe_lookup(Array, Index, Elem).
-
-'elem :='(Index, Array, Value) = array.set(Array, Index, Value).
-
-member(A, X) :-
+array.member(A, X) :-
     nondet_int_in_range(0, array.size(A) - 1, I0),
     X = A ^ elem(I0).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
     % array.sort/1 has type specialised versions for arrays of
     % ints and strings on the expectation that these constitute
@@ -2423,4 +2422,5 @@ array_to_doc_2(I, A) =
     ).
 
 %------------------------------------------------------------------------------%
+:- end_module array.
 %------------------------------------------------------------------------------%

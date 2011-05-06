@@ -12,8 +12,8 @@ Changes to the Mercury standard library:
 
 * We have improved Unicode support in the standard library.
 
-* We have changed the argument order of many of the predicates in the
-  bag, bimap, eqvclass, map, multi_map, queue and set  modules in order
+* We have changed the argument order of many of the predicates in the array,
+  bag, bimap, eqvclass, map, multi_map, queue and set modules in order
   to make them more conducive to the use of state variable notation.
 
 
@@ -33,13 +33,15 @@ Changes to the Mercury standard library:
 
 * The argument order of the following predicates has been changed so as to
   make them more conducive to the use of state variable notation:
-  bag.insert/3, bag.insert_list/3, bag.insert_set/3. bag.remove/3,
-  bag.det_remove/3, bag.remove_list/3, bag.remove_set/3, bag.delete/3,
-  bag.remove_all/3, bag.delete_all/3, bag.remove_smallest/3,
-  bimap.insert/4, bimap.det_insert/4, bimap.set/4, eqvclass.ensure_element/3,
-  eqvclass.new_element/3, eqvclass.ensure_equivalence/4,
-  eqvclass.new_equivalence/4, eqvclass.remove_equivalent_elements/3,
-  map.insert/4, map.det_insert/4, map.det_insert_from_corresponding_lists/4,
+  array.set/4, array.semidet/4, array.slow_set/4, array.semidet_slow_set/4,
+  array.resize/4, array.shrink/3, bag.insert/3, bag.insert_list/3,
+  bag.insert_set/3, bag.remove/3, bag.det_remove/3, bag.remove_list/3,
+  bag.remove_set/3, bag.delete/3, bag.remove_all/3, bag.delete_all/3,
+  bag.remove_smallest/3, bimap.insert/4, bimap.det_insert/4, bimap.set/4,
+  eqvclass.ensure_element/3, eqvclass.new_element/3,
+  eqvclass.ensure_equivalence/4, eqvclass.new_equivalence/4,
+  eqvclass.remove_equivalent_elements/3, map.insert/4, map.det_insert/4,
+  map.det_insert_from_corresponding_lists/4,
   map.det_insert_from_assoc_list/3, map.set_from_corresponding_lists/4,
   map.set_from_assoc_list/3, map.update/4, map.det_update/4, map.delete/3,
   map.delete_list/3, map.remove/4, map.det_remove/4, map.remove_smallest/4,
@@ -50,7 +52,7 @@ Changes to the Mercury standard library:
   queue.get/3, queue.delete_all/3, queue.put_on_front/3,
   queue.get_from_back/3, queue.put_list_on_front/3,
   queue.get_from_back/3, set.insert/3, set.insert_list/3, set.delete/3,
-  set.delete_list/3, set.remove/3, set.remove_list/3 and  set.remove_least/3
+  set.delete_list/3, set.remove/3, set.remove_list/3 and set.remove_least/3
 
 * We have add the following new functions for creating singleton
   maps: bimap.singleton/2, injection.singleton/2, map.singleton/2,

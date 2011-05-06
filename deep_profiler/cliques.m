@@ -73,12 +73,12 @@ add_arc(graph(Size0, Array0), From, To, Graph) :-
     ( array.in_bounds(Array0, From) ->
         array.lookup(Array0, From, Tos0),
         set.insert(To, Tos0, Tos),
-        array.set(u(Array0), From, Tos, Array),
+        array.set(From, Tos, u(Array0), Array),
         Size = int.max(int.max(From, To), Size0),
         Graph = graph(Size, Array)
     ;
         array.size(Array0, Size),
-        array.resize(u(Array0), Size * 2, init, Array1),
+        array.resize(Size * 2, init, u(Array0), Array1),
         add_arc(graph(Size0, Array1), From, To, Graph)
     ).
 
