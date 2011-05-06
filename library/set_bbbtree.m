@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2006, 2010 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -35,13 +35,6 @@
 :- pred set_bbbtree.empty(set_bbbtree(T)::in) is semidet.
 
 :- pred set_bbbtree.non_empty(set_bbbtree(T)::in) is semidet.
-
-    % `set_bbbtree.size(Set, Size)' is true iff `Size' is the cardinality
-    % of `Set'.
-    % This predicate is obsolete; use set_bbbtree.count/2 instead.
-    %
-:- pragma obsolete(set_bbbtree.size/2).
-:- pred set_bbbtree.size(set_bbbtree(T)::in, int::out) is det.
 
     % `set_bbbtree.count(Set, Count)' is true iff `Set' has `Count' elements.
     % i.e. `Count' is the cardinality (size) of the set. 
@@ -454,9 +447,6 @@ set_bbbtree.empty(empty).
 set_bbbtree.non_empty(tree(_, _, _, _)).
 
 %------------------------------------------------------------------------------%
-
-set_bbbtree.size(empty, 0).
-set_bbbtree.size(tree(_V, N, _L, _R), N).
 
 set_bbbtree.count(Set) = Count :-
     set_bbbtree.count(Set, Count).
