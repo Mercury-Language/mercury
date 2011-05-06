@@ -416,7 +416,7 @@ digraph.add_vertex(Vertex, Key, !G) :-
         Key = Key0
     ;
         allocate_key(Key, !G),
-        !:G = !.G ^ vertex_map := bimap.set(!.G ^ vertex_map, Vertex, Key)
+        !G ^ vertex_map := bimap.set(!.G ^ vertex_map, Vertex, Key)
     ).
 
 :- pred allocate_key(digraph_key(T)::out, digraph(T)::in, digraph(T)::out)
@@ -424,7 +424,7 @@ digraph.add_vertex(Vertex, Key, !G) :-
 
 allocate_key(digraph_key(I), !G) :-
     I = !.G ^ next_key,
-    !:G = !.G ^ next_key := I + 1.
+    !G ^ next_key := I + 1.
 
 %-----------------------------------------------------------------------------%
 
