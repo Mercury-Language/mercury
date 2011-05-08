@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -330,12 +330,12 @@ make_process_args(Globals, Variables, OptionArgs, Targets0, !IO) :-
         globals.lookup_bool_option(Globals, keep_going, KeepGoing),
 
         ModuleIndexMap = module_index_map(
-            version_hash_table.new_default(module_name_hash),
+            version_hash_table.init_default(module_name_hash),
             version_array.empty, 0),
         DepIndexMap = dependency_file_index_map(
-            version_hash_table.new_default(dependency_file_hash),
+            version_hash_table.init_default(dependency_file_hash),
             version_array.empty, 0),
-        DepStatusMap = version_hash_table.new_default(dependency_file_hash),
+        DepStatusMap = version_hash_table.init_default(dependency_file_hash),
 
         % Accept and ignore `.depend' targets. `mmc --make' does not need
         % a separate make depend step. The dependencies for each module

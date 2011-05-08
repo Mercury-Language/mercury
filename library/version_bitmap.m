@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007, 2010 The University of Melbourne
+% Copyright (C) 2004-2007, 2010-2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -29,11 +29,18 @@
 %-----------------------------------------------------------------------------%
 
 :- type version_bitmap.
+    
+    % init(N, B) creates a version_bitmap of size N (indexed 0 .. N-1)
+    % setting each bit if B = yes and clearing each bit if B = no.
+    % An exception is thrown if N is negative.
+    %
+:- func init(int, bool) = version_bitmap.
 
     % new(N, B) creates a version_bitmap of size N (indexed 0 .. N-1)
     % setting each bit if B = yes and clearing each bit if B = no.
     % An exception is thrown if N is negative.
     %
+:- pragma obsolete(new/2).
 :- func new(int, bool) = version_bitmap.
 
     % Returns the number of bits in a version_bitmap.
@@ -130,9 +137,11 @@
 
 %-----------------------------------------------------------------------------%
 
-new(N, B) = BM :-
+new(N, B) = init(N, B).
+
+init(N, B) = BM :-
     ( if N < 0 then
-        throw(software_error("version_bitmap.new: negative size"))
+        throw(software_error("version_bitmap.init: negative size"))
       else
         X    = initializer(B),
         BM0  = (version_array.init(num_ints_required(N), X) ^ elem(0) := N),
@@ -143,11 +152,11 @@ new(N, B) = BM :-
 
 resize(BM0, N, B) = BM :-
     ( if N =< 0 then
-        BM      = new(N, B)
+        BM = init(N, B)
       else
-        X       = initializer(B),
+        X = initializer(B),
         NumInts = num_ints_required(N),
-        BM1     = version_array.resize(BM0, NumInts, X),
+        BM1 = version_array.resize(BM0, NumInts, X),
 
             % Now we need to ensure that bits N, N+1, N+2, ... up to
             % the word boundary are initialized properly.

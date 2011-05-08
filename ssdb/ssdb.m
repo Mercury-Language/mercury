@@ -2776,7 +2776,7 @@ find_breakpoint(BreakPoints, Num, Key, BreakPoint) :-
 
 :- func new_breakpoints_filter = (bitmap::bitmap_uo) is det.
 
-new_breakpoints_filter = bitmap.new(breakpoints_filter_mask + 1).
+new_breakpoints_filter = bitmap.init(breakpoints_filter_mask + 1).
 
 :- func breakpoints_filter_mask = int.
 

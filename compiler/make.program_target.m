@@ -1459,7 +1459,7 @@ install_extra_header(Globals, IncDir, FileName, !Succeeded, !IO) :-
     io::di, io::uo) is det.
 
 install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
-        Succeeded, Info0, Info, !IO) :-
+        Succeeded, !Info, !IO) :-
     % Only remove grade-dependent files after installing if
     % --use-grade-subdirs is not specified by the user.
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
@@ -1467,7 +1467,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
 
     % Set up so that grade-dependent files for the current grade
     % don't overwrite the files for the default grade.
-    OptionArgs0 = Info0 ^ option_args,
+    OptionArgs0 = !.Info ^ option_args,
     OptionArgs = OptionArgs0 ++ ["--grade", Grade, "--use-grade-subdirs"],
 
     verbose_msg(Globals,
@@ -1477,7 +1477,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
             io.nl(!IO)
         ), !IO),
 
-    lookup_mmc_options(Globals, Info0 ^ options_variables, MaybeMCFlags, !IO),
+    lookup_mmc_options(Globals, !.Info ^ options_variables, MaybeMCFlags, !IO),
     (
         MaybeMCFlags = yes(MCFlags),
         handle_given_options(MCFlags ++ OptionArgs, _, _, _,
@@ -1491,8 +1491,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
     (
         OptionsErrors = [_ | _],
         usage_errors(OptionsErrors, !IO),
-        Succeeded = no,
-        Info = Info0
+        Succeeded = no
     ;
         OptionsErrors = [],
 
@@ -1502,13 +1501,13 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
         % XXX version_hash_table.delete is not working properly so just clear
         % the dependency status cache completely.
         %
-        % StatusMap0 = Info0 ^ dependency_status,
+        % StatusMap0 = !.Info ^ dependency_status,
         % StatusMap = version_hash_table.fold(remove_grade_dependent_targets,
         %     StatusMap0, StatusMap0),
-        StatusMap = version_hash_table.new_default(dependency_file_hash),
+        StatusMap = version_hash_table.init_default(dependency_file_hash),
 
-        Info1 = Info0 ^ dependency_status := StatusMap,
-        Info2 = Info1 ^ option_args := OptionArgs,
+        !Info ^ dependency_status := StatusMap,
+        !Info ^ option_args := OptionArgs,
 
         % Building the library in the new grade is done in a separate process
         % to make it easier to stop and clean up on an interrupt.
@@ -1524,7 +1523,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
                             ModuleName, AllModules, MInfo, CleanAfter,
                             GradeSuccess0, !IO)
                     ), GradeSuccess, !IO)
-            ), Cleanup, Succeeded, Info2, Info, !IO)
+            ), Cleanup, Succeeded, !Info, !IO)
     ).
 
 :- func remove_grade_dependent_targets(dependency_file, dependency_status,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 2003, 2005-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,24 +39,31 @@
 :- mode array2d_ui == in(array2d).
 :- mode array2d_uo == out(array2d).
 
+    % init(M, N, X) = array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]])
+    % where each XIJ = X.  An exception is thrown if M < 0 or N < 0.
+    %
+:- func init(int, int, T) = array2d(T).
+:- mode init(in, in, in) = array2d_uo is det.
+    
+    % new(M, N, X) = array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]])
+    % where each XIJ = X.  An exception is thrown if M < 0 or N < 0.
+    %
+:- pragma obsolete(new/3).
+:- func new(int, int, T ) = array2d(T).
+:- mode new(in,  in,  in) = array2d_uo is det.
+    
     % array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) constructs a array2d
     % of size M * N, with the special case that bounds(array2d([]), 0, 0).
     %
     % An exception is thrown if the sublists are not all the same length.
     %
 :- func array2d(list(list(T))) = array2d(T).
-:- mode array2d(in           ) = array2d_uo is det.
+:- mode array2d(in) = array2d_uo is det.
 
     % A synonym for the above.
     %
 :- func from_lists(list(list(T))) = array2d(T).
-:- mode from_lists(in           ) = array2d_uo is det.
-
-    % new(M, N, X) = array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]])
-    % where each XIJ = X.  An exception is thrown if M < 0 or N < 0.
-    %
-:- func new(int, int, T ) = array2d(T).
-:- mode new(in,  in,  in) = array2d_uo is det.
+:- mode from_lists(in) = array2d_uo is det.
 
     % array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) ^ elem(I, J) = X
     % where X is the J+1th element of the I+1th row (that is, indices
@@ -141,10 +148,20 @@
 
 :- implementation.
 
+
 %-----------------------------------------------------------------------------%
 
-array2d(      []      ) = array2d(0, 0, make_empty_array).
+init(M, N, X) =
+    ( if    M >= 0, N >= 0
+      then  array2d(M, N, array.init(M * N, X))
+      else  func_error("array2d.new: bounds must be non-negative")
+    ).
 
+new(M, N, X) = init(M, N, X).
+
+%-----------------------------------------------------------------------------%
+
+array2d([]) = array2d(0, 0, make_empty_array).
 array2d(Xss @ [Xs | _]) = T :-
     M = length(Xss),
     N = length(Xs),
@@ -155,14 +172,6 @@ array2d(Xss @ [Xs | _]) = T :-
         ).
 
 from_lists(Xss) = array2d(Xss).
-
-%-----------------------------------------------------------------------------%
-
-new(M, N, X) =
-    ( if    M >= 0, N >= 0
-      then  array2d(M, N, array.init(M * N, X))
-      else  func_error("array2d.new: bounds must be non-negative")
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -219,8 +228,9 @@ lists_2(IJ, J, N, A, Xs, Xss) =
           else  lists_2(IJ,     N - 1, N, A, [],                  [Xs | Xss])
         )
       else
-        [Xs | Xss]
-    ).
+         [Xs | Xss]
+     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module array2d.
 %-----------------------------------------------------------------------------%

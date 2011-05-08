@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2007, 2009-2010 The University of Melbourne
+% Copyright (C) 2001-2002, 2004-2007, 2009-2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,15 +70,27 @@
 
 %-----------------------------------------------------------------------------%
 
+    % init(N, B) creates a bitmap of size N (indexed 0 .. N-1)
+    % setting each bit if B = yes and clearing each bit if B = no.
+    % An exception is thrown if N is negative.
+    %
+:- func init(num_bits::in, bool::in) = (bitmap::bitmap_uo) is det.
+
     % new(N, B) creates a bitmap of size N (indexed 0 .. N-1)
     % setting each bit if B = yes and clearing each bit if B = no.
     % An exception is thrown if N is negative.
     %
+:- pragma obsolete(bitmap.new/2).
 :- func new(num_bits, bool) = bitmap.
 :- mode new(in, in) = bitmap_uo is det.
 
+    % A synonym for init(N, no).
+    %
+:- func init(num_bits::in) = (bitmap::bitmap_uo) is det.
+
     % Same as new(N, no).
     %
+:- pragma obsolete(bitmap.new/1).
 :- func new(num_bits) = bitmap.
 :- mode new(in) = bitmap_uo is det.
 
@@ -436,9 +448,9 @@
 
 %-----------------------------------------------------------------------------%
 
-new(N) = new(N, no).
+init(N) = init(N, no).
 
-new(N, B) = BM :-
+init(N, B) = BM :-
     ( if N < 0 then
         throw_bitmap_error("bitmap.new: negative size") = _ : int
       else
@@ -447,11 +459,15 @@ new(N, B) = BM :-
         BM   = clear_filler_bits(BM0)
     ).
 
+new(N, B) = init(N, B).
+
+new(N) = init(N).
+
 %-----------------------------------------------------------------------------%
 
 resize(!.BM, NewSize, InitializerBit) = !:BM :-
     ( if NewSize =< 0 then
-        !:BM = new(NewSize, InitializerBit)
+        !:BM = init(NewSize, InitializerBit)
       else
         OldSize = num_bits(!.BM),
         InitializerByte = initializer(InitializerBit),
@@ -459,12 +475,12 @@ resize(!.BM, NewSize, InitializerBit) = !:BM :-
         ( if NewSize > OldSize then
             % Fill in the trailing bits in the previous final byte.
             !:BM = set_trailing_bits_in_byte(!.BM, OldSize - 1,
-                        InitializerByte),
+                InitializerByte),
             OldLastByteIndex = byte_index_for_bit(OldSize - 1),
             NewLastByteIndex = byte_index_for_bit(NewSize - 1),
             ( if NewLastByteIndex > OldLastByteIndex then
                 !:BM = initialize_bitmap_bytes(!.BM, OldLastByteIndex + 1,
-                            NewLastByteIndex, InitializerByte)
+                    NewLastByteIndex, InitializerByte)
               else
                 true
             )
@@ -897,7 +913,7 @@ zip2(I, Fn, BMa, BMb) = BM :-
 
 append_list(BMs) = !:BM :-
     BMSize = list.foldl((func(BM, Size) = Size + BM ^ num_bits), BMs, 0),
-    !:BM = new(BMSize),
+    !:BM = init(BMSize),
     list.foldl2(copy_bitmap_into_place, BMs, 0, _, !BM).
 
 :- pred copy_bitmap_into_place(bitmap::in, int::in, int::out,

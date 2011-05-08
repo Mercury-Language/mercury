@@ -1008,7 +1008,7 @@ neg_node_set_status(Neg0, Status) = Neg :-
         trace_node(trace_node_id)::out) is det.
 
 set_trace_node_arg(Node0, FieldNum, Val, Node) :-
-    store.new(S0),
+    store.init(S0),
     store.new_ref(Node0, Ref, S0, S1),
     store.arg_ref(Ref, FieldNum, ArgRef, S1, S2),
     store.set_ref_value(ArgRef, Val, S2, S),

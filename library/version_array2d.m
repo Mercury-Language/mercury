@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -37,17 +37,21 @@
     % An exception is thrown if the sublists are not all the same length.
     %
 :- func version_array2d(list(list(T))) = version_array2d(T).
+    
+    % init(M, N, X) = version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]])
+    % where each XIJ = X.
+    %
+    % An exception is thrown if M < 0 or N < 0.
+    %
+:- func init(int, int, T) = version_array2d(T).
 
     % new(M, N, X) = version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]])
     % where each XIJ = X.
     %
     % An exception is thrown if M < 0 or N < 0.
     %
+:- pragma obsolete(new/3).
 :- func new(int, int, T) = version_array2d(T).
-
-    % A synonym for new/3.
-    %
-:- func init(int, int, T) = version_array2d(T).
 
     % version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) ^ elem(I, J) = X
     % where X is the J+1th element of the I+1th row (i.e. indices start from
@@ -135,13 +139,13 @@ version_array2d(Xss @ [Xs | _]) = VA2D :-
 
 %-----------------------------------------------------------------------------%
 
-new(M, N, X) =
+init(M, N, X) =
     ( if    M >= 0, N >= 0
-      then  version_array2d(M, N, version_array.new(M * N, X))
+      then  version_array2d(M, N, version_array.init(M * N, X))
       else  func_error("version_array2d.new: bounds must be non-negative")
     ).
 
-init(M, N, X) = new(M, N, X).
+new(M, N, X) = init(M, N, X).
 
 %-----------------------------------------------------------------------------%
 
@@ -188,7 +192,7 @@ copy(version_array2d(M, N, VA)) = version_array2d(M, N, copy(VA)).
 %-----------------------------------------------------------------------------%
 
 resize(VA2D0, M, N, X) = VA2D :-
-    VA2D1 = new(M, N, X),
+    VA2D1 = init(M, N, X),
     bounds(VA2D0, M0, N0),
     M1    = min(M0, M),
     N1    = min(N0, N),

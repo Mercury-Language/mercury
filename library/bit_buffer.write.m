@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne
+% Copyright (C) 2007, 2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -166,12 +166,12 @@
 new(NumBytes, Stream, State) = Buffer :-
     SizeInBits = NumBytes * bits_per_byte,
     Size = int.max(SizeInBits, bits_per_int),
-    BM = bitmap.new(Size + int.bits_per_int, no),
+    BM = bitmap.init(Size + int.bits_per_int, no),
     Buffer = write_buffer(new_buffer(BM, 0, Size, yes, Stream, State)).
 
 new_bitmap_builder(NumBytes) = Buffer :-
     Size = NumBytes * bits_per_byte,
-    BM = bitmap.new(Size + int.bits_per_int, no),
+    BM = bitmap.init(Size + int.bits_per_int, no),
     Buffer = write_buffer(new_buffer(BM, 0, Size, no,
                 error_stream, error_state)).
 
@@ -252,7 +252,7 @@ finalize(!.Buffer, Stream, State) :-
 
 finalize_to_bitmap(write_buffer(Buffer)) = !:BM :-
     NumBits = num_buffered_bits(write_buffer(Buffer)),
-    !:BM = bitmap.new(NumBits),
+    !:BM = bitmap.init(NumBits),
 
     % Copy out the filled bitmaps starting at the end of the result bitmap.
     %
@@ -379,7 +379,7 @@ store_full_buffer(!Buffer) :-
     % bitmap created in `new', so we don't need to use
     % copy_bits here).
     %
-    NewBM0 = bitmap.new(NewSize + int.bits_per_int),
+    NewBM0 = bitmap.init(NewSize + int.bits_per_int),
     Remain = Pos - Size,
     NewPos = Remain,
     NewBM = NewBM0 ^ bits(0, Remain) := OldBM ^ bits(Size, Remain),

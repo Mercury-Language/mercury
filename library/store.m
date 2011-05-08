@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 2000-2008, 2010 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,6 +49,11 @@
 
     % Initialize a new store.
     %
+:- some [S] pred store.init(store(S)::uo) is det.
+
+    % A synonym for the above.
+    %
+:- pragma obsolete(store.new/1).
 :- some [S] pred store.new(store(S)::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -272,6 +277,9 @@ store_compare(_, _, _) :-
 :- type generic_ref(T, S) ---> ref(private_builtin.ref(T)).
 
 store.new(S) :-
+    store.init(S).
+
+store.init(S) :-
     store.do_init(S).
 
 :- some [S] pred store.do_init(store(S)::uo) is det.

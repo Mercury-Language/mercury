@@ -58,6 +58,43 @@ Changes to the Mercury standard library:
   maps: bimap.singleton/2, injection.singleton/2, map.singleton/2,
   rbtree.singleton/2 and tree234.singleton/2 .
 
+* The following procedures have been added to the standard library:
+
+	array2d.init/3
+	bitmap.init/2
+	hash_table.init/3
+	hash_table.init_default/1
+	store.init/1
+	semaphore.init/1
+	semaphore.init/3
+	version_array.init/2
+	version_array2d.init/3
+	version_bitmap.init/2
+	version_hash_table.init/3
+	version_hash_table.unsafe_init/3
+	version_hash_table.init_default/1
+	version_hash_table.unsafe_init_default/1
+	version_store.init/1
+
+   They replace the following procedures, which are now obsolete and will be
+   removed in a later release:
+
+	array2d.new/3
+	bitmap.new/2
+	hash_table.new/3
+	hash_table.new_default/1
+	store.new/1
+	semaphore.new/1
+	semaphore.new/3
+	version_array.new/2
+	version_array2d.new/3
+	version_bitmap.new/2
+	version_hash_table.new/3
+	version_hash_table.unsafe_new/3
+	version_hash_table.new_default/1
+	version_hash_table.unsafe_new_default/1
+	version_store.new/1
+
 
 NEWS for Mercury 11.01
 ----------------------

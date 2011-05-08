@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2010 The University of Melbourne.
+% Copyright (C) 2004-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -43,13 +43,14 @@
     %
 :- func empty = version_array(T).
 
-    % new(N, X) returns an array of size N with each item initialised to X.
-    %
-:- func new(int, T) = version_array(T).
-
-    % A synonym for new/2.
+    % init(N, X returns an array fo size N with each itme initialised to X.
     %
 :- func init(int, T) = version_array(T).
+
+    % new(N, X) returns an array of size N with each item initialised to X.
+    %
+:- pragma obsolete(new/2).
+:- func new(int, T) = version_array(T).
 
     % Same as empty/0 except the resulting version_array is not thread safe.
     %
@@ -211,14 +212,14 @@
 
 %-----------------------------------------------------------------------------%
 
-init(N, X) = version_array.new(N, X).
+new(N, X) = version_array.init(N, X).
 
 %-----------------------------------------------------------------------------%
 
 version_array([]) = version_array.empty.
 
 version_array([X | Xs]) =
-    version_array_2(1, Xs, version_array.new(1 + length(Xs), X)).
+    version_array_2(1, Xs, version_array.init(1 + length(Xs), X)).
 
 :- func version_array_2(int, list(T), version_array(T)) = version_array(T).
 
@@ -548,7 +549,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 ").
 
 :- pragma foreign_proc("C",
-    version_array.new(N::in, X::in) = (VA::out),
+    version_array.init(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "

@@ -1992,7 +1992,7 @@ io.read_binary_file_as_bitmap(Stream, Result, !IO) :-
     io.binary_input_stream_file_size(Stream, FileSize, !IO),
     ( FileSize >= 0 ->
         some [!BM] (
-            !:BM = bitmap.new(FileSize * bits_per_byte),
+            !:BM = bitmap.init(FileSize * bits_per_byte),
             io.read_bitmap(Stream, 0, FileSize,
                 !BM, BytesRead, ReadResult, !IO),
             (
@@ -2027,7 +2027,7 @@ io.read_binary_file_as_bitmap(Stream, Result, !IO) :-
 
 io.read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
     some [!BM] (
-        !:BM = bitmap.new(BufferSize * bits_per_byte),
+        !:BM = bitmap.init(BufferSize * bits_per_byte),
         io.read_bitmap(0, BufferSize, !BM, NumBytesRead, ReadRes, !IO),
         (
             ReadRes = ok,

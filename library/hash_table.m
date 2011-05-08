@@ -56,7 +56,7 @@
 :- type hash_pred(K) == ( pred(K, int) ).
 :- inst hash_pred    == ( pred(in, out) is det ).
 
-    % new(HashPred, N, MaxOccupancy)
+    % init(HashPred, N, MaxOccupancy)
     % constructs a new hash table with initial size 2 ^ N that is
     % doubled whenever MaxOccupancy is achieved; elements are
     % indexed using HashPred.
@@ -68,12 +68,24 @@
     % XXX Values too close to the limits may cause bad things
     % to happen.
     %
+:- func init(hash_pred(K), int, float) = hash_table(K, V).
+:- mode init(in(hash_pred), in, in) = hash_table_uo is det.
+
+    % A synonym for the above.
+    %
+:- pragma obsolete(new/3).
 :- func new(hash_pred(K), int, float) = hash_table(K, V).
 :- mode new(in(hash_pred), in, in) = hash_table_uo is det.
 
-    % new_default(HashFn) constructs a hash table with default size and
+    % init_default(HashFn) constructs a hash table with default size and
     % occupancy arguments.
     %
+:- func init_default(hash_pred(K)) = hash_table(K, V).
+:- mode init_default(in(hash_pred)) = hash_table_uo is det.
+
+    % A synonym for the above.
+    %
+:- pragma obsolete(new_default/1).
 :- func new_default(hash_pred(K)) = hash_table(K, V).
 :- mode new_default(in(hash_pred)) = hash_table_uo is det.
 
@@ -253,27 +265,30 @@
 
 %-----------------------------------------------------------------------------%
 
-new(HashPred, N, MaxOccupancy) = HT :-
+init(HashPred, N, MaxOccupancy) = HT :-
     (      if N =< 0 then
-            throw(software_error("hash_table.new: N =< 0"))
+            throw(software_error("hash_table.init: N =< 0"))
       else if N >= int.bits_per_int then
             throw(software_error(
-                "hash_table.new: N >= int.bits_per_int"))
+                "hash_table.init: N >= int.bits_per_int"))
       else if MaxOccupancy =< 0.0 then
             throw(software_error(
-                "hash_table.new: MaxOccupancy =< 0.0"))
+                "hash_table.init: MaxOccupancy =< 0.0"))
       else
-            NumBuckets   = 1 << N,
+            NumBuckets = 1 << N,
             MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
-            Buckets      = init(NumBuckets, ht_nil),
-            HT           = ht(0, MaxOccupants, HashPred, Buckets)
+            Buckets = init(NumBuckets, ht_nil),
+            HT = ht(0, MaxOccupants, HashPred, Buckets)
     ).
+
+new(HashPred, N, MaxOccupancy) = init(HashPred, N, MaxOccupancy).
 
 %-----------------------------------------------------------------------------%
 
     % These numbers are picked out of thin air.
     %
-new_default(HashPred) = new(HashPred, 7, 0.9).
+init_default(HashPred) = init(HashPred, 7, 0.9).
+new_default(HashPred) = init(HashPred, 7, 0.9).
 
 %-----------------------------------------------------------------------------%
 
@@ -435,7 +450,7 @@ to_assoc_list_2(ht_cons(K, V, T), AList) =
     to_assoc_list_2(T, [K - V | AList]).
 
 
-from_assoc_list(HP, AList) = from_assoc_list_2(AList, new_default(HP)).
+from_assoc_list(HP, AList) = from_assoc_list_2(AList, init_default(HP)).
 
 :- func from_assoc_list_2(assoc_list(K, V)::in,
     hash_table(K, V)::hash_table_di) = (hash_table(K, V)::hash_table_uo)
@@ -683,4 +698,5 @@ dynamic_cast_to_array(X, A) :-
     dynamic_cast(X, A `with_type` array(ArgType)).
 
 %-----------------------------------------------------------------------------%
+:- end_module hash_table.
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2010 The University of Melbourne
+% Copyright (C) 2007, 2010-2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -224,7 +224,7 @@ new(NumBytes, Stream, State) = Buffer :-
     SizeInBits = NumBytes * bits_per_byte,
     ChunkSize = int.max(SizeInBits, bits_per_int),
     BMSize = ChunkSize + bits_per_int,
-    BM = bitmap.new(BMSize, no),
+    BM = bitmap.init(BMSize, no),
 
     % Start at the end of the buffer to force a fill on the first read.
     %
@@ -233,7 +233,7 @@ new(NumBytes, Stream, State) = Buffer :-
 
 new_bitmap_reader(BM, StartIndex, NumBits) = Buffer :-
     Buffer = read_buffer(new_buffer(BM, StartIndex, NumBits, no,
-                error_stream, error_state)).
+        error_stream, error_state)).
 
 new_bitmap_reader(BM) = new_bitmap_reader(BM, 0, BM ^ num_bits).
 

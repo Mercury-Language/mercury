@@ -1,8 +1,9 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006, 2010 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2004-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
 % 
 % File: version_hash_table.m.
@@ -34,7 +35,7 @@
 :- type hash_pred(K) == ( pred(K,  int)        ).
 :- inst hash_pred    == ( pred(in, out) is det ).
 
-    % new(HashPred, N, MaxOccupancy)
+    % init(HashPred, N, MaxOccupancy)
     % constructs a new hash table with initial size 2 ^ N that is
     % doubled whenever MaxOccupancy is achieved; elements are
     % indexed using HashPred.
@@ -46,12 +47,16 @@
     % XXX Values too close to the limits may cause bad things
     % to happen.
     %
-:- func new(hash_pred(K)::in(hash_pred), int::in, float::in) =
-            (version_hash_table(K, V)::out) is det.
+:- func init(hash_pred(K)::in(hash_pred), int::in, float::in) = 
+    (version_hash_table(K, V)::out) is det.
 
-    % unsafe_new(HashPred, N, MaxOccupancy)
+:- pragma obsolete(new/3).
+:- func new(hash_pred(K)::in(hash_pred), int::in, float::in) =
+    (version_hash_table(K, V)::out) is det.
+
+    % unsafe_init(HashPred, N, MaxOccupancy)
     %
-    % Like new/3, but the constructed hash table is backed by a non-thread safe
+    % Like init/3, but the constructed hash table is backed by a non-thread safe
     % version array. It is unsafe to concurrently access or update the hash
     % table from different threads, or any two hash tables which were produced
     % from operations on the same original hash table.
@@ -59,22 +64,34 @@
     % manner, a non-thread safe hash table can be much faster than a thread
     % safe one.
     %
-:- func unsafe_new(hash_pred(K)::in(hash_pred), int::in, float::in) =
-            (version_hash_table(K, V)::out) is det.
+:- func unsafe_init(hash_pred(K)::in(hash_pred), int::in, float::in) =
+   (version_hash_table(K, V)::out) is det.
 
-    % new_default(HashFn) constructs a hash table with default size and
+:- pragma obsolete(unsafe_new/3).
+:- func unsafe_new(hash_pred(K)::in(hash_pred), int::in, float::in) =
+   (version_hash_table(K, V)::out) is det.
+
+    % init_default(HashFn) constructs a hash table with default size and
     % occupancy arguments.
     %
-:- func new_default(hash_pred(K)::in(hash_pred)) =
-            (version_hash_table(K, V)::out) is det.
+:- func init_default(hash_pred(K)::in(hash_pred)) =
+   (version_hash_table(K, V)::out) is det.
 
-    % unsafe_new_default(HashFn)
+:- pragma obsolete(new_default/1).
+:- func new_default(hash_pred(K)::in(hash_pred)) =
+   (version_hash_table(K, V)::out) is det.
+
+    % unsafe_init_default(HashFn)
     %
-    % Like new_default/3 but the constructed hash table is backed by a
-    % non-thread safe version array. See the description of unsafe_new/3 above.
+    % Like init_default/3 but the constructed hash table is backed by a
+    % non-thread safe version array. See the description of unsafe_init/3 above.
     %
+:- func unsafe_init_default(hash_pred(K)::in(hash_pred)) =
+   (version_hash_table(K, V)::out) is det.
+
+:- pragma obsolete(unsafe_new_default/1).
 :- func unsafe_new_default(hash_pred(K)::in(hash_pred)) =
-            (version_hash_table(K, V)::out) is det.
+   (version_hash_table(K, V)::out) is det.
 
     % Retrieve the hash_pred associated with a hash table.
     %
@@ -211,14 +228,18 @@
 
 %-----------------------------------------------------------------------------%
 
-new(HashPred, N, MaxOccupancy) = new_2(HashPred, N, MaxOccupancy, yes).
+init(HashPred, N, MaxOccupancy) = init_2(HashPred, N, MaxOccupancy, yes).
 
-unsafe_new(HashPred, N, MaxOccupancy) = new_2(HashPred, N, MaxOccupancy, no).
+new(HashPred, N, MaxOccupancy) = init_2(HashPred, N, MaxOccupancy, yes).
 
-:- func new_2(hash_pred(K)::in(hash_pred), int::in, float::in, bool::in) =
-            (version_hash_table(K, V)::out) is det.
+unsafe_init(HashPred, N, MaxOccupancy) = init_2(HashPred, N, MaxOccupancy, no).
 
-new_2(HashPred, N, MaxOccupancy, NeedSafety) = HT :-
+unsafe_new(HashPred, N, MaxOccupancy) = init_2(HashPred, N, MaxOccupancy, no).
+
+:- func init_2(hash_pred(K)::in(hash_pred), int::in, float::in, bool::in) =
+    (version_hash_table(K, V)::out) is det.
+
+init_2(HashPred, N, MaxOccupancy, NeedSafety) = HT :-
     (      if N =< 0 then
             throw(software_error("version_hash_table.new_hash_table: N =< 0"))
       else if N >= int.bits_per_int then
@@ -232,7 +253,7 @@ new_2(HashPred, N, MaxOccupancy, NeedSafety) = HT :-
             MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
             (
                 NeedSafety = yes,
-                Buckets = version_array.new(NumBuckets, ht_nil)
+                Buckets = version_array.init(NumBuckets, ht_nil)
             ;
                 NeedSafety = no,
                 Buckets = version_array.unsafe_new(NumBuckets, ht_nil)
@@ -244,9 +265,11 @@ new_2(HashPred, N, MaxOccupancy, NeedSafety) = HT :-
 
     % These numbers are picked out of thin air.
     %
-new_default(HashPred) = new(HashPred, 7, 0.9).
+init_default(HashPred) = init(HashPred, 7, 0.9).
+new_default(HashPred) = init(HashPred, 7, 0.9).
 
-unsafe_new_default(HashPred) = unsafe_new(HashPred, 7, 0.9).
+unsafe_init_default(HashPred) = unsafe_init(HashPred, 7, 0.9).
+unsafe_new_default(HashPred) = unsafe_init(HashPred, 7, 0.9).
 
 %-----------------------------------------------------------------------------%
 
@@ -421,18 +444,16 @@ to_assoc_list(HT) =
     = assoc_list(K, V).
 
 to_assoc_list_2(ht_nil, AList) = AList.
-
 to_assoc_list_2(ht_cons(K, V, T), AList) =
     to_assoc_list_2(T, [K - V | AList]).
 
 
-from_assoc_list(HP, AList) = from_assoc_list_2(AList, new_default(HP)).
+from_assoc_list(HP, AList) = from_assoc_list_2(AList, init_default(HP)).
 
 :- func from_assoc_list_2(assoc_list(K, V), version_hash_table(K, V))
     = version_hash_table(K, V).
 
 from_assoc_list_2([], HT) = HT.
-
 from_assoc_list_2([K - V | AList], HT) =
     from_assoc_list_2(AList, HT ^ elem(K) := V).
 
@@ -674,4 +695,5 @@ dynamic_cast_to_array(X, A) :-
     dynamic_cast(X, A `with_type` array(ArgType)).
 
 %-----------------------------------------------------------------------------%
+:- end_module version_hash_table.
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -36,6 +36,11 @@
     % the compiler can automatically detect any attempt to use a
     % mutvar with the wrong version store.
     %
+:- some [S] func init = version_store(S).
+
+    % A synonym for the above.
+    %
+:- pragma obsolete(new/0).
 :- some [S] func new = version_store(S).
 
     % new_mutvar(X, Mutvar, VS0, VS) adds a new mutvar with value reference X
@@ -117,13 +122,15 @@
 
 %-----------------------------------------------------------------------------%
 
-new = version_store(VA) `with_type` version_store(some_version_store_type) :-
+init = version_store(VA) `with_type` version_store(some_version_store_type) :-
 
         % 256 is just a magic number.  The version_store is resized by
         % doubling if necessary when adding a new mutvar.  Index 0 of
         % the version_store holds a counter for allocating new mutvars.
         %
-    VA = version_array.new(256, univ(counter.init(1) `with_type` counter)).
+    VA = version_array.init(256, univ(counter.init(1) `with_type` counter)).
+
+new = init.
 
 %-----------------------------------------------------------------------------%
 

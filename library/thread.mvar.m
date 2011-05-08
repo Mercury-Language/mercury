@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003, 2006-2007 The University of Melbourne.
+% Copyright (C) 2000-2003, 2006-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,8 +70,8 @@
 
 :- pragma promise_pure(mvar.init/3).
 mvar.init(mvar(Full, Empty, Ref), !IO) :-
-    semaphore.new(Full, !IO),
-    semaphore.new(Empty, !IO),
+    semaphore.init(Full, !IO),
+    semaphore.init(Empty, !IO),
     impure new_mutvar0(Ref),
     semaphore.signal(Empty, !IO).   % Initially a mvar starts empty.
 

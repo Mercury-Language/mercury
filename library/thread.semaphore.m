@@ -28,14 +28,23 @@
 
 :- type semaphore.
 
-    % new(Sem, !IO) creates a new semaphore `Sem' with its counter
+    % init(Sem, !IO) creates a new semaphore `Sem' with its counter
     % initialized to 0.
     %
+:- pred semaphore.init(semaphore::out, io::di, io::uo) is det.
+
+    % A synonym for the above.
+    %
+:- pragma obsolete(semaphore.new/3).
 :- pred semaphore.new(semaphore::out, io::di, io::uo) is det.
 
-    % new(Count, Sem) creates a new semaphore `Sem' with its counter
-    % initialized to Count.
+    % Returns a new semaphore `Sem' with its counter initialized to Count.
     %
+:- func semaphore.init(int::in) = (semaphore::uo) is det.
+
+    % A synonym for the above.
+    %
+:- pragma obsolete(semaphore.new/1).
 :- func semaphore.new(int::in) = (semaphore::uo) is det.
 
     % wait(Sem, !IO) blocks until the counter associated with `Sem'
@@ -107,10 +116,15 @@ ML_finalize_semaphore(void *obj, void *cd);
 %-----------------------------------------------------------------------------%
 
 new(Semaphore, !IO) :-
-    Semaphore = new(0).
+    init(Semaphore, !IO).
+
+new(Count) = init(Count).
+
+init(Semaphore, !IO) :-
+    Semaphore = init(0).
 
 :- pragma foreign_proc("C",
-    new(Count::in) = (Semaphore::uo),
+    init(Count::in) = (Semaphore::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     MR_Word         sem_mem;
@@ -142,7 +156,7 @@ new(Semaphore, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    new(Count::in) = (Semaphore::uo),
+    init(Count::in) = (Semaphore::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Semaphore = new thread__semaphore.ML_Semaphore();
@@ -150,7 +164,7 @@ new(Semaphore, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    new(Count::in) = (Semaphore::uo),
+    init(Count::in) = (Semaphore::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Semaphore = new java.util.concurrent.Semaphore(Count);
