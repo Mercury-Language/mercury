@@ -95,6 +95,9 @@ Changes to the Mercury standard library:
 	version_hash_table.unsafe_new_default/1
 	version_store.new/1
 
+* The deprecated modules graph, group and relation are no longer included
+  in the library.
+
 
 NEWS for Mercury 11.01
 ----------------------

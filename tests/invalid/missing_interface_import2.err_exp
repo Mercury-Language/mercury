@@ -1,7 +1,7 @@
 missing_interface_import2.m:009: In definition of predicate
 missing_interface_import2.m:009:   `missing_interface_import2.write_key'/3:
-missing_interface_import2.m:009:   error: undefined type `key'/0.
-missing_interface_import2.m:009:   (The modules `group' and
+missing_interface_import2.m:009:   error: undefined type `partition_id'/0.
+missing_interface_import2.m:009:   (The modules `eqvclass' and
 missing_interface_import2.m:009:   `missing_interface_import3' have not been
 missing_interface_import2.m:009:   imported in the interface.)
 missing_interface_import2.m:009: In definition of predicate
