@@ -4083,7 +4083,7 @@ io.alloc_buffer(Size, buffer(Array)) :-
 
 io.resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
     char.det_from_int(0, Char),
-    array.resize(Array0, NewSize, Char, Array).
+    array.resize(NewSize, Char, Array0, Array).
 
 :- pred io.buffer_to_string(buffer::buffer_di, int::in, string::uo) is semidet.
 

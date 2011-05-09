@@ -1326,7 +1326,7 @@ array.svset(Index, Item, !Array) :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
+    array.unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     Array0.SetValue(Item, Index);   /* destructive update! */
@@ -1342,7 +1342,7 @@ array.svset(Index, Item, !Array) :-
 }").
 
 :- pragma foreign_proc("Erlang",
-    array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
+    array.unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = setelement(Index + 1, Array0, Item)
@@ -1356,7 +1356,7 @@ array.svset(Index, Item, !Array) :-
 ").
 
 :- pragma foreign_proc("Java",
-    array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
+    array.unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array0 instanceof int[]) {
@@ -1465,14 +1465,14 @@ array.resize(!.Array, N, X) = !:Array :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
+    array.resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = array.ML_array_resize(Array0, Size, Item);
 ").
 
 :- pragma foreign_proc("Erlang",
-    array.resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
+    array.resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     InitialSize = size(Array0),
@@ -1489,7 +1489,7 @@ array.resize(!.Array, N, X) = !:Array :-
 ").
 
 :- pragma foreign_proc("Java",
-    array.resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
+    array.resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = jmercury.array.ML_array_resize(Array0, Size, Item);
@@ -1560,21 +1560,21 @@ array.shrink(Size, !Array) :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.shrink_2(Array0::array_di, Size::in, Array::array_uo),
+    array.shrink_2(Size::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = array.ML_shrink_array(Array0, Size);
 ").
 
 :- pragma foreign_proc("Erlang",
-    array.shrink_2(Array0::array_di, Size::in, Array::array_uo),
+    array.shrink_2(Size::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = list_to_tuple(lists:sublist(tuple_to_list(Array0), Size))
 ").
 
 :- pragma foreign_proc("Java",
-    array.shrink_2(Array0::array_di, Size::in, Array::array_uo),
+    array.shrink_2(Size::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array0 == null) {
