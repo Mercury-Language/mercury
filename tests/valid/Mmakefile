@@ -300,6 +300,7 @@ PAR_CONJ_PROGS = \
 # grades.
 CTGC_PROGS = \
 	reuse_static \
+	reuse_static2 \
 	sharing_exist \
 	sharing_loop \
 	sharing_loop2 \

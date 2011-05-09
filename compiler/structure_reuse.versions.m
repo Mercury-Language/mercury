@@ -447,23 +447,23 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
 
 unification_set_reuse(ShortReuseDescription, !Unification) :-
     (
-        !.Unification = construct(A, B, C, D, HowToConstruct0, F, G),
+        HowToConstruct0 = !.Unification ^ construct_how,
         ShortReuseDescription = cell_reused(DeadVar, _, PossibleConsIds,
             CellsToUpdate)
     ->
         (
-            HowToConstruct0 = construct_statically,
-            unexpected(this_file, "unification_set_reuse: construct_statically")
+            HowToConstruct0 = construct_statically
+            % Leave static terms as-is.
         ;
-            HowToConstruct0 = construct_dynamically
-        ;
-            HowToConstruct0 = construct_in_region(_)
-        ;
-            HowToConstruct0 = reuse_cell(_)
-        ),
-        CellToReuse = cell_to_reuse(DeadVar, PossibleConsIds, CellsToUpdate),
-        HowToConstruct = reuse_cell(CellToReuse),
-        !:Unification = construct(A, B, C, D, HowToConstruct, F, G)
+            ( HowToConstruct0 = construct_dynamically
+            ; HowToConstruct0 = construct_in_region(_)
+            ; HowToConstruct0 = reuse_cell(_)
+            ),
+            CellToReuse = cell_to_reuse(DeadVar, PossibleConsIds,
+                CellsToUpdate),
+            HowToConstruct = reuse_cell(CellToReuse),
+            !Unification ^ construct_how := HowToConstruct
+        )
     ;
         true
     ).
