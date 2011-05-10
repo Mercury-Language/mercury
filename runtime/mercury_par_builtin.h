@@ -21,6 +21,7 @@ vim: ft=c ts=4 sw=4 et
 #include "mercury_context.h"
 #include "mercury_thread.h"
 #include "mercury_threadscope.h"
+#include "mercury_atomic_ops.h"
 
 #ifdef MR_THREAD_SAFE
 
@@ -28,11 +29,11 @@ vim: ft=c ts=4 sw=4 et
         /* lock preventing concurrent accesses */
         MercuryLock     MR_fut_lock;
 
-        /* whether this future has been signalled yet */
-        int             MR_fut_signalled;
-
         /* linked list of all the contexts blocked on this future */
         MR_Context      *MR_fut_suspended;
+
+        /* whether this future has been signalled yet */
+        volatile int    MR_fut_signalled;
 
         MR_Word         MR_fut_value;
     };
@@ -89,60 +90,63 @@ vim: ft=c ts=4 sw=4 et
         } while (0)
 
     /*
-    ** It would be nice if we could rely on an invariant such as
-    ** `if MR_fut_signalled is true, then reading MR_fut_value is ok'
-    ** even *without* wrapping up those two field accesses in the mutex,
-    ** taking the mutex only when MR_fut_signalled is false. (We would
-    ** then have to repeat the test of MR_fut_signalled, of course.)
-    ** Unfortunately, memory systems today cannot be relied on to provide
-    ** the required level of consistency; some don't have any way to ask
-    ** for the necessary memory barrier.
+    ** If MR_fut_signalled is true then we guarantee that reading MR_fut_value
+    ** is safe, even without a lock, see the corresponding code in
+    ** MR_par_builtin_signal_future();
+    ** If MR_fut_signalled is false then we do take a lock and re-read the
+    ** this value (to ensure there was not a race).
     */
 
     MR_declare_entry(mercury__par_builtin__wait_resume);
 
     #define MR_par_builtin_wait_future(Future, Value)                       \
         do {                                                                \
-            MR_LOCK(&(Future->MR_fut_lock), "future.wait");                 \
-                                                                            \
             if (Future->MR_fut_signalled) {                                 \
                 Value = Future->MR_fut_value;                               \
-                MR_UNLOCK(&(Future->MR_fut_lock), "future.wait");           \
                 MR_maybe_post_wait_future_nosuspend(Future);                \
             } else {                                                        \
-                MR_Context *ctxt;                                           \
+                MR_LOCK(&(Future->MR_fut_lock), "future.wait");             \
+                MR_CPU_LFENCE;                                              \
+                if (Future->MR_fut_signalled) {                             \
+                    MR_UNLOCK(&(Future->MR_fut_lock), "future.wait");       \
+                    Value = Future->MR_fut_value;                           \
+                    MR_maybe_post_wait_future_nosuspend(Future);            \
+                } else {                                                    \
+                    MR_Context *ctxt;                                       \
                                                                             \
-                /*                                                          \
-                ** Put the address of the future at a fixed place known to  \
-                ** mercury__par_builtin__wait_resume, to wit, the top of    \
-                ** the stack.                                               \
-                */                                                          \
-                MR_incr_sp(1);                                              \
-                MR_sv(1) = (MR_Word) Future;                                \
+                    /*                                                      \
+                    ** Put the address of the future at a fixed place       \
+                    ** known to mercury__par_builtin__wait_resume, to wit,  \
+                    ** the top of the stack.                                \
+                    */                                                      \
+                    MR_incr_sp(1);                                          \
+                    MR_sv(1) = (MR_Word) Future;                            \
                                                                             \
-                /*                                                          \
-                ** Save this context and put it on the list of suspended    \
-                ** contexts for this future.                                \
-                */                                                          \
-                ctxt = MR_ENGINE(MR_eng_this_context);                      \
-                MR_save_context(ctxt);                                      \
+                    /*                                                      \
+                    ** Save this context and put it on the list of          \
+                    ** suspended contexts for this future.                  \
+                    */                                                      \
+                    ctxt = MR_ENGINE(MR_eng_this_context);                  \
+                    MR_save_context(ctxt);                                  \
                                                                             \
-                ctxt->MR_ctxt_resume =                                      \
-                    MR_ENTRY(mercury__par_builtin__wait_resume);            \
-                ctxt->MR_ctxt_resume_owner_engine = MR_ENGINE(MR_eng_id);   \
-                ctxt->MR_ctxt_next = Future->MR_fut_suspended;              \
-                Future->MR_fut_suspended = ctxt;                            \
+                    ctxt->MR_ctxt_resume =                                  \
+                        MR_ENTRY(mercury__par_builtin__wait_resume);        \
+                    ctxt->MR_ctxt_resume_owner_engine =                     \
+                        MR_ENGINE(MR_eng_id);                               \
+                    ctxt->MR_ctxt_next = Future->MR_fut_suspended;          \
+                    Future->MR_fut_suspended = ctxt;                        \
                                                                             \
-                MR_UNLOCK(&(Future->MR_fut_lock), "future.wait");           \
-                MR_maybe_post_wait_future_suspended(Future);                \
+                    MR_UNLOCK(&(Future->MR_fut_lock), "future.wait");       \
+                    MR_maybe_post_wait_future_suspended(Future);            \
                                                                             \
-                MR_maybe_post_stop_context;                                 \
-                MR_ENGINE(MR_eng_this_context) = NULL;                      \
-                /*                                                          \
-                ** MR_idle will try to run a different context as that has  \
-                ** good chance of unblocking the future.                    \
-                */                                                          \
-                MR_idle();                                                  \
+                    MR_maybe_post_stop_context;                             \
+                    MR_ENGINE(MR_eng_this_context) = NULL;                  \
+                    /*                                                      \
+                    ** MR_idle will try to run a different context as that  \
+                    ** has good chance of unblocking the future.            \
+                    */                                                      \
+                    MR_idle();                                              \
+                }                                                           \
             }                                                               \
         } while (0)
 
@@ -171,8 +175,13 @@ vim: ft=c ts=4 sw=4 et
             if (Future->MR_fut_signalled) {                                 \
                 assert(Future->MR_fut_value == Value);                      \
             } else {                                                        \
-                Future->MR_fut_signalled = MR_TRUE;                         \
                 Future->MR_fut_value = Value;                               \
+                /*                                                          \
+                ** Ensure that the value is available before we update      \
+                ** MR_fut_signalled.                                        \
+                */                                                          \
+                MR_CPU_SFENCE;                                              \
+                Future->MR_fut_signalled = MR_TRUE;                         \
             }                                                               \
                                                                             \
             /* Schedule all the contexts blocked on this future. */         \
