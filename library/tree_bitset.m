@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006, 2009-2010 The University of Melbourne.
+% Copyright (C) 2006, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,6 +53,8 @@
 :- pred empty(tree_bitset(T)).
 :- mode empty(in) is semidet.
 :- mode empty(out) is det.
+
+:- pred is_empty(tree_bitset(T)::in) is semidet.
 
     % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
     % elements. Takes O(min(card(SetA), card(SetB))) time.
@@ -850,6 +852,8 @@ head_and_tail([Head | Tail], Head, Tail).
 init = wrap_tree_bitset(leaf_list([])).
 
 empty(init).
+
+is_empty(init).
 
 equal(SetA, SetB) :-
     trace [compile_time(flag("tree-bitset-integrity"))] (

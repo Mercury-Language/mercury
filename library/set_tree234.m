@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2006, 2009-2010 The University of Melbourne.
+% Copyright (C) 2005-2006, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -41,6 +41,10 @@
     % `set_tree234.empty(Set)' is true iff `Set' is an empty set.
     %
 :- pred set_tree234.empty(set_tree234(_T)::in) is semidet.
+
+    % A synonym for the above.
+    %
+:- pred set_tree234.is_empty(set_tree234(_T)::in) is semidet.
 
 :- pred set_tree234.non_empty(set_tree234(T)::in) is semidet.
 
@@ -401,6 +405,8 @@ set_tree234.singleton_set(X, two(X, empty, empty)).
 set_tree234.make_singleton_set(X) = two(X, empty, empty).
 
 set_tree234.empty(empty).
+
+set_tree234.is_empty(empty).
 
 set_tree234.non_empty(two(_, _, _)).
 set_tree234.non_empty(three(_, _, _, _, _)).

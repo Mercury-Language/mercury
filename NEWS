@@ -107,6 +107,13 @@ Changes to the Mercury standard library:
 * The deprecated modules graph, group and relation are no longer included
   in the library.
 
+* The following predicates have been added to the modules that provide sets
+  in the library: set.is_empty/1, set_bbbtree.is_empty/1,
+  set_ctree234.is_empty/1, set_ordlist.is_empty/1, set_tree234.is_empty/1,
+  set_unordlist.is_empty/1, sparse_bitset.is_empty/1, tree_bitset.is_empty/1.
+
+  All are synonyms for the existing empty/1 predicates in those modules.
+
 
 NEWS for Mercury 11.01
 ----------------------

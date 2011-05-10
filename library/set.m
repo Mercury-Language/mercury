@@ -79,6 +79,11 @@
 
 :- pred set.non_empty(set(T)::in) is semidet.
 
+    % A synonym for set.empty/1.
+    %
+:- pred set.is_empty(set(T)::in) is semidet.
+
+
     % `set.subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
     %
 :- pred set.subset(set(T)::in, set(T)::in) is semidet.
@@ -461,6 +466,9 @@ set.equal(SetA, SetB) :-
     set_ordlist.equal(SetA, SetB).
 
 set.empty(Set) :-
+    set_ordlist.empty(Set).
+
+set.is_empty(Set) :-
     set_ordlist.empty(Set).
 
 set.non_empty(Set) :-

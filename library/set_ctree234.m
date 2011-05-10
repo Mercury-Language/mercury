@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim:ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2006, 2010 The University of Melbourne.
+% Copyright (C) 2005-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,6 +49,8 @@
     % `set_ctree234.empty(Set)' is true iff `Set' is an empty set.
     %
 :- pred set_ctree234.empty(set_ctree234(_T)::in) is semidet.
+
+:- pred set_ctree234.is_empty(set_ctree234(_T)::in) is semidet.
 
 :- pred set_ctree234.non_empty(set_ctree234(T)::in) is semidet.
 
@@ -419,6 +421,8 @@ set_ctree234.singleton_set(X, ct(1, two(X, empty, empty))).
 set_ctree234.make_singleton_set(X) = ct(1, two(X, empty, empty)).
 
 set_ctree234.empty(ct(0, _)).
+
+set_ctree234.is_empty(ct(0, _)).
 
 set_ctree234.non_empty(ct(N, _)) :- N \= 0.
 

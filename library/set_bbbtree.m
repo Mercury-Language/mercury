@@ -34,6 +34,10 @@
     %
 :- pred set_bbbtree.empty(set_bbbtree(T)::in) is semidet.
 
+    % A synonym for the above.
+    %
+:- pred set_bbbtree.is_empty(set_bbbtree(T)::in) is semidet.
+
 :- pred set_bbbtree.non_empty(set_bbbtree(T)::in) is semidet.
 
     % `set_bbbtree.count(Set, Count)' is true iff `Set' has `Count' elements.
@@ -443,6 +447,8 @@ set_bbbtree.init(empty).
 %------------------------------------------------------------------------------%
 
 set_bbbtree.empty(empty).
+
+set_bbbtree.is_empty(empty).
 
 set_bbbtree.non_empty(tree(_, _, _, _)).
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne.
+% Copyright (C) 2000-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,6 +61,8 @@
 :- pred empty(sparse_bitset(T)).
 :- mode empty(in) is semidet.
 :- mode empty(out) is det.
+
+:- pred is_empty(sparse_bitset(T)::in) is semidet.
 
     % `equal(SetA, SetB' is true iff `SetA' and `SetB' contain the same
     % elements. Takes O(min(rep_size(SetA), rep_size(SetB))) time.
@@ -410,6 +412,8 @@ init = sparse_bitset([]).
 empty(init).
 
 equal(X, X).
+
+is_empty(sparse_bitset([])).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997,1999-2002, 2004-2006, 2010 The University of Melbourne.
+% Copyright (C) 1995-1997,1999-2002, 2004-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -79,6 +79,8 @@
 :- pred set_unordlist.empty(set_unordlist(_T)::in) is semidet.
 
 :- pred set_unordlist.non_empty(set_unordlist(_T)::in) is semidet.
+
+:- pred set_unordlist.is_empty(set_unordlist(_T)::in) is semidet.
 
     % `set_unordlist.subset(SetA, SetB)' is true iff `SetA' is a subset of
     % `SetB'.
@@ -389,6 +391,8 @@ set_unordlist.equal(SetA, SetB) :-
     set_unordlist.subset(SetB, SetA).
 
 set_unordlist.empty(sul([])).
+
+set_unordlist.is_empty(sul([])).
 
 set_unordlist.non_empty(sul([_ | _])).
 
