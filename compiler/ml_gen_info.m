@@ -578,12 +578,12 @@ ml_gen_info_push_success_cont(SuccCont, !Info) :-
 
 ml_gen_info_pop_success_cont(!Info) :-
     ml_gen_info_get_success_cont_stack(!.Info, Stack0),
-    stack.pop_det(Stack0, _SuccCont, Stack),
+    stack.det_pop(Stack0, _SuccCont, Stack),
     ml_gen_info_set_success_cont_stack(Stack, !Info).
 
 ml_gen_info_current_success_cont(Info, SuccCont) :-
     ml_gen_info_get_success_cont_stack(Info, Stack),
-    stack.top_det(Stack, SuccCont).
+    stack.det_top(Stack, SuccCont).
 
 ml_gen_info_set_var_lval(Var, Lval, !Info) :-
     ml_gen_info_get_var_lvals(!.Info, VarLvals0),

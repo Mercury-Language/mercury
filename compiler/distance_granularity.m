@@ -557,7 +557,7 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
         ( !.IndexInConj > Length ->
             true
         ;
-            list.index1_det(Goals0, !.IndexInConj, Goal0),
+            list.det_index1(Goals0, !.IndexInConj, Goal0),
             Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
             (
                 GoalExpr0 = plain_call(CalleePredId, CalleeProcId, CallArgs0,
@@ -596,7 +596,7 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     create_conj(UnifyGoal, Goal, plain_conj, PlainConj),
 
                     % Replace the call by the newly created conjunction.
-                    list.replace_nth_det(Goals0, !.IndexInConj, PlainConj,
+                    list.det_replace_nth(Goals0, !.IndexInConj, PlainConj,
                         Goals),
                     !:GoalExpr = conj(parallel_conj, Goals)
                 ;
@@ -663,7 +663,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
         ( !.IndexInConj > Length ->
             true
         ;
-            list.index1_det(Goals0, !.IndexInConj, Goal0),
+            list.det_index1(Goals0, !.IndexInConj, Goal0),
             Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
             (
                 GoalExpr0 = plain_call(CalleePredId, CalleeProcId, CallArgs0,
@@ -711,7 +711,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     Detism = detism_det,
                     Purity = purity_pure,
                     % Take the context of the first goal of the conjunction.
-                    list.index1_det(Goals0, 1, FirstGoal),
+                    list.det_index1(Goals0, 1, FirstGoal),
                     FirstGoal = hlds_goal(_, FirstGoalInfo),
                     Context = goal_info_get_context(FirstGoalInfo),
                     goal_info_init(NonLocals, InstMapDeltaDecrement, Detism,
@@ -737,7 +737,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     goal_info_set_instmap_delta(InstMapDelta, GoalInfo0,
                         GoalInfo),
                     Goal = hlds_goal(GoalExpr, GoalInfo),
-                    list.replace_nth_det(Goals0, !.IndexInConj, Goal, Goals1),
+                    list.det_replace_nth(Goals0, !.IndexInConj, Goal, Goals1),
 
                     % Append the goals in the right order.
                     list.det_split_list(!.IndexInConj - 1, Goals1, StartGoals,

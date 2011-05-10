@@ -1300,7 +1300,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     (
         ExistQVars = [_ | _],
         map.lookup(!.VarTypes, FieldVar, FieldType),
-        list.index1_det(ArgTypes0, FieldNumber, FieldArgType),
+        list.det_index1(ArgTypes0, FieldNumber, FieldArgType),
         ( type_list_subsumes([FieldArgType], [FieldType], FieldSubst) ->
             apply_rec_subst_to_type_list(FieldSubst, ArgTypes0, ArgTypes)
         ;

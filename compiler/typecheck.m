@@ -2823,7 +2823,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         unexpected(this_file, "convert_field_access_cons_type_info: not type")
     ),
     FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),
-    list.index1_det(ConsArgTypes, FieldNumber, FieldType),
+    list.det_index1(ConsArgTypes, FieldNumber, FieldType),
     (
         AccessType = get,
         Source = source_get_field_access(SourceType),
@@ -2878,7 +2878,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
             % requires that the fields are of the same type. It probably won't
             % come up too often.
             %
-            list.replace_nth_det(ConsArgTypes, FieldNumber, int_type,
+            list.det_replace_nth(ConsArgTypes, FieldNumber, int_type,
                 ArgTypesWithoutField),
             type_vars_list(ArgTypesWithoutField, TVarsInOtherArgs),
             set.intersect(

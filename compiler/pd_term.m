@@ -290,7 +290,7 @@ get_matching_sizes(ModuleInfo, InstMap, Args,
         OldTotal, NewTotal) :-
     get_matching_sizes(ModuleInfo, InstMap, Args, OldSizes, NewSizes,
         OldTotal1, NewTotal1),
-    list.index1_det(Args, ArgNo, Arg),
+    list.det_index1(Args, ArgNo, Arg),
     instmap_lookup_var(InstMap, Arg, ArgInst),
     pd_util.inst_size(ModuleInfo, ArgInst, NewSize),
     OldTotal = OldTotal1 + OldSize,

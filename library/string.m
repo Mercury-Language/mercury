@@ -3995,14 +3995,14 @@ change_precision(Prec, OldFloat) = NewFloat :-
 
 split_at_exponent(Str, Float, Exponent) :-
     FloatAndExponent = string.words_separator(is_exponent, Str),
-    list.index0_det(FloatAndExponent, 0, Float),
-    list.index0_det(FloatAndExponent, 1, Exponent).
+    list.det_index0(FloatAndExponent, 0, Float),
+    list.det_index0(FloatAndExponent, 1, Exponent).
 
 :- pred split_at_decimal_point(string::in, string::out, string::out) is det.
 
 split_at_decimal_point(Str, Mantissa, Fraction) :-
     MantAndFrac = string.words_separator(is_decimal_point, Str),
-    list.index0_det(MantAndFrac, 0, Mantissa),
+    list.det_index0(MantAndFrac, 0, Mantissa),
     ( list.index0(MantAndFrac, 1, Fraction0) ->
         Fraction = Fraction0
     ;

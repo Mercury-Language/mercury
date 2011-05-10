@@ -51,9 +51,9 @@
 
 %-----------------------------------------------------------------------------%
 
-transform_llds(Globals, CFile0, CFile) :-
-    ModuleName = CFile0 ^ cfile_modulename,
-    Modules0 = CFile0 ^ cfile_code,
+transform_llds(Globals, !CFile) :-
+    ModuleName = !.CFile ^ cfile_modulename,
+    Modules0 = !.CFile ^ cfile_code,
     % Split up large computed gotos.
     globals.lookup_int_option(Globals, max_jump_table_size, MaxSize),
     ( MaxSize = 0 ->
@@ -67,14 +67,14 @@ transform_llds(Globals, CFile0, CFile) :-
         GC = gc_accurate,
         Modules1 = [_ | _]
     ->
-        list.last_det(Modules1, LastModule),
+        list.det_last(Modules1, LastModule),
         LastModule = comp_gen_c_module(LastModuleName, _),
         Modules = Modules1 ++
             [gen_end_label_module(ModuleName, LastModuleName)]
     ;
         Modules = Modules1
     ),
-    CFile = CFile0 ^ cfile_code := Modules.
+    !CFile ^ cfile_code := Modules.
 
     % For LLDS native GC, we need to add a dummy comp_gen_c_module at the end
     % of the list. This dummy module contains only a single dummy procedure

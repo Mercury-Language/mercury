@@ -556,7 +556,7 @@ most_specific_block(Instrs1, MaybeFallThrough1,
     % had no executable instructions. While most_specific_instrs
     % can delete comments from its input instruction sequences,
     % it cannot delete executable instructions.
-    list.last_det(Instrs, LastInstr),
+    list.det_last(Instrs, LastInstr),
     ( LastInstr = llds_instr(goto(code_label(Label)), _) ->
         MaybeFallThrough = yes(Label)
     ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1345,7 +1345,7 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
         TargetType = executable,
         list.map(
             (pred(ModuleStr::in, ModuleName::out) is det :-
-                file_name_to_module_name(dir.basename_det(ModuleStr),
+                file_name_to_module_name(dir.det_basename(ModuleStr),
                     ModuleName)
             ), Modules, ModuleNames),
         MustCompile = yes,
@@ -2907,7 +2907,7 @@ join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
 join_module_list(_Globals, [], _Extension, [], !IO).
 join_module_list(Globals, [Module | Modules], Extension,
         [FileName | FileNames], !IO) :-
-    file_name_to_module_name(dir.basename_det(Module), ModuleName),
+    file_name_to_module_name(dir.det_basename(Module), ModuleName),
     module_name_to_file_name(Globals, ModuleName, Extension,
         do_not_create_dirs, FileName, !IO),
     join_module_list(Globals, Modules, Extension, FileNames, !IO).

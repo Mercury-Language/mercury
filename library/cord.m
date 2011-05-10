@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -450,7 +450,7 @@ get_last_node(Node, Last) :-
             Last = Head
         ;
             Tail = [_ | _],
-            list.last_det(Tail, Last)
+            list.det_last(Tail, Last)
         )
     ;
         Node = branch_node(_, B),

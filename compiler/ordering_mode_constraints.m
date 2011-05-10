@@ -350,7 +350,7 @@ goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, Goal0, Goal) :-
 
             % Then solve the constraints and reorder.
             minimum_reordering(OCInfo, Order),
-            list.map(list.index1_det(Goals0), Order, Goals1),
+            list.map(list.det_index1(Goals0), Order, Goals1),
 
             % Then recurse on the reordered goals.
             list.map(

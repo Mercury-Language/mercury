@@ -360,7 +360,7 @@ perform_push_transform(PushGoal, PushInfo, Result, !Goal) :-
         % For now, we don't allow that.
         PushConjNum + 1 = Lo
     ->
-        list.replace_nth_det(Before0, PushConjNum, PushIntoGoal, Before),
+        list.det_replace_nth(Before0, PushConjNum, PushIntoGoal, Before),
         GoalExpr = conj(plain_conj, Before ++ After),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0),
         Result = push_succeeded
@@ -668,7 +668,7 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
             ->
                 push_into_goal(LoHi, LaterHeadSteps, LaterTailSteps,
                     SelectedConjunct0, SelectedConjunct, Pushable),
-                list.replace_nth_det(Conjuncts0, ConjNum, SelectedConjunct,
+                list.det_replace_nth(Conjuncts0, ConjNum, SelectedConjunct,
                     Conjuncts),
                 GoalExpr = conj(ConjType, Conjuncts),
                 Goal = hlds_goal(GoalExpr, GoalInfo0)

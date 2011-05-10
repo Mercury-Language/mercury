@@ -1607,7 +1607,7 @@ unmake_hlds_class_fundep(TVars, fundep(Domain0, Range0))
 unmake_hlds_class_fundep_2(TVars, Set) = solutions.solutions(P) :-
     P = (pred(TVar::out) is nondet :-
         set.member(N, Set),
-        TVar = list.index1_det(TVars, N)
+        TVar = list.det_index1(TVars, N)
     ).
 
 :- pred write_instances(hlds_out_info::in,

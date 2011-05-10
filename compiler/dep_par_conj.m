@@ -2283,7 +2283,7 @@ should_we_push_test(PredProcId, ArgPos, PushOp, IsWorthPushing, SpecInfo) :-
     InitialModuleInfo = SpecInfo ^ spec_initial_module,
     module_info_proc_info(InitialModuleInfo, PredProcId, ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
-    list.index1_det(HeadVars, ArgPos, Var),
+    list.det_index1(HeadVars, ArgPos, Var),
     proc_info_get_goal(ProcInfo, Goal),
     (
         PushOp = push_wait,

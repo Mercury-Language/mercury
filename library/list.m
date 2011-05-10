@@ -327,16 +327,19 @@
 :- pred list.replace_nth(list(T)::in, int::in, T::in, list(T)::out)
     is semidet.
 
-    % list.replace_nth_det(List0, N, R, List) is true iff List is List0
+    % list.det_replace_nth(List0, N, R, List) is true iff List is List0
     % with Nth element replaced with R.
     % Aborts if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
+:- pred list.det_replace_nth(list(T)::in, int::in, T::in, list(T)::out) is det.
+:- func list.det_replace_nth(list(T), int, T) = list(T).
+
+:- pragma obsolete(list.replace_nth_det/4).
 :- pred list.replace_nth_det(list(T)::in, int::in, T::in, list(T)::out)
     is det.
+:- pragma obsolete(list.replace_nth_det/3).
 :- func list.replace_nth_det(list(T), int, T) = list(T).
-
-:- func list.det_replace_nth(list(T), int, T) = list(T).
 
     % list.sort_and_remove_dups(List0, List):
     %
@@ -387,16 +390,23 @@
     % These predicates select an element in a list from it's position.
     % The `index0' preds consider the first element to be element
     % number zero, whereas the `index1' preds consider the first element
-    % to be element number one. The `_det' preds call error/1 if the index
+    % to be element number one. The `det_' preds call error/1 if the index
     % is out of range, whereas the semidet preds fail if the index is out of
     % range.
     %
 :- pred list.index0(list(T)::in, int::in, T::out) is semidet.
 :- pred list.index1(list(T)::in, int::in, T::out) is semidet.
+:- pred list.det_index0(list(T)::in, int::in, T::out) is det.
+:- pred list.det_index1(list(T)::in, int::in, T::out) is det.
+
+:- pragma obsolete(list.index0_det/3).
 :- pred list.index0_det(list(T)::in, int::in, T::out) is det.
+:- pragma obsolete(list.index1_det/3).
 :- pred list.index1_det(list(T)::in, int::in, T::out) is det.
 
+:- pragma obsolete(list.index0_det/2).
 :- func list.index0_det(list(T), int) = T.
+:- pragma obsolete(list.index1_det/2).
 :- func list.index1_det(list(T), int) = T.
 :- func list.det_index0(list(T), int) = T.
 :- func list.det_index1(list(T), int) = T.
@@ -465,9 +475,11 @@
     % A deterministic version of list.last, which aborts instead of
     % failing if the input list is empty.
     %
-:- pred list.last_det(list(T)::in, T::out) is det.
 :- pred list.det_last(list(T)::in, T::out) is det.
 :- func list.det_last(list(T)) = T.
+
+:- pragma obsolete(list.last_det/2).
+:- pred list.last_det(list(T)::in, T::out) is det.
 
     % list.split_last(List, AllButLast, Last) is true if Last is the
     % last element of List and AllButLast is the list of elements before it.
@@ -1666,6 +1678,9 @@ list.cons(H, T, [H | T]).
 
 list.cons(H, T) = [H | T].
 
+list.append(Xs, Ys) = Zs :-
+    list.append(Xs, Ys, Zs).
+
 list.append([], Ys, Ys).
 list.append([X | Xs], Ys, [X | Zs]) :-
     list.append(Xs, Ys, Zs).
@@ -1707,18 +1722,36 @@ list.index0([X | Xs], N, Elem) :-
         list.index0(Xs, N - 1, Elem)
     ).
 
-list.index0_det(List, N, Elem) :-
+list.det_index0(Xs, N) = A :-
+    list.det_index0(Xs, N, A).
+
+list.det_index0(List, N, Elem) :-
     ( list.index0(List, N, Elem0) ->
         Elem = Elem0
     ;
-        error("list.index: index out of range")
+        error("list.det_index0: index out of range")
     ).
+
+list.index0_det(Xs, N) = A :-
+    list.index0_det(Xs, N, A).
+
+list.index0_det(List, N, Elem) :-
+    list.det_index0(List, N, Elem).
 
 list.index1(List, N, Elem) :-
     list.index0(List, N - 1, Elem).
 
+list.det_index1(Xs, N) = A :-
+    list.det_index1(Xs, N, A).
+
+list.det_index1(List, N, Elem) :-
+    list.det_index0(List, N - 1, Elem).
+
 list.index1_det(List, N, Elem) :-
-    list.index0_det(List, N - 1, Elem).
+    list.det_index1(List, N, Elem).
+
+list.index1_det(Xs, N) = A :-
+    list.det_index1(Xs, N, A).
 
 %-----------------------------------------------------------------------------%
 
@@ -1752,6 +1785,9 @@ list.det_index1_of_first_occurrence(List, Elem) = N :-
 
 %-----------------------------------------------------------------------------%
 
+list.condense(Xss) = Ys :-
+    list.condense(Xss, Ys).
+
 list.condense([], []).
 list.condense([L | Ls], R) :-
     list.condense(Ls, R1),
@@ -1782,6 +1818,9 @@ list.delete_first([X | Xs], Y, Zs) :-
         Zs = [X | Zs1]
     ).
 
+list.delete_all(Xs, A) = Ys :-
+    list.delete_all(Xs, A, Ys).
+
 list.delete_all([], _, []).
 list.delete_all([X | Xs], Y, Zs) :-
     ( X = Y ->
@@ -1790,6 +1829,9 @@ list.delete_all([X | Xs], Y, Zs) :-
         list.delete_all(Xs, Y, Zs1),
         Zs = [X | Zs1]
     ).
+
+list.delete_elems(Xs, Ys) = Zs :-
+    list.delete_elems(Xs, Ys, Zs).
 
 list.delete_elems(Xs, [], Xs).
 list.delete_elems(Xs, [E | Es], Zs) :-
@@ -1810,6 +1852,9 @@ list.replace_first([X | Xs], Y, Z, List) :-
         List = [X | L1]
     ).
 
+list.replace_all(Xs, A, B) = Ys :-
+    list.replace_all(Xs, A, B, Ys).
+
 list.replace_all([], _, _, []).
 list.replace_all([X | Xs], Y, Z, L) :-
     ( X = Y ->
@@ -1824,17 +1869,26 @@ list.replace_nth(Xs, P, R, L) :-
     P > 0,
     list.replace_nth_2(Xs, P, R, L).
 
+list.replace_nth_det(Xs, N, A) = Ys :-
+    list.det_replace_nth(Xs, N, A, Ys).
+
 list.replace_nth_det(Xs, P, R, L) :-
+    list.det_replace_nth(Xs, P, R, L).
+
+list.det_replace_nth(Xs, N, A) = Ys :-
+    list.det_replace_nth(Xs, N, A, Ys).
+
+list.det_replace_nth(Xs, P, R, L) :-
     ( P > 0 ->
         ( list.replace_nth_2(Xs, P, R, L0) ->
             L = L0
         ;
-            error("list.replace_nth_det: " ++
+            error("list.det_replace_nth: " ++
                 "Can't replace element whose index " ++
                 "position is past the end of the list")
         )
     ;
-        error("list.replace_nth_det: " ++
+        error("list.det_replace_nth: " ++
             "Can't replace element whose index " ++
             "position is less than 1.")
     ).
@@ -1869,6 +1923,9 @@ list.contains(List, Elem) :-
 
 %-----------------------------------------------------------------------------%
 
+list.merge(Xs, Ys) = Zs :-
+    list.merge(Xs, Ys, Zs).
+
 list.merge([], [], []).
 list.merge([A | As], [], [A | As]).
 list.merge([], [B | Bs], [B | Bs]).
@@ -1881,6 +1938,9 @@ list.merge([A | As], [B | Bs], Cs) :-
         list.merge(As, [B | Bs], Cs0),
         Cs = [A | Cs0]
     ).
+
+list.merge_and_remove_dups(Xs, Ys) = Zs :-
+    list.merge_and_remove_dups(Xs, Ys, Zs).
 
 list.merge_and_remove_dups([], [], []).
 list.merge_and_remove_dups([A | As], [], [A | As]).
@@ -1907,6 +1967,9 @@ list.merge_and_remove_dups([A | As], [B | Bs], Cs) :-
 % list.length/1 in pure Mercury that works in both directions
 % unless you make it semidet rather than det.
 
+list.length(Xs) = N :-
+    list.length(Xs, N).
+
 list.length(L, N) :-
     list.length_2(L, 0, N).
 
@@ -1919,6 +1982,9 @@ list.length_2([_ | L1], N0, N) :-
     list.length_2(L1, N1, N).
 
 %-----------------------------------------------------------------------------%
+
+list.reverse(Xs) = Ys :-
+    list.reverse(Xs, Ys).
 
     % reverse(A, B) <=> reverse(B, A).
 :- pragma promise_equivalent_clauses(list.reverse/2).
@@ -1944,9 +2010,14 @@ list.reverse_2([X | Xs], L0, L) :-
 
 %-----------------------------------------------------------------------------%
 
+list.sort(Xs) = Ys :-
+    list.sort(Xs, Ys).
+
 list.sort(L0, L) :-
     list.merge_sort(L0, L).
 
+list.sort_and_remove_dups(Xs) = Ys :-
+    list.sort_and_remove_dups(Xs, Ys).
 list.sort_and_remove_dups(L0, L) :-
     list.merge_sort_and_remove_dups_2(list.length(L0), L0, L).
 
@@ -2000,6 +2071,9 @@ list.merge_sort_2(Length, List, SortedList) :-
 
 %-----------------------------------------------------------------------------%
 
+list.remove_dups(Xs) = Ys :-
+    list.remove_dups(Xs, Ys).
+
 list.remove_dups(Xs, Ys) :-
     list.remove_dups_2(Xs, set_tree234.init, Ys).
 
@@ -2018,6 +2092,9 @@ list.remove_dups_2([X | Xs], SoFar0, Zs) :-
 
 %-----------------------------------------------------------------------------%
 
+list.remove_adjacent_dups(Xs) = Ys :-
+    list.remove_adjacent_dups(Xs, Ys).
+
 list.remove_adjacent_dups([], []).
 list.remove_adjacent_dups([X | Xs], L) :-
     list.remove_adjacent_dups_2(Xs, X, L).
@@ -2035,6 +2112,9 @@ list.remove_adjacent_dups_2([X1 | Xs], X0, L) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+list.zip(Xs, Ys) = Zs :-
+    list.zip(Xs, Ys, Zs).
 
 list.zip([], Bs, Bs).
 list.zip([A | As], Bs, [A | Cs]) :-
@@ -2089,6 +2169,9 @@ list.take(N, As, Bs) :-
         Bs = []
     ).
 
+list.take_upto(N, Xs) = Ys :-
+    list.take_upto(N, Xs, Ys).
+
 list.take_upto(N, As, Bs) :-
     ( list.take(N, As, Bs0) ->
         Bs = Bs0
@@ -2119,6 +2202,9 @@ list.det_drop(N, As, Bs) :-
 
 %-----------------------------------------------------------------------------%
 
+list.duplicate(N, A) = Xs :-
+    list.duplicate(N, A, Xs).
+
 list.duplicate(N, X, list.duplicate_2(N, X, [])).
 
 :- func list.duplicate_2(int, T, list(T)) = list(T).
@@ -2131,6 +2217,9 @@ list.duplicate_2(N, X, Xs) =
     ).
 
 %-----------------------------------------------------------------------------%
+
+list.chunk(Xs, N) = Ys :-
+    list.chunk(Xs, N, Ys).
 
 list.chunk(List, ChunkSize, ListOfSmallLists) :-
     list.chunk_2(List, ChunkSize, [], ChunkSize, ListOfSmallLists).
@@ -2196,27 +2285,27 @@ list.last([H | T], Last) :-
         list.last(T, Last)
     ).
 
-list.last_det([], _) :-
-    error("list.last_det: empty list").
-list.last_det([H | T], Last) :-
-    list.last_det_2(H, T, Last).
+list.det_last(List) = Last :-
+    list.det_last(List, Last).
 
-:- pred list.last_det_2(T::in, list(T)::in, T::out) is det.
+list.det_last([], _) :-
+    error("list.det_last: empty list").
+list.det_last([H | T], Last) :-
+    list.det_last_2(H, T, Last).
 
-list.last_det_2(H, T, Last) :-
+:- pred list.det_last_2(T::in, list(T)::in, T::out) is det.
+
+list.det_last_2(H, T, Last) :-
     (
         T = [],
         Last = H
     ;
         T = [TH | TT],
-        list.last_det_2(TH, TT, Last)
+        list.det_last_2(TH, TT, Last)
     ).
 
-list.det_last(List, Last) :-
-    list.last_det(List, Last).
-
-list.det_last(List) = Last :-
-    list.last_det(List, Last).
+list.last_det(List, Last) :-
+    list.det_last(List, Last).
 
 list.split_last([H | T], AllButLast, Last) :-
     (
@@ -2259,6 +2348,9 @@ list.det_split_last(List, AllButLast, Last) :-
     list.split_last_det(List, AllButLast, Last).
 
 %-----------------------------------------------------------------------------%
+
+list.map(_F, []) = [].
+list.map(F, [H | T]) = [F(H) | list.map(F, T)].
 
 list.map(_, [],  []).
 list.map(P, [H0 | T0], [H | T]) :-
@@ -2420,6 +2512,10 @@ list.map_corresponding3_foldl(P, [A | As], [B | Bs], [C | Cs], [D | Ds],
         !Acc) :-
     P(A, B, C, D, !Acc),
     list.map_corresponding3_foldl(P, As, Bs, Cs, Ds, !Acc).
+
+list.foldl(F, Xs, A) = B :-
+    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+    list.foldl(P, Xs, A, B).
 
 list.foldl(_, [], !A).
 list.foldl(P, [H | T], !A) :-
@@ -2623,6 +2719,10 @@ list.filter_map_foldl(P, [X | Xs], True, !A) :-
         list.filter_map_foldl(P, Xs, True, !A)
     ).
 
+list.foldr(F, Xs, A) = B :-
+    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+    list.foldr(P, Xs, A, B).
+
 list.foldr(_, [], !A).
 list.foldr(P, [H | T], !A) :-
     list.foldr(P, T, !A),
@@ -2645,6 +2745,9 @@ list.find_first_match(P, [H | T], FirstMatch) :-
         list.find_first_match(P, T, FirstMatch)
     ).
 
+list.filter(P, Xs) = Trues :-
+    list.filter(P, Xs, Trues).
+
 list.filter(_, [],  []).
 list.filter(P, [H | T], True) :-
     ( P(H) ->
@@ -2653,6 +2756,9 @@ list.filter(P, [H | T], True) :-
     ;
         list.filter(P, T, True)
     ).
+
+list.negated_filter(P, Xs) = Falses :-
+    list.negated_filter(P, Xs, Falses).
 
 list.negated_filter(_, [],  []).
 list.negated_filter(P, [H | T], False) :-
@@ -2672,6 +2778,10 @@ list.filter(P, [H | T], True, False) :-
         list.filter(P, T, True, FalseTail),
         False = [H | FalseTail]
     ).
+
+list.filter_map(F, Xs) = Ys :-
+    P = ( pred(X::in, Y::out) is semidet :- Y = F(X) ),
+    list.filter_map(P, Xs, Ys).
 
 list.filter_map(_, [],  []).
 list.filter_map(P, [H0 | T0], True) :-
@@ -2755,6 +2865,10 @@ list.remove_adjacent_dups_2(P, [X1 | Xs], X0, L) :-
         L = [X0 | L0]
     ).
 
+list.sort(F, Xs) = Ys :-
+    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+    list.sort(P, Xs, Ys).
+
 list.sort(P, L0, L) :-
     list.length(L0, N),
     ( N = 0 ->
@@ -2803,6 +2917,10 @@ list.hosort(P, N, L0, L, Rest) :-
         list.merge(P, L1, L2, L)
     ).
 
+list.merge(F, Xs, Ys) = Zs :-
+    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+    list.merge(P, Xs, Ys, Zs).
+
 list.merge(_P, [], [], []).
 list.merge(_P, [], [Y | Ys], [Y | Ys]).
 list.merge(_P, [X | Xs], [], [X | Xs]).
@@ -2814,6 +2932,10 @@ list.merge(P, [H1 | T1], [H2 | T2], L) :-
         list.merge(P, T1, [H2 | T2], T),
         L = [H1 | T]
     ).
+
+list.merge_and_remove_dups(F, Xs, Ys) = Zs :-
+    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+    list.merge_and_remove_dups(P, Xs, Ys, Zs).
 
 list.merge_and_remove_dups(_P, [], [], []).
 list.merge_and_remove_dups(_P, [], [Y | Ys], [Y | Ys]).
@@ -2850,125 +2972,6 @@ empty_list = [].
 :- pragma foreign_export("IL", (list.cons(in, in) = (out)), "ML_cons").
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cam.sri.com> 27/04/99
-%       Function forms added.
-
-list.det_head([]) = _ :-
-    error("list.det_head/1: empty list as argument").
-list.det_head([X | _]) = X.
-
-list.det_tail([]) = _ :-
-    error("list.det_tail/1: empty list as argument").
-list.det_tail([_ | Xs]) = Xs.
-
-list.head([X | _]) = X.
-
-list.tail([_ | Xs]) = Xs.
-
-list.append(Xs, Ys) = Zs :-
-    list.append(Xs, Ys, Zs).
-
-list.merge(Xs, Ys) = Zs :-
-    list.merge(Xs, Ys, Zs).
-
-list.merge_and_remove_dups(Xs, Ys) = Zs :-
-    list.merge_and_remove_dups(Xs, Ys, Zs).
-
-list.remove_adjacent_dups(Xs) = Ys :-
-    list.remove_adjacent_dups(Xs, Ys).
-
-list.remove_dups(Xs) = Ys :-
-    list.remove_dups(Xs, Ys).
-
-list.length(Xs) = N :-
-    list.length(Xs, N).
-
-list.take_upto(N, Xs) = Ys :-
-    list.take_upto(N, Xs, Ys).
-
-list.delete_all(Xs, A) = Ys :-
-    list.delete_all(Xs, A, Ys).
-
-list.delete_elems(Xs, Ys) = Zs :-
-    list.delete_elems(Xs, Ys, Zs).
-
-list.replace_all(Xs, A, B) = Ys :-
-    list.replace_all(Xs, A, B, Ys).
-
-list.replace_nth_det(Xs, N, A) = Ys :-
-    list.replace_nth_det(Xs, N, A, Ys).
-
-list.det_replace_nth(Xs, N, A) = Ys :-
-    list.replace_nth_det(Xs, N, A, Ys).
-
-list.sort_and_remove_dups(Xs) = Ys :-
-    list.sort_and_remove_dups(Xs, Ys).
-
-list.sort(Xs) = Ys :-
-    list.sort(Xs, Ys).
-
-list.reverse(Xs) = Ys :-
-    list.reverse(Xs, Ys).
-
-list.index0_det(Xs, N) = A :-
-    list.index0_det(Xs, N, A).
-
-list.det_index0(Xs, N) = A :-
-    list.index0_det(Xs, N, A).
-
-list.index1_det(Xs, N) = A :-
-    list.index1_det(Xs, N, A).
-
-list.det_index1(Xs, N) = A :-
-    list.index1_det(Xs, N, A).
-
-list.zip(Xs, Ys) = Zs :-
-    list.zip(Xs, Ys, Zs).
-
-list.duplicate(N, A) = Xs :-
-    list.duplicate(N, A, Xs).
-
-list.condense(Xss) = Ys :-
-    list.condense(Xss, Ys).
-
-list.chunk(Xs, N) = Ys :-
-    list.chunk(Xs, N, Ys).
-
-list.map(_F, []) = [].
-list.map(F, [H | T]) = [F(H) | list.map(F, T)].
-
-list.foldl(F, Xs, A) = B :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.foldl(P, Xs, A, B).
-
-list.foldr(F, Xs, A) = B :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.foldr(P, Xs, A, B).
-
-list.filter(P, Xs) = Trues :-
-    list.filter(P, Xs, Trues).
-
-list.negated_filter(P, Xs) = Falses :-
-    list.negated_filter(P, Xs, Falses).
-
-list.filter_map(F, Xs) = Ys :-
-    P = ( pred(X::in, Y::out) is semidet :- Y = F(X) ),
-    list.filter_map(P, Xs, Ys).
-
-list.sort(F, Xs) = Ys :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.sort(P, Xs, Ys).
-
-list.merge(F, Xs, Ys) = Zs :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.merge(P, Xs, Ys, Zs).
-
-list.merge_and_remove_dups(F, Xs, Ys) = Zs :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.merge_and_remove_dups(P, Xs, Ys, Zs).
-
-%-----------------------------------------------------------------------------%
 
 L1 ++ L2 = list.append(L1, L2).
 
@@ -2986,7 +2989,7 @@ list.series(I, OK, Succ) = Series :-
 
 list.series_2(I, OK, Succ, !Series) :-
     ( OK(I) ->
-        !:Series = [ I | !.Series ],
+        !:Series = [I | !.Series],
         list.series_2(Succ(I), OK, Succ, !Series)
     ;
         true
@@ -3006,6 +3009,20 @@ successive_integers(Lo, Hi, !Ints) :-
     ;
         true
     ).
+
+%-----------------------------------------------------------------------------%
+
+list.head([X | _]) = X.
+
+list.det_head([]) = _ :-
+    error("list.det_head/1: empty list as argument").
+list.det_head([X | _]) = X.
+
+list.tail([_ | Xs]) = Xs.
+
+list.det_tail([]) = _ :-
+    error("list.det_tail/1: empty list as argument").
+list.det_tail([_ | Xs]) = Xs.
 
 %-----------------------------------------------------------------------------%
 
@@ -3150,4 +3167,5 @@ public static List_1 det_tail(List_1 lst)
 ").
 
 %-----------------------------------------------------------------------------%
+:- end_module list.
 %-----------------------------------------------------------------------------%

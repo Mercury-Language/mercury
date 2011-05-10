@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1039,7 +1039,7 @@ extra_args(Functor) = ExtraArgs :-
 :- func get_du_functor_arg(type_info, erlang_du_functor, T, int) = univ.
 
 get_du_functor_arg(TypeInfo, Functor, Term, Loc) = Univ :-
-    ArgInfo = list.index1_det(Functor ^ edu_arg_infos, Loc),
+    ArgInfo = list.det_index1(Functor ^ edu_arg_infos, Loc),
 
     MaybePTI = ArgInfo ^ du_arg_type,
     Info = yes({TypeInfo, yes({Functor, Term})}),
@@ -2216,7 +2216,7 @@ exist_type_info(TypeInfo, Functor, Term, N) = ArgTypeInfo :-
     (
         MaybeExist = yes(ExistInfo),
         % The first existential type variable is numbered 512.
-        ExistLocn = list.index1_det(ExistInfo ^ exist_typeinfo_locns, N - 512),
+        ExistLocn = list.det_index1(ExistInfo ^ exist_typeinfo_locns, N - 512),
         (
             ExistLocn = plain_typeinfo(X),
 

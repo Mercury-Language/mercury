@@ -920,7 +920,7 @@ code_addr_type(do_not_reached, CodeAddr) :-
 :- pred get_last_instr_operand(list(x86_64_instr)::in, operand::out) is det.
 
 get_last_instr_operand(Instrs, Op) :-
-    list.last_det(Instrs, LastInstr),
+    list.det_last(Instrs, LastInstr),
     (
         LastInstr = x86_64_comment(Comment),
         Op = operand_label(Comment)

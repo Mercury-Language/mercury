@@ -1878,7 +1878,7 @@ fix_calls_in_cases([Case0 | Cases0], [Case | Cases], !VarSet, !VarTypes,
     prog_vars::out, prog_vars::out) is det.
 
 extract_tupled_args_from_list(ArgList, Indices, Selected, NotSelected) :-
-    list.map(list.index1_det(ArgList), Indices, Selected),
+    list.map(list.det_index1(ArgList), Indices, Selected),
     extract_tupled_args_from_list_2(ArgList, 1, Indices, NotSelected).
 
 :- pred extract_tupled_args_from_list_2(prog_vars::in, int::in, list(int)::in,

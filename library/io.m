@@ -5365,7 +5365,7 @@ io.unlock_globals :-
 
 io.progname_base(DefaultName, PrognameBase, !IO) :-
     io.progname(DefaultName, Progname, !IO),
-    PrognameBase = dir.basename_det(Progname).
+    PrognameBase = dir.det_basename(Progname).
 
 :- pragma foreign_proc("C",
     io.get_stream_id(Stream::in) = (Id::out),

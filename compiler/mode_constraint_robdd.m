@@ -254,7 +254,7 @@ enter_lambda_goal(GoalId, !MCI) :-
 
 leave_lambda_goal(!MCI) :-
     LambdaPath0 = !.MCI ^ mci_lambda_path,
-    stack.pop_det(LambdaPath0, _GoalPath, LambdaPath),
+    stack.det_pop(LambdaPath0, _GoalPath, LambdaPath),
     !MCI ^ mci_lambda_path := LambdaPath.
 
 :- type prog_var_and_level

@@ -411,7 +411,7 @@ search_scalar_static_cell_offset(Info, DataId, Offset, Rval) :-
     map.lookup(CellGroupMap, TypeNum, CellGroup),
     CellGroupMembers = CellGroup ^ scalar_cell_group_members,
     bimap.reverse_lookup(CellGroupMembers, Rvals, DataId),
-    list.index0_det(Rvals, Offset, Rval).
+    list.det_index0(Rvals, Offset, Rval).
 
 %-----------------------------------------------------------------------------%
 

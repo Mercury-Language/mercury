@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997-1999, 2005-2006 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997-1999, 2005-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -57,12 +57,18 @@
 	%
 :- pred stack.top(stack(T)::in, T::out) is semidet.
 
-	% `stack.top_det' is like `stack.top' except that it will
+	% `stack.det_top' is like `stack.top' except that it will
 	% call error/1 rather than failing if given an empty stack.
 	%
-:- pred stack.top_det(stack(T)::in, T::out) is det.
-:- func stack.top_det(stack(T)) = T.
+:- pred stack.det_top(stack(T)::in, T::out) is det.
 :- func stack.det_top(stack(T)) = T.
+
+    % Obsolete synonyms for the above.
+    %
+:- pragma obsolete(stack.top_det/2).
+:- pred stack.top_det(stack(T)::in, T::out) is det.
+:- pragma obsolete(stack.top_det/1).
+:- func stack.top_det(stack(T)) = T.
 
 	% `stack.pop(Stack0, Elem, Stack)' is true iff `Stack0' is
 	% a non-empty stack whose top element is `Elem', and `Stack'
@@ -70,11 +76,12 @@
 	%
 :- pred stack.pop(stack(T)::in, T::out, stack(T)::out) is semidet.
 
-	% `stack.pop_det' is like `stack.pop' except that it will
+	% `stack.det_pop' is like `stack.pop' except that it will
 	% call error/1 rather than failing if given an empty stack.
 	%
-:- pred stack.pop_det(stack(T)::in, T::out, stack(T)::out) is det.
 :- pred stack.det_pop(stack(T)::in, T::out, stack(T)::out) is det.
+:- pragma obsolete(stack.pop_det/3).
+:- pred stack.pop_det(stack(T)::in, T::out, stack(T)::out) is det.
 
 	% `stack.depth(Stack, Depth)' is true iff `Stack' is a stack
 	% containing `Depth' elements.
@@ -94,6 +101,9 @@
 :- type stack(T)
     --->    stack(list(T)).
 
+stack.init = S :-
+	stack.init(S).
+
 stack.init(stack([])).
 
 stack.is_empty(stack([])).
@@ -101,7 +111,13 @@ stack.is_empty(stack([])).
 stack.is_full(_) :-
 	semidet_fail.
 
+stack.push(S1, X) = S2 :-
+	stack.push(S1, X, S2).
+
 stack.push(stack(Elems), Elem, stack([Elem | Elems])).
+
+stack.push_list(S1, Xs) = S2 :-
+	stack.push_list(S1, Xs, S2).
 
 stack.push_list(Stack, [], Stack).
 stack.push_list(Stack0, [Elem | Elems], Stack1) :-
@@ -110,50 +126,41 @@ stack.push_list(Stack0, [Elem | Elems], Stack1) :-
 
 stack.top(stack([Elem | _]), Elem).
 
-stack.top_det(Stack, Elem) :-
+stack.det_top(S) = X :-
+	stack.det_top(S, X).
+
+stack.det_top(Stack, Elem) :-
 	(
         Stack = stack([Elem | _])
 	;
         Stack = stack([]),
-		error("stack.top_det: top of empty stack")
+		error("stack.det_top: top of empty stack")
 	).
+
+stack.top_det(S) = stack.det_top(S).
+stack.top_det(S, E) :-
+    stack.det_top(S, E).
 
 stack.pop(stack([Elem | Elems]), Elem, stack(Elems)).
 
-stack.pop_det(Stack0, Elem, Stack) :-
+stack.det_pop(Stack0, Elem, Stack) :-
 	(
         Stack0 = stack([Elem | Elems]),
         Stack = stack(Elems)
 	;
         Stack0 = stack([]),
-		error("stack.pop_det: pop from empty stack")
+		error("stack.det_pop: pop from empty stack")
 	).
 
-stack.det_pop(Stack0, Elem, Stack) :-
-	stack.pop_det(Stack0, Elem, Stack).
+stack.pop_det(Stack0, Elem, Stack) :-
+	stack.det_pop(Stack0, Elem, Stack).
+
+stack.depth(S) = N :-
+	stack.depth(S, N).
 
 stack.depth(stack(Elems), Depth) :-
 	list.length(Elems, Depth).
 
 %--------------------------------------------------------------------------%
+:- end_module stack.
 %--------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
-% 	Function forms added.
-
-stack.init = S :-
-	stack.init(S).
-
-stack.push(S1, X) = S2 :-
-	stack.push(S1, X, S2).
-
-stack.push_list(S1, Xs) = S2 :-
-	stack.push_list(S1, Xs, S2).
-
-stack.top_det(S) = X :-
-	stack.top_det(S, X).
-
-stack.det_top(S) = X :-
-	stack.top_det(S, X).
-
-stack.depth(S) = N :-
-	stack.depth(S, N).

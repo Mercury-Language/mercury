@@ -1517,7 +1517,7 @@ select_arg_at_pos(ArgPos, Args0, Arg) :-
         Which = all_headvars
     ),
     maybe_filter_headvars(Which, Args0, Args),
-    list.index1_det(Args, N, Arg).
+    list.det_index1(Args, N, Arg).
 
 absolute_arg_num(any_head_var(ArgNum), _, ArgNum).
 absolute_arg_num(user_head_var(N), atom(_, Args), ArgNum) :-

@@ -434,7 +434,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
                 (
                     UnusedArgs = [_ | _],
                     proc_info_get_headvars(ProcInfo, HeadVars),
-                    list.map(list.index1_det(HeadVars), UnusedArgs,
+                    list.map(list.det_index1(HeadVars), UnusedArgs,
                         UnusedVars),
                     initialise_vardep(UnusedVars, !.VarDep, VarDep),
                     PredProcId = proc(PredId, ProcId),

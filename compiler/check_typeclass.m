@@ -1756,7 +1756,7 @@ induced_fundep(Args, fundep(Domain0, Range0), FunDeps)
 :- func induced_vars(list(mer_type), int, set(tvar)) = set(tvar).
 
 induced_vars(Args, ArgNum, Vars) = union(Vars, NewVars) :-
-    Arg = list.index1_det(Args, ArgNum),
+    Arg = list.det_index1(Args, ArgNum),
     type_vars(Arg, ArgVars),
     NewVars = set.list_to_set(ArgVars).
 

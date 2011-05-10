@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995,1997,1999-2000,2002-2010 The University of Melbourne.
+% Copyright (C) 1994-1995,1997,1999-2000,2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -94,11 +94,13 @@
 
     % As above, but throws an exception instead of failing.
     %
-:- func dir.basename_det(string) = string.
+:- func dir.det_basename(string) = string.
 
     % A synonym for the above.
     %
-:- func dir.det_basename(string) = string.
+:- pragma obsolete(dir.basename_det/1).
+:- func dir.basename_det(string) = string.
+
 
     % dir.dirname(PathName) = DirName.
     %
@@ -332,13 +334,13 @@ dir.parent_directory = "..".
 
 %-----------------------------------------------------------------------------%
 
-dir.det_basename(FileName) = dir.basename_det(FileName).
+dir.basename_det(FileName) = dir.det_basename(FileName).
 
-dir.basename_det(FileName) =
+dir.det_basename(FileName) =
     ( BaseName = dir.basename(FileName) ->
         BaseName
     ;
-        func_error("dir.basename_det: given directory is root directory")
+        func_error("dir.det_basename: given directory is root directory")
     ).
 
 dir.basename(FileName) = BaseName :-

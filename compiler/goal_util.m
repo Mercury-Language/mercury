@@ -1891,7 +1891,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
                     Conj0, MaybeConj),
                 (
                     MaybeConj = ok(Conj),
-                    list.replace_nth_det(Conjs0, ConjNum, Conj, Conjs),
+                    list.det_replace_nth(Conjs0, ConjNum, Conj, Conjs),
                     GoalExpr = conj(ConjType, Conjs),
                     MaybeGoal = ok(Goal0 ^ hlds_goal_expr := GoalExpr)
                 ;
@@ -1913,7 +1913,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
                     Disj0, MaybeDisj),
                 (
                     MaybeDisj = ok(Disj),
-                    list.replace_nth_det(Disjs0, DisjNum, Disj, Disjs),
+                    list.det_replace_nth(Disjs0, DisjNum, Disj, Disjs),
                     GoalExpr = disj(Disjs),
                     MaybeGoal = ok(Goal0 ^ hlds_goal_expr := GoalExpr)
                 ;
@@ -1937,7 +1937,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
                 (
                     MaybeCaseGoal = ok(CaseGoal),
                     Case = Case0 ^ case_goal := CaseGoal,
-                    list.replace_nth_det(Cases0, CaseNum, Case, Cases),
+                    list.det_replace_nth(Cases0, CaseNum, Case, Cases),
                     GoalExpr = switch(Var, CanFail, Cases),
                     MaybeGoal = ok(Goal0 ^ hlds_goal_expr := GoalExpr)
                 ;
@@ -2073,7 +2073,7 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
                     LaterSteps, Instmap, Conj0, MaybeConj),
                 (
                     MaybeConj = ok(Conj),
-                    list.replace_nth_det(Conjs0, ConjNum, Conj, Conjs),
+                    list.det_replace_nth(Conjs0, ConjNum, Conj, Conjs),
                     GoalExpr = conj(ConjType, Conjs),
                     MaybeGoal = ok(Goal0 ^ hlds_goal_expr := GoalExpr)
                 ;
@@ -2095,7 +2095,7 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
                     LaterSteps, Instmap0, Disj0, MaybeDisj),
                 (
                     MaybeDisj = ok(Disj),
-                    list.replace_nth_det(Disjs0, DisjNum, Disj, Disjs),
+                    list.det_replace_nth(Disjs0, DisjNum, Disj, Disjs),
                     MaybeGoal = ok(Goal0 ^ hlds_goal_expr := disj(Disjs))
                 ;
                     ( MaybeDisj = error(_)
@@ -2118,7 +2118,7 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
                 (
                     MaybeCaseGoal = ok(CaseGoal),
                     Case = Case0 ^ case_goal := CaseGoal,
-                    list.replace_nth_det(Cases0, CaseNum, Case, Cases),
+                    list.det_replace_nth(Cases0, CaseNum, Case, Cases),
                     GoalExpr = switch(Var, CanFail, Cases),
                     MaybeGoal = ok(Goal0 ^ hlds_goal_expr := GoalExpr)
                 ;

@@ -1918,7 +1918,7 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
         % the correct type?
         VarType = defined_type(unqualified("<any>"), [], kind_star)
     ),
-    list.index0_det(ArgTypes, 0, ArgType),
+    list.det_index0(ArgTypes, 0, ArgType),
     apply_rec_subst_to_type(TypeBindings, ArgType, ArgType2),
     apply_rec_subst_to_type(TypeBindings, VarType, VarType2),
     ArgTypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet, HeadTypeParams),

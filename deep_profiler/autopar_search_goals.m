@@ -596,7 +596,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
     ;
         HeadRelStep = step_disj(N),
         ( GoalExpr = disj_rep(Goals) ->
-            list.index1_det(Goals, N, SubGoal),
+            list.det_index1(Goals, N, SubGoal),
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
                 TailRelSteps, SubGoal, GoalsToPush0,
                 RevCandidateGoalPathSteps, CandidateConjs)
@@ -606,7 +606,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
     ;
         HeadRelStep = step_switch(N, _),
         ( GoalExpr = switch_rep(_, _, Cases) ->
-            list.index1_det(Cases, N, Case),
+            list.det_index1(Cases, N, Case),
             Case = case_rep(_, _, SubGoal),
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
                 TailRelSteps, SubGoal, GoalsToPush0,

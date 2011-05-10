@@ -1113,7 +1113,7 @@ update_construct_args(Subst, HighLevelData, VarType, ConsId, ArgNum,
 bound_inst_with_free_arg(ConsId, FreeArg) = Inst :-
     Arity = cons_id_arity(ConsId),
     list.duplicate(Arity, ground_inst, ArgInsts0),
-    list.replace_nth_det(ArgInsts0, FreeArg, free_inst, ArgInsts),
+    list.det_replace_nth(ArgInsts0, FreeArg, free_inst, ArgInsts),
     Inst = bound_functor(ConsId, ArgInsts).
 
 %-----------------------------------------------------------------------------%

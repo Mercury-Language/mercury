@@ -1896,7 +1896,7 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
         map.search(ProcArgInfos, proc(PredId, ProcId), ProcArgInfo),
         ProcArgInfo = pd_branch_info(_, LeftArgs, _),
         set.member(LeftArg, LeftArgs),
-        list.index1_det(Args, LeftArg, Arg),
+        list.det_index1(Args, LeftArg, Arg),
         instmap_lookup_var(InstMap, Arg, ArgInst),
         inst_is_bound_to_functors(ModuleInfo, ArgInst, [_]),
 

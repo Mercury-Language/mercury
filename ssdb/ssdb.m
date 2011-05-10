@@ -974,7 +974,7 @@ stack_top_csn(CSN, !IO) :-
 
 stack_index(Num, Frame, !IO) :-
     get_shadow_stack(Stack, !IO),
-    list.index0_det(Stack, Num, Frame).
+    list.det_index0(Stack, Num, Frame).
 
 :- pred stack_depth(int::out, io::di, io::uo) is det.
 
@@ -1023,7 +1023,7 @@ update_top_var_list(ListVarValue, !IO) :-
 
 nondet_stack_index(Num, Frame, !IO) :-
     get_nondet_shadow_stack(Stack, !IO),
-    list.index0_det(Stack, Num, Frame).
+    list.det_index0(Stack, Num, Frame).
 
 :- pred nondet_stack_depth(int::out, io::di, io::uo) is det.
 

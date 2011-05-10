@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2000-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1686,7 +1686,7 @@ type_ctor_details_num_ptags(tcd_enum(_, _, _, _, _, _)) = -1.
 type_ctor_details_num_ptags(tcd_foreign_enum(_, _, _, _, _, _)) = -1.
 type_ctor_details_num_ptags(tcd_du(_, _, PtagMap, _, _)) = LastPtag + 1 :-
     map.keys(PtagMap, Ptags),
-    list.last_det(Ptags, LastPtag).
+    list.det_last(Ptags, LastPtag).
 type_ctor_details_num_ptags(tcd_reserved(_, _, _, PtagMap, _, _)) = NumPtags :-
     map.keys(PtagMap, Ptags),
     (
@@ -1694,7 +1694,7 @@ type_ctor_details_num_ptags(tcd_reserved(_, _, _, PtagMap, _, _)) = NumPtags :-
         NumPtags = -1
     ;
         Ptags = [_ | _],
-        list.last_det(Ptags, LastPtag),
+        list.det_last(Ptags, LastPtag),
         NumPtags = LastPtag + 1
     ).
 type_ctor_details_num_ptags(tcd_notag(_, _)) = -1.

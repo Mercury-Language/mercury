@@ -969,7 +969,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args, Goal0,
             MaybeMethod = yes(Method),
             module_info_get_instance_table(ModuleInfo, Instances),
             map.lookup(Instances, ClassId, InstanceList),
-            list.index1_det(InstanceList, Instance, InstanceDefn),
+            list.det_index1(InstanceList, Instance, InstanceDefn),
             InstanceDefn = hlds_instance_defn(_, _, _,
                 InstanceConstraints, InstanceTypes0, _,
                 yes(ClassInterface), _, _),
@@ -981,7 +981,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args, Goal0,
             list.take(NumArgsToExtract, OtherTypeClassArgs,
                 InstanceConstraintArgs)
         ->
-            list.index1_det(ClassInterface, Method,
+            list.det_index1(ClassInterface, Method,
                 hlds_class_proc(PredId, ProcId)),
             list.append(InstanceConstraintArgs, Args, AllArgs)
         ;
@@ -1067,7 +1067,7 @@ find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
         Constraints = Constraints0,
         UnconstrainedTVarTypes = UnconstrainedTVarTypes0,
         yes(ClassInterface) = Instance ^ instance_hlds_interface,
-        list.index1_det(ClassInterface, MethodNum,
+        list.det_index1(ClassInterface, MethodNum,
             hlds_class_proc(PredId, ProcId))
     ;
         find_matching_instance_method(Instances, MethodNum, ClassTypes,
@@ -2017,7 +2017,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
     ->
         module_info_get_instance_table(ModuleInfo, Instances),
         map.lookup(Instances, ClassId, InstanceDefns),
-        list.index1_det(InstanceDefns, InstanceNum, InstanceDefn),
+        list.det_index1(InstanceDefns, InstanceNum, InstanceDefn),
         InstanceDefn = hlds_instance_defn(_, _, _, Constraints, InstanceTypes,
             _, _, _, _),
         (
@@ -2037,7 +2037,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
             Manipulator = instance_constraint_from_typeclass_info,
             Index = Index0
         ),
-        list.index1_det(OtherVars, Index, TypeInfoArg),
+        list.det_index1(OtherVars, Index, TypeInfoArg),
         maybe_add_alias(TypeInfoVar, TypeInfoArg, !Info),
         Uni = assign(TypeInfoVar, TypeInfoArg),
         Goal = unify(TypeInfoVar, rhs_var(TypeInfoArg), out_mode - in_mode,
@@ -3112,7 +3112,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
     HOArg = higher_order_arg(ConsId, Index, NumArgs, CurriedArgs,
         CurriedArgTypes, CurriedArgRttiInfo, CurriedHOArgs, IsConst),
 
-    list.index1_det(HeadVars0, Index, LVar),
+    list.det_index1(HeadVars0, Index, LVar),
     ( ConsId = closure_cons(ShroudedPredProcId, _) ->
         % Add the curried arguments to the procedure's argument list.
         proc(PredId, ProcId) =

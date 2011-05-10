@@ -882,7 +882,7 @@ trace_dependency_special_case(Store, ProcDefnRep, Ref, StartLoc,
         exit_node_from_id(Store, Ref, ExitNode),
         ExitAtom = get_trace_exit_atom(ExitNode),
         ExitAtom = atom(_, Args),
-        list.index1_det(Args, ArgNum, TryResultArgInfo),
+        list.det_index1(Args, ArgNum, TryResultArgInfo),
         TryResultArgInfo = arg_info(_, _, yes(TryResultRep)),
         rep_to_univ(TryResultRep, TryResultUniv),
         univ_value(TryResultUniv) = TryResult,
@@ -1287,7 +1287,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             DisjInitialPath = Path,
             DisjLastStep = step_disj(N)
         ->
-            list.index1_det(Disjs, N, Disj),
+            list.det_index1(Disjs, N, Disj),
             DisjAndPath = goal_and_path(Disj, DisjPath),
             MaybePrims = make_primitive_list(Store, [DisjAndPath | GoalPaths],
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
@@ -1307,7 +1307,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             ArmInitialPath = Path,
             ArmLastStep = step_switch(N, _)
         ->
-            list.index1_det(Cases, N, Case),
+            list.det_index1(Cases, N, Case),
             Case = case_rep(_ConsId, _ConsIdArity, Arm),
             ArmAndPath = goal_and_path(Arm, ArmPath),
             MaybePrims = make_primitive_list(Store, [ArmAndPath | GoalPaths],
@@ -1600,7 +1600,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
                 Origin = origin_primitive_op(File, Line, primop_unification)
             ;
                 TermPath0 = [TermPathStep0 | TermPath],
-                list.index1_det(FieldVars, TermPathStep0, Var),
+                list.det_index1(FieldVars, TermPathStep0, Var),
                 traverse_primitives(Prims, Var, TermPath, Store, ProcDefnRep,
                     Origin)
             )
@@ -1627,7 +1627,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
             list.member(Var0, BoundVars),
             TermPath0 = [TermPathStep0 | TermPath]
         ->
-            list.index1_det(MaybeFieldVars, TermPathStep0, MaybeVar),
+            list.det_index1(MaybeFieldVars, TermPathStep0, MaybeVar),
             (
                 MaybeVar = yes(Var),
                 % This partial deconstruction bound the TermPathStep0'th
@@ -1655,7 +1655,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
                 Origin = origin_primitive_op(File, Line, primop_unification)
             ;
                 TermPath0 = [TermPathStep0 | TermPath],
-                list.index1_det(MaybeFieldVars, TermPathStep0, MaybeVar),
+                list.det_index1(MaybeFieldVars, TermPathStep0, MaybeVar),
                 (
                     MaybeVar = yes(Var),
                     % The partial construction bound the TermPathStep0'th
@@ -1767,7 +1767,7 @@ plain_call_is_special_case(Module, Name, Args, NewVar) :-
     Module = "builtin",
     Name = "cc_multi_equal",
     list.length(Args, 3),
-    index1_det(Args, 2) = NewVar.
+    list.det_index1(Args, 2) = NewVar.
 
 :- type plain_call_info
     --->    plain_call_info(

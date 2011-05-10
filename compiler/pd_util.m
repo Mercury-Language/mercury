@@ -401,11 +401,11 @@ convert_branch_info(ArgInfo, Args, VarInfo) :-
     convert_branch_info_2(ArgList, Args, BranchVarMap0, BranchVarMap),
 
     set.to_sorted_list(LeftArgs, LeftArgNos),
-    list.map(list.index1_det(Args), LeftArgNos, LeftVars0),
+    list.map(list.det_index1(Args), LeftArgNos, LeftVars0),
     set.list_to_set(LeftVars0, LeftVars),
 
     set.to_sorted_list(OpaqueArgs, OpaqueArgNos),
-    list.map(list.index1_det(Args), OpaqueArgNos, OpaqueVars0),
+    list.map(list.det_index1(Args), OpaqueArgNos, OpaqueVars0),
     set.list_to_set(OpaqueVars0, OpaqueVars),
 
     VarInfo = pd_branch_info(BranchVarMap, LeftVars, OpaqueVars).
@@ -415,7 +415,7 @@ convert_branch_info(ArgInfo, Args, VarInfo) :-
 
 convert_branch_info_2([], _, !VarInfo).
 convert_branch_info_2([ArgNo - Branches | ArgInfos], Args, !VarInfo) :-
-    list.index1_det(Args, ArgNo, Arg),
+    list.det_index1(Args, ArgNo, Arg),
     map.set(Arg, Branches, !VarInfo),
     convert_branch_info_2(ArgInfos, Args, !VarInfo).
 

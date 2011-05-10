@@ -1067,7 +1067,7 @@ get_pred_proc_arginfo(CI, PredId, ProcId) = ArgInfo :-
 current_resume_point_vars(CI) = ResumeVars :-
     get_fail_info(CI, FailInfo),
     FailInfo = fail_info(ResumePointStack, _, _, _, _),
-    stack.top_det(ResumePointStack, ResumePointInfo),
+    stack.det_top(ResumePointStack, ResumePointInfo),
     pick_first_resume_point(ResumePointInfo, ResumeMap, _),
     map.keys(ResumeMap, ResumeMapVarList),
     set.list_to_set(ResumeMapVarList, ResumeVars).
@@ -1767,7 +1767,7 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         HijackInfo = disj_quarter_hijack,
         expect(unify(CurfrMaxfr, must_be_equal), this_file,
             "maxfr may differ from curfr in disj_quarter_hijack"),
-        stack.top_det(ResumePoints, ResumePoint),
+        stack.det_top(ResumePoints, ResumePoint),
         pick_stack_resume_point(ResumePoint, _, StackLabel),
         LabelConst = const(llconst_code_addr(StackLabel)),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
@@ -1955,7 +1955,7 @@ prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
 ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr, _, Allow),
-    stack.pop_det(ResumePoints0, _, ResumePoints),
+    stack.det_pop(ResumePoints0, _, ResumePoints),
     HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType,
         MaybeRegionInfo),
     (
@@ -2012,7 +2012,7 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
         HijackType = ite_quarter_hijack,
         expect(unify(MaybeRegionInfo, no), this_file,
             "ite_enter_then: MaybeRegionInfo ite_quarter_hijack"),
-        stack.top_det(ResumePoints, ResumePoint),
+        stack.det_top(ResumePoints, ResumePoint),
         ( maybe_pick_stack_resume_point(ResumePoint, _, StackLabel) ->
             LabelConst = const(llconst_code_addr(StackLabel)),
             ThenCode = singleton(
@@ -2209,7 +2209,7 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr, CondEnv,
         Allow),
-    stack.top_det(ResumePoints0, TopResumePoint),
+    stack.det_top(ResumePoints0, TopResumePoint),
     clone_resume_point(TopResumePoint, NewResumePoint, !CI),
     stack.push(ResumePoints0, NewResumePoint, ResumePoints),
     FailInfo = fail_info(ResumePoints, resume_point_known(has_been_done),
@@ -2358,7 +2358,7 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
     ;
         HijackInfo = commit_quarter_hijack,
         FailInfo = fail_info(ResumePoints, _, _, _, _),
-        stack.top_det(ResumePoints, TopResumePoint),
+        stack.det_top(ResumePoints, TopResumePoint),
         pick_stack_resume_point(TopResumePoint, _, StackLabel),
         StackLabelConst = const(llconst_code_addr(StackLabel)),
         SuccessUndoCode = from_list([
@@ -2615,7 +2615,7 @@ pop_resume_point(!CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr,
         CondEnv, Allow),
-    stack.pop_det(ResumePoints0, _, ResumePoints),
+    stack.det_pop(ResumePoints0, _, ResumePoints),
     FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
         CondEnv, Allow),
     set_fail_info(FailInfo, !CI).
@@ -2625,7 +2625,7 @@ pop_resume_point(!CI) :-
 top_resume_point(CI, ResumePoint) :-
     get_fail_info(CI, FailInfo),
     FailInfo = fail_info(ResumePoints, _, _, _, _),
-    stack.top_det(ResumePoints, ResumePoint).
+    stack.det_top(ResumePoints, ResumePoint).
 
 set_resume_point_to_unknown(!CI) :-
     get_fail_info(!.CI, FailInfo0),
@@ -2648,7 +2648,7 @@ generate_failure(Code, !CI) :-
     FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _),
     (
         ResumeKnown = resume_point_known(_),
-        stack.top_det(ResumePoints, TopResumePoint),
+        stack.det_top(ResumePoints, TopResumePoint),
         ( pick_matching_resume_addr(!.CI, TopResumePoint, FailureAddress0) ->
             FailureAddress = FailureAddress0,
             PlaceCode = empty
@@ -2671,7 +2671,7 @@ fail_if_rval_is_false(Rval0, Code, !CI) :-
     FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _),
     (
         ResumeKnown = resume_point_known(_),
-        stack.top_det(ResumePoints, TopResumePoint),
+        stack.det_top(ResumePoints, TopResumePoint),
         ( pick_matching_resume_addr(!.CI, TopResumePoint, FailureAddress0) ->
             % We branch away if the test *fails*
             code_util.neg_rval(Rval0, Rval),
@@ -2853,7 +2853,7 @@ flush_resume_vars_to_stack(Code, !CI) :-
 compute_resume_var_stack_locs(CI, VarLocs) :-
     get_fail_info(CI, FailInfo),
     FailInfo = fail_info(ResumePointStack, _, _, _, _),
-    stack.top_det(ResumePointStack, ResumePoint),
+    stack.det_top(ResumePointStack, ResumePoint),
     pick_stack_resume_point(ResumePoint, StackMap, _),
     map.to_assoc_list(StackMap, VarLocSets),
     pick_var_places(VarLocSets, VarLocs).

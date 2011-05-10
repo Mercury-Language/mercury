@@ -223,7 +223,7 @@ write_source_file_map_2(Globals, MapStream, FileName,
         ;
             PartialFileName = FileName
         ),
-        file_name_to_module_name(dir.basename_det(PartialFileName),
+        file_name_to_module_name(dir.det_basename(PartialFileName),
             DefaultModuleName),
         (
             % Only include a module in the mapping if the name doesn't match

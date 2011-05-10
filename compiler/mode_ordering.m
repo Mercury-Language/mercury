@@ -172,7 +172,7 @@ enter_lambda_goal(GoalId, !MOI) :-
 
 leave_lambda_goal(!MOI) :-
     LambdaNesting0 = !.MOI ^ moi_lambda_nesting,
-    stack.pop_det(LambdaNesting0, _, LambdaNesting),
+    stack.det_pop(LambdaNesting0, _, LambdaNesting),
     !MOI ^ moi_lambda_nesting := LambdaNesting.
 
 :- pred mode_order_goal(hlds_goal::in, hlds_goal::out,
