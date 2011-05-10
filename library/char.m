@@ -336,12 +336,18 @@ char.is_upper(Upper) :-
         fail
     ).
 
+char.to_lower(C1) = C2 :-
+    char.to_lower(C1, C2).
+
 char.to_lower(Char, Lower) :-
     ( char.lower_upper(LowerChar, Char) ->
         Lower = LowerChar
     ;
         Lower = Char
     ).
+
+char.to_upper(C1) = C2 :-
+    char.to_upper(C1, C2).
 
 char.to_upper(Char, Upper) :-
     ( char.lower_upper(Char, UpperChar) ->
@@ -425,6 +431,9 @@ char.int_to_hex_char(14, 'E').
 char.int_to_hex_char(15, 'F').
 
 %-----------------------------------------------------------------------------%
+
+char.det_int_to_digit(N) = C :-
+    char.det_int_to_digit(N, C).
 
 char.det_int_to_digit(Int, Digit) :-
     ( char.int_to_digit(Int, Digit1) ->
@@ -529,6 +538,9 @@ char.det_from_int(Int) = Char :-
     Int = (MR_UnsignedChar) Character;
 ").
 
+char.to_int(C) = N :-
+    char.to_int(C, N).
+
 :- pragma foreign_proc("C",
     char.to_int(Character::in, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -612,11 +624,17 @@ char.det_from_int(Int) = Char :-
     SUCCESS_INDICATOR = (Int >= 0 andalso Int =< 16#10ffff)
 ").
 
+char.min_char_value = N :-
+    char.min_char_value(N).
+
     % We used unsigned character codes, so the minimum character code
     % is always zero.
 char.min_char_value(0).
 
 :- pragma foreign_decl("C", "#include <limits.h>").
+
+char.max_char_value = N :-
+    char.max_char_value(N).
 
 :- pragma foreign_proc("C",
     char.max_char_value(Max::out),
@@ -700,28 +718,8 @@ char.is_noncharacter(Char) :-
     ; Int /\ 0xfffe = 0xfffe
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
-%   Functional forms added.
-
-char.to_int(C) = N :-
-    char.to_int(C, N).
-
-char.max_char_value = N :-
-    char.max_char_value(N).
-
-char.min_char_value = N :-
-    char.min_char_value(N).
-
-char.to_upper(C1) = C2 :-
-    char.to_upper(C1, C2).
-
-char.to_lower(C1) = C2 :-
-    char.to_lower(C1, C2).
-
-char.det_int_to_digit(N) = C :-
-    char.det_int_to_digit(N, C).
-
 char.char_to_doc(C) = str(term_io.quoted_char(C)).
 
+%-----------------------------------------------------------------------------%
+:- end_module char.
+%-----------------------------------------------------------------------------%

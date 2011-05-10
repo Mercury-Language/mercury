@@ -62,6 +62,7 @@ Changes to the Mercury standard library:
 
 	array2d.init/3
 	bitmap.init/2
+        cord.init/0
 	hash_table.init/3
 	hash_table.init_default/1
 	store.init/1
@@ -74,7 +75,7 @@ Changes to the Mercury standard library:
 	version_hash_table.unsafe_init/3
 	version_hash_table.init_default/1
 	version_hash_table.unsafe_init_default/1
-	version_store.init/1
+	version_store.init/0
 
    They replace the following procedures, which are now obsolete and will be
    removed in a later release:
@@ -93,7 +94,7 @@ Changes to the Mercury standard library:
 	version_hash_table.unsafe_new/3
 	version_hash_table.new_default/1
 	version_hash_table.unsafe_new_default/1
-	version_store.new/1
+	version_store.new/0
 
 * The following procedures are have been deprecated and will be removed in
   a future release: dir.basename_det/1, list.replace_nth_det/3,

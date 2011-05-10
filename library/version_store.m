@@ -1,8 +1,9 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
 % 
 % File: version_store.m.
@@ -47,20 +48,20 @@
     % to the version store.
     %
 :- pred new_mutvar(T::in, mutvar(T, S)::out,
-            version_store(S)::in, version_store(S)::out) is det.
+    version_store(S)::in, version_store(S)::out) is det.
 
     % new_cyclic_mutvar(F, Mutvar, VS0, VS) adds a new mutvar with value
     % reference F(Mutvar) to the version store.  This can be used to
     % construct cyclic terms.
     %
 :- pred new_cyclic_mutvar((func(mutvar(T, S)) = T)::in, mutvar(T, S)::out,
-            version_store(S)::in, version_store(S)::out) is det.
+    version_store(S)::in, version_store(S)::out) is det.
 
     % copy_mutvar(Mutvar, NewMutvar, VS0, VS) constructs NewMutvar
     % with the same value reference as Mutvar.
     %
 :- pred copy_mutvar(mutvar(T, S)::in, mutvar(T, S)::out,
-            version_store(S)::in, version_store(S)::out) is det.
+    version_store(S)::in, version_store(S)::out) is det.
 
     % VS ^ elem(Mutvar) returns the element referenced by Mutvar in
     % the version store.
@@ -72,8 +73,8 @@
     % A predicate version is also provided.
     %
 :- func lookup(version_store(S), mutvar(T, S)) = T.
-:- pred get_mutvar(mutvar(T, S)::in, T::out, version_store(S)::in,
-            version_store(S)::out) is det.
+:- pred get_mutvar(mutvar(T, S)::in, T::out,
+    version_store(S)::in, version_store(S)::out) is det.
 
     % ( VS ^ elem(Mutvar) := X ) updates the version store so that
     % Mutvar now refers to value X.
@@ -85,8 +86,8 @@
     % A predicate version is also provided.
     %
 :- func set(version_store(S), mutvar(T, S), T) = version_store(S).
-:- pred set_mutvar(mutvar(T, S)::in, T::in, version_store(S)::in,
-            version_store(S)::out) is det.
+:- pred set_mutvar(mutvar(T, S)::in, T::in,
+    version_store(S)::in, version_store(S)::out) is det.
 
     % unsafe_rewind(VS) produces a version of VS for which all accesses are
     % O(1).  Invoking this predicate renders undefined VS and all later

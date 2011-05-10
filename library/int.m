@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -655,6 +655,9 @@ is(X, X).
     #define ML_BITS_PER_INT     (sizeof(MR_Integer) * CHAR_BIT)
 ").
 
+int.max_int = X :-
+    int.max_int(X).
+
 :- pragma foreign_proc("C",
     int.max_int(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -669,6 +672,9 @@ is(X, X).
     }
 ").
 
+int.min_int = X :-
+    int.min_int(X).
+
 :- pragma foreign_proc("C",
     int.min_int(Min::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -682,6 +688,9 @@ is(X, X).
         MR_fatal_error(""Unable to figure out min integer size"");
     }
 ").
+
+int.bits_per_int = X :-
+    int.bits_per_int(X).
 
 :- pragma foreign_proc("C",
     int.bits_per_int(Bits::out),
@@ -792,20 +801,6 @@ int.times_bits_per_int(Int::in) = (Result::out) :-
 
 int.rem_bits_per_int(Int::in) = (Result::out) :-
     Result = Int rem int.bits_per_int.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
-%   Functional forms added.
-
-int.max_int = X :-
-    int.max_int(X).
-
-int.min_int = X :-
-    int.min_int(X).
-
-int.bits_per_int = X :-
-    int.bits_per_int(X).
 
 %-----------------------------------------------------------------------------%
 

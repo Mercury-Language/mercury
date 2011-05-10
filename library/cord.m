@@ -40,6 +40,16 @@
     %
 :- type cord(T).
 
+    % Return the empty cord.
+    %
+:- func init = cord(T).
+
+    % The unique representation for the empty cord:
+    %
+    %   list(empty) = []
+    %
+:- func empty = cord(T).
+
     % The list of data in a cord:
     %
     %   list(empty        ) = []
@@ -52,12 +62,6 @@
     % rev_list(Cord) = list.reverse(list(Cord).
     %
 :- func rev_list(cord(T)) = list(T).
-
-    % The unique representation for the empty cord:
-    %
-    %   list(empty) = []
-    %
-:- func empty = cord(T).
 
     % Succeed iff the given cord is empty.
     %
@@ -233,6 +237,8 @@
     ;       branch_node(cord_node(T), cord_node(T)).
 
 %-----------------------------------------------------------------------------%
+
+init = empty_cord.
 
 empty = empty_cord.
 
