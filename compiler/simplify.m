@@ -2452,7 +2452,7 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
         % in that rare and unsupported case rather than to issue spurious
         % warnings in cases involving `any' insts.  We should only warn about
         % definite nontermination here, not possible nontermination; warnings
-        % about possible nontermination should only be given % if the
+        % about possible nontermination should only be given if the
         % termination analysis pass is enabled.
         all [ArgMode] (
             (
