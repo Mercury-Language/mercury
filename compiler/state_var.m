@@ -84,7 +84,7 @@
 :- pred svar_finish_clause_body(prog_context::in, map(svar, prog_var)::in,
     list(hlds_goal)::in, hlds_goal::out,
     svar_state::in, svar_state::in, svar_store::in,
-    list(error_spec)::out) is det.
+    list(error_spec)::out, list(error_spec)::out) is det.
 
     % Prepare for processing a lambda expression by processing its head.
     %
@@ -359,7 +359,7 @@
                 store_next_goal_id  ::  counter,
                 store_final_remap   ::  map(goal_id,
                                             assoc_list(prog_var, prog_var)),
-                store_warnings      ::  list(error_spec)
+                store_specs         ::  list(error_spec)
             ).
 
     % Create a new svar_state/store set up to start processing a clause head.
@@ -646,11 +646,12 @@ make_svars_read_only(ROC, Context, [SVar - CurStatus | CurTail], LambdaList) :-
 %
 
 svar_finish_clause_body(Context, FinalMap, Goals0, Goal,
-        InitialSVarState, FinalSVarState,
-        !.SVarStore, Warnings) :-
+        InitialSVarState, FinalSVarState, !.SVarStore,
+        WarningSpecs, ErrorSpecs) :-
     svar_finish_body(Context, FinalMap, Goals0, Goal1,
         InitialSVarState, FinalSVarState, !SVarStore),
-    !.SVarStore = svar_store(_, DelayedRenamings, Warnings),
+    !.SVarStore = svar_store(_, DelayedRenamings, Specs),
+    list.filter(severity_is_error, Specs, ErrorSpecs, WarningSpecs),
     (
         map.is_empty(FinalMap),
         map.is_empty(DelayedRenamings)
@@ -704,7 +705,7 @@ svar_finish_body(Context, FinalMap, Goals0, Goal,
 
     Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     GoalId1 = goal_info_get_goal_id(GoalInfo1),
-    !.Store = svar_store(NextGoalId1, DelayedRenamingMap1, Warnings),
+    !.Store = svar_store(NextGoalId1, DelayedRenamingMap1, Specs),
     ( map.search(DelayedRenamingMap1, GoalId1, DelayedRenaming0) ->
         trace [compiletime(flag("state-var-lambda")), io(!IO)] (
             io.write_string("\nfinishing body, ", !IO),
@@ -747,7 +748,7 @@ svar_finish_body(Context, FinalMap, Goals0, Goal,
             Goal = hlds_goal(GoalExpr1, GoalInfo)
         )
     ),
-    !:Store = svar_store(NextGoalId, DelayedRenamingMap, Warnings).
+    !:Store = svar_store(NextGoalId, DelayedRenamingMap, Specs).
 
 :- pred svar_find_final_renames_and_copy_goals(assoc_list(svar, prog_var)::in,
     map(svar, svar_status)::in, map(svar, svar_status)::in,
@@ -928,13 +929,13 @@ svar_finish_disjunction(_Context, DisjStates, Disjs, !VarSet,
             ChangedStatusListAfter),
         StateAfter = svar_state(StatusMapAfter),
 
-        !.Store = svar_store(NextGoalId0, DelayedRenamings0, Warnings0),
+        !.Store = svar_store(NextGoalId0, DelayedRenamings0, Specs0),
         merge_changes_made_by_arms(DisjStates, StatusMapBefore,
             ChangedStatusListAfter, !.VarSet, [], RevDisjs,
             NextGoalId0, NextGoalId, DelayedRenamings0, DelayedRenamings,
-            Warnings0, Warnings),
+            Specs0, Specs),
         list.reverse(RevDisjs, Disjs),
-        !:Store = svar_store(NextGoalId, DelayedRenamings, Warnings)
+        !:Store = svar_store(NextGoalId, DelayedRenamings, Specs)
     ).
 
 :- pred get_disjuncts_with_empty_states(list(hlds_goal_svar_state)::in,
@@ -1002,10 +1003,10 @@ find_changes_in_arm_and_update_changed_status_map([Before | Befores],
     list(error_spec)::in, list(error_spec)::out) is det.
 
 merge_changes_made_by_arms([], _StatusMapBefore, _ChangedStatusListAfter,
-        _VarSet, !RevArms, !NextGoalId, !DelayedRenamings, !Warnings).
+        _VarSet, !RevArms, !NextGoalId, !DelayedRenamings, !Specs).
 merge_changes_made_by_arms([ArmState | ArmStates],
         StatusMapBefore, ChangedStatusListAfter, VarSet, !RevArms,
-        !NextGoalId, !DelayedRenamings, !Warnings) :-
+        !NextGoalId, !DelayedRenamings, !Specs) :-
     ArmState = hlds_goal_svar_state(Arm0, StateAfterArm),
     StatusMapAfterArm = StateAfterArm ^ state_status_map,
     counter.allocate(ArmIdNum, !NextGoalId),
@@ -1031,15 +1032,14 @@ merge_changes_made_by_arms([ArmState | ArmStates],
         % a variable, but we record a warning anyway, to be printed
         % in case the procedure has a mode error.
         ArmContext = goal_info_get_context(ArmInfo0),
-        report_missing_inits_in_disjunct(ArmContext, UninitVarNames,
-            !Warnings)
+        report_missing_inits_in_disjunct(ArmContext, UninitVarNames, !Specs)
     ),
     goal_info_set_goal_id(ArmId, ArmInfo0, ArmInfo),
     Arm = hlds_goal(ArmExpr, ArmInfo),
     !:RevArms = [Arm | !.RevArms],
     merge_changes_made_by_arms(ArmStates, StatusMapBefore,
         ChangedStatusListAfter, VarSet, !RevArms,
-        !NextGoalId, !DelayedRenamings, !Warnings).
+        !NextGoalId, !DelayedRenamings, !Specs).
 
 :- pred handle_arm_updated_state_vars(assoc_list(svar, svar_status)::in,
     map(svar, svar_status)::in, map(svar, svar_status)::in,
@@ -1058,7 +1058,14 @@ handle_arm_updated_state_vars([Change | Changes], StatusMapBefore,
         expect_not(unify(AfterArmStatus, AfterAllArmsStatus),
             $pred, "AfterArmStatus = AfterAllArmsStatus"),
         (
-            BeforeStatus = status_known(BeforeVar),
+            % If the state var is readonly in this context, then it shouldn't
+            % have been updated by any arms. However, if it was, then we have
+            % (a) already generated an error message for it, and (b) changed
+            % its status to writeable to suppress duplicate error messages.
+            % This is why this code treats known_ro the same as known.
+            ( BeforeStatus = status_known(BeforeVar)
+            ; BeforeStatus = status_known_ro(BeforeVar, _, _)
+            ),
             (
                 AfterAllArmsStatus = status_known(AfterAllVar),
                 make_copy_goal(BeforeVar, AfterAllVar, CopyGoal),
@@ -1090,9 +1097,6 @@ handle_arm_updated_state_vars([Change | Changes], StatusMapBefore,
             % known updated prog_var, and thus AfterAllArmsStatus should be
             % the same as StatusBefore, which means we shouldn't get here.
             unexpected($module, $pred, "BeforeStatus is updated")
-        ;
-            BeforeStatus = status_known_ro(_, _, _),
-            unexpected($module, $pred, "BeforeStatus = status_known_ro")
         )
     ;
         (
@@ -1206,19 +1210,19 @@ svar_finish_if_then_else(LocKind, Context, QuantStateVars,
         ThenMissingInits = []
     ;
         ThenMissingInits = [_ | _],
-        ThenWarnings0 = !.Store ^ store_warnings,
+        ThenSpecs0 = !.Store ^ store_specs,
         report_missing_inits_in_ite(Context, ThenMissingInits,
-            "succeeds", "fails", ThenWarnings0, ThenWarnings),
-        !Store ^ store_warnings := ThenWarnings
+            "succeeds", "fails", ThenSpecs0, ThenSpecs),
+        !Store ^ store_specs := ThenSpecs
     ),
     (
         ElseMissingInits = []
     ;
         ElseMissingInits = [_ | _],
-        ElseWarnings0 = !.Store ^ store_warnings,
+        ElseSpecs0 = !.Store ^ store_specs,
         report_missing_inits_in_ite(Context, ThenMissingInits,
-            "fails", "succeeds", ElseWarnings0, ElseWarnings),
-        !Store ^ store_warnings := ElseWarnings
+            "fails", "succeeds", ElseSpecs0, ElseSpecs),
+        !Store ^ store_specs := ElseSpecs
     ),
 
     svar_goal_to_conj_list(ThenGoal0, ThenGoals0, !Store),
@@ -1230,7 +1234,7 @@ svar_finish_if_then_else(LocKind, Context, QuantStateVars,
     conj_list_to_goal(ThenGoals, ThenInfo0, ThenGoal1),
     conj_list_to_goal(ElseGoals, ElseInfo0, ElseGoal1),
 
-    !.Store = svar_store(NextGoalId0, DelayedRenamings0, Warnings),
+    !.Store = svar_store(NextGoalId0, DelayedRenamings0, Specs),
     counter.allocate(ThenGoalIdNum, NextGoalId0, NextGoalId1),
     counter.allocate(ElseGoalIdNum, NextGoalId1, NextGoalId),
     ThenGoalId = goal_id(ThenGoalIdNum),
@@ -1241,7 +1245,7 @@ svar_finish_if_then_else(LocKind, Context, QuantStateVars,
         DelayedRenamings0, DelayedRenamings1),
     map.det_insert(ElseGoalId, ElseRenames,
         DelayedRenamings1, DelayedRenamings),
-    !:Store = svar_store(NextGoalId, DelayedRenamings, Warnings).
+    !:Store = svar_store(NextGoalId, DelayedRenamings, Specs).
 
 :- pred handle_state_vars_in_ite(loc_kind::in, list(svar)::in, list(svar)::in,
     map(svar, svar_status)::in, map(svar, svar_status)::in,
@@ -1824,14 +1828,14 @@ svar_goal_to_conj_list(Goal, Conjuncts, !Store) :-
     % modulo the differences in the argument list.
     Goal = hlds_goal(GoalExpr, GoalInfo),
     ( GoalExpr = conj(plain_conj, Conjuncts0) ->
-        !.Store = svar_store(NextGoalId0, DelayedRenamingMap0, Warnings),
+        !.Store = svar_store(NextGoalId0, DelayedRenamingMap0, Specs),
         GoalId = goal_info_get_goal_id(GoalInfo),
         ( map.search(DelayedRenamingMap0, GoalId, GoalDelayedRenaming) ->
             list.map_foldl2(
                 add_conjunct_delayed_renames(GoalDelayedRenaming),
                     Conjuncts0, Conjuncts, NextGoalId0, NextGoalId,
                     DelayedRenamingMap0, DelayedRenamingMap),
-            !:Store = svar_store(NextGoalId, DelayedRenamingMap, Warnings)
+            !:Store = svar_store(NextGoalId, DelayedRenamingMap, Specs)
         ;
             Conjuncts = Conjuncts0
         )
@@ -2032,5 +2036,11 @@ report_missing_inits_in_disjunct(Context, NextStateVars, !Specs) :-
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_informational, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+%-----------------------------------------------------------------------------%
+
+:- pred severity_is_error(error_spec::in) is semidet.
+
+severity_is_error(error_spec(severity_error, _, _)).
 
 %-----------------------------------------------------------------------------%

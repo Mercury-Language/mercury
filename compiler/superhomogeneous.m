@@ -1194,5 +1194,5 @@ make_fresh_arg_var(Arg0, Var, Vars0, !VarSet, !SVarState, !Specs) :-
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module superhomogeneous.
+:- end_module hlds.make_hlds.superhomogeneous.
 %-----------------------------------------------------------------------------%

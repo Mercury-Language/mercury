@@ -49,6 +49,7 @@ SINGLEMODULE= \
 	bind_var_errors \
 	bug113 \
 	bug150 \
+	bug197 \
 	bug83 \
 	builtin_int \
 	builtin_proc \

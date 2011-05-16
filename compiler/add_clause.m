@@ -492,19 +492,23 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0,
     varset.merge_renaming(VarSet0, CVarSet, VarSet1, Renaming),
     add_clause_transform(Renaming, HeadVars, Args, Body, Context, PredOrFunc,
         Arity, GoalType, Goal0, VarSet1, VarSet,
-        QuantWarnings, StateVarWarnings, !ModuleInfo, !QualInfo, !Specs),
+        QuantWarnings, StateVarWarnings, StateVarErrors,
+        !ModuleInfo, !QualInfo, !Specs),
     qual_info_get_tvarset(!.QualInfo, TVarSet),
     qual_info_get_found_syntax_error(!.QualInfo, FoundError),
     qual_info_set_found_syntax_error(no, !QualInfo),
     (
-        FoundError = yes,
+        ( FoundError = yes
+        ; StateVarErrors = [_ | _]
+        )
+    ->
         % Don't insert clauses containing syntax errors into the clauses_info,
         % because doing that would cause typecheck.m to report spurious type
         % errors. Don't report singleton variable warnings if there were
         % syntax errors.
+        !:Specs = StateVarErrors ++ !.Specs,
         Goal = true_goal
     ;
-        FoundError = no,
         Goal = Goal0,
 
         % If we have foreign clauses, we should only add this clause
@@ -561,13 +565,13 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0,
     proc_arg_vector(prog_var)::in, list(prog_term)::in, goal::in,
     prog_context::in, pred_or_func::in, arity::in, goal_type::in,
     hlds_goal::out, prog_varset::in, prog_varset::out,
-    list(quant_warning)::out, list(error_spec)::out,
+    list(quant_warning)::out, list(error_spec)::out, list(error_spec)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
         Arity, GoalType, Goal, !VarSet, QuantWarnings, StateVarWarnings,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        StateVarErrors, !ModuleInfo, !QualInfo, !Specs) :-
     some [!SInfo, !SVarState, !SVarStore] (
         HeadVarList = proc_arg_vector_to_list(HeadVars),
         rename_vars_in_term_list(need_not_rename, Renaming, Args0, Args1),
@@ -632,7 +636,7 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
         FinalSVarState = !.SVarState,
         svar_finish_clause_body(Context, FinalSVarMap,
             [HeadGoal, BodyGoal], Goal0, InitialSVarState, FinalSVarState,
-            !.SVarStore, StateVarWarnings),
+            !.SVarStore, StateVarWarnings, StateVarErrors),
 
         qual_info_get_var_types(!.QualInfo, VarTypes0),
         % The RTTI varmaps here are just a dummy value, because the real ones
