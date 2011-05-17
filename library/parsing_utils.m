@@ -159,6 +159,7 @@
 
     % ikeyword(IdChars, Keyword, Src, _, !PS)
     % Case-insensitive version of keyword/6.
+    % Only upper and lowercase unaccented Latin letters are treated specially.
     %
 :- pred ikeyword(string::in, string::in, src::in, unit::out,
     ps::in, ps::out) is semidet.
@@ -498,11 +499,11 @@ eof(Src, unit, !PS) :-
 
 next_char(Src, Char, !PS) :-
     promise_pure (
-        current_offset(Src, Offset, !PS),
+        current_offset(Src, Offset, !.PS, _),
         Offset < Src ^ input_length,
-        Char = Src ^ input_string ^ unsafe_elem(Offset),
+        string.unsafe_index_next(Src ^ input_string, Offset, NextOffset, Char),
         impure record_progress(Src, Offset),
-        !:PS = !.PS + 1
+        !:PS = NextOffset
     ).
 
 %-----------------------------------------------------------------------------%
@@ -538,7 +539,8 @@ match_string(MatchStr, Src, PS, PS + N) :-
 
 match_string_2(N, I, MatchStr, Offset, Str) :-
     ( if I < N then
-        MatchStr ^ unsafe_elem(I) = Str ^ unsafe_elem(Offset + I),
+        string.unsafe_index_code_unit(MatchStr, I, CodeUnit),
+        string.unsafe_index_code_unit(Str, Offset + I, CodeUnit),
         match_string_2(N, I + 1, MatchStr, Offset, Str)
       else
         true
@@ -559,9 +561,14 @@ imatch_string(MatchStr, Src, PS, PS + N) :-
 
 imatch_string_2(N, I, MatchStr, Offset, Str) :-
     ( if I < N then
-        char.to_upper(MatchStr ^ unsafe_elem(I), Chr1),
-        char.to_upper(Str ^ unsafe_elem(Offset + I), Chr2),
-        Chr1 = Chr2,
+        % We can compare by code units because char.to_upper only converts
+        % letters in the ASCII range, and ASCII characters are always encoded
+        % in a single code unit.
+        string.unsafe_index_code_unit(MatchStr, I, CodeUnit1),
+        string.unsafe_index_code_unit(Str, Offset + I, CodeUnit2),
+        char.det_from_int(CodeUnit1, Chr1),
+        char.det_from_int(CodeUnit2, Chr2),
+        char.to_upper(Chr1) = char.to_upper(Chr2) : char,
         imatch_string_2(N, I + 1, MatchStr, Offset, Str)
       else
         true
@@ -824,12 +831,13 @@ digits_2(Base, Src, unit, !PS) :-
 %-----------------------------------------------------------------------------%
 
 string_literal(QuoteChar, Src, String, !PS) :-
-    current_offset(Src, Start, !PS),
     next_char(Src, QuoteChar, !PS),
+    current_offset(Src, Start, !PS),
     string_literal_2(Src, QuoteChar, _, !PS),
     current_offset(Src, EndPlusOne, !PS),
+    string.unsafe_prev_index(Src ^ input_string, EndPlusOne, End, QuoteChar),
     skip_whitespace(Src, !PS),
-    input_substring(Src, Start + 1, EndPlusOne - 1, String).
+    input_substring(Src, Start, End, String).
 
 %-----------------------------------------------------------------------------%
 

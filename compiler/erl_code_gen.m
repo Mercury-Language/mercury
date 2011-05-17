@@ -799,9 +799,9 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
 
         list.length(CasesList) > switch_strings_as_atoms_limit,
 
-        % The Erlang implementation limits atoms to be 255 characters long or
-        % less, so we don't use the workaround if any cases are longer than
-        % that.
+        % The Erlang implementation limits atoms to be 255 characters (bytes)
+        % long or less, so we don't use the workaround if any cases are longer
+        % than that.
         all [String] (
             (
                 list.member(case(MainConsId, OtherConsIds, _), CasesList),

@@ -393,6 +393,7 @@ sign_extend_32(X) = R :-
 :- pred pickle_char(char::in, io::di, io::uo) is det.
 
 pickle_char(Char, !IO) :-
+    % XXX handle non-ASCII characters
     char.to_int(Char, Int),
     io.write_byte(Int, !IO).
 

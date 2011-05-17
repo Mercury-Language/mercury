@@ -957,9 +957,10 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
 :- func shorten_long_atom_name(string) = string.
 
 shorten_long_atom_name(Name0) = Name :-
-    % Erlang atom names can be up to 255 characters long, but the Erlang
-    % compiler may mangle it (e.g. to derive the names of anonymous functions)
-    % which would then exceed the limit.
+    % Erlang atom names can be up to 255 characters (bytes) long, but the
+    % Erlang compiler may mangle it (e.g. to derive the names of anonymous
+    % functions) which would then exceed the limit.
+    % This assumes the atom name consists of only ASCII characters.
     (if string.length(Name0) =< 200 then
         Name = Name0
     else

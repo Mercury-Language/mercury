@@ -1294,7 +1294,7 @@ line_length = 79.
 dump_line(Msg, !IO) :-
     Prefix = "%---",
     Start = string.append(Prefix, Msg),
-    Remainder = line_length - string.length(Start) - 1,
+    Remainder = line_length - string.count_codepoints(Start) - 1,
     Line = Start ++ string.duplicate_char('-', Remainder),
     io.write_string(Line, !IO),
     io.write_string("%\n", !IO).

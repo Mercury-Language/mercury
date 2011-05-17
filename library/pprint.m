@@ -496,7 +496,7 @@ lb(P, W, K0, K, I, 'LABEL'(L, X), S0, S) :-
     lb(P, W, K0, K, I ++ L, X, S0, S).
 
 lb(P, _, _,  K, I, 'LINE',        S0, S) :-
-    K = string.length(I),
+    K = string.count_codepoints(I),
     P("\n", S0, S1),
     P(I,    S1, S ).
 
@@ -509,7 +509,7 @@ lb(P, W, K0, K, I, 'DOC'(D, U),   S0, S) :-
     lb(P, W, K0, K, I, to_doc(D, univ_value(U)), S0, S).
 
 lb(P, _, K0, K, _, 'TEXT'(T),     S0, S) :-
-    K = K0 + string.length(T),
+    K = K0 + string.count_codepoints(T),
     P(T, S0, S).
 
 %-----------------------------------------------------------------------------%
@@ -531,7 +531,7 @@ ff('LINE',        R) = R.
 ff('GROUP'(X),    R) = ff(X, R).
 ff('DOC'(D, U),   R) = ff(to_doc(D, univ_value(U)), R).
 ff('TEXT'(S),     R) = R - L :-
-    L = string.length(S),
+    L = string.count_codepoints(S),
     R > L.
 
 %-----------------------------------------------------------------------------%
@@ -563,7 +563,7 @@ layout_flat(P, K0, K, 'DOC'(D, U),   S0, S) :-
     layout_flat(P, K0, K, to_doc(D, univ_value(U)), S0, S).
 
 layout_flat(P, K0, K, 'TEXT'(T),     S0, S) :-
-    K = K0 + string.length(T),
+    K = K0 + string.count_codepoints(T),
     P(T, S0, S).
 
 %-----------------------------------------------------------------------------%

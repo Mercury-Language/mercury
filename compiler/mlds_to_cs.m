@@ -2011,6 +2011,7 @@ write_identifier_string(String, !IO) :-
     % Although the C# spec does not limit identifier lengths, the Microsoft
     % compiler restricts identifiers to 511 characters and Mono restricts
     % identifiers to 512 characters.
+    % This assumes the identifier contains only ASCII characters.
     Length = string.length(String),
     ( Length > 511 ->
         Left = string.left(String, 251),

@@ -381,12 +381,13 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
             %
             Doc = str(String),
             stream.put(Stream, String, !IO),
-            !:RemainingWidth = !.RemainingWidth - string.length(String),
+            !:RemainingWidth = !.RemainingWidth -
+                string.count_codepoints(String),
             Docs = Docs0
         ;
             Doc = nl,
             ( if
-                F = ( func(S, W) = string.length(S) + W ),
+                F = ( func(S, W) = string.count_codepoints(S) + W ),
                 IndentWidth = list.foldl(F, !.Indents, 0),
                 !.RemainingWidth < LineWidth - IndentWidth
               then
@@ -479,7 +480,7 @@ output_current_group(Stream, LineWidth, Indents, OpenGroups,
         [Doc | Docs0], Docs, !RemainingWidth, !RemainingLines, !IO) :-
     ( if Doc = str(String) then
         stream.put(Stream, String, !IO),
-        !:RemainingWidth = !.RemainingWidth - string.length(String),
+        !:RemainingWidth = !.RemainingWidth - string.count_codepoints(String),
         output_current_group(Stream, LineWidth, Indents, OpenGroups,
             Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
       else if Doc = hard_nl then
@@ -545,7 +546,8 @@ expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
       else
         (
             Doc = str(String),
-            !:RemainingWidth = !.RemainingWidth - string.length(String),
+            !:RemainingWidth = !.RemainingWidth -
+                string.count_codepoints(String),
             Docs = [Doc | Docs1],
             expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
@@ -638,7 +640,7 @@ output_indentation(_Stream, [], !RemainingWidth, !IO).
 output_indentation(Stream, [Indent | Indents], !RemainingWidth, !IO) :-
     output_indentation(Stream, Indents, !RemainingWidth, !IO),
     stream.put(Stream, Indent, !IO),
-    !:RemainingWidth = !.RemainingWidth - string.length(Indent).
+    !:RemainingWidth = !.RemainingWidth - string.count_codepoints(Indent).
 
 %-----------------------------------------------------------------------------%
 

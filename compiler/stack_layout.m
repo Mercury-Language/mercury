@@ -117,6 +117,7 @@
 :- import_module parse_tree.prog_event.
 
 :- import_module bool.
+:- import_module char.
 :- import_module cord.
 :- import_module counter.
 :- import_module int.
@@ -2533,7 +2534,7 @@ lookup_string_in_table(String, Offset, !StringTable) :-
     ( map.search(TableMap0, String, OldOffset) ->
         Offset = OldOffset
     ;
-        string.length(String, Length),
+        Length = string.count_utf8_code_units(String),
         TableOffset = TableOffset0 + Length + 1,
         % We use a 32 bit unsigned integer to represent the offset.
         % Computing that limit exactly without getting an overflow

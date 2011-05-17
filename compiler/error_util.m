@@ -950,9 +950,9 @@ do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent, MaxWidth,
         MaybeContext = yes(Context),
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
-        string.length(FileName, FileNameLength),
+        string.count_codepoints(FileName, FileNameLength),
         string.int_to_string(LineNumber, LineNumberStr),
-        string.length(LineNumberStr, LineNumberStrLength0),
+        string.count_codepoints(LineNumberStr, LineNumberStrLength0),
         ( LineNumberStrLength0 < 3 ->
             LineNumberStrLength = 3
         ;
@@ -1342,10 +1342,8 @@ break_into_words(String, Words0, Words) :-
 break_into_words_from(String, Cur, Words0, Words) :-
     ( find_word_start(String, Cur, Start) ->
         find_word_end(String, Start, End),
-        Length = End - Start + 1,
-        string.substring(String, Start, Length, WordStr),
-        Next = End + 1,
-        break_into_words_from(String, Next, [plain_word(WordStr) | Words0],
+        string.substring(String, Start, End - Start, WordStr),
+        break_into_words_from(String, End, [plain_word(WordStr) | Words0],
             Words)
     ;
         Words = Words0
@@ -1354,9 +1352,8 @@ break_into_words_from(String, Cur, Words0, Words) :-
 :- pred find_word_start(string::in, int::in, int::out) is semidet.
 
 find_word_start(String, Cur, WordStart) :-
-    string.index(String, Cur, Char),
+    string.unsafe_index_next(String, Cur, Next, Char),
     ( char.is_whitespace(Char) ->
-        Next = Cur + 1,
         find_word_start(String, Next, WordStart)
     ;
         WordStart = Cur
@@ -1365,8 +1362,7 @@ find_word_start(String, Cur, WordStart) :-
 :- pred find_word_end(string::in, int::in, int::out) is det.
 
 find_word_end(String, Cur, WordEnd) :-
-    Next = Cur + 1,
-    ( string.index(String, Next, Char) ->
+    ( string.unsafe_index_next(String, Cur, Next, Char) ->
         ( char.is_whitespace(Char) ->
             WordEnd = Cur
         ;
@@ -1451,7 +1447,7 @@ group_nonfirst_line_words(Words, Indent, Max, Lines) :-
     list(string)::out, list(string)::out) is det.
 
 get_line_of_words(FirstWord, LaterWords, Indent, Max, Line, RestWords) :-
-    string.length(FirstWord, FirstWordLen),
+    string.count_codepoints(FirstWord, FirstWordLen),
     Avail = Max - Indent * indent_increment,
     get_later_words(LaterWords, FirstWordLen, Avail, [FirstWord],
         Line, RestWords).
@@ -1461,7 +1457,7 @@ get_line_of_words(FirstWord, LaterWords, Indent, Max, Line, RestWords) :-
 
 get_later_words([], _, _, Line, Line, []).
 get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
-    string.length(Word, WordLen),
+    string.count_codepoints(Word, WordLen),
     NewLen = OldLen + 1 + WordLen,
     ( NewLen =< Avail ->
         list.append(Line0, [Word], Line1),

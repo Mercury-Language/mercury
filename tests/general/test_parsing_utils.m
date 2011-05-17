@@ -97,15 +97,25 @@ run_test(Result) :-
             PassFail = "fail"
         )
     ),
+    (
+        CurrentOffset = yes(CO),
+        input_substring(Src, 0, CO, Substring)
+    ->
+        NumCodePoints = string.count_codepoints(Substring),
+        NumCodeUnits = string.count_code_units(Substring),
+        ( NumCodeUnits = NumCodePoints ->
+            What = "chars"
+        ;
+            What = "code points"
+        ),
+        Consumed = string.format("\n\t[%d %s consumed]",
+            [i(NumCodePoints), s(What)])
+    ;
+        Consumed = ""
+    ),
     Result = PassFail ++ ": " ++
         ParserName ++ " on \"" ++ TestString ++ "\"\n\t" ++
-        Outcome ++
-        ( if CurrentOffset = yes(CO) then
-            string.format("\n\t[%d chars consumed]", [i(CO)])
-          else
-            ""
-        ) ++
-        "\n".
+        Outcome ++ Consumed ++ "\n".
 
 %-----------------------------------------------------------------------------%
 
@@ -146,6 +156,20 @@ test_case("keyword(\"ABC\", \"ABC\")", stringify(keyword("ABC", "ABC")),
 test_case("keyword(\"ABC\", \"ABC\")", stringify(keyword("ABC", "ABC")),
     "ABC 123", yes("unit")).
 
+test_case("keyword(\"αβγ\", \"αβγ\")", stringify(keyword("αβγ", "αβγ")),
+    "", no).
+test_case("keyword(\"αβγ\", \"αβγ\")", stringify(keyword("αβγ", "αβγ")),
+    "123", no).
+test_case("keyword(\"αβγ\", \"αβγ\")", stringify(keyword("αβγ", "αβγ")),
+    "αβγα", no).
+test_case("keyword(\"αβγ\", \"αβγ\")", stringify(keyword("αβγ", "αβγ")),
+    "αβγ 123", yes("unit")).
+
+test_case("keyword(\"ABC\", \"ABC\")", stringify(ikeyword("ABC", "ABC")),
+    "abc 123", yes("unit")).
+test_case("ikeyword(\"αβγ\", \"αβγ\")", stringify(ikeyword("αβγ", "αβγ")),
+    "αβγ 123", yes("unit")).
+
 test_case("identifier(\"ABC\", \"ABCabc_\")", stringify(identifier("ABC", "ABCabc_")),
     "", no).
 test_case("identifier(\"ABC\", \"ABCabc_\")", stringify(identifier("ABC", "ABCabc_")),
@@ -160,6 +184,17 @@ test_case("identifier(\"ABC\", \"ABCabc_\")", stringify(identifier("ABC", "ABCab
     "*", no).
 test_case("identifier(\"ABC\", \"ABCabc_\")", stringify(identifier("ABC", "ABCabc_")),
     "Abc !", yes("\"Abc\"")).
+
+test_case("identifier(\"αβγ\", \"αβγ_\")", stringify(identifier("αβγ", "αβγ_")),
+    "", no).
+test_case("identifier(\"αβγ\", \"αβγ_\")", stringify(identifier("αβγ", "αβγ_")),
+    "abc", no).
+test_case("identifier(\"αβγ\", \"αβγ_\")", stringify(identifier("αβγ", "αβγ_")),
+    "_", no).
+test_case("identifier(\"αβγ\", \"αβγ_\")", stringify(identifier("αβγ", "αβγ_")),
+    "α", yes("\"α\"")).
+test_case("identifier(\"αβγ\", \"αβγ_\")", stringify(identifier("αβγ", "αβγ_")),
+    "αβ_γ", yes("\"αβ_γ\"")).
 
 test_case("whitespace", stringify(whitespace),
     "", yes("unit")).
@@ -254,6 +289,13 @@ test_case("string_literal('\\\'')", stringify(string_literal('\'')),
     "\'123\'   abc", yes("\"123\"")).
 test_case("string_literal('\\\'')", stringify(string_literal('\'')),
     "\'1\\\'2\\\'3\'   abc", yes("\"1\\\\\\\'2\\\\\\\'3\"")).
+
+test_case("string_literal('‖')", stringify(string_literal('‖')),
+    "", no).
+test_case("string_literal('‖')", stringify(string_literal('‖')),
+    "‖123‖   abc", yes("\"123\"")).
+test_case("string_literal('‖')", stringify(string_literal('‖')),
+    "‖αβγ‖   abc", yes("\"αβγ\"")).
 
 test_case("optional(punct(\"!\"))", stringify(optional(punct("!"))),
     "", yes("no")).

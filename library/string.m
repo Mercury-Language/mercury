@@ -94,6 +94,11 @@
 :- func string.count_codepoints(string) = int.
 :- pred string.count_codepoints(string::in, int::out) is det.
 
+    % Determine the number of code units required to represent a string
+    % in UTF-8 encoding.
+    %
+:- func string.count_utf8_code_units(string) = int.
+
     % string.codepoint_offset(String, CodePointCount, CodePointOffset):
     % Equivalent to `string.codepoint_offset(String, 0, CodePointCount,
     % CodePointOffset)'.
@@ -605,7 +610,7 @@
     % The length (in code units) of the maximal suffix of `String' consisting
     % entirely of characters (code points) satisfying Pred.
     %
-:- func suffix_length(pred(char)::in(pred(in) is semidet), string::in)
+:- func string.suffix_length(pred(char)::in(pred(in) is semidet), string::in)
     = (int::out) is det.
 
     % string.set_char(Char, Index, String0, String):
@@ -1101,7 +1106,7 @@ string.to_int(String, Int) :-
 
 string.base_string_to_int(Base, String, Int) :-
     string.index(String, 0, Char),
-    Len = string.length(String),
+    Len = string.count_codepoints(String),
     ( Char = ('-') ->
         Len > 1,
         foldl_substring(accumulate_negative_int(Base), String, 1,
@@ -1614,19 +1619,7 @@ string.to_char_list(Str::uo, CharList::in) :-
 ").
 
 string.to_char_list_2(Str, CharList) :-
-    string.to_char_list_3(Str, string.length(Str) - 1, [], CharList).
-
-:- pred string.to_char_list_3(string::in, int::in,
-    list(char)::di, list(char)::uo) is det.
-
-string.to_char_list_3(Str, Index, CharList0, CharList) :-
-    ( Index >= 0 ->
-        string.unsafe_index(Str, Index, Char),
-        CharList1 = [Char | CharList0],
-        string.to_char_list_3(Str, Index - 1, CharList1, CharList)
-    ;
-        CharList = CharList0
-    ).
+    string.foldr(list.cons, Str, [], CharList).
 
 %-----------------------------------------------------------------------------%
 
@@ -3258,7 +3251,7 @@ format_int(Flags, Width, Prec, Int) = String :-
         AbsInteger = integer.abs(Integer),
         AbsIntStr = integer.to_string(AbsInteger)
     ),
-    AbsIntStrLength = string.length(AbsIntStr),
+    AbsIntStrLength = string.count_codepoints(AbsIntStr),
 
     % Do we need to increase precision?
     (
@@ -3273,7 +3266,7 @@ format_int(Flags, Width, Prec, Int) = String :-
     % Do we need to pad to the field width?
     (
         Width = yes(FieldWidth),
-        FieldWidth > string.length(PrecStr),
+        FieldWidth > string.count_codepoints(PrecStr),
         member('0', Flags),
         \+ member('-', Flags),
         Prec = no
@@ -3324,7 +3317,7 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
             AbsIntStr = AbsIntStr0
         )
     ),
-    AbsIntStrLength = string.length(AbsIntStr),
+    AbsIntStrLength = string.count_codepoints(AbsIntStr),
 
     % Do we need to increase precision?
     (
@@ -3350,7 +3343,7 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
     % Do we need to pad to the field width?
     (
         Width = yes(FieldWidth),
-        FieldWidth > string.length(PrecModStr),
+        FieldWidth > string.count_codepoints(PrecModStr),
         member('0', Flags),
         \+ member('-', Flags),
         Prec = no
@@ -3412,7 +3405,7 @@ format_float(Flags, Width, Prec, Float) = NewFloat :-
             \+ member('#', Flags),
             Prec = yes(0)
         ->
-            PrecStrLen = string.length(PrecStr),
+            PrecStrLen = string.count_codepoints(PrecStr),
             PrecModStr = string.substring(PrecStr, 0, PrecStrLen - 1)
         ;
             PrecModStr = PrecStr
@@ -3422,7 +3415,7 @@ format_float(Flags, Width, Prec, Float) = NewFloat :-
     % Do we need to change field width?
     (
         Width = yes(FieldWidth),
-        FieldWidth > string.length(PrecModStr),
+        FieldWidth > string.count_codepoints(PrecModStr),
         member('0', Flags),
         \+ member('-', Flags)
     ->
@@ -3469,7 +3462,7 @@ format_scientific_number_g(Flags, Width, Prec, Float, E) = NewFloat :-
         %
     (
         Width = yes(FieldWidth),
-        FieldWidth > string.length(PrecStr),
+        FieldWidth > string.count_codepoints(PrecStr),
         member('0', Flags),
         \+ member('-', Flags)
     ->
@@ -3521,7 +3514,7 @@ format_scientific_number(Flags, Width, Prec, Float, E) = NewFloat :-
     % Do we need to change field width?
     (
         Width = yes(FieldWidth),
-        FieldWidth > string.length(PrecModStr),
+        FieldWidth > string.count_codepoints(PrecModStr),
         member('0', Flags),
         \+ member('-', Flags)
     ->
@@ -3802,7 +3795,7 @@ change_to_e_notation(Float, Prec, E) = ScientificFloat :-
 
     % Is mantissa greater than one digit long?
     split_at_decimal_point(UnsafeBase, MantissaStr, _FractionStr),
-    ( string.length(MantissaStr) > 1 ->
+    ( string.count_codepoints(MantissaStr) > 1 ->
         % Need to append 0, to fix the problem of having no numbers
         % after the decimal point.
         SafeBase = calculate_base_unsafe(string.append(UnsafeBase, "0"),
@@ -3842,7 +3835,7 @@ size_of_required_exponent(Float, Prec) = Exponent :-
 
     % Is mantissa one digit long?
     split_at_decimal_point(UnsafeBase, MantissaStr, _FractionStr),
-    ( string.length(MantissaStr) > 1 ->
+    ( string.count_codepoints(MantissaStr) > 1 ->
         % We will need to move decimal pt one place to the left:
         % therefore, increment exponent.
         Exponent = UnsafeExponent + 1
@@ -3883,7 +3876,7 @@ remove_zeros(CharNum) = TrimmedNum :-
 
 decimal_pos(Float) = Pos :-
     split_at_decimal_point(Float, MantissaStr, _FractionStr),
-    NumZeros = string.length(MantissaStr) - 1,
+    NumZeros = string.count_codepoints(MantissaStr) - 1,
     Pos = find_non_zero_pos(string.to_char_list(Float), NumZeros).
 
     % Given a list of chars representing a floating point number, this
@@ -3951,7 +3944,7 @@ calculate_base_unsafe(Float, Prec) = Exp :-
 
 change_precision(Prec, OldFloat) = NewFloat :-
     split_at_decimal_point(OldFloat, MantissaStr, FractionStr),
-    FracStrLen = string.length(FractionStr),
+    FracStrLen = string.count_codepoints(FractionStr),
     ( Prec > FracStrLen ->
         PrecFracStr = string.pad_right(FractionStr, '0', Prec),
         PrecMantissaStr = MantissaStr
@@ -3965,7 +3958,10 @@ change_precision(Prec, OldFloat) = NewFloat :-
             NewPrecFrac = string.det_to_int(UnroundedFrac) + 1,
             NewPrecFracStrNotOK = string.int_to_string( NewPrecFrac),
             NewPrecFracStr = string.pad_left(NewPrecFracStrNotOK, '0', Prec),
-            ( string.length(NewPrecFracStr) > string.length(UnroundedFrac) ->
+            (
+                string.count_codepoints(NewPrecFracStr) >
+                    string.count_codepoints(UnroundedFrac)
+            ->
                 PrecFracStr = substring(NewPrecFracStr, 1, Prec),
                 PrecMantissaInt = det_to_int(MantissaStr) + 1,
                 PrecMantissaStr = int_to_string(PrecMantissaInt)
@@ -4994,6 +4990,38 @@ count_codepoints_2(String, I, Count0, Count) :-
 "
     Count = String.codePointCount(0, String.length());
 ").
+
+/*-----------------------------------------------------------------------*/
+
+:- pragma foreign_proc("C",
+    string.count_utf8_code_units(Str::in) = (Length::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Length = strlen(Str);
+").
+:- pragma foreign_proc("Erlang",
+    string.count_utf8_code_units(Str::in) = (Length::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Length = size(Str)
+").
+
+string.count_utf8_code_units(String) = Length :-
+    string.foldl(count_utf8_code_units_2, String, 0, Length).
+
+:- pred count_utf8_code_units_2(char::in, int::in, int::out) is det.
+
+count_utf8_code_units_2(Char, !Length) :-
+    char.to_int(Char, CharInt),
+    ( CharInt =< 0x7f ->
+        !:Length = !.Length + 1
+    ; char.to_utf8(Char, UTF8) ->
+        !:Length = !.Length + list.length(UTF8)
+    ;
+        error("string.count_utf8_code_units: char.to_utf8 failed")
+    ).
+
+/*-----------------------------------------------------------------------*/
 
     % Note: we do not define what happens with unpaired surrogates.
     %

@@ -652,7 +652,7 @@ should_atom_be_quoted(S, NextToGraphicToken) = ShouldQuote :-
         ;
             % Graphic token (6.4.2)
             string.all_match(lexer.graphic_token_char, S),
-            string.length(S) > 0,
+            S \= "",
 
             % We need to quote tokens starting with '#', because Mercury uses
             % '#' to start source line number indicators.

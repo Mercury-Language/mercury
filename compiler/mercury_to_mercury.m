@@ -4359,7 +4359,7 @@ mercury_limited_term_nq_to_string(VarSet, AppendVarnums, NextToGraphicToken,
         Limit, Term) = String :-
     mercury_format_term_nq(VarSet, AppendVarnums, NextToGraphicToken, Term,
         "", FullString),
-    FullLen = string.length(FullString),
+    FullLen = string.count_codepoints(FullString),
     ( FullLen =< Limit ->
         String = FullString
     ;

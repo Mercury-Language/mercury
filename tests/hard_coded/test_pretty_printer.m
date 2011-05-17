@@ -214,7 +214,7 @@ test_case(test_case(LineWidth, MaxLines, Limit, Doc)) :-
         List, map.init : map(int, float)),
     OpTree = mk_op_tree(200),
     Church = list.foldl(func(_, X) = succ(X), 1..10, zero),
-    Tuple = {1, 2.0, "three", '4', {5}},
+    Tuple = {1, 2.0, "three", '4', {5}, "«ąąąąą»"},
     Square = list.duplicate(10, 1..10) : list(list(int)),
     IndentTest = docs([
         str("indentation test:"),

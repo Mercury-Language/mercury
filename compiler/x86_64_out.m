@@ -509,10 +509,11 @@ output_x86_64_instr_list(Stream, Instrs, !IO) :-
     io::di, io::uo) is det <= stream.writer(Stream, string, io).
 
 output_x86_64_instr(Stream, x86_64_comment(Comment), !IO) :-
-    ( string.length(Comment) > 0 ->
+    ( Comment \= "" ->
         put(Stream, "\t# ", !IO),
-        ( string.length(Comment) > comment_length ->
-            string.split(Comment, comment_length, Comment1, Comment2),
+        ( string.count_codepoints(Comment) > comment_length ->
+            string.split_by_codepoint(Comment, comment_length,
+                Comment1, Comment2),
             put(Stream, string.word_wrap(Comment1, comment_length), !IO),
             put(Stream, "\n", !IO),
             output_x86_64_instr(Stream, x86_64_comment(Comment2), !IO)
@@ -523,7 +524,7 @@ output_x86_64_instr(Stream, x86_64_comment(Comment), !IO) :-
         true
     ).
 output_x86_64_instr(Stream, x86_64_label(LabelName), !IO) :-
-    ( string.length(LabelName) > 0 ->
+    ( LabelName \= "" ->
         put(Stream, "\n" ++ LabelName ++ ":", !IO)
     ;
         true
@@ -1057,7 +1058,7 @@ output_x86_64_inst(Stream, xor(Src, Dest), !IO) :-
     is det <= stream.writer(Stream, string, io).
 
 output_x86_64_comment(Stream, Comment, !IO) :-
-    ( string.length(Comment) > 0 ->
+    ( Comment \= "" ->
         put(Stream, "\t# ", !IO),
         put(Stream, Comment, !IO)
     ;   

@@ -28,6 +28,21 @@ pass: keyword("ABC", "ABC") on "ABCA"
 pass: keyword("ABC", "ABC") on "ABC 123"
 	returned unit as expected
 	[4 chars consumed]
+pass: keyword("αβγ", "αβγ") on ""
+	failed as expected
+pass: keyword("αβγ", "αβγ") on "123"
+	failed as expected
+pass: keyword("αβγ", "αβγ") on "αβγα"
+	failed as expected
+pass: keyword("αβγ", "αβγ") on "αβγ 123"
+	returned unit as expected
+	[4 code points consumed]
+pass: keyword("ABC", "ABC") on "abc 123"
+	returned unit as expected
+	[4 chars consumed]
+pass: ikeyword("αβγ", "αβγ") on "αβγ 123"
+	returned unit as expected
+	[4 code points consumed]
 pass: identifier("ABC", "ABCabc_") on ""
 	failed as expected
 pass: identifier("ABC", "ABCabc_") on "abc"
@@ -45,6 +60,18 @@ pass: identifier("ABC", "ABCabc_") on "*"
 pass: identifier("ABC", "ABCabc_") on "Abc !"
 	returned "Abc" as expected
 	[4 chars consumed]
+pass: identifier("αβγ", "αβγ_") on ""
+	failed as expected
+pass: identifier("αβγ", "αβγ_") on "abc"
+	failed as expected
+pass: identifier("αβγ", "αβγ_") on "_"
+	failed as expected
+pass: identifier("αβγ", "αβγ_") on "α"
+	returned "α" as expected
+	[1 code points consumed]
+pass: identifier("αβγ", "αβγ_") on "αβ_γ"
+	returned "αβ_γ" as expected
+	[4 code points consumed]
 pass: whitespace on ""
 	returned unit as expected
 	[0 chars consumed]
@@ -159,6 +186,14 @@ pass: string_literal('\'') on "'123'   abc"
 pass: string_literal('\'') on "'1\'2\'3'   abc"
 	returned "1\\\'2\\\'3" as expected
 	[12 chars consumed]
+pass: string_literal('‖') on ""
+	failed as expected
+pass: string_literal('‖') on "‖123‖   abc"
+	returned "123" as expected
+	[8 code points consumed]
+pass: string_literal('‖') on "‖αβγ‖   abc"
+	returned "αβγ" as expected
+	[8 code points consumed]
 pass: optional(punct("!")) on ""
 	returned no as expected
 	[0 chars consumed]

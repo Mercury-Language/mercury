@@ -428,7 +428,7 @@ make_target(Globals, Target, Success, !Info, !IO) :-
 classify_target(Globals, FileName, ModuleName - TargetType) :-
     (
         string.length(FileName, NameLength),
-        search_backwards_for_dot(FileName, NameLength - 1, DotLocn),
+        search_backwards_for_dot(FileName, NameLength, DotLocn),
         string.split(FileName, DotLocn, ModuleNameStr0, Suffix),
         solutions(classify_target_2(Globals, ModuleNameStr0, Suffix),
             TargetFiles),
@@ -549,11 +549,11 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
 :- pred search_backwards_for_dot(string::in, int::in, int::out) is semidet.
 
 search_backwards_for_dot(String, Index, DotIndex) :-
-    Index >= 0,
-    ( string.index_det(String, Index, '.') ->
-        DotIndex = Index
+    string.unsafe_prev_index(String, Index, CharIndex, Char),
+    ( Char = ('.') ->
+        DotIndex = CharIndex
     ;
-        search_backwards_for_dot(String, Index - 1, DotIndex)
+        search_backwards_for_dot(String, CharIndex, DotIndex)
     ).
 
 :- func get_executable_type(globals) = linked_target_type.

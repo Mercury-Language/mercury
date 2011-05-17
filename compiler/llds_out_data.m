@@ -1025,18 +1025,18 @@ output_rval_const(Info, Const, !IO) :-
         Const = llconst_string(String),
         io.write_string("MR_string_const(""", !IO),
         c_util.output_quoted_string(String, !IO),
-        string.length(String, StringLength),
         io.write_string(""", ", !IO),
-        io.write_int(StringLength, !IO),
+        io.write_int(string.count_utf8_code_units(String), !IO),
         io.write_string(")", !IO)
     ;
-        Const = llconst_multi_string(String),
+        Const = llconst_multi_string(Strings),
         io.write_string("MR_string_const(""", !IO),
-        c_util.output_quoted_multi_string(String, !IO),
+        c_util.output_quoted_multi_string(Strings, !IO),
         io.write_string(""", ", !IO),
 
         % The "+1" is for the NULL character.
-        Length = list.foldl((func(S, L0) = L0 + length(S) + 1), String, 0),
+        SumLengths = (func(S, L0) = L0 + string.count_utf8_code_units(S) + 1),
+        Length = list.foldl(SumLengths, Strings, 0),
         io.write_int(Length, !IO),
         io.write_string(")", !IO)
     ;

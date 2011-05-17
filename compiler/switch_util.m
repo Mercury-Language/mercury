@@ -543,6 +543,7 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         % the end of the string. The multiplication is an attempt to factor in
         % the fact that each character comparison is in a loop, and thus takes
         % more than one instruction.
+        % On non-ASCII strings, this cost depends on the compiler back-end.
         Cost = 1 + 2 * string.length(String)
     ;
         Tag = shared_with_reserved_addresses_tag(RAs, SubTag),

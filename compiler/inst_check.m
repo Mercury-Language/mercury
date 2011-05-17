@@ -247,7 +247,7 @@ find_types_for_functor(FunctorsToTypes, Functor, Types) :-
             % Zero arity functors with length 1 could match the builtin
             % character type.
             Name = unqualified(NameStr),
-            string.length(NameStr) = 1
+            string.count_codepoints(NameStr) = 1
         ->
             TypesExceptTuple = [type_builtin(builtin_type_char)
                 | TypesExceptChar]

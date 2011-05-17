@@ -546,15 +546,7 @@ should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) :-
         )
     ).
 
-stage_num_str(StageNum) = StageNumStr :-
-    int_to_string(StageNum, StageNumStr0),
-    ( string.length(StageNumStr0, 1) ->
-        StageNumStr = "00" ++ StageNumStr0
-    ; string.length(StageNumStr0, 2) ->
-        StageNumStr = "0" ++ StageNumStr0
-    ;
-        StageNumStr = StageNumStr0
-    ).
+stage_num_str(StageNum) = string.format("%03d", [i(StageNum)]).
 
 maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
     module_info_get_globals(HLDS, Globals),

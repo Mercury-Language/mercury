@@ -53,6 +53,7 @@
 
 :- implementation.
 
+:- import_module char.
 :- import_module int.
 :- import_module maybe.
 :- import_module string.
@@ -153,9 +154,11 @@ timestamp_to_string(timestamp(Timestamp)) = Timestamp.
 
 string_to_timestamp(Timestamp) = timestamp(Timestamp) :-
     % The if-then-else here is to force order of evaluation --
-    % we need to ensure that the length check occurs before the
-    % calls to unsafe_undex to avoid dereferencing invalid pointers.
+    % we need to ensure that the sanity checks occur before the
+    % calls to unsafe_index. The offsets are only valid if the string
+    % contains only ASCII characters, as expected.
     (
+        string.all_match(plausible_timestamp_char, Timestamp),
         string.length(Timestamp) : int = string.length("yyyy-mm-dd hh:mm:ss")
     ->
         string.to_int(string.unsafe_substring(Timestamp, 0, 4), _),
@@ -192,3 +195,10 @@ string_to_timestamp(Timestamp) = timestamp(Timestamp) :-
     ;
         fail
     ).
+
+:- pred plausible_timestamp_char(char::in) is semidet.
+
+plausible_timestamp_char(Char) :-
+    char.to_int(Char, CharInt),
+    char.to_int(':', HighestInt),
+    CharInt =< HighestInt.
