@@ -242,6 +242,10 @@ case $HOST in
     neptune)
         OPTIMIZE="-O4"
         ;;
+
+    apollo)
+        OPTIMIZE="-O3 --intermodule-optimization"
+        ;;
     
     goofy)
         OPTIMIZE="-O2 --intermodule-optimization"
@@ -346,7 +350,7 @@ PATH="$INSTALL_DIR/bin:$PATH"
 PARALLEL=
 case $HOST in
     saturn|goofy|taura) PARALLEL="-j2" ;;
-    eris)               PARALLEL="-j3" ;;
+    apollo|eris)        PARALLEL="-j3" ;;
     goliath)            PARALLEL="-j4" ;;
     *)                  PARALLEL= ;;
 esac
@@ -433,6 +437,18 @@ case $HOST in
             hlc.gc                      \
             hlc.gc.trseg                \
             asm_fast"
+        ;;
+    apollo)
+        INSTALL_LIBGRADES="asm_fast.gc      \
+            asm_fast.gc.trseg               \
+            asm_fast.gc.trseg.stseg         \
+            asm_fast.gc.trseg.debug         \
+            asm_fast.par.gc                 \
+            asm_fast.par.gc.stseg           \
+            hlc.gc                          \
+            hlc.gc.trseg                    \
+            hlc.par.gc                      \
+            hlc.par.gc.trseg"
         ;;
     neptune)
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-4.1"
