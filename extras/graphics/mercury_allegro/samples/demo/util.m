@@ -54,7 +54,7 @@ iterate_map_foldl2(P, Low, High, Xs, !A, !B) :-
 
 random_list_element(List, Element, !RS) :-
     random(0, list.length(List), N, !RS),
-    list.index0_det(List, N, Element).
+    list.det_index0(List, N, Element).
 
 %-----------------------------------------------------------------------------%
 % vi:ts=8:sts=4:sw=4:et

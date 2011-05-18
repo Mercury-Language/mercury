@@ -437,7 +437,7 @@ draw_ship(Data, Bitmap,
     (if State = normal(burn_on) then
         retrace_count(RetraceCount, !IO),
         Frame = (RetraceCount / 4) mod 7,
-        Engine = list.index0_det(Data ^ engine, Frame),
+        Engine = list.det_index0(Data ^ engine, Frame),
         EX = X - rle_sprite_w(Engine)/2,
         EY = ScreenH - 24,
         draw_rle_sprite(Bitmap, Engine, EX, EY, !IO)
@@ -465,7 +465,7 @@ get_ship_sprite(Data, normal(_), XSpeed) =
         )).
 
 get_ship_sprite(Data, exploding(Frame), _XSpeed) =
-    yes(list.index0_det(Data ^ explosions, Frame)).
+    yes(list.det_index0(Data ^ explosions, Frame)).
 
 get_ship_sprite(_Data, dead, _XSpeed) = no.
 

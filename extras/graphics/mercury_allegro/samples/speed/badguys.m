@@ -193,7 +193,7 @@ drop(N, L0) = L :-
 %-----------------------------------------------------------------------------%
 
 init_badguys(WaveNum, badguys(WaveNum, evildudes(EvilDudes)), !RS) :-
-    list.index0_det(waveinfo, WaveNum, WaveInfos),
+    list.det_index0(waveinfo, WaveNum, WaveInfos),
     make_waves(WaveInfos, [], EvilDudes0, !RS),
     list.condense(EvilDudes0, EvilDudes).
 
