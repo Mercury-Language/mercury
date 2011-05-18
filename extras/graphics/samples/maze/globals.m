@@ -61,7 +61,7 @@ globals.set(Name, Value, !IO) :-
 	( if univ_to_type(UMap0, Map0)
 	  then
 	  	type_to_univ(Value, UValue),
-		map.set(Map0, Name, UValue, Map),
+		map.set(Name, UValue, Map0, Map),
 		type_to_univ(Map, UMap),
 		io.set_globals(UMap, !IO)
 	  else
