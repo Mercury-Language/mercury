@@ -11,8 +11,24 @@
 % Author: Ralph Becket <rafe@cs.mu.oz.au>.
 % Stability: low.
 %
-% (See the header comments in version_types.m for an explanation of version
-% types.)
+% Version types are efficient pure implementations of typically imperative
+% structures, subject to the following caveat: efficient access is only
+% guaranteed for the "latest" version of a given structure.  An older version
+% incurs an access cost proportional to the number of its descendants.
+%
+% For example, if A0 is a version array, and A1 is created by updating A0,
+% and A2 is created by updating A1, ..., and An is created by updating An-1,
+% then accesses to An cost O(1) (assuming no further versions of the array
+% have been created from An), but accesses to A0 cost O(n).
+%
+% Most version data structures come with impure, unsafe means to "rewind"
+% to an earlier version, restoring that version's O(1) access times, but
+% leaving later versions undefined (i.e. only do this if you are discarding
+% all later versions of the structure.)
+%
+% The motivation for using version types is that they are ordinary ground
+% structures and do not depend upon uniqueness, while in many circumstances
+% offering similar levels of performance.
 %
 % This module implements version arrays.  A version array provides O(1)
 % access and update for the "latest" version of the array.  "Older"

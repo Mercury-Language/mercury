@@ -140,7 +140,6 @@
 :- import_module version_bitmap.
 :- import_module version_hash_table.
 :- import_module version_store.
-:- import_module version_types.
 
 % The modules intended for Mercury system implementors.
 % NOTE: changes to this list may need to be reflected in mdbcomp/prim_data.m.
@@ -322,7 +321,6 @@ mercury_std_library_module("version_array2d").
 mercury_std_library_module("version_bitmap").
 mercury_std_library_module("version_hash_table").
 mercury_std_library_module("version_store").
-mercury_std_library_module("version_types").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

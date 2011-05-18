@@ -10,14 +10,13 @@
 % Main author: rafe, wangp.
 % Stability: low.
 % 
-% (See the header comments in version_types.m for an explanation of version
+% (See the header comments in version_array.m for an explanation of version
 % types.)
 %
-% Version hash tables.  The "latest" version of the hash table
-% provides roughly the same performance as the unique hash table
-% implementation.  "Older" versions of the hash table are still
-% accessible, but will incurr a growing performance penalty as
-% more updates are made to the hash table.
+% Version hash tables.  The "latest" version of the hash table provides roughly
+% the same performance as the unique hash table implementation.  "Older"
+% versions of the hash table are still accessible, but will incurr a growing
+% performance penalty as more updates are made to the hash table.
 % 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -11,7 +11,7 @@
 % 
 % Two-dimensional rectangular (i.e. not ragged) version arrays.
 % 
-% See the header comments in version_types.m for more details about version
+% See the header comments in version_array.m for more details about version
 % structures.
 % 
 %-----------------------------------------------------------------------------%

@@ -10,7 +10,7 @@
 % Author: Ralph Becket <rafe@cs.mu.oz.au>
 % Stability: low.
 % 
-% (See the header comments in version_types.m for an explanation of version
+% (See the header comments in version_array.m for an explanation of version
 % types.)
 %
 % A version_store is similar to, albeit slightly slower than, an ordinary
