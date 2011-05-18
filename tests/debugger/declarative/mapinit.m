@@ -39,4 +39,4 @@ xmap_init(Init) :-
 :- pred xmap_set(xmap(K, V)::in, K::in, V::in, xmap(K, V)::out) is det.
 
 xmap_set(Map0, Key, Value, Map) :-
-	tree234__set(Map0, Key, Value, Map).
+	tree234__set(Key, Value, Map0, Map).

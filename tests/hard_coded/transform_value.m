@@ -11,19 +11,19 @@
 
 :- implementation.
 
-:- import_module map, int, svmap, list, assoc_list, rbtree.
+:- import_module map, int, list, assoc_list, rbtree.
 
 main(!IO) :-
 	some [!M] (
 		!:M = map.init,
-		svmap.set(1, 1, !M),
-		svmap.set(2, 1, !M),
-		svmap.set(3, 1, !M),
-		svmap.set(4, 1, !M),
-		svmap.set(5, 1, !M),
-		svmap.set(6, 1, !M),
-		svmap.set(7, 1, !M),
-		svmap.set(8, 1, !M),
+		map.set(1, 1, !M),
+		map.set(2, 1, !M),
+		map.set(3, 1, !M),
+		map.set(4, 1, !M),
+		map.set(5, 1, !M),
+		map.set(6, 1, !M),
+		map.set(7, 1, !M),
+		map.set(8, 1, !M),
 		M0 = !.M,
 		( map.transform_value(add1, 2, !.M, M1) ->
 			io.write_int(M1 ^ det_elem(2), !IO)
@@ -49,8 +49,8 @@ main(!IO) :-
 		io.write(A, !IO),
 		io.nl(!IO),
 		RB0 = rbtree.init,
-		rbtree.set(RB0, 1, 1, RB1),
-		rbtree.set(RB1, 2, 1, RB2),
+		rbtree.set(1, 1, RB0, RB1),
+		rbtree.set(2, 1, RB1, RB2),
 		(
 			rbtree.transform_value(add1, 1, RB2, RB3),
 			rbtree.transform_value(add1, 2, RB3, RB4)

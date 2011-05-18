@@ -74,21 +74,21 @@
 
 :- func tree234.min_key(tree234(K, V)) = K is semidet.
 
-:- pred tree234.insert(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
+:- pred tree234.insert(K::in, V::in, tree234(K, V)::in, tree234(K, V)::out)
     is semidet.
 
 :- func tree234.set(tree234(K, V), K, V) = tree234(K, V).
-:- pred tree234.set(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
+:- pred tree234.set(K::in, V::in, tree234(K, V)::in, tree234(K, V)::out)
     is det.
 
 :- func tree234.delete(tree234(K, V), K) = tree234(K, V).
-:- pred tree234.delete(tree234(K, V)::in, K::in, tree234(K, V)::out) is det.
+:- pred tree234.delete(K::in, tree234(K, V)::in, tree234(K, V)::out) is det.
 
-:- pred tree234.remove(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234.remove(in, in, out, out) is semidet.
+:- pred tree234.remove(K, V, tree234(K, V), tree234(K, V)).
+:- mode tree234.remove(in, out, in, out) is semidet.
 
-:- pred tree234.remove_smallest(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234.remove_smallest(in, out, out, out) is semidet.
+:- pred tree234.remove_smallest(K, V, tree234(K, V), tree234(K, V)).
+:- mode tree234.remove_smallest(out, out, in, out) is semidet.
 
     % Given a tree234, return a list of all the keys in the tree.
     % The list that is returned is in sorted order.
@@ -99,7 +99,7 @@
 :- func tree234.values(tree234(K, V)) = list(V).
 :- pred tree234.values(tree234(K, V)::in, list(V)::out) is det.
 
-:- pred tree234.update(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
+:- pred tree234.update(K::in, V::in, tree234(K, V)::in, tree234(K, V)::out)
     is semidet.
 
     % Update the value at the given key by applying the supplied
@@ -889,7 +889,7 @@ tree234.min_key(T0) = MinKey :-
 
 %------------------------------------------------------------------------------%
 
-tree234.update(Tin, K, V, Tout) :-
+tree234.update(K, V, Tin, Tout) :-
     (
         Tin = empty,
         fail
@@ -898,14 +898,14 @@ tree234.update(Tin, K, V, Tout) :-
         compare(Result, K, K0),
         (
             Result = (<),
-            tree234.update(T0, K, V, NewT0),
+            tree234.update(K, V, T0, NewT0),
             Tout = two(K0, V0, NewT0, T1)
         ;
             Result = (=),
             Tout = two(K0, V, T0, T1)
         ;
             Result = (>),
-            tree234.update(T1, K, V, NewT1),
+            tree234.update(K, V, T1, NewT1),
             Tout = two(K0, V0, T0, NewT1)
         )
     ;
@@ -913,7 +913,7 @@ tree234.update(Tin, K, V, Tout) :-
         compare(Result0, K, K0),
         (
             Result0 = (<),
-            tree234.update(T0, K, V, NewT0),
+            tree234.update(K, V, T0, NewT0),
             Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
         ;
             Result0 = (=),
@@ -923,14 +923,14 @@ tree234.update(Tin, K, V, Tout) :-
             compare(Result1, K, K1),
             (
                 Result1 = (<),
-                tree234.update(T1, K, V, NewT1),
+                tree234.update(K, V, T1, NewT1),
                 Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
             ;
                 Result1 = (=),
                 Tout = three(K0, V0, K1, V, T0, T1, T2)
             ;
                 Result1 = (>),
-                tree234.update(T2, K, V, NewT2),
+                tree234.update(K, V, T2, NewT2),
                 Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
             )
         )
@@ -942,14 +942,14 @@ tree234.update(Tin, K, V, Tout) :-
             compare(Result0, K, K0),
             (
                 Result0 = (<),
-                tree234.update(T0, K, V, NewT0),
+                tree234.update(K, V, T0, NewT0),
                 Tout = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
             ;
                 Result0 = (=),
                 Tout = four(K0, V, K1, V1, K2, V2, T0, T1, T2, T3)
             ;
                 Result0 = (>),
-                tree234.update(T1, K, V, NewT1),
+                tree234.update(K, V, T1, NewT1),
                 Tout = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3)
             )
         ;
@@ -960,14 +960,14 @@ tree234.update(Tin, K, V, Tout) :-
             compare(Result2, K, K2),
             (
                 Result2 = (<),
-                tree234.update(T2, K, V, NewT2),
+                tree234.update(K, V, T2, NewT2),
                 Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, NewT2, T3)
             ;
                 Result2 = (=),
                 Tout = four(K0, V0, K1, V1, K2, V, T0, T1, T2, T3)
             ;
                 Result2 = (>),
-                tree234.update(T3, K, V, NewT3),
+                tree234.update(K, V, T3, NewT3),
                 Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, NewT3)
             )
         )
@@ -1116,7 +1116,7 @@ tree234.split_four(Tin, MidK, MidV, Sub0, Sub1) :-
 % we have already split 4-nodes into 2-nodes), or if the tree itself is
 % empty.  This algorithm is O(lgN).
 
-tree234.insert(Tin, K, V, Tout) :-
+tree234.insert(K, V, Tin, Tout) :-
     (
         Tin = empty,
         Tout = two(K, V, empty, empty)
@@ -1387,7 +1387,7 @@ tree234.insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 % tree234.set uses the same algorithm as used for tree234.insert,
 % except that instead of failing for equal keys, we replace the value.
 
-tree234.set(Tin, K, V, Tout) :-
+tree234.set(K, V, Tin, Tout) :-
     (
         Tin = empty,
         Tout = two(K, V, empty, empty)
@@ -1660,7 +1660,7 @@ tree234.set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
-tree234.delete(Tin, K, Tout) :-
+tree234.delete(K, Tin, Tout) :-
     tree234.delete_2(Tin, K, Tout, _).
 
     % When deleting an item from a tree, the height of the tree may be
@@ -1912,7 +1912,7 @@ tree234.delete_2(Tin, K, Tout, RH) :-
 
     % We use the same algorithm as tree234.delete.
 
-tree234.remove(Tin, K, V, Tout) :-
+tree234.remove(K, V, Tin, Tout) :-
     tree234.remove_2(Tin, K, V, Tout, _).
 
 :- pred tree234.remove_2(tree234(K, V), K, V, tree234(K, V), bool).
@@ -2165,7 +2165,7 @@ tree234.remove_2(Tin, K, V, Tout, RH) :-
     % The algorithm we use similar to tree234.delete, except that we
     % always go down the left subtree.
 
-tree234.remove_smallest(Tin, K, V, Tout) :-
+tree234.remove_smallest(K, V, Tin, Tout) :-
     tree234.remove_smallest_2(Tin, K, V, Tout, _).
 
 :- pred tree234.remove_smallest_2(tree234(K, V), K, V, tree234(K, V), bool).
@@ -2602,9 +2602,9 @@ tree234.assoc_list_to_tree234(AssocList, Tree) :-
     tree234(K, V)::in, tree234(K, V)::out) is det.
 
 tree234.assoc_list_to_tree234_2([], Tree, Tree).
-tree234.assoc_list_to_tree234_2([K - V | Rest], Tree0, Tree) :-
-    tree234.set(Tree0, K, V, Tree1),
-    tree234.assoc_list_to_tree234_2(Rest, Tree1, Tree).
+tree234.assoc_list_to_tree234_2([K - V | Rest], !Tree) :-
+    tree234.set(K, V, !Tree),
+    tree234.assoc_list_to_tree234_2(Rest, !Tree).
 
 %------------------------------------------------------------------------------%
 
@@ -3060,11 +3060,11 @@ tree234.init = T :-
 tree234.lookup(T, K) = V :-
     tree234.lookup(T, K, V).
 
-tree234.set(T1, K, V) = T2 :-
-    tree234.set(T1, K, V, T2).
+tree234.set(!.T, K, V) = !:T :-
+    tree234.set(K, V, !T).
 
-tree234.delete(T1, K) = T2 :-
-    tree234.delete(T1, K, T2).
+tree234.delete(!.T, K) = !:T :-
+    tree234.delete(K, !T).
 
 tree234.keys(T) = Ks :-
     tree234.keys(T, Ks).
@@ -3478,4 +3478,5 @@ depth_levels(four(_, _, _, _, _, _, T1, T2, T3, T4), Depth, !Depths) :-
     depth_levels(T4, NextDepth, !Depths).
 
 %-----------------------------------------------------------------------------%
+:- end_module tree234.
 %-----------------------------------------------------------------------------%

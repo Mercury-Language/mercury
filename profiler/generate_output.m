@@ -153,7 +153,7 @@ generate_output_for_cycle(ProfNode, Prof, !OutputProf) :-
         DescPercentage, DescTime, TotalCalls, SelfCalls, [], []),
 
     map.det_insert(Name, OutputProfNode, InfoMap0, InfoMap),
-    rbtree.insert_duplicate(CallTree0, DescPercentage, Name, CallTree),
+    rbtree.insert_duplicate(DescPercentage, Name, CallTree0, CallTree),
 
     !:OutputProf = profiling(InfoMap, CallTree, FreeTree).
 
@@ -215,11 +215,10 @@ generate_output_for_single_predicate(ProfNode, Prof, !OutputProf) :-
         ),
 
         map.det_insert(LabelName, OutputProfNode, InfoMap0, InfoMap),
-        rbtree.insert_duplicate(CallTree0, DescPercentage,
-            LabelName, CallTree),
-        rbtree.insert_duplicate(FlatTree0,
-            flat_key(FlatPercentage, TotalCalls),
-            LabelName, FlatTree),
+        rbtree.insert_duplicate(DescPercentage, LabelName,
+            CallTree0, CallTree),
+        rbtree.insert_duplicate(flat_key(FlatPercentage, TotalCalls),
+            LabelName, FlatTree0, FlatTree),
 
         !:OutputProf = profiling(InfoMap, CallTree, FlatTree)
     ).
@@ -323,7 +322,7 @@ process_prof_node_parents_3([PN | PNs], SelfTime, DescTime, TotalCalls,
 
     Parent = parent(LabelName, ParentCycleNum, PropSelfTime, PropDescTime,
         Calls),
-    rbtree.insert_duplicate(!.Output, Calls, Parent, !:Output),
+    rbtree.insert_duplicate(Calls, Parent, !Output),
 
     process_prof_node_parents_3(PNs, SelfTime, DescTime, TotalCalls,
         CycleMap, !Output).
@@ -405,7 +404,7 @@ process_prof_node_children_2([PN | PNs], Prof, !Output) :-
 
     Child = child(LabelName, CycleNum, PropSelfTime, PropDescTime, Calls,
         TotalCalls),
-    rbtree.insert_duplicate(!.Output, Calls, Child, !:Output),
+    rbtree.insert_duplicate(Calls, Child, !Output),
     process_prof_node_children_2(PNs, Prof, !Output).
 
     % assign_index_numbers(IndexMap, RevList, List):

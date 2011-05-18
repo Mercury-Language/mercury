@@ -51,8 +51,12 @@ Changes to the Mercury standard library:
   multi_map.remove_smallest/4, queue.put/3, queue.put_list/3,
   queue.get/3, queue.delete_all/3, queue.put_on_front/3,
   queue.get_from_back/3, queue.put_list_on_front/3,
-  queue.get_from_back/3, set.insert/3, set.insert_list/3, set.delete/3,
-  set.delete_list/3, set.remove/3, set.remove_list/3 and set.remove_least/3
+  queue.get_from_back/3, rbtree.insert/4, rbtree.update/4, rbtree.set/4,
+  rbtree.delete/3, rbtree.remove_smallest/4, rbtree.remove_largest/4,
+  set.insert/3, set.insert_list/3, set.delete/3, set.delete_list/3,
+  set.remove/3, set.remove_list/3, set.remove_least/3, tree234.insert/4,
+  tree234.set/4, tree234.remove/4, tree234.remove_smallest/4 and
+  tree234.update/4.
 
 * We have add the following new functions for creating singleton
   maps: bimap.singleton/2, injection.singleton/2, map.singleton/2,
@@ -124,6 +128,9 @@ Changes to the Mercury standard library:
   (As with the other sv* modules these modules are intended to pave the
   way for an eventual change of the predicate argument ordering in the
   stack and pqueue modules.)
+
+* We have added additional modes with unique and mostly-unique accumulators
+  to rbtree.foldl/4 and rbtree.foldl2/6.
 
 
 NEWS for Mercury 11.01
