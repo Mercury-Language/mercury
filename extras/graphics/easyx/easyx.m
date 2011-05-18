@@ -1,8 +1,9 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004, 2006 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2004, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
 % easyx.m
 % Ralph Becket <rafe@cs.mu.oz.au>
@@ -131,7 +132,7 @@
     % A useful shortcut.
     %
 :- pred set_colour_from_rgb(window::in, float::in, float::in, float::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % set_text_bg_colour(Window, Colour, !IO)
     % Sets the colour draw_image_text will use for the text background.
@@ -169,7 +170,7 @@
     % Set the line drawing attributes.
     %
 :- pred set_line_attributes(window::in, line_width::in, cap_style::in,
-            join_style::in, io::di, io::uo) is det.
+    join_style::in, io::di, io::uo) is det.
 
     % draw_text(Window, X, Y, JX, JY, String, !IO)
     % Draw text String justified as follows: if the rendered text will
@@ -181,14 +182,14 @@
     % Note that Xlib does not support rotated/scaled/distorted text.
     %
 :- pred draw_text(window::in, float::in, float::in, float::in, float::in,
-            string::in, io::di, io::uo) is det.
+    string::in, io::di, io::uo) is det.
 
     % draw_image_text(Window, X, Y, JX, JY, String, !IO)
     % As draw_text, but the text appears on a filled rectangle
     % (see set_text_bg_colour).
     %
 :- pred draw_image_text(window::in, float::in, float::in, float::in, float::in,
-            string::in, io::di, io::uo) is det.
+    string::in, io::di, io::uo) is det.
 
     % draw_text(Window, X, Y, String, !IO)
     % draw_image_text(Window, X, Y, String, !IO)
@@ -196,9 +197,9 @@
     % JX = JY = 0.0.
     %
 :- pred draw_text(window::in, float::in, float::in, string::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 :- pred draw_image_text(window::in, float::in, float::in, string::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % draw_point(Window, X, Y, !IO)
     % Draw a single pixel at {X, Y}.
@@ -209,7 +210,7 @@
     % Draw a line from {X1, Y1} to {X2, Y2}.
     %
 :- pred draw_line(window::in, float::in, float::in, float::in, float::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % draw_arc(Window, X, Y, RX, RY, StartAngle, ThroughAngle, !IO)
     % fill_arc(Window, X, Y, RX, RY, StartAngle, ThroughAngle, !IO)
@@ -217,36 +218,36 @@
     % starting at StartAngle and passing through ThroughAngle.
     %
 :- pred draw_arc(window::in, float::in, float::in, float::in, float::in,
-            float::in, float::in, io::di, io::uo) is det.
+    float::in, float::in, io::di, io::uo) is det.
 :- pred fill_arc(window::in, float::in, float::in, float::in, float::in,
-            float::in, float::in, io::di, io::uo) is det.
+    float::in, float::in, io::di, io::uo) is det.
 
     % draw_circle(Window, X, Y, R, !IO)
     % fill_circle(Window, X, Y, R, !IO)
     % Draw/fill a circle at {X, Y} with radius R.
     %
 :- pred draw_circle(window::in, float::in, float::in, float::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 :- pred fill_circle(window::in, float::in, float::in, float::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % draw_ellipse(Window, X, Y, RX, RY, !IO)
     % fill_ellipse(Window, X, Y, RX, RY, !IO)
     % Draw/fill an ellipse at {X, Y} with radii RX and RY.
     %
 :- pred draw_ellipse(window::in, float::in, float::in, float::in, float::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 :- pred fill_ellipse(window::in, float::in, float::in, float::in, float::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % draw_rectangle(Window, X1, Y1, X2, Y2, !IO)
     % fill_rectangle(Window, X1, Y1, X2, Y2, !IO)
     % Draw/fill a rectangle with opposite corners at {X1, Y1} and {X2, Y2}.
     %
 :- pred draw_rectangle(window::in, float::in, float::in, float::in, float::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 :- pred fill_rectangle(window::in, float::in, float::in, float::in, float::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % draw_lines(Window, Coords, !IO)
     % Draw a series of lines connecting each coordinate to its successor.
@@ -305,7 +306,7 @@
 
     % A restricted set of X events are recognised by this library.
     %
-:- type event
+:- type x_event
                 % Something has occurred (such as the window being resized)
                 % that requires the window contents to be redrawn.
         --->    expose
@@ -353,13 +354,13 @@
     % get_next_event(Window, Event, !IO)
     % Wait for the next input Event from the Window.
     %
-:- pred get_next_event(window::in, event::out, io::di, io::uo) is det.
+:- pred get_next_event(window::in, x_event::out, io::di, io::uo) is det.
 
     % get_next_event_if_any(Window, MaybeEvent, !IO)
     % Get the next input event from the Window if one is available.
     %
-:- pred get_next_event_if_any(window::in, maybe(event)::out, io::di, io::uo)
-            is det.
+:- pred get_next_event_if_any(window::in, maybe(x_event)::out, io::di, io::uo)
+    is det.
 
     % Examine the State value of an event.
     %
@@ -940,8 +941,8 @@ get_next_event_if_any(Window, MaybeEvent, !IO) :-
     ).
 
 
-:- pred process_event_ptr(window::in, xlib.event_ptr::in, maybe(event)::out,
-            io::di, io::uo) is det.
+:- pred process_event_ptr(window::in, xlib.event_ptr::in, maybe(x_event)::out,
+    io::di, io::uo) is det.
 
 process_event_ptr(Window, EventPtr, MaybeEvent, !IO) :-
     store.get_mutvar(Window^width,  PW0, !IO),
