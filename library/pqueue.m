@@ -53,6 +53,11 @@
 :- pred pqueue.remove(pqueue(K, V)::in, K::out, V::out, pqueue(K, V)::out)
     is semidet.
 
+    % As above, but calls error/1 if the priority queue is empty.
+    %
+:- pred pqueue.det_remove(K::out, V::out, pqueue(K, V)::in, pqueue(K, V)::out)
+    is det.
+
     % Extract all the items from a priority queue by repeated
     % removal, and place them in an association list.
     %
@@ -84,6 +89,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module pair.
+:- import_module require.
 
 %---------------------------------------------------------------------------%
 
@@ -93,9 +99,15 @@
 
 %---------------------------------------------------------------------------%
 
+pqueue.init = PQ :-
+    pqueue.init(PQ).
+
 pqueue.init(empty).
 
 %---------------------------------------------------------------------------%
+
+pqueue.insert(PQ1, K, V) = PQ2 :-
+    pqueue.insert(PQ1, K, V, PQ2).
 
 pqueue.insert(empty, K, V, pqueue(0, K, V, empty, empty)).
 pqueue.insert(pqueue(D0, K0, V0, L0, R0), K, V, PQ) :-
@@ -132,6 +144,14 @@ pqueue.insert_2(K, V, pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1),
 
 %---------------------------------------------------------------------------%
 
+pqueue.det_remove(K, V, !PQ) :-
+    ( if pqueue.remove(!.PQ, K0, V0, !:PQ) then
+        K = K0,
+        V = V0
+      else
+        error("pqueue.det_remove/4: empty priority queue")
+    ). 
+
 pqueue.remove(pqueue(_, K, V, L0, R0), K, V, PQ) :-
     pqueue.remove_2(L0, R0, PQ).
 
@@ -157,6 +177,9 @@ pqueue.remove_2(pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1), PQ) :-
 
 %---------------------------------------------------------------------------%
 
+pqueue.to_assoc_list(PQ) = AL :-
+    pqueue.to_assoc_list(PQ, AL).
+
 pqueue.to_assoc_list(Q0, L) :-
     ( pqueue.remove(Q0, K, V, Q1) ->
         pqueue.to_assoc_list(Q1, L0),
@@ -164,6 +187,9 @@ pqueue.to_assoc_list(Q0, L) :-
     ;
         L = []
     ).
+
+pqueue.assoc_list_to_pqueue(AL) = PQ2 :-
+    pqueue.assoc_list_to_pqueue(AL, PQ2).
 
 pqueue.assoc_list_to_pqueue([], Q) :-
     pqueue.init(Q).
@@ -178,23 +204,6 @@ pqueue.from_assoc_list(List) = PQueue :-
 
 pqueue.length(empty) = 0.
 pqueue.length(pqueue(D, _, _, _, _)) = D + 1.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
-%   Functional forms added.
-
-pqueue.init = PQ :-
-    pqueue.init(PQ).
-
-pqueue.insert(PQ1, K, V) = PQ2 :-
-    pqueue.insert(PQ1, K, V, PQ2).
-
-pqueue.to_assoc_list(PQ) = AL :-
-    pqueue.to_assoc_list(PQ, AL).
-
-pqueue.assoc_list_to_pqueue(AL) = PQ2 :-
-    pqueue.assoc_list_to_pqueue(AL, PQ2).
 
 %---------------------------------------------------------------------------%
 :- end_module pqueue.

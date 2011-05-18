@@ -115,6 +115,16 @@ Changes to the Mercury standard library:
 
   All are synonyms for the existing empty/1 predicates in those modules.
 
+* We have added the predicate pqueue.det_remove/4.  It is like pqueue.remove/4
+  except that it throws an exception instead of failing if the priority queue
+  is empty.
+
+* The new modules svstack and svpqueue provide state variable friendly
+  versions of predicates in the stack and pqueue modules.
+  (As with the other sv* modules these modules are intended to pave the
+  way for an eventual change of the predicate argument ordering in the
+  stack and pqueue modules.)
+
 
 NEWS for Mercury 11.01
 ----------------------
