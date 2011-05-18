@@ -26,7 +26,11 @@
 
 :- implementation.
 
-:- import_module list, map, require, string, std_util.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module string.
+:- import_module univ.
 
 init_globals -->
 	{ my_map_init(Map) },
@@ -67,7 +71,7 @@ set_global(Name, Value) -->
 		{ univ_to_type(UMap0, Map0) }
 	->
 		{ type_to_univ(Value, UValue) },
-		{ map__set(Map0, Name, UValue, Map) },
+		{ map__set(Name, UValue, Map0, Map) },
 		{ type_to_univ(Map, UMap1) },
 		{ unsafe_promise_unique(UMap1, UMap) },
 		io__set_globals(UMap)
