@@ -68,8 +68,10 @@ Changes to the Mercury standard library:
   sparse_bitset.delete_list/3, sparse_bitset.remove/3,
   sparse_bitset.remove_list/3, sparse_bitset.remove_leq/3,
   sparse_bitset.remove_gt/3, sparse_bitset.remove_least/3,
-  tree234.set/4, tree234.remove/4, tree234.remove_smallest/4 and
-  tree234.update/4.
+  tree234.set/4, tree234.remove/4, tree234.remove_smallest/4,
+  tree234.update/4, tree_bitset.insert/3, tree_bitset.insert_list/3,
+  tree_bitset.delete/3, tree_bitset.delete_list/3, tree_bitset.remove/3,
+  tree_bitset.remove_list/3 and tree_bitset.remove_least/3
 
 * We have add the following new functions for creating singleton
   maps: bimap.singleton/2, injection.singleton/2, map.singleton/2,
@@ -143,7 +145,7 @@ Changes to the Mercury standard library:
   stack and pqueue modules.)
 
 * We have added additional modes with unique and mostly-unique accumulators
-  to rbtree.foldl/4 and rbtree.foldl2/6.
+  to rbtree.foldl/4, rbtree.foldl2/6 and tree_bitset.foldl/4.
 
 
 NEWS for Mercury 11.01

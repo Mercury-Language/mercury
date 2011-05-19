@@ -371,7 +371,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
         % The switch variable is guaranteed to be nonlocal to the switch, since
         % it has to be bound elsewhere, so we put it in the nonlocals here.
         union_list(NonLocalVarSets, NonLocalVars0),
-        insert(NonLocalVars0, Var, NonLocalVars),
+        insert(Var, NonLocalVars0, NonLocalVars),
         set_nonlocals(NonLocalVars, !Info),
         GoalExpr = switch(Var, Det, Cases),
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
@@ -423,7 +423,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
             rename_some_vars_in_goal(RenameMap, Then0, Then1),
             rename_var_list(need_not_rename, RenameMap, Vars0, Vars)
         ),
-        insert_list(QuantVars, Vars, QuantVars1),
+        insert_list(Vars, QuantVars, QuantVars1),
         (
             NonLocalsToRecompute = ordinary_nonlocals_maybe_lambda,
             goal_vars_both_maybe_lambda(NonLocalsToRecompute, Then1,
@@ -528,25 +528,25 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
             NonLocalsToRecompute, !Info),
         GoalExpr = unify(Var, UnifyRHS, Mode, Unification, UnifyContext),
         get_nonlocals(!.Info, VarsUnifyRHS),
-        insert(VarsUnifyRHS, Var, GoalVars0),
-        insert_list(GoalVars0, TypeInfoVars, GoalVars1),
+        insert(Var, VarsUnifyRHS, GoalVars0),
+        insert_list(TypeInfoVars, GoalVars0, GoalVars1),
         (
             MaybeReuseVar = yes(ReuseVar),
-            insert(GoalVars1, ReuseVar, GoalVars2)
+            insert(ReuseVar, GoalVars1, GoalVars2)
         ;
             MaybeReuseVar = no,
             GoalVars2 = GoalVars1
         ),
         (
             MaybeSizeVar = yes(SizeVar),
-            insert(GoalVars2, SizeVar, GoalVars3)
+            insert(SizeVar, GoalVars2, GoalVars3)
         ;
             MaybeSizeVar = no,
             GoalVars3 = GoalVars2
         ),
         (
             MaybeRegionVar = yes(RegionVar),
-            insert(GoalVars3, RegionVar, GoalVars)
+            insert(RegionVar, GoalVars3, GoalVars)
         ;
             MaybeRegionVar = no,
             GoalVars = GoalVars3
@@ -607,7 +607,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
             (
                 GoalType = unknown_atomic_goal_type,
                 Outer = atomic_interface_vars(OuterDI, OuterUO),
-                insert_list(NonLocalVars0, [OuterDI, OuterUO], NonLocalVars)
+                insert_list([OuterDI, OuterUO], NonLocalVars0, NonLocalVars)
             ;
                 ( GoalType = top_level_atomic_goal
                 ; GoalType = nested_atomic_goal
@@ -694,7 +694,7 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
         implicitly_quantify_goal_quant_info(SubGoal1, SubGoal,
             NonLocalsToRecompute, !Info),
         get_nonlocals(!.Info, NonLocals0),
-        delete_list(NonLocals0, Vars, NonLocals),
+        delete_list(Vars, NonLocals0, NonLocals),
         set_nonlocals(NonLocals, !Info)
     ;
         Reason0 = from_ground_term(TermVar, from_ground_term_construct),
@@ -734,7 +734,7 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
         implicitly_quantify_goal_quant_info(SubGoal1, SubGoal,
             NonLocalsToRecompute, !Info),
         get_nonlocals(!.Info, NonLocals0),
-        delete_list(NonLocals0, Vars, NonLocals),
+        delete_list(Vars, NonLocals0, NonLocals),
         set_nonlocals(NonLocals, !Info)
     ),
     set_quant_vars(QuantVars, !Info),
@@ -756,7 +756,7 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
         !Info) :-
     get_outside(!.Info, OutsideVars),
     get_lambda_outside(!.Info, LambdaOutsideVars),
-    get_quant_vars(!.Info, QuantVars),
+    get_quant_vars(!.Info, QuantVars0),
     % Rename apart all the quantified variables that occur
     % outside this goal.
     QVars = list_to_set(Vars0),
@@ -794,8 +794,8 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
         )
     ),
     update_seen_vars(QVars, !Info),
-    insert_list(QuantVars, Vars, QuantVars1),
-    set_quant_vars(QuantVars1, !Info).
+    insert_list(Vars, QuantVars0, QuantVars),
+    set_quant_vars(QuantVars, !Info).
 
 :- pred implicitly_quantify_goal_quant_info_bi_implication(
     hlds_goal, hlds_goal, hlds_goal_expr, hlds_goal_info,
@@ -974,7 +974,7 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
         set_quant_vars(QuantVars, !Info),
         % Add the lambda vars as outside vars, since they are outside of the
         % lambda goal.
-        insert_list(OutsideVars1, LambdaVars, OutsideVars),
+        insert_list(LambdaVars, OutsideVars1, OutsideVars),
         set_outside(OutsideVars, !Info),
         % Set the LambdaOutsideVars set to empty, because variables that occur
         % outside this lambda expression only in other lambda expressions
@@ -990,7 +990,7 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
 
         get_nonlocals(!.Info, NonLocals0),
         % Lambda-quantified variables are local.
-        delete_list(NonLocals0, LambdaVars, NonLocals),
+        delete_list(LambdaVars, NonLocals0, NonLocals),
         set_quant_vars(QuantVars0, !Info),
         set_outside(OutsideVars0, !Info),
         set_lambda_outside(LambdaOutsideVars0, !Info),
@@ -1179,7 +1179,7 @@ implicitly_quantify_atomic_goals([Goal0 - Inner0 | Goals0], [Goal | Goals],
         % not inserted until the purity checking pass.
         Inner0 = atomic_interface_vars(InnerDI, InnerUO),
         get_outside(!.Info, OutsideVars0),
-        insert_list(OutsideVars0, [InnerDI, InnerUO], OutsideVars),
+        insert_list([InnerDI, InnerUO], OutsideVars0, OutsideVars),
         set_outside(OutsideVars, !Info)
     ),
     implicitly_quantify_goal_quant_info(Goal0, Goal, NonLocalsToRecompute,
@@ -1788,15 +1788,15 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
         !Set, !LambdaSet) :-
     (
         GoalExpr = unify(LHS, RHS, _, Unification, _),
-        insert(!.Set, LHS, !:Set),
+        insert(LHS, !Set),
         (
             Unification = construct(_, _, _, _, How, _, SubInfo),
             (
                 How = reuse_cell(cell_to_reuse(ReuseVar, _, _)),
-                insert(!.Set, ReuseVar, !:Set)
+                insert(ReuseVar, !Set)
             ;
                 How = construct_in_region(RegionVar),
-                insert(!.Set, RegionVar, !:Set)
+                insert(RegionVar, !Set)
             ;
                 ( How = construct_statically
                 ; How = construct_dynamically
@@ -1806,13 +1806,13 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
                 SubInfo = construct_sub_info(_, MaybeSize),
                 MaybeSize = yes(dynamic_size(SizeVar))
             ->
-                insert(!.Set, SizeVar, !:Set)
+                insert(SizeVar, !Set)
             ;
                 true
             )
         ;
             Unification = complicated_unify(_, _, TypeInfoVars),
-            insert_list(!.Set, TypeInfoVars, !:Set)
+            insert_list(TypeInfoVars, !Set)
         ;
             ( Unification = deconstruct(_, _, _, _, _, _)
             ; Unification = assign(_, _)
@@ -1823,18 +1823,18 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
             !Set, !LambdaSet)
     ;
         GoalExpr = plain_call(_, _, ArgVars, _, _, _),
-        insert_list(!.Set, ArgVars, !:Set)
+        insert_list(ArgVars, !Set)
     ;
         GoalExpr = generic_call(GenericCall, ArgVars1, _, _),
         goal_util.generic_call_vars(GenericCall, ArgVars0),
-        insert_list(!.Set, ArgVars0, !:Set),
-        insert_list(!.Set, ArgVars1, !:Set)
+        insert_list(ArgVars0, !Set),
+        insert_list(ArgVars1, !Set)
     ;
         GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
         Vars = list.map(foreign_arg_var, Args),
         ExtraVars = list.map(foreign_arg_var, ExtraArgs),
         list.append(Vars, ExtraVars, AllVars),
-        insert_list(!.Set, AllVars, !:Set)
+        insert_list(AllVars, !Set)
     ;
         GoalExpr = conj(ConjType, Goals),
         (
@@ -1848,7 +1848,7 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
         disj_vars_maybe_lambda(NonLocalsToRecompute, Goals, !Set, !LambdaSet)
     ;
         GoalExpr = switch(Var, _Det, Cases),
-        insert(!.Set, Var, !:Set),
+        insert(Var, !Set),
         case_vars_maybe_lambda(NonLocalsToRecompute, Cases, !Set, !LambdaSet)
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
@@ -1863,8 +1863,8 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
             ElseSet, ElseLambdaSet),
         union(CondSet, ThenSet, CondThenSet),
         union(CondLambdaSet, ThenLambdaSet, CondThenLambdaSet),
-        delete_list(CondThenSet, Vars, SomeCondThenSet),
-        delete_list(CondThenLambdaSet, Vars, SomeCondThenLambdaSet),
+        delete_list(Vars, CondThenSet, SomeCondThenSet),
+        delete_list(Vars, CondThenLambdaSet, SomeCondThenLambdaSet),
         union(!.Set, SomeCondThenSet, !:Set),
         union(!.LambdaSet, SomeCondThenLambdaSet, !:LambdaSet),
         union(!.Set, ElseSet, !:Set),
@@ -1891,24 +1891,24 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
             Reason = exist_quant(Vars),
             goal_vars_both_maybe_lambda(NonLocalsToRecompute, SubGoal,
                 !:Set, !:LambdaSet),
-            delete_list(!.Set, Vars, !:Set),
-            delete_list(!.LambdaSet, Vars, !:LambdaSet)
+            delete_list(Vars, !Set),
+            delete_list(Vars, !LambdaSet)
         ;
             Reason = promise_solutions(Vars, _Kind),
             goal_vars_both_maybe_lambda(NonLocalsToRecompute, SubGoal,
                 !:Set, !:LambdaSet),
-            insert_list(!.Set, Vars, !:Set)
+            insert_list(Vars, !Set)
         ;
             Reason = require_complete_switch(Var),
             goal_vars_both_maybe_lambda(NonLocalsToRecompute, SubGoal,
                 !:Set, !:LambdaSet),
-            insert(!.Set, Var, !:Set)
+            insert(Var, !Set)
         ;
             Reason = from_ground_term(TermVar, Kind),
             (
                 Kind = from_ground_term_construct,
                 !:Set = init,
-                insert(!.Set, TermVar, !:Set),
+                insert(TermVar, !Set),
                 !:LambdaSet = init
             ;
                 ( Kind = from_ground_term_deconstruct
@@ -1933,7 +1933,7 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
             % XXX STM
             Outer = atomic_interface_vars(OuterDI, OuterUO),
             Inner = atomic_interface_vars(InnerDI, InnerUO),
-            insert_list(!.Set, [OuterDI, OuterUO, InnerDI, InnerUO], !:Set),
+            insert_list([OuterDI, OuterUO, InnerDI, InnerUO], !Set),
             disj_vars_maybe_lambda(NonLocalsToRecompute,
                 [MainGoal | OrElseGoals], !Set, !LambdaSet)
         ;
@@ -1957,15 +1957,15 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
 goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
     (
         GoalExpr = unify(LHS, RHS, _, Unification, _),
-        insert(!.Set, LHS, !:Set),
+        insert(LHS, !Set),
         (
             Unification = construct(_, _, _, _, How, _, SubInfo),
             (
                 How = reuse_cell(cell_to_reuse(ReuseVar, _, _)),
-                insert(!.Set, ReuseVar, !:Set)
+                insert(ReuseVar, !Set)
             ;
                 How = construct_in_region(RegionVar),
-                insert(!.Set, RegionVar, !:Set)
+                insert(RegionVar, !Set)
             ;
                 ( How = construct_statically
                 ; How = construct_dynamically
@@ -1975,13 +1975,13 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
                 SubInfo = construct_sub_info(_, MaybeSize),
                 MaybeSize = yes(dynamic_size(SizeVar))
             ->
-                insert(!.Set, SizeVar, !:Set)
+                insert(SizeVar, !Set)
             ;
                 true
             )
         ;
             Unification = complicated_unify(_, _, TypeInfoVars),
-            insert_list(!.Set, TypeInfoVars, !:Set)
+            insert_list(TypeInfoVars, !Set)
         ;
             ( Unification = deconstruct(_, _, _, _, _, _)
             ; Unification = assign(_, _)
@@ -1991,18 +1991,18 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
         unify_rhs_vars_maybe_lambda_and_bi_impl(RHS, !Set, !LambdaSet)
     ;
         GoalExpr = plain_call(_, _, ArgVars, _, _, _),
-        insert_list(!.Set, ArgVars, !:Set)
+        insert_list(ArgVars, !Set)
     ;
         GoalExpr = generic_call(GenericCall, ArgVars1, _, _),
         goal_util.generic_call_vars(GenericCall, ArgVars0),
-        insert_list(!.Set, ArgVars0, !:Set),
-        insert_list(!.Set, ArgVars1, !:Set)
+        insert_list(ArgVars0, !Set),
+        insert_list(ArgVars1, !Set)
     ;
         GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
         Vars = list.map(foreign_arg_var, Args),
         ExtraVars = list.map(foreign_arg_var, ExtraArgs),
         list.append(Vars, ExtraVars, AllVars),
-        insert_list(!.Set, AllVars, !:Set)
+        insert_list(AllVars, !Set)
     ;
         GoalExpr = conj(ConjType, Goals),
         (
@@ -2016,7 +2016,7 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
         disj_vars_maybe_lambda_and_bi_impl(Goals, !Set, !LambdaSet)
     ;
         GoalExpr = switch(Var, _Det, Cases),
-        insert(!.Set, Var, !:Set),
+        insert(Var, !Set),
         case_vars_maybe_lambda_and_bi_impl(Cases, !Set, !LambdaSet)
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
@@ -2031,8 +2031,8 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
             ElseSet, ElseLambdaSet),
         union(CondSet, ThenSet, CondThenSet),
         union(CondLambdaSet, ThenLambdaSet, CondThenLambdaSet),
-        delete_list(CondThenSet, Vars, SomeCondThenSet),
-        delete_list(CondThenLambdaSet, Vars, SomeCondThenLambdaSet),
+        delete_list(Vars, CondThenSet, SomeCondThenSet),
+        delete_list(Vars, CondThenLambdaSet, SomeCondThenLambdaSet),
         union(!.Set, SomeCondThenSet, !:Set),
         union(!.LambdaSet, SomeCondThenLambdaSet, !:LambdaSet),
         union(!.Set, ElseSet, !:Set),
@@ -2059,18 +2059,18 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
             Reason = exist_quant(Vars),
             goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
                 !:Set, !:LambdaSet),
-            delete_list(!.Set, Vars, !:Set),
-            delete_list(!.LambdaSet, Vars, !:LambdaSet)
+            delete_list(Vars, !Set),
+            delete_list(Vars, !LambdaSet)
         ;
             Reason = promise_solutions(Vars, _Kind),
             goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
                 !:Set, !:LambdaSet),
-            insert_list(!.Set, Vars, !:Set)
+            insert_list(Vars, !Set)
         ;
             Reason = require_complete_switch(Var),
             goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
                 !:Set, !:LambdaSet),
-            insert(!.Set, Var, !:Set)
+            insert(Var, !Set)
         ;
             Reason = from_ground_term(_TermVar, _Kind),
             goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
@@ -2088,7 +2088,7 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
             % XXX STM
             Outer = atomic_interface_vars(OuterDI, OuterUO),
             Inner = atomic_interface_vars(InnerDI, InnerUO),
-            insert_list(!.Set, [OuterDI, OuterUO, InnerDI, InnerUO], !:Set),
+            insert_list([OuterDI, OuterUO, InnerDI, InnerUO], !Set),
             disj_vars_maybe_lambda_and_bi_impl([MainGoal | OrElseGoals],
                 !Set, !LambdaSet)
         ;
@@ -2113,17 +2113,17 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
 goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
     (
         GoalExpr = unify(LHS, RHS, _, Unification, _),
-        insert(!.Set, LHS, !:Set),
+        insert(LHS, !Set),
         (
             Unification = construct(_, _, _, _, How, _, SubInfo),
             (
                 How = reuse_cell(cell_to_reuse(ReuseVar, _, SetArgs)),
                 MaybeSetArgs = yes(SetArgs),
-                insert(!.Set, ReuseVar, !:Set)
+                insert(ReuseVar, !Set)
             ;
                 How = construct_in_region(RegionVar),
                 MaybeSetArgs = no,
-                insert(!.Set, RegionVar, !:Set)
+                insert(RegionVar, !Set)
             ;
                 ( How = construct_statically
                 ; How = construct_dynamically
@@ -2134,14 +2134,14 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
                 SubInfo = construct_sub_info(_, MaybeSize),
                 MaybeSize = yes(dynamic_size(SizeVar))
             ->
-                insert(!.Set, SizeVar, !:Set)
+                insert(SizeVar, !Set)
             ;
                 true
             )
         ;
             Unification = complicated_unify(_, _, TypeInfoVars),
             MaybeSetArgs = no,
-            insert_list(!.Set, TypeInfoVars, !:Set)
+            insert_list(TypeInfoVars, !Set)
         ;
             ( Unification = deconstruct(_, _, _, _, _, _)
             ; Unification = assign(_, _)
@@ -2152,18 +2152,18 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
         unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set)
     ;
         GoalExpr = plain_call(_, _, ArgVars, _, _, _),
-        insert_list(!.Set, ArgVars, !:Set)
+        insert_list(ArgVars, !Set)
     ;
         GoalExpr = generic_call(GenericCall, ArgVars1, _, _),
         goal_util.generic_call_vars(GenericCall, ArgVars0),
-        insert_list(!.Set, ArgVars0, !:Set),
-        insert_list(!.Set, ArgVars1, !:Set)
+        insert_list(ArgVars0, !Set),
+        insert_list(ArgVars1, !Set)
     ;
         GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
         Vars = list.map(foreign_arg_var, Args),
         ExtraVars = list.map(foreign_arg_var, ExtraArgs),
         list.append(Vars, ExtraVars, AllVars),
-        insert_list(!.Set, AllVars, !:Set)
+        insert_list(AllVars, !Set)
     ;
         GoalExpr = conj(ConjType, Goals),
         (
@@ -2177,7 +2177,7 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
         disj_vars_no_lambda(NonLocalsToRecompute, Goals, !Set)
     ;
         GoalExpr = switch(Var, _Det, Cases),
-        insert(!.Set, Var, !:Set),
+        insert(Var, !Set),
         case_vars_no_lambda(NonLocalsToRecompute, Cases, !Set)
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
@@ -2188,7 +2188,7 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
         goal_vars_both_no_lambda(NonLocalsToRecompute, Then, ThenSet),
         goal_vars_both_no_lambda(NonLocalsToRecompute, Else, ElseSet),
         union(CondSet, ThenSet, CondThenSet),
-        delete_list(CondThenSet, Vars, SomeCondThenSet),
+        delete_list(Vars, CondThenSet, SomeCondThenSet),
         union(!.Set, SomeCondThenSet, !:Set),
         union(!.Set, ElseSet, !:Set)
     ;
@@ -2209,15 +2209,15 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
         ;
             Reason = exist_quant(Vars),
             goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set),
-            delete_list(!.Set, Vars, !:Set)
+            delete_list(Vars, !Set)
         ;
             Reason = promise_solutions(Vars, _Kind),
             goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set),
-            insert_list(!.Set, Vars, !:Set)
+            insert_list(Vars, !Set)
         ;
             Reason = require_complete_switch(Var),
             goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set),
-            insert(!.Set, Var, !:Set)
+            insert(Var, !Set)
         ;
             Reason = from_ground_term(_TermVar, _),
             goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set)
@@ -2233,7 +2233,7 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
             % XXX STM
             Outer = atomic_interface_vars(OuterDI, OuterUO),
             Inner = atomic_interface_vars(InnerDI, InnerUO),
-            insert_list(!.Set, [OuterDI, OuterUO, InnerDI, InnerUO], !:Set),
+            insert_list([OuterDI, OuterUO, InnerDI, InnerUO], !Set),
             disj_vars_no_lambda(NonLocalsToRecompute, [MainGoal | OrElseGoals],
                 !Set)
         ;
@@ -2255,17 +2255,17 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
 unify_rhs_vars_maybe_lambda(NonLocalsToRecompute, RHS, !Set, !LambdaSet) :-
     (
         RHS = rhs_var(Y),
-        insert(!.Set, Y, !:Set)
+        insert(Y, !Set)
     ;
         RHS = rhs_functor(_, _, ArgVars),
-        insert_list(!.Set, ArgVars, !:Set)
+        insert_list(ArgVars, !Set)
     ;
         RHS = rhs_lambda_goal(_, _, _, _, _, LambdaVars, _, _, Goal),
         % Note that the NonLocals list is not counted, since all the
         % variables in that list must occur in the goal.
-        goal_vars_bitset_maybe_lambda(NonLocalsToRecompute, Goal, GoalVars),
-        delete_list(GoalVars, LambdaVars, GoalVars1),
-        union(!.LambdaSet, GoalVars1, !:LambdaSet)
+        goal_vars_bitset_maybe_lambda(NonLocalsToRecompute, Goal, GoalVars0),
+        delete_list(LambdaVars, GoalVars0, GoalVars),
+        union(!.LambdaSet, GoalVars, !:LambdaSet)
     ).
 
 :- pred unify_rhs_vars_maybe_lambda_and_bi_impl(unify_rhs,
@@ -2276,17 +2276,17 @@ unify_rhs_vars_maybe_lambda(NonLocalsToRecompute, RHS, !Set, !LambdaSet) :-
 unify_rhs_vars_maybe_lambda_and_bi_impl(RHS, !Set, !LambdaSet) :-
     (
         RHS = rhs_var(Y),
-        insert(!.Set, Y, !:Set)
+        insert(Y, !Set)
     ;
         RHS = rhs_functor(_, _, ArgVars),
-        insert_list(!.Set, ArgVars, !:Set)
+        insert_list(ArgVars, !Set)
     ;
         RHS = rhs_lambda_goal(_, _, _, _, _, LambdaVars, _, _, Goal),
         % Note that the NonLocals list is not counted, since all the
         % variables in that list must occur in the goal.
-        goal_vars_bitset_maybe_lambda_and_bi_impl(Goal, GoalVars),
-        delete_list(GoalVars, LambdaVars, GoalVars1),
-        union(!.LambdaSet, GoalVars1, !:LambdaSet)
+        goal_vars_bitset_maybe_lambda_and_bi_impl(Goal, GoalVars0),
+        delete_list(LambdaVars, GoalVars0, GoalVars),
+        union(!.LambdaSet, GoalVars, !:LambdaSet)
     ).
 
 :- pred unify_rhs_vars_no_lambda(nonlocals_to_recompute, unify_rhs,
@@ -2299,7 +2299,7 @@ unify_rhs_vars_maybe_lambda_and_bi_impl(RHS, !Set, !LambdaSet) :-
 unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set) :-
     (
         RHS = rhs_var(Y),
-        insert(!.Set, Y, !:Set)
+        insert(Y, !Set)
     ;
         RHS = rhs_functor(_, _, ArgVars),
         (
@@ -2308,9 +2308,9 @@ unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set) :-
         ->
             % Ignore the fields taken from the reused cell.
             get_updated_fields(SetArgs, ArgVars, ArgsToSet),
-            insert_list(!.Set, ArgsToSet, !:Set)
+            insert_list(ArgsToSet, !Set)
         ;
-            insert_list(!.Set, ArgVars, !:Set)
+            insert_list(ArgVars, !Set)
         )
     ;
         RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
@@ -2322,7 +2322,7 @@ unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set) :-
 
 insert_set_fields(SetArgs, Args, !Set) :-
     get_updated_fields(SetArgs, Args,  ArgsToSet),
-    insert_list(!.Set, ArgsToSet, !:Set).
+    insert_list(ArgsToSet, !Set).
 
 :- pred get_updated_fields(list(needs_update)::in,
     list(prog_var)::in, list(prog_var)::out) is det.

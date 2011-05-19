@@ -117,7 +117,7 @@
     % only `X'. Takes O(log(card(Set))) time and space.
     %
 :- func insert(tree_bitset(T), T) = tree_bitset(T) <= enum(T).
-:- pred insert(tree_bitset(T)::in, T::in, tree_bitset(T)::out)
+:- pred insert(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det <= enum(T).
 
     % `insert_list(Set, X)' returns the union of `Set' and the set containing
@@ -125,14 +125,14 @@
     % more efficient.
     %
 :- func insert_list(tree_bitset(T), list(T)) = tree_bitset(T) <= enum(T).
-:- pred insert_list(tree_bitset(T)::in, list(T)::in, tree_bitset(T)::out)
+:- pred insert_list(list(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det <= enum(T).
 
     % `delete(Set, X)' returns the difference of `Set' and the set containing
     % only `X'. Takes O(card(Set)) time and space.
     %
 :- func delete(tree_bitset(T), T) = tree_bitset(T) <= enum(T).
-:- pred delete(tree_bitset(T)::in, T::in, tree_bitset(T)::out)
+:- pred delete(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det <= enum(T).
 
     % `delete_list(Set, X)' returns the difference of `Set' and the set
@@ -140,22 +140,22 @@
     % `difference(Set, list_to_set(X))', but may be more efficient.
     %
 :- func delete_list(tree_bitset(T), list(T)) = tree_bitset(T) <= enum(T).
-:- pred delete_list(tree_bitset(T)::in, list(T)::in, tree_bitset(T)::out)
+:- pred delete_list(list(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det <= enum(T).
 
-    % `remove(Set0, X, Set)' returns in `Set' the difference of `Set0'
+    % `remove(X, Set0, Set)' returns in `Set' the difference of `Set0'
     % and the set containing only `X', failing if `Set0' does not contain `X'.
     % Takes O(log(card(Set))) time and space.
     %
-:- pred remove(tree_bitset(T)::in, T::in, tree_bitset(T)::out)
+:- pred remove(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is semidet <= enum(T).
 
-    % `remove_list(Set0, X, Set)' returns in `Set' the difference of `Set0'
+    % `remove_list(X, Set0, Set)' returns in `Set' the difference of `Set0'
     % and the set containing all the elements of `X', failing if any element
     % of `X' is not in `Set0'. Same as `subset(list_to_set(X), Set0),
     % difference(Set0, list_to_set(X), Set)', but may be more efficient.
     %
-:- pred remove_list(tree_bitset(T)::in, list(T)::in, tree_bitset(T)::out)
+:- pred remove_list(list(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is semidet <= enum(T).
 
     % `remove_leq(Set, X)' returns `Set' with all elements less than or equal
@@ -176,7 +176,7 @@
     % `Set0', and `Set' is the set which contains all the elements of `Set0'
     % except `X'. Takes O(1) time and space.
     %
-:- pred remove_least(tree_bitset(T)::in, T::out, tree_bitset(T)::out)
+:- pred remove_least(T::out, tree_bitset(T)::in, tree_bitset(T)::out)
     is semidet <= enum(T).
 
     % `union(SetA, SetB)' returns the union of `SetA' and `SetB'. The
@@ -233,10 +233,14 @@
 :- func foldl(func(T, U) = U, tree_bitset(T), U) = U <= enum(T).
 
 :- pred foldl(pred(T, U, U), tree_bitset(T), U, U) <= enum(T).
-:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode foldl(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
 :- mode foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
@@ -1027,14 +1031,14 @@ delete(Set, Elem) = difference(Set, insert(init, Elem)).
 
 delete_list(Set, List) = difference(Set, list_to_set(List)).
 
-remove(Set0, Elem, Set) :-
-    contains(Set0, Elem),
-    Set = delete(Set0, Elem).
+remove(Elem, !Set) :-
+    contains(!.Set, Elem),
+    !:Set = delete(!.Set, Elem).
 
-remove_list(Set0, Elems, Set) :-
+remove_list(Elems, !Set) :-
     ElemsSet = list_to_set(Elems),
-    subset(ElemsSet, Set0),
-    Set = difference(Set0, ElemsSet).
+    subset(ElemsSet, !.Set),
+    !:Set = difference(!.Set, ElemsSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -1196,7 +1200,7 @@ remove_gt_leaf([Head0 | Tail0], Index, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-remove_least(Set0, Elem, Set) :-
+remove_least(Elem, Set0, Set) :-
     Set0 = tree_bitset(List0),
     (
         List0 = leaf_list(LeafNodes0),
@@ -2639,13 +2643,17 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 
 %-----------------------------------------------------------------------------%
 
-insert(A, B, insert(A, B)).
+insert(Elem, !Set) :-
+    !:Set = insert(!.Set, Elem).
 
-insert_list(A, B, insert_list(A, B)).
+insert_list(Elems, !Set) :-
+    !:Set = insert_list(!.Set, Elems).
 
-delete(A, B, delete(A, B)).
+delete(Elem, !Set) :-
+    !:Set = delete(!.Set, Elem).
 
-delete_list(A, B, delete_list(A, B)).
+delete_list(Elems, !Set) :-
+    !:Set = delete_list(!.Set, Elems).
 
 union(A, B, union(A, B)).
 
@@ -2686,12 +2694,16 @@ foldl2(P, Set, !AccA, !AccB) :-
     ).
 
 :- pred do_foldl_pred(pred(T, U, U), list(interior_node), U, U) <= enum(T).
-:- mode do_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode do_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
+:- mode do_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode do_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode do_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode do_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode do_foldl_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode do_foldl_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode do_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode do_foldl_pred(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
 :- mode do_foldl_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode do_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 
 :- pragma type_spec(do_foldl_pred/4, T = int).
 :- pragma type_spec(do_foldl_pred/4, T = var(_)).
@@ -2709,12 +2721,16 @@ do_foldl_pred(P, [H | T], !Acc) :-
     do_foldl_pred(P, T, !Acc).
 
 :- pred leaf_foldl_pred(pred(T, U, U), list(leaf_node), U, U) <= enum(T).
-:- mode leaf_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode leaf_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
+:- mode leaf_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode leaf_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode leaf_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode leaf_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode leaf_foldl_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode leaf_foldl_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode leaf_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode leaf_foldl_pred(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
 :- mode leaf_foldl_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode leaf_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 
 :- pragma type_spec(leaf_foldl_pred/4, T = int).
 :- pragma type_spec(leaf_foldl_pred/4, T = var(_)).
@@ -2933,16 +2949,24 @@ leaf_foldr2_pred(P, [H | T], !AccA, !AccB) :-
     int, int, int, U, U) <= enum(T).
 :- mode fold_bits(in, pred(in, in, out) is det,
     in, in, in, in, out) is det.
+:- mode fold_bits(in, pred(in, mdi, muo) is det,
+    in, in, in, mdi, muo) is det.
 :- mode fold_bits(in, pred(in, di, uo) is det,
     in, in, in, di, uo) is det.
 :- mode fold_bits(in, pred(in, in, out) is semidet,
     in, in, in, in, out) is semidet.
+:- mode fold_bits(in, pred(in, mdi, muo) is semidet,
+    in, in, in, mdi, muo) is semidet.
+:- mode fold_bits(in, pred(in, di, uo) is semidet,
+    in, in, in, di, uo) is semidet.
 :- mode fold_bits(in, pred(in, in, out) is nondet,
     in, in, in, in, out) is nondet.
-:- mode fold_bits(in, pred(in, di, uo) is cc_multi,
-    in, in, in, di, uo) is cc_multi.
+:- mode fold_bits(in, pred(in, mdi, muo) is nondet,
+    in, in, in, mdi, muo) is nondet.
 :- mode fold_bits(in, pred(in, in, out) is cc_multi,
     in, in, in, in, out) is cc_multi.
+:- mode fold_bits(in, pred(in, di, uo) is cc_multi,
+    in, in, in, di, uo) is cc_multi.
 :- pragma type_spec(fold_bits/7, T = int).
 :- pragma type_spec(fold_bits/7, T = var(_)).
 
