@@ -950,6 +950,12 @@ may be caught and handled. A summary of the try goal syntax is:
 
 See @ref{Exception handling} for the full details.
 
+@item @code{event @var{Goal}}
+An event goal.  @var{Goal} must be a predicate call.
+Event goals are an extension used by the Melbourne Mercury implementation
+to support user defined events in the Mercury debugger, @samp{mdb}.
+See the ``Debugging'' chapter of the Mercury User's Guide for further details.
+
 @item @code{@var{Call}}
 Any goal which does not match any of the above forms
 must be a predicate call.
@@ -1159,7 +1165,7 @@ variable syntax.
 
 @table @b
 
-@item Threading the IO state
+@item Threading the I/O state
 @example
 main(!IO) :-
 	io.write_string("The 100th prime is ", !IO),
@@ -1194,7 +1200,7 @@ iterate_while2(P, F, !A, !B) :-
 
 (DCG notation is intended for writing parsers and sequence generators
 in a particular style; in the past it has also been used to thread an
-implicit state variable, typically the IO state, through code.  As a
+implicit state variable, typically the I/O state, through code.  As a
 matter of style, we recommend that in future DCG notation be reserved
 for writing parsers and sequence generators and that state variable
 syntax be used for passing state threads.)
@@ -6515,8 +6521,8 @@ none is specified, is @samp{may_modify_trail}.
 
 @item @samp{will_not_call_mm_tabled/may_call_mm_tabled}
 This attribute declares whether or not a foreign procedure makes calls back to
-Mercury procedures that are evaluated using minimal model tabling (see
-@ref{Tabled evaluation}).  Specifying that a foreign procedure will not call
+Mercury procedures that are evaluated using minimal model tabling
+(@pxref{Tabled evaluation}).  Specifying that a foreign procedure will not call
 procedures evaluated using minimal model tabling may allow the compiler to
 generate more efficient code.  In compilation grades that do not support
 minimal model tabling this attribute is ignored.  These attributes may not be
@@ -7118,9 +7124,9 @@ The @samp{stable} assertion is meaningful
 only in the presence of the @samp{can_pass_as_mercury_type} assertion.
 It states that either the C type is an integer type,
 or it is a pointer type pointing to memory that will never change.
-Together, these assertions are sufficient to allow
-tabling and the @samp{compare_representation} primitive
-to work on values of such types.
+Together, these assertions are sufficient to allow tabling
+(@pxref{Tabled evaluation}) and the @samp{compare_representation}
+primitive to work on values of such types.
 
 As with discriminated union types, programmers can specify the unification
 @w{and/or} comparison predicates to use for values of the type using the
@@ -9743,6 +9749,11 @@ Because all variants of tabling record the values of input arguments,
 and all except @samp{loop_check} also record the values of output arguments,
 you cannot apply any of these pragmas to procedures
 whose arguments' modes include any unique component.
+
+Tabled evaluation of a predicate or function that has an argument whose type
+is a foreign type will result in a run-time error unless the foreign type
+is one for which the @samp{can_pass_as_mercury_type} and @samp{stable}
+assertions have been made (@pxref{Using foreign types from Mercury}).
 
 The optional list of attributes allows programmers
 to control some aspects of the management of the memo table(s)

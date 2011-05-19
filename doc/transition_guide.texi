@@ -203,16 +203,16 @@ module in the Mercury standard library.
 One of the important consequences of our model for input and output
 is that predicates that can fail may not do input or output.
 This is because the state of the world must be a unique object,
-and each IO operation destructively replaces it with a new state.
-Since each IO operation destroys the current state object
+and each I/O operation destructively replaces it with a new state.
+Since each I/O operation destroys the current state object
 and produces a new one,
-it is not possible for IO to be performed in a context that may fail,
+it is not possible for I/O to be performed in a context that may fail,
 since when failure occurs the old state of the world will have been destroyed,
 and since bindings cannot be exported from a failing computation,
 the new state of the world is not accessible.
 
 In some circumstances, Prolog programs that suffer from this problem
-can be fixed by moving the IO out of the failing context.
+can be fixed by moving the I/O out of the failing context.
 For example
 
 @example
@@ -226,7 +226,7 @@ For example
 @end example
 
 @noindent
-where @samp{solve(Goal)} does some IO can be transformed into
+where @samp{solve(Goal)} does some I/O can be transformed into
 valid Mercury in at least two ways. The first is to make
 @samp{solve} deterministic and return a status:
 
