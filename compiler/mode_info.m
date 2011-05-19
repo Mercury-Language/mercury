@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2010 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -342,7 +342,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module svbag.
 :- import_module term.
 :- import_module varset.
 
@@ -708,8 +707,8 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
 mode_info_add_live_vars(NewLiveVars, !MI) :-
     mode_info_get_live_vars(!.MI, LiveVars0),
     mode_info_get_nondet_live_vars(!.MI, NondetLiveVars0),
-    svbag.insert_set(NewLiveVars, LiveVars0, LiveVars),
-    svbag.insert_set(NewLiveVars, NondetLiveVars0, NondetLiveVars),
+    bag.insert_set(NewLiveVars, LiveVars0, LiveVars),
+    bag.insert_set(NewLiveVars, NondetLiveVars0, NondetLiveVars),
     mode_info_set_live_vars(LiveVars, !MI),
     mode_info_set_nondet_live_vars(NondetLiveVars, !MI).
 
@@ -719,8 +718,8 @@ mode_info_add_live_vars(NewLiveVars, !MI) :-
 mode_info_remove_live_vars(OldLiveVars, !MI) :-
     mode_info_get_live_vars(!.MI, LiveVars0),
     mode_info_get_nondet_live_vars(!.MI, NondetLiveVars0),
-    svbag.det_remove_set(OldLiveVars, LiveVars0, LiveVars),
-    svbag.det_remove_set(OldLiveVars, NondetLiveVars0, NondetLiveVars),
+    bag.det_remove_set(OldLiveVars, LiveVars0, LiveVars),
+    bag.det_remove_set(OldLiveVars, NondetLiveVars0, NondetLiveVars),
     mode_info_set_live_vars(LiveVars, !MI),
     mode_info_set_nondet_live_vars(NondetLiveVars, !MI),
 

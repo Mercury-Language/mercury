@@ -202,7 +202,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svbag.
 :- import_module term.
 :- import_module varset.
 
@@ -644,8 +643,8 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
             io.write(!.UnifyInputVars, !IO),
             io.nl(!IO)
         ),
-        svbag.delete(ConstructedVar, !UnifyInputVars),
-        svbag.insert_list(ConstructArgs, !UnifyInputVars),
+        bag.delete(ConstructedVar, !UnifyInputVars),
+        bag.insert_list(ConstructArgs, !UnifyInputVars),
         trace [compiletime(flag("lco")), io(!IO)] (
             io.write_string("updated UnifyInputVars: ", !IO),
             io.write(!.UnifyInputVars, !IO),
