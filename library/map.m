@@ -710,7 +710,6 @@
 
 :- import_module pair.
 :- import_module require.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1307,7 +1306,7 @@ map.reverse_map(Map) = RevMap :-
 
 map.reverse_map_2(Key, Value, !RevMap) :-
     ( map.search(!.RevMap, Value, Keys0) ->
-        svset.insert(Key, Keys0, Keys),
+        set.insert(Key, Keys0, Keys),
         map.det_update(Value, Keys, !RevMap)
     ;
         map.det_insert(Value, set.make_singleton_set(Key), !RevMap)

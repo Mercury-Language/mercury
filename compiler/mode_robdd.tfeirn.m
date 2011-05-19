@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -436,8 +436,8 @@ disj_vars(Vars, X0) = X :-
 		X = zero
 	;
 		VarsNF = Vars `difference` F,
-		( remove_least(VarsNF, Var1, VarsNF1) ->
-			( remove_least(VarsNF1, Var2, VarsNF2) ->
+		( remove_least(Var1, VarsNF, VarsNF1) ->
+			( remove_least(Var2, VarsNF1, VarsNF2) ->
 				( empty(VarsNF2) ->
 					X = mode_robdd(T, F, E,
 						I ^ either(Var1, Var2),
@@ -498,7 +498,7 @@ disj_vars_eq(Vars, Var, X) =
 		X ^ var(Var)
 	; Vars `subset` F ->
 		X ^ not_var(Var)
-	; remove_least(Vars, Var1, Vars1) ->
+	; remove_least(Var1, Vars, Vars1) ->
 		( empty(Vars1) ->
 			X ^ eq_vars(Var, Var1)
 		;
@@ -562,7 +562,7 @@ labelling(Vars0, mode_robdd(T, F, E, I, R, N), TrueVars, FalseVars) :-
 		is nondet.
 
 labelling_2(Vars0, X0, TrueVars, FalseVars) :-
-	( remove_least(Vars0, V, Vars) ->
+	( remove_least(V, Vars0, Vars) ->
 		(
 			X = var_restrict_false(V, X0),
 			X ^ robdd \= zero,
@@ -598,7 +598,7 @@ minimal_model(Vars, X0, TrueVars, FalseVars) :-
 	is semidet.
 
 minimal_model_2(Vars0, X0, TrueVars, FalseVars) :-
-	( remove_least(Vars0, V, Vars) ->
+	( remove_least(V, Vars0, Vars) ->
 		X1 = var_restrict_false(V, X0),
 		( X1 ^ robdd \= zero ->
 			minimal_model_2(Vars, X1, TrueVars, FalseVars0),

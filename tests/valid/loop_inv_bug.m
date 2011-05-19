@@ -22,6 +22,6 @@
 :- implementation.
 
 foo(Var, TrueVars0, FalseVars0) :-
- 	sparse_bitset.remove_leq(TrueVars0, Var, TrueVars),
-	sparse_bitset.remove_leq(FalseVars0, Var, FalseVars), 
+ 	sparse_bitset.remove_leq(Var, TrueVars0, TrueVars),
+	sparse_bitset.remove_leq(Var, FalseVars0, FalseVars), 
 	foo(Var, TrueVars, FalseVars).

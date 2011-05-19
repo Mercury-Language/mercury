@@ -64,6 +64,10 @@ Changes to the Mercury standard library:
   set_unordlist.insert_list/3, set_unordlist.delete/3,
   set_unordlist.delete_list/3, set_unordlist.remove/3,
   set.unordlist.remove_list/3, set_unordlist.remove_least/3,
+  sparse_bitset.insert/3, sparse_bitset.insert_list/3, sparse_bitset.delete/3,
+  sparse_bitset.delete_list/3, sparse_bitset.remove/3,
+  sparse_bitset.remove_list/3, sparse_bitset.remove_leq/3,
+  sparse_bitset.remove_gt/3, sparse_bitset.remove_least/3,
   tree234.set/4, tree234.remove/4, tree234.remove_smallest/4 and
   tree234.update/4.
 

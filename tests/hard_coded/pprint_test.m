@@ -36,8 +36,8 @@ main -->
 	io__nl,
 
 	{ Set0 = sparse_bitset__init },
-	{ sparse_bitset__insert(Set0, 42, Set1) },
-	{ sparse_bitset__insert(Set1, 84, Set2) },
+	{ sparse_bitset__insert(42, Set0, Set1) },
+	{ sparse_bitset__insert(84, Set1, Set2) },
  	pprint__write(line_length, to_doc(Set1)),
 	io__nl,
  	pprint__write(line_length, to_doc(Set2)),

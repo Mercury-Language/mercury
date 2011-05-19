@@ -137,7 +137,7 @@
     % only `X'. Takes O(rep_size(Set)) time and space.
     %
 :- func insert(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
-:- pred insert(sparse_bitset(T)::in, T::in, sparse_bitset(T)::out)
+:- pred insert(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is det <= enum(T).
 
     % `insert_list(Set, X)' returns the union of `Set' and the set containing
@@ -145,14 +145,14 @@
     % more efficient.
     %
 :- func insert_list(sparse_bitset(T), list(T)) = sparse_bitset(T) <= enum(T).
-:- pred insert_list(sparse_bitset(T)::in, list(T)::in, sparse_bitset(T)::out)
+:- pred insert_list(list(T)::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is det <= enum(T).
 
     % `delete(Set, X)' returns the difference of `Set' and the set containing
     % only `X'. Takes O(rep_size(Set)) time and space.
     %
 :- func delete(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
-:- pred delete(sparse_bitset(T)::in, T::in, sparse_bitset(T)::out)
+:- pred delete(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is det <= enum(T).
 
     % `delete_list(Set, X)' returns the difference of `Set' and the set
@@ -160,22 +160,22 @@
     % `difference(Set, list_to_set(X))', but may be more efficient.
     %
 :- func delete_list(sparse_bitset(T), list(T)) = sparse_bitset(T) <= enum(T).
-:- pred delete_list(sparse_bitset(T)::in, list(T)::in, sparse_bitset(T)::out)
+:- pred delete_list(list(T)::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is det <= enum(T).
 
-    % `remove(Set0, X, Set)' returns in `Set' the difference of `Set0'
+    % `remove(X, Set0, Set)' returns in `Set' the difference of `Set0'
     % and the set containing only `X', failing if `Set0' does not contain `X'.
     % Takes O(rep_size(Set)) time and space.
     %
-:- pred remove(sparse_bitset(T)::in, T::in, sparse_bitset(T)::out)
+:- pred remove(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is semidet <= enum(T).
 
-    % `remove_list(Set0, X, Set)' returns in `Set' the difference of `Set0'
+    % `remove_list(X, Set0, Set)' returns in `Set' the difference of `Set0'
     % and the set containing all the elements of `X', failing if any element
     % of `X' is not in `Set0'. Same as `subset(list_to_set(X), Set0),
     % difference(Set0, list_to_set(X), Set)', but may be more efficient.
     %
-:- pred remove_list(sparse_bitset(T)::in, list(T)::in, sparse_bitset(T)::out)
+:- pred remove_list(list(T)::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is semidet <= enum(T).
 
     % `remove_leq(Set, X)' returns `Set' with all elements less than or equal
@@ -183,7 +183,7 @@
     % elements of `Set' which are greater than `X'.
     %
 :- func remove_leq(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
-:- pred remove_leq(sparse_bitset(T)::in, T::in, sparse_bitset(T)::out)
+:- pred remove_leq(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is det <= enum(T).
 
     % `remove_gt(Set, X)' returns `Set' with all elements greater than `X'
@@ -191,14 +191,14 @@
     % of `Set' which are less than or equal to `X'.
     %
 :- func remove_gt(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
-:- pred remove_gt(sparse_bitset(T)::in, T::in, sparse_bitset(T)::out)
+:- pred remove_gt(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is det <= enum(T).
 
     % `remove_least(Set0, X, Set)' is true iff `X' is the least element in
     % `Set0', and `Set' is the set which contains all the elements of `Set0'
     % except `X'. Takes O(1) time and space.
     %
-:- pred remove_least(sparse_bitset(T)::in, T::out, sparse_bitset(T)::out)
+:- pred remove_least(T::out, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is semidet <= enum(T).
 
     % `union(SetA, SetB)' returns the union of `SetA' and `SetB'. The
@@ -409,6 +409,8 @@
 
 init = sparse_bitset([]).
 
+init(init).
+
 empty(init).
 
 equal(X, X).
@@ -416,6 +418,8 @@ equal(X, X).
 is_empty(sparse_bitset([])).
 
 %-----------------------------------------------------------------------------%
+
+to_sorted_list(A, to_sorted_list(A)).
 
 to_sorted_list(Set) = foldr(func(Elem, Acc0) = [Elem | Acc0], Set, []).
 
@@ -666,6 +670,13 @@ count(Set) = foldl((func(_, Acc) = Acc + 1), Set, 0).
 
 make_singleton_set(A) = insert(init, A).
 
+singleton_set(make_singleton_set(A), A).
+
+%-----------------------------------------------------------------------------%
+
+insert(E, !Set) :-
+    !:Set = insert(!.Set, E).
+
 insert(sparse_bitset(Set), Elem) =
     sparse_bitset(insert_2(Set, enum.to_int(Elem))).
 
@@ -691,23 +702,38 @@ insert_2(Set0, Index) = Set :-
         Set = [Data0 | insert_2(Rest, Index)]
     ).
 
+insert_list(List, !Set) :-
+    !:Set = insert_list(!.Set, List).
+
 insert_list(Set, List) = union(list_to_set(List), Set).
 
 %-----------------------------------------------------------------------------%
 
+delete(E, !Set) :-
+    !:Set = delete(!.Set, E).
+
 delete(Set, Elem) = difference(Set, insert(init, Elem)).
+
+delete_list(List, !Set) :-
+    !:Set = delete_list(!.Set, List).
+
 delete_list(Set, List) = difference(Set, list_to_set(List)).
 
-remove(Set0, Elem, Set) :-
-    contains(Set0, Elem),
-    Set = delete(Set0, Elem).
+%-----------------------------------------------------------------------------%
 
-remove_list(Set0, Elems, Set) :-
+remove(Elem, !Set) :-
+    contains(!.Set, Elem),
+    !:Set = delete(!.Set, Elem).
+
+remove_list(Elems, !Set) :-
     list_to_set(Elems, ElemsSet),
-    subset(ElemsSet, Set0),
-    Set = difference(Set0, ElemsSet).
+    subset(ElemsSet, !.Set),
+    !:Set = difference(!.Set, ElemsSet).
 
 %-----------------------------------------------------------------------------%
+
+remove_leq(E, !Set) :-
+    !:Set = remove_leq(!.Set, E).
 
 remove_leq(sparse_bitset(Set), Elem) =
     sparse_bitset(remove_leq_2(Set, enum.to_int(Elem))).
@@ -736,6 +762,9 @@ remove_leq_2([Data | Rest], Index) = Result :-
 
 %-----------------------------------------------------------------------------%
 
+remove_gt(E, !Set) :-
+    !:Set = remove_gt(!.Set, E).
+
 remove_gt(sparse_bitset(Set), Elem) =
     sparse_bitset(remove_gt_2(Set, enum.to_int(Elem))).
 
@@ -763,7 +792,7 @@ remove_gt_2([Data | Rest], Index) = Result :-
 
 %-----------------------------------------------------------------------------%
 
-remove_least(sparse_bitset(Set0), Elem, sparse_bitset(Set)) :-
+remove_least(Elem, sparse_bitset(Set0), sparse_bitset(Set)) :-
     Set0 = [First | Rest],
     Bits0 = First ^ bits,
     Offset = First ^ offset,
@@ -809,6 +838,8 @@ find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+list_to_set(A, list_to_set(A)).
 
 list_to_set(List) =
     sparse_bitset(list_to_set_2(List, [])).
@@ -861,6 +892,8 @@ insert_bitset_elem(Data, [Head | Tail]) = List :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+sorted_list_to_set(A, sorted_list_to_set(A)).
 
 sorted_list_to_set(L) = sparse_bitset(sorted_list_to_set_2(L)).
 
@@ -973,6 +1006,8 @@ member_3(Index, Offset, Size, Bits) :-
 
 rest([_ | Rest]) = Rest.
 
+union(A, B, union(A, B)).
+
 union(sparse_bitset(Set1), sparse_bitset(Set2)) =
     sparse_bitset(union_2(Set1, Set2)).
 
@@ -998,6 +1033,8 @@ union_2(Set1, Set2) = Set :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+intersect(A, B, intersect(A, B)).
 
 intersect(sparse_bitset(Set1), sparse_bitset(Set2)) =
     sparse_bitset(intersect_2(Set1, Set2)).
@@ -1029,6 +1066,8 @@ intersect_2(Set1, Set2) = Set :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+difference(A, B, difference(A, B)).
 
 difference(sparse_bitset(Set1), sparse_bitset(Set2)) =
     sparse_bitset(difference_2(Set1, Set2)).
@@ -1101,33 +1140,5 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 make_bitset_elem(Offset, Bits) = bitset_elem(Offset, Bits).
 
 %-----------------------------------------------------------------------------%
-
-init(init).
-
-singleton_set(make_singleton_set(A), A).
-
-insert(A, B, insert(A, B)).
-
-insert_list(A, B, insert_list(A, B)).
-
-delete(A, B, delete(A, B)).
-
-delete_list(A, B, delete_list(A, B)).
-
-remove_leq(A, B, remove_leq(A, B)).
-
-remove_gt(A, B, remove_gt(A, B)).
-
-list_to_set(A, list_to_set(A)).
-
-to_sorted_list(A, to_sorted_list(A)).
-
-sorted_list_to_set(A, sorted_list_to_set(A)).
-
-union(A, B, union(A, B)).
-
-intersect(A, B, intersect(A, B)).
-
-difference(A, B, difference(A, B)).
-
+:- end_module sparse_bitset.
 %-----------------------------------------------------------------------------%

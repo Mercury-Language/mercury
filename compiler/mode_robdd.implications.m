@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2006, 2010 The University of Melbourne.
+% Copyright (C) 2001-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -133,7 +133,7 @@ imp_vars(A, B, ImpVars) =
 	ImpVars ^ add_clause({neg(A), pos(B)}).
 
 at_most_one_of(Vars0, ImpVars) =
-	( remove_least(Vars0, Var, Vars) ->
+	( remove_least(Var, Vars0, Vars) ->
 	    ImpVars ^ foldl(not_both(Var), Vars) ^ at_most_one_of(Vars)
 	;
 	    ImpVars

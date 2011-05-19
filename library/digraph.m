@@ -337,7 +337,6 @@
 :- import_module bimap.
 :- import_module int.
 :- import_module require.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -379,12 +378,12 @@ key_set_map_add(Map0, XI, Y) = Map :-
         ( contains(SuccXs0, Y) ->
             Map = Map0
         ;
-            insert(SuccXs0, Y, SuccXs),
+            insert(Y, SuccXs0, SuccXs),
             Map = map.det_update(Map0, XI, SuccXs)
         )
     ;
         init(SuccXs0),
-        insert(SuccXs0, Y, SuccXs),
+        insert(Y, SuccXs0, SuccXs),
         Map = map.det_insert(Map0, XI, SuccXs)
     ).
 
@@ -393,7 +392,7 @@ key_set_map_add(Map0, XI, Y) = Map :-
 
 key_set_map_delete(Map0, XI, Y) = Map :-
     ( map.search(Map0, XI, SuccXs0) ->
-        delete(SuccXs0, Y, SuccXs),
+        delete(Y, SuccXs0, SuccXs),
         Map = map.det_update(Map0, XI, SuccXs)
     ;
         Map = Map0
@@ -654,7 +653,7 @@ digraph.dfs_2(G, X, !Visited, !DfsRev) :-
         true
     ;
         digraph.lookup_key_set_from(G, X, SuccXs),
-        insert(!.Visited, X, !:Visited),
+        insert(X, !Visited),
 
         % Go and visit all of the node's children first.
         sparse_bitset.foldl2(digraph.dfs_2(G), SuccXs, !Visited, !DfsRev),
@@ -809,11 +808,11 @@ digraph.components(G, Components) :-
     set(set(digraph_key(T)))::in, set(set(digraph_key(T)))::out) is det.
 
 digraph.components_2(G, Xs0, !Components) :-
-    ( remove_least(Xs0, X, Xs1) ->
+    ( remove_least(X, Xs0, Xs1) ->
         init(Comp0),
         Keys0 = make_singleton_set(X),
         digraph.reachable_from(G, Keys0, Comp0, Comp),
-        svset.insert(to_set(Comp), !Components),
+        set.insert(to_set(Comp), !Components),
         difference(Xs1, Comp, Xs2),
         digraph.components_2(G, Xs2, !Components)
     ;
@@ -825,8 +824,8 @@ digraph.components_2(G, Xs0, !Components) :-
 
 digraph.reachable_from(G, Keys0, !Comp) :-
     % Invariant: Keys0 and !.Comp are disjoint.
-    ( remove_least(Keys0, X, Keys1) ->
-        insert(!.Comp, X, !:Comp),
+    ( remove_least(X, Keys0, Keys1) ->
+        insert(X, !Comp),
         digraph.lookup_key_set_from(G, X, FwdSet),
         digraph.lookup_key_set_to(G, X, BwdSet),
         union(FwdSet, BwdSet, NextSet0),
@@ -871,7 +870,7 @@ digraph.cliques_2([X | Xs0], GInv, !.Visited, !Cliques) :-
 
     % Insert the cycle into the clique set.
     list_to_set(CliqueList, Clique),
-    svset.insert(Clique, !Cliques),
+    set.insert(Clique, !Cliques),
 
     % Delete all the visited vertices, so head of the list is the next
     % highest non-visited vertex.
@@ -944,7 +943,7 @@ digraph.tsort(G, Tsort) :-
 
 digraph.check_tsort(_, _, []).
 digraph.check_tsort(G, Vis0, [X | Xs]) :-
-    insert(Vis0, X, Vis),
+    insert(X, Vis0, Vis),
     digraph.lookup_key_set_from(G, X, SuccXs),
     intersect(Vis, SuccXs, BackPointers),
     empty(BackPointers),

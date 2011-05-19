@@ -301,7 +301,6 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -664,7 +663,7 @@ getopt_io.get_short_option_arg(Opts, Arg, Args0, Args,
 
 getopt_io.process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet, !IO) :-
-    svset.insert(Flag, !OptionsSet),
+    set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(_Arg),
         map.set(Flag, bool(no), !OptionTable),
@@ -676,7 +675,7 @@ getopt_io.process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,
     ).
 getopt_io.process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet, !IO) :-
-    svset.insert(Flag, !OptionsSet),
+    set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         ( string.to_int(Arg, IntArg) ->
@@ -691,7 +690,7 @@ getopt_io.process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
     ).
 getopt_io.process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet, !IO) :-
-    svset.insert(Flag, !OptionsSet),
+    set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         map.set(Flag, string(Arg), !OptionTable),
@@ -702,7 +701,7 @@ getopt_io.process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
     ).
 getopt_io.process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet, !IO) :-
-    svset.insert(Flag, !OptionsSet),
+    set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         ( string.to_int(Arg, IntArg) ->
@@ -717,7 +716,7 @@ getopt_io.process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
     ).
 getopt_io.process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet, !IO) :-
-    svset.insert(Flag, !OptionsSet),
+    set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         map.set(Flag, maybe_string(yes(Arg)), !OptionTable),
@@ -728,7 +727,7 @@ getopt_io.process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
     ).
 getopt_io.process_option(accumulating(List0), _Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet, !IO) :-
-    svset.insert(Flag, !OptionsSet),
+    set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         list.append(List0, [Arg], List),
@@ -740,7 +739,7 @@ getopt_io.process_option(accumulating(List0), _Option, Flag, MaybeArg, _OptionOp
     ).
 getopt_io.process_option(special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset.insert(Flag, !OptionsSet),
+    set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(_Arg),
         error("no special argument expected in getopt_io.process_option")
@@ -751,7 +750,7 @@ getopt_io.process_option(special, Option, Flag, MaybeArg, OptionOps,
     ).
 getopt_io.process_option(bool_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset.insert(Flag, !OptionsSet),
+    set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(_Arg),
         getopt_io.process_special(Option, Flag, bool(no),
@@ -763,7 +762,7 @@ getopt_io.process_option(bool_special, Option, Flag, MaybeArg, OptionOps,
     ).
 getopt_io.process_option(int_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset.insert(Flag, !OptionsSet),
+    set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         ( string.to_int(Arg, IntArg) ->
@@ -778,7 +777,7 @@ getopt_io.process_option(int_special, Option, Flag, MaybeArg, OptionOps,
     ).
 getopt_io.process_option(string_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset.insert(Flag, !OptionsSet),
+    set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         getopt_io.process_special(Option, Flag, string(Arg),
@@ -845,32 +844,32 @@ process_negated_option(Option, Flag, OptionOps, OptionTable0, Result,
     ( map.search(OptionTable0, Flag, OptionData) ->
         (
             OptionData = bool(_),
-            svset.insert(Flag, !OptionsSet),
+            set.insert(Flag, !OptionsSet),
             map.set(Flag, bool(no), OptionTable0, OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = maybe_int(_),
-            svset.insert(Flag, !OptionsSet),
+            set.insert(Flag, !OptionsSet),
             map.set(Flag, maybe_int(no), OptionTable0, OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = maybe_string(_),
-            svset.insert(Flag, !OptionsSet),
+            set.insert(Flag, !OptionsSet),
             map.set(Flag, maybe_string(no), OptionTable0, OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = accumulating(_),
-            svset.insert(Flag, !OptionsSet),
+            set.insert(Flag, !OptionsSet),
             map.set(Flag, accumulating([]), OptionTable0, OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = bool_special,
-            svset.insert(Flag, !OptionsSet),
+            set.insert(Flag, !OptionsSet),
             getopt_io.process_special(Option, Flag, bool(no),
                 OptionOps, OptionTable0, Result, !OptionsSet)
         ;
             OptionData = maybe_string_special,
-            svset.insert(Flag, !OptionsSet),
+            set.insert(Flag, !OptionsSet),
             getopt_io.process_special(Option, Flag, maybe_string(no),
                 OptionOps, OptionTable0, Result, !OptionsSet)
         ;

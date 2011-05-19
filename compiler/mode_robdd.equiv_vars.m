@@ -147,7 +147,7 @@ add_equality_2(A, B, EQVars) =
 		normalise_leader_map((EQVars ^ leader(B) := A) ^ leader_map).
 
 add_equalities(Vars0, EQVars) =
-	( remove_least(Vars0, Var, Vars) ->
+	( remove_least(Var, Vars0, Vars) ->
 		foldl(add_equality(Var), Vars, EQVars)
 	;
 		EQVars

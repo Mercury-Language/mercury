@@ -243,7 +243,7 @@ module_names_to_index_set(ModuleNames, IndexSet, !Info) :-
 module_names_to_index_set_2([], !IndexSet, !Info).
 module_names_to_index_set_2([ModuleName | ModuleNames], !Set, !Info) :-
     module_name_to_index(ModuleName, ModuleIndex, !Info),
-    insert(!.Set, ModuleIndex, !:Set),
+    insert(ModuleIndex, !Set),
     module_names_to_index_set_2(ModuleNames, !Set, !Info).
 
 module_index_set_to_plain_set(Info, ModuleIndices, Modules) :-
@@ -312,9 +312,9 @@ dependency_files_to_index_set(DepFiles, DepIndexSet, !Info) :-
     deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out) is det.
 
-dependency_files_to_index_set_2(DepFiles, Set0, Set, !Info) :-
+dependency_files_to_index_set_2(DepFiles, !Set, !Info) :-
     dependency_file_to_index(DepFiles, DepIndex, !Info),
-    insert(Set0, DepIndex, Set).
+    insert(DepIndex, !Set).
 
 %-----------------------------------------------------------------------------%
 
@@ -615,11 +615,11 @@ of_2(FileType, FindDeps, Globals, ModuleIndex, Success, TargetFiles,
     deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out) is det.
 
-of_3(FileType, ModuleIndex, Set0, Set, !Info) :-
+of_3(FileType, ModuleIndex, !Set, !Info) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     TargetFile = dep_target(target_file(ModuleName, FileType)),
     dependency_file_to_index(TargetFile, TargetFileIndex, !Info),
-    insert(Set0, TargetFileIndex, Set).
+    insert(TargetFileIndex, !Set).
 
 :- func files_of(find_module_deps_plain_set(dependency_file),
     find_module_deps(module_index)) = find_module_deps(dependency_file_index).
@@ -1150,7 +1150,7 @@ find_transitive_interface_imports(Globals, ModuleIndex, Success, Modules,
         !Info, !IO) :-
     find_transitive_module_dependencies(Globals, interface_imports, any_module,
         ModuleIndex, Success, Modules0, !Info, !IO),
-    delete(Modules0, ModuleIndex, Modules).
+    delete(ModuleIndex, Modules0, Modules).
 
 :- pred find_transitive_module_dependencies(globals::in,
     transitive_dependencies_type::in, module_locn::in, module_index::in,
