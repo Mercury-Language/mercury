@@ -106,19 +106,19 @@
     %
 :- pred set_ordlist.contains(set_ordlist(T)::in, T::in) is semidet.
 
-    % `set_ordlist.insert(Set0, X, Set)' is true iff `Set' is the union
+    % `set_ordlist.insert(X, Set0, Set)' is true iff `Set' is the union
     % of `Set0' and the set containing only `X'.
     %
-:- pred set_ordlist.insert(set_ordlist(T)::in, T::in, set_ordlist(T)::out)
+:- pred set_ordlist.insert(T::in, set_ordlist(T)::in, set_ordlist(T)::out)
     is det.
 
 :- func set_ordlist.insert(set_ordlist(T), T) = set_ordlist(T).
 
-    % `set_ordlist.insert_list(Set0, Xs, Set)' is true iff `Set' is the
+    % `set_ordlist.insert_list(Xs, Set0, Set)' is true iff `Set' is the
     % union of `Set0' and the set containing only the members of `Xs'.
     %
-:- pred set_ordlist.insert_list(set_ordlist(T)::in, list(T)::in,
-    set_ordlist(T)::out) is det.
+:- pred set_ordlist.insert_list(list(T)::in,
+    set_ordlist(T)::in, set_ordlist(T)::out) is det.
 :- func set_ordlist.insert_list(set_ordlist(T), list(T)) = set_ordlist(T).
 
     % `set_ordlist.delete(Set0, X, Set)' is true iff `Set' is the
@@ -126,40 +126,40 @@
     % if `Set' is the set which contains all the elements of `Set0'
     % except `X'.
     %
-:- pred set_ordlist.delete(set_ordlist(T)::in, T::in, set_ordlist(T)::out)
+:- pred set_ordlist.delete(T::in, set_ordlist(T)::in, set_ordlist(T)::out)
     is det.
 :- func set_ordlist.delete(set_ordlist(T), T) = set_ordlist(T).
 
-    % `set_ordlist.delete_list(Set0, Xs, Set)' is true iff `Set' is the
+    % `set_ordlist.delete_list(Xs, Set0, Set)' is true iff `Set' is the
     % relative complement of `Set0' and the set containing only the members
     % of `Xs'.
     %
-:- pred set_ordlist.delete_list(set_ordlist(T)::in, list(T)::in,
-    set_ordlist(T)::out) is det.
+:- pred set_ordlist.delete_list(list(T)::in,
+    set_ordlist(T)::in, set_ordlist(T)::out) is det.
 :- func set_ordlist.delete_list(set_ordlist(T), list(T)) = set_ordlist(T).
 
-    % `set_ordlist.remove(Set0, X, Set)' is true iff `Set0' contains `X',
+    % `set_ordlist.remove(X, Set0, Set)' is true iff `Set0' contains `X',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
-:- pred set_ordlist.remove(set_ordlist(T)::in, T::in, set_ordlist(T)::out)
+:- pred set_ordlist.remove(T::in, set_ordlist(T)::in, set_ordlist(T)::out)
     is semidet.
 
-    % `set_ordlist.remove_list(Set0, Xs, Set)' is true iff Xs does not
+    % `set_ordlist.remove_list(Xs, Set0, Set)' is true iff Xs does not
     % contain any duplicates, `Set0' contains every member of `Xs',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only the members of `Xs'.
     %
-:- pred set_ordlist.remove_list(set_ordlist(T)::in, list(T)::in,
-    set_ordlist(T)::out) is semidet.
+:- pred set_ordlist.remove_list(list(T)::in,
+    set_ordlist(T)::in, set_ordlist(T)::out) is semidet.
 
-    % `set_ordlist.remove_least(Set0, X, Set)' is true iff `X' is the
+    % `set_ordlist.remove_least(X, Set0, Set)' is true iff `X' is the
     % least element in `Set0', and `Set' is the set which contains all the
     % elements of `Set0' except `X'.
 
-:- pred set_ordlist.remove_least(set_ordlist(T)::in, T::out,
-    set_ordlist(T)::out) is semidet.
+:- pred set_ordlist.remove_least(T::out,
+    set_ordlist(T)::in, set_ordlist(T)::out) is semidet.
 
     % `set_ordlist.union(SetA, SetB, Set)' is true iff `Set' is the union
     % of `SetA' and `SetB'. The efficiency of the union operation is
@@ -391,11 +391,37 @@
 :- type set_ordlist(T)
     --->    sol(list(T)).
 
+%-----------------------------------------------------------------------------%
+
+set_ordlist.init = S :-
+    set_ordlist.init(S).
+
+set_ordlist.init(sol([])).
+
+set_ordlist.make_singleton_set(T) = S :-
+    set_ordlist.singleton_set(S, T).
+
+set_ordlist.singleton_set(sol([X]), X).
+
+set_ordlist.equal(Set, Set).
+
+set_ordlist.empty(sol([])).
+
+set_ordlist.non_empty(sol([_ | _])).
+
+set_ordlist.is_empty(sol([])).
+
+set_ordlist.list_to_set(Xs) = S :-
+    set_ordlist.list_to_set(Xs, S).
+
 set_ordlist.list_to_set(List0, sol(List)) :-
     list.sort_and_remove_dups(List0, List).
 
 set_ordlist.from_list(List) = Set :-
     set_ordlist.list_to_set(List, Set).
+
+set_ordlist.sorted_list_to_set(Xs) = S :-
+    set_ordlist.sorted_list_to_set(Xs, S).
 
 set_ordlist.sorted_list_to_set(List0, sol(List)) :-
     list.remove_adjacent_dups(List0, List).
@@ -403,13 +429,17 @@ set_ordlist.sorted_list_to_set(List0, sol(List)) :-
 set_ordlist.from_sorted_list(List) = Set :-
     set_ordlist.sorted_list_to_set(List, Set).
 
+set_ordlist.to_sorted_list(S) = Xs :-
+    set_ordlist.to_sorted_list(S, Xs).
+
 set_ordlist.to_sorted_list(sol(List), List).
 
-set_ordlist.insert_list(Set0, List0, Set) :-
-    list.sort_and_remove_dups(List0, List),
-    set_ordlist.union(sol(List), Set0, Set).
+%-----------------------------------------------------------------------------%
 
-set_ordlist.insert(sol(List0), E, sol(List)) :-
+set_ordlist.insert(!.S, T) = !:S :-
+    set_ordlist.insert(T, !S).
+
+set_ordlist.insert(E, sol(List0), sol(List)) :-
     set_ordlist.insert_2(List0, E, List).
 
 :- pred set_ordlist.insert_2(list(T)::in, T::in, list(T)::out)
@@ -430,23 +460,66 @@ set_ordlist.insert_2([I | Is], E, Js) :-
         Js = [E, I | Is]
     ).
 
-set_ordlist.init(sol([])).
+set_ordlist.insert_list(!.S, Xs) = !:S :-
+    set_ordlist.insert_list(Xs, !S).
 
-set_ordlist.singleton_set(sol([X]), X).
+set_ordlist.insert_list(List0, !Set) :-
+    list.sort_and_remove_dups(List0, List),
+    set_ordlist.union(sol(List), !Set).
 
-set_ordlist.equal(Set, Set).
+%-----------------------------------------------------------------------------%
 
-set_ordlist.empty(sol([])).
+set_ordlist.delete(!.S, T) = !:S :-
+    set_ordlist.delete(T, !S).
 
-set_ordlist.non_empty(sol([_ | _])).
+set_ordlist.delete(Elem, !Set) :-
+    set_ordlist.difference(!.Set, sol([Elem]), !:Set).
 
-set_ordlist.is_empty(sol([])).
+set_ordlist.delete_list(!.S, Xs) = !:S :-
+    set_ordlist.delete_list(Xs, !S).
 
-set_ordlist.subset(Subset, Set) :-
-    set_ordlist.intersect(Set, Subset, Subset).
+set_ordlist.delete_list(D, !Set) :-
+    list.sort_and_remove_dups(D, DS),
+    set_ordlist.difference(!.Set, sol(DS), !:Set).
 
-set_ordlist.superset(Superset, Set) :-
-    set_ordlist.subset(Set, Superset).
+%-----------------------------------------------------------------------------%
+
+set_ordlist.remove_list(Elems, !Set) :-
+    set_ordlist.sort_no_dups(Elems, ElemSet),
+    set_ordlist.subset(ElemSet, !.Set),
+    set_ordlist.difference(!.Set, ElemSet, !:Set).
+
+    % set_ordlist.sort_no_dups(List, Set) is true iff
+    % List is a list with the same elements as Set and
+    % List contains no duplicates.
+    % 
+:- pred set_ordlist.sort_no_dups(list(T)::in, set_ordlist(T)::out) is semidet.
+
+set_ordlist.sort_no_dups(List, sol(Set)) :-
+    list.sort(List, Set),
+    (
+        Set = []
+    ;
+        Set = [Elem | Elems],
+        set_ordlist.no_dups(Elem, Elems)
+    ).
+
+    % set_ordlist.no_dups(Elem, Set) is true iff Set does not contain Elem,
+    % and Set does not contains duplicates.
+    %
+:- pred set_ordlist.no_dups(T::in, list(T)::in) is semidet.
+
+set_ordlist.no_dups(_, []).
+set_ordlist.no_dups(Elem, [Elem0 | Elems]) :-
+    Elem \= Elem0,
+    set_ordlist.no_dups(Elem0, Elems).
+
+set_ordlist.remove(Elem, sol(Set0), sol(Set)) :-
+    list.delete_first(Set0, Elem, Set).
+
+set_ordlist.remove_least(Elem, sol([Elem | Set]), sol(Set)).
+
+%-----------------------------------------------------------------------------%
 
 :- pragma promise_equivalent_clauses(set_ordlist.member/2).
 
@@ -477,47 +550,16 @@ set_ordlist.is_member_2(E, [H | T], R) :-
 set_ordlist.contains(S, E) :-
     set_ordlist.member(E, S).
 
-set_ordlist.delete_list(S0, D, S) :-
-    list.sort_and_remove_dups(D, DS),
-    set_ordlist.difference(S0, sol(DS), S).
+%-----------------------------------------------------------------------------%
 
-set_ordlist.delete(Set0, Elem, Set) :-
-    set_ordlist.difference(Set0, sol([Elem]), Set).
+set_ordlist.subset(Subset, Set) :-
+    set_ordlist.intersect(Set, Subset, Subset).
 
-set_ordlist.remove_list(Set0, Elems, Set) :-
-    set_ordlist.sort_no_dups(Elems, ElemSet),
-    set_ordlist.subset(ElemSet, Set0),
-    set_ordlist.difference(Set0, ElemSet, Set).
+set_ordlist.superset(Superset, Set) :-
+    set_ordlist.subset(Set, Superset).
 
-    % set_ordlist.sort_no_dups(List, Set) is true iff
-    % List is a list with the same elements as Set and
-    % List contains no duplicates.
-    % 
-:- pred set_ordlist.sort_no_dups(list(T)::in, set_ordlist(T)::out) is semidet.
-
-set_ordlist.sort_no_dups(List, sol(Set)) :-
-    list.sort(List, Set),
-    (
-        Set = []
-    ;
-        Set = [Elem | Elems],
-        set_ordlist.no_dups(Elem, Elems)
-    ).
-
-    % set_ordlist.no_dups(Elem, Set) is true iff Set does not contain Elem,
-    % and Set does not contains duplicates.
-    %
-:- pred set_ordlist.no_dups(T::in, list(T)::in) is semidet.
-
-set_ordlist.no_dups(_, []).
-set_ordlist.no_dups(Elem, [Elem0 | Elems]) :-
-    Elem \= Elem0,
-    set_ordlist.no_dups(Elem0, Elems).
-
-set_ordlist.remove(sol(Set0), Elem, sol(Set)) :-
-    list.delete_first(Set0, Elem, Set).
-
-set_ordlist.remove_least(sol([Elem | Set]), Elem, sol(Set)).
+set_ordlist.union(S1, S2) = S3 :-
+    set_ordlist.union(S1, S2, S3).
 
 set_ordlist.union(sol(Set0), sol(Set1), sol(Set)) :-
     list.merge_and_remove_dups(Set0, Set1, Set).
@@ -525,6 +567,9 @@ set_ordlist.union(sol(Set0), sol(Set1), sol(Set)) :-
 set_ordlist.union_list(ListofSets) = Set :-
     set_ordlist.init(Set0),
     set_ordlist.power_union_2(ListofSets, Set0, Set).
+
+set_ordlist.power_union(SS) = S :-
+    set_ordlist.power_union(SS, S).
 
 set_ordlist.power_union(sol(ListofSets), Set) :-
     Set = set_ordlist.union_list(ListofSets).
@@ -536,6 +581,11 @@ set_ordlist.power_union_2([], Set, Set).
 set_ordlist.power_union_2([NextSet | SetofSets], Set0, Set) :-
     set_ordlist.union(Set0, NextSet, Set1),
     set_ordlist.power_union_2(SetofSets, Set1, Set).
+
+%--------------------------------------------------------------------------%
+
+set_ordlist.intersect(S1, S2) = S3 :-
+    set_ordlist.intersect(S1, S2, S3).
 
 set_ordlist.intersect(sol(Xs), sol(Ys), sol(Set)) :-
     set_ordlist.intersect_2(Xs, Ys, Set).
@@ -560,6 +610,9 @@ set_ordlist.intersect_2([X | Xs], [Y | Ys], Set) :-
         set_ordlist.intersect_2([X | Xs], Ys, Set)
     ).
 
+set_ordlist.power_intersect(SS) = S :-
+    set_ordlist.power_intersect(SS, S).
+
 set_ordlist.power_intersect(sol(S0), S) :-
     set_ordlist.intersect_list(S0) = S.
 
@@ -575,6 +628,9 @@ set_ordlist.intersect_list([S0 | Ss]) = S :-
     ).
 
 %--------------------------------------------------------------------------%
+
+set_ordlist.difference(S1, S2) = S3 :-
+    set_ordlist.difference(S1, S2, S3).
 
 set_ordlist.difference(sol(Xs), sol(Ys), sol(Set)) :-
     set_ordlist.difference_2(Xs, Ys, Set).
@@ -599,6 +655,9 @@ set_ordlist.difference_2([X | Xs], [Y | Ys], Set) :-
     ).
 
 %--------------------------------------------------------------------------%
+
+set_ordlist.count(S) = N :-
+    set_ordlist.count(S, N).
 
 set_ordlist.count(sol(Set), Count) :-
     list.length(Set, Count).
@@ -627,54 +686,6 @@ set_ordlist.fold6(P, S, !A, !B, !C, !D, !E, !F) :-
     list.foldl6(P, set_ordlist.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%   Function forms added.
-
-set_ordlist.list_to_set(Xs) = S :-
-    set_ordlist.list_to_set(Xs, S).
-
-set_ordlist.sorted_list_to_set(Xs) = S :-
-    set_ordlist.sorted_list_to_set(Xs, S).
-
-set_ordlist.to_sorted_list(S) = Xs :-
-    set_ordlist.to_sorted_list(S, Xs).
-
-set_ordlist.init = S :-
-    set_ordlist.init(S).
-
-set_ordlist.make_singleton_set(T) = S :-
-    set_ordlist.singleton_set(S, T).
-
-set_ordlist.insert(S1, T) = S2 :-
-    set_ordlist.insert(S1, T, S2).
-
-set_ordlist.insert_list(S1, Xs) = S2 :-
-    set_ordlist.insert_list(S1, Xs, S2).
-
-set_ordlist.delete(S1, T) = S2 :-
-    set_ordlist.delete(S1, T, S2).
-
-set_ordlist.delete_list(S1, Xs) = S2 :-
-    set_ordlist.delete_list(S1, Xs, S2).
-
-set_ordlist.union(S1, S2) = S3 :-
-    set_ordlist.union(S1, S2, S3).
-
-set_ordlist.power_union(SS) = S :-
-    set_ordlist.power_union(SS, S).
-
-set_ordlist.intersect(S1, S2) = S3 :-
-    set_ordlist.intersect(S1, S2, S3).
-
-set_ordlist.power_intersect(SS) = S :-
-    set_ordlist.power_intersect(SS, S).
-
-set_ordlist.difference(S1, S2) = S3 :-
-    set_ordlist.difference(S1, S2, S3).
-
-set_ordlist.count(S) = N :-
-    set_ordlist.count(S, N).
 
 set_ordlist.map(F, S1) = S2 :-
     S2 = set_ordlist.list_to_set(list.map(F, set_ordlist.to_sorted_list(S1))).
@@ -682,6 +693,8 @@ set_ordlist.map(F, S1) = S2 :-
 set_ordlist.filter_map(PF, S1) = S2 :-
     S2 = set_ordlist.list_to_set(list.filter_map(PF,
         set_ordlist.to_sorted_list(S1))).
+
+%-----------------------------------------------------------------------------%
 
 set_ordlist.divide(Pred, sol(Set), sol(TruePart), sol(FalsePart)) :-
     % The calls to reverse allow us to make divide_2 tail recursive.
@@ -736,4 +749,5 @@ set_ordlist.divide_by_set_2([Div | Divs], [H | T], !RevTrue, !RevFalse) :-
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module set_ordlist.
 %-----------------------------------------------------------------------------%

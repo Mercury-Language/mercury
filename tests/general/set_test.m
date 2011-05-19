@@ -10,7 +10,6 @@
 
 :- pred main(io__state :: di, io__state :: uo) is det.
 
-
 :- implementation.
 
 :- import_module bool, list, string, set_bbbtree.
@@ -33,7 +32,7 @@ main -->
 	;
 		io__write_string("set_bbbtree__is_member should have failed on empty set\n")
 	),
-	{ set_bbbtree__insert(Set0, 5, Set10) },
+	{ set_bbbtree__insert(5, Set0, Set10) },
 	(
 		{ set_bbbtree__is_member(5, Set10, yes) },
 		{ set_bbbtree__is_member(6, Set10, no) },
@@ -45,7 +44,7 @@ main -->
 	;
 		io__write_string("set_bbbtree__is_member/set_bbbtree__singleton_set/set_bbbtree__least/set_bbbtree__largest failed\n")
 	),
-	{ set_bbbtree__delete(Set10, 5, Set20) },
+	{ set_bbbtree__delete(5, Set10, Set20) },
 	(
 		{ set_bbbtree__empty(Set20) }
 	->
@@ -53,7 +52,7 @@ main -->
 	;
 		io__write_string("set_bbbtree__empty failed as set was not empty\n")
 	),
-	{ set_bbbtree__delete(Set20, 5, Set30) },
+	{ set_bbbtree__delete(5, Set20, Set30) },
 	(
 		{ set_bbbtree__empty(Set30) }
 	->
@@ -62,7 +61,7 @@ main -->
 		io__write_string("set_bbbtree__empty failed as set was not empty\n")
 	),
 
-	{ set_bbbtree__delete_list(Set10,[0, 1, 2, 3, 4, 5, 6, 100000], Set40)},
+	{ set_bbbtree__delete_list([0, 1, 2, 3, 4, 5, 6, 100000], Set10, Set40) },
 	(
 		{ set_bbbtree__empty(Set40) }
 	->
@@ -73,7 +72,7 @@ main -->
 	{ set_bbbtree__list_to_set([-2, 10, 0, -1, 2, -2, -2, 0], Set50) },
 	(
 		{ set_bbbtree__count(Set50, 5) },
-		{ set_bbbtree__remove_least(Set50, -2, TempSet) }
+		{ set_bbbtree__remove_least(-2, Set50, TempSet) }
 	->
 		{ Set60 = TempSet },
 		(
@@ -83,7 +82,7 @@ main -->
 		;
 			io__write_string("set_bbbtree__is_member failed\n")
 		),
-		{ set_bbbtree__delete_list(Set60, [-2, -2, -2, 10], Set70) },
+		{ set_bbbtree__delete_list([-2, -2, -2, 10], Set60, Set70) },
 		(
 			{ set_bbbtree__is_member(-2, Set70, no) },
 			{ set_bbbtree__is_member(10, Set70, no) },
@@ -150,10 +149,10 @@ main -->
 	),
 
 	{ set_bbbtree__init(Set110) },
-	{ set_bbbtree__insert(Set110, Set90, Set120) },
-	{ set_bbbtree__insert(Set120, Set100, Set130) },
-	{ set_bbbtree__insert(Set130, SetIntersection, Set140) },
-	{ set_bbbtree__insert(Set140, SetDifference, Set150) },
+	{ set_bbbtree__insert(Set90, Set110, Set120) },
+	{ set_bbbtree__insert(Set100, Set120, Set130) },
+	{ set_bbbtree__insert(SetIntersection, Set130, Set140) },
+	{ set_bbbtree__insert(SetDifference, Set140, Set150) },
 	{ set_bbbtree__power_union(Set150, SetUnion10) },
 	(
 		{ set_bbbtree__equal(SetUnion10, SetUnion) }

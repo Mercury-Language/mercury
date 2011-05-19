@@ -453,14 +453,14 @@ set.to_sorted_list(Set, List) :-
 set.insert_list(S1, Xs) = S2 :-
     set.insert_list(Xs, S1, S2).
 
-set.insert_list(List, Set0, Set) :-
-    set_ordlist.insert_list(Set0, List, Set).
+set.insert_list(List, !Set) :-
+    set_ordlist.insert_list(List, !Set).
 
 set.insert(S1, T) = S2 :-
     set.insert(T, S1, S2).
 
 set.insert(X, !Set) :-
-    set_ordlist.insert(!.Set, X, !:Set).
+    set_ordlist.insert(X, !Set).
 
 set.equal(SetA, SetB) :-
     set_ordlist.equal(SetA, SetB).
@@ -496,23 +496,23 @@ set.contains(Set, X) :-
 set.delete_list(S1, Xs) = S2 :-
     set.delete_list(Xs, S1, S2).
 
-set.delete_list(List, Set0, Set) :-
-    set_ordlist.delete_list(Set0, List, Set).
+set.delete_list(List, !Set) :-
+    set_ordlist.delete_list(List, !Set).
 
 set.delete(S1, T) = S2 :-
     set.delete(T, S1, S2).
 
-set.delete(X, Set0, Set) :-
-    set_ordlist.delete(Set0, X, Set).
+set.delete(X, !Set) :-
+    set_ordlist.delete(X, !Set).
 
-set.remove_list(List, Set0, Set) :-
-    set_ordlist.remove_list(Set0, List, Set).
+set.remove_list(List, !Set) :-
+    set_ordlist.remove_list(List, !Set).
 
-set.remove(X, Set0, Set) :-
-    set_ordlist.remove(Set0, X, Set).
+set.remove(X, !Set) :-
+    set_ordlist.remove(X, !Set).
 
-set.remove_least(X, Set0, Set) :-
-    set_ordlist.remove_least(Set0, X, Set).
+set.remove_least(X, !Set) :-
+    set_ordlist.remove_least(X, !Set).
 
 set.union(S1, S2) = S3 :-
     set.union(S1, S2, S3).

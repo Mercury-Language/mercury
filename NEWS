@@ -55,6 +55,15 @@ Changes to the Mercury standard library:
   rbtree.delete/3, rbtree.remove_smallest/4, rbtree.remove_largest/4,
   set.insert/3, set.insert_list/3, set.delete/3, set.delete_list/3,
   set.remove/3, set.remove_list/3, set.remove_least/3, tree234.insert/4,
+  set_bbbtree.insert/3, set_bbbtree.insert_list/3, set_bbbtree.delete/3,
+  set_bbbtree.delete_list/3, set_bbbtree.remove/3, set_bbbtree.remove_list/3,
+  set_bbbtree.remove_least/3, set_bbbtree.remove_largest/3,
+  set_ordlist.insert/3, set_ordlist.insert_list/3, set_ordlist.delete/3,
+  set_ordlist.delete_list/3, set_ordlist.remove/3, set_ordlist.remove_list/3,
+  set_ordlist.remove_least/3, set_unordlist.insert/3,
+  set_unordlist.insert_list/3, set_unordlist.delete/3,
+  set_unordlist.delete_list/3, set_unordlist.remove/3,
+  set.unordlist.remove_list/3, set_unordlist.remove_least/3,
   tree234.set/4, tree234.remove/4, tree234.remove_smallest/4 and
   tree234.update/4.
 

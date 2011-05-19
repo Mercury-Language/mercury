@@ -93,72 +93,72 @@
     %
 :- pred set_bbbtree.equal(set_bbbtree(T)::in, set_bbbtree(T)::in) is semidet.
 
-    % `set_bbbtree.insert(Set0, X, Set)' is true iff `Set' is the union of
+    % `set_bbbtree.insert(X, Set0, Set)' is true iff `Set' is the union of
     % `Set0' and the set containing only `X'.
     %
-:- pred set_bbbtree.insert(set_bbbtree(T), T, set_bbbtree(T)).
+:- pred set_bbbtree.insert(T, set_bbbtree(T), set_bbbtree(T)).
 :- mode set_bbbtree.insert(di, di, uo) is det.
 :- mode set_bbbtree.insert(in, in, out) is det.
 
 :- func set_bbbtree.insert(set_bbbtree(T), T) = set_bbbtree(T).
 
-    % `set_bbbtree.insert_list(Set0, Xs, Set)' is true iff `Set' is
+    % `set_bbbtree.insert_list(Xs, Set0, Set)' is true iff `Set' is
     % the union of `Set0' and the set containing only the members of `Xs'.
     %
-:- pred set_bbbtree.insert_list(set_bbbtree(T)::in, list(T)::in,
-    set_bbbtree(T)::out) is det.
+:- pred set_bbbtree.insert_list(list(T)::in,
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree.insert_list(set_bbbtree(T), list(T)) = set_bbbtree(T).
 
-    % `set_bbbtree.delete(Set0, X, Set)' is true iff `Set' is the relative
+    % `set_bbbtree.delete(X, Set0, Set)' is true iff `Set' is the relative
     % complement of `Set0' and the set containing only `X', i.e.
     % if `Set' is the set which contains all the elements of `Set0'
     % except `X'.
     %
-:- pred set_bbbtree.delete(set_bbbtree(T), T, set_bbbtree(T)).
-:- mode set_bbbtree.delete(di, in, uo) is det.
+:- pred set_bbbtree.delete(T, set_bbbtree(T), set_bbbtree(T)).
+:- mode set_bbbtree.delete(in, di, uo) is det.
 :- mode set_bbbtree.delete(in, in, out) is det.
 
 :- func set_bbbtree.delete(set_bbbtree(T), T) = set_bbbtree(T).
 
-    % `set_bbbtree.delete_list(Set0, Xs, Set)' is true iff `Set' is the
+    % `set_bbbtree.delete_list(Xs, Set0, Set)' is true iff `Set' is the
     % relative complement of `Set0' and the set containing only the members
     % of `Xs'.
     %
-:- pred set_bbbtree.delete_list(set_bbbtree(T)::in, list(T)::in,
-    set_bbbtree(T)::out) is det.
+:- pred set_bbbtree.delete_list(list(T)::in,
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree.delete_list(set_bbbtree(T), list(T)) = set_bbbtree(T).
 
-    % `set_bbbtree.remove(Set0, X, Set)' is true iff `Set0' contains `X',
+    % `set_bbbtree.remove(X, Set0, Set)' is true iff `Set0' contains `X',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
-:- pred set_bbbtree.remove(set_bbbtree(T)::in, T::in, set_bbbtree(T)::out)
+:- pred set_bbbtree.remove(T::in, set_bbbtree(T)::in, set_bbbtree(T)::out)
     is semidet.
 
-    % `set_bbbtree.remove_list(Set0, Xs, Set)' is true iff Xs does not
+    % `set_bbbtree.remove_list(Xs, Set0, Set)' is true iff Xs does not
     % contain any duplicates, `Set0' contains every member of `Xs',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only the members of `Xs'.
     %
-:- pred set_bbbtree.remove_list(set_bbbtree(T)::in, list(T)::in,
-    set_bbbtree(T)::out) is semidet.
+:- pred set_bbbtree.remove_list(list(T)::in,
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is semidet.
 
-    % `set_bbbtree.remove_least(Set0, X, Set)' is true iff the union if
+    % `set_bbbtree.remove_least(X, Set0, Set)' is true iff the union if
     % `X' and `Set' is `Set0' and `X' is smaller than all the elements of
     % `Set'.
     %
-:- pred set_bbbtree.remove_least(set_bbbtree(T)::in, T::out,
-    set_bbbtree(T)::out) is semidet.
+:- pred set_bbbtree.remove_least(T::out,
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is semidet.
 
-    % `set_bbbtree.remove_largest(Set0, X, Set)' is true iff the union if
+    % `set_bbbtree.remove_largest(X, Set0, Set)' is true iff the union if
     % `X' and `Set' is `Set0' and `X' is larger than all the elements of
     % `Set'.
     %
-:- pred set_bbbtree.remove_largest(set_bbbtree(T)::in, T::out,
-    set_bbbtree(T)::out) is semidet.
+:- pred set_bbbtree.remove_largest(T::out,
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is semidet.
 
     % `set_bbbtree.list_to_set(List, Set)' is true iff `Set' is the set
     % containing only the members of `List'. O(n lg n)
@@ -442,6 +442,9 @@ set_bbbtree.def_ratio(5).
 
 %------------------------------------------------------------------------------%
 
+set_bbbtree.init = S :-
+    set_bbbtree.init(S).
+
 set_bbbtree.init(empty).
 
 %------------------------------------------------------------------------------%
@@ -518,6 +521,9 @@ set_bbbtree.largest(tree(V, _N, _L, R), X) :-
 
 %------------------------------------------------------------------------------%
 
+set_bbbtree.make_singleton_set(T) = S :-
+    set_bbbtree.singleton_set(S, T).
+
 set_bbbtree.singleton_set(tree(V, 1, empty, empty), V).
 
 %------------------------------------------------------------------------------%
@@ -528,11 +534,14 @@ set_bbbtree.equal(SetA, SetB) :-
 
 %------------------------------------------------------------------------------%
 
+set_bbbtree.insert(!.S, T) = !:S :-
+    set_bbbtree.insert(T, !S).
+
 % This is a hack to handle the bugs with unique and destructive input modes.
-set_bbbtree.insert(Set0, X, Set) :-
+set_bbbtree.insert(X, !Set) :-
     set_bbbtree.def_ratio(Ratio),
-    set_bbbtree.insert_r(Set0, X, Set1, Ratio),
-    unsafe_promise_unique(Set1, Set).
+    set_bbbtree.insert_r(!.Set, X, !:Set, Ratio),
+    unsafe_promise_unique(!Set).
 
 % Uncomment this once destructive input and unique modes are fixed and delete
 % the one above.
@@ -565,17 +574,20 @@ set_bbbtree.insert_r(tree(V, N, L, R), X, Set, Ratio) :-
 
 %------------------------------------------------------------------------------%
 
-set_bbbtree.insert_list(Set0, List, Set) :-
+set_bbbtree.insert_list(!.S, Xs) = !:S :-
+    set_bbbtree.insert_list(Xs, !S).
+
+set_bbbtree.insert_list(List, !Set) :-
     set_bbbtree.def_ratio(Ratio),
-    set_bbbtree.insert_list_r(Set0, List, Set, Ratio).
+    set_bbbtree.insert_list_r(!.Set, List, !:Set, Ratio).
 
 :- pred set_bbbtree.insert_list_r(set_bbbtree(T)::in, list(T)::in,
     set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree.insert_list_r(Set, [], Set, _Ratio).
-set_bbbtree.insert_list_r(Set0, [X | Xs], Set, Ratio) :-
-    set_bbbtree.insert_r(Set0, X, Set1, Ratio),
-    set_bbbtree.insert_list_r(Set1, Xs, Set, Ratio).
+set_bbbtree.insert_list_r(!.Set, [X | Xs], !:Set, Ratio) :-
+    set_bbbtree.insert_r(!.Set, X, !:Set, Ratio),
+    set_bbbtree.insert_list_r(!.Set, Xs, !:Set, Ratio).
 
 %------------------------------------------------------------------------------%
 
@@ -607,36 +619,42 @@ set_bbbtree.insert_list_r(Set0, [X | Xs], Set, Ratio) :-
 %       Set = Set0
 %   ).
 
-set_bbbtree.delete(Set0, X, Set) :-
-    ( set_bbbtree.remove(Set0, X, Set1) ->
-        Set2 = Set1
+set_bbbtree.delete(!.S, T) = !:S :-
+    set_bbbtree.delete(T, !S).
+
+set_bbbtree.delete(X, !Set) :-
+    ( set_bbbtree.remove(X, !.Set, NewSet) ->
+        !:Set = NewSet
     ;
-        Set2 = Set0
+        true
     ),
-    unsafe_promise_unique(Set2, Set).
+    unsafe_promise_unique(!Set).
 
 %------------------------------------------------------------------------------%
 
-set_bbbtree.delete_list(Set, [], Set).
-set_bbbtree.delete_list(Set0, [X | Xs], Set) :-
-    set_bbbtree.delete(Set0, X, Set1),
-    set_bbbtree.delete_list(Set1, Xs, Set).
+set_bbbtree.delete_list(!.S, Xs) = !:S :-
+    set_bbbtree.delete_list(Xs, !S).
+
+set_bbbtree.delete_list([], !Set).
+set_bbbtree.delete_list([X | Xs], !Set) :-
+    set_bbbtree.delete(X, !Set),
+    set_bbbtree.delete_list(Xs, !Set).
 
 %------------------------------------------------------------------------------%
 
-% set_bbbtree.remove(empty, X, _):- fail.
-set_bbbtree.remove(tree(V, N, L, R), X, Set) :-
+% set_bbbtree.remove(X, empty, _):- fail.
+set_bbbtree.remove(X, tree(V, N, L, R), Set) :-
     compare(Result, X, V),
     (
         % Remove X from left subtree.
         Result = (<),
-        set_bbbtree.remove(L, X, NewL), % X in left tree
+        set_bbbtree.remove(X, L, NewL), % X in left tree
         NewN = N - 1,
         Set = tree(V, NewN, NewL, R)
     ;
         % Remove X from right subtree.
         Result = (>),
-        set_bbbtree.remove(R, X, NewR), % X in right tree
+        set_bbbtree.remove(X, R, NewR), % X in right tree
         NewN = N - 1,
         Set = tree(V, NewN, L, NewR)
     ;
@@ -647,18 +665,18 @@ set_bbbtree.remove(tree(V, N, L, R), X, Set) :-
 
 %------------------------------------------------------------------------------%
 
-set_bbbtree.remove_list(Set, [], Set).
-set_bbbtree.remove_list(Set0, [X | Xs], Set) :-
-    set_bbbtree.remove(Set0, X, Set1),
-    set_bbbtree.remove_list(Set1, Xs, Set).
+set_bbbtree.remove_list([], !Set).
+set_bbbtree.remove_list([X | Xs], !Set) :-
+    set_bbbtree.remove(X, !Set),
+    set_bbbtree.remove_list(Xs, !Set).
 
 %------------------------------------------------------------------------------%
 
 % The tree is not rebalanced as the removal of one element will not cause the
 % tree to become much more unbalanced.
 
-% set_bbbtree.remove_least(empty, X, _) :- fail.
-set_bbbtree.remove_least(tree(V, N, L, R), X, Set) :-
+% set_bbbtree.remove_least(X, empty, _) :- fail.
+set_bbbtree.remove_least(X, tree(V, N, L, R), Set) :-
     (
         % Found the least element.
         L = empty,
@@ -667,7 +685,7 @@ set_bbbtree.remove_least(tree(V, N, L, R), X, Set) :-
     ;
         % Search further in the left subtree.
         L = tree(_V, _N, _L, _R),
-        set_bbbtree.remove_least(L, X, NewL),
+        set_bbbtree.remove_least(X, L, NewL),
         NewN = N - 1,
         Set = tree(V, NewN, NewL, R)
     ).
@@ -677,8 +695,8 @@ set_bbbtree.remove_least(tree(V, N, L, R), X, Set) :-
 % The tree is not rebalanced as the removal of one element will not cause the
 % tree to become much more unbalanced.
 
-% set_bbbtree.remove_largest(empty, X, _) :- fail.
-set_bbbtree.remove_largest(tree(V, N, L, R), X, Set) :-
+% set_bbbtree.remove_largest(X, empty, _) :- fail.
+set_bbbtree.remove_largest(X, tree(V, N, L, R), Set) :-
     (
         % Found the largest element.
         R = empty,
@@ -687,12 +705,15 @@ set_bbbtree.remove_largest(tree(V, N, L, R), X, Set) :-
     ;
         % Search further in the right subtree.
         R = tree(_V, _N, _L, _R),
-        set_bbbtree.remove_largest(R, X, NewR),
+        set_bbbtree.remove_largest(X, R, NewR),
         NewN = N - 1,
         Set = tree(V, NewN, L, NewR)
     ).
 
 %------------------------------------------------------------------------------%
+
+set_bbbtree.list_to_set(Xs) = S :-
+    set_bbbtree.list_to_set(Xs, S).
 
 set_bbbtree.list_to_set(List, Set) :-
     set_bbbtree.def_ratio(Ratio),
@@ -724,6 +745,9 @@ set_bbbtree.from_list(List) = Set :-
 %
 % Cases N = 3, N = 2 and N = 1 could safely be removed without change to
 % computed results as long as the 3 in N > 3 is adjusted appropriately.
+
+set_bbbtree.sorted_list_to_set(Xs) = S :-
+    set_bbbtree.sorted_list_to_set(Xs, S).
 
 set_bbbtree.sorted_list_to_set(List, Set) :-
     list.length(List, N),
@@ -796,6 +820,9 @@ set_bbbtree.from_sorted_list(List) = Set :-
 
 %------------------------------------------------------------------------------%
 
+set_bbbtree.to_sorted_list(S) = Xs :-
+    set_bbbtree.to_sorted_list(S, Xs).
+
     % Flatten the tree by an accumulator based tree traversal
     % traversing the tree in a right-to-left post order manner. O(n).
 
@@ -839,6 +866,9 @@ set_bbbtree.union_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
 
 %------------------------------------------------------------------------------%
 
+set_bbbtree.union(S1, S2) = S3 :-
+    set_bbbtree.union(S1, S2, S3).
+
 set_bbbtree.union_list(ListofSets) =
     list.foldl(set_bbbtree.union, ListofSets, set_bbbtree.init).
 
@@ -853,6 +883,9 @@ set_bbbtree.union_list(ListofSets) =
 % union will be inexpensive. Unfortunately as the union grows it will
 % increasing dwarf the tree that is the root node and hence this cost will
 % increase, but this cannot be avoided.
+
+set_bbbtree.power_union(SS) = S :-
+    set_bbbtree.power_union(SS, S).
 
 set_bbbtree.power_union(Sets, Set) :-
     set_bbbtree.def_ratio(Ratio),
@@ -876,6 +909,9 @@ set_bbbtree.power_union_r(tree(V, _N, L, R), Set, Ratio) :-
 %                   ( { elem(x, A) | x < a } intersect { elem(x, B) | x < a } )
 %             union ( { a } )
 %             union ( { elem(x, A) | x > a } intersect { elem(x, B) | x > a } )
+
+set_bbbtree.intersect(S1, S2) = S3 :-
+    set_bbbtree.intersect(S1, S2, S3).
 
 set_bbbtree.intersect(SetA, SetB, Set) :-
     set_bbbtree.def_ratio(Ratio),
@@ -904,6 +940,9 @@ set_bbbtree.intersect_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
 % the accumulator. The aim of the algorithm is to rapidly reduce the size of
 % the accumulator, possibly of the empty set in which case the call immediately
 % returns.
+
+set_bbbtree.power_intersect(SS) = S :-
+    set_bbbtree.power_intersect(SS, S).
 
 set_bbbtree.power_intersect(Sets, Set) :-
     set_bbbtree.def_ratio(Ratio),
@@ -952,6 +991,9 @@ set_bbbtree.intersect_list_r(Intersect0, [Set | Sets], Ratio) =
 %               ( { elem(x, A) | x < a } difference { elem(x, B) | x < a } )
 %         union ( { a } )
 %         union ( { elem(x, A) | x > a } difference { elem(x, B) | x > a } )
+
+set_bbbtree.difference(S1, S2) = S3 :-
+    set_bbbtree.difference(S1, S2, S3).
 
 set_bbbtree.difference(SetA, SetB, Set) :-
     set_bbbtree.def_ratio(Ratio),
@@ -1168,13 +1210,13 @@ set_bbbtree.concat3(L, R, Set) :-
             % right tree and make it the root of the left and
             % the new right trees.
             ( LSize > RSize ->
-                ( set_bbbtree.remove_largest(L, X, NewL) ->
+                ( set_bbbtree.remove_largest(X, L, NewL) ->
                     set_bbbtree.build_node(X, NewL, R, Set)
                 ;
                     error("set_bbbtree.concat3.1")
                 )
             ;
-                ( set_bbbtree.remove_least(R, X, NewR) ->
+                ( set_bbbtree.remove_least(X, R, NewR) ->
                     set_bbbtree.build_node(X, L, NewR, Set)
                 ;
                     error("set_bbbtree.concat3.2")
@@ -1290,51 +1332,6 @@ set_bbbtree.fold6(P, S, !A, !B, !C, !D, !E, !F) :-
     list.foldl6(P, set_bbbtree.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
 
 %--------------------------------------------------------------------------%
-%--------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%   Function forms added.
-
-set_bbbtree.list_to_set(Xs) = S :-
-    set_bbbtree.list_to_set(Xs, S).
-
-set_bbbtree.sorted_list_to_set(Xs) = S :-
-    set_bbbtree.sorted_list_to_set(Xs, S).
-
-set_bbbtree.to_sorted_list(S) = Xs :-
-    set_bbbtree.to_sorted_list(S, Xs).
-
-set_bbbtree.init = S :-
-    set_bbbtree.init(S).
-
-set_bbbtree.make_singleton_set(T) = S :-
-    set_bbbtree.singleton_set(S, T).
-
-set_bbbtree.insert(S1, T) = S2 :-
-    set_bbbtree.insert(S1, T, S2).
-
-set_bbbtree.insert_list(S1, Xs) = S2 :-
-    set_bbbtree.insert_list(S1, Xs, S2).
-
-set_bbbtree.delete(S1, T) = S2 :-
-    set_bbbtree.delete(S1, T, S2).
-
-set_bbbtree.delete_list(S1, Xs) = S2 :-
-    set_bbbtree.delete_list(S1, Xs, S2).
-
-set_bbbtree.union(S1, S2) = S3 :-
-    set_bbbtree.union(S1, S2, S3).
-
-set_bbbtree.power_union(SS) = S :-
-    set_bbbtree.power_union(SS, S).
-
-set_bbbtree.intersect(S1, S2) = S3 :-
-    set_bbbtree.intersect(S1, S2, S3).
-
-set_bbbtree.power_intersect(SS) = S :-
-    set_bbbtree.power_intersect(SS, S).
-
-set_bbbtree.difference(S1, S2) = S3 :-
-    set_bbbtree.difference(S1, S2, S3).
 
 set_bbbtree.map(F, S1) = S2 :-
     S2 = set_bbbtree.list_to_set(list.map(F,

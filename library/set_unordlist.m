@@ -111,67 +111,67 @@
     %
 :- pred set_unordlist.contains(set_unordlist(T)::in, T::in) is semidet.
 
-    % `set_unordlist.insert(Set0, X, Set)' is true iff `Set' is the union
+    % `set_unordlist.insert(X, Set0, Set)' is true iff `Set' is the union
     % of `Set0' and the set containing only `X'.
     %
-:- pred set_unordlist.insert(set_unordlist(T), T, set_unordlist(T)).
+:- pred set_unordlist.insert(T, set_unordlist(T), set_unordlist(T)).
 :- mode set_unordlist.insert(di, di, uo) is det.
 :- mode set_unordlist.insert(in, in, out) is det.
 
 :- func set_unordlist.insert(set_unordlist(T), T) = set_unordlist(T).
 
-    % `set_unordlist.insert_list(Set0, Xs, Set)' is true iff `Set' is the
+    % `set_unordlist.insert_list(Xs, Set0, Set)' is true iff `Set' is the
     % union of `Set0' and the set containing only the members of `Xs'.
     %
-:- pred set_unordlist.insert_list(set_unordlist(T)::in, list(T)::in,
-    set_unordlist(T)::out) is det.
+:- pred set_unordlist.insert_list(list(T)::in,
+    set_unordlist(T)::in, set_unordlist(T)::out) is det.
 
 :- func set_unordlist.insert_list(set_unordlist(T), list(T))
     = set_unordlist(T).
 
-    % `set_unordlist.delete(Set0, X, Set)' is true iff `Set' is the
+    % `set_unordlist.delete(X, Set0, Set)' is true iff `Set' is the
     % relative complement of `Set0' and the set containing only `X', i.e.
     % if `Set' is the set which contains all the elements of `Set0'
     % except `X'.
     %
-:- pred set_unordlist.delete(set_unordlist(T), T, set_unordlist(T)).
-:- mode set_unordlist.delete(di, in, uo) is det.
+:- pred set_unordlist.delete(T, set_unordlist(T), set_unordlist(T)).
+:- mode set_unordlist.delete(in, di, uo) is det.
 :- mode set_unordlist.delete(in, in, out) is det.
 
 :- func set_unordlist.delete(set_unordlist(T), T) = set_unordlist(T).
 
-    % `set_unordlist.delete_list(Set0, Xs, Set)' is true iff `Set' is the
+    % `set_unordlist.delete_list(Xs, Set0, Set)' is true iff `Set' is the
     % relative complement of `Set0' and the set containing only the members
     % of `Xs'.
     %
-:- pred set_unordlist.delete_list(set_unordlist(T)::in, list(T)::in,
-    set_unordlist(T)::out) is det.
+:- pred set_unordlist.delete_list(list(T)::in,
+    set_unordlist(T)::in, set_unordlist(T)::out) is det.
 
 :- func set_unordlist.delete_list(set_unordlist(T), list(T))
     = set_unordlist(T).
 
-    % `set_unordlist.remove(Set0, X, Set)' is true iff `Set0' contains `X',
+    % `set_unordlist.remove(X, Set0, Set)' is true iff `Set0' contains `X',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
-:- pred set_unordlist.remove(set_unordlist(T)::in, T::in,
-    set_unordlist(T)::out) is semidet.
+:- pred set_unordlist.remove(T::in,
+    set_unordlist(T)::in, set_unordlist(T)::out) is semidet.
 
-    % `set_unordlist.remove_list(Set0, Xs, Set)' is true iff Xs does not
+    % `set_unordlist.remove_list(Xs, Set0, Set)' is true iff Xs does not
     % contain any duplicates, `Set0' contains every member of `Xs',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only the members of `Xs'.
     %
-:- pred set_unordlist.remove_list(set_unordlist(T)::in, list(T)::in,
-    set_unordlist(T)::out) is semidet.
+:- pred set_unordlist.remove_list(list(T)::in,
+    set_unordlist(T)::in, set_unordlist(T)::out) is semidet.
 
-    % `set_unordlist.remove_least(Set0, X, Set)' is true iff `X' is the
+    % `set_unordlist.remove_least(X, Set0, Set)' is true iff `X' is the
     % least element in `Set0', and `Set' is the set which contains all the
     % elements of `Set0' except `X'.
     %
-:- pred set_unordlist.remove_least(set_unordlist(T)::in, T::out,
-    set_unordlist(T)::out) is semidet.
+:- pred set_unordlist.remove_least(T::out,
+    set_unordlist(T)::in, set_unordlist(T)::out) is semidet.
 
     % `set_unordlist.union(SetA, SetB, Set)' is true iff `Set' is the union
     % of `SetA' and `SetB'.  If the sets are known to be of different
@@ -377,10 +377,10 @@ set_unordlist.from_sorted_list(List) = sul(List).
 set_unordlist.to_sorted_list(sul(Set), List) :-
     list.sort_and_remove_dups(Set, List).
 
-set_unordlist.insert_list(sul(Set0), List, sul(Set)) :-
-    list.append(List, Set0, Set).
+set_unordlist.insert_list(List, sul(!.Set), sul(!:Set)) :-
+    list.append(List, !Set).
 
-set_unordlist.insert(sul(S0), E, sul([E | S0])).
+set_unordlist.insert(E, sul(S0), sul([E | S0])).
 
 set_unordlist.init(sul([])).
 
@@ -417,25 +417,25 @@ set_unordlist.is_member(E, S, R) :-
 set_unordlist.contains(S, E) :-
     set_unordlist.member(E, S).
 
-set_unordlist.delete_list(S, [], S).
-set_unordlist.delete_list(S0, [X | Xs], S) :-
-    set_unordlist.delete(S0, X, S1),
-    set_unordlist.delete_list(S1, Xs, S).
+set_unordlist.delete_list([], !S).
+set_unordlist.delete_list([X | Xs], !S) :-
+    set_unordlist.delete(X, !S),
+    set_unordlist.delete_list(Xs, !S).
 
-set_unordlist.delete(sul(S0), E, sul(S)) :-
-    list.delete_all(S0, E, S).
+set_unordlist.delete(E, sul(!.S), sul(!:S)) :-
+    list.delete_all(!.S, E, !:S).
 
-set_unordlist.remove_list(S, [], S).
-set_unordlist.remove_list(S0, [X | Xs], S) :-
-    set_unordlist.remove(S0, X, S1),
-    set_unordlist.remove_list(S1, Xs, S).
+set_unordlist.remove_list([], !S).
+set_unordlist.remove_list([X | Xs], !S) :-
+    set_unordlist.remove(X, !S),
+    set_unordlist.remove_list(Xs, !S).
 
-set_unordlist.remove(sul(S0), E, sul(S)) :-
+set_unordlist.remove(E, sul(S0), sul(S)) :-
     list.member(E, S0),
-    set_unordlist.delete(sul(S0), E, sul(S)).
+    set_unordlist.delete(E, sul(S0), sul(S)).
 
-set_unordlist.remove_least(Set0, E, sul(Set)) :-
-    Set0 = sul([_ | _]),   % fail early on an empty set
+set_unordlist.remove_least(E, Set0, sul(Set)) :-
+    Set0 = sul([_ | _]),   % Fail early on an empty set.
     set_unordlist.to_sorted_list(Set0, [E | Set]).
 
 set_unordlist.union(sul(Set0), sul(Set1), sul(Set)) :-
@@ -496,7 +496,7 @@ set_unordlist.difference(A, B, C) :-
 
 set_unordlist.difference_2(sul([]), C, C).
 set_unordlist.difference_2(sul([E | Es]), A, C) :-
-    set_unordlist.delete(A, E, B),
+    set_unordlist.delete(E, A, B),
     set_unordlist.difference_2(sul(Es), B, C).
 
 %-----------------------------------------------------------------------------%
@@ -551,17 +551,17 @@ set_unordlist.init = S :-
 set_unordlist.make_singleton_set(T) = S :-
     set_unordlist.singleton_set(S, T).
 
-set_unordlist.insert(S1, T) = S2 :-
-    set_unordlist.insert(S1, T, S2).
+set_unordlist.insert(!.S, T) = !:S :-
+    set_unordlist.insert(T, !S).
 
-set_unordlist.insert_list(S1, Xs) = S2 :-
-    set_unordlist.insert_list(S1, Xs, S2).
+set_unordlist.insert_list(!.S, Xs) = !:S :-
+    set_unordlist.insert_list(Xs, !S).
 
-set_unordlist.delete(S1, T) = S2 :-
-    set_unordlist.delete(S1, T, S2).
+set_unordlist.delete(!.S, T) = !:S :-
+    set_unordlist.delete(T, !S).
 
-set_unordlist.delete_list(S1, Xs) = S2 :-
-    set_unordlist.delete_list(S1, Xs, S2).
+set_unordlist.delete_list(!.S, Xs) = !:S :-
+    set_unordlist.delete_list(Xs, !S).
 
 set_unordlist.union(S1, S2) = S3 :-
     set_unordlist.union(S1, S2, S3).

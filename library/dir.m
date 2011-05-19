@@ -292,6 +292,8 @@ dir.directory_separator = (if have_win32 then ('\\') else ('/')).
     Sep = java.io.File.separatorChar;
 ").
 
+dir.directory_separator(dir.directory_separator).
+
 :- func dir.alt_directory_separator = char.
 
 dir.alt_directory_separator = (io.have_cygwin -> ('\\') ; ('/')).
@@ -330,7 +332,11 @@ use_windows_paths :- dir.directory_separator = ('\\').
 
 dir.this_directory = ".".
 
+dir.this_directory(dir.this_directory).
+
 dir.parent_directory = "..".
+
+dir.parent_directory(dir.parent_directory).
 
 %-----------------------------------------------------------------------------%
 
@@ -362,6 +368,10 @@ dir.basename(FileName) = BaseName :-
         BaseName = FileName
     ).
 
+dir.basename(S, dir.basename(S)).
+
+%-----------------------------------------------------------------------------%
+
 dir.dirname(FileName) = DirName :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
     (
@@ -387,6 +397,8 @@ dir.dirname(FileName) = DirName :-
     ;
         DirName = dir.this_directory
     ).
+
+dir.dirname(S, dir.dirname(S)).
 
 dir.split_name(FileName, DirName, BaseName) :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
@@ -2105,16 +2117,5 @@ find_matching_brace_or_comma([Char | Chars], Alternatives0, CurAlternative,
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module dir.
 %-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
-%   Functional forms added.
-
-dir.directory_separator(dir.directory_separator).
-
-dir.this_directory(dir.this_directory).
-
-dir.parent_directory(dir.parent_directory).
-
-dir.basename(S, dir.basename(S)).
-
-dir.dirname(S, dir.dirname(S)).
