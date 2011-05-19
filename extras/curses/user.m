@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000, 2005-2006 The University of Melbourne.
+% Copyright (C) 1994-2000, 2005-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -485,7 +485,7 @@ clear(Win) -->
 	get_win(Win, win(Parent, Cols, Rows, Opts, Data0, Visi, Hidden)),
 	{ for(0, Rows-1, (pred(Y::in, array_di, array_uo) is det -->
 		for(0, Cols-1, (pred(X::in, D0::array_di, D::array_uo) is det :-
-			set(D0, X+Y*Cols, ' ' - [], D)
+			set(X+Y*Cols, ' ' - [], D0, D)
 		))
 	), u(Data0), Data) },
 	set_win(Win, win(Parent, Cols, Rows, Opts, Data, Visi, Hidden)).
@@ -501,12 +501,12 @@ scroll(Win, N) -->
 	{ for(0, Rows-N-1, (pred(Y::in, array_di, array_uo) is det -->
 		for(0, Cols-1, (pred(X::in, D0::array_di, D::array_uo) is det :-
 			lookup(D0, X+(Y+N)*Cols, C),
-			set(D0, X+Y*Cols, C, D)
+			set(X+Y*Cols, C, D0, D)
 		))
 	), u(Data0), Data1) },
 	{ for(Rows-N, Rows-1, (pred(Y::in, array_di, array_uo) is det -->
 		for(0, Cols-1, (pred(X::in, D1::array_di, Q::array_uo) is det :-
-			set(D1, X+Y*Cols, ' ' - [], Q)
+			set(X+Y*Cols, ' ' - [], D1, Q)
 		))
 	), Data1, Data) },
 	set_win(Win, win(Parent, Cols, Rows, Opts, Data, Visi, Hidden)).
@@ -519,7 +519,7 @@ place_char(Win, X, Y, C - As) -->
 		X >= 0, Y >= 0,
 		X < Cols, Y < Cols
 	), "place_char: out of range") },
-	{ set(u(Data0), X+Y*Cols, C - As, Data) },
+	{ set(X+Y*Cols, C - As, u(Data0), Data) },
 	set_win(Win, win(Parent, Cols, Rows, Opts, Data, Visi, Hidden)).
 
 :- func u(array(T)) = array(T).
@@ -550,7 +550,7 @@ place_string(Win, X, Y, Str) -->
 update_data([], _, _, _, Data, Data).
 update_data([C|Cs], Y, X, Xmax, Data0, Data) :-
 	( X < Xmax ->
-		set(Data0, X+Y, C - [], Data1),
+		set(X+Y, C - [], Data0, Data1),
 		update_data(Cs, Y, X+1, Xmax, Data1, Data)
 	;
 		Data = Data0
