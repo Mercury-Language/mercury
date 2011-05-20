@@ -228,7 +228,8 @@ MR_new_trail_segment(void)
     new_zone = MR_create_or_reuse_zone("trail_segment", MR_trail_size, 0,
         0, MR_default_handler);
 
-    list = MR_GC_malloc_uncollectable(sizeof(MR_MemoryZones));
+    list = MR_GC_malloc_uncollectable_attrib(sizeof(MR_MemoryZones),
+        MR_ALLOC_SITE_RUNTIME);
 
 #if defined(MR_DEBUG_TRAIL_SEGMENTS)
     printf("create new trail segment: old zone: %p, old trail_ptr %p\n",

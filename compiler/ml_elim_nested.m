@@ -882,9 +882,11 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
         % OnHeap should be "yes" only on for the IL backend, for which
         % the value of MayUseAtomic is immaterial.
         MayUseAtomic = may_not_use_atomic_alloc,
+        MaybeAllocId = no,
         NewObj = [statement(
             ml_stmt_atomic(new_object(ml_var(EnvVar, EnvTypeName),
-                no, no, EnvTypeName, no, no, [], [], MayUseAtomic)),
+                no, no, EnvTypeName, no, no, [], [], MayUseAtomic,
+                MaybeAllocId)),
             Context)]
     ;
         OnHeap = no,
@@ -1841,11 +1843,13 @@ fixup_atomic_stmt(Action, Info, Atomic0, Atomic) :-
         Atomic = delete_object(Rval)
     ;
         Atomic0 = new_object(Target0, MaybeTag, ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic),
+            MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic,
+            MaybeAllocId),
         fixup_lval(Action, Info, Target0, Target),
         fixup_rvals(Action, Info, Args0, Args),
         Atomic = new_object(Target, MaybeTag, ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic)
+            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic,
+            MaybeAllocId)
     ;
         Atomic0 = mark_hp(Lval0),
         fixup_lval(Action, Info, Lval0, Lval),
@@ -1917,6 +1921,7 @@ fixup_target_code_component(Action, Info, Component0, Component) :-
         ; Component0 = user_target_code(_Code, _Context, _Attrs)
         ; Component0 = target_code_type(_Type)
         ; Component0 = target_code_name(_Name)
+        ; Component0 = target_code_alloc_id(_AllocId)
         ),
         Component = Component0
     ;

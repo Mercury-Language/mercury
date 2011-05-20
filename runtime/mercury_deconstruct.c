@@ -329,7 +329,7 @@ MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool wrap)
     }
 
     MR_restore_transient_hp();
-    MR_allocate_aligned_string_msg(str, len, "MR_expand_type_name");
+    MR_allocate_aligned_string_msg(str, len, MR_ALLOC_SITE_STRING);
     MR_save_transient_hp();
 
     sprintf(str, wrap? "<<%s.%s/%d>>" : "%s.%s/%d",

@@ -73,7 +73,7 @@ MR_create_thread(MR_ThreadGoal *goal)
     ** automatically freed when threads terminate (we don't call
     ** pthread_join() anywhere).
     */
-    thread = MR_GC_NEW(MercuryThread);
+    thread = MR_GC_NEW_ATTRIB(MercuryThread, MR_ALLOC_SITE_RUNTIME);
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
     err = pthread_create(thread, &attrs, MR_create_thread_2, (void *) goal);
@@ -416,11 +416,12 @@ MR_create_thread_local_mutables(MR_Unsigned numslots)
 {
     MR_ThreadLocalMuts  *muts;
 
-    muts = MR_GC_NEW(MR_ThreadLocalMuts);
+    muts = MR_GC_NEW_ATTRIB(MR_ThreadLocalMuts, MR_ALLOC_SITE_RUNTIME);
 #ifdef MR_THREAD_SAFE
     pthread_mutex_init(&muts->MR_tlm_lock, MR_MUTEX_ATTR);
 #endif
-    muts->MR_tlm_values = MR_GC_NEW_ARRAY(MR_Word, numslots);
+    muts->MR_tlm_values = MR_GC_NEW_ARRAY_ATTRIB(MR_Word, numslots,
+        MR_ALLOC_SITE_RUNTIME);
 
     return muts;
 }
@@ -444,7 +445,8 @@ MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts)
 
 #ifdef MR_THREAD_SAFE
 void
-MR_init_thread_stuff(void) {
+MR_init_thread_stuff(void)
+{
     int i;
 
     pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);

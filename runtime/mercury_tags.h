@@ -159,11 +159,11 @@
   #define MR_typed_list_cons(ti_head, head, ti_tail, tail)		\
 	((MR_Word) MR_mkword(MR_TAG_CONS,				\
 		MR_create2((ti_head), (head), (ti_tail), (tail))))
-  #define MR_list_empty_msg(proclabel)	MR_list_empty()
-  #define MR_typed_list_cons_msg(ti_head, head, ti_tail, tail, proclabel) \
+  #define MR_list_empty_msg(alloc_id)	MR_list_empty()
+  #define MR_typed_list_cons_msg(ti_head, head, ti_tail, tail, alloc_id)\
 	((MR_Word) MR_mkword(MR_TAG_CONS,				\
 		MR_create2_msg((ti_head), (head), (ti_tail), (tail),	\
-			 proclabel, "list.list/1")))
+			 alloc_id, "list.list/1")))
 #else
   /*
   ** MR_TAGBITS == 0 && 
@@ -191,17 +191,17 @@
 			&MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),	\
 			MR_RAW_TAG_CONS, (ti_head), (head), (ti_tail), (tail))))
 
-  #define MR_list_empty_msg(proclabel) 					\
+  #define MR_list_empty_msg(alloc_id) 					\
 	((MR_Word) MR_mkword(MR_mktag(0),				\
 		MR_create1_msg((MR_TypeInfo)				\
-			&MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),\
-			MR_RAW_TAG_NIL, proclabel, "list:list/1")))
-  #define MR_typed_list_cons_msg(ti_head, head, ti_tail, tail, proclabel) \
+			&MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),	\
+			MR_RAW_TAG_NIL, alloc_id, "list.list/1")))
+  #define MR_typed_list_cons_msg(ti_head, head, ti_tail, tail, alloc_id) \
 	((MR_Word) MR_mkword(MR_mktag(0),				\
 		MR_create3((MR_TypeInfo)				\
 			&MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),	\
 			MR_RAW_TAG_CONS, (ti_head), (head), (ti_tail), (tail), \
-			proclabel, "list:list/1")))
+			alloc_id, "list.list/1")))
 #endif
 
 /*
@@ -219,68 +219,68 @@
 		(head),							 \
 		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0), \
 		(tail))
-  #define MR_list_cons_msg(head, tail, proclabel)			 \
+  #define MR_list_cons_msg(head, tail, alloc_id)			 \
 	MR_typed_list_cons_msg(						 \
 		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0), \
 		(head),							 \
 		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0), \
-		(tail), proclabel)
+		(tail), alloc_id)
 #endif
 
 #define MR_univ_list_cons(head, tail)					\
 	MR_typed_list_cons((MR_TypeInfo) MR_type_ctor_info_for_univ, (head), \
 		MR_type_info_for_list_of_univ, (tail))
 
-#define MR_univ_list_cons_msg(head, tail, proclabel)			\
+#define MR_univ_list_cons_msg(head, tail, alloc_id)			\
 	MR_typed_list_cons_msg(						\
 		(MR_TypeInfo) MR_type_ctor_info_for_univ, (head), 	\
-		MR_type_info_for_list_of_univ, (tail), proclabel)
+		MR_type_info_for_list_of_univ, (tail), alloc_id)
 
 #define MR_int_list_cons(head, tail)					\
 	MR_typed_list_cons(						\
 		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0), \
 		(head), MR_type_info_for_list_of_int, (tail))
 
-#define MR_int_list_cons_msg(head, tail, proclabel)			\
+#define MR_int_list_cons_msg(head, tail, alloc_id)			\
 	MR_typed_list_cons_msg(						\
 		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0),	\
-		(head), MR_type_info_for_list_of_int, (tail), proclabel)
+		(head), MR_type_info_for_list_of_int, (tail), alloc_id)
 
 #define MR_char_list_cons(head, tail)					\
 	MR_typed_list_cons(						\
 		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, character, 0), \
 		(head), MR_type_info_for_list_of_char, (tail))
 
-#define MR_char_list_cons_msg(head, tail, proclabel)			\
+#define MR_char_list_cons_msg(head, tail, alloc_id)			\
 	MR_typed_list_cons_msg(						\
 		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, character, 0), \
-		(head), MR_type_info_for_list_of_char, (tail), proclabel)
+		(head), MR_type_info_for_list_of_char, (tail), alloc_id)
 
 #define MR_string_list_cons(head, tail)					\
 	MR_typed_list_cons(						\
 		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0), \
 		(head), MR_type_info_for_list_of_string, (tail))
 
-#define MR_string_list_cons_msg(head, tail, proclabel)			\
+#define MR_string_list_cons_msg(head, tail, alloc_id)			\
 	MR_typed_list_cons_msg(						\
 		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0), \
-		(head), MR_type_info_for_list_of_string, (tail), proclabel)
+		(head), MR_type_info_for_list_of_string, (tail), alloc_id)
 
 #define MR_type_info_list_cons(head, tail)				\
 	MR_typed_list_cons(MR_type_info_for_type_info, (head),		\
 		MR_type_info_for_list_of_type_info, (tail))
 
-#define MR_type_info_list_cons_msg(head, tail, proclabel)		\
-	MR_typed_list_cons_msg(MR_type_info_for_type_info, (head),	\
-		MR_type_info_for_list_of_type_info, (tail), proclabel)
+#define MR_type_info_list_cons_msg(head, tail, alloc_id)                \
+	MR_typed_list_cons_msg(MR_type_info_for_type_info, (head),      \
+		MR_type_info_for_list_of_type_info, (tail), alloc_id)
 
 #define MR_pseudo_type_info_list_cons(head, tail)			\
 	MR_typed_list_cons(MR_type_info_for_pseudo_type_info, (head),	\
 		MR_type_info_for_list_of_pseudo_type_info, (tail))
 
-#define MR_pseudo_type_info_list_cons_msg(head, tail, proclabel)	\
-	MR_typed_list_cons_msg(MR_type_info_for_pseudo_type_info, (head), \
-		MR_type_info_for_list_of_pseudo_type_info, (tail), proclabel)
+#define MR_pseudo_type_info_list_cons_msg(head, tail, alloc_id)		    \
+	MR_typed_list_cons_msg(MR_type_info_for_pseudo_type_info, (head),   \
+		MR_type_info_for_list_of_pseudo_type_info, (tail), alloc_id)
 
 /*
 ** Convert an enumeration declaration into one which assigns the same

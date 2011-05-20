@@ -75,8 +75,8 @@ extern	void	MR_init_heap(void);
 **
 ** Structures allocated with MR_malloc() and MR_realloc() must NOT contain
 ** pointers into GC'ed memory, because those pointers will never be traced
-** by the conservative GC. ** Use MR_GC_malloc() or
-** MR_GC_malloc_uncollectable() for that.
+** by the conservative GC. Use MR_GC_malloc() or MR_GC_malloc_uncollectable()
+** for that.
 **
 ** MR_NEW(type):
 **	Allocates space for an object of the specified type.
@@ -159,6 +159,9 @@ extern	void 	MR_ensure_big_enough_buffer(char **buffer_ptr,
 **	The memory will not be garbage collected, and so
 **	it should be explicitly deallocated using MR_GC_free().
 **
+** MR_GC_realloc(ptr, bytes):
+**	Reallocates the memory block pointed to by ptr.
+**
 ** MR_GC_free(ptr):
 **	Deallocates the memory.
 **
@@ -170,6 +173,8 @@ extern	void 	MR_ensure_big_enough_buffer(char **buffer_ptr,
 **          grades, it is a no-op in non .gc grades.
 **
 **      XXX this interface is subject to change.
+**
+** Note: consider using the _attrib variants below.
 */
 
 extern	void	*MR_GC_malloc(size_t num_bytes);
@@ -203,6 +208,84 @@ typedef void 	(*MR_GC_finalizer)(void *ptr, void *data);
   #define MR_GC_register_finalizer(ptr, finalizer, data)
 #endif
 
+/*
+** MR_GC_NEW_ATTRIB(type, attrib):
+** MR_GC_NEW_UNCOLLECTABLE_ATTRIB(type, attrib):
+** MR_GC_NEW_ARRAY_ATTRIB(type, attrib):
+** MR_GC_malloc_attrib(bytes, attrib):
+** MR_GC_malloc_uncollectable_attrib(bytes, attrib):
+** MR_GC_realloc_attrib(ptr, num_bytes):
+**	In grades with memory attribution support, these variants will allocate
+**	an extra word before the object.  The value stored `attrib' is stored
+**	in that extra word.
+**
+** MR_GC_RESIZE_ARRAY_ATTRIB(ptr, type, num):
+** MR_GC_free_attrib(ptr):
+**	These variants take into account the extra word before ptr.
+**	You must NOT pass pointers which were returned by non-"attrib"
+**	functions/macros to these "attrib" variants, and vice versa.
+*/
+
+#define MR_GC_NEW_ATTRIB(type, attrib) \
+	((type *) MR_GC_malloc_attrib(sizeof(type), (attrib)))
+
+#define MR_GC_NEW_UNCOLLECTABLE_ATTRIB(type, attrib) \
+	((type *) MR_GC_malloc_uncollectable_attrib(sizeof(type), (attrib)))
+
+#define MR_GC_NEW_ARRAY_ATTRIB(type, num, attrib) \
+	((type *) MR_GC_malloc_attrib((num) * sizeof(type), (attrib)))
+
+#define MR_GC_RESIZE_ARRAY_ATTRIB(ptr, type, num) \
+	((type *) MR_GC_realloc_attrib((ptr), (num) * sizeof(type)))
+
+extern	void	*MR_GC_malloc_attrib(size_t num_bytes, void *attrib);
+extern	void	*MR_GC_malloc_uncollectable_attrib(size_t num_bytes,
+		    void *attrib);
+extern	void	*MR_GC_realloc_attrib(void *ptr, size_t num_bytes);
+extern	void	MR_GC_free_attrib(void *ptr);
+
+struct MR_AllocSiteInfo_Struct {
+    MR_Code	*MR_asi_proc;
+    const char  *MR_asi_file_name;
+    const int   MR_asi_line_number;
+    const char  *MR_asi_type;
+    const int   MR_asi_words;
+};
+
+/*
+** Built-in allocation site ids for use in the runtime and other
+** hand-written code when context-specific ids are unavailable.
+** MR_ALLOC_SITE_RUNTIME is a catch-all for internal runtime structures;
+** these are hidden by default in `mprof -s' output.
+*/
+
+#define MR_ALLOC_SITE_NONE		((void *) 0)
+#ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+    /* These must match the entries in mercury_heap_profile.c. */
+    extern MR_AllocSiteInfo		MR_builtin_alloc_sites[7];
+    #define MR_ALLOC_SITE_RUNTIME	((void *) &MR_builtin_alloc_sites[0])
+    #define MR_ALLOC_SITE_FLOAT		((void *) &MR_builtin_alloc_sites[1])
+    #define MR_ALLOC_SITE_STRING	((void *) &MR_builtin_alloc_sites[2])
+    #define MR_ALLOC_SITE_TYPE_INFO	((void *) &MR_builtin_alloc_sites[3])
+    #define MR_ALLOC_SITE_FOREIGN	((void *) &MR_builtin_alloc_sites[4])
+    #define MR_ALLOC_SITE_TABLING	((void *) &MR_builtin_alloc_sites[5])
+    #define MR_ALLOC_SITE_STM		((void *) &MR_builtin_alloc_sites[6])
+#else
+    #define MR_ALLOC_ID			MR_ALLOC_SITE_NONE
+    #define MR_ALLOC_SITE_RUNTIME	MR_ALLOC_SITE_NONE
+    #define MR_ALLOC_SITE_FLOAT		MR_ALLOC_SITE_NONE
+    #define MR_ALLOC_SITE_STRING	MR_ALLOC_SITE_NONE
+    #define MR_ALLOC_SITE_TYPE_INFO	MR_ALLOC_SITE_NONE
+    #define MR_ALLOC_SITE_FOREIGN	MR_ALLOC_SITE_NONE
+    #define MR_ALLOC_SITE_TABLING	MR_ALLOC_SITE_NONE
+    #define MR_ALLOC_SITE_STM		MR_ALLOC_SITE_NONE
+#endif
+
+extern	void	*MR_new_object_func(size_t num_bytes,
+		    MR_AllocSiteInfoPtr alloc_id, const char *name);
+extern	void	*MR_new_object_atomic_func(size_t num_bytes,
+		    MR_AllocSiteInfoPtr alloc_id, const char *name);
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -210,7 +293,7 @@ typedef void 	(*MR_GC_finalizer)(void *ptr, void *data);
 ** using memory allocated with MR_malloc().
 */
 
-char	*MR_copy_string(const char *s);
+extern char	*MR_copy_string(const char *s);
 
 /*---------------------------------------------------------------------------*/
 

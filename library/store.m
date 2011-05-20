@@ -329,7 +329,7 @@ store.init(S) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     MR_offset_incr_hp_msg(Mutvar, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
-        MR_PROC_LABEL, ""store.mutvar/2"");
+        MR_ALLOC_ID, ""store.mutvar/2"");
     MR_define_size_slot(0, Mutvar, 1);
     * (MR_Word *) Mutvar = Val;
     S = S0;
@@ -439,7 +439,7 @@ copy_mutvar(Mutvar, Copy, !S) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     MR_offset_incr_hp_msg(Mutvar, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
-        MR_PROC_LABEL, ""store.mutvar/2"");
+        MR_ALLOC_ID, ""store.mutvar/2"");
     MR_define_size_slot(0, Mutvar, 1);
     S = S0;
 ").
@@ -596,7 +596,7 @@ store.new_cyclic_mutvar(Func, MutVar, !Store) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
-        MR_PROC_LABEL, ""store:ref/2"");
+        MR_ALLOC_ID, ""store.ref/2"");
     MR_define_size_slot(0, Ref, 1);
     * (MR_Word *) Ref = Val;
     S = S0;
@@ -773,7 +773,7 @@ ref_functor(Ref, Functor, Arity, !Store) :-
 
     if (arg_ref == &Val) {
         MR_offset_incr_hp_msg(ArgRef, MR_SIZE_SLOT_SIZE,
-            MR_SIZE_SLOT_SIZE + 1, MR_PROC_LABEL, ""store:ref/2"");
+            MR_SIZE_SLOT_SIZE + 1, MR_ALLOC_ID, ""store.ref/2"");
         MR_define_size_slot(0, ArgRef, 1);
         * (MR_Word *) ArgRef = Val;
     } else {

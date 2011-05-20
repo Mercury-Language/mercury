@@ -135,7 +135,7 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData, Defns0,
         InitPreds, FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
-        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
+        ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap, GlobalDefns),
     Defns = GlobalDefns ++ Defns0,
 
     % Find all methods which would have their addresses taken to be used as a
@@ -536,7 +536,8 @@ method_ptrs_in_stmt(CallStmt, !CodeAddrs) :-
 method_ptrs_in_stmt(ml_stmt_atomic(AtomicStatement), !CodeAddrs) :-
     (
         AtomicStatement = new_object(Lval, _MaybeTag, _Bool,
-            _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic)
+            _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic,
+            _AllocId)
     ->
         % We don't need to check "_MemRval" since this just stores
         % the amount of memory needed for the new object.
@@ -3085,7 +3086,8 @@ output_atomic_stmt(Info, Indent, AtomicStmt, _Context, !IO) :-
         unexpected(this_file, "delete_object not supported in C#.")
     ;
         AtomicStmt = new_object(Target, _MaybeTag, ExplicitSecTag, Type,
-            _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic),
+            _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic,
+            _AllocId),
         (
             ExplicitSecTag = yes,
             unexpected(this_file, "output_atomic_stmt: explicit secondary tag")
@@ -3199,6 +3201,9 @@ output_target_code_component(Info, TargetCode, !IO) :-
     ;
         TargetCode = target_code_name(Name),
         output_maybe_qualified_name(Info, Name, !IO)
+    ;
+        TargetCode = target_code_alloc_id(_),
+        unexpected(this_file, "target_code_alloc_id not implemented")
     ).
 
 %-----------------------------------------------------------------------------%

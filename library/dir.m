@@ -867,11 +867,15 @@ dir.relative_path_name_from_components(Components) = PathName :-
     */
 
     size_t      size = 256;
+    MR_Word     ptr;
     char        *buf;
     MR_String   str;
 
     while (1) {
-        buf = MR_GC_NEW_ARRAY(char, size);
+        MR_offset_incr_hp_atomic_msg(ptr, 0,
+            (size + sizeof(MR_Word) - 1) / sizeof(MR_Word),
+            MR_ALLOC_ID, ""string.string/0"");
+        buf = (char *) ptr;
         if (getcwd(buf, size)) {
             MR_make_aligned_string(str, buf);
             Res = ML_make_io_res_1_ok_string(str);
@@ -1818,7 +1822,7 @@ copy_c_string(_) = _ :-
     [will_not_call_mercury, promise_pure, thread_safe,
         will_not_modify_trail, does_not_affect_liveness],
 "
-    MR_make_aligned_string_copy(Str, (char *) Ptr);
+    MR_make_aligned_string_copy_msg(Str, (char *) Ptr, MR_ALLOC_ID);
 ").
 
 :- func make_dir_open_result_eof = io.result({dir.stream, string}).
@@ -1952,7 +1956,8 @@ dir.read_entry(Dir0, Res, !IO) :-
     IO = IO0;
     if (FindNextFile(Dir, &file_data)) {
         Status = 1;
-        MR_make_aligned_string_copy(FileName, file_data.cFileName);
+        MR_make_aligned_string_copy_msg(FileName, file_data.cFileName,
+            MR_ALLOC_ID);
     } else {
         Error = GetLastError();
         Status = (Error == ERROR_NO_MORE_FILES ? -1 : 0);
@@ -1971,7 +1976,8 @@ dir.read_entry(Dir0, Res, !IO) :-
         FileName = NULL;
         Status = (Error == 0 ? -1 : 0);
     } else {
-        MR_make_aligned_string_copy(FileName, dir_entry->d_name);
+        MR_make_aligned_string_copy_msg(FileName, dir_entry->d_name,
+            MR_ALLOC_ID);
         Error = 0;
         Status = 1;
     }

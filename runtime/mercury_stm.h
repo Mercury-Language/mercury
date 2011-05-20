@@ -152,7 +152,7 @@ struct MR_STM_TransLog_Struct {
 */
 #define MR_STM_new_stm_var(value, var)                                  \
     do {                                                                \
-        (var) = MR_GC_NEW(MR_STM_Var) ;                                 \
+        (var) = MR_GC_NEW_ATTRIB(MR_STM_Var, MR_ALLOC_SITE_STM);        \
         (var)->MR_STM_var_value = (value);                              \
         (var)->MR_STM_var_waiters = NULL;                               \
     } while (0)
@@ -164,7 +164,7 @@ struct MR_STM_TransLog_Struct {
 */
 #define MR_STM_create_log(tlog, parent)                                 \
     do {                                                                \
-        (tlog) = MR_GC_NEW(MR_STM_TransLog);                            \
+        (tlog) = MR_GC_NEW_ATTRIB(MR_STM_TransLog, MR_ALLOC_SITE_STM);  \
         (tlog)->MR_STM_tl_records = NULL;                               \
         (tlog)->MR_STM_tl_thread = MR_THIS_THREAD_ID;                   \
         (tlog)->MR_STM_tl_parent = (parent);                            \

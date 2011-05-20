@@ -748,7 +748,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                 data_word = *data_word_ptr;
                 sprintf(buf, "%ld", (long) data_word);
-                MR_make_aligned_string_copy_saved_hp(str, buf);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
@@ -766,7 +766,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                 data_word = *data_word_ptr;
                 sprintf(buf, "\'%c\'", (char) data_word);
-                MR_make_aligned_string_copy_saved_hp(str, buf);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
@@ -785,7 +785,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 data_word = *data_word_ptr;
                 f = MR_word_to_float(data_word);
                 MR_sprintf_float(buf, f);
-                MR_make_aligned_string_copy_saved_hp(str, buf);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
@@ -802,7 +802,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                 data_word = *data_word_ptr;
                 MR_make_aligned_string_copy_saved_hp_quote(str,
-                        (MR_String) data_word);
+                        (MR_String) data_word, NULL);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
@@ -818,7 +818,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                 data_word = *data_word_ptr;
                 str = MR_bitmap_to_quoted_string_saved_hp(
-                            (MR_ConstBitmapPtr) data_word);
+                            (MR_ConstBitmapPtr) data_word,
+                            NULL);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
@@ -1014,7 +1015,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                 data_word = *data_word_ptr;
                 sprintf(buf, "c_pointer(0x%lX)", (long) data_word);
-                MR_make_aligned_string_copy_saved_hp(str, buf);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
@@ -1031,7 +1032,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                 data_word = *data_word_ptr;
                 sprintf(buf, "stable_c_pointer(0x%lX)", (long) data_word);
-                MR_make_aligned_string_copy_saved_hp(str, buf);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
@@ -1162,7 +1163,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         char    *str;
 
                         sprintf(buf, "tvar%ld", (long) data_pseudo_type_info);
-                        MR_make_aligned_string_copy_saved_hp(str, buf);
+                        MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
                         expand_info->EXPAND_FUNCTOR_FIELD = str;
                     }
 #endif  /* EXPAND_FUNCTOR_FIELD */

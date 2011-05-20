@@ -50,7 +50,7 @@
 **   which _is_ scanned by the collector).
 **
 ** It is the caller's responsibility to deallocate the memory for the array
-** if/when it is no longer needed, using MR_free() or MR_GC_free()
+** if/when it is no longer needed, using MR_free() or MR_GC_free_attrib()
 ** respectively.
 */
 
@@ -66,15 +66,17 @@
             }                                                           \
         }                                                               \
     } while(0)
-#define MR_GC_ensure_room_for_next(base, type, init)                    \
+#define MR_GC_ensure_room_for_next(base, type, init, alloc_id)          \
     do {                                                                \
         if (base##_next >= base##_max) {                                \
             if (base##_max == 0) {                                      \
                 base##_max = (init);                                    \
-                base##s = MR_GC_NEW_ARRAY(type, base##_max);            \
+                base##s = MR_GC_NEW_ARRAY_ATTRIB(type, base##_max,      \
+                    (alloc_id));                                         \
             } else {                                                    \
                 base##_max *= 2;                                        \
-                base##s = MR_GC_RESIZE_ARRAY(base##s, type, base##_max);\
+                base##s = MR_GC_RESIZE_ARRAY_ATTRIB(base##s, type,      \
+                    base##_max);                                        \
             }                                                           \
         }                                                               \
     } while(0)

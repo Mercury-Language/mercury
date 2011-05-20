@@ -261,6 +261,9 @@ typedef struct MR_SynthAttr_Struct              MR_SynthAttr;
 typedef struct MR_UserEvent_Struct              MR_UserEvent;
 typedef struct MR_UserEventSpec_Struct          MR_UserEventSpec;
 
+typedef struct MR_AllocSiteInfo_Struct          MR_AllocSiteInfo;
+typedef MR_AllocSiteInfo                        *MR_AllocSiteInfoPtr;
+
 typedef union MR_TableNode_Union                MR_TableNode;
 typedef MR_TableNode                            *MR_TrieNode;
 typedef MR_TrieNode                             *MR_TrieNodePtr;

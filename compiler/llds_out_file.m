@@ -160,9 +160,11 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TSStringTable,
         TableIoDecls, TableIoDeclMap, ProcEventLayouts, ExecTraces,
         ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
+        AllocSites, AllocSiteMap,
         Modules, UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
     Info = init_llds_out_info(ModuleName, Globals,
-        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap),
+        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap,
+        AllocSiteMap),
     library.version(Version),
     io.set_output_stream(FileStream, OutputStream, !IO),
     module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
@@ -201,7 +203,7 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls,
-        ProcEventLayouts, ExecTraces, !IO),
+        ProcEventLayouts, ExecTraces, AllocSites, !IO),
 
     list.foldl2(output_proc_layout_data_defn(Info), ProcLayoutDatas,
         !DeclSet, !IO),
@@ -217,7 +219,8 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls,
-        ProcEventLayouts, ExecTraces, TSStringTable, !DeclSet, !IO),
+        ProcEventLayouts, ExecTraces, TSStringTable, AllocSites,
+        !DeclSet, !IO),
 
     list.foldl2(output_comp_gen_c_module(Info), Modules, !DeclSet, !IO),
     list.foldl(output_user_foreign_code(Info), UserForeignCode, !IO),
@@ -225,7 +228,8 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
         ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
-        UserInitPredCNames, UserFinalPredCNames, !DeclSet, !IO),
+        AllocSites, UserInitPredCNames, UserFinalPredCNames,
+        !DeclSet, !IO),
     io.set_output_stream(OutputStream, _, !IO).
 
 :- pred module_gather_env_var_names(list(comp_gen_c_module)::in,
@@ -247,12 +251,13 @@ proc_gather_env_var_names([Proc | Procs], !EnvVarNames) :-
 :- pred output_c_module_init_list(llds_out_info::in, module_name::in,
     list(comp_gen_c_module)::in, list(rtti_data)::in,
     list(proc_layout_data)::in, list(module_layout_data)::in,
-    list(complexity_proc_info)::in, list(string)::in, list(string)::in,
-    list(string)::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
+    list(complexity_proc_info)::in, list(string)::in,
+    list(alloc_site_info)::in, list(string)::in, list(string)::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
         ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
-        InitPredNames, FinalPredNames, !DeclSet, !IO) :-
+        AllocSites, InitPredNames, FinalPredNames, !DeclSet, !IO) :-
     MustInit = (pred(Module::in) is semidet :-
         module_defines_label_with_layout(Info, Module)
     ),
@@ -330,7 +335,7 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
     io.write_string("\t}\n", !IO),
     io.write_string("\tdone = MR_TRUE;\n", !IO),
 
-    output_init_bunch_calls(Info, "always", 0,AlwaysInitModuleBunches, !IO),
+    output_init_bunch_calls(Info, "always", 0, AlwaysInitModuleBunches, !IO),
 
     (
         MaybeInitModuleBunches = []
@@ -340,6 +345,8 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
     ),
 
     output_c_data_init_list(RttiDatas, !IO),
+    output_alloc_sites_init(Info, AllocSites, !IO),
+
     % The call to the debugger initialization function is for bootstrapping;
     % once the debugger has been modified to call do_init_modules_debugger()
     % and all debuggable object files created before this change have been
@@ -546,6 +553,28 @@ output_c_data_init_list([], !IO).
 output_c_data_init_list([Data | Datas], !IO) :-
     rtti_out.init_rtti_data_if_nec(Data, !IO),
     output_c_data_init_list(Datas, !IO).
+
+    % Output code to register the allocation sites defined in this module.
+    %
+:- pred output_alloc_sites_init(llds_out_info::in, list(alloc_site_info)::in,
+    io::di, io::uo) is det.
+
+output_alloc_sites_init(Info, AllocSites, !IO) :-
+    (
+        AllocSites = []
+    ;
+        AllocSites = [_ | _],
+        MangledModuleName = Info ^ lout_mangled_module_name,
+        NumAllocSites = list.length(AllocSites),
+        io.write_string("#ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION\n", !IO),
+        io.write_string("\tMR_register_alloc_sites(", !IO),
+        output_layout_array_name(do_not_use_layout_macro, MangledModuleName,
+            alloc_site_array, !IO),
+        io.write_string(", ", !IO),
+        io.write_int(NumAllocSites, !IO),
+        io.write_string(");\n", !IO),
+        io.write_string("#endif\n", !IO)
+    ).
 
     % Output code to register each type_ctor_info defined in this module.
     %

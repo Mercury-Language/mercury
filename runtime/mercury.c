@@ -49,8 +49,8 @@ MR_OUTLINE_DEFN(
     MR_create1_func(MR_Word w1) 
 ,
     {
-        MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
-            1 * sizeof(MR_Word), "create1");
+        MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 1 * sizeof(MR_Word),
+            NULL, "create1");
         p[0] = w1;
         return (MR_Word) p;
     }
@@ -61,8 +61,8 @@ MR_OUTLINE_DEFN(
     MR_create2_func(MR_Word w1, MR_Word w2) 
 ,
     {
-        MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
-            2 * sizeof(MR_Word), "create2");
+        MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 2 * sizeof(MR_Word),
+            NULL, "create2");
         p[0] = w1;
         p[1] = w2;
         return (MR_Word) p;
@@ -74,8 +74,8 @@ MR_OUTLINE_DEFN(
     MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3) 
 ,
     {
-        MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
-            3 * sizeof(MR_Word), "create3");
+        MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 3 * sizeof(MR_Word),
+            NULL, "create3");
         p[0] = w1;
         p[1] = w2;
         p[2] = w3;
@@ -93,7 +93,8 @@ MR_OUTLINE_DEFN(
         MR_Float *ptr;
 
         MR_make_hp_float_aligned();
-        ptr = (MR_Float *) MR_new_object(MR_Float, sizeof(MR_Float), "float");
+        ptr = (MR_Float *) MR_new_object(MR_Float, sizeof(MR_Float),
+            MR_ALLOC_SITE_FLOAT, NULL);
         *ptr = f;
         return (MR_Box) ptr;
     }
@@ -126,7 +127,8 @@ MR_asm_box_float(MR_Float f)
     MR_Float *ptr;
 
     MR_make_hp_float_aligned();
-    ptr = (MR_Float *) MR_new_object(MR_Float, sizeof(MR_Float), "float");
+    ptr = (MR_Float *) MR_new_object(MR_Float, sizeof(MR_Float),
+        MR_ALLOC_SITE_FLOAT, NULL);
     *ptr = f;
     return (MR_Box) ptr;
 }

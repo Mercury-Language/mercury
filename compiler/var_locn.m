@@ -183,8 +183,8 @@
 :- pred var_locn_assign_cell_to_var(module_info::in, exprn_opts::in,
     prog_var::in, bool::in, tag::in, list(maybe(rval))::in,
     how_to_construct::in, maybe(term_size_value)::in, list(int)::in,
-    string::in, may_use_atomic_alloc::in, label::in, llds_code::out,
-    static_cell_info::in, static_cell_info::out,
+    maybe(alloc_site_id)::in, may_use_atomic_alloc::in, label::in,
+    llds_code::out, static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_save_cell_fields(ModuleInfo, Var, VarLval, Code,
@@ -810,7 +810,7 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 %----------------------------------------------------------------------------%
 
 var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
-        Ptag, MaybeRvals0, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
+        Ptag, MaybeRvals0, HowToConstruct, MaybeSize, FieldAddrs, MaybeAllocId,
         MayUseAtomic, Label, Code, !StaticCellInfo, !VLI) :-
     (
         MaybeSize = yes(SizeSource),
@@ -845,16 +845,16 @@ var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
     ;
         var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var,
             ReserveWordAtStart, Ptag, MaybeRvals, HowToConstruct,
-            MaybeOffset, TypeMsg, MayUseAtomic, Label, Code, !VLI)
+            MaybeOffset, MaybeAllocId, MayUseAtomic, Label, Code, !VLI)
     ).
 
 :- pred var_locn_assign_dynamic_cell_to_var(module_info::in, prog_var::in,
     bool::in, tag::in, list(maybe(rval))::in, how_to_construct::in,
-    maybe(int)::in, string::in, may_use_atomic_alloc::in, label::in,
-    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
+    maybe(int)::in, maybe(alloc_site_id)::in, may_use_atomic_alloc::in,
+    label::in, llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
 var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-        Vector, HowToConstruct, MaybeOffset, TypeMsg, MayUseAtomic, Label,
+        Vector, HowToConstruct, MaybeOffset, MaybeAllocId, MayUseAtomic, Label,
         Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
@@ -951,7 +951,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     CellCode = singleton(
         llds_instr(
             incr_hp(Lval, yes(Ptag), TotalOffset,
-                const(llconst_int(TotalSize)), TypeMsg, MayUseAtomic,
+                const(llconst_int(TotalSize)), MaybeAllocId, MayUseAtomic,
                 MaybeRegionRval, MaybeReuse),
             LldsComment ++ VarName)
     ),

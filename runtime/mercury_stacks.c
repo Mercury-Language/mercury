@@ -217,7 +217,8 @@ MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
     new_zone = MR_create_or_reuse_zone("detstack_segment", MR_detstack_size, 0,
         0, MR_default_handler);
 
-    list = MR_GC_malloc_uncollectable(sizeof(MR_MemoryZones));
+    list = MR_GC_malloc_uncollectable_attrib(sizeof(MR_MemoryZones),
+        MR_ALLOC_SITE_RUNTIME);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
     MR_debug_log_message(
@@ -282,7 +283,8 @@ MR_nondetstack_segment_extend_slow_path(MR_Word *old_maxfr, int incr)
             MR_nondetstack_size, 0, 0, MR_default_handler);
     }
 
-    list = MR_GC_malloc_uncollectable(sizeof(MR_MemoryZones));
+    list = MR_GC_malloc_uncollectable_attrib(sizeof(MR_MemoryZones),
+        MR_ALLOC_SITE_RUNTIME);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
     printf("create new nondet segment: old zone: %p, old maxfr %p\n",
@@ -339,7 +341,7 @@ MR_rewind_nondetstack_segments(MR_Word *maxfr)
         assert(list != NULL);
         MR_CONTEXT(MR_ctxt_nondetstack_zone) = list->MR_zones_head;
         MR_CONTEXT(MR_ctxt_prev_nondetstack_zones) = list->MR_zones_tail;
-        MR_GC_free(list);
+        MR_GC_free_attrib(list);
     }
 
     return reusable_zone;
@@ -375,7 +377,7 @@ MR_define_entry(MR_pop_detstack_segment);
     MR_CONTEXT(MR_ctxt_detstack_zone) = list->MR_zones_head;
     MR_CONTEXT(MR_ctxt_prev_detstack_zones) = list->MR_zones_tail;
     MR_CONTEXT(MR_ctxt_sp) = orig_sp;
-    MR_GC_free(list);
+    MR_GC_free_attrib(list);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
     MR_debug_log_message(
@@ -630,7 +632,8 @@ MR_register_generator_ptr(MR_SubgoalPtr subgoal)
         return;
     }
 
-    node = MR_GC_NEW(struct MR_CutGeneratorListNode);
+    node = MR_GC_NEW_ATTRIB(struct MR_CutGeneratorListNode,
+        MR_ALLOC_SITE_RUNTIME);
     node->MR_cut_generator_ptr = subgoal;
     node->MR_cut_next_generator =
         MR_cut_stack[MR_cut_next - 1].MR_cut_generators;

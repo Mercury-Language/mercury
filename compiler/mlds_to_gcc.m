@@ -3012,7 +3012,8 @@ gen_atomic_stmt(DefnInfo, AtomicStmt, Context, !IO) :-
         sorry(this_file, "NYI delete_object")
     ;
         AtomicStmt = new_object(Target, MaybeTag, _ExplicitSecTag, Type,
-            MaybeSize, _MaybeCtorName, Args, ArgTypes, _MayUseAtomic),
+            MaybeSize, _MaybeCtorName, Args, ArgTypes, _MayUseAtomic,
+            _AllocId),
 
         % Calculate the size that we're going to allocate.
         (

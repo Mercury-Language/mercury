@@ -23,11 +23,13 @@
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module bimap.
 :- import_module cord.
 :- import_module counter.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 
     % This abstract type represents the MLDS code generator's repository of
     % data structures that are "born global", i.e. the ones for which we
@@ -66,6 +68,14 @@
                 mvcg_rows           :: cord(mlds_initializer)
             ).
 
+:- type ml_alloc_site_data
+    --->    ml_alloc_site_data(
+                masd_proc_label     :: mlds_entity_name,
+                masd_context        :: prog_context,
+                masd_type           :: string,
+                masd_size           :: int
+            ).
+
     % Initialize the ml_global_data structure to a value that represents
     % no global data structures known yet.
     %
@@ -90,8 +100,9 @@
     % Note that this order may still require forward declarations.
     %
 :- pred ml_global_data_get_all_global_defns(ml_global_data::in,
-    ml_scalar_cell_map::out, ml_vector_cell_map::out, list(mlds_defn)::out)
-    is det.
+    ml_scalar_cell_map::out, ml_vector_cell_map::out,
+    assoc_list(mlds_alloc_id, ml_alloc_site_data)::out,
+    list(mlds_defn)::out) is det.
 
     % This type maps the names of rtti data structures that have already been
     % generated to the rval that refers to that data structure, and its type.
@@ -180,11 +191,19 @@
     ml_vector_common_type_num::in, list(mlds_initializer)::in,
     mlds_vector_common::out, ml_global_data::in, ml_global_data::out) is det.
 
+    % Generate or look up an allocation site.
+    %
+:- pred ml_gen_alloc_site(mlds_entity_name::in, maybe(cons_id)::in, int::in,
+    prog_context::in, mlds_alloc_id::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module ml_backend.ml_type_gen.
 
 :- import_module int.
@@ -202,6 +221,9 @@
 :- type ml_vector_cell_type_map
     == map(list(mlds_type), ml_vector_common_type_num).
 
+:- type ml_alloc_id_map
+    == bimap(mlds_alloc_id, ml_alloc_site_data).
+
 :- type ml_global_data
     --->    ml_global_data(
                 mgd_pdup_rval_type_map          :: ml_rtti_rval_type_map,
@@ -217,7 +239,10 @@
                 mgd_scalar_cell_group_map       :: ml_scalar_cell_map,
 
                 mgd_vector_type_num_map         :: ml_vector_cell_type_map,
-                mgd_vector_cell_group_map       :: ml_vector_cell_map
+                mgd_vector_cell_group_map       :: ml_vector_cell_map,
+
+                mgd_alloc_id_counter            :: counter,
+                mgd_alloc_id_map                :: ml_alloc_id_map
             ).
 
 %-----------------------------------------------------------------------------%
@@ -225,7 +250,8 @@
 ml_global_data_init(UseCommonCells) = GlobalData :-
     GlobalData = ml_global_data(map.init, UseCommonCells,
         counter.init(1), [], [], [],
-        counter.init(1), map.init, map.init, map.init, map.init).
+        counter.init(1), map.init, map.init, map.init, map.init,
+        counter.init(0), bimap.init).
 
 ml_global_data_get_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap,
@@ -235,16 +261,19 @@ ml_global_data_get_global_defns(GlobalData,
         RevFlatCellDefns, RevFlatRttiDefns, RevMaybeNonFlatDefns,
         _TypeNumCounter,
         _ScalarTypeNumMap, ScalarCellGroupMap,
-        _VectorTypeNumMap, VectorCellGroupMap).
+        _VectorTypeNumMap, VectorCellGroupMap,
+        _AllocIdNumCounter, _AllocIdMap).
 
 ml_global_data_get_all_global_defns(GlobalData,
-        ScalarCellGroupMap, VectorCellGroupMap, Defns) :-
+        ScalarCellGroupMap, VectorCellGroupMap, AllocIds, Defns) :-
     GlobalData = ml_global_data(_PDupRvalTypeMap, _UseCommonCells,
         _ConstCounter,
         RevFlatCellDefns, RevFlatRttiDefns, RevMaybeNonFlatDefns,
         _TypeNumCounter,
         _ScalarTypeNumMap, ScalarCellGroupMap,
-        _VectorTypeNumMap, VectorCellGroupMap),
+        _VectorTypeNumMap, VectorCellGroupMap,
+        _AllocIdNumCounter, AllocIdMap),
+    bimap.to_assoc_list(AllocIdMap, AllocIds),
     % RevFlatRttiDefns are type_ctor_infos and the like, while
     % RevNonFlatDefns are type_infos and pseudo_type_infos.
     % They refer to each other, so neither order is obviously better.
@@ -567,6 +596,64 @@ ml_gen_static_vector_defn(MLDS_ModuleName, TypeNum, RowInitializers, Common,
 
         map.det_update(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
         !GlobalData ^ mgd_vector_cell_group_map := CellGroupMap
+    ).
+
+%-----------------------------------------------------------------------------%
+
+ml_gen_alloc_site(ProcLabel, MaybeConsId, Size, Context, AllocId,
+        !GlobalData) :-
+    (
+        MaybeConsId = yes(ConsId),
+        TypeStr = cons_id_to_alloc_site_string(ConsId)
+    ;
+        MaybeConsId = no,
+        TypeStr = "unknown"
+    ),
+    AllocData = ml_alloc_site_data(ProcLabel, Context, TypeStr, Size),
+    Map0 = !.GlobalData ^ mgd_alloc_id_map,
+    ( bimap.search(Map0, AllocId0, AllocData) ->
+        AllocId = AllocId0
+    ;
+        Counter0 = !.GlobalData ^ mgd_alloc_id_counter,
+        counter.allocate(AllocIdNum, Counter0, Counter),
+        AllocId = mlds_alloc_id(AllocIdNum),
+        bimap.det_insert(AllocId, AllocData, Map0, Map),
+        !GlobalData ^ mgd_alloc_id_counter := Counter,
+        !GlobalData ^ mgd_alloc_id_map := Map
+    ).
+
+:- func cons_id_to_alloc_site_string(cons_id) = string.
+
+cons_id_to_alloc_site_string(ConsId) = TypeStr :-
+    (
+        ConsId = cons(_, _, TypeCtor),
+        TypeStr = type_ctor_to_string(TypeCtor)
+    ;
+        ConsId = tuple_cons(Arity),
+        TypeStr = "{}/" ++ string.from_int(Arity)
+    ;
+        ConsId = closure_cons(_, _),
+        TypeStr = "closure"
+    ;
+        ConsId = type_info_cell_constructor(_),
+        TypeStr = "private_builtin.type_info/0"
+    ;
+        ConsId = typeclass_info_cell_constructor,
+        TypeStr = "typeclass_info"
+    ;
+        ( ConsId = int_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = impl_defined_const(_)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = table_io_decl(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ),
+        unexpected(this_file,
+            "cons_id_to_alloc_site_string: unexpected cons_id")
     ).
 
 %-----------------------------------------------------------------------------%

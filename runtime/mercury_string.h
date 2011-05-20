@@ -89,17 +89,21 @@
 ** MR_{save/restore}_transient_hp().
 */
 
-#define MR_make_aligned_string_copy(ptr, string) 			\
-	do {								\
-		MR_Word make_aligned_string_tmp;			\
-		char	*make_aligned_string_ptr;			\
-									\
-	  	MR_offset_incr_hp_atomic(make_aligned_string_tmp, 0,	\
-			(strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word)); \
-	    	make_aligned_string_ptr =				\
-			(char *) make_aligned_string_tmp;		\
-	    	strcpy(make_aligned_string_ptr, (string));		\
-	    	(ptr) = make_aligned_string_ptr;			\
+#define MR_make_aligned_string_copy(ptr, string)                              \
+	MR_make_aligned_string_copy_msg((ptr), (string), NULL)
+
+#define MR_make_aligned_string_copy_msg(ptr, string, alloc_id)                \
+	do {                                                                  \
+		MR_Word make_aligned_string_tmp;                              \
+		char	*make_aligned_string_ptr;                             \
+                                                                              \
+		MR_offset_incr_hp_atomic_msg(make_aligned_string_tmp, 0,      \
+			(strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word), \
+			(alloc_id), "string.string/0");                       \
+		make_aligned_string_ptr =                                     \
+			(char *) make_aligned_string_tmp;                     \
+		strcpy(make_aligned_string_ptr, (string));                    \
+		(ptr) = make_aligned_string_ptr;                              \
 	} while(0)
 
 /*
@@ -109,17 +113,18 @@
 ** MR_offset_incr_saved_hp_atomic instead of MR_offset_incr_hp_atomic.
 */
 
-#define MR_make_aligned_string_copy_saved_hp(ptr, string) 		\
-	do {								\
-		MR_Word	make_aligned_string_tmp;			\
-		char	*make_aligned_string_ptr;			\
-									\
-	  	MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp,	0, \
-	    	    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word)); \
-	    	make_aligned_string_ptr =				\
-		    (char *) make_aligned_string_tmp;			\
-	    	strcpy(make_aligned_string_ptr, (string));		\
-	    	(ptr) = make_aligned_string_ptr;			\
+#define MR_make_aligned_string_copy_saved_hp(ptr, string, alloc_id)           \
+	do {                                                                  \
+		MR_Word	make_aligned_string_tmp;                              \
+		char	*make_aligned_string_ptr;                             \
+                                                                              \
+		MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp,	0,    \
+		    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word),     \
+		    (alloc_id), "string.string/0");                           \
+		make_aligned_string_ptr =                                     \
+		    (char *) make_aligned_string_tmp;                         \
+		strcpy(make_aligned_string_ptr, (string));                    \
+		(ptr) = make_aligned_string_ptr;                              \
 	} while(0)
 
 /*
@@ -129,17 +134,18 @@
 ** it puts double quote marks at the start and end of the string.
 */
 
-#define MR_make_aligned_string_copy_saved_hp_quote(ptr, string)		\
-	do {								\
-		MR_Word	make_aligned_string_tmp;			\
-		char	*make_aligned_string_ptr;			\
-									\
-	  	MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp,	0, \
-	    	    (strlen(string) + 2 + sizeof(MR_Word)) / sizeof(MR_Word)); \
-	    	make_aligned_string_ptr =				\
-		    (char *) make_aligned_string_tmp;			\
-                sprintf(make_aligned_string_ptr, "%c%s%c", '"', string, '"'); \
-	    	(ptr) = make_aligned_string_ptr;			\
+#define MR_make_aligned_string_copy_saved_hp_quote(ptr, string, alloc_id)     \
+	do {                                                                  \
+		MR_Word	make_aligned_string_tmp;                              \
+		char	*make_aligned_string_ptr;                             \
+                                                                              \
+		MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp,	0,    \
+		    (strlen(string) + 2 + sizeof(MR_Word)) / sizeof(MR_Word), \
+		    (alloc_id), "string.string/0");                           \
+		make_aligned_string_ptr =                                     \
+		    (char *) make_aligned_string_tmp;                         \
+		sprintf(make_aligned_string_ptr, "%c%s%c", '"', string, '"'); \
+		(ptr) = make_aligned_string_ptr;                              \
 	} while(0)
 
 /*
@@ -155,29 +161,30 @@
 ** MR_{save/restore}_transient_hp().
 */
 
-#define MR_allocate_aligned_string_msg(ptr, len, proclabel)		\
-	do {								\
-		MR_Word	make_aligned_string_tmp;			\
-		char	*make_aligned_string_ptr;			\
-									\
-	  	MR_offset_incr_hp_atomic_msg(make_aligned_string_tmp, 0,\
-	    	    ((len) + sizeof(MR_Word)) / sizeof(MR_Word),	\
-		    proclabel, "string:string/0");			\
-	    	make_aligned_string_ptr =				\
-		    (char *) make_aligned_string_tmp;			\
-	    	(ptr) = make_aligned_string_ptr;			\
+#define MR_allocate_aligned_string_msg(ptr, len, alloc_id)                    \
+	do {                                                                  \
+		MR_Word	make_aligned_string_tmp;                              \
+		char	*make_aligned_string_ptr;                             \
+                                                                              \
+		MR_offset_incr_hp_atomic_msg(make_aligned_string_tmp, 0,      \
+		    ((len) + sizeof(MR_Word)) / sizeof(MR_Word),              \
+		    (alloc_id), "string.string/0");                           \
+		make_aligned_string_ptr =                                     \
+		    (char *) make_aligned_string_tmp;                         \
+		(ptr) = make_aligned_string_ptr;                              \
 	} while(0)
 
-#define MR_allocate_aligned_string_saved_hp(ptr, len)			\
-	do {								\
-		MR_Word	make_aligned_string_tmp;			\
-		char	*make_aligned_string_ptr;			\
-									\
-	  	MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp, 0,\
-	    	    ((len) + sizeof(MR_Word)) / sizeof(MR_Word));	\
-	    	make_aligned_string_ptr =				\
-		    (char *) make_aligned_string_tmp;			\
-	    	(ptr) = make_aligned_string_ptr;			\
+#define MR_allocate_aligned_string_saved_hp(ptr, len, alloc_id)               \
+	do {                                                                  \
+		MR_Word	make_aligned_string_tmp;                              \
+		char	*make_aligned_string_ptr;                             \
+                                                                              \
+		MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp, 0,    \
+		    ((len) + sizeof(MR_Word)) / sizeof(MR_Word),              \
+		    (alloc_id), "string.string/0");                           \
+		make_aligned_string_ptr =                                     \
+		    (char *) make_aligned_string_tmp;                         \
+		(ptr) = make_aligned_string_ptr;                              \
 	} while(0)
 
 /*
@@ -309,7 +316,7 @@ MR_Integer	MR_hash_string3(MR_ConstString);
 ** before/after calling this function.
 */
 
-MR_String MR_make_string(MR_Code *proclabel, const char *fmt, ...);
+MR_String MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...);
 
 /*
 ** True if c is an ASCII code point, i.e. U+0000..U+007f.

@@ -889,7 +889,8 @@ MR_init_conservative_GC(void)
 
         limit = (1 << MR_LOW_TAG_BITS);
 
-    #ifdef MR_RECORD_TERM_SIZES
+    #if defined(MR_RECORD_TERM_SIZES) || \
+        defined(MR_MPROF_PROFILE_MEMORY_ATTRIBUTION)
         limit += sizeof(MR_Word);
     #endif
 

@@ -134,25 +134,12 @@ MR_Integer    MR_hash_bitmap(MR_ConstBitmapPtr);
 
 /*
 ** Convert a bitmap to a string consisting of a length followed by a colon
-** and a string of hexadecimal digits surrounded by angle brackets
-** (e.g. "<24:12A>").
-**
-*/
-MR_String MR_bitmap_to_string(MR_ConstBitmapPtr);
-
-/*
-** Convert a bitmap to a string consisting of a length followed by a colon
 ** and a string of hexadecimal digits surrounded by angle brackets and
 ** double quotes (e.g. "\"<24:12A>\"").  Used by `deconstruct.functor/3'.
 **
 */
-MR_String MR_bitmap_to_quoted_string_saved_hp(MR_ConstBitmapPtr);
-
-/*
-** Convert the output of MR_bitmap_to_string back into a bitmap.
-** Returns NULL if the string can't be converted.
-*/
-MR_BitmapPtr MR_string_to_bitmap(MR_ConstString);
+MR_String MR_bitmap_to_quoted_string_saved_hp(MR_ConstBitmapPtr,
+        MR_AllocSiteInfoPtr alloc_id);
 
 /*
 ** Return the length of the element array in words.
@@ -185,24 +172,25 @@ MR_BitmapPtr MR_string_to_bitmap(MR_ConstString);
 ** MR_{save/restore}_transient_hp().
 */
 
-#define MR_allocate_bitmap_msg(ptr, bits, proclabel)                    \
+#define MR_allocate_bitmap_msg(ptr, bits, alloc_id)                     \
     do {                                                                \
         MR_Word    make_bitmap_tmp;                                     \
         MR_BitmapPtr make_bitmap_ptr;                                   \
         MR_offset_incr_hp_atomic_msg(make_bitmap_tmp, 0,                \
-            MR_bitmap_length_in_words(bits) + 1, proclabel,             \
-            "bitmap:bitmap/0");                                         \
+            MR_bitmap_length_in_words(bits) + 1, (alloc_id),            \
+            "bitmap.bitmap/0");                                         \
         make_bitmap_ptr = (MR_BitmapPtr) make_bitmap_tmp;               \
         make_bitmap_ptr->num_bits = bits;                               \
         (ptr) = make_bitmap_ptr;                                        \
     } while(0)
 
-#define MR_allocate_bitmap_saved_hp(ptr, bits)                          \
+#define MR_allocate_bitmap_saved_hp(ptr, bits, alloc_id)                \
     do {                                                                \
         MR_Word    make_bitmap_tmp;                                     \
         MR_BitmapPtr make_bitmap_ptr;                                   \
         MR_offset_incr_saved_hp_atomic(make_bitmap_tmp, 0,              \
-            MR_bitmap_length_in_words(bits) + 1);                       \
+            MR_bitmap_length_in_words(bits) + 1, (alloc_id),            \
+            "bitmap.bitmap/0");                                         \
         make_bitmap_ptr = (MR_BitmapPtr) make_bitmap_tmp;               \
         make_bitmap_ptr->num_bits = bits;                               \
         (ptr) = make_bitmap_ptr;                                        \

@@ -102,6 +102,9 @@
                 cfile_proc_layouts          :: list(proc_layout_data),
                 cfile_module_layout_data    :: list(module_layout_data),
                 cfile_closure_layout_data   :: list(closure_proc_id_data),
+                cfile_alloc_sites           :: list(alloc_site_info),
+                cfile_alloc_site_map        :: map(alloc_site_id,
+                                                layout_slot_name),
                 cfile_code                  :: list(comp_gen_c_module),
                 cfile_user_init_c_names     :: list(string),
                 cfile_user_final_c_names    :: list(string),
@@ -363,16 +366,17 @@
             % Restore maxfr from the saved copy in the given lval. Assumes the
             % lval was saved with save_maxfr.
 
-    ;       incr_hp(lval, maybe(tag), maybe(int), rval, string,
+    ;       incr_hp(lval, maybe(tag), maybe(int), rval, maybe(alloc_site_id),
                 may_use_atomic_alloc, maybe(rval), llds_reuse)
-            % incr_hp(Target, MaybeTag, MaybeOffset, SizeRval, TypeMsg,
+            % incr_hp(Target, MaybeTag, MaybeOffset, SizeRval, MaybeAllocId,
             %   MayUseAtomicAlloc, MaybeRegionId, MaybeReuse)
             %
             % Get a memory block of a size given by SizeRval and put its
             % address in Target, possibly after incrementing it by Offset words
             % (if MaybeOffset = yes(Offset)) and/or after tagging it with Tag
-            % (if MaybeTag = yes(Tag)). TypeMsg gives the name of the type
-            % constructor of the memory cell for use in memory profiling.
+            % (if MaybeTag = yes(Tag)).
+            % If MaybeAllocId = yes(AllocId) then AllocId identifies the
+            % allocation site, for use in memory profiling.
             % MayUseAtomicAlloc says whether we can use the atomic variants
             % of the Boehm gc allocator calls. If MaybeRegionId =
             % yes(RegionId), then the block should be allocated in the region
@@ -645,6 +649,9 @@
     --->    foreign_proc_code(ground, ground, ground, ground, ground,
                 ground, ground, ground, ground, ground).
 
+:- type alloc_site_id
+    --->    alloc_site_id(alloc_site_info).
+
 :- type stack_incr_kind
     --->    stack_incr_leaf         % The incr_sp creates the stack frame
                                     % of a leaf procedure.
@@ -745,6 +752,7 @@
     ;       foreign_proc_raw_code(can_branch_away, proc_affects_liveness,
                 c_code_live_lvals, string)
     ;       foreign_proc_fail_to(label)
+    ;       foreign_proc_alloc_id(alloc_site_id)
     ;       foreign_proc_noop.
 
 :- type can_branch_away

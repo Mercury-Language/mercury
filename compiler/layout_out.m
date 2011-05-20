@@ -47,7 +47,7 @@
     list(proc_layout_proc_static)::in,
     list(int)::in, list(int)::in, list(int)::in, list(table_io_decl_data)::in,
     list(layout_slot_name)::in, list(proc_layout_exec_trace)::in,
-    io::di, io::uo) is det.
+    list(alloc_site_info)::in, io::di, io::uo) is det.
 
 :- pred output_layout_array_defns(llds_out_info::in,
     list(rval)::in, list(int)::in, list(int)::in, list(int)::in,
@@ -58,7 +58,7 @@
     list(proc_layout_proc_static)::in,
     list(int)::in, list(int)::in, list(int)::in, list(table_io_decl_data)::in,
     list(layout_slot_name)::in, list(proc_layout_exec_trace)::in,
-    list(string)::in,
+    list(string)::in, list(alloc_site_info)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -190,6 +190,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -199,7 +200,7 @@ output_layout_array_decls(Info, PseudoTypeInfos, HLDSVarNums,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls,
-        ProcEventLayouts, ExecTraces, !IO) :-
+        ProcEventLayouts, ExecTraces, AllocSites, !IO) :-
     MangledModuleName = Info ^ lout_mangled_module_name,
     (
         PseudoTypeInfos = []
@@ -368,6 +369,15 @@ output_layout_array_decls(Info, PseudoTypeInfos, HLDSVarNums,
         output_layout_array_name_storage_type_name(MangledModuleName,
             ProcEventLayoutArrayName, not_being_defined, !IO),
         io.write_string("[];\n", !IO)
+    ),
+    (
+        AllocSites = []
+    ;
+        AllocSites = [_ | _],
+        AllocSiteArrayName = alloc_site_array,
+        output_layout_array_name_storage_type_name(MangledModuleName,
+            AllocSiteArrayName, not_being_defined, !IO),
+        io.write_string("[];\n", !IO)
     ).
 
 output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums,
@@ -375,7 +385,8 @@ output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls,
-        ProcEventLayouts, ExecTraces, TSStringTable, !DeclSet, !IO) :-
+        ProcEventLayouts, ExecTraces, TSStringTable, AllocSites,
+        !DeclSet, !IO) :-
     (
         PseudoTypeInfos = []
     ;
@@ -492,6 +503,12 @@ output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums,
     ;
         TSStringTable = [_ | _],
         output_threadscope_string_table_array(Info, TSStringTable, !IO)
+    ),
+    (
+        AllocSites = []
+    ;
+        AllocSites = [_ | _],
+        output_alloc_sites_array(Info, AllocSites, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1550,6 +1567,42 @@ output_threadscope_string_table_slot(Info, String, !Slot, !IO) :-
     io.write_string(", 0},\n", !IO).
 
 %-----------------------------------------------------------------------------%
+%
+% Definition of array #21: allocation site structures.
+%
+
+:- pred output_alloc_sites_array(llds_out_info::in, list(alloc_site_info)::in,
+    io::di, io::uo) is det.
+
+output_alloc_sites_array(Info, AllocSites, !IO) :-
+    ModuleName = Info ^ lout_mangled_module_name,
+    output_layout_array_name_storage_type_name(ModuleName, alloc_site_array,
+        being_defined, !IO),
+    list.length(AllocSites, NumAllocSitess),
+    io.format("[%d] = {\n", [i(NumAllocSitess)], !IO),
+    list.foldl2(output_alloc_site_slot(Info), AllocSites, 0, _, !IO),
+    io.write_string("};\n\n", !IO).
+
+:- pred output_alloc_site_slot(llds_out_info::in, alloc_site_info::in, int::in,
+    int::out, io::di, io::uo) is det.
+
+output_alloc_site_slot(_Info, AllocSite, !Slot, !IO) :-
+    AllocSite = alloc_site_info(ProcLabel, Context, TypeMsg, Words),
+    term.context_file(Context, FileName),
+    term.context_line(Context, LineNumber),
+    io.write_string("\t{ ", !IO),
+    output_proc_label(ProcLabel, !IO),
+    io.write_string(", ", !IO),
+    quote_and_write_string(FileName, !IO),
+    io.write_string(", ", !IO),
+    io.write_int(LineNumber, !IO),
+    io.write_string(", ", !IO),
+    quote_and_write_string(TypeMsg, !IO),
+    io.write_string(", ", !IO),
+    io.write_int(Words, !IO),
+    io.write_string("},\n", !IO).
+
+%-----------------------------------------------------------------------------%
 
 output_layout_name_decl(LayoutName, !IO) :-
     output_layout_name_storage_type_name(LayoutName, not_being_defined, !IO),
@@ -1639,6 +1692,9 @@ output_layout_array_name(UseMacro, ModuleName, ArrayName, !IO) :-
         ;
             ArrayName = threadscope_string_table_array,
             io.write_string("MR_threadscope_strings", !IO)
+        ;
+            ArrayName = alloc_site_array,
+            io.write_string("MR_alloc_sites", !IO)
         ),
         io.write_string("(", !IO),
         io.write_string(ModuleName, !IO),
@@ -1706,6 +1762,9 @@ output_layout_array_name(UseMacro, ModuleName, ArrayName, !IO) :-
             ArrayName = threadscope_string_table_array,
             io.write_string("mercury_data__threadscope_string_table_array__",
                 !IO)
+        ;
+            ArrayName = alloc_site_array,
+            io.write_string("mercury_data__alloc_sites_array__", !IO)
         ),
         io.write_string(ModuleName, !IO)
     ).
@@ -1957,9 +2016,11 @@ output_layout_array_name_storage_type_name(ModuleName, Name, _BeingDefined,
             Name, !IO)
     ;
         Name = threadscope_string_table_array,
-        io.write_string(
-            "static MR_Threadscope_String ",
-            !IO),
+        io.write_string("static MR_Threadscope_String ", !IO)
+    ;
+        Name = alloc_site_array,
+        % The type field may be updated at runtime so this array is not const.
+        io.write_string("static MR_AllocSiteInfo ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ).
@@ -3042,6 +3103,7 @@ output_layout_slots_in_vector(ModuleName, [SlotName | SlotNames], !IO) :-
         ; ArrayName = proc_event_layouts_array
         ; ArrayName = proc_exec_trace_array
         ; ArrayName = threadscope_string_table_array
+        ; ArrayName = alloc_site_array
         ),
         output_layout_slot_addr(use_layout_macro, ModuleName, SlotName, !IO),
         io.write_string(",\n", !IO),

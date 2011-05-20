@@ -18,10 +18,6 @@
 ** reason for this is MR_float_to_word, which is used not just as an operand
 ** in expressions, but also as an initializer in static cells generated
 ** by the compiler.
-**
-** Note: the macros that take a proclabel as argument do not put parentheses
-** around it. The reason is that we may need to put the `_entry_' prefix
-** in front of the label name, which wouldn't work if it was parenthesized.
 */
 
 #ifndef MERCURY_HEAP_H
@@ -111,7 +107,7 @@
                         + (offset))),                                       \
                 MR_debug_tag_offset_incr_hp_base((dest), (tag), (offset),   \
                     (count), (is_atomic)),                                  \
-                /* return */ (dest)                                         \
+                ((void) 0)                                                  \
             )
 
   #define   MR_tag_offset_incr_hp_n(dest, tag, offset, count)               \
@@ -149,6 +145,9 @@
       ** MR_INLINE_ALLOC would probably be a performance _loss_.
       */
       #error "MR_INLINE_ALLOC requires the use of GCC"
+    #endif
+    #ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+      #error "MR_INLINE_ALLOC and MR_MPROF_PROFILE_MEMORY_ATTRIBUTION both defined"
     #endif
 
     #include "gc_inline.h"
@@ -240,30 +239,62 @@
 
 /*
 ** The second level of heap allocation macros. These are concerned with
-** recording profiling information for profmem grades.
+** recording profiling information for memory profiling grades. Memory
+** attribution profiling adds an extra word at the start of each object.
 */
 
 #if defined(MR_MPROF_PROFILE_MEMORY)
-  #define   MR_profmem_record_allocation(count, proclabel, type)            \
-            MR_record_allocation((count), MR_ENTRY(proclabel),              \
-                MR_STRINGIFY(proclabel), (type))
+  #define   MR_profmem_record_allocation(count, alloc_id, type)             \
+            MR_record_allocation((count), (alloc_id), (type))
 #else
-  #define   MR_profmem_record_allocation(count, proclabel, type)            \
+  #define   MR_profmem_record_allocation(count, alloc_id, type)             \
+            ((void) 0)
+#endif
+
+#if defined(MR_MPROF_PROFILE_MEMORY_ATTRIBUTION)
+  #define   MR_profmem_attrib_word   (1)
+  #define   MR_profmem_set_attrib(dest, tag, alloc_id)                      \
+            ((MR_Word *) MR_strip_tag(dest))[-1] = (MR_Word) (alloc_id)
+            /*
+            ** XXX This version causes gcc 4.4.4 on x86 to abort when
+            ** compiling mercury_bitmap.c.
+            */
+            /* MR_field((tag), (dest), 0) = (MR_Word) (alloc_id) */
+            /*
+            ** Hand-written code must set the MR_asi_type field at runtime.
+            ** When the type argument is NULL, as it is for generated code,
+            ** the C compiler can optimise away the condition and assignment.
+            */
+  #define   MR_profmem_set_alloc_type(alloc_id, type)                       \
+            ((alloc_id) != NULL && (type) != NULL &&                        \
+             (((MR_AllocSiteInfo *) (alloc_id))->MR_asi_type = (type)))
+#else
+  #define   MR_profmem_attrib_word   (0)
+  #define   MR_profmem_set_attrib(dest, tag, alloc_id)                      \
+            ((void) 0)
+  #define   MR_profmem_set_alloc_type(alloc_id, type)                       \
             ((void) 0)
 #endif
 
 #define     MR_tag_offset_incr_hp_msg(dest, tag, offset, count,             \
-                proclabel, type)                                            \
+                alloc_id, type)                                             \
             (                                                               \
-                MR_profmem_record_allocation((count), proclabel, (type)),   \
-                MR_tag_offset_incr_hp((dest), (tag), (offset), (count))     \
+                MR_tag_offset_incr_hp((dest), (tag),                        \
+                    (offset) + MR_profmem_attrib_word,                      \
+                    (count) + MR_profmem_attrib_word),                      \
+                MR_profmem_set_attrib((dest), (tag), (alloc_id)),           \
+                MR_profmem_set_alloc_type((alloc_id), (type)),              \
+                MR_profmem_record_allocation((count), (alloc_id), (type))   \
             )
 #define     MR_tag_offset_incr_hp_atomic_msg(dest, tag, offset, count,      \
-                proclabel, type)                                            \
+                alloc_id, type)                                             \
             (                                                               \
-                MR_profmem_record_allocation((count), proclabel, (type)),   \
-                MR_tag_offset_incr_hp_atomic((dest), (tag), (offset),       \
-                    (count))                                                \
+                MR_tag_offset_incr_hp_atomic((dest), (tag),                 \
+                    (offset) + MR_profmem_attrib_word,                      \
+                    (count) + MR_profmem_attrib_word),                      \
+                MR_profmem_set_attrib((dest), (tag), (alloc_id)),           \
+                MR_profmem_set_alloc_type((alloc_id), (type)),              \
+                MR_profmem_record_allocation((count), (alloc_id), (type))   \
             )
 
 /***************************************************************************/
@@ -277,12 +308,12 @@
             MR_tag_offset_incr_hp((dest), (tag), 0, (count))
 #define     MR_tag_incr_hp_atomic(dest, tag, count)                         \
             MR_tag_offset_incr_hp_atomic((dest), (tag), 0, (count))
-#define     MR_tag_incr_hp_msg(dest, tag, count, proclabel, type)           \
+#define     MR_tag_incr_hp_msg(dest, tag, count, alloc_id, type)            \
             MR_tag_offset_incr_hp_msg((dest), (tag), 0, (count),            \
-                proclabel, (type))
-#define     MR_tag_incr_hp_atomic_msg(dest, tag, count, proclabel, type)    \
+                (alloc_id), (type))
+#define     MR_tag_incr_hp_atomic_msg(dest, tag, count, alloc_id, type)     \
             MR_tag_offset_incr_hp_atomic_msg((dest), (tag), 0, (count),     \
-                proclabel, (type))
+                (alloc_id), (type))
 
 /*
 ** The MR_offset_incr_hp*() macros are defined in terms of the
@@ -291,16 +322,16 @@
 
 #define     MR_offset_incr_hp(dest, offset, count)                          \
             MR_tag_offset_incr_hp((dest), MR_mktag(0), (offset), (count))
-#define     MR_offset_incr_hp_msg(dest, offset, count, proclabel, type)     \
+#define     MR_offset_incr_hp_msg(dest, offset, count, alloc_id, type)      \
             MR_tag_offset_incr_hp_msg((dest), MR_mktag(0),                  \
-                (offset), (count), proclabel, (type))
+                (offset), (count), (alloc_id), (type))
 #define     MR_offset_incr_hp_atomic(dest, offset, count)                   \
             MR_tag_offset_incr_hp_atomic((dest), MR_mktag(0), (offset),     \
                 (count))
-#define     MR_offset_incr_hp_atomic_msg(dest, offset, count, proclabel,    \
+#define     MR_offset_incr_hp_atomic_msg(dest, offset, count, alloc_id,     \
                 type)                                                       \
             MR_tag_offset_incr_hp_atomic_msg((dest), MR_mktag(0), (offset), \
-                (count), proclabel, (type))
+                (count), (alloc_id), (type))
 
 #ifdef  MR_CONSERVATIVE_GC
             /* we use `MR_hp_word' as a convenient temporary here */
@@ -309,18 +340,19 @@
                 MR_hp_word = (MR_Word) (MR_hp + (count)),                   \
                 (void) 0                                                    \
             )
-  #define   MR_hp_alloc_atomic(count) (                                     \
-                MR_offset_incr_hp_atomic(MR_hp_word, 0, (count)),           \
+  #define   MR_hp_alloc_atomic_msg(count, alloc_id, type) (                 \
+                MR_offset_incr_hp_atomic_msg(MR_hp_word, 0, (count),        \
+                    (alloc_id), (type)),                                    \
                 MR_hp_word = (MR_Word) (MR_hp + (count)),                   \
                 (void) 0                                                    \
             )
-
 #else /* !MR_CONSERVATIVE_GC */
 
   #define   MR_hp_alloc(count)                                              \
             MR_offset_incr_hp(MR_hp_word, 0, (count))
-  #define   MR_hp_alloc_atomic(count)                                       \
-            MR_offset_incr_hp_atomic(MR_hp_word, 0, (count))
+  #define   MR_hp_alloc_atomic_msg(count, alloc_id, type)                   \
+            MR_offset_incr_hp_atomic_msg(MR_hp_word, 0, (count),            \
+                (alloc_id), (type))
 
 #endif /* MR_CONSERVATIVE_GC */
 
@@ -333,14 +365,15 @@
 
 #ifndef MR_RECORD_TERM_SIZES
 
-#define     MR_incr_hp(dest, count)                                         \
+#define     MR_incr_hp(dest, count)                                          \
             MR_offset_incr_hp((dest), 0, (count))
-#define     MR_incr_hp_msg(dest, count, proclabel, type)                    \
-            MR_offset_incr_hp_msg((dest), 0, (count), proclabel, (type))
-#define     MR_incr_hp_atomic(dest, count)                                  \
+#define     MR_incr_hp_msg(dest, count, alloc_id, type)                      \
+            MR_offset_incr_hp_msg((dest), 0, (count), (alloc_id), (type))
+#define     MR_incr_hp_atomic(dest, count)                                   \
             MR_offset_incr_hp_atomic((dest), 0, (count))
-#define     MR_incr_hp_atomic_msg(dest, count, proclabel, type)             \
-            MR_offset_incr_hp_atomic_msg((dest), 0, (count), proclabel, (type))
+#define     MR_incr_hp_atomic_msg(dest, count, alloc_id, type)               \
+            MR_offset_incr_hp_atomic_msg((dest), 0, (count), (alloc_id),     \
+                (type))
 
 #endif
 
@@ -351,15 +384,19 @@
                     (MR_bytes_to_words(sizeof(typename))));                 \
                 (dest) = (typename *) tmp;                                  \
             } while (0)
-#define     MR_incr_hp_type_msg(dest, typename, proclabel, type)            \
+#define     MR_incr_hp_type_msg(dest, typename, alloc_id, type)             \
             do {                                                            \
                 MR_Word tmp;                                                \
                 MR_tag_incr_hp_msg(tmp, MR_mktag(0),                        \
                     (MR_bytes_to_words(sizeof(typename))),                  \
-                    proclabel, (type));                                     \
+                    (alloc_id), (type));                                    \
                 (dest) = (typename *) tmp;                                  \
             } while (0)
 
+/*
+** These are only used by the compiler in non-memory profiling grades,
+** so do not have _msg equivalents.  Avoid these in hand-written code.
+*/
 #define     MR_alloc_heap(dest, count)                                      \
             MR_tag_offset_incr_hp((dest), MR_mktag(0), 0, (count))
 #define     MR_alloc_heap_atomic(dest, count)                               \
@@ -492,11 +529,12 @@
                 ** This assumes that we don't keep term sizes               \
                 ** in grades that use boxes.                                \
                 */                                                          \
-                MR_offset_incr_hp(box_word, 0, size_in_words);              \
+                MR_offset_incr_hp_msg(box_word, 0, size_in_words,           \
+                    MR_ALLOC_SITE_FOREIGN, NULL);                    \
                 box = (MR_Box) box_word;                                    \
                 MR_assign_structure(*(T *)(box), (value));                  \
-                MR_profmem_record_allocation(size_in_words,                   \
-                    "", "foreign type: " MR_STRINGIFY(T));                  \
+                MR_profmem_record_allocation(size_in_words, NULL,           \
+                    "foreign type: " MR_STRINGIFY(T));                      \
             } else {                                                        \
                 /* We can't take the address of `box' here, */              \
                 /* since it might be a global register. */                  \
@@ -560,7 +598,8 @@ MR_create1_func(MR_Word w1)
 {
     MR_Word *p;
 
-    p = (MR_Word *) MR_new_object(MR_Word, 1 * sizeof(MR_Word), "create1");
+    p = (MR_Word *) MR_new_object(MR_Word, 1 * sizeof(MR_Word),
+        NULL, "create1");
     p[0] = w1;
     return (MR_Word) p;
 }
@@ -570,7 +609,8 @@ MR_create2_func(MR_Word w1, MR_Word w2)
 {
     MR_Word *p;
 
-    p = (MR_Word *) MR_new_object(MR_Word, 2 * sizeof(MR_Word), "create2");
+    p = (MR_Word *) MR_new_object(MR_Word, 2 * sizeof(MR_Word),
+        NULL, "create2");
     p[0] = w1;
     p[1] = w2;
     return (MR_Word) p;
@@ -581,7 +621,8 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
 {
     MR_Word *p;
 
-    p = (MR_Word *) MR_new_object(MR_Word, 3 * sizeof(MR_Word), "create3");
+    p = (MR_Word *) MR_new_object(MR_Word, 3 * sizeof(MR_Word),
+        NULL, "create3");
     p[0] = w1;
     p[1] = w2;
     p[2] = w3;
@@ -595,11 +636,11 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
   #define   MR_create3(ti1, w1, ti2, w2, ti3, w3)                           \
             MR_create3_func((w1), (w2), (w3))
 
-  #define   MR_create1_msg(ti1, w1, proclabel, type)                        \
+  #define   MR_create1_msg(ti1, w1, alloc_id, type)                         \
             MR_create1((ti1), (w1))
-  #define   MR_create2_msg(ti1, w1, ti2, w2, proclabel, type)               \
+  #define   MR_create2_msg(ti1, w1, ti2, w2, alloc_id, type)                \
             MR_create2((ti1), (w1), (ti2), (w2))
-  #define   MR_create3_msg(ti1, w1, ti2, w2, ti3, w3, proclabel, type)      \
+  #define   MR_create3_msg(ti1, w1, ti2, w2, ti3, w3, alloc_id, type)       \
             MR_create3((ti1), (w1), (ti2), (w2), (ti3), (w3))
 
 #else /* ! MR_HIGHLEVEL_CODE */
@@ -623,6 +664,19 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
     #define     MR_fill_create1_size(hp, ti1, w1)                     0
     #define     MR_fill_create2_size(hp, ti1, w1, ti2, w2)            0
     #define     MR_fill_create3_size(hp, ti1, w1, ti2, w2, ti3, w3)   0
+  #endif
+
+  #ifdef  MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+    #define     MR_fill_create1_origin(hp, alloc_id)                        \
+                (hp[-2] = (MR_Word) (alloc_id))
+    #define     MR_fill_create2_origin(hp, alloc_id)                        \
+                (hp[-3] = (MR_Word) (alloc_id))
+    #define     MR_fill_create3_origin(hp, alloc_id)                        \
+                (hp[-4] = (MR_Word) (alloc_id))
+  #else
+    #define     MR_fill_create1_origin(hp, alloc_id)     ((void) 0)
+    #define     MR_fill_create2_origin(hp, alloc_id)     ((void) 0)
+    #define     MR_fill_create3_origin(hp, alloc_id)     ((void) 0)
   #endif
 
 /*
@@ -661,44 +715,50 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
                 MR_hp[-1] = (MR_Word) (w3),                                 \
                 MR_fill_create3_size(MR_hp, ti1, w1, ti2, w2, ti3, w3),     \
                 MR_debugcr3(MR_hp),                                         \
-                /* return */ (MR_Word) (MR_hp - 3)                              \
+                /* return */ (MR_Word) (MR_hp - 3)                          \
             )
 
 /* used only by hand-written code not by the automatically generated code */
-  #define   MR_create1_msg(ti1, w1, proclabel, type)                        \
+  #define   MR_create1_msg(ti1, w1, alloc_id, type)                         \
             (                                                               \
                 MR_profmem_record_allocation(MR_SIZE_SLOT_SIZE + 1,         \
-                    proclabel, (type)),                                     \
-                MR_hp_alloc(MR_SIZE_SLOT_SIZE + 1),                         \
+                    (alloc_id), (type)),                                    \
+                MR_profmem_set_alloc_type((alloc_id), (type)),              \
+                MR_hp_alloc(MR_SIZE_SLOT_SIZE + 1 + MR_profmem_attrib_word),\
                 MR_hp[-1] = (MR_Word) (w1),                                 \
                 MR_fill_create1_size(MR_hp, ti1, w1),                       \
+                MR_fill_create1_origin(MR_hp, (alloc_id)),                  \
                 MR_debugcr1(MR_hp),                                         \
                 /* return */ (MR_Word) (MR_hp - 1)                          \
             )
 
 /* used only by hand-written code not by the automatically generated code */
-  #define   MR_create2_msg(ti1, w1, ti2, w2, proclabel, type)               \
+  #define   MR_create2_msg(ti1, w1, ti2, w2, alloc_id, type)                \
             (                                                               \
                 MR_profmem_record_allocation(MR_SIZE_SLOT_SIZE + 2,         \
-                    proclabel, (type)),                                     \
-                MR_hp_alloc(MR_SIZE_SLOT_SIZE + 2),                         \
+                    (alloc_id), (type)),                                    \
+                MR_profmem_set_alloc_type((alloc_id), (type)),              \
+                MR_hp_alloc(MR_SIZE_SLOT_SIZE + 2 + MR_profmem_attrib_word),\
                 MR_hp[-2] = (MR_Word) (w1),                                 \
                 MR_hp[-1] = (MR_Word) (w2),                                 \
                 MR_fill_create2_size(MR_hp, ti1, w1, ti2, w2),              \
+                MR_fill_create2_origin(MR_hp, (alloc_id)),                  \
                 MR_debugcr2(MR_hp),                                         \
                 /* return */ (MR_Word) (MR_hp - 2)                          \
             )
 
 /* used only by hand-written code not by the automatically generated code */
-  #define   MR_create3_msg(ti1, w1, ti2, w2, ti3, w3, proclabel, type)      \
+  #define   MR_create3_msg(ti1, w1, ti2, w2, ti3, w3, alloc_id, type)       \
             (                                                               \
                 MR_profmem_record_allocation(MR_SIZE_SLOT_SIZE + 3,         \
-                    proclabel, (type)),                                     \
-                MR_hp_alloc(MR_SIZE_SLOT_SIZE + 3),                         \
+                    (alloc_id), (type)),                                    \
+                MR_profmem_set_alloc_type((alloc_id), (type)),              \
+                MR_hp_alloc(MR_SIZE_SLOT_SIZE + 3 + MR_profmem_attrib_word),\
                 MR_hp[-3] = (MR_Word) (w1),                                 \
                 MR_hp[-2] = (MR_Word) (w2),                                 \
                 MR_hp[-1] = (MR_Word) (w3),                                 \
                 MR_fill_create3_size(MR_hp, ti1, w1, ti2, w2, ti3, w3),     \
+                MR_fill_create3_origin(MR_hp, (alloc_id)),                  \
                 MR_debugcr3(MR_hp),                                         \
                 /* return */ (MR_Word) (MR_hp - 3)                          \
             )
@@ -717,17 +777,19 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
 ** to think about the implications of their code for term size profiling.
 */
 
-#define MR_offset_incr_saved_hp(dest, offset, count)                        \
+#define MR_offset_incr_saved_hp(dest, offset, count, alloc_id, type)        \
         do {                                                                \
             MR_restore_transient_hp();                                      \
-            MR_offset_incr_hp((dest), (offset), (count));                   \
+            MR_offset_incr_hp_msg((dest), (offset), (count),                \
+                (alloc_id), (type));                                        \
             MR_save_transient_hp();                                         \
         } while (0)
 
-#define MR_offset_incr_saved_hp_atomic(dest, offset, count)                 \
+#define MR_offset_incr_saved_hp_atomic(dest, offset, count, alloc_id, type) \
         do {                                                                \
             MR_restore_transient_hp();                                      \
-            MR_offset_incr_hp_atomic((dest), (offset), (count));            \
+            MR_offset_incr_hp_atomic_msg((dest), (offset), (count),         \
+                (alloc_id), (type));                                        \
             MR_save_transient_hp();                                         \
         } while (0)
 

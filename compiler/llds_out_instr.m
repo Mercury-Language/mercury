@@ -255,6 +255,7 @@ output_record_foreign_proc_component_decls(Info, Component, !DeclSet, !IO) :-
         ( Component = foreign_proc_raw_code(_, _, _, _)
         ; Component = foreign_proc_user_code(_, _, _)
         ; Component = foreign_proc_fail_to(_)
+        ; Component = foreign_proc_alloc_id(_)
         ; Component = foreign_proc_noop
         )
     ).
@@ -629,13 +630,13 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
         output_lval(Info, Lval, !IO),
         io.write_string(");\n", !IO)
     ;
-        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, SizeRval, TypeMsg,
+        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, SizeRval, MaybeAllocId,
             MayUseAtomicAlloc, MaybeRegionRval, MaybeReuse),
         io.write_string("\t", !IO),
         (
             MaybeReuse = no_llds_reuse,
             output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset,
-                SizeRval, TypeMsg, MayUseAtomicAlloc, MaybeRegionRval,
+                SizeRval, MaybeAllocId, MayUseAtomicAlloc, MaybeRegionRval,
                 ProfInfo, !IO)
         ;
             MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
@@ -674,7 +675,7 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
             output_rval(Info, ReuseRval, !IO),
             io.write_string(", ", !IO),
             output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset,
-                SizeRval, TypeMsg, MayUseAtomicAlloc, MaybeRegionRval,
+                SizeRval, MaybeAllocId, MayUseAtomicAlloc, MaybeRegionRval,
                 ProfInfo, !IO),
             io.write_string(")", !IO)
         ),
@@ -1511,12 +1512,12 @@ output_label_or_not_reached(MaybeLabel, !IO) :-
 %
 
 :- pred output_incr_hp_no_reuse(llds_out_info::in, lval::in, maybe(tag)::in,
-    maybe(int)::in, rval::in, string::in, may_use_atomic_alloc::in,
-    maybe(rval)::in, pair(label, set_tree234(label))::in, io::di, io::uo)
-    is det.
+    maybe(int)::in, rval::in, maybe(alloc_site_id)::in,
+    may_use_atomic_alloc::in, maybe(rval)::in,
+    pair(label, set_tree234(label))::in, io::di, io::uo) is det.
 
-output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, TypeMsg,
-        MayUseAtomicAlloc, MaybeRegionRval, ProfInfo, !IO) :-
+output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, MaybeAllocId,
+        MayUseAtomicAlloc, MaybeRegionRval, _ProfInfo, !IO) :-
     (
         MaybeRegionRval = yes(RegionRval),
         (
@@ -1575,11 +1576,8 @@ output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, TypeMsg,
             ),
             output_rval_as_type(Info, Rval, lt_word, !IO),
             io.write_string(", ", !IO),
-            ProfInfo = CallerLabel - _,
-            output_label(CallerLabel, !IO),
-            io.write_string(", """, !IO),
-            c_util.output_quoted_string(TypeMsg, !IO),
-            io.write_string(""")", !IO)
+            output_maybe_alloc_site_id(Info, MaybeAllocId, !IO),
+            io.write_string(", NULL)", !IO)
         ;
             ProfMem = no,
             (
@@ -1645,6 +1643,28 @@ output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, TypeMsg,
             io.write_string(")", !IO)
         )
     ).
+
+:- pred output_maybe_alloc_site_id(llds_out_info::in, maybe(alloc_site_id)::in,
+    io::di, io::uo) is det.
+
+output_maybe_alloc_site_id(Info, MaybeAllocId, !IO) :-
+    (
+        MaybeAllocId = yes(AllocId),
+        output_alloc_site_id(Info, AllocId, !IO)
+    ;
+        MaybeAllocId = no,
+        io.write_string("NULL", !IO)
+    ).
+
+:- pred output_alloc_site_id(llds_out_info::in, alloc_site_id::in,
+    io::di, io::uo) is det.
+
+output_alloc_site_id(Info, AllocId, !IO) :-
+    MangledModuleName = Info ^ lout_mangled_module_name,
+    AllocSiteMap = Info ^ lout_alloc_site_map,
+    map.lookup(AllocSiteMap, AllocId, AllocSiteSlotName),
+    output_layout_slot_addr(use_layout_macro, MangledModuleName,
+        AllocSiteSlotName, !IO).
 
 %----------------------------------------------------------------------------%
 %
@@ -1742,6 +1762,9 @@ output_foreign_proc_component(Info, Component, !IO) :-
             "if (!" ++ foreign_proc_succ_ind_name ++ ") MR_GOTO_LAB(", !IO),
         output_label_no_prefix(Label, !IO),
         io.write_string(");\n", !IO)
+    ;
+        Component = foreign_proc_alloc_id(AllocId),
+        output_alloc_site_id(Info, AllocId, !IO)
     ;
         Component = foreign_proc_noop
     ).

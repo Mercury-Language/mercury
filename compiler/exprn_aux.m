@@ -447,6 +447,9 @@ transform_lval_in_component(Transform, Component0, Component, !Acc) :-
         Component0 = foreign_proc_fail_to(_),
         Component = Component0
     ;
+        Component0 = foreign_proc_alloc_id(_),
+        Component = Component0
+    ;
         Component0 = foreign_proc_noop,
         Component = Component0
     ).

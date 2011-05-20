@@ -53,7 +53,7 @@
     do {                                                            \
         int     i;                                                  \
                                                                     \
-        var = MR_list_empty_msg(MR_PROC_LABEL);                     \
+        var = MR_list_empty_msg(MR_ALLOC_ID);                       \
         i = (ei).arity;                                             \
                                                                     \
         while (--i >= 0) {                                          \
@@ -66,7 +66,7 @@
                     (ei).args_field.num_extra_args]);               \
                                                                     \
                 /* Join the argument to the front of the list */    \
-            var = MR_univ_list_cons_msg(arg, var, MR_PROC_LABEL);   \
+            var = MR_univ_list_cons_msg(arg, var, MR_ALLOC_ID);     \
         }                                                           \
     } while (0)
 

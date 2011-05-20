@@ -56,6 +56,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module term.
 
 %----------------------------------------------------------------------------%
@@ -219,6 +220,12 @@
 :- pred get_static_cell_info(code_info::in, static_cell_info::out) is det.
 
 :- pred set_static_cell_info(static_cell_info::in,
+    code_info::in, code_info::out) is det.
+
+:- pred get_alloc_sites(code_info::in, set_tree234(alloc_site_info)::out)
+    is det.
+
+:- pred set_alloc_sites(set_tree234(alloc_site_info)::in,
     code_info::in, code_info::out) is det.
 
 :- pred get_used_env_vars(code_info::in, set(string)::out) is det.
@@ -465,6 +472,8 @@
 
                 cip_static_cell_info        :: static_cell_info,
 
+                cip_alloc_sites             :: set_tree234(alloc_site_info),
+
                 cip_used_env_vars           :: set(string),
 
                 % A counter and table for allocating and maintaining slots
@@ -591,6 +600,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             -1,
             no,
             StaticCellInfo,
+            set_tree234.init,
             set.init,
             TSStringTableSize,
             TSRevStringTable
@@ -721,6 +731,7 @@ get_closure_layouts(CI, CI ^ code_info_persistent ^ cip_closure_layouts).
 get_max_reg_in_use_at_trace(CI, CI ^ code_info_persistent ^ cip_max_reg_used).
 get_created_temp_frame(CI, CI ^ code_info_persistent ^ cip_created_temp_frame).
 get_static_cell_info(CI, CI ^ code_info_persistent ^ cip_static_cell_info).
+get_alloc_sites(CI, CI ^ code_info_persistent ^ cip_alloc_sites).
 get_used_env_vars(CI, CI ^ code_info_persistent ^ cip_used_env_vars).
 
 %---------------------------------------------------------------------------%
@@ -756,6 +767,8 @@ set_created_temp_frame(MR, CI,
     CI ^ code_info_persistent ^ cip_created_temp_frame := MR).
 set_static_cell_info(SCI, CI,
     CI ^ code_info_persistent ^ cip_static_cell_info := SCI).
+set_alloc_sites(ASI, CI,
+    CI ^ code_info_persistent ^ cip_alloc_sites := ASI).
 set_used_env_vars(UEV, CI,
     CI ^ code_info_persistent ^ cip_used_env_vars := UEV).
 
@@ -917,6 +930,9 @@ get_containing_goal_map_det(CI, ContainingGoalMap) :-
 
 :- pred add_vector_static_cell(list(llds_type)::in, list(list(rval))::in,
     data_id::out, code_info::in, code_info::out) is det.
+
+:- pred add_alloc_site_info(prog_context::in, string::in, int::in,
+    alloc_site_id::out, code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1211,6 +1227,14 @@ add_vector_static_cell(Types, Vector, DataAddr, !CI) :-
     global_data.add_vector_static_cell(Types, Vector, DataAddr,
         StaticCellInfo0, StaticCellInfo),
     set_static_cell_info(StaticCellInfo, !CI).
+
+add_alloc_site_info(Context, Type, Size, AllocId, !CI) :-
+    get_cur_proc_label(!.CI, ProcLabel),
+    AllocSite = alloc_site_info(ProcLabel, Context, Type, Size),
+    AllocId = alloc_site_id(AllocSite),
+    get_alloc_sites(!.CI, AllocSites0),
+    set_tree234.insert(AllocSite, AllocSites0, AllocSites),
+    set_alloc_sites(AllocSites, !CI).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3675,8 +3699,8 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
     %
 :- pred assign_cell_to_var(prog_var::in, bool::in, tag::in,
     list(maybe(rval))::in, how_to_construct::in, maybe(term_size_value)::in,
-    list(int)::in, string::in, may_use_atomic_alloc::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+    list(int)::in, maybe(alloc_site_id)::in, may_use_atomic_alloc::in,
+    llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred save_reused_cell_fields(prog_var::in, lval::in, llds_code::out,
     list(lval)::out, code_info::in, code_info::out) is det.
@@ -3819,14 +3843,14 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, HowToConstruct,
-        MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Code, !CI) :-
+        MaybeSize, FieldAddrs, MaybeAllocId, MayUseAtomic, Code, !CI) :-
     get_next_label(Label, !CI),
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_module_info(!.CI, ModuleInfo),
     get_exprn_opts(!.CI, ExprnOpts),
     var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
-        Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs, TypeMsg,
+        Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs, MaybeAllocId,
         MayUseAtomic, Label, Code, StaticCellInfo0, StaticCellInfo,
         VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),

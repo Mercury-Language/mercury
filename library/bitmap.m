@@ -1968,7 +1968,7 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     allocate_bitmap(N::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    MR_allocate_bitmap_msg(BM, N, MR_PROC_LABEL);
+    MR_allocate_bitmap_msg(BM, N, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("Java",
@@ -2005,7 +2005,7 @@ resize_bitmap(OldBM, N) =
     copy(BM0::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    MR_allocate_bitmap_msg(BM, BM0->num_bits, MR_PROC_LABEL);
+    MR_allocate_bitmap_msg(BM, BM0->num_bits, MR_ALLOC_ID);
     MR_copy_bitmap(BM, BM0);
 ").
 

@@ -922,7 +922,7 @@ read_file_as_bytecode(FileName, Result, !IO) :-
         char    *buf;
 
         Size = statbuf.st_size;
-        MR_allocate_aligned_string_msg(buf, Size, MR_PROC_LABEL);
+        MR_allocate_aligned_string_msg(buf, Size, MR_ALLOC_ID);
         fd = open(FileName, O_RDONLY, 0);
         if (fd < 0) {
             Bytes = NULL;

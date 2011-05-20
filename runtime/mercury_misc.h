@@ -156,6 +156,9 @@ MR_perform_registered_exception_cleanups(void);
 #define MR_threadscope_strings(m)                   \
     MR_PASTE2(mercury_data__threadscope_string_table_array__, m)
 
+#define MR_alloc_sites(m)                           \
+    MR_PASTE2(mercury_data__alloc_sites_array__, m)
+
 /*---------------------------------------------------------------------------*/
 
 #define MR_no_var_label_layout_refs1(m, s1)             \

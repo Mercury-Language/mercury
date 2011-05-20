@@ -190,7 +190,18 @@ MR_dealloc_zone_memory(void *base, size_t size)
 static void *
 MR_alloc_zone_memory(size_t size)
 {
-    return GC_MALLOC_UNCOLLECTABLE(size);
+    MR_Word *ptr;
+
+    ptr = GC_MALLOC_UNCOLLECTABLE(size);
+    /*
+    ** Mark the memory zone as being allocated by the Mercury runtime.
+    ** We do not use a helper function like MR_GC_malloc_uncollectable_attrib
+    ** as that returns an offset pointer which can interfere with memory page
+    ** protection.  The first word will be within the redzone so it will not be
+    ** clobbered later.
+    */
+    *ptr = (MR_Word) MR_ALLOC_SITE_RUNTIME;
+    return ptr;
 }
 
 static void *
@@ -438,7 +449,8 @@ MR_init_offsets()
 
     offset_counter = 0;
 
-    offset_vector = MR_GC_NEW_ARRAY(size_t, CACHE_SLICES - 1);
+    offset_vector = MR_GC_NEW_ARRAY_ATTRIB(size_t, CACHE_SLICES - 1,
+        MR_ALLOC_SITE_RUNTIME);
 
     fake_reg_offset = (MR_Unsigned) MR_fake_reg % MR_pcache_size;
 
@@ -653,7 +665,7 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size)
         MR_fatal_error("Unable to allocate memory for zone");
     }
 
-    zone = MR_GC_NEW(MR_MemoryZone);
+    zone = MR_GC_NEW_ATTRIB(MR_MemoryZone, MR_ALLOC_SITE_RUNTIME);
 
     /* The name is initialized by our caller */
     zone->MR_zone_name = NULL;
@@ -1140,7 +1152,7 @@ MR_return_zone_to_free_list(MR_MemoryZone *zone)
         MR_MemoryZonesFree *new_list;
         MR_MemoryZonesFree *prev_list;
 
-        new_list = MR_GC_NEW(MR_MemoryZonesFree);
+        new_list = MR_GC_NEW_ATTRIB(MR_MemoryZonesFree, MR_ALLOC_SITE_RUNTIME);
         new_list->MR_zonesfree_size = size;
         new_list->MR_zonesfree_minor_head = NULL;
         new_list->MR_zonesfree_minor_tail = NULL;

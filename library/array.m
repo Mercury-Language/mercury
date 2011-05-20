@@ -735,11 +735,11 @@ array.compare_elements(N, Size, Array1, Array2, Result) :-
 **   the array, and updating the array size accordingly.
 */
 
-#define ML_alloc_array(newarray, arraysize, proclabel)                  \
+#define ML_alloc_array(newarray, arraysize, alloc_id)                   \
     do {                                                                \
         MR_Word newarray_word;                                          \
         MR_offset_incr_hp_msg(newarray_word, 0, (arraysize),            \
-            proclabel, ""array:array/1"");                              \
+            alloc_id, ""array.array/1"");                               \
         (newarray) = (MR_ArrayPtr) newarray_word;                       \
     } while (0)
 ").
@@ -1001,7 +1001,7 @@ array.init(Size, Item, Array) :-
         ])
     ],
 "
-    ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
+    ML_alloc_array(Array, Size + 1, MR_ALLOC_ID);
     ML_init_array(Array, Size, Item);
 ").
 
@@ -1013,7 +1013,7 @@ array.make_empty_array = A :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    ML_alloc_array(Array, 1, MR_PROC_LABEL);
+    ML_alloc_array(Array, 1, MR_ALLOC_ID);
     ML_init_array(Array, 0, 0);
 ").
 
@@ -1438,7 +1438,7 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
     ** deallocate the storage for it.
     */
 #ifdef MR_CONSERVATIVE_GC
-    GC_FREE(old_array);
+    MR_GC_free_attrib(old_array);
 #endif
 }
 ").
@@ -1459,7 +1459,7 @@ array.resize(!.Array, N, X) = !:Array :-
     if ((Array0)->size == Size) {
         Array = Array0;
     } else {
-        ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
+        ML_alloc_array(Array, Size + 1, MR_ALLOC_ID);
         ML_resize_array(Array, Array0, Size, Item);
     }
 ").
@@ -1525,7 +1525,7 @@ ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
     ** deallocate the storage for it.
     */
 #ifdef MR_CONSERVATIVE_GC
-    GC_FREE(old_array);
+    MR_GC_free_attrib(old_array);
 #endif
 }
 ").
@@ -1555,7 +1555,7 @@ array.shrink(Size, !Array) :-
         ])
     ],
 "
-    ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
+    ML_alloc_array(Array, Size + 1, MR_ALLOC_ID);
     ML_shrink_array(Array, Array0, Size);
 ").
 
@@ -1640,7 +1640,7 @@ array.copy(A1) = A2 :-
         ])
     ],
 "
-    ML_alloc_array(Array, Array0->size + 1, MR_PROC_LABEL);
+    ML_alloc_array(Array, Array0->size + 1, MR_ALLOC_ID);
     ML_copy_array(Array, (MR_ConstArrayPtr) Array0);
 ").
 
@@ -1921,7 +1921,7 @@ array.append(A, B) = C :-
     MR_Integer offset;
 
     sizeC = ArrayA->size + ArrayB->size;
-    ML_alloc_array(ArrayC, sizeC + 1, MR_PROC_LABEL);
+    ML_alloc_array(ArrayC, sizeC + 1, MR_ALLOC_ID);
 
     ArrayC->size = sizeC;
     for (i = 0; i < ArrayA->size; i++) {

@@ -173,14 +173,15 @@ new_buffer_2(BM, Pos, Size, UseStream, Stream, State, ReadStatus) =
         Stream::in, State::in, ReadStatus::in) = (Buffer::out),
     [will_not_call_mercury, promise_pure],
 "{
-    Buffer = MR_GC_NEW(ML_BitBuffer);
+    MR_incr_hp_type_msg(Buffer, ML_BitBuffer, MR_ALLOC_ID,
+        ""bit_buffer.bit_buffer/3"");
     Buffer->ML_bit_buffer_bitmap = BM;
     Buffer->ML_bit_buffer_pos = Pos;
     Buffer->ML_bit_buffer_size = Size;
     Buffer->ML_bit_buffer_use_stream = UseStream;
     Buffer->ML_bit_buffer_stream = Stream;
     Buffer->ML_bit_buffer_state = State;
-    Buffer->ML_bit_buffer_filled_bitmaps = MR_list_empty();
+    Buffer->ML_bit_buffer_filled_bitmaps = MR_list_empty_msg(MR_ALLOC_ID);
     Buffer->ML_bit_buffer_read_status = ReadStatus;
 }").
 

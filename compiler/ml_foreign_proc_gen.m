@@ -56,6 +56,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_global_data.
 :- import_module parse_tree.builtin_lib_types.
 
 :- import_module bool.
@@ -108,6 +109,7 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
     % For model_non pragma c_code,
     % we generate code of the following form:
     %
+    %   #define MR_ALLOC_ID <allocation id>
     %   #define MR_PROC_LABEL <procedure name>
     %   <declaration of locals needed for boxing/unboxing>
     %   {
@@ -146,15 +148,13 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
     %       #undef SUCCEED_LAST
     %       #undef LOCALS
     %   }
+    %   #undef MR_ALLOC_ID
     %   #undef MR_PROC_LABEL
     %
-    % We insert a #define for MR_PROC_LABEL, so that the C code in the Mercury
-    % standard library that allocates memory manually can use MR_PROC_LABEL
-    % as the procname argument to incr_hp_msg(), for memory profiling.
-    % Hard-coding the procname argument in the C code would be wrong,
-    % since it wouldn't handle the case where the original pragma foreign_proc
-    % procedure gets inlined and optimized away. Of course we also need to
-    % #undef it afterwards.
+    % We insert a #define MR_ALLOC_ID so that the C code in the Mercury
+    % standard library that allocates memory manually can use MR_ALLOC_ID as an
+    % argument to incr_hp_msg(), for memory profiling.  It replaces an older
+    % macro MR_PROC_LABEL, which is retained only for backwards compatibility.
     %
 ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         Args, Context, LocalVarsDecls, LocalVarsContext,
@@ -198,13 +198,18 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
     ml_gen_obtain_release_global_lock(!.Info, ThreadSafe, PredId,
         ObtainLock, ReleaseLock),
 
+    % Generate the MR_ALLOC_ID #define.
+    ml_gen_hash_define_mr_alloc_id([FirstCode, SharedCode], Context,
+        HashDefineAllocId, HashUndefAllocId, !Info),
+
     % Generate the MR_PROC_LABEL #define.
-    ml_gen_hash_define_mr_proc_label(!.Info, HashDefine),
+    ml_gen_hash_define_mr_proc_label(!.Info, HashDefineProcLabel),
 
     % Put it all together.
     Starting_C_Code = list.condense([
         [raw_target_code("{\n", [])],
-        HashDefine,
+        HashDefineAllocId,
+        HashDefineProcLabel,
         ArgDeclsList,
         [raw_target_code("\tstruct {\n", []),
         user_target_code(LocalVarsDecls, LocalVarsContext, []),
@@ -223,8 +228,9 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         raw_target_code("\twhile (1) {\n", []),
         raw_target_code("\t\t{\n", []),
         user_target_code(SharedCode, SharedContext, []),
-        raw_target_code("\n\t\t;}\n", []),
-        raw_target_code("#undef MR_PROC_LABEL\n", []),
+        raw_target_code("\n\t\t;}\n", [])],
+        HashUndefAllocId,
+        [raw_target_code("#undef MR_PROC_LABEL\n", []),
         raw_target_code(ReleaseLock, []),
         raw_target_code("\t\tif (MR_succeeded) {\n", [])],
         AssignOutputsList
@@ -737,6 +743,7 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
     %
     % model_det pragma_c_proc:
     %
+    %   #define MR_ALLOC_ID <allocation id>
     %   #define MR_PROC_LABEL <procedure name>
     %   <declaration of locals needed for boxing/unboxing>
     %   {
@@ -749,10 +756,12 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
     %       <release global lock>
     %       <assign output args>
     %   }
+    %   #undef MR_ALLOC_ID
     %   #undef MR_PROC_LABEL
     %
     % model_semi pragma_c_proc:
     %
+    %   #define MR_ALLOC_ID <allocation id>
     %   #define MR_PROC_LABEL <procedure name>
     %   <declaration of locals needed for boxing/unboxing>
     %   {
@@ -770,16 +779,13 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
     %
     %       <succeeded> = SUCCESS_INDICATOR;
     %   }
+    %   #undef MR_ALLOC_ID
     %   #undef MR_PROC_LABEL
     %
-    % We insert a #define for MR_PROC_LABEL, so that the C code in
-    % the Mercury standard library that allocates memory manually
-    % can use MR_PROC_LABEL as the procname argument to
-    % incr_hp_msg(), for memory profiling. Hard-coding the procname
-    % argument in the C code would be wrong, since it wouldn't
-    % handle the case where the original pragma c_code procedure
-    % gets inlined and optimized away. Of course we also need to
-    % #undef it afterwards.
+    % We insert a #define MR_ALLOC_ID so that the C code in the Mercury
+    % standard library that allocates memory manually can use MR_ALLOC_ID as an
+    % argument to incr_hp_msg(), for memory profiling.  It replaces an older
+    % macro MR_PROC_LABEL, which is retained only for backwards compatibility.
     %
     % Note that we generate this code directly as
     % `target_code(lang_C, <string>)' instructions in the MLDS.
@@ -816,23 +822,29 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     ml_gen_obtain_release_global_lock(!.Info, ThreadSafe, PredId,
         ObtainLock, ReleaseLock),
 
+    % Generate the MR_ALLOC_ID #define.
+    ml_gen_hash_define_mr_alloc_id([C_Code], Context,
+        HashDefineAllocId, HashUndefAllocId, !Info),
+
     % Generate the MR_PROC_LABEL #define.
-    ml_gen_hash_define_mr_proc_label(!.Info, HashDefine),
+    ml_gen_hash_define_mr_proc_label(!.Info, HashDefineProcLabel),
 
     % Put it all together.
     (
         OrdinaryKind = kind_det,
         Starting_C_Code = list.condense([
             [raw_target_code("{\n", [])],
-            HashDefine,
+            HashDefineAllocId,
+            HashDefineProcLabel,
             ArgDeclsList,
             [raw_target_code("\n", [])],
             AssignInputsList,
             [raw_target_code(ObtainLock, []),
             raw_target_code("\t\t{\n", []),
             user_target_code(C_Code, yes(Context), []),
-            raw_target_code("\n\t\t;}\n", []),
-            raw_target_code("#undef MR_PROC_LABEL\n", []),
+            raw_target_code("\n\t\t;}\n", [])],
+            HashUndefAllocId,
+            [raw_target_code("#undef MR_PROC_LABEL\n", []),
             raw_target_code(ReleaseLock, [])],
             AssignOutputsList
         ]),
@@ -846,15 +858,17 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         ml_success_lval(!.Info, SucceededLval),
         Starting_C_Code = list.condense([
             [raw_target_code("{\n", [])],
-            HashDefine,
+            HashDefineAllocId,
+            HashDefineProcLabel,
             ArgDeclsList,
             [raw_target_code("\n", [])],
             AssignInputsList,
             [raw_target_code(ObtainLock, []),
             raw_target_code("\t\t{\n", []),
             user_target_code(C_Code, yes(Context), []),
-            raw_target_code("\n\t\t;}\n", []),
-            raw_target_code("#undef MR_PROC_LABEL\n", []),
+            raw_target_code("\n\t\t;}\n", [])],
+            HashUndefAllocId,
+            [raw_target_code("#undef MR_PROC_LABEL\n", []),
             raw_target_code(ReleaseLock, [])]
         ]),
         Ending_C_Code = [
@@ -867,7 +881,8 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         ml_success_lval(!.Info, SucceededLval),
         Starting_C_Code = list.condense([
             [raw_target_code("{\n", [])],
-            HashDefine,
+            HashDefineAllocId,
+            HashDefineProcLabel,
             ArgDeclsList,
             [raw_target_code("\tMR_bool SUCCESS_INDICATOR;\n", []),
             raw_target_code("\n", [])],
@@ -875,8 +890,9 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
             [raw_target_code(ObtainLock, []),
             raw_target_code("\t\t{\n", []),
             user_target_code(C_Code, yes(Context), []),
-            raw_target_code("\n\t\t;}\n", []),
-            raw_target_code("#undef MR_PROC_LABEL\n", []),
+            raw_target_code("\n\t\t;}\n", [])],
+            HashUndefAllocId,
+            [raw_target_code("#undef MR_PROC_LABEL\n", []),
             raw_target_code(ReleaseLock, []),
             raw_target_code("\tif (SUCCESS_INDICATOR) {\n", [])],
             AssignOutputsList
@@ -923,6 +939,37 @@ ml_gen_obtain_release_global_lock(Info, ThreadSafe, PredId,
     ;
         ObtainLock = "",
         ReleaseLock = ""
+    ).
+
+:- pred ml_gen_hash_define_mr_alloc_id(list(string)::in, prog_context::in,
+    list(target_code_component)::out, list(target_code_component)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_hash_define_mr_alloc_id(C_Codes, Context, HashDefine, HashUndef,
+        !Info) :-
+    ml_gen_info_get_globals(!.Info, Globals),
+    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
+    (
+        ProfileMemory = yes,
+        list.member(C_Code, C_Codes),
+        string.sub_string_search(C_Code, "MR_ALLOC_ID", _)
+    ->
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        ml_gen_info_get_pred_id(!.Info, PredId),
+        ml_gen_info_get_proc_id(!.Info, ProcId),
+        ml_gen_info_get_global_data(!.Info, GlobalData0),
+        ml_gen_proc_label(ModuleInfo, PredId, ProcId, ProcLabel, _Module),
+        ml_gen_alloc_site(ProcLabel, no, 0, Context, AllocId,
+            GlobalData0, GlobalData),
+        ml_gen_info_set_global_data(GlobalData, !Info),
+        HashDefine = [
+            raw_target_code("#define MR_ALLOC_ID ", []),
+            target_code_alloc_id(AllocId),
+            raw_target_code("\n", [])],
+        HashUndef = [raw_target_code("#undef MR_ALLOC_ID\n", [])]
+    ;
+        HashDefine = [],
+        HashUndef = []
     ).
 
 :- pred ml_gen_hash_define_mr_proc_label(ml_gen_info::in,

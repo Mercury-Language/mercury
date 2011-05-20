@@ -243,7 +243,7 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData, PlainDefns,
         InitPreds, FinalPreds, ExportEnums),
     ml_global_data_get_all_global_defns(GlobalData,
-        _ScalarCellGroupMap, _VectorCellGroupMap, GlobalDefns),
+        _ScalarCellGroupMap, _VectorCellGroupMap, _AllocSites, GlobalDefns),
     Defns = GlobalDefns ++ PlainDefns,
 
     mlds_output_hdr_start(Opts, Indent, ModuleName, !IO),
@@ -361,7 +361,7 @@ mlds_output_src_file(Opts, Indent, MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData, PlainDefns,
         InitPreds, FinalPreds, _ExportEnums),
     ml_global_data_get_all_global_defns(GlobalData,
-        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
+        ScalarCellGroupMap, VectorCellGroupMap, AllocSites, GlobalDefns),
     Defns = GlobalDefns ++ PlainDefns,
     map.to_assoc_list(ScalarCellGroupMap, ScalarCellGroups),
     map.to_assoc_list(VectorCellGroupMap, VectorCellGroups),
@@ -421,6 +421,8 @@ mlds_output_src_file(Opts, Indent, MLDS, !IO) :-
     mlds_output_vector_cell_group_decls(Opts, Indent, MLDS_ModuleName,
         MangledModuleName, VectorCellGroups, !IO),
     io.nl(!IO),
+    mlds_output_alloc_site_decls(Indent, AllocSites, !IO),
+    io.nl(!IO),
 
     mlds_output_scalar_cell_group_defns(Opts, Indent, MangledModuleName,
         ScalarCellGroups, !IO),
@@ -428,13 +430,16 @@ mlds_output_src_file(Opts, Indent, MLDS, !IO) :-
     mlds_output_vector_cell_group_defns(Opts, Indent, MangledModuleName,
         VectorCellGroups, !IO),
     io.nl(!IO),
+    mlds_output_alloc_site_defns(Opts, Indent, MLDS_ModuleName, AllocSites,
+        !IO),
+    io.nl(!IO),
 
     mlds_output_c_defns(Opts, MLDS_ModuleName, Indent, ForeignCode, !IO),
     io.nl(!IO),
     mlds_output_defns(Opts, Indent, yes, MLDS_ModuleName, NonTypeDefns, !IO),
     io.nl(!IO),
     mlds_output_init_fn_defns(Opts, MLDS_ModuleName, FuncDefns,
-        TypeCtorInfoDefns, InitPreds, FinalPreds, !IO),
+        TypeCtorInfoDefns, AllocSites, InitPreds, FinalPreds, !IO),
     io.nl(!IO),
     mlds_output_grade_var(!IO),
     io.nl(!IO),
@@ -689,7 +694,6 @@ mlds_get_c_foreign_code(AllForeignCode) = ForeignCode :-
     % then output the functions: `mercury__<modulename>__required_init()' and
     % `mercury__<modulename>__required_final()' as necessary.
     %
-    %
 :- pred mlds_output_init_fn_decls(mlds_module_name::in, list(string)::in,
     list(string)::in, io::di, io::uo) is det.
 
@@ -717,10 +721,11 @@ mlds_output_init_fn_decls(ModuleName, InitPreds, FinalPreds, !IO) :-
 
 :- pred mlds_output_init_fn_defns(mlds_to_c_opts::in, mlds_module_name::in,
     list(mlds_defn)::in, list(mlds_defn)::in,
+    assoc_list(mlds_alloc_id, ml_alloc_site_data)::in,
     list(string)::in, list(string)::in, io::di, io::uo) is det.
 
 mlds_output_init_fn_defns(Opts, ModuleName, FuncDefns, TypeCtorInfoDefns,
-        InitPreds, FinalPreds, !IO) :-
+        AllocSites, InitPreds, FinalPreds, !IO) :-
     output_init_fn_name(ModuleName, "", !IO),
     io.write_string("\n{\n", !IO),
     NeedToInit = Opts ^ m2co_need_to_init,
@@ -731,7 +736,8 @@ mlds_output_init_fn_defns(Opts, ModuleName, FuncDefns, TypeCtorInfoDefns,
         io.write_strings(["\tstatic MR_bool initialised = MR_FALSE;\n",
             "\tif (initialised) return;\n",
             "\tinitialised = MR_TRUE;\n\n"], !IO),
-        mlds_output_calls_to_init_entry(ModuleName, FuncDefns, !IO)
+        mlds_output_calls_to_init_entry(ModuleName, FuncDefns, !IO),
+        mlds_output_call_to_register_alloc_sites(AllocSites, !IO)
     ;
         true
     ),
@@ -858,6 +864,22 @@ mlds_output_calls_to_register_tci(ModuleName,
         !IO),
     io.write_string(");\n", !IO),
     mlds_output_calls_to_register_tci(ModuleName, TypeCtorInfoDefns, !IO).
+
+    % Generate call to MR_register_alloc_sites.
+    %
+:- pred mlds_output_call_to_register_alloc_sites(
+    assoc_list(mlds_alloc_id, ml_alloc_site_data)::in, io::di, io::uo) is det.
+
+mlds_output_call_to_register_alloc_sites(AllocSites, !IO) :-
+    (
+        AllocSites = []
+    ;
+        AllocSites = [_ | _],
+        list.length(AllocSites, Length),
+        io.write_string("\tMR_register_alloc_sites(MR_alloc_sites, ", !IO),
+        io.write_int(Length, !IO),
+        io.write_string(");\n", !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1663,6 +1685,59 @@ mlds_output_cell(Opts, Indent, Initializer, !RowNum, !IO) :-
     !:RowNum = !.RowNum + 1,
     mlds_output_initializer_body(Opts, Indent, Initializer, !IO),
     io.write_string(",\n", !IO).
+
+:- pred mlds_output_alloc_site_decls(indent::in,
+    assoc_list(mlds_alloc_id, ml_alloc_site_data)::in, io::di, io::uo) is det.
+
+mlds_output_alloc_site_decls(Indent, AllocSites, !IO) :-
+    (
+        AllocSites = []
+    ;
+        AllocSites = [_ | _],
+        mlds_indent(Indent, !IO),
+        io.write_string("static MR_AllocSiteInfo MR_alloc_sites[];\n", !IO)
+    ).
+
+:- pred mlds_output_alloc_site_defns(mlds_to_c_opts::in, indent::in,
+    mlds_module_name::in, assoc_list(mlds_alloc_id, ml_alloc_site_data)::in,
+    io::di, io::uo) is det.
+
+mlds_output_alloc_site_defns(Opts, Indent, MLDS_ModuleName, AllocSites, !IO) :-
+    (
+        AllocSites = []
+    ;
+        AllocSites = [_ | _],
+        mlds_indent(Indent, !IO),
+        io.write_string("static MR_AllocSiteInfo MR_alloc_sites[] = {\n", !IO),
+        list.foldl(
+            mlds_output_alloc_site_defn(Opts, Indent + 1, MLDS_ModuleName),
+            AllocSites, !IO),
+        mlds_indent(Indent, !IO),
+        io.write_string("};\n", !IO)
+    ).
+
+:- pred mlds_output_alloc_site_defn(mlds_to_c_opts::in, indent::in,
+    mlds_module_name::in, pair(mlds_alloc_id, ml_alloc_site_data)::in,
+    io::di, io::uo) is det.
+
+mlds_output_alloc_site_defn(_Opts, Indent, MLDS_ModuleName,
+        _AllocId - AllocData, !IO) :-
+    AllocData = ml_alloc_site_data(ProcLabel, Context, Type, Size),
+    QualProcLabel = qual(MLDS_ModuleName, module_qual, ProcLabel),
+    term.context_file(Context, FileName),
+    term.context_line(Context, LineNumber),
+    mlds_indent(Indent, !IO),
+    io.write_string("{ ", !IO),
+    mlds_output_fully_qualified_name(QualProcLabel, !IO),
+    io.write_string(", """, !IO),
+    c_util.output_quoted_string(FileName, !IO),
+    io.write_string(""", ", !IO),
+    io.write_int(LineNumber, !IO),
+    io.write_string(", """, !IO),
+    c_util.output_quoted_string(Type, !IO),
+    io.write_string(""", ", !IO),
+    io.write_int(Size, !IO),
+    io.write_string("},\n", !IO).
 
 :- pred mlds_output_type_forward_decls(mlds_to_c_opts::in, indent::in,
     list(mlds_type)::in, io::di, io::uo) is det.
@@ -3513,47 +3588,6 @@ mlds_output_switch_default(Opts, Indent, FuncInfo, Context, Default, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % If memory profiling is turned on, output an instruction to
-    % record the heap allocation.
-    %
-:- pred mlds_maybe_output_heap_profile_instr(mlds_to_c_opts::in,
-    mlds_context::in, indent::in, list(mlds_rval)::in,
-    mlds_qualified_entity_name::in, maybe(ctor_name)::in, io::di, io::uo)
-    is det.
-
-mlds_maybe_output_heap_profile_instr(Opts, Context, Indent, Args, FuncName,
-        MaybeCtorName, !IO) :-
-    ProfileMemory = Opts ^ m2co_profile_calls,
-    (
-        ProfileMemory = yes,
-        output_context_opts(Opts, Context, !IO),
-        mlds_indent(Indent, !IO),
-        io.write_string("MR_record_allocation(", !IO),
-        io.write_int(list.length(Args), !IO),
-        io.write_string(", ", !IO),
-        mlds_output_fully_qualified_name(FuncName, !IO),
-        io.write_string(", """, !IO),
-        mlds_output_fully_qualified_name(FuncName, !IO),
-        io.write_string(""", ", !IO),
-        (
-            MaybeCtorName = yes(CtorId),
-            io.write_char('"', !IO),
-            CtorId = qual(_ModuleName, _QualKind, CtorDefn),
-            CtorDefn = ctor_id(CtorName, _CtorArity),
-            c_util.output_quoted_string(CtorName, !IO),
-            io.write_char('"', !IO)
-        ;
-            MaybeCtorName = no,
-            % Just use an empty string.  Note that we can't use a null pointer
-            % here, because MR_record_allocation() requires its string
-            % arguments to not be NULL.
-            io.write_string("\"\"", !IO)
-        ),
-        io.write_string(");\n", !IO)
-    ;
-        ProfileMemory = no
-    ).
-
     % If call profiling is turned on output an instruction to record
     % an arc in the call profile between the callee and caller.
     %
@@ -3607,7 +3641,7 @@ mlds_output_label_name(LabelName, !IO) :-
 :- pred mlds_output_atomic_stmt(mlds_to_c_opts::in, indent::in, func_info::in,
     mlds_atomic_statement::in, mlds_context::in, io::di, io::uo) is det.
 
-mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
+mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Statement, Context, !IO) :-
     (
         Statement = comment(Comment),
         % XXX We should escape any "*/"'s in the Comment. We should also split
@@ -3639,7 +3673,8 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
         io.write_string(");\n", !IO)
     ;
         Statement = new_object(Target, MaybeTag, _ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic),
+            MaybeSize, _MaybeCtorName, Args, ArgTypes, MayUseAtomic,
+            MaybeAllocId),
         mlds_indent(Indent, !IO),
         io.write_string("{\n", !IO),
 
@@ -3703,10 +3738,6 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
             )
         ),
 
-        FuncInfo = func_info(FuncName, _FuncSignature),
-        mlds_maybe_output_heap_profile_instr(Opts, Context, Indent + 1, Args,
-            FuncName, MaybeCtorName, !IO),
-
         output_context_opts(Opts, Context, !IO),
         mlds_indent(Indent + 1, !IO),
         write_lval_or_string(Opts, Base, !IO),
@@ -3748,18 +3779,8 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
             io.write_int(-1, !IO)
         ),
         io.write_string(", ", !IO),
-        (
-            MaybeCtorName = yes(QualifiedCtorId),
-            io.write_char('"', !IO),
-            QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
-            CtorDefn = ctor_id(CtorName, _CtorArity),
-            c_util.output_quoted_string(CtorName, !IO),
-            io.write_char('"', !IO)
-        ;
-            MaybeCtorName = no,
-            io.write_string("NULL", !IO)
-        ),
-        io.write_string(")", !IO),
+        mlds_output_maybe_alloc_id(MaybeAllocId, !IO),
+        io.write_string(", NULL)", !IO),
         io.write_string(EndMkword, !IO),
         io.write_string(";\n", !IO),
         (
@@ -3817,6 +3838,18 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
         unexpected(this_file, "outline_foreign_proc is not used in C backend")
     ).
 
+:- pred mlds_output_maybe_alloc_id(maybe(mlds_alloc_id)::in, io::di, io::uo)
+    is det.
+
+mlds_output_maybe_alloc_id(MaybeAllocId, !IO) :-
+    (
+        MaybeAllocId = yes(mlds_alloc_id(Num)),
+        io.format("&MR_alloc_sites[%d]", [i(Num)], !IO)
+    ;
+        MaybeAllocId = no,
+        io.write_string("NULL", !IO)
+    ).
+
 :- pred mlds_output_target_code_component(mlds_to_c_opts::in, mlds_context::in,
     target_code_component::in, io::di, io::uo) is det.
 
@@ -3864,6 +3897,9 @@ mlds_output_target_code_component(Opts, Context, TargetCode, !IO) :-
         TargetCode = target_code_name(Name),
         mlds_output_fully_qualified_name(Name, !IO),
         io.write_string("\n", !IO)
+    ;
+        TargetCode = target_code_alloc_id(AllocId),
+        mlds_output_maybe_alloc_id(yes(AllocId), !IO)
     ).
 
 :- func type_needs_forwarding_pointer_space(mlds_type) = bool.

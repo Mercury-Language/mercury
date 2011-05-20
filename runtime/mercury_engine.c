@@ -190,7 +190,8 @@ MR_create_engine(void)
     ** since the engine pointer will normally be stored in thread-local
     ** storage, which is not traced by the conservative garbage collector.
     */
-    eng = MR_GC_NEW_UNCOLLECTABLE(MercuryEngine);
+    eng = MR_GC_NEW_UNCOLLECTABLE_ATTRIB(MercuryEngine,
+        MR_ALLOC_SITE_RUNTIME);
     MR_init_engine(eng);
     return eng;
 }
@@ -199,7 +200,7 @@ void
 MR_destroy_engine(MercuryEngine *eng)
 {
     MR_finalize_engine(eng);
-    MR_GC_free(eng);
+    MR_GC_free_attrib(eng);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -485,7 +486,7 @@ dummy_label:
     if (MR_ENGINE(MR_eng_this_context) != NULL) {
         MR_SavedOwner *owner;
 
-        owner = MR_GC_NEW(MR_SavedOwner);
+        owner = MR_GC_NEW_ATTRIB(MR_SavedOwner, MR_ALLOC_SITE_RUNTIME);
         owner->MR_saved_owner_engine = MR_ENGINE(MR_eng_id);
         owner->MR_saved_owner_c_depth = MR_ENGINE(MR_eng_c_depth);
         owner->MR_saved_owner_next =
@@ -521,7 +522,7 @@ MR_define_label(engine_done);
         if ((owner->MR_saved_owner_engine == MR_ENGINE(MR_eng_id)) &&
             owner->MR_saved_owner_c_depth == MR_ENGINE(MR_eng_c_depth))
         {
-            MR_GC_free(owner);
+            MR_GC_free_attrib(owner);
             MR_GOTO_LABEL(engine_done_2);
         }
 
@@ -533,7 +534,7 @@ MR_define_label(engine_done);
         this_ctxt->MR_ctxt_resume_owner_engine = owner->MR_saved_owner_engine;
         this_ctxt->MR_ctxt_resume_c_depth = owner->MR_saved_owner_c_depth;
         this_ctxt->MR_ctxt_resume_engine_required = MR_TRUE;
-        MR_GC_free(owner);
+        MR_GC_free_attrib(owner);
         MR_schedule_context(this_ctxt);
 
         MR_ENGINE(MR_eng_this_context) = NULL;

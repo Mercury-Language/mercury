@@ -684,12 +684,29 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag, ExplicitSecT
     list.length(ArgRvals, NumArgs),
     SizeInWordsRval = ml_const(mlconst_int(NumArgs)),
 
+    % Generate an allocation site id.
+    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
+    (
+        ProfileMemory = yes,
+        ml_gen_info_get_pred_id(!.Info, PredId),
+        ml_gen_info_get_proc_id(!.Info, ProcId),
+        ml_gen_info_get_global_data(!.Info, GlobalData0),
+        ml_gen_proc_label(ModuleInfo, PredId, ProcId, ProcLabel, _Module),
+        ml_gen_alloc_site(ProcLabel, MaybeConsId, NumArgs, Context, AllocId,
+            GlobalData0, GlobalData),
+        ml_gen_info_set_global_data(GlobalData, !Info),
+        MaybeAllocId = yes(AllocId)
+    ;
+        ProfileMemory = no,
+        MaybeAllocId = no
+    ),
+
     % Generate a `new_object' statement to dynamically allocate the memory
     % for this term from the heap. The `new_object' statement will also
     % initialize the fields of this term with the specified arguments.
     MakeNewObject = new_object(VarLval, MaybeTag, ExplicitSecTag, MLDS_Type,
         yes(SizeInWordsRval), MaybeCtorName, ArgRvals, MLDS_ArgTypes,
-        MayUseAtomic),
+        MayUseAtomic, MaybeAllocId),
     Stmt = ml_stmt_atomic(MakeNewObject),
     Statement = statement(Stmt, mlds_make_context(Context)),
 

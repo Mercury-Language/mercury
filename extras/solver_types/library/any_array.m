@@ -361,11 +361,11 @@
 **   the any_array, and updating the any_array size accordingly.
 */
 
-#define ML_alloc_any_array(newarray, any_arraysize, proclabel)              \
+#define ML_alloc_any_array(newarray, any_arraysize, alloc_id)               \
     do {                                                                    \
         MR_Word newarray_word;                                              \
         MR_offset_incr_hp_msg(newarray_word, 0, (any_arraysize),            \
-            proclabel, ""any_array:any_array/1"");                          \
+            alloc_id, ""any_array.any_array/1"");                           \
         (newarray) = (MR_ArrayPtr) newarray_word;                           \
     } while (0)
 ").
@@ -405,7 +405,7 @@ any_array.init(Size, Item, Array) :-
     any_array.init_2(Size::in, Item::ia, Array::any_array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    ML_alloc_any_array(Array, Size + 1, MR_PROC_LABEL);
+    ML_alloc_any_array(Array, Size + 1, MR_ALLOC_ID);
     ML_init_any_array(Array, Size, Item);
 ").
 
@@ -413,7 +413,7 @@ any_array.init(Size, Item, Array) :-
     any_array.make_empty_array(Array::any_array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    ML_alloc_any_array(Array, 1, MR_PROC_LABEL);
+    ML_alloc_any_array(Array, 1, MR_ALLOC_ID);
     ML_init_any_array(Array, 0, 0);
 ").
 
@@ -577,7 +577,7 @@ ML_resize_any_array(MR_ArrayPtr any_array, MR_ArrayPtr old_array,
     if ((Array0)->size == Size) {
         Array = Array0;
     } else {
-        ML_alloc_any_array(Array, Size + 1, MR_PROC_LABEL);
+        ML_alloc_any_array(Array, Size + 1, MR_ALLOC_ID);
         ML_resize_any_array(Array, Array0, Size, Item);
     }
 ").
@@ -633,7 +633,7 @@ any_array.shrink(Array0, Size, Array) :-
     any_array.shrink_2(Array0::any_array_di, Size::in, Array::any_array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    ML_alloc_any_array(Array, Size + 1, MR_PROC_LABEL);
+    ML_alloc_any_array(Array, Size + 1, MR_ALLOC_ID);
     ML_shrink_any_array(Array, Array0, Size);
 ").
 
@@ -671,7 +671,7 @@ ML_copy_any_array(MR_ArrayPtr any_array, MR_ConstArrayPtr old_array)
     any_array.copy(Array0::any_array_ui, Array::any_array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    ML_alloc_any_array(Array, Array0->size + 1, MR_PROC_LABEL);
+    ML_alloc_any_array(Array, Array0->size + 1, MR_ALLOC_ID);
     ML_copy_any_array(Array, (MR_ConstArrayPtr) Array0);
 ").
 

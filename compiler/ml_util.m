@@ -468,7 +468,8 @@ atomic_stmt_contains_var(AtomicStmt, DataName) = ContainsVar :-
         ContainsVar = rval_contains_var(Rval, DataName)
     ;
         AtomicStmt = new_object(Target, _MaybeTag, _ExplicitSecTag, _Type,
-            _MaybeSize, _MaybeCtorName, Args, _ArgTypes, _MayUseAtomic),
+            _MaybeSize, _MaybeCtorName, Args, _ArgTypes, _MayUseAtomic,
+            _AllocId),
         ( lval_contains_var(Target, DataName) = yes ->
             ContainsVar = yes
         ;
@@ -542,6 +543,7 @@ target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
         ( TargetCode = user_target_code(_, _, _)
         ; TargetCode = raw_target_code(_, _)
         ; TargetCode = target_code_type(_)
+        ; TargetCode = target_code_alloc_id(_)
         ),
         ContainsVar = no
     ;

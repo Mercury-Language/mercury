@@ -106,7 +106,7 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
     t.tm_isdst = N;
 
     size = sizeof ""yyyy-mm-dd hh:mm:ss"";
-    MR_allocate_aligned_string_msg(Result, size - 1, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(Result, size - 1, MR_ALLOC_ID);
 
     strftime(Result, size, ""%Y-%m-%d %H:%M:%S"", &t);
 }").

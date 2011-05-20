@@ -491,6 +491,9 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
     global_data_add_new_closure_layouts(ClosureLayouts, !GlobalData),
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
 
+    get_alloc_sites(CodeInfo, AllocSites),
+    global_data_add_new_alloc_sites(AllocSites, !GlobalData),
+
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
 

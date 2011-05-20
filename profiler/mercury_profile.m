@@ -38,6 +38,7 @@
 :- import_module output.
 :- import_module process_file.
 :- import_module propagate.
+:- import_module snapshots.
 
 :- import_module bool.
 :- import_module getopt.
@@ -53,7 +54,13 @@ main(!IO) :-
         special_handler),
     getopt.process_options(OptionOps, Args0, Args, Result0),
     postprocess_options(Result0, Args, Result, !IO),
-    main_2(Result, Args, !IO).
+    (
+        Result = yes(ErrorMessage),
+        usage_error(ErrorMessage, !IO)
+    ;
+        Result = no,
+        main_2(Args, !IO)
+    ).
 
 :- pred postprocess_options(maybe_option_table(option)::in, list(string)::in,
     maybe(string)::out, io::di, io::uo) is det.
@@ -136,48 +143,59 @@ long_usage(!IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred main_2(maybe(string)::in, list(string)::in, io::di, io::uo) is det.
+:- pred main_2(list(string)::in, io::di, io::uo) is det.
 
-main_2(yes(ErrorMessage), _, !IO) :-
-    usage_error(ErrorMessage, !IO).
-main_2(no, Args, !IO) :-
-    io.stderr_stream(StdErr, !IO),
-    io.set_output_stream(StdErr, StdOut, !IO),
-    globals.io_lookup_bool_option(call_graph, CallGraphOpt, !IO),
-    globals.io_lookup_bool_option(help, Help, !IO),
+main_2(Args, !IO) :-
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, help, Help),
     (
         Help = yes,
         long_usage(!IO)
     ;
         Help = no,
-        globals.io_lookup_bool_option(verbose, Verbose, !IO),
-
-        maybe_write_string(Verbose, "% Processing input files...", !IO),
-        process_profiling_data_files(Prof0, CallGraph0, !IO),
-        maybe_write_string(Verbose, " done\n", !IO),
-
+        globals.lookup_bool_option(Globals, snapshots, Snapshots),
         (
-            CallGraphOpt = yes,
-            maybe_write_string(Verbose, "% Building call graph...", !IO),
-            build_call_graph(Args, CallGraph0, CallGraph, !IO),
-            maybe_write_string(Verbose, " done\n", !IO),
-
-            maybe_write_string(Verbose, "% Propagating counts...", !IO),
-            propagate_counts(CallGraph, Prof0, Prof, !IO),
-            maybe_write_string(Verbose, " done\n", !IO)
+            Snapshots = yes,
+            show_snapshots(!IO)
         ;
-            CallGraphOpt = no,
-            Prof = Prof0
-        ),
+            Snapshots = no,
+            main_3(Args, !IO)
+        )
+    ).
 
-        maybe_write_string(Verbose, "% Generating output...", !IO),
-        generate_prof_output(Prof, IndexMap, OutputProf, !IO),
+:- pred main_3(list(string)::in, io::di, io::uo) is det.
+
+main_3(Args, !IO) :-
+    io.stderr_stream(StdErr, !IO),
+    io.set_output_stream(StdErr, StdOut, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+
+    maybe_write_string(Verbose, "% Processing input files...", !IO),
+    process_profiling_data_files(Prof0, CallGraph0, !IO),
+    maybe_write_string(Verbose, " done\n", !IO),
+
+    globals.io_lookup_bool_option(call_graph, CallGraphOpt, !IO),
+    (
+        CallGraphOpt = yes,
+        maybe_write_string(Verbose, "% Building call graph...", !IO),
+        build_call_graph(Args, CallGraph0, CallGraph, !IO),
         maybe_write_string(Verbose, " done\n", !IO),
 
-        io.set_output_stream(StdOut, _, !IO),
-        output_profile(OutputProf, IndexMap, !IO),
-        io.nl(!IO)
-    ).
+        maybe_write_string(Verbose, "% Propagating counts...", !IO),
+        propagate_counts(CallGraph, Prof0, Prof, !IO),
+        maybe_write_string(Verbose, " done\n", !IO)
+    ;
+        CallGraphOpt = no,
+        Prof = Prof0
+    ),
+
+    maybe_write_string(Verbose, "% Generating output...", !IO),
+    generate_prof_output(Prof, IndexMap, OutputProf, !IO),
+    maybe_write_string(Verbose, " done\n", !IO),
+
+    io.set_output_stream(StdOut, _, !IO),
+    output_profile(OutputProf, IndexMap, !IO),
+    io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module mercury_profile.

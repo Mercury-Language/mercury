@@ -68,7 +68,7 @@ output_csharp_code(Globals, MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, _Imports, GlobalData, Defns0,
         _InitPreds, _FinalPreds, _ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
-        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
+        ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap, GlobalDefns),
     expect(map.is_empty(ScalarCellGroupMap), this_file,
         "output_csharp_code: nonempty ScalarCellGroupMap"),
     expect(map.is_empty(VectorCellGroupMap), this_file,

@@ -294,6 +294,20 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Allocation site information
+%
+
+:- type alloc_site_info
+    --->    alloc_site_info(
+                % define MR_AllocSiteInfo
+                as_proc_label       :: proc_label,
+                as_context          :: prog_context,
+                as_type             :: string,
+                as_size             :: int
+            ).
+
+%-----------------------------------------------------------------------------%
+%
 % Global variables that hold arrays of layout structures.
 %
 
@@ -329,7 +343,8 @@
     ;       proc_table_io_decl_array
     ;       proc_event_layouts_array
     ;       proc_exec_trace_array
-    ;       threadscope_string_table_array.
+    ;       threadscope_string_table_array
+    ;       alloc_site_array.
 
 %-----------------------------------------------------------------------------%
 %

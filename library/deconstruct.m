@@ -857,6 +857,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 #define ARITY_ARG               Arity
 #define ARGUMENTS_ARG           Arguments
 #define NONCANON                MR_NONCANON_ABORT
+/* This comment tells the compiler to define MR_ALLOC_ID. */
 #include ""mercury_ml_deconstruct_body.h""
 #undef  EXPAND_INFO_TYPE
 #undef  EXPAND_INFO_CALL
@@ -882,6 +883,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 #define ARITY_ARG               Arity
 #define ARGUMENTS_ARG           Arguments
 #define NONCANON                MR_NONCANON_ALLOW
+/* This comment tells the compiler to define MR_ALLOC_ID. */
 #include ""mercury_ml_deconstruct_body.h""
 #undef  EXPAND_INFO_TYPE
 #undef  EXPAND_INFO_CALL
@@ -907,6 +909,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 #define ARITY_ARG               Arity
 #define ARGUMENTS_ARG           Arguments
 #define NONCANON                MR_NONCANON_CC
+/* This comment tells the compiler to define MR_ALLOC_ID. */
 #include ""mercury_ml_deconstruct_body.h""
 #undef  EXPAND_INFO_TYPE
 #undef  EXPAND_INFO_CALL
@@ -934,6 +937,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 #define ARGUMENTS_ARG           Arguments
 #define NONCANON                MR_NONCANON_ABORT
 #define SAVE_SUCCESS
+/* This comment tells the compiler to define MR_ALLOC_ID. */
 #include ""mercury_ml_deconstruct_body.h""
 #undef  EXPAND_INFO_TYPE
 #undef  EXPAND_INFO_CALL
@@ -962,6 +966,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 #define ARGUMENTS_ARG           Arguments
 #define NONCANON                MR_NONCANON_ALLOW
 #define SAVE_SUCCESS
+/* This comment tells the compiler to define MR_ALLOC_ID. */
 #include ""mercury_ml_deconstruct_body.h""
 #undef  EXPAND_INFO_TYPE
 #undef  EXPAND_INFO_CALL
@@ -989,6 +994,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
     #define ARITY_ARG           Arity
     #define ARGUMENTS_ARG       Arguments
     #define NONCANON            MR_NONCANON_CC
+    /* This comment tells the compiler to define MR_ALLOC_ID. */
     #include ""mercury_ml_deconstruct_body.h""
     #undef  EXPAND_INFO_TYPE
     #undef  EXPAND_INFO_CALL

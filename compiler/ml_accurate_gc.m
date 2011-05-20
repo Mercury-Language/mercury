@@ -535,7 +535,7 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
     (
         AtomicStatement0 = new_object(Lval, MaybeTag, _ExplicitSecTag,
             PointerType, _MaybeSizeInWordsRval, _MaybeCtorName,
-            ArgRvals, _ArgTypes, _MayUseAtomic)
+            ArgRvals, _ArgTypes, _MayUseAtomic, _AllocId)
     ->
         % Generate the declaration of the new local variable.
         %

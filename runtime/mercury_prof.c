@@ -401,8 +401,8 @@ print_memory_node(FILE *words_fptr, FILE *cells_fptr, MR_memprof_record *node)
         MR_convert_dword_to_double(words, words_double);
         MR_convert_dword_to_double(cells, cells_double);
 
-        fprintf(words_fptr, "%ld %.0f\n", (long) node->addr, words_double);
-        fprintf(cells_fptr, "%ld %.0f\n", (long) node->addr, cells_double);
+        fprintf(words_fptr, "%ld %.0f\n", (long) node->proc, words_double);
+        fprintf(cells_fptr, "%ld %.0f\n", (long) node->proc, cells_double);
 
         print_memory_node(words_fptr, cells_fptr, node->left);
         print_memory_node(words_fptr, cells_fptr, node->right);
@@ -465,6 +465,10 @@ MR_prof_finish(void)
 
 #ifdef MR_MPROF_PROFILE_MEMORY
     prof_output_mem_tables();
+#endif
+
+#ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+    MR_finish_prof_snapshots_file();
 #endif
 }
 

@@ -511,8 +511,9 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         var_types(!.CI, Args, ArgTypes),
         generate_cons_args(Args, ArgTypes, Modes, 0, 1, TakeAddr, !.CI,
             MaybeRvals, FieldAddrs, MayUseAtomic),
+        Context = goal_info_get_context(GoalInfo),
         construct_cell(Var, Ptag, MaybeRvals, HowToConstruct,
-            MaybeSize, FieldAddrs, MayUseAtomic, Code, !CI)
+            MaybeSize, FieldAddrs, Context, MayUseAtomic, Code, !CI)
     ;
         ConsTag = shared_remote_tag(Ptag, Sectag),
         var_types(!.CI, Args, ArgTypes),
@@ -520,8 +521,9 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
             MaybeRvals0, FieldAddrs, MayUseAtomic),
         % The first field holds the secondary tag.
         MaybeRvals = [yes(const(llconst_int(Sectag))) | MaybeRvals0],
+        Context = goal_info_get_context(GoalInfo),
         construct_cell(Var, Ptag, MaybeRvals, HowToConstruct,
-            MaybeSize, FieldAddrs, MayUseAtomic, Code, !CI)
+            MaybeSize, FieldAddrs, Context, MayUseAtomic, Code, !CI)
     ;
         ConsTag = shared_local_tag(Ptag, Sectag),
         assign_const_to_var(Var,
@@ -686,6 +688,9 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             NumNewArgsPlusThree = NumNewArgs + 3,
             NumNewArgsPlusThree_Rval = const(llconst_int(NumNewArgsPlusThree)),
             produce_variable(CallPred, OldClosureCode, OldClosure, !CI),
+            Context = goal_info_get_context(GoalInfo),
+            maybe_add_alloc_site_info(Context, "closure", NumNewArgsPlusThree,
+                MaybeAllocId, !CI),
             % The new closure contains a pointer to the old closure.
             NewClosureMayUseAtomic = may_not_use_atomic_alloc,
             NewClosureCode = from_list([
@@ -695,7 +700,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                     "get number of arguments"),
                 llds_instr(incr_hp(NewClosure, no, no,
                     binop(int_add, lval(NumOldArgs), NumNewArgsPlusThree_Rval),
-                    "closure", NewClosureMayUseAtomic, no, no_llds_reuse),
+                    MaybeAllocId, NewClosureMayUseAtomic, no, no_llds_reuse),
                     "allocate new closure"),
                 llds_instr(assign(field(yes(0), lval(NewClosure), Zero),
                     lval(field(yes(0), OldClosure, Zero))),
@@ -784,8 +789,10 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         ],
         % XXX construct_dynamically is just a dummy value. We just want
         % something which is not construct_in_region(_).
+        maybe_add_alloc_site_info(Context, "closure", length(Vector),
+            MaybeAllocId, !CI),
         assign_cell_to_var(Var, no, 0, Vector, construct_dynamically, no, [],
-            "closure", MayUseAtomic, Code, !CI)
+            MaybeAllocId, MayUseAtomic, Code, !CI)
     ).
 
 :- pred generate_extra_closure_args(list(prog_var)::in, lval::in,
@@ -934,11 +941,11 @@ initial_may_use_atomic(ModuleInfo) = InitMayUseAtomic :-
 
 :- pred construct_cell(prog_var::in, tag::in, list(maybe(rval))::in,
     how_to_construct::in, maybe(term_size_value)::in,
-    assoc_list(int, prog_var)::in, may_use_atomic_alloc::in,
+    assoc_list(int, prog_var)::in, prog_context::in, may_use_atomic_alloc::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
 construct_cell(Var, Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs,
-        MayUseAtomic, Code, !CI) :-
+        Context, MayUseAtomic, Code, !CI) :-
     VarType = variable_type(!.CI, Var),
     var_type_msg(VarType, VarTypeMsg),
     % If we're doing accurate GC, then for types which hold RTTI that
@@ -958,8 +965,10 @@ construct_cell(Var, Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs,
         ReserveWordAtStart = no
     ),
     FieldNums = list.map(fst, FieldAddrs),
+    Size = list.length(MaybeRvals),
+    maybe_add_alloc_site_info(Context, VarTypeMsg, Size, MaybeAllocId, !CI),
     assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals,
-        HowToConstruct, MaybeSize, FieldNums, VarTypeMsg, MayUseAtomic,
+        HowToConstruct, MaybeSize, FieldNums, MaybeAllocId, MayUseAtomic,
         CellCode, !CI),
     (
         FieldAddrs = [],
@@ -973,6 +982,21 @@ construct_cell(Var, Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs,
         generate_field_take_address_assigns(FieldAddrs, Var, Ptag,
             FieldCode, !CI),
         Code = CellCode ++ FieldCode
+    ).
+
+:- pred maybe_add_alloc_site_info(prog_context::in, string::in, int::in,
+    maybe(alloc_site_id)::out, code_info::in, code_info::out) is det.
+
+maybe_add_alloc_site_info(Context, VarTypeMsg, Size, MaybeAllocId, !CI) :-
+    get_globals(!.CI, Globals),
+    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
+    (
+        ProfileMemory = yes,
+        add_alloc_site_info(Context, VarTypeMsg, Size, AllocId, !CI),
+        MaybeAllocId = yes(AllocId)
+    ;
+        ProfileMemory = no,
+        MaybeAllocId = no
     ).
 
 :- pred generate_field_take_address_assigns(assoc_list(int, prog_var)::in,

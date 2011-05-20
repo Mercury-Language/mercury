@@ -274,7 +274,7 @@ MR_init_context_stuff(void)
     ** affinities later on.
     */
     if (MR_num_threads == 0) {
-  #if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
+      #if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
         long result;
 
         result = sysconf(_SC_NPROCESSORS_ONLN);
@@ -288,24 +288,27 @@ MR_init_context_stuff(void)
             ** automatically enable thread pinning. This prevents a runtime
             ** warning that could unnecessarily confuse the user.
             **/
-    #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
+          #if defined(MR_LL_PARALLEL_CONJ) && \
+              defined(MR_HAVE_SCHED_SETAFFINITY)
             /*
             ** Comment this back in to enable thread pinning by default if we
             ** autodetected the correct number of CPUs.
             */
             /* MR_thread_pinning = MR_TRUE; */
-    #endif
+          #endif
         }
-    #else /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
+      #else /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
         MR_num_threads = 1;
-  #endif /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
+      #endif /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
     }
   #ifdef MR_LL_PARALLEL_CONJ
     MR_granularity_wsdeque_length =
         MR_granularity_wsdeque_length_factor * MR_num_threads;
 
-    MR_spark_deques = MR_GC_NEW_ARRAY(MR_SparkDeque*, MR_num_threads);
-    engine_sleep_sync_data = MR_GC_NEW_ARRAY(engine_sleep_sync, MR_num_threads);
+    MR_spark_deques = MR_GC_NEW_ARRAY_ATTRIB(MR_SparkDeque*,
+        MR_num_threads, MR_ALLOC_SITE_RUNTIME);
+    engine_sleep_sync_data = MR_GC_NEW_ARRAY_ATTRIB(engine_sleep_sync,
+        MR_num_threads, MR_ALLOC_SITE_RUNTIME);
     for (i = 0; i < MR_num_threads; i++) {
         MR_spark_deques[i] = NULL;
 
@@ -345,12 +348,12 @@ MR_pin_primordial_thread(void)
     temp = sched_getcpu();
     if (temp == -1) {
         MR_primordial_thread_cpu = 0;
-    #ifdef MR_HAVE_SCHED_SET_AFFINITY
+      #ifdef MR_HAVE_SCHED_SET_AFFINITY
         if (MR_thread_pinning) {
             perror("Warning: unable to determine the current CPU for "
                 "the primordial thread: ");
         }
-    #endif
+      #endif
     } else {
         MR_primordial_thread_cpu = temp;
     }
@@ -799,7 +802,7 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 #endif
 
     if (c == NULL) {
-        c = MR_GC_NEW(MR_Context);
+        c = MR_GC_NEW_ATTRIB(MR_Context, MR_ALLOC_SITE_RUNTIME);
 #ifdef MR_DEBUG_STACK_SEGMENTS
         if (c) {
             MR_debug_log_message("Creating new context: %p", c);

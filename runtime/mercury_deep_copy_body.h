@@ -36,6 +36,11 @@ static  MR_PseudoTypeInfo   copy_pseudo_type_info(
 static  MR_Word             copy_typeclass_info(MR_Word typeclass_info,
                                 const MR_Word *lower_limit,
                                 const MR_Word *upper_limit);
+#ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+static MR_AllocSiteInfoPtr  maybe_attrib(MR_Word *data_value);
+#else
+#define maybe_attrib(x)     NULL
+#endif
 
 /*
 ** We need to make sure that we don't clobber any part of
@@ -214,6 +219,7 @@ try_again:
                 {                                                           \
                     const MR_DuFunctorDesc  *functor_desc;                  \
                     const MR_DuExistInfo    *exist_info;                    \
+                    MR_AllocSiteInfoPtr     attrib;                         \
                     int                     sectag;                         \
                     int                     cell_size;                      \
                     int                     cur_slot;                       \
@@ -241,8 +247,9 @@ try_again:
                     cell_size += MR_SIZE_SLOT_SIZE;                         \
                                                                             \
                     if (exist_info == NULL) {                               \
+                        attrib = maybe_attrib(data_value);                  \
                         MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE, \
-                                cell_size);                                 \
+                                cell_size, attrib, NULL);                   \
                                                                             \
                         MR_copy_size_slot(0, new_data, ptag, data);         \
                         MR_get_first_slot(have_sectag);                     \
@@ -254,8 +261,9 @@ try_again:
                         num_tci = exist_info->MR_exist_tcis;                \
                         cell_size += num_ti_plain + num_tci;                \
                                                                             \
+                        attrib = maybe_attrib(data_value);                  \
                         MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE, \
-                                cell_size);                                 \
+                                cell_size, attrib, NULL);                   \
                                                                             \
                         MR_copy_size_slot(0, new_data, ptag, data);         \
                         MR_get_first_slot(have_sectag);                     \
@@ -398,9 +406,11 @@ try_again:
             RETURN_IF_OUT_OF_RANGE(data, (MR_Word *) data, 0, MR_Word);
 
             {
-                MR_String   new_string;
+                MR_String           new_string;
+                MR_AllocSiteInfoPtr attrib;
+                attrib = maybe_attrib((MR_Word *) data);
                 MR_make_aligned_string_copy_saved_hp(new_string,
-                        (MR_String) data);
+                        (MR_String) data, attrib);
                 new_data = (MR_Word) new_string;
                 leave_forwarding_pointer(data, 0, new_data);
             }
@@ -432,13 +442,16 @@ try_again:
                 MR_Word             new_closure_word;
                 MR_Closure_Layout   *closure_layout;
                 MR_TypeInfo         *type_info_arg_vector;
+                MR_AllocSiteInfoPtr attrib;
 
                 old_closure = (MR_Closure *) data_value;
                 closure_layout = old_closure->MR_closure_layout;
                 args = old_closure->MR_closure_num_hidden_args;
 
                 /* create new closure */
-                MR_offset_incr_saved_hp(new_closure_word, 0, args + 3);
+                attrib = maybe_attrib(data_value);
+                MR_offset_incr_saved_hp(new_closure_word, 0, args + 3,
+                    attrib, NULL);
                 new_closure = (MR_Closure *) new_closure_word;
 
                 /* copy the fixed fields */
@@ -490,6 +503,7 @@ try_again:
             {
                 MR_Word *new_data_ptr;
                 MR_TypeInfo *arg_typeinfo_vector;
+                MR_AllocSiteInfoPtr attrib;
 
                 arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
 
@@ -497,8 +511,9 @@ try_again:
                     new_data = (MR_Word) NULL;
                 } else {
                     /* allocate space for the new tuple */
+                    attrib = maybe_attrib(data_value);
                     MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,
-                        MR_SIZE_SLOT_SIZE + arity);
+                        MR_SIZE_SLOT_SIZE + arity, attrib, NULL);
                     MR_copy_size_slot(0, new_data, 0, data);
                     new_data_ptr = (MR_Word *) new_data;
 
@@ -536,10 +551,13 @@ try_again:
                 MR_ArrayType *new_array;
                 MR_ArrayType *old_array;
                 MR_Integer array_size;
+                MR_AllocSiteInfoPtr attrib;
 
                 old_array = (MR_ArrayType *) data_value;
                 array_size = old_array->size;
-                MR_offset_incr_saved_hp(new_data, 0, array_size + 1);
+                attrib = maybe_attrib(data_value);
+                MR_offset_incr_saved_hp(new_data, 0, array_size + 1,
+                    attrib, NULL);
                 new_array = (MR_ArrayType *) new_data;
                 new_array->size = array_size;
                 for (i = 0; i < array_size; i++) {
@@ -568,7 +586,8 @@ try_again:
                 MR_BitmapPtr old_array;
 
                 old_array = (MR_BitmapPtr) data_value;
-                MR_allocate_bitmap_saved_hp(new_array, old_array->num_bits);
+                MR_allocate_bitmap_saved_hp(new_array, old_array->num_bits,
+                    NULL);
                 MR_copy_bitmap(new_array, old_array);
                 new_data = (MR_Word) new_array;
                 leave_forwarding_pointer(data, 0, new_data);
@@ -658,13 +677,15 @@ try_again:
             MR_Word *ref;
             MR_Word *new_ref;
             int     i;
+            MR_AllocSiteInfoPtr attrib;
 
             assert(MR_tag(data) == 0);
             ref = (MR_Word *) MR_body(data, MR_mktag(0));
 
             RETURN_IF_OUT_OF_RANGE(data, ref, 0, MR_Word);
 
-            MR_offset_incr_saved_hp(new_data, 0, 1);
+            attrib = maybe_attrib(ref);
+            MR_offset_incr_saved_hp(new_data, 0, 1, attrib, NULL);
             new_ref = (MR_Word *) new_data;
             *new_ref = copy_arg(NULL, *ref, NULL,
                         MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
@@ -792,6 +813,7 @@ copy_type_info(MR_TypeInfo type_info,
         int             arity;
         int             i;
         int             forwarding_pointer_size;
+        MR_AllocSiteInfoPtr attrib;
         
         /*
         ** Note that we assume type_ctor_infos will always be
@@ -821,18 +843,23 @@ copy_type_info(MR_TypeInfo type_info,
             arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
             type_info_args =
                 MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
+            attrib = maybe_attrib((MR_Word *) type_info);
             MR_offset_incr_saved_hp(new_type_info_arena_word,
                 forwarding_pointer_size,
-                MR_var_arity_type_info_size(arity) + forwarding_pointer_size);
+                MR_var_arity_type_info_size(arity) + forwarding_pointer_size,
+                attrib, NULL
+            );
             new_type_info_arena = (MR_Word *) new_type_info_arena_word;
             MR_fill_in_var_arity_type_info(new_type_info_arena,
                 type_ctor_info, arity, new_type_info_args);
         } else {
             arity = type_ctor_info->MR_type_ctor_arity;
             type_info_args = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
+            attrib = maybe_attrib((MR_Word *) type_info);
             MR_offset_incr_saved_hp(new_type_info_arena_word,
                 forwarding_pointer_size,
-                MR_fixed_arity_type_info_size(arity) + forwarding_pointer_size
+                MR_fixed_arity_type_info_size(arity) + forwarding_pointer_size,
+                attrib, NULL
             );
             new_type_info_arena = (MR_Word *) new_type_info_arena_word;
             MR_fill_in_fixed_arity_type_info(new_type_info_arena,
@@ -875,6 +902,7 @@ copy_pseudo_type_info(MR_PseudoTypeInfo pseudo_type_info,
         int                 arity;
         int                 i;
         int                 forwarding_pointer_size;
+        MR_AllocSiteInfoPtr attrib;
         
         /*
         ** Note that we assume type_ctor_infos will always be
@@ -905,10 +933,13 @@ copy_pseudo_type_info(MR_PseudoTypeInfo pseudo_type_info,
             arity = MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pseudo_type_info);
             pseudo_type_info_args =
                 MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(pseudo_type_info);
+            attrib = maybe_attrib((MR_Word *) pseudo_type_info);
             MR_offset_incr_saved_hp(new_pseudo_type_info_arena_word,
                 forwarding_pointer_size,
                 MR_var_arity_pseudo_type_info_size(arity)
-                    + forwarding_pointer_size);
+                    + forwarding_pointer_size,
+                attrib, NULL
+            );
             new_pseudo_type_info_arena = (MR_Word *)
                 new_pseudo_type_info_arena_word;
             MR_fill_in_var_arity_pseudo_type_info(new_pseudo_type_info_arena,
@@ -917,10 +948,12 @@ copy_pseudo_type_info(MR_PseudoTypeInfo pseudo_type_info,
             arity = type_ctor_info->MR_type_ctor_arity;
             pseudo_type_info_args =
                 MR_PSEUDO_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(pseudo_type_info);
+            attrib = maybe_attrib((MR_Word *) pseudo_type_info);
             MR_offset_incr_saved_hp(new_pseudo_type_info_arena_word,
                 forwarding_pointer_size,
                 MR_fixed_arity_pseudo_type_info_size(arity)
-                    + forwarding_pointer_size
+                    + forwarding_pointer_size,
+                attrib, NULL
             );
             new_pseudo_type_info_arena = (MR_Word *)
                 new_pseudo_type_info_arena_word;
@@ -985,7 +1018,8 @@ copy_typeclass_info(MR_Word typeclass_info_param,
         MR_offset_incr_saved_hp(new_typeclass_info_word,
             forwarding_pointer_size,
             forwarding_pointer_size + 1 /* for basetypeclass_info */
-            + num_instance_constraints + num_super + num_arg_typeinfos);
+            + num_instance_constraints + num_super + num_arg_typeinfos,
+            NULL, NULL);
         new_typeclass_info = (MR_Word *) new_typeclass_info_word;
 
         new_typeclass_info[0] = (MR_Word) base_typeclass_info;
@@ -1030,3 +1064,26 @@ copy_typeclass_info(MR_Word typeclass_info_param,
         return (MR_Word) new_typeclass_info;
     }
 }
+
+/*
+** Try to return the allocation identifier for the given object, or NULL.
+** If present, allocation identifiers always occupy the first word of an
+** allocated object, with the Mercury cell starting at the second word.
+*/
+#ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+static MR_AllocSiteInfoPtr
+maybe_attrib(MR_Word *data_value)
+{
+    MR_Word *base;
+
+    /* Strings are not always aligned, for example. */
+    if (MR_tag(data_value) == 0) {
+        base = GC_base(data_value);
+        if (&base[1] == data_value) {
+            return (MR_AllocSiteInfoPtr) *base;
+        }
+    }
+
+    return NULL;
+}
+#endif

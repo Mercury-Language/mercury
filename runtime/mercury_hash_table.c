@@ -28,7 +28,8 @@ MR_ht_init_table(MR_Hash_Table *table)
 {
     int i;
 
-    table->MR_ht_store = MR_GC_NEW_ARRAY(MR_Dlist *, table->MR_ht_size);
+    table->MR_ht_store = MR_GC_NEW_ARRAY_ATTRIB(MR_Dlist *, table->MR_ht_size,
+        MR_ALLOC_SITE_RUNTIME);
 
     for (i = 0; i < table->MR_ht_size; i++) {
         table->MR_ht_store[i] = NULL;

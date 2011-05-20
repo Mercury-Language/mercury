@@ -358,7 +358,7 @@ ML_tr_resize_array(MR_ArrayType *array, const MR_ArrayType *old_array,
         Array::array_uo),
     [promise_pure, will_not_call_mercury],
 "
-    ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
+    ML_alloc_array(Array, Size + 1, MR_ALLOC_ID);
     ML_tr_resize_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0,
         Size, Item);
 ").
@@ -367,7 +367,7 @@ ML_tr_resize_array(MR_ArrayType *array, const MR_ArrayType *old_array,
 %   tr_array.resize(Array0::in, Size::in, Item::in, Array::array_uo),
 %   [promise_pure, will_not_call_mercury],
 % "
-%   MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+%   MR_incr_hp_msg(Array, Size + 1, MR_ALLOC_ID, ""array.array/1"");
 %   ML_tr_resize_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0,
 %       Size, Item);
 % ").
@@ -409,7 +409,7 @@ ML_tr_shrink_array(MR_ArrayType *array, const MR_ArrayType *old_array,
     tr_array.shrink(Array0::array_mui, Size::in, Array::array_uo),
     [promise_pure, will_not_call_mercury],
 "
-    ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
+    ML_alloc_array(Array, Size + 1, MR_ALLOC_ID);
     ML_tr_shrink_array((MR_ArrayType *) Array,
         (const MR_ArrayType *) Array0, Size);
 ").
@@ -418,7 +418,7 @@ ML_tr_shrink_array(MR_ArrayType *array, const MR_ArrayType *old_array,
 %   tr_array.shrink(Array0::in, Size::in, Array::array_uo),
 %   [promise_pure, will_not_call_mercury],
 % "
-%   MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+%   MR_incr_hp_msg(Array, Size + 1, MR_ALLOC_ID, ""array.array/1"");
 %   ML_tr_shrink_array((MR_ArrayType *) Array,
 %       (const MR_ArrayType *) Array0, Size);
 % ").
@@ -457,7 +457,7 @@ ML_tr_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
     [promise_pure, will_not_call_mercury],
 "
     ML_alloc_array(Array, ((const MR_ArrayType *)Array0)->size + 1,
-        MR_PROC_LABEL);
+        MR_ALLOC_ID);
     ML_tr_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0);
 ").
 
@@ -466,7 +466,7 @@ ML_tr_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
 %   [promise_pure, will_not_call_mercury],
 % "
 %   MR_incr_hp_msg(Array, ((const MR_ArrayType *)Array0)->size + 1,
-%       MR_PROC_LABEL, ""array:array/1"");
+%       MR_ALLOC_ID, ""array.array/1"");
 %   ML_tr_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0);
 % ").
 

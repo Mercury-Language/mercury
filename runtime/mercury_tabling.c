@@ -747,7 +747,8 @@ MR_cmp_bitmaps(const void *p1, const void *p2)
                 slot = table->hash_table[bucket].table_field;           \
                 while (slot != NULL) {                                  \
                     MR_GC_ensure_room_for_next(value, type_name,        \
-                        MR_INIT_HASH_CONTENTS_ARRAY_SIZE);              \
+                        MR_INIT_HASH_CONTENTS_ARRAY_SIZE,               \
+                        MR_ALLOC_SITE_TABLING);                         \
                     values[value_next] = slot->key;                     \
                     value_next++;                                       \
                     slot = slot->next;                                  \

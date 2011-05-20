@@ -55,9 +55,11 @@ static MR_TypeInfo          MR_get_arg_type_info(
         MR_Word         *target_word_ptr;                           \
         MR_MemoryList   node;                                       \
                                                                     \
-        target_word_ptr = MR_GC_NEW_ARRAY(MR_Word, (size));         \
+        target_word_ptr = MR_GC_NEW_ARRAY_ATTRIB(MR_Word, (size),   \
+            MR_ALLOC_SITE_TYPE_INFO);                               \
         (target) = (MR_Word) target_word_ptr;                       \
-        node = MR_GC_malloc(sizeof(*node));                         \
+        node = MR_GC_malloc_attrib(sizeof(*node),                   \
+            MR_ALLOC_SITE_TYPE_INFO);                               \
         node->data = target_word_ptr;                               \
         node->next = *allocated;                                    \
         *allocated = node;                                          \
@@ -87,13 +89,13 @@ static MR_TypeInfo          MR_get_arg_type_info(
     do {                                                            \
         /* reserve one extra word for GC forwarding pointer */      \
         /* (see comments in compiler/mlds_to_c.m for details) */    \
-        MR_offset_incr_saved_hp((target), 0, 1);                    \
-        MR_offset_incr_saved_hp((target), 0, (size));               \
+        MR_offset_incr_saved_hp((target), 0, 1, NULL, NULL);        \
+        MR_offset_incr_saved_hp((target), 0, (size), NULL, NULL);   \
     } while (0)
 #else /* !MR_NATIVE_GC */
   #define ALLOCATE_WORDS(target, size)                              \
     do {                                                            \
-        MR_offset_incr_saved_hp((target), 0, (size));               \
+        MR_offset_incr_saved_hp((target), 0, (size), NULL, NULL);   \
     } while (0)
 #endif /* !MR_NATIVE_GC */
 
@@ -121,13 +123,13 @@ static MR_TypeInfo          MR_get_arg_type_info(
     do {                                                            \
         /* reserve one extra word for GC forwarding pointer */      \
         /* (see comments in compiler/mlds_to_c.m for details) */    \
-        MR_offset_incr_saved_hp((target), 0, 1);                    \
-        MR_offset_incr_saved_hp((target), 0, (size));               \
+        MR_offset_incr_saved_hp((target), 0, 1, NULL, NULL);        \
+        MR_offset_incr_saved_hp((target), 0, (size), NULL, NULL);   \
     } while (0)
 #else /* !MR_NATIVE_GC */
   #define ALLOCATE_WORDS(target, size)                              \
     do {                                                            \
-        MR_offset_incr_saved_hp((target), 0, (size));               \
+        MR_offset_incr_saved_hp((target), 0, (size), NULL, NULL);   \
     } while (0)
 #endif /* !MR_NATIVE_GC */
 
@@ -762,8 +764,12 @@ MR_deallocate(MR_MemoryList allocated)
 {
     while (allocated != NULL) {
         MR_MemoryList next = allocated->next;
-        MR_GC_free(allocated->data);
-        MR_GC_free(allocated);
+        /*
+        ** These were allocated with MR_GC_NEW_ARRAY_ATTRIB so we must free
+        ** using MR_GC_free_attrib.
+        **/
+        MR_GC_free_attrib(allocated->data);
+        MR_GC_free_attrib(allocated);
         allocated = next;
     }
 }

@@ -248,7 +248,7 @@ MR_insert_internal_label(const char *name, MR_Code *addr,
 
     MR_do_init_label_tables();
 
-    internal = MR_GC_NEW(MR_Internal);
+    internal = MR_GC_NEW_ATTRIB(MR_Internal, MR_ALLOC_SITE_RUNTIME);
     internal->MR_internal_addr = addr;
     internal->MR_internal_layout = label_layout;
     internal->MR_internal_name = name;

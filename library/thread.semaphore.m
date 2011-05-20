@@ -127,12 +127,10 @@ init(Semaphore, !IO) :-
     init(Count::in) = (Semaphore::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    MR_Word         sem_mem;
     ML_Semaphore    *sem;
 
-    MR_alloc_heap(sem_mem,
-        MR_round_up(sizeof(ML_Semaphore), sizeof(MR_Word)));
-    sem = (ML_Semaphore *) sem_mem;
+    MR_incr_hp_type_msg(sem, ML_Semaphore,
+        MR_ALLOC_ID, ""thread.semaphore.semaphore/0"");
     sem->count = Count;
 #ifndef MR_HIGHLEVEL_CODE
     sem->suspended_head = NULL;

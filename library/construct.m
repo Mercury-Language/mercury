@@ -334,7 +334,7 @@ get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
             ArgNameList = MR_list_empty();
             for (i = 0; i < Arity; i++) {
                 ArgNameList = MR_string_list_cons_msg((MR_Word) NULL,
-                    ArgNameList, MR_PROC_LABEL);
+                    ArgNameList, MR_ALLOC_ID);
             }
             MR_restore_transient_registers();
         } else {
@@ -689,7 +689,7 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
 
                     MR_tag_offset_incr_hp_msg(new_data, ptag,
                         MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1 + arity,
-                        MR_PROC_LABEL, ""<created by construct.construct/3>"");
+                        MR_ALLOC_ID, ""<created by construct.construct/3>"");
 
                     size = MR_cell_size(arity);
                     MR_field(ptag, new_data, 0) =
@@ -714,7 +714,7 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
 
                     MR_tag_offset_incr_hp_msg(new_data, ptag,
                         MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + arity,
-                        MR_PROC_LABEL, ""<created by construct.construct/3>"");
+                        MR_ALLOC_ID, ""<created by construct.construct/3>"");
 
                     size = MR_cell_size(arity);
                     for (i = 0; i < arity; i++) {
@@ -765,7 +765,7 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                     new_data = (MR_Word) NULL;
                 } else {
                     MR_offset_incr_hp_msg(new_data, MR_SIZE_SLOT_SIZE,
-                        MR_SIZE_SLOT_SIZE + arity, MR_PROC_LABEL,
+                        MR_SIZE_SLOT_SIZE + arity, MR_ALLOC_ID,
                         ""<created by construct.construct/3>"");
 
                     size = MR_cell_size(arity);
@@ -1020,7 +1020,7 @@ construct_tuple(Args) =
         new_data = (MR_Word) NULL;
     } else {
         MR_offset_incr_hp_msg(new_data, MR_SIZE_SLOT_SIZE,
-            MR_SIZE_SLOT_SIZE + Arity, MR_PROC_LABEL,
+            MR_SIZE_SLOT_SIZE + Arity, MR_ALLOC_ID,
             ""<created by construct.construct_tuple/1>"");
 
         size = MR_cell_size(Arity);

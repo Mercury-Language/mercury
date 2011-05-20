@@ -67,6 +67,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
@@ -92,7 +93,8 @@
 %   <save live variables onto the stack> /* see note (1) below */
 %   {
 %       <declaration of one local variable for each arg>
-%       #define MR_PROC_LABEL <procedure label> /* see note (5) below */
+%       #define MR_ALLOC_ID <allocation id> /* see note (5) below */
+%       #define MR_PROC_LABEL <procedure label>
 %
 %       <assignment of input values from registers to local variables>
 %       MR_save_registers(); /* see notes (1) and (2) below */
@@ -103,7 +105,8 @@
 %       #endif
 %       <assignment of the output values from local variables to registers>
 %
-%       #undef MR_PROC_LABEL /* see note (5) below */
+%       #undef MR_ALLOC_ID /* see note (5) below */
+%       #undef MR_PROC_LABEL
 %   }
 %
 % In the case of a semidet foreign_proc, the above is followed by
@@ -142,7 +145,8 @@
 %   <assignment of input values from registers to local variables>
 %   <assignment to save struct pointer>
 %   MR_save_registers(); /* see notes (1) and (2) below */
-%   #define MR_PROC_LABEL <procedure label> /* see note (5) below */
+%   #define MR_ALLOC_ID <allocation id> /* see note (5) below */
+%   #define MR_PROC_LABEL <procedure label>
 %   #define SUCCEED()   goto callsuccesslabel
 %   #define SUCCEED_LAST()  goto calllastsuccesslabel
 %   #define FAIL()      fail()
@@ -159,7 +163,8 @@
 %   #undef SUCCEED
 %   #undef SUCCEED_LAST
 %   #undef FAIL
-%   #undef MR_PROC_LABEL /* see note (5) below */
+%   #undef MR_ALLOC_ID /* see note (5) below */
+%   #undef MR_PROC_LABEL
 % }
 % MR_define_label(xxx_i1)
 % <code for entry to a later disjunct>
@@ -168,7 +173,8 @@
 %   <declaration of one local variable to point to save struct>
 %   <assignment to save struct pointer>
 %   MR_save_registers(); /* see notes (1) and (2) below */
-%   #define MR_PROC_LABEL <procedure label> /* see note (5) below */
+%   #define MR_ALLOC_ID <allocation id> /* see note (5) below */
+%   #define MR_PROC_LABEL <procedure label>
 %   #define SUCCEED()   goto retrysuccesslabel
 %   #define SUCCEED_LAST()  goto retrylastsuccesslabel
 %   #define FAIL()      fail()
@@ -185,7 +191,8 @@
 %   #undef SUCCEED
 %   #undef SUCCEED_LAST
 %   #undef FAIL
-%   #undef MR_PROC_LABEL /* see note (5) below */
+%   #undef MR_ALLOC_ID /* see note (5) below */
+%   #undef MR_PROC_LABEL
 % }
 % <--- boundary between code generated here and epilog --->
 % <#undef MR_ORDINARY_SLOTS>
@@ -203,7 +210,8 @@
 %   <assignment of input values from registers to local variables>
 %   <assignment to save struct pointer>
 %   MR_save_registers(); /* see notes (1) and (2) below */
-%   #define MR_PROC_LABEL <procedure label> /* see note (5) below */
+%   #define MR_ALLOC_ID <allocation id> /* see note (5) below */
+%   #define MR_PROC_LABEL <procedure label>
 %   #define SUCCEED()   goto callsuccesslabel
 %   #define SUCCEED_LAST()  goto calllastsuccesslabel
 %   #define FAIL()      fail()
@@ -220,7 +228,8 @@
 %   #undef SUCCEED
 %   #undef SUCCEED_LAST
 %   #undef FAIL
-%   #undef MR_PROC_LABEL /* see note (5) below */
+%   #undef MR_ALLOC_ID /* see note (5) below */
+%   #undef MR_PROC_LABEL
 % }
 % MR_define_label(xxx_i1)
 % <code for entry to a later disjunct>
@@ -229,7 +238,8 @@
 %   <declaration of one local variable to point to save struct>
 %   <assignment to save struct pointer>
 %   MR_save_registers(); /* see notes (1) and (2) below */
-%   #define MR_PROC_LABEL <procedure label> /* see note (5) below */
+%   #define MR_ALLOC_ID <allocation id> /* see note (5) below */
+%   #define MR_PROC_LABEL <procedure label>
 %   #define SUCCEED()   goto retrysuccesslabel
 %   #define SUCCEED_LAST()  goto retrylastsuccesslabel
 %   #define FAIL()      fail()
@@ -246,14 +256,16 @@
 %   #undef SUCCEED
 %   #undef SUCCEED_LAST
 %   #undef FAIL
-%   #undef MR_PROC_LABEL /* see note (5) below */
+%   #undef MR_ALLOC_ID /* see note (5) below */
+%   #undef MR_PROC_LABEL
 % }
 % MR_define_label(xxx_i2)
 % {
 %   <declaration of one local variable for each output arg>
 %   <declaration of one local variable to point to save struct>
 %   <assignment to save struct pointer>
-%   #define MR_PROC_LABEL <procedure label> /* see note (5) below */
+%   #define MR_ALLOC_ID <allocation id> /* see note (5) below */
+%   #define MR_PROC_LABEL <procedure label>
 %   #define SUCCEED()   goto sharedsuccesslabel
 %   #define SUCCEED_LAST()  goto sharedlastsuccesslabel
 %   #define FAIL()      fail()
@@ -269,7 +281,8 @@
 %   #undef SUCCEED
 %   #undef SUCCEED_LAST
 %   #undef FAIL
-%   #undef MR_PROC_LABEL /* see note (5) below */
+%   #undef MR_ALLOC_ID /* see note (5) below */
+%   #undef MR_PROC_LABEL
 % }
 % <--- boundary between code generated here and epilog --->
 % <#undef MR_ORDINARY_SLOTS>
@@ -337,12 +350,10 @@
 %   these macros can be invoked from other macros, and thus we do not have
 %   a sure test of whether the code fragments invoke the macros.
 %
-% 5 We insert a #define for MR_PROC_LABEL, so that the C code in the Mercury
-%   standard library that allocates memory manually can use MR_PROC_LABEL as
-%   the procname argument to incr_hp_msg(), for memory profiling. Hard-coding
-%   the procname argument in the C code would be wrong, since it wouldn't
-%   handle the case where the original foreign_proc gets inlined and optimized
-%   away. Of course we also need to #undef it afterwards.
+% 5 We insert a #define for MR_ALLOC_ID so that the C code that allocates
+%   memory manually can use MR_ALLOC_ID as an argument to incr_hp_msg(), for
+%   memory profiling. It replaces an older macro MR_PROC_LABEL, which is
+%   retained only for backwards compatibility.
 
 %---------------------------------------------------------------------------%
 
@@ -489,8 +500,12 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     % Generate <declaration of one local variable for each arg>.
     make_foreign_proc_decls(CArgs, ModuleInfo, CanOptAwayUnnamedArgs, Decls),
 
-    % Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
-    % and #undef MR_PROC_LABEL.
+    % Generate #define MR_ALLOC_ID and #undef MR_ALLOC_ID /* see note (5) */
+    make_alloc_id_hash_define(C_Code, Context, AllocIdHashDefine,
+        AllocIdHashUndef, !CI),
+
+    % Generate #define MR_PROC_LABEL and #undef MR_PROC_LABEL
+    % for backwards compatibility with older hand-written code.
     get_pred_id(!.CI, CallerPredId),
     get_proc_id(!.CI, CallerProcId),
     make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
@@ -606,10 +621,12 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     OutputComp = foreign_proc_outputs(OutputDescs),
 
     % Join all the components of the foreign_proc_code together.
-    Components = [ProcLabelHashDefine, DefSuccessComp, InputComp,
+    Components = [ProcLabelHashDefine | AllocIdHashDefine] ++
+        [DefSuccessComp, InputComp,
         SaveRegsComp, ObtainLock, C_Code_Comp, ReleaseLock,
         CheckSuccess_Comp, RestoreRegsComp,
-        OutputComp, UndefSuccessComp, ProcLabelHashUndef],
+        OutputComp, UndefSuccessComp,
+        ProcLabelHashUndef | AllocIdHashUndef],
     MaybeMayDupl = get_may_duplicate(Attributes),
     (
         MaybeMayDupl = yes(MayDupl)
@@ -679,12 +696,10 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
 
 make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
         ProcLabelHashDef, ProcLabelHashUndef) :-
-    ProcLabelHashDef = foreign_proc_raw_code(cannot_branch_away,
-        proc_does_not_affect_liveness, live_lvals_info(set.init),
-        "#define\tMR_PROC_LABEL\t" ++
-            make_proc_label_string(ModuleInfo, PredId, ProcId) ++ "\n"),
-    ProcLabelHashUndef = foreign_proc_raw_code(cannot_branch_away,
-        proc_does_not_affect_liveness, live_lvals_info(set.init),
+    ProcLabelStr = make_proc_label_string(ModuleInfo, PredId, ProcId),
+    ProcLabelHashDef = simple_foreign_proc_raw_code(
+        "#define\tMR_PROC_LABEL\t" ++ ProcLabelStr ++ "\n"),
+    ProcLabelHashUndef = simple_foreign_proc_raw_code(
         "#undef\tMR_PROC_LABEL\n").
 
 :- func make_proc_label_string(module_info, pred_id, proc_id) = string.
@@ -698,6 +713,44 @@ make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
     ;
         unexpected(this_file, "code_addr in make_proc_label_hash_define")
     ).
+
+:- pred make_alloc_id_hash_define(string::in, maybe(prog_context)::in,
+    list(foreign_proc_component)::out, list(foreign_proc_component)::out,
+    code_info::in, code_info::out) is det.
+
+make_alloc_id_hash_define(C_Code, MaybeContext,
+        AllocIdHashDefine, AllocIdHashUndef, !CI) :-
+    code_info.get_globals(!.CI, Globals),
+    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
+    (
+        ProfileMemory = yes,
+        string.sub_string_search(C_Code, "MR_ALLOC_ID", _)
+    ->
+        (
+            MaybeContext = yes(Context)
+        ;
+            MaybeContext = no,
+            Context = term.context_init
+        ),
+        add_alloc_site_info(Context, "unknown", 0, AllocId, !CI),
+        AllocIdHashDefine = [
+            simple_foreign_proc_raw_code("#define\tMR_ALLOC_ID\t"),
+            foreign_proc_alloc_id(AllocId),
+            simple_foreign_proc_raw_code("\n")
+        ],
+        AllocIdHashUndef = [
+            simple_foreign_proc_raw_code("#undef\tMR_ALLOC_ID\n")
+        ]
+    ;
+        AllocIdHashDefine = [],
+        AllocIdHashUndef = []
+    ).
+
+:- func simple_foreign_proc_raw_code(string) = foreign_proc_component.
+
+simple_foreign_proc_raw_code(Code) =
+    foreign_proc_raw_code(cannot_branch_away, proc_does_not_affect_liveness,
+        live_lvals_info(set.init), Code).
 
 %-----------------------------------------------------------------------------%
 

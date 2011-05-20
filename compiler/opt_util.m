@@ -985,6 +985,7 @@ foreign_proc_component_refers_stackvars(Component) = Refers :-
         ( Component = foreign_proc_user_code(_, _, _)
         ; Component = foreign_proc_raw_code(_, _, _, _)
         ; Component = foreign_proc_fail_to(_)
+        ; Component = foreign_proc_alloc_id(_)
         ; Component = foreign_proc_noop
         ),
         Refers = no
@@ -1153,6 +1154,7 @@ can_component_branch_away(foreign_proc_raw_code(CanBranchAway, _, _, _))
     ).
 can_component_branch_away(foreign_proc_user_code(_, _, _)) = no.
 can_component_branch_away(foreign_proc_fail_to(_)) = yes.
+can_component_branch_away(foreign_proc_alloc_id(_)) = no.
 can_component_branch_away(foreign_proc_noop) = no.
 
 can_instr_fall_through(comment(_)) = yes.
@@ -1579,6 +1581,8 @@ foreign_proc_component_get_rvals_and_lvals(foreign_proc_raw_code(_, _, _, _),
         !Rvals, !Lvals).
 foreign_proc_component_get_rvals_and_lvals(foreign_proc_fail_to(_),
         !Rvals, !Lvals).
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_alloc_id(_),
+        !Rvals, !Lvals).
 foreign_proc_component_get_rvals_and_lvals(foreign_proc_noop,
         !Rvals, !Lvals).
 
@@ -1753,6 +1757,8 @@ count_temps_component(Comp, !R, !F) :-
         Comp = foreign_proc_raw_code(_, _, _, _)
     ;
         Comp = foreign_proc_fail_to(_)
+    ;
+        Comp = foreign_proc_alloc_id(_)
     ;
         Comp = foreign_proc_noop
     ).
@@ -2088,6 +2094,7 @@ touches_nondet_ctrl_component(foreign_proc_outputs(_)) = no.
 touches_nondet_ctrl_component(foreign_proc_raw_code(_, _, _, _)) = no.
 touches_nondet_ctrl_component(foreign_proc_user_code(_, _, _)) = yes.
 touches_nondet_ctrl_component(foreign_proc_fail_to(_)) = no.
+touches_nondet_ctrl_component(foreign_proc_alloc_id(_)) = no.
 touches_nondet_ctrl_component(foreign_proc_noop) = no.
 
 %-----------------------------------------------------------------------------%
@@ -2570,6 +2577,7 @@ replace_labels_comp(Comp0, Comp, ReplMap) :-
         ; Comp0 = foreign_proc_outputs(_)
         ; Comp0 = foreign_proc_user_code(_, _, _)
         ; Comp0 = foreign_proc_raw_code(_, _, _, _)
+        ; Comp0 = foreign_proc_alloc_id(_)
         ; Comp0 = foreign_proc_noop
         ),
         Comp = Comp0

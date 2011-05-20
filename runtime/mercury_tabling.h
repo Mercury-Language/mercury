@@ -558,33 +558,28 @@ extern	void		MR_print_answerblock(FILE *fp,
 #ifndef MR_NATIVE_GC
 
   #define MR_TABLE_NEW(type)						\
-	MR_GC_NEW(type)
+	MR_GC_NEW_ATTRIB(type, MR_ALLOC_SITE_TABLING)
 
   #define MR_TABLE_NEW_ARRAY(type, count)				\
-	MR_GC_NEW_ARRAY(type, (count))
+	MR_GC_NEW_ARRAY_ATTRIB(type, (count), MR_ALLOC_SITE_TABLING)
 
   #define MR_TABLE_RESIZE_ARRAY(ptr, type, count)			\
-	MR_GC_RESIZE_ARRAY((ptr), type, (count))
+	MR_GC_RESIZE_ARRAY_ATTRIB((ptr), type, (count))
 
   #define MR_table_allocate_words(size)					\
-	((MR_Word *) MR_GC_malloc(sizeof(MR_Word) * (size)))
-
-  #define MR_table_reallocate_words(pointer, size)			\
-	(MR_CHECK_EXPR_TYPE((pointer), MR_Word *),			\
-	(MR_Word *) MR_GC_realloc((pointer), sizeof(MR_Word) * (size)))
+	((MR_Word *) MR_GC_malloc_attrib(sizeof(MR_Word) * (size),      \
+            MR_ALLOC_SITE_TABLING))
 
   #define MR_table_allocate_struct(type)				\
-	((type *) MR_GC_malloc(sizeof(type)))
+	((type *) MR_GC_malloc_attrib(sizeof(type),                     \
+            MR_ALLOC_SITE_TABLING))
 
   #define MR_table_allocate_structs(num, type)				\
-	((type *) MR_GC_malloc(sizeof(type) * (num)))
-
-  #define MR_table_reallocate_structs(pointer, num, type)		\
-	(MR_CHECK_EXPR_TYPE((pointer), type *),				\
-	(type *) MR_GC_realloc((pointer), sizeof(type) * (num)))
+	((type *) MR_GC_malloc_attrib(sizeof(type) * (num),             \
+            MR_ALLOC_SITE_TABLING))
 
   #define MR_table_free(pointer)					\
-	MR_GC_free((pointer))
+	MR_GC_free_attrib((pointer))
 
 #else /* MR_NATIVE_GC */
 
@@ -604,14 +599,8 @@ extern	void		MR_print_answerblock(FILE *fp,
   #define MR_table_allocate_bytes(size)					\
 	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
 	(void *) NULL)
-  #define MR_table_reallocate_bytes(pointer, size)			\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
-	(void *) NULL)
 #endif
   #define MR_table_allocate_words(size)					\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
-	(void *) NULL)
-  #define MR_table_reallocate_words(pointer, size)			\
 	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
 	(void *) NULL)
   #define MR_table_allocate_struct(type)				\
@@ -620,17 +609,14 @@ extern	void		MR_print_answerblock(FILE *fp,
   #define MR_table_allocate_structs(num, type)				\
 	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
 	(void *) NULL)
-  #define MR_table_reallocate_structs(pointer, num, type)		\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
-	(void *) NULL)
   #define MR_table_free(pointer)					\
 	MR_fatal_error(MR_TABLE_NATIVE_GC_MSG)
 
 #endif /* MR_NATIVE_GC */
 
-#define MR_table_copy_bytes(dest, source, size)				\
-	MR_memcpy((dest), (source), (size))
-
+/*
+** XXX The extra memory attribution word is not yet copied.
+*/
 #define MR_table_copy_words(dest, source, size)				\
 	(MR_CHECK_EXPR_TYPE((dest), MR_Word *),				\
 	(MR_CHECK_EXPR_TYPE((source), MR_Word *),			\

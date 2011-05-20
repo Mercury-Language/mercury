@@ -41,6 +41,13 @@
     ;       pairfile
     ;       declfile
     ;       libraryfile
+    % Snapshot (memory attribution profiling) options
+    ;       snapshots
+    ;       snapshots_file
+    ;       snapshots_grouping
+    ;       snapshots_hide_details
+    ;       snapshots_include_runtime
+    ;       snapshots_recalc_size       % developers only
     % Miscellaneous Options
     ;       help.
 
@@ -84,6 +91,12 @@ option_default(pairfile,                string("Prof.CallPair")).
 option_default(declfile,                string("Prof.Decl")).
 option_default(libraryfile,             string("")).
 option_default(demangle,                bool(yes)).
+option_default(snapshots,               bool(no)).
+option_default(snapshots_file,          string("Prof.Snapshots")).
+option_default(snapshots_grouping,      string("proc")).
+option_default(snapshots_hide_details,  bool(no)).
+option_default(snapshots_include_runtime, bool(no)).
+option_default(snapshots_recalc_size,   bool(yes)).
 
     % Miscellaneous Options
 option_default(help,                    bool(no)).
@@ -94,12 +107,16 @@ short_option('C', countfile).
 short_option('c', call_graph).
 short_option('d', dynamic_cg).
 short_option('D', declfile).
+short_option('g', snapshots_grouping).
 short_option('h', help).
+short_option('H', snapshots_hide_details).
 short_option('L', libraryfile).
 short_option('m', profile_memory_words).
 short_option('M', profile_memory_cells).
 short_option('p', profile).
 short_option('P', pairfile).
+short_option('r', snapshots_include_runtime).
+short_option('s', snapshots).
 short_option('t', profile_time).
 short_option('v', verbose).
 short_option('V', very_verbose).
@@ -116,6 +133,12 @@ long_option("profile",              profile).
 long_option("profile-memory-words", profile_memory_words).
 long_option("profile-memory-cells", profile_memory_cells).
 long_option("profile-time",         profile_time).
+long_option("snapshots",            snapshots).
+long_option("snapshots-file",       snapshots_file).
+long_option("snapshots-grouping",   snapshots_grouping).
+long_option("snapshots-hide-details", snapshots_hide_details).
+long_option("snapshots-include-runtime", snapshots_include_runtime).
+long_option("snapshots-recalc-size", snapshots_recalc_size).
 long_option("use-dynamic",          dynamic_cg).
 long_option("verbose",              verbose).
 long_option("very-verbose",         very_verbose).
@@ -172,6 +195,22 @@ options_help -->
     io.write_string("\t-L <file>, --library-callgraph <file>\n"),
     io.write_string("\t\tName of the file which contains the call graph for\n"),
     io.write_string("\t\tthe library modules.\n"),
+
+    io.write_string("\nSnapshot options:\n"),
+    io.write_string("\t-s, --snapshots\n"),
+    io.write_string("\t\tShow summary of heap objects at the times\n"),
+    io.write_string("\t\t`benchmarking.report_memory_attribution' was called.\n"),
+    io.write_string("\t\tThis overrides other profiler modes.\n"),
+    io.write_string("\t--snapshot-file <file>\n"),
+    io.write_string("\t\tName of the snapshots file. Usually `Prof.Snapshots'.\n"),
+    io.write_string("\t-g <type>, --snapshots-grouping <type>\n"),
+    io.write_string("\t\tSelect method of grouping results.\n"),
+    io.write_string("\t\tMay be by ""type"" or ""proc"" (default).\n"),
+    io.write_string("\t-H, --snapshots-hide-details\n"),
+    io.write_string("\t\tGenerate a brief profile.\n"),
+    io.write_string("\t-i, --snapshots-include-runtime\n"),
+    io.write_string("\t\tInclude internal Mercury runtime structures in the\n"),
+    io.write_string("\t\tprofile. These are excluded by default.\n"),
 
     io.write_string("\nVerbosity Options:\n"),
     io.write_string("\t-v, --verbose\n"),

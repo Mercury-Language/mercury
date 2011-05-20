@@ -556,7 +556,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
         MR_Word ret_string_word;
         MR_offset_incr_hp_atomic_msg(ret_string_word,
             0, TCP_IO_BYTES_TO_WORDS((i + 1) * sizeof(MR_Char)),
-            MR_PROC_LABEL, ""string.string/0"");
+            MR_ALLOC_ID, ""string.string/0"");
         RetString = (MR_String) ret_string_word;
         MR_memcpy(RetString, read_buffer, i * sizeof(MR_Char));
         RetString[i] = '\\0';

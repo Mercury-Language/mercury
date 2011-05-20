@@ -1556,14 +1556,14 @@ string.to_char_list(Str::uo, CharList::in) :-
     int pos = strlen(Str);
     int c;
 
-    CharList = MR_list_empty_msg(MR_PROC_LABEL);
+    CharList = MR_list_empty_msg(MR_ALLOC_ID);
     for (;;) {
         c = MR_utf8_prev_get(Str, &pos);
         if (c <= 0) {
             break;
         }
         CharList = MR_char_list_cons_msg((MR_UnsignedChar) c, CharList,
-            MR_PROC_LABEL);
+            MR_ALLOC_ID);
     }
 }").
 
@@ -1657,7 +1657,7 @@ string.from_char_list(Chars::in, Str::uo) :-
     /*
     ** Allocate heap space for string
     */
-    MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(Str, size, MR_ALLOC_ID);
 
     /*
     ** Loop to copy the characters from the char_list to the string.
@@ -1777,7 +1777,7 @@ string.from_rev_char_list(Chars, Str) :-
     /*
     ** Allocate heap space for string
     */
-    MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(Str, size, MR_ALLOC_ID);
 
     /*
     ** Set size to be the offset of the end of the string
@@ -1876,7 +1876,7 @@ string.to_code_unit_list_2(String, Index, End, List) :-
         list_ptr = MR_list_tail(list_ptr);
     }
 
-    MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(Str, size, MR_ALLOC_ID);
 
     SUCCESS_INDICATOR = MR_TRUE;
     size = 0;
@@ -2229,7 +2229,7 @@ string.append_list(Lists, string.append_list(Lists)).
     }
 
     /* Allocate enough word aligned memory for the string */
-    MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(Str, len, MR_ALLOC_ID);
 
     /* Copy the strings into the new memory */
     len = 0;
@@ -2318,7 +2318,7 @@ string.append_list(Strs::in) = (Str::uo) :-
         add_sep = MR_TRUE;
     }
 
-    MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(Str, len, MR_ALLOC_ID);
 
     /* Copy the strings into the new memory */
     len = 0;
@@ -3140,7 +3140,7 @@ int_length_modifer = _ :-
         does_not_affect_liveness, no_sharing],
 "{
     MR_save_transient_hp();
-    Str = MR_make_string(MR_PROC_LABEL, FormatStr, (double) Val);
+    Str = MR_make_string(MR_ALLOC_ID, FormatStr, (double) Val);
     MR_restore_transient_hp();
 }").
 native_format_float(_, _) = _ :-
@@ -3160,7 +3160,7 @@ native_format_float(_, _) = _ :-
         does_not_affect_liveness, no_sharing],
 "{
     MR_save_transient_hp();
-    Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
+    Str = MR_make_string(MR_ALLOC_ID, FormatStr, Val);
     MR_restore_transient_hp();
 }").
 native_format_int(_, _) = _ :-
@@ -3180,7 +3180,7 @@ native_format_int(_, _) = _ :-
         does_not_affect_liveness, no_sharing],
 "{
     MR_save_transient_hp();
-    Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
+    Str = MR_make_string(MR_ALLOC_ID, FormatStr, Val);
     MR_restore_transient_hp();
 }").
 native_format_string(_, _) = _ :-
@@ -3200,7 +3200,7 @@ native_format_string(_, _) = _ :-
         does_not_affect_liveness, no_sharing],
 "{
     MR_save_transient_hp();
-    Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
+    Str = MR_make_string(MR_ALLOC_ID, FormatStr, Val);
     MR_restore_transient_hp();
 }").
 native_format_char(_, _) = _ :-
@@ -4041,7 +4041,7 @@ string.from_float(Flt) = string.float_to_string(Flt).
     ** For efficiency reasons we duplicate the C implementation
     ** of string.lowlevel_float_to_string.
     */
-    MR_float_to_string(Flt, Str);
+    MR_float_to_string(Flt, Str, MR_ALLOC_ID);
 }").
 
 :- pragma foreign_proc("C#",
@@ -4131,7 +4131,7 @@ max_precision = min_precision + 2.
     ** Note any changes here will require the same changes in
     ** string.float_to_string.
     */
-    MR_float_to_string(Flt, Str);
+    MR_float_to_string(Flt, Str, MR_ALLOC_ID);
 }").
 
 :- pragma foreign_proc("C#",
@@ -4709,7 +4709,7 @@ string.set_char(Char, Index, !Str) :-
     } else if (MR_is_ascii(Str0[Index]) && MR_is_ascii(Ch)) {
         /* Fast path. */
         SUCCESS_INDICATOR = MR_TRUE;
-        MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+        MR_allocate_aligned_string_msg(Str, len, MR_ALLOC_ID);
         strcpy(Str, Str0);
         MR_set_code_unit(Str, Index, Ch);
     } else {
@@ -4723,7 +4723,7 @@ string.set_char(Char, Index, !Str) :-
             size_t tailofs;
 
             newlen = len - oldwidth + newwidth;
-            MR_allocate_aligned_string_msg(Str, newlen, MR_PROC_LABEL);
+            MR_allocate_aligned_string_msg(Str, newlen, MR_ALLOC_ID);
             MR_memcpy(Str, Str0, Index);
             MR_utf8_encode(Str + Index, Ch);
             strcpy(Str + Index + newwidth, Str0 + Index + oldwidth);
@@ -4818,7 +4818,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
     size_t len = strlen(Str0);
     if (MR_is_ascii(Str0[Index]) && MR_is_ascii(Ch)) {
         /* Fast path. */
-        MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+        MR_allocate_aligned_string_msg(Str, len, MR_ALLOC_ID);
         strcpy(Str, Str0);
         MR_set_code_unit(Str, Index, Ch);
     } else {
@@ -4829,7 +4829,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
         size_t tailofs;
 
         newlen = len - oldwidth + newwidth;
-        MR_allocate_aligned_string_msg(Str, newlen, MR_PROC_LABEL);
+        MR_allocate_aligned_string_msg(Str, newlen, MR_ALLOC_ID);
         MR_memcpy(Str, Str0, Index);
         MR_utf8_encode(Str + Index, Ch);
         strcpy(Str + Index + newwidth, Str0 + Index + oldwidth);
@@ -5170,7 +5170,7 @@ string.append_iii(X, Y, Z) :-
         /*
         ** We need to make a copy to ensure that the pointer is word-aligned.
         */
-        MR_allocate_aligned_string_msg(S2, len_2, MR_PROC_LABEL);
+        MR_allocate_aligned_string_msg(S2, len_2, MR_ALLOC_ID);
         strcpy(S2, S3 + len_1);
         SUCCESS_INDICATOR = MR_TRUE;
     }
@@ -5216,7 +5216,7 @@ string.append_ioi(X, Y, Z) :-
     size_t len_1, len_2;
     len_1 = strlen(S1);
     len_2 = strlen(S2);
-    MR_allocate_aligned_string_msg(S3, len_1 + len_2, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(S3, len_1 + len_2, MR_ALLOC_ID);
     strcpy(S3, S1);
     strcpy(S3 + len_1, S2);
 }").
@@ -5274,10 +5274,10 @@ string.append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
-    MR_allocate_aligned_string_msg(S1, S1Len, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(S1, S1Len, MR_ALLOC_ID);
     MR_memcpy(S1, S3, S1Len);
     S1[S1Len] = '\\0';
-    MR_allocate_aligned_string_msg(S2, S3Len - S1Len, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(S2, S3Len - S1Len, MR_ALLOC_ID);
     strcpy(S2, S3 + S1Len);
 }").
 
@@ -5367,7 +5367,7 @@ strchars(I, End, Str) = Chars :-
         if (Count > len - Start) {
             Count = len - Start;
         }
-        MR_allocate_aligned_string_msg(SubString, Count, MR_PROC_LABEL);
+        MR_allocate_aligned_string_msg(SubString, Count, MR_ALLOC_ID);
         MR_memcpy(SubString, Str + Start, Count);
         SubString[Count] = '\\0';
     }
@@ -5462,7 +5462,7 @@ string.substring_by_codepoint(Str, Start, Count, SubString) :-
 "{
     MR_Integer len;
 
-    MR_allocate_aligned_string_msg(SubString, Count, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(SubString, Count, MR_ALLOC_ID);
     MR_memcpy(SubString, Str + Start, Count);
     SubString[Count] = '\\0';
 }").
@@ -5503,13 +5503,13 @@ string.substring_by_codepoint(Str, Start, Count, SubString) :-
             Count = len;
         }
 
-        MR_allocate_aligned_string_msg(Left, Count, MR_PROC_LABEL);
+        MR_allocate_aligned_string_msg(Left, Count, MR_ALLOC_ID);
         MR_memcpy(Left, Str, Count);
         Left[Count] = '\\0';
         /*
         ** We need to make a copy to ensure that the pointer is word-aligned.
         */
-        MR_allocate_aligned_string_msg(Right, len - Count, MR_PROC_LABEL);
+        MR_allocate_aligned_string_msg(Right, len - Count, MR_ALLOC_ID);
         strcpy(Right, Str + Count);
     }
 }").
@@ -5736,7 +5736,7 @@ string.split_by_codepoint(Str, Count, Left, Right) :-
         /*
         ** We need to make a copy to ensure that the pointer is word-aligned.
         */
-        MR_allocate_aligned_string_msg(Rest, strlen(Str), MR_PROC_LABEL);
+        MR_allocate_aligned_string_msg(Rest, strlen(Str), MR_ALLOC_ID);
         strcpy(Rest, Str);
         SUCCESS_INDICATOR = MR_TRUE;
     }
@@ -5804,7 +5804,7 @@ string.split_by_codepoint(Str, Count, Left, Right) :-
         /*
         ** We need to make a copy to ensure that the pointer is word-aligned.
         */
-        MR_allocate_aligned_string_msg(Rest, strlen(Str), MR_PROC_LABEL);
+        MR_allocate_aligned_string_msg(Rest, strlen(Str), MR_ALLOC_ID);
         strcpy(Rest, Str);
         SUCCESS_INDICATOR = MR_TRUE;
     }
@@ -5869,7 +5869,7 @@ string.split_by_codepoint(Str, Count, Left, Right) :-
 "{
     size_t firstw = MR_utf8_width(First);
     size_t len = firstw + strlen(Rest);
-    MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(Str, len, MR_ALLOC_ID);
     MR_utf8_encode(Str, First);
     strcpy(Str + firstw, Rest);
 }").
@@ -6246,7 +6246,7 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
     ; dynamic_cast(X, C_Pointer) ->
         add_revstring(c_pointer_to_string(C_Pointer), !Rs)
     ;
-        % Check if the type is array:array/1. We can't just use dynamic_cast
+        % Check if the type is array.array/1. We can't just use dynamic_cast
         % here since array.array/1 is a polymorphic type.
         %
         % The calls to type_ctor_name and type_ctor_module_name are not really

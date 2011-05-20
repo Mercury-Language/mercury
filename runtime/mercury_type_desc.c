@@ -167,7 +167,8 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 
         MR_restore_transient_registers();
         MR_offset_incr_hp_msg(new_type_info_arena_word, 0,
-            MR_var_arity_type_info_size(arity), "MR_make_type", "type_info");
+            MR_var_arity_type_info_size(arity),
+            MR_ALLOC_SITE_TYPE_INFO, NULL);
         new_type_info_arena = (MR_Word *) new_type_info_arena_word;
         MR_save_transient_registers();
         MR_fill_in_var_arity_type_info(new_type_info_arena, type_ctor_info,
@@ -182,7 +183,8 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 
         MR_restore_transient_registers();
         MR_offset_incr_hp_msg(new_type_info_arena_word, 0,
-            MR_fixed_arity_type_info_size(arity), "MR_make_type", "type_info");
+            MR_fixed_arity_type_info_size(arity),
+            MR_ALLOC_SITE_TYPE_INFO, NULL);
         new_type_info_arena = (MR_Word *) new_type_info_arena_word;
         MR_save_transient_registers();
         MR_fill_in_fixed_arity_type_info(new_type_info_arena, type_ctor_info,

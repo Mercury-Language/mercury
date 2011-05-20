@@ -1691,7 +1691,7 @@ MR_maybe_record_call_table(const MR_ProcLayout *level_layout,
 
         if (call_table != NULL) {
             MR_GC_ensure_room_for_next(MR_call_table_ptr, MR_TrieNode,
-                INIT_CALL_TABLE_ARRAY_SIZE);
+                INIT_CALL_TABLE_ARRAY_SIZE, NULL);
 
             MR_call_table_ptrs[MR_call_table_ptr_next] = call_table;
             MR_call_table_ptr_next++;
@@ -1758,7 +1758,7 @@ static void
 MR_abandon_call_table_array(void)
 {
     if (MR_call_table_ptrs != NULL) {
-        MR_GC_free(MR_call_table_ptrs);
+        MR_GC_free_attrib(MR_call_table_ptrs);
         MR_call_table_ptrs = NULL;
     }
 }

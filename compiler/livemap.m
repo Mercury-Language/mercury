@@ -395,6 +395,8 @@ build_livemap_foreign_proc_components([Component | Components],
     ;
         Component = foreign_proc_fail_to(_)
     ;
+        Component = foreign_proc_alloc_id(_)
+    ;
         Component = foreign_proc_noop
     ),
     build_livemap_foreign_proc_components(Components,

@@ -1283,8 +1283,8 @@
             % deallocate) the memory used by the lval.
 
     ;       new_object(
-                % new_object(Target, Tag, Type,
-                %   Size, CtorName, Args, ArgTypes, MayUseAtomic):
+                % new_object(Target, Tag, Type, Size, CtorName,
+                %   Args, ArgTypes, MayUseAtomic, MaybeAllocId):
                 % Allocate a memory block of the given size,
                 % initialize it with a new object of the given
                 % type by calling the constructor with the specified
@@ -1332,7 +1332,10 @@
 
                 % Can we use a cell allocated with GC_malloc_atomic to hold
                 % this object in the C backend?
-                may_use_atomic_alloc
+                may_use_atomic_alloc,
+
+                % The allocation site identifier.
+                maybe(mlds_alloc_id)
             )
 
     ;       gc_check
@@ -1446,7 +1449,8 @@
     ;       target_code_input(mlds_rval)
     ;       target_code_output(mlds_lval)
     ;       target_code_type(mlds_type)
-    ;       target_code_name(mlds_qualified_entity_name).
+    ;       target_code_name(mlds_qualified_entity_name)
+    ;       target_code_alloc_id(mlds_alloc_id).
 
 :- type target_code_attributes == list(target_code_attribute).
 
@@ -1459,6 +1463,9 @@
             % attribute is only used (and is in fact required) by the
             % `IL' foreign language interface, and is measured in units
             % of stack items.
+
+:- type mlds_alloc_id
+    --->    mlds_alloc_id(int).
 
     % Constructor id.
     %

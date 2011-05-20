@@ -258,7 +258,7 @@ generate_il(Globals, MLDS0, Version, ILAsm, ForeignLangs) :-
     MLDS = mlds(MercuryModuleName, ForeignCode, Imports, GlobalData, Defns0,
         _, _, _),
     ml_global_data_get_all_global_defns(GlobalData,
-        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
+        ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap, GlobalDefns),
     expect(map.is_empty(ScalarCellGroupMap), this_file,
         "generate_il: nonempty ScalarCellGroupMap"),
     expect(map.is_empty(VectorCellGroupMap), this_file,
@@ -373,7 +373,7 @@ il_transform_mlds(MLDS0, MLDS) :-
 
     % We take all the definitions out of the global data field of the MLDS.
     ml_global_data_get_all_global_defns(GlobalData0,
-        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
+        ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap, GlobalDefns),
     expect(map.is_empty(ScalarCellGroupMap), this_file,
         "il_transform_mlds: nonempty ScalarCellGroupMap"),
     expect(map.is_empty(VectorCellGroupMap), this_file,
@@ -547,9 +547,9 @@ rename_atomic(assign(L, R)) = assign(rename_lval(L), rename_rval(R)).
 rename_atomic(assign_if_in_heap(L, R)) = assign(rename_lval(L), rename_rval(R)).
 rename_atomic(delete_object(O)) = delete_object(rename_rval(O)).
 rename_atomic(new_object(L, Tag, ExplicitSecTag, Type, MaybeSize, Ctxt, Args,
-        Types, MayUseAtomic))
+        Types, MayUseAtomic, AllocId))
     = new_object(rename_lval(L), Tag, ExplicitSecTag, Type, MaybeSize,
-        Ctxt, list.map(rename_rval, Args), Types, MayUseAtomic).
+        Ctxt, list.map(rename_rval, Args), Types, MayUseAtomic, AllocId).
 rename_atomic(gc_check) = gc_check.
 rename_atomic(mark_hp(L)) = mark_hp(rename_lval(L)).
 rename_atomic(restore_hp(R)) = restore_hp(rename_rval(R)).
@@ -2039,8 +2039,9 @@ atomic_statement_to_il(delete_object(_Target), Instrs, !Info) :-
     % Instrs = LoadInstrs ++ singleton(ldnull) ++ StoreInstrs.
     Instrs = empty.
 
-atomic_statement_to_il(new_object(Target0, _MaybeTag, ExplicitSecTag, Type,
-        Size, MaybeCtorName, Args, ArgTypes, _MayUseAtomic), Instrs, !Info) :-
+atomic_statement_to_il(NewObject, Instrs, !Info) :-
+    NewObject = new_object(Target0, _MaybeTag, ExplicitSecTag, Type,
+        Size, MaybeCtorName, Args, ArgTypes, _MayUseAtomic, _AllocId),
     (
         ExplicitSecTag = yes,
         unexpected(this_file, "new_object has explicit secondary tag")
@@ -2226,6 +2227,9 @@ inline_code_to_il_asm([T | Ts]) = Instrs ++ Rest :-
     ;
         T = target_code_name(_),
         Instrs = empty
+    ;
+        T = target_code_alloc_id(_),
+        unexpected(this_file, "target_code_alloc_id not implemented")
     ),
     Rest = inline_code_to_il_asm(Ts).
 

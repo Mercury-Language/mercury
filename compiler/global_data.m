@@ -27,6 +27,8 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
+:- import_module map.
+:- import_module set_tree234.
 
 %-----------------------------------------------------------------------------%
 
@@ -86,6 +88,13 @@
 
 :- pred add_scalar_static_cell_natural_types(list(rval)::in, data_id::out,
     static_cell_info::in, static_cell_info::out) is det.
+
+:- pred global_data_add_new_alloc_sites(set_tree234(alloc_site_info)::in,
+    global_data::in, global_data::out) is det.
+
+:- pred global_data_get_all_alloc_sites(global_data::in,
+    list(alloc_site_info)::out, map(alloc_site_id, layout_slot_name)::out)
+    is det.
 
 :- pred find_general_llds_types(have_unboxed_floats::in, list(mer_type)::in,
     list(list(rval))::in, list(llds_type)::out) is semidet.
@@ -149,7 +158,6 @@
 :- import_module bimap.
 :- import_module counter.
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
@@ -186,14 +194,17 @@
 
                 % Information about all the statically allocated cells
                 % created so far.
-                gd_static_cell_info         :: static_cell_info
+                gd_static_cell_info         :: static_cell_info,
+
+                % Information about all allocation sites in this module.
+                gd_alloc_sites              :: set_tree234(alloc_site_info)
             ).
 
 global_data_init(StaticCellInfo, GlobalData) :-
     map.init(EmptyDataMap),
     map.init(EmptyLayoutMap),
     GlobalData = global_data(EmptyDataMap, EmptyLayoutMap, [],
-        0, [], StaticCellInfo).
+        0, [], StaticCellInfo, set_tree234.init).
 
 global_data_add_new_proc_var(PredProcId, ProcVar, !GlobalData) :-
     ProcVarMap0 = !.GlobalData ^ gd_proc_var_map,
@@ -253,6 +264,25 @@ global_data_get_static_cell_info(GlobalData, StaticCellInfo) :-
 
 global_data_set_static_cell_info(StaticCellInfo, !GlobalData) :-
     !GlobalData ^ gd_static_cell_info := StaticCellInfo.
+
+global_data_add_new_alloc_sites(NewAllocSites, !GlobalData) :-
+    AllocSites0 = !.GlobalData ^ gd_alloc_sites,
+    set_tree234.union(NewAllocSites, AllocSites0, AllocSites),
+    !GlobalData ^ gd_alloc_sites := AllocSites.
+
+global_data_get_all_alloc_sites(GlobalData, AllocSites, AllocIdMap) :-
+    AllocSitesSet = GlobalData ^ gd_alloc_sites,
+    AllocSites = set_tree234.to_sorted_list(AllocSitesSet),
+    list.foldl2(make_alloc_id_map, AllocSites, 0, _Slot, map.init, AllocIdMap).
+
+:- pred make_alloc_id_map(alloc_site_info::in, int::in, int::out,
+    map(alloc_site_id, layout_slot_name)::in,
+    map(alloc_site_id, layout_slot_name)::out) is det.
+
+make_alloc_id_map(AllocSite, Slot, Slot + 1, !Map) :-
+    AllocId = alloc_site_id(AllocSite),
+    ArraySlot = layout_slot(alloc_site_array, Slot),
+    map.det_insert(AllocId, ArraySlot, !Map).
 
 %-----------------------------------------------------------------------------%
 
@@ -676,9 +706,11 @@ bump_type_num_counter(Increment, !GlobalData) :-
 
 merge_global_datas(GlobalDataA, GlobalDataB, GlobalData, GlobalDataRemap) :-
     GlobalDataA = global_data(ProcVarMapA, ProcLayoutMapA, ClosureLayoutsA,
-        TSStringSlotCounterA, TSRevStringTableA, StaticCellInfoA),
+        TSStringSlotCounterA, TSRevStringTableA, StaticCellInfoA,
+        AllocSitesA),
     GlobalDataB = global_data(ProcVarMapB, ProcLayoutMapB, ClosureLayoutsB,
-        TSStringSlotCounterB, TSRevStringTableB, StaticCellInfoB),
+        TSStringSlotCounterB, TSRevStringTableB, StaticCellInfoB,
+        AllocSitesB),
     ProcVarMap = map.old_merge(ProcVarMapA, ProcVarMapB),
     ProcLayoutMap = map.old_merge(ProcLayoutMapA, ProcLayoutMapB),
     ClosureLayouts = ClosureLayoutsA ++ ClosureLayoutsB,
@@ -687,8 +719,9 @@ merge_global_datas(GlobalDataA, GlobalDataB, GlobalData, GlobalDataRemap) :-
         TSRevStringTable, TSStringSlotCounter, MaybeTSStringTableRemap),
     merge_static_cell_infos(StaticCellInfoA, StaticCellInfoB, StaticCellInfo,
         StaticCellRemap),
+    set_tree234.union(AllocSitesA, AllocSitesB, AllocSites),
     GlobalData = global_data(ProcVarMap, ProcLayoutMap, ClosureLayouts,
-        TSStringSlotCounter, TSRevStringTable, StaticCellInfo),
+        TSStringSlotCounter, TSRevStringTable, StaticCellInfo, AllocSites),
     GlobalDataRemap =
         global_data_remapping(MaybeTSStringTableRemap, StaticCellRemap).
 
@@ -1132,6 +1165,7 @@ remap_foreign_proc_component(Remap, Comp0, Comp) :-
         ( Comp0 = foreign_proc_raw_code(_, _, _, _)
         ; Comp0 = foreign_proc_user_code(_, _, _)
         ; Comp0 = foreign_proc_fail_to(_)
+        ; Comp0 = foreign_proc_alloc_id(_)
         ; Comp0 = foreign_proc_noop
         ),
         Comp = Comp0

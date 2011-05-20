@@ -592,6 +592,7 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     global_data_get_static_cell_info(GlobalData, StaticCellInfo),
     get_static_cells(StaticCellInfo,
         ScalarCommonCellDatas, VectorCommonCellDatas),
+    global_data_get_all_alloc_sites(GlobalData, AllocSites, AllocIdMap),
     global_data_get_threadscope_string_table(GlobalData, TSStringTable),
 
     % Next we put it all together and output it to one or more C files.
@@ -641,7 +642,8 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
         CallSites, CoveragePoints, ProcStatics,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TSStringTable,
         TableIoDecls, TableIoDeclMap, ProcEventLayouts, ExecTraces,
-        ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas, ChunkedModules,
+        ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
+        AllocSites, AllocIdMap, ChunkedModules,
         UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
 
     output_llds_file(Globals, ModuleName, CFile, Verbose, Stats, !IO),

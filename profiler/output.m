@@ -81,6 +81,7 @@ classify_profile(user_plus_system_time) = time_headers.
 classify_profile(real_time) = time_headers.
 classify_profile(memory_words) = memory_words_headers.
 classify_profile(memory_cells) = memory_cells_headers.
+classify_profile(memory_snapshots) = memory_cells_headers.  % dummy
 
 :- pred units(header_category::in, string::out, string::out, string::out,
     string::out, string::out, string::out, string::out, string::out) is det.

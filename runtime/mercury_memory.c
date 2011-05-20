@@ -387,3 +387,87 @@ MR_GC_realloc(void *old_ptr, size_t num_bytes)
 }
 
 /*---------------------------------------------------------------------------*/
+
+void *
+MR_GC_malloc_attrib(size_t num_bytes, void *attrib)
+{
+    MR_Word     *ptr;
+
+#ifdef  MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+    ptr = MR_GC_malloc(sizeof(MR_Word) + num_bytes);
+    *ptr = (MR_Word) attrib;
+    ptr++;
+#else
+    ptr = MR_GC_malloc(num_bytes);
+#endif
+
+    return ptr;
+}
+
+void *
+MR_GC_malloc_uncollectable_attrib(size_t num_bytes, void *attrib)
+{
+    MR_Word     *ptr;
+
+#ifdef  MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+    ptr = MR_GC_malloc_uncollectable(num_bytes + sizeof(MR_Word));
+    *ptr = (MR_Word) attrib;
+    ptr++;
+#else
+    ptr = MR_GC_malloc_uncollectable(num_bytes);
+#endif
+
+    return ptr;
+}
+
+void *
+MR_GC_realloc_attrib(void *ptr, size_t num_bytes)
+{
+    MR_Word     *wptr = ptr;
+
+#ifdef  MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+    wptr = MR_GC_realloc(wptr - 1, num_bytes + sizeof(MR_Word));
+    wptr = wptr + 1;
+#else
+    wptr = MR_GC_realloc(wptr, num_bytes);
+#endif
+
+    return wptr;
+}
+
+void
+MR_GC_free_attrib(void *ptr)
+{
+#ifdef  MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+    ptr = (char *) ptr - sizeof(MR_Word);
+#endif
+    GC_free(ptr);
+}
+
+/*---------------------------------------------------------------------------*/
+
+void *
+MR_new_object_func(size_t num_bytes, MR_AllocSiteInfoPtr alloc_id,
+    const char *name)
+{
+    size_t  num_words;
+    MR_Word dest;
+
+    num_words = MR_bytes_to_words(num_bytes);
+    MR_incr_hp_msg(dest, num_words, alloc_id, name);
+    return (void *) dest;
+}
+
+void *
+MR_new_object_atomic_func(size_t num_bytes, MR_AllocSiteInfoPtr alloc_id,
+    const char *name)
+{
+    size_t  num_words;
+    MR_Word dest;
+
+    num_words = MR_bytes_to_words(num_bytes);
+    MR_incr_hp_atomic_msg(dest, num_words, alloc_id, name);
+    return (void *) dest;
+}
+
+/*---------------------------------------------------------------------------*/

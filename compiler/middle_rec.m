@@ -616,6 +616,7 @@ find_used_registers_component(foreign_proc_outputs(Out), !Used) :-
 find_used_registers_component(foreign_proc_user_code(_, _, _), !Used).
 find_used_registers_component(foreign_proc_raw_code(_, _, _, _), !Used).
 find_used_registers_component(foreign_proc_fail_to(_), !Used).
+find_used_registers_component(foreign_proc_alloc_id(_), !Used).
 find_used_registers_component(foreign_proc_noop, !Used).
 
 :- pred find_used_registers_lvals(list(lval)::in,

@@ -179,12 +179,15 @@ parse_freq_from_x86_brand_string(char *string);
 
 #endif /* __GNUC__ && (__i386__ || __x86_64__) */
 
-extern void 
-MR_do_cpu_feature_detection(void) {
+void
+MR_do_cpu_feature_detection(void)
+{
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     MR_Unsigned     a, b, c, d;
     MR_Unsigned     eflags, old_eflags;
     MR_Unsigned     maximum_extended_page;
+    MR_Unsigned     extended_family, basic_family, family;
+    MR_Unsigned     extended_model, model;
 
     /* 
     ** Check for the CPUID instruction.  CPUID is supported if we can flip bit
@@ -205,8 +208,7 @@ MR_do_cpu_feature_detection(void) {
     ** Test to see if our change held.  We don't restore eflags, a change to
     ** the ID bit has no effect.
     */
-    if (eflags == old_eflags)
-    {
+    if (eflags == old_eflags) {
 #if MR_DEBUG_CPU_FEATURE_DETECTION
         fprintf(stderr, "This CPU doesn't support the CPUID instruction.\n",
             eflags, old_eflags);
@@ -219,15 +221,17 @@ MR_do_cpu_feature_detection(void) {
     ** but not including 0x40000000.
     */
     MR_cpuid(0, 0, &a, &b, &c, &d);
-    if (a < 1)
+    if (a < 1) {
         return;
+    }
 
     /* CPUID 1 gives type, family, model and stepping information in EAX. */
     MR_cpuid(1, 0, &a, &b, &c, &d);
     
     /* Bit 4 in EDX is high if RDTSC is available */
-    if (d & (1 << 4))
+    if (d & (1 << 4)) {
         MR_rdtsc_is_available = MR_TRUE;
+    }
 
     /*
     ** BTW: Intel can't count:
@@ -256,8 +260,6 @@ MR_do_cpu_feature_detection(void) {
     */
 
     /* bits 8-11 (first bit (LSB) is bit 0) */
-    MR_Unsigned extended_family, basic_family, family,
-        extended_model, model;
     basic_family = (a & 0x00000F00) >> 8;
     if (basic_family == 0x0F) {
         /* bits 20-27 */
@@ -272,8 +274,7 @@ MR_do_cpu_feature_detection(void) {
     */
     /* bits 4-7 */
     model = (a & 0x000000F0) >> 4;
-    if ((basic_family == 0x0F) || (basic_family == 0x06))
-    {
+    if ((basic_family == 0x0F) || (basic_family == 0x06)) {
         /* bits 16-19 */
         extended_model = (a & 0x000F0000) >> 16;
         model += (extended_model << 4);
@@ -390,7 +391,8 @@ MR_do_cpu_feature_detection(void) {
 
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
 static MR_uint_least64_t
-parse_freq_from_x86_brand_string(char *string) {
+parse_freq_from_x86_brand_string(char *string)
+{
     unsigned int brand_string_len;
     unsigned int i;
     double       multiplier;
@@ -407,8 +409,9 @@ parse_freq_from_x86_brand_string(char *string) {
         return 0;
 
     if (!((string[brand_string_len - 1] == 'z') &&
-          (string[brand_string_len - 2] == 'H')))
+          (string[brand_string_len - 2] == 'H'))) {
         return 0;
+    }
 
     switch (string[brand_string_len - 3]) {
         case 'M':
@@ -449,37 +452,34 @@ parse_freq_from_x86_brand_string(char *string) {
 }
 #endif /* __GNUC__ && (__i386__ || __x86_64__) */
 
-extern void
-MR_profiling_start_timer(MR_Timer *timer) {
+void
+MR_profiling_start_timer(MR_Timer *timer)
+{
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     /*
     ** If we don't have enough data to fill in all the fields of this structure
     ** we leave them alone, we won't check them later without checking
     ** MR_rdtsc{p}_is_available first.
     */
-    if (MR_rdtscp_is_available == MR_TRUE)
-    {
+    if (MR_rdtscp_is_available) {
         MR_rdtscp(&(timer->MR_timer_time), &(timer->MR_timer_processor_id));
-    }
-    else if (MR_rdtsc_is_available == MR_TRUE)
-    {
+    } else if (MR_rdtsc_is_available) {
         MR_rdtsc(&(timer->MR_timer_time));
     }
 #endif
 }
 
-extern void
-MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats) {
+void
+MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats)
+{
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     MR_Timer            now;
     MR_int_least64_t    duration;
     MR_uint_least64_t   duration_squared;
 
-    if (MR_rdtscp_is_available == MR_TRUE)
-    {
+    if (MR_rdtscp_is_available) {
         MR_rdtscp(&(now.MR_timer_time), &(now.MR_timer_processor_id));
-        if (timer->MR_timer_processor_id == now.MR_timer_processor_id)
-        {
+        if (timer->MR_timer_processor_id == now.MR_timer_processor_id) {
             duration = now.MR_timer_time - timer->MR_timer_time;
             duration_squared = duration * duration;
             MR_atomic_inc_uint(&(stats->MR_stat_count_recorded));
@@ -495,9 +495,7 @@ MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats) {
         } else {
             MR_atomic_inc_uint(&(stats->MR_stat_count_not_recorded));
         }
-    }
-    else if (MR_rdtsc_is_available == MR_TRUE)
-    {
+    } else if (MR_rdtsc_is_available) {
         MR_rdtsc(&(now.MR_timer_time));
         duration = now.MR_timer_time - timer->MR_timer_time;
         duration_squared = duration * duration;
@@ -524,7 +522,7 @@ MR_read_cpu_tsc(void)
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     MR_uint_least64_t   tsc;
 
-    if (MR_rdtsc_is_available == MR_TRUE) {
+    if (MR_rdtsc_is_available) {
         MR_rdtsc(&tsc);
     } else {
         tsc = 0;
@@ -542,7 +540,8 @@ MR_read_cpu_tsc(void)
 
 static __inline__ void 
 MR_cpuid(MR_Unsigned code, MR_Unsigned sub_code,
-        MR_Unsigned *a, MR_Unsigned *b, MR_Unsigned *c, MR_Unsigned *d) {
+        MR_Unsigned *a, MR_Unsigned *b, MR_Unsigned *c, MR_Unsigned *d)
+{
 #ifdef __x86_64__
     __asm__("cpuid"
         : "=a"(*a), "=b"(*b), "=c"(*c), "=d"(*d)
@@ -566,7 +565,8 @@ MR_cpuid(MR_Unsigned code, MR_Unsigned sub_code,
 }
 
 static __inline__ void
-MR_rdtscp(MR_uint_least64_t *tsc, MR_Unsigned *processor_id) {
+MR_rdtscp(MR_uint_least64_t *tsc, MR_Unsigned *processor_id)
+{
     MR_Unsigned tsc_low;
     MR_Unsigned tsc_high;
 
@@ -583,7 +583,8 @@ MR_rdtscp(MR_uint_least64_t *tsc, MR_Unsigned *processor_id) {
 }
 
 static __inline__ void
-MR_rdtsc(MR_uint_least64_t *tsc) {
+MR_rdtsc(MR_uint_least64_t *tsc)
+{
     MR_Unsigned tsc_low;
     MR_Unsigned tsc_high;
 

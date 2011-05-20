@@ -1212,6 +1212,8 @@ short_foreign_proc_component(InstrMap, !Component, !Redirect) :-
             !:Redirect = yes
         )
     ;
+        !.Component = foreign_proc_alloc_id(_)
+    ;
         !.Component = foreign_proc_noop
     ).
 

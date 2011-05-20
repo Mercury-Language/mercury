@@ -341,7 +341,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData, Defns0,
         InitPreds, FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
-        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
+        ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap, GlobalDefns),
 
     % Do NOT enforce the outermost "mercury" qualifier here.  This module
     % name is compared with other module names in the MLDS, to avoid
@@ -843,7 +843,8 @@ method_ptrs_in_stmt(CallStmt, !CodeAddrs) :-
 method_ptrs_in_stmt(ml_stmt_atomic(AtomicStatement), !CodeAddrs) :-
     (
         AtomicStatement = new_object(Lval, _MaybeTag, _Bool,
-            _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic)
+            _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic,
+            _AllocId)
     ->
         % We don't need to check "_MemRval" since this just stores
         % the amount of memory needed for the new object.
@@ -1671,13 +1672,13 @@ rename_class_names_atomic(Renaming, !Statement) :-
         !:Statement = delete_object(Rval)
     ;
         !.Statement = new_object(TargetLval0, MaybeTag, ExplicitSecTag, Type0,
-            MaybeSize, MaybeCtorName, Args0, ArgTypes0, MayUseAtomic),
+            MaybeSize, MaybeCtorName, Args0, ArgTypes0, MayUseAtomic, AllocId),
         rename_class_names_lval(Renaming, TargetLval0, TargetLval),
         rename_class_names_type(Renaming, Type0, Type),
         list.map(rename_class_names_rval(Renaming), Args0, Args),
         list.map(rename_class_names_type(Renaming), ArgTypes0, ArgTypes),
         !:Statement = new_object(TargetLval, MaybeTag, ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic)
+            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic, AllocId)
     ;
         !.Statement = inline_target_code(Lang, Components0),
         (
@@ -1838,6 +1839,8 @@ rename_class_names_target_code_component(Renaming, !Component) :-
         !.Component = user_target_code(_, _, _)
     ;
         !.Component = raw_target_code(_, _)
+    ;
+        !.Component = target_code_alloc_id(_)
     ;
         !.Component = target_code_input(Rval0),
         rename_class_names_rval(Renaming, Rval0, Rval),
@@ -4459,7 +4462,8 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
         unexpected(this_file, "delete_object not supported in Java.")
     ;
         AtomicStmt = new_object(Target, _MaybeTag, ExplicitSecTag, Type,
-            _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic),
+            _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic,
+            _AllocId),
         (
             ExplicitSecTag = yes,
             unexpected(this_file, "output_atomic_stmt: explicit secondary tag")
@@ -4569,6 +4573,9 @@ output_target_code_component(Info, TargetCode, !IO) :-
     ;
         TargetCode = target_code_name(Name),
         output_maybe_qualified_name(Info, Name, !IO)
+    ;
+        TargetCode = target_code_alloc_id(_),
+        unexpected(this_file, "target_code_alloc_id not implemented")
     ).
 
 %-----------------------------------------------------------------------------%

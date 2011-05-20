@@ -762,7 +762,7 @@ read_string_table(ByteCode, StringTable, !Pos) :-
     char    *table;
     int     i;
 
-    MR_allocate_aligned_string_msg(buf, Size, MR_PROC_LABEL);
+    MR_allocate_aligned_string_msg(buf, Size, MR_ALLOC_ID);
     table = ((char *) Bytes) + Offset;
     for (i = 0; i < Size; i++) {
         buf[i] = table[i];

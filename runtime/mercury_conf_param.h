@@ -823,6 +823,18 @@
   #define MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 #endif
 
+/*
+** Memory attribution profiling requires the procedure names from
+** memory profiling and hooks in Boehm GC.
+*/
+#ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+  #error "MR_MPROF_PROFILE_MEMORY_ATTRIBUTION should not be defined " \
+    "on the command line"
+#endif
+#if defined(MR_BOEHM_GC) && defined(MR_MPROF_PROFILE_MEMORY)
+  #define MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+#endif
+
 /* XXX document MR_BYTECODE_CALLABLE */
 
 /*

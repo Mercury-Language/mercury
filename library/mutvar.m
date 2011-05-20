@@ -89,7 +89,7 @@ new_mutvar(X, Ref) :-
     [will_not_call_mercury, thread_safe],
 "
     MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
-        MR_PROC_LABEL, ""mutvar.mutvar/1"");
+        MR_ALLOC_ID, ""mutvar.mutvar/1"");
     MR_define_size_slot(0, Ref, 1);
 ").
 

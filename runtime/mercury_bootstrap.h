@@ -233,7 +233,6 @@ typedef MR_Bool			Bool;
 #define	mark_hp(d)			MR_mark_hp((d))
 #define	restore_hp(d)			MR_restore_hp((d))
 #define	hp_alloc(c)			MR_hp_alloc((c))
-#define	hp_alloc_atomic(c)		MR_hp_alloc_atomic((c))
 #define	tag_incr_hp_msg(d, t, c, p, ty)	MR_tag_incr_hp_msg((d), (t),	    \
 						(c), p, (ty))
 #define	tag_incr_hp_atomic_msg(d, t, c, p, ty)				    \

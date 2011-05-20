@@ -9,7 +9,7 @@
 % File: process_file.m
 % Main author: petdr.
 %
-% Processs the files that contain the label declarations, label counts and
+% Process the files that contain the label declarations, label counts and
 % the caller-callee pairs, also builds the dynamic call graph if the option
 % set.
 %

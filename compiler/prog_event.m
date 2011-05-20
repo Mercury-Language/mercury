@@ -151,12 +151,13 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
 #include ""mercury_event_spec.h""
 #include <stdio.h>
 
-MR_String   read_specs_file_2(MR_Code *proc_label, MR_String specs_file_name,
-    MR_String term_file_name);
-MR_String   read_specs_file_3(MR_Code *proc_label, MR_String specs_file_name,
-    MR_String term_file_name, int spec_fd);
-MR_String   read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
-    MR_String term_file_name, int spec_fd, size_t size, char *spec_buf);
+MR_String   read_specs_file_2(MR_AllocSiteInfoPtr alloc_id,
+    MR_String specs_file_name, MR_String term_file_name);
+MR_String   read_specs_file_3(MR_AllocSiteInfoPtr alloc_id,
+    MR_String specs_file_name, MR_String term_file_name, int spec_fd);
+MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
+    MR_String specs_file_name, MR_String term_file_name, int spec_fd,
+    size_t size, char *spec_buf);
 ").
 
 :- pragma foreign_proc("C",
@@ -169,7 +170,7 @@ MR_String   read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
     ** value on Mercury's heap if necessary.
     */
     MR_save_transient_hp();
-    Problem = read_specs_file_2(MR_PROC_LABEL, SpecsFileName, TermFileName);
+    Problem = read_specs_file_2(MR_ALLOC_ID, SpecsFileName, TermFileName);
     MR_restore_transient_hp();
 ").
 
@@ -179,7 +180,7 @@ read_specs_file(_, _, _, _, _) :-
 :- pragma foreign_code("C", "
 
 MR_String
-read_specs_file_2(MR_Code *proc_label, MR_String specs_file_name,
+read_specs_file_2(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
     MR_String term_file_name)
 {
     int         spec_fd;
@@ -193,10 +194,10 @@ read_specs_file_2(MR_Code *proc_label, MR_String specs_file_name,
 
     spec_fd = open(specs_file_name, O_RDONLY);
     if (spec_fd < 0) {
-        problem = MR_make_string(proc_label, ""could not open %s: %s"",
+        problem = MR_make_string(alloc_id, ""could not open %s: %s"",
             specs_file_name, strerror(errno));
     } else {
-        problem = read_specs_file_3(proc_label, specs_file_name,
+        problem = read_specs_file_3(alloc_id, specs_file_name,
             term_file_name, spec_fd);
         (void) close(spec_fd);
     }
@@ -204,25 +205,25 @@ read_specs_file_2(MR_Code *proc_label, MR_String specs_file_name,
 }
 
 MR_String
-read_specs_file_3(MR_Code *proc_label, MR_String specs_file_name,
+read_specs_file_3(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
     MR_String term_file_name, int spec_fd)
 {
     struct stat stat_buf;
     MR_String   problem;
 
     if (fstat(spec_fd, &stat_buf) != 0) {
-        problem = MR_make_string(proc_label, ""could not stat %s"",
+        problem = MR_make_string(alloc_id, ""could not stat %s"",
             specs_file_name);
     } else {
         char        *spec_buf;
 
         spec_buf = malloc(stat_buf.st_size + 1);
         if (spec_buf == NULL) {
-            problem = MR_make_string(proc_label,
+            problem = MR_make_string(alloc_id,
                 ""could not allocate memory for a copy of %s"",
                 specs_file_name);
         } else {
-            problem = read_specs_file_4(proc_label, specs_file_name,
+            problem = read_specs_file_4(alloc_id, specs_file_name,
                 term_file_name, spec_fd, stat_buf.st_size, spec_buf);
             free(spec_buf);
         }
@@ -231,7 +232,7 @@ read_specs_file_3(MR_Code *proc_label, MR_String specs_file_name,
 }
 
 MR_String
-read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
+read_specs_file_4(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
     MR_String term_file_name, int spec_fd, size_t size, char *spec_buf)
 {
     size_t      num_bytes_read;
@@ -242,7 +243,7 @@ read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
         num_bytes_read = read(spec_fd, spec_buf, size);
     } while (num_bytes_read == -1 && MR_is_eintr(errno));
     if (num_bytes_read != size) {
-        problem = MR_make_string(proc_label, ""could not read in %s"",
+        problem = MR_make_string(alloc_id, ""could not read in %s"",
             specs_file_name);
     } else {
         MR_EventSet event_set;
@@ -251,14 +252,14 @@ read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
         spec_buf[num_bytes_read] = '\\0';
         event_set = MR_read_event_set(specs_file_name, spec_buf);
         if (event_set == NULL) {
-            problem = MR_make_string(proc_label, ""could not parse %s"",
+            problem = MR_make_string(alloc_id, ""could not parse %s"",
                 specs_file_name);
         } else {
             FILE *term_fp;
 
             term_fp = fopen(term_file_name, ""w"");
             if (term_fp == NULL) {
-                problem = MR_make_string(proc_label, ""could not open %s: %s"",
+                problem = MR_make_string(alloc_id, ""could not open %s: %s"",
                     term_file_name, strerror(errno));
             } else {
                 MR_print_event_set(term_fp, event_set);
@@ -267,7 +268,7 @@ read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
                 /*
                 ** Our caller tests Problem against the empty string, not NULL.
                 */
-                problem = MR_make_string(proc_label, """");
+                problem = MR_make_string(alloc_id, """");
             }
         }
     }

@@ -2208,7 +2208,7 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
         MR_Word ret_string_word;
         MR_offset_incr_hp_atomic_msg(ret_string_word,
             0, ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(char)),
-            MR_PROC_LABEL, ""string.string/0"");
+            MR_ALLOC_ID, ""string.string/0"");
         RetString = (MR_String) ret_string_word;
         MR_memcpy(RetString, read_buffer, i * sizeof(char));
         RetString[i] = '\\0';
@@ -2550,7 +2550,7 @@ io.check_err(Stream, Res, !IO) :-
     }
 
     ML_maybe_make_err_msg(RetVal != 0, errno, ""read failed: "",
-        ""io.ferror/5"", MR_TRUE, RetStr);
+        MR_ALLOC_ID, MR_TRUE, RetStr);
     MR_update_io(IO0, IO);
 ").
 
@@ -2635,8 +2635,7 @@ io.make_err_msg(Msg0, Msg, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
-    ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, ""io.make_err_msg/5"",
-        MR_FALSE, Msg);
+    ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_ALLOC_ID, MR_FALSE, Msg);
     MR_update_io(IO0, IO);
 ").
 
@@ -2727,7 +2726,7 @@ make_win32_err_msg(_, _, "", !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
-    ML_maybe_make_win32_err_msg(MR_TRUE, Error, Msg0, MR_PROC_LABEL, Msg);
+    ML_maybe_make_win32_err_msg(MR_TRUE, Error, Msg0, MR_ALLOC_ID, Msg);
     MR_update_io(IO0, IO);
 ").
 
@@ -2853,7 +2852,7 @@ io.file_modification_time(File, Result, !IO) :-
         Status = 1;
     } else {
         ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
-            ""io.file_modification_time_2/6"", MR_TRUE, Msg);
+            MR_ALLOC_ID, MR_TRUE, Msg);
         Status = 0;
     }
 #else
@@ -3938,7 +3937,7 @@ io.file_id(FileName, Result, !IO) :-
         Status = 1;
     } else {
         ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
-            ""io.file_id_2/6"", MR_TRUE, Msg);
+            MR_ALLOC_ID, MR_TRUE, Msg);
         Status = 0;
     }
     MR_update_io(IO0, IO);
@@ -4033,7 +4032,7 @@ have_file_ids :- semidet_fail.
     MR_Word buf;
     MR_offset_incr_hp_atomic_msg(buf, 0,
         (Size * sizeof(char) + sizeof(MR_Word) - 1) / sizeof(MR_Word),
-        MR_PROC_LABEL, ""io:buffer/0"");
+        MR_ALLOC_ID, ""io.buffer/0"");
     Buffer = (char *) buf;
 }").
 
@@ -4061,7 +4060,7 @@ io.alloc_buffer(Size, buffer(Array)) :-
         MR_offset_incr_hp_atomic_msg(next, 0,
             (NewSize * sizeof(char) + sizeof(MR_Word) - 1)
                 / sizeof(MR_Word),
-            MR_PROC_LABEL, ""io:buffer/0"");
+            MR_ALLOC_ID, ""io.buffer/0"");
         assert(Buffer0 + OldSize == (char *) next);
         Buffer = Buffer0;
     } else {
@@ -4070,7 +4069,7 @@ io.alloc_buffer(Size, buffer(Array)) :-
         MR_offset_incr_hp_atomic_msg(buf, 0,
             (NewSize * sizeof(char) + sizeof(MR_Word) - 1)
                 / sizeof(MR_Word),
-            MR_PROC_LABEL, ""io:buffer/0"");
+            MR_ALLOC_ID, ""io.buffer/0"");
         Buffer = (char *) buf;
         if (OldSize > NewSize) {
             MR_memcpy(Buffer, Buffer0, NewSize);
@@ -5696,7 +5695,8 @@ MercuryFilePtr  mercury_current_text_output(void);
 MercuryFilePtr  mercury_current_binary_input(void);
 MercuryFilePtr  mercury_current_binary_output(void);
 int             mercury_next_stream_id(void);
-MercuryFilePtr  mercury_open(const char *filename, const char *openmode);
+MercuryFilePtr  mercury_open(const char *filename, const char *openmode,
+                    MR_AllocSiteInfoPtr alloc_id);
 void            mercury_io_error(MercuryFilePtr mf, const char *format, ...);
 void            mercury_output_error(MercuryFilePtr mf);
 void            mercury_print_string(MercuryFilePtr mf, const char *s);
@@ -6921,7 +6921,8 @@ mercury_set_current_binary_output(Stream) ->
 :- pragma foreign_code("C", "
 
 MercuryFilePtr
-mercury_open(const char *filename, const char *openmode)
+mercury_open(const char *filename, const char *openmode,
+    MR_AllocSiteInfoPtr alloc_id)
 {
     MercuryFilePtr  mf;
     FILE            *f;
@@ -6930,7 +6931,7 @@ mercury_open(const char *filename, const char *openmode)
     if (f == NULL) {
         return NULL;
     }
-    mf = MR_GC_NEW(MercuryFile);
+    MR_incr_hp_type_msg(mf, MercuryFile, alloc_id, ""MercuryFile"");
     MR_mercuryfile_init(f, 1, mf);
     return mf;
 }
@@ -9297,7 +9298,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    Stream = mercury_open(FileName, Mode);
+    Stream = mercury_open(FileName, Mode, MR_ALLOC_ID);
     if (Stream != NULL) {
         ResultCode = 0;
         StreamId = mercury_next_stream_id();
@@ -9314,7 +9315,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    Stream = mercury_open(FileName, Mode);
+    Stream = mercury_open(FileName, Mode, MR_ALLOC_ID);
     if (Stream != NULL) {
         ResultCode = 0;
         StreamId = mercury_next_stream_id();
@@ -9549,10 +9550,10 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     ** Convert mercury_argv from a vector to a list.
     */
     i = mercury_argc;
-    Args = MR_list_empty_msg(MR_PROC_LABEL);
+    Args = MR_list_empty_msg(MR_ALLOC_ID);
     while (--i >= 0) {
         Args = MR_string_list_cons_msg((MR_Word) mercury_argv[i], Args,
-            MR_PROC_LABEL);
+            MR_ALLOC_ID);
     }
     MR_update_io(IO0, IO);
 }").
@@ -9654,8 +9655,8 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
         /* Spawn failed. */
         Status = 127;
         ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error invoking system command: "", ""io.call_system_code/5"",
-            MR_TRUE, Msg);
+            ""error invoking system command: "",
+            MR_ALLOC_ID, MR_TRUE, Msg);
     } else {
         /* Wait for the spawned process to exit. */
         do {
@@ -9664,8 +9665,8 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
         if (err == -1) {
             Status = 127;
             ML_maybe_make_err_msg(MR_TRUE, errno,
-                ""error invoking system command: "", ""io.call_system_code/5"",
-                MR_TRUE, Msg);
+                ""error invoking system command: "",
+                MR_ALLOC_ID, MR_TRUE, Msg);
         } else {
             Status = st;
             Msg = MR_make_string_const("""");
@@ -9683,8 +9684,8 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
         */
         Status = 127;
         ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error invoking system command: "", ""io.call_system_code/5"",
-            MR_TRUE, Msg);
+            ""error invoking system command: "",
+            MR_ALLOC_ID, MR_TRUE, Msg);
     } else {
         Msg = MR_make_string_const("""");
     }
@@ -10208,21 +10209,21 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 #ifdef MR_HAVE_MKSTEMP
     int err, fd;
 
-    FileName = MR_make_string(MR_PROC_LABEL, ""%s%s%.5sXXXXXX"",
+    FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
         Dir, Sep, Prefix);
     fd = mkstemp(FileName);
     if (fd == -1) {
         ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error opening temporary file: "", ""io.do_make_temp/8"", MR_TRUE,
-            ErrorMessage);
+            ""error opening temporary file: "", MR_ALLOC_ID,
+            MR_TRUE, ErrorMessage);
         Error = -1;
     } else {
         do {
             err = close(fd);
         } while (err == -1 && MR_is_eintr(errno));
         ML_maybe_make_err_msg(err, errno,
-            ""error closing temporary file: "", ""io.do_make_temp/8"", MR_TRUE,
-            ErrorMessage);
+            ""error closing temporary file: "", MR_ALLOC_ID,
+            MR_TRUE, ErrorMessage);
         Error = err;
     }
 #else
@@ -10241,7 +10242,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
     /* Dir + / + Prefix + counter_high + . + counter_low + \\0 */
     MR_offset_incr_hp_atomic_msg(filename_word, 0,
         (len + sizeof(MR_Word)) / sizeof(MR_Word),
-        MR_PROC_LABEL, ""string:string/0"");
+        MR_ALLOC_ID, ""string.string/0"");
     FileName = (MR_String) filename_word;
     if (ML_io_tempnam_counter == 0) {
         ML_io_tempnam_counter = getpid();
@@ -10264,7 +10265,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         num_tries < ML_MAX_TEMPNAME_TRIES);
     if (fd == -1) {
         ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error opening temporary file: "", ""io.do_make_temp/8"",
+            ""error opening temporary file: "", MR_ALLOC_ID,
             MR_TRUE, ErrorMessage);
         Error = -1;
     }  else {
@@ -10272,7 +10273,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
             err = close(fd);
         } while (err == -1 && MR_is_eintr(errno));
         ML_maybe_make_err_msg(err, errno,
-            ""error closing temporary file: "", ""io.do_make_temp/8"",
+            ""error closing temporary file: "", MR_ALLOC_ID,
             MR_TRUE, ErrorMessage);
         Error = err;
     }
@@ -10430,7 +10431,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 #include <errno.h>
 
 /*
-** ML_maybe_make_err_msg(was_error, errno, msg, procname, req_lock, error_msg):
+** ML_maybe_make_err_msg(was_error, errno, msg, alloc_id, req_lock, error_msg):
 ** if `was_error' is true, then append `msg' and `strerror(errno)'
 ** to give `error_msg'; otherwise, set `error_msg' to "".
 ** `req_lock' must be true iff the caller is marked `thread_safe' as the
@@ -10443,43 +10444,41 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 ** This is defined as a macro rather than a C function
 ** to avoid worrying about the `hp' register being
 ** invalidated by the function call.
-** It also needs to be a macro because MR_offset_incr_hp_atomic_msg()
-** stringizes the procname argument.
 */
 
-#define ML_maybe_make_err_msg(was_error, error, msg, procname, req_lock,    \\
-            error_msg)                                                      \\
-    do {                                                                    \\
-        char    *errno_msg;                                                 \\
-        size_t  total_len;                                                  \\
-        MR_Word tmp;                                                        \\
-                                                                            \\
-        if (was_error) {                                                    \\
-            if (req_lock) {                                                 \\
-                MR_OBTAIN_GLOBAL_LOCK(procname);                            \\
-            }                                                               \\
-            errno_msg = strerror(error);                                    \\
-            total_len = strlen(msg) + strlen(errno_msg);                    \\
-            MR_offset_incr_hp_atomic_msg(tmp, 0,                            \\
-                (total_len + sizeof(MR_Word)) / sizeof(MR_Word),            \\
-                procname, ""string.string/0"");                             \\
-            (error_msg) = (char *) tmp;                                     \\
-            strcpy((error_msg), msg);                                       \\
-            strcat((error_msg), errno_msg);                                 \\
-            if (req_lock) {                                                 \\
-                MR_RELEASE_GLOBAL_LOCK(procname);                           \\
-            }                                                               \\
-        } else {                                                            \\
-            /*                                                              \\
-            ** We can't just return NULL here, because otherwise mdb        \\
-            ** will break when it tries to print the string.                \\
-            */                                                              \\
-            (error_msg) = MR_make_string_const("""");                       \\
-        }                                                                   \\
+#define ML_maybe_make_err_msg(was_error, error, msg, alloc_id, req_lock,   \\
+            error_msg)                                                     \\
+    do {                                                                   \\
+        char    *errno_msg;                                                \\
+        size_t  total_len;                                                 \\
+        MR_Word tmp;                                                       \\
+                                                                           \\
+        if (was_error) {                                                   \\
+            if (req_lock) {                                                \\
+                MR_OBTAIN_GLOBAL_LOCK(""ML_maybe_make_err_msg"");          \\
+            }                                                              \\
+            errno_msg = strerror(error);                                   \\
+            total_len = strlen(msg) + strlen(errno_msg);                   \\
+            MR_offset_incr_hp_atomic_msg(tmp, 0,                           \\
+                (total_len + sizeof(MR_Word)) / sizeof(MR_Word),           \\
+                (alloc_id), ""string.string/0"");                          \\
+            (error_msg) = (char *) tmp;                                    \\
+            strcpy((error_msg), msg);                                      \\
+            strcat((error_msg), errno_msg);                                \\
+            if (req_lock) {                                                \\
+                MR_RELEASE_GLOBAL_LOCK(""ML_maybe_make_err_msg"");         \\
+            }                                                              \\
+        } else {                                                           \\
+            /*                                                             \\
+            ** We can't just return NULL here, because otherwise mdb       \\
+            ** will break when it tries to print the string.               \\
+            */                                                             \\
+            (error_msg) = MR_make_string_const("""");                      \\
+        }                                                                  \\
     } while(0)
 
 /*
-** ML_maybe_make_win32_err_msg(was_error, error, msg, procname, error_msg):
+** ML_maybe_make_win32_err_msg(was_error, error, msg, alloc_id, error_msg):
 ** if `was_error' is true, then append `msg' and the string
 ** returned by the Win32 API function FormatMessage() for the
 ** last error to give `error_msg'; otherwise, set `error_msg' to "".
@@ -10492,14 +10491,13 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 ** This is defined as a macro rather than a C function
 ** to avoid worrying about the `hp' register being
 ** invalidated by the function call.
-** It also needs to be a macro because MR_incr_hp_atomic_msg()
-** stringizes the procname argument.
 */
 #ifdef MR_WIN32
 
 #include <windows.h>
 
-#define ML_maybe_make_win32_err_msg(was_error, error, msg, procname, error_msg) \\
+#define ML_maybe_make_win32_err_msg(was_error, error, msg, alloc_id,        \\
+        error_msg)                                                          \\
     do {                                                                    \\
         size_t total_len;                                                   \\
         MR_Word tmp;                                                        \\
@@ -10524,7 +10522,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
             total_len = strlen(msg) + strlen((char *)err_buf);              \\
             MR_incr_hp_atomic_msg(tmp,                                      \\
                 (total_len + sizeof(MR_Word)) / sizeof(MR_Word),            \\
-                procname, ""string.string/0"");                             \\
+                (alloc_id), ""string.string/0"");                           \\
             (error_msg) = (char *) tmp;                                     \\
             strcpy((error_msg), msg);                                       \\
             strcat((error_msg), (char *)err_buf);                           \\
@@ -10542,7 +10540,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 
 #else /* !MR_WIN32 */
 
-#define ML_maybe_make_win32_err_msg(was_error, error, msg, procname, error_msg) \\
+#define ML_maybe_make_win32_err_msg(was_error, error, msg, alloc_id, error_msg) \\
     MR_fatal_error(""ML_maybe_make_win32_err_msg called on non-Windows platform"")
 
 #endif /* !MR_WIN32 */
@@ -10568,7 +10566,7 @@ io.remove_file(FileName, Result, !IO) :-
 "{
     RetVal = remove(FileName);
     ML_maybe_make_err_msg(RetVal != 0, errno, ""remove failed: "",
-        ""io.remove_file_2/5"", MR_TRUE, RetStr);
+        MR_ALLOC_ID, MR_TRUE, RetStr);
     MR_update_io(IO0, IO);
 }").
 
@@ -10707,7 +10705,7 @@ io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 "{
     RetVal = rename(OldFileName, NewFileName);
     ML_maybe_make_err_msg(RetVal != 0, errno, ""rename failed: "",
-        ""io.rename_file_2/6"", MR_TRUE, RetStr);
+        MR_ALLOC_ID, MR_TRUE, RetStr);
     MR_update_io(IO0, IO);
 }").
 
@@ -10896,7 +10894,8 @@ io.read_symlink(FileName, Result, !IO) :-
             Status = 0;
         } else {
             buffer2[num_chars] = '\\0';
-            MR_make_aligned_string_copy(TargetFileName, buffer2);
+            MR_make_aligned_string_copy_msg(TargetFileName, buffer2,
+                MR_ALLOC_ID);
             Status = 1;
         }
         MR_free(buffer2);
@@ -10906,7 +10905,7 @@ io.read_symlink(FileName, Result, !IO) :-
         Status = 0;
     } else {
         buffer[num_chars] = '\\0';
-        MR_make_aligned_string_copy(TargetFileName, buffer);
+        MR_make_aligned_string_copy_msg(TargetFileName, buffer, MR_ALLOC_ID);
         Status = 1;
     }
 #else /* !MR_HAVE_READLINK */

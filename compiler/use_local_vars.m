@@ -522,6 +522,7 @@ substitute_lval_in_defn_components(OldLval, NewLval,
         ; Comp0 = foreign_proc_user_code(_, _, _)
         ; Comp0 = foreign_proc_raw_code(_, _, _, _)
         ; Comp0 = foreign_proc_fail_to(_)
+        ; Comp0 = foreign_proc_alloc_id(_)
         ; Comp0 = foreign_proc_noop
         ),
         Comp = Comp0
@@ -734,6 +735,7 @@ component_updates_oldlval(Component, Lval) = Updates :-
     ;
         ( Component = foreign_proc_inputs(_)
         ; Component = foreign_proc_fail_to(_)
+        ; Component = foreign_proc_alloc_id(_)
         ; Component = foreign_proc_noop
         ; Component = foreign_proc_user_code(_, _, _)
         ; Component = foreign_proc_raw_code(_, _, _, _)
@@ -759,6 +761,7 @@ component_affects_liveness(Component) = Affects :-
         ( Component = foreign_proc_inputs(_)
         ; Component = foreign_proc_outputs(_)
         ; Component = foreign_proc_fail_to(_)
+        ; Component = foreign_proc_alloc_id(_)
         ; Component = foreign_proc_noop
         ),
         Affects = no

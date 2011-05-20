@@ -1221,11 +1221,13 @@ eliminate_var_in_atomic_stmt(Stmt0, Stmt, !VarElimInfo) :-
         Stmt = delete_object(Rval)
     ;
         Stmt0 = new_object(Target0, MaybeTag, ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic),
+            MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic,
+            MaybeAllocId),
         eliminate_var_in_lval(Target0, Target, !VarElimInfo),
         eliminate_var_in_rvals(Args0, Args, !VarElimInfo),
         Stmt = new_object(Target, MaybeTag, ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic)
+            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic,
+            MaybeAllocId)
     ;
         Stmt0 = mark_hp(Lval0),
         eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
@@ -1275,6 +1277,7 @@ eliminate_var_in_target_code_component(Component0, Component, !VarElimInfo) :-
         ; Component0 = user_target_code(_Code, _Context, _Attrs)
         ; Component0 = target_code_type(_Type)
         ; Component0 = target_code_name(_Name)
+        ; Component0 = target_code_alloc_id(_AllocId)
         ),
         Component = Component0
     ;

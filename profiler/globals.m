@@ -34,6 +34,7 @@
 :- type what_to_profile
     --->    memory_words
     ;       memory_cells
+    ;       memory_snapshots
     ;       user_plus_system_time
     ;       user_time
     ;       real_time.
@@ -107,6 +108,7 @@
 
 what_to_profile("memory-words", memory_words).
 what_to_profile("memory-cells", memory_cells).
+what_to_profile("snapshots", memory_snapshots).
 what_to_profile("user-plus-system-time", user_plus_system_time).
 what_to_profile("user-time", user_time).
 what_to_profile("real-time", real_time).

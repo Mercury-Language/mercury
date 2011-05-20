@@ -21,7 +21,7 @@ MR_dlist_makelist0(void)
 {
     MR_Dlist    *list;
 
-    list = MR_GC_NEW(MR_Dlist);
+    list = MR_GC_NEW_ATTRIB(MR_Dlist, MR_ALLOC_SITE_RUNTIME);
     MR_dlist_data(list) = NULL;
     MR_dlist_next(list) = list;
     MR_dlist_prev(list) = list;
@@ -49,7 +49,7 @@ MR_dlist_addhead(MR_Dlist *list, const void *data)
         list = MR_dlist_makelist0();
     }
 
-    item = MR_GC_NEW(MR_Dlist);
+    item = MR_GC_NEW_ATTRIB(MR_Dlist, MR_ALLOC_SITE_RUNTIME);
     MR_dlist_data(item) = data;
     MR_dlist_length_field(list)++;
 
@@ -72,7 +72,7 @@ MR_dlist_addtail(MR_Dlist *list, const void *data)
         list = MR_dlist_makelist0();
     }
 
-    item = MR_GC_NEW(MR_Dlist);
+    item = MR_GC_NEW_ATTRIB(MR_Dlist, MR_ALLOC_SITE_RUNTIME);
     MR_dlist_data(item) = data;
     MR_dlist_length_field(list)++;
 
@@ -147,7 +147,7 @@ MR_dlist_insert_before(MR_Dlist *list, MR_Dlist *where, const void *data)
 {
     MR_Dlist    *item;
 
-    item = MR_GC_NEW(MR_Dlist);
+    item = MR_GC_NEW_ATTRIB(MR_Dlist, MR_ALLOC_SITE_RUNTIME);
     MR_dlist_data(item) = data;
     MR_dlist_length_field(list)++;
 
@@ -164,7 +164,7 @@ MR_dlist_insert_after(MR_Dlist *list, MR_Dlist *where, const void *data)
 {
     MR_Dlist    *item;
 
-    item = MR_GC_NEW(MR_Dlist);
+    item = MR_GC_NEW_ATTRIB(MR_Dlist, MR_ALLOC_SITE_RUNTIME);
     MR_dlist_data(item) = data;
     MR_dlist_length_field(list)++;
 

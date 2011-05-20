@@ -15,7 +15,8 @@
 #include <stdio.h>
 
 static int MR_hex_char_to_int(char digit);
-static MR_String MR_do_bitmap_to_string(MR_ConstBitmapPtr, MR_bool, MR_bool);
+static MR_String MR_do_bitmap_to_string(MR_ConstBitmapPtr, MR_bool, MR_bool,
+    MR_AllocSiteInfoPtr);
 
 /*
 ** Note that MR_bitmap_cmp and MR_hash_bitmap are actually defined
@@ -69,20 +70,15 @@ MR_hex_char_to_int(char digit)
 }
 
 MR_String
-MR_bitmap_to_string(MR_ConstBitmapPtr b)
+MR_bitmap_to_quoted_string_saved_hp(MR_ConstBitmapPtr b,
+    MR_AllocSiteInfoPtr alloc_id)
 {
-    return MR_do_bitmap_to_string(b, MR_FALSE, MR_TRUE);
-}
-
-MR_String
-MR_bitmap_to_quoted_string_saved_hp(MR_ConstBitmapPtr b)
-{
-    return MR_do_bitmap_to_string(b, MR_TRUE, MR_TRUE);
+    return MR_do_bitmap_to_string(b, MR_TRUE, MR_TRUE, alloc_id);
 }
 
 static MR_String
 MR_do_bitmap_to_string(MR_ConstBitmapPtr b,
-    MR_bool quote, MR_bool use_saved_hp)
+    MR_bool quote, MR_bool use_saved_hp, MR_AllocSiteInfoPtr alloc_id)
 {
     MR_String result;
     int i;
@@ -101,9 +97,9 @@ MR_do_bitmap_to_string(MR_ConstBitmapPtr b,
     }
 
     if (use_saved_hp) {
-        MR_allocate_aligned_string_saved_hp(result, len);
+        MR_allocate_aligned_string_saved_hp(result, len, alloc_id);
     } else {
-        MR_allocate_aligned_string_msg(result, len, "MR_do_bitmap_to_string");
+        MR_allocate_aligned_string_msg(result, len, alloc_id);
     }
 
     if (quote) {
@@ -127,40 +123,3 @@ MR_do_bitmap_to_string(MR_ConstBitmapPtr b,
     result[len] = '\0';
     return result;
 }
-
-MR_BitmapPtr
-MR_string_to_bitmap(MR_ConstString s)
-{
-    MR_BitmapPtr result;
-    int i;
-    int len;
-    int start;
-    int res;
-    unsigned int result_bits;
-
-    len = strlen(s);
-    if (len < 4 || s[0] != '<' || s[len - 1] != '>') {
-        return NULL;
-    }
-    res = sscanf(s, "<%u:%n", &result_bits, &start);
-    if (res != 1) {
-        return NULL;
-    }
-    MR_allocate_bitmap_msg(result, (MR_Integer) result_bits,
-        "MR_string_to_bitmap");
-    result->num_bits = result_bits;
-    for (i = 0; i < MR_bitmap_length_in_bytes(result_bits); i++) {
-        int h1, h2;
-        if (start + 1 >= len - 1) {
-            return NULL;
-        }
-        h1 = MR_hex_char_to_int(s[start++]);
-        h2 = MR_hex_char_to_int(s[start++]);
-        if (h1 < 0 || h2 < 0) {
-            return NULL;
-        }
-        result->elements[i] = (MR_uint_least8_t) (h1 << 4) | h2;
-    }
-    return result;
-}
-

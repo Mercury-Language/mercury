@@ -62,8 +62,8 @@ typedef	struct MR_memprof_counter
 /* type representing a binary tree node */
 typedef	struct MR_memprof_record
 {
-	const char			*name; /* of the type or procedure */
-	MR_Code				*addr; /* for procedures only */
+	const char			*type_name; /* type name or NULL */
+	MR_STATIC_CODE_CONST MR_Code	*proc; /* proc address or NULL */
 	MR_memprof_counter		counter;
 	struct MR_memprof_record	*left;	/* left sub-tree */
 	struct MR_memprof_record	*right;	/* right sub-tree */
@@ -89,16 +89,15 @@ extern	MR_memprof_table	MR_memprof_types;
 /* function declarations */
 
 /*
-** MR_record_allocation(size, proc_addr, proc_name, type):
+** MR_record_allocation(size, alloc_id, type):
 **
 ** Record heap profiling information for an allocation of one cell of `size'
-** words by procedure `proc_name' with address `proc_addr' for an object of
-** type `type'. The heap profiling information is recorded in the three global
+** words.  The heap profiling information is recorded in the three global
 ** variables above.
 */
 
-extern void	MR_record_allocation(int size, MR_Code *proc_addr,
-			const char *proc_name, const char *type);
+extern void	MR_record_allocation(int size,
+		    const MR_AllocSiteInfoPtr alloc_id, const char *type_name);
 
 /*
 ** MR_prof_output_mem_tables():
@@ -119,6 +118,16 @@ extern void MR_prof_turn_off_heap_profiling(void);
 
 /*---------------------------------------------------------------------------*/
 
+extern void MR_register_alloc_sites(const MR_AllocSiteInfo *alloc_sites,
+			int size);
+
+extern void MR_report_memory_attribution(MR_ConstString label);
+
+extern void MR_finish_prof_snapshots_file(void);
+
+/*---------------------------------------------------------------------------*/
+
 #endif /* MERCURY_HEAP_PROFILE_H */
 
 /*---------------------------------------------------------------------------*/
+/* vim: set ts=4 sts=4 sw=4 noet: */

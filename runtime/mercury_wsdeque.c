@@ -109,9 +109,11 @@ MR_wsdeque_take_top(MR_SparkDeque *dq, MR_Spark *ret_spark)
 static MR_SparkArray *
 MR_alloc_spark_array(MR_Integer size)
 {
-    MR_SparkArray *arr;
+    MR_SparkArray   *arr;
+    size_t          num_bytes;
 
-    arr = MR_GC_malloc(sizeof(MR_SparkArray) + (size - 1) * sizeof(MR_Spark));
+    num_bytes = sizeof(MR_SparkArray) + (size - 1) * sizeof(MR_Spark);
+    arr = MR_GC_malloc_attrib(num_bytes, MR_ALLOC_SITE_RUNTIME);
     arr->MR_sa_max = size - 1;
     return arr;
 }

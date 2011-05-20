@@ -24,7 +24,8 @@ MR_STM_record_transaction(MR_STM_TransLog *tlog, MR_STM_Var *var,
 {
     MR_STM_TransRecord  *new_record;
 
-    new_record = MR_GC_NEW(MR_STM_TransRecord);
+    new_record = MR_GC_NEW_ATTRIB(MR_STM_TransRecord,
+        MR_ALLOC_SITE_RUNTIME);
     new_record->MR_STM_tr_var = var;
     new_record->MR_STM_tr_old_value = old_value;
     new_record->MR_STM_tr_new_value = new_value;
@@ -38,7 +39,7 @@ MR_STM_attach_waiter(MR_STM_Var *var, MR_ThreadId tid,
 {
     MR_STM_Waiter   *new_waiter;
 
-    new_waiter = MR_GC_NEW(MR_STM_Waiter);
+    new_waiter = MR_GC_NEW_ATTRIB(MR_STM_Waiter, MR_ALLOC_SITE_RUNTIME);
     new_waiter->MR_STM_cond_var = cvar;
 
     if (var->MR_STM_var_waiters == NULL) {
@@ -361,7 +362,8 @@ MR_STM_block_thread(MR_STM_TransLog *tlog)
 #if defined(MR_THREAD_SAFE)
         MR_STM_ConditionVar     *thread_condvar;
 
-        thread_condvar = MR_GC_NEW(MR_STM_ConditionVar);
+        thread_condvar = MR_GC_NEW_ATTRIB(MR_STM_ConditionVar,
+            MR_ALLOC_SITE_RUNTIME);
         MR_STM_condvar_init(thread_condvar);
 
         MR_STM_wait(tlog, thread_condvar);
@@ -378,12 +380,12 @@ MR_STM_block_thread(MR_STM_TransLog *tlog)
 
         MR_UNLOCK(&MR_STM_lock, "MR_STM_block_thread");
 
-        MR_GC_free(thread_condvar);
+        MR_GC_free_attrib(thread_condvar);
 #else
     MR_fatal_error("Blocking thread in non-parallel grade");
 #endif
 }
-#endif
+#endif  /* MR_HIGHLEVEL_CODE */
 
 
 #if !defined(MR_HIGHLEVEL_CODE)
@@ -412,4 +414,4 @@ MR_STM_condvar_signal(MR_STM_ConditionVar *cvar)
     MR_schedule_context(MR_STM_context_from_condvar(cvar));
 }
 
-#endif
+#endif  /* !MR_HIGHLEVEL_CODE */

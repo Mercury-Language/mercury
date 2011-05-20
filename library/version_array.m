@@ -502,15 +502,20 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    VA = MR_GC_NEW(struct ML_va);
+    MR_Word array;
+
+    MR_incr_hp_type_msg(VA, struct ML_va,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+    MR_incr_hp_msg(array, 1,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
 
     VA->index            = -1;
     VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, 1);
+    VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = 0;
 
 #ifdef MR_THREAD_SAFE
-    VA->lock             = MR_GC_NEW(MercuryLock);
+    MR_incr_hp_type_msg(VA->lock, MercuryLock, MR_ALLOC_ID, NULL);
     pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
 #endif
 ").
@@ -536,11 +541,16 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    VA = MR_GC_NEW(struct ML_va);
+    MR_Word array;
+
+    MR_incr_hp_type_msg(VA, struct ML_va,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+    MR_incr_hp_msg(array, 1,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
 
     VA->index            = -1;
     VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, 1);
+    VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = 0;
 
 #ifdef MR_THREAD_SAFE
@@ -570,11 +580,16 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
         does_not_affect_liveness, may_not_duplicate],
 "
     MR_Integer  i;
+    MR_Word     array;
 
-    VA = MR_GC_NEW(struct ML_va);
+    MR_incr_hp_type_msg(VA, struct ML_va,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+    MR_incr_hp_msg(array, N + 1,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+
     VA->index            = -1;
     VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
+    VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = N;
 
     for (i = 0; i < N; i++) {
@@ -582,7 +597,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     }
 
 #ifdef MR_THREAD_SAFE
-    VA->lock             = MR_GC_NEW(MercuryLock);
+    MR_incr_hp_type_msg(VA->lock, MercuryLock, MR_ALLOC_ID, NULL);
     pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
 #endif
 ").
@@ -609,11 +624,16 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
         does_not_affect_liveness, may_not_duplicate],
 "
     MR_Integer  i;
+    MR_Word     array;
 
-    VA = MR_GC_NEW(struct ML_va);
+    MR_incr_hp_type_msg(VA, struct ML_va,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+    MR_incr_hp_msg(array,  N + 1,
+        MR_ALLOC_ID, ""version_array.version_array/1"");
+
     VA->index            = -1;
     VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
+    VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = N;
 
     for (i = 0; i < N; i++) {
@@ -646,7 +666,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    VA = ML_va_resize_dolock(VA0, N, X);
+    VA = ML_va_resize_dolock(VA0, N, X, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",
@@ -737,7 +757,7 @@ resize(N, X, VA, resize(VA, N, X)).
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    SUCCESS_INDICATOR = ML_va_set_dolock(VA0, I, X, &VA);
+    SUCCESS_INDICATOR = ML_va_set_dolock(VA0, I, X, &VA, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",
@@ -841,7 +861,8 @@ ML_va_get_dolock(ML_va_ptr, MR_Integer, MR_Word *);
 ** returns MR_TRUE.  Otherwise it returns MR_FALSE.
 */
 extern MR_bool
-ML_va_set_dolock(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *);
+ML_va_set_dolock(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *,
+    MR_AllocSiteInfoPtr);
 
 /*
 ** `Rewinds' a version array, invalidating all extant successors
@@ -854,7 +875,7 @@ ML_va_rewind_dolock(ML_va_ptr);
 ** Resize a version array.
 */
 extern ML_va_ptr
-ML_va_resize_dolock(ML_va_ptr, MR_Integer, MR_Word);
+ML_va_resize_dolock(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 
 ").
 
@@ -880,13 +901,14 @@ ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr);
 ** returns MR_TRUE.  Otherwise it returns MR_FALSE.
 */
 static MR_bool
-ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *);
+ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *,
+    MR_AllocSiteInfoPtr alloc_id);
     
 /*
 ** Create a copy of VA0 as a new array.
 */
 static ML_va_ptr
-ML_va_flat_copy(const ML_va_ptr VA0);
+ML_va_flat_copy(const ML_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id);
     
 /*
 ** Update the array VA using the override values in VA0
@@ -906,7 +928,7 @@ ML_va_rewind(ML_va_ptr VA);
 ** Resize a version array.
 */
 static ML_va_ptr
-ML_va_resize(ML_va_ptr, MR_Integer, MR_Word);
+ML_va_resize(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 
 ").
 
@@ -1006,7 +1028,8 @@ ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
 }
 
 int
-ML_va_set_dolock(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
+ML_va_set_dolock(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr,
+    MR_AllocSiteInfoPtr alloc_id)
 {
 #ifdef MR_THREAD_SAFE
     MercuryLock *lock = VA0->lock;
@@ -1015,7 +1038,7 @@ ML_va_set_dolock(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
 
     ML_maybe_lock(lock);
 
-    ret = ML_va_set(VA0, I, X, VAptr);
+    ret = ML_va_set(VA0, I, X, VAptr, alloc_id);
 
     ML_maybe_unlock(lock);
 
@@ -1023,7 +1046,8 @@ ML_va_set_dolock(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
 }
 
 static int
-ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
+ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr,
+    MR_AllocSiteInfoPtr alloc_id)
 {
     ML_va_ptr VA1;
 
@@ -1032,7 +1056,8 @@ ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
             return MR_FALSE;
         }
 
-        VA1 = MR_GC_NEW(struct ML_va);
+        MR_incr_hp_type_msg(VA1, struct ML_va, alloc_id,
+            ""version_array.version_array/1"");
         VA1->index      = -1;
         VA1->value      = (MR_Word) NULL;
         VA1->rest.array = VA0->rest.array;
@@ -1046,7 +1071,7 @@ ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
 
         VA1->rest.array->elements[I] = X;
     } else {
-        VA1 = ML_va_flat_copy(VA0);
+        VA1 = ML_va_flat_copy(VA0, alloc_id);
 
         if (I < 0 || I >= VA1->rest.array->size) {
             return MR_FALSE;
@@ -1060,20 +1085,25 @@ ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
 }
 
 static ML_va_ptr
-ML_va_flat_copy(const ML_va_ptr VA0)
+ML_va_flat_copy(const ML_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
 {
     ML_va_ptr   latest;
     ML_va_ptr   VA;
+    MR_Word     array;
     MR_Integer  N;
     MR_Integer  i;
 
     latest = ML_va_get_latest(VA0);
     N = latest->rest.array->size;
 
-    VA = MR_GC_NEW(struct ML_va);
+    MR_incr_hp_type_msg(VA, struct ML_va,
+        alloc_id, ""version_array.version_array/1"");
+    MR_incr_hp_msg(array, N + 1,
+        alloc_id, ""version_array.version_array/1"");
+
     VA->index            = -1;
     VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
+    VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = N;
 
     for (i = 0; i < N; i++) {
@@ -1082,7 +1112,7 @@ ML_va_flat_copy(const ML_va_ptr VA0)
 
 #ifdef MR_THREAD_SAFE
     if (VA0->lock != NULL) {
-        VA->lock = MR_GC_NEW(MercuryLock);
+        MR_incr_hp_type_msg(VA->lock, MercuryLock, alloc_id, NULL);
         pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
     } else {
         VA->lock = NULL;
@@ -1147,7 +1177,8 @@ ML_va_rewind(ML_va_ptr VA)
 }
 
 ML_va_ptr
-ML_va_resize_dolock(ML_va_ptr VA0, MR_Integer N, MR_Word X)
+ML_va_resize_dolock(ML_va_ptr VA0, MR_Integer N, MR_Word X,
+    MR_AllocSiteInfoPtr alloc_id)
 {
 #ifdef MR_THREAD_SAFE
     MercuryLock *lock = VA0->lock;
@@ -1156,7 +1187,7 @@ ML_va_resize_dolock(ML_va_ptr VA0, MR_Integer N, MR_Word X)
 
     ML_maybe_lock(lock);
 
-    VA = ML_va_resize(VA0, N, X);
+    VA = ML_va_resize(VA0, N, X, alloc_id);
 
     ML_maybe_unlock(lock);
 
@@ -1164,23 +1195,28 @@ ML_va_resize_dolock(ML_va_ptr VA0, MR_Integer N, MR_Word X)
 }
 
 static ML_va_ptr
-ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X)
+ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X,
+    MR_AllocSiteInfoPtr alloc_id)
 {
     ML_va_ptr   latest;
     ML_va_ptr   VA;
     MR_Integer  i;
     MR_Integer  size_VA0;
     MR_Integer  min;
+    MR_Word     array;
 
     latest = ML_va_get_latest(VA0);
 
     size_VA0 = ML_va_size(latest);
     min      = (N <= size_VA0 ? N : size_VA0);
-    VA       = MR_GC_NEW(struct ML_va);
+    MR_incr_hp_type_msg(VA, struct ML_va,
+        alloc_id, ""version_array.version_array/1"");
+    MR_incr_hp_msg(array, N + 1,
+        alloc_id, ""version_array.version_array/1"");
 
     VA->index            = -1;
     VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
+    VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = N;
 
     for (i = 0; i < min; i++) {
@@ -1189,7 +1225,7 @@ ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X)
 
 #ifdef MR_THREAD_SAFE
     if (VA0->lock != NULL) {
-        VA->lock = MR_GC_NEW(MercuryLock);
+        MR_incr_hp_type_msg(VA->lock, MercuryLock, alloc_id, NULL);
         pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
     } else {
         VA->lock = NULL;

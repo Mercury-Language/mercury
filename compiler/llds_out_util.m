@@ -39,6 +39,8 @@
                 lout_entry_label_to_layout      :: map(label, data_id),
                 lout_table_io_decl_map          :: map(pred_proc_id,
                                                     layout_slot_name),
+                lout_alloc_site_map             :: map(alloc_site_id,
+                                                    layout_slot_name),
                 lout_auto_comments              :: bool,
                 lout_line_numbers               :: bool,
                 lout_emit_c_loops               :: bool,
@@ -57,7 +59,8 @@
 
 :- func init_llds_out_info(module_name, globals,
     map(label, layout_slot_name), map(label, data_id),
-    map(pred_proc_id, layout_slot_name)) = llds_out_info.
+    map(pred_proc_id, layout_slot_name),
+    map(alloc_site_id, layout_slot_name)) = llds_out_info.
 
 :- pred output_set_line_num(llds_out_info::in, prog_context::in,
     io::di, io::uo) is det.
@@ -110,8 +113,8 @@
 %----------------------------------------------------------------------------%
 
 init_llds_out_info(ModuleName, Globals,
-        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap)
-        = Info :-
+        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap,
+        AllocSiteMap) = Info :-
     MangledModuleName = sym_name_mangle(ModuleName),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
@@ -131,6 +134,7 @@ init_llds_out_info(ModuleName, Globals,
     globals.get_trace_level(Globals, TraceLevel),
     Info = llds_out_info(ModuleName, MangledModuleName,
         InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap,
+        AllocSiteMap,
         AutoComments, LineNumbers,
         EmitCLoops, GenerateBytecode, LocalThreadEngineBase,
         ProfileCalls, ProfileTime, ProfileMemory, ProfileDeep,

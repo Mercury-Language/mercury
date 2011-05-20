@@ -5576,8 +5576,11 @@ then a progress message will be displayed as each file is read.
 * Creating profiles::               How to create profile data.
 * Using mprof for time profiling::  How to analyze the time performance of a
                                     program with mprof.
-* Using mprof for memory profiling::How to analyze the memory performance of a
+* Using mprof for profiling memory allocation::
+                                    How to analyze the memory performance of a
                                     program with mprof.
+* Using mprof for profiling memory retention::
+                                    How to analyze what memory is on the heap.
 * Using mdprof::                    How to analyze the time and/or memory
                                     performance of a program with mdprof.
 * Using threadscope::               How to analyse the parallel
@@ -5965,15 +5968,14 @@ time represent the proportion of the current procedure's self and descendent
 time due to that parent.  These times are obtained using the assumption that
 each call contributes equally to the total time of the current procedure.
 
-@node Using mprof for memory profiling
-@section Using mprof for memory profiling
+@node Using mprof for profiling memory allocation
+@section Using mprof for profiling memory allocation
 @pindex mprof
 @cindex Memory profiling
 @cindex Allocation profiling
-@cindex Heap profiling
 @cindex Profiling memory allocation
 
-To create a memory profile, you can invoke @samp{mprof}
+To create a profile of memory allocations, you can invoke @samp{mprof}
 with the @samp{-m} (@samp{--profile memory-words}) option.
 This will profile the amount of memory allocated, measured in units of words.
 (A word is 4 bytes on a 32-bit architecture,
@@ -5992,12 +5994,74 @@ With memory profiling, just as with time profiling,
 you can use the @samp{-c} (@samp{--call-graph}) option to display
 call graph profiles in addition to flat profiles.
 
-Note that Mercury's memory profiler will only tell you about allocation,
-not about deallocation (garbage collection).
+When invoked with the @samp{-m} option, @samp{mprof} only reports
+allocations, not deallocations (garbage collection).
 It can tell you how much memory was allocated by each procedure,
 but it won't tell you how long the memory was live for,
 or how much of that memory was garbage-collected.
 This is also true for @samp{mdprof}.
+
+The memory retention profiling tool described in the next section can tell
+you which memory cells remain on the heap.
+
+@node Using mprof for profiling memory retention
+@section Using mprof for profiling memory retention
+@pindex mprof
+@cindex Memory attribution
+@cindex Memory retention
+@cindex Heap profiling
+
+When a program is built with memory profiling enabled and uses the Boehm
+garbage collector, i.e. a grade with @samp{.memprof.gc} modifiers,
+each memory cell is ``attributed'' with information about its origin
+and type.  This information can be
+collated to tell you what kinds of objects are being retained when
+the program executes.
+
+To do this, you must instrument the program by adding calls to
+@code{benchmarking.report_memory_attribution/1} or
+@code{benchmarking.report_memory_attribution/3}
+at points of interest.
+The first argument of the @code{report_memory_attribution} predicates
+is a string that is used to label the the memory retention data
+corresponding to that call in the profiling output.
+You may want to call them from within @samp{trace} goals:
+
+@example
+trace [run_time(env("SNAPSHOTS")), io(!IO)] (
+    benchmarking.report_memory_attribution("Phase 2", !IO)
+)
+@end example
+
+If a program operates in distinct phases
+you may want to add a call in between the phases.
+The @samp{report_memory_attribution} predicates do nothing in other grades,
+so are safe to leave in the program.
+
+Next, build the program in a @samp{.memprof.gc} grade.
+After the program has finished executing, it will generate a file
+called @samp{Prof.Snapshots} in the current directory.
+Run @samp{mprof -s} to view the profile.
+You will see the memory cells which were on the heap at each time
+that @samp{report_memory_attribution} was called: the origin of the cells, and
+their type constructors.
+
+Passing the additional option @samp{-g type} will group the profile first by
+type constructors, then by procedure.  The @samp{-H} option hides the secondary
+level of information.  Memory cells allocated by the Mercury runtime system
+itself are normally excluded from the profile; they can be viewed by passing
+the @samp{-r} option.
+
+Note that Mercury values which are dead may in fact be still reachable from the
+various execution stacks. This is particularly noticeable on the high-level C
+back-end, as the C compiler does not take conservative garbage collection into
+account and Mercury values may linger on the C stack for longer than necessary.
+The low-level C grades should suffer to a lesser extent.
+
+The attribution requires an extra word of memory per cell, which
+is then rounded up by the memory allocator.
+This is accounted for in @samp{mprof} output, but the memory usage
+of the program may be significantly higher than in non-memory profiling grades.
 
 @node Using mdprof
 @section Using mdprof
@@ -7793,7 +7857,9 @@ This option is only supported by the C back-ends.
 Enable memory profiling.  Insert memory profiling hooks in the
 generated code, and also output some profiling
 information (the static call graph) to the file
-@samp{@var{module}.prof}.  @xref{Using mprof for memory profiling}.
+@samp{@var{module}.prof}.
+@xref{Using mprof for profiling memory allocation}.
+@xref{Using mprof for profiling memory retention}.
 This option is only supported by the C back-ends.
 
 @sp 1

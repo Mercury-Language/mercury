@@ -569,6 +569,9 @@ dump_layout_array_name(ArrayName) = Str :-
     ;
         ArrayName = threadscope_string_table_array,
         Str = "threadscope_string_table_array"
+    ;
+        ArrayName = alloc_site_array,
+        Str = "alloc_site_array"
     ).
 
 dump_layout_name(proc_layout(RttiProcLabel, _)) =
@@ -1170,6 +1173,7 @@ dump_component(_, foreign_proc_raw_code(_, AL, _, Code)) =
     ).
 dump_component(MaybeProcLabel, foreign_proc_fail_to(Label)) =
     "fail to " ++ dump_label(MaybeProcLabel, Label) ++ "\n".
+dump_component(_, foreign_proc_alloc_id(_)) = "<alloc_id>".
 dump_component(_, foreign_proc_noop) = "".
 
 :- func dump_affects_liveness(proc_affects_liveness) = string.

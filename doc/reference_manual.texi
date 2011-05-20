@@ -6610,7 +6610,7 @@ based on factors such as the size of the code fragment.
     @c [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
     @c sharing(yes(int, T, array(T)), [cel(Item,[]) - cel(Array,[T])])],
 @c "
-    @c ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
+    @c ML_alloc_array(Array, Size + 1, MR_ALLOC_ID);
     @c ML_init_array(Array, Size, Item);
 @c ").
 @c @end example

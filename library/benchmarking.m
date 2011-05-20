@@ -42,6 +42,19 @@
     %
 :- impure pred report_full_memory_stats is det.
 
+    % report_memory_attribution(Label, !IO) is a procedure intended for use in
+    % profiling the memory usage by a program. In `memprof.gc' grades it has
+    % the side-effect of forcing a garbage collection and reporting a summary
+    % of the objects on the heap to a data file. See ``Using mprof -s for
+    % profiling memory retention'' in the Mercury User's Guide. The label is
+    % for your reference.
+    %
+    % On other grades this procedure does nothing.
+    %
+:- pred report_memory_attribution(string::in, io::di, io::uo) is det.
+
+:- impure pred report_memory_attribution(string::in) is det.
+
     % benchmark_det(Pred, In, Out, Repeats, Time) is for benchmarking the det
     % predicate Pred. We call Pred with the input In and the output Out, and
     % return Out so that the caller can check the correctness of the
@@ -206,6 +219,25 @@ extern void ML_report_full_memory_stats(void);
 "
     'ML_report_stats'()
 ").
+
+:- pragma foreign_proc("C",
+    report_memory_attribution(Label::in),
+    [will_not_call_mercury],
+"
+#ifdef  MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
+    MR_report_memory_attribution(Label);
+#else
+    (void) Label;
+#endif
+").
+
+report_memory_attribution(_) :-
+    impure_true.
+
+:- pragma promise_pure(report_memory_attribution/3).
+
+report_memory_attribution(Label, !IO) :-
+    impure report_memory_attribution(Label).
 
 %-----------------------------------------------------------------------------%
 
@@ -587,7 +619,11 @@ ML_memory_profile_top_table(MR_memprof_record *node,
         next_slot = ML_memory_profile_top_table(node->left,
             table, table_size, next_slot);
 
-        new_entry.name = node->name;
+        if (node->type_name != NULL) {
+            new_entry.name = node->type_name;
+        } else {
+            new_entry.name = MR_lookup_entry_or_internal(node->proc);
+        }
         ML_update_counter(&node->counter, &new_entry.counter);
         next_slot = ML_insert_into_table(&new_entry,
             table, table_size, next_slot);
@@ -615,7 +651,11 @@ ML_memory_profile_fill_table(MR_memprof_record *node,
         next_slot = ML_memory_profile_fill_table(node->left,
             table, next_slot);
 
-        table[next_slot].name = node->name;
+        if (node->type_name != NULL) {
+            table[next_slot].name = node->type_name;
+        } else {
+            table[next_slot].name = MR_lookup_entry_or_internal(node->proc);
+        }
         ML_update_counter(&node->counter, &table[next_slot].counter);
         next_slot++;
 
@@ -1070,7 +1110,7 @@ repeat(N) :-
     [will_not_call_mercury],
 "
     MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
-        MR_PROC_LABEL, ""benchmarking:int_reference/1"");
+        MR_ALLOC_ID, ""benchmarking.int_reference/1"");
     MR_define_size_slot(0, Ref, 1);
     * (MR_Integer *) Ref = X;
 ").

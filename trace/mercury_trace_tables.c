@@ -324,7 +324,7 @@ MR_insert_module_info(const MR_ModuleLayout *module)
                     module);
         } else {
             MR_GC_ensure_room_for_next(MR_module_nick, MR_Module_Nick,
-                INIT_MODULE_TABLE_SIZE);
+                INIT_MODULE_TABLE_SIZE, NULL);
             MR_prepare_insert_into_sorted(MR_module_nicks, MR_module_nick_next,
                 slot, strcmp(MR_module_nicks[slot].MR_nick_name, nickname));
             MR_module_nicks[slot].MR_nick_name = nickname;

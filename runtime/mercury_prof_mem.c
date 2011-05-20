@@ -37,7 +37,7 @@
 /*
 ** Constants
 */
-#define MEMORY_BLOCK    2048        /* Testing on a big input file on */
+#define MEMORY_BLOCK    8192        /* Testing on a big input file on */
                                     /* the compiler normally required */
                                     /* around 6000 nodes.         */
 
@@ -47,7 +47,7 @@
 ** Private Global Variables
 */
 static size_t   mem_left = 0;       /* Number of bytes left     */
-static void     *next    = NULL;    /* Pointer to next data block   */
+static char     *next    = NULL;    /* Pointer to next data block   */
                                     /* we can give away     */
 
 /*----------------------------------------------------------------------------*/
@@ -73,19 +73,15 @@ MR_prof_malloc(size_t size)
 
     /* Here we waste a bit of space but hopefully not to much */
     if (mem_left < size) {
-        /*
-        ** XXX For the conservative GC, it would be better to allocate
-        ** this memory with GC_malloc_atomic_uncollectable(),
-        ** so that the collector doesn't scan it.
-        */
-        next = MR_GC_malloc(MEMORY_BLOCK * size);
+        next = MR_GC_malloc_uncollectable_attrib(MEMORY_BLOCK * size,
+            MR_ALLOC_SITE_RUNTIME);
         mem_left = MEMORY_BLOCK * size;
     }
 
-    p = next;
+    p = (void *) next;
 
-    next = (void *) ((char *) next + size);
-    mem_left = mem_left - size;
+    next += size;
+    mem_left -= size;
 
     return p;
 }

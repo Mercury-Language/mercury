@@ -944,7 +944,8 @@ MR_make_closure(MR_Code *proc_addr)
     /*
     ** Construct the MR_ClosureId.
     */
-    MR_incr_hp_type(closure_id, MR_ClosureId);
+    MR_incr_hp_type_msg(closure_id, MR_ClosureId,
+        MR_ALLOC_SITE_RUNTIME, NULL);
     closure_id->MR_closure_proc_id.MR_proc_user.MR_user_pred_or_func =
         MR_PREDICATE;
     closure_id->MR_closure_proc_id.MR_proc_user.MR_user_decl_module =
@@ -956,12 +957,14 @@ MR_make_closure(MR_Code *proc_addr)
     closure_id->MR_closure_module_name = "dl";
     closure_id->MR_closure_file_name = __FILE__;
     closure_id->MR_closure_line_number = __LINE__;
-    MR_make_aligned_string_copy(closure_id->MR_closure_goal_path, buf);
+    MR_make_aligned_string_copy_msg(closure_id->MR_closure_goal_path, buf,
+        MR_ALLOC_SITE_STRING);
 
     /*
     ** Construct the MR_Closure_Layout.
     */
-    MR_incr_hp_type(closure_layout, MR_Closure_Dyn_Link_Layout);
+    MR_incr_hp_type_msg(closure_layout, MR_Closure_Dyn_Link_Layout,
+        MR_ALLOC_SITE_RUNTIME, NULL);
     closure_layout->MR_closure_dl_id = closure_id;
     closure_layout->MR_closure_dl_type_params = NULL;
     closure_layout->MR_closure_dl_num_all_args = 0;
@@ -974,7 +977,8 @@ MR_make_closure(MR_Code *proc_addr)
 #else
     num_hidden_args = 0;
 #endif
-    MR_offset_incr_hp(closure_word, 0, 3 + num_hidden_args);
+    MR_offset_incr_hp_msg(closure_word, 0, 3 + num_hidden_args,
+        MR_ALLOC_SITE_RUNTIME, NULL);
     closure = (MR_Closure *) closure_word;
 
     closure->MR_closure_layout = (MR_Closure_Layout *) closure_layout;

@@ -437,7 +437,7 @@ unpickle_string_2(Handle, Index, Length, !String, !State) :-
     allocate_string(Length::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MR_allocate_aligned_string_msg(Str, Length, ""pickle.allocate_string"");
+    MR_allocate_aligned_string_msg(Str, Length, MR_ALLOC_ID);
     Str[Length] = '\\0';
 ").
 

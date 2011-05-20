@@ -23,7 +23,7 @@
 #define BUFFER_SIZE 4096
 
 MR_String
-MR_make_string(MR_Code *proclabel, const char *fmt, ...)
+MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...)
 {
     va_list     ap;
     MR_String   result;
@@ -83,7 +83,7 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...)
     p = fixed;
 #endif
     MR_restore_transient_hp();
-    MR_allocate_aligned_string_msg(result, strlen(p), proclabel);
+    MR_allocate_aligned_string_msg(result, strlen(p), alloc_id);
     MR_save_transient_hp();
     strcpy(result, p);
 
