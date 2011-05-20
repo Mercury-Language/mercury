@@ -4,6 +4,8 @@ depth 0, size 0, width 20
 []
 array([])
 array([])
+version_array([])
+version_array([])
 {}
 {...}
 {...}
@@ -57,6 +59,8 @@ depth 0, size 0, width 40
 []
 array([])
 array([])
+version_array([])
+version_array([])
 {}
 {...}
 {...}
@@ -88,6 +92,8 @@ depth 0, size 0, width 80
 []
 array([])
 array([])
+version_array([])
+version_array([])
 {}
 {...}
 {...}
@@ -110,6 +116,8 @@ depth 0, size 1, width 20
 [...]
 array([...])
 array([...])
+version_array([...])
+version_array([...])
 {}
 {...}
 {...}
@@ -163,6 +171,8 @@ depth 0, size 1, width 40
 [...]
 array([...])
 array([...])
+version_array([...])
+version_array([...])
 {}
 {...}
 {...}
@@ -194,6 +204,8 @@ depth 0, size 1, width 80
 [...]
 array([...])
 array([...])
+version_array([...])
+version_array([...])
 {}
 {...}
 {...}
@@ -216,6 +228,8 @@ depth 0, size 3, width 20
 [...]
 array([...])
 array([...])
+version_array([...])
+version_array([...])
 {}
 {...}
 {...}
@@ -269,6 +283,8 @@ depth 0, size 3, width 40
 [...]
 array([...])
 array([...])
+version_array([...])
+version_array([...])
 {}
 {...}
 {...}
@@ -300,6 +316,8 @@ depth 0, size 3, width 80
 [...]
 array([...])
 array([...])
+version_array([...])
+version_array([...])
 {}
 {...}
 {...}
@@ -322,6 +340,8 @@ depth 0, size 5, width 20
 [...]
 array([...])
 array([...])
+version_array([...])
+version_array([...])
 {}
 {...}
 {...}
@@ -375,6 +395,8 @@ depth 0, size 5, width 40
 [...]
 array([...])
 array([...])
+version_array([...])
+version_array([...])
 {}
 {...}
 {...}
@@ -406,6 +428,8 @@ depth 0, size 5, width 80
 [...]
 array([...])
 array([...])
+version_array([...])
+version_array([...])
 {}
 {...}
 {...}
@@ -428,6 +452,8 @@ depth 5, size 0, width 20
 []
 array([])
 array([])
+version_array([])
+version_array([])
 {}
 {1}
 {1, 2}
@@ -481,6 +507,8 @@ depth 5, size 0, width 40
 []
 array([])
 array([])
+version_array([])
+version_array([])
 {}
 {1}
 {1, 2}
@@ -512,6 +540,8 @@ depth 5, size 0, width 80
 []
 array([])
 array([])
+version_array([])
+version_array([])
 {}
 {1}
 {1, 2}
@@ -534,6 +564,8 @@ depth 5, size 1, width 20
 [1]
 array([[1]])
 array([[1]])
+version_array([[1]])
+version_array([[1]])
 {}
 {1}
 {1, 2}
@@ -588,6 +620,8 @@ depth 5, size 1, width 40
 [1]
 array([[1]])
 array([[1]])
+version_array([[1]])
+version_array([[1]])
 {}
 {1}
 {1, 2}
@@ -619,6 +653,8 @@ depth 5, size 1, width 80
 [1]
 array([[1]])
 array([[1]])
+version_array([[1]])
+version_array([[1]])
 {}
 {1}
 {1, 2}
@@ -642,6 +678,12 @@ depth 5, size 3, width 20
 array([[1], [1], 
  [1]])
 array([
+ [1, 2, ...], 
+ [1, 2, ...], 
+ [1, 2, ...]])
+version_array([
+ [1], [1], [1]])
+version_array([
  [1, 2, ...], 
  [1, 2, ...], 
  [1, 2, ...]])
@@ -713,6 +755,9 @@ depth 5, size 3, width 40
 array([[1], [1], [1]])
 array([[1, 2, ...], [1, 2, ...], 
  [1, 2, ...]])
+version_array([[1], [1], [1]])
+version_array([[1, 2, ...], 
+ [1, 2, ...], [1, 2, ...]])
 {}
 {1}
 {1, 2}
@@ -749,6 +794,8 @@ depth 5, size 3, width 80
 [1, 2, 3]
 array([[1], [1], [1]])
 array([[1, 2, ...], [1, 2, ...], [1, 2, ...]])
+version_array([[1], [1], [1]])
+version_array([[1, 2, ...], [1, 2, ...], [1, 2, ...]])
 {}
 {1}
 {1, 2}
@@ -773,6 +820,12 @@ depth 5, size 5, width 20
 array([[1], [1], 
  [1], ...])
 array([
+ [1, 2, ...], 
+ [1, 2, ...], 
+ [1, 2, ...], ...])
+version_array([
+ [1], [1], [1], ...])
+version_array([
  [1, 2, ...], 
  [1, 2, ...], 
  [1, 2, ...], ...])
@@ -857,6 +910,9 @@ depth 5, size 5, width 40
 array([[1], [1], [1], ...])
 array([[1, 2, ...], [1, 2, ...], 
  [1, 2, ...], ...])
+version_array([[1], [1], [1], ...])
+version_array([[1, 2, ...], 
+ [1, 2, ...], [1, 2, ...], ...])
 {}
 {1}
 {1, 2}
@@ -899,6 +955,8 @@ depth 5, size 5, width 80
 [1, 2, 3, 4, ...]
 array([[1], [1], [1], ...])
 array([[1, 2, ...], [1, 2, ...], [1, 2, ...], ...])
+version_array([[1], [1], [1], ...])
+version_array([[1, 2, ...], [1, 2, ...], [1, 2, ...], ...])
 {}
 {1}
 {1, 2}
@@ -925,6 +983,8 @@ depth 1000, size 0, width 20
 []
 array([])
 array([])
+version_array([])
+version_array([])
 {}
 {1}
 {1, 2}
@@ -979,6 +1039,8 @@ depth 1000, size 0, width 40
 []
 array([])
 array([])
+version_array([])
+version_array([])
 {}
 {1}
 {1, 2}
@@ -1010,6 +1072,8 @@ depth 1000, size 0, width 80
 []
 array([])
 array([])
+version_array([])
+version_array([])
 {}
 {1}
 {1, 2}
@@ -1032,6 +1096,8 @@ depth 1000, size 1, width 20
 [1]
 array([[1]])
 array([[1]])
+version_array([[1]])
+version_array([[1]])
 {}
 {1}
 {1, 2}
@@ -1087,6 +1153,8 @@ depth 1000, size 1, width 40
 [1]
 array([[1]])
 array([[1]])
+version_array([[1]])
+version_array([[1]])
 {}
 {1}
 {1, 2}
@@ -1118,6 +1186,8 @@ depth 1000, size 1, width 80
 [1]
 array([[1]])
 array([[1]])
+version_array([[1]])
+version_array([[1]])
 {}
 {1}
 {1, 2}
@@ -1141,6 +1211,12 @@ depth 1000, size 3, width 20
 array([[1], [1], 
  [1]])
 array([[1, 2, 3], 
+ [1, 2, 3], 
+ [1, 2, 3]])
+version_array([
+ [1], [1], [1]])
+version_array([
+ [1, 2, 3], 
  [1, 2, 3], 
  [1, 2, 3]])
 {}
@@ -1212,6 +1288,9 @@ depth 1000, size 3, width 40
 [1, 2, 3]
 array([[1], [1], [1]])
 array([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
+version_array([[1], [1], [1]])
+version_array([[1, 2, 3], [1, 2, 3], 
+ [1, 2, 3]])
 {}
 {1}
 {1, 2}
@@ -1248,6 +1327,8 @@ depth 1000, size 3, width 80
 [1, 2, 3]
 array([[1], [1], [1]])
 array([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
+version_array([[1], [1], [1]])
+version_array([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
 {}
 {1}
 {1, 2}
@@ -1272,6 +1353,15 @@ depth 1000, size 5, width 20
 array([[1], [1], 
  [1], [1], [1]])
 array([
+ [1, 2, 3, 4, 5], 
+ [1, 2, 3, 4, 5], 
+ [1, 2, 3, 4, 5], 
+ [1, 2, 3, 4, 5], 
+ [1, 2, 3, 4, 5]])
+version_array([
+ [1], [1], [1], 
+ [1], [1]])
+version_array([
  [1, 2, 3, 4, 5], 
  [1, 2, 3, 4, 5], 
  [1, 2, 3, 4, 5], 
@@ -1423,6 +1513,10 @@ array([[1], [1], [1], [1], [1]])
 array([[1, 2, 3, 4, 5], 
  [1, 2, 3, 4, 5], [1, 2, 3, 4, 5], 
  [1, 2, 3, 4, 5], [1, 2, 3, 4, 5]])
+version_array([[1], [1], [1], [1], [1]])
+version_array([[1, 2, 3, 4, 5], 
+ [1, 2, 3, 4, 5], [1, 2, 3, 4, 5], 
+ [1, 2, 3, 4, 5], [1, 2, 3, 4, 5]])
 {}
 {1}
 {1, 2}
@@ -1482,6 +1576,9 @@ depth 1000, size 5, width 80
 array([[1], [1], [1], [1], [1]])
 array([[1, 2, 3, 4, 5], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5], 
  [1, 2, 3, 4, 5]])
+version_array([[1], [1], [1], [1], [1]])
+version_array([[1, 2, 3, 4, 5], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5], 
+ [1, 2, 3, 4, 5], [1, 2, 3, 4, 5]])
 {}
 {1}
 {1, 2}

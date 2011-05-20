@@ -25,6 +25,7 @@
 
 :- import_module pprint.
 :- import_module int, list, map, array, string, rbtree, solutions.
+:- import_module version_array.
 
 :- type tree(T) ---> branch(tree(T), T, tree(T)) ; leaf.
 
@@ -39,6 +40,12 @@ list_doc(M, D) = to_doc(D, 1 `..` M).
 :- func array_doc(int, int, int) = doc.
 
 array_doc(M, N, D) = to_doc(D, array(duplicate(M, 1 `..` N))).
+
+%------------------------------------------------------------------------------%
+
+:- func version_array_doc(int, int, int) = doc.
+
+version_array_doc(M, N, D) = to_doc(D, version_array(duplicate(M, 1 ..N))).
 
 %------------------------------------------------------------------------------%
 
@@ -119,6 +126,8 @@ test_doc(D, S, W) =
     list_doc(S, D) `<>` line `<>`
     array_doc(S, 1, D) `<>` line `<>`
     array_doc(S, S, D) `<>` line `<>`
+    version_array_doc(S, 1, D) `<>` line `<>`
+    version_array_doc(S, S, D) `<>` line `<>`
     tuple_doc_0(D) `<>` line `<>`
     tuple_doc_1(D) `<>` line `<>`
     tuple_doc_2(D) `<>` line `<>`

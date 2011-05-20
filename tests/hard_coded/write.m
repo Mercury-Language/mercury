@@ -11,6 +11,7 @@
 :- implementation.
 
 :- import_module list, int, term, map, array, univ.
+:- import_module version_array.
 
 :- pred test_ops(io__state::di, io__state::uo) is det.
 :- pred test_builtins(io__state::di, io__state::uo) is det.
@@ -153,6 +154,9 @@ test_other -->
 
 	{ array__from_list([1,2,3,4], Array) },
 	io__write(Array), newline,
+
+	{ VersionArray = version_array.from_list([1,2,3,4]) },
+	io.write(VersionArray), newline,
 
 	newline.
 

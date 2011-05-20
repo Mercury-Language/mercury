@@ -29,12 +29,14 @@
 :- import_module list.
 :- import_module map.
 :- import_module pretty_printer.
+:- import_module version_array.
 
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
     L = 1..100,
     A = array(L),
+    VA = version_array(L),
     M = map.from_corresponding_lists(L, L) : map(int, int),
     pretty_printer.get_default_formatter_map(FMap, !IO),
     io.print(FMap, !IO),
@@ -48,7 +50,8 @@ main(!IO) :-
             str("strings: "), format("this is a string"), nl,
             str("ints:    "), format(42), str(" "), format(-123), nl,
             str("floats:  "), format(3.141), str(" "), format(-10.0), nl,
-            str("chars:   "), format([a, '*', '\n']), nl
+            str("chars:   "), format([a, '*', '\n']), nl,
+            str("version_array:"), format(VA), nl
         ]),
         !IO
     ).

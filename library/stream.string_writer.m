@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -183,6 +183,7 @@
 :- import_module rtti_implementation.
 :- import_module term_io.
 :- import_module type_desc.
+:- import_module version_array.
 
 put_int(Stream, Int, !State) :-
     (
@@ -399,6 +400,16 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
         det_univ_to_type(Univ, Array),
         write_array(Stream, Array, !State)
     ;
+        type_ctor_and_args(univ_type(Univ), TypeCtor, ArgTypes),
+        ArgTypes = [ElemType],
+        type_ctor_name(TypeCtor) = "version_array",
+        type_ctor_module_name(TypeCtor) = "version_array"
+    ->
+        has_type(Elem, ElemType),
+        same_version_array_elem_type(VersionArray, Elem),
+        det_univ_to_type(Univ, VersionArray),
+        write_version_array(Stream, VersionArray, !State)
+    ;
         % Check if the type is private_builtin.type_info/1.
         % See the comments above for array.array/1.
 
@@ -418,6 +429,11 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
 :- pred same_array_elem_type(array(T)::unused, T::unused) is det.
 
 same_array_elem_type(_, _).
+
+:- pred same_version_array_elem_type(version_array(T)::unused, T::unused)
+    is det.
+
+same_version_array_elem_type(_, _).
 
 :- pred same_private_builtin_type(private_builtin.type_info::unused,
     T::unused) is det.
@@ -763,6 +779,18 @@ write_c_pointer(Stream, C_Pointer, !State) :-
 write_array(Stream, Array, !State) :-
     put(Stream, "array(", !State),
     array.to_list(Array, List),
+    write(Stream, List, !State),
+    put(Stream, ")", !State).
+
+:- pred write_version_array(Stream::in, version_array(T)::in,
+    State::di, State::uo) is det <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+:- pragma type_spec(write_version_array/4,
+        (Stream = io.output_stream, State = io.state)).
+
+write_version_array(Stream, VersionArray, !State) :-
+    put(Stream, "version_array(", !State),
+    List = version_array.to_list(VersionArray),
     write(Stream, List, !State),
     put(Stream, ")", !State).
 

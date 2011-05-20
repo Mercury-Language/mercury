@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 expandtab tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009-2010 The University of Melbourne
+% Copyright (C) 2007, 2009-2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -252,6 +252,7 @@
 :- import_module string.
 :- import_module term_io.
 :- import_module tree234.               % For tree234_to_doc.
+:- import_module version_array.         % For version_array_to_doc.
 
 %-----------------------------------------------------------------------------%
 
@@ -1084,7 +1085,9 @@ initial_formatter_map = !:Formatters :-
     set_formatter_sv("builtin", "string",    0, fmt_string,  !Formatters),
     set_formatter_sv("array",   "array",     1, fmt_array,   !Formatters),
     set_formatter_sv("list",    "list",      1, fmt_list,    !Formatters),
-    set_formatter_sv("tree234", "tree234",   2, fmt_tree234, !Formatters).
+    set_formatter_sv("tree234", "tree234",   2, fmt_tree234, !Formatters),
+    set_formatter_sv("version_array", "version_array", 1, fmt_version_array,
+        !Formatters).
 
 %-----------------------------------------------------------------------------%
 
@@ -1136,6 +1139,22 @@ fmt_array(Univ, ArgDescs) =
         array_to_doc(X)
       else
         str("?array?")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- func fmt_version_array(univ, list(type_desc)) = doc.
+
+fmt_version_array(Univ, ArgDescs) =
+    ( if
+        ArgDescs = [ArgDesc],
+        has_type(_Arg : T, ArgDesc),
+        Value = univ_value(Univ),
+        dynamic_cast(Value, X : version_array(T))
+      then
+        version_array_to_doc(X)
+      else
+        str("?version_array?")
     ).
 
 %-----------------------------------------------------------------------------%

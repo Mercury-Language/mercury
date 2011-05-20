@@ -52,6 +52,9 @@
 :- interface.
 
 :- import_module list.
+:- import_module pretty_printer.
+
+%-----------------------------------------------------------------------------%
 
 :- type version_array(T).
 
@@ -211,6 +214,10 @@
     %
 :- func unsafe_rewind(version_array(T)) = version_array(T).
 :- pred unsafe_rewind(version_array(T)::in, version_array(T)::out) is det.
+    
+    % Convert a version_array to a pretty_printer.doc for formatting.
+    %
+:- func version_array_to_doc(version_array(T)) = pretty_printer.doc.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1795,6 +1802,24 @@ public static class ML_uva implements ML_va, java.io.Serializable {
 }
 
 ").
+
+%-----------------------------------------------------------------------------%
+
+version_array_to_doc(A) =
+    indent([str("version_array(["), version_array_to_doc_2(0, A), str("])")]).
+
+:- func version_array_to_doc_2(int, version_array(T)) = doc.
+
+version_array_to_doc_2(I, A) =
+    ( if I > version_array.max(A) then
+        str("")
+      else
+        docs([
+          format_arg(format(A ^ elem(I))),
+          ( if I = version_array.max(A) then str("") else group([str(", "), nl]) ),
+          format_susp((func) = version_array_to_doc_2(I + 1, A))
+        ])
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module version_array.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim:ts=4 sw=4 expandtab tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007, 2010 The University of Melbourne
+% Copyright (C) 2000-2007, 2010-2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -377,6 +377,7 @@
 :- import_module sparse_bitset.
 :- import_module term.
 :- import_module type_desc.
+:- import_module version_array.
 
 %-----------------------------------------------------------------------------%
 
@@ -685,6 +686,9 @@ to_doc(Depth, Priority, X) =
       else if dynamic_cast_to_array(X, Array)
       then    array_to_doc(Depth, Array)
 
+      else if dynamic_cast_to_version_array(X, VersionArray)
+      then    version_array_to_doc(Depth, VersionArray)
+
       else if dynamic_cast_to_tuple(X, Tuple)
       then    tuple_to_doc(Depth, Tuple)
 
@@ -818,10 +822,10 @@ dynamic_cast_to_var(X, V) :-
     [ArgTypeDesc] = type_args(type_of(X)),
 
     % Convert ArgTypeDesc to a type variable ArgType.
-    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
+    (_ : ArgType) `has_type` ArgTypeDesc,
 
     % Constrain the type of V to be var(ArgType) and do the cast.
-    dynamic_cast(X, V `with_type` var(ArgType)).
+    dynamic_cast(X, V : var(ArgType)).
 
 %-----------------------------------------------------------------------------%
 
@@ -829,13 +833,13 @@ dynamic_cast_to_var(X, V) :-
     is semidet.
 
 dynamic_cast_to_sparse_bitset_of_int(X, A) :-
-    dynamic_cast(X, A `with_type` sparse_bitset(int)).
+    dynamic_cast(X, A : sparse_bitset(int)).
 
 :- some [T2] pred dynamic_cast_to_sparse_bitset_of_var(T1::in,
     sparse_bitset(var(T2))::out) is semidet.
 
 dynamic_cast_to_sparse_bitset_of_var(X, A) :-
-    dynamic_cast(X, A `with_type` sparse_bitset(var)).
+    dynamic_cast(X, A : sparse_bitset(var)).
 
 %-----------------------------------------------------------------------------%
 
@@ -846,10 +850,25 @@ dynamic_cast_to_array(X, A) :-
     [ArgTypeDesc] = type_args(type_of(X)),
 
     % Convert ArgTypeDesc to a type variable ArgType.
-    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
+    (_ : ArgType) `has_type` ArgTypeDesc,
 
     % Constrain the type of A to be array(ArgType) and do the cast.
-    dynamic_cast(X, A `with_type` array(ArgType)).
+    dynamic_cast(X, A : array(ArgType)).
+
+%-----------------------------------------------------------------------------%
+
+:- some [T2] pred dynamic_cast_to_version_array(T1::in,
+    version_array(T2)::out) is semidet.
+
+dynamic_cast_to_version_array(X, VA) :-
+    % If X is a version array then it has a type with one type argument.
+    [ArgTypeDesc] = type_args(type_of(X)),
+
+    % Convert ArgTypeDesc to a type variable ArgType.
+    (_ : ArgType) `has_type` ArgTypeDesc,
+
+    % Constrain the type of VA to be array(ArgType) and do the cast.
+    dynamic_cast(X, VA : version_array(ArgType)).
 
 %-----------------------------------------------------------------------------%
 
@@ -860,10 +879,10 @@ dynamic_cast_to_list(X, L) :-
     [ArgTypeDesc] = type_args(type_of(X)),
 
     % Convert ArgTypeDesc to a type variable ArgType.
-    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
+    (_ : ArgType) `has_type` ArgTypeDesc,
 
     % Constrain the type of L to be list(ArgType) and do the cast.
-    dynamic_cast(X, L `with_type` list(ArgType)).
+    dynamic_cast(X, L : list(ArgType)).
 
 %-----------------------------------------------------------------------------%
 
@@ -874,11 +893,11 @@ dynamic_cast_to_map(X, M) :-
     [KeyTypeDesc, ValueTypeDesc] = type_args(type_of(X)),
 
     % Convert the TypeDescs to type variables.
-    (_ `with_type` KeyType) `has_type` KeyTypeDesc,
-    (_ `with_type` ValueType) `has_type` ValueTypeDesc,
+    (_ : KeyType) `has_type` KeyTypeDesc,
+    (_ : ValueType) `has_type` ValueTypeDesc,
 
     % Constrain the type of M to be map(KeyType, ValueType) and do the cast.
-    dynamic_cast(X, M `with_type` map(KeyType, ValueType)).
+    dynamic_cast(X, M : map(KeyType, ValueType)).
 
 %-----------------------------------------------------------------------------%
 
@@ -890,12 +909,12 @@ dynamic_cast_to_map_pair(X, MP) :-
     [KeyTypeDesc, ValueTypeDesc] = type_args(type_of(X)),
 
     % Convert the TypeDescs to type variables.
-    (_ `with_type` KeyType) `has_type` KeyTypeDesc,
-    (_ `with_type` ValueType) `has_type` ValueTypeDesc,
+    (_ : KeyType) `has_type` KeyTypeDesc,
+    (_ : ValueType) `has_type` ValueTypeDesc,
 
     % Constrain the type of MP to be map_pair(KeyType, ValueType)
     % and do the cast.
-    dynamic_cast(X, MP `with_type` map_pair(KeyType, ValueType)).
+    dynamic_cast(X, MP : map_pair(KeyType, ValueType)).
 
 %-----------------------------------------------------------------------------%
 
@@ -915,10 +934,10 @@ dynamic_cast_to_robdd(X, R) :-
     [ArgTypeDesc] = type_args(type_of(X)),
 
     % Convert ArgTypeDesc to a type variable ArgType.
-    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
+    (_ : ArgType) `has_type` ArgTypeDesc,
 
     % Constrain the type of R to be robdd(ArgType) and do the cast.
-    dynamic_cast(X, R `with_type` robdd(ArgType)).
+    dynamic_cast(X, R : robdd(ArgType)).
 
 %-----------------------------------------------------------------------------%
 
@@ -954,6 +973,17 @@ list_to_doc(Depth, Xs) =
 
 array_to_doc(Depth, A) =
     group("array" ++ parentheses(list_to_doc(Depth - 1, array.to_list(A)))).
+
+%-----------------------------------------------------------------------------%
+    
+    % XXX Ideally we'd just walk the version array.  But that's an optimization
+    % for another day.
+    %
+:- func version_array_to_doc(int, version_array(T)) = doc.
+
+version_array_to_doc(Depth, A) =
+    group("version_array"
+        ++ parentheses(list_to_doc(Depth - 1, version_array.to_list(A)))).
 
 %-----------------------------------------------------------------------------%
 
