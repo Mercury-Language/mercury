@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2001, 2004-2006, 2010 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2001, 2004-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -43,8 +43,8 @@
 
     % Return the first member of each pair.
     %
-:- pred assoc_list.keys(assoc_list(K, V)::in, list(K)::out) is det.
 :- func assoc_list.keys(assoc_list(K, V)) = list(K).
+:- pred assoc_list.keys(assoc_list(K, V)::in, list(K)::out) is det.
 
     % Return the second member of each pair.
     %
@@ -146,9 +146,15 @@
 
 %-----------------------------------------------------------------------------%
 
+assoc_list.reverse_members(AL1) = AL2 :-
+    assoc_list.reverse_members(AL1, AL2).
+
 assoc_list.reverse_members([], []).
 assoc_list.reverse_members([K - V | KVs], [V - K | VKs]) :-
     assoc_list.reverse_members(KVs, VKs).
+
+assoc_list.from_corresponding_lists(Ks, Vs) = AL :-
+    assoc_list.from_corresponding_lists(Ks, Vs, AL).
 
 assoc_list.from_corresponding_lists(Ks, Vs, KVs) :-
     ( assoc_list.from_corresponding_2(Ks, Vs, KVs0) ->
@@ -176,9 +182,15 @@ assoc_list.from_corresponding_2([], [], []).
 assoc_list.from_corresponding_2([A | As], [B | Bs], [A - B | ABs]) :-
     assoc_list.from_corresponding_2(As, Bs, ABs).
 
+assoc_list.keys(AL) = Ks :-
+    assoc_list.keys(AL, Ks).
+
 assoc_list.keys([], []).
 assoc_list.keys([K - _ | KVs], [K | Ks]) :-
     assoc_list.keys(KVs, Ks).
+
+assoc_list.values(AL) = Vs :-
+    assoc_list.values(AL, Vs).
 
 assoc_list.values([], []).
 assoc_list.values([_ - V | KVs], [V | Vs]) :-
@@ -212,23 +224,6 @@ assoc_list.remove([K - V | KVs], Key, Value, Rest) :-
         assoc_list.remove(KVs, Key, Value, Rest1),
         Rest = [K - V | Rest1]
     ).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
-%   Functional forms added.
-
-assoc_list.reverse_members(AL1) = AL2 :-
-    assoc_list.reverse_members(AL1, AL2).
-
-assoc_list.from_corresponding_lists(Ks, Vs) = AL :-
-    assoc_list.from_corresponding_lists(Ks, Vs, AL).
-
-assoc_list.keys(AL) = Ks :-
-    assoc_list.keys(AL, Ks).
-
-assoc_list.values(AL) = Vs :-
-    assoc_list.values(AL, Vs).
 
 assoc_list.map_keys_only(_P, [], []).
 assoc_list.map_keys_only(P, [K0 - V | KVs0], [K - V | KVs]) :-
@@ -313,3 +308,7 @@ assoc_list.merge([A | As], [B | Bs], Cs) :-
         assoc_list.merge(As, [B | Bs], Cs0),
         Cs = [A | Cs0]
     ).
+
+%-----------------------------------------------------------------------------%
+:- end_module assoc_list.
+%-----------------------------------------------------------------------------%
