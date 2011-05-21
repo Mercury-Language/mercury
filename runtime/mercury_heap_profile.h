@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 1998, 2000-2001, 2006 The University of Melbourne.
+** vim: ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 1998, 2000-2001, 2006, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,8 +21,9 @@
 #ifndef MERCURY_HEAP_PROFILE_H
 #define MERCURY_HEAP_PROFILE_H
 
-#include "mercury_types.h"	/* for `MR_Code' */
-#include "mercury_dword.h"	/* for `MR_Dword' */
+#include "mercury_types.h"     /* for `MR_Code' */
+#include "mercury_dword.h"     /* for `MR_Dword' */
+#include "mercury_type_info.h" /* for `MR_STATIC_CODE_CONST' */
 
 /*---------------------------------------------------------------------------*/
 
@@ -27,8 +31,8 @@
 
 /*
 ** We count memory allocation in units of
-**	- cells (i.e. individual allocations), and
-**	- words
+**  - cells (i.e. individual allocations), and
+**  - words
 **
 ** We keep track of how much allocation occurs in each "period".
 ** A period ends (and a new period begins) at each call to
@@ -36,9 +40,9 @@
 ** We also keep track of the total allocation over all periods.
 **
 ** We keep track of how much memory was allocated
-**	- by each procedure,
-**	- for objects of each type,
-**	- and an overall total
+**  - by each procedure,
+**  - for objects of each type,
+**  - and an overall total
 **
 ** The tables of counters for each procedure is represented
 ** as a binary search tree.  Similarly for the table of counters
@@ -51,38 +55,38 @@
 ** at least 64 bits in size.
 */
 
-typedef	struct MR_memprof_counter
+typedef struct MR_memprof_counter
 {
-	MR_Dword	cells_at_period_start;
-	MR_Dword	words_at_period_start;
-	MR_Dword	cells_since_period_start;
-	MR_Dword	words_since_period_start;
+    MR_Dword    cells_at_period_start;
+    MR_Dword    words_at_period_start;
+    MR_Dword    cells_since_period_start;
+    MR_Dword    words_since_period_start;
 } MR_memprof_counter;
 
 /* type representing a binary tree node */
-typedef	struct MR_memprof_record
+typedef struct MR_memprof_record
 {
-	const char			*type_name; /* type name or NULL */
-	MR_STATIC_CODE_CONST MR_Code	*proc; /* proc address or NULL */
-	MR_memprof_counter		counter;
-	struct MR_memprof_record	*left;	/* left sub-tree */
-	struct MR_memprof_record	*right;	/* right sub-tree */
+    const char                      *type_name; /* type name or NULL */
+    MR_STATIC_CODE_CONST MR_Code    *proc;      /* proc address or NULL */
+    MR_memprof_counter              counter;
+    struct MR_memprof_record        *left;      /* left sub-tree */
+    struct MR_memprof_record        *right;     /* right sub-tree */
 } MR_memprof_record;
 
 /* type representing a binary tree */
-typedef	struct MR_memprof_table
+typedef struct MR_memprof_table
 {
-	MR_memprof_record		*root;
-	int				num_entries;
+    MR_memprof_record       *root;
+    int                     num_entries;
 } MR_memprof_table;
 
 /*---------------------------------------------------------------------------*/
 
 /* global variables */
 
-extern	MR_memprof_counter	MR_memprof_overall;
-extern	MR_memprof_table	MR_memprof_procs;
-extern	MR_memprof_table	MR_memprof_types;
+extern MR_memprof_counter   MR_memprof_overall;
+extern MR_memprof_table     MR_memprof_procs;
+extern MR_memprof_table     MR_memprof_types;
 
 /*---------------------------------------------------------------------------*/
 
@@ -96,8 +100,9 @@ extern	MR_memprof_table	MR_memprof_types;
 ** variables above.
 */
 
-extern void	MR_record_allocation(int size,
-		    const MR_AllocSiteInfoPtr alloc_id, const char *type_name);
+extern void
+MR_record_allocation(int size, const MR_AllocSiteInfoPtr alloc_id,
+    const char *type_name);
 
 /*
 ** MR_prof_output_mem_tables():
@@ -106,28 +111,33 @@ extern void	MR_record_allocation(int size,
 ** of files `Prof.MemoryMR_Words' and `Prof.MemoryCells'.
 */
 
-extern void	MR_prof_output_mem_tables(void);
+extern void
+MR_prof_output_mem_tables(void);
 
 /*---------------------------------------------------------------------------*/
 
 /*
 ** At runtime turn heap profiling on or off.
 */
-extern void MR_prof_turn_on_heap_profiling(void);
-extern void MR_prof_turn_off_heap_profiling(void);
+extern void
+MR_prof_turn_on_heap_profiling(void);
+
+extern void
+MR_prof_turn_off_heap_profiling(void);
 
 /*---------------------------------------------------------------------------*/
 
-extern void MR_register_alloc_sites(const MR_AllocSiteInfo *alloc_sites,
-			int size);
+extern void
+MR_register_alloc_sites(const MR_AllocSiteInfo *alloc_sites, int size);
 
-extern void MR_report_memory_attribution(MR_ConstString label);
+extern void
+MR_report_memory_attribution(MR_ConstString label);
 
-extern void MR_finish_prof_snapshots_file(void);
+extern void
+MR_finish_prof_snapshots_file(void);
 
 /*---------------------------------------------------------------------------*/
 
 #endif /* MERCURY_HEAP_PROFILE_H */
 
 /*---------------------------------------------------------------------------*/
-/* vim: set ts=4 sts=4 sw=4 noet: */
