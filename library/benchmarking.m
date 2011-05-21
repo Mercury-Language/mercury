@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -232,7 +232,7 @@ extern void ML_report_full_memory_stats(void);
 ").
 
 report_memory_attribution(_) :-
-    impure_true.
+    impure impure_true.
 
 :- pragma promise_pure(report_memory_attribution/3).
 
