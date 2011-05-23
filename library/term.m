@@ -466,6 +466,7 @@
 :- import_module int.
 :- import_module require.
 :- import_module string.
+:- import_module version_array.
 
 %-----------------------------------------------------------------------------%
 
@@ -595,6 +596,27 @@ term_to_univ_special_case("array", "array", [ElemType],
         same_type(List, [Elem2]),
         det_univ_to_type(ListUniv, List),
         Array = array(List),
+        Result = ok(univ(Array))
+    ;
+        ArgResult = error(Error),
+        Result = error(Error)
+    ).
+term_to_univ_special_case("version_array", "version_array", [ElemType],
+        Term, _Type, PrevContext, Result) :-
+    % We handle version arrays in pretty much the same way as normal
+    % arrays.
+    Term = functor(atom("version_array"), [ArgList], TermContext),
+    has_type(Elem, ElemType),
+    ListType = type_of([Elem]),
+    ArgContext = arg_context(atom("version_array"), 1, TermContext),
+    NewContext = [ArgContext | PrevContext],
+    try_term_to_univ_2(ArgList, ListType, NewContext, ArgResult),
+    (
+        ArgResult = ok(ListUniv),
+        has_type(Elem2, ElemType),
+        same_type(List, [Elem2]),
+        det_univ_to_type(ListUniv, List),
+        Array = version_array(List),
         Result = ok(univ(Array))
     ;
         ArgResult = error(Error),
@@ -738,6 +760,15 @@ univ_to_term_special_case("array", "array", [ElemType], Univ, Context, Term) :-
     same_type(List, [Elem]),
     det_univ_to_type(Univ, Array),
     array.to_list(Array, List),
+    type_to_term(List, ArgsTerm).
+
+univ_to_term_special_case("version_array", "version_array", [ElemType],
+        Univ, Context, Term) :-
+    Term = functor(atom("version_array"), [ArgsTerm], Context),
+    has_type(Elem, ElemType),
+    same_type(List, [Elem]),
+    det_univ_to_type(Univ, Array),
+    List = version_array.to_list(Array),
     type_to_term(List, ArgsTerm).
 
 :- pred univ_list_to_term_list(list(univ)::in, list(term(T))::out) is det.

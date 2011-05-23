@@ -1,0 +1,16 @@
+Term: 'A'
+Type: A
+Term: 42
+Type: 42
+Term: 12345.6789
+Type: 12345.6789
+Term: "abcdefghijklmnopqrstuvwxyz"
+Type: abcdefghijklmnopqrstuvwxyz
+Term: "<24:10AFBD>"
+Type: <24:10AFBD>
+Term: type_info(list : list(int : int))
+Type: <<term_to_type/2 failed>> (as expected)
+Term: array([1, 2, 3])
+Type: array([1, 2, 3])
+Term: version_array([1, 2, 3])
+Type: version_array([1, 2, 3])
