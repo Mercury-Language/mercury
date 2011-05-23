@@ -517,8 +517,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
             ; Target = target_erlang
             ; Target = target_x86_64
             ),
-            unexpected(this_file,
-                "ml_gen_static_vector_type: unsupported target language")
+            unexpected($module, $pred, "unsupported target language")
         ),
 
         ClassDefn = mlds_class_defn(ClassKind, [], [], [], [], CtorDefns,
@@ -652,15 +651,8 @@ cons_id_to_alloc_site_string(ConsId) = TypeStr :-
         ; ConsId = table_io_decl(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ),
-        unexpected(this_file,
-            "cons_id_to_alloc_site_string: unexpected cons_id")
+        unexpected($module, $pred, "unexpected cons_id")
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_global_data.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.ml_global_data.

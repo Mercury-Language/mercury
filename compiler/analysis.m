@@ -470,7 +470,7 @@ lookup_existing_call_patterns(Info, AnalysisName, ModuleName, FuncId, Calls) :-
     ( ModuleName = Info ^ this_module ->
         true
     ;
-        unexpected(this_file, "lookup_existing_call_patterns: not this_module")
+        unexpected($module, $pred, "not this_module")
     ),
     Map = Info ^ old_analysis_results,
     (
@@ -610,8 +610,7 @@ lookup_exactly_matching_result_even_from_invalid_modules(Info, ModuleName,
         MaybeResult = yes(Result)
     ;
         ResultList = [_, _ | _],
-        unexpected(this_file,
-            "lookup_exactly_matching_result: " ++
+        unexpected($module, $pred,
             "zero or one exactly matching results expected")
     ).
 
@@ -621,9 +620,8 @@ record_result(ModuleName, FuncId, CallPattern, AnswerPattern, Status, !Info) :-
     ( ModuleName = !.Info ^ this_module ->
         true
     ;
-        unexpected(this_file,
-            "record_result: recording result for procedure " ++
-            "defined in another module")
+        unexpected($module, $pred,
+            "recording result for procedure defined in another module")
     ),
 
     MakeAnalysisReg = !.Info ^ make_analysis_registry,
@@ -668,7 +666,7 @@ lookup_requests(Info, AnalysisName, ModuleName, FuncId, CallPatterns) :-
     ( ModuleName = Info ^ this_module ->
         true
     ;
-        unexpected(this_file, "lookup_requests: not this_module")
+        unexpected($module, $pred, "not this_module")
     ),
     (
         map.search(Info ^ analysis_requests, ModuleName, ModuleRequests),
@@ -688,7 +686,7 @@ lookup_requests(Info, AnalysisName, ModuleName, FuncId, CallPatterns) :-
 record_request(AnalysisName, ModuleName, FuncId, CallPattern, !Info) :-
     ThisModule = !.Info ^ this_module,
     ( ThisModule = ModuleName ->
-        unexpected(this_file, "record_request: request on self")
+        unexpected($module, $pred, "request on self")
     ;
         true
     ),
@@ -739,7 +737,7 @@ record_dependency(CalleeModuleName, FuncId, FuncInfo, Call, DummyAnswer,
         !Info) :-
     ThisModule = !.Info ^ this_module,
     ( ThisModule = CalleeModuleName ->
-        unexpected(this_file, "record_dependency: dependency on self")
+        unexpected($module, $pred, "dependency on self")
     ;
         true
     ),
@@ -987,8 +985,7 @@ replace_result_in_analysis_map(ModuleName, FuncId, FuncInfo,
 replace_result_in_list(FuncInfo, Call, Answer, Status, Results0, Results) :-
     (
         Results0 = [],
-        unexpected(this_file,
-            "replace_result_in_list: found no result to replace")
+        unexpected($module, $pred, "found no result to replace")
     ;
         Results0 = [H0 | T0],
         det_univ_to_type(univ(H0 ^ some_ar_call), HCall),
@@ -1208,7 +1205,7 @@ load_module_analysis_results(Globals, ModuleName, !Info, !IO) :-
         ; map.contains(!.Info ^ module_statuses, ModuleName)
         )
     ->
-        unexpected(this_file, "ensure_old_module_analysis_results_loaded")
+        unexpected($module, $pred, "ensure_old_module_analysis_results_loaded")
     ;
         do_read_module_overall_status(!.Info ^ compiler, Globals, ModuleName,
             ModuleStatus, !IO),
@@ -1253,8 +1250,7 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
     ( map.is_empty(!.Info ^ new_analysis_results) ->
         true
     ;
-        unexpected(this_file,
-            "write_analysis_files: new_analysis_results is not empty")
+        unexpected($module, $pred, "new_analysis_results is not empty")
     ),
 
     % Write the module statuses for all local modules (not necessarily
@@ -1392,12 +1388,6 @@ debug_msg(P, !IO) :-
     ;
         Debug = no
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "analysis.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module analysis.

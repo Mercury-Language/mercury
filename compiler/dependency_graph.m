@@ -722,11 +722,5 @@ handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "dependency_graph.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module dependency_graph.
+:- end_module transform_hlds.dependency_graph.
 %-----------------------------------------------------------------------------%

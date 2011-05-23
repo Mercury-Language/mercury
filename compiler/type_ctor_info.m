@@ -147,8 +147,7 @@ gen_type_ctor_gen_infos(ModuleInfo, ModuleName, [TypeCtorDefn | TypeCtorDefns],
         )
     ;
         SymName = unqualified(TypeName),
-        Msg = "unqualified type " ++ TypeName ++ " found in type_ctor_info",
-        unexpected(this_file, Msg)
+        unexpected($module, $pred, "unqualified type " ++ TypeName)
     ).
 
     % Check if we should generate a type_ctor_info for this type.
@@ -204,14 +203,13 @@ gen_builtin_type_ctor_gen_infos(ModuleInfo, ModuleName, [TypeCtor | TypeCtors],
     TypeCtor = type_ctor(SymName, TypeArity),
     (
         SymName = qualified(TypeModuleName, TypeName),
-        expect(unify(TypeModuleName, ModuleName), this_file,
-            "gen_builtin_type_ctor_gen_infos: module mismatch"),
+        expect(unify(TypeModuleName, ModuleName), $module, $pred,
+            "module mismatch"),
         gen_type_ctor_gen_info(ModuleInfo, TypeCtor, TypeModuleName,
             TypeName, TypeArity, builtin_type_defn, TypeCtorGenInfo)
     ;
         SymName = unqualified(TypeName),
-        Msg = "unqualified type " ++ TypeName ++ " in builtin type list",
-        unexpected(this_file, Msg)
+        unexpected($module, $pred, "unqualified type " ++ TypeName)
     ).
 
     % Generate a type_defn for the builtin types which don't have one.
@@ -316,7 +314,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         TypeBody = hlds_abstract_type(_),
         \+ compiler_generated_rtti_for_builtins(ModuleInfo)
     ->
-        unexpected(this_file, "gen_type_ctor_data: abstract_type")
+        unexpected($module, $pred, "abstract_type")
     ;
         true
     ),
@@ -337,7 +335,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     ;
         (
             TypeBody = hlds_abstract_type(_),
-            unexpected(this_file, "gen_type_ctor_data: abstract_type")
+            unexpected($module, $pred, "abstract_type")
         ;
             % We treat solver_types as being equivalent to their representation
             % types for RTTI purposes. Which may cause problems with construct,
@@ -588,7 +586,7 @@ make_mercury_enum_details(TypeCtor, Ctors, ConsTagMap, ReserveTag,
         EqualityAxioms, Details) :-
     (
         ReserveTag = uses_reserved_tag,
-        unexpected(this_file, "enum with reserved tag")
+        unexpected($module, $pred, "enum with reserved tag")
     ;
         ReserveTag = does_not_use_reserved_tag
     ),
@@ -621,16 +619,16 @@ make_enum_functors(_, [], _, _, []).
 make_enum_functors(TypeCtor, [Functor | Functors], NextOrdinal, ConsTagMap,
         [EnumFunctor | EnumFunctors]) :-
     Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs, _Context),
-    expect(unify(ExistTvars, []), this_file,
+    expect(unify(ExistTvars, []), $module, $pred,
         "existential arguments in functor in enum"),
-    expect(unify(Constraints, []), this_file,
+    expect(unify(Constraints, []), $module, $pred,
         "class constraints on functor in enum"),
     list.length(FunctorArgs, Arity),
-    expect(unify(Arity, 0), this_file,
+    expect(unify(Arity, 0), $module, $pred,
         "functor in enum has nonzero arity"),
     ConsId = cons(SymName, list.length(FunctorArgs), TypeCtor),
     map.lookup(ConsTagMap, ConsId, ConsTag),
-    expect(unify(ConsTag, int_tag(NextOrdinal)), this_file,
+    expect(unify(ConsTag, int_tag(NextOrdinal)), $module, $pred,
         "mismatch on constant assigned to functor in enum"),
     FunctorName = unqualify_name(SymName),
     EnumFunctor = enum_functor(FunctorName, NextOrdinal),
@@ -658,7 +656,7 @@ make_foreign_enum_details(TypeCtor, Lang, Ctors, ConsTagMap, ReserveTag,
         EqualityAxioms, Details) :-
     (
         ReserveTag = uses_reserved_tag,
-        unexpected(this_file, "foreign enum with reserved tag")
+        unexpected($module, $pred, "foreign enum with reserved tag")
     ;
         ReserveTag = does_not_use_reserved_tag
     ),
@@ -688,19 +686,19 @@ make_foreign_enum_functors(_, _, [], _, _, []).
 make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
         ConsTagMap, [ForeignEnumFunctor | ForeignEnumFunctors]) :-
     Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs, _Context),
-    expect(unify(ExistTvars, []), this_file,
+    expect(unify(ExistTvars, []), $module, $pred,
         "existential arguments in functor in foreign enum"),
-    expect(unify(Constraints, []), this_file,
+    expect(unify(Constraints, []), $module, $pred,
         "class constraints on functor in foreign enum"),
     list.length(FunctorArgs, Arity),
-    expect(unify(Arity, 0), this_file,
+    expect(unify(Arity, 0), $module, $pred,
         "functor in foreign enum has nonzero arity"),
     ConsId = cons(SymName, list.length(FunctorArgs), TypeCtor),
     map.lookup(ConsTagMap, ConsId, ConsTag),
     (
         ConsTag = foreign_tag(ForeignTagLang, ForeignTagValue0),
-        expect(unify(Lang, ForeignTagLang), this_file, 
-            "language mismatch between foreign tag and foreign enum."),
+        expect(unify(Lang, ForeignTagLang), $module, $pred, 
+            "language mismatch between foreign tag and foreign enum"),
         ForeignTagValue = ForeignTagValue0
     ;
         ( ConsTag = string_tag(_)
@@ -720,7 +718,7 @@ make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
         ; ConsTag = reserved_address_tag(_)
         ; ConsTag = shared_with_reserved_addresses_tag(_, _)
         ),
-        unexpected(this_file, "non foreign tag for foreign enum functor")
+        unexpected($module, $pred, "non foreign tag for foreign enum functor")
     ),
     FunctorName = unqualify_name(SymName),
     ForeignEnumFunctor = foreign_enum_functor(FunctorName, NextOrdinal,
@@ -776,16 +774,16 @@ make_du_details(TypeCtor, Ctors, ConsTagMap, TypeArity, EqualityAxioms,
     FunctorNumberMap = make_functor_number_map(Ctors),
     (
         ResFunctors = [],
-        expect(unify(ReservedAddr, does_not_use_reserved_address), this_file,
-            "make_du_details: ReservedAddr is not does_not_use_reserved_addr"),
+        expect(unify(ReservedAddr, does_not_use_reserved_address),
+            $module, $pred, "ReservedAddr is not does_not_use_reserved_addr"),
         list.foldl(make_du_name_ordered_table, DuFunctors,
             map.init, DuNameOrderedMap),
         Details = tcd_du(EqualityAxioms, DuFunctors, DuPtagTable,
             DuNameOrderedMap, FunctorNumberMap)
     ;
         ResFunctors = [_ | _],
-        expect(unify(ReservedAddr, uses_reserved_address), this_file,
-            "make_du_details: ReservedAddr is not uses_reserved_addr"),
+        expect(unify(ReservedAddr, uses_reserved_address),
+            $module, $pred, "ReservedAddr is not uses_reserved_addr"),
         list.foldl(make_res_name_ordered_table, MaybeResFunctors,
             map.init, ResNameOrderedMap),
         Details = tcd_reserved(EqualityAxioms, MaybeResFunctors,
@@ -840,12 +838,9 @@ make_maybe_res_functors(TypeCtor, [Functor | Functors], NextOrdinal,
         MaybeResFunctor = du_func(DuFunctor)
     ;
         ConsRep = reserved_rep(ResRep),
-        expect(unify(Arity, 0), this_file,
-            "make_maybe_res_functors: bad arity"),
-        expect(unify(ArgInfos, []), this_file,
-            "make_maybe_res_functors: bad args"),
-        expect(unify(MaybeExistInfo, no), this_file,
-            "make_maybe_res_functors: bad exist"),
+        expect(unify(Arity, 0), $module, $pred, "bad arity"),
+        expect(unify(ArgInfos, []), $module, $pred, "bad args"),
+        expect(unify(MaybeExistInfo, no), $module, $pred, "bad exist"),
         ResFunctor = reserved_functor(FunctorName, NextOrdinal, ResRep),
         MaybeResFunctor = res_func(ResFunctor)
     ),
@@ -889,7 +884,7 @@ process_cons_tag(ConsTag, ConsRep) :-
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = table_io_decl_tag(_, _)
         ),
-        unexpected(this_file, "bad cons_tag for du function symbol")
+        unexpected($module, $pred, "bad cons_tag for du function symbol")
     ).
 
 :- pred generate_du_arg_info(int::in, existq_tvars::in, constructor_arg::in,
@@ -975,7 +970,7 @@ find_type_info_index(Constraints, ClassTable, StartSlot, Tvar, !LocnMap) :-
     prog_constraint::out, int::in, int::out, int::out) is det.
 
 first_matching_type_class_info([], _, _, !N, _) :-
-    unexpected(this_file, "first_matching_type_class_info: not found").
+    unexpected($module, $pred, "not found").
 first_matching_type_class_info([C | Cs], Tvar, MatchingConstraint, !N,
         TypeInfoIndex) :-
     C = constraint(_, Ts),
@@ -1011,8 +1006,7 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
         ),
         ( map.search(!.PtagTable, Ptag, SectagTable0) ->
             SectagTable0 = sectag_table(Locn0, NumSharers0, SectagMap0),
-            expect(unify(SectagLocn, Locn0), this_file,
-                "make_du_ptag_ordered_table: " ++
+            expect(unify(SectagLocn, Locn0), $module, $pred,
                 "sectag locn disagreement"),
             map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
             SectagTable = sectag_table(Locn0, NumSharers0 + 1, SectagMap),
@@ -1024,7 +1018,7 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
         )
     ;
         DuRep = du_hl_rep(_),
-        unexpected(this_file, "make_du_ptag_ordered_table: du_hl_rep")
+        unexpected($module, $pred, "du_hl_rep")
     ).
 
 :- pred make_du_name_ordered_table(du_functor::in,
@@ -1116,9 +1110,5 @@ update_contains_var_bit_vector(ArgNum, !Vector) :-
     !:Vector = !.Vector \/ (1 << BitNum).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "type_ctor_info.m".
-
+:- end_module backend_libs.type_ctor_info.
 %---------------------------------------------------------------------------%

@@ -125,11 +125,5 @@ direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
         EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "goal_store.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module goal_store.
+:- end_module transform_hlds.goal_store.
 %-----------------------------------------------------------------------------%

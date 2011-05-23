@@ -171,8 +171,7 @@ transform_livevals(!.RegMap, [Lval | Lvals], [Instr | Instrs]) :-
             get_last_instr_operand(LvalInstrs, LvalOp)
         ;
             Res1 = no,
-            unexpected(this_file,
-                "transform_livevals: unexpected: no results")
+            unexpected($module, $pred, "no results")
         )
     ),
     Instr = x86_64_instr(mov(operand_label("<<liveval>>"), LvalOp)),
@@ -210,8 +209,7 @@ instr_to_x86_64(!RegMap, Op, Instrs) :-
                 Instrs = RvalInstrs ++ [LastInstr]
             ;
                 Res3 = no,
-                unexpected(this_file,
-                    "instr_to_x86_64: assign: unexpected: Rval")
+                unexpected($module, $pred, "assign: unexpected: Rval")
             )
         )
     ;
@@ -232,14 +230,12 @@ instr_to_x86_64(!RegMap, Op, Instrs) :-
                     Instrs = LvalInstrs ++ RvalInstrs ++ [Instr1]
                 ;
                     Res3 = no,
-                    unexpected(this_file,
-                        "instr_to_x86_64: assign: unexpected: Rval")
+                    unexpected($module, $pred, "assign: unexpected: Rval")
                 )
             )
         ;
             Res1 = no,
-            unexpected(this_file,
-                "instr_to_x86_64: assign: unexpected: Lval")
+            unexpected($module, $pred, "assign: unexpected: Lval")
         )
     ).
 instr_to_x86_64(!RegMap, llcall(Target0, Continuation0, _, _, _, _), Instrs) :-
@@ -256,8 +252,7 @@ instr_to_x86_64(!RegMap, llcall(Target0, Continuation0, _, _, _, _), Instrs) :-
             get_last_instr_operand(Instr, Op)
         ;
             Instr0 = no,
-            unexpected(this_file,
-                "instr_to_x86_64: llcall: unexpected: lval_reg_locn failed")
+            unexpected($module, $pred, "llcall: lval_reg_locn failed")
         )
     ),
     Instr1 = x86_64_instr(mov(operand_label(Continuation1), Op)),
@@ -283,8 +278,7 @@ instr_to_x86_64(!RegMap, computed_goto(Rval, Labels), Instrs) :-
             RvalOp = RvalOp0
         ;
             Res1 = no,
-            unexpected(this_file,
-                "instr_to_x86_64: computed_goto: unexpected: Rval")
+            unexpected($module, $pred, "computed_goto: Rval")
         )
     ),
     maybe_labels_to_string(Labels, "", LabelStr),
@@ -310,7 +304,7 @@ instr_to_x86_64(!RegMap, if_val(Rval, CodeAddr), Instrs) :-
             get_last_instr_operand(RvalInstrs, RvalOp)
         ;
             Res1 = no,
-            unexpected(this_file, "instr_to_x86_64: if_val: unexpected: Rval")
+            unexpected($module, $pred, "if_val: Rval")
         )
     ),
     ll_backend.x86_64_out.operand_to_string(RvalOp, RvalStr),
@@ -327,13 +321,13 @@ instr_to_x86_64(!RegMap,
         MaybeRegionRval = no
     ;
         MaybeRegionRval = yes(_),
-        unexpected(this_file, "instr_to_x86_64: encounter a region variable")
+        unexpected($module, $pred, "region")
     ),
     (
         MaybeReuse = no_llds_reuse
     ;
         MaybeReuse = llds_reuse(_, _),
-        unexpected(this_file, "instr_to_x86_64: encounter a reuse variable")
+        unexpected($module, $pred, "reuse")
     ),
     transform_rval(!RegMap, Rval, Res0, Res1),
     transform_lval(!RegMap, Lval, Res2, Res3),
@@ -346,7 +340,7 @@ instr_to_x86_64(!RegMap,
             get_last_instr_operand(RvalInstrs, RvalOp)
         ;
             Res1 = no,
-            unexpected(this_file, "instr_to_x86_64: incr_hp: unexpected: Rval")
+            unexpected($module, $pred, "incr_hp: Rval")
         )
     ),
     (
@@ -358,7 +352,7 @@ instr_to_x86_64(!RegMap,
             get_last_instr_operand(LvalInstrs, LvalOp)
         ;
             Res3 = no,
-            unexpected(this_file, "instr_to_x86_64: incr_hp: unexpected: Lval")
+            unexpected($module, $pred, "incr_hp: Lval")
         )
     ),
     (
@@ -452,7 +446,7 @@ transform_lval(!RegMap, reg(CReg, CRegNum), Op, Instr) :-
         reg_map_remove_scratch_reg(!RegMap)
     ;
         CReg = reg_f,
-        unexpected(this_file, "transform_lval: unexpected: llds reg_f")
+        unexpected($module, $pred, "llds reg_f")
     ).
 transform_lval(!RegMap, succip, Op, Instr) :-
     lval_reg_locn(!.RegMap, succip, Op, Instr),
@@ -470,7 +464,7 @@ transform_lval(!RegMap, sp, Op, Instr) :-
     lval_reg_locn(!.RegMap, sp, Op, Instr),
     reg_map_remove_scratch_reg(!RegMap).
 transform_lval(!RegMap, parent_sp, _, _) :-
-    sorry(this_file, "parallelism is not supported").
+    sorry($module, $pred, "parallelism is not supported").
 transform_lval(!RegMap, temp(CReg, CRegNum), Op, Instr) :-
     transform_lval(!RegMap, reg(CReg, CRegNum), Op, Instr).
 transform_lval(!RegMap, stackvar(Offset), Op, Instr) :-
@@ -491,7 +485,7 @@ transform_lval(!RegMap, stackvar(Offset), Op, Instr) :-
             operand_label(FakeRegVal), operand_reg(ScratchReg)))])
     ).
 transform_lval(!RegMap, parent_stackvar(_), _, _) :-
-    sorry(this_file, "parallelism is not supported").
+    sorry($module, $pred, "parallelism is not supported").
 transform_lval(!RegMap, framevar(Offset), Op, Instr) :-
     % XXX The original code here was out of order: it executed
     % reg_map_remove_scratch_reg *before* reg_map_get_scratch_reg.
@@ -542,7 +536,7 @@ transform_lval(!RegMap, field(Tag0, Rval1, Rval2), no, Instrs) :-
             Instrs1 = RvalInstrs1
         ;
             Res1 = no,
-            unexpected(this_file, "lval_instrs: field: unexpected: Rval1")
+            unexpected($module, $pred, "field: Rval1")
         )
     ),
     (
@@ -556,7 +550,7 @@ transform_lval(!RegMap, field(Tag0, Rval1, Rval2), no, Instrs) :-
             Instrs2 = RvalInstrs2
         ;
             Res3 = no,
-            unexpected(this_file, "lval_instrs: field: unexpected: Rval2")
+            unexpected($module, $pred, "field: Rval2")
         )
     ),
     ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
@@ -597,7 +591,7 @@ transform_rval(!RegMap, mkword(Tag, Rval), no, Instrs) :-
             Instr0 = RvalInstrs ++ [x86_64_comment("<<mkword>>")]
         ;
             Res1 = no,
-            unexpected(this_file, "transform_rval: mkword unexpected: Rval")
+            unexpected($module, $pred, "mkword Rval")
         )
     ),
     ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
@@ -615,7 +609,7 @@ transform_rval(!RegMap, const(llconst_false), Op, no) :-
 transform_rval(!RegMap, const(llconst_int(Val)), Op, no) :-
     Op = yes(operand_imm(imm32(int32(Val)))).
 transform_rval(!RegMap, const(llconst_foreign(_, _)), _, _) :-
-    sorry(this_file, "x86_64 backend and foreign tags.").
+    sorry($module, $pred, "x86_64 backend and foreign tags.").
 transform_rval(!RegMap, const(llconst_float(_)), Op, no) :-
     Op = yes(operand_label("<<llconst_float>>")).
 transform_rval(!RegMap, const(llconst_string(String)), no, yes(Op)) :-
@@ -641,7 +635,7 @@ transform_rval(!RegMap, unop(Op, Rval), no, Instrs) :-
             Instrs = yes(Instrs0)
         ;
             Res1 = no,
-            unexpected(this_file, "transform_rval: unop: unexpected: Rval")
+            unexpected($module, $pred, "unop: Rval")
         )
     ).
 transform_rval(!RegMap, binop(Op, Rval1, Rval2), no, Instrs) :-
@@ -686,13 +680,12 @@ transform_rval(!RegMap, binop(Op, Rval1, Rval2), no, Instrs) :-
                     Instrs = yes(Instrs0)
                 ;
                     Res4 = no,
-                    unexpected(this_file,
-                        "rval_instrs: binop: unexpected: Rval2")
+                    unexpected($module, $pred, "binop: Rval2")
                 )
             )
         ;
             Res2 = no,
-            unexpected(this_file, "rval_instrs: binop: unexpected: Rval1")
+            unexpected($module, $pred, "binop: Rval1")
         )
     ).
 transform_rval(!RegMap, mem_addr(stackvar_ref(Rval)), Op, no) :-
@@ -715,8 +708,7 @@ transform_rval(!RegMap, mem_addr(heap_ref(Rval1, Tag, Rval2)), no, Instrs) :-
                 get_last_instr_operand(Rval2Instr, Rval2Op)
             ;
                 Res3 = no,
-                unexpected(this_file,
-                    "transform_rval: mem_addr(heap_ref): unexpected: Rval2")
+                unexpected($module, $pred, "mem_addr(heap_ref): Rval2")
             )
         )
     ;
@@ -735,15 +727,12 @@ transform_rval(!RegMap, mem_addr(heap_ref(Rval1, Tag, Rval2)), no, Instrs) :-
                     Instrs0 = Rval1Instr ++ Rval2Instr
                 ;
                     Res3 = no,
-                    unexpected(this_file,
-                        "transform_rval: mem_addr(heap_ref): unexpected: " ++
-                        "Rval2")
+                    unexpected($module, $pred, "mem_addr(heap_ref): Rval2")
                 )
             )
        ;
             Res1 = no,
-            unexpected(this_file,
-                "transform_rval: mem_addr(heap_ref) unexpected: Rval1")
+            unexpected($module, $pred, "mem_addr(heap_ref): Rval1")
        )
     ),
     ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
@@ -828,9 +817,8 @@ unop_instrs(bitwise_complement, Op, Instrs0, Instrs) :-
             Instrs = InsRes ++ [x86_64_instr(x86_64_instr_not(LastOp))]
         ;
             Instrs0 = no,
-            unexpected(this_file,
-                "unop_instrs: bitwise_complement: unexpected: " ++
-                "instruction operand Instrs0")
+            unexpected($module, $pred,
+                "bitwise_complement: instruction operand Instrs0")
         )
     ).
 unop_instrs(logical_not, _, _, [x86_64_comment("<<logical_not>>")]).
@@ -932,8 +920,7 @@ get_last_instr_operand(Instrs, Op) :-
         ( last_instr_dest(Instr, OpPrime) ->
             Op = OpPrime
         ;
-            unexpected(this_file,
-                "get_last_instr_operand: last_instr_dest failed")
+            unexpected($module, $pred, "last_instr_dest failed")
         )
     ;
         LastInstr = x86_64_directive(_),
@@ -1001,11 +988,5 @@ maybe_labels_to_string([MaybeLabel | MaybeLabels], Str0, Str) :-
     maybe_labels_to_string(MaybeLabels, Str0 ++ LabelStr, Str).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "llds_to_x86_64.m".
-
-%----------------------------------------------------------------------------%
-:- end_module llds_to_x86_64.
+:- end_module ll_backend.llds_to_x86_64.
 %----------------------------------------------------------------------------%

@@ -163,8 +163,8 @@ reg_map_init(AssocRegMap) = RegMap :-
         RegMap = reg_map(init_scratch_regs, Map1)
     ;
         Result = no,
-        unexpected(this_file, "reg_map_init: unexpected: non-MVM register"
-            ++ " found in the association list")
+        unexpected($module, $pred,
+            "non-MVM register found in the association list")
     ).
 
 reg_map_lookup_reg_locn(Map, Lval) = RegLocn :-
@@ -179,12 +179,10 @@ reg_map_lookup_reg_locn(Map, Lval) = RegLocn :-
         ; Lval = mem_ref(_)
         ; Lval = global_var_ref(_)
         ),
-        unexpected(this_file, "reg_map_lookup_reg_locn: unexpected: " 
-            ++ "lval is not a virtual machine register")
+        unexpected($module, $pred, "lval is not a virtual machine register")
     ;
         Lval = lvar(_),
-        unexpected(this_file, "reg_map_lookup_reg_locn: unexpected: "
-            ++ "lvar/1 during x86_64 code generation")
+        unexpected($module, $pred, "lvar")
     ;
         ( Lval = reg(_, _)
         ; Lval = temp(_, _)
@@ -210,8 +208,7 @@ reg_map_get_scratch_reg(RegMap) = ScratchReg :-
     ( list.index0(ScratchRegs, first_list_idx, ScratchReg0) ->
         ScratchReg = ScratchReg0
     ;
-        unexpected(this_file, "reg_map_get_scratch_reg: unexpected:" 
-           ++ " scratch registers exhausted")
+        unexpected($module, $pred, "scratch registers exhausted")
     ).
 
 reg_map_remove_scratch_reg(RegMap0, RegMap) :-
@@ -219,8 +216,7 @@ reg_map_remove_scratch_reg(RegMap0, RegMap) :-
     ( list.drop(first_list_idx, ScratchRegs0, ScratchRegs1) ->
         RegMap = RegMap0 ^ scratch_reg_info := ScratchRegs1
     ;
-        unexpected(this_file, "reg_map_remove_scratch_reg: unexpected:" 
-           ++ " scratch registers exhausted")
+        unexpected($module, $pred, "scratch registers exhausted")
     ).
 
     % Check if all l-values in the association list correspond to MVM 
@@ -257,12 +253,6 @@ get_scratch_reg = r9.
 :- func first_list_idx = int.
 
 first_list_idx = 0.
-
-%----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "x86_64_regs.m".
 
 %----------------------------------------------------------------------------%
 :- end_module ll_backend.x86_64_regs.

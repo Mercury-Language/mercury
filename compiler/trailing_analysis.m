@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -243,7 +243,7 @@ check_procs_for_trail_mods(SCC, Result, !ModuleInfo) :-
     trailing_status::out, maybe(analysis_status)::out) is det.
 
 combine_individual_proc_results([], _, _) :-
-    unexpected(this_file, "Empty SCC during trailing analysis.").
+    unexpected($module, $pred, "empty SCC").
 combine_individual_proc_results(ProcResults @ [_|_],
         SCC_Result, MaybeAnalysisStatus) :-
     (
@@ -330,8 +330,7 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             )
         ;
             Kind = complicated_unify(_, _, _),
-            unexpected(this_file,
-                "complicated unify during trail usage analysis.")
+            unexpected($module, $pred, "complicated unify")
         )
     ;
         GoalExpr = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
@@ -517,8 +516,7 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file,
-            "shorthand goal encountered during trail usage analysis.")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred check_goals_for_trail_mods(scc::in, vartypes::in,
@@ -868,8 +866,7 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
             )
         ;
             Kind = complicated_unify(_, _, _),
-            unexpected(this_file,
-                "complicated unify during trail usage analysis.")
+            unexpected($module, $pred, "complicated unify")
         ),
         Status = trail_will_not_modify
     ;
@@ -1002,7 +999,7 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
         )
     ;
         !.GoalExpr = shorthand(_),
-        unexpected(this_file, "shorthand goal")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred annotate_goal_list(vartypes::in, hlds_goals::in,
@@ -1272,8 +1269,7 @@ lookup_proc_trailing_info(TrailingInfo, PPId, Status, ResultStatus) :-
             MaybeResultStatus = yes(ResultStatus)
         ;
             MaybeResultStatus = no,
-            unexpected(this_file,
-                "lookup_proc_trailing_info: no result status")
+            unexpected($module, $pred, "no result status")
         )
     ;
         % Probably an exported `:- external' procedure wouldn't have been
@@ -1311,11 +1307,5 @@ output_proc_name(Moduleinfo, PPId, !IO) :-
    io.format("\t%s\n", [s(Str)], !IO).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "trailing_analysis.m".
-
-%----------------------------------------------------------------------------%
-:- end_module trailing_analysis.
+:- end_module transform_hlds.trailing_analysis.
 %----------------------------------------------------------------------------%

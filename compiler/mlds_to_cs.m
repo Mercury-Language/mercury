@@ -238,7 +238,7 @@ output_csharp_decl(Info, Indent, DeclCode, !IO) :-
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),
-        sorry(this_file, "foreign decl other than C#")
+        sorry($module, $pred, "foreign decl other than C#")
     ).
 
 :- pred output_csharp_body_code(csharp_out_info::in, indent::in,
@@ -259,7 +259,7 @@ output_csharp_body_code(Info, Indent, UserForeignCode, !IO) :-
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),
-        sorry(this_file, "foreign code other than C#")
+        sorry($module, $pred, "foreign code other than C#")
     ).
 
 :- func mlds_get_csharp_foreign_code(map(foreign_language, mlds_foreign_code))
@@ -297,7 +297,7 @@ output_export(Info, Indent, Export, !IO) :-
     Export = ml_pragma_export(Lang, ExportName, MLDS_Name, MLDS_Signature,
         _UnivQTVars, _),
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
-    expect(unify(Lang, lang_csharp), this_file,
+    expect(unify(Lang, lang_csharp), $module, $pred,
         "foreign_export for language other than C#."),
 
     indent_line(Indent, !IO),
@@ -316,8 +316,7 @@ output_export(Info, Indent, Export, !IO) :-
         io.write_string(" ", !IO)
     ;
         ReturnTypes = [_, _ | _],
-        unexpected(this_file,
-            "output_export: multiple return values in export method")
+        unexpected($module, $pred, "multiple return values in export method")
     ),
     io.write_string(ExportName, !IO),
     output_params(Info, Indent + 1, Parameters, !IO),
@@ -506,16 +505,13 @@ method_ptrs_in_stmt(ml_stmt_switch(_Type, Rval, _Range, Cases, Default),
     method_ptrs_in_switch_cases(Cases, !CodeAddrs),
     method_ptrs_in_switch_default(Default, !CodeAddrs).
 method_ptrs_in_stmt(ml_stmt_label(_), _, _) :-
-    unexpected(this_file,
-        "method_ptrs_in_stmt: labels not supported in Java.").
+    unexpected($module, $pred, "labels not supported in Java.").
 method_ptrs_in_stmt(ml_stmt_goto(goto_break), !CodeAddrs).
 method_ptrs_in_stmt(ml_stmt_goto(goto_continue), !CodeAddrs).
 method_ptrs_in_stmt(ml_stmt_goto(goto_label(_)), _, _) :-
-    unexpected(this_file,
-        "method_ptrs_in_stmt: goto label not supported in Java.").
+    unexpected($module, $pred, "goto label not supported in Java.").
 method_ptrs_in_stmt(ml_stmt_computed_goto(_, _), _, _) :-
-    unexpected(this_file,
-        "method_ptrs_in_stmt: computed gotos not supported in Java.").
+    unexpected($module, $pred, "computed gotos not supported in Java.").
 method_ptrs_in_stmt(ml_stmt_try_commit(_Lval, StatementGoal,
         StatementHandler), !CodeAddrs) :-
     % We don't check "_Lval" here as we expect it to be a local variable
@@ -983,7 +979,7 @@ output_class(!.Info, Indent, UnqualName, ClassDefn, !IO) :-
         ; UnqualName = entity_function(_, _, _, _)
         ; UnqualName = entity_export(_)
         ),
-        unexpected(this_file, "output_class: name is not entity_type.")
+        unexpected($module, $pred, "name is not entity_type.")
     ),
     ClassDefn = mlds_class_defn(Kind, _Imports, BaseClasses, Implements,
         TypeParams, Ctors, AllMembers),
@@ -1071,8 +1067,7 @@ output_supers_list(Info, Indent, BaseClasses, Interfaces, !IO) :-
         Strings = [BaseClassString | Strings0]
     ;
         BaseClasses = [_, _ | _],
-        unexpected(this_file,
-            "output_supers_list: multiple inheritance not supported")
+        unexpected($module, $pred, "multiple inheritance not supported")
     ),
     (
         Strings = []
@@ -1103,7 +1098,7 @@ interface_to_string(Interface, String) :-
                 i(Arity)])
         )
     ;
-        unexpected(this_file, "interface_to_string: interface was not a class")
+        unexpected($module, $pred, "interface was not a class")
     ).
 
 :- pred output_class_body(csharp_out_info::in, indent::in, mlds_class_kind::in,
@@ -1118,7 +1113,7 @@ output_class_body(Info, Indent, Kind, UnqualName, AllMembers, !IO) :-
         output_defns(Info, Indent, none, AllMembers, !IO)
     ;
         Kind = mlds_package,
-        unexpected(this_file, "cannot use package as a type.")
+        unexpected($module, $pred, "cannot use package as a type")
     ;
         Kind = mlds_enum,
         list.filter(defn_is_const, AllMembers, EnumConsts),
@@ -1164,8 +1159,7 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
                 io.write_string(") ", !IO),
                 io.write_string(String, !IO)
             ;
-                unexpected(this_file,
-                    "output_enum_constant: " ++ string(Rval))
+                unexpected($module, $pred, string(Rval))
             ),
             io.write_string(",", !IO)
         ;
@@ -1173,12 +1167,10 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
             ; Initializer = init_struct(_, _)
             ; Initializer = init_array(_)
             ),
-            unexpected(this_file,
-                "output_enum_constant: " ++ string(Initializer))
+            unexpected($module, $pred, string(Initializer))
         )
     ;
-        unexpected(this_file,
-            "output_enum_constant: definition body was not data.")
+        unexpected($module, $pred, "definition body was not data")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1194,13 +1186,14 @@ output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, Flags, DefnBody),
     ( DefnBody = mlds_data(Type, _Initializer, _GCStatement) ->
         indent_line(Indent, !IO),
-        % We can't honour `readonly' here as the variable is assigned separately.
+        % We can't honour `readonly' here as the variable is assigned
+        % separately.
         NonReadonlyFlags = set_constness(Flags, modifiable),
         output_decl_flags(Info, NonReadonlyFlags, !IO),
         output_data_decl(Info, Name, Type, !IO),
         io.write_string(";\n", !IO)
     ;
-        unexpected(this_file, "output_data_decls: not data")
+        unexpected($module, $pred, "not data")
     ),
     output_data_decls(Info, Indent, Defns, !IO).
 
@@ -1234,7 +1227,7 @@ output_init_data_statements(Info, Indent, [Defn | Defns], !IO) :-
         output_initializer(Info, none, Type, Initializer, !IO),
         io.write_string(";\n", !IO)
     ;
-        unexpected(this_file, "output_init_data_statements: not mlds_data")
+        unexpected($module, $pred, "not mlds_data")
     ),
     output_init_data_statements(Info, Indent, Defns, !IO).
 
@@ -1273,8 +1266,7 @@ output_scalar_common_data(Info, Indent, ScalarCellGroupMap, !IO) :-
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO)
     ;
-        unexpected(this_file,
-            "output_scalar_common_data: digraph.tsort failed")
+        unexpected($module, $pred, "digraph.tsort failed")
     ).
 
 :- pred output_scalar_defns(csharp_out_info::in, indent::in,
@@ -1358,7 +1350,7 @@ add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
         ( Rval = ml_lval(_Lval)
         ; Rval = ml_mem_addr(_Lval)
         ),
-        unexpected(this_file, "add_scalar_deps_rval: lval")
+        unexpected($module, $pred, "lval")
     ).
 
 :- pred add_scalar_deps_rval_const(mlds_scalar_common::in, mlds_rval_const::in,
@@ -1528,13 +1520,11 @@ get_type_initializer(Info, Type) = Initializer :-
             ; ForeignType = java(_)
             ; ForeignType = erlang(_)
             ),
-            unexpected(this_file,
-                "get_type_initializer: wrong foreign language type")
+            unexpected($module, $pred, "wrong foreign language type")
         )
     ;
         Type = mlds_unknown_type,
-        unexpected(this_file,
-            "get_type_initializer: variable has unknown_type")
+        unexpected($module, $pred, "variable has unknown_type")
     ).
 
 :- pred output_maybe(maybe(T)::in,
@@ -1600,10 +1590,10 @@ needs_initialization(init_array(_)) = yes.
 output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
     (
         Initializer = no_initializer,
-        unexpected(this_file, "output_initializer_alloc_only: no_initializer")
+        unexpected($module, $pred, "no_initializer")
     ;
         Initializer = init_obj(_),
-        unexpected(this_file, "output_initializer_alloc_only: init_obj")
+        unexpected($module, $pred, "init_obj")
     ;
         Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
@@ -1629,8 +1619,7 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
             ( list.split_last(ArrayDims, Heads, 0) ->
                 output_array_dimensions(Heads ++ [Size], !IO)
             ;
-                unexpected(this_file,
-                    "output_initializer_alloc_only: missing array dimension")
+                unexpected($module, $pred, "missing array dimension")
             )
         ;
             MaybeType = no,
@@ -1645,7 +1634,7 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
 output_initializer_body(Info, Initializer, MaybeType, !IO) :-
     (
         Initializer = no_initializer,
-        unexpected(this_file, "output_initializer_body: no_initializer")
+        unexpected($module, $pred, "no_initializer")
     ;
         Initializer = init_obj(Rval),
         output_rval(Info, Rval, !IO)
@@ -1721,8 +1710,7 @@ output_rtti_defn_assignments(Info, Indent, Defn, !IO) :-
         ( DefnBody = mlds_function(_, _, _, _, _)
         ; DefnBody = mlds_class(_)
         ),
-        unexpected(this_file,
-            "output_rtti_defn_assignments: expected mlds_data")
+        unexpected($module, $pred, "expected mlds_data")
     ).
 
 :- pred output_rtti_defn_assignments_2(csharp_out_info::in, indent::in,
@@ -1734,7 +1722,7 @@ output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO) :-
     ;
         Initializer = init_obj(_),
         % Not encountered in practice.
-        unexpected(this_file, "output_rtti_defn_assignments_2: init_obj")
+        unexpected($module, $pred, "init_obj")
     ;
         Initializer = init_struct(StructType, FieldInits),
         IsArray = type_is_array(StructType),
@@ -1748,7 +1736,7 @@ output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO) :-
         ;
             IsArray = is_array,
             % Not encountered in practice.
-            unexpected(this_file, "output_rtti_defn_assignments_2: is_array")
+            unexpected($module, $pred, "is_array")
         )
     ;
         Initializer = init_array(ElementInits),
@@ -1959,7 +1947,7 @@ remove_sym_name_prefixes(SymName0, Prefix, SymName) :-
         )
     ;
         SymName0 = unqualified(_),
-        unexpected(this_file, "remove_sym_name_prefixes: prefix not found")
+        unexpected($module, $pred, "prefix not found")
     ).
 
 :- func convert_qual_kind(mlds_qual_kind) = csj_qual_kind.
@@ -2111,16 +2099,16 @@ data_name_to_string(DataName, String) :-
         String = RttiAddrName
     ;
         DataName = mlds_module_layout,
-        unexpected(this_file, "NYI: mlds_module_layout")
+        unexpected($module, $pred, "NYI: mlds_module_layout")
     ;
         DataName = mlds_proc_layout(_ProcLabel),
-        unexpected(this_file, "NYI: mlds_proc_layout")
+        unexpected($module, $pred, "NYI: mlds_proc_layout")
     ;
         DataName = mlds_internal_layout(_ProcLabel, _FuncSeqNum),
-        unexpected(this_file, "NYI: mlds_internal_layout")
+        unexpected($module, $pred, "NYI: mlds_internal_layout")
     ;
         DataName = mlds_tabling_ref(_ProcLabel, _Id),
-        unexpected(this_file, "NYI: mlds_tabling_ref")
+        unexpected($module, $pred, "NYI: mlds_tabling_ref")
     ).
 
 :- pred var_name_to_string(mlds_var_name::in, string::out) is det.
@@ -2249,16 +2237,16 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
             ArrayDims = []
         ;
             ForeignType = c(_),
-            unexpected(this_file, "output_type: c foreign_type")
+            unexpected($module, $pred, "c foreign_type")
         ;
             ForeignType = il(_),
-            unexpected(this_file, "output_type: il foreign_type")
+            unexpected($module, $pred, "il foreign_type")
         ;
             ForeignType = java(_),
-            unexpected(this_file, "output_type: java foreign_type")
+            unexpected($module, $pred, "java foreign_type")
         ;
             ForeignType = erlang(_),
-            unexpected(this_file, "output_type: erlang foreign_type")
+            unexpected($module, $pred, "erlang foreign_type")
         )
     ;
         MLDS_Type = mlds_class_type(Name, Arity, _ClassKind),
@@ -2326,7 +2314,7 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         )
     ;
         MLDS_Type = mlds_unknown_type,
-        unexpected(this_file, "output_type: unknown type")
+        unexpected($module, $pred, "unknown type")
     ).
 
 :- pred mercury_type_to_string(csharp_out_info::in, mer_type::in,
@@ -2401,7 +2389,7 @@ mercury_user_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
             String = TypeString
         )
     ;
-        unexpected(this_file, "output_mercury_user_type: not a user type")
+        unexpected($module, $pred, "not a user type")
     ).
 
 :- pred generic_args_types_to_string(csharp_out_info::in, list(mer_type)::in,
@@ -2794,11 +2782,11 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
     ;
         Statement = ml_stmt_label(_),
         % XXX C# is not Java
-        unexpected(this_file, "output_stmt: labels not supported in Java.")
+        unexpected($module, $pred, "labels not supported in Java.")
     ;
         Statement = ml_stmt_goto(goto_label(_)),
         % XXX C# is not Java
-        unexpected(this_file, "output_stmt: gotos not supported in Java.")
+        unexpected($module, $pred, "gotos not supported in Java.")
     ;
         Statement = ml_stmt_goto(goto_break),
         indent_line(Indent, !IO),
@@ -2812,8 +2800,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
     ;
         Statement = ml_stmt_computed_goto(_, _),
         % XXX C# is not Java
-        unexpected(this_file,
-            "output_stmt: computed gotos not supported in Java.")
+        unexpected($module, $pred, "computed gotos not supported in Java.")
     ;
         Statement = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
             Results, IsTailCall),
@@ -3023,8 +3010,7 @@ output_case_cond(Info, Indent, _Context, Match, !IO) :-
         io.write_string(":\n", !IO)
     ;
         Match = match_range(_, _),
-        unexpected(this_file,
-            "output_case_cond: cannot match ranges in C# cases")
+        unexpected($module, $pred, "cannot match ranges in C# cases")
     ).
 
 :- pred output_switch_default(csharp_out_info::in, indent::in, func_info::in,
@@ -3080,17 +3066,17 @@ output_atomic_stmt(Info, Indent, AtomicStmt, _Context, !IO) :-
         io.write_string(";\n", !IO)
     ;
         AtomicStmt = assign_if_in_heap(_, _),
-        sorry(this_file, "output_atomic_stmt: assign_if_in_heap")
+        sorry($module, $pred, "assign_if_in_heap")
     ;
         AtomicStmt = delete_object(_Lval),
-        unexpected(this_file, "delete_object not supported in C#.")
+        unexpected($module, $pred, "delete_object not supported in C#.")
     ;
         AtomicStmt = new_object(Target, _MaybeTag, ExplicitSecTag, Type,
             _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic,
             _AllocId),
         (
             ExplicitSecTag = yes,
-            unexpected(this_file, "output_atomic_stmt: explicit secondary tag")
+            unexpected($module, $pred, "explicit secondary tag")
         ;
             ExplicitSecTag = no
         ),
@@ -3135,16 +3121,16 @@ output_atomic_stmt(Info, Indent, AtomicStmt, _Context, !IO) :-
         io.write_string("}\n", !IO)
     ;
         AtomicStmt = gc_check,
-        unexpected(this_file, "gc_check not implemented.")
+        unexpected($module, $pred, "gc_check not implemented.")
     ;
         AtomicStmt = mark_hp(_Lval),
-        unexpected(this_file, "mark_hp not implemented.")
+        unexpected($module, $pred, "mark_hp not implemented.")
     ;
         AtomicStmt = restore_hp(_Rval),
-        unexpected(this_file, "restore_hp not implemented.")
+        unexpected($module, $pred, "restore_hp not implemented.")
     ;
         AtomicStmt = trail_op(_TrailOp),
-        unexpected(this_file, "trail_ops not implemented.")
+        unexpected($module, $pred, "trail_ops not implemented.")
     ;
         AtomicStmt = inline_target_code(TargetLang, Components),
         (
@@ -3159,12 +3145,13 @@ output_atomic_stmt(Info, Indent, AtomicStmt, _Context, !IO) :-
             ; TargetLang = ml_target_il
             ; TargetLang = ml_target_java
             ),
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "inline_target_code only works for lang_java")
         )
     ;
         AtomicStmt = outline_foreign_proc(_TargetLang, _Vs, _Lvals, _Code),
-        unexpected(this_file, "foreign language interfacing not implemented")
+        unexpected($module, $pred,
+            "foreign language interfacing not implemented")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3203,7 +3190,7 @@ output_target_code_component(Info, TargetCode, !IO) :-
         output_maybe_qualified_name(Info, Name, !IO)
     ;
         TargetCode = target_code_alloc_id(_),
-        unexpected(this_file, "target_code_alloc_id not implemented")
+        unexpected($module, $pred, "target_code_alloc_id not implemented")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3216,9 +3203,9 @@ output_target_code_component(Info, TargetCode, !IO) :-
 
 output_init_args(_, [], [], !IO).
 output_init_args(_, [_ | _], [], _, _) :-
-    unexpected(this_file, "output_init_args: length mismatch.").
+    unexpected($module, $pred, "length mismatch.").
 output_init_args(_, [], [_ | _], _, _) :-
-    unexpected(this_file, "output_init_args: length mismatch.").
+    unexpected($module, $pred, "length mismatch.").
 output_init_args(Info, [Arg | Args], [_ArgType | ArgTypes], !IO) :-
     output_rval(Info, Arg, !IO),
     (
@@ -3250,7 +3237,7 @@ output_lval(Info, Lval, !IO) :-
             ;
                 % The field type for field(_, _, offset(_), _, _) lvals
                 % must be something that maps to MR_Box.
-                unexpected(this_file, "unexpected field type.")
+                unexpected($module, $pred, "unexpected field type")
             ),
             % XXX We shouldn't need this cast here, but there are cases where
             % it is needed and the MLDS doesn't seem to generate it.
@@ -3377,7 +3364,7 @@ output_rval(Info, Rval, !IO) :-
         output_lval(Info, Lval, !IO)
     ;
         Rval = ml_mkword(_, _),
-        unexpected(this_file, "output_rval: tags not supported in C#")
+        unexpected($module, $pred, "tags not supported in C#")
     ;
         Rval = ml_const(Const),
         output_rval_const(Info, Const, !IO)
@@ -3394,7 +3381,7 @@ output_rval(Info, Rval, !IO) :-
     ;
         Rval = ml_scalar_common(_),
         % This reference is not the same as a mlds_data_addr const.
-        unexpected(this_file, "output_rval: ml_scalar_common")
+        unexpected($module, $pred, "ml_scalar_common")
     ;
         Rval = ml_vector_common_row(VectorCommon, RowRval),
         output_vector_common_row_rval(Info, VectorCommon, RowRval, !IO)
@@ -3599,7 +3586,7 @@ output_binary_op(Op, !IO) :-
     ; java_util.java_float_op(Op, OpStr) ->
         io.write_string(OpStr, !IO)
     ;
-        unexpected(this_file, "output_binary_op: invalid binary operator")
+        unexpected($module, $pred, "invalid binary operator")
     ).
 
 :- pred output_rval_const(csharp_out_info::in, mlds_rval_const::in,
@@ -3626,8 +3613,8 @@ output_rval_const(Info, Const, !IO) :-
         output_cast_rval(Info, EnumType, ml_const(mlconst_int(N)), !IO)
     ;
         Const = mlconst_foreign(Lang, Value, Type),
-        expect(unify(Lang, lang_csharp), this_file,
-            "output_rval_const: language other than C#."),
+        expect(unify(Lang, lang_csharp), $module, $pred,
+            "language other than C#."),
         % XXX Should we parenthesize this?
         io.write_string("(", !IO),
         output_type(Info, Type, !IO),
@@ -3863,9 +3850,5 @@ init_csharp_out_info(ModuleInfo, CodeAddrs) = Info :-
         MLDS_ModuleName, CodeAddrs, do_not_output_generics, []).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mlds_to_cs.m".
-
+:- end_module ml_backend.mlds_to_cs.
 %-----------------------------------------------------------------------------%

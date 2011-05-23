@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -149,7 +149,7 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
         Disjuncts = [FirstDisjunct | LaterDisjuncts],
         (
             LaterDisjuncts = [],
-            unexpected(this_file, "ml_gen_disj: single disjunct")
+            unexpected($module, $pred, "single disjunct")
         ;
             LaterDisjuncts = [_ | _],
             (
@@ -265,7 +265,7 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts, CodeModel,
         ;
             FirstCodeModel = model_non,
             % simplify.m should get wrap commits around these.
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "model_non disjunct in model_det or model_semi disjunction")
         )
     ).
@@ -376,11 +376,5 @@ ml_construct_disjunction_vector(ModuleInfo, StructType,
         Solns, RowInitializers).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_disj_gen.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module ml_disj_gen.
+:- end_module ml_backend.ml_disj_gen.
 %-----------------------------------------------------------------------------%

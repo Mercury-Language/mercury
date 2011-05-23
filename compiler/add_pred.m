@@ -542,7 +542,7 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
         predicate_table_search_pf_sym_arity(!.PredicateTable,
             is_fully_qualified, PredOrFunc, PredName, Arity, _)
     ->
-        unexpected(this_file, "preds_add_implicit")
+        unexpected($module, $pred, "search succeeded")
     ;
         module_info_get_partial_qualifier_info(ModuleInfo, MQInfo),
         predicate_table_insert_qual(PredInfo, may_be_unqualified, MQInfo,
@@ -602,9 +602,5 @@ unqualified_pred_error(PredName, Arity, Context, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "add_pred.m".
-
+:- end_module hlds.make_hlds.add_pred.
 %-----------------------------------------------------------------------------%

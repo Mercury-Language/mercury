@@ -187,7 +187,7 @@ find_list_of_output_args(Vars, Modes, Types, ModuleInfo, !:Outputs) :-
     ( find_list_of_output_args_2(Vars, Modes, Types, ModuleInfo, !:Outputs) ->
         true
     ;
-        unexpected(this_file, "find_list_of_output_args: list length mismatch")
+        unexpected($module, $pred, "list length mismatch")
     ).
 
 :- pred find_list_of_output_args_2(list(prog_var)::in, list(mer_mode)::in,
@@ -324,7 +324,7 @@ apply_deep_prof_tail_rec_to_goal(Goal0, Goal, TailRecInfo, !FoundTailCall,
         Continue = no
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "shorthand in apply_deep_prof_tail_rec_to_goal")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred apply_deep_prof_tail_rec_to_assign(list(prog_var)::in,
@@ -452,7 +452,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "shorthand in figure_out_rec_call_numbers")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred figure_out_rec_call_numbers_in_goal_list(list(hlds_goal)::in,
@@ -1065,8 +1065,7 @@ deep_prof_transform_goal(Goal0, Goal, AddedImpurity, !DeepInfo) :-
         )
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file,
-            "deep_prof_transform_goal: shorthand should have gone by now")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred deep_prof_mark_goal_as_not_mdprof_inst(hlds_goal::in, hlds_goal::out)
@@ -1227,10 +1226,10 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
             CallSite = method_call(FileName, LineNumber, GoalPath)
         ;
             Generic = event_call(_),
-            unexpected(this_file, "deep_profiling.wrap_call: event_call")
+            unexpected($module, $pred, "event_call")
         ;
             Generic = cast(_),
-            unexpected(this_file, "deep_profiling.wrap_call: cast")
+            unexpected($module, $pred, "cast")
         ),
         GoalCodeModel = goal_info_get_code_model(GoalInfo0),
         module_info_get_globals(ModuleInfo, Globals),
@@ -1268,8 +1267,8 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
                 CallGoals, ExitGoals, FailGoals, SaveRestoreVars, !DeepInfo)
         ;
             VisSCC = [_, _ | _],
-            unexpected(this_file,
-                "wrap_call: multi-procedure SCCs not yet implemented")
+            unexpected($module, $pred,
+                "multi-procedure SCCs not yet implemented")
         ),
 
         CodeModel = goal_info_get_code_model(GoalInfo0),
@@ -1538,7 +1537,7 @@ classify_call(ModuleInfo, Expr) = Class :-
         ; Expr = scope(_, _)
         ; Expr = shorthand(_)
         ),
-        unexpected(this_file, "unexpected goal type in classify_call/2")
+        unexpected($module, $pred, "unexpected goal type")
     ).
 
 :- func compute_type_subst(hlds_goal_expr, deep_info) = string.
@@ -1629,8 +1628,8 @@ generate_csn_vector(Length, CSNs, CSNVars, UnifyGoals, CellVar, !DeepInfo) :-
         UnifyGoals = [UnifyGoal],
         CellVar = CSNVar
     ;
-        expect(Length =< max_save_restore_vector_size, this_file,
-            "generate_csn_vector_unifies: too long"),
+        expect(Length =< max_save_restore_vector_size, $module, $pred,
+            "too long"),
         list.map_foldl(generate_single_csn_unify, CSNs, CSNVarsGoals,
             !DeepInfo),
         InnerVars = assoc_list.keys(CSNVarsGoals),
@@ -1791,7 +1790,7 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
     ->
         (
             PredIds = [],
-            unexpected(this_file, "get_deep_profile_builtin_ppid: no pred_id")
+            unexpected($module, $pred, "no pred_id")
         ;
             PredIds = [PredId],
             predicate_table_get_preds(PredTable, Preds),
@@ -1799,23 +1798,20 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
             ProcIds = pred_info_procids(PredInfo),
             (
                 ProcIds = [],
-                unexpected(this_file,
-                    "get_deep_profile_builtin_ppid: no proc_id")
+                unexpected($module, $pred, "no proc_id")
             ;
                 ProcIds = [ProcId]
             ;
                 ProcIds = [_, _ | _],
-                unexpected(this_file,
-                    "get_deep_profile_builtin_ppid: proc_id not unique")
+                unexpected($module, $pred, "proc_id not unique")
             )
         ;
             PredIds = [_, _ | _],
-            unexpected(this_file,
-                "get_deep_profile_builtin_ppid: pred_id not unique")
+            unexpected($module, $pred, "pred_id not unique")
         )
     ;
         format("couldn't find pred_id for `%s'/%d", [s(Name), i(Arity)], Msg),
-        unexpected(this_file, Msg)
+        unexpected($module, $pred, Msg)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1833,11 +1829,5 @@ extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "deep_profiling.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module deep_profiling.
+:- end_module ll_backend.deep_profiling.
 %-----------------------------------------------------------------------------%

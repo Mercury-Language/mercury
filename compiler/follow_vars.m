@@ -257,7 +257,7 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "find_follow_vars_in_goal_expr: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -440,11 +440,5 @@ find_follow_vars_in_conj([Goal0 | Goals0], [Goal | Goals], VarTypes,
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "follow_vars".
-
-%-----------------------------------------------------------------------------%
-:- end_module follow_vars.
+:- end_module ll_backend.follow_vars.
 %-----------------------------------------------------------------------------%

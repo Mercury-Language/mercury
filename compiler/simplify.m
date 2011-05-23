@@ -1021,11 +1021,11 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, !Info) :-
         ;
             ShortHand0 = try_goal(_, _, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "simplify_goal_2: try_goal")
+            unexpected($module, $pred, "try_goal")
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "simplify_goal_2: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -1396,7 +1396,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 GoalExpr1 = hlds_goal(GoalExpr, GoalInfo)
             ;
                 RT0 = rhs_functor(_, _, _),
-                unexpected(this_file, "invalid RHS for complicated unify")
+                unexpected($module, $pred, "invalid RHS for complicated unify")
             )
         ;
             simplify_do_common_struct(!.Info)
@@ -1516,8 +1516,8 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                     NegDetism = NegDetism1,
                     NegInstMapDelta = NegInstMapDelta1
                 ;
-                    unexpected(this_file,
-                        "goal_2: cannot get negated determinism")
+                    unexpected($module, $pred,
+                        "cannot get negated determinism")
                 ),
                 goal_info_set_determinism(NegDetism, CondInfo0, NegCondInfo0),
                 goal_info_set_instmap_delta(NegInstMapDelta,
@@ -1729,8 +1729,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
             )
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected(this_file,
-                "warn_ite_instead_of_switch: complicated unify")
+            unexpected($module, $pred, "complicated unify")
         )
     ;
         CondExpr = disj(Disjuncts),
@@ -1769,7 +1768,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
             !:CondCanSwitch = cond_cannot_switch
         ;
             ShortHand = bi_implication(_, _),
-            unexpected(this_file, "warn_ite_instead_of_switch: shorthand")
+            unexpected($module, $pred, "shorthand")
         )
     ).
 
@@ -1810,21 +1809,21 @@ can_switch_on_type(TypeBody) = CanSwitchOnType :-
         TypeBody = hlds_eqv_type(_),
         % The type of the variable should have had any equivalences expanded
         % out of it before simplify.
-        unexpected(this_file, "warn_switch_for_ite_cond: eqv type")
+        unexpected($module, $pred, "eqv type")
     ;
         TypeBody = hlds_foreign_type(_),
         % If the type is foreign, how can have a Mercury unification using it?
-        unexpected(this_file, "warn_switch_for_ite_cond: foreign type")
+        unexpected($module, $pred, "foreign type")
     ;
         TypeBody = hlds_abstract_type(_),
         % If the type is abstract, how can have a Mercury unification using it?
-        unexpected(this_file, "warn_switch_for_ite_cond: foreign type")
+        unexpected($module, $pred, "abstract type")
     ;
         TypeBody = hlds_solver_type(_, _),
         % Any unifications on constrained variables should be done on the
         % representation type, and the type of the variable in the unification
         % should be the representation type, not the solver type.
-        unexpected(this_file, "warn_switch_for_ite_cond: solver type")
+        unexpected($module, $pred, "solver type")
     ).
 
 :- pred simplify_goal_neg(
@@ -2057,7 +2056,7 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
                 ; Target = target_asm
                 ; Target = target_x86_64
                 ),
-                sorry(this_file,
+                sorry($module, $pred,
                     "runtime trace conditions for this target language")
             ),
             set_may_call_mercury(proc_will_not_call_mercury, !EvalAttributes),
@@ -2869,15 +2868,9 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         Call = hlds_goal(Call1, GoalInfo),
         ExtraGoals = []
     ;
-        ( type_to_ctor_and_args(Type, TypeCtorPrime, TypeArgsPrime) ->
-            TypeCtor = TypeCtorPrime,
-            TypeArgs = TypeArgsPrime
-        ;
-            unexpected(this_file, "type_to_ctor_and_args failed")
-        ),
+        type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
         determinism_components(Det, CanFail, at_most_one),
-        unify_proc.lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det,
-            ProcId),
+        unify_proc.lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det, ProcId),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, special_preds, SpecialPreds),
         globals.lookup_bool_option(Globals, can_compare_compound_values,
@@ -2913,7 +2906,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
             ( TypeInfoVars = [TypeInfoVarPrime] ->
                 TypeInfoVar = TypeInfoVarPrime
             ;
-                unexpected(this_file, "process_compl_unify: " ++
+                unexpected($module, $pred,
                     "more than one typeinfo for one type var")
             ),
             call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
@@ -3507,7 +3500,7 @@ create_test_unification(Var, ConsId, ConsArity,
     ->
         ArgInsts = ArgInsts1
     ;
-        unexpected(this_file, "create_test_unification - get_arg_insts failed")
+        unexpected($module, $pred, "get_arg_insts failed")
     ),
     InstToUniMode =
         (pred(ArgInst::in, ArgUniMode::out) is det :-
@@ -3661,7 +3654,7 @@ fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, Goal, !Info) :-
     hlds_goal::out) is det.
 
 det_disj_to_ite([], _GoalInfo, _) :-
-    unexpected(this_file, "reached base case of det_disj_to_ite").
+    unexpected($module, $pred, "reached base case").
 det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
     (
         Disjuncts = [],
@@ -3797,7 +3790,7 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
             GoalExpr = shorthand(ShortHand)
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected(this_file, "goal_contains_trace: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ),
     (
@@ -4087,8 +4080,7 @@ simplify_info_leave_lambda(!Info) :-
     ( LambdaCount >= 0 ->
         !Info ^ simp_lambdas := LambdaCount
     ;
-        unexpected(this_file,
-            "simplify_info_leave_lambda: Left too many lambdas")
+        unexpected($module, $pred, "left too many lambdas")
     ).
 
 simplify_info_inside_lambda(Info) :-
@@ -4241,7 +4233,7 @@ will_flush(shorthand(ShortHand), _) = WillFlush :-
     ;
         ShortHand = bi_implication(_, _),
         % These should have been expanded out by now.
-        unexpected(this_file, "will_flush: bi_implication")
+        unexpected($module, $pred, "bi_implication")
     ).
 
     % Reset the instmap and seen calls for the next branch.
@@ -4268,11 +4260,5 @@ simplify_info_undo_goal_updates(Info0, !Info) :-
     simplify_info_set_instmap(InstMap, !Info).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "simplify.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module simplify.
+:- end_module check_hlds.simplify.
 %-----------------------------------------------------------------------------%

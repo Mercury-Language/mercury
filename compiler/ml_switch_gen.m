@@ -313,9 +313,9 @@ target_supports_int_switch_2(target_il) = no.
 target_supports_int_switch_2(target_csharp) = yes.
 target_supports_int_switch_2(target_java) = yes.
 target_supports_int_switch_2(target_x86_64) =
-    unexpected(this_file, "target x86_64 with --high-level code").
+    unexpected($module, $pred, "target x86_64 with --high-level code").
 target_supports_int_switch_2(target_erlang) =
-    unexpected(this_file, "target erlang").
+    unexpected($module, $pred, "target erlang").
 
 target_supports_string_switch_2(target_c) = no.
 target_supports_string_switch_2(target_asm) = no.
@@ -323,9 +323,9 @@ target_supports_string_switch_2(target_il) = no.
 target_supports_string_switch_2(target_csharp) = yes.
 target_supports_string_switch_2(target_java) = no.
 target_supports_string_switch_2(target_x86_64) =
-    unexpected(this_file, "target x86_64 with --high-level code").
+    unexpected($module, $pred, "target x86_64 with --high-level code").
 target_supports_string_switch_2(target_erlang) =
-    unexpected(this_file, "target erlang").
+    unexpected($module, $pred, "target erlang").
 
 target_supports_computed_goto_2(target_c) = yes.
 target_supports_computed_goto_2(target_asm) = no.
@@ -336,9 +336,9 @@ target_supports_computed_goto_2(target_csharp) = yes.
 target_supports_computed_goto_2(target_java) = no.
 % target_supports_computed_goto_2(c_sharp) = no.
 target_supports_computed_goto_2(target_x86_64) =
-    unexpected(this_file, "target x86_64 with --high-level code").
+    unexpected($module, $pred, "target x86_64 with --high-level code").
 target_supports_computed_goto_2(target_erlang) =
-    unexpected(this_file, "target erlang").
+    unexpected($module, $pred, "target erlang").
 
 target_supports_goto_2(target_c) = yes.
 target_supports_goto_2(target_asm) = yes.
@@ -346,9 +346,9 @@ target_supports_goto_2(target_il) = yes.
 target_supports_goto_2(target_csharp) = yes.
 target_supports_goto_2(target_java) = no.
 target_supports_goto_2(target_x86_64) =
-    unexpected(this_file, "target x86_64 with --high-level code").
+    unexpected($module, $pred, "target x86_64 with --high-level code").
 target_supports_goto_2(target_erlang) =
-    unexpected(this_file, "target erlang").
+    unexpected($module, $pred, "target erlang").
 
 %-----------------------------------------------------------------------------%
 
@@ -392,8 +392,7 @@ ml_switch_generate_if_then_else_chain(TaggedCases0, Var,
 
     (
         TaggedCases = [],
-        unexpected(this_file,
-            "ml_switch_generate_if_then_else_chain: empty switch")
+        unexpected($module, $pred, "empty switch")
     ;
         TaggedCases = [FirstTaggedCase | LaterTaggedCases],
         ml_switch_generate_if_then_else_chain_ites(FirstTaggedCase,
@@ -589,8 +588,7 @@ ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
         ; Tag = reserved_address_tag(_)
         ; Tag = shared_with_reserved_addresses_tag(_, _)
         ),
-        unexpected(this_file,
-            "ml_tagged_cons_id_to_match_cond: invalid tag type")
+        unexpected($module, $pred, "invalid tag type")
     ),
     MatchCond = match_value(Rval).
 
@@ -612,9 +610,5 @@ ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_switch_gen.m".
-
+:- end_module ml_backend.ml_switch_gen.
 %-----------------------------------------------------------------------------%

@@ -142,8 +142,7 @@ expand_set_field_function_call(Context, MainContext, SubContext0, FieldNames,
 
 expand_set_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    unexpected(this_file,
-        "expand_set_field_function_call_2: empty list of field names").
+    unexpected($module, $pred, "empty list of field names").
 expand_set_field_function_call_2(Context, MainContext, SubContext0,
         [FieldName - FieldArgs | FieldNames], FieldValueVar,
         TermInputVar, TermOutputVar, Functor, FieldSubContext, Goals, NumAdded,
@@ -238,8 +237,7 @@ expand_get_field_function_call(Context, MainContext, SubContext0, FieldNames,
 
 expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    unexpected(this_file,
-        "expand_get_field_function_call_2: empty list of field names").
+    unexpected($module, $pred, "empty list of field names").
 expand_get_field_function_call_2(Context, MainContext, SubContext0,
         [FieldName - FieldArgs | FieldNames], FieldValueVar, TermInputVar,
         Purity, Functor, FieldSubContext, Goals, NumAdded,
@@ -347,11 +345,5 @@ make_field_list_error(VarSet, Context, Term, ContextPieces) = Spec :-
         [simple_msg(Context, [always(Pieces)])]).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "field_access.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module field_access.
+:- end_module hlds.make_hlds.field_access.
 %-----------------------------------------------------------------------------%

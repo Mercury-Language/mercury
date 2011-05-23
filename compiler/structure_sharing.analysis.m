@@ -327,8 +327,7 @@ structure_sharing_answer_to_domain(MaybePPId, HeadVarTypes, ProcInfo, Answer,
                 SharingPairs),
             Sharing = structure_sharing_real(SharingPairs)
         ;
-            unexpected(this_file,
-                "structure_sharing_answer_to_domain: type_unify_list failed")
+            unexpected($module, $pred, "type_unify_list failed")
         )
     ).
 
@@ -375,7 +374,7 @@ sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
             !SharingTable, [], DepProcs, !IO)
     ;
         MaybeDepInfo = no,
-        unexpected(this_file, "No dependency information.")
+        unexpected($module, $pred, "No dependency information")
     ),
 
     % Record the sharing results in the HLDS.
@@ -449,8 +448,7 @@ analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
     % Abort if the analysis is taking too long.  It's probably a bug.
     Run = ss_fixpoint_table_which_run(!.FixpointTable),
     ( Run > max_runs ->
-        unexpected(this_file,
-            "analyse_scc_until_fixpoint: fixpoint not reached after "
+        unexpected($module, $pred, "fixpoint not reached after "
             ++ string.from_int(max_runs) ++ " runs")
     ;
         true
@@ -667,7 +665,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "analyse_goal: shorthand.")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred analyse_goal_with_progress(module_info::in, pred_info::in,
@@ -1328,12 +1326,6 @@ should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
     ;
         ShouldWrite = no
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "structure_sharing.analysis.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_sharing.analysis.

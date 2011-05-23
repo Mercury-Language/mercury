@@ -363,8 +363,8 @@ parse_pragma_foreign_type(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
                                 [always(Pieces)])]),
                         MaybeItem = error1([Spec])
                     ;
-                        unexpected(this_file,
-                            "parse_pragma_type: unexpected failure of " ++
+                        unexpected($module, $pred,
+                            "unexpected failure of " ++
                             "parse_maybe_foreign_type_assertion")
                     )
                 ;
@@ -2987,11 +2987,5 @@ parse_predicate_or_function(PredOrFuncTerm, PredOrFunc) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_io_pragma.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module prog_io_pragma.
+:- end_module parse_tree.prog_io_pragma.
 %-----------------------------------------------------------------------------%

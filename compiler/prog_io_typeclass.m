@@ -213,8 +213,7 @@ parse_constrained_class(ModuleName, Decl, ConstraintsTerm, VarSet, Context,
                 (
                     ConstraintNotInParams = [],
                     FunDepNotInParams = [],
-                    unexpected(this_file,
-                        "parse_constrained_class: no NotInParams")
+                    unexpected($module, $pred, "no NotInParams")
                 ;
                     ConstraintNotInParams = [],
                     FunDepNotInParams = [_ | _],
@@ -928,9 +927,5 @@ is_in_list(List, Element) :-
     list.member(Element, List).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_io_typeclass.m".
-
+:- end_module parse_tree.prog_io_typeclass.
 %----------------------------------------------------------------------------%

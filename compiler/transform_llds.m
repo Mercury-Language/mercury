@@ -190,13 +190,7 @@ split_computed_goto(Rval, Targets, Comment, Instrs, !C, MaxSize, NumTargets,
     ;
         counter.allocate(LabelNum, !C),
         Mid = NumTargets // 2,
-        ( list.split_list(Mid, Targets, StartTargetsPrime, EndTargetsPrime) ->
-            StartTargets = StartTargetsPrime,
-            EndTargets = EndTargetsPrime
-        ;
-            unexpected(this_file, "split_computed_goto: list.split_list")
-        ),
-
+        list.det_split_list(Mid, Targets, StartTargets, EndTargets),
         Index     = binop(int_sub, Rval, const(llconst_int(Mid))),
         Test      = binop(int_ge,  Rval, const(llconst_int(Mid))),
         ElseAddr  = code_label(internal_label(LabelNum, ProcLabel)),
@@ -212,9 +206,5 @@ split_computed_goto(Rval, Targets, Comment, Instrs, !C, MaxSize, NumTargets,
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "transform_llds.m".
-
+:- end_module ll_backend.transform_llds.
 %-----------------------------------------------------------------------------%

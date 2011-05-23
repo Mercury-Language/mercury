@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003, 2005-2006, 2010 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003, 2005-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -145,7 +145,7 @@ X / Y = X * rat.reciprocal(Y).
 
 reciprocal(r(Num, Den)) = 
     ( Num = 0  ->
-        unexpected(this_file, "reciprocal/1: division by zero")
+        unexpected($module, $pred, "division by zero")
     ;
         r(signum(Num) * Den, int.abs(Num))
     ).
@@ -160,7 +160,7 @@ rat.abs(r(Num, Den)) = r(int.abs(Num), Den).
 
 rat_norm(Num, Den) = Rat :-
     ( Den = 0 ->
-        unexpected(this_file, "rat_norm: division by zero")
+        unexpected($module, $pred, "division by zero")
     ; Num = 0 ->
         Rat = r(0, 1)
     ;
@@ -236,11 +236,5 @@ write_rat(r(Numerator, Denominator), !IO) :-
     io.write_char(')', !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file= string.
-
-this_file = "rat.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module rat.
+:- end_module libs.rat.
 %-----------------------------------------------------------------------------%

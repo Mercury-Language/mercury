@@ -428,7 +428,8 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
                 ; Details = foreign_imports
                 ; Details = pragma_memo_attribute
                 ),
-                unexpected(this_file, "Bad introduced foreign_export pragma.")
+                unexpected($module, $pred,
+                    "Bad introduced foreign_export pragma.")
             )
         )
     ).
@@ -507,7 +508,7 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
                 ; Details = foreign_imports
                 ; Details = pragma_memo_attribute
                 ),
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "Bad introduced foreign_export pragma.")
             )
         )
@@ -605,7 +606,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
             MaybeSeverity = yes(Severity)
         ;
             MaybeSeverity = no,
-            unexpected(this_file, "add_pragma_reserve_tag: no severity")
+            unexpected($module, $pred, "no severity")
         ),
         Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
         Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
@@ -730,7 +731,7 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
             MaybeSeverity = yes(Severity)
         ;
             MaybeSeverity = no,
-            unexpected(this_file, "add_foreign_export_enum: no severity")
+            unexpected($module, $pred, "no severity")
         ),
         Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
         Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
@@ -747,7 +748,7 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
     ( sym_name_get_module_name(TypeName, ModuleName0) ->
         ModuleName = ModuleName0
     ;
-        unexpected(this_file,
+        unexpected($module, $pred,
             "unqualified type name while building override map")
     ),
     % Strip off module qualifiers that match those of the type being exported.
@@ -797,7 +798,8 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity,
     ;
         % The type name should have been module qualified by now.
         TypeName = unqualified(_),
-        unexpected(this_file, "unqualified type name for foreign_export_enum")
+        unexpected($module, $pred,
+            "unqualified type name for foreign_export_enum")
     ),
 
     list.foldl3(
@@ -855,7 +857,7 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity,
                 ; Lang = lang_il
                 ; Lang = lang_erlang
                 ),
-                sorry(this_file,
+                sorry($module, $pred,
                     "foreign_export_enum pragma for unsupported language")
             ),
             BadCtorsErrorPieces = [
@@ -932,7 +934,7 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
         UnqualSymName  = unqualified(UnqualCtorName)
     ;
         CtorSymName = unqualified(_),
-        unexpected(this_file, "unqualified constructor name")
+        unexpected($module, $pred, "unqualified constructor name")
     ),
     %
     % If the user specified a name for this constructor then use that.
@@ -961,7 +963,7 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
         ( Lang = lang_il
         ; Lang = lang_erlang
         ),
-        sorry(this_file, "foreign_export_enum for target language")
+        sorry($module, $pred, "foreign_export_enum for target language")
     ),
     (
         IsValidForeignName = yes,
@@ -1123,7 +1125,7 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
             MaybeSeverity = yes(Severity)
         ;
             MaybeSeverity = no,
-            unexpected(this_file, "add_foreign_enum: no severity")
+            unexpected($module, $pred, "no severity")
         ),
         Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
         Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
@@ -1140,7 +1142,7 @@ build_foreign_enum_tag_map(Context, ContextPieces, TypeName, ForeignTagValues0,
     ( sym_name_get_module_name(TypeName, TypeModuleName0) ->
         TypeModuleName = TypeModuleName0
     ;
-        unexpected(this_file,
+        unexpected($module, $pred,
             "unqualified type name while processing foreign tags.")
     ),
     list.map_foldl(fixup_foreign_tag_val_qualification(TypeModuleName),
@@ -1197,9 +1199,9 @@ target_lang_to_foreign_enum_lang(target_il)   = lang_il.
 target_lang_to_foreign_enum_lang(target_csharp) = lang_csharp.
 target_lang_to_foreign_enum_lang(target_java) = lang_java.
 target_lang_to_foreign_enum_lang(target_asm) =
-    sorry(this_file, "pragma foreign_enum and --target `asm'.").
+    sorry($module, $pred, "pragma foreign_enum and --target `asm'.").
 target_lang_to_foreign_enum_lang(target_x86_64) =
-    sorry(this_file, "pragma foreign_enum and --target `x86_64'.").
+    sorry($module, $pred, "pragma foreign_enum and --target `x86_64'.").
 target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.
 
 :- pred make_foreign_tag(foreign_language::in, map(sym_name, string)::in,
@@ -1212,7 +1214,7 @@ make_foreign_tag(ForeignLanguage, ForeignTagMap, ConsId, _, !ConsTagValues,
     ( ConsId = cons(ConsSymName0, 0, _) ->
         ConsSymName = ConsSymName0
     ;
-        unexpected(this_file, "non arity zero enumeration constant.")
+        unexpected($module, $pred, "non arity zero enumeration constant.")
     ),
     ( map.search(ForeignTagMap, ConsSymName, ForeignTagValue) ->
         ForeignTag = foreign_tag(ForeignLanguage, ForeignTagValue),
@@ -1599,8 +1601,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
     assoc_list.keys(Subst, VarsToSub),
     (
         Subst = [],
-        unexpected(this_file,
-            "handle_pragma_type_spec_subst: empty substitution")
+        unexpected($module, $pred, "empty substitution")
     ;
         Subst = [_ | _],
         find_duplicate_list_elements(VarsToSub, MultiSubstVars0),
@@ -2815,7 +2816,7 @@ tabling_pred_name(Prefix, SimpleCallId, ProcId, SingleProc) = NewSymName :-
 table_info_c_global_var_name(ModuleInfo, SimpleCallId, ProcId) = VarName :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    expect(unify(Target, target_c), this_file,
+    expect(unify(Target, target_c), $module, $pred,
         "memo table statistics and reset are supported only for C"),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     module_info_get_name(ModuleInfo, ModuleName),
@@ -3406,8 +3407,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
             ClauseLang = impl_lang_foreign(OldLang),
             (
                 ApplProcIds0 = all_modes,
-                unexpected(this_file,
-                    "add_foreign_proc_update_existing_clauses: all_modes")
+                unexpected($module, $pred, "all_modes")
             ;
                 ApplProcIds0 = selected_modes(ProcIds0)
             ),
@@ -3441,8 +3441,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                     expect(
                         unify(LaterOverridden,
                             not_overridden_by_old_foreign_proc),
-                        this_file,
-                        "inconsistent old foreign_procs")
+                        $module, $pred, "inconsistent old foreign_procs")
                 ;
                     PreferNewForeignLang = no,
                     % We prefer the old foreign_proc to the new one,
@@ -3653,8 +3652,7 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Subst) :-
         VarA = VarA0,
         VarB = VarB0
     ;
-        unexpected(this_file,
-            "match_inst_with_renaming: non-singleton sets")
+        unexpected($module, $pred, "non-singleton sets")
     ),
     ( map.search(Subst0, VarA, SpecVarB) ->
         % If VarA was already in the renaming then check that it's consistent
@@ -3743,7 +3741,7 @@ check_required_feature_set(FeatureSet, ImportStatus, Context, !ModuleInfo,
         % `require_feature_set' pragmas are not included in interface files
         % (including private interfaces) and so this case should not occur.
         IsImported = yes,
-        unexpected(this_file, "imported require_feature_set pragma")
+        unexpected($module, $pred, "imported require_feature_set pragma")
     ;
         IsImported = no,
         set.fold(check_required_feature(Globals, Context), FeatureSet, !Specs)
@@ -3892,11 +3890,5 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
     ).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file =  "add_pragma.m".
-
-%----------------------------------------------------------------------------%
-:- end_module add_pragma.
+:- end_module hlds.make_hlds.add_pragma.
 %----------------------------------------------------------------------------%

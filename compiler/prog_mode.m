@@ -181,9 +181,9 @@ make_std_mode(Name, Args) = Mode :-
 %-----------------------------------------------------------------------------%
 
 inst_lists_to_mode_list([], [_ | _], _) :-
-    unexpected(this_file, "inst_lists_to_mode_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 inst_lists_to_mode_list([_ | _], [], _) :-
-    unexpected(this_file, "inst_lists_to_mode_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 inst_lists_to_mode_list([], [], []).
 inst_lists_to_mode_list([Initial | Initials], [Final | Finals],
         [Mode | Modes]) :-
@@ -299,8 +299,7 @@ inst_apply_substitution(Subst, constrained_inst_vars(Vars, Inst0), Result) :-
     ( set.singleton_set(Vars, Var0) ->
         Var = Var0
     ;
-        unexpected(this_file,
-            "inst_apply_substitution: multiple inst_vars found")
+        unexpected($module, $pred, "multiple inst_vars found")
     ),
     ( map.search(Subst, Var, Replacement) ->
         Result = Replacement
@@ -689,9 +688,5 @@ strip_builtin_qualifiers_from_ho_inst_info(higher_order(Pred0),
     strip_builtin_qualifiers_from_mode_list(Modes0, Modes).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_mode.m".
-
+:- end_module parse_tree.prog_mode.
 %-----------------------------------------------------------------------------%

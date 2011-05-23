@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000, 2003-2006, 2010 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -277,7 +277,7 @@ report_arg_size_errors(SCC, Errors, Module, !IO) :-
     Piece2 = words("set to infinity for the following"),
     (
         Errors = [],
-        unexpected(this_file, "empty list of errors")
+        unexpected($module, $pred, "empty list of errors")
     ;
         Errors = [Error],
         Piece3 = words("reason:"),
@@ -327,7 +327,7 @@ output_term_error(TermErrorContext, Single, ErrorNum, Indent, Module, !IO) :-
             ArgSizePPIdSCC = [InfArgSizePPId],
             report_arg_size_errors(ArgSizePPIdSCC, ArgSizeErrors, Module, !IO)
         ;
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "inf arg size procedure does not have inf arg size")
         )
     ;
@@ -358,8 +358,8 @@ description(TermError, Single, Module, Pieces, no) :-
     TermError = inf_call(CallerPPId, CalleePPId),
     (
         Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), this_file, 
-            "description (inf_call): caller outside this SCC"),
+        expect(unify(PPId, CallerPPId), $module, $pred, 
+            "inf_call: caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
         Single = no,
@@ -377,8 +377,8 @@ description(TermError, Single, Module, Pieces, no) :-
     TermError = can_loop_proc_called(CallerPPId, CalleePPId),
     (
         Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), this_file,
-            "description (can_loop_proc_called): caller outside this SCC"),
+        expect(unify(PPId, CallerPPId), $module, $pred,
+            "can_loop_proc_called: caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
         Single = no,
@@ -402,8 +402,8 @@ description(TermError, Single, Module, Pieces, no) :-
     TermError = horder_args(CallerPPId, CalleePPId),
     (
         Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), this_file,
-            "description (horder_args): caller outside this SCC"),
+        expect(unify(PPId, CallerPPId), $module, $pred,
+            "horder_args: caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
         Single = no,
@@ -420,8 +420,8 @@ description(TermError, Single, Module, Pieces, yes(CalleePPId)) :-
     TermError = inf_termination_const(CallerPPId, CalleePPId),
     (
         Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), this_file,
-            "description (inf_termination_const): caller outside this SCC"),
+        expect(unify(PPId, CallerPPId), $module, $pred,
+            "inf_termination_const: caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
         Single = no,
@@ -441,8 +441,8 @@ description(TermError, Single, Module, Pieces, no) :-
     TermError = ho_inf_termination_const(CallerPPId, _ClosurePPIds),
     (
         Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), this_file,
-            "description (ho_info_termination_const): caller outside this SCC"),
+        expect(unify(PPId, CallerPPId), $module, $pred,
+            "ho_info_termination_const: caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
         Single = no,
@@ -528,7 +528,7 @@ description(solver_failed, _, _, Pieces, no)  :-
     ].
 
 description(is_builtin(_PredId), _Single, _, Pieces, no) :-
-    % XXX expect(unify(Single, yes(_)), this_file,
+    % XXX expect(unify(Single, yes(_)), $module, $pred,
     %       "builtin not alone in SCC"),
     Pieces = [words("It is a builtin predicate.")].
 
@@ -539,7 +539,7 @@ description(does_not_term_pragma(PredId), Single, Module,
     (
         Single = yes(PPId),
         PPId = proc(SCCPredId, _),
-        expect(unify(PredId, SCCPredId), this_file,
+        expect(unify(PredId, SCCPredId), $module, $pred,
             "does not terminate pragma outside this SCC"),
         Pieces2 = [words("it.")]
     ;
@@ -600,11 +600,5 @@ term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,
     ).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_errors.m".
-
-%----------------------------------------------------------------------------%
-:- end_module term_errors.
+:- end_module transform_hlds.term_errors.
 %----------------------------------------------------------------------------%

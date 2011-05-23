@@ -212,7 +212,7 @@ set_parent(Parent, Child, !InstGraph) :-
         map.det_update(Child, node(Functors, parent(Parent)), !InstGraph)
     ;
         MaybeParent0 = parent(_),
-        unexpected(this_file, "set_parent: node already has parent")
+        unexpected($module, $pred, "node already has parent")
     ).
 
 top_level_node(InstGraph, Var, TopLevel) :-
@@ -368,7 +368,7 @@ merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
     ->
         Sub = Sub1
     ;
-        unexpected(this_file, "merge: non-variable terms in substitution")
+        unexpected($module, $pred, "non-variable terms in substitution")
     ),
     map.foldl((pred(Var0::in, Node0::in, IG0::in, IG::out) is det :-
         Node0 = node(Functors0, MaybeParent),
@@ -468,11 +468,5 @@ inst_graph_info_init = inst_graph_info(InstGraph, [], VarSet, InstGraph) :-
     map.init(InstGraph).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "inst_graph.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module inst_graph.
+:- end_module hlds.inst_graph.
 %-----------------------------------------------------------------------------%

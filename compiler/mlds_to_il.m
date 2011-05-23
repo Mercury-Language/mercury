@@ -259,10 +259,10 @@ generate_il(Globals, MLDS0, Version, ILAsm, ForeignLangs) :-
         _, _, _),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap, GlobalDefns),
-    expect(map.is_empty(ScalarCellGroupMap), this_file,
-        "generate_il: nonempty ScalarCellGroupMap"),
-    expect(map.is_empty(VectorCellGroupMap), this_file,
-        "generate_il: nonempty VectorCellGroupMap"),
+    expect(map.is_empty(ScalarCellGroupMap), $module, $pred,
+        "nonempty ScalarCellGroupMap"),
+    expect(map.is_empty(VectorCellGroupMap), $module, $pred,
+        "nonempty VectorCellGroupMap"),
     Defns = GlobalDefns ++ Defns0,
 
     ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
@@ -374,10 +374,10 @@ il_transform_mlds(MLDS0, MLDS) :-
     % We take all the definitions out of the global data field of the MLDS.
     ml_global_data_get_all_global_defns(GlobalData0,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap, GlobalDefns),
-    expect(map.is_empty(ScalarCellGroupMap), this_file,
-        "il_transform_mlds: nonempty ScalarCellGroupMap"),
-    expect(map.is_empty(VectorCellGroupMap), this_file,
-        "il_transform_mlds: nonempty VectorCellGroupMap"),
+    expect(map.is_empty(ScalarCellGroupMap), $module, $pred,
+        "nonempty ScalarCellGroupMap"),
+    expect(map.is_empty(VectorCellGroupMap), $module, $pred,
+        "nonempty VectorCellGroupMap"),
     Defns1 = GlobalDefns ++ Defns0 ++ ExportDefns,
     GlobalData = ml_global_data_init(do_not_use_common_cells),
 
@@ -655,11 +655,11 @@ mlds_defn_to_ilasm_decl(mlds_defn(Name, Context, Flags0, Data), Decl, !Info) :-
     % and so there's no need to handle them here.
     (
         Data = mlds_data(_Type, _Init, _GC),
-        sorry(this_file, "top level data definition!")
+        sorry($module, $pred, "top level data definition!")
     ;
         Data = mlds_function(_MaybePredProcId, _Params, _MaybeStmts, _Attrs,
             _EnvVarNames),
-        sorry(this_file, "top level function definition!")
+        sorry($module, $pred, "top level function definition!")
     ;
         Data = mlds_class(ClassDefn),
         il_info_new_class(ClassDefn, !Info),
@@ -781,7 +781,7 @@ generate_parent_and_extends(DataRep, Kind, Inherits) = Parent - Extends :-
             Extends = extends(Parent)
         ;
             Rest = [_ | _],
-            unexpected(this_file, "multiple inheritance not supported.")
+            unexpected($module, $pred, "multiple inheritance not supported")
         )
     ).
 
@@ -798,8 +798,7 @@ decl_flags_to_classattrs(Flags) =
         Access = [public]
     ;
         AccessFlag = acc_protected,
-        unexpected(this_file,
-            "decl_flags_to_classattrs: protected access flag")
+        unexpected($module, $pred, "protected access flag")
     ;
         AccessFlag = acc_private,
         Access = [private]
@@ -810,8 +809,7 @@ decl_flags_to_classattrs(Flags) =
         Access = [private]
     ;
         AccessFlag = acc_local,
-        unexpected(this_file,
-            "decl_flags_to_classattrs: local access flag")
+        unexpected($module, $pred, "local access flag")
     ).
 
 :- func decl_flags_to_nestedclassattrs(mlds_decl_flags) =
@@ -834,8 +832,7 @@ decl_flags_to_nestedclassattrs(Flags)
         Access = [nestedassembly]
     ;
         AccessFlag = acc_local,
-        unexpected(this_file,
-            "decl_flags_to_classattrs: local access flag")
+        unexpected($module, $pred, "local access flag")
     ).
 
 :- func decl_flags_to_classattrs_2(mlds_decl_flags) = list(ilasm.classattr).
@@ -879,8 +876,7 @@ decl_flags_to_methattrs(Flags)
         Access = [assembly]
     ;
         AccessFlag = acc_local,
-        unexpected(this_file,
-            "decl_flags_to_methattrs: local access flag")
+        unexpected($module, $pred, "local access flag")
     ),
     PerInstanceFlag = per_instance(Flags),
     (
@@ -935,8 +931,7 @@ decl_flags_to_fieldattrs(Flags)
     ;
         AccessFlag = acc_local,
         % Access = [private]
-        unexpected(this_file,
-            "decl_flags_to_fieldattrs: local access flag")
+        unexpected($module, $pred, "local access flag")
     ),
     PerInstanceFlag = per_instance(Flags),
     (
@@ -971,7 +966,7 @@ entity_name_to_ilds_id(entity_data(DataName)) = Name :-
 interface_id_to_class_name(_) = Result :-
     % XXX
     ( semidet_succeed ->
-        sorry(this_file, "interface_id_to_class_name NYI")
+        sorry($module, $pred, "NYI")
     ;
         Result = structured_name(assembly("XXX"), [], [])
     ).
@@ -1069,8 +1064,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     Entity = mlds_function(_MaybePredProcId, Params, MaybeStatement,
         Attributes, EnvVarNames),
 
-    expect(set.empty(EnvVarNames), this_file,
-        "generate_method: EnvVarNames"),
+    expect(set.empty(EnvVarNames), $module, $pred, "EnvVarNames"),
 
     il_info_get_module_name(!.Info, ModuleName),
 
@@ -1112,7 +1106,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
             ( Name = entity_type(_, _)
             ; Name = entity_data(_)
             ),
-            unexpected(this_file, "IL procedure is not a function")
+            unexpected($module, $pred, "IL procedure is not a function")
         ),
         CtorInstrs = []
     ),
@@ -1383,7 +1377,7 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
     ExportDefn = ml_pragma_export(Lang, ExportName, EntityName, Params,
         _UnivQTVars, Context),
     EntityName = qual(ModuleName, _QualKind, UnqualName),
-    expect(unify(Lang, lang_il), this_file,
+    expect(unify(Lang, lang_il), $module, $pred,
         "export for language other than IL."),
     Params = mlds_func_params(Inputs, RetTypes),
     list.map_foldl(
@@ -1402,7 +1396,7 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
         ( EntName = entity_data(mlds_data_var(VarName0)) ->
             VarName = qual(ModuleName, module_qual, VarName0)
         ;
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "exported method has argument without var name")
         )
     ),
@@ -1427,7 +1421,7 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
         ; UnqualName = entity_data(_)
         ; UnqualName = entity_export(_)
         ),
-        unexpected(this_file, "exported entity is not a function")
+        unexpected($module, $pred, "exported entity is not a function")
     ),
 
     % XXX Should we look for tail calls?
@@ -1500,7 +1494,7 @@ generate_defn_initializer(mlds_defn(Name, Context, _DeclFlags, Entity),
                 StoreLvalInstrs
         )
     ;
-        unexpected(this_file, "defn not data(...) in block")
+        unexpected($module, $pred, "defn not data(...) in block")
     ).
 
     % Initialize this value, leave it on the stack.
@@ -1773,7 +1767,7 @@ statement_to_il(statement(SwitchStmt, _Context), _Instrs, !Info) :-
     % The IL back-end only supports computed_gotos and if-then-else chains;
     % the MLDS code generator should either avoid generating MLDS switches,
     % or should transform them into computed_gotos or if-then-else chains.
-    unexpected(this_file, "`switch' not supported").
+    unexpected($module, $pred, "`switch' not supported").
 
 statement_to_il(statement(WhileStmt, Context), Instrs, !Info) :-
     WhileStmt = ml_stmt_while(Kind, Condition, Body),
@@ -1806,7 +1800,7 @@ statement_to_il(statement(WhileStmt, Context), Instrs, !Info) :-
 statement_to_il(statement(ml_stmt_return(Rvals), Context), Instrs, !Info) :-
     (
         Rvals = [],
-        unexpected(this_file, "empty list of return values")
+        unexpected($module, $pred, "empty list of return values")
     ;
         Rvals = [Rval],
         load(Rval, LoadInstrs, !Info),
@@ -1817,7 +1811,7 @@ statement_to_il(statement(ml_stmt_return(Rvals), Context), Instrs, !Info) :-
     ;
         Rvals = [_, _ | _],
         % MS IL doesn't support multiple return values
-        sorry(this_file, "multiple return values")
+        sorry($module, $pred, "multiple return values")
     ).
 
 statement_to_il(statement(ml_stmt_label(Label), Context), Instrs, !Info) :-
@@ -1839,11 +1833,11 @@ statement_to_il(statement(GotoLabelStmt, Context), Instrs, !Info) :-
 
 statement_to_il(statement(ml_stmt_goto(goto_break), _Context), _Instrs,
         !Info) :-
-    sorry(this_file, "break").
+    sorry($module, $pred, "break").
 
 statement_to_il(statement(ml_stmt_goto(goto_continue), _Context), _Instrs,
         !Info) :-
-    sorry(this_file, "continue").
+    sorry($module, $pred, "continue").
 
 statement_to_il(statement(DoCommitStmt, Context), Instrs, !Info) :-
     DoCommitStmt = ml_stmt_do_commit(_Ref),
@@ -1961,7 +1955,7 @@ atomic_statement_to_il(outline_foreign_proc(Lang, _, ReturnLvals, _Code),
                 !Info)
         ;
             ReturnLvals = [_, _ | _],
-            sorry(this_file, "multiple return values")
+            sorry($module, $pred, "multiple return values")
         ),
         MethodName = !.Info ^ csharp_method_name,
         TypeParams = il_method_params_to_il_types(Params),
@@ -1986,24 +1980,24 @@ atomic_statement_to_il(inline_target_code(ml_target_il, Code), Instrs,
     Instrs = inline_code_to_il_asm(Code).
 atomic_statement_to_il(inline_target_code(ml_target_c, _Code), _Instrs,
         !Info) :-
-    unexpected(this_file, "ml_target_c").
+    unexpected($module, $pred, "ml_target_c").
 atomic_statement_to_il(inline_target_code(ml_target_csharp, _Code), _Instrs,
         !Info) :-
-    unexpected(this_file, "ml_target_csharp").
+    unexpected($module, $pred, "ml_target_csharp").
 atomic_statement_to_il(inline_target_code(ml_target_java, _Code), _Instrs,
         !Info) :-
-    unexpected(this_file, "ml_target_java").
+    unexpected($module, $pred, "ml_target_java").
 atomic_statement_to_il(inline_target_code(ml_target_asm, _), _, !Info) :-
-    unexpected(this_file,  "ml_target_asm").
+    unexpected($module, $pred,  "ml_target_asm").
 atomic_statement_to_il(inline_target_code(ml_target_gnu_c, _), _, !Info) :-
-    unexpected(this_file, "ml_target_gnu_c").
+    unexpected($module, $pred, "ml_target_gnu_c").
 
     % NOTE: for the MLDS backends trail ops are currently implemented by
     % the HLDS->HLDS transformation in add_trail_ops.m.  If we encounter
     % an MLDS trail op it's an error.
     %
 atomic_statement_to_il(trail_op(_), _, _, _) :-
-    unexpected(this_file, "trail ops").
+    unexpected($module, $pred, "trail ops").
 
 atomic_statement_to_il(assign(Lval, Rval), Instrs, !Info) :-
     % Do assignments by loading the rval and storing to the lval.
@@ -2017,7 +2011,7 @@ atomic_statement_to_il(assign(Lval, Rval), Instrs, !Info) :-
         StoreLvalInstrs.
 
 atomic_statement_to_il(assign_if_in_heap(_, _), _, !Info) :-
-    sorry(this_file, "assign_if_in_heap").
+    sorry($module, $pred, "assign_if_in_heap").
 
 atomic_statement_to_il(comment(Comment), Instrs, !Info) :-
     Instrs = singleton(comment(Comment)).
@@ -2044,7 +2038,7 @@ atomic_statement_to_il(NewObject, Instrs, !Info) :-
         Size, MaybeCtorName, Args, ArgTypes, _MayUseAtomic, _AllocId),
     (
         ExplicitSecTag = yes,
-        unexpected(this_file, "new_object has explicit secondary tag")
+        unexpected($module, $pred, "new_object has explicit secondary tag")
     ;
         ExplicitSecTag = no
     ),
@@ -2174,7 +2168,7 @@ atomic_statement_to_il(NewObject, Instrs, !Info) :-
             Size = no,
             % XXX Do we need to handle this case?
             % I think it's needed for --high-level-data.
-            unexpected(this_file, "unknown size in MLDS new_object")
+            unexpected($module, $pred, "unknown size in MLDS new_object")
         ),
         load(SizeInWordsRval, LoadSizeInstrs, !Info),
 
@@ -2203,7 +2197,7 @@ inline_code_to_il_asm([T | Ts]) = Instrs ++ Rest :-
             ),
             Instrs = Instrs0 ++ singleton(il_asm_code(Code, N))
         ;
-            unexpected(this_file, "max_stack_size not set")
+            unexpected($module, $pred, "max_stack_size not set")
         )
     ;
         T = raw_target_code(Code, Attrs),
@@ -2213,7 +2207,7 @@ inline_code_to_il_asm([T | Ts]) = Instrs ++ Rest :-
             Instrs = singleton(il_asm_code(Code, N))
         ;
             MaybeMaxStack = no,
-            unexpected(this_file, "max_stack_size not set")
+            unexpected($module, $pred, "max_stack_size not set")
         )
     ;
         T = target_code_input(_),
@@ -2229,7 +2223,7 @@ inline_code_to_il_asm([T | Ts]) = Instrs ++ Rest :-
         Instrs = empty
     ;
         T = target_code_alloc_id(_),
-        unexpected(this_file, "target_code_alloc_id not implemented")
+        unexpected($module, $pred, "target_code_alloc_id not implemented")
     ),
     Rest = inline_code_to_il_asm(Ts).
 
@@ -2280,7 +2274,7 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs, StoreLvalInstrs, !Info) :-
                 StoreLvalInstrs = singleton(stelem(FieldILType))
             ;
                 FieldNum = ml_field_named(_, _),
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "ml_field_named for a type with an array representation.")
             )
         ;
@@ -2380,7 +2374,7 @@ load(Rval, Instrs, !Info) :-
             Instrs = singleton(ldc(int32, i(Int)))
         ;
             Const = mlconst_foreign(_Lang, _F, _T),
-            sorry(this_file, "NYI IL backend and foreign tags.")
+            sorry($module, $pred, "NYI IL backend and foreign tags.")
         ;
             Const = mlconst_float(Float),
             Instrs = singleton(ldc(float64, f(Float)))
@@ -2477,10 +2471,10 @@ store(Lval, Instrs, !Info) :-
         Lval = ml_mem_ref(_Rval, _Type),
         % You always need load the reference first, then the value,
         % then stind it. There's no swap instruction. Annoying, eh?
-        unexpected(this_file, "store into mem_ref")
+        unexpected($module, $pred, "store into mem_ref")
     ;
         Lval = ml_global_var_ref(_),
-        unexpected(this_file, "store into global_var_ref")
+        unexpected($module, $pred, "store into global_var_ref")
     ;
         Lval = ml_var(Var, VarType),
         DataRep = !.Info ^ il_data_rep,
@@ -2528,9 +2522,9 @@ unaryop_to_il(std_unop(logical_not), _,
 unaryop_to_il(std_unop(hash_string), _,
         singleton(call(il_mercury_string_hash)), !Info).
 unaryop_to_il(std_unop(hash_string2), _, _, !Info) :-
-    unexpected(this_file, "unaryop_to_il: hash_string2").
+    unexpected($module, $pred, "hash_string2").
 unaryop_to_il(std_unop(hash_string3), _, _, !Info) :-
-    unexpected(this_file, "unaryop_to_il: hash_string3").
+    unexpected($module, $pred, "hash_string3").
 
     % XXX Should detect casts to System.Array from array types
     % and ignore them, as they are not necessary.
@@ -2557,7 +2551,7 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs, !Info) :-
             ( SrcILType = il_type(_Qual, '&'(ReferencedType)) ->
                 Instrs = singleton(mkrefany(ReferencedType))
             ;
-                unexpected(this_file, "cast from non-ref type to refany")
+                unexpected($module, $pred, "cast from non-ref type to refany")
             )
         )
     ;
@@ -2571,7 +2565,7 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs, !Info) :-
         ( DestILType = il_type(_Qual, '&'(ReferencedType)) ->
             Instrs = singleton(refanyval(ReferencedType))
         ;
-            unexpected(this_file, "cast from non-ref type to refany")
+            unexpected($module, $pred, "cast from non-ref type to refany")
         )
     ;
         % We need to handle casts to/from unmanaged pointers specially --
@@ -2732,7 +2726,7 @@ binaryop_to_il(ne, from_list(Instrs), !Info) :-
     ].
 
 binaryop_to_il(body, _, !Info) :-
-    unexpected(this_file, "binop: body").
+    unexpected($module, $pred, "body").
 
 binaryop_to_il(array_index(ElemType), singleton(I), !Info) :-
     DataRep = !.Info ^ il_data_rep,
@@ -2769,7 +2763,7 @@ binaryop_to_il(str_ge, from_list([
         cgt(signed)
     ]), !Info).
 binaryop_to_il(str_cmp, _, !Info) :-
-    unexpected(this_file, "binop: str_cmp").
+    unexpected($module, $pred, "str_cmp").
 
     % Integer comparison
 binaryop_to_il(int_lt, singleton(clt(signed)), !Info).
@@ -2804,9 +2798,9 @@ binaryop_to_il(float_ge, from_list([clt(signed), ldc(int32, i(0)), ceq]),
         !Info).
 
 binaryop_to_il(compound_eq, _, !Info) :-
-    unexpected(this_file, "binop: compound_eq").
+    unexpected($module, $pred, "compound_eq").
 binaryop_to_il(compound_lt, _, !Info) :-
-    unexpected(this_file, "binop: compound_lt").
+    unexpected($module, $pred, "compound_lt").
 
 %-----------------------------------------------------------------------------%
 %
@@ -2886,7 +2880,7 @@ const_rval_to_function(Const, MemberName) :-
         ),
         MemberName = class_member_name(ClassName, id(ProcLabelStr))
     ;
-        unexpected(this_file, "rval_to_function: const is not a code address")
+        unexpected($module, $pred, "const is not a code address")
     ).
 
 %-----------------------------------------------------------------------------
@@ -3027,7 +3021,7 @@ mlds_inherits_to_ilds_inherits(DataRep, Inherits) = Extends :-
         Extends = extends(mlds_type_to_ilds_class_name(DataRep, InheritType))
     ;
         Inherits = [_, _ | _],
-        unexpected(this_file, "multiple inheritance not supported")
+        unexpected($module, $pred, "multiple inheritance not supported")
     ).
 
 :- pred mlds_signature_to_ilds_type_params(il_data_rep::in,
@@ -3065,7 +3059,7 @@ mlds_signature_to_il_return_param(DataRep, mlds_func_signature(_, Returns))
     ;
         Returns = [_, _ | _],
         % IL doesn't support multiple return values
-        sorry(this_file, "multiple return values")
+        sorry($module, $pred, "multiple return values")
     ).
 
 params_to_il_signature(DataRep, ModuleName, FuncParams) = ILSignature :-
@@ -3082,7 +3076,7 @@ params_to_il_signature(DataRep, ModuleName, FuncParams) = ILSignature :-
     ;
         Outputs = [_, _ | _],
         % IL doesn't support multiple return values.
-        sorry(this_file, "multiple return values")
+        sorry($module, $pred, "multiple return values")
     ),
     ILSignature = signature(call_conv(no, default), Param, ILInputTypes).
 
@@ -3175,16 +3169,16 @@ mlds_type_to_ilds_type(_, mlds_foreign_type(ForeignType))
         )
     ;
         ForeignType = c(_),
-        unexpected(this_file, "c foreign type")
+        unexpected($module, $pred, "c foreign type")
     ;
         ForeignType = java(_),
-        unexpected(this_file, "java foreign type")
+        unexpected($module, $pred, "java foreign type")
     ;
         ForeignType = csharp(_),
-        unexpected(this_file, "csharp foreign type")
+        unexpected($module, $pred, "csharp foreign type")
     ;
         ForeignType = erlang(_),
-        unexpected(this_file, "erlang foreign type")
+        unexpected($module, $pred, "erlang foreign type")
     ).
 
 mlds_type_to_ilds_type(ILDataRep, mlds_ptr_type(MLDSType)) =
@@ -3194,7 +3188,7 @@ mlds_type_to_ilds_type(ILDataRep, mercury_type(MercuryType, TypeCategory, _)) =
     mlds_mercury_type_to_ilds_type(ILDataRep, MercuryType, TypeCategory).
 
 mlds_type_to_ilds_type(_, mlds_unknown_type) = _ :-
-    unexpected(this_file, "mlds_type_to_ilds_type: unknown_type").
+    unexpected($module, $pred, "unknown_type").
 
     % Get the corresponding ILDS type for an MLDS mercury type
     % (this depends on which representation you happen to be using).
@@ -3259,13 +3253,10 @@ mlds_class_to_ilds_simple_type(Kind, ClassName) = SimpleType :-
 :- func mercury_type_to_highlevel_class_type(mer_type) = il_type.
 
 mercury_type_to_highlevel_class_type(MercuryType) = ILType :-
-    ( type_to_ctor_and_args(MercuryType, TypeCtor, _Args) ->
-        ml_gen_type_name(TypeCtor, ClassName, Arity),
-        ILType = il_type([], class(
-            mlds_class_name_to_ilds_class_name(ClassName, Arity)))
-    ;
-        unexpected(this_file, "type_to_ctor_and_args failed")
-    ).
+    type_to_ctor_and_args_det(MercuryType, TypeCtor, _Args),
+    ml_gen_type_name(TypeCtor, ClassName, Arity),
+    ILType = il_type([], class(
+        mlds_class_name_to_ilds_class_name(ClassName, Arity))).
 
 :- func mlds_class_name_to_ilds_class_name(mlds_class, arity) =
     ilds.class_name.
@@ -3289,7 +3280,7 @@ get_ilds_type_class_name(ILType) = ClassName :-
     ->
         ClassName = ClassName0
     ;
-        unexpected(this_file, "get_ilds_type_class_name: type not a class")
+        unexpected($module, $pred, "type not a class")
     ).
 
 %-----------------------------------------------------------------------------
@@ -3547,22 +3538,22 @@ mangle_dataname(DataName, Name) :-
         Name = mangle_mlds_var_name(MLDSVarName)
     ;
         DataName = mlds_scalar_common_ref(_),
-        sorry(this_file, "unimplemented: mangling mlds_scalar_common_ref")
+        sorry($module, $pred, "unimplemented: mangling mlds_scalar_common_ref")
     ;
         DataName = mlds_rtti(RttiId),
         rtti.id_to_c_identifier(RttiId, Name)
     ;
         DataName = mlds_module_layout,
-        sorry(this_file, "unimplemented: mangling mlds_module_layout")
+        sorry($module, $pred, "unimplemented: mangling mlds_module_layout")
     ;
         DataName = mlds_proc_layout(_),
-        sorry(this_file, "unimplemented: mangling mlds_proc_layout")
+        sorry($module, $pred, "unimplemented: mangling mlds_proc_layout")
     ;
         DataName = mlds_internal_layout(_, _),
-        sorry(this_file, "unimplemented: mangling mlds_internal_layout")
+        sorry($module, $pred, "unimplemented: mangling mlds_internal_layout")
     ;
         DataName = mlds_tabling_ref(_, _),
-        sorry(this_file, "unimplemented: mangling mlds_tabling_ref")
+        sorry($module, $pred, "unimplemented: mangling mlds_tabling_ref")
     ).
 
     % We turn procedures into methods of classes.
@@ -3574,13 +3565,13 @@ mangle_mlds_proc_label(qual(ModuleName, _, mlds_proc_label(PredLabel, ProcId)),
 :- pred mangle_entity_name(mlds_entity_name::in, string::out) is det.
 
 mangle_entity_name(entity_type(_TypeName, _), _MangledName) :-
-    unexpected(this_file, "can't mangle type names").
+    unexpected($module, $pred, "can't mangle type names").
 mangle_entity_name(entity_data(DataName), MangledName) :-
     mangle_dataname(DataName, MangledName).
 mangle_entity_name(entity_function(_, _, _, _), _MangledName) :-
-    unexpected(this_file, "can't mangle function names").
+    unexpected($module, $pred, "can't mangle function names").
 mangle_entity_name(entity_export(_), _MangledName) :-
-    unexpected(this_file, "can't mangle export names").
+    unexpected($module, $pred, "can't mangle export names").
 
     % Any valid Mercury identifier will be fine here too.
     % We quote all identifiers before we output them, so
@@ -3718,9 +3709,9 @@ rval_to_type(ml_lval(ml_var(_, Type)), Type).
 rval_to_type(ml_lval(ml_field(_, _, _, Type, _)), Type).
 rval_to_type(ml_lval(ml_mem_ref(_, Type)), Type).
 rval_to_type(ml_lval(ml_global_var_ref(_)), _) :-
-    sorry(this_file, "rval_to_type: global_var_ref").
+    sorry($module, $pred, "global_var_ref").
 rval_to_type(ml_mkword(_, _), _) :-
-    unexpected(this_file, "rval_to_type: mkword").
+    unexpected($module, $pred, "mkword").
 rval_to_type(ml_unop(Unop, _), Type) :-
     (
         Unop = box(_),
@@ -3734,12 +3725,12 @@ rval_to_type(ml_unop(Unop, _), Type) :-
     ;
         Unop = std_unop(StdUnop),
         functor(StdUnop, canonicalize, StdUnopStr, _Arity),
-        sorry(this_file, "rval_to_type: unop: " ++ StdUnopStr)
+        sorry($module, $pred, "unop: " ++ StdUnopStr)
     ).
 rval_to_type(ml_binop(_, _, _), _) :-
-    sorry(this_file, "rval_to_type: binop").
+    sorry($module, $pred, "binop").
 rval_to_type(ml_mem_addr(_), _) :-
-    sorry(this_file, "rval_to_type: mem_addr").
+    sorry($module, $pred, "mem_addr").
 rval_to_type(ml_scalar_common(ScalarCommon), Type) :-
     ScalarCommon = ml_scalar_common(_, Type, _, _).
 rval_to_type(ml_vector_common_row(VectorCommon, _), Type) :-
@@ -3757,7 +3748,7 @@ rval_const_to_type(mlconst_int(_)) = ml_int_type.
 rval_const_to_type(mlconst_enum(_, MLDS_Type)) = MLDS_Type.
 rval_const_to_type(mlconst_char(_)) = ml_char_type.
 rval_const_to_type(mlconst_foreign(_, _, _))
-        = sorry(this_file, "IL backend and foreign tag.").
+        = sorry($module, $pred, "IL backend and foreign tag").
 rval_const_to_type(mlconst_float(_)) = MLDSType :-
     FloatType = builtin_type(builtin_type_float),
     MLDSType = mercury_type(FloatType, ctor_cat_builtin(cat_builtin_float),
@@ -3767,7 +3758,7 @@ rval_const_to_type(mlconst_true) = mlds_native_bool_type.
 rval_const_to_type(mlconst_string(_)) = ml_string_type.
 rval_const_to_type(mlconst_multi_string(_)) = ml_string_type.
 rval_const_to_type(mlconst_named_const(_))
-        = sorry(this_file, "IL backend and named const.").
+        = sorry($module, $pred, "IL backend and named const").
 rval_const_to_type(mlconst_null(MldsType)) = MldsType.
 
 %-----------------------------------------------------------------------------%
@@ -3837,7 +3828,7 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType0, FieldRef,
         ( OffsetRval = ml_const(mlconst_int(Num)) ->
             string.format("f%d", [i(Num)], FieldId)
         ;
-            sorry(this_file, "offsets for non-mlconst_int rvals")
+            sorry($module, $pred, "offsets for non-mlconst_int rvals")
         ),
         CastClassInstrs = empty
     ;
@@ -3887,7 +3878,7 @@ fixup_class_qualifiers(CtorClassName0, PtrClassName) = CtorClassName :-
         CtorClassName = structured_name(CtorAssembly, OuterClass,
             NestedClasses)
     ;
-        unexpected(this_file, "fixup_class_qualifiers")
+        unexpected($module, $pred, "condition failed")
     ).
 
     % common_prefix(List1, List2, Prefix, Tail1, Tail2):
@@ -3924,7 +3915,7 @@ defn_to_local(ModuleName, Defn, Id - MLDSType) :-
             mlds_var_name(MangledDataName, no)), Id),
         MLDSType0 = MLDSType
     ;
-        unexpected(this_file, "defn_to_local: definition name was not data/1")
+        unexpected($module, $pred, "definition name was not data/1")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3969,30 +3960,30 @@ simple_type_to_valuetype(char) =
     il_type([], valuetype(il_system_name(["Char"]))).
 simple_type_to_valuetype(object) = _ :-
     % il_type([], valuetype(il_system_name(["Object"]))).
-    unexpected(this_file, "no value class for System.Object").
+    unexpected($module, $pred, "no value class for System.Object").
 simple_type_to_valuetype(string) = _ :-
     % il_type([], valuetype(il_system_name(["String"]))).
-    unexpected(this_file, "no value class for System.String").
+    unexpected($module, $pred, "no value class for System.String").
 simple_type_to_valuetype(refany) = _ :-
-    unexpected(this_file, "no value class for refany").
+    unexpected($module, $pred, "no value class for refany").
 simple_type_to_valuetype(class(_)) = _ :-
-    unexpected(this_file, "no value class for class").
+    unexpected($module, $pred, "no value class for class").
 simple_type_to_valuetype(valuetype(Name)) =
     il_type([], valuetype(Name)).
 simple_type_to_valuetype(interface(_)) = _ :-
-    unexpected(this_file, "no value class for interface").
+    unexpected($module, $pred, "no value class for interface").
 simple_type_to_valuetype('[]'(_, _)) = _ :-
-    unexpected(this_file, "no value class for array").
+    unexpected($module, $pred, "no value class for array").
 simple_type_to_valuetype('&'( _)) = _ :-
-    unexpected(this_file, "no value class for '&'").
+    unexpected($module, $pred, "no value class for '&'").
 simple_type_to_valuetype('*'(_)) = _ :-
-    unexpected(this_file, "no value class for '*'").
+    unexpected($module, $pred, "no value class for '*'").
 simple_type_to_valuetype(native_float) = _ :-
-    unexpected(this_file, "no value class for native float").
+    unexpected($module, $pred, "no value class for native float").
 simple_type_to_valuetype(native_int) = _ :-
-    unexpected(this_file, "no value class for native int").
+    unexpected($module, $pred, "no value class for native int").
 simple_type_to_valuetype(native_uint) = _ :-
-    unexpected(this_file, "no value class for native uint").
+    unexpected($module, $pred, "no value class for native uint").
 
 %-----------------------------------------------------------------------------%
 
@@ -4676,9 +4667,5 @@ il_method_params_to_il_types([ il_method_param(Type, _) | Params]) =
     Types = il_method_params_to_il_types(Params).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mlds_to_il.m".
-
+:- end_module ml_backend.mlds_to_il.
 %-----------------------------------------------------------------------------%

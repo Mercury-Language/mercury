@@ -304,7 +304,7 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
         ;
             Unify0 = complicated_unify(_, _, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "size_prof_process_goal: complicated_unify")
+            unexpected($module, $pred, "complicated_unify")
         )
     ;
         GoalExpr0 = plain_call(_, _, _, _, _, _),
@@ -375,7 +375,7 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
             Cases = [First | Later]
         ;
             Cases0 = [],
-            unexpected(this_file, "size_prof_process_goal: empty switch")
+            unexpected($module, $pred, "empty switch")
         ),
         update_rev_maps(!Info),
         update_target_map(!Info),
@@ -484,7 +484,7 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "size_prof_process_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo0).
 
@@ -617,8 +617,7 @@ size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
     ( type_to_ctor_and_args(VarType, VarTypeCtorPrime, _VarTypeArgs) ->
         VarTypeCtor = VarTypeCtorPrime
     ;
-        unexpected(this_file,
-            "size_prof.process_construct: constructing term of variable type")
+        unexpected($module, $pred, "constructing term of variable type")
     ),
     ModuleInfo = !.Info ^ spi_module_info,
     VarTypeCtorModule = type_ctor_module(ModuleInfo, VarTypeCtor),
@@ -641,15 +640,13 @@ size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
                 % TypeInfo_for_K as type_info, not type_ctor_info.
                 record_known_type_ctor_info(Var, M, N, A, !Info)
             ;
-                unexpected(this_file,
-                    "size_prof_process_construct: bad type_info")
+                unexpected($module, $pred, "bad type_info")
             )
         ; VarTypeCtorName = "type_ctor_info" ->
             ( ConsId = type_ctor_info_const(M, N, A) ->
                 record_known_type_ctor_info(Var, M, N, A, !Info)
             ;
-                unexpected(this_file,
-                    "size_prof_process_construct: bad type_ctor_info")
+                unexpected($module, $pred, "bad type_ctor_info")
             )
         ;
             !:Info = !.Info
@@ -685,9 +682,7 @@ size_prof_process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr,
     ( type_to_ctor_and_args(VarType, VarTypeCtorPrime, _VarTypeArgs) ->
         VarTypeCtor = VarTypeCtorPrime
     ;
-        unexpected(this_file,
-            "size_prof_process_deconstruct: " ++
-            "deconstructing term of variable type")
+        unexpected($module, $pred, "deconstructing term of variable type")
     ),
     ModuleInfo = !.Info ^ spi_module_info,
     VarTypeCtorModule = type_ctor_module(ModuleInfo, VarTypeCtor),
@@ -728,8 +723,7 @@ size_prof_process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type,
         no, MaybeDynamicSizeVar, Context, ArgGoals, !Info),
     (
         MaybeDynamicSizeVar = no,
-        expect(unify(ArgGoals, []), this_file,
-            "size_prof_process_cons_construct: nonempty ArgGoals"),
+        expect(unify(ArgGoals, []), $module, $pred, "nonempty ArgGoals"),
         (
             NonDefinedArgs = [],
             record_known_size(Var, KnownSize, !Info)
@@ -772,8 +766,7 @@ size_prof_process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr,
         no, MaybeDynamicSizeVar, Context, ArgGoals, !Info),
     (
         MaybeDynamicSizeVar = no,
-        expect(unify(ArgGoals, []), this_file,
-            "size_prof_process_cons_deconstruct: nonempty ArgGoals"),
+        expect(unify(ArgGoals, []), $module, $pred, "nonempty ArgGoals"),
         GoalExpr = GoalExpr0
     ;
         MaybeDynamicSizeVar = yes(SizeVar0),
@@ -925,7 +918,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
         % Type_to_ctor_and_args can fail only if Type is a type variable,
         % or acts like one. The tests in our callers should have filtered
         % out both cases.
-        unexpected(this_file, "size_prof.make_type_info: cannot happen")
+        unexpected($module, $pred, "cannot happen")
     ).
 
     % Construct a type_info for Type = TypeCtor(ArgTypes), given that we know
@@ -1285,11 +1278,11 @@ find_defined_args(Args, Modes, DefinedArgs, NonDefinedArgs, Info) :-
     ;
         Args = [],
         Modes = [_ | _],
-        unexpected(this_file, "size_prof_find_defined_args: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ;
         Args = [_ | _],
         Modes = [],
-        unexpected(this_file, "size_prof_find_defined_args: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ;
         Args = [FirstArg | LaterArgs],
         Modes = [FirstMode | LaterModes],
@@ -1331,11 +1324,5 @@ ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "size_prof.m".
-
-%---------------------------------------------------------------------------%
-:- end_module size_prof.
+:- end_module transform_hlds.size_prof.
 %---------------------------------------------------------------------------%

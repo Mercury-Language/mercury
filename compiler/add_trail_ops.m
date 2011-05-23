@@ -344,7 +344,7 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "goal_expr_add_trail_ops: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred conj_add_trail_ops(hlds_goals::in, hlds_goals::out,
@@ -659,9 +659,5 @@ trail_generate_foreign_proc(PredName, Purity, InstMapDelta,
         ModuleInfo, Context, ForeignProcGoal).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "add_trail_ops.m".
-
+:- end_module ml_backend.add_trail_ops.
 %-----------------------------------------------------------------------------%

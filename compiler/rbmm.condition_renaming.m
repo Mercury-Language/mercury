@@ -1057,8 +1057,8 @@ collect_ite_annotation_region_names(ExecPaths, Graph, PathToCond,
     PathToCond = rgp(RevPathToCondSteps),
     (
         RevPathToCondSteps = [LastStep | RevInitialSteps],
-        expect(unify(LastStep, step_ite_cond), $module,
-            $pred ++ ": not step_ite_cond"),
+        expect(unify(LastStep, step_ite_cond), $module, $pred,
+            "not step_ite_cond"),
         PathToThen = rgp([step_ite_then | RevInitialSteps]),
         get_closest_condition_in_goal_path(PathToCond, _, 0, HowMany),
         list.foldl2(
@@ -1067,7 +1067,7 @@ collect_ite_annotation_region_names(ExecPaths, Graph, PathToCond,
             ExecPaths, !IteRenamingProc, !IteAnnotationProc)
     ;
         RevPathToCondSteps = [],
-        unexpected($module, $pred, "empty path to condition.")
+        unexpected($module, $pred, "empty path to condition")
     ).
 
 :- pred collect_ite_annotation_exec_path(rpt_graph::in, reverse_goal_path::in,
@@ -1161,4 +1161,6 @@ introduce_reverse_renaming(ProgPoint, IteRenamingProc, HowMany, RegName,
     ),
     record_annotation(ProgPoint, Annotation, !IteAnnotationProc).
 
+%-----------------------------------------------------------------------------%
+:- end_module transform_hlds.rbmm.condition_renaming.
 %-----------------------------------------------------------------------------%

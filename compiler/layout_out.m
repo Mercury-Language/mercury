@@ -868,8 +868,7 @@ output_long_var_label_layout_slot(Info, LabelLayout, !Slot, !IO) :-
     ( LongLocnsSlot >= 0 ->
         true
     ;
-        unexpected(this_file,
-            "output_long_var_label_layout_slot: no long locn")
+        unexpected($module, $pred, "no long locn")
     ),
 
     io.write_int(EncodedVarCount, !IO),
@@ -2870,8 +2869,7 @@ output_proc_layout_name_in_vector(LayoutName, !IO) :-
         output_proc_label_no_prefix(ProcLabel, !IO),
         io.write_string(")\n", !IO)
     ;
-        unexpected(this_file,
-            "output_proc_layout_name_in_vector: not proc layout")
+        unexpected($module, $pred, "not proc layout")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3188,9 +3186,5 @@ output_pred_or_func(PredOrFunc, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "layout_out.m".
-
+:- end_module ll_backend.layout_out.
 %-----------------------------------------------------------------------------%

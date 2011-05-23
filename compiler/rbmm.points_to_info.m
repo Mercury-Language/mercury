@@ -162,5 +162,5 @@ rpt_alpha_mapping_at_call_site_equal_2([N | Ns], AMAtCallSiteA,
     rpt_alpha_mapping_at_call_site_equal_2(Ns, AMAtCallSiteA, AMAtCallSiteB).
 
 %-----------------------------------------------------------------------------%
-:- end_module rbmm.points_to_info.
+:- end_module transform_hlds.rbmm.points_to_info.
 %-----------------------------------------------------------------------------%

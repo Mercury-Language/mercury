@@ -757,7 +757,7 @@ merge_static_cell_infos(SCIa, SCIb, SCI, Remap) :-
         CellTypeNumMapA, ScalarCellGroupMapA, VectorCellGroupMapA),
     SCIb = static_cell_info(SubInfoB, _TypeCounterB,
         CellTypeNumMapB, ScalarCellGroupMapB, VectorCellGroupMapB),
-    expect(unify(SubInfoA, SubInfoB), this_file, "merge_static_cell_info"),
+    expect(unify(SubInfoA, SubInfoB), $module, $pred, "mismatch"),
 
     % Merge cell type number maps.
     bimap.foldl3(merge_cell_type_num_maps, CellTypeNumMapB,
@@ -880,7 +880,7 @@ merge_scalar_cell_groups_2(TypeNum, ArrayB, ArrayAB,
             ; BDataId = layout_id(_)
             ; BDataId = layout_slot_id(_, _)
             ),
-            unexpected(this_file, "merge_scalar_cell_groups_2")
+            unexpected($module, $pred, "unexpected BDataId")
         )
     ).
 
@@ -1315,11 +1315,5 @@ remap_mem_ref(Remap, MemRef0, MemRef) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "global_data.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module global_data.
+:- end_module ll_backend.global_data.
 %-----------------------------------------------------------------------------%

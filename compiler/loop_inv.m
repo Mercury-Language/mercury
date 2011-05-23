@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -341,7 +341,7 @@ invariant_goal_candidates_in_goal(PPId, Goal, !IGCs) :-
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "invariant_goal_candidates_in_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -510,8 +510,7 @@ refine_candidate_inv_args(hlds_goal(RecCall, _RecCallInfo), MaybeInvArgs) =
         list.map_corresponding(refine_candidate_inv_args_2,
             MaybeInvArgs, CallArgs)
     ;
-        unexpected(this_file,
-            "refine_candidate_inv_args/2: non call/6 found in argument 1")
+        unexpected($module, $pred, "non call/6 found in argument 1")
     ).
 
 :- func refine_candidate_inv_args_2(maybe(prog_var), prog_var) =
@@ -910,7 +909,7 @@ gen_aux_proc_goal(Info, Goal) = AuxGoal :-
         AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "gen_aux_proc_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- func gen_aux_proc_case(gen_aux_proc_info, case) = case.
@@ -1024,7 +1023,7 @@ gen_out_proc_goal(PPId, CallAux, Goal) = AuxGoal :-
         AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "gen_out_proc_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- func gen_out_proc_case(pred_proc_id, hlds_goal, case) = case.
@@ -1053,7 +1052,7 @@ gen_aux_call(hlds_goal(CallAux0, _CallAuxInfo0), hlds_goal(Call, CallInfo)) =
     ->
         hlds_goal(CallAux, CallInfo)
     ;
-        unexpected(this_file, "gen_aux_call/2: args not both ordinary calls")
+        unexpected($module, $pred, "args not both ordinary calls")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1063,8 +1062,7 @@ gen_aux_call(hlds_goal(CallAux0, _CallAuxInfo0), hlds_goal(Call, CallInfo)) =
 replace_initial_args([],       Ys      ) = Ys.
 replace_initial_args([X | Xs], [_ | Ys]) = [X | replace_initial_args(Xs, Ys)].
 replace_initial_args([_ | _],  []      ) = _ :-
-    unexpected(this_file,
-        "replace_initial_args: first arg longer than second").
+    unexpected($module, $pred, "first arg longer than second").
 
 %-----------------------------------------------------------------------------%
 
@@ -1141,7 +1139,7 @@ used_vars(ModuleInfo, Goal) = UsedVars :-
         UsedVars = used_vars(ModuleInfo, SubGoal)
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "used_vars: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- func case_goals(list(case)) = list(hlds_goal).
@@ -1223,7 +1221,7 @@ goal_inputs(ModuleInfo, Goal) = Inputs :-
             ;
                 UnifyRHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
                 % These should have been expanded out by now.
-                unexpected(this_file, "goal_expr_inputs: lambda goal")
+                unexpected($module, $pred, "lambda goal")
             )
         )
     ;
@@ -1235,7 +1233,7 @@ goal_inputs(ModuleInfo, Goal) = Inputs :-
         ; GoalExpr = scope(_, _)
         ; GoalExpr = shorthand(_)
         ),
-        unexpected(this_file, "goal_expr_inputs: compound goal")
+        unexpected($module, $pred, "compound goal")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1303,7 +1301,7 @@ goal_outputs(ModuleInfo, Goal) = Outputs :-
         ; GoalExpr = scope(_, _)
         ; GoalExpr = shorthand(_)
         ),
-        unexpected(this_file, "goal_expr_outputs: compound goal")
+        unexpected($module, $pred, "compound goal")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1330,11 +1328,5 @@ lhs_modes(UniModes) =
     list.map(func((Pre - _) -> (Post - _)) = (Pre -> Post), UniModes).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "loop_inv.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module loop_inv.
+:- end_module transform_hlds.loop_inv.
 %-----------------------------------------------------------------------------%

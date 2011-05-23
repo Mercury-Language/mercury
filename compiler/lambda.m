@@ -294,7 +294,7 @@ expand_lambdas_in_goal(Goal0, Goal, !Info) :-
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "expand_lambdas_in_goal_2: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ),
@@ -386,7 +386,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         ; Unification0 = simple_test(_, _)
         ; Unification0 = complicated_unify(_, _, _)
         ),
-        unexpected(this_file, "expand_lambda: unexpected unification")
+        unexpected($module, $pred, "unexpected unification")
     ),
 
     set.delete_list(Vars, LambdaGoalNonLocals, NonLocals1),
@@ -838,11 +838,5 @@ mark_vars_as_used([Var | Vars], !VarUses) :-
     mark_vars_as_used(Vars, !VarUses).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "lambda.m".
-
-%---------------------------------------------------------------------------%
-:- end_module lambda.
+:- end_module transform_hlds.lambda.
 %---------------------------------------------------------------------------%

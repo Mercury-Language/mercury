@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -386,7 +386,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
     mode_info_get_context(ModeInfo, Context),
     (
         Errors = [],
-        unexpected(this_file, "mode_error_conj_to_spec: no errors")
+        unexpected($module, $pred, "no errors")
     ;
         Errors = [Error],
         Msgs1 = mode_error_conjunct_to_msgs(Context, ModeInfo, Error)
@@ -418,8 +418,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
                         FirstOtherError)
                 ;
                     OtherErrors = [],
-                    unexpected(this_file,
-                        "mode_error_conj_to_spec: no errors of any kind")
+                    unexpected($module, $pred, "no errors of any kind")
                 )
             ),
             % MoreMsg is there to indicate that --verbose-errors would yield
@@ -729,7 +728,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
             [InitMsg | LaterMsgs])
     ;
         CalleeModeErrors = [],
-        unexpected(this_file, "report_mode_error_in_callee: no error")
+        unexpected($module, $pred, "no error")
     ).
 
 :- func mode_error_no_matching_mode_to_spec(mode_info, list(prog_var),
@@ -747,8 +746,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts) = Spec :-
         ( ModeContext = mode_context_unify(_, _)
         ; ModeContext = mode_context_uninitialized
         ),
-        unexpected(this_file,
-            "report_mode_error_no_matching_mode: invalid context")
+        unexpected($module, $pred, "invalid context")
     ),
     Pieces = [words("mode error: arguments"),
         quote(mercury_vars_to_string(VarSet, no, Vars)),
@@ -1337,7 +1335,7 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
         ( list.drop(NumToDrop, !ArgModes) ->
             true
         ;
-            unexpected(this_file, "report_pred_proc_id: list.drop failed")
+            unexpected($module, $pred, "list.drop failed")
         ),
 
         varset.init(VarSet),
@@ -1454,9 +1452,5 @@ inst_list_to_sep_lines(ModeInfo, [Inst | Insts]) = Pieces ++ MorePieces :-
     MorePieces = inst_list_to_sep_lines(ModeInfo, Insts).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mode_errors.m".
-
+:- end_module check_hlds.mode_errors.
 %-----------------------------------------------------------------------------%

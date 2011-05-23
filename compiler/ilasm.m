@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1999-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -878,7 +878,7 @@ output_simple_type(OutInfo, SimpleType, !Info, !IO) :-
                 output_simple_type(OutInfo, ValueSimpleType, !Info, !IO)
             ;
                 ValueType = reference(_),
-                unexpected(this_file, "builtin reference type")
+                unexpected($module, $pred, "builtin reference type")
             )
         ;
             io.write_string("valuetype ", !IO),
@@ -1004,7 +1004,7 @@ output_simple_type_opcode(float32, !IO) :-
 output_simple_type_opcode(float64, !IO) :-
     io.write_string("r8", !IO).
 output_simple_type_opcode(native_float, !IO) :-
-    unexpected(this_file, "unable to create opcode for native_float").
+    unexpected($module, $pred, "unable to create opcode for native_float").
 output_simple_type_opcode(bool, !IO) :-
     % XXX should i4 be used for bool?
     io.write_string("i4", !IO).
@@ -1391,7 +1391,7 @@ output_instr(OutInfo, Instr, !Info, !IO) :-
             io.write_string("ldc.r8\t", !IO),
             c_util.output_float_literal(FloatConst, !IO)
         ;
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "Inconsistent arguments in ldc instruction")
         )
     ;
@@ -1630,7 +1630,7 @@ output_instr(OutInfo, Instr, !Info, !IO) :-
     ;
         % XXX should be implemented
         Instr = ldtoken(_),
-        sorry(this_file, "output not implemented")
+        sorry($module, $pred, "ldtoken not implemented")
     ;
         Instr = ldvirtftn(MethodRef),
         io.write_string("ldvirtftn\t", !IO),
@@ -1864,7 +1864,7 @@ output_custom_decl(OutInfo, CustomDecl, !Info, !IO) :-
         ( StringOrBytes = qstring(_)
         ; StringOrBytes = no_initalizer
         ),
-        sorry(this_file, "custom_decl of this sort")
+        sorry($module, $pred, "unexpected custom_decl")
     ),
     io.write_string("\n", !IO).
 
@@ -2166,11 +2166,5 @@ init_ilasm_out_info(Globals) = Info :-
         SeparateAssemblies).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ilasm.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module ilasm.
+:- end_module ml_backend.ilasm.
 %-----------------------------------------------------------------------------%

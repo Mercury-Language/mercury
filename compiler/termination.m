@@ -153,7 +153,7 @@ check_foreign_code_attributes(SCCs, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_foreign_code_attributes_2([], !ModuleInfo, !Specs) :-
-    unexpected(this_file, "check_foreign_code_attributes_2: empty SCC.").
+    unexpected($module, $pred, "empty SCC").
 check_foreign_code_attributes_2([PPId], !ModuleInfo, !Specs) :-
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
@@ -282,7 +282,7 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
         proc_info_get_maybe_termination_info(KnownProcInfo, MaybeKnownTerm),
         (
             MaybeKnownTerm = no,
-            unexpected(this_file, "No termination info. found.")
+            unexpected($module, $pred, "no termination info found")
         ;
             MaybeKnownTerm  = yes(KnownTermStatus)
         ),
@@ -331,7 +331,7 @@ check_procs_known_term(Status, [PPId | PPIds], ModuleInfo) :-
     proc_info_get_maybe_termination_info(ProcInfo, MaybeTerm),
     (
         MaybeTerm = no,
-        unexpected(this_file, "No termination info for procedure.")
+        unexpected($module, $pred, "no termination info for procedure")
     ;
         MaybeTerm = yes(PPIdStatus)
     ),
@@ -770,8 +770,7 @@ special_pred_id_to_termination(SpecialPredId, HeadVars, ArgSize,
         Termination = cannot_loop(unit)
     ;
         SpecialPredId = spec_pred_init,
-        unexpected(this_file, "special_pred_id_to_termination/4 " ++
-            "initialise predicate")
+        unexpected($module, $pred, "initialise")
     ).
 
     % The list of proc_ids must refer to builtin predicates. This predicate
@@ -958,11 +957,5 @@ write_proc_termination_info(PredId, [ProcId | ProcIds], ProcTable,
         SymName, Context, !IO).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "termination.m".
-
-%----------------------------------------------------------------------------%
-:- end_module termination.
+:- end_module transform_hlds.termination.
 %----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006, 2010 The University of Melbourne.
+% Copyright (C) 2002-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -115,11 +115,5 @@ java_binary_infix_op(int_le, "<=").
 java_binary_infix_op(int_ge, ">=").
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "java_util.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module java_util.
+:- end_module ml_backend.java_util.
 %-----------------------------------------------------------------------------%

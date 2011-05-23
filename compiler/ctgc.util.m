@@ -148,8 +148,7 @@ get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
         ->
             TypeSubst1 = TypeSubst0
         ;
-            unexpected(this_file,
-                "ctgc.util.get_type_substitution: type unification failed")
+            unexpected($module, $pred, "type unification failed")
         )
     ),
 
@@ -230,12 +229,6 @@ type_category_top_cell_may_be_reusable(CtorCat) = Reusable :-
         ),
         Reusable = yes
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ctgc.util.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.util.

@@ -213,8 +213,8 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
             ExtraArgs = []
         ;
             ExtraArgs = [_ | _],
-            unexpected(this_file, "extra arguments with --arg-file: " ++
-                string(ExtraArgs))
+            unexpected($module, $pred,
+                "extra arguments with --arg-file: " ++ string(ExtraArgs))
         ),
 
         % `mmc --mmake' does not use the --arg-file mechanism for linking.
@@ -2266,9 +2266,5 @@ gc_init(!IO).
 ").
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mercury_compile.m".
-
+:- end_module top_level.mercury_compile.
 %-----------------------------------------------------------------------------%

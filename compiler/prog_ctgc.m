@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: prog_ctgc.m.
 % Main author: nancy.
-% 
+%
 % Utility operations (parsing, printing, renaming) for compile-time garbage
 % collection related information, i.e. structure sharing and structure reuse.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -51,7 +51,7 @@
 
 :- func parse_structure_reuse_domain(term(T)) = structure_reuse_domain.
 
-:- pred parse_user_annotated_sharing(varset::in, term::in, 
+:- pred parse_user_annotated_sharing(varset::in, term::in,
     user_annotated_sharing::out) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -120,7 +120,7 @@
 :- pred print_interface_structure_sharing_domain(prog_varset::in,
     tvarset::in, maybe(structure_sharing_domain)::in, io::di, io::uo) is det.
 
-:- pred print_interface_maybe_structure_reuse_domain(prog_varset::in, 
+:- pred print_interface_maybe_structure_reuse_domain(prog_varset::in,
     tvarset::in, maybe(structure_reuse_domain)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -151,19 +151,19 @@
     structure_sharing_domain::out) is det.
 
 :- pred rename_user_annotated_sharing(list(prog_var)::in, list(prog_var)::in,
-    list(mer_type)::in, user_annotated_sharing::in, 
+    list(mer_type)::in, user_annotated_sharing::in,
     user_annotated_sharing::out) is det.
 
-:- pred rename_structure_reuse_condition(map(prog_var, prog_var)::in, 
-    tsubst::in, structure_reuse_condition::in, 
+:- pred rename_structure_reuse_condition(map(prog_var, prog_var)::in,
+    tsubst::in, structure_reuse_condition::in,
     structure_reuse_condition::out) is det.
 
-:- pred rename_structure_reuse_conditions(map(prog_var, prog_var)::in, 
-    tsubst::in, structure_reuse_conditions::in, 
+:- pred rename_structure_reuse_conditions(map(prog_var, prog_var)::in,
+    tsubst::in, structure_reuse_conditions::in,
     structure_reuse_conditions::out) is det.
 
-:- pred rename_structure_reuse_domain(map(prog_var, prog_var)::in, 
-    tsubst::in, structure_reuse_domain::in, 
+:- pred rename_structure_reuse_domain(map(prog_var, prog_var)::in,
+    tsubst::in, structure_reuse_domain::in,
     structure_reuse_domain::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -225,8 +225,7 @@ parse_unit_selector(Term) = UnitSelector :-
                 ConsId = string_const(Str),
                 UnitSelector = termsel(ConsId, 0)
             ;
-                unexpected(this_file, "parse_unit_selector: " ++
-                    "unknown cons_id in unit selector")
+                unexpected($module, $pred, "unknown cons_id in unit selector")
             )
         ;
             Cons = "typesel",
@@ -235,21 +234,18 @@ parse_unit_selector(Term) = UnitSelector :-
             ( maybe_parse_type(term.coerce(TypeSelectorTerm), TypeSelector) ->
                 UnitSelector = typesel(TypeSelector)
             ;
-                unexpected(this_file,
-                    "parse_unit_selector: error in parsing type selector")
+                unexpected($module, $pred, "error in parsing type selector")
             )
         ;
-            unexpected(this_file, "parse_unit_selector: " ++
+            unexpected($module, $pred,
                 "selector is neither sel/3 nor typesel/1.")
         )
     ;
-        unexpected(this_file, "parse_unit_selector: term not a functor")
+        unexpected($module, $pred, "term not a functor")
     ).
 
 parse_selector(Term) = Selector :-
-    (
-        Term = term.functor(term.atom(Cons), Args, _)
-    ->
+    ( Term = term.functor(term.atom(Cons), Args, _) ->
         (
             Cons = "[|]",
             Args = [First, Rest]
@@ -259,7 +255,7 @@ parse_selector(Term) = Selector :-
             Selector = []
         )
     ;
-        unexpected(this_file, "parse_selector: term not a functor")
+        unexpected($module, $pred, "term not a functor")
     ).
 
 parse_datastruct(Term) = Datastruct :-
@@ -272,17 +268,16 @@ parse_datastruct(Term) = Datastruct :-
         Datastruct = selected_cel(term.coerce_var(Var),
             parse_selector(SelectorTerm))
     ;
-        unexpected(this_file,
-            "parse_datastruct: error while parsing datastruct.")
+        unexpected($module, $pred, "error while parsing datastruct.")
     ).
 
 :- func parse_datastruct_list(term(T)) = list(datastruct).
 
-parse_datastruct_list(Term) = Datastructs :- 
+parse_datastruct_list(Term) = Datastructs :-
     (
         Term = term.functor(term.atom(Cons), Args, _)
-    -> 
-        ( 
+    ->
+        (
             Cons = "[|]",
             Args = [FirstDataTerm, RestDataTerm]
         ->
@@ -291,13 +286,14 @@ parse_datastruct_list(Term) = Datastructs :-
         ;
             Cons = "[]"
         ->
-            Datastructs = [] 
+            Datastructs = []
         ;
-            unexpected(this_file, "Error while parsing list of datastructs.")
+            unexpected($module, $pred,
+                "error while parsing list of datastructs")
         )
     ;
-        unexpected(this_file, "Error while parsing list of datastructs " ++
-            "(term not a functor).")
+        unexpected($module, $pred,
+            "error while parsing list of datastructs (term not a functor)")
     ).
 
 parse_structure_sharing_pair(Term) = SharingPair :-
@@ -308,7 +304,8 @@ parse_structure_sharing_pair(Term) = SharingPair :-
     ->
         SharingPair = parse_datastruct(First) - parse_datastruct(Second)
     ;
-        unexpected(this_file, "Error while parsing structure sharing pair.")
+        unexpected($module, $pred,
+            "error while parsing structure sharing pair")
     ).
 
 parse_structure_sharing(Term) = SharingPairs :-
@@ -326,8 +323,8 @@ parse_structure_sharing(Term) = SharingPairs :-
     ->
         SharingPairs = SharingPairs0
     ;
-        unexpected(this_file,
-            "Error while parsing list of structure sharing pairs.")
+        unexpected($module, $pred,
+            "error while parsing list of structure sharing pairs")
     ).
 
 parse_structure_sharing_domain(Term) = SharingAs :-
@@ -348,14 +345,15 @@ parse_structure_sharing_domain(Term) = SharingAs :-
     ->
         SharingAs = SharingAs0
     ;
-        unexpected(this_file, "Error while parsing structure sharing domain.")
+        unexpected($module, $pred,
+            "error while parsing structure sharing domain")
     ).
 
-parse_structure_reuse_condition(Term) = ReuseCondition :- 
+parse_structure_reuse_condition(Term) = ReuseCondition :-
     (
         Term = term.functor(term.atom(Cons), Args, _)
-    -> 
-        ( 
+    ->
+        (
             Cons = "condition",
             Args = [DeadNodesTerm, InUseNodesTerm, SharingTerm]
         ->
@@ -363,21 +361,21 @@ parse_structure_reuse_condition(Term) = ReuseCondition :-
             DeadNodes = set.from_list(DeadNodesList),
             InUseNodes = parse_datastruct_list(InUseNodesTerm),
             Sharing = parse_structure_sharing_domain(SharingTerm),
-            ReuseCondition = structure_reuse_condition(DeadNodes, 
+            ReuseCondition = structure_reuse_condition(DeadNodes,
                 InUseNodes, Sharing)
         ;
-            unexpected(this_file, "Error while parsing reuse condition.")
+            unexpected($module, $pred, "error while parsing reuse condition")
         )
     ;
-        unexpected(this_file, "Error while parsing reuse condition " ++
-            "(term not a functor).")
+        unexpected($module, $pred,
+            "error while parsing reuse condition (term not a functor)")
     ).
 
-parse_structure_reuse_conditions(Term) = ReuseConditions :- 
+parse_structure_reuse_conditions(Term) = ReuseConditions :-
     (
         Term = term.functor(term.atom(Cons), Args, _)
-    -> 
-        ( 
+    ->
+        (
             Cons = "[|]",
             Args = [FirstTupleTerm, RestTuplesTerm]
         ->
@@ -386,22 +384,22 @@ parse_structure_reuse_conditions(Term) = ReuseConditions :-
         ;
             Cons = "[]"
         ->
-            ReuseConditions = [] 
+            ReuseConditions = []
         ;
-            unexpected(this_file, "Error while parsing reuse conditions.")
+            unexpected($module, $pred, "error while parsing reuse conditions")
         )
     ;
-        unexpected(this_file, "Error while parsing reuse conditions " ++
-            "(term not a functor).")
+        unexpected($module, $pred,
+            "error while parsing reuse conditions (term not a functor)")
     ).
 
-parse_structure_reuse_domain(Term) = ReuseDomain :- 
+parse_structure_reuse_domain(Term) = ReuseDomain :-
     (
         Term = term.functor(term.atom(Cons), Args, _)
-    -> 
-        ( 
+    ->
+        (
             Cons = "has_no_reuse"
-        -> 
+        ->
             ReuseDomain = has_no_reuse
         ;
             Cons = "has_only_unconditional_reuse"
@@ -414,45 +412,45 @@ parse_structure_reuse_domain(Term) = ReuseDomain :-
             ReuseDomain = has_conditional_reuse(
                 parse_structure_reuse_conditions(ReuseConditionsTerm))
         ;
-            unexpected(this_file, "Error while parsing reuse domain.")
+            unexpected($module, $pred, "error while parsing reuse domain")
         )
     ;
-        unexpected(this_file, "Error while parsing reuse domain " ++
-            "(term not a functor).")
+        unexpected($module, $pred,
+            "error while parsing reuse domain (term not a functor)")
     ).
 
 %-----------------------------------------------------------------------------%
 
-parse_user_annotated_sharing(!.Varset, Term, UserSharing) :- 
+parse_user_annotated_sharing(!.Varset, Term, UserSharing) :-
     (
-        Term = term.functor(term.atom("no_sharing"), [], _), 
+        Term = term.functor(term.atom("no_sharing"), [], _),
         UserSharing = user_sharing(structure_sharing_bottom, no)
     ;
         Term = term.functor(term.atom("unknown_sharing"), [], Context),
-        context_to_string(Context, ContextString), 
+        context_to_string(Context, ContextString),
         Msg = "user declared top(" ++ ContextString ++ ")",
         Reason = top_cannot_improve(Msg),
         UserSharing = user_sharing(structure_sharing_top(
             set.make_singleton_set(Reason)), no)
     ;
-        Term = term.functor(term.atom("sharing"), 
+        Term = term.functor(term.atom("sharing"),
             [TypesTerm, UserSharingTerm], _),
         (
             TypesTerm = term.functor(term.atom("yes"), ListTypeTerms, _),
-            maybe_parse_types(ListTypeTerms, Types), 
+            maybe_parse_types(ListTypeTerms, Types),
             term.vars_list(ListTypeTerms, TypeVars),
             varset.select(set.list_to_set(TypeVars), !Varset),
-            MaybeUserTypes = yes(user_type_info(Types, 
+            MaybeUserTypes = yes(user_type_info(Types,
                 varset.coerce(!.Varset)))
         ;
-            TypesTerm = term.functor(term.atom("no"), _, _), 
+            TypesTerm = term.functor(term.atom("no"), _, _),
             MaybeUserTypes = no
-        ), 
-        parse_user_annotated_sharing_term(UserSharingTerm, Sharing), 
+        ),
+        parse_user_annotated_sharing_term(UserSharingTerm, Sharing),
         UserSharing = user_sharing(Sharing, MaybeUserTypes)
     ).
 
-:- pred parse_user_annotated_sharing_term(term::in, 
+:- pred parse_user_annotated_sharing_term(term::in,
     structure_sharing_domain::out) is semidet.
 
 parse_user_annotated_sharing_term(SharingDomainUserTerm, SharingDomain) :-
@@ -466,7 +464,7 @@ parse_user_annotated_sharing_term(SharingDomainUserTerm, SharingDomain) :-
             SharingPairs),
         SharingDomain = structure_sharing_real(SharingPairs)
     ).
-     
+
 :- pred get_list_term_arguments(term::in, list(term)::out) is semidet.
 
 get_list_term_arguments(ListTerm, ArgumentTerms) :-
@@ -481,7 +479,7 @@ get_list_term_arguments(ListTerm, ArgumentTerms) :-
         ArgumentTerms = []
     ).
 
-:- pred parse_user_annotated_sharing_pair_term(term::in, 
+:- pred parse_user_annotated_sharing_pair_term(term::in,
     structure_sharing_pair::out) is semidet.
 
 parse_user_annotated_sharing_pair_term(Term, SharingPair) :-
@@ -489,11 +487,11 @@ parse_user_annotated_sharing_pair_term(Term, SharingPair) :-
     parse_user_annotated_datastruct_term(Left, LeftData),
     parse_user_annotated_datastruct_term(Right, RightData),
     SharingPair = LeftData - RightData.
-        
-:- pred parse_user_annotated_datastruct_term(term::in, datastruct::out) 
+
+:- pred parse_user_annotated_datastruct_term(term::in, datastruct::out)
     is semidet.
 
-parse_user_annotated_datastruct_term(Term, Datastruct) :- 
+parse_user_annotated_datastruct_term(Term, Datastruct) :-
     Term = term.functor(term.atom("cel"), [VarTerm, TypesTerm], _),
     VarTerm = term.variable(GenericVar, _),
     term.coerce_var(GenericVar, ProgVar),
@@ -550,11 +548,11 @@ print_datastruct(ProgVarSet, TypeVarSet, DataStruct, !IO) :-
     print_selector(TypeVarSet, DataStruct ^ sc_selector, !IO),
     io.write_string(")", !IO).
 
-print_datastructs(ProgVarSet, TypeVarSet, Datastructs, !IO) :- 
-    io.write_string("[", !IO), 
+print_datastructs(ProgVarSet, TypeVarSet, Datastructs, !IO) :-
+    io.write_string("[", !IO),
     io.write_list(Datastructs, ", ", print_datastruct(ProgVarSet, TypeVarSet),
-        !IO), 
-    io.write_string("]", !IO). 
+        !IO),
+    io.write_string("]", !IO).
 
 print_structure_sharing_pair(ProgVarSet, TypeVarSet, SharingPair, !IO) :-
     SharingPair = D1 - D2,
@@ -650,18 +648,18 @@ dump_maybe_structure_reuse_domain(ProgVarSet, TypeVarSet, yes(ReuseAs), !IO) :-
     print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseAs,
         "%\t ", ", \n%\t ", "\n", !IO).
 
-:- pred print_structure_reuse_condition(prog_varset::in, tvarset::in, 
+:- pred print_structure_reuse_condition(prog_varset::in, tvarset::in,
     structure_reuse_condition::in, io::di, io::uo) is det.
 
 print_structure_reuse_condition(ProgVarSet, TypeVarSet, ReuseCond, !IO) :-
-    ReuseCond = structure_reuse_condition(DeadNodes, InUseNodes, Sharing), 
+    ReuseCond = structure_reuse_condition(DeadNodes, InUseNodes, Sharing),
     DeadNodesList = set.to_sorted_list(DeadNodes),
-    io.write_string("condition(", !IO), 
+    io.write_string("condition(", !IO),
     print_datastructs(ProgVarSet, TypeVarSet, DeadNodesList, !IO),
     io.write_string(", ", !IO),
-    print_datastructs(ProgVarSet, TypeVarSet, InUseNodes, !IO), 
+    print_datastructs(ProgVarSet, TypeVarSet, InUseNodes, !IO),
     io.write_string(", ", !IO),
-    print_structure_sharing_domain(ProgVarSet, TypeVarSet, no, no, 
+    print_structure_sharing_domain(ProgVarSet, TypeVarSet, no, no,
         Sharing, !IO),
     io.write_string(")", !IO).
 
@@ -669,16 +667,16 @@ print_structure_reuse_condition(ProgVarSet, TypeVarSet, ReuseCond, !IO) :-
     string::in, structure_reuse_conditions::in, io::di, io::uo) is det.
 
 print_structure_reuse_conditions(ProgVarSet, TypeVarSet, Separator, ReuseConds,
-        !IO) :- 
+        !IO) :-
     io.write_list(ReuseConds, Separator,
-        print_structure_reuse_condition(ProgVarSet, TypeVarSet), !IO). 
+        print_structure_reuse_condition(ProgVarSet, TypeVarSet), !IO).
 
-:- pred print_structure_reuse_domain(prog_varset::in, tvarset::in, 
+:- pred print_structure_reuse_domain(prog_varset::in, tvarset::in,
     structure_reuse_domain::in, string::in, string::in, string::in,
     io::di, io::uo) is det.
 
 print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain,
-        Start, Separator, End, !IO) :- 
+        Start, Separator, End, !IO) :-
     io.write_string(Start, !IO),
     (
         ReuseDomain = has_no_reuse,
@@ -688,18 +686,18 @@ print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain,
         io.write_string("has_only_unconditional_reuse", !IO)
     ;
         ReuseDomain = has_conditional_reuse(ReuseConditions),
-        io.write_string("has_conditional_reuse([", !IO), 
+        io.write_string("has_conditional_reuse([", !IO),
         print_structure_reuse_conditions(ProgVarSet, TypeVarSet, Separator,
-            ReuseConditions, !IO), 
+            ReuseConditions, !IO),
         io.write_string("])", !IO)
     ),
     io.write_string(End, !IO).
 
-print_interface_maybe_structure_reuse_domain(_, _, no, !IO) :- 
+print_interface_maybe_structure_reuse_domain(_, _, no, !IO) :-
     io.write_string("not_available", !IO).
 
-print_interface_maybe_structure_reuse_domain(ProgVarSet, TypeVarSet, 
-        yes(ReuseDomain), !IO) :- 
+print_interface_maybe_structure_reuse_domain(ProgVarSet, TypeVarSet,
+        yes(ReuseDomain), !IO) :-
     io.write_string("yes(", !IO),
     print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain,
         "", ", ", "", !IO),
@@ -740,69 +738,65 @@ rename_structure_sharing(Dict, TypeSubst, !List) :-
 
 rename_structure_sharing_domain(_, _, X @ structure_sharing_bottom, X).
 rename_structure_sharing_domain(_, _, X @ structure_sharing_top(_), X).
-rename_structure_sharing_domain(Dict, TypeSubst, 
+rename_structure_sharing_domain(Dict, TypeSubst,
         structure_sharing_real(!.List), structure_sharing_real(!:List)):-
     rename_structure_sharing(Dict, TypeSubst, !List).
 
 %-----------------------------------------------------------------------------%
 
-rename_user_annotated_sharing(HeadVars, NewHeadVars, NewTypes, 
-        !UserSharing) :- 
+rename_user_annotated_sharing(HeadVars, NewHeadVars, NewTypes,
+        !UserSharing) :-
     (
         !.UserSharing = no_user_annotated_sharing
     ;
         !.UserSharing = user_sharing(Sharing, MaybeTypes),
         some [!SharingDomain] (
-            !:SharingDomain = Sharing, 
+            !:SharingDomain = Sharing,
             (
                 !.SharingDomain = structure_sharing_bottom
             ;
                 !.SharingDomain = structure_sharing_top(_)
             ;
                 !.SharingDomain = structure_sharing_real(SharingPairs),
-                map.from_corresponding_lists(HeadVars, NewHeadVars, 
+                map.from_corresponding_lists(HeadVars, NewHeadVars,
                     VarRenaming),
                 (
-                    MaybeTypes = yes(user_type_info(UserSharingTypes, 
+                    MaybeTypes = yes(user_type_info(UserSharingTypes,
                         _UserSharingTVarSet))
                 ->
-                    type_list_subsumes_det(UserSharingTypes, NewTypes, 
+                    type_list_subsumes_det(UserSharingTypes, NewTypes,
                         TypeSubst)
                 ;
                     TypeSubst = map.init
                 ),
-                rename_structure_sharing(VarRenaming, TypeSubst, 
+                rename_structure_sharing(VarRenaming, TypeSubst,
                         SharingPairs, NewSharingPairs),
                 !:SharingDomain = structure_sharing_real(NewSharingPairs)
             ),
             !:UserSharing = user_sharing(!.SharingDomain, no)
         )
-    ). 
+    ).
 
 %-----------------------------------------------------------------------------%
-rename_structure_reuse_condition(Dict, TypeSubst, 
-        structure_reuse_condition(DeadNodes, LiveNodes, Sharing), 
-        structure_reuse_condition(RenDeadNodes, RenLiveNodes, RenSharing)) :- 
+
+rename_structure_reuse_condition(Dict, TypeSubst,
+        structure_reuse_condition(DeadNodes, LiveNodes, Sharing),
+        structure_reuse_condition(RenDeadNodes, RenLiveNodes, RenSharing)) :-
     RenDeadNodes = set.map(rename_datastruct(Dict, TypeSubst), DeadNodes),
     RenLiveNodes = list.map(rename_datastruct(Dict, TypeSubst), LiveNodes),
     rename_structure_sharing_domain(Dict, TypeSubst, Sharing, RenSharing).
 
-rename_structure_reuse_conditions(Dict, TypeSubst, Conds, RenConds) :- 
-    list.map(rename_structure_reuse_condition(Dict, TypeSubst), 
+rename_structure_reuse_conditions(Dict, TypeSubst, Conds, RenConds) :-
+    list.map(rename_structure_reuse_condition(Dict, TypeSubst),
         Conds, RenConds).
 
 rename_structure_reuse_domain(_, _, has_no_reuse, has_no_reuse).
-rename_structure_reuse_domain(_, _, has_only_unconditional_reuse, 
+rename_structure_reuse_domain(_, _, has_only_unconditional_reuse,
         has_only_unconditional_reuse).
 rename_structure_reuse_domain(Dict, TypeSubst, has_conditional_reuse(Conds),
-        has_conditional_reuse(RenConds)):- 
+        has_conditional_reuse(RenConds)):-
     rename_structure_reuse_conditions(Dict, TypeSubst, Conds, RenConds).
-    
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_ctgc.m".
 
 %-----------------------------------------------------------------------------%
+:- end_module parse_tree.prog_ctgc.
 %-----------------------------------------------------------------------------%

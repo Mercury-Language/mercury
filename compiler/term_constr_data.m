@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2010 The University of Melbourne.
+% Copyright (C) 2002, 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -424,7 +424,7 @@ update_local_and_nonlocal_vars(Goal0, Locals0, NonLocals0) = Goal :-
     ).
 
 scc_contains_recursion([]) :-
-    unexpected(this_file, "empty SCC.").
+    unexpected($module, $pred, "empty SCC").
 scc_contains_recursion([Proc | _]) :-
     Proc ^ ap_recursion \= none.
 
@@ -432,7 +432,7 @@ proc_is_recursive(Proc) :-
     not Proc ^ ap_recursion = none.
 
 size_varset_from_abstract_scc([]) = _ :-
-    unexpected(this_file, "empty SCC.").
+    unexpected($module, $pred, "empty SCC").
 size_varset_from_abstract_scc([Proc | _]) = Proc ^ ap_size_varset.
 
 analysis_depends_on_ho(Proc) :-
@@ -563,8 +563,7 @@ combine_primitives(GoalA, GoalB) = Goal :-
         NonLocals = NonLocalsA ++ NonLocalsB,
         Goal = term_primitive(Poly, Locals, NonLocals)
     ;
-        unexpected(this_file,
-            "intersect_primitives called with non-primitive goals.")
+        unexpected($module, $pred, "non-primitive goals")
     ).
 
     % We end up with `empty' primitives by abstracting unifications
@@ -621,8 +620,7 @@ combine_primitive_goals(GoalA, GoalB) = Goal :-
         NonLocals = NonLocalsA ++ NonLocalsB,
         Goal      = term_primitive(Poly, Locals, NonLocals)
     ;
-        unexpected(this_file,
-            "non-primitive goals passed to combine_primitive_goals")
+        unexpected($module, $pred, "non-primitive goals")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -790,12 +788,6 @@ indent_line(N, !IO) :-
     ;
         true
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_constr_data.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_data.

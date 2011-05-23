@@ -156,7 +156,7 @@ intra_analyse_goal_expr(scope(_Reason, Goal), !RptaInfo) :-
 %    ;
 %        Msg = "intra_analyse_goal_expr: Scope's reason of from_ground_term "
 %            ++ "not handled",
-%        unexpected(this_file, Msg)
+%        unexpected($module, $pred, Msg)
 %    ).
 
 intra_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), !RptaInfo) :-
@@ -166,7 +166,7 @@ intra_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), !RptaInfo) :-
 
 intra_analyse_goal_expr(shorthand(_), _, _) :-
     % These should have been expanded out by now.
-    unexpected(this_file, "intra_analyse_goal_expr: shorthand").
+    unexpected($module, $pred, "shorthand").
 
 :- pred intra_analyse_case(case::in, rpta_info::in, rpta_info::out) is det.
 
@@ -217,8 +217,7 @@ intra_analyse_unification(assign(ToVar, FromVar),
     ).
 intra_analyse_unification(simple_test(_, _), !RptaInfo).
 intra_analyse_unification(complicated_unify(_, _, _), _, _) :-
-    unexpected(this_file,
-        "complicated_unify in region points-to analysis.").
+    unexpected($module, $pred, "complicated_unify").
 
 :- pred process_cons_and_decons(prog_var::in, cons_id::in, prog_var::in,
     int::in, int::out, rpt_graph::in, rpt_graph::out) is det.
@@ -271,7 +270,7 @@ inter_proc_rpta(ModuleInfo0, !InfoTable) :-
         run_with_dependencies(DepOrdering, ModuleInfo, !InfoTable)
     ;
         MaybeDepInfo = no,
-        unexpected(this_file, "inter_proc_rpta: no dependency information")
+        unexpected($module, $pred, "no dependency information")
     ).
 
 :- pred run_with_dependencies(dependency_ordering::in, module_info::in,
@@ -424,8 +423,7 @@ inter_analyse_goal_expr(Goal, GoalInfo, ModuleInfo, InfoTable,
 
 inter_analyse_goal_expr(generic_call(_, _, _, _), _, _, _, !FPTable,
         !RptaInfo) :-
-    sorry(this_file,
-        "inter_analyse_goal_expr: generic_call not handled").
+    sorry($module, $pred, "generic_call not handled").
 
 inter_analyse_goal_expr(switch(_, _, Cases), _, ModuleInfo, InfoTable,
         !FPTable, !RptaInfo) :-
@@ -463,7 +461,7 @@ inter_analyse_goal_expr(scope(_Reason, Goal), _, ModuleInfo, InfoTable,
 %    ;
 %        Msg = "inter_analyse_goal_expr: Scope's reason of from_ground_term "
 %            ++ "not handled",
-%        unexpected(this_file, Msg)
+%        unexpected($module, $pred, Msg)
 %    ).
 
 inter_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), _, ModuleInfo,
@@ -474,12 +472,10 @@ inter_analyse_goal_expr(if_then_else(_Vars, If, Then, Else), _, ModuleInfo,
 
 inter_analyse_goal_expr(GoalExpr, _, _, _, !FPTable, !RptaInfo) :-
     GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-    sorry(this_file,
-        "inter_analyse_goal_expr: foreign code not handled").
+    sorry($module, $pred, "foreign code").
 
 inter_analyse_goal_expr(shorthand(_), _, _, _, !FPTable, !RptaInfo) :-
-    unexpected(this_file,
-        "inter_analyse_goal_expr: shorthand goal not handled").
+    unexpected($module, $pred, "shorthand").
 
 :- pred inter_analyse_case(module_info::in,
     rpta_info_table::in, case::in, rpta_fixpoint_table::in,
@@ -718,7 +714,7 @@ rule_3(Node, !Graph) :-
     ;
         Nodes = [],
         % No node in the graph, impossible.
-        unexpected(this_file, "rule_3: impossible having no node in graph")
+        unexpected($module, $pred, "impossible having no node in graph")
     ).
 
     % Check each node in the list to see if it satisfies the condition of
@@ -772,11 +768,9 @@ rule_3_condition(NZ, NY, Graph, NZ1) :-
 
 alpha_mapping_at_call_site([], [], _, !CallerGraph, !AlphaMap).
 alpha_mapping_at_call_site([], [_ | _], _, _, _, _, _) :-
-    unexpected(this_file,
-        "alpha_mapping_at_call_site: actuals and formals do not match.").
+    unexpected($module, $pred, "mismatched lists").
 alpha_mapping_at_call_site([_ | _], [], _, _, _, _, _) :-
-    unexpected(this_file,
-        "alpha_mapping_at_call_site: actuals and formals do not match.").
+    unexpected($module, $pred, "mismatched lists").
 alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
         !CallerGraph, !AlphaMap) :-
     % Xi's are formal arguments, Yi's are actual arguments at the call site.
@@ -1060,14 +1054,8 @@ wrapped_init(InfoTable, PPId) = Entry :-
     ;
         % The information we are looking for should be there after the
         % intraprocedural analysis.
-        unexpected(this_file, "wrapper_init: rpta_info should exist.")
+        unexpected($module, $pred, "no rpta_info")
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.points_to_analysis.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module rbmm.points_to_analysis.

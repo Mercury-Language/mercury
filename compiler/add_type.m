@@ -367,8 +367,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
         TypeCtor = type_ctor(TypeCtorSymName, _),
         (
             TypeCtorSymName = unqualified(_),
-            unexpected(this_file,
-                "process_type_defn: unqualified TypeCtorSymName")
+            unexpected($module, $pred, "unqualified TypeCtorSymName")
         ;
             TypeCtorSymName = qualified(TypeCtorModuleName, _)
         ),
@@ -534,7 +533,7 @@ combine_status(StatusA, StatusB, Status) :-
     ( combine_status_2(StatusA, StatusB, CombinedStatus) ->
         Status = CombinedStatus
     ;
-        unexpected(this_file, "unexpected status for type definition")
+        unexpected($module, $pred, "unexpected status for type definition")
     ).
 
 :- pred combine_status_2(import_status::in, import_status::in,
@@ -807,7 +806,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         FieldModule = FieldModule0
     ;
         FieldName = unqualified(_),
-        unexpected(this_file, "add_ctor_field_name: unqualified field name")
+        unexpected($module, $pred, "unqualified field name")
     ),
     (
         % Field names must be unique within a module, not just within
@@ -820,8 +819,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         ( ConflictingDefns = [ConflictingDefn] ->
             ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _)
         ;
-            unexpected(this_file,
-                "add_ctor_field_name: multiple conflicting fields")
+            unexpected($module, $pred, "multiple conflicting fields")
         ),
 
         % XXX We should record each error.
@@ -863,9 +861,5 @@ do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
         !FieldNameTable).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "add_type.m".
-
+:- end_module hlds.make_hlds.add_type.
 %----------------------------------------------------------------------------%

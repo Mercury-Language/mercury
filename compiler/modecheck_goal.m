@@ -1176,8 +1176,7 @@ modecheck_ground_term_construct_goal_loop(VarSet,
         LHSVarInfo = construct_var_info(TermInst),
         map.det_insert(LHSVar, LHSVarInfo, !LocalVarMap)
     ;
-        unexpected(this_file,
-            "modecheck_ground_term_construct_goal_loop: not rhs_functor unify")
+        unexpected($module, $pred, "not rhs_functor unify")
     ),
     modecheck_ground_term_construct_goal_loop(VarSet, Goals0, Goals,
         !LocalVarMap).
@@ -1272,7 +1271,7 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
         % XXX We should probably fill this in so that
         % rerunning mode analysis works on code with typeclasses.
         GenericCall = class_method(_, _, _, _),
-        unexpected(this_file, "modecheck_goal_expr: class_method_call")
+        unexpected($module, $pred, "class_method_call")
     ;
         GenericCall = event_call(EventName),
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
@@ -1283,7 +1282,7 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
         ;
             % The typechecker should have caught the unknown event,
             % and not let compilation of this predicate proceed any further.
-            unexpected(this_file, "modecheck_goal_expr: unknown event")
+            unexpected($module, $pred, "unknown event")
         ),
         modecheck_event_call(Modes, Args0, Args, !ModeInfo),
         GoalExpr = generic_call(GenericCall, Args, Modes, detism_det)
@@ -1300,7 +1299,7 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
                 Mode1 = Mode1Prime,
                 Mode2 = Mode2Prime
             ;
-                unexpected(this_file, "modecheck_goal_expr: bad cast")
+                unexpected($module, $pred, "bad cast")
             ),
             Mode1 = in_mode,
             Mode2 = out_mode,
@@ -1453,20 +1452,19 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         ->
             GoalType = nested_atomic_goal
         ;
-            unexpected(this_file,
-                "modecheck_goal_shorthand atomic_goal: Invalid outer var type")
+            unexpected($module, $pred, "atomic_goal: invalid outer var type")
         ),
 
         % The following are sanity checks.
-        expect(unify(OuterDIType, OuterUOType), this_file,
-            "modecheck_goal_shorthand atomic_goal: mismatched outer var type"),
+        expect(unify(OuterDIType, OuterUOType), $module, $pred,
+            "atomic_goal: mismatched outer var type"),
         Inner = atomic_interface_vars(InnerDI, InnerUO),
         map.lookup(VarTypes, InnerDI, InnerDIType),
         map.lookup(VarTypes, InnerUO, InnerUOType),
-        expect(unify(InnerDIType, stm_atomic_type), this_file,
-            "modecheck_goal_shorthand atomic_goal: Invalid inner var type"),
-        expect(unify(InnerUOType, stm_atomic_type), this_file,
-            "modecheck_goal_shorthand atomic_goal: Invalid inner var type"),
+        expect(unify(InnerDIType, stm_atomic_type), $module, $pred,
+            "atomic_goal: invalid inner var type"),
+        expect(unify(InnerUOType, stm_atomic_type), $module, $pred,
+            "atomic_goal: invalid inner var type"),
 
         ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
             MainGoal, OrElseGoals, OrElseInners),
@@ -1482,7 +1480,7 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
     ;
         ShortHand0 = bi_implication(_, _),
         % These should have been expanded out by now.
-        unexpected(this_file, "modecheck_goal_shorthand: bi_implication")
+        unexpected($module, $pred, "bi_implication")
     ).
 
 :- pred modecheck_orelse_list(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1552,9 +1550,9 @@ solver_var_must_be_initialised(VarTypes, ModuleInfo, InstMaps, Var) :-
 
 add_necessary_disj_init_calls([], [], [], [], _EnsureInitialised, !ModeInfo).
 add_necessary_disj_init_calls([], _, [_ | _], _, _, _, _) :-
-    unexpected(this_file, "add_necessary_init_calls: mismatched lists").
+    unexpected($module, $pred, "mismatched lists").
 add_necessary_disj_init_calls([_ | _], _, [], _, _, _, _) :-
-    unexpected(this_file, "add_necessary_init_calls: mismatched lists").
+    unexpected($module, $pred, "mismatched lists").
 add_necessary_disj_init_calls([Goal0 | Goals0], [Goal | Goals],
         [InstMap0 | InstMaps0], [InstMap | InstMaps],
         EnsureInitialised, !ModeInfo) :-
@@ -1598,10 +1596,5 @@ solver_var_to_init(ModuleInfo, InstMap, Var) :-
     inst_match.inst_is_free(ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "modecheck_goal.m".
-
+:- end_module check_hlds.modecheck_goal.
 %-----------------------------------------------------------------------------%

@@ -105,7 +105,7 @@ deforestation(!ModuleInfo, !IO) :-
     ->
         ProcArgInfo = ProcArgInfo1
     ;
-        unexpected(this_file, "deforestation: passes_aux stuffed up")
+        unexpected($module, $pred, "passes_aux stuffed up")
     ),
 
     % We process the module bottom-up to make estimation of the
@@ -141,7 +141,7 @@ deforestation(!ModuleInfo, !IO) :-
         module_info_set_globals(Globals, !ModuleInfo),
 
         FoundErrors = contains_errors(Globals, Specs),
-        expect(unify(FoundErrors, no), this_file,
+        expect(unify(FoundErrors, no), $module, $pred,
             "determinism errors after deforestation")
     ;
         true
@@ -368,7 +368,7 @@ deforest_goal_expr(GoalExpr0, GoalExpr, !GoalInfo, !PDInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "goal: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -468,7 +468,7 @@ deforest_get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "deforest_get_branch_vars_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1343,9 +1343,9 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
 
 create_deforest_call_args([], [], _, _, [], !VarSet, !VarTypes).
 create_deforest_call_args([], [_|_], _, _, _, !VarSet, !VarTypes) :-
-    unexpected(this_file, "create_deforest_call_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 create_deforest_call_args([_|_], [], _, _, _, !VarSet, !VarTypes) :-
-    unexpected(this_file, "create_deforest_call_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 create_deforest_call_args([OldArg | OldArgs], [ArgType | ArgTypes],
         Renaming, TypeSubn, [Arg | Args], !VarSet, !VarTypes) :-
     ( map.search(Renaming, OldArg, Arg0) ->
@@ -1773,7 +1773,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
         ; EarlierGoalExpr = scope(_, _)
         ; EarlierGoalExpr = shorthand(_)
         ),
-        unexpected(this_file, "push_goal_into_goal")
+        unexpected($module, $pred, "unexpected goal type")
     ),
     pd_info_set_instmap(InstMap0, !PDInfo),
     goal_list_instmap_delta([EarlierGoal | BetweenGoals], Delta0),
@@ -2174,11 +2174,5 @@ check_deforestation_improvement(Factor, CostDelta, SizeChange) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "deforest.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module deforest.
+:- end_module transform_hlds.deforest.
 %-----------------------------------------------------------------------------%

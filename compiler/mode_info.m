@@ -666,7 +666,7 @@ mode_info_set_call_arg_context(ArgNum, !ModeInfo) :-
         true
     ;
         ModeContext0 = mode_context_uninitialized,
-        unexpected(this_file, "mode_info_set_call_arg_context uninitialized")
+        unexpected($module, $pred, "uninitialized")
     ).
 
 mode_info_unset_call_context(!MI) :-
@@ -785,8 +785,7 @@ mode_info_unlock_vars(Reason, Vars, !ModeInfo) :-
     ->
         LockedVars = LockedVars1
     ;
-        unexpected(this_file,
-            "mode_info_unlock_vars: some kind of nesting error")
+        unexpected($module, $pred, "some kind of nesting error")
     ),
     mode_info_set_locked_vars(LockedVars, !ModeInfo).
 
@@ -812,8 +811,8 @@ mode_info_set_checking_extra_goals(Checking, !MI) :-
     ->
         % This should never happen - once the extra goals are introduced,
         % rechecking the goal should not introduce more extra goals.
-        unexpected(this_file,
-            "mode analysis: rechecking extra goals adds more extra goals")
+        unexpected($module, $pred,
+            "rechecking extra goals adds more extra goals")
     ;
         !MI ^ mi_sub_info ^ msi_checking_extra_goals := Checking
     ).
@@ -866,9 +865,5 @@ mode_info_solver_init_is_supported(ModeInfo) :-
     globals.lookup_bool_option(Globals, solver_type_auto_init, yes).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mode_info.m".
-
+:- end_module check_hlds.mode_info.
 %-----------------------------------------------------------------------------%

@@ -459,14 +459,12 @@ region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming, IteRenaming,
 region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
         !VarSet, !VarTypes) :-
     !.GoalExpr = generic_call(_, _, _, _),
-    sorry(this_file,
-        "region_transform_goal_expr: generic call is not handled.").
+    sorry($module, $pred, "generic call").
 
 region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
         !VarSet, !VarTypes) :-
     !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-    sorry(this_file, "region_transform_goal_expr: " ++
-        "call to foreign procedure is not handled").
+    sorry($module, $pred, "call_foreign_proc").
 
 region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
         !VarSet, !VarTypes) :-
@@ -484,8 +482,7 @@ region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
     ; !.GoalExpr = scope(_, _)
     ; !.GoalExpr = shorthand(_)
     ),
-    unexpected(this_file,
-        "region_transform_goal_expr: encounter compound goal").
+    unexpected($module, $pred, "compound goal").
 
     % Because an atomic goal is turned into a conjunction, we need to
     % flatten its compounding conjunction if it is in one.
@@ -576,8 +573,7 @@ region_transform_compound_goal(ModuleInfo, Graph,
         ; !.GoalExpr = conj(_, [])
         ; !.GoalExpr = disj([])
         ),
-        unexpected(this_file, "region_transform_compound_goal: " ++
-            "encounter shorthand or atomic goal")
+        unexpected($module, $pred, "shorthand or atomic goal")
     ).
 
     % This predicate needs to be consistent with what are done in
@@ -617,8 +613,7 @@ annotate_constructions_unification(_, _, _, _, !Unification, !VarSet,
         )
     ;
         !.Unification = complicated_unify(_, _, _),
-        unexpected(this_file, "annotate_construction_unification: "
-            ++ "encounter complicated unify")
+        unexpected($module, $pred, "complicated unify")
     ).
 
     % The process here is related to the way we treat the unifications
@@ -644,8 +639,8 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
         case(MainConsId, OtherConsIds, !.Goal),
         case(MainConsId, OtherConsIds, !:Goal),
         !NameToVar, !VarSet, !VarTypes) :-
-    expect(unify(OtherConsIds, []), this_file,
-        "NYI: region_transform_case for multi-cons-id cases"),
+    expect(unify(OtherConsIds, []), $module, $pred,
+        "NYI: multi-cons-id cases"),
     (
         ( MainConsId = cons(_, 0, _)
         ; MainConsId = int_const(_)
@@ -880,8 +875,7 @@ region_instruction_to_conj(ModuleInfo, Context, ResurRenaming, IteRenaming,
             ModuleInfo, Context, CallGoal)
     ;
         RegionInstruction = rename_region(_, _),
-        unexpected(this_file, "region_instruction_to_conj: " ++
-            "encounter neither create or remove instruction")
+        unexpected($module, $pred, "neither create nor remove instruction")
     ),
     Conjs = Conjs0 ++ [CallGoal].
 
@@ -916,8 +910,7 @@ region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
             ModuleInfo, Context, CallGoal)
     ;
         RegionInstruction = rename_region(_, _),
-        unexpected(this_file, "region_instruction_to_conj: " ++
-            "encounter neither create or remove instruction")
+        unexpected($module, $pred, "neither create nor remove instruction")
     ),
     Conjs = Conjs0 ++ [CallGoal].
 
@@ -939,8 +932,7 @@ resur_renaming_annotation_to_assignment(IteRenaming, Annotation,
         ( Annotation = create_region(_)
         ; Annotation = remove_region(_)
         ),
-        unexpected(this_file, "resur_renaming_annotation_to_assignment: "
-            ++ "annotation is not assigment")
+        unexpected($module, $pred, "annotation is not assigment")
     ;
         Annotation = rename_region(Right, Left),
         % Only the left region needs to be renamed. Ite renaming does not
@@ -968,8 +960,7 @@ ite_renaming_annotation_to_assignment(Annotation, !NameToVar,
         ( Annotation = create_region(_)
         ; Annotation = remove_region(_)
         ),
-        unexpected(this_file, "ite_renaming_annotation_to_assignment: "
-            ++ "annotation is not assignment")
+        unexpected($module, $pred, "annotation is not assignment")
     ;
         Annotation = rename_region(Right, Left),
         region_name_to_var(Left, LeftRegVar, !NameToVar, !VarSet, !VarTypes),
@@ -1055,9 +1046,5 @@ recheck_purity_proc(PredId, ProcId, !ModuleInfo) :-
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.region_transformation.m".
-
+:- end_module transform_hlds.rbmm.region_transformation.
 %-----------------------------------------------------------------------------%

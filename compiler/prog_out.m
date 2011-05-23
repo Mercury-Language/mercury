@@ -339,7 +339,7 @@ purity_name(purity_semipure, "semipure").
 purity_name(purity_impure, "impure").
 
 eval_method_to_pragma_name(eval_normal) = _ :-
-    unexpected(this_file, "eval_method_to_pragma_name: normal").
+    unexpected($module, $pred, "normal").
 eval_method_to_pragma_name(eval_loop_check) = "loop_check".
 eval_method_to_pragma_name(eval_memo) =  "memo".
 eval_method_to_pragma_name(eval_minimal(MinimalMethod)) = Str :-
@@ -358,7 +358,7 @@ eval_method_to_pragma_name(eval_minimal(MinimalMethod)) = Str :-
         Str = "minimal_model"
     ).
 eval_method_to_pragma_name(eval_table_io(_IsDecl, _IsUnitize)) = _ :-
-    unexpected(this_file, "eval_method_to_pragma_name: io").
+    unexpected($module, $pred, "io").
 
 eval_method_to_string(eval_normal) = "normal".
 eval_method_to_string(eval_loop_check) = "loop_check".
@@ -415,9 +415,5 @@ can_fail_to_string(can_fail) = "can_fail".
 can_fail_to_string(cannot_fail) = "cannot_fail".
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_out.m".
-
+:- end_module parse_tree.prog_out.
 %-----------------------------------------------------------------------------%

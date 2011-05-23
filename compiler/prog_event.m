@@ -799,8 +799,7 @@ describe_event_attr(Attr) = Desc :-
 describe_attr_type(Type) = Desc :-
     (
         Type = defined_type(SymName, ArgTypes, Kind),
-        expect(unify(Kind, kind_star), this_file,
-            "describe_attr_type: not kind_star"),
+        expect(unify(Kind, kind_star), $module, $pred, "not kind_star"),
         (
             ArgTypes = [],
             ArgTypeDescs = ""
@@ -823,8 +822,7 @@ describe_attr_type(Type) = Desc :-
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),
-        unexpected(this_file,
-            "describe_attr_type: type not constructed by prog_event")
+        unexpected($module, $pred, "type not constructed by prog_event")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -861,9 +859,5 @@ project_event_arg_mode(Attribute, Attribute ^ attr_mode) :-
     Attribute ^ attr_maybe_synth_call = no.
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "event_spec.m".
-
+:- end_module parse_tree.prog_event.
 %-----------------------------------------------------------------------------%

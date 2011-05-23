@@ -721,7 +721,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded by now.
-            unexpected(this_file, "format_call_traverse_conj: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -798,8 +798,7 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
                 ( ArgVars = [ArgVar] ->
                     WhatToPrint = what_to_print(ArgVar, Dummy)
                 ;
-                    unexpected(this_file,
-                        "format_call_traverse_unify: arity mismatch")
+                    unexpected($module, $pred, "arity mismatch")
                 ),
                 map.det_insert(CellVar, WhatToPrint, ElementMap0, ElementMap),
                 ConjMap = conj_map(StringMap0, ListMap0, ElementMap, EqvMap0)
@@ -1047,8 +1046,7 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded by now.
-            unexpected(this_file,
-                "opt_format_call_sites_in_goal: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
@@ -1376,9 +1374,5 @@ represent_component(ModuleInfo, Component, MaybeResultVar, ResultVar,
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "format_call.m".
-
+:- end_module check_hlds.format_call.
 %-----------------------------------------------------------------------------%

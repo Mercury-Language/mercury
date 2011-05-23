@@ -444,8 +444,7 @@ add_pass_1_mode_decl(ItemModeDecl, Status, !ModuleInfo, !Specs) :-
         MaybePredOrFunc = no,
         % equiv_type.m should have either set the pred_or_func
         % or removed the item from the list.
-        unexpected(this_file,
-            "add_pass_1_mode_decl: no pred_or_func on mode declaration")
+        unexpected($module, $pred, "no pred_or_func on mode declaration")
     ).
 
 :- pred add_pass_1_module_defn(item_module_defn_info::in,
@@ -503,8 +502,7 @@ add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs) :-
             ; ModuleDefn = md_opt_imported
             ; ModuleDefn = md_abstract_imported
             ),
-            unexpected(this_file,
-                "add_pass_1_module_defn: " ++
+            unexpected($module, $pred,
                 "module_defn_update_import_status missed something")
         ;
             ModuleDefn = md_export(_),
@@ -787,7 +785,7 @@ add_pass_2_pred_decl(ItemPredDecl, _Status, !ModuleInfo, !Specs) :-
             predicate_table_set_preds(Preds, PredTable0, PredTable),
             module_info_set_predicate_table(PredTable, !ModuleInfo)
         ;
-            unexpected(this_file, "can't find func declaration")
+            unexpected($module, $pred, "can't find func declaration")
         )
     ).
 
@@ -835,7 +833,8 @@ add_pass_2_initialise(ItemInitialise, Status, !ModuleInfo, !Specs) :-
                 ; Details = foreign_imports
                 ; Details = pragma_memo_attribute
                 ),
-                unexpected(this_file, "Bad introduced initialise declaration.")
+                unexpected($module, $pred,
+                    "Bad introduced initialise declaration")
             )
         )
     ;
@@ -859,7 +858,7 @@ add_pass_2_finalise(ItemFinalise, Status, !ModuleInfo, !Specs) :-
             % There are no source-to-source transformations that introduce
             % finalise declarations.
             Origin = compiler(_),
-            unexpected(this_file, "Bad introduced finalise declaration.")
+            unexpected($module, $pred, "Bad introduced finalise declaration.")
         )
     ;
         true
@@ -1123,7 +1122,7 @@ add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs) :-
                 ( Details = solver_type
                 ; Details = foreign_imports
                 ),
-                unexpected(this_file, "Bad introduced clauses.")
+                unexpected($module, $pred, "Bad introduced clauses")
             )
         )
     ;
@@ -1499,7 +1498,7 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
         ; Details = pragma_memo_attribute
         ; Details = foreign_imports
         ),
-        unexpected(this_file, "Bad introduced initialise declaration.")
+        unexpected($module, $pred, "Bad introduced initialise declaration")
     ).
 
 :- pred add_pass_3_finalise(item_finalise_info::in,
@@ -1523,7 +1522,7 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
     (
         Origin = compiler(_),
-        unexpected(this_file, "Bad introduced finalise declaration.")
+        unexpected($module, $pred, "Bad introduced finalise declaration")
     ;
         Origin = user
     ),
@@ -3019,7 +3018,7 @@ get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
     % Check that the pragma is module qualified.
     (
         Name = unqualified(_),
-        unexpected(this_file, "get_matching_pred_ids: unqualified name")
+        unexpected($module, $pred, "unqualified name")
     ;
         Name = qualified(_, _),
         predicate_table_search_sym_arity(PredTable0, is_fully_qualified,
@@ -3196,9 +3195,5 @@ pragma_conflict_error(Name, Arity, Context, PragmaName, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "make_hlds_passes.m".
-
+:- end_module hlds.make_hlds.make_hlds_passes.
 %-----------------------------------------------------------------------------%

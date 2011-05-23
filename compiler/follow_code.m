@@ -152,8 +152,7 @@ move_follow_code_in_goal(Goal0, Goal, RttiVarMaps, !Changed) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file,
-            "move_follow_code_in_goal: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -406,11 +405,5 @@ move_follow_code_is_builtin(GoalExpr) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "follow_code.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module follow_code.
+:- end_module ll_backend.follow_code.
 %-----------------------------------------------------------------------------%

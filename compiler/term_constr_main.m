@@ -670,11 +670,5 @@ proc_needs_ar_built(ModuleInfo, PPId) :-
     ).
 
 %------------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_constr_main.m".
-
-%------------------------------------------------------------------------------%
-:- end_module term_constr_main.
+:- end_module transform_hlds.term_constr_main.
 %------------------------------------------------------------------------------%

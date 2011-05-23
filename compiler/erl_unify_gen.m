@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2010 The University of Melbourne.
+% Copyright (C) 2007-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,12 +107,11 @@ erl_gen_unification(Unification, _CodeModel, _Context, MaybeSuccessExpr,
         Assign = elds_eq(expr_from_var(TargetVar), expr_from_var(SourceVar)),
         Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
     ).
-
 erl_gen_unification(Unification, CodeModel, _Context, MaybeSuccessExpr,
         Statement, !Info) :-
     Unification = simple_test(Var1, Var2),
-    expect(unify(CodeModel, model_semi), this_file,
-        "erl_code_gen: simple_test not semidet"),
+    expect(unify(CodeModel, model_semi), $module, $pred,
+        "simple_test not semidet"),
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     erl_variable_type(!.Info, Var1, VarType),
     IsDummy = check_dummy_type(ModuleInfo, VarType),
@@ -132,19 +131,17 @@ erl_gen_unification(Unification, CodeModel, _Context, MaybeSuccessExpr,
         TrueCase  = elds_case(elds_true, expr_or_void(MaybeSuccessExpr)),
         FalseCase = elds_case(elds_false, elds_term(elds_fail))
     ).
-
 erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
         Statement, !Info) :-
     Unification = construct(Var, ConsId, Args, ArgModes, _HowToConstruct,
         _CellIsUnique, SubInfo),
-    expect(unify(CodeModel, model_det), this_file,
-        "erl_code_gen: construct not det"),
+    expect(unify(CodeModel, model_det), $module, $pred, "construct not det"),
     (
         SubInfo = no_construct_sub_info
     ;
         SubInfo = construct_sub_info(_MaybeTakeAddr, MaybeSizeProfInfo),
-        expect(unify(MaybeSizeProfInfo, no), this_file,
-            "erl_code_gen: term size profiling not yet supported")
+        expect(unify(MaybeSizeProfInfo, no), $module, $pred,
+            "term size profiling not yet supported")
     ),
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     erl_variable_type(!.Info, Var, VarType),
@@ -159,7 +156,6 @@ erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
             Construct, !Info),
         Statement = maybe_join_exprs(Construct, MaybeSuccessExpr)
     ).
-
 erl_gen_unification(Unification, _CodeModel, Context, MaybeSuccessExpr,
         Statement, !Info) :-
     Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail, _CanCGC),
@@ -174,10 +170,9 @@ erl_gen_unification(Unification, _CodeModel, Context, MaybeSuccessExpr,
             Statement0, !Info),
         Statement = maybe_join_exprs(Statement0, MaybeSuccessExpr)
     ).
-
 erl_gen_unification(complicated_unify(_, _, _), _, _, _, _, !Info) :-
     % Simplify.m should have converted these into procedure calls.
-    unexpected(this_file, "erl_code_gen: complicated unify").
+    unexpected($module, $pred, "complicated unify").
 
 %-----------------------------------------------------------------------------%
 
@@ -235,7 +230,7 @@ erl_gen_semidet_deconstruct(Var, ConsId, Args, _Modes, _Context,
     ( cons_id_to_term(ConsId, Args, elds_anon_var, Pattern0, !Info) ->
         Pattern = Pattern0
     ;
-        unexpected(this_file,
+        unexpected($module, $pred,
             "erl_gen_semidet_deconstruct: undeconstructable object")
     ),
     %
@@ -298,7 +293,7 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         Expr = elds_term(Term)
     ;
         ConsId = impl_defined_const(_),
-        unexpected(this_file, "cons_id_to_expr: impl_defined_const")
+        unexpected($module, $pred, "cons_id_to_expr: impl_defined_const")
     ;
         ConsId = closure_cons(ShroudedPredProcId, lambda_normal),
         pred_const_to_closure(ShroudedPredProcId, Args, Expr, !Info)
@@ -313,7 +308,7 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         ( sym_name_get_module_name(ClassName, ClassModuleName0) ->
             ClassModuleName = ClassModuleName0
         ;
-            unexpected(this_file, "cons_id_to_expr: class has no module name")
+            unexpected($module, $pred, "cons_id_to_expr: class has no module name")
         ),
         ClassNameStr = unqualify_name(ClassName),
         TCName = tc_name(ClassModuleName, ClassNameStr, Arity),
@@ -332,7 +327,7 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_decl(_)
         ),
-        sorry(this_file,
+        sorry($module, $pred,
             "tabling and deep profiling not supported on Erlang backend")
     ).
 
@@ -398,11 +393,5 @@ pred_const_to_closure(ShroudedPredProcId, CurriedArgs, FunExpr, !Info) :-
     FunExpr = elds_fun(elds_clause(terms_from_vars(ClosureInputArgs), DoCall)).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "erl_unify_gen.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module erl_unify_gen.
+:- end_module erl_backend.erl_unify_gen.
 %-----------------------------------------------------------------------------%

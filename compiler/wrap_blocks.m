@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003, 2005-2007, 2010 The University of Melbourne.
+% Copyright (C) 2001, 2003, 2005-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,11 +58,11 @@ wrap_blocks(Instrs0, Instrs) :-
 wrap_instrs([], R, F, RevSofar, []) :-
     (
         RevSofar = [_ | _],
-        unexpected(this_file, "procedure ends with fallthrough")
+        unexpected($module, $pred, "procedure ends with fallthrough")
     ;
         RevSofar = [],
         ( ( R > 0 ; F > 0 ) ->
-            unexpected(this_file, "procedure ends without closing block")
+            unexpected($module, $pred, "procedure ends without closing block")
         ;
             true
         )
@@ -100,11 +100,5 @@ wrap_instrs([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "wrap_blocks.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module wrap_blocks.
+:- end_module ll_backend.wrap_blocks.
 %-----------------------------------------------------------------------------%

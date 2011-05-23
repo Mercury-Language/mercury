@@ -480,7 +480,7 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
     ( list.drop(NumToDrop, ArgModes0, ArgModes1) ->
         ArgModes = ArgModes1
     ;
-        unexpected(this_file, "report_pred_proc_id: list.drop failed")
+        unexpected($module, $pred, "list.drop failed")
     ),
     (
         MaybeContext = yes(OutContext)
@@ -652,12 +652,7 @@ dump_hlds(DumpFile, HLDS, !IO) :-
             io.error_message(IOError),
         report_error(Msg, !IO)
     ).
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "passes_aux.m".
 
 %-----------------------------------------------------------------------------%
-:- end_module passes_aux.
+:- end_module hlds.passes_aux.
 %-----------------------------------------------------------------------------%

@@ -879,7 +879,7 @@ list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
         list.sort(AllClassFiles, ListClassFiles)
     ;
         Result = error(_, Error),
-        unexpected(this_file, io.error_message(Error))
+        unexpected($module, $pred, io.error_message(Error))
     ).
 
 list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles) :-
@@ -1149,17 +1149,17 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
                 Succeeded = yes,
                 maybe_write_string(Verbose, "% done.\n", !IO)
             ;
-                unexpected(this_file, "chmod exit status != 0"),
+                unexpected($module, $pred, "chmod exit status != 0"),
                 Succeeded = no
             )
         ;
             ChmodResult = error(Message),
-            unexpected(this_file, io.error_message(Message)),
+            unexpected($module, $pred, io.error_message(Message)),
             Succeeded = no
         )
     ;
         OpenResult = error(Message),
-        unexpected(this_file, io.error_message(Message)),
+        unexpected($module, $pred, io.error_message(Message)),
         Succeeded = no
     ).
 
@@ -1184,15 +1184,9 @@ create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
         Succeeded = yes
     ;
         OpenResult = error(Message),
-        unexpected(this_file, io.error_message(Message)),
+        unexpected($module, $pred, io.error_message(Message)),
         Succeeded = no
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "module_cmds.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.module_cmds.

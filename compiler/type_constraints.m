@@ -298,7 +298,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
                 HeadVars, HeadTypes, tconstr_info(bimap.init, counter.init(0),
                 map.init, map.init, TVarSet, []), !:TCInfo)
         ;
-            unexpected(this_file, "head variable types vs vars mismatch")
+            unexpected($module, $pred, "head variable types vs vars mismatch")
         ),
 
         % Generate constraints for each clause of the predicate.
@@ -417,7 +417,7 @@ apply_pred_data_to_goal(ForwardGoalPathMap, GoalId - PredId, !Goal) :-
         ( Result = error(_)
         ; Result = goal_not_found
         ),
-        unexpected(this_file, "apply_pred_data_to_goal: not ok")
+        unexpected($module, $pred, "not ok")
     ).
 
 :- pred set_goal_pred_id(pred_id::in, hlds_goal::in,
@@ -568,8 +568,8 @@ find_type_constraint_solutions(Context, ProgVarSet, DomainMap, !TCInfo) :-
         Solutions = [],
         % This shouldn't happen.
         % XXX zs: The reason *why* it should not happen should be documented.
-        unexpected(this_file,
-            "Cannot find any possible solutions for the type constraints")
+        unexpected($module, $pred,
+            "cannot find any possible solutions for the type constraints")
     ;
         Solutions = [FirstSolution | LaterSolutions],
         (
@@ -1801,7 +1801,7 @@ foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
         list.foldl_corresponding(variable_assignment_constraint(Context),
             ArgVars, ArgTypes, !TCInfo)
     ;
-        unexpected(this_file, "cannot find pred_info for foreign_proc")
+        unexpected($module, $pred, "cannot find pred_info for foreign_proc")
     ).
 
 :- pred generic_call_goal_to_constraint(tconstr_environment::in,
@@ -2238,11 +2238,11 @@ print_constraint_change(TVarSet, Constraint0, Constraint1, !IO) :-
     ;
         Constraint0 = tconstr_conj(_),
         Constraint1 = tconstr_disj(_, _),
-        unexpected(this_file, $pred ++ ": mismatch")
+        unexpected($module, $pred, "mismatch")
     ;
         Constraint0 = tconstr_disj(_, _),
         Constraint1 = tconstr_conj(_),
-        unexpected(this_file, $pred ++ ": mismatch")
+        unexpected($module, $pred, "mismatch")
     ;
         Constraint0 = tconstr_disj(DisjConstraints0, MaybeSingleton0),
         Constraint1 = tconstr_disj(DisjConstraints1, MaybeSingleton1),
@@ -2500,9 +2500,5 @@ zip_single(E, [A, A0 | As], [A,E | Bs]) :-
     zip_single(E, [A0 | As], Bs).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "type_constraints.m".
-
+:- end_module check_hlds.type_constraints.
 %-----------------------------------------------------------------------------%

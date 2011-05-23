@@ -88,19 +88,19 @@ output_foreign_file(Globals, MLDS, ForeignLang, !IO) :-
                 !IO)
         ;
             ForeignLang = lang_c,
-            sorry(this_file, "language C foreign code not supported")
+            sorry($module, $pred, "language C foreign code not supported")
         ;
             ForeignLang = lang_il,
-            sorry(this_file, "language IL foreign code not supported")
+            sorry($module, $pred, "language IL foreign code not supported")
         ;
             ForeignLang = lang_java,
-            sorry(this_file, "language Java foreign code not supported")
+            sorry($module, $pred, "language Java foreign code not supported")
         ;
             ForeignLang = lang_erlang,
-            sorry(this_file, "language Erlang foreign code not supported")
+            sorry($module, $pred, "language Erlang foreign code not supported")
         )
     ;
-        unexpected(this_file, "output_foreign_file: unexpected language")
+        unexpected($module, $pred, "output_foreign_file: unexpected language")
     ).
 
     % Generate the `.il' file.
@@ -138,11 +138,5 @@ output_assembler(Globals, MLDS, ForeignLangs, !IO) :-
     output_src_end(ModuleName, !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mlds_to_ilasm.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module mlds_to_ilasm.
+:- end_module ml_backend.mlds_to_ilasm.
 %-----------------------------------------------------------------------------%

@@ -179,11 +179,5 @@ eliminate_instr(llds_instr(Uinstr0, Comment0), Label, !RevInstrs, !Mod) :-
 labelopt_eliminate_total(yes).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "labelopt.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module labelopt.
+:- end_module ll_backend.labelopt.
 %-----------------------------------------------------------------------------%

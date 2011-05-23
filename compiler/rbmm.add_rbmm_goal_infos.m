@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2010 The University of Melbourne.
+% Copyright (C) 2007-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -235,9 +235,9 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
 
 keep_allocated_regions([], [], _, []).
 keep_allocated_regions([], [_ | _], _, []) :-
-    unexpected(this_file, "keep_allocated_regions: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 keep_allocated_regions([_ | _], [], _, []) :-
-    unexpected(this_file, "keep_allocated_regions: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 keep_allocated_regions([Input | Inputs], [RemovedRegion | RemovedRegions],
         Graph, RemovedAndAllocRegions) :-
     keep_allocated_regions(Inputs, RemovedRegions, Graph,
@@ -255,12 +255,10 @@ keep_allocated_regions([Input | Inputs], [RemovedRegion | RemovedRegions],
     %
 collect_rbmm_goal_info_goal_expr(_, _, _, _, _, _, _, !Expr, !Info) :-
     !.Expr = generic_call(_, _, _, _),
-    sorry(this_file,
-        "collect_rbmm_goal_info_goal_expr: generic call not handled"). 
+    sorry($module, $pred, "generic call not handled"). 
 collect_rbmm_goal_info_goal_expr(_, _, _, _, _, _, _, !Expr, !Info) :-
     !.Expr = call_foreign_proc(_, _, _, _, _, _, _),
-    sorry(this_file,
-        "collect_rbmm_goal_info_goal_expr: call to foreign proc not handled"). 
+    sorry($module, $pred, "call to foreign proc not handled"). 
 
 collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
@@ -322,8 +320,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
     !:Expr = switch(A, B, Cases),
     (
         Cases = [],
-        unexpected(this_file, "collect_rbmm_goal_info_goal_expr: "
-            ++ "empty switch unexpected")
+        unexpected($module, $pred, "empty switch")
     ;
         % The process here is similar to the above code for disjunctions.
         Cases = [Case | _],
@@ -397,8 +394,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
 collect_rbmm_goal_info_goal_expr(_, _, _, _, _, _, _, !Expr, !Info) :-
     !.Expr = shorthand(_), 
     % These should have been expanded out by now.
-    unexpected(this_file,
-        "collect_rbmm_goal_info_goal_expr: shorthand unexpected").
+    unexpected($module, $pred, "shorthand").
 
     % The regions that are created inside this conjunction are all that are
     % created inside each conjunct.
@@ -519,8 +515,7 @@ collect_rbmm_goal_info_unification(Unification, ModuleInfo, Graph,
         goal_info_set_maybe_rbmm(yes(rbmm_info_init), !Info)
     ;
         Unification = complicated_unify(_, _, _),
-        unexpected(this_file, "collect_rbmm_goal_info_unification:"
-            ++ " encountered complicated unification")
+        unexpected($module, $pred, "complicated unification")
     ).
 
 :- pred is_remove_region_call(hlds_goal_expr::in, module_info::in,
@@ -557,9 +552,5 @@ collect_rbmm_goal_info_case(ModuleInfo, ProcInfo, Graph,
     !:Case = case(MainConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.add_rbmm_goal_infos.m".
-
+:- end_module transform_hlds.rbmm.add_rbmm_goal_infos.
 %-----------------------------------------------------------------------------%

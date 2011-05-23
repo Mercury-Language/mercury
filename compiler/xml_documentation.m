@@ -133,7 +133,7 @@ build_comments(S, comments(!.C), comments(!:C), !IO) :-
     ;
         LineResult = error(E),
             % XXX we should recover more gracefully from this error.
-        unexpected(this_file, io.error_message(E))
+        unexpected($module, $pred, io.error_message(E))
     ).
 
     % Given a list of characters representing one line,
@@ -191,7 +191,7 @@ maybe_add_comment(Comments, Context, Xml) =
             Xml
         )
     ;
-        unexpected(this_file, "maybe_add_comment: not an element")
+        unexpected($module, $pred, "not an element")
     ).
 
     % Get the comment string associated with the given prog_context.
@@ -199,12 +199,9 @@ maybe_add_comment(Comments, Context, Xml) =
 :- func get_comment(comments, prog_context) = string.
 
 get_comment(Comments, context(_, Line)) =
-        %
-        % XXX at a later date this hard-coded strategy should
-        % be made more flexible.  What I imagine is that the
-        % user would pass a string saying in what order
-        % they wish to search for comments.
-        %
+    % XXX At a later date this hard-coded strategy should be made
+    % more flexible. What I imagine is that the user would pass a string
+    % saying in what order they wish to search for comments.
     ( comment_on_current_line(Comments, Line, C) ->
         C
     ; comment_directly_above(Comments, Line, C) ->
@@ -338,7 +335,7 @@ import_documentation(InterfaceImportedModules, ImportedModule, !Xmls) :-
     ),
     Xml = elem("import", [], [XmlName, XmlVisibility]),
     !:Xmls = [Xml | !.Xmls].
-    
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -822,11 +819,5 @@ xml_list(Tag, F, L) = elem(Tag, [], list.map(F, L)).
 nyi(Tag) = tagged_string(Tag, "Not yet implemented!").
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "xml_documentation.m".
-
-%-----------------------------------------------------------------------------%
+:- end_module check_hlds.xml_documentation.
 %-----------------------------------------------------------------------------%

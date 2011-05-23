@@ -245,12 +245,10 @@ record_actual_region_arguments_expr(ModuleInfo, GoalExpr, GoalInfo, CallerPPId,
             Cases, !FormalRegionArgTable, !ActualRegionArgProc)
     ;
         GoalExpr = generic_call(_, _, _, _),
-        sorry(this_file,
-            "record_actual_region_arguments_expr: generic_call NYI")
+        sorry($module, $pred, "generic_call NYI")
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        sorry(this_file,
-            "record_actual_region_arguments_expr: call_foreign_proc NYI")
+        sorry($module, $pred, "call_foreign_proc NYI")
     ;
         GoalExpr = negation(SubGoal),
         record_actual_region_arguments_goal(ModuleInfo, CallerPPId,
@@ -267,8 +265,7 @@ record_actual_region_arguments_expr(ModuleInfo, GoalExpr, GoalInfo, CallerPPId,
             !FormalRegionArgTable, !ActualRegionArgProc)
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file,
-            "record_actual_region_arguments_expr: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred record_actual_region_arguments_case(module_info::in,
@@ -341,9 +338,5 @@ find_actual_param(Alpha_PP, Formal, Actuals0, Actuals) :-
     Actuals = [Actual | Actuals0].
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.region_arguments.m".
-
+:- end_module transform_hlds.rbmm.region_arguments.
 %-----------------------------------------------------------------------------%

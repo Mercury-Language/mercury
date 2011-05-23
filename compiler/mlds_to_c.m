@@ -311,7 +311,7 @@ mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
-        unexpected(this_file, "expected target asm or target c")
+        unexpected($module, $pred, "expected target asm or target c")
     ).
 
 :- pred mlds_output_src_import(mlds_to_c_opts::in, indent::in, mlds_import::in,
@@ -947,7 +947,7 @@ mlds_output_c_hdr_decl(Opts, _Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),
-        sorry(this_file, "foreign code other than C")
+        sorry($module, $pred, "foreign code other than C")
     ).
 
 :- pred mlds_output_c_decls(mlds_to_c_opts::in, indent::in,
@@ -991,7 +991,7 @@ mlds_output_c_foreign_import_module(Opts, Indent, ForeignImport, !IO) :-
         ; Lang = lang_java
         ; Lang = lang_erlang
         ),
-        sorry(this_file, "foreign code other than C")
+        sorry($module, $pred, "foreign code other than C")
     ).
 
 :- pred mlds_output_c_defn(mlds_to_c_opts::in, indent::in,
@@ -1009,7 +1009,7 @@ mlds_output_c_defn(Opts, _Indent, UserForeignCode, !IO) :-
         ; Lang = lang_java
         ; Lang = lang_erlang
         ),
-        sorry(this_file, "mlds_output_c_defn: foreign code other than C")
+        sorry($module, $pred, "foreign code other than C")
     ).
 
 :- pred mlds_output_pragma_export_defn(mlds_to_c_opts::in,
@@ -1019,7 +1019,7 @@ mlds_output_c_defn(Opts, _Indent, UserForeignCode, !IO) :-
 mlds_output_pragma_export_defn(Opts, ModuleName, Indent, PragmaExport, !IO) :-
     PragmaExport = ml_pragma_export(Lang, _ExportName, MLDS_Name,
         MLDS_Signature, _UnivQTVars, Context),
-    expect(unify(Lang, lang_c), this_file,
+    expect(unify(Lang, lang_c), $module, $pred,
         "foreign_export to language other than C."),
     mlds_output_pragma_export_func_name(Opts, ModuleName, Indent,
         PragmaExport, !IO),
@@ -1040,7 +1040,8 @@ mlds_output_pragma_export_defn(Opts, ModuleName, Indent, PragmaExport, !IO) :-
 mlds_output_pragma_export_func_name(Opts, ModuleName, Indent, Export, !IO) :-
     Export = ml_pragma_export(Lang, ExportName, _MLDSName, Signature,
         _UnivQTVars, Context),
-    expect(unify(Lang, lang_c), this_file, "export to language other than C."),
+    expect(unify(Lang, lang_c), $module, $pred,
+        "export to language other than C."),
     Name = qual(ModuleName, module_qual, entity_export(ExportName)),
     output_context_opts(Opts, Context, !IO),
     mlds_indent(Indent, !IO),
@@ -1116,20 +1117,16 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
                 io.write_string(Name, !IO)
             ;
                 ForeignType = il(_),
-                unexpected(this_file,
-                    "mlds_output_type_prefix: il foreign_type")
+                unexpected($module, $pred, "il foreign_type")
             ;
                 ForeignType = java(_),
-                unexpected(this_file,
-                    "mlds_output_type_prefix: java foreign_type")
+                unexpected($module, $pred, "java foreign_type")
             ;
                 ForeignType = csharp(_),
-                unexpected(this_file,
-                    "mlds_output_type_prefix: csharp foreign_type")
+                unexpected($module, $pred, "csharp foreign_type")
             ;
                 ForeignType = erlang(_),
-                unexpected(this_file,
-                    "mlds_output_type_prefix: erlang foreign_type")
+                unexpected($module, $pred, "erlang foreign_type")
             )
         ;
             MLDS_Type = mlds_ptr_type(Type),
@@ -1143,8 +1140,7 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
             io.write_string("MR_Word", !IO)
         ;
             MLDS_Type = mlds_unknown_type,
-            unexpected(this_file,
-                "mlds_output_pragma_export_type: unknown_type")
+            unexpected($module, $pred, "unknown_type")
         )
     ).
 
@@ -1311,7 +1307,7 @@ pointed_to_type(PtrType) =
     ( PtrType = mlds_ptr_type(Type) ->
         Type
     ;
-        unexpected(this_file, "pointed_to_type: not pointer")
+        unexpected($module, $pred, "not pointer")
     ).
 
 :- func boxed_name(mlds_entity_name) = mlds_entity_name.
@@ -1321,7 +1317,7 @@ boxed_name(Name) = BoxedName :-
         BoxedName = entity_data(mlds_data_var(
             mlds_var_name("boxed_" ++ VarName, Seq)))
     ;
-        unexpected(this_file, "boxed_name called for non-var argument")
+        unexpected($module, $pred, "boxed_name called for non-var argument")
     ).
 
 :- pred mlds_output_pragma_export_call(mlds_to_c_opts::in,
@@ -1373,8 +1369,7 @@ det_func_signature(mlds_func_params(Args, _RetTypes)) = Params :-
         InputArgs = InputArgs0,
         ReturnArg = ReturnArg0
     ;
-        unexpected(this_file,
-            "det_func_signature: function missing return value?")
+        unexpected($module, $pred, "function missing return value?")
     ),
     (
         ReturnArg = mlds_argument(_ReturnArgName,
@@ -1382,7 +1377,7 @@ det_func_signature(mlds_func_params(Args, _RetTypes)) = Params :-
     ->
         ReturnArgType = ReturnArgType0
     ;
-        unexpected(this_file, "det_func_signature: function return type!")
+        unexpected($module, $pred, "function return type!")
     ),
     Params = mlds_func_params(InputArgs, [ReturnArgType]).
 
@@ -1427,11 +1422,11 @@ mlds_output_exported_enum_constant(ExportedConstant, !IO) :-
     ;
         Initializer = init_obj(ml_const(mlconst_foreign(Lang, Value, _)))
     ->
-        expect(unify(Lang, lang_c), this_file,
+        expect(unify(Lang, lang_c), $module, $pred,
             "mlconst_foreign for language other than C."),
         io.write_string(Value, !IO)
     ;
-        unexpected(this_file,
+        unexpected($module, $pred,
             "tag for export enumeration is not enum or foreign")
     ),
     io.nl(!IO).
@@ -1937,7 +1932,7 @@ mlds_output_class(Opts, Indent, Name, Context, ClassDefn, !IO) :-
         ; UnqualName = entity_function(_, _, _, _)
         ; UnqualName = entity_export(_)
         ),
-        unexpected(this_file, "mlds_output_class")
+        unexpected($module, $pred, "unexpected entity")
     ),
 
     % Hoist out static members, since plain old C doesn't support
@@ -2075,8 +2070,7 @@ mlds_output_enum_constant(Opts, Indent, EnumModuleName, Defn, !IO) :-
         ( DefnBody = mlds_function(_, _, _, _, _)
         ; DefnBody = mlds_class(_)
         ),
-        unexpected(this_file,
-            "mlds_output_enum_constant: constant is not data")
+        unexpected($module, $pred, "constant is not data")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2325,8 +2319,7 @@ standardize_param_names(!Argument, !ArgNum) :-
             ; DataName0 = mlds_internal_layout(_, _)
             ; DataName0 = mlds_tabling_ref(_, _)
             ),
-            unexpected(this_file,
-                "standardize_param_names: unexpected data name")
+            unexpected($module, $pred, "unexpected data name")
         ),
         EntityName = entity_data(DataName)
     ;
@@ -2334,8 +2327,7 @@ standardize_param_names(!Argument, !ArgNum) :-
         ; EntityName0 = entity_function(_, _, _, _)
         ; EntityName0 = entity_export(_)
         ),
-        unexpected(this_file,
-            "standardize_param_names: unexpected entity name")
+        unexpected($module, $pred, "unexpected entity name")
     ),
     !:Argument = mlds_argument(EntityName, Type, GCStmt),
     !:ArgNum = !.ArgNum + 1.
@@ -2645,13 +2637,13 @@ mlds_output_data_name(DataName, !IO) :-
         io.write_string(RttiAddrName, !IO)
     ;
         DataName = mlds_module_layout,
-        sorry(this_file, "NYI: module_layout")
+        sorry($module, $pred, "NYI: module_layout")
     ;
         DataName = mlds_proc_layout(_ProcLabel),
-        sorry(this_file, "NYI: proc_layout")
+        sorry($module, $pred, "NYI: proc_layout")
     ;
         DataName = mlds_internal_layout(_ProcLabel, _FuncSeqNum),
-        sorry(this_file, "NYI: internal_layout")
+        sorry($module, $pred, "NYI: internal_layout")
     ;
         DataName = mlds_tabling_ref(ProcLabel, Id),
         io.write_string(mlds_tabling_data_name(ProcLabel, Id), !IO)
@@ -2811,7 +2803,7 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
         io.write_string(CType, !IO)
     ;
         MLDS_Type = mlds_unknown_type,
-        unexpected(this_file, "prefix has unknown type")
+        unexpected($module, $pred, "prefix has unknown type")
     ).
 
 :- pred mlds_output_mercury_type_prefix(mlds_to_c_opts::in, mer_type::in,
@@ -2953,7 +2945,7 @@ mlds_output_type_suffix(Opts, MLDS_Type, ArraySize, !IO) :-
         )
     ;
         MLDS_Type = mlds_unknown_type,
-        unexpected(this_file, "mlds_output_type_suffix: unknown_type")
+        unexpected($module, $pred, "unknown_type")
     ;
         ( MLDS_Type = mercury_type(_, _, _)
         ; MLDS_Type = mlds_mercury_array_type(_)
@@ -3817,7 +3809,7 @@ mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Statement, Context, !IO) :-
         io.write_string(");\n", !IO)
     ;
         Statement = trail_op(_TrailOp),
-        sorry(this_file, "trail_ops not implemented")
+        sorry($module, $pred, "trail_ops not implemented")
     ;
         Statement = inline_target_code(TargetLang, Components),
         (
@@ -3831,11 +3823,13 @@ mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Statement, Context, !IO) :-
             ; TargetLang = ml_target_csharp
             ; TargetLang = ml_target_java
             ),
-            sorry(this_file, "inline_target_code only works for language C")
+            sorry($module, $pred,
+                "inline_target_code only works for language C")
         )
     ;
         Statement = outline_foreign_proc(_Lang, _Vs, _Lvals, _Code),
-        unexpected(this_file, "outline_foreign_proc is not used in C backend")
+        unexpected($module, $pred,
+            "outline_foreign_proc is not used in C backend")
     ).
 
 :- pred mlds_output_maybe_alloc_id(maybe(mlds_alloc_id)::in, io::di, io::uo)
@@ -3925,15 +3919,13 @@ type_needs_forwarding_pointer_space(mlds_generic_env_ptr_type) = no.
 type_needs_forwarding_pointer_space(mlds_rtti_type(_)) = _ :-
     % These should all be statically allocated, not dynamically allocated,
     % so we should never get here.
-    unexpected(this_file,
-        "type_needs_forwarding_pointer_space: rtti_type").
+    unexpected($module, $pred, "rtti_type").
 type_needs_forwarding_pointer_space(mlds_tabling_type(_)) = _ :-
     % These should all be statically allocated, not dynamically allocated,
     % so we should never get here.
-    unexpected(this_file,
-        "type_needs_forwarding_pointer_space: tabling_type").
+    unexpected($module, $pred, "tabling_type").
 type_needs_forwarding_pointer_space(mlds_unknown_type) = _ :-
-    unexpected(this_file, "type_needs_forwarding_pointer_space: unknown_type").
+    unexpected($module, $pred, "unknown_type").
 
 :- type lval_or_string
     --->    ls_lval(mlds_lval)
@@ -3944,9 +3936,9 @@ type_needs_forwarding_pointer_space(mlds_unknown_type) = _ :-
     mlds_to_c_opts::in, indent::in, io::di, io::uo) is det.
 
 mlds_output_init_args([_ | _], [], _, _, _, _, _, _, !IO) :-
-    unexpected(this_file, "mlds_output_init_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 mlds_output_init_args([], [_ | _], _, _, _, _, _, _, !IO) :-
-    unexpected(this_file, "mlds_output_init_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 mlds_output_init_args([], [], _, _, _, _, _, _, !IO).
 mlds_output_init_args([Arg | Args], [ArgType | ArgTypes], Context,
         ArgNum, Base, Tag, Opts, Indent, !IO) :-
@@ -4026,7 +4018,7 @@ mlds_output_lval(Opts, Lval, !IO) :-
             ;
                 % The field type for ml_lval_field(_, _, ml_field_offset(_),
                 % _, _) lvals must be something that maps to MR_Box.
-                unexpected(this_file, "unexpected field type")
+                unexpected($module, $pred, "unexpected field type")
             )
         ;
             FieldId = ml_field_named(FieldName, CtorType),
@@ -4405,7 +4397,7 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         Category = compound_compare_binop,
         % These operators are intended to be generated only when using
         % the Erlang backend.
-        unexpected(this_file, "mlds_output_binop: compound_compare_binop")
+        unexpected($module, $pred, "compound_compare_binop")
     ;
         Category = string_compare_binop,
         io.write_string("(strcmp(", !IO),
@@ -4482,8 +4474,8 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         io.write_int(C, !IO)
     ;
         Const = mlconst_foreign(Lang, Value, _Type),
-        expect(unify(Lang, lang_c), this_file,
-            "output_rval_const - mlconst_foreign for language other than C."),
+        expect(unify(Lang, lang_c), $module, $pred,
+            "mlconst_foreign for language other than C"),
         io.write_string("((int) ", !IO),
         io.write_string(Value, !IO),
         io.write_string(")", !IO)
@@ -4641,11 +4633,5 @@ mlds_indent(N, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mlds_to_c.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module mlds_to_c.
+:- end_module ml_backend.mlds_to_c.
 %-----------------------------------------------------------------------------%

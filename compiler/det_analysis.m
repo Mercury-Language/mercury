@@ -365,7 +365,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
                 [simple_msg(PragmaContext, [always(ExportPieces)])]),
             !:Specs = [ExportSpec | !.Specs]
         ;
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "Cannot find proc in table of pragma foreign_exported procs")
         )
     ;
@@ -688,7 +688,7 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "det_infer_goal_2: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ).
@@ -778,7 +778,7 @@ det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
                 ; MaxSoln = at_most_one
                 ; MaxSoln = at_most_many_cc
                 ),
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "strange determinism error for parallel conjunction")
             )
         ),
@@ -1239,10 +1239,10 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
         Context = goal_info_get_context(GoalInfo),
         (
             Unify = construct(_, _, _, _, _, _, _),
-            unexpected(this_file, "det_infer_unify: can_fail construct")
+            unexpected($module, $pred, "can_fail construct")
         ;
             Unify = assign(_, _),
-            unexpected(this_file, "det_infer_unify: can_fail assign")
+            unexpected($module, $pred, "can_fail assign")
         ;
             Unify = complicated_unify(_, _, _),
             (
@@ -1254,8 +1254,7 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
                 ( RHS = rhs_functor(_, _, _)
                 ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
                 ),
-                unexpected(this_file,
-                    "det_infer_unify: complicated_unify but no var")
+                unexpected($module, $pred, "complicated_unify but no var")
             )
         ;
             Unify = deconstruct(Var, ConsId, _, _, _, _),
@@ -1332,7 +1331,7 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
             det_negation_det(CondDetism, MaybeNegDetism),
             (
                 MaybeNegDetism = no,
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "cannot find determinism of negated condition")
             ;
                 MaybeNegDetism = yes(NegDetism)
@@ -1374,7 +1373,7 @@ det_infer_not(Goal0, Goal, GoalInfo, InstMap0, MaybePromiseEqvSolutionSets,
     det_negation_det(NegDetism, MaybeDetism),
     (
         MaybeDetism = no,
-        unexpected(this_file,
+        unexpected($module, $pred,
             "inappropriate determinism inside a negation")
     ;
         MaybeDetism = yes(Detism)
@@ -1448,8 +1447,8 @@ det_infer_atomic_goal(Goal0, Goal, InstMap0,
         ; Detism = detism_erroneous
         ),
         % XXX STM Detism = detism_cc_multi            % <== TMP
-        expect(unify(GoalFailingContexts, []), this_file,
-            "det_infer_atomic_goal: GoalFailingContexts != []")
+        expect(unify(GoalFailingContexts, []), $module, $pred,
+            "GoalFailingContexts != []")
     ;
         ( Detism = detism_semi
         ; Detism = detism_multi
@@ -1566,7 +1565,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                         set.to_sorted_list(OverlapVars)),
                     (
                         OverlapVarNames = [],
-                        unexpected(this_file, "det_report_msg: " ++
+                        unexpected($module, $pred,
                             "arbitrary_promise_overlap empty")
                     ;
                         OverlapVarNames = [_],
@@ -1619,8 +1618,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             MissingKindStr = promise_solutions_kind_str(Kind),
             (
                 MissingVarNames = [],
-                unexpected(this_file,
-                    "det_infer_scope: promise_solutions_missing_vars empty")
+                unexpected($module, $pred,
+                    "promise_solutions_missing_vars empty")
             ;
                 MissingVarNames = [_],
                 MissingListStr = "a variable that is not listed:"
@@ -1659,8 +1658,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ExtraKindStr = promise_solutions_kind_str(Kind),
             (
                 ExtraVarNames = [],
-                unexpected(this_file,
-                    "det_infer_scope: promise_solutions_extra_vars empty")
+                unexpected($module, $pred,
+                    "promise_solutions_extra_vars empty")
             ;
                 ExtraVarNames = [_],
                 ExtraListStr = "an extra variable:"
@@ -2085,11 +2084,5 @@ set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "det_analysis.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module det_analysis.
+:- end_module check_hlds.det_analysis.
 %-----------------------------------------------------------------------------%

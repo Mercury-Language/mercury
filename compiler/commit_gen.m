@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -51,7 +51,7 @@ generate_scope(Reason, OuterCodeModel, OuterGoalInfo,
     ->
         % These goals should have been transformed into other forms of goals
         % by simplify.m at the end of semantic analysis.
-        unexpected(this_file, "generate_scope: trace_goal")
+        unexpected($module, $pred, "trace_goal")
     ;
         generate_commit(OuterCodeModel, OuterGoalInfo,
             ForwardLiveVarsBeforeGoal, Goal, Code, !CI)
@@ -74,8 +74,7 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
             code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI)
         ;
             InnerCodeModel = model_semi,
-            unexpected(this_file,
-                "generate_commit: semidet model in det context")
+            unexpected($module, $pred, "semidet model in det context")
         ;
             InnerCodeModel = model_non,
             prepare_for_det_commit(AddTrailOps, AddRegionOps,
@@ -108,11 +107,5 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
     ).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "commit_gen.m".
-
-%---------------------------------------------------------------------------%
-:- end_module commit_gen.
+:- end_module ll_backend.commit_gen.
 %---------------------------------------------------------------------------%

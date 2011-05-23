@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2002-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -396,7 +396,7 @@ goal_info_get_pre_births(GoalInfo, PreBirths) :-
     ( PreBirthsPrime = CodeGenInfo ^ llds_code_gen ^ pre_births ->
         PreBirths = PreBirthsPrime
     ;
-        unexpected(this_file, "goal_info_get_pre_births: no code_gen_info")
+        unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_post_births(GoalInfo, PostBirths) :-
@@ -404,7 +404,7 @@ goal_info_get_post_births(GoalInfo, PostBirths) :-
     ( PostBirthsPrime = CodeGenInfo ^ llds_code_gen ^ post_births ->
         PostBirths = PostBirthsPrime
     ;
-        unexpected(this_file, "goal_info_get_post_births: no code_gen_info")
+        unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
@@ -412,7 +412,7 @@ goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
     ( PreDeathsPrime = CodeGenInfo ^ llds_code_gen ^ pre_deaths ->
         PreDeaths = PreDeathsPrime
     ;
-        unexpected(this_file, "goal_info_get_pre_deaths: no code_gen_info")
+        unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
@@ -420,7 +420,7 @@ goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
     ( PostDeathsPrime = CodeGenInfo ^ llds_code_gen ^ post_deaths ->
         PostDeaths = PostDeathsPrime
     ;
-        unexpected(this_file, "goal_info_get_post_deaths: no code_gen_info")
+        unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_follow_vars(GoalInfo, FollowVars) :-
@@ -428,7 +428,7 @@ goal_info_get_follow_vars(GoalInfo, FollowVars) :-
     ( FollowVarsPrime = CodeGenInfo ^ llds_code_gen ^ follow_vars ->
         FollowVars = FollowVarsPrime
     ;
-        unexpected(this_file, "goal_info_get_follow_vars: no code_gen_info")
+        unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_store_map(GoalInfo, StoreMap) :-
@@ -436,7 +436,7 @@ goal_info_get_store_map(GoalInfo, StoreMap) :-
     ( StoreMapPrime = CodeGenInfo ^ llds_code_gen ^ store_map ->
         StoreMap = StoreMapPrime
     ;
-        unexpected(this_file, "goal_info_get_store_map: no code_gen_info")
+        unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_resume_point(GoalInfo, ResumePoint) :-
@@ -444,7 +444,7 @@ goal_info_get_resume_point(GoalInfo, ResumePoint) :-
     ( ResumePointPrime = CodeGenInfo ^ llds_code_gen ^ resume_point ->
         ResumePoint = ResumePointPrime
     ;
-        unexpected(this_file, "goal_info_get_resume_point: no code_gen_info")
+        unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
@@ -461,7 +461,7 @@ goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
             MaybeNeedAtCall = no
         )
     ;
-        unexpected(this_file, "goal_info_get_need_at_call: no code_gen_info")
+        unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
@@ -478,7 +478,7 @@ goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
             MaybeNeedInResume = no
         )
     ;
-        unexpected(this_file, "goal_info_get_need_in_resume: no code_gen_info")
+        unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
@@ -495,8 +495,7 @@ goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
             MaybeNeedInParConj = no
         )
     ;
-        unexpected(this_file,
-            "goal_info_get_need_in_par_conj: no code_gen_info")
+        unexpected($module, $pred, "no code_gen_info")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -648,7 +647,7 @@ goal_info_resume_vars_and_loc(Resume, Vars, Locs) :-
         Resume = resume_point(Vars, Locs)
     ;
         Resume = no_resume_point,
-        unexpected(this_file, "goal_info_resume_vars_and_loc: no resume point")
+        unexpected($module, $pred, "no resume point")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -767,9 +766,5 @@ abs_locn_to_string(abs_parent_stackvar(N)) =
 abs_locn_to_string(abs_framevar(N)) = "framevar" ++ int_to_string(N).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_llds.m".
-
+:- end_module hlds.hlds_llds.
 %-----------------------------------------------------------------------------%

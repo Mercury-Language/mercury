@@ -572,8 +572,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         RecordTermSizesAsWords = yes,
         RecordTermSizesAsCells = yes,
         % This should have been caught in handle_options.
-        unexpected(this_file,
-            "compile_c_file: inconsistent record term size options")
+        unexpected($module, $pred, "inconsistent record term size options")
     ;
         RecordTermSizesAsWords = yes,
         RecordTermSizesAsCells = no,
@@ -665,8 +664,8 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     ;
         Extend = yes,
         StackSegments = yes,
-        ExtendOpt = unexpected(this_file,
-            "compile_c_file: --extend-stacks-when-needed and --stack-segments")
+        ExtendOpt = unexpected($module, $pred,
+            "--extend-stacks-when-needed and --stack-segments")
     ),
     globals.lookup_bool_option(Globals, target_debug, Target_Debug),
     (
@@ -738,8 +737,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         MinimalModelStackCopy = yes,
         MinimalModelOwnStacks = yes,
         % this should have been caught in handle_options
-        unexpected(this_file,
-            "compile_c_file: inconsistent minimal model options")
+        unexpected($module, $pred, "inconsistent minimal model options")
     ;
         MinimalModelStackCopy = yes,
         MinimalModelOwnStacks = no,
@@ -959,7 +957,7 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
         )
     ;
         JavaFiles = [],
-        unexpected(this_file, "compile_java_files: empty list")
+        unexpected($module, $pred, "empty list")
     ),
 
     globals.lookup_string_option(Globals, java_compiler, JavaCompiler),
@@ -1055,7 +1053,7 @@ assemble(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO) :-
         PIC = link_with_pic,
         % `--target asm' doesn't support any grades for
         % which `.lpic_o' files are needed.
-        unexpected(this_file, "assemble: link_with_pic")
+        unexpected($module, $pred, "link_with_pic")
     ;
         PIC = non_pic,
         AsmExt = ".s",
@@ -1299,7 +1297,7 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
             OutputFileName = Module
         ;
             Modules = [],
-            unexpected(this_file, "link_module_list: no modules")
+            unexpected($module, $pred, "no modules")
         )
     ;
         OutputFileName = OutputFileName0
@@ -1329,7 +1327,7 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
             join_module_list(Globals, [FirstModule], Obj, ObjectsList, !IO)
         ;
             Modules = [],
-            unexpected(this_file, "link_module_list: no modules")
+            unexpected($module, $pred, "no modules")
         )
     ;
         ( Target = target_c
@@ -2048,8 +2046,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             ; TargetType = erlang_launcher
             ; TargetType = erlang_archive
             ),
-            unexpected(this_file,
-                "get_mercury_std_libs: " ++ string(TargetType))
+            unexpected($module, $pred, string(TargetType))
         ),
         grade_directory_component(Globals, GradeDir),
 
@@ -2175,7 +2172,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 StdLib
             ])
         ;
-            unexpected(this_file, "unknown linkage " ++ MercuryLinkage)
+            unexpected($module, $pred, "unknown linkage " ++ MercuryLinkage)
         )
     ;
         MaybeStdlibDir = no,
@@ -2204,7 +2201,7 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt, Name,
         ; TargetType = erlang_launcher
         ; TargetType = erlang_archive
         ),
-        unexpected(this_file, "link_lib_args: " ++ string(TargetType))
+        unexpected($module, $pred, string(TargetType))
     ),
     StaticLibName = LibPrefix ++ Name ++ LibExt,
     StaticArg = quote_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
@@ -2266,7 +2263,7 @@ make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
         ; TargetType = erlang_launcher
         ; TargetType = erlang_archive
         ),
-        unexpected(this_file, "make_link_lib: " ++ string(TargetType))
+        unexpected($module, $pred, string(TargetType))
     ).
 
 :- pred get_runtime_library_path_opts(globals::in, linked_target_type::in,
@@ -2351,7 +2348,7 @@ get_system_libs(Globals, TargetType, SystemLibs) :-
         ; TargetType = erlang_launcher
         ; TargetType = erlang_archive
         ),
-        unexpected(this_file, "get_std_libs: " ++ string(TargetType))
+        unexpected($module, $pred, string(TargetType))
     ),
 
     SystemLibs = string.join_list(" ",
@@ -2480,13 +2477,13 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         LibSuffix = ".dll"
     ;
         Target = target_il,
-        unexpected(this_file, "process_link_library: target_java")
+        unexpected($module, $pred, "target_java")
     ;
         Target = target_java,
-        unexpected(this_file, "process_link_library: target_java")
+        unexpected($module, $pred, "target_java")
     ;
         Target = target_erlang,
-        unexpected(this_file, "process_link_library: target_erlang")
+        unexpected($module, $pred, "target_erlang")
     ),
 
     globals.lookup_accumulating_option(Globals, mercury_libraries,
@@ -2602,7 +2599,7 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         ; LinkTargetType = erlang_launcher
         ; LinkTargetType = erlang_archive
         ),
-        unexpected(this_file, "create_csharp_exe_or_lib: wrong target type")
+        unexpected($module, $pred, "wrong target type")
     ),
 
     globals.lookup_accumulating_option(Globals, link_library_directories,
@@ -2681,7 +2678,7 @@ create_java_archive(Globals, ErrorStream, JarFileName, ObjectList, Succeeded,
         !IO),
     (
         ListClassFiles = [],
-        unexpected(this_file, "empty list of .class files")
+        unexpected($module, $pred, "empty list of .class files")
     ;
         ListClassFiles = [_ | _]
     ),
@@ -2845,7 +2842,8 @@ get_object_code_type(Globals, FileType, ObjectCodeType) :-
                 ObjectCodeType = non_pic
             ;
                 % The linkage string is checked by options.m.
-                unexpected(this_file, "unknown linkage " ++ MercuryLinkage)
+                unexpected($module, $pred,
+                    "unknown linkage " ++ MercuryLinkage)
             )
         )
     ).
@@ -3267,11 +3265,5 @@ arch_is_apple_darwin(FullArch) :-
     string.prefix(OS, "darwin").
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "compile_target_code.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module compile_target_code.
+:- end_module backend_libs.compile_target_code.
 %-----------------------------------------------------------------------------%

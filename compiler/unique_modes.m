@@ -323,8 +323,7 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file,
-                "unique_modes_check_goal_expr: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -514,8 +513,7 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalExpr, !ModeInfo) :-
                 instmap_set_var(TermVar, TermVarInst, InstMap0, InstMap),
                 mode_info_set_instmap(InstMap, !ModeInfo)
             ;
-                unexpected(this_file,
-                    "unique_modes_check_goal_scope: bad InstMapDelta")
+                unexpected($module, $pred, "bad InstMapDelta")
             ),
             GoalExpr = scope(Reason, SubGoal)
         ;
@@ -681,8 +679,7 @@ unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
             Goals = [MainGoal | OrElseGoals]
         ;
             Goals = [],
-            unexpected(this_file,
-                "unique_modes_check_goal_atomic_goal: Goals = []")
+            unexpected($module, $pred, "Goals = []")
         ),
         instmap_merge(NonLocals, InstMapList, merge_disj, !ModeInfo)
     ),
@@ -772,7 +769,7 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
                 % handling of implied modes.
                 % XXX It might happen, though, if the user writes strange code;
                 % we should report a proper error here.
-                unexpected(this_file, "call to implied mode?")
+                unexpected($module, $pred, "call to implied mode?")
             )
         )
     ).
@@ -802,7 +799,7 @@ unique_modes_check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism,
     ;
         % This shouldn't happen, since modes.m should do all the handling
         % of implied modes.
-        unexpected(this_file, "call to implied mode?")
+        unexpected($module, $pred, "call to implied mode?")
     ),
     (
         NeverSucceeds = yes,
@@ -1016,11 +1013,5 @@ unique_modes_check_case_list([Case0 | Cases0], Var, [Case | Cases],
     unique_modes_check_case_list(Cases0, Var, Cases, InstMaps, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "unique_modes.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module unique_modes.
+:- end_module check_hlds.unique_modes.
 %-----------------------------------------------------------------------------%

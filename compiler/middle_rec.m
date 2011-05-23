@@ -208,7 +208,7 @@ contains_only_builtins_expr(GoalExpr) = OnlyBuiltins :-
         OnlyBuiltins = no
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "contains_only_builtins: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- func contains_only_builtins_cases(list(case)) = bool.
@@ -418,16 +418,14 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
     list(instruction)::out) is det.
 
 generate_downloop_test([], _, _) :-
-    unexpected(this_file, "generate_downloop_test on empty list").
+    unexpected($module, $pred, "empty list").
 generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
     ( Instr0 = llds_instr(if_val(Test, _OldTarget), _Comment) ->
         (
             Instrs0 = []
         ;
             Instrs0 = [_ | _],
-            unexpected(this_file,
-                "generate_downloop_test: " ++
-                "if_val followed by other instructions")
+            unexpected($module, $pred, "if_val followed by other instructions")
         ),
         code_util.neg_rval(Test, NewTest),
         Instrs = [
@@ -445,7 +443,7 @@ generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
     list(instruction)::out, list(instruction)::out) is det.
 
 split_rec_code([], _, _) :-
-    unexpected(this_file, "did not find call in split_rec_code").
+    unexpected($module, $pred, "did not find call").
 split_rec_code([Instr0 | Instrs1], Before, After) :-
     ( Instr0 = llds_instr(llcall(_, _, _, _, _, _), _) ->
         (
@@ -456,7 +454,7 @@ split_rec_code([Instr0 | Instrs1], Before, After) :-
             Before = [],
             After = Instrs3
         ;
-            unexpected(this_file, "split_rec_code: call not followed by label")
+            unexpected($module, $pred, "call not followed by label")
         )
     ;
         split_rec_code(Instrs1, Before1, After),
@@ -638,7 +636,7 @@ find_used_registers_lval(Lval, !Used) :-
         find_used_registers_rval(Rval, !Used),
         find_used_registers_rval(FieldNum, !Used)
     ; Lval = lvar(_) ->
-        unexpected(this_file, "lvar found in find_used_registers_lval")
+        unexpected($module, $pred, "lvar")
     ;
         true
     ).
@@ -651,7 +649,7 @@ find_used_registers_rval(Rval, !Used) :-
         find_used_registers_lval(Lval, !Used)
     ;
         Rval = var(_),
-        unexpected(this_file, "var found in find_used_registers_rval")
+        unexpected($module, $pred, "var")
     ;
         Rval = mkword(_, Rval1),
         find_used_registers_rval(Rval1, !Used)
@@ -736,11 +734,5 @@ find_labels_2([Instr | Instrs], !Labels) :-
     find_labels_2(Instrs, !Labels).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "middle_rec.m".
-
-%---------------------------------------------------------------------------%
-:- end_module middle_rec.
+:- end_module ll_backend.middle_rec.
 %---------------------------------------------------------------------------%

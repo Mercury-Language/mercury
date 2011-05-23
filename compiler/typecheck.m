@@ -496,8 +496,8 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
         clause_list_is_empty(ClausesRep1) = ClausesRep1IsEmpty,
         (
             ClausesRep1IsEmpty = yes,
-            expect(unify(StartingSpecs, []), this_file,
-                "typecheck_pred: StartingSpecs not empty"),
+            expect(unify(StartingSpecs, []), $module, $pred,
+                "StartingSpecs not empty"),
 
             % There are no clauses for class methods. The clauses are generated
             % later on, in polymorphism.expand_class_method_bodies.
@@ -1127,8 +1127,7 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info) :-
         % previous type assignment set (so that it can detect other errors
         % in the same clause).
         TypeAssignSet = [],
-        unexpected(this_file,
-            "internal error in typechecker: no type-assignment")
+        unexpected($module, $pred, "no type-assignment")
     ;
         TypeAssignSet = [_SingleTypeAssign]
     ;
@@ -1323,8 +1322,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             typecheck_higher_order_call(PredVar, Purity, Args, !Info)
         ;
             GenericCall0 = class_method(_, _, _, _),
-            unexpected(this_file,
-                "typecheck_goal_2: unexpected class method call")
+            unexpected($module, $pred, "unexpected class method call")
         ;
             GenericCall0 = event_call(EventName),
             GenericCall = GenericCall0,
@@ -1351,7 +1349,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         GoalExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext)
     ;
         GoalExpr0 = switch(_, _, _),
-        unexpected(this_file, "typecheck_goal_2: unexpected switch")
+        unexpected($module, $pred, "switch")
     ;
         GoalExpr0 = call_foreign_proc(_, PredId, _, Args, _, _, _),
         % Foreign_procs are automatically generated, so they will always be
@@ -1404,8 +1402,8 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             list.foldl((pred(Var::in, Info0::in, Info::out) is det :-
                     typecheck_var_has_type(Var, stm_atomic_type, Info0, Info)),
                 InnerVars, !Info),
-            expect(unify(GoalType, unknown_atomic_goal_type), this_file,
-                "typecheck_goal_2: GoalType != unknown_atomic_goal_type"),
+            expect(unify(GoalType, unknown_atomic_goal_type), $module, $pred,
+                "GoalType != unknown_atomic_goal_type"),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
         ;
@@ -1803,7 +1801,7 @@ skip_arg([ArgTypeAssign0 | ArgTypeAssigns0],
     ;
         Args0 = [],
         % this should never happen
-        unexpected(this_file, "skip_arg")
+        unexpected($module, $pred, "skip_arg")
     ),
     ArgTypeAssign = args(TypeAssign, Args, Constraints),
     skip_arg(ArgTypeAssigns0, ArgTypeAssigns).
@@ -1846,7 +1844,7 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
         )
     ;
         ArgTypes0 = [],
-        unexpected(this_file, "arg_type_assign_var_has_type")
+        unexpected($module, $pred, "ArgTypes0 = []")
     ).
 
 :- pred type_assign_var_has_one_of_these_types(type_assign::in,
@@ -1885,9 +1883,9 @@ type_assign_var_has_one_of_these_types(TypeAssign0, Var, TypeA, TypeB,
     int::in, typecheck_info::in, typecheck_info::out) is det.
 
 typecheck_var_has_type_list([], [_ | _], _, !Info) :-
-    unexpected(this_file, "typecheck_var_has_type_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 typecheck_var_has_type_list([_ | _], [], _, !Info) :-
-    unexpected(this_file, "typecheck_var_has_type_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 typecheck_var_has_type_list([], [], _, !Info).
 typecheck_var_has_type_list([Var | Vars], [Type | Types], ArgNum, !Info) :-
     !Info ^ tc_info_arg_num := ArgNum,
@@ -1950,9 +1948,9 @@ type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
     type_assign_set::in, type_assign_set::out) is det.
 
 type_assign_var_has_type_list([], [_ | _], _, _, _, _) :-
-    unexpected(this_file, "type_assign_var_has_type_list: length mis-match").
+    unexpected($module, $pred, "length mismatch").
 type_assign_var_has_type_list([_ | _], [], _, _, _, _) :-
-    unexpected(this_file, "type_assign_var_has_type_list: length mis-match").
+    unexpected($module, $pred, "length mismatch").
 type_assign_var_has_type_list([], [], TypeAssign, _,
         TypeAssignSet, [TypeAssign | TypeAssignSet]).
 type_assign_var_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
@@ -2102,8 +2100,7 @@ typecheck_unify_var_functor(Var, ConsId, Args, GoalId, !Info) :-
             ->
                 % This should never happen, since undefined ctors
                 % should be caught by the check just above.
-                unexpected(this_file,
-                    "typecheck_unify_var_functor: undefined cons?")
+                unexpected($module, $pred, "undefined cons?")
             ;
                 true
             ),
@@ -2391,8 +2388,7 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
         ConsType = ConsType1,
         ArgTypes = ArgTypes1
     ;
-        unexpected(this_file,
-            "get_cons_stuff: type_assign_rename_apart failed")
+        unexpected($module, $pred, "type_assign_rename_apart failed")
     ),
 
     % Add the constraints for this functor to the current constraint set.
@@ -2627,7 +2623,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalId,
                 PredType, ArgTypes, PredConstraints, source_pred(PredId)),
             !:ConsInfos = [ConsInfo | !.ConsInfos]
         ;
-            unexpected(this_file, "make_pred_cons_info: split_list failed")
+            unexpected($module, $pred, "split_list failed")
         )
     ;
         IsPredOrFunc = pf_function,
@@ -2661,7 +2657,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalId,
                 source_pred(PredId)),
             !:ConsInfos = [ConsInfo | !.ConsInfos]
         ;
-            unexpected(this_file, "make_pred_cons_info: split_list failed")
+            unexpected($module, $pred, "split_list failed")
         )
     ;
         true
@@ -2820,7 +2816,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         ; Source0 = source_apply(_)
         ; Source0 = source_pred(_)
         ),
-        unexpected(this_file, "convert_field_access_cons_type_info: not type")
+        unexpected($module, $pred, "not type")
     ),
     FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),
     list.det_index1(ConsArgTypes, FieldNumber, FieldType),
@@ -3281,9 +3277,5 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "typecheck.m".
-
+:- end_module check_hlds.typecheck.
 %-----------------------------------------------------------------------------%

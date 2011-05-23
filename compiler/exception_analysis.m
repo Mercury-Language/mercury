@@ -260,7 +260,7 @@ check_procs_for_exceptions(SCC, Result, !ModuleInfo) :-
     exception_status::out, maybe(analysis_status)::out) is det.
 
 combine_individual_proc_results([], _, _) :-
-    unexpected(this_file, "Empty SCC during exception analysis.").
+    unexpected($module, $pred, "Empty SCC during exception analysis.").
 combine_individual_proc_results(ProcResults @ [_|_], SCC_Result,
         MaybeAnalysisStatus) :-
     (
@@ -377,7 +377,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
         GoalExpr = unify(_, _, _, Kind, _),
         (
             Kind = complicated_unify(_, _, _),
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "complicated unify during exception analysis.")
         ;
             ( Kind = construct(_, _, _, _, _, _, _)
@@ -443,7 +443,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file,
+        unexpected($module, $pred,
             "shorthand goal encountered during exception analysis.")
     ).
 
@@ -920,7 +920,7 @@ check_type_2(ModuleInfo, Type, CtorCat) = WillThrow :-
         ( type_to_ctor_and_args(Type, _TypeCtor, Args) ->
             WillThrow = check_types(ModuleInfo, Args)
         ;
-            unexpected(this_file, "check_type_2/3: expected tuple type")
+            unexpected($module, $pred, "expected tuple type")
         )
     ;
         CtorCat = ctor_cat_enum(_),
@@ -1159,8 +1159,7 @@ lookup_proc_exception_info(ExceptionInfo, PPId, Status, ResultStatus) :-
             MaybeResultStatus = yes(ResultStatus)
         ;
             MaybeResultStatus = no,
-            unexpected(this_file,
-                "lookup_proc_exception_info: no result status")
+            unexpected($module, $pred, "no result status")
         )
     ;
         % Probably an exported `:- external' procedure.
@@ -1323,7 +1322,7 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
                     AnalysisStatus)),
                 (
                     AnalysisStatus = invalid,
-                    unexpected(this_file,
+                    unexpected($module, $pred,
                         "invalid exception_analysis answer")
                 ;
                     ( AnalysisStatus = optimal
@@ -1342,11 +1341,5 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
     ).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "exception_analysis.m".
-
-%----------------------------------------------------------------------------%
-:- end_module exception_analysis.
+:- end_module transform_hlds.exception_analysis.
 %----------------------------------------------------------------------------%

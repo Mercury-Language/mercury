@@ -490,7 +490,7 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "build_abstract_goal_2: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %------------------------------------------------------------------------------%
@@ -582,8 +582,8 @@ build_non_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
             )
         ;
             MaybeTermStatus = no,
-            unexpected(this_file,
-                "Callee procedure has no termination status.")
+            unexpected($module, $pred,
+                "callee procedure has no termination status.")
         )
     ;
         ArgAnalysisOnly = yes
@@ -593,7 +593,7 @@ build_non_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
     ArgSizeInfo = CalleeTerm2Info ^ success_constrs,
     (
         ArgSizeInfo = no,
-        unexpected(this_file, "No argument size info for callee proc.")
+        unexpected($module, $pred, "no argument size info for callee proc")
     ;
         ArgSizeInfo = yes(SizeInfo),
         ArgSizeConstrs0 = polyhedron.non_false_constraints(SizeInfo),
@@ -738,8 +738,7 @@ detect_switch_var(hlds_goal(unify(_, _, _, Kind, _), _), SwitchVar, ConsId)  :-
         Kind = deconstruct(SwitchVar, ConsId, _, _, _, _)
     ;
         Kind = complicated_unify(_, _, _),
-        unexpected(this_file,
-            "complicated_unify/3 goal during termination analysis.")
+        unexpected($module, $pred, "complicated_unify")
     ;
         ( Kind = construct(_, _, _, _, _, _, _)
         ; Kind = assign(_, _)
@@ -748,7 +747,7 @@ detect_switch_var(hlds_goal(unify(_, _, _, Kind, _), _), SwitchVar, ConsId)  :-
         fail
     ).
 detect_switch_var(hlds_goal(shorthand(_), _), _, _) :-
-    unexpected(this_file, "shorthand/1 goal during termination analysis").
+    unexpected($module, $pred, "shorthand").
 
 %------------------------------------------------------------------------------%
 %
@@ -782,7 +781,7 @@ build_abstract_from_ground_term_goal(TermVar, SubGoal, AbstractGoal, !Info) :-
         ),
         AbstractGoal = build_goal_from_unify(Constraints)
     ;
-        unexpected(this_file, "build_abstract_from_ground_term_goal: not conj")
+        unexpected($module, $pred, "not conj")
     ).
 
 :- pred abstract_from_ground_term_conjuncts(module_info::in, functor_info::in,
@@ -824,8 +823,7 @@ abstract_from_ground_term_conjunct(ModuleInfo, Norm, VarTypes, Goal,
         Size = ConsIdSize + TotalArgSize,
         map.det_insert(Var, Size, !SizeMap)
     ;
-        unexpected(this_file,
-            "abstract_from_ground_term_conjunct: malformed conjunct")
+        unexpected($module, $pred, "malformed conjunct")
     ).
 
 :- pred accumulate_sum(list(int)::in, int::in, int::out) is det.
@@ -864,7 +862,7 @@ build_abstract_unification(Unification, AbstractGoal, !Info) :-
         AbstractGoal = build_goal_from_unify(Constraints)
     ;
         Unification = complicated_unify(_, _, _),
-        unexpected(this_file, "complicated_unify/3 in termination analysis.")
+        unexpected($module, $pred, "complicated_unify")
     ).
 
     % Used for deconstruction and construction unifications.  e.g. for a
@@ -918,7 +916,7 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
             CountedVars, FirstTerms, Terms),
         Constraint = construct_constraint(Terms, lp_eq, rat(Constant)),
         ( is_false(Constraint) ->
-            unexpected(this_file, "false constraint from unification.")
+            unexpected($module, $pred, "false constraint from unification")
         ;
             SizeVars0 = prog_vars_to_size_vars(SizeVarMap, ArgVars),
             SizeVars1 = [SizeVar | SizeVars0],
@@ -947,8 +945,7 @@ strip_typeinfos_from_args_and_modes(VarTypes, !Args, !Modes) :-
     ( strip_typeinfos_from_args_and_modes_2(VarTypes, !Args, !Modes) ->
         true
     ;
-        unexpected(this_file,
-            "unequal length lists in strip_type_infso_and_modes/5")
+        unexpected($module, $pred, "unequal length lists")
     ).
 
 :- pred strip_typeinfos_from_args_and_modes_2(vartypes::in,
@@ -989,7 +986,7 @@ build_abstract_simple_or_assign_unify(LeftProgVar, RightProgVar, Constraints,
         ; set.member(RightSizeVar, Zeros)
         )
     ->
-        unexpected(this_file, "zero unified with non-zero.")
+        unexpected($module, $pred, "zero unified with non-zero")
     ;
         % Create non-negativity constraints.
         NonNegConstrs = list.map(make_nonneg_constr,
@@ -1008,7 +1005,7 @@ build_abstract_simple_or_assign_unify(LeftProgVar, RightProgVar, Constraints,
 build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
     Polyhedron = polyhedron.from_constraints(Constraints),
     ( polyhedron.is_empty(Polyhedron) ->
-        unexpected(this_file, "empty polyhedron from unification.")
+        unexpected($module, $pred, "empty polyhedron from unification")
     ;
         true
     ).
@@ -1179,8 +1176,8 @@ find_failure_constraint_for_goal_2(Info, Goal, AbstractGoal) :-
         ModuleInfo = Info ^ tti_module_info,
         type_util.type_constructors(ModuleInfo, Type, Constructors0),
         ( ConsId = cons(ConsName, ConsArity, ConsTypeCtor) ->
-            expect(unify(TypeCtor, ConsTypeCtor), this_file,
-                "find_deconstruct_fail_bound: mismatched type_ctors"),
+            expect(unify(TypeCtor, ConsTypeCtor), $module, $pred,
+                "mismatched type_ctors"),
             FindComplement = (pred(Ctor::in) is semidet :-
                 Ctor = ctor(_, _, SymName, Args, _),
                 list.length(Args, Arity),
@@ -1191,8 +1188,7 @@ find_failure_constraint_for_goal_2(Info, Goal, AbstractGoal) :-
             ),
             list.filter(FindComplement, Constructors0, Constructors)
         ;
-            unexpected(this_file,
-                "find_deconstruct_fail_bound/3: non cons cons_id.")
+            unexpected($module, $pred, "non cons cons_id.")
         ),
         SizeVarMap = Info ^ tti_size_var_map,
         SizeVar = prog_var_to_size_var(SizeVarMap, Var),
@@ -1221,8 +1217,7 @@ bounds_on_var(Norm, ModuleInfo, TypeCtor, Var, Constructors, Polyhedron) :-
         NonZeroSizeCtors = [],
         (
             ZeroSizeCtors = [],
-            unexpected(this_file,
-                "bounds_on_var/6: no other constructors for type.")
+            unexpected($module, $pred, "no other constructors for type")
         ;
             ZeroSizeCtors = [_ | _],
             Constraints = [construct_constraint([Var - one], lp_eq, zero)]
@@ -1284,7 +1279,7 @@ upper_bound_constraints(Norm, ModuleInfo, Var, TypeCtor, Ctors, Constraints) :-
     ),
     ( list.foldl(FindUpperBound, Ctors, 0, Bound0) ->
         ( Bound0 = 0 ->
-            unexpected(this_file, "zero upper bound.")
+            unexpected($module, $pred, "zero upper bound")
         ;
             Constraints =
                 [construct_constraint([Var - one], lp_lt_eq, rat(Bound0))]
@@ -1292,12 +1287,6 @@ upper_bound_constraints(Norm, ModuleInfo, Var, TypeCtor, Ctors, Constraints) :-
     ;
         Constraints = []
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_constr_build.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_build.

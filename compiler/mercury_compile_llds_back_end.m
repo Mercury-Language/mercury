@@ -152,8 +152,8 @@ llds_backend_pass_by_phases(!HLDS, !GlobalData, !:LLDS, !DumpInfo, !IO) :-
 
     maybe_simplify(no, simplify_pass_ll_backend, Verbose, Stats, !HLDS,
         [], SimplifySpecs, !IO),
-    expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
-        "backend_pass_by_phases: simplify has errors"),
+    expect(unify(contains_errors(Globals, SimplifySpecs), no), $module, $pred,
+        "simplify has errors"),
     maybe_dump_hlds(!.HLDS, 325, "ll_backend_simplify", !DumpInfo, !IO),
 
     compute_liveness(Verbose, Stats, !HLDS, !IO),
@@ -744,19 +744,19 @@ make_foreign_import_header_code(Globals, ForeignImportModule, Include, !IO) :-
             IncludeString, Context)
     ;
         Lang = lang_csharp,
-        sorry(this_file, ":- import_module not yet implemented: " ++
+        sorry($module, $pred, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for C#")
     ;
         Lang = lang_il,
-        sorry(this_file, ":- import_module not yet implemented: " ++
+        sorry($module, $pred, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for IL")
     ;
         Lang = lang_java,
-        sorry(this_file, ":- import_module not yet implemented: " ++
+        sorry($module, $pred, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Java")
     ;
         Lang = lang_erlang,
-        sorry(this_file, ":- import_module not yet implemented: " ++
+        sorry($module, $pred, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Erlang")
     ).
 
@@ -829,9 +829,5 @@ compile_fact_table_file(Globals, ErrorStream, BaseName, O_File, Succeeded,
         Globals, Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mercury_compile_llds_back_end.m".
-
+:- end_module top_level.mercury_compile_llds_back_end.
 %-----------------------------------------------------------------------------%

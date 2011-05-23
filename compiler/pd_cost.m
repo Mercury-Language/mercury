@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2008, 2010 The University of Melbourne.
+% Copyright (C) 1998-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,7 +122,7 @@ goal_expr_cost(GoalExpr, GoalInfo, Cost) :-
     ;
         GoalExpr = shorthand(_),
         % these should have been expanded out by now
-        unexpected(this_file, "goal_cost: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred unify_cost(set(prog_var)::in, unification::in, int::out) is det.
@@ -191,11 +191,5 @@ cost_of_fold = 15.               % reward folding
 cost_of_recursive_fold = 25.     % reward recursive folding more
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "pd_cost.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module pd_cost.
+:- end_module transform_hlds.pd_cost.
 %-----------------------------------------------------------------------------%

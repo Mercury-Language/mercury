@@ -526,7 +526,7 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
         Sharing = sharing_as_init
     ;
         Unification = complicated_unify(_, _, _),
-        unexpected(this_file, "complicated_unify during sharing analysis.")
+        unexpected($module, $pred, "complicated_unify")
     ).
 
 :- pred is_introduced_typeinfo_arg(proc_info::in, prog_var::in) is semidet.
@@ -765,7 +765,7 @@ extend_datastruct(ModuleInfo, ProcInfo, SharingAs, Datastruct)
             Datastruct, SharingSet)
     ;
         SharingAs = sharing_as_top(_),
-        unexpected(this_file, "extend_datastruct with top sharing set.")
+        unexpected($module, $pred, "top sharing set")
     ).
 
 extend_datastructs(ModuleInfo, ProcInfo, SharingAs, Datastructs)
@@ -1479,7 +1479,7 @@ remove_directed_entry(FromData, ToData, SharingSet0, SharingSet) :-
             SharingSet = sharing_set(Size, SharingMap)
         )
     ;
-        unexpected(this_file, "Removing non-existant sharing pair.")
+        unexpected($module, $pred, "removing non-existant sharing pair")
     ).
 
     % Determine if the sharing set subsumes the sharing information
@@ -1637,7 +1637,7 @@ check_normalized(ModuleInfo, Type, Sel) :-
     ( Sel = Norm ->
         true
     ;
-        unexpected(this_file, "check_normalized: unnormalized selector")
+        unexpected($module, $pred, "unnormalized selector")
     ).
 
 :- pred new_entries(module_info::in, proc_info::in, structure_sharing::in,
@@ -1672,7 +1672,7 @@ new_directed_entry(FromData, ToData, SharingSet0, SharingSet):-
             map.det_insert(Var, Selectors, Map0, Map),
             Size = Size0 + 1
         ;
-            unexpected(this_file, "new_directed_entry: Impossible option.")
+            unexpected($module, $pred, "impossible option")
         )
     ),
     SharingSet = sharing_set(Size, Map).
@@ -2180,11 +2180,5 @@ data_set_widen_and_add(ModuleInfo, ProcInfo, Data0, !Datastructs):-
     data_set_add_datastruct(ModuleInfo, ProcInfo, Data, !Datastructs).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "structure_sharing.domain.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module structure_sharing.domain.
+:- end_module transform_hlds.ctgc.structure_sharing.domain.
 %-----------------------------------------------------------------------------%

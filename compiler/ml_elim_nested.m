@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2010 The University of Melbourne.
+% Copyright (C) 1999-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1027,7 +1027,7 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
         ; FuncName = entity_data(_)
         ; FuncName = entity_export(_)
         ),
-        unexpected(this_file, "gen_gc_trace_func: not a function")
+        unexpected($module, $pred, "not a function")
     ),
 
     % Construct the function definition.
@@ -1288,9 +1288,9 @@ ml_stack_chain_type = mlds_generic_env_ptr_type.
 :- func ml_env_name(mlds_entity_name, action) = mlds_class_name.
 
 ml_env_name(entity_type(_, _), _) = _ :-
-    unexpected(this_file, "ml_env_name: expected function, got type").
+    unexpected($module, $pred, "expected function, got type").
 ml_env_name(entity_data(_), _) = _ :-
-    unexpected(this_file, "ml_env_name: expected function, got data").
+    unexpected($module, $pred, "expected function, got data").
 ml_env_name(entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId), Action)
         = ClassName :-
     Base = env_name_base(Action),
@@ -1306,7 +1306,7 @@ ml_env_name(entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId), Action)
             [s(PredLabelString), i(ModeNum), s(Base)], ClassName)
     ).
 ml_env_name(entity_export(_), _) = _ :-
-    unexpected(this_file, "ml_env_name: expected function, got export").
+    unexpected($module, $pred, "expected function, got export").
 
 :- func env_name_base(action) = string.
 
@@ -2217,7 +2217,7 @@ ml_env_module_name(Target, ClassType) = EnvModuleName :-
         EnvModuleName = mlds_append_class_qualifier(Target, ClassModule,
             QualKind, ClassName, Arity)
     ;
-        unexpected(this_file, "ml_env_module_name: ClassType is not a class")
+        unexpected($module, $pred, "ClassType is not a class")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2684,7 +2684,7 @@ elim_info_remove_local_data(LocalVar, !ElimInfo) :-
     ( list.delete_first(!.ElimInfo ^ ei_local_data, LocalVar, LocalData) ->
         !ElimInfo ^ ei_local_data := LocalData
     ;
-        unexpected(this_file, "elim_info_remove_local_data: not found")
+        unexpected($module, $pred, "not found")
     ).
 
 :- pred elim_info_allocate_saved_stack_chain_id(int::out,
@@ -2703,9 +2703,5 @@ elim_info_finish(ElimInfo, Funcs, Locals) :-
     Locals = list.reverse(ElimInfo ^ ei_local_data).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_elim_nested.m".
-
+:- end_module ml_backend.ml_elim_nested.
 %-----------------------------------------------------------------------------%

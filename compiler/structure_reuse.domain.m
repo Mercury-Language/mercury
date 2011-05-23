@@ -604,14 +604,10 @@ reuse_as_from_called_procedure_to_local_reuse_as(ModuleInfo, ProcInfo,
         HeadVars, LuData, SharingAs, CalledReuseAs) = LocalReuseAs :-
     (
         CalledReuseAs = no_reuse,
-        unexpected(this_file,
-            "reuse_as_from_called_procedure_to_local_reuse_as: " ++
-            "reuse_as does not specify any reuses.")
+        unexpected($module, $pred, "reuse_as does not specify any reuses")
     ;
         CalledReuseAs = unconditional,
-        unexpected(this_file,
-            "reuse_as_from_called_procedure_to_local_reuse_as: " ++
-            "reuse_as is unconditional.")
+        unexpected($module, $pred, "reuse_as is unconditional")
     ;
         CalledReuseAs = conditional(ConditionsCaller),
         ConditionsCallee =
@@ -630,9 +626,7 @@ reuse_condition_from_called_proc_to_local_condition(ModuleInfo, ProcInfo,
         HeadVars, LuData, SharingAs, CalledCondition) = LocalCondition :-
     (
         CalledCondition = always,
-        unexpected(this_file,
-            "reuse_condition_from_called_proc_to_local_condition: " ++
-            "explicit condition expected.")
+        unexpected($module, $pred, "explicit condition expected")
     ;
         CalledCondition = condition(CalledDeadNodes,
             CalledInUseNodes, CalledSharingAs),
@@ -733,7 +727,7 @@ reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
             ( Result1 = reuse_not_possible(unknown_livedata)
             ; Result1 = reuse_not_possible(reuse_nodes_have_sharing(_))
             ),
-            unexpected(this_file, "reuse_as_satisfied_2: unexpected result")
+            unexpected($module, $pred, "unexpected result")
         )
     ;
         Result0 = reuse_not_possible(no_reuse),
@@ -743,7 +737,7 @@ reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
         Result = Result0
     ;
         Result0 = reuse_not_possible(reuse_nodes_have_sharing(_)),
-        unexpected(this_file, "reuse_as_satisfied_2: reuse_nodes_have_sharing")
+        unexpected($module, $pred, "reuse_nodes_have_sharing")
     ).
 
 :- pred aliases_between_reuse_nodes(module_info::in, proc_info::in,
@@ -762,7 +756,7 @@ aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs, Conditions,
         AliasedVars = set.to_sorted_list(AliasedVarsSet)
     ;
         AllNodes = [],
-        unexpected(this_file, "no_aliases_between_reuse_nodes: no nodes")
+        unexpected($module, $pred, "no nodes")
     ).
 
 :- pred aliases_between_reuse_nodes_2(module_info::in, proc_info::in,
@@ -942,8 +936,7 @@ reuse_as_table_reverse_search_reuse_version_proc(Table, NewPPId,
     ( bimap.reverse_search(Table ^ reuse_version_map, Key, NewPPId) ->
         Key = ppid_no_clobbers(OrigPPId, NoClobbers)
     ;
-        unexpected(this_file,
-            "reuse_as_table_reverse_search_reuse_version_proc")
+        unexpected($module, $pred, "reverse search failed")
     ).
 
 reuse_as_table_set(PPId, ReuseAs_Status, !Table) :-
@@ -1016,12 +1009,6 @@ load_structure_reuse_table_3(ModuleInfo, PredId, ProcId, !ReuseTable) :-
     ;
         MaybePublicReuse = no
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "structure_reuse.domain.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.domain.

@@ -262,7 +262,7 @@ store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "store_alloc_in_goal_2: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -476,9 +476,5 @@ next_free_reg(Values, N0, N) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "store_alloc.m".
-
+:- end_module ll_backend.store_alloc.
 %-----------------------------------------------------------------------------%

@@ -325,8 +325,8 @@ find_compulsory_lvals([Instr | Instrs], MaybeLiveMap, MaybeFallThrough,
     ;
         Uinstr = llcall(_, _, _, _, _, _)
     ->
-        expect(unify(PrevLivevals, yes),
-            this_file, "find_compulsory_lvals: call without livevals"),
+        expect(unify(PrevLivevals, yes), $module, $pred,
+            "call without livevals"),
         % The livevals instruction will include all the live lvals
         % in MaybeCompulsoryLvals after we return.
         !:MaybeCompulsoryLvals = known(set.init)
@@ -400,8 +400,8 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
         counter.allocate(TempNum, !TempCounter),
         TempLval = temp(reg_r, TempNum),
         SubChosenLvals = lvals_in_lval(ChosenLval),
-        expect(unify(SubChosenLvals, []),
-            this_file, "opt_access: nonempty SubChosenLvals"),
+        expect(unify(SubChosenLvals, []), $module, $pred,
+            "nonempty SubChosenLvals"),
         substitute_lval_in_instr_until_defn(ChosenLval, TempLval,
             [Instr0 | TailInstrs0], Instrs1, 0, NumReplacements),
         set.insert(ChosenLval, AlreadyTried0, AlreadyTried1),
@@ -479,15 +479,13 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
     (
         Uinstr0 = assign(ToLval, FromRval)
     ->
-        expect(unify(ToLval, OldLval),
-            this_file, "substitute_lval_in_defn: mismatch in assign"),
+        expect(unify(ToLval, OldLval), $module, $pred, "mismatch in assign"),
         Uinstr = assign(NewLval, FromRval)
     ;
         Uinstr0 = incr_hp(ToLval, MaybeTag, SizeRval, MO, Type,
             MayUseAtomic, MaybeRegionRval, MaybeReuse)
     ->
-        expect(unify(ToLval, OldLval),
-            this_file, "substitute_lval_in_defn: mismatch in incr_hp"),
+        expect(unify(ToLval, OldLval), $module, $pred, "mismatch in incr_hp"),
         Uinstr = incr_hp(NewLval, MaybeTag, SizeRval, MO, Type,
             MayUseAtomic, MaybeRegionRval, MaybeReuse)
     ;
@@ -496,12 +494,11 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
     ->
         substitute_lval_in_defn_components(OldLval, NewLval, Comps0, Comps,
             0, NumSubsts),
-        expect(unify(NumSubsts, 1), this_file,
-            "substitute_lval_in_defn: mismatch in foreign_proc_code"),
+        expect(unify(NumSubsts, 1), $module, $pred,
+            "mismatch in foreign_proc_code"),
         Uinstr = foreign_proc_code(D, Comps, MCM, FNL, FL, FOL, NF, MDL, S, MD)
     ;
-        unexpected(this_file,
-            "substitute_lval_in_defn: unexpected instruction")
+        unexpected($module, $pred, "unexpected instruction")
     ),
     Instr = llds_instr(Uinstr, Comment).
 
@@ -592,8 +589,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     !.Instr = llds_instr(Uinstr0, _),
     (
         Uinstr0 = block(_, _, _),
-        unexpected(this_file,
-            "substitute_lval_in_instr_until_defn: found block")
+        unexpected($module, $pred, "block")
     ;
         Uinstr0 = assign(Lval, _),
         ( assignment_updates_oldlval(Lval, OldLval) = yes ->
@@ -786,11 +782,5 @@ component_affects_liveness(Component) = Affects :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "use_local_vars.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module use_local_vars.
+:- end_module ll_backend.use_local_vars.
 %-----------------------------------------------------------------------------%

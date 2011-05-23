@@ -595,7 +595,7 @@ maybe_polymorphism(Verbose, Stats, !HLDS, !Specs, !IO) :-
         % sense anymore, because the polymorphism pass is necessary
         % for the proper mode analysis of code using existential
         % types.
-        unexpected(this_file,
+        unexpected($module, $pred,
             "sorry, `--no-polymorphism' is no longer supported")
     ).
 
@@ -975,9 +975,5 @@ maybe_proc_statistics(Verbose, Stats, Msg, !HLDS, !Specs, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mercury_compile_front_end.m".
-
+:- end_module top_level.mercury_compile_front_end.
 %-----------------------------------------------------------------------------%

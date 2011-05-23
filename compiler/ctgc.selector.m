@@ -125,7 +125,7 @@ selector_init(ConsId, Index) = [TermSel] :-
         ; ConsId = table_io_decl(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ),
-        unexpected(this_file, "selector_init: cannot handle cons_id")
+        unexpected($module, $pred, "cannot handle cons_id")
     ).
 
 selector_init_from_list(Types)
@@ -384,8 +384,8 @@ select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
             list.member(TVar, ExistQVars)
         )
     ;
-        unexpected(this_file,
-            "select_subtype: type is both existential and non-existential")
+        unexpected($module, $pred,
+            "type is both existential and non-existential")
     ).
 
 :- pragma memo(normalize_selector_with_type_information/4,
@@ -417,8 +417,7 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
             ;
                 CatUser = cat_user_direct_dummy,
                 % We should not be producing selectors for dummy types.
-                unexpected(this_file,
-                    "do_normalize_selector: cat_user_direct_dummy")
+                unexpected($module, $pred, "cat_user_direct_dummy")
             ),
 
             % If it is either a term-selector of a non-existentially typed
@@ -433,9 +432,8 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
                     ( list.index1(ArgTypes, Index, SubType) ->
                         CType = SubType
                     ;
-                        unexpected(this_file,
-                            "do_normalize_selector: " ++
-                            "accessing non-existing index.")
+                        unexpected($module, $pred,
+                            "accessing nonexistent index")
                     )
                 ;
                     UnitSelector = typesel(CType)
@@ -525,10 +523,5 @@ reset_tables(!IO) :-
     table_reset_for_normalize_selector_with_type_information_4(!IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ctgc.selector.m".
-
-%-----------------------------------------------------------------------------%
+:- end_module transform_hlds.ctgc.selector.
 %-----------------------------------------------------------------------------%

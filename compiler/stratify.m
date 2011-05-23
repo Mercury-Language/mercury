@@ -241,7 +241,7 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "first_order_check_goal: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -416,7 +416,7 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "higher_order_check_goal: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -581,7 +581,7 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
             ;
                 CHOInOut = ho_none,
                 % XXX What is a good message for this?
-                unexpected(this_file, "merge_calls: this cannot happen!")
+                unexpected($module, $pred, "ho_none")
             ),
             NewCInfo = ho_info(CHaveAT, CHOInOut),
             NewPInfo = ho_info(PHaveAT, PHOInOut),
@@ -712,9 +712,9 @@ bool_2_ho_in_out(no, no, ho_none).
 
 higherorder_in_out1([], [], _ModuleInfo, !HOIn, !HOOut).
 higherorder_in_out1([], [_ | _], _, !HOIn, !HOOut) :-
-    unexpected(this_file, "higherorder_in_out1: lists were different lengths").
+    unexpected($module, $pred, "mismatched lists").
 higherorder_in_out1([_ | _], [], _, !HOIn, !HOOut) :-
-    unexpected(this_file, "higherorder_in_out1: lists were different lengths").
+    unexpected($module, $pred, "mismatched lists").
 higherorder_in_out1([Type | Types], [Mode | Modes], ModuleInfo,
         !HOIn, !HOOut) :-
     (
@@ -796,7 +796,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             % Do nothing.
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected(this_file, "stratify_analyze_goal: complicated_unify")
+            unexpected($module, $pred, "complicated_unify")
         )
     ;
         GoalExpr = plain_call(CPred, CProc, _Args, _Builtin, _UC, _Sym),
@@ -848,7 +848,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "stratify_analyze_goal: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -918,7 +918,7 @@ get_called_procs(Goal, !Calls) :-
             % Do nothing.
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected(this_file, "get_called_procs: complicated_unify")
+            unexpected($module, $pred, "complicated_unify")
         )
     ;
         GoalExpr = plain_call(CPred, CProc, _Args, _Builtin, _UC, _Sym),
@@ -966,7 +966,7 @@ get_called_procs(Goal, !Calls) :-
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "get_called_procs: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -1022,9 +1022,5 @@ generate_stratify_error(ModuleInfo, PPId, Context, Message, ErrorOrWarning)
     Spec = error_spec(Severity, phase_code_gen, [Msg]).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "stratify.m".
-
+:- end_module check_hlds.stratify.
 %-----------------------------------------------------------------------------%

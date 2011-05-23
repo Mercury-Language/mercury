@@ -227,7 +227,7 @@ polyhedron.constraints(empty_poly) = [lp_rational.false_constraint].
 
 polyhedron.non_false_constraints(eqns(Constraints)) = Constraints.
 polyhedron.non_false_constraints(empty_poly) =
-    unexpected(this_file, "non_false_constraints/1: empty polyhedron.").
+    unexpected($module, $pred, "empty polyhedron").
 
 polyhedron.is_empty(empty_poly).
 
@@ -350,7 +350,8 @@ polyhedron.convex_union(Varset, MaybeMaxSize, eqns(ConstraintsA),
 :- pred convex_hull(list(constraints)::in, polyhedron::out, maybe(int)::in,
     lp_varset::in) is det.
 
-convex_hull([], _, _, _) :- unexpected(this_file, "convex_hull/4: empty list").
+convex_hull([], _, _, _) :-
+    unexpected($module, $pred, "empty list").
 convex_hull([Poly], eqns(Poly), _, _).
 convex_hull(Polys @ [_,_|_], ConvexHull, MaybeMaxSize, Varset0) :-
     %
@@ -517,9 +518,9 @@ polyhedron.bounding_box(eqns(Constraints), Varset) =
 
 polyhedron.widen(empty_poly, empty_poly, _) = empty_poly.
 polyhedron.widen(eqns(_), empty_poly, _) =
-    unexpected(this_file, "widen/2: empty polyhedron").
+    unexpected($module, $pred, "empty polyhedron").
 polyhedron.widen(empty_poly, eqns(_), _) =
-    unexpected(this_file, "widen/2: empty polyhedron").
+    unexpected($module, $pred, "empty polyhedron").
 polyhedron.widen(eqns(Poly1), eqns(Poly2), Varset) = eqns(WidenedEqns) :-
     WidenedEqns = list.filter(entailed(Varset, Poly2), Poly1).
 
@@ -536,7 +537,7 @@ polyhedron.project_all(Varset, Locals, Polyhedra) =
                 ProjectionResult),
             (
                 ProjectionResult = pr_res_aborted,
-                unexpected(this_file, "project_all/4: abort from project.")
+                unexpected($module, $pred, "abort from project")
             ;
                 ProjectionResult = pr_res_inconsistent,
                 Poly = empty_poly
@@ -559,7 +560,7 @@ polyhedron.project(Vars, Varset, eqns(Constraints0), Result) :-
     lp_rational.project(Vars, Varset, Constraints0, ProjectionResult),
     (
         ProjectionResult = pr_res_aborted,
-        unexpected(this_file, "project/4: abort from project")
+        unexpected($module, $pred, "abort from project")
     ;
         ProjectionResult = pr_res_inconsistent,
         Result = empty_poly
@@ -605,11 +606,5 @@ polyhedron.write_polyhedron(eqns(Constraints @ [_|_]), Varset, !IO) :-
     lp_rational.write_constraints(Constraints, Varset, !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "polyhedron.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module polyhedron.
+:- end_module libs.polyhedron.
 %-----------------------------------------------------------------------------%

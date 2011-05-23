@@ -94,7 +94,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         CondGoal = hlds_goal(CondExpr, CondInfo)
     ;
         Resume = no_resume_point,
-        unexpected(this_file,
+        unexpected($module, $pred,
             "condition of an if-then-else has no resume point")
     ),
 
@@ -291,7 +291,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
 generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
     (
         CodeModel = model_non,
-        unexpected(this_file, "generate_negation: nondet negation.")
+        unexpected($module, $pred, "nondet negation")
     ;
         ( CodeModel = model_det
         ; CodeModel = model_semi
@@ -308,8 +308,7 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         Resume = no_resume_point,
-        unexpected(this_file,
-            "generate_negation: negated goal has no resume point.")
+        unexpected($module, $pred, "negated goal has no resume point")
     ),
 
     % For a negated simple test, we can generate better code than the general
@@ -389,8 +388,8 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
         MaybeRegionSuccRecordSlot, !CI),
     % MaybeRegionSuccRecordSlot should be yes only for nondet conditions,
     % and a negated goal can't be nondet.
-    expect(unify(MaybeRegionSuccRecordSlot, no), this_file,
-        "generate_negation_general: MaybeRegionSuccRecordSlot = yes(_)"),
+    expect(unify(MaybeRegionSuccRecordSlot, no), $module, $pred,
+        "MaybeRegionSuccRecordSlot = yes(_)"),
 
     prepare_for_ite_hijack(CodeModel, MaybeRegionSuccRecordSlot, HijackInfo,
         PrepareHijackCode, !CI),
@@ -702,8 +701,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                     MaybeEmbeddedStackFrameId = no
                 ;
                     CondCodeModel = model_det,
-                    unexpected(this_file,
-                        "maybe_create_ite_region_frame: det cond")
+                    unexpected($module, $pred, "det cond")
                 ),
 
                 CondCode = PushInitCode ++ ProtectRegionCode ++
@@ -797,11 +795,5 @@ ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrameId,
         RemovedVars, RegionVars, Codes, !CI).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ite_gen".
-
-%-----------------------------------------------------------------------------%
-:- end_module ite_gen.
+:- end_module ll_backend.ite_gen.
 %-----------------------------------------------------------------------------%

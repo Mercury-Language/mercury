@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -214,14 +214,9 @@ generate_offset_assigns([], _, _, !CI).
 generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-
     LookupLval = field(yes(0), lval(BaseReg), const(llconst_int(Offset))),
     assign_lval_to_var(Var, LookupLval, Code, !CI),
-    expect(cord.is_empty(Code), this_file,
-        "generate_offset_assigns: nonempty code"),
+    expect(cord.is_empty(Code), $module, $pred, "nonempty code"),
     generate_offset_assigns(Vars, Offset + 1, BaseReg, !CI).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "lookup_util.m".
-
+:- end_module ll_backend.lookup_util.
 %---------------------------------------------------------------------------%

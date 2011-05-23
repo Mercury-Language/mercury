@@ -496,7 +496,7 @@ process_continuation(WantReturnInfo, CallInfo, !Internals) :-
         ReturnLabel = internal_label(ReturnLabelNum, _)
     ;
         ReturnLabel = entry_label(_, _),
-        unexpected(this_file, "process_continuation: bad return")
+        unexpected($module, $pred, "bad return")
     ),
     ( map.search(!.Internals, ReturnLabelNum, Internal0) ->
         Internal0 = internal_layout_info(Port0, Resume0, Return0)
@@ -642,7 +642,7 @@ find_return_var_lvals([Var | Vars], StackSlots, OkToDeleteAny, OutputArgLocs,
             VarLvals = TailVarLvals
         ;
             OkToDeleteAny = no,
-            unexpected(this_file, "find_return_var_lvals: no slot")
+            unexpected($module, $pred, "no slot")
         )
     ).
 
@@ -727,14 +727,13 @@ generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo, ModuleInfo,
     ( LvalList = [LvalPrime] ->
         Lval = LvalPrime
     ;
-        unexpected(this_file, "var has more than one lval in stack resume map")
+        unexpected($module, $pred,
+            "var has more than one lval in stack resume map")
     ),
     ( Lval = stackvar(N) ->
-        expect(N > 0, this_file,
-            "generate_resume_layout_for_var: bad stackvar")
+        expect(N > 0, $module, $pred, "bad stackvar")
     ; Lval = stackvar(N) ->
-        expect(N > 0, this_file,
-            "generate_resume_layout_for_var: bad framevar")
+        expect(N > 0, $module, $pred, "bad framevar")
     ;
         true
     ),
@@ -797,7 +796,7 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
             TypeInfoDataMap),
         ClosureLayout = closure_layout_info(ArgLayouts, TypeInfoDataMap)
     ;
-        unexpected(this_file,
+        unexpected($module, $pred,
             "proc headvars and pred argtypes disagree on arity")
     ).
 
@@ -842,12 +841,9 @@ find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
             ),
             solutions.solutions_set(ConvertLval, Locns)
         ;
-            varset.lookup_name(VarSet, TypeInfoVar, VarString),
-            string.format("%s: %s %s",
-                [s("find_typeinfos_for_tvars"),
-                s("can't find rval for type_info var"),
-                s(VarString)], ErrStr),
-            unexpected(this_file, ErrStr)
+            varset.lookup_name(VarSet, TypeInfoVar, VarName),
+            unexpected($module, $pred,
+                "can't find rval for type_info var " ++ VarName)
         )
     ),
     list.map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
@@ -909,11 +905,9 @@ find_typeinfos_for_tvars_table(TypeVars, NumberedVars, ProcInfo,
             Locn = LocnPrime
         ;
             type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-            varset.lookup_name(VarSet, TypeInfoVar, VarString),
-            string.format("%s: %s %s",
-                [s("find_typeinfos_for_tvars_table"),
-                s("can't find slot for type_info var"), s(VarString)], ErrStr),
-            unexpected(this_file, ErrStr)
+            varset.lookup_name(VarSet, TypeInfoVar, VarName),
+            unexpected($module, $pred,
+                "can't find slot for type_info var " ++ VarName)
         )
     ),
     list.map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
@@ -958,11 +952,5 @@ live_value_type(slot_region_disj, live_value_region_disj).
 live_value_type(slot_region_commit, live_value_region_commit).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "continuation_info.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module continuation_info.
+:- end_module ll_backend.continuation_info.
 %-----------------------------------------------------------------------------%

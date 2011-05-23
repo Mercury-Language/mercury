@@ -170,7 +170,7 @@ foreign_type_required_imports(Target, _TypeCtor - TypeDefn) = Imports :-
                     unqualified(Location))),
                 Imports = [foreign_import(Name)]
             ;
-                unexpected(this_file, "no IL type")
+                unexpected($module, $pred, "no IL type")
             )
         ;
             ( TypeBody = hlds_du_type(_, _, _,_,  _, _, _, _)
@@ -182,10 +182,10 @@ foreign_type_required_imports(Target, _TypeCtor - TypeDefn) = Imports :-
         )
     ;
         Target = target_x86_64,
-        unexpected(this_file, "target x86_64 and --high-level-code")
+        unexpected($module, $pred, "target x86_64 and --high-level-code")
     ;
         Target = target_erlang,
-        unexpected(this_file, "foreign_type_required_imports: target erlang")
+        unexpected($module, $pred, "target erlang")
     ).
 
 :- pred ml_gen_defns(module_info::in, module_info::out,
@@ -726,7 +726,7 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
             Decls = ConvDecls ++ DeclsTail
         )
     ;
-        unexpected(this_file, "ml_gen_convert_headvars: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -752,7 +752,7 @@ ml_gen_table_structs(ModuleInfo, Defns) :-
         % GC support (stack frame registration, and calls to MR_GC_check()) to
         % MR_make_long_lived() and MR_deep_copy() so that we do garbage
         % collection of the "global heap" which is used to store the tables.
-        expect(isnt(unify(gc_accurate), GC_Method), this_file,
+        expect(isnt(unify(gc_accurate), GC_Method), $module, $pred,
             "tabling and `--gc accurate'"),
 
         list.foldl(ml_gen_add_table_var(ModuleInfo), TableStructs, [], Defns)
@@ -1000,11 +1000,5 @@ attribute_to_mlds_attribute(ModuleInfo, custom(Type)) =
     custom(mercury_type_to_mlds_type(ModuleInfo, Type)).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_proc_gen.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module ml_proc_gen.
+:- end_module ml_backend.ml_proc_gen.
 %-----------------------------------------------------------------------------%

@@ -136,10 +136,10 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         CodeModel = model_det
     ;
         CodeModel = model_semi,
-        sorry(this_file, "semidet parallel conjunction not implemented")
+        sorry($module, $pred, "semidet parallel conjunction not implemented")
     ;
         CodeModel = model_non,
-        sorry(this_file, "nondet parallel conjunction not implemented")
+        sorry($module, $pred, "nondet parallel conjunction not implemented")
     ),
 
     get_globals(!.CI, Globals),
@@ -195,7 +195,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         SyncTermBaseSlot = SyncTermBaseSlotPrime,
         ParentSyncTermBaseSlot = parent_stackvar(SlotNum)
     ;
-        unexpected(this_file, "generate_par_conj")
+        unexpected($module, $pred, "cannot find stack slot")
     ),
 
     NumGoals = list.length(Goals),
@@ -445,11 +445,5 @@ create_static_conj_id(GoalInfo, SlotNum, !CI) :-
     add_threadscope_string(String, SlotNum, !CI).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "par_conj_gen.m".
-
-%----------------------------------------------------------------------------%
-:- end_module par_conj_gen.
+:- end_module ll_backend.par_conj_gen.
 %----------------------------------------------------------------------------%

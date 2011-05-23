@@ -5,7 +5,7 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File rbmm.region_instruction.m.
 % Main author: Quan Phan
 %
@@ -13,6 +13,7 @@
 % each program point in a procedure based on its region points-to graph and
 % live region information.
 %
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.region_instruction.
 :- interface.
@@ -91,7 +92,7 @@
     %
     % A procedure is 'allowed' to manipulate the regions belongs to either
     % bornR or deadR or localR.
-    % 
+    %
     % These sets are needed for computing resurrection of regions later on.
     %
 :- pred introduce_region_instructions(module_info::in, rpta_info_table::in,
@@ -124,9 +125,9 @@ introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
     list.foldl4(introduce_region_instructions_pred(ModuleInfo,
         RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
         VoidVarRegionTable, BornRTable, DeadRTable, LocalRTable), PredIds,
-        map.init, BecomeLiveTable, 
-        map.init, BecomeDeadBeforeTable, 
-        map.init, BecomeDeadAfterTable, 
+        map.init, BecomeLiveTable,
+        map.init, BecomeDeadBeforeTable,
+        map.init, BecomeDeadAfterTable,
         map.init, RegionInstructionTable).
 
 :- pred introduce_region_instructions_pred(module_info::in,
@@ -201,9 +202,9 @@ introduce_region_instructions_proc(ModuleInfo, PredId, RptaInfoTable,
     pp_region_set_table::in, pp_region_set_table::in,
     pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, module_info::in, proc_info::in,
-    pp_region_set_table::in, pp_region_set_table::out, 
-    pp_region_set_table::in, pp_region_set_table::out, 
-    pp_region_set_table::in, pp_region_set_table::out, 
+    pp_region_set_table::in, pp_region_set_table::out,
+    pp_region_set_table::in, pp_region_set_table::out,
+    pp_region_set_table::in, pp_region_set_table::out,
     region_instr_proc::in, region_instr_proc::out) is det.
 
 introduce_region_instructions_exec_paths([], _, _, _, _, _, _, _, _, _, _, _,
@@ -230,9 +231,9 @@ introduce_region_instructions_exec_paths([ExecPath|ExecPaths], RptaInfo,
     pp_region_set_table::in, pp_region_set_table::in,
     pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, module_info::in, proc_info::in, region_set::in,
-    pp_region_set_table::in, pp_region_set_table::out, 
-    pp_region_set_table::in, pp_region_set_table::out, 
-    pp_region_set_table::in, pp_region_set_table::out, 
+    pp_region_set_table::in, pp_region_set_table::out,
+    pp_region_set_table::in, pp_region_set_table::out,
+    pp_region_set_table::in, pp_region_set_table::out,
     region_instr_proc::in, region_instr_proc::out) is det.
 
 introduce_region_instructions_exec_path([], _, _, _, _, _, _, _, _, _, _, _, _,
@@ -296,7 +297,7 @@ introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
         % before the next program point if the current procedure is allowed
         % to remove it.
         map.lookup(ProcLRBefore, NextProgPoint, LRBeforeNext),
-        
+
         set.intersect(Allowed, set.difference(LRAfter, LRBeforeNext),
             BecomeDeadBeforeNextProgPoint),
 
@@ -304,7 +305,7 @@ introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
             BornR, DeadR, LocalR,
             ProcLRBefore, ProcLRAfter, ProcVoidVarRegion,
             BornRTable, DeadRTable, ModuleInfo, ProcInfo,
-            BecomeDeadBeforeNextProgPoint, 
+            BecomeDeadBeforeNextProgPoint,
             !BecomeLiveProc, !BecomeDeadBeforeProc, !BecomeDeadAfterProc,
             !RegionInstructionProc)
     ;
@@ -392,7 +393,7 @@ annotate_expr(Expr, ProgPoint, BecomeLive, BecomeDead,
         % Special treatment for an atomic switch, i.e. a deconstruction
         % unification that has been removed by MMC. We record the remove
         % annotations after the program point.
-        % 
+        %
         CreatedBeforeProgPoint = set.init,
         RemovedAfterProgPoint = BecomeDead
     ;
@@ -403,7 +404,7 @@ annotate_expr(Expr, ProgPoint, BecomeLive, BecomeDead,
         CreatedBeforeProgPoint = set.init,
         RemovedAfterProgPoint = set.init
     ;
-        unexpected(this_file, "annotate_expr: non-atomic goal found")
+        unexpected($module, $pred, "non-atomic goal")
     ).
 
     % This predicate ensures that, out of the regions that become live at
@@ -522,14 +523,9 @@ make_create_or_remove_instruction(RegionInstrType, RegionName,
         RegionInstruction = remove_region(RegionName)
     ;
         RegionInstrType = renaming_region_instr,
-        unexpected(this_file, "make_create_or_remove_instruction: "
-            ++ "unexpected region instruction type")
+        unexpected($module, $pred, "unexpected region instruction type")
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.region_instruction.m".
-
+:- end_module transform_hlds.rbmm.region_instruction.
 %-----------------------------------------------------------------------------%

@@ -79,7 +79,7 @@ atsort(Succmap, Predmap, MustSuccmap, MustPredmap, PrefOrder, Sortlist) :-
     ( Snodelist = Pnodelist ->
         Nodelist = Snodelist
     ;
-        unexpected(this_file, "succ and pred nodelists differ in atsort")
+        unexpected($module, $pred, "succ and pred nodelists differ")
     ),
     atsort_main(Nodelist, Succmap, Predmap, MustSuccmap, MustPredmap,
         PrefOrder, Sortlist).
@@ -160,7 +160,7 @@ atsort_must_avoid([Head | Tail], Avoidlist) :-
 :- pred atsort_choose_pref(list(T)::in, list(T)::in, T::out) is det.
 
 atsort_choose_pref([], _CanChoose, _Chosen) :-
-    unexpected(this_file, "cannot choose any node in atsort").
+    unexpected($module, $pred, "cannot choose any node in atsort").
 atsort_choose_pref([Pref | Prefs], CanChoose, Chosen) :-
     ( list.member(Pref, CanChoose) ->
         Chosen = Pref
@@ -316,9 +316,5 @@ atsort_maybe_insert([Node | Nodes], !List) :-
     atsort_maybe_insert(Nodes, !List).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "atsort.m".
-
+:- end_module libs.atsort.
 %-----------------------------------------------------------------------------%

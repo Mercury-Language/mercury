@@ -412,7 +412,7 @@ make_instance_constr_id(TCName, Types, TCNum, Arity, RttiId) :-
 gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
     (
         RttiTypeInfo = plain_arity_zero_type_info(_),
-        unexpected(this_file, "gen_type_info_defn: plain_arity_zero_type_info")
+        unexpected($module, $pred, "plain_arity_zero_type_info")
     ;
         RttiTypeInfo = plain_type_info(RttiTypeCtor, ArgTypes),
         ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap),
@@ -483,8 +483,7 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
         !GlobalData) :-
     (
         RttiPseudoTypeInfo = plain_arity_zero_pseudo_type_info(_),
-        unexpected(this_file,
-            "gen_pseudo_type_info_defn: plain_arity_zero_pseudo_type_info")
+        unexpected($module, $pred, "plain_arity_zero_pseudo_type_info")
     ;
         RttiPseudoTypeInfo = plain_pseudo_type_info(RttiTypeCtor, ArgTypes),
         ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap),
@@ -549,7 +548,7 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
         )
     ;
         RttiPseudoTypeInfo = type_var(_),
-        unexpected(this_file, "gen_pseudo_type_info_defn: type_var")
+        unexpected($module, $pred, "type_var")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -758,7 +757,7 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
         Rep = du_ll_rep(Ptag, SectagAndLocn)
     ;
         Rep = du_hl_rep(_),
-        unexpected(this_file, "output_du_functor_defn: du_hl_rep")
+        unexpected($module, $pred, "du_hl_rep")
     ),
     (
         SectagAndLocn = sectag_locn_none,
@@ -1040,7 +1039,7 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap, !GlobalData) :-
             )],
             FirstPtag = 1
         ;
-            unexpected(this_file, "gen_du_ptag_ordered_table: bad ptag list")
+            unexpected($module, $pred, "bad ptag list")
         )
     ),
     PtagInitializers = gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
@@ -1057,8 +1056,7 @@ gen_du_ptag_ordered_table_body(_, _, [], _) = [].
 gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
         [Ptag - SectagTable | PtagTail], CurPtag)
         = [Initializer | Initializers] :-
-    expect(unify(Ptag, CurPtag), this_file,
-        "gen_du_ptag_ordered_table_body: ptag mismatch"),
+    expect(unify(Ptag, CurPtag), $module, $pred, "ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSharers, _SectagMap),
     RttiName = type_ctor_du_ptag_layout(Ptag),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
@@ -1503,21 +1501,17 @@ gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Initializer, !GlobalData) :-
     % boxed, but the generated special pred may operate on unboxed values,
     % hence we need to generate a wrapper function which unboxes the arguments
     % if necessary.
-    ( univ_to_type(RttiProcIdUniv, RttiProcId) ->
-        ( RttiProcId ^ rpl_proc_arity = 0 ->
-            % If there are no arguments, then there's no unboxing to do,
-            % so we don't need a wrapper. (This case can occur with
-            % --no-special-preds, where the procedure will be
-            % private_builtin.unused/0.)
-            Initializer = gen_init_proc_id(ModuleInfo, RttiProcId)
-        ;
-            NumExtra = 0,
-            gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
-                special_pred_closure, Initializer, !GlobalData)
-        )
+    det_univ_to_type(RttiProcIdUniv, RttiProcId),
+    ( RttiProcId ^ rpl_proc_arity = 0 ->
+        % If there are no arguments, then there's no unboxing to do,
+        % so we don't need a wrapper. (This case can occur with
+        % --no-special-preds, where the procedure will be
+        % private_builtin.unused/0.)
+        Initializer = gen_init_proc_id(ModuleInfo, RttiProcId)
     ;
-        unexpected(this_file,
-            "gen_init_special_pred: cannot extract univ value")
+        NumExtra = 0,
+        gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
+            special_pred_closure, Initializer, !GlobalData)
     ).
 
 :- pred gen_wrapper_func_and_initializer(module_info::in, int::in,
@@ -1579,12 +1573,8 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Initializer :-
     mlds_initializer.
 
 gen_init_proc_id_from_univ(ModuleInfo, ProcLabelUniv) = Initializer :-
-    ( univ_to_type(ProcLabelUniv, ProcLabel) ->
-        Initializer = gen_init_proc_id(ModuleInfo, ProcLabel)
-    ;
-        unexpected(this_file,
-            "gen_init_proc_id_from_univ: cannot extract univ value")
-    ).
+    det_univ_to_type(ProcLabelUniv, ProcLabel),
+    Initializer = gen_init_proc_id(ModuleInfo, ProcLabel).
 
     % Succeed iff the specified rtti_data is one that requires an
     % explicit mlds_defn to define it.
@@ -1659,7 +1649,7 @@ add_rtti_defn_nodes(Defn, !Graph, !NameMap) :-
         ; Name = entity_function(_, _, _, _)
         ; Name = entity_export(_)
         ),
-        unexpected(this_file, "add_rtti_defn_nodes: expected entity_data")
+        unexpected($module, $pred, "expected entity_data")
     ).
 
 :- pred add_rtti_defn_arcs(mlds_defn::in,
@@ -1674,7 +1664,7 @@ add_rtti_defn_arcs(Defn, !Graph) :-
     ->
         add_rtti_defn_arcs_initializer(DefnDataName, Initializer, !Graph)
     ;
-        unexpected(this_file, "add_rtti_defn_arcs: expected rtti entity_data")
+        unexpected($module, $pred, "expected rtti entity_data")
     ).
 
 :- pred add_rtti_defn_arcs_initializer(mlds_data_name::in,
@@ -1778,9 +1768,5 @@ add_rtti_defn_arcs_const(DefnDataName, Const, !Graph) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rtti_to_mlds.m".
-
+:- end_module ml_backend.rtti_to_mlds.
 %-----------------------------------------------------------------------------%

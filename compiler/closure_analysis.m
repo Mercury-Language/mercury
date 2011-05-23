@@ -305,11 +305,10 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
                 % Sanity check: make sure the rhs is also a higher-order
                 % variable.
 
-                ( not var_has_ho_type(VarTypes, RHS) ->
-                    unexpected(this_file,
-                        "not a higher-order var in process_goal_2")
-                ;
+                ( var_has_ho_type(VarTypes, RHS) ->
                     true
+                ;
+                    unexpected($module, $pred, "not a higher-order var")
                 ),
                 Values = map.lookup(!.ClosureInfo, RHS),
                 map.det_insert(LHS, Values, !ClosureInfo)
@@ -383,7 +382,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         Goal = Goal0
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "shorthand/1 goal during closure analysis.")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %----------------------------------------------------------------------------%
@@ -395,9 +394,9 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
 
 partition_arguments(_, _, [],    [], !Inputs, !Outputs).
 partition_arguments(_, _, [_|_], [], _, _, _, _) :-
-    unexpected(this_file, "partition_arguments/7 unequal length lists.").
+    unexpected($module, $pred, "unequal length lists.").
 partition_arguments(_, _, [],    [_|_], _, _, _, _) :-
-    unexpected(this_file, "partition_arguments/7 unequal length lists.").
+    unexpected($module, $pred, "unequal length lists.").
 partition_arguments(ModuleInfo, VarTypes, [ Var | Vars ], [ Mode | Modes ],
         !Inputs, !Outputs) :-
     ( var_has_ho_type(VarTypes, Var) ->
@@ -468,7 +467,7 @@ dump_closure_info_expr(_, call_foreign_proc(_, _, _, _, _, _, _), _, !IO).
 dump_closure_info_expr(Varset, disj(Goals), _, !IO) :-
     list.foldl(dump_closure_info(Varset), Goals, !IO).
 dump_closure_info_expr(_, shorthand(_), _, _, _) :-
-    unexpected(this_file, "shorthand goal encountered.\n").
+    unexpected($module, $pred, "shorthand").
 
 :- pred dump_ho_values(hlds_goal_info::in, prog_varset::in,
     io::di, io::uo) is det.
@@ -497,11 +496,5 @@ dump_ho_value(Varset, ProgVar, Values, !IO) :-
     set.fold(WritePPIds, Values, !IO).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "closure_analysis.m".
-
-%----------------------------------------------------------------------------%
-:- end_module closure_analysis.
+:- end_module transform_hlds.closure_analysis.
 %----------------------------------------------------------------------------%

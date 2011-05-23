@@ -9,7 +9,7 @@
 % File: purity.m
 % Main authors: schachte (Peter Schachte, main author and designer of
 % purity system), trd (modifications for impure functions).
-
+%
 % Purpose: handle `impure' and `promise_pure' declarations; finish off
 % type checking.
 %
@@ -735,8 +735,7 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                         AllAtomicGoals1 = [MainGoal1 | OrElseGoals1]
                     ;
                         AllAtomicGoals1 = [],
-                        unexpected(this_file,
-                            "compute_expr_purity: AllAtomicGoals1 = []")
+                        unexpected($module, $pred, "AllAtomicGoals1 = []")
                     ),
                     !Info ^ pi_requant := need_to_requantify
                 )
@@ -772,7 +771,7 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "compute_expr_purity: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -1183,7 +1182,7 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity)
         CodeStr = "impure"
     ;
         PromisedPurity = purity_impure,
-        unexpected(this_file, "warn_unnecessary_promise_pure: promise_impure?")
+        unexpected($module, $pred, "promise_impure")
     ),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     MainPieces = [words("warning: unnecessary"), quote(Pragma),
@@ -1360,11 +1359,5 @@ purity_info_add_message(Spec, Info0, Info) :-
     Info = Info0 ^ pi_messages := [Spec | Info0 ^ pi_messages].
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "purity.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module purity.
+:- end_module check_hlds.purity.
 %-----------------------------------------------------------------------------%

@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2008, 2010 The University of Melbourne.
+% Copyright (C) 2003-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: proc_label.m.
 % Main author: zs.
-
+%
 % This file defines backend-independent identifiers for procedures that a
 % backend can use as the basis for the names of the labels or functions
 % implementing those procedures. It also has functions for creating these
@@ -86,10 +86,8 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
             ProcLabel = special_proc_label(DefiningModule, SpecialPred,
                 TypeModule, TypeName, TypeArity, ProcIdInt)
         ;
-            string.append_list(["make_proc_label:\n",
-                "cannot make label for special pred `", PredName, "'"],
-                ErrorMessage),
-            unexpected(this_file, ErrorMessage)
+            unexpected($module, $pred,
+                "cannot make label for special pred `" ++ PredName ++ "'")
         )
     ;
         ProcLabel = make_user_proc_label(ThisModule, PredIsImported,
@@ -139,13 +137,9 @@ make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
         ProcLabel = special_proc_label(Module, spec_pred_unify, TypeModule,
             TypeName, Arity, UniModeNumInt)
     ;
-        unexpected(this_file, "make_uni_label: unqualified type_ctor")
+        unexpected($module, $pred, "unqualified type_ctor")
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "proc_label.m".
-
+:- end_module backend_libs.proc_label.
 %-----------------------------------------------------------------------------%

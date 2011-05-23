@@ -203,10 +203,9 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
             % Use the original variable names for the headvars of foreign_proc
             % clauses, not the introduced `HeadVar__n' names.
             VarSet = list.foldl(set_arg_names, Args, VarSet0),
-            expect(unify(ExtraArgs, []), this_file,
-                "copy_clauses_to_proc: extra_args"),
-            expect(unify(MaybeTraceRuntimeCond, no), this_file,
-                "copy_clauses_to_proc: trace runtime cond")
+            expect(unify(ExtraArgs, []), $module, $pred, "extra_args"),
+            expect(unify(MaybeTraceRuntimeCond, no), $module, $pred,
+                "trace runtime cond")
         ;
             ( SingleExpr = plain_call(_, _, _, _, _, _)
             ; SingleExpr = generic_call(_, _, _, _)
@@ -386,7 +385,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
         ExtraArgModes = ExtraArgModes0,
         OrigArgModes = OrigArgModes0
     ;
-        unexpected(this_file, "introduce_exists_casts_proc: split_list failed")
+        unexpected($module, $pred, "split_list failed")
     ),
 
     % Add exists_casts for any head vars which are existentially typed,
@@ -442,8 +441,7 @@ introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypes, ArgModes,
             HeadVar0, HeadVar, !VarSet, !VarTypes, !ExtraGoals),
         !:HeadVars = [HeadVar | HeadVarsRest]
     ;
-        unexpected(this_file, "introduce_exists_casts_for_head: " ++
-            "length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 :- pred introduce_exists_casts_for_arg(module_info::in, tsubst::in,
@@ -484,7 +482,7 @@ introduce_exists_casts_extra(_, _, ExistConstraints, [], [], !VarSet,
         ExistConstraints = []
     ;
         ExistConstraints = [_ | _],
-        unexpected(this_file, "introduce_exists_casts_extra: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
@@ -528,8 +526,7 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
                 ExistConstraints0 = [ExistConstraint | ExistConstraints]
             ;
                 ExistConstraints0 = [],
-                unexpected(this_file,
-                    "introduce_exists_casts_extra: missing constraint")
+                unexpected($module, $pred, "missing constraint")
             ),
             rtti_det_insert_typeclass_info_var(ExistConstraint, Var,
                 !RttiVarMaps),
@@ -540,8 +537,7 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
             maybe_add_type_info_locns(ConstraintArgs, Var, 1, !RttiVarMaps)
         ;
             VarInfo = non_rtti_var,
-            unexpected(this_file,
-                "introduce_exists_casts_extra: rtti_varmaps info not found")
+            unexpected($module, $pred, "rtti_varmaps info not found")
         )
     ;
         Var = Var0,
@@ -574,12 +570,6 @@ make_new_exist_cast_var(InternalVar, ExternalVar, !VarSet) :-
     varset.lookup_name(!.VarSet, InternalVar, InternalName),
     string.append("ExistQ", InternalName, ExternalName),
     varset.name_var(ExternalVar, ExternalName, !VarSet).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "clause_to_proc.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.clause_to_proc.

@@ -175,15 +175,9 @@ choose_var(Vars0, Var, Vars) :-
         Var = VarPrime,
         Vars = VarsPrime
     ;
-        unexpected(this_file, "choose_var: no vars!")
+        unexpected($module, $pred, "no vars!")
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "graph_colour.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module graph_colour.
+:- end_module libs.graph_colour.
 %-----------------------------------------------------------------------------%

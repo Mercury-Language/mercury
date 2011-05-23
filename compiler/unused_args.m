@@ -686,8 +686,7 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
             )
         ;
             Unify = deconstruct(CellVar, _, Args, Modes, CanFail, _),
-            expect(unify(CellVar, LHS), this_file,
-                "unused_args_traverse_goal: LHS != CellVar"),
+            expect(unify(CellVar, LHS), $module, $pred, "LHS != CellVar"),
             partition_deconstruct_args(Info, Args, Modes,
                 InputVars, OutputVars),
             % The deconstructed variable is used if any of the variables that
@@ -705,8 +704,7 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
             )
         ;
             Unify = construct(CellVar, _, Args, _, _, _, _),
-            expect(unify(CellVar, LHS), this_file,
-                "unused_args_traverse_goal: LHS != CellVar"),
+            expect(unify(CellVar, LHS), $module, $pred, "LHS != CellVar"),
             ( local_var_is_used(!.VarDep, CellVar) ->
                 set_list_vars_used(Args, !VarDep)
             ;
@@ -725,15 +723,14 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
                 ( RHS = rhs_functor(_, _, _)
                 ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
                 ),
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "complicated unifications should only be var-var")
             )
         )
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file,
-            "unused_args_traverse_goal: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
     % Add PredProc - HeadVar as an alias for the same element of Args.
@@ -754,7 +751,7 @@ add_pred_call_arg_dep(PredProc, LocalArguments, HeadVarIds, !VarDep) :-
     ->
         true
     ;
-        unexpected(this_file, "add_pred_call_arg_dep: invalid call")
+        unexpected($module, $pred, "invalid call")
     ).
 
 :- pred add_arg_dep(prog_var::in, pred_proc_id::in, prog_var::in,
@@ -820,7 +817,7 @@ partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
         InputVars = [],
         OutputVars = []
     ;
-        unexpected(this_file, "get_instantiating_variables - invalid call")
+        unexpected($module, $pred, "mismatched lists")
     ).
 
     % Add Alias as an alias for all of Vars.
@@ -1525,7 +1522,7 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "unused_args_fixup_goal_expr: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred rename_apart_unused_foreign_arg(foreign_arg::in, foreign_arg::out,
@@ -1651,7 +1648,7 @@ need_unify(ModuleInfo, UnusedVars, Unify, Changed) :-
     ;
         % These should have been transformed into calls by polymorphism.m.
         Unify = complicated_unify(_, _, _),
-        unexpected(this_file, "need_unify: complicated unify")
+        unexpected($module, $pred, "complicated unify")
     ).
 
     % Check if any of the arguments of a deconstruction are unused, if
@@ -1688,7 +1685,7 @@ check_deconstruct_args(ModuleInfo, UnusedVars, Args, Modes, !.SomeUsed,
         !.SomeUsed = yes,
         Changed = no
     ;
-        unexpected(this_file, "check_deconstruct_args - invalid call")
+        unexpected($module, $pred, "mismatched lists")
     ).
 
     % Remove unused vars from the instmap_delta, quantification fixes up
@@ -1865,7 +1862,7 @@ report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
 
 :- func format_arg_list(list(int)) = list(format_component).
 
-format_arg_list([]) = unexpected(this_file, "format_arg_list: empty list").
+format_arg_list([]) = unexpected($module, $pred, "empty list").
 format_arg_list([Arg | Rest]) = Pieces :-
     ArgStr = int_to_string(Arg),
     (
@@ -2043,11 +2040,5 @@ write_arg_var_in_proc(ModuleInfo, ArgVarInProc, !IO) :-
     io.format("%s: %s\n", [s(PredProcIdStr), s(VarStr)], !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "unused_args.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module unused_args.
+:- end_module transform_hlds.unused_args.
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -181,7 +181,7 @@ extract_proc_label_from_code_addr(CodeAddr) = ProcLabel :-
     ; CodeAddr = code_imported_proc(ProcLabelPrime) ->
         ProcLabel = ProcLabelPrime
     ;
-        unexpected(this_file, "extract_label_from_code_addr failed")
+        unexpected($module, $pred, "failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -264,7 +264,7 @@ goal_may_alloc_temp_frame_2(if_then_else(_Vars, C, T, E), May) :-
     ).
 goal_may_alloc_temp_frame_2(shorthand(_), _) :-
     % These should have been expanded out by now.
-    unexpected(this_file, "goal_may_alloc_temp_frame_2: shorthand").
+    unexpected($module, $pred, "shorthand").
 
 :- pred goal_list_may_alloc_temp_frame(list(hlds_goal)::in, bool::out) is det.
 
@@ -331,7 +331,7 @@ neg_op(float_gt, float_le).
 neg_op(float_ge, float_lt).
 
 negate_the_test([], _) :-
-    unexpected(this_file, "negate_the_test on empty list").
+    unexpected($module, $pred, "empty list").
 negate_the_test([Instr0 | Instrs0], Instrs) :-
     ( Instr0 = llds_instr(if_val(Test, Target), Comment) ->
         neg_rval(Test, NewTest),
@@ -412,12 +412,6 @@ build_input_arg_list_2([V - Arg | Rest0], VarArgs) :-
     ),
     build_input_arg_list_2(Rest0, VarArgs0).
 
-%---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "code_util.m".
-
 %-----------------------------------------------------------------------------%
-:- end_module code_util.
+:- end_module ll_backend.code_util.
 %-----------------------------------------------------------------------------%

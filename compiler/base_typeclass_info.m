@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000, 2003-2007, 2010 The University of Melbourne.
+% Copyright (C) 1996-2000, 2003-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -118,8 +118,8 @@ gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
     base_typeclass_info::out) is det.
 
 gen_body(no, _, _, _, _, _) :-
-    unexpected(this_file, "pred_proc_ids should have " ++
-        "been filled in by check_typeclass.m").
+    unexpected($module, $pred,
+        "pred_proc_ids should have been filled in by check_typeclass.m").
 gen_body(yes(PredProcIds0), Types, Constraints, ModuleInfo, ClassId,
         BaseTypeClassInfo) :-
     type_vars_list(Types, TypeVars),
@@ -160,9 +160,5 @@ gen_superclass_count(ClassId, ModuleInfo, NumSuperClasses, ClassArity) :-
     list.length(ClassDefn ^ class_vars, ClassArity).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "base_typeclass_info.m".
-
+:- end_module backend_libs.base_typeclass_info.
 %----------------------------------------------------------------------------%

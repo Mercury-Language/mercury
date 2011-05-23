@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -200,9 +200,8 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
             )
         ;
             UnifyCompare = abstract_noncanonical_type(_),
-            unexpected(this_file, "special_pred_needs_term" ++
-                "_check/3: type is local and " ++
-                "abstract_noncanonical")
+            unexpected($module, $pred,
+                "type is local and abstract_noncanonical")
         )
     ). 
 
@@ -238,8 +237,7 @@ emit_non_term_user_special_warning(Globals, Context, SpecialPred, TypeCtor,
         SpecialPredStr = "initialisation"
     ;
         SpecialPred = spec_pred_index,
-        unexpected(this_file, "emit_non_term_user_special_" ++
-            "warning/5 index predicate.")
+        unexpected($module, $pred, "index predicate.")
     ),
     Pieces = [words("Warning: the user-defined "),
         fixed(SpecialPredStr ++ " predicate"),
@@ -249,11 +247,5 @@ emit_non_term_user_special_warning(Globals, Context, SpecialPred, TypeCtor,
     report_warning(Globals, Context, 0, Pieces, !IO).    
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "post_term_analysis.m".
-
-%----------------------------------------------------------------------------%
-:- end_module post_term_analysis.
+:- end_module transform_hlds.post_term_analysis.
 %----------------------------------------------------------------------------%

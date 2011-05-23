@@ -1095,7 +1095,7 @@ module_info_user_init_fn_pred_procs_2(MI, SymName / Arity, PredProcId) :-
         pred_table.get_proc_id(MI, PredId, ProcId),
         PredProcId = proc(PredId, ProcId)
     ;
-        unexpected(this_file, "module_info_user_init_fn_pred_procs_2")
+        unexpected($module, $pred, "lookup failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1214,8 +1214,7 @@ module_info_pred_info(MI, PredId, PredInfo) :-
     ;
         pred_id_to_int(PredId, PredInt),
         string.int_to_string(PredInt, PredStr),
-        string.append("cannot find predicate number ", PredStr, Msg),
-        unexpected(this_file, Msg)
+        unexpected($module, $pred, "cannot find predicate number " ++ PredStr)
     ).
 
 module_info_proc_info(MI, PPId, ProcInfo) :-
@@ -1275,7 +1274,8 @@ module_info_dependency_info(MI, DepInfo) :-
         DepInfo = DepInfoPrime
     ;
         MaybeDepInfo = no,
-        unexpected(this_file, "Attempted to access invalid dependency_info")
+        unexpected($module, $pred,
+            "Attempted to access invalid dependency_info")
     ).
 
 module_info_set_dependency_info(DependencyInfo, !MI) :-
@@ -1469,15 +1469,11 @@ hlds_dependency_info_init(DepInfo) :-
 hlds_dependency_info_get_dependency_graph(DepInfo, DepInfo ^ dep_graph).
 hlds_dependency_info_get_dependency_ordering(DepInfo, DepInfo ^ dep_ord).
 
-hlds_dependency_info_set_dependency_graph(DepGraph, DepInfo,
-    DepInfo ^ dep_graph := DepGraph).
-hlds_dependency_info_set_dependency_ordering(DepOrd, DepInfo,
-    DepInfo ^ dep_ord := DepOrd).
+hlds_dependency_info_set_dependency_graph(DepGraph, !DepInfo) :-
+    !DepInfo ^ dep_graph := DepGraph.
+hlds_dependency_info_set_dependency_ordering(DepOrd, !DepInfo) :-
+    !DepInfo ^ dep_ord := DepOrd.
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_module.m".
-
+:- end_module hlds.hlds_module.
 %-----------------------------------------------------------------------------%

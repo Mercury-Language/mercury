@@ -46,8 +46,8 @@
     % for the resurrecting region. This should happen only in the following
     % case:
     %       remove(R), % R -> R_Resur_1
-    %       create(R), % R -> R_Resur_2 
-    %   (i) goal    
+    %       create(R), % R -> R_Resur_2
+    %   (i) goal
     % That's why multi_map is used.
 :- type renaming == multi_map(string, string).
 
@@ -181,7 +181,7 @@ compute_resurrection_paths(ExecPathTable, LRBeforeTable, LRAfterTable,
 :- pred compute_resurrection_paths_proc(proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
-    proc_pp_region_set_table::in, proc_pp_region_set_table::in, 
+    proc_pp_region_set_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, pred_proc_id::in, list(execution_path)::in,
     proc_resurrection_path_table::in, proc_resurrection_path_table::out)
     is det.
@@ -238,7 +238,7 @@ compute_resurrection_paths_exec_path(LRBeforeProc, LRAfterProc,
 
 compute_resurrection_paths_prog_point(LRBeforeProc, LRAfterProc,
         BecomeLiveProc, BecomeDeadBeforeProc, BecomeDeadAfterProc,
-        ProgPoint - _, !CreatedCandidates, !RemovedCandidates, 
+        ProgPoint - _, !CreatedCandidates, !RemovedCandidates,
         !ResurrectedRegionsInExecPath) :-
     map.lookup(LRBeforeProc, ProgPoint, _LRBeforeProgPoint),
     map.lookup(LRAfterProc, ProgPoint, _LRAfterProgPoint),
@@ -300,7 +300,7 @@ collect_join_points_proc(ExecPathTable, PPId, _, !JoinPointTable) :-
     map.set(PPId, JoinPointProc, !JoinPointTable).
 
 :- pred collect_join_points_path(list(list(program_point))::in,
-    list(program_point)::in, 
+    list(program_point)::in,
     map(program_point, string)::in, map(program_point, string)::out,
     counter::in, counter::out,
     set(program_point)::in, set(program_point)::out,
@@ -577,8 +577,7 @@ collect_renaming_and_annotation_proc(ExecPathTable, JoinPointTable,
 
 collect_renaming_and_annotation_exec_path(_, _, _, _, _, _, _, [],
         !AnnotationProc, !RenamingProc) :-
-    unexpected(this_file, "collect_renaming_and_annotation_exec_path: "
-        ++ "empty execution path encountered").
+    unexpected($module, $pred, "empty execution path").
 
     % This is the first program point in an execution path.
     % It cannot be a join point. Renaming is needed at this point only
@@ -653,7 +652,7 @@ collect_renaming_and_annotation_exec_path_2(ResurrectionRenameProc,
         % Add annotations to the previous point.
         map.lookup(LRBeforeProc, ProgPoint, LRBeforeProgPoint),
         map.lookup(LRAfterProc, PrevProgPoint, LRAfterPrevProgPoint),
-        % Not yet dead in the sense that the region is still needed to be 
+        % Not yet dead in the sense that the region is still needed to be
         % removed.
         set.union(LRBeforeProgPoint, LRAfterPrevProgPoint, NotYetDeadRegions),
         set.intersect(ResurrectedRegions, NotYetDeadRegions,
@@ -753,9 +752,5 @@ make_renaming_instruction(OldRegionName, NewRegionName, RenameInstruction) :-
     RenameInstruction = rename_region(OldRegionName, NewRegionName).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.region_resurrection_renaming.m".
-
+:- end_module transform_hlds.rbmm.region_resurrection_renaming.
 %-----------------------------------------------------------------------------%

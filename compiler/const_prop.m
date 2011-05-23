@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2008, 2010 The University of Melbourne.
+% Copyright (C) 1997-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -606,11 +606,5 @@ make_true_or_fail(yes, true_goal_expr).
 make_true_or_fail(no, fail_goal_expr).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "const_prop.m".
-
-%---------------------------------------------------------------------------%
-:- end_module const_prop.
+:- end_module transform_hlds.const_prop.
 %---------------------------------------------------------------------------%

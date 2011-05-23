@@ -522,7 +522,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         )
     ;
         TypeAssignSet = [],
-        unexpected(this_file, "internal error in typecheck_info_get_vartypes")
+        unexpected($module, $pred, "TypeAssignSet = []")
     ).
 
     % Fully expand the types of the variables by applying the type bindings.
@@ -706,7 +706,7 @@ convert_args_type_assign_set_check_empty_args([ArgTypeAssign | ArgTypeAssigns])
         Args = [_ | _],
         % This should never happen, since the arguments should all have been
         % processed at this point.
-        unexpected(this_file, "convert_nonempty_args_type_assign_set")
+        unexpected($module, $pred, "Args != []")
     ).
 
 :- func convert_args_type_assign(args_type_assign) = type_assign.
@@ -1019,12 +1019,6 @@ checkpoint_tree_stats(Description, Tree, !IO) :-
     io.write_string(": count = ", !IO),
     io.write_int(Count, !IO),
     io.write_string("\n", !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "typecheck_info.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_info.

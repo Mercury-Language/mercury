@@ -294,7 +294,7 @@ trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
     ->
         set.list_to_set(FailVarsList, FailVars)
     ;
-        unexpected(this_file, "length mismatch in trace.fail_vars")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
@@ -791,7 +791,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
         ->
             Port = PortPrime
         ;
-            unexpected(this_file, "generate_internal_event_code: bad path")
+            unexpected($module, $pred, "bad path")
         ),
         (
             get_module_info(!.CI, ModuleInfo),
@@ -901,7 +901,7 @@ generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalId, Context, Code,
         MaybeTailRecInfo = yes(_ - TailRecLabel)
     ;
         MaybeTailRecInfo = no,
-        unexpected(this_file, "generate_tailrec_event_code: no tail rec label")
+        unexpected($module, $pred, "no tail rec label")
     ).
 
 :- pred generate_tailrec_reset_slots_code(trace_info::in,
@@ -924,13 +924,13 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
     % Tail recursion events cannot happen in model_non procedures, so stage 2
     % will not allocate any slots.
     MaybeRedoLabelLval = TraceInfo ^ ti_redo_label,
-    expect(unify(MaybeRedoLabelLval, no), this_file,
+    expect(unify(MaybeRedoLabelLval, no), $module, $pred,
         "redo label in procedure with TAIL event"),
     % Stage 3.
     % Tail recursion events are disabled if the trace level is shallow tracing,
     % so stage 3 will not allocate any slots.
     MaybeFromFullLval = TraceInfo ^ ti_from_full_lval,
-    expect(unify(MaybeFromFullLval, no), this_file,
+    expect(unify(MaybeFromFullLval, no), $module, $pred,
         "from_full slot in procedure with TAIL event"),
     % Stage 4.
     MaybeIoSeqSlot = TraceInfo ^ ti_io_seq_lval,
@@ -977,8 +977,7 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
         )
     ;
         TailRecInfo = no,
-        unexpected(this_file,
-            "generate_tailrec_reset_slots_code: no tail rec lval")
+        unexpected($module, $pred, "no tail rec lval")
     ),
     % Stage 8.
     MaybeCallTableLval = TraceInfo ^ ti_call_table_tip_lval,
@@ -1029,8 +1028,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
                 TailRecResetCode, !CI)
         ;
             MaybeTraceInfo = no,
-            unexpected(this_file,
-                "generate_event_code: tailrec call without TraceInfo")
+            unexpected($module, $pred, "tailrec call without TraceInfo")
         )
     ;
         PortInfo = port_info_internal(Path, PreDeaths),
@@ -1163,7 +1161,7 @@ maybe_setup_redo_event(TraceInfo, Code) :-
             MaybeFromFullSlot = yes(Lval),
             % The code in the runtime looks for the from-full flag in
             % framevar 5; see the comment before reserved_slots.
-            expect(unify(Lval, framevar(5)), this_file,
+            expect(unify(Lval, framevar(5)), $module, $pred,
                 "from-full flag not stored in expected slot"),
             Code = singleton(
                 llds_instr(mkframe(temp_frame(nondet_stack_proc),
@@ -1269,7 +1267,7 @@ stackref_to_string(Lval, LvalStr) :-
         string.int_to_string(Slot, SlotString),
         LvalStr = "MR_fv(" ++ SlotString ++ ")"
     ;
-        unexpected(this_file, "non-stack lval in stackref_to_string")
+        unexpected($module, $pred, "non-stack lval")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1329,7 +1327,7 @@ redo_layout_slot(CodeModel, RedoLayoutSlot) :-
         ( CodeModel = model_det
         ; CodeModel = model_semi
         ),
-        unexpected(this_file,
+        unexpected($module, $pred,
             "attempt to access redo layout slot for det or semi procedure")
     ).
 
@@ -1381,9 +1379,5 @@ redo_layout_slot(CodeModel, RedoLayoutSlot) :-
 get_trace_maybe_tail_rec_info(TraceInfo, TraceInfo ^ ti_tail_rec_info).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "trace_gen.m".
-
+:- end_module ll_backend.trace_gen.
 %-----------------------------------------------------------------------------%

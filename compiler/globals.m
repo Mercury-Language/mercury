@@ -548,8 +548,7 @@ get_backend_foreign_languages(Globals, ForeignLangs) :-
         ( convert_foreign_language(String, ForeignLang0) ->
             ForeignLang = ForeignLang0
         ;
-            unexpected(this_file, "io_get_backend_foreign_languages: " ++
-                "invalid foreign_language string")
+            unexpected($module, $pred, "invalid foreign_language string")
         ), LangStrs).
 
 set_options(Options, !Globals) :-
@@ -585,7 +584,7 @@ lookup_bool_option(Globals, Option, Value) :-
     ( OptionData = bool(Bool) ->
         Value = Bool
     ;
-        unexpected(this_file, "lookup_bool_option: invalid bool option")
+        unexpected($module, $pred, "invalid bool option")
     ).
 
 lookup_string_option(Globals, Option, Value) :-
@@ -593,7 +592,7 @@ lookup_string_option(Globals, Option, Value) :-
     ( OptionData = string(String) ->
         Value = String
     ;
-        unexpected(this_file, "lookup_string_option: invalid string option")
+        unexpected($module, $pred, "invalid string option")
     ).
 
 lookup_int_option(Globals, Option, Value) :-
@@ -601,7 +600,7 @@ lookup_int_option(Globals, Option, Value) :-
     ( OptionData = int(Int) ->
         Value = Int
     ;
-        unexpected(this_file, "lookup_int_option: invalid int option")
+        unexpected($module, $pred, "invalid int option")
     ).
 
 lookup_maybe_string_option(Globals, Option, Value) :-
@@ -609,8 +608,7 @@ lookup_maybe_string_option(Globals, Option, Value) :-
     ( OptionData = maybe_string(MaybeString) ->
         Value = MaybeString
     ;
-        unexpected(this_file,
-            "lookup_string_option: invalid maybe_string option")
+        unexpected($module, $pred, "invalid maybe_string option")
     ).
 
 lookup_accumulating_option(Globals, Option, Value) :-
@@ -618,8 +616,7 @@ lookup_accumulating_option(Globals, Option, Value) :-
     ( OptionData = accumulating(Accumulating) ->
         Value = Accumulating
     ;
-        unexpected(this_file,
-            "lookup_accumulating_option: invalid accumulating option")
+        unexpected($module, $pred, "invalid accumulating option")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -792,11 +789,5 @@ io_set_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
     set_maybe_source_file_map(MaybeSourceFileMap, !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "globals.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module globals.
+:- end_module libs.globals.
 %-----------------------------------------------------------------------------%

@@ -211,7 +211,7 @@ make_hlds_fundep_2(TVars, List) = list.foldl(Func, List, set.init) :-
 :- func get_list_index(list(T), hlds_class_argpos, T) = hlds_class_argpos.
 
 get_list_index([], _, _) = _ :-
-    unexpected(this_file, "get_list_index: element not found").
+    unexpected($module, $pred, "element not found").
 get_list_index([E | Es], N, X) =
     ( X = E ->
         N
@@ -285,8 +285,7 @@ add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
         !PredProcIds, !ModuleInfo, !Specs) :-
     (
         Method = method_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _),
-        unexpected(this_file,
-            "add_class_pred_or_func_mode_method: pred_or_func method item")
+        unexpected($module, $pred, "pred_or_func method item")
     ;
         Method = method_pred_or_func_mode(_VarSet, MaybePredOrFunc, PredName,
             Modes, _WithInst, _MaybeDet, _Cond, Context)
@@ -297,8 +296,7 @@ add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
         % The only way this could have happened now is if a `with_inst`
         % annotation was not expanded.
         MaybePredOrFunc = no,
-        unexpected(this_file, "add_class_pred_or_func_mode_method: " ++
-            "unexpanded `with_inst` annotation")
+        unexpected($module, $pred, "unexpanded `with_inst` annotation")
     ;
         MaybePredOrFunc = yes(PredOrFunc)
     ),
@@ -325,7 +323,7 @@ add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
         ;   
             % This shouldn't happen.
             Preds = [_, _ | _],
-            unexpected(this_file, "multiple preds matching method mode")
+            unexpected($module, $pred, "multiple preds matching method mode")
         )
     ;
         missing_pred_or_func_method_error(PredName, PredArity, PredOrFunc,
@@ -383,8 +381,7 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
             MaybePredOrFunc = no,
             % equiv_type.m should have either set the
             % pred_or_func or removed the item from the list.
-            unexpected(this_file, "module_add_class_method: " ++
-                "no pred_or_func on mode declaration")
+            unexpected($module, $pred, "no pred_or_func on mode declaration")
         )
     ).
 
@@ -412,8 +409,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
             QualName = unqualified(_),
             % The class interface should be fully module qualified
             % by prog_io.m at the time it is read in.
-            unexpected(this_file,
-                "add_default_class_method_func_modes: unqualified func")
+            unexpected($module, $pred, "unqualified func")
         ),
         list.length(TypesAndModes, PredArity),
         module_info_get_predicate_table(!.ModuleInfo, PredTable),
@@ -443,7 +439,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
                 )
             )
         ;
-            unexpected(this_file, "handle_methods_with_no_modes")
+            unexpected($module, $pred, "handle_methods_with_no_modes")
         )
     ;
         Method = method_pred_or_func_mode(_, _, _, _, _, _, _, _)
@@ -659,8 +655,8 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         PredName, HeadTerms0, Body, _ClauseContext, _SeqNum),
     % XXX Can this ever fail? If yes, we should generate an error message
     % instead of aborting.
-    expect(unify(PredOrFunc, ClausePredOrFunc), this_file,
-        "produce_instance_method_clause: PredOrFunc mismatch"),
+    expect(unify(PredOrFunc, ClausePredOrFunc), $module, $pred,
+        "PredOrFunc mismatch"),
     ( illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar) ->
         TVarSet = TVarSet0,
         report_illegal_func_svar_result(Context, CVarSet, StateVar, !Specs)
@@ -729,11 +725,5 @@ missing_pred_or_func_method_error(Name, Arity, PredOrFunc, Context, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "add_class.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module add_class.
+:- end_module hlds.make_hlds.add_class.
 %-----------------------------------------------------------------------------%

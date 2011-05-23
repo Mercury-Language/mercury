@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -363,8 +363,7 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
 
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
-    expect(negate(unify(OutVars, [])), this_file,
-        "generate_string_hash_several_soln_lookup_switch: no OutVars"),
+    expect(negate(unify(OutVars, [])), $module, $pred, "no OutVars"),
     (
         GoalsMayModifyTrail = yes,
         get_emit_trail_ops(!.CI, EmitTrailOps),
@@ -812,8 +811,7 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
 
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
-    expect(negate(unify(OutVars, [])), this_file,
-        "generate_string_binary_several_soln_lookup_switch: no OutVars"),
+    expect(negate(unify(OutVars, [])), $module, $pred, "no OutVars"),
     (
         GoalsMayModifyTrail = yes,
         get_emit_trail_ops(!.CI, EmitTrailOps),
@@ -1054,9 +1052,5 @@ generate_string_switch_fail(CanFail, FailCode, !CI) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "string_switch.m".
-
+:- end_module ll_backend.string_switch.
 %-----------------------------------------------------------------------------%

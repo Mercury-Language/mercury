@@ -314,13 +314,13 @@ add_mc_vars_for_goal(PredId, ProgVarset, Goal, !VarInfo) :-
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, _, _, _),
-            sorry(this_file, "add_mc_vars_for_goal: NYI: atomic_goal")
+            sorry($module, $pred, "NYI: atomic_goal")
         ;
             ShortHand = bi_implication(_, _),
-            unexpected(this_file, "add_mc_vars_for_goal: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ;
             ShortHand = try_goal(_, _, _),
-            sorry(this_file, "add_mc_vars_for_goal: try_goal")
+            sorry($module, $pred, "try_goal")
         )
     ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
@@ -433,7 +433,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         ;
             ConjType = parallel_conj,
             % XXX Need to do something here.
-            sorry(this_file, "par_conj")
+            sorry($module, $pred, "par_conj")
         )
     ;
         GoalExpr = plain_call(CalleePredId, _, Args, _, _, _),
@@ -464,23 +464,23 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         (
             % XXX Need to do something here.
             Details = higher_order(_, _, _, _),
-            sorry(this_file, "higher_order generic_call")
+            sorry($module, $pred, "higher_order generic_call")
         ;
             % XXX Need to do something here.
             Details = class_method(_, _, _, _),
-            sorry(this_file, "class_method generic_call")
+            sorry($module, $pred, "class_method generic_call")
         ;
             % XXX We need to impose the constraint that all the argument
             % variables are bound elsewhere.
             Details = event_call(_),
-            sorry(this_file, "event_call generic_call")
+            sorry($module, $pred, "event_call generic_call")
         ;
             % No mode constraints
             Details = cast(_)
         )
     ;
         GoalExpr = switch(_, _, _),
-        unexpected(this_file, "switch")
+        unexpected($module, $pred, "switch")
     ;
         GoalExpr = unify(LHSvar, RHS, _Mode, _Kind, _UnifyContext),
         prog_var_at_path(ProgVarset, PredId, LHSvar, GoalId,
@@ -521,7 +521,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             )
         ;
             RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
-            sorry(this_file, "unify with lambda goal")
+            sorry($module, $pred, "unify with lambda goal")
         )
     ;
         GoalExpr = disj(Goals),
@@ -655,7 +655,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
                 PredId, [Decl], GoalId, CallArgs, !VarInfo, !Constraints)
         ;
-            unexpected(this_file, "no mode declaration for foreign proc")
+            unexpected($module, $pred, "no mode declaration for foreign proc")
         )
     ;
         GoalExpr = shorthand(Shorthand),
@@ -667,14 +667,14 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             % - InnerUO should definitely be produced inside this goal,
             %   by the main goal and each orelse goal
             % - OuterUO is definitely produced by this goal
-            sorry(this_file, "NYI: atomic_goal")
+            sorry($module, $pred, "NYI: atomic_goal")
         ;
             Shorthand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "shorthand goal")
+            unexpected($module, $pred, "shorthand goal")
         ;
             Shorthand = try_goal(_, _, _),
-            sorry(this_file, "NYI: try_goal")
+            sorry($module, $pred, "NYI: try_goal")
         )
     ).
 
@@ -1108,11 +1108,5 @@ rep_var_to_string(ProgVarset, (ProgVar `in` _) `at` GoalId) = RepString :-
     RepString = ProgVarString ++ "." ++ GoalIdString.
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "build_mode_constraints.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module build_mode_constraints.
+:- end_module check_hlds.build_mode_constraints.
 %-----------------------------------------------------------------------------%

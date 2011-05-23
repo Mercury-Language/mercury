@@ -1059,7 +1059,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
                 ( VarInfo = typeclass_info_var(_)
                 ; VarInfo = non_rtti_var
                 ),
-                unexpected(this_file, "replace_in_goal_expr: info not found")
+                unexpected($module, $pred, "info not found")
             ),
             polymorphism_make_type_info_var(TypeInfoType,
                 term.context_init, TypeInfoVar, Goals0, PolyInfo0, PolyInfo),
@@ -1141,7 +1141,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             GoalExpr = shorthand(ShortHand)
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected(this_file, "replace_in_goal_expr: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -1264,12 +1264,6 @@ replace_in_foreign_arg_list(EqvMap, List0 @ [A0 | As0], List,
     ( Changed = yes, List = [A | As]
     ; Changed = no, List = List0
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "equiv_type_hlds.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.equiv_type_hlds.

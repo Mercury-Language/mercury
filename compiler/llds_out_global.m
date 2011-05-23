@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -693,8 +693,7 @@ output_int_const(N, Type, !IO) :-
         ( ok_int_const(N, Type) ->
             io.write_int(N, !IO)
         ;
-            unexpected(this_file,
-                "output_int_const: constant does not fit in type")
+            unexpected($module, $pred, "constant does not fit in type")
         )
     ;
         Check = no,
@@ -715,26 +714,20 @@ ok_int_const(N, lt_uint_least16) :-
 ok_int_const(_N, lt_int_least32).
 ok_int_const(_N, lt_uint_least32).
 ok_int_const(_N, lt_bool) :-
-    unexpected(this_file, "ok_int_const: not integer constant").
+    unexpected($module, $pred, "not integer constant").
 ok_int_const(_N, lt_integer).
 ok_int_const(_N, lt_unsigned).
 ok_int_const(_, lt_float) :-
-    unexpected(this_file, "ok_int_const: not integer constant").
+    unexpected($module, $pred, "not integer constant").
 ok_int_const(_, lt_word) :-
-    unexpected(this_file, "ok_int_const: not integer constant").
+    unexpected($module, $pred, "not integer constant").
 ok_int_const(_, lt_string) :-
-    unexpected(this_file, "ok_int_const: not integer constant").
+    unexpected($module, $pred, "not integer constant").
 ok_int_const(_, lt_data_ptr) :-
-    unexpected(this_file, "ok_int_const: not integer constant").
+    unexpected($module, $pred, "not integer constant").
 ok_int_const(_, lt_code_ptr) :-
-    unexpected(this_file, "ok_int_const: not integer constant").
-
-%----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "llds_out_global.m".
+    unexpected($module, $pred, "not integer constant").
 
 %---------------------------------------------------------------------------%
-:- end_module llds_out_global.
+:- end_module ll_backend.llds_out.llds_out_global.
 %---------------------------------------------------------------------------%

@@ -475,7 +475,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
         ( set.remove_least(LeastLocn, Locns, _) ->
             Locn = LeastLocn
         ;
-            unexpected(this_file, "tvar has empty set of locations")
+            unexpected($module, $pred, "tvar has empty set of locations")
         ),
         stack_layout.represent_locn_as_int(Locn, LocnAsInt),
         Rval = ml_const(mlconst_int(LocnAsInt)),
@@ -488,8 +488,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
             [TVar - Locns | TVarLocns], NextSlot, VectorTail),
         Vector = [init_obj(ml_const(mlconst_int(0))) | VectorTail]
     ;
-        unexpected(this_file,
-            "unsorted tvars in construct_type_param_locn_vector")
+        unexpected($module, $pred, "unsorted tvars")
     ).
 
     % ml_gen_closure_wrapper:
@@ -704,7 +703,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         WrapperArgTypes = WrapperArgTypes0,
         WrapperBoxedArgTypes = WrapperBoxedArgTypes0
     ;
-        unexpected(this_file, "ml_gen_closure_wrapper: list.drop failed")
+        unexpected($module, $pred, "list.drop failed")
     ),
     WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1,
         list.length(WrapperHeadVars)),
@@ -846,8 +845,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
             Offset = ml_typeclass_info_arg_offset
         ;
             ClosureKind = special_pred_closure,
-            unexpected(this_file,
-                "ml_gen_closure_wrapper: special_pred_closure")
+            unexpected($module, $pred, "special_pred_closure")
         ),
         ml_gen_closure_field_lvals(ClosureLval1, Offset, 1,
             NumClosureArgs, ClosureArgLvals, !Info)
@@ -957,7 +955,7 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
         ClosureActualType = sample_typeclass_info_type
     ;
         ClosureKind = special_pred_closure,
-        unexpected(this_file, "gen_closure_gc_statement: special_pred_closure")
+        unexpected($module, $pred, "special_pred_closure")
     ),
     ml_gen_gc_statement_poly(ClosureName, ClosureDeclType, ClosureActualType,
         Context, ClosureGCStatement, !Info).
@@ -1069,7 +1067,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
         ),
         Lvals = [Lval | LvalsTail]
     ;
-        sorry(this_file, "ml_gen_wrapper_arg_lvals: length mismatch")
+        sorry($module, $pred, "length mismatch")
     ).
 
     % This is used for accurate GC with the MLDS->C back-end.
@@ -1160,8 +1158,7 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         ]
     ;
         ClosureKind = special_pred_closure,
-        unexpected(this_file,
-            "ml_gen_closure_wrapper_gc_decls: special_pred_closure")
+        unexpected($module, $pred, "special_pred_closure")
 
     ),
     TypeParamsGCInit = statement(ml_stmt_atomic(inline_target_code(
@@ -1188,11 +1185,5 @@ ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum, NumClosureArgs,
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_closure_gen.m".
-
-:- end_module ml_closure_gen.
-
+:- end_module ml_backend.ml_closure_gen.
 %-----------------------------------------------------------------------------%

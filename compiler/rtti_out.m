@@ -718,7 +718,7 @@ output_type_ctor_details_defn(Info, RttiTypeCtor, TypeCtorDetails,
     ;
         TypeCtorDetails = tcd_foreign_enum(Lang, _, ForeignEnumFunctors,
             ForeignEnumByOrdinal, ForeignEnumByName, FunctorNumberMap),
-        expect(unify(Lang, lang_c), this_file,
+        expect(unify(Lang, lang_c), $module, $pred,
             "language other than C for foreign enumeration"),
         list.foldl2(output_foreign_enum_functor_defn(Info, RttiTypeCtor),
             ForeignEnumFunctors, !DeclSet, !IO),
@@ -911,7 +911,7 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         Rep = du_ll_rep(Ptag, SectagAndLocn)
     ;
         Rep = du_hl_rep(_),
-        unexpected(this_file, "output_du_functor_defn: du_hl_rep")
+        unexpected($module, $pred, "du_hl_rep")
     ),
     (
         SectagAndLocn = sectag_locn_none,
@@ -983,8 +983,7 @@ output_res_functor_defn(Info, RttiTypeCtor, ResFunctor, !DeclSet, !IO) :-
         io.write_int(SmallPtr, !IO)
     ;
         Rep = reserved_object(_, _, _),
-        unexpected(this_file,
-            "output_res_functor_defn: reserved object")
+        unexpected($module, $pred, "reserved object")
     ),
     io.write_string("\n};\n", !IO).
 
@@ -1098,8 +1097,7 @@ output_du_arg_types(Info, RttiTypeCtor, Ordinal, ArgTypes, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_field_types(Ordinal)),
         !DeclSet, !IO),
     io.write_string(" = {\n", !IO),
-    expect(list.is_not_empty(ArgTypes), this_file,
-        "output_du_arg_types: empty list"),
+    expect(list.is_not_empty(ArgTypes), $module, $pred, "empty list"),
     output_cast_addr_of_rtti_datas("(MR_PseudoTypeInfo) ", ArgTypeDatas, !IO),
     io.write_string("};\n", !IO).
 
@@ -1112,8 +1110,7 @@ output_du_arg_names(Info, RttiTypeCtor, Ordinal, MaybeNames, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_field_names(Ordinal)),
         !DeclSet, !IO),
     io.write_string(" = {\n", !IO),
-    expect(list.is_not_empty(MaybeNames),
-        this_file, "output_du_arg_names: empty list"),
+    expect(list.is_not_empty(MaybeNames), $module, $pred, "empty list"),
     output_maybe_quoted_strings(MaybeNames, !IO),
     io.write_string("};\n", !IO).
 
@@ -1229,7 +1226,7 @@ output_du_ptag_ordered_table(Info, RttiTypeCtor, PtagMap, !DeclSet, !IO) :-
     ; PtagList = [0 - _ | _] ->
         FirstPtag = 0
     ;
-        unexpected(this_file, "output_dummy_ptag_layout_defn: bad ptag list")
+        unexpected($module, $pred, "bad ptag list")
     ),
     output_du_ptag_ordered_table_body(RttiTypeCtor, PtagList, FirstPtag, !IO),
     io.write_string("\n};\n", !IO).
@@ -1240,8 +1237,7 @@ output_du_ptag_ordered_table(Info, RttiTypeCtor, PtagMap, !DeclSet, !IO) :-
 output_du_ptag_ordered_table_body(_RttiTypeCtor, [], _CurPtag, !IO).
 output_du_ptag_ordered_table_body(RttiTypeCtor,
         [Ptag - SectagTable | PtagTail], CurPtag, !IO) :-
-    expect(unify(Ptag, CurPtag), this_file,
-        "output_du_ptag_ordered_table_body: ptag mismatch"),
+    expect(unify(Ptag, CurPtag), $module, $pred, "ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSharers, _SectagMap),
     io.write_string("\t{ ", !IO),
     io.write_int(NumSharers, !IO),
@@ -1291,8 +1287,8 @@ output_res_value_ordered_table(Info, RttiTypeCtor, ResFunctors, DuPtagTable,
         NumericResFunctorReps, SymbolicResFunctorReps),
     list.length(NumericResFunctorReps, NumNumericResFunctorReps),
     list.length(SymbolicResFunctorReps, NumSymbolicResFunctorReps),
-    expect(unify(NumSymbolicResFunctorReps, 0), this_file,
-        "output_res_value_ordered_table: symbolic functors"),
+    expect(unify(NumSymbolicResFunctorReps, 0), $module, $pred,
+        "symbolic functors"),
 
     output_generic_rtti_data_defn_start(Info,
         ctor_rtti_id(RttiTypeCtor, type_ctor_res_addr_functors),
@@ -1378,7 +1374,7 @@ output_reserved_address(small_pointer(Val), !IO) :-
     io.write_int(Val, !IO).
 output_reserved_address(reserved_object(_, _, _), !IO) :-
     % These should only be used for the MLDS back-end.
-    unexpected(this_file, "reserved_object").
+    unexpected($module, $pred, "reserved_object").
 
 %-----------------------------------------------------------------------------%
 
@@ -1452,7 +1448,7 @@ output_rtti_data_decl_chunk(Info, Group, RttiIds, !DeclSet, !IO) :-
         RttiIds = [RttiId | _]
     ;
         RttiIds = [],
-        unexpected(this_file, "output_rtti_data_decl_group: empty list")
+        unexpected($module, $pred, "empty list")
     ),
     Group = data_group(CType, IsArray, Linkage),
 
@@ -1473,8 +1469,7 @@ output_rtti_data_decl_chunk(Info, Group, RttiIds, !DeclSet, !IO) :-
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_rtti_data_decl_chunk_entries(_IsArray, [], !DeclSet, !IO) :-
-    unexpected(this_file,
-        "output_rtti_data_decl_chunk_entries: empty list").
+    unexpected($module, $pred, "empty list").
 output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
         !DeclSet, !IO) :-
     decl_set_insert(decl_rtti_id(RttiId), !DeclSet),
@@ -1961,9 +1956,5 @@ tabling_struct_data_addr_string(ProcLabel, Id) =
         proc_label_to_c_string(ProcLabel, no).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rtti_out.m".
-
+:- end_module ll_backend.rtti_out.
 %-----------------------------------------------------------------------------%

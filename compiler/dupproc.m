@@ -389,7 +389,7 @@ standardize_rval(Rval, StdRval, DupProcMap) :-
         StdRval = Rval
     ;
         Rval = var(_),
-        unexpected(this_file, "var in standardize_rval")
+        unexpected($module, $pred, "var")
     ;
         Rval = mkword(_, _),
         StdRval = Rval
@@ -448,11 +448,5 @@ standardize_rval_const(Const, StdConst, DupProcMap) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "dupproc.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module dupproc.
+:- end_module ll_backend.dupproc.
 %-----------------------------------------------------------------------------%

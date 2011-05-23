@@ -483,7 +483,7 @@ unparse_type(apply_n_type(TVar, Args, _), Term) :-
     Term = term.functor(term.atom(""), [term.variable(Var, Context) | ArgTerms],
         Context).
 unparse_type(kinded_type(_, _), _) :-
-    unexpected(this_file, "prog_io_util: kind annotation").
+    unexpected($module, $pred, "kind annotation").
 
 :- pred unparse_type_list(list(mer_type)::in, list(term)::out) is det.
 
@@ -1212,12 +1212,6 @@ parse_condition_suffix(Term, Term, cond_true).
 %       Body = B,
 %       Condition = true
 %   ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_io_util.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_util.

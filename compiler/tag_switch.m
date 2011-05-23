@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -245,7 +245,7 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
             ( PtagReg = reg(reg_r, PtagRegNo) ->
                 PtagRegNo =< NumRealRegs
             ;
-                unexpected(this_file, "improper reg in tag switch")
+                unexpected($module, $pred, "improper reg in tag switch")
             )
         )
     ->
@@ -335,15 +335,15 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
 
 generate_primary_try_me_else_chain([], _, _, _, _, _, _,
         !CaseLabelMap, !CI) :-
-    unexpected(this_file, "generate_primary_try_me_else_chain: empty switch").
+    unexpected($module, $pred, "empty switch").
 generate_primary_try_me_else_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
         VarRval, MaybeFailLabel, PtagCountMap, Code, !CaseLabelMap, !CI) :-
     PtagGroup = ptag_case_group_entry(MainPtag, OtherPtags, PtagCase),
     PtagCase = ptag_case(StagLoc, StagGoalMap),
     map.lookup(PtagCountMap, MainPtag, CountInfo),
     CountInfo = StagLocPrime - MaxSecondary,
-    expect(unify(StagLoc, StagLocPrime), this_file,
-        "generate_primary_try_me_else_chain: secondary tag locations differ"),
+    expect(unify(StagLoc, StagLocPrime), $module, $pred,
+        "secondary tag locations differ"),
     (
         PtagGroups = [_ | _],
         generate_primary_try_me_else_chain_case(PtagRval, StagReg,
@@ -425,7 +425,7 @@ generate_primary_try_me_else_chain_other_ptags([OtherPtag | OtherPtags],
     code_info::in, code_info::out) is det.
 
 generate_primary_try_chain([], _, _, _, _, _, _, _, _, !CaseLabelMap, !CI) :-
-     unexpected(this_file, "empty list in generate_primary_try_chain").
+     unexpected($module, $pred, "empty list").
 generate_primary_try_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
         VarRval, MaybeFailLabel, PtagCountMap, PrevTestsCode0, PrevCasesCode0,
         Code, !CaseLabelMap, !CI) :-
@@ -433,8 +433,8 @@ generate_primary_try_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
     PtagCase = ptag_case(StagLoc, StagGoalMap),
     map.lookup(PtagCountMap, MainPtag, CountInfo),
     CountInfo = StagLocPrime - MaxSecondary,
-    expect(unify(StagLoc, StagLocPrime), this_file,
-        "secondary tag locations differ in generate_primary_try_chain"),
+    expect(unify(StagLoc, StagLocPrime), $module, $pred,
+        "secondary tag locations differ"),
     (
         PtagGroups = [_ | _],
         generate_primary_try_chain_case(PtagRval, StagReg,
@@ -531,8 +531,8 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
         VarRval, MaybeFailLabel, PtagCountMap, Targets, Code,
         !CaseLabelMap, !CI) :-
     ( CurPrimary > MaxPrimary ->
-        expect(unify(PtagGroups, []), this_file,
-            "generate_primary_jump_table: PtagGroups != [] when Cur > Max"),
+        expect(unify(PtagGroups, []), $module, $pred,
+            "PtagGroups != [] when Cur > Max"),
         Targets = [],
         Code = empty
     ;
@@ -544,9 +544,8 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
             map.lookup(PtagCountMap, CurPrimary, CountInfo),
             CountInfo = StagLocPrime - MaxSecondary,
-            expect(unify(StagLoc, StagLocPrime), this_file,
-                "secondary tag locations differ " ++
-                "in generate_primary_jump_table"),
+            expect(unify(StagLoc, StagLocPrime), $module, $pred,
+                "secondary tag locations differ"),
             get_next_label(NewLabel, !CI),
             Comment = "start of a case in primary tag switch: ptag " ++
                 string.int_to_string(CurPrimary),
@@ -602,19 +601,19 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
             )
         ;
             PtagGroups = [ptag_case_entry(CurPrimaryPrime, PrimaryInfo)],
-            expect(unify(CurPrimary, CurPrimaryPrime), this_file,
-                "generate_primary_binary_search: cur_primary mismatch"),
+            expect(unify(CurPrimary, CurPrimaryPrime), $module, $pred,
+                "cur_primary mismatch"),
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
             map.lookup(PtagCountMap, CurPrimary, CountInfo),
             CountInfo = StagLocPrime - MaxSecondary,
-            expect(unify(StagLoc, StagLocPrime), this_file,
-                "generate_primary_jump_table: secondary tag locations differ"),
+            expect(unify(StagLoc, StagLocPrime), $module, $pred,
+                "secondary tag locations differ"),
             generate_primary_tag_code(StagGoalMap, CurPrimary, [],
                 MaxSecondary, StagReg, StagLoc, VarRval, MaybeFailLabel, Code,
                 !CaseLabelMap, !CI)
         ;
             PtagGroups = [_, _ | _],
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "caselist not singleton or empty when binary search ends")
         )
     ;
@@ -672,23 +671,25 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
         % There is no secondary tag, so there is no switch on it.
         (
             StagGoalList = [],
-            unexpected(this_file, "no goal for non-shared tag")
+            unexpected($module, $pred, "no goal for non-shared tag")
         ;
             StagGoalList = [StagGoal],
             ( StagGoal = -1 - CaseLabel ->
                 generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
             ;
-                unexpected(this_file, "badly formed goal for non-shared tag")
+                unexpected($module, $pred,
+                    "badly formed goal for non-shared tag")
             )
         ;
             StagGoalList = [_, _ | _],
-            unexpected(this_file, "more than one goal for non-shared tag")
+            unexpected($module, $pred, "more than one goal for non-shared tag")
         )
     ;
         ( StagLoc = sectag_local
         ; StagLoc = sectag_remote
         ),
-        expect(unify(OtherPtags, []), this_file, ">1 ptag with secondary tag"),
+        expect(unify(OtherPtags, []), $module, $pred,
+            ">1 ptag with secondary tag"),
 
         % There is a secondary tag, so figure out how to switch on it.
         get_globals(!.CI, Globals),
@@ -728,7 +729,7 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
                 ( StagReg = reg(reg_r, StagRegNo) ->
                     StagRegNo =< NumRealRegs
                 ;
-                    unexpected(this_file, "improper reg in tag switch")
+                    unexpected($module, $pred, "improper reg in tag switch")
                 )
             )
         ->
@@ -791,8 +792,7 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
     code_info::in, code_info::out) is det.
 
 generate_secondary_try_me_else_chain([], _, _, _, !CaseLabelMap, !CI) :-
-    unexpected(this_file,
-        "generate_secondary_try_me_else_chain: empty switch").
+    unexpected($module, $pred, "empty switch").
 generate_secondary_try_me_else_chain([Case | Cases], StagRval,
         MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
     Case = Secondary - CaseLabel,
@@ -849,7 +849,7 @@ generate_secondary_try_me_else_chain_case(CaseLabel, StagRval, Secondary,
     case_label_map::in, case_label_map::out) is det.
 
 generate_secondary_try_chain([], _, _, _, _, !CaseLabelMap) :-
-    unexpected(this_file, "generate_secondary_try_chain: empty switch").
+    unexpected($module, $pred, "empty switch").
 generate_secondary_try_chain([Case | Cases], StagRval, MaybeFailLabel,
         PrevTestsCode0, Code, !CaseLabelMap) :-
     Case = Secondary - CaseLabel,
@@ -903,7 +903,7 @@ generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
 generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
         MaybeFailLabel, Targets) :-
     ( CurSecondary > MaxSecondary ->
-        expect(unify(CaseList, []), this_file,
+        expect(unify(CaseList, []), $module, $pred,
             "caselist not empty when reaching limiting secondary tag"),
         Targets = []
     ;
@@ -950,13 +950,12 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             )
         ;
             StagGoals = [CurSecPrime - CaseLabel],
-            expect(unify(CurSec, CurSecPrime), this_file,
-                "generate_secondary_binary_search: cur_secondary mismatch"),
+            expect(unify(CurSec, CurSecPrime), $module, $pred,
+                "cur_secondary mismatch"),
             generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
         ;
             StagGoals = [_, _ | _],
-            unexpected(this_file,
-                "generate_secondary_binary_search: " ++
+            unexpected($module, $pred,
                 "goallist not singleton or empty when binary search ends")
         )
     ;
@@ -1011,9 +1010,5 @@ make_ptag_comment(BaseStr, MainPtag, OtherPtags, Comment) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "tag_switch.m".
-
+:- end_module ll_backend.tag_switch.
 %-----------------------------------------------------------------------------%

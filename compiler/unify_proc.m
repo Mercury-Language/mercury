@@ -208,7 +208,7 @@ lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det, Num) :-
     ( search_mode_num(ModuleInfo, TypeCtor, UniMode, Det, Num1) ->
         Num = Num1
     ;
-        unexpected(this_file, "search_num failed")
+        unexpected($module, $pred, "search_num failed")
     ).
 
 :- pred search_mode_num(module_info::in, type_ctor::in, uni_mode::in,
@@ -472,8 +472,7 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
         post_typecheck_finish_imported_pred_no_io(!.ModuleInfo,
             ErrorProcs, PredInfo0, PredInfo)
     ),
-    expect(unify(ErrorProcs, []), this_file,
-        "add_lazily_generated_special_pred: error in post_typecheck"),
+    expect(unify(ErrorProcs, []), $module, $pred, "ErrorProcs != []"),
 
     % Call polymorphism to introduce type_info arguments
     % for polymorphic types.
@@ -503,7 +502,7 @@ collect_type_defn(ModuleInfo, TypeCtor, Type, TVarSet, TypeBody, Context) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     expect(special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody,
-        TypeStatus), this_file, "add_lazily_generated_unify_pred"),
+        TypeStatus), $module, $pred, "not generated lazily"),
     prog_type.var_list_to_type_list(KindMap, TypeParams, TypeArgs),
     construct_type(TypeCtor, TypeArgs, Type).
 
@@ -522,7 +521,7 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
                 generate_unify_proc_body(Type, TypeBody, X, Y,
                     Context, Clause, !Info)
             ;
-                unexpected(this_file, "generate_clause_info: bad unify args")
+                unexpected($module, $pred, "bad unify args")
             )
         ;
             SpecialPredId = spec_pred_index,
@@ -530,7 +529,7 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
                 generate_index_proc_body(Type, TypeBody, X, Index,
                     Context, Clause, !Info)
             ;
-                unexpected(this_file, "generate_clause_info: bad index args")
+                unexpected($module, $pred, "bad index args")
             )
         ;
             SpecialPredId = spec_pred_compare,
@@ -538,7 +537,7 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
                 generate_compare_proc_body(Type, TypeBody, Res, X, Y,
                     Context, Clause, !Info)
             ;
-                unexpected(this_file, "generate_clause_info: bad compare args")
+                unexpected($module, $pred, "bad compare args")
             )
         ;
             SpecialPredId = spec_pred_init,
@@ -546,7 +545,7 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
                 generate_initialise_proc_body(Type, TypeBody, X,
                     Context, Clause, !Info)
             ;
-                unexpected(this_file, "generate_clause_info: bad init args")
+                unexpected($module, $pred, "bad init args")
             )
         ),
         info_extract(!.Info, VarSet, Types)
@@ -604,8 +603,8 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
             HowToInit = solver_init_automatic(InitPred)
         ;
             HowToInit = solver_init_explicit,
-            unexpected(this_file, "generating initialise pred. for " ++
-                "solver type that does not have automatic initialisation.")
+            unexpected($module, $pred, "generating initialise pred. for " ++
+                "solver type that does not have automatic initialisation")
         ),
         PredId = invalid_pred_id,
         ModeId = invalid_proc_id,
@@ -618,9 +617,8 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
         ; TypeBody = hlds_foreign_type(_)
         ; TypeBody = hlds_abstract_type(_)
         ),
-        unexpected(this_file, "generate_initialise_proc_body: " ++
-            "trying to create initialisation proc for type " ++
-            "that has no solver_type_details")
+        unexpected($module, $pred, "trying to create initialisation proc " ++
+            "for type that has no solver_type_details")
     ).
 
 :- pred generate_unify_proc_body(mer_type::in, hlds_type_body::in,
@@ -703,7 +701,7 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
                 generate_builtin_unify(TypeCategory, X, Y, Context, Clause,
                     !Info)
             ;
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "trying to create unify proc for abstract type")
             )
         )
@@ -742,7 +740,7 @@ generate_builtin_unify(CtorCat, X, Y, Context, Clause, !Info) :-
         ; CtorCat = ctor_cat_system(_)
         ; CtorCat = ctor_cat_user(_)
         ),
-        unexpected(this_file, "generate_builtin_unify: bad ctor category")
+        unexpected($module, $pred, "bad ctor category")
     ),
     build_call(Name, ArgVars, Context, UnifyGoal, !Info),
     quantify_clause_body(ArgVars, UnifyGoal, Context, Clause, !Info).
@@ -753,7 +751,7 @@ generate_builtin_unify(CtorCat, X, Y, Context, Clause, !Info) :-
 
 generate_user_defined_unify_proc_body(UserEqCompare, _, _, _, _, !Info) :-
     UserEqCompare = abstract_noncanonical_type(_IsSolverType),
-    unexpected(this_file,
+    unexpected($module, $pred,
         "trying to create unify proc for abstract noncanonical type").
 generate_user_defined_unify_proc_body(UserEqCompare, X, Y, Context, Clause,
         !Info) :-
@@ -792,7 +790,7 @@ generate_user_defined_unify_proc_body(UserEqCompare, X, Y, Context, Clause,
             Goal0 = hlds_goal(conj(plain_conj, [CallGoal, UnifyGoal]), GoalInfo)
         ;
             MaybeCompare = no,
-            unexpected(this_file, "generate_user_defined_unify_proc_body")
+            unexpected($module, $pred, "MaybeCompare = no")
         )
     ),
     maybe_wrap_with_pretest_equality(Context, X, Y, no, Goal0, Goal, !Info),
@@ -840,7 +838,7 @@ generate_index_proc_body(Type, TypeBody, X, Index, Context, Clause, !Info) :-
         % calls a user-specified comparison predicate or returns an error,
         % and does not call the type's index predicate, so do not generate
         % an index predicate for such types.
-        unexpected(this_file,
+        unexpected($module, $pred,
             "trying to create index proc for non-canonical type")
     ;
         (
@@ -851,19 +849,19 @@ generate_index_proc_body(Type, TypeBody, X, Index, Context, Clause, !Info) :-
                 % predicate, so do not generate an index predicate for such
                 % types.
                 DuTypeKind = du_type_kind_mercury_enum,
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "trying to create index proc for enum type")
             ;
                 DuTypeKind = du_type_kind_foreign_enum(_),
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "trying to create index proc for foreign enum type")
             ;
                 DuTypeKind = du_type_kind_direct_dummy,
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "trying to create index proc for dummy type")
             ;
                 DuTypeKind = du_type_kind_notag(_, _, _),
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "trying to create index proc for notag type")
             ;
                 DuTypeKind = du_type_kind_general,
@@ -879,18 +877,19 @@ generate_index_proc_body(Type, TypeBody, X, Index, Context, Clause, !Info) :-
             % the index predicate for that type; it calls the compare predicate
             % of the expanded type instead. Therefore the clause body we are
             % generating should never be invoked.
-            unexpected(this_file, "trying to create index proc for eqv type")
+            unexpected($module, $pred,
+                "trying to create index proc for eqv type")
         ;
             TypeBody = hlds_foreign_type(_),
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "trying to create index proc for a foreign type")
         ;
             TypeBody = hlds_solver_type(_, _),
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "trying to create index proc for a solver type")
         ;
             TypeBody = hlds_abstract_type(_),
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "trying to create index proc for abstract type")
         )
     ).
@@ -973,7 +972,7 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
                 generate_builtin_compare(TypeCategory, Res, X, Y,
                     Context, Clause, !Info)
             ;
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "trying to create compare proc for abstract type")
             )
         )
@@ -1064,7 +1063,7 @@ generate_builtin_compare(CtorCat, Res, X, Y, Context, Clause, !Info) :-
         ; CtorCat = ctor_cat_system(_)
         ; CtorCat = ctor_cat_user(_)
         ),
-        unexpected(this_file, "generate_builtin_compare: bad ctor category")
+        unexpected($module, $pred, "bad ctor category")
     ),
     build_call(Name, ArgVars, Context, CompareGoal, !Info),
     quantify_clause_body(ArgVars, CompareGoal, Context, Clause, !Info).
@@ -1094,7 +1093,7 @@ generate_default_solver_type_compare_proc_body(Res, X, Y, Context, Clause,
 
 generate_user_defined_compare_proc_body(abstract_noncanonical_type(_),
         _, _, _, _, _, !Info) :-
-    unexpected(this_file,
+    unexpected($module, $pred,
         "trying to create compare proc for abstract noncanonical type").
 generate_user_defined_compare_proc_body(unify_compare(_, MaybeCompare),
         Res, X, Y, Context, Clause, !Info) :-
@@ -1339,7 +1338,7 @@ generate_du_compare_proc_body(Type, Ctors0, Res, X, Y, Context, Clause,
     ),
     (
         Ctors = [],
-        unexpected(this_file, "compare for type with no functors")
+        unexpected($module, $pred, "compare for type with no functors")
     ;
         Ctors = [_ | _],
         globals.lookup_int_option(Globals, compare_specialization,
@@ -1717,7 +1716,7 @@ compare_args(ArgTypes, ExistQTVars, Xs, Ys, R, Context, Goal, !Info) :-
     ->
         Goal = Goal0
     ;
-        unexpected(this_file, "compare_args: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 :- pred compare_args_2(list(constructor_arg)::in, existq_tvars::in,
@@ -1832,7 +1831,7 @@ build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta, Detism,
         % to special preds for a type in the bodies of other special preds
         % for that same type. If the special preds for a type are built in the
         % right order (index before compare), the lookup should never fail.
-        unexpected(this_file, "build_specific_call: lookup failed")
+        unexpected($module, $pred, "lookup failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1892,7 +1891,7 @@ unify_var_lists(ArgTypes, ExistQVars, Vars1, Vars2, Goal, !Info) :-
     ( unify_var_lists_2(ArgTypes, ExistQVars, Vars1, Vars2, Goal0, !Info) ->
         Goal = Goal0
     ;
-        unexpected(this_file, "unify_var_lists: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 :- pred unify_var_lists_2(list(constructor_arg)::in, existq_tvars::in,
@@ -2099,11 +2098,5 @@ info_set_types(Types, UPI, UPI ^ upi_vartypes := Types).
 info_set_rtti_varmaps(RttiVarMaps, UPI, UPI ^ upi_rtti_varmaps := RttiVarMaps).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "unify_proc.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module unify_proc.
+:- end_module check_hlds.unify_proc.
 %-----------------------------------------------------------------------------%

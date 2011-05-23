@@ -371,7 +371,7 @@ group_var_infos([VarNameInfoMap | VarNameInfoMaps], HeadVar,
             ( VarNameList = [VarName] ->
                 !:Consistents = [VarName | !.Consistents]
             ;
-                unexpected(this_file, "group_var_infos: bad singleton set")
+                unexpected($module, $pred, "bad singleton set")
             )
         ;
             % NameCount > 1, so this *single clause* calls HeadVar
@@ -385,9 +385,5 @@ group_var_infos([VarNameInfoMap | VarNameInfoMaps], HeadVar,
         !Inconsistents, !Consistents, !FunctorOnlys).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "headvar_names.m".
-
+:- end_module hlds.headvar_names.
 %-----------------------------------------------------------------------------%

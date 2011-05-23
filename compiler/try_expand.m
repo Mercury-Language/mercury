@@ -419,7 +419,7 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
             Goal = hlds_goal(shorthand(GoalExpr), GoalInfo0)
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected(this_file, "expand_try_goals_in_goal: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -659,7 +659,7 @@ extract_intermediate_goal_parts(ModuleInfo, ResultVar, IntermediateGoal,
         MaybeElse = MaybeElsePrime,
         ExcpHandling = ExcpHandlingPrime
     ;
-        unexpected(this_file, "find_subparts: unexpected goal form")
+        unexpected($module, $pred, "unexpected goal form")
     ).
 
 :- pred extract_intermediate_goal_parts_2(module_info::in, prog_var::in,
@@ -765,7 +765,7 @@ extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
                 ; GoalMaxSoln = at_most_many_cc
                 ; GoalMaxSoln = at_most_many
                 ),
-                unexpected(this_file, "find_subparts_2: Goal not erroneous")
+                unexpected($module, $pred, "goal not erroneous")
             )
         )
     ).
@@ -773,7 +773,7 @@ extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
 :- pred lookup_case_goal(list(case)::in, cons_id::in, hlds_goal::out) is det.
 
 lookup_case_goal([], ConsId, _) :-
-    unexpected(this_file, "lookup_case_goal: couldn't find " ++ string(ConsId)).
+    unexpected($module, $pred, "couldn't find " ++ string(ConsId)).
 lookup_case_goal([H | T], ConsId, Goal) :-
     ( H = case(ConsId, [], GoalPrime) ->
         Goal = GoalPrime
@@ -935,12 +935,6 @@ make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
 try_expand_may_introduce_calls("try", 2).
 try_expand_may_introduce_calls("try_io", 4).
 try_expand_may_introduce_calls("unreachable", 0).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "try_expand.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.try_expand.

@@ -599,9 +599,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
                 AllAtomicGoals = [MainGoal | OrElseGoals]
             ;
                 AllAtomicGoals = [],
-                unexpected(this_file,
-                    "implicitly_quantify_goal_quant_info_2: " ++
-                    "AllAtomicGoals = []")
+                unexpected($module, $pred, "AllAtomicGoals = []")
             ),
             union_list(NonLocalVarSets, NonLocalVars0),
             (
@@ -636,8 +634,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
                 ; NonLocalsToRecompute = code_gen_nonlocals_no_lambda
                 ),
                 % Any bi_implications should have been expanded out by now.
-                unexpected(this_file,
-                    "implicitly_quantify_goal_quant_info_2: bi_implication")
+                unexpected($module, $pred, "bi_implication")
             )
         ),
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
@@ -1020,9 +1017,9 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
                 SubInfo = no_construct_sub_info
             ;
                 SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize),
-                expect(unify(MaybeTakeAddr, no), this_file,
+                expect(unify(MaybeTakeAddr, no), $module, $pred,
                     "lambda term has take addr"),
-                expect(unify(MaybeSize, no), this_file,
+                expect(unify(MaybeSize, no), $module, $pred,
                     "lambda term has size info")
             ),
             map.from_corresponding_lists(Args0, ArgModes0, ArgModesMap),
@@ -1078,8 +1075,7 @@ implicitly_quantify_conj_maybe_lambda_2(_, [], [], _, !Info) :-
     NonLocalVars = init,
     set_nonlocals(NonLocalVars, !Info).
 implicitly_quantify_conj_maybe_lambda_2([], [_ | _], _, _, _, _) :-
-    unexpected(this_file,
-        "implicitly_quantify_conj_maybe_lambda_2: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 implicitly_quantify_conj_maybe_lambda_2([FollowingVarPair | FollowingVarPairs],
         [Goal0 | Goals0], [Goal | Goals], NonLocalsToRecompute, !Info) :-
     FollowingVarPair = FollowingVars - LambdaFollowingVars,
@@ -1117,8 +1113,7 @@ implicitly_quantify_conj_no_lambda_2(_, [], [], _, !Info) :-
     NonLocalVars = init,
     set_nonlocals(NonLocalVars, !Info).
 implicitly_quantify_conj_no_lambda_2([], [_ | _], _, _, _, _) :-
-    unexpected(this_file,
-        "implicitly_quantify_conj_no_lambda_2: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 implicitly_quantify_conj_no_lambda_2([FollowingVars | FollowingVarsList],
         [Goal0 | Goals0], [Goal | Goals], NonLocalsToRecompute, !Info) :-
     get_outside(!.Info, OutsideVars),
@@ -1451,14 +1446,14 @@ case_vars_maybe_lambda(NonLocalsToRecompute, Cases, !Set, !LambdaSet) :-
         [], CaseSets, [], CaseLambdaSets),
     (
         CaseSets = [],
-        unexpected(this_file, "case_vars: no cases (1)")
+        unexpected($module, $pred, "no cases (1)")
     ;
         CaseSets = [_ | _],
         union_list(CaseSets, CasesSet)
     ),
     (
         CaseLambdaSets = [],
-        unexpected(this_file, "case_vars: no cases (2)")
+        unexpected($module, $pred, "no cases (2)")
     ;
         CaseLambdaSets = [_ | _],
         union_list(CaseLambdaSets, CasesLambdaSet)
@@ -1476,14 +1471,14 @@ case_vars_maybe_lambda_and_bi_impl(Cases, !Set, !LambdaSet) :-
         [], CaseSets, [], CaseLambdaSets),
     (
         CaseSets = [],
-        unexpected(this_file, "case_vars: no cases (1)")
+        unexpected($module, $pred, "no cases (1)")
     ;
         CaseSets = [_ | _],
         union_list(CaseSets, CasesSet)
     ),
     (
         CaseLambdaSets = [],
-        unexpected(this_file, "case_vars: no cases (2)")
+        unexpected($module, $pred, "no cases (2)")
     ;
         CaseLambdaSets = [_ | _],
         union_list(CaseLambdaSets, CasesLambdaSet)
@@ -1502,7 +1497,7 @@ case_vars_no_lambda(NonLocalsToRecompute, Cases, !Set) :-
     compute_case_vars_no_lambda(NonLocalsToRecompute, Cases, [], CaseSets),
     (
         CaseSets = [],
-        unexpected(this_file, "case_vars: no cases (1)")
+        unexpected($module, $pred, "no cases (1)")
     ;
         CaseSets = [_ | _],
         union_list(CaseSets, CasesSet)
@@ -2314,7 +2309,7 @@ unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set) :-
         )
     ;
         RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
-        unexpected(this_file, "unify_rhs_vars_no_lambda: found lambda")
+        unexpected($module, $pred, "found lambda")
     ).
 
 :- pred insert_set_fields(list(needs_update)::in, list(prog_var)::in,
@@ -2335,9 +2330,9 @@ get_updated_fields(SetArgs, Args, ArgsToSet) :-
 
 get_updated_fields([], [], !ArgsToSet).
 get_updated_fields([], [_|_], _, _) :-
-    unexpected(this_file, "get_updated_fields").
+    unexpected($module, $pred, "mismatched lists").
 get_updated_fields([_|_], [], _, _) :-
-    unexpected(this_file, "get_updated_fields").
+    unexpected($module, $pred, "mismatched lists").
 get_updated_fields([SetArg | SetArgs], [Arg | Args], !ArgsToSet) :-
     (
         SetArg = needs_update,
@@ -2545,11 +2540,5 @@ set_rtti_varmaps(RttiVarMaps, !Q) :-
     !Q ^ qi_rtti_varmaps := RttiVarMaps.
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "quantification.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module quantification.
+:- end_module hlds.quantification.
 %-----------------------------------------------------------------------------%

@@ -153,8 +153,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
             ; Target = target_erlang
             ),
             % This should have caught by mercury_compile.m.
-            unexpected(this_file, "runtime_granularity_test_in_goal: " ++
-                "unsupported target language")
+            unexpected($module, $pred, "unsupported target language")
         )
     ;
         GoalExpr0 = conj(plain_conj, Goals0),
@@ -203,7 +202,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "runtime_granularity_test_in_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -239,12 +238,6 @@ runtime_test_code =
     "#ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL\n" ++
     "MR_record_conditional_parallelism_decision(SUCCESS_INDICATOR);\n" ++
     "#endif\n".
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "granularity.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.granularity.

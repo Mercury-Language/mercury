@@ -191,9 +191,9 @@ partition_call_args(ModuleInfo, ArgModes, Args, InVarsBag, OutVarsBag) :-
 
 partition_call_args_2(_, [], [], [], []).
 partition_call_args_2(_, [], [_ | _], _, _) :-
-    unexpected(this_file, "partition_call_args_2/5: unmatched variables.").
+    unexpected($module, $pred, "unmatched variables").
 partition_call_args_2(_, [_ | _], [], _, _) :-
-    unexpected(this_file, "partition_call_args_2/5: unmatched variables.").
+    unexpected($module, $pred, "unmatched variables").
 partition_call_args_2(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
         InputArgs, OutputArgs) :-
     partition_call_args_2(ModuleInfo, ArgModes, Args,
@@ -231,7 +231,7 @@ split_unification_vars([], Modes, _, Vars, Vars) :-
         Modes = []
     ;
         Modes = [_ | _],
-        unexpected(this_file, "split_unification_vars/5: unmatched variables.")
+        unexpected($module, $pred, "unmatched variables")
     ).
 split_unification_vars([Arg | Args], Modes, ModuleInfo,
         InVars, OutVars):-
@@ -258,7 +258,7 @@ split_unification_vars([Arg | Args], Modes, ModuleInfo,
         )
     ;
         Modes = [],
-        unexpected(this_file, "split_unification_vars/5: unmatched variables.")
+        unexpected($module, $pred, "unmatched variables")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -268,7 +268,7 @@ make_bool_list(HeadVars0, Bools, Out) :-
     ( list.drop(Arity, HeadVars0, HeadVars1) ->
         HeadVars = HeadVars1
     ;
-        unexpected(this_file, "make_bool_list/3: unmatched variables.")
+        unexpected($module, $pred, "unmatched variables")
     ),
     make_bool_list_2(HeadVars, Bools, Out).
 
@@ -280,9 +280,9 @@ make_bool_list_2([ _ | Vars ], Bools, [no | Out]) :-
 
 remove_unused_args(Vars, [], [], Vars).
 remove_unused_args(Vars, [], [_X | _Xs], Vars) :-
-    unexpected(this_file, "remove_unused_args/4: unmatched variables.").
+    unexpected($module, $pred, "unmatched variables").
 remove_unused_args(Vars, [_X | _Xs], [], Vars) :-
-    unexpected(this_file, "remove_unused_args/4: unmatched variables.").
+    unexpected($module, $pred, "unmatched variables").
 remove_unused_args(Vars0, [ Arg | Args ], [ UsedVar | UsedVars ], Vars) :-
     (
         % The variable is used, so leave it
@@ -356,7 +356,7 @@ get_context_from_scc(SCC, ModuleInfo, Context) :-
         pred_info_get_context(PredInfo, Context)
     ;
         SCC = [],
-        unexpected(this_file, "get_context_from_scc/3: empty SCC.")
+        unexpected($module, $pred, "empty SCC")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -405,9 +405,9 @@ all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo) :-
 
 all_args_input_or_zero_size_2([], [], _).
 all_args_input_or_zero_size_2([], [_|_], _) :-
-    unexpected(this_file, "all_args_input_or_size_2/3 - unmatched lists.").
+    unexpected($module, $pred, "unmatched lists").
 all_args_input_or_zero_size_2([_|_], [], _) :-
-    unexpected(this_file, "all_args_input_or_size_2/3 - unmatched lists.").
+    unexpected($module, $pred, "unmatched lists").
 all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], ModuleInfo) :-
     ( mode_is_input(ModuleInfo, Mode) ->
         % The variable is an input variables, so its size is irrelevant.
@@ -418,11 +418,5 @@ all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], ModuleInfo) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_util.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module term_util.
+:- end_module transform_hlds.term_util.
 %-----------------------------------------------------------------------------%

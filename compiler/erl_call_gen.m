@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008, 2010 The University of Melbourne.
+% Copyright (C) 2007-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -359,7 +359,7 @@ erl_gen_cast(_Context, ArgVars, MaybeSuccessExpr, Statement, !Info) :-
             Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
         )
     ;
-        unexpected(this_file, "erl_gen_cast: wrong number of args for cast")
+        unexpected($module, $pred, "wrong number of args for cast")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -382,7 +382,7 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
     ->
         SimpleCode = SimpleCode0
     ;
-        unexpected(this_file, "erl_gen_builtin: unknown builtin predicate")
+        unexpected($module, $pred, "unknown builtin predicate")
     ),
     (
         CodeModel = model_det,
@@ -402,10 +402,11 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
             )
         ;
             SimpleCode = ref_assign(_AddrLval, _ValueLval),
-            unexpected(this_file, "ref_assign not supported in Erlang backend")
+            unexpected($module, $pred,
+                "ref_assign not supported in Erlang backend")
         ;
             SimpleCode = test(_),
-            unexpected(this_file, "malformed model_det builtin predicate")
+            unexpected($module, $pred, "malformed model_det builtin predicate")
         ;
             SimpleCode = noop(_),
             Statement = expr_or_void(MaybeSuccessExpr)
@@ -421,18 +422,16 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
             TrueCase = elds_case(elds_true, expr_or_void(MaybeSuccessExpr)),
             FalseCase = elds_case(elds_false, elds_term(elds_fail))
         ;
-            SimpleCode = ref_assign(_, _),
-            unexpected(this_file, "malformed model_semi builtin predicate")
-        ;
-            SimpleCode = assign(_, _),
-            unexpected(this_file, "malformed model_semi builtin predicate")
-        ;
-            SimpleCode = noop(_),
-            unexpected(this_file, "malformed model_semi builtin predicate")
+            ( SimpleCode = ref_assign(_, _)
+            ; SimpleCode = assign(_, _)
+            ; SimpleCode = noop(_)
+            ),
+            unexpected($module, $pred,
+                "malformed model_semi builtin predicate")
         )
     ;
         CodeModel = model_non,
-        unexpected(this_file, "model_non builtin predicate")
+        unexpected($module, $pred, "model_non builtin predicate")
     ).
 
 :- func erl_gen_simple_expr(module_info, vartypes, simple_expr(prog_var)) =
@@ -457,7 +456,8 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
             SimpleExpr1 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr0),
             Expr = elds_unop(Op, SimpleExpr1)
         ;
-            sorry(this_file, "unary builtin not supported on erlang target")
+            sorry($module, $pred,
+                "unary builtin not supported on erlang target")
         )
     ;
         SimpleExpr = binary(StdOp, Expr1, Expr2),
@@ -466,7 +466,8 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
             SimpleExpr2 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr2),
             Expr = elds_binop(Op, SimpleExpr1, SimpleExpr2)
         ;
-            sorry(this_file, "binary builtin not supported on erlang target")
+            sorry($module, $pred,
+                "binary builtin not supported on erlang target")
         )
     ).
 
@@ -642,7 +643,7 @@ erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
         OnFalse = elds_case(elds_false, elds_term(elds_fail))
     ;
         CodeModel = model_non,
-        sorry(this_file, "model_non foreign_procs in Erlang backend")
+        sorry($module, $pred, "model_non foreign_procs in Erlang backend")
     ),
     InnerFun = elds_fun(elds_clause(terms_from_fixed_vars(InputVarsNames),
         InnerFunStatement)),
@@ -771,11 +772,5 @@ erl_generate_runtime_cond_expr(TraceExpr, CondExpr, !Info) :-
     CondExpr = elds_term(elds_tuple(Args)).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "erl_call_gen.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module erl_call_gen.
+:- end_module erl_backend.erl_call_gen.
 %-----------------------------------------------------------------------------%

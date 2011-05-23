@@ -1,7 +1,7 @@
 %------------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -118,7 +118,7 @@ indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs,
             set.init, IntermodRequests)
     ;
         MaybeDepInfo = no,
-        unexpected(this_file, "No dependency information.")
+        unexpected($module, $pred, "no dependency information")
     ).
 
 :- pred indirect_reuse_analyse_scc(sharing_as_table::in,
@@ -493,8 +493,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
             )
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected(this_file,
-            "complicated unification in indirect structure sharing analysis.")
+            unexpected($module, $pred, "complicated unification")
         ),
         OldSharing = !.IrInfo ^ sharing_as,
         NewSharing = add_unify_sharing(ModuleInfo, ProcInfo, Unification,
@@ -563,7 +562,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "indirect_reuse_analyse_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred indirect_reuse_analyse_plain_call(ir_background_info::in,
@@ -883,8 +882,7 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
                 NoClobbers, !.GoalInfo, reuse_is_conditional, !IO)
         )
     ;
-        unexpected(this_file,
-            "verify_indirect_reuse_conditional: unknown NewReuseAs")
+        unexpected($module, $pred, "unknown NewReuseAs")
     ).
 
     % Verify whether the caller's environment satisfies the reuse conditions
@@ -962,7 +960,7 @@ lookup_reuse_as(BaseInfo, OrigPPId, NoClobbers, !IrInfo, ReuseAs) :-
         lookup_reuse_as_2(BaseInfo, OrigPPId, OrigPPId, NoClobbers, !IrInfo,
             ReuseAs)
     ;
-        unexpected(this_file, "lookup_reuse_as")
+        unexpected($module, $pred, "conditions failed")
     ).
 
 :- pred lookup_reuse_as_2(ir_background_info::in, pred_proc_id::in,
@@ -1225,10 +1223,5 @@ sr_fixpoint_table_get_final_as_semidet(PPId, T, Elem) :-
     get_from_fixpoint_table_final_semidet(PPId, T, Elem).
 
 %------------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "structure_reuse.indirect.m".
-
-%------------------------------------------------------------------------------%
+:- end_module structure_reuse.indirect.
 %------------------------------------------------------------------------------%

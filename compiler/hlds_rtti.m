@@ -601,14 +601,11 @@ rtti_set_type_info_locn(TVar, Locn, !RttiVarMaps) :-
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 maybe_check_type_info_var(type_info(Var), TVar, !RttiVarMaps) :-
-    ( map.search(!.RttiVarMaps ^ rv_ti_type_map, Var, Type) ->
-        ( Type = type_variable(TVar, _) ->
-            true
-        ;
-            unexpected(this_file, "inconsistent info in rtti_varmaps")
-        )
+    map.lookup(!.RttiVarMaps ^ rv_ti_type_map, Var, Type),
+    ( Type = type_variable(TVar, _) ->
+        true
     ;
-        unexpected(this_file, "missing info in rtti_varmaps")
+        unexpected($module, $pred, "inconsistent info in rtti_varmaps")
     ).
 maybe_check_type_info_var(typeclass_info(_, _), _, !RttiVarMaps).
 
@@ -623,14 +620,10 @@ rtti_set_typeclass_info_var(Constraint, ProgVar, !RttiVarMaps) :-
     !RttiVarMaps ^ rv_tci_constraint_map := Map.
 
 rtti_reuse_typeclass_info_var(ProgVar, !RttiVarMaps) :-
-    ( map.search(!.RttiVarMaps ^ rv_tci_constraint_map, ProgVar, Constraint) ->
-        Map0 = !.RttiVarMaps ^ rv_tci_varmap,
-        map.set(Constraint, ProgVar, Map0, Map),
-        !RttiVarMaps ^ rv_tci_varmap := Map
-    ;
-        unexpected(this_file,
-            "rtti_reuse_typeclass_info_var: variable not known")
-    ).
+    map.lookup(!.RttiVarMaps ^ rv_tci_constraint_map, ProgVar, Constraint),
+    Map0 = !.RttiVarMaps ^ rv_tci_varmap,
+    map.set(Constraint, ProgVar, Map0, Map),
+    !RttiVarMaps ^ rv_tci_varmap := Map.
 
 rtti_det_insert_type_info_type(ProgVar, Type, !RttiVarMaps) :-
     Map0 = !.RttiVarMaps ^ rv_ti_type_map,
@@ -785,9 +778,10 @@ apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
         ( Type = ExistingType ->
             true
         ;
-            unexpected(this_file, string.format("inconsistent type_infos: "
-                ++ " Type: %s ExistingType: %s",
-                [s(string(Type)), s(string(ExistingType))]))
+            unexpected($module, $pred,
+                string.format("inconsistent type_infos: "
+                    ++ " Type: %s ExistingType: %s",
+                    [s(string(Type)), s(string(ExistingType))]))
         )
     ;
         map.det_insert(Var, Type, !Map)
@@ -808,7 +802,7 @@ apply_substs_to_constraint_map(TRenaming, TSubst, Subst, Var0, Constraint0,
         ( Constraint = ExistingConstraint ->
             true
         ;
-            unexpected(this_file, "inconsistent typeclass_infos")
+            unexpected($module, $pred, "inconsistent typeclass_infos")
         )
     ;
         map.det_insert(Var, Constraint, !Map)
@@ -877,31 +871,28 @@ get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
 
 get_typeinfo_vars_2([], _, _, []).
 get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
-    ( map.search(VarTypes, Var, Type) ->
-        type_vars(Type, TypeVars),
-        (
-            TypeVars = [],
-            % Optimize common case,
-            get_typeinfo_vars_2(Vars, VarTypes, TVarMap, TypeInfoVars)
-        ;
-            TypeVars = [_ | _],
-            % XXX It is possible there are some complications with higher order
-            % pred types here -- if so, maybe treat them specially.
-
-            % The type_info is either stored in a variable, or in a
-            % typeclass_info. Either get the type_info variable or
-            % the typeclass_info variable.
-            LookupVar = (pred(TVar::in, TVarVar::out) is det :-
-                map.lookup(TVarMap, TVar, Locn),
-                type_info_locn_var(Locn, TVarVar)
-            ),
-            list.map(LookupVar, TypeVars, TypeInfoVarsHead),
-
-            get_typeinfo_vars_2(Vars, VarTypes, TVarMap, TypeInfoVarsTail),
-            TypeInfoVars = TypeInfoVarsHead ++ TypeInfoVarsTail
-        )
+    map.lookup(VarTypes, Var, Type),
+    type_vars(Type, TypeVars),
+    (
+        TypeVars = [],
+        % Optimize common case,
+        get_typeinfo_vars_2(Vars, VarTypes, TVarMap, TypeInfoVars)
     ;
-        unexpected(this_file, "get_typeinfo_vars_2: var not found in typemap")
+        TypeVars = [_ | _],
+        % XXX It is possible there are some complications with higher order
+        % pred types here -- if so, maybe treat them specially.
+
+        % The type_info is either stored in a variable, or in a
+        % typeclass_info. Either get the type_info variable or
+        % the typeclass_info variable.
+        LookupVar = (pred(TVar::in, TVarVar::out) is det :-
+            map.lookup(TVarMap, TVar, Locn),
+            type_info_locn_var(Locn, TVarVar)
+        ),
+        list.map(LookupVar, TypeVars, TypeInfoVarsHead),
+
+        get_typeinfo_vars_2(Vars, VarTypes, TVarMap, TypeInfoVarsTail),
+        TypeInfoVars = TypeInfoVarsHead ++ TypeInfoVarsTail
     ).
 
 maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness, VarTypes,
@@ -914,12 +905,6 @@ maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness, VarTypes,
         TypeInfoLiveness = no,
         Vars = Vars0
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_rtti.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_rtti.

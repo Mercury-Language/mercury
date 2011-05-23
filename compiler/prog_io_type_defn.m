@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2008-2010 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1045,7 +1045,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                         [always(Pieces)])]),
                 MaybeSolverUC = error2([Spec])
             ;
-               unexpected(this_file, "make_maybe_where_details_2: " ++
+               unexpected($module, $pred, "make_maybe_where_details_2: " ++
                     "shouldn't have reached this point! (1)")
             )
         ;
@@ -1135,9 +1135,5 @@ get_is_solver_type(IsSolverType, !Attributes) :-
     ).
 
 %-----------------------------------------------------------------------------e
-
-:- func this_file = string.
-
-this_file = "prog_io_type_defn".
-
+:- end_module parse_tree.prog_io_type_defn.
 %-----------------------------------------------------------------------------e

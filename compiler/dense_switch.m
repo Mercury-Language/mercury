@@ -228,7 +228,7 @@ record_dense_label_for_cons_tag(Label, ConsTag, !IndexMap) :-
     ( ConsTag = int_tag(Index) ->
         map.det_insert(Index, Label, !IndexMap)
     ;
-        unexpected(this_file, "record_label_for_index: not int_tag")
+        unexpected($module, $pred, "not int_tag")
     ).
 
 %----------------------------------------------------------------------------%
@@ -241,8 +241,8 @@ record_dense_label_for_cons_tag(Label, ConsTag, !IndexMap) :-
 generate_dense_jump_table(CurVal, LastVal, IndexPairs, Targets,
         !MaybeFailLabel, !CI) :-
     ( CurVal > LastVal ->
-        expect(unify(IndexPairs, []), this_file,
-            "generate_dense_jump_table: NextVal > LastVal, IndexList not []"),
+        expect(unify(IndexPairs, []), $module, $pred,
+            "NextVal > LastVal, IndexList not []"),
         Targets = []
     ;
         NextVal = CurVal + 1,
@@ -280,12 +280,6 @@ get_dense_fail_label(FailLabel, !MaybeFailLabel, !CI) :-
         !.MaybeFailLabel = yes(FailLabel)
     ).
 
-%---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "dense_switch.m".
-
 %----------------------------------------------------------------------------%
-:- end_module dense_switch.
+:- end_module ll_backend.dense_switch.
 %----------------------------------------------------------------------------%

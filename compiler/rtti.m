@@ -1041,7 +1041,7 @@ pti_get_rtti_type_ctor(var_arity_pseudo_type_info(RttiVarArityId, _)) =
     var_arity_id_to_rtti_type_ctor(RttiVarArityId).
 pti_get_rtti_type_ctor(type_var(_)) = _ :-
     % there's no rtti_type_ctor associated with a type_var
-    unexpected(this_file, "pti_get_rtti_type_ctor: type_var").
+    unexpected($module, $pred, "type_var").
 
 var_arity_id_to_rtti_type_ctor(pred_type_info) = Ctor :-
     Builtin = mercury_public_builtin_module,
@@ -1056,8 +1056,8 @@ var_arity_id_to_rtti_type_ctor(tuple_type_info) = Ctor :-
 rtti_id_maybe_element_has_array_type(item_type(RttiId)) =
     rtti_id_has_array_type(RttiId).
 rtti_id_maybe_element_has_array_type(element_type(RttiId)) = not_array :-
-    expect(unify(rtti_id_has_array_type(RttiId), is_array), this_file,
-        "rtti_id_maybe_element_has_array_type: base is not array").
+    expect(unify(rtti_id_has_array_type(RttiId), is_array), $module, $pred,
+        "base is not array").
 
 rtti_id_has_array_type(ctor_rtti_id(_, RttiName)) =
     ctor_rtti_name_has_array_type(RttiName).
@@ -1392,7 +1392,7 @@ encode_tc_instance_type(TCType) = Str :-
             RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId)
         ;
             PTI = type_var(_),
-            unexpected(this_file, "encode_tc_instance_type: type_var")
+            unexpected($module, $pred, "type_var")
         ),
         Arity = list.length(ArgPTIs)
         % XXX We may wish to check that all arguments are variables.
@@ -1526,8 +1526,8 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
         TypeCtorDetails = tcd_enum(TypeCtorUserEq, _, _, _, IsDummy, _),
         (
             IsDummy = yes,
-            expect(unify(TypeCtorUserEq, standard), this_file,
-                "type_ctor_rep_to_string: dummy type with user equality"),
+            expect(unify(TypeCtorUserEq, standard), $module, $pred,
+                "dummy type with user equality"),
             RepStr = "MR_TYPECTOR_REP_DUMMY"
         ;
             IsDummy = no,
@@ -1826,8 +1826,7 @@ rtti_id_maybe_element_c_type(element_type(RttiId), CTypeName, IsArray) :-
     rtti_id_c_type(RttiId, CTypeName, IsArray0),
     (
         IsArray0 = not_array,
-        unexpected(this_file,
-            "rtti_id_maybe_element_c_type: base is not array")
+        unexpected($module, $pred, "base is not array")
     ;
         IsArray0 = is_array,
         IsArray = not_array
@@ -1852,8 +1851,7 @@ rtti_id_maybe_element_java_type(element_type(RttiId), CTypeName, IsArray) :-
     rtti_id_java_type(RttiId, CTypeName, IsArray0),
     (
         IsArray0 = not_array,
-        unexpected(this_file,
-            "rtti_id_maybe_element_java_type: base is not array")
+        unexpected($module, $pred, "base is not array")
     ;
         IsArray0 = is_array,
         IsArray = not_array
@@ -1944,8 +1942,7 @@ rtti_id_maybe_element_csharp_type(element_type(RttiId), CTypeName, IsArray) :-
     rtti_id_csharp_type(RttiId, CTypeName, IsArray0),
     (
         IsArray0 = not_array,
-        unexpected(this_file,
-            "rtti_id_maybe_element_csharp_type: base is not array")
+        unexpected($module, $pred, "base is not array")
     ;
         IsArray0 = is_array,
         IsArray = not_array
@@ -2116,7 +2113,7 @@ pseudo_type_info_name_type(var_arity_pseudo_type_info(_TypeCtor, ArgTypes)) =
 pseudo_type_info_name_type(type_var(_)) = _ :-
     % we use small integers to represent type_vars,
     % rather than pointers, so there is no pointed-to type
-    unexpected(this_file, "pseudo_type_info_name_type: type_var").
+    unexpected($module, $pred, "type_var").
 
 module_qualify_name_of_rtti_id(RttiId) = ShouldModuleQualify :-
     (
@@ -2249,11 +2246,5 @@ table_trie_step_to_c(table_trie_step_promise_implied,
     "MR_TABLE_STEP_PROMISE_IMPLIED", no).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rtti.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module rtti.
+:- end_module backend_libs.rtti.
 %-----------------------------------------------------------------------------%

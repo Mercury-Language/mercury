@@ -119,7 +119,7 @@ goal_mark_static_terms(Goal0, Goal, !SI) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "goal_mark_static_terms: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred conj_mark_static_terms(hlds_goals::in, hlds_goals::out,
@@ -206,11 +206,5 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mark_static_terms.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module mark_static_terms.
+:- end_module hlds.mark_static_terms.
 %-----------------------------------------------------------------------------%

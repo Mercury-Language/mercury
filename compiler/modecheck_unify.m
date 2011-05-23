@@ -471,8 +471,7 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
             mode_info_error(WaitingVars, ModeError, !ModeInfo)
         ;
             NonGroundNonLocals = [],
-            unexpected(this_file,
-                "modecheck_unification_rhs_lambda: very strange var")
+            unexpected($module, $pred, "very strange var")
         ),
         % Return any old garbage.
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
@@ -568,9 +567,7 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
             Goal = true_goal_expr
         )
     ;
-        unexpected(this_file,
-            "modecheck_unification_rhs_undetermined_mode_lambda: " ++
-            "expecting single call")
+        unexpected($module, $pred, "expecting single call")
     ).
 
 :- pred modecheck_unify_functor(prog_var::in, mer_type::in, cons_id::in,
@@ -702,7 +699,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         ( get_mode_of_args(Inst, InstArgs, ModeArgs0) ->
             ModeArgs = ModeArgs0
         ;
-            unexpected(this_file, "get_mode_of_args failed")
+            unexpected($module, $pred, "get_mode_of_args failed")
         ),
         (
             inst_expand_and_remove_constrained_inst_vars(ModuleInfo1,
@@ -714,7 +711,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             ModeOfXArgs = ModeOfXArgs0,
             InstOfXArgs = InstOfXArgs0
         ;
-            unexpected(this_file, "get_(inst/mode)_of_args failed")
+            unexpected($module, $pred, "get_(inst/mode)_of_args failed")
         ),
         categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ModeArgs,
             X, ConsId, ArgVars0, VarTypes, UnifyContext,
@@ -829,7 +826,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             ExtraGoals = extra_goals(_, _),
             instmap_is_reachable(InstMap1)
         ->
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "re-modecheck of unification " ++
                 "encountered complicated sub-unifies")
         ;
@@ -845,13 +842,9 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 
 all_arg_vars_are_non_free_or_solver_vars([], [], _, _, []).
 all_arg_vars_are_non_free_or_solver_vars([], [_ | _], _, _, _) :-
-    unexpected(this_file,
-        "modecheck_unify.all_arg_vars_are_non_free_or_solver_vars: " ++
-        "mismatch in list lengths").
+    unexpected($module, $pred, "mismatched list lengths").
 all_arg_vars_are_non_free_or_solver_vars([_ | _], [], _, _, _) :-
-    unexpected(this_file,
-        "modecheck_unify.all_arg_vars_are_non_free_or_solver_vars: " ++
-        "mismatch in list lengths").
+    unexpected($module, $pred, "mismatched list lengths").
 all_arg_vars_are_non_free_or_solver_vars([Arg | Args], [Inst | Insts],
         VarTypes, ModuleInfo, ArgsToInit) :-
     ( inst_match.inst_is_free(ModuleInfo, Inst) ->
@@ -889,7 +882,7 @@ split_complicated_subunifies(Unification0, Unification, ArgVars0, ArgVars,
             Unification = deconstruct(X, ConsId, ArgVars, ArgModes0, Det,
                 CanCGC)
         ;
-            unexpected(this_file, "split_complicated_subunifies_2 failed")
+            unexpected($module, $pred, "split_complicated_subunifies_2 failed")
         )
     ;
         Unification = Unification0,
@@ -983,7 +976,7 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
             Unification0, Unification, GoalInfo2, GoalInfo),
         GoalExpr = unify(X, Y, Mode, Unification, FinalUnifyContext)
     ;
-        unexpected(this_file, "modecheck_unify.create_var_var_unification")
+        unexpected($module, $pred, "unexpected GoalExpr0")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1026,8 +1019,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
                 Unification = assign(Y, X)
             ;
                 LiveY = is_live,
-                unexpected(this_file,
-                    "categorize_unify_var_var: free-free unify!")
+                unexpected($module, $pred, "free-free unify!")
             )
         )
     ;
@@ -1159,7 +1151,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
     ( Unification0 = complicated_unify(_, _, UnifyTypeInfoVars0) ->
         UnifyTypeInfoVars = UnifyTypeInfoVars0
     ;
-        unexpected(this_file, "modecheck_complicated_unify")
+        unexpected($module, $pred, "non-complicated unify")
     ),
     Unification = complicated_unify(UniMode, CanFail, UnifyTypeInfoVars),
 
@@ -1262,8 +1254,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
         Unification0 = construct(_, ConsId, _, _, _, _, SubInfo),
         (
             SubInfo = construct_sub_info(MaybeTakeAddr, _MaybeSize),
-            expect(unify(MaybeTakeAddr, no), this_file,
-                "categorize_unify_var_lambda: take_addr")
+            expect(unify(MaybeTakeAddr, no), $module, $pred, "take_addr")
         ;
             SubInfo = no_construct_sub_info
         )
@@ -1316,15 +1307,13 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
                         RHSTypeCtor = type_ctor(unqualified("func"), 0)
                     )
                 ;
-                    unexpected(this_file,
-                        "categorize_unify_var_lambda: bad HO type")
+                    unexpected($module, $pred, "bad HO type")
                 ),
                 RHSConsId = cons(qualified(PredModule, PredName), Arity,
                     RHSTypeCtor),
                 RHS = rhs_functor(RHSConsId, no, ArgVars)
             ;
-                unexpected(this_file,
-                    "categorize_unify_var_lambda - reintroduced lambda goal")
+                unexpected($module, $pred, "reintroduced lambda goal")
             )
         ;
             RHS = RHS0
@@ -1370,8 +1359,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
         Unification0 = construct(_, ConsIdPrime, _, _, _, _, SubInfo0),
         (
             SubInfo0 = construct_sub_info(MaybeTakeAddr, _MaybeSize0),
-            expect(unify(MaybeTakeAddr, no), this_file,
-                "categorize_unify_var_functor: take_addr")
+            expect(unify(MaybeTakeAddr, no), $module, $pred, "take_addr")
         ;
             SubInfo0 = no_construct_sub_info
         ),
@@ -1526,8 +1514,7 @@ match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
         ArgModesList = [ArgMode | ArgModes]
     ;
         ArgModesList = [],
-        unexpected(this_file,
-            "args_match_higher_order_insts: too many arguments")
+        unexpected($module, $pred, "too many arguments")
     ),
 
     % For arguments with higher order initial insts, check if the variable in
@@ -1559,7 +1546,7 @@ bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) :-
     ( try_bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) ->
         true
     ;
-        unexpected(this_file, "bind_args: try_bind_args failed")
+        unexpected($module, $pred, "try_bind_args failed")
     ).
 
 :- pred try_bind_args(mer_inst::in, list(prog_var)::in,
@@ -1662,9 +1649,5 @@ init_instmap_may_have_subtype(ModeInfo) = MayHaveSubtype :-
     bool.or_list(MayRestrictList, MayHaveSubtype).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "modecheck_unify.m".
-
+:- end_module check_hlds.modecheck_unify.
 %-----------------------------------------------------------------------------%

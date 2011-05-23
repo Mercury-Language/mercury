@@ -205,7 +205,7 @@ get_from_fixpoint_table_final(Index, T) = Elem :-
     ( get_from_fixpoint_table_final_semidet(Index, T, TabledElem) ->
         Elem = TabledElem
     ;
-        unexpected(this_file, "get_from_fixpoint_table_final: key not in map.")
+        unexpected($module, $pred, "key not in map.")
     ).
 
 get_from_fixpoint_table_final_semidet(Index, T, Elem) :-
@@ -213,10 +213,5 @@ get_from_fixpoint_table_final_semidet(Index, T, Elem) :-
     Elem = Entry ^ entry_elem.
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ctgc.fixpoint_table".
-
-%-----------------------------------------------------------------------------%
+:- end_module transform_hlds.ctgc.fixpoint_table.
 %-----------------------------------------------------------------------------%

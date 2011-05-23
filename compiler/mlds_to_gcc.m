@@ -668,8 +668,7 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
         mlds_output_pragma_export_type(suffix, RetType),
         io.write_string(") ")
     ;
-        { unexpected(this_file,
-            "mlds_output_pragma_export: multiple return types") }
+        { unexpected($module, $pred, "multiple return types") }
     ),
 
     mlds_output_fully_qualified_name(FuncName),
@@ -764,7 +763,7 @@ build_field_defns([Defn|Defns], ModuleName, GlobalInfo, FieldList,
         QualFieldName = qual(ModuleName, type_qual, GCC_FieldName),
         map.det_insert(QualFieldName, GCC_FieldDefn, !FieldTable)
     ;
-        unexpected(this_file, "non-var field")
+        unexpected($module, $pred, "non-var field")
     ),
     build_field_defns(Defns, ModuleName, GlobalInfo, FieldList0,
         !FieldTable, !IO),
@@ -821,8 +820,7 @@ gen_defn_body(Name, Context, Flags, DefnBody, !GlobalInfo, !IO) :-
     ;
         DefnBody = mlds_function(_MaybePredProcId, Signature, FunctionBody,
             _Attributes, EnvVarNames),
-        expect(set.empty(EnvVarNames), this_file,
-            "gen_defn_body: EnvVarNames"),
+        expect(set.empty(EnvVarNames), $module, $pred, "EnvVarNames"),
         gen_func(Name, Context, Flags, Signature, FunctionBody,
             !GlobalInfo, !IO)
     ;
@@ -845,14 +843,14 @@ build_local_defn_body(Name, DefnInfo, _Context, Flags, DefnBody, GCC_Defn,
         % nested functions should get eliminated by ml_elim_nested,
         % unless --gcc-nested-functions is enabled.
         % XXX --gcc-nested-functions is not yet implemented
-        sorry(this_file, "nested function (`--gcc-nested-functions' "
+        sorry($module, $pred, "nested function (`--gcc-nested-functions' "
             ++ "not yet supported with `--target asm')")
     ;
         DefnBody = mlds_class(_),
         % currently the MLDS code generator doesn't generate
         % types nested inside functions, so we don't need to
         % implement this
-        unexpected(this_file, "nested type")
+        unexpected($module, $pred, "nested type")
     ).
 
 :- pred build_field_defn_body(mlds_qualified_entity_name::in, mlds_context::in,
@@ -868,10 +866,10 @@ build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo,
         add_field_decl_flags(Flags, GCC_Defn, !IO)
     ;
         DefnBody = mlds_function(_, _, _, _, _),
-        unexpected(this_file, "function nested in type")
+        unexpected($module, $pred, "function nested in type")
     ;
         DefnBody = mlds_class(_),
-        unexpected(this_file, "type nested in type")
+        unexpected($module, $pred, "type nested in type")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -903,9 +901,9 @@ add_var_access_flag(acc_public, GCC_Defn, !IO) :-
 add_var_access_flag(acc_private, _GCC_Defn, !IO).
     % This should only be used for global variables, where it is the default.
 add_var_access_flag(acc_protected, _GCC_Defn, !IO) :-
-    sorry(this_file, "`protected' access").
+    sorry($module, $pred, "`protected' access").
 add_var_access_flag(acc_default, _GCC_Defn, !IO) :-
-    sorry(this_file, "`default' access").
+    sorry($module, $pred, "`default' access").
 add_var_access_flag(acc_local, _GCC_Defn, !IO).
     % This should only be used for local variables, where it is the default.
 
@@ -915,7 +913,7 @@ add_var_access_flag(acc_local, _GCC_Defn, !IO).
 add_var_virtuality_flag(virtual, _GCC_Defn, !IO) :-
     % `virtual' should only be used for methods,
     % not for variables.
-    unexpected(this_file, "`virtual' variable").
+    unexpected($module, $pred, "`virtual' variable").
 add_var_virtuality_flag(non_virtual, _GCC_Defn, !IO).
     % This is the default.
 
@@ -931,7 +929,7 @@ add_var_constness_flag(modifiable, _GCC_Defn, !IO).
     io::di, io::uo) is det.
 
 add_var_overridability_flag(sealed, _GCC_Defn, !IO) :-
-    unexpected(this_file, "`sealed' variable").
+    unexpected($module, $pred, "`sealed' variable").
 add_var_overridability_flag(overridable, _GCC_Defn, !IO).
     % This is the default.
 
@@ -942,7 +940,7 @@ add_var_abstractness_flag(concrete, _GCC_Defn, !IO).
     % This is the default.
 add_var_abstractness_flag(abstract, _GCC_Defn, !IO) :-
     % `abstract' should only be used for fields or methods, not for variables.
-    unexpected(this_file, "`abstract' variable").
+    unexpected($module, $pred, "`abstract' variable").
 
 %
 % Decl flags for fields.
@@ -965,13 +963,13 @@ add_field_decl_flags(Flags, GCC_Defn, !IO) :-
 add_field_access_flag(acc_public, _GCC_Defn, !IO).
     % This is the default.
 add_field_access_flag(acc_private, _GCC_Defn, !IO) :-
-    sorry(this_file, "`private' field").
+    sorry($module, $pred, "`private' field").
 add_field_access_flag(acc_protected, _GCC_Defn, !IO) :-
-    sorry(this_file, "`protected' field").
+    sorry($module, $pred, "`protected' field").
 add_field_access_flag(acc_default, _GCC_Defn, !IO) :-
-    sorry(this_file, "`default' field").
+    sorry($module, $pred, "`default' field").
 add_field_access_flag(acc_local, _GCC_Defn, !IO) :-
-    sorry(this_file, "`local' field").
+    sorry($module, $pred, "`local' field").
 
 :- pred add_field_per_instance_flag(mlds.per_instance::in, gcc.field_decl::in,
     io::di, io::uo) is det.
@@ -980,13 +978,13 @@ add_field_per_instance_flag(per_instance, _GCC_Defn, !IO).
     % This is the default.
 add_field_per_instance_flag(one_copy, _GCC_Defn, !IO) :-
     % Static fields should be hoisted out as global variables.
-    unexpected(this_file, "`static' field").
+    unexpected($module, $pred, "`static' field").
 
 :- pred add_field_virtuality_flag(virtuality::in, gcc.field_decl::in,
     io::di, io::uo) is det.
 
 add_field_virtuality_flag(virtual, _GCC_Defn, !IO) :-
-    sorry(this_file, "`virtual' field").
+    sorry($module, $pred, "`virtual' field").
 add_field_virtuality_flag(non_virtual, _GCC_Defn, !IO).
     % This is the default.
 
@@ -994,7 +992,7 @@ add_field_virtuality_flag(non_virtual, _GCC_Defn, !IO).
     io::di, io::uo) is det.
 
 add_field_constness_flag(const, _GCC_Defn, !IO) :-
-    sorry(this_file, "`const' field").
+    sorry($module, $pred, "`const' field").
 add_field_constness_flag(modifiable, _GCC_Defn, !IO).
     % This is the default.
 
@@ -1002,7 +1000,7 @@ add_field_constness_flag(modifiable, _GCC_Defn, !IO).
     io::di, io::uo) is det.
 
 add_field_overridability_flag(sealed, _GCC_Defn, !IO) :-
-    sorry(this_file, "`sealed' field").
+    sorry($module, $pred, "`sealed' field").
 add_field_overridability_flag(overridable, _GCC_Defn, !IO).
     % This is the default.
 
@@ -1012,7 +1010,7 @@ add_field_overridability_flag(overridable, _GCC_Defn, !IO).
 add_field_abstractness_flag(concrete, _GCC_Defn, !IO).
     % This is the default.
 add_field_abstractness_flag(abstract, _GCC_Defn, !IO) :-
-    sorry(this_file, "`abstract' field").
+    sorry($module, $pred, "`abstract' field").
 
 %
 % Decl flags for functions.
@@ -1037,12 +1035,12 @@ add_func_access_flag(acc_public, GCC_Defn, !IO) :-
 add_func_access_flag(acc_private, _GCC_Defn, !IO).
     % This is the default.
 add_func_access_flag(acc_protected, _GCC_Defn, !IO) :-
-    sorry(this_file, "`protected' access").
+    sorry($module, $pred, "`protected' access").
 add_func_access_flag(acc_default, _GCC_Defn, !IO) :-
-    sorry(this_file, "`default' access").
+    sorry($module, $pred, "`default' access").
 add_func_access_flag(acc_local, _GCC_Defn, !IO) :-
     % Nested functions are not supported.
-    sorry(this_file, "`local' access").
+    sorry($module, $pred, "`local' access").
 
 :- pred add_func_per_instance_flag(mlds.per_instance::in, gcc.func_decl::in,
     io::di, io::uo) is det.
@@ -1058,7 +1056,7 @@ add_func_per_instance_flag(one_copy, _GCC_Defn, !IO).
     io::di, io::uo) is det.
 
 add_func_virtuality_flag(virtual, _GCC_Defn, !IO) :-
-    sorry(this_file, "`virtual' function").
+    sorry($module, $pred, "`virtual' function").
 add_func_virtuality_flag(non_virtual, _GCC_Defn, !IO).
     % This is the default.
 
@@ -1066,7 +1064,7 @@ add_func_virtuality_flag(non_virtual, _GCC_Defn, !IO).
     io::di, io::uo) is det.
 
 add_func_constness_flag(const, _GCC_Defn, !IO) :-
-    sorry(this_file, "`const' function").
+    sorry($module, $pred, "`const' function").
 add_func_constness_flag(modifiable, _GCC_Defn, !IO).
     % This is the default.
 
@@ -1074,7 +1072,7 @@ add_func_constness_flag(modifiable, _GCC_Defn, !IO).
     io::di, io::uo) is det.
 
 add_func_overridability_flag(sealed, _GCC_Defn, !IO) :-
-    sorry(this_file, "`sealed' function").
+    sorry($module, $pred, "`sealed' function").
 add_func_overridability_flag(overridable, _GCC_Defn, !IO).
     % This is the default.
 
@@ -1082,7 +1080,7 @@ add_func_overridability_flag(overridable, _GCC_Defn, !IO).
     io::di, io::uo) is det.
 
 add_func_abstractness_flag(abstract, _GCC_Defn, !IO) :-
-    sorry(this_file, "`abstract' function").
+    sorry($module, $pred, "`abstract' function").
 add_func_abstractness_flag(concrete, _GCC_Defn, !IO).
     % This is the default.
 
@@ -1110,7 +1108,7 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn,
         % var/1 should be the only kind of mlds_data_name for which
         % the MLDS code generator generates local definitions
         % (within functions)
-        unexpected(this_file, "build_local_data_defn: non-var")
+        unexpected($module, $pred, "non-var")
     ),
     PerInstance = per_instance(Flags),
     (
@@ -1156,13 +1154,13 @@ build_field_data_defn(Name, Type, Initializer, GlobalInfo, GCC_Defn, !IO) :-
         GCC_VarName = ml_var_name_to_string(VarName),
         gcc.build_field_decl(GCC_VarName, GCC_Type, GCC_Defn, !IO)
     ;
-        sorry(this_file, "build_field_data_defn: non-var")
+        sorry($module, $pred, "non-var")
     ),
     ( Initializer = no_initializer ->
         true
     ;
         % Fields can't have initializers.
-        sorry(this_file, "build_field_data_defn: initializer")
+        sorry($module, $pred, "initializer")
     ).
 
 :- pred build_initializer(mlds_initializer::in, gcc.gcc_type::in,
@@ -1171,7 +1169,7 @@ build_field_data_defn(Name, Type, Initializer, GlobalInfo, GCC_Defn, !IO) :-
 build_initializer(Initializer, GCC_Type, DefnInfo, GCC_Expr, !IO) :-
     (
         Initializer = no_initializer,
-        unexpected(this_file, "no_initializer (build_initializer)")
+        unexpected($module, $pred, "no_initializer (build_initializer)")
     ;
         Initializer = init_obj(Rval),
         build_rval(Rval, DefnInfo, GCC_Expr, !IO)
@@ -1245,7 +1243,7 @@ gen_class(Name, Context, ClassDefn, !GlobalInfo, !IO) :-
         ClassModuleName = mlds_append_class_qualifier(Target, ModuleName,
             QualKind, ClassName, ClassArity)
     ;
-        unexpected(this_file, "mlds_output_enum_constants")
+        unexpected($module, $pred, "unexpected entity")
     ),
 
     % Hoist out static members, since plain old C doesn't support
@@ -1260,7 +1258,7 @@ gen_class(Name, Context, ClassDefn, !GlobalInfo, !IO) :-
         Ctors = []
     ;
         Ctors = [_ | _],
-        unexpected(this_file, "constructors")
+        unexpected($module, $pred, "constructors")
     ),
     ( Kind = mlds_enum ->
         StaticMembers = [],
@@ -1286,7 +1284,7 @@ gen_class(Name, Context, ClassDefn, !GlobalInfo, !IO) :-
     % We treat enumerations specially.
     ( Kind = mlds_enum ->
         % XXX enumeration definitions are not yet implemented
-        sorry(this_file, "enum type (`--high-level-data' not yet "
+        sorry($module, $pred, "enum type (`--high-level-data' not yet "
             ++ "implemented for `--target asm')")
         /************
         mlds_output_class_decl(Indent, Name, ClassDefn),
@@ -1405,8 +1403,7 @@ mlds_output_enum_constant(Indent, EnumModuleName, Defn) -->
             qual(EnumModuleName, type_qual, Name)),
         mlds_output_initializer(Type, Initializer)
     ;
-        { unexpected(this_file,
-            "mlds_output_enum_constant: constant is not data") }
+        { unexpected($module, $pred, "constant is not data") }
     ).
 
 ***********/
@@ -1510,7 +1507,7 @@ get_return_type(List, GlobalInfo, GCC_Type, !IO) :-
         build_type(Type, GlobalInfo, GCC_Type, !IO)
     ;
         List = [_, _ | _],
-        unexpected(this_file, "multiple return types")
+        unexpected($module, $pred, "multiple return types")
     ).
 
     % get_func_name(Name, ModuleName, FuncName, AsmFuncName):
@@ -1574,7 +1571,7 @@ get_func_name(FunctionName, FuncName, AsmFuncName) :-
             FuncName = SpecialPredName ++ TypeName
         )
     ;
-        unexpected(this_file, "get_func_name: non-function")
+        unexpected($module, $pred, "non-function")
     ).
 
     % XXX Same as mlds_output_pred_label in mlds_to_c, except that
@@ -1661,8 +1658,7 @@ build_param_types_and_decls([Arg | Args], ModuleName, GlobalInfo,
         SymbolTable = map.det_insert(SymbolTable0,
             qual(ModuleName, module_qual, ArgName), ParamDecl)
     ;
-        unexpected(this_file,
-            "build_param_types_and_decls: invalid param name")
+        unexpected($module, $pred, "invalid param name")
     ),
     ParamTypes = gcc.cons_param_types(GCC_Type, ParamTypes0),
     ParamDecls = gcc.cons_param_decls(ParamDecl, ParamDecls0).
@@ -1777,7 +1773,7 @@ build_type(Type, ArraySize, GlobalInfo, GCC_Type, !IO) :-
             build_type(RetType, no_size, GlobalInfo, GCC_RetType, !IO)
         ;
             RetTypes = [_, _ | _],
-            sorry(this_file, "multiple return types")
+            sorry($module, $pred, "multiple return types")
         ),
         build_param_types(ArgTypes, GlobalInfo, _, GCC_ParamTypes, !IO),
         gcc.build_function_type(GCC_RetType, GCC_ParamTypes,
@@ -1831,10 +1827,10 @@ build_type(Type, ArraySize, GlobalInfo, GCC_Type, !IO) :-
         build_rtti_type(RttiIdMaybeElement, ArraySize, GCC_Type, !IO)
     ;
         Type = mlds_tabling_type(_TablingId),
-        sorry(this_file, "NYI: tabling in the asm backend")
+        sorry($module, $pred, "NYI: tabling in the asm backend")
     ;
         Type = mlds_unknown_type,
-        unexpected(this_file, "build_type: unknown type")
+        unexpected($module, $pred, "unknown type")
     ).
 
 :- pred build_mercury_type(mer_type::in, type_ctor_category::in,
@@ -1951,8 +1947,8 @@ build_rtti_type(RttiIdMaybeElement, Size, GCC_Type, !IO) :-
         )
     ;
         RttiIdMaybeElement = element_type(_),
-        expect(unify(IsArray, is_array), this_file,
-            "build_rtti_type: element of non-array"),
+        expect(unify(IsArray, is_array), $module, $pred,
+            "element of non-array"),
         GCC_Type = BaseType
     ).
 
@@ -1983,7 +1979,7 @@ build_rtti_type_name(type_ctor_enum_functor_desc(_), GCC_Type, !IO) :-
          'MR_int_least32_t' - "MR_enum_functor_ordinal"],
         GCC_Type, !IO).
 build_rtti_type_name(type_ctor_foreign_enum_functor_desc(_), _, _, _) :-
-    sorry(this_file, "NYI foreign enums and asm backend.").
+    sorry($module, $pred, "NYI foreign enums and asm backend").
 build_rtti_type_name(type_ctor_notag_functor_desc, GCC_Type, !IO) :-
     % typedef struct {
     %     MR_ConstString      MR_notag_functor_name;
@@ -2175,8 +2171,7 @@ build_rtti_type_tc_name(type_class_instance_constraints(_), GCC_Type, !IO) :-
     build_tc_constr_type(StructType, !IO),
     gcc.build_pointer_type(StructType, GCC_Type, !IO).
 build_rtti_type_tc_name(type_class_instance_methods(_), _GCC_Type, !IO) :-
-    sorry(this_file,
-        "build_rtti_type_tc_name: type_class_instance_methods").
+    sorry($module, $pred, "type_class_instance_methods").
 
 :- pred build_type_info_type(rtti_type_info::in,
     gcc.gcc_type::out, io::di, io::uo) is det.
@@ -2219,7 +2214,7 @@ build_type_info_type(var_arity_type_info(_VarArityTypeId, ArgTypes), GCC_Type,
 build_pseudo_type_info_type(type_var(_), _, !IO) :-
     % We use small integers to represent type_vars,
     % rather than pointers, so there is no pointed-to type.
-    unexpected(this_file, "mlds_rtti_type: type_var").
+    unexpected($module, $pred, "type_var").
 build_pseudo_type_info_type(plain_arity_zero_pseudo_type_info(_), GCC_Type,
         !IO) :-
     build_rtti_type_name(type_ctor_type_ctor_info, GCC_Type, !IO).
@@ -2534,16 +2529,16 @@ build_name(entity_export(Name)) = Name.
 build_data_name(mlds_data_var(Name)) =
     name_mangle(ml_var_name_to_string(Name)).
 build_data_name(mlds_scalar_common_ref(_)) =
-    sorry(this_file, "mlds_scalar_common_ref").
+    sorry($module, $pred, "mlds_scalar_common_ref").
 build_data_name(mlds_rtti(RttiId0)) = RttiAddrName :-
     RttiId = fixup_rtti_id(RttiId0),
     rtti.id_to_c_identifier(RttiId, RttiAddrName).
 build_data_name(mlds_module_layout) = _ :-
-    sorry(this_file, "mlds_module_layout").
+    sorry($module, $pred, "mlds_module_layout").
 build_data_name(mlds_proc_layout(_ProcLabel)) = _ :-
-    sorry(this_file, "mlds_proc_layout").
+    sorry($module, $pred, "mlds_proc_layout").
 build_data_name(mlds_internal_layout(_ProcLabel, _FuncSeqNum)) = _ :-
-    sorry(this_file, "mlds_internal_layout").
+    sorry($module, $pred, "mlds_internal_layout").
 build_data_name(mlds_tabling_ref(ProcLabel, Id)) = TablingPointerName :-
     % convert the proc_label into an entity_name,
     % so we can use get_func_name below
@@ -2734,17 +2729,17 @@ gen_stmt(DefnInfo, Stmt, Context, !IO) :-
         % XXX not yet implemented
         % but we set target_supports_break_and_continue to no
         % for this target, so we shouldn't get any.
-        unexpected(this_file, "NYI continue")
+        unexpected($module, $pred, "NYI continue")
     ;
         Stmt = ml_stmt_computed_goto(_Expr, _Labels),
         % XXX not yet implemented
         % but we set target_supports_computed_goto to no
         % for this target, so we shouldn't get any.
-        unexpected(this_file, "NYI computed goto")
+        unexpected($module, $pred, "NYI computed goto")
     ;
         Stmt = ml_stmt_call(_Signature, FuncRval, MaybeObject, CallArgs,
             Results, CallKind),
-        expect(unify(MaybeObject, no), this_file, "method call"),
+        expect(unify(MaybeObject, no), $module, $pred, "method call"),
         build_args(CallArgs, DefnInfo, GCC_ArgList, !IO),
         build_rval(FuncRval, DefnInfo, GCC_FuncRval, !IO),
         (
@@ -2786,7 +2781,7 @@ gen_stmt(DefnInfo, Stmt, Context, !IO) :-
             )
         ;
             Results = [_, _ | _],
-            sorry(this_file, "call with multiple outputs")
+            sorry($module, $pred, "call with multiple outputs")
         )
     ;
         Stmt = ml_stmt_return(Results),
@@ -2795,14 +2790,14 @@ gen_stmt(DefnInfo, Stmt, Context, !IO) :-
             % XXX Not yet implemented
             % These are not generated by the current MLDS code
             % generator, so I didn't bother to implement them.
-            sorry(this_file, "gen_stmt: return without return value")
+            sorry($module, $pred, "return without return value")
         ;
             Results = [Rval],
             build_rval(Rval, DefnInfo, Expr, !IO),
             gcc.gen_return(Expr, !IO)
         ;
             Results = [_, _ | _],
-            sorry(this_file, "gen_stmt: multiple return values")
+            sorry($module, $pred, "multiple return values")
         )
     ;
         Stmt = ml_stmt_do_commit(Ref),
@@ -2810,7 +2805,7 @@ gen_stmt(DefnInfo, Stmt, Context, !IO) :-
         ( Ref = ml_lval(RefLval0) ->
             RefLval = RefLval0
         ;
-            unexpected(this_file, "non-lval argument to do_commit")
+            unexpected($module, $pred, "non-lval argument to do_commit")
         ),
         build_call(gcc.longjmp_func_decl,
             [ml_mem_addr(RefLval), ml_const(mlconst_int(1))],
@@ -2875,7 +2870,7 @@ gen_case_label(DefnInfo, match_range(Min, Max), !IO) :-
     % not needed so far, since these are not generated by the current
     % MLDS code generator)
     %%% gcc.gen_case_range_label(GCC_Min, GCC_Max, Label).
-    sorry(this_file, "match_range").
+    sorry($module, $pred, "match_range").
 
 :- pred gen_default(defn_info::in, mlds_switch_default::in,
     io::di, io::uo) is det.
@@ -3002,14 +2997,14 @@ gen_atomic_stmt(DefnInfo, AtomicStmt, Context, !IO) :-
         gcc.gen_assign(GCC_Lval, GCC_Rval, !IO)
     ;
         AtomicStmt = assign_if_in_heap(_, _),
-        sorry(this_file, "gen_atomic_stmt: assign_if_in_heap")
+        sorry($module, $pred, "assign_if_in_heap")
     ;
         AtomicStmt = delete_object(_Lval),
         % XXX not yet implemented
         % we should generate a call to GC_free()
         % (would be easy to do, but not needed so far, since
         % these are not generated by the current MLDS code generator)
-        sorry(this_file, "NYI delete_object")
+        sorry($module, $pred, "NYI delete_object")
     ;
         AtomicStmt = new_object(Target, MaybeTag, _ExplicitSecTag, Type,
             MaybeSize, _MaybeCtorName, Args, ArgTypes, _MayUseAtomic,
@@ -3024,7 +3019,7 @@ gen_atomic_stmt(DefnInfo, AtomicStmt, Context, !IO) :-
             SizeInBytes = ml_binop(int_mul, SizeInWords, SizeOfWord)
         ;
             MaybeSize = no,
-            sorry(this_file, "new_object with unknown size")
+            sorry($module, $pred, "new_object with unknown size")
         ),
 
         % Generate code to allocate the memory and optionally tag the pointer,
@@ -3060,19 +3055,19 @@ gen_atomic_stmt(DefnInfo, AtomicStmt, Context, !IO) :-
             DefnInfo, !IO)
     ;
         AtomicStmt = gc_check,
-        sorry(this_file, "gc_check")
+        sorry($module, $pred, "gc_check")
     ;
         AtomicStmt = mark_hp(_Lval),
-        sorry(this_file, "mark_hp")
+        sorry($module, $pred, "mark_hp")
     ;
         AtomicStmt = restore_hp(_Rval),
-        sorry(this_file, "restore_hp")
+        sorry($module, $pred, "restore_hp")
     ;
         AtomicStmt = trail_op(_TrailOp),
         % Currently trail ops are implemented via calls to
         % impure predicates implemented in C, rather than as
         % MLDS trail ops, so this should never be reached.
-        unexpected(this_file, "trail_op")
+        unexpected($module, $pred, "trail_op")
         % XXX That approach should work OK, but it is not
         % maximally efficient for this back-end, since for
         % this back-end the calls to C will end up as out-of-line
@@ -3084,11 +3079,11 @@ gen_atomic_stmt(DefnInfo, AtomicStmt, Context, !IO) :-
     ;
         AtomicStmt = inline_target_code(_TargetLang, _Components),
         % XXX We should support inserting inline asm code fragments.
-        sorry(this_file, "target_code (for `--target asm')")
+        sorry($module, $pred, "target_code (for `--target asm')")
     ;
         AtomicStmt = outline_foreign_proc(_, _, _, _),
         % XXX I'm not sure if we need to handle this case.
-        sorry(this_file, "outline_foreign_proc (for `--target asm')")
+        sorry($module, $pred, "outline_foreign_proc (for `--target asm')")
     ).
 
     % gen_init_args generates code to initialize the fields
@@ -3099,9 +3094,9 @@ gen_atomic_stmt(DefnInfo, AtomicStmt, Context, !IO) :-
     mlds_tag::in, defn_info::in, io::di, io::uo) is det.
 
 gen_init_args([_ | _], [], _, _, _, _, _, _, !IO) :-
-    unexpected(this_file, "gen_init_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 gen_init_args([], [_ | _], _, _, _, _, _, _, !IO) :-
-    unexpected(this_file, "gen_init_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 gen_init_args([], [], _, _, _, _, _, _, !IO).
 gen_init_args([Arg | Args], [ArgType | ArgTypes], Context, ArgNum, Target,
         Type, Tag, DefnInfo, !IO) :-
@@ -3139,7 +3134,7 @@ build_lval(Lval, DefnInfo, GCC_Expr, !IO) :-
         ;
             % The field type for field(_, _, offset(_), _, _) lvals
             % must be something that maps to MR_Box.
-            unexpected(this_file, "unexpected field type")
+            unexpected($module, $pred, "unexpected field type")
         ),
 
         % Generate the tagged pointer whose field we want to extract.
@@ -3220,7 +3215,7 @@ build_lval(Lval, DefnInfo, GCC_Expr, !IO) :-
         gcc.build_pointer_deref(PointerExpr, GCC_Expr, !IO)
     ;
         Lval = ml_global_var_ref(_),
-        sorry(this_file, "build_lval: global_var_ref NYI")
+        sorry($module, $pred, "global_var_ref NYI")
     ;
         Lval = ml_var(qual(ModuleName, QualKind, VarName), _VarType),
         % Look up the variable in the symbol table. We try the symbol table
@@ -3260,7 +3255,7 @@ build_lval(Lval, DefnInfo, GCC_Expr, !IO) :-
             gcc.build_extern_var_decl(GCC_VarName, Type, Decl, !IO),
             GCC_Expr = gcc.var_expr(Decl)
         ;
-            unexpected(this_file, "undeclared variable: " ++
+            unexpected($module, $pred, "undeclared variable: " ++
                 build_qualified_name(Name))
         )
     ).
@@ -3278,7 +3273,7 @@ get_class_type_name(Type) = Name :-
         ClassName = qual(ModuleName, QualKind, UnqualClassName),
         Name = qual(ModuleName, QualKind, entity_type(UnqualClassName, Arity))
     ;
-        unexpected(this_file, "non-class_type in get_type_name")
+        unexpected($module, $pred, "non-class_type in get_type_name")
     ).
 
 :- pred build_rval(mlds_rval::in, defn_info::in, gcc.expr::out,
@@ -3309,13 +3304,13 @@ build_rval(Rval, DefnInfo, Expr, !IO) :-
         gcc.build_addr_expr(LvalExpr, Expr, !IO)
     ;
         Rval = ml_scalar_common(_),
-        unexpected(this_file, "scalar_common rval")
+        unexpected($module, $pred, "scalar_common rval")
     ;
         Rval = ml_vector_common_row(_, _),
-        unexpected(this_file, "vector_common rval")
+        unexpected($module, $pred, "vector_common rval")
     ;
         Rval = ml_self(_),
-        unexpected(this_file, "self rval")
+        unexpected($module, $pred, "self rval")
     ).
 
 :- pred build_unop(mlds_unary_op::in, mlds_rval::in, defn_info::in,
@@ -3343,7 +3338,7 @@ build_unop(Unop, Rval, DefnInfo, GCC_Expr, !IO) :-
                 build_cast_rval(mlds_generic_type, PtrRval, DefnInfo,
                     GCC_Expr, !IO)
             ;
-                unexpected(this_file, "boxing non-lval, non-null array")
+                unexpected($module, $pred, "boxing non-lval, non-null array")
             )
         ;
             build_cast_rval(mlds_generic_type, Rval, DefnInfo, GCC_Expr, !IO)
@@ -3450,7 +3445,7 @@ build_unop_expr(Unop, Arg, DefnInfo, Expr, !IO) :-
         ( Unop = hash_string2
         ; Unop = hash_string3
         ),
-        unexpected(this_file, "build_unop_expr: hash_string2/3")
+        unexpected($module, $pred, "hash_string2/3")
     ).
 
 :- pred build_std_binop(builtin_ops.binary_op::in,
@@ -3472,7 +3467,7 @@ build_std_binop(BinaryOp, Arg1, Arg2, DefnInfo, Expr, !IO) :-
         % (computed_goto) switches, and we set
         % target_supports_computed_goto to no for this target,
         % so we shouldn't get any of these.
-        unexpected(this_file, "unsigned comparison operator")
+        unexpected($module, $pred, "unsigned comparison operator")
         /***
         %
         % Treat unsigned comparison operators specially:
@@ -3540,20 +3535,21 @@ convert_binary_op(eq,       gcc.eq_expr,        gcc.boolean_type_node).
 convert_binary_op(ne,       gcc.ne_expr,        gcc.boolean_type_node).
 convert_binary_op(body,     gcc.minus_expr,     'MR_intptr_t').
 convert_binary_op(array_index(_), _, _) :-
-    unexpected(this_file, "array_index").
-convert_binary_op(str_eq, _, _) :- unexpected(this_file, "str_eq").
-convert_binary_op(str_ne, _, _) :- unexpected(this_file, "str_ne").
-convert_binary_op(str_lt, _, _) :- unexpected(this_file, "str_lt").
-convert_binary_op(str_gt, _, _) :- unexpected(this_file, "str_gt").
-convert_binary_op(str_le, _, _) :- unexpected(this_file, "str_le").
-convert_binary_op(str_ge, _, _) :- unexpected(this_file, "str_ge").
+    unexpected($module, $pred, "array_index").
+convert_binary_op(str_eq, _, _) :- unexpected($module, $pred, "str_eq").
+convert_binary_op(str_ne, _, _) :- unexpected($module, $pred, "str_ne").
+convert_binary_op(str_lt, _, _) :- unexpected($module, $pred, "str_lt").
+convert_binary_op(str_gt, _, _) :- unexpected($module, $pred, "str_gt").
+convert_binary_op(str_le, _, _) :- unexpected($module, $pred, "str_le").
+convert_binary_op(str_ge, _, _) :- unexpected($module, $pred, "str_ge").
 convert_binary_op(str_cmp, _, _) :-
-    unexpected(this_file, "str_cmp").
+    unexpected($module, $pred, "str_cmp").
 convert_binary_op(int_lt,   gcc.lt_expr,        gcc.boolean_type_node).
 convert_binary_op(int_gt,   gcc.gt_expr,        gcc.boolean_type_node).
 convert_binary_op(int_le,   gcc.le_expr,        gcc.boolean_type_node).
 convert_binary_op(int_ge,   gcc.ge_expr,        gcc.boolean_type_node).
-convert_binary_op(unsigned_le, _, _) :- unexpected(this_file, "unsigned_le").
+convert_binary_op(unsigned_le, _, _) :-
+    unexpected($module, $pred, "unsigned_le").
 convert_binary_op(float_plus,   gcc.plus_expr,      'MR_Float').
 convert_binary_op(float_minus,  gcc.minus_expr,     'MR_Float').
 convert_binary_op(float_times,  gcc.mult_expr,      'MR_Float').
@@ -3564,8 +3560,10 @@ convert_binary_op(float_lt, gcc.lt_expr,        gcc.boolean_type_node).
 convert_binary_op(float_gt, gcc.gt_expr,        gcc.boolean_type_node).
 convert_binary_op(float_le, gcc.le_expr,        gcc.boolean_type_node).
 convert_binary_op(float_ge, gcc.ge_expr,        gcc.boolean_type_node).
-convert_binary_op(compound_eq, _, _) :- unexpected(this_file, "compound_eq").
-convert_binary_op(compound_lt, _, _) :- unexpected(this_file, "compound_lt").
+convert_binary_op(compound_eq, _, _) :-
+    unexpected($module, $pred, "compound_eq").
+convert_binary_op(compound_lt, _, _) :-
+    unexpected($module, $pred, "compound_lt").
 
 :- pred build_call(gcc.func_decl::in, list(mlds_rval)::in, defn_info::in,
     gcc.expr::out, io::di, io::uo) is det.
@@ -3611,7 +3609,8 @@ build_rval_const(Const, GlobalInfo, Expr, !IO) :-
         gcc.build_int(N, Expr, !IO)
     ;
         Const = mlconst_foreign(_Lang, _Value, _Type),
-        sorry(this_file, "foreign tags not yet supported with `--target asm'")
+        sorry($module, $pred,
+            "foreign tags not yet supported with `--target asm'")
     ;
         Const = mlconst_float(FloatVal),
         gcc.build_float(FloatVal, Expr, !IO)
@@ -3621,10 +3620,12 @@ build_rval_const(Const, GlobalInfo, Expr, !IO) :-
     ;
         Const = mlconst_multi_string(_Strings),
         % multi-strings are only used for the debugger
-        sorry(this_file, "debugging not yet supported with `--target asm'")
+        sorry($module, $pred,
+            "debugging not yet supported with `--target asm'")
     ;
         Const = mlconst_named_const(_NamedConst),
-        sorry(this_file, "named consts not yet supported with `--target asm'")
+        sorry($module, $pred,
+            "named consts not yet supported with `--target asm'")
     ;
         Const = mlconst_code_addr(CodeAddr),
         build_code_addr(CodeAddr, GlobalInfo, Expr, !IO)
@@ -3770,12 +3771,6 @@ gen_context(MLDS_Context, !IO) :-
 'MR_int_least32_t'  = gcc.int32_type_node.
 'MR_int_least64_t'  = gcc.int64_type_node.
 'MR_intptr_t'       = gcc.intptr_type_node.
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mlds_to_gcc.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module mlds_to_gcc.

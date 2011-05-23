@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2006, 2010 The University of Melbourne.
+% Copyright (C) 1999-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -450,7 +450,7 @@ get_class_suffix(structured_name(_, OuterClassFullName, NestedClass))
         SuffixName = [Last | NestedClass]
     ;
         % This class has no name whatsoever.
-        unexpected(this_file, "get_class_namespace: class has no name")
+        unexpected($module, $pred, "class has no name")
     ).
 
 get_class_namespace(structured_name(_, FullName, _)) = NamespaceName :-
@@ -461,13 +461,13 @@ get_class_namespace(structured_name(_, FullName, _)) = NamespaceName :-
         NamespaceName0 = NamespaceName
     ;
         % This class has no name whatsoever.
-        unexpected(this_file, "get_class_namespace: class has no name")
+        unexpected($module, $pred, "class has no name")
     ).
 
 append_toplevel_class_name(structured_name(Assembly, Namespace, NestedClass),
         Class) = structured_name(Assembly, ClassName, []) :-
-    expect(unify(NestedClass, []), this_file,
-        "append_toplevel_class_name: namespace name has nested class?"),
+    expect(unify(NestedClass, []), $module, $pred,
+        "namespace name has nested class?"),
     list.append(Namespace, [Class], ClassName).
 
 append_nested_class_name(StructuredName0, ExtraNestedClasses)
@@ -497,7 +497,7 @@ calculate_max_stack_2([I | Instrs], Current, Max) =
     ),
     % This is a sanity check, the stack should never have a negative size.
     ( NewCurrent < 0 ->
-        unexpected(this_file, "stack underflow while calculating max stack")
+        unexpected($module, $pred, "stack underflow")
     ;
         true
     ).
@@ -637,11 +637,5 @@ get_calli_stack_difference(signature(CallConv, RetType, Params)) = Diff :-
     Diff = -(length(Params)) + InstanceDiff + RetDiff - 1.
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ilds.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module ilds.
+:- end_module ml_backend.ilds.
 %-----------------------------------------------------------------------------%

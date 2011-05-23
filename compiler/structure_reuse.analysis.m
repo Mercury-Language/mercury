@@ -420,7 +420,7 @@ make_intermediate_reuse_proc(sr_request(PPId, NoClobbers), NewPPId,
 
 get_numbered_args(_, [], _, []).
 get_numbered_args(_, [_ | _], [], _) :-
-    unexpected(this_file, "get_numbered_args: argument list too short").
+    unexpected($module, $pred, "argument list too short").
 get_numbered_args(I, [N | Ns], [Var | Vars], Selected) :-
     ( I = N ->
         get_numbered_args(I + 1, Ns, Vars, Selected0),
@@ -668,8 +668,7 @@ structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer, Reuse) :-
             rename_structure_reuse_domain(VarRenaming, TypeSubst,
                 has_conditional_reuse(ImpReuseConditions), Reuse)
         ;
-            unexpected(this_file,
-                "structure_reuse_answer_to_domain: type_unify_list failed")
+            unexpected($module, $pred, "type_unify_list failed")
         )
     ).
 
@@ -882,7 +881,7 @@ analysis_name = "structure_reuse".
     bottom(_, _) = structure_reuse_answer_no_reuse,
     ( top(_, _) = _ :-
         % We have no representation for "all possible conditions".
-        unexpected(this_file, "top/2 called")
+        unexpected($module, $pred, "top/2 called")
     ),
     ( get_func_info(ModuleInfo, ModuleName, FuncId, _, _, FuncInfo) :-
         func_id_to_ppid(ModuleInfo, ModuleName, FuncId, PPId),
@@ -1207,7 +1206,7 @@ lookup_new_structure_reuse_answer(ModuleInfo, ReuseTable, ReusePPId,
     ( reuse_as_table_search(ReuseTable, ReusePPId, ReuseAs_Status) ->
         ReuseAs_Status = reuse_as_and_status(NewReuseAs, _)
     ;
-        unexpected(this_file, "lookup_new_structure_reuse_answer")
+        unexpected($module, $pred, "search failed")
     ),
     reuse_as_to_structure_reuse_answer(ModuleInfo, ReusePPId, NewReuseAs,
         NewAnswer).
@@ -1245,12 +1244,6 @@ remove_useless_reuse_proc(ModuleInfo, VeryVerbose, ReuseAsMap, _, PPId,
     ;
         true
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "structure_reuse.analysis.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.analysis.

@@ -382,7 +382,7 @@ start_in_forked_process(P, MaybePid, !IO) :-
     io::di, io::uo) is det.
 
 start_in_forked_process_2(_, _, !IO) :-
-    sorry(this_file, "start_in_forked_process_2").
+    sorry($module, $pred, "NYI in languages other than C").
 
 :- pragma foreign_proc("C",
     start_in_forked_process_2(Pred::in(io_pred), Pid::out,
@@ -518,12 +518,6 @@ wait_pid(Pid, Status, !IO) :-
 wait_any(Pid, Status, !IO) :-
     do_wait(-1, Pid, Status0, !IO),
     Status = io.handle_system_command_exit_status(Status0).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "process_util.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.process_util.

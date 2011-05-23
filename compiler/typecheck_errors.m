@@ -464,8 +464,7 @@ too_much_overloading_to_msgs(Info, IsError) = Msgs :-
             OverloadedSymbolsSortedContexts = [_ - Contexts],
             (
                 Contexts = [],
-                unexpected(this_file,
-                    "warning_too_much_overloading_to_msgs: no contexts")
+                unexpected($module, $pred, "no contexts")
             ;
                 Contexts = [_],
                 SecondPieces =
@@ -497,7 +496,7 @@ too_much_overloading_to_msgs(Info, IsError) = Msgs :-
 describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
     (
         SortedContexts = [],
-        unexpected(this_file, "describe_overloaded_symbol: no context")
+        unexpected($module, $pred, "no context")
     ;
         SortedContexts = [FirstContext | LaterContexts],
         % We print a detailed message for the first context, but omit
@@ -735,8 +734,8 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
         TypeAssigns = list.map(get_caller_arg_assign, ArgsTypeAssignSet),
         find_mismatched_args(ArgExpTypes, TypeAssigns, 1,
             SimpleMismatches, ComplexMismatches, AllMismatches),
-        expect(list.is_not_empty(AllMismatches), this_file,
-            "report_error_functor_arg_types: no mismatches"),
+        expect(list.is_not_empty(AllMismatches), $module, $pred,
+            "no mismatches"),
         ComplexMismatches = []
     ->
         Pieces2 =
@@ -854,8 +853,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
     ( TypeMismatches = [TypeMismatch] ->
         TypeMismatch = type_mismatch(ActTypePieces, ExpTypePieces)
     ;
-        unexpected(this_file,
-            "report_mismatched_args: more than one type mismatch")
+        unexpected($module, $pred, "more than one type mismatch")
     ),
     (
         % Handle higher-order syntax such as ''(F, A) specially:
@@ -1069,8 +1067,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity) = Spec :-
     % Check for some special cases, so that we can give clearer error messages.
     (
         Functor = cons(unqualified(FunctorName), FunctorArity, _),
-        expect(unify(Arity, FunctorArity), this_file,
-            "report_error_undef_cons: arity mismatch"),
+        expect(unify(Arity, FunctorArity), $module, $pred, "arity mismatch"),
         (
             language_builtin_functor_components(FunctorName, Arity,
                 FunctorComps0)
@@ -1088,8 +1085,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity) = Spec :-
         ReportConsErrors = no
     ;
         Functor = cons(Constructor, FunctorArity, _),
-        expect(unify(Arity, FunctorArity), this_file,
-            "report_error_undef_cons: arity mismatch"),
+        expect(unify(Arity, FunctorArity), $module, $pred, "arity mismatch"),
         typecheck_info_get_ctors(Info, ConsTable),
         solutions.solutions(
             (pred(N::out) is nondet :-
@@ -1275,8 +1271,7 @@ report_cons_error(Context, ConsError) = Msgs :-
             words("the existentially quantified type")],
         (
             TVars = [],
-            unexpected(this_file,
-                "report_invalid_field_update: no type variables")
+            unexpected($module, $pred, "no type variables")
         ;
             TVars = [TVar],
             TVarsStr = mercury_var_to_string(TVarSet, no, TVar),
@@ -1532,7 +1527,7 @@ cons_type_to_pieces(ConsInfo, Functor) = Pieces :-
             ArgPieces = type_to_pieces(Type, TVarSet, ExistQVars) ++
                 [suffix(":")]
         ;
-            unexpected(this_file, "cons_type_to_pieces: invalid cons_id")
+            unexpected($module, $pred, "invalid cons_id")
         )
     ;
         ArgTypes = [],
@@ -1955,12 +1950,6 @@ make_list_term([]) = term.functor(term.atom("[]"), [], term.context_init).
 make_list_term([Var | Vars]) = term.functor(term.atom("[|]"),
     [term.variable(Var, context_init), make_list_term(Vars)],
     term.context_init).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "typecheck_errors.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_errors.

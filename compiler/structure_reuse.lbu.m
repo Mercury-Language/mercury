@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008, 2010 The University of Melbourne.
+% Copyright (C) 2006-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -167,7 +167,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
     ;
         !.Expr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "backward_use_in_goal_2: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- func get_backtrack_vars(vartypes, hlds_goal_info) = set(prog_var).
@@ -227,12 +227,6 @@ backward_use_in_disj(VarTypes, !Goals, !LBU) :-
 backward_use_in_disj_goal(LBU0, VarTypes, !Goal, !LBU) :-
     backward_use_in_goal(VarTypes, !Goal, LBU0, NewLBU),
     set.union(NewLBU, !LBU).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "structure_reuse.lbu.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.lbu.

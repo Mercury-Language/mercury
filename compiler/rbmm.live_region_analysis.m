@@ -143,10 +143,8 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
         % But it is not the case at the moment.
         true
     ;
-        (
-            % This check is just a cautious check.
-            RptaInfo = rpta_info_table_search_rpta_info(PPId, RptaInfoTable)
-        ->
+        % This test is just a cautious check.
+        ( RptaInfo = rpta_info_table_search_rpta_info(PPId, RptaInfoTable) ->
             % Compute region sets.
             RptaInfo = rpta_info(Graph, _ALpha),
             module_info_proc_info(ModuleInfo, PPId, ProcInfo),
@@ -189,7 +187,7 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
                 ProcVoidVar, map.init, ProcVoidVarRegion),
             map.set(PPId, ProcVoidVarRegion, !VoidVarRegionTable)
         ;
-            unexpected($module, $pred, "rpta_info must exist")
+            unexpected($module, $pred, "no rpta_info")
         )
     ).
 
@@ -231,4 +229,6 @@ lv_to_lr(LVSet, Graph, ModuleInfo, ProcInfo, LRSet) :-
             LVSet, LRSet0, LRSet)
     ).
 
+%----------------------------------------------------------------------------%
+:- end_module transform_hlds.rbmm.live_region_analysis.
 %----------------------------------------------------------------------------%

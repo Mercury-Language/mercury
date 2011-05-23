@@ -1554,7 +1554,7 @@ pred_info_update_goal_type(GoalType1, !PredInfo) :-
         GoalType = GoalType0
     ;
         GoalType0 = goal_type_promise(_),
-        unexpected(this_file, "pred_info_update_goal_type")
+        unexpected($module, $pred, "promise")
     ),
     ( GoalType = GoalType0 ->
         % Avoid unnecessary memory allocation.
@@ -2701,7 +2701,7 @@ proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
         MaybeHeadModesConstraint = yes(HeadModesConstraint)
     ;
         MaybeHeadModesConstraint = no,
-        unexpected(this_file, "proc_info_head_modes_constraint: no constraint")
+        unexpected($module, $pred, "no constraint")
     ).
 
 proc_info_set_head_modes_constraint(HMC, ProcInfo,
@@ -2775,7 +2775,7 @@ proc_info_arg_info(ProcInfo, ArgInfo) :-
         MaybeArgInfo0 = yes(ArgInfo)
     ;
         MaybeArgInfo0 = no,
-        unexpected(this_file, "proc_info_arg_info: arg_pass_info not set")
+        unexpected($module, $pred, "arg_pass_info not set")
     ).
 
 proc_info_get_termination2_info(ProcInfo, Termination2Info) :-
@@ -3094,7 +3094,7 @@ field_extraction_function_args(Args, TermInputArg) :-
     ( Args = [TermInputArg0] ->
         TermInputArg = TermInputArg0
     ;
-        unexpected(this_file, "field_extraction_function_args")
+        unexpected($module, $pred, "num_args != 1")
     ).
 
 field_update_function_args(Args, TermInputArg, FieldArg) :-
@@ -3102,7 +3102,7 @@ field_update_function_args(Args, TermInputArg, FieldArg) :-
         FieldArg = FieldArg0,
         TermInputArg = TermInputArg0
     ;
-        unexpected(this_file, "field_update_function_args")
+        unexpected($module, $pred, "num_args != 2")
     ).
 
 field_access_function_name(get, FieldName, FieldName).
@@ -3275,8 +3275,7 @@ valid_determinism_for_eval_method(eval_memo, Detism) = Valid :-
         Valid = yes
     ).
 valid_determinism_for_eval_method(eval_table_io(_, _), _) = _ :-
-    unexpected(this_file,
-        "valid_determinism_for_eval_method called after tabling phase").
+    unexpected($module, $pred, "called after tabling phase").
 valid_determinism_for_eval_method(eval_minimal(_), Detism) = Valid :-
     % The following reasons specify why a particular determinism is
     % incompatible with minimal model tabling.
@@ -3373,12 +3372,6 @@ eval_method_change_determinism(eval_table_io(_, _), Detism) = Detism.
 eval_method_change_determinism(eval_memo, Detism) = Detism.
 eval_method_change_determinism(eval_minimal(_), Detism0) = Detism :-
     det_conjunction_detism(detism_semi, Detism0, Detism).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_pred.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_pred.

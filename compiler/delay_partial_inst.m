@@ -453,8 +453,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file,
-                "delay_partial_inst_in_goal: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -500,7 +499,7 @@ get_sole_cons_id_and_canon_vars(ConstructMap, Var, ConsId, CanonVars) :-
             % This algorithm does not work if a variable could be bound to
             % multiple functors when we try to do a tag test against it.
             % XXX report a nicer error message
-            sorry(this_file,
+            sorry($module, $pred,
                 "delaying partial instantiations when variable could be " ++
                 "bound to multiple functors")
         )
@@ -578,11 +577,5 @@ delay_partial_inst_in_cases(InstMap0, [Case0 | Cases0], [Case | Cases],
         !DelayInfo).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "delay_partial_inst.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module delay_partial_inst.
+:- end_module check_hlds.delay_partial_inst.
 %-----------------------------------------------------------------------------%

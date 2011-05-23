@@ -249,10 +249,10 @@ prog_vars_to_size_vars(SizeVarMap, Vars)
     = list.map(prog_var_to_size_var(SizeVarMap), Vars).
 
 prog_var_to_size_var(SizeVarMap, Var) = SizeVar :-
-    ( if    map.search(SizeVarMap, Var, SizeVar0)
-      then  SizeVar = SizeVar0
-      else  unexpected(this_file,
-            "prog_var_to_size_var/2: prog_var not in size_var_map.")
+    ( if map.search(SizeVarMap, Var, SizeVar0) then
+        SizeVar = SizeVar0
+    else
+        unexpected($module, $pred, "prog_var not in size_var_map")
     ).
 
 find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes) = Zeros :-
@@ -320,9 +320,9 @@ create_var_substitution(Args, HeadVars) = SubstMap :-
 
 create_var_substitution_2([], [], !Subst).
 create_var_substitution_2([_|_], [], _, _) :-
-    unexpected(this_file, "compose_bijections/5: unmatched lists.").
+    unexpected($module, $pred, "unmatched lists").
 create_var_substitution_2([], [_|_], _, _) :-
-    unexpected(this_file, "compose_bijections/5: unmatched lists.").
+    unexpected($module, $pred, "unmatched lists").
 create_var_substitution_2([Arg | Args], [HeadVar | HeadVars],  !Subst) :-
     map.det_insert(HeadVar, Arg, !Subst),
     create_var_substitution_2(Args, HeadVars, !Subst).
@@ -466,16 +466,9 @@ get_abstract_proc(ModuleInfo, PPId) = AbstractProc :-
         MaybeAbstractProc = yes(AbstractProc)
     ;
         MaybeAbstractProc = no,
-        unexpected(this_file,
-            "get_abstract_proc/2: no abstract rep. for proc.")
+        unexpected($module, $pred, "no abstract rep. for proc")
     ).
 
 %------------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_constr_util.m".
-
-%------------------------------------------------------------------------------%
-:- end_module term_constr_util.
+:- end_module transform_hlds.term_constr_util.
 %------------------------------------------------------------------------------%

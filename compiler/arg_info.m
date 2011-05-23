@@ -222,9 +222,9 @@ make_arg_infos_list([Mode | Modes], [Type | Types], !.InReg, !.OutReg,
     ArgInfo = arg_info(ArgReg, ArgMode),
     make_arg_infos_list(Modes, Types, !.InReg, !.OutReg, ModuleInfo, ArgInfos).
 make_arg_infos_list([], [_|_], _, _, _, _) :-
-    unexpected(this_file, "make_arg_infos_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 make_arg_infos_list([_|_], [], _, _, _, _) :-
-    unexpected(this_file, "make_arg_infos_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 %---------------------------------------------------------------------------%
 
@@ -236,7 +236,7 @@ compute_in_and_out_vars(ModuleInfo, Vars, Modes, Types,
     ->
         true
     ;
-        unexpected(this_file, "compute_in_and_out_vars: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 :- pred compute_in_and_out_vars_2(module_info::in,
@@ -266,7 +266,7 @@ unify_arg_info(model_det,
 unify_arg_info(model_semi,
     [arg_info(1, top_in), arg_info(2, top_in)]).
 unify_arg_info(model_non, _) :-
-    unexpected(this_file, "unify_arg_info: nondet unify!").
+    unexpected($module, $pred, "nondet unify!").
 
 %---------------------------------------------------------------------------%
 
@@ -340,7 +340,7 @@ do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
     ->
         true
     ;
-        unexpected(this_file, "do_partition_proc_args: list length mismatch")
+        unexpected($module, $pred, "list length mismatch")
     ).
 
 :- pred partition_proc_args_2(list(prog_var)::in, list(mer_type)::in,
@@ -368,11 +368,5 @@ partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
         !Inputs, !Outputs, !Unuseds).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "arg_info.m".
-
-%----------------------------------------------------------------------------%
-:- end_module arg_info.
+:- end_module hlds.arg_info.
 %----------------------------------------------------------------------------%

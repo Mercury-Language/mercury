@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2010 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -110,7 +110,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
     (
         MayChangeCalledProc = may_not_change_called_proc,
         ( ProcId0 = invalid_proc_id ->
-            unexpected(this_file, "modecheck_call_pred: invalid proc_id")
+            unexpected($module, $pred, "invalid proc_id")
         ;
             ProcIds = [ProcId0]
         )
@@ -289,8 +289,8 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
 modecheck_event_call(Modes, Args0, Args, !ModeInfo) :-
     ArgOffset = 0,
     modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args, !ModeInfo),
-    expect(unify(ExtraGoals, no_extra_goals), this_file,
-        "modecheck_event_call: ExtraGoals").
+    expect(unify(ExtraGoals, no_extra_goals), $module, $pred,
+        "ExtraGoals").
 
 modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo) :-
     Det = detism_det,
@@ -685,7 +685,7 @@ modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
     list(mer_mode)::out) is det.
 
 choose_best_match(_, [], _, _, _, _, _, _) :-
-    unexpected(this_file, "choose_best_match: no best match").
+    unexpected($module, $pred, "no best match").
 choose_best_match(ModeInfo,
         [proc_mode(ProcId, InstVarSub, ArgModes) | ProcIds], PredId,
         Procs, ArgVars, TheProcId, TheInstVarSub, TheArgModes) :-
@@ -767,7 +767,7 @@ compare_inst_list(ModuleInfo, InstsA, InstsB, ArgInsts, Types, Result) :-
     ->
         Result = Result0
     ;
-        unexpected(this_file, "compare_inst_list: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 :- pred compare_inst_list_2(module_info::in,
@@ -792,9 +792,9 @@ compare_inst_list_2(ModuleInfo, [InstA | InstsA], [InstB | InstsB],
 
 compare_liveness_list([], [], same).
 compare_liveness_list([_|_], [], _) :-
-    unexpected(this_file, "compare_liveness_list: length mismatch (1)").
+    unexpected($module, $pred, "length mismatch").
 compare_liveness_list([], [_|_], _) :-
-    unexpected(this_file, "compare_liveness_list: length mismatch (2)").
+    unexpected($module, $pred, "length mismatch").
 compare_liveness_list([LiveA | LiveAs], [LiveB | LiveBs], Result) :-
     compare_liveness(LiveA, LiveB, Result0),
     compare_liveness_list(LiveAs, LiveBs, Result1),
@@ -943,9 +943,5 @@ compare_inst(ModuleInfo, InstA, InstB, MaybeArgInst, Type, Result) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "modecheck_call.m".
-
+:- end_module check_hlds.modecheck_call.
 %-----------------------------------------------------------------------------%

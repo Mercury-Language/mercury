@@ -268,11 +268,9 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
 
 update_output_suppliers([], _ActiveVars, [], []).
 update_output_suppliers([_ | _], _ActiveVars, [], []) :-
-    unexpected(this_file,
-        "update_output_suppliers/4: umatched variables.").
+    unexpected($module, $pred, "umatched variables").
 update_output_suppliers([], _ActiveVars, [_ | _], []) :-
-    unexpected(this_file,
-        "update_output_suppliers/4: umatched variables.").
+    unexpected($module, $pred, "umatched variables").
 update_output_suppliers([Arg | Args], ActiveVars,
         [OutputSupplier0 | OutputSuppliers0],
         [OutputSupplier | OutputSuppliers]) :-
@@ -383,8 +381,7 @@ check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo, !IO) :-
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file,
-            "shorthand goal encountered during termination analysis.")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred check_cases_non_term_calls(
@@ -476,11 +473,5 @@ pred_proc_var(PPId, Var, !Varset, !PPVars) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_pass1.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module term_pass1.
+:- end_module transform_hlds.term_pass1.
 %-----------------------------------------------------------------------------%

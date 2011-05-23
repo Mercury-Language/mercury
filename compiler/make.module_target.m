@@ -261,7 +261,7 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
                 "foreign_import_module cycle.\n", !IO),
             io.set_exit_status(1, !IO)
         ;
-            unexpected(this_file, "make_module_target: " ++
+            unexpected($module, $pred,
                 "target being built, circular dependencies?")
         ),
         Succeeded = no
@@ -547,7 +547,7 @@ build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, Imports,
             Globals, Succeeded, !IO)
     ;
         Target = target_x86_64,
-        sorry(this_file, "NYI mmc --make and target x86_64")
+        sorry($module, $pred, "NYI mmc --make and target x86_64")
     ;
         Target = target_erlang,
         module_name_to_file_name(Globals, ModuleName, ".erl", do_create_dirs,
@@ -606,7 +606,7 @@ get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
         ForeignModName = ForeignModName0,
         SrcExt = SrcExt0
     ;
-        unexpected(this_file, "unsupported foreign language")
+        unexpected($module, $pred, "unsupported foreign language")
     ),
     ObjExt = get_object_extension(Globals, PIC),
     module_name_to_file_name(Globals, ForeignModName, SrcExt, do_create_dirs,
@@ -642,16 +642,16 @@ get_object_extension(Globals, PIC) = Ext :-
         Ext = ".dll"
     ;
         CompilationTarget = target_csharp,
-        sorry(this_file, "object extension for csharp")
+        sorry($module, $pred, "object extension for csharp")
     ;
         CompilationTarget = target_java,
-        sorry(this_file, "object extension for java")
+        sorry($module, $pred, "object extension for java")
     ;
         CompilationTarget = target_x86_64,
-        sorry(this_file, "mmc --make NYI and target x86_64")
+        sorry($module, $pred, "mmc --make NYI and target x86_64")
     ;
         CompilationTarget = target_erlang,
-        sorry(this_file, "mmc --make NYI and target erlang")
+        sorry($module, $pred, "mmc --make NYI and target erlang")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -697,8 +697,7 @@ invoke_mmc(Globals, ErrorStream, MaybeArgFileName, Args, Succeeded, !IO) :-
         MaybeArgFileName = yes(ArgFileName)
     ;
         MaybeArgFileName = no,
-        unexpected(this_file,
-            "make.module_target.invoke_mmc: argument file not created")
+        unexpected($module, $pred, "argument file not created")
     ),
 
     io.open_output(ArgFileName, ArgFileOpenRes, !IO),
@@ -818,9 +817,9 @@ delete_timestamp(Globals, TouchedFile, !Timestamps) :-
     compilation_task_result.
 
 compilation_task(_, module_target_source) = _ :-
-    unexpected(this_file, "compilation_task").
+    unexpected($module, $pred, "compilation_task").
 compilation_task(_, module_target_track_flags) = _ :-
-    unexpected(this_file, "compilation_task").
+    unexpected($module, $pred, "compilation_task").
 compilation_task(_, module_target_errors) =
     process_module(task_errorcheck) - ["--errorcheck-only"].
 compilation_task(_, module_target_unqualified_short_interface) =
@@ -929,7 +928,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
         % This error should have been caught earlier. We shouldn't be
         % attempting to build a target if we couldn't find the dependencies
         % for the module.
-        unexpected(this_file, "touched_files: no module dependencies")
+        unexpected($module, $pred, "no module dependencies")
     ),
 
     NestedChildren = Imports ^ mai_nested_children,
@@ -948,7 +947,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
         % This error should have been caught earlier. We shouldn't be
         % attempting to build a target if we couldn't find the dependencies
         % for the module or its nested sub-modules.
-        unexpected(this_file, "touched_files: no nested module dependencies")
+        unexpected($module, $pred, "no nested module dependencies")
     ),
 
     globals.get_target(Globals, CompilationTarget),
@@ -1012,7 +1011,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
                 module_target_erlang_header)
         ;
             CompilationTarget = target_x86_64,
-            sorry(this_file, "NYI mmc --make and target x86_64")
+            sorry($module, $pred, "NYI mmc --make and target x86_64")
         ),
 
         (
@@ -1184,12 +1183,6 @@ target_type_to_pic(TargetType) = Result :-
         ),
         Result = non_pic
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "make.module_target.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module make.module_target.

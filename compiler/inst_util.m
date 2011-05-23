@@ -871,8 +871,7 @@ unify_uniq(Live, Real, Det, mostly_clobbered, Uniq0, Uniq) :-
     determinism::in) is semidet.
 
 allow_unify_with_clobbered(is_live, _, _) :-
-    unexpected(this_file,
-        "allow_unify_with_clobbered: clobbered value is is_live?").
+    unexpected($module, $pred, "clobbered value is is_live?").
 allow_unify_with_clobbered(is_dead, fake_unify, _).
 allow_unify_with_clobbered(is_dead, _, detism_det).
 
@@ -883,9 +882,9 @@ allow_unify_with_clobbered(is_dead, _, detism_det).
     % Sanity check.
 check_not_clobbered(Uniq, Real) :-
     ( Real = real_unify, Uniq = clobbered ->
-        unexpected(this_file, "abstractly_unify_inst_3: clobbered inst")
+        unexpected($module, $pred, "clobbered inst")
     ; Real = real_unify, Uniq = mostly_clobbered ->
-        unexpected(this_file, "abstractly_unify_inst_3: mostly_clobbered inst")
+        unexpected($module, $pred, "mostly_clobbered inst")
     ;
         true
     ).
@@ -951,7 +950,7 @@ make_ground_inst(ground(Uniq0, HOInstInfo), IsLive, Uniq1, Real,
         ground(Uniq, HOInstInfo), detism_semi, !ModuleInfo) :-
     unify_uniq(IsLive, Real, detism_semi, Uniq0, Uniq1, Uniq).
 make_ground_inst(inst_var(_), _, _, _, _, _, _, _) :-
-    unexpected(this_file, "make_ground_inst: free inst var").
+    unexpected($module, $pred, "free inst var").
 make_ground_inst(constrained_inst_vars(InstVars, InstConstraint), IsLive,
         Uniq, Real, Inst, Det, !ModuleInfo) :-
     abstractly_unify_constrained_inst_vars(IsLive, InstVars,
@@ -1058,7 +1057,7 @@ make_any_inst(ground(Uniq0, PredInst), IsLive, Uniq1, Real,
     allow_unify_bound_any(Real),
     unify_uniq(IsLive, Real, detism_semi, Uniq0, Uniq1, Uniq).
 make_any_inst(inst_var(_), _, _, _, _, _, _, _) :-
-    unexpected(this_file, "make_any_inst: free inst var").
+    unexpected($module, $pred, "free inst var").
 make_any_inst(constrained_inst_vars(InstVars, InstConstraint), IsLive,
         Uniq, Real, Inst, Det, !ModuleInfo) :-
     abstractly_unify_constrained_inst_vars(IsLive, InstVars,
@@ -1174,9 +1173,9 @@ maybe_make_shared_inst_list([Inst0 | Insts0], [IsLive | IsLives],
     ),
     maybe_make_shared_inst_list(Insts0, IsLives, Insts, !ModuleInfo).
 maybe_make_shared_inst_list([], [_ | _], _, _, _) :-
-    unexpected(this_file, "maybe_make_shared_inst_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 maybe_make_shared_inst_list([_ | _], [], _, _, _) :-
-    unexpected(this_file, "maybe_make_shared_inst_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 make_shared_inst_list([], [], !ModuleInfo).
 make_shared_inst_list([Inst0 | Insts0], [Inst | Insts], !ModuleInfo) :-
@@ -1194,12 +1193,10 @@ make_shared_inst(any(Uniq0, HOInstInfo), any(Uniq, HOInstInfo), !ModuleInfo) :-
     make_shared(Uniq0, Uniq).
 make_shared_inst(free, free, !ModuleInfo) :-
     % The caller should ensure that this never happens.
-    unexpected(this_file,
-        "make_shared_inst: cannot make shared version of `free'").
+    unexpected($module, $pred, "cannot make shared version of `free'").
 make_shared_inst(free(T), free(T), !ModuleInfo) :-
     % The caller should ensure that this never happens.
-    unexpected(this_file,
-        "make_shared_inst: cannot make shared version of `free(T)'").
+    unexpected($module, $pred, "cannot make shared version of `free(T)'").
 make_shared_inst(bound(Uniq0, BoundInsts0), bound(Uniq, BoundInsts),
         !ModuleInfo) :-
     % XXX This code has a performance problem.
@@ -1231,7 +1228,7 @@ make_shared_inst(ground(Uniq0, PredInst), ground(Uniq, PredInst),
         !ModuleInfo) :-
     make_shared(Uniq0, Uniq).
 make_shared_inst(inst_var(_), _, _, _) :-
-    unexpected(this_file, "make_shared_inst: free inst var").
+    unexpected($module, $pred, "free inst var").
 make_shared_inst(constrained_inst_vars(InstVars, Inst0), Inst, !ModuleInfo) :-
     make_shared_inst(Inst0, Inst1, !ModuleInfo),
     ( \+ inst_matches_final(Inst1, Inst0, !.ModuleInfo) ->
@@ -1240,7 +1237,7 @@ make_shared_inst(constrained_inst_vars(InstVars, Inst0), Inst, !ModuleInfo) :-
         Inst = constrained_inst_vars(InstVars, Inst1)
     ).
 make_shared_inst(abstract_inst(_,_), _, !ModuleInfo) :-
-    unexpected(this_file, "make_shared_inst(abstract_inst)").
+    unexpected($module, $pred, "abstract_inst").
 make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     % Check whether the inst name is already in the shared_inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -1320,7 +1317,7 @@ make_mostly_uniq_inst(ground(Uniq0, PredInst), ground(Uniq, PredInst),
         !ModuleInfo) :-
     make_mostly_uniq(Uniq0, Uniq).
 make_mostly_uniq_inst(inst_var(_), _, _, _) :-
-    unexpected(this_file, "make_mostly_uniq_inst: free inst var").
+    unexpected($module, $pred, "free inst var").
 make_mostly_uniq_inst(constrained_inst_vars(InstVars, Inst0), Inst,
         !ModuleInfo) :-
     make_mostly_uniq_inst(Inst0, Inst1, !ModuleInfo),
@@ -1330,7 +1327,7 @@ make_mostly_uniq_inst(constrained_inst_vars(InstVars, Inst0), Inst,
         Inst = constrained_inst_vars(InstVars, Inst1)
     ).
 make_mostly_uniq_inst(abstract_inst(_,_), _, !ModuleInfo) :-
-    unexpected(this_file, "make_mostly_uniq_inst(abstract_inst)").
+    unexpected($module, $pred, "abstract_inst").
 make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     % Check whether the inst name is already in the mostly_uniq_inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -1675,7 +1672,7 @@ merge_inst_uniq(defined_inst(InstName), UniqB, ModuleInfo,
     ).
 merge_inst_uniq(not_reached, Uniq, _, !Expansions, Uniq).
 merge_inst_uniq(inst_var(_), _, _, !Expansions, _) :-
-    unexpected(this_file, "merge_inst_uniq: unexpected inst_var").
+    unexpected($module, $pred, "inst_var").
 merge_inst_uniq(constrained_inst_vars(_InstVars, Inst0), UniqB, ModuleInfo,
         !Expansions, Uniq) :-
     merge_inst_uniq(Inst0, UniqB, ModuleInfo, !Expansions, Uniq).
@@ -1778,7 +1775,7 @@ inst_contains_nonstandard_func_mode_2(ModuleInfo, bound(_, BoundInsts),
     list.member(Inst, Insts),
     inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions).
 inst_contains_nonstandard_func_mode_2(_, inst_var(_), _) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions0) :-
     Inst = defined_inst(InstName),
     \+ set.member(Inst, Expansions0),
@@ -1803,7 +1800,7 @@ inst_contains_any_2(ModuleInfo, bound(_, BoundInsts), Expansions) :-
     inst_contains_any_2(ModuleInfo, Inst, Expansions).
 
 inst_contains_any_2(_ModuleInfo, inst_var(_), _Expansions) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 
 inst_contains_any_2(ModuleInfo, defined_inst(InstName), Expansions0) :-
     \+ set.member(InstName, Expansions0),
@@ -1872,11 +1869,5 @@ inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "inst_util".
-
-%-----------------------------------------------------------------------------%
-:- end_module inst_util.
+:- end_module check_hlds.inst_util.
 %-----------------------------------------------------------------------------%

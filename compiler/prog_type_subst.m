@@ -351,7 +351,7 @@ apply_type_args(Type0, Args, Type) :-
             Args = []
         ;
             Args = [_ | _],
-            unexpected(this_file, "applied type args to builtin")
+            unexpected($module, $pred, "applied type args to builtin")
         ),
         Type = Type0
     ;
@@ -375,15 +375,15 @@ apply_type_args(Type0, Args, Type) :-
 
 apply_type_args_to_kind(Kind, [], Kind).
 apply_type_args_to_kind(kind_star, [_ | _], _) :-
-    unexpected(this_file, "too many args in apply_n").
+    unexpected($module, $pred, "too many args in apply_n").
 apply_type_args_to_kind(kind_arrow(Kind0, Kind1), [ArgType | ArgTypes], Kind) :-
     ( get_type_kind(ArgType) = Kind0 ->
         apply_type_args_to_kind(Kind1, ArgTypes, Kind)
     ;
-        unexpected(this_file, "kind error in apply_n")
+        unexpected($module, $pred, "kind error in apply_n")
     ).
 apply_type_args_to_kind(kind_variable(_), [_ | _], _) :-
-    unexpected(this_file, "unbound kind variable").
+    unexpected($module, $pred, "unbound kind variable").
 
 :- pred ensure_type_has_kind(kind::in, mer_type::in, mer_type::out) is det.
 
@@ -391,7 +391,7 @@ ensure_type_has_kind(Kind, Type0, Type) :-
     ( get_type_kind(Type0) = Kind ->
         Type = Type0
     ;
-        unexpected(this_file, "substitution not kind preserving")
+        unexpected($module, $pred, "substitution not kind preserving")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -448,9 +448,5 @@ apply_rec_subst_to_prog_constraints(Subst, !Constraints) :-
     !:Constraints = constraints(UnivCs, ExistCs).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_type_subst.m".
-
+:- end_module parse_tree.prog_type_subst.
 %-----------------------------------------------------------------------------%

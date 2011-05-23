@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -218,10 +218,10 @@ output_first_opt_debug(Info, FileName, ProcLabel, Instrs0, Counter, !IO) :-
             io.close_output(FileStream, !IO)
         ;
             Res = error(_),
-            unexpected(this_file, "cannot open " ++ FileName)
+            unexpected($module, $pred, "cannot open " ++ FileName)
         )
     ;
-        unexpected(this_file, "cannot make " ++ opt_subdir_name)
+        unexpected($module, $pred, "cannot make " ++ opt_subdir_name)
     ).
 
 :- func opt_subdir_name = string.
@@ -280,8 +280,7 @@ maybe_opt_debug(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
                 io.close_output(FileStream, !IO)
             ;
                 Res = error(_),
-                ErrorMsg = "cannot open " ++ OptFileName,
-                unexpected(this_file, ErrorMsg)
+                unexpected($module, $pred, "cannot open " ++ OptFileName)
             ),
             (
                 Same = yes
@@ -826,11 +825,5 @@ init_llds_opt_info(Globals) = Info :-
         OptRepeat, DebugOpt, DebugOptPredIdStrs, DebugOptPredNames).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "optimize".
-
-%-----------------------------------------------------------------------------%
-:- end_module optimize.
+:- end_module ll_backend.optimize.
 %-----------------------------------------------------------------------------%

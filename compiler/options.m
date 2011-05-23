@@ -3065,7 +3065,7 @@ enable_opt_levels(N0, N, !OptionTable) :-
         N1 = N0 + 1,
         enable_opt_levels(N1, N, !OptionTable)
     ;
-        unexpected(this_file, "Unknown optimization level")
+        unexpected($module, $pred, "unknown optimization level")
     ).
 
 :- pred override_options(list(pair(option, option_data))::in,
@@ -5716,9 +5716,5 @@ write_tabbed_lines([Str | Strs], !IO) :-
     write_tabbed_lines(Strs, !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "options.m".
-
+:- end_module libs.options.
 %-----------------------------------------------------------------------------%

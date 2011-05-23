@@ -638,9 +638,9 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
 
 partition_call_args(_, _, [], [], [], [], []).
 partition_call_args(_, _, [], [_ | _], _, _, _) :-
-    unexpected(this_file, "partition_call_args: length mismatch (1)").
+    unexpected($module, $pred, "length mismatch (1)").
 partition_call_args(_, _, [_ | _], [], _, _, _) :-
-    unexpected(this_file, "partition_call_args: length mismatch (2)").
+    unexpected($module, $pred, "length mismatch (2)").
 partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
         [Arg | Args], InputArgs, OutputArgs, OutputModes) :-
     partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,
@@ -760,7 +760,7 @@ create_output_unifications(OldGoalInfo, OutputArgs, OldOutputArgs, UniModes,
     ->
         Goals = []
     ;
-        unexpected(this_file, "create_output_unifications: mode mismatch")
+        unexpected($module, $pred, "mode mismatch")
     ).
 
 %---------------------------------------------------------------------------%
@@ -827,7 +827,7 @@ types_match_exactly(tuple_type(As, _), tuple_type(Bs, _)) :-
 types_match_exactly(apply_n_type(TVar, As, _), apply_n_type(TVar, Bs, _)) :-
     types_match_exactly_list(As, Bs).
 types_match_exactly(kinded_type(_, _), _) :-
-    unexpected(this_file, "kind annotation").
+    unexpected($module, $pred, "kind annotation").
 
 :- pred types_match_exactly_list(list(mer_type)::in, list(mer_type)::in)
     is semidet.
@@ -895,8 +895,7 @@ apply_induced_substitutions(ToVar, FromVar, !Info) :-
                 % Calculate_induced_tsubst failed for a different reason,
                 % either because unification failed or because one variable
                 % was a type_info and the other was a typeclass_info.
-                unexpected(this_file,
-                    "apply_induced_tsubst: inconsistent info")
+                unexpected($module, $pred, "inconsistent info")
             )
         )
     ).
@@ -925,11 +924,5 @@ calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "common.m".
-
-%---------------------------------------------------------------------------%
-:- end_module common.
+:- end_module check_hlds.common.
 %---------------------------------------------------------------------------%

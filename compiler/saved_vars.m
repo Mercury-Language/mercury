@@ -175,8 +175,7 @@ saved_vars_in_goal(Goal0, Goal, !SlotInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % these should have been expanded out by now
-        unexpected(this_file,
-            "saved_vars_in_goal: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -333,7 +332,7 @@ can_push(Var, Goal) = CanPush :-
         ;
             GoalExpr = shorthand(_),
             % These should have been expanded out by now.
-            unexpected(this_file, "can_push: unexpected shorthand")
+            unexpected($module, $pred, "shorthand")
         )
     ;
         CanPush = yes
@@ -476,8 +475,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         ;
             Goal0Expr = shorthand(_),
             % These should have been expanded out by now.
-            unexpected(this_file,
-                "saved_vars_delay_goal: unexpected shorthand")
+            unexpected($module, $pred, "shorthand")
         )
     ;
         saved_vars_delay_goal(Goals0, Goals1, Construct, Var, IsNonLocal,
@@ -623,11 +621,5 @@ slot_info_do_not_duplicate_var(SlotInfo, Var) :-
     polymorphism.type_is_type_info_or_ctor_type(Type).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "saved_vars.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module saved_vars.
+:- end_module ll_backend.saved_vars.
 %-----------------------------------------------------------------------------%

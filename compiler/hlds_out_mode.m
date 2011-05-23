@@ -340,7 +340,7 @@ inst_uniqueness(mostly_clobbered, _) = "mostly_clobbered".
 :- func bound_insts_to_term(list(bound_inst), prog_context) = prog_term.
 
 bound_insts_to_term([], _) = _ :-
-    unexpected(this_file, "bound_insts_to_term([])").
+    unexpected($module, $pred, "bound_insts_to_term([])").
 bound_insts_to_term([BoundInst | BoundInsts], Context) = Term :-
     BoundInst = bound_functor(ConsId, Args),
     ArgTerms = list.map(map_inst_to_term(Context), Args),
@@ -355,8 +355,7 @@ bound_insts_to_term([BoundInst | BoundInsts], Context) = Term :-
                 Context, Term)
         )
     ;
-        unexpected(this_file,
-            "bound_insts_to_term: cons_id_and_args_to_term failed")
+        unexpected($module, $pred, "cons_id_and_args_to_term failed")
     ).
 
 :- func det_to_term(determinism, prog_context) = prog_term.
@@ -457,12 +456,6 @@ mercury_format_expanded_defined_inst(InstName, ExpandedInstInfo, !S) :-
                                 % further occurrences of these will
                                 % be output as "..."
             ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_out_mode.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_mode.

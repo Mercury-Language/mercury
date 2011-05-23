@@ -345,7 +345,7 @@ read_options_lines(Globals, Dir, !Variables, !IO) :-
         )
     ;
         LineResult = failed,
-        unexpected(this_file, "read_options_lines")
+        unexpected($module, $pred, "cannot read line")
     ).
 
 :- pred read_options_lines_2(globals::in, dir_name::in, options_variables::in,
@@ -1209,11 +1209,5 @@ lookup_variable_chars(Variables, Var, Value, !Undef, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "options_file.m.".
-
-%-----------------------------------------------------------------------------%
-:- end_module options_file.
+:- end_module make.options_file.
 %-----------------------------------------------------------------------------%

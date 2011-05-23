@@ -1,16 +1,18 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File rbmm.region_liveness_info.m.
 % Main author: Quan Phan.
 %
 % Defines the data structures used in several phases of the live region
 % analysis.
+%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.region_liveness_info.
 
@@ -121,3 +123,7 @@ find_input_output_args(ModuleInfo, CalleeProcInfo, Inputs, Outputs) :-
     proc_info_get_argmodes(CalleeProcInfo, ArgModes),
     arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars, ArgModes, ArgTypes,
         Inputs, Outputs).
+
+%-----------------------------------------------------------------------------%
+:- end_module transform_hlds.rbmm.region_liveness_info.
+%-----------------------------------------------------------------------------%

@@ -372,7 +372,7 @@ erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
             )
         )
     ;
-        unexpected(this_file, "erl_gen_arg_list_arg_modes: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1003,11 +1003,5 @@ sum(Xs) = list.foldl(int.plus, Xs, 0).
 erl_base_typeclass_info_method_offset = 4.
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "erl_code_util.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module erl_code_util.
+:- end_module erl_backend.erl_code_util.
 %-----------------------------------------------------------------------------%

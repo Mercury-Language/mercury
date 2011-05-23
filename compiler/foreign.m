@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2010 The University of Melbourne.
+% Copyright (C) 2000-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -194,7 +194,7 @@ filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
 
 extrude_pragma_implementation([], _PragmaVars, _PredName, _PredOrFunc,
         _Context, !ModuleInfo, !NewAttributes, !Impl) :-
-    unexpected(this_file, "no suitable target languages available").
+    unexpected($module, $pred, "no suitable target languages available").
 
 extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
         _PredName, _PredOrFunc, _Context, !ModuleInfo, !Attributes, !Impl) :-
@@ -304,7 +304,7 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
     is erroneous.
 
 unimplemented_combination(Lang1, Lang2) :-
-    sorry(this_file, "unimplemented: calling "
+    sorry($module, $pred, "unimplemented: calling "
         ++ foreign_language_string(Lang2) ++ " foreign code from "
         ++ foreign_language_string(Lang1)).
 
@@ -424,9 +424,9 @@ create_pragma_vars([Var | Vars], [Mode | Modes], ArgNum0,
     PragmaVar = pragma_var(Var, ArgName, Mode, native_if_possible),
     create_pragma_vars(Vars, Modes, ArgNum, PragmaVars).
 create_pragma_vars([_ | _], [], _, _) :-
-    unexpected(this_file, "create_pragma_vars: length mis-match").
+    unexpected($module, $pred, "length mismatch").
 create_pragma_vars([], [_ | _], _, _) :-
-    unexpected(this_file, "create_pragma_vars: length mis-match").
+    unexpected($module, $pred, "length mismatch").
 
     % create_pragma_import_c_code(PragmaVars, M, !C_Code):
     %
@@ -535,7 +535,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             Name = unqualified(NameStr)
         ;
             MaybeC = no,
-            unexpected(this_file, "to_exported_type: no C type")
+            unexpected($module, $pred, "no C type")
         )
     ;
         Target = target_il,
@@ -545,7 +545,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
                 Assertions)
         ;
             MaybeIL = no,
-            unexpected(this_file, "to_exported_type: no IL type")
+            unexpected($module, $pred, "no IL type")
         )
     ;
         Target = target_csharp,
@@ -556,7 +556,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             Name = unqualified(NameStr)
         ;
             MaybeCSharp = no,
-            unexpected(this_file, "to_exported_type: no C# type")
+            unexpected($module, $pred, "no C# type")
         )
     ;
         Target = target_java,
@@ -567,7 +567,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             Name = unqualified(NameStr)
         ;
             MaybeJava = no,
-            unexpected(this_file, "to_exported_type: no Java type")
+            unexpected($module, $pred, "no Java type")
         )
     ;
         Target = target_erlang,
@@ -578,7 +578,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             Name = unqualified("")
         ;
             MaybeErlang = no,
-            unexpected(this_file, "to_exported_type: no Erlang type")
+            unexpected($module, $pred, "no Erlang type")
         )
     ;
         Target = target_asm,
@@ -589,7 +589,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             Name = unqualified(NameStr)
         ;
             MaybeC = no,
-            unexpected(this_file, "to_exported_type: no C type")
+            unexpected($module, $pred, "no C type")
         )
     ;
         Target = target_x86_64,
@@ -600,7 +600,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             Name = unqualified(NameStr)
         ;
             MaybeC = no,
-            unexpected(this_file, "to_exported_type: no C type")
+            unexpected($module, $pred, "no C type")
         )
     ).
 
@@ -620,8 +620,7 @@ exported_type_to_string(Lang, ExportedType) = Result :-
                 Result = Result0
             ;
                 ForeignType = qualified(_, _),
-                unexpected(this_file,
-                    "exported_type_to_string: qualified C type")
+                unexpected($module, $pred, "qualified C type")
             )
         ;
             ( Lang = lang_csharp
@@ -674,8 +673,7 @@ exported_type_to_string(Lang, ExportedType) = Result :-
                 Result = "MR_Word"
             ;
                 Type = kinded_type(_, _),
-                unexpected(this_file,
-                    "exported_type_to_string: kinded type")
+                unexpected($module, $pred, "kinded type")
             )
         ;
             Lang = lang_csharp,
@@ -737,10 +735,10 @@ exported_type_to_string(Lang, ExportedType) = Result :-
             )
         ;
             Lang = lang_il,
-            sorry(this_file, "exported_type_to_string for il")
+            sorry($module, $pred, "il")
         ;
             Lang = lang_erlang,
-            sorry(this_file, "exported_type_to_string for erlang")
+            sorry($module, $pred, "erlang")
         )
     ).
 
@@ -751,11 +749,5 @@ decl_guard(ModuleName) = UppercaseModuleName ++ "_DECL_GUARD" :-
     string.to_upper(MangledModuleName, UppercaseModuleName).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "foreign.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module foreign.
+:- end_module backend_libs.foreign.
 %-----------------------------------------------------------------------------%

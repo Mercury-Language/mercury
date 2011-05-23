@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2003-2006, 2010 The University of Melbourne.
+% Copyright (C) 2003-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -163,8 +163,8 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
     TVarNums = list.map(term.var_to_int, TVars),
     TVarLength = list.length(TVarNums),
     ( list.last(TVarNums, LastTVarNum) ->
-        expect(unify(TVarLength, LastTVarNum), this_file,
-            "generate_instance_decl: tvar num mismatch"),
+        expect(unify(TVarLength, LastTVarNum), $module, $pred,
+            "tvar num mismatch"),
         NumTypeVars = TVarLength
     ;
         NumTypeVars = 0
@@ -178,7 +178,7 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
             Interface)
     ;
         MaybeInterface = no,
-        unexpected(this_file, "generate_instance_decl: no interface")
+        unexpected($module, $pred, "no interface")
     ),
     TCInstance = tc_instance(TCName, InstanceTCTypes, NumTypeVars,
         TCConstraints, MethodProcLabels),
@@ -197,7 +197,7 @@ generate_class_name(class_id(SymName, Arity)) = TCName :-
         SymName = qualified(ModuleName, ClassName)
     ;
         SymName = unqualified(_),
-        unexpected(this_file, "generate_class_name: unqualified sym_name")
+        unexpected($module, $pred, "unqualified sym_name")
     ),
     TCName = tc_name(ModuleName, ClassName, Arity).
 
@@ -227,11 +227,5 @@ generate_tc_type(Type) = TCType :-
 type_class_info_rtti_version = 0.
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "type_class_info.m".
-
-%---------------------------------------------------------------------------%
-:- end_module type_class_info.
+:- end_module backend_libs.type_class_info.
 %---------------------------------------------------------------------------%

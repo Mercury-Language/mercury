@@ -625,7 +625,7 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "ho_traverse_goal: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
     % To process a parallel conjunction, we process each conjunct with the
@@ -638,7 +638,7 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
 ho_traverse_parallel_conj(Goals0, Goals, !Info) :-
     (
         Goals0 = [],
-        unexpected(this_file, "ho_traverse_parallel_conj: empty list")
+        unexpected($module, $pred, "empty list")
     ;
         Goals0 = [_ | _],
         get_pre_branch_info(!.Info, PreInfo),
@@ -707,7 +707,7 @@ ho_traverse_cases(Cases0, Cases, !Info) :-
     % works only on nonempty lists.
     (
         Cases0 = [],
-        unexpected(this_file, "ho_traverse_cases: empty list of cases")
+        unexpected($module, $pred, "empty list of cases")
     ;
         Cases0 = [_ | _],
         get_pre_branch_info(!.Info, PreInfo),
@@ -771,7 +771,7 @@ set_post_branch_info(post_branch_info(PostInfo),
     post_branch_info::out) is det.
 
 merge_post_branch_infos_into_one([], _) :-
-    unexpected(this_file, "merge_post_branch_infos_into_one: empty list").
+    unexpected($module, $pred, "empty list").
 merge_post_branch_infos_into_one([PostInfo], PostInfo).
 merge_post_branch_infos_into_one(PostInfos @ [_, _ | _], PostInfo) :-
     merge_post_branch_info_pass(PostInfos, [], MergedPostInfos),
@@ -835,13 +835,12 @@ merge_post_branch_infos(PostA, PostB, Post) :-
 
 merge_common_var_const_list([], [], !List).
 merge_common_var_const_list([], [_ | _], !MergedList) :-
-    unexpected(this_file, "merge_common_var_const_list: mismatched list").
+    unexpected($module, $pred, "mismatched list").
 merge_common_var_const_list([_ | _], [], !MergedList) :-
-    unexpected(this_file, "merge_common_var_const_list: mismatched list").
+    unexpected($module, $pred, "mismatched list").
 merge_common_var_const_list([VarA - ValueA | ListA], [VarB - ValueB | ListB],
         !MergedList) :-
-    expect(unify(VarA, VarB), this_file,
-        "merge_common_var_const_list: var mismatch"),
+    expect(unify(VarA, VarB), $module, $pred, "var mismatch"),
     ( ValueA = ValueB ->
         % It does not matter whether ValueA is bound to constant(_, _)
         % or to multiple_values, in both cases, if ValueA = ValueB, the
@@ -898,7 +897,7 @@ check_unify(Unification, !Info) :-
         )
     ;
         Unification = complicated_unify(_, _, _),
-        unexpected(this_file, "check_unify: complicated unification")
+        unexpected($module, $pred, "complicated unification")
     ).
 
 :- func is_interesting_cons_id(ho_params, cons_id) = bool.
@@ -1322,7 +1321,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
                 NewProcId = NewProcId0,
                 NewArgs = NewArgs1
             ;
-                unexpected(this_file, "maybe_specialize_pred_const")
+                unexpected($module, $pred, "cannot get NewArgs")
             ),
 
             module_info_proc_info(ModuleInfo, NewPredId, NewProcId,
@@ -1334,7 +1333,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
             ->
                 CurriedArgModes = CurriedArgModes0
             ;
-                unexpected(this_file, "maybe_specialize_pred_const")
+                unexpected($module, $pred, "cannot get CurriedArgModes")
             ),
             modes_to_uni_modes(ModuleInfo, CurriedArgModes,
                 CurriedArgModes, UniModes),
@@ -1492,7 +1491,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
 
 find_higher_order_args(_, _, [], _, _, _, _, _, !HOArgs).
 find_higher_order_args(_, _, [_ | _], [], _, _, _, _, _, _) :-
-    unexpected(this_file, "find_higher_order_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
         [CalleeArgType | CalleeArgTypes], VarTypes, RttiVarMaps,
         PredVars, ArgNo, !HOArgs) :-
@@ -1807,7 +1806,7 @@ search_for_version(Info, Params, ModuleInfo, Request, [Version | Versions],
                         MaybeMatch2 = yes(Match1)
                     )
                 ;
-                    unexpected(this_file, "search_for_version")
+                    unexpected($module, $pred, "comparison failed")
                 )
             ),
             search_for_version(Info, Params, ModuleInfo, Request,
@@ -2056,8 +2055,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         ( TypeInfoVarType = TypeInfoArgType ->
             true
         ;
-            unexpected(this_file,
-                "interpret_typeclass_info_manipulator: type mismatch")
+            unexpected($module, $pred, "type mismatch")
         ),
 
         !Info ^ hoi_proc_info := ProcInfo,
@@ -2407,8 +2405,7 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
         ; CtorCat = ctor_cat_user(_)
         ; CtorCat = ctor_cat_system(_)
         ),
-        unexpected(this_file,
-            "find_builtin_type_with_equivalent_compare: bad type")
+        unexpected($module, $pred, "bad type")
     ).
 
 :- pred generate_unsafe_type_cast(prog_context::in,
@@ -2922,7 +2919,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
         ->
             ExtraTypeInfoTVars = ExtraTypeInfoTVarsPrim
         ;
-            unexpected(this_file, "create_new_proc: type var got bound")
+            unexpected($module, $pred, "type var got bound")
         )
     ),
 
@@ -3057,8 +3054,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
                 VarTypes7, VarTypes8),
             proc_info_set_vartypes(VarTypes8, !NewProcInfo)
         ;
-            unexpected(this_file,
-                "create_new_proc: type_list_subsumes failed")
+            unexpected($module, $pred, "type_list_subsumes failed")
         )
     ),
 
@@ -3128,8 +3124,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
             NonCurriedArgModes = NonCurriedArgModes0,
             CurriedArgModes1 = CurriedArgModes0
         ;
-            unexpected(this_file,
-                "construct_higher_order_terms: list.split_list failed.")
+            unexpected($module, $pred, "list.split_list failed.")
         ),
         proc_info_interface_determinism(CalledProcInfo, ProcDetism),
         GroundInstInfo = higher_order(pred_inst_info(PredOrFunc,
@@ -3289,7 +3284,7 @@ remove_const_higher_order_args(Index, [Arg | Args0], HOArgs0, Args) :-
             remove_const_higher_order_args(Index + 1, Args0, HOArgs0, Args1),
             Args = [Arg | Args1]
         ;
-            unexpected(this_file, "remove_const_higher_order_args")
+            unexpected($module, $pred, "unordered indexes")
         )
     ;
         HOArgs0 = [],
@@ -3366,9 +3361,9 @@ find_class_context(_, [], [], Univ0, Exist0, Constraints) :-
     list.reverse(Exist0, Exist),
     Constraints = constraints(Univ, Exist).
 find_class_context(_, [], [_ | _], _, _, _) :-
-    unexpected(this_file, "mismatched list length in find_class_context/6.").
+    unexpected($module, $pred, "mismatched list length").
 find_class_context(_, [_ | _], [], _, _, _) :-
-    unexpected(this_file, "mismatched list length in find_class_context/6.").
+    unexpected($module, $pred, "mismatched list length").
 find_class_context(ModuleInfo, [VarInfo | VarInfos], [Mode | Modes],
         !.Univ, !.Exist, Constraints) :-
     (
@@ -3398,11 +3393,5 @@ maybe_add_constraint(Constraint, !Constraints) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "higher_order.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module higher_order.
+:- end_module transform_hlds.higher_order.
 %-----------------------------------------------------------------------------%

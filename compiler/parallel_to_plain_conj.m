@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008, 2010 The University of Melbourne.
+% Copyright (C) 2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,7 +96,7 @@ parallel_to_plain_conjs_goal(Goal0, Goal) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo0).
 
@@ -118,11 +118,5 @@ parallel_to_plain_conjs_cases([Case0 | Cases0], [Case | Cases]) :-
     parallel_to_plain_conjs_cases(Cases0, Cases).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "parallel_to_plain_conj.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module parallel_to_plain_conj.
+:- end_module transform_hlds.parallel_to_plain_conj.
 %-----------------------------------------------------------------------------%

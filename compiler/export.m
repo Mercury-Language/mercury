@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -148,7 +148,7 @@ get_foreign_export_decls_2(Preds, [E | ExportedProcs], Globals,
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),
-        sorry(this_file,  ":- pragma foreign_export for non-C backends.")
+        sorry($module, $pred,  ":- pragma foreign_export for non-C backends.")
     ),
     ExportDecl = foreign_export_decl(Lang, RetType, ExportName, ArgDecls),
     get_foreign_export_decls_2(Preds, ExportedProcs, Globals, ModuleInfo,
@@ -274,7 +274,8 @@ get_foreign_export_defns(ModuleInfo, ExportedProcsCode) :-
 to_c(_Preds, [], _ModuleInfo, []).
 to_c(Preds, [E | ExportedProcs], ModuleInfo, ExportedProcsCode) :-
     E = pragma_exported_proc(Lang, PredId, ProcId, C_Function, _Ctxt),
-    expect(unify(Lang, lang_c), this_file, "foreign language other than C"),
+    expect(unify(Lang, lang_c), $module, $pred,
+        "foreign language other than C"),
     module_info_get_globals(ModuleInfo, Globals),
     get_export_info_for_lang_c(Preds, PredId, ProcId, Globals, ModuleInfo,
         DeclareString, C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
@@ -446,7 +447,7 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
         ArgInfoTypes2 = ArgInfoTypes0
     ;
         CodeModel = model_non,
-        unexpected(this_file, "Attempt to export model_non procedure.")
+        unexpected($module, $pred, "Attempt to export model_non procedure.")
     ),
     list.filter(include_arg(ModuleInfo), ArgInfoTypes2, ArgInfoTypes).
 
@@ -761,7 +762,7 @@ produce_header_file_2([E | ExportedProcs], !IO) :-
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),
-        sorry(this_file, "foreign languages other than C unimplemented")
+        sorry($module, $pred, "foreign languages other than C unimplemented")
     ),
     produce_header_file_2(ExportedProcs, !IO).
 
@@ -828,7 +829,7 @@ output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO) :-
         ; TypeBody = hlds_solver_type(_, _)
         ; TypeBody = hlds_abstract_type(_)
         ),
-        unexpected(this_file, "invalid type for foreign_export_enum")
+        unexpected($module, $pred, "invalid type for foreign_export_enum")
     ;
         TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
             DuTypeKind, _MaybeUserEq, _ReservedTag, _ReservedAddr,
@@ -837,7 +838,7 @@ output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO) :-
             ( DuTypeKind = du_type_kind_general
             ; DuTypeKind = du_type_kind_notag(_, _, _)
             ),
-            unexpected(this_file, "d.u. is not an enumeration.")
+            unexpected($module, $pred, "d.u. is not an enumeration.")
         ;
             ( DuTypeKind = du_type_kind_mercury_enum
             ; DuTypeKind = du_type_kind_foreign_enum(_)
@@ -912,10 +913,10 @@ foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
         ; TagVal = reserved_address_tag(_)
         ; TagVal = shared_with_reserved_addresses_tag(_, _)
         ),
-        unexpected(this_file, "enum constant requires an int tag")
+        unexpected($module, $pred, "enum constant requires an int tag")
     ),
     % Sanity check.
-    expect(unify(Arity, 0), this_file, "enum constant arity != 0"),
+    expect(unify(Arity, 0), $module, $pred, "enum constant arity != 0"),
     UnqualifiedCtorName = unqualified(unqualify_name(QualifiedCtorName)),
     map.lookup(Mapping, UnqualifiedCtorName, ForeignName),
     list.cons(ForeignName - Tag, !NamesAndTags).
@@ -929,11 +930,5 @@ c_type_is_word_sized_int_or_ptr("MR_TypeClassInfo").
 c_type_is_word_sized_int_or_ptr("MR_BaseTypeclassInfo").
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "export.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module export.
+:- end_module backend_libs.export.
 %-----------------------------------------------------------------------------%

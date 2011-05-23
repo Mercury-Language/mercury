@@ -134,7 +134,7 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
             Reasons = !.Info ^ rci_recompilation_reasons
         ;
             Result = failed,
-            unexpected(this_file, "should_recompile_2")
+            unexpected($module, $pred, "try failed")
         ;
             Result = exception(Exception),
             ( univ_to_type(Exception, RecompileException0) ->
@@ -760,7 +760,7 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
         UsedItemsResult = error1(Specs),
         (
             Specs = [],
-            unexpected(this_file, "check_module_used_items: error1([])")
+            unexpected($module, $pred, "error1([])")
         ;
             Specs = [_ | _],
             Reason = recompile_for_unreadable_used_items(Specs),
@@ -887,7 +887,7 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         !Info) :-
     (
         Item = item_clause(_),
-        unexpected(this_file, "check_for_ambiguities: clause")
+        unexpected($module, $pred, "clause")
     ;
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(_, Name, Params, Body, _, _, _),
@@ -1090,9 +1090,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
                 AritiesToMatch, ResolvedFunctor, !Info)
         ;
             SymName = unqualified(_),
-            unexpected(this_file,
-                "check_for_pred_or_func_item_ambiguity: " ++
-                "unqualified predicate name")
+            unexpected($module, $pred, "unqualified predicate name")
         )
     ;
         true
@@ -1593,9 +1591,5 @@ throw_syntax_error(Reason, Info) :-
     throw(recompile_exception(Reason, RecompileInfo)).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "recompilation.check.m".
-
+:- end_module recompilation.check.
 %-----------------------------------------------------------------------------%

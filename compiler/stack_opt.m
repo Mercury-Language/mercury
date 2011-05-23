@@ -658,8 +658,8 @@ close_path(Path0) = Path :-
         FlushAnchors, IntervalIds),
     (
         FlushState = current_is_before_first_flush,
-        expect(set.empty(FirstSegment0), this_file,
-            "close_path: FirstSegment0 not empty"),
+        expect(set.empty(FirstSegment0), $module, $pred,
+            "FirstSegment0 not empty"),
         FirstSegment = CurSegment,
         OtherSegments = OtherSegments0
     ;
@@ -796,21 +796,21 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
     map.lookup(IntervalInfo ^ ii_interval_succ, IntervalId, SuccessorIds),
     (
         SuccessorIds = [],
-        expect(unify(may_have_no_successor(End), yes), this_file,
-            "find_all_branches: unexpected no successor")
-        % expect(unify(MaybeSearchAnchor0, no), this_file,
+        expect(unify(may_have_no_successor(End), yes), $module, $pred,
+            "unexpected no successor")
+        % expect(unify(MaybeSearchAnchor0, no), $module, $pred,
         %   "find_all_branches: no successor while in search"),
         % that test may fail if we come to a call that cannot succeed
     ;
         SuccessorIds = [SuccessorId | MoreSuccessorIds],
         (
             MoreSuccessorIds = [],
-            expect(unify(may_have_one_successor(End), yes), this_file,
-                "find_all_branches: unexpected one successor")
+            expect(unify(may_have_one_successor(End), yes), $module, $pred,
+                "unexpected one successor")
         ;
             MoreSuccessorIds = [_ | _],
-            expect(unify(may_have_more_successors(End), yes), this_file,
-                "find_all_branches: unexpected more successors")
+            expect(unify(may_have_more_successors(End), yes), $module, $pred,
+                "unexpected more successors")
         ),
         (
             MaybeSearchAnchor0 = yes(SearchAnchor0),
@@ -873,8 +873,7 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
             ElseStartId = ElseStartIdPrime,
             CondStartId = CondStartIdPrime
         ;
-            unexpected(this_file,
-                "find_all_branches_from: ite not else, cond")
+            unexpected($module, $pred, "ite not else, cond")
         ),
         MaybeSearchAnchorCond = yes(anchor_cond_then(EndGoalId)),
         apply_interval_find_all_branches(RelevantVars,
@@ -909,8 +908,7 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
                 MaybeSearchAnchor0, IntervalInfo,
                 StackOptInfo, SuccessorId, !AllPaths)
         ;
-            unexpected(this_file,
-                "find_all_branches_from: more successor ids")
+            unexpected($module, $pred, "more successor ids")
         )
     ).
 
@@ -977,7 +975,7 @@ apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
 :- pred consolidate_after_join(list(all_paths)::in, all_paths::out) is det.
 
 consolidate_after_join([], _) :-
-    unexpected(this_file, "consolidate_after_join: no paths to join").
+    unexpected($module, $pred, "no paths to join").
 consolidate_after_join([First | Rest], AllPaths) :-
     PathsList = list.map(project_paths_from_all_paths, [First | Rest]),
     Paths0 = set.union_list(PathsList),
@@ -1113,9 +1111,5 @@ dump_matching_result(MatchingResult, !IO) :-
     io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "stack_opt.m".
-
+:- end_module ll_backend.stack_opt.
 %-----------------------------------------------------------------------------%

@@ -357,7 +357,7 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
     list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.
 
 write_constructors(_TypeCtor, _Indent, _TVarSet, [], _, !IO) :-
-    unexpected(this_file, "write_constructors: empty constructor list?").
+    unexpected($module, $pred, "empty constructor list").
 write_constructors(TypeCtor, Indent, TVarSet, [Ctor], TagValues, !IO) :-
     write_indent(Indent, !IO),
     io.write_char('\t', !IO),
@@ -887,12 +887,6 @@ write_promise(Info, PromiseType, Indent, ModuleInfo, _PredId, VarSet,
     Goal = Clause ^ clause_body,
     do_write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
         Indent+1, ").\n", TypeQual, !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_out_module.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_module.

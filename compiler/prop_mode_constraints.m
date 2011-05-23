@@ -322,7 +322,7 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !Varset, !VarTypes) :-
             )
         ;
             !.GoalExpr = switch(_SwitchVar, _CanFail, _Cases0),
-            unexpected(this_file, "switch")
+            unexpected($module, $pred, "switch")
         ;
             !.GoalExpr = unify(_, _, _, _, _)
         ;
@@ -373,7 +373,7 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !Varset, !VarTypes) :-
                 !:GoalExpr = shorthand(ShortHand)
             ;
                 ShortHand0 = bi_implication(_, _),
-                unexpected(this_file, "bi_implication")
+                unexpected($module, $pred, "bi_implication")
             )
         ),
         !:Goal = hlds_goal(!.GoalExpr, !.GoalInfo)
@@ -559,12 +559,6 @@ pretty_print_proc_constraints(ModuleInfo, ConstraintVarset, PredConstraints,
     dump_constraints_and_annotations(Globals, ConstraintVarset,
         ProcSpecAnnConstraints, !IO).
 
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prop_mode_constraints.m".
-
 %----------------------------------------------------------------------------%
-:- end_module prop_mode_constraints.
+:- end_module check_hlds.prop_mode_constraints.
 %----------------------------------------------------------------------------%

@@ -563,7 +563,7 @@ inst_matches_initial_sub(InstA, InstB, Type, !ModuleInfo, !Sub) :-
         MaybeSub = yes(!:Sub)
     ;
         MaybeSub = no,
-        unexpected(this_file, "inst_matches_initial_sub: missing inst_var_sub")
+        unexpected($module, $pred, "missing inst_var_sub")
     ).
 
 inst_matches_initial_no_implied_modes(InstA, InstB, Type, ModuleInfo) :-
@@ -672,7 +672,8 @@ inst_matches_initial_4(ground(UniqA, HOInstInfoA),
 inst_matches_initial_4(ground(_UniqA, none), abstract_inst(_,_), _, !Info) :-
     % I don't know what this should do.
     % Abstract insts aren't really supported.
-    unexpected(this_file, "inst_matches_initial(ground, abstract_inst) == ??").
+    unexpected($module, $pred,
+        "inst_matches_initial(ground, abstract_inst) == ??").
 inst_matches_initial_4(abstract_inst(_,_), any(shared, none), _, !Info).
 inst_matches_initial_4(abstract_inst(_,_), free, _, !Info).
 inst_matches_initial_4(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
@@ -1295,7 +1296,7 @@ inst_is_clobbered(_, ground(mostly_clobbered, _)).
 inst_is_clobbered(_, bound(clobbered, _)).
 inst_is_clobbered(_, bound(mostly_clobbered, _)).
 inst_is_clobbered(_, inst_var(_)) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_clobbered(ModuleInfo, constrained_inst_vars(_, Inst)) :-
     inst_is_clobbered(ModuleInfo, Inst).
 inst_is_clobbered(ModuleInfo, defined_inst(InstName)) :-
@@ -1305,7 +1306,7 @@ inst_is_clobbered(ModuleInfo, defined_inst(InstName)) :-
 inst_is_free(_, free).
 inst_is_free(_, free(_Type)).
 inst_is_free(_, inst_var(_)) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_free(ModuleInfo, constrained_inst_vars(_, Inst)) :-
     inst_is_free(ModuleInfo, Inst).
 inst_is_free(ModuleInfo, defined_inst(InstName)) :-
@@ -1314,7 +1315,7 @@ inst_is_free(ModuleInfo, defined_inst(InstName)) :-
 
 inst_is_any(_, any(_, _)).
 inst_is_any(_, inst_var(_)) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_any(ModuleInfo, constrained_inst_vars(_, Inst)) :-
     inst_is_any(ModuleInfo, Inst).
 inst_is_any(ModuleInfo, defined_inst(InstName)) :-
@@ -1326,7 +1327,7 @@ inst_is_bound(_, any(_, _)).
 inst_is_bound(_, ground(_, _)).
 inst_is_bound(_, bound(_, _)).
 inst_is_bound(_, inst_var(_)) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_bound(ModuleInfo, constrained_inst_vars(_, Inst)) :-
     inst_is_bound(ModuleInfo, Inst).
 inst_is_bound(ModuleInfo, defined_inst(InstName)) :-
@@ -1340,7 +1341,7 @@ inst_is_bound(_, abstract_inst(_, _)).
     %
 inst_is_bound_to_functors(_, bound(_Uniq, Functors), Functors).
 inst_is_bound_to_functors(_, inst_var(_), _) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_bound_to_functors(ModuleInfo, constrained_inst_vars(_, Inst),
         Functors) :-
     inst_is_bound_to_functors(ModuleInfo, Inst, Functors).
@@ -1389,7 +1390,7 @@ inst_is_ground_2(ModuleInfo, MaybeType, bound(_, List), !Expansions) :-
     bound_inst_list_is_ground_2(List, MaybeType, ModuleInfo, !Expansions).
 inst_is_ground_2(_, _, ground(_, _), !Expansions).
 inst_is_ground_2(_, _, inst_var(_), !Expansions) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_ground_2(ModuleInfo, MaybeType, Inst, !Expansions) :-
     Inst = constrained_inst_vars(_, Inst2),
     inst_is_ground_1(ModuleInfo, MaybeType, Inst2, !Expansions).
@@ -1420,7 +1421,7 @@ inst_is_ground_or_any_2(ModuleInfo, bound(_, List), !Expansions) :-
 inst_is_ground_or_any_2(_, ground(_, _), !Expansions).
 inst_is_ground_or_any_2(_, any(_, _), !Expansions).
 inst_is_ground_or_any_2(_, inst_var(_), !Expansions) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
     Inst = constrained_inst_vars(_, Inst2),
     inst_is_ground_or_any_2(ModuleInfo, Inst2, !Expansions).
@@ -1454,7 +1455,7 @@ inst_is_unique_2(_, any(unique, _), !Expansions).
 inst_is_unique_2(_, free, !Expansions).
 inst_is_unique_2(_, ground(unique, _), !Expansions).
 inst_is_unique_2(_, inst_var(_), !Expansions) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
     Inst = constrained_inst_vars(_, Inst2),
     inst_is_unique_2(ModuleInfo, Inst2, !Expansions).
@@ -1492,7 +1493,7 @@ inst_is_mostly_unique_2(_, free, !Expansions).
 inst_is_mostly_unique_2(_, ground(unique, _), !Expansions).
 inst_is_mostly_unique_2(_, ground(mostly_unique, _), !Expansions).
 inst_is_mostly_unique_2(_, inst_var(_), !Expansions) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
     Inst = constrained_inst_vars(_, Inst2),
     inst_is_mostly_unique_2(ModuleInfo, Inst2, !Expansions).
@@ -1526,7 +1527,7 @@ inst_is_not_partly_unique_2(_, free, !Expansions).
 inst_is_not_partly_unique_2(_, any(shared, _), !Expansions).
 inst_is_not_partly_unique_2(_, ground(shared, _), !Expansions).
 inst_is_not_partly_unique_2(_, inst_var(_), !Expansions) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
     Inst = constrained_inst_vars(_, Inst2),
     inst_is_not_partly_unique_2(ModuleInfo, Inst2, !Expansions).
@@ -1569,7 +1570,7 @@ inst_is_not_fully_unique_2(_, free, !Expansions).
 inst_is_not_fully_unique_2(_, ground(shared, _), !Expansions).
 inst_is_not_fully_unique_2(_, ground(mostly_unique, _), !Expansions).
 inst_is_not_fully_unique_2(_, inst_var(_), _, _) :-
-    unexpected(this_file, "internal error: uninstantiated inst parameter").
+    unexpected($module, $pred, "uninstantiated inst parameter").
 inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
     Inst = constrained_inst_vars(_, Inst2),
     inst_is_not_fully_unique_2(ModuleInfo, Inst2, !Expansions).
@@ -1739,9 +1740,9 @@ inst_list_is_not_fully_unique([Inst | Insts], ModuleInfo) :-
 
 inst_list_is_ground_2([], [], _, !Expansions).
 inst_list_is_ground_2([], [_ | _], _, !Expansions) :-
-    unexpected(this_file, "inst_list_is_ground_2: list length mismatch").
+    unexpected($module, $pred, "length mismatch").
 inst_list_is_ground_2([_ | _], [], _, !Expansions) :-
-    unexpected(this_file, "inst_list_is_ground_2: list length mismatch").
+    unexpected($module, $pred, "length mismatch").
 inst_list_is_ground_2([Inst | Insts], [MaybeType | MaybeTypes], ModuleInfo,
         !Expansions) :-
     inst_is_ground_1(ModuleInfo, MaybeType, Inst, !Expansions),
@@ -2059,11 +2060,5 @@ type_may_contain_solver_type_2(CtorCat) = MayContainSolverType :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "inst_match.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module inst_match.
+:- end_module check_hlds.inst_match.
 %-----------------------------------------------------------------------------%

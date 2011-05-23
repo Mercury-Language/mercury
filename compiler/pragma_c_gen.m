@@ -369,12 +369,12 @@ generate_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
             CanOptAwayUnnamedArgs, Code, !CI)
     ;
         MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
-        expect(unify(Args, []), this_file,
-            "generate_foreign_proc_code: args runtime cond"),
-        expect(unify(ExtraArgs, []), this_file,
-            "generate_foreign_proc_code: extra args runtime cond"),
-        expect(unify(CodeModel, model_semi), this_file,
-            "generate_foreign_proc_code: non-semi runtime cond"),
+        expect(unify(Args, []), $module, $pred,
+            "args runtime cond"),
+        expect(unify(ExtraArgs, []), $module, $pred,
+            "extra args runtime cond"),
+        expect(unify(CodeModel, model_semi), $module, $pred,
+            "non-semi runtime cond"),
         generate_trace_runtime_cond_foreign_proc_code(TraceRuntimeCond,
             Code, !CI)
     ).
@@ -450,8 +450,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ThreadSafe = proc_thread_safe
     ;
         ThreadSafe = proc_maybe_thread_safe,
-        unexpected(this_file, "generate_ordinary_foreign_proc_code: " ++
-            "maybe_thread_safe encountered.")
+        unexpected($module, $pred, "maybe_thread_safe")
     ;
         ThreadSafe = proc_not_thread_safe
     ),
@@ -711,7 +710,7 @@ make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
     ; CodeAddr = code_label(Label) ->
         ProcLabelString = label_to_c_string(Label, yes)
     ;
-        unexpected(this_file, "code_addr in make_proc_label_hash_define")
+        unexpected($module, $pred, "code_addr")
     ).
 
 :- pred make_alloc_id_hash_define(string::in, maybe(prog_context)::in,
@@ -782,9 +781,9 @@ make_c_arg_list([Arg | ArgTail], [ArgInfo | ArgInfoTail], [CArg | CArgTail]) :-
     CArg = c_arg(Var, MaybeName, Type, BoxPolicy, ArgInfo),
     make_c_arg_list(ArgTail, ArgInfoTail, CArgTail).
 make_c_arg_list([], [_ | _], _) :-
-    unexpected(this_file, "make_c_arg_list length mismatch").
+    unexpected($module, $pred, "length mismatch").
 make_c_arg_list([_ | _], [], _) :-
-    unexpected(this_file, "make_c_arg_list length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 %---------------------------------------------------------------------------%
 
@@ -814,7 +813,7 @@ make_extra_c_arg_list_seq([ExtraArg | ExtraArgs], ModuleInfo, LastReg,
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, ArgMode)
     ;
         MaybeNameMode = no,
-        unexpected(this_file, "make_extra_c_arg_list_seq: no name")
+        unexpected($module, $pred, "no name")
     ),
     NextReg = LastReg + 1,
     % Extra args are always input.
@@ -1012,8 +1011,7 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
         ;
             MaybeC = no,
             % This is ensured by check_foreign_type in make_hlds.
-            unexpected(this_file,
-                "get_maybe_foreign_type_name: no c foreign type")
+            unexpected($module, $pred, "no c foreign type")
         )
     ;
         MaybeForeignTypeInfo = no
@@ -1071,11 +1069,9 @@ place_foreign_proc_output_args_in_regs([Arg | Args], [Reg | Regs],
         Outputs = OutputsTail
     ).
 place_foreign_proc_output_args_in_regs([_ | _], [], _, _, !CI) :-
-    unexpected(this_file,
-        "place_foreign_proc_output_args_in_regs: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 place_foreign_proc_output_args_in_regs([], [_ | _], _, _, !CI) :-
-    unexpected(this_file,
-        "place_foreign_proc_output_args_in_regs: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 %---------------------------------------------------------------------------%
 
@@ -1146,11 +1142,5 @@ foreign_proc_struct_name(ModuleName, PredName, Arity, ProcId) =
 foreign_proc_succ_ind_name = "MercurySuccessIndicator".
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "pragma_c_gen.m".
-
-%---------------------------------------------------------------------------%
-:- end_module pragma_c_gen.
+:- end_module ll_backend.pragma_c_gen.
 %---------------------------------------------------------------------------%

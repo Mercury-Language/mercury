@@ -989,8 +989,7 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
                 % This should have been split out into a separate
                 % mode declaration by gather_items.
                 TypeAndMode0 = type_and_mode(_, _),
-                unexpected(this_file,
-                    "pred_or_func_type_matches: type_and_mode")
+                unexpected($module, $pred, "type_and_mode")
             )
         ),
     Types1 = list.map(GetArgTypes, TypesAndModes1),
@@ -1024,7 +1023,7 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
     ( prog_type.type_list_to_var_list(SubstExistQTypes2, SubstExistQVars2) ->
         ExistQVars1 = SubstExistQVars2
     ;
-        unexpected(this_file, "pred_or_func_type_is_unchanged: non-var")
+        unexpected($module, $pred, "non-var")
     ),
 
     % Check that the class constraints are identical.
@@ -1361,9 +1360,5 @@ parse_item_version_number(ParseName, Term, Result) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "recompilation.version.m".
-
+:- end_module recompilation.version.
 %-----------------------------------------------------------------------------%

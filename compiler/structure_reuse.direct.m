@@ -287,11 +287,5 @@ dead_cell_entry_dump(PP, Cond, !IO) :-
     io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "structure_sharing.direct.m".
-
-%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.direct.
 %-----------------------------------------------------------------------------%

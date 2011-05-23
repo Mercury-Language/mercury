@@ -138,8 +138,7 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
                 CheckedNondetTailCallInfo = yes(_ - !:C)
             ;
                 CheckedNondetTailCallInfo = no,
-                unexpected(this_file,
-                    "jumpopt_main: lost the next label number")
+                unexpected($module, $pred, "lost the next label number")
             )
         ;
             CheckedNondetTailCall = no,
@@ -382,7 +381,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         Uinstr0 = block(_, _, _),
         % These are supposed to be introduced only after jumpopt is run
         % for the last time.
-        unexpected(this_file, "jump_opt_instr_list: block")
+        unexpected($module, $pred, "block")
     ;
         Uinstr0 = fork_new_child(SyncTerm, Child0),
         InstrMap = JumpOptInfo ^ joi_instr_map,
@@ -1023,8 +1022,8 @@ adjust_livevals(PrevInstr, Instrs0, Instrs) :-
         ( BetweenLivevals = PrevLivevals ->
             Instrs = Instrs2
         ;
-            unexpected(this_file,
-                "adjust_livevals: BetweenLivevals and PrevLivevals differ")
+            unexpected($module, $pred,
+                "BetweenLivevals and PrevLivevals differ")
         )
     ;
         Instrs = Instrs0
@@ -1100,7 +1099,7 @@ final_dest_2(InstrMap, LabelsSofar, SrcLabel, DestLabel,
 short_labels_rval(InstrMap, lval(Lval0), lval(Lval)) :-
     short_labels_lval(InstrMap, Lval0, Lval).
 short_labels_rval(_, var(_), _) :-
-    unexpected(this_file, "var rval in short_labels_rval").
+    unexpected($module, $pred, "var").
 short_labels_rval(InstrMap, mkword(Tag, Rval0), mkword(Tag, Rval)) :-
     short_labels_rval(InstrMap, Rval0, Rval).
 short_labels_rval(InstrMap, const(Const0), const(Const)) :-
@@ -1187,7 +1186,7 @@ short_labels_lval(InstrMap, field(Tag, Rval0, Field0),
 short_labels_lval(InstrMap, mem_ref(Rval0), mem_ref(Rval)) :-
     short_labels_rval(InstrMap, Rval0, Rval).
 short_labels_lval(_, lvar(_), _) :-
-    unexpected(this_file, "lvar lval in short_labels_lval").
+    unexpected($module, $pred, "lvar").
 
 :- pred short_foreign_proc_component(instrmap::in,
     foreign_proc_component::in, foreign_proc_component::out,
@@ -1218,11 +1217,5 @@ short_foreign_proc_component(InstrMap, !Component, !Redirect) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "jumpopt.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module jumpopt.
+:- end_module ll_backend.jumpopt.
 %-----------------------------------------------------------------------------%

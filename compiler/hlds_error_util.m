@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -194,7 +194,7 @@ describe_one_pred_name_mode(ModuleInfo, ShouldModuleQualify, PredId,
     ( list.drop(NumArgModes - Arity, ArgModes0, ArgModes) ->
         strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes)
     ;
-        unexpected(this_file, "describe_one_pred_name_mode: bad argument list")
+        unexpected($module, $pred, "bad argument list")
     ),
     (
         PredOrFunc = pf_predicate,
@@ -302,11 +302,5 @@ maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_error_util.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module hlds_error_util.
+:- end_module hlds.hlds_error_util.
 %-----------------------------------------------------------------------------%

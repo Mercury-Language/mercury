@@ -360,7 +360,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
         map.init, RefinedGoals1, no, Changed),
     unneeded_refine_goal(Goal1, Goal2, RefinedGoals1, RefinedGoals),
     expect(map.is_empty(RefinedGoals),
-        this_file, "unneeded_process_proc: goal reattachment unsuccessful"),
+        $module, $pred, "goal reattachment unsuccessful"),
     (
         Changed = yes,
         % We need to fix up the goal_info by recalculating the nonlocal vars
@@ -693,8 +693,7 @@ unneeded_process_goal_internal(UnneededInfo, Goal0, Goal,
         ->
             MaybeNumAlt = MaybeNumAltPrime
         ;
-            unexpected(this_file,
-                "unneeded_process_goal_internal: switch count")
+            unexpected($module, $pred, "switch count")
         ),
         GoalId = goal_info_get_goal_id(GoalInfo0),
         BranchPoint = branch_point(GoalId, alt_switch(MaybeNumAlt)),
@@ -751,7 +750,7 @@ unneeded_process_goal_internal(UnneededInfo, Goal0, Goal,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "unneeded_process_goal_internal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1018,7 +1017,7 @@ unneeded_refine_goal(Goal0, Goal, !RefinedGoals) :-
         )
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "unneeded_refine_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred unneeded_refine_conj(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1228,11 +1227,5 @@ branch_point_is_complete(alt_switch(yes(NumFunctors)), Alts) :-
     NumAlts = NumFunctors.
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "unneeded_code.m".
-
-%---------------------------------------------------------------------------%
-:- end_module unneeded_code.
+:- end_module transform_hlds.unneeded_code.
 %---------------------------------------------------------------------------%

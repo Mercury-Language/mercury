@@ -324,9 +324,9 @@ tailcall_loop_label_name = "loop_top".
 
 generate_assign_args(_, [], [], [], []).
 generate_assign_args(_, [_|_], [], [], []) :-
-    unexpected(this_file, "generate_assign_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 generate_assign_args(_, [], [_|_], [], []) :-
-    unexpected(this_file, "generate_assign_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
         Statements, TempDefns) :-
     Arg = mlds_argument(Name, Type, _ArgGCStatement),
@@ -387,8 +387,7 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
             TempDefns = [TempDefn | TempDefns0]
         )
     ;
-        unexpected(this_file,
-            "generate_assign_args: function param is not a var")
+        unexpected($module, $pred, "function param is not a var")
     ).
 
 %----------------------------------------------------------------------------
@@ -481,9 +480,9 @@ target_supports_break_and_continue_2(target_csharp) = yes.
 target_supports_break_and_continue_2(target_java) = yes.
 % target_supports_break_and_continue_2(target_c_sharp) = yes.
 target_supports_break_and_continue_2(target_x86_64) = _ :-
-    unexpected(this_file, "target x86_64 with --high-level-code").
+    unexpected($module, $pred, "target x86_64 with --high-level-code").
 target_supports_break_and_continue_2(target_erlang) = _ :-
-    unexpected(this_file, "target erlang").
+    unexpected($module, $pred, "target erlang").
 
 %-----------------------------------------------------------------------------%
 
@@ -666,7 +665,7 @@ var_defn(VarName, Defn) :-
     list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
 set_initializer(_, _, [], _) :-
-    unexpected(this_file, "set_initializer: var not found!").
+    unexpected($module, $pred, "var not found").
 set_initializer(VarName, Rval, [Defn0 | Defns0], [Defn | Defns]) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
@@ -1318,13 +1317,5 @@ eliminate_var_in_trail_op(Op0, Op, !VarElimInfo) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_optimize.m".
-
-%-----------------------------------------------------------------------------%
-
-:- end_module ml_optimize.
-
+:- end_module ml_backend.ml_optimize.
 %-----------------------------------------------------------------------------%

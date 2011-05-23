@@ -162,7 +162,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         SharedCode, SharedContext, Decls, Statements, !Info) :-
     Lang = get_foreign_language(Attributes),
     ( Lang = lang_csharp ->
-        sorry(this_file, "nondet pragma foreign_proc for C#")
+        sorry($module, $pred, "nondet pragma foreign_proc for C#")
     ;
         true
     ),
@@ -258,19 +258,16 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
             ml_gen_call_current_success_cont(Context, CallCont, !Info)
         ;
             Target = target_x86_64,
-            unexpected(this_file,
-                "target x86_64 with --high-level-code")
+            unexpected($module, $pred, "target x86_64 with --high-level-code")
         ;
             Target = target_erlang,
-            unexpected(this_file,
-                "ml_gen_nondet_pragma_foreign_proc: target erlang")
+            unexpected($module, $pred, "target erlang")
         )
     ;
         ( CodeModel = model_det
         ; CodeModel = model_semi
         ),
-        unexpected(this_file,
-            "ml_gen_nondet_pragma_foreign_proc: unexpected code model")
+        unexpected($module, $pred, "unexpected code model")
     ),
     Ending_C_Code = [
         raw_target_code("\t\t}\n", []),
@@ -324,8 +321,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         OrdinaryDespiteDetism = get_ordinary_despite_detism(Attributes),
         (
             OrdinaryDespiteDetism = no,
-            unexpected(this_file,
-                "ml_gen_ordinary_pragma_foreign_proc: unexpected code model")
+            unexpected($module, $pred, "unexpected code model")
         ;
             OrdinaryDespiteDetism = yes,
             OrdinaryKind = kind_semi
@@ -356,7 +352,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             ; Target = target_x86_64
             ; Target = target_erlang
             ),
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "C# foreign code not supported for compilation target")
         )
     ;
@@ -372,8 +368,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
         Lang = lang_erlang,
-        unexpected(this_file,
-            "ml_gen_ordinary_pragma_foreign_proc: unexpected language Erlang")
+        unexpected($module, $pred, "unexpected language Erlang")
     ).
 
 :- inst java_or_csharp
@@ -403,8 +398,7 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
 
     % Generate <declaration of one local variable for each arg>
     ml_gen_pragma_csharp_java_decls(!.Info, MutableSpecial, Args, ArgDeclsList),
-    expect(unify(ExtraArgs, []), this_file,
-        "ml_gen_ordinary_pragma_csharp_java_proc: extra args"),
+    expect(unify(ExtraArgs, []), $module, $pred, "extra args"),
 
     % Generate code to set the values of the input variables.
     ml_gen_pragma_ccsj_input_arg_list(Lang, Args, AssignInputsList, !Info),
@@ -492,8 +486,7 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
 ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
         Args, ExtraArgs, ForeignCode, Context, Decls, Statements, !Info) :-
     ml_gen_outline_args(Args, OutlineArgs, !Info),
-    expect(unify(ExtraArgs, []), this_file,
-        "ml_gen_ordinary_pragma_managed_proc: extra args"),
+    expect(unify(ExtraArgs, []), $module, $pred, "extra args"),
 
     ForeignLang = get_foreign_language(Attributes),
     MLDSContext = mlds_make_context(Context),
@@ -528,9 +521,7 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
         SuccessIndicatorStatements = [SuccessIndicatorStatement]
     ;
         OrdinaryKind = kind_failure,
-        unexpected(this_file,
-            "ml_gen_ordinary_pragma_managed_proc: " ++
-            "kind_failure not yet implemented")
+        unexpected($module, $pred, "kind_failure not yet implemented")
     ),
 
     OutlineStatement = statement(ml_stmt_atomic(OutlineStmt), MLDSContext),
@@ -581,8 +572,7 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
 
 ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, ForeignCode, Context, Decls, Statements, !Info) :-
-    expect(unify(ExtraArgs, []), this_file,
-        "ml_gen_ordinary_pragma_managed_proc: extra args"),
+    expect(unify(ExtraArgs, []), $module, $pred, "extra args"),
 
     % XXX FIXME need to handle model_semi code here,
     % i.e. provide some equivalent to SUCCESS_INDICATOR.
@@ -705,7 +695,7 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
         NonMangledVarName = mlds_var_name(UserVarNameString, no)
     ;
         MaybeNameMode = no,
-        sorry(this_file, "no variable name for var")
+        sorry($module, $pred, "no variable name for var")
     ),
     (
         BoxPolicy = always_boxed,
@@ -1279,8 +1269,7 @@ input_arg_assignable_with_cast(Lang, HighLevelData, OrigType, ExportedType,
         ( Lang = lang_il
         ; Lang = lang_erlang
         ),
-        unexpected(this_file,
-            "input_arg_assignable_with_cast: unexpected language")
+        unexpected($module, $pred, "unexpected language")
     ).
 
 :- pred ml_gen_pragma_csharp_java_output_arg_list(mutable_special_case::in,
@@ -1299,8 +1288,9 @@ ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, [JavaArg | JavaArgs],
     ConvDecls = ConvDecls1 ++ ConvDecls2,
     ConvStatements = ConvStatements1 ++ ConvStatements2.
 
-    % ml_gen_pragma_csharp_java_output_arg generates MLDS statements to assign the
-    % value of an output arg for a `pragma foreign_proc' declaration.
+    % ml_gen_pragma_csharp_java_output_arg generates MLDS statements
+    % to assign the value of an output arg for a `pragma foreign_proc'
+    % declaration.
     %
 :- pred ml_gen_pragma_csharp_java_output_arg(mutable_special_case::in,
     foreign_arg::in, prog_context::in, list(statement)::out,
@@ -1475,11 +1465,5 @@ ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_foreign_proc_gen.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module ml_foreign_proc_gen.
+:- end_module ml_backend.ml_foreign_proc_gen.
 %-----------------------------------------------------------------------------%

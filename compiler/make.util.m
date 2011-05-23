@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1514,7 +1514,7 @@ module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
                     ForeignModuleName, module_target_object_code(PIC), MkDir,
                     Search, FileName, !IO)
             ;
-                unexpected(this_file, "module_target_to_file_name_2")
+                unexpected($module, $pred, "object test failed")
             )
         ;
             TargetType = module_target_foreign_il_asm(Lang),
@@ -1526,7 +1526,7 @@ module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
                     ForeignModuleName, module_target_il_asm, MkDir,
                     Search, FileName, !IO)
             ;
-                unexpected(this_file, "module_target_to_file_name_2")
+                unexpected($module, $pred, "ilasm test failed")
             )
         ;
             TargetType = module_target_fact_table_object(PIC, FactFile),
@@ -1557,7 +1557,7 @@ module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
             ; TargetType = module_target_xml_doc
             ; TargetType = module_target_track_flags
             ),
-            unexpected(this_file, "module_target_to_file_name_2")
+            unexpected($module, $pred, "unexpected TargetType")
         )
     ).
 
@@ -1817,8 +1817,7 @@ make_write_module_or_linked_target(Globals, ModuleName - FileType, !IO) :-
         io.write_string(FileName, !IO)
     ;
         FileType = misc_target(_),
-        unexpected(this_file,
-            "maybe_warn_up_to_date_target: misc_target")
+        unexpected($module, $pred, "misc_target")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1984,12 +1983,6 @@ mix(H0, X) = H :-
 :- func concoct_second_hash(int) = int.
 
 concoct_second_hash(H) = mix(H, 0xfe3dbe7f).    % whatever
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "make.util.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module make.util.

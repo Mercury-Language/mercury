@@ -1,16 +1,16 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2003, 2005-2010 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2003, 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
 % File: pseudo_type_info.m.
 % Authors: trd, zs.
-
+%
 % This module generates representations for pseudo-type-infos.
-
+%
 % The documentation of the structures of pseudo-type-infos is in
 % runtime/mercury_type_info.h; that file also contains a list of all
 % the files that depend on such data structures.
@@ -100,7 +100,7 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
                 PseudoArgs),
             expect(check_var_arity(VarArityId, PseudoArgs, RealArity),
-                this_file, "construct_pseudo_type_info: var arity mismatch"),
+                $module, $pred, "var arity mismatch"),
             PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, PseudoArgs)
         ;
             TypeCtor = type_ctor(QualTypeName, Arity),
@@ -110,8 +110,8 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
                 PseudoArgs),
-            expect(check_arity(PseudoArgs, Arity), this_file,
-                "construct_pseudo_type_info: arity mismatch"),
+            expect(check_arity(PseudoArgs, Arity), $module, $pred,
+                "arity mismatch"),
             (
                 PseudoArgs = [],
                 PseudoTypeInfo =
@@ -149,42 +149,38 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             ( list.nth_member_search(ExistQTvars, Var, ExistNum0) ->
                 VarInt = ExistNum0 + pseudo_typeinfo_exist_var_base
             ;
-                unexpected(this_file,
-                    "construct_pseudo_type_info: not in list")
+                unexpected($module, $pred, "not in list")
             )
         ),
-        expect(VarInt =< pseudo_typeinfo_max_var, this_file,
-            "construct_pseudo_type_info: type var exceeds limit"),
+        expect(VarInt =< pseudo_typeinfo_max_var, $module, $pred,
+            "type var exceeds limit"),
         PseudoTypeInfo = type_var(VarInt)
     ).
 
 construct_type_info(Type, TypeInfo) :-
-    ( type_to_ctor_and_args(Type, TypeCtor, TypeArgs) ->
-        ( type_is_var_arity(Type, VarArityId) ->
-            TypeCtor = type_ctor(_QualTypeName, RealArity),
-            generate_plain_args(TypeArgs, TypeInfoArgs),
-            expect(check_var_arity(VarArityId, TypeInfoArgs, RealArity),
-                this_file, "construct_type_info: arity mismatch"),
-            TypeInfo = var_arity_type_info(VarArityId, TypeInfoArgs)
-        ;
-            TypeCtor = type_ctor(QualTypeName, Arity),
-            TypeName = unqualify_name(QualTypeName),
-            sym_name_get_module_name_default(QualTypeName,
-                unqualified("builtin"), TypeModule),
-            RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
-            generate_plain_args(TypeArgs, TypeInfoArgs),
-            expect(check_arity(TypeInfoArgs, Arity),
-                this_file, "construct_type_info: arity mismatch"),
-            (
-                TypeInfoArgs = [],
-                TypeInfo = plain_arity_zero_type_info(RttiTypeCtor)
-            ;
-                TypeInfoArgs = [_ | _],
-                TypeInfo = plain_type_info(RttiTypeCtor, TypeInfoArgs)
-            )
-        )
+    type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
+    ( type_is_var_arity(Type, VarArityId) ->
+        TypeCtor = type_ctor(_QualTypeName, RealArity),
+        generate_plain_args(TypeArgs, TypeInfoArgs),
+        expect(check_var_arity(VarArityId, TypeInfoArgs, RealArity),
+            $module, $pred, "arity mismatch"),
+        TypeInfo = var_arity_type_info(VarArityId, TypeInfoArgs)
     ;
-        unexpected(this_file, "construct_type_info: type is var")
+        TypeCtor = type_ctor(QualTypeName, Arity),
+        TypeName = unqualify_name(QualTypeName),
+        sym_name_get_module_name_default(QualTypeName,
+            unqualified("builtin"), TypeModule),
+        RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
+        generate_plain_args(TypeArgs, TypeInfoArgs),
+        expect(check_arity(TypeInfoArgs, Arity),
+            $module, $pred, "arity mismatch"),
+        (
+            TypeInfoArgs = [],
+            TypeInfo = plain_arity_zero_type_info(RttiTypeCtor)
+        ;
+            TypeInfoArgs = [_ | _],
+            TypeInfo = plain_type_info(RttiTypeCtor, TypeInfoArgs)
+        )
     ).
 
 :- pred check_var_arity(var_arity_ctor_id::in, list(T)::in, int::in)
@@ -282,9 +278,5 @@ pseudo_typeinfo_max_var = 1024.
 pseudo_typeinfo_exist_var_base = 512.
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "pseudo_type_info.m".
-
+:- end_module backend_libs.pseudo_type_info.
 %---------------------------------------------------------------------------%

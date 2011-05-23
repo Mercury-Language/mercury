@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2007, 2010 The University of Melbourne.
+% Copyright (C) 2002, 2005-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -231,7 +231,7 @@ description(can_loop_proc_called(CallerPPId, CalleePPId),
         Single, Module, Pieces, no) :-
     (
         Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), this_file,
+        expect(unify(PPId, CallerPPId), $module, $pred,
             "caller outside this SCC"),
         Piece1 = [words("It")]
     ;
@@ -258,7 +258,7 @@ description(does_not_term_pragma(PredId), Single, Module, Pieces, no) :-
     (
         Single = yes(PPId),
         PPId = proc(SCCPredId, _),
-        expect(unify(PredId, SCCPredId), this_file,
+        expect(unify(PredId, SCCPredId), $module, $pred,
             "does not terminate pragma outside this SCC"),
         Piece2 = [words("it.")]
     ;
@@ -284,11 +284,5 @@ indirect_error(does_not_term_pragma(_)).
 indirect_error(can_loop_proc_called(_, _)). 
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_constr_errors.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module term_constr_errors.
+:- end_module transform_hlds.term_constr_errors.
 %-----------------------------------------------------------------------------%

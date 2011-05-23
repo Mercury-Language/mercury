@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -164,8 +164,7 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(detect_garbage.this_file,
-            "determine_dead_deconstructions_2: shorthand goal.")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred determine_dead_deconstructions_2_with_progress(detect_bg_info::in,
@@ -296,8 +295,7 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
         Unification = simple_test(_, _)
     ;
         Unification = complicated_unify(_, _, _),
-        unexpected(detect_garbage.this_file, "unification_verify_reuse: " ++
-            "complicated_unify/3 encountered.")
+        unexpected($module, $pred, "complicated_unify")
     ).
 
 :- pred var_not_live(module_info::in, proc_info::in, hlds_goal_info::in,
@@ -315,12 +313,6 @@ var_not_live(ModuleInfo, ProcInfo, GoalInfo, Sharing, Var) :-
         ),
         fail
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "structure_sharing.direct.detect_garbage.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.

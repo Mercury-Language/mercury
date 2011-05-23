@@ -388,10 +388,10 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
                 Outer, Inner, MainGoal, OrElseGoals, Goal, !Info)
         ;
             ShortHand0 = try_goal(_, _, _),
-            unexpected(this_file, "stm_process_goal: try_goal")
+            unexpected($module, $pred, "try_goal")
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected(this_file, "stm_process_goal: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -491,8 +491,7 @@ stm_create_actual_goal(GoalType, InitInstmap, FinalInstmap, Outer, Inner,
             FinalGoal, !StmInfo)
     ;
         GoalType = unknown_atomic_goal_type,
-        unexpected(this_file,
-            "stm_create_actual_goal: Unknown atomic goal type")
+        unexpected($module, $pred, "unknown atomic goal type")
     ),
     !StmInfo ^ stm_info_requalify := yes.
 
@@ -545,8 +544,7 @@ order_vars_into_groups_2(ModuleInfo, [Var|Vars], InitInstmap, FinalInstmap,
     ->
         !:InputVars = [Var | !.InputVars]
     ;
-        unexpected(this_file,
-            "order_vars_into_groups_2: Unhandled inst case")
+        unexpected($module, $pred, "unhandled inst case")
     ),
     order_vars_into_groups_2(ModuleInfo, Vars, InitInstmap, FinalInstmap,
         !LocalVars, !InputVars, !OutputVars).
@@ -604,7 +602,7 @@ calc_pred_variables_list(InitInstmap, FinalInstmap, HldsGoals,
             InnerDIs0, InnerUOs0, IgnoreVarList, StmGoalVarList0, !StmInfo),
         StmGoalVarList = [StmGoalVar | StmGoalVarList0]
     ;
-        unexpected(this_file, "calc_pred_variables_list: lengths mismatch")
+        unexpected($module, $pred, "lengths mismatch")
     ).
 
     % Arranges all variables from the goal and non-locals into local variables,
@@ -689,7 +687,7 @@ strip_goal_calls(Goal0, Goal, StmOutDI, StmOutUO, StmInDI, StmInUO) :-
         Goal0 = hlds_goal(conj(plain_conj, GoalList0), GoalInfo) ->
         (
             GoalList0 = [],
-            unexpected(this_file, "strip_goal_calls: conjunction is empty")
+            unexpected($module, $pred, "empty conjunction")
         ;
             GoalList0 = [_ | _],
             remove_tail(GoalList0, GoalList, MaybeOutVarPair, MaybeInVarPair),
@@ -709,11 +707,11 @@ strip_goal_calls(Goal0, Goal, StmOutDI, StmOutUO, StmInDI, StmInUO) :-
                 StmOutUO = StmOutUO0,
                 Goal = hlds_goal(conj(plain_conj, GoalList), GoalInfo)
             ;
-                unexpected(this_file, "strip_goal_calls: Vars not extracted")
+                unexpected($module, $pred, "Vars not extracted")
             )
         )
     ;
-        unexpected(this_file, "strip_goal_calls: atomic_goal not a conj")
+        unexpected($module, $pred, "atomic_goal not a conj")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1316,7 +1314,7 @@ create_wrapper_for_goal_list(AtomicGoalVarList, ResultType, ResultVar,
         GoalList, PredProcId, CallGoal, !StmInfo) :-
     (
         GoalList = [],
-        unexpected(this_file, "create_wrapper_for_goal_list: list empty")
+        unexpected($module, $pred, "empty list")
     ;
         GoalList = [SingleGoal],
         AtomicGoalVars = list.det_head(AtomicGoalVarList),
@@ -1692,7 +1690,7 @@ create_or_else_branches(AtomicGoalVars, ReturnType, OuterStmDIVar,
             OuterStmUOVar, InnerVar, RttiVar, RollbackExceptionRttiVar,
             WrapID, HldsGoal0, HldsGoal, StmInfo, !NewPredInfo)
     ;
-        unexpected(this_file, "create_or_else_branches: Mismatched lists")
+        unexpected($module, $pred, "mismatched lists")
     ).
 
 :- pred create_or_else_inner_stm_vars(int::in, list(prog_var)::out,
@@ -1707,7 +1705,7 @@ create_or_else_inner_stm_vars(Count, Vars, !NewPredInfo) :-
         create_or_else_inner_stm_vars(Count1, Vars0, !NewPredInfo),
         Vars = [Var | Vars0]
     ;
-        unexpected(this_file, "create_or_else_inner_stm_vars: Negative count")
+        unexpected($module, $pred, "negative count")
     ).
 
     % Creates an or_else branch.
@@ -1745,7 +1743,7 @@ map2_in_foldl(Pred, Src1, Src2, Dest, !Accum) :-
         map2_in_foldl(Pred, Ss, Ts,  Rs, !Accum),
         Dest = [R | Rs]
     ;
-        unexpected(this_file, "map2_in_foldl: Source list lengths mismatch")
+        unexpected($module, $pred, "source list lengths mismatch")
     ).
 
 :- pred map3_in_foldl(
@@ -1768,7 +1766,7 @@ map3_in_foldl(Pred, Src1, Src2, Src3, Dest, !Accum) :-
         map3_in_foldl(Pred, Ss, Ts, Us, Rs, !Accum),
         Dest = [R | Rs]
     ;
-        unexpected(this_file, "map2_in_foldl: Source list lengths mismatch")
+        unexpected($module, $pred, "source list lengths mismatch")
     ).
 
 :- pred create_or_else_end_branch(list(prog_var)::in, prog_var::in,
@@ -2618,12 +2616,6 @@ stm_inner_outer =
     qualified(mercury_stm_builtin_module, "stm_from_inner_to_outer").
 stm_outer_inner =
     qualified(mercury_stm_builtin_module, "stm_from_outer_to_inner").
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "stm_expand.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.stm_expand.

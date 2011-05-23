@@ -778,7 +778,7 @@ get_containing_goal_map_det(CI, ContainingGoalMap) :-
         MaybeContainingGoalMap = yes(ContainingGoalMap)
     ;
         MaybeContainingGoalMap = no,
-        unexpected(this_file, "get_containing_goal_map_det: no map")
+        unexpected($module, $pred, "no map")
     ).
 
 %---------------------------------------------------------------------------%
@@ -971,7 +971,7 @@ pre_goal_update(GoalInfo, HasSubGoals, !CI) :-
         ResumePoint = no_resume_point
     ;
         ResumePoint = resume_point(_, _),
-        unexpected(this_file, "pre_goal_update with resume point")
+        unexpected($module, $pred, "pre_goal_update with resume point")
     ),
     goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
     (
@@ -1038,7 +1038,7 @@ lookup_type_defn(CI, Type) = TypeDefn :-
     ( search_type_defn(CI, Type, TypeDefnPrime) ->
         TypeDefn = TypeDefnPrime
     ;
-        unexpected(this_file, "lookup_type_defn: type ctor has no definition")
+        unexpected($module, $pred, "type ctor has no definition")
     ).
 
 lookup_cheaper_tag_test(CI, Type) = CheaperTagTest :-
@@ -1129,7 +1129,7 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, GoalPath,
         Label = internal_label(LabelNum, _)
     ;
         Label = entry_label(_, _),
-        unexpected(this_file, "add_trace_layout_for_label: entry")
+        unexpected($module, $pred, "entry")
     ),
     ( map.search(Internals0, LabelNum, Internal0) ->
         Internal0 = internal_layout_info(Exec0, Resume, Return),
@@ -1137,8 +1137,7 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, GoalPath,
             Exec0 = no
         ;
             Exec0 = yes(_),
-            unexpected(this_file,
-                "adding trace layout for already known label")
+            unexpected($module, $pred, "already known label")
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
         map.det_update(LabelNum, Internal, Internals0, Internals)
@@ -1155,7 +1154,7 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
         Label = internal_label(LabelNum, _)
     ;
         Label = entry_label(_, _),
-        unexpected(this_file, "add_trace_layout_for_label: entry")
+        unexpected($module, $pred, "entry")
     ),
     ( map.search(Internals0, LabelNum, Internal0) ->
         Internal0 = internal_layout_info(Exec, Resume0, Return),
@@ -1163,7 +1162,7 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
             Resume0 = no
         ;
             Resume0 = yes(_),
-            unexpected(this_file, "adding gc layout for already known label")
+            unexpected($module, $pred, "already known label")
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
         map.det_update(LabelNum, Internal, Internals0, Internals)
@@ -1346,8 +1345,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
             ResumeKnown1 = resume_point_known(Redoip1)
         ->
             ResumeKnown = resume_point_known(Redoip0),
-            expect(unify(Redoip0, Redoip1), this_file,
-                "redoip mismatch in generate_branch_end")
+            expect(unify(Redoip0, Redoip1), $module, $pred, "redoip mismatch")
         ;
             ResumeKnown = resume_point_unknown
         ),
@@ -1367,7 +1365,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
         ;
             Hijack = not_allowed
         ),
-        expect(unify(CondEnv0, CondEnv1), this_file,
+        expect(unify(CondEnv0, CondEnv1), $module, $pred,
             "some but not all branches inside a non condition"),
         FailInfo = fail_info(R, ResumeKnown, CurfrMaxfr, CondEnv0, Hijack),
         set_fail_info(FailInfo, EndCodeInfo1, EndCodeInfoA),
@@ -1391,7 +1389,7 @@ after_all_branches(StoreMap, MaybeEnd, !CI) :-
         remake_with_store_map(StoreMap, !CI)
     ;
         MaybeEnd = no,
-        unexpected(this_file, "no branches in branched control structure")
+        unexpected($module, $pred, "no branches in branched control structure")
     ).
 
     % remake_with_store_map throws away the var_info data structure, forgetting
@@ -1789,7 +1787,7 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         )
     ;
         HijackInfo = disj_quarter_hijack,
-        expect(unify(CurfrMaxfr, must_be_equal), this_file,
+        expect(unify(CurfrMaxfr, must_be_equal), $module, $pred,
             "maxfr may differ from curfr in disj_quarter_hijack"),
         stack.det_top(ResumePoints, ResumePoint),
         pick_stack_resume_point(ResumePoint, _, StackLabel),
@@ -1801,9 +1799,9 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         )
     ;
         HijackInfo = disj_half_hijack(RedoipSlot),
-        expect(unify(ResumeKnown, resume_point_unknown), this_file,
+        expect(unify(ResumeKnown, resume_point_unknown), $module, $pred,
             "resume point known in disj_half_hijack"),
-        expect(unify(CurfrMaxfr, must_be_equal), this_file,
+        expect(unify(CurfrMaxfr, must_be_equal), $module, $pred,
             "maxfr may differ from curfr in disj_half_hijack"),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
         Code = singleton(
@@ -1812,7 +1810,7 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         )
     ;
         HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
-        expect(unify(CurfrMaxfr, may_be_different), this_file,
+        expect(unify(CurfrMaxfr, may_be_different), $module, $pred,
             "maxfr same as curfr in disj_full_hijack"),
         Code = from_list([
             llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
@@ -1885,8 +1883,8 @@ prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
         ( CondCodeModel = model_det
         ; CondCodeModel = model_semi
         ),
-        expect(unify(MaybeEmbeddedFrameId, no), this_file,
-            "prepare_for_ite_hijack: MaybeEmbeddedFrameId in model_semi"),
+        expect(unify(MaybeEmbeddedFrameId, no), $module, $pred,
+            "MaybeEmbeddedFrameId in model_semi"),
         HijackType = ite_no_hijack,
         Code = singleton(
             llds_instr(comment("ite no hijack"), "")
@@ -1984,8 +1982,8 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
         MaybeRegionInfo),
     (
         HijackType = ite_no_hijack,
-        expect(unify(MaybeRegionInfo, no), this_file,
-            "ite_enter_then: MaybeRegionInfo ite_no_hijack"),
+        expect(unify(MaybeRegionInfo, no), $module, $pred,
+            "MaybeRegionInfo ite_no_hijack"),
         ThenCode = empty,
         ElseCode = empty
     ;
@@ -2034,8 +2032,8 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
         )
     ;
         HijackType = ite_quarter_hijack,
-        expect(unify(MaybeRegionInfo, no), this_file,
-            "ite_enter_then: MaybeRegionInfo ite_quarter_hijack"),
+        expect(unify(MaybeRegionInfo, no), $module, $pred,
+            "MaybeRegionInfo ite_quarter_hijack"),
         stack.det_top(ResumePoints, ResumePoint),
         ( maybe_pick_stack_resume_point(ResumePoint, _, StackLabel) ->
             LabelConst = const(llconst_code_addr(StackLabel)),
@@ -2050,8 +2048,8 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
         ElseCode = ThenCode
     ;
         HijackType = ite_half_hijack(RedoipSlot),
-        expect(unify(MaybeRegionInfo, no), this_file,
-            "ite_enter_then: MaybeRegionInfo ite_half_hijack"),
+        expect(unify(MaybeRegionInfo, no), $module, $pred,
+            "MaybeRegionInfo ite_half_hijack"),
         ThenCode = singleton(
             llds_instr(assign(redoip_slot(lval(curfr)), lval(RedoipSlot)),
                 "restore redoip for half ite hijack")
@@ -2059,8 +2057,8 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
         ElseCode = ThenCode
     ;
         HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
-        expect(unify(MaybeRegionInfo, no), this_file,
-            "ite_enter_then: MaybeRegionInfo ite_full_hijack"),
+        expect(unify(MaybeRegionInfo, no), $module, $pred,
+            "MaybeRegionInfo ite_full_hijack"),
         ThenCode = from_list([
             llds_instr(assign(redoip_slot(lval(MaxfrSlot)), lval(RedoipSlot)),
                 "restore redoip for full ite hijack"),
@@ -2103,7 +2101,7 @@ enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CI) :-
     make_fake_resume_map(ResumeVarList, ResumeMap0, ResumeMap),
     ResumePoint = orig_only(ResumeMap, do_redo),
     effect_resume_point(ResumePoint, model_semi, Code, !CI),
-    expect(is_empty(Code), this_file, "nonempty code for simple neg"),
+    expect(is_empty(Code), $module, $pred, "nonempty code for simple neg"),
     pre_goal_update(GoalInfo, does_not_have_subgoals, !CI).
 
 leave_simple_neg(GoalInfo, FailInfo, !CI) :-
@@ -2609,7 +2607,7 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
         map.keys(NewMap, NewKeys),
         set.list_to_set(OldKeys, OldKeySet),
         set.list_to_set(NewKeys, NewKeySet),
-        expect(set.subset(OldKeySet, NewKeySet), this_file,
+        expect(set.subset(OldKeySet, NewKeySet), $module, $pred,
             "non-nested resume point variable sets")
     ;
         true
@@ -2836,7 +2834,7 @@ pick_stack_resume_point(ResumePoint, Map, Addr) :-
         Map = Map1,
         Addr = Addr1
     ;
-        unexpected(this_file, "no stack resume point")
+        unexpected($module, $pred, "no stack resume point")
     ).
 
 :- pred maybe_pick_stack_resume_point(resume_point_info::in,
@@ -3120,7 +3118,7 @@ extract_label_from_code_addr(CodeAddr, Label) :-
     ( CodeAddr = code_label(Label0) ->
         Label = Label0
     ;
-        unexpected(this_file, "extract_label_from_code_addr: non-label!")
+        unexpected($module, $pred, "non-label")
     ).
 
 :- pred place_resume_vars(assoc_list(prog_var, set(lval))::in,
@@ -3239,7 +3237,7 @@ maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode, !CI) :-
 clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
     (
         ResumePoint0 = orig_only(_, _),
-        unexpected(this_file, "cloning orig_only resume point")
+        unexpected($module, $pred, "cloning orig_only resume point")
     ;
         ResumePoint0 = stack_only(Map1, _),
         get_next_label(Label1, !CI),
@@ -3838,7 +3836,7 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
         VarLocnInfo0, VarLocnInfo)
     ;
         Lvals = [_ | _],
-        unexpected(this_file, "assign_expr_to_var: non-var lvals")
+        unexpected($module, $pred, "non-var lvals")
     ),
     set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3980,7 +3978,7 @@ record_highest_used_reg(_, AbsLocn, !HighestUsedRegNum) :-
 
 acquire_reg(Type, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    expect(unify(Type, reg_r), this_file, "acquire_reg: unknown reg type"),
+    expect(unify(Type, reg_r), $module, $pred, "unknown reg type"),
     var_locn_acquire_reg(Lval, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
@@ -4075,8 +4073,7 @@ valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
         ),
         N < 0
     ->
-        unexpected(this_file,
-            "valid_stack_slot: nondummy var in dummy stack slot")
+        unexpected($module, $pred, "nondummy var in dummy stack slot")
     ;
         true
     ).
@@ -4413,7 +4410,7 @@ acquire_temp_slot(Item, Persistence, StackVar, !CI) :-
 acquire_several_temp_slots([], _, _, _, _, _, !CI) :-
     % We could return an empty list of stack vars for StackVars, but there is
     % nothing meaningful we can return for the other outputs.
-    unexpected(this_file, "acquire_several_temp_slots: []").
+    unexpected($module, $pred, "[]").
 acquire_several_temp_slots([HeadItem | TailItems], Persistence, StackVars,
         StackId, FirstSlotNum, LastSlotNum, !CI) :-
     get_temp_content_map(!.CI, TempContentMap0),
@@ -4526,8 +4523,7 @@ find_unused_slots_for_items([Head | Tail], HeadItem, TailItems, TempsInUse,
             StackId0 = nondet_stack,
             FirstSlotNum0 = N
         ;
-            unexpected(this_file,
-                "find_unused_slots_for_items: not stackvar or framevar")
+            unexpected($module, $pred, "not stackvar or framevar")
         ),
         StackId1 = StackId0,
         FirstSlotNum1 = FirstSlotNum0,
@@ -4568,13 +4564,13 @@ release_temp_slot(StackVar, Persistence, !CI) :-
     (
         Persistence = persistent_temp_slot,
         expect(unify(IsInPersistentTemps0, yes),
-            this_file, "released stack slot should be persistent"),
+            $module, $pred, "released stack slot should be persistent"),
         set.delete(StackVar, PersistentTemps0, PersistentTemps),
         set_persistent_temps(PersistentTemps, !CI)
     ;
         Persistence = non_persistent_temp_slot,
         expect(unify(IsInPersistentTemps0, no),
-            this_file, "released stack slot should not be persistent")
+            $module, $pred, "released stack slot should not be persistent")
     ).
 
 release_several_temp_slots([], _Persistence, !CI).
@@ -4592,9 +4588,8 @@ get_variable_slot(CI, Var, Slot) :-
         Name = variable_name(CI, Var),
         term.var_to_int(Var, Num),
         string.int_to_string(Num, NumStr),
-        Str = "get_variable_slot: variable `" ++ Name ++ "' " ++
-            "(" ++ NumStr ++ ") not found",
-        unexpected(this_file, Str)
+        Str = "variable `" ++ Name ++ "' " ++ "(" ++ NumStr ++ ") not found",
+        unexpected($module, $pred, Str)
     ).
 
 get_total_stackslot_count(CI, NumSlots) :-
@@ -4711,9 +4706,5 @@ output_resume_map_element(VarSet, Var - LvalSet, !IO) :-
     io.nl(!IO).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "code_info.m".
-
+:- end_module ll_backend.code_info.
 %---------------------------------------------------------------------------%

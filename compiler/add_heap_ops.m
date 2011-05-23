@@ -238,7 +238,7 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "goal_expr_add_heap_ops: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred conj_add_heap_ops(hlds_goals::in, hlds_goals::out,
@@ -370,9 +370,5 @@ heap_generate_call(PredName, Detism, Purity, Args, InstMapDelta, ModuleInfo,
         ModuleInfo, Context, CallGoal).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "add_heap_ops.m".
-
+:- end_module ml_backend.add_heap_ops.
 %-----------------------------------------------------------------------------%

@@ -793,7 +793,7 @@ ml_gen_array_elem_type(ElemType) = MLDS_Type :-
         MLDS_Type = ml_gen_scalar_array_elem_type(ScalarElem)
     ;
         ElemType = array_elem_struct(_ScalarElems),
-        unexpected(this_file, "ml_gen_array_elem_type: struct")
+        unexpected($module, $pred, "struct")
     ).
 
 :- func ml_gen_scalar_array_elem_type(scalar_array_elem_type) = mlds_type.
@@ -905,7 +905,7 @@ ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         !:Info = Info
     ;
         MaybeInfo = no,
-        unexpected(this_file, "ml_gen_params: missing ml_gen_info")
+        unexpected($module, $pred, "missing ml_gen_info")
     ).
 
 :- pred ml_gen_params_base(module_info::in, list(mlds_var_name)::in,
@@ -936,8 +936,8 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
             ( RetTypePtr = mlds_ptr_type(RetType) ->
                 RetTypes = [RetType]
             ;
-                unexpected(this_file, "output mode function result " ++
-                    "doesn't have pointer type")
+                unexpected($module, $pred,
+                    "output mode function result doesn't have pointer type")
             )
         ;
             FuncArgs = FuncArgs0,
@@ -1038,7 +1038,7 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
             RetTypes = RetTypes0
         )
     ;
-        unexpected(this_file, "ml_gen_arg_decls: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
     % Given an argument variable, and its type and mode,
@@ -1195,10 +1195,8 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             MLDS_PredLabel = mlds_special_pred_label(PredName,
                 MaybeDeclaringModule, TypeName, TypeArity)
         ;
-            string.append_list(["ml_gen_pred_label:\n",
-                "cannot make label for special pred `",
-                PredName, "'"], ErrorMessage),
-            unexpected(this_file, ErrorMessage)
+            unexpected($module, $pred, 
+                "cannot make label for special pred `" ++ PredName ++ "'")
         )
     ;
         (
@@ -1427,9 +1425,9 @@ ml_must_box_field_type_category(CtorCat) = MustBox :-
 
 ml_gen_box_const_rvals(_, _, [], [], [], !GlobalData).
 ml_gen_box_const_rvals(_, _, [], [_ | _], _, !GlobalData) :-
-    unexpected(this_file, "ml_gen_box_const_rvals: list length mismatch").
+    unexpected($module, $pred, "list length mismatch").
 ml_gen_box_const_rvals(_, _, [_ | _], [], _, !GlobalData) :-
-    unexpected(this_file, "ml_gen_box_const_rvals: list length mismatch").
+    unexpected($module, $pred, "list length mismatch").
 ml_gen_box_const_rvals(ModuleInfo, Context, [Type | Types], [Rval | Rvals],
         [BoxedRval | BoxedRvals], !GlobalData) :-
     ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval, BoxedRval,
@@ -1599,7 +1597,8 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
                 ml_gen_local_for_output_arg(ArgVarName, CalleeType, ArgNum,
                     Context, ArgVarDecl, !Info)
             ;
-                unexpected(this_file, "invalid CalleeType for closure wrapper")
+                unexpected($module, $pred,
+                    "invalid CalleeType for closure wrapper")
             )
         ;
             ForClosureWrapper = no,
@@ -1756,7 +1755,7 @@ ml_gen_success(model_non, Context, [CallCont], !Info) :-
     ml_gen_call_current_success_cont(Context, CallCont, !Info).
 
 ml_gen_failure(model_det, _, _, !Info) :-
-    unexpected(this_file, "ml_gen_failure: `fail' has determinism `det'").
+    unexpected($module, $pred, "`fail' has determinism `det'").
 ml_gen_failure(model_semi, Context, [SetSuccessFalse], !Info) :-
     %
     % semidet fail:
@@ -1856,9 +1855,9 @@ ml_skip_dummy_argument_types([Type | Types0], [Var | Vars0], ModuleInfo,
         Vars = [Var | Vars1]
     ).
 ml_skip_dummy_argument_types([_ | _], [], _, _, _) :-
-    unexpected(this_file, "ml_skip_dummy_argument_types: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 ml_skip_dummy_argument_types([], [_ | _], _, _, _) :-
-    unexpected(this_file, "ml_skip_dummy_argument_types: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 ml_gen_call_current_success_cont(Context, Statement, !Info) :-
     ml_gen_info_current_success_cont(!.Info, SuccCont),
@@ -1932,7 +1931,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
                 Lval = ml_lval(ml_var(qual(MLDS_Module, module_qual, VarName),
                     Type))
             ;
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "expected variable name in continuation parameters")
             )
         ), InnerArgs0),
@@ -1975,7 +1974,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
         BlockStmt = ml_stmt_block([Defn], [statement(Stmt, MLDS_Context)]),
         Statement = statement(BlockStmt, MLDS_Context)
     ;
-        unexpected(this_file,
+        unexpected($module, $pred,
             "success continuation generated was not a function")
     ).
 
@@ -2102,7 +2101,7 @@ ml_generate_field_assigns(OutVars, FieldTypes, FieldIds, VectorCommon,
             !Info),
         Statements = [HeadStatement | TailStatements]
     ;
-        unexpected(this_file, "ml_generate_offset_assigns: mismatched lists")
+        unexpected($module, $pred, "mismatched lists")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2129,11 +2128,5 @@ fixup_builtin_module(ModuleName0) = ModuleName :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_code_util.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module ml_code_util.
+:- end_module ml_backend.ml_code_util.
 %-----------------------------------------------------------------------------%

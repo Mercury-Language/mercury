@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2010 The University of Melbourne.
+% Copyright (C) 2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -423,7 +423,7 @@ expr_to_term(Expr) = Term :-
     ( Expr = elds_term(Term0) ->
         Term = Term0
     ;
-        unexpected(this_file, "unable to convert elds_expr to elds_term")
+        unexpected($module, $pred, "unable to convert elds_expr to elds_term")
     ).
 
 join_exprs(ExprA, ExprB) = Expr :-
@@ -455,7 +455,7 @@ expr_or_void(no) = elds_term(elds_atom_raw("void")).
 
 det_expr(yes(Expr)) = Expr.
 det_expr(no) = _ :-
-    unexpected(this_file, "det_expr: no expression").
+    unexpected($module, $pred, "no expression").
 
 elds_body_arity(body_defined_here(Clause)) = elds_clause_arity(Clause).
 elds_body_arity(body_external(Arity)) = Arity.
@@ -472,9 +472,5 @@ tuple_or_single_expr(List) =
 make_enum_alternative(F) = elds_tuple([elds_term(elds_atom(unqualified(F)))]).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "elds.m".
-
+:- end_module erl_backend.elds.
 %-----------------------------------------------------------------------------%

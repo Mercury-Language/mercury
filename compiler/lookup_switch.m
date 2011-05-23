@@ -252,7 +252,7 @@ generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
             Disjuncts = [],
             % Cases like this should have been filtered out by
             % filter_out_failing_cases.
-            unexpected(this_file, "generate_constants: disj([])")
+            unexpected($module, $pred, "disj([])")
         ;
             Disjuncts = [FirstDisjunct | LaterDisjuncts],
             goal_is_conj_of_unify(ArmNonLocals, FirstDisjunct),
@@ -317,7 +317,7 @@ record_lookup_for_tagged_cons_id_int(SolnConsts, TaggedConsId, !IndexMap) :-
     ( ConsTag = int_tag(Index) ->
         map.det_insert(Index, SolnConsts, !IndexMap)
     ;
-        unexpected(this_file, "record_lookup_for_tagged_cons_id: not int_tag")
+        unexpected($module, $pred, "not int_tag")
     ).
 
 record_lookup_for_tagged_cons_id_string(SolnConsts, TaggedConsId, !IndexMap) :-
@@ -325,7 +325,7 @@ record_lookup_for_tagged_cons_id_string(SolnConsts, TaggedConsId, !IndexMap) :-
     ( ConsTag = string_tag(Index) ->
         map.det_insert(Index, SolnConsts, !IndexMap)
     ;
-        unexpected(this_file, "record_lookup_for_tagged_cons_id: not int_tag")
+        unexpected($module, $pred, "not int_tag")
     ).
 
 %---------------------------------------------------------------------------%
@@ -497,8 +497,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
         OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, Code, !CI) :-
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
-    expect(negate(unify(OutVars, [])), this_file,
-        "generate_several_soln_int_lookup_switch: no OutVars"),
+    expect(negate(unify(OutVars, [])), $module, $pred, "no OutVars"),
 
     % Now generate the static cells into which we do the lookups of the values
     % of the output variables, if there are any.
@@ -524,8 +523,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     ->
         true
     ;
-        unexpected(this_file,
-            "generate_several_soln_int_lookup_switch: bad FailCaseCount")
+        unexpected($module, $pred, "bad FailCaseCount")
     ),
 
     MainRowTypes = [lt_integer, lt_integer | OutTypes],
@@ -601,7 +599,7 @@ case_kind_to_string(kind_several_solns) = "kind_several_solns".
 
 generate_code_for_each_kind([], _, _, _, _, _, _, _, _, _, _, _, _,
         !MaybeEnd, _, !CI) :-
-    unexpected(this_file, "generate_code_for_each_kind: no kinds").
+    unexpected($module, $pred, "no kinds").
 generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
         OutVars, ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
         AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
@@ -950,11 +948,5 @@ default_value_for_type(lt_code_ptr) = const(llconst_int(0)).
 default_value_for_type(lt_word) = const(llconst_int(0)).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "lookup_switch.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module lookup_switch.
+:- end_module ll_backend.lookup_switch.
 %-----------------------------------------------------------------------------%

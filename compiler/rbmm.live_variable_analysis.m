@@ -235,11 +235,9 @@ live_variable_analysis_singleton_exec_path([ProgPoint - Goal | _], Inputs,
     % Collect void vars after this program point.
     compute_useds_produceds(ModuleInfo, Goal, _UsedSet, ProducedSet),
     collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar).
-
 live_variable_analysis_singleton_exec_path([], _, _, _, _,
         !ProcLVBefore, !ProcLVAfter, !ProcVoidVar) :-
-    unexpected(this_file,
-        "live_variable_analysis_singleton_exec_path: impossible").
+    unexpected($module, $pred, "empty list").
 
     % A variable is live at a program point if it is live in one of
     % the execution paths that covers the program point.
@@ -293,8 +291,8 @@ compute_useds_produceds(ModuleInfo, Goal, UsedSet, ProducedSet) :-
             Useds = [],
             Produceds = []
         ;
-            unexpected(this_file, "compute_useds_produceds: the expression "
-                ++ "must be either call, unify, true, or fail")
+            unexpected($module, $pred,
+                "the expression must be either call, unify, true, or fail")
         )
     ),
     set.list_to_set(Useds, UsedSet),
@@ -337,14 +335,10 @@ get_inputs_outputs_proc_call(ActualArgs, CalleeId, ModuleInfo,
 get_inputs_outputs_proc_call_2([], [], _, _, !ActualInputs, !ActualOutputs).
 get_inputs_outputs_proc_call_2([], [_ | _], _, _, !ActualInputs,
         !ActualOutputs) :-
-    unexpected(this_file,
-        "get_inputs_outputs_proc_call_2: more actual arguments than "
-        ++ "formal ones").
+    unexpected($module, $pred, "mismatched lists").
 get_inputs_outputs_proc_call_2([_ | _], [], _, _, !ActualInputs,
         !ActualOutputs) :-
-    unexpected(this_file,
-        "get_inputs_outputs_proc_call_2: more formal arguments that "
-        ++ "actual ones").
+    unexpected($module, $pred, "mismatched lists").
 get_inputs_outputs_proc_call_2([FormalArg | FormalArgs],
         [ActualArg | ActualArgs], Inputs, Outputs, !ActualInputs,
         !ActualOutputs) :-
@@ -399,9 +393,5 @@ void_var(Varset, Var, !VoidVars) :-
     ).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.live_variable_analysis.m".
-
+:- end_module transform_hlds.rbmm.live_variable_analysis.
 %----------------------------------------------------------------------------%

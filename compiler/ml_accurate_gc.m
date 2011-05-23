@@ -607,11 +607,5 @@ maybe_tag_rval(yes(Tag), Type, Rval) = TaggedRval :-
     TaggedRval = ml_unop(cast(Type), ml_mkword(Tag, Rval)).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_accurate_gc.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module ml_accurate_gc.
+:- end_module ml_backend.ml_accurate_gc.
 %-----------------------------------------------------------------------------%

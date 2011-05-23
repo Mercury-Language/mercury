@@ -70,7 +70,7 @@ generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
             ( CodeModel = model_det
             ; CodeModel = model_non
             ),
-            unexpected(this_file, "generate_disj: empty disjunction.")
+            unexpected($module, $pred, "empty disjunction")
         )
     ;
         Goals = [Goal | _],
@@ -460,7 +460,7 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
     llds_code::out, code_info::in, code_info::out) is det.
 
 generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
-    unexpected(this_file, "generate_disjuncts: empty disjunction!").
+    unexpected($module, $pred, "empty disjunction").
 generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         MaybeEntryResumePoint, HijackInfo, DisjGoalInfo,
         RegionCommitDisjCleanup, EndLabel, ReclaimHeap,
@@ -528,9 +528,9 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 BranchStart0, BranchStart, !CI),
             HpCodeInstrs = cord.list(SaveHpCode),
             BranchHpCodeInstrs = cord.list(BranchSaveHpCode),
-            expect(unify(HpCodeInstrs, BranchHpCodeInstrs), this_file,
+            expect(unify(HpCodeInstrs, BranchHpCodeInstrs), $module, $pred,
                 "cannot use same code for saving hp"),
-            expect(unify(HpSlot, BranchHpSlot), this_file,
+            expect(unify(HpSlot, BranchHpSlot), $module, $pred,
                 "cannot allocate same slot for saved hp")
         ;
             SaveHpCode = empty,
@@ -921,11 +921,5 @@ disj_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
         RegionVars, Codes, !CI).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "disj_gen.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module disj_gen.
+:- end_module ll_backend.disj_gen.
 %-----------------------------------------------------------------------------%

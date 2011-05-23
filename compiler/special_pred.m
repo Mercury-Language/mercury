@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000,2002-2010 The University of Melbourne.
+% Copyright (C) 1995-2000,2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,8 +178,7 @@ special_pred_get_type_det(SpecialId, ArgTypes, Type) :-
     ( special_pred_get_type(SpecialId, ArgTypes, TypePrime) ->
         Type = TypePrime
     ;
-        unexpected(this_file,
-            "special_pred_get_type_det: special_pred_get_type failed")
+        unexpected($module, $pred, "special_pred_get_type failed")
     ).
 
 special_pred_description(spec_pred_unify,   "unification predicate").
@@ -308,9 +307,5 @@ compiler_generated_rtti_for_builtins(ModuleInfo) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "special_pred.m".
-
+:- end_module hlds.special_pred.
 %-----------------------------------------------------------------------------%

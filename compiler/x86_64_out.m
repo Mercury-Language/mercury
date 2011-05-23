@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2010 The University of Melbourne.
+% Copyright (C) 2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -240,8 +240,8 @@ output_x86_64_pseudo_op(Stream, section(Name, Flags0, Type0, EntSize0), !IO) :-
             check_pseudo_section_type(Type1, Type1Str),
             put(Stream, "," ++ Type1Str, !IO)
         ;
-            unexpected(this_file, "output_x86_64_pseudo_op: section:" 
-                ++ " check_section_flags_and_type unexpected")
+            unexpected($module, $pred,
+                "section: check_section_flags_and_type unexpected")
         )
      ;
         Flags0 = no
@@ -402,8 +402,7 @@ check_section_flags_and_type(Flags, Type0, Result) :-
         ->
             true
         ;
-            unexpected(this_file, "check_section_flags_and_type:" 
-               ++ " unexpected: flag 'm' has to have 'type' arguments")
+            unexpected($module, $pred, "flag 'm' has to have 'type' arguments")
         )
     ;
         Result0 = no,
@@ -566,13 +565,12 @@ output_x86_64_inst(Stream, bs(Src, Dest, Cond), !IO) :-
             put(Stream, SrcType ++ ", " ++ DestType ++ "\t", !IO)
         ;
             DestRes = no,
-            unexpected(this_file, "output_x86_64_instr: bs: unexpected:"
-                ++ " second operand is not a register")
+            unexpected($module, $pred, "bs: second operand is not a register")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: bsf: unexpected: first"
-            ++ " operand is an immediate value")
+        unexpected($module, $pred,
+            "bsf: first operand is an immediate value")
     ).
 output_x86_64_inst(Stream, bswap(Op), !IO) :-
     check_operand_register(Op, Result),
@@ -582,8 +580,7 @@ output_x86_64_inst(Stream, bswap(Op), !IO) :-
         put(Stream, "\tbswap\t" ++ RegType ++ "\t\t", !IO)
     ;
         Result = no,
-        unexpected(this_file, "output_x86_64_instr: bswap: unexpected: operand"
-            ++ " is not a register")
+        unexpected($module, $pred, "bswap: operand is not a register")
     ). 
 output_x86_64_inst(Stream, bt(Src, Idx), !IO) :-
     output_bit_test_instr(Stream, "bt", Src, Idx, !IO).
@@ -601,8 +598,7 @@ output_x86_64_inst(Stream, call(Target), !IO) :-
         put(Stream, "\tcall\t" ++ TargetType ++ "\t\t", !IO)
     ;
         Result = no,
-        unexpected(this_file, "output_x86_64_instr: call: unexpected:" 
-            ++ " invalid target operand")
+        unexpected($module, $pred, "call: invalid target operand")
     ).
 output_x86_64_inst(Stream, cbw, !IO) :-
     put(Stream, "\tcbw\t", !IO).
@@ -638,13 +634,11 @@ output_x86_64_inst(Stream, cmpxchg(Src, Dest), !IO) :-
             put(Stream, "\tcmp\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: xmpxchg: unexpected:"
-                ++ " invalid second operand")
+            unexpected($module, $pred, "xmpxchg: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: xmpxchg: unexpected:"
-            ++ " invalid first operand")
+        unexpected($module, $pred, "xmpxchg: invalid first operand")
     ).
 output_x86_64_inst(Stream, cmpxchg8b(Op), !IO) :-
     check_operand_not_mem_ref(Op, Result),
@@ -654,8 +648,7 @@ output_x86_64_inst(Stream, cmpxchg8b(Op), !IO) :-
         put(Stream, "\tcmpxchg8b" ++ OpType, !IO)
     ;
         Result = yes,
-        unexpected(this_file, "output_x86_64_instr: cmpxchg8b: unexpected:"
-            ++ "invalid operand")
+        unexpected($module, $pred, "cmpxchg8b: invalid operand")
     ).
 output_x86_64_inst(Stream, dec(Operand), !IO) :-
     output_instr_not_imm_dest(Stream, "dec", Operand, no, !IO).
@@ -676,8 +669,7 @@ output_x86_64_inst(Stream, enter(StackSize, NestingLevel), !IO) :-
         put_int(Stream, Level, !IO),
         put(Stream, "\t", !IO)
     ;
-        unexpected(this_file, "output_x86_64_instr: enter: unexpected:"
-            ++ " check_unsigned_int_size failed")
+        unexpected($module, $pred, "enter: check_unsigned_int_size failed")
     ).
 output_x86_64_inst(Stream, idiv(Operand), !IO) :-
     output_instr_not_imm_dest(Stream, "idiv", Operand, no, !IO).
@@ -729,13 +721,11 @@ output_x86_64_inst(Stream, lea(Src, Dest), !IO) :-
             put(Stream, "\tlea\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_inst: lea: unexpected:"
-                ++ " invalid second operand")
+            unexpected($module, $pred, "lea: invalid second operand")
         )
     ;
         Result1 = yes,
-        unexpected(this_file, "output_x86_64_inst: lea: unexpected:"
-            ++ " invalid first operand")
+        unexpected($module, $pred, "lea: invalid first operand")
     ).
 output_x86_64_inst(Stream, leave, !IO) :-
     put(Stream, "\tleave\t", !IO).
@@ -784,13 +774,11 @@ output_x86_64_inst(Stream, rc(Amnt, Dest, Cond), !IO) :-
             put(Stream, Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: rc: unexpected"
-               ++ " invalid second operand")
+            unexpected($module, $pred, "rc: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: rc: unexpected"
-            ++ " invalid first operand")
+        unexpected($module, $pred, "rc: invalid first operand")
     ).
 output_x86_64_inst(Stream, ret(Op), !IO) :-
     ( 
@@ -807,8 +795,7 @@ output_x86_64_inst(Stream, ret(Op), !IO) :-
             put(Stream, "\t", !IO)
         ;
             Result = no,
-            unexpected(this_file, "output_x86_64_instr: ret: unexpected:"
-                ++ "check_unsigned_int_size failed")
+            unexpected($module, $pred, "ret: check_unsigned_int_size failed")
         )
     ).
 output_x86_64_inst(Stream, ro(Amnt, Dest, Dir), !IO) :-
@@ -824,13 +811,11 @@ output_x86_64_inst(Stream, ro(Amnt, Dest, Dir), !IO) :-
             put(Stream, Op1 ++ ", " ++ Op2 ++ "\t\t", !IO)
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: ro: unexpected:"
-                ++ " invalid second operand")
+            unexpected($module, $pred, "ro: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: ro: unexpected" 
-            ++ " invalid first operand")
+        unexpected($module, $pred, "ro: invalid first operand")
     ).
 output_x86_64_inst(Stream, sal(Amnt, Dest), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
@@ -844,13 +829,11 @@ output_x86_64_inst(Stream, sal(Amnt, Dest), !IO) :-
             put(Stream, "\tsal\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: sal: unexpected:" 
-                ++ " invalid second operand")
+            unexpected($module, $pred, "sal: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: sal: unexpected:"
-            ++ "invalid first operand")
+        unexpected($module, $pred, "sal: invalid first operand")
     ).
 output_x86_64_inst(Stream, shl(Amnt, Dest), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
@@ -864,13 +847,11 @@ output_x86_64_inst(Stream, shl(Amnt, Dest), !IO) :-
             put(Stream, "\tshl\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: shl: unexpected:"
-                ++ " invalid second operand")
+            unexpected($module, $pred, "shl: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: shl: unexpected:" 
-            ++ " invalid first operand")
+        unexpected($module, $pred, "shl: invalid first operand")
     ).
 output_x86_64_inst(Stream, sar(Amnt, Dest), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
@@ -884,13 +865,11 @@ output_x86_64_inst(Stream, sar(Amnt, Dest), !IO) :-
             put(Stream, "\tsar\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO) 
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: sar: unexpected:" 
-                ++ "invalid second operand")
+            unexpected($module, $pred, "sar: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: sar: unexpected:"
-            ++ " invalid first operand")
+        unexpected($module, $pred, "sar: invalid first operand")
     ).
 output_x86_64_inst(Stream, sbb(Src, Dest), !IO) :-
     output_instr_not_imm_dest(Stream, "sbb", Src, yes(Dest), !IO).
@@ -901,8 +880,7 @@ output_x86_64_inst(Stream, set(Operand, Cond), !IO) :-
         output_instr_with_condition(Stream, "set", Operand, no, Cond, !IO)
     ;
         Result = no,
-        unexpected(this_file, "output_x86_64_instr: set: unexpected" 
-            ++ " invalid first operand")
+        unexpected($module, $pred, "set: invalid first operand")
     ).
 output_x86_64_inst(Stream, shld(Amnt, Dest1, Reg), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
@@ -921,18 +899,15 @@ output_x86_64_inst(Stream, shld(Amnt, Dest1, Reg), !IO) :-
                 put(Stream, Op2 ++ ", " ++ Op3 ++ "\t", !IO)
             ;
                 Result3 = no,
-                unexpected(this_file, "output_x86_64_instr: shld: unexpected:"
-                    ++ "invalid third operand")
+                unexpected($module, $pred, "shld: invalid third operand")
             )
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: shld: unexpected:"
-                ++ " invalid second operand")
+            unexpected($module, $pred, "shld: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: shld: unexpected"
-            ++ " invalid first operand")
+        unexpected($module, $pred, "shld: invalid first operand")
     ).
 output_x86_64_inst(Stream, shr(Amnt, Dest), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
@@ -946,13 +921,11 @@ output_x86_64_inst(Stream, shr(Amnt, Dest), !IO) :-
             put(Stream, "\tshr\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: shr: unexpected"
-               ++ " invalid second operand")
+            unexpected($module, $pred, "shr: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: shr: unexpected" 
-            ++ " invalid first operand")
+        unexpected($module, $pred, "shr: invalid first operand")
     ).
 output_x86_64_inst(Stream, shrd(Amnt, Dest1, Reg), !IO) :-
     check_operand_unsigned_imm_or_reg(Amnt, Result1),
@@ -971,18 +944,15 @@ output_x86_64_inst(Stream, shrd(Amnt, Dest1, Reg), !IO) :-
                 put(Stream, Op2 ++ ", " ++ Op3 ++ "\t", !IO)
             ;
                 Result3 = no,
-                unexpected(this_file, "output_x86_64_instr: shrd: unexpected"
-                    ++ " invalid third operand")
+                unexpected($module, $pred, "shrd: invalid third operand")
             )
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: shrd: unexpected"
-                ++ " invalid second operand")
+            unexpected($module, $pred, "shrd: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: shrd: unexpected:" 
-          ++ " invalid first operand")
+        unexpected($module, $pred, "shrd: invalid first operand")
     ).
 output_x86_64_inst(Stream, stc, !IO) :-
     put(Stream, "\tstc\t", !IO).
@@ -1002,13 +972,11 @@ output_x86_64_inst(Stream, test(Src1, Src2), !IO) :-
             put(Stream, "\ttest\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: test: unexpected" 
-                ++ " invalid second operand")
+            unexpected($module, $pred, "test: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: test: unexpected"
-            ++ " invalid first operand")
+        unexpected($module, $pred, "test: invalid first operand")
     ).
 output_x86_64_inst(Stream, xadd(Src, Dest), !IO) :-
     check_operand_register(Src, Result1),
@@ -1022,13 +990,12 @@ output_x86_64_inst(Stream, xadd(Src, Dest), !IO) :-
             put(Stream, "\txadd\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: unexpected
-                xadd second operand is an immediate value")
+            unexpected($module, $pred,
+                "xadd: second operand is an immediate value")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: unexpected
-            xadd first operand is not a register")
+        unexpected($module, $pred, "xadd: first operand is not a register")
     ).
 output_x86_64_inst(Stream, xchg(Src1, Src2), !IO) :-
     check_operand_reg_or_mem(Src1, Result1),
@@ -1042,13 +1009,11 @@ output_x86_64_inst(Stream, xchg(Src1, Src2), !IO) :-
             put(Stream, "\txchg\t" ++ Op1 ++ ", " ++ Op2 ++ "\t", !IO)
         ;
             Result2 = no,
-            unexpected(this_file, "output_x86_64_instr: xchg: unexpected"
-                ++ " invalid second operand")
+            unexpected($module, $pred, "xchg: invalid second operand")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_x86_64_instr: xchg: unexpected" 
-             ++ " invalid second operand")
+        unexpected($module, $pred, "xchg: invalid second operand")
     ).
 output_x86_64_inst(Stream, xor(Src, Dest), !IO) :-
     output_instr_not_imm_dest(Stream, "xor", Src, yes(Dest), !IO).
@@ -1136,8 +1101,8 @@ instr_ptr_type(rip_constant(int32(Constant)), InstrPtrType) :-
         InstrPtrType = string.int_to_string(Constant) ++ "(%rip)"
     ;
         Result = no,
-        unexpected(this_file, "instr_ptr_type: rip_constant: unexpected"
-            ++ " check_signed_int_size failed")
+        unexpected($module, $pred,
+            "rip_constant: check_signed_int_size failed")
     ).
 instr_ptr_type(rip_expr(Symbol), InstrPtrType) :-
     InstrPtrType = Symbol ++ "(%rip)".
@@ -1157,8 +1122,7 @@ rel_offset_to_string(ro8(int8(Val)), RelOffsetVal) :-
         )
     ;
         Result = no,
-        unexpected(this_file, "rel_offset_to_string: ro8(int8): unexpected:"
-            ++ " check_signed_int_size failed")
+        unexpected($module, $pred, "ro8(int8): check_signed_int_size failed")
     ).
 rel_offset_to_string(ro16(int16(Val)), RelOffsetVal) :-
     check_signed_int_size(16, Val, Result),
@@ -1171,8 +1135,7 @@ rel_offset_to_string(ro16(int16(Val)), RelOffsetVal) :-
         )
     ;
         Result = no,
-        unexpected(this_file, "rel_offset_to_string: ro16(int16): unexpected"
-            ++ " check_signed_int_size failed")
+        unexpected($module, $pred, "ro16(int16): check_signed_int_size failed")
     ).
 rel_offset_to_string(ro32(int32(Val)), RelOffsetVal) :-
     check_signed_int_size(32, Val, Result),
@@ -1185,8 +1148,7 @@ rel_offset_to_string(ro32(int32(Val)), RelOffsetVal) :-
         )
     ;
         Result = no,
-        unexpected(this_file, "rel_offset_to_string: ro32(int32): unexpected"
-            ++ " check_signed_int_size failed")
+        unexpected($module, $pred, "ro32(int32): check_signed_int_size failed")
     ).
 
 
@@ -1234,8 +1196,8 @@ output_instr_not_imm_dest(Stream, Instr, Op1, Op2, !IO) :-
             )
         ;
             Result1 = no,
-            unexpected(this_file, "output_instr_not_imm_dest: unexpected:"
-                ++ " invalid operands - two memory references are not allowed")
+            unexpected($module, $pred,
+                "invalid operands: two memory references are not allowed")
         )
     ;
         Op2 = no,
@@ -1262,17 +1224,15 @@ output_instr_8bit_rel_offset(Stream, InstrName, RelOffset, !IO) :-
                 put(Stream, "\t\t", !IO)
             ;
                 Result2 = no,
-                unexpected(this_file, "output_instr_8bit_rel_offset:" 
-                    ++ " unexpected: check_signed_int_size failed")
+                unexpected($module, $pred, "check_signed_int_size failed")
             )
         ;
-            unexpected(this_file, "output_instr_8bit_rel_offset: unexpected:"
-                ++ " string.to_int failed")
+            unexpected($module, $pred, "string.to_int failed")
         )
    ;
         Result1 = no,
-        unexpected(this_file, "output_instr_8bit_rel_offset: unexpected:"
-            ++ " invalid operand - operand is not a relative offset")
+        unexpected($module, $pred,
+            "invalid operand: operand is not a relative offset")
    ).
 
 :- pred output_bit_test_instr(Stream::in, string::in, operand::in,
@@ -1295,22 +1255,20 @@ output_bit_test_instr(Stream, Instr, Src, Idx, !IO) :-
                     put(Stream, Op1 ++ ", " ++ Op2 ++ "\t", !IO)
                 ;
                     Result3 = no,
-                    unexpected(this_file, "output_bit_test_instr: bt:"
-                        ++ " unexpected: invalid second operand")
+                    unexpected($module, $pred, "bt: invalid second operand")
                 )
             ;
-                unexpected(this_file, "output_bit_test_instr: unexpected:"
-                    ++ " string.to_int failed")
+                unexpected($module, $pred, "string.to_int failed")
             )
         ;
             Result2 = no,
-            unexpected(this_file, "output_bit_test_instr: bt: unexpected:" 
-                ++ " invalid second operand - memory reference is not allowed")
+            unexpected($module, $pred,
+                "bt: invalid second operand - memory reference is not allowed")
         )
     ;
         Result1 = no,
-        unexpected(this_file, "output_bit_test_instr: bt: unexpected:"
-            ++ " invalid first operand - immediate value is not allowed")
+        unexpected($module, $pred,
+            "bt: invalid first operand - immediate value is not allowed")
     ).
 
 :- pred output_instr_with_condition(Stream::in, string::in, operand::in,
@@ -1335,8 +1293,7 @@ output_instr_with_condition(Stream, Instr, Op1, Op2, Cond, !IO) :-
                 put(Stream, ", " ++ Op2Type, !IO)
             ;
                 Result3 = no,
-                    unexpected(this_file, "output_instr_with_condition:"
-                        ++ " invalid second operand")
+                    unexpected($module, $pred, "invalid second operand")
             )
        ;
             Op2 = no,
@@ -1344,8 +1301,8 @@ output_instr_with_condition(Stream, Instr, Op1, Op2, Cond, !IO) :-
        )
     ;            
         Result1 = no,
-        unexpected(this_file, "output_instr_with_condition: unexpected:" 
-            ++ "invalid first operand - immediate value is not allowed")
+        unexpected($module, $pred,
+            "invalid first operand: immediate value is not allowed")
    ).
 
 %-----------------------------------------------------------------------------%
@@ -1366,8 +1323,7 @@ check_rc_first_operand(Op, Result) :-
                 Result = no
             )
         ;
-            unexpected(this_file,
-                "check_rc_first_operand: unexpected: string.to_int")
+            unexpected($module, $pred, "string.to_int")
         )
     ;
         Op = operand_reg(_),
@@ -1384,8 +1340,7 @@ check_rc_first_operand(Op, Result) :-
         ; Op = operand_rel_offset(_)
         ; Op = operand_label(_)
         ),
-        unexpected(this_file,
-            "check_rc_first_operand: unexpected: invalid operand")
+        unexpected($module, $pred, "invalid operand")
     ). 
 
 :- pred check_not_both_memory_ops(operand::in, operand::in, bool::out) is det. 
@@ -1438,8 +1393,7 @@ check_operand_unsigned_imm_or_reg(Operand, Result) :-
                 )
             )
         ;
-            unexpected(this_file, "check_operand_unsigned_imm_or_reg:"
-                ++ " unexpected: string.to_int failed")
+            unexpected($module, $pred, "string.to_int failed")
         )
     ;
         Result = no
@@ -1541,11 +1495,5 @@ check_signed_int_size(BitSize, Val, Result) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "x86_64_out.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module x86_64_out.
+:- end_module ll_backend.x86_64_out.
 %-----------------------------------------------------------------------------%

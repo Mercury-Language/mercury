@@ -458,8 +458,7 @@ special_pred_id_to_termination(spec_pred_unify, HeadProgVars, ModuleInfo,
         ( NonZeroHeadSizeVars = [_]
         ; NonZeroHeadSizeVars = [_, _, _ | _]
         ),
-        unexpected(this_file, "special_pred_id_to_termination/7: " ++
-             "wrong number of args for unify.")
+        unexpected($module, $pred, "wrong number of args for unify")
     ),
     Polyhedron  = polyhedron.from_constraints(Constrs),
     ArgSizeInfo = Polyhedron,
@@ -471,12 +470,11 @@ special_pred_id_to_termination(spec_pred_index, HeadProgVars, ModuleInfo,
         make_info(HeadProgVars, ModuleInfo, VarTypes, ArgSize,
             Termination, SizeVarMap, HeadSizeVars)
     ;
-        unexpected(this_file,
-            "Less than two arguments to builtin index.")
+        unexpected($module, $pred,
+            "less than two arguments to builtin index")
     ).
 special_pred_id_to_termination(spec_pred_init, _, _, _, _, _, _, _) :-
-    unexpected(this_file, "special_pred_id_to_termination/8 " ++
-        "initialise predicate").
+    unexpected($module, $pred, "initialise predicate").
 
     % Sets the termination status and argument size information for
     % those special_preds (compare and index) where the arguments
@@ -517,7 +515,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     ; all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo0) ->
         Constrs = []
     ;
-        unexpected(this_file, "builtin with non-zero size args.")
+        unexpected($module, $pred, "builtin with non-zero size args")
     ),
     Polyhedron = polyhedron.from_constraints(Constrs),
     ArgSizeInfo = yes(Polyhedron),
@@ -562,8 +560,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
     ->
         Constraints = ConstraintsPrime
     ;
-        unexpected(this_file,
-            "Unrecognised predicate passed to process_special_builtin.")
+        unexpected($module, $pred, "unrecognised predicate")
     ).
 
 %----------------------------------------------------------------------------%
@@ -583,11 +580,5 @@ initialise_size_var_maps([ProcId | ProcIds], !ProcTable) :-
     initialise_size_var_maps(ProcIds, !ProcTable).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_constr_initial.m".
-
-%----------------------------------------------------------------------------%
-:- end_module term_constr_initial.
+:- end_module transform_hlds.term_constr_initial.
 %----------------------------------------------------------------------------%

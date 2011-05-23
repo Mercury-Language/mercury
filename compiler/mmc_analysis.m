@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2006, 2008-2010 The University of Melbourne.
+% Copyright (C) 2003-2006, 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -147,14 +147,9 @@ func_id_to_ppid(ModuleInfo, ModuleName, FuncId, PPId) :-
     ->
         PPId = proc(PredId, ProcId)
     ;
-        unexpected(this_file, "func_id_to_ppid: more than one predicate")
+        unexpected($module, $pred, "more than one predicate")
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mmc_analysis.m".
-
-%-----------------------------------------------------------------------------%
+:- end_module transform_hlds.mmc_analysis.
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -525,11 +525,5 @@ ml_gen_commit_var_decl(Context, VarName) =
         Context).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_commit_gen.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module ml_commit_gen.
+:- end_module ml_backend.ml_commit_gen.
 %-----------------------------------------------------------------------------%

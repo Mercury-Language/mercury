@@ -435,8 +435,7 @@ collect_mq_info_qualified_symname(SymName, !Info) :-
         mq_info_set_module_used(ModuleName, !Info)
     ;
         SymName = unqualified(_),
-        unexpected(this_file,
-            "collect_mq_info_qualified_symname: not qualified.")
+        unexpected($module, $pred, "unqualified")
     ).
 
     % process_module_defn:
@@ -475,7 +474,7 @@ process_module_defn(md_abstract_imported, !Info) :-
     mq_info_set_import_status(mq_status_abstract_imported, !Info),
     mq_info_set_need_qual_flag(must_be_qualified, !Info).
 process_module_defn(md_transitively_imported, !Info) :-
-    unexpected(this_file, "process_module_defn: transitively_imported item").
+    unexpected($module, $pred, "transitively_imported item").
 process_module_defn(md_external(_, _), !Info).
 process_module_defn(md_export(_), !Info).
 process_module_defn(md_import(Imports), !Info) :-
@@ -1142,7 +1141,7 @@ qualify_inst(any(Uniq, HOInstInfo0), any(Uniq, HOInstInfo), !Info, !Specs) :-
 qualify_inst(free, free, !Info, !Specs).
 qualify_inst(not_reached, not_reached, !Info, !Specs).
 qualify_inst(free(_), _, !Info, !Specs) :-
-    unexpected(this_file, "compiler generated inst not expected").
+    unexpected($module, $pred, "compiler generated inst not expected").
 qualify_inst(bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts), !Info,
         !Specs) :-
     qualify_bound_inst_list(BoundInsts0, BoundInsts, !Info, !Specs).
@@ -1198,21 +1197,21 @@ qualify_inst_name(user_inst(SymName0, Insts0), user_inst(SymName, Insts),
             InstIds, inst_id, !Info, !Specs)
     ).
 qualify_inst_name(merge_inst(_, _), _, !Info, !Specs) :-
-    unexpected(this_file, "compiler generated inst unexpected").
+    unexpected($module, $pred, "compiler generated inst unexpected").
 qualify_inst_name(unify_inst(_, _, _, _), _, !Info, !Specs) :-
-    unexpected(this_file, "compiler generated inst unexpected").
+    unexpected($module, $pred, "compiler generated inst unexpected").
 qualify_inst_name(ground_inst(_, _, _, _), _, !Info, !Specs) :-
-    unexpected(this_file, "compiler generated inst unexpected").
+    unexpected($module, $pred, "compiler generated inst unexpected").
 qualify_inst_name(any_inst(_, _, _, _), _, !Info, !Specs) :-
-    unexpected(this_file, "compiler generated inst unexpected").
+    unexpected($module, $pred, "compiler generated inst unexpected").
 qualify_inst_name(shared_inst(_), _, !Info, !Specs) :-
-    unexpected(this_file, "compiler generated inst unexpected").
+    unexpected($module, $pred, "compiler generated inst unexpected").
 qualify_inst_name(mostly_uniq_inst(_), _, !Info, !Specs) :-
-    unexpected(this_file, "compiler generated inst unexpected").
+    unexpected($module, $pred, "compiler generated inst unexpected").
 qualify_inst_name(typed_ground(_, _), _, !Info, !Specs) :-
-    unexpected(this_file, "compiler generated inst unexpected").
+    unexpected($module, $pred, "compiler generated inst unexpected").
 qualify_inst_name(typed_inst(_, _), _, !Info, !Specs) :-
-    unexpected(this_file, "compiler generated inst unexpected").
+    unexpected($module, $pred, "compiler generated inst unexpected").
 
     % Qualify an inst of the form bound(functor(...)).
     %
@@ -2118,7 +2117,7 @@ id_set_init(IdSet) :-
     is det.
 
 id_set_insert(_, mq_id(unqualified(_), _), _, _) :-
-    unexpected(this_file, "module_qual.id_set_insert - unqualified id").
+    unexpected($module, $pred, "unqualified id").
 id_set_insert(NeedQualifier, mq_id(qualified(Module, Name), Arity), !IdSet) :-
     ( map.search(!.IdSet, Name - Arity, ImportModules0 - UseModules0) ->
         ImportModules1 = ImportModules0,
@@ -2263,11 +2262,5 @@ get_first_module_name(unqualified(ModuleName)) = ModuleName.
 get_first_module_name(qualified(Parent, _)) = get_first_module_name(Parent).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "module_qual.m".
-
-%----------------------------------------------------------------------------%
-:- end_module module_qual.
+:- end_module parse_tree.module_qual.
 %----------------------------------------------------------------------------%

@@ -652,3 +652,5 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module hlds.make_hlds.add_clause.
+%-----------------------------------------------------------------------------%

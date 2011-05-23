@@ -397,7 +397,7 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
         % a retry command in the debugger from a point in the middle of this
         % procedure will do the wrong thing.
         proc_info_get_need_maxfr_slot(ProcInfo, HaveMaxfrSlot),
-        expect(unify(HaveMaxfrSlot, yes), this_file,
+        expect(unify(HaveMaxfrSlot, yes), $module, $pred,
             "should have reserved a slot for maxfr, but didn't")
     ;
         true
@@ -468,8 +468,7 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
         ;
             MaybeTableIOInfo = yes(TableIOInfo),
             ( map.search(TableStructMap, PredProcId, _TableStructInfo) ->
-                unexpected(this_file,
-                    "generate_proc_code: conflicting kinds of tabling")
+                unexpected($module, $pred, "conflicting kinds of tabling")
             ;
                 MaybeTableInfo = yes(proc_table_io_decl(TableIOInfo))
             )
@@ -570,8 +569,7 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
         MaybeHLDSDeepLayout = yes(HLDSDeepLayout)
     ;
         MaybeHLDSDeepLayout = no,
-        unexpected(this_file,
-            "generate_deep_prof_info: no HLDS deep profiling layout info")
+        unexpected($module, $pred, "no HLDS deep profiling layout info")
     ),
     HLDSDeepLayout = hlds_deep_layout(HLDSProcStatic, HLDSExcpVars),
     HLDSDeepInfo ^ deep_orig_body = OriginalProcBody,
@@ -762,7 +760,7 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
         generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
             TraceCallCode, !CI),
         get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
-        expect(unify(MaybeTailRecInfo, no), this_file,
+        expect(unify(MaybeTailRecInfo, no), $module, $pred,
             "tail recursive call in model_non code"),
         generate_goal(model_non, Goal, BodyCode, !CI),
         generate_entry(!.CI, model_non, Goal, ResumePoint,
@@ -1131,8 +1129,8 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         proc_info_get_maybe_special_return(ProcInfo, MaybeSpecialReturn),
         (
             CodeModel = model_det,
-            expect(unify(MaybeSpecialReturn, no), this_file,
-                "generate_exit: det special_return"),
+            expect(unify(MaybeSpecialReturn, no), $module, $pred,
+                "det special_return"),
             SuccessCode = from_list([
                 llds_instr(livevals(LiveLvals), ""),
                 llds_instr(goto(code_succip), "Return from procedure call")
@@ -1141,8 +1139,8 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 SuccessCode
         ;
             CodeModel = model_semi,
-            expect(unify(MaybeSpecialReturn, no), this_file,
-                "generate_exit: semi special_return"),
+            expect(unify(MaybeSpecialReturn, no), $module, $pred,
+                "semi special_return"),
             set.insert(reg(reg_r, 1), LiveLvals, SuccessLiveRegs),
             SuccessCode = from_list([
                 llds_instr(assign(reg(reg_r, 1), const(llconst_true)),
@@ -1341,8 +1339,7 @@ add_tabling_info_struct(PredProcId - TableStructInfo, !GlobalData) :-
         TVarVectorRval, StaticCellInfo0, StaticCellInfo),
     global_data_set_static_cell_info(StaticCellInfo, !GlobalData),
     NumArgs = NumInputs + NumOutputs,
-    expect(unify(NumArgs, NumPTIs), this_file,
-        "add_tabling_info_struct: args mismatch"),
+    expect(unify(NumArgs, NumPTIs), $module, $pred, "args mismatch"),
 
     MaybeSizeLimit = TableAttributes ^ table_attr_size_limit,
     Statistics = TableAttributes ^ table_attr_statistics,
@@ -1353,9 +1350,5 @@ add_tabling_info_struct(PredProcId - TableStructInfo, !GlobalData) :-
     global_data_add_new_proc_var(PredProcId, Var, !GlobalData).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "proc_gen.m".
-
+:- end_module ll_backend.proc_gen.
 %---------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2010 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -223,16 +223,9 @@ make_impl_defined_literal(Var, Name, Context, Info, Goal) :-
         make_string_const_construction(Var, Grade, Goal)
     ;
         % These should have been caught during type checking.
-        unexpected(this_file,
-            "make_impl_defined_literal: unknown literal")
+        unexpected($module, $pred, "unknown literal")
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "implementation_defined_literals.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module implementation_defined_literals.
+:- end_module check_hlds.implementation_defined_literals.
 %-----------------------------------------------------------------------------%

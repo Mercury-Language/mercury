@@ -2078,11 +2078,5 @@ write_or_else_list(Info, [Goal | Goals], ModuleInfo, VarSet, AppendVarNums,
         Indent+1, Follow, TypeQual, !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_out_goal.m".
-
-%-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_goal.
 %-----------------------------------------------------------------------------%

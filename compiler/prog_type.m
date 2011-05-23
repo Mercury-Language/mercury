@@ -522,7 +522,7 @@ type_to_ctor_and_args(Type, TypeCtor, Args) :-
         TypeCtor = type_ctor(SymName, Arity)
     ;
         Type = apply_n_type(_, _, _),
-        sorry(this_file, "apply/N types")
+        sorry($module, $pred, "apply/N types")
     ;
         Type = kinded_type(SubType, _),
         type_to_ctor_and_args(SubType, TypeCtor, Args)
@@ -533,8 +533,7 @@ type_to_ctor_and_args_det(Type, TypeCtor, Args) :-
         TypeCtor = TypeCtorPrime,
         Args = ArgsPrime
     ;
-        unexpected(this_file,
-            "type_to_ctor_and_args_det: type_to_ctor_and_args failed")
+        unexpected($module, $pred, "type_to_ctor_and_args failed")
     ).
 
 type_to_ctor(Type, TypeCtor) :-
@@ -1291,8 +1290,7 @@ type_list_subsumes_det(TypesA, TypesB, TypeSubst) :-
     ( type_list_subsumes(TypesA, TypesB, TypeSubstPrime) ->
         TypeSubst = TypeSubstPrime
     ;
-        unexpected(this_file,
-            "type_list_subsumes_det: type_list_subsumes failed")
+        unexpected($module, $pred, "type_list_subsumes failed")
     ).
 
 arg_type_list_subsumes(TVarSet, ExistQVars, ActualArgTypes, HeadTypeParams,
@@ -1359,11 +1357,5 @@ apply_partial_map_to_list(PartialMap, [X | Xs], [Y | Ys]) :-
     apply_partial_map_to_list(PartialMap, Xs, Ys).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_type.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module prog_type.
+:- end_module parse_tree.prog_type.
 %-----------------------------------------------------------------------------%

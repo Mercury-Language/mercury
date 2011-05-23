@@ -395,7 +395,7 @@ apply_dg_to_goal(!Goal, CallerPredId, CallerProcId, PredIdSpecialized,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "apply_dg_to_goal")
+        unexpected($module, $pred, "shorthand")
     ).
 
     % Apply the distance granularity transformation to a plain call.
@@ -527,7 +527,7 @@ create_if_then_else_goal(GoalsInConj, ConjInfo, MaybeGranularityVar,
         MaybeGranularityVar = no,
         % The conjunction contains recursive calls so the
         % granularity variable must have been created.
-        unexpected(this_file, "apply_dg_to_goal")
+        unexpected($module, $pred, "MaybeGranularityVar = no")
     ).
 
     % Update the then part of the new if_then_else goal introduced by the
@@ -612,7 +612,7 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
         )
     ;
         % Not a parallel conjunction.
-        unexpected(this_file, "apply_dg_to_then2")
+        unexpected($module, $pred, "unexpected goal type")
     ).
 
     % Recompute the hlds_goal_info of a conjunction.
@@ -632,7 +632,7 @@ recompute_conj_info(!Conj) :-
         !:Conj = hlds_goal(conj(Type, Goals), ConjInfo)
     ;
         % Not a conjunction.
-        unexpected(this_file, "recompute_conj_info")
+        unexpected($module, $pred, "unexpected goal type")
     ).
 
     % Update the else part of the new if_then_else goal introduced by the
@@ -759,7 +759,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                 CallerPredId, CallerProcId, ModuleInfo, !ProcInfo)
         )
     ;
-        unexpected(this_file, "apply_dg_to_else2")
+        unexpected($module, $pred, "unexpected goal type")
     ).
 
     % Apply the distance granularity transformation to a disjunction.
@@ -942,7 +942,7 @@ update_original_predicate_goal(!Goal, CallerPredId, CallerProcId,
     ;
         GoalExpr0 = shorthand(_),
         % Shorthand are not supposed to occur here.
-        unexpected(this_file, "update_original_predicate_goal")
+        unexpected($module, $pred, "shorthand")
     ).
 
     % Update the plain call so that the pred_id called is the one of the
@@ -1038,12 +1038,6 @@ update_original_predicate_switch([Case | Cases], !CasesAcc, CallerPredId,
     update_original_predicate_switch(Cases, !CasesAcc, CallerPredId,
         CallerProcId, PredIdSpecialized, SymNameSpecialized, !ProcInfo,
         Distance).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "distance_granularity.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.distance_granularity.

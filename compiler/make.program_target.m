@@ -182,7 +182,7 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
             ObjectTargetType = module_target_java_class_code
         ;
             CompilationTarget = target_x86_64,
-            sorry(this_file, "mmc --make and target x86_64")
+            sorry($module, $pred, "mmc --make and target x86_64")
         ;
             CompilationTarget = target_erlang,
             IntermediateTargetType = module_target_erlang_code,
@@ -381,7 +381,7 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
         MaybeImports = yes(Imports)
     ;
         MaybeImports = no,
-        unexpected(this_file, "unknown imports")
+        unexpected($module, $pred, "unknown imports")
     ),
     (
         CompilationTarget = target_asm,
@@ -598,8 +598,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                 ;
                     MaybeImports = no,
                     % This error should have been detected earlier.
-                    unexpected(this_file,
-                        "build_linked_target: error in dependencies")
+                    unexpected($module, $pred, "error in dependencies")
                 )
             ), AllModulesList, ExtraForeignFiles, !Info, !IO),
         ForeignObjects = list.map(
@@ -653,7 +652,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                 Succeeded, !IO)
         ;
             CompilationTarget = target_x86_64,
-            sorry(this_file, "mmc --make and target x86_64")
+            sorry($module, $pred, "mmc --make and target x86_64")
         ;
             CompilationTarget = target_il,
             Succeeded = yes
@@ -1179,7 +1178,7 @@ lookup_module_and_imports(ModuleDeps, ModuleName) = ModuleImports :-
         MaybeModuleImports = yes(ModuleImports)
     ;
         MaybeModuleImports = no,
-        unexpected(this_file, "lookup_module_and_imports")
+        unexpected($module, $pred, "MaybeModuleImports = no")
     ).
 
 :- pred modules_needing_reanalysis(bool::in, globals::in,
@@ -1234,7 +1233,7 @@ build_library(MainModuleName, AllModules, Globals, Succeeded, !Info, !IO) :-
             !Info, !IO)
     ;
         Target = target_il,
-        sorry(this_file, "build_library: target IL not supported yet")
+        sorry($module, $pred, "target IL not supported yet")
     ;
         Target = target_csharp,
         build_csharp_library(Globals, MainModuleName, Succeeded, !Info, !IO)
@@ -1243,7 +1242,7 @@ build_library(MainModuleName, AllModules, Globals, Succeeded, !Info, !IO) :-
         build_java_library(Globals, MainModuleName, Succeeded, !Info, !IO)
     ;
         Target = target_x86_64,
-        sorry(this_file, "build_library: target x86_64 not supported yet")
+        sorry($module, $pred, "target x86_64 not supported yet")
     ;
         Target = target_erlang,
         build_erlang_library(Globals, MainModuleName, AllModules, Succeeded,
@@ -1485,7 +1484,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
     ;
         MaybeMCFlags = no,
         % Errors should have been caught before.
-        unexpected(this_file, "install_library_grade: bad DEFAULT_MCFLAGS")
+        unexpected($module, $pred, "bad DEFAULT_MCFLAGS")
     ),
 
     (
@@ -2198,12 +2197,6 @@ check_library_is_installed(Globals, Dirs, Grade, LibName, !Succeeded, !IO) :-
             [s(ProgName), s(LibName), s(Grade)], !IO),
         !:Succeeded = no
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "make.program_target.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module make.program_target.

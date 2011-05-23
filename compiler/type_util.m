@@ -1016,8 +1016,7 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
                 ExistQVars0 = [_ | _],
                 (
                     EQVarAction = abort_on_exist_qvar,
-                    unexpected(this_file,
-                        "get_cons_id_arg_types: existentially typed cons_id")
+                    unexpected($module, $pred, "existentially typed cons_id")
                 ;
                     EQVarAction = fail_on_exist_qvar,
                     fail
@@ -1078,7 +1077,7 @@ get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     ( get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefnPrime) ->
         ConsDefn = ConsDefnPrime
     ;
-        unexpected(this_file, "get_cons_defn_det: get_cons_defn failed")
+        unexpected($module, $pred, "get_cons_defn failed")
     ).
 
 get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
@@ -1347,11 +1346,5 @@ apply_rec_subst_to_constraint_map(Subst, !ConstraintMap) :-
         !ConstraintMap).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "type_util.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module type_util.
+:- end_module check_hlds.type_util.
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -230,7 +230,7 @@ analyse_mm_tabling_in_scc(Debug, Pass1Only, SCC, !ModuleInfo) :-
    mm_tabling_status::out, maybe(analysis_status)::out) is det.
 
 combine_individual_proc_results([], _, _) :-
-    unexpected(this_file, "Empty SCC during mm tabling analysis.").
+    unexpected($module, $pred, "empty SCC").
 combine_individual_proc_results(ProcResults @ [_ | _], SCC_Result,
         MaybeAnalysisStatus) :-
     (
@@ -328,8 +328,7 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             )
         ;
             Kind = complicated_unify(_, _, _),
-            unexpected(this_file,
-                "complicated unify during mm tabling analysis.")
+            unexpected($module, $pred, "complicated unify")
         )
     ;
         GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
@@ -386,8 +385,7 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             MaybeAnalysisStatus, !ModuleInfo)
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file,
-            "shorthand goal encountered during mm tabling analysis.")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred check_goals_for_mm_tabling(scc::in, vartypes::in,
@@ -613,7 +611,7 @@ annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         !.GoalExpr = unify(_, _, _, Kind, _),
         (
             Kind = complicated_unify(_, _, _),
-            unexpected(this_file, "complicated unify during tabling analysis.")
+            unexpected($module, $pred, "complicated unify")
         ;
             ( Kind = construct(_, _, _, _, _, _, _)
             ; Kind = deconstruct(_, _, _, _, _, _)
@@ -688,7 +686,7 @@ annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         )
     ;
         !.GoalExpr = shorthand(_),
-        unexpected(this_file, "shorthand goal")
+        unexpected($module, $pred, "shorthand goal")
     ).
 
 :- pred annotate_goal_list(vartypes::in, hlds_goals::in, hlds_goals::out,
@@ -753,7 +751,7 @@ annotate_call(CalleePPId, CallArgs, VarTypes, Status, !ModuleInfo) :-
                 !ModuleInfo),
             (
                 AnalysisStatus = invalid,
-                unexpected(this_file,
+                unexpected($module, $pred,
                     "invalid analysis result while annotating goals")
             ;
                 ( AnalysisStatus = optimal
@@ -1038,8 +1036,7 @@ lookup_proc_mm_tabling_info(TablingInfo, PPId, Status, ResultStatus) :-
             MaybeResultStatus = yes(ResultStatus)
         ;
             MaybeResultStatus = no,
-            unexpected(this_file,
-                "lookup_proc_mm_tabling_info: no result status")
+            unexpected($module, $pred, "no result status")
         )
     ;
         % Probably an exported `:- external' procedure.
@@ -1076,11 +1073,5 @@ output_proc_name(Moduleinfo, PPId, !IO) :-
    io.format("\t%s\n", [s(Str)], !IO).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "tabling_analysis.m".
-
-%----------------------------------------------------------------------------%
-:- end_module tabling_analysis.
+:- end_module transform_hlds.tabling_analysis.
 %----------------------------------------------------------------------------%

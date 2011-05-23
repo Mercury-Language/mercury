@@ -681,8 +681,8 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             % The fb_jump_dests and fb_fall_dest fields are only dummies.
             (
                 Extra = [],
-                expect(unify(NeedsFrame, block_doesnt_need_frame), this_file,
-                    "build_frame_block_map: [] needs frame"),
+                expect(unify(NeedsFrame, block_doesnt_need_frame),
+                    $module, $pred, "[] needs frame"),
                 map.det_insert(Label, ExitLabel, !PreExitDummyLabelMap),
                 ExtraBlockType = ordinary_block(NeedsFrame, is_pre_exit_dummy)
             ;
@@ -734,8 +734,7 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             LabelSeq = [Label | LabelSeq0]
         )
     ;
-        unexpected(this_file,
-            "build_frame_block_map; block does not start with label")
+        unexpected($module, $pred, "block does not start with label")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1137,7 +1136,7 @@ analyze_block_map(LabelSeq, PreExitDummyLabelMap, !BlockMap, KeepFrameData) :-
             KeepFrameData = no
         )
     ;
-        unexpected(this_file, "analyze_block_map: bad data")
+        unexpected($module, $pred, "bad data")
     ).
 
 :- pred analyze_block_map_2(list(label)::in, label::in, proc_label::in,
@@ -1244,7 +1243,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
             true
         )
     ;
-        unexpected(this_file, "analyze_block_map_2: mismatch or no last instr")
+        unexpected($module, $pred, "mismatch or no last instr")
     ),
     BlockInfo = frame_block_info(BlockLabel, BlockInstrs, FallInto,
         SideLabels, MaybeFallThrough, Type),
@@ -1309,7 +1308,7 @@ mark_redoip_label(Label, !BlockMap) :-
     BlockType0 = BlockInfo0 ^ fb_type,
     (
         BlockType0 = entry_block(_),
-        unexpected(this_file, "mark_redoip_label: entry_block")
+        unexpected($module, $pred, "entry_block")
     ;
         BlockType0 = ordinary_block(_, MaybeDummy),
         BlockType = ordinary_block(block_needs_frame, MaybeDummy),
@@ -1317,7 +1316,7 @@ mark_redoip_label(Label, !BlockMap) :-
         map.det_update(Label, BlockInfo, !BlockMap)
     ;
         BlockType0 = exit_block(_),
-        unexpected(this_file, "mark_redoip_label: exit_block")
+        unexpected($module, $pred, "exit_block")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1373,8 +1372,7 @@ keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
         ->
             OrigLabelInstr = OrigInstr0
         ;
-            unexpected(this_file,
-                "keep_frame_transform: block does not begin with label")
+            unexpected($module, $pred, "block does not begin with label")
         ),
         string.append(Comment, " (keeping frame)", NewComment),
         NewGoto = llds_instr(goto(code_label(SecondLabel)), NewComment),
@@ -1766,7 +1764,7 @@ record_frame_need(BlockMap, Label, !OrdNeedsFrame, !CanTransform) :-
         ord_needs_frame(Label, !OrdNeedsFrame)
     ;
         BlockType = exit_block(_),
-        unexpected(this_file, "record_frame_need: exit_block")
+        unexpected($module, $pred, "exit_block")
     ).
 
 :- pred all_successors_need_frame(frame_block_map(En, Ex)::in,
@@ -1824,8 +1822,8 @@ process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
     map.lookup(!.BlockMap, Label0, BlockInfo0),
     BlockInfo0 = frame_block_info(Label0Copy, Instrs0, FallInto, SideLabels0,
         MaybeFallThrough0, Type),
-    expect(unify(Label0, Label0Copy), this_file,
-        "process_frame_delay: label in frame_block_info is not copy"),
+    expect(unify(Label0, Label0Copy), $module, $pred,
+        "label in frame_block_info is not copy"),
     (
         Type = entry_block(_),
         (
@@ -1834,8 +1832,7 @@ process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
         ->
             LabelInstr = LabelInstrPrime
         ;
-            unexpected(this_file,
-                "process_frame_delay: setup block does not begin with label")
+            unexpected($module, $pred, "setup block does not begin with label")
         ),
         BlockInfo = frame_block_info(Label0, [LabelInstr], FallInto,
             SideLabels0, MaybeFallThrough0,
@@ -1907,8 +1904,8 @@ transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0, OrdNeedsFrame,
             !SetupParMap, !ExitParMap),
         MaybeFallThrough = yes(FallThroughLabel),
         expect(no_disagreement(SideAssocLabelMap,
-            FallThroughLabel0, FallThroughLabel), this_file,
-            "transform_nostack_ordinary_block: disagreement"),
+            FallThroughLabel0, FallThroughLabel), $module, $pred,
+            "disagreement"),
         AssocLabelMap = [FallThroughLabel0 - FallThroughLabel
             | SideAssocLabelMap],
         ( FallThroughLabel = FallThroughLabel0 ->
@@ -1987,7 +1984,7 @@ mark_parallel_for_nostack_successor(Label0, Label, OrdNeedsFrame, BlockMap,
     Type = BlockInfo ^ fb_type,
     (
         Type = entry_block(_),
-        unexpected(this_file, "mark_parallels_for_nostack_jump: " ++
+        unexpected($module, $pred,
             "reached setup via jump from ordinary block")
     ;
         Type = ordinary_block(_, _),
@@ -2028,11 +2025,11 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
     map.lookup(!.BlockMap, Label0, BlockInfo0),
     BlockInfo0 = frame_block_info(Label0Copy, _, FallInto,
         SideLabels, MaybeFallThrough, Type),
-    expect(unify(Label0, Label0Copy), this_file,
-        "create_parallels: label in frame_block_info is not copy"),
+    expect(unify(Label0, Label0Copy), $module, $pred,
+        "label in frame_block_info is not copy"),
     ( search_exit_par_map(ExitParMap, Label0, ParallelLabel) ->
-        expect(unify(MaybeFallThrough, no), this_file,
-            "create_parallels: exit block with parallel has fall through"),
+        expect(unify(MaybeFallThrough, no), $module, $pred,
+            "exit block with parallel has fall through"),
         (
             SideLabels = [],
             Comments = []
@@ -2069,11 +2066,11 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             ( Type = entry_block(_)
             ; Type = ordinary_block(_, _)
             ),
-            unexpected(this_file, "block in exit_par_map is not exit")
+            unexpected($module, $pred, "block in exit_par_map is not exit")
         )
     ; search_setup_par_map(SetupParMap, Label0, SetupLabel) ->
-        expect(is_ordinary_block(Type), this_file,
-            "create_parallels: block in setup map is not ordinary"),
+        expect(is_ordinary_block(Type), $module, $pred,
+            "block in setup map is not ordinary"),
         PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
         (
             PrevNeedsFrame = block_needs_frame,
@@ -2214,8 +2211,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
     map.lookup(BlockMap, Label, BlockInfo),
     BlockInfo = frame_block_info(BlockLabel, BlockInstrs, FallInto,
         SideLabels, MaybeFallThrough, Type),
-    expect(unify(Label, BlockLabel), this_file,
-        "describe_block: label mismatch"),
+    expect(unify(Label, BlockLabel), $module, $pred, "label mismatch"),
     YesProcLabel = yes(ProcLabel),
     LabelStr = dump_label(YesProcLabel, Label),
     BlockInstrsStr = dump_fullinstrs(YesProcLabel, yes, BlockInstrs),
@@ -2275,10 +2271,10 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
         ( map.search(OrdNeedsFrame, Label, NeedsFrame) ->
             (
                 NeedsFrame = block_doesnt_need_frame,
-                expect(unify(UsesFrame, block_doesnt_need_frame), this_file,
-                    "describe_block: "
-                    ++ "NeedsFrame=block_doesnt_need_frame, "
-                    ++ "UsesFrame=block_needs_frame"),
+                expect(unify(UsesFrame, block_doesnt_need_frame),
+                    $module, $pred,
+                    "NeedsFrame=block_doesnt_need_frame, " ++
+                    "UsesFrame=block_needs_frame"),
                 TypeStr = TypeStr1 ++ "does not need frame\n"
             ;
                 NeedsFrame = block_needs_frame,
@@ -2290,8 +2286,8 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
         )
     ;
         Type = exit_block(Exit),
-        expect(unify(MaybeFallThrough, no), this_file,
-            "describe_block: exit_block, MaybeFallThrough=yes(_)"),
+        expect(unify(MaybeFallThrough, no), $module, $pred,
+            "exit_block, MaybeFallThrough=yes(_)"),
         TypeStr = "exit_block\n" ++ describe_exit(YesProcLabel, Exit)
     ),
     Comment = Heading ++ PredStr ++ FallIntoStr ++ SideStr ++ FallThroughStr
@@ -2372,11 +2368,5 @@ is_yes(yes(_)).
 pair_with(T, U, T - U).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "frameopt.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module frameopt.
+:- end_module ll_backend.frameopt.
 %-----------------------------------------------------------------------------%

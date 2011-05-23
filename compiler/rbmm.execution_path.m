@@ -165,9 +165,7 @@ execution_paths_covered_compound_goal(ProcInfo, CompoundGoal, !ExecPaths) :-
         ; Expr = generic_call(_, _, _, _)
         ; Expr = shorthand(_)
         ),
-        unexpected(this_file,
-            "collect_execution_path_in_compound_goal: encountered atomic or"
-            ++ " unsupported goal")
+        unexpected($module, $pred, "encountered atomic or unsupported goal")
     ).
 
     % Extend execution paths to cover the goals in this conjunction.
@@ -214,8 +212,8 @@ execution_paths_covered_disj(ProcInfo, [Disj | Disjs], !ExecPaths) :-
 execution_paths_covered_cases(_, _, [], _, []).
 execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
     Case = case(MainConsId, OtherConsIds, CaseGoal),
-    expect(unify(OtherConsIds, []), this_file,
-        "NYI: execution_paths_covered_cases for multi-cons-id cases"),
+    expect(unify(OtherConsIds, []), $module, $pred,
+        "NYI: multi-cons-id cases"),
     Switch = hlds_goal(_SwitchExpr, Info),
     ProgPoint = program_point_init(Info),
 
@@ -250,8 +248,7 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
         ; MainConsId = table_io_decl(_)
         ; MainConsId = deep_profiling_proc_layout(_)
         ),
-        unexpected(this_file,
-            "execution_paths_covered_cases: new cons_id encountered")
+        unexpected($module, $pred, "unexpected cons_id")
     ),
     execution_paths_covered_goal(ProcInfo, CaseGoal,
         ExecPathsBeforeCase, ExecPathsCase),
@@ -289,9 +286,5 @@ extend_exectution_path(ExecPath, [Extension | Extensions],
     ExtendedExecPaths = [ExtendedExecPath | ExtendedExecPaths0].
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.execution_path.m".
-
+:- end_module transform_hlds.rbmm.execution_path.
 %----------------------------------------------------------------------------%

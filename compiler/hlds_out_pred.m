@@ -637,7 +637,7 @@ write_rtti_var_info(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet, Var,
         mercury_output_constraint(TVarSet, AppendVarNums, Constraint, !IO)
     ;
         VarInfo = non_rtti_var,
-        unexpected(this_file, "write_rtti_var_info: non rtti var")
+        unexpected($module, $pred, "non rtti var")
     ),
     io.nl(!IO).
 
@@ -1255,12 +1255,6 @@ marker_name(marker_mode_check_clauses, "mode_check_clauses").
 marker_name(marker_mutable_access_pred, "mutable_access_pred").
 marker_name(marker_has_require_scope, "has_require_scope").
 marker_name(marker_has_format_call, "has_format_call").
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_out_pred.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_pred.

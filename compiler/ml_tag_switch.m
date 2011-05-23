@@ -165,27 +165,28 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
         ptag_case(SecTagLocn, GoalMap)),
     map.lookup(PtagCountMap, MainPtag, CountInfo),
     CountInfo = SecTagLocn1 - MaxSecondary,
-    expect(unify(SecTagLocn, SecTagLocn1), this_file,
-        "ml_tag_switch.m: secondary tag locations differ"),
+    expect(unify(SecTagLocn, SecTagLocn1), $module, $pred,
+        "secondary tag locations differ"),
     map.to_assoc_list(GoalMap, GoalList),
     (
         SecTagLocn = sectag_none,
         % There is no secondary tag, so there is no switch on it.
         (
             GoalList = [],
-            unexpected(this_file, "no goal for non-shared tag")
+            unexpected($module, $pred, "no goal for non-shared tag")
         ;
             GoalList = [_Stag - CaseNum],
             map.lookup(CodeMap, CaseNum, Statement)
         ;
             GoalList = [_, _ | _],
-            unexpected(this_file, "more than one goal for non-shared tag")
+            unexpected($module, $pred, "more than one goal for non-shared tag")
         )
     ;
         ( SecTagLocn = sectag_local
         ; SecTagLocn = sectag_remote
         ),
-        expect(unify(OtherPtags, []), this_file, ">1 ptag with secondary tag"),
+        expect(unify(OtherPtags, []), $module, $pred,
+            ">1 ptag with secondary tag"),
         (
             CanFail = cannot_fail,
             CaseCanFail = cannot_fail
@@ -283,7 +284,7 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
             VarRval)
     ;
         StagLocn = sectag_none,
-        unexpected(this_file, "gen_stag_switch: no stag")
+        unexpected($module, $pred, "no stag")
     ),
 
     % Generate the switch on the secondary tag.
@@ -325,9 +326,5 @@ gen_stag_case(Group, CodeMap, MLDS_Case, !Info) :-
 make_match_value(Stag) = match_value(ml_const(mlconst_int(Stag))).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_tag_switch.m".
-
+:- end_module ml_backend.ml_tag_switch.
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -162,12 +162,10 @@ forward_use_in_composite_goal(VarTypes, !Goal, !InstantiatedVars,
         ; GoalExpr0 = generic_call(_, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
-        unexpected(this_file,
-            "forward_use_in_composite_goal: atomic goal")
+        unexpected($module, $pred, "atomic goal")
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file,
-            "forward_use_in_composite_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
     set.difference(InstantiadedBefore, !.DeadVars, LFU),
     goal_info_set_lfu(LFU, GoalInfo0, GoalInfo),
@@ -302,7 +300,7 @@ add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
             Shorthand = bi_implication(LeftGoal, RightGoal)
         ;
             Shorthand0 = try_goal(_, _, _),
-            unexpected(this_file, "add_vars_to_lfu_in_goal_expr: try_goal")
+            unexpected($module, $pred, "try_goal")
         ),
         Expr = shorthand(Shorthand)
     ).
@@ -324,12 +322,6 @@ add_vars_to_lfu_in_cases(ForceInUse, [Case0 | Cases0], [Case | Cases]) :-
     add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
     Case = case(MainConsId, OtherConsIds, Goal),
     add_vars_to_lfu_in_cases(ForceInUse, Cases0, Cases).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "structure_reuse.lfu.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.lfu.

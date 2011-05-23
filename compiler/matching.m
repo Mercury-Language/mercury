@@ -628,8 +628,8 @@ compute_via_cell_vars([FieldCostsBenefits | FieldsCostsBenefits],
     ; set.equal(MarkedFieldBenefits, FieldBenefits) ->
         ViaCellVars = ViaCellVars1
     ;
-        unexpected(this_file, "compute_via_cell_vars: theorem violation: " ++
-            "intersection neither empty nor full")
+        unexpected($module, $pred,
+            "theorem violation: intersection neither empty nor full")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -760,9 +760,5 @@ project_benefit_op(benefit_node(BenefitOp, _CopyNum)) = BenefitOp.
 project_cost_op(cost_node(CostOp, _CopyNum)) = CostOp.
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "matching.m".
-
+:- end_module backend_libs.matching.
 %-----------------------------------------------------------------------------%

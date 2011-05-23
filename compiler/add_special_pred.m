@@ -244,9 +244,9 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
                 do_add_special_pred_for_real(SpecialPredId, TVarSet, Type,
                     TypeCtor, TypeBody, Context, Status0, !ModuleInfo)
             ;
-                unexpected(this_file, "add_special_pred: "
-                    ++ "attempt to add initialise pred for non-solver type "
-                    ++ "or solver type without automatic initialisation.")
+                unexpected($module, $pred,
+                    "attempt to add initialise pred for non-solver type " ++
+                    "or solver type without automatic initialisation.")
             )
         )
     ).
@@ -462,9 +462,5 @@ adjust_special_pred_status(SpecialPredId, !Status) :-
     ).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "add_special_pred.m".
-
+:- end_module hlds.make_hlds.add_special_pred.
 %----------------------------------------------------------------------------%

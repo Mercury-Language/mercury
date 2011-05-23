@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -630,8 +630,8 @@ modecheck_delayed_goals_eager(ConjType, DelayedGoals0, DelayedGoals, Goals,
         mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 
         mode_info_get_may_init_solver_vars(!.ModeInfo, OldMayInit),
-        expect(unify(OldMayInit, may_not_init_solver_vars), this_file,
-            "modecheck_delayed_goals_eager: may init solver vars"),
+        expect(unify(OldMayInit, may_not_init_solver_vars), $module, $pred,
+            "may init solver vars"),
         mode_info_set_may_init_solver_vars(may_init_solver_vars, !ModeInfo),
         modecheck_conj_list_2(ConjType, Goals0, Goals1, !ImpurityErrors,
             !ModeInfo),
@@ -753,10 +753,5 @@ redelay_goals([DelayedGoal | DelayedGoals], !DelayInfo) :-
     redelay_goals(DelayedGoals, !DelayInfo).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "modecheck_conj.m".
-
+:- end_module check_hlds.modecheck_conj.
 %-----------------------------------------------------------------------------%

@@ -137,11 +137,11 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = comment(_)
     ;
         Uinstr0 = livevals(_),
-        unexpected(this_file,
+        unexpected($module, $pred,
             "livevals found in backward scan in build_livemap")
     ;
         Uinstr0 = block(_, _, _),
-        unexpected(this_file, "block found in backward scan in build_livemap")
+        unexpected($module, $pred, "block found in backward scan")
     ;
         ( Uinstr0 = assign(Lval, Rval)
         ; Uinstr0 = keep_assign(Lval, Rval)
@@ -192,8 +192,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
                 ; CodeAddr = do_call_closure(_)
                 ; CodeAddr = do_call_class_method(_)
                 ),
-                unexpected(this_file,
-                    "unknown code_addr type in build_livemap")
+                unexpected($module, $pred, "unknown code_addr type")
             )
         ),
         livemap_special_code_addr(CodeAddr, MaybeSpecial),
@@ -342,7 +341,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = decr_sp_and_return(_),
         % These instructions should be generated only *after* any optimizations
         % that need livemaps have been run for the last time.
-        unexpected(this_file, "build_livemap_instr: decr_sp_and_return")
+        unexpected($module, $pred, "decr_sp_and_return")
     ;
         Uinstr0 = init_sync_term(_, _, _)
     ;
@@ -457,7 +456,7 @@ look_for_livevals(Instrs0, Instrs, !Livevals, Site, Compulsory, Found) :-
     ;
         (
             Compulsory = yes,
-            unexpected(this_file, Site ++ " not preceded by livevals")
+            unexpected($module, $pred, Site ++ " not preceded by livevals")
         ;
             Compulsory = no,
             Instrs = Instrs1,
@@ -515,7 +514,8 @@ make_live_in_rval(binop(_, Rval1, Rval2), !Live) :-
     make_live_in_rval(Rval1, !Live),
     make_live_in_rval(Rval2, !Live).
 make_live_in_rval(var(_), _, _) :-
-    unexpected(this_file, "var rval should not propagate to the optimizer").
+    unexpected($module, $pred,
+        "var rval should not propagate to the optimizer").
 make_live_in_rval(mem_addr(MemRef), !Live) :-
     make_live_in_mem_ref(MemRef, !Live).
 
@@ -582,9 +582,5 @@ livemap_insert_proper_liveval(Live, !Livevals) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "livemap.m".
-
+:- end_module ll_backend.livemap.
 %-----------------------------------------------------------------------------%

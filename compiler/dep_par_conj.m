@@ -404,7 +404,7 @@ sync_dep_par_conjs_in_goal(Goal0, Goal, InstMap0, InstMap, !SyncInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "sync_dep_par_conjs_in_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
     update_instmap(Goal, InstMap0, InstMap).
 
@@ -711,7 +711,7 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
             ;
                 (
                     Cases0 = [],
-                    unexpected(this_file, "insert_wait_in_goal: no cases")
+                    unexpected($module, $pred, "no cases")
                 ;
                     Cases0 = [FirstCase0 | LaterCases0],
                     FirstCase0 = case(MainConsId, OtherConsIds, FirstGoal0),
@@ -766,8 +766,7 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
             InvariantEstablished = yes,
             ( Reason = from_ground_term(_, from_ground_term_construct) ->
                 % These scopes do not consume anything.
-                unexpected(this_file,
-                    "insert_wait_in_goal: from_ground_term_construct")
+                unexpected($module, $pred, "from_ground_term_construct")
             ;
                 insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
                     FutureMap, ConsumedVar, WaitedOnAllSuccessPaths0,
@@ -795,7 +794,7 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
                 Goal0, Goal1, !VarSet, !VarTypes)
         ;
             GoalExpr0 = shorthand(_),
-            unexpected(this_file, "insert_wait_in_goal: shorthand")
+            unexpected($module, $pred, "shorthand")
         ),
         (
             WaitedOnAllSuccessPaths0 = waited_on_all_success_paths,
@@ -847,7 +846,7 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
                         Goal2, Goal, !VarSet, !VarTypes)
                 ;
                     InvariantEstablished = yes,
-                    unexpected(this_file, "insert_wait_in_goal: " ++
+                    unexpected($module, $pred,
                         "not_waited_on_all_success_paths invariant violation")
                 )
             )
@@ -1063,7 +1062,8 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             ;
                 GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
                 ( ProducedVar = SwitchVar ->
-                    unexpected(this_file, "switch on unbound shared variable")
+                    unexpected($module, $pred,
+                        "switch on unbound shared variable")
                 ;
                     insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
                         Cases0, Cases, !VarSet, !VarTypes),
@@ -1073,7 +1073,7 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             ;
                 GoalExpr0 = if_then_else(QuantVars, Cond, Then0, Else0),
                 expect(var_not_in_nonlocals(ProducedVar, Cond),
-                    this_file, "condition binds shared variable"),
+                    $module, $pred, "condition binds shared variable"),
                 insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                     Then0, Then, !VarSet, !VarTypes),
                 insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
@@ -1082,7 +1082,7 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                 Goal = hlds_goal(GoalExpr, GoalInfo0)
             ;
                 GoalExpr0 = negation(_),
-                unexpected(this_file, "negation binds shared variable")
+                unexpected($module, $pred, "negation binds shared variable")
             ;
                 GoalExpr0 = scope(Reason, SubGoal0),
                 ( Reason = from_ground_term(_, from_ground_term_construct) ->
@@ -1130,13 +1130,12 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                     Goal0, Goal, !VarSet, !VarTypes)
             ;
                 GoalExpr0 = shorthand(_),
-                unexpected(this_file, "insert_signal_in_goal: shorthand")
+                unexpected($module, $pred, "shorthand")
             )
         ;
             % We expected this goal to produce the variable that we're looking
             % for.
-            unexpected(this_file,
-                "insert_signal_in_goal: ProducedVar is not in nonlocals")
+            unexpected($module, $pred, "ProducedVar is not in nonlocals")
         )
     ;
         NumSolutions = at_most_zero,
@@ -1173,8 +1172,8 @@ insert_signal_in_plain_conj(ModuleInfo, FutureMap, ProducedVar,
         Goal0 = hlds_goal(_, GoalInfo0),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-        expect(set.contains(ChangedVars, ProducedVar), this_file,
-            "insert_signal_in_plain_conj: ProducedVar not in ChangedVars"),
+        expect(set.contains(ChangedVars, ProducedVar), $module, $pred,
+            "ProducedVar not in ChangedVars"),
         insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             Goal0, Goal1, !VarSet, !VarTypes),
         ( Goal1 ^ hlds_goal_expr = conj(plain_conj, GoalConjs1) ->
@@ -1203,8 +1202,8 @@ insert_signal_in_par_conj(ModuleInfo, FutureMap, ProducedVar,
         Goal0 = hlds_goal(_, GoalInfo0),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-        expect(set.contains(ChangedVars, ProducedVar), this_file,
-            "insert_signal_in_plain_conj: ProducedVar not in ChangedVars"),
+        expect(set.contains(ChangedVars, ProducedVar), $module, $pred,
+            "ProducedVar not in ChangedVars"),
         insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             Goal0, Goal, !VarSet, !VarTypes),
         Goals = Goals0
@@ -1360,7 +1359,7 @@ search_scc(SCCs, PredProcId, SCC) :-
     ->
         SCC = SCCPrime
     ;
-        unexpected(this_file, "Couldn't find SCC for pred/proc id.")
+        unexpected($module, $pred, "Couldn't find SCC for pred/proc id.")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1646,7 +1645,7 @@ replace_head_vars(ModuleInfo, FutureMap,
         ; mode_is_output(ModuleInfo, Mode0) ->
             Mode = (ground(shared, none) -> ground(shared, none))
         ;
-            sorry(this_file,
+            sorry($module, $pred,
                 "dependent parallel conjunction transformation " ++
                 "only understands input and output modes")
         )
@@ -1656,9 +1655,9 @@ replace_head_vars(ModuleInfo, FutureMap,
     ),
     replace_head_vars(ModuleInfo, FutureMap, Vars0, Vars, Modes0, Modes).
 replace_head_vars(_, _, [_ | _], _, [], _) :-
-    unexpected(this_file, "replace_head_vars: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 replace_head_vars(_, _, [], _, [_ | _], _) :-
-    unexpected(this_file, "replace_head_vars: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 :- pred any_output_arguments(module_info::in, list(mer_mode)::in) is semidet.
 
@@ -1732,7 +1731,7 @@ specialize_sequences_in_goal(Goal0, Goal, !SpecInfo) :-
         Goal = Goal0
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "specialize_sequences_in_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred specialize_sequences_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -2234,8 +2233,7 @@ futurise_argtypes(ArgNo, [FutureArg | FutureArgs], [ArgType | ArgTypes],
             ArgTypes, FuturisedArgTypes)
     ).
 futurise_argtypes(_, [_ | _], [], _) :-
-    unexpected(this_file,
-        "futurise_argtypes: more future arguments than argument types").
+    unexpected($module, $pred, "more future arguments than argument types").
 
 %-----------------------------------------------------------------------------%
 
@@ -2309,7 +2307,7 @@ should_we_push_test(PredProcId, ArgPos, PushOp, IsWorthPushing, SpecInfo) :-
         (
             CostAfterSignal = not_seen_signal,
             % This should not happen, since it is a mode error.
-            unexpected(this_file, "should_we_push_test: not_seen_signal")
+            unexpected($module, $pred, "not_seen_signal")
         ;
             CostAfterSignal = seen_signal_negligible_cost_after,
             IsWorthPushing = not_worth_pushing
@@ -2517,7 +2515,7 @@ should_we_push_wait(Var, Goal, Wait) :-
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "should_we_push_wait: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred should_we_push_wait_in_conj(prog_var::in, list(hlds_goal)::in,
@@ -2702,7 +2700,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
             ( Var = SwitchVar ->
                 % !.Signal must show that we have already seen a signal.
                 expect(negate(unify(!.Signal, not_seen_signal)),
-                    this_file, "should_we_push_signal: not seen switch var")
+                    $module, $pred, "not seen switch var")
             ;
                 should_we_push_signal_in_cases(Var, Cases, !Signal)
             )
@@ -2722,8 +2720,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
                     ( SignalElse = seen_signal_non_negligible_cost_after
                     ; SignalElse = seen_signal_negligible_cost_after
                     ),
-                    unexpected(this_file, "should_we_push_signal: " ++
-                        "ITE is not mode safe")
+                    unexpected($module, $pred, "ITE is not mode safe")
                 )
             ;
                 SignalThen = code_has_no_solutions,
@@ -2732,8 +2729,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
                 SignalThen = seen_signal_non_negligible_cost_after,
                 (
                     SignalElse = not_seen_signal,
-                    unexpected(this_file, "should_we_push_signal: " ++
-                        "ITE is not mode safe")
+                    unexpected($module, $pred, "ITE is not mode safe")
                 ;
                     ( SignalElse = code_has_no_solutions
                     ; SignalElse = seen_signal_non_negligible_cost_after
@@ -2745,8 +2741,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
                 SignalThen = seen_signal_negligible_cost_after,
                 (
                     SignalElse = not_seen_signal,
-                    unexpected(this_file, "should_we_push_signal: " ++
-                        "ITE is not mode safe")
+                    unexpected($module, $pred, "ITE is not mode safe")
                 ;
                     ( SignalElse = code_has_no_solutions
                     ; SignalElse = seen_signal_negligible_cost_after
@@ -2782,7 +2777,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
             )
         ;
             GoalExpr = shorthand(_),
-            unexpected(this_file, "should_we_push_signal: shorthand")
+            unexpected($module, $pred, "shorthand")
         )
     ;
         NumSolutions = at_most_zero,
@@ -2854,8 +2849,8 @@ should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts], OrigSignal,
         !:FinalSignal = seen_signal_non_negligible_cost_after
     ),
     FinalSignal = !.FinalSignal,
-    expect(seen_more_signal(FinalSignal0, FinalSignal), this_file,
-        "should_we_push_signal_in_par_conj: final signal goes backwards").
+    expect(seen_more_signal(FinalSignal0, FinalSignal), $module, $pred,
+        "final signal goes backwards").
 
 :- pred should_we_push_signal_in_disj(prog_var::in, list(hlds_goal)::in,
     cost_after_signal::in(cost_after_signal_in),
@@ -2886,7 +2881,7 @@ should_we_push_signal_in_disj(Var, [FirstGoal | LaterGoals], OrigSignal,
             SignalFirst = seen_signal_negligible_cost_after,
             (
                 Signal0 = not_seen_signal,
-                unexpected(this_file, "should_we_push_signal_in_disj: " ++
+                unexpected($module, $pred,
                     "The program doesn't seem mode correct")
             ;
                 Signal0 = code_has_no_solutions,
@@ -2933,7 +2928,7 @@ should_we_push_signal_in_cases(Var, [FirstCase | LaterCases], OrigSignal,
             SignalFirst = seen_signal_negligible_cost_after,
             (
                 Signal0 = not_seen_signal,
-                unexpected(this_file, "should_we_push_signal_in_cases: " ++
+                unexpected($module, $pred,
                     "The program doesn't seem mode correct")
             ;
                 Signal0 = code_has_no_solutions,
@@ -3316,11 +3311,5 @@ var_not_in_nonlocals(Var, Goal) :-
     not var_in_nonlocals(Var, Goal).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "dep_par_conj.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module dep_par_conj.
+:- end_module transform_hlds.dep_par_conj.
 %-----------------------------------------------------------------------------%

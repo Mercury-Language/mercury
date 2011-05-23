@@ -783,8 +783,8 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_simplify(no, simplify_pass_post_untuple, Verbose, Stats, !HLDS,
             [], SimplifySpecs, !IO),
-        expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
-            "maybe_untuple_arguments: simplify has errors"),
+        expect(unify(contains_errors(Globals, SimplifySpecs), no),
+            $module, $pred, "simplify has errors"),
         maybe_report_stats(Stats, !IO)
     ;
         Untuple = no
@@ -911,7 +911,7 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
         ->
             Specs = SpecsPrime
         ;
-            unexpected(this_file, "maybe_introduce_accumulators: bad task")
+            unexpected($module, $pred, "bad task")
         ),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS),
@@ -994,7 +994,7 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
         (
             Deforest = no,
             Constraints = no,
-            unexpected(this_file, "maybe_deforestation")
+            unexpected($module, $pred, "no no")
         ;
             Deforest = yes,
             Constraints = yes,
@@ -1315,7 +1315,7 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
     (
         AsWords = yes,
         AsCells = yes,
-        unexpected(this_file, "maybe_term_size_prof: as_words and as_cells")
+        unexpected($module, $pred, "as_words and as_cells")
     ;
         AsWords = yes,
         AsCells = no,
@@ -1423,9 +1423,5 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mercury_compile_middle_passes.m".
-
+:- end_module top_level.mercury_compile_middle_passes.
 %-----------------------------------------------------------------------------%

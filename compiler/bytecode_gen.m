@@ -223,7 +223,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             % XXX
             % string.append_list([
             % "bytecode for ", GenericCallFunctor, " calls"], Msg),
-            % sorry(this_file, Msg)
+            % sorry($module, $pred, Msg)
             functor(GenericCallType, canonicalize, _GenericCallFunctor, _),
             Code = singleton(byte_not_supported)
         )
@@ -272,7 +272,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         gen_conj(GoalList, !ByteInfo, Code)
     ;
         GoalExpr = conj(parallel_conj, _GoalList),
-        sorry(this_file, "bytecode_gen of parallel conjunction")
+        sorry($module, $pred, "bytecode_gen of parallel conjunction")
     ;
         GoalExpr = disj(GoalList),
         (
@@ -316,7 +316,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "goal_expr: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %---------------------------------------------------------------------------%
@@ -425,14 +425,13 @@ gen_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
             map_assign(ByteInfo, Var, Expr, Code)
         ;
             SimpleCode = ref_assign(_Var, _Expr),
-            unexpected(this_file, "ref_assign")
+            unexpected($module, $pred, "ref_assign")
         ;
             SimpleCode = noop(_DefinedVars),
             Code = empty
         )
     ;
-        string.append("unknown builtin predicate ", PredName, Msg),
-        unexpected(this_file, Msg)
+        unexpected($module, $pred, "unknown builtin predicate " ++ PredName)
     ).
 
 :- pred map_test(byte_info::in, simple_expr(prog_var)::in(simple_test_expr),
@@ -542,11 +541,11 @@ gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
     ->
         ( TypeCtor2 = TypeCtor1 ->
             TypeCtor = TypeCtor1
-        ;   unexpected(this_file,
+        ;   unexpected($module, $pred,
                 "simple_test between different types")
         )
     ;
-        unexpected(this_file, "failed lookup of type id")
+        unexpected($module, $pred, "failed lookup of type id")
     ),
     ByteInfo = byte_info(_, _, ModuleInfo, _, _),
     TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
@@ -570,30 +569,29 @@ gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
         TestId = enum_test
     ;
         TypeCategory = ctor_cat_enum(cat_enum_foreign),
-        sorry(this_file, "foreign enums with bytecode backend")
+        sorry($module, $pred, "foreign enums with bytecode backend")
     ;
         TypeCategory = ctor_cat_higher_order,
-        unexpected(this_file, "higher_order_type in simple_test")
+        unexpected($module, $pred, "higher_order_type")
     ;
         TypeCategory = ctor_cat_tuple,
-        unexpected(this_file, "tuple_type in simple_test")
+        unexpected($module, $pred, "tuple_type")
     ;
         TypeCategory = ctor_cat_user(_),
-        unexpected(this_file, "user_ctor_type in simple_test")
+        unexpected($module, $pred, "user_ctor_type")
     ;
         TypeCategory = ctor_cat_variable,
-        unexpected(this_file, "variable_type in simple_test")
+        unexpected($module, $pred, "variable_type")
     ;
         TypeCategory = ctor_cat_void,
-        unexpected(this_file, "void_type in simple_test")
+        unexpected($module, $pred, "void_type")
     ;
         TypeCategory = ctor_cat_system(_),
-        unexpected(this_file, "system type in simple_test")
+        unexpected($module, $pred, "system type")
     ),
     Code = singleton(byte_test(ByteVar1, ByteVar2, TestId)).
 gen_unify(complicated_unify(_,_,_), _Var, _RHS, _ByteInfo, _Code) :-
-    unexpected(this_file, "complicated unifications " ++
-        "should have been handled by polymorphism.m").
+    unexpected($module, $pred, "complicated unify").
 
 :- pred map_uni_modes(list(uni_mode)::in, list(prog_var)::in,
     byte_info::in, list(byte_dir)::out) is det.
@@ -621,14 +619,14 @@ map_uni_modes([UniMode | UniModes], [Arg | Args], ByteInfo, [Dir | Dirs]) :-
     ->
         Dir = to_none
     ;
-        unexpected(this_file,
+        unexpected($module, $pred,
             "invalid mode for (de)construct unification")
     ),
     map_uni_modes(UniModes, Args, ByteInfo, Dirs).
 map_uni_modes([], [_|_], _, _) :-
-    unexpected(this_file, "map_uni_modes: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 map_uni_modes([_|_], [], _, _) :-
-    unexpected(this_file, "map_uni_modes: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 :- pred all_dirs_same(list(byte_dir)::in, byte_dir::in)
     is semidet.
@@ -658,7 +656,7 @@ gen_conj([Goal | Goals], !ByteInfo, Code) :-
     byte_info::in, byte_info::out,  byte_tree::out) is det.
 
 gen_disj([], _, _, _, _) :-
-    unexpected(this_file, "empty disjunction in disj").
+    unexpected($module, $pred, "empty disjunction").
 gen_disj([Disjunct | Disjuncts], EndLabel, !ByteInfo, Code) :-
     gen_goal(Disjunct, !ByteInfo, ThisCode),
     (
@@ -709,7 +707,7 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
             Functor = qualified(ModuleName, FunctorName)
         ;
             Functor = unqualified(_),
-            unexpected(this_file, "map_cons_id: unqualified cons")
+            unexpected($module, $pred, "unqualified cons")
         ),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         map_cons_tag(ConsTag, ByteConsTag),
@@ -747,7 +745,7 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ByteConsId = byte_string_const(StringVal)
     ;
         ConsId = impl_defined_const(_),
-        unexpected(this_file, "map_cons_id: impl_defined_const")
+        unexpected($module, $pred, "impl_defined_const")
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity),
         ByteConsId = byte_type_ctor_info_const(ModuleName, TypeName, TypeArity)
@@ -763,13 +761,13 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ByteConsId = byte_typeclass_info_cell_constructor
     ;
         ConsId = tabling_info_const(_),
-        sorry(this_file, "bytecode cannot implement tabling")
+        sorry($module, $pred, "bytecode cannot implement tabling")
     ;
         ConsId = table_io_decl(_),
-        sorry(this_file, "bytecode cannot implement table io decl")
+        sorry($module, $pred, "bytecode cannot implement table io decl")
     ;
         ConsId = deep_profiling_proc_layout(_),
-        sorry(this_file, "bytecode cannot implement deep profiling")
+        sorry($module, $pred, "bytecode cannot implement deep profiling")
     ).
 
 :- pred map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
@@ -784,41 +782,41 @@ map_cons_tag(shared_remote_tag(Primary, Secondary),
 map_cons_tag(shared_local_tag(Primary, Secondary),
     byte_shared_local_tag(Primary, Secondary)).
 map_cons_tag(string_tag(_), _) :-
-    unexpected(this_file, "string_tag cons tag " ++
+    unexpected($module, $pred, "string_tag cons tag " ++
         "for non-string_constant cons id").
 map_cons_tag(int_tag(IntVal), byte_enum_tag(IntVal)).
 map_cons_tag(foreign_tag(_, _), _) :-
-    sorry(this_file, "bytecode with foreign tags").
+    sorry($module, $pred, "bytecode with foreign tags").
 map_cons_tag(float_tag(_), _) :-
-    unexpected(this_file, "float_tag cons tag " ++
+    unexpected($module, $pred, "float_tag cons tag " ++
         "for non-float_constant cons id").
 map_cons_tag(closure_tag(_, _, _), _) :-
-    unexpected(this_file, "closure_tag cons tag " ++
+    unexpected($module, $pred, "closure_tag cons tag " ++
         "for non-closure_cons cons id").
 map_cons_tag(type_ctor_info_tag(_, _, _), _) :-
-    unexpected(this_file, "type_ctor_info_tag cons tag " ++
+    unexpected($module, $pred, "type_ctor_info_tag cons tag " ++
         "for non-type_ctor_info_constant cons id").
 map_cons_tag(base_typeclass_info_tag(_, _, _), _) :-
-    unexpected(this_file, "base_typeclass_info_tag cons tag " ++
+    unexpected($module, $pred, "base_typeclass_info_tag cons tag " ++
         "for non-base_typeclass_info_constant cons id").
 map_cons_tag(tabling_info_tag(_, _), _) :-
-    unexpected(this_file, "tabling_info_tag cons tag " ++
+    unexpected($module, $pred, "tabling_info_tag cons tag " ++
         "for non-tabling_info_constant cons id").
 map_cons_tag(deep_profiling_proc_layout_tag(_, _), _) :-
-    unexpected(this_file, "deep_profiling_proc_layout_tag cons tag " ++
+    unexpected($module, $pred, "deep_profiling_proc_layout_tag cons tag " ++
         "for non-deep_profiling_proc_static cons id").
 map_cons_tag(table_io_decl_tag(_, _), _) :-
-    unexpected(this_file, "table_io_decl_tag cons tag " ++
+    unexpected($module, $pred, "table_io_decl_tag cons tag " ++
         "for non-table_io_decl cons id").
 map_cons_tag(reserved_address_tag(_), _) :-
     % These should only be generated if the --num-reserved-addresses
     % or --num-reserved-objects options are used.
-    sorry(this_file, "bytecode with --num-reserved-addresses " ++
+    sorry($module, $pred, "bytecode with --num-reserved-addresses " ++
         "or --num-reserved-objects").
 map_cons_tag(shared_with_reserved_addresses_tag(_, _), _) :-
     % These should only be generated if the --num-reserved-addresses
     % or --num-reserved-objects options are used.
-    sorry(this_file, "bytecode with --num-reserved-addresses " ++
+    sorry($module, $pred, "bytecode with --num-reserved-addresses " ++
         "or --num-reserved-objects").
 
 %---------------------------------------------------------------------------%
@@ -923,11 +921,5 @@ get_is_func(PredInfo, IsFunc) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "bytecode_gen.m".
-
-%---------------------------------------------------------------------------%
-:- end_module bytecode_gen.
+:- end_module bytecode_backend.bytecode_gen.
 %---------------------------------------------------------------------------%

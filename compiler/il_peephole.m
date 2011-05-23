@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001, 2003-2006, 2009 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2006, 2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -812,11 +812,5 @@ can_branch(stsfld(_FieldRef))                   = no.
 can_branch(unbox(_Type))                        = no.
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "il_peephole.m".
-
-%----------------------------------------------------------------------------%
-:- end_module il_peephole.
+:- end_module ml_backend.il_peephole.
 %----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006, 2010 The University of Melbourne.
+% Copyright (C) 2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -117,7 +117,7 @@ livedata_is_top(livedata_top).
 
 livedata_get_datastructs(livedata_bottom) = [].
 livedata_get_datastructs(livedata_live(Data)) = Data.
-livedata_get_datastructs(livedata_top) = unexpected(this_file, 
+livedata_get_datastructs(livedata_top) = unexpected($module, $pred, 
     "livedata_get_datastructs: livedata is top.").
 
 livedata_least_upper_bound(ModuleInfo, ProcInfo, LiveData1, 
@@ -246,7 +246,7 @@ livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo, SharingAs) = LiveData :-
             ( SharingDomain = structure_sharing_bottom
             ; SharingDomain = structure_sharing_top(_)
             ),
-            unexpected(this_file, "livedata_init_at_goal")
+            unexpected($module, $pred, "unexpected SharingDomain")
         )
     ).
 
@@ -395,12 +395,6 @@ nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes, LiveData, Result) :-
             DeadNodes, LiveDatastructs, SubsumedNodes),
         Result = nodes_are_live(SubsumedNodes)
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ctgc.livedata.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.livedata.

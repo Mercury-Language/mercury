@@ -665,7 +665,7 @@ promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
         Goal0 = Clause ^ clause_body,
         assertion.normalise_goal(Goal0, Goal)
     ;
-        unexpected(this_file, "promise_ex_goal: not a single clause")
+        unexpected($module, $pred, "not a single clause")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -723,7 +723,7 @@ in_interface_check(ModuleInfo, PredInfo, Goal, !Specs) :-
         in_interface_check_list(ModuleInfo, PredInfo, Goals, !Specs)
     ;
         GoalExpr = switch(_, _, _),
-        unexpected(this_file, "in_interface_check: assertion contains switch.")
+        unexpected($module, $pred, "assertion contains switch")
     ;
         GoalExpr = disj(Goals),
         in_interface_check_list(ModuleInfo, PredInfo, Goals, !Specs)
@@ -1183,13 +1183,11 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
                     ( encode_escaped_char(Char, Name0) ->
                         ConsId = char_const(Char)
                     ;
-                        unexpected(this_file,
-                            "resolve_unify_functor: encode_escaped_char")
+                        unexpected($module, $pred, "encode_escaped_char")
                     )
                 ;
                     SymName0 = qualified(_, _),
-                    unexpected(this_file,
-                        "resolve_unify_functor: qualified char const")
+                    unexpected($module, $pred, "qualified char const")
                 )
             ;
                 Name = unqualify_name(SymName0),
@@ -1200,8 +1198,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
                     ConsId = cons(SymName, Arity, TypeCtorOfX)
                 ;
                     TypeCtorSymName = unqualified(_),
-                    unexpected(this_file,
-                        "resolve_unify_functor: unqualified type_ctor")
+                    unexpected($module, $pred, "unqualified type_ctor")
                 )
             )
         ;
@@ -1304,8 +1301,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
         ( type_list_subsumes([FieldArgType], [FieldType], FieldSubst) ->
             apply_rec_subst_to_type_list(FieldSubst, ArgTypes0, ArgTypes)
         ;
-            unexpected(this_file,
-                "translate_get_function: type_list_subsumes failed")
+            unexpected($module, $pred, "type_list_subsumes failed")
         )
     ;
         ExistQVars = [],
@@ -1376,7 +1372,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
             remove_new_prefix(ConsName, ConsName0),
             ConsId = cons(ConsName, ConsArity, TypeCtor)
         ;
-            unexpected(this_file, "translate_set_function: invalid cons_id")
+            unexpected($module, $pred, "invalid cons_id")
         )
     ),
 
@@ -1444,17 +1440,11 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
         ( type_list_to_var_list(ActualExistQVarTypes, ActualExistQVars0) ->
             ActualExistQVars = ActualExistQVars0
         ;
-            unexpected(this_file, "existq_tvar bound to non-var")
+            unexpected($module, $pred, "existq_tvar bound to non-var")
         )
     ),
-    ( type_to_ctor_and_args(TermType, _, TypeArgs) ->
-        map.from_corresponding_lists(TypeParams, TypeArgs, UnivTSubst)
-    ;
-        unexpected(this_file,
-            "get_cons_id_arg_types_adding_existq_tvars: " ++
-            "type_to_ctor_and_args failed")
-
-    ),
+    type_to_ctor_and_args_det(TermType, _, TypeArgs),
+    map.from_corresponding_lists(TypeParams, TypeArgs, UnivTSubst),
     apply_subst_to_type_list(UnivTSubst, ActualArgTypes0, ActualArgTypes).
 
 :- pred constraint_list_subsumes_det(list(prog_constraint)::in,
@@ -1469,7 +1459,7 @@ constraint_list_subsumes_det(ConstraintsA, ConstraintsB, Subst) :-
     ->
         Subst = Subst1
     ;
-        unexpected(this_file, "constraint_list_subsumes_det: failed")
+        unexpected($module, $pred, "failed")
     ).
 
 :- pred unify_constraint_list(list(prog_constraint)::in,
@@ -1495,7 +1485,7 @@ split_list_at_index(Index, List, Before, At, After) :-
         At = At0,
         After = After0
     ;
-        unexpected(this_file, "split_list_at_index")
+        unexpected($module, $pred, "split_list_at_index")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1522,15 +1512,14 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ; TermTypeBody = hlds_solver_type(_, _)
         ; TermTypeBody = hlds_abstract_type(_)
         ),
-        unexpected(this_file, "get_constructor_containing_field: not du type")
+        unexpected($module, $pred, "not du type")
     ).
 
 :- pred get_constructor_containing_field_2(type_ctor::in,
     list(constructor)::in, ctor_field_name::in, cons_id::out, int::out) is det.
 
 get_constructor_containing_field_2(_, [], _, _, _) :-
-    unexpected(this_file,
-        "get_constructor_containing_field: can't find field").
+    unexpected($module, $pred, "can't find field").
 get_constructor_containing_field_2(TypeCtor, [Ctor | Ctors], FieldName,
         ConsId, FieldNumber) :-
     Ctor = ctor(_, _, SymName, CtorArgs, _Ctxt),
@@ -1658,11 +1647,5 @@ check_for_missing_type_defns_2(TypeCtor, TypeDefn, !Specs) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "post_typecheck.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module post_typecheck.
+:- end_module check_hlds.post_typecheck.
 %-----------------------------------------------------------------------------%

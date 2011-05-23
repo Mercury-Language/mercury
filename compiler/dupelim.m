@@ -235,7 +235,8 @@ process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
     map.lookup(!.BlockMap, Exemplar, ExemplarInfo0),
     ExemplarInfo0 = block_info(ExLabel, ExLabelInstr, ExInstrs0,
         ExFallInto, ExSideLabels, ExMaybeFallThrough),
-    expect(unify(Exemplar, ExLabel), this_file, "exemplar label mismatch"),
+    expect(unify(Exemplar, ExLabel), $module, $pred,
+        "exemplar label mismatch"),
     process_elim_labels(ElimLabels, ExInstrs0, !LabelSeq, !.BlockMap,
         Exemplar, !ReplMap, UnifiedInstrs,
         ExMaybeFallThrough, UnifiedMaybeFallThrough),
@@ -266,7 +267,8 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
     map.lookup(BlockMap, ElimLabel, ElimLabelInfo),
     ElimLabelInfo = block_info(ElimLabel2, _, ElimInstrs,
         _, _, ElimMaybeFallThrough),
-    expect(unify(ElimLabel, ElimLabel2), this_file, "elim label mismatch"),
+    expect(unify(ElimLabel, ElimLabel2), $module, $pred,
+        "elim label mismatch"),
     (
         most_specific_block(Instrs0, !.MaybeFallThrough, ElimInstrs,
             ElimMaybeFallThrough, Instrs1, !:MaybeFallThrough)
@@ -276,7 +278,7 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
         process_elim_labels(ElimLabels, Instrs1, !LabelSeq, BlockMap,
             Exemplar, !ReplMap, Instrs, !MaybeFallThrough)
     ;
-        unexpected(this_file,
+        unexpected($module, $pred,
             "blocks with same standard form don't antiunify")
     ).
 
@@ -479,7 +481,7 @@ standardize_lval(Lval0, Lval) :-
         Lval = field(no, Addr, FieldNum)
     ;
         Lval0 = lvar(_),
-        unexpected(this_file, "lvar in standardize_lval")
+        unexpected($module, $pred, "lvar")
     ).
 
     % Compute the standard form of an rval.
@@ -508,7 +510,7 @@ standardize_rval(Rval0, Rval) :-
         Rval = binop(Binop, RvalL, RvalR)
     ;
         Rval0 = var(_),
-        unexpected(this_file, "var in standardize_rval")
+        unexpected($module, $pred, "var")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -883,7 +885,7 @@ most_specific_lval(LvalA, LvalB, Lval) :-
         Lval = field(MaybeTag, Addr, FieldNum)
     ;
         LvalA = lvar(_),
-        unexpected(this_file, "lvar in most_specific_lval")
+        unexpected($module, $pred, "lvar")
     ).
 
     % This predicate computes the most specific rval that
@@ -899,7 +901,7 @@ most_specific_rval(RvalA, RvalB, Rval) :-
         Rval = lval(Lval)
     ;
         RvalA = var(_),
-        unexpected(this_file, "var in most_specific_rval")
+        unexpected($module, $pred, "var")
     ;
         ( RvalA = mkword(_, _)
         ; RvalA = const(_)
@@ -921,11 +923,5 @@ most_specific_rval(RvalA, RvalB, Rval) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "dupelim.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module dupelim.
+:- end_module ll_backend.dupelim.
 %-----------------------------------------------------------------------------%

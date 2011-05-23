@@ -308,7 +308,7 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
             true
         )
     ;
-        unexpected(this_file, "ml_gen_cast: wrong number of args for cast")
+        unexpected($module, $pred, "wrong number of args for cast")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -579,9 +579,9 @@ ml_gen_copy_args_to_locals_2(Info, [LocalLval | LocalLvals], [Type | Types],
     ml_gen_copy_args_to_locals_2(Info, LocalLvals, Types, ArgNum + 1,
         Context, Statements).
 ml_gen_copy_args_to_locals_2(_Info, [], [_ | _], _, _, _) :-
-    unexpected(this_file, "ml_gen_copy_args_to_locals_2: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 ml_gen_copy_args_to_locals_2(_Info, [_ | _], [], _, _, _) :-
-    unexpected(this_file, "ml_gen_copy_args_to_locals_2: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 :- func ml_gen_arg_name(int) = mlds_var_name.
 
@@ -702,7 +702,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
             )
         )
     ;
-        unexpected(this_file, "ml_gen_arg_list: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
     % ml_gen_mem_addr(Lval) returns a value equal to &Lval.
@@ -719,9 +719,6 @@ ml_gen_mem_addr(Lval) =
 % Code for builtins.
 %
 
-    %
-    % Generate MLDS code for a call to a builtin procedure.
-    %
 ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
         !Info) :-
     ml_gen_var_list(!.Info, ArgVars, ArgLvals),
@@ -734,7 +731,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
     ->
         SimpleCode = SimpleCode0
     ;
-        unexpected(this_file, "ml_gen_builtin: unknown builtin predicate")
+        unexpected($module, $pred, "unknown builtin predicate")
     ),
     (
         CodeModel = model_det,
@@ -761,11 +758,11 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
                     ml_lval(ValueLval), Context),
                 Statements = [Statement]
             ;
-                unexpected(this_file, "malformed ref_assign")
+                unexpected($module, $pred, "malformed ref_assign")
             )
         ;
             SimpleCode = test(_),
-            unexpected(this_file, "malformed model_det builtin predicate")
+            unexpected($module, $pred, "malformed model_det builtin predicate")
         ;
             SimpleCode = noop(_),
             Statements = []
@@ -779,17 +776,20 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
             Statements = [Statement]
         ;
             SimpleCode = ref_assign(_, _),
-            unexpected(this_file, "malformed model_semi builtin predicate")
+            unexpected($module, $pred,
+                "malformed model_semi builtin predicate")
         ;
             SimpleCode = assign(_, _),
-            unexpected(this_file, "malformed model_semi builtin predicate")
+            unexpected($module, $pred,
+                "malformed model_semi builtin predicate")
         ;
             SimpleCode = noop(_),
-            unexpected(this_file, "malformed model_semi builtin predicate")
+            unexpected($module, $pred,
+                "malformed model_semi builtin predicate")
         )
     ;
         CodeModel = model_non,
-        unexpected(this_file, "model_non builtin predicate")
+        unexpected($module, $pred, "model_non builtin predicate")
     ),
     Decls = [].
 
@@ -804,11 +804,5 @@ ml_gen_simple_expr(binary(Op, ExprA, ExprB)) =
     ml_binop(Op, ml_gen_simple_expr(ExprA), ml_gen_simple_expr(ExprB)).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_call_gen.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module ml_call_gen.
+:- end_module ml_backend.ml_call_gen.
 %-----------------------------------------------------------------------------%

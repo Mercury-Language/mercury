@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2010 The University of Melbourne.
+% Copyright (C) 2002, 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -245,7 +245,7 @@ term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
             ( polyhedron.is_empty(OldPolyhedron) ->
                 ChangeFlag = no
             ;
-                unexpected(this_file, "old polyhedron is empty.")
+                unexpected($module, $pred, "old polyhedron is empty")
             )
         ;
             % If the procedure is not recursive then we need only perform one
@@ -429,7 +429,8 @@ term_traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-
     %
  :- func pairwise_map(func(T, T) = T, list(T)) = T.
 
-pairwise_map(_, []) = _ :- unexpected(this_file, "pairwise_map: empty list").
+pairwise_map(_, []) = _ :-
+    unexpected($module, $pred, "empty list").
 pairwise_map(_, [X]) = X.
 pairwise_map(Op, List @ [_, _ | _]) = X :-
     pairwise_map_2(Op, List, [], X0),
@@ -478,12 +479,6 @@ test_fixpoint(NewPoly, OldPoly, SizeVarSet) = ChangeFlag :-
     ;
         ChangeFlag = no
     ).
-
-%-----------------------------------------------------------------------------
-
-:- func this_file = string.
-
-this_file = "term_constr_fixpoint.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_fixpoint.

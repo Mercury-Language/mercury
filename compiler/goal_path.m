@@ -238,7 +238,7 @@ fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNum, !ContainingGoalMap,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "fill_goal_id_slots: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ),
@@ -402,7 +402,7 @@ fill_goal_path_slots(RevSteps0, SlotInfo, Goal0, Goal) :-
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "fill_goal_path_slots: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ),
@@ -457,11 +457,5 @@ fill_orelse_path_slots(RevSteps0, N0, SlotInfo,
     fill_orelse_path_slots(RevSteps0, N1, SlotInfo, Goals0, Goals).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "goal_path.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module goal_path.
+:- end_module hlds.goal_path.
 %-----------------------------------------------------------------------------%

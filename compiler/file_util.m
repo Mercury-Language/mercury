@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2008-2010 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -290,12 +290,6 @@ report_error_to_stream(Stream, ErrorMessage, !IO) :-
     io.set_output_stream(Stream, OldStream, !IO),
     report_error(ErrorMessage, !IO),
     io.set_output_stream(OldStream, _, !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "file_util.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.file_util.

@@ -178,8 +178,7 @@ prove_termination_in_scc_single_arg(SCC, PassInfo, Terminates, !ModuleInfo,
             PassInfo, Terminates, !ModuleInfo, !IO)
     ;
         SCC = [],
-        unexpected(this_file,
-            "prove_termination_in_scc_single_arg/3: empty SCC.")
+        unexpected($module, $pred, "empty SCC")
     ).
 
     % Find a procedure of minimum arity among the given list and the tentative
@@ -395,7 +394,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
     term_traverse_goal(Goal, Params, Info0, Info, !ModuleInfo, !IO),
     (
         Info = term_traversal_ok(Paths, CanLoop),
-        expect(unify(CanLoop, []), this_file,
+        expect(unify(CanLoop, []), $module, $pred,
             "can_loop detected in pass2 but not pass1"),
         set.to_sorted_list(Paths, PathList),
         upper_bound_active_vars(PathList, ActiveVars),
@@ -413,7 +412,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
             !ModuleInfo, !IO)
     ;
         Info = term_traversal_error(Errors, CanLoop),
-        expect(unify(CanLoop, []), this_file, 
+        expect(unify(CanLoop, []), $module, $pred, 
             "can_loop detected in pass2 but not pass1"),
         Result = term_pass2_error(Errors)
     ).
@@ -426,11 +425,9 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
 
 update_rec_input_suppliers([], _, _, [], [], !RecBag).
 update_rec_input_suppliers([_ | _], _, _, [], [], _, _) :-
-    unexpected(this_file,
-        "update_rec_input_suppliers/7: unmatched variables.").
+    unexpected($module, $pred, "unmatched variables").
 update_rec_input_suppliers([], _, _, [_ | _], [], _, _) :-
-    unexpected(this_file,
-        "update_rec_input_suppliers/7: unmatched variables.").
+    unexpected($module, $pred, "unmatched variables").
 update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
         [RecInputSupplier0 | RecInputSuppliers0],
         [RecInputSupplier | RecInputSuppliers], !RecBag) :-
@@ -485,15 +482,13 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
         Context = ContextPrime
     ;
         CallSite = no,
-        unexpected(this_file,
-            "add_call_arcs/4: no call site in path in stage 2.")
+        unexpected($module, $pred, "no call site in path in stage 2")
     ),
     (
         GammaVars = []
     ;
         GammaVars = [_ | _],
-        unexpected(this_file,
-            "add_call_arc/4: gamma variables in path in stage 2.")
+        unexpected($module, $pred, "gamma variables in path in stage 2")
     ),
     !.CallInfo = call_weight_info(InfCalls0, CallWeights0),
     ( bag.is_subbag(ActiveVars, RecInputSuppliers) ->
@@ -626,10 +621,6 @@ zero_or_positive_weight_cycles_from_neighbour(CurPPId - (Context - EdgeWeight),
 
 map_to_no(_, no).
 
-:- func this_file = string.
-
-this_file = "term_pass2.m".
-
 %-----------------------------------------------------------------------------%
-:- end_module term_pass2.
+:- end_module transform_hlds.term_pass2.
 %-----------------------------------------------------------------------------%

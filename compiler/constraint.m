@@ -213,7 +213,7 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
         FinalGoals = [hlds_goal(GoalExpr, GoalInfo) | ConstraintGoals]
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "propagate_conj_sub_goal_2: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -840,11 +840,5 @@ strip_constraint_markers_expr(Goal) = Goal :-
     Goal = shorthand(_).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "constraint.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module constraint.
+:- end_module transform_hlds.constraint.
 %-----------------------------------------------------------------------------%

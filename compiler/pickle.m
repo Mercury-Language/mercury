@@ -170,7 +170,7 @@ pickle_args(Pickles, N, Arity, T, !IO) :-
             pickle(Pickles, Arg, !IO),
             pickle_args(Pickles, N + 1, Arity, T, !IO)
         ;
-            unexpected(this_file, "pickle_args: unable to deconstruct arg")
+            unexpected($module, $pred, "unable to deconstruct arg")
         )
     ).
 
@@ -306,11 +306,11 @@ unpickle_2(Unpicklers, Handle, TypeDesc, Univ, !State) :-
                 ( Univ0 = construct(TypeDesc, N, ArgUnivs) ->
                     Univ = Univ0
                 ;
-                    unexpected(this_file, "unpickle_2: unable to construct")
+                    unexpected($module, $pred, "unable to construct")
                 )
             )
         ;
-            unexpected(this_file, "unpickle_2: unable to unpickle")
+            unexpected($module, $pred, "unable to unpickle")
         )
     ).
 
@@ -538,12 +538,6 @@ get_byte(Bitmap, Byte, Index, Index + 1) :-
         Msg = "byte " ++ string.from_int(Index) ++ " is out of range",
         throw(get_byte_out_of_range(Msg))
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "libs.pickle".
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.pickle.

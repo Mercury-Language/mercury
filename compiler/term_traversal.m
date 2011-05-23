@@ -153,8 +153,7 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
                 Gamma = 0 - Gamma0,
                 record_change(InVars, OutVars, Gamma, [], !Info)
             ;
-                unexpected(this_file,
-                    "traverse_goal_2/5: higher order deconstruction.")
+                unexpected($module, $pred, "higher order deconstruction")
             )
         ;
             Unification = assign(OutVar, InVar),
@@ -166,7 +165,7 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
             Unification = simple_test(_InVar1, _InVar2)
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected(this_file, "traverse_goal: complicated unify.")
+            unexpected($module, $pred, "complicated unify")
         )
     ;
         GoalExpr = plain_call(CallPredId, CallProcId, Args, _, _, _),
@@ -336,7 +335,7 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "traverse_goal_2/5: shorthand goal.")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -492,11 +491,9 @@ combine_paths(InfoA, InfoB, Params, Info) :-
 compute_rec_start_vars([], [], Out) :-
     bag.init(Out).
 compute_rec_start_vars([_ | _], [], _Out) :-
-    unexpected(this_file,
-        "compute_rec_start_vars/3: unmatched variables.").
+    unexpected($module, $pred, "unmatched variables").
 compute_rec_start_vars([], [_ | _], _Out) :-
-    unexpected(this_file,
-        "compute_rec_start_vars/3: unmatched variables.").
+    unexpected($module, $pred, "unmatched variables").
 compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
         Out) :-
     compute_rec_start_vars(Vars, RecInputSuppliers, Out1),
@@ -693,11 +690,5 @@ params_get_max_errors(Params, Params ^ term_trav_max_errors).
 params_get_max_paths(Params, Params ^ term_trav_max_paths).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_traversal.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module term_traversal.
+:- end_module transform_hlds.term_traversal.
 %-----------------------------------------------------------------------------%

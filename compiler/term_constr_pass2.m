@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2010 The University of Melbourne.
+% Copyright (C) 2002, 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -265,7 +265,8 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
             MaybeArgSizeInfo = CallTermInfo ^ success_constrs,
             (
                 MaybeArgSizeInfo = no,
-                unexpected(this_file, "Proc with no arg size info in pass 2.")
+                unexpected($module, $pred,
+                    "proc with no arg size info in pass 2")
             ;
                 MaybeArgSizeInfo = yes(ArgSizePolyhedron0),
                 ( polyhedron.is_universe(ArgSizePolyhedron0) ->
@@ -279,8 +280,8 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
                         CallProc = CallProc0
                     ;
                         MaybeCallProc = no,
-                        unexpected(this_file,
-                            "No abstract representation for proc.")
+                        unexpected($module, $pred,
+                            "no abstract representation for proc")
                     ),
                     HeadVars = CallProc ^ ap_head_vars,
                     Subst = map.from_corresponding_lists(HeadVars, CallVars),
@@ -445,7 +446,7 @@ partition_cycles([Proc | Procs], Cycles0) = CycleSets :-
     = abstract_proc.
 
 get_proc_from_abstract_scc([], _) = _ :-
-    unexpected(this_file, "Cannot find proc.").
+    unexpected($module, $pred, "cannot find proc").
 get_proc_from_abstract_scc([Proc | Procs], PPId) =
     ( Proc ^ ap_ppid = PPId ->
         Proc
@@ -506,7 +507,7 @@ strict_decrease_around_loop(AbstractSCC, SizeVarSet, PPId, Loop) :-
         ; PPId \= Loop ^ tcge_callee
         )
     ->
-        unexpected(this_file, "Badly formed loop.")
+        unexpected($module, $pred, "badly formed loop")
     ;
         true
     ),
@@ -553,7 +554,7 @@ collapse_cycle(StartPPId, Cycle) = CollapsedCycle :-
     Cycle = term_cg_cycle(_, Edges0),
     (
         Edges0 = [],
-        unexpected(this_file, "Trying to collapse a cycle with no edges.")
+        unexpected($module, $pred, "trying to collapse a cycle with no edges")
     ;
         Edges0 = [Edge],
         CollapsedCycle = Edge
@@ -570,7 +571,7 @@ collapse_cycle(StartPPId, Cycle) = CollapsedCycle :-
                 HeadVars, CallVars, Zeros, Polyhedron)
         ;
             Edges = [],
-            unexpected(this_file, "Error while collapsing cycles.")
+            unexpected($module, $pred, "error while collapsing cycles")
         )
     ).
 
@@ -691,12 +692,6 @@ write_edge(ModuleInfo, SizeVarSet, Edge, !IO) :-
     write_size_vars(SizeVarSet, Edge ^ tcge_call_args, !IO),
     io.write_string(" :- \n", !IO),
     io.nl(!IO).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_constr_pass2.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_pass2.

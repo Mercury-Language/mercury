@@ -986,7 +986,7 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
     ;
         % If there is no matching predicate for this call, then this predicate
         % must have a type error which should have been caught by typechecking.
-        unexpected(this_file, "type error in pred call: no matching pred")
+        unexpected($module, $pred, "type error in pred call: no matching pred")
     ).
 
 find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
@@ -1041,8 +1041,7 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
                     nl],
                 write_error_pieces(Globals, Context, 0, Pieces, !IO)
             ),
-            unexpected(this_file,
-                "find_matching_pred_id: unresolvable predicate overloading")
+            unexpected($module, $pred, "unresolvable predicate overloading")
         ;
             ThePredId = PredId
         )
@@ -1106,10 +1105,9 @@ get_pred_id_and_proc_id_by_types(IsFullyQualified, SymName, PredOrFunc,
         PredOrFuncStr = prog_out.pred_or_func_to_str(PredOrFunc),
         NameStr = sym_name_to_string(SymName),
         string.int_to_string(Arity, ArityString),
-        string.append_list(["get_pred_id_and_proc_id_by_types: ",
-            "undefined/invalid ", PredOrFuncStr,
+        string.append_list(["undefined/invalid ", PredOrFuncStr,
             "\n`", NameStr, "/", ArityString, "'"], Msg),
-        unexpected(this_file, Msg)
+        unexpected($module, $pred, Msg)
     ),
     get_proc_id(ModuleInfo, PredId, ProcId).
 
@@ -1140,7 +1138,7 @@ get_proc_id(ModuleInfo, PredId, ProcId) :-
                 "(use an explicit lambda expression instead)"],
                 Message)
         ),
-        unexpected(this_file, Message)
+        unexpected($module, $pred, Message)
     ).
 
 lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
@@ -1178,9 +1176,8 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
         PredId = PredId0
     ;
         string.int_to_string(Arity, ArityS),
-        string.append_list(["can't locate ", ProcName, "/", ArityS],
-            ErrorMessage),
-        unexpected(this_file, ErrorMessage)
+        unexpected($module, $pred, 
+            "can't locate " ++ ProcName ++ "/" ++ ArityS)
     ),
     module_info_pred_info(Module, PredId, PredInfo),
     ProcIds = pred_info_procids(PredInfo),
@@ -1189,7 +1186,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
         ( ProcIds = [ProcId0] ->
             ProcId = ProcId0
         ;
-            unexpected(this_file,
+            unexpected($module, $pred,
                 string.format("expected single mode for %s/%d",
                     [s(ProcName), i(Arity)]))
         )
@@ -1198,7 +1195,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
         ( list.index0(ProcIds, N, ProcId0) ->
             ProcId = ProcId0
         ;
-            unexpected(this_file,
+            unexpected($module, $pred,
                 string.format("there is no mode %d for %s/%d",
                     [i(N), s(ProcName), i(Arity)]))
         )
@@ -1208,9 +1205,5 @@ get_next_pred_id(PredTable, NextPredId) :-
     NextPredId = PredTable ^ next_pred_id.
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "pred_table.m".
-
+:- end_module hlds.pred_table.
 %-----------------------------------------------------------------------------%

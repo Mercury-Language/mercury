@@ -564,7 +564,7 @@ output_block_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
 output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
     (
         Expr = elds_block([]),
-        unexpected(this_file, "output_expr: empty elds_block")
+        unexpected($module, $pred, "empty elds_block")
     ;
         Expr = elds_block(Exprs @ [_ | _]),
         io.write_string("(begin", !IO),
@@ -754,7 +754,7 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
     ;
         Term = elds_char(Char),
         Int = char.to_int(Char),
-        (if char.is_alnum(Char) then
+        ( if char.is_alnum(Char) then
             io.write_char('$', !IO),
             io.write_char(Char, !IO)
         else if escape(Esc, Int) then
@@ -870,7 +870,7 @@ output_var_string(String, !IO) :-
 :- pred output_var_string_2(char::in, io::di, io::uo) is det.
 
 output_var_string_2(C, !IO) :-
-    (if char.is_alnum_or_underscore(C) then
+    ( if char.is_alnum_or_underscore(C) then
         io.write_char(C, !IO)
     else
         io.write_int(char.to_int(C), !IO)
@@ -942,7 +942,7 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
             "__arity", string.from_int(ClassArity), "__", InstanceStr])
     ),
     Atom = shorten_long_atom_name(Atom1),
-    (if CurModuleName \= InstanceModule then
+    ( if CurModuleName \= InstanceModule then
         output_atom(erlang_module_name_to_str(InstanceModule), !IO),
         io.write_char(':', !IO)
     else
@@ -961,7 +961,7 @@ shorten_long_atom_name(Name0) = Name :-
     % Erlang compiler may mangle it (e.g. to derive the names of anonymous
     % functions) which would then exceed the limit.
     % This assumes the atom name consists of only ASCII characters.
-    (if string.length(Name0) =< 200 then
+    ( if string.length(Name0) =< 200 then
         Name = Name0
     else
         % Use only lower 32 bits of the hash value so that the result is the
@@ -1095,9 +1095,8 @@ erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPred - TypeCtor,
         ProcNameStr = ProcNameStr1 ++ TypeName ++ "_" ++
             string.from_int(TypeArity) ++ "_" ++ string.from_int(ModeNum)
     ;
-        unexpected(this_file,
-            "erlang_special_proc_name: cannot make label for special pred " ++
-            PredName)
+        unexpected($module, $pred,
+            "cannot make label for special pred " ++ PredName)
     ).
 
 :- func erlang_module_name_to_str(module_name) = string.
@@ -1111,7 +1110,7 @@ erlang_module_name_to_str(ModuleName) = String :-
 :- pred output_atom(string::in, io::di, io::uo) is det.
 
 output_atom(String, !IO) :-
-    (if 
+    ( if 
         string.index(String, 0, FirstChar),
         char.is_lower(FirstChar),
         string.is_all_alnum_or_underscore(String),
@@ -1347,9 +1346,5 @@ maybe_write_comma(yes, !IO) :-
     comma(!IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "elds_to_erlang.m".
-
+:- end_module erl_backend.elds_to_erlang.
 %-----------------------------------------------------------------------------%

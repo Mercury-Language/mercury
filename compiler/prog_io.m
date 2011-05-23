@@ -41,7 +41,7 @@
 % 3.  improve the error reporting (most of the semidet preds should
 %     be det and should return a meaningful indication of where an
 %     error occurred).
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io.
@@ -507,8 +507,7 @@ check_end_module(EndModule, !Items, !Specs, !Error) :-
     ;
         % If there's no `:- module' declaration at this point, it is
         % an internal error -- read_first_item should have inserted one.
-        unexpected(this_file,
-            "check_end_module: no `:- module' declaration")
+        unexpected($module, $pred, "no `:- module' declaration")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2400,9 +2399,7 @@ inst_var_constraints_are_consistent_in_inst(Inst, !Sub) :-
         )
     ;
         Inst = inst_var(_),
-        unexpected(this_file,
-            "inst_var_constraints_are_consistent_in_inst: " ++
-            "unconstrained inst_var")
+        unexpected($module, $pred, "unconstrained inst_var")
     ;
         Inst = defined_inst(InstName),
         ( InstName = user_inst(_, Insts) ->
@@ -2596,9 +2593,5 @@ make_external(MaybeBackend, Context, SeqNum, SymSpec, Item) :-
 %     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_io.m".
-
+:- end_module parse_tree.prog_io.
 %-----------------------------------------------------------------------------%

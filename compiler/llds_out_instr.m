@@ -133,8 +133,8 @@ output_record_instr_decls(Info, Instr, !DeclSet, !IO) :-
         ->
             DeclId = decl_foreign_proc_struct(StructName),
             ( decl_set_is_member(DeclId, !.DeclSet) ->
-                Msg = "struct " ++ StructName ++ " has been declared already",
-                unexpected(this_file, Msg)
+                unexpected($module, $pred,
+                    "struct " ++ StructName ++ " has been declared already")
             ;
                 true
             ),
@@ -365,11 +365,10 @@ output_instruction_list_while_block(Info, [Instr | Instrs], Label, ProfInfo,
         !IO) :-
     Instr = llds_instr(Uinstr, Comment),
     ( Uinstr = label(_) ->
-        unexpected(this_file, "label in block")
+        unexpected($module, $pred, "label in block")
     ; Uinstr = goto(code_label(Label)) ->
         io.write_string("\tcontinue;\n", !IO),
-        expect(unify(Instrs, []), this_file,
-            "output_instruction_list_while_block: code after goto")
+        expect(unify(Instrs, []), $module, $pred, "code after goto")
     ; Uinstr = if_val(Rval, code_label(Label)) ->
         io.write_string("\tif (", !IO),
         output_test_rval(Info, Rval, !IO),
@@ -388,7 +387,7 @@ output_instruction_list_while_block(Info, [Instr | Instrs], Label, ProfInfo,
         output_instruction_list_while_block(Info, Instrs, Label,
             ProfInfo, !IO)
     ; Uinstr = block(_, _, _) ->
-        unexpected(this_file, "block in block")
+        unexpected($module, $pred, "block in block")
     ;
         output_instruction_and_comment(Info, Uinstr, Comment, ProfInfo, !IO),
         output_instruction_list_while_block(Info, Instrs, Label,
@@ -572,7 +571,7 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
                     output_code_addr(FailCont, !IO)
                 ;
                     MaybeFailCont = no,
-                    unexpected(this_file, "output_instruction: no failcont")
+                    unexpected($module, $pred, "no failcont")
                 ),
                 io.write_string(");\n", !IO)
             ;
@@ -583,7 +582,7 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
                     output_code_addr(FailCont, !IO)
                 ;
                     MaybeFailCont = no,
-                    unexpected(this_file, "output_instruction: no failcont")
+                    unexpected($module, $pred, "no failcont")
                 ),
                 io.write_string(");\n", !IO)
             )
@@ -1125,7 +1124,7 @@ output_call(Info, Target, Continuation, CallerLabel, !IO) :-
                 % We should never get here; the conditions that lead here
                 % in this switch should have been caught by the first
                 % if-then-else condition that tests Target.
-                unexpected(this_file, "output_call: calling label")
+                unexpected($module, $pred, "calling label")
             ;
                 NeedsPrefix = yes,
                 Wrapper = wrapper_none,
@@ -2003,12 +2002,6 @@ output_foreign_proc_output(Info, Output, !IO) :-
     ),
     io.write_string(";\n", !IO).
 
-%----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "llds_out_instr.m".
-
 %---------------------------------------------------------------------------%
-:- end_module llds_out_instr.
+:- end_module ll_backend.llds_out.llds_out_instr.
 %---------------------------------------------------------------------------%

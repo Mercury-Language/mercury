@@ -277,9 +277,9 @@ mode_is_undefined(ModuleInfo, Mode) :-
 
 modes_to_arg_modes(_ModuleInfo, [], [], []).
 modes_to_arg_modes(_ModuleInfo, [], [_ | _], _) :-
-        unexpected(this_file, "modes_to_arg_modes: length mismatch").
+        unexpected($module, $pred, "length mismatch").
 modes_to_arg_modes(_ModuleInfo, [_ | _], [], _) :-
-        unexpected(this_file, "modes_to_arg_modes: length mismatch").
+        unexpected($module, $pred, "length mismatch").
 modes_to_arg_modes(ModuleInfo, [Mode | Modes], [Type | Types],
         [ArgMode | ArgModes]) :-
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
@@ -355,11 +355,11 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
     ;
         HeadVars = [],
         HeadModes = [_ | _],
-        unexpected(this_file, "select_output_vars: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ;
         HeadVars = [_ | _],
         HeadModes = [],
-        unexpected(this_file, "select_output_vars: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -402,11 +402,10 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         ArgInst = any(Uniq, none)
     ;
         Inst = abstract_inst(_, _),
-        unexpected(this_file,
-            "get_single_arg_inst: abstract insts not supported")
+        unexpected($module, $pred, "abstract insts not supported")
     ;
         Inst = inst_var(_),
-        unexpected(this_file, "get_single_arg_inst: inst_var")
+        unexpected($module, $pred, "inst_var")
     ;
         Inst = constrained_inst_vars(_, InsideInst),
         get_single_arg_inst(ModuleInfo, InsideInst, ConsId, ArgInst)
@@ -434,9 +433,9 @@ get_single_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
     %
 modes_to_uni_modes(_ModuleInfo, [], [], []).
 modes_to_uni_modes(_ModuleInfo, [], [_ | _], _) :-
-    unexpected(this_file, "modes_to_uni_modes: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 modes_to_uni_modes(_ModuleInfo, [_ | _], [], _) :-
-    unexpected(this_file, "modes_to_uni_modes: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 modes_to_uni_modes(ModuleInfo, [X | Xs], [Y | Ys], [A | As]) :-
     mode_get_insts(ModuleInfo, X, InitialX, FinalX),
     mode_get_insts(ModuleInfo, Y, InitialY, FinalY),
@@ -543,9 +542,9 @@ propagate_types_into_mode_list(ModuleInfo, [Type | Types],
     propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode),
     propagate_types_into_mode_list(ModuleInfo, Types, Modes0, Modes).
 propagate_types_into_mode_list(_, [], [_ | _], []) :-
-    unexpected(this_file, "propagate_types_into_mode_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 propagate_types_into_mode_list(_, [_ | _], [], []) :-
-    unexpected(this_file, "propagate_types_into_mode_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 propagate_types_into_inst_list(_, _, [], [], []).
 propagate_types_into_inst_list(ModuleInfo, Subst, [Type | Types],
@@ -553,9 +552,9 @@ propagate_types_into_inst_list(ModuleInfo, Subst, [Type | Types],
     propagate_type_into_inst(ModuleInfo, Subst, Type, Inst0, Inst),
     propagate_types_into_inst_list(ModuleInfo, Subst, Types, Insts0, Insts).
 propagate_types_into_inst_list(_, _, [], [_ | _], []) :-
-    unexpected(this_file, "propagate_types_into_inst_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 propagate_types_into_inst_list(_, _, [_ | _], [], []) :-
-    unexpected(this_file, "propagate_types_into_inst_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
     % Given a type and a mode, produce a new mode that includes the
     % information provided by the type.
@@ -662,7 +661,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         Inst = free             % XXX temporary hack
     ;
         Inst0 = free(_),
-        unexpected(this_file, "propagate_ctor_info: type info already present")
+        unexpected($module, $pred, "type info already present")
     ;
         Inst0 = bound(Uniq, BoundInsts0),
         propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts),
@@ -760,8 +759,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         Inst = free             % XXX temporary hack
     ;
         Inst0 = free(_),
-        unexpected(this_file,
-            "propagate_ctor_info_lazily: typeinfo already present")
+        unexpected($module, $pred, "typeinfo already present")
     ;
         Inst0 = bound(Uniq, BoundInsts0),
         apply_type_subst(Type0, Subst, Type),
@@ -1038,7 +1036,7 @@ mode_get_insts(ModuleInfo, Mode, InstA, InstB) :-
         InstA = InstA0,
         InstB = InstB0
     ;
-        unexpected(this_file, "mode_get_insts_semidet failed")
+        unexpected($module, $pred, "mode_get_insts_semidet failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1270,8 +1268,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
                 VarTypes, InstMap0, NonLocals, InstMapDelta, !RI),
             (
                 Goals = [],
-                unexpected(this_file,
-                    "recompute_instmap_delta_2: Goals = []")
+                unexpected($module, $pred, "Goals = []")
             ;
                 Goals = [MainGoal | OrElseGoals]
             ),
@@ -1285,8 +1282,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file,
-                "recompute_instmap_delta_2: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ).
@@ -1433,9 +1429,9 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
 
 compute_inst_var_sub([], _, _, [], !Sub, !ModuleInfo).
 compute_inst_var_sub([_ | _], _, _, [], !Sub, !ModuleInfo) :-
-    unexpected(this_file, "compute_inst_var_sub").
+    unexpected($module, $pred, "length mismatch").
 compute_inst_var_sub([], _, _, [_ | _], !Sub, !ModuleInfo) :-
-    unexpected(this_file, "compute_inst_var_sub").
+    unexpected($module, $pred, "length mismatch").
 compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
         !Sub, !ModuleInfo) :-
     % This is similar to modecheck_var_has_inst.
@@ -1467,9 +1463,9 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
 
 recompute_instmap_delta_call_2([], _, [], [], !ModuleInfo).
 recompute_instmap_delta_call_2([_ | _], _, [], _, !ModuleInfo) :-
-    unexpected(this_file, "recompute_instmap_delta_call_2").
+    unexpected($module, $pred, "length mismatch").
 recompute_instmap_delta_call_2([], _, [_ | _], _, !ModuleInfo) :-
-    unexpected(this_file, "recompute_instmap_delta_call_2").
+    unexpected($module, $pred, "length mismatch").
 recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
         [Mode | Modes], !ModuleInfo) :-
     % This is similar to modecheck_set_var_inst.
@@ -1486,8 +1482,7 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
         ->
             Mode = (ArgInst0 -> UnifyInst)
         ;
-            unexpected(this_file,
-                "recompute_instmap_delta_call_2: unify_inst failed")
+            unexpected($module, $pred, "unify_inst failed")
         )
     ;
         Mode = (not_reached -> not_reached)
@@ -1535,8 +1530,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
                 ModuleInfo = ModuleInfo1,
                 !RI ^ ri_module_info := ModuleInfo
             ;
-                unexpected(this_file, "recompute_instmap_delta_unify: "
-                    ++ "abstractly_unify_inst failed")
+                unexpected($module, $pred, "abstractly_unify_inst failed")
             )
         ;
             % It wasn't in the instmap_delta, so the inst didn't change.
@@ -1603,8 +1597,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         MaybeInst = yes(bound(shared, [bound_functor(ConsId, [])]))
     ;   
         ConsId = impl_defined_const(_),
-        unexpected(this_file,
-            "cons_id_to_shared_inst: impl_defined_const")
+        unexpected($module, $pred, "impl_defined_const")
     ;
         ConsId = closure_cons(PredProcId, _),
         module_info_pred_proc_info(ModuleInfo,
@@ -1615,7 +1608,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         ( list.drop(NumArgs, ProcArgModes, ModesPrime) ->
             Modes = ModesPrime
         ;
-            unexpected(this_file, "cons_id_to_shared_inst: list.drop failed")
+            unexpected($module, $pred, "list.drop failed")
         ),
         Inst = ground(shared, higher_order(pred_inst_info(PorF, Modes, Det))),
         MaybeInst = yes(Inst)
@@ -1651,9 +1644,9 @@ get_arg_lives(ModuleInfo, [Mode | Modes], [IsLive | IsLives]) :-
 
 normalise_insts(_, [], [], []).
 normalise_insts(_, [], [_ | _], _) :-
-    unexpected(this_file, "normalise_insts: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 normalise_insts(_, [_ | _], [], _) :-
-    unexpected(this_file, "normalise_insts: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 normalise_insts(ModuleInfo, [Type | Types],
         [Inst0 | Insts0], [Inst | Insts]) :-
     normalise_inst(ModuleInfo, Type, Inst0, Inst),
@@ -1721,9 +1714,9 @@ fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
 %-----------------------------------------------------------------------------%
 
 partition_args(_, [], [_ | _], _, _) :-
-    unexpected(this_file, "partition_args").
+    unexpected($module, $pred, "length mismatch").
 partition_args(_, [_ | _], [], _, _) :-
-    unexpected(this_file, "partition_args").
+    unexpected($module, $pred, "length mismatch").
 partition_args(_, [], [], [], []).
 partition_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
         !:InputArgs, !:OutputArgs) :-
@@ -1735,9 +1728,5 @@ partition_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mode_util.m".
-
+:- end_module check_hlds.mode_util.
 %-----------------------------------------------------------------------------%

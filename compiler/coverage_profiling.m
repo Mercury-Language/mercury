@@ -203,10 +203,8 @@ coverage_prof_second_pass_goal(Goal0, Goal,
     ->
         GoalId = goal_id(GoalNum),
         UnknownMsg = string.format(
-            "coverage_prof_second_pass_goal: " ++
-            "Coverage information is unknown for goal_id %d\n",
-            [i(GoalNum)]),
-        unexpected(this_file, UnknownMsg)
+            "Coverage information is unknown for goal_id %d\n", [i(GoalNum)]),
+        unexpected($module, $pred, UnknownMsg)
     ;
         true
     ),
@@ -315,7 +313,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
             AddedImpurityInner)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "coverage_prof_second_pass_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
 
     % Step 2.
@@ -975,7 +973,7 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
             PortCountsCoverageAfterElse, PortCountsCoverageAfterDirect)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "coverage_prof_first_pass: shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
 
     (
@@ -1003,8 +1001,7 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
         DPInfo = dp_goal_info(IsProfilingInstrumentation, yes(Info))
     ;
         MaybeDPInfo0 = no,
-        unexpected(this_file,
-            "coverage_prof_first_pass: goal_dp_info not present")
+        unexpected($module, $pred, "goal_dp_info not present")
     ),
     goal_info_set_maybe_dp_info(yes(DPInfo), GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
@@ -1340,7 +1337,7 @@ goal_info_get_dp_info(GoalInfo) = DPInfo :-
         MaybeDPInfo = yes(DPInfo)
     ;
         MaybeDPInfo = no,
-        unexpected(this_file, "goal_info_get_dp_info: MaybeDPInfo = no")
+        unexpected($module, $pred, "MaybeDPInfo = no")
     ).
 
 :- func goal_info_get_maybe_dp_coverage_info(hlds_goal_info) =
@@ -1371,11 +1368,5 @@ goal_get_maybe_dp_port_counts_coverage(Goal) = PortCountsGiveCoverageAfter :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "coverage_profiling.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module coverage_profiling.
+:- end_module ll_backend.coverage_profiling.
 %-----------------------------------------------------------------------------%

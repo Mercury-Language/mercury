@@ -457,8 +457,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
         UnivCs = OtherUnivCs,
         ClassContext = constraints(UnivCs, ExistCs)
     ;
-        unexpected(this_file,
-            "check_instance_pred: no constraint on class method")
+        unexpected($module, $pred, "no constraint on class method")
     ),
     MethodName0 = pred_info_name(PredInfo),
     PredModule = pred_info_module(PredInfo),
@@ -1826,7 +1825,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
         MatchingInstanceMethods = [FirstInstance | LaterInstances]
     ;
         MatchingInstanceMethods = [],
-        unexpected(this_file, "no matching instances")
+        unexpected($module, $pred, "no matching instances")
     ),
     FirstInstanceContext = FirstInstance ^ instance_method_decl_context,
     FirstPieces = [words("First definition appears here."), nl],
@@ -1915,7 +1914,7 @@ format_method_name(Method) = MethodName :-
 report_cyclic_classes(ClassTable, ClassPath) = Spec :-
     (
         ClassPath = [],
-        unexpected(this_file, "report_cyclic_classes: empty cycle found.")
+        unexpected($module, $pred, "empty cycle found.")
     ;
         ClassPath = [ClassId | Tail],
         Context = map.lookup(ClassTable, ClassId) ^ class_context,
@@ -2142,11 +2141,5 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars) = Spec :-
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "check_typeclass.m".
-
-%---------------------------------------------------------------------------%
-:- end_module check_typeclass.
+:- end_module check_hlds.check_typeclass.
 %---------------------------------------------------------------------------%

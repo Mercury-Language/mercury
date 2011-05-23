@@ -285,8 +285,7 @@ functor_norm(_ModuleInfo, FunctorInfo, TypeCtor, ConsId, Int, !Args, !Modes) :-
             ( functor_norm_filter_args(UseArgList, !Args, !Modes) ->
                 true
             ;
-                unexpected(this_file,
-                    "Unmatched lists in functor_norm_filter_args.")
+                unexpected($module, $pred, "unmatched lists")
             )
         ;
             Int = 0
@@ -360,11 +359,5 @@ zero_size_type_category(CtorCat, ZeroSize) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "term_norm.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module term_norm.
+:- end_module transform_hlds.term_norm.
 %-----------------------------------------------------------------------------%

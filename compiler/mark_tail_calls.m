@@ -85,7 +85,7 @@ find_maybe_output_args(ModuleInfo, Types, Modes, Vars, Outputs) :-
     ( find_maybe_output_args_2(ModuleInfo, Types, Modes, Vars, OutputsPrime) ->
         Outputs = OutputsPrime
     ;
-        unexpected(this_file, "find_maybe_output_args: list length mismatch")
+        unexpected($module, $pred, "list length mismatch")
     ).
 
 :- pred find_maybe_output_args_2(module_info::in,
@@ -215,7 +215,7 @@ mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, MaybeOutputs,
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "mark_tail_calls_in_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred is_output_arg_rename(prog_var::in, prog_var::in,
@@ -287,9 +287,9 @@ mark_tail_calls_in_conj(Feature, PredId, ProcId, Outputs0, MaybeOutputs,
 
 match_output_args([], []).
 match_output_args([], [_ | _]) :-
-    unexpected(this_file, "match_output_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 match_output_args([_ | _], []) :-
-    unexpected(this_file, "match_output_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 match_output_args([MaybeOutputVar | MaybeOutputVars], [ArgVar | ArgVars]) :-
     (
         MaybeOutputVar = no
@@ -299,9 +299,5 @@ match_output_args([MaybeOutputVar | MaybeOutputVars], [ArgVar | ArgVars]) :-
     match_output_args(MaybeOutputVars, ArgVars).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mark_tail_calls.m".
-
+:- end_module hlds.mark_tail_calls.
 %-----------------------------------------------------------------------------%

@@ -152,7 +152,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         ContainsErrors = contains_errors(Globals, ModeSpecs),
         (
             ContainsErrors = yes,
-            unexpected(this_file, "mode check fails when repeated")
+            unexpected($module, $pred, "mode check fails when repeated")
         ;
             ContainsErrors = no
             % There is no point in returning any warnings and/or informational
@@ -367,7 +367,7 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "detect_cse_in_goal_expr: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
             % XXX not sure about this as SubGoal0 is not in its final form.
@@ -674,8 +674,7 @@ construct_common_unify(Var, hlds_goal(GoalExpr0, GoalInfo), !CseInfo,
             ( RHS = rhs_var(_)
             ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
             ),
-            unexpected(this_file,
-                "non-functor unify in construct_common_unify")
+            unexpected($module, $pred, "non-functor unify")
         ),
         Context = goal_info_get_context(GoalInfo),
         create_parallel_subterms(Args, Context, Ucontext, !CseInfo,
@@ -684,7 +683,7 @@ construct_common_unify(Var, hlds_goal(GoalExpr0, GoalInfo), !CseInfo,
         rename_some_vars_in_goal(Sub, hlds_goal(GoalExpr1, GoalInfo),
             HoistedGoal)
     ;
-        unexpected(this_file, "non-unify goal in construct_common_unify")
+        unexpected($module, $pred, "non-unify goal")
     ).
 
 :- pred create_parallel_subterms(list(prog_var)::in, prog_context::in,
@@ -746,8 +745,7 @@ find_similar_deconstruct(HoistedUnifyGoal, OldUnifyGoal, Context,
             OldHoistedVars),
         pair_subterms(OldHoistedVars, Context, OC, Replacements)
     ;
-        unexpected(this_file,
-            "find_similar_deconstruct: non-deconstruct unify")
+        unexpected($module, $pred, "non-deconstruct unify")
     ).
 
 :- pred pair_subterms(assoc_list(prog_var)::in, prog_context::in,
@@ -926,11 +924,5 @@ find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !Renaming) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "cse_detection.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module cse_detection.
+:- end_module check_hlds.cse_detection.
 %-----------------------------------------------------------------------------%

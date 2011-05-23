@@ -177,7 +177,7 @@ delay_info_check_invariant_x(DelayInfo) :-
     ->
         true
     ;
-        unexpected(this_file, "delay_info: invariant violated")
+        unexpected($module, $pred, "invariant violated")
     ).
 
     % For every variable which goals are waiting on, check the consistency
@@ -480,11 +480,5 @@ delay_info_wakeup_goal(Goal, !DelayInfo) :-
     delay_info_check_invariant(!.DelayInfo).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "delay_info.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module delay_info.
+:- end_module check_hlds.delay_info.
 %-----------------------------------------------------------------------------%

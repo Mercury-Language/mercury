@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -104,7 +104,7 @@ generate_goal(ContextModel, Goal, Code, !CI) :-
             CodeModel = model_semi,
             (
                 ContextModel = model_det,
-                unexpected(this_file, "semidet model in det context")
+                unexpected($module, $pred, "semidet model in det context")
             ;
                 ( ContextModel = model_semi
                 ; ContextModel = model_non
@@ -116,7 +116,8 @@ generate_goal(ContextModel, Goal, Code, !CI) :-
                 ( ContextModel = model_det
                 ; ContextModel = model_semi
                 ),
-                unexpected(this_file, "nondet model in det/semidet context")
+                unexpected($module, $pred,
+                    "nondet model in det/semidet context")
             ;
                 ContextModel = model_non
             )
@@ -221,8 +222,7 @@ compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
             DeepSaveVars = []
         )
     ;
-        unexpected(this_file,
-            "compute_deep_save_excp_vars: inconsistent proc_info")
+        unexpected($module, $pred, "inconsistent proc_info")
     ).
 
 %---------------------------------------------------------------------------%
@@ -301,13 +301,12 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
             ; Lang = lang_il
             ; Lang = lang_erlang
             ),
-            unexpected(this_file,
-                "generate_goal_2: foreign code other than C unexpected")
+            unexpected($module, $pred, "foreign code other than C")
         )
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "generate_goal_2: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %---------------------------------------------------------------------------%
@@ -330,9 +329,5 @@ generate_goals([Goal | Goals], CodeModel, [Code | Codes], !CI) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "code_gen.m".
-
+:- end_module ll_backend.code_gen.
 %---------------------------------------------------------------------------%

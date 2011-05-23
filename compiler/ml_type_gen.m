@@ -331,12 +331,10 @@ ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
         ; TagVal = reserved_address_tag(_)
         ; TagVal = shared_with_reserved_addresses_tag(_, _)
         ),
-        unexpected(this_file,
-            "ml_gen_enum_constant: enum constant needs int or foreign tag")
+        unexpected($module, $pred, "enum constant needs int or foreign tag")
     ),
     % Sanity check.
-    expect(unify(Arity, 0), this_file,
-        "ml_gen_enum_constant: arity != []"),
+    expect(unify(Arity, 0), $module, $pred, "arity != []"),
 
     % Generate an MLDS definition for this enumeration constant.
     UnqualifiedName = unqualify_name(Name),
@@ -884,9 +882,9 @@ ml_target_uses_constructors(target_csharp) = yes.
 ml_target_uses_constructors(target_java) = yes.
 ml_target_uses_constructors(target_asm) = no.
 ml_target_uses_constructors(target_x86_64) =
-    unexpected(this_file, "target_x86_64 and --high-level-code").
+    unexpected($module, $pred, "target_x86_64 and --high-level-code").
 ml_target_uses_constructors(target_erlang) =
-    unexpected(this_file, "target erlang").
+    unexpected($module, $pred, "target erlang").
 
 :- func target_uses_empty_base_classes(compilation_target) = bool.
 
@@ -896,9 +894,9 @@ target_uses_empty_base_classes(target_csharp) = no.
 target_uses_empty_base_classes(target_java) = yes.
 target_uses_empty_base_classes(target_asm) = no.
 target_uses_empty_base_classes(target_x86_64) =
-    unexpected(this_file, "target_x86_64 and --high-level-code").
+    unexpected($module, $pred, "target_x86_64 and --high-level-code").
 target_uses_empty_base_classes(target_erlang) =
-    unexpected(this_file, "target erlang").
+    unexpected($module, $pred, "target erlang").
 
     % This should return yes if references to function parameters in
     % constructor functions must be qualified with the module name,
@@ -916,9 +914,9 @@ target_requires_module_qualified_params(target_csharp) = yes.
 target_requires_module_qualified_params(target_java) = yes.
 target_requires_module_qualified_params(target_asm) = no.
 target_requires_module_qualified_params(target_x86_64) =
-    unexpected(this_file, "target_x86_64 with --high-level-code").
+    unexpected($module, $pred, "target_x86_64 with --high-level-code").
 target_requires_module_qualified_params(target_erlang) =
-    unexpected(this_file, "target erlang").
+    unexpected($module, $pred, "target erlang").
 
 ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
         SecondaryTagClassId, MaybeTag, Members, Context) = CtorDefn :-
@@ -959,7 +957,7 @@ make_arg(mlds_defn(Name, _Context, _Flags, Defn)) = Arg :-
     ( Defn = mlds_data(Type, _Init, GCStatement) ->
         Arg = mlds_argument(Name, Type, GCStatement)
     ;
-        unexpected(this_file, "make_arg: non-data member")
+        unexpected($module, $pred, "non-data member")
     ).
 
     % Generate "this-><fieldname> = <fieldname>;".
@@ -977,7 +975,7 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         ( Defn = mlds_function(_, _, _, _, _)
         ; Defn = mlds_class(_)
         ),
-        unexpected(this_file, "gen_init_field: non-data member")
+        unexpected($module, $pred, "non-data member")
     ),
     (
         EntityName = entity_data(mlds_data_var(VarName0)),
@@ -986,7 +984,7 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         Name = Name0,
         VarName = VarName0
     ;
-        unexpected(this_file, "gen_init_field: non-var member")
+        unexpected($module, $pred, "non-var member")
     ),
     RequiresQualifiedParams = target_requires_module_qualified_params(Target),
     (
@@ -994,8 +992,7 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         ( BaseClassId = mlds_class_type(qual(ModuleName, _, _), _, _) ->
             QualVarName = qual(ModuleName, module_qual, VarName)
         ;
-            unexpected(this_file,
-                "gen_init_field: invalid BaseClassId")
+            unexpected($module, $pred, "invalid BaseClassId")
         )
     ;
         RequiresQualifiedParams = no,
@@ -1023,7 +1020,7 @@ gen_init_tag(Target, ClassType, SecondaryTagClassId, TagVal, Context)
         TagClassQualifier = mlds_append_class_qualifier(Target,
             BaseClassQualifier, QualKind, TagClassName, TagArity)
     ;
-        unexpected(this_file, "gen_init_tag: class_id should be a class")
+        unexpected($module, $pred, "class_id should be a class")
     ),
     Name = "data_tag",
     Type = mlds_native_int_type,
@@ -1205,7 +1202,7 @@ ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
         ; TypeBody = hlds_solver_type(_, _)
         ; TypeBody = hlds_abstract_type(_)
         ),
-        unexpected(this_file, "ml_gen_exported_enum - invalid type (2).")
+        unexpected($module, $pred, "invalid type")
     ;
         TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
             _IsEnumOrDummy, _MaybeUserEq, _ReservedTag, _ReservedAddr,
@@ -1255,10 +1252,11 @@ generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
         ; TagVal = reserved_address_tag(_)
         ; TagVal = shared_with_reserved_addresses_tag(_, _)
         ),
-        unexpected(this_file, "enum constant requires an int or foreign tag")
+        unexpected($module, $pred,
+            "enum constant requires an int or foreign tag")
     ),
     % Sanity check.
-    expect(unify(Arity, 0), this_file, "enum constant arity != 0"),
+    expect(unify(Arity, 0), $module, $pred, "enum constant arity != 0"),
     UnqualName = unqualify_name(QualName),
     UnqualSymName = unqualified(UnqualName),
     map.lookup(Mapping, UnqualSymName, ForeignName),
@@ -1267,11 +1265,5 @@ generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
     !:ExportConstants = [ExportConstant | !.ExportConstants].
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_type_gen.m".
-
-:- end_module ml_type_gen.
-
+:- end_module ml_backend.ml_type_gen.
 %-----------------------------------------------------------------------------%

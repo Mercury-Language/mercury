@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2010 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -419,8 +419,7 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
         ->
             SubDirName = "bin"
         ;
-            string.append_list(["unknown extension `", Ext, "'"], ErrorMsg),
-            unexpected(this_file, ErrorMsg)
+            unexpected($module, $pred, "unknown extension `" ++ Ext ++ "'")
         ),
 
         make_file_name(Globals, [SubDirName | BaseParentDirs], Search, MkDir,
@@ -594,12 +593,6 @@ file_is_arch_or_grade_dependent_3(Globals, Ext) :-
     ;
         Ext = "_init" ++ ObjExt
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "file_names.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.file_names.

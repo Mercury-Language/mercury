@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2000, 2003-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1999-2000, 2003-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -89,7 +89,7 @@ output_byte(Val, !IO) :-
     ( Val < 256 ->
         io.write_byte(Val, !IO)
     ;
-        unexpected(this_file, "output_byte: byte does not fit in eight bits")
+        unexpected($module, $pred, "byte does not fit in eight bits")
     ).
 
 output_short(Val, !IO) :-
@@ -107,7 +107,7 @@ int32_to_byte_list(IntVal, List) :-
 output_int(IntVal, !IO) :-
     int.bits_per_int(IntBits),
     ( IntBits > bytecode_int_bits ->
-        unexpected(this_file, "output_int: " ++
+        unexpected($module, $pred,
             "size of int is larger than size of bytecode integer.")
     ;
         output_int(bytecode_int_bits, IntVal, !IO)
@@ -116,7 +116,7 @@ output_int(IntVal, !IO) :-
 int_to_byte_list(IntVal, Bytes) :-
     int.bits_per_int(IntBits),
     ( IntBits > bytecode_int_bits ->
-        unexpected(this_file, "int_to_byte_list: " ++
+        unexpected($module, $pred,
             "size of int is larger than size of bytecode integer.")
     ;
         int_to_byte_list(bytecode_int_bits, IntVal, Bytes)
@@ -146,10 +146,8 @@ output_int(Writer, Bits, IntVal, !IO) :-
         ; IntVal < -MaxVal
         )
     ->
-        string.format(
-            "error: bytecode_data.output_int: %d does not fit in %d bits",
-            [i(IntVal), i(Bits)], Msg),
-        unexpected(this_file, Msg)
+        string.format("%d does not fit in %d bits", [i(IntVal), i(Bits)], Msg),
+        unexpected($module, $pred, Msg)
     ;
         true
     ),
@@ -261,15 +259,9 @@ float_to_byte_list(Val, [B0, B1, B2, B3, B4, B5, B6, B7]) :-
 ").
 
 float_to_float64_bytes(_FloatVal, _B0, _B1, _B2, _B3, _B4, _B5, _B6, _B7) :-
-    sorry(this_file, "float_to_float64_bytes for non-C target").
+    sorry($module, $pred, "float_to_float64_bytes for non-C target").
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "bytecode_data.m".
-
-%---------------------------------------------------------------------------%
-:- end_module bytecode_data.
+:- end_module backend_libs.bytecode_data.
 %---------------------------------------------------------------------------%
 

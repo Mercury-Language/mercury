@@ -342,8 +342,7 @@ add_clause_item_number_regions(ItemNum, Context, !Regions) :-
                 Context, UpperContext0),
             !:Regions = [FirstRegion | LaterRegions0]
         ; ItemNum =< UpperNum0 ->
-            unexpected(this_file,
-                "add_clause_item_number: duplicate item number")
+            unexpected($module, $pred, "duplicate item number")
         ; ItemNum = UpperNum0 + 1 ->
             FirstRegion = clause_item_number_region(LowerNum0, ItemNum,
                 LowerContext0, Context),
@@ -355,8 +354,7 @@ add_clause_item_number_regions(ItemNum, Context, !Regions) :-
             % of LaterRegions1.
             (
                 LaterRegions1 = [],
-                unexpected(this_file,
-                    "add_clause_item_number: insertion yields empty list")
+                unexpected($module, $pred, "insertion yields empty list")
             ;
                 LaterRegions1 = [FirstLaterRegion1 | LaterLaterRegions1],
                 FirstLaterRegion1 = clause_item_number_region(
@@ -529,12 +527,6 @@ add_clause(Clause, !ClausesRep) :-
         RevClauses = [Clause | RevClauses0],
         !:ClausesRep = cr_rev(NumClauses, RevClauses)
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_clauses.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_clauses.

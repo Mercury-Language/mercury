@@ -160,7 +160,7 @@ delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "delay_construct_in_goal: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -273,11 +273,5 @@ delay_construct_in_cases([Case0 | Cases0], InstMap0, DelayInfo,
     delay_construct_in_cases(Cases0, InstMap0, DelayInfo, Cases).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "delay_construct.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module delay_construct.
+:- end_module transform_hlds.delay_construct.
 %-----------------------------------------------------------------------------%

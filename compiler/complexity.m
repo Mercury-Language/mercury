@@ -509,9 +509,9 @@ complexity_generate_foreign_proc(PredName, Detism, Args, ExtraArgs,
 
 classify_args([], [], _, _, _, []).
 classify_args([_ | _], [], _, _, _, _) :-
-    unexpected(this_file, "classify_args: lists not same length").
+    unexpected($module, $pred, "lists not same length").
 classify_args([], [_ | _], _, _, _, _) :-
-    unexpected(this_file, "classify_args: lists not same length").
+    unexpected($module, $pred, "lists not same length").
 classify_args([Var | Vars], [Mode | Modes], ModuleInfo, VarSet, VarTypes,
         [Var - complexity_arg_info(MaybeName, Kind) | VarInfos]) :-
     classify_args(Vars, Modes, ModuleInfo, VarSet, VarTypes, VarInfos),
@@ -575,15 +575,8 @@ make_type_info_var(Type, Context, PredId, !ProcInfo, !ModuleInfo,
         TypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PredInfo0, PredInfo,
         !ProcInfo, !:ModuleInfo),
-    expect(unify(PredInfo0, PredInfo), this_file,
-        "make_type_info_var: modified pred_info").
+    expect(unify(PredInfo0, PredInfo), $module, $pred, "modified pred_info").
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "complexity.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module complexity.
+:- end_module transform_hlds.complexity.
 %-----------------------------------------------------------------------------%

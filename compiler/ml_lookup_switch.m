@@ -91,8 +91,8 @@ ml_gen_lookup_switch(SwitchVar, TaggedCases, NonLocals, CodeModel, Context,
             CodeModel, Context, StartVal, EndVal,
             NeedBitVecCheck, NeedRangeCheck, Statement, !Info)
     ;
-        expect(unify(CodeModel, model_non), this_file,
-            "ml_gen_lookup_switch: CodeModel != model_non"),
+        expect(unify(CodeModel, model_non), $module, $pred,
+            "CodeModel != model_non"),
         ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns,
             Context, StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck,
             Statement, !Info)
@@ -136,10 +136,10 @@ ml_gen_simple_lookup_switch(IndexRval, OutVars, CaseValues, CodeModel, Context,
 
     (
         CodeModel = model_det,
-        expect(unify(NeedRangeCheck, dont_need_range_check), this_file,
-            "ml_gen_simple_lookup_switch: model_det need_range_check"),
-        expect(unify(NeedBitVecCheck, dont_need_bit_vec_check), this_file,
-            "ml_gen_simple_lookup_switch: model_det need_bit_vec_check"),
+        expect(unify(NeedRangeCheck, dont_need_range_check), $module, $pred,
+            "model_det need_range_check"),
+        expect(unify(NeedBitVecCheck, dont_need_bit_vec_check), $module, $pred,
+            "model_det need_bit_vec_check"),
         Stmt = ml_stmt_block([], LookupStatements),
         Statement = statement(Stmt, MLDS_Context)
     ;
@@ -198,7 +198,7 @@ ml_gen_simple_lookup_switch(IndexRval, OutVars, CaseValues, CodeModel, Context,
         CodeModel = model_non,
         % If all the switch arms have exactly one solution, then the switch
         % as a whole cannot be model_non.
-        unexpected(this_file, "ml_gen_simple_lookup_switch: model_non")
+        unexpected($module, $pred, "model_non")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -261,8 +261,7 @@ ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns, Context,
         ( FirstSolnTableFieldIds = []
         ; FirstSolnTableFieldIds = [_]
         ),
-        unexpected(this_file,
-            "ml_gen_model_non_lookup_switch: not enough field_ids")
+        unexpected($module, $pred, "not enough field_ids")
     ;
         FirstSolnTableFieldIds =
             [NumLaterSolnsFieldId, FirstLaterRowFieldId | FirstSolnFieldIds]
@@ -329,16 +328,16 @@ ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns, Context,
 
     (
         NeedBitVecCheck = dont_need_bit_vec_check,
-        expect(unify(HadDummyRows, no), this_file,
-            "ml_gen_model_non_lookup_switch: bad dont_need_bit_vec_check"),
+        expect(unify(HadDummyRows, no), $module, $pred,
+            "bad dont_need_bit_vec_check"),
         InRangeStmt = ml_stmt_block(
             [NumLaterSolnsVarDefn, LaterSlotVarDefn, LimitVarDefn],
             [NumLaterSolnsLookupStatement | OneOrMoreSolnsStatements]),
         InRangeStatement = statement(InRangeStmt, MLDS_Context)
     ;
         NeedBitVecCheck = need_bit_vec_check,
-        expect(unify(HadDummyRows, yes), this_file,
-            "ml_gen_model_non_lookup_switch: bad need_bit_vec_check"),
+        expect(unify(HadDummyRows, yes), $module, $pred,
+            "bad need_bit_vec_check"),
 
         OneOrMoreSolnsBlockStmt = ml_stmt_block([], OneOrMoreSolnsStatements),
         OneOrMoreSolnsBlockStatement =
@@ -641,8 +640,7 @@ ml_default_value_for_type(MLDS_Type) = DefaultRval :-
         ; MLDS_Type = mlds_tabling_type(_)
         ; MLDS_Type = mlds_unknown_type
         ),
-        unexpected(this_file,
-            "ml_default_value_for_type: unexpected MLDS_Type")
+        unexpected($module, $pred, "unexpected MLDS_Type")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -698,14 +696,9 @@ ml_record_lookup_for_tagged_cons_id(SolnConsts, TaggedConsId, !IndexMap) :-
     ( ConsTag = int_tag(Index) ->
         map.det_insert(Index, SolnConsts, !IndexMap)
     ;
-        unexpected(this_file,
-            "ml_record_lookup_for_tagged_cons_id: not int_tag")
+        unexpected($module, $pred, "not int_tag")
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_lookup_switch.m".
-
+:- end_module ml_backend.ml_lookup_switch.
 %-----------------------------------------------------------------------------%

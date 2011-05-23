@@ -3696,7 +3696,7 @@ mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO) :-
             PredOrFunc = PredOrFunc0
         ;
             MaybePredOrFunc = no,
-            unexpected(this_file, "pragma type_spec: no pred_or_func")
+            unexpected($module, $pred, "no pred_or_func")
         ),
         (
             PredOrFunc = pf_function,
@@ -4308,8 +4308,7 @@ unit_selector_to_string(TVarSet, UnitSelector) = String :-
         String = mercury_type_to_string(TVarSet, no, Type)
     ;
         UnitSelector = termsel(_, _),
-        unexpected(this_file,
-            "unit_selector_to_string: termsel in user-annotated sharing")
+        unexpected($module, $pred, "termsel in user-annotated sharing")
     ).
 
 :- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute)
@@ -5359,12 +5358,6 @@ init_merc_out_info_for_item(Globals) = Info :-
 merc_out_info_disable_line_numbers(Info0) = Info :-
     Info = Info0 ^ moi_unqualified_item_names := no.
 
-%---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mercury_to_mercury.m".
-
 %-----------------------------------------------------------------------------%
-:- end_module mercury_to_mercury.
+:- end_module parse_tree.mercury_to_mercury.
 %-----------------------------------------------------------------------------%

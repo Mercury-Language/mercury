@@ -612,7 +612,7 @@ inlining_in_goal(Goal0, Goal, !Info) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "inlining_in_goal: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -840,8 +840,7 @@ get_type_substitution(HeadTypes, ArgTypes,
         ->
             TypeSubn = TypeSubn1
         ;
-            unexpected(this_file,
-                "get_type_substitution: type unification failed")
+            unexpected($module, $pred, "type unification failed")
         )
     ).
 
@@ -1065,11 +1064,5 @@ ok_to_inline_language(lang_csharp, target_csharp).
 %   ok_to_inline_language(c_slash_cplusplus, cplusplus).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "inlining.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module inlining.
+:- end_module transform_hlds.inlining.
 %-----------------------------------------------------------------------------%

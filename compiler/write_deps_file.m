@@ -201,7 +201,7 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ( string.remove_suffix(SourceFileName, ".m", SourceFileBase) ->
             ErrFileName = SourceFileBase ++ ".err"
         ;
-            unexpected(this_file, "source file doesn't end in `.m'")
+            unexpected($module, $pred, "source file doesn't end in `.m'")
         ),
         module_name_to_file_name(Globals, ModuleName, ".optdate",
             do_not_create_dirs, OptDateFileName, !IO),
@@ -1484,7 +1484,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
             )
         ;
             Target = target_x86_64,
-            unexpected(this_file, "--highlevel-code with --target x86_64")
+            unexpected($module, $pred, "--highlevel-code with --target x86_64")
         )
     ;
         % For the LLDS back-end, we don't use `.mih' files at all
@@ -2383,7 +2383,7 @@ get_source_file(DepsMap, ModuleName, FileName) :-
     ( string.remove_suffix(SourceFileName, ".m", SourceFileBase) ->
         FileName = SourceFileBase
     ;
-        unexpected(this_file, "source file name doesn't end in `.m'")
+        unexpected($module, $pred, "source file name doesn't end in `.m'")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2524,9 +2524,5 @@ compare_module_names(Sym1, Sym2, Result) :-
     compare(Result, Str1, Str2).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "write_deps_file.m".
-
+:- end_module parse_tree.write_deps_file.
 %-----------------------------------------------------------------------------%

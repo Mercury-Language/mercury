@@ -155,7 +155,7 @@ divide_reuse_procs(ExistingReusePPIdsSet, PPId, ReuseAs_Status,
     ; reuse_as_no_reuses(ReuseAs) ->
         true
     ;
-        unexpected(this_file, "divide_reuse_procs")
+        unexpected($module, $pred, "conditions failed")
     ).
 
 :- pred maybe_create_full_reuse_proc_copy(pred_proc_id::in, pred_proc_id::out,
@@ -168,8 +168,7 @@ maybe_create_full_reuse_proc_copy(PPId, NewPPId, !ModuleInfo, !ReuseTable) :-
         reuse_as_table_search_reuse_version_proc(!.ReuseTable,
             PPId, NoClobbers, _)
     ->
-        unexpected(this_file,
-            "maybe_create_full_reuse_proc_copy: procedure already exists")
+        unexpected($module, $pred, "procedure already exists")
     ;
         true
     ),
@@ -179,8 +178,7 @@ maybe_create_full_reuse_proc_copy(PPId, NewPPId, !ModuleInfo, !ReuseTable) :-
         reuse_as_table_insert_reuse_version_proc(PPId, NoClobbers, NewPPId,
             !ReuseTable)
     ;
-        unexpected(this_file,
-            "maybe_create_full_reuse_proc_copy: no reuse information")
+        unexpected($module, $pred, "no reuse information")
     ).
 
 %------------------------------------------------------------------------------%
@@ -439,7 +437,7 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "process_goal: shorthand goal.")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred unification_set_reuse(short_reuse_description::in,
@@ -521,12 +519,6 @@ create_fake_reuse_procedure(PPId, NoClobbers, !ModuleInfo) :-
         module_info_set_pred_proc_info(NewPPId, !.PredInfo, !.ProcInfo,
             !ModuleInfo)
     ).
-
-%------------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "structure_reuse.versions.m".
 
 %------------------------------------------------------------------------------%
 :- end_module structure_reuse.versions.

@@ -752,8 +752,8 @@ output_user_foreign_code(Info, UserForeignCode, !IO) :-
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),
-        unexpected(this_file, "output_user_foreign_code: unimplemented: " ++
-            "foreign code other than C")
+        unexpected($module, $pred,
+            "unimplemented: foreign code other than C")
     ).
 
 :- pred output_foreign_header_include_lines(llds_out_info::in,
@@ -800,8 +800,8 @@ output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
         ; Lang = lang_il
         ; Lang = lang_erlang
         ),
-        unexpected(this_file, "output_user_foreign_code: unexpected: " ++
-            "foreign decl code other than C")
+        unexpected($module, $pred,
+            "unexpected: foreign decl code other than C")
     ).
 
 :- pred output_record_c_label_decls(llds_out_info::in,
@@ -827,7 +827,7 @@ group_decl_c_labels([Label | Labels], !InternalLabelMap) :-
         multi_map.set(ProcLabel, LabelNum, !InternalLabelMap)
     ;
         Label = entry_label(_, _),
-        unexpected(this_file, "group_decl_c_labels: entry label")
+        unexpected($module, $pred, "entry label")
     ),
     group_decl_c_labels(Labels, !InternalLabelMap).
 
@@ -882,8 +882,7 @@ output_record_entry_label_decl(_Info, Label, !DeclSet, !IO) :-
         DeclMacro = "MR_decl_local"
     ;
         Label = internal_label(_, _),
-        unexpected(this_file,
-            "output_record_entry_label_decl: internal label")
+        unexpected($module, $pred, "internal label")
     ),
     io.write_string(DeclMacro, !IO),
     io.write_string("(", !IO),
@@ -960,14 +959,14 @@ group_init_c_labels(InternalLabelToLayoutMap, [Label | Labels],
                     multi_map.set(ProcLabel, Pair, !LVarLayoutMap)
                 )
             ;
-                unexpected(this_file, "group_init_c_labels: bad slot type")
+                unexpected($module, $pred, "bad slot type")
             )
         ;
             multi_map.set(ProcLabel, LabelNum, !NoLayoutMap)
         )
     ;
         Label = entry_label(_, _),
-        unexpected(this_file, "group_init_c_labels: entry label")
+        unexpected($module, $pred, "entry label")
     ),
     group_init_c_labels(InternalLabelToLayoutMap, Labels,
         !NoLayoutMap, !NoVarLayoutMap, !SVarLayoutMap, !LVarLayoutMap).
@@ -1057,7 +1056,7 @@ output_c_entry_label_init(EntryLabelToLayoutMap, Label, !IO) :-
     ;
         Label = internal_label(_, _),
         % These should have been separated out by group_c_labels.
-        unexpected(this_file, "output_c_entry_label_init: internal/2")
+        unexpected($module, $pred, "internal label")
     ),
     io.write_string(TabInitMacro, !IO),
     io.write_string(SuffixOpen, !IO),
@@ -1157,12 +1156,12 @@ output_c_procedure(Info, Proc, !IO) :-
 :- pred find_caller_label(list(instruction)::in, label::out) is det.
 
 find_caller_label([], _) :-
-    unexpected(this_file, "cannot find caller label").
+    unexpected($module, $pred, "cannot find caller label").
 find_caller_label([llds_instr(Uinstr, _) | Instrs], CallerLabel) :-
     ( Uinstr = label(Label) ->
         (
             Label = internal_label(_, _),
-            unexpected(this_file, "caller label is internal label")
+            unexpected($module, $pred, "caller label is internal label")
         ;
             Label = entry_label(_, _),
             CallerLabel = Label
@@ -1268,14 +1267,14 @@ count_while_label_in_block(_, [], !Count).
 count_while_label_in_block(Label, [Instr0 | Instrs0], !Count) :-
     Instr0 = llds_instr(Uinstr0, _),
     ( Uinstr0 = label(_) ->
-        unexpected(this_file, "label in block")
+        unexpected($module, $pred, "label in block")
     ;
         ( Uinstr0 = goto(code_label(Label)) ->
             !:Count = !.Count + 1
         ; Uinstr0 = if_val(_, code_label(Label)) ->
             !:Count = !.Count + 1
         ; Uinstr0 = block(_, _, _) ->
-            unexpected(this_file, "block in block")
+            unexpected($module, $pred, "block in block")
         ;
             true
         ),
@@ -1415,12 +1414,6 @@ gather_labels_from_instrs_acc([Instr | Instrs],
     gather_labels_from_instrs_acc(Instrs,
         !RevEntryLabels, !RevInternalLabels).
 
-%----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "llds_out_file.m".
-
 %---------------------------------------------------------------------------%
-:- end_module llds_out_file.
+:- end_module ll_backend.llds_out.llds_out_file.
 %---------------------------------------------------------------------------%

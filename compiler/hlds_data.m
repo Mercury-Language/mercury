@@ -1462,7 +1462,7 @@ lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
     ->
         Constraints = Constraints0
     ;
-        unexpected(this_file, "lookup_hlds_constraint_list: not found")
+        unexpected($module, $pred, "not found")
     ).
 
 search_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
@@ -1672,12 +1672,6 @@ exclusive_table_optimize(!ExclusiveTable) :-
 
 exclusive_table_add(ExclusiveId, PredId, !ExclusiveTable) :-
     multi_map.set(PredId, ExclusiveId, !ExclusiveTable).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_data.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_data.

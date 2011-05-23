@@ -412,8 +412,7 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             )
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected(this_file,
-                "build_live_sets_in_goal_2: complicated_unify")
+            unexpected($module, $pred, "complicated_unify")
         )
     ;
         GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId, Args,
@@ -450,8 +449,7 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file,
-            "build_live_sets_in_goal_2: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -695,9 +693,5 @@ record_par_conj(NeedInParConj, !GoalInfo, !StackAlloc) :-
     at_par_conj(NeedInParConj, !.GoalInfo, !StackAlloc).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "live_vars.m".
-
+:- end_module ll_backend.live_vars.
 %-----------------------------------------------------------------------------%

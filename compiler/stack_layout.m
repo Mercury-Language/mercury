@@ -910,13 +910,12 @@ construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
                 MaybeTable = yes(data_or_slot_is_slot(TableSlotName))
             ;
                 MaybeTableSlotName = no,
-                unexpected(this_file,
-                    "construct_exec_trace_layout: MaybeTableSlotName = no")
+                unexpected($module, $pred, "MaybeTableSlotName = no")
             )
         ;
             TableInfo = proc_table_struct(_),
-            expect(unify(MaybeTableSlotName, no), this_file,
-                "construct_exec_trace_layout: MaybeTableSlotName != no"),
+            expect(unify(MaybeTableSlotName, no), $module, $pred,
+                "MaybeTableSlotName != no"),
             ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
             TableDataId = proc_tabling_data_id(ProcLabel, tabling_info),
             MaybeTable = yes(data_or_slot_is_data(TableDataId))
@@ -1403,7 +1402,8 @@ construct_internal_layout(Params, ProcLabel, ProcLayoutName, VarNumMap,
     ;
         Trace = yes(_),
         Return = yes(_),
-        unexpected(this_file, "label has both trace and return layout info")
+        unexpected($module, $pred,
+            "label has both trace and return layout info")
     ),
     AgcStackLayout = Params ^ slp_agc_stack_layout,
     (
@@ -1704,7 +1704,7 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
         ( set.remove_least(LeastLocn, Locns, _) ->
             Locn = LeastLocn
         ;
-            unexpected(this_file, "tvar has empty set of locations")
+            unexpected($module, $pred, "tvar has empty set of locations")
         ),
         represent_locn_as_int_rval(Locn, Rval),
         construct_type_param_locn_vector(TVarLocns, NextSlot, VectorTail),
@@ -1715,8 +1715,7 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
         % This slot will never be referred to.
         Vector = [const(llconst_int(0)) - lt_unsigned | VectorTail]
     ;
-        unexpected(this_file,
-            "unsorted tvars in construct_type_param_locn_vector")
+        unexpected($module, $pred, "unsorted tvars")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1784,10 +1783,10 @@ construct_label_var_info(Params, VarInfoSet, VarNumMap, TVarLocnMap,
     list.length(HLDSVarNums, NumHLDSVarNums),
     list.length(ShortLocns, NumShortLocns),
     list.length(LongLocns, NumLongLocns),
-    expect(unify(NumPTIs, NumHLDSVarNums), this_file,
-        "construct_liveval_arrays: NumPTIs != NumHLDSVarNums"),
-    expect(unify(NumPTIs, NumLongLocns + NumShortLocns), this_file,
-        "construct_liveval_arrays: NumPTIs != NumLongLocns + NumShortLocns"),
+    expect(unify(NumPTIs, NumHLDSVarNums), $module, $pred,
+        "NumPTIs != NumHLDSVarNums"),
+    expect(unify(NumPTIs, NumLongLocns + NumShortLocns), $module, $pred,
+        "NumPTIs != NumLongLocns + NumShortLocns"),
 
     EncodedLength = NumLongLocns << short_count_bits + NumShortLocns,
 
@@ -1914,8 +1913,7 @@ construct_liveval_array_slots([VarInfo | VarInfos], ModuleInfo, VarNumMap,
             Locn = locn_direct(reg(_, _))
         )
     ->
-        unexpected(this_file, "construct_liveval_array_slots: " ++
-            "unexpected reference to dummy value")
+        unexpected($module, $pred, "unexpected reference to dummy value")
     ;
         BytesSoFar < BytesLimit,
         represent_locn_as_byte(Locn, ShortLocn)
@@ -2133,7 +2131,7 @@ represent_locn_or_const_as_int_rval(Params, LvalOrConst, Rval, Type,
         ; LvalOrConst = mem_addr(_)
         ; LvalOrConst = var(_)
         ),
-        unexpected(this_file, "represent_locn_or_const_as_int_rval: bad rval")
+        unexpected($module, $pred, "bad rval")
     ).
 
 %---------------------------------------------------------------------------%
@@ -2162,8 +2160,8 @@ represent_locn_as_int(locn_direct(Lval), Word) :-
     represent_lval(Lval, Word).
 represent_locn_as_int(locn_indirect(Lval, Offset), Word) :-
     represent_lval(Lval, BaseWord),
-    expect((1 << long_lval_offset_bits) > Offset, this_file,
-        "represent_locn: offset too large to be represented"),
+    expect((1 << long_lval_offset_bits) > Offset, $module, $pred,
+        "offset too large to be represented"),
     BaseAndOffset = (BaseWord << long_lval_offset_bits) + Offset,
     make_tagged_word(lval_indirect, BaseAndOffset, Word).
 
@@ -2176,13 +2174,13 @@ represent_lval(reg(reg_r, Num), Word) :-
 represent_lval(reg(reg_f, Num), Word) :-
     make_tagged_word(lval_f_reg, Num, Word).
 represent_lval(stackvar(Num), Word) :-
-    expect(Num > 0, this_file, "represent_lval: bad stackvar"),
+    expect(Num > 0, $module, $pred, "bad stackvar"),
     make_tagged_word(lval_stackvar, Num, Word).
 represent_lval(parent_stackvar(Num), Word) :-
-    expect(Num > 0, this_file, "represent_lval: bad parent_stackvar"),
+    expect(Num > 0, $module, $pred, "bad parent_stackvar"),
     make_tagged_word(lval_parent_stackvar, Num, Word).
 represent_lval(framevar(Num), Word) :-
-    expect(Num > 0, this_file, "represent_lval: bad framevar"),
+    expect(Num > 0, $module, $pred, "bad framevar"),
     make_tagged_word(lval_framevar, Num, Word).
 represent_lval(succip, Word) :-
     make_tagged_word(lval_succip, 0, Word).
@@ -2198,27 +2196,29 @@ represent_lval(parent_sp, Word) :-
     make_tagged_word(lval_parent_sp, 0, Word).
 
 represent_lval(temp(_, _), _) :-
-    unexpected(this_file, "continuation live value stored in temp register").
+    unexpected($module, $pred,
+        "continuation live value stored in temp register").
 
 represent_lval(succip_slot(_), _) :-
-    unexpected(this_file, "continuation live value stored in fixed slot").
+    unexpected($module, $pred, "continuation live value stored in fixed slot").
 represent_lval(redoip_slot(_), _) :-
-    unexpected(this_file, "continuation live value stored in fixed slot").
+    unexpected($module, $pred, "continuation live value stored in fixed slot").
 represent_lval(redofr_slot(_), _) :-
-    unexpected(this_file, "continuation live value stored in fixed slot").
+    unexpected($module, $pred, "continuation live value stored in fixed slot").
 represent_lval(succfr_slot(_), _) :-
-    unexpected(this_file, "continuation live value stored in fixed slot").
+    unexpected($module, $pred, "continuation live value stored in fixed slot").
 represent_lval(prevfr_slot(_), _) :-
-    unexpected(this_file, "continuation live value stored in fixed slot").
+    unexpected($module, $pred, "continuation live value stored in fixed slot").
 
 represent_lval(field(_, _, _), _) :-
-    unexpected(this_file, "continuation live value stored in field").
+    unexpected($module, $pred, "continuation live value stored in field").
 represent_lval(mem_ref(_), _) :-
-    unexpected(this_file, "continuation live value stored in mem_ref").
+    unexpected($module, $pred, "continuation live value stored in mem_ref").
 represent_lval(global_var_ref(_), _) :-
-    unexpected(this_file, "continuation live value stored in global_var_ref").
+    unexpected($module, $pred,
+        "continuation live value stored in global_var_ref").
 represent_lval(lvar(_), _) :-
-    unexpected(this_file, "continuation live value stored in lvar").
+    unexpected($module, $pred, "continuation live value stored in lvar").
 
     % Some things in this module are encoded using a low tag.  This is not
     % done using the normal compiler mkword, but by doing the bit shifting
@@ -2297,16 +2297,16 @@ represent_locn_as_byte(LayoutLocn, Byte) :-
 :- pred represent_lval_as_byte(lval::in, int::out) is semidet.
 
 represent_lval_as_byte(reg(reg_r, Num), Byte) :-
-    expect(Num > 0, this_file, "represent_lval_as_byte: bad reg"),
+    expect(Num > 0, $module, $pred, "bad reg"),
     make_tagged_byte(0, Num, Byte).
 represent_lval_as_byte(stackvar(Num), Byte) :-
-    expect(Num > 0, this_file, "represent_lval_as_byte: bad stackvar"),
+    expect(Num > 0, $module, $pred, "bad stackvar"),
     make_tagged_byte(1, Num, Byte).
 represent_lval_as_byte(parent_stackvar(Num), Byte) :-
-    expect(Num > 0, this_file, "represent_lval_as_byte: bad parent_stackvar"),
+    expect(Num > 0, $module, $pred, "bad parent_stackvar"),
     make_tagged_byte(1, Num, Byte). % XXX placeholder only
 represent_lval_as_byte(framevar(Num), Byte) :-
-    expect(Num > 0, this_file, "represent_lval_as_byte: bad framevar"),
+    expect(Num > 0, $module, $pred, "bad framevar"),
     make_tagged_byte(2, Num, Byte).
 represent_lval_as_byte(succip, Byte) :-
     locn_type_code(lval_succip, Val),
@@ -2558,9 +2558,5 @@ lookup_string_in_table(String, Offset, !StringTable) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "stack_layout.m".
-
+:- end_module ll_backend.stack_layout.
 %---------------------------------------------------------------------------%

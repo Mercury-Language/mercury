@@ -581,7 +581,7 @@ ensure_zero_obj_coeffs([V | Vs], !Tableau) :-
             ensure_zero_obj_coeffs(Vs, !Tableau)
         ;
             Ones = [],
-            unexpected(this_file, "problem with artificial variable")
+            unexpected($module, $pred, "problem with artificial variable")
         )
     ).
 
@@ -706,7 +706,7 @@ index(Tableau, J, K, R) :-
     (
         (list.member(J, SR) ; list.member(K, SC))
     ->
-        unexpected(this_file, "index: attempt to address shunned row/col")
+        unexpected($module, $pred, "attempt to address shunned row/col")
     ;
         true
     ),
@@ -726,7 +726,7 @@ set_index(J, K, R, !Tableau) :-
     (
         (list.member(J, SR) ; list.member(K, SC))
     ->
-        unexpected(this_file, "set_index: attempt to write shunned row/col")
+        unexpected($module, $pred, "attempt to write shunned row/col")
     ;
         true
     ),
@@ -915,11 +915,5 @@ show_cell(Tableau, Row, Col, !IO) :-
     io.format("%2.2f\t", [f(Val)], !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "lp.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module lp.
+:- end_module libs.lp.
 %-----------------------------------------------------------------------------%

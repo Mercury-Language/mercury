@@ -60,7 +60,7 @@ standardize_labels(Instrs0, Instrs, _, !:ProcCounter) :-
         replace_labels_instruction_list(Instrs1, Instrs2, Map, yes, yes),
         Instrs = [LabelInstr | Comments] ++ Instrs2
     ;
-        unexpected(this_file, "standardize_labels: no proc_label")
+        unexpected($module, $pred, "no proc_label")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -81,11 +81,5 @@ build_std_map([Instr | Instrs], ProcLabel, !Counter, !Map) :-
     build_std_map(Instrs, ProcLabel, !Counter, !Map).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "stdlabel.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module stdlabel.
+:- end_module ll_backend.stdlabel.
 %-----------------------------------------------------------------------------%

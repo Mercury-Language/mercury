@@ -619,8 +619,8 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
     ;
         GoalExpr = generic_call(GenericCall, Vars, Modes, Detism),
         determinism_to_code_model(Detism, CallCodeModel),
-        expect(unify(CodeModel, CallCodeModel), this_file,
-            "ml_gen_generic_call: code model mismatch"),
+        expect(unify(CodeModel, CallCodeModel), $module, $pred,
+            "code model mismatch"),
         ml_gen_generic_call(GenericCall, Vars, Modes, Detism, Context,
             Decls, Statements, !Info)
     ;
@@ -675,7 +675,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
     ;
         GoalExpr = shorthand(_),
         % these should have been expanded out by now
-        unexpected(this_file, "ml_gen_goal_expr: unexpected shorthand")
+        unexpected($module, $pred, "unexpected shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -763,7 +763,7 @@ goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
             SubGoalNonLocals = set.list_to_set([LHSVar, RHSVar])
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected(this_file, "goal_expr_find_subgoal_nonlocals")
+            unexpected($module, $pred, "complicated_unify")
         )
     ;
         GoalExpr = plain_call(_PredId, _ProcId, ArgVars, _Builtin,
@@ -819,7 +819,7 @@ goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
         cases_find_subgoal_nonlocals(Cases, set.init, SubGoalNonLocals)
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "goal_expr_find_subgoal_nonlocals: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred goals_find_subgoal_nonlocals(list(hlds_goal)::in,
@@ -867,18 +867,15 @@ ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
         (
             OuterCodeModel = model_det,
             InnerCodeModel = model_semi,
-            unexpected(this_file,
-                "ml_gen_maybe_convert_goal_code_model: semi in det")
+            unexpected($module, $pred, "semi in det")
         ;
             OuterCodeModel = model_det,
             InnerCodeModel = model_non,
-            unexpected(this_file,
-                "ml_gen_maybe_convert_goal_code_model: nondet in det")
+            unexpected($module, $pred, "nondet in det")
         ;
             OuterCodeModel = model_semi,
             InnerCodeModel = model_non,
-            unexpected(this_file,
-                "ml_gen_maybe_convert_goal_code_model: nondet in semi")
+            unexpected($module, $pred, "nondet in semi")
         )
     ;
         % If the inner code model is more precise than the outer code model,
@@ -1130,10 +1127,10 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
         Statements = CondStatements ++ [InvertSuccess]
     ;
         CodeModel = model_semi, CondCodeModel = model_non,
-        unexpected(this_file, "ml_gen_negation: nondet cond")
+        unexpected($module, $pred, "nondet cond")
     ;
         CodeModel = model_non,
-        unexpected(this_file, "ml_gen_negation: nondet negation")
+        unexpected($module, $pred, "nondet negation")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1171,11 +1168,5 @@ ml_gen_conj(Conjuncts, CodeModel, Context, Decls, Statements, !Info) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_code_gen.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module ml_code_gen.
+:- end_module ml_backend.ml_code_gen.
 %-----------------------------------------------------------------------------%

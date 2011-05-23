@@ -154,8 +154,7 @@ apply_live_region_rule(Rule, ModuleInfo, RptaInfoTable, ExecPathTable,
             !ProcRegionSetTable)
     ;
         MaybeDepInfo = no,
-        unexpected(this_file,
-            "apply_live_region_rule: no dependency info")
+        unexpected($module, $pred, "no dependency info")
     ).
 
 :- pred run_with_dependencies(rule_pred::in(rule_pred),
@@ -611,9 +610,5 @@ retain_non_primitive_regions_at_pp(ModuleInfo, Graph, ProgPoint,
     map.set(ProgPoint, RegionSet, !LRProc).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.interproc_region_lifetime.m".
-
+:- end_module transform_hlds.rbmm.interproc_region_lifetime.
 %-----------------------------------------------------------------------------%

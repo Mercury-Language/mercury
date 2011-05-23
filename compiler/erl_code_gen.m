@@ -112,8 +112,7 @@ filter_erlang_foreigns(ModuleInfo, ForeignDecls, ForeignBodies, PragmaExports,
     ( BackendForeignLanguages = [lang_erlang] ->
         true
     ;
-        unexpected(this_file,
-            "erl_gen_foreign_code: foreign language other than Erlang")
+        unexpected($module, $pred, "foreign language other than Erlang")
     ),
     module_info_get_foreign_decl(ModuleInfo, AllForeignDecls),
     module_info_get_foreign_body_code(ModuleInfo, AllForeignBodys),
@@ -462,7 +461,7 @@ erl_gen_goal(CodeModel, InstMap, Goal, MaybeSuccessExpr0, Code, !Info) :-
             GoalCodeModel = model_non
         )
     ->
-        unexpected(this_file, "erl_gen_goal: code model mismatch")
+        unexpected($module, $pred, "code model mismatch")
     ;
         Determinism = goal_info_get_determinism(GoalInfo),
         (
@@ -674,8 +673,8 @@ erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
     ;
         GoalExpr = generic_call(GenericCall, Vars, Modes, CallDetism),
         determinism_to_code_model(CallDetism, CallCodeModel),
-        expect(unify(CodeModel, CallCodeModel), this_file,
-            "erl_gen_generic_call: code model mismatch"),
+        expect(unify(CodeModel, CallCodeModel), $module, $pred,
+            "code model mismatch"),
         (
             GenericCall = higher_order(_, _, _, _),
             erl_gen_higher_order_call(GenericCall, Vars, Modes, CallDetism,
@@ -686,7 +685,7 @@ erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
                 Context, MaybeSuccessExpr, Statement, !Info)
         ;
             GenericCall = event_call(_),
-            sorry(this_file, "event_calls in erlang backend")
+            sorry($module, $pred, "event_calls in erlang backend")
         ;
             GenericCall = cast(_),
             erl_gen_cast(Context, Vars, MaybeSuccessExpr, Statement, !Info)
@@ -704,7 +703,7 @@ erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
                 MaybeSuccessExpr, Statement, !Info)
         ;
             BuiltinState = out_of_line_builtin,
-            unexpected(this_file, "erl_gen_goal_expr: out_of_line_builtin")
+            unexpected($module, $pred, "out_of_line_builtin")
         )
     ;
         GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
@@ -718,7 +717,7 @@ erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "erl_gen_goal_expr: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -856,15 +855,15 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
 erl_gen_case(Type, CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
         Case, ELDSCase, !Info) :-
     Case = case(MainConsId, OtherConsIds, Goal),
-    expect(unify(OtherConsIds, []), this_file,
-        "erl_gen_case: multi-cons-id switch arms NYI"),
+    expect(unify(OtherConsIds, []), $module, $pred,
+        "multi-cons-id switch arms NYI"),
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     Size = cons_id_size(ModuleInfo, Type, MainConsId),
     erl_gen_info_new_anonymous_vars(Size, DummyVars, !Info),
     ( cons_id_to_term(MainConsId, DummyVars, elds_anon_var, Pattern0, !Info) ->
         Pattern = Pattern0
     ;
-        unexpected(this_file, "erl_gen_case: cannot pattern match on object")
+        unexpected($module, $pred, "cannot pattern match on object")
     ),
     erl_fix_success_expr(InstMap, Goal, MaybeSuccessExpr,
         MaybeSuccessExprForCase, !Info),
@@ -914,12 +913,12 @@ cons_id_size(ModuleInfo, Type, ConsId) = Size :-
 erl_gen_case_on_atom(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
         Case, ELDSCase, !Info) :-
     Case = case(MainConsId, OtherConsIds, Goal),
-    expect(unify(OtherConsIds, []), this_file,
-        "erl_gen_case_on_atom: multi-cons-id switch arms NYI"),
+    expect(unify(OtherConsIds, []), $module, $pred,
+        "multi-cons-id switch arms NYI"),
     ( MainConsId = string_const(String0) ->
         String = String0
     ;
-        unexpected(this_file, "erl_gen_case_on_atom: non-string const")
+        unexpected($module, $pred, "non-string const")
     ),
     erl_fix_success_expr(InstMap, Goal, MaybeSuccessExpr,
         MaybeSuccessExprForCase, !Info),
@@ -1223,10 +1222,10 @@ erl_gen_negation(Cond, CodeModel, InstMap, _Context, MaybeSuccessExpr,
         OtherCase = elds_case(elds_anon_var, elds_term(elds_fail))
     ;
         CodeModel = model_semi, CondCodeModel = model_non,
-        unexpected(this_file, "erl_gen_negation: nondet cond")
+        unexpected($module, $pred, "nondet cond")
     ;
         CodeModel = model_non,
-        unexpected(this_file, "erl_gen_negation: nondet negation")
+        unexpected($module, $pred, "nondet negation")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1379,7 +1378,7 @@ erl_gen_disj([], CodeModel, _InstMap, _Context, _MaybeSuccessExpr,
     % Handle empty disjunctions (a.ka. `fail').
     (
         CodeModel = model_det,
-        unexpected(this_file, "erl_gen_disj: `fail' has determinism `det'")
+        unexpected($module, $pred, "`fail' has determinism `det'")
     ;
         ( CodeModel = model_semi
         ; CodeModel = model_non
@@ -1420,7 +1419,7 @@ erl_gen_disjunct([], CodeModel, _InstMap, _Context,
     % Handle empty disjunctions (a.ka. `fail').
     (
         CodeModel = model_det,
-        unexpected(this_file, "erl_gen_disj: `fail' has determinism `det'")
+        unexpected($module, $pred, "`fail' has determinism `det'")
     ;
         ( CodeModel = model_semi
         ; CodeModel = model_non
@@ -1518,7 +1517,8 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
         ;
             FirstCodeModel = model_non,
             % simplify.m should get wrap commits around these.
-            unexpected(this_file, "model_non disj in model_det disjunction")
+            unexpected($module, $pred,
+                "model_non disj in model_det disjunction")
         )
     ;
         CodeModel = model_non,
@@ -1581,7 +1581,7 @@ erl_gen_foreign_export_defn(ProcDefns, PragmaExport, ForeignExportDefn) :-
             elds_call(elds_call_plain(PredProcId), exprs_from_vars(Vars))),
         ForeignExportDefn = elds_foreign_export_defn(Name, VarSet, Clause)
     ;
-        unexpected(this_file,
+        unexpected($module, $pred,
             "missing definition of foreign exported procedure")
     ).
 
@@ -1596,11 +1596,5 @@ search_elds_defn([Defn0 | Defns], PredProcId, Defn) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "erl_code_gen.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module erl_code_gen.
+:- end_module erl_backend.erl_code_gen.
 %-----------------------------------------------------------------------------%

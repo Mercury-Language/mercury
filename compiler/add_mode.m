@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006, 2008, 2010 The University of Melbourne.
+% Copyright (C) 1993-2006, 2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -72,7 +72,7 @@ module_add_inst_defn(ItemInstDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
 
 insts_add(_, _, _, abstract_inst, _, _, _, !Insts, !Specs) :-
     % XXX handle abstract insts
-    sorry(this_file, "abstract insts not implemented").
+    sorry($module, $pred, "abstract insts not implemented").
 insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
         !Specs) :-
     list.length(Args, Arity),
@@ -255,9 +255,5 @@ report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
     ).
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "add_mode.m".
-
+:- end_module hlds.make_hlds.add_mode.
 %----------------------------------------------------------------------------%

@@ -389,8 +389,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     disable_det_warnings(_OptionsToRestore, Globals, GlobalsToUse),
     ContainsErrors = contains_errors(GlobalsToUse, Specs),
-    expect(unify(ContainsErrors, no), this_file,
-        "rerun_det_analysis: determinism errors").
+    expect(unify(ContainsErrors, no), $module, $pred, "determinism errors").
 
 %-----------------------------------------------------------------------------%
 
@@ -698,7 +697,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "get_sub_branch_vars_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -1011,9 +1010,9 @@ goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
 collect_matching_arg_types([], [], _, !MatchingTypes) :-
     list.reverse(!MatchingTypes).
 collect_matching_arg_types([_ | _], [], _, !MatchingTypes) :-
-    unexpected(this_file, "collect_matching_arg_types").
+    unexpected($module, $pred, "list length mismatch").
 collect_matching_arg_types([], [_ | _], _, !MatchingTypes) :-
-    unexpected(this_file, "collect_matching_arg_types").
+    unexpected($module, $pred, "list length mismatch").
 collect_matching_arg_types([Arg | Args], [Type | Types],
         Renaming, !MatchingTypes) :-
     ( map.contains(Renaming, Arg) ->
@@ -1170,9 +1169,5 @@ goal_depends_on_goal(hlds_goal(_, GoalInfo1), hlds_goal(_, GoalInfo2)) :-
     \+ set.empty(Intersection).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "pd_util.m".
-
+:- end_module transform_hlds.pd_util.
 %-----------------------------------------------------------------------------%

@@ -254,7 +254,7 @@ find_min_and_max_in_case_cond(match_value(Rval), !Min, !Max) :-
         int.min(Val, !Min),
         int.max(Val, !Max)
     ;
-        unexpected(this_file, "find_min_and_max_in_case_cond: non-int case")
+        unexpected($module, $pred, "non-int case")
     ).
 find_min_and_max_in_case_cond(match_range(MinRval, MaxRval),
         !Min, !Max) :-
@@ -265,7 +265,7 @@ find_min_and_max_in_case_cond(match_range(MinRval, MaxRval),
         int.min(RvalMin, !Min),
         int.max(RvalMax, !Max)
     ;
-        unexpected(this_file, "find_min_and_max_in_case_cond: non-int case")
+        unexpected($module, $pred, "non-int case")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -400,7 +400,7 @@ insert_case_into_map(ThisLabel, Cond, !CaseLabelsMap) :-
         ( Rval = ml_const(mlconst_int(Val)) ->
             map.det_insert(Val, ThisLabel, !CaseLabelsMap)
         ;
-            unexpected(this_file, "insert_case_into_map: non-int case")
+            unexpected($module, $pred, "non-int case")
         )
     ;
         Cond = match_range(MinRval, MaxRval),
@@ -410,7 +410,7 @@ insert_case_into_map(ThisLabel, Cond, !CaseLabelsMap) :-
         ->
             insert_range_into_map(Min, Max, ThisLabel, !CaseLabelsMap)
         ;
-            unexpected(this_file, "insert_case_into_map: non-int case")
+            unexpected($module, $pred, "non-int case")
         )
     ).
 
@@ -513,9 +513,5 @@ ml_gen_case_match_cond(match_range(MinRval, MaxRval), SwitchRval) =
         ml_binop(int_le, SwitchRval, MaxRval)).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_simplify_switch.m".
-
+:- end_module ml_backend.ml_simplify_switch.
 %-----------------------------------------------------------------------------%

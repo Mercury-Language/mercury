@@ -573,8 +573,7 @@ intermod_traverse_goal_expr(GoalExpr0, GoalExpr, DoWrite, !Info) :-
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file,
-                "intermod_traverse_goal_expr: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ).
@@ -745,7 +744,7 @@ add_proc_2(PredId, DoWrite, !Info) :-
         set.insert(PredModule, Modules0, Modules),
         intermod_info_set_modules(Modules, !Info)
     ;
-        unexpected(this_file, "add_proc: unexpected status")
+        unexpected($module, $pred, "unexpected status")
     ).
 
     % Resolve overloading and module qualify everything in a unify_rhs.
@@ -838,8 +837,8 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
                     MethodAL)
             ;
                 MaybePredProcIds = no,
-                unexpected(this_file,
-                    "gather_instances_3: method pred_proc_ids not filled in")
+                unexpected($module, $pred,
+                    "method pred_proc_ids not filled in")
             ),
             list.map_foldl(qualify_instance_method(ModuleInfo),
                 MethodAL, Methods, [], PredIds),
@@ -1012,7 +1011,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
             UnqualMethodName = unqualify_name(InstanceMethodName0),
             InstanceMethodName = qualified(TypeModule, UnqualMethodName)
         ;
-            unexpected(this_file, "unqualified type_ctor in " ++
+            unexpected($module, $pred, "unqualified type_ctor in " ++
                 "hlds_cons_defn or hlds_ctor_field_defn")
         )
     ).
@@ -1492,12 +1491,12 @@ gather_foreign_enum_value_pair(ConsId, ConsTag, !Values) :-
     ( ConsId = cons(SymName0, 0, _) ->
         SymName = SymName0
     ;
-        unexpected(this_file, "expected enumeration constant")
+        unexpected($module, $pred, "expected enumeration constant")
     ),
     ( ConsTag = foreign_tag(_ForeignLang, ForeignTag0) ->
         ForeignTag = ForeignTag0
     ;
-        unexpected(this_file, "expected foreign tag")
+        unexpected($module, $pred, "expected foreign tag")
     ),
     !:Values = [SymName - ForeignTag | !.Values].
 
@@ -1712,8 +1711,7 @@ write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds], !IO) :-
         ArgModes = ArgModes0,
         Detism = Detism0
     ;
-        unexpected(this_file,
-            "write_pred_modes: attempt to write undeclared mode")
+        unexpected($module, $pred, "attempt to write undeclared mode")
     ),
     proc_info_get_context(ProcInfo, Context),
     varset.init(Varset),
@@ -1756,8 +1754,7 @@ write_preds(OutInfo, ModuleInfo, [PredId | PredIds], !IO) :-
                 PredId, VarSet, no, HeadVars, PredOrFunc, Clause,
                 no_varset_vartypes, !IO)
         ;
-            unexpected(this_file,
-                "write_preds: assertion not a single clause.")
+            unexpected($module, $pred, "assertion not a single clause.")
         )
     ;
         pred_info_get_typevarset(PredInfo, TypeVarset),
@@ -1809,8 +1806,7 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc,
         ->
             (
                 ApplicableProcIds = all_modes,
-                unexpected(this_file,
-                    "intermod_write_clause: all_modes foreign_proc")
+                unexpected($module, $pred, "all_modes foreign_proc")
             ;
                 ApplicableProcIds = selected_modes(ProcIds),
                 list.foldl(
@@ -1819,7 +1815,7 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc,
                     ProcIds, !IO)
             )
         ;
-            unexpected(this_file, "foreign_proc expected within this goal")
+            unexpected($module, $pred, "did not find foreign_proc")
         )
     ).
 
@@ -1841,7 +1837,7 @@ write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
             PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl, !IO)
     ;
         MaybeArgModes = no,
-        unexpected(this_file, "write_clause: no mode declaration")
+        unexpected($module, $pred, "no mode declaration")
     ).
 
     % Strip the `Headvar.n = Term' unifications from each clause,
@@ -1982,7 +1978,7 @@ write_type_spec_pragma(Pragma, !IO) :-
         AppendVarnums = yes,
         mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO)
     ;
-        unexpected(this_file, "write_type_spec_pragma")
+        unexpected($module, $pred, "write_type_spec_pragma")
     ).
 
     % Is a pragma declaration required in the `.opt' file for
@@ -2049,11 +2045,11 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
     ;
         Args = [],
         Modes = [_ | _],
-        unexpected(this_file, "get_pragma_foreign_code_vars")
+        unexpected($module, $pred, "list length mismatch")
     ;
         Args = [_ | _],
         Modes = [],
-        unexpected(this_file, "get_pragma_foreign_code_vars")
+        unexpected($module, $pred, "list length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2580,11 +2576,5 @@ update_error_status(_Globals, FileType, FileName,
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "intermod.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module intermod.
+:- end_module transform_hlds.intermod.
 %-----------------------------------------------------------------------------%

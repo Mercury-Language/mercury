@@ -1969,8 +1969,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         ;
             MaybeC = no,
             % This is checked by check_foreign_type in make_hlds.
-            unexpected(this_file,
-                "mercury_type_to_mlds_type: No C foreign type")
+            unexpected($module, $pred, "no C foreign type")
         )
     ;
         Target = target_il,
@@ -1981,8 +1980,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         ;
             MaybeIL = no,
             % This is checked by check_foreign_type in make_hlds.
-            unexpected(this_file,
-                "mercury_type_to_mlds_type: No IL foreign type")
+            unexpected($module, $pred, "no IL foreign type")
         )
     ;
         Target = target_csharp,
@@ -1993,8 +1991,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         ;
             MaybeCSharp = no,
             % This is checked by check_foreign_type in make_hlds.
-            unexpected(this_file,
-                "mercury_type_to_mlds_type: no C# foreign type")
+            unexpected($module, $pred, "no C# foreign type")
         )
     ;
         Target = target_java,
@@ -2005,8 +2002,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         ;
             MaybeJava = no,
             % This is checked by check_foreign_type in make_hlds.
-            unexpected(this_file,
-                "mercury_type_to_mlds_type: no Java foreign type")
+            unexpected($module, $pred, "no Java foreign type")
         )
     ;
         Target = target_asm,
@@ -2018,15 +2014,14 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
             MaybeC = no,
             % XXX This ought to be checked by the front-end, e.g.
             % check_foreign_type in make_hlds.
-            sorry(this_file,
-                "mercury_type_to_mlds_type: No C foreign type")
+            sorry($module, $pred, "no C foreign type")
         )
     ;
         Target = target_x86_64,
-        unexpected(this_file, "target x86_64 with --high-level-code")
+        unexpected($module, $pred, "target x86_64 with --high-level-code")
     ;
         Target = target_erlang,
-        unexpected(this_file, "mercury_type_to_mlds_type: target erlang")
+        unexpected($module, $pred, "target erlang")
     ),
     MLDSType = mlds_foreign_type(ForeignType).
 
@@ -2127,8 +2122,7 @@ mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
             Arity, model_det, no)
     ;
         PredLabel0 = mlds_special_pred_label(_, _, _, _),
-        unexpected(this_file,
-            "mlds_std_tabling_proc_label: mlds_special_pred_label")
+        unexpected($module, $pred, "mlds_special_pred_label")
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId).
 
@@ -2223,42 +2217,42 @@ access(Flags) = Access :-
     ( Flags /\ access_mask = access_bits(AccessPrime) ->
         Access = AccessPrime
     ;
-        unexpected(this_file, "access: unknown bits")
+        unexpected($module, $pred, "access: unknown bits")
     ).
 
 per_instance(Flags) = PerInstance :-
     ( Flags /\ per_instance_mask = per_instance_bits(PerInstancePrime) ->
         PerInstance = PerInstancePrime
     ;
-        unexpected(this_file, "per_instance: unknown bits")
+        unexpected($module, $pred, "per_instance: unknown bits")
     ).
 
 virtuality(Flags) = Virtuality :-
     ( Flags /\ virtuality_mask = virtuality_bits(VirtualityPrime) ->
         Virtuality = VirtualityPrime
     ;
-        unexpected(this_file, "virtuality: unknown bits")
+        unexpected($module, $pred, "virtuality: unknown bits")
     ).
 
 overridability(Flags) = Overridability :-
     ( Flags /\ overridability_mask = overridability_bits(Overridability0) ->
         Overridability = Overridability0
     ;
-        unexpected(this_file, "per_instance: unknown bits")
+        unexpected($module, $pred, "per_instance: unknown bits")
     ).
 
 constness(Flags) = Constness :-
     ( Flags /\ constness_mask = constness_bits(ConstnessPrime) ->
         Constness = ConstnessPrime
     ;
-        unexpected(this_file, "per_instance: unknown bits")
+        unexpected($module, $pred, "per_instance: unknown bits")
     ).
 
 abstractness(Flags) = Abstractness :-
     ( Flags /\ abstractness_mask = abstractness_bits(AbstractnessPrime) ->
         Abstractness = AbstractnessPrime
     ;
-        unexpected(this_file, "per_instance: unknown bits")
+        unexpected($module, $pred, "per_instance: unknown bits")
     ).
 
 %
@@ -2305,9 +2299,5 @@ ml_static_const_decl_flags = DeclFlags :-
         Virtuality, Overridability, Constness, Abstractness).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mlds.m".
-
+:- end_module ml_backend.mlds.
 %-----------------------------------------------------------------------------%

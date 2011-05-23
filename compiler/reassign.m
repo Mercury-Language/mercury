@@ -144,7 +144,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:RevInstrs = [Instr0 | !.RevInstrs]
     ;
         Uinstr0 = block(_, _, _),
-        unexpected(this_file, "remove_reassign_loop: block")
+        unexpected($module, $pred, "block")
     ;
         Uinstr0 = assign(Target, Source),
         (
@@ -468,11 +468,5 @@ make_dependent(Target, SubLval, !DepLvalMap) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "reassign.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module reassign.
+:- end_module ll_backend.reassign.
 %-----------------------------------------------------------------------------%

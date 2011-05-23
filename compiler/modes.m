@@ -983,8 +983,8 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
 
             detect_cse_in_proc(PredId, ProcId, !ModuleInfo),
             determinism_check_proc(ProcId, PredId, !ModuleInfo, DetismSpecs),
-            expect(unify(DetismSpecs, []), this_file,
-                "modecheck_queued_proc: found detism error"),
+            expect(unify(DetismSpecs, []), $module, $pred,
+                "found detism error"),
             save_proc_info(ProcId, PredId, !.ModuleInfo, !OldPredTable),
             unique_modes_check_proc(ProcId, PredId, !ModuleInfo,
                 NewChanged, UniqueSpecs),
@@ -1178,9 +1178,9 @@ modecheck_final_insts(HeadVars, InferModes, FinalInsts0, FinalInsts,
     list(mer_inst)::out) is det.
 
 maybe_clobber_insts([], [_ | _], _) :-
-    unexpected(this_file, "maybe_clobber_insts: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 maybe_clobber_insts([_ | _], [], _) :-
-    unexpected(this_file, "maybe_clobber_insts: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 maybe_clobber_insts([], [], []).
 maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
     (
@@ -1265,7 +1265,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
         check_final_insts(VarsTail, InstsTail, VarInstsTail,
             InferModes, ArgNum + 1, ModuleInfo, !Goal, !Changed, !ModeInfo)
     ;
-        unexpected(this_file, "check_final_insts: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1425,10 +1425,5 @@ report_wrong_mode_for_main(ProcInfo) = Spec :-
         [Msg]).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "modes.m".
-
+:- end_module check_hlds.modes.
 %-----------------------------------------------------------------------------%

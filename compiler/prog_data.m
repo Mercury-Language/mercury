@@ -278,7 +278,7 @@ det_conjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
 det_conjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
     % If the first conjunct could be cc pruned, the second conj ought to have
     % been cc pruned too.
-    unexpected(this_file, "det_conjunction_maxsoln: many_cc , many").
+    unexpected($module, $pred, "many_cc, many").
 
 det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
@@ -506,10 +506,10 @@ default_memo_table_attributes =
 eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     (
         EvalMethod = eval_normal,
-        unexpected(this_file, "eval_method_to_table_type: eval_normal")
+        unexpected($module, $pred, "eval_normal")
     ;
         EvalMethod = eval_table_io(_, _),
-        unexpected(this_file, "eval_method_to_table_type: eval_table_io")
+        unexpected($module, $pred, "eval_table_io")
     ;
         EvalMethod = eval_loop_check,
         TableTypeStr = "MR_TABLE_TYPE_LOOPCHECK"
@@ -521,7 +521,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
         TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY"
     ;
         EvalMethod = eval_minimal(own_stacks_consumer),
-        unexpected(this_file, "eval_method_to_table_type: own_stacks_consumer")
+        unexpected($module, $pred, "own_stacks_consumer")
     ;
         EvalMethod = eval_minimal(own_stacks_generator),
         TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS"
@@ -1460,7 +1460,7 @@ rename_var(Must, Renaming, Var0, Var) :-
             term.var_to_int(Var0, Var0Int),
             string.format("rename_var: no substitute for var %i", [i(Var0Int)],
                 Msg),
-            unexpected(this_file, Msg)
+            unexpected($module, $pred, Msg)
         )
     ).
 
@@ -1884,7 +1884,7 @@ tvarset_merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming) :-
 
 convert_subst_term_to_tvar(variable(TVar, _), TVar).
 convert_subst_term_to_tvar(functor(_, _, _), _) :-
-    unexpected(this_file, "non-variable found in renaming").
+    unexpected($module, $pred, "non-variable found in renaming").
 
 %-----------------------------------------------------------------------------%
 %
@@ -2288,13 +2288,5 @@ add_module(visibility_private, Module, !UsedModules) :-
             ).
 
 %-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- func this_file = string.
-
-this_file = "prog_data.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module prog_data.
+:- end_module parse_tree.prog_data.
 %-----------------------------------------------------------------------------%

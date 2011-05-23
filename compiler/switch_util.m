@@ -363,7 +363,7 @@
     ;       is_not_int_switch.
 
 tag_cases(_ModuleInfo, _SwitchType, [], [], _) :-
-    unexpected(this_file, "tag_cases: no cases").
+    unexpected($module, $pred, "no cases").
 tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
         [TaggedCase | TaggedCases], MaybeIntSwitchLimits) :-
     Case = case(MainConsId, OtherConsIds, Goal),
@@ -558,7 +558,7 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
         ),
-        unexpected(this_file, "estimate_switch_tag_test_cost: non-switch tag")
+        unexpected($module, $pred, "non-switch tag")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -594,7 +594,7 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
             ; TypeBody = hlds_solver_type(_, _)
             ; TypeBody = hlds_abstract_type(_)
             ),
-            unexpected(this_file, "type_range: enum type is not d.u. type?")
+            unexpected($module, $pred, "enum type is not d.u. type?")
         )
     ),
     NumValues = Max - Min + 1.
@@ -806,7 +806,7 @@ string_hash_cons_id(CaseRep, HashMask, TaggedConsId,
     ( Tag = string_tag(StringPrime) ->
         String = StringPrime
     ;
-        unexpected(this_file, "string_hash_cases: non-string case?")
+        unexpected($module, $pred, "non-string case?")
     ),
     StringCaseRep = String - CaseRep,
     HashVal1 = string.hash(String) /\ HashMask,
@@ -996,7 +996,7 @@ follow_hash_chain(Map, Slot, LastSlot) :-
 
 next_free_hash_slot(Map, HomeMap, TableSize, LastUsed, FreeSlot) :-
     NextSlot = LastUsed + 1,
-    expect(NextSlot < TableSize, this_file, "next_free_hash_slot: overflow"),
+    expect(NextSlot < TableSize, $module, $pred, "overflow"),
     (
         \+ map.contains(Map, NextSlot),
         \+ map.contains(HomeMap, NextSlot)
@@ -1043,7 +1043,7 @@ add_string_binary_entry(CaseRep, TaggedConsId, !UnsortedTable) :-
     ( Tag = string_tag(StringPrime) ->
         String = StringPrime
     ;
-        unexpected(this_file, "string_hash_cases: non-string case?")
+        unexpected($module, $pred, "non-string case?")
     ),
     !:UnsortedTable = [String - CaseRep | !.UnsortedTable].
 
@@ -1068,7 +1068,7 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
         ; TypeBody = hlds_solver_type(_, _)
         ; TypeBody = hlds_abstract_type(_)
         ),
-        unexpected(this_file, "non-du type in get_ptag_counts")
+        unexpected($module, $pred, "non-du type")
     ),
     map.init(PtagCountMap0),
     get_ptag_counts_2(TagList, -1, MaxPrimary, PtagCountMap0, PtagCountMap).
@@ -1084,7 +1084,7 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ),
         int.max(Primary, !MaxPrimary),
         ( map.search(!.PtagCountMap, Primary, _) ->
-            unexpected(this_file, "unshared tag is shared")
+            unexpected($module, $pred, "unshared tag is shared")
         ;
             map.det_insert(Primary, sectag_none - (-1), !PtagCountMap)
         )
@@ -1099,7 +1099,8 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
                 ( TagType = sectag_local
                 ; TagType = sectag_none
                 ),
-                unexpected(this_file, "remote tag is shared with non-remote")
+                unexpected($module, $pred,
+                    "remote tag is shared with non-remote")
             ),
             int.max(Secondary, MaxSoFar, Max),
             map.det_update(Primary, sectag_remote - Max, !PtagCountMap)
@@ -1117,7 +1118,8 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
                 ( TagType = sectag_remote
                 ; TagType = sectag_none
                 ),
-                unexpected(this_file, "local tag is shared with non-local")
+                unexpected($module, $pred,
+                    "local tag is shared with non-local")
             ),
             int.max(Secondary, MaxSoFar, Max),
             map.det_update(Primary, sectag_local - Max, !PtagCountMap)
@@ -1139,7 +1141,7 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ; Tag = reserved_address_tag(_)
         ; Tag = shared_with_reserved_addresses_tag(_, _)
         ),
-        unexpected(this_file, "non-du tag in get_ptag_counts_2")
+        unexpected($module, $pred, "non-du tag")
     ),
     get_ptag_counts_2(Tags, !MaxPrimary, !PtagCountMap).
 
@@ -1183,7 +1185,7 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
         ; Tag = unshared_tag(Primary)
         ),
         ( map.search(!.PtagCaseMap, Primary, _Group) ->
-            unexpected(this_file, "unshared tag is shared")
+            unexpected($module, $pred, "unshared tag is shared")
         ;
             StagGoalMap = map.singleton(-1, CaseRep),
             map.det_insert(Primary, ptag_case(sectag_none, StagGoalMap),
@@ -1193,7 +1195,7 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
         Tag = shared_remote_tag(Primary, Secondary),
         ( map.search(!.PtagCaseMap, Primary, Group) ->
             Group = ptag_case(StagLoc, StagGoalMap0),
-            expect(unify(StagLoc, sectag_remote), this_file,
+            expect(unify(StagLoc, sectag_remote), $module, $pred,
                 "remote tag is shared with non-remote"),
             map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
             map.det_update(Primary, ptag_case(sectag_remote, StagGoalMap),
@@ -1207,7 +1209,7 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
         Tag = shared_local_tag(Primary, Secondary),
         ( map.search(!.PtagCaseMap, Primary, Group) ->
             Group = ptag_case(StagLoc, StagGoalMap0),
-            expect(unify(StagLoc, sectag_local), this_file,
+            expect(unify(StagLoc, sectag_local), $module, $pred,
                 "local tag is shared with non-local"),
             map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
             map.det_update(Primary, ptag_case(sectag_local, StagGoalMap),
@@ -1232,7 +1234,7 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
         ; Tag = reserved_address_tag(_)
         ; Tag = shared_with_reserved_addresses_tag(_, _)
         ),
-        unexpected(this_file, "non-du tag in group_case_by_ptag")
+        unexpected($module, $pred, "non-du tag")
     ),
     ( map.search(!.CaseNumPtagsMap, CaseNum, Ptags0) ->
         set.insert(Primary, Ptags0, Ptags),
@@ -1293,8 +1295,7 @@ build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
         ( map.search(!.RevMap, Case, OldEntry) ->
             OldEntry = ptag_case_rev_map_entry(OldCount,
                 OldFirstPtag, OldLaterPtags0, OldCase),
-            expect(unify(Case, OldCase), this_file,
-                "build_ptag_case_rev_map: Case != OldCase"),
+            expect(unify(Case, OldCase), $module, $pred, "Case != OldCase"),
             NewEntry = ptag_case_rev_map_entry(OldCount + Count,
                 OldFirstPtag, OldLaterPtags0 ++ [Ptag], OldCase),
             map.det_update(Case, NewEntry, !RevMap)
@@ -1341,17 +1342,10 @@ order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
         ( map.is_empty(PtagCaseMap0) ->
             PtagCaseList = []
         ;
-            unexpected(this_file,
-                "PtagCaseMap0 is not empty in order_ptags_by_value")
+            unexpected($module, $pred, "PtagCaseMap0 is not empty")
         )
     ).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "switch_util.m".
-
-%-----------------------------------------------------------------------------%
+:- end_module backend_libs.switch_util.
 %-----------------------------------------------------------------------------%

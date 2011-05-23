@@ -691,3 +691,7 @@ process_dcg_clause(MaybeFunctor, VarSet, Var0, Var, Body, Context,
         MaybeFunctor = error2(Specs),
         MaybeItem = error1(Specs)
     ).
+
+%-----------------------------------------------------------------------------%
+:- end_module parse_tree.prog_io_dcg.
+%-----------------------------------------------------------------------------%

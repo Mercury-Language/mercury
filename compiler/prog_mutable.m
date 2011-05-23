@@ -840,11 +840,5 @@ mutable_mutex_var_name(TargetMutableVarName) = MutexVarName :-
     MutexVarName = TargetMutableVarName ++ "_lock". 
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_mutable.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module prog_mutable.
+:- end_module parse_tree.prog_mutable.
 %-----------------------------------------------------------------------------%

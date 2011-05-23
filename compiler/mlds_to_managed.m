@@ -69,10 +69,10 @@ output_csharp_code(Globals, MLDS, !IO) :-
         _InitPreds, _FinalPreds, _ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap, GlobalDefns),
-    expect(map.is_empty(ScalarCellGroupMap), this_file,
-        "output_csharp_code: nonempty ScalarCellGroupMap"),
-    expect(map.is_empty(VectorCellGroupMap), this_file,
-        "output_csharp_code: nonempty VectorCellGroupMap"),
+    expect(map.is_empty(ScalarCellGroupMap), $module, $pred,
+        "nonempty ScalarCellGroupMap"),
+    expect(map.is_empty(VectorCellGroupMap), $module, $pred,
+        "nonempty VectorCellGroupMap"),
     Defns = GlobalDefns ++ Defns0,
 
     output_src_start(ModuleName, !IO),
@@ -178,7 +178,7 @@ generate_foreign_header_code(Globals, ForeignCode, !IO) :-
                 io.write_string(Code, !IO),
                 io.nl(!IO)
             ;
-                sorry(this_file, "wrong foreign code")
+                sorry($module, $pred, "wrong foreign code")
             ),
             output_reset_context(Globals, !IO)
         ), !IO).
@@ -216,7 +216,7 @@ generate_foreign_code(Globals, ForeignCode, !IO) :-
                 io.write_string(Code, !IO),
                 io.nl(!IO)
             ;
-                sorry(this_file, "wrong foreign code")
+                sorry($module, $pred, "wrong foreign code")
             ),
             output_reset_context(Globals, !IO)
     ), !IO).
@@ -240,8 +240,7 @@ generate_method_code(Globals, DataRep, Defn, !IO) :-
             has_foreign_languages(Statement, Langs),
             list.member(lang_csharp, Langs)
         ->
-            expect(set.empty(EnvVarNames), this_file,
-                "generate_method_code: EnvVarNames"),
+            expect(set.empty(EnvVarNames), $module, $pred, "EnvVarNames"),
             Params = mlds_func_params(Inputs, Outputs),
             (
                 Outputs = [],
@@ -254,7 +253,7 @@ generate_method_code(Globals, DataRep, Defn, !IO) :-
             ;
                 Outputs = [_, _ | _],
                 % C# doesn't support multiple return values
-                sorry(this_file, "multiple return values")
+                sorry($module, $pred, "multiple return values")
             ),
 
             predlabel_to_csharp_id(PredLabel, ProcId, MaybeSeqNum, Id),
@@ -309,7 +308,7 @@ write_statement(Globals, DataRep, Args, statement(Statement, Context), !IO) :-
             write_rval(DataRep, Rval, !IO),
             io.write_string(";\n", !IO)
         ;
-            sorry(this_file, "multiple return values")
+            sorry($module, $pred, "multiple return values")
         )
     ;
         Statement = ml_stmt_atomic(assign(LVal, RVal))
@@ -320,7 +319,7 @@ write_statement(Globals, DataRep, Args, statement(Statement, Context), !IO) :-
         io.write_string(";\n", !IO)
     ;
         functor(Statement, canonicalize, SFunctor, _Arity),
-        sorry(this_file, "foreign code output for " ++ SFunctor)
+        sorry($module, $pred, "foreign code output for " ++ SFunctor)
     ).
 
 :- pred write_outline_arg_init(il_data_rep::in, outline_arg::in,
@@ -370,7 +369,7 @@ write_assign_local_to_output(mlds_argument(Name, Type, _GcCode), !IO) :-
     ( Name = entity_data(mlds_data_var(VarName0)) ->
         VarName = VarName0
     ;
-        unexpected(this_file, "not a variable name")
+        unexpected($module, $pred, "not a variable name")
     ),
 
     % A pointer type is an output type.
@@ -413,7 +412,7 @@ write_rval(DataRep, Rval, !IO) :-
         write_lval(DataRep, Lval, !IO)
     ;
         Rval = ml_mkword(_Tag, _Rval),
-        sorry(this_file, "mkword rval")
+        sorry($module, $pred, "mkword rval")
     ;
         Rval = ml_const(RvalConst),
         write_rval_const(RvalConst, !IO)
@@ -435,7 +434,7 @@ write_rval(DataRep, Rval, !IO) :-
             io.write_string(") ", !IO),
             write_rval(DataRep, RvalA, !IO)
         ;
-            sorry(this_file, "box or unbox unop")
+            sorry($module, $pred, "box or unbox unop")
         )
     ;
         Rval = ml_binop(Binop, RvalA, RvalB),
@@ -449,20 +448,20 @@ write_rval(DataRep, Rval, !IO) :-
             write_rval(DataRep, RvalB, !IO),
             io.write_string(")", !IO)
         ;
-            sorry(this_file, "binop rval")
+            sorry($module, $pred, "binop rval")
         )
     ;
         Rval = ml_scalar_common(_),
-        sorry(this_file, "scalar_common rval")
+        sorry($module, $pred, "scalar_common rval")
     ;
         Rval = ml_vector_common_row(_, _),
-        sorry(this_file, "vector_common_row rval")
+        sorry($module, $pred, "vector_common_row rval")
     ;
         Rval = ml_mem_addr(_),
-        sorry(this_file, "mem_addr rval")
+        sorry($module, $pred, "mem_addr rval")
     ;
         Rval = ml_self(_),
-        sorry(this_file, "self rval")
+        sorry($module, $pred, "self rval")
     ).
 
 :- pred write_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
@@ -478,7 +477,7 @@ write_rval_const(Const, !IO) :-
     ),
     io.write_int(I, !IO).
 write_rval_const(mlconst_foreign(_Lang, _Value, _Type), !IO) :-
-    sorry(this_file, "mlconst_foreign for managed languages").
+    sorry($module, $pred, "mlconst_foreign for managed languages").
 write_rval_const(mlconst_float(F), !IO) :-
     io.write_float(F, !IO).
     % XXX We don't quote this correctly.
@@ -507,7 +506,7 @@ write_rval_const(mlconst_code_addr(CodeAddrConst), !IO) :-
         io.write_string(MangledName, !IO)
     ).
 write_rval_const(mlconst_data_addr(_), !IO) :-
-    sorry(this_file, "data_addr_const rval").
+    sorry($module, $pred, "data_addr_const rval").
 write_rval_const(mlconst_null(_), !IO) :-
     io.write_string("null", !IO).
 
@@ -538,7 +537,7 @@ write_lval(DataRep, Lval, !IO) :-
         write_rval(DataRep, Rval, !IO)
     ;
         Lval = ml_global_var_ref(_),
-        sorry(this_file, "write_lval: global_var_ref NYI")
+        sorry($module, $pred, "global_var_ref NYI")
     ;
         Lval = ml_var(Var, _VarType),
         Var = qual(_, _, VarName),
@@ -559,7 +558,7 @@ write_defn_decl(DataRep, Defn, !IO) :-
         io.write_string(";\n", !IO)
     ;
         % XXX We should implement others.
-        sorry(this_file, "data_addr_const rval")
+        sorry($module, $pred, "data_addr_const rval")
     ).
 
 :- pred write_parameter_type(il_data_rep::in, mlds_type::in, io::di, io::uo)
@@ -579,7 +578,7 @@ write_input_arg_as_foreign_type(DataRep, Arg, !IO) :-
     ( EntityName = entity_data(mlds_data_var(VarName)) ->
         write_mlds_var_name_for_parameter(VarName, !IO)
     ;
-        unexpected(this_file, "found a variable in a list")
+        unexpected($module, $pred, "found a variable in a list")
     ).
 
 :- pred write_parameter_initializer(il_data_rep::in, mlds_type::in,
@@ -660,7 +659,7 @@ write_il_simple_type_as_foreign_type(class(ClassName), !IO) :-
 write_il_simple_type_as_foreign_type(valuetype(ClassName), !IO) :-
     write_class_name(ClassName, !IO).
 write_il_simple_type_as_foreign_type(interface(_ClassName), !IO) :-
-    sorry(this_file, "interfaces").
+    sorry($module, $pred, "interfaces").
 write_il_simple_type_as_foreign_type('[]'(Type, Bounds), !IO) :-
     write_il_type_as_foreign_type(Type, !IO),
     io.write_string("[]", !IO),
@@ -668,7 +667,7 @@ write_il_simple_type_as_foreign_type('[]'(Type, Bounds), !IO) :-
         Bounds = []
     ;
         Bounds = [_ | _],
-        sorry(this_file, "arrays with bounds")
+        sorry($module, $pred, "arrays with bounds")
     ).
 write_il_simple_type_as_foreign_type('&'(Type), !IO) :-
     % XXX Is this always right?
@@ -756,9 +755,5 @@ write_mlds_var_name_for_parameter(mlds_var_name(Name, MaybeNum), !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mlds_to_managed.m".
-
+:- end_module ml_backend.mlds_to_managed.
 %-----------------------------------------------------------------------------%

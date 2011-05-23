@@ -1990,3 +1990,5 @@ parse_dcg_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
     parse_dcg_pred_expr_args(Terms, Args, Modes).
 
 %-----------------------------------------------------------------------------%
+:- end_module parse_tree.prog_io_goal.
+%-----------------------------------------------------------------------------%

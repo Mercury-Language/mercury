@@ -262,8 +262,7 @@ prepare_abstract_constraint(Constraint, !PCs) :-
         ->
             disjunction_of_assignments(DisjOfAssgts, !PCs)
         ;
-            sorry(this_file,
-                "Disjuction of constraints - general case.")
+            sorry($module, $pred, "Disjuction of constraints - general case.")
         )
     ).
 
@@ -361,7 +360,7 @@ at_most_one(Xs, !PCs) :-
 exactly_one(Xs, !PCs) :-
     (
         Xs = [],
-        unexpected(this_file, "exactly_one of zero variables")
+        unexpected($module, $pred, "exactly_one of zero variables")
     ;
         Xs = [X],
         assign(X, yes, !PCs)
@@ -798,12 +797,5 @@ all_no(Bs, [X | Xs]) :-
 mc_var_to_string(MCVar) = int_to_string(var_to_int(MCVar)).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mcsolver.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module mcsolver.
+:- end_module check_hlds.mcsolver.
 %-----------------------------------------------------------------------------%

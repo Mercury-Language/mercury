@@ -350,8 +350,7 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file,
-                "detect_switches_in_goal_expr: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ).
@@ -445,16 +444,16 @@ convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
         !AlreadyHandledConsIds) :-
     ( set_tree234.contains(!.AlreadyHandledConsIds, ConsId) ->
         Entry = cons_id_entry(State, _ArmCord),
-        expect(unify(State, cons_id_has_one_multi), this_file,
-            "convert_case: already handled but not cons_id_has_one_multi")
+        expect(unify(State, cons_id_has_one_multi), $module, $pred,
+            "already handled but not cons_id_has_one_multi")
     ;
         Entry = cons_id_entry(State, ArmsCord),
         Arms = cord.list(ArmsCord),
         (
             State = cons_id_has_conflict,
             set_tree234.is_member(ConflictConsIds, ConsId, IsMember),
-            expect(unify(IsMember, yes), this_file,
-                "convert_case: conflict status but not in ConflictConsIds"),
+            expect(unify(IsMember, yes), $module, $pred,
+                "conflict status but not in ConflictConsIds"),
             Disjuncts = list.map(project_arm_goal, Arms),
             disj_list_to_goal(Disjuncts, GoalInfo, Goal),
             Case = case(ConsId, [], Goal),
@@ -462,8 +461,8 @@ convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
         ;
             State = cons_id_has_all_singles,
             set_tree234.is_member(ConflictConsIds, ConsId, IsMember),
-            expect(unify(IsMember, no), this_file,
-                "convert_case: singles status but in ConflictConsIds"),
+            expect(unify(IsMember, no), $module, $pred,
+                "singles status but in ConflictConsIds"),
             Disjuncts = list.map(project_single_arm_goal, Arms),
             disj_list_to_goal(Disjuncts, GoalInfo, Goal),
             Case = case(ConsId, [], Goal),
@@ -496,12 +495,11 @@ convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
                 ;
                     AllConsIds = [],
                     % At least, AllConsIds should contain ConsId.
-                    unexpected(this_file, "convert_case: " ++
+                    unexpected($module, $pred,
                         "cons_id_has_one_multi: AllConsIds = []")
                 )
             ;
-                unexpected(this_file,
-                    "convert_case: misleading cons_id_has_one_multi")
+                unexpected($module, $pred, "misleading cons_id_has_one_multi")
             )
         )
     ).
@@ -515,7 +513,7 @@ project_arm_goal(multi_cons_id_arm(_, _, Goal)) = Goal.
 
 project_single_arm_goal(single_cons_id_arm(_, Goal)) = Goal.
 project_single_arm_goal(multi_cons_id_arm(_, _, _)) = _ :-
-    unexpected(this_file, "project_single_arm_goal: multi arm").
+    unexpected($module, $pred, "multi arm").
 
 :- func num_cases_in_table(cases_table) = int.
 
@@ -879,7 +877,7 @@ find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
             Goals = [Goal]
         )
     ;
-        unexpected(this_file, "find_bind_var_for_switch_in_deconstruct")
+        unexpected($module, $pred, "condition failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1000,7 +998,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
             FoundDeconstruct = given_up_search
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected(this_file, "find_bind_var_2: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -1119,9 +1117,5 @@ count_covered_cons_ids([Case | Cases]) = CaseCount + CasesCount :-
     CasesCount = count_covered_cons_ids(Cases).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "switch_detection.m".
-
+:- end_module check_hlds.switch_detection.
 %-----------------------------------------------------------------------------%

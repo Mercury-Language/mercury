@@ -490,8 +490,8 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
         )
     ;
         ItemsNeedTabling = no,
-        expect(unify(ItemsNeedTablingStatistics, no), this_file,
-            "add_implicit_imports: tabling statistics without tabling"),
+        expect(unify(ItemsNeedTablingStatistics, no), $module, $pred,
+            "tabling statistics without tabling"),
         (
             % These forms of tabling cannot ask for statistics.
             (
@@ -790,9 +790,5 @@ get_fact_table_dependencies_2([Item | Items], !Deps) :-
     get_fact_table_dependencies_2(Items, !Deps).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "module_imports.m".
-
+:- end_module parse_tree.module_imports.
 %-----------------------------------------------------------------------------%

@@ -144,7 +144,7 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         StringFieldId = StringFieldIdPrime,
         NextSlotFieldId = NextSlotFieldIdPrime
     ;
-        unexpected(this_file, "ml_generate_string_switch: bad FieldIds")
+        unexpected($module, $pred, "bad FieldIds")
     ),
 
     % Generate the rows of the hash table.
@@ -284,7 +284,7 @@ gen_string_switch_case_comment(TaggedConsId) = String :-
     ( ConsTag = string_tag(ConsString) ->
         String = """" ++ ConsString ++ """"
     ;
-        unexpected(this_file, "gen_string_switch_case_comment: non-string tag")
+        unexpected($module, $pred, "non-string tag")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -361,9 +361,5 @@ generate_string_switch_arms(CodeMap, [Entry | Entries], !Cases) :-
 make_hash_match(Slot) = match_value(ml_const(mlconst_int(Slot))).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ml_string_switch.m".
-
+:- end_module ml_backend.ml_string_switch.
 %-----------------------------------------------------------------------------%

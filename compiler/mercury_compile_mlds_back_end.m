@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -108,8 +108,8 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
 
     maybe_simplify(no, simplify_pass_ml_backend, Verbose, Stats, !HLDS, [],
         SimplifySpecs, !IO),
-    expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
-        "ml_backend: simplify has errors"),
+    expect(unify(contains_errors(Globals, SimplifySpecs), no), $module, $pred,
+        "simplify has errors"),
     maybe_dump_hlds(!.HLDS, 405, "ml_backend_simplify", !DumpInfo, !IO),
 
     % NOTE: it is unsafe for passes after add_trail_ops to reorder
@@ -491,10 +491,5 @@ dump_mlds(Globals, DumpFile, MLDS, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mercury_compile_mlds_back_end.m".
-
-%-----------------------------------------------------------------------------%
+:- end_module top_level.mercury_compile_mlds_back_end.
 %-----------------------------------------------------------------------------%

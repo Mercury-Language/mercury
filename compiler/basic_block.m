@@ -202,14 +202,14 @@ extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
             BlockFallInto, BlockSideLabels, BlockMaybeFallThrough),
         NextBlockInfo = block_info(NextBlockLabel, _, NextBlockInstrs,
             NextBlockFallInto, NextBlockSideLabels, NextBlockMaybeFallThrough),
-        expect(unify(BlockLabel, Label), this_file,
-            "extend_basic_blocks: block label mismatch"),
-        expect(unify(NextBlockLabel, NextLabel), this_file,
-            "extend_basic_blocks: next block label mismatch"),
-        expect(unify(BlockMaybeFallThrough, yes(NextLabel)), this_file,
-            "extend_basic_blocks: fall through mismatch"),
-        expect(unify(NextBlockFallInto, yes), this_file,
-            "extend_basic_blocks: fall into mismatch"),
+        expect(unify(BlockLabel, Label), $module, $pred,
+            "block label mismatch"),
+        expect(unify(NextBlockLabel, NextLabel), $module, $pred,
+            "next block label mismatch"),
+        expect(unify(BlockMaybeFallThrough, yes(NextLabel)), $module, $pred,
+            "fall through mismatch"),
+        expect(unify(NextBlockFallInto, yes), $module, $pred,
+            "fall into mismatch"),
         NewBlockInfo = block_info(BlockLabel, BlockLabelInstr,
             BlockInstrs ++ NextBlockInstrs, BlockFallInto,
             BlockSideLabels ++ NextBlockSideLabels, NextBlockMaybeFallThrough),
@@ -232,11 +232,5 @@ flatten_basic_blocks([Label | Labels], BlockMap, Instrs) :-
     list.append([BlockLabelInstr | BlockInstrs], RestInstrs, Instrs).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "basic_block.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module basic_block.
+:- end_module ll_backend.basic_block.
 %-----------------------------------------------------------------------------%

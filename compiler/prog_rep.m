@@ -243,7 +243,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
         ;
             FlattenParConjs = expect_no_par_conjs,
             Goals = Goals0,
-            expect(unify(ConjType, plain_conj), this_file,
+            expect(unify(ConjType, plain_conj), $module, $pred,
                 "non-plain conjunction and declarative debugging")
         ),
         conj_to_conj_rep(Info, Instmap0, Goals, GoalReps),
@@ -338,7 +338,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                     var_to_var_rep(Info, Var2))
             ;
                 Uni = complicated_unify(_, _, _),
-                unexpected(this_file, "goal_expr_to_byte_list: complicated_unify")
+                unexpected($module, $pred, "complicated_unify")
             )
         ;
             GoalExpr = generic_call(GenericCall, Args, _, _),
@@ -359,8 +359,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 ( ArgsRep = [InputArgRep, OutputArgRep] ->
                     AtomicGoalRep = cast_rep(OutputArgRep, InputArgRep) 
                 ;
-                    unexpected(this_file, 
-                        "goal_expr_goal_expr_rep: cast arity != 2")
+                    unexpected($module, $pred, "cast arity != 2")
                 )
             )
         ;
@@ -378,8 +377,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 AtomicGoalRep = builtin_call_rep(ModuleName, PredName, ArgsRep)
             ;
                 Builtin = out_of_line_builtin,
-                unexpected(this_file,
-                    "goal_expr_to_byte_list: out_of_line_builtin")
+                unexpected($module, $pred, "out_of_line_builtin")
             )
         ;
             GoalExpr = call_foreign_proc(_, _PredId, _, Args, _, _, _),
@@ -395,7 +393,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "goal_expr_to_byte_list: unexpected shorthand")
+        unexpected($module, $pred, "unexpected shorthand")
     ).
 
 :- pred conj_to_conj_rep(prog_rep_info::in, instmap::in, list(hlds_goal)::in,
@@ -618,9 +616,9 @@ filter_input_args(Info, [Mode | Modes], [Var | Vars],
     ),
     filter_input_args(Info, Modes, Vars, MaybeVars).
 filter_input_args(_, [], [_ | _], _) :-
-    unexpected(this_file, "filter_input_args: mismatched lists").
+    unexpected($module, $pred, "mismatched lists").
 filter_input_args(_, [_ | _], [], _) :-
-    unexpected(this_file, "filter_input_args: mismatched lists").
+    unexpected($module, $pred, "mismatched lists").
 
 %---------------------------------------------------------------------------%
 
@@ -809,11 +807,5 @@ method_num_to_byte_list(VarNum) = Bytes :-
     short_to_byte_list(VarNum, Bytes).
 
 %---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_rep.m".
-
-%---------------------------------------------------------------------------%
-:- end_module prog_rep.
+:- end_module ll_backend.prog_rep.
 %---------------------------------------------------------------------------%

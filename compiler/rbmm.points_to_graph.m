@@ -247,7 +247,7 @@
 
 :- type rptg_edge_content
         --->    rptg_edge_content(
-                    rptg_ec_label     :: selector 
+                    rptg_ec_label     :: selector
                     % The label of an edge.
                 ).
 
@@ -285,7 +285,7 @@
     %    from rptg_edge, which is the edge id, to rptg_edge_info.
     %    We refer to label as some information associated with an edge. We
     %    represent it by rptg_edge_content.
-    %    
+    %
     % Two above maps (for sets of nodes and edges) store enough *information*
     % about an rpt graph. But in terms of *accessibility* it is unconvenient.
     % We often access an rpt graph from a node, and then follow
@@ -443,11 +443,9 @@ rptg_path_2(G, S, E, Nodes0, Path) :-
 
 rptg_reachable_and_having_type(Graph, Start, EType, E) :-
     rptg_lookup_node_type(Graph, Start) = Type,
-    ( if
-        Type = EType
-      then
+    ( if Type = EType then
         E = Start
-      else
+    else
         reachable_and_having_type_2(Graph, [Start], [Start], EType, E)
     ).
 
@@ -460,12 +458,10 @@ rptg_reachable_and_having_type(Graph, Start, EType, E) :-
 reachable_and_having_type_2(Graph, [StartNode | StartNodes0], VisitedNodes0,
         EType, E) :-
     Ends = rptg_lookup_list_endnodes(Graph, StartNode),
-    ( if
-        find_node_with_same_type(Ends, Graph, EType, E1)
-      then
+    ( if find_node_with_same_type(Ends, Graph, EType, E1) then
         % Find such a node, return it.
         E = E1
-      else
+    else
         % Still not find, do breath-first search, with nodes that we have
         % never started from.
         StartNodes1 = StartNodes0 ++ Ends,
@@ -483,11 +479,9 @@ reachable_and_having_type_2(Graph, [StartNode | StartNodes0], VisitedNodes0,
 
 find_node_with_same_type([N | Ns], Graph, Type, End) :-
     rptg_lookup_node_type(Graph, N) = NType,
-    ( if
-        NType = Type
-      then
+    ( if NType = Type then
         End = N
-      else
+    else
         find_node_with_same_type(Ns, Graph, Type, End)
     ).
 
@@ -496,11 +490,10 @@ rptg_get_node_by_region_name(Graph, RegionName, Node) :-
     ( if
         get_node_by_region_name_from_list(Graph, AllNodes, RegionName,
             NodePrime)
-      then
+    then
         Node = NodePrime
-      else
-        unexpected(this_file,
-            "rptg_get_node_by_region_name: No such a node exists")
+    else
+        unexpected($module, $pred, "node not found")
     ).
 
 :- pred get_node_by_region_name_from_list(rpt_graph::in, list(rptg_node)::in,
@@ -509,22 +502,18 @@ rptg_get_node_by_region_name(Graph, RegionName, Node) :-
 get_node_by_region_name_from_list(Graph, NodeList, RegName, Node) :-
     NodeList = [ANode | Rest],
     RegionANode = rptg_lookup_region_name(Graph, ANode),
-    ( if
-        RegionANode = RegName
-      then
+    ( if RegionANode = RegName then
         Node = ANode
-      else
+    else
         get_node_by_region_name_from_list(Graph, Rest, RegName, Node)
     ).
 
 rptg_get_node_by_vars(Graph, Vars, Node) :-
     Nodes = rptg_get_nodes_as_list(Graph),
-    ( if
-        get_node_by_vars_from_list(Graph, Nodes, Vars, NodePrime)
-      then
+    ( if get_node_by_vars_from_list(Graph, Nodes, Vars, NodePrime) then
         Node = NodePrime
-      else
-        unexpected(this_file, "rptg_get_node_by_vars: No such a node exists")
+    else
+        unexpected($module, $pred, "node not found")
     ).
 
 :- pred get_node_by_vars_from_list(rpt_graph::in, list(rptg_node)::in,
@@ -555,7 +544,7 @@ rptg_get_node_by_node(Graph, Node, MergedNode) :-
         ( get_node_by_node_from_list(Graph, AllNodes, Node, MergedNode0) ->
             MergedNode = MergedNode0
         ;
-            unexpected(this_file, "get_node_by_node: No such a node exists")
+            unexpected($module, $pred, "node not found")
         )
     ).
 
@@ -611,7 +600,7 @@ rptg_set_node_is_allocated(Node, IsAlloc, !Graph) :-
     NodeContent0 = rptg_get_node_content(!.Graph, Node),
     rptg_node_content_set_is_allocated(IsAlloc, NodeContent0, NodeContent),
     rptg_set_node_content(Node, NodeContent, !Graph).
-    
+
 rptg_node_content_get_vars(NC) = NC ^ rptg_nc_vars.
 rptg_node_content_get_region_name(NC) = NC ^ rptg_nc_reg_var_name.
 rptg_node_content_get_merged_from(NC) = NC ^ rptg_nc_merged_from.
@@ -754,8 +743,8 @@ edge_points_to_node(End, Edge, EdgeInfo, !L) :-
     % This predicate is very similar to transfer_out_edges_2, except that
     % the edges now point to Node1, instead of going out from it.
     %
-:- pred transfer_in_edges_2(list(rptg_edge)::in, rptg_node::in, rpt_graph::in,
-    rpt_graph::out) is det.
+:- pred transfer_in_edges_2(list(rptg_edge)::in, rptg_node::in,
+    rpt_graph::in, rpt_graph::out) is det.
 
 transfer_in_edges_2([], _, !Graph).
 transfer_in_edges_2([Edge | Edges], Node1, !Graph) :-
@@ -866,7 +855,6 @@ rptg_edge_in_graph(Start, Label, End, Graph) :-
     solutions(map.inverse_search(OutEdgesOfStart, End), EdgePointToEndList),
 
     find_edge_with_same_content(Label, EdgePointToEndList, Graph, _).
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1025,9 +1013,5 @@ update_remembered_list(Selector0, HLDS, TypeX, Graph, Processed, OutEdge,
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.points_to_graph.m".
-
+:- end_module transform_hlds.rbmm.points_to_graph.
 %-----------------------------------------------------------------------------%

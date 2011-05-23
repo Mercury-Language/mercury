@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -219,8 +219,7 @@ output_record_lval_decls_format(Info, Lval, FirstIndent, LaterIndent,
             % All env_var_ref global_var_refs should have been output by
             % output_c_procedure_decls already, and as of now there are no
             % other global_var_refs.
-            unexpected(this_file,
-                "output_record_lval_decls_format: global_var_ref")
+            unexpected($module, $pred, "global_var_ref")
         )
     ).
 
@@ -236,7 +235,7 @@ output_lval(Info, Lval, !IO) :-
     ;
         Lval = stackvar(N),
         ( N =< 0 ->
-            unexpected(this_file, "stack var out of range")
+            unexpected($module, $pred, "stack var out of range")
         ;
             true
         ),
@@ -246,7 +245,7 @@ output_lval(Info, Lval, !IO) :-
     ;
         Lval = parent_stackvar(N),
         ( N =< 0 ->
-            unexpected(this_file, "parent stack var out of range")
+            unexpected($module, $pred, "parent stack var out of range")
         ;
             true
         ),
@@ -256,7 +255,7 @@ output_lval(Info, Lval, !IO) :-
     ;
         Lval = framevar(N),
         ( N =< 0 ->
-            unexpected(this_file, "frame var out of range")
+            unexpected($module, $pred, "frame var out of range")
         ;
             true
         ),
@@ -328,7 +327,7 @@ output_lval(Info, Lval, !IO) :-
         io.write_string(")", !IO)
     ;
         Lval = lvar(_),
-        unexpected(this_file, "output_lval/3: illegal to output an lvar.")
+        unexpected($module, $pred, "lvar")
     ;
         Lval = temp(Type, Num),
         (
@@ -354,14 +353,13 @@ output_lval_for_assign(Info, Lval, Type, !IO) :-
     (
         Lval = reg(RegType, Num),
         Type = lt_word,
-        expect(unify(RegType, reg_r), this_file,
-            "output_lval_for_assign: float reg"),
+        expect(unify(RegType, reg_r), $module, $pred, "float reg"),
         output_reg(RegType, Num, !IO)
     ;
         Lval = stackvar(N),
         Type = lt_word,
         ( N < 0 ->
-            unexpected(this_file, "stack var out of range")
+            unexpected($module, $pred, "stack var out of range")
         ;
             true
         ),
@@ -372,7 +370,7 @@ output_lval_for_assign(Info, Lval, Type, !IO) :-
         Lval = parent_stackvar(N),
         Type = lt_word,
         ( N < 0 ->
-            unexpected(this_file, "parent stack var out of range")
+            unexpected($module, $pred, "parent stack var out of range")
         ;
             true
         ),
@@ -383,7 +381,7 @@ output_lval_for_assign(Info, Lval, Type, !IO) :-
         Lval = framevar(N),
         Type = lt_word,
         ( N =< 0 ->
-            unexpected(this_file, "frame var out of range")
+            unexpected($module, $pred, "frame var out of range")
         ;
             true
         ),
@@ -467,7 +465,7 @@ output_lval_for_assign(Info, Lval, Type, !IO) :-
         io.write_string(")", !IO)
     ;
         Lval = lvar(_),
-        unexpected(this_file, "output_lval_for_assign: lvar")
+        unexpected($module, $pred, "lvar")
     ;
         Lval = temp(RegType, Num),
         (
@@ -497,7 +495,7 @@ output_lval_as_word(Info, Lval, !IO) :-
         output_lval(Info, Lval, !IO)
     ; ActualType = lt_float ->
         % Sanity check -- if this happens, the LLDS is ill-typed.
-        unexpected(this_file, "output_lval_as_word: got float")
+        unexpected($module, $pred, "float")
     ;
         io.write_string("MR_LVALUE_CAST(MR_Word,", !IO),
         output_lval(Info, Lval, !IO),
@@ -568,7 +566,7 @@ reg_to_string(reg_r, N) =
     ; N =< max_virtual_r_reg ->
         "MR_r(" ++ int_to_string(N) ++ ")"
     ;
-        unexpected(this_file, "reg_to_string: register number too large")
+        unexpected($module, $pred, "register number too large")
     ).
 reg_to_string(reg_f, N) =
     "MR_f(" ++ int_to_string(N) ++ ")".
@@ -584,7 +582,7 @@ max_virtual_r_reg = 1024.
 output_reg(reg_r, N, !IO) :-
     io.write_string(reg_to_string(reg_r, N), !IO).
 output_reg(reg_f, _, !IO) :-
-    sorry(this_file, "Floating point registers not implemented").
+    sorry($module, $pred, "Floating point registers not implemented").
 
 % The calls to env_var_is_acceptable_char in prog_io_goal.m ensure that
 % EnvVarName is acceptable as part of a C identifier.
@@ -628,7 +626,7 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             FirstIndent, LaterIndent, !N, !DeclSet, !IO)
     ;
         Rval = var(_),
-        unexpected(this_file, "output_record_rval_decls_format: var")
+        unexpected($module, $pred, "var")
     ;
         Rval = mkword(_, SubRval),
         output_record_rval_decls_format(Info, SubRval,
@@ -799,7 +797,7 @@ output_rval(Info, Rval, !IO) :-
             Category = compound_compare_binop,
             % These operators are intended to be generated only when using
             % the Erlang backend.
-            unexpected(this_file, "output_rval: compound_compare_binop")
+            unexpected($module, $pred, "compound_compare_binop")
         ;
             Category = string_compare_binop,
             io.write_string("(strcmp(", !IO),
@@ -953,7 +951,7 @@ output_rval(Info, Rval, !IO) :-
         )
     ;
         Rval = var(_),
-        unexpected(this_file, "Cannot output a var(_) expression in code")
+        unexpected($module, $pred, "cannot output a var(_) expression in code")
     ;
         Rval = mem_addr(MemRef),
         (
@@ -1163,7 +1161,7 @@ output_rval_as_type(Info, Rval, DesiredType, !IO) :-
             ; DesiredType = lt_data_ptr ->
                 output_float_rval_as_data_ptr(Info, Rval, !IO)
             ;
-                unexpected(this_file, "output_rval_as_type: type error")
+                unexpected($module, $pred, "type error")
             )
         ;
             (
@@ -1590,12 +1588,6 @@ output_common_vector_cell_array_name(type_num(TypeNum), CellNum, !IO) :-
     io.write_string("_", !IO),
     io.write_int(CellNum, !IO).
 
-%----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "llds_out_data.m".
-
 %---------------------------------------------------------------------------%
-:- end_module llds_out_data.
+:- end_module ll_backend.llds_out.llds_out_data.
 %---------------------------------------------------------------------------%

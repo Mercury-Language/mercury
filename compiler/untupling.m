@@ -287,9 +287,9 @@ expand_args_in_proc_3([HeadVar0 | HeadVars0], [ArgMode0 | ArgModes0],
     expand_args_in_proc_3(HeadVars0, ArgModes0, HeadVars, ArgModes,
         !Goal, !VarSet, !VarTypes, ContainerTypes, TypeTable).
 expand_args_in_proc_3([], [_|_], _, _, !_, !_, !_, _, _) :-
-    unexpected(this_file, "expand_args_in_proc_3: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 expand_args_in_proc_3([_|_], [], _, _, !_, !_, !_, _, _) :-
-    unexpected(this_file, "expand_args_in_proc_3: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 :- pred expand_one_arg_in_proc(prog_var::in, mer_mode::in, prog_vars::out,
     list(mer_mode)::out, hlds_goal::in, hlds_goal::out, prog_varset::in,
@@ -338,8 +338,7 @@ expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
             deconstruct_functor(HeadVar0, ConsId, NewHeadVars, UnifGoal),
             conjoin_goals_keep_detism(!.Goal, UnifGoal, !:Goal)
         ;
-            unexpected(this_file,
-                "expand_one_arg_in_proc_2: unsupported mode encountered")
+            unexpected($module, $pred, "unsupported mode")
         ),
         ContainerTypes = [Type | ContainerTypes0]
     ;
@@ -384,9 +383,9 @@ build_untuple_map([OldVar | OldVars], [NewVars | NewVarss], !UntupleMap) :-
         build_untuple_map(OldVars, NewVarss, !UntupleMap)
     ).
 build_untuple_map([], [_| _], !_) :-
-    unexpected(this_file, "build_untuple_map: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 build_untuple_map([_| _], [], !_) :-
-    unexpected(this_file, "build_untuple_map: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 %-----------------------------------------------------------------------------%
 
@@ -523,7 +522,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
                 ConjList = EnterUnifs ++ [Call] ++ ExitUnifs,
                 conj_list_to_goal(ConjList, GoalInfo0, Goal)
             ;
-                unexpected(this_file, "fix_calls_in_goal: not a call template")
+                unexpected($module, $pred, "not a call template")
             )
         ;
             Goal = hlds_goal(GoalExpr0, GoalInfo0)
@@ -586,7 +585,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "fix_calls_in_goal: unexpected shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -678,7 +677,7 @@ expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
                 Args, EnterUnifs, ExitUnifs1, !VarSet,
                 !VarTypes, ContainerTypes, TypeTable)
         ;
-            unexpected(this_file, "expand_call_args: unsupported mode")
+            unexpected($module, $pred, "unsupported mode")
         )
     ;
         Expansion = no_expansion,
@@ -688,9 +687,9 @@ expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
     ).
 
 expand_call_args_2([], [_|_], _, _, _, !_, !_, _, _) :-
-    unexpected(this_file, "expand_call_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 expand_call_args_2([_|_], [], _, _, _, !_, !_, _, _) :-
-    unexpected(this_file, "expand_call_args: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -764,11 +763,5 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "untupling.m".
-
-%-----------------------------------------------------------------------------%
-:- end_module untupling.
+:- end_module transform_hlds.untupling.
 %-----------------------------------------------------------------------------%

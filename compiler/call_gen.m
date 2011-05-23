@@ -181,8 +181,7 @@ generate_generic_call(OuterCodeModel, GenericCall, Args, Modes, Det,
         ( Args = [InputArg, OutputArg] ->
             generate_assign_builtin(OutputArg, leaf(InputArg), Code, !CI)
         ;
-            unexpected(this_file,
-                "generate_generic_call: invalid type/inst cast call")
+            unexpected($module, $pred, "invalid type/inst cast call")
         )
     ).
 
@@ -290,7 +289,7 @@ generate_event_call(EventName, Args, GoalInfo, Code, !CI) :-
         generate_user_event_code(UserEventInfo, GoalInfo, EventCode, !CI),
         Code = cord_list_to_cord(AttrCodes) ++ EventCode
     ;
-        unexpected(this_file, "generate_event_call: bad event name")
+        unexpected($module, $pred, "bad event name")
     ).
 
 :- pred generate_event_attributes(list(event_attribute)::in,
@@ -300,7 +299,7 @@ generate_event_call(EventName, Args, GoalInfo, Code, !CI) :-
 generate_event_attributes([], !.Vars, [], [], !CI) :-
     (
         !.Vars = [_ | _],
-        unexpected(this_file, "generate_event_attributes: var")
+        unexpected($module, $pred, "var")
     ;
         !.Vars = []
     ).
@@ -316,7 +315,7 @@ generate_event_attributes([Attribute | Attributes], !.Vars,
             MaybeUserAttr = yes(UserAttr)
         ;
             !.Vars = [],
-            unexpected(this_file, "generate_event_attributes: no var")
+            unexpected($module, $pred, "no var")
         )
     ;
         SynthCall = yes(_),
@@ -443,9 +442,9 @@ generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
         ])
     ).
 generic_call_nonvar_setup(event_call(_), _, _, _, _, !CI) :-
-    unexpected(this_file, "generic_call_nonvar_setup: event_call").
+    unexpected($module, $pred, "event_call").
 generic_call_nonvar_setup(cast(_), _, _, _, _, !CI) :-
-    unexpected(this_file, "generic_call_nonvar_setup: cast").
+    unexpected($module, $pred, "cast").
 
 %---------------------------------------------------------------------------%
 
@@ -626,7 +625,7 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
         length(Args, Arity),
         format("unknown builtin predicate: %s/%d",
             [s(PredName), i(Arity)], Msg),
-        unexpected(this_file, Msg)
+        unexpected($module, $pred, Msg)
     ),
     (
         CodeModel = model_det,
@@ -642,7 +641,7 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
             Code = AddrVarCode ++ ValueVarCode ++ StoreCode
         ;
             SimpleCode = test(_),
-            unexpected(this_file, "malformed model_det builtin predicate")
+            unexpected($module, $pred, "malformed model_det builtin predicate")
         ;
             SimpleCode = noop(DefinedVars),
             list.foldl(magically_put_var_in_unused_reg, DefinedVars, !CI),
@@ -657,17 +656,17 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
             Code = ArgCode ++ TestCode
         ;
             SimpleCode = assign(_, _),
-            unexpected(this_file, "malformed model_semi builtin predicate")
+            unexpected($module, $pred, "malformed model_semi builtin predicate")
         ;
             SimpleCode = ref_assign(_, _),
-            unexpected(this_file, "malformed model_semi builtin predicate")
+            unexpected($module, $pred, "malformed model_semi builtin predicate")
         ;
             SimpleCode = noop(_),
-            unexpected(this_file, "malformed model_semi builtin predicate")
+            unexpected($module, $pred, "malformed model_semi builtin predicate")
         )
     ;
         CodeModel = model_non,
-        unexpected(this_file, "model_non builtin predicate")
+        unexpected($module, $pred, "model_non builtin predicate")
     ).
 
 :- pred generate_assign_builtin(prog_var::in, simple_expr(prog_var)::in,
@@ -780,12 +779,6 @@ give_vars_consecutive_arg_infos([Var | Vars], N0, ArgMode,
     ArgInfo = arg_info(N0, ArgMode),
     N1 = N0 + 1,
     give_vars_consecutive_arg_infos(Vars, N1, ArgMode, ArgInfos).
-
-%---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "call_gen.m".
 
 %---------------------------------------------------------------------------%
 :- end_module call_gen.
