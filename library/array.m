@@ -123,6 +123,33 @@
 :- func array(list(T)) = array(T).
 :- mode array(in) = array_uo is det.
 
+    % array.generate(Size, Generate) = Array:
+    % Create an array with bounds from 0 to Size - 1 using the function
+    % Generate to set the intial value of each element of the array.
+    % The initial value of the element at index K will be the result of
+    % calling the function Generate(K).
+    %
+:- func array.generate(int::in, (func(int) = T)::in) = (array(T)::array_uo)
+    is det.
+
+    % array.generate_foldl(Size, Generate, Array, !Acc):
+    % As above, but using a predicate with an accumulator threaded through it
+    % to generate the inital value of each element.
+    %
+:- pred array.generate_foldl(int, pred(int, T, A, A), array(T), A, A).
+:- mode array.generate_foldl(in, in(pred(in, out, in, out) is det),
+    array_uo, in, out) is det.
+:- mode array.generate_foldl(in, in(pred(in, out, mdi, muo) is det),
+    array_uo, mdi, muo) is det.
+:- mode array.generate_foldl(in, in(pred(in, out, di, uo) is det),
+    array_uo, di, uo) is det.
+:- mode array.generate_foldl(in, in(pred(in, out, in, out) is semidet),
+    array_uo, in, out) is semidet.
+:- mode array.generate_foldl(in, in(pred(in, out, mdi, muo) is semidet),
+    array_uo, mdi, muo) is semidet.
+:- mode array.generate_foldl(in, in(pred(in, out, di, uo) is semidet),
+    array_uo, di, uo) is semidet.
+
 %-----------------------------------------------------------------------------%
 
     % array.min returns the lower bound of the array.
@@ -766,6 +793,9 @@ ML_init_array(MR_ArrayPtr array, MR_Integer size, MR_Word item)
 ").
 
 :- pragma foreign_code("C#", "
+
+// XXX What does the fill argument do here?
+//
 public static System.Array
 ML_new_array(int Size, object Item, bool fill)
 {
@@ -783,6 +813,20 @@ ML_new_array(int Size, object Item, bool fill)
     }
     return arr;
 }
+
+public static System.Array
+ML_unsafe_new_array(int Size, object Item)
+{
+    System.Array arr;
+
+    if (Item is int || Item is double || Item is char || Item is bool) {
+        arr = System.Array.CreateInstance(Item.GetType(), Size);
+    } else {
+        arr = new object[Size];
+    }
+    arr.SetValue(Item, 0);
+    return arr;
+} 
 
 public static System.Array
 ML_array_resize(System.Array arr0, int Size, object Item)
@@ -895,6 +939,34 @@ ML_new_array(int Size, Object Item, boolean fill)
     if (fill) {
         java.util.Arrays.fill(as, Item);
     }
+    return as;
+}
+
+public static Object
+ML_unsafe_new_array(int Size, Object Item)
+{
+    if (Item instanceof Integer) {
+        int[] as = new int[Size];
+        as[0] = (Integer) Item;
+        return as;
+    }
+    if (Item instanceof Double) {
+        double[] as = new double[Size];
+        as[0] = (Double) Item;
+        return as;
+    }
+    if (Item instanceof Character) {
+        char[] as = new char[Size];
+        as[0] = (Character) Item;
+        return as;
+    }
+    if (Item instanceof Boolean) {
+        boolean[] as = new boolean[Size];
+        as[0] = (Boolean) Item;
+        return as;
+    }
+    Object[] as = new Object[Size];
+    as[0] = Item;
     return as;
 }
 
@@ -1063,6 +1135,114 @@ array.make_empty_array = A :-
     // XXX as per C#
     Array = null;
 ").
+
+%-----------------------------------------------------------------------------%
+
+array.generate(Size, GenFunc) = Array :-
+    compare(Result, Size, 0),
+    (
+        Result = (<),
+        error("array.generate: negative size")
+    ;
+        Result = (=),
+        make_empty_array(Array)
+    ;
+        Result = (>),
+        FirstElem = GenFunc(0),
+        Array0 = unsafe_init(Size, FirstElem),
+        Array = generate_2(1, Size, GenFunc, Array0)
+    ).
+
+:- func unsafe_init(int::in, T::in) = (array(T)::array_uo) is det.
+:- pragma foreign_proc("C",
+    unsafe_init(Size::in, FirstElem::in) = (Array::array_uo),
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    ML_alloc_array(Array, Size + 1, MR_ALLOC_ID);
+
+    /*
+    ** In debugging grades we fill the array with the first element
+    ** in case the return value of a call to this predicate is examined
+    ** in the debugger.
+    */ 
+    #if defined(MR_EXEC_TRACE)
+        ML_init_array(Array, Size, FirstElem);
+    #else
+        Array->size = Size;    
+        Array->elements[0] = FirstElem;
+    #endif
+
+").
+:- pragma foreign_proc("C#",
+    unsafe_init(Size::in, FirstElem::in) = (Array::array_uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Array = array.ML_unsafe_new_array(Size, FirstElem);
+").
+:- pragma foreign_proc("Java",
+    unsafe_init(Size::in, FirstElem::in) = (Array::array_uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Array = array.ML_unsafe_new_array(Size, FirstElem);
+").
+:- pragma foreign_proc("Erlang",
+    unsafe_init(Size::in, FirstElem::in) = (Array::array_uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Array = erlang.make_tuple(Size, FirstElem)
+").    
+
+:- func generate_2(int::in, int::in, (func(int) = T)::in, array(T)::array_di)
+    = (array(T)::array_uo) is det.
+
+generate_2(Index, Size, GenFunc, !.Array) = !:Array :-  
+    ( if Index < Size then
+        Elem = GenFunc(Index),
+        array.unsafe_set(Index, Elem, !Array),
+        !:Array = generate_2(Index + 1, Size, GenFunc, !.Array)
+      else
+        true
+    ).
+
+array.generate_foldl(Size, GenPred, Array, !Acc) :-
+    compare(Result, Size, 0),
+    (
+        Result = (<),
+        error("array.generate_foldl: negative size")
+    ;
+        Result = (=),
+        make_empty_array(Array)
+    ;
+        Result = (>),
+        GenPred(0, FirstElem, !Acc),
+        Array0 = unsafe_init(Size, FirstElem),
+        generate_foldl_2(1, Size, GenPred, Array0, Array, !Acc)
+    ).
+
+:- pred generate_foldl_2(int, int, pred(int, T, A, A),
+    array(T), array(T), A, A).
+:- mode generate_foldl_2(in, in, in(pred(in, out, in, out) is det),
+    array_di, array_uo, in, out) is det.
+:- mode generate_foldl_2(in, in, in(pred(in, out, mdi, muo) is det),
+    array_di, array_uo, mdi, muo) is det.
+:- mode generate_foldl_2(in, in, in(pred(in, out, di, uo) is det),
+    array_di, array_uo, di, uo) is det.
+:- mode generate_foldl_2(in, in, in(pred(in, out, in, out) is semidet),
+    array_di, array_uo, in, out) is semidet.
+:- mode generate_foldl_2(in, in, in(pred(in, out, mdi, muo) is semidet),
+    array_di, array_uo, mdi, muo) is semidet.
+:- mode generate_foldl_2(in, in, in(pred(in, out, di, uo) is semidet),
+    array_di, array_uo, di, uo) is semidet.
+
+generate_foldl_2(Index, Size, GenPred, !Array, !Acc) :-
+    ( if Index < Size then
+        GenPred(Index, Elem, !Acc),
+        array.unsafe_set(Index, Elem, !Array),
+        generate_foldl_2(Index + 1, Size, GenPred, !Array, !Acc)
+      else
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 

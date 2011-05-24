@@ -147,6 +147,9 @@ Changes to the Mercury standard library:
 * We have added additional modes with unique and mostly-unique accumulators
   to rbtree.foldl/4, rbtree.foldl2/6 and tree_bitset.foldl/4.
 
+* A new function, array.generate/2, and new predicate, array.generate_foldl/5,
+  can be used to create and fill new arrays.
+
 
 NEWS for Mercury 11.01
 ----------------------

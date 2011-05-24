@@ -10,6 +10,7 @@ ORDINARY_PROGS=	\
 	agg \
 	array_test \
 	array_test2 \
+	array_gen \
 	backquoted_qualified_ops \
 	bag_various \
 	bidirectional \
