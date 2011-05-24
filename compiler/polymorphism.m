@@ -1005,9 +1005,9 @@ produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     list(hlds_goal)::out) is det.
 
 assign_var_list([], [_ | _], _) :-
-    unexpected(this_file, "assign_var_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 assign_var_list([_ | _], [], _) :-
-    unexpected(this_file, "assign_var_list: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 assign_var_list([], [], []).
 assign_var_list([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
     assign_var(Var1, Var2, Goal),
@@ -1231,15 +1231,13 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
                 SubGoalExpr = conj(plain_conj, Conjuncts),
                 SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo)
             ;
-                unexpected(this_file,
-                    "polymorphism_process_goal_expr: malformed try goal")
+                unexpected($module, $pred, "malformed try goal")
             ),
             set_maps_snapshot(InitialSnapshot, !Info),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected(this_file,
-                "polymorphism_process_goal_expr: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -1508,8 +1506,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
                     GoalInfo0, GoalInfo1)
             ;
                 ProcIds = [],
-                unexpected(this_file,
-                    "polymorphism_process_unify_functor: no modes")
+                unexpected($module, $pred, "no modes")
             )
         ;
             ProcId = ProcId0,
@@ -1649,8 +1646,7 @@ fix_undetermined_mode_lambda_goal(ProcId, Functor0, Functor, ModuleInfo) :-
         MaybeCallUnifyContext = MaybeCallUnifyContext0,
         QualifiedPName = QualifiedPName0
     ;
-        unexpected(this_file,
-            "fix_undetermined_mode_lambda_goal: unmatched lambda goal")
+        unexpected($module, $pred, "unmatched lambda goal")
     ),
 
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
@@ -1680,7 +1676,7 @@ lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet) :-
     ( list.drop(NumArgModes - NumLambdaVars, ArgModes, LambdaModesPrime) ->
         LambdaModes = LambdaModesPrime
     ;
-        unexpected(this_file, "lambda_modes_and_det: list.drop failed")
+        unexpected($module, $pred, "list.drop failed")
     ),
     proc_info_get_declared_determinism(ProcInfo, MaybeDet),
     (
@@ -1688,9 +1684,8 @@ lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet) :-
         LambdaDet = Det
     ;
         MaybeDet = no,
-        sorry(this_file,
-            "lambda_modes_and_det: determinism inference for " ++
-            "higher order predicate terms.")
+        sorry($module, $pred,
+            "determinism inference for higher order predicate terms.")
     ).
 
 :- pred create_fresh_vars(list(mer_type)::in, list(prog_var)::out,
@@ -2093,7 +2088,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         ->
             ActualExistQVars = ActualExistQVars0
         ;
-            unexpected(this_file, "existq_tvar bound")
+            unexpected($module, $pred, "existq_tvar bound")
         ),
         Context = goal_info_get_context(GoalInfo0),
         make_typeclass_info_vars(ActualUnivConstraints, ActualExistQVars,
@@ -2160,8 +2155,7 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
         OrigPredArgTypes = OrigPredArgTypes0,
         CalleeExtraHeadVars = CalleeExtraHeadVars0
     ;
-        unexpected(this_file,
-            "polymorphism_process_new_call: extra args not found")
+        unexpected($module, $pred, "extra args not found")
     ),
 
     % Work out the bindings of type variables in the call.
@@ -2182,11 +2176,11 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
             VarInfo = type_info_var(TypeInfoType)
         ;
             VarInfo = typeclass_info_var(_),
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "unsupported: constraints on initialisation preds")
         ;
             VarInfo = non_rtti_var,
-            unexpected(this_file,
+            unexpected($module, $pred,
                 "missing rtti_var_info for initialisation pred")
         )
     ),
@@ -2502,7 +2496,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         SuperClassIndex0 = SuperClassIndex
     ;
         % We shouldn't have got this far if the constraints were not satisfied.
-        unexpected(this_file, "constraint not in constraint list")
+        unexpected($module, $pred, "constraint not in constraint list")
     ),
 
     poly_info_get_varset(!.Info, VarSet0),
@@ -3047,7 +3041,7 @@ get_special_proc_det(Type, SpecialPredId, ModuleInfo, PredName,
         PredId = PredIdPrime,
         ProcId = ProcIdPrime
     ;
-        unexpected(this_file, "get_special_proc_det: get_special_proc failed")
+        unexpected($module, $pred, "get_special_proc failed")
     ).
 
 :- func get_category_name(type_ctor_category) = maybe(string).
@@ -3080,10 +3074,10 @@ get_category_name(CtorCat) = MaybeName :-
         MaybeName = no
     ;
         CtorCat = ctor_cat_variable,
-        unexpected(this_file, "get_category_name: variable type")
+        unexpected($module, $pred, "variable type")
     ;
         CtorCat = ctor_cat_void,
-        unexpected(this_file, "get_category_name: void_type")
+        unexpected($module, $pred, "void_type")
     ).
 
 init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
@@ -3530,8 +3524,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
     ( ClassContext = constraints([Head | _], _) ->
         InstanceConstraint = Head
     ;
-        unexpected(this_file,
-            "expand_one_body: class method is not constrained")
+        unexpected($module, $pred, "class method is not constrained")
     ),
 
     proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
@@ -3566,8 +3559,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
         HeadVars = HeadVarsPrime,
         Modes = ModesPrime
     ;
-        unexpected(this_file, "expand_class_method_body: " ++
-            "typeclass_info var not found")
+        unexpected($module, $pred, "typeclass_info var not found")
     ),
 
     InstanceConstraint = constraint(ClassName, InstanceArgs),
@@ -3844,12 +3836,6 @@ empty_maps(!Info) :-
     !Info ^ poly_type_ctor_info_var_map := map.init,
     !Info ^ poly_type_info_var_map := map.init,
     !Info ^ poly_typeclass_info_map := map.init.
-
-%---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "polymorphism.m".
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism.
