@@ -1255,7 +1255,7 @@ output_live_value_type(live_value_region_ite, !IO) :-
     io.write_string("type region ite", !IO).
 output_live_value_type(live_value_unwanted, !IO) :-
     io.write_string("unwanted", !IO).
-output_live_value_type(live_value_var(Var, Name, Type, LldsInst), !IO) :-
+output_live_value_type(live_value_var(Var, Name, Type, _LldsInst), !IO) :-
     io.write_string("var(", !IO),
     term.var_to_int(Var, VarInt),
     io.write_int(VarInt, !IO),
@@ -1265,16 +1265,16 @@ output_live_value_type(live_value_var(Var, Name, Type, LldsInst), !IO) :-
     % XXX Fake type varset
     varset.init(NewTVarset),
     mercury_output_type(NewTVarset, no, Type, !IO),
-    io.write_string(", ", !IO),
-    (
-        LldsInst = llds_inst_ground,
-        io.write_string("ground", !IO)
-    ;
-        LldsInst = llds_inst_partial(Inst),
-        % XXX Fake inst varset
-        varset.init(NewIVarset),
-        mercury_output_inst(Inst, NewIVarset, !IO)
-    ),
+%   io.write_string(", ", !IO),
+%   (
+%       LldsInst = llds_inst_ground,
+%       io.write_string("ground", !IO)
+%   ;
+%       LldsInst = llds_inst_partial(Inst),
+%       % XXX Fake inst varset
+%       varset.init(NewIVarset),
+%       mercury_output_inst(Inst, NewIVarset, !IO)
+%   ),
     io.write_string(")", !IO).
 
 %----------------------------------------------------------------------------%

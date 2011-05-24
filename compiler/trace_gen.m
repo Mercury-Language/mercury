@@ -1207,21 +1207,22 @@ trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
     set(tvar)::in, set(tvar)::out, layout_var_info::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
-trace_produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
+trace_produce_var(Var, VarSet, _InstMap, !Tvars, VarInfo, VarCode, !CI) :-
     produce_variable_in_reg_or_stack(Var, VarCode, Lval, !CI),
     Type = variable_type(!.CI, Var),
-    get_module_info(!.CI, ModuleInfo),
     ( varset.search_name(VarSet, Var, SearchName) ->
         Name = SearchName
     ;
         Name = ""
     ),
-    instmap_lookup_var(InstMap, Var, Inst),
-    ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
-        LldsInst = llds_inst_ground
-    ;
-        LldsInst = llds_inst_partial(Inst)
-    ),
+%   get_module_info(!.CI, ModuleInfo),
+%   instmap_lookup_var(InstMap, Var, Inst),
+%   ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
+%       LldsInst = llds_inst_ground
+%   ;
+%       LldsInst = llds_inst_partial(Inst)
+%   ),
+    LldsInst = llds_inst_better_be_ground,
     LiveType = live_value_var(Var, Name, Type, LldsInst),
     VarInfo = layout_var_info(locn_direct(Lval), LiveType, "trace"),
     type_vars(Type, TypeVars),

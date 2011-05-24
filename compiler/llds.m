@@ -972,11 +972,11 @@
     % a label's list of live variables.
     %
     % At the moment, the LLDS only handles ground insts. When this changes,
-    % the argument type of partial will have to be changed.
+    % the argument type of partial will have to be changed, and the code
+    % that sets this field in live_value_var will have some actual work to do.
     %
 :- type llds_inst
-    --->    llds_inst_ground
-    ;       llds_inst_partial(mer_inst).
+    --->    llds_inst_better_be_ground.
 
 :- func stack_slot_to_lval(stack_slot) = lval.
 :- func key_stack_slot_to_lval(_, stack_slot) = lval.

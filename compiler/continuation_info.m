@@ -666,7 +666,7 @@ generate_var_live_lvalues([Var - Lval | VarLvals], InstMap, VarLocs, ProcInfo,
         ModuleInfo, WantReturnVarLayout, [Live | Lives]) :-
     (
         WantReturnVarLayout = yes,
-        generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo,
+        generate_layout_for_var(ModuleInfo, ProcInfo, InstMap, Var, 
             LiveValueType, TypeVars),
         find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeParams),
         Live = live_lvalue(locn_direct(Lval), LiveValueType, TypeParams)
@@ -737,7 +737,7 @@ generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo, ModuleInfo,
     ;
         true
     ),
-    generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo, LiveValueType,
+    generate_layout_for_var(ModuleInfo, ProcInfo, InstMap, Var, LiveValueType,
         TypeVars),
     VarInfo = layout_var_info(locn_direct(Lval), LiveValueType,
         "generate_result_layout_for_var").
@@ -755,10 +755,10 @@ generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_layout_for_var(prog_var::in, instmap::in, proc_info::in,
-    module_info::in, live_value_type::out, list(tvar)::out) is det.
+:- pred generate_layout_for_var(module_info::in, proc_info::in,
+    instmap::in, prog_var::in, live_value_type::out, list(tvar)::out) is det.
 
-generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo, LiveValueType,
+generate_layout_for_var(_ModuleInfo, ProcInfo, _InstMap, Var, LiveValueType,
         TypeVars) :-
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -767,13 +767,30 @@ generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo, LiveValueType,
     ;
         Name = ""
     ),
-    instmap_lookup_var(InstMap, Var, Inst),
     map.lookup(VarTypes, Var, Type),
-    ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
-        LldsInst = llds_inst_ground
-    ;
-        LldsInst = llds_inst_partial(Inst)
-    ),
+
+%   In some programs, specifically zm_enum.m, the Mercury program generated
+%   for the enum.zinc g12 test case, this call to inst_is_ground can be
+%   a huge performance problem. The reason for that is the following.
+%
+%   - The program builds a huge data structure.
+%   - The nth variable in this data structure is built from the previous
+%     n-1 variables,
+%   - The size of the inst of the nth variable is therefore proportional to n.
+%   - The total sizes of the n insts is therefore proportional to n^2.
+%   - The value of n can be huge.
+%
+%   Since we do not yet use the inst field in live_value_vars, there is
+%   no point in incurring the expense of filling it in.
+%
+%   instmap_lookup_var(InstMap, Var, Inst),
+%   ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
+%       LldsInst = llds_inst_ground
+%   ;
+%       LldsInst = llds_inst_partial(Inst)
+%   ),
+
+    LldsInst = llds_inst_better_be_ground,
     LiveValueType = live_value_var(Var, Name, Type, LldsInst),
     type_vars(Type, TypeVars).
 
@@ -829,17 +846,17 @@ find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
     FindLocn = (pred(TypeInfoLocn::in, Locns::out) is det :-
         type_info_locn_var(TypeInfoLocn, TypeInfoVar),
         ( map.search(VarLocs, TypeInfoVar, TypeInfoLvalSet) ->
-            ConvertLval = (pred(Locn::out) is nondet :-
-                set.member(Lval, TypeInfoLvalSet),
+            AddLocn = (pred(Lval::in, LocnSet0::in, LocnSet::out) is det :-
                 (
                     TypeInfoLocn = typeclass_info(_, FieldNum),
                     Locn = locn_indirect(Lval, FieldNum)
                 ;
                     TypeInfoLocn = type_info(_),
                     Locn = locn_direct(Lval)
-                )
+                ),
+                set.insert(Locn, LocnSet0, LocnSet)
             ),
-            solutions.solutions_set(ConvertLval, Locns)
+            set.fold(AddLocn, TypeInfoLvalSet, set.init, Locns)
         ;
             varset.lookup_name(VarSet, TypeInfoVar, VarName),
             unexpected($module, $pred,

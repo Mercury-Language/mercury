@@ -2,7 +2,7 @@
 #
 # A program to test different versions of the compiler.
 
-usage="Usage: speedtest [-dhstz] [-l | -1] [-c cmd] [-nN] [-ON] [-fFILE] batchname"
+usage="Usage: speedtest [-dstz] [-l | -1] [-g grade] [-c cmd] [-nN] [-ON] [-fFILE] batchname"
 
 single_modulelist="typecheck.m"
 # As of 13 oct 2010, these are the eight largest modules of the compiler.
@@ -50,8 +50,10 @@ do
 	-d)
 		debug=true ;;
 
-	-h)
-		grade="--grade hlc.gc" ;;
+	-g)
+		grade="--grade $2" ; shift ;;
+	-g*)
+		grade="--grade ` expr $1 : '-g\(.*\)' `" ;;
 
 	-f)
 		framesizefile="$2" ; shift ;;
