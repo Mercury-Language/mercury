@@ -9078,6 +9078,13 @@ Optimize away assignments to locations that already hold the assigned value.
 @findex --optimize-repeat
 Iterate most optimizations at most @var{n} times (default: 3).
 
+@sp 1
+@item --layout-compression-limit @var{n}
+@findex --layout-compression-limit
+Attempt to compress the layout structures used by the debugger
+only as long as the arrays involved have at most @var{n} elements
+(default: 4000).
+
 @end table
 
 @node Output-level (LLDS -> C) optimization options

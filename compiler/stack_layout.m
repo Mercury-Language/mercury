@@ -944,7 +944,11 @@ construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
         list.reverse(HeadVarNumVector, RevHeadVarNumVector),
         list.length(HeadVarNumVector, NumHeadVars),
         (
-            CompressArrays = yes,
+            some [CompressionLimit] (
+                CompressArrays = yes(CompressionLimit),
+                !.ExecTraceInfo ^ eti_next_proc_head_var_num =<
+                    CompressionLimit
+            ),
             find_sequence(RevHeadVarNumVector, RevHeadVarNums0,
                 0, OldHeadVarNumOffset)
         ->
@@ -973,7 +977,10 @@ construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
         list.reverse(VarNameVector, RevVarNameVector),
         list.length(VarNameVector, NumVarNames),
         (
-            CompressArrays = yes,
+            some [CompressionLimit] (
+                CompressArrays = yes(CompressionLimit),
+                !.ExecTraceInfo ^ eti_next_proc_var_name =< CompressionLimit
+            ),
             find_sequence(RevVarNameVector, RevVarNames0, 0, OldVarNameOffset)
         ->
             VarNameSlot = NextVarName0 - OldVarNameOffset - NumVarNames
@@ -1800,7 +1807,10 @@ construct_label_var_info(Params, VarInfoSet, VarNumMap, TVarLocnMap,
         NextPTISlot0 = !.LabelLayoutInfo ^ lli_next_pti,
         list.reverse(PTIs, RevPTIs),
         (
-            CompressArrays = yes,
+            some [CompressionLimit] (
+                CompressArrays = yes(CompressionLimit),
+                !.LabelLayoutInfo ^ lli_next_pti =< CompressionLimit
+            ),
             find_sequence(RevPTIs, AllRevPTIs0, 0, OldPTIOffset)
         ->
             PTISlot = NextPTISlot0 - OldPTIOffset - NumPTIs
@@ -1825,7 +1835,10 @@ construct_label_var_info(Params, VarInfoSet, VarNumMap, TVarLocnMap,
         NextHLDSVarNumSlot0 = !.LabelLayoutInfo ^ lli_next_hlds_var_num,
         list.reverse(HLDSVarNums, RevHLDSVarNums),
         (
-            CompressArrays = yes,
+            some [CompressionLimit] (
+                CompressArrays = yes(CompressionLimit),
+                !.LabelLayoutInfo ^ lli_next_hlds_var_num =< CompressionLimit
+            ),
             find_sequence(RevHLDSVarNums, AllRevHLDSVarNums0,
                 0, OldHLDSVarNumsOffset)
         ->
@@ -1847,7 +1860,10 @@ construct_label_var_info(Params, VarInfoSet, VarNumMap, TVarLocnMap,
         NextShortLocnSlot0 = !.LabelLayoutInfo ^ lli_next_short_locn,
         list.reverse(ShortLocns, RevShortLocns),
         (
-            CompressArrays = yes,
+            some [CompressionLimit] (
+                CompressArrays = yes(CompressionLimit),
+                !.LabelLayoutInfo ^ lli_next_short_locn =< CompressionLimit
+            ),
             find_sequence(RevShortLocns, AllRevShortLocns0,
                 0, OldShortLocnsOffset)
         ->
@@ -1869,7 +1885,10 @@ construct_label_var_info(Params, VarInfoSet, VarNumMap, TVarLocnMap,
         NextLongLocnSlot0 = !.LabelLayoutInfo ^ lli_next_long_locn,
         list.reverse(LongLocns, RevLongLocns),
         (
-            CompressArrays = yes,
+            some [CompressionLimit] (
+                CompressArrays = yes(CompressionLimit),
+                !.LabelLayoutInfo ^ lli_next_long_locn =< CompressionLimit
+            ),
             find_sequence(RevLongLocns, AllRevLongLocns0,
                 0, OldLongLocnsOffset)
         ->
@@ -2405,7 +2424,9 @@ init_label_layouts_info = Info :-
     % We use the straightforward, brute force algorithm instead of more
     % sophisticated algorithms like Knuth-Morris-Pratt because (a) those
     % algorithms are nontrivial to adapt to working on lists instead of arrays
-    % without losing their edge, and (b) this algorithm is fast enough.
+    % without losing their edge, (b) this algorithm is fast enough in most
+    % cases, and when it isn't, even KMP is unlikely to be fast enough.
+    %
     % Turning this on optimization reduces the size of the generated .c and .o
     % files by about 12% and 11% respectively (measured on the files in the
     % library, mdbcomp and compiler directories in grade asm_fast.gc.debug),
@@ -2417,6 +2438,11 @@ init_label_layouts_info = Info :-
     % elements at the current end of the array could be extended into the
     % search sequence, instead of adding the whole search sequence to the
     % array.
+    %
+    % Because of the brute force nature of this algorithm, it should not
+    % be invoked on lists that are longer than the compression limit.
+    % Ironically, the bigger the array, the more we want to compress it,
+    % but the less we can afford to do so.
     %
 :- pred find_sequence(list(T)::in, list(T)::in, int::in, int::out) is semidet.
 :- pragma type_spec(find_sequence/4, T = int).
@@ -2469,7 +2495,7 @@ represent_determinism_rval(Detism,
                 slp_procid_stack_layout     :: bool,
 
                 % Should we try to compress arrays?
-                slp_compress_arrays         :: bool,
+                slp_compress_arrays         :: maybe(int),
 
                 % Do we have static code addresses or unboxed floats?
                 slp_static_code_addresses   :: bool,
@@ -2493,6 +2519,8 @@ init_stack_layout_params(ModuleInfo) = Params :-
     globals.lookup_bool_option(Globals, static_code_addresses, StaticCodeAddr),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloatOpt),
     globals.lookup_bool_option(Globals, rtti_line_numbers, RttiLineNumbers),
+    globals.lookup_int_option(Globals, layout_compression_limit,
+        CompressLimit),
     (
         UnboxedFloatOpt = no,
         UnboxedFloat = do_not_have_unboxed_floats
@@ -2500,8 +2528,15 @@ init_stack_layout_params(ModuleInfo) = Params :-
         UnboxedFloatOpt = yes,
         UnboxedFloat = have_unboxed_floats
     ),
+    (
+        CommonLayoutData = no,
+        CompressArrays = no
+    ;
+        CommonLayoutData = yes,
+        CompressArrays = yes(CompressLimit)
+    ),
     Params = stack_layout_params(ModuleInfo, TraceLevel, TraceSuppress,
-        DeepProfiling, AgcLayout, TraceLayout, ProcIdLayout, CommonLayoutData,
+        DeepProfiling, AgcLayout, TraceLayout, ProcIdLayout, CompressArrays,
         StaticCodeAddr, UnboxedFloat, RttiLineNumbers).
 
 %---------------------------------------------------------------------------%

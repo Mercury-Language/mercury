@@ -2,7 +2,7 @@
 #
 # A program to test different versions of the compiler.
 
-usage="Usage: speedtest [-dstz] [-l | -1] [-g grade] [-c cmd] [-nN] [-ON] [-fFILE] batchname"
+usage="Usage: speedtest [-dstz] [-l | -1] [-g grade] [-o option]* [-c cmd] [-nN] [-ON] [-fFILE] batchname"
 
 single_modulelist="typecheck.m"
 # As of 13 oct 2010, these are the eight largest modules of the compiler.
@@ -33,7 +33,8 @@ grade="--grade asm_fast.gc"
 framesizefile=""
 modulelist="$short_modulelist"
 limit=6
-opt="-O2"
+options=""
+optlevel="-O2"
 size=false
 table_io=false
 zip=false
@@ -71,10 +72,15 @@ do
 	-n*)
 		limit="` expr $1 : '-n\(.*\)' `" ;;
 
+	-o)
+		options="$options $2" ; shift ;;
+	-o*)
+		options="$options ` expr $1 : '-f\(.*\)' `" ;;
+
 	-O)
-		opt="-O$2" ; shift ;;
+		optlevel="-O$2" ; shift ;;
 	-O*)
-		opt="$1" ;;
+		optlevel="$1" ;;
 
 	-s)
 		size=true ;;
@@ -97,7 +103,7 @@ done
 
 if test "$cmd" = ""
 then
-	cmd="mmc -C $opt $grade $modulelist"
+	cmd="mmc -C $optlevel $options $grade $modulelist"
 fi
 
 if test $# != 1

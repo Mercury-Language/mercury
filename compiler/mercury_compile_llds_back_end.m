@@ -197,20 +197,21 @@ llds_backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
         list.condense(PredSCCs, OrderedPredIds),
         MaybeDupProcMap = yes(map.init)
     ),
-    llds_backend_pass_by_preds_2(OrderedPredIds, !HLDS, !GlobalData,
-        MaybeDupProcMap, [], RevCodes, !IO),
+    llds_backend_pass_by_preds_loop_over_preds(OrderedPredIds,
+        !HLDS, !GlobalData, MaybeDupProcMap, [], RevCodes, !IO),
     list.reverse(RevCodes, Codes),
     list.condense(Codes, LLDS).
 
-:- pred llds_backend_pass_by_preds_2(list(pred_id)::in,
+:- pred llds_backend_pass_by_preds_loop_over_preds(list(pred_id)::in,
     module_info::in, module_info::out, global_data::in, global_data::out,
     maybe(map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label))::in,
     list(list(c_procedure))::in, list(list(c_procedure))::out, io::di, io::uo)
     is det.
 
-llds_backend_pass_by_preds_2([], !HLDS, !GlobalData, _, !RevCodes, !IO).
-llds_backend_pass_by_preds_2([PredId | PredIds], !HLDS, !GlobalData,
-        !.MaybeDupProcMap, !RevCodes, !IO) :-
+llds_backend_pass_by_preds_loop_over_preds([],
+        !HLDS, !GlobalData, _, !RevCodes, !IO).
+llds_backend_pass_by_preds_loop_over_preds([PredId | PredIds],
+        !HLDS, !GlobalData, !.MaybeDupProcMap, !RevCodes, !IO) :-
     module_info_get_preds(!.HLDS, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
@@ -225,7 +226,8 @@ llds_backend_pass_by_preds_2([PredId | PredIds], !HLDS, !GlobalData,
             Verbose = yes,
             io.write_string("% Generating code for ", !IO),
             write_pred_id(!.HLDS, PredId, !IO),
-            io.write_string("\n", !IO)
+            io.write_string("\n", !IO),
+            maybe_flush_output(Verbose, !IO)
         ;
             Verbose = no
         ),
@@ -259,10 +261,13 @@ llds_backend_pass_by_preds_2([PredId | PredIds], !HLDS, !GlobalData,
             eliminate_duplicate_procs(IdProcList, ProcList,
                 DupProcMap0, DupProcMap),
             !:MaybeDupProcMap = yes(DupProcMap)
-        )
+        ),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        globals.lookup_bool_option(Globals0, statistics, Stats),
+        maybe_report_stats(Stats, !IO)
     ),
     !:RevCodes = [ProcList | !.RevCodes],
-    llds_backend_pass_by_preds_2(PredIds, !HLDS, !GlobalData,
+    llds_backend_pass_by_preds_loop_over_preds(PredIds, !HLDS, !GlobalData,
         !.MaybeDupProcMap, !RevCodes, !IO).
 
 :- pred llds_backend_pass_for_pred(list(proc_id)::in, pred_id::in,
@@ -563,6 +568,9 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
+    maybe_write_string(Verbose,
+        "% Generating layout data...", !IO),
+    maybe_flush_output(Verbose, !IO),
     % Here we generate the LLDS representations for various data structures
     % used for RTTI, type classes, and stack layouts.
     % XXX This should perhaps be part of backend_pass rather than output_pass.
@@ -582,6 +590,8 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes,
         TableIoDecls, TableIoDeclMap, ProcEventLayouts,
         ExecTraces, ProcLayoutDatas, ModuleLayoutDatas),
+    maybe_write_string(Verbose, " done.\n", !IO),
+    maybe_report_stats(Stats, !IO),
 
     % Here we perform some optimizations on the LLDS data.
     % XXX This should perhaps be part of backend_pass rather than output_pass.

@@ -776,6 +776,7 @@
     ;       optimize_delay_slot
     ;       optimize_reassign
     ;       optimize_repeat
+    ;       layout_compression_limit
 
     %   - C
     ;       use_macro_for_redo_fail
@@ -1623,6 +1624,7 @@ option_defaults_2(optimization_option, [
     optimize_delay_slot                 -   bool(no),
     optimize_reassign                   -   bool(no),
     optimize_repeat                     -   int(0),
+    layout_compression_limit            -   int(4000),
 
     % LLDS -> C
     use_macro_for_redo_fail             -   bool(no),
@@ -2555,6 +2557,7 @@ long_option("optimize-reassign",    optimize_reassign).
 long_option("optimise-reassign",    optimize_reassign).
 long_option("optimize-repeat",      optimize_repeat).
 long_option("optimise-repeat",      optimize_repeat).
+long_option("layout-compression-limit",      layout_compression_limit).
 
 % LLDS->C optimizations
 long_option("use-macro-for-redo-fail",  use_macro_for_redo_fail).
@@ -5162,7 +5165,11 @@ options_help_llds_llds_optimization -->
         "\tOptimize away assignments to locations that already hold",
         "\tthe assigned value.",
         "--optimize-repeat <n>",
-        "\tIterate most optimizations at most <n> times (default: 3)."
+        "\tIterate most optimizations at most <n> times (default: 3).",
+        "--layout-compression-limit <n>",
+        "\tAttempt to compress the layout structures used by the debugger",
+        "\tonly as long as the arrays involved have at most <n> elements",
+        "\t(default: 4000)."
     ]).
 
 :- pred options_help_mlds_mlds_optimization(io::di, io::uo) is det.
