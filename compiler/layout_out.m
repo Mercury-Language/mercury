@@ -565,7 +565,13 @@ output_hlds_var_nums_array_defn(Info, VarNums, !IO) :-
         being_defined, !IO),
     io.format("[%d] = {", [i(NumVarNums)], !IO),
     AutoComments = Info ^ lout_auto_comments,
-    list.foldl2(output_number_in_vector(AutoComments), VarNums, 0, _, !IO),
+    (
+        AutoComments = yes,
+        output_numbers_in_vector_ac(VarNums, 0, !IO)
+    ;
+        AutoComments = no,
+        output_numbers_in_vector_noac(VarNums, 0, !IO)
+    ),
     io.write_string("\n};\n\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -584,7 +590,13 @@ output_short_locns_array_defn(Info, ShortLocns, !IO) :-
         being_defined, !IO),
     io.format("[%d] = {", [i(NumShortLocns)], !IO),
     AutoComments = Info ^ lout_auto_comments,
-    list.foldl2(output_number_in_vector(AutoComments), ShortLocns, 0, _, !IO),
+    (
+        AutoComments = yes,
+        output_numbers_in_vector_ac(ShortLocns, 0, !IO)
+    ;
+        AutoComments = no,
+        output_numbers_in_vector_noac(ShortLocns, 0, !IO)
+    ),
     io.write_string("\n};\n\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -603,7 +615,13 @@ output_long_locns_array_defn(Info, LongLocns, !IO) :-
         being_defined, !IO),
     io.format("[%d] = {", [i(NumLongLocns)], !IO),
     AutoComments = Info ^ lout_auto_comments,
-    list.foldl2(output_number_in_vector(AutoComments), LongLocns, 0, _, !IO),
+    (
+        AutoComments = yes,
+        output_numbers_in_vector_ac(LongLocns, 0, !IO)
+    ;
+        AutoComments = no,
+        output_numbers_in_vector_noac(LongLocns, 0, !IO)
+    ),
     io.write_string("\n};\n\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1268,7 +1286,13 @@ output_proc_head_var_nums_array(Info, HeadVarNums, !IO) :-
         being_defined, !IO),
     io.format("[%d] = {", [i(NumHeadVarNums)], !IO),
     AutoComments = Info ^ lout_auto_comments,
-    list.foldl2(output_number_in_vector(AutoComments), HeadVarNums, 0, _, !IO),
+    (
+        AutoComments = yes,
+        output_numbers_in_vector_ac(HeadVarNums, 0, !IO)
+    ;
+        AutoComments = no,
+        output_numbers_in_vector_noac(HeadVarNums, 0, !IO)
+    ),
     io.write_string("\n};\n\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1287,7 +1311,13 @@ output_proc_var_names_array(Info, VarNames, !IO) :-
         being_defined, !IO),
     io.format("[%d] = {", [i(NumVarNames)], !IO),
     AutoComments = Info ^ lout_auto_comments,
-    list.foldl2(output_number_in_vector(AutoComments), VarNames, 0, _, !IO),
+    (
+        AutoComments = yes,
+        output_numbers_in_vector_ac(VarNames, 0, !IO)
+    ;
+        AutoComments = no,
+        output_numbers_in_vector_noac(VarNames, 0, !IO)
+    ),
     io.write_string("\n};\n\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1306,7 +1336,13 @@ output_proc_body_bytecodes_array(Info, Bytecodes, !IO) :-
         being_defined, !IO),
     io.format("[%d] = {\n", [i(NumBytecodes)], !IO),
     AutoComments = Info ^ lout_auto_comments,
-    list.foldl2(output_number_in_vector(AutoComments), Bytecodes, 0, _, !IO),
+    (
+        AutoComments = yes,
+        output_numbers_in_vector_ac(Bytecodes, 0, !IO)
+    ;
+        AutoComments = no,
+        output_numbers_in_vector_noac(Bytecodes, 0, !IO)
+    ),
     io.write_string("};\n\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -3026,8 +3062,13 @@ output_file_layout_line_number_vector_defn(Info, ModuleName, FileNum,
     ;
         LineNumbers = [_ | _],
         AutoComments = Info ^ lout_auto_comments,
-        list.foldl2(output_number_in_vector(AutoComments), LineNumbers,
-            0, _, !IO)
+        (
+            AutoComments = yes,
+            output_numbers_in_vector_ac(LineNumbers, 0, !IO)
+        ;
+            AutoComments = no,
+            output_numbers_in_vector_noac(LineNumbers, 0, !IO)
+        )
     ),
     io.write_string("\n};\n", !IO),
     decl_set_insert(decl_layout_id(LayoutName), !DeclSet).
@@ -3140,28 +3181,95 @@ output_layout_slot_chunk(Macro, ModuleName, SlotNums, !IO) :-
     io.write_string(")\n", !IO).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 %
-% Utility predicates.
+% Print out vectors of numbers.
+%
+% We print ten numbers per line to make it easy to locate a particular element
+% in a vector.
+%
+% We do a two level loop to limit the number of stack frames we consume
+% in grades that do not permit tail recursion. The idea is that after printing
+% 1000 numbers, we free up all the stack space that printing consumed.
+% When printing N numbers, we use only about (N / 1000) + (N mod 1000) frames.
+%
+% Each predicate has two versions. The _ac version assumes auto-comment,
+% the _noac version assumes no auto-comment.
 %
 
-:- pred output_number_in_vector(bool::in, int::in, int::in, int::out,
+:- pred output_numbers_in_vector_ac(list(int)::in, int::in,
     io::di, io::uo) is det.
 
-output_number_in_vector(AutoComments, VarNum, !Slot, !IO) :-
+output_numbers_in_vector_ac([], _, !IO).
+output_numbers_in_vector_ac(VarNums @ [_ | _], !.Slot, !IO) :-
+    output_upto_n_numbers_in_vector_ac(VarNums, 1000, LeftOverVarNums,
+        !Slot, !IO),
+    output_numbers_in_vector_ac(LeftOverVarNums, !.Slot, !IO).
+
+:- pred output_numbers_in_vector_noac(list(int)::in, int::in,
+    io::di, io::uo) is det.
+
+output_numbers_in_vector_noac([], _, !IO).
+output_numbers_in_vector_noac(VarNums @ [_ | _], !.Slot, !IO) :-
+    output_upto_n_numbers_in_vector_noac(VarNums, 1000, LeftOverVarNums,
+        !Slot, !IO),
+    output_numbers_in_vector_noac(LeftOverVarNums, !.Slot, !IO).
+
+:- pred output_upto_n_numbers_in_vector_ac(list(int)::in, int::in,
+    list(int)::out, int::in, int::out, io::di, io::uo) is det.
+
+output_upto_n_numbers_in_vector_ac([], _, [], !Slot, !IO).
+output_upto_n_numbers_in_vector_ac([VarNum | VarNums], N, LeftOverVarNums,
+        !Slot, !IO) :-
+    ( N > 0 ->
+        output_number_in_vector_ac(VarNum, !Slot, !IO),
+        output_upto_n_numbers_in_vector_ac(VarNums, N - 1, LeftOverVarNums,
+            !Slot, !IO)
+    ;
+        LeftOverVarNums = [VarNum | VarNums]
+    ).
+
+:- pred output_upto_n_numbers_in_vector_noac(list(int)::in, int::in,
+    list(int)::out, int::in, int::out, io::di, io::uo) is det.
+
+output_upto_n_numbers_in_vector_noac([], _, [], !Slot, !IO).
+output_upto_n_numbers_in_vector_noac([VarNum | VarNums], N, LeftOverVarNums,
+        !Slot, !IO) :-
+    ( N > 0 ->
+        output_number_in_vector_noac(VarNum, !Slot, !IO),
+        output_upto_n_numbers_in_vector_noac(VarNums, N - 1, LeftOverVarNums,
+            !Slot, !IO)
+    ;
+        LeftOverVarNums = [VarNum | VarNums]
+    ).
+
+:- pred output_number_in_vector_ac(int::in, int::in, int::out,
+    io::di, io::uo) is det.
+
+output_number_in_vector_ac(VarNum, !Slot, !IO) :-
     ( !.Slot mod 10 = 0 ->
-        (
-            AutoComments = yes,
-            io.format("\n/* slots %d+ */ ", [i(!.Slot)], !IO)
-        ;
-            AutoComments = no,
-            io.nl(!IO)
-        )
+        io.format("\n/* slots %d+ */ ", [i(!.Slot)], !IO)
     ;
         io.write_string(" ", !IO)
     ),
     io.format("%d,", [i(VarNum)], !IO),
     !:Slot = !.Slot + 1.
+
+:- pred output_number_in_vector_noac(int::in, int::in, int::out,
+    io::di, io::uo) is det.
+
+output_number_in_vector_noac(VarNum, !Slot, !IO) :-
+    ( !.Slot mod 10 = 0 ->
+        io.nl(!IO)
+    ;
+        io.write_string(" ", !IO)
+    ),
+    io.format("%d,", [i(VarNum)], !IO),
+    !:Slot = !.Slot + 1.
+
+%-----------------------------------------------------------------------------%
+%
+% Utility predicates.
+%
 
 :- pred output_layout_name_in_vector(string::in, layout_name::in,
     io::di, io::uo) is det.
