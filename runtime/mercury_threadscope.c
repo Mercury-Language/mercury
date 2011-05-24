@@ -159,8 +159,8 @@
 #define MR_TS_MER_EVENT_START           100
 
 #define MR_TS_MER_EVENT_START_PAR_CONJ      100 /* (int id, memo'd string id) */
-#define MR_TS_MER_EVENT_STOP_PAR_CONJ       101 /* (int id) */
-#define MR_TS_MER_EVENT_STOP_PAR_CONJUNCT   102 /* (int id) */
+#define MR_TS_MER_EVENT_END_PAR_CONJ        101 /* (int id) */
+#define MR_TS_MER_EVENT_END_PAR_CONJUNCT    102 /* (int id) */
 
 /*
 ** Creating sparks is not specifically mercury, but conjunct IDs are.
@@ -448,13 +448,13 @@ static EventTypeDesc event_type_descs[] = {
         SZ_DYN_CONJ_ID + SZ_STATIC_CONJ_ID
     },
     {
-        MR_TS_MER_EVENT_STOP_PAR_CONJ,
-        "Stop a parallel conjunction (dyn id)",
+        MR_TS_MER_EVENT_END_PAR_CONJ,
+        "End a parallel conjunction (dyn id)",
         SZ_DYN_CONJ_ID
     },
     {
-        MR_TS_MER_EVENT_STOP_PAR_CONJUNCT,
-        "Stop a parallel conjunct (dyn id)",
+        MR_TS_MER_EVENT_END_PAR_CONJUNCT,
+        "End a parallel conjunct (dyn id)",
         SZ_DYN_CONJ_ID
     },
     {
@@ -573,7 +573,7 @@ enough_room_for_event(struct MR_threadscope_event_buffer *buffer,
         buffer->MR_tsbuffer_pos +
         event_type_size(event_type) +
         event_type_size(MR_TS_EVENT_BLOCK_MARKER) +
-        ((2 + 8) * 2)) /* (EventType, Time) * 2 */
+        ((2 + 8) * 2); /* (EventType, Time) * 2 */
     return needed < MR_TS_BUFFERSIZE;
 }
 
@@ -585,7 +585,7 @@ enough_room_for_variable_size_event(struct MR_threadscope_event_buffer *buffer,
         buffer->MR_tsbuffer_pos +
         length +
         event_type_size(MR_TS_EVENT_BLOCK_MARKER) +
-        (2 + 8) * 2) /* (EventType, Time) * 2 */
+        ((2 + 8) * 2); /* (EventType, Time) * 2 */
     return needed < MR_TS_BUFFERSIZE;
 }
 
@@ -1391,19 +1391,19 @@ MR_threadscope_post_start_par_conj(MR_Word* dynamic_id,
 }
 
 void
-MR_threadscope_post_stop_par_conj(MR_Word *dynamic_id)
+MR_threadscope_post_end_par_conj(MR_Word *dynamic_id)
 {
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
-    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_STOP_PAR_CONJ)) {
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_END_PAR_CONJ)) {
         flush_event_buffer(buffer);
         open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
         open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
-    put_event_header(buffer, MR_TS_MER_EVENT_STOP_PAR_CONJ,
+    put_event_header(buffer, MR_TS_MER_EVENT_END_PAR_CONJ,
         get_current_time_nanosecs());
     put_par_conj_dynamic_id(buffer, dynamic_id);
 
@@ -1411,19 +1411,19 @@ MR_threadscope_post_stop_par_conj(MR_Word *dynamic_id)
 }
 
 void
-MR_threadscope_post_stop_par_conjunct(MR_Word *dynamic_id)
+MR_threadscope_post_end_par_conjunct(MR_Word *dynamic_id)
 {
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
-    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_STOP_PAR_CONJUNCT)) {
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_END_PAR_CONJUNCT)) {
         flush_event_buffer(buffer);
         open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
         open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
-    put_event_header(buffer, MR_TS_MER_EVENT_STOP_PAR_CONJUNCT,
+    put_event_header(buffer, MR_TS_MER_EVENT_END_PAR_CONJUNCT,
         get_current_time_nanosecs());
     put_par_conj_dynamic_id(buffer, dynamic_id);
 

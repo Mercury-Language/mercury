@@ -164,12 +164,12 @@ extern void MR_threadscope_post_start_par_conj(MR_Word* dynamic_id,
 /*
 ** Post this message after a parallel conjunction stops.
 */
-extern void MR_threadscope_post_stop_par_conj(MR_Word* dynamic_id);
+extern void MR_threadscope_post_end_par_conj(MR_Word* dynamic_id);
 
 /*
 ** Post this message when a parallel conjunct calls the bariier code.
 */
-extern void MR_threadscope_post_stop_par_conjunct(MR_Word* dynamic_id);
+extern void MR_threadscope_post_end_par_conjunct(MR_Word* dynamic_id);
 
 /*
 ** Post this message when a future is created, this establishes the conjuction

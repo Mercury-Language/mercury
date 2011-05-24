@@ -314,7 +314,7 @@ ts_finish_par_conj_instr(SyncTermBaseSlot, SyncTermBaseSlotLval) =
         live_lvals_info(set([SyncTermBaseSlotLval])),
         format(Code, [i(SyncTermBaseSlot)]))],
     Code = "#ifdef MR_THREADSCOPE
-MR_threadscope_post_stop_par_conj(&MR_sv(%d));
+MR_threadscope_post_end_par_conj(&MR_sv(%d));
 #endif
 ".
 

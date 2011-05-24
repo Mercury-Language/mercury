@@ -676,9 +676,6 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
             )                                                                 \
         )                                                                     \
         MR_set_min_heap_reclamation_point(load_context_c);                    \
-        MR_IF_THREADSCOPE(                                  \
-            MR_threadscope_post_run_context();                                \
-        )                                                                     \
     } while (0)
 
 #define MR_save_context(cptr)                                                 \

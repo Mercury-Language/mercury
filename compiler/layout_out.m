@@ -2015,7 +2015,9 @@ output_layout_array_name_storage_type_name(ModuleName, Name, _BeingDefined,
             Name, !IO)
     ;
         Name = threadscope_string_table_array,
-        io.write_string("static MR_Threadscope_String ", !IO)
+        io.write_string("static MR_Threadscope_String ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
     ;
         Name = alloc_site_array,
         % The type field may be updated at runtime so this array is not const.

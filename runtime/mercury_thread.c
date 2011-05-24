@@ -214,6 +214,9 @@ MR_init_thread(MR_when_to_use when_to_use)
 #endif
             }
             MR_load_context(MR_ENGINE(MR_eng_this_context));
+#ifdef MR_THREADSCOPE
+            MR_threadscope_post_run_context();
+#endif
             MR_save_registers();
             return MR_TRUE;
 

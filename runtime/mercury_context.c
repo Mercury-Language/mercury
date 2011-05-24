@@ -1457,17 +1457,12 @@ MR_define_entry(MR_do_idle);
 {
     /*
     ** Try to get a context.
-    **
-    ** Always look for local work first, even though we'd need to allocate a
-    ** context to execute it.  This is probably less efficient (TODO) but it's
-    ** safer. It makes it easier for the state of the machine to change before
-    ** it goes to sleep.
     */
-    MR_MAYBE_TRAMPOLINE(do_local_spark(NULL));
-
     advertise_engine_state_idle();
 
     MR_MAYBE_TRAMPOLINE_AND_ACTION(do_get_context(),
+        advertise_engine_state_working());
+    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_local_spark(NULL),
         advertise_engine_state_working());
     MR_MAYBE_TRAMPOLINE_AND_ACTION(do_work_steal(NULL),
         advertise_engine_state_working());
@@ -1511,6 +1506,7 @@ MR_define_entry(MR_do_idle_clean_context);
 
     MR_MAYBE_TRAMPOLINE_AND_ACTION(do_work_steal(NULL),
         advertise_engine_state_working());
+
     MR_MAYBE_TRAMPOLINE_AND_ACTION(do_get_context(),
         advertise_engine_state_working());
     MR_GOTO(MR_ENTRY(MR_do_sleep));
@@ -1700,6 +1696,9 @@ prepare_engine_for_context(MR_Context *context) {
     }
     MR_ENGINE(MR_eng_this_context) = context;
     MR_load_context(context);
+#ifdef MR_THREADSCOPE
+    MR_threadscope_post_run_context();
+#endif
 }
 
 static void
@@ -1746,6 +1745,9 @@ prepare_engine_for_spark(volatile MR_Spark *spark, MR_Code *join_label)
 #endif
 */
         MR_load_context(MR_ENGINE(MR_eng_this_context));
+#ifdef MR_THREADSCOPE
+        MR_threadscope_post_run_context();
+#endif
 #ifdef MR_DEBUG_STACK_SEGMENTS
         MR_debug_log_message("created new context for spark: %p",
             MR_ENGINE(MR_eng_this_context));
@@ -1753,7 +1755,8 @@ prepare_engine_for_spark(volatile MR_Spark *spark, MR_Code *join_label)
     }
 
     /*
-    ** At this point we have a context, either a dirty context that's compatbile or a clean one.
+    ** At this point we have a context, either a dirty context that's
+    ** compatbile or a clean one.
     */
     MR_parent_sp = spark->MR_spark_sync_term->MR_st_parent_sp;
     MR_SET_THREAD_LOCAL_MUTABLES(spark->MR_spark_thread_local_mutables);
@@ -1830,7 +1833,8 @@ save_dirty_context(MR_Code *join_label) {
 static void
 advertise_engine_state_idle(void)
 {
-    engine_sleep_sync_data[MR_ENGINE(MR_eng_id)].d.es_state = ENGINE_STATE_IDLE;
+    engine_sleep_sync_data[MR_ENGINE(MR_eng_id)].d.es_state =
+        ENGINE_STATE_IDLE;
     MR_CPU_SFENCE;
     MR_atomic_inc_int(&MR_num_idle_engines);
 }
@@ -1840,7 +1844,8 @@ advertise_engine_state_working(void)
 {
     MR_atomic_dec_int(&MR_num_idle_engines);
     MR_CPU_SFENCE;
-    engine_sleep_sync_data[MR_ENGINE(MR_eng_id)].d.es_state = ENGINE_STATE_WORKING;
+    engine_sleep_sync_data[MR_ENGINE(MR_eng_id)].d.es_state =
+        ENGINE_STATE_WORKING;
 }
 #endif /* MR_THREAD_SAFE */
 
@@ -1854,7 +1859,7 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
     MR_Context  *this_context = MR_ENGINE(MR_eng_this_context);
 
   #ifdef MR_THREADSCOPE
-    MR_threadscope_post_stop_par_conjunct((MR_Word*)jnc_st);
+    MR_threadscope_post_end_par_conjunct((MR_Word*)jnc_st);
   #endif
 
     /*
