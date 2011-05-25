@@ -35,22 +35,25 @@
 :- type block_info
     --->    block_info(
                 % The label starting the block.
-                starting_label      :: label,
+                bi_starting_label       :: label,
 
                 % The instruction containing the label.
-                label_instr         :: instruction,
+                bi_label_instr          :: instruction,
 
                 % The code of the block without the initial label.
-                later_instrs        :: list(instruction),
+                bi_later_instrs         :: list(instruction),
+
+                % The number of instructions in bi_later_instrs.
+                bi_num_later_instrs     :: int,
 
                 % Does the previous block (if any) fall through to this block?
-                fallen_into         :: bool,
+                bi_fallen_into          :: bool,
 
                 % The labels we can jump to (not falling through).
-                jump_dests          :: list(label),
+                bi_jump_dests           :: list(label),
 
                 % The label we fall through to (if there is one).
-                fall_dest           :: maybe(label)
+                bi_fall_dest            :: maybe(label)
             ).
 
     % create_basic_blocks(ProcInstrs, Comments, ProcLabel, !C, NewLabels,
@@ -81,14 +84,14 @@
 :- pred extend_basic_blocks(list(label)::in, list(label)::out,
     block_map::in, block_map::out, set(label)::in) is det.
 
-    % flatten_basic_blocks(LabelSeq, BlockMap, Instrs):
+    % flatten_basic_blocks(LabelSeq, BlockMap, Instrs, NumInstrs):
     %
     % Given LabelSeq, a sequence of labels each referring to a block in
     % BlockMap, return the concatenation of the basic blocks referred to by
     % the labels in LabelSeq.
     %
 :- pred flatten_basic_blocks(list(label)::in, block_map::in,
-    list(instruction)::out) is det.
+    list(instruction)::out, int::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -97,6 +100,7 @@
 
 :- import_module ll_backend.opt_util.
 
+:- import_module int.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
@@ -132,14 +136,20 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         RestInstrs = [OrigInstr0 | OrigInstrs0]
     ),
     (
-        take_until_end_of_block(RestInstrs, BlockInstrs, Instrs1),
+        take_until_end_of_block(RestInstrs, [], RevBlockInstrs, Instrs1),
         build_block_map(Instrs1, LabelSeq1, ProcLabel, NextFallInto, !BlockMap,
             !NewLabels, !C),
-        ( list.last(BlockInstrs, LastInstr) ->
+        (
+            RevBlockInstrs = [LastInstr | _],
+            reverse_and_count_list(RevBlockInstrs, [], BlockInstrs,
+                0, NumBlockInstrs),
             LastInstr = llds_instr(LastUinstr, _),
             opt_util.possible_targets(LastUinstr, SideLabels, _SideCodeAddrs),
             opt_util.can_instr_fall_through(LastUinstr) = NextFallInto
         ;
+            RevBlockInstrs = [],
+            BlockInstrs = [],
+            NumBlockInstrs = 0,
             SideLabels = [],
             NextFallInto = yes
         ),
@@ -150,32 +160,37 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
             NextFallInto = no,
             MaybeFallThrough = no
         ),
-        BlockInfo = block_info(Label, LabelInstr, BlockInstrs, FallInto,
-            SideLabels, MaybeFallThrough),
+        BlockInfo = block_info(Label, LabelInstr, BlockInstrs, NumBlockInstrs,
+            FallInto, SideLabels, MaybeFallThrough),
         map.det_insert(Label, BlockInfo, !BlockMap),
         LabelSeq = [Label | LabelSeq1]
     ).
 
-%-----------------------------------------------------------------------------%
-
 :- pred take_until_end_of_block(list(instruction)::in,
-    list(instruction)::out, list(instruction)::out) is det.
+    list(instruction)::in, list(instruction)::out,
+    list(instruction)::out) is det.
 
-take_until_end_of_block([], [], []).
-take_until_end_of_block([Instr0 | Instrs0], BlockInstrs, Rest) :-
+take_until_end_of_block([], !RevBlockInstrs, []).
+take_until_end_of_block([Instr0 | Instrs0], !RevBlockInstrs, Rest) :-
     Instr0 = llds_instr(Uinstr0, _Comment),
     ( Uinstr0 = label(_) ->
-        BlockInstrs = [],
         Rest = [Instr0 | Instrs0]
     ; opt_util.can_instr_branch_away(Uinstr0) = yes ->
-        BlockInstrs = [Instr0],
+        !:RevBlockInstrs = [Instr0 | !.RevBlockInstrs],
         Rest = Instrs0
     ;
-        take_until_end_of_block(Instrs0, BlockInstrs1, Rest),
-        BlockInstrs = [Instr0 | BlockInstrs1]
+        !:RevBlockInstrs = [Instr0 | !.RevBlockInstrs],
+        take_until_end_of_block(Instrs0, !RevBlockInstrs, Rest)
     ).
 
-%-----------------------------------------------------------------------------%
+:- pred reverse_and_count_list(list(T)::in, list(T)::in, list(T)::out,
+    int::in, int::out) is det.
+
+reverse_and_count_list([], !List, !N).
+reverse_and_count_list([X | Xs], !List, !N) :-
+    !:List = [X | !.List],
+    !:N = !.N + 1,
+    reverse_and_count_list(Xs, !List, !N).
 
 :- pred get_fallthrough_from_seq(list(label)::in, maybe(label)::out) is det.
 
@@ -199,9 +214,11 @@ extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
         map.lookup(!.BlockMap, Label, BlockInfo),
         map.lookup(!.BlockMap, NextLabel, NextBlockInfo),
         BlockInfo = block_info(BlockLabel, BlockLabelInstr, BlockInstrs,
-            BlockFallInto, BlockSideLabels, BlockMaybeFallThrough),
+            NumBlockInstrs, BlockFallInto, BlockSideLabels,
+            BlockMaybeFallThrough),
         NextBlockInfo = block_info(NextBlockLabel, _, NextBlockInstrs,
-            NextBlockFallInto, NextBlockSideLabels, NextBlockMaybeFallThrough),
+            NumNextBlockInstrs, NextBlockFallInto, NextBlockSideLabels,
+            NextBlockMaybeFallThrough),
         expect(unify(BlockLabel, Label), $module, $pred,
             "block label mismatch"),
         expect(unify(NextBlockLabel, NextLabel), $module, $pred,
@@ -211,7 +228,8 @@ extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
         expect(unify(NextBlockFallInto, yes), $module, $pred,
             "fall into mismatch"),
         NewBlockInfo = block_info(BlockLabel, BlockLabelInstr,
-            BlockInstrs ++ NextBlockInstrs, BlockFallInto,
+            BlockInstrs ++ NextBlockInstrs,
+            NumBlockInstrs + NumNextBlockInstrs, BlockFallInto,
             BlockSideLabels ++ NextBlockSideLabels, NextBlockMaybeFallThrough),
         map.det_update(Label, NewBlockInfo, !BlockMap),
         map.delete(NextLabel, !BlockMap),
@@ -224,12 +242,14 @@ extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
 
 %-----------------------------------------------------------------------------%
 
-flatten_basic_blocks([], _, []).
-flatten_basic_blocks([Label | Labels], BlockMap, Instrs) :-
-    flatten_basic_blocks(Labels, BlockMap, RestInstrs),
+flatten_basic_blocks([], _, [], 0).
+flatten_basic_blocks([Label | Labels], BlockMap, Instrs, NumInstrs) :-
+    flatten_basic_blocks(Labels, BlockMap, RestInstrs, RestNumInstrs),
     map.lookup(BlockMap, Label, BlockInfo),
-    BlockInfo = block_info(_, BlockLabelInstr, BlockInstrs, _, _, _),
-    list.append([BlockLabelInstr | BlockInstrs], RestInstrs, Instrs).
+    BlockInfo = block_info(_, BlockLabelInstr, BlockInstrs, NumBlockInstrs,
+        _, _, _),
+    Instrs = [BlockLabelInstr | BlockInstrs] ++ RestInstrs,
+    NumInstrs = NumBlockInstrs + RestNumInstrs.
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.basic_block.

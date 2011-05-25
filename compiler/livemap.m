@@ -44,6 +44,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module int.
 :- import_module require.
 :- import_module string.
 
@@ -65,12 +66,12 @@
 build_livemap(Instrs, MaybeLivemap) :-
     map.init(Livemap0),
     list.reverse(Instrs, BackInstrs),
-    build_livemap_fixpoint(BackInstrs, Livemap0, MaybeLivemap).
+    build_livemap_fixpoint(BackInstrs, Livemap0, 0, MaybeLivemap).
 
-:- pred build_livemap_fixpoint(list(instruction)::in, livemap::in,
+:- pred build_livemap_fixpoint(list(instruction)::in, livemap::in, int::in,
     maybe(livemap)::out) is det.
 
-build_livemap_fixpoint(Backinstrs, Livemap0, MaybeLivemap) :-
+build_livemap_fixpoint(Backinstrs, Livemap0, CurIteration, MaybeLivemap) :-
     set.init(Livevals0),
     livemap_do_build(Backinstrs, Livevals0, no, ContainsBadUserCode,
         Livemap0, Livemap1),
@@ -82,7 +83,12 @@ build_livemap_fixpoint(Backinstrs, Livemap0, MaybeLivemap) :-
         ( livemap.equal_livemaps(Livemap0, Livemap1) ->
             MaybeLivemap = yes(Livemap1)
         ;
-            build_livemap_fixpoint(Backinstrs, Livemap1, MaybeLivemap)
+            ( CurIteration < livemap_iteration_limit ->
+                build_livemap_fixpoint(Backinstrs, Livemap1, CurIteration + 1,
+                    MaybeLivemap)
+            ;
+                MaybeLivemap = no
+            )
         )
     ).
 
@@ -109,6 +115,12 @@ equal_livemaps_keys([Label | Labels], Livemap1, Livemap2) :-
     map.lookup(Livemap2, Label, Liveset2),
     set.equal(Liveset1, Liveset2),
     equal_livemaps_keys(Labels, Livemap1, Livemap2).
+
+    % Don't iterate the map building process more than this many times.
+    %
+:- func livemap_iteration_limit = int.
+
+livemap_iteration_limit = 5.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

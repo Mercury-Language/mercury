@@ -104,25 +104,32 @@ use_local_vars_proc(Instrs0, Instrs, NumRealRRegs, AccessThreshold,
         AutoComments, ProcLabel, !C) :-
     create_basic_blocks(Instrs0, Comments0, ProcLabel, !C, NewLabels,
         LabelSeq, BlockMap0),
-    flatten_basic_blocks(LabelSeq, BlockMap0, TentativeInstrs),
-    build_livemap(TentativeInstrs, MaybeLiveMap),
-    extend_basic_blocks(LabelSeq, EBBLabelSeq, BlockMap0, EBBBlockMap0,
-        NewLabels),
-    list.foldl(use_local_vars_block(MaybeLiveMap, NumRealRRegs,
-        AccessThreshold), EBBLabelSeq, EBBBlockMap0, EBBBlockMap),
-    flatten_basic_blocks(EBBLabelSeq, EBBBlockMap, Instrs1),
+    flatten_basic_blocks(LabelSeq, BlockMap0, TentativeInstrs,
+        NumTentativeInstrs),
+    % If the number of instructions in the procedure is too big,
+    % then building MaybeLiveMap will probably take too long.
+    ( NumTentativeInstrs < local_vars_proc_size_limit ->
+        build_livemap(TentativeInstrs, MaybeLiveMap),
+        extend_basic_blocks(LabelSeq, EBBLabelSeq, BlockMap0, EBBBlockMap0,
+            NewLabels),
+        list.foldl(use_local_vars_block(MaybeLiveMap, NumRealRRegs,
+            AccessThreshold), EBBLabelSeq, EBBBlockMap0, EBBBlockMap),
+        flatten_basic_blocks(EBBLabelSeq, EBBBlockMap, Instrs1, _),
 
-    (
-        MaybeLiveMap = yes(LiveMap),
-        AutoComments = yes
-    ->
-        NewComment = "\n" ++ dump_livemap(yes(ProcLabel), LiveMap),
-        NewCommentInstr = llds_instr(comment(NewComment), ""),
-        Comments = Comments0 ++ [NewCommentInstr]
+        (
+            MaybeLiveMap = yes(LiveMap),
+            AutoComments = yes
+        ->
+            NewComment = "\n" ++ dump_livemap(yes(ProcLabel), LiveMap),
+            NewCommentInstr = llds_instr(comment(NewComment), ""),
+            Comments = Comments0 ++ [NewCommentInstr]
+        ;
+            Comments = Comments0
+        ),
+        Instrs = Comments ++ Instrs1
     ;
-        Comments = Comments0
-    ),
-    Instrs = Comments ++ Instrs1.
+        Instrs = Instrs0
+    ).
 
 :- pred use_local_vars_block(maybe(livemap)::in, int::in, int::in, label::in,
     block_map::in, block_map::out) is det.
@@ -130,17 +137,25 @@ use_local_vars_proc(Instrs0, Instrs, NumRealRRegs, AccessThreshold,
 use_local_vars_block(MaybeLiveMap, NumRealRRegs, AccessThreshold, Label,
         !BlockMap) :-
     map.lookup(!.BlockMap, Label, BlockInfo0),
-    BlockInfo0 = block_info(BlockLabel, LabelInstr, RestInstrs0,
+    BlockInfo0 = block_info(BlockLabel, LabelInstr, RestInstrs0, BlockSize,
         FallInto, JumpLabels, MaybeFallThrough),
-    counter.init(1, TempCounter0),
-    use_local_vars_instrs(RestInstrs0, RestInstrs, TempCounter0, TempCounter,
-        NumRealRRegs, AccessThreshold, MaybeLiveMap, MaybeFallThrough),
-    ( TempCounter = TempCounter0 ->
-        true
+    % The algorithm we use is half-quadratic, so using it on long instruction
+    % lists is not a good idea. The correct fix of course would be to reduce
+    % the complexity of the algorithm, but that is not trivial to do.
+    ( BlockSize < local_vars_block_size_limit ->
+        counter.init(1, TempCounter0),
+        use_local_vars_instrs(RestInstrs0, RestInstrs,
+            TempCounter0, TempCounter, NumRealRRegs,
+            AccessThreshold, MaybeLiveMap, MaybeFallThrough),
+        ( TempCounter = TempCounter0 ->
+            true
+        ;
+            BlockInfo = block_info(BlockLabel, LabelInstr, RestInstrs,
+                BlockSize, FallInto, JumpLabels, MaybeFallThrough),
+            map.det_update(Label, BlockInfo, !BlockMap)
+        )
     ;
-        BlockInfo = block_info(BlockLabel, LabelInstr, RestInstrs, FallInto,
-            JumpLabels, MaybeFallThrough),
-        map.det_update(Label, BlockInfo, !BlockMap)
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -780,6 +795,16 @@ component_affects_liveness(Component) = Affects :-
             )
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func local_vars_proc_size_limit = int.
+
+local_vars_proc_size_limit = 10000.
+
+:- func local_vars_block_size_limit = int.
+
+local_vars_block_size_limit = 200.
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.use_local_vars.

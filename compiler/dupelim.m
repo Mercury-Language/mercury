@@ -65,6 +65,7 @@
 :- import_module ll_backend.opt_util.
 
 :- import_module bool.
+:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -104,7 +105,7 @@ dupelim_main(ProcLabel, !C, Instrs0, Instrs) :-
         map.init(ReplMap0),
         process_clusters(Clusters, LabelSeq0, LabelSeq, BlockMap0, BlockMap,
             ReplMap0, ReplMap),
-        flatten_basic_blocks(LabelSeq, BlockMap, Instrs1),
+        flatten_basic_blocks(LabelSeq, BlockMap, Instrs1, _),
         opt_util.replace_labels_instruction_list(Instrs1, Instrs2,
             ReplMap, yes, no),
         Instrs = Comments ++ Instrs2
@@ -122,12 +123,16 @@ dupelim_main(ProcLabel, !C, Instrs0, Instrs) :-
 dupelim_build_maps([], _, !StdMap, !Fixed).
 dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
     map.lookup(BlockMap, Label, BlockInfo),
-    BlockInfo = block_info(_, _, Instrs, _, _, MaybeFallThrough),
-    standardize_instr_block(Instrs, MaybeFallThrough, StdInstrs),
-    ( map.search(!.StdMap, StdInstrs, Cluster) ->
-        map.det_update(StdInstrs, [Label | Cluster], !StdMap)
+    BlockInfo = block_info(_, _, Instrs, NumInstrs, _, _, MaybeFallThrough),
+    ( NumInstrs < std_block_size_limit ->
+        standardize_instr_block(Instrs, MaybeFallThrough, StdInstrs),
+        ( map.search(!.StdMap, StdInstrs, Cluster) ->
+            map.det_update(StdInstrs, [Label | Cluster], !StdMap)
+        ;
+            map.det_insert(StdInstrs, [Label], !StdMap)
+        )
     ;
-        map.det_insert(StdInstrs, [Label], !StdMap)
+        true
     ),
     (
         MaybeFallThrough = yes(FallIntoLabel),
@@ -137,6 +142,14 @@ dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
     ),
     list.foldl(add_pragma_pref_labels, Instrs, !Fixed),
     dupelim_build_maps(Labels, BlockMap, !StdMap, !Fixed).
+
+    % Don't try to standardize blocks that have more instructions than this. 
+    % They are extremely unlikely to be duplicate blocks, so the work would
+    % be almost certainly wasted.
+    %
+:- func std_block_size_limit = int.
+
+std_block_size_limit = 10.
 
 :- pred add_pragma_pref_labels(instruction::in,
     set(label)::in, set(label)::out) is det.
@@ -234,14 +247,14 @@ process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
     Cluster = cluster(Exemplar, ElimLabels),
     map.lookup(!.BlockMap, Exemplar, ExemplarInfo0),
     ExemplarInfo0 = block_info(ExLabel, ExLabelInstr, ExInstrs0,
-        ExFallInto, ExSideLabels, ExMaybeFallThrough),
+        ExNumInstrs, ExFallInto, ExSideLabels, ExMaybeFallThrough),
     expect(unify(Exemplar, ExLabel), $module, $pred,
         "exemplar label mismatch"),
     process_elim_labels(ElimLabels, ExInstrs0, !LabelSeq, !.BlockMap,
         Exemplar, !ReplMap, UnifiedInstrs,
         ExMaybeFallThrough, UnifiedMaybeFallThrough),
     ExemplarInfo = block_info(ExLabel, ExLabelInstr, UnifiedInstrs,
-        ExFallInto, ExSideLabels, UnifiedMaybeFallThrough),
+        ExNumInstrs, ExFallInto, ExSideLabels, UnifiedMaybeFallThrough),
     map.det_update(Exemplar, ExemplarInfo, !BlockMap),
     process_clusters(Clusters, !LabelSeq, !BlockMap, !ReplMap).
 
@@ -265,7 +278,7 @@ process_elim_labels([], Instrs, !LabelSeq, _, _, !ReplMap, Instrs,
 process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
         Exemplar, !ReplMap, Instrs, !MaybeFallThrough) :-
     map.lookup(BlockMap, ElimLabel, ElimLabelInfo),
-    ElimLabelInfo = block_info(ElimLabel2, _, ElimInstrs,
+    ElimLabelInfo = block_info(ElimLabel2, _, ElimInstrs, _NumElimInstrs,
         _, _, ElimMaybeFallThrough),
     expect(unify(ElimLabel, ElimLabel2), $module, $pred,
         "elim label mismatch"),
