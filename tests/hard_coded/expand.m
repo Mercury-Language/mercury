@@ -199,7 +199,7 @@ test_builtins -->
 test_other -->
 	io.write_string("TESTING OTHER TYPES\n"),
 	{ term.init_var_supply(VarSupply) },
-	{ term.create_var(VarSupply, Var, NewVarSupply) },
+	{ term.create_var(Var, VarSupply, NewVarSupply) },
 	test_all(Var), newline,
 	test_all(VarSupply), newline,
 	test_all(NewVarSupply), newline,

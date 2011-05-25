@@ -1322,7 +1322,7 @@ write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State) :-
             get_elements_and_args(MakeElement, TypeDesc,
                 [RootElement], [_], [_], [PseudoArgTypes], _)
         ->
-            ArgTypes = list.map(ground_pseudo_type_desc_to_type_desc_det,
+            ArgTypes = list.map(det_ground_pseudo_type_desc_to_type_desc,
                 PseudoArgTypes),
             put(Stream, "<!DOCTYPE ", !State),
             put(Stream, RootElement, !State),
@@ -1526,7 +1526,7 @@ write_dtd_type_elements(Stream, MakeElement, TypeDesc, ChildArgTypes, !State)
         MaybeFunctors, MaybeArities, ArgPseudoTypeLists,
         AttributeLists),
     ArgTypeLists = list.map(list.map(
-        ground_pseudo_type_desc_to_type_desc_det), ArgPseudoTypeLists),
+        det_ground_pseudo_type_desc_to_type_desc), ArgPseudoTypeLists),
     list.condense(ArgTypeLists, ChildArgTypes),
     put(Stream, "<!-- Elements for functors of type """, !State),
     write_xml_escaped_string(Stream, type_name(TypeDesc), !State),

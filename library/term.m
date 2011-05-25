@@ -357,8 +357,7 @@
     % create_var(VarSupply0, Variable, VarSupply):
     % Create a fresh variable (var) and return the updated var_supply.
     %
-:- pred create_var(var_supply(T), var(T), var_supply(T)).
-:- mode create_var(in, out, out) is det.
+:- pred create_var(var(T)::out, var_supply(T)::in, var_supply(T)::out) is det.
 
     % var_id(Variable):
     % Returns a unique number associated with this variable w.r.t.
@@ -692,7 +691,8 @@ det_term_to_type(Term, X) :-
 
 %-----------------------------------------------------------------------------%
 
-type_to_term(Val, Term) :- type_to_univ(Val, Univ),
+type_to_term(Val, Term) :-
+    type_to_univ(Val, Univ),
     univ_to_term(Univ, Term).
 
 univ_to_term(Univ, Term) :-
@@ -1108,7 +1108,7 @@ apply_substitution_to_list([Term0 | Terms0], Substitution, [Term | Terms]) :-
 
 init_var_supply(var_supply(0)).
 
-create_var(var_supply(V0), var(V), var_supply(V)) :-
+create_var(var(V), var_supply(V0), var_supply(V)) :-
     % We number variables using sequential numbers.
     V = V0 + 1.
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -549,7 +549,7 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
     Num0 >= 0,
     Num = Num0 - 1,
     ( get_functor(TypeInfo, Num, Functor, Arity, ArgPseudoTypes) ->
-        ArgTypes = list.map(ground_pseudo_type_desc_to_type_desc_det,
+        ArgTypes = list.map(det_ground_pseudo_type_desc_to_type_desc,
             ArgPseudoTypes),
         FunctorNumber = Num
     ;

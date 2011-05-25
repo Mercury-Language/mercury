@@ -67,8 +67,12 @@
     % Convert a pseudo_type_desc describing a ground type to a type_desc.
     % If the pseudo_type_desc describes a non-ground type, abort.
     %
-:- func ground_pseudo_type_desc_to_type_desc_det(pseudo_type_desc) = type_desc
-    is det.
+:- func det_ground_pseudo_type_desc_to_type_desc(pseudo_type_desc) = type_desc.
+
+    % An obsolete synonym for the above.
+    %
+:- pragma obsolete(ground_pseudo_type_desc_to_type_desc_det/1).
+:- func ground_pseudo_type_desc_to_type_desc_det(pseudo_type_desc) = type_desc.
 
     % The function type_of/1 returns a representation of the type
     % of its argument.
@@ -445,11 +449,14 @@ ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
         fail
     ).
 
-ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
+ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) =
+    det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc).
+
+det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
     ( pseudo_type_desc_is_ground(PseudoTypeDesc) ->
         private_builtin.unsafe_type_cast(PseudoTypeDesc, TypeDesc)
     ;
-        error("ground_pseudo_type_desc_to_type_desc_det: not ground")
+        error("det_ground_pseudo_type_desc_to_type_desc: not ground")
     ).
 
 :- pragma foreign_proc("C",

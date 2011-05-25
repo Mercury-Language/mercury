@@ -142,10 +142,15 @@
     %
 :- pred string.remove_suffix(string::in, string::in, string::out) is semidet.
 
-    % string.remove_suffix_det(String, Suffix) returns the same value
+    % string.det_remove_suffix(String, Suffix) returns the same value
     % as string.remove_suffix, except it aborts if String does not end
     % with Suffix.
     %
+:- func string.det_remove_suffix(string, string) = string.
+
+    % An obsolete synonym for the above.
+    %
+:- pragma obsolete(string.remove_suffix_det/2).
 :- func string.remove_suffix_det(string, string) = string.
 
     % string.remove_suffix_if_present(Suffix, String) returns `String' minus
@@ -492,18 +497,23 @@
     %
 :- pred string.index(string::in, int::in, char::uo) is semidet.
 
-    % string.index_det(String, Index, Char):
+    % string.det_index(String, Index, Char):
     % `Char' is the character (code point) in `String', beginning at the
     % code unit `Index'.
     % Calls error/1 if `Index' is out of range (negative, or greater than
     % or equal to the length of `String'), or if an illegal sequence is
     % detected.
     %
+:- func string.det_index(string, int) = char.
+:- pred string.det_index(string::in, int::in, char::uo) is det.
+
+:- pragma obsolete(string.index_det/2).
 :- func string.index_det(string, int) = char.
+:- pragma obsolete(string.index_det/3).
 :- pred string.index_det(string::in, int::in, char::uo) is det.
 
-    % A synonym for index_det/2:
-    % String ^ elem(Index) = string.index_det(String, Index).
+    % A synonym for det_index/2:
+    % String ^ elem(Index) = string.det_index(String, Index).
     %
 :- func string ^ elem(int) = char.
 
@@ -512,7 +522,7 @@
     % code unit `Index'.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String').
-    % This version is constant time, whereas string.index_det
+    % This version is constant time, whereas string.det_index
     % may be linear in the length of the string. Use with care!
     %
 :- func string.unsafe_index(string, int) = char.
@@ -625,25 +635,33 @@
 % strings into static data even when they might be updated.
 %:- mode string.set_char(in, in, di, uo) is semidet.
 
-    % string.set_char_det(Char, Index, String0, String):
+    % string.det_set_char(Char, Index, String0, String):
     % `String' is `String0', with the code point beginning at code unit
     % `Index' removed and replaced by `Char'.
     % Calls error/1 if `Index' is out of range (negative, or greater than
     % or equal to the length of `String0').
     %
-:- func string.set_char_det(char, int, string) = string.
-:- pred string.set_char_det(char, int, string, string).
-:- mode string.set_char_det(in, in, in, out) is det.
+:- func string.det_set_char(char, int, string) = string.
+:- pred string.det_set_char(char, int, string, string).
+:- mode string.det_set_char(in, in, in, out) is det.
 % XXX This mode is disabled because the compiler puts constant
 % strings into static data even when they might be updated.
-%:- mode string.set_char_det(in, in, di, uo) is det.
+%:- mode string.det_set_char(in, in, di, uo) is det.
+
+    % Deperecated synonyms for the above.
+    %
+:- pragma obsolete(string.set_char_det/3).
+:- func string.set_char_det(char, int, string) = string.
+:- pragma obsolete(string.set_char_det/4).
+:- pred string.set_char_det(char, int, string, string).
+:- mode string.set_char_det(in, in, in, out) is det.
 
     % string.unsafe_set_char(Char, Index, String0, String):
     % `String' is `String0', with the code point beginning at code unit
     % `Index' removed and replaced by `Char'.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String0').
-    % This version is constant time, whereas string.set_char_det
+    % This version is constant time, whereas string.det_set_char
     % may be linear in the length of the string. Use with care!
     %
 :- func string.unsafe_set_char(char, int, string) = string.
@@ -1135,25 +1153,31 @@ accumulate_negative_int(Base, Char, N0, N) :-
     N = (Base * N0) - M,
     ( N =< N0 ; Base \= 10 ).       % Fail on underflow for base 10 numbers.
 
-% It is important to inline string.index and string.index_det.
+% It is important to inline string.index and string.det_index.
 % so that the compiler can do loop invariant hoisting
 % on calls to string.length that occur in loops.
-:- pragma inline(string.index_det/3).
+:- pragma inline(string.det_index/3).
 
 string.index_det(String, Int, Char) :-
+    string.det_index(String, Int, Char).
+
+string.det_index(String, Int, Char) :-
     ( string.index(String, Int, Char0) ->
         Char = Char0
     ;
-        error("string.index_det: index out of range")
+        error("string.det_index: index out of range")
     ).
 
-String ^ elem(Index) = index_det(String, Index).
+String ^ elem(Index) = det_index(String, Index).
 
-string.set_char_det(Char, Int, String0, String) :-
+string.set_char_det(Char, Int, !String) :-
+    string.det_set_char(Char, Int, !String).
+
+string.det_set_char(Char, Int, String0, String) :-
     ( string.set_char(Char, Int, String0, String1) ->
         String = String1
     ;
-        error("string.set_char_det: index out of range")
+        error("string.det_set_char: index out of range")
     ).
 
 string.foldl(Closure, String, !Acc) :-
@@ -1294,11 +1318,14 @@ string.remove_suffix(String, Suffix, StringWithoutSuffix) :-
     string.suffix(String, Suffix),
     string.left(String, length(String) - length(Suffix), StringWithoutSuffix).
 
-string.remove_suffix_det(String, Suffix) = StringWithoutSuffix :-
+string.remove_suffix_det(String, Suffix) =
+    string.det_remove_suffix(String, Suffix).
+
+string.det_remove_suffix(String, Suffix) = StringWithoutSuffix :-
     ( string.remove_suffix(String, Suffix, StringWithoutSuffixPrime) ->
         StringWithoutSuffix = StringWithoutSuffixPrime
     ;
-        error("string.remove_suffix_det: string does not have given suffix")
+        error("string.det_remove_suffix: string does not have given suffix")
     ).
 
 string.remove_suffix_if_present(Suffix, String) = Out :-
@@ -3950,7 +3977,7 @@ change_precision(Prec, OldFloat) = NewFloat :-
         PrecMantissaStr = MantissaStr
     ; Prec < FracStrLen ->
         UnroundedFrac = string.substring(FractionStr, 0, Prec),
-        NextDigit = string.index_det(FractionStr, Prec),
+        NextDigit = string.det_index(FractionStr, Prec),
         (
             UnroundedFrac \= "",
             (char.to_int(NextDigit) - char.to_int('0')) >= 5
@@ -4338,7 +4365,7 @@ string.contains_char(Str, Char, I) :-
 
 /*-----------------------------------------------------------------------*/
 
-% It's important to inline string.index and string.index_det.
+% It's important to inline string.index and string.det_index.
 % so that the compiler can do loop invariant hoisting
 % on calls to string.length that occur in loops.
 :- pragma inline(string.index/3).
@@ -5961,14 +5988,19 @@ string.pad_right(S1, C, N) = S2 :-
 string.duplicate_char(C, N) = S :-
     string.duplicate_char(C, N, S).
 
-string.index_det(S, N) = C :-
-    string.index_det(S, N, C).
+string.index_det(S, N) = string.det_index(S, N).
+
+string.det_index(S, N) = C :-
+    string.det_index(S, N, C).
 
 string.unsafe_index(S, N) = C :-
     string.unsafe_index(S, N, C).
 
-string.set_char_det(C, N, S0) = S :-
-    string.set_char_det(C, N, S0, S).
+string.set_char_det(C, N, S0) =
+    string.det_set_char(C, N, S0).
+
+string.det_set_char(C, N, S0) = S :-
+    string.det_set_char(C, N, S0, S).
 
 string.unsafe_set_char(C, N, S0) = S :-
     string.unsafe_set_char(C, N, S0, S).

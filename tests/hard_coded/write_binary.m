@@ -143,7 +143,7 @@ test_builtins -->
 test_other -->
 	io__write_string("TESTING OTHER TYPES\n"),
 	{ term__init_var_supply(VarSupply `with_type` var_supply(generic)) },
-	{ term__create_var(VarSupply, Var, NewVarSupply) },
+	{ term__create_var(Var, VarSupply, NewVarSupply) },
 	do_test(Var),
 	do_test(VarSupply),
 	do_test(NewVarSupply),

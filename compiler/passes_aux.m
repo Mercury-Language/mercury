@@ -605,7 +605,7 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
         )
     ; should_dump_stage(StageNum, StageNumStr, StageName, DumpTraceStages) ->
         module_info_get_dump_hlds_base_file_name(HLDS, BaseFileName),
-        DumpFileName = string.remove_suffix_det(BaseFileName, ".hlds_dump") ++
+        DumpFileName = string.det_remove_suffix(BaseFileName, ".hlds_dump") ++
             ".trace_counts." ++ StageNumStr ++ "-" ++ StageName ++
             UserFileSuffix,
         write_out_trace_counts(DumpFileName, MaybeTraceCountsError, !IO),

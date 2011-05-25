@@ -68,7 +68,7 @@ Changes to the Mercury standard library:
   sparse_bitset.delete_list/3, sparse_bitset.remove/3,
   sparse_bitset.remove_list/3, sparse_bitset.remove_leq/3,
   sparse_bitset.remove_gt/3, sparse_bitset.remove_least/3,
-  tree234.set/4, tree234.remove/4, tree234.remove_smallest/4,
+  term.create_var/3, tree234.set/4, tree234.remove/4, tree234.remove_smallest/4,
   tree234.update/4, tree_bitset.insert/3, tree_bitset.insert_list/3,
   tree_bitset.delete/3, tree_bitset.delete_list/3, tree_bitset.remove/3,
   tree_bitset.remove_list/3 and tree_bitset.remove_least/3
@@ -119,9 +119,11 @@ Changes to the Mercury standard library:
   a future release: dir.basename_det/1, list.replace_nth_det/3,
   list.replace_nth_det/4, list.index0_det/2, list.index1_det/2,
   list.index0_det/2, list.index1_det/2, list.last_det/1, stack.top_det/1,
-  stack.pop_det/3.
+  stack.pop_det/3, string.remove_suffix_det/2, string.index_det/2,
+  string.index_det/3, string.set_char_det/3, string.set_char_det/4 and
+  type_desc.ground_pseudo_type_desc_type_to_type_desc_det/1.
 
-  The versions of these procedure that use "det_" as a prefix should be
+  The versions of these procedures that use "det_" as a prefix should be
   used instead.  (We have added these where they did not already exist.) 
 
 * The deprecated modules graph, group and relation are no longer included

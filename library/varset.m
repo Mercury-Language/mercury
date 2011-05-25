@@ -19,11 +19,11 @@
 % Associated with each variable there can be both a name and a value
 % (binding).
 %
-% There may be some design flaws in the relationship between varset.m,
-% term.m, and graph.m.  Once we have implemented unique modes and
-% destructive assignment, we will need to rethink the design;  we may
-% end up modifying these modules considerably, or we may end up
-% making new single-threaded versions of these modules.
+% There may be some design flaws in the relationship between varset.m, and
+% term.m.  Once we have implemented unique modes and destructive assignment, we
+% will need to rethink the design;  we may end up modifying these modules
+% considerably, or we may end up making new single-threaded versions of these
+% modules.
 % 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -303,23 +303,23 @@ varset.is_empty(varset(VarSupply, _, _)) :-
 
 varset.new_var(Var, !VarSet) :-
     MaxId0 = !.VarSet ^ var_supply,
-    term.create_var(MaxId0, Var, MaxId),
+    term.create_var(Var, MaxId0, MaxId),
     !VarSet ^ var_supply := MaxId.
 
 varset.new_named_var(Name, Var,
         varset(!.MaxId, !.Names, Values), varset(!:MaxId, !:Names, Values)) :-
-    term.create_var(!.MaxId, Var, !:MaxId),
+    term.create_var(Var, !MaxId),
     map.set(Var, Name, !Names).
 
 varset.new_uniquely_named_var(Name, Var,
         varset(!.MaxId, !.Names, Values), varset(!:MaxId, !:Names, Values)) :-
-    term.create_var(!.MaxId, Var, !:MaxId),
+    term.create_var(Var, !MaxId),
     N = term.var_id(Var),
     map.set(Var, string.format("%s_%d", [s(Name), i(N)]), !Names).
 
 varset.new_maybe_named_var(MaybeName, Var,
         varset(!.MaxId, !.Names, Values), varset(!:MaxId, !:Names, Values)) :-
-    term.create_var(!.MaxId, Var, !:MaxId),
+    term.create_var(Var, !MaxId),
     (
         MaybeName = no
     ;
@@ -375,8 +375,8 @@ varset.vars_2(N, Max, RevVars0) = RevVars :-
     ( N = Max ->
         RevVars = RevVars0
     ;
-        term.create_var(N, Var, N1),
-        RevVars = varset.vars_2(N1, Max, [Var | RevVars0])
+        term.create_var(Var, N, NPrime),
+        RevVars = varset.vars_2(NPrime, Max, [Var | RevVars0])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -487,8 +487,8 @@ varset.merge_renaming_2(!.SupplyB, MaxSupplyB, NamesB,
     ( !.SupplyB = MaxSupplyB ->
         true
     ;
-        term.create_var(!.Supply, Var, !:Supply),
-        term.create_var(!.SupplyB, VarB, !:SupplyB),
+        term.create_var(Var, !Supply),
+        term.create_var(VarB, !SupplyB),
         ( map.search(NamesB, VarB, NameB) ->
             map.det_insert(Var, NameB, !Names)
         ;
@@ -516,8 +516,8 @@ varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB, !Supply, !Subst) :-
     ( !.SupplyB = MaxSupplyB ->
         true
     ;
-        term.create_var(!.Supply, Var, !:Supply),
-        term.create_var(!.SupplyB, VarB, !:SupplyB),
+        term.create_var(Var, !Supply),
+        term.create_var(VarB, !SupplyB),
         map.det_insert(VarB, Var, !Subst),
         varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB,
             !Supply, !Subst)
@@ -548,8 +548,8 @@ varset.merge_subst_2(!.SupplyB, MaxSupplyB, NamesB,
     ( !.SupplyB = MaxSupplyB ->
         true
     ;
-        term.create_var(!.Supply, Var, !:Supply),
-        term.create_var(!.SupplyB, VarB, !:SupplyB),
+        term.create_var(Var, !Supply),
+        term.create_var(VarB, !SupplyB),
         ( map.search(NamesB, VarB, NameB) ->
             map.det_insert(Var, NameB, !Names)
         ;
@@ -578,8 +578,8 @@ varset.merge_subst_without_names_2(!.SupplyB, MaxSupplyB, !Supply, !Subst) :-
     ( !.SupplyB = MaxSupplyB ->
         true
     ;
-        term.create_var(!.Supply, Var, !:Supply),
-        term.create_var(!.SupplyB, VarB, !:SupplyB),
+        term.create_var(Var, !Supply),
+        term.create_var(VarB, !SupplyB),
         Replacement = term.variable(Var, context_init),
         map.det_insert(VarB, Replacement, !Subst),
         varset.merge_subst_without_names_2(!.SupplyB, MaxSupplyB,
