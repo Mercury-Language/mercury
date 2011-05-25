@@ -243,8 +243,12 @@
 :- pred polymorphism_make_type_info_var(mer_type::in, term.context::in,
     prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-    % gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar,
-    %   Index, ModuleInfo, Goals, TypeInfoVar, ...):
+:- type int_or_var
+    --->    iov_int(int)
+    ;       iov_var(prog_var).
+
+    % gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
+    %   IndexIntOrVar, Goals, TypeInfoVar, ...):
     %
     % Generate code to extract a type_info variable from a given slot of a
     % typeclass_info variable, by calling type_info_from_typeclass_info from
@@ -255,8 +259,8 @@
     % which is a fresh variable holding the type_info, and Goals, which is
     % the code generated to initialize TypeInfoVar.
     %
-:- pred gen_extract_type_info(tvar::in, kind::in, prog_var::in,
-    int::in, module_info::in, list(hlds_goal)::out, prog_var::out,
+:- pred gen_extract_type_info(module_info::in, tvar::in, kind::in,
+    prog_var::in, int_or_var::in, list(hlds_goal)::out, prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
@@ -2908,30 +2912,29 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         poly_info_set_num_reuses(NumReuses + 1, !Info),
         TypeCtorVar = OldTypeCtorVar,
         TypeCtorGoals = [],
-        VarSet1 = VarSet0,
-        VarTypes1 = VarTypes0,
-        RttiVarMaps1 = RttiVarMaps0
+        VarSet = VarSet0,
+        VarTypes = VarTypes0,
+        RttiVarMaps = RttiVarMaps0
     ;
         init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorVar,
-            TypeCtorGoal, ModuleInfo, VarSet0, VarSet1, VarTypes0, VarTypes1,
-            RttiVarMaps0, RttiVarMaps1),
+            TypeCtorGoal, ModuleInfo, VarSet0, VarSet, VarTypes0, VarTypes,
+            RttiVarMaps0, RttiVarMaps),
         TypeCtorGoals = [TypeCtorGoal],
         map.det_insert(TypeCtor, TypeCtorVar,
             TypeCtorInfoVarMap0, TypeCtorInfoVarMap),
         poly_info_set_type_ctor_info_var_map(TypeCtorInfoVarMap, !Info)
     ),
 
-    maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity,
-        ArgTypeInfoVars, Context, Var, VarSet1, VarSet, VarTypes1, VarTypes,
-        RttiVarMaps1, RttiVarMaps, ArgTypeInfoGoals, TypeCtorGoals,
-        ExtraGoals),
-
     poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-    poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
+    poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
+
+    maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity,
+        ArgTypeInfoVars, Context, Var,
+        ArgTypeInfoGoals, TypeCtorGoals, ExtraGoals, !Info).
 
     % maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity,
-    %   ArgTypeInfoVars, Context, Var, VarSet0, VarSet,
-    %   VarTypes0, VarTypes, ArgTypeInfoGoals, ExtraGoals0, ExtraGoals):
+    %   ArgTypeInfoVars, Context, Var,
+    %   ArgTypeInfoGoals, ExtraGoals0, ExtraGoals, !Info):
     %
     % Create a unification the constructs the second cell of a type_info
     % for Type if necessary. This cell will usually be of the form:
@@ -2957,41 +2960,64 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
     %
 :- pred maybe_init_second_cell(mer_type::in, prog_var::in,
     bool::in, list(prog_var)::in, prog_context::in, prog_var::out,
-    prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out,
-    rtti_varmaps::in, rtti_varmaps::out,
-    list(hlds_goal)::in, list(hlds_goal)::in, list(hlds_goal)::out) is det.
+    list(hlds_goal)::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
 
 maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity, ArgTypeInfoVars,
-        _Context, Var, !VarSet, !VarTypes, !RttiVarMaps, ArgTypeInfoGoals,
-        ExtraGoals0, ExtraGoals) :-
+        _Context, Var, ArgTypeInfoGoals, ExtraGoals0, ExtraGoals, !Info) :-
     (
         TypeCtorIsVarArity = yes,
         % Unfortunately, if the type's type constructor has variable arity,
         % we cannot use a one-cell representation for that type.
         list.length(ArgTypeInfoVars, ActualArity),
-        make_int_const_construction_alloc(ActualArity, yes("ActualArity"),
-            ArityGoal, ArityVar, !VarSet, !VarTypes),
+        poly_info_get_varset(!.Info, VarSet0),
+        poly_info_get_var_types(!.Info, VarTypes0),
+        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+        poly_info_get_int_const_map(!.Info, IntConstMap0),
+        ( map.search(IntConstMap0, ActualArity, ArityVarPrime) ->
+            VarSet1 = VarSet0,
+            VarTypes1 = VarTypes0,
+            ArityVar = ArityVarPrime,
+            ArityGoals = []
+        ;
+            make_int_const_construction_alloc(ActualArity, yes("ActualArity"),
+                ArityGoal, ArityVar, VarSet0, VarSet1, VarTypes0, VarTypes1),
+            map.det_insert(ActualArity, ArityVar, IntConstMap0, IntConstMap),
+            poly_info_set_int_const_map(IntConstMap, !Info),
+            ArityGoals = [ArityGoal]
+        ),
         init_type_info_var(Type, [TypeCtorVar, ArityVar | ArgTypeInfoVars],
-            no, Var, TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps),
-        ExtraGoals = ExtraGoals0 ++ [ArityGoal |  ArgTypeInfoGoals]
+            no, Var, TypeInfoGoal, VarSet1, VarSet, VarTypes1, VarTypes,
+            RttiVarMaps0, RttiVarMaps),
+        poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+        poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
+        ExtraGoals = ExtraGoals0 ++ ArityGoals ++ ArgTypeInfoGoals
             ++ [TypeInfoGoal]
     ;
         TypeCtorIsVarArity = no,
         (
             ArgTypeInfoVars = [_ | _],
+            poly_info_get_varset(!.Info, VarSet0),
+            poly_info_get_var_types(!.Info, VarTypes0),
+            poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
             init_type_info_var(Type, [TypeCtorVar | ArgTypeInfoVars], no, Var,
-                TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps),
-            ExtraGoals = ExtraGoals0 ++ ArgTypeInfoGoals ++ [TypeInfoGoal]
+                TypeInfoGoal, VarSet0, VarSet, VarTypes0, VarTypes,
+                RttiVarMaps0, RttiVarMaps),
+            ExtraGoals = ExtraGoals0 ++ ArgTypeInfoGoals ++ [TypeInfoGoal],
+            poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+            poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
         ;
             ArgTypeInfoVars = [],
             % Since this type_ctor_info is pretending to be a type_info,
             % we need to adjust its type. Since type_ctor_info_const cons_ids
             % are handled specially, this should not cause problems.
+            poly_info_get_varset(!.Info, VarSet0),
+            poly_info_get_var_types(!.Info, VarTypes0),
             TypeInfoType = type_info_type,
-            map.det_update(TypeCtorVar, TypeInfoType, !VarTypes),
             Var = TypeCtorVar,
-            ExtraGoals = ArgTypeInfoGoals ++ ExtraGoals0
+            ExtraGoals = ArgTypeInfoGoals ++ ExtraGoals0,
+            map.det_update(TypeCtorVar, TypeInfoType, VarTypes0, VarTypes),
+            poly_info_set_varset_and_types(VarSet0, VarTypes, !Info)
 
             % The type_info to represent Type is just a type_ctor_info. We used
             % to simply change the type of TypeCtorVar from type_ctor_info to
@@ -3210,13 +3236,13 @@ new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
 
 get_type_info(TypeInfoLocn, TypeVar, ExtraGoals, Var, !Info) :-
     (
-        % If the typeinfo is available in a variable, just use it
+        % If the typeinfo is available in a variable, just use it.
         TypeInfoLocn = type_info(TypeInfoVar),
         Var = TypeInfoVar,
         ExtraGoals = []
     ;
         % If the typeinfo is in a typeclass_info, then we need to extract it
-        % before using it
+        % before using it.
         TypeInfoLocn = typeclass_info(TypeClassInfoVar, Index),
         polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index,
             ExtraGoals, Var, !Info)
@@ -3233,16 +3259,39 @@ polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Goals,
     poly_info_get_module_info(!.Info, ModuleInfo),
     poly_info_get_tvar_kinds(!.Info, TVarKinds),
     get_tvar_kind(TVarKinds, TypeVar, Kind),
-    gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, ModuleInfo,
-        Goals, TypeInfoVar, VarSet0, VarSet, VarTypes0, VarTypes,
-        RttiVarMaps0, RttiVarMaps),
+    poly_info_get_int_const_map(!.Info, IntConstMap0),
+    ( map.search(IntConstMap0, Index, IndexVarPrime) ->
+        VarSet1 = VarSet0,
+        VarTypes1 = VarTypes0,
+        IndexVar = IndexVarPrime,
+        IndexGoals = []
+    ;
+        make_int_const_construction_alloc(Index,
+            yes("PolyConst" ++ string.int_to_string(Index)),
+            IndexGoal, IndexVar, VarSet0, VarSet1, VarTypes0, VarTypes1),
+        map.det_insert(Index, IndexVar, IntConstMap0, IntConstMap),
+        poly_info_set_int_const_map(IntConstMap, !Info),
+        IndexGoals = [IndexGoal]
+    ),
+    IndexIntOrVar = iov_var(IndexVar),
+    gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
+        IndexIntOrVar, ExtractGoals, TypeInfoVar,
+        VarSet1, VarSet, VarTypes1, VarTypes, RttiVarMaps0, RttiVarMaps),
+    Goals = IndexGoals ++ ExtractGoals,
     poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
     poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
-gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, ModuleInfo,
-        Goals, TypeInfoVar, !VarSet, !VarTypes, !RttiVarMaps) :-
-    make_int_const_construction_alloc(Index, yes("TypeInfoIndex"),
-        IndexGoal, IndexVar, !VarSet, !VarTypes),
+gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
+        IndexIntOrVar, Goals, TypeInfoVar, !VarSet, !VarTypes, !RttiVarMaps) :-
+    (
+        IndexIntOrVar = iov_int(Index),
+        make_int_const_construction_alloc(Index, yes("TypeInfoIndex"),
+            IndexGoal, IndexVar, !VarSet, !VarTypes),
+        IndexGoals = [IndexGoal]
+    ;
+        IndexIntOrVar = iov_var(IndexVar),
+        IndexGoals = []
+    ),
     Type = type_variable(TypeVar, Kind),
     new_type_info_var_raw(Type, type_info, TypeInfoVar,
         !VarSet, !VarTypes, !RttiVarMaps),
@@ -3251,7 +3300,7 @@ gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, ModuleInfo,
         detism_det, purity_pure, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
         instmap_delta_bind_var(TypeInfoVar), ModuleInfo, term.context_init,
         CallGoal),
-    Goals = [IndexGoal, CallGoal].
+    Goals = IndexGoals ++ [CallGoal].
 
 %-----------------------------------------------------------------------------%
 
@@ -3635,6 +3684,8 @@ get_constrained_vars(Constraint) = CVars :-
 :- type typeclass_info_map ==
     map(class_name, map(list(mer_type), typeclass_info_map_entry)).
 
+:- type int_const_map == map(int, prog_var).
+
 :- type poly_info
     --->    poly_info(
                 % The first two fields are from the proc_info.
@@ -3661,16 +3712,17 @@ get_constrained_vars(Constraint) = CVars :-
                 % Specifies the constraints at each location in the goal.
                 poly_constraint_map         :: constraint_map,
 
-                % The next three maps hold information about what
+                % The next four maps hold information about what
                 % type_ctor_infos, type_infos, base_typeclass_infos and
                 % typeclass_infos are guaranteed to be available (i.e. created
                 % by previous code on all execution paths) at the current point
-                % in the code, so they can be reused. The fourth field counts
+                % in the code, so they can be reused. The fifth field counts
                 % the number of times that one of these variables has in fact
                 % been reused.
                 poly_type_ctor_info_var_map :: type_ctor_info_var_map,
                 poly_type_info_var_map      :: type_info_var_map,
                 poly_typeclass_info_map     :: typeclass_info_map,
+                poly_int_const_map          :: int_const_map,
                 poly_num_reuses             :: int,
 
                 poly_pred_info              :: pred_info,
@@ -3696,10 +3748,11 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     map.init(TypeCtorInfoVarMap),
     map.init(TypeInfoVarMap),
     map.init(TypeClassInfoMap),
+    map.init(IntConstMap),
     NumReuses = 0,
     PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
         RttiVarMaps, Proofs, ConstraintMap, TypeCtorInfoVarMap, TypeInfoVarMap,
-        TypeClassInfoMap, NumReuses, PredInfo, ModuleInfo).
+        TypeClassInfoMap, IntConstMap, NumReuses, PredInfo, ModuleInfo).
 
     % Create_poly_info creates a poly_info for an existing procedure.
     % (See also init_poly_info.)
@@ -3715,16 +3768,17 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     map.init(TypeCtorInfoVarMap),
     map.init(TypeInfoVarMap),
     map.init(TypeClassInfoMap),
+    map.init(IntConstMap),
     NumReuses = 0,
     PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
         RttiVarMaps, Proofs, ConstraintMap, TypeCtorInfoVarMap, TypeInfoVarMap,
-        TypeClassInfoMap, NumReuses, PredInfo, ModuleInfo).
+        TypeClassInfoMap, IntConstMap, NumReuses, PredInfo, ModuleInfo).
 
 poly_info_extract(Info, !PredInfo, !ProcInfo, ModuleInfo) :-
     Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
         RttiVarMaps, _Proofs, _ConstraintMap,
-        _TypeCtorInfoVarMap, _TypeInfoVarMap, _TypeClassInfoMap, _NumReuses,
-        _OldPredInfo, ModuleInfo),
+        _TypeCtorInfoVarMap, _TypeInfoVarMap, _TypeClassInfoMap, _IntConstMap,
+        _NumReuses, _OldPredInfo, ModuleInfo),
 
     % Set the new values of the fields in proc_info and pred_info.
     proc_info_set_varset(VarSet, !ProcInfo),
@@ -3749,6 +3803,7 @@ poly_info_extract(Info, !PredInfo, !ProcInfo, ModuleInfo) :-
     type_info_var_map::out) is det.
 :- pred poly_info_get_typeclass_info_map(poly_info::in,
     typeclass_info_map::out) is det.
+:- pred poly_info_get_int_const_map(poly_info::in, int_const_map::out) is det.
 :- pred poly_info_get_num_reuses(poly_info::in, int::out) is det.
 :- pred poly_info_get_pred_info(poly_info::in, pred_info::out) is det.
 :- pred poly_info_get_module_info(poly_info::in, module_info::out) is det.
@@ -3764,6 +3819,7 @@ poly_info_get_type_ctor_info_var_map(PolyInfo,
     PolyInfo ^ poly_type_ctor_info_var_map).
 poly_info_get_type_info_var_map(PolyInfo, PolyInfo ^ poly_type_info_var_map).
 poly_info_get_typeclass_info_map(PolyInfo, PolyInfo ^ poly_typeclass_info_map).
+poly_info_get_int_const_map(PolyInfo, PolyInfo ^ poly_int_const_map).
 poly_info_get_num_reuses(PolyInfo, PolyInfo ^ poly_num_reuses).
 poly_info_get_pred_info(PolyInfo, PolyInfo ^ poly_pred_info).
 poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
@@ -3785,6 +3841,8 @@ poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
 :- pred poly_info_set_type_info_var_map(type_info_var_map::in,
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_typeclass_info_map(typeclass_info_map::in,
+    poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_int_const_map(int_const_map::in,
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_num_reuses(int::in,
     poly_info::in, poly_info::out) is det.
@@ -3808,6 +3866,8 @@ poly_info_set_type_info_var_map(TypeInfoVarMap, !PI) :-
     !PI ^ poly_type_info_var_map := TypeInfoVarMap.
 poly_info_set_typeclass_info_map(TypeClassInfoMap, !PI) :-
     !PI ^ poly_typeclass_info_map := TypeClassInfoMap.
+poly_info_set_int_const_map(IntConstMap, !PI) :-
+    !PI ^ poly_int_const_map := IntConstMap.
 poly_info_set_num_reuses(NumReuses, !PI) :-
     !PI ^ poly_num_reuses := NumReuses.
 
@@ -3828,14 +3888,17 @@ set_maps_snapshot(maps_snapshot(SnapshotInfo), !Info) :-
     TypeCtorInfoVarMap = SnapshotInfo ^ poly_type_ctor_info_var_map,
     TypeInfoVarMap = SnapshotInfo ^ poly_type_info_var_map,
     TypeClassInfoMap = SnapshotInfo ^ poly_typeclass_info_map,
+    IntConstMap = SnapshotInfo ^ poly_int_const_map,
     !Info ^ poly_type_ctor_info_var_map := TypeCtorInfoVarMap,
     !Info ^ poly_type_info_var_map := TypeInfoVarMap,
-    !Info ^ poly_typeclass_info_map := TypeClassInfoMap.
+    !Info ^ poly_typeclass_info_map := TypeClassInfoMap,
+    !Info ^ poly_int_const_map := IntConstMap.
 
 empty_maps(!Info) :-
     !Info ^ poly_type_ctor_info_var_map := map.init,
     !Info ^ poly_type_info_var_map := map.init,
-    !Info ^ poly_typeclass_info_map := map.init.
+    !Info ^ poly_typeclass_info_map := map.init,
+    !Info ^ poly_int_const_map := map.init.
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism.

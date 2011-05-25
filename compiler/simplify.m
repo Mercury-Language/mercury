@@ -3054,9 +3054,9 @@ extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, Goals, TypeInfoVar,
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 
-    polymorphism.gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index,
-        ModuleInfo, Goals, TypeInfoVar, VarSet0, VarSet, VarTypes0, VarTypes,
-        RttiVarMaps0, RttiVarMaps),
+    polymorphism.gen_extract_type_info(ModuleInfo, TypeVar, Kind,
+        TypeClassInfoVar, iov_int(Index), Goals, TypeInfoVar,
+        VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
 
     simplify_info_set_var_types(VarTypes, !Info),
     simplify_info_set_varset(VarSet, !Info),
