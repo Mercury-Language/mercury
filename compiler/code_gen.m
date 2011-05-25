@@ -240,8 +240,7 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
         GoalExpr = conj(ConjType, Goals),
         (
             ConjType = plain_conj,
-            generate_goals(Goals, CodeModel, Codes, !CI),
-            Code = cord_list_to_cord(Codes)
+            generate_goals(Goals, CodeModel, cord.init, Code, !CI)
         ;
             ConjType = parallel_conj,
             par_conj_gen.generate_par_conj(Goals, GoalInfo, CodeModel, Code,
@@ -311,21 +310,21 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
 
 %---------------------------------------------------------------------------%
 
-    % Generate a conjoined series of goals. Note of course, that with a
-    % conjunction, state information flows directly from one conjunct
-    % to the next.
+    % Generate a conjoined series of goals. State information flows directly
+    % from one conjunct to the next.
     %
-:- pred generate_goals(hlds_goals::in, code_model::in,
-    list(llds_code)::out, code_info::in, code_info::out) is det.
+:- pred generate_goals(list(hlds_goal)::in, code_model::in,
+    llds_code::in, llds_code::out, code_info::in, code_info::out) is det.
 
-generate_goals([], _, [], !CI).
-generate_goals([Goal | Goals], CodeModel, [Code | Codes], !CI) :-
-    generate_goal(CodeModel, Goal, Code, !CI),
+generate_goals([], _, !Code, !CI).
+generate_goals([Goal | Goals], CodeModel, !Code, !CI) :-
+    generate_goal(CodeModel, Goal, GoalCode, !CI),
+    !:Code = !.Code ++ GoalCode,
     get_instmap(!.CI, Instmap),
     ( instmap_is_unreachable(Instmap) ->
-        Codes = []
+        true
     ;
-        generate_goals(Goals, CodeModel, Codes, !CI)
+        generate_goals(Goals, CodeModel, !Code, !CI)
     ).
 
 %---------------------------------------------------------------------------%
