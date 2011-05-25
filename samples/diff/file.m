@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1998, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -121,8 +121,8 @@ file.read_stream2(Stream, LineNo, File, !IO) :-
         array.init(LineNo, "", File)
     ;
         Res = ok(Line),
-        file.read_stream2(Stream, LineNo + 1, File1, !IO),
-        array.set(File1, LineNo, Line, File)
+        file.read_stream2(Stream, LineNo + 1, File0, !IO),
+        array.set(LineNo, Line, File0, File)
     ;
         Res = error(Error),
         io.error_message(Error, Msg),

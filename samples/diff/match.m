@@ -111,9 +111,9 @@ build_matches_for_file(Opts, OrigFile, I, !MatchMap, !ID, !File) :-
             string.from_char_list(Chars1, Line)
         ),
         ( map.search(!.MatchMap, Line, MaybeID) ->
-            array.set(!.File, I, MaybeID, !:File)
+            array.set(I, MaybeID, !File)
         ;
-            array.set(!.File, I, !.ID, !:File),
+            array.set(I, !.ID, !File),
             map.det_insert(Line, !.ID, !MatchMap),
             !:ID = !.ID + 1
         ),

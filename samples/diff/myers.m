@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998, 2006 The University of Melbourne.
+% Copyright (C) 1998, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -166,9 +166,9 @@ myers.find_middle(DOffset, FileX, FileY, Xlow, Xhigh, Ylow, Yhigh, Heur,
     Dmax = Xhigh - Ylow,
 
     Fmid = Xlow - Ylow,
-    array.set(Fwd0, Fmid + DOffset, Xlow, Fwd1),
+    array.set(Fmid + DOffset, Xlow, Fwd0, Fwd1),
     Bmid = Xhigh - Yhigh,
-    array.set(Bwd0, Bmid + DOffset, Xhigh, Bwd1),
+    array.set(Bmid + DOffset, Xhigh, Bwd0, Bwd1),
 
     ( 1 = (Fmid - Bmid) /\ 1 ->
         DeltaOdd = yes
@@ -196,14 +196,14 @@ myers.find_middle_2(Constants, Fwd0, Fwd, Bwd0, Bwd,
     Constants = constants(DOffset, _, _, _, _, _, _, Dmin, Dmax, _, _),
     ( Fmin > Dmin ->
         Fmin1 = Fmin - 1,
-        array.set(Fwd0, Fmin1 + DOffset - 1, -1, Fwd1)
+        array.set(Fmin1 + DOffset - 1, -1, Fwd0, Fwd1)
     ;
         Fmin1 = Fmin + 1,
         Fwd1 = Fwd0
     ),
     ( Fmax < Dmax ->
         Fmax1 = Fmax + 1,
-        array.set(Fwd1, Fmax1 + DOffset + 1, -1, Fwd2)
+        array.set(Fmax1 + DOffset + 1, -1, Fwd1, Fwd2)
     ;
         Fmax1 = Fmax - 1,
         Fwd2 = Fwd1
@@ -228,14 +228,14 @@ myers.find_forward_reaching_path(Constants, Fwd0, Fwd, Bwd0, Bwd,
         int.max_int(MaxInt),
         ( Bmin > Dmin ->
             Bmin1 = Bmin - 1,
-            array.set(Bwd0, Bmin1 + DOffset - 1, MaxInt, Bwd1)
+            array.set(Bmin1 + DOffset - 1, MaxInt, Bwd0, Bwd1)
         ;
             Bmin1 = Bmin + 1,
             Bwd1 = Bwd0
         ),
         ( Bmax < Dmax ->
             Bmax1 = Bmax + 1,
-            array.set(Bwd1, Bmax1 + DOffset + 1, MaxInt, Bwd2)
+            array.set( Bmax1 + DOffset + 1, MaxInt, Bwd1, Bwd2)
         ;
             Bmax1 = Bmax - 1,
             Bwd2 = Bwd1
@@ -256,7 +256,7 @@ myers.find_forward_reaching_path(Constants, Fwd0, Fwd, Bwd0, Bwd,
         Constants = constants(_, FileX, FileY, _, Xhigh, _, Yhigh,
             _, _, _, _),
         myers.scan_forward(FileX, FileY, Xhigh, Yhigh, X0, X, Y0, Y),
-        array.set(Fwd0, SearchCost + DOffset, X, Fwd1),
+        array.set(SearchCost + DOffset, X, Fwd0, Fwd1),
 
         Constants = constants(_, _, _, _, _, _, _, _, _, DeltaOdd, _),
         (
@@ -305,7 +305,7 @@ myers.find_backward_reaching_path(Constants, Fwd0, Fwd, Bwd0, Bwd,
         Constants = constants(_, FileX, FileY, Xlow, _, Ylow, _,
             _, _, _, _),
         myers.scan_backward(FileX, FileY, Xlow, Ylow, X0, X, Y0, Y),
-        array.set(Bwd0, SearchCost + DOffset, X, Bwd1),
+        array.set(SearchCost + DOffset, X, Bwd0, Bwd1),
 
         Constants = constants(_, _, _, _, _, _, _, _, _, DeltaOdd, _),
         (
