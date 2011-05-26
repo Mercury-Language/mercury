@@ -1,19 +1,19 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997, 1999-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: set.m.
 % Main authors: conway, fjh, benyi.
 % Stability: high.
-% 
+%
 % This module provides a set ADT.
 % The implementation represents sets using ordered lists.
 % This file just calls the equivalent predicates in set_ordlist.
-% 
+%
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
@@ -82,7 +82,6 @@
     % A synonym for set.empty/1.
     %
 :- pred set.is_empty(set(T)::in) is semidet.
-
 
     % `set.subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
     %
@@ -212,7 +211,7 @@
 :- pred set.difference(set(T)::in, set(T)::in, set(T)::out) is det.
 
     % `set.count(Set, Count)' is true iff `Set' has `Count' elements.
-    % i.e. `Count' is the cardinality (size) of the set. 
+    % i.e. `Count' is the cardinality (size) of the set.
     %
 :- func set.count(set(T)) = int.
 :- pred set.count(set(T)::in, int::out) is det.
@@ -246,12 +245,18 @@
 :- mode set.map_fold(pred(in, out, di, uo) is semidet, in, out,
     di, uo) is semidet.
 
-
+    % Return the set of items for which the given predicate succeeds.
     % set.filter(P, S) =
     %   sorted_list_to_set(list.filter(P, to_sorted_list(S))).
     %
 :- func set.filter(pred(T1), set(T1)) = set(T1).
 :- mode set.filter(pred(in) is semidet, in) = out is det.
+
+    % Return the set of items for which the given predicate succeeds,
+    % and the set of items for which it fails.
+    %
+:- pred set.filter(pred(T1), set(T1), set(T1), set(T1)).
+:- mode set.filter(pred(in) is semidet, in, out, out) is det.
 
     % set.filter_map(PF, S) =
     %   list_to_set(list.filter_map(PF, to_sorted_list(S))).
@@ -320,45 +325,45 @@
 :- pred set.fold5(pred(T, A, A, B, B, C, C, D, D, E, E), set(T), A, A, B, B,
     C, C, D, D, E, E).
 :- mode set.fold5(
-    pred(in, in, out, in, out, in, out, in, out, in, out) is det, 
+    pred(in, in, out, in, out, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode set.fold5(
-    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det, 
+    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode set.fold5(
-    pred(in, in, out, in, out, in, out, in, out, di, uo) is det, 
+    pred(in, in, out, in, out, in, out, in, out, di, uo) is det,
     in, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode set.fold5(
-    pred(in, in, out, in, out, in, out, in, out, in, out) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out, in, out, in, out) is semidet.
 :- mode set.fold5(
-    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode set.fold5(
-    pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 :- pred set.fold6(pred(T, A, A, B, B, C, C, D, D, E, E, F, F), set(T),
     A, A, B, B, C, C, D, D, E, E, F, F).
 :- mode set.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode set.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode set.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is det, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is det,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode set.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
 :- mode set.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode set.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
- 
+
     % set.divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
     % FalsePart consists of those elements of Set for which Pred fails.
@@ -559,45 +564,48 @@ set.map(P, S1, S2) :-
     list.map(P, L1, L2),
     set.list_to_set(L2, S2).
 
-set.map(F, S1) = S2 :-
-    S2 = set.list_to_set(list.map(F, set.to_sorted_list(S1))).
+set.map(F, Set) = TransformedSet :-
+    List = set.to_sorted_list(Set),
+    TransformedList = list.map(F, List),
+    TransformedSet = set.list_to_set(TransformedList).
 
 set.map_fold(P, S0, S, A0, A) :-
     L0 = set.to_sorted_list(S0),
     list.map_foldl(P, L0, L, A0, A),
     S = set.list_to_set(L).
 
-set.filter(P, S1) = S2 :-
-    S2 = set.sorted_list_to_set(list.filter(P, set.to_sorted_list(S1))).
+set.filter(P, Set) =
+    set_ordlist.filter(P, Set).
 
-set.filter_map(PF, S1) = S2 :-
-    S2 = set.list_to_set(list.filter_map(PF, set.to_sorted_list(S1))).
+set.filter(P, Set, TrueSet, FalseSet) :-
+    set_ordlist.filter(P, Set, TrueSet, FalseSet).
 
-set.filter_map(P, S1, S2) :-
-    set.to_sorted_list(S1, L1),
-    list.filter_map(P, L1, L2),
-    set.list_to_set(L2, S2).
+set.filter_map(PF, Set) = 
+    set_ordlist.filter_map(PF, Set).
 
-set.fold(F, S, A) = B :-
-    B = list.foldl(F, set.to_sorted_list(S), A).
+set.filter_map(P, Set, TransformedTrueSet) :-
+    set_ordlist.filter_map(P, Set, TransformedTrueSet).
+
+set.fold(F, S, A) =
+    set_ordlist.fold(F, S, A).
 
 set.fold(F, S, !A) :-
-    list.foldl(F, set.to_sorted_list(S), !A).
+    set_ordlist.fold(F, S, !A).
 
 set.fold2(F, S, !A, !B) :-
-    list.foldl2(F, set.to_sorted_list(S), !A, !B).
+    set_ordlist.fold2(F, S, !A, !B).
 
 set.fold3(F, S, !A, !B, !C) :-
-    list.foldl3(F, set.to_sorted_list(S), !A, !B, !C).
+    set_ordlist.fold3(F, S, !A, !B, !C).
 
 set.fold4(F, S, !A, !B, !C, !D) :-
-    list.foldl4(F, set.to_sorted_list(S), !A, !B, !C, !D).
+    set_ordlist.fold4(F, S, !A, !B, !C, !D).
 
 set.fold5(F, S, !A, !B, !C, !D, !E) :-
-    list.foldl5(F, set.to_sorted_list(S), !A, !B, !C, !D, !E).
+    set_ordlist.fold5(F, S, !A, !B, !C, !D, !E).
 
 set.fold6(F, S, !A, !B, !C, !D, !E, !F) :-
-    list.foldl6(F, set.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
+    set_ordlist.fold6(F, S, !A, !B, !C, !D, !E, !F).
 
 set.divide(P, Set, TruePart, FalsePart) :-
     set_ordlist.divide(P, Set, TruePart, FalsePart).

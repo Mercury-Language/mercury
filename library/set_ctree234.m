@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim:ts=4 sw=4 expandtab
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -15,7 +15,8 @@
 % ordered lists, but it has much better worst-case complexity, and is likely
 % to be faster for large sets. Specifically,
 %
-% - the cost of lookups is only logarithmic in the size of the set, not linear
+% - the cost of lookups is only logarithmic in the size of the set, not linear;
+%
 % - for operations that are intrinsically linear in the size of one input
 %   operand or the other, the counts allow us to choose to be linear in the
 %   size of the smaller set.
@@ -335,9 +336,21 @@
     pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+    % Return the set of items for which the predicate succeeds.
+    %
+:- pred set_ctree234.filter(pred(T)::in(pred(in) is semidet),
+    set_ctree234(T)::in, set_ctree234(T)::out) is det.
+
+    % Return the set of items for which the predicate succeeds,
+    % and the set for which it fails.
+    %
+:- pred set_ctree234.filter(pred(T)::in(pred(in) is semidet),
+    set_ctree234(T)::in, set_ctree234(T)::out, set_ctree234(T)::out) is det.
+
     % set_ctree234.divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
     % FalsePart consists of those elements of Set for which Pred fails.
+    % NOTE: This is the same as filter/4.
     %
 :- pred set_ctree234.divide(pred(T)::in(pred(in) is semidet),
     set_ctree234(T)::in, set_ctree234(T)::out, set_ctree234(T)::out) is det.
@@ -2732,6 +2745,13 @@ set_ctree234.filter_map_func(Func, Tin, !List) :-
 
 %------------------------------------------------------------------------------%
 
+set_ctree234.filter(Pred, Set, TrueSet) :-
+    % XXX This should be more efficient.
+    set_ctree234.divide(Pred, Set, TrueSet, _FalseSet).
+
+set_ctree234.filter(Pred, Set, TrueSet, FalseSet) :-
+    set_ctree234.divide(Pred, Set, TrueSet, FalseSet).
+
 set_ctree234.divide(Pred, ct(_, Tree), TrueSet, FalseSet) :-
     set_ctree234.do_divide(Pred, Tree,
         set_ctree234.init, TrueSet, set_ctree234.init, FalseSet).
@@ -2741,6 +2761,7 @@ set_ctree234.divide(Pred, ct(_, Tree), TrueSet, FalseSet) :-
     set_ctree234(T)::in, set_ctree234(T)::out,
     set_ctree234(T)::in, set_ctree234(T)::out) is det.
 
+    % XXX This should be more efficient.
 set_ctree234.do_divide(_Pred, empty, !TrueSet, !FalseSet).
 set_ctree234.do_divide(Pred, Tin, !TrueSet, !FalseSet) :-
     Tin = two(E0, T0, T1),
@@ -2789,6 +2810,7 @@ set_ctree234.do_divide(Pred, Tin, !TrueSet, !FalseSet) :-
     set_ctree234.do_divide(Pred, T3, !TrueSet, !FalseSet).
 
 set_ctree234.divide_by_set(DivideBySet, Set, TrueSet, FalseSet) :-
+    % XXX This should be more efficient.
     set_ctree234.divide(set_ctree234.contains(DivideBySet), Set,
         TrueSet, FalseSet).
 
@@ -2818,3 +2840,5 @@ do_verify_depths(four(_, _, _, T0, T1, T2, T3), Depth, !Depths) :-
     do_verify_depths(T1, Depth + 1, !Depths),
     do_verify_depths(T2, Depth + 1, !Depths),
     do_verify_depths(T3, Depth + 1, !Depths).
+
+%------------------------------------------------------------------------------%

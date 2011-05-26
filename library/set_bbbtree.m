@@ -1,17 +1,17 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 1999-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: set_bbbtree.m.
 % Main authors: benyi.
 % Stability: low.
-% 
+%
 % This module implements sets using bounded balanced binary trees.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -41,7 +41,7 @@
 :- pred set_bbbtree.non_empty(set_bbbtree(T)::in) is semidet.
 
     % `set_bbbtree.count(Set, Count)' is true iff `Set' has `Count' elements.
-    % i.e. `Count' is the cardinality (size) of the set. 
+    % i.e. `Count' is the cardinality (size) of the set.
     %
 :- func set_bbbtree.count(set_bbbtree(T)) = int.
 :- pred set_bbbtree.count(set_bbbtree(T)::in, int::out) is det.
@@ -268,12 +268,6 @@
 :- pred set_bbbtree.superset(set_bbbtree(T)::in, set_bbbtree(T)::in)
     is semidet.
 
-:- func set_bbbtree.map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
-
-:- func set_bbbtree.filter_map(func(T1) = T2, set_bbbtree(T1))
-    = set_bbbtree(T2).
-:- mode set_bbbtree.filter_map(func(in) = out is semidet, in) = out is det.
-
 :- func set_bbbtree.fold(func(T1, T2) = T2, set_bbbtree(T1), T2) = T2.
 :- pred set_bbbtree.fold(pred(T1, T2, T2), set_bbbtree(T1), T2, T2).
 :- mode set_bbbtree.fold(pred(in, in, out) is det, in, in, out) is det.
@@ -363,23 +357,42 @@
     pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7),
     set_bbbtree(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7).
 :- mode set_bbbtree.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode set_bbbtree.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode set_bbbtree.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is det, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is det,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode set_bbbtree.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
 :- mode set_bbbtree.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode set_bbbtree.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
+:- func set_bbbtree.map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
+
+:- func set_bbbtree.filter_map(func(T1) = T2, set_bbbtree(T1))
+    = set_bbbtree(T2).
+:- mode set_bbbtree.filter_map(func(in) = out is semidet, in) = out is det.
+
+    % set_bbbtree.filter(Pred, Items, Trues):
+    % Return the set of items for which Pred succeeds.
+    %
+:- pred set_bbbtree.filter(pred(T)::in(pred(in) is semidet),
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
+
+    % set_bbbtree.filter(Pred, Items, Trues, Falses):
+    % Return the set of items for which Pred succeeds,
+    % and the set for which it fails.
+    %
+:- pred set_bbbtree.filter(pred(T)::in(pred(in) is semidet),
+    set_bbbtree(T)::in, set_bbbtree(T)::out, set_bbbtree(T)::out) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -1334,12 +1347,27 @@ set_bbbtree.fold6(P, S, !A, !B, !C, !D, !E, !F) :-
 %--------------------------------------------------------------------------%
 
 set_bbbtree.map(F, S1) = S2 :-
-    S2 = set_bbbtree.list_to_set(list.map(F,
-        set_bbbtree.to_sorted_list(S1))).
+    set_bbbtree.to_sorted_list(S1, L1),
+    L2 = list.map(F, L1),
+    set_bbbtree.list_to_set(L2, S2).
 
 set_bbbtree.filter_map(PF, S1) = S2 :-
-    S2 = set_bbbtree.list_to_set(list.filter_map(PF,
-        set_bbbtree.to_sorted_list(S1))).
+    set_bbbtree.to_sorted_list(S1, L1),
+    L2 = list.filter_map(PF, L1),
+    set_bbbtree.list_to_set(L2, S2).
+
+%-----------------------------------------------------------------------------%
+
+set_bbbtree.filter(P, Set, TrueSet) :-
+    set_bbbtree.to_sorted_list(Set, List),
+    list.filter(P, List, TrueList),
+    set_bbbtree.list_to_set(TrueList, TrueSet).
+
+set_bbbtree.filter(P, Set, TrueSet, FalseSet) :-
+    set_bbbtree.to_sorted_list(Set, List),
+    list.filter(P, List, TrueList, FalseList),
+    set_bbbtree.list_to_set(TrueList, TrueSet),
+    set_bbbtree.list_to_set(FalseList, FalseSet).
 
 %-----------------------------------------------------------------------------%
 :- end_module set_bbbtree.

@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: set_tree234.m.
 % Author: zs.
 % Stability: high.
-% 
-% This modules implements sets using 2-3-4 trees.
-% 
+%
+% This module implements sets using 2-3-4 trees.
+%
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
@@ -320,6 +320,17 @@
 :- mode set_tree234.fold6(
     pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
+    % Return the set of items for which the predicate succeeds.
+    %
+:- pred set_tree234.filter(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in, set_tree234(T)::out) is det.
+
+    % Return the set of items for which the predicate succeeds,
+    % and the set for which it fails.
+    %
+:- pred set_tree234.filter(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in, set_tree234(T)::out, set_tree234(T)::out) is det.
 
     % set_tree234.divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
@@ -2333,6 +2344,13 @@ set_tree234.filter_map_func(Func, Tin, !List) :-
 
 %------------------------------------------------------------------------------%
 
+set_tree234.filter(Pred, Set, TrueSet) :-
+    % XXX This should be more efficient.
+    set_tree234.divide(Pred, Set, TrueSet, _FalseSet).
+
+set_tree234.filter(Pred, Set, TrueSet, FalseSet) :-
+    set_tree234.divide(Pred, Set, TrueSet, FalseSet).
+
 set_tree234.divide(Pred, Set, TrueSet, FalseSet) :-
     set_tree234.divide_2(Pred, Set, empty, TrueSet, empty, FalseSet).
 
@@ -2341,6 +2359,7 @@ set_tree234.divide(Pred, Set, TrueSet, FalseSet) :-
     set_tree234(T)::in, set_tree234(T)::out,
     set_tree234(T)::in, set_tree234(T)::out) is det.
 
+    % XXX This should be more efficient.
 set_tree234.divide_2(_Pred, empty, !TrueSet, !FalseSet).
 set_tree234.divide_2(Pred, Tin, !TrueSet, !FalseSet) :-
     Tin = two(E0, T0, T1),
@@ -2389,6 +2408,7 @@ set_tree234.divide_2(Pred, Tin, !TrueSet, !FalseSet) :-
     set_tree234.divide_2(Pred, T3, !TrueSet, !FalseSet).
 
 set_tree234.divide_by_set(DivideBySet, Set, TrueSet, FalseSet) :-
+    % XXX This should be more efficient.
     set_tree234.divide(set_tree234.contains(DivideBySet), Set,
         TrueSet, FalseSet).
 

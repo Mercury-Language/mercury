@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -289,12 +289,18 @@
 :- mode foldr2(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out)
     is cc_multi.
 
-    % `filter(Pred, Set)' removes those elements from `Set' for which
-    % `Pred' fails. In other words, it returns the set consisting of those
-    % elements of `Set' for which `Pred' succeeds.
+    % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
+    % Pred succeeds.
     %
 :- func filter(pred(T), sparse_bitset(T)) = sparse_bitset(T) <= enum(T).
 :- mode filter(pred(in) is semidet, in) = out is det.
+
+    % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
+    % for which Pred succeeds, and those for which it fails.
+    %
+:- pred filter(pred(T), sparse_bitset(T), sparse_bitset(T), sparse_bitset(T))
+    <= enum(T).
+:- mode filter(pred(in) is semidet, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -658,9 +664,18 @@ fold2_bits(Dir, P, Offset, Bits, Size, !Acc1, !Acc2) :-
 
 %-----------------------------------------------------------------------------%
 
-% XXX could make this more efficient.
+% XXX We should make these more efficient.
 
-filter(P, S) = S ^ to_sorted_list ^ list.filter(P) ^ sorted_list_to_set.
+filter(Pred, Set) = TrueSet :-
+    SortedList = to_sorted_list(Set),
+    SortedTrueList = list.filter(Pred, SortedList),
+    TrueSet = sorted_list_to_set(SortedTrueList).
+
+filter(Pred, Set, TrueSet, FalseSet) :-
+    SortedList = to_sorted_list(Set),
+    list.filter(Pred, SortedList, SortedTrueList, SortedFalseList),
+    TrueSet = sorted_list_to_set(SortedTrueList),
+    FalseSet = sorted_list_to_set(SortedFalseList).
 
 %-----------------------------------------------------------------------------%
 

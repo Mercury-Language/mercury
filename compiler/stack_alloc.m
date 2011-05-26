@@ -130,16 +130,13 @@ filter_out_dummy_values_2(ModuleInfo, VarTypes,
         [LiveSet0 | LiveSets0], LiveSets, !Dummies) :-
     filter_out_dummy_values_2(ModuleInfo, VarTypes, LiveSets0, LiveSets1,
         !Dummies),
-    set.to_sorted_list(LiveSet0, LiveList0),
-    list.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), LiveList0,
+    set.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), LiveSet0,
         DummyVars, NonDummyVars),
-    set.insert_list(DummyVars, !Dummies),
-    (
-        NonDummyVars = [],
+    set.union(DummyVars, !Dummies),
+    ( set.empty(NonDummyVars) ->
         LiveSets = LiveSets1
     ;
-        NonDummyVars = [_ | _],
-        LiveSets = [list_to_set(NonDummyVars) | LiveSets1]
+        LiveSets = [NonDummyVars | LiveSets1]
     ).
 
 %-----------------------------------------------------------------------------%

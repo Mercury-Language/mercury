@@ -1,18 +1,18 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-1997,1999-2002, 2004-2006, 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: set_ordlist.m.
 % Main authors: conway, fjh.
 % Stability: medium.
-% 
+%
 % This file contains a `set' ADT.
 % Sets are implemented here as sorted lists without duplicates.
-% 
+%
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
@@ -25,7 +25,7 @@
 %--------------------------------------------------------------------------%
 
 :- type set_ordlist(_T).
-    
+
     % `set_ordlist.init(Set)' is true iff `Set' is an empty set.
     %
 :- pred set_ordlist.init(set_ordlist(_T)::uo) is det.
@@ -223,11 +223,27 @@
 :- pred set_ordlist.count(set_ordlist(T)::in, int::out) is det.
 :- func set_ordlist.count(set_ordlist(T)) = int.
 
+    % Return the set of items for which the given predicate succeeds.
+    %
+:- func set_ordlist.filter(pred(T1), set_ordlist(T1)) = set_ordlist(T1).
+:- mode set_ordlist.filter(pred(in) is semidet, in) = out is det.
+
+    % Return the set of items for which the given predicate succeeds,
+    % and the set of items for which it fails.
+    %
+:- pred set_ordlist.filter(pred(T1), set_ordlist(T1),
+    set_ordlist(T1), set_ordlist(T1)).
+:- mode set_ordlist.filter(pred(in) is semidet, in, out, out) is det.
+
 :- func set_ordlist.map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
 
 :- func set_ordlist.filter_map(func(T1) = T2, set_ordlist(T1))
     = set_ordlist(T2).
 :- mode set_ordlist.filter_map(func(in) = out is semidet, in) = out is det.
+
+:- pred set_ordlist.filter_map(pred(T1, T2), set_ordlist(T1),
+    set_ordlist(T2)).
+:- mode set_ordlist.filter_map(pred(in, out) is semidet, in, out) is det.
 
 :- func set_ordlist.fold(func(T1, T2) = T2, set_ordlist(T1), T2) = T2.
 :- pred set_ordlist.fold(pred(T1, T2, T2), set_ordlist(T1), T2, T2).
@@ -317,22 +333,22 @@
 :- pred set_ordlist.fold6(pred(T, A, A, B, B, C, C, D, D, E, E, F, F),
     set_ordlist(T), A, A, B, B, C, C, D, D, E, E, F, F).
 :- mode set_ordlist.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode set_ordlist.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode set_ordlist.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is det, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is det,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode set_ordlist.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
 :- mode set_ordlist.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode set_ordlist.fold6(
-    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet, 
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
     % set_ordlist.divide(Pred, Set, TruePart, FalsePart):
@@ -492,7 +508,7 @@ set_ordlist.remove_list(Elems, !Set) :-
     % set_ordlist.sort_no_dups(List, Set) is true iff
     % List is a list with the same elements as Set and
     % List contains no duplicates.
-    % 
+    %
 :- pred set_ordlist.sort_no_dups(list(T)::in, set_ordlist(T)::out) is semidet.
 
 set_ordlist.sort_no_dups(List, sol(Set)) :-
@@ -687,12 +703,33 @@ set_ordlist.fold6(P, S, !A, !B, !C, !D, !E, !F) :-
 
 %-----------------------------------------------------------------------------%
 
-set_ordlist.map(F, S1) = S2 :-
-    S2 = set_ordlist.list_to_set(list.map(F, set_ordlist.to_sorted_list(S1))).
+set_ordlist.filter(P, Set) = TrueSet :-
+    List = set_ordlist.to_sorted_list(Set),
+    list.filter(P, List, TrueList),
+    set_ordlist.sorted_list_to_set(TrueList, TrueSet).
 
-set_ordlist.filter_map(PF, S1) = S2 :-
-    S2 = set_ordlist.list_to_set(list.filter_map(PF,
-        set_ordlist.to_sorted_list(S1))).
+set_ordlist.filter(P, Set, TrueSet, FalseSet) :-
+    List = set_ordlist.to_sorted_list(Set),
+    list.filter(P, List, TrueList, FalseList),
+    set_ordlist.sorted_list_to_set(TrueList, TrueSet),
+    set_ordlist.sorted_list_to_set(FalseList, FalseSet).
+
+%-----------------------------------------------------------------------------%
+
+set_ordlist.map(F, Set) = TransformedSet :-
+    List = set_ordlist.to_sorted_list(Set),
+    TransformedList = list.map(F, List),
+    set_ordlist.list_to_set(TransformedList, TransformedSet).
+
+set_ordlist.filter_map(PF, Set) = TransformedTrueSet :-
+    set_ordlist.to_sorted_list(Set, List),
+    TransformedTrueList = list.filter_map(PF, List),
+    set_ordlist.list_to_set(TransformedTrueList, TransformedTrueSet).
+
+set_ordlist.filter_map(PF, Set, TransformedTrueSet) :-
+    set_ordlist.to_sorted_list(Set, List),
+    list.filter_map(PF, List, TransformedTrueList),
+    set_ordlist.list_to_set(TransformedTrueList, TransformedTrueSet).
 
 %-----------------------------------------------------------------------------%
 
