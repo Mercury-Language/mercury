@@ -59,7 +59,7 @@ AC_PREREQ(2.58)
 # Strip out any site or system specific configuration files since their
 # presence when reconfiguring will result in the command line used to invoke
 # configure being invalid.
-	
+
 # Also quote any args containing shell metacharacters.
 #
 # NOTE: Some macros, e.g. AC_CHECK_PROG, overwrite the argument list,
@@ -140,7 +140,7 @@ esac
 # x86_64 machine, then we need to tell configure that we are using the
 # 32-bit C compiler.  If we didn't call the AC_PROG_CC macro at this point
 # then configure's --with-cc option would not do that.
- 
+
 AC_PROG_CC
 AC_SUBST([CC])
 
@@ -486,7 +486,7 @@ then
         then
             highlevel_code=`grep "HIGHLEVEL_CODE=.*" compiler/Mercury/cs/top_level.c`
         else
-            # If we are going to attempt to bootstrap from a compiler in 
+            # If we are going to attempt to bootstrap from a compiler in
             # $PREFIX/bin (see the above section), then it is ok if we do not
             # have any pre-generated .c files; if not, then we cannot continue.
             #
@@ -497,7 +497,7 @@ then
             fi
         fi
     fi
-    
+
     case "$highlevel_code" in
 
         *yes)
@@ -507,14 +507,14 @@ then
         *no)
             BOOTSTRAP_HLC="no"
             ;;
-       
+
         "")
             # This corresponds to the case where we compile using
             # $PREFIX/bin/mercury_compile.  Since we can (hopefully)
             # regenerate any .c files, it is irrelevant whether we used
             # --highlevel-code or not when compiling any existing ones.
             ;;
-    
+
         *)
             AC_MSG_ERROR(
 [Cannot determine what code model pre-generated .c files use.])
@@ -1014,7 +1014,7 @@ else
             LD_STRIP_FLAG=""
             ;;
     esac
-    
+
     LDFLAGS_FOR_DEBUG="-g"
     LD_LIBFLAGS_FOR_DEBUG="-g"
 
@@ -2857,7 +2857,7 @@ then
                 WIN32_GC_THREADLIB="-DGC_WIN32_PTHREADS"
             else
                 WIN32_GC_THREADLIB="-DGC_WIN32_THREADS"
-            fi 
+            fi
         ;;
 
         *)
@@ -2880,8 +2880,8 @@ case "$with_gc_pthreads_win32" in
         # Force the use of the pthreads-win32 library with the Boehm GC.
         WIN32_GC_THREADLIB="-DGC_WIN32_PTHREADS"
     ;;
-        
-    no) 
+
+    no)
     ;;
 
     *)
@@ -2930,7 +2930,7 @@ ENABLE_BOEHM_PARALLEL_MARK=
 
 # This following variable is used for passing any other C compiler
 # flags to the version of the Boehm GC built in parallel grades.
-# 
+#
 BOEHM_MISC_CFLAGS_FOR_THREADS=
 
 case "$host" in
@@ -3095,7 +3095,7 @@ case "$mercury_cv_user_base_grade" in
             asm_fast|asm_jump|fast|jump|reg|none)
                 BEST_LLDS_BASE_GRADE="$user_llds_base_grade"
                 ;;
-               
+
             yes)
                 AC_MSG_ERROR(
 [missing argument to --with-llds-base-grade=... option])
@@ -3413,10 +3413,17 @@ AC_ARG_ENABLE(erlang-grade,
 
 AC_ARG_ENABLE(libgrades,
     AC_HELP_STRING([--enable-libgrades=...],
-                   [install exactly the given versions of the library.
+            [install exactly the given versions of the library.
             The versions are specified using a comma-separated
             list.]),
     enable_libgrades_given=yes;enable_libgrades="$enableval",enable_libgrades_given=no)
+
+AC_ARG_ENABLE(additional-libgrades,
+    AC_HELP_STRING([--enable-additional-libgrades=...],
+            [install the given versions of the library in addition
+            to those requested by other options. The versions are
+            specified using a comma-separated list.]),
+    enable_additional_libgrades_given=yes;enable_additional_libgrades="$enableval",enable_additional_libgrades_given=no)
 
 if test "$enable_most_grades" = no; then
     enable_inefficient_grades=no
@@ -3638,7 +3645,7 @@ then
         *mingw*)
             LIBGRADES="$LIBGRADES hlc.par.gc"
         ;;
-        
+
         *)
             LIBGRADES="$LIBGRADES hlc.par.gc $BEST_LLDS_BASE_GRADE.par.gc"
         ;;
@@ -3653,7 +3660,7 @@ then
     then
         LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.tr.stseg"
     fi
-    
+
     if test "$enable_debug_grades" = "yes"
     then
         LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.debug.stseg"
@@ -3765,7 +3772,9 @@ if test "$enable_libgrades_given" = yes; then
     fi
 else
     cat /dev/null > .canonical_grades
-    grade_error=false
+    conf_grade_error=false
+    added_grade_error=false
+
     for raw_grade in $LIBGRADES
     do
         if ! test -x scripts/canonical_grade
@@ -3775,25 +3784,60 @@ else
         then
             cat .confgrade >> .canonical_grades
         else
-            grade_error=true
+            conf_grade_error=true
         fi
     done
 
-    canonical_grades=`sort -u .canonical_grades`
-    rm -f .confgrade .canonical_grades > /dev/null 2>&1
+    if test "$enable_additional_libgrades_given" = yes; then
+        if test "$enable_additional_libgrades" = no; then
+            AC_MSG_ERROR(
+[--enable-additional-libgrades requires a comma-separated
+    list of grades as argument])
 
-    if $grade_error
+        elif test "$enable_additional_libgrades" = yes; then
+            AC_MSG_ERROR(
+[--enable-additional-libgrades requires a comma-separated
+    list of grades as argument])
+
+        else
+            # Add the grades specified by the user to the list
+            added_grades=`echo $enable_additional_libgrades | sed 's/,/ /g'`
+            for raw_grade in $added_grades
+            do
+                if ! test -x scripts/canonical_grade
+                then
+                    echo $raw_grade >> .canonical_grades
+                elif scripts/canonical_grade --grade $raw_grade > .confgrade
+                then
+                    cat .confgrade >> .canonical_grades
+                else
+                    MERCURY_MSG("--enable-additional-libgrades: $raw_grade is not a grade")
+                    added_grade_error=true
+                fi
+            done
+        fi
+    fi
+
+    if $conf_grade_error
     then
         AC_MSG_ERROR(
 [internal error: configure script generates invalid grade(s)])
     fi
+
+    if $added_grade_error
+    then
+        AC_MSG_ERROR(
+[invalid grade(s) specified for --enable-additional-libgrades])
+    fi
+
+    canonical_grades=`sort -u .canonical_grades`
+    rm -f .confgrade .canonical_grades > /dev/null 2>&1
 
     LIBGRADES=$canonical_grades
 fi
 
 # The echo deletes the initial space character.
 LIBGRADES=`echo $LIBGRADES`
-MERCURY_MSG("using \`$LIBGRADES' as the set of library grades to install")
 
 # Check that the default grade is in the set of grades to install.
 have_default_grade="no"
@@ -3804,12 +3848,6 @@ do
         have_default_grade="yes"
     fi
 done
-    
-if test "$have_default_grade" = "no"
-then
-    AC_MSG_WARN([the default grade for applications is $DEFAULT_GRADE,
-****    but this grade is not going to be installed.])
-fi
 
 LIBGRADE_OPTS=
 for libgrade in $LIBGRADES
@@ -4084,9 +4122,9 @@ case "$host" in
                         ;;
                 esac
         esac
-        
+
         EXT_FOR_LINK_WITH_PIC_OBJECTS=o
-        
+
         # On x86_64 machines we use -fPIC rather than -fpic
         # in order to avoid limits on the size of the global
         # offset table implied by the latter.
@@ -4313,12 +4351,12 @@ case "$host" in
                     *apple*darwin*10*)
                         DEPLOYMENT_TARGET="10.4"
                     ;;
-                    
+
                     *)
                         DEPLOYMENT_TARGET="10.3"
                     ;;
                 esac
-            
+
                 SET_MACOSX_DEPLOYMENT_TARGET="\
                     MACOSX_DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET; \
                     export MACOSX_DEPLOYMENT_TARGET"
@@ -4379,7 +4417,7 @@ then
     # For a full list of the other gcc warnings that we don't
     # enable, and why, see scripts/mgnuc.in.
     CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
-    
+
     # Enabling -fomit-frame-pointer causes setjmp/longjmp to misbehave
     # with MinGW on Windows XP.
     case "$host" in
@@ -4408,7 +4446,7 @@ else
             CFLAGS_FOR_NO_STRICT_ALIASING=
             MCFLAGS_FOR_CC=
             ;;
-        
+
         *cl* | *CL*)
             C_COMPILER_TYPE=cl
             CFLAGS_FOR_ANSI=
@@ -4422,7 +4460,7 @@ else
             # in the compiler.
             MCFLAGS_FOR_CC="--max-jump-table-size 512"
             ;;
-        
+
         cc* | */cc*)
             C_COMPILER_TYPE=unknown
             CFLAGS_FOR_ANSI=
@@ -4432,7 +4470,7 @@ else
             CFLAGS_FOR_NO_STRICT_ALIASING=
             MCFLAGS_FOR_CC=
             ;;
-        
+
         *)
             C_COMPILER_TYPE=unknown
             CFLAGS_FOR_ANSI=
@@ -5000,7 +5038,7 @@ fi
 
 AC_ARG_WITH(msvcrt,
     AC_HELP_STRING([--with-msvcrt],
-                   [use the MS Visual C runtime if using MS C compiler.]),  
+                   [use the MS Visual C runtime if using MS C compiler.]),
     mercury_cv_msvcrt=yes,mercury_cv_msvcrt=no)
 
 AC_MSG_CHECKING(whether to use the MS Visual C Runtime)
@@ -5083,7 +5121,7 @@ AC_SUBST(DEFAULT_XML_TMP_FILENAME)
 case "$GRADE" in
     hl*) need_hl_c_files="yes" ;;
     *)   need_hl_c_files="no"  ;;
-esac     
+esac
 
 mercury_check_c_files () {
     c_dir=$1
@@ -5347,6 +5385,42 @@ for file in $nonexecutable_output_files
 do
     chmod a-x "$file"
 done
+
+MERCURY_MSG("")
+num_installed_grades=0
+MERCURY_MSG("the set of library grades to install will be")
+for grade in $LIBGRADES
+do
+    MERCURY_MSG("   $grade")
+    num_installed_grades=`expr $num_installed_grades + 1`
+done
+MERCURY_MSG("")
+
+if test "$have_default_grade" = "no"
+then
+    AC_MSG_WARN([the default grade for applications is $DEFAULT_GRADE,
+****    but this grade is not going to be installed.])
+fi
+
+min_minutes_per_grade=10
+max_minutes_per_grade=30
+min_minutes=`expr $num_installed_grades \* $min_minutes_per_grade`
+max_minutes=`expr $num_installed_grades \* $max_minutes_per_grade`
+min_hours=`expr '(' $min_minutes + 30 ')' / 60`
+max_hours=`expr '(' $max_minutes + 30 ')' / 60`
+MERCURY_MSG("Configuring to install $num_installed_grades grades.")
+if test $max_minutes -gt 2 -a $min_minutes -ne $max_minutes
+then
+    MERCURY_MSG("This will likely take $min_hours to $max_hours hours.")
+else
+    MERCURY_MSG("This will likely take $min_minutes to $max_minutes minutes.")
+fi
+# This message would be easier to read with some parentheses or commas,
+# but getting m4 to accept either seems to be impossible.
+MERCURY_MSG("You can make the install faster by installing fewer grades")
+MERCURY_MSG("as shown by the fine-tuning section of the INSTALL file or by")
+MERCURY_MSG("compiling the files of each grade in parallel which you can do")
+MERCURY_MSG("via a command such as make install -j2.")
 
 case "$remake_dependencies.$reconfiguring" in
     "true.no")
