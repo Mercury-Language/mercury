@@ -5409,7 +5409,7 @@ max_minutes=`expr $num_installed_grades \* $max_minutes_per_grade`
 min_hours=`expr '(' $min_minutes + 30 ')' / 60`
 max_hours=`expr '(' $max_minutes + 30 ')' / 60`
 MERCURY_MSG("Configuring to install $num_installed_grades grades.")
-if test $max_minutes -gt 2 -a $min_minutes -ne $max_minutes
+if test $max_hours -gt 2 -a $min_hours -ne $max_hours
 then
     MERCURY_MSG("This will likely take $min_hours to $max_hours hours.")
 else
