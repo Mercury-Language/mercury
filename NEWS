@@ -158,6 +158,9 @@ Changes to the Mercury standard library:
 * A new function, array.generate/2, and new predicate, array.generate_foldl/5,
   can be used to create and fill new arrays.
 
+* We have added the new predicate assoc_list.foldl_keys_only/4 and
+  assoc_list.foldl_values_only/4 for folding over just keys or values
+  an association list.
 
 NEWS for Mercury 11.01
 ----------------------
