@@ -794,10 +794,8 @@ ML_init_array(MR_ArrayPtr array, MR_Integer size, MR_Word item)
 
 :- pragma foreign_code("C#", "
 
-// XXX What does the fill argument do here?
-//
 public static System.Array
-ML_new_array(int Size, object Item, bool fill)
+ML_new_array(int Size, object Item)
 {
     System.Array arr;
     if (Size == 0) {
@@ -835,7 +833,7 @@ ML_array_resize(System.Array arr0, int Size, object Item)
         return null;
     }
     if (arr0 == null) {
-        return ML_new_array(Size, Item, true);
+        return ML_new_array(Size, Item);
     }
     if (arr0.Length == Size) {
         return arr0;
@@ -1093,7 +1091,7 @@ array.make_empty_array = A :-
     array.init_2(Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Array = array.ML_new_array(Size, Item, true);
+    Array = array.ML_new_array(Size, Item);
 ").
 :- pragma foreign_proc("C#",
     array.make_empty_array(Array::array_uo),
