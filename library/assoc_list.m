@@ -135,48 +135,48 @@
 :- func assoc_list.merge(assoc_list(K, V), assoc_list(K, V))
     = assoc_list(K, V).
 
-    % assoc_list.foldl_keys_only(Pred, List, Start End) calls Pred
+    % assoc_list.foldl_keys(Pred, List, Start End) calls Pred
     % with each key in List (working left-to-right) and an accumulator
     % (with initial value of Start), and returns the final value in End.
     %
-:- pred assoc_list.foldl_keys_only(pred(K, A, A), assoc_list(K, V), A, A).
-:- mode assoc_list.foldl_keys_only(pred(in, in, out) is det, in,
+:- pred assoc_list.foldl_keys(pred(K, A, A), assoc_list(K, V), A, A).
+:- mode assoc_list.foldl_keys(pred(in, in, out) is det, in,
     in, out) is det.
-:- mode assoc_list.foldl_keys_only(pred(in, mdi, muo) is det, in,
+:- mode assoc_list.foldl_keys(pred(in, mdi, muo) is det, in,
     mdi, muo) is det.
-:- mode assoc_list.foldl_keys_only(pred(in, di, uo) is det, in,
+:- mode assoc_list.foldl_keys(pred(in, di, uo) is det, in,
     di, uo) is det.
-:- mode assoc_list.foldl_keys_only(pred(in, in, out) is semidet, in,
+:- mode assoc_list.foldl_keys(pred(in, in, out) is semidet, in,
     in, out) is semidet.
-:- mode assoc_list.foldl_keys_only(pred(in, mdi, muo) is semidet, in,
+:- mode assoc_list.foldl_keys(pred(in, mdi, muo) is semidet, in,
     mdi, muo) is semidet.
-:- mode assoc_list.foldl_keys_only(pred(in, di, uo) is semidet, in,
+:- mode assoc_list.foldl_keys(pred(in, di, uo) is semidet, in,
     di, uo) is semidet.
-:- mode assoc_list.foldl_keys_only(pred(in, in, out) is multi, in,
+:- mode assoc_list.foldl_keys(pred(in, in, out) is multi, in,
     in, out) is multi.
-:- mode assoc_list.foldl_keys_only(pred(in, in, out) is nondet, in,
+:- mode assoc_list.foldl_keys(pred(in, in, out) is nondet, in,
     in, out) is nondet.
 
-    % assoc_list.foldl_values_only(Pred, List, Start End) calls Pred
+    % assoc_list.foldl_values(Pred, List, Start End) calls Pred
     % with each value in List (working left-to-right) and an accumulator
     % (with initial value of Start), and returns the final value in End.
     %
-:- pred assoc_list.foldl_values_only(pred(V, A, A), assoc_list(K, V), A, A).
-:- mode assoc_list.foldl_values_only(pred(in, in, out) is det, in,
+:- pred assoc_list.foldl_values(pred(V, A, A), assoc_list(K, V), A, A).
+:- mode assoc_list.foldl_values(pred(in, in, out) is det, in,
     in, out) is det.
-:- mode assoc_list.foldl_values_only(pred(in, mdi, muo) is det, in,
+:- mode assoc_list.foldl_values(pred(in, mdi, muo) is det, in,
     mdi, muo) is det.
-:- mode assoc_list.foldl_values_only(pred(in, di, uo) is det, in,
+:- mode assoc_list.foldl_values(pred(in, di, uo) is det, in,
     di, uo) is det.
-:- mode assoc_list.foldl_values_only(pred(in, in, out) is semidet, in,
+:- mode assoc_list.foldl_values(pred(in, in, out) is semidet, in,
     in, out) is semidet.
-:- mode assoc_list.foldl_values_only(pred(in, mdi, muo) is semidet, in,
+:- mode assoc_list.foldl_values(pred(in, mdi, muo) is semidet, in,
     mdi, muo) is semidet.
-:- mode assoc_list.foldl_values_only(pred(in, di, uo) is semidet, in,
+:- mode assoc_list.foldl_values(pred(in, di, uo) is semidet, in,
     di, uo) is semidet.
-:- mode assoc_list.foldl_values_only(pred(in, in, out) is multi, in,
+:- mode assoc_list.foldl_values(pred(in, in, out) is multi, in,
     in, out) is multi.
-:- mode assoc_list.foldl_values_only(pred(in, in, out) is nondet, in,
+:- mode assoc_list.foldl_values(pred(in, in, out) is nondet, in,
     in, out) is nondet.
 
 %-----------------------------------------------------------------------------%
@@ -353,17 +353,17 @@ assoc_list.merge([A | As], [B | Bs], Cs) :-
         Cs = [A | Cs0]
     ).
 
-assoc_list.foldl_keys_only(_, [], !Acc).
-assoc_list.foldl_keys_only(P, [KV | KVs], !Acc) :-
+assoc_list.foldl_keys(_, [], !Acc).
+assoc_list.foldl_keys(P, [KV | KVs], !Acc) :-
     KV = K - _V,
     P(K, !Acc),
-    assoc_list.foldl_keys_only(P, KVs, !Acc).
+    assoc_list.foldl_keys(P, KVs, !Acc).
 
-assoc_list.foldl_values_only(_, [], !Acc).
-assoc_list.foldl_values_only(P, [KV | KVs], !Acc) :-
+assoc_list.foldl_values(_, [], !Acc).
+assoc_list.foldl_values(P, [KV | KVs], !Acc) :-
     KV = _K - V,
     P(V, !Acc),
-    assoc_list.foldl_values_only(P, KVs, !Acc).
+    assoc_list.foldl_values(P, KVs, !Acc).
 
 %-----------------------------------------------------------------------------%
 :- end_module assoc_list.
