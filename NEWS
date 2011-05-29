@@ -162,6 +162,10 @@ Changes to the Mercury standard library:
   assoc_list.foldl_values/4 for folding over just keys or values
   an association list.
 
+* We have added the new function array.from_reverse_list/1, which creates
+  a new array from a list with the elements of the array occurring in
+  the reverse order to that of the list.
+
 NEWS for Mercury 11.01
 ----------------------
 

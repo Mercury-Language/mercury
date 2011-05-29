@@ -347,11 +347,13 @@
     % array.from_list takes a list, and returns an array containing those
     % elements in the same order that they occurred in the list.
     %
-:- pred array.from_list(list(T), array(T)).
-:- mode array.from_list(in, array_uo) is det.
+:- func array.from_list(list(T)::in) = (array(T)::array_uo) is det.
+:- pred array.from_list(list(T)::in, array(T)::array_uo) is det.
 
-:- func array.from_list(list(T)) = array(T).
-:- mode array.from_list(in) = array_uo is det.
+    % array.from_reverse_list takes a list, and returns an array containing
+    % those elements in the reverse order that they occurred in the list.
+    %
+:- func array.from_reverse_list(list(T)::in) = (array(T)::array_uo) is det.
 
     % array.to_list takes an array and returns a list containing the elements
     % of the array in the same order that they occurred in the array.
@@ -813,7 +815,7 @@ ML_new_array(int Size, object Item)
 }
 
 public static System.Array
-ML_unsafe_new_array(int Size, object Item)
+ML_unsafe_new_array(int Size, object Item, int IndexToSet)
 {
     System.Array arr;
 
@@ -822,7 +824,7 @@ ML_unsafe_new_array(int Size, object Item)
     } else {
         arr = new object[Size];
     }
-    arr.SetValue(Item, 0);
+    arr.SetValue(Item, IndexToSet);
     return arr;
 } 
 
@@ -941,30 +943,30 @@ ML_new_array(int Size, Object Item, boolean fill)
 }
 
 public static Object
-ML_unsafe_new_array(int Size, Object Item)
+ML_unsafe_new_array(int Size, Object Item, int IndexToSet)
 {
     if (Item instanceof Integer) {
         int[] as = new int[Size];
-        as[0] = (Integer) Item;
+        as[IndexToSet] = (Integer) Item;
         return as;
     }
     if (Item instanceof Double) {
         double[] as = new double[Size];
-        as[0] = (Double) Item;
+        as[IndexToSet] = (Double) Item;
         return as;
     }
     if (Item instanceof Character) {
         char[] as = new char[Size];
-        as[0] = (Character) Item;
+        as[IndexToSet] = (Character) Item;
         return as;
     }
     if (Item instanceof Boolean) {
         boolean[] as = new boolean[Size];
-        as[0] = (Boolean) Item;
+        as[IndexToSet] = (Boolean) Item;
         return as;
     }
     Object[] as = new Object[Size];
-    as[0] = Item;
+    as[IndexToSet] = Item;
     return as;
 }
 
@@ -1147,13 +1149,13 @@ array.generate(Size, GenFunc) = Array :-
     ;
         Result = (>),
         FirstElem = GenFunc(0),
-        Array0 = unsafe_init(Size, FirstElem),
+        Array0 = unsafe_init(Size, FirstElem, 0),
         Array = generate_2(1, Size, GenFunc, Array0)
     ).
 
-:- func unsafe_init(int::in, T::in) = (array(T)::array_uo) is det.
+:- func unsafe_init(int::in, T::in, int::in) = (array(T)::array_uo) is det.
 :- pragma foreign_proc("C",
-    unsafe_init(Size::in, FirstElem::in) = (Array::array_uo),
+    unsafe_init(Size::in, FirstElem::in, IndexToSet::in) = (Array::array_uo),
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -1168,24 +1170,24 @@ array.generate(Size, GenFunc) = Array :-
         ML_init_array(Array, Size, FirstElem);
     #else
         Array->size = Size;    
-        Array->elements[0] = FirstElem;
+        Array->elements[IndexToSet] = FirstElem;
     #endif
 
 ").
 :- pragma foreign_proc("C#",
-    unsafe_init(Size::in, FirstElem::in) = (Array::array_uo),
+    unsafe_init(Size::in, FirstElem::in, IndexToSet::in) = (Array::array_uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    Array = array.ML_unsafe_new_array(Size, FirstElem);
+    Array = array.ML_unsafe_new_array(Size, FirstElem, IndexToSet);
 ").
 :- pragma foreign_proc("Java",
-    unsafe_init(Size::in, FirstElem::in) = (Array::array_uo),
+    unsafe_init(Size::in, FirstElem::in, IndexToSet::in) = (Array::array_uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    Array = array.ML_unsafe_new_array(Size, FirstElem);
+    Array = array.ML_unsafe_new_array(Size, FirstElem, IndexToSet);
 ").
 :- pragma foreign_proc("Erlang",
-    unsafe_init(Size::in, FirstElem::in) = (Array::array_uo),
+    unsafe_init(Size::in, FirstElem::in, _IndexToSet::in) = (Array::array_uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Array = erlang.make_tuple(Size, FirstElem)
@@ -1214,7 +1216,7 @@ array.generate_foldl(Size, GenPred, Array, !Acc) :-
     ;
         Result = (>),
         GenPred(0, FirstElem, !Acc),
-        Array0 = unsafe_init(Size, FirstElem),
+        Array0 = unsafe_init(Size, FirstElem, 0),
         generate_foldl_2(1, Size, GenPred, Array0, Array, !Acc)
     ).
 
@@ -1880,7 +1882,7 @@ array.from_list([], Array) :-
 array.from_list(List, Array) :-
     List = [Head | Tail],
     list.length(List, Len),
-    array.init(Len, Head, Array0),
+    Array0 = array.unsafe_init(Len, Head, 0),
     array.unsafe_insert_items(Tail, 1, Array0, Array).
 
 %-----------------------------------------------------------------------------%
@@ -1892,6 +1894,24 @@ array.unsafe_insert_items([], _N, !Array).
 array.unsafe_insert_items([Head | Tail], N, !Array) :-
     array.unsafe_set(N, Head, !Array),
     array.unsafe_insert_items(Tail, N + 1, !Array).
+
+%-----------------------------------------------------------------------------%
+
+array.from_reverse_list([]) = Array :-
+    array.make_empty_array(Array).
+array.from_reverse_list(RevList) = Array :-
+    RevList = [Head | Tail],
+    list.length(RevList, Len),
+    Array0 = array.unsafe_init(Len, Head, Len - 1),
+    array.unsafe_insert_items_reverse(Tail, Len - 2, Array0, Array).
+
+:- pred array.unsafe_insert_items_reverse(list(T)::in, int::in,
+    array(T)::array_di, array(T)::array_uo) is det.
+
+array.unsafe_insert_items_reverse([], _, !Array).
+array.unsafe_insert_items_reverse([Head | Tail], N, !Array) :-
+    array.unsafe_set(N, Head, !Array),
+    array.unsafe_insert_items_reverse(Tail, N - 1, !Array).
 
 %-----------------------------------------------------------------------------%
 
