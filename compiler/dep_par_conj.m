@@ -3116,10 +3116,12 @@ make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
     (
         WaitOrGetPred = wait_pred,
         PredName = wait_future_pred_name,
+        Purity = purity_impure,
         Code = "MR_par_builtin_wait_future(Future, Value);"
     ;
         WaitOrGetPred = get_pred,
         PredName = get_future_pred_name,
+        Purity = purity_pure,
         Code = "MR_par_builtin_get_future(Future, Value);"
     ),
     Features = [],
@@ -3130,11 +3132,11 @@ make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
         ShouldInline = no,
         ArgVars = [FutureVar, ConsumedVar],
         generate_simple_call(ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_pure, ArgVars, Features,
+            only_mode, detism_det, Purity, ArgVars, Features,
             InstMapDelta, ModuleInfo, Context, WaitGoal)
     ;
         ShouldInline = yes,
-        ForeignAttrs = par_builtin_foreign_proc_attributes(purity_pure, no),
+        ForeignAttrs = par_builtin_foreign_proc_attributes(Purity, no),
         Arg1 = foreign_arg(FutureVar, yes("Future" - in_mode),
             map.lookup(VarTypes, FutureVar), native_if_possible),
         Arg2 = foreign_arg(ConsumedVar, yes("Value" - out_mode),
@@ -3142,7 +3144,7 @@ make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
         Args = [Arg1, Arg2],
         ExtraArgs = [],
         generate_foreign_proc(ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_pure, ForeignAttrs, Args, ExtraArgs,
+            only_mode, detism_det, Purity, ForeignAttrs, Args, ExtraArgs,
             no, Code, Features, InstMapDelta, ModuleInfo, Context, WaitGoal)
     ).
 

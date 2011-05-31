@@ -43,7 +43,12 @@
     % Wait until Future is signalled, blocking if necessary. Then set Var
     % to the value bound to the variable associated with the future.
     %
-:- pred wait_future(future(T)::in, T::out) is det.
+    % wait_future/2 doesn't actually have a side effect.  However once it has
+    % returned get_future/2 is guaranteed to be safe.  Therefore it must be
+    % impure to prevent it from being optimized away, especially in (valid)
+    % cases where its output occurs only once in a procedure.
+    %
+:- impure pred wait_future(future(T)::in, T::out) is det.
 
     % get_future(Future, Var):
     %
@@ -129,7 +134,7 @@
 
 :- pragma foreign_proc("C",
     wait_future(Future::in, Var::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+    [will_not_call_mercury, thread_safe, will_not_modify_trail,
         may_not_duplicate],
 "
     MR_par_builtin_wait_future(Future, Var);

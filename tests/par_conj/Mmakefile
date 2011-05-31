@@ -52,6 +52,7 @@ DEP_PAR_CONJ_PROGS= \
 	dep_par_27 \
 	dep_par_28 \
 	dep_par_29 \
+	impure_wait \
 	pathological_right_recursion \
 	produce_in_nondet_disj
 
@@ -173,6 +174,11 @@ pathological_right_recursion.out: pathological_right_recursion
 		--detstack-size 65536 \
 		--small-detstack-size 65536" \
 	./pathological_right_recursion 2>&1 > pathological_right_recursion.out || \
+	{ grep . $@ /dev/null; exit 1; }
+
+impure_wait.out: impure_wait
+	MERCURY_OPTIONS="--thread-pinning" \
+	./impure_wait 2>&1 > impure_wait.out || \
 	{ grep . $@ /dev/null; exit 1; }
 
 endif
