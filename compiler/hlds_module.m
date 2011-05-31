@@ -525,6 +525,12 @@
 :- pred module_info_set_event_set(event_set::in,
     module_info::in, module_info::out) is det.
 
+:- pred module_info_get_ts_rev_string_table(module_info::in, int::out,
+    list(string)::out) is det.
+
+:- pred module_info_set_ts_rev_string_table(int::in, list(string)::in,
+    module_info::in, module_info::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_get_preds(module_info::in, pred_table::out) is det.
@@ -827,7 +833,16 @@
                 % language.
                 msi_exported_enums              :: list(exported_enum_info),
 
-                msi_event_set                   :: event_set
+                msi_event_set                   :: event_set,
+
+                % A table of strings used by some threadscope events.
+                % Currently threadscope events are introduced for each future
+                % in dep_par_conj.m which is why we need to record the table
+                % within the HLDS.  The LLDS also uses threadscope string
+                % tables, see global_data.m, the LLDS introduces strings during
+                % the HLDS->LLDS transformation of parallel conjunctions.
+                msi_ts_string_table_size        :: int,
+                msi_ts_rev_string_table         :: list(string)
             ).
 
 module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
@@ -881,6 +896,8 @@ module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
     set.init(InterfaceModuleSpecs),
     ExportedEnums = [],
     EventSet = event_set("", map.init),
+    TSStringTableSize = 0,
+    TSRevStringTable = [],
 
     ModuleSubInfo = module_sub_info(Name, DumpBaseFileName, Globals,
         ContainsParConj, ContainsUserEvent, ContainsForeignType,
@@ -894,7 +911,7 @@ module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
         MaybeComplexityMap, ComplexityProcInfos,
         AnalysisInfo, UserInitPredCNames, UserFinalPredCNames,
         StructureReusePredIds, UsedModules, InterfaceModuleSpecs,
-        ExportedEnums, EventSet),
+        ExportedEnums, EventSet, TSStringTableSize, TSRevStringTable),
 
     predicate_table_init(PredicateTable),
     unify_proc.init_requests(Requests),
@@ -1027,6 +1044,9 @@ module_info_get_interface_module_specifiers(MI,
     MI ^ mi_sub_info ^ msi_interface_module_specifiers).
 module_info_get_exported_enums(MI, MI ^ mi_sub_info ^ msi_exported_enums).
 module_info_get_event_set(MI, MI ^ mi_sub_info ^ msi_event_set).
+module_info_get_ts_rev_string_table(MI,
+    MI ^ mi_sub_info ^ msi_ts_string_table_size,
+    MI ^ mi_sub_info ^ msi_ts_rev_string_table).
 
     % XXX There is some debate as to whether duplicate initialise directives
     % in the same module should constitute an error. Currently it is not, but
@@ -1184,6 +1204,9 @@ module_info_set_used_modules(UsedModules, !MI) :-
     !MI ^ mi_sub_info ^ msi_used_modules := UsedModules.
 module_info_set_event_set(EventSet, !MI) :-
     !MI ^ mi_sub_info ^ msi_event_set := EventSet.
+module_info_set_ts_rev_string_table(Size, RevTable, !MI) :-
+    !MI ^ mi_sub_info ^ msi_ts_string_table_size := Size,
+    !MI ^ mi_sub_info ^ msi_ts_rev_string_table := RevTable.
 
 module_info_add_parents_to_used_modules(Modules, !MI) :-
     module_info_get_used_modules(!.MI, UsedModules0),

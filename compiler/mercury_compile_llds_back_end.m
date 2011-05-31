@@ -110,7 +110,10 @@ llds_backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
     ),
     StaticCellInfo0 = init_static_cell_info(ModuleName, UnboxFloats,
         DoCommonData),
-    global_data_init(StaticCellInfo0, !:GlobalData),
+    module_info_get_ts_rev_string_table(!.HLDS, TSStringTableSize,
+        TSRevStringTable),
+    global_data_init(StaticCellInfo0, TSStringTableSize, TSRevStringTable,
+        !:GlobalData),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),

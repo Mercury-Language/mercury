@@ -174,8 +174,9 @@ extern void MR_threadscope_post_end_par_conjunct(MR_Word* dynamic_id);
 /*
 ** Post this message when a future is created, this establishes the conjuction
 ** id to future id mapping.  The conjunction id is inferred by context.
+** The name of the future within the conjunction is given by 'name'.
 */
-extern void MR_threadscope_post_new_future(MR_Future* future_id);
+extern void MR_threadscope_post_new_future(MR_Future* future_id, MR_TS_StringId name);
 
 /*
 ** Post either of these messages when waiting on a future.  THe first if the

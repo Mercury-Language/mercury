@@ -34,7 +34,8 @@
 
 :- type global_data.
 
-:- pred global_data_init(static_cell_info::in, global_data::out) is det.
+:- pred global_data_init(static_cell_info::in, int::in, list(string)::in,
+    global_data::out) is det.
 
 :- pred global_data_add_new_proc_var(pred_proc_id::in, tabling_info_struct::in,
     global_data::in, global_data::out) is det.
@@ -200,11 +201,13 @@
                 gd_alloc_sites              :: set_tree234(alloc_site_info)
             ).
 
-global_data_init(StaticCellInfo, GlobalData) :-
+global_data_init(StaticCellInfo, TSStringTableSize, TSRevStringTable,
+        GlobalData) :-
     map.init(EmptyDataMap),
     map.init(EmptyLayoutMap),
     GlobalData = global_data(EmptyDataMap, EmptyLayoutMap, [],
-        0, [], StaticCellInfo, set_tree234.init).
+        TSStringTableSize, TSRevStringTable, StaticCellInfo,
+        set_tree234.init).
 
 global_data_add_new_proc_var(PredProcId, ProcVar, !GlobalData) :-
     ProcVarMap0 = !.GlobalData ^ gd_proc_var_map,

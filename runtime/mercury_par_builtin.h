@@ -73,7 +73,7 @@ vim: ft=c ts=4 sw=4 et
 
 #ifdef MR_LL_PARALLEL_CONJ
 
-    #define MR_par_builtin_new_future(Future)                               \
+    #define MR_par_builtin_new_future_2(Future)                             \
         do {                                                                \
             MR_Word fut_addr;                                               \
                                                                             \
@@ -86,8 +86,27 @@ vim: ft=c ts=4 sw=4 et
                                                                             \
             Future->MR_fut_signalled = MR_FALSE;                            \
             Future->MR_fut_suspended = NULL;                                \
-            MR_maybe_post_new_future(Future);                               \
         } while (0)
+
+  #ifdef MR_THREADSCOPE
+    /*
+    ** In threadscope grades we need to pass the name of the future to the
+    ** threadscope event.
+    */
+    #define MR_par_builtin_new_future(Future, Name)                         \
+        do {                                                                \
+            MR_par_builtin_new_future_2(Future);                            \
+            MR_threadscope_post_new_future(Future, Name);                   \
+        } while (0)
+
+  #else /* ! MR_THREADSCOPE */
+
+    #define MR_par_builtin_new_future(Future)                               \
+        do {                                                                \
+            MR_par_builtin_new_future_2(Future);                            \
+        } while (0)
+
+  #endif /* ! MR_THREADSCOPE */
 
     /*
     ** If MR_fut_signalled is true then we guarantee that reading MR_fut_value
@@ -202,11 +221,6 @@ vim: ft=c ts=4 sw=4 et
             MR_threadscope_post_stop_context(MR_TS_STOP_REASON_BLOCKED);    \
         } while (0)
 
-    #define MR_maybe_post_new_future(future)                                \
-        do {                                                                \
-            MR_threadscope_post_new_future(future);                         \
-        } while (0)
-
     #define MR_maybe_post_wait_future_nosuspend(future)                     \
         do {                                                                \
             MR_threadscope_post_wait_future_nosuspend(future);              \
@@ -227,7 +241,6 @@ vim: ft=c ts=4 sw=4 et
         do {                                                                \
         } while (0)
     #define MR_maybe_post_stop_context MR_noop
-    #define MR_maybe_post_new_future(future) MR_noop
     #define MR_maybe_post_wait_future_nosuspend(future) MR_noop
     #define MR_maybe_post_wait_future_suspended(future) MR_noop
     #define MR_maybe_post_signal_future(future) MR_noop

@@ -169,7 +169,7 @@
 */
 #define MR_TS_MER_EVENT_SPARKING            103 /* (int id, spark id) */
 
-#define MR_TS_MER_EVENT_FUT_CREATE          104 /* (fut id) */
+#define MR_TS_MER_EVENT_FUT_CREATE          104 /* (fut id, memo'd name id) */
 #define MR_TS_MER_EVENT_FUT_WAIT_NOSUSPEND  105 /* (fut id) */
 #define MR_TS_MER_EVENT_FUT_WAIT_SUSPENDED  106 /* (fut id) */
 #define MR_TS_MER_EVENT_FUT_SIGNAL          107 /* (fut id) */
@@ -262,7 +262,9 @@ typedef struct {
 #define SZ_ENGINE_ID            2
 #define SZ_PID                  4
 #define SZ_SPARK_ID             4
-#define SZ_STATIC_CONJ_ID       4
+#define SZ_STRING_ID            4
+#define SZ_STATIC_CONJ_ID       (SZ_STRING_ID)
+#define SZ_VAR_NAME_ID          (SZ_STRING_ID)
 #define SZ_TIME                 8
 #define SZ_FUTURE_ID            8
 
@@ -464,7 +466,7 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_MER_EVENT_FUT_CREATE,
         "Create a future (future id)",
-        SZ_FUTURE_ID
+        SZ_FUTURE_ID + SZ_VAR_NAME_ID
     },
     {
         MR_TS_MER_EVENT_FUT_WAIT_NOSUSPEND,
@@ -1582,7 +1584,7 @@ MR_threadscope_post_runtime_identifier(MR_EngSetId engset_id,
 }
 
 void
-MR_threadscope_post_new_future(MR_Future *future_id)
+MR_threadscope_post_new_future(MR_Future *future_id, MR_TS_StringId name)
 {
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
@@ -1597,6 +1599,7 @@ MR_threadscope_post_new_future(MR_Future *future_id)
     put_event_header(buffer, MR_TS_MER_EVENT_FUT_CREATE,
         get_current_time_nanosecs());
     put_future_id(buffer, future_id);
+    put_string_id(buffer, name);
 
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }

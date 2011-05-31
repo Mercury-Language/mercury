@@ -33,7 +33,10 @@
     % shared variable between parallel conjuncts, when one conjunct produces
     % the value for other conjuncts.
     %
-:- pred new_future(future(T)::uo) is det.
+    % The first argument is an integer that refers to a string (via a table) of
+    % the future's name. It is used in threadscope grades.
+    %
+:- pred new_future(int::in, future(T)::uo) is det.
 
     % wait_future(Future, Var):
     %
@@ -113,11 +116,15 @@
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    new_future(Future::uo),
+    new_future(Name::in, Future::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         may_not_duplicate],
 "
-    MR_par_builtin_new_future(Future);
+    #ifdef MR_THREADSCOPE
+        MR_par_builtin_new_future(Future, Name);
+    #else
+        MR_par_builtin_new_future(Future);
+    #endif
 ").
 
 :- pragma foreign_proc("C",
