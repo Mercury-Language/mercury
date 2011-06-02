@@ -816,10 +816,10 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 #ifdef MR_USE_TRAIL
         c->MR_ctxt_trail_zone = NULL;
 #endif
-    }
 #ifdef MR_THREADSCOPE
-    c->MR_ctxt_num_id = allocate_context_id();
+        c->MR_ctxt_num_id = allocate_context_id();
 #endif
+    }
 
 #ifdef MR_DEBUG_CONTEXT_CREATION_SPEED
     MR_debug_log_message("Calling MR_init_context_maybe_generator");
@@ -829,15 +829,15 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 }
 
 /*
-** TODO: We should gc the cached contexts, or otherwise not cache to many.
+** TODO: We should gc the cached contexts, or otherwise not cache too many.
 */
 void
 MR_destroy_context(MR_Context *c)
 {
     MR_assert(c);
 
-#ifdef MR_DEBUG_STACK_SEGMENTS
-    MR_debug_log_message("Caching old context: %p", c);
+#ifdef MR_THREADSCOPE
+    MR_threadscope_post_release_context(c);
 #endif
 
 #ifdef MR_THREAD_SAFE

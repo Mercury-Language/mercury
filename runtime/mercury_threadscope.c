@@ -176,7 +176,8 @@
 #define MR_TS_MER_EVENT_LOOKING_FOR_GLOBAL_CONTEXT \
                                             108 /* () */
 #define MR_TS_MER_EVENT_WORK_STEALING       109 /* () */
-#define MR_TS_NUM_MER_EVENTS                10
+#define MR_TS_MER_EVENT_RELEASE_CONTEXT     110 /* (context id) */
+#define MR_TS_NUM_MER_EVENTS                11
 
 #if 0  /* DEPRECATED EVENTS: */
 #define EVENT_CREATE_SPARK        13 /* (cap, thread) */
@@ -492,6 +493,11 @@ static EventTypeDesc event_type_descs[] = {
         MR_TS_MER_EVENT_WORK_STEALING,
         "Engine begins attempt to steal work",
         0
+    },
+    {
+        MR_TS_MER_EVENT_RELEASE_CONTEXT,
+        "Release this context to the free context pool",
+        SZ_CONTEXT_ID
     },
     {
         /* Mark the end of this array. */
@@ -1128,6 +1134,27 @@ MR_threadscope_post_create_context_for_spark(MR_Context *context)
     }
 
     put_event_header(buffer, MR_TS_EVENT_CREATE_SPARK_THREAD,
+        get_current_time_nanosecs());
+    put_context_id(buffer, context->MR_ctxt_num_id);
+
+    MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
+}
+
+void
+MR_threadscope_post_release_context(MR_Context *context)
+{
+    struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
+
+    MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
+
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_RELEASE_CONTEXT)) {
+        flush_event_buffer(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    } else if (!block_is_open(buffer)) {
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    }
+
+    put_event_header(buffer, MR_TS_MER_EVENT_RELEASE_CONTEXT,
         get_current_time_nanosecs());
     put_context_id(buffer, context->MR_ctxt_num_id);
 

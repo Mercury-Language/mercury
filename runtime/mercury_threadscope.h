@@ -105,6 +105,14 @@ extern void MR_threadscope_post_create_context_for_spark(
                 struct MR_Context_Struct *ctxt);
 
 /*
+** This context is being released (back into a pool of free contexts).  We may
+** see a new create_context or create_context_for_spark message with the same
+** context ID, such a message indicates that the context is being re-used.
+*/
+extern void MR_threadscope_post_release_context(
+                struct MR_Context_Struct *context);
+
+/*
 ** This message says the context is now ready to run.  Such as it's being
 ** placed on the run queue after being blocked
 */
