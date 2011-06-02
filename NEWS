@@ -146,11 +146,11 @@ Changes to the Mercury standard library:
   except that it throws an exception instead of failing if the priority queue
   is empty.
 
-* The new modules svstack and svpqueue provide state variable friendly
-  versions of predicates in the stack and pqueue modules.
+* The new modules svlist, svstack and svpqueue provide state variable friendly
+  versions of predicates in the list, stack and pqueue modules.
   (As with the other sv* modules these modules are intended to pave the
   way for an eventual change of the predicate argument ordering in the
-  stack and pqueue modules.)
+  list, stack and pqueue modules.)
 
 * We have added additional modes with unique and mostly-unique accumulators
   to rbtree.foldl/4, rbtree.foldl2/6 and tree_bitset.foldl/4.
