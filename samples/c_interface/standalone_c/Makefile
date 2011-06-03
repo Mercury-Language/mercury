@@ -101,18 +101,9 @@ mercury_lib_int.o: mercury_lib.init
 	$(MMC) $(GRADEOPT) --ml mercury_lib \
 		--generate-standalone-interface mercury_lib_int
 
-# We use the mgnuc script here rather than invoking gcc directly since
-# c_main.c #includes parts of the Mercury runtime and mgnuc knows where to
-# find those header files without us specifying the location.  If we used
-# gcc (or some other C compiler) directly then we would need to specify the
-# location of the runtime and standard library header files, e.g. by using
-# the `-I' option.
-#
 c_main.o: c_main.c mercury_lib.init mercury_lib_int.o
 	$(CC) $(CFLAGS) -c c_main.c
 
-# For similar reasons we use the ml script rather than invoking ld directly.
-#
 c_main: c_main.o mercury_lib_int.o mercury_lib.init
 	$(LD) -o c_main c_main.o $(MERCURY_LIB_LDFLAGS) mercury_lib_int.o $(LIB_LDFLAGS)
 
