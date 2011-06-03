@@ -324,7 +324,7 @@ case $HOST in
     # The actual architecture string for eris has the version appended to it, but
     # that will change with every OS update so we don't include it here.
     eris)
-       INSTALL_DIR=/Users/mercury/mercury/public/$INSTALL_DIR_NAME/i686-apple-darwin
+       INSTALL_DIR=/Users/mercury/mercury/public/$INSTALL_DIR_NAME/x86_64-apple-darwin
        ;;
     *)              
        INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH
@@ -474,7 +474,7 @@ case $HOST in
             asm_fast.gc.prof                \
             asm_fast.gc.memprof             \
             asm_fast.gc.mm                  \
-            asm_fast.gc.tr                  \
+            asm_fast.gc.trseg               \
             asm_fast.gc.rbmm                \
             hlc.par.gc                      \
             hlc.gc.trseg                    \
