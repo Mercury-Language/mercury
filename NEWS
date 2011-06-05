@@ -8,6 +8,12 @@ Changes to the Mercury language:
 
 * The `char' type now represents a Unicode code point.
 
+* Unicode characters can now be encoded in string literals using an
+  escape sequence.  The escape sequence \uXXXX (or \UXXXXXXXX), where XXXX
+  (or XXXXXXXX) is a Unicode character code in hexadecimal, is replaced with
+  the corresponding Unicode character.  The UTF-8 encoding is used to represent
+  the Unicode character.
+
 Changes to the Mercury standard library:
 
 * We have improved Unicode support in the standard library.
