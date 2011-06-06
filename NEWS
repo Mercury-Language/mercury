@@ -11,8 +11,7 @@ Changes to the Mercury language:
 * Unicode characters can now be encoded in string literals using an
   escape sequence.  The escape sequence \uXXXX (or \UXXXXXXXX), where XXXX
   (or XXXXXXXX) is a Unicode character code in hexadecimal, is replaced with
-  the corresponding Unicode character.  The UTF-8 encoding is used to represent
-  the Unicode character.
+  the corresponding Unicode character.
 
 Changes to the Mercury standard library:
 
