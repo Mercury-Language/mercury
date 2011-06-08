@@ -55,15 +55,15 @@
 :- func bag.insert_set(bag(T), set(T)) = bag(T).
 :- pred bag.insert_set(set(T)::in, bag(T)::in, bag(T)::out) is det.
 
-    % bag.member(Val, Bag) :
-    %   True iff `Bag' contains at least one occurrence of `Val'.
+    % bag.member(Val, Bag):
+    % True iff `Bag' contains at least one occurrence of `Val'.
     %
 :- pred bag.member(T::in, bag(T)::in) is semidet.
 
-    % bag.member(Val, Bag, Remainder) :
-    %   Nondeterministically returns all values from Bag and the
-    %   corresponding bag after the value has been removed. Duplicate values
-    %   are returned as many times as they occur in the Bag.
+    % bag.member(Val, Bag, Remainder):
+    % Nondeterministically returns all values from Bag and the
+    % corresponding bag after the value has been removed. Duplicate values
+    % are returned as many times as they occur in the Bag.
     %
 :- pred bag.member(T::out, bag(T)::in, bag(T)::out) is nondet.
 
