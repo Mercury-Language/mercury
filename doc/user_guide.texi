@@ -10670,6 +10670,9 @@ Note that the address of the stack base should be word aligned as
 some garbage collectors rely upon this.
 (This is why the type of the dummy variable in the above example is
 @code{void *}.)
+Note that modifying the argument vector, @var{argv}, after the Mercury runtime
+has been initialised will result in undefined behaviour since the runtime
+maintains a reference into @var{argv}.
 
 @sp 1
 @item @bullet{} @code{mercury_terminate()}
