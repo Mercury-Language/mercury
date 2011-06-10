@@ -6335,7 +6335,7 @@ If the foreign language code does not recursively invoke Mercury code,
 as in the above example, then you can use @samp{will_not_call_mercury}
 in place of @samp{may_call_mercury} in the declarations above.
 This allows the compiler to use a slightly more efficient calling convention.
-(If you use this form, and the C code @emph{does} invoke Mercury code,
+(If you use this form, and the foreign code @emph{does} invoke Mercury code,
 then the behaviour is undefined --- your program may misbehave or crash.)
 
 If there are both Mercury definitions and foreign_proc definitions for 
@@ -6684,12 +6684,12 @@ and @code{string}, there is a C typedef for the corresponding type in C:
 @code{MR_Integer}, @code{MR_Float}, @code{MR_Char},
 and @code{MR_String} respectively.
 
-In the current implementation, @samp{MR_Integer} is a typedef for an integral
-type whose size is the same size as a pointer of type @samp{void *};
+In the current implementation, @samp{MR_Integer} is a typedef for a signed
+integral type whose size is the same size as a pointer of type @samp{void *};
 @samp{MR_Float} is a typedef for @samp{double} (unless the program and the
 Mercury library was compiled with @samp{--single-prec-float}, in which case it
-is a typedef for @samp{float}); @samp{MR_Char} is a typedef for @samp{char};
-and @samp{MR_String} is a typedef for @samp{MR_Char *}.
+is a typedef for @samp{float}); @samp{MR_Char} is a typedef for a signed 
+32-bit integral type and @samp{MR_String} is a typedef for @samp{char *}.
 
 Mercury variables of type @code{int}, @code{float}, @code{char}, or
 @code{string} are passed to and from C as C variables whose type is
@@ -7671,14 +7671,14 @@ The simplest method is to just create monomorphic forwarding procedures that
 call the polymorphic procedures, and export them, rather than exporting the
 polymorphic procedures.
 
-If you do export a polymorphically typed Mercury procedure, the compiler
-will prepend one @samp{type_info} argument to the parameter list of
-the C interface function for each polymorphic type variable in the
-Mercury procedure's type signature.  The caller must arrange to pass
-in appropriate @samp{type_info} values corresponding to the types
-of the other arguments passed.  These @samp{type_info} arguments can
-be obtained using the Mercury @samp{type_of} function in the Mercury
-standard library module @samp{type_desc}.
+If you do export a polymorphically typed Mercury procedure, the compiler will
+prepend one @samp{type_info} argument to the parameter list of the C interface
+function for each distinct type variable in the Mercury procedure's type
+signature.
+The caller must arrange to pass in appropriate @samp{type_info} values
+corresponding to the types of the other arguments passed.  These
+@samp{type_info} arguments can be obtained using the Mercury @samp{type_of}
+function in the Mercury standard library module @samp{type_desc}.
 
 To use the C declarations produced see @ref{Using pragma foreign_decl for C}.
 
