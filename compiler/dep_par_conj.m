@@ -524,8 +524,8 @@ sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars, Goals, GoalInfo,
         !TSStringTable),
     list.condense(AllocateFuturesGoals, AllocateFutures),
     list.map_foldl3(
-        sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly,
-            par_conjunct_is_in_conjunction, SharedVars, FutureMap),
+        sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, SharedVars,
+            FutureMap),
         Goals, NewGoals, InstMap, _, !VarSet, !VarTypes),
 
     LastGoal = hlds_goal(conj(parallel_conj, NewGoals), GoalInfo),
@@ -547,17 +547,63 @@ sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars, Goals, GoalInfo,
         NewGoal = hlds_goal(scope(Reason, NewGoal0), GoalInfo)
     ).
 
-:- type par_conjunct_status
-    --->    par_conjunct_is_in_conjunction
-    ;       par_conjunct_is_proc_body.
+    % Add waits and signals into the body of a procedure.  This is slightly
+    % different from adding them to a parallel conjunct. We have to maintain
+    % the extra invariant that the procedure guarantees that all futures have
+    % been waited on, For futures that would have been inputs to the procedure
+    % before the transformation).
+    %
+    % XXX: In some cases the pushed variable appears in the head of the
+    % procedure but not in the body, that is to say it is an unused argument.
+    % In these cases the specialization creates slower code than the original
+    % procedure simply to maintain the above invariant.  Can an unused argument
+    % analysis prevent this situation?
+    %
+:- pred sync_dep_par_proc_body(module_info::in, bool::in,
+    set(prog_var)::in, future_map::in, instmap::in,
+    hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out) is det.
+
+sync_dep_par_proc_body(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
+        InstMap, !Goal, !VarSet, !VarTypes) :-
+    Nonlocals = goal_get_nonlocals(!.Goal),
+    set.intersect(Nonlocals, SharedVars, NonlocalSharedVars),
+    ( not set.empty(NonlocalSharedVars) ->
+        GoalInfo0 = !.Goal ^ hlds_goal_info,
+        InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
+        consumed_and_produced_vars(ModuleInfo, InstMap, InstMapDelta0,
+            NonlocalSharedVars, ConsumedVarsList, ProducedVarsList),
+
+        % Insert waits into the conjunct.
+        list.foldl3(insert_wait_in_goal_for_proc(ModuleInfo,
+                AllowSomePathsOnly, FutureMap),
+            ConsumedVarsList, !Goal, !VarSet, !VarTypes),
+
+        % Insert signals into the conjunct, as early as possible.
+        list.foldl3(insert_signal_in_goal(ModuleInfo, FutureMap),
+            ProducedVarsList, !Goal, !VarSet, !VarTypes)
+    ;
+        true
+    ),
+
+    set.difference(SharedVars, Nonlocals, WaitAfterVars),
+    ( not set.empty(WaitAfterVars) ->
+        % WaitAfterVars are pushed into this call but not consumed in the body.
+        % Our caller expects them to be consumed by the time this call returns
+        % so we must wait for them.
+        list.foldl3(insert_wait_after_goal(ModuleInfo, FutureMap),
+            set.to_sorted_list(WaitAfterVars), !Goal, !VarSet, !VarTypes)
+    ;
+        true
+    ).
 
 :- pred sync_dep_par_conjunct(module_info::in, bool::in,
-    par_conjunct_status::in, set(prog_var)::in, future_map::in,
-    hlds_goal::in, hlds_goal::out, instmap::in, instmap::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    set(prog_var)::in, future_map::in, hlds_goal::in, hlds_goal::out,
+    instmap::in, instmap::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out) is det.
 
-sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, ParConjunctStatus,
-        SharedVars, FutureMap, !Goal, !InstMap, !VarSet, !VarTypes) :-
+sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
+        !Goal, !InstMap, !VarSet, !VarTypes) :-
     Nonlocals = goal_get_nonlocals(!.Goal),
     set.intersect(Nonlocals, SharedVars, NonlocalSharedVars),
     ( set.empty(NonlocalSharedVars) ->
@@ -565,32 +611,14 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, ParConjunctStatus,
     ;
         GoalInfo0 = !.Goal ^ hlds_goal_info,
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-
-        % Divide the shared variables into those that are produced by this
-        % conjunct, and those that are consumed by it.
-        % XXX We should check that the initial instantiation of each variable
-        % in ProducedVars in !.InstMap is free. However, at the moment, there
-        % is nothing useful we can do if it isn't.
-        IsProducedVar = var_is_bound_in_instmap_delta(ModuleInfo,
-            !.InstMap, InstMapDelta0),
-        set.divide(IsProducedVar, NonlocalSharedVars,
-            ProducedVars, ConsumedVars),
-        ConsumedVarsList = set.to_sorted_list(ConsumedVars),
-        ProducedVarsList = set.to_sorted_list(ProducedVars),
+        consumed_and_produced_vars(ModuleInfo, !.InstMap, InstMapDelta0,
+            NonlocalSharedVars, ConsumedVarsList, ProducedVarsList),
 
         % Insert waits into the conjunct, as late as possible.
-        (
-            ParConjunctStatus = par_conjunct_is_in_conjunction,
-            list.map_foldl3(insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
-                    FutureMap),
-                ConsumedVarsList, _WaitedOnAllSuccessPaths,
-                !Goal, !VarSet, !VarTypes)
-        ;
-            ParConjunctStatus = par_conjunct_is_proc_body,
-            list.foldl3(insert_wait_in_goal_for_proc(ModuleInfo,
-                    AllowSomePathsOnly, FutureMap),
-                ConsumedVarsList, !Goal, !VarSet, !VarTypes)
-        ),
+        list.map_foldl3(insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
+                FutureMap),
+            ConsumedVarsList, _WaitedOnAllSuccessPaths,
+            !Goal, !VarSet, !VarTypes),
 
         % Insert signals into the conjunct, as early as possible.
         list.foldl3(insert_signal_in_goal(ModuleInfo, FutureMap),
@@ -598,17 +626,29 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, ParConjunctStatus,
 
         % Each consumer will have its own local name for the consumed variable,
         % so they can each wait for it when they need to.
-        (
-            ParConjunctStatus = par_conjunct_is_in_conjunction,
-            clone_variables(ConsumedVarsList, !.VarSet, !.VarTypes,
-                !VarSet, !VarTypes, map.init, Renaming),
-            rename_some_vars_in_goal(Renaming, !Goal)
-        ;
-            ParConjunctStatus = par_conjunct_is_proc_body
-            % We don't need to rename anything.
-        )
+        clone_variables(ConsumedVarsList, !.VarSet, !.VarTypes,
+            !VarSet, !VarTypes, map.init, Renaming),
+        rename_some_vars_in_goal(Renaming, !Goal)
     ),
     update_instmap(!.Goal, !InstMap).
+
+    % Divide the shared variables into those that are consumed by this
+    % conjunct, and those that are produced by it.
+    %
+:- pred consumed_and_produced_vars(module_info::in, instmap::in,
+    instmap_delta::in, set(prog_var)::in,
+    list(prog_var)::out, list(prog_var)::out) is det.
+
+consumed_and_produced_vars(ModuleInfo, InstMap, InstMapDelta, Vars,
+        ConsumedVarsList, ProducedVarsList) :-
+    % XXX We should check that the initial instantiation of each variable
+    % in ProducedVars in !.InstMap is free. However, at the moment, there
+    % is nothing useful we can do if it isn't.
+    IsProducedVar = var_is_bound_in_instmap_delta(ModuleInfo, InstMap,
+        InstMapDelta),
+    set.divide(IsProducedVar, Vars, ProducedVars, ConsumedVars),
+    ConsumedVarsList = set.to_sorted_list(ConsumedVars),
+    ProducedVarsList = set.to_sorted_list(ProducedVars).
 
 :- pred insert_wait_in_goal_for_proc(module_info::in, bool::in, future_map::in,
     prog_var::in, hlds_goal::in, hlds_goal::out,
@@ -1604,9 +1644,8 @@ add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
         globals.lookup_bool_option(Globals, allow_some_paths_only_waits,
             AllowSomePathsOnly),
         SharedVars = set.from_list(map.keys(FutureMap)),
-        sync_dep_par_conjunct(!.ModuleInfo, AllowSomePathsOnly,
-            par_conjunct_is_proc_body, SharedVars, FutureMap, Goal0, Goal,
-            InstMap0, _, !VarSet, !VarTypes),
+        sync_dep_par_proc_body(!.ModuleInfo, AllowSomePathsOnly, SharedVars,
+            FutureMap, InstMap0, Goal0, Goal, !VarSet, !VarTypes),
 
         proc_info_set_varset(!.VarSet, !NewProcInfo),
         proc_info_set_vartypes(!.VarTypes, !NewProcInfo),
