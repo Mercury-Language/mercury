@@ -1190,7 +1190,7 @@ array.generate(Size, GenFunc) = Array :-
     unsafe_init(Size::in, FirstElem::in, _IndexToSet::in) = (Array::array_uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    Array = erlang.make_tuple(Size, FirstElem)
+    Array = erlang:make_tuple(Size, FirstElem)
 ").    
 
 :- func generate_2(int::in, int::in, (func(int) = T)::in, array(T)::array_di)
