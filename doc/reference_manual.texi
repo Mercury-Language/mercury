@@ -7950,12 +7950,11 @@ The simplest method is to just create monomorphic forwarding procedures that
 call the polymorphic procedures, and export them, rather than exporting the
 polymorphic procedures.
 
-If you do export a polymorphically typed Mercury procedure, the compiler
-will prepend one @samp{type_info} argument to the parameter list of
-the C# interface function for each polymorphic type variable in the
-Mercury procedure's type signature.  The caller must arrange to pass
-in appropriate @samp{type_info} values corresponding to the types
-of the other arguments passed.
+If you do export a polymorphically typed Mercury procedure, the compiler will
+prepend one @samp{type_info} argument to the parameter list of the C# interface
+function for each type variable in the Mercury procedure's type signature.
+The caller must arrange to pass in appropriate @samp{type_info} values
+corresponding to the types of the other arguments passed.
 
 @node Using pragma foreign_decl for C#
 @subsubsection Using pragma foreign_decl for C#
@@ -8135,12 +8134,12 @@ The simplest method is to just create monomorphic forwarding procedures that
 call the polymorphic procedures, and export them, rather than exporting the
 polymorphic procedures.
 
-If you do export a polymorphically typed Mercury procedure, the compiler
-will prepend one @samp{type_info} argument to the parameter list of
-the Java interface function for each polymorphic type variable in the
-Mercury procedure's type signature.  The caller must arrange to pass
-in appropriate @samp{type_info} values corresponding to the types
-of the other arguments passed.
+If you do export a polymorphically typed Mercury procedure, the compiler will
+prepend one @samp{type_info} argument to the parameter list of the Java
+interface function for each type variable in the Mercury procedure's type
+signature.
+The caller must arrange to pass in appropriate @samp{type_info} values
+corresponding to the types of the other arguments passed.
 @c XXX the following won't work while type_descs and type_infos have
 @c different representations in Java.
 @c These @samp{type_info} arguments can
@@ -8286,14 +8285,14 @@ procedures.  The simplest method is to just create monomorphic forwarding
 procedures that call the polymorphic procedures, and export them, rather
 than exporting the polymorphic procedures.
 
-If you do export a polymorphically typed Mercury procedure, the compiler
-will prepend one @samp{type_info} argument to the parameter list of
-the Erlang interface function for each polymorphic type variable in the
-Mercury procedure's type signature.  The caller must arrange to pass
-in appropriate @samp{type_info} values corresponding to the types
-of the other arguments passed.  These @samp{type_info} arguments can
-be obtained using the Mercury @samp{type_of} function in the Mercury
-standard library module @samp{type_desc}.
+If you do export a polymorphically typed Mercury procedure, the compiler will
+prepend one @samp{type_info} argument to the parameter list of the Erlang
+interface function for each type variable in the Mercury procedure's type
+signature.
+The caller must arrange to pass in appropriate @samp{type_info} values
+corresponding to the types of the other arguments passed.  These
+@samp{type_info} arguments can be obtained using the Mercury @samp{type_of}
+function in the Mercury standard library module @samp{type_desc}.
 
 @node Using pragma foreign_decl for Erlang
 @subsubsection Using pragma foreign_decl for Erlang
