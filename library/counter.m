@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2005-2006 The University of Melbourne.
+% Copyright (C) 2000, 2005-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
 
 :- type counter.
 
-    % counter_init(N, Counter) returns a counter whose first allocation
+    % counter.init(N, Counter) returns a counter whose first allocation
     % will be the integer N.
     %
 :- pred counter.init(int::in, counter::out) is det.
