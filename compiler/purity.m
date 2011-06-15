@@ -685,23 +685,10 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
         ),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        GoalExpr0 = call_foreign_proc(Attributes, PredId, _, _, _, _, _),
-        ModuleInfo = !.Info ^ pi_module_info,
-        LegacyBehaviour = get_legacy_purity_behaviour(Attributes),
-        (
-            LegacyBehaviour = yes,
-            % Get the purity from the declaration, and set it here so that
-            % it is correct for later use.
-            module_info_pred_info(ModuleInfo, PredId, PredInfo),
-            pred_info_get_purity(PredInfo, Purity),
-            set_purity(Purity, Attributes, NewAttributes),
-            GoalExpr = GoalExpr0 ^ foreign_attr := NewAttributes
-        ;
-            LegacyBehaviour = no,
-            GoalExpr = GoalExpr0,
-            Purity = get_purity(Attributes)
-        ),
-        ContainsTrace = contains_no_trace_goal
+        GoalExpr0 = call_foreign_proc(Attributes, _, _, _, _, _, _),
+        Purity = get_purity(Attributes),
+        ContainsTrace = contains_no_trace_goal,
+        GoalExpr = GoalExpr0
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (

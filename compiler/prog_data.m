@@ -996,7 +996,6 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     foreign_language.
 :- func get_tabled_for_io(pragma_foreign_proc_attributes) =
     proc_tabled_for_io.
-:- func get_legacy_purity_behaviour(pragma_foreign_proc_attributes) = bool.
 :- func get_may_throw_exception(pragma_foreign_proc_attributes) =
     proc_may_throw_exception.
 :- func get_ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
@@ -1038,9 +1037,6 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 :- pred set_may_throw_exception(proc_may_throw_exception::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_legacy_purity_behaviour(bool::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 :- pred set_ordinary_despite_detism(bool::in,
@@ -1205,10 +1201,6 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
                 attr_terminates                 :: proc_terminates,
                 attr_user_annotated_sharing     :: user_annotated_sharing,
                 attr_may_throw_exception        :: proc_may_throw_exception,
-
-                % There is some special case behaviour for pragma c_code
-                % and pragma import purity if legacy_purity_behaviour is `yes'.
-                attr_legacy_purity_behaviour    :: bool,
                 attr_ordinary_despite_detism    :: bool,
                 attr_may_modify_trail           :: proc_may_modify_trail,
                 attr_may_call_mm_tabled         :: may_call_mm_tabled,
@@ -1225,7 +1217,7 @@ default_attributes(Language) =
     attributes(Language, proc_may_call_mercury, proc_not_thread_safe,
         proc_not_tabled_for_io, purity_impure, depends_on_mercury_calls,
         no_user_annotated_sharing, default_exception_behaviour,
-        no, no, proc_may_modify_trail, default_calls_mm_tabled,
+        no, proc_may_modify_trail, default_calls_mm_tabled,
         native_if_possible, proc_default_affects_liveness,
         proc_default_allocates_memory, proc_default_registers_roots,
         no, []).
@@ -1238,7 +1230,6 @@ get_purity(Attrs) = Attrs ^ attr_purity.
 get_terminates(Attrs) = Attrs ^ attr_terminates.
 get_user_annotated_sharing(Attrs) = Attrs ^ attr_user_annotated_sharing.
 get_may_throw_exception(Attrs) = Attrs ^ attr_may_throw_exception.
-get_legacy_purity_behaviour(Attrs) = Attrs ^ attr_legacy_purity_behaviour.
 get_ordinary_despite_detism(Attrs) = Attrs ^ attr_ordinary_despite_detism.
 get_may_modify_trail(Attrs) = Attrs ^ attr_may_modify_trail.
 get_may_call_mm_tabled(Attrs) = Attrs ^ attr_may_call_mm_tabled.
@@ -1265,8 +1256,6 @@ set_user_annotated_sharing(UserSharing, !Attrs) :-
     !Attrs ^ attr_user_annotated_sharing := UserSharing.
 set_may_throw_exception(MayThrowException, !Attrs) :-
     !Attrs ^ attr_may_throw_exception := MayThrowException.
-set_legacy_purity_behaviour(Legacy, !Attrs) :-
-    !Attrs ^ attr_legacy_purity_behaviour := Legacy.
 set_ordinary_despite_detism(OrdinaryDespiteDetism, !Attrs) :-
     !Attrs ^ attr_ordinary_despite_detism := OrdinaryDespiteDetism.
 set_may_modify_trail(MayModifyTrail, !Attrs) :-

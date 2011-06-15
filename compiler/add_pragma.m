@@ -2175,7 +2175,6 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
             pred_info_is_imported(!.PredInfo)
         ->
             Pieces = [words("Error: `:- pragma foreign_proc'"),
-                words("(or `pragma c_code')"),
                 words("declaration for imported"),
                 simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
                 suffix("."), nl],
