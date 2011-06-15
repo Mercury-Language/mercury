@@ -12,9 +12,6 @@
 % This module defines predicates to produce the functions which are
 % exported to a foreign language via a `pragma foreign_export' declaration.
 %
-% NOTE: any changes here might also require similar changes to the handling
-% of `pragma import' declarations, which are handled in make_hlds.m.
-%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.export.
