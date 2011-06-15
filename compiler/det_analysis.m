@@ -286,6 +286,14 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
         SolnContext = all_solns
     ),
 
+    trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
+        io.write_string("inferring procedure ", !IO),
+        io.write(PredId, !IO),
+        io.write_string("/", !IO),
+        io.write(ProcId, !IO),
+        io.nl(!IO)
+    ),
+
     % Infer the determinism of the goal.
     proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap0),
@@ -617,9 +625,19 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, SwitchCanFail, Cases0),
+        trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
+            io.write_string("inferring switch on ", !IO),
+            io.write(Var, !IO),
+            io.nl(!IO)
+        ),
         det_infer_switch(Var, SwitchCanFail, Cases0, Cases, GoalInfo, InstMap0,
             SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets,
             Detism, GoalFailingContexts, !DetInfo),
+        trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
+            io.write_string("done inferring switch on ", !IO),
+            io.write(Var, !IO),
+            io.nl(!IO)
+        ),
         GoalExpr = switch(Var, SwitchCanFail, Cases)
     ;
         GoalExpr0 = plain_call(PredId, ProcId0, Args, Builtin, UnifyContext,
@@ -971,6 +989,13 @@ det_infer_switch_cases([Case0 | Cases0], [Case | Cases], Var, InstMap0,
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     det_info_set_module_info(ModuleInfo, !DetInfo),
+    trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
+        io.write_string("inferring switch case for ", !IO),
+        io.write(Var, !IO),
+        io.write_string(" with main cons id ", !IO),
+        io.write(MainConsId, !IO),
+        io.nl(!IO)
+    ),
     det_infer_goal(Goal0, Goal, InstMap1, SolnContext, RightFailingContexts,
         MaybePromiseEqvSolutionSets, FirstDetism, GoalFailingContexts,
         !DetInfo),
@@ -1205,6 +1230,15 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
 det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
         SolnContext, RightFailingContexts, Detism, GoalFailingContexts,
         !DetInfo) :-
+    trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
+        io.write_string("inferring unification ", !IO),
+        io.write(LHS, !IO),
+        io.write_string(" = ", !IO),
+        io.write(RHS0, !IO),
+        io.nl(!IO),
+        io.write(Unify, !IO),
+        io.nl(!IO)
+    ),
     % Unifications are either deterministic or semideterministic.
     (
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
@@ -1247,15 +1281,17 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
             Unify = complicated_unify(_, _, _),
             (
                 RHS = rhs_var(RHSVar),
-                FailingGoal = test_goal(LHS, RHSVar),
-                FailingContext = failing_context(Context, FailingGoal),
-                GoalFailingContexts = [FailingContext]
+                FailingGoal = test_goal(LHS, RHSVar)
             ;
-                ( RHS = rhs_functor(_, _, _)
-                ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
-                ),
-                unexpected($module, $pred, "complicated_unify but no var")
-            )
+                RHS = rhs_functor(ConsId, _, _),
+                FailingGoal = deconstruct_goal(LHS, ConsId)
+            ;
+                RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+                unexpected($module, $pred,
+                    "complicated_unify but no fail context")
+            ),
+            FailingContext = failing_context(Context, FailingGoal),
+            GoalFailingContexts = [FailingContext]
         ;
             Unify = deconstruct(Var, ConsId, _, _, _, _),
             FailingGoal = deconstruct_goal(Var, ConsId),
@@ -1288,6 +1324,9 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
     % SolnContext correctly.
 
     % First process the `then' part.
+    trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
+        io.write_string("inferring condition\n", !IO)
+    ),
     update_instmap(Cond0, InstMap0, InstMap1),
     det_infer_goal(Then0, Then, InstMap1, SolnContext, RightFailingContexts,
         MaybePromiseEqvSolutionSets, ThenDetism, ThenFailingContexts,
@@ -1305,14 +1344,20 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
     ;
         CondSolnContext = all_solns
     ),
-    % Process the `condition' part
+    % Process the `condition' part,
+    trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
+        io.write_string("inferring then-part\n", !IO)
+    ),
     det_infer_goal(Cond0, Cond, InstMap0, CondSolnContext,
         ThenFailingContexts ++ RightFailingContexts,
         MaybePromiseEqvSolutionSets, CondDetism, _CondFailingContexts,
         !DetInfo),
     determinism_components(CondDetism, CondCanFail, CondMaxSoln),
 
-    % Process the `else' part
+    % Process the `else' part.
+    trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
+        io.write_string("inferring else-part\n", !IO)
+    ),
     det_infer_goal(Else0, Else, InstMap0, SolnContext, RightFailingContexts,
         MaybePromiseEqvSolutionSets, ElseDetism, ElseFailingContexts,
         !DetInfo),

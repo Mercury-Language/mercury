@@ -8,9 +8,9 @@ ORDINARY_PROGS=	\
 	abstract_eqv \
 	address_of_builtins \
 	agg \
+	array_gen \
 	array_test \
 	array_test2 \
-	array_gen \
 	backquoted_qualified_ops \
 	bag_various \
 	bidirectional \
@@ -32,6 +32,7 @@ ORDINARY_PROGS=	\
 	common_type_cast \
 	compare_spec \
 	comparison \
+	complicated_unify_bug \
 	constant_prop_1 \
 	constraint \
 	constraint_order \
