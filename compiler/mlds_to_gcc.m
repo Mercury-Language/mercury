@@ -15,18 +15,17 @@
 % without going via an external file.
 %
 % Code using the C interface, however, does get compiled to C; this module
-% invokes mlds_to_c.m to do that.  We split off all the parts of the MLDS
-% for `c_code'/`foreign_code' declarations, `c_header_code'/`foreign_decl'
-% declarations, `export' declarations, and procedures defined with
-% `c_code'/`foreign_proc', and pass them to mlds_to_c.m.  That will generate
-% a `<module>.c' file for this module; mercury_compile.m will invoke the C
-% compiler to compile that to `<module>__c_code.o'.  The remainding parts
-% of the MLDS, which don't contain any foreign code, we handle normally,
-% converting them to GCC trees and passing them to the GCC back-end
-% to generate an assembler file.  Calls to procedures defined using
-% `c_code'/`foreign_proc' will end up calling the functions defined in
-% `<module>__c_code.o'.  This works because the calling convention that
-% is used for the MLDS->C back-end is the same as (i.e. binary compatible
+% invokes mlds_to_c.m to do that.  We split off all the parts of the MLDS for
+% `foreign_code' declarations, `foreign_decl' declarations, `foreign_export'
+% declarations, and procedures defined with `foreign_proc', and pass them to
+% mlds_to_c.m.  That will generate a `<module>.c' file for this module;
+% mercury_compile.m will invoke the C compiler to compile that to
+% `<module>__c_code.o'.  The remainding parts of the MLDS, which don't contain
+% any foreign code, we handle normally, converting them to GCC trees and
+% passing them to the GCC back-end to generate an assembler file.  Calls to
+% procedures defined using `foreign_proc' will end up calling the functions
+% defined in `<module>__c_code.o'.  This works because the calling convention
+% that is used for the MLDS->C back-end is the same as (i.e. binary compatible
 % with) the calling convention that we use here in the MLDS->GCC back-end.
 %
 % Currently this back-end supports grade hlc.gc only.

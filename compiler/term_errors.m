@@ -348,9 +348,7 @@ description(pragma_foreign_code, _, _, Pieces, no) :-
     Pieces = [
         words("It depends on the properties of"),
         words("foreign language code included via a"),
-        fixed("`:- pragma c_code'"),
-        words("or"),
-        fixed("`:- pragma foreign'"),
+        fixed("`:- pragma foreign_proc'"),
         words("declaration.")
     ].
 

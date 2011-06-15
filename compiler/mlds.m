@@ -364,7 +364,7 @@
                 mlds_name               :: mercury_module_name,
 
                 % Code defined in some other language, e.g.  for
-                % `pragma c_header_code', etc.
+                % `pragma foreign-decl', etc.
                 mlds_foreign_code_map   :: map(foreign_language,
                                             mlds_foreign_code),
 

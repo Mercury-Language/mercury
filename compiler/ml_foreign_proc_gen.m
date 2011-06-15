@@ -21,19 +21,9 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module maybe.
 
 :- pred ml_gen_trace_runtime_cond(trace_expr(trace_runtime)::in,
     prog_context::in, list(mlds_defn)::out, list(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
-:- pred ml_gen_nondet_pragma_foreign_proc(code_model::in,
-    pragma_foreign_proc_attributes::in,
-    pred_id::in, proc_id::in, list(foreign_arg)::in,
-    prog_context::in, string::in, maybe(prog_context)::in, string::in,
-    maybe(prog_context)::in, string::in, maybe(prog_context)::in,
-    string::in, maybe(prog_context)::in,
-    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_gen_ordinary_pragma_foreign_proc(code_model::in,
@@ -61,6 +51,7 @@
 
 :- import_module bool.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -105,193 +96,6 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
         ),
         CondRval = ml_binop(Op, RvalA, RvalB)
     ).
-
-    % For model_non pragma c_code,
-    % we generate code of the following form:
-    %
-    %   #define MR_ALLOC_ID <allocation id>
-    %   #define MR_PROC_LABEL <procedure name>
-    %   <declaration of locals needed for boxing/unboxing>
-    %   {
-    %       <declaration of one local variable for each arg>
-    %       struct {
-    %           <user's local_vars decls>
-    %       } MR_locals;
-    %       MR_bool MR_done = MR_FALSE;
-    %       MR_bool MR_succeeded = MR_FALSE;
-    %
-    %       #define FAIL            (MR_done = MR_TRUE)
-    %       #define SUCCEED         (MR_succeeded = MR_TRUE)
-    %       #define SUCCEED_LAST    (MR_succeeded = MR_TRUE, \
-    %                                   MR_done = MR_TRUE)
-    %       #define LOCALS          (&MR_locals)
-    %
-    %       <assign input args>
-    %       <obtain global lock>
-    %       <user's first_code C code>
-    %       while (true) {
-    %           <user's shared_code C code>
-    %           <release global lock>
-    %           if (MR_succeeded) {
-    %               <assign output args>
-    %               <boxing/unboxing of outputs>
-    %               CONT();
-    %           }
-    %           if (MR_done) break;
-    %           MR_succeeded = MR_FALSE;
-    %           <obtain global lock>
-    %           <user's later_code C code>
-    %       }
-    %
-    %       #undef FAIL
-    %       #undef SUCCEED
-    %       #undef SUCCEED_LAST
-    %       #undef LOCALS
-    %   }
-    %   #undef MR_ALLOC_ID
-    %   #undef MR_PROC_LABEL
-    %
-    % We insert a #define MR_ALLOC_ID so that the C code in the Mercury
-    % standard library that allocates memory manually can use MR_ALLOC_ID as an
-    % argument to incr_hp_msg(), for memory profiling.  It replaces an older
-    % macro MR_PROC_LABEL, which is retained only for backwards compatibility.
-    %
-ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
-        Args, Context, LocalVarsDecls, LocalVarsContext,
-        FirstCode, FirstContext, LaterCode, LaterContext,
-        SharedCode, SharedContext, Decls, Statements, !Info) :-
-    Lang = get_foreign_language(Attributes),
-    ( Lang = lang_csharp ->
-        sorry($module, $pred, "nondet pragma foreign_proc for C#")
-    ;
-        true
-    ),
-
-    % Generate <declaration of one local variable for each arg>
-    ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
-
-    % Generate definitions of the FAIL, SUCCEED, SUCCEED_LAST,
-    % and LOCALS macros.
-
-    string.append_list([
-"   #define FAIL        (MR_done = MR_TRUE)\n",
-"   #define SUCCEED     (MR_succeeded = MR_TRUE)\n",
-"   #define SUCCEED_LAST    (MR_succeeded = MR_TRUE, MR_done = MR_TRUE)\n",
-"   #define LOCALS      (&MR_locals)\n"
-        ], HashDefines),
-    string.append_list([
-            "   #undef  FAIL\n",
-            "   #undef  SUCCEED\n",
-            "   #undef  SUCCEED_LAST\n",
-            "   #undef  LOCALS\n"
-        ], HashUndefs),
-
-    % Generate code to set the values of the input variables.
-    ml_gen_pragma_ccsj_input_arg_list(Lang, Args, AssignInputsList, !Info),
-
-    % Generate code to assign the values of the output variables.
-    ml_gen_pragma_c_output_arg_list(Args, Context,
-        AssignOutputsList, ConvDecls, ConvStatements, !Info),
-
-    % Generate code fragments to obtain and release the global lock.
-    ThreadSafe = get_thread_safe(Attributes),
-    ml_gen_obtain_release_global_lock(!.Info, ThreadSafe, PredId,
-        ObtainLock, ReleaseLock),
-
-    % Generate the MR_ALLOC_ID #define.
-    ml_gen_hash_define_mr_alloc_id([FirstCode, SharedCode], Context,
-        HashDefineAllocId, HashUndefAllocId, !Info),
-
-    % Generate the MR_PROC_LABEL #define.
-    ml_gen_hash_define_mr_proc_label(!.Info, HashDefineProcLabel),
-
-    % Put it all together.
-    Starting_C_Code = list.condense([
-        [raw_target_code("{\n", [])],
-        HashDefineAllocId,
-        HashDefineProcLabel,
-        ArgDeclsList,
-        [raw_target_code("\tstruct {\n", []),
-        user_target_code(LocalVarsDecls, LocalVarsContext, []),
-        raw_target_code("\n", []),
-        raw_target_code("\t} MR_locals;\n", []),
-        raw_target_code("\tMR_bool MR_succeeded = MR_FALSE;\n", []),
-        raw_target_code("\tMR_bool MR_done = MR_FALSE;\n", []),
-        raw_target_code("\n", []),
-        raw_target_code(HashDefines, []),
-        raw_target_code("\n", [])],
-        AssignInputsList,
-        [raw_target_code(ObtainLock, []),
-        raw_target_code("\t{\n", []),
-        user_target_code(FirstCode, FirstContext, []),
-        raw_target_code("\n\t;}\n", []),
-        raw_target_code("\twhile (1) {\n", []),
-        raw_target_code("\t\t{\n", []),
-        user_target_code(SharedCode, SharedContext, []),
-        raw_target_code("\n\t\t;}\n", [])],
-        HashUndefAllocId,
-        [raw_target_code("#undef MR_PROC_LABEL\n", []),
-        raw_target_code(ReleaseLock, []),
-        raw_target_code("\t\tif (MR_succeeded) {\n", [])],
-        AssignOutputsList
-    ]),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    (
-        CodeModel = model_non,
-
-        (
-            Target = target_il,
-            % For IL code, we can't call continutations because there is no
-            % syntax for calling managed function pointers in C#. Instead,
-            % we have to call back into IL and make the continuation call
-            % in IL. This is called an "indirect" success continuation call.
-            ml_gen_call_current_success_cont_indirectly(Context, CallCont,
-                !Info)
-        ;
-            ( Target = target_c
-            ; Target = target_java
-            ; Target = target_csharp
-            ; Target = target_asm
-            ),
-            ml_gen_call_current_success_cont(Context, CallCont, !Info)
-        ;
-            Target = target_x86_64,
-            unexpected($module, $pred, "target x86_64 with --high-level-code")
-        ;
-            Target = target_erlang,
-            unexpected($module, $pred, "target erlang")
-        )
-    ;
-        ( CodeModel = model_det
-        ; CodeModel = model_semi
-        ),
-        unexpected($module, $pred, "unexpected code model")
-    ),
-    Ending_C_Code = [
-        raw_target_code("\t\t}\n", []),
-        raw_target_code("\t\tif (MR_done) break;\n", []),
-        raw_target_code("\tMR_succeeded = MR_FALSE;\n", []),
-        raw_target_code(ObtainLock, []),
-        raw_target_code("\t\t{\n", []),
-        user_target_code(LaterCode, LaterContext, []),
-        raw_target_code("\n\t\t;}\n", []),
-        raw_target_code("\t}\n", []),
-        raw_target_code("\n", []),
-        raw_target_code(HashUndefs, []),
-        raw_target_code("}\n", [])
-    ],
-    Starting_C_Code_Stmt = inline_target_code(ml_target_c, Starting_C_Code),
-    Starting_C_Code_Statement = statement(
-        ml_stmt_atomic(Starting_C_Code_Stmt), mlds_make_context(Context)),
-    Ending_C_Code_Stmt = inline_target_code(ml_target_c, Ending_C_Code),
-    Ending_C_Code_Statement = statement(
-        ml_stmt_atomic(Ending_C_Code_Stmt), mlds_make_context(Context)),
-    Statements =
-        [Starting_C_Code_Statement | ConvStatements] ++
-        [CallCont, Ending_C_Code_Statement],
-    Decls = ConvDecls.
 
 ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, Foreign_Code, Context, Decls, Statements, !Info) :-

@@ -1484,7 +1484,7 @@ parse_foreign_type_assertion(Term, Assertion) :-
     Constant = "stable",
     Assertion = foreign_type_stable.
 
-    % This predicate parses both c_header_code and foreign_decl pragmas.
+    % This predicate parses foreign_decl pragmas.
     %
 :- pred parse_pragma_foreign_decl_pragma(module_name::in, string::in,
     list(term)::in, term::in, varset::in, prog_context::in, int::in,

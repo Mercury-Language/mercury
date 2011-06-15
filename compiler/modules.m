@@ -1564,9 +1564,6 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
     % interface, but all other pragma declarations are implementation details
     % only, and should go in the implementation.
 
-    % XXX we should allow c_header_code;
-    % but if we do allow it, we should put it in the generated
-    % header file, which currently we don't.
     (
         ( Pragma = pragma_foreign_code(_, _)
         ; Pragma = pragma_foreign_decl(_, _, _)
