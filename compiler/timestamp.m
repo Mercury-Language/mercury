@@ -161,35 +161,35 @@ string_to_timestamp(Timestamp) = timestamp(Timestamp) :-
         string.all_match(plausible_timestamp_char, Timestamp),
         string.length(Timestamp) : int = string.length("yyyy-mm-dd hh:mm:ss")
     ->
-        string.to_int(string.unsafe_substring(Timestamp, 0, 4), _),
+        string.to_int(string.unsafe_between(Timestamp, 0, 4), _),
 
         string.unsafe_index(Timestamp, 4, '-'),
 
-        string.to_int(string.unsafe_substring(Timestamp, 5, 2), Month),
+        string.to_int(string.unsafe_between(Timestamp, 5, 7), Month),
         Month >= 1,
         Month =< 12,
 
         string.unsafe_index(Timestamp, 7, '-'),
 
-        string.to_int(string.unsafe_substring(Timestamp, 8, 2), Day),
+        string.to_int(string.unsafe_between(Timestamp, 8, 10), Day),
         Day >= 1,
         Day =< 31,
 
         string.unsafe_index(Timestamp, 10, ' '),
 
-        string.to_int(string.unsafe_substring(Timestamp, 11, 2), Hour),
+        string.to_int(string.unsafe_between(Timestamp, 11, 13), Hour),
         Hour >= 0,
         Hour =< 23,
 
         string.unsafe_index(Timestamp, 13, ':'),
 
-        string.to_int(string.unsafe_substring(Timestamp, 14, 2), Minute),
+        string.to_int(string.unsafe_between(Timestamp, 14, 16), Minute),
         Minute >= 0,
         Minute =< 59,
 
         string.unsafe_index(Timestamp, 16, ':'),
 
-        string.to_int(string.unsafe_substring(Timestamp, 17, 2), Second),
+        string.to_int(string.unsafe_between(Timestamp, 17, 19), Second),
         Second >= 0,
         Second =< 61    % Seconds 60 and 61 are for leap seconds.
     ;

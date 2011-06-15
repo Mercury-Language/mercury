@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -844,7 +844,7 @@ remove_maybe_module_prefix(MaybeModule, StringsToStopAt, String0, String) :-
         string.left(String0, Index, Module),
         string.length(String0, Len),
         Index2 = Index + 2,
-        string.substring(String0, Index2, Len, String1),
+        string.between(String0, Index2, Len, String1),
         (
             remove_maybe_module_prefix(yes(SubModule),
                 StringsToStopAt, String1, String2)
@@ -869,7 +869,7 @@ remove_maybe_pred_name(MaybePredName, String0, String) :-
         string.left(String0, Index, PredName),
         string.length(String0, Len),
         Index2 = Index + 2,
-        string.substring(String0, Index2, Len, String),
+        string.between(String0, Index2, Len, String),
         MaybePredName = yes(PredName)
     ;
         String = String0,

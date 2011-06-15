@@ -791,9 +791,9 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
 output_float(Float, !IO) :-
     S = string.from_float(Float),
     ( digit_then_e(S, no, 0, Pos) ->
-        io.write_string(string.substring(S, 0, Pos), !IO),
+        io.write_string(string.between(S, 0, Pos), !IO),
         io.write_string(".0", !IO),
-        io.write_string(string.substring(S, Pos, length(S)), !IO)
+        io.write_string(string.between(S, Pos, length(S)), !IO)
     ;
         io.write_string(S, !IO)
     ).

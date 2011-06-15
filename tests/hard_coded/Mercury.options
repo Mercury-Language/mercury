@@ -50,6 +50,7 @@ MCFLAGS-opt_format          =	--optimize-format-calls
 MCFLAGS-reuse_ho            =	--ctgc --no-optimise-higher-order
 MCFLAGS-sharing_comb	    =	--ctgc --structure-sharing-widening 2
 MCFLAGS-simplify_multi_arm_switch = -O3
+MCFLAGS-string_substring    =	--no-warn-obsolete
 MCFLAGS-uncond_reuse	    =	--ctgc
 MCFLAGS-uncond_reuse_bad    =	--ctgc
 MCFLAGS-uo_regression1      =	--from-ground-term-threshold=4

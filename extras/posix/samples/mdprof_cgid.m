@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -267,7 +267,7 @@ handle_request_2(Data, Path, !IO) :-
     %
     (if string.sub_string_search(Path, "?", QuesIndex) then
         Length = string.length(Path),
-        QueryString = string.substring(Path, QuesIndex + 1, Length)
+        QueryString = string.between(Path, QuesIndex + 1, Length)
     else
         QueryString = ""
     ),

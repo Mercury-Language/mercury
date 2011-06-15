@@ -385,8 +385,7 @@ collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar) :-
 
 void_var(Varset, Var, !VoidVars) :-
     mercury_var_to_string(Varset, no, Var) = VarName,
-    string.substring(VarName, 0, 1, FirstChar),
-    ( FirstChar = "_" ->
+    ( string.index(VarName, 0, '_') ->
         set.insert(Var, !VoidVars)
     ;
         true

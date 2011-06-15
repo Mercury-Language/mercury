@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000, 2003-2007 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1221,16 +1221,16 @@ integer.from_base_string(Base0, String) = Integer :-
     Len = string.length(String),
     ( Char = ('-') ->
         Len > 1,
-        string.foldl_substring(accumulate_integer(Base), String, 1, Len - 1,
+        string.foldl_between(accumulate_integer(Base), String, 1, Len,
             integer.zero, N),
         Integer = -N
     ; Char = ('+') ->
         Len > 1,
-        string.foldl_substring(accumulate_integer(Base), String, 1, Len - 1,
+        string.foldl_between(accumulate_integer(Base), String, 1, Len,
             integer.zero, N),
         Integer = N
     ;
-        string.foldl_substring(accumulate_integer(Base), String, 0, Len,
+        string.foldl_between(accumulate_integer(Base), String, 0, Len,
             integer.zero, N),
         Integer = N
     ).

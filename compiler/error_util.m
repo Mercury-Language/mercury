@@ -1342,7 +1342,7 @@ break_into_words(String, Words0, Words) :-
 break_into_words_from(String, Cur, Words0, Words) :-
     ( find_word_start(String, Cur, Start) ->
         find_word_end(String, Start, End),
-        string.substring(String, Start, End - Start, WordStr),
+        string.between(String, Start, End, WordStr),
         break_into_words_from(String, End, [plain_word(WordStr) | Words0],
             Words)
     ;

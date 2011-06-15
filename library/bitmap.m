@@ -1426,21 +1426,18 @@ to_string_chars(Index, BM, !Chars) :-
     ).
 
 from_string(Str) = BM :-
-    Len = length(Str),
-    ( if Len >= 4 then
-        Str ^ unsafe_elem(0) = ('<'),
-        char.is_digit(Str ^ unsafe_elem(1)),
-        Str ^ unsafe_elem(Len - 1) = ('>'),
-        string.sub_string_search(Str, ":", Colon),
-        SizeStr = string.unsafe_substring(Str, 1, Colon - 1),
-        string.to_int(SizeStr, Size),
-        ( if Size >= 0 then
-            BM0 = allocate_bitmap(Size),
-            hex_chars_to_bitmap(Str, Colon + 1, Len - 1, 0, BM0, BM)
-          else
-            fail
-        )
-      else
+    string.unsafe_index_next(Str, 0, Start, '<'),
+    string.unsafe_index(Str, Start, Char),
+    char.is_digit(Char),
+    string.unsafe_prev_index(Str, length(Str), End, '>'),
+    string.sub_string_search_start(Str, ":", Start, Colon),
+    SizeStr = string.unsafe_between(Str, Start, Colon),
+    string.to_int(SizeStr, Size),
+    ( Size >= 0 ->
+        BM0 = allocate_bitmap(Size),
+        string.unsafe_index_next(Str, Colon, AfterColon, _),
+        hex_chars_to_bitmap(Str, AfterColon, End, 0, BM0, BM)
+    ;
         fail
     ).
 

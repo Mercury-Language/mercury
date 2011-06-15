@@ -709,12 +709,80 @@
 :- mode string.foldl2(pred(in, in, out, in, out) is multi,
     in, in, out, in, out) is multi.
 
-    % string.foldl_substring(Closure, String, Start, Count, !Acc)
+    % string.foldl_between(Closure, String, Start, End, !Acc)
     % is equivalent to string.foldl(Closure, SubString, !Acc)
-    % where SubString = string.substring(String, Start, Count).
+    % where SubString = string.between(String, Start, End).
     %
-    % `Start' and `Count' are in terms of code units.
+    % `Start' and `End' are in terms of code units.
     %
+:- func string.foldl_between(func(char, A) = A, string, int, int, A) = A.
+:- pred string.foldl_between(pred(char, A, A), string, int, int, A, A).
+:- mode string.foldl_between(pred(in, in, out) is det, in, in, in,
+    in, out) is det.
+:- mode string.foldl_between(pred(in, di, uo) is det, in, in, in,
+    di, uo) is det.
+:- mode string.foldl_between(pred(in, in, out) is semidet, in, in, in,
+    in, out) is semidet.
+:- mode string.foldl_between(pred(in, in, out) is nondet, in, in, in,
+    in, out) is nondet.
+:- mode string.foldl_between(pred(in, in, out) is multi, in, in, in,
+    in, out) is multi.
+
+    % string.foldl2_between(Closure, String, Start, End, !Acc1, !Acc2)
+    % A variant of string.foldl_between with two accumulators.
+    %
+    % `Start' and `End' are in terms of code units.
+    %
+:- pred string.foldl2_between(pred(char, A, A, B, B),
+    string, int, int, A, A, B, B).
+:- mode string.foldl2_between(pred(in, di, uo, di, uo) is det,
+    in, in, in, di, uo, di, uo) is det.
+:- mode string.foldl2_between(pred(in, in, out, di, uo) is det,
+    in, in, in, in, out, di, uo) is det.
+:- mode string.foldl2_between(pred(in, in, out, in, out) is det,
+    in, in, in, in, out, in, out) is det.
+:- mode string.foldl2_between(pred(in, in, out, in, out) is semidet,
+    in, in, in, in, out, in, out) is semidet.
+:- mode string.foldl2_between(pred(in, in, out, in, out) is nondet,
+    in, in, in, in, out, in, out) is nondet.
+:- mode string.foldl2_between(pred(in, in, out, in, out) is multi,
+    in, in, in, in, out, in, out) is multi.
+
+    % string.foldr(Closure, String, !Acc):
+    % As string.foldl/4, except that processing proceeds right-to-left.
+    %
+:- func string.foldr(func(char, T) = T, string, T) = T.
+:- pred string.foldr(pred(char, T, T), string, T, T).
+:- mode string.foldr(pred(in, in, out) is det, in, in, out) is det.
+:- mode string.foldr(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode string.foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode string.foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode string.foldr(pred(in, in, out) is multi, in, in, out) is multi.
+
+    % string.foldr_between(Closure, String, Start, End, !Acc)
+    % is equivalent to string.foldr(Closure, SubString, !Acc)
+    % where SubString = string.between(String, Start, End).
+    %
+    % `Start' and `End' are in terms of code units.
+    %
+:- func string.foldr_between(func(char, T) = T, string, int, int, T) = T.
+:- pred string.foldr_between(pred(char, T, T), string, int, int, T, T).
+:- mode string.foldr_between(pred(in, in, out) is det, in, in, in,
+    in, out) is det.
+:- mode string.foldr_between(pred(in, di, uo) is det, in, in, in,
+    di, uo) is det.
+:- mode string.foldr_between(pred(in, in, out) is semidet, in, in, in,
+    in, out) is semidet.
+:- mode string.foldr_between(pred(in, in, out) is nondet, in, in, in,
+    in, out) is nondet.
+:- mode string.foldr_between(pred(in, in, out) is multi, in, in, in,
+    in, out) is multi.
+
+    % string.foldl_substring(Closure, String, Start, Count, !Acc)
+    % Please use string.foldl_between instead.
+    %
+:- pragma obsolete(string.foldl_substring/5).
+:- pragma obsolete(string.foldl_substring/6).
 :- func string.foldl_substring(func(char, A) = A, string, int, int, A) = A.
 :- pred string.foldl_substring(pred(char, A, A), string, int, int, A, A).
 :- mode string.foldl_substring(pred(in, in, out) is det, in, in, in,
@@ -728,11 +796,10 @@
 :- mode string.foldl_substring(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-    % string.foldl_substring2(Closure, String, Start, Count, !Acc1, !Acc2)
-    % A variant of string.foldl_substring with two accumulators.
+    % string.foldl2_substring(Closure, String, Start, Count, !Acc1, !Acc2)
+    % Please use string.foldl2_between instead.
     %
-    % `Start' and `Count' are in terms of code units.
-    %
+:- pragma obsolete(string.foldl2_substring/8).
 :- pred string.foldl2_substring(pred(char, A, A, B, B),
     string, int, int, A, A, B, B).
 :- mode string.foldl2_substring(pred(in, di, uo, di, uo) is det,
@@ -748,23 +815,11 @@
 :- mode string.foldl2_substring(pred(in, in, out, in, out) is multi,
     in, in, in, in, out, in, out) is multi.
 
-    % string.foldr(Closure, String, !Acc):
-    % As string.foldl/4, except that processing proceeds right-to-left.
-    %
-:- func string.foldr(func(char, T) = T, string, T) = T.
-:- pred string.foldr(pred(char, T, T), string, T, T).
-:- mode string.foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode string.foldr(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode string.foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode string.foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode string.foldr(pred(in, in, out) is multi, in, in, out) is multi.
-
     % string.foldr_substring(Closure, String, Start, Count, !Acc)
-    % is equivalent to string.foldr(Closure, SubString, !Acc)
-    % where SubString = string.substring(String, Start, Count).
+    % Please use string.foldr_between instead.
     %
-    % `Start' and `Count' are in terms of code units.
-    %
+:- pragma obsolete(string.foldr_substring/5).
+:- pragma obsolete(string.foldr_substring/6).
 :- func string.foldr_substring(func(char, T) = T, string, int, int, T) = T.
 :- pred string.foldr_substring(pred(char, T, T), string, int, int, T, T).
 :- mode string.foldr_substring(pred(in, in, out) is det, in, in, in,
@@ -873,40 +928,58 @@
 :- func string.right_by_codepoint(string::in, int::in) = (string::uo) is det.
 :- pred string.right_by_codepoint(string::in, int::in, string::uo) is det.
 
-    % string.substring(String, Start, Count, Substring):
-    % `Substring' is first the `Count' code _units_ in what would remain
-    % of `String' after the first `Start' code _units_ were removed.
+    % string.between(String, Start, End, Substring):
+    % `Substring' consists of the segment of `String' within the half-open
+    % interval [Start, End), where `Start' and `End' are code unit offsets.
     % (If `Start' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.
-    % If `Count' is out of the range [0, length of `String' - `Start'],
+    % If `End' is out of the range [`Start', length of `String'],
     % it is treated as if it were the nearest end-point of that range.)
     %
+:- func string.between(string::in, int::in, int::in) = (string::uo) is det.
+:- pred string.between(string::in, int::in, int::in, string::uo) is det.
+
+    % string.substring(String, Start, Count, Substring):
+    % Please use string.between instead.
+    %
+:- pragma obsolete(string.substring/3).
+:- pragma obsolete(string.substring/4).
 :- func string.substring(string::in, int::in, int::in) = (string::uo) is det.
 :- pred string.substring(string::in, int::in, int::in, string::uo) is det.
 
-    % string.substring_by_codepoint(String, Start, Count, Substring):
-    % `Substring' is first the `Count' code points in what would remain
-    % of `String' after the first `Start' code points were removed.
+    % string.between_codepoints(String, Start, End, Substring):
+    % `Substring' is the part of `String' between the code point positions
+    % `Start' and `End'.
     % (If `Start' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.
-    % If `Count' is out of the range [0, length of `String' - `Start'],
+    % If `End' is out of the range [`Start', length of `String'],
     % it is treated as if it were the nearest end-point of that range.)
     %
-:- func string.substring_by_codepoint(string::in, int::in, int::in)
+:- func string.between_codepoints(string::in, int::in, int::in)
     = (string::uo) is det.
-:- pred string.substring_by_codepoint(string::in, int::in, int::in, string::uo)
+:- pred string.between_codepoints(string::in, int::in, int::in, string::uo)
     is det.
 
-    % string.unsafe_substring(String, Start, Count, Substring):
-    % `Substring' is first the `Count' code _units_ in what would remain
-    % of `String' after the first `Start' code _units_ were removed.
-    % WARNING: if `Start' is out of the range [0, length of `String'],
-    % or if `Count' is out of the range [0, length of `String' - `Start'],
+    % string.unsafe_between(String, Start, End, Substring):
+    % `Substring' consists of the segment of `String' within the half-open
+    % interval [Start, End), where `Start' and `End' are code unit offsets.
+    % WARNING: if `Start' is out of the range [0, length of `String'] or
+    % `End' is out of the range [`Start', length of `String']
     % then the behaviour is UNDEFINED. Use with care!
     % This version takes time proportional to the length of the substring,
     % whereas string.substring may take time proportional to the length
     % of the whole string.
     %
+:- func string.unsafe_between(string::in, int::in, int::in) = (string::uo)
+    is det.
+:- pred string.unsafe_between(string::in, int::in, int::in, string::uo)
+    is det.
+
+    % string.unsafe_substring(String, Start, Count, Substring):
+    % Please use string.unsafe_between instead.
+    %
+:- pragma obsolete(string.unsafe_substring/3).
+:- pragma obsolete(string.unsafe_substring/4).
 :- func string.unsafe_substring(string::in, int::in, int::in) = (string::uo)
     is det.
 :- pred string.unsafe_substring(string::in, int::in, int::in, string::uo)
@@ -1083,11 +1156,11 @@
 string.replace(Str, Pat, Subst, Result) :-
     sub_string_search(Str, Pat, Index),
 
-    Initial = string.unsafe_substring(Str, 0, Index),
+    Initial = string.unsafe_between(Str, 0, Index),
 
     BeginAt = Index + string.length(Pat),
-    Length = string.length(Str) - BeginAt,
-    Final = string.unsafe_substring(Str, BeginAt, Length),
+    EndAt = string.length(Str),
+    Final = string.unsafe_between(Str, BeginAt, EndAt),
 
     Result = string.append_list([Initial, Subst, Final]).
 
@@ -1108,14 +1181,12 @@ string.replace_all(Str, Pat, Subst, Result) :-
 
 string.replace_all_2(Str, Pat, Subst, PatLength, BeginAt, Result0) = Result :-
     ( sub_string_search_start(Str, Pat, BeginAt, Index) ->
-        Length = Index - BeginAt,
-        Initial = string.unsafe_substring(Str, BeginAt, Length),
+        Initial = string.unsafe_between(Str, BeginAt, Index),
         Start = Index + PatLength,
         Result = string.replace_all_2(Str, Pat, Subst, PatLength, Start,
             [Subst, Initial | Result0])
     ;
-        Length = string.length(Str) - BeginAt,
-        EndString = string.unsafe_substring(Str, BeginAt, Length),
+        EndString = string.unsafe_between(Str, BeginAt, length(Str)),
         Result = [EndString | Result0]
     ).
 
@@ -1127,13 +1198,12 @@ string.base_string_to_int(Base, String, Int) :-
     Len = string.count_codepoints(String),
     ( Char = ('-') ->
         Len > 1,
-        foldl_substring(accumulate_negative_int(Base), String, 1,
-            Len - 1, 0, Int)
+        foldl_between(accumulate_negative_int(Base), String, 1, Len, 0, Int)
     ; Char = ('+') ->
         Len > 1,
-        foldl_substring(accumulate_int(Base), String, 1, Len - 1, 0, Int)
+        foldl_between(accumulate_int(Base), String, 1, Len, 0, Int)
     ;
-        foldl_substring(accumulate_int(Base), String, 0, Len, 0, Int)
+        foldl_between(accumulate_int(Base), String, 0, Len, 0, Int)
     ).
 
 :- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
@@ -1182,71 +1252,69 @@ string.det_set_char(Char, Int, String0, String) :-
 
 string.foldl(Closure, String, !Acc) :-
     string.length(String, Length),
-    string.foldl_substring(Closure, String, 0, Length, !Acc).
+    string.foldl_between(Closure, String, 0, Length, !Acc).
 
 string.foldl2(Closure, String, !Acc1, !Acc2) :-
     string.length(String, Length),
-    string.foldl2_substring(Closure, String, 0, Length, !Acc1, !Acc2).
+    string.foldl2_between(Closure, String, 0, Length, !Acc1, !Acc2).
 
-string.foldl_substring(Closure, String, Start0, Count0, !Acc) :-
+string.foldl_between(Closure, String, Start0, End0, !Acc) :-
     Start = max(0, Start0),
-    Count = min(Count0, length(String) - Start),
-    End = Start + Count,
-    string.foldl_substring_2(Closure, String, Start, End, !Acc).
+    End = min(End0, length(String)),
+    string.foldl_between_2(Closure, String, Start, End, !Acc).
 
-string.foldl2_substring(Closure, String, Start0, Count0, !Acc1, !Acc2) :-
+string.foldl2_between(Closure, String, Start0, End0, !Acc1, !Acc2) :-
     Start = max(0, Start0),
-    Count = min(Count0, length(String) - Start),
-    End = Start + Count,
-    string.foldl2_substring_2(Closure, String, Start, End, !Acc1, !Acc2).
+    End = min(End0, length(String)),
+    string.foldl2_between_2(Closure, String, Start, End, !Acc1, !Acc2).
 
-:- pred string.foldl_substring_2(pred(char, A, A), string, int, int, A, A).
-:- mode string.foldl_substring_2(pred(in, di, uo) is det, in, in, in,
+:- pred string.foldl_between_2(pred(char, A, A), string, int, int, A, A).
+:- mode string.foldl_between_2(pred(in, di, uo) is det, in, in, in,
     di, uo) is det.
-:- mode string.foldl_substring_2(pred(in, in, out) is det, in, in, in,
+:- mode string.foldl_between_2(pred(in, in, out) is det, in, in, in,
     in, out) is det.
-:- mode string.foldl_substring_2(pred(in, in, out) is semidet, in, in, in,
+:- mode string.foldl_between_2(pred(in, in, out) is semidet, in, in, in,
     in, out) is semidet.
-:- mode string.foldl_substring_2(pred(in, in, out) is nondet, in, in, in,
+:- mode string.foldl_between_2(pred(in, in, out) is nondet, in, in, in,
     in, out) is nondet.
-:- mode string.foldl_substring_2(pred(in, in, out) is multi, in, in, in,
+:- mode string.foldl_between_2(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-string.foldl_substring_2(Closure, String, I, End, !Acc) :-
+string.foldl_between_2(Closure, String, I, End, !Acc) :-
     (
         I < End,
         string.unsafe_index_next(String, I, J, Char),
         J =< End
     ->
         Closure(Char, !Acc),
-        string.foldl_substring_2(Closure, String, J, End, !Acc)
+        string.foldl_between_2(Closure, String, J, End, !Acc)
     ;
         true
     ).
 
-:- pred string.foldl2_substring_2(pred(char, A, A, B, B), string, int, int,
+:- pred string.foldl2_between_2(pred(char, A, A, B, B), string, int, int,
     A, A, B, B).
-:- mode string.foldl2_substring_2(pred(in, di, uo, di, uo) is det,
+:- mode string.foldl2_between_2(pred(in, di, uo, di, uo) is det,
     in, in, in, di, uo, di, uo) is det.
-:- mode string.foldl2_substring_2(pred(in, in, out, di, uo) is det,
+:- mode string.foldl2_between_2(pred(in, in, out, di, uo) is det,
     in, in, in, in, out, di, uo) is det.
-:- mode string.foldl2_substring_2(pred(in, in, out, in, out) is det,
+:- mode string.foldl2_between_2(pred(in, in, out, in, out) is det,
     in, in, in, in, out, in, out) is det.
-:- mode string.foldl2_substring_2(pred(in, in, out, in, out) is semidet,
+:- mode string.foldl2_between_2(pred(in, in, out, in, out) is semidet,
     in, in, in, in, out, in, out) is semidet.
-:- mode string.foldl2_substring_2(pred(in, in, out, in, out) is nondet,
+:- mode string.foldl2_between_2(pred(in, in, out, in, out) is nondet,
     in, in, in, in, out, in, out) is nondet.
-:- mode string.foldl2_substring_2(pred(in, in, out, in, out) is multi,
+:- mode string.foldl2_between_2(pred(in, in, out, in, out) is multi,
     in, in, in, in, out, in, out) is multi.
 
-string.foldl2_substring_2(Closure, String, I, End, !Acc1, !Acc2) :-
+string.foldl2_between_2(Closure, String, I, End, !Acc1, !Acc2) :-
     (
         I < End,
         string.unsafe_index_next(String, I, J, Char),
         J =< End
     ->
         Closure(Char, !Acc1, !Acc2),
-        string.foldl2_substring_2(Closure, String, J, End, !Acc1, !Acc2)
+        string.foldl2_between_2(Closure, String, J, End, !Acc1, !Acc2)
     ;
         true
     ).
@@ -1255,42 +1323,61 @@ string.foldr(F, String, Acc0) = Acc :-
     Closure = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y)),
     string.foldr(Closure, String, Acc0, Acc).
 
-string.foldr_substring(F, String, Start, Count, Acc0) = Acc :-
+string.foldr_between(F, String, Start, Count, Acc0) = Acc :-
     Closure = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    string.foldr_substring(Closure, String, Start, Count, Acc0, Acc).
+    string.foldr_between(Closure, String, Start, Count, Acc0, Acc).
 
 string.foldr(Closure, String, Acc0, Acc) :-
-    string.foldr_substring(Closure, String, 0, length(String), Acc0, Acc).
+    string.foldr_between(Closure, String, 0, length(String), Acc0, Acc).
 
-string.foldr_substring(Closure, String, Start0, Count0, Acc0, Acc) :-
+string.foldr_between(Closure, String, Start0, End0, Acc0, Acc) :-
     Start = max(0, Start0),
-    Count = min(Count0, length(String) - Start),
-    End = Start + Count,
-    string.foldr_substring_2(Closure, String, Start, End, Acc0, Acc).
+    End = min(End0, length(String)),
+    string.foldr_between_2(Closure, String, Start, End, Acc0, Acc).
 
-:- pred string.foldr_substring_2(pred(char, T, T), string, int, int, T, T).
-:- mode string.foldr_substring_2(pred(in, in, out) is det, in, in, in,
+:- pred string.foldr_between_2(pred(char, T, T), string, int, int, T, T).
+:- mode string.foldr_between_2(pred(in, in, out) is det, in, in, in,
     in, out) is det.
-:- mode string.foldr_substring_2(pred(in, di, uo) is det, in, in, in,
+:- mode string.foldr_between_2(pred(in, di, uo) is det, in, in, in,
     di, uo) is det.
-:- mode string.foldr_substring_2(pred(in, in, out) is semidet, in, in, in,
+:- mode string.foldr_between_2(pred(in, in, out) is semidet, in, in, in,
     in, out) is semidet.
-:- mode string.foldr_substring_2(pred(in, in, out) is nondet, in, in, in,
+:- mode string.foldr_between_2(pred(in, in, out) is nondet, in, in, in,
     in, out) is nondet.
-:- mode string.foldr_substring_2(pred(in, in, out) is multi, in, in, in,
+:- mode string.foldr_between_2(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-string.foldr_substring_2(Closure, String, Start, I, !Acc) :-
+string.foldr_between_2(Closure, String, Start, I, !Acc) :-
     (
         I > Start,
         string.unsafe_prev_index(String, I, J, Char),
         J >= Start
     ->
         Closure(Char, !Acc),
-        string.foldr_substring_2(Closure, String, Start, J, !Acc)
+        string.foldr_between_2(Closure, String, Start, J, !Acc)
     ;
         true
     ).
+
+string.foldl_substring(F, String, Start, Count, Acc0) = Acc :-
+    convert_endpoints(Start, Count, ClampStart, ClampEnd),
+    Acc = string.foldl_between(F, String, ClampStart, ClampEnd, Acc0).
+
+string.foldl_substring(Closure, String, Start, Count, !Acc) :-
+    convert_endpoints(Start, Count, ClampStart, ClampEnd),
+    string.foldl_between(Closure, String, ClampStart, ClampEnd, !Acc).
+
+string.foldl2_substring(Closure, String, Start, Count, !Acc1, !Acc2) :-
+    convert_endpoints(Start, Count, ClampStart, ClampEnd),
+    string.foldl2_between(Closure, String, ClampStart, ClampEnd, !Acc1, !Acc2).
+
+string.foldr_substring(F, String, Start, Count, Acc0) = Acc :-
+    convert_endpoints(Start, Count, ClampStart, ClampEnd),
+    Acc = string.foldr_between(F, String, ClampStart, ClampEnd, Acc0).
+
+string.foldr_substring(Closure, String, Start, Count, !Acc) :-
+    convert_endpoints(Start, Count, ClampStart, ClampEnd),
+    string.foldr_between(Closure, String, ClampStart, ClampEnd, !Acc).
 
 string.left(String, Count, LeftString) :-
     string.split(String, Count, LeftString, _RightString).
@@ -1372,7 +1459,7 @@ prefix_2_iii(String, Prefix, I) :-
 
 prefix_2_ioi(String, Prefix, Cur) :-
     (
-        Prefix = unsafe_substring(String, 0, Cur)
+        Prefix = unsafe_between(String, 0, Cur)
     ;
         string.unsafe_index_next(String, Cur, Next, _),
         prefix_2_ioi(String, Prefix, Next)
@@ -1405,7 +1492,7 @@ suffix_2_iiii(String, Suffix, I, Offset, Len) :-
 
 suffix_2_ioii(String, Suffix, Cur, Len) :-
     (
-        string.unsafe_substring(String, Cur, Len - Cur, Suffix)
+        string.unsafe_between(String, Cur, Len, Suffix)
     ;
         string.unsafe_prev_index(String, Cur, Prev, _),
         suffix_2_ioii(String, Suffix, Prev, Len)
@@ -2567,7 +2654,8 @@ sub_string_search_start_2(String, SubString, I, Length, SubLength, Index) :-
         % mode of substring, so this ends up calling the (in, in, in) = out
         % mode and then doing the unification. This will create a lot of
         % unnecessary garbage.
-        substring(String, I, SubLength) = SubString
+        % XXX This will abort if either index is not at a code point boundary.
+        between(String, I, I + SubLength) = SubString
     ->
         Index = I
     ;
@@ -3256,7 +3344,7 @@ format_char(Flags, Width, Char) = String :-
 format_string(Flags, Width, Prec, OldStr) = NewStr :-
     (
         Prec = yes(NumChars),
-        PrecStr = string.substring_by_codepoint(OldStr, 0, NumChars)
+        PrecStr = string.left_by_codepoint(OldStr, NumChars)
     ;
         Prec = no,
         PrecStr = OldStr
@@ -3433,7 +3521,7 @@ format_float(Flags, Width, Prec, Float) = NewFloat :-
             Prec = yes(0)
         ->
             PrecStrLen = string.count_codepoints(PrecStr),
-            PrecModStr = string.substring(PrecStr, 0, PrecStrLen - 1)
+            PrecModStr = string.between(PrecStr, 0, PrecStrLen - 1)
         ;
             PrecModStr = PrecStr
         )
@@ -3785,8 +3873,8 @@ change_to_g_notation(Float, Prec, E, Flags) = FormattedFloat :-
             split_at_exponent(ScientificFloat, BaseStr, ExponentStr),
             Exp = string.det_to_int(ExponentStr),
             split_at_decimal_point(BaseStr, MantissaStr, FractionStr),
-            RestMantissaStr = substring(FractionStr, 0, Exp),
-            NewFraction = substring(FractionStr, Exp, Prec - Exp - 1),
+            RestMantissaStr = between(FractionStr, 0, Exp),
+            NewFraction = between(FractionStr, Exp, Prec - 1),
             FormattedFloat0 = MantissaStr ++ RestMantissaStr
                 ++ "." ++ NewFraction
         ),
@@ -3941,7 +4029,7 @@ calculate_base_unsafe(Float, Prec) = Exp :-
     split_at_decimal_point(Float, MantissaStr, FractionStr),
     ( Place < 0 ->
         DecimalPos = abs(Place),
-        PaddedMantissaStr = string.substring(FractionStr, 0, DecimalPos),
+        PaddedMantissaStr = string.between(FractionStr, 0, DecimalPos),
 
         % Get rid of superfluous zeros.
         MantissaInt = string.det_to_int(PaddedMantissaStr),
@@ -3949,11 +4037,11 @@ calculate_base_unsafe(Float, Prec) = Exp :-
 
         % Create fractional part.
         PaddedFractionStr = pad_right(FractionStr, '0', Prec + 1),
-        ExpFractionStr = string.substring(PaddedFractionStr, DecimalPos,
-            Prec + 1)
+        ExpFractionStr = string.between(PaddedFractionStr, DecimalPos,
+            DecimalPos + Prec + 1)
     ; Place > 0 ->
-        ExpMantissaStr = string.substring(MantissaStr, 0, 1),
-        FirstHalfOfFractionStr = string.substring(MantissaStr, 1, Place),
+        ExpMantissaStr = string.between(MantissaStr, 0, 1),
+        FirstHalfOfFractionStr = string.between(MantissaStr, 1, Place),
         ExpFractionStr = FirstHalfOfFractionStr ++ FractionStr
     ;
         ExpMantissaStr = MantissaStr,
@@ -3976,7 +4064,7 @@ change_precision(Prec, OldFloat) = NewFloat :-
         PrecFracStr = string.pad_right(FractionStr, '0', Prec),
         PrecMantissaStr = MantissaStr
     ; Prec < FracStrLen ->
-        UnroundedFrac = string.substring(FractionStr, 0, Prec),
+        UnroundedFrac = string.between(FractionStr, 0, Prec),
         NextDigit = string.det_index(FractionStr, Prec),
         (
             UnroundedFrac \= "",
@@ -3989,7 +4077,7 @@ change_precision(Prec, OldFloat) = NewFloat :-
                 string.count_codepoints(NewPrecFracStr) >
                     string.count_codepoints(UnroundedFrac)
             ->
-                PrecFracStr = substring(NewPrecFracStr, 1, Prec),
+                PrecFracStr = between(NewPrecFracStr, 1, 1 + Prec),
                 PrecMantissaInt = det_to_int(MantissaStr) + 1,
                 PrecMantissaStr = int_to_string(PrecMantissaInt)
             ;
@@ -5348,16 +5436,14 @@ string.mercury_append(X, Y, Z) :-
 
 /*-----------------------------------------------------------------------*/
 
-substring(Str, !.Start, !.Count, SubStr) :-
-    ( !.Count =< 0 ->
+between(Str, Start, End, SubStr) :-
+    ( Start >= End ->
         SubStr = ""
     ;
-        % Be careful about integer overflow when Count = max_int.
         Len = string.length(Str),
-        max(0, !Start),
-        min(Len, !Start),
-        min(Len - !.Start, !Count),
-        CharList = strchars(!.Start, !.Start + !.Count, Str),
+        max(0, Start, ClampStart),
+        min(Len, End, ClampEnd),
+        CharList = strchars(ClampStart, ClampEnd, Str),
         SubStr = string.from_char_list(CharList)
     ).
 
@@ -5376,24 +5462,26 @@ strchars(I, End, Str) = Chars :-
     ).
 
 :- pragma foreign_proc("C",
-    string.substring(Str::in, Start::in, Count::in, SubString::uo),
+    string.between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
     MR_Integer  len;
+    MR_Integer  Count;
     MR_Word     tmp;
 
     if (Start < 0) Start = 0;
-    if (Count <= 0) {
+    if (End <= Start) {
         MR_make_aligned_string(SubString, """");
     } else {
         len = strlen(Str);
         if (Start > len) {
             Start = len;
         }
-        if (Count > len - Start) {
-            Count = len - Start;
+        if (End > len) {
+            End = len;
         }
+        Count = End - Start;
         MR_allocate_aligned_string_msg(SubString, Count, MR_ALLOC_ID);
         MR_memcpy(SubString, Str + Start, Count);
         SubString[Count] = '\\0';
@@ -5401,116 +5489,142 @@ strchars(I, End, Str) = Chars :-
 }").
 
 :- pragma foreign_proc("C#",
-    string.substring(Str::in, Start::in, Count::in, SubString::uo),
+    string.between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "
     if (Start < 0) Start = 0;
-    if (Count <= 0) {
+    if (End <= Start) {
         SubString = """";
     } else {
         int len = Str.Length;
         if (Start > len) {
             Start = len;
         }
-        if (Count > len - Start) {
-            Count = len - Start;
+        if (End > len) {
+            End = len;
         }
-        SubString = Str.Substring(Start, Count);
+        SubString = Str.Substring(Start, End - Start);
     }
 ").
 
 :- pragma foreign_proc("Java",
-    string.substring(Str::in, Start::in, Count::in, SubString::uo),
+    string.between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "
     if (Start < 0) Start = 0;
-    if (Count <= 0) {
+    if (End <= Start) {
         SubString = """";
     } else {
         int len = Str.length();
         if (Start > len) {
             Start = len;
         }
-        if (Count > len - Start) {
-            Count = len - Start;
+        if (End > len) {
+            End = len;
         }
-        SubString = Str.substring(Start, Start + Count);
+        SubString = Str.substring(Start, End);
     }
 ").
 
 :- pragma foreign_proc("Erlang",
-    string.substring(Str::in, Start0::in, Count0::in, SubString::uo),
+    string.between(Str::in, Start0::in, End0::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    if Start0 < 0 ->
-        Start = 0;
-    true ->
-        Start = Start0
-    end,
-    if
-        Count0 =< 0 ->
-            SubString = <<>>;
-        Start > size(Str) ->
-            SubString = <<>>;
-        true ->
-            if Count0 > size(Str) - Start ->
-                Count = size(Str) - Start;
-            true ->
-                Count = Count0
-            end,
-            <<_:Start/binary, SubString:Count/binary, _/binary>> = Str
+    Start = max(Start0, 0),
+    End = min(End0, size(Str)),
+    Count = End - Start,
+    if Count =< 0 ->
+        SubString = <<>>
+    ; true ->
+        <<_:Start/binary, SubString:Count/binary, _/binary>> = Str
     end
 ").
 
-string.substring_by_codepoint(Str, Start, Count) = SubString :-
-    string.substring_by_codepoint(Str, Start, Count, SubString).
+string.between(Str, Start, End) = SubString :-
+    string.between(Str, Start, End, SubString).
 
-string.substring_by_codepoint(Str, Start, Count, SubString) :-
+string.substring(Str, Start, Count) = SubString :-
+    string.substring(Str, Start, Count, SubString).
+
+string.substring(Str, Start, Count, SubString) :-
+    convert_endpoints(Start, Count, ClampStart, ClampEnd),
+    string.between(Str, ClampStart, ClampEnd, SubString).
+
+:- pred convert_endpoints(int::in, int::in, int::out, int::out) is det.
+
+convert_endpoints(Start, Count, ClampStart, ClampEnd) :-
+    ClampStart = int.max(0, Start),
+    ( Count =< 0 ->
+        ClampEnd = ClampStart
+    ;
+        End = ClampStart + Count,
+        % Check for overflow.
+        ClampEnd = ( End =< 0 -> max_int ; End )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+string.between_codepoints(Str, Start, End) = SubString :-
+    string.between_codepoints(Str, Start, End, SubString).
+
+string.between_codepoints(Str, Start, End, SubString) :-
     ( string.codepoint_offset(Str, Start, StartOffset0) ->
         StartOffset = StartOffset0
     ;
         StartOffset = 0
     ),
-    ( string.codepoint_offset(Str, StartOffset, Count, EndOffset0) ->
+    ( string.codepoint_offset(Str, End, EndOffset0) ->
         EndOffset = EndOffset0
     ;
         EndOffset = string.length(Str)
     ),
-    OffsetCount = EndOffset - StartOffset,
-    string.substring(Str, StartOffset, OffsetCount, SubString).
+    string.between(Str, StartOffset, EndOffset, SubString).
 
 :- pragma foreign_proc("C",
-    string.unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
+    string.unsafe_between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    MR_Integer len;
+    MR_Integer Count;
 
+    Count = End - Start;
     MR_allocate_aligned_string_msg(SubString, Count, MR_ALLOC_ID);
     MR_memcpy(SubString, Str + Start, Count);
     SubString[Count] = '\\0';
 }").
 :- pragma foreign_proc("C#",
-    string.unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
+    string.unsafe_between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
-    SubString = Str.Substring(Start, Count);
+    SubString = Str.Substring(Start, End - Start);
 }").
 :- pragma foreign_proc("Java",
-    string.unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
+    string.unsafe_between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SubString = Str.substring(Start, Start + Count);
+    SubString = Str.substring(Start, End);
 ").
 :- pragma foreign_proc("Erlang",
-    string.unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
+    string.unsafe_between(Str::in, Start::in, End::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
+    Count = End - Start,
     << _:Start/binary, SubString:Count/binary, _/binary >> = Str
 ").
+
+string.unsafe_between(Str, Start, End) = SubString :-
+    string.unsafe_between(Str, Start, End, SubString).
+
+string.unsafe_substring(Str, Start, Count) = SubString :-
+    string.unsafe_between(Str, Start, Start + Count) = SubString.
+
+string.unsafe_substring(Str, Start, Count, SubString) :-
+    string.unsafe_between(Str, Start, Start + Count, SubString).
+
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     string.split(Str::in, Count::in, Left::uo, Right::uo),
@@ -6009,21 +6123,15 @@ string.foldl(F, S, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     string.foldl(P, S, A, B).
 
-string.foldl_substring(F, S, Start, Count, A) = B :-
+string.foldl_between(F, S, Start, End, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    string.foldl_substring(P, S, Start, Count, A, B).
+    string.foldl_between(P, S, Start, End, A, B).
 
 string.left(S1, N) = S2 :-
     string.left(S1, N, S2).
 
 string.right(S1, N) = S2 :-
     string.right(S1, N, S2).
-
-string.substring(S1, N1, N2) = S2 :-
-    string.substring(S1, N1, N2, S2).
-
-string.unsafe_substring(S1, N1, N2) = S2 :-
-    string.unsafe_substring(S1, N1, N2, S2).
 
 string.format(S1, PT) = S2 :-
     string.format(S1, PT, S2).
@@ -6042,7 +6150,7 @@ words_2(SepP, String, WordStart, Words) :-
     ( WordEnd = WordStart ->
         Words = []
     ;
-        string.unsafe_substring(String, WordStart, WordEnd - WordStart, Word),
+        string.unsafe_between(String, WordStart, WordEnd, Word),
         next_boundary(SepP, String, WordEnd, NextWordStart),
         ( WordEnd = NextWordStart ->
             Words = [Word]
@@ -6091,7 +6199,7 @@ split_at_separator_2(DelimP, Str, I, SegEnd, Acc0, Acc) :-
         ( DelimP(C) ->
             % Chop here.
             SegStart = I,
-            Seg = string.unsafe_substring(Str, SegStart, SegEnd - SegStart),
+            Seg = string.unsafe_between(Str, SegStart, SegEnd),
             split_at_separator_2(DelimP, Str, J, J, [Seg | Acc0], Acc)
         ;
             % Extend current segment.
@@ -6099,7 +6207,7 @@ split_at_separator_2(DelimP, Str, I, SegEnd, Acc0, Acc) :-
         )
     ;
         % We've reached the beginning of the string.
-        Seg = string.unsafe_substring(Str, 0, SegEnd),
+        Seg = string.unsafe_between(Str, 0, SegEnd),
         Acc = [Seg | Acc0]
     ).
 
@@ -6117,7 +6225,7 @@ split_at_string(Needle, Total) =
 
 split_at_string(StartAt, NeedleLen, Needle, Total) = Out :-
     ( sub_string_search_start(Total, Needle, StartAt, NeedlePos) ->
-        BeforeNeedle = substring(Total, StartAt, NeedlePos - StartAt),
+        BeforeNeedle = between(Total, StartAt, NeedlePos),
         Tail = split_at_string(NeedlePos+NeedleLen, NeedleLen, Needle, Total),
         Out = [BeforeNeedle | Tail]
     ;
@@ -6164,7 +6272,7 @@ lstrip(S) = lstrip_pred(is_whitespace, S).
 strip(S0) = S :-
     L = prefix_length(is_whitespace, S0),
     R = suffix_length(is_whitespace, S0),
-    S = substring(S0, L, length(S0) - L - R).
+    S = between(S0, L, length(S0) - R).
 
 %-----------------------------------------------------------------------------%
 

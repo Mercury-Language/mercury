@@ -710,7 +710,7 @@ string_to_goal_path(String) = Path :-
     string.prefix(String, "<"),
     string.suffix(String, ">"),
     string.length(String, Length),
-    string.substring(String, 1, Length-2, SubString),
+    string.between(String, 1, Length - 1, SubString),
     rev_goal_path_from_string(SubString, Path).
 
     % This function should be kept in sync with the MR_named_count_port array

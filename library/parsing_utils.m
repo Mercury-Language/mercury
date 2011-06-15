@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -517,8 +517,7 @@ char_in_class(CharClass, Src, Char, !PS) :-
 input_substring(Src, Start, EndPlusOne, Substring) :-
     promise_pure (
         EndPlusOne =< Src ^ input_length,
-        Substring =
-            unsafe_substring(Src ^ input_string, Start, EndPlusOne - Start),
+        Substring = unsafe_between(Src ^ input_string, Start, EndPlusOne),
         impure record_progress(Src, Start)
     ).
 

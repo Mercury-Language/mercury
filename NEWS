@@ -17,6 +17,9 @@ Changes to the Mercury standard library:
 
 * We have improved Unicode support in the standard library.
 
+* We have deprecated substring procedures which take start and count
+  arguments in favour of procedures which take start and end arguments.
+
 * We have changed the argument order of many of the predicates in the array,
   bag, bimap, eqvclass, map, multi_map, queue and set modules in order
   to make them more conducive to the use of state variable notation.
@@ -33,6 +36,12 @@ Changes to the Mercury standard library:
       UTF-16 encodings, depending upon the backend.
 
     + Text I/O routines now read and write files in UTF-8 encoding.
+
+* We have deprecated substring procedures which take start and count
+  arguments in favour of procedures which take start and end arguments.
+  The new procedures are more convenient to call, make more sense with
+  variable-width character encodings, and pave the way for potentially
+  replacing string offsets with an abstract type.
 
 * We have added additional modes for set.map/3 and set.map_fold/5.
 
@@ -108,15 +117,24 @@ Changes to the Mercury standard library:
 	bitmap.new/2
 	hash_table.new/3
 	hash_table.new_default/1
-	store.new/1
 	semaphore.new/1
 	semaphore.new/3
+	store.new/1
+	string.foldl2_substring/8
+	string.foldl_substring/5
+	string.foldl_substring/6
+	string.foldr_substring/5
+	string.foldr_substring/6
+	string.substring/3
+	string.substring/4
+	string.unsafe_substring/3
+	string.unsafe_substring/4
 	version_array.new/2
 	version_array2d.new/3
 	version_bitmap.new/2
 	version_hash_table.new/3
-	version_hash_table.unsafe_new/3
 	version_hash_table.new_default/1
+	version_hash_table.unsafe_new/3
 	version_hash_table.unsafe_new_default/1
 	version_store.new/0
 

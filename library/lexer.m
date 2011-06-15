@@ -348,8 +348,7 @@ string_ungetchar(String, Posn0, Posn) :-
 grab_string(String, Posn0, SubString, Posn, Posn) :-
     Posn0 = posn(_, _, Offset0),
     Posn = posn(_, _, Offset),
-    Count = Offset - Offset0,
-    string.unsafe_substring(String, Offset0, Count, SubString).
+    string.unsafe_between(String, Offset0, Offset, SubString).
 
 :- pred string_set_line_number(int::in, posn::in, posn::out) is det.
 

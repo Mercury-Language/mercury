@@ -99,8 +99,8 @@ main(!IO) :-
     io.write_string(R3, !IO),
     io.nl(!IO),
 
-    io.write_string("\nsubstring_by_codepoint:\n", !IO),
-    string.substring_by_codepoint(Str, 2, 2, Sub),
+    io.write_string("\nbetween_codepoints:\n", !IO),
+    string.between_codepoints(Str, 2, 4, Sub),
     io.write_string(Sub, !IO),
     io.nl(!IO).
 
