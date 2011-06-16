@@ -364,7 +364,7 @@
                 mlds_name               :: mercury_module_name,
 
                 % Code defined in some other language, e.g.  for
-                % `pragma foreign-decl', etc.
+                % `pragma foreign_decl', etc.
                 mlds_foreign_code_map   :: map(foreign_language,
                                             mlds_foreign_code),
 
@@ -380,11 +380,9 @@
                 mlds_defns              :: list(mlds_defn),
 
                 % The names of init and final preds.
-                % XXX These only work for the C backend because initialisers
-                % and finalisers do not (yet) work for the other backends.
-                % (These should possibly be moved into mlds_foreign_code_map.)
                 mlds_init_preds         :: list(string),
                 mlds_final_preds        :: list(string),
+
                 mlds_exported_enums     :: list(mlds_exported_enum)
             ).
 
