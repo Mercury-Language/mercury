@@ -1128,17 +1128,15 @@ incr_ref(Ref) :-
 
 :- semipure pred ref_value(int_reference::in, int::out) is det.
 :- pragma inline(ref_value/2).
-:- pragma promise_semipure(ref_value/2).
-
 :- pragma foreign_proc("C",
     ref_value(Ref::in, X::out),
-    [will_not_call_mercury],
+    [promise_semipure, will_not_call_mercury],
 "
     X = * (MR_Integer *) Ref;
 ").
 :- pragma foreign_proc("Java",
     ref_value(Ref::in, X::out),
-    [will_not_call_mercury],
+    [promise_semipure, will_not_call_mercury],
 "
     X = Ref.value;
 ").

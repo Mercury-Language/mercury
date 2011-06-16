@@ -856,15 +856,15 @@ make_type_ctor_desc_with_arity(_, _, _) :-
 
 %-----------------------------------------------------------------------------%
 
-% This is the forwards mode of make_type/1: given a type constructor and
+% This is the forwards mode of make_type/2: given a type constructor and
 % a list of argument types, check that the length of the argument types
 % matches the arity of the type constructor, and if so, use the type
 % constructor to construct a new type with the specified arguments.
 
-:- pragma promise_pure(make_type/2).
+:- pragma promise_equivalent_clauses(make_type/2).
 :- pragma foreign_proc("C",
     make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail],
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
 "{
     MR_TypeCtorDesc type_ctor_desc;
     MR_TypeCtorInfo type_ctor_info;
@@ -899,7 +899,7 @@ make_type_ctor_desc_with_arity(_, _, _) :-
 
 :- pragma foreign_proc("C#",
     make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail,
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
         may_not_duplicate],
 "{
     runtime.PseudoTypeInfo[] args =
@@ -926,7 +926,7 @@ make_type_ctor_desc_with_arity(_, _, _) :-
 
 :- pragma foreign_proc("Java",
     make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail,
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
         may_not_duplicate],
 "{
     PseudoTypeInfo[] as = new PseudoTypeInfo[TypeCtorDesc.arity];
@@ -950,6 +950,14 @@ make_type_ctor_desc_with_arity(_, _, _) :-
     }
 }").
 
+make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        erlang_rtti_implementation.make_type_desc(TypeCtorDesc, ArgTypes,
+            TypeDesc)
+    ;
+        private_builtin.sorry("make_type(in, in) = out")
+    ).
+
     /*
     ** This is the reverse mode of make_type: given a type,
     ** split it up into a type constructor and a list of
@@ -958,7 +966,7 @@ make_type_ctor_desc_with_arity(_, _, _) :-
 
 :- pragma foreign_proc("C",
     make_type(TypeCtorDesc::out, ArgTypes::out) = (TypeDesc::in),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail],
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
 "{
     MR_TypeCtorDesc type_ctor_desc;
     MR_TypeInfo     type_info;
@@ -972,21 +980,14 @@ make_type_ctor_desc_with_arity(_, _, _) :-
     MR_restore_transient_registers();
 }").
 
-make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
-        erlang_rtti_implementation.make_type_desc(TypeCtorDesc, ArgTypes,
-            TypeDesc)
-    ;
-        private_builtin.sorry("make_type(in, in) = out")
-    ).
-
 make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
     private_builtin.sorry("make_type(out, out) = in").
 
 :- pragma foreign_proc("C",
     type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
         TypeCtorName::out, TypeCtorArity::out),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure,
+        will_not_modify_trail],
 "{
     MR_TypeCtorDesc type_ctor_desc;
 
@@ -1016,6 +1017,8 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
         TypeCtorArity = type_ctor_info->MR_type_ctor_arity;
     }
 }").
+
+%-----------------------------------------------------------------------------%
 
 type_ctor_name_and_arity(TypeCtorDesc, ModuleName, TypeCtorName,
         TypeCtorArity) :-

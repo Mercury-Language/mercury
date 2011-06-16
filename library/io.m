@@ -10020,12 +10020,10 @@ command_line_argument(_, "") :-
 #include <stdlib.h> /* for getenv() and putenv() */
 ").
 
-:- pragma promise_semipure(io.getenv/2).
-
 :- pragma foreign_proc("C",
     io.getenv(Var::in, Value::out),
-    [will_not_call_mercury, tabled_for_io, does_not_affect_liveness,
-        no_sharing],
+    [promise_semipure, will_not_call_mercury, tabled_for_io,
+        does_not_affect_liveness, no_sharing],
 "
     Value = getenv(Var);
     SUCCESS_INDICATOR = (Value != 0);
@@ -10033,7 +10031,7 @@ command_line_argument(_, "") :-
 
 :- pragma foreign_proc("C#",
     io.getenv(Var::in, Value::out),
-    [will_not_call_mercury, tabled_for_io],
+    [promise_semipure, will_not_call_mercury, tabled_for_io],
 "
     Value = System.Environment.GetEnvironmentVariable(Var);
     SUCCESS_INDICATOR = (Value != null);
@@ -10041,7 +10039,7 @@ command_line_argument(_, "") :-
 
 :- pragma foreign_proc("Java",
     io.getenv(Var::in, Value::out),
-    [will_not_call_mercury, tabled_for_io, may_not_duplicate],
+    [promise_semipure, will_not_call_mercury, tabled_for_io, may_not_duplicate],
 "
     Value = System.getenv(Var);
     SUCCESS_INDICATOR = (Value != null);
@@ -10049,7 +10047,7 @@ command_line_argument(_, "") :-
 
 :- pragma foreign_proc("Erlang",
     io.getenv(Var::in, Value::out),
-    [will_not_call_mercury, tabled_for_io],
+    [promise_semipure, will_not_call_mercury, tabled_for_io],
 "
     case os:getenv(binary_to_list(Var)) of
         false ->
