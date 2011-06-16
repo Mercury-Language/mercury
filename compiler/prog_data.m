@@ -1144,7 +1144,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     ;       proc_may_not_duplicate.
 
     % This type specifies the termination property of a procedure
-    % defined using pragma c_code or pragma foreign_proc.
+    % defined using pragma foreign_proc.
     %
 :- type proc_terminates
     --->    proc_terminates

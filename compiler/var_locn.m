@@ -302,7 +302,8 @@
     % var_locn_clear_r1(ModuleInfo, Code, !VarLocnInfo):
     %
     % Produces a code fragment Code to move whatever is in r1 to some other
-    % register, if r1 is live. This is used prior to semidet pragma c_codes.
+    % register, if r1 is live. This is used prior to semidet pragma
+    % foreign_procs.
     %
 :- pred var_locn_clear_r1(module_info::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.

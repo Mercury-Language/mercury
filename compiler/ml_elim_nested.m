@@ -216,8 +216,8 @@
 %   But if Mercury code calls C code which calls back to Mercury code, and
 %   the C code uses pointers to the Mercury heap, then there could be
 %   serious problems (i.e. dangling pointers). Even if you just use `pragma
-%   foreign_export' to export a procedure and `pragma import' to import it
-%   back again, there may be trouble. The code generated for the exported
+%   foreign_export' to export a procedure and `pragma foreign_proc' to import
+%   it back again, there may be trouble. The code generated for the exported
 %   functions can include calls to MR_MAYBE_BOX_FOREIGN_TYPE, which may
 %   allocate heap; we ought to register the frame and call MR_GC_check()
 %   before each call to MR_MAYBE_BOX_FOREIGN_TYPE, but currently we don't.

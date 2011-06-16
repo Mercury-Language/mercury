@@ -1780,7 +1780,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 % We don't invoke the assembler to produce an object file yet
                 % -- that is done at the top level.
                 %
-                % But if the module contained `pragma c_code', then we will
+                % But if the module contained C foreign code then we will
                 % have compiled that to a separate C file. We need to invoke
                 % the C compiler on that.
                 (

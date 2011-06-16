@@ -2225,7 +2225,7 @@ parse_no_exception_promise(term.functor(
 parse_ordinary_despite_detism(
         term.functor(term.atom("ordinary_despite_detism"), [], _)).
 
-    % Parse a pragma foreign_code declaration.
+    % Parse a pragma foreign_proc declaration.
     %
 :- pred parse_pragma_foreign_code(module_name::in,
     pragma_foreign_proc_attributes::in, term::in, pragma_foreign_code_impl::in,
@@ -2233,7 +2233,7 @@ parse_ordinary_despite_detism(
 
 parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
         PragmaImpl, VarSet, Context, SeqNum, MaybeItem) :-
-    ContextPieces = [words("In"), quote(":- pragma c_code"),
+    ContextPieces = [words("In"), quote(":- pragma foreign_proc"),
         words("declaration:")],
     parse_pred_or_func_and_args_general(yes(ModuleName), PredAndVarsTerm0,
         VarSet, ContextPieces, MaybePredAndArgs),
@@ -2249,7 +2249,7 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
             PredOrFunc = pf_predicate,
             VarList = VarList0
         ),
-        parse_pragma_c_code_varlist(VarSet, VarList, MaybePragmaVars),
+        parse_pragma_foreign_proc_varlist(VarSet, VarList, MaybePragmaVars),
         (
             MaybePragmaVars = ok1(PragmaVars),
             varset.coerce(VarSet, ProgVarSet),
@@ -2268,14 +2268,15 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
         MaybeItem = error1(Specs)
     ).
 
-    % Parse the variable list in the pragma c code declaration.
+    % Parse the variable list in the pragma foreign_proc declaration.
     % The final argument is 'no' for no error, or 'yes(ErrorMessage)'.
     %
-:- pred parse_pragma_c_code_varlist(varset::in, list(term)::in,
+:- pred parse_pragma_foreign_proc_varlist(varset::in, list(term)::in,
     maybe1(list(pragma_var))::out) is det.
 
-parse_pragma_c_code_varlist(_, [], ok1([])).
-parse_pragma_c_code_varlist(VarSet, [HeadTerm | TailTerm], MaybePragmaVars):-
+parse_pragma_foreign_proc_varlist(_, [], ok1([])).
+parse_pragma_foreign_proc_varlist(VarSet, [HeadTerm | TailTerm],
+        MaybePragmaVars):-
     (
         HeadTerm = term.functor(term.atom("::"), [VarTerm, ModeTerm], _),
         VarTerm = term.variable(Var, VarContext)
@@ -2286,7 +2287,7 @@ parse_pragma_c_code_varlist(VarSet, [HeadTerm | TailTerm], MaybePragmaVars):-
                 term.coerce_var(Var, ProgVar),
                 HeadPragmaVar = pragma_var(ProgVar, VarName, Mode,
                     native_if_possible),
-                parse_pragma_c_code_varlist(VarSet, TailTerm,
+                parse_pragma_foreign_proc_varlist(VarSet, TailTerm,
                     MaybeTailPragmaVars),
                 (
                     MaybeTailPragmaVars = ok1(TailPragmaVars),
@@ -2296,7 +2297,9 @@ parse_pragma_c_code_varlist(VarSet, [HeadTerm | TailTerm], MaybePragmaVars):-
                     MaybePragmaVars = MaybeTailPragmaVars
                 )
             ;
-                Pieces = [words("Error: unknown mode in pragma c_code."), nl],
+                Pieces = [
+                    words("Error: unknown mode in pragma foreign_proc."), nl
+                ],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(ModeTerm),
                         [always(Pieces)])]),
@@ -2306,7 +2309,7 @@ parse_pragma_c_code_varlist(VarSet, [HeadTerm | TailTerm], MaybePragmaVars):-
             % If the variable wasn't in the varset it must be an
             % underscore variable.
             Pieces = [words("Sorry, not implemented: "),
-                words("anonymous `_' variable in pragma c_code."), nl],
+                words("anonymous `_' variable in pragma foreign_proc."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(VarContext, [always(Pieces)])]),
             MaybePragmaVars = error1([Spec])
