@@ -7709,9 +7709,10 @@ prepend one @samp{type_info} argument to the parameter list of the C interface
 function for each distinct type variable in the Mercury procedure's type
 signature.
 The caller must arrange to pass in appropriate @samp{type_info} values
-corresponding to the types of the other arguments passed.  These
-@samp{type_info} arguments can be obtained using the Mercury @samp{type_of}
-function in the Mercury standard library module @samp{type_desc}.
+corresponding to the types of the other arguments passed.
+These @samp{type_info} arguments can be obtained using the Mercury
+@samp{type_of} function in the Mercury standard library module
+@samp{type_desc}.
 
 To use the C declarations produced see @ref{Using pragma foreign_decl for C}.
 
@@ -7989,6 +7990,9 @@ function for each distinct type variable in the Mercury procedure's type
 signature.
 The caller must arrange to pass in appropriate @samp{type_info} values
 corresponding to the types of the other arguments passed.
+These @samp{type_info} arguments can be obtained using the Mercury
+@samp{type_of} function in the Mercury standard library module
+@samp{type_desc}.
 
 @node Using pragma foreign_decl for C#
 @subsubsection Using pragma foreign_decl for C#
