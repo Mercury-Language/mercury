@@ -72,7 +72,7 @@
 ** compiler/type_ctor_info.m.
 */
 
-#define MR_RTTI_VERSION                     MR_RTTI_VERSION__BITMAP
+#define MR_RTTI_VERSION                     MR_RTTI_VERSION__DIRECT_ARG
 #define MR_RTTI_VERSION__INITIAL            2
 #define MR_RTTI_VERSION__USEREQ             3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT       4
@@ -85,6 +85,7 @@
 #define MR_RTTI_VERSION__DUMMY              11
 #define MR_RTTI_VERSION__FUNCTOR_NUMBERS    12
 #define MR_RTTI_VERSION__BITMAP             13
+#define MR_RTTI_VERSION__DIRECT_ARG         14
 
 /*
 ** Check that the RTTI version is in a sensible range.
@@ -839,6 +840,8 @@ typedef struct {
 **
 ** The primary and secondary fields give the corresponding tag values, and
 ** the sectag_locn field gives the location of the secondary tag.
+** MR_SECTAG_NONE_DIRECT_ARG is a sub-case of MR_SECTAG_NONE, where the
+** function symbol is represented as a tagged pointer to its only argument.
 **
 ** The ordinal field gives the position of the function symbol in the
 ** list of function symbols of the type; one function symbol compares
@@ -872,6 +875,7 @@ typedef struct {
 
 typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_SECTAG_NONE),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_SECTAG_NONE_DIRECT_ARG),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_SECTAG_LOCAL),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_SECTAG_REMOTE),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_SECTAG_VARIABLE)
@@ -969,9 +973,9 @@ typedef const MR_ReservedAddrFunctorDesc    *MR_ReservedAddrFunctorDescPtr;
 **
 ** The intention is that if you have a word in a DU type that you want to
 ** interpret, you compute its primary tag and find its MR_DuPtagLayout.
-** You then look at the locn field. If it is MR_SECTAG_NONE, you index
-** the alternatives field with zero; if it is MR_SECTAG_{LOCAL,REMOTE}, you
-** compute the secondary tag and index the alternatives field with that.
+** You then look at the locn field. If it is MR_SECTAG_NONE{,_DIRECT_ARG}, you
+** index the alternatives field with zero; if it is MR_SECTAG_{LOCAL,REMOTE},
+** you compute the secondary tag and index the alternatives field with that.
 **
 ** A value of type MR_DuTypeLayout points to an array of MR_DuPtagLayout
 ** structures. The element at index k gives information about primary tag
@@ -1399,7 +1403,7 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
 #define MR_DEFINE_TYPE_CTOR_INFO_BODY_FLAG(m, n, a, cr, u, c, f, fns)   \
     {                                                                   \
         a,                                                              \
-        MR_RTTI_VERSION__FUNCTOR_NUMBERS,                               \
+        MR_RTTI_VERSION__DIRECT_ARG,                                    \
         -1,                                                             \
         MR_PASTE2(MR_TYPECTOR_REP_, cr),                                \
         MR_DEFINE_TYPE_CTOR_INFO_CODE(u),                               \

@@ -524,7 +524,9 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         % of the scan over them.
         Cost = 2
     ;
-        Tag = unshared_tag(_),
+        ( Tag = unshared_tag(_)
+        ; Tag = direct_arg_tag(_)
+        ),
         % You need to compute the primary tag and compare it.
         Cost = 2
     ;
@@ -585,7 +587,7 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _, _),
+            TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _, _, _),
             map.count(ConsTable, TypeRange),
             Max = TypeRange - 1
         ;
@@ -1059,7 +1061,7 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
-        TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _, _, _),
         map.to_assoc_list(ConsTable, ConsList),
         assoc_list.values(ConsList, TagList)
     ;
@@ -1079,14 +1081,22 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
 get_ptag_counts_2([], !MaxPrimary, !PtagCountMap).
 get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
     (
-        ( Tag = single_functor_tag, Primary = 0
-        ; Tag = unshared_tag(Primary)
+        (
+            Tag = single_functor_tag,
+            Primary = 0,
+            SecTag = sectag_none
+        ;
+            Tag = unshared_tag(Primary),
+            SecTag = sectag_none
+        ;
+            Tag = direct_arg_tag(Primary),
+            SecTag = sectag_none_direct_arg
         ),
         int.max(Primary, !MaxPrimary),
         ( map.search(!.PtagCountMap, Primary, _) ->
             unexpected($module, $pred, "unshared tag is shared")
         ;
-            map.det_insert(Primary, sectag_none - (-1), !PtagCountMap)
+            map.det_insert(Primary, SecTag - (-1), !PtagCountMap)
         )
     ;
         Tag = shared_remote_tag(Primary, Secondary),
@@ -1098,6 +1108,7 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
             ;
                 ( TagType = sectag_local
                 ; TagType = sectag_none
+                ; TagType = sectag_none_direct_arg
                 ),
                 unexpected($module, $pred,
                     "remote tag is shared with non-remote")
@@ -1117,6 +1128,7 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
             ;
                 ( TagType = sectag_remote
                 ; TagType = sectag_none
+                ; TagType = sectag_none_direct_arg
                 ),
                 unexpected($module, $pred,
                     "local tag is shared with non-local")
@@ -1181,14 +1193,22 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
         !CaseNumPtagsMap, !PtagCaseMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, Tag),
     (
-        ( Tag = single_functor_tag, Primary = 0
-        ; Tag = unshared_tag(Primary)
+        (
+            Tag = single_functor_tag,
+            Primary = 0,
+            SecTag = sectag_none
+        ;
+            Tag = unshared_tag(Primary),
+            SecTag = sectag_none
+        ;
+            Tag = direct_arg_tag(Primary),
+            SecTag = sectag_none_direct_arg
         ),
         ( map.search(!.PtagCaseMap, Primary, _Group) ->
             unexpected($module, $pred, "unshared tag is shared")
         ;
             StagGoalMap = map.singleton(-1, CaseRep),
-            map.det_insert(Primary, ptag_case(sectag_none, StagGoalMap),
+            map.det_insert(Primary, ptag_case(SecTag, StagGoalMap),
                 !PtagCaseMap)
         )
     ;
@@ -1291,7 +1311,9 @@ build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
     Entry = Ptag - Case,
     map.lookup(PtagCountMap, Ptag, CountSecTagLocn - Count),
     (
-        CountSecTagLocn = sectag_none,
+        ( CountSecTagLocn = sectag_none
+        ; CountSecTagLocn = sectag_none_direct_arg
+        ),
         ( map.search(!.RevMap, Case, OldEntry) ->
             OldEntry = ptag_case_rev_map_entry(OldCount,
                 OldFirstPtag, OldLaterPtags0, OldCase),

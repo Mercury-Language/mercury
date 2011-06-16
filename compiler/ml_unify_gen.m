@@ -149,6 +149,10 @@
 :- import_module term.
 :- import_module varset.
 
+:- inst no_or_direct_arg_tag
+    --->    no_tag
+    ;       direct_arg_tag(ground).
+
 %-----------------------------------------------------------------------------%
 
 ml_gen_unification(Unification, CodeModel, Context, Statements, !Info) :-
@@ -297,13 +301,16 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         ml_gen_construct_tag(ThisTag, Type, Var, ConsId, Args, ArgModes,
             TakeAddr, HowToConstruct, Context, Statements, !Info)
     ;
-        Tag = no_tag,
+        ( Tag = no_tag
+        ; Tag = direct_arg_tag(_)
+        ),
         (
             Args = [ArgVar],
-            ArgModes = [_ArgMode]
+            ArgModes = [ArgMode]
         ->
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
+            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
             ( ml_gen_info_search_const_var(!.Info, ArgVar, ArgGroundTerm) ->
                 ArgGroundTerm = ml_ground_term(ArgRval, _ArgType,
                     MLDS_ArgType),
@@ -311,27 +318,35 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
                 ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
                     ArgRval, Rval0, GlobalData0, GlobalData),
                 ml_gen_info_set_global_data(GlobalData, !Info),
-                MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-                Rval = ml_unop(cast(MLDS_Type), Rval0),
+                Rval = ml_cast_cons_tag(MLDS_Type, Tag, Rval0),
                 GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
-                ml_gen_info_set_const_var(Var, GroundTerm, !Info)
+                ml_gen_info_set_const_var(Var, GroundTerm, !Info),
+                Statement = ml_gen_assign(VarLval, Rval, Context),
+                Statements = [Statement]
             ;
-                ml_gen_var(!.Info, ArgVar, ArgVarLval),
+                ml_gen_var(!.Info, ArgVar, ArgLval),
                 ml_variable_type(!.Info, ArgVar, ArgType),
-                ArgRval = ml_lval(ArgVarLval),
-                ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, Type,
-                    native_if_possible, ArgRval, Rval)
-            ),
-            Statement = ml_gen_assign(VarLval, Rval, Context),
-            Statements = [Statement]
+                (
+                    Tag = no_tag,
+                    ArgRval = ml_lval(ArgLval),
+                    ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, Type,
+                        native_if_possible, ArgRval, Rval),
+                    Statement = ml_gen_assign(VarLval, Rval, Context),
+                    Statements = [Statement]
+                ;
+                    Tag = direct_arg_tag(Ptag),
+                    ml_variable_type(!.Info, Var, VarType),
+                    ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
+                        ArgLval, ArgType, VarLval, VarType, Context, Statements)
+                )
+            )
         ;
+            Tag = no_tag,
             unexpected($module, $pred, "no_tag: arity != 1")
+        ;
+            Tag = direct_arg_tag(_),
+            unexpected($module, $pred, "direct_arg_tag: arity != 1")
         )
-    ;
-        % Lambda expressions.
-        Tag = closure_tag(PredId, ProcId, _EvalMethod),
-        ml_gen_closure(PredId, ProcId, Var, Args, ArgModes, HowToConstruct,
-            Context, Statements, !Info)
     ;
         % Ordinary compound terms.
         (
@@ -349,6 +364,11 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
             Args, ArgModes, TakeAddr, HowToConstruct, Context,
             Statements, !Info)
+    ;
+        % Lambda expressions.
+        Tag = closure_tag(PredId, ProcId, _EvalMethod),
+        ml_gen_closure(PredId, ProcId, Var, Args, ArgModes, HowToConstruct,
+            Context, Statements, !Info)
     ;
         % Constants.
         ( Tag = int_tag(_)
@@ -467,6 +487,9 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
         ;
             Tag = unshared_tag(_),
             unexpected($module, $pred, "unshared_tag")
+        ;
+            Tag = direct_arg_tag(_),
+            unexpected($module, $pred, "direct_arg_tag")
         ;
             Tag = shared_remote_tag(_, _),
             unexpected($module, $pred, "shared_remote_tag")
@@ -1116,6 +1139,19 @@ constructor_arg_types(ModuleInfo, ConsId, ArgTypes, Type) = ConsArgTypes :-
 
 ml_gen_mktag(Tag) = ml_unop(std_unop(mktag), ml_const(mlconst_int(Tag))).
 
+:- func ml_cast_cons_tag(mlds_type::in, cons_tag::in(no_or_direct_arg_tag),
+    mlds_rval::in) = (mlds_rval::out) is det.
+
+ml_cast_cons_tag(Type, Tag, Rval) = CastRval :-
+    (
+        Tag = no_tag,
+        TagRval = Rval
+    ;
+        Tag = direct_arg_tag(Ptag),
+        TagRval = ml_mkword(Ptag, Rval)
+    ),
+    CastRval = ml_unop(cast(Type), TagRval).
+
 :- pred ml_gen_box_or_unbox_const_rval_list(module_info::in,
     list(mer_type)::in, list(mer_type)::in, list(mlds_rval)::in,
     prog_context::in, list(mlds_rval)::out,
@@ -1402,6 +1438,21 @@ ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
             unexpected($module, $pred, "no_tag: arity != 1")
         )
     ;
+        Tag = direct_arg_tag(Ptag),
+        (
+            Args = [Arg],
+            Modes = [Mode]
+        ->
+            ml_variable_type(!.Info, Arg, ArgType),
+            ml_gen_var(!.Info, Arg, ArgLval),
+            ml_gen_var(!.Info, Var, VarLval),
+            ml_gen_info_get_module_info(!.Info, ModuleInfo),
+            ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
+                ArgLval, ArgType, VarLval, Type, Context, Statements)
+        ;
+            unexpected($module, $pred, "direct_arg_tag: arity != 1")
+        )
+    ;
         ( Tag = single_functor_tag
         ; Tag = unshared_tag(_UnsharedTag)
         ; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag)
@@ -1436,7 +1487,9 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
         OffSet = 0,
         ArgNum = 1
     ;
-        Tag = unshared_tag(UnsharedTag),
+        ( Tag = unshared_tag(UnsharedTag)
+        ; Tag = direct_arg_tag(UnsharedTag)
+        ),
         TagBits = UnsharedTag,
         OffSet = 0,
         ArgNum = 1
@@ -1711,6 +1764,114 @@ ml_gen_sub_unify(ModuleInfo, Mode, ArgLval, ArgType, FieldLval, FieldType,
         unexpected($module, $pred, "some strange unify")
     ).
 
+:- pred ml_gen_direct_arg_construct(module_info::in, uni_mode::in, int::in,
+    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, prog_context::in,
+    list(statement)::out) is det.
+
+ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
+        ArgLval, ArgType, VarLval, VarType, Context, Statements) :-
+    Mode = ((LI - RI) -> (LF - RF)),
+    mode_to_arg_mode(ModuleInfo, (LI -> LF), ArgType, LeftMode),
+    mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode),
+    (
+        % Skip dummy argument types, since they will not have been declared.
+        ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
+        ; check_dummy_type(ModuleInfo, VarType) = is_dummy_type
+        )
+    ->
+        unexpected($module, $pred, "dummy unify")
+    ;
+        % Both input: it's a test unification.
+        LeftMode = top_in,
+        RightMode = top_in
+    ->
+        % This shouldn't happen, since mode analysis should avoid creating
+        % any tests in the arguments of a construction or deconstruction
+        % unification.
+        unexpected($module, $pred, "test in arg of [de]construction")
+    ;
+        % Input - output: it's an assignment to the RHS.
+        LeftMode = top_in,
+        RightMode = top_out
+    ->
+        unexpected($module, $pred, "left-to-right data flow in construction")
+    ;
+        % Output - input: it's an assignment to the LHS.
+        LeftMode = top_out,
+        RightMode = top_in
+    ->
+        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
+            native_if_possible, ml_lval(ArgLval), ArgRval),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+        CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
+        Statement = ml_gen_assign(VarLval, CastRval, Context),
+        Statements = [Statement]
+    ;
+        % Unused - unused: the unification has no effect.
+        LeftMode = top_unused,
+        RightMode = top_unused
+    ->
+        Statements = []
+    ;
+        unexpected($module, $pred, "some strange unify")
+    ).
+
+:- pred ml_gen_direct_arg_deconstruct(module_info::in, uni_mode::in, int::in,
+    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, prog_context::in,
+    list(statement)::out) is det.
+
+ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
+        ArgLval, ArgType, VarLval, VarType, Context, Statements) :-
+    Mode = ((LI - RI) -> (LF - RF)),
+    mode_to_arg_mode(ModuleInfo, (LI -> LF), ArgType, LeftMode),
+    mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode),
+    (
+        % Skip dummy argument types, since they will not have been declared.
+        ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
+        ; check_dummy_type(ModuleInfo, VarType) = is_dummy_type
+        )
+    ->
+        unexpected($module, $pred, "dummy unify")
+    ;
+        % Both input: it's a test unification.
+        LeftMode = top_in,
+        RightMode = top_in
+    ->
+        % This shouldn't happen, since mode analysis should avoid creating
+        % any tests in the arguments of a construction or deconstruction
+        % unification.
+        unexpected($module, $pred, "test in arg of [de]construction")
+    ;
+        % Input - output: it's an assignment to the RHS.
+        LeftMode = top_in,
+        RightMode = top_out
+    ->
+        ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
+            native_if_possible, ml_lval(VarLval), VarRval),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+        CastRval = ml_unop(cast(MLDS_Type),
+            ml_binop(body, VarRval, ml_const(mlconst_int(Ptag)))),
+        Statement = ml_gen_assign(ArgLval, CastRval, Context),
+        Statements = [Statement]
+    ;
+        % Output - input: it's an assignment to the LHS.
+        LeftMode = top_out,
+        RightMode = top_in
+    ->
+        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
+            native_if_possible, ml_lval(ArgLval), ArgRval),
+        Statement = ml_gen_assign(VarLval, ml_mkword(Ptag, ArgRval), Context),
+        Statements = [Statement]
+    ;
+        % Unused - unused: the unification has no effect.
+        LeftMode = top_unused,
+        RightMode = top_unused
+    ->
+        Statements = []
+    ;
+        unexpected($module, $pred, "some strange unify")
+    ).
+
 %-----------------------------------------------------------------------------%
 
     % Generate a semidet deconstruction. A semidet deconstruction unification
@@ -1822,7 +1983,9 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         Tag = single_functor_tag,
         TagTestRval = ml_const(mlconst_true)
     ;
-        Tag = unshared_tag(UnsharedTagNum),
+        ( Tag = unshared_tag(UnsharedTagNum)
+        ; Tag = direct_arg_tag(UnsharedTagNum)
+        ),
         RvalTag = ml_unop(std_unop(tag), Rval),
         UnsharedTag = ml_unop(std_unop(mktag),
             ml_const(mlconst_int(UnsharedTagNum))),
@@ -1922,7 +2085,7 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     (
         TypeDefnBody =
-            hlds_du_type(Ctors, TagValues, _, _, _, _ReservedTag, _, _),
+            hlds_du_type(Ctors, TagValues, _, _, _, _, _ReservedTag, _, _),
         % XXX We probably shouldn't ignore ReservedTag here.
         (
             some [Ctor] (
@@ -2135,14 +2298,16 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             VarTypes, Var, VarType, MLDS_Type, ConsId, ThisTag, Args, Context,
             !GlobalData, !GroundTermMap)
     ;
-        ConsTag = no_tag,
+        ( ConsTag = no_tag
+        ; ConsTag = direct_arg_tag(_)
+        ),
         (
             Args = [Arg],
             map.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
             ArgGroundTerm = ml_ground_term(ArgRval, _ArgType, MLDS_ArgType),
             ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
                 ArgRval, Rval0, !GlobalData),
-            Rval = ml_unop(cast(MLDS_Type), Rval0),
+            Rval = ml_cast_cons_tag(MLDS_Type, ConsTag, Rval0),
             GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
             map.det_insert(Var, GroundTerm, !GroundTermMap)
         ;

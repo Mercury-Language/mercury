@@ -198,7 +198,7 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
         DefinedInThisModule = yes,
         Visibility = item_visibility(ImportStatus),
         (
-            TypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
             list.foldl(ctor_used_modules(Visibility), Ctors, !UsedModules)
         ;
             TypeBody = hlds_eqv_type(EqvType),

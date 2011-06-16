@@ -225,6 +225,9 @@
                 % User-defined equality and comparison preds.
                 du_type_usereq              :: maybe(unify_compare),
 
+                % Direct argument functors.
+                du_direct_arg_ctors         :: maybe(list(sym_name_and_arity)),
+
                 % Is there a `:- pragma reserve_tag' pragma for this type?
                 du_type_reserved_tag        :: uses_reserved_tag,
 
@@ -381,14 +384,22 @@
     ;       unshared_tag(tag_bits)
             % This is for constants or functors which can be distinguished
             % with just a primary tag. An "unshared" tag is one which fits
-            % on the bottom of a pointer (i.e.  two bits for 32-bit
+            % on the bottom of a pointer (i.e. two bits for 32-bit
             % architectures, or three bits for 64-bit architectures), and is
             % used for just one functor. For constants we store a tagged zero,
             % for functors we store a tagged pointer to the argument vector.
 
+    ;       direct_arg_tag(tag_bits)
+            % This is for functors which can be distinguished with just a
+            % primary tag. The primary tag says which of the type's functors
+            % (which must all be arity-1) this word represents. However, the
+            % body of the word is not a pointer to a cell holding the argument;
+            % it IS the value of that argument, which must be an untagged
+            % pointer to a cell.
+
     ;       shared_remote_tag(tag_bits, int)
             % This is for functors or constants which require more than just
-            % a two-bit tag. In this case, we use both a primary and a
+            % a primary tag. In this case, we use both a primary and a
             % secondary tag. Several functors share the primary tag and are
             % distinguished by the secondary tag. The secondary tag is stored
             % as the first word of the argument vector. (If it is a constant,
@@ -505,6 +516,7 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         MaybePrimaryTag = yes(0)
     ;
         ( Tag = unshared_tag(PrimaryTag)
+        ; Tag = direct_arg_tag(PrimaryTag)
         ; Tag = shared_remote_tag(PrimaryTag, _SecondaryTag)
         ; Tag = shared_local_tag(PrimaryTag, _SecondaryTag)
         ),
@@ -529,6 +541,7 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
         ; Tag = no_tag
         ; Tag = reserved_address_tag(_)
         ; Tag = unshared_tag(_PrimaryTag)
+        ; Tag = direct_arg_tag(_PrimaryTag)
         ; Tag = single_functor_tag
         ),
         MaybeSecondaryTag = no
@@ -544,7 +557,7 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
 
 get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
     (
-        TypeBody = hlds_du_type(_, _, CheaperTagTest, _, _, _, _, _)
+        TypeBody = hlds_du_type(_, _, CheaperTagTest, _, _, _, _, _, _)
     ;
         ( TypeBody = hlds_eqv_type(_)
         ; TypeBody = hlds_foreign_type(_)

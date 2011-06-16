@@ -546,8 +546,8 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
         ;
             (
                 TypeBody0 = hlds_du_type(Body, _CtorTags0, _CheaperTagTest,
-                    _IsEnum0, MaybeUserEqComp, ReservedTag0, _ReservedAddr,
-                    IsForeign),
+                    _DuTypeKind, MaybeUserEqComp, MaybeDirectArgCtors,
+                    ReservedTag0, _ReservedAddr, IsForeign),
                 (
                     ReservedTag0 = uses_reserved_tag,
                     % Make doubly sure that we don't get any spurious warnings
@@ -570,10 +570,10 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
                 ReservedTag = uses_reserved_tag,
                 module_info_get_globals(!.ModuleInfo, Globals),
                 assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor,
-                    ReservedTag, Globals, CtorTags, ReservedAddr, EnumDummy),
+                    ReservedTag, Globals, CtorTags, ReservedAddr, DuTypeKind),
                 TypeBody = hlds_du_type(Body, CtorTags, no_cheaper_tag_test,
-                    EnumDummy, MaybeUserEqComp, ReservedTag, ReservedAddr,
-                    IsForeign),
+                    DuTypeKind, MaybeUserEqComp, MaybeDirectArgCtors,
+                    ReservedTag, ReservedAddr, IsForeign),
                 hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
                 replace_type_ctor_defn(TypeCtor, TypeDefn,
                     TypeTable0, TypeTable),
@@ -660,8 +660,8 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
             ;
                 % XXX How should we handle IsForeignType here?
                 TypeBody = hlds_du_type(Ctors, _TagValues, _CheaperTagTest,
-                    DuTypeKind, _MaybeUserEq, _ReservedTag, _ReservedAddr,
-                    _IsForeignType),
+                    DuTypeKind, _MaybeUserEq, _MaybeDirectArgCtors,
+                    _ReservedTag, _ReservedAddr, _IsForeignType),
                 (
                     ( DuTypeKind = du_type_kind_mercury_enum
                     ; DuTypeKind = du_type_kind_foreign_enum(_)
@@ -710,7 +710,7 @@ add_pragma_foreign_export_enum(Lang, TypeName, TypeArity, Attributes,
                         words("error: "),
                         sym_name_and_arity(TypeName / TypeArity),
                         words("is not an enumeration type."),
-                        words("It has one more non-zero arity"),
+                        words("It has one or more non-zero arity"),
                         words("constructors.")
                     ]
                 )
@@ -1014,8 +1014,8 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                 words("is not an enumeration type"), suffix(".")]
         ;
             TypeBody0 = hlds_du_type(Ctors, OldTagValues, CheaperTagTest,
-                DuTypeKind0, MaybeUserEq, ReservedTag, ReservedAddr,
-                IsForeignType),
+                DuTypeKind0, MaybeUserEq, MaybeDirectArgCtors,
+                ReservedTag, ReservedAddr, IsForeignType),
             % Work out what language's foreign_enum pragma we should be
             % looking at for the the current compilation target language.
             module_info_get_globals(!.ModuleInfo, Globals),
@@ -1059,7 +1059,8 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                             UnmappedCtors = [],
                             TypeBody = hlds_du_type(Ctors, TagValues,
                                 CheaperTagTest, DuTypeKind, MaybeUserEq,
-                                ReservedTag, ReservedAddr, IsForeignType),
+                                MaybeDirectArgCtors, ReservedTag, ReservedAddr,
+                                IsForeignType),
                             set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
                             replace_type_ctor_defn(TypeCtor, TypeDefn,
                                 TypeTable0, TypeTable),

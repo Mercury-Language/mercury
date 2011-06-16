@@ -60,11 +60,15 @@
 :- interface.
 
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_module.
 :- import_module libs.globals.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
 :- import_module maybe.
+
+%-----------------------------------------------------------------------------%
 
     % assign_constructor_tags(Constructors, MaybeUserEq, TypeCtor,
     %   ReservedTagPragma, Globals, TagValues, IsEnum):
@@ -80,18 +84,37 @@
     globals::in, cons_tag_values::out,
     uses_reserved_address::out, du_type_kind::out) is det.
 
+    % For data types with exactly two alternatives, one of which is a constant,
+    % we can test against the constant (negating the result of the test, if
+    % needed), since a test against a constant is cheaper than a tag test.
+    %
+    % The type must not use reserved tags or reserved addresses.
+    %
+:- pred compute_cheaper_tag_test(cons_tag_values::in,
+    maybe_cheaper_tag_test::out) is det.
+
+    % Look for general du type definitions that can be converted into
+    % direct arg type definitions.
+    %
+:- pred post_process_type_defns(module_info::in, module_info::out,
+    list(error_spec)::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
@@ -185,8 +208,8 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
             ;
                 MaxTag = max_num_tags(NumTagBits) - 1,
                 separate_out_constants(Ctors, Constants, Functors),
-                assign_constant_tags(TypeCtor, Constants, !CtorTags,
-                    InitTag, NextTag),
+                assign_constant_tags(TypeCtor, Constants, InitTag, NextTag,
+                    !CtorTags),
                 assign_unshared_tags(TypeCtor, Functors, NextTag, MaxTag,
                     [], !CtorTags),
                 ReservedAddr = does_not_use_reserved_address
@@ -267,18 +290,17 @@ assign_reserved_symbolic_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
     ).
 
 :- pred assign_constant_tags(type_ctor::in, list(constructor)::in,
-    cons_tag_values::in, cons_tag_values::out, int::in, int::out) is det.
+    int::in, int::out, cons_tag_values::in, cons_tag_values::out) is det.
 
+assign_constant_tags(TypeCtor, Constants, InitTag, NextTag, !CtorTags) :-
     % If there's no constants, don't do anything. Otherwise, allocate the
     % first tag for the constants, and give them all shared local tags
     % with that tag as the primary tag, and different secondary tags
     % starting from zero.
     %
-    % Note that if there's a single constant, we still give it a
-    % shared_local_tag rather than a unshared_tag. That's because
+    % Note that if there is a single constant, we still give it a
+    % shared_local_tag rather than a unshared_tag. That is because
     % deconstruction of the shared_local_tag is more efficient.
-    %
-assign_constant_tags(TypeCtor, Constants, !CtorTags, InitTag, NextTag) :-
     (
         Constants = [],
         NextTag = InitTag
@@ -377,12 +399,370 @@ maybe_add_reserved_addresses(ReservedAddresses, Tag0) = Tag :-
 
 %-----------------------------------------------------------------------------%
 
+compute_cheaper_tag_test(CtorTagMap, CheaperTagTest) :-
+    (
+        map.to_assoc_list(CtorTagMap, CtorTagList),
+        CtorTagList = [ConsIdA - ConsTagA, ConsIdB - ConsTagB],
+        ConsIdA = cons(_, ArityA, _),
+        ConsIdB = cons(_, ArityB, _)
+    ->
+        (
+            ArityB = 0,
+            ArityA > 0
+        ->
+            CheaperTagTest = cheaper_tag_test(ConsIdA, ConsTagA,
+                ConsIdB, ConsTagB)
+        ;
+            ArityA = 0,
+            ArityB > 0
+        ->
+            CheaperTagTest = cheaper_tag_test(ConsIdB, ConsTagB,
+                ConsIdA, ConsTagA)
+        ;
+            CheaperTagTest = no_cheaper_tag_test
+        )
+    ;
+        CheaperTagTest = no_cheaper_tag_test
+    ).
+
+%-----------------------------------------------------------------------------%
+
+post_process_type_defns(!HLDS, Specs) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        globals.lookup_bool_option(Globals, record_term_sizes_as_words,
+            TermSizeWords),
+        globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
+            TermSizeCells),
+        (
+            TermSizeWords = no,
+            TermSizeCells = no
+        ->
+            module_info_get_type_table(!.HLDS, TypeTable0),
+            get_all_type_ctor_defns(TypeTable0, TypeCtorsDefns),
+            globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
+            MaxTag = max_num_tags(NumTagBits) - 1,
+            convert_direct_arg_functors(MaxTag, TypeCtorsDefns,
+                TypeTable0, TypeTable, [], Specs),
+            module_info_set_type_table(TypeTable, !HLDS)
+        ;
+            % We cannot use direct arg functors in term size grades.
+            Specs = []
+        )
+    ;
+        ( Target = target_il
+        ; Target = target_csharp
+        ; Target = target_java
+        ; Target = target_erlang
+        ; Target = target_asm
+        ; Target = target_x86_64
+        ),
+        % Direct arg functors have not (yet) been implemented on these targets.
+        Specs = []
+    ).
+
+:- pred convert_direct_arg_functors(int::in,
+    assoc_list(type_ctor, hlds_type_defn)::in, type_table::in, type_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+convert_direct_arg_functors(_, [], !TypeTable, !Specs).
+convert_direct_arg_functors(MaxTag, [TypeCtor - TypeDefn | TypeCtorsDefns],
+        !TypeTable, !Specs) :-
+    convert_direct_arg_functors_if_suitable(MaxTag, TypeCtor, TypeDefn,
+        !TypeTable, !Specs),
+    convert_direct_arg_functors(MaxTag, TypeCtorsDefns,
+        !TypeTable, !Specs).
+
+:- pred convert_direct_arg_functors_if_suitable(int::in,
+    type_ctor::in, hlds_type_defn::in, type_table::in, type_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+convert_direct_arg_functors_if_suitable(MaxTag, TypeCtor, TypeDefn,
+        !TypeTable, !Specs) :-
+    get_type_defn_body(TypeDefn, Body),
+    (
+        Body = hlds_du_type(Ctors, _ConsTagValues, _MaybeCheaperTagTest,
+            DuKind, MaybeUserEqComp, MaybeAssertedDirectArgCtors,
+            ReservedTag, ReservedAddr, MaybeForeign),
+        (
+            Ctors = [_, _ | _],
+            DuKind = du_type_kind_general,
+            ReservedTag = does_not_use_reserved_tag,
+            ReservedAddr = does_not_use_reserved_address,
+            MaybeForeign = no,
+            TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
+            sym_name_get_module_name(TypeCtorSymName, TypeCtorModule)
+        ->
+            get_type_defn_status(TypeDefn, TypeStatus),
+            (
+                MaybeAssertedDirectArgCtors = yes(AssertedDirectArgFunctors)
+            ;
+                MaybeAssertedDirectArgCtors = no,
+                AssertedDirectArgFunctors = []
+            ),
+            separate_out_constants(Ctors, Constants, Functors),
+            list.filter(is_direct_arg_ctor(!.TypeTable, TypeCtorModule,
+                    TypeStatus, AssertedDirectArgFunctors),
+                Functors, DirectArgFunctors, NonDirectArgFunctors),
+            (
+                DirectArgFunctors = []
+                % We cannot use the direct argument representation for any
+                % functors.
+            ;
+                DirectArgFunctors = [_ | _],
+                some [!NextTag, !CtorTags] (
+                    !:NextTag = 0,
+                    map.init(!:CtorTags),
+                    assign_constant_tags(TypeCtor, Constants,
+                        !NextTag, !CtorTags),
+                    % We prefer to allocate primary tags to direct argument
+                    % functors.
+                    assign_direct_arg_tags(TypeCtor, DirectArgFunctors,
+                        !NextTag, MaxTag, LeftOverDirectArgFunctors, !CtorTags),
+                    assign_unshared_tags(TypeCtor,
+                        LeftOverDirectArgFunctors ++ NonDirectArgFunctors,
+                        !.NextTag, MaxTag, [], !CtorTags),
+                    DirectArgConsTagValues = !.CtorTags
+                ),
+                compute_cheaper_tag_test(DirectArgConsTagValues,
+                    MaybeCheaperTagTest),
+                DirectArgFunctorNames =
+                    list.map(constructor_to_sym_name_and_arity,
+                    DirectArgFunctors),
+                DirectArgBody = hlds_du_type(Ctors, DirectArgConsTagValues,
+                    MaybeCheaperTagTest, DuKind, MaybeUserEqComp,
+                    yes(DirectArgFunctorNames), ReservedTag, ReservedAddr,
+                    MaybeForeign),
+                set_type_defn_body(DirectArgBody, TypeDefn, DirectArgTypeDefn),
+                replace_type_ctor_defn(TypeCtor, DirectArgTypeDefn, !TypeTable)
+            ),
+            check_incorrect_direct_arg_assertions(AssertedDirectArgFunctors,
+                NonDirectArgFunctors, !Specs)
+        ;
+            % We cannot use the direct argument representation for any
+            % functors.
+            true
+        )
+    ;
+        ( Body = hlds_eqv_type(_)
+        ; Body = hlds_foreign_type(_)
+        ; Body = hlds_solver_type(_, _)
+        ; Body = hlds_abstract_type(_)
+        )
+        % Leave these types alone.
+    ).
+
+:- pred is_direct_arg_ctor(type_table::in, module_name::in, import_status::in,
+    list(sym_name_and_arity)::in, constructor::in) is semidet.
+
+is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
+        AssertedDirectArgCtors, Ctor) :-
+    Ctor = ctor(ExistQTVars, ExistConstraints, ConsName, ConsArgs,
+        _CtorContext),
+    ExistQTVars = [],
+    ExistConstraints = [],
+    ConsArgs = [ConsArg],
+    Arity = 1,
+    ConsArg = ctor_arg(_MaybeFieldName, ArgType, _ArgContext),
+    type_to_ctor_and_args(ArgType, ArgTypeCtor, ArgTypeCtorArgTypes),
+
+    (
+        % Trust the `direct_arg' attribute of an imported type.
+        status_is_imported(TypeStatus) = yes,
+        list.contains(AssertedDirectArgCtors, ConsName / Arity)
+    ->
+        ArgCond = direct_arg_asserted
+    ;
+        % Tuples are always acceptable argument types as they are represented
+        % by word-aligned vector pointers.
+        % Strings are *not* always word-aligned (yet) so are not acceptable.
+        type_ctor_is_tuple(ArgTypeCtor)
+    ->
+        ArgCond = direct_arg_builtin_type
+    ;
+        ArgTypeCtorArgTypes = [],
+        % XXX We could let this be a subset of the type params, but that would
+        % require the runtime system to be able to handle variables in the
+        % argument type, during unification and comparison
+        % (mercury_unify_compare_body.h) during deconstruction
+        % (mercury_ml_expand_body.h), during deep copying
+        % (mercury_deep_copy_body.h), and maybe during some other operations.
+
+        search_type_ctor_defn(TypeTable, ArgTypeCtor, ArgTypeDefn),
+        get_type_defn_body(ArgTypeDefn, ArgBody),
+        ArgBody = hlds_du_type(ArgCtors, ArgConsTagValues,
+            ArgMaybeCheaperTagTest, ArgDuKind, _ArgMaybeUserEqComp,
+            ArgDirectArgCtors, ArgReservedTag, ArgReservedAddr,
+            ArgMaybeForeign),
+        ArgCtors = [_],
+        ArgMaybeCheaperTagTest = no_cheaper_tag_test,
+        ArgDuKind = du_type_kind_general,
+        ArgDirectArgCtors = no,
+        ArgReservedTag = does_not_use_reserved_tag,
+        ArgReservedAddr = does_not_use_reserved_address,
+        ArgMaybeForeign = no,
+
+        map.to_assoc_list(ArgConsTagValues, ArgConsTagValueList),
+        ArgConsTagValueList = [ArgConsTagValue],
+        ArgConsTagValue = _ConsId - single_functor_tag,
+
+        (
+            status_defined_in_this_module(TypeStatus) = yes,
+            list.contains(AssertedDirectArgCtors, ConsName / Arity)
+        ->
+            ArgCond = direct_arg_asserted
+        ;
+            ArgTypeCtor = type_ctor(ArgTypeCtorSymName, _ArgTypeCtorArity),
+            sym_name_get_module_name(ArgTypeCtorSymName, ArgTypeCtorModule),
+            ( TypeCtorModule = ArgTypeCtorModule ->
+                get_type_defn_status(ArgTypeDefn, ArgTypeStatus),
+                ArgCond = direct_arg_same_module(ArgTypeStatus)
+            ;
+                ArgCond = direct_arg_different_module
+            )
+        )
+    ),
+
+    check_direct_arg_cond(TypeStatus, ArgCond).
+
+:- type direct_arg_cond
+    --->    direct_arg_builtin_type
+            % The argument is of a builtin type that is represented with an
+            % untagged pointer.
+
+    ;       direct_arg_asserted
+            % A `where direct_arg' attribute asserts that the direct arg
+            % representation may be used for the constructor.
+
+    ;       direct_arg_same_module(import_status)
+            % The argument type is defined in the same module as the outer
+            % type, and has the given import status.
+
+    ;       direct_arg_different_module.
+            % The argument type is defined in a different module to the outer
+            % type.
+
+:- pred check_direct_arg_cond(import_status::in, direct_arg_cond::in)
+    is semidet.
+
+check_direct_arg_cond(TypeStatus, ArgCond) :-
+    (
+        % If the outer type _definition_ is not exported from this module then
+        % the direct arg representation may be used.  In the absence of
+        % intermodule optimisation, only this module can [de]construct values
+        % of this type.
+        ( TypeStatus = status_local
+        ; TypeStatus = status_abstract_exported
+        )
+    ;
+        % If the outer type is opt-exported, another module may opt-import this
+        % type, but abstract-import the argument type.  It could not then infer
+        % if the direct arg representation is required for any functors of the
+        % outer type.  The problem is overcome by adding `where direct_arg'
+        % attributes to the opt-exported type definition in .opt files,
+        % which state the functors that require the direct arg representation.
+        TypeStatus = status_opt_exported
+    ;
+        % If the outer type is exported from this module, then the direct arg
+        % representation may be used, so long as any importing modules will
+        % infer the same thing.
+        ( TypeStatus = status_exported
+        ; TypeStatus = status_exported_to_submodules
+        ),
+        ( ArgCond = direct_arg_builtin_type
+        ; ArgCond = direct_arg_asserted
+        ; ArgCond = direct_arg_same_module(status_exported)
+        ; ArgCond = direct_arg_same_module(TypeStatus)
+            % If the outer type is exported to sub-modules only, the argument
+            % type only needs to be exported to sub-modules as well.
+        )
+    ;
+        % The direct arg representation is required if the outer type is
+        % imported, and:
+        % - if the argument type is an acceptable builtin type
+        % - a `where direct_arg' attribute says so
+        % - if the argument type is imported from the same module
+        TypeStatus = status_imported(_),
+        ( ArgCond = direct_arg_builtin_type
+        ; ArgCond = direct_arg_asserted
+        ; ArgCond = direct_arg_same_module(status_imported(_))
+        )
+    ;
+        % If the outer type is opt-imported, there will always be a
+        % `where direct_arg' attribute on the type definition which states
+        % if the direct argument representation must be used.
+        ( TypeStatus = status_opt_imported
+        ; TypeStatus = status_abstract_imported
+        ),
+        ArgCond = direct_arg_asserted
+    ).
+
+:- pred assign_direct_arg_tags(type_ctor::in, list(constructor)::in,
+    int::in, int::out, int::in, list(constructor)::out,
+    cons_tag_values::in, cons_tag_values::out) is det.
+
+assign_direct_arg_tags(_, [], !Val, _, [], !CtorTags).
+assign_direct_arg_tags(TypeCtor, [Ctor | Ctors], !Val, MaxTag, LeftOverCtors,
+        !CtorTags) :-
+    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
+    ConsId = cons(Name, list.length(Args), TypeCtor),
+    (
+        % If we are about to run out of unshared tags, stop, and return
+        % the leftovers.
+        !.Val = MaxTag,
+        Ctors = [_ | _]
+    ->
+        LeftOverCtors = [Ctor | Ctors]
+    ;
+        Tag = direct_arg_tag(!.Val),
+        % We call set instead of det_insert because we don't want types
+        % that erroneously contain more than one copy of a cons_id to crash
+        % the compiler.
+        map.set(ConsId, Tag, !CtorTags),
+        !:Val = !.Val + 1,
+        assign_direct_arg_tags(TypeCtor, Ctors, !Val, MaxTag, LeftOverCtors,
+            !CtorTags)
+    ).
+
+:- pred check_incorrect_direct_arg_assertions(list(sym_name_and_arity)::in,
+    list(constructor)::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+check_incorrect_direct_arg_assertions(_AssertedDirectArgCtors, [], !Specs).
+check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors],
+        !Specs) :-
+    (
+        Ctor = ctor(_, _, SymName, Args, Context),
+        list.length(Args, Arity),
+        list.contains(AssertedDirectArgCtors, SymName / Arity)
+    ->
+        Pieces = [words("Error:"), sym_name_and_arity(SymName / Arity),
+            words("cannot be represented as a direct pointer to its"),
+            words("sole argument."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_type_check, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ;
+        true
+    ),
+    check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, Ctors,
+        !Specs).
+
+:- func constructor_to_sym_name_and_arity(constructor) = sym_name_and_arity.
+
+constructor_to_sym_name_and_arity(ctor(_, _, Name, Args, _)) =
+    Name / list.length(Args).
+
+%-----------------------------------------------------------------------------%
+%
+% Auxiliary functions and predicates.
+%
+
 :- func max_num_tags(int) = int.
 
 max_num_tags(NumTagBits) = MaxTags :-
     int.pow(2, NumTagBits, MaxTags).
-
-%-----------------------------------------------------------------------------%
 
 :- pred ctors_are_all_constants(list(constructor)::in) is semidet.
 
@@ -391,8 +771,6 @@ ctors_are_all_constants([Ctor | Rest]) :-
     Ctor = ctor(_ExistQVars, _Constraints, _Name, Args, _Ctxt),
     Args = [],
     ctors_are_all_constants(Rest).
-
-%-----------------------------------------------------------------------------%
 
 :- pred separate_out_constants(list(constructor)::in,
     list(constructor)::out, list(constructor)::out) is det.
@@ -412,4 +790,5 @@ separate_out_constants([Ctor | Ctors], Constants, Functors) :-
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module hlds.make_tags.
 %-----------------------------------------------------------------------------%

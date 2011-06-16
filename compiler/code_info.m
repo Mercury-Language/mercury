@@ -1045,7 +1045,7 @@ lookup_cheaper_tag_test(CI, Type) = CheaperTagTest :-
     (
         search_type_defn(CI, Type, TypeDefn),
         get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = hlds_du_type(_, _, CheaperTagTestPrime, _, _, _, _, _)
+        TypeBody = hlds_du_type(_, _, CheaperTagTestPrime, _, _, _, _, _, _)
     ->
         CheaperTagTest = CheaperTagTestPrime
     ;
@@ -3833,7 +3833,7 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
     (
         Lvals = [],
         var_locn_assign_expr_to_var(Var, Rval, Code,
-        VarLocnInfo0, VarLocnInfo)
+            VarLocnInfo0, VarLocnInfo)
     ;
         Lvals = [_ | _],
         unexpected($module, $pred, "non-var lvals")

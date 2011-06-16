@@ -1503,7 +1503,7 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
     lookup_type_ctor_defn(TypeTable, TermTypeCtor, TermTypeDefn),
     hlds_data.get_type_defn_body(TermTypeDefn, TermTypeBody),
     (
-        TermTypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _),
+        TermTypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
         get_constructor_containing_field_2(TermTypeCtor, Ctors, FieldName,
             ConsId, FieldNumber)
     ;

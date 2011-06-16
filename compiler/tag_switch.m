@@ -667,7 +667,9 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
         StagReg, StagLoc, Rval, MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
     map.to_assoc_list(StagGoalMap, StagGoalList),
     (
-        StagLoc = sectag_none,
+        ( StagLoc = sectag_none
+        ; StagLoc = sectag_none_direct_arg
+        ),
         % There is no secondary tag, so there is no switch on it.
         (
             StagGoalList = [],

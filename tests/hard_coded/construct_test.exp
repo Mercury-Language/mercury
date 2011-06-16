@@ -184,6 +184,11 @@ TESTING OTHER TYPES
 0 - dummy/0 [] ordinal: 0 lex: 0
 
 
+2 functors in this type
+1 - unboxed_arg/1 [_] ordinal: 1 lex: 1
+0 - no/0 [] ordinal: 0 lex: 0
+
+
 1 functors in this type
 0 - xyzzy/1 [f21name] ordinal: 0 lex: 0
 
@@ -218,6 +223,8 @@ About to construct zop/2
 Constructed: zop(2.1, 2.1)
 About to construct qwerty/1
 Constructed: qwerty(1)
+About to construct unboxed_arg/1
+Constructed: unboxed_arg(unboxed_struct(12, 34))
 About to construct poly_one/1
 Constructed: poly_one(1)
 About to construct poly_two/1

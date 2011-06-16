@@ -5,7 +5,7 @@ ee_invalid.m:037:   error: undefined type `undefined_type'/0.
 ee_invalid.m:041: In `pragma foreign_export_enum' declaration for
 ee_invalid.m:041:   `ee_invalid.foo'/1:
 ee_invalid.m:041:   error: `ee_invalid.foo'/1 is not an enumeration type. It
-ee_invalid.m:041:   has one more non-zero arity constructors.
+ee_invalid.m:041:   has one or more non-zero arity constructors.
 ee_invalid.m:045: In `pragma foreign_export_enum' declaration for
 ee_invalid.m:045:   `ee_invalid.bar'/0:
 ee_invalid.m:045:   error: `ee_invalid.bar'/0 is not an enumeration type.

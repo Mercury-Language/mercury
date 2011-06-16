@@ -421,7 +421,7 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        TypeBody = hlds_du_type(_, _, _, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _),
         (
             TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
             have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
@@ -489,7 +489,7 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type,
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        TypeBody = hlds_du_type(_, _, _, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _),
         (
             TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
             have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
@@ -641,7 +641,7 @@ check_dummy_type_2(ModuleInfo, Type, CoveredTypes) = IsDummy :-
             ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)->
                 get_type_defn_body(TypeDefn, TypeBody),
                 (
-                    TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _),
+                    TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _, _),
                     (
                         DuTypeKind = du_type_kind_direct_dummy,
                         IsDummy = is_dummy_type
@@ -685,7 +685,7 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
     ; Name = "typeclass_info"
     ; Name = "base_typeclass_info"
     ),
-    \+ ( Body = hlds_du_type(_, _, _, _, _, _, _, yes(_))
+    \+ ( Body = hlds_du_type(_, _, _, _, _, _, _, _, yes(_))
        ; Body = hlds_foreign_type(_)
        ; Body = hlds_solver_type(_, _)
        ).
@@ -780,7 +780,7 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _),
+            TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _, _),
             (
                 DuTypeKind = du_type_kind_mercury_enum,
                 TypeCategory = ctor_cat_enum(cat_enum_mercury)
@@ -818,7 +818,7 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
     % already done that.
 
     (
-        TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _),
+        TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _, _),
         (
             DuTypeKind = du_type_kind_mercury_enum,
             TypeCategory = ctor_cat_enum(cat_enum_mercury)

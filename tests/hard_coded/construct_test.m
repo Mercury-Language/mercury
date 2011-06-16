@@ -31,6 +31,10 @@
 
 :- type dummy		--->	dummy.
 
+:- type unboxed_arg	--->	no ; unboxed_arg(unboxed_struct).
+
+:- type unboxed_struct	--->	unboxed_struct(int, int).
+
 :- type exist_type	--->	some [T] xyzzy(f21name :: T).
 
 %----------------------------------------------------------------------------%
@@ -83,6 +87,11 @@ test_construct -->
 
 		% No-tag type:
 	test_construct_2(type_desc__type_of(qwerty(7)), "qwerty", 1, [One]),
+
+		% Functor with single unboxed argument.
+	{ type_to_univ(unboxed_struct(12, 34), UnboxedStruct) },
+	test_construct_2(type_desc__type_of(_ : unboxed_arg), "unboxed_arg",
+		1, [UnboxedStruct]),
 
 	{ type_to_univ("goodbye", Bye) },
 
@@ -315,6 +324,9 @@ test_other -->
 
 		% a dummy type
 	test_all(dummy), newline,
+
+		% a functor with a single unboxed argument
+	test_all(unboxed_arg(unboxed_struct(12, 34))), newline,
 
 		% an existential type:
 	{ ExistVal = 'new xyzzy'(8) },

@@ -732,6 +732,19 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                     MR_define_size_slot(ptag, new_data, size);
                     break;
 
+                case MR_SECTAG_NONE_DIRECT_ARG:
+                    arity = functor_desc->MR_du_functor_orig_arity;
+                    if (arity != 1) {
+                        MR_fatal_error(
+                            ""construct(): direct_arg_tag arity != 1"");
+                    }
+
+                    arg_data = MR_field(MR_UNIV_TAG, MR_list_head(arg_list),
+                        MR_UNIV_OFFSET_FOR_DATA);
+                    new_data = (MR_Word) MR_mkword(MR_mktag(ptag), arg_data);
+                    arg_list = MR_list_tail(arg_list);
+                    break;
+
                 case MR_SECTAG_VARIABLE:
                     new_data = (MR_Word) 0;     /* avoid a warning */
                     MR_fatal_error(""construct(): cannot construct variable"");

@@ -937,10 +937,10 @@ insert_type_defn(New, [Head | Tail], Result) :-
 
 make_impl_type_abstract(TypeDefnMap, !TypeDefnPairs) :-
     (
-        !.TypeDefnPairs =
-            [parse_tree_du_type(Ctors, MaybeEqCmp) - ItemTypeDefn0],
+        !.TypeDefnPairs = [TypeDefn0 - ItemTypeDefn0],
+        TypeDefn0 = parse_tree_du_type(Ctors, MaybeEqCmp, MaybeDirectArgCtors),
         not constructor_list_represents_dummy_argument_type(TypeDefnMap,
-            Ctors, MaybeEqCmp)
+            Ctors, MaybeEqCmp, MaybeDirectArgCtors)
     ->
         Defn = parse_tree_abstract_type(non_solver_type),
         ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := Defn,
@@ -960,18 +960,19 @@ make_impl_type_abstract(TypeDefnMap, !TypeDefnPairs) :-
     % NOTE: changes here may require changes to `type_util.check_dummy_type'.
     %
 :- pred constructor_list_represents_dummy_argument_type(type_defn_map::in,
-    list(constructor)::in, maybe(unify_compare)::in) is semidet.
+    list(constructor)::in, maybe(unify_compare)::in,
+    maybe(list(sym_name_and_arity))::in) is semidet.
 
 constructor_list_represents_dummy_argument_type(TypeDefnMap,
-        Ctors, MaybeEqCmp) :-
+        Ctors, MaybeEqCmp, MaybeDirectArgCtors) :-
     constructor_list_represents_dummy_argument_type_2(TypeDefnMap,
-        Ctors, MaybeEqCmp, []).
+        Ctors, MaybeEqCmp, MaybeDirectArgCtors, []).
 
 :- pred constructor_list_represents_dummy_argument_type_2(type_defn_map::in,
-    list(constructor)::in, maybe(unify_compare)::in, list(mer_type)::in)
-    is semidet.
+    list(constructor)::in, maybe(unify_compare)::in,
+    maybe(list(sym_name_and_arity))::in, list(mer_type)::in) is semidet.
 
-constructor_list_represents_dummy_argument_type_2(TypeDefnMap, [Ctor], no,
+constructor_list_represents_dummy_argument_type_2(TypeDefnMap, [Ctor], no, no,
         CoveredTypes) :-
     Ctor = ctor(ExistQTVars, Constraints, _Name, Args, _Context),
     ExistQTVars = [],
@@ -1006,10 +1007,11 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
                 % dummy type?
                 multi_map.search(TypeDefnMap, TypeCtor, TypeDefns),
                 list.member(TypeDefn - _, TypeDefns),
-                TypeDefn = parse_tree_du_type(TypeCtors, MaybeEqCmp),
+                TypeDefn = parse_tree_du_type(TypeCtors, MaybeEqCmp,
+                    MaybeDirectArgCtors),
                 CoveredTypes = [Type | CoveredTypes0],
                 constructor_list_represents_dummy_argument_type_2(TypeDefnMap,
-                    TypeCtors, MaybeEqCmp, CoveredTypes)
+                    TypeCtors, MaybeEqCmp, MaybeDirectArgCtors, CoveredTypes)
             ->
                 IsDummyType = yes
             ;
@@ -1146,9 +1148,9 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
     ->
         set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
     ;
-        TypeDefn = parse_tree_du_type(Ctors, MaybeEqCmp),
+        TypeDefn = parse_tree_du_type(Ctors, MaybeEqCmp, MaybeDirectArgCtors),
         constructor_list_represents_dummy_argument_type(BothTypesMap,
-            Ctors, MaybeEqCmp)
+            Ctors, MaybeEqCmp, MaybeDirectArgCtors)
     ->
         set.insert(TypeCtor, !DummyTypeCtors)
     ;
@@ -1184,7 +1186,7 @@ accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _,
         set.union(NewRhsTypeCtors, !AbsEqvRhsTypeCtors),
         set.fold3(accumulate_abs_impl_exported_type_rhs(ImplTypeMap),
             NewRhsTypeCtors, !AbsEqvRhsTypeCtors, set.init, _, !Modules)
-    ; TypeDefn = parse_tree_du_type(Ctors, _) ->
+    ; TypeDefn = parse_tree_du_type(Ctors, _, _) ->
         % There must exist a foreign type alternative to this type.  As the du
         % type will be exported, we require the types of all the fields.
         ctors_to_type_ctor_set(Ctors, set.init, RhsTypeCtors),
@@ -1587,8 +1589,9 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         Allowed = no
     ;
         % Note that the parser will strip out `source_file' pragmas anyway,
-        % and that `reserve_tag' must be in the interface iff the corresponding
-        % type definition is in the interface. This is checked in make_hlds.
+        % and that `reserve_tag' and `direct_arg' must be in the interface iff
+        % the corresponding type definition is in the interface. This is
+        % checked in make_hlds.
         ( Pragma = pragma_foreign_enum(_, _, _, _)
         ; Pragma = pragma_foreign_import_module(_, _)
         ; Pragma = pragma_obsolete(_, _)
@@ -3924,7 +3927,7 @@ make_abstract_defn(Item, ShortInterfaceKind, AbstractItem) :-
         Item = item_type_defn(ItemTypeDefn),
         TypeDefn = ItemTypeDefn ^ td_ctor_defn,
         (
-            TypeDefn = parse_tree_du_type(_, _),
+            TypeDefn = parse_tree_du_type(_, _, _),
             IsSolverType = non_solver_type,
             % For the `.int2' files, we need the full definitions of
             % discriminated union types.  Even if the functors for a type
@@ -3982,9 +3985,11 @@ make_abstract_unify_compare(Item, int2, AbstractItem) :-
     Item = item_type_defn(ItemTypeDefn),
     TypeDefn = ItemTypeDefn ^ td_ctor_defn,
     (
-        TypeDefn = parse_tree_du_type(Constructors, yes(_UserEqComp)),
-        AbstractTypeDefn = parse_tree_du_type(Constructors, yes(
-            abstract_noncanonical_type(non_solver_type)))
+        TypeDefn = parse_tree_du_type(Constructors, yes(_UserEqComp),
+            MaybeDirectArgCtors),
+        MaybeUserEqComp = yes(abstract_noncanonical_type(non_solver_type)),
+        AbstractTypeDefn = parse_tree_du_type(Constructors, MaybeUserEqComp,
+            MaybeDirectArgCtors)
     ;
         TypeDefn = parse_tree_foreign_type(ForeignType,
             yes(_UserEqComp), Assertions),

@@ -482,6 +482,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 int                     ptag;
                 MR_Word                 sectag;
                 MR_Word                 *arg_vector;
+                MR_Word                 direct_arg;
 
                 data = *data_word_ptr;
                 ptag = MR_tag(data);
@@ -491,6 +492,11 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     case MR_SECTAG_NONE:
                         functor_desc = ptag_layout->MR_sectag_alternatives[0];
                         arg_vector = (MR_Word *) MR_body(data, ptag);
+                        break;
+                    case MR_SECTAG_NONE_DIRECT_ARG:
+                        functor_desc = ptag_layout->MR_sectag_alternatives[0];
+                        direct_arg = MR_body(data, ptag);
+                        arg_vector = &direct_arg;
                         break;
                     case MR_SECTAG_LOCAL:
                         sectag = MR_unmkbody(data);

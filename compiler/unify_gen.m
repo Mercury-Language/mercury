@@ -392,7 +392,9 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ConsTag = single_functor_tag,
         TestRval = const(llconst_true)
     ;
-        ConsTag = unshared_tag(UnsharedTag),
+        ( ConsTag = unshared_tag(UnsharedTag)
+        ; ConsTag = direct_arg_tag(UnsharedTag)
+        ),
         VarPtag = unop(tag, Rval),
         ConstPtag = unop(mktag, const(llconst_int(UnsharedTag))),
         TestRval = binop(eq, VarPtag, ConstPtag)
@@ -514,6 +516,24 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         Context = goal_info_get_context(GoalInfo),
         construct_cell(Var, Ptag, MaybeRvals, HowToConstruct,
             MaybeSize, FieldAddrs, Context, MayUseAtomic, Code, !CI)
+    ;
+        ConsTag = direct_arg_tag(Ptag),
+        (
+            Args = [Arg],
+            Modes = [Mode]
+        ->
+            (
+                TakeAddr = [],
+                Type = variable_type(!.CI, Arg),
+                generate_direct_arg_construct(Var, Arg, Ptag, Mode, Type, Code,
+                    !CI)
+            ;
+                TakeAddr = [_ | _],
+                unexpected($module, $pred, "direct_arg_tag: take_addr")
+            )
+        ;
+            unexpected($module, $pred, "direct_arg_tag: arity != 1")
+        )
     ;
         ConsTag = shared_remote_tag(Ptag, Sectag),
         var_types(!.CI, Args, ArgTypes),
@@ -1126,6 +1146,18 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
         var_types(!.CI, Args, ArgTypes),
         generate_unify_args(Fields, ArgVars, Modes, ArgTypes, Code, !CI)
     ;
+        Tag = direct_arg_tag(Ptag),
+        (
+            Args = [Arg],
+            Modes = [Mode]
+        ->
+            Type = variable_type(!.CI, Arg),
+            generate_direct_arg_deconstruct(Var, Arg, Ptag, Mode, Type, Code,
+                !CI)
+        ;
+            unexpected($module, $pred, "direct_arg_tag: arity != 1")
+        )
+    ;
         Tag = shared_remote_tag(Ptag, _Sectag1),
         Rval = var(Var),
         make_fields_and_argvars(Args, Rval, 1, Ptag, Fields, ArgVars),
@@ -1232,8 +1264,6 @@ generate_sub_unify(L, R, Mode, Type, Code, !CI) :-
         unexpected($module, $pred, "some strange unify")
     ).
 
-%---------------------------------------------------------------------------%
-
 :- pred generate_sub_assign(uni_val::in, uni_val::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
@@ -1268,6 +1298,103 @@ generate_sub_assign(Left, Right, Code, !CI) :-
         ;
             Code = empty
         )
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % Generate a direct arg unification between
+    % - the left-hand-side (the whole term), and
+    % - the right-hand-side (the one argument).
+    %
+:- pred generate_direct_arg_construct(prog_var::in, prog_var::in, tag_bits::in,
+    uni_mode::in, mer_type::in, llds_code::out,
+    code_info::in, code_info::out) is det.
+
+generate_direct_arg_construct(Var, Arg, Ptag, Mode, Type, Code, !CI) :-
+    Mode = ((LI - RI) -> (LF - RF)),
+    get_module_info(!.CI, ModuleInfo),
+    mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode),
+    mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode),
+    (
+        % Input - input == test unification
+        LeftMode = top_in,
+        RightMode = top_in
+    ->
+        % This shouldn't happen, since mode analysis should avoid creating
+        % any tests in the arguments of a construction or deconstruction
+        % unification.
+        unexpected($module, $pred, "test in arg of [de]construction")
+    ;
+        % Input - Output == assignment ->
+        LeftMode = top_in,
+        RightMode = top_out
+    ->
+        unexpected($module, $pred, "left-to-right data flow in construction")
+    ;
+        % Output - Input == assignment <-
+        LeftMode = top_out,
+        RightMode = top_in
+    ->
+        assign_expr_to_var(Var, mkword(Ptag, var(Arg)), Code, !CI)
+    ;
+        LeftMode = top_unused,
+        RightMode = top_unused
+    ->
+        Code = empty
+        % free-free - ignore
+        % XXX I think this will have to change if we start to support aliasing.
+    ;
+        unexpected($module, $pred, "some strange unify")
+    ).
+
+    % Generate a direct arg unification between
+    % - the left-hand-side (the whole term), and
+    % - the right-hand-side (the one argument).
+    %
+:- pred generate_direct_arg_deconstruct(prog_var::in, prog_var::in,
+    tag_bits::in, uni_mode::in, mer_type::in, llds_code::out,
+    code_info::in, code_info::out) is det.
+
+generate_direct_arg_deconstruct(Var, Arg, Ptag, Mode, Type, Code, !CI) :-
+    Mode = ((LI - RI) -> (LF - RF)),
+    get_module_info(!.CI, ModuleInfo),
+    mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode),
+    mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode),
+    (
+        % Input - input == test unification
+        LeftMode = top_in,
+        RightMode = top_in
+    ->
+        % This shouldn't happen, since mode analysis should avoid creating
+        % any tests in the arguments of a construction or deconstruction
+        % unification.
+        unexpected($module, $pred, "test in arg of [de]construction")
+    ;
+        % Input - Output == assignment ->
+        LeftMode = top_in,
+        RightMode = top_out
+    ->
+        ( variable_is_forward_live(!.CI, Arg) ->
+            assign_expr_to_var(Arg,
+                binop(body, var(Var), const(llconst_int(Ptag))), Code, !CI)
+        ;
+            Code = empty
+        )
+    ;
+        % Output - Input == assignment <-
+        LeftMode = top_out,
+        RightMode = top_in
+    ->
+        assign_expr_to_var(Var, mkword(Ptag, var(Arg)), Code, !CI)
+    ;
+        LeftMode = top_unused,
+        RightMode = top_unused
+    ->
+        Code = empty
+        % free-free - ignore
+        % XXX I think this will have to change if we start to support aliasing.
+    ;
+        unexpected($module, $pred, "some strange unify")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1426,6 +1553,20 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
         Rval = mkword(Ptag, CellPtrConst),
         ActiveGroundTerm = Rval - lt_data_ptr,
         map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+    ;
+        ConsTag = direct_arg_tag(Ptag),
+        (
+            Args = [Arg],
+            map.det_remove(Arg, ArgRval - _RvalType, !ActiveMap),
+            Rval = mkword(Ptag, ArgRval),
+            ActiveGroundTerm = Rval - lt_data_ptr,
+            map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+        ;
+            ( Args = []
+            ; Args = [_, _ | _]
+            ),
+            unexpected($module, $pred, "direct_arg_tag: arity != 1")
+        )
     ;
         ConsTag = shared_remote_tag(Ptag, Stag),
         generate_ground_term_args(Args, ArgRvalsTypes, !ActiveMap),

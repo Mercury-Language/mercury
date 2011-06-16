@@ -1035,7 +1035,8 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         (
             TypeBody0 = hlds_du_type(Ctors, Tags, CheaperTagTest, Enum,
-                MaybeUserEqComp0, ReservedTag, ReservedAddr, MaybeForeign0),
+                MaybeUserEqComp0, MaybeDirectArgCtors, ReservedTag, ReservedAddr,
+                MaybeForeign0),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
 
@@ -1066,7 +1067,8 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
                 MaybeForeign = MaybeForeign0
             ),
             TypeBody = hlds_du_type(Ctors, Tags, CheaperTagTest, Enum,
-                MaybeUserEqComp, ReservedTag, ReservedAddr, MaybeForeign),
+                MaybeUserEqComp, MaybeDirectArgCtors, ReservedTag, ReservedAddr,
+                MaybeForeign),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;
             TypeBody0 = hlds_foreign_type(ForeignTypeBody0),
@@ -1362,8 +1364,9 @@ write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     TypeCtor = type_ctor(Name, Arity),
     (
-        Body = hlds_du_type(Ctors, _, _, _, MaybeUserEqComp, _, _, _),
-        TypeBody = parse_tree_du_type(Ctors, MaybeUserEqComp)
+        Body = hlds_du_type(Ctors, _, _, _, MaybeUserEqComp, MaybeDirectArgCtors,
+            _, _, _),
+        TypeBody = parse_tree_du_type(Ctors, MaybeUserEqComp, MaybeDirectArgCtors)
     ;
         Body = hlds_eqv_type(EqvType),
         TypeBody = parse_tree_eqv_type(EqvType)
@@ -1470,13 +1473,13 @@ write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         true
     ),
     (
-        Body = hlds_du_type(_, ConsTagVals, _, DuTypeKind, _, _, _, _),
+        Body = hlds_du_type(_, ConsTagVals, _, DuTypeKind, _, _, _, _, _),
         DuTypeKind = du_type_kind_foreign_enum(Lang)
     ->
         map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [],
             ForeignEnumVals),
-        Pragma = pragma_foreign_enum(Lang, Name, Arity, ForeignEnumVals),
-        ForeignItemPragma = item_pragma_info(user, Pragma, Context, -1),
+        ForeignPragma = pragma_foreign_enum(Lang, Name, Arity, ForeignEnumVals),
+        ForeignItemPragma = item_pragma_info(user, ForeignPragma, Context, -1),
         ForeignItem = item_pragma(ForeignItemPragma),
         mercury_output_item(MercInfo, ForeignItem, !IO)
     ;

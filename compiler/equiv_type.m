@@ -779,11 +779,11 @@ replace_in_type_defn(Location, EqvMap, EqvInstMap, TypeCtor, TypeDefn0, TypeDefn
             !UsedModules),
         TypeDefn = parse_tree_eqv_type(TypeBody)
     ;
-        TypeDefn0 = parse_tree_du_type(TypeBody0, EqPred),
+        TypeDefn0 = parse_tree_du_type(TypeBody0, EqPred, DirectArgFunctors),
         replace_in_ctors_location(Location, EqvMap, TypeBody0, TypeBody,
             !VarSet, !EquivTypeInfo, !UsedModules),
         ContainsCirc = no,
-        TypeDefn = parse_tree_du_type(TypeBody, EqPred)
+        TypeDefn = parse_tree_du_type(TypeBody, EqPred, DirectArgFunctors)
     ;
         TypeDefn0 = parse_tree_solver_type(SolverDetails0, MaybeUserEqComp),
         SolverDetails0 = solver_type_details(RepresentationType0, InitPred,

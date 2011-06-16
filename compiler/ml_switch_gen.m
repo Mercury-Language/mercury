@@ -582,6 +582,7 @@ ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
         ; Tag = table_io_decl_tag(_, _)
         ; Tag = single_functor_tag
         ; Tag = unshared_tag(_)
+        ; Tag = direct_arg_tag(_)
         ; Tag = shared_remote_tag(_, _)
         ; Tag = shared_local_tag(_, _)
         ; Tag = no_tag

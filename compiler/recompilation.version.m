@@ -293,7 +293,7 @@ gather_items_2(Item, !Section, !Info) :-
             % procedure.
             BodyItem = Item
         ;
-            Body = parse_tree_du_type(_, _),
+            Body = parse_tree_du_type(_, _, _),
             NameItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
                 parse_tree_abstract_type(non_solver_type), Cond, Context,
                 SeqNum),

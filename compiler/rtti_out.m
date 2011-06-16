@@ -918,6 +918,10 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         Locn = "MR_SECTAG_NONE",
         Stag = -1
     ;
+        SectagAndLocn = sectag_locn_none_direct_arg,
+        Locn = "MR_SECTAG_NONE_DIRECT_ARG",
+        Stag = -1
+    ;
         SectagAndLocn = sectag_locn_local(Stag),
         Locn = "MR_SECTAG_LOCAL"
     ;

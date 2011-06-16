@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2005, 2007 The University of Melbourne.
+** Copyright (C) 1997-2005, 2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -183,6 +183,7 @@ try_again:
 
             /* case MR_SECTAG_REMOTE: */
             /* case MR_SECTAG_NONE: */
+            /* case MR_SECTAG_NONE_DIRECT_ARG: */
                 /*
                 ** The code we want to execute for the MR_SECTAG_REMOTE
                 ** and MR_SECTAG_NONE cases is very similar.  However,
@@ -321,6 +322,42 @@ try_again:
             case MR_SECTAG_NONE:
                 /* see comments above */
                 MR_handle_sectag_remote_or_none(MR_FALSE);
+                return new_data;
+
+            case MR_SECTAG_NONE_DIRECT_ARG:
+                /*
+                ** This code is a cut-down and specialized version
+                ** of the code for MR_SECTAG_NONE.
+                */
+                data_value = (MR_Word *) MR_body(data, ptag);
+                RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
+                {
+                    const MR_DuFunctorDesc  *functor_desc;
+                    const MR_DuExistInfo    *exist_info;
+                    int                     arity;
+
+                    functor_desc = ptag_layout->MR_sectag_alternatives[0];
+                    arity = functor_desc->MR_du_functor_orig_arity;
+                    exist_info = functor_desc->MR_du_functor_exist_info;
+                    if (arity != 1) {
+                        MR_fatal_error("arity != 1 in direct arg tag functor");
+                    }
+                    if (exist_info != NULL) {
+                        MR_fatal_error("exist_info in direct arg tag functor");
+                    }
+
+                    new_data = copy((MR_Word) data_value,
+                        MR_pseudo_type_info_is_ground(
+                            functor_desc->MR_du_functor_arg_types[0]),
+                        lower_limit, upper_limit);
+
+                    new_data = (MR_Word) MR_mkword(ptag, new_data);
+                    /*
+                    ** We cannot (and shouldn't need to) leave a forwarding
+                    ** pointer for the whole term that is separate from the
+                    ** forwarding pointer for the argument.
+                    */
+                }
                 return new_data;
 
             case MR_SECTAG_VARIABLE:

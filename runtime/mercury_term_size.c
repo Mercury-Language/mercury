@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2003-2005, 2007, 2009 The University of Melbourne.
+** Copyright (C) 2003-2005, 2007, 2009, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -85,6 +85,13 @@ try_again:
                     }
 #endif
                     return MR_field(MR_mktag(ptag), term, -1);
+
+                case MR_SECTAG_NONE_DIRECT_ARG:
+                     /*
+                     ** The compiler should not generate direct arg tags
+                     ** in term size recording grades.
+                     */
+                     MR_fatal_error("MR_term_size: DIRECT_ARG");
 
                 case MR_SECTAG_LOCAL:
 #ifdef MR_DEBUG_TERM_SIZES

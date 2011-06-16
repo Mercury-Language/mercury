@@ -7,6 +7,7 @@ THIS_DIR = debugger
 RETRY_PROGS = \
 	all_solutions			\
 	browser_test			\
+	chooser_tag_test		\
 	io_tab_goto			\
 	lambda_expr			\
 	mdb_command_test		\
@@ -284,7 +285,11 @@ cmd_quote.out: cmd_quote cmd_quote.inp
 		sed 's/io.m:[0-9]*/io.m:NNNN/g' > cmd_quote.out 2>&1
 
 cond.out: cond cond.inp
-	$(MDB_STD) ./cond < cond.inp 2>&1 > cond.out 2>&1
+	$(MDB_STD) ./cond < cond.inp > cond.out 2>&1
+
+chooser_tag_test.out: chooser_tag_test chooser_tag_test.inp
+	$(MDB_STD) ./chooser_tag_test < chooser_tag_test.inp \
+		> chooser_tag_test.out 2>&1
 
 # Set up readline to make it easier to use completion non-interactively.
 completion.out: completion completion.inp

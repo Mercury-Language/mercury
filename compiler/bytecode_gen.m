@@ -777,6 +777,8 @@ map_cons_tag(no_tag, byte_no_tag).
     % this optimization is not important for the bytecode
 map_cons_tag(single_functor_tag, byte_unshared_tag(0)).
 map_cons_tag(unshared_tag(Primary), byte_unshared_tag(Primary)).
+map_cons_tag(direct_arg_tag(_), _) :-
+    sorry($module, $pred, "bytecode with direct_arg_tag").
 map_cons_tag(shared_remote_tag(Primary, Secondary),
     byte_shared_remote_tag(Primary, Secondary)).
 map_cons_tag(shared_local_tag(Primary, Secondary),

@@ -829,8 +829,8 @@ output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO) :-
         unexpected($module, $pred, "invalid type for foreign_export_enum")
     ;
         TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
-            DuTypeKind, _MaybeUserEq, _ReservedTag, _ReservedAddr,
-            _IsForeignType),
+            DuTypeKind, _MaybeUserEq, _MaybeDirectArgCtors,
+            _ReservedTag, _ReservedAddr, _IsForeignType),
         (
             ( DuTypeKind = du_type_kind_general
             ; DuTypeKind = du_type_kind_notag(_, _, _)
@@ -904,6 +904,7 @@ foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
         ; TagVal = table_io_decl_tag(_, _)
         ; TagVal = single_functor_tag
         ; TagVal = unshared_tag(_)
+        ; TagVal = direct_arg_tag(_)
         ; TagVal = shared_remote_tag(_, _)
         ; TagVal = shared_local_tag(_, _)
         ; TagVal = no_tag

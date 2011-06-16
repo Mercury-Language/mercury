@@ -81,7 +81,8 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeItem) :-
             % Because this is a non-solver type, if the unification with
             % MaybeWherePart succeeds then _SolverTypeDetails is guaranteed
             % to be `no'.
-            MaybeWherePart = ok2(_SolverTypeDetails, MaybeUserEqComp),
+            MaybeWherePart = ok3(_SolverTypeDetails, MaybeUserEqComp,
+                MaybeDirectArgIs),
             (
                 MaybeUserEqComp = yes(_),
                 MaybeItem0 = ok1(Item0)
@@ -95,7 +96,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeItem) :-
                         parse_tree_foreign_type(Type, MaybeUserEqComp,
                             Assertions),
                     Item = item_type_defn(ItemTypeDefn),
-                    MaybeItem = ok1(Item)
+                    MaybeItem1 = ok1(Item)
                 ;
                     Pieces = [words("Error: unexpected"),
                         quote("where equality/comparison is"),
@@ -103,13 +104,27 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeItem) :-
                     Spec = error_spec(severity_error, phase_term_to_parse_tree,
                         [simple_msg(get_term_context(SinglePragmaTerm0),
                             [always(Pieces)])]),
-                    MaybeItem = error1([Spec])
+                    MaybeItem1 = error1([Spec])
                 )
             ;
-                MaybeItem = MaybeItem0
+                MaybeItem1 = MaybeItem0
+            ),
+            (
+                MaybeDirectArgIs = yes(_),
+                MaybeItem1 = ok1(_)
+            ->
+                PiecesB = [words("Error:"), quote("direct_arg"),
+                    words("attribute is not applicable to foreign types."),
+                    nl],
+                SpecB = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(SinglePragmaTerm0),
+                        [always(PiecesB)])]),
+                MaybeItem = error1([SpecB])
+            ;
+                MaybeItem = MaybeItem1
             )
         ;
-            MaybeWherePart = error2(Specs),
+            MaybeWherePart = error3(Specs),
             MaybeItem = error1(Specs)
         )
     ;

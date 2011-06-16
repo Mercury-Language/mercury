@@ -181,7 +181,7 @@ ml_gen_type_defn_2(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
         % The same issue arises for some of the cases below.
     ;
         TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest, DuTypeKind,
-            MaybeUserEqComp, _ReservedTag, _, _),
+            MaybeUserEqComp, _MaybeDirectArgCtors, _ReservedTag, _, _),
         % XXX We probably shouldn't ignore _ReservedTag.
         ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
         (
@@ -325,6 +325,7 @@ ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
         ; TagVal = table_io_decl_tag(_, _)
         ; TagVal = single_functor_tag
         ; TagVal = unshared_tag(_)
+        ; TagVal = direct_arg_tag(_)
         ; TagVal = shared_remote_tag(_, _)
         ; TagVal = shared_local_tag(_, _)
         ; TagVal = no_tag
@@ -868,6 +869,7 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
         ; Tag = unshared_tag(_)
+        ; Tag = direct_arg_tag(_)
         ; Tag = shared_remote_tag(_, _)
         ; Tag = shared_local_tag(_, _)
         ; Tag = no_tag
@@ -1205,8 +1207,8 @@ ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
         unexpected($module, $pred, "invalid type")
     ;
         TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
-            _IsEnumOrDummy, _MaybeUserEq, _ReservedTag, _ReservedAddr,
-            _IsForeignType),
+            _IsEnumOrDummy, _MaybeUserEq, _MaybeDirectArgCtors,
+            _ReservedTag, _ReservedAddr, _IsForeignType),
         ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
         MLDS_Type = mlds_class_type(QualifiedClassName, MLDS_ClassArity,
             mlds_enum),
@@ -1246,6 +1248,7 @@ generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
         ; TagVal = table_io_decl_tag(_, _)
         ; TagVal = single_functor_tag
         ; TagVal = unshared_tag(_)
+        ; TagVal = direct_arg_tag(_)
         ; TagVal = shared_remote_tag(_, _)
         ; TagVal = shared_local_tag(_, _)
         ; TagVal = no_tag

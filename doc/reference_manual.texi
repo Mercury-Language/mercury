@@ -2005,6 +2005,39 @@ Note that excessive overloading of constructors can slow down type checking
 and can make the program confusing for human readers,
 so overloading should not be over-used.
 
+@c XXX The `where direct_arg' attribute is not documented because it requires
+@c     the user has a detailed understanding of the type representation, and
+@c     is very implementation specific. The following is for implementors.
+
+@c Discriminated union type definitions may be followed by a
+@c @samp{direct_arg} attribute of the following form:
+@c
+@c @example
+@c where direct_arg is @var{ctors}
+@c @end example
+@c
+@c @noindent
+@c where @var{ctors} is a list of @var{functor-name} / @var{functor-arity}.
+@c The functor arities must always be one.
+@c
+@c The attribute notifies importing modules that each of the functors
+@c listed is to be represented as a tagged pointer to its argument. The
+@c argument type must be known, when compiling the module that the type is
+@c defined in, to not require the use of the tag bits. The compiler will
+@c emit an error message otherwise.  The compiler will silently ignore
+@c functors which require a secondary tag.
+@c
+@c The optimised type representation is usually only applied if the
+@c argument type is defined in the interface section of the same module.
+@c This attribute allows the programmer to also apply it when the argument
+@c type is known to the defining module, but not necessarily modules which
+@c import the top-level type.
+@c
+@c Ideally, the @samp{direct_arg} attribute would be automatically
+@c generated when making an interface file, so the user would never need to
+@c write it manually.  At this time, the compiler does not have enough
+@c information when making interface files.
+
 @node Equivalence types
 @subsection Equivalence types
 
@@ -10050,7 +10083,6 @@ function then the compiler will quit with an error message.
 @c Note that neither the @samp{reserve_tag} pragma nor the @samp{--reserve-tag}
 @c compiler option will have any useful effect if the @samp{--high-level-data} 
 @c option is used (e.g. for the .NET or Java back-ends).
-
 
 @c XXX TO DO!
 @c @node Compile-time garbage collection

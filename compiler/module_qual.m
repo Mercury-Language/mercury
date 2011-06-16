@@ -999,15 +999,17 @@ update_import_status(md_include_module(_), !Info, yes) :-
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_type_defn(parse_tree_du_type(Ctors0, MaybeUserEqComp0),
-        parse_tree_du_type(Ctors, MaybeUserEqComp),
+qualify_type_defn(
+        parse_tree_du_type(Ctors0, MaybeUserEqComp0, MaybeDirectArgCtors0),
+        parse_tree_du_type(Ctors, MaybeUserEqComp, MaybeDirectArgCtors),
         !Info, !Specs) :-
     qualify_constructors(Ctors0, Ctors, !Info, !Specs),
     % User-defined equality pred names will be converted into predicate calls
     % and then module-qualified after type analysis (during mode analysis).
     % That way they get full type overloading resolution, etc. Thus we don't
     % module-qualify them here.
-    MaybeUserEqComp = MaybeUserEqComp0.
+    MaybeUserEqComp = MaybeUserEqComp0,
+    MaybeDirectArgCtors = MaybeDirectArgCtors0.
 qualify_type_defn(parse_tree_eqv_type(Type0), parse_tree_eqv_type(Type),
         !Info, !Specs) :-
     qualify_type(Type0, Type, !Info, !Specs).

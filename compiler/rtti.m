@@ -381,6 +381,7 @@
     %
 :- type sectag_locn
     --->    sectag_none
+    ;       sectag_none_direct_arg
     ;       sectag_local
     ;       sectag_remote.
 
@@ -389,6 +390,7 @@
     %
 :- type sectag_and_locn
     --->    sectag_locn_none
+    ;       sectag_locn_none_direct_arg
     ;       sectag_locn_local(int)
     ;       sectag_locn_remote(int).
 
@@ -1512,13 +1514,35 @@ type_info_list_to_string(TypeInfoList) =
 pred_or_func_to_string(pf_predicate, "MR_PREDICATE").
 pred_or_func_to_string(pf_function,  "MR_FUNCTION").
 
-sectag_locn_to_string(sectag_none,   "MR_SECTAG_NONE").
-sectag_locn_to_string(sectag_local,  "MR_SECTAG_LOCAL").
-sectag_locn_to_string(sectag_remote, "MR_SECTAG_REMOTE").
+sectag_locn_to_string(SecTag, String) :-
+    (
+        SecTag = sectag_none,
+        String = "MR_SECTAG_NONE"
+    ;
+        SecTag = sectag_none_direct_arg,
+        String = "MR_SECTAG_NONE_DIRECT_ARG"
+    ;
+        SecTag = sectag_local,
+        String = "MR_SECTAG_LOCAL"
+    ;
+        SecTag = sectag_remote,
+        String = "MR_SECTAG_REMOTE"
+    ).
 
-sectag_and_locn_to_locn_string(sectag_locn_none,      "MR_SECTAG_NONE").
-sectag_and_locn_to_locn_string(sectag_locn_local(_),  "MR_SECTAG_LOCAL").
-sectag_and_locn_to_locn_string(sectag_locn_remote(_), "MR_SECTAG_REMOTE").
+sectag_and_locn_to_locn_string(SecTag, String) :-
+    (
+        SecTag = sectag_locn_none,
+        String = "MR_SECTAG_NONE"
+    ;
+        SecTag = sectag_locn_none_direct_arg,
+        String = "MR_SECTAG_NONE_DIRECT_ARG"
+    ;
+        SecTag = sectag_locn_local(_),
+        String = "MR_SECTAG_LOCAL"
+    ;
+        SecTag = sectag_locn_remote(_),
+        String = "MR_SECTAG_REMOTE"
+    ).
 
 type_ctor_rep_to_string(TypeCtorData, RepStr) :-
     TypeCtorDetails = TypeCtorData ^ tcr_rep_details,

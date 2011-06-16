@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2007 The University of Melbourne.
+** Copyright (C) 2002-2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -202,6 +202,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
             switch (ptag_layout->MR_sectag_locn) {
                 case MR_SECTAG_NONE:
+                case MR_SECTAG_NONE_DIRECT_ARG:
                     functor_desc = ptag_layout->MR_sectag_alternatives[0];
                     break;
                 case MR_SECTAG_LOCAL:

@@ -1,0 +1,9 @@
+where_direct_arg.m:012: Error: the `direct_arg' attribute contains a function
+where_direct_arg.m:012:   symbol whose arity is not 1.
+where_direct_arg.m:012: Error: the `direct_arg' attribute lists the function
+where_direct_arg.m:012:   symbol `where_direct_arg.nonexistent'/1 which is not
+where_direct_arg.m:012:   in the type definition.
+where_direct_arg.m:016: Error: only solver types can be defined by a `where'
+where_direct_arg.m:016:   block alone.
+where_direct_arg.m:018: Error: solver type definitions cannot have `direct_arg'
+where_direct_arg.m:018:   attributes.

@@ -371,8 +371,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             Details = tcd_eqv(MaybePseudoTypeInfo)
         ;
             TypeBody = hlds_du_type(Ctors, ConsTagMap, _CheaperTagTest,
-                DuTypeKind, MaybeUserEqComp, ReservedTag, ReservedAddr,
-                _IsForeignType),
+                DuTypeKind, MaybeUserEqComp, _MaybeDirectArgCtors,
+                ReservedTag, ReservedAddr, _IsForeignType),
             (
                 MaybeUserEqComp = yes(_),
                 EqualityAxioms = user_defined
@@ -407,7 +407,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     some [!Flags] (
         !:Flags = set.init,
         (
-            TypeBody = hlds_du_type(_, _, _, _, _, BodyReservedTag, _, _),
+            TypeBody = hlds_du_type(_, _, _, _, _, _, BodyReservedTag, _, _),
             set.insert(kind_of_du_flag, !Flags),
             (
                 BodyReservedTag = uses_reserved_tag,
@@ -487,7 +487,7 @@ impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
     %
 :- func type_ctor_info_rtti_version = int.
 
-type_ctor_info_rtti_version = 13.
+type_ctor_info_rtti_version = 14.
 
     % Construct an rtti_data for a pseudo_type_info, and also construct
     % rtti_data definitions for all of the pseudo_type_infos that it references
@@ -712,6 +712,7 @@ make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
         ; ConsTag = table_io_decl_tag(_, _)
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
+        ; ConsTag = direct_arg_tag(_)
         ; ConsTag = shared_remote_tag(_, _)
         ; ConsTag = shared_local_tag(_, _)
         ; ConsTag = no_tag
@@ -819,7 +820,7 @@ make_maybe_res_functors(TypeCtor, [Functor | Functors], NextOrdinal,
     FunctorName = unqualify_name(SymName),
     ConsId = cons(SymName, list.length(ConstructorArgs), TypeCtor),
     map.lookup(ConsTagMap, ConsId, ConsTag),
-    process_cons_tag(ConsTag, ConsRep),
+    get_maybe_reserved_rep(ConsTag, ConsRep),
     list.map(generate_du_arg_info(TypeArity, ExistTvars),
         ConstructorArgs, ArgInfos),
     (
@@ -847,16 +848,22 @@ make_maybe_res_functors(TypeCtor, [Functor | Functors], NextOrdinal,
     make_maybe_res_functors(TypeCtor, Functors, NextOrdinal + 1, ConsTagMap,
         TypeArity, ModuleInfo, MaybeResFunctors).
 
-:- pred process_cons_tag(cons_tag::in, maybe_reserved_rep::out) is det.
+:- pred get_maybe_reserved_rep(cons_tag::in, maybe_reserved_rep::out) is det.
 
-process_cons_tag(ConsTag, ConsRep) :-
+get_maybe_reserved_rep(ConsTag, ConsRep) :-
     (
         ConsTag = single_functor_tag,
         ConsPtag = 0,
-        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_locn_none))
+        SecTagLocn = sectag_locn_none,
+        ConsRep = du_rep(du_ll_rep(ConsPtag, SecTagLocn))
     ;
         ConsTag = unshared_tag(ConsPtag),
-        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_locn_none))
+        SecTagLocn = sectag_locn_none,
+        ConsRep = du_rep(du_ll_rep(ConsPtag, SecTagLocn))
+    ;
+        ConsTag = direct_arg_tag(ConsPtag),
+        SecTagLocn = sectag_locn_none_direct_arg,
+        ConsRep = du_rep(du_ll_rep(ConsPtag, SecTagLocn))
     ;
         ConsTag = shared_local_tag(ConsPtag, ConsStag),
         ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_locn_local(ConsStag)))
@@ -870,7 +877,7 @@ process_cons_tag(ConsTag, ConsRep) :-
         ConsTag = shared_with_reserved_addresses_tag(_RAs, ThisTag),
         % Here we can just ignore the fact that this cons_tag is
         % shared with reserved addresses.
-        process_cons_tag(ThisTag, ConsRep)
+        get_maybe_reserved_rep(ThisTag, ConsRep)
     ;
         ( ConsTag = no_tag
         ; ConsTag = string_tag(_)
@@ -996,6 +1003,10 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
         (
             SectagAndLocn = sectag_locn_none,
             SectagLocn = sectag_none,
+            Sectag = 0
+        ;
+            SectagAndLocn = sectag_locn_none_direct_arg,
+            SectagLocn = sectag_none_direct_arg,
             Sectag = 0
         ;
             SectagAndLocn = sectag_locn_local(Sectag),

@@ -169,7 +169,9 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
         "secondary tag locations differ"),
     map.to_assoc_list(GoalMap, GoalList),
     (
-        SecTagLocn = sectag_none,
+        ( SecTagLocn = sectag_none
+        ; SecTagLocn = sectag_none_direct_arg
+        ),
         % There is no secondary tag, so there is no switch on it.
         (
             GoalList = [],
@@ -283,7 +285,9 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
         STagRval = ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTag, VarType,
             VarRval)
     ;
-        StagLocn = sectag_none,
+        ( StagLocn = sectag_none
+        ; StagLocn = sectag_none_direct_arg
+        ),
         unexpected($module, $pred, "no stag")
     ),
 

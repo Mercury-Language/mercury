@@ -1365,7 +1365,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
                     is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn,
                         EqvType, N, _, !SeenTypes, !Specs)
                 ;
-                    ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _)
+                    ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _)
                     ; TypeBody = hlds_foreign_type(_)
                     ; TypeBody = hlds_solver_type(_, _)
                     ; TypeBody = hlds_abstract_type(_)
@@ -1601,7 +1601,7 @@ check_pred_type_ambiguities(PredInfo, !ModuleInfo, !Specs) :-
 check_ctor_constraints(TypeCtor - TypeDefn, !ModuleInfo, !Specs) :-
     get_type_defn_body(TypeDefn, Body),
     (
-        Body = hlds_du_type(Ctors, _, _, _, _, _, _, _),
+        Body = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
         list.foldl2(check_ctor_type_ambiguities(TypeCtor, TypeDefn), Ctors,
             !ModuleInfo, !Specs)
     ;

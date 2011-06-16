@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2000-2005, 2007 The University of Melbourne.
+** Copyright (C) 2000-2005, 2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -228,6 +228,7 @@ start_label:
                             sectag = data_value[0];                           \
                             break;                                            \
                         case MR_SECTAG_NONE:                                  \
+                        case MR_SECTAG_NONE_DIRECT_ARG:                       \
                             sectag = 0;                                       \
                             break;                                            \
                         case MR_SECTAG_VARIABLE:                              \
@@ -300,6 +301,7 @@ start_label:
                         break;
 
                     case MR_SECTAG_NONE:
+                    case MR_SECTAG_NONE_DIRECT_ARG:
                         x_sectag = 0;
                         break;
 
@@ -311,12 +313,52 @@ start_label:
                 functor_desc = ptaglayout->MR_sectag_alternatives[x_sectag];
   #endif /* select_compare_code */
 
-                if (functor_desc->MR_du_functor_sectag_locn ==
-                    MR_SECTAG_REMOTE)
-                {
+                switch (functor_desc->MR_du_functor_sectag_locn) {
+
+                case MR_SECTAG_NONE_DIRECT_ARG:
+                    /* the work is done in the switch */
+                    {
+                        MR_TypeInfo arg_type_info;
+
+                        arg_type_info = (MR_TypeInfo)
+                            functor_desc->MR_du_functor_arg_types[0];
+                        MR_save_transient_registers();
+      #ifdef  select_compare_code
+        #ifdef include_compare_rep_code
+                        result = MR_generic_compare_representation(
+                            arg_type_info,
+                            (MR_Word) x_data_value, (MR_Word) y_data_value);
+        #else
+                        result = MR_generic_compare(arg_type_info,
+                            (MR_Word) x_data_value, (MR_Word) y_data_value);
+        #endif
+      #else
+                        result = MR_generic_unify(arg_type_info,
+                            (MR_Word) x_data_value, (MR_Word) y_data_value);
+      #endif
+                        MR_restore_transient_registers();
+                    }
+
+      #ifdef  select_compare_code
+                    return_compare_answer(builtin, user_by_rtti, 0, result);
+      #else
+                    return_unify_answer(builtin, user_by_rtti, 0, result);
+      #endif
+                    break;
+
+                case MR_SECTAG_REMOTE:
                     cur_slot = 1;
-                } else {
+                    /* the work is done after the switch */
+                    break;
+
+                case MR_SECTAG_NONE:
+                case MR_SECTAG_LOCAL:
                     cur_slot = 0;
+                    /* the work is done after the switch */
+                    break;
+
+                default:
+                    MR_fatal_error("bad sectag location in direct arg switch");
                 }
 
                 arity = functor_desc->MR_du_functor_orig_arity;

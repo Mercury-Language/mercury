@@ -255,7 +255,8 @@ write_type_params_2(TVarSet, [P | Ps], !IO) :-
 write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
     (
         TypeBody = hlds_du_type(Ctors, ConsTagMap, CheaperTagTest, DuTypeKind,
-            MaybeUserEqComp, ReservedTag, ReservedAddr, Foreign),
+            MaybeUserEqComp, MaybeDirectArgCtors, ReservedTag, ReservedAddr,
+            Foreign),
         io.write_string(" --->\n", !IO),
         (
             CheaperTagTest = no_cheaper_tag_test
@@ -324,7 +325,7 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         write_constructors(TypeCtor, Indent, TVarSet, Ctors, ConsTagMap, !IO),
         MercInfo = Info ^ hoi_mercury_to_mercury,
         mercury_output_where_attributes(MercInfo, TVarSet, no, MaybeUserEqComp,
-            !IO),
+            MaybeDirectArgCtors, !IO),
         (
             Foreign = yes(_),
             write_indent(Indent, !IO),
@@ -349,7 +350,7 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         TypeBody = hlds_solver_type(SolverTypeDetails, MaybeUserEqComp),
         MercInfo = Info ^ hoi_mercury_to_mercury,
         mercury_output_where_attributes(MercInfo, TVarSet,
-            yes(SolverTypeDetails), MaybeUserEqComp, !IO),
+            yes(SolverTypeDetails), MaybeUserEqComp, no, !IO),
         io.write_string(".\n", !IO)
     ).
 

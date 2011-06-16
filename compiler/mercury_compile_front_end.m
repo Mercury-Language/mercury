@@ -92,6 +92,7 @@
 :- import_module check_hlds.unused_imports.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_statistics.
+:- import_module hlds.make_tags.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -131,9 +132,17 @@ frontend_pass(QualInfo0, FoundUndefTypeError, FoundUndefModeError, !FoundError,
     ;
         FoundUndefTypeError = no,
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+
+        maybe_write_string(Verbose,
+            "% Post-processing type definitions...\n", !IO),
+        post_process_type_defns(!HLDS, PostTypeSpecs),
+        PostTypeErrors = contains_errors(Globals, PostTypeSpecs),
+        bool.or(PostTypeErrors, !FoundError),
+        maybe_dump_hlds(!.HLDS, 3, "typedefn", !DumpInfo, !IO),
+
         maybe_write_string(Verbose, "% Checking typeclasses...\n", !IO),
         check_typeclasses(!HLDS, QualInfo0, QualInfo, [], TypeClassSpecs),
-        !:Specs = TypeClassSpecs ++ !.Specs,
+        !:Specs = PostTypeSpecs ++ TypeClassSpecs ++ !.Specs,
         maybe_dump_hlds(!.HLDS, 5, "typeclass", !DumpInfo, !IO),
         set_module_recomp_info(QualInfo, !HLDS),
 
@@ -145,16 +154,16 @@ frontend_pass(QualInfo0, FoundUndefTypeError, FoundUndefModeError, !FoundError,
             !:FoundError = yes
         ;
             TypeClassErrors = no,
-            frontend_pass_after_typecheck(FoundUndefModeError,
+            frontend_pass_after_typeclass_check(FoundUndefModeError,
                 !FoundError, !HLDS, !DumpInfo, !Specs, !IO)
         )
     ).
 
-:- pred frontend_pass_after_typecheck(bool::in, bool::in, bool::out,
+:- pred frontend_pass_after_typeclass_check(bool::in, bool::in, bool::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-frontend_pass_after_typecheck(FoundUndefModeError, !FoundError,
+frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
         !HLDS, !DumpInfo, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),

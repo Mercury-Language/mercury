@@ -764,6 +764,10 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
         Locn = sectag_none,
         Stag = -1
     ;
+        SectagAndLocn = sectag_locn_none_direct_arg,
+        Locn = sectag_none_direct_arg,
+        Stag = -1
+    ;
         SectagAndLocn = sectag_locn_local(Stag),
         Locn = sectag_local
     ;

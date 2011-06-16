@@ -1777,7 +1777,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
 can_switch_on_type(TypeBody) = CanSwitchOnType :-
     (
         TypeBody = hlds_du_type(_Ctors, _TagValues, _CheaperTagTest,
-            DuTypeKind, _UserEq, _ReservedTag, _ReservedAddr,
+            DuTypeKind, _UserEq, _DirectArgCtors, _ReservedTag, _ReservedAddr,
             _MaybeForeignType),
         % We don't care about _UserEq, since the unification with *any* functor
         % of the type indicates that we are deconstructing the physical

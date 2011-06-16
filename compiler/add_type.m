@@ -87,7 +87,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         (
             Body0 = hlds_abstract_type(_)
         ;
-            Body0 = hlds_du_type(_, _, _, _, _, _, _, _),
+            Body0 = hlds_du_type(_, _, _, _, _, _, _, _, _),
             string.suffix(term.context_file(Context), ".int2")
             % If the type definition comes from a .int2 file then we must
             % treat it as abstract. The constructors may only be used
@@ -103,7 +103,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         % zero-arity constructor are dummy types. Dummy types are not allowed
         % to have user-defined equality or comparison.
 
-        TypeDefn = parse_tree_du_type(Ctors, MaybeUserUC),
+        TypeDefn = parse_tree_du_type(Ctors, MaybeUserUC, _MaybeDirectArg),
         Ctors = [Constructor],
         list.length(Constructor ^ cons_args, 0),
         MaybeUserUC = yes(_),
@@ -360,7 +360,8 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
     get_type_defn_need_qualifier(TypeDefn, NeedQual),
     module_info_get_globals(!.ModuleInfo, Globals),
     (
-        Body = hlds_du_type(ConsList, _, _, _, UserEqCmp, ReservedTag, _, _),
+        Body = hlds_du_type(ConsList, _, _, _, UserEqCmp, _DirectArgCtors,
+            ReservedTag, _, _),
         module_info_get_cons_table(!.ModuleInfo, Ctors0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
         module_info_get_ctor_field_table(!.ModuleInfo, CtorFields0),
@@ -491,7 +492,7 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
         Body = Body1 ^ du_type_is_foreign_type := yes(ForeignTypeBody)
     ).
 merge_foreign_type_bodies(Target, MakeOptInterface,
-        Body0 @ hlds_du_type(_, _, _, _, _, _, _, _),
+        Body0 @ hlds_du_type(_, _, _, _, _, _, _, _, _),
         Body1 @ hlds_foreign_type(_), Body) :-
     merge_foreign_type_bodies(Target, MakeOptInterface, Body1, Body0, Body).
 merge_foreign_type_bodies(_, _, hlds_foreign_type(Body0),
@@ -603,8 +604,8 @@ combine_status_abstract_imported(Status2, Status) :-
 :- pred convert_type_defn(type_defn::in, type_ctor::in, globals::in,
     hlds_type_body::out) is det.
 
-convert_type_defn(parse_tree_du_type(Body, MaybeUserEqComp), TypeCtor, Globals,
-        HLDSBody) :-
+convert_type_defn(parse_tree_du_type(Body, MaybeUserEqComp,
+        MaybeDirectArgCtors), TypeCtor, Globals, HLDSBody) :-
     % Initially, when we first see the `:- type' definition,
     % we assign the constructor tags assuming that there is no
     % `:- pragma reserve_tag' declaration for this type.
@@ -615,33 +616,14 @@ convert_type_defn(parse_tree_du_type(Body, MaybeUserEqComp), TypeCtor, Globals,
     assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor, ReservedTagPragma,
         Globals, CtorTagMap, ReservedAddr, IsEnum),
     IsForeign = no,
-    (
-        ReservedAddr = does_not_use_reserved_address,
-        map.to_assoc_list(CtorTagMap, CtorTagList),
-        CtorTagList = [ConsIdA - ConsTagA, ConsIdB - ConsTagB],
-        ConsIdA = cons(_, ArityA, _),
-        ConsIdB = cons(_, ArityB, _)
-    ->
-        (
-            ArityB = 0,
-            ArityA > 0
-        ->
-            CheaperTagTest = cheaper_tag_test(ConsIdA, ConsTagA,
-                ConsIdB, ConsTagB)
-        ;
-            ArityA = 0,
-            ArityB > 0
-        ->
-            CheaperTagTest = cheaper_tag_test(ConsIdB, ConsTagB,
-                ConsIdA, ConsTagA)
-        ;
-            CheaperTagTest = no_cheaper_tag_test
-        )
+    ( ReservedAddr = does_not_use_reserved_address ->
+        compute_cheaper_tag_test(CtorTagMap, CheaperTagTest)
     ;
         CheaperTagTest = no_cheaper_tag_test
     ),
     HLDSBody = hlds_du_type(Body, CtorTagMap, CheaperTagTest, IsEnum,
-        MaybeUserEqComp, ReservedTagPragma, ReservedAddr, IsForeign).
+        MaybeUserEqComp, MaybeDirectArgCtors, ReservedTagPragma, ReservedAddr,
+        IsForeign).
 convert_type_defn(parse_tree_eqv_type(Body), _, _, hlds_eqv_type(Body)).
 convert_type_defn(parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
         _, _, hlds_solver_type(SolverTypeDetails, MaybeUserEqComp)).

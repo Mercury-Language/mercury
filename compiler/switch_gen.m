@@ -435,6 +435,7 @@ is_reserved_addr_tag(TaggedConsId) = IsReservedAddr :-
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = unshared_tag(_)
+        ; ConsTag = direct_arg_tag(_)
         ),
         IsReservedAddr = no
     ).

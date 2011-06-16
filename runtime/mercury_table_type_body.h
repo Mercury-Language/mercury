@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2006-2007 The University of Melbourne.
+** Copyright (C) 2006-2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -136,6 +136,7 @@
                 int                     ptag;
                 MR_Word                 sectag;
                 MR_Word                 *arg_vector;
+                MR_Word                 direct_arg;
                 int                     meta_args;
                 int                     i;
 
@@ -147,6 +148,12 @@
                     case MR_SECTAG_NONE:
                         functor_desc = ptag_layout->MR_sectag_alternatives[0];
                         arg_vector = (MR_Word *) MR_body(data, ptag);
+                        break;
+
+                    case MR_SECTAG_NONE_DIRECT_ARG:
+                        functor_desc = ptag_layout->MR_sectag_alternatives[0];
+                        direct_arg = MR_body(data, ptag);
+                        arg_vector = &direct_arg;
                         break;
 
                     case MR_SECTAG_LOCAL:

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -115,7 +115,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            TypeBody = hlds_du_type(_, ConsTagTable, _, _, _, _, _, _),
+            TypeBody = hlds_du_type(_, ConsTagTable, _, _, _, _, _, _, _),
             map.lookup(ConsTagTable, ConsId, Tag)
         ;
             ( TypeBody = hlds_eqv_type(_)

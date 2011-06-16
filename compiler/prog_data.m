@@ -1628,7 +1628,8 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
 :- type type_defn
     --->    parse_tree_du_type(
                 du_ctors            :: list(constructor),
-                du_user_uc          :: maybe(unify_compare)
+                du_user_uc          :: maybe(unify_compare),
+                du_direct_arg       :: maybe(list(sym_name_and_arity))
             )
     ;       parse_tree_eqv_type(
                 eqv_type            :: mer_type

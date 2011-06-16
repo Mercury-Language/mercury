@@ -1,0 +1,10 @@
+where_direct_arg2.m:009: Error: `where_direct_arg2.string'/1 cannot be
+where_direct_arg2.m:009:   represented as a direct pointer to its sole
+where_direct_arg2.m:009:   argument.
+where_direct_arg2.m:010: Error: `where_direct_arg2.int'/1 cannot be represented
+where_direct_arg2.m:010:   as a direct pointer to its sole argument.
+where_direct_arg2.m:014: Error: `where_direct_arg2.enum'/1 cannot be
+where_direct_arg2.m:014:   represented as a direct pointer to its sole
+where_direct_arg2.m:014:   argument.
+where_direct_arg2.m:036: Error: `direct_arg' attribute is not applicable to
+where_direct_arg2.m:036:   foreign types.

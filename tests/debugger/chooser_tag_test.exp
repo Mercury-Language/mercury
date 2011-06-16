@@ -1,0 +1,54 @@
+      E1:     C1 CALL pred chooser_tag_test.main/2-0 (det) chooser_tag_test.m:54
+mdb> mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> break test_wraps
+ 0: + stop  interface pred chooser_tag_test.test_wraps/2-0 (det)
+mdb> continue
+      E2:     C2 CALL pred chooser_tag_test.test_wraps/2-0 (det)
+mdb> finish
+test_wrap_a: A0 = a(10, 11), X = xa(a(10, 11)), A1 = a(10, 11)
+test_wrap_a: A0 = a(12, 20), X = xa(a(12, 20)), A1 = a(12, 20)
+test_wrap_b: B0 = b(10, "eleven"), X = xb(b(10, "eleven")), B1 = b(10, "eleven")
+test_wrap_b: B0 = b(12, "twenty"), X = xb(b(12, "twenty")), B1 = b(12, "twenty")
+test_wrap_c: C0 = c("ten", 11), X = xc(c("ten", 11)), C1 = c("ten", 11)
+test_wrap_c: C0 = c("twelve", 20), X = xc(c("twelve", 20)), C1 = c("twelve", 20)
+      E3:     C2 EXIT pred chooser_tag_test.test_wraps/2-0 (det)
+mdb> retry -f
+      E2:     C2 CALL pred chooser_tag_test.test_wraps/2-0 (det)
+mdb> break wrap_a
+ 1: + stop  interface pred chooser_tag_test.wrap_a/2-0 (det)
+mdb> continue
+      E4:     C3 CALL pred chooser_tag_test.wrap_a/2-0 (det)
+mdb> print *
+       A (arg 1)              	a(10, 11)
+mdb> finish
+      E5:     C3 EXIT pred chooser_tag_test.wrap_a/2-0 (det)
+mdb> print *
+       A (arg 1)              	a(10, 11)
+       HeadVar__2             	xa(a(10, 11))
+mdb> delete *
+ 0: E stop  interface pred chooser_tag_test.test_wraps/2-0 (det)
+ 1: E stop  interface pred chooser_tag_test.wrap_a/2-0 (det)
+mdb> break unwrap_b
+ 0: + stop  interface pred chooser_tag_test.unwrap_b/2-0 (semidet)
+mdb> condition HeadVar__1 = xb(b(12, _))
+ 0: + stop  interface pred chooser_tag_test.unwrap_b/2-0 (semidet)
+            HeadVar__1 = xb(b(12, _))
+mdb> continue
+test_wrap_a: A0 = a(10, 11), X = xa(a(10, 11)), A1 = a(10, 11)
+test_wrap_a: A0 = a(12, 20), X = xa(a(12, 20)), A1 = a(12, 20)
+test_wrap_b: B0 = b(10, "eleven"), X = xb(b(10, "eleven")), B1 = b(10, "eleven")
+      E6:     C4 CALL pred chooser_tag_test.unwrap_b/2-0 (semidet)
+mdb> print
+unwrap_b(xb(b(12, "twenty")), _)
+mdb> delete *
+ 0: E stop  interface pred chooser_tag_test.unwrap_b/2-0 (semidet)
+            HeadVar__1 = xb(b(12, _))
+mdb> continue
+test_wrap_b: B0 = b(12, "twenty"), X = xb(b(12, "twenty")), B1 = b(12, "twenty")
+test_wrap_c: C0 = c("ten", 11), X = xc(c("ten", 11)), C1 = c("ten", 11)
+test_wrap_c: C0 = c("twelve", 20), X = xc(c("twelve", 20)), C1 = c("twelve", 20)
+solns for 30 = [xa(a(30, 30)), xa(a(31, 31)), xb(b(30, "b2")), xb(b(31, "b2")), xc(c("c1", 30)), xc(c("c1", 31))]
+solns for 130 = []

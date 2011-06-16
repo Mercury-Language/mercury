@@ -401,12 +401,14 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
         ConsId = tuple_cons(TupleArity),
         map.from_assoc_list([ConsId - single_functor_tag], ConsTagValues),
         UnifyPred = no,
+        DirectArgCtors = no,
         DuTypeKind = du_type_kind_general,
         ReservedTag = does_not_use_reserved_tag,
         ReservedAddr = does_not_use_reserved_address,
         IsForeign = no,
         TypeBody = hlds_du_type([Ctor], ConsTagValues, no_cheaper_tag_test,
-            DuTypeKind, UnifyPred, ReservedTag, ReservedAddr, IsForeign),
+            DuTypeKind, UnifyPred, DirectArgCtors, ReservedTag, ReservedAddr,
+            IsForeign),
         construct_type(TypeCtor, TupleArgTypes, Type),
 
         term.context_init(Context)
@@ -613,7 +615,7 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
         Goal = hlds_goal(Call, GoalInfo),
         quantify_clause_body([X], Goal, Context, Clause, !Info)
     ;
-        ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _)
+        ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _)
         ; TypeBody = hlds_foreign_type(_)
         ; TypeBody = hlds_abstract_type(_)
         ),
@@ -641,7 +643,7 @@ generate_unify_proc_body(Type, TypeBody, X, Y, Context, Clause, !Info) :-
             Clause, !Info)
     ;
         (
-            TypeBody = hlds_du_type(Ctors, _, _, DuTypeKind, _, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, _, DuTypeKind, _, _, _, _, _),
             (
                 ( DuTypeKind = du_type_kind_mercury_enum
                 ; DuTypeKind = du_type_kind_foreign_enum(_)
@@ -842,7 +844,7 @@ generate_index_proc_body(Type, TypeBody, X, Index, Context, Clause, !Info) :-
             "trying to create index proc for non-canonical type")
     ;
         (
-            TypeBody = hlds_du_type(Ctors, _, _, DuTypeKind, _, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, _, DuTypeKind, _, _, _, _, _),
             (
                 % For enum types, the generated comparison predicate performs
                 % an integer comparison, and does not call the type's index
@@ -914,7 +916,7 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
             Res, X, Y, Context, Clause, !Info)
     ;
         (
-            TypeBody = hlds_du_type(Ctors, _, _, DuTypeKind, _, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, _, DuTypeKind, _, _, _, _, _),
             (
                 ( DuTypeKind = du_type_kind_mercury_enum
                 ; DuTypeKind = du_type_kind_foreign_enum(_)

@@ -1,0 +1,19 @@
+register --quiet
+echo on
+context none
+break test_wraps
+continue
+finish
+retry -f
+break wrap_a
+continue
+print *
+finish
+print *
+delete *
+break unwrap_b
+condition HeadVar__1 = xb(b(12, _))
+continue
+print
+delete *
+continue

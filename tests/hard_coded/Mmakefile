@@ -61,6 +61,9 @@ ORDINARY_PROGS=	\
 	dense_lookup_switch3 \
 	dense_lookup_switch_non \
 	det_in_semidet_cntxt \
+	direct_arg_cyclic1 \
+	direct_arg_intermod1 \
+	direct_arg_parent \
 	disjs_in_switch \
 	division_test \
 	dos \

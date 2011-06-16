@@ -359,8 +359,8 @@
     bool::in, io::di, io::uo) is det.
 
 :- pred mercury_output_where_attributes(merc_out_info::in, tvarset::in,
-    maybe(solver_type_details)::in, maybe(unify_compare)::in, io::di, io::uo)
-    is det.
+    maybe(solver_type_details)::in, maybe(unify_compare)::in,
+    maybe(list(sym_name_and_arity))::in, io::di, io::uo) is det.
 
 :- func describe_error_term(varset(T), term(T)) = string.
 
@@ -1928,7 +1928,7 @@ mercury_output_type_defn(Info, TVarSet, Name, TParams, TypeDefn, Context,
         mercury_output_type(TVarSet, no, Body, !IO),
         io.write_string(".\n", !IO)
     ;
-        TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp),
+        TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp, MaybeDirectArgs),
         mercury_output_begin_type_decl(non_solver_type, !IO),
         Args = list.map((func(V) = term.variable(V, Context)), TParams),
         construct_qualified_term(Name, Args, Context, TypeTerm),
@@ -1936,7 +1936,7 @@ mercury_output_type_defn(Info, TVarSet, Name, TParams, TypeDefn, Context,
         io.write_string("\n\t--->\t", !IO),
         mercury_output_ctors(Ctors, TVarSet, !IO),
         mercury_output_where_attributes(Info, TVarSet, no, MaybeUserEqComp,
-            !IO),
+            MaybeDirectArgs, !IO),
         io.write_string(".\n", !IO)
     ;
         TypeDefn = parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
@@ -1945,7 +1945,7 @@ mercury_output_type_defn(Info, TVarSet, Name, TParams, TypeDefn, Context,
         construct_qualified_term(Name, Args, Context, TypeTerm),
         mercury_output_term(TVarSet, no, TypeTerm, !IO),
         mercury_output_where_attributes(Info, TVarSet, yes(SolverTypeDetails),
-            MaybeUserEqComp, !IO),
+            MaybeUserEqComp, no, !IO),
         io.write_string(".\n", !IO)
     ;
         TypeDefn = parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
@@ -2007,7 +2007,7 @@ mercury_output_type_defn(Info, TVarSet, Name, TParams, TypeDefn, Context,
         ),
         io.write_string(")", !IO),
         mercury_output_where_attributes(Info, TVarSet, no, MaybeUserEqComp,
-            !IO),
+            no, !IO),
         io.write_string(".\n", !IO)
     ).
 
@@ -2036,10 +2036,11 @@ mercury_output_begin_type_decl(IsSolverType, !IO) :-
     ).
 
 mercury_output_where_attributes(Info, TVarSet,
-        MaybeSolverTypeDetails, MaybeUserEqComp, !IO) :-
+        MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgs, !IO) :-
     (
         MaybeSolverTypeDetails = no,
-        MaybeUserEqComp        = no
+        MaybeUserEqComp        = no,
+        MaybeDirectArgs        = no
     ->
         true
     ;
@@ -2090,9 +2091,23 @@ mercury_output_where_attributes(Info, TVarSet,
         (
             MaybeComparePred = yes(ComparePredName),
             io.write_string("comparison is ", !IO),
-            mercury_output_bracketed_sym_name(ComparePredName, !IO)
+            mercury_output_bracketed_sym_name(ComparePredName, !IO),
+            (
+                MaybeDirectArgs = yes(_),
+                io.write_string(",\n\t\t", !IO)
+            ;
+                MaybeDirectArgs = no
+            )
         ;
             MaybeComparePred = no
+        ),
+        (
+            MaybeDirectArgs = yes(DirectArgFunctors),
+            io.write_string("direct_arg is [", !IO),
+            mercury_output_direct_arg_functors(DirectArgFunctors, !IO),
+            io.write_string("]", !IO)
+        ;
+            MaybeDirectArgs = no
         )
     ).
 
@@ -2222,6 +2237,12 @@ mercury_output_ctor_arg_name_prefix(no, !IO).
 mercury_output_ctor_arg_name_prefix(yes(Name), !IO) :-
     mercury_output_bracketed_sym_name(Name, !IO),
     io.write_string(" :: ", !IO).
+
+:- pred mercury_output_direct_arg_functors(list(sym_name_and_arity)::in,
+    io::di, io::uo) is det.
+
+mercury_output_direct_arg_functors(Ctors, !IO) :-
+    io.write_list(Ctors, ", ", mercury_format_sym_name_and_arity, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -4714,6 +4735,14 @@ mercury_format_sym_name(Name, NextToGraphicToken, !U) :-
         Name = unqualified(PredName),
         mercury_format_quoted_atom(PredName, NextToGraphicToken, !U)
     ).
+
+:- pred mercury_format_sym_name_and_arity(sym_name_and_arity::in, U::di, U::uo)
+    is det <= output(U).
+
+mercury_format_sym_name_and_arity(Name / Arity, !U) :-
+    mercury_format_sym_name(Name, !U),
+    add_char('/', !U),
+    add_int(Arity, !U).
 
 :- pred mercury_quote_atom(string::in, needs_quotes::in, io::di, io::uo)
     is det.

@@ -107,7 +107,7 @@ add_type_to_eqv_map(TypeCtor, Defn, !EqvMap, !EqvExportTypes) :-
             IsExported = no
         )
     ;
-        ( Body = hlds_du_type(_, _, _, _, _, _, _, _)
+        ( Body = hlds_du_type(_, _, _, _, _, _, _, _, _)
         ; Body = hlds_foreign_type(_)
         ; Body = hlds_solver_type(_, _)
         ; Body = hlds_abstract_type(_)
@@ -155,7 +155,7 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
     maybe_start_recording_expanded_items(ModuleName, TypeCtorSymName,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
-        Body0 = hlds_du_type(Ctors0, _, _, _, _, _, _, _),
+        Body0 = hlds_du_type(Ctors0, _, _, _, _, _, _, _, _),
         equiv_type.replace_in_ctors(EqvMap, Ctors0, Ctors,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         Body = Body0 ^ du_type_ctors := Ctors
