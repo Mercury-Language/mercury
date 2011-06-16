@@ -507,16 +507,17 @@ case $HOST in
         ;;
     taura)
         CONFIG_OPTS=""
-        INSTALL_LIBGRADES="asm_fast.gc  \
-            asm_fast.gc.stseg           \
-            asm_fast.par.gc             \
-            asm_fast.par.gc.stseg       \
-            asm_fast.gc.debug           \
-            asm_fast.gc.debug.trseg     \
-            asm_fast.gc.decldebug       \
-            asm_fast.gc.profdeep        \
-            asm_jump.gc                 \
-            hlc.gc                      \
+        INSTALL_LIBGRADES="asm_fast.gc          \
+            asm_fast.gc.stseg                   \
+            asm_fast.par.gc                     \
+            asm_fast.par.gc.stseg               \
+            asm_fast.par.gc.stseg.threadscope   \
+            asm_fast.gc.debug                   \
+            asm_fast.gc.debug.trseg             \
+            asm_fast.gc.decldebug               \
+            asm_fast.gc.profdeep                \
+            asm_jump.gc                         \
+            hlc.gc                              \
             hlc.gc.trseg"
             # asm_fast.gc.tsw.debug       \
             # asm_fast.gc.mmos            \
