@@ -5560,9 +5560,12 @@ convert_endpoints(Start, Count, ClampStart, ClampEnd) :-
     ( Count =< 0 ->
         ClampEnd = ClampStart
     ;
-        End = ClampStart + Count,
         % Check for overflow.
-        ClampEnd = ( End =< 0 -> max_int ; End )
+        ( ClampStart > max_int - Count ->
+            ClampEnd = max_int
+        ;
+            ClampEnd = ClampStart + Count
+        )
     ).
 
 %-----------------------------------------------------------------------------%
