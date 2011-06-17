@@ -125,36 +125,7 @@ output_record_instr_decls(Info, Instr, !DeclSet, !IO) :-
         output_record_code_addr_decls(Info, Target, !DeclSet, !IO),
         output_record_code_addr_decls(Info, ContLabel, !DeclSet, !IO)
     ;
-        Instr = mkframe(FrameInfo, MaybeFailureContinuation),
-        (
-            FrameInfo = ordinary_frame(_, _, yes(Struct)),
-            Struct = foreign_proc_struct(StructName, StructFields,
-                MaybeStructFieldsContext)
-        ->
-            DeclId = decl_foreign_proc_struct(StructName),
-            ( decl_set_is_member(DeclId, !.DeclSet) ->
-                unexpected($module, $pred,
-                    "struct " ++ StructName ++ " has been declared already")
-            ;
-                true
-            ),
-            io.write_string("struct ", !IO),
-            io.write_string(StructName, !IO),
-            io.write_string(" {\n", !IO),
-            (
-                MaybeStructFieldsContext = yes(StructFieldsContext),
-                output_set_line_num(Info, StructFieldsContext, !IO),
-                io.write_string(StructFields, !IO),
-                output_reset_line_num(Info, !IO)
-            ;
-                MaybeStructFieldsContext = no,
-                io.write_string(StructFields, !IO)
-            ),
-            io.write_string("\n};\n", !IO),
-            decl_set_insert(DeclId, !DeclSet)
-        ;
-            true
-        ),
+        Instr = mkframe(_FrameInfo, MaybeFailureContinuation),
         (
             MaybeFailureContinuation = yes(FailureContinuation),
             output_record_code_addr_decls(Info, FailureContinuation,
@@ -516,50 +487,23 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
     ;
         Instr = mkframe(FrameInfo, MaybeFailCont),
         (
-            FrameInfo = ordinary_frame(Msg, Num, MaybeStruct),
+            FrameInfo = ordinary_frame(Msg, Num),
             (
-                MaybeStruct = yes(foreign_proc_struct(StructName, _, _)),
-                (
-                    MaybeFailCont = yes(FailCont),
-                    io.write_string("\tMR_mkpragmaframe(""", !IO),
-                    c_util.output_quoted_string(Msg, !IO),
-                    io.write_string(""", ", !IO),
-                    io.write_int(Num, !IO),
-                    io.write_string(",\n\t\t", !IO),
-                    io.write_string(StructName, !IO),
-                    io.write_string(", ", !IO),
-                    output_code_addr(FailCont, !IO),
-                    io.write_string(");\n", !IO)
-                ;
-                    MaybeFailCont = no,
-                    io.write_string("\tMR_mkpragmaframe_no_redoip(""", !IO),
-                    c_util.output_quoted_string(Msg, !IO),
-                    io.write_string(""", ", !IO),
-                    io.write_int(Num, !IO),
-                    io.write_string(",\n\t\t", !IO),
-                    io.write_string(StructName, !IO),
-                    io.write_string(");\n", !IO)
-                )
+                MaybeFailCont = yes(FailCont),
+                io.write_string("\tMR_mkframe(""", !IO),
+                c_util.output_quoted_string(Msg, !IO),
+                io.write_string(""", ", !IO),
+                io.write_int(Num, !IO),
+                io.write_string(",\n\t\t", !IO),
+                output_code_addr(FailCont, !IO),
+                io.write_string(");\n", !IO)
             ;
-                MaybeStruct = no,
-                (
-                    MaybeFailCont = yes(FailCont),
-                    io.write_string("\tMR_mkframe(""", !IO),
-                    c_util.output_quoted_string(Msg, !IO),
-                    io.write_string(""", ", !IO),
-                    io.write_int(Num, !IO),
-                    io.write_string(",\n\t\t", !IO),
-                    output_code_addr(FailCont, !IO),
-                    io.write_string(");\n", !IO)
-                ;
-                    MaybeFailCont = no,
-                    io.write_string("\tMR_mkframe_no_redoip(""",
-                        !IO),
-                    c_util.output_quoted_string(Msg, !IO),
-                    io.write_string(""", ", !IO),
-                    io.write_int(Num, !IO),
-                    io.write_string(");\n", !IO)
-                )
+                MaybeFailCont = no,
+                io.write_string("\tMR_mkframe_no_redoip(""", !IO),
+                c_util.output_quoted_string(Msg, !IO),
+                io.write_string(""", ", !IO),
+                io.write_int(Num, !IO),
+                io.write_string(");\n", !IO)
             )
         ;
             FrameInfo = temp_frame(Kind),
@@ -1776,22 +1720,13 @@ output_foreign_proc_component(Info, Component, !IO) :-
 
 output_foreign_proc_decls([], !IO).
 output_foreign_proc_decls([Decl | Decls], !IO) :-
-    (
-        % Apart from special cases, the local variables are MR_Words
-        Decl = foreign_proc_arg_decl(_Type, TypeString, VarName),
-        io.write_string("\t", !IO),
-        io.write_string(TypeString, !IO),
-        io.write_string("\t", !IO),
-        io.write_string(VarName, !IO),
-        io.write_string(";\n", !IO)
-    ;
-        Decl = foreign_proc_struct_ptr_decl(StructTag, VarName),
-        io.write_string("\tstruct ", !IO),
-        io.write_string(StructTag, !IO),
-        io.write_string("\t*", !IO),
-        io.write_string(VarName, !IO),
-        io.write_string(";\n", !IO)
-    ),
+    % Apart from special cases, the local variables are MR_Words
+    Decl = foreign_proc_arg_decl(_Type, TypeString, VarName),
+    io.write_string("\t", !IO),
+    io.write_string(TypeString, !IO),
+    io.write_string("\t", !IO),
+    io.write_string(VarName, !IO),
+    io.write_string(";\n", !IO),
     output_foreign_proc_decls(Decls, !IO).
 
     % Output declarations for any rvals used to initialize the inputs.

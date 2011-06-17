@@ -917,7 +917,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     (
         CodeModel = model_non,
         resume_point_stack_addr(OutsideResumePoint, OutsideResumeAddress),
-        NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, no),
+        NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots),
         AllocCode = singleton(
             llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
                 "Allocate stack frame")

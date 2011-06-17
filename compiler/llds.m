@@ -664,11 +664,7 @@
             )
     ;       ordinary_frame(
                 string,                 % Name of the predicate.
-                int,                    % Number of framevar slots.
-                maybe(foreign_proc_struct)
-                                        % If yes, the frame should also contain
-                                        % this struct (for use by a model_non
-                                        % pragma C code).
+                int                     % Number of framevar slots.
             ).
 
 :- type c_code_live_lvals
@@ -703,23 +699,6 @@
                                 % whether cell reuse was actually possible.
             ).
 
-    % Procedures defined by nondet pragma C codes must have some way of
-    % preserving information after a success, so that when control
-    % backtracks to the procedure, the C code knows what to do.
-    % Our implementation saves this information in a C struct.
-    % Programmers must include the declaration of the fields of this
-    % C struct in the `pragma c_code' declaration itself.
-    % A foreign_proc_struct holds information about this C struct.
-    %
-:- type foreign_proc_struct
-    --->    foreign_proc_struct(
-                string,     % The name of the struct tag.
-                string,     % The field declarations, supplied by the user
-                            % in the `pragma foreign_proc' % declaration.
-                maybe(prog_context)
-                            % Where the field declarations originally appeared.
-            ).
-
     % A foreign_proc_decl holds the information needed for the declaration
     % of a local variable in a block of C code emitted for a foreign_proc_code
     % instruction.
@@ -732,13 +711,6 @@
                             % in the C code.
                 string      % The name of the local variable that will hold
                             % the value of that argument inside the C block.
-            )
-        ;   foreign_proc_struct_ptr_decl(
-                % This local variable holds the address of the save struct.
-                string,     % The name of the C struct tag of the save struct;
-                            % the type of the local variable will be a pointer
-                            % to a struct with this tag.
-                string      % The name of the local variable.
             ).
 
     % A foreign_proc_component holds one component of a foreign_proc_code

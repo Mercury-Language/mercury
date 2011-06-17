@@ -846,16 +846,9 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
             R_str = "no_redoip"
         ),
         (
-            FrameInfo = ordinary_frame(Name, Size, MaybePragma),
-            (
-                MaybePragma = yes(foreign_proc_struct(StructName, Fields, _)),
-                P_str = "yes(" ++ StructName ++ ", " ++ Fields ++ ")"
-            ;
-                MaybePragma = no,
-                P_str = "no"
-            ),
+            FrameInfo = ordinary_frame(Name, Size),
             Str = "mkframe(" ++ Name ++ ", " ++ int_to_string(Size) ++ ", "
-                ++ P_str ++ ", " ++ R_str ++ ")"
+                ++ R_str ++ ")"
         ;
             FrameInfo = temp_frame(Kind),
             (
@@ -1142,8 +1135,6 @@ dump_decls([Decl | Decls]) =
 
 dump_decl(foreign_proc_arg_decl(_MerType, TypeStr, VarName)) =
     "decl " ++ TypeStr ++ " " ++ VarName ++ "\n".
-dump_decl(foreign_proc_struct_ptr_decl(StructTag, VarName)) =
-    "decl struct" ++ StructTag ++ " " ++ VarName ++ "\n".
 
 :- func dump_components(maybe(proc_label), list(foreign_proc_component))
     = string.

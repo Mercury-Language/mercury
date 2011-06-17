@@ -195,8 +195,8 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
             FrameInfo = temp_frame(_),
             StdFrameInfo = FrameInfo
         ;
-            FrameInfo = ordinary_frame(_, NumSlots, MaybePragma),
-            StdFrameInfo = ordinary_frame("", NumSlots, MaybePragma)
+            FrameInfo = ordinary_frame(_, NumSlots),
+            StdFrameInfo = ordinary_frame("", NumSlots)
         ),
         standardize_maybe_code_addr(MaybeCodeAddr, MaybeStdCodeAddr,
             DupProcMap),

@@ -308,7 +308,7 @@ frameopt_keep_nondet_frame(ProcLabel, LayoutLabels, !C, Instrs0, Instrs,
 nondetstack_setup(Instrs0, FrameInfo, Redoip, MkframeInstr, Remain) :-
     Instrs0 = [MkframeInstr | Remain],
     MkframeInstr = llds_instr(mkframe(FrameInfo, yes(Redoip)), _),
-    FrameInfo = ordinary_frame(_, _, _).
+    FrameInfo = ordinary_frame(_, _).
 
 :- pred find_succeed_labels(list(instruction)::in, tailmap::in, tailmap::out)
     is det.
@@ -799,7 +799,7 @@ detect_nondet_entry(Instrs0, [MkframeInstr], Remain, EntryInfo) :-
     % then even this entry block needs a stack frame, so frameopt cannot do
     % anything.
     Redoip = do_fail,
-    FrameInfo = ordinary_frame(Msg, Size, no),
+    FrameInfo = ordinary_frame(Msg, Size),
     EntryInfo = nondet_entry(Msg, Size, Redoip).
 
 %-----------------------------------------------------------------------------%
@@ -2149,7 +2149,7 @@ det_non_teardown_exit_code(det_exit(_, Livevals, Goto)) = Livevals ++ [Goto].
 :- func nondet_late_setup(nondet_entry_info) = list(instruction).
 
 nondet_late_setup(nondet_entry(Msg, FrameSize, Redoip)) =
-    [llds_instr(mkframe(ordinary_frame(Msg, FrameSize, no), yes(Redoip)),
+    [llds_instr(mkframe(ordinary_frame(Msg, FrameSize), yes(Redoip)),
         "late setup")].
 
 :- func nondet_non_teardown_exit_code(nondet_exit_info) = list(instruction).
