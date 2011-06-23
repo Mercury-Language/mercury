@@ -189,6 +189,10 @@ Changes to the Mercury standard library:
   a new array from a list with the elements of the array occurring in
   the reverse order to that of the list.
 
+* We have added the predicate maybe.map_fold3_maybe/9 and also added
+  additional modes for maybe.fold_maybe/4, maybe.map_fold_maybe/5,
+  and maybe.map_fold2_maybe/7.
+
 NEWS for Mercury 11.01
 ----------------------
 
