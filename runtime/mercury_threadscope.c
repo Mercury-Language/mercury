@@ -177,7 +177,8 @@
                                             108 /* () */
 #define MR_TS_MER_EVENT_WORK_STEALING       109 /* () */
 #define MR_TS_MER_EVENT_RELEASE_CONTEXT     110 /* (context id) */
-#define MR_TS_NUM_MER_EVENTS                11
+#define MR_TS_MER_EVENT_ENGINE_SLEEPING     111 /* () */
+#define MR_TS_NUM_MER_EVENTS                 12
 
 #if 0  /* DEPRECATED EVENTS: */
 #define EVENT_CREATE_SPARK        13 /* (cap, thread) */
@@ -498,6 +499,11 @@ static EventTypeDesc event_type_descs[] = {
         MR_TS_MER_EVENT_RELEASE_CONTEXT,
         "Release this context to the free context pool",
         SZ_CONTEXT_ID
+    },
+    {
+        MR_TS_MER_EVENT_ENGINE_SLEEPING,
+        "This engine is going to sleep",
+        0
     },
     {
         /* Mark the end of this array. */
@@ -1211,8 +1217,10 @@ MR_threadscope_post_run_context(void)
 
     if (context) {
         MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
-        MR_threadscope_post_run_context_locked(buffer, context);
-        buffer->MR_tsbuffer_ctxt_is_stopped = 0;
+        if (buffer->MR_tsbuffer_ctxt_is_stopped) {
+            MR_threadscope_post_run_context_locked(buffer, context);
+            buffer->MR_tsbuffer_ctxt_is_stopped = MR_FALSE;
+        }
         MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
     }
 }
@@ -1245,9 +1253,10 @@ MR_threadscope_post_stop_context(MR_ContextStopReason reason)
     context = MR_thread_engine_base->MR_eng_this_context;
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
-    MR_threadscope_post_stop_context_locked(buffer, context, reason);
-
-    buffer->MR_tsbuffer_ctxt_is_stopped = 1;
+    if (!buffer->MR_tsbuffer_ctxt_is_stopped) {
+        MR_threadscope_post_stop_context_locked(buffer, context, reason);
+        buffer->MR_tsbuffer_ctxt_is_stopped = MR_TRUE;
+    }
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }
 
@@ -1691,6 +1700,24 @@ MR_threadscope_post_signal_future(MR_Future* future_id)
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }
 
+void MR_threadscope_post_engine_sleeping(void)
+{
+    struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
+
+    MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_ENGINE_SLEEPING)) {
+        flush_event_buffer(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    } else if (!block_is_open(buffer)) {
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    }
+
+    put_event_header(buffer, MR_TS_MER_EVENT_ENGINE_SLEEPING,
+        get_current_time_nanosecs());
+
+    MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
+}
+
 /***************************************************************************/
 
 static struct MR_threadscope_event_buffer*
@@ -1701,7 +1728,7 @@ MR_create_event_buffer(void)
     buffer = MR_GC_NEW(MR_threadscope_event_buffer_t);
     buffer->MR_tsbuffer_pos = 0;
     buffer->MR_tsbuffer_block_open_pos = -1;
-    buffer->MR_tsbuffer_ctxt_is_stopped = 1;
+    buffer->MR_tsbuffer_ctxt_is_stopped = MR_TRUE;
     buffer->MR_tsbuffer_lock = MR_US_LOCK_INITIAL_VALUE;
 
     return buffer;

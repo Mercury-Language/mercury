@@ -1500,15 +1500,19 @@ MR_BEGIN_MODULE(scheduler_module_idle_clean_context)
 MR_BEGIN_CODE
 MR_define_entry(MR_do_idle_clean_context);
 {
-    MR_MAYBE_TRAMPOLINE(do_local_spark(NULL));
+#ifdef MR_THREADSCOPE
+    MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
+#endif
 
+    MR_MAYBE_TRAMPOLINE(do_get_context());
+    MR_MAYBE_TRAMPOLINE(do_local_spark(NULL));
+    MR_MAYBE_TRAMPOLINE(do_work_steal(NULL));
+
+    /*
+     * XXX: I'm not convinced that the idle state is useful.
+     */
     advertise_engine_state_idle();
 
-    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_work_steal(NULL),
-        advertise_engine_state_working());
-
-    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_get_context(),
-        advertise_engine_state_working());
     MR_GOTO(MR_ENTRY(MR_do_sleep));
 }
 MR_END_MODULE
@@ -1522,22 +1526,43 @@ MR_define_entry(MR_do_idle_dirty_context);
 {
     MR_Code *join_label = (MR_Code*)MR_r1;
 
+    if (MR_runqueue_head != NULL) {
+        /*
+        ** There's a context in the run queue, save this context and attempt to
+        ** get a context from the run queue.
+        */
+        save_dirty_context(join_label);
+        MR_ENGINE(MR_eng_this_context) = NULL;
+        MR_MAYBE_TRAMPOLINE(do_get_context());
+
+        /*
+        ** If execution reaches this point then we lost a race for a free context.
+        ** Tell threadscope about it,
+        ** XXX: Consider making this a first-class event in the future.
+        */
+#ifdef MR_THREADSCOPE
+        MR_threadscope_post_log_msg("Runtime: Lost a race for a runnable context.");
+#endif
+        join_label = NULL;
+    }
+
+#ifdef MR_THREADSCOPE
+    MR_threadscope_post_stop_context(MR_TS_STOP_REASON_BLOCKED);
+#endif
     MR_MAYBE_TRAMPOLINE(do_local_spark(join_label));
+    MR_MAYBE_TRAMPOLINE(do_work_steal(join_label));
+    if (join_label != NULL) {
+        /*
+        ** Save the dirty context, we can't take it to sleep and it won't be used
+        ** if do_get_context() succeeds.
+        */
+        save_dirty_context(join_label);
+        MR_ENGINE(MR_eng_this_context) = NULL;
+        MR_MAYBE_TRAMPOLINE(do_get_context());
+    }
 
     advertise_engine_state_idle();
 
-    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_work_steal(join_label),
-        advertise_engine_state_working());
-
-    /*
-    ** Save the dirty context, we can't take it to sleep and it won't be used
-    ** if do_get_context() succeeds.
-    */
-    save_dirty_context(join_label);
-    MR_ENGINE(MR_eng_this_context) = NULL;
-
-    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_get_context(),
-        advertise_engine_state_working());
     MR_GOTO(MR_ENTRY(MR_do_sleep));
 }
 MR_END_MODULE
@@ -1563,6 +1588,9 @@ MR_define_entry(MR_do_sleep);
     while (1) {
         engine_sleep_sync_data[engine_id].d.es_state = ENGINE_STATE_SLEEPING;
         MR_CPU_SFENCE;
+#ifdef MR_THREADSCOPE
+        MR_threadscope_post_engine_sleeping();
+#endif
         result = MR_SEM_WAIT(
             &(engine_sleep_sync_data[engine_id].d.es_sleep_semaphore),
             "MR_do_sleep sleep_sem");
@@ -1662,21 +1690,23 @@ do_get_context(void)
     MR_threadscope_post_looking_for_global_context();
     #endif
 
-    MR_LOCK(&MR_runqueue_lock, "do_get_context (i)");
-    ready_context = MR_find_ready_context();
-    MR_UNLOCK(&MR_runqueue_lock, "do_get_context (ii)");
+    if (MR_runqueue_head != NULL) {
+        MR_LOCK(&MR_runqueue_lock, "do_get_context (i)");
+        ready_context = MR_find_ready_context();
+        MR_UNLOCK(&MR_runqueue_lock, "do_get_context (ii)");
 
-    if (ready_context != NULL) {
-        prepare_engine_for_context(ready_context);
+        if (ready_context != NULL) {
+            prepare_engine_for_context(ready_context);
 
-        #ifdef MR_DEBUG_STACK_SEGMENTS
-        MR_debug_log_message("resuming old context: %p", ready_context);
-        #endif
+            #ifdef MR_DEBUG_STACK_SEGMENTS
+            MR_debug_log_message("resuming old context: %p", ready_context);
+            #endif
 
-        resume_point = (MR_Code*)(ready_context->MR_ctxt_resume);
-        ready_context->MR_ctxt_resume = NULL;
+            resume_point = (MR_Code*)(ready_context->MR_ctxt_resume);
+            ready_context->MR_ctxt_resume = NULL;
 
-        return resume_point;
+            return resume_point;
+        }
     }
 
     return NULL;
@@ -1745,14 +1775,14 @@ prepare_engine_for_spark(volatile MR_Spark *spark, MR_Code *join_label)
 #endif
 */
         MR_load_context(MR_ENGINE(MR_eng_this_context));
-#ifdef MR_THREADSCOPE
-        MR_threadscope_post_run_context();
-#endif
 #ifdef MR_DEBUG_STACK_SEGMENTS
         MR_debug_log_message("created new context for spark: %p",
             MR_ENGINE(MR_eng_this_context));
 #endif
     }
+#ifdef MR_THREADSCOPE
+    MR_threadscope_post_run_context();
+#endif
 
     /*
     ** At this point we have a context, either a dirty context that's

@@ -200,6 +200,11 @@ extern void MR_threadscope_post_wait_future_suspended(MR_Future* future_id);
 extern void MR_threadscope_post_signal_future(MR_Future* future_id);
 
 /*
+** Post this event when the engine is going to sleep.
+*/
+extern void MR_threadscope_post_engine_sleeping(void);
+
+/*
 ** Register all the strings in an array and save their IDs in the array.
 */
 extern void MR_threadscope_register_strings_array(MR_Threadscope_String *array,
