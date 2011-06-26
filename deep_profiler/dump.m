@@ -139,7 +139,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svset.
 
 %----------------------------------------------------------------------------%
 
@@ -277,10 +276,10 @@ get_static_ptrs_from_dynamic_procs(ProcDynamics, ProcStatics, PS_Ptrs,
 get_static_ptrs_from_dynamic_proc(ProcStatics, _, ProcDynamic, !PS_Ptrs,
         !CSS_Ptrs) :-
     ProcStaticPtr = ProcDynamic ^ pd_proc_static,
-    svset.insert(ProcStaticPtr, !PS_Ptrs),
+    set.insert(ProcStaticPtr, !PS_Ptrs),
     lookup_proc_statics(ProcStatics, ProcStaticPtr, ProcStatic),
     CSSs = array.to_list(ProcStatic ^ ps_sites),
-    svset.insert_list(CSSs, !CSS_Ptrs).
+    set.insert_list(CSSs, !CSS_Ptrs).
 
 %----------------------------------------------------------------------------%
 %

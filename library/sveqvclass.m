@@ -29,6 +29,7 @@
     % The element may already be known to the class;
     % if it isn't, it is created without any equivalence relationships.
     %
+:- pragma obsolete(sveqvclass.ensure_element/3).
 :- pred sveqvclass.ensure_element(T::in, eqvclass(T)::in, eqvclass(T)::out)
     is det.
 
@@ -36,24 +37,28 @@
     % The element must not already be known to the class;
     % it is created without any equivalence relationships.
     %
+:- pragma obsolete(sveqvclass.new_element/3).
 :- pred sveqvclass.new_element(T::in, eqvclass(T)::in, eqvclass(T)::out)
     is det.
 
     % Make two elements of the equivalence class equivalent.
     % It is ok if they already are.
     %
+:- pragma obsolete(sveqvclass.ensure_equivalence/4).
 :- pred sveqvclass.ensure_equivalence(T::in, T::in,
     eqvclass(T)::in, eqvclass(T)::out) is det.
 
     % Make two elements of the equivalence class equivalent.
     % It is an error if they are already equivalent.
     %
+:- pragma obsolete(sveqvclass.new_equivalence/4).
 :- pred sveqvclass.new_equivalence(T::in, T::in,
     eqvclass(T)::in, eqvclass(T)::out) is det.
 
     % Remove the given element and all other elements equivalent to it
     % from the given equivalence class.
     %
+:- pragma obsolete(sveqvclass.remove_equivalent_elements/3).
 :- pred sveqvclass.remove_equivalent_elements(T::in,
     eqvclass(T)::in, eqvclass(T)::out) is det.
 

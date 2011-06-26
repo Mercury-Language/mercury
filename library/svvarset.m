@@ -31,57 +31,68 @@
 
     % Create a new variable.
     %
+:- pragma obsolete(svvarset.new_var/3).
 :- pred svvarset.new_var(var(T)::out, varset(T)::in, varset(T)::out) is det.
 
     % Create a new named variable.
     %
+:- pragma obsolete(svvarset.new_named_var/4).
 :- pred svvarset.new_named_var(string::in, var(T)::out,
     varset(T)::in, varset(T)::out) is det.
 
     % Create a new variable, and maybe give it a name.
     %
+:- pragma obsolete(svvarset.new_maybe_named_var/4).
 :- pred svvarset.new_maybe_named_var(maybe(string)::in, var(T)::out,
     varset(T)::in, varset(T)::out) is det.
 
     % Create a new named variable with a unique (w.r.t. the
     % varset) number appended to the name.
     %
+:- pragma obsolete(svvarset.new_uniquely_named_var/4).
 :- pred svvarset.new_uniquely_named_var(string::in, var(T)::out,
     varset(T)::in, varset(T)::out) is det.
 
     % Create multiple new variables.
     %
+:- pragma obsolete(svvarset.new_vars/4).
 :- pred svvarset.new_vars(int::in, list(var(T))::out, varset(T)::in,
     varset(T)::out) is det.
 
     % Delete the name and value for a variable.
     %
+:- pragma obsolete(svvarset.delete_var/3).
 :- pred svvarset.delete_var(var(T)::in, varset(T)::in, varset(T)::out) is det.
 
     % Delete the names and values for a list of variables.
     %
+:- pragma obsolete(svvarset.delete_vars/3).
 :- pred svvarset.delete_vars(list(var(T))::in, varset(T)::in, varset(T)::out)
     is det.
 
     % Set the name of a variable.
     %
+:- pragma obsolete(svvarset.name_var/4).
 :- pred svvarset.name_var(var(T)::in, string::in, varset(T)::in,
     varset(T)::out) is det.
 
     % Bind a value to a variable.
     % This will overwrite any existing binding.
     %
+:- pragma obsolete(svvarset.bind_var/4).
 :- pred svvarset.bind_var(var(T)::in, term(T)::in, varset(T)::in,
     varset(T)::out) is det.
 
     % Bind a set of terms to a set of variables.
     %
+:- pragma obsolete(svvarset.bind_vars/3).
 :- pred svvarset.bind_vars(substitution(T)::in, varset(T)::in, varset(T)::out)
     is det.
 
     % Given a varset and a set of variables, remove the names
     % and values of any other variables stored in the varset.
     %
+:- pragma obsolete(svvarset.select/3).
 :- pred svvarset.select(set(var(T))::in, varset(T)::in, varset(T)::out) is det.
 
 %-----------------------------------------------------------------------------%

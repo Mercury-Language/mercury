@@ -37,7 +37,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -207,7 +206,7 @@ parse_alloc_site_line(Line0, !AllocSiteMap, !IO) :-
     ->
         demangle(MangledProcName, ProcName),
         AllocSite = alloc_site(ProcName, Type, FileName, LineNum, NumWords),
-        svmap.det_insert(alloc_id(Id), AllocSite, !AllocSiteMap)
+        map.det_insert(alloc_id(Id), AllocSite, !AllocSiteMap)
     ;
         unexpected($module, $pred, "format error: bad alloc site declaration")
     ).

@@ -27,11 +27,13 @@
     % `svset.insert(X, Set0, Set)' is true iff `Set' is the union of
     % `Set0' and the set containing only `X'.
     %
+:- pragma obsolete(svset.insert/3).
 :- pred svset.insert(T::in, set(T)::in, set(T)::out) is det.
 
     % `svset.insert_list(Xs, Set0, Set)' is true iff `Set' is the union of
     % `Set0' and the set containing only the members of `Xs'.
     %
+:- pragma obsolete(svset.insert_list/3).
 :- pred svset.insert_list(list(T)::in, set(T)::in, set(T)::out) is det.
 
     % `svset.delete(X, Set0, Set)' is true iff `Set' is the relative
@@ -39,12 +41,14 @@
     % if `Set' is the set which contains all the elements of `Set0'
     % except `X'.
     %
+:- pragma obsolete(svset.delete/3).
 :- pred svset.delete(T::in, set(T)::in, set(T)::out) is det.
 
     % `svset.delete_list(Xs, Set0, Set)' is true iff `Set' is the relative
     % complement of `Set0' and the set containing only the members of
     % `Xs'.
     %
+:- pragma obsolete(svset.delete_list/3).
 :- pred svset.delete_list(list(T)::in, set(T)::in, set(T)::out) is det.
 
     % `svset.remove(X, Set0, Set)' is true iff `Set0' contains `X',
@@ -52,6 +56,7 @@
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
+:- pragma obsolete(svset.remove/3).
 :- pred svset.remove(T::in, set(T)::in, set(T)::out) is semidet.
 
     % `svset.remove_list(Xs, Set0, Set)' is true iff `Xs' does not
@@ -59,6 +64,7 @@
     % and `Set' is the relative complement of `Set0' and the set
     % containing only the members of `Xs'.
     %
+:- pragma obsolete(svset.remove_list/3).
 :- pred svset.remove_list(list(T)::in, set(T)::in, set(T)::out) is semidet.
 
     % `svset.remove_least(Elem, Set0, Set)' is true iff
@@ -67,6 +73,7 @@
     % by compare/3), and `Set' is the set containing all the
     % elements of `Set0' except `Elem'.
     %
+:- pragma obsolete(svset.remove_least/3).
 :- pred svset.remove_least(T::out, set(T)::in, set(T)::out) is semidet.
 
 %--------------------------------------------------------------------------%

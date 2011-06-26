@@ -30,12 +30,14 @@
     % the queue which results from appending `Elem' onto the end
     % of `Queue0'.
     %
+:- pragma obsolete(svqueue.put/3).
 :- pred svqueue.put(T::in, queue(T)::in, queue(T)::out) is det.
 
     % `svqueue.put_list(Elems, Queue0, Queue)' is true iff `Queue'
     % is the queue which results from inserting the items in the
     % list `Elems' into `Queue0'.
     %
+:- pragma obsolete(svqueue.put_list/3).
 :- pred svqueue.put_list(list(T)::in, queue(T)::in, queue(T)::out) is det.
 
     % `svqueue.get(Elem, Queue0, Queue)' is true iff `Queue0' is
@@ -43,29 +45,34 @@
     % the queue which results from removing that element from
     % the front of `Queue0'.
     %
+:- pragma obsolete(svqueue.get/3).
 :- pred svqueue.get(T::out, queue(T)::in, queue(T)::out) is semidet.
 
     % `svqueue.delete_all(Elem, Queue0, Queue)' is true iff `Queue' is
     % the same queue as `Queue0' with all occurences of `Elem' removed
     % from it.
     %
+:- pragma obsolete(svqueue.delete_all/3).
 :- pred svqueue.delete_all(T::in, queue(T)::in, queue(T)::out) is det.
 
     % `svqueue.put_on_front(Elem, Queue0, Queue)' pushes `Elem' on to
     % the front of `Queue0', giving `Queue'.
     %
+:- pragma obsolete(svqueue.put_on_front/3).
 :- pred svqueue.put_on_front(T::in, queue(T)::in, queue(T)::out) is det.
 
     % `svqueue.put_list_on_front(Queue0, Elems, Queue)' pushes `Elems'
     % on to the front of `Queue0', giving `Queue' (the Nth member
     % of `Elems' becomes the Nth member from the front of `Queue').
     %
+:- pragma obsolete(svqueue.put_list_on_front/3).
 :- pred svqueue.put_list_on_front(list(T)::in, queue(T)::in, queue(T)::out)
     is det.
 
     % `queue.get_from_back(Elem, Queue0, Queue)' removes `Elem' from
     % the back of `Queue0', giving `Queue'.
     %
+:- pragma obsolete(svqueue.get_from_back/3).
 :- pred svqueue.get_from_back(T::out, queue(T)::in, queue(T)::out) is semidet.
 
 %--------------------------------------------------------------------------%

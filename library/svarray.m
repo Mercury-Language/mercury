@@ -27,6 +27,7 @@
     % resulting array (good opportunity for destructive update ;-).
     % Throws an exception if the index is out of bounds.
     %
+:- pragma obsolete(svarray.set/4).
 :- pred svarray.set(int::in, T::in, array(T)::array_di, array(T)::array_uo)
     is det.
 
@@ -34,6 +35,7 @@
     % and returns the resulting array.
     % It fails if the index is out of bounds.
     %
+:- pragma obsolete(svarray.semidet_set/4).
 :- pred svarray.semidet_set(int::in, T::in,
     array(T)::array_di, array(T)::array_uo) is semidet.
 
@@ -43,6 +45,7 @@
     % destructive update.
     % It is an error if the index is out of bounds.
     %
+:- pragma obsolete(svarray.slow_set/4).
 :- pred svarray.slow_set(int, T, array(T), array(T)).
 %:- mode svarray.slow_set(in, in, array_ui, array_uo) is det.
 :- mode svarray.slow_set(in, in, in, array_uo) is det.
@@ -53,6 +56,7 @@
     % destructive update.
     % It fails if the index is out of bounds.
     %
+:- pragma obsolete(svarray.semidet_slow_set/4).
 :- pred svarray.semidet_slow_set(int, T, array(T), array(T)).
 %:- mode svarray.semidet_slow_set(in, in, array_ui, array_uo) is semidet.
 :- mode svarray.semidet_slow_set(in, in, in, array_uo) is semidet.
@@ -62,6 +66,7 @@
     % the new size `Size'.  Any new entries are filled
     % with `Init'.
     %
+:- pragma obsolete(svarray.resize/4).
 :- pred svarray.resize(int::in, T::in, array(T)::array_di, array(T)::array_uo)
     is det.
 
@@ -69,6 +74,7 @@
     % The array is shrunk to make it fit the new size `Size'.
     % Throws an exception if `Size' is larger than the size of `Array0'.
     %
+:- pragma obsolete(svarray.shrink/3).
 :- pred svarray.shrink(int::in, array(T)::array_di, array(T)::array_uo)
     is det.
 

@@ -27,24 +27,29 @@
 
     % Insert a particular value in a bag.
     %
+:- pragma obsolete(svbag.insert/3).
 :- pred svbag.insert(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Insert a list of values into a bag.
     %
+:- pragma obsolete(svbag.insert_list/3).
 :- pred svbag.insert_list(list(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Insert a set of values into a bag.
     %
+:- pragma obsolete(svbag.insert_set/3).
 :- pred svbag.insert_set(set(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Remove one occurrence of a particular value from a bag.
     % Fail if the item does not exist in the bag.
     %
+:- pragma obsolete(svbag.remove/3).
 :- pred svbag.remove(T::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove one occurrence of a particular value from a bag.
     % Abort if the item does not exist in the bag.
     %
+:- pragma obsolete(svbag.det_remove/3).
 :- pred svbag.det_remove(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Remove a list of values from a bag.  Duplicates are removed
@@ -58,36 +63,43 @@
     %       bag.is_subbag(RemoveBag, Bag0),
     %       svbag.subtract(RemoveBag, Bag0, Bag).
     %
+:- pragma obsolete(svbag.remove_list/3).
 :- pred svbag.remove_list(list(T)::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove a list of values from a bag.  Duplicates are removed
     % from the bag the appropriate number of times.  Abort if any
     % of the items in the list do not exist in the bag.
     %
+:- pragma obsolete(svbag.det_remove_list/3).
 :- pred svbag.det_remove_list(list(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Remove a set of values from a bag. Each value is removed once.
     % Fail if any of the items in the set do not exist in the bag.
     %
+:- pragma obsolete(svbag.remove_set/3).
 :- pred svbag.remove_set(set(T)::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove a set of values from a bag. Each value is removed once.
     % Abort if any of the items in the set do not exist in the bag.
     %
+:- pragma obsolete(svbag.det_remove_set/3).
 :- pred svbag.det_remove_set(set(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Delete one occurrence of a particular value from a bag.
     % If the key is not present, leave the bag unchanged.
     %
+:- pragma obsolete(svbag.delete/3).
 :- pred svbag.delete(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Remove all occurrences of a particular value from a bag.
     % Fail if the item does not exist in the bag.
     %
+:- pragma obsolete(svbag.remove_all/3).
 :- pred svbag.remove_all(T::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Delete all occurrences of a particular value from a bag.
     %
+:- pragma obsolete(svbag.delete_all/3).
 :- pred svbag.delete_all(T::in, bag(T)::in, bag(T)::out) is det.
 
     % svbag.subtract(Bag0, SubBag, Bag):
@@ -98,10 +110,12 @@
     % element is not removed.
     % e.g. svbag.subtract({1, 1, 2, 2, 3 }, {1, 1, 2, 3, 3, 3}, {2}).
     %
+:- pragma obsolete(svbag.subtract/3).
 :- pred svbag.subtract(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Fails if the bag is empty.
     %
+:- pragma obsolete(svbag.remove_smallest/3).
 :- pred svbag.remove_smallest(T::out, bag(T)::in, bag(T)::out) is semidet.
 
 %---------------------------------------------------------------------------%

@@ -23,12 +23,15 @@
 
 %-----------------------------------------------------------------------------%
 
+:- pragma obsolete(svbimap.insert/4).
 :- pred svbimap.insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
     is semidet.
 
+:- pragma obsolete(svbimap.det_insert/4).
 :- pred svbimap.det_insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
     is det.
 
+:- pragma obsolete(svbimap.set/4).
 :- pred svbimap.set(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out) is det.
 
 %-----------------------------------------------------------------------------%

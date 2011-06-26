@@ -29,69 +29,81 @@
     % Insert a new key and corresponding value into a multi_map.
     % Fail if the key already exists.
     %
+:- pragma obsolete(svmulti_map.insert/4).
 :- pred svmulti_map.insert(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
     % Insert a new key and corresponding value into a multi_map.
     % Abort if the key already exists.
     %
+:- pragma obsolete(svmulti_map.det_insert/4).
 :- pred svmulti_map.det_insert(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Update (add) the value corresponding to a given key.
     % Fail if the key does not already exist.
     %
+:- pragma obsolete(svmulti_map.update/4).
 :- pred svmulti_map.update(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
     % Update (add) the value corresponding to a given key.
     % Abort if the key doesn't already exist.
     %
+:- pragma obsolete(svmulti_map.det_update/4).
 :- pred svmulti_map.det_update(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Update (replace) the value corresponding to a given key.
     % Abort if the key does not already exist.
     %
+:- pragma obsolete(svmulti_map.det_replace/4).
 :- pred svmulti_map.det_replace(K::in, list(V)::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Update (add) value if the key is already present, otherwise
     % insert the new key and value.
     %
+:- pragma obsolete(svmulti_map.set/4).
 :- pred svmulti_map.set(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
+:- pragma obsolete(svmulti_map.add/4).
 :- pred svmulti_map.add(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Delete a key and data from a multi_map
     % If the key is not present, leave the multi_map unchanged.
     %
+:- pragma obsolete(svmulti_map.delete/3).
 :- pred svmulti_map.delete(K::in, multi_map(K, V)::in, multi_map(K, V)::out)
     is det.
 
     % Delete a data value from a key in a multi_map
     % If the key is not present, leave the multi_map unchanged.
     %
+:- pragma obsolete(svmulti_map.delete/4).
 :- pred svmulti_map.delete(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Delete a key-value pair from a multi_map and return the value.
     % Fail if the key is not present.
     %
+:- pragma obsolete(svmulti_map.remove/4).
 :- pred svmulti_map.remove(K::in, list(V)::out,
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
     % Delete a key-value pair from a multi_map and return the value.
     % Abort if the key is not present.
     %
+:- pragma obsolete(svmulti_map.det_remove/4).
 :- pred svmulti_map.det_remove(K::in, list(V)::out,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Remove the smallest item from the multi_map, fail if
     % the multi_map is empty.
     %
+:- pragma obsolete(svmulti_map.remove_smallest/4).
 :- pred svmulti_map.remove_smallest(K::out, list(V)::out,
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 

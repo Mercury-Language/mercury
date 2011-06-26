@@ -30,68 +30,82 @@
     % Insert a new key and corresponding value into a map.
     % Fail if the key already exists.
     %
+:- pragma obsolete(svmap.insert/4).
 :- pred svmap.insert(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Insert a new key and corresponding value into a map.
     % Abort if the key already exists.
     %
+:- pragma obsolete(svmap.det_insert/4).
 :- pred svmap.det_insert(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
 
     % Apply map.det_insert to key - value pairs from corresponding lists.
     %
+:- pragma obsolete(svmap.det_insert_from_corresponding_lists/4).
 :- pred svmap.det_insert_from_corresponding_lists(list(K)::in, list(V)::in,
     map(K, V)::in, map(K, V)::out) is det.
 
     % Apply map.det_insert to key - value pairs from the assoc_lists.
     %
+:- pragma obsolete(svmap.det_insert_from_assoc_list/3).
 :- pred svmap.det_insert_from_assoc_list(assoc_list(K, V)::in,
     map(K, V)::in, map(K, V)::out) is det.
 
     % Apply map.set to key - value pairs from corresponding lists.
     %
+:- pragma obsolete(svmap.set_from_corresponding_lists/4).
 :- pred svmap.set_from_corresponding_lists(list(K)::in, list(V)::in,
     map(K, V)::in, map(K, V)::out) is det.
 
+:- pragma obsolete(svmap.set_from_assoc_list/3).
 :- pred svmap.set_from_assoc_list(assoc_list(K, V)::in,
     map(K, V)::in, map(K, V)::out) is det.
 
     % Update the value corresponding to a given key
     % Fail if the key doesn't already exist.
     %
+:- pragma obsolete(svmap.update/4).
 :- pred svmap.update(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Update the value corresponding to a given key
     % Abort if the key doesn't already exist.
     %
+:- pragma obsolete(svmap.det_update/4).
 :- pred svmap.det_update(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
 
     % Update value if the key is already present, otherwise
     % insert new key and value.
     %
+:- pragma obsolete(svmap.set/4).
 :- pred svmap.set(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
 
     % Delete a key-value pair from a map.
     % If the key is not present, leave the map unchanged.
     %
+:- pragma obsolete(svmap.delete/3).
 :- pred svmap.delete(K::in, map(K, V)::in, map(K, V)::out) is det.
 
     % Apply map.delete/3 to a list of keys.
     %
+:- pragma obsolete(svmap.delete_list/3).
 :- pred svmap.delete_list(list(K)::in, map(K, V)::in, map(K, V)::out) is det.
 
     % Delete a key-value pair from a map and return the value.
     % Fail if the key is not present.
     %
+:- pragma obsolete(svmap.remove/4).
 :- pred svmap.remove(K::in, V::out, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Delete a key-value pair from a map and return the value.
     % Abort if the key is not present.
     %
+:- pragma obsolete(svmap.det_remove/4).
 :- pred svmap.det_remove(K::in, V::out, map(K, V)::in, map(K, V)::out) is det.
 
     % Remove the smallest item from the map, fail if
     % the map is empty.
     %
+:- pragma obsolete(svmap.remove_smallest/4).
 :- pred svmap.remove_smallest(K::out, V::out, map(K, V)::in, map(K, V)::out)
     is semidet.
 

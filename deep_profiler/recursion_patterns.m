@@ -67,7 +67,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module svset.
 :- import_module unit.
 
 %----------------------------------------------------------------------------%
@@ -767,7 +766,7 @@ recursion_data_add_error(Error, !RecursionData) :-
     some [!Errors] (
         (
             !.RecursionData = recursion_data(_, _, !:Errors),
-            svset.insert(Error, !Errors),
+            set.insert(Error, !Errors),
             !RecursionData ^ rd_errors := !.Errors
         ;
             !.RecursionData = proc_dead_code
