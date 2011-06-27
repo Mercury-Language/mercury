@@ -125,7 +125,7 @@
 
     % array.generate(Size, Generate) = Array:
     % Create an array with bounds from 0 to Size - 1 using the function
-    % Generate to set the intial value of each element of the array.
+    % Generate to set the initial value of each element of the array.
     % The initial value of the element at index K will be the result of
     % calling the function Generate(K).
     %
@@ -134,7 +134,7 @@
 
     % array.generate_foldl(Size, Generate, Array, !Acc):
     % As above, but using a predicate with an accumulator threaded through it
-    % to generate the inital value of each element.
+    % to generate the initial value of each element.
     %
 :- pred array.generate_foldl(int, pred(int, T, A, A), array(T), A, A).
 :- mode array.generate_foldl(in, in(pred(in, out, in, out) is det),

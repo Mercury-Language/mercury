@@ -62,7 +62,7 @@
     %
 :- func empty = version_array(T).
 
-    % init(N, X returns an array fo size N with each itme initialised to X.
+    % init(N, X returns an array of size N with each item initialised to X.
     %
 :- func init(int, T) = version_array(T).
 
