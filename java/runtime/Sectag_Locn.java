@@ -9,8 +9,9 @@ package jmercury.runtime;
 public class Sectag_Locn implements java.io.Serializable {
 	
 	public static final int MR_SECTAG_NONE = 0;
-	public static final int MR_SECTAG_LOCAL = 1;
-	public static final int MR_SECTAG_REMOTE = 2;
+	public static final int MR_SECTAG_NONE_DIRECT_ARG = 1;
+	public static final int MR_SECTAG_LOCAL = 2;
+	public static final int MR_SECTAG_REMOTE = 3;
 
 	public int value;
 

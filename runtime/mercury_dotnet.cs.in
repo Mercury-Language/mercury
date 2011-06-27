@@ -700,9 +700,10 @@ public class DuFunctorDesc {
 }
 
 public enum Sectag_Locn {
-    MR_SECTAG_NONE      = 0,
-    MR_SECTAG_LOCAL     = 1,
-    MR_SECTAG_REMOTE    = 2
+    MR_SECTAG_NONE              = 0,
+    MR_SECTAG_NONE_DIRECT_ARG   = 1,
+    MR_SECTAG_LOCAL             = 2,
+    MR_SECTAG_REMOTE            = 3
 }
 
 public class DuPtagLayout {

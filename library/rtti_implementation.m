@@ -2537,6 +2537,9 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
                 SecTagLocn = stag_none,
                 FunctorDesc = PTagEntry ^ du_sectag_alternatives(0)
             ;
+                SecTagLocn = stag_none_direct_arg,
+                FunctorDesc = PTagEntry ^ du_sectag_alternatives(0)
+            ;
                 SecTagLocn = stag_remote,
                 SecTag = get_remote_secondary_tag(Term),
                 FunctorDesc = PTagEntry ^ du_sectag_alternatives(SecTag)
@@ -2877,6 +2880,9 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
                 SecTagLocn = stag_none,
                 SecTag = 0
             ;
+                SecTagLocn = stag_none_direct_arg,
+                SecTag = 0
+            ;
                 SecTagLocn = stag_remote,
                 SecTag = get_remote_secondary_tag(Term)
             ),
@@ -3056,7 +3062,12 @@ get_arg(Term, SecTagLocn, FunctorDesc, TypeInfo, Index, Arg) :-
     PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, Index),
     get_arg_type_info(TypeInfo, PseudoTypeInfo, Term, FunctorDesc,
         ArgTypeInfo),
-    ( ( SecTagLocn = stag_none ; high_level_data ) ->
+    (
+        ( SecTagLocn = stag_none
+        ; SecTagLocn = stag_none_direct_arg
+        ; high_level_data
+        )
+    ->
         TagOffset = 0
     ;
         TagOffset = 1
@@ -3696,6 +3707,7 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 
 :- type sectag_locn
     --->    stag_none
+    ;       stag_none_direct_arg
     ;       stag_local
     ;       stag_remote
     ;       stag_variable.

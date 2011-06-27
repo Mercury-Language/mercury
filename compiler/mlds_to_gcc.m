@@ -2446,9 +2446,10 @@ rtti_enum_const("MR_TYPECTOR_REP_DUMMY", 42).
 rtti_enum_const("MR_TYPECTOR_REP_BITMAP", 43).
 rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 44).
 rtti_enum_const("MR_SECTAG_NONE", 0).
-rtti_enum_const("MR_SECTAG_LOCAL", 1).
-rtti_enum_const("MR_SECTAG_REMOTE", 2).
-rtti_enum_const("MR_SECTAG_VARIABLE", 3).
+rtti_enum_const("MR_SECTAG_NONE_DIRECT_ARG", 1).
+rtti_enum_const("MR_SECTAG_LOCAL", 2).
+rtti_enum_const("MR_SECTAG_REMOTE", 3).
+rtti_enum_const("MR_SECTAG_VARIABLE", 4).
 rtti_enum_const("MR_PREDICATE", 0).
 rtti_enum_const("MR_FUNCTION", 1).
 
