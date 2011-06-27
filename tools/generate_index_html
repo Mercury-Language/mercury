@@ -11,8 +11,8 @@
 # an absolute path name, it had better be in its own path!
 #
 
-CURRENT_RELEASE=10.04.2
-BETA_RELEASE=11.01
+CURRENT_RELEASE=11.01
+BETA_RELEASE=11.07
 
 # We need bash's extended globbing for the case patterns
 # matching the release numbers.
