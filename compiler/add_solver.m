@@ -27,7 +27,7 @@
     %   where representation is rt,     % type
     %         initialisation is ip,     % pred
     %         ground         is gi,     % inst
-    %         any            is ai, ...     % inst
+    %         any            is ai, ... % inst
     %
     % causes the following to be introduced:
     %
@@ -64,6 +64,7 @@
 
 :- import_module bool.
 :- import_module map.
+:- import_module require.
 :- import_module string.
 :- import_module varset.
 
@@ -182,34 +183,67 @@ solver_conversion_fn_symname(Prefix, qualified(ModuleNames, Name), Arity) =
 
 add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
-    Arity             = length(TypeParams),
+    Arity = length(TypeParams),
 
-    AnyInst           = SolverTypeDetails ^ std_any_inst,
-    GroundInst        = SolverTypeDetails ^ std_ground_inst,
+    AnyInst = SolverTypeDetails ^ std_any_inst,
+    GroundInst = SolverTypeDetails ^ std_ground_inst,
 
-    InAnyMode         = in_mode(AnyInst),
-    InGroundMode      = in_mode(GroundInst),
+    InAnyMode = in_mode(AnyInst),
+    InGroundMode = in_mode(GroundInst),
 
-    OutAnyMode        = out_mode(AnyInst),
-    OutGroundMode     = out_mode(GroundInst),
+    OutAnyMode = out_mode(AnyInst),
+    OutGroundMode = out_mode(GroundInst),
 
-    ProgVarSet0       = varset.init,
+    ProgVarSet0 = varset.init,
     varset.new_var(X, ProgVarSet0, ProgVarSet1),
     varset.new_var(Y, ProgVarSet1, ProgVarSet),
 
     InstVarSet = varset.init,
 
-    Attrs0            = default_attributes(lang_c),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        Lang = lang_c
+    ;
+        Target = target_csharp,
+        Lang = lang_csharp
+    ;
+        Target = target_java,
+        Lang = lang_java
+    ;
+        Target = target_erlang,
+        Lang = lang_erlang
+    ;
+        ( Target = target_il
+        ; Target = target_asm
+        ; Target = target_x86_64
+        ),
+        WhatMsg = "solver type conversion functions for this backend",
+        sorry($module, WhatMsg)
+    ),
+
+    Attrs0 = default_attributes(Lang),
     some [!Attrs] (
         !:Attrs = Attrs0,
         set_may_call_mercury(proc_will_not_call_mercury, !Attrs),
         set_thread_safe(proc_thread_safe, !Attrs),
         set_terminates(proc_terminates, !Attrs),
+        set_may_modify_trail(proc_will_not_modify_trail, !Attrs),
         Attrs = !.Attrs
     ),
 
-    Impl              = fc_impl_ordinary("Y = X;", yes(Context)),
-
+    (
+        ( Lang = lang_c
+        ; Lang = lang_csharp
+        ; Lang = lang_java
+        ),
+        Impl = fc_impl_ordinary("Y = X;", yes(Context))
+    ;
+        Lang = lang_erlang,
+        Impl = fc_impl_ordinary("Y = X", yes(Context))
+    ),
+    
     % The `func(in) = out(<i_ground>) is det' mode.
     %
     ToGroundRepnSymName = solver_to_ground_repn_symname(TypeSymName, Arity),
