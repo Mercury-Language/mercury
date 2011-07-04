@@ -577,6 +577,16 @@ case $COMPILER in gcc)
                 ARCH_OPTS="$ARCH_OPTS -O0" ;;
             *" random.c "*|*" random.dir/random"*".c "*)
                 ARCH_OPTS="$ARCH_OPTS -O0" ;;
+            # Workarounds for internal problems with GCC in asm_fast.gc
+            # on i*86.  Reported against gcc 4.4.5 and 4.6.0.
+            *" ml_backend.ml_closure_gen.c "*)
+                ARCH_OPTS="$ARCH_OPTS -O0" ;;
+            *" ml_backend.ml_unify_gen.c "*)
+                ARCH_OPTS="$ARCH_OPTS -O0" ;;
+            *" ml_backend.rtti_to_mlds.c "*)
+                ARCH_OPTS="$ARCH_OPTS -O0" ;;
+            *" display_report.c "*)
+                ARCH_OPTS="$ARCH_OPTS -O0" ;;
             esac ;;
         sparc*)
             case "$*" in
