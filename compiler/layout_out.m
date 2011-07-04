@@ -2948,33 +2948,49 @@ output_module_string_table(ModuleName, _StringTableSize,
     io::di, io::uo) is det.
 
 output_module_string_table_strings(String, [], !IO) :-
-    output_module_string_table_chars(0, length(String) - 1, String, !IO).
+    output_module_string_table_chars(0, 0, String, !IO).
 output_module_string_table_strings(String, [Next | Rest], !IO) :-
-    output_module_string_table_chars(0, length(String) - 1, String, !IO),
+    output_module_string_table_chars(0, 0, String, !IO),
     io.write_string(",\n", !IO),
     output_module_string_table_strings(Next, Rest, !IO).
 
 :- pred output_module_string_table_chars(int::in, int::in, string::in,
     io::di, io::uo) is det.
 
-output_module_string_table_chars(CurIndex, MaxIndex, String, !IO) :-
-    ( CurIndex =< MaxIndex ->
-        ( CurIndex mod 10 = 0 ->
-            io.nl(!IO)
+output_module_string_table_chars(CurIndex, Count, String, !IO) :-
+    ( string.unsafe_index_next(String, CurIndex, NextIndex, Char) ->
+        (
+            char.to_int(Char, Int),
+            Int =< 0x7f
+        ->
+            io.write_char('''', !IO),
+            c_util.output_quoted_char(Char, !IO),
+            io.write_char('''', !IO),
+            io.write_string(", ", !IO)
+        ; char.to_utf8(Char, Codes) ->
+            output_multi_byte_char_codes(Codes, !IO)
         ;
-            true
+            unexpected($module, $pred, "invalid code point")
         ),
-        string.unsafe_index(String, CurIndex, Char),
-        io.write_char('''', !IO),
-        c_util.output_quoted_char(Char, !IO),
-        io.write_char('''', !IO),
-        io.write_string(", ", !IO),
-        output_module_string_table_chars(CurIndex + 1, MaxIndex, String, !IO)
+        ( Count = 10 ->
+            io.nl(!IO),
+            output_module_string_table_chars(NextIndex, 0, String, !IO)
+        ;
+            output_module_string_table_chars(NextIndex, Count + 1, String, !IO)
+        )
     ;
         io.write_char('''', !IO),
         c_util.output_quoted_char(char.det_from_int(0), !IO),
         io.write_char('''', !IO)
     ).
+
+:- pred output_multi_byte_char_codes(list(int)::in, io::di, io::uo) is det.
+
+output_multi_byte_char_codes([], !IO).
+output_multi_byte_char_codes([C | Cs], !IO) :-
+    io.write_int(C, !IO),
+    io.write_string(", ", !IO),
+    output_multi_byte_char_codes(Cs, !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -577,10 +577,10 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		dir_test \
 		final_excp \
 		init_excp \
+		io_globals_deadlock \
 		map_merge_test \
 		mutable_excp \
 		null_char \
-		io_globals_deadlock \
 		test_array2d \
 		test_injection \
 		tl_backjump_test \
