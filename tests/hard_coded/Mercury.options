@@ -24,6 +24,13 @@ MCFLAGS-direct_arg_cyclic3 =	--intermodule-optimization
 MCFLAGS-direct_arg_intermod1 =  --intermodule-optimization
 MCFLAGS-direct_arg_intermod2 =  --intermodule-optimization
 MCFLAGS-direct_arg_intermod3 =  --intermodule-optimization
+
+# --intermodule-optimization causes impl_def_literal to abort during
+# the STM transformation (bug #136).  Its use here is disabled until
+# that is fixed.
+MCFLAGS-impl_def_literal = --no-intermodule-optimization
+MCFLAGS-impl_def_literal.sub = --no-intermodule-optimization
+
 MCFLAGS-lp		=	--intermodule-optimization -O3
 MCFLAGS-elim_local_var_char =   --eliminate-local-vars
 MCFLAGS-float_consistency =	--optimize-constant-propagation
