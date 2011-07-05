@@ -114,6 +114,7 @@
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.llds_out.llds_out_data.
 :- import_module ll_backend.llds_out.llds_out_file.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module assoc_list.
@@ -874,7 +875,7 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         ArgInfos, MaybeExistInfo),
     ArgTypes = list.map(du_arg_info_type, ArgInfos),
     MaybeArgNames = list.map(du_arg_info_name, ArgInfos),
-    ArgNames = list.filter_map(project_yes, MaybeArgNames),
+    HaveArgNames = (list.member(yes(_), MaybeArgNames) -> yes ; no),
     (
         ArgInfos = [_ | _],
         output_du_arg_types(Info, RttiTypeCtor, Ordinal, ArgTypes,
@@ -883,12 +884,14 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         ArgInfos = []
     ),
     (
-        ArgNames = [_ | _],
+        HaveArgNames = yes,
         output_du_arg_names(Info, RttiTypeCtor, Ordinal, MaybeArgNames,
             !DeclSet, !IO)
     ;
-        ArgNames = []
+        HaveArgNames = no
     ),
+    output_du_arg_locns(Info, RttiTypeCtor, Ordinal, ArgInfos,
+        HaveArgLocns, !DeclSet, !IO),
     (
         MaybeExistInfo = yes(ExistInfo),
         output_exist_info(Info, RttiTypeCtor, Ordinal, ExistInfo,
@@ -947,11 +950,20 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
     ),
     io.write_string(",\n\t", !IO),
     (
-        ArgNames = [_ | _],
+        HaveArgNames = yes,
         output_addr_of_ctor_rtti_id(RttiTypeCtor,
             type_ctor_field_names(Ordinal), !IO)
     ;
-        ArgNames = [],
+        HaveArgNames = no,
+        io.write_string("NULL", !IO)
+    ),
+    io.write_string(",\n\t", !IO),
+    (
+        HaveArgLocns = yes,
+        output_addr_of_ctor_rtti_id(RttiTypeCtor,
+            type_ctor_field_locns(Ordinal), !IO)
+    ;
+        HaveArgLocns = no,
         io.write_string("NULL", !IO)
     ),
     io.write_string(",\n\t", !IO),
@@ -1117,6 +1129,53 @@ output_du_arg_names(Info, RttiTypeCtor, Ordinal, MaybeNames, !DeclSet, !IO) :-
     expect(list.is_not_empty(MaybeNames), $module, $pred, "empty list"),
     output_maybe_quoted_strings(MaybeNames, !IO),
     io.write_string("};\n", !IO).
+
+:- pred output_du_arg_locns(llds_out_info::in, rtti_type_ctor::in, int::in,
+    list(du_arg_info)::in, bool::out, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
+
+output_du_arg_locns(Info, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
+        !DeclSet, !IO) :-
+    (
+        list.member(ArgInfo, ArgInfos),
+        ArgInfo = du_arg_info(_, _, partial_word_first(_))
+    ->
+        output_generic_rtti_data_defn_start(Info,
+            ctor_rtti_id(RttiTypeCtor, type_ctor_field_locns(Ordinal)),
+            !DeclSet, !IO),
+        io.write_string(" = {\n", !IO),
+        output_du_arg_locns_2(ArgInfos, -1, !IO),
+        io.write_string("};\n", !IO),
+        HaveArgLocns = yes
+    ;
+        HaveArgLocns = no
+    ).
+
+:- pred output_du_arg_locns_2(list(du_arg_info)::in, int::in, io::di, io::uo)
+    is det.
+
+output_du_arg_locns_2([], _, !IO).
+output_du_arg_locns_2([ArgInfo | ArgInfos], PrevSlotNum, !IO) :-
+    ArgWidth = ArgInfo ^ du_arg_width,
+    (
+        ArgWidth = full_word,
+        % Code which examines this structure must check for Bits = 0 as a
+        % special case, meaning that the argument is not packed.
+        Shift = 0,
+        Bits = 0,
+        SlotNum = PrevSlotNum + 1
+    ;
+        ArgWidth = partial_word_first(Mask),
+        Shift = 0,
+        int.log2(Mask, Bits),
+        SlotNum = PrevSlotNum + 1
+    ;
+        ArgWidth = partial_word_shifted(Shift, Mask),
+        int.log2(Mask, Bits),
+        SlotNum = PrevSlotNum
+    ),
+    io.format("\t{ %d, %d, %d },\n", [i(SlotNum), i(Shift), i(Bits)], !IO),
+    output_du_arg_locns_2(ArgInfos, SlotNum, !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -1371,11 +1371,11 @@ write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         Body = hlds_eqv_type(EqvType),
         TypeBody = parse_tree_eqv_type(EqvType)
     ;
-        Body = hlds_abstract_type(IsSolverType),
-        TypeBody = parse_tree_abstract_type(IsSolverType)
+        Body = hlds_abstract_type(Details),
+        TypeBody = parse_tree_abstract_type(Details)
     ;
         Body = hlds_foreign_type(_),
-        TypeBody = parse_tree_abstract_type(non_solver_type)
+        TypeBody = parse_tree_abstract_type(abstract_type_general)
     ;
         Body = hlds_solver_type(SolverTypeDetails, MaybeUserEqComp),
         TypeBody = parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp)

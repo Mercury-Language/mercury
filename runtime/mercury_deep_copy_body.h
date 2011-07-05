@@ -219,6 +219,7 @@ try_again:
                 RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);       \
                 {                                                           \
                     const MR_DuFunctorDesc  *functor_desc;                  \
+                    const MR_DuArgLocn      *arg_locns;                     \
                     const MR_DuExistInfo    *exist_info;                    \
                     MR_AllocSiteInfoPtr     attrib;                         \
                     int                     sectag;                         \
@@ -237,14 +238,16 @@ try_again:
                     functor_desc = ptag_layout->MR_sectag_alternatives      \
                         [sectag];                                           \
                     arity = functor_desc->MR_du_functor_orig_arity;         \
+                    arg_locns = functor_desc->MR_du_functor_arg_locns;      \
                     exist_info = functor_desc->MR_du_functor_exist_info;    \
                                                                             \
                     /* this `if' will get evaluated at compile time */      \
-                    if (!have_sectag) {                                     \
-                        cell_size = arity;                                  \
+                    if (have_sectag) {                                      \
+                        cell_size = 1;                                      \
                     } else {                                                \
-                        cell_size = 1 + arity;                              \
+                        cell_size = 0;                                      \
                     }                                                       \
+                    cell_size += MR_cell_size_for_args(arity, arg_locns);   \
                     cell_size += MR_SIZE_SLOT_SIZE;                         \
                                                                             \
                     if (exist_info == NULL) {                               \
@@ -286,6 +289,21 @@ try_again:
                     }                                                       \
                                                                             \
                     for (i = 0; i < arity; i++) {                           \
+                        if (arg_locns != NULL &&                            \
+                            arg_locns[i].MR_arg_bits != 0)                  \
+                        {                                                   \
+                            /*                                              \
+                            ** Copy fields holding packed arguments when    \
+                            ** we encounter the first argument.             \
+                            */                                              \
+                            if (arg_locns[i].MR_arg_shift == 0) {           \
+                                MR_field(0, new_data, cur_slot) =           \
+                                    data_value[cur_slot];                   \
+                                cur_slot++;                                 \
+                            }                                               \
+                            continue;                                       \
+                        }                                                   \
+                                                                            \
                         if (MR_arg_type_may_contain_var(functor_desc, i)) { \
                             MR_Word *parent_data = (MR_Word *) new_data;    \
                             if (have_sectag) {                              \
@@ -333,14 +351,19 @@ try_again:
                 RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
                 {
                     const MR_DuFunctorDesc  *functor_desc;
+                    const MR_DuArgLocn      *arg_locns;
                     const MR_DuExistInfo    *exist_info;
                     int                     arity;
 
                     functor_desc = ptag_layout->MR_sectag_alternatives[0];
                     arity = functor_desc->MR_du_functor_orig_arity;
+                    arg_locns = functor_desc->MR_du_functor_arg_locns;
                     exist_info = functor_desc->MR_du_functor_exist_info;
                     if (arity != 1) {
                         MR_fatal_error("arity != 1 in direct arg tag functor");
+                    }
+                    if (arg_locns != NULL) {
+                        MR_fatal_error("arg_locns in direct arg tag functor");
                     }
                     if (exist_info != NULL) {
                         MR_fatal_error("exist_info in direct arg tag functor");

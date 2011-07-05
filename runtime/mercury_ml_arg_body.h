@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -48,28 +48,35 @@
   #define arg_func  MR_arg
 #endif
 
-    MR_TypeInfo type_info;
-    MR_TypeInfo arg_type_info;
-    MR_Word     *argument_ptr;
-    MR_bool        success;
+    MR_TypeInfo         type_info;
+    MR_TypeInfo         arg_type_info;
+    MR_Word             *argument_ptr;
+    const MR_DuArgLocn *arg_locn_ptr;
+    MR_Word             value;
+    MR_bool             success;
 
     type_info = (MR_TypeInfo) TYPEINFO_ARG;
 
     MR_save_transient_registers();
     success = arg_func(type_info, &TERM_ARG, SELECTOR_ARG, &arg_type_info,
-        &argument_ptr, NONCANON);
+        &argument_ptr, &arg_locn_ptr, NONCANON);
     MR_restore_transient_registers();
     if (success) {
+        value = *argument_ptr;
+        if (arg_locn_ptr != NULL) {
+            value = MR_unpack_arg(value, arg_locn_ptr);
+        }
+
         /*
         ** The following code is what *should* be here. The reason it is
         ** commented out, and the code to create a univ used instead, is
         ** the typechecking bug reported on 30 Jan, 2002.
         **
-        ** SELECTED_ARG = *argument_ptr;                               
+        ** SELECTED_ARG = value;
         ** SELECTED_TYPE_INFO = arg_type_info;
         */
 
-        MR_new_univ_on_hp(SELECTED_ARG, arg_type_info, *argument_ptr);
+        MR_new_univ_on_hp(SELECTED_ARG, arg_type_info, value);
     }
 
 #ifdef SAVE_SUCCESS

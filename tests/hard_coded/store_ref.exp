@@ -1,0 +1,5 @@
+{"struct", 7}
+struct(1, 2.2, enum1, enum2, enum3, "four", {5, 6})
+{1, 2.2, enum1, enum2, "four", {5, 6}}
+{2.2, 3.3}
+{enum2, enum3}

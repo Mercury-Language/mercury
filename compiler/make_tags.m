@@ -565,7 +565,7 @@ is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
     ExistConstraints = [],
     ConsArgs = [ConsArg],
     Arity = 1,
-    ConsArg = ctor_arg(_MaybeFieldName, ArgType, _ArgContext),
+    ConsArg = ctor_arg(_MaybeFieldName, ArgType, _ArgWidth, _ArgContext),
     type_to_ctor_and_args(ArgType, ArgTypeCtor, ArgTypeCtorArgTypes),
 
     (

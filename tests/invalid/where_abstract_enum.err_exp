@@ -1,0 +1,3 @@
+where_abstract_enum.m:011: Error: invalid argument for type_is_abstract_enum.
+where_abstract_enum.m:013: Error: invalid `where ...' attributes for abstract
+where_abstract_enum.m:013:   non-solver type.

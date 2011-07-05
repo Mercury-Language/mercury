@@ -220,7 +220,7 @@ builtin_type_defn = TypeDefn :-
     varset.init(TVarSet),
     Params = [],
     map.init(Kinds),
-    Body = hlds_abstract_type(non_solver_type),
+    Body = hlds_abstract_type(abstract_type_general),
     ImportStatus = status_local,
     NeedQualifier = may_be_unqualified,
     term.context_init(Context),
@@ -487,7 +487,7 @@ impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
     %
 :- func type_ctor_info_rtti_version = int.
 
-type_ctor_info_rtti_version = 14.
+type_ctor_info_rtti_version = 15.
 
     % Construct an rtti_data for a pseudo_type_info, and also construct
     % rtti_data definitions for all of the pseudo_type_infos that it references
@@ -898,7 +898,7 @@ get_maybe_reserved_rep(ConsTag, ConsRep) :-
     du_arg_info::out) is det.
 
 generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo) :-
-    ConstructorArg = ctor_arg(MaybeArgSymName, ArgType, _Ctxt),
+    ConstructorArg = ctor_arg(MaybeArgSymName, ArgType, ArgWidth, _Ctxt),
     (
         MaybeArgSymName = yes(SymName),
         ArgName = unqualify_name(SymName),
@@ -918,7 +918,7 @@ generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo) :-
         MaybePseudoTypeInfo = pseudo(PseudoTypeInfo),
         MaybePseudoTypeInfoOrSelf = pseudo(PseudoTypeInfo)
     ),
-    ArgInfo = du_arg_info(MaybeArgName, MaybePseudoTypeInfoOrSelf).
+    ArgInfo = du_arg_info(MaybeArgName, MaybePseudoTypeInfoOrSelf, ArgWidth).
 
     % This function gives the size of the MR_du_functor_arg_type_contains_var
     % field of the C type MR_DuFunctorDesc in bits.

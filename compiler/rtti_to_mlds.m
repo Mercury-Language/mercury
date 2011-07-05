@@ -714,7 +714,7 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
         MaybeExistInfo),
     ArgTypes = list.map(du_arg_info_type, ArgInfos),
     MaybeArgNames = list.map(du_arg_info_name, ArgInfos),
-    ArgNames = list.filter_map(project_yes, MaybeArgNames),
+    HaveArgNames = (list.member(yes(_), MaybeArgNames) -> yes ; no),
     ContainsVarBitVector = compute_contains_var_bit_vector(ArgTypes),
     module_info_get_name(ModuleInfo, ModuleName),
     (
@@ -730,16 +730,28 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
                 ctor_rtti_id(RttiTypeCtor, type_ctor_field_types(0)))))
     ),
     (
-        ArgNames = [_ | _],
+        HaveArgNames = yes,
         gen_field_names(ModuleInfo, RttiTypeCtor, Ordinal,
             MaybeArgNames, !GlobalData),
         ArgNameInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_field_names(Ordinal))
     ;
-        ArgNames = [],
+        HaveArgNames = no,
         ArgNameInitializer = gen_init_null_pointer(
             mlds_rtti_type(item_type(
                 ctor_rtti_id(RttiTypeCtor, type_ctor_field_names(0)))))
+    ),
+    gen_field_locns(ModuleInfo, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
+        !GlobalData),
+    (
+        HaveArgLocns = yes,
+        ArgLocnsInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+            type_ctor_field_locns(Ordinal))
+    ;
+        HaveArgLocns = no,
+        ArgLocnsInitializer = gen_init_null_pointer(
+            mlds_rtti_type(item_type(
+                ctor_rtti_id(RttiTypeCtor, type_ctor_field_locns(0)))))
     ),
     (
         MaybeExistInfo = yes(ExistInfo),
@@ -786,6 +798,7 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
         gen_init_int(Ordinal),
         ArgTypeInitializer,
         ArgNameInitializer,
+        ArgLocnsInitializer,
         ExistInfoInitializer
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
@@ -947,6 +960,55 @@ gen_field_names(_ModuleInfo, RttiTypeCtor, Ordinal, MaybeNames, !GlobalData) :-
     RttiName = type_ctor_field_names(Ordinal),
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
         !GlobalData).
+
+:- pred gen_field_locns(module_info::in, rtti_type_ctor::in, int::in,
+    list(du_arg_info)::in, bool::out, ml_global_data::in, ml_global_data::out)
+    is det.
+
+gen_field_locns(_ModuleInfo, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
+        !GlobalData) :-
+    (
+        some [ArgInfo] (
+            list.member(ArgInfo, ArgInfos),
+            ArgInfo ^ du_arg_width \= full_word
+        )
+    ->
+        HaveArgLocns = yes,
+        RttiName = type_ctor_field_locns(Ordinal),
+        RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
+        list.map_foldl(gen_field_locn(RttiId), ArgInfos, ArgLocnInitializers,
+            -1, _Offset),
+        Initializer = init_struct(mlds_rtti_type(item_type(RttiId)),
+            ArgLocnInitializers),
+        rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData)
+    ;
+        HaveArgLocns = no
+    ).
+
+:- pred gen_field_locn(rtti_id::in, du_arg_info::in, mlds_initializer::out,
+    int::in, int::out) is det.
+
+gen_field_locn(RttiId, ArgInfo, ArgLocnInitializer, !Offset) :-
+    ArgWidth = ArgInfo ^ du_arg_width,
+    (
+        ArgWidth = full_word,
+        !:Offset = !.Offset + 1,
+        Shift = 0,
+        Bits = 0
+    ;
+        ArgWidth = partial_word_first(Mask),
+        !:Offset = !.Offset + 1,
+        Shift = 0,
+        int.log2(Mask, Bits)
+    ;
+        ArgWidth = partial_word_shifted(Shift, Mask),
+        int.log2(Mask, Bits)
+    ),
+    ArgLocnInitializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
+        gen_init_int(!.Offset),
+        gen_init_int(Shift),
+        gen_init_int(Bits)
+    ]).
 
 %-----------------------------------------------------------------------------%
 

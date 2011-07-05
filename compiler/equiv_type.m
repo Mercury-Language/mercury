@@ -1047,13 +1047,27 @@ replace_in_ctor_arg_list(Location,
 replace_in_ctor_arg_list_2(_Location, _EqvMap, _Seen, [], [],
         !Circ, !VarSet, !EquivTypeInfo, !UsedModules).
 replace_in_ctor_arg_list_2(Location, EqvMap, Seen,
-        [ctor_arg(N, T0, C) | As0], [ctor_arg(N, T, C) | As],
+        [Arg0 | Args0], [Arg | Args],
         !Circ, !VarSet, !EquivTypeInfo, !UsedModules) :-
-    replace_in_type_location_2(Location, EqvMap, Seen, T0, T, _, ContainsCirc,
-        !VarSet, !EquivTypeInfo, !UsedModules),
+    Arg0 = ctor_arg(Name, Type0, Width, Context),
+    replace_in_type_location_2(Location, EqvMap, Seen, Type0, Type, _,
+        ContainsCirc, !VarSet, !EquivTypeInfo, !UsedModules),
+    (
+        Width = full_word
+    ;
+        ( Width = partial_word_first(_)
+        ; Width = partial_word_shifted(_, _)
+        ),
+        ( Type = Type0 ->
+            true
+        ;
+            unexpected($module, $pred, "changed type of packed argument")
+        )
+    ),
+    Arg = ctor_arg(Name, Type, Width, Context),
     !:Circ = !.Circ `or` ContainsCirc,
-    replace_in_ctor_arg_list_2(Location, EqvMap,
-        Seen, As0, As, !Circ, !VarSet, !EquivTypeInfo, !UsedModules).
+    replace_in_ctor_arg_list_2(Location, EqvMap, Seen, Args0, Args,
+        !Circ, !VarSet, !EquivTypeInfo, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 

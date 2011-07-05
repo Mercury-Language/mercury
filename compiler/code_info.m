@@ -3692,11 +3692,16 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
 :- pred assign_expr_to_var(prog_var::in, rval::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-    % assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, MaybeSize,
-    %   FieldAddrs, TypeMsg, MayUseAtomic, Where, Code, !CI).
+:- pred assign_field_lval_expr_to_var(prog_var::in, lval::in, rval::in,
+    llds_code::out, code_info::in, code_info::out) is det.
+
+    % assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals,
+    %   AllFilled, MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Where,
+    %   Code, !CI).
     %
 :- pred assign_cell_to_var(prog_var::in, bool::in, tag::in,
-    list(maybe(rval))::in, how_to_construct::in, maybe(term_size_value)::in,
+    list(maybe(rval))::in, bool::in, how_to_construct::in,
+    maybe(term_size_value)::in,
     list(int)::in, maybe(alloc_site_id)::in, may_use_atomic_alloc::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
@@ -3840,17 +3845,29 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
     ),
     set_var_locn_info(VarLocnInfo, !CI).
 
-assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, HowToConstruct,
-        MaybeSize, FieldAddrs, MaybeAllocId, MayUseAtomic, Code, !CI) :-
+assign_field_lval_expr_to_var(Var, FieldLval, Rval, Code, !CI) :-
+    get_var_locn_info(!.CI, VarLocnInfo0),
+    Lvals = lvals_in_rval(Rval),
+    ( Lvals = [FieldLval] ->
+        var_locn_assign_field_lval_expr_to_var(Var, FieldLval, Rval, Code,
+            VarLocnInfo0, VarLocnInfo)
+    ;
+        unexpected($module, $pred, "rval contains unexpected lval")
+    ),
+    set_var_locn_info(VarLocnInfo, !CI).
+
+assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, AllFilled,
+        HowToConstruct, MaybeSize, FieldAddrs, MaybeAllocId, MayUseAtomic,
+        Code, !CI) :-
     get_next_label(Label, !CI),
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_module_info(!.CI, ModuleInfo),
     get_exprn_opts(!.CI, ExprnOpts),
     var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
-        Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs, MaybeAllocId,
-        MayUseAtomic, Label, Code, StaticCellInfo0, StaticCellInfo,
-        VarLocnInfo0, VarLocnInfo),
+        Ptag, MaybeRvals, AllFilled, HowToConstruct, MaybeSize, FieldAddrs,
+        MaybeAllocId, MayUseAtomic, Label, Code,
+        StaticCellInfo0, StaticCellInfo, VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),
     set_var_locn_info(VarLocnInfo, !CI).
 

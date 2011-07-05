@@ -413,7 +413,8 @@ constructor(C, TVarset,
 
 :- func constructor_arg(comments, tvarset, constructor_arg) = xml.
 
-constructor_arg(C, TVarset, ctor_arg(MaybeFieldName, Type, Context)) = Xml :-
+constructor_arg(C, TVarset, CtorArg) = Xml :-
+    CtorArg = ctor_arg(MaybeFieldName, Type, _Width, Context),
     XmlType = elem("arg_type", [], [mer_type(TVarset, Type)]),
     XmlContext = prog_context(Context),
     (

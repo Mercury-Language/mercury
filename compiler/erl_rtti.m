@@ -156,7 +156,7 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
         Ordinal = 0,
         FunctorNum = 0,
         ArgTypeInfo = convert_to_rtti_maybe_pseudo_type_info_or_self(TypeInfo),
-        ArgInfos = [du_arg_info(ArgName, ArgTypeInfo)],
+        ArgInfos = [du_arg_info(ArgName, ArgTypeInfo, full_word)],
         DUFunctor = erlang_du_functor(Name, OrigArity, Ordinal, FunctorNum,
             erlang_atom_raw(Name), ArgInfos, no),
         Details = erlang_du([DUFunctor])

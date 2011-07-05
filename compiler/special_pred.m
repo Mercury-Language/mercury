@@ -209,7 +209,7 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
     % appear in the symbol table.
 
     Body \= hlds_solver_type(_, _),
-    Body \= hlds_abstract_type(solver_type),
+    Body \= hlds_abstract_type(abstract_solver_type),
 
     CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
     (

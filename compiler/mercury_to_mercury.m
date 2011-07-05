@@ -1911,12 +1911,29 @@ mercury_format_mode(user_defined_mode(Name, Args), InstInfo, !U) :-
 mercury_output_type_defn(Info, TVarSet, Name, TParams, TypeDefn, Context,
         !IO) :-
     (
-        TypeDefn = parse_tree_abstract_type(IsSolverType),
+        TypeDefn = parse_tree_abstract_type(Details),
+        (
+            ( Details = abstract_type_general
+            ; Details = abstract_enum_type(_)
+            ),
+            IsSolverType = non_solver_type
+        ;
+            Details = abstract_solver_type,
+            IsSolverType = solver_type
+        ),
         mercury_output_begin_type_decl(IsSolverType, !IO),
         Args = list.map((func(V) = term.variable(V, Context)), TParams),
         construct_qualified_term(Name, Args, Context, TypeTerm),
         mercury_output_term_nq(TVarSet, no, next_to_graphic_token, TypeTerm,
             !IO),
+        (
+            Details = abstract_enum_type(NumBits),
+            mercury_output_where_abstract_enum_type(NumBits, !IO)
+        ;
+            Details = abstract_type_general
+        ;
+            Details = abstract_solver_type
+        ),
         io.write_string(".\n", !IO)
     ;
         TypeDefn = parse_tree_eqv_type(Body),
@@ -2141,6 +2158,15 @@ mercury_output_solver_type_details(Info, TVarSet, Details, !IO) :-
         io.write_string("\n\t\t]", !IO)
     ).
 
+:- pred mercury_output_where_abstract_enum_type(int::in, io::di, io::uo)
+    is det.
+
+mercury_output_where_abstract_enum_type(NumBits, !IO) :-
+    io.write_string("\n\twhere\t", !IO),
+    io.write_string("type_is_abstract_enum(", !IO),
+    io.write_int(NumBits, !IO),
+    io.write_string(")", !IO).
+
 :- pred mercury_output_ctors(list(constructor)::in, tvarset::in,
     io::di, io::uo) is det.
 
@@ -2220,9 +2246,9 @@ mercury_output_ctor(Ctor, VarSet, !IO) :-
 :- pred mercury_output_ctor_arg(tvarset::in, constructor_arg::in,
     io::di, io::uo) is det.
 
-mercury_output_ctor_arg(Varset, ctor_arg(N, T, _), !IO) :-
-    mercury_output_ctor_arg_name_prefix(N, !IO),
-    mercury_output_type(Varset, no, T, !IO).
+mercury_output_ctor_arg(Varset, ctor_arg(Name, Type, _Width, _Context), !IO) :-
+    mercury_output_ctor_arg_name_prefix(Name, !IO),
+    mercury_output_type(Varset, no, Type, !IO).
 
 mercury_output_remaining_ctor_args(_Varset, [], !IO).
 mercury_output_remaining_ctor_args(Varset, [A | As], !IO) :-

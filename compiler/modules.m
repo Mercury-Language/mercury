@@ -739,22 +739,25 @@ strip_unnecessary_impl_defns(Items0, Items) :-
         % If there is an exported type declaration for a type with an abstract
         % declaration in the implementation (usually it will originally
         % have been a d.u. type), remove the declaration in the implementation.
-        FindAbstractExportedTypes =
+        % Don't remove `type_is_abstract_enum' declarations, though.
+        FindRemovableAbsExpTypes =
             (pred(TypeCtor::out) is nondet :-
                 map.member(!.ImplTypesMap, TypeCtor, Defns),
-                \+ (
-                    list.member(Defn, Defns),
-                    Defn \= parse_tree_abstract_type(_) - _
-                ),
+                all [Defn] (
+                    list.member(Defn - _, Defns)
+                => (
+                    Defn = parse_tree_abstract_type(Details),
+                    Details \= abstract_enum_type(_)
+                )),
                 multi_map.contains(!.IntTypesMap, TypeCtor)
             ),
-        solutions(FindAbstractExportedTypes, AbstractExportedTypes),
+        solutions(FindRemovableAbsExpTypes, RemovableAbstractExportedTypes),
         RemoveFromImplTypesMap =
             (pred(TypeCtor::in, !.ImplTypesMap::in, !:ImplTypesMap::out)
                     is det :-
                 multi_map.delete(TypeCtor, !ImplTypesMap)
             ),
-        list.foldl(RemoveFromImplTypesMap, AbstractExportedTypes,
+        list.foldl(RemoveFromImplTypesMap, RemovableAbstractExportedTypes,
             !ImplTypesMap),
 
         AddProjectedItem =
@@ -938,13 +941,24 @@ insert_type_defn(New, [Head | Tail], Result) :-
 make_impl_type_abstract(TypeDefnMap, !TypeDefnPairs) :-
     (
         !.TypeDefnPairs = [TypeDefn0 - ItemTypeDefn0],
-        TypeDefn0 = parse_tree_du_type(Ctors, MaybeEqCmp, MaybeDirectArgCtors),
-        not constructor_list_represents_dummy_argument_type(TypeDefnMap,
-            Ctors, MaybeEqCmp, MaybeDirectArgCtors)
+        TypeDefn0 = parse_tree_du_type(Ctors, MaybeEqCmp, MaybeDirectArgCtors)
     ->
-        Defn = parse_tree_abstract_type(non_solver_type),
-        ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := Defn,
-        !:TypeDefnPairs = [Defn - ItemTypeDefn]
+        (
+            constructor_list_represents_dummy_argument_type(TypeDefnMap, Ctors,
+                MaybeEqCmp, MaybeDirectArgCtors)
+        ->
+            % Leave dummy types alone.
+            true
+        ;
+            ( du_type_is_enum(Ctors, NumBits) ->
+                Details = abstract_enum_type(NumBits)
+            ;
+                Details = abstract_type_general
+            ),
+            Defn = parse_tree_abstract_type(Details),
+            ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := Defn,
+            !:TypeDefnPairs = [Defn - ItemTypeDefn]
+        )
     ;
         true
     ).
@@ -982,7 +996,7 @@ constructor_list_represents_dummy_argument_type_2(TypeDefnMap, [Ctor], no, no,
         Args = []
     ;
         % A constructor with a single dummy argument.
-        Args = [ctor_arg(_, ArgType, _)],
+        Args = [ctor_arg(_, ArgType, _, _)],
         ctor_arg_is_dummy_type(TypeDefnMap, ArgType, CoveredTypes) = yes
     ).
 
@@ -1106,6 +1120,10 @@ is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
     % exported and the implementation section also contains a foreign_type
     % definition of the type constructor.
     %
+    % Given a enumeration type definition in the implementation section, we
+    % should include it in AbsImplExpEnumTypeCtors if the type constructor is
+    % abstract exported.
+    %
     % Return in Modules the set of modules that define the type constructors
     % in NecessaryTypeCtors.
     %
@@ -1116,24 +1134,28 @@ is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
 get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
         BothTypeMap, DummyTypeCtors, NecessaryTypeCtors, Modules) :-
     multi_map.to_flat_assoc_list(ImplTypeMap, ImplTypes),
-    list.foldl2(
+    list.foldl3(
         accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypeMap),
-        ImplTypes, set.init, AbsImplExpLhsTypeCtors, set.init, DummyTypeCtors),
+        ImplTypes, set.init, AbsImplExpLhsTypeCtors,
+        set.init, AbsImplExpEnumTypeCtors, set.init, DummyTypeCtors),
     set.fold3(accumulate_abs_impl_exported_type_rhs(ImplTypeMap),
         AbsImplExpLhsTypeCtors,
         set.init, AbsEqvRhsTypeCtors, set.init, ForeignDuFieldTypeCtors,
         set.init, Modules),
     NecessaryTypeCtors = set.union_list([AbsImplExpLhsTypeCtors,
-        AbsEqvRhsTypeCtors, ForeignDuFieldTypeCtors]).
+        AbsEqvRhsTypeCtors, ForeignDuFieldTypeCtors,
+        AbsImplExpEnumTypeCtors]).
 
 :- pred accumulate_abs_impl_exported_type_lhs(type_defn_map::in,
     type_defn_map::in,
     pair(type_ctor, pair(type_defn, item_type_defn_info))::in,
     set(type_ctor)::in, set(type_ctor)::out,
+    set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
 accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
-        TypeCtor - (TypeDefn - _Item), !AbsEqvLhsTypeCtors, !DummyTypeCtors) :-
+        TypeCtor - (TypeDefn - _Item), !AbsEqvLhsTypeCtors,
+        !AbsImplExpEnumTypeCtors, !DummyTypeCtors) :-
     % A type may have multiple definitions because it may be defined both
     % as a foreign type and as a Mercury type. We grab any equivalence types
     % that are in there.
@@ -1148,11 +1170,21 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
     ->
         set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
     ;
-        TypeDefn = parse_tree_du_type(Ctors, MaybeEqCmp, MaybeDirectArgCtors),
-        constructor_list_represents_dummy_argument_type(BothTypesMap,
-            Ctors, MaybeEqCmp, MaybeDirectArgCtors)
+        TypeDefn = parse_tree_du_type(Ctors, MaybeEqCmp, MaybeDirectArgCtors)
     ->
-        set.insert(TypeCtor, !DummyTypeCtors)
+        (
+            map.search(InterfaceTypeMap, TypeCtor, _),
+            du_type_is_enum(Ctors, _NumBits)
+        ->
+            set.insert(TypeCtor, !AbsImplExpEnumTypeCtors)
+        ;
+            constructor_list_represents_dummy_argument_type(BothTypesMap,
+                Ctors, MaybeEqCmp, MaybeDirectArgCtors)
+        ->
+            set.insert(TypeCtor, !DummyTypeCtors)
+        ;
+            true
+        )
     ;
         true
     ).
@@ -1260,7 +1292,7 @@ ctors_to_type_ctor_set([Ctor | Ctors], !TypeCtors) :-
 
 cons_args_to_type_ctor_set([], !TypeCtors).
 cons_args_to_type_ctor_set([Arg | Args], !TypeCtors) :-
-    Arg = ctor_arg(_, Type, _),
+    Arg = ctor_arg(_, Type, _, _),
     type_to_type_ctor_set(Type, !TypeCtors),
     cons_args_to_type_ctor_set(Args, !TypeCtors).
 
@@ -3927,26 +3959,29 @@ make_abstract_defn(Item, ShortInterfaceKind, AbstractItem) :-
         Item = item_type_defn(ItemTypeDefn),
         TypeDefn = ItemTypeDefn ^ td_ctor_defn,
         (
-            TypeDefn = parse_tree_du_type(_, _, _),
-            IsSolverType = non_solver_type,
+            TypeDefn = parse_tree_du_type(Ctors, _, _),
+            ( du_type_is_enum(Ctors, NumBits) ->
+                AbstractDetails = abstract_enum_type(NumBits)
+            ;
+                AbstractDetails = abstract_type_general
+            ),
             % For the `.int2' files, we need the full definitions of
             % discriminated union types.  Even if the functors for a type
             % are not used within a module, we may need to know them for
             % comparing insts, e.g. for comparing `ground' and `bound(...)'.
             ShortInterfaceKind = int3
         ;
-            TypeDefn = parse_tree_abstract_type(IsSolverType)
+            TypeDefn = parse_tree_abstract_type(AbstractDetails)
         ;
             TypeDefn = parse_tree_solver_type(_, _),
             % rafe: XXX we need to also export the details of the
             % forwarding type for the representation and the forwarding
             % pred for initialization.
-            IsSolverType = solver_type
+            AbstractDetails = abstract_solver_type
         ;
             TypeDefn = parse_tree_eqv_type(_),
-            % rafe: XXX what *should* IsSolverType be here?  We need
-            % to know properly.
-            IsSolverType = non_solver_type,
+            % XXX is this right for solver types?
+            AbstractDetails = abstract_type_general,
             % For the `.int2' files, we need the full definitions of
             % equivalence types. They are needed to ensure that
             % non-abstract equivalence types always get fully expanded
@@ -3960,11 +3995,11 @@ make_abstract_defn(Item, ShortInterfaceKind, AbstractItem) :-
             TypeDefn = parse_tree_foreign_type(_, _, _),
             % We always need the definitions of foreign types
             % to handle inter-language interfacing correctly.
-            IsSolverType = non_solver_type,
+            AbstractDetails = abstract_type_general,
             semidet_fail
         ),
         AbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(IsSolverType),
+            := parse_tree_abstract_type(AbstractDetails),
         AbstractItem = item_type_defn(AbstractItemTypeDefn)
     ;
         Item = item_instance(ItemInstance),
@@ -3977,6 +4012,21 @@ make_abstract_defn(Item, ShortInterfaceKind, AbstractItem) :-
             := class_interface_abstract,
         AbstractItem = item_typeclass(AbstractItemTypeClass)
     ).
+
+:- pred du_type_is_enum(list(constructor)::in, int::out) is semidet.
+
+du_type_is_enum(Ctors, NumBits) :-
+    Ctors = [_, _ | _],
+    all [Ctor] (
+        list.member(Ctor, Ctors)
+    => (
+        Ctor = ctor(ExistQTVars, ExistConstraints, _Name, Args, _Context),
+        ExistQTVars = [],
+        ExistConstraints = [],
+        Args = []
+    )),
+    list.length(Ctors, NumFunctors),
+    int.log2(NumFunctors, NumBits).
 
 :- pred make_abstract_unify_compare(item::in, short_interface_kind::in,
     item::out) is semidet.

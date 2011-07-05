@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2010 The University of Melbourne.
+** Copyright (C) 1999-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1809,11 +1809,12 @@ char *
 MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
     MR_TypeInfo *sub_type_info, MR_Word **sub_value)
 {
-    MR_TypeInfo new_type_info;
-    MR_Word     *new_value;
-    char        *old_path;
-    int         arg_num;
-    int         len;
+    MR_TypeInfo         new_type_info;
+    MR_Word             *new_value;
+    const MR_DuArgLocn  *arg_locn;
+    char                *old_path;
+    int                 arg_num;
+    int                 len;
 
     if (path == NULL) {
         *sub_value = value;
@@ -1861,10 +1862,18 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
         }
 
         if (MR_arg(type_info, value, arg_num, &new_type_info, &new_value,
-            MR_NONCANON_CC))
+            &arg_locn, MR_NONCANON_CC))
         {
             type_info = new_type_info;
-            value = new_value;
+            if (arg_locn == NULL) {
+                value = new_value;
+            } else {
+                MR_Word storage;
+
+                MR_incr_hp(storage, 1);
+                ((MR_Word *) storage)[0] = MR_unpack_arg(*new_value, arg_locn);
+                value = (MR_Word *) storage;
+            }
         } else {
             return old_path;
         }

@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2004, 2007 The University of Melbourne.
+** Copyright (C) 2002-2004, 2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -58,14 +58,25 @@
                                                                     \
         while (--i >= 0) {                                          \
             MR_Word arg;                                            \
+            MR_Word val;                                            \
                                                                     \
-                /* Create an argument on the heap */                \
+            if ((ei).args_field.arg_locns == NULL) {                \
+                val = (ei).args_field.arg_values[i +                \
+                    (ei).args_field.num_extra_args];                \
+            } else {                                                \
+                const MR_DuArgLocn *locn =                          \
+                    &(ei).args_field.arg_locns[i];                  \
+                val = (ei).args_field.arg_values[                   \
+                    locn->MR_arg_offset +                           \
+                    (ei).args_field.num_extra_args];                \
+                val = MR_unpack_arg(val, locn);                     \
+            }                                                       \
+                                                                    \
+            /* Create an argument on the heap */                    \
             MR_new_univ_on_hp(arg,                                  \
-                (ei).args_field.arg_type_infos[i],                  \
-                (ei).args_field.arg_values[i +                      \
-                    (ei).args_field.num_extra_args]);               \
+                (ei).args_field.arg_type_infos[i], val);            \
                                                                     \
-                /* Join the argument to the front of the list */    \
+            /* Join the argument to the front of the list */        \
             var = MR_univ_list_cons_msg(arg, var, MR_ALLOC_ID);     \
         }                                                           \
     } while (0)

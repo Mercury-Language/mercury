@@ -1635,7 +1635,7 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
                 eqv_type            :: mer_type
             )
     ;       parse_tree_abstract_type(
-                abstract_is_solver  :: is_solver_type
+                abstract_details    :: abstract_type_details
             )
     ;       parse_tree_solver_type(
                 solver_details      :: solver_type_details,
@@ -1646,6 +1646,14 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
                 foreign_user_uc     :: maybe(unify_compare),
                 foreign_assertions  :: list(foreign_type_assertion)
             ).
+
+:- type abstract_type_details
+    --->    abstract_type_general
+    ;       abstract_enum_type(int)
+            % The abstract type is known to be an enumeration type, requiring
+            % the given number of bits required to represent.
+    ;       abstract_solver_type.
+            % An abstract solver type.
 
     % The `is_solver_type' type specifies whether a type is a "solver" type,
     % for which `any' insts are interpreted as "don't know", or a non-solver
@@ -1683,10 +1691,33 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
     --->    ctor_arg(
                 arg_field_name      :: maybe(ctor_field_name),
                 arg_type            :: mer_type,
+                arg_width           :: arg_width,
                 arg_context         :: prog_context
             ).
 
 :- type ctor_field_name == sym_name.
+
+    % How much space does a constructor argument occupy in the underlying
+    % representation.
+    %
+    % `full_word' indicates that an argument occupies a full word.
+    % This is the case for all arguments except some enumeration arguments.
+    %
+    % `partial_word_begin(Mask)' indicates that the argument is the first of
+    % two or more arguments which share the same word. The argument occupies
+    % the lowest bits in the word so no shifting is required. The other
+    % arguments can be masked out with the bit-mask `Mask'. The actual number
+    % of bits occupied by the argument is `int.log2(Mask)'.
+    %
+    % `partial_word_shifted(Shift, Mask)' indicates that the argument is one of
+    % the subsequent arguments which share the same word. `Shift' is the
+    % non-zero number of bits that the argument value is left-shifted by.
+    % `Mask' is the unshifted bit-mask to mask out other arguments.
+    %
+:- type arg_width
+    --->    full_word
+    ;       partial_word_first(int)         % mask
+    ;       partial_word_shifted(int, int). % shift, mask
 
     % unify_compare gives the user-defined unification and/or comparison
     % predicates for a noncanonical type, if they are known.  The value

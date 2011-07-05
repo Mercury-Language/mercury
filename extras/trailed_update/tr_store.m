@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002-2003, 2005-2006, 2010 The University of Melbourne.
+% Copyright (C) 1997-2000,2002-2003, 2005-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -243,11 +243,12 @@ ref_functor(Ref, Functor, Arity, !S) :-
 "
     MR_TypeInfo arg_type_info;
     MR_Word* arg_ref;
+    const MR_DuArgLocn* arg_locn;
 
     MR_save_transient_registers();
 
     if (!MR_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) Ref, ArgNum,
-        &arg_type_info, &arg_ref, MR_NONCANON_ALLOW))
+        &arg_type_info, &arg_ref, &arg_locn, MR_NONCANON_ALLOW))
     {
         MR_fatal_error(
         ""tr_store.arg_ref: argument number out of range"");
@@ -257,6 +258,10 @@ ref_functor(Ref, Functor, Arity, !S) :-
         (MR_TypeInfo) TypeInfo_for_ArgT) != MR_COMPARE_EQUAL)
     {
         MR_fatal_error(""tr_store.arg_ref: argument has wrong type"");
+    }
+
+    if (arg_locn != NULL && arg_locn->MR_arg_bits != 0) {
+        MR_fatal_error(""tr_store.arg_ref: argument has packed representation"");
     }
 
     MR_restore_transient_registers();
@@ -271,11 +276,12 @@ ref_functor(Ref, Functor, Arity, !S) :-
 "
     MR_TypeInfo arg_type_info;
     MR_Word* arg_ref;
+    const MR_DuArgLocn* arg_locn;
 
     MR_save_transient_registers();
 
     if (!MR_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) &Val, ArgNum,
-        &arg_type_info, &arg_ref, MR_NONCANON_ALLOW))
+        &arg_type_info, &arg_ref, &arg_locn, MR_NONCANON_ALLOW))
     {
         MR_fatal_error(
         ""tr_store.new_arg_ref: argument number out of range"");
@@ -290,13 +296,16 @@ ref_functor(Ref, Functor, Arity, !S) :-
 
     MR_restore_transient_registers();
 
-    /*
-    ** For no_tag types, the argument may have the same address as the
-    ** term.  Since the term (Val) is currently on the C stack, we can't
-    ** return a pointer to it; so if that is the case, then we need
-    ** to copy it to the heap before returning.
-    */
-    if (arg_ref == &Val) {
+    if (arg_locn != NULL && arg_locn->MR_arg_bits != 0) {
+        MR_incr_hp(ArgRef, 1);
+        * (MR_Word *) ArgRef = MR_unpack_arg(*arg_ref, arg_locn);
+    } else if (arg_ref == &Val) {
+        /*
+        ** For no_tag types, the argument may have the same address as the
+        ** term.  Since the term (Val) is currently on the C stack, we can't
+        ** return a pointer to it; so if that is the case, then we need
+        ** to copy it to the heap before returning.
+        */
         MR_incr_hp(ArgRef, 1);
         *(MR_Word *)ArgRef = Val;
     } else {

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997, 1999, 2002, 2005-2006, 2010 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997, 1999, 2002, 2005-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -290,7 +290,7 @@ tr_array.semidet_slow_set(Array0, Index, Item, Array) :-
 
 tr_array.slow_set(Array0, Index, Item, Array) :-
     tr_array.copy(Array0, Array1),
-    array.set(Array1, Index, Item, Array).
+    array.set(Index, Item, Array1, Array).
 
 %-----------------------------------------------------------------------------%
 

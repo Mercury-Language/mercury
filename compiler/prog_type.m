@@ -931,7 +931,7 @@ type_constructors_are_type_info(Ctors) :-
 type_is_single_ctor_single_arg(Ctors, Ctor, ArgType, MaybeArgName) :-
     Ctors = [SingleCtor],
     SingleCtor = ctor(ExistQVars, _Constraints, Ctor,
-        [ctor_arg(MaybeArgName, ArgType, _)], _Ctxt),
+        [ctor_arg(MaybeArgName, ArgType, _, _)], _Ctxt),
     ExistQVars = [].
 
 :- pred ctor_is_type_info(sym_name::in) is semidet.

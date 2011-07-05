@@ -426,6 +426,8 @@ dump_rtti_name(type_ctor_field_names(Ordinal)) =
     "field_names_" ++ int_to_string(Ordinal).
 dump_rtti_name(type_ctor_field_types(Ordinal)) =
     "field_types_" ++ int_to_string(Ordinal).
+dump_rtti_name(type_ctor_field_locns(Ordinal)) =
+    "field_locns_" ++ int_to_string(Ordinal).
 dump_rtti_name(type_ctor_res_addrs) = "res_addrs".
 dump_rtti_name(type_ctor_res_addr_functors) = "res_addr_functors".
 dump_rtti_name(type_ctor_enum_functor_desc(Ordinal)) =

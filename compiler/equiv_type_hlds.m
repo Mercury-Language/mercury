@@ -326,9 +326,23 @@ replace_in_cons_defn(EqvMap, ConsDefn0, ConsDefn) :-
     tvarset::in, tvarset::out) is det.
 
 replace_in_constructor_arg(EqvMap, CtorArg0, CtorArg, !TVarSet) :-
-    CtorArg0 = ctor_arg(MaybeFieldName, Type0, Context),
-    replace_in_type(EqvMap, Type0, Type, _Changed, !TVarSet, no, _),
-    CtorArg = ctor_arg(MaybeFieldName, Type, Context).
+    CtorArg0 = ctor_arg(MaybeFieldName, Type0, Width, Context),
+    replace_in_type(EqvMap, Type0, Type, Changed, !TVarSet, no, _),
+    (
+        Changed = yes,
+        (
+            Width = full_word,
+            CtorArg = ctor_arg(MaybeFieldName, Type, Width, Context)
+        ;
+            ( Width = partial_word_first(_)
+            ; Width = partial_word_shifted(_, _)
+            ),
+            unexpected($module, $pred, "changed type of packed argument")
+        )
+    ;
+        Changed = no,
+        CtorArg = CtorArg0
+    ).
 
 %-----------------------------------------------------------------------------%
 

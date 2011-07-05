@@ -23,6 +23,7 @@ SIMPLE_NONLOOP_PROGS = \
 	mercury_java_parser_dead_proc_elim_bug \
 	mercury_java_parser_dead_proc_elim_bug2 \
 	oota \
+	pack_args_memo \
 	reset_stats_intermod \
 	specified_hidden_arg \
 	table_foreign_output \

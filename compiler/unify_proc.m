@@ -391,7 +391,8 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
         ExistQVars = [],
         ClassConstraints = [],
 
-        MakeUnamedField = (func(ArgType) = ctor_arg(no, ArgType, Context)),
+        MakeUnamedField = (func(ArgType) =
+            ctor_arg(no, ArgType, full_word, Context)),
         CtorArgs = list.map(MakeUnamedField, TupleArgTypes),
 
         CtorSymName = unqualified("{}"),

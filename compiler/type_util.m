@@ -547,7 +547,7 @@ type_is_solver_type_with_auto_init(ModuleInfo, Type) :-
         % problem.  (In the event that we do re-add some form of support for
         % automatic solver initialisation then we will need to make sure
         % that this information ends up in interface files somehow.)
-        TypeBody = hlds_abstract_type(solver_type),
+        TypeBody = hlds_abstract_type(abstract_solver_type),
         fail
     ;
         TypeBody = hlds_eqv_type(ActualType)
@@ -563,7 +563,7 @@ type_is_solver_type(ModuleInfo, Type) :-
         (
             TypeBody = hlds_solver_type(_, _)
         ;
-            TypeBody = hlds_abstract_type(solver_type)
+            TypeBody = hlds_abstract_type(abstract_solver_type)
         ;
             TypeBody = hlds_eqv_type(EqvType),
             type_is_solver_type(ModuleInfo, EqvType)
@@ -601,7 +601,7 @@ type_body_is_solver_type(ModuleInfo, TypeBody) :-
     (
         TypeBody = hlds_solver_type(_, _)
     ;
-        TypeBody = hlds_abstract_type(solver_type)
+        TypeBody = hlds_abstract_type(abstract_solver_type)
     ;
         TypeBody = hlds_eqv_type(Type),
         is_solver_type(ModuleInfo, Type)
@@ -779,40 +779,10 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        (
-            TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _, _),
-            (
-                DuTypeKind = du_type_kind_mercury_enum,
-                TypeCategory = ctor_cat_enum(cat_enum_mercury)
-            ;
-                DuTypeKind = du_type_kind_foreign_enum(_),
-                TypeCategory = ctor_cat_enum(cat_enum_foreign)
-            ;
-                DuTypeKind = du_type_kind_direct_dummy,
-                TypeCategory = ctor_cat_user(cat_user_direct_dummy)
-            ;
-                DuTypeKind = du_type_kind_notag(_, _, _),
-                TypeCategory = ctor_cat_user(cat_user_notag)
-            ;
-                DuTypeKind = du_type_kind_general,
-                TypeCategory = ctor_cat_user(cat_user_general)
-            )
-        ;
-            % XXX We should be able to return more precise descriptions
-            % than this.
-            ( TypeBody = hlds_eqv_type(_)
-            ; TypeBody = hlds_foreign_type(_)
-            ; TypeBody = hlds_solver_type(_, _)
-            ; TypeBody = hlds_abstract_type(_)
-            ),
-            TypeCategory = ctor_cat_user(cat_user_general)
-        )
+        TypeCategory = classify_type_defn_body(TypeBody)
     ).
 
 classify_type_defn_body(TypeBody) = TypeCategory :-
-    % Please keep the code of this predicate in sync with the code of
-    % classify_type_ctor.
-    %
     % Unlike classify_type_ctor, we don't have to (a) test for types that do
     % not have definitions, or (b) look up the definition, since our caller has
     % already done that.
@@ -841,7 +811,9 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
         ( TypeBody = hlds_eqv_type(_)
         ; TypeBody = hlds_foreign_type(_)
         ; TypeBody = hlds_solver_type(_, _)
-        ; TypeBody = hlds_abstract_type(_)
+        ; TypeBody = hlds_abstract_type(abstract_type_general)
+        ; TypeBody = hlds_abstract_type(abstract_enum_type(_))
+        ; TypeBody = hlds_abstract_type(abstract_solver_type)
         ),
         TypeCategory = ctor_cat_user(cat_user_general)
     ).
@@ -902,7 +874,8 @@ type_constructors(ModuleInfo, Type, Constructors) :-
         ClassConstraints = [],
         Context = term.context_init,
         CtorArgs = list.map(
-            (func(ArgType) = ctor_arg(no, ArgType, Context)), TypeArgs),
+            (func(ArgType) = ctor_arg(no, ArgType, full_word, Context)),
+            TypeArgs),
         Constructors = [ctor(ExistQVars, ClassConstraints, unqualified("{}"),
             CtorArgs, Context)]
     ;

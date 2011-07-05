@@ -85,6 +85,7 @@ static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 MR_bool
 MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr,
+    const MR_DuArgLocn **arg_locn_ptr,
     MR_noncanon_handling noncanon)
 {
     MR_Expand_Chosen_Arg_Only_Info  expand_info;
@@ -92,10 +93,11 @@ MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     MR_expand_chosen_arg_only(type_info, term_ptr, noncanon, arg_index,
             &expand_info);
 
-        /* Check range */
+    /* Check range. */
     if (expand_info.chosen_index_exists) {
         *arg_type_info_ptr = expand_info.chosen_type_info;
         *arg_ptr = expand_info.chosen_value_ptr;
+        *arg_locn_ptr = expand_info.chosen_arg_locn;
         return MR_TRUE;
     }
 
@@ -105,6 +107,7 @@ MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
 MR_bool
 MR_named_arg(MR_TypeInfo type_info, MR_Word *term_ptr, MR_ConstString arg_name,
     MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr,
+    const MR_DuArgLocn **arg_locn_ptr,
     MR_noncanon_handling noncanon)
 {
     MR_Expand_Chosen_Arg_Only_Info  expand_info;
@@ -112,10 +115,11 @@ MR_named_arg(MR_TypeInfo type_info, MR_Word *term_ptr, MR_ConstString arg_name,
     MR_expand_named_arg_only(type_info, term_ptr, noncanon, arg_name,
             &expand_info);
 
-        /* Check range */
+    /* Check range. */
     if (expand_info.chosen_index_exists) {
         *arg_type_info_ptr = expand_info.chosen_type_info;
         *arg_ptr = expand_info.chosen_value_ptr;
+        *arg_locn_ptr = expand_info.chosen_arg_locn;
         return MR_TRUE;
     }
 

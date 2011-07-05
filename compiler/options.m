@@ -577,6 +577,8 @@
 
     ;       type_check_constraints
 
+    ;       allow_argument_packing
+
     % Code generation options
     ;       low_level_debug
     ;       table_debug
@@ -1390,7 +1392,8 @@ option_defaults_2(internal_use_option, [
     size_region_commit_entry            -   int(1),
     solver_type_auto_init               -   bool(no),
     allow_multi_arm_switches            -   bool(yes),
-    type_check_constraints              -   bool(no)
+    type_check_constraints              -   bool(no),
+    allow_argument_packing              -   bool(yes)
 ]).
 option_defaults_2(code_gen_option, [
     % Code Generation Options
@@ -2268,6 +2271,7 @@ long_option("size-region-commit-entry",         size_region_commit_entry).
 long_option("solver-type-auto-init",    solver_type_auto_init).
 long_option("allow-multi-arm-switches", allow_multi_arm_switches).
 long_option("type-check-constraints",   type_check_constraints).
+long_option("allow-argument-packing",   allow_argument_packing).
 
 % code generation options
 long_option("low-level-debug",      low_level_debug).
@@ -4634,6 +4638,12 @@ options_help_compilation_model -->
 %       "--type-check-constraints",
 %       "(This option is not for general use.)",
 %       Use the constraint based type checker instead of the old one.
+
+        % This is a developer only option.
+%       "--allow-argument-packing",
+%       "(This option is not for general use.)",
+%       Allow the compiler to pack multiple constructor arguments into
+%       a single field.
     ]).
 
 :- pred options_help_code_generation(io::di, io::uo) is det.

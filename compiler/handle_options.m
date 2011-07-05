@@ -887,7 +887,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % Using trail segments implies the use of the trail.
     option_implies(trail_segments, use_trail, bool(yes), !Globals),
-    
+
     %
     % Set up options for position independent code.
     %
@@ -1258,6 +1258,24 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         true
     ),
 
+    % Argument packing only works on C back-ends with low-level data.
+    % In the future, we may want to use C bit-field syntax for high-level data.
+    % For other back-ends, any RTTI code will need to be updated to cope with
+    % packed arguments.
+    option_implies(highlevel_data, allow_argument_packing, bool(no), !Globals),
+    (
+        Target = target_c
+    ;
+        ( Target = target_csharp
+        ; Target = target_java
+        ; Target = target_x86_64
+        ; Target = target_asm
+        ; Target = target_il
+        ; Target = target_erlang
+        ),
+        globals.set_option(allow_argument_packing, bool(no), !Globals)
+    ),
+
     % We assume that single-precision floats do not need to be boxed.
     option_implies(single_prec_float, unboxed_float, bool(yes),
         !Globals),
@@ -1270,7 +1288,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % Currently, multi-arm switches have been tested only for the LLDS
     % backend (which always generates C) and for the MLDS backend when
-    % it is generating C or Java code.
+    % it is generating C, C# or Java code.
     (
         ( Target = target_c
         ; Target = target_csharp

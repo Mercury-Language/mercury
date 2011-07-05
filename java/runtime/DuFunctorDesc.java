@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2001-2004 The University of Melbourne.
+// Copyright (C) 2001-2004, 2011 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -19,6 +19,7 @@ public class DuFunctorDesc implements java.io.Serializable {
 	//     yet, so this may not be correct.
 	public /*final*/ PseudoTypeInfo[] du_functor_arg_types;
 	public /*final*/ java.lang.String[] du_functor_arg_names;
+	public /*final*/ DuArgLocn[] du_functor_arg_locns;
 	public /*final*/ DuExistInfo du_functor_exist_info;
 
 	public DuFunctorDesc()
@@ -31,6 +32,7 @@ public class DuFunctorDesc implements java.io.Serializable {
 		// XXX why do we need to use Object here?
 		java.lang.Object arg_types,
 		java.lang.Object arg_names,
+		java.lang.Object arg_locns,
 		java.lang.Object exist_info)
 	{
 		du_functor_name = functor_name;
@@ -43,6 +45,7 @@ public class DuFunctorDesc implements java.io.Serializable {
 		du_functor_ordinal = ordinal;
 		du_functor_arg_types = (PseudoTypeInfo []) arg_types;
 		du_functor_arg_names = (java.lang.String []) arg_names;
+		du_functor_arg_locns = (DuArgLocn []) arg_locns;
 		du_functor_exist_info = (DuExistInfo) exist_info;
 	}
 }

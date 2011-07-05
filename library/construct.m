@@ -526,8 +526,6 @@ get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
     MR_restore_transient_registers();
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
     if (Ordinal < 0 || Ordinal >= num_functors
-            || type_ctor_info->MR_type_ctor_version
-                < MR_RTTI_VERSION__FUNCTOR_NUMBERS
             || !type_ctor_info->MR_type_ctor_functor_number_map)
     {
         SUCCESS_INDICATOR = MR_FALSE; 
@@ -660,15 +658,19 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
         case MR_TYPECTOR_REP_DU_USEREQ:
             {
                 const MR_DuFunctorDesc  *functor_desc;
+                const MR_DuArgLocn      *arg_locns;
                 MR_Word                 arg_list;
                 MR_Word                 ptag;
                 MR_Word                 arity;
                 MR_Word                 arg_data;
                 MR_TypeInfo             arg_type_info;
+                int                     args_size;
+                int                     alloc_size;
                 int                     size;
                 int                     i;
 
                 functor_desc = construct_info.functor_info.du_functor_desc;
+                arg_locns = functor_desc->MR_du_functor_arg_locns;
                 if (functor_desc->MR_du_functor_exist_info != NULL) {
                     MR_fatal_error(""not yet implemented: construction ""
                         ""of terms containing existential types"");
@@ -686,12 +688,24 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
 
                 case MR_SECTAG_REMOTE:
                     arity = functor_desc->MR_du_functor_orig_arity;
+                    args_size = MR_cell_size_for_args(arity, arg_locns);
+                    alloc_size = MR_SIZE_SLOT_SIZE + 1 + args_size;
 
                     MR_tag_offset_incr_hp_msg(new_data, ptag,
-                        MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1 + arity,
+                        MR_SIZE_SLOT_SIZE, alloc_size,
                         MR_ALLOC_ID, ""<created by construct.construct/3>"");
 
-                    size = MR_cell_size(arity);
+                    /*
+                    ** Ensure words holding packed arguments are zeroed before
+                    ** filling them in.
+                    */
+                  #ifndef MR_BOEHM_GC
+                    if (arg_locns != NULL) {
+                        MR_memset(new_data, 0, alloc_size * sizeof(MR_Word));
+                    }
+                  #endif
+
+                    size = MR_cell_size(args_size);
                     MR_field(ptag, new_data, 0) =
                         functor_desc->MR_du_functor_secondary;
                     for (i = 0; i < arity; i++) {
@@ -701,7 +715,13 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                         arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
                             MR_list_head(arg_list),
                             MR_UNIV_OFFSET_FOR_TYPEINFO);
-                        MR_field(ptag, new_data, i + 1) = arg_data;
+                        if (arg_locns == NULL) {
+                            MR_field(ptag, new_data, 1 + i) = arg_data;
+                        } else {
+                            const MR_DuArgLocn *locn = &arg_locns[i];
+                            MR_field(ptag, new_data, 1 + locn->MR_arg_offset)
+                                |= (arg_data << locn->MR_arg_shift);
+                        }
                         size += MR_term_size(arg_type_info, arg_data);
                         arg_list = MR_list_tail(arg_list);
                     }
@@ -711,12 +731,24 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
 
                 case MR_SECTAG_NONE:
                     arity = functor_desc->MR_du_functor_orig_arity;
+                    args_size = MR_cell_size_for_args(arity, arg_locns);
+                    alloc_size = MR_SIZE_SLOT_SIZE + args_size;
 
                     MR_tag_offset_incr_hp_msg(new_data, ptag,
-                        MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + arity,
+                        MR_SIZE_SLOT_SIZE, alloc_size,
                         MR_ALLOC_ID, ""<created by construct.construct/3>"");
 
-                    size = MR_cell_size(arity);
+                    /*
+                    ** Ensure words holding packed arguments are zeroed before
+                    ** filling them in.
+                    */
+                  #ifndef MR_BOEHM_GC
+                    if (arg_locns != NULL) {
+                        MR_memset(new_data, 0, alloc_size * sizeof(MR_Word));
+                    }
+                  #endif
+
+                    size = MR_cell_size(args_size);
                     for (i = 0; i < arity; i++) {
                         arg_data = MR_field(MR_UNIV_TAG,
                             MR_list_head(arg_list),
@@ -724,7 +756,13 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                         arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
                             MR_list_head(arg_list),
                             MR_UNIV_OFFSET_FOR_TYPEINFO);
-                        MR_field(ptag, new_data, i) = arg_data;
+                        if (arg_locns == NULL) {
+                            MR_field(ptag, new_data, i) = arg_data;
+                        } else {
+                            const MR_DuArgLocn *locn = &arg_locns[i];
+                            MR_field(ptag, new_data, locn->MR_arg_offset)
+                                |= (arg_data << locn->MR_arg_shift);
+                        }
                         size += MR_term_size(arg_type_info, arg_data);
                         arg_list = MR_list_tail(arg_list);
                     }

@@ -1966,6 +1966,8 @@ build_rtti_type_name(type_ctor_exist_info(_), GCC_Type, !IO) :-
     build_du_exist_info_type(GCC_Type, !IO).
 build_rtti_type_name(type_ctor_field_names(_), 'MR_ConstString', !IO).
 build_rtti_type_name(type_ctor_field_types(_), 'MR_PseudoTypeInfo', !IO).
+build_rtti_type_name(type_ctor_field_locns(_), _, !IO) :-
+    sorry($module, $pred, "MR_DuArgLocn").
 build_rtti_type_name(type_ctor_res_addrs, gcc.ptr_type_node, !IO).
 build_rtti_type_name(type_ctor_res_addr_functors, gcc.ptr_type_node, !IO).
 build_rtti_type_name(type_ctor_enum_functor_desc(_), GCC_Type, !IO) :-
@@ -2002,6 +2004,7 @@ build_rtti_type_name(type_ctor_du_functor_desc(_), GCC_Type, !IO) :-
     %     const MR_PseudoTypeInfo *MR_du_functor_arg_types;
     %     const MR_ConstString    *MR_du_functor_arg_names;
     %     const MR_DuExistInfo    *MR_du_functor_exist_info;
+    %     const MR_DuArgLocn      *MR_du_functor_arg_locns; /* XXX not yet */
     % } MR_DuFunctorDesc;
     build_du_exist_info_type(MR_DuExistInfo, !IO),
     gcc.build_pointer_type('MR_PseudoTypeInfo', MR_PseudoTypeInfoPtr, !IO),

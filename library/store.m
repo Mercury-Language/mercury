@@ -222,10 +222,13 @@
     % except that they doesn't check for errors,
     % and they don't work for `no_tag' types (types with
     % exactly one functor which has exactly one argument),
+    % and they don't work for arguments which occupy a word with other
+    % arguments,
     % and they don't work for types with >4 functors.
     % If the argument number is out of range,
     % or if the argument reference has the wrong type,
     % or if the argument is a `no_tag' type,
+    % or if the argument uses a packed representation,
     % then the behaviour is undefined, and probably harmful.
 
 :- pred store.unsafe_arg_ref(generic_ref(T, S)::in, int::in,
@@ -682,10 +685,11 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::di, S::uo),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "{
-    MR_TypeInfo type_info;
-    MR_TypeInfo arg_type_info;
-    MR_TypeInfo exp_arg_type_info;
-    MR_Word     *arg_ref;
+    MR_TypeInfo         type_info;
+    MR_TypeInfo         arg_type_info;
+    MR_TypeInfo         exp_arg_type_info;
+    MR_Word             *arg_ref;
+    const MR_DuArgLocn  *arg_locn;
 
     type_info = (MR_TypeInfo) TypeInfo_for_T;
     exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
@@ -693,7 +697,7 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     MR_save_transient_registers();
 
     if (!MR_arg(type_info, (MR_Word *) Ref, ArgNum, &arg_type_info,
-        &arg_ref, MR_NONCANON_ABORT))
+        &arg_ref, &arg_locn, MR_NONCANON_ABORT))
     {
         MR_fatal_error(""store.arg_ref: argument number out of range"");
     }
@@ -706,7 +710,14 @@ ref_functor(Ref, Functor, Arity, !Store) :-
 
     MR_restore_transient_registers();
 
-    ArgRef = (MR_Word) arg_ref;
+    if (arg_locn != NULL && arg_locn->MR_arg_bits != 0) {
+        MR_offset_incr_hp_msg(ArgRef, MR_SIZE_SLOT_SIZE,
+            MR_SIZE_SLOT_SIZE + 1, MR_ALLOC_ID, ""store.ref/2"");
+        MR_define_size_slot(0, ArgRef, 1);
+        * (MR_Word *) ArgRef = MR_unpack_arg(*arg_ref, arg_locn);
+    } else {
+        ArgRef = (MR_Word) arg_ref;
+    }
     S = S0;
 }").
 
@@ -740,10 +751,11 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     new_arg_ref(Val::di, ArgNum::in, ArgRef::out, S0::di, S::uo),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "{
-    MR_TypeInfo type_info;
-    MR_TypeInfo arg_type_info;
-    MR_TypeInfo exp_arg_type_info;
-    MR_Word     *arg_ref;
+    MR_TypeInfo         type_info;
+    MR_TypeInfo         arg_type_info;
+    MR_TypeInfo         exp_arg_type_info;
+    MR_Word             *arg_ref;
+    const MR_DuArgLocn  *arg_locn;
 
     type_info = (MR_TypeInfo) TypeInfo_for_T;
     exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
@@ -751,7 +763,7 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     MR_save_transient_registers();
 
     if (!MR_arg(type_info, (MR_Word *) &Val, ArgNum, &arg_type_info,
-        &arg_ref, MR_NONCANON_ABORT))
+        &arg_ref, &arg_locn, MR_NONCANON_ABORT))
     {
         MR_fatal_error(""store.new_arg_ref: argument number out of range"");
     }
@@ -764,14 +776,19 @@ ref_functor(Ref, Functor, Arity, !Store) :-
 
     MR_restore_transient_registers();
 
-    /*
-    ** For no_tag types, the argument may have the same address as the
-    ** term.  Since the term (Val) is currently on the C stack, we can't
-    ** return a pointer to it; so if that is the case, then we need
-    ** to copy it to the heap before returning.
-    */
+    if (arg_locn != NULL && arg_locn->MR_arg_bits != 0) {
+        MR_offset_incr_hp_msg(ArgRef, MR_SIZE_SLOT_SIZE,
+            MR_SIZE_SLOT_SIZE + 1, MR_ALLOC_ID, ""store.ref/2"");
+        MR_define_size_slot(0, ArgRef, 1);
+        * (MR_Word *) ArgRef = MR_unpack_arg(*arg_ref, arg_locn);
+    } else if (arg_ref == &Val) {
+        /*
+        ** For no_tag types, the argument may have the same address as the
+        ** term.  Since the term (Val) is currently on the C stack, we can't
+        ** return a pointer to it; so if that is the case, then we need
+        ** to copy it to the heap before returning.
+        */
 
-    if (arg_ref == &Val) {
         MR_offset_incr_hp_msg(ArgRef, MR_SIZE_SLOT_SIZE,
             MR_SIZE_SLOT_SIZE + 1, MR_ALLOC_ID, ""store.ref/2"");
         MR_define_size_slot(0, ArgRef, 1);

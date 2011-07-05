@@ -144,6 +144,17 @@
     static_cell_info::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
+    % var_locn_assign_field_lval_expr_to_var(ModuleInfo, Var, FieldLval, Expr,
+    %   StaticCellInfo, Code, !VarLocnInfo);
+    %
+    % Reflects the effect of the assignment Var := Expr,
+    % where Expr contains on the field lval FieldLval.
+    % Any code required to effect the assignment will be returned in Code.
+    %
+:- pred var_locn_assign_field_lval_expr_to_var(prog_var::in,
+    lval::in, rval::in, llds_code::out,
+    var_locn_info::in, var_locn_info::out) is det.
+
     % var_locn_assign_const_to_var(ExprnOpts, Var, ConstRval,
     %   !VarLocnInfo):
     %
@@ -181,7 +192,7 @@
     % obvious conflict.) Label can be used in the generated code if necessary.
     %
 :- pred var_locn_assign_cell_to_var(module_info::in, exprn_opts::in,
-    prog_var::in, bool::in, tag::in, list(maybe(rval))::in,
+    prog_var::in, bool::in, tag::in, list(maybe(rval))::in, bool::in,
     how_to_construct::in, maybe(term_size_value)::in, list(int)::in,
     maybe(alloc_site_id)::in, may_use_atomic_alloc::in, label::in,
     llds_code::out, static_cell_info::in, static_cell_info::out,
@@ -758,6 +769,21 @@ var_locn_assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code,
 add_field_offset(Ptag, Offset, Base) =
     field(Ptag, lval(Base), Offset).
 
+var_locn_assign_field_lval_expr_to_var(Var, Lval, Expr, Code, !VLI) :-
+    check_var_is_unknown(!.VLI, Var),
+    ( Lval = field(yes(_Ptag), var(BaseVar), const(llconst_int(_Offset))) ->
+        var_locn_get_var_state_map(!.VLI, VarStateMap0),
+        set.init(Lvals),
+        set.init(Using),
+        State = var_state(Lvals, no, yes(Expr), Using, doa_alive),
+        map.det_insert(Var, State, VarStateMap0, VarStateMap1),
+        add_use_ref(BaseVar, Var, VarStateMap1, VarStateMap),
+        var_locn_set_var_state_map(VarStateMap, !VLI),
+        Code = empty
+    ;
+        unexpected($module, $pred, "not field lval")
+    ).
+
 %----------------------------------------------------------------------------%
 
 var_locn_assign_const_to_var(ExprnOpts, Var, ConstRval0, !VLI) :-
@@ -809,8 +835,8 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 %----------------------------------------------------------------------------%
 
 var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
-        Ptag, MaybeRvals0, HowToConstruct, MaybeSize, FieldAddrs, MaybeAllocId,
-        MayUseAtomic, Label, Code, !StaticCellInfo, !VLI) :-
+        Ptag, MaybeRvals0, AllFilled, HowToConstruct, MaybeSize, FieldAddrs,
+        MaybeAllocId, MayUseAtomic, Label, Code, !StaticCellInfo, !VLI) :-
     (
         MaybeSize = yes(SizeSource),
         (
@@ -832,6 +858,7 @@ var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
     % We can make the cell a constant only if all its fields are filled in,
     % and they are all constants.
     (
+        AllFilled = yes,
         StaticGroundCells = have_static_ground_cells,
         FieldAddrs = [],
         cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes)
@@ -1101,17 +1128,26 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
             AssignCode = singleton(llds_instr(assign(Target, Rval), Comment))
         )
     ;
-        Rval0 = const(_),
+        (
+            Rval0 = const(_),
+            Comment = "assigning field from const"
+        ;
+            Rval0 = mkword(_, _),
+            Comment = "assigning field from tagged pointer"
+        ;
+            Rval0 = unop(_, _),
+            Comment = "assigning field from unary op"
+        ;
+            Rval0 = binop(_, _, _),
+            Comment = "assigning field from binary op"
+        ;
+            Rval0 = lval(_),
+            Comment = "assigning field"
+        ),
         EvalCode = empty,
-        Comment = "assigning field from const",
         AssignCode = singleton(llds_instr(assign(Target, Rval0), Comment))
     ;
-        ( Rval0 = mkword(_, _)
-        ; Rval0 = binop(_, _, _)
-        ; Rval0 = unop(_, _)
-        ; Rval0 = lval(_)
-        ; Rval0 = mem_addr(_)
-        ),
+        Rval0 = mem_addr(_),
         unexpected($module, $pred, "unknown rval")
     ),
     Code = EvalCode ++ AssignCode.

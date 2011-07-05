@@ -400,7 +400,8 @@
 :- type du_arg_info
     --->    du_arg_info(
                 du_arg_name         :: maybe(string),
-                du_arg_type         :: rtti_maybe_pseudo_type_info_or_self
+                du_arg_type         :: rtti_maybe_pseudo_type_info_or_self,
+                du_arg_width        :: arg_width
             ).
 
     % An rtti_maybe_pseudo_type_info identifies the type of a function
@@ -629,6 +630,7 @@
     ;       type_ctor_exist_info(int)                   % functor ordinal
     ;       type_ctor_field_names(int)                  % functor ordinal
     ;       type_ctor_field_types(int)                  % functor ordinal
+    ;       type_ctor_field_locns(int)                  % functor ordinal
     ;       type_ctor_res_addrs
     ;       type_ctor_res_addr_functors
     ;       type_ctor_enum_functor_desc(int)            % functor ordinal
@@ -792,9 +794,9 @@
     %
 :- func du_arg_info_type(du_arg_info) = rtti_maybe_pseudo_type_info_or_self.
 
-    % If the given value is bound to yes, return its argument.
+    % Extract the argument width from du_arg_info.
     %
-:- func project_yes(maybe(T)) = T is semidet.
+:- func du_arg_info_width(du_arg_info) = arg_width.
 
     % Return the symbolic representation of the address of the given
     % functor descriptor.
@@ -1084,6 +1086,7 @@ ctor_rtti_name_is_exported(type_ctor_exist_tc_constrs(_))         = no.
 ctor_rtti_name_is_exported(type_ctor_exist_info(_))               = no.
 ctor_rtti_name_is_exported(type_ctor_field_names(_))              = no.
 ctor_rtti_name_is_exported(type_ctor_field_types(_))              = no.
+ctor_rtti_name_is_exported(type_ctor_field_locns(_))              = no.
 ctor_rtti_name_is_exported(type_ctor_res_addrs)                   = no.
 ctor_rtti_name_is_exported(type_ctor_res_addr_functors)           = no.
 ctor_rtti_name_is_exported(type_ctor_enum_functor_desc(_))        = no.
@@ -1181,6 +1184,11 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
         RttiName = type_ctor_field_types(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__field_types_",
+            TypeName, "_", A_str, "_", O_str], Str)
+    ;
+        RttiName = type_ctor_field_locns(Ordinal),
+        string.int_to_string(Ordinal, O_str),
+        string.append_list([ModuleName, "__field_locns_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = type_ctor_res_addrs,
@@ -1745,7 +1753,7 @@ du_arg_info_name(ArgInfo) = ArgInfo ^ du_arg_name.
 
 du_arg_info_type(ArgInfo) = ArgInfo ^ du_arg_type.
 
-project_yes(yes(X)) = X.
+du_arg_info_width(ArgInfo) = ArgInfo ^ du_arg_width.
 
 enum_functor_rtti_name(EnumFunctor) =
     type_ctor_enum_functor_desc(EnumFunctor ^ enum_ordinal).
@@ -1791,6 +1799,7 @@ ctor_rtti_name_code_addr(type_ctor_exist_tc_constrs(_)) =           no.
 ctor_rtti_name_code_addr(type_ctor_exist_info(_)) =                 no.
 ctor_rtti_name_code_addr(type_ctor_field_names(_)) =                no.
 ctor_rtti_name_code_addr(type_ctor_field_types(_)) =                no.
+ctor_rtti_name_code_addr(type_ctor_field_locns(_)) =                no.
 ctor_rtti_name_code_addr(type_ctor_res_addrs) =                     no.
 ctor_rtti_name_code_addr(type_ctor_res_addr_functors) =             no.
 ctor_rtti_name_code_addr(type_ctor_enum_functor_desc(_)) =          no.
@@ -2030,6 +2039,8 @@ ctor_rtti_name_type(type_ctor_field_names(_),
         "ConstString", is_array).
 ctor_rtti_name_type(type_ctor_field_types(_),
         "PseudoTypeInfo", is_array).
+ctor_rtti_name_type(type_ctor_field_locns(_),
+        "DuArgLocn", is_array).
 ctor_rtti_name_type(type_ctor_res_addrs,
         "ReservedAddr", is_array).
 ctor_rtti_name_type(type_ctor_res_addr_functors,

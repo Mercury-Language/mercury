@@ -72,7 +72,7 @@
 ** compiler/type_ctor_info.m.
 */
 
-#define MR_RTTI_VERSION                     MR_RTTI_VERSION__DIRECT_ARG
+#define MR_RTTI_VERSION                     MR_RTTI_VERSION__ARG_WIDTHS
 #define MR_RTTI_VERSION__INITIAL            2
 #define MR_RTTI_VERSION__USEREQ             3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT       4
@@ -86,6 +86,7 @@
 #define MR_RTTI_VERSION__FUNCTOR_NUMBERS    12
 #define MR_RTTI_VERSION__BITMAP             13
 #define MR_RTTI_VERSION__DIRECT_ARG         14
+#define MR_RTTI_VERSION__ARG_WIDTHS         15
 
 /*
 ** Check that the RTTI version is in a sensible range.
@@ -101,7 +102,7 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    assert((typector)->MR_type_ctor_version >= MR_RTTI_VERSION__FUNCTOR_NUMBERS)
+    assert((typector)->MR_type_ctor_version >= MR_RTTI_VERSION__ARG_WIDTHS)
 
 /*---------------------------------------------------------------------------*/
 
@@ -865,12 +866,17 @@ typedef struct {
 ** compiler-recorded information, these macros return conservative answers
 ** for any argument whose type is not represented in this bit vector.
 **
-** The arg_name field points to an array of field names, one for each
+** The arg_names field points to an array of field names, one for each
 ** visible argument. If no argument has a name, this field will be NULL.
 **
 ** If the functor has any arguments whose types include existentially
 ** quantified type variables, the exist_info field will point to information
 ** about those type variables; otherwise, the exist_info field will be NULL.
+**
+** If every argument occupies exactly one word each, then the arg_locns
+** field will be NULL. Otherwise, it points to an array of MR_DuArgLocn
+** structures, describing the location and packing scheme of each visible
+** argument.
 */
 
 typedef enum {
@@ -882,6 +888,18 @@ typedef enum {
 } MR_Sectag_Locn;
 
 typedef struct {
+    MR_int_least16_t        MR_arg_offset; /* not including extra args */
+    MR_int_least8_t         MR_arg_shift;
+    MR_int_least8_t         MR_arg_bits;
+    /*
+    ** If MR_arg_bits is zero then the argument occupies the entire word.
+    ** Otherwise MR_arg_bits is non-zero and gives the number of bits used by
+    ** the argument. Storing the bit-mask would be more useful, but would not
+    ** be as compact. 
+    */
+} MR_DuArgLocn;
+
+typedef struct {
     MR_ConstString          MR_du_functor_name;
     MR_int_least16_t        MR_du_functor_orig_arity;
     MR_int_least16_t        MR_du_functor_arg_type_contains_var;
@@ -891,6 +909,7 @@ typedef struct {
     MR_int_least32_t        MR_du_functor_ordinal;
     const MR_PseudoTypeInfo *MR_du_functor_arg_types;
     const MR_ConstString    *MR_du_functor_arg_names;
+    const MR_DuArgLocn      *MR_du_functor_arg_locns;
     const MR_DuExistInfo    *MR_du_functor_exist_info;
 } MR_DuFunctorDesc;
 
@@ -923,6 +942,12 @@ typedef const MR_DuFunctorDesc              *MR_DuFunctorDescPtr;
 
 #define MR_some_arg_type_contains_var(functor_desc)                     \
     ((functor_desc)->MR_du_functor_arg_type_contains_var > 0)
+
+#define MR_unpack_arg(val, arg_locn)                                    \
+    ((arg_locn)->MR_arg_bits == 0                                       \
+     ? (val)                                                            \
+     : ((val) >> (arg_locn)->MR_arg_shift) &                            \
+        ((MR_Word) (1 << (arg_locn)->MR_arg_bits) - 1))
 
 /*---------------------------------------------------------------------------*/
 
@@ -1403,7 +1428,7 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
 #define MR_DEFINE_TYPE_CTOR_INFO_BODY_FLAG(m, n, a, cr, u, c, f, fns)   \
     {                                                                   \
         a,                                                              \
-        MR_RTTI_VERSION__DIRECT_ARG,                                    \
+        MR_RTTI_VERSION__ARG_WIDTHS,                                    \
         -1,                                                             \
         MR_PASTE2(MR_TYPECTOR_REP_, cr),                                \
         MR_DEFINE_TYPE_CTOR_INFO_CODE(u),                               \
@@ -1895,6 +1920,17 @@ extern  MR_Word     MR_arg_name_vector_to_list(int arity,
 extern  MR_Word     MR_pseudo_type_info_vector_to_pseudo_type_info_list(
                         int arity, MR_TypeInfoParams type_params,
                         const MR_PseudoTypeInfo *arg_pseudo_type_infos);
+
+/*
+** MR_cell_size_for_args:
+**
+** Return the number of words required to hold the visible arguments of a
+** constructor. That is, it does not count extra arguments, an optional
+** secondary tag, or the additional slot for term size profiling.
+*/
+
+extern  int         MR_cell_size_for_args(int arity,
+                        const MR_DuArgLocn *arg_locns);
 
 /*
 ** MR_print_type:

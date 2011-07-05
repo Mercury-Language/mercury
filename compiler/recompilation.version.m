@@ -294,8 +294,10 @@ gather_items_2(Item, !Section, !Info) :-
             BodyItem = Item
         ;
             Body = parse_tree_du_type(_, _, _),
+            % XXX does the abstract_details matter here?
+            AbstractDetails = abstract_type_general,
             NameItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
-                parse_tree_abstract_type(non_solver_type), Cond, Context,
+                parse_tree_abstract_type(AbstractDetails), Cond, Context,
                 SeqNum),
             NameItem = item_type_defn(NameItemTypeDefn),
             BodyItem = Item

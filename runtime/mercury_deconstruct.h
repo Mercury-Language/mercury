@@ -3,7 +3,7 @@
 */
 
 /*
-** Copyright (C) 2002, 2005, 2007 The University of Melbourne.
+** Copyright (C) 2002, 2005, 2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,6 +24,7 @@
 typedef struct {
     int                     num_extra_args;
     MR_Word                 *arg_values;
+    const MR_DuArgLocn      *arg_locns;
     MR_TypeInfo             *arg_type_infos;
     MR_bool                 can_free_arg_type_infos;
 } MR_Expand_Args_Fields;
@@ -58,6 +59,7 @@ typedef struct {
     int                     arity;
     MR_bool                 chosen_index_exists;
     MR_Word                 *chosen_value_ptr;
+    const MR_DuArgLocn      *chosen_arg_locn;
     MR_TypeInfo             chosen_type_info;
 } MR_Expand_Chosen_Arg_Only_Info;
 
@@ -121,6 +123,7 @@ extern  void    MR_expand_named_arg_only(MR_TypeInfo type_info,
 
 extern  MR_bool MR_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
                     MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr,
+                    const MR_DuArgLocn **arg_locn_ptr,
                     MR_noncanon_handling noncanon);
 
 /*
@@ -133,7 +136,9 @@ extern  MR_bool MR_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
 
 extern  MR_bool MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
                     MR_ConstString arg_name, MR_TypeInfo *arg_type_info_ptr,
-                    MR_Word **argument_ptr, MR_noncanon_handling noncanon);
+                    MR_Word **argument_ptr,
+                    const MR_DuArgLocn **arg_locn_ptr,
+                    MR_noncanon_handling noncanon);
 
 /*
 ** MR_named_arg_num() takes the address of a term, its type,

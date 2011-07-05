@@ -271,7 +271,7 @@ my_term_to_term(var(MyVar), variable(Var, Context), !VarSet, !VarMap, !S) :-
 	( assoc_list.search(!.VarMap, MyVar, Var0) ->
 		Var = Var0
 	;
-		varset.new_var(!.VarSet, Var, !:VarSet),
+		varset.new_var(Var, !VarSet),
 		!:VarMap = [MyVar - Var | !.VarMap]
 	),
 	%
@@ -281,13 +281,13 @@ my_term_to_term(var(MyVar), variable(Var, Context), !VarSet, !VarMap, !S) :-
 	tr_store.get_mutvar(MyVar, MyValue, !S),
 	( MyValue \= free ->
 		my_term_to_term(MyValue, Value, !VarSet, !VarMap, !S),
-		varset.bind_var(!.VarSet, Var, Value, !:VarSet)
+		varset.bind_var(Var, Value, !VarSet)
 	;
         true
 	).
 my_term_to_term(free, variable(Var, Context), !VarSet, !VarMap, !S) :-
 	context_init(Context),
-	varset.new_var(!.VarSet, Var, !:VarSet),
+	varset.new_var(Var, !VarSet),
 	error("my_term_to_term: unexpected free var").
 my_term_to_term(functor(Functor, Args0), functor(Functor, Args, Context),
 		!VarSet, !VarMap, !S) :-
@@ -562,17 +562,17 @@ database_assert_clause(VarSet, Term, !Database) :-
 			( map.search(Preds0, PredId, Pred0) ->
 				Pred0 = db_pred(PredUnindexedClauses,
 				    PredIndexedClauses0),
-				multi_map.set(PredIndexedClauses0, FirstArgId,
-					Clause, PredIndexedClauses),
+				multi_map.set(FirstArgId, Clause,
+					PredIndexedClauses0, PredIndexedClauses),
 				Pred = db_pred(PredUnindexedClauses,
 				    PredIndexedClauses),
-				map.det_update(Preds0, PredId, Pred, Preds)
+				map.det_update(PredId, Pred, Preds0, Preds)
 			;
 				multi_map.init(PredIndexedClauses0),
-				multi_map.set(PredIndexedClauses0, FirstArgId,
-					Clause, PredIndexedClauses),
+				multi_map.set(FirstArgId, Clause,
+					PredIndexedClauses0, PredIndexedClauses),
 				Pred = db_pred([], PredIndexedClauses),
-				map.det_insert(Preds0, PredId, Pred, Preds)
+				map.det_insert(PredId, Pred, Preds0, Preds)
 			)
 		;
 			% We can't do first-argument indexing -- just
@@ -583,11 +583,11 @@ database_assert_clause(VarSet, Term, !Database) :-
 						PredIndexedClauses),
 				Pred = db_pred([Clause | PredUnindexedClauses],
 						PredIndexedClauses),
-				map.det_update(Preds0, PredId, Pred, Preds)
+				map.det_update(PredId, Pred, Preds0, Preds)
 			;
 				multi_map.init(PredIndexedClauses),
 				Pred = db_pred([Clause], PredIndexedClauses),
-				map.det_insert(Preds0, PredId, Pred, Preds)
+				map.det_insert(PredId, Pred, Preds0, Preds)
 			)
 		),
 		!:Database = database(UnindexedClauses, Preds)

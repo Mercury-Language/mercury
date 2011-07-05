@@ -56,6 +56,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.arg_pack.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
@@ -92,12 +93,26 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
 :- type uni_val
     --->    ref(prog_var)
-    ;       lval(lval).
+    ;       lval(lval, arg_width).
+            % The argument may only occupy part of a word.
+
+    % The phantom type prevents us from mixing field_addrs which are computed
+    % with and without consideration for argument packing.
+    %
+:- type field_addr(T)
+    --->    field_addr(
+                fa_num  :: int,
+                fa_var  :: prog_var
+            ).
+
+:- type unpacked ---> unpacked.
+:- type packed   ---> packed.
 
 %---------------------------------------------------------------------------%
 
@@ -137,17 +152,25 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
                 MaybeTakeAddr = no,
                 TakeAddr = []
             ),
-            generate_construction(Var, ConsId, Args, Modes, HowToConstruct,
-                TakeAddr, MaybeSize, GoalInfo, Code, !CI)
+            get_module_info(!.CI, ModuleInfo),
+            get_cons_arg_widths(ModuleInfo, ConsId, Args, ConsArgWidths),
+            generate_construction(Var, ConsId, Args, Modes, ConsArgWidths,
+                HowToConstruct, TakeAddr, MaybeSize, GoalInfo, Code, !CI)
         ;
             Code = empty
         )
     ;
         Uni = deconstruct(Var, ConsId, Args, Modes, _CanFail, CanCGC),
-        ( CodeModel = model_det ->
-            generate_det_deconstruction(Var, ConsId, Args, Modes, Code0, !CI)
+        get_module_info(!.CI, ModuleInfo),
+        get_cons_arg_widths(ModuleInfo, ConsId, Args, ConsArgWidths),
+        (
+            CodeModel = model_det,
+            generate_det_deconstruction(Var, ConsId, Args, Modes,
+                ConsArgWidths, Code0, !CI)
         ;
-            generate_semi_deconstruction(Var, ConsId, Args, Modes, Code0, !CI)
+            CodeModel = model_semi, 
+            generate_semi_deconstruction(Var, ConsId, Args, Modes,
+                ConsArgWidths, Code0, !CI)
         ),
         (
             CanCGC = can_cgc,
@@ -182,6 +205,31 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
         % procedures by polymorphism.m.
         Uni = complicated_unify(_UniMode, _CanFail, _TypeInfoVars),
         unexpected($module, $pred, "complicated unify")
+    ).
+
+:- pred get_cons_arg_widths(module_info::in, cons_id::in,
+    list(prog_var)::in, list(arg_width)::out) is det.
+
+get_cons_arg_widths(ModuleInfo, ConsId, Args, AllArgWidths) :-
+    (
+        ConsId = cons(_, _, TypeCtor),
+        get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
+    ->
+        ConsArgs = ConsDefn ^ cons_args,
+        ArgWidths = list.map((func(C) = C ^ arg_width), ConsArgs),
+        list.length(Args, NumArgs),
+        list.length(ConsArgs, NumConsArgs),
+        NumExtraArgs = NumArgs - NumConsArgs,
+        ( NumExtraArgs = 0 ->
+            AllArgWidths = ArgWidths
+        ; NumExtraArgs > 0 ->
+            ExtraArgWidths = list.duplicate(NumExtraArgs, full_word),
+            AllArgWidths = ExtraArgWidths ++ ArgWidths
+        ;
+            unexpected($module, $pred, "too few arguments")
+        )
+    ;
+        AllArgWidths = list.duplicate(length(Args), full_word)
     ).
 
 %---------------------------------------------------------------------------%
@@ -448,23 +496,25 @@ generate_reserved_address(reserved_object(_, _, _)) = _ :-
     % instantiate the arguments of that term.
     %
 :- pred generate_construction(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, how_to_construct::in,
+    list(prog_var)::in, list(uni_mode)::in, list(arg_width)::in,
+    how_to_construct::in,
     list(int)::in, maybe(term_size_value)::in, hlds_goal_info::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
-generate_construction(Var, ConsId, Args, Modes, HowToConstruct,
+generate_construction(Var, ConsId, Args, Modes, ArgWidths, HowToConstruct,
         TakeAddr, MaybeSize, GoalInfo, Code, !CI) :-
     get_module_info(!.CI, ModuleInfo),
     Tag = cons_id_to_tag(ModuleInfo, ConsId),
-    generate_construction_2(Tag, Var, Args, Modes, HowToConstruct,
+    generate_construction_2(Tag, Var, Args, Modes, ArgWidths, HowToConstruct,
         TakeAddr, MaybeSize, GoalInfo, Code, !CI).
 
 :- pred generate_construction_2(cons_tag::in, prog_var::in,
-    list(prog_var)::in, list(uni_mode)::in, how_to_construct::in,
+    list(prog_var)::in, list(uni_mode)::in, list(arg_width)::in,
+    how_to_construct::in,
     list(int)::in, maybe(term_size_value)::in, hlds_goal_info::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
-generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
+generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
         TakeAddr, MaybeSize, GoalInfo, Code, !CI) :-
     (
         ConsTag = string_tag(String),
@@ -511,11 +561,17 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
             ConsTag = unshared_tag(Ptag)
         ),
         var_types(!.CI, Args, ArgTypes),
-        generate_cons_args(Args, ArgTypes, Modes, 0, 1, TakeAddr, !.CI,
-            MaybeRvals, FieldAddrs, MayUseAtomic),
+        FirstOffset = 0,
+        generate_cons_args(Args, ArgTypes, Modes, FirstOffset, TakeAddr, !.CI,
+            MaybeRvals0, FieldAddrs0, MayUseAtomic),
+        pack_cell_rvals(ArgWidths, MaybeRvals0, MaybeRvals, AllFilled,
+            PackCode, !CI),
+        pack_field_addrs(ArgWidths, FieldAddrs0, FieldAddrs),
+        pack_how_to_construct(ArgWidths, HowToConstruct0, HowToConstruct),
         Context = goal_info_get_context(GoalInfo),
-        construct_cell(Var, Ptag, MaybeRvals, HowToConstruct,
-            MaybeSize, FieldAddrs, Context, MayUseAtomic, Code, !CI)
+        construct_cell(Var, Ptag, MaybeRvals, AllFilled, HowToConstruct,
+            MaybeSize, FieldAddrs, Context, MayUseAtomic, ConstructCode, !CI),
+        Code = PackCode ++ ConstructCode
     ;
         ConsTag = direct_arg_tag(Ptag),
         (
@@ -537,13 +593,19 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
     ;
         ConsTag = shared_remote_tag(Ptag, Sectag),
         var_types(!.CI, Args, ArgTypes),
-        generate_cons_args(Args, ArgTypes, Modes, 1, 1, TakeAddr, !.CI,
-            MaybeRvals0, FieldAddrs, MayUseAtomic),
         % The first field holds the secondary tag.
-        MaybeRvals = [yes(const(llconst_int(Sectag))) | MaybeRvals0],
+        FirstOffset = 1,
+        generate_cons_args(Args, ArgTypes, Modes, FirstOffset, TakeAddr, !.CI,
+            MaybeRvals0, FieldAddrs0, MayUseAtomic),
+        pack_cell_rvals(ArgWidths, MaybeRvals0, MaybeRvals1, AllFilled,
+            PackCode, !CI),
+        pack_field_addrs(ArgWidths, FieldAddrs0, FieldAddrs),
+        pack_how_to_construct(ArgWidths, HowToConstruct0, HowToConstruct),
+        MaybeRvals = [yes(const(llconst_int(Sectag))) | MaybeRvals1],
         Context = goal_info_get_context(GoalInfo),
-        construct_cell(Var, Ptag, MaybeRvals, HowToConstruct,
-            MaybeSize, FieldAddrs, Context, MayUseAtomic, Code, !CI)
+        construct_cell(Var, Ptag, MaybeRvals, AllFilled, HowToConstruct,
+            MaybeSize, FieldAddrs, Context, MayUseAtomic, ConstructCode, !CI),
+        Code = PackCode ++ ConstructCode
     ;
         ConsTag = shared_local_tag(Ptag, Sectag),
         assign_const_to_var(Var,
@@ -611,8 +673,8 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         % For shared_with_reserved_address, the sharing is only important
         % for tag tests, not for constructions, so here we just recurse
         % on the real representation.
-        generate_construction_2(ThisTag, Var, Args, Modes, HowToConstruct,
-            TakeAddr, MaybeSize, GoalInfo, Code, !CI)
+        generate_construction_2(ThisTag, Var, Args, Modes, ArgWidths,
+            HowToConstruct0, TakeAddr, MaybeSize, GoalInfo, Code, !CI)
     ;
         ConsTag = closure_tag(PredId, ProcId, EvalMethod),
         expect(unify(TakeAddr, []), $module, $pred,
@@ -807,12 +869,15 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             yes(const(llconst_int(NumArgs)))
             | PredArgs
         ],
+        AllFilled = yes,
         % XXX construct_dynamically is just a dummy value. We just want
         % something which is not construct_in_region(_).
+        HowToConstruct = construct_dynamically,
+        MaybeSize = no,
         maybe_add_alloc_site_info(Context, "closure", length(Vector),
             MaybeAllocId, !CI),
-        assign_cell_to_var(Var, no, 0, Vector, construct_dynamically, no, [],
-            MaybeAllocId, MayUseAtomic, Code, !CI)
+        assign_cell_to_var(Var, no, 0, Vector, AllFilled, HowToConstruct,
+            MaybeSize, [], MaybeAllocId, MayUseAtomic, Code, !CI)
     ).
 
 :- pred generate_extra_closure_args(list(prog_var)::in, lval::in,
@@ -880,15 +945,16 @@ generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
         !MayUseAtomic).
 
 :- pred generate_cons_args(list(prog_var)::in, list(mer_type)::in,
-    list(uni_mode)::in, int::in, int::in, list(int)::in, code_info::in,
-    list(maybe(rval))::out, assoc_list(int, prog_var)::out,
+    list(uni_mode)::in, int::in, list(int)::in, code_info::in,
+    list(maybe(rval))::out, list(field_addr(unpacked))::out,
     may_use_atomic_alloc::out) is det.
 
-generate_cons_args(Vars, Types, Modes, FirstOffset, FirstArgNum, TakeAddr,
-        CI, !:Args, !:FieldAddrs, !:MayUseAtomic) :-
+generate_cons_args(Vars, Types, Modes, FirstOffset, TakeAddr, CI,
+        !:Args, !:FieldAddrs, !:MayUseAtomic) :-
     get_module_info(CI, ModuleInfo),
     !:MayUseAtomic = initial_may_use_atomic(ModuleInfo),
     (
+        FirstArgNum = 1,
         generate_cons_args_2(Vars, Types, Modes, FirstOffset, FirstArgNum,
             TakeAddr, CI, !:Args, !:FieldAddrs, !MayUseAtomic)
     ->
@@ -904,7 +970,7 @@ generate_cons_args(Vars, Types, Modes, FirstOffset, FirstArgNum, TakeAddr,
     %
 :- pred generate_cons_args_2(list(prog_var)::in, list(mer_type)::in,
     list(uni_mode)::in, int::in, int::in, list(int)::in, code_info::in,
-    list(maybe(rval))::out, assoc_list(int, prog_var)::out,
+    list(maybe(rval))::out, list(field_addr(unpacked))::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
 
 generate_cons_args_2([], [], [], _, _, [], _, [], [], !MayUseAtomic).
@@ -927,9 +993,10 @@ generate_cons_args_2([Var | Vars], [Type | Types], [UniMode | UniModes],
             !.TakeAddr, CI, MaybeRvals, FieldAddrs1, !MayUseAtomic),
         % Whereas CurArgNum starts numbering the arguments from 1, offsets
         % into fields start from zero. However, if FirstOffset = 1, then the
-        % first word in the cell is the secondary tag.
+        % first word in the cell is the secondary tag. This offset calculation
+        % does not consider field packing; that is done subsequently.
         Offset = CurArgNum - 1 + FirstOffset,
-        FieldAddrs = [Offset - Var | FieldAddrs1]
+        FieldAddrs = [field_addr(Offset, Var) | FieldAddrs1]
     ;
         UniMode = ((_LI - RI) -> (_LF - RF)),
         mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, ArgMode),
@@ -959,13 +1026,69 @@ initial_may_use_atomic(ModuleInfo) = InitMayUseAtomic :-
         InitMayUseAtomic = may_use_atomic_alloc
     ).
 
-:- pred construct_cell(prog_var::in, tag::in, list(maybe(rval))::in,
-    how_to_construct::in, maybe(term_size_value)::in,
-    assoc_list(int, prog_var)::in, prog_context::in, may_use_atomic_alloc::in,
+:- pred pack_cell_rvals(list(arg_width)::in,
+    list(maybe(rval))::in, list(maybe(rval))::out, bool::out,
     llds_code::out, code_info::in, code_info::out) is det.
 
-construct_cell(Var, Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs,
-        Context, MayUseAtomic, Code, !CI) :-
+pack_cell_rvals(ArgWidths, Rvals0, Rvals, AllFilled, Code, !CI) :-
+    % Check whether all arguments are filled in.  This has to be done on the
+    % unpacked rvals list.
+    AllFilled = (list.contains(Rvals0, no) -> no ; yes),
+    pack_args(shift_combine_arg, ArgWidths, Rvals0, Rvals, empty, Code, !CI).
+
+:- pred pack_field_addrs(list(arg_width)::in,
+    list(field_addr(unpacked))::in, list(field_addr(packed))::out) is det.
+
+pack_field_addrs(ArgWidths, FieldAddrs0, FieldAddrs) :-
+    list.map(pack_field_addr(ArgWidths), FieldAddrs0, FieldAddrs).
+
+:- pred pack_field_addr(list(arg_width)::in,
+    field_addr(unpacked)::in, field_addr(packed)::out) is det.
+
+pack_field_addr(ArgWidths, field_addr(Num0, Var), field_addr(Num, Var)) :-
+    ( list.take(Num0, ArgWidths, ArgWidthsToVar) ->
+        Num = count_distinct_words(ArgWidthsToVar)
+    ;
+        unexpected($module, $pred, "more fields than arg_widths")
+    ).
+
+:- pred pack_how_to_construct(list(arg_width)::in,
+    how_to_construct::in, how_to_construct::out) is det.
+
+pack_how_to_construct(ArgWidths, !HowToConstruct) :-
+    (
+        !.HowToConstruct = construct_statically
+    ;
+        !.HowToConstruct = construct_dynamically
+    ;
+        !.HowToConstruct = construct_in_region(_)
+    ;
+        !.HowToConstruct = reuse_cell(CellToReuse0),
+        % If an argument within a packed field needs updating,
+        % the field needs updating.
+        CellToReuse0 = cell_to_reuse(Var, ConsIds, NeedsUpdates0),
+        chunk_list_by_words(ArgWidths, NeedsUpdates0, NeedsUpdates1),
+        list.map(condense_needs_updates, NeedsUpdates1) = NeedsUpdates,
+        CellToReuse = cell_to_reuse(Var, ConsIds, NeedsUpdates),
+        !:HowToConstruct = reuse_cell(CellToReuse)
+    ).
+
+:- func condense_needs_updates(list(needs_update)) = needs_update.
+
+condense_needs_updates(NeedsUpdatess) =
+    ( list.member(needs_update, NeedsUpdatess) ->
+        needs_update
+    ;
+        does_not_need_update
+    ).
+
+:- pred construct_cell(prog_var::in, tag::in, list(maybe(rval))::in, bool::in,
+    how_to_construct::in, maybe(term_size_value)::in,
+    list(field_addr(packed))::in, prog_context::in, may_use_atomic_alloc::in,
+    llds_code::out, code_info::in, code_info::out) is det.
+
+construct_cell(Var, Ptag, MaybeRvals, AllFilled, HowToConstruct, MaybeSize,
+        FieldAddrs, Context, MayUseAtomic, Code, !CI) :-
     VarType = variable_type(!.CI, Var),
     var_type_msg(VarType, VarTypeMsg),
     % If we're doing accurate GC, then for types which hold RTTI that
@@ -984,10 +1107,10 @@ construct_cell(Var, Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs,
     ;
         ReserveWordAtStart = no
     ),
-    FieldNums = list.map(fst, FieldAddrs),
+    FieldNums = list.map(get_field_num, FieldAddrs),
     Size = list.length(MaybeRvals),
     maybe_add_alloc_site_info(Context, VarTypeMsg, Size, MaybeAllocId, !CI),
-    assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals,
+    assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, AllFilled,
         HowToConstruct, MaybeSize, FieldNums, MaybeAllocId, MayUseAtomic,
         CellCode, !CI),
     (
@@ -1004,6 +1127,10 @@ construct_cell(Var, Ptag, MaybeRvals, HowToConstruct, MaybeSize, FieldAddrs,
         Code = CellCode ++ FieldCode
     ).
 
+:- func get_field_num(field_addr(packed)) = int.
+
+get_field_num(field_addr(Num, _Var)) = Num.
+
 :- pred maybe_add_alloc_site_info(prog_context::in, string::in, int::in,
     maybe(alloc_site_id)::out, code_info::in, code_info::out) is det.
 
@@ -1019,13 +1146,14 @@ maybe_add_alloc_site_info(Context, VarTypeMsg, Size, MaybeAllocId, !CI) :-
         MaybeAllocId = no
     ).
 
-:- pred generate_field_take_address_assigns(assoc_list(int, prog_var)::in,
+:- pred generate_field_take_address_assigns(list(field_addr(packed))::in,
     prog_var::in, int::in, llds_code::out, code_info::in, code_info::out)
     is det.
 
 generate_field_take_address_assigns([], _, _, empty, !CI).
-generate_field_take_address_assigns([FieldNum - Var | FieldAddrs],
+generate_field_take_address_assigns([FieldAddr | FieldAddrs],
         CellVar, CellPtag, ThisCode ++ RestCode, !CI) :-
+    FieldAddr = field_addr(FieldNum, Var),
     FieldNumRval = const(llconst_int(FieldNum)),
     Addr = mem_addr(heap_ref(var(CellVar), CellPtag, FieldNumRval)),
     assign_expr_to_var(Var, Addr, ThisCode, !CI),
@@ -1047,16 +1175,28 @@ var_types(CI, Vars, Types) :-
     % Construct a pair of lists that associates the fields of a term
     % with variables.
     %
-:- pred make_fields_and_argvars(list(prog_var)::in, rval::in,
-    int::in, int::in, list(uni_val)::out, list(uni_val)::out) is det.
+:- pred make_fields_and_argvars(list(prog_var)::in, list(arg_width)::in,
+    rval::in, int::in, int::in, list(uni_val)::out, list(uni_val)::out) is det.
 
-make_fields_and_argvars([], _, _, _, [], []).
-make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
-        [F | Fs], [A | As]) :-
-    F = lval(field(yes(TagNum), Rval, const(llconst_int(Field0)))),
+make_fields_and_argvars([], [], _, _, _, [], []).
+make_fields_and_argvars([Var | Vars], [Width | Widths], Rval, PrevOffset,
+        TagNum, [F | Fs], [A | As]) :-
+    (
+        ( Width = full_word
+        ; Width = partial_word_first(_Mask)
+        ),
+        Offset = PrevOffset + 1
+    ;
+        Width = partial_word_shifted(_Shift, _Mask),
+        Offset = PrevOffset
+    ),
+    F = lval(field(yes(TagNum), Rval, const(llconst_int(Offset))), Width),
     A = ref(Var),
-    Field1 = Field0 + 1,
-    make_fields_and_argvars(Vars, Rval, Field1, TagNum, Fs, As).
+    make_fields_and_argvars(Vars, Widths, Rval, Offset, TagNum, Fs, As).
+make_fields_and_argvars([], [_ | _], _, _, _, _, _) :-
+    unexpected($module, $pred, "mismatched lists").
+make_fields_and_argvars([_ | _], [], _, _, _, _, _) :-
+    unexpected($module, $pred, "mismatched lists").
 
 %---------------------------------------------------------------------------%
 
@@ -1069,19 +1209,21 @@ make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
     % are cached.
     %
 :- pred generate_det_deconstruction(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, llds_code::out,
-    code_info::in, code_info::out) is det.
-
-generate_det_deconstruction(Var, Cons, Args, Modes, Code, !CI) :-
-    get_module_info(!.CI, ModuleInfo),
-    Tag = cons_id_to_tag(ModuleInfo, Cons),
-    generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI).
-
-:- pred generate_det_deconstruction_2(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, cons_tag::in,
+    list(prog_var)::in, list(uni_mode)::in, list(arg_width)::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
-generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
+generate_det_deconstruction(Var, Cons, Args, Modes, ArgWidths, Code, !CI) :-
+    get_module_info(!.CI, ModuleInfo),
+    Tag = cons_id_to_tag(ModuleInfo, Cons),
+    generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
+        Code, !CI).
+
+:- pred generate_det_deconstruction_2(prog_var::in, cons_id::in,
+    list(prog_var)::in, list(uni_mode)::in, list(arg_width)::in, cons_tag::in,
+    llds_code::out, code_info::in, code_info::out) is det.
+
+generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
+        Code, !CI) :-
     % For constants, if the deconstruction is det, then we already know
     % the value of the constant, so Code = empty.
     (
@@ -1105,7 +1247,8 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
         Tag = no_tag,
         (
             Args = [Arg],
-            Modes = [Mode]
+            Modes = [Mode],
+            ArgWidths = [_ArgWidth]
         ->
             VarType = variable_type(!.CI, Var),
             get_module_info(!.CI, ModuleInfo),
@@ -1128,8 +1271,8 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
             ;
                 IsDummy = is_not_dummy_type,
                 ArgType = variable_type(!.CI, Arg),
-                generate_sub_unify(ref(Var), ref(Arg), Mode, ArgType, Code,
-                    !CI)
+                generate_sub_unify(ref(Var), ref(Arg), Mode, ArgType,
+                    Code, !CI)
             )
         ;
             unexpected($module, $pred, "no_tag: arity != 1")
@@ -1137,19 +1280,20 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     ;
         Tag = single_functor_tag,
         % Treat single_functor the same as unshared_tag(0).
-        generate_det_deconstruction_2(Var, Cons, Args, Modes, unshared_tag(0),
-            Code, !CI)
+        generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths,
+            unshared_tag(0), Code, !CI)
     ;
         Tag = unshared_tag(Ptag),
         Rval = var(Var),
-        make_fields_and_argvars(Args, Rval, 0, Ptag, Fields, ArgVars),
+        make_fields_and_argvars(Args, ArgWidths, Rval, -1, Ptag, Fields, ArgVars),
         var_types(!.CI, Args, ArgTypes),
         generate_unify_args(Fields, ArgVars, Modes, ArgTypes, Code, !CI)
     ;
         Tag = direct_arg_tag(Ptag),
         (
             Args = [Arg],
-            Modes = [Mode]
+            Modes = [Mode],
+            ArgWidths = [_]
         ->
             Type = variable_type(!.CI, Arg),
             generate_direct_arg_deconstruct(Var, Arg, Ptag, Mode, Type, Code,
@@ -1160,7 +1304,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     ;
         Tag = shared_remote_tag(Ptag, _Sectag1),
         Rval = var(Var),
-        make_fields_and_argvars(Args, Rval, 1, Ptag, Fields, ArgVars),
+        make_fields_and_argvars(Args, ArgWidths, Rval, 0, Ptag, Fields, ArgVars),
         var_types(!.CI, Args, ArgTypes),
         generate_unify_args(Fields, ArgVars, Modes, ArgTypes, Code, !CI)
     ;
@@ -1168,8 +1312,8 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
         % for tag tests, not for det deconstructions, so here we just recurse
         % on the real representation.
         Tag = shared_with_reserved_addresses_tag(_RAs, ThisTag),
-        generate_det_deconstruction_2(Var, Cons, Args, Modes, ThisTag, Code,
-            !CI)
+        generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths,
+            ThisTag, Code, !CI)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1179,10 +1323,10 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     % followed by a deterministic deconstruction.
     %
 :- pred generate_semi_deconstruction(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+    list(prog_var)::in, list(uni_mode)::in, list(arg_width)::in,
+    llds_code::out, code_info::in, code_info::out) is det.
 
-generate_semi_deconstruction(Var, Tag, Args, Modes, Code, !CI) :-
+generate_semi_deconstruction(Var, Tag, Args, Modes, ArgWidths, Code, !CI) :-
     VarType = variable_type(!.CI, Var),
     CheaperTagTest = lookup_cheaper_tag_test(!.CI, VarType),
     generate_tag_test(Var, Tag, CheaperTagTest, branch_on_success, SuccLabel,
@@ -1190,7 +1334,8 @@ generate_semi_deconstruction(Var, Tag, Args, Modes, Code, !CI) :-
     remember_position(!.CI, AfterUnify),
     generate_failure(FailCode, !CI),
     reset_to_position(AfterUnify, !CI),
-    generate_det_deconstruction(Var, Tag, Args, Modes, DeconsCode, !CI),
+    generate_det_deconstruction(Var, Tag, Args, Modes, ArgWidths, DeconsCode,
+        !CI),
     SuccessLabelCode = singleton(llds_instr(label(SuccLabel), "")),
     Code = TagTestCode ++ FailCode ++ SuccessLabelCode ++ DeconsCode.
 
@@ -1269,26 +1414,56 @@ generate_sub_unify(L, R, Mode, Type, Code, !CI) :-
 
 generate_sub_assign(Left, Right, Code, !CI) :-
     (
-        Left = lval(_Lval),
-        Right = lval(_Rval),
+        Left = lval(_Lval, _),
+        Right = lval(_Rval, _),
         % Assignment between two lvalues - cannot happen.
         unexpected($module, $pred, "lval/lval")
     ;
-        Left = lval(Lval0),
+        Left = lval(Lval0, LeftWidth),
         Right = ref(Var),
         % Assignment from a variable to an lvalue - cannot cache
         % so generate immediately.
         produce_variable(Var, SourceCode, Source, !CI),
         materialize_vars_in_lval(Lval0, Lval, MaterializeCode, !CI),
-        CopyCode = singleton(llds_instr(assign(Lval, Source), "Copy value")),
-        Code = SourceCode ++ MaterializeCode ++ CopyCode
+        (
+            LeftWidth = full_word,
+            AssignCode = singleton(llds_instr(assign(Lval, Source),
+                "Copy value"))
+        ;
+            (
+                LeftWidth = partial_word_first(Mask),
+                Shift = 0
+            ;
+                LeftWidth = partial_word_shifted(Shift, Mask)
+            ),
+            ComplementMask = const(llconst_int(\(Mask << Shift))),
+            MaskOld = binop(bitwise_and, lval(Lval), ComplementMask),
+            ShiftNew = maybe_left_shift_rval(Source, Shift),
+            Combined = binop(bitwise_or, MaskOld, ShiftNew),
+            AssignCode = singleton(llds_instr(assign(Lval, Combined),
+                "Update part of word"))
+        ),
+        Code = SourceCode ++ MaterializeCode ++ AssignCode
     ;
         Left = ref(Lvar),
         ( variable_is_forward_live(!.CI, Lvar) ->
             (
-                Right = lval(Lval),
+                Right = lval(Lval, RightWidth),
                 % Assignment of a value to a variable, generate now.
-                assign_lval_to_var(Lvar, Lval, Code, !CI)
+                (
+                    RightWidth = full_word,
+                    assign_lval_to_var(Lvar, Lval, Code, !CI)
+                ;
+                    (
+                        RightWidth = partial_word_first(Mask),
+                        Rval0 = lval(Lval)
+                    ;
+                        RightWidth = partial_word_shifted(Shift, Mask),
+                        Rval0 = right_shift_rval(lval(Lval), Shift)
+                    ),
+                    Rval = binop(bitwise_and, Rval0, const(llconst_int(Mask))),
+                    assign_field_lval_expr_to_var(Lvar, Lval, Rval, Code, !CI)
+                )
             ;
                 Right = ref(Rvar),
                 % Assignment of a variable to a variable, so cache it.
@@ -1470,19 +1645,20 @@ generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
         SubInfo = no_construct_sub_info
     ->
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-        generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
-            !StaticCellInfo, !ActiveMap)
+        get_cons_arg_widths(ModuleInfo, ConsId, Args, ConsArgWidths),
+        generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
+            UnboxedFloats, !StaticCellInfo, !ActiveMap)
     ;
         unexpected($module, $pred, "malformed goal")
     ).
 
 :- pred generate_ground_term_conjunct_tag(prog_var::in, cons_tag::in,
-    list(prog_var)::in, have_unboxed_floats::in,
+    list(prog_var)::in, list(arg_width)::in, have_unboxed_floats::in,
     static_cell_info::in, static_cell_info::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
-        !StaticCellInfo, !ActiveMap) :-
+generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
+        UnboxedFloats, !StaticCellInfo, !ActiveMap) :-
     (
         (
             ConsTag = string_tag(String),
@@ -1525,7 +1701,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
     ;
         ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
         generate_ground_term_conjunct_tag(Var, ActualConsTag, Args,
-            UnboxedFloats, !StaticCellInfo, !ActiveMap)
+            ConsArgWidths, UnboxedFloats, !StaticCellInfo, !ActiveMap)
     ;
         ConsTag = no_tag,
         (
@@ -1547,7 +1723,8 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
             ConsTag = unshared_tag(Ptag)
         ),
         generate_ground_term_args(Args, ArgRvalsTypes, !ActiveMap),
-        add_scalar_static_cell(ArgRvalsTypes, DataAddr, !StaticCellInfo),
+        pack_ground_term_args(ConsArgWidths, ArgRvalsTypes, PackArgRvalsTypes),
+        add_scalar_static_cell(PackArgRvalsTypes, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         Rval = mkword(Ptag, CellPtrConst),
@@ -1570,8 +1747,9 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
     ;
         ConsTag = shared_remote_tag(Ptag, Stag),
         generate_ground_term_args(Args, ArgRvalsTypes, !ActiveMap),
+        pack_ground_term_args(ConsArgWidths, ArgRvalsTypes, PackArgRvalsTypes),
         StagRvalType = const(llconst_int(Stag)) - lt_integer,
-        AllRvalsTypes = [StagRvalType | ArgRvalsTypes],
+        AllRvalsTypes = [StagRvalType | PackArgRvalsTypes],
         add_scalar_static_cell(AllRvalsTypes, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
@@ -1597,6 +1775,121 @@ generate_ground_term_args([], [], !ActiveMap).
 generate_ground_term_args([Var | Vars], [RvalType | RvalsTypes], !ActiveMap) :-
     map.det_remove(Var, RvalType, !ActiveMap),
     generate_ground_term_args(Vars, RvalsTypes, !ActiveMap).
+
+:- pred pack_ground_term_args(list(arg_width)::in,
+    assoc_list(rval, llds_type)::in, assoc_list(rval, llds_type)::out) is det.
+
+pack_ground_term_args(Widths, !RvalsTypes) :-
+    pack_args(shift_combine_rval_type, Widths, !RvalsTypes, unit, _, unit, _).
+
+%-----------------------------------------------------------------------------%
+
+:- pred shift_combine_arg(maybe(rval)::in, int::in,
+    maybe(maybe(rval))::in, maybe(rval)::out,
+    llds_code::in, llds_code::out, code_info::in, code_info::out) is det.
+
+shift_combine_arg(ArgA, Shift, MaybeArgB, FinalArg, !Code, !CI) :-
+    (
+        Shift = 0,
+        MaybeArgB = no
+    ->
+        FinalArg = ArgA
+    ;
+        (
+            ArgA = yes(RvalA),
+            ( RvalA = var(Var) ->
+                IsDummy = variable_is_of_dummy_type(!.CI, Var),
+                (
+                    IsDummy = is_dummy_type,
+                    ShiftArgA = no
+                ;
+                    IsDummy = is_not_dummy_type,
+                    produce_variable(Var, VarCode, VarRval, !CI),
+                    ShiftArgA = yes(maybe_left_shift_rval(VarRval, Shift)),
+                    !:Code = !.Code ++ VarCode
+                )
+            ; RvalA = const(llconst_int(Int)) ->
+                NewInt = maybe_left_shift_int(Int, Shift),
+                ShiftArgA = yes(const(llconst_int(NewInt)))
+            ;
+                unexpected($module, $pred, "non-var or int argument")
+            )
+        ;
+            ArgA = no,
+            ShiftArgA = no
+        ),
+        (
+            MaybeArgB = yes(ArgB),
+            FinalArg = bitwise_or_maybe_rval(ShiftArgA, ArgB)
+        ;
+            MaybeArgB = no,
+            FinalArg = ShiftArgA
+        )
+    ).
+
+:- pred shift_combine_rval_type(pair(rval, llds_type)::in, int::in,
+    maybe(pair(rval, llds_type))::in, pair(rval, llds_type)::out,
+    unit::in, unit::out, unit::in, unit::out) is det.
+
+shift_combine_rval_type(ArgA, Shift, MaybeArgB, FinalArg, !Acc1, !Acc2) :-
+    ArgA = RvalA - TypeA,
+    ShiftRvalA = maybe_left_shift_rval(RvalA, Shift),
+    (
+        MaybeArgB = yes(RvalB - TypeB),
+        ( TypeA = TypeB ->
+            FinalRval = binop(bitwise_or, ShiftRvalA, RvalB)
+        ;
+            unexpected($module, $pred, "mismatched llds_types")
+        )
+    ;
+        MaybeArgB = no,
+        FinalRval = ShiftRvalA
+    ),
+    FinalArg = FinalRval - TypeA.
+
+:- func maybe_left_shift_rval(rval, int) = rval.
+
+maybe_left_shift_rval(Rval, Shift) =
+    ( Shift = 0 ->
+        Rval
+    ;
+        binop(unchecked_left_shift, Rval, const(llconst_int(Shift)))
+    ).
+
+:- func maybe_left_shift_int(int, int) = int.
+
+maybe_left_shift_int(X, Shift) =
+    ( Shift = 0 ->
+        X
+    ;
+        X << Shift
+    ).
+
+:- func right_shift_rval(rval, int) = rval.
+
+right_shift_rval(Rval, Shift) =
+    binop(unchecked_right_shift, Rval, const(llconst_int(Shift))).
+
+:- func bitwise_or_maybe_rval(maybe(rval), maybe(rval)) = maybe(rval).
+
+bitwise_or_maybe_rval(MaybeRvalA, MaybeRvalB) = MaybeRval :-
+    (
+        MaybeRvalA = yes(RvalA),
+        MaybeRvalB = yes(RvalB),
+        MaybeRval = yes(binop(bitwise_or, RvalA, RvalB))
+    ;
+        MaybeRvalA = yes(_),
+        MaybeRvalB = no,
+        MaybeRval = MaybeRvalA
+    ;
+        MaybeRvalA = no,
+        MaybeRvalB = yes(_),
+        MaybeRval = MaybeRvalB
+    ;
+        MaybeRvalA = no,
+        MaybeRvalB = no,
+        MaybeRval = no
+    ).
 
 %---------------------------------------------------------------------------%
 

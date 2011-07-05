@@ -251,6 +251,7 @@ SINGLEMODULE= \
 	user_eq_dummy \
 	uu_type \
 	vars_in_wrong_places \
+	where_abstract_enum \
 	where_direct_arg \
 	where_direct_arg2 \
 	with_type \

@@ -97,6 +97,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
 :- import_module check_hlds.clause_to_proc.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
@@ -126,6 +127,7 @@
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
 
+:- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
@@ -166,15 +168,30 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
     ),
     !:Specs = Pass2Specs ++ !.Specs,
 
-    % Add constructors and special preds to the HLDS. This must be done
-    % after adding all type and `:- pragma foreign_type' declarations.
-    % If there were errors in foreign type type declarations, doing this
-    % may cause a compiler abort.
     (
         InvalidTypes1 = no,
-        module_info_get_type_table(!.ModuleInfo, TypeTable),
-        foldl3_over_type_ctor_defns(process_type_defn, TypeTable,
-            no, InvalidTypes2, !ModuleInfo, !Specs)
+        some [!TypeTable] (
+            % Figure out how arguments should be packed into fields,
+            % before constructors are added to the HLDS.
+            globals.lookup_bool_option(Globals, allow_argument_packing,
+                ArgPacking),
+            module_info_get_type_table(!.ModuleInfo, !:TypeTable),
+            (
+                ArgPacking = yes,
+                foldl_over_type_ctor_defns(pack_du_type_args(!.ModuleInfo),
+                    !.TypeTable, !TypeTable),
+                module_info_set_type_table(!.TypeTable, !ModuleInfo)
+            ;
+                ArgPacking = no
+            ),
+
+            % Add constructors and special preds to the HLDS. This must be done
+            % after adding all type and `:- pragma foreign_type' declarations.
+            % If there were errors in foreign type type declarations, doing this
+            % may cause a compiler abort.
+            foldl3_over_type_ctor_defns(process_type_defn, !.TypeTable,
+                no, InvalidTypes2, !ModuleInfo, !Specs)
+        )
     ;
         InvalidTypes1 = yes,
         InvalidTypes2 = yes
@@ -214,12 +231,161 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
     mq_info_get_mode_error_flag(MQInfo, InvalidModes1),
     InvalidModes = InvalidModes0 `or` InvalidModes1.
 
+%-----------------------------------------------------------------------------%
+
+:- pred pack_du_type_args(module_info::in, type_ctor::in, hlds_type_defn::in,
+    type_table::in, type_table::out) is det.
+
+pack_du_type_args(ModuleInfo, TypeCtor, TypeDefn, !TypeTable) :-
+    get_type_defn_body(TypeDefn, Body0),
+    (
+        Body0 = hlds_du_type(Ctors0, ConsTagValues, MaybeCheaperTagTest,
+            DuKind, MaybeUserEqComp, DirectArgFunctors, ReservedTag,
+            ReservedAddr, MaybeForeign),
+        list.map(decide_du_ctor_packing(ModuleInfo), Ctors0, Ctors),
+        Body = hlds_du_type(Ctors, ConsTagValues, MaybeCheaperTagTest,
+            DuKind, MaybeUserEqComp, DirectArgFunctors, ReservedTag,
+            ReservedAddr, MaybeForeign),
+        set_type_defn_body(Body, TypeDefn, PackedTypeDefn),
+        replace_type_ctor_defn(TypeCtor, PackedTypeDefn, !TypeTable)
+    ;
+        ( Body0 = hlds_eqv_type(_)
+        ; Body0 = hlds_foreign_type(_)
+        ; Body0 = hlds_solver_type(_, _)
+        ; Body0 = hlds_abstract_type(_)
+        )
+        % Leave these types alone.
+    ).
+    
+:- pred decide_du_ctor_packing(module_info::in,
+    constructor::in, constructor::out) is det.
+
+decide_du_ctor_packing(ModuleInfo, Ctor0, Ctor) :-
+    Ctor0 = ctor(ExistTVars, Constraints, Name, Args0, Context),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
+    pack_du_ctor_args(ModuleInfo, TargetWordBits, 0, Args0, Args, _),
+    list.length(Args0, UnpackedLength),
+    count_words(Args, 0, PackedLength),
+    (
+        (
+            PackedLength = UnpackedLength
+        ;
+            % Boehm GC will round up allocations (at least) to the next even
+            % number of words.  There is no point saving a single word if that
+            % word will be allocated anyway.
+            int.even(UnpackedLength),
+            PackedLength = UnpackedLength - 1
+        )
+    ->
+        Ctor = Ctor0
+    ;
+        PackedLength < UnpackedLength
+    ->
+        Ctor = ctor(ExistTVars, Constraints, Name, Args, Context)
+    ;
+        unexpected($module, $pred, "packed length exceeds unpacked length")
+    ).
+
+:- pred pack_du_ctor_args(module_info::in, int::in, int::in,
+    list(constructor_arg)::in, list(constructor_arg)::out,
+    arg_width::out) is det.
+
+pack_du_ctor_args(_ModuleInfo, _TargetWordBits, _Shift, [], [],
+        full_word).
+pack_du_ctor_args(ModuleInfo, TargetWordBits, Shift,
+        [Arg0 | Args0], [Arg | Args], ArgWidth) :-
+    Arg0 = ctor_arg(Name, Type, _, Context),
+    ( type_is_enum_bits(ModuleInfo, Type, NumBits) ->
+        Mask = int.pow(2, NumBits) - 1,
+        % Try to place the argument in the current word, otherwise move on to
+        % the next word.
+        ( Shift + NumBits > TargetWordBits ->
+            ArgWidth0 = partial_word_first(Mask),
+            NextShift = NumBits
+        ; Shift = 0 ->
+            ArgWidth0 = partial_word_first(Mask),
+            NextShift = NumBits
+        ;
+            ArgWidth0 = partial_word_shifted(Shift, Mask),
+            NextShift = Shift + NumBits
+        ),
+        pack_du_ctor_args(ModuleInfo, TargetWordBits, NextShift, Args0, Args,
+            NextArgWidth),
+        % If this argument starts a word but the next argument is not packed
+        % with it, then this argument is not packed.
+        (
+            ArgWidth0 = partial_word_first(_),
+            ( NextArgWidth = full_word
+            ; NextArgWidth = partial_word_first(_)
+            )
+        ->
+            ArgWidth = full_word
+        ;
+            ArgWidth = ArgWidth0
+        ),
+        Arg = ctor_arg(Name, Type, ArgWidth, Context)
+    ;
+        % This argument occupies a full word.
+        Arg = Arg0,
+        ArgWidth = full_word,
+        NextShift = 0,
+        pack_du_ctor_args(ModuleInfo, TargetWordBits, NextShift, Args0, Args,
+            _)
+    ).
+
+:- pred type_is_enum_bits(module_info::in, mer_type::in, int::out) is semidet.
+
+type_is_enum_bits(ModuleInfo, Type, NumBits) :-
+    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+    TypeCategory = classify_type_defn_body(TypeBody),
+    (
+        TypeCategory = ctor_cat_enum(cat_enum_mercury),
+        NumBits = cons_tags_bits(TypeBody ^ du_type_cons_tag_values)
+    ;
+        TypeCategory = ctor_cat_user(cat_user_general),
+        TypeBody = hlds_abstract_type(abstract_enum_type(NumBits))
+    ).
+
+:- func cons_tags_bits(cons_tag_values) = int.
+
+cons_tags_bits(ConsTagValues) = NumBits :-
+    map.foldl_values(max_int_tag, ConsTagValues, 0, MaxFunctor),
+    int.log2(MaxFunctor + 1, NumBits).
+
+:- pred max_int_tag(cons_tag::in, int::in, int::out) is det.
+
+max_int_tag(ConsTag, !Max) :-
+    ( ConsTag = int_tag(Int) ->
+        int.max(Int, !Max)
+    ;
+        unexpected($module, $pred, "non-integer value for enumeration")
+    ).
+
+:- pred count_words(list(constructor_arg)::in, int::in, int::out) is det.
+
+count_words([], !Count).
+count_words([Arg | Args], !Count) :-
+    ArgWidth = Arg ^ arg_width,
+    (
+        ArgWidth = full_word,
+        !:Count = !.Count + 1
+    ;
+        ArgWidth = partial_word_first(_),
+        !:Count = !.Count + 1
+    ;
+        ArgWidth = partial_word_shifted(_Shift, _Mask)
+    ),
+    count_words(Args, !Count).
+
+%-----------------------------------------------------------------------------%
+
 :- pred add_builtin_type_ctor_special_preds(type_ctor::in,
     module_info::in, module_info::out) is det.
 
 add_builtin_type_ctor_special_preds(TypeCtor, !ModuleInfo) :-
     varset.init(TVarSet),
-    Body = hlds_abstract_type(non_solver_type),
+    Body = hlds_abstract_type(abstract_type_general),
     term.context_init(Context),
     Status = status_local,
     construct_type(TypeCtor, [], Type),

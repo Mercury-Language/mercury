@@ -1314,6 +1314,8 @@
                 maybe(ctor_name),
 
                 % The arguments to the constructor.
+                % Any arguments which are supposed to be packed together should
+                % be packed in this list by the HLDS->MLDS code generator.
                 list(mlds_rval),
 
                 % The types of the arguments to the constructor.
@@ -2126,166 +2128,46 @@ mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
 
 %-----------------------------------------------------------------------------%
 
-    % We represent the set of declaration flags as a bunch of bit-fields packed
-    % into a single int.
+    % The compiler can pack all the enumeration arguments together,
+    % though a cell will still be allocated.
     %
-:- type mlds_decl_flags == int.
+:- type mlds_decl_flags
+    --->    mlds_decl_flags(
+                mdf_access          :: access,
+                mdf_per_instance    :: per_instance,
+                mdf_virtuality      :: virtuality,
+                mdf_overridability  :: overridability,
+                mdf_constness       :: constness,
+                mdf_abstractness    :: abstractness
+            ).
 
-% Here we define which bits are used to store each bitfield.
-%
-% It would be nicer to use a language builtin, e.g. index/2, for these.
-% But currently builtin.index/2 does not work in the reverse mode,
-% and you can't use construct.construct/4 since that numbers the
-% alternatives in a different order than builtin.index/2.
-%
-% It would also be nice to use a typeclass:
-%   :- typeclass bitfield(T) where [
-%       func bits(T) = int,
-%       func mask(T::unused) = (int::out) is det
-%   ].
-% But currently that is too cumbersome, since you can't define class
-% methods inline.
-%
-% On the other hand, doing it manually may be more efficient than either
-% of those two approaches.
-
-:- func access_bits(access) = int.
-:- mode access_bits(in) = out is det.
-:- mode access_bits(out) = in is semidet.
-access_bits(acc_public)    = 0x00.
-access_bits(acc_private)   = 0x01.
-access_bits(acc_protected) = 0x02.
-access_bits(acc_default)   = 0x03.
-access_bits(acc_local)     = 0x04.
-% 0x5 - 0x7 reserved
-
-:- func access_mask = int.
-access_mask = 0x07.
-
-:- func per_instance_bits(per_instance) = int.
-:- mode per_instance_bits(in) = out is det.
-:- mode per_instance_bits(out) = in is semidet.
-per_instance_bits(one_copy)     = 0x00.
-per_instance_bits(per_instance) = 0x08.
-
-:- func per_instance_mask = int.
-per_instance_mask = per_instance_bits(per_instance).
-
-:- func virtuality_bits(virtuality) = int.
-:- mode virtuality_bits(in) = out is det.
-:- mode virtuality_bits(out) = in is semidet.
-virtuality_bits(non_virtual) = 0x00.
-virtuality_bits(virtual)     = 0x10.
-
-:- func virtuality_mask = int.
-virtuality_mask = virtuality_bits(virtual).
-
-:- func overridability_bits(overridability) = int.
-:- mode overridability_bits(in) = out is det.
-:- mode overridability_bits(out) = in is semidet.
-overridability_bits(overridable) = 0x00.
-overridability_bits(sealed)      = 0x20.
-
-:- func overridability_mask = int.
-overridability_mask = overridability_bits(sealed).
-
-:- func constness_bits(constness) = int.
-:- mode constness_bits(in) = out is det.
-:- mode constness_bits(out) = in is semidet.
-constness_bits(modifiable) = 0x00.
-constness_bits(const)      = 0x40.
-
-:- func constness_mask = int.
-constness_mask = constness_bits(const).
-
-:- func abstractness_bits(abstractness) = int.
-:- mode abstractness_bits(in) = out is det.
-:- mode abstractness_bits(out) = in is semidet.
-abstractness_bits(abstract) = 0x00.
-abstractness_bits(concrete) = 0x80.
-
-:- func abstractness_mask = int.
-abstractness_mask = abstractness_bits(concrete).
-
-%
-% Here we define the functions to lookup a member of the set.
-%
-
-access(Flags) = Access :-
-    ( Flags /\ access_mask = access_bits(AccessPrime) ->
-        Access = AccessPrime
-    ;
-        unexpected($module, $pred, "access: unknown bits")
-    ).
-
-per_instance(Flags) = PerInstance :-
-    ( Flags /\ per_instance_mask = per_instance_bits(PerInstancePrime) ->
-        PerInstance = PerInstancePrime
-    ;
-        unexpected($module, $pred, "per_instance: unknown bits")
-    ).
-
-virtuality(Flags) = Virtuality :-
-    ( Flags /\ virtuality_mask = virtuality_bits(VirtualityPrime) ->
-        Virtuality = VirtualityPrime
-    ;
-        unexpected($module, $pred, "virtuality: unknown bits")
-    ).
-
-overridability(Flags) = Overridability :-
-    ( Flags /\ overridability_mask = overridability_bits(Overridability0) ->
-        Overridability = Overridability0
-    ;
-        unexpected($module, $pred, "per_instance: unknown bits")
-    ).
-
-constness(Flags) = Constness :-
-    ( Flags /\ constness_mask = constness_bits(ConstnessPrime) ->
-        Constness = ConstnessPrime
-    ;
-        unexpected($module, $pred, "per_instance: unknown bits")
-    ).
-
-abstractness(Flags) = Abstractness :-
-    ( Flags /\ abstractness_mask = abstractness_bits(AbstractnessPrime) ->
-        Abstractness = AbstractnessPrime
-    ;
-        unexpected($module, $pred, "per_instance: unknown bits")
-    ).
-
-%
-% Here we define the functions to set a member of the set.
-%
+access(Flags) = Flags ^ mdf_access.
+per_instance(Flags) = Flags ^ mdf_per_instance.
+virtuality(Flags) = Flags ^ mdf_virtuality.
+overridability(Flags) = Flags ^ mdf_overridability.
+constness(Flags) = Flags ^ mdf_constness.
+abstractness(Flags) = Flags ^ mdf_abstractness.
 
 set_access(Flags, Access) =
-    Flags /\ \access_mask \/ access_bits(Access).
-
+    Flags ^ mdf_access := Access.
 set_per_instance(Flags, PerInstance) =
-    Flags /\ \per_instance_mask \/ per_instance_bits(PerInstance).
-
+    Flags ^ mdf_per_instance := PerInstance.
 set_virtuality(Flags, Virtuality) =
-    Flags /\ \virtuality_mask \/ virtuality_bits(Virtuality).
-
+    Flags ^ mdf_virtuality := Virtuality.
 set_overridability(Flags, Overridability) =
-    Flags /\ \overridability_mask \/ overridability_bits(Overridability).
-
+    Flags ^ mdf_overridability := Overridability.
 set_constness(Flags, Constness) =
-    Flags /\ \constness_mask \/ constness_bits(Constness).
-
+    Flags ^ mdf_constness := Constness.
 set_abstractness(Flags, Abstractness) =
-    Flags /\ \abstractness_mask \/ abstractness_bits(Abstractness).
+    Flags ^ mdf_abstractness := Abstractness.
 
 init_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
         Abstractness) =
-    access_bits(Access) \/
-    per_instance_bits(PerInstance) \/
-    virtuality_bits(Virtuality) \/
-    overridability_bits(Overridability) \/
-    constness_bits(Constness) \/
-    abstractness_bits(Abstractness).
+    mlds_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
+        Abstractness).
 
 ml_static_const_decl_flags = DeclFlags :-
-    % Note that rtti_decl_flags, in rtti_to_mlds.m,
+    % Note that rtti_data_decl_flags, in rtti_to_mlds.m,
     % must be the same as this apart from the access.
     Access = acc_local,
     PerInstance = one_copy,

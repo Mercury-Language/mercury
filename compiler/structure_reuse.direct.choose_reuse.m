@@ -948,7 +948,19 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
     DeconSpec = decon(DeadVar, _, DeadCons, DeadCellArgs, _),
 
     ModuleInfo = Background ^ back_module_info,
-    Vartypes = Background ^ back_vartypes,
+    VarTypes = Background ^ back_vartypes,
+
+    ( NewCons = DeadCons ->
+        SameCons = yes
+    ;
+        SameCons = no,
+        % XXX All the reuse code was written before packed arguments were
+        % introduced. For now only allow reuse of cells with packed fields when
+        % the dead variable and the new variable have the same constructor.
+        cons_has_no_packed_fields(ModuleInfo, NewCons),
+        cons_has_no_packed_fields(ModuleInfo, DeadCons)
+    ),
+
     NewNumArgs = list.length(NewCellArgs),
     DeadNumArgs = list.length(DeadCellArgs),
 
@@ -956,8 +968,8 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
     NewNumArgs \= 0,
 
     % Include the space needed for secondary tags.
-    has_secondary_tag(ModuleInfo, Vartypes, NewVar, NewCons, SecTag),
-    has_secondary_tag(ModuleInfo, Vartypes, DeadVar, DeadCons, DeadSecTag),
+    has_secondary_tag(ModuleInfo, VarTypes, NewVar, NewCons, SecTag),
+    has_secondary_tag(ModuleInfo, VarTypes, DeadVar, DeadCons, DeadSecTag),
     NewArity = NewNumArgs + (SecTag = yes -> 1 ; 0),
     DeadArity = DeadNumArgs + (DeadSecTag = yes -> 1 ; 0),
 
@@ -968,7 +980,6 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
     % specified by the user.
     Constraint = Background ^ back_strategy,
     DiffArity = DeadArity - NewArity,
-    ( NewCons = DeadCons -> SameCons = yes ; SameCons = no),
     (
         Constraint = within_n_cells_difference(N),
         DiffArity =< N
@@ -996,6 +1007,38 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
         - alfa_value * DiffArity ),
     Weight > 0,
     ReuseType = reuse_type(SameCons, ReuseFields, float(Weight)).
+
+:- pred cons_has_no_packed_fields(module_info::in, cons_id::in) is semidet.
+
+cons_has_no_packed_fields(ModuleInfo, Cons) :-
+    (
+        Cons = cons(_, _, TypeCtor),
+        get_cons_defn_det(ModuleInfo, TypeCtor, Cons, ConsDefn),
+        ConsArgs = ConsDefn ^ cons_args,
+        all [Arg] (
+            list.member(Arg, ConsArgs)
+        =>
+            Arg = ctor_arg(_, _, full_word, _)
+        )
+    ;
+        Cons = tuple_cons(_)
+    ;
+        ( Cons = closure_cons(_, _)
+        ; Cons = int_const(_)
+        ; Cons = float_const(_)
+        ; Cons = char_const(_)
+        ; Cons = string_const(_)
+        ; Cons = impl_defined_const(_)
+        ; Cons = type_ctor_info_const(_, _, _)
+        ; Cons = base_typeclass_info_const(_, _, _, _)
+        ; Cons = type_info_cell_constructor(_)
+        ; Cons = typeclass_info_cell_constructor
+        ; Cons = tabling_info_const(_)
+        ; Cons = table_io_decl(_)
+        ; Cons = deep_profiling_proc_layout(_)
+        ),
+        unexpected($module, $pred, "unusual cons_id")
+    ).
 
 :- func glb_reuse_types(list(reuse_type)) = reuse_type is semidet.
 

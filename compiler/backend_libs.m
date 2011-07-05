@@ -15,6 +15,7 @@
 :- interface.
 
 % modules that provide functionality used by several different back-ends
+:- include_module arg_pack.
 :- include_module base_typeclass_info.
 :- include_module builtin_ops.
 :- include_module bytecode_data.

@@ -740,7 +740,8 @@
     % This matters because a module has lots of construct unifications.
 :- type construct_sub_info
     --->    construct_sub_info(
-                take_address_fields     :: maybe(list(int)),
+                % The argument numbers to take the address of.
+                take_address_args       :: maybe(list(int)),
 
                 % The value `yes' tells the code generator to reserve an extra
                 % slot, at offset -1, to hold an integer giving the size of

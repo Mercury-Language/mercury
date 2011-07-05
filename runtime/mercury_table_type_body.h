@@ -221,6 +221,18 @@
                 }
 
                 for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
+                    const MR_DuArgLocn *arg_locn;
+                    MR_Word             arg_value;
+
+                    if (functor_desc->MR_du_functor_arg_locns != NULL) {
+                        arg_locn = &functor_desc->MR_du_functor_arg_locns[i];
+                        arg_value = arg_vector[meta_args +
+                            arg_locn->MR_arg_offset];
+                        arg_value = MR_unpack_arg(arg_value, arg_locn);
+                    } else {
+                        arg_value = arg_vector[meta_args + i];
+                    }
+
                     if (MR_arg_type_may_contain_var(functor_desc, i)) {
                         arg_type_info = MR_make_type_info_maybe_existq(
                             MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
@@ -234,7 +246,7 @@
                     MR_table_record_arg_lookup();
                     MR_TABLE_ANY(STATS, DEBUG, BACK, "du arg",
                         table_next, table,
-                        arg_type_info, arg_vector[meta_args + i]);
+                        arg_type_info, arg_value);
                     table = table_next;
                 }
 

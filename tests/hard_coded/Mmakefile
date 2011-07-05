@@ -154,6 +154,7 @@ ORDINARY_PROGS=	\
 	intermod_unused_args \
 	java_rtti_bug \
 	join_list \
+	lco_pack_args \
 	lco_mday_bug_1 \
 	lco_mday_bug_2 \
 	lco_no_inline \
@@ -193,6 +194,9 @@ ORDINARY_PROGS=	\
 	one_member \
 	opt_dup_bug \
 	opt_format \
+	pack_args \
+	pack_args_copy \
+	pack_args_intermod1 \
 	ppc_bug \
 	pprint_test \
 	pprint_test2 \
@@ -420,6 +424,7 @@ ifeq "$(findstring debug,$(GRADE))" ""
 		bad_indirect_reuse2 \
 		bad_indirect_reuse2b \
 		bad_indirect_reuse3 \
+		pack_args_reuse \
 		reuse_array \
 		reuse_ho \
 		sharing_comb \

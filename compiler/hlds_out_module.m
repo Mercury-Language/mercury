@@ -213,7 +213,7 @@ write_types_2(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
     write_indent(Indent, !IO),
     (
         ( TypeBody = hlds_solver_type(_, _)
-        ; TypeBody = hlds_abstract_type(solver_type)
+        ; TypeBody = hlds_abstract_type(abstract_solver_type)
         )
     ->
         io.write_string(":- solver type ", !IO)

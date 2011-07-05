@@ -2204,7 +2204,7 @@ get_case_goal(Case, Case ^ case_goal).
 
 :- pred get_ctor_arg_type(constructor_arg::in, mer_type::out) is det.
 
-get_ctor_arg_type(ctor_arg(_, Type, _), Type).
+get_ctor_arg_type(ctor_arg(_, Type, _, _), Type).
 
 :- func tvar_to_type(tvar) = mer_type.
 

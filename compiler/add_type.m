@@ -327,8 +327,18 @@ is_solver_type_is_inconsistent(OldBody, Body) :-
 :- pred maybe_get_body_is_solver_type(hlds_type_body::in, is_solver_type::out)
     is semidet.
 
-maybe_get_body_is_solver_type(hlds_abstract_type(IsSolverType), IsSolverType).
 maybe_get_body_is_solver_type(hlds_solver_type(_, _), solver_type).
+maybe_get_body_is_solver_type(hlds_abstract_type(Details), IsSolverType) :-
+    (
+        Details = abstract_type_general,
+        IsSolverType = non_solver_type
+    ;
+        Details = abstract_enum_type(_),
+        IsSolverType = non_solver_type
+    ;
+        Details = abstract_solver_type,
+        IsSolverType = solver_type
+    ).
 
     % check_foreign_type_visibility(OldStatus, NewDefnStatus).
     %
@@ -627,8 +637,8 @@ convert_type_defn(parse_tree_du_type(Body, MaybeUserEqComp,
 convert_type_defn(parse_tree_eqv_type(Body), _, _, hlds_eqv_type(Body)).
 convert_type_defn(parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
         _, _, hlds_solver_type(SolverTypeDetails, MaybeUserEqComp)).
-convert_type_defn(parse_tree_abstract_type(IsSolverType), _, _,
-        hlds_abstract_type(IsSolverType)).
+convert_type_defn(parse_tree_abstract_type(Details), _, _,
+        hlds_abstract_type(Details)).
 convert_type_defn(parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
         Assertions), _, _, hlds_foreign_type(Body)) :-
     (

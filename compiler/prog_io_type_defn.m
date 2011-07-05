@@ -93,7 +93,7 @@ parse_type_defn(ModuleName, VarSet, TypeDefnTerm, Attributes, Context,
                 Condition, Context, SeqNum, MaybeItem)
         ;
             Name = "where",
-            parse_solver_type_defn(ModuleName, VarSet,
+            parse_where_block_type_defn(ModuleName, VarSet,
                 HeadTerm, BeforeCondTerm, Attributes,
                 Condition, Context, SeqNum, MaybeItem)
         )
@@ -348,7 +348,8 @@ convert_constructor_arg_list_2(ModuleName, VarSet, MaybeFieldName,
     (
         MaybeType = ok1(Type),
         Context = get_term_context(TypeTerm),
-        Arg = ctor_arg(MaybeFieldName, Type, Context),
+        % Initially every argument is assumed to occupy one word.
+        Arg = ctor_arg(MaybeFieldName, Type, full_word, Context),
         MaybeTailArgs =
             convert_constructor_arg_list(ModuleName, VarSet, Terms),
         (
@@ -582,22 +583,20 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes,
 
 %-----------------------------------------------------------------------------%
 
-    % parse_solver_type_defn parses the definition of a solver type.
+    % Parse a type definition which consists only of a `where' block.
+    % This is either an abstract enumeration type, or a solver type.
     %
-:- pred parse_solver_type_defn(module_name::in, varset::in, term::in, term::in,
-    decl_attrs::in, condition::in, prog_context::in, int::in,
+:- pred parse_where_block_type_defn(module_name::in, varset::in, term::in,
+    term::in, decl_attrs::in, condition::in, prog_context::in, int::in,
     maybe1(item)::out) is det.
 
-parse_solver_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
-        Condition, Context, SeqNum, MaybeItem) :-
+parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
+        Attributes0, Condition, Context, SeqNum, MaybeItem) :-
     get_is_solver_type(IsSolverType, Attributes0, Attributes),
     (
         IsSolverType = non_solver_type,
-        Pieces = [words("Error: only solver types can be defined"),
-            words("by a `where' block alone."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
-        MaybeItem = error1([Spec])
+        parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm,
+            BodyTerm, Condition, Context, SeqNum, MaybeItem)
     ;
         IsSolverType = solver_type,
         MaybeWhere = parse_type_decl_where_term(solver_type, ModuleName,
@@ -621,6 +620,49 @@ parse_solver_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
                     MaybeSolverTypeDetails, MaybeUserEqComp, Attributes,
                     Condition, Context, SeqNum, MaybeItem)
             )
+        )
+    ).
+
+:- pred parse_where_type_is_abstract_enum(module_name::in, varset::in,
+    term::in, term::in, condition::in, prog_context::in, int::in,
+    maybe1(item)::out) is det.
+
+parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
+        Condition, Context, SeqNum, MaybeItem) :-
+    parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameParams),
+    (
+        MaybeNameParams = error2(Specs),
+        MaybeItem = error1(Specs)
+    ;
+        MaybeNameParams = ok2(Name, Params),
+        (
+            BodyTerm = term.functor(term.atom("type_is_abstract_enum"),
+                Args, _)
+        ->
+            (
+                Args = [Arg],
+                Arg = term.functor(integer(NumBits), [], _)
+            ->
+                varset.coerce(VarSet, TypeVarSet),
+                TypeDefn = parse_tree_abstract_type(
+                    abstract_enum_type(NumBits)),
+                ItemTypeDefn = item_type_defn_info(TypeVarSet, Name, Params,
+                    TypeDefn, Condition, Context, SeqNum),
+                Item = item_type_defn(ItemTypeDefn),
+                MaybeItem = ok1(Item)
+            ;
+                Pieces = [words("Error: invalid argument for"),
+                    words("type_is_abstract_enum."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(Context, [always(Pieces)])]),
+                MaybeItem = error1([Spec])
+            )
+        ;
+            Pieces = [words("Error: invalid"), quote("where ..."),
+                words("attributes for abstract non-solver type."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            MaybeItem = error1([Spec])
         )
     ).
 
@@ -691,7 +733,13 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Attributes0,
     ;
         MaybeTypeCtorAndArgs = ok2(Name, Params),
         varset.coerce(VarSet, TypeVarSet),
-        TypeDefn = parse_tree_abstract_type(IsSolverType),
+        (
+            IsSolverType = non_solver_type,
+            TypeDefn = parse_tree_abstract_type(abstract_type_general)
+        ;
+            IsSolverType = solver_type,
+            TypeDefn = parse_tree_abstract_type(abstract_solver_type)
+        ),
         ItemTypeDefn = item_type_defn_info(TypeVarSet, Name, Params, TypeDefn,
             Condition, Context, SeqNum),
         Item = item_type_defn(ItemTypeDefn),

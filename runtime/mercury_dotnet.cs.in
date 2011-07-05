@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2003-2004, 2010 The University of Melbourne.
+// Copyright (C) 2003-2004, 2010-2011 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -667,6 +667,7 @@ public class DuFunctorDesc {
     public int              du_functor_ordinal;
     public PseudoTypeInfo[] du_functor_arg_types;
     public string[]         du_functor_arg_names;
+    public DuArgLocn[]      du_functor_arg_locns;
     public DuExistInfo      du_functor_exist_info;
 
     public DuFunctorDesc() {
@@ -683,6 +684,7 @@ public class DuFunctorDesc {
         // XXX why do we need to use object here?
         object arg_types,
         object arg_names,
+        object arg_locns,
         object exist_info)
     {
         du_functor_name = functor_name;
@@ -695,6 +697,7 @@ public class DuFunctorDesc {
         du_functor_ordinal = ordinal;
         du_functor_arg_types = (PseudoTypeInfo []) arg_types;
         du_functor_arg_names = (string[]) arg_names;
+        du_functor_arg_locns = (DuArgLocn[]) arg_locns;
         du_functor_exist_info = (DuExistInfo) exist_info;
     }
 }
@@ -720,6 +723,18 @@ public class DuPtagLayout {
     public DuPtagLayout(int sharers, int locn, DuFunctorDesc[] alts)
         : this(sharers, (Sectag_Locn)locn, alts)
     {
+    }
+}
+
+public class DuArgLocn {
+    public int arg_offset;
+    public int arg_shift;
+    public int arg_bits;
+
+    public DuArgLocn(int arg_offset, int arg_shift, int arg_bits) {
+        this.arg_offset = arg_offset;
+        this.arg_shift = arg_shift;
+        this.arg_bits = arg_bits;
     }
 }
 

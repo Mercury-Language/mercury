@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1995-2006 The University of Melbourne.
+** Copyright (C) 1995-2006, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -904,7 +904,15 @@ MR_typeclass_ref_error(MR_Word tci, int n, const char *msg)
     return 0;
 }
 
-/*---------------------------------------------------------------------------*/
+int
+MR_cell_size_for_args(int arity, const MR_DuArgLocn *arg_locns)
+{
+    if (arg_locns == NULL) {
+        return arity;
+    } else {
+        return arg_locns[arity - 1].MR_arg_offset + 1;
+    }
+}
 
 void
 MR_print_type(FILE *fp, MR_TypeInfo type_info)

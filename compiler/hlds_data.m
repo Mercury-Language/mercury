@@ -241,7 +241,7 @@
     ;       hlds_eqv_type(mer_type)
     ;       hlds_foreign_type(foreign_type_body)
     ;       hlds_solver_type(solver_type_details, maybe(unify_compare))
-    ;       hlds_abstract_type(is_solver_type).
+    ;       hlds_abstract_type(abstract_type_details).
 
 :- type maybe_cheaper_tag_test
     --->    no_cheaper_tag_test

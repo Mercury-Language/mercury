@@ -45,6 +45,13 @@
 	;	moomoo(
 			moo	:: int,
 			'mooo!'	:: string
+		)
+	;	packed(
+			packed1	:: int,
+			packed2 :: enum,
+			packed3 :: enum,
+			packed4	:: enum,
+			packed5	:: string
 		).
 
 :- type poly(A, B)
@@ -119,7 +126,9 @@ main -->
 		% test arrays
 	test_all(array([1000, 2000])), newline,
 	test_all(array([100, 200, 300])), newline,
-	test_all(array([10, 20, 30, 40])), newline.
+	test_all(array([10, 20, 30, 40])), newline,
+		% test packed fields
+	test_all(packed(100, one, two, three, "four")), newline.
 
 %-----------------------------------------------------------------------------%
 
@@ -132,6 +141,9 @@ test_all(T) -->
 	test_deconstruct_arg(T, 2),
 	test_deconstruct_named_arg(T, "moo"),
 	test_deconstruct_named_arg(T, "mooo!"),
+	test_deconstruct_named_arg(T, "packed1"),
+	test_deconstruct_named_arg(T, "packed2"),
+	test_deconstruct_named_arg(T, "packed3"),
 	test_deconstruct_deconstruct(T),
 	test_deconstruct_limited_deconstruct(T, 3).
 
