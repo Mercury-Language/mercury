@@ -86,9 +86,9 @@
 
     % Predicate and procedure ids are abstract data types. One important
     % advantage of this arrangement is to make it harder to accidentally
-    % use an integer in their place. However, you can convert between
-    % integers and pred_ids/proc_ids with the following predicates and
-    % functions.
+    % confuse them for each other, or to use an integer in their place.
+    % However, you can convert between integers and pred_ids/proc_ids
+    % with the following predicates and functions.
     %
 :- func shroud_pred_id(pred_id) = shrouded_pred_id.
 :- func shroud_proc_id(proc_id) = shrouded_proc_id.
@@ -164,41 +164,40 @@
     ;       goal_type_none.
 
     % NOTE: `liveness_info' records liveness in the sense used by code
-    % generation.  This is *not* the same thing as the notion of liveness
+    % generation. This is *not* the same thing as the notion of liveness
     % used by mode analysis!  See compiler/notes/glossary.html.
     %
-:- type liveness_info == set(prog_var).  % The live variables.
+:- type liveness_info == set(prog_var).     % The live variables.
 
 :- type arg_info
     --->    arg_info(
-                arg_loc,    % Stored location.
-                arg_mode    % Mode of top functor.
+                arg_loc,                    % Stored location.
+                arg_mode                    % Mode of top functor.
             ).
 
     % The `arg_mode' specifies the mode of the top-level functor
     % (excluding `no_tag' functors, since those have no representation).
-    % It is used by the code generators for determining how to
-    % pass the argument.
+    % It is used by the code generators for determining how to pass
+    % the argument.
     %
     % For the LLDS back-end, top_in arguments are passed in registers,
-    % and top_out values are returned in registers; top_unused
-    % values are not passed at all, but they are treated as if
-    % they were top_out for the purpose of assigning arguments
-    % to registers.  (So e.g. if a det procedure has three arguments
-    % with arg_modes top_out, top_unused, and top_out respectively,
-    % the last argument will be returned in register r3, not r2.)
+    % and top_out values are returned in registers; top_unused values
+    % are not passed at all, but they are treated as if they were top_out
+    % for the purpose of assigning arguments to registers. (So e.g. if
+    % a det procedure has three arguments with arg_modes top_out, top_unused,
+    % and top_out respectively, the last argument will be returned in
+    % register r3, not r2.)
     %
     % For the MLDS back-end, top_in values are passed as arguments;
     % top_out values are normally passed by reference, except that
-    %   - if the procedure is model_nondet, and the --nondet-copy-out
-    %     option is set, top_out values are passed by value to
-    %     the continuation function
-    %   - if the procedure is model_det or model_semi,
-    %     and the --det-copy-out option is set,
-    %     top_out arguments in the HLDS are mapped to (multiple)
-    %     return values in the MLDS
-    %   - if the HLDS function return value for a det function has
-    %     mode `top_out', it is mapped to an MLDS return value.
+    %   - if the procedure is model_nondet, and the --nondet-copy-out option
+    %     is set, top_out values are passed by value to the continuation
+    %     function;
+    %   - if the procedure is model_det or model_semi, and the
+    %     --det-copy-out option is set, top_out arguments in the HLDS
+    %     are mapped to (multiple) return values in the MLDS; and
+    %   - if the HLDS function return value for a det function has mode
+    %     `top_out', it is mapped to an MLDS return value.
     % top_unused arguments are not passed at all.
     %
 :- type arg_mode
@@ -697,9 +696,9 @@
     pred_info::in, pred_info::out) is det.
 
     % Mode information for the arguments of a procedure.
-    % The first map gives the instantiation state on entry of the
-    % node corresponding to the prog_var.  The second map gives
-    % the instantation state on exit.
+    % The first map gives the instantiation state on entry of the node
+    % corresponding to the prog_var. The second map gives the instantiation
+    % state on exit.
 :- type arg_modes_map == pair(map(prog_var, bool)).
 
     % Return a list of all the proc_ids for the valid modes of this predicate.
@@ -1771,7 +1770,7 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % what will go into MR_ProcStatic structures.
                 deep_layout             :: maybe(hlds_deep_layout),
 
-                % This field stores the origional body of a procedure,
+                % This field stores the original body of a procedure,
                 % before either part of the deep profiling transformation
                 % was executed. For inner procedures created by the tail
                 % recursion part of the deep profiling transformation,
