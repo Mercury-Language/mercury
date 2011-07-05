@@ -5,21 +5,21 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: calendar.m.
 % Main authors: maclarty
 % Stability: low.
-% 
+%
 % Proleptic Gregorian calendar utilities.
 %
 % The Gregorian calendar is the calendar that is currently used by most of
-% the world.  In this calendar a year is a leap year if it is divisible by
-% 4, but not divisible by 100.  The only exception is if the year is divisible
-% by 400, in which case it is a leap year.  For example 1900 is not leap year,
-% while 2000 is.  The proleptic Gregorian calendar is an extension of the
+% the world. In this calendar a year is a leap year if it is divisible by
+% 4, but not divisible by 100. The only exception is if the year is divisible
+% by 400, in which case it is a leap year. For example 1900 is not leap year,
+% while 2000 is. The proleptic Gregorian calendar is an extension of the
 % Gregorian calendar backward in time to before it was first introduced in
 % 1582.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -56,7 +56,7 @@
     ;       october
     ;       november
     ;       december.
-    
+
 :- type day_of_week
     --->    monday
     ;       tuesday
@@ -78,7 +78,7 @@
 :- func microsecond(date) = microsecond.
 
     % init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date).
-    % Initialize a new date.  Fails if the given date is invalid.
+    % Initialize a new date. Fails if the given date is invalid.
     %
 :- pred init_date(year::in, month::in, day_of_month::in, hour::in,
     minute::in, second::in, microsecond::in, date::out) is semidet.
@@ -126,7 +126,7 @@
 :- func unix_epoch = date.
 
     % A period of time measured in years, months, days, hours, minutes,
-    % seconds and microseconds.  Internally a duration is represented
+    % seconds and microseconds. Internally a duration is represented
     % using only months, days, seconds and microseconds components.
     %
 :- type duration.
@@ -153,7 +153,7 @@
 
     % init_duration(Years, Months, Days, Hours, Minutes,
     %   Seconds, MicroSeconds) = Duration.
-    % Create a new duration.  All of the components should either be
+    % Create a new duration. All of the components should either be
     % non-negative or non-positive (they can all be zero).
     %
 :- func init_duration(years, months, days, hours, minutes, seconds,
@@ -174,23 +174,23 @@
 :- func negate(duration) = duration.
 
     % Parse a duration string.
-    % 
+    %
     % The string should be of the form "PnYnMnDTnHnMnS" where each "n" is a
     % non-negative integer representing the number of years (Y), months (M),
-    % days (D), hours (H), minutes (M) or seconds (S).  The duration string
+    % days (D), hours (H), minutes (M) or seconds (S). The duration string
     % always starts with 'P' and the 'T' separates the date and time components
-    % of the duration.  A component may be omitted if it is zero and the 'T'
-    % separator is not required if all the time components are zero.  The
-    % second component may include a fraction component using a period.  This
-    % fraction component should not have a resolution higher than a
+    % of the duration. A component may be omitted if it is zero, and the 'T'
+    % separator is not required if all the time components are zero.
+    % The second component may include a fraction component using a period.
+    % This fraction component should not have a resolution higher than a
     % microsecond.
     %
     % For example the duration 1 year, 18 months, 100 days, 10 hours, 15
     % minutes 90 seconds and 300 microseconds can be written as:
     %   P1Y18M100DT10H15M90.0003S
     % while the duration 1 month and 2 days can be written as:
-    %    P1M2D
-    % 
+    %   P1M2D
+    %
     % Note that internally the duration is represented using only months,
     % days, seconds and microseconds, so that
     % duration_to_string(det_duration_from_string("P1Y18M100DT10H15M90.0003S"))
@@ -211,8 +211,8 @@
     %
     % First the years and months are added to the date.
     % If this causes the day to be out of range (e.g. April 31), then it is
-    % decreased until it is in range (e.g. April 30).  Next the remaining
-    % days, hours, minutes and seconds components are added.  These could
+    % decreased until it is in range (e.g. April 30). Next the remaining
+    % days, hours, minutes and seconds components are added. These could
     % in turn cause the month and year components of the date to change again.
     %
 :- pred add_duration(duration::in, date::in, date::out) is det.
@@ -229,7 +229,7 @@
     %
     % There is only a partial order on durations, because some durations
     % cannot be said to be less than, equal to or greater than another duration
-    % (e.g.  1 month vs. 30 days).
+    % (e.g. 1 month vs. 30 days).
     %
 :- pred duration_leq(duration::in, duration::in) is semidet.
 
@@ -243,29 +243,28 @@
     % current_local_time occurred at the same instant.
     %
     % To convert UTC time to local time, add the result of local_time_offset/3
-    % to UTC (using add_duration/3).  To compute UTC given the local time,
+    % to UTC (using add_duration/3). To compute UTC given the local time,
     % first negate the result of local_time_offset/3 (using negate/1) and then
     % add it to the local time.
     %
 :- pred local_time_offset(duration::out, io::di, io::uo) is det.
 
     % duration(DateA, DateB) = Duration.
-    % Find the duration between two dates using a "greedy" algorithm.  The
-    % algorithm is greedy in the sense that it will try to maximise each
+    % Find the duration between two dates using a "greedy" algorithm.
+    % The algorithm is greedy in the sense that it will try to maximise each
     % component in the returned duration in the following order: years, months,
     % days, hours, minutes, seconds, microseconds.
     % The returned duration is positive if DateB is after DateA and negative
     % if DateB is before DateA.
     % Any leap seconds that occurred between the two dates are ignored.
     % The dates should be in the same timezone and in the same daylight
-    % savings phase.  To work out the duration between dates in different
-    % timezones or daylight savings phases, first convert the dates to
-    % UTC.
+    % savings phase. To work out the duration between dates in different
+    % timezones or daylight savings phases, first convert the dates to UTC.
     %
     % If the seconds components of DateA and DateB are < 60 then
     % add_duration(DateA, duration(DateA, DateB), DateB) will hold, but
-    % add_duration(DateB, negate(duration(DateA, DateB)), DateA) may not
-    % hold.  For example if:
+    % add_duration(DateB, negate(duration(DateA, DateB)), DateA) may not hold.
+    % For example if:
     %   DateA = 2001-01-31
     %   DateB = 2001-02-28
     %   Duration = 1 month
@@ -278,8 +277,8 @@
 :- func duration(date, date) = duration.
 
     % Same as above, except that the year and month components of the
-    % returned duration will always be zero.  The duration will be
-    % in terms of days, hours, minutes, seconds and microseconds only.
+    % returned duration will always be zero. The duration will be in terms
+    % of days, hours, minutes, seconds and microseconds only.
     %
 :- func day_duration(date, date) = duration.
 
@@ -354,10 +353,10 @@ date_from_string(Str, Date) :-
         !.Chars = [],
         Date = date(Year, Month, Day, Hour, Minute, Second, MicroSecond)
     ).
- 
+
 :- pred read_microseconds(microseconds::out, list(char)::in, list(char)::out)
     is det.
- 
+
 read_microseconds(MicroSeconds, !Chars) :-
     (
         read_char((.), !.Chars, Chars1),
@@ -598,8 +597,8 @@ duration_to_string(duration(Months, Days, Seconds, MicroSeconds) @ Duration)
         Seconds = 0,
         MicroSeconds = 0
     ->
-        % At least one component must appear in the string.  The choice
-        % of days is arbitrary.
+        % At least one component must appear in the string.
+        % The choice of days is arbitrary.
         Str = "P0D"
     ;
         (
@@ -619,8 +618,7 @@ duration_to_string(duration(Months, Days, Seconds, MicroSeconds) @ Duration)
             Sign = -1,
             SignStr = "-"
         ;
-            error("duration_to_string: " ++
-                "duration components have mixed signs")
+            error("duration_to_string: duration components have mixed signs")
         ),
         (
             Seconds = 0,
@@ -657,13 +655,12 @@ seconds_duration_string(Seconds, MicroSeconds) = Str :-
     ( Seconds = 0, MicroSeconds = 0 ->
         Str = ""
     ;
-        Str = string.append_list([
-            string.from_int(Seconds),
-            microsecond_string(MicroSeconds),
-            "S"])
+        Str = string.from_int(Seconds) ++
+            microsecond_string(MicroSeconds) ++ "S"
     ).
 
 %-----------------------------------------------------------------------------%
+%
 % Partial relation on durations.  This algorithm is described at
 % http://www.w3.org/TR/xmlschema-2/#duration.
 %
@@ -689,11 +686,12 @@ test_dates = [
 ].
 
 %-----------------------------------------------------------------------------%
+%
 % Adding durations to date times.
 %
-% The following is a fairly direct translation of the algorithm at 
+% The following is a fairly direct translation of the algorithm at
 % http://www.w3.org/TR/xmlschema-2/#adding-durations-to-dateTimes.
-% 
+%
 
 :- func fquotient(int, int, int) = int.
 
@@ -712,12 +710,15 @@ modulo(A, Low, High) = modulo(A - Low, High - Low) + Low.
 max_day_in_month_for(YearValue, MonthValue) = Max :-
     M = int.mod(MonthValue - 1, 12) + 1,
     Y = YearValue + int.div(MonthValue - 1, 12),
-    ( 
-        ( ( M = 1 ; M = 3 ; M = 5 ; M = 7 ; M = 8 ; M = 10 ; M = 12 ),
+    (
+        (
+            ( M = 1 ; M = 3 ; M = 5 ; M = 7 ; M = 8 ; M = 10 ; M = 12 ),
             Max0 = 31
-        ; ( M = 4 ; M = 6 ; M = 9 ; M = 11 ),
+        ;
+            ( M = 4 ; M = 6 ; M = 9 ; M = 11 ),
             Max0 = 30
-        ; M = 2,
+        ;
+            M = 2,
             ( ( Y mod 400 = 0 ; ( Y mod 100 \= 0, Y mod 4 = 0 ) ) ->
                 Max0 = 29
             ;
@@ -728,8 +729,7 @@ max_day_in_month_for(YearValue, MonthValue) = Max :-
         Max = Max0
     ;
         % This should never happen.
-        error("max_day_in_month_for: unexpected value for M: " ++
-            string(M))
+        error("max_day_in_month_for: unexpected value for M: " ++ string(M))
     ).
 
 add_duration(D, S, E) :-
@@ -782,7 +782,7 @@ add_duration_loop(D, S, !E) :-
         !E ^ dt_month := modulo(Temp, 1, 13),
         !E ^ dt_year := !.E ^ dt_year + fquotient(Temp, 1, 13),
         add_duration_loop(D, S, !E)
-    ; 
+    ;
         MaxDaysInMonth = max_day_in_month_for(!.E ^ dt_year, !.E ^ dt_month),
         !.E ^ dt_day > MaxDaysInMonth
     ->
@@ -797,6 +797,7 @@ add_duration_loop(D, S, !E) :-
     ).
 
 %-----------------------------------------------------------------------------%
+%
 % Computing duration between dates.
 %
 
@@ -834,12 +835,15 @@ day_duration(DateA, DateB) = Duration :-
 
 duration(DateA, DateB) = Duration :-
     compare(CompResult, DateB, DateA),
-    ( CompResult = (<),
+    (
+        CompResult = (<),
         greedy_subtract_descending(ascending, DateA, DateB, Duration0),
         Duration = negate(Duration0)
-    ; CompResult = (=),
+    ;
+        CompResult = (=),
         Duration = zero_duration
-    ; CompResult = (>),
+    ;
+        CompResult = (>),
         greedy_subtract_descending(descending, DateB, DateA, Duration)
     ).
 
@@ -847,18 +851,18 @@ duration(DateA, DateB) = Duration :-
     --->    ascending
     ;       descending.
 
-:- pred greedy_subtract_descending(order::in, date::in, date::in,
-    duration::out) is det.
-
-    % This predicate has the precondition that DateA < DateB.  OriginalOrder is
+    % This predicate has the precondition that DateA < DateB. OriginalOrder is
     % the original order of the date arguments (descending means that in the
     % original call DateA < DateB, while ascending means that in the original
-    % call DateA > DateB).  This is needed to correctly compute the days
-    % component of the resulting duration.  The calculation is different
+    % call DateA > DateB). This is needed to correctly compute the days
+    % component of the resulting duration. The calculation is different
     % depending on the original order, because we want the invariant:
     %   add_duration(duration(DateA, DateB), DateA, DateB)
     % to hold, and in the case where DateA > DateB, Duration will be negative.
     %
+:- pred greedy_subtract_descending(order::in, date::in, date::in,
+    duration::out) is det.
+
 greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
     some [!Borrow] (
         MicroSecondA = DateA ^ dt_microsecond,
@@ -867,8 +871,7 @@ greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
             MicroSecondB, MicroSeconds, !:Borrow),
         SecondA = DateA ^ dt_second - !.Borrow,
         SecondB = DateB ^ dt_second,
-        subtract_ints_with_borrow(60, SecondA, SecondB, Seconds,
-            !:Borrow),
+        subtract_ints_with_borrow(60, SecondA, SecondB, Seconds, !:Borrow),
         MinuteA = DateA ^ dt_minute - !.Borrow,
         MinuteB = DateB ^ dt_minute,
         subtract_ints_with_borrow(60, MinuteA, MinuteB, Minutes, !:Borrow),
@@ -876,8 +879,7 @@ greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
         HourB = DateB ^ dt_hour,
         subtract_ints_with_borrow(24, HourA, HourB, Hours, !:Borrow),
         ( OriginalOrder = descending,
-            add_duration(duration(0, -1, 0, 0), DateA,
-                DateAMinus1Month),
+            add_duration(duration(0, -1, 0, 0), DateA, DateAMinus1Month),
             DaysToBorrow = max_day_in_month_for(DateAMinus1Month ^ dt_year,
                 DateAMinus1Month ^ dt_month),
             DateAEndOfMonth = max_day_in_month_for(DateA ^ dt_year,
@@ -903,14 +905,13 @@ greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
         ;
             % If this happens then DateA < DateB which violates a precondition
             % of this predicate.
-            error("greedy_subtract_descending: " ++
-                "left over years")
+            error("greedy_subtract_descending: left over years")
         ),
         Duration = init_duration(Years, Months, Days, Hours, Minutes, Seconds,
             MicroSeconds)
     ).
 
-    % subtract_ints_with_borrow(BorrowAmount, Val1, Val2, Val, Borrow)
+    % subtract_ints_with_borrow(BorrowAmount, Val1, Val2, Val, Borrow):
     % Subtract Val2 from Val1, possibly borrowing BorrowAmount if Val1 < Val2.
     % If an amount is borrowed, then Borrow is set to 1, otherwise it is set
     % to 0.
@@ -928,6 +929,7 @@ subtract_ints_with_borrow(BorrowVal, Val1, Val2, Diff, Borrow) :-
     ).
 
 %-----------------------------------------------------------------------------%
+%
 % The day of the week is computed by working out the Julian day modulo 7.
 % The algorithm is described at
 % http://en.wikipedia.org/wiki/Julian_day.
@@ -951,11 +953,11 @@ det_day_of_week_from_mod(Mod) = DayOfWeek :-
     ( day_of_week_num(DayOfWeek0, Mod) ->
         DayOfWeek = DayOfWeek0
     ;
-        error("det_day_of_week_from_mod: invalid mod: " ++
-            int_to_string(Mod))
+        error("det_day_of_week_from_mod: invalid mod: " ++ int_to_string(Mod))
     ).
 
 %-----------------------------------------------------------------------------%
+%
 % Misc
 %
 
@@ -985,11 +987,9 @@ init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date) :-
     Date = date(Year, month_num(Month), Day, Hour, Minute, Second,
         MicroSecond).
 
-det_init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond) = Date
-        :-
-    (
-        init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date0)
-    ->
+det_init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond)
+        = Date :-
+    ( init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date0) ->
         Date = Date0
     ;
         error(string.format("calendar.det_init_date: invalid date: " ++
