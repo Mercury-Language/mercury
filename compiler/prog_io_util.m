@@ -857,8 +857,8 @@ sum_to_list(Term, List) :-
 binop_term_to_list(Op, Term, List) :-
     binop_term_to_list_2(Op, Term, [], List).
 
-:- pred binop_term_to_list_2(string::in, term(T)::in, list(term(T))::in,
-    list(term(T))::out) is det.
+:- pred binop_term_to_list_2(string::in, term(T)::in,
+    list(term(T))::in, list(term(T))::out) is det.
 
 binop_term_to_list_2(Op, Term, !List) :-
     ( Term = term.functor(term.atom(Op), [L, R], _Context) ->
