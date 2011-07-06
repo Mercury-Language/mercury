@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007, 2010 The University of Melbourne.
+% Copyright (C) 1994-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1183,6 +1183,8 @@ semidet_false :-
 % NOTE: cc_multi_equal/2 is handled specially in browser/declarative_tree.m.
 % Any changes here may need to be reflected there.
 
+:- pragma promise_equivalent_clauses(cc_multi_equal/2).
+
 :- pragma foreign_proc("C",
     cc_multi_equal(X::in, Y::out),
     [will_not_call_mercury, thread_safe, promise_pure,
@@ -1236,10 +1238,6 @@ semidet_false :-
 "
     Y = X
 ").
-
-:- pragma promise_pure(cc_multi_equal/2).
-
-cc_multi_equal(X, X).
 
 %-----------------------------------------------------------------------------%
 
