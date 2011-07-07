@@ -446,8 +446,8 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
         proc_info_get_maybe_deep_profile_info(ProcInfo, MaybeHLDSDeepInfo),
         (
             MaybeHLDSDeepInfo = yes(HLDSDeepInfo),
-            DeepProfInfo = generate_deep_prof_info(ProcInfo, HLDSDeepInfo),
-            MaybeDeepProfInfo = yes(DeepProfInfo)
+            MaybeDeepProfInfo =
+                maybe_generate_deep_prof_info(ProcInfo, HLDSDeepInfo)
         ;
             MaybeHLDSDeepInfo = no,
             MaybeDeepProfInfo = no
@@ -560,43 +560,44 @@ maybe_set_trace_level(PredInfo, !ModuleInfo) :-
         true
     ).
 
-:- func generate_deep_prof_info(proc_info, deep_profile_proc_info)
-    = proc_deep_prof_info.
+:- func maybe_generate_deep_prof_info(proc_info, deep_profile_proc_info)
+    = maybe(proc_deep_prof_info).
 
-generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
+maybe_generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = MaybeDeepProfInfo :-
     HLDSDeepInfo ^ deep_layout = MaybeHLDSDeepLayout,
     (
-        MaybeHLDSDeepLayout = yes(HLDSDeepLayout)
+        MaybeHLDSDeepLayout = yes(HLDSDeepLayout),
+        HLDSDeepLayout = hlds_deep_layout(HLDSProcStatic, HLDSExcpVars),
+        HLDSDeepInfo ^ deep_orig_body = OriginalProcBody,
+        HLDSExcpVars = hlds_deep_excp_vars(TopCSDVar, MiddleCSDVar,
+            MaybeOldOutermostVar),
+        proc_info_get_stack_slots(ProcInfo, StackSlots),
+        ( map.search(StackSlots, TopCSDVar, TopCSDSlot) ->
+            TopCSDSlotNum = stack_slot_num(TopCSDSlot),
+            map.lookup(StackSlots, MiddleCSDVar, MiddleCSDSlot),
+            MiddleCSDSlotNum = stack_slot_num(MiddleCSDSlot),
+            (
+                MaybeOldOutermostVar = yes(OldOutermostVar),
+                map.lookup(StackSlots, OldOutermostVar, OldOutermostSlot),
+                OldOutermostSlotNum = stack_slot_num(OldOutermostSlot)
+            ;
+                MaybeOldOutermostVar = no,
+                OldOutermostSlotNum = -1
+            )
+        ;
+            TopCSDSlotNum = -1,
+            MiddleCSDSlotNum = -1,
+            OldOutermostSlotNum = -1
+        ),
+        DeepExcpSlots = deep_excp_slots(TopCSDSlotNum, MiddleCSDSlotNum,
+            OldOutermostSlotNum),
+        DeepProfInfo = proc_deep_prof_info(HLDSProcStatic, DeepExcpSlots,
+            OriginalProcBody),
+        MaybeDeepProfInfo = yes(DeepProfInfo)
     ;
         MaybeHLDSDeepLayout = no,
-        unexpected($module, $pred, "no HLDS deep profiling layout info")
-    ),
-    HLDSDeepLayout = hlds_deep_layout(HLDSProcStatic, HLDSExcpVars),
-    HLDSDeepInfo ^ deep_orig_body = OriginalProcBody,
-    HLDSExcpVars = hlds_deep_excp_vars(TopCSDVar, MiddleCSDVar,
-        MaybeOldOutermostVar),
-    proc_info_get_stack_slots(ProcInfo, StackSlots),
-    ( map.search(StackSlots, TopCSDVar, TopCSDSlot) ->
-        TopCSDSlotNum = stack_slot_num(TopCSDSlot),
-        map.lookup(StackSlots, MiddleCSDVar, MiddleCSDSlot),
-        MiddleCSDSlotNum = stack_slot_num(MiddleCSDSlot),
-        (
-            MaybeOldOutermostVar = yes(OldOutermostVar),
-            map.lookup(StackSlots, OldOutermostVar, OldOutermostSlot),
-            OldOutermostSlotNum = stack_slot_num(OldOutermostSlot)
-        ;
-            MaybeOldOutermostVar = no,
-            OldOutermostSlotNum = -1
-        )
-    ;
-        TopCSDSlotNum = -1,
-        MiddleCSDSlotNum = -1,
-        OldOutermostSlotNum = -1
-    ),
-    DeepExcpSlots = deep_excp_slots(TopCSDSlotNum, MiddleCSDSlotNum,
-        OldOutermostSlotNum),
-    DeepProfInfo = proc_deep_prof_info(HLDSProcStatic, DeepExcpSlots,
-        OriginalProcBody).
+        MaybeDeepProfInfo = no
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
