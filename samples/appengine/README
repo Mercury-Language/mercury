@@ -1,0 +1,35 @@
+This is a very simple demo of how to deploy Mercury code to Google App Engine
+using the Java backend.
+
+The code should also work with any other servlet container.
+
+The file servlet.m contains a simple request handler written in Mercury.  It
+also contains some Java foreign code that defines a subclass of
+javax.servlet.http.HttpServlet.
+
+To run this sample, first download the Google App Engine SDK from
+http://code.google.com/appengine/.
+
+After unzipping the SDK, add the file lib/shared/servlet-api.jar to your
+CLASSPATH.  Also add the SDK's bin directory to your PATH.
+
+Make sure you have a recent Mercury compiler with the java grade installed and
+that mmc is in your PATH.
+
+To build the servlet do:
+    
+    make
+
+To run the servlet locally do:
+
+    make run
+
+Then point your browser to http://localhost:8080/.
+
+To deploy the servlet to Google App Engine, first edit the file
+war/WEB-INF/appengine-web.xml and change the application id one you've created.
+You can create a new application at https://appengine.google.com/.  Then do:
+
+    make deploy
+
+The sample is currently deployed to http://imlmertest.appspot.com/.
