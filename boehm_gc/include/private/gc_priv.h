@@ -1931,6 +1931,8 @@ void GC_print_static_roots(void);
 GC_INNER void GC_print_finalization_stats(void);
 /* void GC_dump(void); - declared in gc.h */
 
+GC_INNER void GC_mercury_enumerate_reachable_objects(void);
+
 #ifdef KEEP_BACK_PTRS
    GC_INNER void GC_store_back_pointer(ptr_t source, ptr_t dest);
    GC_INNER void GC_marked_for_finalization(ptr_t dest);
