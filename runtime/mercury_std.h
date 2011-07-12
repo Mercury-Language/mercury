@@ -161,6 +161,15 @@ typedef	char		MR_small_bool;
   #define MR_INLINE			inline
   #define MR_EXTERN_INLINE		inline
   #define MR_OUTLINE_DEFN(DECL,BODY)
+#elif defined(__clang__)
+  /* clang: note that since clang also defines the macro __GNUC__
+  ** we must handle it before we handle the GCC case.
+  ** XXX why don't the C99 definitions work for clang?
+  */
+  #define MR_STATIC_INLINE		static
+  #define MR_INLINE			static
+  #define MR_EXTERN_INLINE		static
+  #define MR_OUTLINE_DEFN(DECL,BODY)
 #elif defined(__GNUC__) 
   /* GNU C */
   #define MR_STATIC_INLINE		static __inline__
