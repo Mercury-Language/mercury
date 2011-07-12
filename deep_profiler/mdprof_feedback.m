@@ -207,9 +207,9 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
         Parameters, Conjs), Report) :-
     create_feedback_autopar_report(Parameters, Conjs, Report).
 
-:- func help_message = string.
+:- func help_message(string) = string.
 
-help_message =
+help_message(ProgName) = format(
 "Usage: %s [<options>] <input> <output>
        %s <output>
        %s --help
@@ -294,7 +294,7 @@ help_message =
                 feedback tool will accept a parallelization. It must be
                 a floating point number, which must be at least 1.0.
                 If it is e.g. 1.02, then the feedback tool will ignore
-                parallelizations that promise less than a 2% local speedup.
+                parallelizations that promise less than a 2%% local speedup.
     --ipar-best-par-alg <alg>
                 Select which algorithm to use to find the best way to
                 parallelise a conjunction.  The available algorithms are:
@@ -319,13 +319,15 @@ help_message =
                 parallelism.  This option uses the implicit parallelism
                 settings above.
 
-".
+",
+    % This is obviously redundant but by spelling it out we allow the compiler
+    % to check that the format string and arguments make sense.
+    [s(ProgName), s(ProgName), s(ProgName), s(ProgName)]).
 
 :- pred write_help_message(string::in, io::di, io::uo) is det.
 
 write_help_message(ProgName, !IO) :-
-    Message = help_message,
-    io.format(Message, duplicate(4, s(ProgName)), !IO).
+    io.write_string(help_message(ProgName), !IO).
 
 :- pred write_version_message(string::in, io::di, io::uo) is det.
 

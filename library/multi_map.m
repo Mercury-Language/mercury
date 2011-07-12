@@ -78,27 +78,33 @@
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
     % Insert a new key and corresponding value into a multi_map.
-    % Abort if the key already exists.
+    % Aborts if the key already exists.
     %
 :- func multi_map.det_insert(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred multi_map.det_insert(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Update (add) the value corresponding to a given key.
-    % Fail if the key does not already exist.
+    % Fails if the key does not already exist.
     %
 :- pred multi_map.update(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
     % Update (add) the value corresponding to a given key.
-    % Abort if the key does not already exist.
+    % Aborts if the key does not already exist.
     %
 :- func multi_map.det_update(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred multi_map.det_update(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Update (replace) the value corresponding to a given key.
-    % Abort if the key does not already exist.
+    % Fails if the key does not already exist.
+    %
+:- pred multi_map.replace(K::in, list(V)::in,
+    multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
+
+    % Update (replace) the value corresponding to a given key.
+    % Aborts if the key does not already exist.
     %
 :- func multi_map.det_replace(multi_map(K, V), K, list(V)) = multi_map(K, V).
 :- pred multi_map.det_replace(K::in, list(V)::in,
@@ -174,13 +180,13 @@
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Delete a key-value pair from a multi_map and return the value.
-    % fail if the key is not present.
+    % Fails if the key is not present.
     %
 :- pred multi_map.remove(K::in, list(V)::out,
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
     % Delete a key-value pair from a multi_map and return the value.
-    % Abort if the key is not present.
+    % Aborts if the key is not present.
     %
 :- pred multi_map.det_remove(K::in, list(V)::out,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
@@ -246,8 +252,8 @@
 :- func multi_map.optimize(multi_map(K, V)) = multi_map(K, V).
 :- pred multi_map.optimize(multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
-    % Remove the smallest item from the multi_map, fail if
-    % the multi_map is empty.
+    % Remove the smallest item from the multi_map.
+    % Fails if the multi_map is empty.
     %
 :- pred multi_map.remove_smallest(K::out, list(V)::out,
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
@@ -302,7 +308,14 @@ multi_map.update(Key, Value, !MultiMap) :-
     map.update(Key, Values, !MultiMap).
 
 multi_map.det_update(Key, Value, !MultiMap) :-
-    map.det_update(Key, [Value], !MultiMap).
+    ( if multi_map.update(Key, Value, !MultiMap) then
+        true
+      else
+         report_lookup_error("multi_map.det_update: key not found", Key)
+    ).
+
+multi_map.replace(Key, Value, !MultiMap) :-
+    map.update(Key, Value, !MultiMap).
 
 multi_map.det_replace(Key, Value, !MultiMap) :-
     map.det_update(Key, Value, !MultiMap).

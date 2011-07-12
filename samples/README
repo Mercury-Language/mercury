@@ -50,6 +50,8 @@ concurrency interface, i.e. using threads in Mercury programs.
 There are also some sub-directories which contain examples of multi-module
 Mercury programs:
 
+appengine               A simple Google App Engine servlet.
+
 diff                    This directory contains an implementation of a
 			simple version of the standard UNIX utility
 			`diff', which prints the differences between

@@ -141,9 +141,13 @@
                 % The patch level, if known.
                 % This is only available since gcc 3.0.
             )
+    ;       cc_clang(maybe(clang_version))
     ;       cc_lcc
     ;       cc_cl
     ;       cc_unknown.
+
+:- type clang_version
+    --->    clang_version(int, int, int).
 
     % The strategy for determining the reuse possibilities, i.e., either
     % reuse is only allowed between terms that have exactly the same cons_id,
@@ -386,6 +390,7 @@ convert_c_compiler_type(CC_Str, C_CompilerType) :-
     is semidet.
 
 convert_c_compiler_type_simple("gcc",      cc_gcc(no, no, no)).
+convert_c_compiler_type_simple("clang",    cc_clang(no)).
 convert_c_compiler_type_simple("lcc",      cc_lcc).
 convert_c_compiler_type_simple("cl",       cc_cl).
 convert_c_compiler_type_simple("unknown",  cc_unknown).
@@ -398,7 +403,9 @@ convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
         CC_Str),
     ( Tokens = ["gcc", Major, Minor, Patch] ->
         convert_gcc_version(Major, Minor, Patch, C_CompilerType)
-    ; 
+    ; Tokens = ["clang", Major, Minor, Patch] ->
+        convert_clang_version(Major, Minor, Patch, C_CompilerType)
+    ;
          false
     ).
 
@@ -456,6 +463,28 @@ convert_gcc_version(MajorStr, MinorStr, PatchStr, C_CompilerType) :-
             false
         )
     ;
+        false
+    ).
+
+    % Create the value of C compiler type when we have (some) version
+    % information for clang available.
+    % We only accept version information that has the following form:
+    % 
+    %   <major>_<minor>_<patch>
+    %
+:- pred convert_clang_version(string::in, string::in, string::in,
+    c_compiler_type::out) is semidet.
+
+convert_clang_version(MajorStr, MinorStr, PatchStr, C_CompilerType) :-
+    ( if
+        string.to_int(MajorStr, Major),
+        string.to_int(MinorStr, Minor),
+        string.to_int(PatchStr, Patch),
+        Major >= 0, Minor >= 0, Patch >= 0
+      then
+        ClangVersion = clang_version(Major, Minor, Patch),
+        C_CompilerType = cc_clang(yes(ClangVersion))
+     else
         false
     ).
 

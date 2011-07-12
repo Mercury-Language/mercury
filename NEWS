@@ -193,4 +193,8 @@ Changes to the Mercury standard library:
   additional modes for maybe.fold_maybe/4, maybe.map_fold_maybe/5,
   and maybe.map_fold2_maybe/7.
 
+* The implementation of multi_map.det_update/4 has been fixed so that it
+  conforms to the documented behaviour.  The new predicate multi_map.replace/4
+  has been added.
+
 For news about earlier versions, see the HISTORY file.

@@ -1,0 +1,10 @@
+<web-app xmlns="http://java.sun.com/xml/ns/javaee" version="2.5">
+    <servlet>
+        <servlet-name>merservlet</servlet-name>
+        <servlet-class>jmercury.servlet$Servlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>merservlet</servlet-name>
+        <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+</web-app>

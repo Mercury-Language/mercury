@@ -1,1 +1,14 @@
-[11, 13]
+[13, 11]
+PASSED: is_empty(EmptyMap) succeeded
+PASSED: is_empty(Map) failed
+det_insert/4: [1 - [13, 11], 2 - [22], 3 - [34]]
+insert/4 (test 1): PASSED: [1 - [13, 11], 2 - [22], 3 - [34]]
+insert/4 (test 2) PASSED
+det_update/4: [1 - [14, 13, 11], 2 - [22]]
+update/4 (test 1): PASSED: [1 - [14, 13, 11], 2 - [22]]
+update/4 (test 2): PASSED
+det_replace/4: [1 - [561, 562, 563], 2 - [22]]
+replace/4 (test 1): PASSED: [1 - [561, 562, 563], 2 - [22]]
+replace/4 (test 2): PASSED
+set/4 (test 1): [1 - [12]]
+set/4 (test 2): [1 - [14, 13, 11], 2 - [22]]

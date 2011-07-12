@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997-2005 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-2005, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -160,6 +160,15 @@ typedef	char		MR_small_bool;
   #define MR_STATIC_INLINE		static inline
   #define MR_INLINE			inline
   #define MR_EXTERN_INLINE		inline
+  #define MR_OUTLINE_DEFN(DECL,BODY)
+#elif defined(__clang__)
+  /* clang: note that since clang also defines the macro __GNUC__
+  ** we must handle it before we handle the GCC case.
+  ** XXX why don't the C99 definitions work for clang?
+  */
+  #define MR_STATIC_INLINE		static
+  #define MR_INLINE			static
+  #define MR_EXTERN_INLINE		static
   #define MR_OUTLINE_DEFN(DECL,BODY)
 #elif defined(__GNUC__) 
   /* GNU C */

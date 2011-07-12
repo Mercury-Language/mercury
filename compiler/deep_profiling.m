@@ -125,7 +125,15 @@ apply_deep_prof_tail_rec_transform(!ModuleInfo) :-
 
 apply_deep_prof_tail_rec_transform_to_scc(SCC, !ModuleInfo) :-
     % For the time being, we only look for self-tail-recursive calls.
-    list.foldl(apply_deep_prof_tail_rec_transform_to_proc, SCC, !ModuleInfo).
+    % If the SCC contains more than one procedure, a self-tail-recursive
+    % call in Proc A could end up calling the other procedure Proc B
+    % in the SCC, which could then call back to Proc A. This would screw up
+    % our bookkeeping.
+    ( SCC = [PredProcId] ->
+        apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo)
+    ;
+        true
+    ).
 
 :- pred apply_deep_prof_tail_rec_transform_to_proc(pred_proc_id::in,
     module_info::in, module_info::out) is det.
@@ -135,6 +143,7 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_arg_types(PredInfo0, Types),
+    pred_info_get_origin(PredInfo0, Origin),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
@@ -152,10 +161,20 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
             [PredProcId - ClonePredProcId], Detism, Outputs),
         apply_deep_prof_tail_rec_to_goal(Goal0, Goal, TailRecInfo,
             no, FoundTailCall, _Continue),
-        FoundTailCall = yes
+        FoundTailCall = yes,
+        % The unification or comparison procedure for a type can be called
+        % from builtin.unify or builtin.compare respectively, through the
+        % type_ctor_info of an argument type. This means that we cannot
+        % guarantee that a unification or comparison procedure is alone
+        % in its SCC unless it cannot call builtin.unify and builtin.compare.
+        (
+            Origin = origin_special_pred(_)
+        =>
+            goal_contains_builtin_unify_or_compare(Goal) = no
+        )
     ->
         proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
-        figure_out_rec_call_numbers(Goal, 0, _N, [], TailCallSites),
+        figure_out_rec_call_numbers(Goal, 0, _Num, [], TailCallSites),
         OrigDeepRecInfo = yes(deep_recursion_info(
             deep_prof_outer_proc(ClonePredProcId),
             [visible_scc_data(PredProcId, ClonePredProcId, TailCallSites)])),
@@ -206,6 +225,82 @@ find_list_of_output_args_2([Var | Vars], [Mode | Modes], [Type | Types],
         ; ArgMode = top_unused
         ),
         Outputs = [Var | LaterOutputs]
+    ).
+
+:- func goal_contains_builtin_unify_or_compare(hlds_goal) = bool.
+
+goal_contains_builtin_unify_or_compare(Goal) = Contains :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
+    (
+        GoalExpr = unify(_, _, _, _, _),
+        Contains = no
+    ;
+        ( GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ),
+        % Unfortunately, even if the procedure we are calling is neither
+        % builtin.unify nor builtin.compare, we cannot know whether it
+        % can call those predicates directly or indirectly.
+        Contains = yes
+    ;
+        GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
+        MayCallMercury = get_may_call_mercury(Attributes),
+        (
+            MayCallMercury = proc_will_not_call_mercury,
+            Contains = no
+        ;
+            MayCallMercury = proc_may_call_mercury,
+            % The Mercury code may call builtin.unify or builtin.compare.
+            Contains = yes
+        )
+    ;
+        ( GoalExpr = conj(_, Goals)
+        ; GoalExpr = disj(Goals)
+        ),
+        Contains = goals_contain_builtin_unify_or_compare(Goals)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        Contains = cases_contain_builtin_unify_or_compare(Cases)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        (
+            goal_contains_builtin_unify_or_compare(Cond) = no,
+            goal_contains_builtin_unify_or_compare(Then) = no,
+            goal_contains_builtin_unify_or_compare(Else) = no
+        ->
+            Contains = no
+        ;
+            Contains = yes
+        )
+    ;
+        ( GoalExpr = negation(SubGoal)
+        ; GoalExpr = scope(_, SubGoal)
+        ),
+        Contains = goal_contains_builtin_unify_or_compare(SubGoal)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected($module, $pred, "shorthand")
+    ).
+
+:- func goals_contain_builtin_unify_or_compare(list(hlds_goal)) = bool.
+
+goals_contain_builtin_unify_or_compare([]) = no.
+goals_contain_builtin_unify_or_compare([Goal | Goals]) = Contains :-
+    ( goal_contains_builtin_unify_or_compare(Goal) = yes ->
+        Contains = yes
+    ;
+        Contains = goals_contain_builtin_unify_or_compare(Goals)
+    ).
+
+:- func cases_contain_builtin_unify_or_compare(list(case)) = bool.
+
+cases_contain_builtin_unify_or_compare([]) = no.
+cases_contain_builtin_unify_or_compare([Case | Cases]) = Contains :-
+    Case = case(_, _, Goal),
+    ( goal_contains_builtin_unify_or_compare(Goal) = yes ->
+        Contains = yes
+    ;
+        Contains = cases_contain_builtin_unify_or_compare(Cases)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1647,8 +1742,7 @@ generate_csn_vector_cell(Length, CSNVars, CellVar, CellGoal, !DeepInfo) :-
     VarInfo0 = !.DeepInfo ^ deep_varinfo,
     ProfilingBuiltin = mercury_profiling_builtin_module,
     CellTypeName = string.format("call_site_nums_%d", [i(Length)]),
-    CellTypeCtor = type_ctor(qualified(ProfilingBuiltin, CellTypeName),
-        Length),
+    CellTypeCtor = type_ctor(qualified(ProfilingBuiltin, CellTypeName), 0),
     construct_type(CellTypeCtor, [], CellType),
     generate_var("CSNCell", CellType, CellVar, VarInfo0, VarInfo),
     !DeepInfo ^ deep_varinfo := VarInfo,
