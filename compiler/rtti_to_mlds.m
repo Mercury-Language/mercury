@@ -999,10 +999,10 @@ gen_field_locn(RttiId, ArgInfo, ArgLocnInitializer, !Offset) :-
         ArgWidth = partial_word_first(Mask),
         !:Offset = !.Offset + 1,
         Shift = 0,
-        int.log2(Mask, Bits)
+        int.log2(Mask + 1, Bits)
     ;
         ArgWidth = partial_word_shifted(Shift, Mask),
-        int.log2(Mask, Bits)
+        int.log2(Mask + 1, Bits)
     ),
     ArgLocnInitializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_int(!.Offset),

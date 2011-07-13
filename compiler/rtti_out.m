@@ -1167,11 +1167,11 @@ output_du_arg_locns_2([ArgInfo | ArgInfos], PrevSlotNum, !IO) :-
     ;
         ArgWidth = partial_word_first(Mask),
         Shift = 0,
-        int.log2(Mask, Bits),
+        int.log2(Mask + 1, Bits),
         SlotNum = PrevSlotNum + 1
     ;
         ArgWidth = partial_word_shifted(Shift, Mask),
-        int.log2(Mask, Bits),
+        int.log2(Mask + 1, Bits),
         SlotNum = PrevSlotNum
     ),
     io.format("\t{ %d, %d, %d },\n", [i(SlotNum), i(Shift), i(Bits)], !IO),

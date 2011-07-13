@@ -1707,7 +1707,7 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
     % two or more arguments which share the same word. The argument occupies
     % the lowest bits in the word so no shifting is required. The other
     % arguments can be masked out with the bit-mask `Mask'. The actual number
-    % of bits occupied by the argument is `int.log2(Mask)'.
+    % of bits occupied by the argument is `int.log2(Mask + 1)'.
     %
     % `partial_word_shifted(Shift, Mask)' indicates that the argument is one of
     % the subsequent arguments which share the same word. `Shift' is the

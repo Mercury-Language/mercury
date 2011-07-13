@@ -318,7 +318,8 @@ ORDINARY_PROGS=	\
 	write_reg1 \
 	write_reg2 \
 	write_xml \
-	xmlable_test
+	xmlable_test \
+	zinc_pack_bug
 
 # --transitive-intermodule-optimization is incompatible with mmc --make.
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
