@@ -985,7 +985,7 @@ if test "$ac_microsoft" = "yes" ; then
     LINK_LIB_SUFFIX=".lib"
     LINK_OPT_SEP="/link"
 
-    OBJFILE_OPT="/Fo"
+    OBJFILE_OPT="-Fo"
     AR="lib"
     ARFLAGS=""
     AR_LIBFILE_OPT="/OUT:"
@@ -4470,7 +4470,7 @@ else
             CFLAGS_FOR_ANSI=
             CFLAGS_FOR_WARNINGS=
             CFLAGS_FOR_OPT=
-            CFLAGS_FOR_DEBUG="/Zi"
+            CFLAGS_FOR_DEBUG="-Zi"
             CFLAGS_FOR_NO_STRICT_ALIASING=
 
             # Using the MSVC compiler implies that we must use
