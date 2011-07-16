@@ -112,7 +112,7 @@
 % "Mostly" unique modes
 %
 
-% Unique except that that may be referenced again on backtracking.
+% Unique except that they may be referenced again on backtracking.
 
     % mostly unique output
     %
@@ -394,7 +394,7 @@
     %
 :- impure pred impure_true is det.
 
-    % `semipure_true' is like `true' except that that it is semipure.
+    % `semipure_true' is like `true' except that it is semipure.
     %
 :- semipure pred semipure_true is det.
 
