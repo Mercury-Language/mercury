@@ -25,7 +25,7 @@
 :- pred options.get_option_ops(option_ops(option) :: out(option_ops)) is det.
 
     % Process the option table, perhaps returning an error message
-    % if there was some inconsistentcy or other error.
+    % if there was some inconsistency or other error.
     %
 :- pred postprocess_options(maybe_option_table::in, maybe(string)::out,
     io::di, io::uo) is det.

@@ -745,7 +745,7 @@ Changes to the Mercury standard library:
   efficient representation of lists of tokens. The functionality is
   unchanged.
 
-* We have fixed a problem where io__call_system/4 was not returning the
+* We have fixed a problem where io__call_system/4 was not returning
   the exit code of the invoked command on some operating systems.
 
 * We have fixed a bug in relation__rtc/4.
@@ -1792,7 +1792,7 @@ Changes to the Mercury implementation:
 * Native code compiler.
 
   There's a new back-end for the Mercury compiler that compiles
-  directly to assembler, rather than than going via C.  This
+  directly to assembler, rather than going via C.  This
   back-end is enabled using the new `--target asm' option.
 
   This new back-end is implemented by linking the Mercury compiler
@@ -1933,7 +1933,7 @@ Changes to the Mercury language:
 * Predicate and function type and mode declarations can now be expressed
   in terms of higher-order predicate and function types and insts, rather
   than explicitly listing the argument types and modes.  This is useful
-  where several predicates or functions must have the the same type and
+  where several predicates or functions must have the same type and
   mode signature.
 
   For example:
@@ -2130,7 +2130,7 @@ Changes to the Mercury standard library:
   which on interrupt returns the number of the signal which interrupted
   the command rather than just an error message.
 
-* We've added added several new predicates for deconstructing terms to
+* We've added several new predicates for deconstructing terms to
   std_util.m. `named_argument' and `det_named_argument' are analogous
   to `argument' and `det_argument' respectively, but specify the desired
   argument by its name, not its position. We have also added committed choice
@@ -2391,7 +2391,7 @@ Changes to the compiler back-ends:
 * The native code Linux/x86 back-end is now "release quality".
 
   The native code back-end, which was first released in Mercury 0.10,
-  compiles directly to assembler, rather than than going via C.
+  compiles directly to assembler, rather than going via C.
   This back-end is enabled using the `--target asm' option.  It is
   implemented by linking the Mercury compiler with the (relatively)
   language independent GNU Compiler Collection back-end.  In other words,
@@ -4007,7 +4007,7 @@ Changes to the Mercury standard library:
   set_ctree234.non_empty/1.  We have add the function
   set_ctree234.from_list/1.
 
-* We have added the the predicate set_bbbtree.count/2 and the
+* We have added the predicate set_bbbtree.count/2 and the
   function set_bbbtree.count/1.  These replace the predicate
   set_bbbtree.size/2 which is now deprecated.  
 

@@ -5659,7 +5659,7 @@ options_help_build_system -->
         "\tThis option uses temporary files to pass arguments to sub-commands.",
         "\t(This option is only supported by `mmc --make'.)",
         "--env-type <type>",
-        "\tSpecify the the environment type in which the compiler and generated",
+        "\tSpecify the environment type in which the compiler and generated",
         "\tprograms will be invoked.",
         "\tThe <type> should be one of `posix', `cygwin', `msys', or `windows'.",
         "\tThis option is equivalent to setting both --host-env-type and",
