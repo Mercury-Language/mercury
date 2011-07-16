@@ -80,7 +80,7 @@ case "$CC" in
         ANSI_OPTS=""
         CHECK_OPTS=""
         OPT_OPTS=""
-        DEBUG_OPT="/Zi"
+        DEBUG_OPT="-Zi"
         COMPILER=cl
         ;;
     *)
