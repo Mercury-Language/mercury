@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2001, 2003-2006, 2008 The University of Melbourne.
+** Copyright (C) 1998-2001, 2003-2006, 2008, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -354,7 +354,7 @@ extern  void        MR_print_proc_id_trace_and_context(FILE *fp,
 
 extern  void        MR_dump_stack_record_print(FILE *fp,
                         MR_bool include_trace_data,
-                        MR_StackDumpInfo dump_info);
+                        const MR_StackDumpInfo dump_info);
 
 /*
 ** Find the first call event on the stack whose event number or sequence number

@@ -576,7 +576,7 @@ MR_next_offset(void)
 
 MR_MemoryZone *
 MR_create_or_reuse_zone(const char *name, size_t size, size_t offset,
-    size_t redzone_size, MR_ZoneHandler handler)
+    size_t redzone_size, MR_ZoneHandler *handler)
 {
     MR_Word         *base;
     size_t          total_size;

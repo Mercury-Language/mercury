@@ -712,7 +712,7 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
             ** Browse the mercury memory zones to see if the
             ** AV address references one of them.
             */
-            zone = MR_get_used_memory_zones();
+            zone = MR_get_used_memory_zones_readonly();
             while(zone != NULL) {
                 fprintf(stderr,
                         "\n***    Checking zone %s#%"
