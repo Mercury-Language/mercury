@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008, 2010 The University of Melbourne.
+% Copyright (C) 1997-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1841,7 +1841,7 @@ void mercury_sys_init_exceptions_write_out_proc_statics(FILE *deep_fp,
 **
 ** (1) If MR_debug_enabled is set, then invoke
 **     `MR_trace(..., MR_PORT_EXCEPTION, ...)' for each stack frame,
-**     to signal to the debugger that that procedure has exited via
+**     to signal to the debugger that the procedure has exited via
 **     an exception.  This allows to user to use the `retry' command
 **     to restart a goal which exited via an exception.
 **

@@ -76,7 +76,7 @@ begins:
      or assembly 'mer_std',  Version=...
 
 For (1), you will need to copy the library assemblies from the Mercury library
-installation into the the same directory as the process assembly.
+installation into the same directory as the process assembly.
 The files for the library assemblies are located in
 
      <prefix>\lib\mercury\lib\csharp

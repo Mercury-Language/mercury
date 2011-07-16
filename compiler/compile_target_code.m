@@ -709,7 +709,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
             % XXX Check whether we need to do anything for these C compilers?
             ( C_CompilerType = cc_clang(_)
             ; C_CompilerType = cc_lcc
-            ; C_CompilerType = cc_cl
+            ; C_CompilerType = cc_cl(_)
             ),
             C_FnAlignOpt = ""
         ;

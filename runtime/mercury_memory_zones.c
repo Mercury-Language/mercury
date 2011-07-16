@@ -576,7 +576,7 @@ MR_next_offset(void)
 
 MR_MemoryZone *
 MR_create_or_reuse_zone(const char *name, size_t size, size_t offset,
-    size_t redzone_size, MR_ZoneHandler handler)
+    size_t redzone_size, MR_ZoneHandler *handler)
 {
     MR_Word         *base;
     size_t          total_size;
@@ -1226,9 +1226,12 @@ static void
 MR_gc_zones(void)
 {
     do {
-        MR_LOCK(&memory_zones_lock, "MR_gc_zones");
+
         MR_MemoryZonesFree  *cur_list;
-        MR_Unsigned         oldest_lru_token, cur_lru_token;
+        MR_Unsigned         oldest_lru_token;
+        MR_Unsigned         cur_lru_token;
+        
+        MR_LOCK(&memory_zones_lock, "MR_gc_zones");
 
         if (NULL == lru_free_memory_zones) {
             /*

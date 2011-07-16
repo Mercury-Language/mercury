@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002, 2005, 2006-2007, 2010 The University of Melbourne.
+# Copyright (C) 1995-2002, 2005, 2006-2007, 2010-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -15,9 +15,14 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS	= -I$(RUNTIME_DIR) -O0
-# we need -I ../runtime for "mercury_std.h", etc.
-# the -O0 is to get around a stupid compiler bug in gcc 2.7.2.3 on cyclone
+# We need -I$(RUNTIME_DIR) for "mercury_std.h", etc.
+# The -O0 is to get around a stupid compiler bug in gcc 2.7.2.3.
+# Visual C does not have a -O0 option (it uses -Od instead).
+ifeq ($(USING_MICROSOFT_CL_COMPILER),yes)
+    CFLAGS = -I$(RUNTIME_DIR)
+else
+    CFLAGS = -I$(RUNTIME_DIR) -O0
+endif
 
 PROGS=mkinit mkinit_erl mdemangle mfiltercc info_to_mdb
 PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))
@@ -43,6 +48,21 @@ MGNUCFLAGS-mfiltercc = --no-filter-cc
 
 all:	$(PROGS) $(TAGS_FILE_EXISTS)
 
+ifeq ($(USING_MICROSOFT_CL_COMPILER),yes)
+.c:
+	$(MGNUC) --no-mercury-stdlib-dir \
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -Fe$@ $< $(GETOPT_SRC)
+
+mkinit: mkinit.c mkinit_common.c mkinit_common.h
+	$(MGNUC) --no-mercury-stdlib-dir \
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -Fe$@ \
+			mkinit.c mkinit_common.c $(GETOPT_SRC)
+
+mkinit_erl: mkinit_erl.c mkinit_common.c mkinit_common.h
+	$(MGNUC) --no-mercury-stdlib-dir \
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -Fe$@ \
+			mkinit_erl.c mkinit_common.c $(GETOPT_SRC)
+else
 .c:
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
@@ -56,6 +76,8 @@ mkinit_erl: mkinit_erl.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ \
 			mkinit_erl.c mkinit_common.c $(GETOPT_SRC)
+
+endif
 
 tags:
 	ctags $(SRC)

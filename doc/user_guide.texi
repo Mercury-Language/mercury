@@ -6022,9 +6022,9 @@ To do this, you must instrument the program by adding calls to
 @code{benchmarking.report_memory_attribution/1} or
 @code{benchmarking.report_memory_attribution/3}
 at points of interest.
-The first argument of the @code{report_memory_attribution} predicates
-is a string that is used to label the the memory retention data
-corresponding to that call in the profiling output.
+The first argument of the @code{report_memory_attribution} predicates is a
+string that is used to label the memory retention data corresponding to that
+call in the profiling output.
 You may want to call them from within @samp{trace} goals:
 
 @example

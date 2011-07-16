@@ -1690,8 +1690,13 @@ GC_API int GC_CALL GC_get_force_unmap_on_gcollect(void)
 
 GC_API void GC_CALL GC_mercury_write_size_map(FILE *fp)
 {
-    ssize_t bytes;
-    ssize_t limit;
+    #if defined(_WIN32)
+        SSIZE_T bytes;
+        SSIZE_T limit;
+    #else
+        ssize_t bytes;
+        ssize_t limit;
+    #endif 
 
     for (limit = MAXOBJBYTES; limit >= 0; limit--) {
 	if (GC_size_map[limit] != 0) {

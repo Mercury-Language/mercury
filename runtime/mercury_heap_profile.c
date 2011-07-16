@@ -72,7 +72,7 @@ MR_increment_table_entry(MR_memprof_table *table,
     const MR_Code *proc, const char *type_name, int size)
 {
     MR_bool             found;
-    int                 diff;
+    MR_Integer          diff;
     MR_memprof_record   **node_addr;
     MR_memprof_record   *node;
 
@@ -83,7 +83,11 @@ MR_increment_table_entry(MR_memprof_table *table,
     node_addr = &table->root;
     if (proc != NULL) {
         while ((node = *node_addr) != NULL) {
-            diff = proc - node->proc;
+            /*
+            ** The casts to MR_Integer are so that we work with C compilers
+            ** that do not support arithmetic with void pointers.
+            */
+            diff = (MR_Integer)proc - (MR_Integer)node->proc;
             if (diff < 0) {
                 node_addr = &node->left;
             } else if (diff > 0) {

@@ -143,7 +143,7 @@
             )
     ;       cc_clang(maybe(clang_version))
     ;       cc_lcc
-    ;       cc_cl
+    ;       cc_cl(maybe(int))
     ;       cc_unknown.
 
 :- type clang_version
@@ -392,7 +392,7 @@ convert_c_compiler_type(CC_Str, C_CompilerType) :-
 convert_c_compiler_type_simple("gcc",      cc_gcc(no, no, no)).
 convert_c_compiler_type_simple("clang",    cc_clang(no)).
 convert_c_compiler_type_simple("lcc",      cc_lcc).
-convert_c_compiler_type_simple("cl",       cc_cl).
+convert_c_compiler_type_simple("cl",       cc_cl(no)).
 convert_c_compiler_type_simple("unknown",  cc_unknown).
 
 :- pred convert_c_compiler_type_with_version(string::in, c_compiler_type::out)
@@ -405,6 +405,8 @@ convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
         convert_gcc_version(Major, Minor, Patch, C_CompilerType)
     ; Tokens = ["clang", Major, Minor, Patch] ->
         convert_clang_version(Major, Minor, Patch, C_CompilerType)
+    ; Tokens = ["cl", Version] ->
+        convert_msvc_version(Version, C_CompilerType)
     ;
          false
     ).
@@ -476,17 +478,24 @@ convert_gcc_version(MajorStr, MinorStr, PatchStr, C_CompilerType) :-
     c_compiler_type::out) is semidet.
 
 convert_clang_version(MajorStr, MinorStr, PatchStr, C_CompilerType) :-
-    ( if
-        string.to_int(MajorStr, Major),
-        string.to_int(MinorStr, Minor),
-        string.to_int(PatchStr, Patch),
-        Major >= 0, Minor >= 0, Patch >= 0
-      then
-        ClangVersion = clang_version(Major, Minor, Patch),
-        C_CompilerType = cc_clang(yes(ClangVersion))
-     else
-        false
-    ).
+    string.to_int(MajorStr, Major),
+    string.to_int(MinorStr, Minor),
+    string.to_int(PatchStr, Patch),
+    Major >= 0, Minor >= 0, Patch >= 0,
+    ClangVersion = clang_version(Major, Minor, Patch),
+    C_CompilerType = cc_clang(yes(ClangVersion)).
+
+    % Create the value of C compiler type when we have version information
+    % for Visual C available.
+    % The version number is an integer literal (corresponding to the value
+    % of the builtin macro _MSC_VER).
+    %
+:- pred convert_msvc_version(string::in, c_compiler_type::out) is semidet.
+
+convert_msvc_version(VersionStr, C_CompilerType) :-
+    string.to_int(VersionStr, Version),
+    Version > 0,
+    C_CompilerType = cc_cl(yes(Version)).
 
 convert_env_type("posix",   env_type_posix).
 convert_env_type("cygwin",  env_type_cygwin).
