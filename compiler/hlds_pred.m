@@ -2251,6 +2251,9 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred var_is_of_dummy_type(module_info::in, vartypes::in, prog_var::in)
     is semidet.
 
+:- pred var_is_of_non_dummy_type(module_info::in, vartypes::in, prog_var::in)
+    is semidet.
+
 :- implementation.
 
 :- type proc_info
@@ -3049,6 +3052,10 @@ ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
 var_is_of_dummy_type(ModuleInfo, VarTypes, Var) :-
     map.lookup(VarTypes, Var, Type),
     check_dummy_type(ModuleInfo, Type) = is_dummy_type.
+
+var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var) :-
+    map.lookup(VarTypes, Var, Type),
+    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
 
 %-----------------------------------------------------------------------------%
 

@@ -2809,14 +2809,16 @@ match_resume_loc(Map, Locations0) :-
     set.list_to_set(KeyList, Keys),
     map.select(Locations0, Keys, Locations),
     map.to_assoc_list(Locations, List),
-    (
-        list.member(Var - Actual, List)
-    =>
-        (
-            map.search(Map, Var, Lvals),
-            set.subset(Lvals, Actual)
-        )
-    ).
+    all_vars_match_resume_map(Map, List).
+
+:- pred all_vars_match_resume_map(resume_map::in,
+    assoc_list(prog_var, set(lval))::in) is semidet.
+
+all_vars_match_resume_map(_Map, []).
+all_vars_match_resume_map(Map, [Var - Actual | VarsActuals]) :-
+    map.search(Map, Var, Lvals),
+    set.subset(Lvals, Actual),
+    all_vars_match_resume_map(Map, VarsActuals).
 
 :- pred pick_first_resume_point(resume_point_info::in,
     resume_map::out, code_addr::out) is det.
@@ -4061,8 +4063,8 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
             RealStackVarLocs, DummyStackVarLocs)
     ),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    list.filter(key_var_is_of_dummy_type(ModuleInfo, VarTypes), InArgInfos,
-        _DummyInArgInfos, RealInArgInfos),
+    list.filter(key_var_is_of_non_dummy_type(ModuleInfo, VarTypes),
+        InArgInfos, RealInArgInfos),
     var_arg_info_to_lval(RealInArgInfos, RealInArgLocs),
     AllRealLocs = RealStackVarLocs ++ RealInArgLocs,
     AllLocs = DummyStackVarLocs ++ AllRealLocs,
@@ -4071,11 +4073,11 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
     assoc_list.values(AllRealLocs, LiveLocList),
     set.list_to_set(LiveLocList, LiveLocs).
 
-:- pred key_var_is_of_dummy_type(module_info::in, vartypes::in,
+:- pred key_var_is_of_non_dummy_type(module_info::in, vartypes::in,
     pair(prog_var, arg_info)::in) is semidet.
 
-key_var_is_of_dummy_type(ModuleInfo, VarTypes, Var - _ArgInfo) :-
-    var_is_of_dummy_type(ModuleInfo, VarTypes, Var).
+key_var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var - _ArgInfo) :-
+    var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var).
 
 :- pred valid_stack_slot(module_info::in, vartypes::in,
     pair(prog_var, lval)::in) is semidet.
@@ -4241,8 +4243,8 @@ generate_call_stack_vn_livevals(CI, OutputArgs, LiveVals) :-
     get_known_variables(CI, KnownVarList0),
     get_module_info(CI, ModuleInfo),
     VarTypes = get_var_types(CI),
-    list.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), KnownVarList0,
-        _, KnownVarList),
+    list.filter(var_is_of_non_dummy_type(ModuleInfo, VarTypes),
+        KnownVarList0, KnownVarList),
     set.list_to_set(KnownVarList, KnownVars),
     set.difference(KnownVars, OutputArgs, LiveVars),
     set.to_sorted_list(LiveVars, LiveVarList),
@@ -4284,7 +4286,7 @@ generate_return_live_lvalues(CI, OutputArgLocs, ReturnInstMap,
     get_known_variables(CI, Vars0),
     get_module_info(CI, ModuleInfo),
     VarTypes = get_var_types(CI),
-    list.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), Vars0, _, Vars),
+    list.filter(var_is_of_non_dummy_type(ModuleInfo, VarTypes), Vars0, Vars),
     get_active_temps_data(CI, Temps),
     get_proc_info(CI, ProcInfo),
     get_globals(CI, Globals),

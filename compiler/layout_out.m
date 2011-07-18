@@ -521,30 +521,58 @@ output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums,
 
 output_pseudo_type_info_array_defn(Info, PTIs, !IO) :-
     ModuleName = Info ^ lout_mangled_module_name,
-    list.length(PTIs, NumPTIs),
+    long_length(PTIs, NumPTIs),
     Name = pseudo_type_info_array,
     output_layout_array_name_storage_type_name(ModuleName, Name,
         being_defined, !IO),
     io.format("[%d] = {", [i(NumPTIs)], !IO),
-    list.chunk(PTIs, 10, PTIChunks),
-    list.foldl2(output_pti_chunk(Info), PTIChunks, 0, _, !IO),
-    io.write_string("\n};\n\n", !IO).
-
-:- pred output_pti_chunk(llds_out_info::in, list(rval)::in, int::in, int::out,
-    io::di, io::uo) is det.
-
-output_pti_chunk(Info, ChunkPTIs, !Slot, !IO) :-
-    list.length(ChunkPTIs, NumChunkPTIs),
     AutoComments = Info ^ lout_auto_comments,
     (
         AutoComments = yes,
-        io.format("\n/* slots %d+ */ MR_cast_to_pti%d(\n\t",
-            [i(!.Slot), i(NumChunkPTIs)], !IO)
+        output_ptis_outer_loop_ac(Info, PTIs, 0, _, !IO)
     ;
         AutoComments = no,
-        io.format("\nMR_cast_to_pti%d(",
-            [i(NumChunkPTIs)], !IO)
+        output_ptis_outer_loop_noac(Info, PTIs, 0, _, !IO)
     ),
+    io.write_string("\n};\n\n", !IO).
+
+:- pred output_ptis_outer_loop_ac(llds_out_info::in, list(rval)::in,
+    int::in, int::out, io::di, io::uo) is det.
+
+output_ptis_outer_loop_ac(_Info, [], !Slot, !IO).
+output_ptis_outer_loop_ac(Info, PTIs @ [_ | _], !Slot, !IO) :-
+    list.split_upto(1000, PTIs, StartPTIs, LaterPTIs),
+    list.chunk(StartPTIs, 10, PTIChunks),
+    list.foldl2(output_pti_chunk_ac(Info), PTIChunks, !Slot, !IO),
+    output_ptis_outer_loop_ac(Info, LaterPTIs, !Slot, !IO).
+
+:- pred output_ptis_outer_loop_noac(llds_out_info::in, list(rval)::in,
+    int::in, int::out, io::di, io::uo) is det.
+
+output_ptis_outer_loop_noac(_Info, [], !Slot, !IO).
+output_ptis_outer_loop_noac(Info, PTIs @ [_ | _], !Slot, !IO) :-
+    list.split_upto(1000, PTIs, StartPTIs, LaterPTIs),
+    list.chunk(StartPTIs, 10, PTIChunks),
+    list.foldl2(output_pti_chunk_noac(Info), PTIChunks, !Slot, !IO),
+    output_ptis_outer_loop_noac(Info, LaterPTIs, !Slot, !IO).
+
+:- pred output_pti_chunk_ac(llds_out_info::in, list(rval)::in,
+    int::in, int::out, io::di, io::uo) is det.
+
+output_pti_chunk_ac(Info, ChunkPTIs, !Slot, !IO) :-
+    list.length(ChunkPTIs, NumChunkPTIs),
+    io.format("\n/* slots %d+ */ MR_cast_to_pti%d(\n\t",
+        [i(!.Slot), i(NumChunkPTIs)], !IO),
+    io.write_list(ChunkPTIs, ",\n\t", output_rval(Info), !IO),
+    io.write_string(")", !IO),
+    !:Slot = !.Slot + NumChunkPTIs.
+
+:- pred output_pti_chunk_noac(llds_out_info::in, list(rval)::in,
+    int::in, int::out, io::di, io::uo) is det.
+
+output_pti_chunk_noac(Info, ChunkPTIs, !Slot, !IO) :-
+    list.length(ChunkPTIs, NumChunkPTIs),
+    io.format("\nMR_cast_to_pti%d(", [i(NumChunkPTIs)], !IO),
     io.write_list(ChunkPTIs, ",\n\t", output_rval(Info), !IO),
     io.write_string(")", !IO),
     !:Slot = !.Slot + NumChunkPTIs.
@@ -559,7 +587,7 @@ output_pti_chunk(Info, ChunkPTIs, !Slot, !IO) :-
 
 output_hlds_var_nums_array_defn(Info, VarNums, !IO) :-
     ModuleName = Info ^ lout_mangled_module_name,
-    list.length(VarNums, NumVarNums),
+    long_length(VarNums, NumVarNums),
     Name = hlds_var_nums_array,
     output_layout_array_name_storage_type_name(ModuleName, Name,
         being_defined, !IO),
@@ -3309,6 +3337,30 @@ output_pred_or_func(PredOrFunc, !IO) :-
     ;
         PredOrFunc = pf_function,
         io.write_string("MR_FUNCTION", !IO)
+    ).
+
+:- pred long_length(list(T)::in, int::out) is det.
+
+long_length(List, Length) :-
+    long_length_outer_loop(List, 0, Length).
+
+:- pred long_length_outer_loop(list(T)::in, int::in, int::out) is det.
+
+long_length_outer_loop([], !Length).
+long_length_outer_loop(List @ [_ | _], !Length) :-
+    long_length_inner_loop(List, 5000, LeftOver, !Length),
+    long_length_outer_loop(LeftOver, !Length).
+
+:- pred long_length_inner_loop(list(T)::in, int::in, list(T)::out,
+    int::in, int::out) is det.
+
+long_length_inner_loop([], _, [], !Length).
+long_length_inner_loop([H | T], Count, LeftOver, !Length) :-
+    ( Count > 0 ->
+        !:Length = !.Length + 1,
+        long_length_inner_loop(T, Count - 1, LeftOver, !Length)
+    ;
+        LeftOver = [H | T]
     ).
 
 %-----------------------------------------------------------------------------%

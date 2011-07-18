@@ -59,6 +59,7 @@
 
 :- import_module bool.
 :- import_module cord.
+:- import_module int.
 :- import_module io.
 :- import_module list.
 :- import_module map.
@@ -123,7 +124,7 @@ generate_goal(ContextModel, Goal, Code, !CI) :-
             )
         ),
 
-        generate_goal_2(GoalExpr, GoalInfo, CodeModel,
+        generate_goal_expr(GoalExpr, GoalInfo, CodeModel,
             ForwardLiveVarsBeforeGoal, GoalCode, !CI),
         Features = goal_info_get_features(GoalInfo),
         get_proc_info(!.CI, ProcInfo),
@@ -227,11 +228,11 @@ compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
+:- pred generate_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
     code_model::in, set(prog_var)::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
+generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
         Code, !CI) :-
     (
         GoalExpr = unify(_, _, _, Uni, _),
@@ -240,7 +241,7 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
         GoalExpr = conj(ConjType, Goals),
         (
             ConjType = plain_conj,
-            generate_goals(Goals, CodeModel, cord.init, Code, !CI)
+            generate_conj(Goals, CodeModel, cord.init, Code, !CI)
         ;
             ConjType = parallel_conj,
             par_conj_gen.generate_par_conj(Goals, GoalInfo, CodeModel, Code,
@@ -313,18 +314,37 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
     % Generate a conjoined series of goals. State information flows directly
     % from one conjunct to the next.
     %
-:- pred generate_goals(list(hlds_goal)::in, code_model::in,
+    % We call generate_goals to generate code for up to 1000 goals.
+    % If there are any more goals left after that, we let generate_goals
+    % give up all its stack frames before calling it again. This allows us
+    % to generate code for *very* long sequences of goals even if the compiler
+    % is compiled in a grade that does not allow tail recursion.
+    %
+:- pred generate_conj(list(hlds_goal)::in, code_model::in,
     llds_code::in, llds_code::out, code_info::in, code_info::out) is det.
 
-generate_goals([], _, !Code, !CI).
-generate_goals([Goal | Goals], CodeModel, !Code, !CI) :-
-    generate_goal(CodeModel, Goal, GoalCode, !CI),
-    !:Code = !.Code ++ GoalCode,
-    get_instmap(!.CI, Instmap),
-    ( instmap_is_unreachable(Instmap) ->
-        true
+generate_conj([], _, !Code, !CI).
+generate_conj(Goals @ [_ | _], CodeModel, !Code, !CI) :-
+    generate_goals(Goals, 1000, CodeModel, LeftOverGoals, !Code, !CI),
+    generate_conj(LeftOverGoals, CodeModel, !Code, !CI).
+
+:- pred generate_goals(list(hlds_goal)::in, int::in, code_model::in,
+    list(hlds_goal)::out, llds_code::in, llds_code::out,
+    code_info::in, code_info::out) is det.
+
+generate_goals([], _, _, [], !Code, !CI).
+generate_goals([Goal | Goals], N, CodeModel, LeftOverGoals, !Code, !CI) :-
+    ( N > 0 ->
+        generate_goal(CodeModel, Goal, GoalCode, !CI),
+        !:Code = !.Code ++ GoalCode,
+        get_instmap(!.CI, Instmap),
+        ( instmap_is_unreachable(Instmap) ->
+            LeftOverGoals = []
+        ;
+            generate_goals(Goals, N - 1, CodeModel, LeftOverGoals, !Code, !CI)
+        )
     ;
-        generate_goals(Goals, CodeModel, !Code, !CI)
+        LeftOverGoals = [Goal | Goals]
     ).
 
 %---------------------------------------------------------------------------%

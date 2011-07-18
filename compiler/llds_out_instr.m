@@ -259,11 +259,11 @@ output_instruction_list(Info, [Instr | Instrs], ProfInfo, WhileSet,
         output_instruction_and_comment(Info, Uinstr, Comment, ProfInfo, !IO),
         ( set_tree234.contains(WhileSet, Label) ->
             io.write_string("\twhile (1) {\n", !IO),
-            output_instruction_list_while(Info, Instrs, Label, ProfInfo,
-                WhileSet, !IO)
-            % The matching close brace is printed in output_instruction_list
-            % when before the next label, before a goto that closes the loop,
-            % or when we get to the end of Instrs.
+            output_instruction_list_while(Info, Label, Instrs,
+                AfterWhileInstrs, ProfInfo, WhileSet, !IO),
+            io.write_string("\t} /* end while */\n", !IO),
+            output_instruction_list(Info, AfterWhileInstrs, ProfInfo, WhileSet,
+                not_after_layout_label, !IO)
         ;
             output_instruction_list(Info, Instrs, ProfInfo, WhileSet,
                 AfterLayoutLabel, !IO)
@@ -280,23 +280,22 @@ output_instruction_list(Info, [Instr | Instrs], ProfInfo, WhileSet,
             AfterLayoutLabel, !IO)
     ).
 
-:- pred output_instruction_list_while(llds_out_info::in,
-    list(instruction)::in, label::in, pair(label,
-    set_tree234(label))::in, set_tree234(label)::in, io::di, io::uo) is det.
+:- pred output_instruction_list_while(llds_out_info::in, label::in,
+    list(instruction)::in, list(instruction)::out,
+    pair(label, set_tree234(label))::in, set_tree234(label)::in,
+    io::di, io::uo) is det.
 
-output_instruction_list_while(_, [], _, _, _, !IO) :-
-    io.write_string("\tbreak; } /* end while */\n", !IO).
-output_instruction_list_while(Info, [Instr | Instrs], Label, ProfInfo,
-        WhileSet, !IO) :-
+output_instruction_list_while(_, _, [], [], _, _, !IO) :-
+    io.write_string("\tbreak;\n", !IO).
+output_instruction_list_while(Info, Label, [Instr | Instrs], AfterWhileInstrs,
+        ProfInfo, WhileSet, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
     ( Uinstr = label(_) ->
-        io.write_string("\tbreak; } /* end while */\n", !IO),
-        output_instruction_list(Info, [Instr | Instrs],
-            ProfInfo, WhileSet, not_after_layout_label, !IO)
+        io.write_string("\tbreak;\n", !IO),
+        AfterWhileInstrs = [Instr | Instrs]
     ; Uinstr = goto(code_label(Label)) ->
-        io.write_string("\t/* continue */ } /* end while */\n", !IO),
-        output_instruction_list(Info, Instrs, ProfInfo, WhileSet,
-            not_after_layout_label, !IO)
+        io.write_string("\t/* continue */\n", !IO),
+        AfterWhileInstrs = Instrs
     ; Uinstr = if_val(Rval, code_label(Label)) ->
         io.write_string("\tif (", !IO),
         output_test_rval(Info, Rval, !IO),
@@ -312,19 +311,19 @@ output_instruction_list_while(Info, [Instr | Instrs], Label, ProfInfo,
         ;
             true
         ),
-        output_instruction_list_while(Info, Instrs, Label, ProfInfo,
-            WhileSet, !IO)
+        output_instruction_list_while(Info, Label, Instrs, AfterWhileInstrs,
+            ProfInfo, WhileSet, !IO)
     ; Uinstr = block(TempR, TempF, BlockInstrs) ->
         output_block_start(TempR, TempF, !IO),
         output_instruction_list_while_block(Info, BlockInstrs, Label,
             ProfInfo, !IO),
         output_block_end(!IO),
-        output_instruction_list_while(Info, Instrs, Label, ProfInfo,
-            WhileSet, !IO)
+        output_instruction_list_while(Info, Label, Instrs, AfterWhileInstrs,
+            ProfInfo, WhileSet, !IO)
     ;
         output_instruction_and_comment(Info, Uinstr, Comment, ProfInfo, !IO),
-        output_instruction_list_while(Info, Instrs, Label, ProfInfo,
-            WhileSet, !IO)
+        output_instruction_list_while(Info, Label, Instrs, AfterWhileInstrs,
+            ProfInfo, WhileSet, !IO)
     ).
 
 :- pred output_instruction_list_while_block(llds_out_info::in,

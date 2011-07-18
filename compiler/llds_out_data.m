@@ -739,12 +739,35 @@ output_record_rvals_decls(Info, Rvals, !DeclSet, !IO) :-
     decl_set::out, io::di, io::uo) is det.
 
 output_record_rvals_decls_format(_, [], _, _, !N, !DeclSet, !IO).
-output_record_rvals_decls_format(Info, [Rval | Rvals],
+output_record_rvals_decls_format(Info, Rvals @ [_ | _],
         FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
-    output_record_rval_decls_format(Info, Rval,
+    output_record_rvals_decls_format_count(Info, Rvals, LeftOverRvals, 1000,
         FirstIndent, LaterIndent, !N, !DeclSet, !IO),
-    output_record_rvals_decls_format(Info, Rvals,
+    output_record_rvals_decls_format(Info, LeftOverRvals,
         FirstIndent, LaterIndent, !N, !DeclSet, !IO).
+
+    % We use this predicate to output the declarations of up to Count rvals.
+    % It is separate from output_record_rvals_decls_format so that in grades
+    % that do not permit tail recursion, we can free up the stack frames
+    % occupied by a bunch of loop iterations before the declarations of *all*
+    % the rvals have been output.
+    % 
+:- pred output_record_rvals_decls_format_count(llds_out_info::in,
+    list(rval)::in, list(rval)::out, int::in,
+    string::in, string::in, int::in, int::out, decl_set::in,
+    decl_set::out, io::di, io::uo) is det.
+
+output_record_rvals_decls_format_count(_, [], [], _, _, _, !N, !DeclSet, !IO).
+output_record_rvals_decls_format_count(Info, [Rval | Rvals], LeftOverRvals,
+        Count, FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
+    ( Count > 0 ->
+        output_record_rval_decls_format(Info, Rval,
+            FirstIndent, LaterIndent, !N, !DeclSet, !IO),
+        output_record_rvals_decls_format_count(Info, Rvals, LeftOverRvals,
+            Count - 1, FirstIndent, LaterIndent, !N, !DeclSet, !IO)
+    ;
+        LeftOverRvals = [Rval | Rvals]
+    ).
 
 :- pred output_record_mem_ref_decls_format(llds_out_info::in, mem_ref::in,
     string::in, string::in, int::in, int::out, decl_set::in, decl_set::out,
