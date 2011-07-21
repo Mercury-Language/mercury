@@ -229,6 +229,8 @@
     %
 :- func set_ordlist.filter(pred(T1), set_ordlist(T1)) = set_ordlist(T1).
 :- mode set_ordlist.filter(pred(in) is semidet, in) = out is det.
+:- pred set_ordlist.filter(pred(T1), set_ordlist(T1), set_ordlist(T1)).
+:- mode set_ordlist.filter(pred(in) is semidet, in, out) is det.
 
     % Return the set of items for which the given predicate succeeds,
     % and the set of items for which it fails.
@@ -716,6 +718,9 @@ set_ordlist.filter(P, Set) = TrueSet :-
     List = set_ordlist.to_sorted_list(Set),
     list.filter(P, List, TrueList),
     set_ordlist.sorted_list_to_set(TrueList, TrueSet).
+
+set_ordlist.filter(P, Set, TrueSet) :-
+    TrueSet = set_ordlist.filter(P, Set).
 
 set_ordlist.filter(P, Set, TrueSet, FalseSet) :-
     List = set_ordlist.to_sorted_list(Set),

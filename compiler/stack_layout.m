@@ -1192,18 +1192,18 @@ var_has_name(_VarNum - VarName) :-
     string_table::in, string_table::out) is det.
 
 construct_var_name_rvals([], _CurNum, MaxNum, MaxNum, [], !StringTable).
-construct_var_name_rvals([Var - Name | VarNamesTail], CurNum,
-        !MaxNum, [Offset | OffsetsTail], !StringTable) :-
+construct_var_name_rvals(VarNamesHeadTail @ [Var - Name | VarNamesTail],
+        CurNum, !MaxNum, [Offset | OffsetsTail], !StringTable) :-
     ( Var = CurNum ->
         lookup_string_in_table(Name, Offset, !StringTable),
         !:MaxNum = Var,
         VarNames = VarNamesTail
     ;
         Offset = 0,
-        VarNames = [Var - Name | VarNamesTail]
+        VarNames = VarNamesHeadTail
     ),
-    construct_var_name_rvals(VarNames, CurNum + 1,
-        !MaxNum, OffsetsTail, !StringTable).
+    construct_var_name_rvals(VarNames,
+        CurNum + 1, !MaxNum, OffsetsTail, !StringTable).
 
 %---------------------------------------------------------------------------%
 
@@ -1419,22 +1419,24 @@ construct_internal_layout(Params, ProcLabel, ProcLayoutName, VarNumMap,
         map.init(ReturnTypeVarMap)
     ;
         Return = yes(return_layout_info(_, ReturnLayout)),
-        ReturnLayout = layout_label_info(ReturnLiveVarSet0, ReturnTypeVarMap0),
+        ReturnLayout = layout_label_info(ReturnLiveVarSet0, ReturnTypeVarMap),
         (
             AgcStackLayout = yes,
-            ReturnLiveVarSet = ReturnLiveVarSet0,
-            ReturnTypeVarMap = ReturnTypeVarMap0
+            ReturnLiveVarSet = ReturnLiveVarSet0
         ;
             AgcStackLayout = no,
             % This set of variables must be for uplevel printing in execution
             % tracing, so we are interested only in (a) variables, not
             % temporaries, (b) only named variables, and (c) only those
             % on the stack, not the return values.
-            set.to_sorted_list(ReturnLiveVarSet0, ReturnLiveVarList0),
-            select_trace_return(
-                ReturnLiveVarList0, ReturnTypeVarMap0,
-                ReturnLiveVarList, ReturnTypeVarMap),
-            set.list_to_set(ReturnLiveVarList, ReturnLiveVarSet)
+            %
+            % At the moment, we use ReturnTypeVarMap unchanged. Due to the
+            % deletions done by this filtering, this map may be bigger than
+            % necessary, but this fact does not compromise correctness.
+            % We use the unchanged ReturnTypeVarMap to avoid having to scan
+            % the types of all the selected layout_var_infos.
+            set.filter(select_trace_return,
+                ReturnLiveVarSet0, ReturnLiveVarSet)
         )
     ),
     (
@@ -1623,24 +1625,16 @@ construct_user_data_array(Params, VarNumMap, [MaybeAttr | MaybeAttrs],
 
     % Given a list of layout_var_infos and the type variables that occur
     % in them, select only the layout_var_infos that may be required
-    % by up-level printing in the trace-based debugger. At the moment
-    % the typeinfo list we return may be bigger than necessary, but this
-    % does not compromise correctness; we do this to avoid having to
-    % scan the types of all the selected layout_var_infos.
+    % by up-level printing in the trace-based debugger.
     %
-:- pred select_trace_return(
-    list(layout_var_info)::in, map(tvar, set(layout_locn))::in,
-    list(layout_var_info)::out, map(tvar, set(layout_locn))::out) is det.
+:- pred select_trace_return(layout_var_info::in) is semidet.
 
-select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
-    IsNamedReturnVar = (pred(LocnInfo::in) is semidet :-
-        LocnInfo = layout_var_info(Locn, LvalType, _),
-        LvalType = live_value_var(_, Name, _, _),
-        Name \= "",
-        ( Locn = locn_direct(Lval) ; Locn = locn_indirect(Lval, _)),
-        ( Lval = stackvar(_) ; Lval = framevar(_) )
-    ),
-    list.filter(IsNamedReturnVar, Infos, TraceReturnInfos).
+select_trace_return(LocnInfo) :-
+    LocnInfo = layout_var_info(Locn, LvalType, _),
+    LvalType = live_value_var(_, Name, _, _),
+    Name \= "",
+    ( Locn = locn_direct(Lval) ; Locn = locn_indirect(Lval, _)),
+    ( Lval = stackvar(_) ; Lval = framevar(_) ).
 
     % Given a list of layout_var_infos, put the ones that tracing can be
     % interested in (whether at an internal port or for uplevel printing)
