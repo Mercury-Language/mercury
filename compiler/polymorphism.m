@@ -412,6 +412,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -2244,7 +2245,7 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         OutsideVars = proc_arg_vector_to_set(HeadVars),
         implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
-            OutsideVars, _Warnings, Goal0, Goal,
+            set_to_bitset(OutsideVars), _Warnings, Goal0, Goal,
             VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
         poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
@@ -2280,7 +2281,7 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
             ExistQVars, NonLocalsPlusArgs, NewOutsideVars),
         set.union(NonLocals, NewOutsideVars, OutsideVars),
         implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
-            OutsideVars, _Warnings, !Goal,
+            set_to_bitset(OutsideVars), _Warnings, !Goal,
             VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
         poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info)

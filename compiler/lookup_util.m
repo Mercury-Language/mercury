@@ -24,9 +24,9 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
-:- import_module set.
 
     % Figure out which variables are bound in the goal.
     % We do this by using the current instmap and the instmap delta in the
@@ -50,11 +50,11 @@
     %
 :- pred generate_constants_for_arm(hlds_goal::in, list(prog_var)::in,
     abs_store_map::in, list(rval)::out, branch_end::in, branch_end::out,
-    set(prog_var)::out, code_info::in, code_info::out) is semidet.
+    set_of_progvar::out, code_info::in, code_info::out) is semidet.
 
 :- pred generate_constants_for_disjunct(hlds_goal::in,
     list(prog_var)::in, abs_store_map::in, list(rval)::out,
-    branch_end::in, branch_end::out, set(prog_var)::out,
+    branch_end::in, branch_end::out, set_of_progvar::out,
     code_info::in, code_info::out) is semidet.
 
 :- pred generate_constants_for_disjuncts(list(hlds_goal)::in,
@@ -67,7 +67,7 @@
     % to their indicated locations, and end the current branch, updating
     % !MaybeEnd in the process.
     %
-:- pred set_liveness_and_end_branch(abs_store_map::in, set(prog_var)::in,
+:- pred set_liveness_and_end_branch(abs_store_map::in, set_of_progvar::in,
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
@@ -90,6 +90,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 
 figure_out_output_vars(CI, GoalInfo, OutVars) :-
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
@@ -122,7 +123,7 @@ generate_constants_for_arm(Goal, Vars, StoreMap, !MaybeEnd, CaseRvals,
 
 :- pred do_generate_constants_for_arm(hlds_goal::in, list(prog_var)::in,
     abs_store_map::in, bool::in, list(rval)::out,
-    branch_end::in, branch_end::out, set(prog_var)::out,
+    branch_end::in, branch_end::out, set_of_progvar::out,
     code_info::in, code_info::out) is semidet.
 
 do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, CaseRvals,
@@ -206,7 +207,7 @@ set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
     % values aside.
     get_forward_live_vars(!.CI, OldLiveness),
     set_forward_live_vars(Liveness, !CI),
-    set.difference(OldLiveness, Liveness, DeadVars),
+    set_of_var.difference(OldLiveness, Liveness, DeadVars),
     maybe_make_vars_forward_dead(DeadVars, no, !CI),
     generate_branch_end(StoreMap, !MaybeEnd, BranchEndCode, !CI).
 

@@ -105,6 +105,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module counter.
@@ -128,7 +129,7 @@
 
 :- type opt_stack_alloc
     --->    opt_stack_alloc(
-                par_conj_own_slots  :: set(prog_var)
+                par_conj_own_slots      :: set_of_progvar
             ).
 
 :- type stack_opt_params
@@ -138,7 +139,7 @@
                 sop_fixpoint_loop       :: bool,
                 sop_full_path           :: bool,
                 sop_on_stack            :: bool,
-                sop_non_candidate_vars  :: set(prog_var)
+                sop_non_candidate_vars  :: set_of_progvar
             ).
 
 :- type matching_result
@@ -146,7 +147,7 @@
                 prog_var,
                 cons_id,
                 list(prog_var),
-                set(prog_var),
+                set_of_progvar,
                 goal_id,
                 set(interval_id),
                 set(interval_id),
@@ -182,9 +183,9 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
     OptStackAlloc0 = init_opt_stack_alloc,
     set.init(FailVars),
     set.init(NondetLiveness0),
-    build_live_sets_in_goal_no_par_stack(Goal2, Goal, FailVars, AllocData,
-        OptStackAlloc0, OptStackAlloc, Liveness0, _Liveness,
-        NondetLiveness0, _NondetLiveness),
+    build_live_sets_in_goal_no_par_stack(Goal2, Goal, set_to_bitset(FailVars),
+        AllocData, OptStackAlloc0, OptStackAlloc, Liveness0, _Liveness,
+        set_to_bitset(NondetLiveness0), _NondetLiveness),
     proc_info_set_goal(Goal, !ProcInfo),
     allocate_store_maps(for_stack_opt, !.ModuleInfo, PredProcId, !ProcInfo),
     globals.lookup_int_option(Globals, debug_stack_opt, DebugStackOpt),
@@ -218,7 +219,7 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
 
 :- func init_opt_stack_alloc = opt_stack_alloc.
 
-init_opt_stack_alloc = opt_stack_alloc(set.init).
+init_opt_stack_alloc = opt_stack_alloc(set_of_var.init).
 
 :- pred optimize_live_sets(module_info::in, opt_stack_alloc::in,
     proc_info::in, proc_info::out, bool::out, int::in, int::in) is det.
@@ -237,7 +238,8 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
         optimize_saved_vars_cell_candidate_headvars, CandHeadvars),
     (
         CandHeadvars = no,
-        set.union(HeadVars, ParConjOwnSlot, NonCandidateVars)
+        set_of_var.union(set_to_bitset(HeadVars), ParConjOwnSlot,
+            NonCandidateVars)
     ;
         CandHeadvars = yes,
         NonCandidateVars = ParConjOwnSlot
@@ -246,10 +248,10 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     counter.allocate(CurInterval, Counter0, Counter1),
     CurIntervalId = interval_id(CurInterval),
     EndMap0 = map.singleton(CurIntervalId, anchor_proc_end),
-    InsertMap0 = map.init,
-    StartMap0 = map.init,
+    map.init(InsertMap0),
+    map.init(StartMap0),
     SuccMap0 = map.singleton(CurIntervalId, []),
-    VarsMap0 = map.singleton(CurIntervalId, OutputArgs),
+    VarsMap0 = map.singleton(CurIntervalId, set_to_bitset(OutputArgs)),
     globals.lookup_int_option(Globals,
         optimize_saved_vars_cell_cv_store_cost, CellVarStoreCost),
     globals.lookup_int_option(Globals,
@@ -278,7 +280,8 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     globals.lookup_bool_option(Globals,
         opt_no_return_calls, OptNoReturnCalls),
     IntParams = interval_params(ModuleInfo, VarTypes0, OptNoReturnCalls),
-    IntervalInfo0 = interval_info(IntParams, set.init, OutputArgs,
+    IntervalInfo0 = interval_info(IntParams,
+        set_of_var.init, set_to_bitset(OutputArgs),
         map.init, map.init, map.init, CurIntervalId, Counter1,
         set.make_singleton_set(CurIntervalId),
         map.init, set.init, StartMap0, EndMap0,
@@ -303,7 +306,8 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
         record_decisions_in_goal(Goal0, Goal1, VarSet0, VarSet,
             VarTypes0, VarTypes, map.init, RenameMap,
             InsertMap, yes(feature_stack_opt)),
-        apply_headvar_correction(HeadVars, RenameMap, Goal1, Goal),
+        apply_headvar_correction(set_to_bitset(HeadVars), RenameMap,
+            Goal1, Goal),
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset(VarSet, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
@@ -335,7 +339,7 @@ opt_at_resume_site(_NeedAtResume, _GoalInfo, StackAlloc, StackAlloc).
 opt_at_par_conj(NeedParConj, _GoalInfo, StackAlloc0, StackAlloc) :-
     NeedParConj = need_in_par_conj(StackVars),
     ParConjOwnSlots0 = StackAlloc0 ^ par_conj_own_slots,
-    ParConjOwnSlots = set.union(StackVars, ParConjOwnSlots0),
+    ParConjOwnSlots = set_of_var.union(StackVars, ParConjOwnSlots0),
     StackAlloc = StackAlloc0 ^ par_conj_own_slots := ParConjOwnSlots.
 
 %-----------------------------------------------------------------------------%
@@ -347,27 +351,31 @@ opt_at_par_conj(NeedParConj, _GoalInfo, StackAlloc0, StackAlloc) :-
 
 :- type match_path_info
     --->    match_path_info(
-                set(prog_var),      % The set of vars referenced in
-                                    % the first interval, before
-                                    % the first flush point.
-                list(set(prog_var)) % The set of vars referenced in
-                                    % later intervals, after the
-                                    % first flush point.
+                % The set of vars referenced in the first interval,
+                % before the first flush point.
+                set_of_progvar,
+
+                % The set of vars referenced in later intervals,
+                % after the first flush point.
+                list(set_of_progvar)
             ).
 
 :- type match_info
     --->    match_info(
-                list(match_path_info),  % Information about the
-                                        % variables used along each
-                                        % path.
-                set(prog_var),          % The variables used after the
-                                        % deconstruction goes out of
-                                        % scope.
-                bool,                   % Have we stepped over a
-                                        % model_non goal?
-                set(anchor),            % The set of save points
-                                        % to which the results of the
-                                        % matching applies.
+                % Information about the variables used along each path.
+                list(match_path_info),
+
+                % The variables used after the deconstruction
+                % goes out of scope.
+                set_of_progvar,
+
+                % Have we stepped over a model_non goal?
+                bool,
+
+                % The set of save points to which the results of the
+                % matching applies.
+                set(anchor),
+
                 set(interval_id)
             ).
 
@@ -379,12 +387,12 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
     FlushedLater = !.IntervalInfo ^ ii_flushed_later,
     StackOptParams = !.StackOptInfo ^ soi_stack_opt_params,
     NonCandidateVars = StackOptParams ^ sop_non_candidate_vars,
-    set.list_to_set(FieldVarList, FieldVars),
-    set.intersect(FieldVars, FlushedLater, FlushedLaterFieldVars),
-    set.difference(FlushedLaterFieldVars, NonCandidateVars,
+    FieldVars = set_of_var.list_to_set(FieldVarList),
+    set_of_var.intersect(FieldVars, FlushedLater, FlushedLaterFieldVars),
+    set_of_var.difference(FlushedLaterFieldVars, NonCandidateVars,
         CandidateArgVars0),
     (
-        set.empty(CandidateArgVars0)
+        set_of_var.is_empty(CandidateArgVars0)
     ->
         true
     ;
@@ -414,14 +422,15 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
             fail
         )
     ->
-        RelevantVars = set.insert(FieldVars, CellVar),
+        set_of_var.insert(CellVar, FieldVars, RelevantVars),
         find_all_branches_from_cur_interval(RelevantVars, MatchInfo,
             !.IntervalInfo, !.StackOptInfo),
         MatchInfo = match_info(PathsInfo, RelevantAfterVars,
             AfterModelNon, InsertAnchors, InsertIntervals),
         (
             FreeOfCost = yes,
-            set.difference(CandidateArgVars0, RelevantAfterVars, ViaCellVars),
+            set_of_var.difference(CandidateArgVars0, RelevantAfterVars,
+                ViaCellVars),
             record_matching_result(CellVar, ConsId, FieldVarList, ViaCellVars,
                 Goal, InsertAnchors, InsertIntervals, !IntervalInfo,
                 !StackOptInfo)
@@ -430,11 +439,11 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
             (
                 AfterModelNon = no,
                 OnStack = StackOptParams ^ sop_on_stack,
-                set.difference(CandidateArgVars0, RelevantAfterVars,
+                set_of_var.difference(CandidateArgVars0, RelevantAfterVars,
                     CandidateArgVars),
                 (
                     OnStack = yes,
-                    ( set.member(CellVar, FlushedLater) ->
+                    ( set_of_var.member(FlushedLater, CellVar) ->
                         CellVarFlushedLater = yes
                     ;
                         CellVarFlushedLater = no
@@ -445,7 +454,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
                         list.member(PathInfo, PathsInfo),
                         PathInfo = match_path_info(_, Segments),
                         list.member(Segment, Segments),
-                        set.member(CellVar, Segment)
+                        set_of_var.member(Segment, CellVar)
                     ->
                         CellVarFlushedLater = yes
                     ;
@@ -467,7 +476,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
 
 :- pred apply_matching(prog_var::in, bool::in, interval_params::in,
     stack_opt_params::in, list(match_path_info)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 apply_matching(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
         PathInfos, CandidateArgVars0, ViaCellVars) :-
@@ -482,13 +491,13 @@ apply_matching(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
     ( NumBenefitNodes * 100 >= NumCostNodes * AllPathNodeRatio ->
         ViaCellVars = ViaCellVars0
     ;
-        ViaCellVars = set.init
+        ViaCellVars = set_of_var.init
     ).
 
 :- pred apply_matching_loop(prog_var::in, bool::in, interval_params::in,
-    stack_opt_params::in, list(match_path_info)::in, set(prog_var)::in,
+    stack_opt_params::in, list(match_path_info)::in, set_of_progvar::in,
     list(set(benefit_node))::out, list(set(cost_node))::out,
-    set(prog_var)::out) is det.
+    set_of_progvar::out) is det.
 
 apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
         PathInfos, CandidateArgVars0, BenefitNodeSets, CostNodeSets,
@@ -503,10 +512,10 @@ apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
             PathViaCellVars = [ViaCellVars | _]
         ;
             PathViaCellVars = [],
-            ViaCellVars = set.init
+            ViaCellVars = set_of_var.init
         )
     ;
-        CandidateArgVars1 = set.intersect_list(PathViaCellVars),
+        CandidateArgVars1 = set_of_var.intersect_list(PathViaCellVars),
         FixpointLoop = StackOptParams ^ sop_fixpoint_loop,
         (
             FixpointLoop = no,
@@ -522,15 +531,15 @@ apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
     ).
 
 :- pred apply_matching_for_path(prog_var::in, bool::in, stack_opt_params::in,
-    set(prog_var)::in, match_path_info::in,
-    set(benefit_node)::out, set(cost_node)::out, set(prog_var)::out) is det.
+    set_of_progvar::in, match_path_info::in,
+    set(benefit_node)::out, set(cost_node)::out, set_of_progvar::out) is det.
 
 apply_matching_for_path(CellVar, CellVarFlushedLater, StackOptParams,
         CandidateArgVars, PathInfo, BenefitNodes, CostNodes, ViaCellVars) :-
-    ( set.empty(CandidateArgVars) ->
+    ( set_of_var.is_empty(CandidateArgVars) ->
         BenefitNodes = set.init,
         CostNodes = set.init,
-        ViaCellVars = set.init
+        ViaCellVars = set_of_var.init
     ;
         PathInfo = match_path_info(FirstSegment, LaterSegments),
         MatchingParams = StackOptParams ^ sop_matching_params,
@@ -540,13 +549,13 @@ apply_matching_for_path(CellVar, CellVarFlushedLater, StackOptParams,
     ).
 
 :- pred record_matching_result(prog_var::in, cons_id::in,
-    list(prog_var)::in, set(prog_var)::in, hlds_goal::in, set(anchor)::in,
+    list(prog_var)::in, set_of_progvar::in, hlds_goal::in, set(anchor)::in,
     set(interval_id)::in, interval_info::in, interval_info::out,
     stack_opt_info::in, stack_opt_info::out) is det.
 
 record_matching_result(CellVar, ConsId, ArgVars, ViaCellVars, Goal,
         PotentialAnchors, PotentialIntervals, !IntervalInfo, !StackOptInfo) :-
-    ( set.empty(ViaCellVars) ->
+    ( set_of_var.is_empty(ViaCellVars) ->
         true
     ;
         set.to_sorted_list(PotentialIntervals, PotentialIntervalList),
@@ -568,7 +577,7 @@ record_matching_result(CellVar, ConsId, ArgVars, ViaCellVars, Goal,
         !StackOptInfo ^ soi_matching_results := MatchingResults
     ).
 
-:- pred record_cell_var_for_interval(prog_var::in, set(prog_var)::in,
+:- pred record_cell_var_for_interval(prog_var::in, set_of_progvar::in,
     interval_id::in, interval_info::in, interval_info::out,
     stack_opt_info::in, stack_opt_info::out,
     set(interval_id)::in, set(interval_id)::out) is det.
@@ -577,13 +586,13 @@ record_cell_var_for_interval(CellVar, ViaCellVars, IntervalId,
         !IntervalInfo, !StackOptInfo, !InsertIntervals) :-
     record_interval_vars(IntervalId, [CellVar], !IntervalInfo),
     delete_interval_vars(IntervalId, ViaCellVars, DeletedVars, !IntervalInfo),
-    ( set.non_empty(DeletedVars) ->
+    ( set_of_var.is_non_empty(DeletedVars) ->
         set.insert(IntervalId, !InsertIntervals)
     ;
         true
     ).
 
-:- pred add_anchor_inserts(hlds_goal::in, set(prog_var)::in,
+:- pred add_anchor_inserts(hlds_goal::in, set_of_progvar::in,
     set(interval_id)::in, anchor::in, interval_info::in,
     interval_info::out, stack_opt_info::in, stack_opt_info::out,
     set(anchor)::in, set(anchor)::out) is det.
@@ -620,24 +629,24 @@ add_anchor_inserts(Goal, ArgVarsViaCellVar, InsertIntervals, Anchor,
 :- type path
     --->    path(
                 flush_state             :: current_segment_first_flush,
-                current_segment         :: set(prog_var),
-                first_segment           :: set(prog_var),
-                other_segments          :: list(set(prog_var)),
+                current_segment         :: set_of_progvar,
+                first_segment           :: set_of_progvar,
+                other_segments          :: list(set_of_progvar),
                 flush_anchors           :: set(anchor),
                 occurring_intervals     :: set(interval_id)
             ).
 
 :- type all_paths
     --->    all_paths(
+                % The set of all paths so far.
                 paths_so_far            :: set(path),
-                                        % The set of all paths so far.
+
+                % Have we stepped over model_non goals?
                 stepped_over_model_non  :: bool,
-                                        % Have we stepped over
-                                        % model_non goals?
-                used_after_scope        :: set(prog_var)
-                                        % The vars which are known to be used
-                                        % after the deconstruction goes out of
-                                        % scope.
+
+                % The vars which are known to be used after the deconstruction
+                % goes out of scope.
+                used_after_scope        :: set_of_progvar
             ).
 
 :- pred extract_match_and_save_info(path::in, match_path_info::out,
@@ -658,13 +667,13 @@ close_path(Path0) = Path :-
         FlushAnchors, IntervalIds),
     (
         FlushState = current_is_before_first_flush,
-        expect(set.empty(FirstSegment0), $module, $pred,
+        expect(set_of_var.is_empty(FirstSegment0), $module, $pred,
             "FirstSegment0 not empty"),
         FirstSegment = CurSegment,
         OtherSegments = OtherSegments0
     ;
         FlushState = current_is_after_first_flush,
-        ( set.empty(CurSegment) ->
+        ( set_of_var.is_empty(CurSegment) ->
             FirstSegment = FirstSegment0,
             OtherSegments = OtherSegments0
         ;
@@ -672,17 +681,17 @@ close_path(Path0) = Path :-
             OtherSegments = [CurSegment | OtherSegments0]
         )
     ),
-    Path = path(current_is_after_first_flush, set.init,
+    Path = path(current_is_after_first_flush, set_of_var.init,
         FirstSegment, OtherSegments, FlushAnchors, IntervalIds).
 
-:- func add_interval_to_path(interval_id, set(prog_var), path) = path.
+:- func add_interval_to_path(interval_id, set_of_progvar, path) = path.
 
 add_interval_to_path(IntervalId, Vars, !.Path) = !:Path :-
-    ( set.empty(Vars) ->
+    ( set_of_var.is_empty(Vars) ->
         true
     ;
         CurSegment0 = !.Path ^ current_segment,
-        CurSegment = set.union(Vars, CurSegment0),
+        CurSegment = set_of_var.union(Vars, CurSegment0),
         OccurringIntervals0 = !.Path ^ occurring_intervals,
         set.insert(IntervalId, OccurringIntervals0, OccurringIntervals),
         !Path ^ current_segment := CurSegment,
@@ -764,17 +773,17 @@ may_have_more_successors(anchor_call_site(_)) = no.
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_all_branches_from_cur_interval(set(prog_var)::in,
+:- pred find_all_branches_from_cur_interval(set_of_progvar::in,
     match_info::out, interval_info::in, stack_opt_info::in) is det.
 
 find_all_branches_from_cur_interval(RelevantVars, MatchInfo, IntervalInfo,
         StackOptInfo) :-
     IntervalId = IntervalInfo ^ ii_cur_interval,
     map.lookup(IntervalInfo ^ ii_interval_vars, IntervalId, IntervalVars),
-    IntervalRelevantVars = set.intersect(RelevantVars, IntervalVars),
+    IntervalRelevantVars = set_of_var.intersect(RelevantVars, IntervalVars),
     Path0 = path(current_is_before_first_flush, IntervalRelevantVars,
-        set.init, [], set.init, set.init),
-    AllPaths0 = all_paths(set.make_singleton_set(Path0), no, set.init),
+        set_of_var.init, [], set.init, set.init),
+    AllPaths0 = all_paths(set.make_singleton_set(Path0), no, set_of_var.init),
     find_all_branches(RelevantVars, IntervalId, no, IntervalInfo,
         StackOptInfo, AllPaths0, AllPaths),
     AllPaths = all_paths(Paths, AfterModelNon, RelevantAfter),
@@ -786,7 +795,7 @@ find_all_branches_from_cur_interval(RelevantVars, MatchInfo, IntervalInfo,
     MatchInfo = match_info(MatchInputs, RelevantAfter, AfterModelNon,
         FlushAnchors, OccurringIntervals).
 
-:- pred find_all_branches(set(prog_var)::in, interval_id::in,
+:- pred find_all_branches(set_of_progvar::in, interval_id::in,
     maybe(anchor)::in, interval_info::in, stack_opt_info::in,
     all_paths::in, all_paths::out) is det.
 
@@ -816,17 +825,18 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
             MaybeSearchAnchor0 = yes(SearchAnchor0),
             End = SearchAnchor0
         ->
-            !AllPaths ^ used_after_scope := set.init
+            !AllPaths ^ used_after_scope := set_of_var.init
         ;
             End = anchor_branch_end(_, EndGoalId),
             map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalId,
                 BranchEndInfo),
             OnStackAfterBranch = BranchEndInfo ^ flushed_after_branch,
             AccessedAfterBranch = BranchEndInfo ^ accessed_after_branch,
-            NeededAfterBranch = set.union(OnStackAfterBranch,
+            NeededAfterBranch = set_of_var.union(OnStackAfterBranch,
                 AccessedAfterBranch),
-            RelevantAfter = set.intersect(RelevantVars, NeededAfterBranch),
-            set.non_empty(RelevantAfter)
+            RelevantAfter = set_of_var.intersect(RelevantVars,
+                NeededAfterBranch),
+            set_of_var.is_non_empty(RelevantAfter)
         ->
             !AllPaths ^ used_after_scope := RelevantAfter
         ;
@@ -836,7 +846,7 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
         )
     ).
 
-:- pred find_all_branches_from(anchor::in, set(prog_var)::in,
+:- pred find_all_branches_from(anchor::in, set_of_progvar::in,
     maybe(anchor)::in, interval_info::in, stack_opt_info::in,
     list(interval_id)::in, all_paths::in, all_paths::out) is det.
 
@@ -912,7 +922,7 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
         )
     ).
 
-:- pred one_after_another(set(prog_var)::in, maybe(anchor)::in,
+:- pred one_after_another(set_of_progvar::in, maybe(anchor)::in,
     interval_info::in, stack_opt_info::in, list(interval_id)::in,
     all_paths::in, all_paths::out) is det.
 
@@ -927,7 +937,7 @@ one_after_another(RelevantVars, MaybeSearchAnchor1, IntervalInfo, StackOptInfo,
     % We need a version of apply_interval_find_all_branches with this
     % argument order for use in higher order caode.
     %
-:- pred apply_interval_find_all_branches_map(set(prog_var)::in,
+:- pred apply_interval_find_all_branches_map(set_of_progvar::in,
     maybe(anchor)::in, interval_info::in, stack_opt_info::in,
     all_paths::in, interval_id::in, all_paths::out) is det.
 
@@ -936,14 +946,14 @@ apply_interval_find_all_branches_map(RelevantVars, MaybeSearchAnchor0,
     apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
         IntervalInfo, StackOptInfo, IntervalId, !AllPaths).
 
-:- pred apply_interval_find_all_branches(set(prog_var)::in,
+:- pred apply_interval_find_all_branches(set_of_progvar::in,
     maybe(anchor)::in, interval_info::in, stack_opt_info::in,
     interval_id::in, all_paths::in, all_paths::out) is det.
 
 apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
         IntervalInfo, StackOptInfo, IntervalId, !AllPaths) :-
     map.lookup(IntervalInfo ^ ii_interval_vars, IntervalId, IntervalVars),
-    RelevantIntervalVars = set.intersect(RelevantVars, IntervalVars),
+    RelevantIntervalVars = set_of_var.intersect(RelevantVars, IntervalVars),
     !.AllPaths = all_paths(Paths0, AfterModelNon0, RelevantAfter),
     Paths1 = set.map(add_interval_to_path(IntervalId, RelevantIntervalVars),
         Paths0),
@@ -956,8 +966,8 @@ apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
         ),
         map.search(IntervalInfo ^ ii_anchor_follow_map, Start, StartInfo),
         StartInfo = anchor_follow_info(AnchorFollowVars, _),
-        set.intersect(RelevantVars, AnchorFollowVars, NeededVars),
-        set.non_empty(NeededVars)
+        set_of_var.intersect(RelevantVars, AnchorFollowVars, NeededVars),
+        set_of_var.is_non_empty(NeededVars)
     ->
         Paths2 = set.map(add_anchor_to_path(Start), Paths1)
     ;
@@ -983,7 +993,7 @@ consolidate_after_join([First | Rest], AllPaths) :-
     AfterModelNonList = list.map(project_after_model_non_from_all_paths,
         [First | Rest]),
     bool.or_list(AfterModelNonList, AfterModelNon),
-    AllPaths = all_paths(Paths, AfterModelNon, set.init).
+    AllPaths = all_paths(Paths, AfterModelNon, set_of_var.init).
 
 :- func project_paths_from_all_paths(all_paths) = set(path).
 
@@ -1050,7 +1060,7 @@ dump_anchor_inserts(Anchor - InsertSpecs, !IO) :-
 :- pred dump_insert(insert_spec::in, io::di, io::uo) is det.
 
 dump_insert(insert_spec(Goal, Vars), !IO) :-
-    list.map(term.var_to_int, set.to_sorted_list(Vars), VarNums),
+    list.map(term.var_to_int, set_of_var.to_sorted_list(Vars), VarNums),
     io.write_string("vars [", !IO),
     write_int_list(VarNums, !IO),
     io.write_string("]: ", !IO),
@@ -1082,7 +1092,8 @@ dump_matching_result(MatchingResult, !IO) :-
     io.write_string("\n", !IO),
     term.var_to_int(CellVar, CellVarNum),
     list.map(term.var_to_int, ArgVars, ArgVarNums),
-    list.map(term.var_to_int, set.to_sorted_list(ViaCellVars), ViaCellVarNums),
+    list.map(term.var_to_int, set_of_var.to_sorted_list(ViaCellVars),
+        ViaCellVarNums),
     io.write_int(CellVarNum, !IO),
     io.write_string(" => ", !IO),
     write_cons_id_and_arity(ConsId, !IO),

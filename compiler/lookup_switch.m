@@ -52,10 +52,10 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
 :- import_module map.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -72,7 +72,7 @@
                 % for each case.
                 lsi_field_types         :: list(llds_type),
 
-                lsi_liveness            :: set(prog_var)
+                lsi_liveness            :: set_of_progvar
             ).
 
 :- pred record_lookup_for_tagged_cons_id_int(soln_consts(rval)::in,
@@ -154,8 +154,8 @@
     % solutions table.
     %
 :- pred generate_code_for_all_kinds(list(case_kind)::in, int::in,
-    list(prog_var)::in, set(prog_var)::in, label::in, abs_store_map::in,
-    set(prog_var)::in, add_trail_ops::in, lval::in, rval::in,
+    list(prog_var)::in, set_of_progvar::in, label::in, abs_store_map::in,
+    set_of_progvar::in, add_trail_ops::in, lval::in, rval::in,
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
@@ -182,6 +182,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module std_util.
 :- import_module string.
 
@@ -200,7 +201,7 @@ is_lookup_switch(RecordLookupForTaggedConsId, TaggedCases, GoalInfo, StoreMap,
     remember_position(!.CI, CurPos),
     generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
         TaggedCases, OutVars, ArmNonLocals, StoreMap, Liveness,
-        map.init, CaseSolnMap, !MaybeEnd, set.init, ResumeVars,
+        map.init, CaseSolnMap, !MaybeEnd, set_of_var.init, ResumeVars,
         no, GoalsMayModifyTrail, !CI),
     map.to_assoc_list(CaseSolnMap, CaseSolns),
     reset_to_position(CurPos, !CI),
@@ -228,13 +229,13 @@ is_lookup_switch(RecordLookupForTaggedConsId, TaggedCases, GoalInfo, StoreMap,
 :- pred generate_constants_for_lookup_switch(
     record_switch_lookup(Key)::in(record_switch_lookup),
     list(tagged_case)::in, list(prog_var)::in, set(prog_var)::in,
-    abs_store_map::in, set(prog_var)::out,
+    abs_store_map::in, set_of_progvar::out,
     map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out,
-    branch_end::in, branch_end::out, set(prog_var)::in, set(prog_var)::out,
+    branch_end::in, branch_end::out, set_of_progvar::in, set_of_progvar::out,
     bool::in, bool::out, code_info::in, code_info::out) is semidet.
 
 generate_constants_for_lookup_switch(_RecordLookupForTaggedConsId,
-        [], _Vars, _ArmNonLocals, _StoreMap, set.init, !IndexMap,
+        [], _Vars, _ArmNonLocals, _StoreMap, set_of_var.init, !IndexMap,
         !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
 generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
         [TaggedCase | TaggedCases], Vars, ArmNonLocals, StoreMap, Liveness,
@@ -264,7 +265,7 @@ generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
             goal_info_get_resume_point(FirstDisjunctGoalInfo, ThisResumePoint),
             (
                 ThisResumePoint = resume_point(ThisResumeVars, _),
-                set.union(ThisResumeVars, !ResumeVars)
+                set_of_var.union(ThisResumeVars, !ResumeVars)
             ;
                 ThisResumePoint = no_resume_point
             ),
@@ -388,7 +389,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
 :- pred generate_simple_int_lookup_switch(rval::in, abs_store_map::in,
     int::in, int::in, assoc_list(int, list(rval))::in,
     list(prog_var)::in, list(llds_type)::in, need_bit_vec_check::in,
-    set(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
+    set_of_progvar::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
         CaseValues, OutVars, OutTypes, NeedBitVecCheck, Liveness, Code, !CI) :-
@@ -486,9 +487,9 @@ construct_simple_int_lookup_vector([Index - Rvals | Rest], CurIndex, OutTypes,
 
 :- pred generate_several_soln_int_lookup_switch(rval::in, label::in,
     abs_store_map::in, int::in, int::in,
-    assoc_list(int, soln_consts(rval))::in, set(prog_var)::in,
+    assoc_list(int, soln_consts(rval))::in, set_of_progvar::in,
     add_trail_ops::in, list(prog_var)::in, list(llds_type)::in,
-    need_bit_vec_check::in, set(prog_var)::in,
+    need_bit_vec_check::in, set_of_progvar::in,
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
@@ -591,8 +592,8 @@ case_kind_to_string(kind_one_soln) = "kind_one_soln".
 case_kind_to_string(kind_several_solns) = "kind_several_solns".
 
 :- pred generate_code_for_each_kind(list(case_kind)::in, int::in,
-    list(prog_var)::in, set(prog_var)::in, position_info::in,
-    label::in, abs_store_map::in, set(prog_var)::in, add_trail_ops::in,
+    list(prog_var)::in, set_of_progvar::in, position_info::in,
+    label::in, abs_store_map::in, set_of_progvar::in, add_trail_ops::in,
     lval::in, lval::in, lval::in, rval::in,
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
@@ -632,7 +633,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
         % The code below is modelled on the code in disj_gen, but is
         % specialized for the situation here.
 
-        produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+        produce_vars(to_sorted_list(ResumeVars), ResumeMap, FlushCode, !CI),
         MinOffsetColumnRval = const(llconst_int(NumPrevColumns)),
         MaxOffsetColumnRval = const(llconst_int(NumPrevColumns + 1)),
         SaveSlotsCode = from_list([
@@ -653,8 +654,8 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
 
         % Generate code for the non-last disjunct.
 
-        make_resume_point(ResumeVars, resume_locs_stack_only,
-            ResumeMap, ResumePoint, !CI),
+        make_resume_point(set_of_var.to_sorted_list(ResumeVars),
+            resume_locs_stack_only, ResumeMap, ResumePoint, !CI),
         effect_resume_point(ResumePoint, model_non, UpdateRedoipCode, !CI),
         generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg, !CI),
         flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CI),

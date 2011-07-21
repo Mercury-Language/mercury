@@ -131,6 +131,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module int.
 :- import_module map.
@@ -214,7 +215,7 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
     ( string.contains_char(DumpOptions, 'p') ->
         (
             goal_info_maybe_get_pre_deaths(GoalInfo, PreDeaths),
-            set.to_sorted_list(PreDeaths, PreDeathList),
+            PreDeathList = set_of_var.to_sorted_list(PreDeaths),
             PreDeathList = [_ | _]
         ->
             write_indent(Indent, !IO),
@@ -226,7 +227,7 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
         ),
         (
             goal_info_maybe_get_pre_births(GoalInfo, PreBirths),
-            set.to_sorted_list(PreBirths, PreBirthList),
+            PreBirthList = set_of_var.to_sorted_list(PreBirths),
             PreBirthList = [_ | _]
         ->
             write_indent(Indent, !IO),
@@ -417,7 +418,7 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
     ( string.contains_char(DumpOptions, 'p') ->
         (
             goal_info_maybe_get_post_deaths(GoalInfo, PostDeaths),
-            set.to_sorted_list(PostDeaths, PostDeathList),
+            PostDeathList = set_of_var.to_sorted_list(PostDeaths),
             PostDeathList = [_ | _]
         ->
             write_indent(Indent, !IO),
@@ -429,7 +430,7 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
         ),
         (
             goal_info_maybe_get_post_births(GoalInfo, PostBirths),
-            set.to_sorted_list(PostBirths, PostBirthList),
+            PostBirthList = set_of_var.to_sorted_list(PostBirths),
             PostBirthList = [_ | _]
         ->
             write_indent(Indent, !IO),
@@ -544,7 +545,7 @@ write_llds_code_gen_info(Info, GoalInfo, VarSet, AppendVarNums, Indent, !IO) :-
             Resume = no_resume_point
         ;
             Resume = resume_point(ResumeVars, Locs),
-            set.to_sorted_list(ResumeVars, ResumeVarList),
+            ResumeVarList = set_of_var.to_sorted_list(ResumeVars),
             write_indent(Indent, !IO),
             io.write_string("% resume point ", !IO),
             (
@@ -586,9 +587,9 @@ write_llds_code_gen_info(Info, GoalInfo, VarSet, AppendVarNums, Indent, !IO) :-
     ->
         NeedAcrossCall = need_across_call(CallForwardSet, CallResumeSet,
             CallNondetSet),
-        set.to_sorted_list(CallForwardSet, CallForwardList),
-        set.to_sorted_list(CallResumeSet, CallResumeList),
-        set.to_sorted_list(CallNondetSet, CallNondetList),
+        CallForwardList = set_of_var.to_sorted_list(CallForwardSet),
+        CallResumeList = set_of_var.to_sorted_list(CallResumeSet),
+        CallNondetList = set_of_var.to_sorted_list(CallNondetSet),
         write_indent(Indent, !IO),
         io.write_string("% need across call forward vars: ", !IO),
         (
@@ -631,8 +632,8 @@ write_llds_code_gen_info(Info, GoalInfo, VarSet, AppendVarNums, Indent, !IO) :-
     ->
         NeedInResume = need_in_resume(ResumeOnStack, ResumeResumeSet,
             ResumeNondetSet),
-        set.to_sorted_list(ResumeResumeSet, ResumeResumeList),
-        set.to_sorted_list(ResumeNondetSet, ResumeNondetList),
+        ResumeResumeList = set_of_var.to_sorted_list(ResumeResumeSet),
+        ResumeNondetList = set_of_var.to_sorted_list(ResumeNondetSet),
 
         write_indent(Indent, !IO),
         (
@@ -672,7 +673,7 @@ write_llds_code_gen_info(Info, GoalInfo, VarSet, AppendVarNums, Indent, !IO) :-
         MaybeNeedInParConj = yes(NeedInParConj)
     ->
         NeedInParConj = need_in_par_conj(ParConjSet),
-        set.to_sorted_list(ParConjSet, ParConjList),
+        ParConjList = set_of_var.to_sorted_list(ParConjSet),
         write_indent(Indent, !IO),
         io.write_string("% need in par_conj vars: ", !IO),
         write_vars(VarSet, AppendVarNums, ParConjList, !IO),

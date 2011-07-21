@@ -106,6 +106,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bool.
@@ -1211,7 +1212,7 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
         not_builtin, no, qualified(PredModule, PredName)),
     Goal1 = hlds_goal(GoalExpr, GoalInfo1),
     implicitly_quantify_goal_general(ordinary_nonlocals_no_lambda,
-        NonLocals, _, Goal1, Goal, VarSet0, VarSet,
+        set_to_bitset(NonLocals), _, Goal1, Goal, VarSet0, VarSet,
         VarTypes1, VarTypes, RttiVarMaps0, RttiVarMaps),
     proc_info_set_goal(Goal, !OldProc),
     proc_info_set_varset(VarSet, !OldProc),
@@ -1376,7 +1377,7 @@ do_unused_args_fixup_proc(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
         (
             Changed = yes,
             % If anything has changed, rerun quantification.
-            set.list_to_set(HeadVars, NonLocals),
+            NonLocals = set_of_var.list_to_set(HeadVars),
             proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
             implicitly_quantify_goal_general(ordinary_nonlocals_no_lambda,
                 NonLocals, _, !Goal, VarSet1, VarSet, VarTypes1, VarTypes,

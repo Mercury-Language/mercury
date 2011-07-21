@@ -122,6 +122,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
@@ -500,7 +501,7 @@ common_candidate_headvars_of_procs_2(HeadVarName, ListOfOrigins,
     --->    no_tupling
     ;       tupling(
                 cell_var            :: prog_var,
-                field_vars          :: prog_vars,
+                field_vars          :: list(prog_var),
                 field_var_arg_pos   :: assoc_list(prog_var, int)
             ).
 
@@ -670,7 +671,7 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_transformed_proc(prog_var::in, prog_vars::in, insert_map::in,
+:- pred make_transformed_proc(prog_var::in, list(prog_var)::in, insert_map::in,
     proc_info::in, proc_info::out) is det.
 
 make_transformed_proc(CellVar, FieldVarsList, InsertMap, !ProcInfo) :-
@@ -707,14 +708,15 @@ make_transformed_proc(CellVar, FieldVarsList, InsertMap, !ProcInfo) :-
     %
     deconstruct_tuple(CellVar, FieldVarsList, ProcStartDeconstruct),
     ProcStartInsert = insert_spec(ProcStartDeconstruct,
-        set.from_list(FieldVarsList)),
+        set_of_var.list_to_set(FieldVarsList)),
     insert_proc_start_deconstruction(Goal1, Goal2,
         VarSet1, VarSet, VarTypes1, VarTypes,
         RenameMapB, ProcStartInsert),
     rename_some_vars_in_goal(RenameMapB, Goal2, Goal3),
 
     map.old_merge(RenameMapA, RenameMapB, RenameMap),
-    apply_headvar_correction(set.from_list(HeadVars), RenameMap, Goal3, Goal),
+    apply_headvar_correction(set_of_var.list_to_set(HeadVars), RenameMap,
+        Goal3, Goal),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
@@ -830,8 +832,8 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
 
 :- type count_state
     --->    count_state(
-                cs_reg_vars             :: set(prog_var),
-                cs_stack_vars           :: set(prog_var),
+                cs_reg_vars             :: set_of_progvar,
+                cs_stack_vars           :: set_of_progvar,
                 cs_load_costs           :: float,
                 cs_store_costs          :: float
             ).
@@ -889,8 +891,8 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
             !ReverseGoalPathMapMap),
         proc_info_get_goal(!.ProcInfo, Goal0),
         OptTupleAlloc0 = opt_tuple_alloc,
-        set.init(FailVars),
-        set.init(NondetLiveness0),
+        FailVars = set_of_var.init,
+        NondetLiveness0 = set_of_var.init,
         build_live_sets_in_goal_no_par_stack(Goal0, Goal, FailVars, AllocData,
             OptTupleAlloc0, _OptTupleAlloc, Liveness0, _Liveness,
             NondetLiveness0, _NondetLiveness),
@@ -994,7 +996,7 @@ count_load_stores_in_proc(CountInfo, Loads, Stores) :-
     ProcInfo = CountInfo ^ ci_proc,
     ModuleInfo = CountInfo ^ ci_module,
     initial_liveness(ProcInfo, PredId, ModuleInfo, InitialLiveness),
-    CountState0 = count_state(InitialLiveness, set.init, 0.0, 0.0),
+    CountState0 = count_state(InitialLiveness, set_of_var.init, 0.0, 0.0),
     proc_info_get_goal(ProcInfo, Goal),
     count_load_stores_in_goal(Goal, CountInfo, CountState0, CountState1),
     arg_info.partition_proc_args(ProcInfo, ModuleInfo, _, OutputArgs, _),
@@ -1068,7 +1070,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
                 length(InputArgs), _, GenericVarsArgInfos, _, _),
             assoc_list.keys(GenericVarsArgInfos, GenericVars),
             list.append(GenericVars, InputArgs, Inputs),
-            set.list_to_set(OutputArgs, Outputs),
+            Outputs = set.list_to_set(OutputArgs),
             count_load_stores_for_call(CountInfo, Inputs, Outputs,
                 MaybeNeedAcrossCall, GoalInfo, !CountState)
         ;
@@ -1171,12 +1173,8 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
 
 %-----------------------------------------------------------------------------%
 
-:- inst call_goal_expr
-    ==  bound(plain_call(ground, ground, ground, ground, ground, ground)).
-:- mode in_call_goal
-    ==  in(call_goal_expr).
-
-:- pred count_load_stores_in_call_to_tupled(hlds_goal_expr::in_call_goal,
+:- pred count_load_stores_in_call_to_tupled(
+    hlds_goal_expr::in(goal_expr_plain_call),
     hlds_goal_info::in, count_info::in,
     tupling_proposal::in(bound(tupling(ground, ground, ground))),
     count_state::in, count_state::out) is det.
@@ -1228,7 +1226,8 @@ count_load_stores_in_call_to_tupled(GoalExpr, GoalInfo, CountInfo,
     count_load_stores_for_call(CountInfo, Inputs, Outputs,
         MaybeNeedAcrossCall, GoalInfo, !CountState).
 
-:- pred count_load_stores_in_call_to_not_tupled(hlds_goal_expr::in_call_goal,
+:- pred count_load_stores_in_call_to_not_tupled(
+    hlds_goal_expr::in(goal_expr_plain_call),
     hlds_goal_info::in, count_info::in, count_state::in, count_state::out)
     is det.
 
@@ -1241,23 +1240,23 @@ count_load_stores_in_call_to_not_tupled(GoalExpr, GoalInfo, CountInfo,
     ProcInfo = CountInfo ^ ci_proc,
     proc_info_get_vartypes(ProcInfo, VarTypes),
     arg_info.partition_proc_call_args(CalleeProcInfo, VarTypes,
-        ModuleInfo, ArgVars, InputArgs, Outputs, _),
+        ModuleInfo, ArgVars, InputArgs, OutputArgs, _),
     set.to_sorted_list(InputArgs, Inputs),
+    set.to_sorted_list(OutputArgs, Outputs),
     (
         Builtin = inline_builtin,
         cls_require_in_regs(CountInfo, Inputs, !CountState),
-        cls_put_in_regs(set.to_sorted_list(Outputs), !CountState)
+        cls_put_in_regs(Outputs, !CountState)
     ;
         ( Builtin = out_of_line_builtin
         ; Builtin = not_builtin
         ),
-        goal_info_get_maybe_need_across_call(GoalInfo,
-            MaybeNeedAcrossCall),
-        count_load_stores_for_call(CountInfo, Inputs, Outputs,
+        goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
+        count_load_stores_for_call(CountInfo, Inputs, OutputArgs,
             MaybeNeedAcrossCall, GoalInfo, !CountState)
     ).
 
-:- pred count_load_stores_for_call(count_info::in, prog_vars::in,
+:- pred count_load_stores_for_call(count_info::in, list(prog_var)::in,
     set(prog_var)::in, maybe(need_across_call)::in,
     hlds_goal_info::in, count_state::in, count_state::out) is det.
 
@@ -1268,7 +1267,8 @@ count_load_stores_for_call(CountInfo, Inputs, Outputs, MaybeNeedAcrossCall,
         MaybeNeedAcrossCall = yes(NeedAcrossCall),
         NeedAcrossCall = need_across_call(ForwardVars,
             ResumeVars, NondetLiveVars),
-        AllVars = set.union_list([ForwardVars, ResumeVars, NondetLiveVars]),
+        AllVars = set_of_var.union_list(
+            [ForwardVars, ResumeVars, NondetLiveVars]),
         cls_require_flushed(CountInfo, AllVars, !CountState),
         cls_clobber_regs(Outputs, !CountState)
     ;
@@ -1337,8 +1337,8 @@ count_load_stores_in_cases([Case | Cases], CountInfo, !CountState) :-
 
     % Make the values of the given variables available in registers.
     %
-:- pred cls_require_in_regs(count_info::in, prog_vars::in, count_state::in,
-    count_state::out) is det.
+:- pred cls_require_in_regs(count_info::in, list(prog_var)::in,
+    count_state::in, count_state::out) is det.
 
 cls_require_in_regs(CountInfo, Vars, !CountState) :-
     list.foldl(cls_require_in_reg(CountInfo), Vars, !CountState).
@@ -1373,18 +1373,18 @@ cls_require_normal_var_in_reg(CountInfo, Var, !CountState) :-
 cls_require_field_var_in_reg(CountInfo, TuplingProposal, FieldVar,
         CountState0, CountState) :-
     CountState0 = count_state(RegVars0, StackVars, Loads0, Stores),
-    ( set.member(FieldVar, RegVars0) ->
+    ( set_of_var.member(RegVars0, FieldVar) ->
         CountState = CountState0
     ;
         TuplingProposal = tupling(CellVar, _, _),
         TuningParams = CountInfo ^ ci_params,
         CvLoadCost = float(TuningParams ^ tp_cell_var_load_cost),
         FvLoadCost = float(TuningParams ^ tp_field_var_load_cost),
-        ( set.member(CellVar, RegVars0) ->
-            set.insert(FieldVar, RegVars0, RegVars),
+        ( set_of_var.member(RegVars0, CellVar) ->
+            set_of_var.insert(FieldVar, RegVars0, RegVars),
             Loads = Loads0 + FvLoadCost
         ;
-            set.insert_list([CellVar, FieldVar], RegVars0, RegVars),
+            set_of_var.insert_list([CellVar, FieldVar], RegVars0, RegVars),
             Loads = Loads0 + CvLoadCost + FvLoadCost
         ),
         CountState = count_state(RegVars, StackVars, Loads, Stores)
@@ -1395,26 +1395,26 @@ cls_require_field_var_in_reg(CountInfo, TuplingProposal, FieldVar,
 
 cls_require_var_in_reg_with_cost(LoadCost, Var, CountState0, CountState) :-
     CountState0 = count_state(RegVars0, StackVars, Loads0, Stores),
-    ( set.member(Var, RegVars0) ->
+    ( set_of_var.member(RegVars0, Var) ->
         CountState = CountState0
     ;
-        set.insert(Var, RegVars0, RegVars),
+        set_of_var.insert(Var, RegVars0, RegVars),
         Loads = Loads0 + float(LoadCost),
         CountState = count_state(RegVars, StackVars, Loads, Stores)
     ).
 
     % Put the values of the given variables into registers.
     %
-:- pred cls_put_in_regs(prog_vars::in, count_state::in, count_state::out)
+:- pred cls_put_in_regs(list(prog_var)::in, count_state::in, count_state::out)
     is det.
 
 cls_put_in_regs(Vars, !CountState) :-
     RegVars0 = !.CountState ^ cs_reg_vars,
-    set.insert_list(Vars, RegVars0, RegVars),
+    set_of_var.insert_list(Vars, RegVars0, RegVars),
     !CountState ^ cs_reg_vars := RegVars.
 
 :- pred cls_put_in_regs_via_deconstruct(count_info::in, prog_var::in,
-    prog_vars::in, count_state::in, count_state::out) is det.
+    list(prog_var)::in, count_state::in, count_state::out) is det.
 
 cls_put_in_regs_via_deconstruct(CountInfo,
         DeconstructCellVar, DeconstructFieldVars, !State) :-
@@ -1452,13 +1452,13 @@ cls_put_in_regs_via_deconstruct(CountInfo,
     % Copy the given variables to the stack, if they have not been copied
     % previously.
     %
-:- pred cls_require_flushed(count_info::in, set(prog_var)::in,
+:- pred cls_require_flushed(count_info::in, set_of_progvar::in,
     count_state::in, count_state::out) is det.
 
 cls_require_flushed(CountInfo, Vars, !CountState) :-
     TuplingProposal = get_own_tupling_proposal(CountInfo),
     TuningParams = CountInfo ^ ci_params,
-    set.fold(cls_require_flushed_2(TuplingProposal, TuningParams),
+    set_of_var.fold(cls_require_flushed_2(TuplingProposal, TuningParams),
         Vars, !CountState).
 
 :- pred cls_require_flushed_2(tupling_proposal::in, tuning_params::in,
@@ -1484,11 +1484,11 @@ cls_require_flushed_2(tupling(CellVar, FieldVars, _), TuningParams, Var,
 cls_require_flushed_with_cost(StoreCost, Var,
         count_state(RegVars, StackVars0, Loads, Stores0),
         count_state(RegVars, StackVars, Loads, Stores)) :-
-    ( set.member(Var, StackVars0) ->
+    ( set_of_var.member(StackVars0, Var) ->
         StackVars = StackVars0,
         Stores = Stores0
     ;
-        StackVars = StackVars0 `insert` Var,
+        set_of_var.insert(Var, StackVars0, StackVars),
         Stores = Stores0 + float(StoreCost)
     ).
 
@@ -1501,7 +1501,7 @@ cls_require_flushed_with_cost(StoreCost, Var,
     is det.
 
 cls_clobber_regs(NewVars, !CountState) :-
-    !CountState ^ cs_reg_vars := NewVars.
+    !CountState ^ cs_reg_vars := set_to_bitset(NewVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -1539,10 +1539,10 @@ build_interval_info(ModuleInfo, ProcInfo, IntervalInfo) :-
     EndMap = map.singleton(CurIntervalId, anchor_proc_end),
     StartMap = map.init,
     SuccMap = map.singleton(CurIntervalId, []),
-    VarsMap = map.singleton(CurIntervalId, OutputArgs),
+    VarsMap = map.singleton(CurIntervalId, set_to_bitset(OutputArgs)),
     IntParams = interval_params(ModuleInfo, VarTypes, no),
-    IntervalInfo0 = interval_info(IntParams, set.init,
-        OutputArgs, map.init, map.init, map.init,
+    IntervalInfo0 = interval_info(IntParams, set_of_var.init,
+        set_to_bitset(OutputArgs), map.init, map.init, map.init,
         CurIntervalId, Counter,
         set.make_singleton_set(CurIntervalId),
         map.init, set.init, StartMap, EndMap,
@@ -1567,22 +1567,22 @@ use_cell(_CellVar, _FieldVarList, _ConsId, _Goal, !IntervalInfo, !Unit).
     % deconstruction unification that is to be inserted _after_ the
     % interval beginning with that left anchor.
     %
-:- pred build_insert_map(prog_var::in, prog_vars::in, interval_info::in,
+:- pred build_insert_map(prog_var::in, list(prog_var)::in, interval_info::in,
     insert_map::out) is det.
 
 build_insert_map(CellVar, FieldVars, IntervalInfo, InsertMap) :-
-    FieldVarsSet = set.from_list(FieldVars),
+    FieldVarsSet = set_of_var.list_to_set(FieldVars),
     map.foldl(build_insert_map_2(CellVar, FieldVars, FieldVarsSet),
         IntervalInfo ^ ii_anchor_follow_map, map.init, InsertMap).
 
-:- pred build_insert_map_2(prog_var::in, list(prog_var)::in, set(prog_var)::in,
+:- pred build_insert_map_2(prog_var::in, list(prog_var)::in, set_of_progvar::in,
     anchor::in, anchor_follow_info::in, insert_map::in, insert_map::out)
     is det.
 
 build_insert_map_2(CellVar, FieldVars, FieldVarsSet, Anchor,
         anchor_follow_info(FollowVars, _), !InsertMap) :-
-    NeededFieldVars = FieldVarsSet `set.intersect` FollowVars,
-    ( set.empty(NeededFieldVars) ->
+    NeededFieldVars = FieldVarsSet `set_of_var.intersect` FollowVars,
+    ( set_of_var.is_empty(NeededFieldVars) ->
         true
     ;
         deconstruct_tuple(CellVar, FieldVars, Goal),
@@ -1610,7 +1610,7 @@ combine_inserts(A, [B | Bs], [C | Cs]) :-
         A = insert_spec(Goal, ASet),
         B = insert_spec(Goal, BSet)
     ->
-        C = insert_spec(Goal, ASet `set.union` BSet),
+        C = insert_spec(Goal, ASet `set_of_var.union` BSet),
         Cs = Bs
     ;
         C = B,
@@ -1705,10 +1705,9 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred fix_calls_in_goal(hlds_goal::in, hlds_goal::out, prog_varset::in,
-    prog_varset::out, vartypes::in, vartypes::out,
-    rtti_varmaps::in, rtti_varmaps::out, transform_map::in)
-    is det.
+:- pred fix_calls_in_goal(hlds_goal::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    rtti_varmaps::in, rtti_varmaps::out, transform_map::in) is det.
 
 fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
         TransformMap) :-
@@ -1743,7 +1742,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
                 unexpected($module, $pred, "not a call template")
             ),
             conj_list_to_goal([ConstructGoal, CallGoal], GoalInfo0, Goal1),
-            RequantifyVars = set.from_list([CellVar | Args0]),
+            RequantifyVars = set_of_var.list_to_set([CellVar | Args0]),
             implicitly_quantify_goal_general(ordinary_nonlocals_no_lambda,
                 RequantifyVars, _, Goal1, Goal,
                 !VarSet, !VarTypes, !RttiVarMaps)
@@ -1869,15 +1868,15 @@ fix_calls_in_cases([Case0 | Cases0], [Case | Cases], !VarSet, !VarTypes,
     % Note again that the ordering of Selected and NotSelected are
     % determined by different lists!
     %
-:- pred extract_tupled_args_from_list(prog_vars::in, list(int)::in,
-    prog_vars::out, prog_vars::out) is det.
+:- pred extract_tupled_args_from_list(list(prog_var)::in, list(int)::in,
+    list(prog_var)::out, list(prog_var)::out) is det.
 
 extract_tupled_args_from_list(ArgList, Indices, Selected, NotSelected) :-
     list.map(list.det_index1(ArgList), Indices, Selected),
     extract_tupled_args_from_list_2(ArgList, 1, Indices, NotSelected).
 
-:- pred extract_tupled_args_from_list_2(prog_vars::in, int::in, list(int)::in,
-    prog_vars::out) is det.
+:- pred extract_tupled_args_from_list_2(list(prog_var)::in, int::in,
+    list(int)::in, list(prog_var)::out) is det.
 
 extract_tupled_args_from_list_2([], _Num, _Indices, []).
 extract_tupled_args_from_list_2([H | T], Num, Indices, NotSelected) :-

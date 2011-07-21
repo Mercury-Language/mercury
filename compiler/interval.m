@@ -39,6 +39,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module counter.
@@ -84,22 +85,22 @@
 
 :- type branch_end_info
     --->    branch_end_info(
-                flushed_after_branch    :: set(prog_var),
-                accessed_after_branch   :: set(prog_var),
+                flushed_after_branch    :: set_of_progvar,
+                accessed_after_branch   :: set_of_progvar,
                 interval_after_branch   :: interval_id
             ).
 
 :- type insert_spec
     --->    insert_spec(
                 hlds_goal,
-                set(prog_var)
+                set_of_progvar
             ).
 
 :- type insert_map      ==  map(anchor, list(insert_spec)).
 
 :- type anchor_follow_info
     --->    anchor_follow_info(
-                set(prog_var),
+                set_of_progvar,
                 set(interval_id)
             ).
 
@@ -113,8 +114,8 @@
 :- type interval_info
     --->    interval_info(
                 ii_interval_params      :: interval_params,
-                ii_flushed_later        :: set(prog_var),
-                ii_accessed_later       :: set(prog_var),
+                ii_flushed_later        :: set_of_progvar,
+                ii_accessed_later       :: set_of_progvar,
                 ii_branch_resume_map    :: map(goal_id, resume_save_status),
                 ii_branch_end_map       :: map(goal_id, branch_end_info),
                 ii_cond_end_map         :: map(goal_id, interval_id),
@@ -126,8 +127,9 @@
                 ii_interval_start       :: map(interval_id, anchor),
                 ii_interval_end         :: map(interval_id, anchor),
                 ii_interval_succ        :: map(interval_id, list(interval_id)),
-                ii_interval_vars        :: map(interval_id, set(prog_var)),
-                ii_interval_delvars     :: map(interval_id, list(set(prog_var)))
+                ii_interval_vars        :: map(interval_id, set_of_progvar),
+                ii_interval_delvars     :: map(interval_id,
+                                            list(set_of_progvar))
             ).
 
 :- type maybe_needs_flush
@@ -146,8 +148,8 @@
 :- pred record_interval_vars(interval_id::in, list(prog_var)::in,
     interval_info::in, interval_info::out) is det.
 
-:- pred delete_interval_vars(interval_id::in, set(prog_var)::in,
-    set(prog_var)::out, interval_info::in, interval_info::out) is det.
+:- pred delete_interval_vars(interval_id::in, set_of_progvar::in,
+    set_of_progvar::out, interval_info::in, interval_info::out) is det.
 
 :- type rename_map  ==  map(prog_var, prog_var).
 
@@ -170,7 +172,7 @@
     % body. The resulting procedure definition will be isomorphic to the one
     % we would have get by applying the original renaming to the headvars.
     %
-:- pred apply_headvar_correction(set(prog_var)::in, rename_map::in,
+:- pred apply_headvar_correction(set_of_progvar::in, rename_map::in,
     hlds_goal::in, hlds_goal::out) is det.
 
 :- pred dump_interval_info(interval_info::in, io::di, io::uo) is det.
@@ -435,7 +437,7 @@ build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
         MaybeNeedAcrossCall = yes(NeedAcrossCall),
         NeedAcrossCall = need_across_call(ForwardVars, ResumeVars,
             NondetLiveVars),
-        VarsOnStack0 = set.union_list([ForwardVars, ResumeVars,
+        VarsOnStack0 = set_of_var.union_list([ForwardVars, ResumeVars,
             NondetLiveVars]),
         GoalId = goal_info_get_goal_id(GoalInfo),
         CallAnchor = anchor_call_site(GoalId),
@@ -456,7 +458,7 @@ build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
             % If the call cannot succeed, then execution cannot
             % get from BeforeCallId to AfterCallId.
             record_interval_no_succ(BeforeCallId, !IntervalInfo),
-            VarsOnStack = set.init
+            VarsOnStack = set_of_var.init
         ),
         set_cur_interval(BeforeCallId, !IntervalInfo),
         assign_open_intervals_to_anchor(CallAnchor, !IntervalInfo),
@@ -531,7 +533,7 @@ build_interval_info_in_cases([Case | Cases],
 
 :- pred reached_branch_end(hlds_goal_info::in, maybe(hlds_goal)::in,
     branch_construct::in, anchor::out, anchor::out,
-    interval_id::out, interval_id::out, maybe(set(prog_var))::out,
+    interval_id::out, interval_id::out, maybe(set_of_progvar)::out,
     interval_info::in, interval_info::out, T::in, T::out) is det
     <= build_interval_info_acc(T).
 
@@ -555,7 +557,7 @@ reached_branch_end(GoalInfo, MaybeResumeGoal, Construct,
     record_branch_resume(GoalId, HasResumeSave, !IntervalInfo),
     ( goal_info_maybe_get_store_map(GoalInfo, StoreMap) ->
         map.sorted_keys(StoreMap, StoreMapVarList),
-        set.sorted_list_to_set(StoreMapVarList, StoreMapVars),
+        StoreMapVars = set_of_var.sorted_list_to_set(StoreMapVarList),
         require_flushed(StoreMapVars, !IntervalInfo)
     ;
         unexpected($module, $pred, "no store map")
@@ -622,7 +624,7 @@ reached_cond_then(GoalInfo, !IntervalInfo) :-
     set_open_intervals(OpenIntervals, !IntervalInfo).
 
 :- pred leave_branch_start(branch_construct::in, anchor::in, interval_id::in,
-    maybe(set(prog_var))::in, set(interval_id)::in,
+    maybe(set_of_progvar)::in, set(interval_id)::in,
     interval_info::in, interval_info::out) is det.
 
 leave_branch_start(_BranchConstruct, StartArchor, BeforeId, MaybeResumeVars,
@@ -667,11 +669,12 @@ assign_open_intervals_to_anchor(Anchor, !IntervalInfo) :-
     IntervalVarMap = !.IntervalInfo ^ ii_interval_vars,
     CurOpenIntervals = !.IntervalInfo ^ ii_open_intervals,
     set.fold(gather_interval_vars(IntervalVarMap), CurOpenIntervals,
-        set.init, CurOpenIntervalVars),
+        set_of_var.init, CurOpenIntervalVars),
     ( map.search(AnchorFollowMap0, Anchor, AnchorFollowInfo0) ->
         AnchorFollowInfo0 =
             anchor_follow_info(OpenIntervalVars0, OpenIntervals0),
-        OpenIntervalVars = set.union(OpenIntervalVars0, CurOpenIntervalVars),
+        OpenIntervalVars =
+            set_of_var.union(OpenIntervalVars0, CurOpenIntervalVars),
         OpenIntervals = set.union(OpenIntervals0, CurOpenIntervals),
         AnchorFollowInfo =
             anchor_follow_info(OpenIntervalVars, OpenIntervals),
@@ -685,12 +688,12 @@ assign_open_intervals_to_anchor(Anchor, !IntervalInfo) :-
     ),
     !IntervalInfo ^ ii_anchor_follow_map := AnchorFollowMap.
 
-:- pred gather_interval_vars(map(interval_id, set(prog_var))::in,
-    interval_id::in, set(prog_var)::in, set(prog_var)::out) is det.
+:- pred gather_interval_vars(map(interval_id, set_of_progvar)::in,
+    interval_id::in, set_of_progvar::in, set_of_progvar::out) is det.
 
 gather_interval_vars(IntervalVarMap, IntervalId, !OpenIntervalVars) :-
     map.lookup(IntervalVarMap, IntervalId, IntervalVars),
-    !:OpenIntervalVars = set.union(!.OpenIntervalVars, IntervalVars).
+    !:OpenIntervalVars = set_of_var.union(!.OpenIntervalVars, IntervalVars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -713,7 +716,7 @@ new_interval_id(Id, !IntervalInfo) :-
     IntervalVars0 = !.IntervalInfo ^ ii_interval_vars,
     counter.allocate(Num, Counter0, Counter),
     Id = interval_id(Num),
-    map.det_insert(Id, set.init, IntervalVars0, IntervalVars),
+    map.det_insert(Id, set_of_var.init, IntervalVars0, IntervalVars),
     !IntervalInfo ^ ii_interval_counter := Counter,
     !IntervalInfo ^ ii_interval_vars := IntervalVars.
 
@@ -781,10 +784,10 @@ record_interval_no_succ(Id, !IntervalInfo) :-
 record_interval_vars(Id, NewVars, !IntervalInfo) :-
     VarsMap0 = !.IntervalInfo ^ ii_interval_vars,
     ( map.search(VarsMap0, Id, Vars0) ->
-        set.insert_list(NewVars, Vars0, Vars),
+        set_of_var.insert_list(NewVars, Vars0, Vars),
         map.det_update(Id, Vars, VarsMap0, VarsMap)
     ;
-        set.list_to_set(NewVars, Vars),
+        Vars = set_of_var.list_to_set(NewVars),
         map.det_insert(Id, Vars, VarsMap0, VarsMap)
     ),
     !IntervalInfo ^ ii_interval_vars := VarsMap.
@@ -792,8 +795,8 @@ record_interval_vars(Id, NewVars, !IntervalInfo) :-
 delete_interval_vars(Id, ToDeleteVars, DeletedVars, !IntervalInfo) :-
     VarsMap0 = !.IntervalInfo ^ ii_interval_vars,
     map.lookup(VarsMap0, Id, Vars0),
-    DeletedVars = set.intersect(Vars0, ToDeleteVars),
-    Vars = set.difference(Vars0, DeletedVars),
+    DeletedVars = set_of_var.intersect(Vars0, ToDeleteVars),
+    Vars = set_of_var.difference(Vars0, DeletedVars),
     map.det_update(Id, Vars, VarsMap0, VarsMap),
     !IntervalInfo ^ ii_interval_vars := VarsMap,
 
@@ -816,12 +819,12 @@ require_in_regs(Vars, !IntervalInfo) :-
     CurIntervalId = !.IntervalInfo ^ ii_cur_interval,
     record_interval_vars(CurIntervalId, Vars, !IntervalInfo).
 
-:- pred require_flushed(set(prog_var)::in,
+:- pred require_flushed(set_of_progvar::in,
     interval_info::in, interval_info::out) is det.
 
 require_flushed(Vars, !IntervalInfo) :-
     FlushedLater0 = !.IntervalInfo ^ ii_flushed_later,
-    FlushedLater = set.union(FlushedLater0, Vars),
+    FlushedLater = set_of_var.union(FlushedLater0, Vars),
     !IntervalInfo ^ ii_flushed_later := FlushedLater.
 
 :- pred require_access(list(prog_var)::in,
@@ -829,7 +832,7 @@ require_flushed(Vars, !IntervalInfo) :-
 
 require_access(Vars, !IntervalInfo) :-
     AccessedLater0 = !.IntervalInfo ^ ii_accessed_later,
-    set.insert_list(Vars, AccessedLater0, AccessedLater),
+    set_of_var.insert_list(Vars, AccessedLater0, AccessedLater),
     !IntervalInfo ^ ii_accessed_later := AccessedLater.
 
 :- pred record_branch_resume(goal_id::in, resume_save_status::in,
@@ -1083,7 +1086,7 @@ make_inserted_goal(VarSet0, VarSet, VarTypes0, VarTypes, !RenameMap,
         MaybeFeature, Goal),
     Info = interval_var_info(VarSet, VarTypes).
 
-:- pred create_shadow_vars(list(prog_var)::in, set(prog_var)::in,
+:- pred create_shadow_vars(list(prog_var)::in, set_of_progvar::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rename_map::in, rename_map::out, rename_map::in, rename_map::out)
     is det.
@@ -1096,7 +1099,7 @@ create_shadow_vars([Arg | Args], VarsToExtract, !VarSet, !VarTypes,
     create_shadow_vars(Args, VarsToExtract, !VarSet, !VarTypes,
         !VarRename, !VoidRename).
 
-:- pred create_shadow_var(prog_var::in, set(prog_var)::in,
+:- pred create_shadow_var(prog_var::in, set_of_progvar::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rename_map::in, rename_map::out, rename_map::in, rename_map::out) is det.
 
@@ -1106,7 +1109,7 @@ create_shadow_var(Arg, VarsToExtract, !VarSet, !VarTypes,
     varset.new_named_var(Name, Shadow, !VarSet),
     map.lookup(!.VarTypes, Arg, Type),
     map.det_insert(Shadow, Type, !VarTypes),
-    ( set.member(Arg, VarsToExtract) ->
+    ( set_of_var.member(VarsToExtract, Arg) ->
         map.det_insert(Arg, Shadow, !VarRename)
     ;
         map.det_insert(Arg, Shadow, !VoidRename)
@@ -1200,7 +1203,7 @@ record_decisions_in_cases([Case0 | Cases0], [Case | Cases],
 %-----------------------------------------------------------------------------%
 
 apply_headvar_correction(HeadVarSet, RenameMap, Goal0, Goal) :-
-    set.to_sorted_list(HeadVarSet, HeadVars),
+    HeadVars = set_of_var.to_sorted_list(HeadVarSet),
     build_headvar_subst(HeadVars, RenameMap, map.init, Subst),
     ( map.is_empty(Subst) ->
         Goal = Goal0
@@ -1280,7 +1283,7 @@ dump_interval_info_id(IntervalInfo, IntervalId, !IO) :-
         io.write_string("no end\n", !IO)
     ),
     ( map.search(IntervalInfo ^ ii_interval_vars, IntervalId, Vars) ->
-        list.map(term.var_to_int, set.to_sorted_list(Vars), VarNums),
+        list.map(term.var_to_int, set_of_var.to_sorted_list(Vars), VarNums),
         io.write_string("vars [", !IO),
         write_int_list(VarNums, !IO),
         io.write_string("]\n", !IO)
@@ -1295,10 +1298,10 @@ dump_interval_info_id(IntervalInfo, IntervalId, !IO) :-
         true
     ).
 
-:- pred dump_deletion(set(prog_var)::in, io::di, io::uo) is det.
+:- pred dump_deletion(set_of_progvar::in, io::di, io::uo) is det.
 
 dump_deletion(Vars, !IO) :-
-    list.map(term.var_to_int, set.to_sorted_list(Vars), VarNums),
+    list.map(term.var_to_int, set_of_var.to_sorted_list(Vars), VarNums),
     io.write_string(" [", !IO),
     write_int_list(VarNums, !IO),
     io.write_string("]", !IO).
@@ -1311,7 +1314,7 @@ dump_anchor_follow(Anchor - AnchorFollowInfo, !IO) :-
     io.write_string("\n", !IO),
     io.write(Anchor, !IO),
     io.write_string(" =>\n", !IO),
-    list.map(term.var_to_int, set.to_sorted_list(Vars), VarNums),
+    list.map(term.var_to_int, set_of_var.to_sorted_list(Vars), VarNums),
     io.write_string("vars [", !IO),
     write_int_list(VarNums, !IO),
     io.write_string("]\nintervals: ", !IO),

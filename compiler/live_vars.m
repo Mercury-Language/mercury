@@ -26,10 +26,9 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -51,9 +50,9 @@
 ].
 
 :- pred build_live_sets_in_goal_no_par_stack(hlds_goal::in, hlds_goal::out,
-    set(prog_var)::in, alloc_data::in, T::in, T::out,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out) is det <= stack_alloc_info(T).
+    set_of_progvar::in, alloc_data::in, T::in, T::out,
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det <= stack_alloc_info(T).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -66,6 +65,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 :- import_module map.
@@ -80,15 +80,15 @@
     --->    parallel_stackvars(
                 % Variables nonlocal to the parallel conjunction which need
                 % their own stack slots.
-                set(prog_var),
+                set_of_progvar,
 
                 % Variables local to parallel conjuncts prior to the
                 % current conjunct which need stack slots.
-                list(set(prog_var)),
+                list(set_of_progvar),
 
                 % Accumulating set of variables local to the current
                 % parallel conjunct which need stack slots.
-                set(prog_var)
+                set_of_progvar
             ).
 
 %-----------------------------------------------------------------------------%
@@ -99,15 +99,15 @@
 
 build_live_sets_in_goal_no_par_stack(Goal0, Goal,
         ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
-    ParStackVars0 = parallel_stackvars(set.init, [], set.init),
+    ParStackVars0 = parallel_stackvars(set_of_var.init, [], set_of_var.init),
     build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
         AllocData, !StackAlloc, !Liveness, !NondetLiveness,
         ParStackVars0, _ParStackVars).
 
 :- pred build_live_sets_in_goal(hlds_goal::in, hlds_goal::out,
-    set(prog_var)::in, alloc_data::in, T::in, T::out,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out,
+    set_of_progvar::in, alloc_data::in, T::in, T::out,
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out,
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
@@ -120,8 +120,8 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
     goal_info_get_post_births(GoalInfo0, PostBirths),
 
     % note: we must be careful to apply deaths before births
-    set.difference(!.Liveness, PreDeaths, !:Liveness),
-    set.union(!.Liveness, PreBirths, !:Liveness),
+    set_of_var.difference(!.Liveness, PreDeaths, !:Liveness),
+    set_of_var.union(!.Liveness, PreBirths, !:Liveness),
 
     % If the goal is atomic, we want to apply the postdeaths before processing
     % the goal, but if the goal is a compound goal, then we want to apply them
@@ -129,7 +129,7 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
     HasSubGoals = goal_expr_has_subgoals(GoalExpr0),
     (
         HasSubGoals = does_not_have_subgoals,
-        set.difference(!.Liveness, PostDeaths, !:Liveness)
+        set_of_var.difference(!.Liveness, PostDeaths, !:Liveness)
     ;
         HasSubGoals = has_subgoals
     ),
@@ -142,7 +142,7 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
     ;
         ResumePoint = resume_point(ResumePointVars, Locs),
         ( resume_locs_include_stack(Locs, yes) ->
-            set.union(ResumeVars0, ResumePointVars, ResumeVars1),
+            set_of_var.union(ResumeVars0, ResumePointVars, ResumeVars1),
             ResumeOnStack = yes
         ;
             ResumeVars1 = ResumeVars0,
@@ -161,10 +161,10 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
         HasSubGoals = does_not_have_subgoals
     ;
         HasSubGoals = has_subgoals,
-        set.difference(!.Liveness, PostDeaths, !:Liveness)
+        set_of_var.difference(!.Liveness, PostDeaths, !:Liveness)
     ),
 
-    set.union(!.Liveness, PostBirths, !:Liveness),
+    set_of_var.union(!.Liveness, PostBirths, !:Liveness),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred resume_locs_include_stack(resume_locs::in, bool::out) is det.
@@ -186,9 +186,9 @@ resume_locs_include_stack(resume_locs_stack_and_orig, yes).
     %
 :- pred build_live_sets_in_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
-    set(prog_var)::in, alloc_data::in, T::in, T::out,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out,
+    set_of_progvar::in, alloc_data::in, T::in, T::out,
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out,
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
@@ -216,11 +216,12 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % must be available in a stackslot past the parallel conjunction
             % as well.
             NonLocals = goal_info_get_code_gen_nonlocals(GoalInfo0),
-            LiveSet = set.union_list([NonLocals, !.Liveness, ResumeVars0]),
+            LiveSet = set_of_var.union_list([set_to_bitset(NonLocals),
+                !.Liveness, ResumeVars0]),
 
-            InnerNonLocals = LiveSet `set.union` OuterNonLocals,
+            InnerNonLocals = LiveSet `set_of_var.union` OuterNonLocals,
             InnerParStackVars0 =
-                parallel_stackvars(InnerNonLocals, [], set.init),
+                parallel_stackvars(InnerNonLocals, [], set_of_var.init),
             build_live_sets_in_par_conj(Goals0, Goals, ResumeVars0, AllocData,
                 !StackAlloc, !Liveness, !NondetLiveness,
                 InnerParStackVars0, InnerParStackVars),
@@ -231,8 +232,8 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % slots. Variables local to a single conjunct could share stack
             % slots, as long as the _sets_ of stack slots allocated to
             % different parallel conjuncts are distinct.
-            NeedInParConj = need_in_par_conj(InnerNonLocals `set.union`
-                set.union_list(InnerStackVars)),
+            NeedInParConj = need_in_par_conj(InnerNonLocals `set_of_var.union`
+                    set_of_var.union_list(InnerStackVars)),
             record_par_conj(NeedInParConj, GoalInfo0, GoalInfo, !StackAlloc),
 
             % All the local variables which needed stack slots in the parallel
@@ -241,8 +242,9 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % to but are needed in the parallel conjunctions also become part
             % of the accumulating set.
             OuterAccStackVars = OuterAccStackVars0
-                `set.union` set.union_list(InnerStackVars)
-                `set.union` (LiveSet `set.difference` OuterNonLocals),
+                `set_of_var.union` set_of_var.union_list(InnerStackVars)
+                `set_of_var.union`
+                    (LiveSet `set_of_var.difference` OuterNonLocals),
             !:ParStackVars = parallel_stackvars(OuterNonLocals,
                 OuterLocalStackVars, OuterAccStackVars)
         ),
@@ -279,7 +281,8 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                         resume_locs_include_stack(Locs, yes)
                     )
                 ->
-                    set.union(!.NondetLiveness, ResumeVars, !:NondetLiveness)
+                    set_of_var.union(!.NondetLiveness, ResumeVars,
+                        !:NondetLiveness)
                 ;
                     true
                 )
@@ -316,7 +319,8 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         build_live_sets_in_goal(Else0, Else, ResumeVars0, AllocData,
             !StackAlloc, Liveness0, Liveness,
             NondetLiveness0, NondetLivenessElse, !ParStackVars),
-        set.union(NondetLivenessThen, NondetLivenessElse, NondetLiveness),
+        set_of_var.union(NondetLivenessThen, NondetLivenessElse,
+            NondetLiveness),
         !:Liveness = Liveness,
         !:NondetLiveness = NondetLiveness,
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
@@ -338,7 +342,7 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % The scope does not contain any calls, resume points or parallel
             % conjunctions, so there are no updates to !StackAlloc,
             % !NondetLiveness, or !ParStackVars.
-            set.insert(TermVar, !Liveness)
+            set_of_var.insert(TermVar, !Liveness)
         ;
             NondetLiveness0 = !.NondetLiveness,
             build_live_sets_in_goal(SubGoal0, SubGoal, ResumeVars0, AllocData,
@@ -376,9 +380,9 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ModuleInfo = AllocData ^ ad_module_info,
             arg_info.partition_generic_call_args(ModuleInfo, ArgVars,
                 Types, Modes, _InVars, OutVars, _UnusedVars),
-            build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo,
-                ResumeVars0, AllocData, !StackAlloc, !.Liveness,
-                !NondetLiveness, !ParStackVars)
+            build_live_sets_in_call(set_to_bitset(OutVars),
+                GoalInfo0, GoalInfo, ResumeVars0, AllocData,
+                !StackAlloc, !.Liveness, !NondetLiveness, !ParStackVars)
         )
     ;
         GoalExpr0 = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
@@ -396,9 +400,9 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ( Builtin = out_of_line_builtin
             ; Builtin = not_builtin
             ),
-            build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo,
-                ResumeVars0, AllocData, !StackAlloc, !.Liveness,
-                !NondetLiveness, !ParStackVars)
+            build_live_sets_in_call(set_to_bitset(OutVars),
+                GoalInfo0, GoalInfo, ResumeVars0, AllocData,
+                !StackAlloc, !.Liveness, !NondetLiveness, !ParStackVars)
         )
     ;
         GoalExpr0 = unify(_, _, _, Unification, _),
@@ -442,9 +446,9 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % (except for the output arguments produced by the call), plus
             % all the variables that may be needed at an enclosing resumption
             % point.
-            build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo,
-                ResumeVars0, AllocData, !StackAlloc, !.Liveness,
-                !NondetLiveness, !ParStackVars)
+            build_live_sets_in_call(set_to_bitset(OutVars),
+                GoalInfo0, GoalInfo, ResumeVars0, AllocData,
+                !StackAlloc, !.Liveness, !NondetLiveness, !ParStackVars)
         )
     ;
         GoalExpr0 = shorthand(_),
@@ -460,16 +464,15 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     % arguments produced by the goal, plus all the variables that may be
     % needed at an enclosing resumption point.
     %
-:- pred build_live_sets_in_call(set(prog_var)::in, hlds_goal_info::in,
-    hlds_goal_info::out, set(prog_var)::in, alloc_data::in, T::in, T::out,
-    set(prog_var)::in, set(prog_var)::in, set(prog_var)::out,
+:- pred build_live_sets_in_call(set_of_progvar::in, hlds_goal_info::in,
+    hlds_goal_info::out, set_of_progvar::in, alloc_data::in, T::in, T::out,
+    set_of_progvar::in, set_of_progvar::in, set_of_progvar::out,
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
 build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
         !StackAlloc, Liveness, !NondetLiveness, !ParStackVars) :-
-
-    set.difference(Liveness, OutVars, ForwardVars0),
+    set_of_var.difference(Liveness, OutVars, ForwardVars0),
 
     % Might need to add more live variables with typeinfo liveness
     % calculation.
@@ -482,7 +485,8 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
         Detism = detism_erroneous,
         AllocData ^ ad_opt_no_return_calls = yes
     ->
-        NeedAcrossCall = need_across_call(set.init, set.init, set.init)
+        NeedAcrossCall = need_across_call(set_of_var.init, set_of_var.init,
+            set_of_var.init)
     ;
         NeedAcrossCall = need_across_call(ForwardVars, ResumeVars0,
             !.NondetLiveness)
@@ -500,7 +504,7 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
         CodeModel = model_semi
     ;
         CodeModel = model_non,
-        set.union(!.NondetLiveness, ForwardVars, !:NondetLiveness)
+        set_of_var.union(!.NondetLiveness, ForwardVars, !:NondetLiveness)
     ),
 
     % In a parallel conjunction all the stack slots we need must not be reused
@@ -508,15 +512,16 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
     % allocated stack slots in each conjunct.
 
     !.ParStackVars = parallel_stackvars(Nonlocals, ParallelVars, AccVars0),
-    AccVars = AccVars0 `set.union` (ForwardVars `set.difference` Nonlocals),
+    AccVars = AccVars0 `set_of_var.union`
+        (ForwardVars `set_of_var.difference` Nonlocals),
     !:ParStackVars = parallel_stackvars(Nonlocals, ParallelVars, AccVars).
 
 %-----------------------------------------------------------------------------%
 
 :- pred build_live_sets_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    set(prog_var)::in, alloc_data::in, T::in, T::out,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out,
+    set_of_progvar::in, alloc_data::in, T::in, T::out,
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out,
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
@@ -542,9 +547,9 @@ build_live_sets_in_conj([Goal0 | Goals0], [Goal | Goals], ResumeVars0,
 %-----------------------------------------------------------------------------%
 
 :- pred build_live_sets_in_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    set(prog_var)::in, alloc_data::in, T::in, T::out,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out,
+    set_of_progvar::in, alloc_data::in, T::in, T::out,
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out,
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
@@ -559,7 +564,7 @@ build_live_sets_in_par_conj([Goal0 | Goals0], [Goal | Goals], ResumeVars0,
         ParStackVars0, ParStackVars1),
     ParStackVars1 = parallel_stackvars(Nonlocals, PrevSets1, CurSet1),
     ParStackVars2 = parallel_stackvars(Nonlocals, [CurSet1 | PrevSets1],
-        set.init),
+        set_of_var.init),
     build_live_sets_in_par_conj(Goals0, Goals, ResumeVars0, AllocData,
         !StackAlloc, Liveness0, _Liveness1, !NondetLiveness,
         ParStackVars2, ParStackVars).
@@ -567,9 +572,9 @@ build_live_sets_in_par_conj([Goal0 | Goals0], [Goal | Goals], ResumeVars0,
 %-----------------------------------------------------------------------------%
 
 :- pred build_live_sets_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    hlds_goal_info::in, set(prog_var)::in, alloc_data::in,
-    T::in, T::out, set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out,
+    hlds_goal_info::in, set_of_progvar::in, alloc_data::in,
+    T::in, T::out, set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out,
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
@@ -591,13 +596,13 @@ build_live_sets_in_disj([Goal0 | Goals0], [Goal | Goals],
         % NondetLiveness should be a set of prog_var sets. Instead of taking
         % the union of the NondetLive sets at the ends of disjuncts, we should
         % just keep them in this set of sets.
-        set.union(NondetLiveness1, NondetLiveness2, NondetLiveness3),
+        set_of_var.union(NondetLiveness1, NondetLiveness2, NondetLiveness3),
         goal_info_get_resume_point(GoalInfo, Resume),
         (
             Resume = resume_point(ResumePointVars, Locs),
             resume_locs_include_stack(Locs, yes)
         ->
-            set.union(NondetLiveness3, ResumePointVars, NondetLiveness)
+            set_of_var.union(NondetLiveness3, ResumePointVars, NondetLiveness)
         ;
             NondetLiveness = NondetLiveness3
         )
@@ -611,9 +616,9 @@ build_live_sets_in_disj([Goal0 | Goals0], [Goal | Goals],
 %-----------------------------------------------------------------------------%
 
 :- pred build_live_sets_in_cases(list(case)::in, list(case)::out,
-    set(prog_var)::in, alloc_data::in, T::in, T::out,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out,
+    set_of_progvar::in, alloc_data::in, T::in, T::out,
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out,
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
@@ -630,7 +635,7 @@ build_live_sets_in_cases([Case0 | Cases0], [Case | Cases],
     build_live_sets_in_cases(Cases0, Cases, ResumeVars0, AllocData,
         !StackAlloc, Liveness0, _Liveness2, NondetLiveness0, NondetLiveness2,
         !ParStackVars),
-    set.union(NondetLiveness1, NondetLiveness2, NondetLiveness).
+    set_of_var.union(NondetLiveness1, NondetLiveness2, NondetLiveness).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -654,7 +659,7 @@ build_live_sets_in_cases([Case0 | Cases0], [Case | Cases],
     % since this makes a significant difference to the output set of vars.
     %
 :- pred maybe_add_typeinfo_liveness(proc_info::in, bool::in,
-    set(prog_var)::in, set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::in, set_of_progvar::out) is det.
 
 maybe_add_typeinfo_liveness(ProcInfo, TypeInfoLiveness, OutVars, !LiveVars) :-
     (
@@ -663,8 +668,8 @@ maybe_add_typeinfo_liveness(ProcInfo, TypeInfoLiveness, OutVars, !LiveVars) :-
         proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
         get_typeinfo_vars(!.LiveVars, VarTypes, RttiVarMaps, TypeInfoVarsLive),
         get_typeinfo_vars(OutVars, VarTypes, RttiVarMaps, TypeInfoVarsOut),
-        set.union(!.LiveVars, TypeInfoVarsOut, !:LiveVars),
-        set.union(!.LiveVars, TypeInfoVarsLive, !:LiveVars)
+        set_of_var.union(!.LiveVars, TypeInfoVarsOut, !:LiveVars),
+        set_of_var.union(!.LiveVars, TypeInfoVarsLive, !:LiveVars)
     ;
         TypeInfoLiveness = no
     ).

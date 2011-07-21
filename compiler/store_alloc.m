@@ -56,6 +56,7 @@
 :- import_module ll_backend.llds.
 :- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -94,16 +95,17 @@ allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
         eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, !.ProcInfo,
             TraceLevel) = yes
     ->
-        trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
+        trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0),
+        ResumeVars1 = set_to_bitset(ResumeVars0)
     ;
-        set.init(ResumeVars0)
+        ResumeVars1 = set_of_var.init
     ),
     build_input_arg_list(!.ProcInfo, InputArgLvals),
     LastLocns0 = initial_last_locns(InputArgLvals),
     proc_info_get_stack_slots(!.ProcInfo, StackSlots),
     StoreAllocInfo = store_alloc_info(ModuleInfo, StackSlots),
     store_alloc_in_goal(Goal2, Goal, Liveness0, _, LastLocns0, _,
-        ResumeVars0, StoreAllocInfo),
+        ResumeVars1, StoreAllocInfo),
     proc_info_set_goal(Goal, !ProcInfo).
 
 :- func initial_last_locns(assoc_list(prog_var, lval)) = last_locns.
@@ -118,9 +120,9 @@ initial_last_locns([Var - Lval | VarLvals]) =
 :- type store_alloc_info
     --->    store_alloc_info(
                 sai_module_info     :: module_info,
+
+                % Maps each var to its stack slot (if it has one).
                 sai_stack_slots     :: stack_slots
-                                    % Maps each var to its stack slot
-                                    % (if it has one).
             ).
 
 :- type where_stored    == set(lval).   % These lvals may contain var() rvals.
@@ -128,34 +130,34 @@ initial_last_locns([Var - Lval | VarLvals]) =
 :- type last_locns  == map(prog_var, where_stored).
 
 :- pred store_alloc_in_goal(hlds_goal::in, hlds_goal::out,
-    liveness_info::in, liveness_info::out, last_locns::in, last_locns::out,
-    set(prog_var)::in, store_alloc_info::in) is det.
+    set_of_progvar::in, set_of_progvar::out, last_locns::in, last_locns::out,
+    set_of_progvar::in, store_alloc_info::in) is det.
 
-store_alloc_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo), Liveness0, Liveness,
-        !LastLocns, ResumeVars0, StoreAllocInfo) :-
+store_alloc_in_goal(Goal0, Goal, Liveness0, Liveness, !LastLocns, ResumeVars0,
+        StoreAllocInfo) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     % note: we must be careful to apply deaths before births
     goal_info_get_pre_deaths(GoalInfo0, PreDeaths),
     goal_info_get_pre_births(GoalInfo0, PreBirths),
     goal_info_get_post_deaths(GoalInfo0, PostDeaths),
     goal_info_get_post_births(GoalInfo0, PostBirths),
 
-    set.difference(Liveness0,  PreDeaths, Liveness1),
-    set.union(Liveness1, PreBirths, Liveness2),
+    set_of_var.difference(Liveness0,  PreDeaths, Liveness1),
+    set_of_var.union(Liveness1, PreBirths, Liveness2),
     store_alloc_in_goal_2(GoalExpr0, GoalExpr, Liveness2, Liveness3,
         !LastLocns, ResumeVars0, BranchedGoal, StoreAllocInfo),
-    set.difference(Liveness3, PostDeaths, Liveness4),
+    set_of_var.difference(Liveness3, PostDeaths, Liveness4),
     % If any variables magically become live in the PostBirths,
     % then they have to mundanely become live in a parallel goal,
     % so we don't need to allocate anything for them here.
-    set.union(Liveness4, PostBirths, Liveness),
+    set_of_var.union(Liveness4, PostBirths, Liveness),
     (
         BranchedGoal = is_branched_goal,
         % Any variables that become magically live at the
         % end of the goal should not be included in the store map.
         % That is why we use Liveness4 instead of Liveness here.
-        set.union(Liveness4, ResumeVars0, MappedSet),
-        set.to_sorted_list(MappedSet, MappedVars),
+        set_of_var.union(Liveness4, ResumeVars0, MappedSet),
+        MappedVars = set_of_var.to_sorted_list(MappedSet),
         ( goal_info_maybe_get_store_map(GoalInfo0, StoreMapPrime) ->
             AdvisoryStoreMap = StoreMapPrime
         ;
@@ -167,7 +169,8 @@ store_alloc_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
     ;
         BranchedGoal = is_not_branched_goal,
         GoalInfo = GoalInfo0
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -178,8 +181,8 @@ store_alloc_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
     % Here we process each of the different sorts of goals.
     %
 :- pred store_alloc_in_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
-    liveness_info::in, liveness_info::out,
-    last_locns::in, last_locns::out, set(prog_var)::in, branched_goal::out,
+    set_of_progvar::in, set_of_progvar::out,
+    last_locns::in, last_locns::out, set_of_progvar::in, branched_goal::out,
     store_alloc_info::in) is det.
 
 store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
@@ -244,7 +247,7 @@ store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
         GoalExpr0 = scope(Reason, SubGoal0),
         ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
             GoalExpr = GoalExpr0,
-            set.insert(TermVar, !Liveness)
+            set_of_var.insert(TermVar, !Liveness)
         ;
             store_alloc_in_goal(SubGoal0, SubGoal, !Liveness, !LastLocns,
                 ResumeVars0, StoreAllocInfo),
@@ -268,8 +271,8 @@ store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
 %-----------------------------------------------------------------------------%
 
 :- pred store_alloc_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    liveness_info::in, liveness_info::out, last_locns::in, last_locns::out,
-    set(prog_var)::in, store_alloc_info::in) is det.
+    set_of_progvar::in, set_of_progvar::out, last_locns::in, last_locns::out,
+    set_of_progvar::in, store_alloc_info::in) is det.
 
 store_alloc_in_conj([], [], !Liveness, !LastLocns, _, _).
 store_alloc_in_conj([Goal0 | Goals0], [Goal | Goals], !Liveness, !LastLocns,
@@ -293,24 +296,24 @@ store_alloc_in_conj([Goal0 | Goals0], [Goal | Goals], !Liveness, !LastLocns,
 %-----------------------------------------------------------------------------%
 
 :- pred store_alloc_in_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    liveness_info::in, liveness_info::out, last_locns::in, last_locns::out,
-    set(prog_var)::in, store_alloc_info::in) is det.
+    set_of_progvar::in, set_of_progvar::out, last_locns::in, last_locns::out,
+    set_of_progvar::in, store_alloc_info::in) is det.
 
-store_alloc_in_par_conj([], [], _Liveness0, set.init, !LastLocns, _, _).
+store_alloc_in_par_conj([], [], _Liveness0, set_of_var.init, !LastLocns, _, _).
 store_alloc_in_par_conj([Goal0 | Goals0], [Goal | Goals], Liveness0, Liveness,
         !LastLocns, ResumeVars0, StoreAllocInfo) :-
     store_alloc_in_goal(Goal0, Goal, Liveness0, Liveness1,
         !LastLocns, ResumeVars0, StoreAllocInfo),
     store_alloc_in_par_conj(Goals0, Goals, Liveness0, Liveness2,
         !LastLocns, ResumeVars0, StoreAllocInfo),
-    Liveness = set.union(Liveness1, Liveness2).
+    Liveness = set_of_var.union(Liveness1, Liveness2).
 
 %-----------------------------------------------------------------------------%
 
 :- pred store_alloc_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    liveness_info::in, liveness_info::out,
+    set_of_progvar::in, set_of_progvar::out,
     last_locns::in, list(last_locns)::out,
-    set(prog_var)::in, store_alloc_info::in) is det.
+    set_of_progvar::in, store_alloc_info::in) is det.
 
 store_alloc_in_disj([], [], !Liveness, _, [], _, _).
 store_alloc_in_disj([Goal0 | Goals0], [Goal | Goals], Liveness0, Liveness,
@@ -332,9 +335,9 @@ store_alloc_in_disj([Goal0 | Goals0], [Goal | Goals], Liveness0, Liveness,
 %-----------------------------------------------------------------------------%
 
 :- pred store_alloc_in_cases(list(case)::in, list(case)::out,
-    liveness_info::in, liveness_info::out,
+    set_of_progvar::in, set_of_progvar::out,
     last_locns::in, list(last_locns)::out,
-    set(prog_var)::in, store_alloc_info::in) is det.
+    set_of_progvar::in, store_alloc_info::in) is det.
 
 store_alloc_in_cases([], [], !Liveness, _, [], _, _).
 store_alloc_in_cases([Case0 | Cases0], [Case | Cases], Liveness0, Liveness,

@@ -56,6 +56,8 @@
 
 :- pred is_empty(tree_bitset(T)::in) is semidet.
 
+:- pred is_non_empty(tree_bitset(T)::in) is semidet.
+
     % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
     % elements. Takes O(min(card(SetA), card(SetB))) time.
     %
@@ -90,6 +92,10 @@
     % element `Elem'.
     %
 :- func make_singleton_set(T) = tree_bitset(T) <= enum(T).
+
+    % Is the given set a singleton, and if yes, what is the element?
+    %
+:- pred is_singleton(tree_bitset(T)::in, T::out) is semidet <= enum(T).
 
     % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
     % Same as `intersect(Set, Subset, Subset)', but may be more efficient.
@@ -188,6 +194,11 @@
 :- pred union(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det.
 
+    % `union_list(Sets, Set)' returns the union of all the sets in Sets.
+    %
+:- func union_list(list(tree_bitset(T))) = tree_bitset(T).
+:- pred union_list(list(tree_bitset(T))::in, tree_bitset(T)::out) is det.
+
     % `intersect(SetA, SetB)' returns the intersection of `SetA' and `SetB'.
     % The efficiency of the intersection operation is not sensitive to the
     % argument ordering. Takes somewhere between
@@ -197,6 +208,12 @@
 :- func intersect(tree_bitset(T), tree_bitset(T)) = tree_bitset(T).
 :- pred intersect(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det.
+
+    % `intersect_list(Sets, Set)' returns the intersection of all the sets
+    % in Sets.
+    %
+:- func intersect_list(list(tree_bitset(T))) = tree_bitset(T).
+:- pred intersect_list(list(tree_bitset(T))::in, tree_bitset(T)::out) is det.
 
     % `difference(SetA, SetB)' returns the set containing all the elements
     % of `SetA' except those that occur in `SetB'. Takes somewhere between
@@ -463,33 +480,34 @@
                 leaf_nodes      :: list(leaf_node)
             )
     ;       interior_list(
+                % Convenient but redundant; could be computed from the
+                % init_offset and limit_offset fields of the nodes.
                 level           :: int,
-                                % Convenient but redundant; could be computed
-                                % from the init_offset and limit_offset fields
-                                % of the nodes.
+
                 interior_nodes  :: list(interior_node)
             ).
 
 :- type leaf_node
     --->    leaf_node(
+                % Must be a multiple of bits_per_int.
                 leaf_offset     :: int,
-                                % multiple of bits_per_int
 
+                % bits offset .. offset + bits_per_int - 1
+                % The tree_bitset operations all remove elements of the list
+                % with a `bits' field of zero.
                 leaf_bits       :: int
-                                % bits offset .. offset + bits_per_int - 1
-                                % The tree_bitset operations all remove
-                                % elements of the list with a `bits'
-                                % field of zero.
             ).
 
 :- type interior_node
     --->    interior_node(
+                % Must be a multiple of
+                % bits_per_int * 2 ^ (level * bits_per_level).
                 init_offset     :: int,
-                                % multiple of
-                                % bits_per_int * 2 ^ (level * bits_per_level)
+
+                % limit_offset = init_offset +
+                %   bits_per_int * 2 ^ (level * bits_per_level)
                 limit_offset    :: int,
-                                % limit_offset = init_offset +
-                                %   bits_per_int * 2 ^ (level * bits_per_level)
+
                 components      :: node_list
             ).
 
@@ -865,6 +883,9 @@ empty(init).
 
 is_empty(init).
 
+is_non_empty(Set) :-
+    not is_empty(Set).
+
 equal(SetA, SetB) :-
     trace [compile_time(flag("tree-bitset-integrity"))] (
         (
@@ -915,6 +936,15 @@ count(Set) = foldl((func(_, Acc) = Acc + 1), Set, 0).
 %-----------------------------------------------------------------------------%
 
 make_singleton_set(A) = insert(init, A).
+
+is_singleton(Set, Elem) :-
+    Set = tree_bitset(List0),
+    List0 = leaf_list([Leaf]),
+    fold_bits(high_to_low, cons, Leaf ^ leaf_offset, Leaf ^ leaf_bits,
+        bits_per_int, [], List),
+    List = [Elem].
+
+%-----------------------------------------------------------------------------%
 
 insert(Set0, Elem) = Set :-
     Set0 = tree_bitset(List0),
@@ -2062,7 +2092,7 @@ difference(SetA, SetB) = Set :-
         ListB = interior_list(LevelB, InteriorNodesB),
         (
             LeafNodesA = [],
-            List = ListB
+            List = ListA
         ;
             LeafNodesA = [FirstNodeA | LaterNodesA],
             raise_leaves_to_interior(FirstNodeA, LaterNodesA, InteriorNodeA),
@@ -2252,6 +2282,80 @@ interiorlist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
     ;
         interiorlist_difference(ListA, TailB, List)
     ).
+
+%-----------------------------------------------------------------------------%
+
+union_list(Sets) = Set :-
+    union_list(Sets, Set).
+
+union_list([], tree_bitset.init).
+union_list([Set], Set).
+union_list(Sets @ [_, _ | _], Set) :-
+    union_list_pass(Sets, [], MergedSets),
+    union_list(MergedSets, Set).
+
+    % Union adjacent pairs of sets, so that the resulting list has N sets
+    % if the input list has 2N or 2N-1 sets.
+    %
+    % We keep invoking union_list_pass until it yields a list of only one set.
+    %
+    % The point of this approach is that unioning a large set with a small set
+    % is often only slightly faster than unioning that large set with another
+    % large set, yet it gets significantly less work done. This is because
+    % the bitsets in a small set can be expected to be considerably sparser
+    % that bitsets in large sets.
+    %
+    % We expect that this approach should yield performance closer to NlogN
+    % than to N^2 when unioning a list of N sets.
+    %
+:- pred union_list_pass(list(tree_bitset(T))::in,
+    list(tree_bitset(T))::in, list(tree_bitset(T))::out)
+    is det.
+
+union_list_pass([], !MergedSets).
+union_list_pass([Set], !MergedSets) :-
+    !:MergedSets = [Set | !.MergedSets].
+union_list_pass([SetA, SetB | Sets0], !MergedSets) :-
+    union(SetA, SetB, SetAB),
+    !:MergedSets = [SetAB | !.MergedSets],
+    union_list_pass(Sets0, !MergedSets).
+
+%-----------------------------------------------------------------------------%
+
+intersect_list(Sets) = Set :-
+    intersect_list(Sets, Set).
+
+intersect_list([], tree_bitset.init).
+intersect_list([Set], Set).
+intersect_list(Sets @ [_, _ | _], Set) :-
+    intersect_list_pass(Sets, [], MergedSets),
+    intersect_list(MergedSets, Set).
+
+    % Intersect adjacent pairs of sets, so that the resulting list has N sets
+    % if the input list has 2N or 2N-1 sets.
+    %
+    % We keep invoking intersect_list_pass until it yields a list
+    % of only one set.
+    %
+    % The point of this approach is that intersecting a large set with a small
+    % set is often only slightly faster than intersecting that large set
+    % with another large set, yet it gets significantly less work done.
+    % This is because the bitsets in a small set can be expected to be
+    % considerably sparser that bitsets in large sets.
+    %
+    % We expect that this approach should yield performance closer to NlogN
+    % than to N^2 when intersecting a list of N sets.
+    %
+:- pred intersect_list_pass(list(tree_bitset(T))::in,
+    list(tree_bitset(T))::in, list(tree_bitset(T))::out) is det.
+
+intersect_list_pass([], !MergedSets).
+intersect_list_pass([Set], !MergedSets) :-
+    !:MergedSets = [Set | !.MergedSets].
+intersect_list_pass([SetA, SetB | Sets0], !MergedSets) :-
+    intersect(SetA, SetB, SetAB),
+    !:MergedSets = [SetAB | !.MergedSets],
+    intersect_list_pass(Sets0, !MergedSets).
 
 %-----------------------------------------------------------------------------%
 
@@ -2460,12 +2564,12 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
 %     ),
 %     prune_top_levels(List, PrunedList),
 %     Set = wrap_tree_bitset(PrunedList).
-% 
+%
 % :- pred interiornode_difference(
 %     int::in, interior_node::in, list(interior_node)::in,
 %     int::in, interior_node::in, list(interior_node)::in,
 %     int::out, list(interior_node)::out) is det.
-% 
+%
 % interiornode_difference(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
 %         Level, List) :-
 %     ( LevelA < LevelB ->
@@ -2512,10 +2616,10 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
 %             List = []
 %         )
 %     ).
-% 
+%
 % :- pred find_containing_node(int::in, int::in, list(interior_node)::in,
 %     interior_node::out) is semidet.
-% 
+%
 % find_containing_node(InitOffsetA, LimitOffsetA, [HeadB | TailB], ChosenB) :-
 %     (
 %         HeadB ^ init_offset =< InitOffsetA,
@@ -2525,10 +2629,10 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
 %     ;
 %         find_containing_node(InitOffsetA, LimitOffsetA, TailB, ChosenB)
 %     ).
-% 
+%
 % :- pred leaflist_difference(list(leaf_node)::in, list(leaf_node)::in,
 %     list(leaf_node)::out) is det.
-% 
+%
 % leaflist_difference([], [], []).
 % leaflist_difference([], [_ | _], []).
 % leaflist_difference(ListA @ [_ | _], [], ListA).
@@ -2550,11 +2654,11 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
 %     ;
 %         leaflist_difference(ListA, TailB, List)
 %     ).
-% 
+%
 % :- pred interiorlist_difference(
 %     list(interior_node)::in, list(interior_node)::in,
 %     list(interior_node)::out) is det.
-% 
+%
 % interiorlist_difference([], [], []).
 % interiorlist_difference([], [_ | _], []).
 % interiorlist_difference(ListA @ [_ | _], [], ListA).

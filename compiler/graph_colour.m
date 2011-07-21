@@ -15,6 +15,12 @@
 % a set of sets each containing elements that can be assigned the same
 % colour, ensuring that touching elements have different colours.
 % ("Good" means using as few colours as possible.)
+%
+% XXX We do not use this module anymore. Instead, we use set_of_var.m,
+% which uses a more efficient representation of sets of elements. Since that
+% more efficient representation depends on knowing that the elements are
+% variables and therefore in the enum type class, a generic module like this
+% cannot use that representation.
 % 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

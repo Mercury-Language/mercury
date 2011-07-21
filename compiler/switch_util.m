@@ -29,6 +29,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -120,11 +121,13 @@
             )
     ;       some_several_solns(
                 assoc_list(Key, soln_consts(Rval)),
-                set(prog_var),          % The resume vars.
-                bool                    % The Boolean "or" of the result
-                                        % of invoking goal_may_modify_trail
-                                        % on the goal_infos of the switch arms
-                                        % that are disjunctions.
+                % The resume vars.
+                set_of_progvar,
+
+                % The Boolean "or" of the result of invoking
+                % goal_may_modify_trail on the goal_infos of the switch arms
+                % that are disjunctions.
+                bool
             ).
 
 :- type soln_consts(Rval)

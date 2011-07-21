@@ -73,6 +73,7 @@
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module cord.
@@ -464,7 +465,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     foreign_proc_select_out_args(CArgs, OutCArgs),
 
     goal_info_get_post_deaths(GoalInfo, PostDeaths),
-    set.init(DeadVars0),
+    DeadVars0 = set_of_var.init,
     find_dead_input_vars(InCArgs, PostDeaths, DeadVars0, DeadVars),
 
     % Generate code to <save live variables on stack>.
@@ -941,14 +942,14 @@ make_foreign_proc_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred find_dead_input_vars(list(c_arg)::in, set(prog_var)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+:- pred find_dead_input_vars(list(c_arg)::in, set_of_progvar::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 find_dead_input_vars([], _, !DeadVars).
 find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
     Arg = c_arg(Var, _MaybeName, _Type, _BoxPolicy, _ArgInfo),
-    ( set.member(Var, PostDeaths) ->
-        set.insert(Var, !DeadVars)
+    ( set_of_var.member(PostDeaths, Var) ->
+        set_of_var.insert(Var, !DeadVars)
     ;
         true
     ),

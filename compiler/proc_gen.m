@@ -99,6 +99,7 @@
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -724,7 +725,7 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
 
         generate_resume_point(ResumePoint, ResumeCode, !CI),
         resume_point_vars(ResumePoint, ResumeVarList),
-        set.list_to_set(ResumeVarList, ResumeVars),
+        ResumeVars = set_of_var.list_to_set(ResumeVarList),
         set_forward_live_vars(ResumeVars, !CI),
         % XXX A context that gives the end of the procedure definition
         % would be better than ProcContext.
@@ -771,7 +772,7 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
 
         generate_resume_point(ResumePoint, ResumeCode, !CI),
         resume_point_vars(ResumePoint, ResumeVarList),
-        set.list_to_set(ResumeVarList, ResumeVars),
+        ResumeVars = set_of_var.list_to_set(ResumeVarList),
         set_forward_live_vars(ResumeVars, !CI),
         % XXX A context that gives the end of the procedure definition
         % would be better than ProcContext.

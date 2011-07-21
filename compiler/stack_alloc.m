@@ -42,13 +42,13 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module libs.globals.
-:- import_module libs.graph_colour.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.live_vars.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module int.
@@ -69,16 +69,17 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
         eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, !.ProcInfo,
             TraceLevel) = yes
     ->
-        trace_fail_vars(ModuleInfo, !.ProcInfo, FailVars)
+        trace_fail_vars(ModuleInfo, !.ProcInfo, FailVars0),
+        FailVars = set_to_bitset(FailVars0)
     ;
-        set.init(FailVars)
+        FailVars = set_of_var.init
     ),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
     globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
     AllocData = alloc_data(ModuleInfo, !.ProcInfo, TypeInfoLiveness,
         OptNoReturnCalls),
-    set.init(NondetLiveness0),
+    NondetLiveness0 = set_of_var.init,
     SimpleStackAlloc0 = stack_alloc(set.make_singleton_set(FailVars)),
     proc_info_get_goal(!.ProcInfo, Goal0),
     build_live_sets_in_goal_no_par_stack(Goal0, Goal, FailVars, AllocData,
@@ -92,7 +93,7 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
         NumReservedSlots, MaybeReservedVarInfo),
     (
         MaybeReservedVarInfo = yes(ResVar - _),
-        set.singleton_set(ResVarSet, ResVar),
+        ResVarSet = set_of_var.make_singleton(ResVar),
         set.insert(ResVarSet, LiveSets0, LiveSets1)
     ;
         MaybeReservedVarInfo = no,
@@ -101,7 +102,7 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
     filter_out_dummy_values(ModuleInfo, VarTypes, LiveSets1, LiveSets,
         DummyVars),
-    graph_colour.group_elements(LiveSets, ColourSets),
+    graph_colour_group_elements(LiveSets, ColourSets),
     set.to_sorted_list(ColourSets, ColourList),
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
     allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
@@ -111,29 +112,29 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
     proc_info_set_stack_slots(StackSlots, !ProcInfo).
 
 :- pred filter_out_dummy_values(module_info::in, vartypes::in,
-    set(set(prog_var))::in, set(set(prog_var))::out,
+    set(set_of_progvar)::in, set(set_of_progvar)::out,
     list(prog_var)::out) is det.
 
 filter_out_dummy_values(ModuleInfo, VarTypes, LiveSet0, LiveSet, DummyVars) :-
     set.to_sorted_list(LiveSet0, LiveList0),
     filter_out_dummy_values_2(ModuleInfo, VarTypes, LiveList0, LiveList,
-        set.init, Dummies),
+        set_of_var.init, Dummies),
     set.list_to_set(LiveList, LiveSet),
-    set.to_sorted_list(Dummies, DummyVars).
+    DummyVars = set_of_var.to_sorted_list(Dummies).
 
 :- pred filter_out_dummy_values_2(module_info::in, vartypes::in,
-    list(set(prog_var))::in, list(set(prog_var))::out,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    list(set_of_progvar)::in, list(set_of_progvar)::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 filter_out_dummy_values_2(_, _VarTypes, [], [], !Dummies).
 filter_out_dummy_values_2(ModuleInfo, VarTypes,
         [LiveSet0 | LiveSets0], LiveSets, !Dummies) :-
     filter_out_dummy_values_2(ModuleInfo, VarTypes, LiveSets0, LiveSets1,
         !Dummies),
-    set.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), LiveSet0,
+    set_of_var.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), LiveSet0,
         DummyVars, NonDummyVars),
-    set.union(DummyVars, !Dummies),
-    ( set.empty(NonDummyVars) ->
+    set_of_var.union(DummyVars, !Dummies),
+    ( set_of_var.is_empty(NonDummyVars) ->
         LiveSets = LiveSets1
     ;
         LiveSets = [NonDummyVars | LiveSets1]
@@ -144,8 +145,9 @@ filter_out_dummy_values_2(ModuleInfo, VarTypes,
 
 :- type stack_alloc
     --->    stack_alloc(
-                set(set(prog_var))  % The sets of vars that need to be
-                                    % on the stack at the same time.
+                % The sets of vars that need to be on the stack
+                % at the same time.
+                set(set_of_progvar)
             ).
 
 :- instance stack_alloc_info(stack_alloc) where [
@@ -159,7 +161,7 @@ filter_out_dummy_values_2(ModuleInfo, VarTypes,
 
 alloc_at_call_site(NeedAtCall, _GoalInfo, StackAlloc0, StackAlloc) :-
     NeedAtCall = need_across_call(ForwardVars, ResumeVars, NondetLiveVars),
-    LiveSet = set.union_list([ForwardVars, ResumeVars, NondetLiveVars]),
+    LiveSet = set_of_var.union_list([ForwardVars, ResumeVars, NondetLiveVars]),
     StackAlloc0 = stack_alloc(LiveSets0),
     LiveSets = set.insert(LiveSets0, LiveSet),
     StackAlloc = stack_alloc(LiveSets).
@@ -174,7 +176,7 @@ alloc_at_resume_site(NeedAtResume, _GoalInfo, StackAlloc0, StackAlloc) :-
         StackAlloc = StackAlloc0
     ;
         ResumeOnStack = yes,
-        LiveSet = set.union(ResumeVars, NondetLiveVars),
+        LiveSet = set_of_var.union(ResumeVars, NondetLiveVars),
         StackAlloc0 = stack_alloc(LiveSets0),
         LiveSets = set.insert(LiveSets0, LiveSet),
         StackAlloc = stack_alloc(LiveSets)
@@ -192,7 +194,7 @@ alloc_at_par_conj(NeedParConj, _GoalInfo, StackAlloc0, StackAlloc) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred allocate_stack_slots(list(set(prog_var))::in, code_model::in, int::in,
+:- pred allocate_stack_slots(list(set_of_progvar)::in, code_model::in, int::in,
     maybe(pair(prog_var, int))::in, stack_slots::out) is det.
 
 allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
@@ -203,7 +205,7 @@ allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
     allocate_stack_slots_2(ColourList, CodeModel, FirstVarSlot,
         MaybeReservedVarInfo, map.init, StackSlots).
 
-:- pred allocate_stack_slots_2(list(set(prog_var))::in, code_model::in,
+:- pred allocate_stack_slots_2(list(set_of_progvar)::in, code_model::in,
     int::in, maybe(pair(prog_var, int))::in,
     stack_slots::in, stack_slots::out) is det.
 
@@ -212,7 +214,7 @@ allocate_stack_slots_2([Vars | VarSets], CodeModel, N0, MaybeReservedVarInfo,
         !StackSlots) :-
     (
         MaybeReservedVarInfo = yes(ResVar - ResSlotNum),
-        set.member(ResVar, Vars)
+        set_of_var.member(Vars, ResVar)
     ->
         SlotNum = ResSlotNum,
         N1 = N0
@@ -220,7 +222,7 @@ allocate_stack_slots_2([Vars | VarSets], CodeModel, N0, MaybeReservedVarInfo,
         SlotNum = N0,
         N1 = N0 + 1
     ),
-    set.to_sorted_list(Vars, VarList),
+    VarList = set_of_var.to_sorted_list(Vars),
     allocate_same_stack_slot(VarList, CodeModel, SlotNum, !StackSlots),
     allocate_stack_slots_2(VarSets, CodeModel, N1, MaybeReservedVarInfo,
         !StackSlots).

@@ -76,6 +76,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.lookup_util.
 :- import_module ll_backend.switch_case.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -202,7 +203,7 @@ generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
 
 :- pred generate_string_hash_simple_lookup_switch(rval::in,
     assoc_list(string, list(rval))::in, list(prog_var)::in,
-    list(llds_type)::in, set(prog_var)::in,
+    list(llds_type)::in, set_of_progvar::in,
     can_fail::in, label::in, abs_store_map::in,
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
@@ -327,8 +328,8 @@ construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
 %-----------------------------------------------------------------------------%
 
 :- pred generate_string_hash_several_soln_lookup_switch(rval::in,
-    assoc_list(string, soln_consts(rval))::in, set(prog_var)::in, bool::in,
-    list(prog_var)::in, list(llds_type)::in, set(prog_var)::in,
+    assoc_list(string, soln_consts(rval))::in, set_of_progvar::in, bool::in,
+    list(prog_var)::in, list(llds_type)::in, set_of_progvar::in,
     can_fail::in, label::in, abs_store_map::in,
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
@@ -679,7 +680,7 @@ generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
 
 :- pred generate_string_binary_simple_lookup_switch(rval::in,
     assoc_list(string, list(rval))::in, list(prog_var)::in,
-    list(llds_type)::in, set(prog_var)::in,
+    list(llds_type)::in, set_of_progvar::in,
     can_fail::in, label::in, abs_store_map::in,
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
@@ -781,8 +782,8 @@ construct_string_binary_simple_lookup_vector([Str - OutRvals | Rest],
 %-----------------------------------------------------------------------------%
 
 :- pred generate_string_binary_several_soln_lookup_switch(rval::in,
-    assoc_list(string, soln_consts(rval))::in, set(prog_var)::in, bool::in,
-    list(prog_var)::in, list(llds_type)::in, set(prog_var)::in,
+    assoc_list(string, soln_consts(rval))::in, set_of_progvar::in, bool::in,
+    list(prog_var)::in, list(llds_type)::in, set_of_progvar::in,
     can_fail::in, label::in, abs_store_map::in,
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.

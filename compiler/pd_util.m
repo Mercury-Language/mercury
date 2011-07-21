@@ -168,6 +168,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.constraint.
 :- import_module transform_hlds.pd_debug.
 
@@ -795,7 +796,7 @@ pd_requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
         proc_info_get_vartypes(!.ProcInfo, VarTypes0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
         implicitly_quantify_goal_general(ordinary_nonlocals_no_lambda,
-            NonLocals, _, Goal0, Goal, VarSet0, VarSet,
+            set_to_bitset(NonLocals), _, Goal0, Goal, VarSet0, VarSet,
             VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
         proc_info_set_varset(VarSet, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),

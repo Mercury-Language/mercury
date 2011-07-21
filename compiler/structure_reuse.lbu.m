@@ -43,6 +43,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
 :- import_module require.
@@ -96,8 +97,11 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
             goal_info_get_pre_births(Info0, PreBirths),
             goal_info_get_post_births(Info0, PostBirths),
             !:LBU = set.union_list([goal_info_get_lfu(Info0),
-                remove_typeinfo_vars_from_set(VarTypes, PreBirths),
-                remove_typeinfo_vars_from_set(VarTypes, PostBirths), !.LBU])
+                remove_typeinfo_vars_from_set(VarTypes,
+                    bitset_to_set(PreBirths)),
+                remove_typeinfo_vars_from_set(VarTypes,
+                    bitset_to_set(PostBirths)),
+                !.LBU])
         ;
             true
         )
@@ -176,7 +180,7 @@ get_backtrack_vars(VarTypes, Info) = Vars :-
     goal_info_get_resume_point(Info, ResPoint),
     (
         ResPoint = resume_point(ResVars, _),
-        Vars = remove_typeinfo_vars_from_set(VarTypes, ResVars)
+        Vars = remove_typeinfo_vars_from_set(VarTypes, bitset_to_set(ResVars))
     ;
         ResPoint = no_resume_point,
         Vars = set.init

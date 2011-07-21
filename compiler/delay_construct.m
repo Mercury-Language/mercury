@@ -46,6 +46,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module list.
@@ -218,13 +219,13 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         delay_construct_skippable(GoalExpr0, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        maybe_complete_with_typeinfo_vars(NonLocals,
+        maybe_complete_with_typeinfo_vars(set_to_bitset(NonLocals),
             DelayInfo ^ dci_body_typeinfo_liveness,
             DelayInfo ^ dci_vartypes,
             DelayInfo ^ dci_rtti_varmaps, CompletedNonLocals),
-        set.intersect(CompletedNonLocals, ConstructedVars0,
-            Intersection),
-        set.empty(Intersection),
+        set_of_var.intersect(CompletedNonLocals,
+            set_to_bitset(ConstructedVars0), Intersection),
+        set_of_var.is_empty(Intersection),
         goal_info_get_purity(GoalInfo0) = purity_pure
     ->
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,

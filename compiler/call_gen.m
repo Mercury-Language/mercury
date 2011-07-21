@@ -74,6 +74,7 @@
 :- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_event.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module cord.
@@ -543,18 +544,18 @@ call_comment(CI, PredId, CodeModel, Msg) :-
     % and handle_return ignore them.
     %
 :- pred kill_dead_input_vars(assoc_list(prog_var, arg_info)::in,
-    hlds_goal_info::in, set(prog_var)::out,
+    hlds_goal_info::in, set_of_progvar::out,
     code_info::in, code_info::out) is det.
 
 kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs, !CI) :-
     get_forward_live_vars(!.CI, Liveness),
-    find_nonlive_outputs(ArgsInfos, Liveness, set.init, NonLiveOutputs),
+    find_nonlive_outputs(ArgsInfos, Liveness, set_of_var.init, NonLiveOutputs),
     goal_info_get_post_deaths(GoalInfo, PostDeaths),
-    set.difference(PostDeaths, NonLiveOutputs, ImmediatePostDeaths),
+    set_of_var.difference(PostDeaths, NonLiveOutputs, ImmediatePostDeaths),
     make_vars_forward_dead(ImmediatePostDeaths, !CI).
 
 :- pred handle_return(assoc_list(prog_var, arg_info)::in,
-    hlds_goal_info::in, set(prog_var)::in, instmap::in,
+    hlds_goal_info::in, set_of_progvar::in, instmap::in,
     list(liveinfo)::out, code_info::in, code_info::out) is det.
 
 handle_return(ArgsInfos, GoalInfo, _NonLiveOutputs, ReturnInstMap,
@@ -572,17 +573,17 @@ handle_return(ArgsInfos, GoalInfo, _NonLiveOutputs, ReturnInstMap,
         ReturnInstMap, OkToDeleteAny, ReturnLiveLvalues).
 
 :- pred find_nonlive_outputs(assoc_list(prog_var, arg_info)::in,
-    set(prog_var)::in, set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::in, set_of_progvar::out) is det.
 
 find_nonlive_outputs([], _, !NonLiveOutputs).
 find_nonlive_outputs([Var - arg_info(_ArgLoc, Mode) | Args],
         Liveness, !NonLiveOutputs) :-
     (
         Mode = top_out,
-        ( set.member(Var, Liveness) ->
+        ( set_of_var.member(Liveness, Var) ->
             true
         ;
-            set.insert(Var, !NonLiveOutputs)
+            set_of_var.insert(Var, !NonLiveOutputs)
         )
     ;
         ( Mode = top_in
@@ -592,7 +593,7 @@ find_nonlive_outputs([Var - arg_info(_ArgLoc, Mode) | Args],
     find_nonlive_outputs(Args, Liveness, !NonLiveOutputs).
 
 :- pred rebuild_registers(assoc_list(prog_var, arg_info)::in,
-    set(prog_var)::in, assoc_list(prog_var, arg_loc)::out,
+    set_of_progvar::in, assoc_list(prog_var, arg_loc)::out,
     code_info::in, code_info::out) is det.
 
 rebuild_registers([], _, [], !CI).
@@ -601,7 +602,7 @@ rebuild_registers([Var - arg_info(ArgLoc, Mode) | Args], Liveness,
     rebuild_registers(Args, Liveness, OutputArgLocs1, !CI),
     (
         Mode = top_out,
-        set.member(Var, Liveness)
+        set_of_var.member(Liveness, Var)
     ->
         code_util.arg_loc_to_register(ArgLoc, Register),
         set_var_location(Var, Register, !CI),

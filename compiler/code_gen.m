@@ -56,6 +56,7 @@
 :- import_module ll_backend.switch_gen.
 :- import_module ll_backend.unify_gen.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module cord.
@@ -229,7 +230,7 @@ compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
-    code_model::in, set(prog_var)::in, llds_code::out,
+    code_model::in, set_of_progvar::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,

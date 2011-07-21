@@ -151,6 +151,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.    % for pd_cost, etc.
 :- import_module transform_hlds.const_prop.
 :- import_module transform_hlds.pd_cost.
@@ -693,7 +694,8 @@ do_process_clause_body_goal(!Goal, !Info) :-
             simplify_info_get_var_types(!.Info, !:VarTypes),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
             implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
-                NonLocals, _, !Goal, !VarSet, !VarTypes, !RttiVarMaps),
+                set_to_bitset(NonLocals), _, !Goal,
+                !VarSet, !VarTypes, !RttiVarMaps),
 
             simplify_info_set_varset(!.VarSet, !Info),
             simplify_info_set_var_types(!.VarTypes, !Info),

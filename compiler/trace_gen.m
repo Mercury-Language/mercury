@@ -244,6 +244,7 @@
 :- import_module ll_backend.layout_out.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module cord.
@@ -261,25 +262,27 @@
 :- type trace_port_info
     --->    port_info_external
     ;       port_info_tailrec_call(
-                forward_goal_path,
                 % The id of the tail recursive call.
-                assoc_list(prog_var, arg_info)
+                forward_goal_path,
+
                 % The list of arguments of this call.
+                assoc_list(prog_var, arg_info)
             )
     ;       port_info_internal(
-                forward_goal_path,
                 % The id of the goal whose start this port represents.
-                set(prog_var)
+                forward_goal_path,
+
                 % The pre-death set of this goal.
+                set_of_progvar
             )
     ;       port_info_negation_end(
-                forward_goal_path
                 % The id of the goal whose end (one way or another)
                 % this port represents.
+                forward_goal_path
             )
     ;       port_info_user(
-                forward_goal_path
                 % The id of the goal.
+                forward_goal_path
             ).
 
 trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
@@ -1033,8 +1036,8 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     ;
         PortInfo = port_info_internal(Path, PreDeaths),
         ResumeVars = current_resume_point_vars(!.CI),
-        set.difference(PreDeaths, ResumeVars, RealPreDeaths),
-        set.to_sorted_list(RealPreDeaths, RealPreDeathList),
+        set_of_var.difference(PreDeaths, ResumeVars, RealPreDeaths),
+        RealPreDeathList = set_of_var.to_sorted_list(RealPreDeaths),
         list.delete_elems(LiveVars0, RealPreDeathList, LiveVars),
         TailRecResetCode = empty
     ;

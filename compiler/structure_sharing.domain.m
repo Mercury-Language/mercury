@@ -305,6 +305,7 @@
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.util.
@@ -606,7 +607,7 @@ optimize_for_deconstruct(GoalInfo, !NumberedArgs) :-
     hlds_llds.goal_info_get_pre_births(GoalInfo, PreBirthSet),
     IsPreBirthArg = (pred(NumberedArg::in) is semidet :-
         Var = snd(NumberedArg),
-        set.member(Var, PreBirthSet)
+        set_of_var.member(PreBirthSet, Var)
     ),
     list.filter(IsPreBirthArg, !NumberedArgs).
 
@@ -615,14 +616,13 @@ optimize_for_deconstruct(GoalInfo, !NumberedArgs) :-
 
 optimization_remove_deaths(ProcInfo, GoalInfo, Sharing0) = Sharing :-
     proc_info_get_headvars(ProcInfo, HeadVars),
-    set.list_to_set(HeadVars, HeadVarsSet),
+    HeadVarsSet = set_of_var.list_to_set(HeadVars),
     goal_info_get_post_deaths(GoalInfo, Deaths0),
-    %
+
     % Make sure to keep all the information about the headvars,
     % even if they are in the post deaths set.
-    %
-    set.difference(Deaths0, HeadVarsSet, Deaths),
-    set.to_sorted_list(Deaths, DeathsList),
+    set_of_var.difference(Deaths0, HeadVarsSet, Deaths),
+    DeathsList = set_of_var.to_sorted_list(Deaths),
     sharing_as_project_with_type(outproject, DeathsList, Sharing0, Sharing).
 
 add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId,

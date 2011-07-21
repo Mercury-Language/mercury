@@ -20,14 +20,12 @@
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
-:- import_module parse_tree.prog_data.
-
-:- import_module set.
+:- import_module parse_tree.set_of_var.
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_scope(scope_reason::in, code_model::in, hlds_goal_info::in,
-    set(prog_var)::in, hlds_goal::in, llds_code::out,
+    set_of_progvar::in, hlds_goal::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -36,6 +34,8 @@
 :- implementation.
 
 :- import_module ll_backend.code_gen.
+% :- import_module parse_tree.prog_data.
+% :- import_module set.
 
 :- import_module cord.
 :- import_module maybe.
@@ -57,7 +57,7 @@ generate_scope(Reason, OuterCodeModel, OuterGoalInfo,
             ForwardLiveVarsBeforeGoal, Goal, Code, !CI)
     ).
 
-:- pred generate_commit(code_model::in, hlds_goal_info::in, set(prog_var)::in,
+:- pred generate_commit(code_model::in, hlds_goal_info::in, set_of_progvar::in,
     hlds_goal::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,

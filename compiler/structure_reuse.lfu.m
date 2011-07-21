@@ -46,6 +46,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
 :- import_module map.
@@ -87,7 +88,7 @@ forward_use_in_goal(VarTypes, !Goal, !InstantiatedVars, !DeadVars) :-
     ;
         HasSubGoals = has_subgoals,
         goal_info_get_pre_deaths(GoalInfo0, PreDeaths),
-        set.union(PreDeaths, !DeadVars),
+        set.union(bitset_to_set(PreDeaths), !DeadVars),
         forward_use_in_composite_goal(VarTypes, !Goal,
             !InstantiatedVars, !DeadVars)
     ).
@@ -104,9 +105,11 @@ compute_instantiated_and_dead_vars(VarTypes, Info, !Inst, !Dead) :-
     goal_info_get_post_deaths(Info, PostDeaths),
     goal_info_get_pre_deaths(Info, PreDeaths),
     !:Inst = set.union_list([
-        remove_typeinfo_vars_from_set(VarTypes, PreBirths),
-        remove_typeinfo_vars_from_set(VarTypes, PostBirths), !.Inst]),
-    !:Dead = set.union_list([PreDeaths, PostDeaths, !.Dead]).
+        remove_typeinfo_vars_from_set(VarTypes, bitset_to_set(PreBirths)),
+        remove_typeinfo_vars_from_set(VarTypes, bitset_to_set(PostBirths)),
+        !.Inst]),
+    !:Dead = set.union_list(
+        [bitset_to_set(PreDeaths), bitset_to_set(PostDeaths), !.Dead]).
 
 :- pred forward_use_in_composite_goal(vartypes::in, hlds_goal::in,
     hlds_goal::out, set(prog_var)::in, set(prog_var)::out,

@@ -81,6 +81,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1599,7 +1600,7 @@ generate_ground_term(TermVar, Goal, !CI) :-
                     ActiveMap0, ActiveMap),
                 map.to_assoc_list(ActiveMap, ActivePairs),
                 ( ActivePairs = [TermVar - GroundTerm] ->
-                    add_forward_live_vars(NonLocals, !CI),
+                    add_forward_live_vars(set_to_bitset(NonLocals), !CI),
                     set_static_cell_info(StaticCellInfo, !CI),
                     GroundTerm = Rval - _,
                     assign_const_to_var(TermVar, Rval, !CI)

@@ -21,12 +21,12 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module array.
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -320,11 +320,11 @@
     % for accurate garbage collection - live variables need to have
     % their typeinfos stay live too.
     %
-:- pred get_typeinfo_vars(set(prog_var)::in, vartypes::in, rtti_varmaps::in,
-    set(prog_var)::out) is det.
+:- pred get_typeinfo_vars(set_of_progvar::in, vartypes::in, rtti_varmaps::in,
+    set_of_progvar::out) is det.
 
-:- pred maybe_complete_with_typeinfo_vars(set(prog_var)::in,
-    bool::in, vartypes::in, rtti_varmaps::in, set(prog_var)::out) is det.
+:- pred maybe_complete_with_typeinfo_vars(set_of_progvar::in,
+    bool::in, vartypes::in, rtti_varmaps::in, set_of_progvar::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -859,9 +859,9 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 
 get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
     TVarMap = RttiVarMaps ^ rv_ti_varmap,
-    set.to_sorted_list(Vars, VarList),
+    VarList = set_of_var.to_sorted_list(Vars),
     get_typeinfo_vars_2(VarList, VarTypes, TVarMap, TypeInfoVarList),
-    set.list_to_set(TypeInfoVarList, TypeInfoVars).
+    TypeInfoVars = set_of_var.list_to_set(TypeInfoVarList).
 
     % Auxiliary predicate - traverses variables and builds a list of
     % variables that store typeinfos for these variables.
@@ -900,7 +900,7 @@ maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness, VarTypes,
     (
         TypeInfoLiveness = yes,
         get_typeinfo_vars(Vars0, VarTypes, RttiVarMaps, TypeInfoVars),
-        set.union(Vars0, TypeInfoVars, Vars)
+        set_of_var.union(Vars0, TypeInfoVars, Vars)
     ;
         TypeInfoLiveness = no,
         Vars = Vars0

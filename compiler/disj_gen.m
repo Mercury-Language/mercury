@@ -48,6 +48,7 @@
 :- import_module ll_backend.lookup_util.
 :- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module cord.
@@ -81,7 +82,7 @@ generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
             ResumeVars = ResumeVarsPrime
         ;
             Resume = no_resume_point,
-            set.init(ResumeVars)
+            ResumeVars = set_of_var.init
         ),
         AddTrailOps = should_add_trail_ops(!.CI, GoalInfo),
         AddRegionOps = should_add_region_ops(!.CI, GoalInfo),
@@ -104,7 +105,7 @@ generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
 
                 ldi_store_map           :: abs_store_map,
                 ldi_branch_end          :: branch_end,
-                ldi_liveness            :: set(prog_var),
+                ldi_liveness            :: set_of_progvar,
 
                 lds_cur_slot            :: lval,
 
@@ -125,7 +126,7 @@ generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
             ).
 
 :- pred is_lookup_disj(add_trail_ops::in, add_region_ops::in,
-    set(prog_var)::in, list(hlds_goal)::in, hlds_goal_info::in,
+    set_of_progvar::in, list(hlds_goal)::in, hlds_goal_info::in,
     lookup_disj_info::out, code_info::in, code_info::out) is semidet.
 
 is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Disjuncts, DisjGoalInfo,
@@ -156,7 +157,8 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Disjuncts, DisjGoalInfo,
     VarTypes = get_var_types(!.CI),
     list.map(map.lookup(VarTypes), OutVars, OutTypes),
 
-    produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+    produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
+        FlushCode, !CI),
 
     % We cannot release this stack slot anywhere within the disjunction,
     % since it will be needed after backtracking to later disjuncts.
@@ -193,7 +195,7 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Disjuncts, DisjGoalInfo,
         SaveHpCode, MaybeHpSlot, HijackInfo, PrepareHijackCode,
         Solns, LLDSTypes).
 
-:- pred generate_lookup_disj(set(prog_var)::in, lookup_disj_info::in,
+:- pred generate_lookup_disj(set_of_progvar::in, lookup_disj_info::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
 generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
@@ -227,8 +229,8 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
 
     remember_position(!.CI, DisjEntry),
 
-    make_resume_point(ResumeVars, resume_locs_stack_only,
-        ResumeMap, ResumePoint, !CI),
+    make_resume_point(set_of_var.to_sorted_list(ResumeVars),
+        resume_locs_stack_only, ResumeMap, ResumePoint, !CI),
     effect_resume_point(ResumePoint, model_non, UpdateRedoipCode, !CI),
     generate_offset_assigns(OutVars, 0, BaseReg, !CI),
     flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CI),
@@ -337,15 +339,16 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_real_disj(add_trail_ops::in, add_region_ops::in,
-    code_model::in, set(prog_var)::in, list(hlds_goal)::in, hlds_goal_info::in,
-    llds_code::out, code_info::in, code_info::out) is det.
+    code_model::in, set_of_progvar::in, list(hlds_goal)::in,
+    hlds_goal_info::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
         DisjGoalInfo, Code, !CI)  :-
     % Make sure that the variables whose values will be needed on backtracking
     % to any disjunct are materialized into registers or stack slots. Their
     % locations are recorded in ResumeMap.
-    produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+    produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
+        FlushCode, !CI),
 
     % If we are using a trail, save the current trail state before the
     % first disjunct.
@@ -538,8 +541,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             BranchStart = BranchStart0
         ),
 
-        make_resume_point(ResumeVars, ResumeLocs, FullResumeMap,
-            NextResumePoint, !CI),
+        make_resume_point(set_of_var.to_sorted_list(ResumeVars),
+            ResumeLocs, FullResumeMap, NextResumePoint, !CI),
         effect_resume_point(NextResumePoint, CodeModel, ModContCode, !CI),
 
         maybe_generate_internal_event_code(Goal, DisjGoalInfo, TraceCode, !CI),
@@ -708,7 +711,7 @@ maybe_create_disj_region_frame_nondet(DisjRegionOps, _DisjGoalInfo,
         % at the starts of some later disjuncts (i.e. aren't used only in the
         % first disjunct). We don't yet gather this information.
         SnapshotRegionVars = LiveRegionVars,
-        SnapshotRegionVarList = set.to_sorted_list(SnapshotRegionVars),
+        SnapshotRegionVarList = set_of_var.to_sorted_list(SnapshotRegionVars),
         list.length(SnapshotRegionVarList, NumSnapshotRegionVars),
 
         get_globals(!.CI, Globals),

@@ -21,6 +21,7 @@
 
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module list.
@@ -76,9 +77,9 @@
     % and RealizedCostNodes give the benefit and cost nodes realized
     % by this choice.
     %
-:- pred find_via_cell_vars(prog_var::in, set(prog_var)::in, bool::in,
-    set(prog_var)::in, list(set(prog_var))::in, matching_params::in,
-    set(benefit_node)::out, set(cost_node)::out, set(prog_var)::out)
+:- pred find_via_cell_vars(prog_var::in, set_of_progvar::in, bool::in,
+    set_of_progvar::in, list(set_of_progvar)::in, matching_params::in,
+    set(benefit_node)::out, set(cost_node)::out, set_of_progvar::out)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -155,18 +156,18 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
     InclAllCand = MatchingParams ^ include_all_candidates,
     (
         InclAllCand = no,
-        AllSegmentVars = set.union_list([BeforeFlush | AfterFlush]),
-        set.intersect(CandidateFieldVars, AllSegmentVars,
+        AllSegmentVars = set_of_var.union_list([BeforeFlush | AfterFlush]),
+        set_of_var.intersect(CandidateFieldVars, AllSegmentVars,
             OccurringCandidateFieldVars),
-        set.difference(CandidateFieldVars, OccurringCandidateFieldVars,
+        set_of_var.difference(CandidateFieldVars, OccurringCandidateFieldVars,
             NonOccurringCandidateFieldVars)
     ;
         InclAllCand = yes,
         OccurringCandidateFieldVars = CandidateFieldVars,
-        NonOccurringCandidateFieldVars = set.init
+        NonOccurringCandidateFieldVars = set_of_var.init
     ),
-    set.to_sorted_list(OccurringCandidateFieldVars,
-        OccurringCandidateFieldVarList),
+    OccurringCandidateFieldVarList =
+        set_of_var.to_sorted_list(OccurringCandidateFieldVars),
     list.filter_map(simplify_segment(CellVar, OccurringCandidateFieldVars),
         AfterFlush, FilteredAfterFlush),
     NumberedAfterFlush = number_segments(2, FilteredAfterFlush),
@@ -214,12 +215,12 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
         % the .err file.
         % Nullified = no
     ;
-        ViaCellOccurringVars = set.init
+        ViaCellOccurringVars = set_of_var.init
         % Uncomment if you want to dump performance information into
         % the .err file.
         % Nullified = yes
     ),
-    ViaCellVars = set.union(ViaCellOccurringVars,
+    ViaCellVars = set_of_var.union(ViaCellOccurringVars,
         NonOccurringCandidateFieldVars).
     % Uncomment if you want to dump performance information into
     % the .err file.
@@ -237,15 +238,15 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
     % SegmentVars, them simplify_segment succeeds after removing the
     % non-candidate variables from SegmentVars0.
     %
-:- pred simplify_segment(prog_var::in, set(prog_var)::in, set(prog_var)::in,
-    set(prog_var)::out) is semidet.
+:- pred simplify_segment(prog_var::in, set_of_progvar::in, set_of_progvar::in,
+    set_of_progvar::out) is semidet.
 
 simplify_segment(CellVar, CandidateArgVars, SegmentVars0, SegmentVars) :-
-    \+ set.member(CellVar, SegmentVars0),
-    SegmentVars = set.intersect(SegmentVars0, CandidateArgVars).
+    \+ set_of_var.member(SegmentVars0, CellVar),
+    SegmentVars = set_of_var.intersect(SegmentVars0, CandidateArgVars).
 
-:- func number_segments(int, list(set(prog_var))) =
-    assoc_list(int, set(prog_var)).
+:- func number_segments(int, list(set_of_progvar)) =
+    assoc_list(int, set_of_progvar).
 
 number_segments(_N, []) = [].
 number_segments(N, [Segment | Segments]) =
@@ -256,8 +257,8 @@ number_segments(N, [Segment | Segments]) =
     % Find_costs_benefits computes the costs and benefits of accessing the
     % given field variable FieldVar via the cell variable CellVar.
     %
-:- func find_costs_benefits(prog_var, set(prog_var),
-    assoc_list(int, set(prog_var)), bool, matching_params, prog_var)
+:- func find_costs_benefits(prog_var, set_of_progvar,
+    assoc_list(int, set_of_progvar), bool, matching_params, prog_var)
     = field_costs_benefits.
 
 find_costs_benefits(CellVar, BeforeFlush, AfterFlush, CellVarFlushedLater,
@@ -271,7 +272,7 @@ find_costs_benefits(CellVar, BeforeFlush, AfterFlush, CellVarFlushedLater,
         CostOps = [cell_var_store | CostOps0]
     ),
     BenefitOps0 = [field_var_store(FieldVar)],
-    ( set.member(CellVar, BeforeFlush) ->
+    ( set_of_var.member(BeforeFlush, CellVar) ->
         BenefitOps = BenefitOps0
     ;
         BenefitOps = [field_var_load(FieldVar) | BenefitOps0]
@@ -294,13 +295,13 @@ find_costs_benefits(CellVar, BeforeFlush, AfterFlush, CellVarFlushedLater,
     FieldCostsBenefits = field_costs_benefits(FieldVar,
         CostNodeSet, BenefitNodeSet).
 
-:- pred find_cell_var_loads_for_field(assoc_list(int, set(prog_var))::in,
+:- pred find_cell_var_loads_for_field(assoc_list(int, set_of_progvar)::in,
     prog_var::in, list(cost_operation)::in, list(cost_operation)::out) is det.
 
 find_cell_var_loads_for_field([], _, !CostOps).
 find_cell_var_loads_for_field([SegmentNum - SegmentVars | AfterFlush],
         FieldVar, !CostOps) :-
-    ( set.member(FieldVar, SegmentVars) ->
+    ( set_of_var.member(SegmentVars, FieldVar) ->
         !:CostOps = [cell_var_load(SegmentNum) | !.CostOps]
     ;
         true
@@ -615,16 +616,16 @@ adj_to_matched_cost(CostToBenefitMap, CostNode) = Match :-
 %-----------------------------------------------------------------------------%
 
 :- func compute_via_cell_vars(list(field_costs_benefits), set(benefit_node))
-    = set(prog_var).
+    = set_of_progvar.
 
-compute_via_cell_vars([], _MarkedBenefits) = set.init.
+compute_via_cell_vars([], _MarkedBenefits) = set_of_var.init.
 compute_via_cell_vars([FieldCostsBenefits | FieldsCostsBenefits],
         MarkedBenefits) = ViaCellVars :-
     ViaCellVars1 = compute_via_cell_vars(FieldsCostsBenefits, MarkedBenefits),
     FieldCostsBenefits = field_costs_benefits(FieldVar, _, FieldBenefits),
     set.intersect(FieldBenefits, MarkedBenefits, MarkedFieldBenefits),
-    ( set.empty(MarkedFieldBenefits) ->
-        set.insert(FieldVar, ViaCellVars1, ViaCellVars)
+    ( set.is_empty(MarkedFieldBenefits) ->
+        set_of_var.insert(FieldVar, ViaCellVars1, ViaCellVars)
     ; set.equal(MarkedFieldBenefits, FieldBenefits) ->
         ViaCellVars = ViaCellVars1
     ;
@@ -672,9 +673,9 @@ get_unmatched_cost_nodes([Node | Nodes], MatchingCB) = UnmatchedNodes :-
     % the call to dump_results, and two lines computing one of the arguments of
     % that call.
     %
-:- pred dump_results(prog_var::in, set(prog_var)::in, list(prog_var)::in,
-    set(prog_var)::in, bool::in, set(prog_var)::in,
-    assoc_list(int, set(prog_var))::in,
+:- pred dump_results(prog_var::in, set_of_progvar::in, list(prog_var)::in,
+    set_of_progvar::in, bool::in, set_of_progvar::in,
+    assoc_list(int, set_of_progvar)::in,
     list(benefit_node)::in, list(benefit_operation)::in,
     list(cost_node)::in, list(cost_operation)::in, io::di, io::uo) is det.
 
@@ -682,9 +683,9 @@ dump_results(CellVar, CandidateFieldVars, OccurringCandidateFieldVarList,
         ViaCellOccurringVars, Nullified, BeforeFlush, AfterFlush,
         BenefitNodes, BenefitOps, CostNodes, CostOps, !IO) :-
     term.var_to_int(CellVar, CellVarInt),
-    set.to_sorted_list(CandidateFieldVars, CandidateFieldVarList),
-    set.to_sorted_list(ViaCellOccurringVars, ViaCellVarList),
-    set.to_sorted_list(BeforeFlush, BeforeFlushList),
+    CandidateFieldVarList = set_of_var.to_sorted_list(CandidateFieldVars),
+    ViaCellVarList = set_of_var.to_sorted_list(ViaCellOccurringVars),
+    BeforeFlushList = set_of_var.to_sorted_list(BeforeFlush),
     list.map(term.var_to_int, CandidateFieldVarList,
         CandidateFieldVarInts),
     list.map(term.var_to_int, OccurringCandidateFieldVarList,
@@ -730,11 +731,11 @@ dump_results(CellVar, CandidateFieldVars, OccurringCandidateFieldVarList,
     io.write(CostOps, !IO),
     io.write_string("\n%\n", !IO).
 
-:- pred dump_after_flush(pair(int, set(prog_var))::in,
+:- pred dump_after_flush(pair(int, set_of_progvar)::in,
     io::di, io::uo) is det.
 
 dump_after_flush(SegmentNum - SegmentVars, !IO) :-
-    set.to_sorted_list(SegmentVars, SegmentVarList),
+    SegmentVarList = set_of_var.to_sorted_list(SegmentVars),
     list.map(term.var_to_int, SegmentVarList, SegmentVarInts),
     io.write_string("% after flush, segment ", !IO),
     io.write_int(SegmentNum, !IO),
@@ -744,12 +745,12 @@ dump_after_flush(SegmentNum - SegmentVars, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred realized_costs_benefits(set(prog_var)::in, field_costs_benefits::in)
+:- pred realized_costs_benefits(set_of_progvar::in, field_costs_benefits::in)
     is semidet.
 
 realized_costs_benefits(ViaCellOccurringVars, FieldCostsBenefits) :-
     FieldCostsBenefits = field_costs_benefits(FieldVar, _, _),
-    set.member(FieldVar, ViaCellOccurringVars).
+    set_of_var.member(ViaCellOccurringVars, FieldVar).
 
 :- func project_benefit_op(benefit_node) = benefit_operation.
 

@@ -47,6 +47,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -159,11 +160,11 @@
 
     % Get the set of currently forward-live variables.
     %
-:- pred get_forward_live_vars(code_info::in, set(prog_var)::out) is det.
+:- pred get_forward_live_vars(code_info::in, set_of_progvar::out) is det.
 
     % Set the set of currently forward-live variables.
     %
-:- pred set_forward_live_vars(set(prog_var)::in,
+:- pred set_forward_live_vars(set_of_progvar::in,
     code_info::in, code_info::out) is det.
 
     % Get the table mapping variables to the current
@@ -258,9 +259,9 @@
 
 :- pred get_opt_no_return_calls(code_info::in, bool::out) is det.
 
-:- pred get_zombies(code_info::in, set(prog_var)::out) is det.
+:- pred get_zombies(code_info::in, set_of_progvar::out) is det.
 
-:- pred set_zombies(set(prog_var)::in, code_info::in, code_info::out) is det.
+:- pred set_zombies(set_of_progvar::in, code_info::in, code_info::out) is det.
 
 :- pred get_var_locn_info(code_info::in, var_locn_info::out) is det.
 
@@ -392,14 +393,14 @@
 :- type code_info_loc_dep
     --->    code_info_loc_dep(
                 % Variables that are forward live after this goal.
-                cild_forward_live_vars  :: set(prog_var),
+                cild_forward_live_vars  :: set_of_progvar,
 
                 % Current insts of the live variables.
                 cild_instmap            :: instmap,
 
                 % Zombie variables; variables that are not forward live
                 % but which are protected by an enclosing resume point.
-                cild_zombies            :: set(prog_var),
+                cild_zombies            :: set_of_progvar,
 
                 % A map storing the information about the status of each known
                 % variable. (Known vars = forward live vars + zombies.)
@@ -489,7 +490,8 @@
 
 code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         FollowVars, ModuleInfo, StaticCellInfo, ResumePoint, TraceSlotInfo,
-        MaybeContainingGoalMap, TSRevStringTable, TSStringTableSize, CodeInfo) :-
+        MaybeContainingGoalMap, TSRevStringTable, TSStringTableSize,
+        CodeInfo) :-
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
     proc_info_get_liveness_info(ProcInfo, Liveness),
     CodeModel = proc_info_interface_code_model(ProcInfo),
@@ -526,7 +528,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     map.init(TempContentMap),
     set.init(PersistentTemps),
     set.init(TempsInUse),
-    set.init(Zombies),
+    Zombies = set_of_var.init,
     map.init(LayoutMap),
     max_var_slot(StackSlots, VarSlotMax),
     trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,
@@ -579,7 +581,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             MaybeContainingGoalMap
         ),
         code_info_loc_dep(
-            Liveness,
+            set_to_bitset(Liveness),
             InstMap,
             Zombies,
             VarLocnInfo,
@@ -848,7 +850,7 @@ get_containing_goal_map_det(CI, ContainingGoalMap) :-
 
 :- func lookup_cheaper_tag_test(code_info, mer_type) = maybe_cheaper_tag_test.
 
-:- func filter_region_vars(code_info, set(prog_var)) = set(prog_var).
+:- func filter_region_vars(code_info, set_of_progvar) = set_of_progvar.
 
     % Get the code model of the current procedure.
     %
@@ -869,7 +871,7 @@ get_containing_goal_map_det(CI, ContainingGoalMap) :-
     % Get the set of variables currently needed by the resume
     % points of enclosing goals.
     %
-:- func current_resume_point_vars(code_info) = set(prog_var).
+:- func current_resume_point_vars(code_info) = set_of_progvar.
 
 :- func variable_name(code_info, prog_var) = string.
 
@@ -1054,7 +1056,7 @@ lookup_cheaper_tag_test(CI, Type) = CheaperTagTest :-
 
 filter_region_vars(CI, ForwardLiveVarsBeforeGoal) = RegionVars :-
     VarTypes = code_info.get_var_types(CI),
-    RegionVars = set.filter(is_region_var(VarTypes),
+    RegionVars = set_of_var.filter(is_region_var(VarTypes),
         ForwardLiveVarsBeforeGoal).
 
 %---------------------------------------------------------------------------%
@@ -1086,7 +1088,7 @@ current_resume_point_vars(CI) = ResumeVars :-
     stack.det_top(ResumePointStack, ResumePointInfo),
     pick_first_resume_point(ResumePointInfo, ResumeMap, _),
     map.keys(ResumeMap, ResumeMapVarList),
-    set.list_to_set(ResumeMapVarList, ResumeVars).
+    ResumeVars = set_of_var.list_to_set(ResumeMapVarList).
 
 variable_name(CI, Var) = Name :-
     get_varset(CI, Varset),
@@ -1269,13 +1271,15 @@ add_alloc_site_info(Context, Type, Size, AllocId, !CI) :-
 
 :- type position_info
     --->    position_info(
-                code_info_loc_dep   % The location-dependent part of the
-                                    % code_info at a given position.
+                % The location-dependent part of the code_info
+                % at a given position.
+                code_info_loc_dep
             ).
 
 :- type branch_end_info
     --->    branch_end_info(
-                code_info           % The code_info at the end of a branch.
+                % The code_info at the end of a branch.
+                code_info
             ).
 
 :- func pos_get_fail_info(position_info) = fail_info.
@@ -1487,7 +1491,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
     %
 :- type simple_neg_info.
 
-:- pred enter_simple_neg(set(prog_var)::in, hlds_goal_info::in,
+:- pred enter_simple_neg(list(prog_var)::in, hlds_goal_info::in,
     simple_neg_info::out, code_info::in, code_info::out) is det.
 
 :- pred leave_simple_neg(hlds_goal_info::in, simple_neg_info::in,
@@ -1498,13 +1502,13 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
     % being cut across. If the goal succeeds, the commit will cut away
     % any choice points generated in the goal.
     %
-    % The set(prog_var) should be the set of variables live before
+    % The set_of_progvar should be the set of variables live before
     % the scope goal.
     %
 :- type det_commit_info.
 
 :- pred prepare_for_det_commit(add_trail_ops::in, add_region_ops::in,
-    set(prog_var)::in, hlds_goal_info::in, det_commit_info::out,
+    set_of_progvar::in, hlds_goal_info::in, det_commit_info::out,
     llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_det_commit(det_commit_info::in,
@@ -1521,7 +1525,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
 :- type semi_commit_info.
 
 :- pred prepare_for_semi_commit(add_trail_ops::in, add_region_ops::in,
-    set(prog_var)::in, hlds_goal_info::in, semi_commit_info::out,
+    set_of_progvar::in, hlds_goal_info::in, semi_commit_info::out,
     llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_semi_commit(semi_commit_info::in,
@@ -1581,7 +1585,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
 
     % Materialize the given variables into registers or stack slots.
     %
-:- pred produce_vars(set(prog_var)::in, resume_map::out, llds_code::out,
+:- pred produce_vars(list(prog_var)::in, resume_map::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
     % Put the variables needed in enclosing failure continuations
@@ -1591,8 +1595,10 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
     code_info::in, code_info::out) is det.
 
     % Set up the resume_point_info structure.
+    % The ResumeVars passed as the first arguments should be a sorted list
+    % without duplicates.
     %
-:- pred make_resume_point(set(prog_var)::in, resume_locs::in, resume_map::in,
+:- pred make_resume_point(list(prog_var)::in, resume_locs::in, resume_map::in,
     resume_point_info::out, code_info::in, code_info::out) is det.
 
     % Generate the code for a resume point.
@@ -1677,14 +1683,18 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
     ;       disj_temp_frame
     ;       disj_quarter_hijack
     ;       disj_half_hijack(
-                lval        % The stack slot in which we saved
-                            % the value of the hijacked redoip.
+                % The stack slot in which we saved the value
+                % of the hijacked redoip.
+                lval
             )
     ;       disj_full_hijack(
-                lval,       % The stack slot in which we saved
-                            % the value of the hijacked redoip.
-                lval        % The stack slot in which we saved
-                            % the value of the hijacked redofr.
+                % The stack slot in which we saved the value
+                % of the hijacked redoip.
+                lval,
+
+                % The stack slot in which we saved the value
+                % of the hijacked redofr.
+                lval
             ).
 
 prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
@@ -1856,21 +1866,26 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
 :- type ite_hijack_type
     --->    ite_no_hijack
     ;       ite_temp_frame(
-                lval        % The stack slot in which we saved
-                            % the value of maxfr.
+                % The stack slot in which we saved the value of maxfr.
+                lval
             )
     ;       ite_quarter_hijack
     ;       ite_half_hijack(
-                lval        % The stack slot in which we saved
-                            % the value of the hijacked redoip.
+                % The stack slot in which we saved the value
+                % of the hijacked redoip.
+                lval
             )
     ;       ite_full_hijack(
-                lval,       % The stack slot in which we saved
-                            % the value of the hijacked redoip.
-                lval,       % The stack slot in which we saved
-                            % the value of the hijacked redofr.
-                lval        % The stack slot in which we saved
-                            % the value of maxfr.
+                % The stack slot in which we saved the value
+                % of the hijacked redoip.
+                lval,
+
+                % The stack slot in which we saved the value
+                % of the hijacked redofr.
+                lval,
+
+                % The stack slot in which we saved the value of maxfr.
+                lval
             ).
 
 prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
@@ -2096,9 +2111,8 @@ enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CI) :-
     % Therefore the only part of ResumePoint that matters is the set of
     % variables in the resume map; the other parts of ResumePoint
     % (the locations, the code address) will not be referenced.
-    set.to_sorted_list(ResumeVars, ResumeVarList),
     map.init(ResumeMap0),
-    make_fake_resume_map(ResumeVarList, ResumeMap0, ResumeMap),
+    make_fake_resume_map(ResumeVars, ResumeMap0, ResumeMap),
     ResumePoint = orig_only(ResumeMap, do_redo),
     effect_resume_point(ResumePoint, model_semi, Code, !CI),
     expect(is_empty(Code), $module, $pred, "nonempty code for simple neg"),
@@ -2122,28 +2136,30 @@ make_fake_resume_map([Var | Vars], !ResumeMap) :-
 
 :- type det_commit_info
     --->    det_commit_info(
-                maybe(lval),        % Location of saved maxfr.
-                maybe(pair(lval)),  % Location of saved ticket
-                                    % counter and trail pointer.
+                % Location of saved maxfr.
+                maybe(lval),
+
+                % Location of saved ticket % counter and trail pointer.
+                maybe(pair(lval)),
+
                 maybe(region_commit_stack_frame)
             ).
 
 :- type region_commit_stack_frame
     --->    region_commit_stack_frame(
+                % The id of the region commit stack frame, which is emdedded
+                % in the current procedure's stack frame, and whose layout is:
+
+                % saved region_commit_stack_pointer
+                % saved region sequence number
+                % number of live nonprotected regions
+                % space reserved for the ids of live nonprotected regions
+
                 embedded_stack_frame_id,
-                                    % The id of the region commit stack frame,
-                                    % which is emdedded in the current
-                                    % procedure's stack frame, and whose
-                                    % layout is:
 
-                                    % saved region_commit_stack_pointer
-                                    % saved region sequence number
-                                    % number of live nonprotected regions
-                                    % space reserved for the ids of live
-                                    %   nonprotected regions
-
-                list(lval)          % The list of temporary slots that
-                                    % constitute this embedded stack frame.
+                % The list of temporary slots that constitute
+                % this embedded stack frame.
+                list(lval)
             ).
 
 prepare_for_det_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
@@ -2197,33 +2213,43 @@ generate_det_commit(DetCommitInfo, Code, !CI) :-
 
 :- type semi_commit_info
     --->    semi_commit_info(
-                fail_info,              % Fail_info on entry.
+                % Fail_info on entry.
+                fail_info,
+
                 resume_point_info,
                 commit_hijack_info,
-                maybe(pair(lval)),      % Location of saved ticket
-                                        % counter and trail pointer.
+
+                % Location of saved ticket counter and trail pointer.
+                maybe(pair(lval)),
+
                 maybe(region_commit_stack_frame)
             ).
 
 :- type commit_hijack_info
     --->    commit_temp_frame(
-                lval,       % The stack slot in which we saved
-                            % the old value of maxfr.
-                bool        % Do we bracket the goal with
-                            % MR_commit_mark and MR_commit_cut?
+                % The stack slot in which we saved the old value of maxfr.
+                lval,
+
+                % Do we bracket the goal with MR_commit_mark and MR_commit_cut?
+                bool
             )
     ;       commit_quarter_hijack
     ;       commit_half_hijack(
-                lval        % The stack slot in which we saved
-                            % the value of the hijacked redoip.
+                % The stack slot in which we saved the value
+                % of the hijacked redoip.
+                lval
             )
     ;       commit_full_hijack(
-                lval,       % The stack slot in which we saved
-                            % the value of the hijacked redoip.
-                lval,       % The stack slot in which we saved
-                            % the value of the hijacked redofr.
-                lval        % The stack slot in which we saved
-                            % the value of maxfr.
+                % The stack slot in which we saved the value
+                % of the hijacked redoip.
+                lval,
+
+                % The stack slot in which we saved the value
+                % of the hijacked redofr.
+                lval,
+
+                % The stack slot in which we saved the value of maxfr.
+                lval
             ).
 
 prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
@@ -2447,7 +2473,7 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_save_region_commit_frame(add_region_ops::in, set(prog_var)::in,
+:- pred maybe_save_region_commit_frame(add_region_ops::in, set_of_progvar::in,
     hlds_goal_info::in, maybe(region_commit_stack_frame)::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
@@ -2850,18 +2876,10 @@ maybe_pick_stack_resume_point(stack_and_orig(Map, Addr, _, _),
 
 %---------------------------------------------------------------------------%
 
-produce_vars(Vars, Map, Code, !CI) :-
-    set.to_sorted_list(Vars, VarList),
-    produce_vars_2(VarList, Map, Code, !CI).
-
-:- pred produce_vars_2(list(prog_var)::in,
-    map(prog_var, set(lval))::out,
-    llds_code::out, code_info::in, code_info::out) is det.
-
-produce_vars_2([], Map, empty, !CI) :-
+produce_vars([], Map, empty, !CI) :-
     map.init(Map).
-produce_vars_2([Var | Vars], Map, Code, !CI) :-
-    produce_vars_2(Vars, Map0, CodeVars, !CI),
+produce_vars([Var | Vars], Map, Code, !CI) :-
+    produce_vars(Vars, Map0, CodeVars, !CI),
     produce_variable_in_reg_or_stack(Var, CodeVar, Lval, !CI),
     set.singleton_set(Lvals, Lval),
     map.set(Var, Lvals, Map0, Map),
@@ -2940,7 +2958,7 @@ init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
 
 make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
     get_stack_slots(!.CI, StackSlots),
-    map.select(FullMap, ResumeVars, OrigMap),
+    map.select_sorted_list(FullMap, ResumeVars, OrigMap),
     (
         ResumeLocs = resume_locs_orig_only,
         get_next_label(OrigLabel, !CI),
@@ -3016,11 +3034,11 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         )
     ).
 
-:- pred make_stack_resume_map(set(prog_var)::in, stack_slots::in,
+:- pred make_stack_resume_map(list(prog_var)::in, stack_slots::in,
     map(prog_var, set(lval))::out) is det.
 
 make_stack_resume_map(ResumeVars, StackSlots, StackMap) :-
-    map.select(StackSlots, ResumeVars, StackMap0),
+    map.select_sorted_list(StackSlots, ResumeVars, StackMap0),
     map.to_assoc_list(StackMap0, AbsStackList),
     StackList0 = assoc_list.map_values_only(stack_slot_to_lval, AbsStackList),
     make_singleton_sets(StackList0, StackList),
@@ -3271,59 +3289,59 @@ clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
 
 :- interface.
 
-:- pred add_forward_live_vars(set(prog_var)::in,
+:- pred add_forward_live_vars(set_of_progvar::in,
     code_info::in, code_info::out) is det.
 
 :- pred get_known_variables(code_info::in, list(prog_var)::out) is det.
 
 :- pred variable_is_forward_live(code_info::in, prog_var::in) is semidet.
 
-:- pred make_vars_forward_dead(set(prog_var)::in,
+:- pred make_vars_forward_dead(set_of_progvar::in,
     code_info::in, code_info::out) is det.
 
-:- pred maybe_make_vars_forward_dead(set(prog_var)::in, bool::in,
+:- pred maybe_make_vars_forward_dead(set_of_progvar::in, bool::in,
     code_info::in, code_info::out) is det.
 
-:- pred pickup_zombies(set(prog_var)::out,
+:- pred pickup_zombies(set_of_progvar::out,
     code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- pred rem_forward_live_vars(set(prog_var)::in,
+:- pred rem_forward_live_vars(set_of_progvar::in,
     code_info::in, code_info::out) is det.
 
     % Make these variables appear magically live.
     % We don't care where they are put.
     %
-:- pred make_vars_forward_live(set(prog_var)::in,
+:- pred make_vars_forward_live(set_of_progvar::in,
     code_info::in, code_info::out) is det.
 
 get_known_variables(CI, VarList) :-
     get_forward_live_vars(CI, ForwardLiveVars),
     ResumeVars = current_resume_point_vars(CI),
-    set.union(ForwardLiveVars, ResumeVars, Vars),
-    set.to_sorted_list(Vars, VarList).
+    set_of_var.union(ForwardLiveVars, ResumeVars, Vars),
+    VarList = set_of_var.to_sorted_list(Vars).
 
 variable_is_forward_live(CI, Var) :-
     get_forward_live_vars(CI, Liveness),
-    set.member(Var, Liveness).
+    set_of_var.member(Liveness, Var).
 
 add_forward_live_vars(Births, !CI) :-
     get_forward_live_vars(!.CI, Liveness0),
-    set.union(Liveness0, Births, Liveness),
+    set_of_var.union(Liveness0, Births, Liveness),
     set_forward_live_vars(Liveness, !CI).
 
 rem_forward_live_vars(Deaths, !CI) :-
     get_forward_live_vars(!.CI, Liveness0),
-    set.difference(Liveness0, Deaths, Liveness),
+    set_of_var.difference(Liveness0, Deaths, Liveness),
     set_forward_live_vars(Liveness, !CI).
 
 make_vars_forward_live(Vars, !CI) :-
     get_stack_slots(!.CI, StackSlots),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    set.to_sorted_list(Vars, VarList),
+    VarList = set_of_var.to_sorted_list(Vars),
     make_vars_forward_live_2(VarList, StackSlots, 1,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
@@ -3358,12 +3376,12 @@ make_vars_forward_dead(Vars, !CI) :-
 
 maybe_make_vars_forward_dead(Vars0, FirstTime, !CI) :-
     ResumeVars = current_resume_point_vars(!.CI),
-    set.intersect(Vars0, ResumeVars, FlushVars),
+    set_of_var.intersect(Vars0, ResumeVars, FlushVars),
     get_zombies(!.CI, Zombies0),
-    set.union(Zombies0, FlushVars, Zombies),
+    set_of_var.union(Zombies0, FlushVars, Zombies),
     set_zombies(Zombies, !CI),
-    set.difference(Vars0, Zombies, Vars),
-    set.to_sorted_list(Vars, VarList),
+    set_of_var.difference(Vars0, Zombies, Vars),
+    VarList = set_of_var.to_sorted_list(Vars),
     get_var_locn_info(!.CI, VarLocnInfo0),
     maybe_make_vars_forward_dead_2(VarList, FirstTime,
         VarLocnInfo0, VarLocnInfo),
@@ -3379,7 +3397,7 @@ maybe_make_vars_forward_dead_2([Var | Vars], FirstTime, !VLI) :-
 
 pickup_zombies(Zombies, !CI) :-
     get_zombies(!.CI, Zombies),
-    set_zombies(set.init, !CI).
+    set_zombies(set_of_var.init, !CI).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -4039,7 +4057,8 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
         RealStackVarLocs = [],
         DummyStackVarLocs = []
     ;
-        compute_forward_live_var_saves(!.CI, OutVarSet, ForwardVarLocs),
+        compute_forward_live_var_saves(!.CI, set_to_bitset(OutVarSet),
+            ForwardVarLocs),
         CodeModel = goal_info_get_code_model(GoalInfo),
         (
             CodeModel = model_non,
@@ -4112,7 +4131,7 @@ setup_call_args(AllArgsInfos, Direction, LiveLocs, Code, !CI) :-
     assoc_list.values(ArgsLocns, LiveLocList),
     set.list_to_set(LiveLocList, LiveLocs),
     assoc_list.keys(ArgsLocns, ArgVars),
-    which_variables_are_forward_live(!.CI, ArgVars, set.init, DeadVars),
+    which_variables_are_forward_live(!.CI, ArgVars, set_of_var.init, DeadVars),
     make_vars_forward_dead(DeadVars, !CI).
 
 :- pred var_arg_info_to_lval(assoc_list(prog_var, arg_info)::in,
@@ -4125,14 +4144,14 @@ var_arg_info_to_lval([Var - ArgInfo | RestInfos], [Var - Lval | RestLvals]) :-
     var_arg_info_to_lval(RestInfos, RestLvals).
 
 :- pred which_variables_are_forward_live(code_info::in,
-    list(prog_var)::in, set(prog_var)::in, set(prog_var)::out) is det.
+    list(prog_var)::in, set_of_progvar::in, set_of_progvar::out) is det.
 
 which_variables_are_forward_live(_, [], !DeadVars).
 which_variables_are_forward_live(CI, [Var | Vars], !DeadVars) :-
     ( variable_is_forward_live(CI, Var) ->
         true
     ;
-        set.insert(Var, !DeadVars)
+        set_of_var.insert(Var, !DeadVars)
     ),
     which_variables_are_forward_live(CI, Vars, !DeadVars).
 
@@ -4169,7 +4188,7 @@ clobber_regs(Regs, !CI) :-
     set_var_locn_info(VarLocnInfo, !CI).
 
 save_variables(OutArgs, SavedLocs, Code, !CI) :-
-    compute_forward_live_var_saves(!.CI, OutArgs, VarLocs),
+    compute_forward_live_var_saves(!.CI, set_to_bitset(OutArgs), VarLocs),
     assoc_list.values(VarLocs, SavedLocList),
     set.list_to_set(SavedLocList, SavedLocs),
     place_vars(VarLocs, Code, !CI).
@@ -4179,19 +4198,19 @@ save_variables_on_stack(Vars, Code, !CI) :-
     place_vars(VarLocs, Code, !CI).
 
 :- pred compute_forward_live_var_saves(code_info::in,
-    set(prog_var)::in, assoc_list(prog_var, lval)::out) is det.
+    set_of_progvar::in, assoc_list(prog_var, lval)::out) is det.
 
 compute_forward_live_var_saves(CI, OutArgs, VarLocs) :-
     get_known_variables(CI, Variables0),
-    set.list_to_set(Variables0, Vars0),
+    Vars0 = set_of_var.list_to_set(Variables0),
     TypeInfoLiveness = body_typeinfo_liveness(CI),
     get_proc_info(CI, ProcInfo),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness, VarTypes,
         RttiVarMaps, Vars1),
-    set.difference(Vars1, OutArgs, Vars),
-    set.to_sorted_list(Vars, Variables),
+    set_of_var.difference(Vars1, OutArgs, Vars),
+    Variables = set_of_var.to_sorted_list(Vars),
     list.map(associate_stack_slot(CI), Variables, VarLocs).
 
 :- pred associate_stack_slot(code_info::in, prog_var::in,
@@ -4679,15 +4698,16 @@ output_code_info(Components, CI, !IO) :-
         _VarLocnInfo, TempsInUse, _FailInfo, ParConjDepth),
     ( list.member(cic_forward_live_vars, Components) ->
         io.write_string("forward live vars: ", !IO),
-        mercury_output_vars(VarSet, yes, set.to_sorted_list(ForwardLiveVars),
-            !IO),
+        mercury_output_vars(VarSet, yes,
+            set_of_var.to_sorted_list(ForwardLiveVars), !IO),
         io.nl(!IO)
     ;
         true
     ),
     ( list.member(cic_zombies, Components) ->
         io.write_string("zombies: ", !IO),
-        mercury_output_vars(VarSet, yes, set.to_sorted_list(Zombies), !IO),
+        mercury_output_vars(VarSet, yes,
+            set_of_var.to_sorted_list(Zombies), !IO),
         io.nl(!IO)
     ;
         true

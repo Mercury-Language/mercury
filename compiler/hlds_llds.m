@@ -20,11 +20,11 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
-:- import_module set.
 
 :- type stack_slot
     --->    det_slot(int)
@@ -67,7 +67,7 @@
 
     % see compiler/notes/allocation.html for what these alternatives mean
 :- type resume_point
-    --->    resume_point(set(prog_var), resume_locs)
+    --->    resume_point(set_of_progvar, resume_locs)
     ;       no_resume_point.
 
 :- type resume_locs
@@ -94,9 +94,9 @@
 
 :- type need_across_call
     --->    need_across_call(
-                call_forward_vars       :: set(prog_var),
-                call_resume_vars        :: set(prog_var),
-                call_nondet_vars        :: set(prog_var)
+                call_forward_vars       :: set_of_progvar,
+                call_resume_vars        :: set_of_progvar,
+                call_nondet_vars        :: set_of_progvar
             ).
 
     % resume_vars_on_stack is true if the resume point has a stack label.
@@ -110,8 +110,8 @@
 :- type need_in_resume
     --->    need_in_resume(
                 resume_vars_on_stack    :: bool,
-                resume_resume_vars      :: set(prog_var),
-                resume_nondet_vars      :: set(prog_var)
+                resume_resume_vars      :: set_of_progvar,
+                resume_nondet_vars      :: set_of_progvar
             ).
 
     % par_conj_engine_vars gives the set of variables that the execution
@@ -120,7 +120,7 @@
     %
 :- type need_in_par_conj
     --->    need_in_par_conj(
-                par_conj_engine_vars    :: set(prog_var)
+                par_conj_engine_vars    :: set_of_progvar
             ).
 
 :- type llds_code_gen_details.
@@ -135,16 +135,16 @@
 % both the pre-death and pre-birth sets.
 
 :- pred goal_info_get_pre_births(hlds_goal_info::in,
-    set(prog_var)::out) is det.
+    set_of_progvar::out) is det.
 
 :- pred goal_info_get_post_births(hlds_goal_info::in,
-    set(prog_var)::out) is det.
+    set_of_progvar::out) is det.
 
 :- pred goal_info_get_pre_deaths(hlds_goal_info::in,
-    set(prog_var)::out) is det.
+    set_of_progvar::out) is det.
 
 :- pred goal_info_get_post_deaths(hlds_goal_info::in,
-    set(prog_var)::out) is det.
+    set_of_progvar::out) is det.
 
 :- pred goal_info_get_follow_vars(hlds_goal_info::in,
     maybe(abs_follow_vars)::out) is det.
@@ -167,16 +167,16 @@
 %-----------------------------------------------------------------------------%
 
 :- pred goal_info_maybe_get_pre_births(hlds_goal_info::in,
-    set(prog_var)::out) is semidet.
+    set_of_progvar::out) is semidet.
 
 :- pred goal_info_maybe_get_post_births(hlds_goal_info::in,
-    set(prog_var)::out) is semidet.
+    set_of_progvar::out) is semidet.
 
 :- pred goal_info_maybe_get_pre_deaths(hlds_goal_info::in,
-    set(prog_var)::out) is semidet.
+    set_of_progvar::out) is semidet.
 
 :- pred goal_info_maybe_get_post_deaths(hlds_goal_info::in,
-    set(prog_var)::out) is semidet.
+    set_of_progvar::out) is semidet.
 
 :- pred goal_info_maybe_get_follow_vars(hlds_goal_info::in,
     maybe(abs_follow_vars)::out) is semidet.
@@ -201,23 +201,23 @@
     % goal_info_initialize_liveness_info(PreBirths, PostBirths,
     %   PreDeaths, PostDeaths, ResumePoint, !GoalInfo):
     % Updates !GoalInfo by overwriting the previous values of its
-    % pre_births, post_births, pre_deaths, post_deaths and resume_point
-    % fields.
+    % pre_births, post_births, pre_deaths, post_deaths and resume_point fields.
     %
 :- pred goal_info_initialize_liveness_info(
-    set(prog_var)::in, set(prog_var)::in, set(prog_var)::in, set(prog_var)::in,
+    set_of_progvar::in, set_of_progvar::in,
+    set_of_progvar::in, set_of_progvar::in,
     resume_point::in, hlds_goal_info::in, hlds_goal_info::out) is det.
 
-:- pred goal_info_set_pre_births(set(prog_var)::in,
+:- pred goal_info_set_pre_births(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-:- pred goal_info_set_post_births(set(prog_var)::in,
+:- pred goal_info_set_post_births(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-:- pred goal_info_set_pre_deaths(set(prog_var)::in,
+:- pred goal_info_set_pre_deaths(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-:- pred goal_info_set_post_deaths(set(prog_var)::in,
+:- pred goal_info_set_post_deaths(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
 :- pred goal_info_set_follow_vars(maybe(abs_follow_vars)::in,
@@ -247,7 +247,7 @@
     hlds_goal::in, hlds_goal::out) is det.
 
 :- pred goal_info_resume_vars_and_loc(resume_point::in,
-    set(prog_var)::out, resume_locs::out) is det.
+    set_of_progvar::out, resume_locs::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -328,10 +328,10 @@ explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
                 % All four of these fields are computed by liveness.m.
                 % For atomic goals, the post-deadness should be applied
                 % _before_ the goal.
-                pre_births          :: set(prog_var),
-                post_births         :: set(prog_var),
-                pre_deaths          :: set(prog_var),
-                post_deaths         :: set(prog_var),
+                pre_births          :: set_of_progvar,
+                post_births         :: set_of_progvar,
+                pre_deaths          :: set_of_progvar,
+                post_deaths         :: set_of_progvar,
 
                 % Initially set to `no' for all goals, which means the absence
                 % of the advisory information. Can be set to `yes' by the
@@ -660,7 +660,8 @@ get_details(llds_code_gen_info(LLDSInfo)) = LLDSInfo.
 :- func init_llds_code_gen_details = llds_code_gen_details.
 
 init_llds_code_gen_details =
-    llds_code_gen_details(set.init, set.init, set.init, set.init,
+    llds_code_gen_details(set_of_var.init, set_of_var.init,
+        set_of_var.init, set_of_var.init,
         no, map.init, no_resume_point, no_need).
 
 %-----------------------------------------------------------------------------%
@@ -669,10 +670,10 @@ rename_vars_in_llds_code_gen_info(Must, Subn, Details0, Details) :-
     Details0 = llds_code_gen_details(PreBirths0, PostBirths0,
         PreDeaths0, PostDeaths0, MaybeFollowVars0, StoreMap0,
         ResumePoint0, MaybeNeed0),
-    rename_vars_in_var_set(Must, Subn, PreBirths0, PreBirths),
-    rename_vars_in_var_set(Must, Subn, PostBirths0, PostBirths),
-    rename_vars_in_var_set(Must, Subn, PreDeaths0, PreDeaths),
-    rename_vars_in_var_set(Must, Subn, PostDeaths0, PostDeaths),
+    rename_vars_in_set_of_var(Must, Subn, PreBirths0, PreBirths),
+    rename_vars_in_set_of_var(Must, Subn, PostBirths0, PostBirths),
+    rename_vars_in_set_of_var(Must, Subn, PreDeaths0, PreDeaths),
+    rename_vars_in_set_of_var(Must, Subn, PostDeaths0, PostDeaths),
     (
         MaybeFollowVars0 = no,
         MaybeFollowVars = no
@@ -690,7 +691,8 @@ rename_vars_in_llds_code_gen_info(Must, Subn, Details0, Details) :-
         ResumePoint = no_resume_point
     ;
         ResumePoint0 = resume_point(ResumePointVars0, ResumeLocs),
-        rename_vars_in_var_set(Must, Subn, ResumePointVars0, ResumePointVars),
+        rename_vars_in_set_of_var(Must, Subn,
+            ResumePointVars0, ResumePointVars),
         ResumePoint = resume_point(ResumePointVars, ResumeLocs)
     ),
     (
@@ -700,9 +702,9 @@ rename_vars_in_llds_code_gen_info(Must, Subn, Details0, Details) :-
         MaybeNeed0 = need_call(NeedAcrossCall0),
         NeedAcrossCall0 = need_across_call(ForwardVars0,
             CallResumeVars0, CallNondetLiveVars0),
-        rename_vars_in_var_set(Must, Subn, ForwardVars0, ForwardVars),
-        rename_vars_in_var_set(Must, Subn, CallResumeVars0, CallResumeVars),
-        rename_vars_in_var_set(Must, Subn,
+        rename_vars_in_set_of_var(Must, Subn, ForwardVars0, ForwardVars),
+        rename_vars_in_set_of_var(Must, Subn, CallResumeVars0, CallResumeVars),
+        rename_vars_in_set_of_var(Must, Subn,
             CallNondetLiveVars0, CallNondetLiveVars),
         NeedAcrossCall = need_across_call(ForwardVars,
             CallResumeVars, CallNondetLiveVars),
@@ -710,20 +712,29 @@ rename_vars_in_llds_code_gen_info(Must, Subn, Details0, Details) :-
     ;
         MaybeNeed0 = need_resume(NeedInResume0),
         NeedInResume0 = need_in_resume(OnStack, ResumeVars0, NondetLiveVars0),
-        rename_vars_in_var_set(Must, Subn, ResumeVars0, ResumeVars),
-        rename_vars_in_var_set(Must, Subn, NondetLiveVars0, NondetLiveVars),
+        rename_vars_in_set_of_var(Must, Subn, ResumeVars0, ResumeVars),
+        rename_vars_in_set_of_var(Must, Subn, NondetLiveVars0, NondetLiveVars),
         NeedInResume = need_in_resume(OnStack, ResumeVars, NondetLiveVars),
         MaybeNeed = need_resume(NeedInResume)
     ;
         MaybeNeed0 = need_par_conj(NeedInParConj0),
         NeedInParConj0 = need_in_par_conj(ParConjVars0),
-        rename_vars_in_var_set(Must, Subn, ParConjVars0, ParConjVars),
+        rename_vars_in_set_of_var(Must, Subn, ParConjVars0, ParConjVars),
         NeedInParConj = need_in_par_conj(ParConjVars),
         MaybeNeed = need_par_conj(NeedInParConj)
     ),
     Details = llds_code_gen_details(PreBirths, PostBirths,
         PreDeaths, PostDeaths, MaybeFollowVars, StoreMap,
         ResumePoint, MaybeNeed).
+
+:- pred rename_vars_in_set_of_var(must_rename::in,
+    map(prog_var, prog_var)::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
+
+rename_vars_in_set_of_var(Must, Subn, Set0, Set) :-
+    List0 = set_of_var.to_sorted_list(Set0),
+    list.map(rename_var(Must, Subn), List0, List),
+    Set = set_of_var.list_to_set(List).
 
 :- pred rename_vars_in_var_locn_map(must_rename::in,
     map(prog_var, prog_var)::in,

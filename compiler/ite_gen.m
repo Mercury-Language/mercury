@@ -51,6 +51,7 @@
 :- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.
 :- import_module transform_hlds.rbmm.
 :- import_module transform_hlds.rbmm.region_transformation.
@@ -101,7 +102,8 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     % Make sure that the variables whose values will be needed on backtracking
     % to the else part are materialized into registers or stack slots.
     % Their locations are recorded in ResumeMap.
-    produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+    produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
+        FlushCode, !CI),
 
     % Maybe save the heap state current before the condition.
     % This is after produce_vars since code that flushes the cache
@@ -155,7 +157,8 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedStackFrameId,
         HijackInfo, PrepareHijackCode, !CI),
 
-    make_resume_point(ResumeVars, ResumeLocs, ResumeMap, ResumePoint, !CI),
+    make_resume_point(set_of_var.to_sorted_list(ResumeVars),
+        ResumeLocs, ResumeMap, ResumePoint, !CI),
     effect_resume_point(ResumePoint, EffCodeModel, EffectResumeCode, !CI),
 
     % Generate the condition.
@@ -324,7 +327,8 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
         % apply the pre- and post-goal updates that would normally be applied
         % by code_gen.generate_goal.
 
-        enter_simple_neg(ResumeVars, GoalInfo, SimpleNeg, !CI),
+        enter_simple_neg(set_of_var.to_sorted_list(ResumeVars), GoalInfo,
+            SimpleNeg, !CI),
         produce_variable(L, CodeL, ValL, !CI),
         produce_variable(R, CodeR, ValR, !CI),
         Type = variable_type(!.CI, L),
@@ -350,12 +354,13 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
     % of the code for if-then-elses.
     %
 :- pred generate_negation_general(code_model::in,
-    hlds_goal::in, hlds_goal_info::in, set(prog_var)::in,
+    hlds_goal::in, hlds_goal_info::in, set_of_progvar::in,
     resume_locs::in, llds_code::out, code_info::in, code_info::out) is det.
 
 generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
         Code, !CI) :-
-    produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+    produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
+        FlushCode, !CI),
 
     % Maybe save the heap state current before the condition; this ought to be
     % after we make the failure continuation because that causes the cache to
@@ -394,7 +399,8 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
     prepare_for_ite_hijack(CodeModel, MaybeRegionSuccRecordSlot, HijackInfo,
         PrepareHijackCode, !CI),
 
-    make_resume_point(ResumeVars, ResumeLocs, ResumeMap, ResumePoint, !CI),
+    make_resume_point(set_of_var.to_sorted_list(ResumeVars),
+        ResumeLocs, ResumeMap, ResumePoint, !CI),
     effect_resume_point(ResumePoint, CodeModel, EffectResumeCode, !CI),
 
     % Generate the negated goal as a semi-deterministic goal; it cannot be
@@ -620,15 +626,17 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                 UnprotectedRemovedAtStartOfElse = set.intersect(
                     RemovedAtStartOfElse, CondCarriedRegionVars),
 
-                ProtectRegionVars = set.intersect(LiveRegionVars,
-                    NeedToBeProtectedRegionVars),
-                SnapshotRegionVars0 = set.intersect(LiveRegionVars,
-                    CondAllocRegionVars),
-                SnapshotRegionVars = set.difference(SnapshotRegionVars0,
-                    UnprotectedRemovedAtStartOfElse),
+                ProtectRegionVars = set_of_var.intersect(LiveRegionVars,
+                    set_to_bitset(NeedToBeProtectedRegionVars)),
+                SnapshotRegionVars0 = set_of_var.intersect(LiveRegionVars,
+                    set_to_bitset(CondAllocRegionVars)),
+                SnapshotRegionVars = set_of_var.difference(SnapshotRegionVars0,
+                    set_to_bitset(UnprotectedRemovedAtStartOfElse)),
 
-                ProtectRegionVarList = set.to_sorted_list(ProtectRegionVars),
-                SnapshotRegionVarList = set.to_sorted_list(SnapshotRegionVars),
+                ProtectRegionVarList =
+                    set_of_var.to_sorted_list(ProtectRegionVars),
+                SnapshotRegionVarList =
+                    set_of_var.to_sorted_list(SnapshotRegionVars),
 
                 list.length(ProtectRegionVarList, NumProtectRegionVars),
                 list.length(SnapshotRegionVarList, NumSnapshotRegionVars),

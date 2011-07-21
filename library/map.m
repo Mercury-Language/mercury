@@ -39,7 +39,7 @@
     %
 :- pred map.init(map(_, _)::uo) is det.
 :- func map.init = (map(K, V)::uo) is det.
-    
+
     % Initialize a map containing the given key-value pair.
     %
 :- func map.singleton(K, V) = map(K, V).
@@ -274,11 +274,18 @@
 :- pred map.overlay_large_map(map(K, V)::in, map(K, V)::in, map(K, V)::out)
     is det.
 
-    % map.select takes a map and a set of keys and returns a map
+    % map.select takes a map and a set of keys, and returns a map
     % containing the keys in the set and their corresponding values.
     %
 :- func map.select(map(K, V), set(K)) = map(K, V).
 :- pred map.select(map(K, V)::in, set(K)::in, map(K, V)::out) is det.
+
+    % map.select_sorted_list takes a map and a sorted list of keys, and returns
+    % a map containing the keys in the list and their corresponding values.
+    %
+:- func map.select_sorted_list(map(K, V), list(K)) = map(K, V).
+:- pred map.select_sorted_list(map(K, V)::in, list(K)::in, map(K, V)::out)
+    is det.
 
     % Given a list of keys, produce a list of their corresponding
     % values in a specified map.
@@ -694,6 +701,9 @@
 :- pragma type_spec(map.select/2, K = var(_)).
 :- pragma type_spec(map.select/3, K = var(_)).
 
+:- pragma type_spec(map.select_sorted_list/2, K = var(_)).
+:- pragma type_spec(map.select_sorted_list/3, K = var(_)).
+
 :- pragma type_spec(map.elem/2, K = int).
 :- pragma type_spec(map.elem/2, K = var(_)).
 
@@ -843,7 +853,7 @@ map.det_update(M1, K, V) = M2 :-
 
 map.det_update(K, V, !Map) :-
     ( tree234.update(K, V, !.Map, NewMap) ->
-        !:Map = NewMap 
+        !:Map = NewMap
     ;
         report_lookup_error("map.det_update: key not found", K, V)
     ).
@@ -1034,23 +1044,30 @@ map.overlay_large_map_2([K - V | AssocList], Map0, Map) :-
 map.select(M1, S) = M2 :-
     map.select(M1, S, M2).
 
+map.select_sorted_list(M1, S) = M2 :-
+    map.select_sorted_list(M1, S, M2).
+
 map.select(Original, KeySet, NewMap) :-
-    set.to_sorted_list(KeySet, KeyList),
+    set.to_sorted_list(KeySet, Keys),
     map.init(NewMap0),
-    map.select_2(KeyList, Original, NewMap0, NewMap).
+    map.select_loop(Keys, Original, NewMap0, NewMap).
 
-:- pred map.select_2(list(K)::in, map(K, V)::in,
+map.select_sorted_list(Original, Keys, NewMap) :-
+    map.init(NewMap0),
+    map.select_loop(Keys, Original, NewMap0, NewMap).
+
+:- pred map.select_loop(list(K)::in, map(K, V)::in,
     map(K, V)::in, map(K, V)::out) is det.
-:- pragma type_spec(map.select_2/4, K = var(_)).
+:- pragma type_spec(map.select_loop/4, K = var(_)).
 
-map.select_2([], _Original, !New).
-map.select_2([K|Ks], Original, !New) :-
+map.select_loop([], _Original, !New).
+map.select_loop([K | Ks], Original, !New) :-
     ( map.search(Original, K, V) ->
-        map.set(K, V, !New)
+        map.det_insert(K, V, !New)
     ;
         true
     ),
-    map.select_2(Ks, Original, !New).
+    map.select_loop(Ks, Original, !New).
 
 %-----------------------------------------------------------------------------%
 
