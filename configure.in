@@ -302,6 +302,8 @@ then
             [[untrailed, attach_to_io_state, thread_local]]
         ).
 
+        :- type abs_enum where type_is_abstract_enum(1).
+
         main(!IO) :-
             return_rtti_version(Version),
             p(T),
