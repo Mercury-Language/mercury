@@ -66,6 +66,7 @@
 :- mode set_ordlist.singleton_set(out, in) is det.
 
 :- func set_ordlist.make_singleton_set(T) = set_ordlist(T).
+:- pred set_ordlist.is_singleton(set_ordlist(T)::in, T::out) is semidet.
 
     % `set_ordlist.equal(SetA, SetB)' is true iff
     % `SetA' and `SetB' contain the same elements.
@@ -75,10 +76,10 @@
     % `set_ordlist.empty(Set)' is true iff `Set' is an empty set.
     %
 :- pred set_ordlist.empty(set_ordlist(_T)::in) is semidet.
+:- pred set_ordlist.is_empty(set_ordlist(T)::in) is semidet.
 
 :- pred set_ordlist.non_empty(set_ordlist(T)::in) is semidet.
-
-:- pred set_ordlist.is_empty(set_ordlist(T)::in) is semidet.
+:- pred set_ordlist.is_non_empty(set_ordlist(T)::in) is semidet.
 
     % `set_ordlist.subset(SetA, SetB)' is true iff `SetA' is a subset of
     % `SetB'.
@@ -168,12 +169,13 @@
     %
 :- pred set_ordlist.union(set_ordlist(T)::in, set_ordlist(T)::in,
     set_ordlist(T)::out) is det.
-
 :- func set_ordlist.union(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
 
     % `set_ordlist.union_list(A, B)' is true iff `B' is the union of
     % all the sets in `A'
     %
+:- pred set_ordlist.union_list(list(set_ordlist(T))::in, set_ordlist(T)::out)
+    is det.
 :- func set_ordlist.union_list(list(set_ordlist(T))) = set_ordlist(T).
 
     % `set_ordlist.power_union(A, B)' is true iff `B' is the union of
@@ -181,7 +183,6 @@
     %
 :- pred set_ordlist.power_union(set_ordlist(set_ordlist(T))::in,
     set_ordlist(T)::out) is det.
-
 :- func set_ordlist.power_union(set_ordlist(set_ordlist(T))) = set_ordlist(T).
 
     % `set_ordlist.intersect(SetA, SetB, Set)' is true iff `Set' is the
@@ -191,7 +192,6 @@
 :- pred set_ordlist.intersect(set_ordlist(T), set_ordlist(T), set_ordlist(T)).
 :- mode set_ordlist.intersect(in, in, out) is det.
 :- mode set_ordlist.intersect(in, in, in) is semidet.
-
 :- func set_ordlist.intersect(set_ordlist(T), set_ordlist(T))
     = set_ordlist(T).
 
@@ -207,6 +207,8 @@
     % intersection of all the sets in `A'.
     %
 :- func set_ordlist.intersect_list(list(set_ordlist(T))) = set_ordlist(T).
+:- pred set_ordlist.intersect_list(list(set_ordlist(T))::in,
+    set_ordlist(T)::out) is det.
 
     % `set_ordlist.difference(SetA, SetB, Set)' is true iff `Set' is the
     % set containing all the elements of `SetA' except those that
@@ -227,6 +229,8 @@
     %
 :- func set_ordlist.filter(pred(T1), set_ordlist(T1)) = set_ordlist(T1).
 :- mode set_ordlist.filter(pred(in) is semidet, in) = out is det.
+:- pred set_ordlist.filter(pred(T1), set_ordlist(T1), set_ordlist(T1)).
+:- mode set_ordlist.filter(pred(in) is semidet, in, out) is det.
 
     % Return the set of items for which the given predicate succeeds,
     % and the set of items for which it fails.
@@ -378,19 +382,18 @@
 :- import_module term.  % for var/1.
 
 :- pragma type_spec(set_ordlist.list_to_set/2, T = var(_)).
-
 :- pragma type_spec(set_ordlist.member(in, in), T = var(_)).
-
 :- pragma type_spec(set_ordlist.contains(in, in), T = var(_)).
-
 :- pragma type_spec(set_ordlist.insert/3, T = var(_)).
-
 :- pragma type_spec(set_ordlist.insert_list/3, T = var(_)).
-
+:- pragma type_spec(set_ordlist.delete/3, T = var(_)).
+:- pragma type_spec(set_ordlist.delete_list/3, T = var(_)).
+:- pragma type_spec(set_ordlist.remove/3, T = var(_)).
+:- pragma type_spec(set_ordlist.remove_list/3, T = var(_)).
 :- pragma type_spec(set_ordlist.union/3, T = var(_)).
-
+:- pragma type_spec(set_ordlist.union_list/2, T = var(_)).
 :- pragma type_spec(set_ordlist.intersect/3, T = var(_)).
-
+:- pragma type_spec(set_ordlist.intersect_list/2, T = var(_)).
 :- pragma type_spec(set_ordlist.difference/3, T = var(_)).
 
 %-----------------------------------------------------------------------------%
@@ -419,13 +422,15 @@ set_ordlist.make_singleton_set(T) = S :-
 
 set_ordlist.singleton_set(sol([X]), X).
 
+set_ordlist.is_singleton(sol([X]), X).
+
 set_ordlist.equal(Set, Set).
 
 set_ordlist.empty(sol([])).
+set_ordlist.is_empty(sol([])).
 
 set_ordlist.non_empty(sol([_ | _])).
-
-set_ordlist.is_empty(sol([])).
+set_ordlist.is_non_empty(sol([_ | _])).
 
 set_ordlist.list_to_set(Xs) = S :-
     set_ordlist.list_to_set(Xs, S).
@@ -584,6 +589,9 @@ set_ordlist.union_list(ListofSets) = Set :-
     set_ordlist.init(Set0),
     set_ordlist.power_union_2(ListofSets, Set0, Set).
 
+set_ordlist.union_list(ListofSets, Set) :-
+    Set = set_ordlist.union_list(ListofSets).
+
 set_ordlist.power_union(SS) = S :-
     set_ordlist.power_union(SS, S).
 
@@ -642,6 +650,9 @@ set_ordlist.intersect_list([S0 | Ss]) = S :-
         S1 = set_ordlist.intersect_list(Ss),
         set_ordlist.intersect(S1, S0, S)
     ).
+
+set_ordlist.intersect_list(ListofSets, Set) :-
+    Set = set_ordlist.intersect_list(ListofSets).
 
 %--------------------------------------------------------------------------%
 
@@ -707,6 +718,9 @@ set_ordlist.filter(P, Set) = TrueSet :-
     List = set_ordlist.to_sorted_list(Set),
     list.filter(P, List, TrueList),
     set_ordlist.sorted_list_to_set(TrueList, TrueSet).
+
+set_ordlist.filter(P, Set, TrueSet) :-
+    TrueSet = set_ordlist.filter(P, Set).
 
 set_ordlist.filter(P, Set, TrueSet, FalseSet) :-
     List = set_ordlist.to_sorted_list(Set),

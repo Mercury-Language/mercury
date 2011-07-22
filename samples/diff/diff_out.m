@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2006 The University of Melbourne.
+% Copyright (C) 1995-1998, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -111,7 +111,7 @@ robust(cvs_merge_conflict).
 %-----------------------------------------------------------------------------%
 
     % diff_out.show_file shows the segment of the file from Low to High, with
-    % each line preceeded by the Prefix characher and a space.  The diff(1)
+    % each line preceded by the Prefix character and a space.  The diff(1)
     % format specifies that the lines effected in the first file should be
     % flagged by '<' and the lines effected in the second file should be
     % flagged by '>'.

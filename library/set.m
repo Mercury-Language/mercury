@@ -251,6 +251,8 @@
     %
 :- func set.filter(pred(T1), set(T1)) = set(T1).
 :- mode set.filter(pred(in) is semidet, in) = out is det.
+:- pred set.filter(pred(T1), set(T1), set(T1)).
+:- mode set.filter(pred(in) is semidet, in, out) is det.
 
     % Return the set of items for which the given predicate succeeds,
     % and the set of items for which it fails.
@@ -576,6 +578,9 @@ set.map_fold(P, S0, S, A0, A) :-
 
 set.filter(P, Set) =
     set_ordlist.filter(P, Set).
+
+set.filter(P, Set, TrueSet) :-
+    set_ordlist.filter(P, Set, TrueSet).
 
 set.filter(P, Set, TrueSet, FalseSet) :-
     set_ordlist.filter(P, Set, TrueSet, FalseSet).
