@@ -126,7 +126,7 @@
     %
 :- pred contains(sparse_bitset(T)::in, T::in) is semidet <= enum(T).
 
-    % `member(Set, X)' is true iff `X' is a member of `Set'.
+    % `member(X, Set)' is true iff `X' is a member of `Set'.
     % Takes O(rep_size(Set)) time.
     %
 :- pred member(T, sparse_bitset(T)) <= enum(T).

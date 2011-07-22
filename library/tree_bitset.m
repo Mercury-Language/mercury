@@ -112,7 +112,7 @@
     %
 :- pred contains(tree_bitset(T)::in, T::in) is semidet <= enum(T).
 
-    % `member(Set, X)' is true iff `X' is a member of `Set'.
+    % `member(X, Set)' is true iff `X' is a member of `Set'.
     % Takes O(card(Set)) time for the semidet mode.
     %
 :- pred member(T, tree_bitset(T)) <= enum(T).
