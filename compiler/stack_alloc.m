@@ -38,6 +38,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
@@ -50,7 +51,9 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
+:- import_module array.
 :- import_module bool.
+:- import_module enum.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -77,8 +80,10 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
     globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    build_dummy_type_array(ModuleInfo, VarTypes, DummyTypeArray, DummyVars),
     AllocData = alloc_data(ModuleInfo, !.ProcInfo, TypeInfoLiveness,
-        OptNoReturnCalls),
+        OptNoReturnCalls, DummyTypeArray),
     NondetLiveness0 = set_of_var.init,
     SimpleStackAlloc0 = stack_alloc(set.make_singleton_set(FailVars)),
     proc_info_get_goal(!.ProcInfo, Goal0),
@@ -94,51 +99,20 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
     (
         MaybeReservedVarInfo = yes(ResVar - _),
         ResVarSet = set_of_var.make_singleton(ResVar),
-        set.insert(ResVarSet, LiveSets0, LiveSets1)
+        set.insert(ResVarSet, LiveSets0, LiveSets)
     ;
         MaybeReservedVarInfo = no,
-        LiveSets1 = LiveSets0
+        LiveSets = LiveSets0
     ),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
-    filter_out_dummy_values(ModuleInfo, VarTypes, LiveSets1, LiveSets,
-        DummyVars),
     graph_colour_group_elements(LiveSets, ColourSets),
     set.to_sorted_list(ColourSets, ColourList),
+
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
     allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
         MaybeReservedVarInfo, StackSlots1),
     allocate_dummy_stack_slots(DummyVars, CodeModel, -1,
         StackSlots1, StackSlots),
     proc_info_set_stack_slots(StackSlots, !ProcInfo).
-
-:- pred filter_out_dummy_values(module_info::in, vartypes::in,
-    set(set_of_progvar)::in, set(set_of_progvar)::out,
-    list(prog_var)::out) is det.
-
-filter_out_dummy_values(ModuleInfo, VarTypes, LiveSet0, LiveSet, DummyVars) :-
-    set.to_sorted_list(LiveSet0, LiveList0),
-    filter_out_dummy_values_2(ModuleInfo, VarTypes, LiveList0, LiveList,
-        set_of_var.init, Dummies),
-    set.list_to_set(LiveList, LiveSet),
-    DummyVars = set_of_var.to_sorted_list(Dummies).
-
-:- pred filter_out_dummy_values_2(module_info::in, vartypes::in,
-    list(set_of_progvar)::in, list(set_of_progvar)::out,
-    set_of_progvar::in, set_of_progvar::out) is det.
-
-filter_out_dummy_values_2(_, _VarTypes, [], [], !Dummies).
-filter_out_dummy_values_2(ModuleInfo, VarTypes,
-        [LiveSet0 | LiveSets0], LiveSets, !Dummies) :-
-    filter_out_dummy_values_2(ModuleInfo, VarTypes, LiveSets0, LiveSets1,
-        !Dummies),
-    set_of_var.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), LiveSet0,
-        DummyVars, NonDummyVars),
-    set_of_var.union(DummyVars, !Dummies),
-    ( set_of_var.is_empty(NonDummyVars) ->
-        LiveSets = LiveSets1
-    ;
-        LiveSets = [NonDummyVars | LiveSets1]
-    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -156,40 +130,59 @@ filter_out_dummy_values_2(ModuleInfo, VarTypes,
     pred(at_par_conj/4) is alloc_at_par_conj
 ].
 
-:- pred alloc_at_call_site(need_across_call::in, hlds_goal_info::in,
+:- pred alloc_at_call_site(need_across_call::in, alloc_data::in,
     stack_alloc::in, stack_alloc::out) is det.
 
-alloc_at_call_site(NeedAtCall, _GoalInfo, StackAlloc0, StackAlloc) :-
+alloc_at_call_site(NeedAtCall, AllocData, !StackAlloc) :-
     NeedAtCall = need_across_call(ForwardVars, ResumeVars, NondetLiveVars),
-    LiveSet = set_of_var.union_list([ForwardVars, ResumeVars, NondetLiveVars]),
-    StackAlloc0 = stack_alloc(LiveSets0),
-    LiveSets = set.insert(LiveSets0, LiveSet),
-    StackAlloc = stack_alloc(LiveSets).
+    LiveSet0 = set_of_var.union_list([ForwardVars, ResumeVars, NondetLiveVars]),
+    filter_out_dummy_vars(AllocData, LiveSet0, LiveSet),
 
-:- pred alloc_at_resume_site(need_in_resume::in, hlds_goal_info::in,
+    !.StackAlloc = stack_alloc(LiveSets0),
+    LiveSets = set.insert(LiveSets0, LiveSet),
+    !:StackAlloc = stack_alloc(LiveSets).
+
+:- pred alloc_at_resume_site(need_in_resume::in, alloc_data::in,
     stack_alloc::in, stack_alloc::out) is det.
 
-alloc_at_resume_site(NeedAtResume, _GoalInfo, StackAlloc0, StackAlloc) :-
+alloc_at_resume_site(NeedAtResume, AllocData, !StackAlloc) :-
     NeedAtResume = need_in_resume(ResumeOnStack, ResumeVars, NondetLiveVars),
     (
-        ResumeOnStack = no,
-        StackAlloc = StackAlloc0
+        ResumeOnStack = no
     ;
         ResumeOnStack = yes,
-        LiveSet = set_of_var.union(ResumeVars, NondetLiveVars),
-        StackAlloc0 = stack_alloc(LiveSets0),
+        LiveSet0 = set_of_var.union(ResumeVars, NondetLiveVars),
+        filter_out_dummy_vars(AllocData, LiveSet0, LiveSet),
+
+        !.StackAlloc = stack_alloc(LiveSets0),
         LiveSets = set.insert(LiveSets0, LiveSet),
-        StackAlloc = stack_alloc(LiveSets)
+        !:StackAlloc = stack_alloc(LiveSets)
     ).
 
-:- pred alloc_at_par_conj(need_in_par_conj::in, hlds_goal_info::in,
+:- pred alloc_at_par_conj(need_in_par_conj::in, alloc_data::in,
     stack_alloc::in, stack_alloc::out) is det.
 
-alloc_at_par_conj(NeedParConj, _GoalInfo, StackAlloc0, StackAlloc) :-
-    NeedParConj = need_in_par_conj(StackVars),
-    StackAlloc0 = stack_alloc(LiveSets0),
+alloc_at_par_conj(NeedParConj, AllocData, !StackAlloc) :-
+    NeedParConj = need_in_par_conj(StackVars0),
+    filter_out_dummy_vars(AllocData, StackVars0, StackVars),
+
+    !.StackAlloc = stack_alloc(LiveSets0),
     LiveSets = set.insert(LiveSets0, StackVars),
-    StackAlloc = stack_alloc(LiveSets).
+    !:StackAlloc = stack_alloc(LiveSets).
+
+:- pred filter_out_dummy_vars(alloc_data::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
+
+filter_out_dummy_vars(AllocData, Vars, NonDummyVars) :-
+    DummyVarArray = AllocData ^ ad_dummy_var_array,
+    set_of_var.filter(var_is_not_dummy(DummyVarArray), Vars, NonDummyVars).
+
+:- pred var_is_not_dummy(array(is_dummy_type)::in, prog_var::in) is semidet.
+
+var_is_not_dummy(DummyVarArray, Var) :-
+    VarNum = to_int(Var),
+    array.lookup(DummyVarArray, VarNum, IsDummy),
+    IsDummy = is_not_dummy_type.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

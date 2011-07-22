@@ -88,6 +88,7 @@
 :- import_module backend_libs.matching.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.simplify.
+:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.goal_path.
 :- import_module hlds.hlds_data.
@@ -107,6 +108,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
+:- import_module array.
 :- import_module bool.
 :- import_module counter.
 :- import_module int.
@@ -176,8 +178,9 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
     globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
+    array.init(1, is_not_dummy_type, DummyDummyTypeArray),
     AllocData = alloc_data(!.ModuleInfo, !.ProcInfo, TypeInfoLiveness,
-        OptNoReturnCalls),
+        OptNoReturnCalls, DummyDummyTypeArray),
     fill_goal_id_slots_in_proc(!.ModuleInfo, _, !ProcInfo),
     proc_info_get_goal(!.ProcInfo, Goal2),
     OptStackAlloc0 = init_opt_stack_alloc,
@@ -323,24 +326,24 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     pred(at_par_conj/4) is opt_at_par_conj
 ].
 
-:- pred opt_at_call_site(need_across_call::in, hlds_goal_info::in,
+:- pred opt_at_call_site(need_across_call::in, alloc_data::in,
     opt_stack_alloc::in, opt_stack_alloc::out) is det.
 
-opt_at_call_site(_NeedAtCall, _GoalInfo, StackAlloc, StackAlloc).
+opt_at_call_site(_NeedAtCall, _AllocData, !StackAlloc).
 
-:- pred opt_at_resume_site(need_in_resume::in, hlds_goal_info::in,
+:- pred opt_at_resume_site(need_in_resume::in, alloc_data::in,
     opt_stack_alloc::in, opt_stack_alloc::out) is det.
 
-opt_at_resume_site(_NeedAtResume, _GoalInfo, StackAlloc, StackAlloc).
+opt_at_resume_site(_NeedAtResume, _AllocData, !StackAlloc).
 
-:- pred opt_at_par_conj(need_in_par_conj::in, hlds_goal_info::in,
+:- pred opt_at_par_conj(need_in_par_conj::in, alloc_data::in,
     opt_stack_alloc::in, opt_stack_alloc::out) is det.
 
-opt_at_par_conj(NeedParConj, _GoalInfo, StackAlloc0, StackAlloc) :-
+opt_at_par_conj(NeedParConj, _AllocData, !StackAlloc) :-
     NeedParConj = need_in_par_conj(StackVars),
-    ParConjOwnSlots0 = StackAlloc0 ^ par_conj_own_slots,
+    ParConjOwnSlots0 = !.StackAlloc ^ par_conj_own_slots,
     ParConjOwnSlots = set_of_var.union(StackVars, ParConjOwnSlots0),
-    StackAlloc = StackAlloc0 ^ par_conj_own_slots := ParConjOwnSlots.
+    !StackAlloc ^ par_conj_own_slots := ParConjOwnSlots.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

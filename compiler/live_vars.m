@@ -22,13 +22,22 @@
 :- module ll_backend.live_vars.
 :- interface.
 
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
+:- import_module array.
 :- import_module bool.
+:- import_module list.
+
+%-----------------------------------------------------------------------------%
+
+:- pred build_dummy_type_array(module_info::in, vartypes::in,
+    array(is_dummy_type)::out, list(prog_var)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -37,15 +46,24 @@
                 ad_module_info          ::  module_info,
                 ad_proc_info            ::  proc_info,
                 ad_typeinfo_liveness    ::  bool,
-                ad_opt_no_return_calls  ::  bool
+                ad_opt_no_return_calls  ::  bool,
+
+                % We want to remove variables of dummy types from the live sets
+                % we generate. The array is indexed by variable number: each
+                % slot says whether the corresponding variable is of a dummy
+                % type or not.
+                %
+                % The array may itself be a dummy if the operations of the
+                % stack_alloc_info type class do not need it.
+                ad_dummy_var_array      ::  array(is_dummy_type)
             ).
 
 :- typeclass stack_alloc_info(T) where [
-    pred at_call_site(need_across_call::in, hlds_goal_info::in,
+    pred at_call_site(need_across_call::in, alloc_data::in,
         T::in, T::out) is det,
-    pred at_resume_site(need_in_resume::in, hlds_goal_info::in,
+    pred at_resume_site(need_in_resume::in, alloc_data::in,
         T::in, T::out) is det,
-    pred at_par_conj(need_in_par_conj::in, hlds_goal_info::in,
+    pred at_par_conj(need_in_par_conj::in, alloc_data::in,
         T::in, T::out) is det
 ].
 
@@ -67,9 +85,50 @@
 :- import_module hlds.instmap.
 :- import_module parse_tree.prog_data.
 
-:- import_module list.
+:- import_module assoc_list.
+:- import_module enum.
+:- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
+
+%-----------------------------------------------------------------------------%
+
+build_dummy_type_array(ModuleInfo, VarTypes, DummyTypeArray, DummyVars) :-
+    map.to_assoc_list(VarTypes, VarsTypes),
+    list.foldl(max_var_num, VarsTypes, 0, MaxVarNum),
+    % We want to index the array with variable numbers, which will be from
+    % 1 to MaxVarNum.
+    array.init(MaxVarNum + 1, is_not_dummy_type, DummyTypeArray0),
+    set_dummy_array_elements(ModuleInfo, VarsTypes,
+        DummyTypeArray0, DummyTypeArray, [], DummyVars).
+
+:- pred max_var_num(pair(prog_var, mer_type)::in, int::in, int::out) is det.
+
+max_var_num(Var - _Type, !MaxVarNum) :-
+    VarNum = to_int(Var),
+    int.max(VarNum, !MaxVarNum).
+
+:- pred set_dummy_array_elements(module_info::in,
+    assoc_list(prog_var, mer_type)::in,
+    array(is_dummy_type)::array_di, array(is_dummy_type)::array_uo,
+    list(prog_var)::in, list(prog_var)::out) is det.
+
+set_dummy_array_elements(_, [], !DummyTypeArray, !DummyVars).
+set_dummy_array_elements(ModuleInfo, [VarType | VarsTypes],
+        !DummyTypeArray, !DummyVars) :-
+    VarType = Var - Type,
+    IsDummyType = check_dummy_type(ModuleInfo, Type),
+    (
+        IsDummyType = is_dummy_type,
+        array.set(to_int(Var), IsDummyType, !DummyTypeArray),
+        !:DummyVars = [Var | !.DummyVars]
+    ;
+        IsDummyType = is_not_dummy_type
+        % This is the default; the array slot already has the right value.
+    ),
+    set_dummy_array_elements(ModuleInfo, VarsTypes,
+        !DummyTypeArray, !DummyVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -150,7 +209,8 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
         ),
         NeedInResume = need_in_resume(ResumeOnStack, ResumeVars1,
             !.NondetLiveness),
-        record_resume_site(NeedInResume, GoalInfo0, GoalInfo1, !StackAlloc)
+        record_resume_site(NeedInResume, AllocData,
+            GoalInfo0, GoalInfo1, !StackAlloc)
     ),
 
     build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo1, GoalInfo,
@@ -233,8 +293,9 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % slots, as long as the _sets_ of stack slots allocated to
             % different parallel conjuncts are distinct.
             NeedInParConj = need_in_par_conj(InnerNonLocals `set_of_var.union`
-                    set_of_var.union_list(InnerStackVars)),
-            record_par_conj(NeedInParConj, GoalInfo0, GoalInfo, !StackAlloc),
+                set_of_var.union_list(InnerStackVars)),
+            record_par_conj(NeedInParConj, AllocData,
+                GoalInfo0, GoalInfo, !StackAlloc),
 
             % All the local variables which needed stack slots in the parallel
             % conjuncts (InnerStackVars) become part of the accumulating set of
@@ -492,7 +553,8 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
             !.NondetLiveness)
     ),
 
-    record_call_site(NeedAcrossCall, GoalInfo0, GoalInfo, !StackAlloc),
+    record_call_site(NeedAcrossCall, AllocData,
+        GoalInfo0, GoalInfo, !StackAlloc),
 
     % If this is a nondet call, then all the stack slots we need
     % must be protected against reuse in following code.
@@ -676,26 +738,29 @@ maybe_add_typeinfo_liveness(ProcInfo, TypeInfoLiveness, OutVars, !LiveVars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred record_call_site(need_across_call::in, hlds_goal_info::in,
-    hlds_goal_info::out, T::in, T::out) is det <= stack_alloc_info(T).
+:- pred record_call_site(need_across_call::in, alloc_data::in,
+    hlds_goal_info::in, hlds_goal_info::out, T::in, T::out) is det
+    <= stack_alloc_info(T).
 
-record_call_site(NeedAcrossCall, !GoalInfo, !StackAlloc) :-
+record_call_site(NeedAcrossCall, AllocData, !GoalInfo, !StackAlloc) :-
     goal_info_set_need_across_call(NeedAcrossCall, !GoalInfo),
-    at_call_site(NeedAcrossCall, !.GoalInfo, !StackAlloc).
+    at_call_site(NeedAcrossCall, AllocData, !StackAlloc).
 
-:- pred record_resume_site(need_in_resume::in, hlds_goal_info::in,
-    hlds_goal_info::out, T::in, T::out) is det <= stack_alloc_info(T).
+:- pred record_resume_site(need_in_resume::in, alloc_data::in,
+    hlds_goal_info::in, hlds_goal_info::out, T::in, T::out) is det
+    <= stack_alloc_info(T).
 
-record_resume_site(NeedInResume, !GoalInfo, !StackAlloc) :-
+record_resume_site(NeedInResume, AllocData, !GoalInfo, !StackAlloc) :-
     goal_info_set_need_in_resume(NeedInResume, !GoalInfo),
-    at_resume_site(NeedInResume, !.GoalInfo, !StackAlloc).
+    at_resume_site(NeedInResume, AllocData, !StackAlloc).
 
-:- pred record_par_conj(need_in_par_conj::in, hlds_goal_info::in,
-    hlds_goal_info::out, T::in, T::out) is det <= stack_alloc_info(T).
+:- pred record_par_conj(need_in_par_conj::in, alloc_data::in,
+    hlds_goal_info::in, hlds_goal_info::out, T::in, T::out) is det
+    <= stack_alloc_info(T).
 
-record_par_conj(NeedInParConj, !GoalInfo, !StackAlloc) :-
+record_par_conj(NeedInParConj, AllocData, !GoalInfo, !StackAlloc) :-
     goal_info_set_need_in_par_conj(NeedInParConj, !GoalInfo),
-    at_par_conj(NeedInParConj, !.GoalInfo, !StackAlloc).
+    at_par_conj(NeedInParConj, AllocData, !StackAlloc).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.live_vars.

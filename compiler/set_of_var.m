@@ -107,6 +107,8 @@
     %
 :- func filter(pred(var(T))::in(pred(in) is semidet), set_of_var(T)::in)
     = (set_of_var(T)::out) is det.
+:- pred filter(pred(var(T))::in(pred(in) is semidet),
+    set_of_var(T)::in, set_of_var(T)::out) is det.
 
     % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
     % for which Pred succeeds, and those for which it fails.
@@ -250,6 +252,9 @@ fold(P, Set, !Acc) :-
     tree_bitset.foldl(P, Set, !Acc).                                % MODULE
 
 filter(P, Set) = tree_bitset.filter(P, Set).                        % MODULE
+
+filter(P, Set, Trues) :-
+    Trues = tree_bitset.filter(P, Set).                             % MODULE
 
 filter(P, Set, Trues, Falses) :-
      tree_bitset.filter(P, Set, Trues, Falses).                     % MODULE

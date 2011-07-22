@@ -99,6 +99,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.interval.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
@@ -125,6 +126,7 @@
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.dependency_graph.
 
+:- import_module array.
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module counter.
@@ -883,8 +885,9 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
         body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
         globals.lookup_bool_option(Globals,
             opt_no_return_calls, OptNoReturnCalls),
+        array.init(1, is_not_dummy_type, DummyDummyTypeArray),
         AllocData = alloc_data(!.ModuleInfo, !.ProcInfo,
-            TypeInfoLiveness, OptNoReturnCalls),
+            TypeInfoLiveness, OptNoReturnCalls, DummyDummyTypeArray),
         fill_goal_id_slots_in_proc(!.ModuleInfo, ContainingGoalMap, !ProcInfo),
         ReverseGoalPathMap = create_reverse_goal_path_map(ContainingGoalMap),
         map.det_insert(PredProcId, ReverseGoalPathMap,
@@ -904,7 +907,7 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-% The opt_tuple_alloc structure is constructed by live_vars.m.  As far as I can
+% The opt_tuple_alloc structure is constructed by live_vars.m. As far as I can
 % tell we don't need such a thing for this module so we just define some stubs.
 
 :- type opt_tuple_alloc
@@ -916,20 +919,20 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
     pred(at_par_conj/4) is opt_at_par_conj
 ].
 
-:- pred opt_at_call_site(need_across_call::in, hlds_goal_info::in,
+:- pred opt_at_call_site(need_across_call::in, alloc_data::in,
     opt_tuple_alloc::in, opt_tuple_alloc::out) is det.
 
-opt_at_call_site(_NeedAtCall, _GoalInfo, StackAlloc, StackAlloc).
+opt_at_call_site(_NeedAtCall, _AllocData, !StackAlloc).
 
-:- pred opt_at_resume_site(need_in_resume::in, hlds_goal_info::in,
+:- pred opt_at_resume_site(need_in_resume::in, alloc_data::in,
     opt_tuple_alloc::in, opt_tuple_alloc::out) is det.
 
-opt_at_resume_site(_NeedAtResume, _GoalInfo, StackAlloc, StackAlloc).
+opt_at_resume_site(_NeedAtResume, _AllocData, !StackAlloc).
 
-:- pred opt_at_par_conj(need_in_par_conj::in, hlds_goal_info::in,
+:- pred opt_at_par_conj(need_in_par_conj::in, alloc_data::in,
     opt_tuple_alloc::in, opt_tuple_alloc::out) is det.
 
-opt_at_par_conj(_NeedParConj, _GoalInfo, StackAlloc, StackAlloc).
+opt_at_par_conj(_NeedParConj, _AllocData, !StackAlloc).
 
 %-----------------------------------------------------------------------------%
 
