@@ -132,237 +132,369 @@ evaluate_call_2(ModuleName, Pred, ModeNum, Args, CrossCompiling, GoalExpr,
     % If the call is a det call with one output that can be statically
     % evaluated, evaluate_det_call succeeds with OutputArg being whichever of
     % Args is output, and with OutputArgVal being the computed value of
-    % OutputArg.  Otherwise it fails.
+    % OutputArg. Otherwise it fails.
     %
 :- pred evaluate_det_call(string::in, string::in, int::in, bool::in,
     list(arg_hlds_info)::in, arg_hlds_info::out, cons_id::out) is semidet.
 
-%
-% Constant functions
-%
+evaluate_det_call(ModuleName, ProcName, ModeNum, CrossCompiling, Args,
+        OutputArg, OutputArgVal) :-
+    (
+        Args = [X],
+        % Constant functions.
+        (
+            ModuleName = "int",
+            evaluate_det_call_int_1(ProcName, ModeNum, CrossCompiling,
+                X, OutputArg, OutputArgVal)
+        )
+    ;
+        Args = [X, Y],
+        % Unary functions.
+        (
+            ModuleName = "int",
+            evaluate_det_call_int_2(ProcName, ModeNum, CrossCompiling,
+                X, Y, OutputArg, OutputArgVal)
+        ;
+            ModuleName = "float",
+            evaluate_det_call_float_2(ProcName, ModeNum, CrossCompiling,
+                X, Y, OutputArg, OutputArgVal)
+        )
+    ;
+        Args = [X, Y, Z],
+        % Unary functions.
+        (
+            ModuleName = "int",
+            evaluate_det_call_int_3(ProcName, ModeNum, CrossCompiling,
+                X, Y, Z, OutputArg, OutputArgVal)
+        ;
+            ModuleName = "float",
+            evaluate_det_call_float_3(ProcName, ModeNum, CrossCompiling,
+                X, Y, Z, OutputArg, OutputArgVal)
+        ;
+            ModuleName = "string",
+            evaluate_det_call_string_3(ProcName, ModeNum, CrossCompiling,
+                X, Y, Z, OutputArg, OutputArgVal)
+        )
+    ).
 
-evaluate_det_call("int", "bits_per_int", 0, CrossCompiling, [X],
-        X, int_const(XVal)) :-
-    CrossCompiling = no,
-    XVal = int.bits_per_int.
+:- pred evaluate_det_call_int_1(string::in, int::in, bool::in,
+    arg_hlds_info::in, arg_hlds_info::out, cons_id::out) is semidet.
 
-%
-% Unary operators
-%
+evaluate_det_call_int_1(ProcName, ModeNum, CrossCompiling, X,
+        OutputArg, int_const(OutputArgVal)) :-
+    (
+        ProcName = "bits_per_int",
+        ModeNum = 0,
+        CrossCompiling = no,
+        OutputArg = X,
+        OutputArgVal = int.bits_per_int
+    ).
 
-    % Integer arithmetic
+:- pred evaluate_det_call_int_2(string::in, int::in, bool::in,
+    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::out, cons_id::out)
+    is semidet.
 
-evaluate_det_call("int", "+", 0, _, [X, Y], Y, int_const(YVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = XVal.
+evaluate_det_call_int_2(ProcName, ModeNum, CrossCompiling, X, Y,
+        OutputArg, int_const(OutputArgVal)) :-
+    (
+        ProcName = "+",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = XVal
+    ;
+        ProcName = "-",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = -XVal
+    ;
+        ProcName = "\\",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = \ XVal
+    ;
+        ProcName = "floor_to_multiple_of_bits_per_int",
+        ModeNum = 0,
+        CrossCompiling = no,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = int.floor_to_multiple_of_bits_per_int(XVal)
+    ;
+        ProcName = "quot_bits_per_int",
+        ModeNum = 0,
+        CrossCompiling = no,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = int.quot_bits_per_int(XVal)
+    ;
+        ProcName = "times_bits_per_int",
+        ModeNum = 0,
+        CrossCompiling = no,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = int.times_bits_per_int(XVal)
+    ;
+        ProcName = "rem_bits_per_int",
+        ModeNum = 0,
+        CrossCompiling = no,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = int.rem_bits_per_int(XVal)
+    ).
 
-evaluate_det_call("int", "-", 0, _, [X, Y], Y, int_const(YVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = -XVal.
+:- pred evaluate_det_call_float_2(string::in, int::in, bool::in,
+    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::out, cons_id::out)
+    is semidet.
 
-evaluate_det_call("int", "\\", 0, _, [X, Y], Y, int_const(YVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = \ XVal.
+evaluate_det_call_float_2(ProcName, ModeNum, _CrossCompiling, X, Y,
+        OutputArg, float_const(OutputArgVal)) :-
+    (
+        ProcName = "+",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = XVal
+    ;
+        ProcName = "-",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = -XVal
+    ).
 
-evaluate_det_call("int", "floor_to_multiple_of_bits_per_int", 0,
-        CrossCompiling, [X, Y], Y, int_const(YVal)) :-
-    CrossCompiling = no,
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = int.floor_to_multiple_of_bits_per_int(XVal).
+:- pred evaluate_det_call_int_3(string::in, int::in, bool::in,
+    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
+    arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call("int", "quot_bits_per_int", 0,
-        CrossCompiling, [X, Y], Y, int_const(YVal)) :-
-    CrossCompiling = no,
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = int.quot_bits_per_int(XVal).
+evaluate_det_call_int_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
+        OutputArg, int_const(OutputArgVal)) :-
+    (
+        ProcName = "plus",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal + YVal
+    ;
+        ProcName = "+",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal + YVal
+    ;
+        ProcName = "+",
+        ModeNum = 1,
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        Z ^ arg_inst = bound(_, [bound_functor(int_const(ZVal), [])]),
+        OutputArg = X,
+        OutputArgVal = ZVal - YVal
+    ;
+        ProcName = "+",
+        ModeNum = 2,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Z ^ arg_inst = bound(_, [bound_functor(int_const(ZVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = ZVal - XVal
+    ;
+        ProcName = "minus",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal - YVal
+    ;
+        ProcName = "-",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal - YVal
+    ;
+        ProcName = "-",
+        ModeNum = 1,
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        Z ^ arg_inst = bound(_, [bound_functor(int_const(ZVal), [])]),
+        OutputArg = X,
+        OutputArgVal = YVal + ZVal
+    ;
+        ProcName = "-",
+        ModeNum = 2,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Z ^ arg_inst = bound(_, [bound_functor(int_const(ZVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = XVal - ZVal
+    ;
+        ProcName = "times",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal * YVal
+    ;
+        ProcName = "*",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal * YVal
+    ;
+        ProcName = "unchecked_quotient",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        YVal \= 0,
+        OutputArg = Z,
+        OutputArgVal = unchecked_quotient(XVal, YVal)
+    ;
+        ProcName = "//",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        YVal \= 0,
+        OutputArg = Z,
+        OutputArgVal = XVal // YVal
+    ;
+        ProcName = "mod",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        YVal \= 0,
+        OutputArg = Z,
+        OutputArgVal = XVal mod YVal
+    ;
+        ProcName = "rem",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        YVal \= 0,
+        OutputArg = Z,
+        OutputArgVal = XVal rem YVal
+    ;
+        ProcName = "unchecked_rem",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        YVal \= 0,
+        OutputArg = Z,
+        OutputArgVal = unchecked_rem(XVal, YVal)
+    ;
+        ProcName = "unchecked_left_shift",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = unchecked_left_shift(XVal, YVal)
+    ;
+        ProcName = "<<",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal << YVal
+    ;
+        ProcName = "unchecked_right_shift",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = unchecked_right_shift(XVal, YVal)
+    ;
+        ProcName = ">>",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal >> YVal
+    ;
+        ProcName = "/\\",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal /\ YVal
+    ;
+        ProcName = "\\/",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal \/ YVal
+    ;
+        ProcName = "xor",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = xor(XVal, YVal)
+    ).
 
-evaluate_det_call("int", "times_bits_per_int", 0,
-        CrossCompiling, [X, Y], Y, int_const(YVal)) :-
-    CrossCompiling = no,
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = int.times_bits_per_int(XVal).
+:- pred evaluate_det_call_float_3(string::in, int::in, bool::in,
+    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
+    arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call("int", "rem_bits_per_int", 0,
-        CrossCompiling, [X, Y], Y, int_const(YVal)) :-
-    CrossCompiling = no,
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = int.rem_bits_per_int(XVal).
+evaluate_det_call_float_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
+        OutputArg, float_const(OutputArgVal)) :-
+    (
+        ProcName = "+",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(float_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal + YVal
+    ;
+        ProcName = "-",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(float_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal - YVal
+    ;
+        ProcName = "*",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(float_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal * YVal
+    ;
+        ProcName = "/",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(float_const(YVal), [])]),
+        OutputArg = Z,
+        YVal \= 0.0,
+        OutputArgVal = XVal / YVal
+    ;
+        ProcName = "unchecked_quotient",
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(float_const(YVal), [])]),
+        OutputArg = Z,
+        YVal \= 0.0,
+        OutputArgVal = unchecked_quotient(XVal, YVal)
+    ).
 
-    % Floating point arithmetic
+:- pred evaluate_det_call_string_3(string::in, int::in, bool::in,
+    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
+    arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call("float", "+", 0, _, [X, Y], Y, int_const(YVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = XVal.
-
-evaluate_det_call("float", "-", 0, _, [X, Y], Y, int_const(YVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = -XVal.
-
-%
-% Binary operators
-%
-
-    % Integer arithmetic
-
-evaluate_det_call("int", "+", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal + YVal.
-evaluate_det_call("int", "+", 1, _, [X, Y, Z], X, int_const(XVal)) :-
-    Z ^ arg_inst = bound(_ZUniq, [bound_functor(int_const(ZVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    XVal = ZVal - YVal.
-evaluate_det_call("int", "+", 2, _, [X, Y, Z], Y, int_const(YVal)) :-
-    Z ^ arg_inst = bound(_ZUniq, [bound_functor(int_const(ZVal), [])]),
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = ZVal - XVal.
-
-evaluate_det_call("int", "-", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal - YVal.
-evaluate_det_call("int", "-", 1, _, [X, Y, Z], X, int_const(XVal)) :-
-    Z ^ arg_inst = bound(_ZUniq, [bound_functor(int_const(ZVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    XVal = YVal + ZVal.
-evaluate_det_call("int", "-", 2, _, [X, Y, Z], Y, int_const(YVal)) :-
-    Z ^ arg_inst = bound(_ZUniq, [bound_functor(int_const(ZVal), [])]),
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    YVal = XVal - ZVal.
-
-evaluate_det_call("int", "*", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal * YVal.
-
-evaluate_det_call("int", "//", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    YVal \= 0,
-    ZVal = XVal // YVal.
-
-evaluate_det_call("int", "plus", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal + YVal.
-
-evaluate_det_call("int", "minus", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal - YVal.
-
-evaluate_det_call("int", "times", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal * YVal.
-
-evaluate_det_call("int", "unchecked_quotient", 0, _, [X, Y, Z], Z,
-        int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    YVal \= 0,
-    ZVal = unchecked_quotient(XVal, YVal).
-
-evaluate_det_call("int", "mod", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    YVal \= 0,
-    ZVal = XVal mod YVal.
-
-evaluate_det_call("int", "rem", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    YVal \= 0,
-    ZVal = XVal rem YVal.
-
-evaluate_det_call("int", "unchecked_rem", 0, _, [X, Y, Z], Z,
-        int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    YVal \= 0,
-    ZVal = unchecked_rem(XVal, YVal).
-
-evaluate_det_call("int", "unchecked_left_shift",
-        0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = unchecked_left_shift(XVal, YVal).
-
-evaluate_det_call("int", "<<", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal << YVal.
-
-evaluate_det_call("int", "unchecked_right_shift",
-        0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = unchecked_right_shift(XVal, YVal).
-
-evaluate_det_call("int", ">>", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal >> YVal.
-
-evaluate_det_call("int", "/\\", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal /\ YVal.
-
-evaluate_det_call("int", "\\/", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal \/ YVal.
-
-evaluate_det_call("int", "xor", 0, _, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
-    ZVal = XVal `xor` YVal.
-
-    % float arithmetic
-
-evaluate_det_call("float", "+", 0, _, [X, Y, Z], Z, float_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
-    ZVal = XVal + YVal.
-
-evaluate_det_call("float", "-", 0, _, [X, Y, Z], Z, float_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
-    ZVal = XVal - YVal.
-
-evaluate_det_call("float", "*", 0, _, [X, Y, Z], Z, float_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
-    ZVal = XVal * YVal.
-
-evaluate_det_call("float", "/", 0, _, [X, Y, Z], Z, float_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
-    YVal \= 0.0,
-    ZVal = XVal / YVal.
-
-evaluate_det_call("float", "unchecked_quotient", 0, _, [X, Y, Z], Z,
-        float_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
-    YVal \= 0.0,
-    ZVal = unchecked_quotient(XVal, YVal).
-
-    % string operations
-
-evaluate_det_call("string", Name, _, _, [X, Y, Z], Z, string_const(ZVal)) :-
-    ( Name = "++"
-    ; Name = "append"
-    ),
-    X ^ arg_inst = bound(_XUniq, [bound_functor(string_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(string_const(YVal), [])]),
-
-    % We can only do the append if Z is free (this allows us to ignore
-    % the mode number and pick up both the predicate and function versions
-    % of append).
-    Z ^ arg_inst = free,
-    ZVal = XVal ++ YVal.
+evaluate_det_call_string_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
+        OutputArg, string_const(OutputArgVal)) :-
+    (
+        ( ProcName = "++"
+        ; ProcName = "append"
+        ),
+        % We can only do the append if Z is free (this allows us to ignore
+        % the mode number and pick up both the predicate and function versions
+        % of append).
+        ModeNum = 0,
+        X ^ arg_inst = bound(_, [bound_functor(string_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, [bound_functor(string_const(YVal), [])]),
+        OutputArg = Z,
+        OutputArgVal = XVal ++ YVal
+    ).
 
 %---------------------------------------------------------------------------%
 
