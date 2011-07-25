@@ -340,6 +340,8 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], MaxTag, 0,
             ReservedAddresses, !CtorTags)
     ;
+        Val =< MaxTag
+    ->
         Tag = maybe_add_reserved_addresses(ReservedAddresses,
             unshared_tag(Val)),
         % We call set instead of det_insert because we don't want types
@@ -348,6 +350,8 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         map.set(ConsId, Tag, !CtorTags),
         assign_unshared_tags(TypeCtor, Ctors, Val + 1, MaxTag,
             ReservedAddresses, !CtorTags)
+    ;
+        unexpected($module, $pred, "exceeded max tag")
     ).
 
 :- pred assign_shared_remote_tags(type_ctor::in, list(constructor)::in,
@@ -519,8 +523,16 @@ convert_direct_arg_functors_if_suitable(MaxTag, TypeCtor, TypeDefn,
                         !NextTag, !CtorTags),
                     % We prefer to allocate primary tags to direct argument
                     % functors.
+                    (
+                        NonDirectArgFunctors = [],
+                        MaxTagForDirect = MaxTag
+                    ;
+                        NonDirectArgFunctors = [_ | _],
+                        MaxTagForDirect = MaxTag - 1
+                    ),
                     assign_direct_arg_tags(TypeCtor, DirectArgFunctors,
-                        !NextTag, MaxTag, LeftOverDirectArgFunctors, !CtorTags),
+                        !NextTag, MaxTagForDirect, LeftOverDirectArgFunctors,
+                        !CtorTags),
                     assign_unshared_tags(TypeCtor,
                         LeftOverDirectArgFunctors ++ NonDirectArgFunctors,
                         !.NextTag, MaxTag, [], !CtorTags),
