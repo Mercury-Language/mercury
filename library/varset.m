@@ -268,6 +268,8 @@
     %
 :- func varset.max_var(varset(T)) = var(T).
 
+:- func varset.num_allocated(varset(T)) = int.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -696,12 +698,12 @@ varset.coerce(A, B) :-
 
 varset.max_var(varset(VarSupply, _, _)) = term.var_supply_max_var(VarSupply).
 
-%-----------------------------------------------------------------------------%
-%:- end_module varset.
+varset.num_allocated(varset(VarSupply, _, _)) =
+    term.var_supply_num_allocated(VarSupply).
+
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
 %   Function forms added.
-
 
 varset.delete_var(!.VS, V) = !:VS :-
     varset.delete_var(V, !VS).
@@ -750,3 +752,7 @@ varset.select(!.VS, S) = !:VS :-
 
 varset.coerce(!.VS) = !:VS :-
     varset.coerce(!VS).
+
+%-----------------------------------------------------------------------------%
+%:- end_module varset.
+%-----------------------------------------------------------------------------%

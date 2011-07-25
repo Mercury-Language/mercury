@@ -6992,6 +6992,11 @@ beyond the point of their last use, in order to make them
 accessible from as many debugger events as possible.
 However, it will not do this if this option is given.
 
+@item --delay-death-max-vars @var{N}
+@findex --delay-death-max-vars
+Delay the deaths of variables only when the number of variables
+in the procedure is no more than N. The default value is 1000.
+
 @item --stack-trace-higher-order
 @findex --stack-trace-higher-order
 Enable stack traces through predicates and functions with
@@ -7042,9 +7047,9 @@ The generated code may be in C (the usual case)
 or in Mercury (with @samp{--convert-to-mercury}).
 
 @sp 1
-@item --max-error-line-width <n>
+@item --max-error-line-width @var{N}
 @findex --max-error-line-width
-Set the maximum width of an error message line to <n> characters
+Set the maximum width of an error message line to @var{N} characters
 (unless a long single word forces the line over this limit).
 
 @sp 1

@@ -244,6 +244,7 @@
             % library to be linked in with an executable compiled in a .debug
             % grade.
     ;       delay_death
+    ;       delay_death_max_vars
 
     ;       stack_trace_higher_order
     ;       force_disable_ssdebug
@@ -1189,6 +1190,7 @@ option_defaults_2(aux_output_option, [
     suppress_trace                      -   string(""),
     force_disable_tracing               -   bool(no),
     delay_death                         -   bool(yes),
+    delay_death_max_vars                -   int(1000),
     stack_trace_higher_order            -   bool(no),
     force_disable_ssdebug               -   bool(no),
     generate_bytecode                   -   bool(no),
@@ -2054,6 +2056,7 @@ long_option("exec-trace-tail-rec",      exec_trace_tail_rec).
 long_option("suppress-trace",           suppress_trace).
 long_option("force-disable-tracing",    force_disable_tracing).
 long_option("delay-death",              delay_death).
+long_option("delay-death-max-vars",     delay_death_max_vars).
 long_option("stack-trace-higher-order", stack_trace_higher_order).
 long_option("force-disable-ssdebug",    force_disable_ssdebug).
 long_option("generate-bytecode",        generate_bytecode).
@@ -3797,6 +3800,9 @@ options_help_aux_output -->
         "\tbeyond the point of their last use, in order to make them",
         "\taccessible from as many debugger events as possible.",
         "\tHowever, it will not do this if this option is given.",
+        "--delay-death-max-vars <N>",
+        "\tDelay the deaths of variables only when the number of variables",
+        "\tin the procedure is no more than N. The default value is 1000.",
         "--stack-trace-higher-order",
         "\tEnable stack traces through predicates and functions with",
         "\thigher-order arguments, even if stack tracing is not",

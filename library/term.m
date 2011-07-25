@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: term.m.
 % Main author: fjh.
 % Stability: medium.
-% 
+%
 % This file provides a type `term' used to represent Prolog terms,
 % and various predicates to manipulate terms and substitutions.
 % Terms are polymorphic so that terms representing different kinds of
 % thing can be made to be of different types so they don't get mixed up.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -220,7 +220,7 @@
 :- pred substitute(term(T)::in, var(T)::in, term(T)::in, term(T)::out)
     is det.
 
-    % As above, except for a list of terms rather than a single 
+    % As above, except for a list of terms rather than a single
     %
 :- func substitute_list(list(term(T)), var(T), term(T)) = list(term(T)).
 :- pred substitute_list(list(term(T))::in, var(T)::in, term(T)::in,
@@ -391,7 +391,7 @@
 :- pred context_file(context::in, string::out) is det.
 
     % Used to initialize the term context when reading in
-    % (or otherwise constructing) a 
+    % (or otherwise constructing) a term.
     %
 :- func context_init = context.
 :- pred context_init(context::out) is det.
@@ -452,6 +452,8 @@
     % Returns the highest numbered variable returned from this var_supply.
     %
 :- func var_supply_max_var(var_supply(T)) = var(T).
+
+:- func var_supply_num_allocated(var_supply(T)) = int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1132,6 +1134,8 @@ var_to_int(var(Var), Var).
 unsafe_int_to_var(Var) = var(Var).
 
 var_supply_max_var(var_supply(V)) = var(V).
+
+var_supply_num_allocated(var_supply(V)) = V.
 
 %-----------------------------------------------------------------------------%
 

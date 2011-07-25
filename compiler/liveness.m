@@ -206,6 +206,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module io.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -319,7 +320,18 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         AllowDelayDeath = trace_level_allows_delay_death(TraceLevel),
         AllowDelayDeath = yes,
         globals.lookup_bool_option(Globals, delay_death, DelayDeath),
-        DelayDeath = yes
+        DelayDeath = yes,
+        globals.lookup_int_option(Globals, delay_death_max_vars,
+            DelayDeathMaxVars),
+        % Don't count the variables in the vartypes map if the varset
+        % shows that it cannot possibly contain too many variables.
+        (
+            varset.num_allocated(VarSet) =< DelayDeathMaxVars
+        ;
+            map.count(VarTypes) =< DelayDeathMaxVars
+        ),
+        pred_info_get_origin(PredInfo, Origin),
+        Origin \= origin_special_pred(_)
     ->
         delay_death_proc_body(Goal2, Goal3, VarSet, Liveness0),
         trace [io(!IO)] (
