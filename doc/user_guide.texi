@@ -5243,7 +5243,7 @@ The program will run as usual, except that when it terminates
 it will write the number of times each debugger event was executed
 to a trace count file.
 @sp 1
-@samp{mtc} accepts an @samp{-f} or @samp{--output-file} option.
+@samp{mtc} accepts an @samp{-o} or @samp{--output-file} option.
 The argument to this option is the filename to use
 for the generated trace count file.
 If this option is not given,

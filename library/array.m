@@ -506,9 +506,7 @@
 :- mode array.foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
 :- mode array.foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 
-    % array.foldr2(P, Array, !Acc1, !Acc2) is equivalent to
-    %   list.foldr2(P, array.to_list(Array), !Acc1, !Acc2)
-    % but more efficient.
+    % As above, but with two accumulators.
     %
 :- pred array.foldr2(pred(T1, T2, T2, T3, T3), array(T1), T2, T2, T3, T3).
 :- mode array.foldr2(pred(in, in, out, in, out) is det, in, in, out, in, out)
