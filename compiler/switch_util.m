@@ -78,7 +78,7 @@
     --->    atomic_switch   % a switch on int/char/enum
     ;       string_switch
     ;       tag_switch
-    ;       other_switch.
+    ;       float_switch.
 
     % Convert a type constructor category to a switch category.
     %
@@ -192,14 +192,14 @@
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
         ::in(pred(in, out, in, out, in, out, in, out) is det),
     StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
-    map(int, string_hash_slot(CaseRep))::out, unary_op::out) is det.
+    map(int, string_hash_slot(CaseRep))::out, unary_op::out, int::out) is det.
 
     % For a string lookup switch, compute the hash value for each string,
     % and store the associated data in a map from the hash values.
     %
 :- pred construct_string_hash_lookup_cases(assoc_list(string, CaseRep)::in,
-    int::in, int::in, map(int, string_hash_slot(CaseRep))::out, unary_op::out)
-    is det.
+    int::in, int::in, map(int, string_hash_slot(CaseRep))::out,
+    unary_op::out, int::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -491,7 +491,7 @@ type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
         SwitchCat = string_switch
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_float),
-        SwitchCat = other_switch
+        SwitchCat = float_switch
     ;
         CtorCat = ctor_cat_user(cat_user_general),
         SwitchCat = tag_switch
@@ -743,7 +743,8 @@ log2_rounded_down(X) = Log :-
 %
 
 construct_string_hash_jump_cases(TaggedCases, TableSize, HashMask,
-        RepresentCase, !StateA, !StateB, !StateC, HashSlotsMap, HashOp) :-
+        RepresentCase, !StateA, !StateB, !StateC, HashSlotsMap,
+        HashOp, NumCollisions) :-
     string_hash_jump_cases(TaggedCases, HashMask, RepresentCase,
         !StateA, !StateB, !StateC,
         map.init, HashValsMap1, map.init, HashValsMap2, map.init, HashValsMap3,
@@ -754,13 +755,16 @@ construct_string_hash_jump_cases(TaggedCases, TableSize, HashMask,
     ),
     ( NumCollisions1 =< NumCollisions2, NumCollisions1 =< NumCollisions3 ->
         HashValsMap = HashValsMap1,
-        HashOp = hash_string
+        HashOp = hash_string,
+        NumCollisions = NumCollisions1
     ; NumCollisions2 =< NumCollisions3 ->
         HashValsMap = HashValsMap2,
-        HashOp = hash_string2
+        HashOp = hash_string2,
+        NumCollisions = NumCollisions2
     ;
         HashValsMap = HashValsMap3,
-        HashOp = hash_string3
+        HashOp = hash_string3,
+        NumCollisions = NumCollisions3
     ),
     map.to_assoc_list(HashValsMap, HashValsList),
     calc_string_hash_slots(TableSize, HashValsList, HashValsMap, HashSlotsMap).
@@ -839,7 +843,7 @@ string_hash_cons_id(CaseRep, HashMask, TaggedConsId,
 %-----------------------------------------------------------------------------%
 
 construct_string_hash_lookup_cases(StrsDatas, TableSize, HashMask,
-        HashSlotsMap, HashOp) :-
+        HashSlotsMap, HashOp, NumCollisions) :-
     string_hash_lookup_cases(StrsDatas, HashMask,
         map.init, HashValsMap1, map.init, HashValsMap2, map.init, HashValsMap3,
         0, NumCollisions1, 0, NumCollisions2, 0, NumCollisions3),
@@ -849,13 +853,16 @@ construct_string_hash_lookup_cases(StrsDatas, TableSize, HashMask,
     ),
     ( NumCollisions1 =< NumCollisions2, NumCollisions1 =< NumCollisions3 ->
         HashValsMap = HashValsMap1,
-        HashOp = hash_string
+        HashOp = hash_string,
+        NumCollisions = NumCollisions1
     ; NumCollisions2 =< NumCollisions3 ->
         HashValsMap = HashValsMap2,
-        HashOp = hash_string2
+        HashOp = hash_string2,
+        NumCollisions = NumCollisions2
     ;
         HashValsMap = HashValsMap3,
-        HashOp = hash_string3
+        HashOp = hash_string3,
+        NumCollisions = NumCollisions3
     ),
     map.to_assoc_list(HashValsMap, HashValsList),
     calc_string_hash_slots(TableSize, HashValsList, HashValsMap, HashSlotsMap).

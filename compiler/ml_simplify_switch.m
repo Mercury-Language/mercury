@@ -16,9 +16,9 @@
 % We should eventually also handle lookup switches and binary search switches
 % here too.
 %
-% The choice of which exactly which simplifications will get
-% performed depends on the target (e.g. whether it understands
-% switches) and the --prefer-switch option.
+% The choice of which exactly which simplifications will get performed
+% depends on the target (e.g. whether it understands switches) and the
+% --prefer-switch option.
 %
 %-----------------------------------------------------------------------------%
 

@@ -133,8 +133,9 @@
     %   predicate.
     %   - For int switches, there will be no previous columns.
     %   - For binary string switches, there is one containing the string.
-    %   - For hash string switches, there are two, containing the string,
-    %     and the number of the next slot in the open addressing sequence.
+    %   - For hash string switches, there are one or two, the first containing
+    %     the string, and the second (if it is needed) the number of the next
+    %     slot in the open addressing sequence.
     %
     % - The second group contains two columns, which contain respectively
     %   the offsets of the first and last later solutions in the later

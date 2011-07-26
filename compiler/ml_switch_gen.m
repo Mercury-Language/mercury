@@ -7,56 +7,92 @@
 %-----------------------------------------------------------------------------%
 %
 % File: ml_switch_gen.m
-% Author: fjh (adapted from switch_gen.m)
+% Authors: fjh, zs.
 %
-% This module handles the generation of code for switches for the MLDS
-% back-end. Switches are disjunctions that do not require backtracking.
-% They are detected in switch_detection.m.  This is the module that determines
-% what sort of indexing to use for each switch and then actually generates the
-% code.  The code here is quite similar to the code in switch_gen.m, which
-% does the same thing for the LLDS back-end.
+% This module determines how we should generate code for a switch, primarily
+% by deciding what sort of indexing, if any, we should use.
+% NOTE The code here is quite similar to the code in switch_gen.m,
+% which does the same thing for the LLDS back-end. Any changes here
+% probably also require similar changes there.
 %
-% The following describes the different forms of indexing that we could use.
-% Note that currently most of these are not implemented!
-% The ones that are not are marked NYI (for "not yet implemented").
+% The following describes the different forms of indexing that we can use.
+% Note that currently some of these are not implemented; these are marked
+% NYI (for "not yet implemented").
 %
-% 1 For switches on atomic data types (int, char, enums), there are
-%   several possibilities.
+% 1 For switches on atomic data types (int, char, enums), we can use
+%   three smart indexing strategies.
 %
 %   a)  If all the alternative goals for a switch on an atomic data type
-%       contain only construction unifications of constants, then we should
-%       generate a dense lookup table (an array) in which we can look up
+%       contain only construction unifications of constants, then we
+%       generate a dense lookup table (an array) in which we look up
 %       the values of the output variables.
+%       Implemented by ml_lookup_switch.m
+%
 %   b)  If the cases are not sparse, and the target supports computed
 %       gotos, we should use a computed_goto, unless the target supports
-%       switch statements and the `--prefer-switch' option is set. (NYI)
-%   c)  If the target supports switch statements,
-%       we generate an MLDS switch statement.
+%       switch statements and the `--prefer-switch' option is set.
+%       NYI.
 %
-% 2 For switches on strings, there are several possibilities.
+%   c)  If the target supports switch statements, we generate an MLDS
+%       switch statement.
+%       Implemented by this module.
 %
-%   a)  If the target supports indirect gotos, we should look up the address
-%       to jump to in a hash table (e.g. using open addressing to resolve
-%       hash collisions), and then jump to it using an indirect goto,
-%       unless the target supports string switch statements and the
-%       `--prefer-switch' option is set. (NYI)
-%   b)  If the target supports string switches,
-%       we generate an MLDS switch statement.
+% 2 For switches on strings, we can use five smart indexing strategies,
+%   four of which are the possible combinations of two possible implementation
+%   strategies of each of two aspects on the switch.
+%
+%   a)  One basic implementation strategy is the use of a hash table with
+%       open addressing. Since the contents of the hash table is fixed,
+%       the open addressing can select buckets that are not the home bucket
+%       of any string in the table. And if we know that no two strings in
+%       the table share the same home address, we can dispense with open
+%       addressing altogether.
+%
+%       This strategy requires the target to support either computed gotos
+%       or int switches. We prefer computed gotos, in which case table entries
+%       contain the address to jump to, but we can also use it switches,
+%       in which case entries contain an integer to give to a switch.
+%       We don't use this strategy if the target supports string switch
+%       statements and the `--prefer-switch' option is set.
+%
+%   b)  The second basic implementation approach is the use of binary search.
+%       We generate a table containing all the strings in the switch cases in
+%       order, and search it using binary search. Again, we don't use this
+%       strategy if the target supports string switch statements and the
+%       `--prefer-switch' option is set.
+%
+%   c)  If the target supports string switches, we generate an MLDS switch
+%       statement directly on the string variable.
+%
+%   The second aspect is whether we use a lookup table. If all the switch arms
+%   contain only construction unifications of constants, and we are using
+%   approach (a) or (b), we extend can each row in either the hash table or the
+%   binary search table with extra columns containing the values of the output
+%   variables.
+%
+%   The use of a lookup table and the use of binary searches is NYI.
+%   All the other indexing strategies are implemented by ml_string_switch.m.
 %
 % 3 For switches on discriminated union types, we generate code that does
 %   indexing first on the primary tag, and then on the secondary tag (if
 %   the primary tag is shared between several function symbols). The
 %   indexing code for switches on both primary and secondary tags can be
 %   in the form of a try-me-else chain, a try chain, a dense jump table
-%   or a binary search. (NYI)
+%   or a binary search.
+%   At the moment, ml_tag_switch implements only try-me-else chains;
+%   the other indexing forms are NYI.
 %
-% For all other cases (or if the --smart-indexing option was disabled),
-% we just generate a chain of if-then-elses.
+% 4 For switches on floats, we could generate code that does binary search.
+%   However, this is not yet implemented.
+%
+% If we cannot apply any of the above smart indexing strategies, or if the
+% --smart-indexing option was disabled, then this module just generates
+% a chain of if-then-elses.
 %
 % TODO:
-%   - implement the things marked NYI above
-%   - optimize switches so that the recursive case comes first
-%     (see switch_gen.m).
+% - implement the things marked NYI above
+% - optimize if-then-else chain switches so that the recursive case
+%   comes first (see switch_gen.m).
 %
 %-----------------------------------------------------------------------------%
 
@@ -162,6 +198,43 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
         Decls = []
     ;
         (
+            SwitchCategory = atomic_switch,
+            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
+            (
+                ml_gen_info_get_high_level_data(!.Info, no),
+                MaybeIntSwitchInfo = int_switch(LowerLimit, UpperLimit,
+                    NumValues),
+                globals.lookup_bool_option(Globals, static_ground_cells, yes),
+                globals.lookup_int_option(Globals, lookup_switch_size,
+                    LookupSize),
+                NumConsIds >= LookupSize,
+                NumArms > 1,
+                globals.lookup_int_option(Globals, lookup_switch_req_density,
+                    ReqDensity),
+                filter_out_failing_cases_if_needed(CodeModel,
+                    TaggedCases, FilteredTaggedCases,
+                    CanFail, FilteredCanFail),
+                find_int_lookup_switch_params(ModuleInfo, SwitchVarType,
+                    FilteredCanFail, LowerLimit, UpperLimit, NumValues,
+                    ReqDensity, NeedBitVecCheck, NeedRangeCheck,
+                    FirstVal, LastVal),
+                NonLocals = goal_info_get_nonlocals(GoalInfo),
+                ml_gen_lookup_switch(SwitchVar, FilteredTaggedCases,
+                    NonLocals, CodeModel, Context, FirstVal, LastVal,
+                    NeedBitVecCheck, NeedRangeCheck, LookupStatement, !Info)
+            ->
+                Statements = [LookupStatement]
+            ;
+                target_supports_int_switch(Globals)
+            ->
+                ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
+                    CodeModel, CanFail, Context, Statements, !Info)
+            ;
+                ml_switch_generate_if_then_else_chain(TaggedCases,
+                    SwitchVar, CodeModel, CanFail, Context, Statements, !Info)
+            ),
+            Decls = []
+        ;
             SwitchCategory = string_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
             globals.lookup_int_option(Globals, string_hash_switch_size,
@@ -218,73 +291,14 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
             ),
             Decls = []
         ;
-            SwitchCategory = atomic_switch,
-            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
-            (
-                ml_gen_info_get_high_level_data(!.Info, no),
-                MaybeIntSwitchInfo = int_switch(LowerLimit, UpperLimit,
-                    NumValues),
-                globals.lookup_bool_option(Globals, static_ground_cells, yes),
-                globals.lookup_int_option(Globals, lookup_switch_size,
-                    LookupSize),
-                NumConsIds >= LookupSize,
-                NumArms > 1,
-                globals.lookup_int_option(Globals, lookup_switch_req_density,
-                    ReqDensity),
-                filter_out_failing_cases_if_needed(CodeModel,
-                    TaggedCases, FilteredTaggedCases,
-                    CanFail, FilteredCanFail),
-                find_int_lookup_switch_params(ModuleInfo, SwitchVarType,
-                    FilteredCanFail, LowerLimit, UpperLimit, NumValues,
-                    ReqDensity, NeedBitVecCheck, NeedRangeCheck,
-                    FirstVal, LastVal),
-                NonLocals = goal_info_get_nonlocals(GoalInfo),
-                ml_gen_lookup_switch(SwitchVar, FilteredTaggedCases,
-                    NonLocals, CodeModel, Context, FirstVal, LastVal,
-                    NeedBitVecCheck, NeedRangeCheck, LookupStatement, !Info)
-            ->
-                Statements = [LookupStatement]
-            ;
-                target_supports_computed_goto(Globals)
-            ->
-                ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
-                    CodeModel, CanFail, Context, Statements, !Info)
-            ;
-                ml_switch_generate_if_then_else_chain(TaggedCases,
-                    SwitchVar, CodeModel, CanFail, Context, Statements, !Info)
-            ),
-            Decls = []
-        ;
-            SwitchCategory = other_switch,
-            (
-                % Try using a "direct-mapped" switch. This also handles dense
-                % (computed goto) switches -- for those, we first generate a
-                % direct-mapped switch, and then convert it into a computed
-                % goto switch in ml_simplify_switch.
-                target_supports_switch(SwitchCategory, Globals)
-            ->
-                ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
-                    CodeModel, CanFail, Context, Statements, !Info)
-            ;
-                ml_switch_generate_if_then_else_chain(TaggedCases,
-                    SwitchVar, CodeModel, CanFail, Context, Statements, !Info)
-            ),
+            SwitchCategory = float_switch,
+            ml_switch_generate_if_then_else_chain(TaggedCases,
+                SwitchVar, CodeModel, CanFail, Context, Statements, !Info),
             Decls = []
         )
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- pred target_supports_switch(switch_category::in, globals::in) is semidet.
-
-target_supports_switch(SwitchCategory, Globals) :-
-    (
-        SwitchCategory = atomic_switch,
-        target_supports_int_switch(Globals)
-    ;
-        SwitchCategory = string_switch,
-        target_supports_string_switch(Globals)
-    ).
 
 target_supports_int_switch(Globals) :-
     globals.get_target(Globals, Target),
@@ -490,7 +504,7 @@ chain_ors(FirstExpr, LaterExprs, Expr) :-
 
     % Generate an MLDS switch. This is used for "direct-mapped" switches,
     % where we map a Mercury switch directly to a switch in the target
-    % language.
+    % language. (But see the post-processing done by ml_simplify_switch.)
     %
 :- pred ml_switch_generate_mlds_switch(list(tagged_case)::in,
     prog_var::in, code_model::in, can_fail::in, prog_context::in,

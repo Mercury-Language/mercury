@@ -106,7 +106,6 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     % of cases up to the nearest power of two, and then double it.
     % This should hopefully ensure that we don't get too many hash collisions.
 
-    NumColumns = 2,
     list.length(Cases, NumCases),
     int.log2(NumCases, LogNumCases),
     int.pow(2, LogNumCases, RoundedNumCases),
@@ -117,19 +116,27 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     map.init(CaseLabelMap0),
     construct_string_hash_jump_cases(Cases, TableSize, HashMask,
         represent_tagged_case_for_llds(Params),
-        CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, HashSlotsMap, HashOp),
+        CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, HashSlotsMap,
+        HashOp, NumCollisions),
 
     % Generate the data structures for the hash table.
     FailLabel = HashSwitchInfo ^ shsi_fail_label,
     construct_string_hash_jump_vectors(0, TableSize, HashSlotsMap, FailLabel,
-        [], RevTableRows, [], RevTargets),
+        NumCollisions, [], RevTableRows, [], RevTargets),
     list.reverse(RevTableRows, TableRows),
     list.reverse(RevTargets, Targets),
 
     % Generate the code for the hash table lookup.
-    RowElemTypes = [lt_string, lt_integer],
+    ( NumCollisions = 0 ->
+        NumColumns = 1,
+        RowElemTypes = [lt_string],
+        ArrayElemTypes = [scalar_elem_string]
+    ;
+        NumColumns = 2,
+        RowElemTypes = [lt_string, lt_integer],
+        ArrayElemTypes = [scalar_elem_string, scalar_elem_int]
+    ),
     add_vector_static_cell(RowElemTypes, TableRows, TableAddr, !CI),
-    ArrayElemTypes = [scalar_elem_string, scalar_elem_int],
     ArrayElemType = array_elem_struct(ArrayElemTypes),
     TableAddrRval = const(llconst_data_addr(TableAddr, no)),
 
@@ -141,8 +148,8 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     ]),
 
     generate_string_hash_switch_search(HashSwitchInfo, VarRval, TableAddrRval,
-        ArrayElemType, NumColumns, HashOp, HashMask, MatchCode,
-        HashLookupCode),
+        ArrayElemType, NumColumns, HashOp, HashMask, NumCollisions,
+        MatchCode, HashLookupCode),
 
     % Generate the code for the cases.
     map.foldl(add_remaining_case, CaseLabelMap, empty, CasesCode),
@@ -153,12 +160,12 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     Code = CommentCode ++ HashLookupCode ++ CasesCode ++ EndLabelCode.
 
 :- pred construct_string_hash_jump_vectors(int::in, int::in,
-    map(int, string_hash_slot(label))::in, label::in,
+    map(int, string_hash_slot(label))::in, label::in, int::in,
     list(list(rval))::in, list(list(rval))::out,
     list(maybe(label))::in, list(maybe(label))::out) is det.
 
 construct_string_hash_jump_vectors(Slot, TableSize, HashSlotMap, FailLabel,
-        !RevTableRows, !RevMaybeTargets) :-
+        NumCollisions, !RevTableRows, !RevMaybeTargets) :-
     ( Slot = TableSize ->
         true
     ;
@@ -172,11 +179,15 @@ construct_string_hash_jump_vectors(Slot, TableSize, HashSlotMap, FailLabel,
             NextSlotRval = const(llconst_int(-2)),
             Target = FailLabel
         ),
-        TableRow = [StringRval, NextSlotRval],
+        ( NumCollisions = 0 ->
+            TableRow = [StringRval]
+        ;
+            TableRow = [StringRval, NextSlotRval]
+        ),
         !:RevTableRows = [TableRow | !.RevTableRows],
         !:RevMaybeTargets = [yes(Target) | !.RevMaybeTargets],
         construct_string_hash_jump_vectors(Slot + 1, TableSize, HashSlotMap,
-            FailLabel, !RevTableRows, !RevMaybeTargets)
+            FailLabel, NumCollisions, !RevTableRows, !RevMaybeTargets)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -227,24 +238,30 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     TableSize = 2 * RoundedNumCases,
     HashMask = TableSize - 1,
 
-    list.length(OutVars, NumOutVars),
-    NumColumns = 2 + NumOutVars,
-    % For the LLDS backend, array indexing ops don't need the element
-    % types, so it is ok to lie here.
-    list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
-    ArrayElemTypes = [scalar_elem_string, scalar_elem_int | OutElemTypes],
-    ArrayElemType = array_elem_struct(ArrayElemTypes),
-
     % Compute the hash table.
     construct_string_hash_lookup_cases(CaseValues, TableSize, HashMask,
-        HashSlotsMap, HashOp),
+        HashSlotsMap, HashOp, NumCollisions),
+
+    list.length(OutVars, NumOutVars),
+    % For the LLDS backend, array indexing ops don't need the element
+    % types, so it is ok to lie for OutElemTypes.
+    list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
+    DummyOutRvals = list.map(default_value_for_type, OutTypes),
+    ( NumCollisions = 0 ->
+        NumColumns = 1 + NumOutVars,
+        ArrayElemTypes = [scalar_elem_string | OutElemTypes],
+        RowElemTypes = [lt_string | OutTypes]
+    ;
+        NumColumns = 2 + NumOutVars,
+        ArrayElemTypes = [scalar_elem_string, scalar_elem_int | OutElemTypes],
+        RowElemTypes = [lt_string, lt_integer | OutTypes]
+    ),
+    ArrayElemType = array_elem_struct(ArrayElemTypes),
 
     % Generate the static lookup table for this switch.
-    DummyOutRvals = list.map(default_value_for_type, OutTypes),
     construct_string_hash_simple_lookup_vector(0, TableSize, HashSlotsMap,
-        DummyOutRvals, [], RevVectorRvals),
+        NumCollisions, DummyOutRvals, [], RevVectorRvals),
     list.reverse(RevVectorRvals, VectorRvals),
-    RowElemTypes = [lt_string, lt_integer | OutTypes],
     add_vector_static_cell(RowElemTypes, VectorRvals, VectorAddr, !CI),
     VectorAddrRval = const(llconst_data_addr(VectorAddr, no)),
 
@@ -292,7 +309,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     MatchCode = SetBaseRegCode ++ BranchEndCode ++ GotoEndLabelCode,
     generate_string_hash_switch_search(HashSwitchInfo,
         VarRval, VectorAddrRval, ArrayElemType, NumColumns, HashOp, HashMask,
-        MatchCode, HashSearchCode),
+        NumCollisions, MatchCode, HashSearchCode),
 
     EndLabelCode = singleton(
         llds_instr(label(EndLabel),
@@ -302,11 +319,11 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     Code = CommentCode ++ HashSearchCode ++ EndLabelCode.
 
 :- pred construct_string_hash_simple_lookup_vector(int::in, int::in,
-    map(int, string_hash_slot(list(rval)))::in, list(rval)::in,
+    map(int, string_hash_slot(list(rval)))::in, int::in, list(rval)::in,
     list(list(rval))::in, list(list(rval))::out) is det.
 
 construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
-        DummyOutRvals, !RevRows) :-
+        NumCollisions, DummyOutRvals, !RevRows) :-
     ( Slot = TableSize ->
         true
     ;
@@ -319,10 +336,14 @@ construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
             NextSlotRval = const(llconst_int(-2)),
             OutVarRvals = DummyOutRvals
         ),
-        Row = [StringRval, NextSlotRval | OutVarRvals],
+        ( NumCollisions = 0 ->
+            Row = [StringRval | OutVarRvals]
+        ;
+            Row = [StringRval, NextSlotRval | OutVarRvals]
+        ),
         !:RevRows = [Row | !.RevRows],
         construct_string_hash_simple_lookup_vector(Slot + 1, TableSize,
-            HashSlotMap, DummyOutRvals, !RevRows)
+            HashSlotMap, NumCollisions, DummyOutRvals, !RevRows)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -353,13 +374,28 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     TableSize = 2 * RoundedNumCases,
     HashMask = TableSize - 1,
 
+    % Compute the hash table.
+    construct_string_hash_lookup_cases(CaseSolns, TableSize, HashMask,
+        HashSlotsMap, HashOp, NumCollisions),
+
     list.length(OutVars, NumOutVars),
-    NumColumns = 4 + NumOutVars,
     % For the LLDS backend, array indexing ops don't need the element
-    % types, so it is ok to lie here.
+    % types, so it is ok to lie for OutElemTypes.
     list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
-    ArrayElemTypes = [scalar_elem_string, scalar_elem_int,
-        scalar_elem_int, scalar_elem_int | OutElemTypes],
+    ( NumCollisions = 0 ->
+        NumColumns = 3 + NumOutVars,
+        NumPrevColumns = 1,
+        ArrayElemTypes = [scalar_elem_string,
+            scalar_elem_int, scalar_elem_int | OutElemTypes],
+        MainRowTypes = [lt_string, lt_integer, lt_integer | OutTypes]
+    ;
+        NumColumns = 4 + NumOutVars,
+        NumPrevColumns = 2,
+        ArrayElemTypes = [scalar_elem_string, scalar_elem_int,
+            scalar_elem_int, scalar_elem_int | OutElemTypes],
+        MainRowTypes = [lt_string, lt_integer, lt_integer, lt_integer
+            | OutTypes]
+    ),
     ArrayElemType = array_elem_struct(ArrayElemTypes),
 
     % If there are no output variables, then how can the individual solutions
@@ -373,10 +409,6 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
         GoalsMayModifyTrail = no,
         AddTrailOps = do_not_add_trail_ops
     ),
-
-    % Compute the hash table.
-    construct_string_hash_lookup_cases(CaseSolns, TableSize, HashMask,
-        HashSlotsMap, HashOp),
 
     % Generate the static lookup table for this switch.
     InitLaterSolnRowNumber = 1,
@@ -395,7 +427,6 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
     assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
 
-    MainRowTypes = [lt_string, lt_integer, lt_integer, lt_integer | OutTypes],
     add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
     MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
     add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorAddr, !CI),
@@ -416,14 +447,14 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
             mem_addr(heap_ref(MainVectorAddrRval, 0, lval(RowStartReg)))),
             "set up base reg")
     ),
-    generate_code_for_all_kinds(DescendingSortedKinds, 2, OutVars, ResumeVars,
-        EndLabel, StoreMap, Liveness, AddTrailOps,
+    generate_code_for_all_kinds(DescendingSortedKinds, NumPrevColumns,
+        OutVars, ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
         BaseReg, LaterVectorAddrRval, !MaybeEnd, LookupResultsCode, !CI),
     MatchCode = SetBaseRegCode ++ LookupResultsCode,
 
     generate_string_hash_switch_search(HashSwitchInfo,
         VarRval, MainVectorAddrRval, ArrayElemType, NumColumns,
-        HashOp, HashMask, MatchCode, HashSearchCode),
+        HashOp, HashMask, NumCollisions, MatchCode, HashSearchCode),
     EndLabelCode = singleton(
         llds_instr(label(EndLabel),
             "end of simple hash string lookup switch")
@@ -536,10 +567,11 @@ init_string_hash_switch_info(CanFail, Info, !CI) :-
 
 :- pred generate_string_hash_switch_search(string_hash_switch_info::in,
     rval::in, rval::in, array_elem_type::in, int::in, unary_op::in, int::in,
-    llds_code::in, llds_code::out) is det.
+    int::in, llds_code::in, llds_code::out) is det.
 
 generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
-        ArrayElemType, NumColumns, HashOp, HashMask, MatchCode, Code) :-
+        ArrayElemType, NumColumns, HashOp, HashMask, NumCollisions,
+        MatchCode, Code) :-
     SlotReg = Info ^ shsi_slot_reg,
     RowStartReg = Info ^ shsi_row_start_reg,
     StringReg = Info ^ shsi_string_reg,
@@ -548,40 +580,76 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
     FailLabel = Info ^ shsi_fail_label,
     FailCode = Info ^ shsi_fail_code,
 
-    Code = from_list([
-        llds_instr(assign(SlotReg,
-            binop(bitwise_and, unop(HashOp, VarRval),
-                const(llconst_int(HashMask)))),
-            "compute the hash value of the input string"),
-        llds_instr(label(LoopStartLabel),
-            "begin hash chain loop, nofulljump"),
-        llds_instr(assign(RowStartReg,
-            binop(int_mul, lval(SlotReg), const(llconst_int(NumColumns)))),
-            "find the start of the row"),
-        llds_instr(assign(StringReg,
-            binop(array_index(ArrayElemType), TableAddrRval,
-                lval(RowStartReg))),
-            "lookup the string for this hash slot"),
-        llds_instr(if_val(
-                binop(logical_or,
-                    binop(eq, lval(StringReg), const(llconst_int(0))),
-                    binop(str_ne, lval(StringReg), VarRval)),
-            code_label(NoMatchLabel)),
-            "did we find a match? nofulljump")
-    ]) ++ MatchCode ++ from_list([
-        llds_instr(label(NoMatchLabel),
-            "no match yet, nofulljump"),
-        llds_instr(assign(SlotReg,
-            binop(array_index(ArrayElemType), TableAddrRval,
-                binop(int_add, lval(RowStartReg), const(llconst_int(1))))),
-            "get next slot in hash chain"),
-        llds_instr(
-            if_val(binop(int_ge, lval(SlotReg), const(llconst_int(0))),
-                code_label(LoopStartLabel)),
-            "if we have not yet reached the end of the chain, keep searching"),
-        llds_instr(label(FailLabel),
-            "handle the failure of the table search")
-    ]) ++ FailCode.
+    ( NumCollisions = 0 ->
+        ( NumColumns = 1 ->
+            BaseReg = SlotReg,
+            MultiplyInstrs = []
+        ;
+            BaseReg = RowStartReg,
+            MultiplyInstrs = [
+                llds_instr(assign(RowStartReg,
+                    binop(int_mul, lval(SlotReg),
+                        const(llconst_int(NumColumns)))),
+                    "find the start of the row")
+            ]
+        ),
+        Code = from_list([
+            llds_instr(assign(SlotReg,
+                binop(bitwise_and, unop(HashOp, VarRval),
+                    const(llconst_int(HashMask)))),
+                "compute the hash value of the input string") |
+            MultiplyInstrs]) ++
+        from_list([
+            llds_instr(assign(StringReg,
+                binop(array_index(ArrayElemType), TableAddrRval,
+                    lval(BaseReg))),
+                "lookup the string for this hash slot"),
+            llds_instr(if_val(
+                    binop(logical_or,
+                        binop(eq, lval(StringReg), const(llconst_int(0))),
+                        binop(str_ne, lval(StringReg), VarRval)),
+                code_label(FailLabel)),
+                "did we find a match? nofulljump")
+        ]) ++ MatchCode ++ from_list([
+            llds_instr(label(FailLabel),
+                "handle the failure of the table search")
+        ]) ++ FailCode
+    ;
+        Code = from_list([
+            llds_instr(assign(SlotReg,
+                binop(bitwise_and, unop(HashOp, VarRval),
+                    const(llconst_int(HashMask)))),
+                "compute the hash value of the input string"),
+            llds_instr(label(LoopStartLabel),
+                "begin hash chain loop, nofulljump"),
+            llds_instr(assign(RowStartReg,
+                binop(int_mul, lval(SlotReg), const(llconst_int(NumColumns)))),
+                "find the start of the row"),
+            llds_instr(assign(StringReg,
+                binop(array_index(ArrayElemType), TableAddrRval,
+                    lval(RowStartReg))),
+                "lookup the string for this hash slot"),
+            llds_instr(if_val(
+                    binop(logical_or,
+                        binop(eq, lval(StringReg), const(llconst_int(0))),
+                        binop(str_ne, lval(StringReg), VarRval)),
+                code_label(NoMatchLabel)),
+                "did we find a match? nofulljump")
+        ]) ++ MatchCode ++ from_list([
+            llds_instr(label(NoMatchLabel),
+                "no match yet, nofulljump"),
+            llds_instr(assign(SlotReg,
+                binop(array_index(ArrayElemType), TableAddrRval,
+                    binop(int_add, lval(RowStartReg), const(llconst_int(1))))),
+                "get next slot in hash chain"),
+            llds_instr(
+                if_val(binop(int_ge, lval(SlotReg), const(llconst_int(0))),
+                    code_label(LoopStartLabel)),
+                "if we have not reached the end of the chain, keep searching"),
+            llds_instr(label(FailLabel),
+                "handle the failure of the table search")
+        ]) ++ FailCode
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

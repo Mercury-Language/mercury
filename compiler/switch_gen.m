@@ -9,36 +9,67 @@
 % File: switch_gen.m.
 % Authors: conway, fjh, zs.
 %
-% This module handles the generation of code for switches, which are
-% disjunctions that do not require backtracking. Switches are detected
-% in switch_detection.m. This module determines what sort of indexing to use
-% for each switch and then actually generates the code.
+% This module determines how we should generate code for a switch, primarily
+% by deciding what sort of indexing, if any, we should use.
+% NOTE The code here is quite similar to the code in ml_switch_gen.m,
+% which does the same thing for the MLDS back-end. Any changes here
+% probably also require similar changes there.
 %
-% Currently the following forms of indexing are used:
+% The following describes the different forms of indexing that we can use.
 %
-% For switches on atomic data types (int, char, enums), if the cases are not
-% sparse, we use the value of the switch variable to index into a jump table.
+% 1 For switches on atomic data types (int, char, enums), we can use two
+%   smart indexing strategies.
 %
-% If all the alternative goals for a switch on an atomic data type or a string
-% contain only constructions of constant data structures, then we generate
-% a dense lookup table (an array) for the output variables of the switch,
-% rather than a jump table, so that executing the switch becomes
-% a matter of doing an array lookup for each output variable, avoiding
-% the branch overhead of the jump table.
+%   a)  If all the switch arms contain only construction unifications of
+%       constants, then we generate a dense lookup table (an array) in which
+%       we look up the values of the output variables.
+%       Implemented by lookup_switch.m.
 %
-% For switches on strings, we can use binary search in a table, or we can
-% look up the address to jump to in a hash table, using open addressing
-% to resolve hash collisions.
+%   b)  If the cases are not sparse, we use a computed_goto.
+%       Implemented by dense_switch.m.
 %
-% For switches on discriminated union types, we generate code that does
-% indexing first on the primary tag, and then on the secondary tag (if
-% the primary tag is shared between several function symbols). The
-% indexing code for switches on both primary and secondary tags can be
-% in the form of a try-me-else chain, a try chain, a dense jump table
-% or a binary search.
+% 2 For switches on strings, we can use four smart indexing strategies,
+%   which are the possible combinations of two possible implementations
+%   of each of two aspects of the switch.
 %
-% For all other cases (or if the --smart-indexing option was disabled),
-% we just generate a chain of if-then-elses.
+%   The first aspect is the implementation of the lookup.
+%
+%   a)  One basic implementation approach is the use of a hash table with
+%       open addressing. Since the contents of the hash table is fixed,
+%       the open addressing can select buckets that are not the home bucket
+%       of any string in the table. And if we know that no two strings in
+%       the table share the same home address, we can dispense with open
+%       addressing altogether.
+%
+%   b)  The other basic implementation approach is the use of binary search.
+%       We generate a table containing all the strings in the switch cases in
+%       order, and search it using binary search.
+%
+%   The second aspect is whether we use a lookup table. If all the switch arms
+%   contain only construction unifications of constants, then we extend each
+%   row in either the hash table or the binary search table with extra columns
+%   containing the values of the output variables.
+%
+%   All these indexing strategies are implemented by string_switch.m, with
+%   some help from utility predicates in lookup_switch.m.
+%
+% 3 For switches on discriminated union types, we generate code that does
+%   indexing first on the primary tag, and then on the secondary tag (if
+%   the primary tag is shared between several function symbols). The
+%   indexing code for switches on both primary and secondary tags can be
+%   in the form of a try-me-else chain, a try chain, a dense jump table
+%   or a binary search.
+%   Implemented by tag_switch.m.
+%
+%   XXX We should implement lookup switches on secondary tags, and (if the
+%   switched-on type does not use any secondary tags) on primary tags as well.
+%
+% 4 For switches on floats, we could generate code that does binary search.
+%   However, this is not yet implemented.
+%
+% If we cannot apply any of the above smart indexing strategies, or if the
+% --smart-indexing option was disabled, then this module just generates
+% a chain of if-then-elses.
 %
 %-----------------------------------------------------------------------------%
 
@@ -249,7 +280,7 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                     MaybeEnd, SwitchCode, !CI)
             )
         ;
-            SwitchCategory = other_switch,
+            SwitchCategory = float_switch,
             order_and_generate_cases(TaggedCases, VarRval, VarType,
                 VarName, CodeModel, CanFail, GoalInfo, EndLabel,
                 MaybeEnd, SwitchCode, !CI)
@@ -276,23 +307,22 @@ determine_switch_category(CI, Var) = SwitchCategory :-
 
     % Generate a switch as a chain of if-then-elses.
     %
-    % To generate a case for a switch we generate
-    % code to do a tag-test and fall through to the next case in
-    % the event of failure.
+    % To generate a case for a switch, we generate code to do a tag-test,
+    % and fall through to the next case in the event of failure.
     %
     % Each case except the last consists of
     %
-    %   a tag test, jumping to the next case if it fails
-    %   the goal for that case
-    %   code to move variables to where the store map says they ought to be
-    %   a branch to the end of the switch.
+    % - a tag test, jumping to the next case if it fails;
+    % - the goal for that case;
+    % - code to move variables to where the store map says they ought to be;
+    % - a branch to the end of the switch.
     %
     % For the last case, if the switch covers all cases that can occur,
-    % we don't need to generate the tag test, and we never need to
-    % generate the branch to the end of the switch.
+    % we don't need to generate the tag test, and we never need to generate
+    % the branch to the end of the switch.
     %
-    % After the last case, we put the end-of-switch label which other
-    % cases branch to after their case goals.
+    % After the last case, we put the end-of-switch label which other cases
+    % branch to after their case goals.
     %
     % In the important special case of a det switch with two cases,
     % we try to find out which case will be executed more frequently,
