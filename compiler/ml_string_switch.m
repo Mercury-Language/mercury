@@ -66,8 +66,8 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     VarRval = ml_lval(VarLval),
 
     % Generate the following local variable declarations:
-    %   int slot_N;
-    %   MR_String str_M;
+    %   int         slot_N;
+    %   MR_String   str_M;
 
     ml_gen_info_new_aux_var_name("slot", SlotVar, !Info),
     SlotVarType = mlds_native_int_type,
@@ -185,12 +185,10 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
                 ml_lval(StringVarLval),
                 VarRval)
         ),
+    FoundMatchComment = "we found a match; dispatch to the corresponding code",
     FoundMatchCode = statement(
         ml_stmt_block([], [
-            statement(ml_stmt_atomic(comment("we found a match")),
-                MLDS_Context),
-            statement(ml_stmt_atomic(
-                    comment("dispatch to the corresponding code")),
+            statement(ml_stmt_atomic(comment(FoundMatchComment)),
                 MLDS_Context),
             SwitchStatement,
             GotoEndStatement
@@ -270,8 +268,8 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         statement(ml_stmt_atomic(comment("end of hashed string switch")),
             MLDS_Context),
 
-    % Collect all the generated variable/constant declarations
-    % and code fragments together.
+    % Collect all the generated variable declarations and code fragments
+    % together.
     Decls = [SlotVarDefn, StringVarDefn],
     Statements =
         HashLookupStatements ++
