@@ -374,7 +374,7 @@ fi
 
 for testdir in $testdirs
 do
-    if (cd tests/$testdir; runtests)
+    if (cd tests/$testdir; mmake runtests)
     then
         echo "tests in the $testdir directory successful"
     else
