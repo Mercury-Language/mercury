@@ -155,10 +155,10 @@ ORDINARY_PROGS=	\
 	intermod_unused_args \
 	java_rtti_bug \
 	join_list \
-	lco_pack_args \
 	lco_mday_bug_1 \
 	lco_mday_bug_2 \
 	lco_no_inline \
+	lco_pack_args \
 	list_series_int \
 	lookup_disj \
 	lookup_switch_simple \
@@ -290,6 +290,7 @@ ORDINARY_PROGS=	\
 	trace_goal_4 \
 	transform_value \
 	transitive_inst_type \
+	tree_bitset_difference \
 	trigraphs \
 	tuple_test \
 	type_ctor_desc \

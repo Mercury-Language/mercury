@@ -1,0 +1,8 @@
+list A:                 [532, 32431]
+list B:                 [32794]
+set difference:         [532, 32431]
+tree_bitset difference: [532, 32431]
+list A:                 [1064, 64862]
+list B:                 [65588]
+set difference:         [1064, 64862]
+tree_bitset difference: [1064, 64862]
