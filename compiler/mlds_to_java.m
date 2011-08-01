@@ -4385,7 +4385,11 @@ output_case_cond(Info, Indent, Context, Match, !IO) :-
         Match = match_value(Val),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("case ", !IO),
-        output_rval(Info, Val, !IO),
+        ( Val = ml_const(mlconst_enum(N, _)) ->
+            io.write_int(N, !IO)
+        ;
+            output_rval(Info, Val, !IO)
+        ),
         io.write_string(":\n", !IO)
     ;
         Match = match_range(_, _),
