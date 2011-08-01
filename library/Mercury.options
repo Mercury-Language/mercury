@@ -17,8 +17,10 @@ MCFLAGS-set += $(TYPE_SPEC_FLAGS)
 MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 
 MCFLAGS-lexer += --optimize-constructor-last-call
+
 MCFLAGS-sparse_bitset += --use-atomic-cells --optimize-constant-propagation
-MCFLAGS-tree_bitset += --use-atomic-cells --optimize-constant-propagation
+MCFLAGS-tree_bitset += --use-atomic-cells --optimize-constant-propagation \
+	--trace-flag tree-bitset-checks
 
 # Speed up structure sharing analysis.
 MCFLAGS-set_ctree234 += --structure-sharing-widening 1

@@ -527,11 +527,10 @@ make_leaf_node(Offset, Bits) = leaf_node(Offset, Bits).
 :- func enum_to_index(T) = int <= enum(T).
 
 enum_to_index(Elem) = Index :-
-    Int = enum.to_int(Elem),
-    ( Int < 0 ->
-        unexpected($module, $pred, "enums must map to nonnegative integers")
-    ;
-        Index = Int
+    Index = enum.to_int(Elem),
+    trace [compile_time(flag("tree-bitset-checks"))] (
+        expect((Index >= 0), $module, $pred,
+            "enums must map to nonnegative integers")
     ).
 
 :- func index_to_enum(int) = T <= enum(T).
@@ -829,8 +828,10 @@ raise_to_common_level(CurLevel, HeadA, TailA, HeadB, TailB,
     range_of_parent_node(HeadB ^ init_offset, CurLevel,
         ParentInitOffsetB, ParentLimitOffsetB),
     ( ParentInitOffsetA = ParentInitOffsetB ->
-        expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-            $module, $pred, "limit mismatch"),
+        trace [compile_time(flag("tree-bitset-checks"))] (
+            expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
+                $module, $pred, "limit mismatch")
+        ),
         TopHeadA = HeadA,
         TopTailA = TailA,
         TopHeadB = HeadB,
@@ -1047,14 +1048,18 @@ interiorlist_insert(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         Components0 = Head0 ^ components,
         (
             Components0 = leaf_list(LeafList0),
-            expect(unify(Level, 1), $module, $pred,
-                "bad component list (leaf)"),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(unify(Level, 1), $module, $pred,
+                    "bad component list (leaf)")
+            ),
             leaflist_insert(Index, LeafList0, LeafList),
             Components = leaf_list(LeafList)
         ;
             Components0 = interior_list(InteriorLevel, InteriorList0),
-            expect(unify(InteriorLevel, Level - 1), $module, $pred,
-                "bad component list (interior)"),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(unify(InteriorLevel, Level - 1), $module, $pred,
+                    "bad component list (interior)")
+            ),
             interiorlist_insert(Index, InteriorLevel,
                 InteriorList0, InteriorList),
             Components = interior_list(InteriorLevel, InteriorList)
@@ -1428,8 +1433,10 @@ group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, !.RevAcc,
     range_of_parent_node(Head ^ leaf_offset, 0,
         HeadParentInitOffset, HeadParentLimitOffset),
     ( ParentInitOffset = HeadParentInitOffset ->
-        expect(unify(ParentLimitOffset, HeadParentLimitOffset),
-            $module, $pred, "limit mismatch"),
+        trace [compile_time(flag("tree-bitset-checks"))] (
+            expect(unify(ParentLimitOffset, HeadParentLimitOffset),
+                $module, $pred, "limit mismatch")
+        ),
         !:RevAcc = [Head | !.RevAcc],
         group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset,
             !.RevAcc, Tail, ParentNode, Remaining)
@@ -1489,8 +1496,10 @@ group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
     range_of_parent_node(Head ^ init_offset, Level,
         HeadParentInitOffset, HeadParentLimitOffset),
     ( ParentInitOffset = HeadParentInitOffset ->
-        expect(unify(ParentLimitOffset, HeadParentLimitOffset),
-            $module, $pred, "limit mismatch"),
+        trace [compile_time(flag("tree-bitset-checks"))] (
+            expect(unify(ParentLimitOffset, HeadParentLimitOffset),
+                $module, $pred, "limit mismatch")
+        ),
         !:RevAcc = [Head | !.RevAcc],
         group_interior_nodes_in_range(Level,
             ParentInitOffset, ParentLimitOffset,
@@ -1665,8 +1674,10 @@ union(SetA, SetB) = Set :-
             range_of_parent_node(FirstNodeB ^ leaf_offset, 0,
                 ParentInitOffsetB, ParentLimitOffsetB),
             ( ParentInitOffsetA = ParentInitOffsetB ->
-                expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-                    $module, $pred, "limit mismatch"),
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
+                        $module, $pred, "limit mismatch")
+                ),
                 leaflist_union(LeafNodesA, LeafNodesB, LeafNodes),
                 List = leaf_list(LeafNodes)
             ;
@@ -1787,8 +1798,10 @@ interiorlist_union(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
         ;
             ComponentsA = interior_list(LevelA, InteriorListA),
             ComponentsB = interior_list(LevelB, InteriorListB),
-            expect(unify(LevelA, LevelB), $module, $pred,
-                "inconsistent levels"),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(unify(LevelA, LevelB), $module, $pred,
+                    "inconsistent levels")
+            ),
             interiorlist_union(InteriorListA, InteriorListB, InteriorList),
             Components = interior_list(LevelA, InteriorList),
             Head = interior_node(HeadA ^ init_offset, HeadA ^ limit_offset,
@@ -1832,8 +1845,10 @@ intersect(SetA, SetB) = Set :-
             range_of_parent_node(FirstNodeB ^ leaf_offset, 0,
                 ParentInitOffsetB, ParentLimitOffsetB),
             ( ParentInitOffsetA = ParentInitOffsetB ->
-                expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-                    $module, $pred, "limit mismatch"),
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
+                        $module, $pred, "limit mismatch")
+                ),
                 leaflist_intersect(LeafNodesA, LeafNodesB, LeafNodes),
                 List = leaf_list(LeafNodes)
             ;
@@ -1922,10 +1937,14 @@ descend_and_intersect(LevelA, InteriorNodeA, LevelB, [HeadB | TailB], List) :-
         InteriorNodeA ^ limit_offset =< HeadB ^ limit_offset
     ->
         ( LevelA = LevelB ->
-            expect(unify(InteriorNodeA ^ init_offset, HeadB ^ init_offset),
-                $module, $pred, "inconsistent inits"),
-            expect(unify(InteriorNodeA ^ limit_offset, HeadB ^ limit_offset),
-                $module, $pred, "inconsistent limits"),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(
+                    unify(InteriorNodeA ^ init_offset, HeadB ^ init_offset),
+                    $module, $pred, "inconsistent inits"),
+                expect(
+                    unify(InteriorNodeA ^ limit_offset, HeadB ^ limit_offset),
+                    $module, $pred, "inconsistent limits")
+            ),
             ComponentsA = InteriorNodeA ^ components,
             ComponentsB = HeadB ^ components,
             (
@@ -1936,13 +1955,11 @@ descend_and_intersect(LevelA, InteriorNodeA, LevelB, [HeadB | TailB], List) :-
             ;
                 ComponentsA = leaf_list(_),
                 ComponentsB = interior_list(_, _),
-                unexpected($module, $pred,
-                    "inconsistent levels")
+                unexpected($module, $pred, "inconsistent levels")
             ;
                 ComponentsA = interior_list(_, _),
                 ComponentsB = leaf_list(_),
-                unexpected($module, $pred,
-                    "inconsistent levels")
+                unexpected($module, $pred, "inconsistent levels")
             ;
                 ComponentsA = interior_list(_SubLevelA, InteriorNodesA),
                 ComponentsB = interior_list(_SubLevelB, InteriorNodesB),
@@ -1951,7 +1968,9 @@ descend_and_intersect(LevelA, InteriorNodeA, LevelB, [HeadB | TailB], List) :-
                 List = interior_list(LevelA, InteriorNodes)
             )
         ;
-            expect(LevelA < LevelB, $module, $pred, "LevelA > LevelB"),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(LevelA < LevelB, $module, $pred, "LevelA > LevelB")
+            ),
             ComponentsB = HeadB ^ components,
             (
                 ComponentsB = leaf_list(_),
@@ -2023,8 +2042,10 @@ interiorlist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
         ;
             ComponentsA = interior_list(LevelA, InteriorNodesA),
             ComponentsB = interior_list(LevelB, InteriorNodesB),
-            expect(unify(LevelA, LevelB), $module, $pred,
-                "inconsistent levels"),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(unify(LevelA, LevelB), $module, $pred,
+                    "inconsistent levels")
+            ),
             interiorlist_intersect(InteriorNodesA, InteriorNodesB,
                 InteriorNodes),
             (
@@ -2073,8 +2094,10 @@ difference(SetA, SetB) = Set :-
             range_of_parent_node(FirstNodeB ^ leaf_offset, 0,
                 ParentInitOffsetB, ParentLimitOffsetB),
             ( ParentInitOffsetA = ParentInitOffsetB ->
-                expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-                    $module, $pred, "limit mismatch"),
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
+                        $module, $pred, "limit mismatch")
+                ),
                 leaflist_difference(LeafNodesA, LeafNodesB, LeafNodes),
                 List = leaf_list(LeafNodes)
             ;
@@ -2139,13 +2162,17 @@ interiornode_difference(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
             ComponentsB = ChosenB ^ components,
             (
                 ComponentsB = leaf_list(_),
-                expect(unify(LevelA, 1), $module, $pred, "bad leaf level"),
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    expect(unify(LevelA, 1), $module, $pred, "bad leaf level")
+                ),
                 interiorlist_difference([HeadA | TailA], [ChosenB], List),
                 Level = LevelA
             ;
                 ComponentsB = interior_list(SubLevelB, SubNodesB),
-                expect(unify(LevelB, SubLevelB + 1), $module, $pred,
-                    "bad levels"),
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    expect(unify(LevelB, SubLevelB + 1), $module, $pred,
+                        "bad levels")
+                ),
                 head_and_tail(SubNodesB, SubHeadB, SubTailB),
                 interiornode_difference(LevelA, HeadA, TailA,
                     SubLevelB, SubHeadB, SubTailB, Level, List)
@@ -2162,8 +2189,10 @@ interiornode_difference(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
         range_of_parent_node(RaisedHeadB ^ init_offset, LevelA,
             ParentInitOffsetB, ParentLimitOffsetB),
         ( ParentInitOffsetA = ParentInitOffsetB ->
-            expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-                $module, $pred, "limit mismatch"),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
+                    $module, $pred, "limit mismatch")
+            ),
             interiorlist_difference([HeadA | TailA],
                 [RaisedHeadB | RaisedTailB], List),
             Level = LevelA
@@ -2259,8 +2288,10 @@ interiorlist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
         ;
             ComponentsA = interior_list(LevelA, InteriorNodesA),
             ComponentsB = interior_list(LevelB, InteriorNodesB),
-            expect(unify(LevelA, LevelB), $module, $pred,
-                "inconsistent levels"),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(unify(LevelA, LevelB), $module, $pred,
+                    "inconsistent levels")
+            ),
             interiorlist_difference(InteriorNodesA, InteriorNodesB,
                 InteriorNodes),
             (
