@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997, 1999-2002, 2007 The University of Melbourne.
+** Copyright (C) 1995-1997, 1999-2002, 2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -65,7 +65,7 @@
     )
 #endif
 
-#ifdef __GNUC__
+#ifdef MR_GNUC
   #define MR_float_const(f) ({ static const MR_Float d = f; (MR_Word) &d; })
 #else
   #define MR_float_const(f) MR_float_to_word(f)	/* inefficient */
@@ -84,7 +84,7 @@
 
   #define MR_float_const(f) MR_float_to_word(f)
 
-  #ifdef __GNUC__
+  #ifdef MR_GNUC
 
     /* GNU C allows you to cast to a union type */
     #define MR_float_to_word(f) (__extension__ \
@@ -92,14 +92,14 @@
     #define MR_word_to_float(w) (__extension__ \
 				((union MR_Float_Word)(MR_Word)(w)).f)
 
-  #else /* not __GNUC__ */
+  #else /* not MR_GNUC */
 
     static MR_Word MR_float_to_word(MR_Float f)
 	{ union MR_Float_Word tmp; tmp.f = f; return tmp.w; }
     static MR_Float MR_word_to_float(MR_Word w)
 	{ union MR_Float_Word tmp; tmp.w = w; return tmp.f; }
 
-  #endif /* not __GNUC__ */
+  #endif /* not MR_GNUC */
 
 #endif /* not MR_BOXED_FLOAT */
 

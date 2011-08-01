@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2006 The University of Melbourne.
+** Copyright (C) 1999-2006, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -85,7 +85,7 @@
 ** The jmp_buf type used by MR_builtin_setjmp()
 ** to save the stack context when implementing commits.
 */
-#ifdef __GNUC__
+#ifdef MR_GNUC
   /*
   ** For GCC, we use `__builtin_setjmp' and `__builtin_longjmp'.
   ** These are documented (in gcc/builtins.c in the GCC source code)
@@ -160,7 +160,7 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 **	2.  The call to __builtin_longjmp() must not be in the same
 **	    function as the call to __builtin_setjmp().
 */
-#if (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 8))
+#if (MR_GNUC > 2 || (MR_GNUC == 2 && __GNUC_MINOR__ >= 8))
   #ifndef MR_DARWIN_SETJMP_WORKAROUND
     #define MR_builtin_setjmp(buf)	__builtin_setjmp((buf))
     #define MR_builtin_longjmp(buf, val)	__builtin_longjmp((buf), (val))
@@ -178,7 +178,7 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 
 #ifdef MR_CONSERVATIVE_GC
   #ifdef MR_INLINE_ALLOC
-    #ifndef __GNUC__
+    #ifndef MR_GNUC
       #error "MR_INLINE_ALLOC requires GNU C"
     #endif
     /*
@@ -229,7 +229,7 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 
 #else /* !MR_CONSERVATIVE_GC */
 
-  #ifndef __GNUC__
+  #ifndef MR_GNUC
     /*
     ** We need GNU C's `({...})' expressions.
     ** It's not worth worrying about compilers other than GNU C for
@@ -266,7 +266,7 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 ** XXX we should optimize the case where sizeof(MR_Float) == sizeof(MR_Box)
 */ 
 
-#if defined(__GNUC__) && !defined(MR_AVOID_MACROS)
+#if defined(MR_GNUC) && !defined(MR_AVOID_MACROS)
   #define MR_box_float(f) ({						\
 	MR_Float *MR_box_float_ptr;					\
 									\

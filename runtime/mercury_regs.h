@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2007 The University of Melbourne.
+** Copyright (C) 1993-2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -8,6 +8,13 @@
 #define MERCURY_REGS_H
 
 #include "mercury_conf.h"
+/*
+** NOTE: we need to include mercury_conf_param.h separately here since some
+** of the tests in the configure script need MR_GNUC to be defined and
+** mercury_conf.h might will not exist until *after* we have run the configure
+** script has been run.
+*/
+#include "mercury_conf_param.h"
 #include "mercury_types.h"
 
 /*---------------------------------------------------------------------------*/
@@ -19,7 +26,7 @@
 ** Similarly for comma expressions and conditional expressions.
 */
 
-#ifdef __GNUC__
+#ifdef MR_GNUC
   #define MR_LVALUE_CAST(type, lval)	((type)(lval))
   #define MR_LVALUE_SEQ(expr, lval)	((expr),(lval))
   #define MR_LVALUE_COND(expr, x, y)	((expr)?(x):(y))
@@ -74,7 +81,7 @@
 ** The hardware description layer
 */
 #if defined(MR_USE_GCC_GLOBAL_REGISTERS)
-  #ifndef __GNUC__
+  #ifndef MR_GNUC
     #error "You must use gcc if you define MR_USE_GCC_GLOBAL_REGISTERS."
   #endif
 

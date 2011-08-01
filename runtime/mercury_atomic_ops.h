@@ -52,7 +52,7 @@
  * References: Intel and AMD documentation for PAUSE, Intel optimisation
  * guide.
  */
-#if defined(__GNUC__) && ( defined(__i386__) || defined(__x86_64__) ) && \
+#if defined(MR_GNUC) && ( defined(__i386__) || defined(__x86_64__) ) && \
     !defined(MR_DO_NOT_USE_CPU_RELAX)
 
     #define MR_ATOMIC_PAUSE                                                 \
@@ -148,7 +148,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)) && \
+#if (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)) && \
     !defined(MR_AVOID_COMPILER_INTRINSICS)
 
     /*
@@ -159,7 +159,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
             return __sync_bool_compare_and_swap(addr, old, new_val);        \
         } while (0)
 
-#elif defined(__GNUC__) && defined(__x86_64__)
+#elif defined(MR_GNUC) && defined(__x86_64__)
 
     #define MR_COMPARE_AND_SWAP_WORD_BODY                                   \
         do {                                                                \
@@ -173,7 +173,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
             return (MR_bool) result;                                        \
         } while (0)
 
-#elif defined(__GNUC__) && defined(__i386__)
+#elif defined(MR_GNUC) && defined(__i386__)
 
     /* Really 486 or better. */
     #define MR_COMPARE_AND_SWAP_WORD_BODY                                   \
@@ -208,7 +208,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)) && \
+#if (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)) && \
     !defined(MR_AVOID_COMPILER_INTRINSICS)
 
     #define MR_ATOMIC_ADD_AND_FETCH_WORD_BODY                               \
@@ -270,7 +270,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(__GNUC__) && defined(__x86_64__) && \
+#if defined(MR_GNUC) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_ADD_WORD_BODY                                         \
@@ -285,7 +285,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
     #define MR_ATOMIC_ADD_INT_BODY MR_ATOMIC_ADD_WORD_BODY
     #define MR_ATOMIC_ADD_UINT_BODY MR_ATOMIC_ADD_WORD_BODY
 
-#elif defined(__GNUC__) && defined(__i386__)
+#elif defined(MR_GNUC) && defined(__i386__)
 
     #define MR_ATOMIC_ADD_WORD_BODY                                         \
         do {                                                                \
@@ -331,7 +331,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(__GNUC__) && defined(__x86_64__) && \
+#if defined(MR_GNUC) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_SUB_INT_BODY                                          \
@@ -343,7 +343,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
                 );                                                          \
         } while (0)
 
-#elif defined(__GNUC__) && defined(__i386__)
+#elif defined(MR_GNUC) && defined(__i386__)
 
     #define MR_ATOMIC_SUB_INT_BODY                                          \
         do {                                                                \
@@ -354,7 +354,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
                 );                                                          \
         } while (0)
 
-#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+#elif MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)
 
     #define MR_ATOMIC_SUB_INT_BODY                                          \
         do {                                                                \
@@ -373,7 +373,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(__GNUC__) && defined(__x86_64__) && \
+#if defined(MR_GNUC) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_INC_WORD_BODY                                         \
@@ -388,7 +388,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
     #define MR_ATOMIC_INC_INT_BODY MR_ATOMIC_INC_WORD_BODY
     #define MR_ATOMIC_INC_UINT_BODY MR_ATOMIC_INC_WORD_BODY
 
-#elif defined(__GNUC__) && defined(__i386__) && \
+#elif defined(MR_GNUC) && defined(__i386__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /* Really 486 or better. */
@@ -438,7 +438,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(__GNUC__) && defined(__x86_64__) && \
+#if defined(MR_GNUC) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_DEC_INT_BODY                                          \
@@ -450,7 +450,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
                 );                                                          \
         } while (0)
 
-#elif defined(__GNUC__) && defined(__i386__) && \
+#elif defined(MR_GNUC) && defined(__i386__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /* Really 486 or better. */
@@ -486,7 +486,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 ** Note that on x86(_64) we have to use the sub instruction rather than the
 ** dec instruction because we need it to set the CPU flags.
 */
-#if defined(__GNUC__) && defined(__x86_64__) && \
+#if defined(MR_GNUC) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
 /*
@@ -511,7 +511,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
     #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY \
         MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
 
-#elif defined(__GNUC__) && defined(__i386__)
+#elif defined(MR_GNUC) && defined(__i386__)
 
     #define MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY                              \
         do {                                                                \
@@ -529,7 +529,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
     #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY \
         MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
 
-#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+#elif MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)
 
     #define MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY                             \
         do {                                                                \
@@ -569,7 +569,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 /*
 ** Memory fence operations.
 */
-#if defined(__GNUC__) && ( defined(__i386__) || defined(__x86_64__) ) && \
+#if defined(MR_GNUC) && ( defined(__i386__) || defined(__x86_64__) ) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /*
@@ -598,7 +598,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
             __asm__ __volatile__("mfence");                                 \
         } while(0)
 
-#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+#elif MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)
 
     /*
     ** Our memory fences are better than GCC's.  GCC only implements a full

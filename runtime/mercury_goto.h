@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001, 2003-2007, 2009 The University of Melbourne.
+** Copyright (C) 1995-2001, 2003-2007, 2009, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -770,7 +770,7 @@
 
 #if defined(MR_USE_GCC_NONLOCAL_GOTOS)
 
-  #ifndef __GNUC__
+  #ifndef MR_GNUC
   #error "You must use gcc if you define MR_USE_GCC_NONLOCAL_GOTOS"
   #endif
 
@@ -845,7 +845,7 @@
   ** falls through. For older versions of gcc, we don't do this, since it
   ** adds significantly to the code size.
   */
-  #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 91)
+  #if MR_GNUC > 2 || (MR_GNUC == 2 && __GNUC_MINOR__ > 91)
     /* gcc version > egcs 1.1.2 */
     #define MR_BEGIN_MODULE(module_name)				\
 	MR_MODULE_STATIC_OR_EXTERN void module_name(void);		\

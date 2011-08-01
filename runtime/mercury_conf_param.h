@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2007, 2009-2010 The University of Melbourne.
+** Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1050,6 +1050,31 @@
 
 #if defined(__CYGWIN__)
    #define MR_CYGWIN
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** C compilers.
+*/
+
+/*
+** MR_CLANG -- The C compiler is clang.
+**
+** MR_GNUC -- The C compiler is GCC.  We use this macro instead of __GNUC__
+**            since clang also defines __GNUC__.
+	      The value of this macro gives the major version number.
+**
+** MR_MSVC -- The C compiler is Visual C.
+**	      The value of this macro gives the version number.
+*/
+
+#if defined(__clang__)
+    #define MR_CLANG __clang__
+#elif defined(__GNUC__)
+    #define MR_GNUC __GNUC__
+#elif defined(_MSC_VER)
+    #define MR_MSVC _MSC_VER
 #endif
 
 /*---------------------------------------------------------------------------*/

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2003, 2006 The University of Melbourne.
+** Copyright (C) 1999-2003, 2006, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -83,7 +83,7 @@ MR_OUTLINE_DEFN(
     }
 )
 
-#if defined(MR_AVOID_MACROS) || !defined(__GNUC__)
+#if defined(MR_AVOID_MACROS) || !defined(MR_GNUC)
 
 MR_OUTLINE_DEFN(
     MR_Box
@@ -100,7 +100,7 @@ MR_OUTLINE_DEFN(
     }
 )
 
-#endif /* MR_AVOID_MACROS || !__GNUC__ */
+#endif /* MR_AVOID_MACROS || !MR_GNUC */
 
 #if defined(MR_AVOID_MACROS)
 
