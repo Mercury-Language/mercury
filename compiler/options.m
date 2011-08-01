@@ -2522,6 +2522,7 @@ long_option("allow-hijacks",        allow_hijacks).
 % you can't use both at the same time it doesn't really matter.
 long_option("mlds-optimize",        optimize).
 long_option("mlds-optimise",        optimize).
+long_option("mlds-peephole",        optimize_peep).
 long_option("optimize-tailcalls",   optimize_tailcalls).
 long_option("optimise-tailcalls",   optimize_tailcalls).
 long_option("optimize-initializations", optimize_initializations).
@@ -5195,6 +5196,8 @@ options_help_mlds_mlds_optimization -->
     write_tabbed_lines([
         "--no-mlds-optimize",
         "\tDisable the MLDS->MLDS optimization passes.",
+        "--no-mlds-peephole",
+        "\tDo not perform peephole optimization of the MLDS.",
         "--no-optimize-tailcalls",
         "\tTreat tailcalls as ordinary calls, rather than optimizing",
         "\tby turning self-tailcalls into loops.",

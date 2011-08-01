@@ -54,6 +54,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module std_util.
 :- import_module string.
 
@@ -139,7 +140,15 @@ optimize_in_maybe_statement(OptInfo, !MaybeStatement) :-
     list(statement)::in, list(statement)::out) is det.
 
 optimize_in_statements(OptInfo, !Statements) :-
-    list.map(optimize_in_statement(OptInfo), !Statements).
+    list.map(optimize_in_statement(OptInfo), !Statements),
+    Globals = OptInfo ^ oi_globals,
+    globals.lookup_bool_option(Globals, optimize_peep, OptPeep),
+    (
+        OptPeep = no
+    ;
+        OptPeep = yes,
+        peephole_opt_statements(!Statements)
+    ).
 
 :- pred optimize_in_statement(opt_info::in,
     statement::in, statement::out) is det.
@@ -503,6 +512,255 @@ flatten_block(Statement) = Statements :-
         Statements = BlockStatements
     ;
         Statements = [Statement]
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred peephole_opt_statements(list(statement)::in, list(statement)::out)
+    is det.
+
+peephole_opt_statements([], []).
+peephole_opt_statements([Stmt0], [Stmt0]).
+peephole_opt_statements([Stmt0, Stmt1 | Stmts2], Stmts) :-
+    ( peephole_opt_statement(Stmt0, Stmt1, Stmts2, ReplStmts) ->
+        peephole_opt_statements(ReplStmts, Stmts)
+    ;
+        peephole_opt_statements([Stmt1 | Stmts2], StmtsTail),
+        Stmts = [Stmt0 | StmtsTail]
+    ).
+
+:- pred peephole_opt_statement(statement::in, statement::in,
+    list(statement)::in, list(statement)::out) is semidet.
+
+peephole_opt_statement(Statement0, Statement1, Statements2, Statements) :-
+    Statement0 = statement(Stmt0, Context0),
+    Statement1 = statement(Stmt1, _Context1),
+    (
+        % This pattern optimizes redundant tests like this:
+        %
+        % if (TestRval) {
+        %     ...
+        % } else {
+        %     ...
+        % }
+        % if (TestRval) {
+        %     ...
+        % } else {
+        %     ...
+        % }
+        %
+        % If neither the then-part nor the else-part of the first if-then-else
+        % can update any lval in TestRval, then the second test is redundant,
+        % and we therefore optimize it away.
+        %
+        % The pattern seems to occur mostly with semidet deconstructions.
+        % The semidet deconstruction tests whether the variable has the right
+        % functor, the then-part of that if-then-else picks up its argument
+        % values, there is no else part, and the next statement starts by
+        % testing whether the previous one succeeded, using the exact same
+        % condition as the semidet deconstruction.
+        %
+        % In theory, we could also apply the pattern if there were some other
+        % non-TestRval-affecting statements between the if-then-elses. However,
+        % I (zs) have not (yet) seen any code like that.
+
+        Stmt0 = ml_stmt_if_then_else(TestRval, StmtThen0, MaybeStmtElse0),
+        Stmt1 = ml_stmt_if_then_else(TestRval, StmtThen1, MaybeStmtElse1),
+        find_rval_component_lvals(TestRval, set.init, TestRvalComponents),
+        statement_affects_lvals(TestRvalComponents, StmtThen0, no),
+        (
+            MaybeStmtElse0 = no
+        ;
+            MaybeStmtElse0 = yes(StmtElse0),
+            statement_affects_lvals(TestRvalComponents, StmtElse0, no)
+        )
+    ->
+        StmtThen0 = statement(_, ContextT),
+        Then = statement(ml_stmt_block([], [StmtThen0, StmtThen1]), ContextT),
+        (
+            MaybeStmtElse0 = no,
+            (
+                MaybeStmtElse1 = no,
+                MaybeElse = no
+            ;
+                MaybeStmtElse1 = yes(_),
+                MaybeElse = MaybeStmtElse1
+            )
+        ;
+            MaybeStmtElse0 = yes(Else0),
+            (
+                MaybeStmtElse1 = no,
+                MaybeElse = MaybeStmtElse0
+            ;
+                MaybeStmtElse1 = yes(Else1),
+                MaybeElse = yes(statement(
+                    ml_stmt_block([], [Else0, Else1]), Context0))
+            )
+        ),
+        Stmt = ml_stmt_if_then_else(TestRval, Then, MaybeElse),
+        Statement = statement(Stmt, Context0),
+        Statements = [Statement | Statements2]
+    ;
+        fail
+    ).
+
+:- pred find_rval_component_lvals(mlds_rval::in,
+    set(mlds_lval)::in, set(mlds_lval)::out) is det.
+
+find_rval_component_lvals(Rval, !Components) :-
+    (
+        Rval = ml_lval(Lval),
+        set.insert(Lval, !Components),
+        find_lval_component_lvals(Lval, !Components)
+    ;
+        Rval = ml_mkword(_, SubRval),
+        find_rval_component_lvals(SubRval, !Components)
+    ;
+        Rval = ml_unop(_, SubRvalA),
+        find_rval_component_lvals(SubRvalA, !Components)
+    ;
+        Rval = ml_binop(_, SubRvalA, SubRvalB),
+        find_rval_component_lvals(SubRvalA, !Components),
+        find_rval_component_lvals(SubRvalB, !Components)
+    ;
+        Rval = ml_mem_addr(Lval),
+        set.insert(Lval, !Components),
+        find_lval_component_lvals(Lval, !Components)
+    ;
+        ( Rval = ml_const(_)
+        ; Rval = ml_scalar_common(_)
+        ; Rval = ml_vector_common_row(_, _)
+        ; Rval = ml_self(_)
+        )
+    ).
+
+:- pred find_lval_component_lvals(mlds_lval::in,
+    set(mlds_lval)::in, set(mlds_lval)::out) is det.
+
+find_lval_component_lvals(Lval, !Components) :-
+    (
+        Lval = ml_field(_, Rval, _, _, _),
+        find_rval_component_lvals(Rval, !Components)
+    ;
+        Lval = ml_mem_ref(Rval, _),
+        find_rval_component_lvals(Rval, !Components)
+    ;
+        Lval = ml_global_var_ref(_)
+    ;
+        Lval = ml_var(_, _)
+    ).
+
+:- pred statement_affects_lvals(set(mlds_lval)::in,
+    statement::in, bool::out) is det.
+
+statement_affects_lvals(Lvals, Statement, Affects) :-
+    Statement = statement(Stmt, _),
+    (
+        Stmt = ml_stmt_block(_, Statements),
+        statements_affect_lvals(Lvals, Statements, Affects)
+    ;
+        Stmt = ml_stmt_while(_, _, SubStatement),
+        statement_affects_lvals(Lvals, SubStatement, Affects)
+    ;
+        Stmt = ml_stmt_if_then_else(_, Then, MaybeElse),
+        (
+            MaybeElse = no,
+            Statements = [Then]
+        ;
+            MaybeElse = yes(Else),
+            Statements = [Then, Else]
+        ),
+        statements_affect_lvals(Lvals, Statements, Affects)
+    ;
+        Stmt = ml_stmt_switch(_, _, _, Cases, Default),
+        cases_affect_lvals(Lvals, Cases, Affects0),
+        (
+            Affects0 = yes,
+            Affects = yes
+        ;
+            Affects0 = no,
+            (
+                ( Default = default_is_unreachable
+                ; Default = default_do_nothing
+                ),
+                Affects = no
+            ;
+                Default = default_case(DefaultStatement),
+                statement_affects_lvals(Lvals, DefaultStatement, Affects)
+            )
+        )
+    ;
+        Stmt = ml_stmt_label(_),
+        Affects = no
+    ;
+        ( Stmt = ml_stmt_goto(_)
+        ; Stmt = ml_stmt_computed_goto(_, _)
+        ; Stmt = ml_stmt_try_commit(_, _, _)
+        ; Stmt = ml_stmt_do_commit(_)
+        ; Stmt = ml_stmt_return(_)
+        ),
+        Affects = yes
+    ;
+        Stmt = ml_stmt_call(_, _, _, _, _, _),
+        % A call can update local variables even without referring to them
+        % explicitly, by referring to the environment in which they reside.
+        Affects = yes
+    ;
+        Stmt = ml_stmt_atomic(AtomicStmt),
+        (
+            ( AtomicStmt = comment(_)
+            ; AtomicStmt = delete_object(_)
+            ; AtomicStmt = gc_check
+            ; AtomicStmt = restore_hp(_)
+            ; AtomicStmt = trail_op(_)
+            ),
+            Affects = no
+        ;
+            ( AtomicStmt = assign(Lval, _)
+            ; AtomicStmt = assign_if_in_heap(Lval, _)
+            ; AtomicStmt = new_object(Lval, _, _, _, _, _, _, _, _, _)
+            ; AtomicStmt = mark_hp(Lval)
+            ),
+            ( set.contains(Lvals, Lval) ->
+                Affects = yes
+            ;
+                Affects = no
+            )
+        ;
+            ( AtomicStmt = inline_target_code(_, _)     % XXX could be improved
+            ; AtomicStmt = outline_foreign_proc(_, _, _, _)
+            ),
+            Affects = yes
+        )
+    ).
+
+:- pred statements_affect_lvals(set(mlds_lval)::in,
+    list(statement)::in, bool::out) is det.
+
+statements_affect_lvals(_, [], no).
+statements_affect_lvals(Lvals, [Head | Tail], Affects) :-
+    statement_affects_lvals(Lvals, Head, HeadAffects),
+    (
+        HeadAffects = yes,
+        Affects = yes
+    ;
+        HeadAffects = no,
+        statements_affect_lvals(Lvals, Tail, Affects)
+    ).
+
+:- pred cases_affect_lvals(set(mlds_lval)::in,
+    list(mlds_switch_case)::in, bool::out) is det.
+
+cases_affect_lvals(_, [], no).
+cases_affect_lvals(Lvals, [Head | Tail], Affects) :-
+    Head = mlds_switch_case(_, _, Statement),
+    statement_affects_lvals(Lvals, Statement, HeadAffects),
+    (
+        HeadAffects = yes,
+        Affects = yes
+    ;
+        HeadAffects = no,
+        cases_affect_lvals(Lvals, Tail, Affects)
     ).
 
 %-----------------------------------------------------------------------------%

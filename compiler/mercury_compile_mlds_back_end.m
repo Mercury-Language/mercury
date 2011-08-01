@@ -236,10 +236,9 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 35, "nested_funcs", !IO),
 
-    % Run the ml_optimize pass again after ml_elim_nested,
-    % to do optimize_initializations.  (It may also help pick
-    % up some additional optimization opportunities for the
-    % other optimizations in this pass.)
+    % Run the ml_optimize pass again after ml_elim_nested, to do
+    % optimize_initializations. (It may also help pick up some additional
+    % optimization opportunities for the other optimizations in this pass.)
     (
         Optimize = yes,
         maybe_write_string(Verbose, "% Optimizing MLDS again...\n", !IO),

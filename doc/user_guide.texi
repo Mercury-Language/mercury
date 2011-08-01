@@ -8838,6 +8838,11 @@ intermediate code.
 @findex --mlds-optimize
 Disable the MLDS -> MLDS optimization passes.
 
+@item --no-mlds-peephole
+@findex --no-mlds-peephole
+@findex --mlds-peephole
+Do not perform peephole optimization of the MLDS.
+
 @sp 1
 @item --no-optimize-tailcalls
 @findex --no-optimize-tailcalls
