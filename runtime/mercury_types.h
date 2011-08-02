@@ -42,8 +42,9 @@
 #if __STDC_VERSION__ >= 199901  /* January 1999 */
   /* Use C9X-style variable-length arrays. */
   #define   MR_VARIABLE_SIZED   /* nothing */
-#elif defined(__GNUC__)
+#elif defined(MR_GNUC)
   /* Use GNU-style variable-length arrays */
+  /* Note: clang does *not* support these. */
   #define   MR_VARIABLE_SIZED   0
 #else
   /* Just fake it by pretending that the array has a fixed size */
