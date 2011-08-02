@@ -266,6 +266,8 @@ ORDINARY_PROGS=	\
 	string_substring \
 	string_suffix_bug \
 	string_switch \
+	string_switch2 \
+	string_switch3 \
 	string_various \
 	sv_nested_closures \
 	sv_record_update \
@@ -643,7 +645,7 @@ endif
 # string_hash tests features of the Mercury C runtime.
 # It requires too much memory to be used in non-GC grades.
 ifeq "$(filter il% csharp% java%,$(GRADE))$(findstring gc,$(GRADE))" "gc"
-	C_AND_GC_ONLY_PROGS =string_hash
+	C_AND_GC_ONLY_PROGS = string_hash
 else
 	C_AND_GC_ONLY_PROGS =
 endif

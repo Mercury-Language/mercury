@@ -30,7 +30,12 @@
 % duplicate them, and dupelim, which can replace them with other labels)
 % would have to be taught to reflect any changes they make in the global
 % data. It is the last step that is the killer in terms of difficulty
-% of implementation.
+% of implementation. One possible way around the problem would be to do
+% the code generation and optimization as we do now, just recording a bit
+% more information during code generation about which numbers in static data
+% refer to which computed_gotos, and then, after all the optimizations are
+% done, to go back and replace all the indicated numbers with the corresponding
+% final labels.
 %
 %-----------------------------------------------------------------------------%
 
@@ -72,6 +77,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.switch_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.lookup_util.
@@ -102,22 +108,15 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
         llds_instr(comment("string hash jump switch"), "")
     ),
 
-    % Determine how big to make the hash table. Currently we round the number
-    % of cases up to the nearest power of two, and then double it.
-    % This should hopefully ensure that we don't get too many hash collisions.
-
-    list.length(Cases, NumCases),
-    int.log2(NumCases, LogNumCases),
-    int.pow(2, LogNumCases, RoundedNumCases),
-    TableSize = 2 * RoundedNumCases,
-    HashMask = TableSize - 1,
+    % Generate code for the cases, and remember the label of each case.
+    map.init(CaseLabelMap0),
+    represent_tagged_cases_in_string_switch(Params, Cases, StrsLabels,
+        CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI),
 
     % Compute the hash table.
-    map.init(CaseLabelMap0),
-    construct_string_hash_jump_cases(Cases, TableSize, HashMask,
-        represent_tagged_case_for_llds(Params),
-        CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, HashSlotsMap,
-        HashOp, NumCollisions),
+    construct_string_hash_cases(StrsLabels, allow_doubling,
+        TableSize, HashSlotsMap, HashOp, NumCollisions),
+    HashMask = TableSize - 1,
 
     % Generate the data structures for the hash table.
     FailLabel = HashSwitchInfo ^ shsi_fail_label,
@@ -190,6 +189,34 @@ construct_string_hash_jump_vectors(Slot, TableSize, HashSlotMap, FailLabel,
             FailLabel, NumCollisions, !RevTableRows, !RevMaybeTargets)
     ).
 
+:- pred represent_tagged_cases_in_string_switch(represent_params::in,
+    list(tagged_case)::in, assoc_list(string, label)::out,
+    case_label_map::in, case_label_map::out,
+    branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
+
+represent_tagged_cases_in_string_switch(_, [], [],
+        !CaseLabelMap, !MaybeEnd, !CI).
+represent_tagged_cases_in_string_switch(Params, [Case | Cases], !:StrsLabels,
+        !CaseLabelMap, !MaybeEnd, !CI) :-
+    represent_tagged_case_for_llds(Params, Case, Label,
+        !CaseLabelMap, !MaybeEnd, !CI),
+    represent_tagged_cases_in_string_switch(Params, Cases, !:StrsLabels,
+        !CaseLabelMap, !MaybeEnd, !CI),
+    Case = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
+    add_to_strs_labels(Label, MainTaggedConsId, !StrsLabels),
+    list.foldl(add_to_strs_labels(Label), OtherTaggedConsIds, !StrsLabels).
+
+:- pred add_to_strs_labels(label::in, tagged_cons_id::in,
+    assoc_list(string, label)::in, assoc_list(string, label)::out) is det.
+
+add_to_strs_labels(Label, TaggedConsId, !StrsLabels) :-
+    TaggedConsId = tagged_cons_id(_ConsId, Tag),
+    ( Tag = string_tag(String) ->
+        !:StrsLabels = [String - Label | !.StrsLabels]
+    ;
+        unexpected($module, $pred, "non-string tag")
+    ).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -232,15 +259,10 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
         llds_instr(comment("string hash simple lookup switch"), "")
     ),
 
-    list.length(CaseValues, NumCases),
-    int.log2(NumCases, LogNumCases),
-    int.pow(2, LogNumCases, RoundedNumCases),
-    TableSize = 2 * RoundedNumCases,
-    HashMask = TableSize - 1,
-
     % Compute the hash table.
-    construct_string_hash_lookup_cases(CaseValues, TableSize, HashMask,
-        HashSlotsMap, HashOp, NumCollisions),
+    construct_string_hash_cases(CaseValues, allow_doubling,
+        TableSize, HashSlotsMap, HashOp, NumCollisions),
+    HashMask = TableSize - 1,
 
     list.length(OutVars, NumOutVars),
     % For the LLDS backend, array indexing ops don't need the element
@@ -248,10 +270,12 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
     DummyOutRvals = list.map(default_value_for_type, OutTypes),
     ( NumCollisions = 0 ->
+        NumPrevColumns = 1,
         NumColumns = 1 + NumOutVars,
         ArrayElemTypes = [scalar_elem_string | OutElemTypes],
         RowElemTypes = [lt_string | OutTypes]
     ;
+        NumPrevColumns = 2,
         NumColumns = 2 + NumOutVars,
         ArrayElemTypes = [scalar_elem_string, scalar_elem_int | OutElemTypes],
         RowElemTypes = [lt_string, lt_integer | OutTypes]
@@ -287,7 +311,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
                 mem_addr(heap_ref(VectorAddrRval, 0, lval(RowStartReg)))),
                 "set up base reg")
         ),
-        generate_offset_assigns(OutVars, 2, BaseReg, !CI)
+        generate_offset_assigns(OutVars, NumPrevColumns, BaseReg, !CI)
     ),
 
     % We keep track of what variables are supposed to be live at the end
@@ -368,15 +392,10 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
         llds_instr(comment("string hash several soln lookup switch"), "")
     ),
 
-    list.length(CaseSolns, NumCases),
-    int.log2(NumCases, LogNumCases),
-    int.pow(2, LogNumCases, RoundedNumCases),
-    TableSize = 2 * RoundedNumCases,
-    HashMask = TableSize - 1,
-
     % Compute the hash table.
-    construct_string_hash_lookup_cases(CaseSolns, TableSize, HashMask,
+    construct_string_hash_cases(CaseSolns, allow_doubling, TableSize,
         HashSlotsMap, HashOp, NumCollisions),
+    HashMask = TableSize - 1,
 
     list.length(OutVars, NumOutVars),
     % For the LLDS backend, array indexing ops don't need the element
@@ -415,8 +434,9 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     DummyOutRvals = list.map(default_value_for_type, OutTypes),
     LaterSolnArrayCord0 = singleton(DummyOutRvals),
     construct_string_hash_several_soln_lookup_vector(0, TableSize,
-        HashSlotsMap, DummyOutRvals, NumOutVars, [], RevMainRows,
-        InitLaterSolnRowNumber, LaterSolnArrayCord0, LaterSolnArrayCord,
+        HashSlotsMap, DummyOutRvals, NumOutVars, NumCollisions,
+        [], RevMainRows, InitLaterSolnRowNumber,
+        LaterSolnArrayCord0, LaterSolnArrayCord,
         0, OneSolnCaseCount, 0, SeveralSolnsCaseCount),
     list.reverse(RevMainRows, MainRows),
     LaterSolnArray = cord.list(LaterSolnArrayCord),
@@ -462,13 +482,13 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     Code = CommentCode ++ HashSearchCode ++ EndLabelCode.
 
 :- pred construct_string_hash_several_soln_lookup_vector(int::in, int::in,
-    map(int, string_hash_slot(soln_consts(rval)))::in, list(rval)::in, int::in,
-    list(list(rval))::in, list(list(rval))::out,
+    map(int, string_hash_slot(soln_consts(rval)))::in, list(rval)::in,
+    int::in, int::in, list(list(rval))::in, list(list(rval))::out,
     int::in, cord(list(rval))::in, cord(list(rval))::out,
     int::in, int::out, int::in, int::out) is det.
 
 construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
-        DummyOutRvals, NumOutVars,
+        DummyOutRvals, NumOutVars, NumCollisions,
         !RevMainRows, !.LaterNextRow, !LaterSolnArray,
         !OneSolnCaseCount, !SeveralSolnsCaseCount) :-
     ( Slot = TableSize ->
@@ -482,8 +502,15 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
                 Soln = one_soln(OutVarRvals),
                 !:OneSolnCaseCount = !.OneSolnCaseCount + 1,
                 ZeroRval = const(llconst_int(0)),
-                MainRow = [StringRval, NextSlotRval, ZeroRval, ZeroRval
-                    | OutVarRvals]
+                % The first ZeroRval means there is exactly one solution for
+                % this case; the second ZeroRval is a dummy that won't be
+                % referenced.
+                MainRowTail = [ZeroRval, ZeroRval | OutVarRvals],
+                ( NumCollisions = 0 ->
+                    MainRow = [StringRval | MainRowTail]
+                ;
+                    MainRow = [StringRval, NextSlotRval | MainRowTail]
+                )
             ;
                 Soln = several_solns(FirstSolnRvals, LaterSolns),
                 !:SeveralSolnsCaseCount = !.SeveralSolnsCaseCount + 1,
@@ -493,24 +520,30 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
                     * NumOutVars,
                 FirstRowRval = const(llconst_int(FirstRowOffset)),
                 LastRowRval = const(llconst_int(LastRowOffset)),
-                MainRow = [StringRval, NextSlotRval, FirstRowRval, LastRowRval
-                    | FirstSolnRvals],
+                MainRowTail = [FirstRowRval, LastRowRval | FirstSolnRvals],
+                ( NumCollisions = 0 ->
+                    MainRow = [StringRval | MainRowTail]
+                ;
+                    MainRow = [StringRval, NextSlotRval | MainRowTail]
+                ),
                 !:LaterNextRow = !.LaterNextRow + NumLaterSolns,
                 !:LaterSolnArray = !.LaterSolnArray ++ from_list(LaterSolns)
             )
         ;
+            % The zero in the StringRval slot means that this bucket is empty.
             StringRval = const(llconst_int(0)),
             NextSlotRval = const(llconst_int(-2)),
             ZeroRval = const(llconst_int(0)),
-            % The first ZeroRval means there is exactly one solution for
-            % this case; the second ZeroRval is a dummy that won't be
-            % referenced.
-            MainRow = [StringRval, NextSlotRval, ZeroRval, ZeroRval
-                | DummyOutRvals]
+            MainRowTail = [ZeroRval, ZeroRval | DummyOutRvals],
+            ( NumCollisions = 0 ->
+                MainRow = [StringRval | MainRowTail]
+            ;
+                MainRow = [StringRval, NextSlotRval | MainRowTail]
+            )
         ),
         !:RevMainRows = [MainRow | !.RevMainRows],
         construct_string_hash_several_soln_lookup_vector(Slot + 1, TableSize,
-            HashSlotMap, DummyOutRvals, NumOutVars,
+            HashSlotMap, DummyOutRvals, NumOutVars, NumCollisions,
             !RevMainRows, !.LaterNextRow, !LaterSolnArray,
             !OneSolnCaseCount, !SeveralSolnsCaseCount)
     ).

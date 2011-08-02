@@ -196,7 +196,7 @@
 ** It should not be used directly. Use MR_hash_string{,2,3}() instead.
 **
 ** Note that these functions are also defined in library/string.m.
-** The definition heres and in string.m must be kept equivalent.
+** The definition here and in string.m must be kept equivalent.
 */
 
 #define MR_do_hash_string(hash, s)					\

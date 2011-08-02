@@ -93,20 +93,13 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     GotoEndStatement =
         statement(ml_stmt_goto(goto_label(EndLabel)), MLDS_Context),
 
-    % Determine how big to make the hash table. Currently we round the number
-    % of cases up to the nearest power of two, and then double it. This should
-    % hopefully ensure that we don't get too many hash collisions.
-    list.length(Cases, NumCases),
-    int.log2(NumCases, LogNumCases),
-    int.pow(2, LogNumCases, RoundedNumCases),
-    TableSize = 2 * RoundedNumCases,
-    HashMask = TableSize - 1,
+    gen_tagged_case_codes_for_string_switch(CodeModel, Cases, StrsCaseNums,
+        map.init, CodeMap, !Info),
 
     % Compute the hash table.
-    construct_string_hash_jump_cases(Cases, TableSize, HashMask,
-        gen_tagged_case_code_for_string_switch(CodeModel),
-        map.init, CodeMap, unit, _, !Info, HashSlotsMap,
-        HashOp, NumCollisions),
+    construct_string_hash_cases(StrsCaseNums, allow_doubling,
+        TableSize, HashSlotsMap, HashOp, NumCollisions),
+    HashMask = TableSize - 1,
 
     % Generate the code for when the hash lookup fails.
     (
@@ -278,13 +271,41 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_tagged_case_code_for_string_switch(code_model::in,
-    tagged_case::in, int::out,
-    map(int, statement)::in, map(int, statement)::out, unit::in, unit::out,
+:- pred gen_tagged_case_codes_for_string_switch(code_model::in,
+    list(tagged_case)::in, assoc_list(string, int)::out,
+    map(int, statement)::in, map(int, statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+gen_tagged_case_codes_for_string_switch(_CodeModel, [], [],
+        !CodeMap, !Info).
+gen_tagged_case_codes_for_string_switch(CodeModel, [TaggedCase | TaggedCases],
+        !:StrsCaseNums, !CodeMap, !Info) :-
+    gen_tagged_case_code_for_string_switch(CodeModel,
+        TaggedCase, CaseNum, !CodeMap, !Info),
+    gen_tagged_case_codes_for_string_switch(CodeModel,
+        TaggedCases, !:StrsCaseNums, !CodeMap, !Info),
+    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
+    add_to_strs_casenums(CaseNum, MainTaggedConsId, !StrsCaseNums),
+    list.foldl(add_to_strs_casenums(CaseNum), OtherTaggedConsIds,
+        !StrsCaseNums).
+
+:- pred add_to_strs_casenums(int::in, tagged_cons_id::in,
+    assoc_list(string, int)::in, assoc_list(string, int)::out) is det.
+
+add_to_strs_casenums(CaseNum, TaggedConsId, !StrsCaseNums) :-
+    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
+    ( ConsTag = string_tag(String) ->
+        !:StrsCaseNums = [String - CaseNum | !.StrsCaseNums]
+    ;
+        unexpected($module, $pred, "non-string tag")
+    ).
+
+:- pred gen_tagged_case_code_for_string_switch(code_model::in, tagged_case::in,
+    int::out, map(int, statement)::in, map(int, statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_tagged_case_code_for_string_switch(CodeModel, TaggedCase, CaseNum,
-        !CodeMap, !Unit, !Info) :-
+        !CodeMap, !Info) :-
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds,
         CaseNum, Goal),
     ml_gen_goal_as_branch_block(CodeModel, Goal, GoalStatement, !Info),
