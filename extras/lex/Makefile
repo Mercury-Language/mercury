@@ -1,5 +1,5 @@
 # Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-# Copyright (C) 2002-2007 The University of Melbourne
+# Copyright (C) 2002-2007, 2011 The University of Melbourne
 
 # To build, do the following:
 #
@@ -27,7 +27,7 @@ INSTALL_PREFIX = .
 
 MAIN_TARGET = all
 
-.PHONY: all install check
+.PHONY: all install check realclean
 
 all: liblex.compile libregex.compile
 
@@ -43,6 +43,11 @@ endif
 	mmc --make $(LIBGRADES_FLAGS) $*
 %.install:
 	mmc --make $(LIBGRADES_FLAGS) --install-prefix $(INSTALL_PREFIX) $@
+
+%.realclean:
+	mmc --make lex.realclean
+	mmc --make regex.realclean
+	/bin/rm -rf Mercury
 
 check: install
 	(cd tests; mmake check)
