@@ -7,10 +7,14 @@
 %-----------------------------------------------------------------------------%
 %
 % File: ml_string_switch.m.
-% Author: fjh (adapted from string_switch.m)
+% Authors: fjh, zs.
 %
-% For switches on strings, we generate a hash table using open addressing
-% to resolve hash conflicts.
+% For switches on strings, we can generate either
+% - a hash table using open addressing to resolve hash conflicts, or
+% - a sorted table for binary search.
+%
+% The hash table has a higher startup cost, but should use fewer comparisons,
+% so it is preferred for bigger tables.
 %
 % WARNING: the code here is quite similar to the code in string_switch.m.
 % Any changes here may require similar changes there and vice versa.
@@ -28,7 +32,12 @@
 
 :- import_module list.
 
-:- pred ml_generate_string_switch(list(tagged_case)::in, prog_var::in,
+:- pred ml_generate_string_hash_switch(list(tagged_case)::in, prog_var::in,
+    code_model::in, can_fail::in, prog_context::in,
+    list(mlds_defn)::out, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+:- pred ml_generate_string_binary_switch(list(tagged_case)::in, prog_var::in,
     code_model::in, can_fail::in, prog_context::in,
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -55,12 +64,14 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module term.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
-        Decls, Statements, !Info) :-
+ml_generate_string_hash_switch(Cases, Var, CodeModel, CanFail, Context,
+        Defns, Statements, !Info) :-
     MLDS_Context = mlds_make_context(Context),
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
@@ -88,7 +99,6 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         StringVarType, StringVarGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, StringVar, StringVarType, StringVarLval),
 
-    % Generate new labels.
     ml_gen_new_label(EndLabel, !Info),
     GotoEndStatement =
         statement(ml_stmt_goto(goto_label(EndLabel)), MLDS_Context),
@@ -102,23 +112,8 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     HashMask = TableSize - 1,
 
     % Generate the code for when the hash lookup fails.
-    (
-        CodeModel = model_det,
-        % This can happen if the initial inst of the switched-on variable
-        % shows that we know a finite set of strings that the variable can be
-        % bound to.
-        FailComment =
-            statement(ml_stmt_atomic(comment("switch cannot fail")),
-                MLDS_Context),
-        FailStatements = []
-    ;
-        ( CodeModel = model_semi
-        ; CodeModel = model_non
-        ),
-        FailComment = statement(ml_stmt_atomic(comment("no match, so fail")),
-            MLDS_Context),
-        ml_gen_failure(CodeModel, Context, FailStatements, !Info)
-    ),
+    ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, MLDS_Context, 
+        FailStatements, !Info),
 
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
@@ -263,10 +258,9 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
 
     % Collect all the generated variable declarations and code fragments
     % together.
-    Decls = [SlotVarDefn, StringVarDefn],
+    Defns = [SlotVarDefn, StringVarDefn],
     Statements =
-        HashLookupStatements ++
-        [FailComment | FailStatements] ++
+        HashLookupStatements ++ FailStatements ++
         [EndLabelStatement, EndComment].
 
 %-----------------------------------------------------------------------------%
@@ -299,6 +293,16 @@ add_to_strs_casenums(CaseNum, TaggedConsId, !StrsCaseNums) :-
     ;
         unexpected($module, $pred, "non-string tag")
     ).
+
+:- pred gen_tagged_case_code_for_string_switch_dummy(code_model::in,
+    tagged_case::in, int::out,
+    map(int, statement)::in, map(int, statement)::out,
+    ml_gen_info::in, ml_gen_info::out, unit::in, unit::out) is det.
+
+gen_tagged_case_code_for_string_switch_dummy(CodeModel, TaggedCase, CaseNum,
+        !CodeMap, !Info, !Dummy) :-
+    gen_tagged_case_code_for_string_switch(CodeModel, TaggedCase, CaseNum,
+        !CodeMap, !Info).
 
 :- pred gen_tagged_case_code_for_string_switch(code_model::in, tagged_case::in,
     int::out, map(int, statement)::in, map(int, statement)::out,
@@ -421,6 +425,253 @@ generate_string_switch_arms(CodeMap, [Entry | Entries], !Cases) :-
 :- func make_hash_match(int) = mlds_case_match_cond.
 
 make_hash_match(Slot) = match_value(ml_const(mlconst_int(Slot))).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+ml_generate_string_binary_switch(Cases, Var, CodeModel, CanFail, Context,
+        Defns, Statements, !Info) :-
+    MLDS_Context = mlds_make_context(Context),
+    ml_gen_var(!.Info, Var, VarLval),
+    VarRval = ml_lval(VarLval),
+
+    ml_gen_string_binary_switch_search_vars(MLDS_Context, LoVarLval, HiVarLval,
+        MidVarLval, ResultVarLval, Defns, !Info),
+
+    % Generate the code for when the hash lookup fails.
+    ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, MLDS_Context,
+        FailStatements, !Info),
+
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_name(ModuleInfo, ModuleName),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    ml_gen_info_get_target(!.Info, Target),
+
+    MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
+    MLDS_CaseNumType = mlds_native_int_type,
+    MLDS_ArgTypes = [MLDS_StringType, MLDS_CaseNumType],
+
+    % Generate the binary search table.
+    ml_gen_info_get_global_data(!.Info, GlobalData0),
+    ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
+        MLDS_ArgTypes, StructTypeNum, StructType, FieldIds,
+        GlobalData0, GlobalData1),
+    ml_gen_info_set_global_data(GlobalData1, !Info),
+    ( FieldIds = [StringFieldIdPrime, CaseNumFieldIdPrime] ->
+        StringFieldId = StringFieldIdPrime,
+        CaseNumFieldId = CaseNumFieldIdPrime
+    ;
+        unexpected($module, $pred, "bad FieldIds")
+    ),
+    map.init(CaseLabelMap0),
+    switch_util.string_binary_cases(Cases,
+        gen_tagged_case_code_for_string_switch_dummy(CodeModel),
+        CaseLabelMap0, CaseLabelMap, !Info, unit, _, SortedTable),
+    ml_gen_string_binary_jump_initializers(SortedTable, StructType,
+        [], RevRowInitializers, 0, TableSize),
+    list.reverse(RevRowInitializers, RowInitializers),
+    % We need to get the globaldata out of !Info again, since the generation
+    % of code for the switch arms can generate global data.
+    ml_gen_info_get_global_data(!.Info, GlobalData2),
+    ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum, RowInitializers,
+        VectorCommon, GlobalData2, GlobalData),
+    ml_gen_info_set_global_data(GlobalData, !Info),
+
+    % Generate the switch that uses the final value of MidVar (the one that,
+    % when used as an index into the binary search table, matches the current
+    % value of the switched-on variable) to select the piece of code to
+    % execute.
+    map.to_assoc_list(CaseLabelMap, CaseLabelList),
+    ml_gen_string_binary_jump_switch_arms(CaseLabelList, [], SwitchCases0),
+    list.sort(SwitchCases0, SwitchCases),
+    SwitchStmt0 = ml_stmt_switch(mlds_native_int_type,
+        ml_lval(ml_field(yes(0),
+            ml_vector_common_row(VectorCommon, ml_lval(MidVarLval)),
+        CaseNumFieldId, MLDS_StringType, StructType)),
+        mlds_switch_range(0, TableSize - 1), SwitchCases,
+        default_is_unreachable),
+    ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
+
+    ml_gen_new_label(EndLabel, !Info),
+    GotoEndStatement =
+        statement(ml_stmt_goto(goto_label(EndLabel)), MLDS_Context),
+    SuccessStatement =
+        statement(ml_stmt_block([], [SwitchStatement, GotoEndStatement]),
+            MLDS_Context),
+
+    % Generate the code that searches the table.
+    ml_gen_string_binary_switch_search(MLDS_Context, VarRval,
+        LoVarLval, HiVarLval, MidVarLval, ResultVarLval, VectorCommon,
+        TableSize, StructType, StringFieldId,
+        SuccessStatement, LookupStatements, !.Info),
+    EndLabelStatement =
+        statement(ml_stmt_label(EndLabel), MLDS_Context),
+    Statements = LookupStatements ++ FailStatements ++ [EndLabelStatement].
+
+:- pred ml_gen_string_binary_jump_initializers(assoc_list(string, int)::in,
+    mlds_type::in,
+    list(mlds_initializer)::in, list(mlds_initializer)::out,
+    int::in, int::out) is det.
+
+ml_gen_string_binary_jump_initializers([],
+        _StructType, !RevRowInitializers, !CurIndex).
+ml_gen_string_binary_jump_initializers([Str - CaseNum | StrCaseNums],
+        StructType, !RevRowInitializers, !CurIndex) :-
+    StrRval = ml_const(mlconst_string(Str)),
+    CaseNumRval = ml_const(mlconst_int(CaseNum)),
+    RowInitializer = init_struct(StructType,
+        [init_obj(StrRval), init_obj(CaseNumRval)]),
+    !:RevRowInitializers = [RowInitializer | !.RevRowInitializers],
+    !:CurIndex = !.CurIndex + 1,
+    ml_gen_string_binary_jump_initializers(StrCaseNums,
+        StructType, !RevRowInitializers, !CurIndex).
+
+:- pred ml_gen_string_binary_jump_switch_arms(assoc_list(int, statement)::in,
+    list(mlds_switch_case)::in, list(mlds_switch_case)::out) is det.
+
+ml_gen_string_binary_jump_switch_arms([], !SwitchCases).
+ml_gen_string_binary_jump_switch_arms([CaseNumStmt | CaseNumsStmts],
+        !SwitchCases) :-
+    CaseNumStmt = CaseNum - Statement,
+    MatchCond = match_value(ml_const(mlconst_int(CaseNum))),
+    SwitchCase = mlds_switch_case(MatchCond, [], Statement),
+    !:SwitchCases = [SwitchCase | !.SwitchCases],
+    ml_gen_string_binary_jump_switch_arms(CaseNumsStmts, !SwitchCases).
+
+:- pred ml_gen_string_binary_switch_search_vars(mlds_context::in,
+    mlds_lval::out, mlds_lval::out, mlds_lval::out, mlds_lval::out,
+    list(mlds_defn)::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_string_binary_switch_search_vars(MLDS_Context, LoVarLval, HiVarLval,
+        MidVarLval, ResultVarLval, Defns, !Info) :-
+    % Generate the following local variable declarations:
+    %   int         lo;
+    %   int         hi;
+    %   int         mid;
+    %   MR_String   str;
+
+    IndexType = mlds_native_int_type,
+    ResultType = mlds_native_int_type,
+    % We never need to trace ints.
+    IndexGCStatement = gc_no_stmt,
+    ResultGCStatement = gc_no_stmt,
+
+    ml_gen_info_new_aux_var_name("lo", LoVar, !Info),
+    LoVarDefn = ml_gen_mlds_var_decl(mlds_data_var(LoVar), IndexType,
+        IndexGCStatement, MLDS_Context),
+    ml_gen_var_lval(!.Info, LoVar, IndexType, LoVarLval),
+
+    ml_gen_info_new_aux_var_name("hi", HiVar, !Info),
+    HiVarDefn = ml_gen_mlds_var_decl(mlds_data_var(HiVar), IndexType,
+        IndexGCStatement, MLDS_Context),
+    ml_gen_var_lval(!.Info, HiVar, IndexType, HiVarLval),
+
+    ml_gen_info_new_aux_var_name("mid", MidVar, !Info),
+    MidVarDefn = ml_gen_mlds_var_decl(mlds_data_var(MidVar), IndexType,
+        IndexGCStatement, MLDS_Context),
+    ml_gen_var_lval(!.Info, MidVar, IndexType, MidVarLval),
+
+    ml_gen_info_new_aux_var_name("result", ResultVar, !Info),
+    ResultVarDefn = ml_gen_mlds_var_decl(mlds_data_var(ResultVar), ResultType,
+        ResultGCStatement, MLDS_Context),
+    ml_gen_var_lval(!.Info, ResultVar, ResultType, ResultVarLval),
+
+    Defns = [LoVarDefn, HiVarDefn, MidVarDefn, ResultVarDefn].
+
+:- pred ml_gen_string_binary_switch_search(mlds_context::in, mlds_rval::in,
+    mlds_lval::in, mlds_lval::in, mlds_lval::in, mlds_lval::in,
+    mlds_vector_common::in, int::in, mlds_type::in, mlds_field_id::in,
+    statement::in, list(statement)::out,
+    ml_gen_info::in) is det.
+
+ml_gen_string_binary_switch_search(MLDS_Context, VarRval, LoVarLval, HiVarLval,
+        MidVarLval, ResultVarLval, VectorCommon, TableSize,
+        StructType, StringFieldId, SuccessStatement, Statements, Info) :-
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
+
+    LoopBodyStatements = [
+        statement(ml_stmt_atomic(
+            assign(MidVarLval,
+                ml_binop(int_div,
+                    ml_binop(int_add, ml_lval(LoVarLval), ml_lval(HiVarLval)),
+                    ml_const(mlconst_int(2))))),
+            MLDS_Context),
+        statement(ml_stmt_atomic(
+            assign(ResultVarLval,
+                ml_binop(str_cmp,
+                    VarRval,
+                    ml_lval(ml_field(yes(0),
+                        ml_vector_common_row(VectorCommon,
+                            ml_lval(MidVarLval)),
+                    StringFieldId, MLDS_StringType, StructType))))),
+            MLDS_Context),
+        statement(ml_stmt_if_then_else(
+            ml_binop(eq,
+                ml_lval(ResultVarLval),
+                ml_const(mlconst_int(0))),
+            SuccessStatement,
+            yes(statement(
+                ml_stmt_if_then_else(
+                    ml_binop(int_le,
+                        ml_lval(ResultVarLval),
+                        ml_const(mlconst_int(0))),
+                    statement(ml_stmt_atomic(
+                        assign(HiVarLval,
+                            ml_binop(int_sub,
+                                ml_lval(MidVarLval),
+                                ml_const(mlconst_int(1))))),
+                        MLDS_Context),
+                    yes(statement(ml_stmt_atomic(
+                        assign(LoVarLval,
+                            ml_binop(int_add,
+                                ml_lval(MidVarLval),
+                                ml_const(mlconst_int(1))))),
+                        MLDS_Context))),
+                MLDS_Context))),
+            MLDS_Context)
+    ],
+    Statements = [
+        statement(ml_stmt_atomic(
+            assign(LoVarLval, ml_const(mlconst_int(0)))),
+            MLDS_Context),
+        statement(ml_stmt_atomic(
+            assign(HiVarLval, ml_const(mlconst_int(TableSize - 1)))),
+            MLDS_Context),
+        statement(ml_stmt_while(may_loop_zero_times,
+            ml_binop(int_le,
+                ml_lval(LoVarLval),
+                ml_lval(HiVarLval)),
+            statement(ml_stmt_block([], LoopBodyStatements),
+                MLDS_Context)),
+            MLDS_Context)
+        ].
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred ml_gen_maybe_switch_failure(code_model::in, can_fail::in,
+    term.context::in, mlds_context::in, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, MLDS_Context, 
+        FailStatements, !Info) :-
+    (
+        CanFail = cannot_fail,
+        % This can happen if the initial inst of the switched-on variable
+        % shows that we know a finite set of strings that the variable can be
+        % bound to.
+        FailComment =
+            statement(ml_stmt_atomic(comment("switch cannot fail")),
+                MLDS_Context),
+        FailStatements = [FailComment]
+    ;
+        CanFail = can_fail,
+        FailComment = statement(ml_stmt_atomic(comment("no match, so fail")),
+            MLDS_Context),
+        ml_gen_failure(CodeModel, Context, FailStatements0, !Info),
+        FailStatements = [FailComment | FailStatements0]
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.ml_string_switch.

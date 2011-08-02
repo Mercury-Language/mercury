@@ -1557,7 +1557,7 @@
             )
 
     % Values somewhere in memory.
-    % This is the deference operator (e.g. unary `*' in C).
+    % This is the dereference operator (e.g. unary `*' in C).
 
     ;       ml_mem_ref(
                 % The rval should have originally come from a mem_addr rval.

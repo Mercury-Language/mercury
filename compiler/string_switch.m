@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: string_switch.m.
-% Author: fjh.
+% Authors: fjh, zs.
 %
 % For switches on strings, we can generate either
 % - a hash table using open addressing to resolve hash conflicts, or
@@ -1041,7 +1041,6 @@ construct_string_binary_several_soln_lookup_vector([Str - Soln | StrSolns],
     string_binary_switch_info::out, code_info::in, code_info::out) is det.
 
 init_string_binary_switch_info(CanFail, Info, !CI) :-
-    % Much but not all of the code of this predicate is common
     % We get the registers we use as working storage in the hash table lookup
     % code now, before we generate the code of the switch arms, since the set
     % of free registers will in general be different before and after that

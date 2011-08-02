@@ -236,42 +236,68 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
             Decls = []
         ;
             SwitchCategory = string_switch,
-            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
-            globals.lookup_int_option(Globals, string_hash_switch_size,
-                StringSize),
-            (
-                NumConsIds >= StringSize,
-                NumArms > 1,
-                % We can implement string hash switches using either
-                % computed gotos or int switches.
+            filter_out_failing_cases_if_needed(CodeModel,
+                TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
+            num_cons_ids_in_tagged_cases(FilteredTaggedCases,
+                NumConsIds, NumArms),
+            ( NumArms > 1 ->
+                globals.lookup_int_option(Globals, string_hash_switch_size,
+                    StringHashSwitchSize),
+                globals.lookup_int_option(Globals, string_binary_switch_size,
+                    StringBinarySwitchSize),
+                globals.lookup_bool_option(Globals, prefer_switch,
+                    PreferSwitch),
                 (
-                    target_supports_computed_goto(Globals)
-                ;
-                    target_supports_int_switch(Globals)
-                ),
-                % XXX Currently string hash switches always use gotos
-                % (to break out of the hash chain loop).
-                % We should change that, so that we can use string hash
-                % switches for the Java back-end too.
-                target_supports_goto(Globals),
-                % OK, we could use a string hash switch. But should we?
-                % We may prefer to do a direct-mapped string switch.
-                \+ (
                     target_supports_string_switch(Globals),
-                    globals.lookup_bool_option(Globals, prefer_switch, yes)
+                    % Even if we could use a hash or binary switch,
+                    % we may prefer to do a direct-mapped string switch.
+                    PreferSwitch = yes
+                ->
+                    ml_switch_generate_mlds_switch(FilteredTaggedCases,
+                        SwitchVar, CodeModel, FilteredCanFail, Context,
+                        Statements, !Info),
+                    Decls = []
+                ;
+                    NumConsIds >= StringHashSwitchSize,
+                    % We can implement string hash switches using either
+                    % computed gotos or int switches.
+                    (
+                        target_supports_computed_goto(Globals)
+                    ;
+                        target_supports_int_switch(Globals)
+                    ),
+                    % XXX Currently string hash switches always use gotos
+                    % (to break out of the hash chain loop).
+                    % We should change that, so that we can use string hash
+                    % switches for the Java back-end too.
+                    target_supports_goto(Globals)
+                ->
+                    ml_generate_string_hash_switch(FilteredTaggedCases,
+                        SwitchVar, CodeModel, FilteredCanFail, Context,
+                        Decls, Statements, !Info)
+                ;
+                    NumConsIds >= StringBinarySwitchSize,
+                    % We can implement string binary switches using either
+                    % computed gotos or int switches.
+                    (
+                        target_supports_computed_goto(Globals)
+                    ;
+                        target_supports_int_switch(Globals)
+                    )
+                ->
+                    ml_generate_string_binary_switch(FilteredTaggedCases,
+                        SwitchVar, CodeModel, FilteredCanFail, Context,
+                        Decls, Statements, !Info)
+                ;
+                    ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
+                        SwitchVar, CodeModel, FilteredCanFail, Context,
+                        Statements, !Info),
+                    Decls = []
                 )
-            ->
-                ml_generate_string_switch(TaggedCases, SwitchVar,
-                    CodeModel, CanFail, Context, Decls, Statements, !Info)
             ;
-                target_supports_string_switch(Globals)
-            ->
-                ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
-                    CodeModel, CanFail, Context, Statements, !Info),
-                Decls = []
-            ;
-                ml_switch_generate_if_then_else_chain(TaggedCases,
-                    SwitchVar, CodeModel, CanFail, Context, Statements, !Info),
+                ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
+                    SwitchVar, CodeModel, FilteredCanFail, Context,
+                    Statements, !Info),
                 Decls = []
             )
         ;

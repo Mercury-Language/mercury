@@ -225,39 +225,49 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                 TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
             num_cons_ids_in_tagged_cases(FilteredTaggedCases,
                 NumConsIds, NumArms),
-            globals.lookup_int_option(Globals, string_hash_switch_size,
-                StringHashSwitchSize),
-            globals.lookup_int_option(Globals, string_binary_switch_size,
-                StringBinarySwitchSize),
-            ( NumConsIds >= StringHashSwitchSize, NumArms > 1 ->
-                (
-                    is_lookup_switch(record_lookup_for_tagged_cons_id_string,
-                        FilteredTaggedCases, GoalInfo, StoreMap,
-                        no, MaybeEnd1, LookupSwitchInfo, !CI)
-                ->
-                    % We update MaybeEnd1 to MaybeEnd to account for the
-                    % possible reservation of temp slots for nondet switches.
-                    generate_string_hash_lookup_switch(VarRval,
-                        LookupSwitchInfo, FilteredCanFail, EndLabel, StoreMap,
-                        MaybeEnd1, MaybeEnd, SwitchCode, !CI)
+            ( NumArms > 1 ->
+                globals.lookup_int_option(Globals, string_hash_switch_size,
+                    StringHashSwitchSize),
+                globals.lookup_int_option(Globals, string_binary_switch_size,
+                    StringBinarySwitchSize),
+                ( NumConsIds >= StringHashSwitchSize ->
+                    (
+                        is_lookup_switch(
+                            record_lookup_for_tagged_cons_id_string,
+                            FilteredTaggedCases, GoalInfo, StoreMap,
+                            no, MaybeEnd1, LookupSwitchInfo, !CI)
+                    ->
+                        % We update MaybeEnd1 to MaybeEnd to account for the
+                        % possible reservation of temp slots for nondet
+                        % switches.
+                        generate_string_hash_lookup_switch(VarRval,
+                            LookupSwitchInfo, FilteredCanFail, EndLabel,
+                            StoreMap, MaybeEnd1, MaybeEnd, SwitchCode, !CI)
+                    ;
+                        generate_string_hash_switch(TaggedCases, VarRval,
+                            VarName, CodeModel, CanFail, GoalInfo, EndLabel,
+                            MaybeEnd, SwitchCode, !CI)
+                    )
+                ; NumConsIds >= StringBinarySwitchSize ->
+                    (
+                        is_lookup_switch(
+                            record_lookup_for_tagged_cons_id_string,
+                            FilteredTaggedCases, GoalInfo, StoreMap,
+                            no, MaybeEnd1, LookupSwitchInfo, !CI)
+                    ->
+                        % We update MaybeEnd1 to MaybeEnd to account for the
+                        % possible reservation of temp slots for nondet
+                        % switches.
+                        generate_string_binary_lookup_switch(VarRval,
+                            LookupSwitchInfo, FilteredCanFail, EndLabel,
+                            StoreMap, MaybeEnd1, MaybeEnd, SwitchCode, !CI)
+                    ;
+                        generate_string_binary_switch(TaggedCases, VarRval,
+                            VarName, CodeModel, CanFail, GoalInfo, EndLabel,
+                            MaybeEnd, SwitchCode, !CI)
+                    )
                 ;
-                    generate_string_hash_switch(TaggedCases, VarRval,
-                        VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                        MaybeEnd, SwitchCode, !CI)
-                )
-            ; NumConsIds >= StringBinarySwitchSize, NumArms > 1 ->
-                (
-                    is_lookup_switch(record_lookup_for_tagged_cons_id_string,
-                        FilteredTaggedCases, GoalInfo, StoreMap,
-                        no, MaybeEnd1, LookupSwitchInfo, !CI)
-                ->
-                    % We update MaybeEnd1 to MaybeEnd to account for the
-                    % possible reservation of temp slots for nondet switches.
-                    generate_string_binary_lookup_switch(VarRval,
-                        LookupSwitchInfo, FilteredCanFail, EndLabel, StoreMap,
-                        MaybeEnd1, MaybeEnd, SwitchCode, !CI)
-                ;
-                    generate_string_binary_switch(TaggedCases, VarRval,
+                    order_and_generate_cases(TaggedCases, VarRval, VarType,
                         VarName, CodeModel, CanFail, GoalInfo, EndLabel,
                         MaybeEnd, SwitchCode, !CI)
                 )
