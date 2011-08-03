@@ -283,7 +283,11 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                         target_supports_computed_goto(Globals)
                     ;
                         target_supports_int_switch(Globals)
-                    )
+                    ),
+                    % XXX Currently string binary switches always use gotos.
+                    % We should change that, so that we can use string binary
+                    % switches for the Java back-end too.
+                    target_supports_goto(Globals)
                 ->
                     ml_generate_string_binary_switch(FilteredTaggedCases,
                         SwitchVar, CodeModel, FilteredCanFail, Context,
@@ -362,6 +366,7 @@ target_supports_string_switch_2(target_asm) = no.
 target_supports_string_switch_2(target_il) = no.
 target_supports_string_switch_2(target_csharp) = yes.
 target_supports_string_switch_2(target_java) = no.
+    % String switches were added in Java 7.
 target_supports_string_switch_2(target_x86_64) =
     unexpected($module, $pred, "target x86_64 with --high-level code").
 target_supports_string_switch_2(target_erlang) =
