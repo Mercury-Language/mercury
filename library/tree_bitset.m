@@ -778,6 +778,14 @@ raise_leaf_to_level(TargetLevel, LeafNode, TopNode) :-
     raise_leaves_to_interior(LeafNode, [], ParentNode),
     raise_one_interior_to_level(TargetLevel, 1, ParentNode, TopNode).
 
+:- pred raise_leaves_to_level(int::in, leaf_node::in, list(leaf_node)::in,
+    interior_node::out) is det.
+:- pragma inline(raise_leaves_to_level/4).
+
+raise_leaves_to_level(TargetLevel, LeafNode, LeafNodes, TopNode) :-
+    raise_leaves_to_interior(LeafNode, LeafNodes, ParentNode),
+    raise_one_interior_to_level(TargetLevel, 1, ParentNode, TopNode).
+
 :- pred raise_one_interior_to_level(int::in, int::in,
     interior_node::in, interior_node::out) is det.
 
@@ -2113,9 +2121,10 @@ difference(SetA, SetB) = Set :-
             List = ListA
         ;
             LeafNodesA = [FirstNodeA | LaterNodesA],
-            raise_leaves_to_interior(FirstNodeA, LaterNodesA, InteriorNodeA),
+            raise_leaves_to_level(LevelB, FirstNodeA, LaterNodesA,
+                InteriorNodeA),
             head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
-            interiornode_difference(1, InteriorNodeA, [],
+            interiornode_difference(LevelB, InteriorNodeA, [],
                 LevelB, InteriorHeadB, InteriorTailB, Level, InteriorNodes),
             List = interior_list(Level, InteriorNodes)
         )
@@ -2127,10 +2136,11 @@ difference(SetA, SetB) = Set :-
             List = ListA
         ;
             LeafNodesB = [FirstNodeB | LaterNodesB],
-            raise_leaves_to_interior(FirstNodeB, LaterNodesB, InteriorNodeB),
+            raise_leaves_to_level(LevelA, FirstNodeB, LaterNodesB,
+                InteriorNodeB),
             head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
             interiornode_difference(LevelA, InteriorHeadA, InteriorTailA,
-                1, InteriorNodeB, [], Level, InteriorNodes),
+                LevelA, InteriorNodeB, [], Level, InteriorNodes),
             List = interior_list(Level, InteriorNodes)
         )
     ;
@@ -2138,8 +2148,14 @@ difference(SetA, SetB) = Set :-
         ListB = interior_list(LevelB, InteriorNodesB),
         head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
         head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
-        interiornode_difference(LevelA, InteriorHeadA, InteriorTailA,
-            LevelB, InteriorHeadB, InteriorTailB, Level, InteriorNodes),
+
+        int.max(LevelA, LevelB, LevelAB),
+        raise_interiors_to_level(LevelAB, LevelA, InteriorHeadA, InteriorTailA,
+            RaisedHeadA, RaisedTailA),
+        raise_interiors_to_level(LevelAB, LevelB, InteriorHeadB, InteriorTailB,
+            RaisedHeadB, RaisedTailB),
+        interiornode_difference(LevelAB, RaisedHeadA, RaisedTailA,
+            LevelAB, RaisedHeadB, RaisedTailB, Level, InteriorNodes),
         List = interior_list(Level, InteriorNodes)
     ),
     prune_top_levels(List, PrunedList),
@@ -2152,75 +2168,36 @@ difference(SetA, SetB) = Set :-
 
 interiornode_difference(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
         Level, List) :-
-    ( LevelA < LevelB ->
-        range_of_parent_node(HeadA ^ init_offset, LevelA + 1,
-            ParentInitOffsetA, ParentLimitOffsetA),
-        (
-            find_containing_node(ParentInitOffsetA, ParentLimitOffsetA,
-                [HeadB | TailB], ChosenB)
-        ->
-            ComponentsB = ChosenB ^ components,
-            (
-                ComponentsB = leaf_list(_),
-                trace [compile_time(flag("tree-bitset-checks"))] (
-                    expect(unify(LevelA, 1), $module, $pred, "bad leaf level")
-                ),
-                interiorlist_difference([HeadA | TailA], [ChosenB], List),
-                Level = LevelA
-            ;
-                ComponentsB = interior_list(SubLevelB, SubNodesB),
-                trace [compile_time(flag("tree-bitset-checks"))] (
-                    expect(unify(LevelB, SubLevelB + 1), $module, $pred,
-                        "bad levels")
-                ),
-                head_and_tail(SubNodesB, SubHeadB, SubTailB),
-                interiornode_difference(LevelA, HeadA, TailA,
-                    SubLevelB, SubHeadB, SubTailB, Level, List)
-            )
-        ;
-            Level = 1,
-            List = []
-        )
+    trace [compile_time(flag("tree-bitset-checks"))] (
+        expect(unify(LevelA, LevelB),
+            $module, $pred, "level mismatch")
+    ),
+    range_of_parent_node(HeadA ^ init_offset, LevelA,
+        ParentInitOffsetA, ParentLimitOffsetA),
+    range_of_parent_node(HeadB ^ init_offset, LevelB,
+        ParentInitOffsetB, ParentLimitOffsetB),
+    ( ParentInitOffsetA = ParentInitOffsetB ->
+        trace [compile_time(flag("tree-bitset-checks"))] (
+            expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
+                $module, $pred, "limit mismatch")
+        ),
+        interiorlist_difference([HeadA | TailA], [HeadB | TailB], List),
+        Level = LevelA
     ;
-        raise_interiors_to_level(LevelA, LevelB, HeadB, TailB,
-            RaisedHeadB, RaisedTailB),
-        range_of_parent_node(HeadA ^ init_offset, LevelA,
-            ParentInitOffsetA, ParentLimitOffsetA),
-        range_of_parent_node(RaisedHeadB ^ init_offset, LevelA,
-            ParentInitOffsetB, ParentLimitOffsetB),
-        ( ParentInitOffsetA = ParentInitOffsetB ->
-            trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-                    $module, $pred, "limit mismatch")
-            ),
-            interiorlist_difference([HeadA | TailA],
-                [RaisedHeadB | RaisedTailB], List),
+        (
+            TailA = [],
+            List = [HeadA],
             Level = LevelA
         ;
-            (
-                TailA = [],
-                List = [HeadA],
-                Level = LevelA
-            ;
-                TailA = [HeadTailA | TailTailA],
-                interiornode_difference(LevelA, HeadTailA, TailTailA,
-                    LevelA, RaisedHeadB, RaisedTailB, Level, Tail),
-                List = [HeadA | Tail]
-            )
+            TailA = [HeadTailA | TailTailA],
+            interiornode_difference(LevelA, HeadTailA, TailTailA,
+                LevelA, HeadB, TailB, Level, Tail),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(unify(LevelA, Level),
+                    $module, $pred, "final level mismatch")
+            ),
+            List = [HeadA | Tail]
         )
-    ).
-
-:- pred find_containing_node(int::in, int::in, list(interior_node)::in,
-    interior_node::out) is semidet.
-
-find_containing_node(InitOffsetA, LimitOffsetA, [HeadB | TailB], ChosenB) :-
-    (
-        HeadB ^ init_offset =< InitOffsetA,
-        LimitOffsetA =< HeadB ^ limit_offset
-    ->
-        ChosenB = HeadB
-    ;
-        find_containing_node(InitOffsetA, LimitOffsetA, TailB, ChosenB)
     ).
 
 :- pred leaflist_difference(list(leaf_node)::in, list(leaf_node)::in,
