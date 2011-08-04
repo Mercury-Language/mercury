@@ -32,6 +32,10 @@
 
     % Create an empty mvar.
     %
+:- func mvar.init = (mvar(T)::uo) is det.
+
+    % Create an empty mvar.
+    %
 :- pred mvar.init(mvar(T)::out, io::di, io::uo) is det.
 
     % Take the contents of the mvar out leaving the mvar empty.
@@ -68,20 +72,24 @@
                 mutvar(T)   % data
             ).
 
-:- pragma promise_pure(mvar.init/3).
-mvar.init(mvar(Full, Empty, Ref), !IO) :-
-    semaphore.init(Full, !IO),
-    semaphore.init(Empty, !IO),
-    impure new_mutvar0(Ref),
-    semaphore.signal(Empty, !IO).   % Initially a mvar starts empty.
+mvar.init(mvar.init, !IO).
+
+:- pragma promise_pure(mvar.init/0).
+
+mvar.init = mvar(Full, Empty, Ref) :-
+    Full = semaphore.init(0),
+    Empty = semaphore.init(1),      % Initially a mvar starts empty.
+    impure new_mutvar0(Ref).
 
 :- pragma promise_pure(mvar.take/4).
+
 mvar.take(mvar(Full, Empty, Ref), Data, !IO) :-
     semaphore.wait(Full, !IO),
     impure get_mutvar(Ref, Data),
     semaphore.signal(Empty, !IO).
 
 :- pragma promise_pure(mvar.try_take/4).
+
 mvar.try_take(mvar(Full, Empty, Ref), MaybeData, !IO) :-
     semaphore.try_wait(Full, Success, !IO),
     (
@@ -95,6 +103,7 @@ mvar.try_take(mvar(Full, Empty, Ref), MaybeData, !IO) :-
     ).
 
 :- pragma promise_pure(mvar.put/4).
+
 mvar.put(mvar(Full, Empty, Ref), Data, !IO) :-
     semaphore.wait(Empty, !IO),
     impure set_mutvar(Ref, Data),
