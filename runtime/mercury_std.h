@@ -161,8 +161,8 @@ typedef	char		MR_small_bool;
   #define MR_INLINE			inline
   #define MR_EXTERN_INLINE		inline
   #define MR_OUTLINE_DEFN(DECL,BODY)
-#elif defined(__clang__)
-  /* clang: note that since clang also defines the macro __GNUC__
+#elif defined(MR_CLANG)
+  /* clang: note that since clang also defines the macro MR_GNUC
   ** we must handle it before we handle the GCC case.
   ** XXX why don't the C99 definitions work for clang?
   */
@@ -170,7 +170,7 @@ typedef	char		MR_small_bool;
   #define MR_INLINE			static
   #define MR_EXTERN_INLINE		static
   #define MR_OUTLINE_DEFN(DECL,BODY)
-#elif defined(__GNUC__) 
+#elif defined(MR_GNUC) 
   /* GNU C */
   #define MR_STATIC_INLINE		static __inline__
   #define MR_INLINE			static __inline__
@@ -194,7 +194,7 @@ typedef	char		MR_small_bool;
 
 /* A macro for declaring functions that never return */
 
-#if __GNUC__
+#if MR_GNUC
   #define MR_NO_RETURN __attribute__((noreturn))
 #else
   #define MR_NO_RETURN
@@ -229,7 +229,7 @@ typedef	char		MR_small_bool;
 ** optimization is more likely to be important than squeezing the last 1%
 ** in performance.
 */
-#if defined(MR_USE_REGPARM) && defined(__GNUC__) && defined(__i386__)
+#if defined(MR_USE_REGPARM) && defined(MR_GNUC) && defined(__i386__)
   #define MR_CALL __attribute__((__stdcall__, __regparm__(2)))
 #else
   #define MR_CALL

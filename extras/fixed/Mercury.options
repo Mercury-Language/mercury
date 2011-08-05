@@ -1,0 +1,1 @@
+MCFLAGS-mercury_fixed = --no-warn-nothing-exported

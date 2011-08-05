@@ -9,7 +9,7 @@
 %   The changes made by Rationalizer are contributed under the terms 
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
-% Copyright (C) 2002, 2010 The University of Melbourne
+% Copyright (C) 2002, 2010-2011 The University of Melbourne
 %
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -99,7 +99,7 @@ compile_lexeme(Lexeme) = CompiledLexeme :-
     StopStates     = DFA ^ smc_stop_states,
     Transitions    = DFA ^ smc_state_transitions,
     N              = 1 + find_top_state(Transitions),
-    Accepting      = set_accepting_states(StopStates, bitmap.new(N, no)),
+    Accepting      = set_accepting_states(StopStates, bitmap.init(N, no)),
     Rows           = array(set_up_rows(0, N, Transitions)),
     TransitionMap  = transition_map(Accepting, Rows),
     CompiledLexeme = compiled_lexeme(TokenCreator, StartState, TransitionMap).

@@ -1,11 +1,11 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2003, 2005, 2007 The University of Melbourne.
+# Copyright (C) 2002-2003, 2005, 2007, 2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 #
 # This Mmakefile provides some targets for building and installing most
-# of the libraries in this `extras' distribution.
+# of the libraries and tools in this `extras' distribution.
 #
 # Note that not all subdirectories of `extras' are set up for
 # automatic installation.  This Mmakefile will only build those which are.
@@ -14,17 +14,33 @@
 # built by this Mmakefile, because they are often won't install
 # "out-of-the-box":
 #
-#	graphics 	you need to have tcl/tk or OpenGL installed
-#	morphine 	see morphine/README for instructions on how to install
-#	concurrency 	doesn't work in all compilation grades
-#	trailed_update 	doesn't work in all compilation grades
-#	logged_output 	requires a specially-configured Mercury installation
-#	odbc 		requires an ODBC driver be installed
-#	quickcheck 	no `install' target
+#   curs			requires ncurses to be available
+#   curses			requires ncurses to be available
+#   graphics/easyx		requires Xlib to be available	
+#   graphics/mercury_allegro	see README file in that directory for details
+#   graphics/mercury_cairo	see README file in that directory for details
+#   graphics/mercury_glut	requires GLUT (or freeglut) to be available
+#   graphics/mercury_opengl	requires OpenGL to be available
+#   graphics/mercury_tcltk	requires Tcl/Tk to be available				
+#   morphine 		see morphine/README for instructions on how to install
+#   trailed_update 	doesn't work in all compilation grades
+#   lex			see the Makefile in that directory for details	
+#   logged_output 	requires a specially-configured Mercury installation
+#   odbc 		requires an ODBC driver be installed
 
-SUBDIRS = cgi complex_numbers curs curses dynamic_linking \
-	lazy_evaluation lex moose posix \
-	references windows_installer_generator xml
+SUBDIRS = \
+	base64		\
+	cgi 		\
+	complex_numbers	\
+	dynamic_linking \
+	error		\
+	fixed		\
+	lex		\
+	moose		\
+	posix		\
+	references	\
+	windows_installer_generator \
+	xml
 
 MMAKEFLAGS =
 

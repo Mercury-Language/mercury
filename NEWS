@@ -98,6 +98,7 @@ Changes to the Mercury standard library:
         cord.init/0
 	hash_table.init/3
 	hash_table.init_default/1
+	mvar.init/0
 	store.init/1
 	semaphore.init/1
 	semaphore.init/3

@@ -1,0 +1,10 @@
+# The base64 module (currently) only provides a C implementation of the
+# encoder / decoder.  Compilation will fail if we attempt to build it
+# in a non-C grade.
+
+MCFLAGS += --libgrades-exclude-component java 
+MCFLAGS += --libgrades-exclude-component csharp
+MCFLAGS += --libgrades-exclude-component erlang
+
+MCFLAGS-mercury_base64 += --no-warn-nothing-exported
+MCFLAGS-mercury_base64 += --no-warn-interface-imports

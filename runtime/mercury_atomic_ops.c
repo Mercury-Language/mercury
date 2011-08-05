@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007, 2009-2010 The University of Melbourne.
+** Copyright (C) 2007, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -142,7 +142,7 @@ MR_OUTLINE_DEFN(
 ** Profiling of the parallel runtime.
 */
 
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
 /*
 ** True if the RDTSCP and RDTSC instructions are available respectively.
 */
@@ -152,7 +152,7 @@ static MR_bool  MR_rdtsc_is_available = MR_FALSE;
 
 MR_uint_least64_t MR_cpu_cycles_per_sec = 0;
 
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
 
 /* Set this to 1 to enable some printfs below */
 #define MR_DEBUG_CPU_FEATURE_DETECTION 0 
@@ -177,12 +177,12 @@ MR_rdtsc(MR_uint_least64_t *tsc);
 static MR_uint_least64_t
 parse_freq_from_x86_brand_string(char *string);
 
-#endif /* __GNUC__ && (__i386__ || __x86_64__) */
+#endif /* MR_GNUC && (__i386__ || __x86_64__) */
 
 void
 MR_do_cpu_feature_detection(void)
 {
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
     MR_Unsigned     a, b, c, d;
     MR_Unsigned     eflags, old_eflags;
     MR_Unsigned     maximum_extended_page;
@@ -386,10 +386,10 @@ MR_do_cpu_feature_detection(void)
         }
 #endif
     }
-#endif /* __GNUC__ && (__i386__ || __x86_64__) */
+#endif /* MR_GNUC && (__i386__ || __x86_64__) */
 }
 
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
 static MR_uint_least64_t
 parse_freq_from_x86_brand_string(char *string)
 {
@@ -450,12 +450,12 @@ parse_freq_from_x86_brand_string(char *string)
     */
     return (MR_uint_least64_t)(strtod(&string[freq_index], NULL) * multiplier);
 }
-#endif /* __GNUC__ && (__i386__ || __x86_64__) */
+#endif /* MR_GNUC && (__i386__ || __x86_64__) */
 
 void
 MR_profiling_start_timer(MR_Timer *timer)
 {
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
     /*
     ** If we don't have enough data to fill in all the fields of this structure
     ** we leave them alone, we won't check them later without checking
@@ -472,7 +472,7 @@ MR_profiling_start_timer(MR_Timer *timer)
 void
 MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats)
 {
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
     MR_Timer            now;
     MR_int_least64_t    duration;
     MR_uint_least64_t   duration_squared;
@@ -510,16 +510,16 @@ MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats)
         MR_US_UNLOCK(&(stats->MR_stat_sums_lock));
   #endif
     }
-#else /* not __GNUC__ && (__i386__ || __x86_64__) */
+#else /* not MR_GNUC && (__i386__ || __x86_64__) */
     /* No TSC support on this architecture or with this C compiler */
     MR_atomic_inc_int(&(stats->MR_stat_count_recorded));
-#endif /* not __GNUC__ && (__i386__ || __x86_64__) */
+#endif /* not MR_GNUC && (__i386__ || __x86_64__) */
 }
 
 MR_uint_least64_t
 MR_read_cpu_tsc(void)
 {
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
     MR_uint_least64_t   tsc;
 
     if (MR_rdtsc_is_available) {
@@ -528,15 +528,15 @@ MR_read_cpu_tsc(void)
         tsc = 0;
     }
     return tsc;
-#else /* not __GNUC__ && (__i386__ || __x86_64__) */
+#else /* not MR_GNUC && (__i386__ || __x86_64__) */
     return 0;
-#endif /* not __GNUC__ && (__i386__ || __x86_64__) */
+#endif /* not MR_GNUC && (__i386__ || __x86_64__) */
 }
 
 /*
 ** It's convenient that this instruction is the same on both i386 and x86_64
 */
-#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
 
 static __inline__ void 
 MR_cpuid(MR_Unsigned code, MR_Unsigned sub_code,
@@ -596,7 +596,7 @@ MR_rdtsc(MR_uint_least64_t *tsc)
     *tsc |= tsc_low;
 }
 
-#endif /* __GNUC__ && (__i386__ || __x86_64__) */
+#endif /* MR_GNUC && (__i386__ || __x86_64__) */
 
 #endif /* MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 

@@ -1,0 +1,29 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2011 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# This is file exists so that do an `mmake' from the top-level of the extras
+# distribution works.  The actual work of building this library is done
+# using the Makefile and mmc --make.  This file just fowards all the work
+# to there.
+
+MAIN_TARGET = build
+
+.PHONY: build
+build:
+	$(MAKE) all
+
+# Do nothing, mmc --make will handle this for us.
+#
+.PHONY: depend
+depend:
+
+.PHONY: install
+install:
+	$(MAKE) install INSTALL_PREFIX=$(INSTALL_PREFIX)/extras
+
+.PHONY: realclean
+realclean:
+	$(MAKE) realclean

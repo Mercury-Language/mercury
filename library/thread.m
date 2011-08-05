@@ -359,7 +359,7 @@ INIT mercury_sys_init_thread_modules
 
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-    if (pthread_create(&thread, MR_THREAD_ATTR, ML_thread_wrapper, args)) {
+    if (pthread_create(&thread, &attrs, ML_thread_wrapper, args)) {
         MR_fatal_error(""Unable to create thread."");
     }
     pthread_attr_destroy(&attrs);

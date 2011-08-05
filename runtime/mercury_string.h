@@ -196,7 +196,7 @@
 ** It should not be used directly. Use MR_hash_string{,2,3}() instead.
 **
 ** Note that these functions are also defined in library/string.m.
-** The definition heres and in string.m must be kept equivalent.
+** The definition here and in string.m must be kept equivalent.
 */
 
 #define MR_do_hash_string(hash, s)					\
@@ -253,7 +253,7 @@ MR_Integer	MR_hash_string(MR_ConstString);
 MR_Integer	MR_hash_string2(MR_ConstString);
 MR_Integer	MR_hash_string3(MR_ConstString);
 
-#ifdef __GNUC__
+#if defined(MR_GNUC) 
 #define MR_hash_string(s)						\
 	({								\
 	 	MR_Integer hash_string_result;				\

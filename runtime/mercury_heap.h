@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 et
 */
 /*
-** Copyright (C) 1995-2006, 2010 The University of Melbourne.
+** Copyright (C) 1995-2006, 2010-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -139,7 +139,7 @@
     ** of words.
     */
 
-    #ifndef __GNUC__
+    #ifndef MR_GNUC
       /*
       ** Without the gcc extensions __builtin_constant_p() and ({...}),
       ** MR_INLINE_ALLOC would probably be a performance _loss_.

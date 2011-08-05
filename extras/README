@@ -37,9 +37,8 @@ graphics	Some packages for doing graphics programming
 		to Allegro/AllegroGL and a Mercury binding to Cairo.
 
 lazy_evaluation
-		A library module `lazy' containing support for optional
-		lazy evaluation in Mercury, together with some examples
-		of its use, including a module `lazy_list' that defines
+		Some examples of the use of the standard library's
+		`lazy' module, including a module `lazy_list' that defines
 		a lazy list data type.
 
 lex		A lexer package for Mercury that works over the I/O state,

@@ -59,13 +59,11 @@ encode64(Data, Base64) :-
 :- pragma foreign_decl("C", "
 #include <string.h>
 
-unsigned char alphabet[];
-
 ").
 
-:- pragma foreign_code("C", "
+:- pragma foreign_decl("C", local, "
 
-unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\";
+static unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\";
 
 ").
 
@@ -73,7 +71,7 @@ unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw
 
 :- pragma foreign_proc("C",
     encode64(Data::in, Len::in, Base64::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, may_not_duplicate],
 "
     MR_Word base64_buff;
     char *base64_ptr;
@@ -143,7 +141,8 @@ unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw
 
 :- pragma foreign_proc("C",
     decode64(Base64::in, Data::out),
-    [will_not_call_mercury, thread_safe, promise_pure], "
+    [will_not_call_mercury, thread_safe, promise_pure, may_not_duplicate],
+"
 
     MR_Word data_buff;
     char *data_ptr;

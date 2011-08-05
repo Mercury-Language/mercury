@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007 The University of Melbourne.
+** Copyright (C) 2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -55,7 +55,7 @@
 
 MR_Integer MR_bitmap_cmp(MR_ConstBitmapPtr, MR_ConstBitmapPtr);
 
-#ifdef __GNUC__
+#if defined(MR_GNUC)
 #define MR_bitmap_cmp(b1, b2)                                           \
     ({                                                                  \
         MR_Integer bitmap_cmp_result;                                   \
@@ -111,7 +111,7 @@ MR_Integer MR_bitmap_cmp(MR_ConstBitmapPtr, MR_ConstBitmapPtr);
 
 MR_Integer    MR_hash_bitmap(MR_ConstBitmapPtr);
 
-#ifdef __GNUC__
+#if defined(MR_GNUC)
 #define MR_hash_bitmap(b)                                               \
     ({                                                                  \
         MR_Integer hash_bitmap_result;                                  \
