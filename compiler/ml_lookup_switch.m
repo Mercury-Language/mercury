@@ -23,6 +23,7 @@
 
 :- import_module backend_libs.switch_util.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
@@ -30,15 +31,64 @@
 
 :- import_module list.
 :- import_module set.
+:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 
-    % Generate MLDS code for a lookup switch, if possible.
+:- type ml_lookup_switch_info(Key)
+    --->    ml_lookup_switch_info(
+                % The map from the switched-on value to the values of the
+                % variables in each solution.
+                mllsi_cases             ::  case_consts(Key, mlds_rval, unit),
+
+                % The output variables, which become (some of) the fields
+                % in each row of a lookup table.
+                mllsi_out_variables     ::  list(prog_var),
+
+                % The types of the fields holding output variables.
+                mllsi_out_types         ::  list(mlds_type)
+            ).
+
+    % Is the given list of cases implementable as a lookup switch?
     %
-:- pred ml_gen_lookup_switch(prog_var::in, list(tagged_case)::in,
-    set(prog_var)::in, code_model::in, prog_context::in,
-    int::in, int::in, need_bit_vec_check::in, need_range_check::in,
-    statement::out, ml_gen_info::in, ml_gen_info::out) is semidet.
+:- pred ml_is_lookup_switch(pred(cons_tag, Key)::in(pred(in, out) is det),
+    prog_var::in, list(tagged_case)::in, set(prog_var)::in, code_model::in,
+    ml_lookup_switch_info(Key)::out,
+    ml_gen_info::in, ml_gen_info::out) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+    % Generate MLDS code for the lookup switch.
+    %
+:- pred ml_gen_lookup_switch(prog_var::in, ml_lookup_switch_info(int)::in,
+    code_model::in, prog_context::in, int::in, int::in,
+    need_bit_vec_check::in, need_range_check::in,
+    statement::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% These types and predicates are exported because they are useful in the
+% implementation of string lookup switches.
+%
+
+:- type ml_several_soln_lookup_vars
+    --->    ml_several_soln_lookup_vars(
+                msslv_num_later_solns_var       :: mlds_lval,
+                msslv_later_slot_var            :: mlds_lval,
+                msslv_limit_var                 :: mlds_lval,
+                msslv_limit_assign_statement    :: statement,
+                msslv_incr_later_slot_statement :: statement,
+                msslv_denfs                     :: list(mlds_defn)
+            ).
+
+:- pred make_several_soln_lookup_vars(mlds_context::in,
+    ml_several_soln_lookup_vars::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+:- func ml_construct_later_soln_row(mlds_type, list(mlds_rval)) =
+    mlds_initializer.
+
+:- func ml_default_value_for_type(mlds_type) = mlds_rval.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -47,7 +97,6 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
@@ -55,6 +104,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -63,18 +113,92 @@
 
 %-----------------------------------------------------------------------------%
 
-ml_gen_lookup_switch(SwitchVar, TaggedCases, NonLocals, CodeModel, Context,
-        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, Statement, !Info) :-
+ml_is_lookup_switch(GetTag, SwitchVar, TaggedCases, NonLocals, CodeModel,
+        LookupSwitchInfo, !Info) :-
     set.remove(SwitchVar, NonLocals, OtherNonLocals),
     set.to_sorted_list(OtherNonLocals, OutVars),
-    ml_generate_constants_for_lookup_switch(CodeModel, OutVars, OtherNonLocals,
-        TaggedCases, map.init, CaseSolnMap, !Info),
     % While the LLDS backend has to worry about about implementing trailing
     % for model_non lookup switches, we do not. The MLDS backend implements
     % trailing by a HLDS-to-HLDS transform (which is in add_trail_ops.m),
     % so we can get here only if trailing is not enabled, since otherwise
     % the calls or foreign_procs inserted into all non-first disjuncts
-    % would have caused ml_generate_constants_for_lookup_switch to fail.
+    % would cause ml_generate_constants_for_lookup_switch to fail.
+    ml_generate_constants_for_lookup_switch(GetTag, CodeModel,
+        OutVars, OtherNonLocals, TaggedCases, map.init, CaseSolnMap, !Info),
+    map.to_assoc_list(CaseSolnMap, CaseSolns),
+    ( project_all_to_one_solution(CaseSolns, CaseValuePairs) ->
+        CaseConsts = all_one_soln(CaseValuePairs)
+    ;
+        CaseConsts = some_several_solns(CaseSolns, unit)
+    ),
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    ml_gen_info_get_var_types(!.Info, VarTypes),
+    list.map(map.lookup(VarTypes), OutVars, OutTypes),
+    FieldTypes =
+        list.map(mercury_type_to_mlds_type(ModuleInfo), OutTypes),
+    LookupSwitchInfo = ml_lookup_switch_info(CaseConsts, OutVars, FieldTypes).
+
+:- pred ml_generate_constants_for_lookup_switch(
+    pred(cons_tag, T)::in(pred(in, out) is det),
+    code_model::in, list(prog_var)::in, set(prog_var)::in,
+    list(tagged_case)::in,
+    map(T, soln_consts(mlds_rval))::in,
+    map(T, soln_consts(mlds_rval))::out,
+    ml_gen_info::in, ml_gen_info::out) is semidet.
+
+ml_generate_constants_for_lookup_switch(_GetTag, _CodeModel,
+        _OutVars, _ArmNonLocals, [], !IndexMap, !Info).
+ml_generate_constants_for_lookup_switch(GetTag, CodeModel,
+        OutVars, ArmNonLocals, [TaggedCase | TaggedCases], !IndexMap, !Info) :-
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
+    ( GoalExpr = disj(Disjuncts) ->
+        (
+            Disjuncts = []
+        ;
+            Disjuncts = [FirstDisjunct | LaterDisjuncts],
+            goal_is_conj_of_unify(ArmNonLocals, FirstDisjunct),
+            all_disjuncts_are_conj_of_unify(ArmNonLocals, LaterDisjuncts),
+            ml_generate_constants_for_arm(OutVars, FirstDisjunct, FirstSoln,
+                !Info),
+            ml_generate_constants_for_arms(OutVars, LaterDisjuncts, LaterSolns,
+                !Info),
+            SolnConsts = several_solns(FirstSoln, LaterSolns),
+            ml_record_lookup_for_tagged_cons_id(GetTag, SolnConsts,
+                TaggedMainConsId, !IndexMap),
+            list.foldl(
+                ml_record_lookup_for_tagged_cons_id(GetTag, SolnConsts),
+                TaggedOtherConsIds, !IndexMap)
+        )
+    ;
+        goal_is_conj_of_unify(ArmNonLocals, Goal),
+        ml_generate_constants_for_arm(OutVars, Goal, Soln, !Info),
+        SolnConsts = one_soln(Soln),
+        ml_record_lookup_for_tagged_cons_id(GetTag, SolnConsts,
+            TaggedMainConsId, !IndexMap),
+        list.foldl(ml_record_lookup_for_tagged_cons_id(GetTag, SolnConsts),
+            TaggedOtherConsIds, !IndexMap)
+    ),
+    ml_generate_constants_for_lookup_switch(GetTag, CodeModel,
+        OutVars, ArmNonLocals, TaggedCases, !IndexMap, !Info).
+
+:- pred ml_record_lookup_for_tagged_cons_id(
+    pred(cons_tag, T)::in(pred(in, out) is det),
+    soln_consts(mlds_rval)::in, tagged_cons_id::in,
+    map(T, soln_consts(mlds_rval))::in,
+    map(T, soln_consts(mlds_rval))::out) is det.
+
+ml_record_lookup_for_tagged_cons_id(GetTag, SolnConsts, TaggedConsId,
+        !IndexMap) :-
+    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
+    GetTag(ConsTag, Index),
+    map.det_insert(Index, SolnConsts, !IndexMap).
+
+%-----------------------------------------------------------------------------%
+
+ml_gen_lookup_switch(SwitchVar, LookupSwitchInfo, CodeModel, Context,
+        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, Statement, !Info) :-
+    LookupSwitchInfo = ml_lookup_switch_info(CaseConsts, OutVars, FieldTypes),
 
     ml_gen_var(!.Info, SwitchVar, SwitchVarLval),
     SwitchVarRval = ml_lval(SwitchVarLval),
@@ -84,55 +208,51 @@ ml_gen_lookup_switch(SwitchVar, TaggedCases, NonLocals, CodeModel, Context,
         StartRval = ml_const(mlconst_int(StartVal)),
         IndexRval = ml_binop(int_sub, SwitchVarRval, StartRval)
     ),
-
-    map.to_assoc_list(CaseSolnMap, CaseSolns),
-    ( project_all_to_one_solution(CaseSolns, CaseValuePairs) ->
-        ml_gen_simple_lookup_switch(IndexRval, OutVars, CaseValuePairs,
-            CodeModel, Context, StartVal, EndVal,
+    (
+        CaseConsts = all_one_soln(CaseValuePairs),
+        ml_gen_simple_lookup_switch(IndexRval, OutVars, FieldTypes,
+            CaseValuePairs, CodeModel, Context, StartVal, EndVal,
             NeedBitVecCheck, NeedRangeCheck, Statement, !Info)
     ;
+        CaseConsts = some_several_solns(CaseSolns, _Unit),
         expect(unify(CodeModel, model_non), $module, $pred,
             "CodeModel != model_non"),
-        ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns,
-            Context, StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck,
-            Statement, !Info)
+        ml_gen_several_soln_lookup_switch(IndexRval, OutVars, FieldTypes,
+            CaseSolns, Context, StartVal, EndVal,
+            NeedBitVecCheck, NeedRangeCheck, Statement, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- pred ml_gen_simple_lookup_switch(mlds_rval::in, list(prog_var)::in,
-    assoc_list(int, list(mlds_rval))::in, code_model::in, prog_context::in,
-    int::in, int::in, need_bit_vec_check::in, need_range_check::in,
+    list(mlds_type)::in, assoc_list(int, list(mlds_rval))::in, code_model::in,
+    prog_context::in, int::in, int::in,
+    need_bit_vec_check::in, need_range_check::in,
     statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_simple_lookup_switch(IndexRval, OutVars, CaseValues, CodeModel, Context,
-        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, Statement, !Info) :-
+ml_gen_simple_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
+        CodeModel, Context, StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck,
+        Statement, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     MLDS_Context = mlds_make_context(Context),
     ml_gen_info_get_target(!.Info, Target),
 
-    ml_gen_info_get_var_types(!.Info, VarTypes),
-    list.map(map.lookup(VarTypes), OutVars, FieldTypes),
-    MLDS_FieldTypes =
-        list.map(mercury_type_to_mlds_type(ModuleInfo), FieldTypes),
-
     ml_gen_info_get_global_data(!.Info, GlobalData0),
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
-        MLDS_FieldTypes, StructTypeNum, StructType, FieldIds,
+        OutTypes, StructTypeNum, StructType, FieldIds,
         GlobalData0, GlobalData1),
 
     ml_construct_simple_switch_vector(ModuleInfo, StructType,
-        MLDS_FieldTypes, StartVal, CaseValues, RowInitializers),
+        OutTypes, StartVal, CaseValues, RowInitializers),
 
     ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum, RowInitializers,
         VectorCommon, GlobalData1, GlobalData),
     ml_gen_info_set_global_data(GlobalData, !Info),
 
-    ml_generate_field_assigns(OutVars, MLDS_FieldTypes, FieldIds,
-        VectorCommon, StructType, IndexRval, MLDS_Context, LookupStatements,
-        !Info),
+    ml_generate_field_assigns(OutVars, OutTypes, FieldIds, VectorCommon,
+        StructType, IndexRval, MLDS_Context, LookupStatements, !Info),
 
     (
         CodeModel = model_det,
@@ -203,50 +323,32 @@ ml_gen_simple_lookup_switch(IndexRval, OutVars, CaseValues, CodeModel, Context,
 
 %-----------------------------------------------------------------------------%
 
-:- pred ml_gen_model_non_lookup_switch(mlds_rval::in, list(prog_var)::in,
-    assoc_list(int, soln_consts(mlds_rval))::in, prog_context::in,
-    int::in, int::in, need_bit_vec_check::in, need_range_check::in,
+:- pred ml_gen_several_soln_lookup_switch(mlds_rval::in, list(prog_var)::in,
+    list(mlds_type)::in, assoc_list(int, soln_consts(mlds_rval))::in,
+    prog_context::in, int::in, int::in,
+    need_bit_vec_check::in, need_range_check::in,
     statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns, Context,
-        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, Statement,
-        !Info) :-
+ml_gen_several_soln_lookup_switch(IndexRval, OutVars, OutTypes,
+        CaseSolns, Context, StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck,
+        Statement, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     MLDS_Context = mlds_make_context(Context),
     ml_gen_info_get_target(!.Info, Target),
 
-    MLDS_IntType = mlds_native_int_type,
+    make_several_soln_lookup_vars(MLDS_Context, SeveralSolnLookupVars, !Info),
+    SeveralSolnLookupVars = ml_several_soln_lookup_vars(NumLaterSolnsVarLval,
+        LaterSlotVarLval, LimitVarLval,
+        LimitAssignStatement, IncrLaterSlotVarStatement, Defns),
 
-    ml_gen_info_new_aux_var_name("num_later_solns", NumLaterSolnsVar, !Info),
-    % We never need to trace ints.
-    NumLaterSolnsVarDefn = ml_gen_mlds_var_decl(mlds_data_var(NumLaterSolnsVar),
-        MLDS_IntType, gc_no_stmt, MLDS_Context),
-    ml_gen_var_lval(!.Info, NumLaterSolnsVar, MLDS_IntType,
-        NumLaterSolnsVarLval),
     NumLaterSolnsVarRval = ml_lval(NumLaterSolnsVarLval),
-
-    ml_gen_info_new_aux_var_name("later_slot", LaterSlotVar, !Info),
-    % We never need to trace ints.
-    LaterSlotVarDefn = ml_gen_mlds_var_decl(mlds_data_var(LaterSlotVar),
-        MLDS_IntType, gc_no_stmt, MLDS_Context),
-    ml_gen_var_lval(!.Info, LaterSlotVar, MLDS_IntType, LaterSlotVarLval),
     LaterSlotVarRval = ml_lval(LaterSlotVarLval),
-
-    ml_gen_info_new_aux_var_name("limit", LimitVar, !Info),
-    % We never need to trace ints.
-    LimitVarDefn = ml_gen_mlds_var_decl(mlds_data_var(LimitVar),
-        MLDS_IntType, gc_no_stmt, MLDS_Context),
-    ml_gen_var_lval(!.Info, LimitVar, MLDS_IntType, LimitVarLval),
     LimitVarRval = ml_lval(LimitVarLval),
 
-    ml_gen_info_get_var_types(!.Info, VarTypes),
-    list.map(map.lookup(VarTypes), OutVars, FieldTypes),
-    MLDS_FieldTypes =
-        list.map(mercury_type_to_mlds_type(ModuleInfo), FieldTypes),
-    FirstSolnFieldTypes = [MLDS_IntType, MLDS_IntType | MLDS_FieldTypes],
-    LaterSolnFieldTypes = MLDS_FieldTypes,
+    MLDS_IntType = mlds_native_int_type,
+    FirstSolnFieldTypes = [MLDS_IntType, MLDS_IntType | OutTypes],
 
     ml_gen_call_current_success_cont(Context, CallContStatement, !Info),
 
@@ -255,7 +357,7 @@ ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns, Context,
         FirstSolnFieldTypes, FirstSolnStructTypeNum, FirstSolnStructType,
         FirstSolnTableFieldIds, GlobalData0, GlobalData1),
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
-        LaterSolnFieldTypes, LaterSolnStructTypeNum, LaterSolnStructType,
+        OutTypes, LaterSolnStructTypeNum, LaterSolnStructType,
         LaterSolnFieldIds, GlobalData1, GlobalData2),
     (
         ( FirstSolnTableFieldIds = []
@@ -266,13 +368,12 @@ ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns, Context,
         FirstSolnTableFieldIds =
             [NumLaterSolnsFieldId, FirstLaterRowFieldId | FirstSolnFieldIds]
     ),
-
     ml_construct_model_non_switch_vector(ModuleInfo, StartVal, EndVal,
-        0, CaseSolns,
-        FirstSolnStructType, LaterSolnStructType, LaterSolnFieldTypes,
-        FirstSolnRowInitializers, LaterSolnRowInitializers,
-        no, HadDummyRows),
-
+        0, CaseSolns, FirstSolnStructType, LaterSolnStructType, OutTypes,
+        [], RevFirstSolnRowInitializers,
+        cord.init, LaterSolnRowInitializersCord, no, HadDummyRows),
+    list.reverse(RevFirstSolnRowInitializers, FirstSolnRowInitializers),
+    LaterSolnRowInitializers = cord.list(LaterSolnRowInitializersCord),
     ml_gen_static_vector_defn(MLDS_ModuleName, FirstSolnStructTypeNum,
         FirstSolnRowInitializers, FirstSolnVectorCommon,
         GlobalData2, GlobalData3),
@@ -289,22 +390,12 @@ ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns, Context,
         FirstLaterRowFieldId,
         FirstSolnVectorCommon, FirstSolnStructType, IndexRval,
         MLDS_Context, LaterSlotVarLookupStatement, !Info),
-    % We must use LaterSolnFieldTypes here, since we handle the assignments
-    % from the first two fields separately.
-    ml_generate_field_assigns(OutVars, LaterSolnFieldTypes, FirstSolnFieldIds,
+    ml_generate_field_assigns(OutVars, OutTypes, FirstSolnFieldIds,
         FirstSolnVectorCommon, FirstSolnStructType, IndexRval,
         MLDS_Context, FirstSolnLookupStatements, !Info),
-    ml_generate_field_assigns(OutVars, LaterSolnFieldTypes, LaterSolnFieldIds,
+    ml_generate_field_assigns(OutVars, OutTypes, LaterSolnFieldIds,
         LaterSolnVectorCommon, LaterSolnStructType, LaterSlotVarRval,
         MLDS_Context, LaterSolnLookupStatements, !Info),
-
-    LimitAssignStmt = ml_stmt_atomic(assign(LimitVarLval, 
-        ml_binop(int_add, LaterSlotVarRval, NumLaterSolnsVarRval))),
-    LimitAssignStatement = statement(LimitAssignStmt, MLDS_Context),
-
-    IncrLaterSlotVarStmt = ml_stmt_atomic(assign(LaterSlotVarLval,
-        ml_binop(int_add, LaterSlotVarRval, ml_const(mlconst_int(1))))),
-    IncrLaterSlotVarStatement = statement(IncrLaterSlotVarStmt, MLDS_Context),
 
     FirstLookupSucceedStmt = ml_stmt_block([],
         FirstSolnLookupStatements ++ [CallContStatement]),
@@ -330,8 +421,7 @@ ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns, Context,
         NeedBitVecCheck = dont_need_bit_vec_check,
         expect(unify(HadDummyRows, no), $module, $pred,
             "bad dont_need_bit_vec_check"),
-        InRangeStmt = ml_stmt_block(
-            [NumLaterSolnsVarDefn, LaterSlotVarDefn, LimitVarDefn],
+        InRangeStmt = ml_stmt_block(Defns,
             [NumLaterSolnsLookupStatement | OneOrMoreSolnsStatements]),
         InRangeStatement = statement(InRangeStmt, MLDS_Context)
     ;
@@ -350,8 +440,7 @@ ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns, Context,
         ZeroOrMoreSolnsStatement =
             statement(ZeroOrMoreSolnsStmt, MLDS_Context),
 
-        InRangeStmt = ml_stmt_block(
-            [NumLaterSolnsVarDefn, LaterSlotVarDefn, LimitVarDefn],
+        InRangeStmt = ml_stmt_block(Defns,
             [NumLaterSolnsLookupStatement, ZeroOrMoreSolnsStatement]),
         InRangeStatement = statement(InRangeStmt, MLDS_Context)
     ),
@@ -368,6 +457,43 @@ ml_gen_model_non_lookup_switch(IndexRval, OutVars, CaseSolns, Context,
         Stmt = ml_stmt_if_then_else(RangeCheckCond, InRangeStatement, no),
         Statement = statement(Stmt, MLDS_Context)
     ).
+
+make_several_soln_lookup_vars(MLDS_Context, SeveralSolnLookupVars, !Info) :-
+    ml_gen_info_new_aux_var_name("num_later_solns", NumLaterSolnsVar, !Info),
+    % We never need to trace ints.
+    NumLaterSolnsVarDefn = ml_gen_mlds_var_decl(
+        mlds_data_var(NumLaterSolnsVar), mlds_native_int_type, gc_no_stmt,
+        MLDS_Context),
+    ml_gen_var_lval(!.Info, NumLaterSolnsVar, mlds_native_int_type,
+        NumLaterSolnsVarLval),
+
+    ml_gen_info_new_aux_var_name("later_slot", LaterSlotVar, !Info),
+    % We never need to trace ints.
+    LaterSlotVarDefn = ml_gen_mlds_var_decl(mlds_data_var(LaterSlotVar),
+        mlds_native_int_type, gc_no_stmt, MLDS_Context),
+    ml_gen_var_lval(!.Info, LaterSlotVar, mlds_native_int_type,
+        LaterSlotVarLval),
+
+    ml_gen_info_new_aux_var_name("limit", LimitVar, !Info),
+    % We never need to trace ints.
+    LimitVarDefn = ml_gen_mlds_var_decl(mlds_data_var(LimitVar),
+        mlds_native_int_type, gc_no_stmt, MLDS_Context),
+    ml_gen_var_lval(!.Info, LimitVar, mlds_native_int_type, LimitVarLval),
+
+    Defns = [NumLaterSolnsVarDefn, LaterSlotVarDefn, LimitVarDefn],
+
+    LaterSlotVarRval = ml_lval(LaterSlotVarLval),
+    NumLaterSolnsVarRval = ml_lval(NumLaterSolnsVarLval),
+    LimitAssignStmt = ml_stmt_atomic(assign(LimitVarLval, 
+        ml_binop(int_add, LaterSlotVarRval, NumLaterSolnsVarRval))),
+    LimitAssignStatement = statement(LimitAssignStmt, MLDS_Context),
+    IncrLaterSlotVarStmt = ml_stmt_atomic(assign(LaterSlotVarLval,
+        ml_binop(int_add, LaterSlotVarRval, ml_const(mlconst_int(1))))),
+    IncrLaterSlotVarStatement = statement(IncrLaterSlotVarStmt, MLDS_Context),
+
+    SeveralSolnLookupVars = ml_several_soln_lookup_vars(NumLaterSolnsVarLval,
+        LaterSlotVarLval, LimitVarLval,
+        LimitAssignStatement, IncrLaterSlotVarStatement, Defns).
 
 %-----------------------------------------------------------------------------%
 
@@ -448,33 +574,33 @@ ml_generate_bit_vec(MLDS_ModuleName, Context, CaseVals, Start, WordBits,
 ml_generate_bit_vec_2([], _, _, !BitMap).
 ml_generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, !BitMap) :-
     Val = Tag - Start,
-    Word = Val // WordBits,
+    WordNum = Val // WordBits,
     Offset = Val mod WordBits,
-    ( map.search(!.BitMap, Word, X0) ->
+    ( map.search(!.BitMap, WordNum, X0) ->
         X1 = X0 \/ (1 << Offset)
     ;
         X1 = (1 << Offset)
     ),
-    map.set(Word, X1, !BitMap),
+    map.set(WordNum, X1, !BitMap),
     ml_generate_bit_vec_2(Rest, Start, WordBits, !BitMap).
 
 :- pred ml_generate_bit_vec_initializers(list(pair(int))::in, int::in,
     list(mlds_rval)::out, list(mlds_initializer)::out) is det.
 
 ml_generate_bit_vec_initializers([], _, [], []).
-ml_generate_bit_vec_initializers([Word - Bits | Rest], Count,
+ml_generate_bit_vec_initializers(All @ [WordNum - Bits | Rest], Count,
         [Rval | Rvals], [Initializer | Initializers]) :-
-    ( Count < Word ->
+    ( Count < WordNum ->
         WordVal = 0,
-        Remainder = [Word - Bits | Rest]
+        Remainder = All
     ;
         WordVal = Bits,
         Remainder = Rest
     ),
     Rval = ml_const(mlconst_int(WordVal)),
     Initializer = init_obj(Rval),
-    Count1 = Count + 1,
-    ml_generate_bit_vec_initializers(Remainder, Count1, Rvals, Initializers).
+    ml_generate_bit_vec_initializers(Remainder, Count + 1,
+        Rvals, Initializers).
 
 %-----------------------------------------------------------------------------%
 
@@ -501,58 +627,38 @@ ml_construct_simple_switch_vector(ModuleInfo, StructType, FieldTypes,
 :- pred ml_construct_model_non_switch_vector(module_info::in,
     int::in, int::in, int::in, assoc_list(int, soln_consts(mlds_rval))::in,
     mlds_type::in, mlds_type::in, list(mlds_type)::in,
-    list(mlds_initializer)::out, list(mlds_initializer)::out,
+    list(mlds_initializer)::in, list(mlds_initializer)::out,
+    cord(mlds_initializer)::in, cord(mlds_initializer)::out,
     bool::in, bool::out) is det.
 
 ml_construct_model_non_switch_vector(ModuleInfo, CurIndex, EndVal,
-        NextLaterSolnRow, [],
+        !.NextLaterSolnRow, [],
         FirstSolnStructType, LaterSolnStructType, FieldTypes,
-        FirstSolnRowInitializers, LaterSolnRowInitializers, !HadDummyRows) :-
+        !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
+        !HadDummyRows) :-
     ( CurIndex > EndVal ->
-        FirstSolnRowInitializers = [],
-        LaterSolnRowInitializers = []
+        true
     ;
+        make_dummy_first_soln_row(FirstSolnStructType, FieldTypes,
+            !RevFirstSolnRowInitializers),
         !:HadDummyRows = yes,
-        FieldRvals = list.map(ml_default_value_for_type, FieldTypes),
-        FieldInitializers = list.map(wrap_init_obj, FieldRvals),
-        NumLaterSolnsInitializer = gen_init_int(-1),
-        FirstLaterSlotInitializer = gen_init_int(-1),
-        FirstSolnFieldInitializers =
-            [NumLaterSolnsInitializer, FirstLaterSlotInitializer
-                | FieldInitializers],
-        FirstSolnRowInitializer =
-            init_struct(FirstSolnStructType, FirstSolnFieldInitializers),
         ml_construct_model_non_switch_vector(ModuleInfo, CurIndex + 1, EndVal,
-            NextLaterSolnRow, [],
+            !.NextLaterSolnRow, [],
             FirstSolnStructType, LaterSolnStructType, FieldTypes,
-            FirstSolnRowInitializersTail, LaterSolnRowInitializers,
-            !HadDummyRows),
-        FirstSolnRowInitializers =
-            [FirstSolnRowInitializer | FirstSolnRowInitializersTail]
+            !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
+            !HadDummyRows)
     ).
 ml_construct_model_non_switch_vector(ModuleInfo, CurIndex, EndVal,
-        NextLaterSolnRow, [Pair | Pairs],
+        !.NextLaterSolnRow, [Pair | Pairs],
         FirstSolnStructType, LaterSolnStructType, FieldTypes,
-        FirstSolnRowInitializers, LaterSolnRowInitializers, !HadDummyRows) :-
+        !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
+        !HadDummyRows) :-
     Pair = Index - Soln,
     ( CurIndex < Index ->
+        make_dummy_first_soln_row(FirstSolnStructType, FieldTypes,
+            !RevFirstSolnRowInitializers),
         !:HadDummyRows = yes,
-        FieldRvals = list.map(ml_default_value_for_type, FieldTypes),
-        FieldInitializers = list.map(wrap_init_obj, FieldRvals),
-        NumLaterSolnsInitializer = gen_init_int(-1),
-        FirstLaterSlotInitializer = gen_init_int(-1),
-        FirstSolnFieldInitializers =
-            [NumLaterSolnsInitializer, FirstLaterSlotInitializer
-                | FieldInitializers],
-        FirstSolnRowInitializer =
-            init_struct(FirstSolnStructType, FirstSolnFieldInitializers),
-        ml_construct_model_non_switch_vector(ModuleInfo, CurIndex + 1, EndVal,
-            NextLaterSolnRow, [Pair | Pairs],
-            FirstSolnStructType, LaterSolnStructType, FieldTypes,
-            FirstSolnRowInitializersTail, LaterSolnRowInitializers,
-            !HadDummyRows),
-        FirstSolnRowInitializers =
-            [FirstSolnRowInitializer | FirstSolnRowInitializersTail]
+        NextPairs = [Pair | Pairs]
     ;
         (
             Soln = one_soln(FieldRvals),
@@ -564,47 +670,59 @@ ml_construct_model_non_switch_vector(ModuleInfo, CurIndex, EndVal,
                     | FieldInitializers],
             FirstSolnRowInitializer =
                 init_struct(FirstSolnStructType, FirstSolnFieldInitializers),
-            ml_construct_model_non_switch_vector(ModuleInfo,
-                CurIndex + 1, EndVal, NextLaterSolnRow, Pairs,
-                FirstSolnStructType, LaterSolnStructType, FieldTypes,
-                FirstSolnRowInitializersTail, LaterSolnRowInitializers,
-                !HadDummyRows),
-            FirstSolnRowInitializers =
-                [FirstSolnRowInitializer | FirstSolnRowInitializersTail]
+            !:RevFirstSolnRowInitializers =
+                [FirstSolnRowInitializer | !.RevFirstSolnRowInitializers]
         ;
             Soln = several_solns(FirstSolnRvals, LaterSolns),
             FieldInitializers = list.map(wrap_init_obj, FirstSolnRvals),
             list.length(LaterSolns, NumLaterSolns),
             NumLaterSolnsInitializer = gen_init_int(NumLaterSolns),
-            FirstLaterSlotInitializer = gen_init_int(NextLaterSolnRow),
+            FirstLaterSlotInitializer = gen_init_int(!.NextLaterSolnRow),
             FirstSolnFieldInitializers =
                 [NumLaterSolnsInitializer, FirstLaterSlotInitializer
                     | FieldInitializers],
-            HeadLaterSolnRowInitializers = list.map(
-                ml_construct_later_soln_row(LaterSolnStructType),
-                LaterSolns),
             FirstSolnRowInitializer =
                 init_struct(FirstSolnStructType, FirstSolnFieldInitializers),
-            ml_construct_model_non_switch_vector(ModuleInfo,
-                CurIndex + 1, EndVal, NextLaterSolnRow + NumLaterSolns, Pairs,
-                FirstSolnStructType, LaterSolnStructType, FieldTypes,
-                FirstSolnRowInitializersTail, LaterSolnRowInitializersTail,
-                !HadDummyRows),
-            FirstSolnRowInitializers =
-                [FirstSolnRowInitializer | FirstSolnRowInitializersTail],
-            LaterSolnRowInitializers =
-                HeadLaterSolnRowInitializers ++ LaterSolnRowInitializersTail
-        )
-    ).
+            !:RevFirstSolnRowInitializers =
+                [FirstSolnRowInitializer | !.RevFirstSolnRowInitializers],
 
-:- func ml_construct_later_soln_row(mlds_type, list(mlds_rval)) =
-    mlds_initializer.
+            LaterSolnRowInitializers = list.map(
+                ml_construct_later_soln_row(LaterSolnStructType),
+                LaterSolns),
+            !:LaterSolnRowInitializersCord = !.LaterSolnRowInitializersCord ++
+                from_list(LaterSolnRowInitializers),
+            !:NextLaterSolnRow = !.NextLaterSolnRow + NumLaterSolns
+        ),
+        NextPairs = Pairs
+    ),
+    ml_construct_model_non_switch_vector(ModuleInfo, CurIndex + 1, EndVal,
+        !.NextLaterSolnRow, NextPairs,
+        FirstSolnStructType, LaterSolnStructType, FieldTypes,
+        !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
+        !HadDummyRows).
 
 ml_construct_later_soln_row(StructType, Rvals) = RowInitializer :-
     FieldInitializers = list.map(wrap_init_obj, Rvals),
     RowInitializer = init_struct(StructType, FieldInitializers).
 
-:- func ml_default_value_for_type(mlds_type) = mlds_rval.
+%-----------------------------------------------------------------------------%
+
+:- pred make_dummy_first_soln_row(mlds_type::in, list(mlds_type)::in,
+    list(mlds_initializer)::in, list(mlds_initializer)::out) is det.
+
+make_dummy_first_soln_row(FirstSolnStructType, FieldTypes,
+        !RevFirstSolnRowInitializers) :-
+    FieldRvals = list.map(ml_default_value_for_type, FieldTypes),
+    FieldInitializers = list.map(wrap_init_obj, FieldRvals),
+    NumLaterSolnsInitializer = gen_init_int(-1),
+    FirstLaterSlotInitializer = gen_init_int(-1),
+    FirstSolnFieldInitializers =
+        [NumLaterSolnsInitializer, FirstLaterSlotInitializer
+            | FieldInitializers],
+    FirstSolnRowInitializer =
+        init_struct(FirstSolnStructType, FirstSolnFieldInitializers),
+    !:RevFirstSolnRowInitializers =
+        [FirstSolnRowInitializer | !.RevFirstSolnRowInitializers].
 
 ml_default_value_for_type(MLDS_Type) = DefaultRval :-
     (
@@ -641,62 +759,6 @@ ml_default_value_for_type(MLDS_Type) = DefaultRval :-
         ; MLDS_Type = mlds_unknown_type
         ),
         unexpected($module, $pred, "unexpected MLDS_Type")
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred ml_generate_constants_for_lookup_switch(code_model::in,
-    list(prog_var)::in, set(prog_var)::in, list(tagged_case)::in,
-    map(int, soln_consts(mlds_rval))::in,
-    map(int, soln_consts(mlds_rval))::out,
-    ml_gen_info::in, ml_gen_info::out) is semidet.
-
-ml_generate_constants_for_lookup_switch(_CodeModel, _OutVars, _ArmNonLocals,
-        [], !IndexMap, !Info).
-ml_generate_constants_for_lookup_switch(CodeModel, OutVars, ArmNonLocals,
-        [TaggedCase | TaggedCases], !IndexMap, !Info) :-
-    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
-    Goal = hlds_goal(GoalExpr, _GoalInfo),
-    ( GoalExpr = disj(Disjuncts) ->
-        (
-            Disjuncts = []
-        ;
-            Disjuncts = [FirstDisjunct | LaterDisjuncts],
-            goal_is_conj_of_unify(ArmNonLocals, FirstDisjunct),
-            all_disjuncts_are_conj_of_unify(ArmNonLocals, LaterDisjuncts),
-            ml_generate_constants_for_arm(OutVars, FirstDisjunct, FirstSoln,
-                !Info),
-            ml_generate_constants_for_arms(OutVars, LaterDisjuncts, LaterSolns,
-                !Info),
-            SolnConsts = several_solns(FirstSoln, LaterSolns),
-            ml_record_lookup_for_tagged_cons_id(SolnConsts,
-                TaggedMainConsId, !IndexMap),
-            list.foldl(ml_record_lookup_for_tagged_cons_id(SolnConsts),
-                TaggedOtherConsIds, !IndexMap)
-        )
-    ;
-        goal_is_conj_of_unify(ArmNonLocals, Goal),
-        ml_generate_constants_for_arm(OutVars, Goal, Soln, !Info),
-        SolnConsts = one_soln(Soln),
-        ml_record_lookup_for_tagged_cons_id(SolnConsts,
-            TaggedMainConsId, !IndexMap),
-        list.foldl(ml_record_lookup_for_tagged_cons_id(SolnConsts),
-            TaggedOtherConsIds, !IndexMap)
-    ),
-    ml_generate_constants_for_lookup_switch(CodeModel, OutVars, ArmNonLocals,
-        TaggedCases, !IndexMap, !Info).
-
-:- pred ml_record_lookup_for_tagged_cons_id(soln_consts(mlds_rval)::in,
-    tagged_cons_id::in,
-    map(int, soln_consts(mlds_rval))::in,
-    map(int, soln_consts(mlds_rval))::out) is det.
-
-ml_record_lookup_for_tagged_cons_id(SolnConsts, TaggedConsId, !IndexMap) :-
-    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
-    ( ConsTag = int_tag(Index) ->
-        map.det_insert(Index, SolnConsts, !IndexMap)
-    ;
-        unexpected($module, $pred, "not int_tag")
     ).
 
 %-----------------------------------------------------------------------------%

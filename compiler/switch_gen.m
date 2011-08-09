@@ -188,9 +188,8 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                     FilteredCanFail, LowerLimit, UpperLimit, NumValues,
                     ReqDensity, NeedBitVecCheck, NeedRangeCheck,
                     FirstVal, LastVal),
-                is_lookup_switch(record_lookup_for_tagged_cons_id_int,
-                    FilteredTaggedCases, GoalInfo, StoreMap,
-                    no, MaybeEnd1, LookupSwitchInfo, !CI)
+                is_lookup_switch(get_int_tag, FilteredTaggedCases, GoalInfo,
+                    StoreMap, no, MaybeEnd1, LookupSwitchInfo, !CI)
             ->
                 % We update MaybeEnd1 to MaybeEnd to account for the possible
                 % reservation of temp slots for nondet switches.
@@ -232,10 +231,9 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                     StringBinarySwitchSize),
                 ( NumConsIds >= StringHashSwitchSize ->
                     (
-                        is_lookup_switch(
-                            record_lookup_for_tagged_cons_id_string,
-                            FilteredTaggedCases, GoalInfo, StoreMap,
-                            no, MaybeEnd1, LookupSwitchInfo, !CI)
+                        is_lookup_switch(get_string_tag, FilteredTaggedCases,
+                            GoalInfo, StoreMap, no, MaybeEnd1,
+                            LookupSwitchInfo, !CI)
                     ->
                         % We update MaybeEnd1 to MaybeEnd to account for the
                         % possible reservation of temp slots for nondet
@@ -250,10 +248,9 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                     )
                 ; NumConsIds >= StringBinarySwitchSize ->
                     (
-                        is_lookup_switch(
-                            record_lookup_for_tagged_cons_id_string,
-                            FilteredTaggedCases, GoalInfo, StoreMap,
-                            no, MaybeEnd1, LookupSwitchInfo, !CI)
+                        is_lookup_switch(get_string_tag, FilteredTaggedCases,
+                            GoalInfo, StoreMap, no, MaybeEnd1,
+                            LookupSwitchInfo, !CI)
                     ->
                         % We update MaybeEnd1 to MaybeEnd to account for the
                         % possible reservation of temp slots for nondet

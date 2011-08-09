@@ -55,7 +55,6 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module list.
-:- import_module map.
 
 %-----------------------------------------------------------------------------%
 
@@ -63,36 +62,22 @@
     --->    lookup_switch_info(
                 % The map from the switched-on value to the values of the
                 % variables in each solution.
-                lsi_cases               :: case_consts(Key, rval),
+                lsi_cases               ::  case_consts(Key, rval,
+                                                case_consts_several_llds),
 
-                % The output variables.
-                lsi_variables           :: list(prog_var),
+                % The output variables, which become (some of) the fields
+                % in each row of a lookup table.
+                lsi_out_variables       ::  list(prog_var),
 
-                % The types of the fields in the C structure we generate
-                % for each case.
-                lsi_field_types         :: list(llds_type),
+                % The types of the fields holding output variables.
+                lsi_out_types           ::  list(llds_type),
 
-                lsi_liveness            :: set_of_progvar
+                lsi_liveness            ::  set_of_progvar
             ).
-
-:- pred record_lookup_for_tagged_cons_id_int(soln_consts(rval)::in,
-    tagged_cons_id::in,
-    map(int, soln_consts(rval))::in, map(int, soln_consts(rval))::out) is det.
-
-:- pred record_lookup_for_tagged_cons_id_string(soln_consts(rval)::in,
-    tagged_cons_id::in,
-    map(string, soln_consts(rval))::in, map(string, soln_consts(rval))::out)
-    is det.
-
-:- type record_switch_lookup(Key) ==
-    pred(soln_consts(rval), tagged_cons_id,
-    map(Key, soln_consts(rval)), map(Key, soln_consts(rval))).
-:- inst record_switch_lookup ==
-    (pred(in, in, in, out) is det).
 
     % Decide whether we can generate code for this switch using a lookup table.
     %
-:- pred is_lookup_switch(record_switch_lookup(Key)::in(record_switch_lookup),
+:- pred is_lookup_switch(pred(cons_tag, Key)::in(pred(in, out) is det),
     list(tagged_case)::in, hlds_goal_info::in, abs_store_map::in,
     branch_end::in, branch_end::out, lookup_switch_info(Key)::out,
     code_info::in, code_info::out) is semidet.
@@ -180,6 +165,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
@@ -189,8 +175,8 @@
 
 %-----------------------------------------------------------------------------%
 
-is_lookup_switch(RecordLookupForTaggedConsId, TaggedCases, GoalInfo, StoreMap,
-        !MaybeEnd, LookupSwitchInfo, !CI) :-
+is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap, !MaybeEnd,
+        LookupSwitchInfo, !CI) :-
     % Most of this predicate is taken from dense_switch.m.
 
     % We need the code_info structure to generate code for the cases to
@@ -200,10 +186,9 @@ is_lookup_switch(RecordLookupForTaggedConsId, TaggedCases, GoalInfo, StoreMap,
     figure_out_output_vars(!.CI, GoalInfo, OutVars),
     set.list_to_set(OutVars, ArmNonLocals),
     remember_position(!.CI, CurPos),
-    generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
-        TaggedCases, OutVars, ArmNonLocals, StoreMap, Liveness,
-        map.init, CaseSolnMap, !MaybeEnd, set_of_var.init, ResumeVars,
-        no, GoalsMayModifyTrail, !CI),
+    generate_constants_for_lookup_switch(GetTag, TaggedCases,
+        OutVars, ArmNonLocals, StoreMap, Liveness, map.init, CaseSolnMap,
+        !MaybeEnd, set_of_var.init, ResumeVars, no, GoalsMayModifyTrail, !CI),
     map.to_assoc_list(CaseSolnMap, CaseSolns),
     reset_to_position(CurPos, !CI),
     VarTypes = get_var_types(!.CI),
@@ -212,8 +197,8 @@ is_lookup_switch(RecordLookupForTaggedConsId, TaggedCases, GoalInfo, StoreMap,
         CaseConsts = all_one_soln(CaseValuePairs),
         assoc_list.values(CaseValuePairs, CaseValues)
     ;
-        CaseConsts = some_several_solns(CaseSolns, ResumeVars,
-            GoalsMayModifyTrail),
+        CaseConsts = some_several_solns(CaseSolns,
+            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
         % This generates CaseValues in reverse order of index, but given that
         % we only use CaseValues to find out the right OutLLDSTypes,
         % this is OK.
@@ -228,19 +213,19 @@ is_lookup_switch(RecordLookupForTaggedConsId, TaggedCases, GoalInfo, StoreMap,
 %---------------------------------------------------------------------------%
 
 :- pred generate_constants_for_lookup_switch(
-    record_switch_lookup(Key)::in(record_switch_lookup),
+    pred(cons_tag, Key)::in(pred(in, out) is det),
     list(tagged_case)::in, list(prog_var)::in, set(prog_var)::in,
     abs_store_map::in, set_of_progvar::out,
     map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out,
     branch_end::in, branch_end::out, set_of_progvar::in, set_of_progvar::out,
     bool::in, bool::out, code_info::in, code_info::out) is semidet.
 
-generate_constants_for_lookup_switch(_RecordLookupForTaggedConsId,
-        [], _Vars, _ArmNonLocals, _StoreMap, set_of_var.init, !IndexMap,
+generate_constants_for_lookup_switch(_GetTag, [],
+        _Vars, _ArmNonLocals, _StoreMap, set_of_var.init, !IndexMap,
         !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
-generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
-        [TaggedCase | TaggedCases], Vars, ArmNonLocals, StoreMap, Liveness,
-        !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI) :-
+generate_constants_for_lookup_switch(GetTag, [TaggedCase | TaggedCases],
+        Vars, ArmNonLocals, StoreMap, Liveness, !IndexMap,
+        !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI) :-
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
@@ -294,41 +279,37 @@ generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
             !MaybeEnd, Liveness, !CI),
         SolnConsts = one_soln(Soln)
     ),
-    RecordLookupForTaggedConsId(SolnConsts, TaggedMainConsId, !IndexMap),
-    record_lookup_for_tagged_cons_ids(RecordLookupForTaggedConsId, SolnConsts,
+    record_lookup_for_tagged_cons_id(GetTag, SolnConsts,
+        TaggedMainConsId, !IndexMap),
+    record_lookup_for_tagged_cons_ids(GetTag, SolnConsts,
         TaggedOtherConsIds, !IndexMap),
-    generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
+    generate_constants_for_lookup_switch(GetTag,
         TaggedCases, Vars, ArmNonLocals, StoreMap, _LivenessRest,
         !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
 
 :- pred record_lookup_for_tagged_cons_ids(
-    record_switch_lookup(Key)::in(record_switch_lookup),
+    pred(cons_tag, Key)::in(pred(in, out) is det),
     soln_consts(rval)::in, list(tagged_cons_id)::in,
     map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out) is det.
 
-record_lookup_for_tagged_cons_ids(_RecordLookupForTaggedConsId, _SolnConsts,
-        [], !IndexMap).
-record_lookup_for_tagged_cons_ids(RecordLookupForTaggedConsId, SolnConsts,
+record_lookup_for_tagged_cons_ids(_GetTag, _SolnConsts, [], !IndexMap).
+record_lookup_for_tagged_cons_ids(GetTag, SolnConsts,
         [TaggedConsId | TaggedConsIds], !IndexMap) :-
-    RecordLookupForTaggedConsId(SolnConsts, TaggedConsId, !IndexMap),
-    record_lookup_for_tagged_cons_ids(RecordLookupForTaggedConsId, SolnConsts,
+    record_lookup_for_tagged_cons_id(GetTag, SolnConsts,
+        TaggedConsId, !IndexMap),
+    record_lookup_for_tagged_cons_ids(GetTag, SolnConsts,
         TaggedConsIds, !IndexMap).
 
-record_lookup_for_tagged_cons_id_int(SolnConsts, TaggedConsId, !IndexMap) :-
-    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
-    ( ConsTag = int_tag(Index) ->
-        map.det_insert(Index, SolnConsts, !IndexMap)
-    ;
-        unexpected($module, $pred, "not int_tag")
-    ).
+:- pred record_lookup_for_tagged_cons_id(
+    pred(cons_tag, Key)::in(pred(in, out) is det),
+    soln_consts(rval)::in, tagged_cons_id::in,
+    map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out) is det.
 
-record_lookup_for_tagged_cons_id_string(SolnConsts, TaggedConsId, !IndexMap) :-
+record_lookup_for_tagged_cons_id(GetTag, SolnConsts, TaggedConsId,
+        !IndexMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
-    ( ConsTag = string_tag(Index) ->
-        map.det_insert(Index, SolnConsts, !IndexMap)
-    ;
-        unexpected($module, $pred, "not int_tag")
-    ).
+    GetTag(ConsTag, Index),
+    map.det_insert(Index, SolnConsts, !IndexMap).
 
 %---------------------------------------------------------------------------%
 
@@ -368,8 +349,8 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
             StartVal, EndVal, CaseValues, OutVars, OutTypes,
             NeedBitVecCheck, Liveness, RestCode, !CI)
     ;
-        CaseConsts = some_several_solns(CaseSolns, ResumeVars,
-            GoalsMayModifyTrail),
+        CaseConsts = some_several_solns(CaseSolns,
+            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
         (
             GoalsMayModifyTrail = yes,
             get_emit_trail_ops(!.CI, EmitTrailOps),

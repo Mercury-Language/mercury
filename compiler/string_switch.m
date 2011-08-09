@@ -230,8 +230,8 @@ generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
             OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
             !MaybeEnd, Code, !CI)
     ;
-        CaseConsts = some_several_solns(CaseSolns, ResumeVars,
-            GoalsMayModifyTrail),
+        CaseConsts = some_several_solns(CaseSolns,
+            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
         generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
             ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
             CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI)
@@ -770,8 +770,8 @@ generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
             OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
             !MaybeEnd, Code, !CI)
     ;
-        CaseConsts = some_several_solns(CaseSolns, ResumeVars,
-            GoalsMayModifyTrail),
+        CaseConsts = some_several_solns(CaseSolns,
+            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
         generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
             ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
             CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI)

@@ -115,12 +115,17 @@
 % Stuff for lookup switches.
 %
 
-:- type case_consts(Key, Rval)
+:- type case_consts(Key, Rval, SeveralInfo)
     --->    all_one_soln(
                 assoc_list(Key, list(Rval))
             )
     ;       some_several_solns(
                 assoc_list(Key, soln_consts(Rval)),
+                SeveralInfo
+            ).
+
+:- type case_consts_several_llds
+    --->    case_consts_several_llds(
                 % The resume vars.
                 set_of_progvar,
 
@@ -204,8 +209,9 @@
 % Stuff for string binary switches.
 %
 
-    % For a string switch, compute the hash value for each case in the list
-    % of cases, and store the cases in a map from hash values to cases.
+    % Given a list of cases, represent each case using the supplied predicate,
+    % map each string to the representation of its corresponding case,
+    % and return a sorted assoc_list version of that map.
     %
 :- pred string_binary_cases(list(tagged_case)::in,
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
@@ -334,6 +340,18 @@
     %
 :- pred get_ptag_counts(mer_type::in, module_info::in,
     int::out, ptag_count_map::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % If the cons_tag specifies an int_tag, return the int;
+    % otherwise abort.
+    %
+:- pred get_int_tag(cons_tag::in, int::out) is det.
+
+    % If the cons_tag specifies a string_tag, return the string;
+    % otherwise abort.
+    %
+:- pred get_string_tag(cons_tag::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1360,6 +1378,23 @@ order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
         ;
             unexpected($module, $pred, "PtagCaseMap0 is not empty")
         )
+    ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+get_int_tag(ConsTag, Int) :-
+    ( ConsTag = int_tag(IntPrime) ->
+        Int = IntPrime
+    ;
+        unexpected($module, $pred, "not int_tag")
+    ).
+
+get_string_tag(ConsTag, Str) :-
+    ( ConsTag = string_tag(StrPrime) ->
+        Str = StrPrime
+    ;
+        unexpected($module, $pred, "not string_tag")
     ).
 
 %-----------------------------------------------------------------------------%

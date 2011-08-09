@@ -219,10 +219,13 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                     ReqDensity, NeedBitVecCheck, NeedRangeCheck,
                     FirstVal, LastVal),
                 NonLocals = goal_info_get_nonlocals(GoalInfo),
-                ml_gen_lookup_switch(SwitchVar, FilteredTaggedCases,
-                    NonLocals, CodeModel, Context, FirstVal, LastVal,
-                    NeedBitVecCheck, NeedRangeCheck, LookupStatement, !Info)
+                ml_is_lookup_switch(get_int_tag, SwitchVar,
+                    FilteredTaggedCases, NonLocals, CodeModel,
+                    LookupSwitchInfo, !Info)
             ->
+                ml_gen_lookup_switch(SwitchVar, LookupSwitchInfo,
+                    CodeModel, Context, FirstVal, LastVal,
+                    NeedBitVecCheck, NeedRangeCheck, LookupStatement, !Info),
                 Statements = [LookupStatement]
             ;
                 target_supports_int_switch(Globals)
@@ -272,9 +275,23 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                     % switches for the Java back-end too.
                     target_supports_goto(Globals)
                 ->
-                    ml_generate_string_hash_switch(FilteredTaggedCases,
-                        SwitchVar, CodeModel, FilteredCanFail, Context,
-                        Decls, Statements, !Info)
+                    (
+                        ml_gen_info_get_high_level_data(!.Info, no),
+                        globals.lookup_bool_option(Globals,
+                            static_ground_cells, yes),
+                        NonLocals = goal_info_get_nonlocals(GoalInfo),
+                        ml_is_lookup_switch(get_string_tag, SwitchVar,
+                            FilteredTaggedCases, NonLocals, CodeModel,
+                            LookupSwitchInfo, !Info)
+                    ->
+                        ml_generate_string_hash_lookup_switch(SwitchVar,
+                            LookupSwitchInfo, CodeModel, FilteredCanFail,
+                            Context, Decls, Statements, !Info)
+                    ;
+                        ml_generate_string_hash_jump_switch(
+                            FilteredTaggedCases, SwitchVar, CodeModel,
+                            FilteredCanFail, Context, Decls, Statements, !Info)
+                    )
                 ;
                     NumConsIds >= StringBinarySwitchSize,
                     % We can implement string binary switches using either
@@ -289,9 +306,23 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                     % switches for the Java back-end too.
                     target_supports_goto(Globals)
                 ->
-                    ml_generate_string_binary_switch(FilteredTaggedCases,
-                        SwitchVar, CodeModel, FilteredCanFail, Context,
-                        Decls, Statements, !Info)
+                    (
+                        ml_gen_info_get_high_level_data(!.Info, no),
+                        globals.lookup_bool_option(Globals,
+                            static_ground_cells, yes),
+                        NonLocals = goal_info_get_nonlocals(GoalInfo),
+                        ml_is_lookup_switch(get_string_tag, SwitchVar,
+                            FilteredTaggedCases, NonLocals, CodeModel,
+                            LookupSwitchInfo, !Info)
+                    ->
+                        ml_generate_string_binary_lookup_switch(SwitchVar,
+                            LookupSwitchInfo, CodeModel, FilteredCanFail,
+                            Context, Decls, Statements, !Info)
+                    ;
+                        ml_generate_string_binary_jump_switch(
+                            FilteredTaggedCases, SwitchVar, CodeModel,
+                            FilteredCanFail, Context, Decls, Statements, !Info)
+                    )
                 ;
                     ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
                         SwitchVar, CodeModel, FilteredCanFail, Context,
