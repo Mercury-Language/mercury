@@ -904,6 +904,35 @@ Options to pass to the Mercury compiler only when using @samp{mmc --make}.
 
 @end table
 
+The following variables can also appear in options files but are
+@emph{only} supported by @samp{mmc --make}.
+
+@table @code
+
+@item GCC_FLAGS
+@vindex GCC_FLAGS
+Options to pass to the C compiler, but only if the C compiler is GCC.
+If the C compiler is not GCC then this variable is ignored. 
+These options will be passed @emph{after} any options given by the
+@samp{CFLAGS} variable.
+
+@item CLANG_FLAGS
+@vindex CLANG_FLAGS
+Options to pass to the C compiler, but only if the C compiler is clang.
+If the C compiler is not clang then this variable is ignored.
+These options will be passed @emph{after} any options given by the
+@samp{CFLAGS} variable.
+
+@item MSVC_FLAGS
+@vindex MSVC_FLAGS
+Options to pass to the C compiler, but on if the C compiler is
+Microsoft Visual C.
+If the C compiler is not Visual C then this variable is ignored.
+These options will be passed @emph{after} any options given by the
+@samp{CFLAGS} variable.
+
+@end table
+
 @c ----------------------------------------------------------------------------
 
 @node Libraries

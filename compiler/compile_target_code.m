@@ -415,6 +415,7 @@ do_compile_c_file(ErrorStream, PIC, C_File, O_File, Globals, Succeeded, !IO) :-
 gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     globals.lookup_accumulating_option(Globals, cflags, C_Flags_List),
     join_string_list(C_Flags_List, "", "", " ", CFLAGS),
+    gather_compiler_specific_flags(Globals, CC_Specific_CFLAGS),
 
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     (
@@ -878,12 +879,13 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     % it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
     % Also be careful that each option is separated by spaces.
     % 
-    % In general, user supplied C compiler flags, i.e. CFLAGS below, should
-    % be able to override those introduced by the Mercury compiler.
+    % In general, user supplied C compiler flags, i.e. CFLAGS and
+    % CC_Specific_CFLAGS below, should be able to override those introduced by
+    % the Mercury compiler.
     % In some circumstances we want to prevent the user doing this, typically
     % where we know the behaviour of a particular C compiler is buggy; the
     % last option, OverrideOpts, does this -- because of this it must be
-    % listed after CFLAGS.
+    % listed after CFLAGS and CC_Specific_CFLAGS.
     %
     string.append_list([
         SubDirInclOpt, InclOpt, " ",
@@ -918,7 +920,29 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         C_FnAlignOpt, 
         WarningOpt, " ", 
         CFLAGS, " ",
+        CC_Specific_CFLAGS, " ",
         OverrideOpts], AllCFlags).
+
+:- pred gather_compiler_specific_flags(globals::in, string::out) is det.
+
+gather_compiler_specific_flags(Globals, Flags) :-
+    globals.get_c_compiler_type(Globals, C_CompilerType),
+    (
+        C_CompilerType = cc_gcc(_, _, _),
+        globals.lookup_accumulating_option(Globals, gcc_flags, FlagsList)
+    ;
+        C_CompilerType = cc_clang(_),
+        globals.lookup_accumulating_option(Globals, clang_flags, FlagsList)
+    ;
+        C_CompilerType = cc_cl(_),
+        globals.lookup_accumulating_option(Globals, msvc_flags, FlagsList)
+    ;
+        ( C_CompilerType = cc_lcc
+        ; C_CompilerType = cc_unknown
+        ),
+        FlagsList = []
+    ),
+    join_string_list(FlagsList, "", "", " ", Flags).
 
 :- pred get_maybe_filtercc_command(globals::in, maybe(string)::out) is det.
 

@@ -806,6 +806,14 @@
     ;       ansi_c
     ;       inline_alloc
 
+    % Flags for specific C compilers.
+    ;       gcc_flags
+    ;       quoted_gcc_flag
+    ;       clang_flags
+    ;       quoted_clang_flag
+    ;       msvc_flags
+    ;       quoted_msvc_flag
+
     % Auto-configured C compilation options.
     ;       cflags_for_warnings
     ;       cflags_for_optimization
@@ -1659,6 +1667,13 @@ option_defaults_2(target_code_compilation_option, [
     inline_alloc                        -   bool(no),
     cflags                              -   accumulating([]),
     quoted_cflag                        -   string_special,
+
+    gcc_flags                           -   accumulating([]),
+    quoted_gcc_flag                     -   string_special,
+    clang_flags                         -   accumulating([]),
+    quoted_clang_flag                   -   string_special,
+    msvc_flags                          -   accumulating([]),
+    quoted_msvc_flag                    -   string_special,
 
     cflags_for_warnings                 -   string(""),
                                         % The `mmc' script will override the
@@ -2596,6 +2611,14 @@ long_option("c-include-dir",        c_include_directory).
 long_option("ansi-c",               ansi_c).
 long_option("cflags",               cflags).
 long_option("cflag",                quoted_cflag).
+
+long_option("gcc-flags",            gcc_flags).
+long_option("gcc-flag",             quoted_gcc_flag).
+long_option("clang-flags",          clang_flags).
+long_option("clang-flag",           quoted_clang_flag).
+long_option("msvc-flags",           msvc_flags).
+long_option("msvc-flag",            quoted_msvc_flag).
+
 long_option("cflags-for-warnings",  cflags_for_warnings).
 long_option("cflags-for-optimization",  cflags_for_optimization).
 long_option("cflags-for-ansi",      cflags_for_ansi).
@@ -2980,6 +3003,15 @@ special_handler(mercury_configuration_directory_special,
 special_handler(quoted_cflag, string(Flag),
         OptionTable0, ok(OptionTable)) :-
     handle_quoted_flag(cflags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_gcc_flag, string(Flag),
+        OptionTable0, ok(OptionTable)) :-
+    handle_quoted_flag(gcc_flags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_clang_flag, string(Flag),
+        OptionTable0, ok(OptionTable)) :-
+    handle_quoted_flag(clang_flags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_msvc_flag, string(Flag),
+        OptionTable0, ok(OptionTable)) :-
+    handle_quoted_flag(msvc_flags, Flag, OptionTable0, OptionTable).
 special_handler(quoted_java_flag, string(Flag),
         OptionTable0, ok(OptionTable)) :-
     handle_quoted_flag(java_flags, Flag, OptionTable0, OptionTable).
@@ -5304,6 +5336,11 @@ options_help_target_code_compilation -->
         "\tSpecify options to be passed to the C compiler.",
         "\t`--cflag' should be used for single words which need",
         "\tto be quoted when passed to the shell.",
+
+        % The --gcc-flags, --gcc-flag, --clang-flags, --clang-flag,
+        % --msvc-flags and --msvc-flag options are an internal
+        % part of the implementation of mmc --make; they are deliberately
+        % not documented.
 
         % The --cflags-for-regs, --cflags-for-gotos,
         % --cflags-for-threads, --cflags-for-pic,
