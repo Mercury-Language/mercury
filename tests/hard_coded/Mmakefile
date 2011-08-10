@@ -283,6 +283,7 @@ ORDINARY_PROGS=	\
 	test_pretty_printer \
 	test_pretty_printer_defaults \
 	test_semaphore \
+	test_tree_bitset \
 	test_yield \
 	tim_qual1 \
 	time_test \
@@ -443,7 +444,7 @@ endif
 # execute them in grades that do not allow tail recursion, since their failures
 # would be spurious.
 
-ifneq "$(filter debug% deep%,$(GRADE))" ""
+ifeq "$(findstring debug,$(GRADE))$(findstring deep,$(GRADE))" ""
 	BIG_DATA_PROGS = \
 		big_array_from_list \
 		hash_table_test \

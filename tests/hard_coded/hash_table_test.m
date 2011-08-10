@@ -36,17 +36,17 @@ main(!IO) :-
     Max = string.det_to_int(A),
     MaxOccupancy = string.det_to_float(B),
     some [!HT] (
-        !:HT = hash_table.new(int_hash, 1, MaxOccupancy),
+        !:HT = hash_table.init(int_hash, 1, MaxOccupancy),
 
         io.write_string("Inserting elements\n", !IO),
         int.fold_up(do_insert, 0, Max - 1, !HT),
-        trace [io(!IO), runtime(env("HASH_TABLE_STATS"))] (
+        trace [runtime(env("HASH_TABLE_STATS"))] (
             impure report_stats
         ),
 
         io.write_string("Looking up elements\n", !IO),
         int.fold_up(do_lookup, 0, Max - 1, !HT),
-        trace [io(!IO), runtime(env("HASH_TABLE_STATS"))] (
+        trace [runtime(env("HASH_TABLE_STATS"))] (
             impure report_stats
         ),
 
@@ -62,7 +62,7 @@ main(!IO) :-
         Half = Max / 2,
         io.write_string("Deleting some elements\n", !IO),
         int.fold_up(do_delete, 0, Half - 1, !HT),
-        trace [io(!IO), runtime(env("HASH_TABLE_STATS"))] (
+        trace [runtime(env("HASH_TABLE_STATS"))] (
             impure report_stats
         ),
 
@@ -84,13 +84,13 @@ main(!IO) :-
 
         io.write_string("Replacing elements\n", !IO),
         int.fold_up(do_replace_neg, 0, Max - 1, !HT),
-        trace [io(!IO), runtime(env("HASH_TABLE_STATS"))] (
+        trace [runtime(env("HASH_TABLE_STATS"))] (
             impure report_stats
         ),
 
         io.write_string("Looking up elements\n", !IO),
         int.fold_up(do_lookup_neg, 0, Max - 1, !HT),
-        trace [io(!IO), runtime(env("HASH_TABLE_STATS"))] (
+        trace [runtime(env("HASH_TABLE_STATS"))] (
             impure report_stats
         ),
 

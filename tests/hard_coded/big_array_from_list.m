@@ -42,7 +42,7 @@ array_from_list(List, Array) :-
 
 array_insert_items([], _N, Array, Array).
 array_insert_items([Head | Tail], N, Array0, Array) :-
-    array.set(Array0, N, Head, Array1),
+    array.set(N, Head, Array0, Array1),
     N1 = N + 1,
     array_insert_items(Tail, N1, Array1, Array).
 

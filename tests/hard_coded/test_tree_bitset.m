@@ -38,6 +38,7 @@ main(!IO) :-
 
     % Run some more tests with random input, checking
     % the output against that of set_ordlist.
+    % XXX this is wholly inadequate
     Iterations = 10,
     random.init(1, Supply),
     run_tests(Iterations, Supply, !IO).
@@ -152,7 +153,7 @@ run_test(Write, List1, List2, !IO) :-
     write_bitset_result(Write, Delete, !IO),
 
     require(unify(delete_list(Set1, List1),
-            init `with_type` tree_bitset_tester(int)),
+            init : tree_bitset_tester.bitset_tester(int)),
         "delete_list_failed").
 
 :- pred write_bitset_result(bool::in, bitset_tester(int)::in,
