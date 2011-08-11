@@ -1649,9 +1649,7 @@ get_source_line_number(Stream, Chars, Token, Context, !IO) :-
         ( char.is_digit(Char) ->
             get_source_line_number(Stream, [Char | Chars], Token, Context, !IO)
         ; Char = '\n' ->
-            (
-                rev_char_list_to_string(Chars, String)
-            ->
+            ( rev_char_list_to_string(Chars, String) ->
                 (
                     string.base_string_to_int(10, String, Int),
                     Int > 0
