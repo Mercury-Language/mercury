@@ -115,6 +115,7 @@
 :- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_event.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module char.
@@ -1212,7 +1213,7 @@ compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap) :-
         !:VarNumMap = map.init,
         !:Counter = counter.init(1), % to match term.var_supply_init
         goal_util.goal_vars(Goal, GoalVarSet),
-        set.to_sorted_list(GoalVarSet, GoalVars),
+        set_of_var.to_sorted_list(GoalVarSet, GoalVars),
         list.foldl2(add_var_to_var_number_map(VarSet), GoalVars,
             !VarNumMap, !Counter),
         list.foldl2(add_var_to_var_number_map(VarSet), HeadVars,

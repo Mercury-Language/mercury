@@ -63,6 +63,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module int.
 :- import_module require.
@@ -1205,9 +1206,10 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 
     % Remove unneeded variables from the vartypes and varset.
     goal_util.goal_vars(Goal0, GoalVars0),
-    set.insert_list(ArgVars, GoalVars0, GoalVars),
-    map.select(VarTypes0, GoalVars, VarTypes),
-    varset.select(GoalVars, VarSet0, VarSet),
+    set_of_var.insert_list(ArgVars, GoalVars0, GoalVars),
+    GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
+    map.select(VarTypes0, GoalVarsSet, VarTypes),
+    varset.select(GoalVarsSet, VarSet0, VarSet),
 
     % Approximate the termination information for the new procedure.
     ( goal_cannot_loop(ModuleInfo0, Goal0) ->

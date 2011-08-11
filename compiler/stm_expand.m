@@ -188,6 +188,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -618,12 +619,10 @@ calc_pred_variables(InitInstmap, FinalInstmap, HldsGoal,
     ModuleInfo = !.StmInfo ^ stm_info_module_info,
 
     goal_vars(HldsGoal, GoalVars0),
+    set_of_var.delete_list(IgnoreVarList, GoalVars0, GoalVars),
+    GoalVarList = set_of_var.to_sorted_list(GoalVars),
+
     HldsGoal = hlds_goal(_, GoalInfo),
-
-    set.delete_list(IgnoreVarList, GoalVars0, GoalVars),
-
-    GoalVarList = set.to_sorted_list(GoalVars),
-
     GoalNonLocalSet0 = goal_info_get_nonlocals(GoalInfo),
     set.delete_list(IgnoreVarList, GoalNonLocalSet0, GoalNonLocalSet),
     GoalNonLocals = set.to_sorted_list(GoalNonLocalSet),
@@ -637,8 +636,8 @@ calc_pred_variables(InitInstmap, FinalInstmap, HldsGoal,
     InputVars = set.from_list(InputVarsList),
     OutputVars = set.from_list(OutputVarsList),
 
-    StmGoalVars = stm_goal_vars(InputVars, LocalVars, OutputVars, InnerDI,
-        InnerUO).
+    StmGoalVars = stm_goal_vars(InputVars, LocalVars, OutputVars,
+        InnerDI, InnerUO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2535,12 +2534,13 @@ run_quantification_over_pred(!NewPredInfo) :-
 
 new_pred_set_goal(HldsGoal, !NewPredInfo) :-
     ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
-    goal_vars(HldsGoal, GoalVars0),
+    goal_vars(HldsGoal, GoalVars),
+    GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
     proc_info_get_varset(ProcInfo0, ProcVarSet0),
     proc_info_get_vartypes(ProcInfo0, ProcVarTypes0),
 
-    varset.select(GoalVars0, ProcVarSet0, ProgVarSet),
-    map.select(ProcVarTypes0, GoalVars0, ProcVarTypes),
+    varset.select(GoalVarsSet, ProcVarSet0, ProgVarSet),
+    map.select(ProcVarTypes0, GoalVarsSet, ProcVarTypes),
 
     proc_info_set_varset(ProgVarSet, ProcInfo0, ProcInfo1),
     proc_info_set_goal(HldsGoal, ProcInfo1, ProcInfo2),

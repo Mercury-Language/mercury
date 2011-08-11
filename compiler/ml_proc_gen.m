@@ -50,6 +50,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module getopt_io.
@@ -583,8 +584,8 @@ ml_gen_all_local_var_decls(Goal, VarSet, VarTypes, HeadVars, MLDS_LocalVars,
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     goal_util.goal_vars(Goal, AllVarsSet),
-    set.delete_list(HeadVars, AllVarsSet, LocalVarsSet),
-    set.to_sorted_list(LocalVarsSet, LocalVars),
+    set_of_var.delete_list(HeadVars, AllVarsSet, LocalVarsSet),
+    set_of_var.to_sorted_list(LocalVarsSet, LocalVars),
     ml_gen_local_var_decls(VarSet, VarTypes, Context, LocalVars,
         MLDS_LocalVars0, !Info),
     MLDS_Context = mlds_make_context(Context),

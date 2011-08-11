@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1998-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,6 +70,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.set_of_var.
 
 :- import_module set.
 
@@ -224,7 +225,8 @@ pd_debug_output_goal_2(PDInfo, Msg, Goal, !IO) :-
     pd_info_get_instmap(PDInfo, InstMap),
     pd_info_get_module_info(PDInfo, ModuleInfo),
     io.write_string(Msg, !IO),
-    goal_util.goal_vars(hlds_goal(GoalExpr, GoalInfo), Vars),
+    goal_util.goal_vars(hlds_goal(GoalExpr, GoalInfo), VarsSet),
+    Vars = set_of_var.bitset_to_set(VarsSet),
     instmap_restrict(Vars, InstMap, InstMap1),
     write_instmap(InstMap1, VarSet, yes, 1, !IO),
     io.nl(!IO),

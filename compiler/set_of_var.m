@@ -27,8 +27,10 @@
 :- type set_of_tvar    == set_of_var(tvar_type).
 
 :- func init = set_of_var(T).
+:- pred init(set_of_var(T)::out) is det.
 
 :- func make_singleton(var(T)) = set_of_var(T).
+:- pred make_singleton(var(T)::in, set_of_var(T)::out) is det.
 
 %---------------
 % Tests.
@@ -46,6 +48,10 @@
 :- func list_to_set(list(var(T))) = set_of_var(T).
 :- func sorted_list_to_set(list(var(T))) = set_of_var(T).
 :- func to_sorted_list(set_of_var(T)) = list(var(T)).
+
+:- pred list_to_set(list(var(T))::in, set_of_var(T)::out) is det.
+:- pred sorted_list_to_set(list(var(T))::in, set_of_var(T)::out) is det.
+:- pred to_sorted_list(set_of_var(T)::in, list(var(T))::out) is det.
 
 :- func set_to_bitset(set(var(T))) = set_of_var(T).
 :- func bitset_to_set(set_of_var(T)) = set(var(T)).
@@ -158,8 +164,12 @@
 %-----------------------------------------------------------------------------%
 
 init = tree_bitset.init.                                            % MODULE
+init(Set) :-
+    Set = set_of_var.init.
 
 make_singleton(Elem) = tree_bitset.make_singleton_set(Elem).        % MODULE
+make_singleton(Elem, Set) :-
+    Set = set_of_var.make_singleton(Elem).
 
 %---------------
 % Tests.
@@ -187,6 +197,15 @@ list_to_set(List) = tree_bitset.list_to_set(List).                  % MODULE
 sorted_list_to_set(List) = tree_bitset.sorted_list_to_set(List).    % MODULE
 
 to_sorted_list(Set) = tree_bitset.to_sorted_list(Set).              % MODULE
+
+list_to_set(List, Set) :-
+    Set = set_of_var.list_to_set(List).
+
+sorted_list_to_set(List, Set) :-
+    Set = set_of_var.sorted_list_to_set(List).
+
+to_sorted_list(Set, List) :-
+    List = set_of_var.to_sorted_list(Set).
 
 set_to_bitset(OrdSet) = tree_bitset.from_set(OrdSet).               % MODULE
 

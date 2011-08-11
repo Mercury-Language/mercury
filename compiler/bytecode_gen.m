@@ -64,6 +64,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module cord.
@@ -138,8 +139,8 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
     goal_util.goal_vars(Goal, GoalVars),
     proc_info_get_headvars(ProcInfo, ArgVars),
-    set.insert_list(ArgVars, GoalVars, Vars),
-    set.to_sorted_list(Vars, VarList),
+    set_of_var.insert_list(ArgVars, GoalVars, Vars),
+    set_of_var.to_sorted_list(Vars, VarList),
     map.init(VarMap0),
     create_varmap(VarList, VarSet, VarTypes, 0, VarMap0, VarMap, VarInfos),
 

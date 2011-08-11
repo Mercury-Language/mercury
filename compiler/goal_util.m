@@ -28,6 +28,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module list.
@@ -97,13 +98,13 @@
     % if you have a way to do it *without* calling the predicate, you will
     % probably want to it that way.
     %
-:- pred goal_vars(hlds_goal::in, set(prog_var)::out) is det.
+:- pred goal_vars(hlds_goal::in, set_of_progvar::out) is det.
 
     % Do the same job as goal_vars, but for a list of goals, and adding
     % the goal's variables to the accumulator.
     %
 :- pred goals_goal_vars(list(hlds_goal)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
     % Return all the variables in a generic call.
     %
@@ -536,21 +537,21 @@ clone_variables([Var | Vars], OldVarNames, OldVarTypes, !VarSet, !VarTypes,
 %-----------------------------------------------------------------------------%
 
 goal_vars(Goal, !:Set) :-
-    set.init(!:Set),
+    !:Set = set_of_var.init,
     goal_vars_2(Goal, !Set).
 
-:- pred goal_vars_2(hlds_goal::in, set(prog_var)::in, set(prog_var)::out)
+:- pred goal_vars_2(hlds_goal::in, set_of_progvar::in, set_of_progvar::out)
     is det.
 
 goal_vars_2(Goal, !Set) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = unify(Var, RHS, _, Unif, _),
-        set.insert(Var, !Set),
+        set_of_var.insert(Var, !Set),
         (
             Unif = construct(_, _, _, _, CellToReuse, _, _),
             ( CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) ->
-                set.insert(Var, !Set)
+                set_of_var.insert(Var, !Set)
             ;
                 true
             )
@@ -567,11 +568,11 @@ goal_vars_2(Goal, !Set) :-
     ;
         GoalExpr = generic_call(GenericCall, ArgVars, _, _),
         generic_call_vars(GenericCall, GenericCallVars),
-        set.insert_list(GenericCallVars, !Set),
-        set.insert_list(ArgVars, !Set)
+        set_of_var.insert_list(GenericCallVars, !Set),
+        set_of_var.insert_list(ArgVars, !Set)
     ;
         GoalExpr = plain_call(_, _, ArgVars, _, _, _),
-        set.insert_list(ArgVars, !Set)
+        set_of_var.insert_list(ArgVars, !Set)
     ;
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
@@ -579,22 +580,22 @@ goal_vars_2(Goal, !Set) :-
         goals_goal_vars(Goals, !Set)
     ;
         GoalExpr = switch(Var, _Det, Cases),
-        set.insert(Var, !Set),
+        set_of_var.insert(Var, !Set),
         cases_goal_vars(Cases, !Set)
     ;
         GoalExpr = scope(Reason, SubGoal),
         (
             Reason = exist_quant(Vars),
-            set.insert_list(Vars, !Set)
+            set_of_var.insert_list(Vars, !Set)
         ;
             Reason = promise_solutions(Vars, _),
-            set.insert_list(Vars, !Set)
+            set_of_var.insert_list(Vars, !Set)
         ;
             Reason = from_ground_term(Var, _),
-            set.insert(Var, !Set)
+            set_of_var.insert(Var, !Set)
         ;
             Reason = require_complete_switch(Var),
-            set.insert(Var, !Set)
+            set_of_var.insert(Var, !Set)
         ;
             ( Reason = promise_purity(_)
             ; Reason = require_detism(_)
@@ -609,7 +610,7 @@ goal_vars_2(Goal, !Set) :-
         goal_vars_2(SubGoal, !Set)
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
-        set.insert_list(Vars, !Set),
+        set_of_var.insert_list(Vars, !Set),
         goal_vars_2(Cond, !Set),
         goal_vars_2(Then, !Set),
         goal_vars_2(Else, !Set)
@@ -617,24 +618,24 @@ goal_vars_2(Goal, !Set) :-
         GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
         ArgVars = list.map(foreign_arg_var, Args),
         ExtraVars = list.map(foreign_arg_var, ExtraArgs),
-        set.insert_list(ArgVars, !Set),
-        set.insert_list(ExtraVars, !Set)
+        set_of_var.insert_list(ArgVars, !Set),
+        set_of_var.insert_list(ExtraVars, !Set)
     ;
         GoalExpr = shorthand(Shorthand),
         (
             Shorthand = atomic_goal(_, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, _),
             Outer = atomic_interface_vars(OuterDI, OuterUO),
-            set.insert(OuterDI, !Set),
-            set.insert(OuterUO, !Set),
+            set_of_var.insert(OuterDI, !Set),
+            set_of_var.insert(OuterUO, !Set),
             Inner = atomic_interface_vars(InnerDI, InnerUO),
-            set.insert(InnerDI, !Set),
-            set.insert(InnerUO, !Set),
+            set_of_var.insert(InnerDI, !Set),
+            set_of_var.insert(InnerUO, !Set),
             (
                 MaybeOutputVars = no
             ;
                 MaybeOutputVars = yes(OutputVars),
-                set.insert_list(OutputVars, !Set)
+                set_of_var.insert_list(OutputVars, !Set)
             ),
             goal_vars_2(MainGoal, !Set),
             goals_goal_vars(OrElseGoals, !Set)
@@ -655,7 +656,7 @@ goals_goal_vars([Goal | Goals], !Set) :-
     goals_goal_vars(Goals, !Set).
 
 :- pred cases_goal_vars(list(case)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 cases_goal_vars([], !Set).
 cases_goal_vars([case(_, _, Goal) | Cases], !Set) :-
@@ -663,18 +664,18 @@ cases_goal_vars([case(_, _, Goal) | Cases], !Set) :-
     cases_goal_vars(Cases, !Set).
 
 :- pred rhs_goal_vars(unify_rhs::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 rhs_goal_vars(RHS, !Set) :-
     RHS = rhs_var(X),
-    set.insert(X, !Set).
+    set_of_var.insert(X, !Set).
 rhs_goal_vars(RHS, !Set) :-
     RHS = rhs_functor(_Functor, _, ArgVars),
-    set.insert_list(ArgVars, !Set).
+    set_of_var.insert_list(ArgVars, !Set).
 rhs_goal_vars(RHS, !Set) :-
     RHS = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal),
-    set.insert_list(NonLocals, !Set),
-    set.insert_list(LambdaVars, !Set),
+    set_of_var.insert_list(NonLocals, !Set),
+    set_of_var.insert_list(LambdaVars, !Set),
     goal_vars_2(Goal, !Set).
 
 generic_call_vars(higher_order(Var, _, _, _), [Var]).

@@ -132,6 +132,7 @@
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module int.
@@ -1074,9 +1075,9 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             % to the proper set of nonlocal arguments.
             some [!LambdaGoalVars] (
                 goal_util.goal_vars(HLDS_Goal, !:LambdaGoalVars),
-                set.delete_list(LambdaVars, !LambdaGoalVars),
-                set.delete_list(QuantifiedVars, !LambdaGoalVars),
-                LambdaNonLocals = set.to_sorted_list(!.LambdaGoalVars)
+                set_of_var.delete_list(LambdaVars, !LambdaGoalVars),
+                set_of_var.delete_list(QuantifiedVars, !LambdaGoalVars),
+                LambdaNonLocals = set_of_var.to_sorted_list(!.LambdaGoalVars)
             ),
 
             LambdaRHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,

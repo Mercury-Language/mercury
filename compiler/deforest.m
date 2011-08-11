@@ -66,6 +66,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.inlining.
 :- import_module transform_hlds.pd_cost.
@@ -1156,10 +1157,10 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
                 CalledProcInfo1),
             proc_info_get_goal(CalledProcInfo1, CalledGoal1),
             goal_util.goal_vars(CalledGoal1, GoalVars1),
-            set.to_sorted_list(GoalVars1, GoalVarsList1),
-            set.init(GoalVars2),
+            set_of_var.to_sorted_list(GoalVars1, GoalVarsList1),
+            set_of_var.init(GoalVars2),
             goal_util.goals_goal_vars(BetweenGoals, GoalVars2, GoalVars3),
-            set.to_sorted_list(GoalVars3, GoalVarsList3),
+            set_of_var.to_sorted_list(GoalVars3, GoalVarsList3),
 
             list.length(GoalVarsList1, NumVars1),
             list.length(GoalVarsList3, NumVars3),
@@ -1543,7 +1544,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
     map.from_corresponding_lists(FirstVersionArgs, FirstArgs, FirstRenaming0),
 
     goal_util.goal_vars(FirstVersionGoal, FirstVersionVars0),
-    set.to_sorted_list(FirstVersionVars0, FirstVersionVars),
+    set_of_var.to_sorted_list(FirstVersionVars0, FirstVersionVars),
 
     module_info_pred_proc_info(ModuleInfo, FirstPredId, FirstProcId,
         _, FirstProcInfo),
