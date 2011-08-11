@@ -18,7 +18,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.quantification.
-:- import_module libs.globals.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -37,7 +36,7 @@
     % but occur more than once, or about variables that do not occur in
     % C code strings when they should.
     %
-:- pred warn_singletons(prog_varset::in, simple_call_id::in, module_info::in,
+:- pred warn_singletons(module_info::in, simple_call_id::in, prog_varset::in,
     hlds_goal::in, list(error_spec)::in, list(error_spec)::out) is det.
 
     % warn_singletons_in_pragma_foreign_proc checks to see if each variable
@@ -48,10 +47,11 @@
     % to do this check, or you may need to add a transformation to map
     % Mercury variable names into identifiers for that foreign language).
     %
-:- pred warn_singletons_in_pragma_foreign_proc(pragma_foreign_code_impl::in,
-    foreign_language::in, list(maybe(pair(string, mer_mode)))::in,
-    prog_context::in, simple_call_id::in, pred_id::in, proc_id::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred warn_singletons_in_pragma_foreign_proc(module_info::in,
+    pragma_foreign_code_impl::in, foreign_language::in,
+    list(maybe(pair(string, mer_mode)))::in, prog_context::in,
+    simple_call_id::in, pred_id::in, proc_id::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % This predicate performs the following checks on promise ex declarations
     % (see notes/promise_ex.html).
@@ -72,6 +72,7 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_out.
@@ -114,34 +115,104 @@ warn_overlap_to_spec(VarSet, PredCallId, Warn) = Spec :-
 
 %-----------------------------------------------------------------------------%
 
-warn_singletons(VarSet, PredCallId, ModuleInfo, Body, !Specs) :-
-    set.init(QuantVars),
-    warn_singletons_in_goal(Body, QuantVars, VarSet, PredCallId,
-        ModuleInfo, !Specs).
+warn_singletons(ModuleInfo, PredCallId, VarSet, Body, !Specs) :-
+    % We handle warnings about variables in the clause head specially.
+    % This is because the compiler transforms clause heads such as
+    %
+    % p(X, Y, Z) :- ...
+    %
+    % into
+    %
+    % p(HV1, HV2, HV3) :- HV1 = X, HV2 = Y, HV3 = Z, ...
+    %
+    % If more than one of the head variables is a singleton, programmers
+    % would expect a single warning naming them all, since to programmers,
+    % everything in the clause head is part of the same scope, but for the
+    % compiler, the singleton nature of e.g. Y is detected in its own scope,
+    % to wit, the HV2 = Y unification.
+    %
+    % Even though we discover the singleton nature of e.g. Y in that
+    % unification, we don't generate a warning for that scope. Instead,
+    % we gather all the singleton variables in the head, and generate a single
+    % message for them all here.
+    %
+    % We also do the same thing for variables whose names indicate they should
+    % be singletons, but aren't.
+
+    Info0 = warn_info(ModuleInfo, PredCallId, VarSet,
+        [], set.init, set.init, context_init),
+    QuantVars = set.init,
+    warn_singletons_in_goal(Body, QuantVars, Info0, Info),
+    Info = warn_info(_ModuleInfo, _PredCallId, _VarSet,
+        NewSpecs, SingletonHeadVarsSet, MultiHeadVarsSet, HeadContext),
+    !:Specs = NewSpecs ++ !.Specs,
+    set.to_sorted_list(SingletonHeadVarsSet, SingletonHeadVars),
+    set.to_sorted_list(MultiHeadVarsSet, MultiHeadVars),
+    (
+        SingletonHeadVars = []
+    ;
+        SingletonHeadVars = [_ | _],
+        generate_variable_warning(sm_single, HeadContext, PredCallId, VarSet,
+            SingletonHeadVars, SingleSpec),
+        !:Specs = [SingleSpec | !.Specs]
+    ),
+    (
+        MultiHeadVars = []
+    ;
+        MultiHeadVars = [_ | _],
+        generate_variable_warning(sm_multi, HeadContext, PredCallId, VarSet,
+            MultiHeadVars, MultiSpec),
+        !:Specs = [MultiSpec | !.Specs]
+    ).
+
+:- type warn_info
+    --->    warn_info(
+                % The current module.
+                wi_module_info          :: module_info,
+
+                % The id and the varset of the procedure whose body
+                % we are checking.
+                wi_pred_call_id         :: simple_call_id,
+                wi_varset               :: prog_varset,
+
+                % The warnings we have generated while checking.
+                wi_specs                :: list(error_spec),
+
+                % The set of variables that occur singleton in the clause head.
+                wi_singleton_headvars   :: set(prog_var),
+
+                % The set of variables that occur more than once in the clause
+                % head, even though their names say they SHOULD be singletons.
+                wi_multi_headvars       :: set(prog_var),
+
+                % The context of the clause head. Should be set to a meaningful
+                % value if either wi_singleton_headvars or wi_multi_headvars
+                % is not empty.
+                %
+                % It is possible for the clause head to occupy more than one
+                % line, and thus for different parts of it to have different
+                % contexts. Since we want to generate only a single error_spec,
+                % we arbitrarily pick the context of one of those variables.
+                wi_head_context         :: prog_context
+            ).
 
 :- pred warn_singletons_in_goal(hlds_goal::in, set(prog_var)::in,
-    prog_varset::in, simple_call_id::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    warn_info::in, warn_info::out) is det.
 
-warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
-        !Specs) :-
+warn_singletons_in_goal(Goal, QuantVars, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = conj(_ConjType, Goals),
-        warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId,
-            ModuleInfo, !Specs)
+        warn_singletons_in_goal_list(Goals, QuantVars, !Info)
     ;
         GoalExpr = disj(Goals),
-        warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId,
-            ModuleInfo, !Specs)
+        warn_singletons_in_goal_list(Goals, QuantVars, !Info)
     ;
         GoalExpr = switch(_Var, _CanFail, Cases),
-        warn_singletons_in_cases(Cases, QuantVars, VarSet, PredCallId,
-            ModuleInfo, !Specs)
+        warn_singletons_in_cases(Cases, QuantVars, !Info)
     ;
         GoalExpr = negation(SubGoal),
-        warn_singletons_in_goal(SubGoal, QuantVars, VarSet, PredCallId,
-            ModuleInfo, !Specs)
+        warn_singletons_in_goal(SubGoal, QuantVars, !Info)
     ;
         GoalExpr = scope(Reason, SubGoal),
         % Warn if any quantified variables occur only in the quantifier.
@@ -153,15 +224,14 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
                 Vars = [_ | _],
                 SubGoalVars = free_goal_vars(SubGoal),
                 set.init(EmptySet),
-                warn_singletons_goal_vars(Vars, GoalInfo, EmptySet, SubGoalVars,
-                    VarSet, PredCallId, !Specs),
+                warn_singletons_goal_vars(Vars, GoalInfo, EmptySet,
+                    SubGoalVars, !Info),
                 set.insert_list(Vars, QuantVars, SubQuantVars)
             ;
                 Vars = [],
                 SubQuantVars = QuantVars
             ),
-            warn_singletons_in_goal(SubGoal, SubQuantVars, VarSet, PredCallId,
-                ModuleInfo, !Specs)
+            warn_singletons_in_goal(SubGoal, SubQuantVars, !Info)
         ;
             ( Reason = promise_purity(_)
             ; Reason = require_detism(_)
@@ -170,17 +240,16 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
             ),
-            warn_singletons_in_goal(SubGoal, QuantVars, VarSet, PredCallId,
-                ModuleInfo, !Specs)
+            warn_singletons_in_goal(SubGoal, QuantVars, !Info)
         ;
             Reason = from_ground_term(TermVar, _Kind),
             % There can be no singleton variables inside the scopes by
-            % construction. The only variable involved in the scope
-            % that can possibly be singleton is the one representing the entire
+            % construction. The only variable involved in the scope that
+            % can possibly be singleton is the one representing the entire
             % ground term.
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             warn_singletons_goal_vars([TermVar], GoalInfo, NonLocals,
-                QuantVars, VarSet, PredCallId, !Specs)
+                QuantVars, !Info)
         )
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
@@ -194,41 +263,37 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
             set.union(CondVars, ThenVars, CondThenVars),
             set.init(EmptySet),
             warn_singletons_goal_vars(Vars, GoalInfo, EmptySet, CondThenVars,
-                VarSet, PredCallId, !Specs)
+                !Info)
         ;
             Vars = []
         ),
         set.insert_list(Vars, QuantVars, CondThenQuantVars),
-        warn_singletons_in_goal(Cond, CondThenQuantVars, VarSet, PredCallId,
-            ModuleInfo, !Specs),
-        warn_singletons_in_goal(Then, CondThenQuantVars, VarSet, PredCallId,
-            ModuleInfo, !Specs),
-        warn_singletons_in_goal(Else, QuantVars, VarSet, PredCallId,
-            ModuleInfo, !Specs)
+        warn_singletons_in_goal(Cond, CondThenQuantVars, !Info),
+        warn_singletons_in_goal(Then, CondThenQuantVars, !Info),
+        warn_singletons_in_goal(Else, QuantVars, !Info)
     ;
         GoalExpr = plain_call(_, _, Args, _, _, _),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
-        warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, VarSet,
-            PredCallId, !Specs)
+        warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, !Info)
     ;
         GoalExpr = generic_call(GenericCall, Args0, _, _),
         goal_util.generic_call_vars(GenericCall, Args1),
-        list.append(Args0, Args1, Args),
+        Args = Args0 ++ Args1,
         NonLocals = goal_info_get_nonlocals(GoalInfo),
-        warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, VarSet,
-            PredCallId, !Specs)
+        warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, !Info)
     ;
         GoalExpr = unify(Var, RHS, _, _, _),
-        warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
-            PredCallId, ModuleInfo, !Specs)
+        warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, !Info)
     ;
         GoalExpr = call_foreign_proc(Attrs, PredId, ProcId, Args, _, _,
             PragmaImpl),
         Context = goal_info_get_context(GoalInfo),
         Lang = get_foreign_language(Attrs),
         NamesModes = list.map(foreign_arg_maybe_name_mode, Args),
-        warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
-            NamesModes, Context, PredCallId, PredId, ProcId, ModuleInfo, !Specs)
+        warn_singletons_in_pragma_foreign_proc(!.Info ^ wi_module_info,
+            PragmaImpl, Lang, NamesModes, Context, !.Info ^ wi_pred_call_id,
+            PredId, ProcId, [], PragmaSpecs),
+        list.foldl(add_warn_spec, PragmaSpecs, !Info)
     ;
         GoalExpr = shorthand(ShortHand),
         (
@@ -238,79 +303,66 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
                 _MaybeOutputVars, MainGoal, OrElseGoals, _OrElseInners),
             Inner = atomic_interface_vars(InnerDI, InnerUO),
             set.insert_list([InnerDI, InnerUO], QuantVars, InsideQuantVars),
-            warn_singletons_in_goal(MainGoal, InsideQuantVars, VarSet,
-                PredCallId, ModuleInfo, !Specs),
-            warn_singletons_in_goal_list(OrElseGoals, InsideQuantVars, VarSet,
-                PredCallId, ModuleInfo, !Specs)
+            warn_singletons_in_goal(MainGoal, InsideQuantVars, !Info),
+            warn_singletons_in_goal_list(OrElseGoals, InsideQuantVars, !Info)
         ;
             ShortHand = try_goal(_, _, SubGoal),
-            warn_singletons_in_goal(SubGoal, QuantVars, VarSet,
-                PredCallId, ModuleInfo, !Specs)
+            warn_singletons_in_goal(SubGoal, QuantVars, !Info)
         ;
             ShortHand = bi_implication(GoalA, GoalB),
-            warn_singletons_in_goal_list([GoalA, GoalB], QuantVars, VarSet,
-                PredCallId, ModuleInfo, !Specs)
+            warn_singletons_in_goal_list([GoalA, GoalB], QuantVars, !Info)
         )
     ).
 
 :- pred warn_singletons_in_goal_list(list(hlds_goal)::in, set(prog_var)::in,
-    prog_varset::in, simple_call_id::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    warn_info::in, warn_info::out) is det.
 
-warn_singletons_in_goal_list([], _, _, _, _, !Specs).
-warn_singletons_in_goal_list([Goal | Goals], QuantVars, VarSet, CallPredId,
-        ModuleInfo, !Specs) :-
-    warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId,
-        ModuleInfo, !Specs),
-    warn_singletons_in_goal_list(Goals, QuantVars, VarSet, CallPredId,
-        ModuleInfo, !Specs).
+warn_singletons_in_goal_list([], _, !Info).
+warn_singletons_in_goal_list([Goal | Goals], QuantVars, !Info) :-
+    warn_singletons_in_goal(Goal, QuantVars, !Info),
+    warn_singletons_in_goal_list(Goals, QuantVars, !Info).
 
 :- pred warn_singletons_in_cases(list(case)::in, set(prog_var)::in,
-    prog_varset::in, simple_call_id::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    warn_info::in, warn_info::out) is det.
 
-warn_singletons_in_cases([], _, _, _, _, !IO).
-warn_singletons_in_cases([Case | Cases], QuantVars, VarSet, CallPredId,
-        ModuleInfo, !Specs) :-
+warn_singletons_in_cases([], _, !Info).
+warn_singletons_in_cases([Case | Cases], QuantVars, !Info) :-
     Case = case(_MainConsId, _OtherConsIds, Goal),
-    warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId,
-        ModuleInfo, !Specs),
-    warn_singletons_in_cases(Cases, QuantVars, VarSet, CallPredId,
-        ModuleInfo, !Specs).
+    warn_singletons_in_goal(Goal, QuantVars, !Info),
+    warn_singletons_in_cases(Cases, QuantVars, !Info).
 
-:- pred warn_singletons_in_unify(prog_var::in, unify_rhs::in,
-    hlds_goal_info::in, set(prog_var)::in, prog_varset::in,
-    simple_call_id::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred warn_singletons_in_unify(prog_var::in,
+    unify_rhs::in, hlds_goal_info::in, set(prog_var)::in,
+    warn_info::in, warn_info::out) is det.
 
-warn_singletons_in_unify(X, rhs_var(Y), GoalInfo, QuantVars, VarSet,
-        CallPredId, _, !Specs) :-
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    warn_singletons_goal_vars([X, Y], GoalInfo, NonLocals, QuantVars,
-        VarSet, CallPredId, !Specs).
-warn_singletons_in_unify(X, rhs_functor(_ConsId, _, Vars), GoalInfo,
-        QuantVars, VarSet, CallPredId, _, !Specs) :-
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    warn_singletons_goal_vars([X | Vars], GoalInfo, NonLocals, QuantVars,
-        VarSet, CallPredId, !Specs).
-warn_singletons_in_unify(X, rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
-        _Eval, _NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
-        GoalInfo, QuantVars, VarSet, CallPredId, ModuleInfo, !Specs) :-
-    % Warn if any lambda-quantified variables occur only in the quantifier.
-    LambdaGoal = hlds_goal(_, LambdaGoalInfo),
-    LambdaNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
-    warn_singletons_goal_vars(LambdaVars, GoalInfo, LambdaNonLocals, QuantVars,
-        VarSet, CallPredId, !Specs),
+warn_singletons_in_unify(X, RHS, GoalInfo, QuantVars, !Info) :-
+    (
+        RHS = rhs_var(Y),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        warn_singletons_goal_vars([X, Y], GoalInfo, NonLocals, QuantVars,
+            !Info)
+    ;
+        RHS = rhs_functor(_ConsId, _, Ys),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        warn_singletons_goal_vars([X | Ys], GoalInfo, NonLocals, QuantVars,
+            !Info)
+    ;
+        RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
+            _Eval, _NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
+        % Warn if any lambda-quantified variables occur only in the quantifier.
+        LambdaGoal = hlds_goal(_, LambdaGoalInfo),
+        LambdaNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
+        warn_singletons_goal_vars(LambdaVars, GoalInfo, LambdaNonLocals,
+            QuantVars, !Info),
 
-    % Warn if X (the variable we're unifying the lambda expression with)
-    % is singleton.
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    warn_singletons_goal_vars([X], GoalInfo, NonLocals, QuantVars,
-        VarSet, CallPredId, !Specs),
+        % Warn if X (the variable we're unifying the lambda expression with)
+        % is singleton.
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        warn_singletons_goal_vars([X], GoalInfo, NonLocals, QuantVars, !Info),
 
-    % Warn if the lambda-goal contains singletons.
-    warn_singletons_in_goal(LambdaGoal, QuantVars, VarSet, CallPredId,
-        ModuleInfo, !Specs).
+        % Warn if the lambda-goal contains singletons.
+        warn_singletons_in_goal(LambdaGoal, QuantVars, !Info)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -321,51 +373,41 @@ warn_singletons_in_unify(X, rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
     % or if any of the underscore variables in Vars do occur in NonLocals.
     % Omit the warning if GoalInfo says we should.
     %
-:- pred warn_singletons_goal_vars(list(prog_var)::in, hlds_goal_info::in,
-    set(prog_var)::in, set(prog_var)::in, prog_varset::in, simple_call_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred warn_singletons_goal_vars(list(prog_var)::in,
+    hlds_goal_info::in, set(prog_var)::in, set(prog_var)::in,
+    warn_info::in, warn_info::out) is det.
 
-warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
-        PredOrFuncCallId, !Specs) :-
+warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
     % Find all the variables in the goal that don't occur outside the goal
     % (i.e. are singleton), have a variable name that doesn't start with "_"
     % or "DCG_", and don't have the same name as any variable in QuantVars
     % (i.e. weren't explicitly quantified).
+
+    VarSet = !.Info ^ wi_varset,
+    CallId = !.Info ^ wi_pred_call_id,
+    Context = goal_info_get_context(GoalInfo),
 
     list.filter(is_singleton_var(NonLocals, QuantVars, VarSet), GoalVars,
         SingleVars),
 
     % If there were any such variables, issue a warning.
     (
-        (
-            SingleVars = []
-        ;
-            goal_info_has_feature(GoalInfo, feature_dont_warn_singleton)
+        ( SingleVars = []
+        ; goal_info_has_feature(GoalInfo, feature_dont_warn_singleton)
         )
     ->
         true
     ;
-        SinglesPreamble = [words("In clause for"),
-            simple_call(PredOrFuncCallId), suffix(":"), nl],
-        SingleVarStrs0 = list.map(mercury_var_to_string(VarSet, no),
-            SingleVars),
-        list.sort_and_remove_dups(SingleVarStrs0, SingleVarStrs),
-        SingleVarsPiece = quote(string.join_list(", ", SingleVarStrs)),
-        ( SingleVarStrs = [_] ->
-            SinglesPieces = [words("warning: variable"), SingleVarsPiece,
-                words("occurs only once in this scope."), nl]
+        ( goal_info_has_feature(GoalInfo, feature_from_head) ->
+            SingleHeadVars0 = !.Info ^ wi_singleton_headvars,
+            set.insert_list(SingleVars, SingleHeadVars0, SingleHeadVars),
+            !Info ^ wi_singleton_headvars := SingleHeadVars,
+            !Info ^ wi_head_context := goal_info_get_context(GoalInfo)
         ;
-            SinglesPieces = [words("warning: variables"), SingleVarsPiece,
-                words("occur only once in this scope."), nl]
-        ),
-        SinglesMsg = simple_msg(goal_info_get_context(GoalInfo),
-            [option_is_set(warn_singleton_vars, yes,
-                [always(SinglesPreamble ++ SinglesPieces)])]),
-        SingleSeverity = severity_conditional(warn_singleton_vars, yes,
-            severity_warning, no),
-        SinglesSpec = error_spec(SingleSeverity, phase_parse_tree_to_hlds,
-            [SinglesMsg]),
-        !:Specs = [SinglesSpec | !.Specs]
+            generate_variable_warning(sm_single, Context, CallId, VarSet,
+                SingleVars, SingleSpec),
+            add_warn_spec(SingleSpec, !Info)
+        )
     ),
 
     % Find all the variables in the goal that do occur outside the goal
@@ -377,33 +419,63 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
         MultiVars = []
     ;
         MultiVars = [_ | _],
-        MultiPreamble = [words("In clause for"),
-            simple_call(PredOrFuncCallId), suffix(":"), nl],
-        MultiVarStrs0 = list.map(mercury_var_to_string(VarSet, no),
-            MultiVars),
-        list.sort_and_remove_dups(MultiVarStrs0, MultiVarStrs),
-        MultiVarsPiece = quote(string.join_list(", ", MultiVarStrs)),
-        ( MultiVarStrs = [_] ->
-            MultiPieces = [words("warning: variable"), MultiVarsPiece,
-                words("occurs more than once in this scope."), nl]
+        ( goal_info_has_feature(GoalInfo, feature_from_head) ->
+            MultiHeadVars0 = !.Info ^ wi_multi_headvars,
+            set.insert_list(MultiVars, MultiHeadVars0, MultiHeadVars),
+            !Info ^ wi_multi_headvars := MultiHeadVars,
+            !Info ^ wi_head_context := goal_info_get_context(GoalInfo)
         ;
-            MultiPieces = [words("warning: variables"), MultiVarsPiece,
-                words("occur more than once in this scope."), nl]
-        ),
-        MultiMsg = simple_msg(goal_info_get_context(GoalInfo),
-            [option_is_set(warn_singleton_vars, yes,
-                [always(MultiPreamble ++ MultiPieces)])]),
-        MultiSeverity = severity_conditional(warn_singleton_vars, yes,
-            severity_warning, no),
-        MultiSpec = error_spec(MultiSeverity, phase_parse_tree_to_hlds,
-            [MultiMsg]),
-        !:Specs = [MultiSpec | !.Specs]
+            generate_variable_warning(sm_multi, Context, CallId, VarSet,
+                MultiVars, MultiSpec),
+            add_warn_spec(MultiSpec, !Info)
+        )
     ).
+
+:- type single_or_multi
+    --->    sm_single
+    ;       sm_multi.
+
+:- pred generate_variable_warning(single_or_multi::in, prog_context::in,
+    simple_call_id::in, prog_varset::in, list(prog_var)::in, error_spec::out)
+    is det.
+
+generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
+    (
+        SingleMulti = sm_single,
+        Count = "only once"
+    ;
+        SingleMulti = sm_multi,
+        Count = "more than once"
+    ),
+    Preamble = [words("In clause for"), simple_call(CallId), suffix(":"), nl],
+    VarStrs0 = list.map(mercury_var_to_string(VarSet, no), Vars),
+    list.sort_and_remove_dups(VarStrs0, VarStrs),
+    VarsPiece = quote(string.join_list(", ", VarStrs)),
+    ( VarStrs = [_] ->
+        Pieces = [words("warning: variable"), VarsPiece,
+            words("occurs"), words(Count), words("in this scope."), nl]
+    ;
+        Pieces = [words("warning: variables"), VarsPiece,
+            words("occur"), words(Count), words("in this scope."), nl]
+    ),
+    Msg = simple_msg(Context,
+        [option_is_set(warn_singleton_vars, yes,
+            [always(Preamble ++ Pieces)])]),
+    Severity = severity_conditional(warn_singleton_vars, yes,
+        severity_warning, no),
+    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]).
+
+:- pred add_warn_spec(error_spec::in, warn_info::in, warn_info::out) is det.
+
+add_warn_spec(Spec, !Info) :-
+    Specs0 = !.Info ^ wi_specs,
+    Specs = [Spec | Specs0],
+    !Info ^ wi_specs := Specs.
 
 %-----------------------------------------------------------------------------%
 
-warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
-        PredOrFuncCallId, PredId, ProcId, ModuleInfo, !Specs) :-
+warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
+        Args, Context, SimpleCallId, PredId, ProcId, !Specs) :-
     LangStr = foreign_language_string(Lang),
     PragmaImpl = fc_impl_ordinary(C_Code, _),
     c_code_to_name_list(C_Code, C_CodeList),
@@ -412,21 +484,19 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         UnmentionedVars = []
     ;
         UnmentionedVars = [_ | _],
-        Pieces1 = [words("In the"), words(LangStr), words("code for"),
-            simple_call(PredOrFuncCallId), suffix(":"), nl] ++
+        Pieces = [words("In the"), words(LangStr), words("code for"),
+            simple_call(SimpleCallId), suffix(":"), nl] ++
             variable_warning_start(UnmentionedVars) ++
-            [words("not occur in the"), words(LangStr), words("code."),
-            nl],
-        Msg1 = simple_msg(Context,
-            [option_is_set(warn_singleton_vars, yes, [always(Pieces1)])]),
-        Severity1 = severity_conditional(warn_singleton_vars, yes,
+            [words("not occur in the"), words(LangStr), words("code."), nl],
+        Msg = simple_msg(Context,
+            [option_is_set(warn_singleton_vars, yes, [always(Pieces)])]),
+        Severity = severity_conditional(warn_singleton_vars, yes,
             severity_warning, no),
-        Spec1 = error_spec(Severity1, phase_parse_tree_to_hlds,
-            [Msg1]),
-        !:Specs = [Spec1 | !.Specs]
+        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ),
-    pragma_foreign_proc_body_checks(Lang, Context, PredOrFuncCallId,
-        PredId, ProcId, ModuleInfo, C_CodeList, !Specs).
+    pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, SimpleCallId,
+        PredId, ProcId, C_CodeList, !Specs).
 
 :- pred var_is_unmentioned(list(string)::in, maybe(pair(string, mer_mode))::in,
     string::out) is semidet.
@@ -542,13 +612,12 @@ is_multi_var(NonLocals, VarSet, Var) :-
     varset.search_name(VarSet, Var, Name),
     string.prefix(Name, "_").
 
-:- pred pragma_foreign_proc_body_checks(foreign_language::in,
+:- pred pragma_foreign_proc_body_checks(module_info::in, foreign_language::in,
     prog_context::in, simple_call_id::in, pred_id::in, proc_id::in,
-    module_info::in, list(string)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-pragma_foreign_proc_body_checks(Lang, Context, PredOrFuncCallId, PredId, ProcId,
-        ModuleInfo, BodyPieces, !Specs) :-
+pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, SimpleCallId,
+        PredId, ProcId, BodyPieces, !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
     IsImported = status_is_imported(ImportStatus),
@@ -556,19 +625,19 @@ pragma_foreign_proc_body_checks(Lang, Context, PredOrFuncCallId, PredId, ProcId,
         IsImported = yes
     ;
         IsImported = no,
-        check_fp_body_for_success_indicator(Lang, Context, PredOrFuncCallId,
-            PredId, ProcId, ModuleInfo, BodyPieces, !Specs),
-        check_fp_body_for_return(Lang, Context, PredOrFuncCallId, BodyPieces,
+        check_fp_body_for_success_indicator(ModuleInfo, Lang, Context,
+            SimpleCallId, PredId, ProcId, BodyPieces, !Specs),
+        check_fp_body_for_return(Lang, Context, SimpleCallId, BodyPieces,
             !Specs)
     ).
 
-:- pred check_fp_body_for_success_indicator(foreign_language::in,
-    prog_context::in, simple_call_id::in, pred_id::in, proc_id::in,
-    module_info::in, list(string)::in,
+:- pred check_fp_body_for_success_indicator(module_info::in,
+    foreign_language::in, prog_context::in, simple_call_id::in,
+    pred_id::in, proc_id::in, list(string)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_fp_body_for_success_indicator(Lang, Context, CallId, PredId, ProcId,
-        ModuleInfo, BodyPieces, !Specs) :-
+check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, SimpleCallId,
+        PredId, ProcId, BodyPieces, !Specs) :-
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
     proc_info_get_declared_determinism(ProcInfo, MaybeDeclDetism),
     (
@@ -580,68 +649,61 @@ check_fp_body_for_success_indicator(Lang, Context, CallId, PredId, ProcId,
             ; Lang = lang_java
             ),
             SuccIndStr = "SUCCESS_INDICATOR",
-            ( if    list.member(SuccIndStr, BodyPieces)
-              then
+            (
+                ( Detism = detism_det
+                ; Detism = detism_cc_multi
+                ; Detism = detism_erroneous
+                ),
+                ( list.member(SuccIndStr, BodyPieces) ->
                     LangStr = foreign_language_string(Lang),
-                    (
-                        ( Detism = detism_det
-                        ; Detism = detism_cc_multi
-                        ; Detism = detism_erroneous
-                        ),
-                        Pieces = [
-                            words("warning: the "), fixed(LangStr),
-                            words("code for"), simple_call(CallId),
-                            words("may set"), quote(SuccIndStr),
-                            words(", but it cannot fail.")
-                        ],
-                        Msg = simple_msg(Context,
-                            [option_is_set(warn_suspicious_foreign_procs, yes,
-                                [always(Pieces)])]),
-                        Severity = severity_conditional(
-                            warn_suspicious_foreign_procs, yes,
-                            severity_warning, no),
-                        Spec = error_spec(Severity, phase_parse_tree_to_hlds,
-                            [Msg]),
-                        !:Specs = [Spec | !.Specs]
-                    ;
-                        ( Detism = detism_semi
-                        ; Detism = detism_multi
-                        ; Detism = detism_non
-                        ; Detism = detism_cc_non
-                        ; Detism = detism_failure
-                        )
-                    )
-              else
-                    (
-                        ( Detism = detism_semi
-                        ; Detism = detism_cc_non
-                        ),
-                        LangStr = foreign_language_string(Lang),
-                        Pieces = [
-                            words("warning: the "), fixed(LangStr),
-                            words("code for"), simple_call(CallId),
-                            words("does not appear to set"),
-                            quote(SuccIndStr),
-                            words(", but it can fail.")
-                        ],
-                        Msg = simple_msg(Context,
-                            [option_is_set(warn_suspicious_foreign_procs, yes,
-                                [always(Pieces)])]),
-                        Severity = severity_conditional(
-                            warn_suspicious_foreign_procs, yes,
-                            severity_warning, no),
-                        Spec = error_spec(Severity, phase_parse_tree_to_hlds,
-                            [Msg]),
-                        !:Specs = [Spec | !.Specs]
-                    ;
-                        ( Detism = detism_det
-                        ; Detism = detism_cc_multi
-                        ; Detism = detism_failure
-                        ; Detism = detism_non
-                        ; Detism = detism_multi
-                        ; Detism = detism_erroneous
-                        )
-                    )
+                    Pieces = [
+                        words("warning: the "), fixed(LangStr),
+                        words("code for"), simple_call(SimpleCallId),
+                        words("may set"), quote(SuccIndStr), suffix(","),
+                        words("but it cannot fail.")
+                    ],
+                    Msg = simple_msg(Context,
+                        [option_is_set(warn_suspicious_foreign_procs, yes,
+                            [always(Pieces)])]),
+                    Severity = severity_conditional(
+                        warn_suspicious_foreign_procs, yes,
+                        severity_warning, no),
+                    Spec = error_spec(Severity, phase_parse_tree_to_hlds,
+                        [Msg]),
+                    !:Specs = [Spec | !.Specs]
+                ;
+                    true
+                )
+            ;
+                ( Detism = detism_semi
+                ; Detism = detism_cc_non
+                ),
+                ( list.member(SuccIndStr, BodyPieces) ->
+                    true
+                ;
+                    LangStr = foreign_language_string(Lang),
+                    Pieces = [
+                        words("warning: the "), fixed(LangStr),
+                        words("code for"), simple_call(SimpleCallId),
+                        words("does not appear to set"),
+                        quote(SuccIndStr), suffix(","),
+                        words("but it can fail.")
+                    ],
+                    Msg = simple_msg(Context,
+                        [option_is_set(warn_suspicious_foreign_procs, yes,
+                            [always(Pieces)])]),
+                    Severity = severity_conditional(
+                        warn_suspicious_foreign_procs, yes,
+                        severity_warning, no),
+                    Spec = error_spec(Severity, phase_parse_tree_to_hlds,
+                        [Msg]),
+                    !:Specs = [Spec | !.Specs]
+                )
+            ;
+                ( Detism = detism_multi
+                ; Detism = detism_non
+                ; Detism = detism_failure
+                )
             )
         ;
             Lang = lang_il
@@ -653,59 +715,58 @@ check_fp_body_for_success_indicator(Lang, Context, CallId, PredId, ProcId,
     % Check to see if a foreign_proc body contains a return statement
     % (or whatever the foreign language equivalent is).
     %
-:- pred check_fp_body_for_return(foreign_language::in,
-    prog_context::in, simple_call_id::in, list(string)::in, 
+:- pred check_fp_body_for_return(foreign_language::in, prog_context::in,
+    simple_call_id::in, list(string)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_fp_body_for_return(Lang, Context, Id, BodyPieces, !Specs) :-
+check_fp_body_for_return(Lang, Context, SimpleCallId, BodyPieces, !Specs) :-
     (
         ( Lang = lang_c
         ; Lang = lang_csharp
         ; Lang = lang_java
         ),
-        ( if    list.member("return", BodyPieces)
-          then
-                LangStr = foreign_language_string(Lang),
-                Pieces = [
-                    words("warning: the "), fixed(LangStr), words("code for"),
-                    simple_call(Id),
-                    words("may contain a"), quote("return"),
-                    words("statement.")
-                ],
-                Msg = simple_msg(Context,
-                    [option_is_set(warn_suspicious_foreign_procs, yes,
-                        [always(Pieces)])]
-                ),
-                Severity = severity_conditional(
-                    warn_suspicious_foreign_procs, yes, severity_warning, no),
-                Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-                !:Specs = [Spec | !.Specs]
-          else
-                true
+        ( list.member("return", BodyPieces) ->
+            LangStr = foreign_language_string(Lang),
+            Pieces = [
+                words("warning: the "), fixed(LangStr),
+                words("code for"), simple_call(SimpleCallId),
+                words("may contain a"), quote("return"),
+                words("statement."), nl
+            ],
+            Msg = simple_msg(Context,
+                [option_is_set(warn_suspicious_foreign_procs, yes,
+                    [always(Pieces)])]
+            ),
+            Severity = severity_conditional(
+                warn_suspicious_foreign_procs, yes, severity_warning, no),
+            Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            true
         )
     ;
         Lang = lang_il,
-        ( if    ( list.member("ret", BodyPieces)
-                ; list.member("jmp", BodyPieces)
-                )
-          then
-                Pieces = [
-                    words("warning: the IL code for"),
-                    simple_call(Id),
-                    words("may contain a"), quote("ret"),
-                    words("or"), quote("jmp"),
-                    words("instruction.")
-                ],
-                Msg = simple_msg(Context,
-                    [option_is_set(warn_suspicious_foreign_procs, yes,
-                        [always(Pieces)])]
-                ),
-                Severity = severity_conditional(
-                    warn_suspicious_foreign_procs, yes, severity_warning, no),
-                Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-                !:Specs = [Spec | !.Specs]
-          else
-                true
+        (
+            ( list.member("ret", BodyPieces)
+            ; list.member("jmp", BodyPieces)
+            )
+        ->
+            Pieces = [
+                words("warning: the IL code for"), simple_call(SimpleCallId),
+                words("may contain a"), quote("ret"),
+                words("or"), quote("jmp"),
+                words("instruction."), nl
+            ],
+            Msg = simple_msg(Context,
+                [option_is_set(warn_suspicious_foreign_procs, yes,
+                    [always(Pieces)])]
+            ),
+            Severity = severity_conditional(
+                warn_suspicious_foreign_procs, yes, severity_warning, no),
+            Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            true
         )
     ;
         Lang = lang_erlang
@@ -739,7 +800,7 @@ check_promise_ex_goal(PromiseType, GoalExpr - Context, !Specs) :-
     ; GoalExpr = disj_expr(_, _) ->
         flatten_to_disj_list(GoalExpr - Context, DisjList),
         list.map(flatten_to_conj_list, DisjList, DisjConjList),
-        check_disjunction(PromiseType, DisjConjList, !Specs)
+        check_promise_ex_disjunction(PromiseType, DisjConjList, !Specs)
     ; GoalExpr = all_expr(_UnivVars, Goal) ->
         promise_ex_error(PromiseType, Context,
             "universal quantification should come before " ++
@@ -780,33 +841,34 @@ flatten_to_conj_list(GoalExpr - Context, GoalList) :-
 
     % Taking a list of arms of the disjunction, check each arm individually.
     %
-:- pred check_disjunction(promise_type::in, list(goals)::in,
+:- pred check_promise_ex_disjunction(promise_type::in, list(goals)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_disjunction(PromiseType, DisjConjList, !Specs) :-
+check_promise_ex_disjunction(PromiseType, DisjConjList, !Specs) :-
     (
         DisjConjList = []
     ;
         DisjConjList = [ConjList | Rest],
-        check_disj_arm(PromiseType, ConjList, no, !Specs),
-        check_disjunction(PromiseType, Rest, !Specs)
+        check_promise_ex_disj_arm(PromiseType, ConjList, no, !Specs),
+        check_promise_ex_disjunction(PromiseType, Rest, !Specs)
     ).
 
     % Only one goal in an arm is allowed to be a call, the rest must be
     % unifications.
     %
-:- pred check_disj_arm(promise_type::in, goals::in, bool::in,
+:- pred check_promise_ex_disj_arm(promise_type::in, goals::in, bool::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
+check_promise_ex_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
     (
         Goals = []
     ;
         Goals = [GoalExpr - Context | Rest],
         ( GoalExpr = unify_expr(_, _, _) ->
-            check_disj_arm(PromiseType, Rest, CallUsed, !Specs)
+            check_promise_ex_disj_arm(PromiseType, Rest, CallUsed, !Specs)
         ; GoalExpr = some_expr(_, Goal) ->
-            check_disj_arm(PromiseType, [Goal | Rest], CallUsed, !Specs)
+            check_promise_ex_disj_arm(PromiseType, [Goal | Rest], CallUsed,
+                !Specs)
         ; GoalExpr = call_expr(_, _, _) ->
             (
                 CallUsed = no
@@ -815,11 +877,11 @@ check_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
                 promise_ex_error(PromiseType, Context,
                     "disjunct contains more than one call", !Specs)
             ),
-            check_disj_arm(PromiseType, Rest, yes, !Specs)
+            check_promise_ex_disj_arm(PromiseType, Rest, yes, !Specs)
         ;
             promise_ex_error(PromiseType, Context,
                 "disjunct is not a call or unification", !Specs),
-            check_disj_arm(PromiseType, Rest, CallUsed, !Specs)
+            check_promise_ex_disj_arm(PromiseType, Rest, CallUsed, !Specs)
         )
     ).
 

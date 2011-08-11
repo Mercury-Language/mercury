@@ -275,7 +275,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 ;
                     % Warn about singleton variables.
                     SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
-                    warn_singletons(VarSet, SimpleCallId, !.ModuleInfo, Goal,
+                    warn_singletons(!.ModuleInfo, SimpleCallId, VarSet, Goal,
                         !Specs),
                     % Warn about variables with overlapping scopes.
                     warn_overlap(Warnings, VarSet, SimpleCallId, !Specs)

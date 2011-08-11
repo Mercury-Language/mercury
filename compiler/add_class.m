@@ -679,7 +679,7 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
 
         % Warn about singleton variables.
-        warn_singletons(VarSet, SimpleCallId, !.ModuleInfo, Goal, !Specs),
+        warn_singletons(!.ModuleInfo, SimpleCallId, VarSet, Goal, !Specs),
 
         % Warn about variables with overlapping scopes.
         warn_overlap(Warnings, VarSet, SimpleCallId, !Specs)

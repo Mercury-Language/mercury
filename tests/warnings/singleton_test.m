@@ -15,6 +15,10 @@
 :- mode my_c_pred(in, in, out) is det.
 
 :- pred c_hello_world(string::in, io__state::di, io__state::uo) is det.
+
+:- pred test_head(int::in, int::in, int::in, int::in, int::out, int::out)
+	is det.
+
 :- implementation.
 :- import_module int.
 
@@ -82,3 +86,5 @@ my_append_func([H | T], L) = [H | my_append_func(L, L)].
 	io:format(""Hello, world""),
 	IO = IO0
 ").
+
+test_head(A, B, C, _D, C, _D).

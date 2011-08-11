@@ -2224,9 +2224,9 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                 module_info_set_predicate_table(PredTable, !ModuleInfo),
                 pragma_get_var_infos(PVars, ArgInfoBox),
                 assoc_list.keys(ArgInfoBox, ArgInfo),
-                warn_singletons_in_pragma_foreign_proc(PragmaImpl,
-                    PragmaForeignLanguage, ArgInfo, Context, SimpleCallId,
-                    PredId, ProcId, !.ModuleInfo, !Specs)
+                warn_singletons_in_pragma_foreign_proc(!.ModuleInfo,
+                    PragmaImpl, PragmaForeignLanguage, ArgInfo, Context,
+                    SimpleCallId, PredId, ProcId, !Specs)
             ;
                 Pieces = [words("Error: `:- pragma foreign_proc' declaration"),
                     words("for undeclared mode of"),
