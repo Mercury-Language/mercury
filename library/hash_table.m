@@ -673,30 +673,5 @@ fold_p(P, ht_cons(K, V, KVs), !A) :-
     fold_p(P, KVs, !A).
 
 %-----------------------------------------------------------------------------%
-
-    % XXX To go into array.m
-    %
-    % dynamic_cast/2 won't work for arbitrary arrays since array/1 is
-    % not a ground type (that is, dynamic_cast/2 will work when the
-    % target type is e.g. array(int), but not when it is array(T)).
-    %
-:- some [T2] pred dynamic_cast_to_array(T1::in, array(T2)::out) is semidet.
-
-dynamic_cast_to_array(X, A) :-
-
-        % If X is an array then it has a type with one type argument.
-        %
-    [ArgTypeDesc] = type_args(type_of(X)),
-
-        % Convert ArgTypeDesc to a type variable ArgType.
-        %
-    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
-
-        % Constrain the type of A to be array(ArgType) and do the
-        % cast.
-        %
-    dynamic_cast(X, A `with_type` array(ArgType)).
-
-%-----------------------------------------------------------------------------%
 :- end_module hash_table.
 %-----------------------------------------------------------------------------%

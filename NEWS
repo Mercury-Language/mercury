@@ -190,6 +190,12 @@ Changes to the Mercury standard library:
   a new array from a list with the elements of the array occurring in
   the reverse order to that of the list.
 
+* We have added a version of the field update function for arrays that
+  omits the bounds check, 'unsafe_elem :='/3.
+
+* We have added the predicates array.foldl3/8, array.foldl4/10, array.foldl5/12,
+  array.foldr3/8, array.foldr4/10 and array.foldr5/12.
+
 * We have added the predicate maybe.map_fold3_maybe/9 and also added
   additional modes for maybe.fold_maybe/4, maybe.map_fold_maybe/5,
   and maybe.map_fold2_maybe/7.
