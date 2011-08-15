@@ -40,7 +40,7 @@ save_stage2_on_error="false"
 save_stage2_on_no_compiler="false"
 errfiles="false"
 compile_times=""
-testparams=""
+test_params=""
 stop_after_stage_2=""
 failed="continue"
 
@@ -231,7 +231,7 @@ do
     succeeded=false
     created_compiler=false
     if tools/bootcheck $gradeopt --copy-runtime $jfactor $runtests \
-        $objects $compile_times $stop_after_stage_2 $testparams \
+        $objects $compile_times $stop_after_stage_2 $test_params \
         > batch/$batch.out.$visn 2>&1
     then
         succeeded=true

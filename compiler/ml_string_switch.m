@@ -65,14 +65,17 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_simplify_switch.
+:- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.builtin_lib_types.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module map.
@@ -87,14 +90,7 @@
 
 ml_generate_string_hash_jump_switch(Cases, Var, CodeModel, CanFail, Context,
         Defns, Statements, !Info) :-
-    ml_gen_string_hash_switch_search_vars(Context, Var, HashSearchInfo, !Info),
-    HashSearchInfo = ml_hash_search_info(MLDS_Context, _VarRval,
-        SlotVarLval, _StringVarLval, Defns),
-
-    ml_gen_new_label(EndLabel, !Info),
-    GotoEndStatement =
-        statement(ml_stmt_goto(goto_label(EndLabel)), MLDS_Context),
-
+    MLDS_Context = mlds_make_context(Context),
     gen_tagged_case_codes_for_string_switch(CodeModel, Cases, StrsCaseNums,
         map.init, CodeMap, !Info),
 
@@ -102,10 +98,6 @@ ml_generate_string_hash_jump_switch(Cases, Var, CodeModel, CanFail, Context,
     construct_string_hash_cases(StrsCaseNums, allow_doubling,
         TableSize, HashSlotMap, HashOp, NumCollisions),
     HashMask = TableSize - 1,
-
-    % Generate the code for when the hash lookup fails.
-    ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, MLDS_Context,
-        FailStatements, !Info),
 
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
@@ -116,10 +108,18 @@ ml_generate_string_hash_jump_switch(Cases, Var, CodeModel, CanFail, Context,
     MLDS_IntType = mlds_native_int_type,
 
     ( NumCollisions = 0 ->
-        MLDS_ArgTypes = [MLDS_StringType]
+        MLDS_ArgTypes = [MLDS_StringType],
+        LoopPresent = no
     ;
-        MLDS_ArgTypes = [MLDS_StringType, MLDS_IntType]
+        MLDS_ArgTypes = [MLDS_StringType, MLDS_IntType],
+        LoopPresent = yes
     ),
+
+    ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
+        Context, MLDS_Context, Var, HashSearchInfo, !Info),
+    HashSearchInfo = ml_hash_search_info(_CodeModel, _LoopPresent,
+        _Context, _VarRval, SlotVarLval, _StringVarLval,
+        _MaybeStopLoopLval, _FailStatements, Defns),
 
     ml_gen_info_get_global_data(!.Info, GlobalData0),
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
@@ -161,28 +161,16 @@ ml_generate_string_hash_jump_switch(Cases, Var, CodeModel, CanFail, Context,
     ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
 
     FoundMatchComment = "we found a match; dispatch to the corresponding code",
-    FoundMatchStatement = statement(
-        ml_stmt_block([], [
-            statement(ml_stmt_atomic(comment(FoundMatchComment)),
-                MLDS_Context),
-            SwitchStatement,
-            GotoEndStatement
-        ]),
-        MLDS_Context),
+    FoundMatchStatements = [
+        statement(ml_stmt_atomic(comment(FoundMatchComment)), MLDS_Context),
+        SwitchStatement
+    ],
 
     InitialComment = "hashed string jump switch",
-    ml_gen_string_hash_switch_search(InitialComment, HashSearchInfo, HashOp,
-        VectorCommon, StructType, StringFieldId, MaybeNextSlotFieldId,
-        HashMask, FoundMatchStatement, HashLookupStatements),
-
-    EndLabelStatement = statement(ml_stmt_label(EndLabel), MLDS_Context),
-    EndComment =
-        statement(ml_stmt_atomic(comment("end of hashed string switch")),
-            MLDS_Context),
-
-    % Collect all the generated code fragments together.
-    Statements = HashLookupStatements ++ FailStatements ++
-        [EndLabelStatement, EndComment].
+    ml_gen_string_hash_switch_search(MLDS_Context, InitialComment,
+        HashSearchInfo, HashOp, VectorCommon, StructType,
+        StringFieldId, MaybeNextSlotFieldId, HashMask,
+        [], FoundMatchStatements, Statements, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -354,51 +342,36 @@ make_hash_match(Slot) = match_value(ml_const(mlconst_int(Slot))).
 
 ml_generate_string_hash_lookup_switch(Var, LookupSwitchInfo, CodeModel,
         CanFail, Context, Defns, Statements, !Info) :-
-    ml_gen_string_hash_switch_search_vars(Context, Var, HashSearchInfo, !Info),
-    Defns = HashSearchInfo ^ mhsi_defns,
-    MLDS_Context = HashSearchInfo ^ mhsi_mlds_context,
-
-    % Generate the code for when the lookup fails.
-    ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, MLDS_Context,
-        FailStatements, !Info),
-
     LookupSwitchInfo = ml_lookup_switch_info(CaseConsts, OutVars, OutTypes),
     (
-        CaseConsts = all_one_soln(CaseValuePairs),
-        ml_generate_string_hash_simple_lookup_switch(CodeModel, CaseValuePairs,
-            OutVars, OutTypes, Context, HashSearchInfo,
-            FailStatements, Statements, !Info)
+        CaseConsts = all_one_soln(CaseValues),
+        ml_generate_string_hash_simple_lookup_switch(Var,
+            CodeModel, CanFail, CaseValues, OutVars, OutTypes, Context,
+            Defns, Statements, !Info)
     ;
         CaseConsts = some_several_solns(CaseSolns, _Unit),
         expect(unify(CodeModel, model_non), $module, $pred,
             "CodeModel != model_non"),
-        ml_generate_string_hash_several_soln_lookup_switch(CaseSolns,
-            OutVars, OutTypes, Context, HashSearchInfo,
-            FailStatements, Statements, !Info)
+        ml_generate_string_hash_several_soln_lookup_switch(Var,
+            CodeModel, CanFail, CaseSolns, OutVars, OutTypes, Context,
+            Defns, Statements, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred ml_generate_string_hash_simple_lookup_switch(code_model::in,
+:- pred ml_generate_string_hash_simple_lookup_switch(prog_var::in,
+    code_model::in, can_fail::in,
     assoc_list(string, list(mlds_rval))::in,
-    list(prog_var)::in, list(mlds_type)::in,
-    prog_context::in, ml_hash_search_info::in,
-    list(statement)::in, list(statement)::out,
+    list(prog_var)::in, list(mlds_type)::in, prog_context::in,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_generate_string_hash_simple_lookup_switch(CodeModel, CaseValuePairs,
-        OutVars, OutTypes, Context, HashSearchInfo,
-        FailStatements, Statements, !Info) :-
-    HashSearchInfo = ml_hash_search_info(MLDS_Context, _VarRval,
-        SlotVarLval, _StringVarLval, _Defns),
-    SlotVarRval = ml_lval(SlotVarLval),
-
-    ml_gen_new_label(EndLabel, !Info),
-    GotoEndStatement =
-        statement(ml_stmt_goto(goto_label(EndLabel)), MLDS_Context),
+ml_generate_string_hash_simple_lookup_switch(Var, CodeModel, CanFail,
+        CaseValues, OutVars, OutTypes, Context, Defns, Statements, !Info) :-
+    MLDS_Context = mlds_make_context(Context),
 
     % Compute the hash table.
-    construct_string_hash_cases(CaseValuePairs, allow_doubling,
+    construct_string_hash_cases(CaseValues, allow_doubling,
         TableSize, HashSlotMap, HashOp, NumCollisions),
     HashMask = TableSize - 1,
 
@@ -411,10 +384,19 @@ ml_generate_string_hash_simple_lookup_switch(CodeModel, CaseValuePairs,
     MLDS_IntType = mlds_native_int_type,
 
     ( NumCollisions = 0 ->
-        MLDS_ArgTypes = [MLDS_StringType | OutTypes]
+        MLDS_ArgTypes = [MLDS_StringType | OutTypes],
+        LoopPresent = no
     ;
-        MLDS_ArgTypes = [MLDS_StringType, MLDS_IntType | OutTypes]
+        MLDS_ArgTypes = [MLDS_StringType, MLDS_IntType | OutTypes],
+        LoopPresent = yes
     ),
+
+    ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
+        Context, MLDS_Context, Var, HashSearchInfo, !Info),
+    HashSearchInfo = ml_hash_search_info(_CodeModel, _LoopPresent,
+        _Context, _VarRval, SlotVarLval, _StringVarLval, _MaybeStopLoopLval,
+        _FailStatements, Defns),
+    SlotVarRval = ml_lval(SlotVarLval),
 
     ml_gen_info_get_global_data(!.Info, GlobalData0),
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
@@ -461,40 +443,23 @@ ml_generate_string_hash_simple_lookup_switch(CodeModel, CaseValuePairs,
 
     (
         CodeModel = model_det,
-        FoundMatchStatement = statement(
-            ml_stmt_block([],
-                [FoundMatchCommentStatement | LookupStatements] ++
-                [GotoEndStatement]
-            ),
-            MLDS_Context)
+        MatchStatements = [FoundMatchCommentStatement | LookupStatements]
     ;
         CodeModel = model_semi,
         ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
             SetSuccessTrueStatement),
-        FoundMatchStatement = statement(
-            ml_stmt_block([],
-                [FoundMatchCommentStatement | LookupStatements] ++
-                [SetSuccessTrueStatement, GotoEndStatement]
-            ),
-            MLDS_Context)
+        MatchStatements = [FoundMatchCommentStatement | LookupStatements] ++
+            [SetSuccessTrueStatement]
     ;
         CodeModel = model_non,
         unexpected($module, $pred, "model_non")
     ),
 
     InitialComment = "hashed string simple lookup switch",
-    ml_gen_string_hash_switch_search(InitialComment, HashSearchInfo, HashOp,
-        VectorCommon, StructType, StringFieldId, MaybeNextSlotFieldId,
-        HashMask, FoundMatchStatement, HashLookupStatements),
-
-    EndLabelStatement = statement(ml_stmt_label(EndLabel), MLDS_Context),
-    EndComment =
-        statement(ml_stmt_atomic(comment("end of hashed string switch")),
-            MLDS_Context),
-
-    % Collect all the generated code fragments together.
-    Statements = HashLookupStatements ++ FailStatements ++
-        [EndLabelStatement, EndComment].
+    ml_gen_string_hash_switch_search(MLDS_Context, InitialComment,
+        HashSearchInfo, HashOp, VectorCommon, StructType,
+        StringFieldId, MaybeNextSlotFieldId, HashMask,
+        [], MatchStatements, Statements, !Info).
 
 :- pred ml_gen_string_hash_simple_lookup_slots(int::in, int::in, mlds_type::in,
     map(int, string_hash_slot(list(mlds_rval)))::in, maybe(mlds_field_id)::in,
@@ -544,24 +509,20 @@ ml_gen_string_hash_simple_lookup_slot(Slot, StructType, HashSlotMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred ml_generate_string_hash_several_soln_lookup_switch(
+:- pred ml_generate_string_hash_several_soln_lookup_switch(prog_var::in,
+    code_model::in, can_fail::in,
     assoc_list(string, soln_consts(mlds_rval))::in,
-    list(prog_var)::in, list(mlds_type)::in,
-    prog_context::in, ml_hash_search_info::in,
-    list(statement)::in, list(statement)::out,
+    list(prog_var)::in, list(mlds_type)::in, prog_context::in,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_generate_string_hash_several_soln_lookup_switch(CaseSolns,
-        OutVars, OutTypes, Context, HashSearchInfo,
-        FailStatements, Statements, !Info) :-
-    HashSearchInfo = ml_hash_search_info(MLDS_Context, _VarRval,
-        SlotVarLval, _StringVarLval, _Defns),
-    SlotVarRval = ml_lval(SlotVarLval),
-
+ml_generate_string_hash_several_soln_lookup_switch(Var, CodeModel, CanFail,
+        CaseSolns, OutVars, OutTypes, Context, Defns, Statements, !Info) :-
+    MLDS_Context = mlds_make_context(Context),
     make_several_soln_lookup_vars(MLDS_Context, SeveralSolnLookupVars, !Info),
     SeveralSolnLookupVars = ml_several_soln_lookup_vars(NumLaterSolnsVarLval,
         LaterSlotVarLval, LimitVarLval,
-        LimitAssignStatement, IncrLaterSlotVarStatement, Defns),
+        LimitAssignStatement, IncrLaterSlotVarStatement, MatchDefns),
     LaterSlotVarRval = ml_lval(LaterSlotVarLval),
     LimitVarRval = ml_lval(LimitVarLval),
 
@@ -580,11 +541,20 @@ ml_generate_string_hash_several_soln_lookup_switch(CaseSolns,
 
     ( NumCollisions = 0 ->
         FirstSolnFieldTypes = [MLDS_StringType,
-            MLDS_IntType, MLDS_IntType | OutTypes]
+            MLDS_IntType, MLDS_IntType | OutTypes],
+        LoopPresent = no
     ;
         FirstSolnFieldTypes = [MLDS_StringType, MLDS_IntType,
-            MLDS_IntType, MLDS_IntType | OutTypes]
+            MLDS_IntType, MLDS_IntType | OutTypes],
+        LoopPresent = yes
     ),
+
+    ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
+        Context, MLDS_Context, Var, HashSearchInfo, !Info),
+    HashSearchInfo = ml_hash_search_info(_CodeModel, _LoopPresent,
+        _Context, _VarRval, SlotVarLval, _StringVarLval, _MaybeStopLoopLval,
+        _FailStatements, Defns),
+    SlotVarRval = ml_lval(SlotVarLval),
 
     ml_gen_info_get_global_data(!.Info, GlobalData0),
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
@@ -673,23 +643,15 @@ ml_generate_string_hash_several_soln_lookup_switch(CaseSolns,
         LaterLookupSucceedStatement),
     MoreSolnsLoopStatement = statement(MoreSolnsLoopStmt, MLDS_Context),
 
-    ml_gen_new_label(FailLabel, !Info),
-    GotoFailStatement =
-        statement(ml_stmt_goto(goto_label(FailLabel)), MLDS_Context),
-    SuccessStmt = ml_stmt_block(Defns, [
-        NumLaterSolnsAssignStatement, FirstLookupSucceedStatement,
-        LaterSlotVarAssignStatement, LimitAssignStatement,
-        MoreSolnsLoopStatement, GotoFailStatement
-    ]),
-    SuccessStatement = statement(SuccessStmt, MLDS_Context),
+    SuccessStatements = [NumLaterSolnsAssignStatement,
+        FirstLookupSucceedStatement, LaterSlotVarAssignStatement,
+        LimitAssignStatement, MoreSolnsLoopStatement],
 
     InitialComment = "hashed string several_soln lookup switch",
-    ml_gen_string_hash_switch_search(InitialComment, HashSearchInfo, HashOp,
-        FirstSolnVectorCommon, FirstSolnStructType, StringFieldId,
-        MaybeNextSlotFieldId, HashMask,
-        SuccessStatement, LookupStatements),
-    FailLabelStatement = statement(ml_stmt_label(FailLabel), MLDS_Context),
-    Statements = LookupStatements ++ [FailLabelStatement | FailStatements].
+    ml_gen_string_hash_switch_search(MLDS_Context, InitialComment,
+        HashSearchInfo, HashOp, FirstSolnVectorCommon,
+        FirstSolnStructType, StringFieldId, MaybeNextSlotFieldId, HashMask,
+        MatchDefns, SuccessStatements, Statements, !Info).
 
 :- pred ml_gen_string_hash_several_soln_lookup_slots(int::in, int::in,
     map(int, string_hash_slot(soln_consts(mlds_rval)))::in,
@@ -781,18 +743,24 @@ ml_gen_string_hash_several_soln_lookup_slot(Slot, HashSlotMap,
 
 :- type ml_hash_search_info
     --->    ml_hash_search_info(
-                mhsi_mlds_context               :: mlds_context,
+                mhsi_code_model                 :: code_model,
+                mhsi_loop_present               :: bool,
+                mhsi_context                    :: prog_context,
                 mhsi_switch_var                 :: mlds_rval,
                 mhsi_slot_var                   :: mlds_lval,
                 mhsi_string_var                 :: mlds_lval,
+                mhsi_stop_loop_var              :: maybe(mlds_lval),
+                mhsi_fail_statements            :: list(statement),
                 mhsi_defns                      :: list(mlds_defn)
             ).
 
-:- pred ml_gen_string_hash_switch_search_vars(prog_context::in, prog_var::in,
-    ml_hash_search_info::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_string_hash_switch_search_vars(code_model::in, can_fail::in,
+    bool::in, prog_context::in, mlds_context::in, prog_var::in,
+    ml_hash_search_info::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_string_hash_switch_search_vars(Context, Var, HashSearchInfo, !Info) :-
-    MLDS_Context = mlds_make_context(Context),
+ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
+        Context, MLDS_Context, Var, HashSearchInfo, !Info) :-
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
 
@@ -816,27 +784,46 @@ ml_gen_string_hash_switch_search_vars(Context, Var, HashSearchInfo, !Info) :-
         StringVarType, gc_no_stmt, MLDS_Context),
     ml_gen_var_lval(!.Info, StringVar, StringVarType, StringVarLval),
 
-    Defns = [SlotVarDefn, StringVarDefn],
-    HashSearchInfo = ml_hash_search_info(MLDS_Context, VarRval,
-        SlotVarLval, StringVarLval, Defns).
+    AlwaysDefns = [SlotVarDefn, StringVarDefn],
+    ml_should_use_stop_loop(MLDS_Context, LoopPresent,
+        MaybeStopLoopLval, StopLoopVarDefns, !Info),
+    Defns = AlwaysDefns ++ StopLoopVarDefns,
 
-:- pred ml_gen_string_hash_switch_search(string::in, ml_hash_search_info::in,
-    unary_op::in, mlds_vector_common::in, mlds_type::in,
+    % Generate the code for when the lookup fails.
+    ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, FailStatements,
+        !Info),
+
+    HashSearchInfo = ml_hash_search_info(CodeModel, LoopPresent, Context,
+        VarRval, SlotVarLval, StringVarLval, MaybeStopLoopLval,
+        FailStatements, Defns).
+
+:- pred ml_gen_string_hash_switch_search(mlds_context::in, string::in,
+    ml_hash_search_info::in, unary_op::in,
+    mlds_vector_common::in, mlds_type::in,
     mlds_field_id::in, maybe(mlds_field_id)::in, int::in,
-    statement::in, list(statement)::out) is det.
+    list(mlds_defn)::in, list(statement)::in, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_string_hash_switch_search(InitialComment, HashSearchInfo, HashOp,
-        VectorCommon, StructType, StringFieldId, MaybeNextSlotFieldId,
-        HashMask, FoundMatchStatement, HashLookupStatements) :-
-    HashSearchInfo = ml_hash_search_info(MLDS_Context, VarRval,
-        SlotVarLval, StringVarLval, _Defns),
+ml_gen_string_hash_switch_search(MLDS_Context, InitialComment,
+        HashSearchInfo, HashOp, VectorCommon, StructType,
+        StringFieldId, MaybeNextSlotFieldId, HashMask,
+        MatchDefns, MatchStatements, Statements, !Info) :-
+    HashSearchInfo = ml_hash_search_info(CodeModel, LoopPresent,
+        Context, VarRval, SlotVarLval, StringVarLval,
+        MaybeStopLoopVarLval, FailStatements, _Defns),
     SlotVarRval = ml_lval(SlotVarLval),
     StringVarRval = ml_lval(StringVarLval),
     SlotVarType = mlds_native_int_type,
     StringVarType = ml_string_type,
 
-    PrepareForMatchStatements = [
+    ml_wrap_loop_break(CodeModel, LoopPresent,
+        MLDS_Context, MaybeStopLoopVarLval,
+        MatchDefns, MatchStatements, FailStatements,
+        SetupForFailStatements, SuccessStatement, AfterStatements, !Info),
+
+    InitialCommentStatement =
         statement(ml_stmt_atomic(comment(InitialComment)), MLDS_Context),
+    PrepareForMatchStatements = [
         statement(ml_stmt_atomic(comment(
             "compute the hash value of the input string")), MLDS_Context),
         statement(
@@ -848,11 +835,10 @@ ml_gen_string_hash_switch_search(InitialComment, HashSearchInfo, HashOp,
         ],
     FoundMatchCond =
         ml_binop(logical_and,
-            ml_binop(ne, StringVarRval,
-                ml_const(mlconst_null(StringVarType))),
+            ml_binop(ne, StringVarRval, ml_const(mlconst_null(StringVarType))),
             ml_binop(str_eq, StringVarRval, VarRval)
         ),
-    LookForMatchStatements = [
+    LookForMatchPrepareStatements = [
         statement(ml_stmt_atomic(comment(
             "lookup the string for this hash slot")), MLDS_Context),
         statement(
@@ -862,14 +848,45 @@ ml_gen_string_hash_switch_search(InitialComment, HashSearchInfo, HashOp,
                     StringFieldId, StringVarType, StructType)))),
             MLDS_Context),
         statement(ml_stmt_atomic(comment("did we find a match?")),
-            MLDS_Context),
-        statement(ml_stmt_if_then_else(FoundMatchCond,
-            FoundMatchStatement, no),
             MLDS_Context)
     ],
+    SlotTest = ml_binop(int_ge, SlotVarRval, ml_const(mlconst_int(0))),
+    (
+        MaybeStopLoopVarLval = no,
+        InitStopLoopVarStatements = [],
+        InitSuccessStatements = [],
+        LoopTest = SlotTest
+    ;
+        MaybeStopLoopVarLval = yes(StopLoopVarLval),
+        InitStopLoopVarStatement = statement(ml_stmt_atomic(
+            assign(StopLoopVarLval, ml_const(mlconst_int(0)))),
+            MLDS_Context),
+        InitStopLoopVarStatements = [InitStopLoopVarStatement],
+        (
+            CodeModel = model_det,
+            % If the switch is model_det, the value of `succeeded'
+            % is irrelevant, as it will not be consulted.
+            InitSuccessStatements = []
+        ;
+            CodeModel = model_semi,
+            ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
+                InitSuccessStatement),
+            InitSuccessStatements = [InitSuccessStatement]
+        ;
+            CodeModel = model_non,
+            % If the switch is model_non, we get to the end of search code
+            % (which may or my not be a loop) for both matches and non-matches,
+            % though in the case of matches we get there only after invoking
+            % the success continuation for each solution.
+            InitSuccessStatements = []
+        ),
+        StopLoopTest = ml_binop(eq,
+            ml_lval(StopLoopVarLval), ml_const(mlconst_int(0))),
+        LoopTest = ml_binop(logical_and, StopLoopTest, SlotTest)
+    ),
     (
         MaybeNextSlotFieldId = yes(NextSlotFieldId),
-        NoMatchStatements = [
+        NoMatchStatement = statement(ml_stmt_block([], [
             statement(ml_stmt_atomic(comment(
                 "no match yet, so get next slot in hash chain")),
                 MLDS_Context),
@@ -879,33 +896,38 @@ ml_gen_string_hash_switch_search(InitialComment, HashSearchInfo, HashOp,
                         ml_vector_common_row(VectorCommon, SlotVarRval),
                         NextSlotFieldId, SlotVarType, StructType)))),
                 MLDS_Context)
-        ],
-
+            ]), MLDS_Context),
+        LookForMatchStatement = statement(
+            ml_stmt_if_then_else(FoundMatchCond, SuccessStatement,
+                yes(NoMatchStatement)),
+            MLDS_Context),
         LoopBody = statement(ml_stmt_block([],
-            LookForMatchStatements ++ NoMatchStatements), MLDS_Context),
-
+            LookForMatchPrepareStatements ++ [LookForMatchStatement]),
+            MLDS_Context),
         LoopStatements = [
             statement(ml_stmt_atomic(comment("hash chain loop")),
                 MLDS_Context),
-            statement(
-                ml_stmt_while(loop_at_least_once,
-                    ml_binop(int_ge, SlotVarRval, ml_const(mlconst_int(0))),
-                    LoopBody),
+            statement(ml_stmt_while(loop_at_least_once, LoopTest, LoopBody),
                 MLDS_Context)
-            ],
-
-        HashLookupStatements =
-            PrepareForMatchStatements ++ LoopStatements
+        ],
+        SearchStatements = PrepareForMatchStatements ++
+            InitStopLoopVarStatements ++ InitSuccessStatements ++
+            LoopStatements,
+        Statements = [InitialCommentStatement | SetupForFailStatements] ++
+            SearchStatements ++ AfterStatements
     ;
         MaybeNextSlotFieldId = no,
-        NoLoopStatements = [
-            statement(ml_stmt_atomic(
-                comment("no collisions; no hash chain loop")), MLDS_Context)
-            ],
-
-        HashLookupStatements =
-            PrepareForMatchStatements ++ LookForMatchStatements ++
-            NoLoopStatements
+        NoLoopCommentStatement = statement(ml_stmt_atomic(
+            comment("no collisions; no hash chain loop")), MLDS_Context),
+        LookForMatchStatement = statement(
+            ml_stmt_if_then_else(FoundMatchCond, SuccessStatement, no),
+            MLDS_Context),
+        SearchStatements = PrepareForMatchStatements ++
+            InitSuccessStatements ++
+            [NoLoopCommentStatement | LookForMatchPrepareStatements] ++
+            [LookForMatchStatement],
+        Statements = [InitialCommentStatement | SearchStatements] ++
+            AfterStatements
     ).
 
 %-----------------------------------------------------------------------------%
@@ -913,14 +935,12 @@ ml_gen_string_hash_switch_search(InitialComment, HashSearchInfo, HashOp,
 
 ml_generate_string_binary_jump_switch(Cases, Var, CodeModel, CanFail, Context,
         Defns, Statements, !Info) :-
-    ml_gen_string_binary_switch_search_vars(Context, Var, BinarySearchInfo,
-        !Info),
-    BinarySearchInfo = ml_binary_search_info(MLDS_Context, _VarRval,
-        _LoVarLval, _HiVarLval, MidVarLval, _ResultVarLval, Defns),
-
-    % Generate the code for when the lookup fails.
-    ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, MLDS_Context,
-        FailStatements, !Info),
+    MLDS_Context = mlds_make_context(Context),
+    ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
+        Context, MLDS_Context, Var, BinarySearchInfo, !Info),
+    BinarySearchInfo = ml_binary_search_info(_CodeModel,
+        _VarRval, _LoVarLval, _HiVarLval, MidVarLval, _ResultVarLval,
+        _MaybeStopLoopVarLval, _FailStatements, Defns),
 
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
@@ -972,23 +992,11 @@ ml_generate_string_binary_jump_switch(Cases, Var, CodeModel, CanFail, Context,
         default_is_unreachable),
     ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
 
-    ml_gen_new_label(EndLabel, !Info),
-    GotoEndStatement =
-        statement(ml_stmt_goto(goto_label(EndLabel)), MLDS_Context),
-    SuccessStatement =
-        statement(ml_stmt_block([], [SwitchStatement, GotoEndStatement]),
-            MLDS_Context),
-
     % Generate the code that searches the table.
-    ml_gen_string_binary_switch_search(BinarySearchInfo, VectorCommon,
-        TableSize, StructType, StringFieldId,
-        SuccessStatement, LookupStatements, !.Info),
     InitialComment = "binary string jump switch",
-    CommentStatement = statement(ml_stmt_atomic(comment(InitialComment)),
-        MLDS_Context),
-    EndLabelStatement = statement(ml_stmt_label(EndLabel), MLDS_Context),
-    Statements = [CommentStatement | LookupStatements] ++
-        FailStatements ++ [EndLabelStatement].
+    ml_gen_string_binary_switch_search(MLDS_Context, InitialComment,
+        BinarySearchInfo, VectorCommon, TableSize, StructType, StringFieldId,
+        [], [SwitchStatement], Statements, !Info).
 
 :- pred ml_gen_string_binary_jump_initializers(assoc_list(string, int)::in,
     mlds_type::in,
@@ -1025,53 +1033,45 @@ ml_gen_string_binary_jump_switch_arms([CaseNumStmt | CaseNumsStmts],
 
 ml_generate_string_binary_lookup_switch(Var, LookupSwitchInfo, CodeModel,
         CanFail, Context, Defns, Statements, !Info) :-
-    ml_gen_string_binary_switch_search_vars(Context, Var, BinarySearchInfo,
-        !Info),
-    Defns = BinarySearchInfo ^ mbsi_defns,
-    MLDS_Context = BinarySearchInfo ^ mbsi_mlds_context,
-
-    % Generate the code for when the lookup fails.
-    ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, MLDS_Context,
-        FailStatements, !Info),
-
+    MLDS_Context = mlds_make_context(Context),
     LookupSwitchInfo = ml_lookup_switch_info(CaseConsts, OutVars, OutTypes),
     (
-        CaseConsts = all_one_soln(CaseValuePairs),
-        ml_generate_string_binary_simple_lookup_switch(CodeModel,
-            CaseValuePairs, OutVars, OutTypes, Context,
-            BinarySearchInfo, FailStatements, Statements, !Info)
+        CaseConsts = all_one_soln(CaseValues),
+        ml_generate_string_binary_simple_lookup_switch(Var,
+            CodeModel, CanFail, CaseValues, OutVars, OutTypes,
+            Context, MLDS_Context, Defns, Statements, !Info)
     ;
         CaseConsts = some_several_solns(CaseSolns, _Unit),
         expect(unify(CodeModel, model_non), $module, $pred,
             "CodeModel != model_non"),
-        ml_generate_string_binary_several_soln_lookup_switch(CaseSolns,
-            OutVars, OutTypes, Context, BinarySearchInfo,
-            FailStatements, Statements, !Info)
+        ml_generate_string_binary_several_soln_lookup_switch(Var,
+            CodeModel, CanFail, CaseSolns, OutVars, OutTypes,
+            Context, MLDS_Context, Defns, Statements, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred ml_generate_string_binary_simple_lookup_switch(code_model::in,
+:- pred ml_generate_string_binary_simple_lookup_switch(prog_var::in,
+    code_model::in, can_fail::in,
     assoc_list(string, list(mlds_rval))::in,
     list(prog_var)::in, list(mlds_type)::in,
-    prog_context::in, ml_binary_search_info::in,
-    list(statement)::in, list(statement)::out,
+    prog_context::in, mlds_context::in,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_generate_string_binary_simple_lookup_switch(CodeModel, CaseValuePairs0,
-        OutVars, OutTypes, Context, BinarySearchInfo,
-        FailStatements, Statements, !Info) :-
+ml_generate_string_binary_simple_lookup_switch(Var, CodeModel, CanFail,
+        CaseValues0, OutVars, OutTypes, Context, MLDS_Context,
+        Defns, Statements, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ml_gen_info_get_target(!.Info, Target),
-    MLDS_Context = BinarySearchInfo ^ mbsi_mlds_context,
 
     MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
     MLDS_ArgTypes = [MLDS_StringType | OutTypes],
 
     % Generate the binary search table.
-    list.sort(CaseValuePairs0, CaseValuePairs),
+    list.sort(CaseValues0, CaseValues),
     ml_gen_info_get_global_data(!.Info, GlobalData0),
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
         MLDS_ArgTypes, StructTypeNum, StructType, FieldIds,
@@ -1082,50 +1082,41 @@ ml_generate_string_binary_simple_lookup_switch(CodeModel, CaseValuePairs0,
     ;
         unexpected($module, $pred, "bad FieldIds")
     ),
-    ml_gen_string_binary_simple_lookup_initializers(CaseValuePairs, StructType,
+    ml_gen_string_binary_simple_lookup_initializers(CaseValues, StructType,
         [], RevRowInitializers, 0, TableSize),
     list.reverse(RevRowInitializers, RowInitializers),
     ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum, RowInitializers,
         VectorCommon, GlobalData1, GlobalData),
     ml_gen_info_set_global_data(GlobalData, !Info),
 
-    MidVarLval = BinarySearchInfo ^ mbsi_mid_var,
-    ml_generate_field_assigns(OutVars, OutTypes, OutFieldIds,
-        VectorCommon, StructType, ml_lval(MidVarLval), MLDS_Context,
-        GetArgStatements, !Info),
+    ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
+        Context, MLDS_Context, Var, BinarySearchInfo, !Info),
+    BinarySearchInfo = ml_binary_search_info(_CodeModel, _VarRval,
+        _LoVarLval, _HiVarLval, MidVarLval, _ResultVarLval, _MaybeStopLoopLval,
+        _FailStatements, Defns),
+    MidVarRval = ml_lval(MidVarLval),
 
-    ml_gen_new_label(EndLabel, !Info),
-    GotoEndStatement =
-        statement(ml_stmt_goto(goto_label(EndLabel)), MLDS_Context),
+    ml_generate_field_assigns(OutVars, OutTypes, OutFieldIds,
+        VectorCommon, StructType, MidVarRval, MLDS_Context,
+        GetArgStatements, !Info),
     (
         CodeModel = model_det,
-        SuccessStatement = statement(
-            ml_stmt_block([], GetArgStatements ++ [GotoEndStatement]),
-            MLDS_Context)
+        MatchStatements = GetArgStatements
     ;
         CodeModel = model_semi,
         ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
             SetSuccessTrueStatement),
-        SuccessStatement = statement(
-            ml_stmt_block([],
-                GetArgStatements ++
-                [SetSuccessTrueStatement, GotoEndStatement]),
-            MLDS_Context)
+        MatchStatements = GetArgStatements ++ [SetSuccessTrueStatement]
     ;
         CodeModel = model_non,
         unexpected($module, $pred, "model_non")
     ),
 
     % Generate the code that searches the table.
-    ml_gen_string_binary_switch_search(BinarySearchInfo, VectorCommon,
-        TableSize, StructType, StringFieldId,
-        SuccessStatement, LookupStatements, !.Info),
     InitialComment = "binary string simple lookup switch",
-    CommentStatement = statement(ml_stmt_atomic(comment(InitialComment)),
-        MLDS_Context),
-    EndLabelStatement = statement(ml_stmt_label(EndLabel), MLDS_Context),
-    Statements = [CommentStatement | LookupStatements] ++
-        FailStatements ++ [EndLabelStatement].
+    ml_gen_string_binary_switch_search(MLDS_Context, InitialComment,
+        BinarySearchInfo, VectorCommon, TableSize, StructType, StringFieldId,
+        [], MatchStatements, Statements, !Info).
 
 :- pred ml_gen_string_binary_simple_lookup_initializers(
     assoc_list(string, list(mlds_rval))::in, mlds_type::in,
@@ -1146,26 +1137,26 @@ ml_gen_string_binary_simple_lookup_initializers([Str - Rvals | StrRvals],
 
 %-----------------------------------------------------------------------------%
 
-:- pred ml_generate_string_binary_several_soln_lookup_switch(
+:- pred ml_generate_string_binary_several_soln_lookup_switch(prog_var::in,
+    code_model::in, can_fail::in,
     assoc_list(string, soln_consts(mlds_rval))::in,
     list(prog_var)::in, list(mlds_type)::in,
-    prog_context::in, ml_binary_search_info::in,
-    list(statement)::in, list(statement)::out,
+    prog_context::in, mlds_context::in,
+    list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_generate_string_binary_several_soln_lookup_switch(CaseSolns0,
-        OutVars, OutTypes, Context, BinarySearchInfo,
-        FailStatements, Statements, !Info) :-
+ml_generate_string_binary_several_soln_lookup_switch(Var, CodeModel, CanFail,
+        CaseSolns0, OutVars, OutTypes, Context, MLDS_Context,
+        Defns, Statements, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ml_gen_info_get_target(!.Info, Target),
-    MLDS_Context = BinarySearchInfo ^ mbsi_mlds_context,
 
     make_several_soln_lookup_vars(MLDS_Context, SeveralSolnLookupVars, !Info),
     SeveralSolnLookupVars = ml_several_soln_lookup_vars(NumLaterSolnsVarLval,
         LaterSlotVarLval, LimitVarLval,
-        LimitAssignStatement, IncrLaterSlotVarStatement, Defns),
+        LimitAssignStatement, IncrLaterSlotVarStatement, MatchDefns),
     LaterSlotVarRval = ml_lval(LaterSlotVarLval),
     LimitVarRval = ml_lval(LimitVarLval),
 
@@ -1210,8 +1201,13 @@ ml_generate_string_binary_several_soln_lookup_switch(CaseSolns0,
         GlobalData3, GlobalData),
     ml_gen_info_set_global_data(GlobalData, !Info),
 
-    MidVarLval = BinarySearchInfo ^ mbsi_mid_var,
+    ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
+        Context, MLDS_Context, Var, BinarySearchInfo, !Info),
+    BinarySearchInfo = ml_binary_search_info(_CodeModel, _VarRval,
+        _LoVarLval, _HiVarLval, MidVarLval, _ResultVarLval, _MaybeStopLoopLval,
+        _FailStatements, Defns),
     MidVarRval = ml_lval(MidVarLval),
+
     ml_generate_field_assign(NumLaterSolnsVarLval, MLDS_IntType,
         NumLaterSolnsFieldId,
         FirstSolnVectorCommon, FirstSolnStructType, MidVarRval,
@@ -1244,26 +1240,18 @@ ml_generate_string_binary_several_soln_lookup_switch(CaseSolns0,
         LaterLookupSucceedStatement),
     MoreSolnsLoopStatement = statement(MoreSolnsLoopStmt, MLDS_Context),
 
-    ml_gen_new_label(FailLabel, !Info),
-    GotoFailStatement =
-        statement(ml_stmt_goto(goto_label(FailLabel)), MLDS_Context),
-    SuccessStmt = ml_stmt_block(Defns, [
+    MatchStatements = [
         NumLaterSolnsAssignStatement, FirstLookupSucceedStatement,
         LaterSlotVarAssignStatement, LimitAssignStatement,
-        MoreSolnsLoopStatement, GotoFailStatement
-    ]),
-    SuccessStatement = statement(SuccessStmt, MLDS_Context),
+        MoreSolnsLoopStatement
+    ],
 
     % Generate the code that searches the table.
-    ml_gen_string_binary_switch_search(BinarySearchInfo, FirstSolnVectorCommon,
-        FirstSolnTableSize, FirstSolnStructType, StringFieldId,
-        SuccessStatement, LookupStatements, !.Info),
     InitialComment = "binary string several soln lookup switch",
-    CommentStatement = statement(ml_stmt_atomic(comment(InitialComment)),
-        MLDS_Context),
-    FailLabelStatement = statement(ml_stmt_label(FailLabel), MLDS_Context),
-    Statements = [CommentStatement | LookupStatements] ++
-        [FailLabelStatement | FailStatements].
+    ml_gen_string_binary_switch_search(MLDS_Context, InitialComment,
+        BinarySearchInfo, FirstSolnVectorCommon,FirstSolnTableSize,
+        FirstSolnStructType, StringFieldId,
+        MatchDefns, MatchStatements, Statements, !Info).
 
 :- pred ml_gen_string_binary_several_lookup_initializers(
     assoc_list(string, soln_consts(mlds_rval))::in,
@@ -1321,21 +1309,23 @@ ml_gen_string_binary_several_lookup_initializers([Str - Solns | StrSolns],
 
 :- type ml_binary_search_info
     --->    ml_binary_search_info(
-                mbsi_mlds_context           :: mlds_context,
+                mbsi_code_model             :: code_model,
                 mbsi_switch_var             :: mlds_rval,
                 mbsi_lo_var                 :: mlds_lval,
                 mbsi_hi_var                 :: mlds_lval,
                 mbsi_mid_var                :: mlds_lval,
                 mbsi_result_var             :: mlds_lval,
+                mbsi_stop_loop_var          :: maybe(mlds_lval),
+                mbsi_fail_statements        :: list(statement),
                 mbsi_defns                  :: list(mlds_defn)
             ).
 
-:- pred ml_gen_string_binary_switch_search_vars(prog_context::in, prog_var::in,
+:- pred ml_gen_string_binary_switch_search_vars(code_model::in, can_fail::in,
+    prog_context::in, mlds_context::in, prog_var::in,
     ml_binary_search_info::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_string_binary_switch_search_vars(Context, Var, BinarySearchInfo,
-        !Info) :-
-    MLDS_Context = mlds_make_context(Context),
+ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
+        Context, MLDS_Context, Var, BinarySearchInfo, !Info) :-
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
 
@@ -1371,78 +1361,127 @@ ml_gen_string_binary_switch_search_vars(Context, Var, BinarySearchInfo,
         ResultGCStatement, MLDS_Context),
     ml_gen_var_lval(!.Info, ResultVar, ResultType, ResultVarLval),
 
-    Defns = [LoVarDefn, HiVarDefn, MidVarDefn, ResultVarDefn],
-    BinarySearchInfo = ml_binary_search_info(MLDS_Context, VarRval,
-        LoVarLval, HiVarLval, MidVarLval, ResultVarLval, Defns).
+    AlwaysDefns = [LoVarDefn, HiVarDefn, MidVarDefn, ResultVarDefn],
+    ml_should_use_stop_loop(MLDS_Context, yes,
+        MaybeStopLoopLval, StopLoopVarDefns, !Info),
+    Defns = AlwaysDefns ++ StopLoopVarDefns,
 
-:- pred ml_gen_string_binary_switch_search(ml_binary_search_info::in,
-    mlds_vector_common::in, int::in, mlds_type::in, mlds_field_id::in,
-    statement::in, list(statement)::out, ml_gen_info::in) is det.
+    % Generate the code for when the lookup fails.
+    ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, FailStatements,
+        !Info),
 
-ml_gen_string_binary_switch_search(BinarySearchInfo,
-        VectorCommon, TableSize, StructType, StringFieldId,
-        SuccessStatement, Statements, Info) :-
-    BinarySearchInfo = ml_binary_search_info(MLDS_Context, VarRval,
-        LoVarLval, HiVarLval, MidVarLval, ResultVarLval, _Defns),
-    ml_gen_info_get_module_info(Info, ModuleInfo),
+    BinarySearchInfo = ml_binary_search_info(CodeModel, VarRval,
+        LoVarLval, HiVarLval, MidVarLval, ResultVarLval, MaybeStopLoopLval,
+        FailStatements, Defns).
+
+:- pred ml_gen_string_binary_switch_search(mlds_context::in, string::in,
+    ml_binary_search_info::in, mlds_vector_common::in, int::in, mlds_type::in,
+    mlds_field_id::in, list(mlds_defn)::in, list(statement)::in,
+    list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_string_binary_switch_search(MLDS_Context, InitialComment,
+        BinarySearchInfo, VectorCommon, TableSize, StructType, StringFieldId,
+        MatchDefns, MatchStatement, Statements, !Info) :-
+    BinarySearchInfo = ml_binary_search_info(CodeModel, VarRval,
+        LoVarLval, HiVarLval, MidVarLval, ResultVarLval, MaybeStopLoopVarLval,
+        FailStatements, _Defns),
+    LoVarRval = ml_lval(LoVarLval),
+    HiVarRval = ml_lval(HiVarLval),
+    MidVarRval = ml_lval(MidVarLval),
+    ResultVarRval = ml_lval(ResultVarLval),
+
+    ml_wrap_loop_break(CodeModel, yes, MLDS_Context, MaybeStopLoopVarLval,
+        MatchDefns, MatchStatement, FailStatements,
+        SetupForFailStatements, SuccessStatement, AfterStatements, !Info),
+
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
     MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
 
-    LoopBodyStatements = [
-        statement(ml_stmt_atomic(
-            assign(MidVarLval,
-                ml_binop(int_div,
-                    ml_binop(int_add, ml_lval(LoVarLval), ml_lval(HiVarLval)),
-                    ml_const(mlconst_int(2))))),
-            MLDS_Context),
-        statement(ml_stmt_atomic(
-            assign(ResultVarLval,
-                ml_binop(str_cmp,
-                    VarRval,
-                    ml_lval(ml_field(yes(0),
-                        ml_vector_common_row(VectorCommon,
-                            ml_lval(MidVarLval)),
-                    StringFieldId, MLDS_StringType, StructType))))),
-            MLDS_Context),
-        statement(ml_stmt_if_then_else(
-            ml_binop(eq,
-                ml_lval(ResultVarLval),
-                ml_const(mlconst_int(0))),
-            SuccessStatement,
-            yes(statement(
-                ml_stmt_if_then_else(
-                    ml_binop(int_lt,
-                        ml_lval(ResultVarLval),
-                        ml_const(mlconst_int(0))),
-                    statement(ml_stmt_atomic(
-                        assign(HiVarLval,
-                            ml_binop(int_sub,
-                                ml_lval(MidVarLval),
-                                ml_const(mlconst_int(1))))),
-                        MLDS_Context),
-                    yes(statement(ml_stmt_atomic(
-                        assign(LoVarLval,
-                            ml_binop(int_add,
-                                ml_lval(MidVarLval),
-                                ml_const(mlconst_int(1))))),
-                        MLDS_Context))),
+    InitLoVarStatement = statement(ml_stmt_atomic(
+        assign(LoVarLval, ml_const(mlconst_int(0)))),
+        MLDS_Context),
+    InitHiVarStatement = statement(ml_stmt_atomic(
+        assign(HiVarLval, ml_const(mlconst_int(TableSize - 1)))),
+        MLDS_Context),
+    CrossingTest = ml_binop(int_le, LoVarRval, HiVarRval),
+
+    AssignMidVarStatement = statement(ml_stmt_atomic(
+        assign(MidVarLval,
+            ml_binop(int_div,
+                ml_binop(int_add, LoVarRval, HiVarRval),
+                ml_const(mlconst_int(2))))),
+        MLDS_Context),
+    AssignResultVarStatement = statement(ml_stmt_atomic(
+        assign(ResultVarLval,
+            ml_binop(str_cmp,
+                VarRval,
+                ml_lval(ml_field(yes(0),
+                    ml_vector_common_row(VectorCommon, MidVarRval),
+                StringFieldId, MLDS_StringType, StructType))))),
+        MLDS_Context),
+    ResultTest = ml_binop(eq, ResultVarRval, ml_const(mlconst_int(0))),
+    UpdateLoOrHiVarStatement = statement(
+        ml_stmt_if_then_else(
+            ml_binop(int_lt, ResultVarRval, ml_const(mlconst_int(0))),
+            statement(ml_stmt_atomic(
+                assign(HiVarLval,
+                    ml_binop(int_sub, MidVarRval, ml_const(mlconst_int(1))))),
+                MLDS_Context),
+            yes(statement(ml_stmt_atomic(
+                assign(LoVarLval,
+                    ml_binop(int_add, MidVarRval, ml_const(mlconst_int(1))))),
                 MLDS_Context))),
-            MLDS_Context)
-    ],
-    Statements = [
-        statement(ml_stmt_atomic(
-            assign(LoVarLval, ml_const(mlconst_int(0)))),
+        MLDS_Context),
+
+    (
+        MaybeStopLoopVarLval = no,
+        LoopBodyStatements = [
+            AssignMidVarStatement,
+            AssignResultVarStatement,
+            statement(ml_stmt_if_then_else(ResultTest,
+                SuccessStatement, yes(UpdateLoOrHiVarStatement)),
+                MLDS_Context)
+        ],
+        SearchStatements = [
+            InitLoVarStatement,
+            InitHiVarStatement,
+            statement(ml_stmt_while(loop_at_least_once,
+                CrossingTest,
+                statement(ml_stmt_block([], LoopBodyStatements),
+                    MLDS_Context)),
+                MLDS_Context)
+        ]
+    ;
+        MaybeStopLoopVarLval = yes(StopLoopVarLval),
+        InitStopLoopVarStatement = statement(ml_stmt_atomic(
+            assign(StopLoopVarLval, ml_const(mlconst_int(0)))),
             MLDS_Context),
-        statement(ml_stmt_atomic(
-            assign(HiVarLval, ml_const(mlconst_int(TableSize - 1)))),
-            MLDS_Context),
-        statement(ml_stmt_while(may_loop_zero_times,
-            ml_binop(int_le,
-                ml_lval(LoVarLval),
-                ml_lval(HiVarLval)),
-            statement(ml_stmt_block([], LoopBodyStatements),
-                MLDS_Context)),
-            MLDS_Context)
-        ].
+        StopLoopTest = ml_binop(eq,
+            ml_lval(StopLoopVarLval), ml_const(mlconst_int(0))),
+        LoopBodyStatements = [
+            AssignMidVarStatement,
+            AssignResultVarStatement,
+            % SuccessStatement should set StopLoopVarLval to 1.
+            statement(ml_stmt_if_then_else(ResultTest,
+                SuccessStatement, yes(UpdateLoOrHiVarStatement)),
+                MLDS_Context)
+        ],
+        SearchStatements = [
+            InitLoVarStatement,
+            InitHiVarStatement,
+            InitStopLoopVarStatement,
+            statement(ml_stmt_while(loop_at_least_once,
+                ml_binop(logical_and, StopLoopTest, CrossingTest),
+                statement(ml_stmt_block([], LoopBodyStatements),
+                    MLDS_Context)),
+                MLDS_Context)
+        ]
+    ),
+
+    InitialCommentStatement =
+        statement(ml_stmt_atomic(comment(InitialComment)), MLDS_Context),
+    Statements = [InitialCommentStatement | SetupForFailStatements] ++
+        SearchStatements ++ AfterStatements.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1450,27 +1489,222 @@ ml_gen_string_binary_switch_search(BinarySearchInfo,
 % Code useful for all kinds of string switches.
 %
 
-:- pred ml_gen_maybe_switch_failure(code_model::in, can_fail::in,
-    prog_context::in, mlds_context::in, list(statement)::out,
+:- pred ml_should_use_stop_loop(mlds_context::in, bool::in,
+    maybe(mlds_lval)::out, list(mlds_defn)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, MLDS_Context,
-        FailStatements, !Info) :-
+ml_should_use_stop_loop(MLDS_Context, LoopPresent,
+        MaybeStopLoopLval, StopLoopLvalDefns, !Info) :-
+    (
+        LoopPresent = no,
+        UseStopLoop = no
+    ;
+        LoopPresent = yes,
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        SupportsGoto = globals_target_supports_goto(Globals),
+        globals.lookup_string_option(Globals, experiment, Experiment),
+        (
+            SupportsGoto = yes,
+            ( Experiment = "use_stop_loop" ->
+                UseStopLoop = yes
+            ;
+                UseStopLoop = no
+            )
+        ;
+            SupportsGoto = no,
+            UseStopLoop = yes
+        )
+    ),
+    (
+        UseStopLoop = no,
+        MaybeStopLoopLval = no,
+        StopLoopLvalDefns = []
+    ;
+        UseStopLoop = yes,
+        % On targets that do not support gotos or break, after we have
+        % handled a match, we set the stop loop flag, which will cause the
+        % next test of the loop condition to fail.
+
+        StopLoopType = mlds_native_int_type,
+        % We never need to trace ints.
+        StopLoopGCStatement = gc_no_stmt,
+
+        ml_gen_info_new_aux_var_name("stop_loop", StopLoopVar, !Info),
+        StopLoopVarDefn = ml_gen_mlds_var_decl(mlds_data_var(StopLoopVar),
+            StopLoopType, StopLoopGCStatement, MLDS_Context),
+        ml_gen_var_lval(!.Info, StopLoopVar, StopLoopType, StopLoopVarLval),
+        MaybeStopLoopLval = yes(StopLoopVarLval),
+        StopLoopLvalDefns = [StopLoopVarDefn]
+    ).
+
+:- pred ml_gen_maybe_switch_failure(code_model::in, can_fail::in,
+    prog_context::in, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, FailStatements,
+        !Info) :-
+    % We used to include comments in FailStatements. However, that would
+    % complicate the task of ml_wrap_loop_break, which needs to decide
+    % whether FailStatements actually contains executable code.
     (
         CanFail = cannot_fail,
         % This can happen if the initial inst of the switched-on variable
         % shows that we know a finite set of strings that the variable can be
         % bound to.
-        FailComment =
-            statement(ml_stmt_atomic(comment("switch cannot fail")),
-                MLDS_Context),
-        FailStatements = [FailComment]
+        FailStatements = []
     ;
         CanFail = can_fail,
-        FailComment = statement(ml_stmt_atomic(comment("no match, so fail")),
-            MLDS_Context),
-        ml_gen_failure(CodeModel, Context, FailStatements0, !Info),
-        FailStatements = [FailComment | FailStatements0]
+        ml_gen_failure(CodeModel, Context, FailStatements, !Info)
+    ).
+
+    % ml_wrap_loop_break(CodeModel, LoopPresent,
+    %   MLDS_Context, MaybeStopLoopVarLval, MatchDefns, MatchStatements,
+    %   SetupForFailStatements, BodyStatement, AfterStatements, !Info)
+    %
+    % MatchStatements should be the statements that we execute once we find
+    % a match, and OnlyFailAfterStatements should be the statements that we
+    % want to execute after the search loop if the loop did NOT find a match.
+    %
+    % This predicate wraps up MatchStatements with both MatchDefns and with
+    % other following code that causes execution to exit the loop
+    % after a match, and returns the resulting code as BodyStatement.
+    %
+    % We also return SetupForFailStatements and AfterStatements.
+    % SetupForFailStatements will be code to put before the loop, to set up
+    % for possible failure to find a match.
+
+    % AfterStatements will be code to put after the loop. It will contain
+    % OnlyFailAfterStatements, wrapped up in a test if necessary, as well as
+    % any code needed to enable BodyStatement to break out of the loop
+    % on a match.
+    %
+:- pred ml_wrap_loop_break(code_model::in, bool::in, mlds_context::in,
+    maybe(mlds_lval)::in, list(mlds_defn)::in, list(statement)::in,
+    list(statement)::in,
+    list(statement)::out, statement::out, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_wrap_loop_break(CodeModel, LoopPresent, MLDS_Context, MaybeStopLoopVarLval,
+        MatchDefns, MatchStatements, FailStatements,
+        SetupForFailStatements, BodyStatement, AfterStatements, !Info) :-
+    (
+        CodeModel = model_det,
+        SetupForFailStatements = [],
+        expect(unify(FailStatements, []), $module, $pred,
+            "model_det, but FailStatements is not empty"),
+        OnlyFailAfterStatements = []
+    ;
+        CodeModel = model_semi,
+        (
+            MaybeStopLoopVarLval = no,
+            SetupForFailStatements = [],
+            OnlyFailAfterStatements = FailStatements
+        ;
+            MaybeStopLoopVarLval = yes(_),
+            % It is more efficient to set up the default value of the succeeded
+            % variable (FALSE) with an unconditional assignment than it is
+            % to set up its actual value with a conditional assignment.
+            SetupForFailStatements = FailStatements,
+            OnlyFailAfterStatements = []
+        )
+    ;
+        CodeModel = model_non,
+        SetupForFailStatements = [],
+        expect(unify(FailStatements, []), $module, $pred,
+            "model_non, but FailStatements is not empty"),
+        OnlyFailAfterStatements = []
+    ),
+    (
+        MaybeStopLoopVarLval = no,
+        (
+            LoopPresent = no,
+            OnlyFailAfterStatements = []
+        ->
+            BodyStatement =
+                statement(ml_stmt_block(MatchDefns, MatchStatements),
+                    MLDS_Context),
+            AfterStatements = []
+        ;
+            ml_gen_info_get_module_info(!.Info, ModuleInfo),
+            module_info_get_globals(ModuleInfo, Globals),
+            SupportsBreakContinue =
+                globals_target_supports_break_and_continue(Globals),
+            globals.lookup_string_option(Globals, experiment, Experiment),
+            (
+                SupportsBreakContinue = yes,
+                OnlyFailAfterStatements = [],
+                Experiment \= "use_end_label"
+            ->
+                BreakCommentStatement = statement(ml_stmt_atomic(
+                    comment("break out of search loop")), MLDS_Context),
+                BreakStatement =
+                    statement(ml_stmt_goto(goto_break), MLDS_Context),
+                BodyStatement =
+                    statement(ml_stmt_block(MatchDefns,
+                        MatchStatements ++
+                            [BreakCommentStatement, BreakStatement]),
+                        MLDS_Context),
+                AfterStatements = []
+            ;
+                ml_gen_new_label(EndLabel, !Info),
+                GotoCommentStatement = statement(ml_stmt_atomic(
+                    comment("jump out of search loop")), MLDS_Context),
+                GotoEndStatement =
+                    statement(ml_stmt_goto(goto_label(EndLabel)),
+                        MLDS_Context),
+                BodyStatement =
+                    statement(ml_stmt_block(MatchDefns,
+                        MatchStatements ++
+                            [GotoCommentStatement, GotoEndStatement]),
+                        MLDS_Context),
+                EndLabelStatement =
+                    statement(ml_stmt_label(EndLabel), MLDS_Context),
+                AfterStatements =
+                    OnlyFailAfterStatements ++ [EndLabelStatement]
+            )
+        )
+    ;
+        MaybeStopLoopVarLval = yes(StopLoopVarLval),
+        (
+            LoopPresent = no,
+            OnlyFailAfterStatements = []
+        ->
+            BodyStatement =
+                statement(ml_stmt_block(MatchDefns, MatchStatements),
+                    MLDS_Context)
+        ;
+            SetStopLoopStatement =
+                statement(ml_stmt_atomic(
+                    assign(StopLoopVarLval, ml_const(mlconst_int(1)))),
+                    MLDS_Context),
+            BodyStatement =
+                statement(ml_stmt_block(MatchDefns,
+                    MatchStatements ++ [SetStopLoopStatement]),
+                    MLDS_Context)
+        ),
+        (
+            OnlyFailAfterStatements = [],
+            AfterStatements = []
+        ;
+            (
+                OnlyFailAfterStatements = [OnlyFailAfterStatement]
+            ;
+                OnlyFailAfterStatements = [_, _ | _],
+                OnlyFailAfterStatement = statement(
+                    ml_stmt_block([], OnlyFailAfterStatements),
+                    MLDS_Context)
+            ),
+            SuccessTest = ml_binop(eq,
+                ml_lval(StopLoopVarLval),
+                ml_const(mlconst_int(0))),
+            AfterStatement =
+                statement(
+                    ml_stmt_if_then_else(SuccessTest,
+                        OnlyFailAfterStatement, no),
+                    MLDS_Context),
+            AfterStatements = [AfterStatement]
+        )
     ).
 
 %-----------------------------------------------------------------------------%

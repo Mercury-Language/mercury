@@ -569,29 +569,6 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
     ml_initial_cont(!.Info, OutputVarLvals, OutputVarTypes, InitialCont),
     ml_gen_info_push_success_cont(InitialCont, !Info).
 
-    % Generate MLDS definitions for all the local variables in a function.
-    %
-    % Note that this function generates all the local variables at the
-    % top of the function. It might be a better idea to instead generate
-    % local declarations for all the variables used in each sub-goal.
-    %
-:- pred ml_gen_all_local_var_decls(hlds_goal::in, prog_varset::in,
-    vartypes::in, list(prog_var)::in, list(mlds_defn)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_gen_all_local_var_decls(Goal, VarSet, VarTypes, HeadVars, MLDS_LocalVars,
-        !Info) :-
-    Goal = hlds_goal(_, GoalInfo),
-    Context = goal_info_get_context(GoalInfo),
-    goal_util.goal_vars(Goal, AllVarsSet),
-    set_of_var.delete_list(HeadVars, AllVarsSet, LocalVarsSet),
-    set_of_var.to_sorted_list(LocalVarsSet, LocalVars),
-    ml_gen_local_var_decls(VarSet, VarTypes, Context, LocalVars,
-        MLDS_LocalVars0, !Info),
-    MLDS_Context = mlds_make_context(Context),
-    MLDS_SucceededVar = ml_gen_succeeded_var_decl(MLDS_Context),
-    MLDS_LocalVars = [MLDS_SucceededVar | MLDS_LocalVars0].
-
     % Generate the code for a procedure body.
     %
 :- pred ml_gen_proc_body(code_model::in, list(prog_var)::in,

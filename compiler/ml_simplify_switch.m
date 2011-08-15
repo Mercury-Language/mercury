@@ -42,6 +42,7 @@
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_switch_gen.
+:- import_module ml_backend.ml_target_util.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
@@ -65,9 +66,9 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
 
         % Does the target want us to convert dense int switches
         % into computed gotos?
-        target_supports_computed_goto(Globals),
+        globals_target_supports_computed_goto(Globals) = yes,
         \+ (
-            target_supports_int_switch(Globals),
+            globals_target_supports_int_switch(Globals) = yes,
             globals.lookup_bool_option(Globals, prefer_switch, yes)
         ),
 
@@ -95,7 +96,7 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
         Stmt0 = ml_stmt_switch(Type, Rval, _Range, Cases, Default),
         is_integral_type(Type) = yes,
         \+ (
-            target_supports_int_switch(Globals),
+            globals_target_supports_int_switch(Globals) = yes,
             globals.lookup_bool_option(Globals, prefer_switch, yes)
         )
     ->

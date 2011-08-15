@@ -136,6 +136,7 @@
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
+:- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.builtin_lib_types.
@@ -551,20 +552,6 @@ ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
             unexpected($module, $pred, "unqualified ctor name")
         )
     ).
-
-    % This should return `yes' iff downcasts are not needed.
-    %
-:- func target_supports_inheritence(compilation_target) = bool.
-
-target_supports_inheritence(target_c) = no.
-target_supports_inheritence(target_il) = yes.
-target_supports_inheritence(target_csharp) = yes.
-target_supports_inheritence(target_java) = yes.
-target_supports_inheritence(target_asm) = no.
-target_supports_inheritence(target_x86_64) =
-    unexpected($module, $pred, "target_x86_64 and --high-level-code").
-target_supports_inheritence(target_erlang) =
-    unexpected($module, $pred, "target erlang").
 
 %-----------------------------------------------------------------------------%
 

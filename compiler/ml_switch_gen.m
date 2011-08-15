@@ -101,7 +101,6 @@
 
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
-:- import_module libs.globals.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
@@ -123,13 +122,6 @@
     prog_context::in, mlds_switch_default::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % Succeed iff the target supports the specified construct.
-    %
-:- pred target_supports_int_switch(globals::in) is semidet.
-:- pred target_supports_string_switch(globals::in) is semidet.
-:- pred target_supports_goto(globals::in) is semidet.
-:- pred target_supports_computed_goto(globals::in) is semidet.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -141,6 +133,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
@@ -148,6 +141,7 @@
 :- import_module ml_backend.ml_simplify_switch.
 :- import_module ml_backend.ml_string_switch.
 :- import_module ml_backend.ml_tag_switch.
+:- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_unify_gen.
 :- import_module parse_tree.prog_type.
 
@@ -228,7 +222,7 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                     NeedBitVecCheck, NeedRangeCheck, LookupStatement, !Info),
                 Statements = [LookupStatement]
             ;
-                target_supports_int_switch(Globals)
+                globals_target_supports_int_switch(Globals) = yes
             ->
                 ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
                     CodeModel, CanFail, Context, Statements, !Info)
@@ -251,7 +245,7 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                 globals.lookup_bool_option(Globals, prefer_switch,
                     PreferSwitch),
                 (
-                    target_supports_string_switch(Globals),
+                    globals_target_supports_string_switch(Globals) = yes,
                     % Even if we could use a hash or binary switch,
                     % we may prefer to do a direct-mapped string switch.
                     PreferSwitch = yes
@@ -265,15 +259,10 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                     % We can implement string hash switches using either
                     % computed gotos or int switches.
                     (
-                        target_supports_computed_goto(Globals)
+                        globals_target_supports_computed_goto(Globals) = yes
                     ;
-                        target_supports_int_switch(Globals)
-                    ),
-                    % XXX Currently string hash switches always use gotos
-                    % (to break out of the hash chain loop).
-                    % We should change that, so that we can use string hash
-                    % switches for the Java back-end too.
-                    target_supports_goto(Globals)
+                        globals_target_supports_int_switch(Globals) = yes
+                    )
                 ->
                     (
                         ml_gen_info_get_high_level_data(!.Info, no),
@@ -297,14 +286,10 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                     % We can implement string binary switches using either
                     % computed gotos or int switches.
                     (
-                        target_supports_computed_goto(Globals)
+                        globals_target_supports_computed_goto(Globals) = yes
                     ;
-                        target_supports_int_switch(Globals)
-                    ),
-                    % XXX Currently string binary switches always use gotos.
-                    % We should change that, so that we can use string binary
-                    % switches for the Java back-end too.
-                    target_supports_goto(Globals)
+                        globals_target_supports_int_switch(Globals) = yes
+                    )
                 ->
                     (
                         ml_gen_info_get_high_level_data(!.Info, no),
@@ -342,7 +327,7 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
             (
                 NumConsIds >= TagSize,
                 NumArms > 1,
-                target_supports_int_switch(Globals)
+                globals_target_supports_int_switch(Globals) = yes
             ->
                 ml_generate_tag_switch(TaggedCases, SwitchVar, CodeModel,
                     CanFail, Context, Statements, !Info)
@@ -358,73 +343,6 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
             Decls = []
         )
     ).
-
-%-----------------------------------------------------------------------------%
-
-target_supports_int_switch(Globals) :-
-    globals.get_target(Globals, Target),
-    target_supports_int_switch_2(Target) = yes.
-
-target_supports_string_switch(Globals) :-
-    globals.get_target(Globals, Target),
-    target_supports_string_switch_2(Target) = yes.
-
-target_supports_goto(Globals) :-
-    globals.get_target(Globals, Target),
-    target_supports_goto_2(Target) = yes.
-
-target_supports_computed_goto(Globals) :-
-    globals.get_target(Globals, Target),
-    target_supports_computed_goto_2(Target) = yes.
-
-:- func target_supports_int_switch_2(compilation_target) = bool.
-:- func target_supports_string_switch_2(compilation_target) = bool.
-:- func target_supports_goto_2(compilation_target) = bool.
-:- func target_supports_computed_goto_2(compilation_target) = bool.
-
-target_supports_int_switch_2(target_c) = yes.
-target_supports_int_switch_2(target_asm) = yes.
-target_supports_int_switch_2(target_il) = no.
-target_supports_int_switch_2(target_csharp) = yes.
-target_supports_int_switch_2(target_java) = yes.
-target_supports_int_switch_2(target_x86_64) =
-    unexpected($module, $pred, "target x86_64 with --high-level code").
-target_supports_int_switch_2(target_erlang) =
-    unexpected($module, $pred, "target erlang").
-
-target_supports_string_switch_2(target_c) = no.
-target_supports_string_switch_2(target_asm) = no.
-target_supports_string_switch_2(target_il) = no.
-target_supports_string_switch_2(target_csharp) = yes.
-target_supports_string_switch_2(target_java) = no.
-    % String switches were added in Java 7.
-target_supports_string_switch_2(target_x86_64) =
-    unexpected($module, $pred, "target x86_64 with --high-level code").
-target_supports_string_switch_2(target_erlang) =
-    unexpected($module, $pred, "target erlang").
-
-target_supports_computed_goto_2(target_c) = yes.
-target_supports_computed_goto_2(target_asm) = no.
-    % XXX for asm, it should be `yes', but currently
-    % computed gotos are not yet implemented in gcc.m.
-target_supports_computed_goto_2(target_il) = yes.
-target_supports_computed_goto_2(target_csharp) = yes.
-target_supports_computed_goto_2(target_java) = no.
-% target_supports_computed_goto_2(c_sharp) = no.
-target_supports_computed_goto_2(target_x86_64) =
-    unexpected($module, $pred, "target x86_64 with --high-level code").
-target_supports_computed_goto_2(target_erlang) =
-    unexpected($module, $pred, "target erlang").
-
-target_supports_goto_2(target_c) = yes.
-target_supports_goto_2(target_asm) = yes.
-target_supports_goto_2(target_il) = yes.
-target_supports_goto_2(target_csharp) = yes.
-target_supports_goto_2(target_java) = no.
-target_supports_goto_2(target_x86_64) =
-    unexpected($module, $pred, "target x86_64 with --high-level code").
-target_supports_goto_2(target_erlang) =
-    unexpected($module, $pred, "target erlang").
 
 %-----------------------------------------------------------------------------%
 

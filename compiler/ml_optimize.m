@@ -47,6 +47,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_util.
 
 :- import_module bool.
@@ -304,13 +305,17 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
 :- func tailcall_loop_top(globals) = mlds_goto_target.
 
 tailcall_loop_top(Globals) = Target :-
-    ( target_supports_break_and_continue(Globals) ->
+    SupportsBreakContinue =
+        globals_target_supports_break_and_continue(Globals),
+    (
+        SupportsBreakContinue = yes,
         % The function body has been wrapped inside
         % `while (true) { ... break; }', and so to branch to the top of the
         % function, we just do a `continue' which will continue the next
         % iteration of the loop.
         Target = goto_continue
     ;
+        SupportsBreakContinue = no,
         % A label has been inserted at the start of the function, and so to
         % branch to the top of the function, we just branch to that label.
         Target = goto_label(tailcall_loop_label_name)
@@ -435,10 +440,13 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
         Comment = ml_stmt_atomic(comment("tailcall optimized into a loop")),
         CommentStmt = statement(Comment, Context),
         % The loop can be defined either using while, break, and continue,
-        % or using a label and goto.  We prefer to use the former, if possible,
+        % or using a label and goto. We prefer to use the former, if possible,
         % since it is a higher-level construct that may help the back-end
         % compiler's optimizer.
-        ( target_supports_break_and_continue(Globals) ->
+        SupportsBreakContinue =
+            globals_target_supports_break_and_continue(Globals),
+        (
+            SupportsBreakContinue = yes,
             % Wrap a while loop around the function body:
             %   while (true) {
             %       /* tailcall optimized into a loop */
@@ -454,6 +462,7 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
                     statement(ml_stmt_goto(goto_break), Context)]),
                 Context))
         ;
+            SupportsBreakContinue = no,
             % Add a loop_top label at the start of the function
             % body:
             %   {
@@ -472,26 +481,6 @@ optimize_func_stmt(OptInfo, Statement0, Statement) :-
         Stmt = Stmt0
     ),
     Statement = statement(Stmt, Context).
-
-:- pred target_supports_break_and_continue(globals::in) is semidet.
-
-target_supports_break_and_continue(Globals) :-
-    globals.get_target(Globals, Target),
-    target_supports_break_and_continue_2(Target) = yes.
-
-:- func target_supports_break_and_continue_2(compilation_target) = bool.
-
-target_supports_break_and_continue_2(target_c) = yes.
-target_supports_break_and_continue_2(target_asm) = no.
-    % asm means via gnu back-end
-target_supports_break_and_continue_2(target_il) = no.
-target_supports_break_and_continue_2(target_csharp) = yes.
-target_supports_break_and_continue_2(target_java) = yes.
-% target_supports_break_and_continue_2(target_c_sharp) = yes.
-target_supports_break_and_continue_2(target_x86_64) = _ :-
-    unexpected($module, $pred, "target x86_64 with --high-level-code").
-target_supports_break_and_continue_2(target_erlang) = _ :-
-    unexpected($module, $pred, "target erlang").
 
 %-----------------------------------------------------------------------------%
 
