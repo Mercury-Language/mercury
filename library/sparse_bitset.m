@@ -956,17 +956,17 @@ superset(Superset, Set) :-
 %-----------------------------------------------------------------------------%
 
 contains(sparse_bitset(Set), Elem) :-
-    contains_2(Set, enum.to_int(Elem)).
+    contains_search_nodes(Set, enum.to_int(Elem)).
 
-:- pred contains_2(bitset_impl::in, int::in) is semidet.
+:- pred contains_search_nodes(bitset_impl::in, int::in) is semidet.
 
-contains_2([Data | Rest], Index) :-
+contains_search_nodes([Data | Rest], Index) :-
     Offset = Data ^ offset,
     Index >= Offset,
     ( Index < Offset + bits_per_int ->
         get_bit(Data ^ bits, Index - Offset) \= 0
     ;
-        contains_2(Rest, Index)
+        contains_search_nodes(Rest, Index)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -976,7 +976,7 @@ contains_2([Data | Rest], Index) :-
 member(Elem::in, Set::in) :-
     contains(Set, Elem).
 member(Elem::out, sparse_bitset(Set)::in) :-
-    member_2(Index, Set),
+    member_search_nodes(Index, Set),
     ( Elem0 = from_int(Index) ->
         Elem = Elem0
     ;
@@ -985,16 +985,16 @@ member(Elem::out, sparse_bitset(Set)::in) :-
         error("sparse_bitset.m: `enum.from_int/1' failed")
     ).
 
-:- pred member_2(int::out, bitset_impl::in) is nondet.
+:- pred member_search_nodes(int::out, bitset_impl::in) is nondet.
 
-member_2(Index, [Elem | Elems]) :-
-    ( member_3(Index, Elem ^ offset, bits_per_int, Elem ^ bits)
-    ; member_2(Index, Elems)
+member_search_nodes(Index, [Elem | Elems]) :-
+    ( member_search_one_node(Index, Elem ^ offset, bits_per_int, Elem ^ bits)
+    ; member_search_nodes(Index, Elems)
     ).
 
-:- pred member_3(int::out, int::in, int::in, int::in) is nondet.
+:- pred member_search_one_node(int::out, int::in, int::in, int::in) is nondet.
 
-member_3(Index, Offset, Size, Bits) :-
+member_search_one_node(Index, Offset, Size, Bits) :-
     ( Bits = 0 ->
         fail
     ; Size = 1 ->
@@ -1009,8 +1009,8 @@ member_3(Index, Offset, Size, Bits) :-
         % Extract the high-order half of the bits.
         HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
 
-        ( member_3(Index, Offset, HalfSize, LowBits)
-        ; member_3(Index, Offset + HalfSize, HalfSize, HighBits)
+        ( member_search_one_node(Index, Offset, HalfSize, LowBits)
+        ; member_search_one_node(Index, Offset + HalfSize, HalfSize, HighBits)
         )
     ).
 

@@ -1061,12 +1061,13 @@
 /*
 ** MR_CLANG -- The C compiler is clang.
 **
-** MR_GNUC -- The C compiler is GCC.  We use this macro instead of __GNUC__
-**            since clang also defines __GNUC__.
-	      The value of this macro gives the major version number.
+** MR_GNUC -- The C compiler is GCC.  
+**            The value of this macro gives the major version number.
+**            We use this macro instead of __GNUC__ since clang also
+**            defines __GNUC__.
 **
 ** MR_MSVC -- The C compiler is Visual C.
-**	      The value of this macro gives the version number.
+**            The value of this macro gives the version number.
 */
 
 #if defined(__clang__)

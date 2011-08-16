@@ -5,20 +5,20 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: robdd.m.
 % Main author: dmo.
 % Stability: low.
-% 
+%
 % This module contains a Mercury interface to Peter Schachte's C
 % implementation of Reduced Ordered Binary Decision Diagrams (ROBDDs).
 % ROBDDs are an efficient representation for Boolean constraints.
-% 
-% Boolean variables are represented using the type var(T) from the
-% `term' library module (see the `term' module documentation for
-% more information).
-% 
+%
+% Boolean variables are represented using the type var(T) from the `term'
+% library module (see the `term' module documentation for more information).
+%
 % Example usage:
+%
 %   % Create some variables.
 %   term.init_var_supply(VarSupply0),
 %   term.create_var(VarSupply0, A, VarSupply1),
@@ -37,16 +37,16 @@
 %
 %   % Test R2 and R3 for equivalence (should succeed).
 %   R2 = R3.
-% 
+%
 % ROBDDs are implemented so that two ROBDDs, R1 and R2, represent
 % the same Boolean constraint if and only iff `R1 = R2'. Checking
 % equivalence of ROBDDs is fast since it involves only a single
 % pointer comparison.
-% 
+%
 % XXX This module is not yet sufficiently well tested or documented to be
 % included in the publically available part of the library, so at the moment
 % it is not included in the list of modules mentioned in the library manual.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -66,37 +66,46 @@
 
 :- func empty_vars_set = vars(T).
 
-% Constants.
+    % Constants.
+    %
 :- func one = robdd(T).
 :- func zero = robdd(T).
 
-% If-then-else.
+    % If-then-else.
+    %
 :- func ite(robdd(T), robdd(T), robdd(T)) = robdd(T).
 
 % The functions *, +, =<, =:=, =\= and ~ correspond to the names
 % used in the SICStus clp(B) library.
 
-% Conjunction.
+    % Conjunction.
+    %
 :- func robdd(T) * robdd(T) = robdd(T).
 
-% Disjunction.
+    % Disjunction.
+    %
 :- func robdd(T) + robdd(T) = robdd(T).
 
-% Implication.
+    % Implication.
+    %
 :- func (robdd(T) =< robdd(T)) = robdd(T).
 
-% Equivalence.
+    % Equivalence.
+    %
 :- func (robdd(T) =:= robdd(T)) = robdd(T).
 
-% Non-equivalence (XOR).
+    % Non-equivalence (XOR).
+    %
 :- func (robdd(T) =\= robdd(T)) = robdd(T).
 
-% Negation.
+    % Negation.
+    %
 :- func (~ robdd(T)) = robdd(T).
 
 %-----------------------------------------------------------------------------%
 
     % var(X) is the ROBDD that is true iff X is true.
+    %
 :- func var(var(T)) = robdd(T).
 
 % The following functions operate on individual variables and are
@@ -104,66 +113,83 @@
 % ROBDDs as input.
 
     % not_var(V) = ~ var(V).
+    %
 :- func not_var(var(T)) = robdd(T).
 
     % ite_var(V, FA, FB) = ite(var(V), FA, FB).
+    %
 :- func ite_var(var(T), robdd(T), robdd(T)) = robdd(T).
 
     % eq_vars(X, Y) = ( var(X) =:= var(Y) ).
+    %
 :- func eq_vars(var(T), var(T)) = robdd(T).
 
     % neq_vars(X, Y) = ( var(X) =\= var(Y) ).
+    %
 :- func neq_vars(var(T), var(T)) = robdd(T).
 
     % imp_vars(X, Y) = ( var(X) =< var(Y) ).
+    %
 :- func imp_vars(var(T), var(T)) = robdd(T).
 
     % conj_vars([V1, V2, ..., Vn]) = var(V1) * var(V2) * ... * var(Vn).
+    %
 :- func conj_vars(vars(T)) = robdd(T).
 
     % conj_not_vars([V1, V2, ..., Vn]) = not_var(V1) * ... * not_var(Vn).
+    %
 :- func conj_not_vars(vars(T)) = robdd(T).
 
     % disj_vars([V1, V2, ..., Vn]) = var(V1) + var(V2) + ... + var(Vn).
+    %
 :- func disj_vars(vars(T)) = robdd(T).
 
     % at_most_one_of(Vs) =
     %   foreach pair Vi, Vj in Vs where Vi \= Vj. ~(var(Vi) * var(Vj)).
+    %
 :- func at_most_one_of(vars(T)) = robdd(T).
 
     % var_restrict_true(V, F) = restrict(V, F * var(V)).
+    %
 :- func var_restrict_true(var(T), robdd(T)) = robdd(T).
 
     % var_restrict_false(V, F) = restrict(V, F * not_var(V)).
+    %
 :- func var_restrict_false(var(T), robdd(T)) = robdd(T).
 
 %-----------------------------------------------------------------------------%
 
-    % X `entails` Y
-    %   Succeed iff X entails Y.
-    %   Does not create any new ROBDD nodes.
+    % X `entails` Y:
+    %
+    % Succeed iff X entails Y.
+    % Does not create any new ROBDD nodes.
+    %
 :- pred robdd(T) `entails` robdd(T).
 :- mode in `entails` in is semidet.
 
     % Succeed iff the var is entailed by the ROBDD.
+    %
 :- pred var_entailed(robdd(T)::in, var(T)::in) is semidet.
 
 :- type entailment_result(T)
     --->    all_vars
-    ;   some_vars(vars :: T).
+    ;       some_vars(vars :: T).
 
 :- type vars_entailed_result(T) == entailment_result(vars(T)).
 
     % Return the set of vars entailed by the ROBDD.
+    %
 :- func vars_entailed(robdd(T)) = vars_entailed_result(T).
 
     % Return the set of vars disentailed by the ROBDD.
+    %
 :- func vars_disentailed(robdd(T)) = vars_entailed_result(T).
 
-    % definite_vars(R, T, F) <=> T = vars_entailed(R) /\
-    %                F = vars_disentailed(R)
+    % definite_vars(R, T, F) <=>
+    %   T = vars_entailed(R) /\ F = vars_disentailed(R)
+    %
 :- pred definite_vars(robdd(T)::in, vars_entailed_result(T)::out,
-        vars_entailed_result(T)::out) is det.
+    vars_entailed_result(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -177,10 +203,10 @@
 
 :- type leader_map(T) == map(var(T), var(T)).
 
-:- type equiv_vars(T) --->
-    equiv_vars(
-        leader_map  :: leader_map(T)
-    ).
+:- type equiv_vars(T)
+    --->    equiv_vars(
+                leader_map  :: leader_map(T)
+            ).
 
 :- type equivalent_result(T) == entailment_result(equiv_vars(T)).
 
@@ -199,34 +225,39 @@
 
 :- type imp_vars(T)
     --->    imp_vars(
-            imps :: imp_map(T),     %  K =>  V  (~K \/  V)
-            rev_imps ::imp_map(T),      % ~K => ~V  ( K \/ ~V)
-            dis_imps :: imp_map(T),     %  K => ~V  (~K \/ ~V)
-            rev_dis_imps :: imp_map(T)  % ~K =>  V  ( K \/  V)
-        ).
+                imps            :: imp_map(T), %  K =>  V  (~K \/  V)
+                rev_imps        :: imp_map(T), % ~K => ~V  ( K \/ ~V)
+                dis_imps        :: imp_map(T), %  K => ~V  (~K \/ ~V)
+                rev_dis_imps    :: imp_map(T)  % ~K =>  V  ( K \/  V)
+            ).
 
 :- func extract_implications(robdd(T)) = imp_vars(T).
 
 %---------------------------------------------------------------------------%
 
     % Existentially quantify away the var in the ROBDD.
+    %
 :- func restrict(var(T), robdd(T)) = robdd(T).
 
     % Existentially quantify away all vars greater than the specified var.
+    %
 :- func restrict_threshold(var(T), robdd(T)) = robdd(T).
 
     % Existentially quantify away all vars for which the predicate fails.
+    %
 :- func restrict_filter(pred(var(T)), robdd(T)) = robdd(T).
 :- mode restrict_filter(pred(in) is semidet, in) = out is det.
 
-    % restrict_filter(P, D, R)
-    %   Existentially quantify away all vars for which P fails,
-    %   except, if D fails for a var, do not existentially quantify
-    %   away that var or any greater than it. This means that D can be
-    %   used to set a depth limit on the existential quantification.
+    % restrict_filter(P, D, R):
+    %
+    % Existentially quantify away all vars for which P fails,
+    % except, if D fails for a var, do not existentially quantify
+    % away that var or any greater than it. This means that D can be
+    % used to set a depth limit on the existential quantification.
+    %
 :- func restrict_filter(pred(var(T)), pred(var(T)), robdd(T)) = robdd(T).
 :- mode restrict_filter(pred(in) is semidet, pred(in) is semidet, in) = out
-        is det.
+    is det.
 
 :- func restrict_true_false_vars(vars(T), vars(T), robdd(T)) = robdd(T).
 
@@ -234,26 +265,35 @@
     % equivalence class from the ROBDD.
     % Note: the leader map MUST correspond to actual equivalences within
     % the ROBDD, (e.g. have been produced by 'equivalent_vars/1').
+    %
 :- func squeeze_equiv(equiv_vars(T), robdd(T)) = robdd(T).
 
     % make_equiv(Equivalences) = Robdd:
-    %   Robdd is the constraint representing all the equivalences
-    %   in Equivalences.
+    %
+    % Robdd is the constraint representing all the equivalences
+    % in Equivalences.
+    %
 :- func make_equiv(equiv_vars(T)) = robdd(T).
 
     % add_equivalences(Equivalences, Robbd0) = Robdd:
-    %   Robdd is the constraint Robdd0 conjoined with
-    %   robdds representing all the equivalences in Equivalences.
+    %
+    % Robdd is the constraint Robdd0 conjoined with robdds representing
+    % all the equivalences in Equivalences.
+    %
 :- func add_equivalences(equiv_vars(T), robdd(T)) = robdd(T).
 
     % add_implications(Implications, Robbd0) = Robdd:
-    %   Robdd is the constraint Robdd0 conjoined with
-    %   robdds representing all the implications in Implications.
+    %
+    % Robdd is the constraint Robdd0 conjoined with robdds representing
+    % all the implications in Implications.
+    %
 :- func add_implications(imp_vars(T), robdd(T)) = robdd(T).
 
     % remove_implications_from_robdd(Implications, Robbd0) = Robdd:
-    %   Robdd is the constraint Robdd0 conjoined with
-    %   robdds representing all the implications in Implications.
+    %
+    % Robdd is the constraint Robdd0 conjoined with robdds representing
+    % all the implications in Implications.
+    %
 :- func remove_implications(imp_vars(T), robdd(T)) = robdd(T).
 
 %-----------------------------------------------------------------------------%
@@ -263,73 +303,90 @@
     ;   neg(var(T)).
 
     % Convert the ROBDD to disjunctive normal form.
+    %
 :- func dnf(robdd(T)) = list(list(literal(T))).
 
 %   % Convert the ROBDD to conjunctive normal form.
+%   %
 % :- func cnf(robdd(T)) = list(list(literal(T))).
 
     % Print out the ROBDD in disjunctive normal form.
-:- pred print_robdd(robdd(T)::in, io.state::di, io.state::uo) is det.
+    %
+:- pred print_robdd(robdd(T)::in, io::di, io::uo) is det.
 
-    % robdd_to_dot(ROBDD, WriteVar, FileName, IO0, IO).
-    %   Output the ROBDD in a format that can be processed by the
-    %   graph-drawing program `dot'.
+    % robdd_to_dot(ROBDD, WriteVar, FileName, !IO):
+    %
+    % Output the ROBDD in a format that can be processed by the
+    % graph-drawing program `dot'.
+    %
+:- pred robdd_to_dot(robdd(T)::in, write_var(T)::in(write_var), string::in,
+    io::di, io::uo) is det.
+
+    % robdd_to_dot(ROBDD, WriteVar, !IO):
+    %
+    % Output the ROBDD in a format that can be processed by the
+    % graph-drawing program `dot'.
+    %
 :- pred robdd_to_dot(robdd(T)::in, write_var(T)::in(write_var),
-        string::in, io.state::di, io.state::uo) is det.
+    io::di, io::uo) is det.
 
-    % robdd_to_dot(ROBDD, WriteVar, IO0, IO).
-    %   Output the ROBDD in a format that can be processed by the
-    %   graph-drawing program `dot'.
-:- pred robdd_to_dot(robdd(T)::in, write_var(T)::in(write_var),
-        io.state::di, io.state::uo) is det.
-
-:- type write_var(T) == pred(var(T), io.state, io.state).
+:- type write_var(T) == pred(var(T), io, io).
 :- inst write_var == (pred(in, di, uo) is det).
 
     % Apply the variable substitution to the ROBDD.
+    %
 :- func rename_vars(func(var(T)) = var(T), robdd(T)) = robdd(T).
 
     % Succeed iff ROBDD = one or ROBDD = zero.
+    %
 :- pred is_terminal(robdd(T)::in) is semidet.
 
     % Output the number of nodes and the depth of the ROBDD.
+    %
 :- pred size(robdd(T)::in, int::out, int::out) is det.
 
     % Output the number of nodes, the depth of the ROBDD and the
     % variables it contains.
+    %
 :- pred size(robdd(T)::in, int::out, int::out, list(var(T))::out) is det.
 
     % Succeed iff the var is constrained by the ROBDD.
+    %
 :- pred var_is_constrained(robdd(T)::in, var(T)::in) is semidet.
 
     % Succeed iff all the vars in the set are constrained by the ROBDD.
+    %
 :- pred vars_are_constrained(robdd(T)::in, vars(T)::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
-    % labelling(Vars, ROBDD, TrueVars, FalseVars)
-    %   Takes a set of Vars and an ROBDD and returns a value assignment
-    %   for those Vars that is a model of the Boolean function
-    %   represented by the ROBDD.
-    %   The value assignment is returned in the two sets TrueVars (set
-    %   of variables assigned the value 1) and FalseVars (set of
-    %   variables assigned the value 0).
+    % labelling(Vars, ROBDD, TrueVars, FalseVars):
+    %
+    % Takes a set of Vars and an ROBDD and returns a value assignment
+    % for those Vars that is a model of the Boolean function
+    % represented by the ROBDD.
+    % The value assignment is returned in the two sets TrueVars (set
+    % of variables assigned the value 1) and FalseVars (set of
+    % variables assigned the value 0).
     %
     % XXX should try using sparse_bitset here.
-:- pred labelling(vars(T)::in, robdd(T)::in, vars(T)::out,
-        vars(T)::out) is nondet.
+    %
+:- pred labelling(vars(T)::in, robdd(T)::in, vars(T)::out, vars(T)::out)
+    is nondet.
 
-    % minimal_model(Vars, ROBDD, TrueVars, FalseVars)
-    %   Takes a set of Vars and an ROBDD and returns a value assignment
-    %   for those Vars that is a minimal model of the Boolean function
-    %   represented by the ROBDD.
-    %   The value assignment is returned in the two sets TrueVars (set
-    %   of variables assigned the value 1) and FalseVars (set of
-    %   variables assigned the value 0).
+    % minimal_model(Vars, ROBDD, TrueVars, FalseVars):
+    %
+    % Takes a set of Vars and an ROBDD and returns a value assignment
+    % for those Vars that is a minimal model of the Boolean function
+    % represented by the ROBDD.
+    % The value assignment is returned in the two sets TrueVars (set
+    % of variables assigned the value 1) and FalseVars (set of
+    % variables assigned the value 0).
     %
     % XXX should try using sparse_bitset here.
-:- pred minimal_model(vars(T)::in, robdd(T)::in, vars(T)::out,
-        vars(T)::out) is nondet.
+    %
+:- pred minimal_model(vars(T)::in, robdd(T)::in, vars(T)::out, vars(T)::out)
+    is nondet.
 
 %-----------------------------------------------------------------------------%
 
@@ -338,8 +395,8 @@
     % This operation is pure and does not perform any I/O, but we need
     % to either declare it impure or pass io.states to ensure that
     % the compiler won't try to optimise away the call.
-
-:- pred clear_caches(io.state::di, io.state::uo) is det.
+    %
+:- pred clear_caches(io::di, io::uo) is det.
 
 :- impure pred clear_caches is det.
 
@@ -359,9 +416,8 @@
 :- import_module set_unordlist.
 :- import_module string.
 
-% :- import_module unsafe.
-
-:- type robdd(T) ---> robdd(int).
+:- type robdd(T)
+    --->    robdd(int).
 
 % :- type robdd(T) ---> robdd(c_pointer).
 % Can't use a c_pointer since we want to memo ROBDD operations and
@@ -513,9 +569,7 @@ vars_entailed(R) =
     ; R = zero ->
         all_vars
     ;
-        (
-            R ^ fa = zero
-        ->
+        ( R ^ fa = zero ->
             (vars_entailed(R ^ tr) `intersection` vars_entailed(R ^ fa))
                 `insert` R ^ value
         ;
@@ -531,9 +585,7 @@ vars_disentailed(R) =
     ; R = zero ->
         all_vars
     ;
-        (
-            R ^ tr = zero
-        ->
+        ( R ^ tr = zero ->
             (vars_disentailed(R ^ tr) `intersection`
                 vars_disentailed(R ^ fa)) `insert` R ^ value
         ;
@@ -624,13 +676,13 @@ rev_map(some_vars(leader_to_eqvclass(EQ0))) = some_vars(equiv_vars(EQ)) :-
     map.foldl2(
         ( pred(V::in, Vs::in, Seen0::in, Seen::out, in, out) is det -->
             ( { Seen0 `contains` V } ->
-            { Seen = Seen0 }
+                { Seen = Seen0 }
             ;
-            ^ elem(V) := V,
-            sparse_bitset.foldl((pred(Ve::in, in, out) is det -->
-                ^ elem(Ve) := V
-                ), Vs),
-            { Seen = Seen0 `sparse_bitset.union` Vs }
+                ^ elem(V) := V,
+                sparse_bitset.foldl((pred(Ve::in, in, out) is det -->
+                    ^ elem(Ve) := V
+                    ), Vs),
+                { Seen = Seen0 `sparse_bitset.union` Vs }
             )
         ), EQ0, sparse_bitset.init, _, map.init, EQ).
 
@@ -638,14 +690,15 @@ extract_implications(R) = implication_result_to_imp_vars(implications_2(R)).
 
 :- type implication_result(T)
     --->    implication_result(
-            imp_res(T), %  K ->  V
-            imp_res(T), % ~K -> ~V
-            imp_res(T), %  K -> ~V
-            imp_res(T)  % ~K ->  V
-        ).
+                imp_res(T), %  K ->  V
+                imp_res(T), % ~K -> ~V
+                imp_res(T), %  K -> ~V
+                imp_res(T)  % ~K ->  V
+            ).
 
 :- type imp_res(T) == entailment_result(imp_res_2(T)).
-:- type imp_res_2(T) ---> imps(map(var(T), vars_entailed_result(T))).
+:- type imp_res_2(T)
+    --->    imps(map(var(T), vars_entailed_result(T))).
 
 :- func implications_2(robdd(T)) = implication_result(T).
 % :- pragma memo(implications_2/1).
@@ -668,17 +721,14 @@ implications_2(R) = implication_result(Imps, RevImps, DisImps, RevDisImps) :-
         FTVars = vars_entailed(R ^ fa),
 
         implications_2(R ^ tr) =
-            implication_result(Imps0, RevImps0, DisImps0,
-                RevDisImps0),
+            implication_result(Imps0, RevImps0, DisImps0, RevDisImps0),
         implications_2(R ^ fa) =
-            implication_result(Imps1, RevImps1, DisImps1,
-                RevDisImps1),
+            implication_result(Imps1, RevImps1, DisImps1, RevDisImps1),
 
         Imps2 = merge_imp_res(TTVars, FTVars, Imps0, Imps1),
         RevImps2 = merge_imp_res(TFVars, FFVars, RevImps0, RevImps1),
         DisImps2 = merge_imp_res(TFVars, FFVars, DisImps0, DisImps1),
-        RevDisImps2 = merge_imp_res(TTVars, FTVars, RevDisImps0,
-            RevDisImps1),
+        RevDisImps2 = merge_imp_res(TTVars, FTVars, RevDisImps0, RevDisImps1),
 
         % Imps2 = Imps0 `intersection` Imps1,
         % RevImps2 = RevImps0 `intersection` RevImps1,
@@ -692,7 +742,7 @@ implications_2(R) = implication_result(Imps, RevImps, DisImps, RevDisImps) :-
     ).
 
 :- func merge_imp_res(vars_entailed_result(T), vars_entailed_result(T),
-        imp_res(T), imp_res(T)) = imp_res(T).
+    imp_res(T), imp_res(T)) = imp_res(T).
 
 merge_imp_res(_, _, all_vars, all_vars) = all_vars.
 merge_imp_res(_, _, some_vars(Imps), all_vars) = some_vars(Imps).
@@ -701,17 +751,16 @@ merge_imp_res(TVars, FVars, some_vars(ImpsA), some_vars(ImpsB)) =
     some_vars(merge_imp_res_2(TVars, FVars, ImpsA, ImpsB)).
 
 :- func merge_imp_res_2(vars_entailed_result(T), vars_entailed_result(T),
-        imp_res_2(T), imp_res_2(T)) = imp_res_2(T).
+    imp_res_2(T), imp_res_2(T)) = imp_res_2(T).
 
 merge_imp_res_2(EntailedVarsA, EntailedVarsB, imps(ImpsA), imps(ImpsB)) =
         imps(Imps) :-
     KeysA = map.sorted_keys(ImpsA),
     KeysB = map.sorted_keys(ImpsB),
     Keys = list.merge_and_remove_dups(KeysA, KeysB),
-    Imps = list.foldl((func(V, M) =
-            M ^ elem(V) := VsA `intersection` VsB :-
-        VsA = ( VsA0 = ImpsA ^ elem(V) -> VsA0 ; EntailedVarsA ),
-        VsB = ( VsB0 = ImpsB ^ elem(V) -> VsB0 ; EntailedVarsB )
+    Imps = list.foldl((func(V, M) = M ^ elem(V) := VsA `intersection` VsB :-
+            VsA = ( VsA0 = ImpsA ^ elem(V) -> VsA0 ; EntailedVarsA ),
+            VsB = ( VsB0 = ImpsB ^ elem(V) -> VsB0 ; EntailedVarsB )
         ), Keys, map.init).
 
 :- func implication_result_to_imp_vars(implication_result(T)) = imp_vars(T).
@@ -915,7 +964,7 @@ print_robdd(F) -->
     ).
 
 :- pred print_robdd_2(robdd(T)::in, set_unordlist(var(T))::in,
-        set_unordlist(var(T))::in, io.state::di, io.state::uo) is det.
+    set_unordlist(var(T))::in, io::di, io::uo) is det.
 
 print_robdd_2(F, Trues, Falses) -->
     ( { F = one } ->
@@ -1212,11 +1261,10 @@ make_equiv_2([Var - LeaderVar | Vs], Trues) = Robdd :-
         var_to_int(Var, VarNum),
         var_to_int(LeaderVar, LeaderVarNum),
         require(LeaderVarNum < VarNum, "make_equiv_2: unordered vars"),
-        % Since LeaderVar < Var, and every leader must
-        % appear in an equivalence with itself, an ancestor
-        % invocation of this predicate must already have seen
-        % LeaderVar. If it is not in Trues, it must
-        % therefore be false.
+        % Since LeaderVar < Var, and every leader must appear in an equivalence
+        % with itself, an ancestor invocation of this predicate must already
+        % have seen LeaderVar. If it is not in Trues, it must therefore
+        % be false.
         Robdd = make_node(Var, zero, make_equiv_2(Vs, Trues))
     ).
 
@@ -1268,8 +1316,7 @@ add_equivalences_2([Var - LeaderVar | Vs], Trues, R0, R, !Cache) :-
             !:Cache = !.Cache ^ elem(R0) := R
         )
     ; LeaderVar = Var ->
-        add_equivalences_2(Vs, Trues `insert` Var,
-            R0 ^ tr, Rtr, !Cache),
+        add_equivalences_2(Vs, Trues `insert` Var, R0 ^ tr, Rtr, !Cache),
         add_equivalences_2(Vs, Trues, R0 ^ fa, Rfa, !Cache),
         R = make_node(Var, Rtr, Rfa),
         !:Cache = !.Cache ^ elem(R0) := R
@@ -1338,10 +1385,8 @@ size_2(F, Nodes0, Nodes, Depth0, Depth, Val0, Seen0, Seen) :-
         Nodes = Nodes0, Depth = Depth0, Seen = Seen0
     ;
         Val = term.var_to_int(F ^ value),
-        size_2(F ^ tr, Nodes0+1, Nodes1, Depth0, Depth1, Val,
-            Seen0, Seen1),
-        size_2(F ^ fa, Nodes1, Nodes, Depth0, Depth2, Val,
-            Seen1, Seen2),
+        size_2(F ^ tr, Nodes0+1, Nodes1, Depth0, Depth1, Val, Seen0, Seen1),
+        size_2(F ^ fa, Nodes1, Nodes, Depth0, Depth2, Val, Seen1, Seen2),
         max(Depth1, Depth2, Max),
         Depth = Max + 1,
         Seen = Seen2 `insert` F
@@ -1421,10 +1466,10 @@ robdd_to_dot(Robdd, WV) -->
 
     % XXX should see if sparse_bitset is more efficient than set_bbbtree.
 :- pred robdd_to_dot_2(robdd(T)::in, write_var(T)::in(write_var),
-        set_bbbtree(robdd(T))::in, set_bbbtree(robdd(T))::out,
-        multi_map(var(T), robdd(T))::in,
-        multi_map(var(T), robdd(T))::out,
-        io.state::di, io.state::uo) is det.
+    set_bbbtree(robdd(T))::in, set_bbbtree(robdd(T))::out,
+    multi_map(var(T), robdd(T))::in,
+    multi_map(var(T), robdd(T))::out,
+    io::di, io::uo) is det.
 
 robdd_to_dot_2(Robdd, WV, Seen0, Seen, Ranks0, Ranks) -->
     ( { is_terminal(Robdd) } ->
@@ -1444,7 +1489,7 @@ robdd_to_dot_2(Robdd, WV, Seen0, Seen, Ranks0, Ranks) -->
     ).
 
 :- pred write_node(robdd(T)::in, write_var(T)::in(write_var),
-        io.state::di, io.state::uo) is det.
+    io::di, io::uo) is det.
 
 write_node(R, WV) -->
     io.format("%s [label=""<f0> %s|<f1> ",
@@ -1484,7 +1529,7 @@ terminal_name(R) =
     ).
 
 :- pred write_edge(robdd(T)::in, robdd(T)::in, bool::in,
-        io.state::di, io.state::uo) is det.
+    io::di, io::uo) is det.
 
 write_edge(R0, R1, Arc) -->
     ( { is_terminal(R1) } ->
@@ -1500,19 +1545,17 @@ labelling(Vars, R, TrueVars, FalseVars) :-
         empty_vars_set, FalseVars).
 
 :- pred labelling_2(list(var(T))::in, robdd(T)::in, vars(T)::in,
-        vars(T)::out, vars(T)::in, vars(T)::out) is nondet.
+    vars(T)::out, vars(T)::in, vars(T)::out) is nondet.
 
 labelling_2([], _, TrueVars, TrueVars, FalseVars, FalseVars).
 labelling_2([V | Vs], R0, TrueVars0, TrueVars, FalseVars0, FalseVars) :-
     R = var_restrict_false(V, R0),
     R \= zero,
-    labelling_2(Vs, R, TrueVars0, TrueVars, FalseVars0 `insert` V,
-        FalseVars).
+    labelling_2(Vs, R, TrueVars0, TrueVars, FalseVars0 `insert` V, FalseVars).
 labelling_2([V | Vs], R0, TrueVars0, TrueVars, FalseVars0, FalseVars) :-
     R = var_restrict_true(V, R0),
     R \= zero,
-    labelling_2(Vs, R, TrueVars0 `insert` V, TrueVars, FalseVars0,
-        FalseVars).
+    labelling_2(Vs, R, TrueVars0 `insert` V, TrueVars, FalseVars0, FalseVars).
 
 minimal_model(Vars, R, TrueVars, FalseVars) :-
     ( empty(Vars) ->

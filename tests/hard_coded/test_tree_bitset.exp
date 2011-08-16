@@ -1,0 +1,90 @@
+List1: 2, 7, 15, 19, 19, 22, 25, 28, 29, 31, 32, 34, 36, 38, 39, 40, 42, 44, 47, 58, 59, 59
+
+List2: 2, 4, 4, 9, 11, 12, 13, 14, 17, 18, 21, 23, 23, 30, 31, 37, 37, 38, 39, 40, 42, 43, 44, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 56, 57, 58, 61, 61, 63, 64
+
+testing count
+count: 20 35
+testing foldl
+Sum of List1 = 647
+Sum of List2 = 1305
+testing union
+[2, 4, 7, 9, 11, 12, 13, 14, 15, 17, 18, 19, 21, 22, 23, 25, 28, 29, 30, 31, 32, 34, 36, 37, 38, 39, 40, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 61, 63, 64]
+testing intersection
+[2, 31, 38, 39, 40, 42, 44, 58]
+testing difference
+[7, 15, 19, 22, 25, 28, 29, 32, 34, 36, 47, 59]
+testing remove_least_element
+2
+[7, 15, 19, 22, 25, 28, 29, 31, 32, 34, 36, 38, 39, 40, 42, 44, 47, 58, 59]
+testing delete_list
+[7, 15, 19, 22, 25, 28, 29, 32, 34, 36, 47, 59]
+testing count
+testing foldl
+testing union
+testing intersection
+testing difference
+testing remove_least_element
+testing delete_list
+testing count
+testing foldl
+testing union
+testing intersection
+testing difference
+testing remove_least_element
+testing delete_list
+testing count
+testing foldl
+testing union
+testing intersection
+testing difference
+testing remove_least_element
+testing delete_list
+testing count
+testing foldl
+testing union
+testing intersection
+testing difference
+testing remove_least_element
+testing delete_list
+testing count
+testing foldl
+testing union
+testing intersection
+testing difference
+testing remove_least_element
+testing delete_list
+testing count
+testing foldl
+testing union
+testing intersection
+testing difference
+testing remove_least_element
+testing delete_list
+testing count
+testing foldl
+testing union
+testing intersection
+testing difference
+testing remove_least_element
+testing delete_list
+testing count
+testing foldl
+testing union
+testing intersection
+testing difference
+testing remove_least_element
+testing delete_list
+testing count
+testing foldl
+testing union
+testing intersection
+testing difference
+testing remove_least_element
+testing delete_list
+testing count
+testing foldl
+testing union
+testing intersection
+testing difference
+testing remove_least_element
+testing delete_list

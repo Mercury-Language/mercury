@@ -843,20 +843,6 @@ dynamic_cast_to_sparse_bitset_of_var(X, A) :-
 
 %-----------------------------------------------------------------------------%
 
-:- some [T2] pred dynamic_cast_to_array(T1::in, array(T2)::out) is semidet.
-
-dynamic_cast_to_array(X, A) :-
-    % If X is an array then it has a type with one type argument.
-    [ArgTypeDesc] = type_args(type_of(X)),
-
-    % Convert ArgTypeDesc to a type variable ArgType.
-    (_ : ArgType) `has_type` ArgTypeDesc,
-
-    % Constrain the type of A to be array(ArgType) and do the cast.
-    dynamic_cast(X, A : array(ArgType)).
-
-%-----------------------------------------------------------------------------%
-
 :- some [T2] pred dynamic_cast_to_version_array(T1::in,
     version_array(T2)::out) is semidet.
 

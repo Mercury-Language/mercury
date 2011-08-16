@@ -78,6 +78,11 @@
 :- func bag.from_set(set(T)) = bag(T).
 :- pred bag.from_set(set(T)::in, bag(T)::out) is det.
 
+    % Make a bag from a sorted list.
+    %
+:- func bag.from_sorted_list(list(T)) = bag(T).
+:- pred bag.from_sorted_list(list(T)::in, bag(T)::out) is det.
+
     % Given a bag, produce a sorted list containing all the values in
     % the bag.  Each value will appear in the list the same number of
     % times that it appears in the bag.
@@ -340,6 +345,14 @@ bag.from_set(Xs) = B :-
 
 bag.from_set(Set, Bag) :-
     set.to_sorted_list(Set, List),
+    bag.init(Bag0),
+    % XXX We should exploit the sortedness of List.
+    bag.insert_list(List, Bag0, Bag).
+
+bag.from_sorted_list(Xs) = B :-
+    bag.from_sorted_list(Xs, B).
+
+bag.from_sorted_list(List, Bag) :-
     bag.init(Bag0),
     % XXX We should exploit the sortedness of List.
     bag.insert_list(List, Bag0, Bag).
