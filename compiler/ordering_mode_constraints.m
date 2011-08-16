@@ -115,6 +115,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bimap.
 :- import_module bool.
@@ -500,7 +501,7 @@ make_conjunct_nonlocal_repvars(PredId, Goal, !RepvarMap) :-
     Nonlocals = goal_info_get_nonlocals(GoalInfo),
     GoalId = goal_info_get_goal_id(GoalInfo),
 
-    set.fold(
+    set_of_var.fold(
         (pred(NL::in, RMap0::in, RMap::out) is det :-
             multi_map.set(NL, NL `in` PredId `at` GoalId, RMap0, RMap)
         ),

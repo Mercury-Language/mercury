@@ -39,6 +39,7 @@
 :- import_module check_hlds.type_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.livedata.
 
@@ -51,11 +52,11 @@
 
 :- type detect_bg_info
     --->    detect_bg_info(
-                module_info     ::  module_info,
-                pred_info       ::  pred_info,
-                proc_info       ::  proc_info,
-                sharing_table   ::  sharing_as_table,
-                very_verbose    ::  bool
+                dbgi_module_info        :: module_info,
+                dbgi_pred_info          :: pred_info,
+                dbgi_proc_info          :: proc_info,
+                dbgi_sharing_table      :: sharing_as_table,
+                dbgi_very_verbose       :: bool
             ).
 
 :- func detect_bg_info_init(module_info, pred_info, proc_info,
@@ -78,7 +79,7 @@ determine_dead_deconstructions(ModuleInfo, PredInfo, ProcInfo, SharingTable,
         sharing_as_init, _, dead_cell_table_init, DeadCellTable),
 
     % Add a newline after the "progress dots".
-    VeryVerbose = Background ^ very_verbose,
+    VeryVerbose = Background ^ dbgi_very_verbose,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
@@ -102,10 +103,10 @@ determine_dead_deconstructions(ModuleInfo, PredInfo, ProcInfo, SharingTable,
 determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
         !DeadCellTable) :-
     TopGoal = hlds_goal(GoalExpr, GoalInfo),
-    ModuleInfo = Background ^ module_info,
-    PredInfo = Background ^ pred_info,
-    ProcInfo = Background ^ proc_info,
-    SharingTable = Background ^ sharing_table,
+    ModuleInfo = Background ^ dbgi_module_info,
+    PredInfo = Background ^ dbgi_pred_info,
+    ProcInfo = Background ^ dbgi_proc_info,
+    SharingTable = Background ^ dbgi_sharing_table,
     (
         GoalExpr = conj(_, Goals),
         list.foldl2(determine_dead_deconstructions_2_with_progress(Background),
@@ -173,7 +174,7 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
 
 determine_dead_deconstructions_2_with_progress(Background, TopGoal,
         !SharingAs, !DeadCellTable) :-
-    VeryVerbose = Background ^ very_verbose,
+    VeryVerbose = Background ^ dbgi_very_verbose,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
@@ -203,8 +204,8 @@ determine_dead_deconstructions_2_disj_goal(Background, SharingBeforeDisj,
         Goal, !SharingAs, !DeadCellTable) :-
     determine_dead_deconstructions_2(Background, Goal, SharingBeforeDisj,
         GoalSharing, !DeadCellTable),
-    !:SharingAs = sharing_as_least_upper_bound(Background ^ module_info,
-        Background ^ proc_info, !.SharingAs, GoalSharing).
+    !:SharingAs = sharing_as_least_upper_bound(Background ^ dbgi_module_info,
+        Background ^ dbgi_proc_info, !.SharingAs, GoalSharing).
 
 :- pred determine_dead_deconstructions_generic_call(module_info::in,
     proc_info::in, generic_call::in, prog_vars::in, list(mer_mode)::in,

@@ -79,13 +79,13 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -243,7 +243,8 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
 
         % The non-local vars are just the head variables.
 
-        NonLocalVars = proc_arg_vector_to_set(HeadVars),
+        NonLocalVars =
+            set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
         goal_info_set_nonlocals(NonLocalVars, GoalInfo1, GoalInfo2),
 
         % The disjunction is impure/semipure if any of the disjuncts
@@ -409,7 +410,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     goal_to_conj_list(Body0, Goals0),
     Goals = Goals0 ++ ExistsCastHeadGoals ++ ExistsCastExtraGoals,
     HeadVars = ExtraHeadVars ++ OrigHeadVars,
-    set.list_to_set(HeadVars, NonLocals),
+    NonLocals = set_of_var.list_to_set(HeadVars),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Body = hlds_goal(conj(plain_conj, Goals), GoalInfo),
     proc_info_set_body(VarSet, VarTypes, HeadVars, Body, RttiVarMaps,

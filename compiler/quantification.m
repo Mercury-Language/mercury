@@ -40,7 +40,6 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module list.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -97,7 +96,7 @@
     % excluding unset fields of reconstructions if
     % NonLocalsToRecompute is `code_gen_nonlocals_no_lambda'.
     %
-:- func free_goal_vars(hlds_goal) = set(prog_var).
+:- func free_goal_vars(hlds_goal) = set_of_progvar.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -178,37 +177,37 @@
 %-----------------------------------------------------------------------------%
 
 implicitly_quantify_clause_body_general(NonLocalsToRecompute, HeadVars,
-        Warnings, !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
+        Warnings, !Goal, !VarSet, !VarTypes, !RttiVarMaps) :-
     OutsideVars = set_of_var.list_to_set(HeadVars),
     implicitly_quantify_goal_general(NonLocalsToRecompute, OutsideVars,
-        Warnings, !Goal, !Varset, !VarTypes, !RttiVarMaps).
+        Warnings, !Goal, !VarSet, !VarTypes, !RttiVarMaps).
 
 requantify_proc_general(NonLocalsToRecompute, !ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
-    proc_info_get_varset(!.ProcInfo, Varset0),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarmaps0),
     implicitly_quantify_clause_body_general(NonLocalsToRecompute, HeadVars, _,
-        Goal0, Goal, Varset0, Varset, VarTypes0, VarTypes,
+        Goal0, Goal, VarSet0, VarSet, VarTypes0, VarTypes,
         RttiVarmaps0, RttiVarmaps),
-    proc_info_set_varset(Varset, !ProcInfo),
+    proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarmaps, !ProcInfo).
 
 implicitly_quantify_goal_general(NonLocalsToRecompute, OutsideVars, Warnings,
-        !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
+        !Goal, !VarSet, !VarTypes, !RttiVarMaps) :-
     (
         NonLocalsToRecompute = ordinary_nonlocals_maybe_lambda,
         implicitly_quantify_goal_2(ordinary_nonlocals_maybe_lambda,
-            OutsideVars, Warnings, !Goal, !Varset, !VarTypes, !RttiVarMaps)
+            OutsideVars, Warnings, !Goal, !VarSet, !VarTypes, !RttiVarMaps)
     ;
         ( NonLocalsToRecompute = ordinary_nonlocals_no_lambda
         ; NonLocalsToRecompute = code_gen_nonlocals_no_lambda
         ),
         implicitly_quantify_goal_2(ordinary_nonlocals_no_lambda,
-            OutsideVars, Warnings, !Goal, !Varset, !VarTypes, !RttiVarMaps)
+            OutsideVars, Warnings, !Goal, !VarSet, !VarTypes, !RttiVarMaps)
     ),
     (
         NonLocalsToRecompute = code_gen_nonlocals_no_lambda,
@@ -218,7 +217,7 @@ implicitly_quantify_goal_general(NonLocalsToRecompute, OutsideVars, Warnings,
         goal_contains_reconstruction(!.Goal)
     ->
         implicitly_quantify_goal_2(code_gen_nonlocals_no_lambda, OutsideVars,
-            _, !Goal, !Varset, !VarTypes, !RttiVarMaps)
+            _, !Goal, !VarSet, !VarTypes, !RttiVarMaps)
     ;
         true
     ).
@@ -235,12 +234,12 @@ implicitly_quantify_goal_general(NonLocalsToRecompute, OutsideVars, Warnings,
     in, out, in, out, in, out, in, out, in, out) is det.
 
 implicitly_quantify_goal_2(NonLocalsToRecompute, OutsideVars, Warnings,
-        !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
-    init_quant_info(OutsideVars, !.Varset, !.VarTypes, !.RttiVarMaps,
+        !Goal, !VarSet, !VarTypes, !RttiVarMaps) :-
+    init_quant_info(OutsideVars, !.VarSet, !.VarTypes, !.RttiVarMaps,
         QuantInfo0),
     implicitly_quantify_goal_quant_info(!Goal, NonLocalsToRecompute,
         QuantInfo0, QuantInfo),
-    get_varset(QuantInfo, !:Varset),
+    get_varset(QuantInfo, !:VarSet),
     get_vartypes(QuantInfo, !:VarTypes),
     get_warnings(QuantInfo, Warnings0),
     get_rtti_varmaps(QuantInfo, !:RttiVarMaps),
@@ -989,7 +988,7 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
 
         Goal = hlds_goal(_, LambdaGoalInfo),
         LambdaGoalNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
-        list.filter(contains(LambdaGoalNonLocals),
+        list.filter(set_of_var.contains(LambdaGoalNonLocals),
             LambdaNonLocals0, LambdaNonLocals),
 
         % For a unification that constructs a lambda expression, the argument
@@ -1552,23 +1551,21 @@ free_goal_vars(Goal) =
     % is `code_gen_nonlocals_no_lambda'.
     %
 :- func free_goal_vars_nl_maybe_lambda(nonlocals_to_recompute, hlds_goal)
-    = set(prog_var).
+    = set_of_progvar.
 :- mode free_goal_vars_nl_maybe_lambda(in(ordinary_nonlocals_maybe_lambda),
     in) = out is det.
 
-free_goal_vars_nl_maybe_lambda(NonLocalsToRecompute, Goal) =
-        bitset_to_set(BothSet) :-
+free_goal_vars_nl_maybe_lambda(NonLocalsToRecompute, Goal) = BothSet :-
     goal_vars_bitset_maybe_lambda(NonLocalsToRecompute, Goal, BothSet).
 
 :- func free_goal_vars_nl_no_lambda(nonlocals_to_recompute, hlds_goal)
-    = set(prog_var).
+    = set_of_progvar.
 :- mode free_goal_vars_nl_no_lambda(in(ordinary_nonlocals_no_lambda),
     in) = out is det.
 :- mode free_goal_vars_nl_no_lambda(in(code_gen_nonlocals_no_lambda),
     in) = out is det.
 
-free_goal_vars_nl_no_lambda(NonLocalsToRecompute, Goal) =
-        bitset_to_set(BothSet) :-
+free_goal_vars_nl_no_lambda(NonLocalsToRecompute, Goal) = BothSet :-
     goal_vars_bitset_no_lambda(NonLocalsToRecompute, Goal, BothSet).
 
 :- pred goal_vars_bitset(nonlocals_to_recompute,
@@ -2367,13 +2364,13 @@ rename_apart(RenameSet, RenameMap, NonLocalsToRecompute, !Goal, !Info) :-
         map.init(RenameMap)
     ;
         RenameList = to_sorted_list(RenameSet),
-        get_varset(!.Info, Varset0),
+        get_varset(!.Info, VarSet0),
         get_vartypes(!.Info, VarTypes0),
         map.init(RenameMap0),
-        clone_variables(RenameList, Varset0, VarTypes0,
-            Varset0, Varset, VarTypes0, VarTypes, RenameMap0, RenameMap),
+        clone_variables(RenameList, VarSet0, VarTypes0,
+            VarSet0, VarSet, VarTypes0, VarTypes, RenameMap0, RenameMap),
         rename_some_vars_in_goal(RenameMap, !Goal),
-        set_varset(Varset, !Info),
+        set_varset(VarSet, !Info),
         set_vartypes(VarTypes, !Info)
 
         % We don't need to add the newly created vars to the seen vars
@@ -2401,7 +2398,7 @@ set_goal_nonlocals(NonLocals, NonLocalsToRecompute, !GoalInfo, !Info) :-
     set_goal_nonlocals_translate(NonLocals, _, NonLocalsToRecompute,
         !GoalInfo, !Info).
 
-:- pred set_goal_nonlocals_translate(set_of_progvar, set(prog_var),
+:- pred set_goal_nonlocals_translate(set_of_progvar, set_of_progvar,
     nonlocals_to_recompute, hlds_goal_info, hlds_goal_info,
     quant_info, quant_info).
 :- mode set_goal_nonlocals_translate(in, out,
@@ -2411,9 +2408,8 @@ set_goal_nonlocals(NonLocals, NonLocalsToRecompute, !GoalInfo, !Info) :-
 :- mode set_goal_nonlocals_translate(in, out,
     in(code_gen_nonlocals_no_lambda), in, out, in, out) is det.
 
-set_goal_nonlocals_translate(NonLocalsBitSet, NonLocals, NonLocalsToRecompute,
+set_goal_nonlocals_translate(NonLocals, NonLocals, NonLocalsToRecompute,
         !GoalInfo, !Info) :-
-    NonLocals = bitset_to_set(NonLocalsBitSet),
     (
         ( NonLocalsToRecompute = ordinary_nonlocals_maybe_lambda
         ; NonLocalsToRecompute = ordinary_nonlocals_no_lambda
@@ -2429,10 +2425,10 @@ set_goal_nonlocals_translate(NonLocalsBitSet, NonLocals, NonLocalsToRecompute,
 :- pred init_quant_info(set_of_progvar::in,
     prog_varset::in, vartypes::in, rtti_varmaps::in, quant_info::out) is det.
 
-init_quant_info(OutsideVars, Varset, VarTypes, RttiVarMaps, QuantInfo) :-
+init_quant_info(OutsideVars, VarSet, VarTypes, RttiVarMaps, QuantInfo) :-
     OverlapWarnings = [],
     QuantInfo = quant_info(OutsideVars, QuantVars, LambdaOutsideVars,
-        NonLocals, Seen, Varset, VarTypes, OverlapWarnings, RttiVarMaps),
+        NonLocals, Seen, VarSet, VarTypes, OverlapWarnings, RttiVarMaps),
     QuantVars = set_of_var.init,
     NonLocals = set_of_var.init,
     LambdaOutsideVars = set_of_var.init,
@@ -2487,8 +2483,8 @@ set_nonlocals(NonLocals, !Q) :-
     !Q ^ qi_nonlocals := NonLocals.
 set_seen(Seen, !Q) :-
     !Q ^ qi_seen := Seen.
-set_varset(Varset, !Q) :-
-    !Q ^ qi_varset := Varset.
+set_varset(VarSet, !Q) :-
+    !Q ^ qi_varset := VarSet.
 set_vartypes(VarTypes, !Q) :-
     !Q ^ qi_vartypes := VarTypes.
 set_warnings(Warnings, !Q) :-

@@ -52,6 +52,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module list.
@@ -243,7 +244,7 @@ no_bind_vars([Goal | Goals]) :-
     Goal = hlds_goal(_, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-    set.empty(ChangedVars),
+    set_of_var.is_empty(ChangedVars),
     no_bind_vars(Goals).
 
 %-----------------------------------------------------------------------------%

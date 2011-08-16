@@ -206,6 +206,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.set_of_var.
 
 :- import_module int.
 :- import_module maybe.
@@ -1251,7 +1252,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
             ExtraArgs = [_ | _],
             OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
             ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
-            instmap_delta_restrict(set.list_to_set(ExtraArgVars),
+            instmap_delta_restrict(set_of_var.list_to_set(ExtraArgVars),
                 OldInstMapDelta, ExtraArgsInstMapDelta),
             instmap_delta_apply_instmap_delta(InstMapDelta0,
                 ExtraArgsInstMapDelta, large_base, InstMapDelta)
@@ -1309,7 +1310,7 @@ recompute_instmap_delta_conj(RecomputeAtomic, [Goal0 | Goals0], [Goal | Goals],
 
 :- pred recompute_instmap_delta_disj(recompute_atomic_instmap_deltas::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
-    vartypes::in, instmap::in, set(prog_var)::in, instmap_delta::out,
+    vartypes::in, instmap::in, set_of_progvar::in, instmap_delta::out,
     recompute_info::in, recompute_info::out) is det.
 
 recompute_instmap_delta_disj(RecomputeAtomic, Goals0, Goals,
@@ -1328,7 +1329,7 @@ recompute_instmap_delta_disj(RecomputeAtomic, Goals0, Goals,
 
 :- pred recompute_instmap_delta_disj_2(recompute_atomic_instmap_deltas::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
-    vartypes::in, instmap::in, set(prog_var)::in, list(instmap_delta)::out,
+    vartypes::in, instmap::in, set_of_progvar::in, list(instmap_delta)::out,
     recompute_info::in, recompute_info::out) is det.
 
 recompute_instmap_delta_disj_2(_RecomputeAtomic, [], [],
@@ -1345,7 +1346,7 @@ recompute_instmap_delta_disj_2(RecomputeAtomic,
 
 :- pred recompute_instmap_delta_cases(recompute_atomic_instmap_deltas::in,
     prog_var::in, list(case)::in, list(case)::out,
-    vartypes::in, instmap::in, set(prog_var)::in, instmap_delta::out,
+    vartypes::in, instmap::in, set_of_progvar::in, instmap_delta::out,
     recompute_info::in, recompute_info::out) is det.
 
 recompute_instmap_delta_cases(RecomputeAtomic, Var, Cases0, Cases,
@@ -1364,7 +1365,7 @@ recompute_instmap_delta_cases(RecomputeAtomic, Var, Cases0, Cases,
 
 :- pred recompute_instmap_delta_cases_2(recompute_atomic_instmap_deltas::in,
     prog_var::in, list(case)::in,
-    list(case)::out, vartypes::in, instmap::in, set(prog_var)::in,
+    list(case)::out, vartypes::in, instmap::in, set_of_progvar::in,
     list(instmap_delta)::out, recompute_info::in, recompute_info::out) is det.
 
 recompute_instmap_delta_cases_2(_RecomputeAtomic, _Var, [], [],
@@ -1551,7 +1552,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         Uni = construct(Var, ConsId, Args, _, _, _, _),
         (
             NonLocals = goal_info_get_nonlocals(GoalInfo),
-            set.member(Var, NonLocals),
+            set_of_var.member(NonLocals, Var),
             OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
             \+ instmap_delta_search_var(OldInstMapDelta, Var, _),
             MaybeInst = cons_id_to_shared_inst(ModuleInfo0, ConsId,

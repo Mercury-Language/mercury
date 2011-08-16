@@ -22,13 +22,13 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.pd_info.
 
 :- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -54,7 +54,7 @@
 
     % Apply unique_modes.m to the goal.
     %
-:- pred unique_modecheck_goal_live_vars(set(prog_var)::in,
+:- pred unique_modecheck_goal_live_vars(set_of_progvar::in,
     hlds_goal::in, hlds_goal::out, list(mode_error_info)::out,
     pd_info::in, pd_info::out) is det.
 
@@ -74,7 +74,7 @@
 
     % Recompute the non-locals of the goal.
     %
-:- pred pd_requantify_goal(set(prog_var)::in,
+:- pred pd_requantify_goal(set_of_progvar::in,
     hlds_goal::in, hlds_goal::out, pd_info::in, pd_info::out) is det.
 
     % Apply mode_util.recompute_instmap_delta to the goal.
@@ -325,21 +325,21 @@ unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo) :-
     % which of the non-local variables are not clobbered by the goal.
     %
 :- pred get_goal_live_vars(pd_info::in, hlds_goal::in,
-    set(prog_var)::out) is det.
+    set_of_progvar::out) is det.
 
 get_goal_live_vars(PDInfo, hlds_goal(_, GoalInfo), !:Vars) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     pd_info_get_instmap(PDInfo, InstMap),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    set.to_sorted_list(NonLocals, NonLocalsList),
-    set.init(!:Vars),
+    set_of_var.to_sorted_list(NonLocals, NonLocalsList),
+    set_of_var.init(!:Vars),
     get_goal_live_vars_2(ModuleInfo, NonLocalsList, InstMap, InstMapDelta,
         !Vars).
 
 :- pred get_goal_live_vars_2(module_info::in, prog_vars::in,
     instmap::in, instmap_delta::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 get_goal_live_vars_2(_, [], _, _, !Vars).
 get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals],
@@ -352,7 +352,7 @@ get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals],
     ( inst_is_clobbered(ModuleInfo, FinalInst) ->
         true
     ;
-        set.insert(NonLocal, !Vars)
+        set_of_var.insert(NonLocal, !Vars)
     ),
     get_goal_live_vars_2(ModuleInfo, NonLocals, InstMap, InstMapDelta, !Vars).
 
@@ -428,7 +428,7 @@ get_branch_vars_proc(PredProcId, ProcInfo, !ModuleInfo, !ArgInfo) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     instmap.init_reachable(InstMap0),
     map.init(Vars0),
-    set.init(LeftVars0),
+    set_of_var.init(LeftVars0),
     goal_to_conj_list(Goal, GoalList),
     (
         get_branch_vars_goal_2(!.ModuleInfo, GoalList, no,
@@ -491,7 +491,7 @@ get_opaque_args(ModuleInfo, ArgNo, [ArgMode | ArgModes],
     % information.
     %
 :- pred get_extra_info_headvars(prog_vars::in, int::in,
-    set(prog_var)::in, pd_var_info::in,
+    set_of_progvar::in, pd_var_info::in,
     branch_info_map(int)::in, branch_info_map(int)::out,
     set(int)::in, set(int)::out) is det.
 
@@ -503,7 +503,7 @@ get_extra_info_headvars([HeadVar | HeadVars], ArgNo,
     ;
         true
     ),
-    ( set.member(HeadVar, LeftVars) ->
+    ( set_of_var.member(LeftVars, HeadVar) ->
         set.insert(ArgNo, !ThisProcLeftVars)
     ;
         true
@@ -520,7 +520,7 @@ get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
     pd_info_get_proc_arg_info(!.PDInfo, ProcArgInfo),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    set.init(LeftVars0),
+    set_of_var.init(LeftVars0),
     map.init(Vars0),
     (
         get_branch_vars_goal_2(ModuleInfo0, [Goal], no,
@@ -533,14 +533,15 @@ get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
 
         % OpaqueVars is only filled in for calls.
         set.init(OpaqueVars),
-        MaybeBranchInfo = yes(pd_branch_info(Vars, LeftVars, OpaqueVars))
+        MaybeBranchInfo = yes(pd_branch_info(Vars,
+            set_of_var.bitset_to_set(LeftVars), OpaqueVars))
     ;
         MaybeBranchInfo = no
     ).
 
 :- pred get_branch_vars_goal_2(module_info::in, hlds_goals::in,
     bool::in, vartypes::in, instmap::in,
-    set(prog_var)::in, set(prog_var)::out,
+    set_of_progvar::in, set_of_progvar::out,
     pd_var_info::in, pd_var_info::out) is semidet.
 
 get_branch_vars_goal_2(_, [], yes, _, _, !LeftVars, !Vars).
@@ -602,11 +603,11 @@ get_branch_instmap_deltas(Goal, InstMapDeltas) :-
     % also check for if-then-elses with simple conditions.
     %
 :- pred get_left_vars(hlds_goal::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 get_left_vars(Goal, Vars0, Vars) :-
     ( Goal = hlds_goal(switch(Var, _, _), _) ->
-        set.insert(Var, Vars0, Vars)
+        set_of_var.insert(Var, Vars0, Vars)
     ;
         Vars = Vars0
     ).
@@ -638,7 +639,7 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
             )
         ),
     instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-    set.to_sorted_list(ChangedVars, ChangedVarsList),
+    set_of_var.to_sorted_list(ChangedVars, ChangedVarsList),
     list.foldl(AddExtraInfoVars, ChangedVarsList, !ExtraVars),
 
     % We have extra information about a switched-on variable
@@ -757,7 +758,7 @@ examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
             true
         )
     ;
-        set.init(LeftVars0),
+        set_of_var.init(LeftVars0),
         map.init(!:Vars),
         get_branch_vars_goal_2(ModuleInfo, [Goal], no,
             VarTypes, InstMap, LeftVars0, _, !Vars)
@@ -796,7 +797,7 @@ pd_requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
         proc_info_get_vartypes(!.ProcInfo, VarTypes0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
         implicitly_quantify_goal_general(ordinary_nonlocals_no_lambda,
-            set_to_bitset(NonLocals), _, Goal0, Goal, VarSet0, VarSet,
+            NonLocals, _, Goal0, Goal, VarSet0, VarSet,
             VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
         proc_info_set_varset(VarSet, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
@@ -995,8 +996,8 @@ goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
     list.map(Search, OldArgs, NewArgs),
     NewGoal = hlds_goal(_, NewGoalInfo),
     NewNonLocals = goal_info_get_nonlocals(NewGoalInfo),
-    set.delete_list(NewArgs, NewNonLocals, UnmatchedNonLocals),
-    set.empty(UnmatchedNonLocals),
+    set_of_var.delete_list(NewArgs, NewNonLocals, UnmatchedNonLocals),
+    set_of_var.is_empty(UnmatchedNonLocals),
 
     % Check that argument types of NewGoal are subsumed by those of OldGoal.
     collect_matching_arg_types(OldArgs, OldArgTypes,
@@ -1166,8 +1167,8 @@ goal_depends_on_goal(hlds_goal(_, GoalInfo1), hlds_goal(_, GoalInfo2)) :-
     InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
     instmap_delta_changed_vars(InstmapDelta1, ChangedVars1),
     NonLocals2 = goal_info_get_nonlocals(GoalInfo2),
-    set.intersect(ChangedVars1, NonLocals2, Intersection),
-    \+ set.empty(Intersection).
+    set_of_var.intersect(ChangedVars1, NonLocals2, Intersection),
+    set_of_var.is_non_empty(Intersection).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.pd_util.

@@ -33,7 +33,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
-:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -144,7 +143,7 @@
     % variable.
     %
 :- pred extra_nonlocal_typeinfos(rtti_varmaps::in, vartypes::in,
-    existq_tvars::in, set(prog_var)::in, set(prog_var)::out) is det.
+    existq_tvars::in, set_of_progvar::in, set_of_progvar::out) is det.
 
 :- type is_leaf
     --->    is_leaf
@@ -452,6 +451,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module solutions.
 :- import_module string.
 :- import_module varset.
@@ -493,7 +493,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
     UnifyInfo = assign(OrigVar, NewVar),
     UnifyContext = unify_context(umc_explicit, []),
     GoalExpr = unify(OrigVar, rhs_var(NewVar), Mode, UnifyInfo, UnifyContext),
-    set.list_to_set([OrigVar, NewVar], NonLocals),
+    set_of_var.list_to_set([OrigVar, NewVar], NonLocals),
     UnifyInstMapDelta = instmap_delta_from_assoc_list([OrigVar - NewInst]),
     goal_info_init(NonLocals, UnifyInstMapDelta, detism_det, purity_pure,
         term.context_init, GoalInfo),
@@ -809,11 +809,11 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
     % Find all non-local type vars.  That is, type vars that are existentially
     % quantified or type vars that appear in the type of a non-local prog_var.
 
-    set.to_sorted_list(NonLocals, NonLocalsList),
+    set_of_var.to_sorted_list(NonLocals, NonLocalsList),
     map.apply_to_list(NonLocalsList, VarTypes, NonLocalsTypes),
     type_vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
-    list.append(ExistQVars, NonLocalTypeVarsList0, NonLocalTypeVarsList),
-    set.list_to_set(NonLocalTypeVarsList, NonLocalTypeVars),
+    NonLocalTypeVarsList = ExistQVars ++ NonLocalTypeVarsList0,
+    set_of_var.list_to_set(NonLocalTypeVarsList, NonLocalTypeVars),
 
     % Find all the type_infos that are non-local, that is, type_infos for
     % type vars that are non-local in the above sense.
@@ -822,13 +822,14 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, Locn),
         type_info_locn_var(Locn, ProgVar)
     ),
-    NonLocalTypeInfoVars = set.map(TypeVarToProgVar, NonLocalTypeVars),
+    NonLocalTypeInfoVars = set_of_var.list_to_set(
+        list.map(TypeVarToProgVar, NonLocalTypeVarsList)),
 
     % Find all the typeclass_infos that are non-local. These include
     % all typeclass_infos that constrain a type variable that is non-local
     % in the above sense.
 
-    solutions.solutions_set(
+    solutions.solutions(
         (pred(Var::out) is nondet :-
             % Search through all arguments of all constraints
             % that the goal could have used.
@@ -836,13 +837,15 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
             list.member(Constraint, Constraints),
             Constraint = constraint(_Name, ArgTypes),
             type_list_contains_var(ArgTypes, TypeVar),
-            set.member(TypeVar, NonLocalTypeVars),
+            set_of_var.member(NonLocalTypeVars, TypeVar),
 
             % We found a constraint that is non-local. Include the variable
             % holding its typeclass_info.
             rtti_lookup_typeclass_info_var(RttiVarMaps, Constraint, Var)
-        ), NonLocalTypeClassInfoVars),
-    NonLocalTypeInfos = set.union(NonLocalTypeInfoVars,
+        ), NonLocalTypeClassInfoVarsList),
+    set_of_var.sorted_list_to_set(NonLocalTypeClassInfoVarsList,
+        NonLocalTypeClassInfoVars),
+    NonLocalTypeInfos = set_of_var.union(NonLocalTypeInfoVars,
         NonLocalTypeClassInfoVars).
 
 %-----------------------------------------------------------------------------%
@@ -1367,7 +1370,7 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
         cannot_cgc),
     ExtraGoalExpr = unify(Var, rhs_functor(ConsId, no, ArgVars), UniMode,
         Unification, UnifyContext),
-    set.singleton_set(NonLocals, Var),
+    NonLocals = set_of_var.make_singleton(Var),
     instmap_delta_init_reachable(ExtraInstMapDelta0),
     instmap_delta_bind_var_to_functor(Var, VarType, ConsId, InstMap,
         ExtraInstMapDelta0, ExtraInstMapDelta, !ModuleInfo),
@@ -1382,15 +1385,15 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
     % of the entire conjunction.
     CaseGoal = hlds_goal(_, CaseGoalInfo),
     CaseNonLocals0 = goal_info_get_nonlocals(CaseGoalInfo),
-    set.insert(Var, CaseNonLocals0, CaseNonLocals),
+    set_of_var.insert(Var, CaseNonLocals0, CaseNonLocals),
     CaseInstMapDelta = goal_info_get_instmap_delta(CaseGoalInfo),
     instmap_delta_apply_instmap_delta(ExtraInstMapDelta, CaseInstMapDelta,
         test_size, InstMapDelta),
     CaseDetism0 = goal_info_get_determinism(CaseGoalInfo),
     det_conjunction_detism(detism_semi, CaseDetism0, Detism),
     CasePurity = goal_info_get_purity(CaseGoalInfo),
-    goal_info_init(CaseNonLocals, InstMapDelta,
-        Detism, CasePurity, CombinedGoalInfo),
+    goal_info_init(CaseNonLocals, InstMapDelta, Detism, CasePurity,
+        CombinedGoalInfo),
     Disjunct = hlds_goal(conj(plain_conj, GoalList), CombinedGoalInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1616,8 +1619,8 @@ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal, InstMapBeforeEarlierGoal,
         VarTypes, ModuleInfo, EarlierChangedVars),
 
     LaterGoalNonLocals = goal_info_get_nonlocals(LaterGoalInfo),
-    set.intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
-    not set.empty(Intersection).
+    set_of_var.intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
+    not set_of_var.is_empty(Intersection).
 
 %-----------------------------------------------------------------------------%
 
@@ -1635,7 +1638,7 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
 
     GoalExpr = plain_call(PredId, ProcId, Args, BuiltinState, no,
         qualified(ModuleName, ProcName)),
-    set.list_to_set(Args, NonLocals),
+    set_of_var.list_to_set(Args, NonLocals),
     determinism_components(Detism, _CanFail, NumSolns),
     (
         NumSolns = at_most_zero,
@@ -1668,7 +1671,7 @@ generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
     ArgVars = list.map(foreign_arg_var, Args),
     ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
     Vars = ArgVars ++ ExtraArgVars,
-    set.list_to_set(Vars, NonLocals),
+    set_of_var.list_to_set(Vars, NonLocals),
     determinism_components(Detism, _CanFail, NumSolns),
     (
         NumSolns = at_most_zero,
@@ -1696,7 +1699,7 @@ generate_cast(CastType, InArg, OutArg, Context, Goal) :-
 
 generate_cast_with_insts(CastType, InArg, OutArg, InInst, OutInst, Context,
         Goal) :-
-    set.list_to_set([InArg, OutArg], NonLocals),
+    set_of_var.list_to_set([InArg, OutArg], NonLocals),
     InstMapDelta = instmap_delta_from_assoc_list([OutArg - OutInst]),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
         GoalInfo),

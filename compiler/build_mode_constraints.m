@@ -28,10 +28,10 @@
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bimap.
 :- import_module list.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -71,7 +71,7 @@
 
     % Just a conveniently descriptive name.
     %
-:- type nonlocals == set(prog_var).
+:- type nonlocals == set_of_progvar.
 
     % In order to uniquely distinguish a prog_var that may not be
     % unique amongst predicates, this data structure is used to specify
@@ -279,7 +279,7 @@ add_mc_vars_for_goal(PredId, ProgVarset, Goal, !VarInfo) :-
     Nonlocals = goal_info_get_nonlocals(GoalInfo),
     GoalId = goal_info_get_goal_id(GoalInfo),
 
-    set.to_sorted_list(Nonlocals, NlsList),
+    set_of_var.to_sorted_list(Nonlocals, NlsList),
     prog_vars_at_path(ProgVarset, PredId, NlsList, GoalId, _, !VarInfo),
 
     % Switch on GoalExpr for recursion
@@ -360,7 +360,7 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         % Temporarily form the disjunction implied by the goal path
         % annotations.
         MainGoal = disj(Goals),
-        Nonlocals = proc_arg_vector_to_set(HeadVars),
+        Nonlocals = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
         add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, MainGoal,
             Context, goal_id(0), Nonlocals, !VarInfo, !Constraints)
     ).
@@ -546,12 +546,10 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         Goal = hlds_goal(_, NegatedGoalInfo),
         NegatedGoalId = goal_info_get_goal_id(NegatedGoalInfo),
         VarMap = rep_var_map(!.VarInfo),
-        NonlocalsAtId = set.fold(
-            cons_prog_var_at_path(VarMap, PredId, GoalId),
-            Nonlocals, []),
-        NonlocalsConstraintVars = set.fold(
-            cons_prog_var_at_path(VarMap, PredId, NegatedGoalId),
-            Nonlocals, NonlocalsAtId),
+        set_of_var.fold(cons_prog_var_at_path(VarMap, PredId, GoalId),
+            Nonlocals, [], NonlocalsAtId),
+        set_of_var.fold(cons_prog_var_at_path(VarMap, PredId, NegatedGoalId),
+            Nonlocals, NonlocalsAtId, NonlocalsConstraintVars),
 
         add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal, !VarInfo,
             !Constraints),
@@ -570,7 +568,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         % statement, it is produced at the main goal as well
         % - here we pair up equivalent mode constraint vars and
         % then constrain them to reflect this.
-        NonlocalsList = set.to_sorted_list(Nonlocals),
+        NonlocalsList = set_of_var.to_sorted_list(Nonlocals),
         prog_vars_at_path(ProgVarset, PredId, NonlocalsList, GoalId,
             NonlocalsHere, !VarInfo),
         prog_vars_at_path(ProgVarset, PredId, NonlocalsList, SomeGoalId,
@@ -600,16 +598,17 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             NonlocalsAtThen, !VarInfo),
         prog_vars_at_path(ProgVarset, PredId, NonlocalsList, ElseId,
             NonlocalsAtElse, !VarInfo),
-        NonlocalsList = set.to_sorted_list(Nonlocals),
+        NonlocalsList = set_of_var.to_sorted_list(Nonlocals),
 
         % The existentially quantified variables shared between the condition
         % and the then-part have special constraints.
 
         CondNonlocals = goal_info_get_nonlocals(CondInfo),
         ThenNonlocals = goal_info_get_nonlocals(ThenInfo),
-        list.filter(set.contains(CondNonlocals), ExistVars, NonlocalToCond),
-        list.filter(set.contains(ThenNonlocals), NonlocalToCond,
-            LocalAndShared),
+        list.filter(set_of_var.contains(CondNonlocals),
+            ExistVars, NonlocalToCond),
+        list.filter(set_of_var.contains(ThenNonlocals),
+            NonlocalToCond, LocalAndShared),
         prog_vars_at_path(ProgVarset, PredId, LocalAndShared, CondId,
             LocalAndSharedAtCond, !VarInfo),
         prog_vars_at_path(ProgVarset, PredId, LocalAndShared, ThenId,
@@ -859,20 +858,22 @@ add_goal_nonlocals_to_conjunct_production_maps(VarMap, PredId, Nonlocals,
 
     % These are variables nonlocal to the conjunction that
     % appear in this particular conjunct.
-    Nonlocal = set.intersect(SubGoalNonlocals, Nonlocals),
+    Nonlocal = set_of_var.intersect(SubGoalNonlocals, Nonlocals),
 
     % These are variables local to the conjunction that
     % are non-local to this particular conjunct.
-    Local = set.difference(SubGoalNonlocals, Nonlocals),
+    Local = set_of_var.difference(SubGoalNonlocals, Nonlocals),
 
     some [!LocalsMap, !NonlocalsMap] (
         !:LocalsMap = !.ConjConstraintsInfo ^ locals_positions,
         !:NonlocalsMap = !.ConjConstraintsInfo ^ nonlocals_positions,
 
-        set.fold(add_variable_to_conjunct_production_map(VarMap, PredId,
-            SubGoalId), Local, !LocalsMap),
-        set.fold(add_variable_to_conjunct_production_map(VarMap, PredId,
-            SubGoalId), Nonlocal, !NonlocalsMap),
+        set_of_var.fold(
+            add_variable_to_conjunct_production_map(VarMap, PredId, SubGoalId),
+            Local, !LocalsMap),
+        set_of_var.fold(
+            add_variable_to_conjunct_production_map(VarMap, PredId, SubGoalId),
+            Nonlocal, !NonlocalsMap),
 
         !ConjConstraintsInfo ^ locals_positions := !.LocalsMap,
         !ConjConstraintsInfo ^ nonlocals_positions := !.NonlocalsMap
@@ -1048,11 +1049,12 @@ lookup_prog_var_at_path(VarMap, PredId, GoalId, ProgVar) =
     % Retrieves the mode constraint var as per prog_var_at_path, but
     % attaches it to the list supplied rather than return it directly.
     %
-:- func cons_prog_var_at_path(mc_var_map, pred_id, goal_id, prog_var,
-    list(mc_var)) = list(mc_var).
+:- pred cons_prog_var_at_path(mc_var_map::in, pred_id::in, goal_id::in,
+    prog_var::in, list(mc_var)::in, list(mc_var)::out) is det.
 
-cons_prog_var_at_path(VarMap, PredId, GoalId, ProgVar, MCVars) =
-    [lookup_prog_var_at_path(VarMap, PredId, GoalId, ProgVar) | MCVars].
+cons_prog_var_at_path(VarMap, PredId, GoalId, ProgVar, MCVars0, MCVars) :-
+    MCVar = lookup_prog_var_at_path(VarMap, PredId, GoalId, ProgVar),
+    MCVars = [MCVar | MCVars0].
 
     % prog_var_at_paths(VarMap, GoalIds, ProgVar) = ConstraintVars
     % consults the map to form a list of the constraint variable
@@ -1095,7 +1097,7 @@ nonlocals_at_path_and_subpaths(ProgVarset, PredId, GoalId, SubIds,
             prog_var_at_paths(ProgVarset, PredId, Nl, SubIds, NlAtSubIds,
                 !VInfo)
         ), NonlocalsList, NonlocalsAtSubIds, !VarInfo),
-    NonlocalsList = set.to_sorted_list(Nonlocals).
+    NonlocalsList = set_of_var.to_sorted_list(Nonlocals).
 
 %----------------------------------------------------------------------------%
 

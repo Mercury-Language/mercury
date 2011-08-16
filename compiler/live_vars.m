@@ -276,8 +276,8 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % must be available in a stackslot past the parallel conjunction
             % as well.
             NonLocals = goal_info_get_code_gen_nonlocals(GoalInfo0),
-            LiveSet = set_of_var.union_list([set_to_bitset(NonLocals),
-                !.Liveness, ResumeVars0]),
+            LiveSet =
+                set_of_var.union_list([NonLocals, !.Liveness, ResumeVars0]),
 
             InnerNonLocals = LiveSet `set_of_var.union` OuterNonLocals,
             InnerParStackVars0 =

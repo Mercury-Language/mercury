@@ -238,9 +238,9 @@
     %
 :- type stm_goal_vars
     --->    stm_goal_vars(
-                vars_input               :: set(prog_var),
-                vars_local               :: set(prog_var),
-                vars_output              :: set(prog_var),
+                vars_input               :: set_of_progvar,
+                vars_local               :: set_of_progvar,
+                vars_output              :: set_of_progvar,
                 vars_innerDI             :: prog_var,       % inner STM di var
                 vars_innerUO             :: prog_var        % inner STM uo var
             ).
@@ -565,7 +565,7 @@ common_goal_vars_from_list(GoalList, GoalVar) :-
         Input = AGV ^ vars_input),
 
     list.map(ExtractInputSet, GoalList, InputVarList),
-    InputVars = set.union_list(InputVarList),
+    InputVars = set_of_var.union_list(InputVarList),
     GoalVar0 = list.det_head(GoalList),
     GoalVar = GoalVar0 ^ vars_input := InputVars.
 
@@ -624,17 +624,17 @@ calc_pred_variables(InitInstmap, FinalInstmap, HldsGoal,
 
     HldsGoal = hlds_goal(_, GoalInfo),
     GoalNonLocalSet0 = goal_info_get_nonlocals(GoalInfo),
-    set.delete_list(IgnoreVarList, GoalNonLocalSet0, GoalNonLocalSet),
-    GoalNonLocals = set.to_sorted_list(GoalNonLocalSet),
+    set_of_var.delete_list(IgnoreVarList, GoalNonLocalSet0, GoalNonLocalSet),
+    GoalNonLocals = set_of_var.to_sorted_list(GoalNonLocalSet),
 
     order_vars_into_groups(ModuleInfo, GoalVarList, InitInstmap, FinalInstmap,
         LocalVarsList, InputVarsList, _),
     order_vars_into_groups(ModuleInfo, GoalNonLocals, InitInstmap,
         FinalInstmap, _, _InputVarsList, OutputVarsList),
 
-    LocalVars = set.from_list(LocalVarsList),
-    InputVars = set.from_list(InputVarsList),
-    OutputVars = set.from_list(OutputVarsList),
+    LocalVars = set_of_var.list_to_set(LocalVarsList),
+    InputVars = set_of_var.list_to_set(InputVarsList),
+    OutputVars = set_of_var.list_to_set(OutputVarsList),
 
     StmGoalVars = stm_goal_vars(InputVars, LocalVars, OutputVars,
         InnerDI, InnerUO).
@@ -654,7 +654,8 @@ calc_pred_variables(InitInstmap, FinalInstmap, HldsGoal,
 remove_tail([], [], no - no, no - no).
 remove_tail([G | Gs], Goals, MaybeOutDI - MaybeOutUO,
 		MaybeInDI - MaybeInUO) :-
-    remove_tail(Gs, Goals0, MaybeOutDI0 - MaybeOutUO0,MaybeInDI0 - MaybeInUO0),
+    remove_tail(Gs, Goals0, MaybeOutDI0 - MaybeOutUO0,
+        MaybeInDI0 - MaybeInUO0),
     ( G = hlds_goal(plain_call(_, _, [_, X, V], _, _, stm_outer_inner), _) ->
         MaybeInDI = yes(V),
         MaybeInUO = MaybeInUO0,
@@ -1277,7 +1278,7 @@ move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
     proc_info_get_varset(OldProcInfo0, OldPredVarSet0),
     proc_info_get_vartypes(OldProcInfo0, OldPredVarTypes0),
     AtomicGoalVars = stm_goal_vars(_, LocalVars, _, OrigInnerDI, OrigInnerUO),
-    LocalVarList = set.to_sorted_list(LocalVars),
+    LocalVarList = set_of_var.to_sorted_list(LocalVars),
 
     VarMapping0 = map.init,
     list.foldl5(apply_varset_to_preds, LocalVarList,
@@ -1886,7 +1887,8 @@ create_or_else_branch(AtomicGoalVars, ReturnType, OuterStmDIVar,
 
     create_simple_call(mercury_exception_module, "unsafe_try_stm",
         pf_predicate, mode_no(0), detism_cc_multi, purity_pure,
-        [RttiVar, AtomicClosureVar, ReturnExceptVar, InnerSTM0Var,InnerSTMVar],
+        [RttiVar, AtomicClosureVar, ReturnExceptVar,
+            InnerSTM0Var, InnerSTMVar],
         [],
         instmap_delta_from_assoc_list([
             RttiVar - ground(shared, none),
@@ -2159,7 +2161,7 @@ create_aux_variable_assignment(Cons, Type, MaybeName, Goal, Var,
 :- pred create_var_test(prog_var::in, prog_var::in, unify_mode::in,
     hlds_goal::out, stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_var_test(VarLHS, VarRHS, UnifyMode, HldsGoal, !NewPredInfo) :-
+create_var_test(VarLHS, VarRHS, UnifyMode, Goal, !NewPredInfo) :-
     Context = !.NewPredInfo ^ new_pred_context,
     ModuleInfo = !.NewPredInfo ^ new_pred_module_info,
 
@@ -2170,19 +2172,14 @@ create_var_test(VarLHS, VarRHS, UnifyMode, HldsGoal, !NewPredInfo) :-
 
     instmap_delta_from_mode_list([VarLHS, VarRHS], [ModeLHS, ModeRHS],
         ModuleInfo, InstmapDelta),
-    HldsGoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
+    GoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
 
-    some [!NonLocals] (
-        set.init(!:NonLocals),
-        set.insert(VarLHS, !NonLocals),
-        set.insert(VarRHS, !NonLocals),
-
-        Determism = detism_semi,
-        Purity = purity_pure,
-        goal_info_init(!.NonLocals, InstmapDelta, Determism, Purity, Context,
-            HldsGoalInfo)
-    ),
-    HldsGoal = hlds_goal(HldsGoalExpr, HldsGoalInfo).
+    set_of_var.list_to_set([VarLHS, VarRHS], NonLocals),
+    Determism = detism_semi,
+    Purity = purity_pure,
+    goal_info_init(NonLocals, InstmapDelta, Determism, Purity, Context,
+        GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
     % Creates a unification between two variables (using the unify goal)
     % Takes the "stm_info" state
@@ -2190,7 +2187,7 @@ create_var_test(VarLHS, VarRHS, UnifyMode, HldsGoal, !NewPredInfo) :-
 :- pred create_var_unify_stm(prog_var::in, prog_var::in, unify_mode::in,
     hlds_goal::out, stm_info::in, stm_info::out) is det.
 
-create_var_unify_stm(VarLHS, VarRHS, UnifyMode, HldsGoal, !StmInfo) :-
+create_var_unify_stm(VarLHS, VarRHS, UnifyMode, Goal, !StmInfo) :-
     Context = term.context("--temp-context--", 999),
     ModuleInfo = !.StmInfo ^ stm_info_module_info,
 
@@ -2201,26 +2198,21 @@ create_var_unify_stm(VarLHS, VarRHS, UnifyMode, HldsGoal, !StmInfo) :-
 
     instmap_delta_from_mode_list([VarLHS, VarRHS], [ModeLHS, ModeRHS],
         ModuleInfo, InstmapDelta),
-    HldsGoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
+    GoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
 
-    some [!NonLocals] (
-        set.init(!:NonLocals),
-        set.insert(VarLHS, !NonLocals),
-        set.insert(VarRHS, !NonLocals),
-
-        Determism = detism_det,
-        Purity = purity_pure,
-        goal_info_init(!.NonLocals, InstmapDelta, Determism, Purity, Context,
-            HldsGoalInfo)
-    ),
-    HldsGoal = hlds_goal(HldsGoalExpr, HldsGoalInfo).
+    set_of_var.list_to_set([VarLHS, VarRHS], NonLocals),
+    Determism = detism_det,
+    Purity = purity_pure,
+    goal_info_init(NonLocals, InstmapDelta, Determism, Purity, Context,
+        GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
     % Creates a unification between two variables (using the unify goal)
     %
 :- pred create_var_unify(prog_var::in, prog_var::in, unify_mode::in,
     hlds_goal::out, stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_var_unify(VarLHS, VarRHS, UnifyMode, HldsGoal, !NewPredInfo) :-
+create_var_unify(VarLHS, VarRHS, UnifyMode, Goal, !NewPredInfo) :-
     Context = !.NewPredInfo ^ new_pred_context,
     ModuleInfo = !.NewPredInfo ^ new_pred_module_info,
 
@@ -2231,19 +2223,14 @@ create_var_unify(VarLHS, VarRHS, UnifyMode, HldsGoal, !NewPredInfo) :-
 
     instmap_delta_from_mode_list([VarLHS, VarRHS], [ModeLHS, ModeRHS],
         ModuleInfo, InstmapDelta),
-    HldsGoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
+    GoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
 
-    some [!NonLocals] (
-        set.init(!:NonLocals),
-        set.insert(VarLHS, !NonLocals),
-        set.insert(VarRHS, !NonLocals),
-
-        Determism = detism_det,
-        Purity = purity_pure,
-        goal_info_init(!.NonLocals, InstmapDelta, Determism, Purity, Context,
-            HldsGoalInfo)
-    ),
-    HldsGoal = hlds_goal(HldsGoalExpr, HldsGoalInfo).
+    set_of_var.list_to_set([VarLHS, VarRHS], NonLocals),
+    Determism = detism_det,
+    Purity = purity_pure,
+    goal_info_init(NonLocals, InstmapDelta, Determism, Purity, Context,
+        GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
     % Creates a simple call.  If the call is polymorphic, remember to add
     % the runtime type information as well ("type_info" variable).
@@ -2297,7 +2284,7 @@ create_if_then_else(ExistVars, Cond, Then, Else, Detism, Purity, OutGoal,
         !NewPredInfo) :-
     Context = !.NewPredInfo ^ new_pred_context,
     OutGoalExpr = if_then_else(ExistVars, Cond, Then, Else),
-    NonLocals = set.init,
+    NonLocals = set_of_var.init,
     instmap_delta_init_reachable(InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo),
@@ -2312,7 +2299,7 @@ create_if_then_else(ExistVars, Cond, Then, Else, Detism, Purity, OutGoal,
 create_switch_disjunction(ProgVar, Cases, Detism, Purity, OutGoal,
         !NewPredInfo) :-
     Context = !.NewPredInfo ^ new_pred_context,
-    NonLocals = set.init,
+    NonLocals = set_of_var.init,
     instmap_delta_init_reachable(InstMapDelta),
     OutGoalExpr = switch(ProgVar, cannot_fail, Cases),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
@@ -2455,8 +2442,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
     CallExpr = plain_call(NewPredId, NewProcId, ProcHeadVars, not_builtin, no,
         NewPredName),
 
-    set.init(CallNonLocals0),
-    set.insert_list(ProcHeadVars, CallNonLocals0, CallNonLocals),
+    set_of_var.list_to_set(ProcHeadVars, CallNonLocals),
     instmap_delta_from_mode_list(ProcHeadVars, ProcHeadModes, ModuleInfo0,
         CallInstmapDelta),
 
@@ -2563,15 +2549,15 @@ get_pred_proc_id(NewPredInfo0, PredProcId) :-
 
     % Get the list of input and output variables of the original atomic goal.
     %
-:- pred get_input_output_varlist(stm_goal_vars::in, list(prog_var)::out,
-    list(prog_var)::out) is det.
+:- pred get_input_output_varlist(stm_goal_vars::in,
+    list(prog_var)::out, list(prog_var)::out) is det.
 
 get_input_output_varlist(StmGoalVars, Input, Output) :-
     InputSet = StmGoalVars ^ vars_input,
     OutputSet = StmGoalVars ^ vars_output,
 
-    Input = set.to_sorted_list(InputSet),
-    Output = set.to_sorted_list(OutputSet).
+    Input = set_of_var.to_sorted_list(InputSet),
+    Output = set_of_var.to_sorted_list(OutputSet).
 
     % Get the list of types corresponding to the input and output
     % variables of the original atomic goal.

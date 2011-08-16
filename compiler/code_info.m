@@ -507,7 +507,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     ->
         trace_fail_vars(ModuleInfo, ProcInfo, FailVars),
         MaybeFailVars = yes(FailVars),
-        set.union(Liveness, FailVars, EffLiveness)
+        set_of_var.union(Liveness, FailVars, EffLiveness)
     ;
         MaybeFailVars = no,
         EffLiveness = Liveness
@@ -581,7 +581,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             MaybeContainingGoalMap
         ),
         code_info_loc_dep(
-            set_to_bitset(Liveness),
+            Liveness,
             InstMap,
             Zombies,
             VarLocnInfo,
@@ -1519,7 +1519,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, CI0, CI) :-
     % being cut across. If the goal succeeds, the commit will cut
     % any choice points generated in the goal.
     %
-    % The set(prog_var) should be the set of variables live before
+    % The set_of_progvar should be the set of variables live before
     % the scope goal.
     %
 :- type semi_commit_info.
@@ -2902,7 +2902,7 @@ compute_resume_var_stack_locs(CI, VarLocs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred init_fail_info(code_model::in, maybe(set(prog_var))::in,
+:- pred init_fail_info(code_model::in, maybe(set_of_progvar)::in,
     resume_point_info::out, code_info::in, code_info::out) is det.
 
 init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
@@ -2935,7 +2935,8 @@ init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
     (
         MaybeFailVars = yes(FailVars),
         get_stack_slots(!.CI, StackSlots),
-        map.select(StackSlots, FailVars, AbsStackMap),
+        map.select_sorted_list(StackSlots, set_of_var.to_sorted_list(FailVars),
+            AbsStackMap),
         map.to_assoc_list(AbsStackMap, AbsStackList),
         StackList0 = assoc_list.map_values_only(stack_slot_to_lval,
             AbsStackList),
@@ -3798,7 +3799,7 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
 
 :- pred clobber_regs(list(lval)::in, code_info::in, code_info::out) is det.
 
-:- pred save_variables(set(prog_var)::in, set(lval)::out, llds_code::out,
+:- pred save_variables(set_of_progvar::in, set(lval)::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 :- pred save_variables_on_stack(list(prog_var)::in, llds_code::out,
@@ -4188,7 +4189,7 @@ clobber_regs(Regs, !CI) :-
     set_var_locn_info(VarLocnInfo, !CI).
 
 save_variables(OutArgs, SavedLocs, Code, !CI) :-
-    compute_forward_live_var_saves(!.CI, set_to_bitset(OutArgs), VarLocs),
+    compute_forward_live_var_saves(!.CI, OutArgs, VarLocs),
     assoc_list.values(VarLocs, SavedLocList),
     set.list_to_set(SavedLocList, SavedLocs),
     place_vars(VarLocs, Code, !CI).
@@ -4241,7 +4242,7 @@ magically_put_var_in_unused_reg(Var, !CI) :-
 :- interface.
 
 :- pred generate_call_vn_livevals(code_info::in, list(arg_loc)::in,
-    set(prog_var)::in, set(lval)::out) is det.
+    set_of_progvar::in, set(lval)::out) is det.
 
 :- pred generate_return_live_lvalues(code_info::in,
     assoc_list(prog_var, arg_loc)::in, instmap::in, bool::in,
@@ -4256,7 +4257,7 @@ generate_call_vn_livevals(CI, InputArgLocs, OutputArgs, LiveVals) :-
     generate_input_var_vn(InputArgLocs, StackLiveVals, LiveVals).
 
 :- pred generate_call_stack_vn_livevals(code_info::in,
-    set(prog_var)::in, set(lval)::out) is det.
+    set_of_progvar::in, set(lval)::out) is det.
 
 generate_call_stack_vn_livevals(CI, OutputArgs, LiveVals) :-
     get_known_variables(CI, KnownVarList0),
@@ -4264,9 +4265,9 @@ generate_call_stack_vn_livevals(CI, OutputArgs, LiveVals) :-
     VarTypes = get_var_types(CI),
     list.filter(var_is_of_non_dummy_type(ModuleInfo, VarTypes),
         KnownVarList0, KnownVarList),
-    set.list_to_set(KnownVarList, KnownVars),
-    set.difference(KnownVars, OutputArgs, LiveVars),
-    set.to_sorted_list(LiveVars, LiveVarList),
+    set_of_var.list_to_set(KnownVarList, KnownVars),
+    set_of_var.difference(KnownVars, OutputArgs, LiveVars),
+    set_of_var.to_sorted_list(LiveVars, LiveVarList),
     generate_stack_var_vn(CI, LiveVarList, set.init, LiveVals1),
     get_active_temps_data(CI, Temps),
     generate_call_temp_vn(Temps, LiveVals1, LiveVals).

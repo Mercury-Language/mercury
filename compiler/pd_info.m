@@ -122,6 +122,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.pd_debug.
 :- import_module transform_hlds.pd_util.
 
@@ -590,7 +591,7 @@ pd_info.goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
         NewGoal, NewVarTypes, OldNewRenaming, TypeRenaming),
     OldGoal = hlds_goal(_, OldGoalInfo),
     OldNonLocals0 = goal_info_get_nonlocals(OldGoalInfo),
-    set.to_sorted_list(OldNonLocals0, OldNonLocalsList),
+    set_of_var.to_sorted_list(OldNonLocals0, OldNonLocalsList),
     pd_info.check_insts(ModuleInfo, OldNonLocalsList, OldNewRenaming,
         OldInstMap, NewInstMap, NewVarTypes, exact, Exact),
 
@@ -636,7 +637,7 @@ pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap),
     Goal = hlds_goal(_, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    set.to_sorted_list(NonLocals, Args),
+    set_of_var.to_sorted_list(NonLocals, Args),
     pd_info_get_counter(!.PDInfo, Counter0),
     counter.allocate(Count, Counter0, Counter),
     pd_info_set_counter(Counter, !PDInfo),

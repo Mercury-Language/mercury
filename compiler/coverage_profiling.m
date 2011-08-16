@@ -51,6 +51,7 @@
 :- import_module libs.options.
 :- import_module ll_backend.deep_profiling.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1160,7 +1161,7 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
         coverage_point_ll_code(DataType, ForeignCallAttrs, ForeignCode),
         CallGoalExpr = call_foreign_proc(ForeignCallAttrs, PredId, ProcId,
             ForeignArgVars, [], no, ForeignCode),
-        NonLocals = list_to_set(ArgVars),
+        NonLocals = set_of_var.list_to_set(ArgVars),
         InstMapDelta = instmap_delta_from_assoc_list([]),
         CallGoalInfo = impure_init_goal_info(NonLocals, InstMapDelta,
             detism_det),

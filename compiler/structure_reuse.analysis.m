@@ -112,6 +112,7 @@
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
@@ -409,14 +410,15 @@ make_intermediate_reuse_proc(sr_request(PPId, NoClobbers), NewPPId,
     module_info_pred_proc_info(!.ModuleInfo, NewPPId, PredInfo, ProcInfo0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     get_numbered_args(1, NoClobbers, HeadVars, NoClobberVars),
-    add_vars_to_lfu(set.from_list(NoClobberVars), ProcInfo0, ProcInfo),
+    add_vars_to_lfu(set_of_var.list_to_set(NoClobberVars),
+        ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(NewPPId, PredInfo, ProcInfo, !ModuleInfo),
 
     reuse_as_table_insert_reuse_version_proc(PPId, NoClobbers, NewPPId,
         !ReuseTable).
 
-:- pred get_numbered_args(int::in, list(int)::in, prog_vars::in,
-    prog_vars::out) is det.
+:- pred get_numbered_args(int::in, list(int)::in,
+    list(prog_var)::in, list(prog_var)::out) is det.
 
 get_numbered_args(_, [], _, []).
 get_numbered_args(_, [_ | _], [], _) :-

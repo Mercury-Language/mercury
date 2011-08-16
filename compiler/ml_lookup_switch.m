@@ -28,9 +28,9 @@
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
-:- import_module set.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -52,7 +52,7 @@
     % Is the given list of cases implementable as a lookup switch?
     %
 :- pred ml_is_lookup_switch(pred(cons_tag, Key)::in(pred(in, out) is det),
-    prog_var::in, list(tagged_case)::in, set(prog_var)::in, code_model::in,
+    prog_var::in, list(tagged_case)::in, set_of_progvar::in, code_model::in,
     ml_lookup_switch_info(Key)::out,
     ml_gen_info::in, ml_gen_info::out) is semidet.
 
@@ -115,8 +115,8 @@
 
 ml_is_lookup_switch(GetTag, SwitchVar, TaggedCases, NonLocals, CodeModel,
         LookupSwitchInfo, !Info) :-
-    set.remove(SwitchVar, NonLocals, OtherNonLocals),
-    set.to_sorted_list(OtherNonLocals, OutVars),
+    set_of_var.remove(SwitchVar, NonLocals, OtherNonLocals),
+    set_of_var.to_sorted_list(OtherNonLocals, OutVars),
     % While the LLDS backend has to worry about about implementing trailing
     % for model_non lookup switches, we do not. The MLDS backend implements
     % trailing by a HLDS-to-HLDS transform (which is in add_trail_ops.m),
@@ -140,7 +140,7 @@ ml_is_lookup_switch(GetTag, SwitchVar, TaggedCases, NonLocals, CodeModel,
 
 :- pred ml_generate_constants_for_lookup_switch(
     pred(cons_tag, T)::in(pred(in, out) is det),
-    code_model::in, list(prog_var)::in, set(prog_var)::in,
+    code_model::in, list(prog_var)::in, set_of_progvar::in,
     list(tagged_case)::in,
     map(T, soln_consts(mlds_rval))::in,
     map(T, soln_consts(mlds_rval))::out,

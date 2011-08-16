@@ -182,6 +182,7 @@
 :- import_module ml_backend.ml_accurate_gc.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module map.
@@ -451,9 +452,10 @@ ml_gen_maybe_make_locals_for_output_args(GoalInfo, LocalVarDecls,
         Context = goal_info_get_context(GoalInfo),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         ml_gen_info_get_byref_output_vars(!.Info, ByRefOutputVars),
-        VarsToCopy = set.intersect(set.list_to_set(ByRefOutputVars),
-            NonLocals),
-        ml_gen_make_locals_for_output_args(set.to_sorted_list(VarsToCopy),
+        VarsToCopy = set_of_var.intersect(
+            set_of_var.list_to_set(ByRefOutputVars), NonLocals),
+        ml_gen_make_locals_for_output_args(
+            set_of_var.to_sorted_list(VarsToCopy),
             Context, LocalVarDecls, CopyLocalsToOutputArgs, !Info)
     ;
         NondetCopyOut = no,

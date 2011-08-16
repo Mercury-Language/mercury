@@ -103,7 +103,7 @@ figure_out_output_vars(CI, GoalInfo, OutVars) :-
         instmap.apply_instmap_delta(CurrentInstMap, InstMapDelta,
             InstMapAfter),
         list.filter(is_output_var(ModuleInfo, CurrentInstMap, InstMapAfter),
-            set.to_sorted_list(ChangedVars), OutVars)
+            set_of_var.to_sorted_list(ChangedVars), OutVars)
     ).
 
 :- pred is_output_var(module_info::in, instmap::in, instmap::in, prog_var::in)

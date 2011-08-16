@@ -18,6 +18,7 @@
 
 :- import_module parse_tree.prog_data.
 
+:- import_module bool.
 :- import_module list.
 :- import_module set.
 :- import_module term.
@@ -32,6 +33,8 @@
 :- func make_singleton(var(T)) = set_of_var(T).
 :- pred make_singleton(var(T)::in, set_of_var(T)::out) is det.
 
+:- func count(set_of_var(T)) = int.
+
 %---------------
 % Tests.
 
@@ -39,7 +42,14 @@
 :- pred is_non_empty(set_of_var(T)::in) is semidet.
 :- pred is_singleton(set_of_var(T)::in, var(T)::out) is semidet.
 
-:- pred member(set_of_var(T)::in, var(T)::in) is semidet.
+:- pred member(set_of_var(T), var(T)).
+:- mode member(in, in) is semidet.
+:- mode member(in, out) is nondet.
+
+:- pred is_member(set_of_var(T)::in, var(T)::in, bool::out) is det.
+
+:- pred contains(set_of_var(T)::in, var(T)::in) is semidet.
+
 :- pred equal(set_of_var(T)::in, set_of_var(T)::in) is semidet.
 
 %---------------
@@ -108,6 +118,9 @@
 :- mode fold(pred(in, in, out) is det, in, in, out) is det.
 :- mode fold(pred(in, in, out) is semidet, in, in, out) is semidet.
 
+:- pred fold_func((func(var(T), Acc) = Acc), set_of_var(T), Acc, Acc).
+:- mode fold_func(in((func(in, in) = out) is det), in, in, out) is det.
+
     % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
     % Pred succeeds.
     %
@@ -171,6 +184,9 @@ make_singleton(Elem) = tree_bitset.make_singleton_set(Elem).        % MODULE
 make_singleton(Elem, Set) :-
     Set = set_of_var.make_singleton(Elem).
 
+count(Set) = Count :-
+    Count = tree_bitset.count(Set).                                 % MODULE
+
 %---------------
 % Tests.
 
@@ -185,6 +201,16 @@ is_singleton(Set, Elem) :-
 
 member(Set, Elem) :-
     tree_bitset.member(Elem, Set).                                  % MODULE
+
+is_member(Set, Elem, IsMember) :-
+    ( set_of_var.contains(Set, Elem) ->
+        IsMember = yes
+    ;
+        IsMember = no
+    ).
+
+contains(Set, Elem) :-
+    tree_bitset.contains(Set, Elem).                                % MODULE
 
 equal(SetA, SetB) :-
     tree_bitset.equal(SetA, SetB).                                  % MODULE
@@ -269,6 +295,9 @@ divide_by_set(DivideBySet, Set, InPart, OutPart) :-
 
 fold(P, Set, !Acc) :-
     tree_bitset.foldl(P, Set, !Acc).                                % MODULE
+
+fold_func(P, Set, !Acc) :-
+    !:Acc = tree_bitset.foldl(P, Set, !.Acc).                       % MODULE
 
 filter(P, Set) = tree_bitset.filter(P, Set).                        % MODULE
 

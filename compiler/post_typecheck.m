@@ -143,6 +143,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1350,7 +1351,8 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     DeconstructArgs = VarsBeforeField ++ [SingletonFieldVar | VarsAfterField],
     OldNonLocals = goal_info_get_nonlocals(OldGoalInfo),
     NonLocalArgs = VarsBeforeField ++ VarsAfterField,
-    set.insert_list(NonLocalArgs, OldNonLocals, DeconstructRestrictNonLocals),
+    set_of_var.insert_list(NonLocalArgs, OldNonLocals,
+        DeconstructRestrictNonLocals),
 
     create_pure_atomic_unification_with_nonlocals(TermInputVar,
         rhs_functor(ConsId0, no, DeconstructArgs), OldGoalInfo,
@@ -1359,7 +1361,8 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
 
     % Build a goal to construct the output.
     ConstructArgs = VarsBeforeField ++ [FieldVar | VarsAfterField],
-    set.insert_list(NonLocalArgs, OldNonLocals, ConstructRestrictNonLocals),
+    set_of_var.insert_list(NonLocalArgs, OldNonLocals,
+        ConstructRestrictNonLocals),
 
     % If the cons_id is existentially quantified, add a `new' prefix
     % so that polymorphism.m adds the appropriate type_infos.
@@ -1554,7 +1557,7 @@ get_constructor_containing_field_3([CtorArg | CtorArgs],
 %-----------------------------------------------------------------------------%
 
 :- pred create_pure_atomic_unification_with_nonlocals(prog_var::in,
-    unify_rhs::in, hlds_goal_info::in, set(prog_var)::in, list(prog_var)::in,
+    unify_rhs::in, hlds_goal_info::in, set_of_progvar::in, list(prog_var)::in,
     unify_context::in, hlds_goal::out) is det.
 
 create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
@@ -1567,8 +1570,8 @@ create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
 
     % Compute the nonlocals of the goal.
-    set.list_to_set(VarsList, NonLocals1),
-    set.intersect(RestrictNonLocals, NonLocals1, NonLocals),
+    set_of_var.list_to_set(VarsList, NonLocals1),
+    set_of_var.intersect(RestrictNonLocals, NonLocals1, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
 
     % Use the goal id from the original goal, so that the constraint_ids

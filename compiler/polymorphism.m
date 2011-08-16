@@ -1388,12 +1388,12 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         ExistQVars = [],
         fixup_lambda_quantification(ArgVars0, LambdaVars, ExistQVars,
             LambdaGoal1, LambdaGoal, NonLocalTypeInfos, !Info),
-        set.to_sorted_list(NonLocalTypeInfos, NonLocalTypeInfosList),
+        set_of_var.to_sorted_list(NonLocalTypeInfos, NonLocalTypeInfosList),
         ArgVars = NonLocalTypeInfosList ++ ArgVars0,
         Y1 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             ArgVars, LambdaVars, Modes, Det, LambdaGoal),
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        set.union(NonLocals0, NonLocalTypeInfos, NonLocals),
+        set_of_var.union(NonLocals0, NonLocalTypeInfos, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
 
         % Complicated (in-in) argument unifications are impossible for lambda
@@ -1437,7 +1437,7 @@ add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo) :-
     % Insert the TypeInfoVars into the nonlocals field of the goal_info
     % for the unification goal.
     NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
-    set.insert_list(TypeInfoVars, NonLocals0, NonLocals),
+    set_of_var.insert_list(TypeInfoVars, NonLocals0, NonLocals),
     goal_info_set_nonlocals(NonLocals, !GoalInfo),
 
     % Also save those type_info vars into a field in the complicated_unify,
@@ -1557,7 +1557,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
             ExtraVars, ExtraGoals, !Info),
         ArgVars = ExtraVars ++ ArgVars0,
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        set.insert_list(ExtraVars, NonLocals0, NonLocals),
+        set_of_var.insert_list(ExtraVars, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
 
         % Some of the argument unifications may be complicated unifications,
@@ -1610,9 +1610,9 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % to compute constraint_ids correctly.
 
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
-    set.insert_list(LambdaVars, NonLocals, OutsideVars),
-    set.list_to_set(Args, InsideVars),
-    set.intersect(OutsideVars, InsideVars, LambdaNonLocals),
+    set_of_var.insert_list(LambdaVars, NonLocals, OutsideVars),
+    set_of_var.list_to_set(Args, InsideVars),
+    set_of_var.intersect(OutsideVars, InsideVars, LambdaNonLocals),
     GoalId = goal_info_get_goal_id(GoalInfo0),
     goal_info_init(LambdaGoalInfo0),
     goal_info_set_context(Context, LambdaGoalInfo0, LambdaGoalInfo1),
@@ -2130,7 +2130,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
         % Update the nonlocals.
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        set.insert_list(ExtraVars, NonLocals0, NonLocals),
+        set_of_var.insert_list(ExtraVars, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo)
     ).
 
@@ -2201,8 +2201,8 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
         ExtraArgs, ExtraGoals, !Info),
     CallArgs = ExtraArgs ++ CallArgs0,
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-    NonLocals1 = set.list_to_set(ExtraArgs),
-    NonLocals = set.union(NonLocals0, NonLocals1),
+    NonLocals1 = set_of_var.list_to_set(ExtraArgs),
+    set_of_var.union(NonLocals0, NonLocals1, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     CallGoalExpr = plain_call(PredId, ProcId, CallArgs, BuiltinState,
         MaybeCallUnifyContext, SymName),
@@ -2263,25 +2263,26 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
     %
 :- pred fixup_lambda_quantification(list(prog_var)::in,
     list(prog_var)::in, existq_tvars::in, hlds_goal::in, hlds_goal::out,
-    set(prog_var)::out, poly_info::in, poly_info::out) is det.
+    set_of_progvar::out, poly_info::in, poly_info::out) is det.
 
 fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
         NewOutsideVars, !Info) :-
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     ( rtti_varmaps_no_tvars(RttiVarMaps0) ->
-        set.init(NewOutsideVars)
+        set_of_var.init(NewOutsideVars)
     ;
         poly_info_get_varset(!.Info, VarSet0),
         poly_info_get_var_types(!.Info, VarTypes0),
         !.Goal = hlds_goal(_, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        set.insert_list(ArgVars, NonLocals, NonLocalsPlusArgs0),
-        set.insert_list(LambdaVars, NonLocalsPlusArgs0, NonLocalsPlusArgs),
+        set_of_var.insert_list(ArgVars, NonLocals, NonLocalsPlusArgs0),
+        set_of_var.insert_list(LambdaVars,
+            NonLocalsPlusArgs0, NonLocalsPlusArgs),
         goal_util.extra_nonlocal_typeinfos(RttiVarMaps0, VarTypes0,
             ExistQVars, NonLocalsPlusArgs, NewOutsideVars),
-        set.union(NonLocals, NewOutsideVars, OutsideVars),
+        set_of_var.union(NonLocals, NewOutsideVars, OutsideVars),
         implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
-            set_to_bitset(OutsideVars), _Warnings, !Goal,
+            OutsideVars, _Warnings, !Goal,
             VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
         poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
@@ -2551,7 +2552,7 @@ construct_base_typeclass_info(Constraint, InstanceNum, InstanceTypes,
         BaseUnification, BaseUnifyContext),
 
     % Create the unification goal.
-    set.list_to_set([BaseVar], NonLocals),
+    NonLocals = set_of_var.make_singleton(BaseVar),
     InstmapDelta = instmap_delta_bind_var(BaseVar),
     goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
         BaseGoalInfo),
@@ -2587,7 +2588,7 @@ construct_typeclass_info(Constraint, BaseVar, ArgVars, TypeClassInfoVar, Goal,
 
     % Create a goal_info for the unification.
     goal_info_init(GoalInfo0),
-    set.list_to_set([TypeClassInfoVar | AllArgVars], NonLocals),
+    set_of_var.list_to_set([TypeClassInfoVar | AllArgVars], NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
     list.duplicate(NumArgVars, ground(shared, none), ArgInsts),
     % Note that we could perhaps be more accurate than `ground(shared)',
@@ -3139,7 +3140,7 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
         UnifyContext),
 
     % Create a goal_info for the unification.
-    set.list_to_set([TypeInfoVar | ArgVars], NonLocals),
+    set_of_var.list_to_set([TypeInfoVar | ArgVars], NonLocals),
     list.duplicate(NumArgVars, ground(shared, none), ArgInsts),
     % note that we could perhaps be more accurate than `ground(shared)',
     % but it shouldn't make any difference.
@@ -3172,7 +3173,7 @@ init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
         Unification, UnifyContext),
 
     % Create a goal_info for the unification.
-    set.list_to_set([TypeCtorInfoVar], NonLocals),
+    NonLocals = set_of_var.make_singleton(TypeCtorInfoVar),
     InstmapDelta = instmap_delta_bind_var(TypeCtorInfoVar),
     goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure, GoalInfo),
     TypeCtorInfoGoal = hlds_goal(Unify, GoalInfo).
@@ -3625,7 +3626,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
         HeadVars, Modes, Detism),
 
     % Make the goal info for the call.
-    set.list_to_set(HeadVars0, NonLocals),
+    set_of_var.list_to_set(HeadVars0, NonLocals),
     instmap_delta_from_mode_list(HeadVars0, Modes0, !.ModuleInfo,
         InstmapDelta),
     pred_info_get_purity(PredInfo0, Purity),

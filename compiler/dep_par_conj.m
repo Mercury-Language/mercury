@@ -113,10 +113,9 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -134,7 +133,7 @@
     % This function is exported for use by the implicit_parallelism pass.
     %
 :- func find_shared_variables(module_info, instmap, list(hlds_goal))
-    = set(prog_var).
+    = set_of_progvar.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -155,6 +154,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.dependency_graph.
@@ -222,7 +222,7 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
                 % Variables which should not be replaced by futures in this
                 % pass because it has already been done. This field is
                 % read only.
-                sync_ignore_vars            :: set(prog_var),
+                sync_ignore_vars            :: set_of_progvar,
 
                 % The value of the --allow-some-paths-only-waits option.
                 % Read-only.
@@ -266,12 +266,12 @@ maybe_sync_dep_par_conjs_in_proc(PredId, ProcId, !ModuleInfo, !ProcsToScan,
         HasParallelConj = no
     ;
         HasParallelConj = yes,
-        sync_dep_par_conjs_in_proc(PredId, ProcId, set.init,
+        sync_dep_par_conjs_in_proc(PredId, ProcId, set_of_var.init,
             !ModuleInfo, !ProcsToScan, !TSStringTable)
     ).
 
-:- pred sync_dep_par_conjs_in_proc(pred_id::in, proc_id::in, set(prog_var)::in,
-    module_info::in, module_info::out,
+:- pred sync_dep_par_conjs_in_proc(pred_id::in, proc_id::in,
+    set_of_progvar::in, module_info::in, module_info::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     ts_string_table::in, ts_string_table::out) is det.
 
@@ -469,9 +469,10 @@ maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
     % Filter out all the variables which have already have associated futures,
     % i.e. they were head variables which were replaced by futures; signal and
     % wait calls will already have been inserted for them.
-    SharedVars = set.filter(isnt(set.contains(IgnoreVars)), SharedVars0),
+    SharedVars = set_of_var.filter(isnt(set_of_var.contains(IgnoreVars)),
+        SharedVars0),
 
-    ( set.empty(SharedVars) ->
+    ( set_of_var.is_empty(SharedVars) ->
         % Independant parallel conjunctions can somtimes be re-ordered to
         % generate faster code.
         reorder_indep_par_conj(PredProcId, VarTypes0, InstMap, Conjuncts,
@@ -511,14 +512,14 @@ maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
     %           append(AB_10, A, ABA)
     %       ).
     %
-:- pred sync_dep_par_conj(module_info::in, bool::in, set(prog_var)::in,
+:- pred sync_dep_par_conj(module_info::in, bool::in, set_of_progvar::in,
     list(hlds_goal)::in, hlds_goal_info::in, hlds_goal::out, instmap::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     ts_string_table::in, ts_string_table::out) is det.
 
 sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars, Goals, GoalInfo,
         NewGoal, InstMap, !VarSet, !VarTypes, !TSStringTable) :-
-    SharedVarsList = set.to_sorted_list(SharedVars),
+    SharedVarsList = set_of_var.to_sorted_list(SharedVars),
     list.map_foldl4(allocate_future(ModuleInfo), SharedVarsList,
         AllocateFuturesGoals, !VarSet, !VarTypes, map.init, FutureMap,
         !TSStringTable),
@@ -560,22 +561,23 @@ sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars, Goals, GoalInfo,
     % analysis prevent this situation?
     %
 :- pred sync_dep_par_proc_body(module_info::in, bool::in,
-    set(prog_var)::in, future_map::in, instmap::in,
+    set_of_progvar::in, future_map::in, instmap::in,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
 sync_dep_par_proc_body(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
         InstMap, !Goal, !VarSet, !VarTypes) :-
     Nonlocals = goal_get_nonlocals(!.Goal),
-    set.intersect(Nonlocals, SharedVars, NonlocalSharedVars),
-    ( not set.empty(NonlocalSharedVars) ->
+    set_of_var.intersect(Nonlocals, SharedVars, NonlocalSharedVars),
+    ( not set_of_var.is_empty(NonlocalSharedVars) ->
         GoalInfo0 = !.Goal ^ hlds_goal_info,
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
         consumed_and_produced_vars(ModuleInfo, InstMap, InstMapDelta0,
             NonlocalSharedVars, ConsumedVarsList, ProducedVarsList),
 
         % Insert waits into the conjunct.
-        list.foldl3(insert_wait_in_goal_for_proc(ModuleInfo,
+        list.foldl3(
+            insert_wait_in_goal_for_proc(ModuleInfo,
                 AllowSomePathsOnly, FutureMap),
             ConsumedVarsList, !Goal, !VarSet, !VarTypes),
 
@@ -586,27 +588,28 @@ sync_dep_par_proc_body(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
         true
     ),
 
-    set.difference(SharedVars, Nonlocals, WaitAfterVars),
-    ( not set.empty(WaitAfterVars) ->
+    set_of_var.difference(SharedVars, Nonlocals, WaitAfterVars),
+    ( not set_of_var.is_empty(WaitAfterVars) ->
         % WaitAfterVars are pushed into this call but not consumed in the body.
         % Our caller expects them to be consumed by the time this call returns
         % so we must wait for them.
         list.foldl3(insert_wait_after_goal(ModuleInfo, FutureMap),
-            set.to_sorted_list(WaitAfterVars), !Goal, !VarSet, !VarTypes)
+            set_of_var.to_sorted_list(WaitAfterVars),
+            !Goal, !VarSet, !VarTypes)
     ;
         true
     ).
 
 :- pred sync_dep_par_conjunct(module_info::in, bool::in,
-    set(prog_var)::in, future_map::in, hlds_goal::in, hlds_goal::out,
+    set_of_progvar::in, future_map::in, hlds_goal::in, hlds_goal::out,
     instmap::in, instmap::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
 sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
         !Goal, !InstMap, !VarSet, !VarTypes) :-
     Nonlocals = goal_get_nonlocals(!.Goal),
-    set.intersect(Nonlocals, SharedVars, NonlocalSharedVars),
-    ( set.empty(NonlocalSharedVars) ->
+    set_of_var.intersect(Nonlocals, SharedVars, NonlocalSharedVars),
+    ( set_of_var.is_empty(NonlocalSharedVars) ->
         true
     ;
         GoalInfo0 = !.Goal ^ hlds_goal_info,
@@ -636,7 +639,7 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
     % conjunct, and those that are produced by it.
     %
 :- pred consumed_and_produced_vars(module_info::in, instmap::in,
-    instmap_delta::in, set(prog_var)::in,
+    instmap_delta::in, set_of_progvar::in,
     list(prog_var)::out, list(prog_var)::out) is det.
 
 consumed_and_produced_vars(ModuleInfo, InstMap, InstMapDelta, Vars,
@@ -646,9 +649,9 @@ consumed_and_produced_vars(ModuleInfo, InstMap, InstMapDelta, Vars,
     % is nothing useful we can do if it isn't.
     IsProducedVar = var_is_bound_in_instmap_delta(ModuleInfo, InstMap,
         InstMapDelta),
-    set.divide(IsProducedVar, Vars, ProducedVars, ConsumedVars),
-    ConsumedVarsList = set.to_sorted_list(ConsumedVars),
-    ProducedVarsList = set.to_sorted_list(ProducedVars).
+    set_of_var.divide(IsProducedVar, Vars, ProducedVars, ConsumedVars),
+    ConsumedVarsList = set_of_var.to_sorted_list(ConsumedVars),
+    ProducedVarsList = set_of_var.to_sorted_list(ProducedVars).
 
 :- pred insert_wait_in_goal_for_proc(module_info::in, bool::in, future_map::in,
     prog_var::in, hlds_goal::in, hlds_goal::out,
@@ -1230,7 +1233,7 @@ insert_signal_in_plain_conj(ModuleInfo, FutureMap, ProducedVar,
         Goal0 = hlds_goal(_, GoalInfo0),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-        expect(set.contains(ChangedVars, ProducedVar), $module, $pred,
+        expect(set_of_var.contains(ChangedVars, ProducedVar), $module, $pred,
             "ProducedVar not in ChangedVars"),
         insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             Goal0, Goal1, !VarSet, !VarTypes),
@@ -1260,7 +1263,7 @@ insert_signal_in_par_conj(ModuleInfo, FutureMap, ProducedVar,
         Goal0 = hlds_goal(_, GoalInfo0),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-        expect(set.contains(ChangedVars, ProducedVar), $module, $pred,
+        expect(set_of_var.contains(ChangedVars, ProducedVar), $module, $pred,
             "ProducedVar not in ChangedVars"),
         insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             Goal0, Goal, !VarSet, !VarTypes),
@@ -1643,7 +1646,7 @@ add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
         module_info_get_globals(InitialModuleInfo, Globals),
         globals.lookup_bool_option(Globals, allow_some_paths_only_waits,
             AllowSomePathsOnly),
-        SharedVars = set.from_list(map.keys(FutureMap)),
+        SharedVars = set_of_var.sorted_list_to_set(map.keys(FutureMap)),
         sync_dep_par_proc_body(!.ModuleInfo, AllowSomePathsOnly, SharedVars,
             FutureMap, InstMap0, Goal0, Goal, !VarSet, !VarTypes),
 
@@ -1672,7 +1675,7 @@ add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
         % Look for and process any dependent parallel conjunctions inside
         % the newly created (sort of; the previous version was only a
         % placeholder) specialized procedure.
-        IgnoreVars = set.from_list(map.keys(FutureMap)),
+        IgnoreVars = set_of_var.sorted_list_to_set(map.keys(FutureMap)),
         sync_dep_par_conjs_in_proc(NewPredId, NewProcId, IgnoreVars,
             !ModuleInfo, [], _ProcsToScan, !TSStringTable),
         find_specialization_requests_in_proc(DoneParProcs, InitialModuleInfo,
@@ -2419,7 +2422,7 @@ should_we_push_wait(Var, Goal, Wait) :-
     % this entire code useless.
     (
         GoalExpr = unify(_, _, _, _, _),
-        ( set.member(Var, NonLocals) ->
+        ( set_of_var.member(NonLocals, Var) ->
             Wait = seen_wait_negligible_cost_before
         ;
             Wait = not_seen_wait_negligible_cost_so_far
@@ -2428,7 +2431,7 @@ should_we_push_wait(Var, Goal, Wait) :-
         GoalExpr = plain_call(_, _, _, BuiltinStatus, _, _),
         (
             BuiltinStatus = inline_builtin,
-            ( set.member(Var, NonLocals) ->
+            ( set_of_var.member(NonLocals, Var) ->
                 Wait = seen_wait_negligible_cost_before
             ;
                 Wait = not_seen_wait_negligible_cost_so_far
@@ -2437,7 +2440,7 @@ should_we_push_wait(Var, Goal, Wait) :-
             ( BuiltinStatus = not_builtin
             ; BuiltinStatus = out_of_line_builtin
             ),
-            ( set.member(Var, NonLocals) ->
+            ( set_of_var.member(NonLocals, Var) ->
                 Wait = seen_wait_non_negligible_cost_before
             ;
                 Wait = not_seen_wait_non_negligible_cost_so_far
@@ -2447,7 +2450,7 @@ should_we_push_wait(Var, Goal, Wait) :-
         ( GoalExpr = generic_call(_, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
-        ( set.member(Var, NonLocals) ->
+        ( set_of_var.member(NonLocals, Var) ->
             Wait = seen_wait_non_negligible_cost_before
         ;
             Wait = not_seen_wait_non_negligible_cost_so_far
@@ -2710,19 +2713,19 @@ should_we_push_signal(Var, Goal, !Signal) :-
         % signals, rendering this entire code useless.
         (
             GoalExpr = unify(_, _, _, _, _),
-            ( set.member(Var, NonLocals) ->
+            ( set_of_var.member(NonLocals, Var) ->
                 seen_produced_var(!Signal)
             ;
                 true
             )
         ;
             % With generic calls, the only safe assumption is that they produce
-            % Var just before return. With foreign code, the signal is done after
-            % the return to Mercury execution.
+            % Var just before return. With foreign code, the signal is done
+            % after the return to Mercury execution.
             ( GoalExpr = generic_call(_, _, _, _)
             ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
             ),
-            ( set.member(Var, NonLocals) ->
+            ( set_of_var.member(NonLocals, Var) ->
                 seen_produced_var(!Signal)
             ;
                 seen_nontrivial_cost(!Signal)
@@ -2732,7 +2735,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
             % XXX We should invoke should_we_push recursively on the called
             % procedure, though that would require safeguards against infinite
             % recursion.
-            ( set.member(Var, NonLocals) ->
+            ( set_of_var.member(NonLocals, Var) ->
                 seen_produced_var(!Signal)
             ;
                 seen_nontrivial_cost(!Signal)
@@ -3123,8 +3126,8 @@ make_future_name_var_and_goal(Name, FutureNameVar, Goal, !VarSet, !VarTypes, !TS
             construct_statically, cell_is_unique, no_construct_sub_info),
         unify_context(umc_implicit("dep_par_conj transformation"), [])),
     InstmapDelta = instmap_delta_from_assoc_list([FutureNameVar - Ground]),
-    goal_info_init(set([FutureNameVar]), InstmapDelta, detism_det, purity_pure,
-        GoalInfo),
+    goal_info_init(set_of_var.make_singleton(FutureNameVar), InstmapDelta,
+        detism_det, purity_pure, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred make_wait_goal(module_info::in, vartypes::in,
@@ -3340,18 +3343,18 @@ conjoin_goals_update_goal_infos(!.GoalInfo, GoalA, GoalB, Goal) :-
 find_shared_variables(ModuleInfo, InstMap, Goals) = SharedVars :-
     list.map2(get_nonlocals_and_instmaps, Goals, Nonlocals, InstMapDeltas),
     find_shared_variables_2(ModuleInfo, 0, Nonlocals, InstMap, InstMapDeltas,
-        set.init, SharedVars).
+        set_of_var.init, SharedVars).
 
 :- pred get_nonlocals_and_instmaps(hlds_goal::in,
-    set(prog_var)::out, instmap_delta::out) is det.
+    set_of_progvar::out, instmap_delta::out) is det.
 
 get_nonlocals_and_instmaps(hlds_goal(_, GoalInfo), Nonlocals, InstMapDelta) :-
     Nonlocals = goal_info_get_nonlocals(GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo).
 
 :- pred find_shared_variables_2(module_info::in, int::in,
-    list(set(prog_var))::in, instmap::in, list(instmap_delta)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    list(set_of_progvar)::in, instmap::in, list(instmap_delta)::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 find_shared_variables_2(_ModuleInfo, _ConjunctIndex,
         [], _InstMap, _InstMapDeltas, !SharedVars).
@@ -3364,10 +3367,11 @@ find_shared_variables_2(ModuleInfo, ConjunctIndex,
         instmap_lookup_var(InstMap, Var, VarInst),
         not inst_is_bound(ModuleInfo, VarInst)
     ),
-    UnboundNonlocals = set.filter(Filter, Nonlocals),
+    UnboundNonlocals = set_of_var.filter(Filter, Nonlocals),
     Changed =
-        set.filter(changed_var(ModuleInfo, InstMapDeltasB), UnboundNonlocals),
-    set.union(Changed, !SharedVars),
+        set_of_var.filter(changed_var(ModuleInfo, InstMapDeltasB),
+            UnboundNonlocals),
+    set_of_var.union(Changed, !SharedVars),
     find_shared_variables_2(ModuleInfo, ConjunctIndex+1, MoreNonlocals,
         InstMap, InstMapDeltas, !SharedVars).
 
@@ -3402,7 +3406,7 @@ det_delete_nth(N, List0, List) :-
 :- pred var_in_nonlocals(prog_var::in, hlds_goal::in) is semidet.
 
 var_in_nonlocals(Var, Goal) :-
-    set.member(Var, goal_get_nonlocals(Goal)).
+    set_of_var.member(goal_get_nonlocals(Goal), Var).
 
 :- pred var_not_in_nonlocals(prog_var::in, hlds_goal::in) is semidet.
 

@@ -1581,7 +1581,7 @@ generate_direct_arg_deconstruct(Var, Arg, Ptag, Mode, Type, Code, !CI) :-
 generate_ground_term(TermVar, Goal, !CI) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    set.to_sorted_list(NonLocals, NonLocalList),
+    set_of_var.to_sorted_list(NonLocals, NonLocalList),
     (
         NonLocalList = []
         % The term being constructed by the scope is not needed, so there is
@@ -1600,7 +1600,7 @@ generate_ground_term(TermVar, Goal, !CI) :-
                     ActiveMap0, ActiveMap),
                 map.to_assoc_list(ActiveMap, ActivePairs),
                 ( ActivePairs = [TermVar - GroundTerm] ->
-                    add_forward_live_vars(set_to_bitset(NonLocals), !CI),
+                    add_forward_live_vars(NonLocals, !CI),
                     set_static_cell_info(StaticCellInfo, !CI),
                     GroundTerm = Rval - _,
                     assign_const_to_var(TermVar, Rval, !CI)

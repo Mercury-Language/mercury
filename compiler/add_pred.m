@@ -86,6 +86,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module map.
 :- import_module set.
@@ -245,7 +246,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
     clauses_info_get_headvar_list(ClausesInfo0, HeadVarList),
 
     goal_info_init(Context, GoalInfo0),
-    NonLocals = proc_arg_vector_to_set(HeadVars),
+    NonLocals = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
     (
         Module = mercury_private_builtin_module,
@@ -289,13 +290,14 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         UnifyMode = ((Free -> Ground) - (Ground -> Ground)),
         UnifyContext = unify_context(umc_explicit, []),
         AssignExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext),
-        goal_info_set_nonlocals(set.make_singleton_set(ZeroVar),
+        goal_info_set_nonlocals(set_of_var.make_singleton(ZeroVar),
             GoalInfo0, GoalInfoWithZero),
         AssignGoal = hlds_goal(AssignExpr, GoalInfoWithZero),
 
         CastExpr = generic_call(cast(unsafe_type_inst_cast),
             [ZeroVar] ++ HeadVarList, [in_mode, uo_mode], detism_det),
-        goal_info_set_nonlocals(set.list_to_set([ZeroVar] ++ HeadVarList),
+        goal_info_set_nonlocals(
+            set_of_var.list_to_set([ZeroVar | HeadVarList]),
             GoalInfo0, GoalInfoWithZeroHeadVars),
         CastGoal = hlds_goal(CastExpr, GoalInfoWithZeroHeadVars),
 

@@ -72,8 +72,7 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
         eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, !.ProcInfo,
             TraceLevel) = yes
     ->
-        trace_fail_vars(ModuleInfo, !.ProcInfo, FailVars0),
-        FailVars = set_to_bitset(FailVars0)
+        trace_fail_vars(ModuleInfo, !.ProcInfo, FailVars)
     ;
         FailVars = set_of_var.init
     ),

@@ -140,6 +140,7 @@
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bag.
 :- import_module bool.
@@ -297,7 +298,7 @@ modecheck_goal_disj(Disjuncts0, GoalInfo0, GoalExpr, !ModeInfo) :-
             NonLocals, LargeFlatConstructs, !ModeInfo),
         ( mode_info_solver_init_is_supported(!.ModeInfo) ->
             mode_info_get_var_types(!.ModeInfo, VarTypes),
-            handle_solver_vars_in_disjs(set.to_sorted_list(NonLocals),
+            handle_solver_vars_in_disjs(set_of_var.to_sorted_list(NonLocals),
                 VarTypes, Disjuncts1, Disjuncts2, InstMaps0, InstMaps,
                 !ModeInfo)
         ;
@@ -312,7 +313,7 @@ modecheck_goal_disj(Disjuncts0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_checkpoint(exit, "disj", !ModeInfo).
 
 :- pred modecheck_disj_list(list(hlds_goal)::in, list(hlds_goal)::out,
-    list(instmap)::out, set(prog_var)::in, set(prog_var)::out,
+    list(instmap)::out, set_of_progvar::in, set_of_progvar::out,
     mode_info::in, mode_info::out) is det.
 
 modecheck_disj_list([], [], [], !LargeFlatConstructs, !ModeInfo).
@@ -326,13 +327,13 @@ modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps],
     modecheck_disj_list(Goals0, Goals, InstMaps, !LargeFlatConstructs,
         !ModeInfo).
 
-:- pred merge_disj_branches(set(prog_var)::in, set(prog_var)::in,
+:- pred merge_disj_branches(set_of_progvar::in, set_of_progvar::in,
     list(hlds_goal)::in, list(hlds_goal)::out, list(instmap)::in,
     mode_info::in, mode_info::out) is det.
 
 merge_disj_branches(NonLocals, LargeFlatConstructs, Disjuncts0, Disjuncts,
         InstMaps0, !ModeInfo) :-
-    ( set.empty(LargeFlatConstructs) ->
+    ( set_of_var.is_empty(LargeFlatConstructs) ->
         Disjuncts = Disjuncts0,
         InstMaps = InstMaps0
     ;
@@ -356,7 +357,8 @@ merge_disj_branches(NonLocals, LargeFlatConstructs, Disjuncts0, Disjuncts,
         list.map(
             set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs),
             Disjuncts0, Disjuncts),
-        LargeFlatConstructList = set.to_sorted_list(LargeFlatConstructs),
+        LargeFlatConstructList =
+            set_of_var.to_sorted_list(LargeFlatConstructs),
         list.map(
             instmap_set_vars_same(ground(shared, none),
                 LargeFlatConstructList),
@@ -410,7 +412,7 @@ modecheck_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_checkpoint(exit, "switch", !ModeInfo).
 
 :- pred modecheck_case_list(list(case)::in, prog_var::in, list(case)::out,
-    list(instmap)::out, set(prog_var)::in, set(prog_var)::out,
+    list(instmap)::out, set_of_progvar::in, set_of_progvar::out,
     mode_info::in, mode_info::out) is det.
 
 modecheck_case_list([], _Var, [], [], !LargeFlatConstructs, !ModeInfo).
@@ -445,13 +447,13 @@ modecheck_case_list([Case0 | Cases0], Var, [Case | Cases],
     modecheck_case_list(Cases0, Var, Cases, InstMaps, !LargeFlatConstructs,
         !ModeInfo).
 
-:- pred merge_switch_branches(set(prog_var)::in, set(prog_var)::in,
+:- pred merge_switch_branches(set_of_progvar::in, set_of_progvar::in,
     list(case)::in, list(case)::out, list(instmap)::in,
     mode_info::in, mode_info::out) is det.
 
 merge_switch_branches(NonLocals, LargeFlatConstructs, Cases0, Cases,
         InstMaps0, !ModeInfo) :-
-    ( set.empty(LargeFlatConstructs) ->
+    ( set_of_var.is_empty(LargeFlatConstructs) ->
         Cases = Cases0,
         InstMaps = InstMaps0
     ;
@@ -459,7 +461,8 @@ merge_switch_branches(NonLocals, LargeFlatConstructs, Cases0, Cases,
         list.map(
             set_large_flat_constructs_to_ground_in_case(LargeFlatConstructs),
             Cases0, Cases),
-        LargeFlatConstructList = set.to_sorted_list(LargeFlatConstructs),
+        LargeFlatConstructList =
+            set_of_var.to_sorted_list(LargeFlatConstructs),
         list.map(
             instmap_set_vars_same(ground(shared, none),
                 LargeFlatConstructList),
@@ -474,19 +477,19 @@ merge_switch_branches(NonLocals, LargeFlatConstructs, Cases0, Cases,
 %
 
 :- pred accumulate_large_flat_constructs(hlds_goal::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 accumulate_large_flat_constructs(Goal, !LargeFlatConstructs) :-
-    ( set.empty(!.LargeFlatConstructs) ->
+    ( set_of_var.is_empty(!.LargeFlatConstructs) ->
         % Calling goal_large_flat_constructs and then set.intersect
         % would be waste of time; !:LargeFlatConstructs will still be empty.
         true
     ;
         GoalLargeFlatConstructs = goal_large_flat_constructs(Goal),
-        set.intersect(GoalLargeFlatConstructs, !LargeFlatConstructs)
+        set_of_var.intersect(GoalLargeFlatConstructs, !LargeFlatConstructs)
     ).
 
-:- func goal_large_flat_constructs(hlds_goal) = set(prog_var).
+:- func goal_large_flat_constructs(hlds_goal) = set_of_progvar.
 
 goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
     Goal = hlds_goal(GoalExpr, _),
@@ -494,13 +497,13 @@ goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
         GoalExpr = unify(_, _, _, _, _),
         % Unifications not wrapped in from_ground_term_construct scopes
         % are never marked by the modechecker as being constructed statically.
-        LargeFlatConstructs = set.init
+        LargeFlatConstructs = set_of_var.init
     ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
         ; GoalExpr = generic_call(_, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
-        LargeFlatConstructs = set.init
+        LargeFlatConstructs = set_of_var.init
     ;
         ( GoalExpr = disj(_)
         ; GoalExpr = switch(_, _, _)
@@ -509,12 +512,12 @@ goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
         ; GoalExpr = shorthand(_)
         ; GoalExpr = conj(parallel_conj, _)
         ),
-        LargeFlatConstructs = set.init
+        LargeFlatConstructs = set_of_var.init
     ;
         GoalExpr = scope(Reason, _),
         (
             Reason = from_ground_term(TermVar, from_ground_term_construct),
-            LargeFlatConstructs = set.make_singleton_set(TermVar)
+            LargeFlatConstructs = set_of_var.make_singleton(TermVar)
         ;
             ( Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)
@@ -527,23 +530,24 @@ goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
             ),
-            LargeFlatConstructs = set.init
+            LargeFlatConstructs = set_of_var.init
         )
     ;
         GoalExpr = conj(plain_conj, Conjuncts),
-        goals_large_flat_constructs(Conjuncts, set.init, LargeFlatConstructs)
+        goals_large_flat_constructs(Conjuncts,
+            set_of_var.init, LargeFlatConstructs)
     ).
 
 :- pred goals_large_flat_constructs(list(hlds_goal)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 goals_large_flat_constructs([], !LargeFlatConstructs).
 goals_large_flat_constructs([Goal | Goals], !LargeFlatConstructs) :-
     GoalLargeFlatConstructs = goal_large_flat_constructs(Goal),
-    set.union(GoalLargeFlatConstructs, !LargeFlatConstructs),
+    set_of_var.union(GoalLargeFlatConstructs, !LargeFlatConstructs),
     goals_large_flat_constructs(Goals, !LargeFlatConstructs).
 
-:- pred set_large_flat_constructs_to_ground_in_goal(set(prog_var)::in,
+:- pred set_large_flat_constructs_to_ground_in_goal(set_of_progvar::in,
     hlds_goal::in, hlds_goal::out) is det.
 
 set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
@@ -571,7 +575,7 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
         GoalExpr0 = scope(Reason, SubGoal0),
         (
             Reason = from_ground_term(TermVar, from_ground_term_construct),
-            ( set.member(TermVar, LargeFlatConstructs) ->
+            ( set_of_var.member(LargeFlatConstructs, TermVar) ->
                 InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
                 instmap_delta_set_var(TermVar, ground(shared, none),
                     InstMapDelta0, InstMapDelta),
@@ -611,14 +615,15 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
 
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
         instmap_delta_changed_vars(InstMapDelta0, ChangedVars),
-        set.intersect(ChangedVars, LargeFlatConstructs, GroundVars),
+        set_of_var.intersect(ChangedVars, LargeFlatConstructs, GroundVars),
         instmap_delta_set_vars_same(ground(shared, none),
-            set.to_sorted_list(GroundVars), InstMapDelta0, InstMapDelta),
+            set_of_var.to_sorted_list(GroundVars),
+            InstMapDelta0, InstMapDelta),
         goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 
-:- pred set_large_flat_constructs_to_ground_in_goals(set(prog_var)::in,
+:- pred set_large_flat_constructs_to_ground_in_goals(set_of_progvar::in,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 set_large_flat_constructs_to_ground_in_goals(_, [], []).
@@ -629,7 +634,7 @@ set_large_flat_constructs_to_ground_in_goals(LargeFlatConstructs,
     set_large_flat_constructs_to_ground_in_goals(LargeFlatConstructs,
         Goals0, Goals).
 
-:- pred set_large_flat_constructs_to_ground_in_case(set(prog_var)::in,
+:- pred set_large_flat_constructs_to_ground_in_case(set_of_progvar::in,
     case::in, case::out) is det.
 
 set_large_flat_constructs_to_ground_in_case(LargeFlatConstructs,
@@ -679,7 +684,7 @@ modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0, GoalExpr,
     modecheck_goal(Else0, Else1, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMapElse1),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
-    handle_solver_vars_in_ite(set.to_sorted_list(NonLocals), VarTypes,
+    handle_solver_vars_in_ite(set_of_var.to_sorted_list(NonLocals), VarTypes,
         Then1, Then, Else1, Else,
         InstMapThen1, InstMapThen, InstMapElse1, InstMapElse, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
@@ -692,7 +697,8 @@ modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0, GoalExpr,
         InPromisePurityScope = not_in_promise_purity_scope,
         CondNonLocals0 = goal_get_nonlocals(Cond),
         CondNonLocals =
-            set.to_sorted_list(CondNonLocals0 `intersect` NonLocals),
+            set_of_var.to_sorted_list(
+                set_of_var.intersect(CondNonLocals0, NonLocals)),
         check_no_inst_any_vars(if_then_else, CondNonLocals,
             InstMap0, InstMap, !ModeInfo)
     ;
@@ -759,7 +765,8 @@ modecheck_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         InPromisePurityScope = not_in_promise_purity_scope,
         NegNonLocals = goal_info_get_nonlocals(GoalInfo0),
         instmap.init_unreachable(Unreachable),
-        check_no_inst_any_vars(negation, set.to_sorted_list(NegNonLocals),
+        check_no_inst_any_vars(negation,
+            set_of_var.to_sorted_list(NegNonLocals),
             InstMap0, Unreachable, !ModeInfo)
     ;
         InPromisePurityScope = in_promise_purity_scope
@@ -1066,7 +1073,7 @@ modecheck_specializable_ground_term(SubGoal, TermVar, TermVarInst,
     SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo),
     (
         NonLocals = goal_info_get_nonlocals(SubGoalInfo),
-        set.singleton_set(NonLocals, TermVar),
+        set_of_var.is_singleton(NonLocals, TermVar),
         goal_info_get_purity(SubGoalInfo) = purity_pure,
         SubGoalExpr = conj(plain_conj, [UnifyTermGoal | UnifyArgGoals]),
         % If TermVar is created by an impure unification, which is
@@ -1422,7 +1429,7 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % mode_info_unlock_vars(var_lock_atomic_goal, OuterVars, !ModeInfo),
 
         % XXX STM: Handling of solver vars
-        handle_solver_vars_in_disjs(set.to_sorted_list(NonLocals),
+        handle_solver_vars_in_disjs(set_of_var.to_sorted_list(NonLocals),
             VarTypes, AtomicGoalList1, AtomicGoalList, InstMapList0,
             InstMapList, !ModeInfo),
         MainGoal = list.det_head(AtomicGoalList),
@@ -1518,9 +1525,10 @@ check_no_inst_any_vars(NegCtxtDesc, [NonLocal | NonLocals], InstMap0, InstMap,
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
         inst_contains_any(ModuleInfo, Inst)
     ->
+        WaitingVars = set_of_var.make_singleton(NonLocal),
         ModeError = purity_error_should_be_in_promise_purity_scope(NegCtxtDesc,
             NonLocal),
-        mode_info_error(make_singleton_set(NonLocal), ModeError, !ModeInfo)
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ;
         check_no_inst_any_vars(NegCtxtDesc, NonLocals, InstMap0, InstMap,
             !ModeInfo)
@@ -1565,13 +1573,13 @@ add_necessary_disj_init_calls([Goal0 | Goals0], [Goal | Goals],
     add_necessary_disj_init_calls(Goals0, Goals, InstMaps0, InstMaps,
         EnsureInitialised, !ModeInfo).
 
-:- func append_init_calls_to_goal(set(prog_var), list(hlds_goal), hlds_goal) =
+:- func append_init_calls_to_goal(set_of_progvar, list(hlds_goal), hlds_goal) =
         hlds_goal.
 
 append_init_calls_to_goal(InitedVars, InitCalls, Goal0) = Goal :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-    NonLocals = set.union(InitedVars, NonLocals0),
+    set_of_var.union(InitedVars, NonLocals0, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     ( GoalExpr0 = disj(Disjs0) ->
         Disjs = list.map(append_init_calls_to_goal(InitedVars, InitCalls),

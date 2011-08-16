@@ -50,6 +50,7 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module io.
@@ -191,7 +192,7 @@ saved_vars_in_goal(Goal0, Goal, !SlotInfo) :-
     % following goal that uses all the variables they define.
     %
 :- pred saved_vars_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    set(prog_var)::in, slot_info::in, slot_info::out) is det.
+    set_of_progvar::in, slot_info::in, slot_info::out) is det.
 
 saved_vars_in_conj([], [], _, !SlotInfo).
 saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
@@ -211,7 +212,7 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
         OtherGoals = [First | _Rest],
         can_push(Var, First) = yes
     ->
-        set.is_member(Var, NonLocals, IsNonLocal),
+        set_of_var.is_member(NonLocals, Var, IsNonLocal),
         saved_vars_delay_goal(OtherGoals, Goals1, Goal0, Var, IsNonLocal,
             !SlotInfo),
         list.append(Constants, Goals1, Goals2),
@@ -282,7 +283,7 @@ skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
 can_push(Var, Goal) = CanPush :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    ( set.member(Var, NonLocals) ->
+    ( set_of_var.member(NonLocals, Var) ->
         (
             ( GoalExpr = if_then_else(_, _, _, _)
             ; GoalExpr = negation(_)
@@ -370,7 +371,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         !SlotInfo) :-
     Goal0 = hlds_goal(Goal0Expr, Goal0Info),
     Goal0NonLocals = goal_info_get_nonlocals(Goal0Info),
-    ( set.member(Var, Goal0NonLocals) ->
+    ( set_of_var.member(Goal0NonLocals, Var) ->
         (
             Goal0Expr = unify(_, _, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
@@ -507,7 +508,7 @@ push_into_goal(Goal0, Goal, Construct, Var, !SlotInfo) :-
 push_into_goal_rename(Goal0, Goal, Construct, Var, !SlotInfo) :-
     Goal0 = hlds_goal(_, GoalInfo0),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
-    ( set.member(Var, NonLocals) ->
+    ( set_of_var.member(NonLocals, Var) ->
         rename_var(Var, NewVar, Subst, !SlotInfo),
         rename_some_vars_in_goal(Subst, Construct, NewConstruct),
         rename_some_vars_in_goal(Subst, Goal0, Goal1),

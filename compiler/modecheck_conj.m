@@ -42,6 +42,7 @@
 :- import_module hlds.instmap.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -337,7 +338,7 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
             % (i.e. have non-free insts).
             mode_info_get_instmap(!.ModeInfo, InstMap),
             instmap_to_assoc_list(InstMap, VarInsts),
-            NonFreeVars0 = set.list_to_set(
+            NonFreeVars0 = set_of_var.list_to_set(
                 non_free_vars_in_assoc_list(VarInsts)),
 
             % Find the set of vars whose instantiation should lead to
@@ -352,7 +353,7 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             mode_info_get_var_types(!.ModeInfo, VarTypes),
             all [Var] (
-                set.member(Var, CandidateInitVars)
+                set_of_var.member(CandidateInitVars, Var)
             =>
                 (
                     map.lookup(VarTypes, Var, VarType),
@@ -363,7 +364,8 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
         ->
             % Construct the inferred initialisation goals
             % and try scheduling again.
-            CandidateInitVarList = set.to_sorted_list(CandidateInitVars),
+            CandidateInitVarList =
+                set_of_var.to_sorted_list(CandidateInitVars),
             construct_initialisation_calls(CandidateInitVarList,
                 InitGoals, !ModeInfo),
             Goals1 = InitGoals ++ Goals0,
@@ -416,25 +418,25 @@ non_free_vars_in_assoc_list([Var - Inst | AssocList]) =
     % goals, foreign_code, or var/lambda unifications.
     %
 :- pred candidate_init_vars(mode_info::in, list(hlds_goal)::in,
-    set(prog_var)::in, set(prog_var)::out) is cc_nondet.
+    set_of_progvar::in, set_of_progvar::out) is cc_nondet.
 
 candidate_init_vars(ModeInfo, Goals, NonFreeVars0, CandidateVars) :-
-    CandidateVars0 = set.init,
+    CandidateVars0 = set_of_var.init,
     candidate_init_vars_2(ModeInfo, Goals, NonFreeVars0, NonFreeVars1,
         CandidateVars0, CandidateVars1),
-    CandidateVars = set.difference(CandidateVars1, NonFreeVars1).
+    CandidateVars = set_of_var.difference(CandidateVars1, NonFreeVars1).
 
 :- pred candidate_init_vars_2(mode_info::in, list(hlds_goal)::in,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out) is nondet.
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is nondet.
 
 candidate_init_vars_2(ModeInfo, Goals, !NonFree, !CandidateVars) :-
     list.foldl2(candidate_init_vars_3(ModeInfo), Goals,
         !NonFree, !CandidateVars).
 
 :- pred candidate_init_vars_3(mode_info::in, hlds_goal::in,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out) is nondet.
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is nondet.
 
 candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
@@ -442,21 +444,21 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         % A var/var unification.
         GoalExpr = unify(X, RHS, _, _, _),
         RHS  = rhs_var(Y),
-        ( set.member(X, !.NonFree) ->
-            not set.member(Y, !.NonFree),
+        ( set_of_var.member(!.NonFree, X) ->
+            not set_of_var.member(!.NonFree, Y),
             % It is an assignment from X to Y.
-            !:NonFree = set.insert(!.NonFree, Y)
-        ; set.member(Y, !.NonFree) ->
+            set_of_var.insert(Y, !NonFree)
+        ; set_of_var.member(!.NonFree, Y) ->
             % It is an assignment from Y to X.
-            !:NonFree = set.insert(!.NonFree, X)
+            set_of_var.insert(X, !NonFree)
         ;
             % It is an assignment one way or the other.
             (
-                !:NonFree       = set.insert(!.NonFree, X),
-                !:CandidateVars = set.insert(!.CandidateVars, Y)
+                set_of_var.insert(X, !NonFree),
+                set_of_var.insert(Y, !CandidateVars)
             ;
-                !:NonFree       = set.insert(!.NonFree, Y),
-                !:CandidateVars = set.insert(!.CandidateVars, X)
+                set_of_var.insert(Y, !NonFree),
+                set_of_var.insert(X, !CandidateVars)
             )
         )
     ;
@@ -466,13 +468,13 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         RHS  = rhs_functor(_, _, Args),
 
         % If this is a construction then X must be free.
-        not set.member(X, !.NonFree),
+        not set_of_var.member(!.NonFree, X),
 
         % But X becomes instantiated.
-        !:NonFree = set.insert(!.NonFree, X),
+        set_of_var.insert(X, !NonFree),
 
         % And the Args are potential candidates for initialisation.
-        !:CandidateVars = set.insert_list(!.CandidateVars, Args)
+        set_of_var.insert_list(Args, !CandidateVars)
     ;
         % A var/lambda unification, which can only be deterministic if it is
         % a construction.
@@ -480,10 +482,10 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         RHS  = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
 
         % If this is a construction then X must be free.
-        not set.member(X, !.NonFree),
+        not set_of_var.member(!.NonFree, X),
 
         % But X becomes instantiated.
-        !:NonFree = set.insert(!.NonFree, X)
+        set_of_var.insert(X, !NonFree)
     ;
         % Disjunctions are tricky, because we don't perform switch analysis
         % until after mode analysis. So here we assume that the disjunction
@@ -503,14 +505,14 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         mode_info_get_var_types(ModeInfo, VarTypes),
         NonSolverNonLocals =
-            set.filter(non_solver_var(ModuleInfo, VarTypes), NonLocals),
-        !:NonFree = set.union(NonSolverNonLocals, !.NonFree),
+            set_of_var.filter(non_solver_var(ModuleInfo, VarTypes), NonLocals),
+        set_of_var.union(NonSolverNonLocals, !NonFree),
 
         candidate_init_vars_3(ModeInfo, ThenGoal, !.NonFree, NonFreeThen,
             !CandidateVars),
         candidate_init_vars_3(ModeInfo, ElseGoal, !.NonFree, NonFreeElse,
             !CandidateVars),
-        !:NonFree = set.union(NonFreeThen, NonFreeElse)
+        set_of_var.union(NonFreeThen, NonFreeElse, !:NonFree)
     ;
         % XXX We should special-case the handling of from_ground_term_construct
         % scopes.
@@ -566,8 +568,8 @@ non_solver_var(ModuleInfo, VarTypes, Var) :-
     %
 :- pred candidate_init_vars_call(mode_info::in,
     list(prog_var)::in, list(mer_mode)::in,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out) is semidet.
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is semidet.
 
 candidate_init_vars_call(_ModeInfo, [], [], !NonFree, !CandidateVars).
 candidate_init_vars_call(ModeInfo, [Arg | Args], [Mode | Modes],
@@ -579,19 +581,19 @@ candidate_init_vars_call(ModeInfo, [Arg | Args], [Mode | Modes],
         InitialInst \= free(_)
     ->
         % This arg is an input that needs instantiation.
-        !:CandidateVars = set.insert(!.CandidateVars, Arg)
+        set_of_var.insert(Arg, !CandidateVars)
     ;
         % Otherwise this arg could be an output...
         FinalInst \= free,
         FinalInst \= free(_)
     ->
         % And it is.
-        ( set.contains(!.NonFree, Arg) ->
+        ( set_of_var.contains(!.NonFree, Arg) ->
             % This arg appears in an implied mode.
             fail
         ;
             % This arg is instantiated on output.
-            !:NonFree = set.insert(!.NonFree, Arg)
+            set_of_var.insert(Arg, !NonFree)
         )
     ;
         % This arg is unused.
@@ -729,18 +731,18 @@ is_headvar_unification_goal(HeadVars, delayed_goal(_, _, Goal)) :-
     % Given an association list of Vars - Goals,
     % combine all the Vars together into a single set.
     %
-:- pred get_all_waiting_vars(list(delayed_goal)::in, set(prog_var)::out)
+:- pred get_all_waiting_vars(list(delayed_goal)::in, set_of_progvar::out)
     is det.
 
 get_all_waiting_vars(DelayedGoals, Vars) :-
-    get_all_waiting_vars_2(DelayedGoals, set.init, Vars).
+    get_all_waiting_vars_2(DelayedGoals, set_of_var.init, Vars).
 
 :- pred get_all_waiting_vars_2(list(delayed_goal)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 get_all_waiting_vars_2([], Vars, Vars).
 get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
-    set.union(Vars0, Vars1, Vars2),
+    set_of_var.union(Vars0, Vars1, Vars2),
     get_all_waiting_vars_2(Rest, Vars2, Vars).
 
 :- pred redelay_goals(list(delayed_goal)::in, delay_info::in, delay_info::out)

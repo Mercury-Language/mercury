@@ -101,6 +101,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.
 :- import_module transform_hlds.pd_cost.
 
@@ -776,7 +777,7 @@ generate_assign(ToVar, FromVar, UniMode, OldGoalInfo, GoalExpr, GoalInfo,
     map.lookup(VarTypes, ToVar, ToVarType),
     map.lookup(VarTypes, FromVar, FromVarType),
 
-    set.list_to_set([ToVar, FromVar], NonLocals),
+    set_of_var.list_to_set([ToVar, FromVar], NonLocals),
     UniMode = ((_ - ToVarInst0) -> (_ - ToVarInst)),
     ( types_match_exactly(ToVarType, FromVarType) ->
         UnifyMode = (ToVarInst0 -> ToVarInst) - (ToVarInst -> ToVarInst),

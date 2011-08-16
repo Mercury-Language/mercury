@@ -87,6 +87,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -477,7 +478,7 @@ can_eliminate_or_move(UnneededInfo, Goal, InitInstMap, FinalInstMap,
     VarTypes = UnneededInfo ^ uci_vartypes,
     instmap_changed_vars(InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
         ChangedVarSet),
-    set.to_sorted_list(ChangedVarSet, ChangedVars),
+    set_of_var.to_sorted_list(ChangedVarSet, ChangedVars),
     map.init(Empty),
     !:WhereInfo = branches(Empty),
     Goal = hlds_goal(_, GoalInfo),
@@ -582,7 +583,7 @@ demand_inputs(UnneededInfo, Goal, InitInstMap, WhereNeeded, !WhereNeededMap) :-
     Goal = hlds_goal(_, GoalInfo),
     NonLocalSet = goal_info_get_nonlocals(GoalInfo),
     GoalId = goal_info_get_goal_id(GoalInfo),
-    set.to_sorted_list(NonLocalSet, NonLocals),
+    set_of_var.to_sorted_list(NonLocalSet, NonLocals),
     ModuleInfo = UnneededInfo ^ uci_module_info,
     list.filter(nonlocal_may_be_input(ModuleInfo, InitInstMap), NonLocals,
         Inputs),
@@ -605,7 +606,7 @@ nonlocal_may_be_input(ModuleInfo, InstMap, Var) :-
 undemand_virgin_outputs(Goal, ModuleInfo, InstMap, !WhereNeededMap) :-
     Goal = hlds_goal(_, GoalInfo),
     NonLocalSet = goal_info_get_nonlocals(GoalInfo),
-    set.to_sorted_list(NonLocalSet, NonLocals),
+    set_of_var.to_sorted_list(NonLocalSet, NonLocals),
     list.filter(nonlocal_is_virgin_output(ModuleInfo, InstMap), NonLocals,
         VirginOutputs),
     list.foldl(undemand_var, VirginOutputs, !WhereNeededMap).

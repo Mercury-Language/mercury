@@ -146,6 +146,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module char.
@@ -156,7 +157,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module set_tree234.
 :- import_module string.
 :- import_module term.
 :- import_module univ.
@@ -309,7 +309,7 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
     fill_goal_id_slots_in_proc_body(ModuleInfo, !.VarTypes, _, Goal0, Goal1),
     format_call_traverse_goal(ModuleInfo, Goal1, _, [], FormatCallSites,
         Counter0, _Counter, ConjMaps0, ConjMaps, map.init, PredMap,
-        set_tree234.init, _),
+        set_of_var.init, _),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, optimize_format_calls, OptFormatCalls),
     list.foldl4(
@@ -325,11 +325,9 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
         Goal1 = hlds_goal(_, GoalInfo1),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo1),
         instmap_delta_changed_vars(InstMapDelta, NeededVars0),
-        ToDeleteVars0 = set_tree234.init,
-        NeededVarsSet = set_tree234.sorted_list_to_set(
-            set.to_sorted_list(NeededVars0)),
+        ToDeleteVars0 = set_of_var.init,
         opt_format_call_sites_in_goal(Goal1, Goal, GoalIdMap, _,
-            NeededVarsSet, _NeededVars, ToDeleteVars0, _ToDeleteVars),
+            NeededVars0, _NeededVars, ToDeleteVars0, _ToDeleteVars),
         MaybeGoal = yes(Goal)
     ).
 
@@ -469,7 +467,7 @@ try_create_replacement_goal(ModuleInfo, GoalId, Kind,
         ->
             AllToDeleteVars = [StringVar | ValuesToDeleteVars],
             FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
-                set_tree234.list_to_set(AllToDeleteVars)),
+                set_of_var.list_to_set(AllToDeleteVars)),
             map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
         ;
             % create_string_format_replacement does not (yet) recognize
@@ -492,7 +490,7 @@ try_create_replacement_goal(ModuleInfo, GoalId, Kind,
         ->
             AllToDeleteVars = [StringVar | ValuesToDeleteVars],
             FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
-                set_tree234.list_to_set(AllToDeleteVars)),
+                set_of_var.list_to_set(AllToDeleteVars)),
             map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
         ;
             % create_string_format_replacement does not (yet) recognize
@@ -599,7 +597,7 @@ project_all_yes([yes(Value) | TailMaybes], [Value | Tail]) :-
     list(format_call_site)::in, list(format_call_site)::out,
     counter::in, counter::out, conj_maps::in, conj_maps::out,
     conj_pred_map::in, conj_pred_map::out,
-    set_tree234(prog_var)::in, set_tree234(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 format_call_traverse_goal(ModuleInfo, Goal, CurId, !FormatCallSites, !Counter,
         !ConjMaps, !PredMap, !RelevantVars) :-
@@ -612,7 +610,7 @@ format_call_traverse_goal(ModuleInfo, Goal, CurId, !FormatCallSites, !Counter,
     conj_id::in, list(format_call_site)::in, list(format_call_site)::out,
     counter::in, counter::out, conj_maps::in, conj_maps::out,
     conj_pred_map::in, conj_pred_map::out,
-    set_tree234(prog_var)::in, set_tree234(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 format_call_traverse_conj(_ModuleInfo, [], _CurId, !FormatCallSites, !Counter,
         !ConjMaps, !PredMap, !RelevantVars).
@@ -684,7 +682,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
             FormatCallSite = format_call_site(GoalId, StringVar, ValuesVar,
                 Kind, ModuleName, Name, Arity, Context, CurId),
             !:FormatCallSites = [FormatCallSite | !.FormatCallSites],
-            set_tree234.insert_list([StringVar, ValuesVar], !RelevantVars)
+            set_of_var.insert_list([StringVar, ValuesVar], !RelevantVars)
         ;
             true
         )
@@ -727,15 +725,15 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
 
 :- pred format_call_traverse_unify(unification::in, conj_id::in,
     conj_maps::in, conj_maps::out, conj_pred_map::in, conj_pred_map::out,
-    set_tree234(prog_var)::in, set_tree234(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
         !RelevantVars) :-
     (
         Unification = assign(TargetVar, SourceVar),
-        ( set_tree234.contains(!.RelevantVars, TargetVar) ->
-            set_tree234.delete(TargetVar, !RelevantVars),
-            set_tree234.insert(SourceVar, !RelevantVars),
+        ( set_of_var.member(!.RelevantVars, TargetVar) ->
+            set_of_var.delete(TargetVar, !RelevantVars),
+            set_of_var.insert(SourceVar, !RelevantVars),
             ConjMap0 = get_conj_map(!.ConjMaps, CurId),
             ConjMap0 = conj_map(StringMap, ListMap, ElementMap, EqvMap0),
             map.det_insert(TargetVar, SourceVar, EqvMap0, EqvMap),
@@ -746,13 +744,13 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
         )
     ;
         Unification = construct(CellVar, ConsId, ArgVars, _, _, _, _),
-        ( set_tree234.contains(!.RelevantVars, CellVar) ->
+        ( set_of_var.member(!.RelevantVars, CellVar) ->
             ConjMap0 = get_conj_map(!.ConjMaps, CurId),
             ConjMap0 = conj_map(StringMap0, ListMap0, ElementMap0, EqvMap0),
             (
                 ConsId = string_const(StringConst)
             ->
-                set_tree234.delete(CellVar, !RelevantVars),
+                set_of_var.delete(CellVar, !RelevantVars),
                 map.det_insert(CellVar, StringConst, StringMap0, StringMap),
                 ConjMap = conj_map(StringMap, ListMap0, ElementMap0, EqvMap0)
             ;
@@ -771,8 +769,8 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
                     List = list_skeleton_nil
                 )
             ->
-                set_tree234.delete(CellVar, !RelevantVars),
-                set_tree234.insert_list(ArgVars, !RelevantVars),
+                set_of_var.delete(CellVar, !RelevantVars),
+                set_of_var.insert_list(ArgVars, !RelevantVars),
                 map.det_insert(CellVar, List, ListMap0, ListMap),
                 ConjMap = conj_map(StringMap0, ListMap, ElementMap0, EqvMap0)
             ;
@@ -794,7 +792,7 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
                     Dummy = c('0')
                 )
             ->
-                set_tree234.delete(CellVar, !RelevantVars),
+                set_of_var.delete(CellVar, !RelevantVars),
                 ( ArgVars = [ArgVar] ->
                     WhatToPrint = what_to_print(ArgVar, Dummy)
                 ;
@@ -824,7 +822,7 @@ project_case_goal(case(_, _, Goal)) = Goal.
     conj_id::in, list(format_call_site)::in, list(format_call_site)::out,
     counter::in, counter::out, conj_maps::in, conj_maps::out,
     conj_pred_map::in, conj_pred_map::out,
-    set_tree234(prog_var)::in, set_tree234(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 format_call_traverse_disj(ModuleInfo, Disjuncts, CurId, !FormatCallSites,
         !Counter, !ConjMaps, !PredMap, !RelevantVars) :-
@@ -833,14 +831,14 @@ format_call_traverse_disj(ModuleInfo, Disjuncts, CurId, !FormatCallSites,
         DisjRelevantVarSets),
     list.condense(DisjFormatCallSitesLists, DisjFormatCallSites),
     !:FormatCallSites = !.FormatCallSites ++ DisjFormatCallSites,
-    DisjRelevantVars = set_tree234.union_list(DisjRelevantVarSets),
-    set_tree234.union(DisjRelevantVars, !RelevantVars).
+    DisjRelevantVars = set_of_var.union_list(DisjRelevantVarSets),
+    set_of_var.union(DisjRelevantVars, !RelevantVars).
 
 :- pred format_call_traverse_disj_arms(module_info::in, list(hlds_goal)::in,
     conj_id::in, list(list(format_call_site))::out,
     counter::in, counter::out, conj_maps::in, conj_maps::out,
     conj_pred_map::in, conj_pred_map::out,
-    list(set_tree234(prog_var))::out) is det.
+    list(set_of_progvar)::out) is det.
 
 format_call_traverse_disj_arms(_, [], _, [], !Counter, !ConjMaps, !PredMap,
         []).
@@ -849,7 +847,7 @@ format_call_traverse_disj_arms(ModuleInfo, [Goal | Goals], ContainingId,
         !ConjMaps, !PredMap, [GoalRelevantVars | GoalsRelevantVars]) :-
     format_call_traverse_goal(ModuleInfo, Goal, DisjId, [],
         GoalFormatCallSites, !Counter, !ConjMaps, !PredMap,
-        set_tree234.init, GoalRelevantVars),
+        set_of_var.init, GoalRelevantVars),
     map.det_insert(DisjId, ContainingId, !PredMap),
     format_call_traverse_disj_arms(ModuleInfo, Goals, ContainingId,
         GoalsFormatCallSites, !Counter, !ConjMaps, !PredMap,
@@ -872,12 +870,10 @@ alloc_id(ConjId, !Counter) :-
 
 %-----------------------------------------------------------------------------%
 
-% XXX Consider using set_tree234s instead of plain sets.
-
 :- type fc_opt_goal_info
     --->    fc_opt_goal_info(
                 fcogi_replacement_goal  :: hlds_goal,
-                fcogi_unneeded_vars     :: set_tree234(prog_var)
+                fcogi_unneeded_vars     :: set_of_progvar
             ).
 
 :- type fc_goal_id_map == map(goal_id, fc_opt_goal_info).
@@ -887,8 +883,8 @@ alloc_id(ConjId, !Counter) :-
     %
 :- pred opt_format_call_sites_in_goal(hlds_goal::in, hlds_goal::out,
     fc_goal_id_map::in, fc_goal_id_map::out,
-    set_tree234(prog_var)::in, set_tree234(prog_var)::out,
-    set_tree234(prog_var)::in, set_tree234(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         !NeededVars, !ToDeleteVars) :-
@@ -899,16 +895,13 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         ( map.remove(GoalId, OptGoalInfo, !GoalIdMap) ->
             OptGoalInfo = fc_opt_goal_info(ReplacementGoal, GoalToDeleteVars),
             Goal = ReplacementGoal,
-            set_tree234.union(!.ToDeleteVars, GoalToDeleteVars, !:ToDeleteVars)
+            set_of_var.union(!.ToDeleteVars, GoalToDeleteVars, !:ToDeleteVars)
         ;
             Goal = Goal0,
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             % Assume that all nonlocals are needed.
-            NonLocalsSet = set_tree234.sorted_list_to_set(
-                set.to_sorted_list(NonLocals)),
-            set_tree234.union(!.NeededVars, NonLocalsSet, !:NeededVars),
-            set_tree234.difference(!.ToDeleteVars, NonLocalsSet,
-                !:ToDeleteVars)
+            set_of_var.union(!.NeededVars, NonLocals, !:NeededVars),
+            set_of_var.difference(!.ToDeleteVars, NonLocals, !:ToDeleteVars)
         )
     ;
         ( GoalExpr0 = generic_call(_, _, _, _)
@@ -917,19 +910,17 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         Goal = Goal0,
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         % Assume that all nonlocals are needed.
-        NonLocalsSet = set_tree234.sorted_list_to_set(
-            set.to_sorted_list(NonLocals)),
-        set_tree234.union(!.NeededVars, NonLocalsSet, !:NeededVars),
-        set_tree234.difference(!.ToDeleteVars, NonLocalsSet, !:ToDeleteVars)
+        set_of_var.union(!.NeededVars, NonLocals, !:NeededVars),
+        set_of_var.difference(!.ToDeleteVars, NonLocals, !:ToDeleteVars)
     ;
         GoalExpr0 = unify(_LHS, _RHS, _UnifyModes, Unification, _UnifyContext),
         (
             Unification = construct(LHSVar, _ConsId, _RHSVars, _ArgModes, 
                 _How, _Unique, _SubInfo),
-            not set_tree234.contains(!.NeededVars, LHSVar),
+            not set_of_var.member(!.NeededVars, LHSVar),
             % If this succeeds, then the backward traversal cannot encounter
             % any more producers of LHSVar.
-            set_tree234.remove(LHSVar, !ToDeleteVars)
+            set_of_var.remove(LHSVar, !ToDeleteVars)
         ->
             % This effectively deletes the unification.
             Goal = true_goal
@@ -946,11 +937,8 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
             Goal = Goal0,
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             % Assume that all nonlocals are needed.
-            NonLocalsSet = set_tree234.sorted_list_to_set(
-                set.to_sorted_list(NonLocals)),
-            set_tree234.union(!.NeededVars, NonLocalsSet, !:NeededVars),
-            set_tree234.difference(!.ToDeleteVars, NonLocalsSet,
-                !:ToDeleteVars)
+            set_of_var.union(!.NeededVars, NonLocals, !:NeededVars),
+            set_of_var.difference(!.ToDeleteVars, NonLocals, !:ToDeleteVars)
         )
     ;
         % XXX Check that this works for parallel conjunctions.
@@ -964,8 +952,8 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         opt_format_call_sites_in_disj(Disjuncts0, Disjuncts, !GoalIdMap,
             !.NeededVars, [], NeededVarsSets,
             !.ToDeleteVars, [], ToDeleteVarsSets),
-        !:NeededVars = set_tree234.union_list(NeededVarsSets),
-        !:ToDeleteVars = set_tree234.intersect_list(ToDeleteVarsSets),
+        !:NeededVars = set_of_var.union_list(NeededVarsSets),
+        !:ToDeleteVars = set_of_var.intersect_list(ToDeleteVarsSets),
         GoalExpr = disj(Disjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
@@ -973,8 +961,8 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         opt_format_call_sites_in_switch(Cases0, Cases, !GoalIdMap,
             !.NeededVars, [], NeededVarsSets,
             !.ToDeleteVars, [], ToDeleteVarsSets),
-        !:NeededVars = set_tree234.union_list(NeededVarsSets),
-        !:ToDeleteVars = set_tree234.intersect_list(ToDeleteVarsSets),
+        !:NeededVars = set_of_var.union_list(NeededVarsSets),
+        !:ToDeleteVars = set_of_var.intersect_list(ToDeleteVarsSets),
         GoalExpr = switch(SwitchVar, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
@@ -988,9 +976,9 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         opt_format_call_sites_in_goal(Cond0, Cond, !GoalIdMap,
             NeededVarsBeforeThen, NeededVarsBeforeCond,
             ToDeleteVarsBeforeThen, ToDeleteVarsBeforeCond),
-        set_tree234.union(NeededVarsBeforeCond, NeededVarsBeforeElse,
+        set_of_var.union(NeededVarsBeforeCond, NeededVarsBeforeElse,
             !:NeededVars),
-        set_tree234.intersect(ToDeleteVarsBeforeCond, ToDeleteVarsBeforeElse,
+        set_of_var.intersect(ToDeleteVarsBeforeCond, ToDeleteVarsBeforeElse,
             !:ToDeleteVars),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo)
@@ -1030,9 +1018,9 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
                 !GoalIdMap, !.NeededVars, [], NeededVarsSets,
                 !.ToDeleteVars, [], ToDeleteVarsSets),
             !:NeededVars =
-                set_tree234.union_list([NeededVarsMain | NeededVarsSets]),
+                set_of_var.union_list([NeededVarsMain | NeededVarsSets]),
             !:ToDeleteVars =
-                set_tree234.intersect_list(
+                set_of_var.intersect_list(
                     [ToDeleteVarsMain | ToDeleteVarsSets]),
             ShortHand = atomic_goal(AtomicType, OuterVars, InnerVars,
                 OutputVars, MainGoal, OrElseGoals, OrElseInners),
@@ -1054,8 +1042,8 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
 :- pred opt_format_call_sites_in_conj(
     list(hlds_goal)::in, list(hlds_goal)::out,
     fc_goal_id_map::in, fc_goal_id_map::out,
-    set_tree234(prog_var)::in, set_tree234(prog_var)::out,
-    set_tree234(prog_var)::in, set_tree234(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 opt_format_call_sites_in_conj([], [], !GoalIdMap,
         !NeededVars, !ToDeleteVars).
@@ -1070,10 +1058,8 @@ opt_format_call_sites_in_conj([Goal0 | Goals0], [Goal | Goals], !GoalIdMap,
 :- pred opt_format_call_sites_in_disj(
     list(hlds_goal)::in, list(hlds_goal)::out,
     fc_goal_id_map::in, fc_goal_id_map::out,
-    set_tree234(prog_var)::in,
-    list(set_tree234(prog_var))::in, list(set_tree234(prog_var))::out,
-    set_tree234(prog_var)::in,
-    list(set_tree234(prog_var))::in, list(set_tree234(prog_var))::out)
+    set_of_progvar::in, list(set_of_progvar)::in, list(set_of_progvar)::out,
+    set_of_progvar::in, list(set_of_progvar)::in, list(set_of_progvar)::out)
     is det.
 
 opt_format_call_sites_in_disj([], [], !GoalIdMap,
@@ -1091,10 +1077,8 @@ opt_format_call_sites_in_disj([Goal0 | Goals0], [Goal | Goals], !GoalIdMap,
 
 :- pred opt_format_call_sites_in_switch(list(case)::in, list(case)::out,
     fc_goal_id_map::in, fc_goal_id_map::out,
-    set_tree234(prog_var)::in,
-    list(set_tree234(prog_var))::in, list(set_tree234(prog_var))::out,
-    set_tree234(prog_var)::in,
-    list(set_tree234(prog_var))::in, list(set_tree234(prog_var))::out)
+    set_of_progvar::in, list(set_of_progvar)::in, list(set_of_progvar)::out,
+    set_of_progvar::in, list(set_of_progvar)::in, list(set_of_progvar)::out)
     is det.
 
 opt_format_call_sites_in_switch([], [], !GoalIdMap,
@@ -1130,7 +1114,7 @@ create_string_format_replacement(ModuleInfo, FormatStringChars, ResultVar,
             AssignGoal),
         AllGoals = Goals ++ [AssignGoal]
     ),
-    NonLocals = set.list_to_set([ResultVar | VarsToPrint]),
+    NonLocals = set_of_var.list_to_set([ResultVar | VarsToPrint]),
     InstMapDelta = instmap_delta_bind_var(ResultVar),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
         term.context_init, GoalInfo),
@@ -1189,7 +1173,7 @@ create_io_format_replacement(ModuleInfo, FormatStringChars,
         InstMapDelta, ModuleInfo, term.context_init, CallGoal),
 
     AllGoals = Goals ++ [CallGoal],
-    NonLocals = set.list_to_set(ArgVars ++ VarsToPrint),
+    NonLocals = set_of_var.list_to_set(ArgVars ++ VarsToPrint),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
         term.context_init, GoalInfo),
     conj_list_to_goal(AllGoals, GoalInfo, Goal).

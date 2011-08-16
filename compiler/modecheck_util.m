@@ -29,19 +29,21 @@
 :- type extra_goals
     --->    no_extra_goals
     ;       extra_goals(
+                % Goals to insert before the main goal.
                 extra_before_main   :: list(hlds_goal),
-                                    % goals to insert before the main goal
+
+                % Goals to append after the main goal.
                 extra_after_main    :: list(hlds_goal)
-                                    % goals to append after the main goal
             ).
 
 :- type after_goals
     --->    no_after_goals
     ;       after_goals(
+                % Instmap at end of main goal.
                 after_instmap       :: instmap,
-                                    % instmap at end of main goal
+
+                % Goals to append after the main goal.
                 after_goals         :: list(hlds_goal)
-                                    % goals to append after the main goal
             ).
 
     % Append_extra_goals inserts adds some goals to the
@@ -193,6 +195,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module int.
@@ -243,11 +246,11 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
 
         % Recompute the new set of non-local variables for the main goal.
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        set.list_to_set(Args0, OldArgVars),
-        set.list_to_set(Args, NewArgVars),
-        set.difference(NewArgVars, OldArgVars, IntroducedVars),
-        set.union(NonLocals0, IntroducedVars, OutsideVars),
-        set.intersect(OutsideVars, NewArgVars, NonLocals),
+        set_of_var.list_to_set(Args0, OldArgVars),
+        set_of_var.list_to_set(Args, NewArgVars),
+        set_of_var.difference(NewArgVars, OldArgVars, IntroducedVars),
+        set_of_var.union(NonLocals0, IntroducedVars, OutsideVars),
+        set_of_var.intersect(OutsideVars, NewArgVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
 
         % Combine the main goal and the extra goals into a conjunction.
@@ -433,7 +436,7 @@ modecheck_var_is_live_no_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
         ExpectedIsLive = is_dead,
         VarIsLive = is_live
     ->
-        set.singleton_set(WaitingVars, VarId),
+        WaitingVars = set_of_var.make_singleton(VarId),
         ModeError = mode_error_var_is_live(VarId),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ;
@@ -450,7 +453,7 @@ modecheck_var_is_live_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
     ( VarIsLive = ExpectedIsLive ->
         true
     ;
-        set.singleton_set(WaitingVars, VarId),
+        WaitingVars = set_of_var.make_singleton(VarId),
         ModeError = mode_error_var_is_live(VarId),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
@@ -523,7 +526,7 @@ modecheck_var_has_inst_exact_match(Var, Inst, !Subst, !ModeInfo) :-
     ->
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     ;
-        set.singleton_set(WaitingVars, Var),
+        WaitingVars = set_of_var.make_singleton(Var),
         ModeError = mode_error_var_has_inst(Var, VarInst, Inst),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
@@ -544,7 +547,7 @@ modecheck_var_has_inst_no_exact_match(Var, Inst, !Subst, !ModeInfo) :-
     ->
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     ;
-        set.singleton_set(WaitingVars, Var),
+        WaitingVars = set_of_var.make_singleton(Var),
         ModeError = mode_error_var_has_inst(Var, VarInst, Inst),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
@@ -560,7 +563,7 @@ modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
     ->
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     ;
-        set.singleton_set(WaitingVars, Var),
+        WaitingVars = set_of_var.make_singleton(Var),
         ModeError = mode_error_var_has_inst(Var, VarInst, Inst),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
@@ -682,7 +685,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
                     ModuleInfo)
             )
         ->
-            set.singleton_set(WaitingVars, Var0),
+            WaitingVars = set_of_var.make_singleton(Var0),
             ModeError = mode_error_bind_var(Reason0, Var0, Inst0, Inst),
             mode_info_error(WaitingVars, ModeError, !ModeInfo)
         ;
@@ -699,8 +702,8 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
         PVars0 = []
     ;
         PVars0 = [par_conj_mode_check(NonLocals, Bound0) | PVars1],
-        ( set.member(Var0, NonLocals) ->
-            set.insert(Var0, Bound0, Bound),
+        ( set_of_var.member(NonLocals, Var0) ->
+            set_of_var.insert(Var0, Bound0, Bound),
             PVars = [par_conj_mode_check(NonLocals, Bound) | PVars1]
         ;
             PVars = PVars0
@@ -773,7 +776,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
         ;
             % If the type is a type variable, or isn't a solver type,
             % then give up.
-            set.singleton_set(WaitingVars, Var0),
+            WaitingVars = set_of_var.make_singleton(Var0),
             ModeError = mode_error_implied_mode(Var0, VarInst0, InitialInst),
             mode_info_error(WaitingVars, ModeError, !ModeInfo)
         )
@@ -782,7 +785,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
     ->
         % This is the case we can't handle.
         Var = Var0,
-        set.singleton_set(WaitingVars, Var0),
+        WaitingVars = set_of_var.make_singleton(Var0),
         ModeError = mode_error_implied_mode(Var0, VarInst0, InitialInst),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ;
@@ -876,7 +879,7 @@ construct_initialisation_call(Var, VarType, Inst, Context,
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             module_info_get_name(ModuleInfo, ModuleName)
         ),
-        NonLocals = set.make_singleton_set(Var),
+        NonLocals = set_of_var.make_singleton(Var),
         InstMapDeltaAL = [Var - Inst],
         InstMapDelta = instmap_delta_from_assoc_list(InstMapDeltaAL),
         build_call(ModuleName, PredName, [Var], [VarType], NonLocals,
@@ -905,7 +908,7 @@ construct_initialisation_call(Var, VarType, Inst, Context,
     ).
 
 :- pred build_call(module_name::in, string::in, list(prog_var)::in,
-    list(mer_type)::in, set(prog_var)::in, instmap_delta::in,
+    list(mer_type)::in, set_of_progvar::in, instmap_delta::in,
     prog_context::in, maybe(call_unify_context)::in, hlds_goal::out,
     mode_info::in, mode_info::out) is semidet.
 

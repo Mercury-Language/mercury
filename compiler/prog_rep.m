@@ -94,6 +94,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module int.
 :- import_module maybe.
@@ -639,7 +640,7 @@ goal_info_to_atomic_goal_rep_fields(GoalInfo, Instmap0, Info, FileName, LineNo,
     instmap.apply_instmap_delta(Instmap0, InstmapDelta, Instmap),
     instmap_changed_vars(Instmap0, Instmap, Info ^ pri_vartypes,
         Info ^ pri_module_info, ChangedVars),
-    set.to_sorted_list(ChangedVars, BoundVars).
+    set_of_var.to_sorted_list(ChangedVars, BoundVars).
 
 :- pred cons_id_and_arity_rep_to_byte_list(cons_id_arity_rep::in, 
     list(int)::out, string_table::in, string_table::out) is det.

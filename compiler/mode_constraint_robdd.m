@@ -23,13 +23,14 @@
 :- module check_hlds.mode_constraint_robdd.
 :- interface.
 
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mode_robdd.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module io.
@@ -146,7 +147,7 @@
 % A prodvars_map maps each subgoal to the set of variables produced
 % by that subgoal.
 
-:- type prodvars_map == map(lambda_path, set(prog_var)).
+:- type prodvars_map == map(lambda_path, set_of_progvar).
 
 :- func atomic_prodvars_map(mode_constraint, mode_constraint_info) =
     prodvars_map.
@@ -181,7 +182,7 @@
                 mci_lambda_path         :: lambda_path,
                 mci_min_vars            :: map(pred_id, mode_constraint_var),
                 mci_max_vars            :: map(pred_id, mode_constraint_var),
-                mci_input_nodes         :: sparse_bitset(prog_var),
+                mci_input_nodes         :: set_of_progvar,
 
                 % A var that is always zero.
                 mci_zero_var            :: robdd_var,
@@ -202,7 +203,7 @@ init_mode_constraint_info(Simple) = MCI :-
     varset.new_var(ZeroVar, VarSet0, VarSet),
     PredId = hlds_pred.initial_pred_id,
     MCI = mode_constraint_info(VarSet, bimap.init, PredId, stack.init,
-        map.init, map.init, sparse_bitset.init, ZeroVar, Simple, map.init).
+        map.init, map.init, set_of_var.init, ZeroVar, Simple, map.init).
 
 :- type robdd_var == var(mc_type).
 
@@ -404,29 +405,28 @@ robdd_to_dot(Constraint, ProgVarSet, MCI, FileName, !IO) :-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-atomic_prodvars_map(Constraint, MCI) =
-    (
-        some_vars(VarsEntailed) = vars_entailed(ensure_normalised(Constraint))
-    ->
+atomic_prodvars_map(Constraint, MCI) = ProdVarsMap :-
+    ( some_vars(VarsEntailed) = vars_entailed(ensure_normalised(Constraint)) ->
         list.foldl(
-            (func(MCVar, PVM) =
+            (pred(MCVar::in, PVM0::in, PVM::out) is det :-
                 (
                     bimap.reverse_lookup(MCI ^ mci_varmap, Key, MCVar),
                     Key = key(RepVar, PredId, LambdaId0),
                     PredId = MCI ^ mci_pred_id,
                     RepVar = ProgVar `at` GoalId,
-                    LambdaId = stack.push(LambdaId0, GoalId)
+                    stack.push(LambdaId0, GoalId, LambdaId)
                 ->
-                    ( Vs = map.search(PVM, LambdaId) ->
-                        map.det_update(PVM, LambdaId, Vs `insert` ProgVar)
+                    ( map.search(PVM0, LambdaId, Vs0) ->
+                        set_of_var.insert(ProgVar, Vs0, Vs),
+                        map.det_update(LambdaId, Vs, PVM0, PVM)
                     ;
-                        map.det_insert(PVM, LambdaId,
-                            make_singleton_set(ProgVar))
+                        Vs = set_of_var.make_singleton(ProgVar),
+                        map.det_insert(LambdaId, Vs, PVM0, PVM)
                     )
                 ;
-                    PVM
+                    PVM = PVM0
                 )
-            ), to_sorted_list(VarsEntailed), map.init)
+            ), to_sorted_list(VarsEntailed), map.init, ProdVarsMap)
     ;
-        func_error("atomic_prodvars_map: zero constraint")
+        unexpected($module, $pred, "zero constraint")
     ).

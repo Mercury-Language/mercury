@@ -34,8 +34,9 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_util.
 
@@ -63,7 +64,6 @@
 :- import_module libs.options.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.set_of_var.
 
 :- import_module int.
 :- import_module require.
@@ -168,7 +168,7 @@
     % generation. This is *not* the same thing as the notion of liveness
     % used by mode analysis!  See compiler/notes/glossary.html.
     %
-:- type liveness_info == set(prog_var).     % The live variables.
+:- type liveness_info == set_of_progvar.    % The live variables.
 
 :- type arg_info
     --->    arg_info(
@@ -1186,9 +1186,9 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes0,
             ExistQVars, NonLocals, ExtraTypeInfos0),
-        set.delete_list(ArgVars0, ExtraTypeInfos0, ExtraTypeInfos1),
-        set.to_sorted_list(ExtraTypeInfos1, ExtraTypeInfos),
-        list.append(ExtraTypeInfos, ArgVars0, ArgVars)
+        set_of_var.delete_list(ArgVars0, ExtraTypeInfos0, ExtraTypeInfos1),
+        set_of_var.to_sorted_list(ExtraTypeInfos1, ExtraTypeInfos),
+        ArgVars = ExtraTypeInfos ++ ArgVars0
     ;
         TypeInfoLiveness = no,
         ArgVars = ArgVars0,
@@ -2540,7 +2540,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     ModeErrors = [],
     InferredDet = detism_erroneous,
     map.init(StackSlots),
-    set.init(InitialLiveness),
+    set_of_var.init(InitialLiveness),
     ArgInfo = no,
     goal_info_init(GoalInfo),
     ClauseBody = hlds_goal(conj(plain_conj, []), GoalInfo),
@@ -2575,7 +2575,7 @@ proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, HeadModes, DetismDecl, MaybeDeclaredDetism, Detism,
         Goal, RttiVarMaps, IsAddressTaken, VarNameRemap, ProcInfo) :-
     map.init(StackSlots),
-    set.init(Liveness),
+    set_of_var.init(Liveness),
     MaybeHeadLives = no,
     ModeErrors = [],
     Term2Info = term_constr_main.term2_info_init,

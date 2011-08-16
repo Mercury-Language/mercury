@@ -159,6 +159,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 :- import_module recompilation.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_constr_util.
@@ -1484,7 +1485,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             % map.from_corresponding_lists(Args, Types, VarTypes0)
             map.init(VarTypes0),
             goal_info_init(GoalInfo0),
-            set.list_to_set(Args, NonLocals),
+            set_of_var.list_to_set(Args, NonLocals),
             goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
             goal_info_set_context(Context, GoalInfo1, GoalInfo),
 

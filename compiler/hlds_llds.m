@@ -727,15 +727,6 @@ rename_vars_in_llds_code_gen_info(Must, Subn, Details0, Details) :-
         PreDeaths, PostDeaths, MaybeFollowVars, StoreMap,
         ResumePoint, MaybeNeed).
 
-:- pred rename_vars_in_set_of_var(must_rename::in,
-    map(prog_var, prog_var)::in,
-    set_of_progvar::in, set_of_progvar::out) is det.
-
-rename_vars_in_set_of_var(Must, Subn, Set0, Set) :-
-    List0 = set_of_var.to_sorted_list(Set0),
-    list.map(rename_var(Must, Subn), List0, List),
-    Set = set_of_var.list_to_set(List).
-
 :- pred rename_vars_in_var_locn_map(must_rename::in,
     map(prog_var, prog_var)::in,
     map(prog_var, abs_locn)::in, map(prog_var, abs_locn)::out) is det.

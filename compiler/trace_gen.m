@@ -57,6 +57,7 @@
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module map.
@@ -136,7 +137,7 @@
     % layouts), and those of dummy types.
     %
 :- pred trace_fail_vars(module_info::in, proc_info::in,
-    set(prog_var)::out) is det.
+    set_of_progvar::out) is det.
 
     % Figure out whether we need a slot for storing the value of maxfr
     % on entry, and record the result in the proc info.
@@ -295,7 +296,7 @@ trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
         build_fail_vars(HeadVars, Insts, ArgInfos,
             ModuleInfo, VarTypes, FailVarsList)
     ->
-        set.list_to_set(FailVarsList, FailVars)
+        set_of_var.list_to_set(FailVarsList, FailVars)
     ;
         unexpected($module, $pred, "length mismatch")
     ).

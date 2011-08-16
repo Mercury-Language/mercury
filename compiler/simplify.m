@@ -694,8 +694,7 @@ do_process_clause_body_goal(!Goal, !Info) :-
             simplify_info_get_var_types(!.Info, !:VarTypes),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
             implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
-                set_to_bitset(NonLocals), _, !Goal,
-                !VarSet, !VarTypes, !RttiVarMaps),
+                NonLocals, _, !Goal, !VarSet, !VarTypes, !RttiVarMaps),
 
             simplify_info_set_varset(!.VarSet, !Info),
             simplify_info_set_var_types(!.VarTypes, !Info),
@@ -821,7 +820,7 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
 
         % If the goal had any non-locals we should requantify.
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        ( set.empty(NonLocals0) ->
+        ( set_of_var.is_empty(NonLocals0) ->
             true
         ;
             simplify_info_set_requantify(!Info)
@@ -888,7 +887,7 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
 
         % If the goal had any non-locals we should requantify.
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        ( set.empty(NonLocals0) ->
+        ( set_of_var.is_empty(NonLocals0) ->
             true
         ;
             simplify_info_set_requantify(!Info)
@@ -1216,7 +1215,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 % Work out the nonlocals, instmap_delta
                 % and determinism of the entire conjunction.
                 NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-                set.insert(Var, NonLocals0, NonLocals),
+                set_of_var.insert(Var, NonLocals0, NonLocals),
                 InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
                 simplify_info_get_instmap(!.Info, InstMap),
                 instmap_delta_bind_var_to_functor(Var, Type, MainConsId,
@@ -2333,7 +2332,8 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
         CmpGoal0),
     CmpGoal0 = hlds_goal(CmpExpr, CmpInfo0),
     CmpNonLocals0 = goal_info_get_nonlocals(CmpInfo0),
-    goal_info_set_nonlocals(set.insert(CmpNonLocals0, R), CmpInfo0, CmpInfo),
+    set_of_var.insert(R, CmpNonLocals0, CmpNonLocals),
+    goal_info_set_nonlocals(CmpNonLocals, CmpInfo0, CmpInfo),
     CmpGoal  = hlds_goal(CmpExpr, CmpInfo),
 
     % Construct the unification R = Inequality.
@@ -2348,7 +2348,8 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
         "replacement of inequality with call to compare/3"), []),
     UfyExpr  = unify(R, RHS, UMode, UKind, UContext),
     UfyNonLocals0 = goal_info_get_nonlocals(GoalInfo),
-    goal_info_set_nonlocals(set.insert(UfyNonLocals0, R), GoalInfo, UfyInfo),
+    set_of_var.insert(R, UfyNonLocals0, UfyNonLocals),
+    goal_info_set_nonlocals(UfyNonLocals, GoalInfo, UfyInfo),
     UfyGoal  = hlds_goal(UfyExpr, UfyInfo),
 
     (
@@ -2614,7 +2615,7 @@ simplify_library_call(ModuleName, PredName, _ModeNum, CrossCompiling,
             make_const_construction(Res,
                 cons(qualified(Builtin, ">"), 0, TypeCtor), ReturnGt),
 
-            NonLocals = set.from_list([Res, X, Y]),
+            NonLocals = set_of_var.list_to_set([Res, X, Y]),
             goal_info_set_nonlocals(NonLocals, !GoalInfo),
 
             RestExpr = if_then_else([], CondLt, ReturnLt, ReturnGt),
@@ -2691,7 +2692,7 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
     ConstMode = (free -> Ground) - (Ground -> Ground),
     ConstGoalExpr = unify(ConstVar, ConstRHS, ConstMode, ConstUnification,
         ConstUnifyContext),
-    ConstNonLocals = set.make_singleton_set(ConstVar),
+    ConstNonLocals = set_of_var.make_singleton(ConstVar),
     InstMapDelta = instmap_delta_bind_var(ConstVar),
     goal_info_init(ConstNonLocals, InstMapDelta,
         detism_det, purity_pure, ConstGoalInfo),
@@ -2714,7 +2715,7 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
 
     OpGoalInfo0 = !.GoalInfo,
     OpNonLocals0 = goal_info_get_nonlocals(OpGoalInfo0),
-    set.insert(ConstVar, OpNonLocals0, OpNonLocals),
+    set_of_var.insert(ConstVar, OpNonLocals0, OpNonLocals),
     goal_info_set_nonlocals(OpNonLocals, OpGoalInfo0, OpGoalInfo),
     OpGoal = hlds_goal(OpGoalExpr, OpGoalInfo),
 
@@ -2961,7 +2962,7 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
 
     % Add the extra type_info vars to the nonlocals for the call.
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-    set.insert_list(TypeInfoVars, NonLocals0, NonLocals),
+    set_of_var.insert_list(TypeInfoVars, NonLocals0, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, CallGoalInfo).
 
 :- pred call_builtin_compound_eq(prog_var::in, prog_var::in, module_info::in,
@@ -3312,7 +3313,7 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
 :- type var_renaming == map(prog_var, prog_var).
 
 :- pred find_excess_assigns_in_conj(trace_level::in, bool::in,
-    prog_varset::in, set(prog_var)::in, list(hlds_goal)::in,
+    prog_varset::in, set_of_progvar::in, list(hlds_goal)::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     var_renaming::in, var_renaming::out) is det.
 
@@ -3331,7 +3332,7 @@ find_excess_assigns_in_conj(Trace, TraceOptimized, VarSet, ConjNonLocals,
         Goals, !RevGoals, !Subn).
 
 :- pred goal_is_excess_assign(trace_level::in, bool::in, prog_varset::in,
-    set(prog_var)::in, hlds_goal::in,
+    set_of_progvar::in, hlds_goal::in,
     var_renaming::in, var_renaming::out) is semidet.
 
 goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals, Goal0,
@@ -3343,8 +3344,8 @@ goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals, Goal0,
     find_renamed_var(!.Subn, LeftVar0, LeftVar),
     find_renamed_var(!.Subn, RightVar0, RightVar),
 
-    CanElimLeft = ( set.member(LeftVar, ConjNonLocals) -> no ; yes ),
-    CanElimRight = ( set.member(RightVar, ConjNonLocals) -> no ; yes ),
+    CanElimLeft = ( set_of_var.member(ConjNonLocals, LeftVar) -> no ; yes ),
+    CanElimRight = ( set_of_var.member(ConjNonLocals, RightVar) -> no ; yes ),
 
     (
         CanElimLeft = yes,
@@ -3482,8 +3483,7 @@ simplify_switch(Var, [Case0 | Cases0], !RevCases, !InstMaps,
 :- pred create_test_unification(prog_var::in, cons_id::in, int::in,
     hlds_goal::out, simplify_info::in, simplify_info::out) is det.
 
-create_test_unification(Var, ConsId, ConsArity,
-        hlds_goal(ExtraGoal, ExtraGoalInfo), !Info) :-
+create_test_unification(Var, ConsId, ConsArity, ExtraGoal, !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     varset.new_vars(ConsArity, ArgVars, VarSet0, VarSet),
@@ -3513,14 +3513,15 @@ create_test_unification(Var, ConsId, ConsArity,
     UnifyContext = unify_context(umc_explicit, []),
     Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail,
         cannot_cgc),
-    ExtraGoal = unify(Var, rhs_functor(ConsId, no, ArgVars),
+    ExtraGoalExpr = unify(Var, rhs_functor(ConsId, no, ArgVars),
         UniMode, Unification, UnifyContext),
-    set.singleton_set(NonLocals, Var),
+    NonLocals = set_of_var.make_singleton(Var),
 
     % The test can't bind any variables, so the InstMapDelta should be empty.
     instmap_delta_init_reachable(InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_semi, purity_pure,
-        ExtraGoalInfo).
+        ExtraGoalInfo),
+    ExtraGoal = hlds_goal(ExtraGoalExpr, ExtraGoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -3673,7 +3674,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 
         CondNonLocals = goal_info_get_nonlocals(CondGoalInfo),
         RestNonLocals = goal_info_get_nonlocals(RestGoalInfo),
-        set.union(CondNonLocals, RestNonLocals, NonLocals),
+        set_of_var.union(CondNonLocals, RestNonLocals, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo, NewGoalInfo0),
 
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo),

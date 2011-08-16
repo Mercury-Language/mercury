@@ -157,6 +157,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bag.
@@ -167,7 +168,6 @@
 :- import_module maybe.
 :- import_module queue.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -621,7 +621,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         % Construct the initial set of live vars:
         % initially, only the non-clobbered head variables are live.
         get_live_vars(HeadVars, ArgLives0, LiveVarsList),
-        set.list_to_set(LiveVarsList, LiveVars),
+        set_of_var.list_to_set(LiveVarsList, LiveVars),
 
         % Initialize the mode info.
         mode_info_init(!.ModuleInfo, PredId, ProcId, Context, LiveVars,
@@ -769,7 +769,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
         BodyNonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
         mode_info_get_var_types(!.ModeInfo, VarTypes0),
         SolverNonLocals = list.filter(is_solver_var(VarTypes0, ModuleInfo),
-            set.to_sorted_list(BodyNonLocals)),
+            set_of_var.to_sorted_list(BodyNonLocals)),
         SolverNonLocals = []
     ->
         BodyContext = goal_info_get_context(BodyGoalInfo0),
@@ -1063,7 +1063,7 @@ modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var, Case0, Case,
     Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred unique_modecheck_clause_disj(list(prog_var)::in, instmap::in,
-    list(mer_inst)::in, determinism::in, set(prog_var)::in, bag(prog_var)::in,
+    list(mer_inst)::in, determinism::in, set_of_progvar::in, bag(prog_var)::in,
     hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out) is det.
 
 unique_modecheck_clause_disj(HeadVars, InstMap0, ArgFinalInsts0, DisjDetism,
@@ -1255,7 +1255,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
                         % I don't think this can happen. But just in case...
                         Reason = wrongly_instantiated
                     ),
-                    set.init(WaitingVars),
+                    set_of_var.init(WaitingVars),
                     ModeError = mode_error_final_inst(ArgNum, Var, VarInst,
                         Inst, Reason),
                     mode_info_error(WaitingVars, ModeError, !ModeInfo)

@@ -55,6 +55,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module digraph.
@@ -198,10 +199,10 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
             union_mode_vars_sets(Goals, !GoalInfo),
             ConsVars = !.GoalInfo ^ consuming_vars,
             !GoalInfo ^ consuming_vars :=
-                ConsVars `difference` !.GoalInfo ^ producing_vars,
+                ConsVars `set_of_var.difference` !.GoalInfo ^ producing_vars,
             NeedVars = !.GoalInfo ^ need_visible_vars,
             !GoalInfo ^ need_visible_vars :=
-                NeedVars `difference` !.GoalInfo ^ make_visible_vars
+                NeedVars `set_of_var.difference` !.GoalInfo ^ make_visible_vars
         ;
             ConjType = parallel_conj,
             list.map_foldl(mode_order_goal, Goals0, Goals, !MOI),
@@ -211,11 +212,13 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
     ;
         GoalExpr0 = plain_call(PredId, _, Args, _, _, _),
         set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI),
-        MakeVisibleVars = list_to_set(Args) `intersect` ProdVars,
+        MakeVisibleVars =
+            set_of_var.list_to_set(Args) `set_of_var.intersect` ProdVars,
 
         find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars,
             !MOI),
-        NeedVisibleVars = list_to_set(Args) `intersect` ConsumingVars,
+        NeedVisibleVars =
+            set_of_var.list_to_set(Args) `set_of_var.intersect` ConsumingVars,
 
         goal_info_set_consuming_vars(ConsumingVars, !GoalInfo),
         goal_info_set_make_visible_vars(MakeVisibleVars, !GoalInfo),
@@ -234,47 +237,48 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
         (
             RHS0 = rhs_var(VarB),
             RHS = RHS0,
-            ( ProdVars `contains` VarA ->
+            ( set_of_var.contains(ProdVars, VarA) ->
                 Unification = assign(VarA, VarB),
-                MakeVisibleVars = make_singleton_set(VarA),
-                NeedVisibleVars = make_singleton_set(VarB)
-            ; ProdVars `contains` VarB ->
+                MakeVisibleVars = set_of_var.make_singleton(VarA),
+                NeedVisibleVars = set_of_var.make_singleton(VarB)
+            ; set_of_var.contains(ProdVars, VarB) ->
                 Unification = assign(VarB, VarA),
-                MakeVisibleVars = make_singleton_set(VarB),
-                NeedVisibleVars = make_singleton_set(VarA)
+                MakeVisibleVars = set_of_var.make_singleton(VarB),
+                NeedVisibleVars = set_of_var.make_singleton(VarA)
             ;
                 Unification = simple_test(VarA, VarB),
                 % XXX may be complicated unify -- need to check.
-                MakeVisibleVars = set.init,
-                NeedVisibleVars = list_to_set([VarA, VarB])
+                MakeVisibleVars = set_of_var.init,
+                NeedVisibleVars = set_of_var.list_to_set([VarA, VarB])
             ),
-            ConsumingVars = solutions.solutions_set((pred(Var::out) is nondet :-
+            ConsumingVarsList = solutions.solutions((pred(Var::out) is nondet :-
                 inst_graph.same_graph_corresponding_nodes(InstGraph,
                     VarA, VarB, VarC, VarD),
-                ( ProdVars `contains` VarC ->
+                ( set_of_var.contains(ProdVars, VarC) ->
                     Var = VarD
-                ; ProdVars `contains` VarD ->
+                ; set_of_var.contains(ProdVars, VarD) ->
                     Var = VarC
                 ;
                     fail
-                )))
+                ))),
+            ConsumingVars = set_of_var.sorted_list_to_set(ConsumingVarsList)
         ;
             RHS0 = rhs_functor(_ConsId, _IsExistConstruct, ArgVars),
             RHS = RHS0,
-            ( ProdVars `contains` VarA ->
+            ( set_of_var.contains(ProdVars, VarA) ->
                 % Unification = construct(VarA, ConsId, ArgVars,
                 %   _UniModes, _HowTo, _CellUniq, _MaybeRLExprId),
                 Unification = Unification0, % XXX
-                ConsumingVars = set.init,
-                MakeVisibleVars = list_to_set([VarA | ArgVars]),
-                NeedVisibleVars = set.init
+                ConsumingVars = set_of_var.init,
+                MakeVisibleVars = set_of_var.list_to_set([VarA | ArgVars]),
+                NeedVisibleVars = set_of_var.init
             ;
                 % Unification = deconstruct(VarA, ConsId, ArgVars,
                 %   _UniModes, _CanFail, _CanCGC),
                 Unification = Unification0, % XXX
-                ConsumingVars = make_singleton_set(VarA),
-                MakeVisibleVars = list_to_set(ArgVars),
-                NeedVisibleVars = make_singleton_set(VarA)
+                ConsumingVars = set_of_var.make_singleton(VarA),
+                MakeVisibleVars = set_of_var.list_to_set(ArgVars),
+                NeedVisibleVars = set_of_var.make_singleton(VarA)
             )
         ;
             % Unification = construct(VarA, _ConsId, _ArgVars,
@@ -291,10 +295,11 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
             mode_order_goal(SubGoal0, SubGoal, !MOI),
             leave_lambda_goal(!MOI),
 
-            ConsumingVars = solutions.solutions_set(
+            ConsumingVarsList = solutions.solutions(
                 inst_graph.reachable_from_list(InstGraph, NonLocals)),
-            MakeVisibleVars = make_singleton_set(VarA),
-            NeedVisibleVars = list_to_set(NonLocals)
+            ConsumingVars = set_of_var.sorted_list_to_set(ConsumingVarsList),
+            MakeVisibleVars = set_of_var.make_singleton(VarA),
+            NeedVisibleVars = set_of_var.list_to_set(NonLocals)
         ),
         goal_info_set_consuming_vars(ConsumingVars, !GoalInfo),
         goal_info_set_make_visible_vars(MakeVisibleVars, !GoalInfo),
@@ -328,10 +333,10 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
         union_mode_vars_sets([Cond, Then], !GoalInfo),
         ConsVars = !.GoalInfo ^ consuming_vars,
         !GoalInfo ^ consuming_vars :=
-            ConsVars `difference` !.GoalInfo ^ producing_vars,
+            ConsVars `set_of_var.difference` !.GoalInfo ^ producing_vars,
         NeedVars = !.GoalInfo ^ need_visible_vars,
         !GoalInfo ^ need_visible_vars :=
-            NeedVars `difference` !.GoalInfo ^ make_visible_vars,
+            NeedVars `set_of_var.difference` !.GoalInfo ^ make_visible_vars,
 
         combine_mode_vars_sets(Else ^ hlds_goal_info, !GoalInfo),
         GoalExpr = if_then_else(Locals, Cond, Then, Else)
@@ -374,13 +379,13 @@ combine_mode_vars_sets(GI, !GoalInfo) :-
     NeedVisibleVars0 = !.GoalInfo ^ need_visible_vars,
 
     !GoalInfo ^ producing_vars
-        := ProdVars0 `intersect` GI ^ producing_vars,
+        := ProdVars0 `set_of_var.intersect` GI ^ producing_vars,
     !GoalInfo ^ consuming_vars
-        := ConsumVars0 `union` GI ^ consuming_vars,
+        := ConsumVars0 `set_of_var.union` GI ^ consuming_vars,
     !GoalInfo ^ make_visible_vars
-        := MakeVisibleVars0 `intersect` GI ^ make_visible_vars,
+        := MakeVisibleVars0 `set_of_var.intersect` GI ^ make_visible_vars,
     !GoalInfo ^ need_visible_vars
-        := NeedVisibleVars0 `union` GI ^ need_visible_vars.
+        := NeedVisibleVars0 `set_of_var.union` GI ^ need_visible_vars.
 
 :- pred union_mode_vars_sets(hlds_goals::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -399,13 +404,13 @@ union_mode_vars_set(Goal, !GoalInfo) :-
     Goal = hlds_goal(_, GI),
 
     !GoalInfo ^ producing_vars
-        := ProdVars0 `union` GI ^ producing_vars,
+        := ProdVars0 `set_of_var.union` GI ^ producing_vars,
     !GoalInfo ^ consuming_vars
         := ConsumVars0 `union` GI ^ consuming_vars,
     !GoalInfo ^ make_visible_vars
-        := MakeVisibleVars0 `union` GI ^ make_visible_vars,
+        := MakeVisibleVars0 `set_of_var.union` GI ^ make_visible_vars,
     !GoalInfo ^ need_visible_vars
-        := NeedVisibleVars0 `union` GI ^ need_visible_vars.
+        := NeedVisibleVars0 `set_of_var.union` GI ^ need_visible_vars.
 
 :- pred goal_info_copy_mode_var_sets(hlds_goal_info::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -437,14 +442,17 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
     ProdMap =
         map.foldl((func(I, G, PM0) =
             list.foldl((func(V, PM1) = map.det_insert(PM1, V, I)),
-            set.to_sorted_list(G ^ hlds_goal_info ^ producing_vars), PM0)
+                set_of_var.to_sorted_list(G ^ hlds_goal_info ^ producing_vars),
+                PM0)
         ), GoalMap, map.init),
 
     MakeVisMap =
         map.foldl((func(I, G, MVM0) =
             list.foldl((func(V, MVM1) = map.set(MVM1, V, I)),
             % XXX disjunction required!
-            set.to_sorted_list(G ^ hlds_goal_info ^ make_visible_vars), MVM0)
+                set_of_var.to_sorted_list(
+                    G ^ hlds_goal_info ^ make_visible_vars),
+                MVM0)
         ), GoalMap, map.init),
 
     Graph = map.foldl((func(I, G, !.R) = !:R :-
@@ -457,7 +465,7 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
                 ;
                     true
                 )
-            ), set.to_sorted_list(GI ^ consuming_vars), !.R),
+            ), set_of_var.to_sorted_list(GI ^ consuming_vars), !.R),
         !:R = list.foldl((func(V, !.R2) = !:R2 :-
                 ( Index2 = map.search(MakeVisMap, V) ->
                     digraph.add_vertex(Index2, Key2, !R2),
@@ -465,7 +473,7 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
                 ;
                     true
                 )
-            ), set.to_sorted_list(GI ^ need_visible_vars), !.R)
+            ), set_of_var.to_sorted_list(GI ^ need_visible_vars), !.R)
         ), GoalMap, digraph.init),
 
     ( digraph.tsort(Graph, TSort) ->
@@ -475,7 +483,7 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
         unexpected($module, $pred, "tsort failed")
     ).
 
-:- pred set_atomic_prod_vars(set(prog_var)::out,
+:- pred set_atomic_prod_vars(set_of_progvar::out,
     hlds_goal_info::in, hlds_goal_info::out,
     mode_ordering_info::in, mode_ordering_info::out) is det.
 
@@ -489,7 +497,7 @@ set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI) :-
     ->
         ProdVars = ProdVars0
     ;
-        ProdVars = set.init
+        ProdVars = set_of_var.init
     ),
     goal_info_set_producing_vars(ProdVars, !GoalInfo).
 
@@ -506,8 +514,8 @@ pred_info_create_proc_info_for_mode_decl_constraint(_ModeDeclConstraint,
         ProcId = initial_proc_id
     ).
 
-:- pred find_matching_proc(pred_id::in, list(prog_var)::in, set(prog_var)::in,
-    proc_id::out, set(prog_var)::out,
+:- pred find_matching_proc(pred_id::in, list(prog_var)::in, set_of_progvar::in,
+    proc_id::out, set_of_progvar::out,
     mode_ordering_info::in, mode_ordering_info::out) is det.
 
 find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars, !MOI) :-
@@ -540,8 +548,8 @@ find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars, !MOI) :-
     ).
 
 :- pred find_matching_proc_2(assoc_list(proc_id, proc_info)::in,
-    set(prog_var)::in, list(prog_var)::in, inst_graph::in, inst_graph::in,
-    mode_constraint_info::in, proc_id::out, set(prog_var)::out) is semidet.
+    set_of_progvar::in, list(prog_var)::in, inst_graph::in, inst_graph::in,
+    mode_constraint_info::in, proc_id::out, set_of_progvar::out) is semidet.
 
 find_matching_proc_2([ProcId0 - ProcInfo | ProcList], ProdVars, Args,
         CallerInstGraph, CalleeInstGraph, MCInfo, ProcId, ConsumingVars) :-
@@ -554,7 +562,7 @@ find_matching_proc_2([ProcId0 - ProcInfo | ProcList], ProdVars, Args,
                 CallerInstGraph, CalleeInstGraph, Args, HeadVars, X, Y)
         =>
             (
-                ProdVars `contains` X
+                set_of_var.contains(ProdVars, X)
             <=>
                 (
                     var_entailed(Constraint,
@@ -566,13 +574,14 @@ find_matching_proc_2([ProcId0 - ProcInfo | ProcList], ProdVars, Args,
         )
     ->
         ProcId = ProcId0,
-        ConsumingVars = solutions.solutions_set(pred(X::out) is nondet :-
+        ConsumingVarsList = solutions.solutions(pred(X::out) is nondet :-
             some [Y] (
                 inst_graph.corresponding_nodes_from_lists(CallerInstGraph,
                 CalleeInstGraph, Args, HeadVars, X, Y),
                 var_entailed(Constraint, mode_constraint_var(MCInfo, in(Y)))
             )
-        )
+        ),
+        set_of_var.sorted_list_to_set(ConsumingVarsList, ConsumingVars)
     ;
         find_matching_proc_2(ProcList, ProdVars, Args, CallerInstGraph,
         CalleeInstGraph, MCInfo, ProcId, ConsumingVars)

@@ -70,6 +70,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -124,7 +125,7 @@ modecheck_unification(LHSVar, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
                 LambdaNonLocals),
             AnyVars = [_ | _]
         ->
-            set.init(WaitingVars),
+            set_of_var.init(WaitingVars),
             mode_info_error(WaitingVars,
                 purity_error_lambda_should_be_any(AnyVars), !ModeInfo),
             Goal = conj(plain_conj, [])
@@ -223,7 +224,7 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
             UnifyGoalExpr = conj(plain_conj, [InitGoal, UnifySubGoal])
         )
     ;
-        set.list_to_set([X, Y], WaitingVars),
+        set_of_var.list_to_set([X, Y], WaitingVars),
         ModeError = mode_error_unify_var_var(X, Y, InstOfX, InstOfY),
         mode_info_error(WaitingVars, ModeError, !ModeInfo),
         % If we get an error, set the inst to not_reached to suppress
@@ -363,7 +364,7 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
     % Mark the non-clobbered lambda variables as live.
     get_arg_lives(ModuleInfo0, Modes, ArgLives),
     get_live_vars(Vars, ArgLives, LiveVarsList),
-    set.list_to_set(LiveVarsList, LiveVars),
+    set_of_var.list_to_set(LiveVarsList, LiveVars),
     mode_info_add_live_vars(LiveVars, !ModeInfo),
 
     % Lock the non-locals.  A ground lambda goal is not allowed to bind any
@@ -376,21 +377,21 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
     % is safe to bind the lambda goal itself.
     Goal0 = hlds_goal(_, GoalInfo0),
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-    set.delete_list(Vars, NonLocals0, NonLocals1),
+    set_of_var.delete_list(Vars, NonLocals0, NonLocals1),
     (
         Groundness = ho_ground,
         NonLocals = NonLocals1
     ;
         Groundness = ho_any,
         mode_info_get_var_types(!.ModeInfo, NonLocalTypes),
-        NonLocals = set.filter((pred(NonLocal::in) is semidet :-
+        NonLocals = set_of_var.filter((pred(NonLocal::in) is semidet :-
                 map.lookup(NonLocalTypes, NonLocal, NonLocalType),
                 instmap_lookup_var(InstMap1, NonLocal, NonLocalInst),
                 \+ inst_matches_initial(NonLocalInst, any(shared, none),
                     NonLocalType, ModuleInfo0)
             ), NonLocals1)
     ),
-    set.to_sorted_list(NonLocals, NonLocalsList),
+    set_of_var.to_sorted_list(NonLocals, NonLocalsList),
     instmap_lookup_vars(InstMap1, NonLocalsList, NonLocalInsts),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo2),
     (
@@ -466,7 +467,7 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
         (
             NonGroundNonLocals = [BadVar | _],
             instmap_lookup_var(InstMap1, BadVar, BadInst),
-            set.singleton_set(WaitingVars, BadVar),
+            WaitingVars = set_of_var.make_singleton(BadVar),
             ModeError = mode_error_non_local_lambda_var(BadVar, BadInst),
             mode_info_error(WaitingVars, ModeError, !ModeInfo)
         ;
@@ -509,7 +510,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
             RHS0, RHS, Unification0, Unification, !ModeInfo),
         modecheck_set_var_inst(X, Inst, no, !ModeInfo)
     ;
-        set.list_to_set([X], WaitingVars),
+        set_of_var.list_to_set([X], WaitingVars),
         ModeError = mode_error_unify_var_lambda(X, InstOfX, InstOfY),
         mode_info_error(WaitingVars, ModeError, !ModeInfo),
         % If we get an error, set the inst to not_reached to avoid cascading
@@ -546,8 +547,9 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
             ( MatchResult = possible_modes([])
             ; MatchResult = ho_arg_not_ground
             ),
+            WaitingVars = set_of_var.make_singleton(X),
             ModeError = mode_error_unify_var_multimode_pred(X, PredId),
-            mode_info_error(set.make_singleton_set(X), ModeError, !ModeInfo),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo),
             % Return any old garbage.
             Goal = true_goal_expr
         ;
@@ -560,9 +562,10 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
                 GoalInfo, Goal, !ModeInfo)
         ;
             MatchResult = possible_modes([_, _ | _]),
+            WaitingVars = set_of_var.make_singleton(X),
             ModeError =
                 mode_error_unify_var_multimode_pred_undetermined(X, PredId),
-            mode_info_error(set.make_singleton_set(X), ModeError, !ModeInfo),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo),
             % Return any old garbage.
             Goal = true_goal_expr
         )
@@ -652,7 +655,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         list.member(X, ArgVars0),
         \+ inst_is_ground(ModuleInfo0, InstOfX)
     ->
-        set.list_to_set([X], WaitingVars),
+        set_of_var.list_to_set([X], WaitingVars),
         ModeError = mode_error_unify_var_functor(X, InstConsId, ArgVars0,
             InstOfX, InstArgs),
         mode_info_error(WaitingVars, ModeError, !ModeInfo),
@@ -739,7 +742,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             bind_args(Inst, ArgVars, UnifyArgInsts, !ModeInfo)
         )
     ;
-        set.list_to_set([X | ArgVars0], WaitingVars), % conservative
+        set_of_var.list_to_set([X | ArgVars0], WaitingVars), % conservative
         ModeError = mode_error_unify_var_functor(X, InstConsId, ArgVars0,
             InstOfX, InstArgs),
         mode_info_error(WaitingVars, ModeError, !ModeInfo),
@@ -953,7 +956,7 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
     % N.B. This may overestimate the set of non-locals,
     % but that shouldn't cause any problems.
 
-    set.list_to_set([Var0, Var], NonLocals),
+    set_of_var.list_to_set([Var0, Var], NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
     goal_info_set_context(Context, GoalInfo1, GoalInfo2),
 
@@ -1124,8 +1127,8 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 record_optimize_away(GoalInfo, Var1, Var2, !ModeInfo) :-
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     (
-        set.member(Var1, NonLocals),
-        set.member(Var2, NonLocals)
+        set_of_var.member(NonLocals, Var1),
+        set_of_var.member(NonLocals, Var2)
     ->
         true
     ;
@@ -1187,14 +1190,14 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
         Type = type_variable(_, _),
         \+ inst_is_ground_or_any(ModuleInfo3, InitialInstX)
     ->
-        set.singleton_set(WaitingVars, X),
+        WaitingVars = set_of_var.make_singleton(X),
         ModeError = mode_error_poly_unify(X, InitialInstX),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ;
         Type = type_variable(_, _),
         \+ inst_is_ground_or_any(ModuleInfo3, InitialInstY)
     ->
-        set.singleton_set(WaitingVars, Y),
+        WaitingVars = set_of_var.make_singleton(Y),
         ModeError = mode_error_poly_unify(Y, InitialInstY),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ;
@@ -1216,7 +1219,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
         ->
             true
         ;
-            set.init(WaitingVars),
+            set_of_var.init(WaitingVars),
             ModeError =
                 mode_error_unify_pred(X, error_at_var(Y), Type, PredOrFunc),
             mode_info_error(WaitingVars, ModeError, !ModeInfo)
@@ -1324,7 +1327,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
         % If it is a deconstruction, it is a mode error.
         % The error message would be incorrect in unreachable code,
         % since not_reached is considered bound.
-        set.init(WaitingVars),
+        set_of_var.init(WaitingVars),
         mode_info_get_var_types(!.ModeInfo, VarTypes0),
         map.lookup(VarTypes0, X, Type),
         ModeError = mode_error_unify_pred(X,
@@ -1421,7 +1424,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
                 type_is_higher_order_details(TypeOfX, _, PredOrFunc, _, _),
                 instmap_is_reachable(InstMap0)
             ->
-                set.init(WaitingVars),
+                set_of_var.init(WaitingVars),
                 ModeError = mode_error_unify_pred(X,
                     error_at_functor(ConsId, ArgVars), TypeOfX, PredOrFunc),
                 mode_info_error(WaitingVars, ModeError, !ModeInfo)

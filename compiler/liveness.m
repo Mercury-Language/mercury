@@ -216,18 +216,6 @@
 :- import_module term.
 :- import_module varset.
 
-% We should switch to using tree_bitset(prog_var) instead. Unfortunately,
-% that is not easy, for two reasons.
-% 
-% - The job of this module is to fill in the pre_birth, post_birth, pre_death
-%   and post_death slots in goal_infos, and those fields are currently
-%   set(prog_var). Changing them to be set_of_var would be a nontrivial job.
-%
-% - The predicates that deal with RTTI information use set(prog_var). We would
-%   need to either change them to use set_of_var, or do conversions before and
-%   after all calls to them.
-%
-
 %-----------------------------------------------------------------------------%
 
 detect_liveness_preds_parallel(!HLDS) :-
@@ -347,19 +335,18 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, !.ProcInfo,
             TraceLevel) = yes
     ->
-        trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0),
-        ResumeVars1 = set_to_bitset(ResumeVars0)
+        trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
     ;
-        ResumeVars1 = set_of_var.init
+        ResumeVars0 = set_of_var.init
     ),
     detect_resume_points_in_goal(Goal3, Goal, Liveness0, _,
-        LiveInfo, ResumeVars1),
+        LiveInfo, ResumeVars0),
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nafter resume point",
             DebugLiveness, PredIdInt, VarSet, Goal, !IO)
     ),
     proc_info_set_goal(Goal, !ProcInfo),
-    proc_info_set_liveness_info(bitset_to_set(Liveness0), !ProcInfo).
+    proc_info_set_liveness_info(Liveness0, !ProcInfo).
 
 :- pred maybe_debug_liveness(module_info::in, string::in, int::in, int::in,
     prog_varset::in, hlds_goal::in, io::di, io::uo) is det.
@@ -1754,7 +1741,7 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
 
     module_info_get_globals(ModuleInfo, Globals),
     proc_info_get_goal(ProcInfo, hlds_goal(_Goal, GoalInfo)),
-    NonLocals0 = set_to_bitset(goal_info_get_code_gen_nonlocals(GoalInfo)),
+    NonLocals0 = goal_info_get_code_gen_nonlocals(GoalInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeinfoLiveness),
@@ -1857,7 +1844,7 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 
 get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
         NonLocals, CompletedNonLocals) :-
-    NonLocals = set_to_bitset(goal_info_get_code_gen_nonlocals(GoalInfo)),
+    NonLocals = goal_info_get_code_gen_nonlocals(GoalInfo),
     maybe_complete_with_typeinfos(LiveInfo, NonLocals, CompletedNonLocals).
 
 :- pred maybe_complete_with_typeinfos(live_info::in,

@@ -150,6 +150,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module recompilation.
 
 :- import_module bool.
@@ -1824,7 +1825,7 @@ build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta, Detism,
     ->
         GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no,
             PredName),
-        set.list_to_set(ArgVars, NonLocals),
+        set_of_var.list_to_set(ArgVars, NonLocals),
         goal_info_init(NonLocals, InstmapDelta, Detism, purity_pure,
             GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, GoalInfo),

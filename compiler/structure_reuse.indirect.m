@@ -79,6 +79,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.livedata.
@@ -914,15 +915,15 @@ verify_indirect_reuse_for_call(BaseInfo, IrInfo, GoalInfo, CalleePPId,
         SharingAs),
     ProjectedLiveData = livedata_project(CalleeArgs, LiveData),
     StaticVars = set.to_sorted_list(IrInfo ^ static_vars),
- 
+
     reuse_as_satisfied(ModuleInfo, ProcInfo, ProjectedLiveData,
         SharingAs, StaticVars, ActualReuseAs, Result),
     (
         Result = reuse_possible,
         LFU = goal_info_get_lfu(GoalInfo),
         LBU = goal_info_get_lbu(GoalInfo),
-        LU = set.union(LFU, LBU),
-        LuList = set.to_sorted_list(LU),
+        LU = set_of_var.union(LFU, LBU),
+        LuList = set_of_var.to_sorted_list(LU),
         LuData = list.map(datastruct_init, LuList),
         NewReuseAs = reuse_as_from_called_procedure_to_local_reuse_as(
             ModuleInfo, ProcInfo, BaseInfo ^ headvars, LuData, SharingAs,
@@ -1086,7 +1087,7 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
         globals.lookup_bool_option(Globals, intermodule_analysis,
             IntermoduleAnalysis),
         (
-            IntermoduleAnalysis = yes, 
+            IntermoduleAnalysis = yes,
             Request = sr_request(CalleePPId, NotDeadArgNums),
             !IrInfo ^ inter_requests :=
                 set.insert(!.IrInfo ^ inter_requests, Request)

@@ -230,6 +230,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module map.
@@ -501,7 +502,8 @@ expand_try_goal(Instmap, TryGoal, FinalGoal, !Info) :-
         GoalOutputVarsSet0),
     (
         MaybeIO = yes(try_io_state_vars(_IOStateVarInitial, IOStateVarFinal)),
-        set.delete(IOStateVarFinal, GoalOutputVarsSet0, GoalOutputVarsSet)
+        set_of_var.delete(IOStateVarFinal,
+            GoalOutputVarsSet0, GoalOutputVarsSet)
     ;
         MaybeIO = no,
         GoalOutputVarsSet = GoalOutputVarsSet0
@@ -517,7 +519,7 @@ expand_try_goal(Instmap, TryGoal, FinalGoal, !Info) :-
 
 :- pred expand_try_goal_2(maybe(try_io_state_vars)::in, prog_var::in,
     hlds_goal::in, hlds_goal::in, maybe(hlds_goal)::in, hlds_goal::in,
-    instmap::in, set(prog_var)::in, hlds_goal::out,
+    instmap::in, set_of_progvar::in, hlds_goal::out,
     pred_info::in, pred_info::out, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
@@ -527,7 +529,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
     some [!VarTypes] (
         % Get the type of the output tuple.
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
-        GoalOutputVars = set.to_sorted_list(GoalOutputVarsSet),
+        GoalOutputVars = set_of_var.to_sorted_list(GoalOutputVarsSet),
         map.apply_to_list(GoalOutputVars, !.VarTypes, GoalOutputVarTypes),
         OutputTupleType = tuple_type(GoalOutputVarTypes, kind_star),
 
@@ -782,16 +784,17 @@ lookup_case_goal([H | T], ConsId, Goal) :-
     ).
 
 :- pred bound_nonlocals_in_goal(module_info::in, instmap::in, hlds_goal::in,
-    set(prog_var)::out) is det.
+    set_of_progvar::out) is det.
 
 bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
     Goal = hlds_goal(_, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
-    BoundNonLocals = set.filter(var_is_bound_in_instmap_delta(ModuleInfo,
-        InstMap, InstmapDelta), NonLocals).
+    BoundNonLocals = set_of_var.filter(
+        var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstmapDelta),
+        NonLocals).
 
-:- pred make_try_lambda(hlds_goal::in, set(prog_var)::in, mer_type::in,
+:- pred make_try_lambda(hlds_goal::in, set_of_progvar::in, mer_type::in,
     maybe(try_io_state_vars)::in, prog_var::out, hlds_goal::out,
     proc_info::in, proc_info::out) is det.
 
@@ -799,7 +802,7 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         LambdaVar, AssignLambdaVar, !ProcInfo) :-
     Body0 = hlds_goal(_, BodyInfo0),
     NonLocals0 = goal_info_get_nonlocals(BodyInfo0),
-    set.difference(NonLocals0, OutputVarsSet, NonLocals1),
+    set_of_var.difference(NonLocals0, OutputVarsSet, NonLocals1),
 
     proc_info_create_var_from_type(OutputTupleType, yes("OutputTuple"),
         OutputTupleVar, !ProcInfo),
@@ -808,7 +811,7 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         LambdaParams = [OutputTupleVar, IOVarInitial, IOVarFinal],
         LambdaParamTypes = [OutputTupleType, io_state_type, io_state_type],
         LambdaParamModes = [out_mode, di_mode, uo_mode],
-        set.delete(IOVarFinal, NonLocals1, NonLocals)
+        set_of_var.delete(IOVarFinal, NonLocals1, NonLocals)
     ;
         MaybeIO = no,
         LambdaParams = [OutputTupleVar],
@@ -822,15 +825,16 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         !ProcInfo),
 
     % Add the construction of OutputTuple to the body.
-    construct_tuple(OutputTupleVar, set.to_sorted_list(OutputVarsSet),
+    construct_tuple(OutputTupleVar, set_of_var.to_sorted_list(OutputVarsSet),
         MakeOutputTuple),
     conjoin_goals(Body0, MakeOutputTuple, LambdaBody0),
 
     % Rename away output variables in the lambda body.
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    clone_variables(set.to_sorted_list(OutputVarsSet), VarSet0, VarTypes0,
-        VarSet0, VarSet, VarTypes0, VarTypes, map.init, Renaming),
+    clone_variables(set_of_var.to_sorted_list(OutputVarsSet),
+        VarSet0, VarTypes0, VarSet0, VarSet, VarTypes0, VarTypes,
+        map.init, Renaming),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     rename_some_vars_in_goal(Renaming, LambdaBody0, LambdaBody),
@@ -842,7 +846,7 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
 
     % Make the lambda assignment.
     RHS = rhs_lambda_goal(purity_pure, ho_ground, pf_predicate,
-        lambda_normal, set.to_sorted_list(NonLocals),
+        lambda_normal, set_of_var.to_sorted_list(NonLocals),
         LambdaParams, LambdaParamModes, LambdaDetism, LambdaBody),
     create_pure_atomic_complicated_unification(LambdaVar, RHS,
         term.context_init, umc_implicit("try_expand"), [], AssignLambdaVar).

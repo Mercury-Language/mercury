@@ -43,11 +43,11 @@
 :- implementation.
 
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module int.
 :- import_module list.
 :- import_module require.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -125,7 +125,7 @@ goal_expr_cost(GoalExpr, GoalInfo, Cost) :-
         unexpected($module, $pred, "shorthand")
     ).
 
-:- pred unify_cost(set(prog_var)::in, unification::in, int::out) is det.
+:- pred unify_cost(set_of_progvar::in, unification::in, int::out) is det.
 
 unify_cost(NonLocals, Unification, Cost) :-
     (
@@ -139,7 +139,7 @@ unify_cost(NonLocals, Unification, Cost) :-
         Cost = cost_of_simple_test
     ;
         Unification = construct(Var, _, Args, _, _, _, _),
-        ( set.member(Var, NonLocals) ->
+        ( set_of_var.member(NonLocals, Var) ->
             list.length(Args, Arity),
             Cost = cost_of_heap_incr + Arity * cost_of_heap_assign
         ;
@@ -154,7 +154,7 @@ unify_cost(NonLocals, Unification, Cost) :-
             CanFail = cannot_fail,
             Cost0 = 0
         ),
-        list.filter(set.contains(NonLocals), Args, NonLocalArgs),
+        list.filter(set_of_var.contains(NonLocals), Args, NonLocalArgs),
         list.length(NonLocalArgs, NumAssigns),
         Cost = Cost0 + cost_of_heap_incr + NumAssigns * cost_of_heap_assign
     ).

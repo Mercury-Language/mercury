@@ -475,7 +475,7 @@ deforest_get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- pred propagate_conj_constraints(list(hlds_goal)::in,
-    set(prog_var)::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    set_of_progvar::in, list(hlds_goal)::in, list(hlds_goal)::out,
     pd_info::in, pd_info::out) is det.
 
 propagate_conj_constraints([], _, RevGoals, Goals, !PDInfo) :-
@@ -531,7 +531,7 @@ propagate_conj_constraints([Goal0 | Goals0], NonLocals, RevGoals0, Goals,
 :- type annotated_conj ==
     assoc_list(hlds_goal, maybe(pd_branch_info(prog_var))).
 
-:- pred deforest_conj(annotated_conj::in, set(prog_var)::in,
+:- pred deforest_conj(annotated_conj::in, set_of_progvar::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     pd_info::in, pd_info::out) is det.
 
@@ -643,7 +643,7 @@ potential_deforestation(Info1, Info2, DeforestBranches) :-
     % Take the part of a conjunction found to have potential
     % for deforestation and attempt the optimization.
     %
-:- pred handle_deforestation(set(prog_var)::in, deforest_info::in,
+:- pred handle_deforestation(set_of_progvar::in, deforest_info::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     annotated_conj::in, annotated_conj::out, bool::out,
     pd_info::in, pd_info::out) is det.
@@ -837,8 +837,9 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
         ),
         OpaqueGoal = hlds_goal(_, OpaqueGoalInfo),
         OpaqueNonLocals = goal_info_get_nonlocals(OpaqueGoalInfo),
-        set.intersect(OpaqueNonLocals, OpaqueVars, UsedOpaqueVars),
-        \+ set.empty(UsedOpaqueVars)
+        OpaqueVarsSet = set_of_var.set_to_bitset(OpaqueVars), 
+        set_of_var.intersect(OpaqueNonLocals, OpaqueVarsSet, UsedOpaqueVars),
+        set_of_var.is_non_empty(UsedOpaqueVars)
     ->
         trace [compile_time(flag("debug_deforest")), io(!IO)] (
             pd_debug_message(DebugPD,
@@ -1014,7 +1015,7 @@ is_improvement_worth_while(PDInfo, Optimized0, CostDelta0, SizeDelta0)
 
     % Attempt deforestation on a pair of calls.
     %
-:- pred call_call(set(prog_var)::in, hlds_goal::in,
+:- pred call_call(set_of_progvar::in, hlds_goal::in,
     list(hlds_goal)::in, maybe(hlds_goal)::in, maybe(hlds_goal)::out,
     pd_info::in, pd_info::out) is det.
 
@@ -1033,7 +1034,7 @@ call_call(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal, MaybeGoal,
 
     % Attempt deforestation on a pair of calls.
     %
-:- pred call_call_2(set(prog_var)::in, hlds_goal::in,
+:- pred call_call_2(set_of_progvar::in, hlds_goal::in,
     list(hlds_goal)::in, maybe(hlds_goal)::in, maybe(hlds_goal)::out,
     pd_info::in, pd_info::out) is det.
 
@@ -1128,7 +1129,7 @@ call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal,
     % recursively process that procedure.
     %
 :- pred create_deforest_goal(hlds_goal::in, hlds_goals::in,
-    maybe(hlds_goal)::in, hlds_goal::in, set(prog_var)::in, bool::in,
+    maybe(hlds_goal)::in, hlds_goal::in, set_of_progvar::in, bool::in,
     proc_pair::in, int::in, maybe(pred_proc_id)::in, maybe(hlds_goal)::out,
     pd_info::in, pd_info::out) is det.
 
@@ -1180,7 +1181,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             DidUnfold, !PDInfo),
         create_conj(UnfoldedCall, BetweenGoals, MaybeLaterGoal, NonLocals,
             DeforestGoal0),
-        set.to_sorted_list(NonLocals, NonLocalsList),
+        set_of_var.to_sorted_list(NonLocals, NonLocalsList),
 
         (
             DidUnfold = yes,
@@ -1327,7 +1328,7 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
     proc_info_get_argmodes(CalledProcInfo, ArgModes),
     instmap_delta_from_mode_list(Args, ArgModes, ModuleInfo, InstMapDelta),
     proc_info_interface_determinism(ProcInfo, Detism),
-    set.list_to_set(Args, NonLocals),
+    set_of_var.list_to_set(Args, NonLocals),
     pred_info_get_purity(CalledPredInfo, Purity),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo),
 
@@ -1366,7 +1367,7 @@ create_deforest_call_args([OldArg | OldArgs], [ArgType | ArgTypes],
     % into a conjunction.
     %
 :- pred create_conj(hlds_goal::in, list(hlds_goal)::in,
-    maybe(hlds_goal)::in, set(prog_var)::in, hlds_goal::out) is det.
+    maybe(hlds_goal)::in, set_of_progvar::in, hlds_goal::out) is det.
 
 create_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, NonLocals, FoldGoal) :-
     (
@@ -1396,7 +1397,7 @@ create_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, NonLocals, FoldGoal) :-
     % to achieve folding.
     %
 :- pred try_generalisation(hlds_goal::in, list(hlds_goal)::in,
-    maybe(hlds_goal)::in, hlds_goal::in, set(prog_var)::in,
+    maybe(hlds_goal)::in, hlds_goal::in, set_of_progvar::in,
     proc_pair::in, int::in, pred_proc_id::in, maybe(hlds_goal)::out,
     pd_info::in, pd_info::out) is det.
 
@@ -1451,7 +1452,7 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 :- pred do_generalisation(list(prog_var)::in,
     map(prog_var, prog_var)::in, instmap::in, hlds_goal::in,
     list(hlds_goal)::in, maybe(hlds_goal)::in, hlds_goal::in,
-    set(prog_var)::in, proc_pair::in, int::in,
+    set_of_progvar::in, proc_pair::in, int::in,
     pred_proc_id::in, maybe(hlds_goal)::out,
     pd_info::in, pd_info::out) is det.
 
@@ -1467,7 +1468,7 @@ do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal,
     pd_info_get_instmap(!.PDInfo, InstMap0),
     instmap_lookup_vars(VersionInstMap, VersionArgs, VersionInsts),
     pd_util.inst_list_size(ModuleInfo, VersionInsts, VersionInstSizes),
-    set.to_sorted_list(ConjNonLocals, ConjNonLocalsList),
+    set_of_var.to_sorted_list(ConjNonLocals, ConjNonLocalsList),
     (
         % Check whether we can do a most specific generalisation of insts
         % of the non-locals.
@@ -1527,7 +1528,7 @@ try_MSG(ModuleInfo, VersionInstMap, [VersionArg | VersionArgs], Renaming,
 :- pred match_generalised_version(module_info::in,
     hlds_goal::in, list(prog_var)::in, list(mer_type)::in,
     hlds_goal::in, list(hlds_goal)::in, maybe(hlds_goal)::in,
-    set(prog_var)::in, prog_varset::in, vartypes::in,
+    set_of_progvar::in, prog_varset::in, vartypes::in,
     version_index::in, map(prog_var, prog_var)::out) is semidet.
 
 match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
@@ -1602,9 +1603,9 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
     % This is needed to ensure that the temporary list in double_append is
     % found to be local to the conjunction and can be removed.
     %
-:- pred get_sub_conj_nonlocals(set(prog_var)::in, deforest_info::in,
+:- pred get_sub_conj_nonlocals(set_of_progvar::in, deforest_info::in,
     list(hlds_goal)::in, list(hlds_goal)::in, list(hlds_goal)::in,
-    annotated_conj::in, set(prog_var)::out) is det.
+    annotated_conj::in, set_of_progvar::out) is det.
 
 get_sub_conj_nonlocals(NonLocals0, DeforestInfo,
         RevBeforeGoals, BeforeIrrelevant, AfterIrrelevant,
@@ -1616,10 +1617,10 @@ get_sub_conj_nonlocals(NonLocals0, DeforestInfo,
         BeforeIrrelevant, EarlierGoal, BetweenGoals, yes(LaterGoal),
         AfterIrrelevant, AfterGoals, SubConjNonLocals).
 
-:- pred get_sub_conj_nonlocals(set(prog_var)::in,
+:- pred get_sub_conj_nonlocals(set_of_progvar::in,
     list(hlds_goal)::in, list(hlds_goal)::in, hlds_goal::in,
     list(hlds_goal)::in, maybe(hlds_goal)::in, list(hlds_goal)::in,
-    list(hlds_goal)::in, set(prog_var)::out) is det.
+    list(hlds_goal)::in, set_of_progvar::out) is det.
 
 get_sub_conj_nonlocals(!.NonLocals, RevBeforeGoals, BeforeIrrelevant,
         EarlierGoal, BetweenGoals, MaybeLaterGoal,
@@ -1627,7 +1628,7 @@ get_sub_conj_nonlocals(!.NonLocals, RevBeforeGoals, BeforeIrrelevant,
     AddGoalNonLocals = (pred(Goal::in, Vars0::in, Vars::out) is det :-
         Goal = hlds_goal(_, GoalInfo),
         GoalNonLocals = goal_info_get_nonlocals(GoalInfo),
-        set.union(Vars0, GoalNonLocals, Vars)
+        set_of_var.union(GoalNonLocals, Vars0, Vars)
     ),
     list.foldl(AddGoalNonLocals, RevBeforeGoals, !NonLocals),
     list.foldl(AddGoalNonLocals, BeforeIrrelevant, !NonLocals),
@@ -1635,14 +1636,14 @@ get_sub_conj_nonlocals(!.NonLocals, RevBeforeGoals, BeforeIrrelevant,
     list.foldl(AddGoalNonLocals, AfterGoals, !NonLocals),
 
     list.foldl(AddGoalNonLocals, [EarlierGoal | BetweenGoals],
-        set.init, !:SubConjNonLocals),
+        set_of_var.init, !:SubConjNonLocals),
     (
         MaybeLaterGoal = yes(LaterGoal),
         call(AddGoalNonLocals, LaterGoal, !SubConjNonLocals)
     ;
         MaybeLaterGoal = no
     ),
-    set.intersect(!.NonLocals, !SubConjNonLocals).
+    set_of_var.intersect(!.NonLocals, !SubConjNonLocals).
 
 %-----------------------------------------------------------------------------%
 
@@ -1733,7 +1734,7 @@ can_move_goal_backward(ModuleInfo, FullyStrict, ThisGoal, Goals) :-
     % of the first goal, unfolding the second goal in the branches which have
     % extra information about the arguments.
     %
-:- pred push_goal_into_goal(set(prog_var)::in, set(int)::in,
+:- pred push_goal_into_goal(set_of_progvar::in, set(int)::in,
     hlds_goal::in, hlds_goals::in, hlds_goal::in, hlds_goal::out,
     pd_info::in, pd_info::out) is det.
 
@@ -1743,7 +1744,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     EarlierGoal = hlds_goal(EarlierGoalExpr, _),
     (
         EarlierGoalExpr = switch(Var1, CanFail1, Cases1),
-        set.insert(Var1, NonLocals, CaseNonLocals),
+        set_of_var.insert(Var1, NonLocals, CaseNonLocals),
         append_goal_to_cases(Var1, BetweenGoals, LaterGoal,
             CaseNonLocals, 1, DeforestInfo, Cases1, Cases, !PDInfo),
         GoalExpr = switch(Var1, CanFail1, Cases)
@@ -1752,7 +1753,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
         pd_info_update_goal(Cond, !PDInfo),
         Cond = hlds_goal(_, CondInfo),
         CondNonLocals = goal_info_get_nonlocals(CondInfo),
-        set.union(CondNonLocals, NonLocals, ThenNonLocals),
+        set_of_var.union(CondNonLocals, NonLocals, ThenNonLocals),
         append_goal(Then0, BetweenGoals, LaterGoal,
             ThenNonLocals, 1, DeforestInfo, Then, !PDInfo),
         pd_info_set_instmap(InstMap0, !PDInfo),
@@ -1807,7 +1808,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     pd_info_set_instmap(InstMap0, !PDInfo).
 
 :- pred append_goal_to_disjuncts(hlds_goals::in, hlds_goal::in,
-    set(prog_var)::in, int::in, set(int)::in, hlds_goals::in, hlds_goals::out,
+    set_of_progvar::in, int::in, set(int)::in, hlds_goals::in, hlds_goals::out,
     pd_info::in, pd_info::out) is det.
 
 append_goal_to_disjuncts(_, _, _, _, _, [], [], !PDInfo).
@@ -1822,7 +1823,7 @@ append_goal_to_disjuncts(BetweenGoals, GoalToAppend, NonLocals,
         NonLocals, NextBranch, Branches, Goals0, Goals, !PDInfo).
 
 :- pred append_goal_to_cases(prog_var::in, hlds_goals::in,
-    hlds_goal::in, set(prog_var)::in, int::in, set(int)::in,
+    hlds_goal::in, set_of_progvar::in, int::in, set(int)::in,
     list(case)::in,list(case)::out, pd_info::in, pd_info::out) is det.
 
 append_goal_to_cases(_, _, _, _, _, _, [], [], !PDInfo).
@@ -1840,7 +1841,7 @@ append_goal_to_cases(Var, BetweenGoals, GoalToAppend, NonLocals,
         NonLocals, NextCase, Branches, Cases0, Cases, !PDInfo).
 
 :- pred append_goal(hlds_goal::in, hlds_goals::in,
-    hlds_goal::in, set(prog_var)::in, int::in, set(int)::in,
+    hlds_goal::in, set_of_progvar::in, int::in, set(int)::in,
     hlds_goal::out, pd_info::in, pd_info::out) is det.
 
 append_goal(Goal0, BetweenGoals, GoalToAppend0, NonLocals0,
@@ -1859,7 +1860,7 @@ append_goal(Goal0, BetweenGoals, GoalToAppend0, NonLocals0,
     list.condense([GoalList0, BetweenGoals, GoalListToAppend], Goals),
 
     goal_list_nonlocals(Goals, SubNonLocals),
-    set.intersect(NonLocals0, SubNonLocals, NonLocals),
+    set_of_var.intersect(NonLocals0, SubNonLocals, NonLocals),
     goal_list_instmap_delta(Goals, Delta0),
     instmap_delta_restrict(NonLocals, Delta0, Delta),
     goal_list_determinism(Goals, Detism),
@@ -2021,8 +2022,8 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         % Update the quantification if not all the output arguments are used.
         Goal1 = hlds_goal(_, GoalInfo1),
         NonLocals1 = goal_info_get_nonlocals(GoalInfo1),
-        set.list_to_set(Args, NonLocals),
-        ( set.equal(NonLocals1, NonLocals) ->
+        set_of_var.list_to_set(Args, NonLocals),
+        ( set_of_var.equal(NonLocals1, NonLocals) ->
             Goal2 = Goal1
         ;
             pd_requantify_goal(NonLocals, Goal1, Goal2, !PDInfo)
@@ -2034,8 +2035,8 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         ),
         proc_info_arglives(CalledProcInfo, ModuleInfo, ArgLives),
         get_live_vars(Args, ArgLives, LiveVars0),
-        set.list_to_set(LiveVars0, LiveVars1),
-        set.intersect(NonLocals, LiveVars1, LiveVars),
+        set_of_var.list_to_set(LiveVars0, LiveVars1),
+        set_of_var.intersect(NonLocals, LiveVars1, LiveVars),
         pd_util.unique_modecheck_goal_live_vars(LiveVars, Goal2, Goal3, Errors,
             !PDInfo),
 

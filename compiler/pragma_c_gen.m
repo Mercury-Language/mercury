@@ -481,7 +481,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         % other registers, so we need to save any live variables
         % (other than the output args) onto the stack.
         get_c_arg_list_vars(OutCArgs, OutVars),
-        set.list_to_set(OutVars, OutVarsSet),
+        set_of_var.list_to_set(OutVars, OutVarsSet),
         save_variables(OutVarsSet, _, SaveVarsCode, !CI)
     ),
 

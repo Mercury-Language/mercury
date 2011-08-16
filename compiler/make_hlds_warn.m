@@ -76,10 +76,10 @@
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module char.
-:- import_module set.
 :- import_module string.
 :- import_module varset.
 
@@ -140,14 +140,14 @@ warn_singletons(ModuleInfo, PredCallId, VarSet, Body, !Specs) :-
     % be singletons, but aren't.
 
     Info0 = warn_info(ModuleInfo, PredCallId, VarSet,
-        [], set.init, set.init, context_init),
-    QuantVars = set.init,
+        [], set_of_var.init, set_of_var.init, context_init),
+    QuantVars = set_of_var.init,
     warn_singletons_in_goal(Body, QuantVars, Info0, Info),
     Info = warn_info(_ModuleInfo, _PredCallId, _VarSet,
         NewSpecs, SingletonHeadVarsSet, MultiHeadVarsSet, HeadContext),
     !:Specs = NewSpecs ++ !.Specs,
-    set.to_sorted_list(SingletonHeadVarsSet, SingletonHeadVars),
-    set.to_sorted_list(MultiHeadVarsSet, MultiHeadVars),
+    set_of_var.to_sorted_list(SingletonHeadVarsSet, SingletonHeadVars),
+    set_of_var.to_sorted_list(MultiHeadVarsSet, MultiHeadVars),
     (
         SingletonHeadVars = []
     ;
@@ -179,11 +179,11 @@ warn_singletons(ModuleInfo, PredCallId, VarSet, Body, !Specs) :-
                 wi_specs                :: list(error_spec),
 
                 % The set of variables that occur singleton in the clause head.
-                wi_singleton_headvars   :: set(prog_var),
+                wi_singleton_headvars   :: set_of_progvar,
 
                 % The set of variables that occur more than once in the clause
                 % head, even though their names say they SHOULD be singletons.
-                wi_multi_headvars       :: set(prog_var),
+                wi_multi_headvars       :: set_of_progvar,
 
                 % The context of the clause head. Should be set to a meaningful
                 % value if either wi_singleton_headvars or wi_multi_headvars
@@ -196,7 +196,7 @@ warn_singletons(ModuleInfo, PredCallId, VarSet, Body, !Specs) :-
                 wi_head_context         :: prog_context
             ).
 
-:- pred warn_singletons_in_goal(hlds_goal::in, set(prog_var)::in,
+:- pred warn_singletons_in_goal(hlds_goal::in, set_of_progvar::in,
     warn_info::in, warn_info::out) is det.
 
 warn_singletons_in_goal(Goal, QuantVars, !Info) :-
@@ -223,10 +223,10 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
             (
                 Vars = [_ | _],
                 SubGoalVars = free_goal_vars(SubGoal),
-                set.init(EmptySet),
+                set_of_var.init(EmptySet),
                 warn_singletons_goal_vars(Vars, GoalInfo, EmptySet,
                     SubGoalVars, !Info),
-                set.insert_list(Vars, QuantVars, SubQuantVars)
+                set_of_var.insert_list(Vars, QuantVars, SubQuantVars)
             ;
                 Vars = [],
                 SubQuantVars = QuantVars
@@ -260,14 +260,14 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
             Vars = [_ | _],
             CondVars = free_goal_vars(Cond),
             ThenVars = free_goal_vars(Then),
-            set.union(CondVars, ThenVars, CondThenVars),
-            set.init(EmptySet),
+            set_of_var.union(CondVars, ThenVars, CondThenVars),
+            set_of_var.init(EmptySet),
             warn_singletons_goal_vars(Vars, GoalInfo, EmptySet, CondThenVars,
                 !Info)
         ;
             Vars = []
         ),
-        set.insert_list(Vars, QuantVars, CondThenQuantVars),
+        set_of_var.insert_list(Vars, QuantVars, CondThenQuantVars),
         warn_singletons_in_goal(Cond, CondThenQuantVars, !Info),
         warn_singletons_in_goal(Then, CondThenQuantVars, !Info),
         warn_singletons_in_goal(Else, QuantVars, !Info)
@@ -302,7 +302,8 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
             ShortHand = atomic_goal(_GoalType, _Outer, Inner,
                 _MaybeOutputVars, MainGoal, OrElseGoals, _OrElseInners),
             Inner = atomic_interface_vars(InnerDI, InnerUO),
-            set.insert_list([InnerDI, InnerUO], QuantVars, InsideQuantVars),
+            set_of_var.insert_list([InnerDI, InnerUO],
+                QuantVars, InsideQuantVars),
             warn_singletons_in_goal(MainGoal, InsideQuantVars, !Info),
             warn_singletons_in_goal_list(OrElseGoals, InsideQuantVars, !Info)
         ;
@@ -314,7 +315,7 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
         )
     ).
 
-:- pred warn_singletons_in_goal_list(list(hlds_goal)::in, set(prog_var)::in,
+:- pred warn_singletons_in_goal_list(list(hlds_goal)::in, set_of_progvar::in,
     warn_info::in, warn_info::out) is det.
 
 warn_singletons_in_goal_list([], _, !Info).
@@ -322,7 +323,7 @@ warn_singletons_in_goal_list([Goal | Goals], QuantVars, !Info) :-
     warn_singletons_in_goal(Goal, QuantVars, !Info),
     warn_singletons_in_goal_list(Goals, QuantVars, !Info).
 
-:- pred warn_singletons_in_cases(list(case)::in, set(prog_var)::in,
+:- pred warn_singletons_in_cases(list(case)::in, set_of_progvar::in,
     warn_info::in, warn_info::out) is det.
 
 warn_singletons_in_cases([], _, !Info).
@@ -332,7 +333,7 @@ warn_singletons_in_cases([Case | Cases], QuantVars, !Info) :-
     warn_singletons_in_cases(Cases, QuantVars, !Info).
 
 :- pred warn_singletons_in_unify(prog_var::in,
-    unify_rhs::in, hlds_goal_info::in, set(prog_var)::in,
+    unify_rhs::in, hlds_goal_info::in, set_of_progvar::in,
     warn_info::in, warn_info::out) is det.
 
 warn_singletons_in_unify(X, RHS, GoalInfo, QuantVars, !Info) :-
@@ -374,7 +375,7 @@ warn_singletons_in_unify(X, RHS, GoalInfo, QuantVars, !Info) :-
     % Omit the warning if GoalInfo says we should.
     %
 :- pred warn_singletons_goal_vars(list(prog_var)::in,
-    hlds_goal_info::in, set(prog_var)::in, set(prog_var)::in,
+    hlds_goal_info::in, set_of_progvar::in, set_of_progvar::in,
     warn_info::in, warn_info::out) is det.
 
 warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
@@ -400,7 +401,8 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
     ;
         ( goal_info_has_feature(GoalInfo, feature_from_head) ->
             SingleHeadVars0 = !.Info ^ wi_singleton_headvars,
-            set.insert_list(SingleVars, SingleHeadVars0, SingleHeadVars),
+            set_of_var.insert_list(SingleVars,
+                SingleHeadVars0, SingleHeadVars),
             !Info ^ wi_singleton_headvars := SingleHeadVars,
             !Info ^ wi_head_context := goal_info_get_context(GoalInfo)
         ;
@@ -421,7 +423,7 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
         MultiVars = [_ | _],
         ( goal_info_has_feature(GoalInfo, feature_from_head) ->
             MultiHeadVars0 = !.Info ^ wi_multi_headvars,
-            set.insert_list(MultiVars, MultiHeadVars0, MultiHeadVars),
+            set_of_var.insert_list(MultiVars, MultiHeadVars0, MultiHeadVars),
             !Info ^ wi_multi_headvars := MultiHeadVars,
             !Info ^ wi_head_context := goal_info_get_context(GoalInfo)
         ;
@@ -591,24 +593,24 @@ get_first_c_name_in_word([C | CodeChars], NameCharList, TheRest) :-
         TheRest = CodeChars
     ).
 
-:- pred is_singleton_var(set(prog_var)::in,
-    set(prog_var)::in, prog_varset::in, prog_var::in) is semidet.
+:- pred is_singleton_var(set_of_progvar::in,
+    set_of_progvar::in, prog_varset::in, prog_var::in) is semidet.
 
 is_singleton_var(NonLocals, QuantVars, VarSet, Var) :-
-    \+ set.member(Var, NonLocals),
+    \+ set_of_var.member(NonLocals, Var),
     varset.search_name(VarSet, Var, Name),
     \+ string.prefix(Name, "_"),
     \+ string.prefix(Name, "DCG_"),
     \+ (
-        set.member(QuantVar, QuantVars),
+        set_of_var.member(QuantVars, QuantVar),
         varset.search_name(VarSet, QuantVar, Name)
     ).
 
-:- pred is_multi_var(set(prog_var)::in, prog_varset::in, prog_var::in)
+:- pred is_multi_var(set_of_progvar::in, prog_varset::in, prog_var::in)
     is semidet.
 
 is_multi_var(NonLocals, VarSet, Var) :-
-    set.member(Var, NonLocals),
+    set_of_var.member(NonLocals, Var),
     varset.search_name(VarSet, Var, Name),
     string.prefix(Name, "_").
 

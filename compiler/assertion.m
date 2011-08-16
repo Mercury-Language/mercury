@@ -24,6 +24,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
 
+:- import_module list.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%
@@ -55,7 +56,7 @@
     % identical locations on both sides of the equivalence).
     %
 :- pred is_commutativity_assertion(module_info::in, assert_id::in,
-    prog_vars::in, pair(prog_var)::out) is semidet.
+    list(prog_var)::in, pair(prog_var)::out) is semidet.
 
     % is_associativity_assertion(MI, Id, Vs, CVs, OV):
     %
@@ -84,7 +85,7 @@
     % identical locations on both sides of the equivalence).
     %
 :- pred is_associativity_assertion(module_info::in, assert_id::in,
-    prog_vars::in, pair(prog_var)::out, prog_var::out) is semidet.
+    list(prog_var)::in, pair(prog_var)::out, prog_var::out) is semidet.
 
     % is_update_assertion(MI, Id, PId, Ss):
     %
@@ -107,7 +108,7 @@
     % the pair of variables which are state variables, SPair.
     %
 :- pred is_update_assertion(module_info::in, assert_id::in,
-    pred_id::in, prog_vars::in, pair(prog_var)::out) is semidet.
+    pred_id::in, list(prog_var)::in, pair(prog_var)::out) is semidet.
 
     % is_construction_equivalence_assertion(MI, Id, C, P):
     %
@@ -136,9 +137,9 @@
 :- import_module hlds.hlds_clauses.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -165,8 +166,8 @@ is_commutativity_assertion(Module, AssertId, CallVars, CommutativeVars) :-
     % It also takes a list of variables, Vs, to a call and returns
     % the two variables in that list that can be swapped, ie [A,B].
     %
-:- pred commutative_var_ordering(prog_vars::in, prog_vars::in,
-    prog_vars::in, pair(prog_var)::out) is semidet.
+:- pred commutative_var_ordering(list(prog_var)::in, list(prog_var)::in,
+    list(prog_var)::in, pair(prog_var)::out) is semidet.
 
 commutative_var_ordering([P | Ps], [Q | Qs], [V | Vs], CommutativeVars) :-
     ( P = Q ->
@@ -176,8 +177,9 @@ commutative_var_ordering([P | Ps], [Q | Qs], [V | Vs], CommutativeVars) :-
         CommutativeVars = V - CallVarB
     ).
 
-:- pred commutative_var_ordering_2(prog_var::in, prog_var::in, prog_vars::in,
-    prog_vars::in, prog_vars::in, prog_var::out) is semidet.
+:- pred commutative_var_ordering_2(prog_var::in, prog_var::in,
+    list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
+    prog_var::out) is semidet.
 
 commutative_var_ordering_2(VarP, VarQ, [P | Ps], [Q | Qs], [V | Vs],
         CallVarB) :-
@@ -200,8 +202,8 @@ is_associativity_assertion(Module, AssertId, CallVars,
 
     UniversiallyQuantifiedVars = goal_info_get_nonlocals(GoalInfo),
 
-        % There may or may not be a some [] depending on whether
-        % the user explicity qualified the call or not.
+    % There may or may not be a some [] depending on whether
+    % the user explicity qualified the call or not.
     (
         P = hlds_goal(scope(_, hlds_goal(conj(plain_conj, PCalls0), _)), _),
         Q = hlds_goal(scope(_, hlds_goal(conj(plain_conj, QCalls0), _)), _)
@@ -228,7 +230,7 @@ is_associativity_assertion(Module, AssertId, CallVars,
     %   compose(AB, C, ABC)     <=> compose(A, BC, ABC)
     %
 :- pred associative(hlds_goals::in, hlds_goals::in,
-    set(prog_var)::in, prog_vars::in,
+    set_of_progvar::in, list(prog_var)::in,
     pair(pair(prog_var), prog_var)::out) is cc_nondet.
 
 associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
@@ -281,8 +283,8 @@ reorder(PCalls, QCalls, LHSCalls, RHSCalls) :-
     % i.e. for app(TypeInfo, X, Y, XY), app(TypeInfo, XY, Z, XYZ)
     % L <= XY and Ps <= [X - XY, Y - Z, XY - XYZ]
     %
-:- pred process_one_side(hlds_goals::in, set(prog_var)::in, pred_id::out,
-    prog_var::out, assoc_list(prog_var)::out, prog_vars::out) is semidet.
+:- pred process_one_side(hlds_goals::in, set_of_progvar::in, pred_id::out,
+    prog_var::out, assoc_list(prog_var)::out, list(prog_var)::out) is semidet.
 
 process_one_side(Goals, UniversiallyQuantifiedVars, PredId,
         LinkingVar, Vars, VarsA) :-
@@ -306,8 +308,8 @@ is_update_assertion(Module, AssertId, _PredId, CallVars, StateA - StateB) :-
     goal_is_equivalence(hlds_goal(GoalExpr, GoalInfo), P, Q),
     UniversiallyQuantifiedVars = goal_info_get_nonlocals(GoalInfo),
 
-        % There may or may not be an explicit some [Vars] there,
-        % as quantification now works correctly.
+    % There may or may not be an explicit some [Vars] there,
+    % as quantification now works correctly.
     (
         P = hlds_goal(scope(_, hlds_goal(conj(plain_conj, PCalls0), _)), _),
         Q = hlds_goal(scope(_, hlds_goal(conj(plain_conj, QCalls0), _)), _)
@@ -325,8 +327,8 @@ is_update_assertion(Module, AssertId, _PredId, CallVars, StateA - StateB) :-
     %   compose(S0, A, SA),     compose(SB, A, S),
     %   compose(SA, B, S)   <=> compose(S0, B, SB)
     %
-:- pred update(hlds_goals::in, hlds_goals::in, set(prog_var)::in,
-    prog_vars::in, pair(prog_var)::out) is nondet.
+:- pred update(hlds_goals::in, hlds_goals::in, set_of_progvar::in,
+    list(prog_var)::in, pair(prog_var)::out) is nondet.
 
 update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
         StateA - StateB) :-
@@ -364,9 +366,9 @@ update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
     % corresponding variable in the second call, and VAs are the
     % variables of the first call.
     %
-:- pred process_two_linked_calls(hlds_goals::in, set(prog_var)::in,
-    pred_id::out, prog_var::out, assoc_list(prog_var)::out, prog_vars::out)
-    is semidet.
+:- pred process_two_linked_calls(hlds_goals::in, set_of_progvar::in,
+    pred_id::out, prog_var::out, assoc_list(prog_var)::out,
+    list(prog_var)::out) is semidet.
 
 process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
         LinkingVar, Vars, VarsA) :-
@@ -376,7 +378,8 @@ process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
     % Determine the linking variable, L. By definition it must be
     % existentially quantified and member of both variable lists.
     CommonVars = list_to_set(VarsA) `intersect` list_to_set(VarsB),
-    set.singleton_set(CommonVars `difference` UniversiallyQuantifiedVars,
+    set_of_var.is_singleton(
+        set_of_var.difference(CommonVars, UniversiallyQuantifiedVars),
         LinkingVar),
 
     % Set up mapping between the variables in the two calls.
@@ -591,8 +594,8 @@ equal_var(VA, VB, !Subst) :-
         map.insert(VA, VB, !Subst)
     ).
 
-:- pred equal_vars(prog_vars::in, prog_vars::in, subst::in, subst::out)
-    is semidet.
+:- pred equal_vars(list(prog_var)::in, list(prog_var)::in,
+    subst::in, subst::out) is semidet.
 
 equal_vars([], [], !Subst).
 equal_vars([VA | VAs], [VB | VBs], !Subst) :-
@@ -716,7 +719,7 @@ normalise_goal_expr(GoalExpr0, GoalExpr) :-
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
-            ShortHand0 = atomic_goal(GoalType, Outer, Inner, Vars, 
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, Vars,
                 MainGoal0, OrElseAlternatives0, OrElseInners),
             normalise_goal(MainGoal0, MainGoal),
             normalise_goals(OrElseAlternatives0, OrElseAlternatives),

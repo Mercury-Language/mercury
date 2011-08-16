@@ -37,6 +37,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module list.
@@ -75,7 +76,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
                 VarSet0, VarSet, map.init, Subst, [], RevConj),
 
             NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-            rename_vars_in_var_set(need_not_rename, Subst,
+            rename_vars_in_set_of_var(need_not_rename, Subst,
                 NonLocals0, NonLocals),
             goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
             conj_list_to_goal(list.reverse(RevConj), GoalInfo, Goal),
@@ -152,7 +153,7 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
                 ),
                 OtherGoal = hlds_goal(_, OtherGoalInfo),
                 OtherNonLocals = goal_info_get_nonlocals(OtherGoalInfo),
-                set.member(HeadVar, OtherNonLocals)
+                set_of_var.member(OtherNonLocals, HeadVar)
             ))
         ->
             SeenVars = [OtherVar | SeenVars0],

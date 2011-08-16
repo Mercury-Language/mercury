@@ -27,10 +27,10 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module list.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -98,7 +98,7 @@
 :- pred det_lookup_var_type(module_info::in, proc_info::in, prog_var::in,
     hlds_type_defn::out) is semidet.
 
-:- pred det_no_output_vars(set(prog_var)::in, instmap::in, instmap_delta::in,
+:- pred det_no_output_vars(set_of_progvar::in, instmap::in, instmap_delta::in,
     det_info::in) is semidet.
 
 :- pred det_info_add_error_spec(error_spec::in, det_info::in, det_info::out)

@@ -42,10 +42,10 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module list.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -67,8 +67,8 @@
 
     % Prepare for checking a disjunct in a disjunction.
     %
-:- pred prepare_for_disjunct(hlds_goal::in, determinism::in, set(prog_var)::in,
-    mode_info::in, mode_info::out) is det.
+:- pred prepare_for_disjunct(hlds_goal::in, determinism::in,
+    set_of_progvar::in, mode_info::in, mode_info::out) is det.
 
     % Make all nondet-live variables whose current inst
     % is `unique' become `mostly_unique'.
@@ -427,7 +427,7 @@ unique_modes_check_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
     %   ).
 
     mode_info_add_live_vars(ElseVars, !ModeInfo),
-    set.to_sorted_list(CondVars, CondVarList),
+    set_of_var.to_sorted_list(CondVars, CondVarList),
     select_live_vars(CondVarList, !.ModeInfo, CondLiveVars),
     Cond0 = hlds_goal(_, CondInfo0),
     CondDeltaInstMap0 = goal_info_get_instmap_delta(CondInfo0),
@@ -473,7 +473,7 @@ unique_modes_check_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
     % then the negation will succeed, and so these variables can be accessed
     % again after backtracking.
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
-    set.to_sorted_list(NonLocals, NonLocalsList),
+    set_of_var.to_sorted_list(NonLocals, NonLocalsList),
     select_live_vars(NonLocalsList, !.ModeInfo, LiveNonLocals),
     make_var_list_mostly_uniq(LiveNonLocals, !ModeInfo),
 
@@ -715,7 +715,7 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
     (
         ModeErrors = [_ | _],
         % mode error in callee for this mode
-        WaitingVars = set.list_to_set(ArgVars),
+        WaitingVars = set_of_var.list_to_set(ArgVars),
         mode_info_get_instmap(!.ModeInfo, InstMap),
         instmap_lookup_vars(InstMap, ArgVars, ArgInsts),
         mode_info_error(WaitingVars,
@@ -868,7 +868,7 @@ make_par_conj_nonlocal_multiset([], Empty) :-
 make_par_conj_nonlocal_multiset([Goal | Goals], NonLocalsMultiSet) :-
     make_par_conj_nonlocal_multiset(Goals, NonLocalsMultiSet0),
     NonLocals = goal_get_nonlocals(Goal),
-    set.to_sorted_list(NonLocals, NonLocalsList),
+    set_of_var.to_sorted_list(NonLocals, NonLocalsList),
     bag.from_list(NonLocalsList, NonLocalsMultiSet1),
     bag.union(NonLocalsMultiSet0, NonLocalsMultiSet1, NonLocalsMultiSet).
 
@@ -882,7 +882,7 @@ make_par_conj_nonlocal_multiset([Goal | Goals], NonLocalsMultiSet) :-
     % which we do not allow.
     %
 :- pred unique_modes_check_par_conj(list(hlds_goal)::in, bag(prog_var)::in,
-    list(hlds_goal)::out, list(pair(instmap, set(prog_var)))::out,
+    list(hlds_goal)::out, list(pair(instmap, set_of_progvar))::out,
     mode_info::in, mode_info::out) is det.
 
 unique_modes_check_par_conj(Goals0, NonLocalVarsBag, Goals, Instmaps,
@@ -917,7 +917,7 @@ unique_modes_check_par_conj_0(NonLocalVarsBag, !ModeInfo) :-
     % multiple parallel conjuncts, so we don't need to lock/unlock variables.
     %
 :- pred unique_modes_check_par_conj_1(list(hlds_goal)::in,
-    list(hlds_goal)::out, list(pair(instmap, set(prog_var)))::out,
+    list(hlds_goal)::out, list(pair(instmap, set_of_progvar))::out,
     mode_info::in, mode_info::out) is det.
 
 unique_modes_check_par_conj_1([], [], [], !ModeInfo).
@@ -937,7 +937,7 @@ unique_modes_check_par_conj_1([Goal0 | Goals0], [Goal | Goals],
     % of the resulting instmaps.
     %
 :- pred unique_modes_check_disj(list(hlds_goal)::in, determinism::in,
-    set(prog_var)::in, list(hlds_goal)::out, list(instmap)::out,
+    set_of_progvar::in, list(hlds_goal)::out, list(instmap)::out,
     mode_info::in, mode_info::out) is det.
 
 unique_modes_check_disj([], _, _, [], [], !ModeInfo).

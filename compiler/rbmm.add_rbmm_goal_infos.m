@@ -68,6 +68,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
@@ -278,7 +279,8 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
     RbmmInfo0 = rbmm_goal_info(Created, Removed, _, AllocatedInto, Used),
     NonLocals = goal_info_get_nonlocals(!.Info),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    NonLocalRegions = set.filter(is_region_var(VarTypes), NonLocals),
+    NonLocalRegionsSet = set_of_var.filter(is_region_var(VarTypes), NonLocals),
+    NonLocalRegions = set_of_var.bitset_to_set(NonLocalRegionsSet),
     set.difference(NonLocalRegions, set.union(Created, Removed), Carried),
     RbmmInfo = rbmm_goal_info(Created, Removed, Carried, AllocatedInto, Used),
     goal_info_set_maybe_rbmm(yes(RbmmInfo), !Info).

@@ -72,6 +72,7 @@
 :- import_module libs.rat.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.
@@ -1022,8 +1023,8 @@ build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
 local_vars(hlds_goal(GoalExpr, GoalInfo)) = Locals :-
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     QuantVars = free_goal_vars(hlds_goal(GoalExpr, GoalInfo)),
-    LocalsSet = set.difference(QuantVars, NonLocals),
-    Locals = set.to_sorted_list(LocalsSet).
+    LocalsSet = set_of_var.difference(QuantVars, NonLocals),
+    Locals = set_of_var.to_sorted_list(LocalsSet).
 
     % Partition the variables of a goal into a set of local variables
     % and a set of non-local variables.
@@ -1033,8 +1034,9 @@ local_vars(hlds_goal(GoalExpr, GoalInfo)) = Locals :-
 partition_vars(hlds_goal(GoalExpr, GoalInfo), Locals, NonLocals) :-
     NonLocals0 = goal_info_get_nonlocals(GoalInfo),
     QuantVars = free_goal_vars(hlds_goal(GoalExpr, GoalInfo)),
-    Locals = set.to_sorted_list(set.difference(QuantVars, NonLocals0)),
-    NonLocals = set.to_sorted_list(NonLocals0).
+    Locals = set_of_var.to_sorted_list(
+        set_of_var.difference(QuantVars, NonLocals0)),
+    NonLocals = set_of_var.to_sorted_list(NonLocals0).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1062,7 +1064,7 @@ allocate_sizevars(HeadProgVars, Goal, SizeVarMap, !SizeVarset) :-
 
 fill_var_to_sizevar_map(Goal, !SizeVarset, SizeVarMap) :-
     ProgVarsInGoal = free_goal_vars(Goal),
-    ProgVars = set.to_sorted_list(ProgVarsInGoal),
+    ProgVars = set_of_var.to_sorted_list(ProgVarsInGoal),
     make_size_var_map(ProgVars, !SizeVarset, SizeVarMap).
 
     % Fix the map in case some variables that are present only
@@ -1116,7 +1118,7 @@ find_failure_constraint_for_goal(Info, Goal) = AbstractGoal :-
         AbstractGoal = AbstractGoal0
     ;
         NonLocalProgVars0 = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
-        NonLocalProgVars = set.to_sorted_list(NonLocalProgVars0),
+        NonLocalProgVars = set_of_var.to_sorted_list(NonLocalProgVars0),
         NonLocalSizeVars = prog_vars_to_size_vars(Info ^ tti_size_var_map,
             NonLocalProgVars),
         Constraints = make_arg_constraints(NonLocalSizeVars,

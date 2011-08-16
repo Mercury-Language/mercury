@@ -81,6 +81,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -275,7 +276,7 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
         ;
             Disjuncts0 = [_ | _],
             NonLocals = goal_info_get_nonlocals(GoalInfo),
-            set.to_sorted_list(NonLocals, NonLocalsList),
+            set_of_var.to_sorted_list(NonLocals, NonLocalsList),
             detect_switches_in_disj(GoalInfo, NonLocalsList,
                 Disjuncts0, NonLocalsList, InstMap0, [], GoalExpr, !LocalInfo)
         )
@@ -782,8 +783,8 @@ expand_sub_disj_process_conj(AllowMulti, Var, ConjGoals, !.RevUnifies,
                 % specific to each cons_id, so it could not be shared with
                 % other cons_ids.
                 NonLocals = goal_info_get_nonlocals(FirstGoalInfo),
-                set.delete(Var, NonLocals, OtherNonLocals),
-                set.empty(OtherNonLocals),
+                set_of_var.delete(Var, NonLocals, OtherNonLocals),
+                set_of_var.is_empty(OtherNonLocals),
 
                 all_disjuncts_are_switch_var_unifies(Var, Disjuncts,
                     DisjConsIds),

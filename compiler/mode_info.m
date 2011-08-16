@@ -30,13 +30,13 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bag.
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -88,24 +88,26 @@
     --->    may_change_called_proc
     ;       may_not_change_called_proc.
 
-:- type locked_vars == assoc_list(var_lock_reason, set(prog_var)).
+:- type locked_vars == assoc_list(var_lock_reason, set_of_progvar).
 
 :- type mode_info.
 
 :- type debug_flags
     --->    debug_flags(
+                % The value --debug-modes-verbose.
                 verbose     :: bool,
-                            % The value --debug-modes-verbose
+
+                % The value --debug-modes-minimal.
                 minimal     :: bool,
-                            % The value --debug-modes-minimal
+
+                % The value --debug-modes-statistics.
                 statistics  :: bool
-                            % The value --debug-modes-statistics
             ).
 
     % Initialize the mode_info.
     %
 :- pred mode_info_init(module_info::in, pred_id::in,
-    proc_id::in, prog_context::in, set(prog_var)::in, instmap::in,
+    proc_id::in, prog_context::in, set_of_progvar::in, instmap::in,
     how_to_check_goal::in, may_change_called_proc::in, mode_info::out) is det.
 
     % The mode_info contains a flag indicating whether initialisation calls,
@@ -144,8 +146,8 @@
 :- type par_conj_mode_check_stack == list(par_conj_mode_check).
 :- type par_conj_mode_check
     --->    par_conj_mode_check(
-                par_conj_nonlocals  :: set(prog_var),
-                par_conj_bound      :: set(prog_var)
+                par_conj_nonlocals  :: set_of_progvar,
+                par_conj_bound      :: set_of_progvar
             ).
 
 %-----------------------------------------------------------------------------%
@@ -170,7 +172,7 @@
 :- pred mode_info_get_in_promise_purity_scope(mode_info::in,
     in_promise_purity_scope::out) is det.
 :- pred mode_info_get_num_errors(mode_info::in, int::out) is det.
-:- pred mode_info_get_liveness(mode_info::in, set(prog_var)::out) is det.
+:- pred mode_info_get_liveness(mode_info::in, set_of_progvar::out) is det.
 :- pred mode_info_get_varset(mode_info::in, prog_varset::out) is det.
 :- pred mode_info_get_instvarset(mode_info::in, inst_varset::out) is det.
 :- pred mode_info_get_var_types(mode_info::in, vartypes::out) is det.
@@ -230,9 +232,9 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_in_promise_purity_scope(in_promise_purity_scope::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_add_live_vars(set(prog_var)::in,
+:- pred mode_info_add_live_vars(set_of_progvar::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_remove_live_vars(set(prog_var)::in,
+:- pred mode_info_remove_live_vars(set_of_progvar::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_varset(prog_varset::in,
     mode_info::in, mode_info::out) is det.
@@ -272,10 +274,10 @@
 :- pred mode_info_get_types_of_vars(mode_info::in,
     list(prog_var)::in, list(mer_type)::out) is det.
 
-:- pred mode_info_lock_vars(var_lock_reason::in, set(prog_var)::in,
+:- pred mode_info_lock_vars(var_lock_reason::in, set_of_progvar::in,
     mode_info::in, mode_info::out) is det.
 
-:- pred mode_info_unlock_vars(var_lock_reason::in, set(prog_var)::in,
+:- pred mode_info_unlock_vars(var_lock_reason::in, set_of_progvar::in,
     mode_info::in, mode_info::out) is det.
 
 :- pred mode_info_var_is_locked(mode_info::in, prog_var::in,
@@ -303,7 +305,7 @@
 
     % Record a mode error (and associated context info) in the mode_info.
     %
-:- pred mode_info_error(set(prog_var)::in, mode_error::in,
+:- pred mode_info_error(set_of_progvar::in, mode_error::in,
     mode_info::in, mode_info::out) is det.
 
 :- pred mode_info_add_error(mode_error_info::in,
@@ -515,7 +517,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMap0,
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
 
-    bag.from_set(LiveVars, LiveVarsBag),
+    bag.from_sorted_list(set_of_var.to_sorted_list(LiveVars), LiveVarsBag),
     instmap.init_unreachable(LastCheckpointInstMap),
     LockedVars = [],
     ParallelVars = [],
@@ -541,7 +543,8 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMap0,
     mode_context_init(ModeContext),
     delay_info_init(DelayInfo),
     ErrorList = [],
-    bag.from_set(LiveVars, NondetLiveVarsBag),
+    bag.from_sorted_list(set_of_var.to_sorted_list(LiveVars),
+        NondetLiveVarsBag),
 
     ModeInfo = mode_info(ModuleInfo, InstMap0, DelayInfo, ErrorList,
         ModeContext, Context, NondetLiveVarsBag, ModeSubInfo).
@@ -699,16 +702,18 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
     % We keep track of the live variables and the nondet-live variables
     % a bag, represented as a list of sets of vars.
     % This allows us to easily add and remove sets of variables.
-    % It's probably not maximally efficient.
+    % It is probably not maximally efficient.
 
     % Add a set of vars to the bag of live vars and the bag of
     % nondet-live vars.
 
 mode_info_add_live_vars(NewLiveVars, !MI) :-
+    set_of_var.to_sorted_list(NewLiveVars, NewLiveVarsList),
+
     mode_info_get_live_vars(!.MI, LiveVars0),
     mode_info_get_nondet_live_vars(!.MI, NondetLiveVars0),
-    bag.insert_set(NewLiveVars, LiveVars0, LiveVars),
-    bag.insert_set(NewLiveVars, NondetLiveVars0, NondetLiveVars),
+    bag.insert_list(NewLiveVarsList, LiveVars0, LiveVars),
+    bag.insert_list(NewLiveVarsList, NondetLiveVars0, NondetLiveVars),
     mode_info_set_live_vars(LiveVars, !MI),
     mode_info_set_nondet_live_vars(NondetLiveVars, !MI).
 
@@ -716,18 +721,19 @@ mode_info_add_live_vars(NewLiveVars, !MI) :-
     % the bag of nondet-live vars.
 
 mode_info_remove_live_vars(OldLiveVars, !MI) :-
+    set_of_var.to_sorted_list(OldLiveVars, OldLiveVarsList),
+
     mode_info_get_live_vars(!.MI, LiveVars0),
     mode_info_get_nondet_live_vars(!.MI, NondetLiveVars0),
-    bag.det_remove_set(OldLiveVars, LiveVars0, LiveVars),
-    bag.det_remove_set(OldLiveVars, NondetLiveVars0, NondetLiveVars),
+    bag.det_remove_list(OldLiveVarsList, LiveVars0, LiveVars),
+    bag.det_remove_list(OldLiveVarsList, NondetLiveVars0, NondetLiveVars),
     mode_info_set_live_vars(LiveVars, !MI),
     mode_info_set_nondet_live_vars(NondetLiveVars, !MI),
 
     % When a variable becomes dead, we may be able to wake up a goal
     % which is waiting on that variable.
-    set.to_sorted_list(OldLiveVars, VarList),
     mode_info_get_delay_info(!.MI, DelayInfo0),
-    delay_info_bind_var_list(VarList, DelayInfo0, DelayInfo),
+    delay_info_bind_var_list(OldLiveVarsList, DelayInfo0, DelayInfo),
     mode_info_set_delay_info(DelayInfo, !MI).
 
 mode_info_var_list_is_live(_, [], []).
@@ -756,7 +762,7 @@ mode_info_var_is_nondet_live(ModeInfo, Var, Result) :-
 mode_info_get_liveness(ModeInfo, LiveVars) :-
     mode_info_get_live_vars(ModeInfo, LiveVarsBag),
     bag.to_list_without_duplicates(LiveVarsBag, SortedList),
-    set.sorted_list_to_set(SortedList, LiveVars).
+    set_of_var.sorted_list_to_set(SortedList, LiveVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -781,7 +787,7 @@ mode_info_unlock_vars(Reason, Vars, !ModeInfo) :-
     mode_info_get_locked_vars(!.ModeInfo, LockedVars0),
     (
         LockedVars0 = [Reason - TheseVars | LockedVars1],
-        set.equal(TheseVars, Vars)
+        set_of_var.equal(TheseVars, Vars)
     ->
         LockedVars = LockedVars1
     ;
@@ -797,7 +803,7 @@ mode_info_var_is_locked(ModeInfo, Var, Reason) :-
     var_lock_reason::out) is semidet.
 
 mode_info_var_is_locked_2([ThisReason - Set | Sets], Var, Reason) :-
-    ( set.member(Var, Set) ->
+    ( set_of_var.member(Set, Var) ->
         Reason = ThisReason
     ;
         mode_info_var_is_locked_2(Sets, Var, Reason)

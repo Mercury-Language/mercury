@@ -25,6 +25,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1083,20 +1084,20 @@
     --->    mode_constr_goal_info(
                 % Inst_graph nodes that are reachable from variables
                 % that occur in the goal.
-                mci_occurring_vars          :: set(prog_var),
+                mci_occurring_vars          :: set_of_progvar,
 
                 % Inst_graph nodes produced by this goal.
-                mci_producing_vars          :: set(prog_var),
+                mci_producing_vars          :: set_of_progvar,
 
                 % Inst_graph nodes consumed by this goal.
-                mci_consuming_vars          :: set(prog_var),
+                mci_consuming_vars          :: set_of_progvar,
 
                 % The variables that this goal makes visible.
-                mci_make_visible_vars       :: set(prog_var),
+                mci_make_visible_vars       :: set_of_progvar,
 
                 % The variables that this goal needs to be visible
                 % before it is executed.
-                mci_need_visible_vars       :: set(prog_var)
+                mci_need_visible_vars       :: set_of_progvar
             ).
 
     % Information about compile-time garbage collection.
@@ -1108,16 +1109,16 @@
                 % + sum(pre_births), minus the set of dead vars
                 % (sum(post_deaths and pre_deaths).
                 % The information is needed for determining the direct reuses.
-                ctgc_lfu        :: set(prog_var),
+                ctgc_lfu                    :: set_of_progvar,
 
                 % The local backward use set. This set contains the
                 % instantiated variables that are needed upon backtracking
                 % (i.e. syntactically appearing in any nondet call preceding
                 % this goal).
-                ctgc_lbu        :: set(prog_var),
+                ctgc_lbu                    :: set_of_progvar,
 
                 % Any structure reuse information related to this call.
-                ctgc_reuse      :: reuse_description
+                ctgc_reuse                  :: reuse_description
             ).
 
     % Information describing possible kinds of reuse on a per goal basis.
@@ -1226,8 +1227,8 @@
                 port_counts_give_coverage_after
             ).
 
-    % A goal is trivial if it is a simple atomic goal (not a call), or it's a
-    % non-atomic goal and all it's descendants are trivial.
+    % A goal is trivial if it is a simple atomic goal (not a call),
+    % or it is a non-atomic goal and all its descendants are trivial.
     %
 :- type goal_trivial
     --->    goal_is_trivial
@@ -1242,19 +1243,19 @@
 
 :- pred goal_info_init(hlds_goal_info::out) is det.
 :- pred goal_info_init(prog_context::in, hlds_goal_info::out) is det.
-:- pred goal_info_init(set(prog_var)::in, instmap_delta::in, determinism::in,
+:- pred goal_info_init(set_of_progvar::in, instmap_delta::in, determinism::in,
     purity::in, hlds_goal_info::out) is det.
-:- pred goal_info_init(set(prog_var)::in, instmap_delta::in, determinism::in,
+:- pred goal_info_init(set_of_progvar::in, instmap_delta::in, determinism::in,
     purity::in, prog_context::in, hlds_goal_info::out) is det.
 
-:- func impure_init_goal_info(set(prog_var), instmap_delta, determinism)
+:- func impure_init_goal_info(set_of_progvar, instmap_delta, determinism)
     = hlds_goal_info.
-:- func impure_reachable_init_goal_info(set(prog_var), determinism)
+:- func impure_reachable_init_goal_info(set_of_progvar, determinism)
     = hlds_goal_info.
-:- func impure_unreachable_init_goal_info(set(prog_var), determinism)
+:- func impure_unreachable_init_goal_info(set_of_progvar, determinism)
     = hlds_goal_info.
 
-:- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set(prog_var))
+:- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set_of_progvar)
     = hlds_goal_info.
 :- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred add_impurity_if_needed(bool::in,
@@ -1272,8 +1273,8 @@
 :- func goal_info_get_determinism(hlds_goal_info) = determinism.
 :- func goal_info_get_instmap_delta(hlds_goal_info) = instmap_delta.
 :- func goal_info_get_context(hlds_goal_info) = prog_context.
-:- func goal_info_get_nonlocals(hlds_goal_info) = set(prog_var).
-:- func goal_info_get_code_gen_nonlocals(hlds_goal_info) = set(prog_var).
+:- func goal_info_get_nonlocals(hlds_goal_info) = set_of_progvar.
+:- func goal_info_get_code_gen_nonlocals(hlds_goal_info) = set_of_progvar.
 :- func goal_info_get_purity(hlds_goal_info) = purity.
 :- func goal_info_get_features(hlds_goal_info) = set(goal_feature).
 :- func goal_info_get_goal_id(hlds_goal_info) = goal_id.
@@ -1284,8 +1285,8 @@
 :- func goal_info_get_maybe_mode_constr(hlds_goal_info) =
     maybe(mode_constr_goal_info).
 :- func goal_info_get_maybe_ctgc(hlds_goal_info) = maybe(ctgc_goal_info).
-:- func goal_info_get_maybe_lfu(hlds_goal_info) = maybe(set(prog_var)).
-:- func goal_info_get_maybe_lbu(hlds_goal_info) = maybe(set(prog_var)).
+:- func goal_info_get_maybe_lfu(hlds_goal_info) = maybe(set_of_progvar).
+:- func goal_info_get_maybe_lbu(hlds_goal_info) = maybe(set_of_progvar).
 :- func goal_info_get_maybe_reuse(hlds_goal_info) = maybe(reuse_description).
 :- func goal_info_get_maybe_dp_info(hlds_goal_info) = maybe(dp_goal_info).
 
@@ -1297,9 +1298,9 @@
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_purity(purity::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_nonlocals(set(prog_var)::in,
+:- pred goal_info_set_nonlocals(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_code_gen_nonlocals(set(prog_var)::in,
+:- pred goal_info_set_code_gen_nonlocals(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_features(set(goal_feature)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -1317,9 +1318,9 @@
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_maybe_ctgc(maybe(ctgc_goal_info)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_lfu(set(prog_var)::in, hlds_goal_info::in,
+:- pred goal_info_set_lfu(set_of_progvar::in, hlds_goal_info::in,
     hlds_goal_info::out) is det.
-:- pred goal_info_set_lbu(set(prog_var)::in, hlds_goal_info::in,
+:- pred goal_info_set_lbu(set_of_progvar::in, hlds_goal_info::in,
     hlds_goal_info::out) is det.
 :- pred goal_info_set_reuse(reuse_description::in, hlds_goal_info::in,
     hlds_goal_info::out) is det.
@@ -1330,43 +1331,43 @@
     % requested values have not been set.
     %
 :- func goal_info_get_rbmm(hlds_goal_info) = rbmm_goal_info.
-:- func goal_info_get_lfu(hlds_goal_info) = set(prog_var).
-:- func goal_info_get_lbu(hlds_goal_info) = set(prog_var).
+:- func goal_info_get_lfu(hlds_goal_info) = set_of_progvar.
+:- func goal_info_get_lbu(hlds_goal_info) = set_of_progvar.
 :- func goal_info_get_reuse(hlds_goal_info) = reuse_description.
 
-:- pred goal_info_get_occurring_vars(hlds_goal_info::in, set(prog_var)::out)
+:- pred goal_info_get_occurring_vars(hlds_goal_info::in, set_of_progvar::out)
     is det.
-:- pred goal_info_get_producing_vars(hlds_goal_info::in, set(prog_var)::out)
+:- pred goal_info_get_producing_vars(hlds_goal_info::in, set_of_progvar::out)
     is det.
-:- pred goal_info_get_consuming_vars(hlds_goal_info::in, set(prog_var)::out)
+:- pred goal_info_get_consuming_vars(hlds_goal_info::in, set_of_progvar::out)
     is det.
-:- pred goal_info_get_make_visible_vars(hlds_goal_info::in, set(prog_var)::out)
+:- pred goal_info_get_make_visible_vars(hlds_goal_info::in, set_of_progvar::out)
     is det.
-:- pred goal_info_get_need_visible_vars(hlds_goal_info::in, set(prog_var)::out)
+:- pred goal_info_get_need_visible_vars(hlds_goal_info::in, set_of_progvar::out)
     is det.
 
-:- pred goal_info_set_occurring_vars(set(prog_var)::in,
+:- pred goal_info_set_occurring_vars(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_producing_vars(set(prog_var)::in,
+:- pred goal_info_set_producing_vars(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_consuming_vars(set(prog_var)::in,
+:- pred goal_info_set_consuming_vars(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_make_visible_vars(set(prog_var)::in,
+:- pred goal_info_set_make_visible_vars(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_need_visible_vars(set(prog_var)::in,
+:- pred goal_info_set_need_visible_vars(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-:- func producing_vars(hlds_goal_info) = set(prog_var).
-:- func 'producing_vars :='(hlds_goal_info, set(prog_var)) = hlds_goal_info.
+:- func producing_vars(hlds_goal_info) = set_of_progvar.
+:- func 'producing_vars :='(hlds_goal_info, set_of_progvar) = hlds_goal_info.
 
-:- func consuming_vars(hlds_goal_info) = set(prog_var).
-:- func 'consuming_vars :='(hlds_goal_info, set(prog_var)) = hlds_goal_info.
+:- func consuming_vars(hlds_goal_info) = set_of_progvar.
+:- func 'consuming_vars :='(hlds_goal_info, set_of_progvar) = hlds_goal_info.
 
-:- func make_visible_vars(hlds_goal_info) = set(prog_var).
-:- func 'make_visible_vars :='(hlds_goal_info, set(prog_var)) = hlds_goal_info.
+:- func make_visible_vars(hlds_goal_info) = set_of_progvar.
+:- func 'make_visible_vars :='(hlds_goal_info, set_of_progvar) = hlds_goal_info.
 
-:- func need_visible_vars(hlds_goal_info) = set(prog_var).
-:- func 'need_visible_vars :='(hlds_goal_info, set(prog_var)) = hlds_goal_info.
+:- func need_visible_vars(hlds_goal_info) = set_of_progvar.
+:- func 'need_visible_vars :='(hlds_goal_info, set_of_progvar) = hlds_goal_info.
 
 :- type contains_trace_goal
     --->    contains_trace_goal
@@ -1375,7 +1376,7 @@
 :- func worst_contains_trace(contains_trace_goal, contains_trace_goal)
     = contains_trace_goal.
 
-:- func goal_get_nonlocals(hlds_goal) = set(prog_var).
+:- func goal_get_nonlocals(hlds_goal) = set_of_progvar.
 
 :- pred goal_set_goal_id(goal_id::in, hlds_goal::in, hlds_goal::out) is det.
 
@@ -1683,7 +1684,7 @@
 
     % Return the union of all the nonlocals of a list of goals.
     %
-:- pred goal_list_nonlocals(list(hlds_goal)::in, set(prog_var)::out) is det.
+:- pred goal_list_nonlocals(list(hlds_goal)::in, set_of_progvar::out) is det.
 
     % Compute the instmap_delta resulting from applying
     % all the instmap_deltas of the given goals.
@@ -1922,7 +1923,7 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
                 % quantification.m). In some circumstances, this may be a
                 % conservative approximation: it may be a superset of the
                 % real non-locals.
-/*  3 */        gi_nonlocals        :: set(prog_var),
+/*  3 */        gi_nonlocals        :: set_of_progvar,
 
 /*  4 */        gi_purity           :: purity,
 
@@ -1964,7 +1965,7 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
 goal_info_init(GoalInfo) :-
     Detism = detism_erroneous,
     instmap_delta_init_unreachable(InstMapDelta),
-    set.init(NonLocals),
+    NonLocals = set_of_var.init,
     term.context_init(Context),
     set.init(Features),
     GoalId = goal_id(-1),
@@ -1977,7 +1978,7 @@ goal_info_init(GoalInfo) :-
 goal_info_init(Context, GoalInfo) :-
     Detism = detism_erroneous,
     instmap_delta_init_unreachable(InstMapDelta),
-    set.init(NonLocals),
+    NonLocals = set_of_var.init,
     set.init(Features),
     GoalId = goal_id(-1),
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
@@ -2019,13 +2020,13 @@ impure_unreachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
 
 goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
     NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
-    NonLocals = set.union(NonLocals0, NewNonLocals),
+    NonLocals = set_of_var.union(NonLocals0, NewNonLocals),
     goal_info_set_nonlocals(NonLocals, !GoalInfo),
     make_impure(!GoalInfo).
 
 fail_goal_info = GoalInfo :-
     instmap_delta_init_unreachable(InstMapDelta),
-    goal_info_init(set.init, InstMapDelta, detism_failure, purity_pure,
+    goal_info_init(set_of_var.init, InstMapDelta, detism_failure, purity_pure,
         GoalInfo).
 
 make_impure(!GoalInfo) :-
@@ -2054,7 +2055,8 @@ hlds_goal_extra_info_init(Context) = ExtraInfo :-
 
 :- func ctgc_goal_info_init = ctgc_goal_info.
 
-ctgc_goal_info_init = ctgc_goal_info(set.init, set.init, no_reuse_info).
+ctgc_goal_info_init =
+    ctgc_goal_info(set_of_var.init, set_of_var.init, no_reuse_info).
 
 rbmm_info_init = rbmm_goal_info(set.init, set.init, set.init, set.init,
     set.init).
@@ -2130,7 +2132,7 @@ goal_info_get_occurring_vars(GoalInfo, OccurringVars) :-
         OccurringVars = MCI ^ mci_occurring_vars
     ;
         MMCI = no,
-        OccurringVars = set.init
+        OccurringVars = set_of_var.init
     ).
 
 goal_info_get_producing_vars(GoalInfo, ProducingVars) :-
@@ -2140,7 +2142,7 @@ goal_info_get_producing_vars(GoalInfo, ProducingVars) :-
         ProducingVars = MCI ^ mci_producing_vars
     ;
         MMCI = no,
-        ProducingVars = set.init
+        ProducingVars = set_of_var.init
     ).
 
 goal_info_get_consuming_vars(GoalInfo, ConsumingVars) :-
@@ -2150,7 +2152,7 @@ goal_info_get_consuming_vars(GoalInfo, ConsumingVars) :-
         ConsumingVars = MCI ^ mci_consuming_vars
     ;
         MMCI = no,
-        ConsumingVars = set.init
+        ConsumingVars = set_of_var.init
     ).
 
 goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars) :-
@@ -2160,7 +2162,7 @@ goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars) :-
         MakeVisibleVars = MCI ^ mci_make_visible_vars
     ;
         MMCI = no,
-        MakeVisibleVars = set.init
+        MakeVisibleVars = set_of_var.init
     ).
 
 goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars) :-
@@ -2170,7 +2172,7 @@ goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars) :-
         NeedVisibleVars = MCI ^ mci_need_visible_vars
     ;
         MMCI = no,
-        NeedVisibleVars = set.init
+        NeedVisibleVars = set_of_var.init
     ).
 
 goal_info_set_occurring_vars(OccurringVars, !GoalInfo) :-
@@ -2180,10 +2182,10 @@ goal_info_set_occurring_vars(OccurringVars, !GoalInfo) :-
         MCI = MCI0 ^ mci_occurring_vars := OccurringVars
     ;
         MMCI0 = no,
-        set.init(ProducingVars),
-        set.init(ConsumingVars),
-        set.init(MakeVisibleVars),
-        set.init(NeedVisibleVars),
+        set_of_var.init(ProducingVars),
+        set_of_var.init(ConsumingVars),
+        set_of_var.init(MakeVisibleVars),
+        set_of_var.init(NeedVisibleVars),
         MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
@@ -2196,10 +2198,10 @@ goal_info_set_producing_vars(ProducingVars, !GoalInfo) :-
         MCI = MCI0 ^ mci_producing_vars := ProducingVars
     ;
         MMCI0 = no,
-        set.init(OccurringVars),
-        set.init(ConsumingVars),
-        set.init(MakeVisibleVars),
-        set.init(NeedVisibleVars),
+        set_of_var.init(OccurringVars),
+        set_of_var.init(ConsumingVars),
+        set_of_var.init(MakeVisibleVars),
+        set_of_var.init(NeedVisibleVars),
         MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
@@ -2212,10 +2214,10 @@ goal_info_set_consuming_vars(ConsumingVars, !GoalInfo) :-
         MCI = MCI0 ^ mci_consuming_vars := ConsumingVars
     ;
         MMCI0 = no,
-        set.init(OccurringVars),
-        set.init(ProducingVars),
-        set.init(MakeVisibleVars),
-        set.init(NeedVisibleVars),
+        set_of_var.init(OccurringVars),
+        set_of_var.init(ProducingVars),
+        set_of_var.init(MakeVisibleVars),
+        set_of_var.init(NeedVisibleVars),
         MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
@@ -2228,10 +2230,10 @@ goal_info_set_make_visible_vars(MakeVisibleVars, !GoalInfo) :-
         MCI = MCI0 ^ mci_make_visible_vars := MakeVisibleVars
     ;
         MMCI0 = no,
-        set.init(OccurringVars),
-        set.init(ProducingVars),
-        set.init(ConsumingVars),
-        set.init(NeedVisibleVars),
+        set_of_var.init(OccurringVars),
+        set_of_var.init(ProducingVars),
+        set_of_var.init(ConsumingVars),
+        set_of_var.init(NeedVisibleVars),
         MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
@@ -2244,10 +2246,10 @@ goal_info_set_need_visible_vars(NeedVisibleVars, !GoalInfo) :-
         MCI = MCI0 ^ mci_need_visible_vars := NeedVisibleVars
     ;
         MMCI0 = no,
-        set.init(OccurringVars),
-        set.init(ProducingVars),
-        set.init(ConsumingVars),
-        set.init(MakeVisibleVars),
+        set_of_var.init(OccurringVars),
+        set_of_var.init(ProducingVars),
+        set_of_var.init(ConsumingVars),
+        set_of_var.init(MakeVisibleVars),
         MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
@@ -3003,7 +3005,7 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
     !.GoalInfo = goal_info(Detism, InstMapDelta0, NonLocals0, Purity,
         Features, GoalPath, CodeGenInfo0, ExtraInfo0),
 
-    rename_vars_in_var_set(Must, Subn, NonLocals0, NonLocals),
+    rename_vars_in_set_of_var(Must, Subn, NonLocals0, NonLocals),
     instmap_delta_apply_sub(Must, Subn, InstMapDelta0, InstMapDelta),
     (
         CodeGenInfo0 = no_code_gen_info,
@@ -3022,8 +3024,8 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
     ;
         MaybeCTGC0 = yes(CTGC0),
         CTGC0 = ctgc_goal_info(ForwardUse0, BackwardUse0, ReuseDesc0),
-        rename_vars_in_var_set(Must, Subn, ForwardUse0, ForwardUse),
-        rename_vars_in_var_set(Must, Subn, BackwardUse0, BackwardUse),
+        rename_vars_in_set_of_var(Must, Subn, ForwardUse0, ForwardUse),
+        rename_vars_in_set_of_var(Must, Subn, BackwardUse0, BackwardUse),
         (
             ( ReuseDesc0 = no_reuse_info
             ; ReuseDesc0 = no_possible_reuse
@@ -3065,11 +3067,11 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
         MaybeMCI0 = yes(MCI0),
         MCI0 = mode_constr_goal_info(Occurring0, Producing0, Consuming0,
             MakeVisible0, NeedVisible0),
-        rename_vars_in_var_set(Must, Subn, Occurring0, Occurring),
-        rename_vars_in_var_set(Must, Subn, Producing0, Producing),
-        rename_vars_in_var_set(Must, Subn, Consuming0, Consuming),
-        rename_vars_in_var_set(Must, Subn, MakeVisible0, MakeVisible),
-        rename_vars_in_var_set(Must, Subn, NeedVisible0, NeedVisible),
+        rename_vars_in_set_of_var(Must, Subn, Occurring0, Occurring),
+        rename_vars_in_set_of_var(Must, Subn, Producing0, Producing),
+        rename_vars_in_set_of_var(Must, Subn, Consuming0, Consuming),
+        rename_vars_in_set_of_var(Must, Subn, MakeVisible0, MakeVisible),
+        rename_vars_in_set_of_var(Must, Subn, NeedVisible0, NeedVisible),
         MCI = mode_constr_goal_info(Occurring, Producing, Consuming,
             MakeVisible, NeedVisible),
         MaybeMCI = yes(MCI)
@@ -3340,7 +3342,8 @@ goal_expr_has_subgoals(GoalExpr) = HasSubGoals :-
 
 true_goal = hlds_goal(true_goal_expr, GoalInfo) :-
     instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(set.init, InstMapDelta, detism_det, purity_pure, GoalInfo).
+    goal_info_init(set_of_var.init, InstMapDelta, detism_det, purity_pure,
+        GoalInfo).
 
 true_goal_expr = conj(plain_conj, []).
 
@@ -3350,7 +3353,7 @@ true_goal_with_context(Context) = hlds_goal(GoalExpr, GoalInfo) :-
 
 fail_goal = hlds_goal(fail_goal_expr, GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
-    goal_info_init(set.init, InstMapDelta, detism_failure, purity_pure,
+    goal_info_init(set_of_var.init, InstMapDelta, detism_failure, purity_pure,
         GoalInfo).
 
 fail_goal_expr = disj([]).
@@ -3362,13 +3365,8 @@ fail_goal_with_context(Context) = hlds_goal(GoalExpr, GoalInfo) :-
 %-----------------------------------------------------------------------------%
 
 goal_list_nonlocals(Goals, NonLocals) :-
-    UnionNonLocals = (pred(Goal::in, Vars0::in, Vars::out) is det :-
-        Goal = hlds_goal(_, GoalInfo),
-        Vars1 = goal_info_get_nonlocals(GoalInfo),
-        set.union(Vars0, Vars1, Vars)
-    ),
-    set.init(NonLocals0),
-    list.foldl(UnionNonLocals, Goals, NonLocals0, NonLocals).
+    GoalNonLocals = list.map(goal_get_nonlocals, Goals),
+    set_of_var.union_list(GoalNonLocals, NonLocals).
 
 goal_list_instmap_delta(Goals, InstMapDelta) :-
     ApplyDelta = (pred(Goal::in, Delta0::in, Delta::out) is det :-
@@ -3488,7 +3486,7 @@ make_simple_assign(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Mode = ((free -> Ground) - (Ground -> Ground)),
     Unification = assign(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
-    goal_info_init(set.list_to_set([X, Y]), instmap_delta_bind_var(X),
+    goal_info_init(set_of_var.list_to_set([X, Y]), instmap_delta_bind_var(X),
         detism_semi, purity_pure, GoalInfo),
     GoalExpr = unify(X, rhs_var(Y), Mode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
@@ -3498,7 +3496,7 @@ make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Mode = ((Ground -> Ground) - (Ground -> Ground)),
     Unification = simple_test(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
-    goal_info_init(set.list_to_set([X, Y]), instmap_delta_bind_no_var,
+    goal_info_init(set_of_var.list_to_set([X, Y]), instmap_delta_bind_no_var,
         detism_semi, purity_pure, GoalInfo),
     GoalExpr = unify(X, rhs_var(Y), Mode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
@@ -3580,7 +3578,7 @@ make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     Context = unify_context(umc_explicit, []),
     GoalExpr = unify(Var, RHS, Mode, Unification, Context),
-    set.singleton_set(NonLocals, Var),
+    NonLocals = set_of_var.make_singleton(Var),
     instmap_delta_init_reachable(InstMapDelta0),
     instmap_delta_insert_var(Var, Inst, InstMapDelta0, InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo).
@@ -3595,7 +3593,7 @@ construct_functor(Var, ConsId, Args, Goal) :-
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     UnifyContext = unify_context(umc_explicit, []),
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
-    set.list_to_set([Var | Args], NonLocals),
+    set_of_var.list_to_set([Var | Args], NonLocals),
     InstMapDelta = instmap_delta_bind_var(Var),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     Goal = hlds_goal(Unify, GoalInfo).
@@ -3610,7 +3608,7 @@ deconstruct_functor(Var, ConsId, Args, Goal) :-
     Unification = deconstruct(Var, ConsId, Args, UniModes, cannot_fail,
         cannot_cgc),
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
-    set.list_to_set([Var | Args], NonLocals),
+    set_of_var.list_to_set([Var | Args], NonLocals),
     InstMapDelta = instmap_delta_bind_vars(Args),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     Goal = hlds_goal(Unify, GoalInfo).

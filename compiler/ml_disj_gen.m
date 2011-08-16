@@ -130,12 +130,12 @@
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module set.
 
 ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
     % Note that we place each arm of the disjunction into a block. This is so
@@ -173,7 +173,7 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
                     % not have to worry about resetting the trail at the
                     % starts of all non-first disjuncts.
                     NonLocals = goal_info_get_nonlocals(GoalInfo),
-                    OutVars = set.to_sorted_list(NonLocals),
+                    OutVars = set_of_var.to_sorted_list(NonLocals),
                     list.map_foldl(ml_generate_constants_for_arm(OutVars),
                         Disjuncts, Solns, !Info),
                     ml_gen_lookup_disj(OutVars, Solns, Context,

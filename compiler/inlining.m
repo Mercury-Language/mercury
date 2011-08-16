@@ -160,6 +160,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.complexity.
 :- import_module transform_hlds.dead_proc_elim.
 :- import_module transform_hlds.dependency_graph.
@@ -659,7 +660,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         % If some of the output variables are not used in the calling
         % procedure, requantify the procedure.
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        ( set.list_to_set(ArgVars) = NonLocals ->
+        ( set_of_var.list_to_set(ArgVars) = NonLocals ->
             Requantify = Requantify0
         ;
             Requantify = yes

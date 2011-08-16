@@ -54,13 +54,13 @@
 :- import_module hlds.goal_form.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module term.
 :- import_module varset.
 
@@ -323,7 +323,7 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
             \+ inst_matches_initial(InstAfter, InstBefore,
                 map.lookup(VarTypes, Var), ModuleInfo)
         ),
-    IncompatibleInstVars = set.list_to_set(
+    IncompatibleInstVars = set_of_var.list_to_set(
         list.filter(InCompatible, InstMapVars)),
 
     % This will consider variables with inst `any' to be bound by the goal,
@@ -337,12 +337,12 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
             \+ inst_matches_binding(InstAfter, InstBefore,
                 map.lookup(VarTypes, Var), ModuleInfo)
         ),
-    BoundVars = set.list_to_set(list.filter(Bound, InstMapVars)),
+    BoundVars = set_of_var.list_to_set(list.filter(Bound, InstMapVars)),
 
     % Make sure that variables with inst `any' are placed in the changed vars
     % set. XXX This is too conservative, but avoids unexpected reorderings.
 
-    set.union(ChangedVars0, BoundVars, ChangedVars),
+    set_of_var.union(ChangedVars0, BoundVars, ChangedVars),
 
     AnnotatedConjunct = annotated_conjunct(Goal, ChangedVars, BoundVars,
         IncompatibleInstVars),
@@ -361,17 +361,17 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
                 hlds_goal,
 
                 % All variables returned by instmap_changed_vars.
-                set(prog_var),
+                set_of_progvar,
 
                 % All variables returned by instmap_changed_vars for
                 % which inst_matches_binding(NewInst, OldInst) fails.
-                set(prog_var),
+                set_of_progvar,
 
                 % Variables returned by instmap_changed_vars
                 % for which the new inst cannot be substituted
                 % for the old as an input to a goal
                 % (inst_matches_initial(NewInst, OldInst) fails).
-                set(prog_var)
+                set_of_progvar
             ).
 
     % A constraint is a goal that may fail, has no outputs,
@@ -383,13 +383,13 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
                 hlds_goal,
 
                 % All variables returned by instmap_changed_vars.
-                set(prog_var),
+                set_of_progvar,
 
                 % Variables returned by instmap_changed_vars
                 % for which the new inst cannot be substituted
                 % for the old as an input to a goal
                 % (inst_matches_initial(NewInst, OldInst) fails).
-                set(prog_var),
+                set_of_progvar,
 
                 % Goals to construct constants used by the constraint.
                 % (as in X = 2, Y < X). These need to be propagated
@@ -437,7 +437,7 @@ annotate_conj_constraints(ModuleInfo,
 
         % XXX This is probably a bit too conservative. For example,
         % `any->any' moded non-locals are considered to be outputs.
-        set.empty(OutputVars),
+        set_of_var.is_empty(OutputVars),
 
         % Don't propagate impure goals.
         goal_info_get_purity(GoalInfo) = purity_pure,
@@ -493,7 +493,7 @@ annotate_conj_constraints(ModuleInfo,
             ConstraintGoals),
         list.map(add_empty_constraints, [Goal | ConstraintGoals],
             GoalsAndConstraints),
-        list.append(GoalsAndConstraints, Goals0, Goals1)
+        Goals1 = GoalsAndConstraints ++ Goals0
     ;
         % Don't move goals which can fail before a goal which can loop
         % or throw an exception if `--fully-strict' is set.
@@ -558,7 +558,7 @@ add_constant_construction(ConstructVar, Construct0,
     (
         ConstraintGoal0 = hlds_goal(_, ConstraintInfo),
         ConstraintNonLocals = goal_info_get_nonlocals(ConstraintInfo),
-        set.member(ConstructVar, ConstraintNonLocals)
+        set_of_var.member(ConstraintNonLocals, ConstructVar)
     ->
         VarSet0 = !.Info ^ constr_varset,
         VarTypes0 = !.Info ^ constr_vartypes,
@@ -592,7 +592,7 @@ add_constant_construction(ConstructVar, Construct0,
     % current goal, if the purity and termination properties of the
     % current goal allow that.
     %
-:- pred filter_dependent_constraints(set(prog_var)::in, set(prog_var)::in,
+:- pred filter_dependent_constraints(set_of_progvar::in, set_of_progvar::in,
     list(constraint)::in, list(constraint)::out, list(constraint)::out) is det.
 
 filter_dependent_constraints(NonLocals, GoalOutputVars, Constraints,
@@ -602,7 +602,7 @@ filter_dependent_constraints(NonLocals, GoalOutputVars, Constraints,
     list.reverse(RevDependent, Dependent),
     list.reverse(RevIndependent, Independent).
 
-:- pred filter_dependent_constraints_2(set(prog_var)::in, set(prog_var)::in,
+:- pred filter_dependent_constraints_2(set_of_progvar::in, set_of_progvar::in,
     list(constraint)::in,
     list(constraint)::in, list(constraint)::out,
     list(constraint)::in, list(constraint)::out) is det.
@@ -619,17 +619,17 @@ filter_dependent_constraints_2(NonLocals, GoalOutputVars,
         (
             % A constraint is not independent of a goal if it uses
             % any of the output variables of that goal.
-            set.intersect(ConstraintNonLocals, GoalOutputVars,
+            set_of_var.intersect(ConstraintNonLocals, GoalOutputVars,
                 OutputVarsUsedByConstraint),
-            \+ set.empty(OutputVarsUsedByConstraint)
+            \+ set_of_var.is_empty(OutputVarsUsedByConstraint)
         ;
             % A constraint is not independent of a goal if it changes
             % the inst of a non-local of the goal in such a way that
             % the new inst is incompatible with the old inst (e.g. by
             % losing uniqueness).
-            set.intersect(NonLocals, IncompatibleInstVars,
+            set_of_var.intersect(NonLocals, IncompatibleInstVars,
                 IncompatibleInstVarsUsedByGoal),
-            \+ set.empty(IncompatibleInstVarsUsedByGoal)
+            \+ set_of_var.is_empty(IncompatibleInstVarsUsedByGoal)
         ;
             % A constraint is not independent of a goal if it uses
             % any variables whose instantiatedness is changed
@@ -656,9 +656,9 @@ can_reorder_constraints(EarlierConstraint, Constraint) :-
     Constraint = constraint(ConstraintGoal, _, _, _),
     ConstraintGoal = hlds_goal(_, ConstraintGoalInfo),
     ConstraintNonLocals = goal_info_get_nonlocals(ConstraintGoalInfo),
-    set.intersect(EarlierChangedVars, ConstraintNonLocals,
+    set_of_var.intersect(EarlierChangedVars, ConstraintNonLocals,
         EarlierConstraintIntersection),
-    set.empty(EarlierConstraintIntersection).
+    set_of_var.is_empty(EarlierConstraintIntersection).
 
 %-----------------------------------------------------------------------------%
 

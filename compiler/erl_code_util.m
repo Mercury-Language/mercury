@@ -22,6 +22,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
 :- import_module maybe.
@@ -131,7 +132,7 @@
     % by that goal.
     %
 :- pred erl_bound_nonlocals_in_goal(erl_gen_info::in, instmap::in,
-    hlds_goal::in, set(prog_var)::out) is det.
+    hlds_goal::in, set_of_progvar::out) is det.
 
     % erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap, !Statement)
     %
@@ -145,7 +146,7 @@
     %
     % VarsToBind must not include dummy variables.
     %
-:- pred erl_bind_unbound_vars(erl_gen_info::in, set(prog_var)::in,
+:- pred erl_bind_unbound_vars(erl_gen_info::in, set_of_progvar::in,
     hlds_goal::in, instmap::in, elds_expr::in, elds_expr::out) is det.
 
     % erl_var_or_dummy_replacement(ModuleInfo, VarTypes, DummyRepl, Var) = Expr
@@ -177,14 +178,14 @@
     % Rename all variables in Expr0 to fresh variables, except for the
     % variables in the set KeepVars.
     %
-:- pred erl_rename_vars_in_expr_except(set(prog_var)::in,
+:- pred erl_rename_vars_in_expr_except(set_of_progvar::in,
     elds_expr::in, elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
     % erl_expr_vars(Expr, Vars)
     %
     % Vars is the set of variables appearing in Expr.
     %
-:- pred erl_expr_vars(elds_expr::in, set(prog_var)::out) is det.
+:- pred erl_expr_vars(elds_expr::in, set_of_progvar::out) is det.
 
     % Return a rough indication of the "size" of an expression, where each
     % simple constant has a value of 1.  This is used to decide if an
@@ -240,8 +241,8 @@
 
                 % input_vars and output_vars do not include variables of dummy
                 % types.
-                egi_input_vars          :: prog_vars,
-                egi_output_vars         :: prog_vars,
+                egi_input_vars          :: list(prog_var),
+                egi_output_vars         :: list(prog_var),
 
                 % Set of environment variables used by this procedure.
                 egi_env_var_names       :: set(string)
@@ -398,8 +399,9 @@ erl_bound_nonlocals_in_goal(Info, InstMap, Goal, BoundNonLocals) :-
     Goal = hlds_goal(_, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
-    BoundNonLocals = set.filter(is_bound_and_not_dummy(ModuleInfo, VarTypes,
-        InstMap, InstmapDelta), NonLocals).
+    BoundNonLocals = set_of_var.filter(
+        is_bound_and_not_dummy(ModuleInfo, VarTypes, InstMap, InstmapDelta),
+        NonLocals).
 
 :- pred is_bound_and_not_dummy(module_info::in, vartypes::in, instmap::in,
     instmap_delta::in, prog_var::in) is semidet.
@@ -412,12 +414,12 @@ is_bound_and_not_dummy(ModuleInfo, VarTypes, InstMap, InstmapDelta, Var) :-
 erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap,
         Statement0, Statement) :-
     erl_bound_nonlocals_in_goal(Info, InstMap, Goal, Bound),
-    NotBound = set.difference(VarsToBind, Bound),
-    (if set.empty(NotBound) then
+    NotBound = set_of_var.difference(VarsToBind, Bound),
+    ( if set_of_var.is_empty(NotBound) then
         Statement = Statement0
     else
         % We arbitrarily assign all the variables to the atom `false'.
-        NotBoundList = set.to_sorted_list(NotBound),
+        NotBoundList = set_of_var.to_sorted_list(NotBound),
         Assignments = list.map(var_eq_false, NotBoundList),
         Statement = join_exprs(elds_block(Assignments), Statement0)
     ).
@@ -717,23 +719,23 @@ erl_rename_vars_in_catch(Subn, Catch0, Catch) :-
 
 erl_rename_vars_in_expr_except(ExceptVars, Expr0, Expr, !Info) :-
     erl_expr_vars(Expr0, Vars0),
-    Vars = set.difference(Vars0, ExceptVars),
-    erl_create_renaming(set.to_sorted_list(Vars), Subn, !Info),
+    Vars = set_of_var.difference(Vars0, ExceptVars),
+    erl_create_renaming(set_of_var.to_sorted_list(Vars), Subn, !Info),
     erl_rename_vars_in_expr(Subn, Expr0, Expr).
 
 %-----------------------------------------------------------------------------%
 
 erl_expr_vars(Expr, Set) :-
-    erl_vars_in_expr(Expr, set.init, Set).
+    erl_vars_in_expr(Expr, set_of_var.init, Set).
 
 :- pred erl_vars_in_exprs(list(elds_expr)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 erl_vars_in_exprs(Exprs, !Set) :-
     list.foldl(erl_vars_in_expr, Exprs, !Set).
 
 :- pred erl_vars_in_expr(elds_expr::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 erl_vars_in_expr(Expr, !Set) :-
     (
@@ -797,13 +799,13 @@ erl_vars_in_expr(Expr, !Set) :-
     ).
 
 :- pred erl_vars_in_terms(list(elds_term)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 erl_vars_in_terms(Terms, !Set) :-
     list.foldl(erl_vars_in_term, Terms, !Set).
 
 :- pred erl_vars_in_term(elds_term::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 erl_vars_in_term(Term, !Set) :-
     (
@@ -822,11 +824,11 @@ erl_vars_in_term(Term, !Set) :-
         erl_vars_in_exprs(Exprs, !Set)
     ;
         Term = elds_var(Var),
-        set.insert(Var, !Set)
+        set_of_var.insert(Var, !Set)
     ).
 
 :- pred erl_vars_in_call_target(elds_call_target::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 erl_vars_in_call_target(Target, !Set) :-
     (
@@ -839,7 +841,7 @@ erl_vars_in_call_target(Target, !Set) :-
     ).
 
 :- pred erl_vars_in_clause(elds_clause::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 erl_vars_in_clause(Clause, !Set) :-
     Clause = elds_clause(Pattern, Expr),
@@ -847,13 +849,13 @@ erl_vars_in_clause(Clause, !Set) :-
     erl_vars_in_expr(Expr, !Set).
 
 :- pred erl_vars_in_cases(list(elds_case)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 erl_vars_in_cases(Cases, !Set) :-
     list.foldl(erl_vars_in_case, Cases, !Set).
 
 :- pred erl_vars_in_case(elds_case::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 erl_vars_in_case(Case, !Set) :-
     Case = elds_case(Pattern, Expr),
@@ -861,7 +863,7 @@ erl_vars_in_case(Case, !Set) :-
     erl_vars_in_expr(Expr, !Set).
 
 :- pred erl_vars_in_catch(elds_catch::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 erl_vars_in_catch(Catch, !Set) :-
     Catch = elds_catch(PatternA, PatternB, Expr),

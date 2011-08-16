@@ -141,6 +141,7 @@
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module int.
@@ -2245,7 +2246,7 @@ ml_gen_field_id(Target, Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
 ml_gen_ground_term(TermVar, Goal, Statements, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    set.to_sorted_list(NonLocals, NonLocalList),
+    set_of_var.to_sorted_list(NonLocals, NonLocalList),
     (
         NonLocalList = [],
         % The term being constructed by the scope is not needed, so there is

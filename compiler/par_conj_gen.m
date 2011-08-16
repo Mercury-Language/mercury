@@ -117,6 +117,7 @@
 :- import_module ll_backend.exprn_aux.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module cord.
@@ -174,7 +175,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     save_variables_on_stack(Vars, SaveCode, !CI),
 
     Nonlocals = goal_info_get_code_gen_nonlocals(GoalInfo),
-    set.to_sorted_list(Nonlocals, Variables),
+    set_of_var.to_sorted_list(Nonlocals, Variables),
     get_instmap(!.CI, Initial),
     Delta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(Initial, Delta, Final),

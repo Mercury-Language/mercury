@@ -418,7 +418,8 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
                 % We only need region support for backtracking if some disjunct
                 % performs some region operations (allocation or removal).
                 maybe_create_disj_region_frame_semi(AddRegionOps,
-                    DisjRemovedRegionVars, DisjAllocRegionVars,
+                    set_of_var.set_to_bitset(DisjRemovedRegionVars),
+                    set_of_var.set_to_bitset(DisjAllocRegionVars),
                     BeforeEnterRegionCode, LaterRegionCode, LastRegionCode,
                     RegionStackVars, RegionCommitDisjCleanup, !CI),
                 RegionStackVarsToRelease = RegionStackVars
@@ -769,7 +770,7 @@ maybe_create_disj_region_frame_nondet(DisjRegionOps, _DisjGoalInfo,
     ).
 
 :- pred maybe_create_disj_region_frame_semi(add_region_ops::in,
-    set(prog_var)::in, set(prog_var)::in, llds_code::out, llds_code::out,
+    set_of_progvar::in, set_of_progvar::in, llds_code::out, llds_code::out,
     llds_code::out, list(lval)::out, commit_disj_region_cleanup::out,
     code_info::in, code_info::out) is det.
 
@@ -801,8 +802,8 @@ maybe_create_disj_region_frame_semi(DisjRegionOps, DisjRemovedRegionVars,
         %
         SnapshotRegionVars = DisjAllocRegionVars,
 
-        ProtectRegionVarList = set.to_sorted_list(ProtectRegionVars),
-        SnapshotRegionVarList = set.to_sorted_list(SnapshotRegionVars),
+        ProtectRegionVarList = set_of_var.to_sorted_list(ProtectRegionVars),
+        SnapshotRegionVarList = set_of_var.to_sorted_list(SnapshotRegionVars),
 
         list.length(ProtectRegionVarList, NumProtectRegionVars),
         list.length(SnapshotRegionVarList, NumSnapshotRegionVars),

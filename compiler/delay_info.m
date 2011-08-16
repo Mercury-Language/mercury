@@ -89,8 +89,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_errors.   % for the mode_error_info
-                                           % and delay_info types.
+:- import_module check_hlds.mode_errors.
+:- import_module parse_tree.set_of_var.
 
 :- import_module int.
 :- import_module map.
@@ -108,43 +108,35 @@
 
 :- type delay_info
     --->    delay_info(
+                % CurrentDepth: the current conjunction depth,
+                % i.e. the number of nested conjunctions which are
+                % currently active.
                 delay_depth     :: depth_num,
-                                % CurrentDepth:
-                                % the current conjunction depth,
-                                % i.e. the number of nested conjunctions
-                                % which are currently active
 
+                % DelayedGoalStack: for each nested conjunction,
+                % we store a collection of delayed goals associated with
+                % that conjunction, indexed by sequence number.
                 delay_goals     :: stack(map(seq_num, delayed_goal)),
-                                % DelayedGoalStack:
-                                % for each nested conjunction,
-                                % we store a collection of delayed goals
-                                % associated with that conjunction,
-                                % indexed by sequence number
 
+                % WaitingGoalsTable: for each variable, we keep track of
+                % all the goals which are waiting on that variable.
                 delay_waiting   :: waiting_goals_table,
-                                % WaitingGoalsTable:
-                                % for each variable, we keep track of
-                                % all the goals which are waiting on
-                                % that variable
 
+                % PendingGoalsTable: when a variable gets bound, we mark
+                % all the goals which are waiting on that variable as ready
+                % to be reawakened at the next opportunity.
                 delay_pending   :: pending_goals_table,
-                                % PendingGoalsTable:
-                                % when a variable gets bound, we
-                                % mark all the goals which are waiting
-                                % on that variable as ready to be
-                                % reawakened at the next opportunity
 
+                % SeqNumsStack: For each nested conjunction, the next
+                % available sequence number.
                 delay_seqs      :: stack(seq_num)
-                                % SeqNumsStack:
-                                % For each nested conjunction, the
-                                % next available sequence number.
             ).
 
-:- type waiting_goals_table == map(prog_var, waiting_goals).
     % Used to store the collection of goals waiting on a variable.
+:- type waiting_goals_table == map(prog_var, waiting_goals).
 
-:- type waiting_goals == map(delay_goal_num, list(prog_var)).
     % For each goal, we store all the variables that it is waiting on.
+:- type waiting_goals == map(delay_goal_num, list(prog_var)).
 
 :- type pending_goals_table == map(depth_num, list(seq_num)).
 
@@ -284,7 +276,7 @@ remove_delayed_goals([SeqNum | SeqNums], DelayedGoalsTable, Depth,
     map.lookup(DelayedGoalsTable, SeqNum, DelayedGoal),
     DelayedGoal = delayed_goal(Vars, _Error, _Goal),
     GoalNum = delay_goal_num(Depth, SeqNum),
-    set.to_sorted_list(Vars, VarList),
+    set_of_var.to_sorted_list(Vars, VarList),
     delete_waiting_vars(VarList, GoalNum, !WaitingGoalsTable),
     remove_delayed_goals(SeqNums, DelayedGoalsTable, Depth,
         !WaitingGoalsTable).
@@ -313,7 +305,7 @@ delay_info_delay_goal(Error, Goal, DelayInfo0, DelayInfo) :-
 
     % Store indexes to the goal in the waiting goals table
     GoalNum = delay_goal_num(CurrentDepth, SeqNum),
-    set.to_sorted_list(Vars, VarList),
+    set_of_var.to_sorted_list(Vars, VarList),
     add_waiting_vars(VarList, GoalNum, VarList,
         WaitingGoalsTable0, WaitingGoalsTable),
 

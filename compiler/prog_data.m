@@ -27,6 +27,7 @@
 :- import_module libs.rat.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module char.
@@ -686,7 +687,8 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 :- type dead_datastruct == datastruct.
 :- type dead_datastructs == set(dead_datastruct).
 :- type live_var == prog_var.
-:- type live_vars == list(live_var).
+:- type live_vars == list(prog_var).
+:- type set_of_live_var == set_of_progvar.
 :- type live_datastruct == datastruct.
 :- type live_datastructs == list(live_datastruct).
 
@@ -1400,11 +1402,14 @@ valid_trace_grade_name(GradeName) :-
 :- pred rename_vars_in_term_list(must_rename::in, map(var(V), var(V))::in,
     list(term(V))::in, list(term(V))::out) is det.
 
-:- pred rename_vars_in_var_set(must_rename::in, prog_var_renaming::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+:- pred rename_vars_in_var_set(must_rename::in, map(var(V), var(V))::in,
+    set(var(V))::in, set(var(V))::out) is det.
 
-:- pred rename_var_list(must_rename::in, map(var(T), var(T))::in,
-    list(var(T))::in, list(var(T))::out) is det.
+:- pred rename_vars_in_set_of_var(must_rename::in, map(var(V), var(V))::in,
+    set_of_var(V)::in, set_of_var(V)::out) is det.
+
+:- pred rename_var_list(must_rename::in, map(var(V), var(V))::in,
+    list(var(V))::in, list(var(V))::out) is det.
 
 :- pred rename_var(must_rename::in, map(var(V), var(V))::in,
     var(V)::in, var(V)::out) is det.
@@ -1431,6 +1436,11 @@ rename_vars_in_var_set(Must, Renaming, Vars0, Vars) :-
     set.to_sorted_list(Vars0, VarsList0),
     rename_var_list(Must, Renaming, VarsList0, VarsList),
     set.list_to_set(VarsList, Vars).
+
+rename_vars_in_set_of_var(Must, Renaming, Vars0, Vars) :-
+    set_of_var.to_sorted_list(Vars0, VarsList0),
+    rename_var_list(Must, Renaming, VarsList0, VarsList),
+    set_of_var.list_to_set(VarsList, Vars).
 
 rename_var_list(_Must, _Renaming, [], []).
 rename_var_list(Must, Renaming, [Var0 | Vars0], [Var | Vars]) :-

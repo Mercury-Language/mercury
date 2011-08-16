@@ -181,6 +181,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.goal_store.
 
 :- import_module assoc_list.
@@ -638,7 +639,7 @@ identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
 
         Member = (pred(M::in) is semidet :-
             M = HeadVar - _,
-            set.member(HeadVar, ChangedVars)
+            set_of_var.member(ChangedVars, HeadVar)
         ),
         list.filter(Member, HeadArg0, HeadArg),
         list.map(fst, HeadArg, Out),
@@ -960,7 +961,7 @@ member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId, LessThanGoal) :-
 
 :- type accu_assoc
     --->    accu_assoc(
-                set(prog_var),      % the associative input args
+                set_of_progvar,     % the associative input args
                 prog_var,           % the corresponding output arg
                 bool                % is the predicate commutative?
             ).
@@ -995,7 +996,7 @@ accu_is_associative(ModuleInfo, PredId, Args, Result) :-
     % is descended from which.
     %
 :- pred associativity_assertion(module_info::in, list(assert_id)::in,
-    prog_vars::in, set(prog_var)::out, prog_var::out) is semidet.
+    prog_vars::in, set_of_progvar::out, prog_var::out) is semidet.
 
 associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0, VarAB,
         OutputVar) :-
@@ -1004,7 +1005,7 @@ associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0, VarAB,
             Args0, VarA - VarB, OutputVar0)
     ->
         \+ associativity_assertion(ModuleInfo, AssertIds, Args0, _, _),
-        VarAB = set.list_to_set([VarA, VarB]),
+        VarAB = set_of_var.list_to_set([VarA, VarB]),
         OutputVar = OutputVar0
     ;
         associativity_assertion(ModuleInfo, AssertIds, Args0, VarAB, OutputVar)
@@ -1018,7 +1019,7 @@ associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0, VarAB,
     % is descended from which.
     %
 :- pred commutativity_assertion(module_info::in,list(assert_id)::in,
-    prog_vars::in, set(prog_var)::out) is semidet.
+    prog_vars::in, set_of_progvar::out) is semidet.
 
 commutativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
         PossibleStaticVars) :-
@@ -1027,7 +1028,7 @@ commutativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
             Args0, StaticVarA - StaticVarB)
     ->
         \+ commutativity_assertion(ModuleInfo, AssertIds, Args0, _),
-        PossibleStaticVars = set.list_to_set([StaticVarA, StaticVarB])
+        PossibleStaticVars = set_of_var.list_to_set([StaticVarA, StaticVarB])
     ;
         commutativity_assertion(ModuleInfo, AssertIds, Args0,
             PossibleStaticVars)
@@ -1127,19 +1128,21 @@ accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
         goal_store_lookup(GoalStore, Id, stored_goal(Goal, _InstMap)),
         Goal = hlds_goal(_GoalExpr, GoalInfo),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
-        Set = NonLocals `union` Set0
+        set_of_var.union(NonLocals, Set0, Set)
     ),
-    list.foldl(P, set.to_sorted_list(Before), set.init, BeforeNonLocals),
-    list.foldl(P, set.to_sorted_list(After), set.init, AfterNonLocals),
-    InitAccs = BeforeNonLocals `intersect` AfterNonLocals,
+    list.foldl(P, set.to_sorted_list(Before),
+        set_of_var.init, BeforeNonLocals),
+    list.foldl(P, set.to_sorted_list(After),
+        set_of_var.init, AfterNonLocals),
+    InitAccs = set_of_var.intersect(BeforeNonLocals, AfterNonLocals),
 
     proc_info_get_varset(ProcInfo0, !:VarSet),
     proc_info_get_vartypes(ProcInfo0, !:VarTypes),
 
-    accu_substs_init(set.to_sorted_list(InitAccs), !VarSet, !VarTypes,
+    accu_substs_init(set_of_var.to_sorted_list(InitAccs), !VarSet, !VarTypes,
         !:Substs),
 
-    set.list_to_set(OutPrime, OutPrimeSet),
+    set_of_var.list_to_set(OutPrime, OutPrimeSet),
     accu_process_assoc_set(ModuleInfo, GoalStore, set.to_sorted_list(Assoc),
         OutPrimeSet, !Substs, !VarSet, !VarTypes, CS, Warnings),
 
@@ -1147,7 +1150,7 @@ accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
         OutPrimeSet, !Substs, !VarSet, !VarTypes, UpdateOut, UpdateAccOut,
         BasePairs),
 
-    Accs = set.to_sorted_list(InitAccs) ++ UpdateAccOut,
+    Accs = set_of_var.to_sorted_list(InitAccs) ++ UpdateAccOut,
 
     accu_divide_base_case(ModuleInfo, !.VarTypes, GoalStore, UpdateOut, Out,
         UpdateBase, AssocBase, OtherBase),
@@ -1201,7 +1204,7 @@ create_new_var(OldVar, Prefix, NewVar, !VarSet, !VarTypes) :-
     % by reordering the arguments to a call.
     %
 :- pred accu_process_assoc_set(module_info::in, accu_goal_store::in,
-    list(accu_goal_id)::in, set(prog_var)::in,
+    list(accu_goal_id)::in, set_of_progvar::in,
     accu_substs::in, accu_substs::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     accu_goal_store::out, accu_warnings::out) is semidet.
@@ -1219,8 +1222,9 @@ accu_process_assoc_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     Goal = hlds_goal(plain_call(PredId, _, Args, _, _, _), GoalInfo),
     accu_is_associative(ModuleInfo, PredId, Args, AssocInfo),
     AssocInfo = accu_assoc(Vars, AssocOutput, IsCommutative),
-    set.singleton_set(Vars `intersect` OutPrime, DuringAssocVar),
-    set.singleton_set(Vars `difference` (Vars `intersect` OutPrime),
+    OutPrimeVars = set_of_var.intersect(Vars, OutPrime),
+    set_of_var.is_singleton(OutPrimeVars, DuringAssocVar),
+    set_of_var.is_singleton(set_of_var.difference(Vars, OutPrimeVars),
         BeforeAssocVar),
 
     map.lookup(AccVarSubst, BeforeAssocVar, AccVar),
@@ -1254,7 +1258,7 @@ accu_process_assoc_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
             % of the predicate.
             accu_heuristic(ModuleName, PredName, Arity, Args,
                 PossibleDuringAssocVars),
-            set.member(DuringAssocVar, PossibleDuringAssocVars),
+            set_of_var.member(PossibleDuringAssocVars, DuringAssocVar), 
             CurWarnings = []
         ;
             ProgContext = goal_info_get_context(GoalInfo),
@@ -1262,7 +1266,7 @@ accu_process_assoc_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
                 DuringAssocVar)]
         ),
         % Swap the arguments.
-        [A, B] = set.to_sorted_list(Vars),
+        [A, B] = set_of_var.to_sorted_list(Vars),
         map.from_assoc_list([A - B, B - A], Subst),
         rename_some_vars_in_goal(Subst, Goal, SwappedGoal),
         CSGoal = stored_goal(SwappedGoal, InstMap)
@@ -1281,11 +1285,11 @@ accu_has_heuristic(unqualified("list"), "append", 3).
     % in the running time of the predicate.
     %
 :- pred accu_heuristic(module_name::in, string::in, arity::in, prog_vars::in,
-    set(prog_var)::out) is semidet.
+    set_of_progvar::out) is semidet.
 
 accu_heuristic(unqualified("list"), "append", 3, [_Typeinfo, A, _B, _C],
         Set) :-
-    set.list_to_set([A], Set).
+    set_of_var.make_singleton(A, Set).
 
 %-----------------------------------------------------------------------------%
 
@@ -1295,7 +1299,7 @@ accu_heuristic(unqualified("list"), "append", 3, [_Typeinfo, A, _B, _C],
     % to get the result from.
     %
 :- pred accu_process_update_set(module_info::in, accu_goal_store::in,
-    list(accu_goal_id)::in, set(prog_var)::in,
+    list(accu_goal_id)::in, set_of_progvar::in,
     accu_substs::in, accu_substs::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     prog_vars::out, prog_vars::out, list(pair(prog_var))::out) is semidet.
@@ -1311,7 +1315,7 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     Goal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _GoalInfo),
     accu_is_update(ModuleInfo, PredId, Args, StateVarA - StateVarB),
 
-    ( set.member(StateVarA, OutPrime) ->
+    ( set_of_var.member(OutPrime, StateVarA) ->
         StateInputVar = StateVarA,
         StateOutputVar = StateVarB
     ;
@@ -1399,7 +1403,7 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
             apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
             instmap_changed_vars(InstMap0, InstMap, VarTypes,
                 ModuleInfo, ChangedVars),
-            set.singleton_set(ChangedVars, Var)
+            set_of_var.is_singleton(ChangedVars, Var)
         ), Ids),
     (
         Ids = [],
@@ -1724,7 +1728,7 @@ acc_unification(Out - Acc, Goal) :-
     UniMode = LHSMode - RHSMode,
     Context = unify_context(umc_explicit, []),
     Expr = unify(Out, rhs_var(Acc), UniMode, assign(Out,Acc), Context),
-    set.list_to_set([Out, Acc], NonLocalVars),
+    set_of_var.list_to_set([Out, Acc], NonLocalVars),
     InstMapDelta = instmap_delta_bind_var(Out),
     goal_info_init(NonLocalVars, InstMapDelta, detism_det, purity_pure, Info),
     Goal = hlds_goal(Expr, Info).

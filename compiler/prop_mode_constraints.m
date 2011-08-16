@@ -40,14 +40,14 @@
 
 %-----------------------------------------------------------------------------%
 
-    % prop_mode_constraints_in_scc(SCC, !ModuleInfo, !Varset, !VarMap,
+    % prop_mode_constraints_in_scc(SCC, !ModuleInfo, !VarSet, !VarMap,
     %   !PredConstraintsMap):
     %
     % For each predicate in SCC:
     %
     % - Add producer/consumer constraints to PredConstraintsMap.
     % - Add goal path annotations to its clauses in ModuleInfo.
-    % - Add any constraint variables it requires to Varset and VarMap.
+    % - Add any constraint variables it requires to VarSet and VarMap.
     %
 :- pred prop_mode_constraints_in_scc(list(pred_id)::in,
     module_info::in, module_info::out, mc_var_info::in, mc_var_info::out,
@@ -88,10 +88,10 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -113,14 +113,14 @@ prop_mode_constraints_in_scc(SCC0, !ModuleInfo, !VarInfo, !Constraints) :-
     list.foldl3(prop_mode_constraints_in_pred, SCC,
         !ModuleInfo, !VarInfo, !Constraints).
 
-    % prop_mode_constraints_in_pred(PredId, !ModuleInfo, !Varset, !VarMap,
+    % prop_mode_constraints_in_pred(PredId, !ModuleInfo, !VarSet, !VarMap,
     %   !Constraints):
     %
     % Performs a number of tasks for predicate PredId:
     %   1) Fill out the goal_id information in the ModuleInfo structure.
     %   2) Add producer/consumer constraint variables for program
     %      variables corresponding to any location at which they are
-    %      nonlocal to Varset and VarMap. (Elsewhere is is clear as to
+    %      nonlocal to VarSet and VarMap. (Elsewhere is is clear as to
     %      whether they are produced or consumed.)
     %   3) Add mode declaration constraints to Constraints.
     %   4) Add goal constraints to Constraints.
@@ -128,7 +128,7 @@ prop_mode_constraints_in_scc(SCC0, !ModuleInfo, !VarInfo, !Constraints) :-
     % NOTE: This relies on the head variables for any predicate without mode
     % declarations that is called by this one (PredId) to have the constraint
     % variables corresponding to the empty goal path (i.e. the whole body
-    % of the predicate) to already be VarMap (and therefore also in Varset).
+    % of the predicate) to already be VarMap (and therefore also in VarSet).
     %
 :- pred prop_mode_constraints_in_pred(pred_id::in,
     module_info::in, module_info::out, mc_var_info::in, mc_var_info::out,
@@ -231,42 +231,42 @@ ensure_unique_arguments(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
-    clauses_info_get_varset(ClausesInfo0, Varset0),
+    clauses_info_get_varset(ClausesInfo0, VarSet0),
     clauses_info_get_vartypes(ClausesInfo0, VarTypes0),
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
-    SeenSoFar = proc_arg_vector_to_set(HeadVars),
+    SeenSoFar = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
     get_clause_list(ClausesRep0, Clauses0),
     BodyGoals0 = list.map(func(X) = clause_body(X), Clauses0),
     list.map_foldl3(ensure_unique_arguments_in_goal, BodyGoals0, BodyGoals,
-        SeenSoFar, _, Varset0, Varset, VarTypes0, VarTypes),
+        SeenSoFar, _, VarSet0, VarSet, VarTypes0, VarTypes),
 
     Clauses = list.map_corresponding(func(C, B) = C ^ clause_body := B,
         Clauses0, BodyGoals),
     set_clause_list(Clauses, ClausesRep),
     some [!ClausesInfo] (
         !:ClausesInfo = ClausesInfo0,
-        clauses_info_set_varset(Varset, !ClausesInfo),
+        clauses_info_set_varset(VarSet, !ClausesInfo),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
         clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, PredInfo0, PredInfo)
     ),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-    % ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !Varset, !VarTypes):
+    % ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !VarSet, !VarTypes):
     %
     % Create variables and introduce unifications in Goal, where appropriate,
     % to ensure that no program variable in SeenSoFar is used as an argument in
     % a predicate call and that no program variable is used as an argument for
     % more than one predicate call.
-    % Created variables are added to Varset, VarTypes and SeenSoFar. Variables
+    % Created variables are added to VarSet, VarTypes and SeenSoFar. Variables
     % used as arguments in predicate calls are added to SeenSoFar.
     %
 :- pred ensure_unique_arguments_in_goal(hlds_goal::in, hlds_goal::out,
-    set(prog_var)::in, set(prog_var)::out, prog_varset::in, prog_varset::out,
+    set_of_progvar::in, set_of_progvar::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
-ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !Varset, !VarTypes) :-
+ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !VarSet, !VarTypes) :-
     some [!GoalExpr, !GoalInfo] (
         !.Goal = hlds_goal(!:GoalExpr, !:GoalInfo),
         (
@@ -274,13 +274,13 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !Varset, !VarTypes) :-
             (
                 ConjType = plain_conj,
                 list.map_foldl3(ensure_unique_arguments_in_goal,
-                    Goals0, Goals1, !SeenSoFar, !Varset, !VarTypes),
+                    Goals0, Goals1, !SeenSoFar, !VarSet, !VarTypes),
                 flatten_conjunction(Goals1, Goals),
                 !:GoalExpr = conj(plain_conj, Goals)
             ;
                 ConjType = parallel_conj,
                 list.map_foldl3(ensure_unique_arguments_in_goal,
-                    Goals0, Goals, !SeenSoFar, !Varset, !VarTypes),
+                    Goals0, Goals, !SeenSoFar, !VarSet, !VarTypes),
                 !:GoalExpr = conj(parallel_conj, Goals)
             )
         ;
@@ -288,7 +288,7 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !Varset, !VarTypes) :-
                 Builtin, UnifyContext, SymName),
             Context = goal_info_get_context(!.GoalInfo),
             make_unifications(Context, Unifications, Args0, Args, !SeenSoFar,
-                !Varset, !VarTypes),
+                !VarSet, !VarTypes),
             (
                 % No arguments changed.
                 Unifications = []
@@ -307,7 +307,7 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !Varset, !VarTypes) :-
             !.GoalExpr = generic_call(Details, Args0, Modes, Determinism),
             Context = goal_info_get_context(!.GoalInfo),
             make_unifications(Context, Unifications, Args0, Args, !SeenSoFar,
-                !Varset, !VarTypes),
+                !VarSet, !VarTypes),
             (
                 % No arguments changed.
                 Unifications = []
@@ -328,27 +328,27 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !Varset, !VarTypes) :-
         ;
             !.GoalExpr = disj(Goals0),
             list.map_foldl3(ensure_unique_arguments_in_goal, Goals0, Goals,
-                !SeenSoFar, !Varset, !VarTypes),
+                !SeenSoFar, !VarSet, !VarTypes),
             !:GoalExpr = disj(Goals)
         ;
             !.GoalExpr = negation(Goal0),
-            ensure_unique_arguments_in_goal(Goal0, Goal, !SeenSoFar, !Varset,
+            ensure_unique_arguments_in_goal(Goal0, Goal, !SeenSoFar, !VarSet,
                 !VarTypes),
             !:GoalExpr = negation(Goal)
         ;
             !.GoalExpr = scope(Reason, Goal0),
             % XXX We should special-case the handling of
             % from_ground_term_construct scopes.
-            ensure_unique_arguments_in_goal(Goal0, Goal, !SeenSoFar, !Varset,
+            ensure_unique_arguments_in_goal(Goal0, Goal, !SeenSoFar, !VarSet,
                 !VarTypes),
             !:GoalExpr = scope(Reason, Goal)
         ;
             !.GoalExpr = if_then_else(ExistVars, Cond0, Then0, Else0),
-            ensure_unique_arguments_in_goal(Cond0, Cond, !SeenSoFar, !Varset,
+            ensure_unique_arguments_in_goal(Cond0, Cond, !SeenSoFar, !VarSet,
                 !VarTypes),
-            ensure_unique_arguments_in_goal(Then0, Then, !SeenSoFar, !Varset,
+            ensure_unique_arguments_in_goal(Then0, Then, !SeenSoFar, !VarSet,
                 !VarTypes),
-            ensure_unique_arguments_in_goal(Else0, Else, !SeenSoFar, !Varset,
+            ensure_unique_arguments_in_goal(Else0, Else, !SeenSoFar, !VarSet,
                 !VarTypes),
             !:GoalExpr = if_then_else(ExistVars, Cond, Then, Else)
         ;
@@ -359,16 +359,16 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !Varset, !VarTypes) :-
                 ShortHand0 = atomic_goal(GoalType, Outer, Inner,
                     MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
                 ensure_unique_arguments_in_goal(MainGoal0, MainGoal,
-                    !SeenSoFar, !Varset, !VarTypes),
+                    !SeenSoFar, !VarSet, !VarTypes),
                 list.map_foldl3(ensure_unique_arguments_in_goal,
-                    OrElseGoals0, OrElseGoals, !SeenSoFar, !Varset, !VarTypes),
+                    OrElseGoals0, OrElseGoals, !SeenSoFar, !VarSet, !VarTypes),
                 ShortHand = atomic_goal(GoalType, Outer, Inner,
                     MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
                 !:GoalExpr = shorthand(ShortHand)
             ;
                 ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
                 ensure_unique_arguments_in_goal(SubGoal0, SubGoal, !SeenSoFar,
-                    !Varset, !VarTypes),
+                    !VarSet, !VarTypes),
                 ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
                 !:GoalExpr = shorthand(ShortHand)
             ;
@@ -402,41 +402,41 @@ add_to_before_conjunction(Goal, !Goals) :-
     ).
 
     % make_unifications(Context, MaybeUnifications, Args0, Args, !SeenSoFar,
-    %   !Varset, !VarTypes):
+    %   !VarSet, !VarTypes):
     %
     % If any of the given arguments in Args0 is in SeenSoFar, creates a new
-    % argument (in Varset and VarTypes) to replace it (in Args), and generates
+    % argument (in VarSet and VarTypes) to replace it (in Args), and generates
     % a unification between new argument and old (with context Context).
     %
 :- pred make_unifications(prog_context::in, list(hlds_goal)::out,
     list(prog_var)::in, list(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out,
+    set_of_progvar::in, set_of_progvar::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 make_unifications(Context, Unifications, !Args, !SeenSoFar,
-        !Varset, !VarTypes) :-
+        !VarSet, !VarTypes) :-
     list.map_foldl4(make_unification(Context), !Args,
-        [], Unifications, !SeenSoFar, !Varset, !VarTypes).
+        [], Unifications, !SeenSoFar, !VarSet, !VarTypes).
 
     % make_unification(Context, Var0, Var, !Unifications, !SeenSoFar,
-    %   !Varset, !VarTypes):
+    %   !VarSet, !VarTypes):
     %
-    % If Var0 is in SeenSoFar, creates a new argument Var (in Varset and
+    % If Var0 is in SeenSoFar, creates a new argument Var (in VarSet and
     % VarTypes), and generates a unification between Var0 and Var.
     %
 :- pred make_unification(prog_context::in, prog_var::in, prog_var::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
-    set(prog_var)::in, set(prog_var)::out, prog_varset::in, prog_varset::out,
+    set_of_progvar::in, set_of_progvar::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
-make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
+make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !VarSet,
         !VarTypes) :-
-    ( set.contains(!.SeenSoFar, Var0) ->
+    ( set_of_var.contains(!.SeenSoFar, Var0) ->
         % Make new variable.
-        OldVarName = varset.lookup_name(!.Varset, Var0),
+        OldVarName = varset.lookup_name(!.VarSet, Var0),
         OldVarType = map.lookup(!.VarTypes, Var0),
         NewVarName = "Arg_" ++ OldVarName,
-        varset.new_uniquely_named_var(NewVarName, Var, !Varset),
+        varset.new_uniquely_named_var(NewVarName, Var, !VarSet),
         map.set(Var, OldVarType, !VarTypes),
 
         % Make new unification.
@@ -445,7 +445,7 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
             UnificationGoal0),
         UnificationGoal0 =
             hlds_goal(UnificationGoalExpr, UnificationGoalInfo0),
-        goal_info_set_nonlocals(set.from_list([Var0, Var]),
+        goal_info_set_nonlocals(set_of_var.list_to_set([Var0, Var]),
             UnificationGoalInfo0, UnificationGoalInfo),
         UnificationGoal =
             hlds_goal(UnificationGoalExpr, UnificationGoalInfo),
@@ -453,7 +453,7 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
     ;
         Var = Var0
     ),
-    set.insert(Var, !SeenSoFar).
+    set_of_var.insert(Var, !SeenSoFar).
 
     % replace_call_with_conjunction(NewCallGoalExpr, Unifications, NewArgs,
     %   GoalExpr, !GoalInfo):
@@ -475,7 +475,7 @@ replace_call_with_conjunction(CallGoalExpr, Unifications, NewArgs, GoalExpr,
     CallGoalInfo0 = !.GoalInfo,
     Context = goal_info_get_context(CallGoalInfo0),
     CallNonlocals0 = goal_info_get_nonlocals(CallGoalInfo0),
-    CallNonlocals = set.insert_list(CallNonlocals0, NewArgs),
+    set_of_var.insert_list(NewArgs, CallNonlocals0, CallNonlocals),
     goal_info_set_nonlocals(CallNonlocals, CallGoalInfo0, CallGoalInfo),
     Goals = [hlds_goal(CallGoalExpr, CallGoalInfo) | Unifications],
 
@@ -502,11 +502,11 @@ module_info_pred_status_is_imported(ModuleInfo, PredId) :-
     % based on the default filename for the module followed by the
     % predicate's name.
     %
-pretty_print_pred_constraints_map(ModuleInfo, ConstraintVarset,
+pretty_print_pred_constraints_map(ModuleInfo, ConstraintVarSet,
         PredConstraintsMap, !IO) :-
     ConstrainedPreds = map.keys(PredConstraintsMap),
     list.foldl(
-        pretty_print_pred_constraints(ModuleInfo, ConstraintVarset,
+        pretty_print_pred_constraints(ModuleInfo, ConstraintVarSet,
             PredConstraintsMap),
         ConstrainedPreds, !IO).
 
@@ -517,7 +517,7 @@ pretty_print_pred_constraints_map(ModuleInfo, ConstraintVarset,
 :- pred pretty_print_pred_constraints(module_info::in, mc_varset::in,
     pred_constraints_map::in, pred_id::in, io::di, io::uo) is det.
 
-pretty_print_pred_constraints(ModuleInfo, ConstraintVarset,
+pretty_print_pred_constraints(ModuleInfo, ConstraintVarSet,
         PredConstraintsMap, PredId, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
 
@@ -531,10 +531,10 @@ pretty_print_pred_constraints(ModuleInfo, ConstraintVarset,
 
     map.lookup(PredConstraintsMap, PredId, {_, PredConstraints}),
     AllProcAnnConstraints = allproc_annotated_constraints(PredConstraints),
-    dump_constraints_and_annotations(Globals, ConstraintVarset,
+    dump_constraints_and_annotations(Globals, ConstraintVarSet,
         AllProcAnnConstraints, !IO),
     list.foldl(
-        pretty_print_proc_constraints(ModuleInfo, ConstraintVarset,
+        pretty_print_proc_constraints(ModuleInfo, ConstraintVarSet,
             PredConstraints, PredId),
         pred_info_all_procids(PredInfo), !IO).
 
@@ -545,7 +545,7 @@ pretty_print_pred_constraints(ModuleInfo, ConstraintVarset,
 :- pred pretty_print_proc_constraints(module_info::in, mc_varset::in,
     pred_p_c_constraints::in, pred_id::in, proc_id::in, io::di, io::uo) is det.
 
-pretty_print_proc_constraints(ModuleInfo, ConstraintVarset, PredConstraints,
+pretty_print_proc_constraints(ModuleInfo, ConstraintVarSet, PredConstraints,
         PredId, ProcId, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
 
@@ -556,7 +556,7 @@ pretty_print_proc_constraints(ModuleInfo, ConstraintVarset, PredConstraints,
         should_module_qualify, proc(PredId, ProcId)) ++ [suffix(":")], !IO),
     ProcSpecAnnConstraints =
         proc_specific_annotated_constraints(ProcId, PredConstraints),
-    dump_constraints_and_annotations(Globals, ConstraintVarset,
+    dump_constraints_and_annotations(Globals, ConstraintVarSet,
         ProcSpecAnnConstraints, !IO).
 
 %----------------------------------------------------------------------------%

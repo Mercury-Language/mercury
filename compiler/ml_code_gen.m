@@ -523,6 +523,7 @@
 :- import_module ml_backend.ml_switch_gen.
 :- import_module ml_backend.ml_unify_gen.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module map.
@@ -700,8 +701,8 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
 find_vars_to_declare(VarTypes, GoalExpr, GoalInfo, VarsToDeclare) :-
     goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    set.difference(SubGoalNonLocals, NonLocals, VarsToDeclareSet),
-    set.to_sorted_list(VarsToDeclareSet, VarsToDeclare0),
+    set_of_var.difference(SubGoalNonLocals, NonLocals, VarsToDeclareSet),
+    set_of_var.to_sorted_list(VarsToDeclareSet, VarsToDeclare0),
     (
         ( VarsToDeclare0 = []
         ; VarsToDeclare0 = [_]
@@ -738,7 +739,7 @@ find_vars_to_declare(VarTypes, GoalExpr, GoalInfo, VarsToDeclare) :-
     % arguments from calls and unifications.
     %
 :- pred goal_expr_find_subgoal_nonlocals(hlds_goal_expr::in,
-    set(prog_var)::out) is det.
+    set_of_progvar::out) is det.
 
 goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
     (
@@ -750,17 +751,17 @@ goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
             % or a region to construct the term in, but both of those require
             % that variable to be nonlocal to GoalExpr, which means that they
             % would be subtracted from SubGoalNonLocals by our caller anyway.
-            SubGoalNonLocals = set.list_to_set([LHSVar | ArgVars])
+            SubGoalNonLocals = set_of_var.list_to_set([LHSVar | ArgVars])
         ;
             Unification = deconstruct(LHSVar, _ConsId, ArgVars, _ArgModes,
                 _CanFail, _CanCGC),
-            SubGoalNonLocals = set.list_to_set([LHSVar | ArgVars])
+            SubGoalNonLocals = set_of_var.list_to_set([LHSVar | ArgVars])
         ;
             Unification = assign(LHSVar, RHSVar),
-            SubGoalNonLocals = set.list_to_set([LHSVar, RHSVar])
+            SubGoalNonLocals = set_of_var.list_to_set([LHSVar, RHSVar])
         ;
             Unification = simple_test(LHSVar, RHSVar),
-            SubGoalNonLocals = set.list_to_set([LHSVar, RHSVar])
+            SubGoalNonLocals = set_of_var.list_to_set([LHSVar, RHSVar])
         ;
             Unification = complicated_unify(_, _, _),
             unexpected($module, $pred, "complicated_unify")
@@ -768,29 +769,29 @@ goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
     ;
         GoalExpr = plain_call(_PredId, _ProcId, ArgVars, _Builtin,
             _Unify_context, _SymName),
-        SubGoalNonLocals = set.list_to_set(ArgVars)
+        SubGoalNonLocals = set_of_var.list_to_set(ArgVars)
     ;
         GoalExpr = generic_call(GenericCall, ArgVars, _Modes, _Detism),
         (
             GenericCall = higher_order(HOVar, _Purity, _Kind, _Arity),
-            SubGoalNonLocals = set.list_to_set([HOVar | ArgVars])
+            SubGoalNonLocals = set_of_var.list_to_set([HOVar | ArgVars])
         ;
             GenericCall = class_method(MethodVar, _MethodNum, _MethodClassId,
                 _Name),
-            SubGoalNonLocals = set.list_to_set([MethodVar | ArgVars])
+            SubGoalNonLocals = set_of_var.list_to_set([MethodVar | ArgVars])
         ;
             GenericCall = event_call(_Eventname),
-            SubGoalNonLocals = set.list_to_set(ArgVars)
+            SubGoalNonLocals = set_of_var.list_to_set(ArgVars)
         ;
             GenericCall = cast(_CastKind),
-            SubGoalNonLocals = set.list_to_set(ArgVars)
+            SubGoalNonLocals = set_of_var.list_to_set(ArgVars)
         )
     ;
         GoalExpr = call_foreign_proc(_Attr, _PredId, _ProcId, Args, ExtraArgs,
             _TraceCond, _Impl),
         ArgVars = list.map(foreign_arg_var, Args),
         ExtraVars = list.map(foreign_arg_var, ExtraArgs),
-        SubGoalNonLocals = set.list_to_set(ExtraVars ++ ArgVars)
+        SubGoalNonLocals = set_of_var.list_to_set(ExtraVars ++ ArgVars)
     ;
         ( GoalExpr = negation(SubGoal)
         ; GoalExpr = scope(_Reason, SubGoal)
@@ -805,40 +806,41 @@ goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
         ( GoalExpr = conj(_, SubGoals)
         ; GoalExpr = disj(SubGoals)
         ),
-        goals_find_subgoal_nonlocals(SubGoals, set.init, SubGoalNonLocals)
+        goals_find_subgoal_nonlocals(SubGoals,
+            set_of_var.init, SubGoalNonLocals)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
         % The value of _Vars is not guaranteed to contain the set of variables
         % shared between only Cond and Then.
         goals_find_subgoal_nonlocals([Cond, Then, Else],
-            set.init, SubGoalNonLocals)
+            set_of_var.init, SubGoalNonLocals)
     ;
         GoalExpr = switch(_Var, _CanFail, Cases),
         % _Var must be nonlocal; if it weren't, there would have been a mode
         % error (no producer for _Var before a consumer, namely this switch).
-        cases_find_subgoal_nonlocals(Cases, set.init, SubGoalNonLocals)
+        cases_find_subgoal_nonlocals(Cases, set_of_var.init, SubGoalNonLocals)
     ;
         GoalExpr = shorthand(_),
         unexpected($module, $pred, "shorthand")
     ).
 
 :- pred goals_find_subgoal_nonlocals(list(hlds_goal)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 goals_find_subgoal_nonlocals([], !SubGoalNonLocals).
 goals_find_subgoal_nonlocals([SubGoal | SubGoals], !SubGoalNonLocals) :-
     NonLocals = goal_get_nonlocals(SubGoal),
-    set.union(!.SubGoalNonLocals, NonLocals, !:SubGoalNonLocals),
+    set_of_var.union(NonLocals, !SubGoalNonLocals),
     goals_find_subgoal_nonlocals(SubGoals, !SubGoalNonLocals).
 
 :- pred cases_find_subgoal_nonlocals(list(case)::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 cases_find_subgoal_nonlocals([], !SubGoalNonLocals).
 cases_find_subgoal_nonlocals([Case | Cases], !SubGoalNonLocals) :-
     Case = case(_, _, SubGoal),
     NonLocals = goal_get_nonlocals(SubGoal),
-    set.union(!.SubGoalNonLocals, NonLocals, !:SubGoalNonLocals),
+    set_of_var.union(NonLocals, !SubGoalNonLocals),
     cases_find_subgoal_nonlocals(Cases, !SubGoalNonLocals).
 
 %-----------------------------------------------------------------------------%

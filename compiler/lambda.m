@@ -99,6 +99,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module array.
@@ -373,7 +374,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
     ExistQVars = [],
     LambdaGoal = hlds_goal(_, LambdaGoalInfo),
     LambdaGoalNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
-    set.insert_list(Vars, LambdaGoalNonLocals, LambdaNonLocals),
+    set_of_var.insert_list(Vars, LambdaGoalNonLocals, LambdaNonLocals),
     goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         LambdaNonLocals, ExtraTypeInfos),
     OrigVars = OrigNonLocals0,
@@ -389,14 +390,14 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         unexpected($module, $pred, "unexpected unification")
     ),
 
-    set.delete_list(Vars, LambdaGoalNonLocals, NonLocals1),
+    set_of_var.delete_list(Vars, LambdaGoalNonLocals, NonLocals1),
 
     % We need all the typeinfos, including the ones that are not used,
     % for the layout structure describing the closure.
-    set.difference(ExtraTypeInfos, NonLocals1, NewTypeInfos),
-    set.union(NonLocals1, NewTypeInfos, NonLocals),
+    set_of_var.difference(ExtraTypeInfos, NonLocals1, NewTypeInfos),
+    set_of_var.union(NonLocals1, NewTypeInfos, NonLocals),
 
-    ( set.empty(NewTypeInfos) ->
+    ( set_of_var.is_empty(NewTypeInfos) ->
         MustRecomputeNonLocals = MustRecomputeNonLocals0
     ;
         % If we added variables to the nonlocals of the lambda goal, then
@@ -404,7 +405,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         MustRecomputeNonLocals = yes
     ),
 
-    set.to_sorted_list(NonLocals, ArgVars1),
+    set_of_var.to_sorted_list(NonLocals, ArgVars1),
 
     (
         % Optimize a special case: replace

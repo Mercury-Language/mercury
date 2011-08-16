@@ -91,6 +91,7 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module counter.
@@ -292,7 +293,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     NonLocalsList = list.map(
         (func(hlds_goal(_GX, GI)) = goal_info_get_nonlocals(GI)),
         HLDS_TypeInfoGoals),
-    NonLocals = set.union_list(NonLocalsList),
+    NonLocals = set_of_var.union_list(NonLocalsList),
     InstMapDelta = instmap_delta_bind_var(TypeInfoVar),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_impure,
         GoalInfo),
@@ -335,7 +336,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
                 mercury_type_to_mlds_type(ModuleInfo, LocalVarType),
                 gc_no_stmt, MLDS_Context)
         ),
-    set.to_sorted_list(NonLocals, NonLocalVarList),
+    set_of_var.to_sorted_list(NonLocals, NonLocalVarList),
     MLDS_NonLocalVarDecls = list.map(GenLocalVarDecl, NonLocalVarList),
 
     % Combine the MLDS code fragments together.

@@ -23,8 +23,7 @@
 :- interface.
 
 :- import_module hlds.hlds_pred.
-:- import_module parse_tree.prog_data.
-:- import_module set.
+:- import_module parse_tree.set_of_var.
 
 %-----------------------------------------------------------------------------%
 
@@ -34,7 +33,7 @@
     %
     % Add the vars to all the LFU sets in the body of the procedure.
     %
-:- pred add_vars_to_lfu(set(prog_var)::in, proc_info::in, proc_info::out)
+:- pred add_vars_to_lfu(set_of_progvar::in, proc_info::in, proc_info::out)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -45,8 +44,8 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.set_of_var.
 
 :- import_module list.
 :- import_module map.
@@ -58,21 +57,21 @@ forward_use_information(!ProcInfo) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
     proc_info_get_goal(!.ProcInfo, Goal0),
 
-        % Set of variables initially instantiated.
+    % Set of variables initially instantiated.
     proc_info_get_liveness_info(!.ProcInfo, InstantiatedVars0),
-        % Set of variables initially "dead" = instantiated variables that
-        % syntactically do not occur in the remainder of the goal.
-    set.init(DeadVars0),
+    % Set of variables initially "dead" = instantiated variables that
+    % syntactically do not occur in the remainder of the goal.
+    set_of_var.init(DeadVars0),
 
     forward_use_in_goal(VarTypes, Goal0, Goal,
-        remove_typeinfo_vars_from_set(VarTypes, InstantiatedVars0),
+        remove_typeinfo_vars_from_set_of_var(VarTypes, InstantiatedVars0),
         _InstantiatedVars, DeadVars0, _DeadVars),
 
     proc_info_set_goal(Goal, !ProcInfo).
 
 :- pred forward_use_in_goal(vartypes::in, hlds_goal::in, hlds_goal::out,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 forward_use_in_goal(VarTypes, !Goal, !InstantiatedVars, !DeadVars) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
@@ -82,20 +81,20 @@ forward_use_in_goal(VarTypes, !Goal, !InstantiatedVars, !DeadVars) :-
         InstantiatedVars0 = !.InstantiatedVars,
         compute_instantiated_and_dead_vars(VarTypes, GoalInfo0,
             !InstantiatedVars, !DeadVars),
-        set.difference(InstantiatedVars0, !.DeadVars, LFU),
+        set_of_var.difference(InstantiatedVars0, !.DeadVars, LFU),
         goal_info_set_lfu(LFU, GoalInfo0, GoalInfo),
         !:Goal = hlds_goal(GoalExpr0, GoalInfo)
     ;
         HasSubGoals = has_subgoals,
         goal_info_get_pre_deaths(GoalInfo0, PreDeaths),
-        set.union(bitset_to_set(PreDeaths), !DeadVars),
+        set_of_var.union(PreDeaths, !DeadVars),
         forward_use_in_composite_goal(VarTypes, !Goal,
             !InstantiatedVars, !DeadVars)
     ).
 
 :- pred compute_instantiated_and_dead_vars(vartypes::in, hlds_goal_info::in,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 compute_instantiated_and_dead_vars(VarTypes, Info, !Inst, !Dead) :-
     % Inst = Inst0 + birth-set
@@ -104,16 +103,15 @@ compute_instantiated_and_dead_vars(VarTypes, Info, !Inst, !Dead) :-
     goal_info_get_post_births(Info, PostBirths),
     goal_info_get_post_deaths(Info, PostDeaths),
     goal_info_get_pre_deaths(Info, PreDeaths),
-    !:Inst = set.union_list([
-        remove_typeinfo_vars_from_set(VarTypes, bitset_to_set(PreBirths)),
-        remove_typeinfo_vars_from_set(VarTypes, bitset_to_set(PostBirths)),
+    !:Inst = set_of_var.union_list([
+        remove_typeinfo_vars_from_set_of_var(VarTypes, PreBirths),
+        remove_typeinfo_vars_from_set_of_var(VarTypes, PostBirths),
         !.Inst]),
-    !:Dead = set.union_list(
-        [bitset_to_set(PreDeaths), bitset_to_set(PostDeaths), !.Dead]).
+    !:Dead = set_of_var.union_list([PreDeaths, PostDeaths, !.Dead]).
 
 :- pred forward_use_in_composite_goal(vartypes::in, hlds_goal::in,
-    hlds_goal::out, set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    hlds_goal::out, set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 forward_use_in_composite_goal(VarTypes, !Goal, !InstantiatedVars,
         !DeadVars) :-
@@ -156,8 +154,8 @@ forward_use_in_composite_goal(VarTypes, !Goal, !InstantiatedVars,
         forward_use_in_goal(VarTypes, Then0, Then,
             !InstantiatedVars, !DeadVars),
         forward_use_in_goal(VarTypes, Else0, Else, Inst0, Inst1, Dead0, Dead1),
-        set.union(Inst1, !InstantiatedVars),
-        set.union(Dead1, !DeadVars),
+        set_of_var.union(Inst1, !InstantiatedVars),
+        set_of_var.union(Dead1, !DeadVars),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         ( GoalExpr0 = unify(_, _, _, _, _)
@@ -170,21 +168,22 @@ forward_use_in_composite_goal(VarTypes, !Goal, !InstantiatedVars,
         GoalExpr0 = shorthand(_),
         unexpected($module, $pred, "shorthand")
     ),
-    set.difference(InstantiadedBefore, !.DeadVars, LFU),
+    set_of_var.difference(InstantiadedBefore, !.DeadVars, LFU),
     goal_info_set_lfu(LFU, GoalInfo0, GoalInfo),
     !:Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred forward_use_in_conj(vartypes::in, list(hlds_goal)::in,
-    list(hlds_goal)::out, set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out) is det.
+:- pred forward_use_in_conj(vartypes::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 forward_use_in_conj(VarTypes, !Goals, !InstantiatedVars, !DeadVars) :-
     list.map_foldl2(forward_use_in_goal(VarTypes), !Goals,
         !InstantiatedVars, !DeadVars).
 
 :- pred forward_use_in_cases(vartypes::in, list(case)::in, list(case)::out,
-    set(prog_var)::in, set(prog_var)::out, set(prog_var)::in,
-    set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 forward_use_in_cases(VarTypes, !Cases, !InstantiatedVars, !DeadVars) :-
     Inst0 = !.InstantiatedVars,
@@ -192,21 +191,23 @@ forward_use_in_cases(VarTypes, !Cases, !InstantiatedVars, !DeadVars) :-
     list.map_foldl2(forward_use_in_case(VarTypes, Inst0, Dead0),
         !Cases, !InstantiatedVars, !DeadVars).
 
-:- pred forward_use_in_case(vartypes::in, set(prog_var)::in,
-    set(prog_var)::in, case::in, case::out, set(prog_var)::in,
-    set(prog_var)::out, set(prog_var)::in, set(prog_var)::out) is det.
+:- pred forward_use_in_case(vartypes::in, set_of_progvar::in,
+    set_of_progvar::in, case::in, case::out,
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 forward_use_in_case(VarTypes, Inst0, Dead0, !Case,
         !InstantiatedVars, !DeadVars) :-
     !.Case = case(MainConsId, OtherConsIds, Goal0),
     forward_use_in_goal(VarTypes, Goal0, Goal, Inst0, Inst, Dead0, Dead),
     !:Case = case(MainConsId, OtherConsIds, Goal),
-    set.union(Inst, !InstantiatedVars),
-    set.union(Dead, !DeadVars).
+    set_of_var.union(Inst, !InstantiatedVars),
+    set_of_var.union(Dead, !DeadVars).
 
-:- pred forward_use_in_disj(vartypes::in, list(hlds_goal)::in,
-    list(hlds_goal)::out, set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out) is det.
+:- pred forward_use_in_disj(vartypes::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 forward_use_in_disj(VarTypes, !Goals, !InstantiatedVars, !DeadVars):-
     Inst0 = !.InstantiatedVars,
@@ -214,15 +215,16 @@ forward_use_in_disj(VarTypes, !Goals, !InstantiatedVars, !DeadVars):-
     list.map_foldl2(forward_use_in_disj_goal(VarTypes, Inst0, Dead0),
         !Goals, !InstantiatedVars, !DeadVars).
 
-:- pred forward_use_in_disj_goal(vartypes::in, set(prog_var)::in,
-    set(prog_var)::in, hlds_goal::in, hlds_goal::out, set(prog_var)::in,
-    set(prog_var)::out, set(prog_var)::in, set(prog_var)::out) is det.
+:- pred forward_use_in_disj_goal(vartypes::in, set_of_progvar::in,
+    set_of_progvar::in, hlds_goal::in, hlds_goal::out,
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 forward_use_in_disj_goal(VarTypes, Inst0, Dead0, !Goal,
         !InstantiatedVars, !DeadVars) :-
     forward_use_in_goal(VarTypes, !Goal, Inst0, Inst, Dead0, Dead),
-    set.union(Inst, !InstantiatedVars),
-    set.union(Dead, !DeadVars).
+    set_of_var.union(Inst, !InstantiatedVars),
+    set_of_var.union(Dead, !DeadVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -231,19 +233,19 @@ add_vars_to_lfu(ForceInUse, !ProcInfo) :-
     add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
     proc_info_set_goal(Goal, !ProcInfo).
 
-:- pred add_vars_to_lfu_in_goal(set(prog_var)::in,
+:- pred add_vars_to_lfu_in_goal(set_of_progvar::in,
     hlds_goal::in, hlds_goal::out) is det.
 
 add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal) :-
     Goal0 = hlds_goal(Expr0, GoalInfo0),
     add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr),
     LFU0 = goal_info_get_lfu(GoalInfo0),
-    LFU = set.union(ForceInUse, LFU0),
+    LFU = set_of_var.union(ForceInUse, LFU0),
     goal_info_set_lfu(LFU, GoalInfo0, GoalInfo1),
     goal_info_set_reuse(no_reuse_info, GoalInfo1, GoalInfo),
     Goal = hlds_goal(Expr, GoalInfo).
 
-:- pred add_vars_to_lfu_in_goal_expr(set(prog_var)::in,
+:- pred add_vars_to_lfu_in_goal_expr(set_of_progvar::in,
     hlds_goal_expr::in, hlds_goal_expr::out) is det.
 
 add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
@@ -308,7 +310,7 @@ add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
         Expr = shorthand(Shorthand)
     ).
 
-:- pred add_vars_to_lfu_in_goals(set(prog_var)::in,
+:- pred add_vars_to_lfu_in_goals(set_of_progvar::in,
     hlds_goals::in, hlds_goals::out) is det.
 
 add_vars_to_lfu_in_goals(_, [], []).
@@ -316,7 +318,7 @@ add_vars_to_lfu_in_goals(ForceInUse, [Goal0 | Goals0], [Goal | Goals]) :-
     add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
     add_vars_to_lfu_in_goals(ForceInUse, Goals0, Goals).
 
-:- pred add_vars_to_lfu_in_cases(set(prog_var)::in,
+:- pred add_vars_to_lfu_in_cases(set_of_progvar::in,
     list(case)::in, list(case)::out) is det.
 
 add_vars_to_lfu_in_cases(_, [], []).

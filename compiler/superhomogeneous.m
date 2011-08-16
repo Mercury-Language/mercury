@@ -419,7 +419,7 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
         % from_ground_term_construct scopes, and quantification can
         % exploit this knowledge.
         Kind = from_ground_term_construct,
-        goal_info_set_nonlocals(set.make_singleton_set(LHSVar),
+        goal_info_set_nonlocals(set_of_var.make_singleton(LHSVar),
             GoalInfo0, GoalInfo),
         ( GoalExpr0 = conj(plain_conj, Conjuncts0) ->
             mark_nonlocals_in_ground_term_construct(Conjuncts0, Conjuncts),
@@ -447,7 +447,7 @@ mark_nonlocals_in_ground_term_construct([Goal0 | Goals0], [Goal | Goals]) :-
         GoalExpr = unify(LHSVar, RHS, _, _, _),
         RHS = rhs_functor(_, _, RHSVars)
     ->
-        set.list_to_set([LHSVar | RHSVars], NonLocals),
+        set_of_var.list_to_set([LHSVar | RHSVars], NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
@@ -1180,7 +1180,7 @@ make_fresh_arg_vars_loop([], !RevVars, !VarSet, !SVarState, !Specs).
 make_fresh_arg_vars_loop([Arg | Args], !RevVars, !VarSet, !SVarState,
         !Specs) :-
     make_fresh_arg_var(Arg, Var, !.RevVars, !VarSet, !SVarState, !Specs),
-    !:RevVars = [Var | !.RevVars], 
+    !:RevVars = [Var | !.RevVars],
     make_fresh_arg_vars_loop(Args, !RevVars, !VarSet, !SVarState, !Specs).
 
 make_fresh_arg_var(Arg0, Var, Vars0, !VarSet, !SVarState, !Specs) :-

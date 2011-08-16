@@ -8,7 +8,7 @@
 %
 % File: ctgc.livedata.m.
 % Main author: nancy.
-% 
+%
 % Definition of the live_data type used to represent the set of datastructures
 % that are probably (not definitely!) live at a given program point (goal).
 % A data structure is said to be "live" if the memory used to represent
@@ -33,8 +33,8 @@
 
 :- type livedata.
 
-    % Create an initial set of live data structure, possibly given a list 
-    % of live variables or data structures. 
+    % Create an initial set of live data structure, possibly given a list
+    % of live variables or data structures.
     %
 :- func livedata_init = livedata.   % Which assumes that nothing is live.
 :- func livedata_init_from_vars(live_vars) = livedata.
@@ -52,19 +52,19 @@
 
     % Least upper bound of all the livedata.
     %
-:- func livedata_least_upper_bound(module_info, proc_info, livedata, 
+:- func livedata_least_upper_bound(module_info, proc_info, livedata,
     livedata) = livedata.
-:- func livedata_least_upper_bound_list(module_info, proc_info, 
+:- func livedata_least_upper_bound_list(module_info, proc_info,
     list(livedata)) = livedata.
 
     % Subsumption predicates.
     %
 :- pred livedata_subsumes_prog_var(livedata::in, prog_var::in) is semidet.
-:- pred livedata_subsumes_datastruct(module_info::in, proc_info::in, 
+:- pred livedata_subsumes_datastruct(module_info::in, proc_info::in,
     livedata::in, datastruct::in) is semidet.
 
     % Projection operation.
-    % 
+    %
 :- func livedata_project(list(prog_var), livedata) = livedata.
 
 %-----------------------------------------------------------------------------%
@@ -87,6 +87,7 @@
 
 :- implementation.
 
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 
@@ -96,19 +97,19 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type livedata 
+:- type livedata
     --->    livedata_bottom      % There are no live data structures.
     ;       livedata_top         % All data structures may be live.
     ;       livedata_live(list(datastruct)).
                                  % Only the listed datastructures can
                                  % possibly be live.
-    
+
 %-----------------------------------------------------------------------------%
 
 livedata_init = livedata_bottom.
-livedata_init_from_vars(LiveVars) = 
+livedata_init_from_vars(LiveVars) =
     livedata_live(list.map(datastruct_init, LiveVars)).
-livedata_init_from_datastructs(Data) = 
+livedata_init_from_datastructs(Data) =
     livedata_live(Data).
 livedata_init_as_top = livedata_top.
 
@@ -117,10 +118,10 @@ livedata_is_top(livedata_top).
 
 livedata_get_datastructs(livedata_bottom) = [].
 livedata_get_datastructs(livedata_live(Data)) = Data.
-livedata_get_datastructs(livedata_top) = unexpected($module, $pred, 
+livedata_get_datastructs(livedata_top) = unexpected($module, $pred,
     "livedata_get_datastructs: livedata is top.").
 
-livedata_least_upper_bound(ModuleInfo, ProcInfo, LiveData1, 
+livedata_least_upper_bound(ModuleInfo, ProcInfo, LiveData1,
         LiveData2) = LiveData :-
     (
         LiveData1 = livedata_bottom,
@@ -144,16 +145,16 @@ livedata_least_upper_bound(ModuleInfo, ProcInfo, LiveData1,
         )
     ).
 
-livedata_least_upper_bound_list(ModuleInfo, ProcInfo, LiveDataList) 
-    = list.foldl(livedata_least_upper_bound(ModuleInfo, ProcInfo), 
+livedata_least_upper_bound_list(ModuleInfo, ProcInfo, LiveDataList)
+    = list.foldl(livedata_least_upper_bound(ModuleInfo, ProcInfo),
         LiveDataList, livedata_init).
 
-livedata_subsumes_prog_var(LiveData, ProgVar) :- 
+livedata_subsumes_prog_var(LiveData, ProgVar) :-
     livedata_subsumes_topcell(LiveData, datastruct_init(ProgVar)).
 
 :- pred livedata_subsumes_topcell(livedata::in, datastruct::in) is semidet.
 
-livedata_subsumes_topcell(LiveData, TopCell) :- 
+livedata_subsumes_topcell(LiveData, TopCell) :-
     (
         LiveData = livedata_top
     ;
@@ -171,11 +172,11 @@ livedata_subsumes_datastruct(ModuleInfo, ProcInfo, LiveData, Datastruct):-
             LiveData, Datastruct)
     ).
 
-:- pred livedata_subsumes_datastruct_with_selector(module_info::in, 
+:- pred livedata_subsumes_datastruct_with_selector(module_info::in,
     proc_info::in, livedata::in, datastruct::in) is semidet.
 
 livedata_subsumes_datastruct_with_selector(ModuleInfo, ProcInfo, LiveData,
-        Datastruct) :- 
+        Datastruct) :-
     (
         LiveData = livedata_top
     ;
@@ -188,16 +189,16 @@ livedata_project(ProgVars, LiveData) = ProjectedLiveData :-
         LiveData = livedata_bottom,
         ProjectedLiveData = livedata_bottom
     ;
-        LiveData = livedata_top, 
+        LiveData = livedata_top,
         ProjectedLiveData = livedata_top
-    ;     
+    ;
         LiveData = livedata_live(Data),
-        list.filter(list_contains_datastruct_var(ProgVars), 
+        list.filter(list_contains_datastruct_var(ProgVars),
             Data, FilteredData),
-        ( 
+        (
             FilteredData = [],
             ProjectedLiveData = livedata_bottom
-        ;  
+        ;
             FilteredData = [_ | _],
             ProjectedLiveData = livedata_live(FilteredData)
         )
@@ -205,34 +206,34 @@ livedata_project(ProgVars, LiveData) = ProjectedLiveData :-
 
 :- pred list_contains_datastruct_var(prog_vars::in, datastruct::in) is semidet.
 
-list_contains_datastruct_var(ProgVars, Datastruct) :- 
+list_contains_datastruct_var(ProgVars, Datastruct) :-
     list.member(Datastruct ^ sc_var, ProgVars).
 
 %-----------------------------------------------------------------------------%
 
 livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo, SharingAs) = LiveData :-
-    % Collect the 
+    % Collect the
     % (XXX collect the what?)
     Lfu = goal_info_get_lfu(GoalInfo),
-    Lbu = goal_info_get_lbu(GoalInfo), 
-    Lu = set.to_sorted_list(set.union(Lfu, Lbu)),
+    Lbu = goal_info_get_lbu(GoalInfo),
+    Lu = set_of_var.to_sorted_list(set_of_var.union(Lfu, Lbu)),
     (
-        % When there are no data structure in forward nor backward use, 
+        % When there are no data structure in forward nor backward use,
         % then the livedata set is empty.
         Lu = []
-    -> 
+    ->
         LiveData = livedata_init
     ;
         % If Lu is not empty, and sharing is top, then all possible
         % datastructures might possibly be live.
         sharing_as_is_top(SharingAs)
-    -> 
+    ->
         LiveData = livedata_init_as_top
     ;
         % Lu not empty, and sharing is bottom... then only the
         % datastructures in local use are live.
         sharing_as_is_bottom(SharingAs)
-    -> 
+    ->
         LiveData = livedata_init_from_vars(Lu)
     ;
         % Otherwise we have the most general case: Lu not empty, Sharing
@@ -257,7 +258,7 @@ livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo, SharingAs) = LiveData :-
     % port over.  However, its caller always passes the empty set for the
     % LIVE_0 argument which would make a lot of code unnecessary.
     %
-:- func livedata_init_at_goal_2(module_info, proc_info, live_vars, 
+:- func livedata_init_at_goal_2(module_info, proc_info, live_vars,
     structure_sharing) = livedata.
 
 livedata_init_at_goal_2(ModuleInfo, ProcInfo, Lu, SharingPairs) = LiveData :-
@@ -282,7 +283,7 @@ livedata_init_at_goal_2(ModuleInfo, ProcInfo, Lu, SharingPairs) = LiveData :-
     structure_sharing::in, list(datastruct)::out) is det.
 
 live_from_in_use(ModuleInfo, ProcInfo, InUseList, SharingPairs, Live):-
-    % Filter the list of sharing pairs, keeping only the ones that 
+    % Filter the list of sharing pairs, keeping only the ones that
     % involve at least one variable from the IN_USE (LU) set.
     list.map(one_of_vars_is_live(ModuleInfo, ProcInfo, InUseList),
         SharingPairs, DatastructsLists),
@@ -296,12 +297,12 @@ live_from_in_use(ModuleInfo, ProcInfo, InUseList, SharingPairs, Live):-
 	% 	   or
 	%		sy.s2 = s1 => sx1 = sx.s2
     %
-:- pred one_of_vars_is_live(module_info::in, proc_info::in, 
+:- pred one_of_vars_is_live(module_info::in, proc_info::in,
     list(datastruct)::in, structure_sharing_pair::in, list(datastruct)::out)
     is det.
 
 one_of_vars_is_live(ModuleInfo, ProcInfo, Datastructs0, PairXY,
-        Datastructs) :- 
+        Datastructs) :-
 	one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, Datastructs0,
         PairXY, L1),
 	% Switch order.
@@ -315,11 +316,11 @@ one_of_vars_is_live(ModuleInfo, ProcInfo, Datastructs0, PairXY,
 	list(datastruct)::in, structure_sharing_pair::in,
     list(datastruct)::out) is det.
 
-one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, List, Pair, List_Xsx1) :- 
+one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, List, Pair, List_Xsx1) :-
 	Pair = Xsx - Ysy,
 	list.filter(datastruct_same_vars(Ysy), List, Y_List),
 	(
-		% First try to find one of the found datastructs which is 
+		% First try to find one of the found datastructs which is
 		% fully alive: so that Ysy is less or equal to at least one
 		% Ys1 in Y_List (sy = s1.s2)
 		list.filter(datastruct_subsumed_by(ModuleInfo, ProcInfo, Ysy),
@@ -329,7 +330,7 @@ one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, List, Pair, List_Xsx1) :-
 		Xsx1 = Xsx,
 		List_Xsx1 = [Xsx1]
 	;
-		% Find all datastructs from Y_List which are less or 
+		% Find all datastructs from Y_List which are less or
 		% equal to Ysy. Select the one with the shortest selector
 		% (Note that there should be only one solution. If more
 		% than one such datastruct is found, the initial live set
@@ -345,48 +346,48 @@ one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, List, Pair, List_Xsx1) :-
 	).
 
 livedata_add_liveness(ModuleInfo, ProcInfo, LuData, LocalSharing, LiveData0)
-        = LiveData :- 
-    ( 
+        = LiveData :-
+    (
         sharing_as_is_top(LocalSharing)
     ->
         LiveData = livedata_init_as_top
-    ; 
+    ;
         sharing_as_is_bottom(LocalSharing)
     ->
-        LiveData = livedata_least_upper_bound(ModuleInfo, ProcInfo, 
+        LiveData = livedata_least_upper_bound(ModuleInfo, ProcInfo,
             LiveData0, livedata_init_from_datastructs(LuData))
     ;
         % most general case: normal sharing.
         ExtendLuData = extend_datastructs(ModuleInfo, ProcInfo,
             LocalSharing, LuData),
         LuLiveData = livedata_init_from_datastructs(ExtendLuData),
-        ExtendLiveData = extend_livedata(ModuleInfo, ProcInfo, 
+        ExtendLiveData = extend_livedata(ModuleInfo, ProcInfo,
             LocalSharing, LiveData0),
-        LiveData = livedata_least_upper_bound(ModuleInfo, ProcInfo, 
+        LiveData = livedata_least_upper_bound(ModuleInfo, ProcInfo,
             LuLiveData, ExtendLiveData)
     ).
-   
+
 :- func extend_livedata(module_info, proc_info, sharing_as, livedata)
     = livedata.
 
 extend_livedata(ModuleInfo, ProcInfo, SharingAs, LiveData0) = LiveData :-
     (
-        LiveData0 = livedata_bottom, 
+        LiveData0 = livedata_bottom,
         LiveData = livedata_bottom
     ;
         LiveData0 = livedata_top,
         LiveData = livedata_top
     ;
         LiveData0 = livedata_live(Data0),
-        LiveData = livedata_live(extend_datastructs(ModuleInfo, ProcInfo, 
+        LiveData = livedata_live(extend_datastructs(ModuleInfo, ProcInfo,
             SharingAs, Data0))
     ).
 
-nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes, LiveData, Result) :- 
+nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes, LiveData, Result) :-
     (
         LiveData = livedata_top,
         Result = nodes_all_live
-    ; 
+    ;
         LiveData = livedata_bottom,
         Result = nodes_are_live([])
     ;

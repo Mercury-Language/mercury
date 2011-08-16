@@ -155,6 +155,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module int.
@@ -519,7 +520,7 @@ create_if_then_else_goal(GoalsInConj, ConjInfo, MaybeGranularityVar,
         % The non-locals of the hlds_goal_info of the if_then_else goal must
         % contain the variable controlling the granularity.
         NonLocals0 = goal_info_get_nonlocals(ConjInfo),
-        set.insert(GranularityVar, NonLocals0, NonLocals),
+        set_of_var.insert(GranularityVar, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, ConjInfo, IfThenElseInfo),
         IfThenElseGoal = hlds_goal(if_then_else([], Cond, Then, Else),
             IfThenElseInfo)
@@ -701,7 +702,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     DecrementGoalExpr = plain_call(MinusPredId, MinusProcId,
                         MinusCallArgs, MinusCallBuiltin, MinusCallUnifyContext,
                         MinusCallSymName),
-                    set.list_to_set([GranularityVar, Var, VarResult],
+                    set_of_var.list_to_set([GranularityVar, Var, VarResult],
                         NonLocals),
                     VarResultDelta = VarResult - ground(unique, none),
                     VarDelta = Var - bound(shared, [bound_functor(int_const(1),
@@ -982,7 +983,7 @@ update_original_predicate_plain_call(!Goal, CallerPredId, CallerProcId,
         % Update the nonlocals and the instmap_delta of the hlds_goal_info
         % of the recursive plain call for Var.
         NonLocals0 = goal_info_get_nonlocals(CallInfo0),
-        set.insert(Var, NonLocals0, NonLocals),
+        set_of_var.insert(Var, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, CallInfo0, CallInfo1),
         InstMapDelta0 = goal_info_get_instmap_delta(CallInfo1),
         MerInst = ground(shared, none),

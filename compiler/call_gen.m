@@ -760,7 +760,7 @@ output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_call_vn_livevals(list(arg_loc)::in, set(prog_var)::in,
+:- pred generate_call_vn_livevals(list(arg_loc)::in, set_of_progvar::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
 generate_call_vn_livevals(InputArgLocs, OutputArgs, Code, !CI) :-

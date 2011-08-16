@@ -53,6 +53,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -61,7 +62,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -337,20 +337,20 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
         ;
             Goals0 = [_ | _],
             NonLocals = goal_info_get_nonlocals(GoalInfo),
-            set.to_sorted_list(NonLocals, NonLocalsList),
+            NonLocalsList = set_of_var.to_sorted_list(NonLocals),
             detect_cse_in_disj(NonLocalsList, Goals0, GoalInfo,
                 InstMap0, !CseInfo, Redo, GoalExpr)
         )
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
-        set.to_sorted_list(NonLocals, NonLocalsList),
+        NonLocalsList = set_of_var.to_sorted_list(NonLocals),
         detect_cse_in_cases(NonLocalsList, Var, CanFail, Cases0, GoalInfo,
             InstMap0, !CseInfo, Redo, GoalExpr)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
-        set.to_sorted_list(NonLocals, NonLocalsList),
+        NonLocalsList = set_of_var.to_sorted_list(NonLocals),
         detect_cse_in_ite(NonLocalsList, Vars, Cond0, Then0, Else0, GoalInfo,
             InstMap0, !CseInfo, Redo, GoalExpr)
     ;

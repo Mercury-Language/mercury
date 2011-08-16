@@ -126,6 +126,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1583,9 +1584,10 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                             [always(NestedOuterPieces)])])
                     ]),
                 det_info_add_error_spec(NestedSpec, !DetInfo),
-                AllVars = set.union(list_to_set(OuterVars), list_to_set(Vars)),
+                AllVars = set_of_var.list_to_set(OuterVars ++ Vars),
                 MaybePromiseEqvSolutionSets =
-                    yes(pess_info(to_sorted_list(AllVars), OuterContext))
+                    yes(pess_info(set_of_var.to_sorted_list(AllVars),
+                        OuterContext))
             )
         ;
             Kind = equivalent_solution_sets_arbitrary,
@@ -1600,14 +1602,15 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ;
                 MaybePromiseEqvSolutionSets0 = yes(pess_info(OldVars,
                     PromiseContext)),
-                OverlapVars = set.intersect(list_to_set(OldVars),
-                    list_to_set(Vars)),
-                ( set.empty(OverlapVars) ->
+                OverlapVars = set_of_var.intersect(
+                    set_of_var.list_to_set(OldVars),
+                    set_of_var.list_to_set(Vars)),
+                ( set_of_var.is_empty(OverlapVars) ->
                     true
                 ;
                     OverlapVarNames = list.map(
                         lookup_var_name_in_varset(VarSet),
-                        set.to_sorted_list(OverlapVars)),
+                        set_of_var.to_sorted_list(OverlapVars)),
                     (
                         OverlapVarNames = [],
                         unexpected($module, $pred,
@@ -1643,23 +1646,25 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         det_info_get_module_info(!.DetInfo, ModuleInfo),
         % BoundVars must include both vars whose inst has changed and vars
         % with inst any which may have been further constrained by the goal.
-        set.divide(var_is_ground_in_instmap(ModuleInfo, InstMap0),
+        set_of_var.divide(var_is_ground_in_instmap(ModuleInfo, InstMap0),
             ChangedVars, _GroundAtStartVars, GroundBoundVars),
         NonLocalVars = goal_info_get_nonlocals(GoalInfo),
-        AnyBoundVars = set.filter(var_is_any_in_instmap(ModuleInfo, InstMap0),
+        AnyBoundVars = set_of_var.filter(
+            var_is_any_in_instmap(ModuleInfo, InstMap0),
             NonLocalVars),
-        BoundVars0 = set.union(GroundBoundVars, AnyBoundVars),
+        BoundVars0 = set_of_var.union(GroundBoundVars, AnyBoundVars),
         proc_info_get_vartypes(ProcInfo, VarTypes),
-        BoundVars = remove_typeinfo_vars_from_set(VarTypes, BoundVars0),
+        BoundVars = remove_typeinfo_vars_from_set_of_var(VarTypes, BoundVars0),
 
         % Which vars were bound inside the scope but not listed
         % in the promise_equivalent_solution{s,_sets} or arbitrary scope?
-        set.difference(BoundVars, set.list_to_set(Vars), MissingVars),
-        ( set.empty(MissingVars) ->
+        set_of_var.difference(BoundVars, set_of_var.list_to_set(Vars),
+            MissingVars),
+        ( set_of_var.is_empty(MissingVars) ->
             true
         ;
             MissingVarNames = list.map(lookup_var_name_in_varset(VarSet),
-                set.to_sorted_list(MissingVars)),
+                set_of_var.to_sorted_list(MissingVars)),
             MissingKindStr = promise_solutions_kind_str(Kind),
             (
                 MissingVarNames = [],
@@ -1673,8 +1678,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 MissingListStr = "some variables that are not listed:"
             ),
             (
-                set.member(MissingVar, MissingVars),
-                set.member(MissingVar, AnyBoundVars)
+                set_of_var.member(MissingVars, MissingVar),
+                set_of_var.member(AnyBoundVars, MissingVar)
             ->
                 BindsWords = "goal may constrain"
             ;
@@ -1689,17 +1694,18 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         ),
         % Which vars were listed in the promise_equivalent_solutions
         % but not bound inside the scope?
-        set.difference(set.list_to_set(Vars), BoundVars, ExtraVars),
+        set_of_var.difference(set_of_var.list_to_set(Vars),
+            BoundVars, ExtraVars),
         det_info_get_pess_extra_vars(!.DetInfo, IgnoreExtraVars),
         (
-            ( set.empty(ExtraVars)
+            ( set_of_var.is_empty(ExtraVars)
             ; IgnoreExtraVars = pess_extra_vars_ignore
             )
         ->
             true
         ;
             ExtraVarNames = list.map(lookup_var_name_in_varset(VarSet),
-                set.to_sorted_list(ExtraVars)),
+                set_of_var.to_sorted_list(ExtraVars)),
             ExtraKindStr = promise_solutions_kind_str(Kind),
             (
                 ExtraVarNames = [],

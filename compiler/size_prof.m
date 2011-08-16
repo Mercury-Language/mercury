@@ -120,6 +120,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.term_norm.
 
 :- import_module assoc_list.
@@ -130,7 +131,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -744,7 +744,7 @@ size_prof_process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type,
             construct_sub_info(no, yes(dynamic_size(SizeVar)))),
         UnifyExpr = unify(LHS, RHS, UniMode, Unification, UnifyContext),
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        set.insert(SizeVar, NonLocals0, NonLocals),
+        set_of_var.insert(SizeVar, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         UnifyGoal = hlds_goal(UnifyExpr, GoalInfo),
         Goals = list.condense([ArgGoals, SizeGoals, [UnifyGoal]]),

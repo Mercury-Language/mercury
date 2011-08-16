@@ -90,11 +90,11 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -130,7 +130,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         ProcIds = [],
         \+ check_marker(Markers, marker_infer_modes)
     ->
-        set.init(WaitingVars),
+        set_of_var.init(WaitingVars),
         mode_info_error(WaitingVars, mode_error_no_mode_decl, !ModeInfo),
         TheProcId = invalid_proc_id,
         ArgVars = ArgVars0,
@@ -173,7 +173,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         mode_info_get_errors(!.ModeInfo, OldErrors),
         mode_info_set_errors([], !ModeInfo),
 
-        set.init(WaitingVars0),
+        set_of_var.init(WaitingVars0),
         modecheck_find_matching_modes(ProcIds, PredId, Procs, ArgVars0,
             [], RevMatchingProcIds, WaitingVars0, WaitingVars1, !ModeInfo),
 
@@ -193,7 +193,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
                 CalleeModeErrors = [_ | _],
                 % mode error in callee for this mode
                 ArgVars = ArgVars0,
-                WaitingVars = set.list_to_set(ArgVars),
+                WaitingVars = set_of_var.list_to_set(ArgVars),
                 ExtraGoals = no_extra_goals,
                 instmap_lookup_vars(InstMap, ArgVars, ArgInsts),
                 mode_info_set_call_arg_context(0, !ModeInfo),
@@ -251,7 +251,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
             mode_info_var_is_locked(!.ModeInfo, PredVar, Reason)
         ->
             BetterPredVarInst = ground(A, B),
-            set.singleton_set(WaitingVars, PredVar),
+            WaitingVars = set_of_var.make_singleton(PredVar),
             mode_info_error(WaitingVars, mode_error_bind_var(Reason, PredVar,
                     PredVarInst, BetterPredVarInst), !ModeInfo),
             Modes = [],
@@ -275,7 +275,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
     ;
         % The error occurred in argument 1, i.e. the pred term.
         mode_info_set_call_arg_context(1, !ModeInfo),
-        set.singleton_set(WaitingVars, PredVar),
+        WaitingVars = set_of_var.make_singleton(PredVar),
         mode_info_error(WaitingVars,
             mode_error_higher_order_pred_var(PredOrFunc, PredVar, PredVarInst,
                 Arity),
@@ -325,14 +325,13 @@ modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args, !ModeInfo) :-
 %--------------------------------------------------------------------------%
 
 :- pred no_matching_modes(pred_id::in, list(prog_var)::in,
-    maybe(determinism)::in, set(prog_var)::in, proc_id::out,
+    maybe(determinism)::in, set_of_progvar::in, proc_id::out,
     mode_info::in, mode_info::out) is det.
 
 no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
         !ModeInfo) :-
-    %
     % There were no matching modes.
-    % If we're inferring modes for this called predicate, then
+    % If we are inferring modes for this called predicate, then
     % just insert a new mode declaration which will match.
     % Otherwise, report an error.
     %
@@ -362,7 +361,7 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
 
 :- pred modecheck_find_matching_modes(list(proc_id)::in, pred_id::in,
     proc_table::in, list(prog_var)::in, list(proc_mode)::in,
-    list(proc_mode)::out, set(prog_var)::in, set(prog_var)::out,
+    list(proc_mode)::out, set_of_progvar::in, set_of_progvar::out,
     mode_info::in, mode_info::out) is det.
 
 modecheck_find_matching_modes([], _PredId, _Procs, _ArgVars,
@@ -413,7 +412,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
         Errors = [FirstError | _],
         mode_info_set_errors([], !ModeInfo),
         FirstError = mode_error_info(ErrorWaitingVars, _, _, _),
-        set.union(!.WaitingVars, ErrorWaitingVars, !:WaitingVars)
+        set_of_var.union(ErrorWaitingVars, !WaitingVars)
     ;
         Errors = [],
         NewMatch = proc_mode(ProcId, InstVarSub, ProcArgModes),

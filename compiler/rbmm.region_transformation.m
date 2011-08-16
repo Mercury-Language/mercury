@@ -84,6 +84,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
@@ -988,7 +989,7 @@ make_assignment_goal(LeftRegVar, RightRegVar, Context, AssignmentGoal) :-
     % I think it is always recomputed but it seems that I am wrong.
     % It should be able to be recomputed from the modes in the assigment.
     % Maybe I am missing or doing something wrong here.
-    NonLocals = set.init,
+    NonLocals = set_of_var.init,
     InstmapDelta = instmap_delta_bind_var(LeftRegVar),
     goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
         AssignmentInfo),

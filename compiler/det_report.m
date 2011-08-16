@@ -154,6 +154,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -163,7 +164,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module set_tree234.
 :- import_module solutions.
 :- import_module string.
@@ -908,10 +908,10 @@ find_switch_var_matches([Conjunct | Conjuncts], !.SwitchVarSynonyms,
         OtherConsIds = []
     ->
         NonLocals = goal_info_get_nonlocals(GoalInfo),
-        set.list_to_set(ArgVars, ArgVarsSet),
+        ArgVarsSet = set_of_var.list_to_set(ArgVars),
         (
-            set.intersect(NonLocals, ArgVarsSet, NonLocalArgVarsSet),
-            set.non_empty(NonLocalArgVarsSet)
+            set_of_var.intersect(NonLocals, ArgVarsSet, NonLocalArgVarsSet),
+            set_of_var.is_non_empty(NonLocalArgVarsSet)
         ->
             MaybeArgVars = yes(ArgVars)
         ;
@@ -975,10 +975,10 @@ find_switch_var_submatches([Disjunct | Disjuncts], SwitchVarSynonyms,
         find_switch_var_submatches(Disjuncts, SwitchVarSynonyms,
             MaybeMainConsId, LeftOverConsIds, MaybeMainMatch, LeftOverMatches),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
-        set.list_to_set(ArgVars, ArgVarsSet),
+        set_of_var.list_to_set(ArgVars, ArgVarsSet),
         (
-            set.intersect(NonLocals, ArgVarsSet, NonLocalArgVarsSet),
-            set.non_empty(NonLocalArgVarsSet)
+            set_of_var.intersect(NonLocals, ArgVarsSet, NonLocalArgVarsSet),
+            set_of_var.is_non_empty(NonLocalArgVarsSet)
         ->
             MaybeArgVars = yes(ArgVars)
         ;

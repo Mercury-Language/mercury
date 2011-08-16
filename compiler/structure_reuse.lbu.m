@@ -56,19 +56,19 @@ backward_use_information(_ModuleInfo, !ProcInfo):-
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
 
     % Before the first goal, the set of variables in LBU is empty.
-    LBU0 = set.init,
+    LBU0 = set_of_var.init,
     backward_use_in_goal(VarTypes, Goal0, Goal, LBU0, _LBU),
 
     proc_info_set_goal(Goal, !ProcInfo).
 
 :- pred backward_use_in_goal(vartypes::in, hlds_goal::in, hlds_goal::out,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 backward_use_in_goal(VarTypes, !TopGoal, !LBU) :-
     !.TopGoal = hlds_goal(Expr0, Info0),
 
     % Add resume_vars to the LBU-set.
-    set.union(get_backtrack_vars(VarTypes, Info0), !LBU),
+    set_of_var.union(get_backtrack_vars(VarTypes, Info0), !LBU),
 
     backward_use_in_goal_2(VarTypes, Info0, Expr0, Expr, !LBU),
 
@@ -76,8 +76,8 @@ backward_use_in_goal(VarTypes, !TopGoal, !LBU) :-
     !:TopGoal = hlds_goal(Expr, Info).
 
 :- pred backward_use_in_goal_2(vartypes::in, hlds_goal_info::in,
-    hlds_goal_expr::in, hlds_goal_expr::out, set(prog_var)::in,
-    set(prog_var)::out) is det.
+    hlds_goal_expr::in, hlds_goal_expr::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
     % Handle each goal type separately:
@@ -86,9 +86,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
     ;
         !.Expr = plain_call(_,_, _, _, _, _),
         Det = goal_info_get_determinism(Info0),
-        (
-            detism_allows_multiple_solns(Det)
-        ->
+        ( detism_allows_multiple_solns(Det) ->
             % Implementation of Instantiation 2 from Nancy's PhD.
             % In this instantation, a non-deterministic procedure
             % call only adds its LFU-variables to the current set
@@ -96,11 +94,9 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
 
             goal_info_get_pre_births(Info0, PreBirths),
             goal_info_get_post_births(Info0, PostBirths),
-            !:LBU = set.union_list([goal_info_get_lfu(Info0),
-                remove_typeinfo_vars_from_set(VarTypes,
-                    bitset_to_set(PreBirths)),
-                remove_typeinfo_vars_from_set(VarTypes,
-                    bitset_to_set(PostBirths)),
+            !:LBU = set_of_var.union_list([goal_info_get_lfu(Info0),
+                remove_typeinfo_vars_from_set_of_var(VarTypes, PreBirths),
+                remove_typeinfo_vars_from_set_of_var(VarTypes, PostBirths),
                 !.LBU])
         ;
             true
@@ -166,7 +162,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
 
         % Annotate Else-goal.
         backward_use_in_goal(VarTypes, Else0, Else, LBU0, LBUE),
-        set.union(LBUT, LBUE, !:LBU),
+        set_of_var.union(LBUT, LBUE, !:LBU),
         !:Expr = if_then_else(Vars, Cond, Then, Else)
     ;
         !.Expr = shorthand(_),
@@ -174,16 +170,16 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
         unexpected($module, $pred, "shorthand")
     ).
 
-:- func get_backtrack_vars(vartypes, hlds_goal_info) = set(prog_var).
+:- func get_backtrack_vars(vartypes, hlds_goal_info) = set_of_progvar.
 
 get_backtrack_vars(VarTypes, Info) = Vars :-
     goal_info_get_resume_point(Info, ResPoint),
     (
         ResPoint = resume_point(ResVars, _),
-        Vars = remove_typeinfo_vars_from_set(VarTypes, bitset_to_set(ResVars))
+        Vars = remove_typeinfo_vars_from_set_of_var(VarTypes, ResVars)
     ;
         ResPoint = no_resume_point,
-        Vars = set.init
+        Vars = set_of_var.init
     ).
 
 :- pred detism_allows_multiple_solns(prog_data__determinism::in) is semidet.
@@ -194,43 +190,44 @@ detism_allows_multiple_solns(detism_cc_non).
 detism_allows_multiple_solns(detism_cc_multi).
 
 :- pred backward_use_in_conj(vartypes::in, list(hlds_goal)::in,
-    list(hlds_goal)::out, set(prog_var)::in, set(prog_var)::out) is det.
+    list(hlds_goal)::out, set_of_progvar::in, set_of_progvar::out) is det.
 
 backward_use_in_conj(VarTypes, !Goals, !LBU) :-
     list.map_foldl(backward_use_in_goal(VarTypes), !Goals, !LBU).
 
 :- pred backward_use_in_cases(vartypes::in, list(case)::in, list(case)::out,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 backward_use_in_cases(VarTypes, !Cases, !LBU) :-
     % Every case is analysed with the same initial set of LBU-vars.
     LBU0 = !.LBU,
     list.map_foldl(backward_use_in_case(LBU0, VarTypes), !Cases, !LBU).
 
-:- pred backward_use_in_case(set(prog_var)::in, vartypes::in, case::in,
-    case::out, set(prog_var)::in, set(prog_var)::out) is det.
+:- pred backward_use_in_case(set_of_progvar::in, vartypes::in,
+    case::in, case::out, set_of_progvar::in, set_of_progvar::out) is det.
 
 backward_use_in_case(LBU0, VarTypes, !Case, !LBU):-
     !.Case = case(MainConsId, OtherConsIds, Goal0),
     backward_use_in_goal(VarTypes, Goal0, Goal, LBU0, NewLBU),
     !:Case = case(MainConsId, OtherConsIds, Goal),
-    set.union(NewLBU, !LBU).
+    set_of_var.union(NewLBU, !LBU).
 
-:- pred backward_use_in_disj(vartypes::in, list(hlds_goal)::in,
-    list(hlds_goal)::out, set(prog_var)::in, set(prog_var)::out) is det.
+:- pred backward_use_in_disj(vartypes::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 backward_use_in_disj(VarTypes, !Goals, !LBU) :-
     % Every disj-goal is analysed with the same initial set of LBU-vars.
     LBU0 = !.LBU,
     list.map_foldl(backward_use_in_disj_goal(LBU0, VarTypes), !Goals, !LBU).
 
-:- pred backward_use_in_disj_goal(set(prog_var)::in, vartypes::in,
-    hlds_goal::in, hlds_goal::out, set(prog_var)::in,
-    set(prog_var)::out) is det.
+:- pred backward_use_in_disj_goal(set_of_progvar::in, vartypes::in,
+    hlds_goal::in, hlds_goal::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 backward_use_in_disj_goal(LBU0, VarTypes, !Goal, !LBU) :-
     backward_use_in_goal(VarTypes, !Goal, LBU0, NewLBU),
-    set.union(NewLBU, !LBU).
+    set_of_var.union(NewLBU, !LBU).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.lbu.

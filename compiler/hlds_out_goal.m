@@ -199,7 +199,7 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
     ),
     ( string.contains_char(DumpOptions, 'n') ->
         NonLocalsSet = goal_info_get_nonlocals(GoalInfo),
-        set.to_sorted_list(NonLocalsSet, NonLocalsList),
+        set_of_var.to_sorted_list(NonLocalsSet, NonLocalsList),
         (
             NonLocalsList = [_ | _],
             write_indent(Indent, !IO),
@@ -242,8 +242,8 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
     ),
     ( string.contains_char(DumpOptions, 'B') ->
         ProducingVars = GoalInfo ^ producing_vars,
-        ( set.non_empty(ProducingVars) ->
-            set.to_sorted_list(ProducingVars, ProducingVarsList),
+        ( set_of_var.is_non_empty(ProducingVars) ->
+            set_of_var.to_sorted_list(ProducingVars, ProducingVarsList),
             write_indent(Indent, !IO),
             io.write_string("% producing vars: ", !IO),
             mercury_output_vars(VarSet, AppendVarNums, ProducingVarsList, !IO),
@@ -253,8 +253,8 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
         ),
 
         ConsumingVars = GoalInfo ^ consuming_vars,
-        ( set.non_empty(ConsumingVars) ->
-            set.to_sorted_list(ConsumingVars, ConsumingVarsList),
+        ( set_of_var.is_non_empty(ConsumingVars) ->
+            set_of_var.to_sorted_list(ConsumingVars, ConsumingVarsList),
             write_indent(Indent, !IO),
             io.write_string("% consuming vars: ", !IO),
             mercury_output_vars(VarSet, AppendVarNums, ConsumingVarsList, !IO),
@@ -264,8 +264,8 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
         ),
 
         MakeVisibleVars = GoalInfo ^ make_visible_vars,
-        ( set.non_empty(MakeVisibleVars) ->
-            set.to_sorted_list(MakeVisibleVars, MakeVisibleVarsList),
+        ( set_of_var.is_non_empty(MakeVisibleVars) ->
+            set_of_var.to_sorted_list(MakeVisibleVars, MakeVisibleVarsList),
             write_indent(Indent, !IO),
             io.write_string("% make_visible vars: ", !IO),
             mercury_output_vars(VarSet, AppendVarNums, MakeVisibleVarsList,
@@ -276,8 +276,8 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
         ),
 
         NeedVisibleVars = GoalInfo ^ need_visible_vars,
-        ( set.non_empty(NeedVisibleVars) ->
-            set.to_sorted_list(NeedVisibleVars, NeedVisibleVarsList),
+        ( set_of_var.is_non_empty(NeedVisibleVars) ->
+            set_of_var.to_sorted_list(NeedVisibleVars, NeedVisibleVarsList),
             write_indent(Indent, !IO),
             io.write_string("% need_visible vars: ", !IO),
             mercury_output_vars(VarSet, AppendVarNums, NeedVisibleVarsList,
@@ -395,7 +395,7 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
         (
             instmap_delta_is_reachable(InstMapDelta),
             instmap_delta_changed_vars(InstMapDelta, Vars),
-            set.empty(Vars)
+            set_of_var.is_empty(Vars)
         ->
             true
         ;
@@ -448,8 +448,8 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
             yes(LFU) = goal_info_get_maybe_lfu(GoalInfo),
             yes(LBU) = goal_info_get_maybe_lbu(GoalInfo),
             yes(ReuseDescription) = goal_info_get_maybe_reuse(GoalInfo),
-            set.to_sorted_list(LFU, ListLFU),
-            set.to_sorted_list(LBU, ListLBU)
+            set_of_var.to_sorted_list(LFU, ListLFU),
+            set_of_var.to_sorted_list(LBU, ListLBU)
         ->
             write_indent(Indent, !IO),
             io.write_string("% LFU: ", !IO),

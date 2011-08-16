@@ -45,9 +45,10 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
 :- import_module map.
@@ -209,7 +210,7 @@ convert_clause_to_hhf(_HeadVars, Clause0, Clause, !HI) :-
     % !HI ^ hhfi_varset := VarSet,
     % !HI ^ hhfi_vartypes := VarTypes.
 
-:- pred convert_goal_to_hhf(set(prog_var)::in, hlds_goal::in, hlds_goal::out,
+:- pred convert_goal_to_hhf(set_of_progvar::in, hlds_goal::in, hlds_goal::out,
     hhf_info::in, hhf_info::out) is det.
 
 convert_goal_to_hhf(NonLocals, Goal0, Goal, !HI) :-
@@ -226,7 +227,7 @@ goal_use_own_nonlocals(Goal0, Goal, !HI) :-
     convert_goal_expr_to_hhf(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred convert_goal_expr_to_hhf(set(prog_var)::in, hlds_goal_info::in,
+:- pred convert_goal_expr_to_hhf(set_of_progvar::in, hlds_goal_info::in,
     hlds_goal_expr::in, hlds_goal_expr::out, hhf_info::in, hhf_info::out)
     is det.
 
@@ -289,7 +290,7 @@ convert_goal_expr_to_hhf(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         unexpected($module, $pred, "shorthand")
     ).
 
-:- pred convert_unify_to_hhf(unify_rhs::in, set(prog_var)::in,
+:- pred convert_unify_to_hhf(unify_rhs::in, set_of_progvar::in,
     hlds_goal_info::in, prog_var::in, unify_mode::in, unification::in,
     unify_context::in, hlds_goal_expr::out, hhf_info::in, hhf_info::out)
     is det.
@@ -324,7 +325,7 @@ convert_unify_to_hhf(RHS0, NonLocals, GoalInfo0, X, Mode, Unif, Context,
             !HI ^ hhfi_inst_graph := InstGraph
         ),
         GINonlocals0 = goal_info_get_nonlocals(GoalInfo0),
-        GINonlocals = set.union(GINonlocals0, list_to_set(Args)),
+        GINonlocals = set_of_var.union(GINonlocals0, list_to_set(Args)),
         goal_info_set_nonlocals(GINonlocals, GoalInfo0, GoalInfo),
         RHS = rhs_functor(ConsId, IsExistConstruct, Args),
         UnifyGoalExpr = unify(X, RHS, Mode, Unif, Context),
@@ -344,11 +345,11 @@ make_unifications([], [_ | _], _, _, _, _, _) :-
 make_unifications([A | As], [B | Bs], GI0, M, U, C,
         [hlds_goal(unify(A, rhs_var(B), M, U, C), GI) | Us]) :-
     GINonlocals0 = goal_info_get_nonlocals(GI0),
-    GINonlocals = set.insert_list(GINonlocals0, [A, B]),
+    set_of_var.insert_list([A, B], GINonlocals0, GINonlocals),
     goal_info_set_nonlocals(GINonlocals, GI0, GI),
     make_unifications(As, Bs, GI0, M, U, C, Us).
 
-:- pred add_unifications(list(prog_var)::in, set(prog_var)::in,
+:- pred add_unifications(list(prog_var)::in, set_of_progvar::in,
     hlds_goal_info::in, unify_mode::in, unification::in, unify_context::in,
     list(prog_var)::out, hlds_goals::out, hhf_info::in, hhf_info::out) is det.
 
@@ -361,7 +362,7 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
             map.lookup(InstGraph0, A, Node),
             Node = node(_, parent(_))
         ;
-            set.member(A, NonLocals)
+            set_of_var.member(NonLocals, A)
         )
     ->
         VarSet0 = !.HI ^ hhfi_varset,
@@ -375,7 +376,7 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
         !HI ^ hhfi_vartypes := VarTypes,
         !HI ^ hhfi_inst_graph := InstGraph,
         GINonlocals0 = goal_info_get_nonlocals(GI0),
-        GINonlocals = set.insert(GINonlocals0, V),
+        set_of_var.insert(V, GINonlocals0, GINonlocals),
         goal_info_set_nonlocals(GINonlocals, GI0, GI),
         Goals = [hlds_goal(unify(A, rhs_var(V), M, U, C), GI) | Goals0]
     ;

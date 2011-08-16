@@ -124,12 +124,14 @@ output_llds(Globals, CFile, !IO) :-
 
 output_c_file_mercury_headers(Info, !IO) :-
     io.write_string("#define MR_ALLOW_RESET\n", !IO),
+    io.write_string("#include ""mercury_imp.h""\n", !IO),
     TraceLevel = Info ^ lout_trace_level,
-    ( given_trace_level_is_none(TraceLevel) = no ->
-        io.write_string("#include ""mercury_imp.h""\n", !IO),
+    TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
+    (
+        TraceLevelIsNone = no,
         io.write_string("#include ""mercury_trace_base.h""\n", !IO)
     ;
-        io.write_string("#include ""mercury_imp.h""\n", !IO)
+        TraceLevelIsNone = yes
     ),
     DeepProfile = Info ^ lout_profile_deep,
     (

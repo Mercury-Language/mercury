@@ -28,7 +28,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module map.
-:- import_module set.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -56,7 +55,7 @@
     % local forward and backward use, as well as the local structure sharing.
     %
 :- func reuse_condition_init(module_info, proc_info, dead_var,
-    set(live_var), set(live_var), sharing_as) = reuse_condition.
+    set_of_live_var, set_of_live_var, sharing_as) = reuse_condition.
 
 :- pred reuse_condition_is_conditional(reuse_condition::in) is semidet.
 
@@ -272,6 +271,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module parse_tree.prog_ctgc.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.util.
 
@@ -358,11 +358,11 @@ reuse_condition_init(ModuleInfo, ProcInfo, DeadVar, LFU, LBU, Sharing)
         Condition = always
     ;
         Nodes = [_ | _],
-        set.union(LFU, LBU, LU),
+        set_of_var.union(LFU, LBU, LU),
         % XXX the old implementation did not bother about extending at this
         % place, which was contrary to the theory. Check the effect of this
         % change!
-        LuData = list.map(datastruct_init, set.to_sorted_list(LU)),
+        LuData = list.map(datastruct_init, set_of_var.to_sorted_list(LU)),
         ExtendedLuData = list.map(
             extend_datastruct(ModuleInfo, ProcInfo, Sharing), LuData),
         SharedLU = list.condense(ExtendedLuData),
@@ -370,7 +370,7 @@ reuse_condition_init(ModuleInfo, ProcInfo, DeadVar, LFU, LBU, Sharing)
 
         structure_sharing.domain.sharing_as_project(HeadVars, Sharing,
             HeadVarSharing),
-        Condition = condition(set.from_list(Nodes), HeadVarSharedLU,
+        Condition = condition(set.list_to_set(Nodes), HeadVarSharedLU,
             HeadVarSharing)
     ).
 

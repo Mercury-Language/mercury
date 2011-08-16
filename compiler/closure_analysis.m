@@ -42,6 +42,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
@@ -114,9 +115,9 @@ process_scc(Debug, SCC, !ModuleInfo, !IO) :-
 
 closure_info_init(ModuleInfo, VarTypes, HeadVars, ArgModes) = ClosureInfo :-
     partition_arguments(ModuleInfo, VarTypes, HeadVars, ArgModes,
-        set.init, Inputs0, set.init, _Outputs),
-    Inputs = set.filter(var_has_ho_type(VarTypes), Inputs0),
-    set.fold(insert_unknown, Inputs, map.init, ClosureInfo).
+        set_of_var.init, Inputs0, set_of_var.init, _Outputs),
+    Inputs = set_of_var.filter(var_has_ho_type(VarTypes), Inputs0),
+    set_of_var.fold(insert_unknown, Inputs, map.init, ClosureInfo).
 
     % Succeeds iff the given variable has a higher-order type.
     %
@@ -195,7 +196,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         % in case there are duplicate arguments.
 
         partition_arguments(ModuleInfo, VarTypes, CallArgs, CallArgModes,
-            set.init, InputArgs, set.init, OutputArgs),
+            set_of_var.init, InputArgs, set_of_var.init, OutputArgs),
 
         % Update the goal_info to include any information about the
         % values of higher-order valued variables.
@@ -217,17 +218,17 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
                 true
             )
         ),
-        set.fold(AddValues, InputArgs, map.init, Values),
+        set_of_var.fold(AddValues, InputArgs, map.init, Values),
         goal_info_set_ho_values(Values, GoalInfo0, GoalInfo),
 
         % Insert any information about higher-order outputs from this call
         % into the closure_info.
-        set.fold(insert_unknown, OutputArgs, !ClosureInfo),
+        set_of_var.fold(insert_unknown, OutputArgs, !ClosureInfo),
         Goal = hlds_goal(GoalExpr0, GoalInfo)
     ;
         GoalExpr0 = generic_call(Details, GCallArgs, GCallModes, _),
         partition_arguments(ModuleInfo, VarTypes, GCallArgs, GCallModes,
-            set.init, InputArgs0, set.init, OutputArgs),
+            set_of_var.init, InputArgs0, set_of_var.init, OutputArgs),
 
         % For higher-order calls we need to make sure that the actual
         % higher-order variable being called is also considered (it will
@@ -236,7 +237,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         % separately.
 
         ( Details = higher_order(CalledClosure0, _, _, _) ->
-            set.insert(CalledClosure0, InputArgs0, InputArgs)
+            set_of_var.insert(CalledClosure0, InputArgs0, InputArgs)
         ;
             InputArgs = InputArgs0
         ),
@@ -257,12 +258,12 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
                 true
             )
         ),
-        set.fold(AddValues, InputArgs, map.init, Values),
+        set_of_var.fold(AddValues, InputArgs, map.init, Values),
         goal_info_set_ho_values(Values, GoalInfo0, GoalInfo),
 
         % Insert any information about higher-order outputs from this call
         % into the closure_info
-        set.fold(insert_unknown, OutputArgs, !ClosureInfo),
+        set_of_var.fold(insert_unknown, OutputArgs, !ClosureInfo),
         Goal = hlds_goal(GoalExpr0, GoalInfo)
     ;
         GoalExpr0 = switch(SwitchVar, SwitchCanFail, Cases0),
@@ -389,8 +390,8 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
 
 :- pred partition_arguments(module_info::in, vartypes::in,
     prog_vars::in, list(mer_mode)::in,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 partition_arguments(_, _, [],    [], !Inputs, !Outputs).
 partition_arguments(_, _, [_|_], [], _, _, _, _) :-
@@ -401,9 +402,9 @@ partition_arguments(ModuleInfo, VarTypes, [ Var | Vars ], [ Mode | Modes ],
         !Inputs, !Outputs) :-
     ( var_has_ho_type(VarTypes, Var) ->
         ( mode_is_input(ModuleInfo, Mode) ->
-            set.insert(Var, !Inputs)
+            set_of_var.insert(Var, !Inputs)
         ; mode_is_output(ModuleInfo, Mode) ->
-            set.insert(Var, !Outputs)
+            set_of_var.insert(Var, !Outputs)
         ;
             true
         )

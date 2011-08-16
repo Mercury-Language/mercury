@@ -95,17 +95,16 @@ allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
         eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, !.ProcInfo,
             TraceLevel) = yes
     ->
-        trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0),
-        ResumeVars1 = set_to_bitset(ResumeVars0)
+        trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars)
     ;
-        ResumeVars1 = set_of_var.init
+        ResumeVars = set_of_var.init
     ),
     build_input_arg_list(!.ProcInfo, InputArgLvals),
     LastLocns0 = initial_last_locns(InputArgLvals),
     proc_info_get_stack_slots(!.ProcInfo, StackSlots),
     StoreAllocInfo = store_alloc_info(ModuleInfo, StackSlots),
     store_alloc_in_goal(Goal2, Goal, Liveness0, _, LastLocns0, _,
-        ResumeVars1, StoreAllocInfo),
+        ResumeVars, StoreAllocInfo),
     proc_info_set_goal(Goal, !ProcInfo).
 
 :- func initial_last_locns(assoc_list(prog_var, lval)) = last_locns.

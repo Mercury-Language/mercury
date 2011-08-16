@@ -21,11 +21,10 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module list.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -33,11 +32,11 @@
     % variable in the given set? A from_ground_term_construct scope counts
     % as a unification.
     %
-:- pred goal_is_conj_of_unify(set(prog_var)::in, hlds_goal::in) is semidet.
+:- pred goal_is_conj_of_unify(set_of_progvar::in, hlds_goal::in) is semidet.
 
     % Run goal_is_conj_of_unify on each goal in the list.
     %
-:- pred all_disjuncts_are_conj_of_unify(set(prog_var)::in,
+:- pred all_disjuncts_are_conj_of_unify(set_of_progvar::in,
     list(hlds_goal)::in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -186,6 +185,7 @@
 
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
+:- import_module parse_tree.prog_data.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.term_constr_main.
 
@@ -203,7 +203,7 @@ goal_is_conj_of_unify(ToAssignVars0, Goal) :-
     CodeModel = model_det,
     goal_to_conj_list(Goal, Conj),
     only_constant_goals(Conj, ToAssignVars0, ToAssignVars),
-    set.empty(ToAssignVars).
+    set_of_var.is_empty(ToAssignVars).
 
 all_disjuncts_are_conj_of_unify(_ToAssignVars, []).
 all_disjuncts_are_conj_of_unify(ToAssignVars, [Disjunct | Disjuncts]) :-
@@ -211,7 +211,7 @@ all_disjuncts_are_conj_of_unify(ToAssignVars, [Disjunct | Disjuncts]) :-
     all_disjuncts_are_conj_of_unify(ToAssignVars, Disjuncts).
 
 :- pred only_constant_goals(list(hlds_goal)::in,
-    set(prog_var)::in, set(prog_var)::out) is semidet.
+    set_of_progvar::in, set_of_progvar::out) is semidet.
 
 only_constant_goals([], !ToAssignVars).
 only_constant_goals([Goal | Goals], !ToAssignVars) :-
@@ -226,7 +226,7 @@ only_constant_goals([Goal | Goals], !ToAssignVars) :-
         GoalExpr = scope(Reason, _),
         Reason = from_ground_term(Var, from_ground_term_construct)
     ),
-    set.delete(Var, !ToAssignVars),
+    set_of_var.delete(Var, !ToAssignVars),
     only_constant_goals(Goals, !ToAssignVars).
 
 %-----------------------------------------------------------------------------%

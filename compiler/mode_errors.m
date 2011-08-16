@@ -26,10 +26,10 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module list.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -45,7 +45,7 @@
 
 :- type delayed_goal
     --->    delayed_goal(
-                set(prog_var),      % The vars it's waiting on.
+                set_of_progvar,     % The vars it's waiting on.
                 mode_error_info,    % The reason it can't be scheduled.
                 hlds_goal           % The goal itself.
             ).
@@ -174,7 +174,7 @@
 
 :- type mode_error_info
     --->    mode_error_info(
-                set(prog_var),      % The variables which caused the error
+                set_of_progvar,     % The variables which caused the error
                                     % (we will attempt to reschedule the goal
                                     % if one of these variables becomes
                                     % more instantiated).
@@ -491,7 +491,7 @@ is_error_important(Error) :-
 
 mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     DelayedGoal = delayed_goal(Vars, Error, Goal),
-    set.to_sorted_list(Vars, VarList),
+    set_of_var.to_sorted_list(Vars, VarList),
     mode_info_get_varset(!.ModeInfo, VarSet),
     Pieces1 = [words("Floundered goal, waiting on {"),
         words(mercury_vars_to_string(VarSet, no, VarList)),

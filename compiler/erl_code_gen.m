@@ -65,6 +65,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module int.
@@ -349,8 +350,8 @@ erl_gen_proc_defn(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
 
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     NonLocals0 = goal_info_get_code_gen_nonlocals(GoalInfo0),
-    set.list_to_set(HeadVars, HeadVarsSet),
-    set.intersect(HeadVarsSet, NonLocals0, NonLocals),
+    set_of_var.list_to_set(HeadVars, HeadVarsSet),
+    set_of_var.intersect(HeadVarsSet, NonLocals0, NonLocals),
     goal_info_set_code_gen_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
@@ -586,7 +587,7 @@ erl_gen_commit_pieces(Goal, InstMap, _Context, DoRenaming,
         GoalStatement, PackedNonLocals, !Info) :-
     % Find the nonlocal variables bound by the goal.
     erl_bound_nonlocals_in_goal(!.Info, InstMap, Goal, NonLocalsSet),
-    NonLocals = set.to_sorted_list(NonLocalsSet),
+    NonLocals = set_of_var.to_sorted_list(NonLocalsSet),
 
     % Throw = ``throw({'MERCURY_COMMIT', {NonLocals, ...})''
     Throw = elds_throw(elds_term(ThrowValue)),
@@ -848,7 +849,7 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
         maybe_join_exprs1(MaybeConvertToAtom, CaseExpr)).
 
 :- pred erl_gen_case(mer_type::in,
-    code_model::in, instmap::in, set(prog_var)::in,
+    code_model::in, instmap::in, set_of_progvar::in,
     maybe(elds_expr)::in, hlds_goal.case::in, elds_case::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
@@ -906,7 +907,7 @@ cons_id_size(ModuleInfo, Type, ConsId) = Size :-
         Size = 0
     ).
 
-:- pred erl_gen_case_on_atom(code_model::in, instmap::in, set(prog_var)::in,
+:- pred erl_gen_case_on_atom(code_model::in, instmap::in, set_of_progvar::in,
     maybe(elds_expr)::in, hlds_goal.case::in, elds_case::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
@@ -939,19 +940,19 @@ erl_gen_case_on_atom(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
 %
 
 :- pred union_bound_nonlocals_in_goals(erl_gen_info::in, instmap::in,
-    hlds_goals::in, set(prog_var)::out) is det.
+    hlds_goals::in, set_of_progvar::out) is det.
 
 union_bound_nonlocals_in_goals(Info, InstMap, Goals, NonLocalsUnion) :-
     IsBound = erl_bound_nonlocals_in_goal(Info, InstMap),
     list.map(IsBound, Goals, NonLocalsLists),
-    NonLocalsUnion = set.union_list(NonLocalsLists).
+    NonLocalsUnion = set_of_var.union_list(NonLocalsLists).
 
     % If a success expression is too large to duplicate but is required after
     % two or more goals Gs, we generate a closure C containing the success
     % expression which takes the nonlocal variables bound by Gs as arguments.
     % Then we generate the code for Gs such that they call C on success.
     %
-:- pred maybe_create_closure_for_success_expr(set(prog_var)::in,
+:- pred maybe_create_closure_for_success_expr(set_of_progvar::in,
     maybe(elds_expr)::in, maybe(elds_expr)::out, maybe(elds_expr)::out,
     instmap::in, instmap::out, erl_gen_info::in, erl_gen_info::out) is det.
 
@@ -964,7 +965,7 @@ maybe_create_closure_for_success_expr(NonLocals, MaybeSuccessExpr0,
         erl_gen_info_new_named_var("SuccessClosure", ClosureVar, !Info),
         ground_var_in_instmap(ClosureVar, InstMap0, InstMap),
         ClosureVarExpr = expr_from_var(ClosureVar),
-        ClosureArgs0 = set.to_sorted_list(NonLocals),
+        ClosureArgs0 = set_of_var.to_sorted_list(NonLocals),
 
         % Ignore dummy variables.
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -1063,7 +1064,7 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         update_instmap(Cond, InstMap0, InstMap0PostCond),
         erl_bound_nonlocals_in_goal(!.Info, InstMap0PostCond, Then, ThenVars),
         erl_bound_nonlocals_in_goal(!.Info, InstMap0, Else, ElseVars),
-        CondVarsList = set.to_sorted_list(CondVars),
+        CondVarsList = set_of_var.to_sorted_list(CondVars),
 
         % Generate the condition goal, making it evaluate to a tuple of the
         % non-local variables that it binds on success.
@@ -1078,7 +1079,7 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         % Create a closure for the success expression if it is too large to
         % duplicate into the branches.
         % (InstMap1 = InstMap0 + optionally a variable bound to a closure)
-        BoundNonLocals = set.union(ThenVars, ElseVars),
+        BoundNonLocals = set_of_var.union(ThenVars, ElseVars),
         maybe_create_closure_for_success_expr(BoundNonLocals,
             MaybeSuccessExpr0, MaybeMakeClosure, MaybeSuccessExpr,
             InstMap0, InstMap1, !Info),
@@ -1336,7 +1337,7 @@ erl_gen_conj_2([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
 
             % Find the variables bound by First.
             erl_bound_nonlocals_in_goal(!.Info, InstMap0, First, NonLocalsSet),
-            NonLocals = set.to_sorted_list(NonLocalsSet),
+            NonLocals = set_of_var.to_sorted_list(NonLocalsSet),
 
             % Make the success continuation.  Rename apart any variables bound
             % by First to avoid warnings about the closure shadowing variables.
@@ -1470,7 +1471,7 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
             FirstCodeModel = model_semi,
 
             erl_bound_nonlocals_in_goal(!.Info, InstMap, First, FirstVarsSet),
-            FirstVars = set.to_sorted_list(FirstVarsSet),
+            FirstVars = set_of_var.to_sorted_list(FirstVarsSet),
             FirstVarsTerm = elds_tuple(exprs_from_vars(FirstVars)),
 
             % Generate code for the first goal, making it return a tuple of the
@@ -1540,7 +1541,7 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
             FirstStatement0, !Info),
 
         erl_bound_nonlocals_in_goal(!.Info, InstMap, First, FirstVarsSet),
-        FirstVars = set.to_sorted_list(FirstVarsSet),
+        FirstVars = set_of_var.to_sorted_list(FirstVarsSet),
         erl_create_renaming(FirstVars, Subst, !Info),
         erl_rename_vars_in_expr(Subst, FirstStatement0, FirstStatement),
 

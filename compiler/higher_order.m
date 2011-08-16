@@ -68,6 +68,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.inlining.
 
 :- import_module assoc_list.
@@ -1166,7 +1167,7 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
         !ProcInfo),
     CallArgs = [TypeClassInfoVar, IndexVar, ResultVar],
 
-    set.list_to_set(CallArgs, NonLocals),
+    set_of_var.list_to_set(CallArgs, NonLocals),
     instmap_delta_init_reachable(InstMapDelta0),
     instmap_delta_insert_var(ResultVar, ground(shared, none),
         InstMapDelta0, InstMapDelta),
@@ -2254,7 +2255,7 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
             NewCallArgs = [ComparisonResult, CastArg1, CastArg2],
             Call = plain_call(SpecialPredId, SpecialProcId, NewCallArgs,
                 not_builtin, MaybeContext, SymName),
-            set.list_to_set([ComparisonResult, Arg1, Arg2], NonLocals),
+            set_of_var.list_to_set([ComparisonResult, Arg1, Arg2], NonLocals),
             InstMapDelta = instmap_delta_bind_var(ComparisonResult),
             Detism = detism_det,
             goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
@@ -2280,7 +2281,7 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
         UnwrappedArg1, ExtractGoal1, ProcInfo0, ProcInfo1),
     unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg2,
         UnwrappedArg2, ExtractGoal2, ProcInfo1, ProcInfo2),
-    set.list_to_set([UnwrappedArg1, UnwrappedArg2], NonLocals0),
+    set_of_var.list_to_set([UnwrappedArg1, UnwrappedArg2], NonLocals0),
     (
         MaybeResult = no,
         in_mode(In),
@@ -2297,7 +2298,7 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
         !Info ^ hoi_proc_info := ProcInfo2
     ;
         MaybeResult = yes(ComparisonResult),
-        set.insert(ComparisonResult, NonLocals0, NonLocals),
+        set_of_var.insert(ComparisonResult, NonLocals0, NonLocals),
         InstMapDelta = instmap_delta_bind_var(ComparisonResult),
         Detism = detism_det,
         % Build a new call with the unwrapped arguments.
@@ -2427,7 +2428,7 @@ unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg,
     ConsId = cons(Constructor, 1, OuterTypeCtor),
     UniModes = [(ground(shared, none) - free) ->
         (ground(shared, none) - ground(shared, none))],
-    set.list_to_set([Arg, UnwrappedArg], NonLocals),
+    set_of_var.list_to_set([Arg, UnwrappedArg], NonLocals),
     % This will be recomputed later.
     InstMapDelta = instmap_delta_bind_var(UnwrappedArg),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
@@ -3178,7 +3179,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         % other constants which include it will be recognized as constant.
         modes_to_uni_modes(ModuleInfo, CurriedArgModes1,
             CurriedArgModes1, UniModes),
-        set.list_to_set(CurriedHeadVars1, ConstNonLocals),
+        set_of_var.list_to_set(CurriedHeadVars1, ConstNonLocals),
         ConstInst = ground(shared, GroundInstInfo),
         ConstInstMapDelta = instmap_delta_from_assoc_list([LVar - ConstInst]),
         goal_info_init(ConstNonLocals, ConstInstMapDelta, detism_det,

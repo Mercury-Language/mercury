@@ -184,7 +184,7 @@ is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap, !MaybeEnd,
     % end because we may have allocated some new static ground terms.
 
     figure_out_output_vars(!.CI, GoalInfo, OutVars),
-    set.list_to_set(OutVars, ArmNonLocals),
+    set_of_var.list_to_set(OutVars, ArmNonLocals),
     remember_position(!.CI, CurPos),
     generate_constants_for_lookup_switch(GetTag, TaggedCases,
         OutVars, ArmNonLocals, StoreMap, Liveness, map.init, CaseSolnMap,
@@ -214,7 +214,7 @@ is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap, !MaybeEnd,
 
 :- pred generate_constants_for_lookup_switch(
     pred(cons_tag, Key)::in(pred(in, out) is det),
-    list(tagged_case)::in, list(prog_var)::in, set(prog_var)::in,
+    list(tagged_case)::in, list(prog_var)::in, set_of_progvar::in,
     abs_store_map::in, set_of_progvar::out,
     map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out,
     branch_end::in, branch_end::out, set_of_progvar::in, set_of_progvar::out,

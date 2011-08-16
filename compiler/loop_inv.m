@@ -128,6 +128,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module cord.
@@ -573,7 +574,7 @@ inv_goals_vars_2(ModuleInfo, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
 has_uniquely_used_arg(UUVs, hlds_goal(_GoalExpr, GoalInfo)) :-
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     list.member(UUV, UUVs),
-    set.member(UUV, NonLocals).
+    set_of_var.member(NonLocals, UUV).
 
 %-----------------------------------------------------------------------------%
 

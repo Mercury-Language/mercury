@@ -67,6 +67,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.
 :- import_module transform_hlds.dead_proc_elim.
 :- import_module transform_hlds.dependency_graph.
@@ -895,7 +896,8 @@ build_semi_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
         generate_deep_call(ModuleInfo, "semi_fail_port_code_sr", 3,
             [TopCSD, MiddleCSD, ActivationPtr1], no, detism_failure,
             FailPortCode),
-        NewNonlocals = list_to_set([TopCSD, MiddleCSD, ActivationPtr1])
+        NewNonlocals =
+            set_of_var.list_to_set([TopCSD, MiddleCSD, ActivationPtr1])
     ;
         MaybeActivationPtr = no,
         generate_deep_det_call(ModuleInfo, "semi_call_port_code_ac", 3,
@@ -907,7 +909,7 @@ build_semi_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
             [TopCSD, MiddleCSD], [], ExitPortCode),
         generate_deep_call(ModuleInfo, "semi_fail_port_code_ac", 2,
             [TopCSD, MiddleCSD], no, detism_failure, FailPortCode),
-        NewNonlocals = list_to_set([TopCSD, MiddleCSD])
+        NewNonlocals = set_of_var.list_to_set([TopCSD, MiddleCSD])
     ),
 
     ExitConjGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo0,
@@ -987,8 +989,7 @@ build_non_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
     determinism_components(Detism, CanFail, at_most_many),
     goal_info_set_determinism(Detism, GoalInfo0, GoalInfo1),
 
-    ExitRedoNonLocals = set.union(NewNonlocals,
-        list_to_set([NewOutermostProcDyn])),
+    set_of_var.insert(NewOutermostProcDyn, NewNonlocals, ExitRedoNonLocals),
     ExitRedoGoalInfo = impure_reachable_init_goal_info(ExitRedoNonLocals,
         detism_multi),
 
@@ -1376,7 +1377,7 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
             ( CodeModel = model_semi
             ; CodeModel = model_non
             ),
-            ExtraVars = list_to_set([MiddleCSD | SaveRestoreVars]),
+            ExtraVars = set_of_var.list_to_set([MiddleCSD | SaveRestoreVars]),
             WrappedGoalGoalInfo0 =
                 goal_info_add_nonlocals_make_impure(MdprofInstGoalInfo,
                     ExtraVars),
@@ -1429,7 +1430,8 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
             UseActivationCounts = yes,
 
             generate_var("SavedCounter", int_type, SavedCountVar, !VarInfo),
-            ExtraNonLocals = set.list_to_set([SavedCountVar, SavedPtrVar]),
+            ExtraNonLocals =
+                set_of_var.list_to_set([SavedCountVar, SavedPtrVar]),
 
             generate_deep_det_call(!.DeepInfo ^ deep_module_info,
                 "save_and_zero_activation_info_ac", 2,
@@ -1444,7 +1446,7 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
         ;
             UseActivationCounts = no,
 
-            ExtraNonLocals = set.list_to_set([SavedPtrVar]),
+            ExtraNonLocals = set_of_var.make_singleton(SavedPtrVar),
 
             generate_deep_det_call(!.DeepInfo ^ deep_module_info,
                 "save_and_zero_activation_info_sr", 1,
@@ -1479,7 +1481,7 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
     goal_info_set_mdprof_inst(goal_is_mdprof_inst,
         RestoreFailGoalInfo0, RestoreFailGoalInfo),
 
-    RezeroFailGoalInfo0 = impure_unreachable_init_goal_info(set.init,
+    RezeroFailGoalInfo0 = impure_unreachable_init_goal_info(set_of_var.init,
         detism_failure),
     goal_info_set_mdprof_inst(goal_is_mdprof_inst,
         RezeroFailGoalInfo0, RezeroFailGoalInfo),
@@ -1786,7 +1788,7 @@ generate_deep_call(ModuleInfo, Name, Arity, ArgVars, MaybeOutputVars, Detism,
 
 generate_deep_const_unify(ConsId, Var, Goal) :-
     Ground = ground(shared, none),
-    NonLocals = set.make_singleton_set(Var),
+    NonLocals = set_of_var.make_singleton(Var),
     InstMapDelta = instmap_delta_bind_var(Var),
     Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
@@ -1804,7 +1806,7 @@ generate_deep_const_unify(ConsId, Var, Goal) :-
 
 generate_deep_cell_unify(Length, ConsId, Args, Var, Goal) :-
     Ground = ground(shared, none),
-    NonLocals = set.list_to_set([Var | Args]),
+    NonLocals = set_of_var.list_to_set([Var | Args]),
     InstMapDelta = instmap_delta_bind_var(Var),
     Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,

@@ -63,6 +63,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module int.
@@ -606,7 +607,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         % First the goal info, ...
         goal_info_init(GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
-        set.list_to_set(HeadVars, NonLocals),
+        set_of_var.list_to_set(HeadVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
         ( check_marker(Markers, marker_is_impure) ->
             goal_info_set_purity(purity_impure, GoalInfo2, GoalInfo)

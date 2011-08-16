@@ -129,6 +129,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module int.
@@ -1029,7 +1030,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         create_pure_atomic_complicated_unification(FuncRetVal,
             FuncRHS, Context, umc_explicit, [], Goal0),
         Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-        NonLocals = proc_arg_vector_to_set(HeadVars),
+        NonLocals = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
         Clause = clause(all_modes, Goal, impl_lang_mercury, Context, []),
