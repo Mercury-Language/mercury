@@ -2858,7 +2858,6 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         type_info_locn(TypeVar, Kind, TypeInfoVar, ExtraGoals, !Info),
         call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
             Context, GoalInfo0, Call)
-
     ; type_is_higher_order(Type) ->
         % Convert higher-order unifications into calls to
         % builtin_unify_pred (which calls error/1).
