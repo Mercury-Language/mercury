@@ -1732,14 +1732,26 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         Reason = trace_goal(_, _, _, _, _),
         det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
             RightFailingContexts, MaybePromiseEqvSolutionSets0,
-            Detism, GoalFailingContexts, !DetInfo),
+            Detism0, GoalFailingContexts, !DetInfo),
         (
-            ( Detism = detism_det
-            ; Detism = detism_cc_multi
+            % Since the trace goal may not be enabled, it would be incorrect
+            % to say that it ALWAYS aborts. That is why we convert a detism
+            % of detism_erroneous inside the scope to detism_det outside the 
+            % scope.
+            (
+                Detism0 = detism_det,
+                Detism1 = detism_det
+            ;
+                Detism0 = detism_cc_multi,
+                Detism1 = detism_cc_multi
+            ;
+                Detism0 = detism_erroneous,
+                Detism1 = detism_det
             )
         ->
-            true
+            Detism = Detism1
         ;
+            Detism = Detism0,
             Context = goal_info_get_context(GoalInfo),
             DetismStr = determinism_to_string(Detism),
             Pieces = [words("Error: trace goal has determinism"),

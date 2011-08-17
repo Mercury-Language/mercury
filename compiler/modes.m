@@ -135,6 +135,7 @@
 :- import_module check_hlds.delay_partial_inst.
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.inst_match.
+:- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_goal.
@@ -637,7 +638,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         mode_list_get_final_insts(!.ModuleInfo, ArgModes0, ArgFinalInsts0),
 
         modecheck_proc_body(!.ModuleInfo, WhatToCheck, InferModes,
-            Markers, Body0, Body, HeadVars, InstMap0,
+            Markers, PredId, ProcId, Body0, Body, HeadVars, InstMap0,
             ArgFinalInsts0, ArgFinalInsts, !ModeInfo),
 
         mode_info_get_errors(!.ModeInfo, ModeErrors),
@@ -698,16 +699,17 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
     ).
 
 :- pred modecheck_proc_body(module_info::in, how_to_check_goal::in,
-    bool::in, pred_markers::in, hlds_goal::in, hlds_goal::out,
+    bool::in, pred_markers::in, pred_id::in, proc_id::in,
+    hlds_goal::in, hlds_goal::out,
     list(prog_var)::in, instmap::in, list(mer_inst)::in, list(mer_inst)::out,
     mode_info::in, mode_info::out) is det.
 
 modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
-        Body0, Body, HeadVars, InstMap0, ArgFinalInsts0, ArgFinalInsts,
-        ModeInfo0, ModeInfo) :-
+        PredId, ProcId, Body0, Body, HeadVars, InstMap0,
+        ArgFinalInsts0, ArgFinalInsts, ModeInfo0, ModeInfo) :-
     do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
-        Body0, Body1, HeadVars, InstMap0, ArgFinalInsts0, ArgFinalInsts1,
-        ModeInfo0, ModeInfo1),
+        PredId, ProcId, Body0, Body1, HeadVars, InstMap0,
+        ArgFinalInsts0, ArgFinalInsts1, ModeInfo0, ModeInfo1),
     mode_info_get_errors(ModeInfo1, ModeErrors1),
     (
         ModeErrors1 = [],
@@ -733,7 +735,7 @@ modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
             mode_info_set_make_ground_terms_unique(make_ground_terms_unique,
                 ModeInfo0, ModeInfo2),
             do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes,
-                Markers, Body0, Body, HeadVars, InstMap0,
+                Markers, PredId, ProcId, Body0, Body, HeadVars, InstMap0,
                 ArgFinalInsts0, ArgFinalInsts, ModeInfo2, ModeInfo)
         ;
             HadFromGroundTerm = did_not_have_from_ground_term_scope,
@@ -746,13 +748,17 @@ modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
     ).
 
 :- pred do_modecheck_proc_body(module_info::in, how_to_check_goal::in,
-    bool::in, pred_markers::in, hlds_goal::in, hlds_goal::out,
-    list(prog_var)::in, instmap::in, list(mer_inst)::in, list(mer_inst)::out,
-    mode_info::in, mode_info::out) is det.
+    bool::in, pred_markers::in, pred_id::in, proc_id::in,
+    hlds_goal::in, hlds_goal::out, list(prog_var)::in, instmap::in,
+    list(mer_inst)::in, list(mer_inst)::out, mode_info::in, mode_info::out)
+    is det.
 
 do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
-        Body0, Body, HeadVars, InstMap0, ArgFinalInsts0, ArgFinalInsts,
-        !ModeInfo) :-
+        PredId, ProcId, Body0, Body, HeadVars, InstMap0,
+        ArgFinalInsts0, ArgFinalInsts, !ModeInfo) :-
+    string.format("procedure_%d_%d",
+        [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))],
+        CheckpointMsg),
     (
         InferModes = no,
         check_marker(Markers, marker_mode_check_clauses),
@@ -787,14 +793,15 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
                 ClausesForm0 = clause_disj(Disjuncts1),
                 Disjuncts2 = flatten_disjs(Disjuncts1),
                 list.map_foldl(
-                    modecheck_clause_disj(HeadVars, InstMap0, ArgFinalInsts0),
+                    modecheck_clause_disj(CheckpointMsg, HeadVars,
+                        InstMap0, ArgFinalInsts0),
                     Disjuncts2, Disjuncts, !ModeInfo),
                 NewGoalExpr = disj(Disjuncts)
             ;
                 ClausesForm0 = clause_switch(SwitchVar, CanFail, Cases1),
                 list.map_foldl(
-                    modecheck_clause_switch(HeadVars, InstMap0,
-                        ArgFinalInsts0, SwitchVar),
+                    modecheck_clause_switch(CheckpointMsg, HeadVars,
+                        InstMap0, ArgFinalInsts0, SwitchVar),
                     Cases1, Cases, !ModeInfo),
                 NewGoalExpr = switch(SwitchVar, CanFail, Cases)
             )
@@ -819,15 +826,16 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
                     true
                 ),
                 list.map_foldl(
-                    unique_modecheck_clause_disj(HeadVars, InstMap0,
-                        ArgFinalInsts0, Detism, NonLocals, NondetLiveVars0),
+                    unique_modecheck_clause_disj(CheckpointMsg, HeadVars,
+                        InstMap0, ArgFinalInsts0, Detism, NonLocals,
+                        NondetLiveVars0),
                     Disjuncts2, Disjuncts, !ModeInfo),
                 NewGoalExpr = disj(Disjuncts)
             ;
                 ClausesForm0 = clause_switch(SwitchVar, CanFail, Cases1),
                 list.map_foldl(
-                    unique_modecheck_clause_switch(HeadVars, InstMap0,
-                        ArgFinalInsts0, SwitchVar),
+                    unique_modecheck_clause_switch(CheckpointMsg, HeadVars,
+                        InstMap0, ArgFinalInsts0, SwitchVar),
                     Cases1, Cases, !ModeInfo),
                 NewGoalExpr = switch(SwitchVar, CanFail, Cases)
             )
@@ -844,6 +852,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
         ArgFinalInsts = ArgFinalInsts0
     ;
         % Modecheck the procedure body as a single goal.
+        mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
         (
             WhatToCheck = check_modes,
             modecheck_goal(Body0, Body1, !ModeInfo)
@@ -851,6 +860,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
             WhatToCheck = check_unique_modes,
             unique_modes_check_goal(Body0, Body1, !ModeInfo)
         ),
+        mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
 
         % Check that final insts match those specified in the mode declaration.
         modecheck_final_insts(HeadVars, InferModes,
@@ -1017,25 +1027,28 @@ save_proc_info(ProcId, PredId, ModuleInfo, !OldPredTable) :-
     --->    clause_disj(list(hlds_goal))
     ;       clause_switch(prog_var, can_fail, list(case)).
 
-:- pred modecheck_clause_disj(list(prog_var)::in, instmap::in,
+:- pred modecheck_clause_disj(string::in, list(prog_var)::in, instmap::in,
     list(mer_inst)::in, hlds_goal::in, hlds_goal::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_clause_disj(HeadVars, InstMap0, ArgFinalInsts0, Disjunct0, Disjunct,
-        !ModeInfo) :-
+modecheck_clause_disj(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
+        Disjunct0, Disjunct, !ModeInfo) :-
+    mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
     modecheck_goal(Disjunct0, Disjunct1, !ModeInfo),
+    mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(HeadVars, no, ArgFinalInsts0,
         _ArgFinalInsts, Disjunct1, Disjunct, !ModeInfo).
 
-:- pred modecheck_clause_switch(list(prog_var)::in, instmap::in,
+:- pred modecheck_clause_switch(string::in, list(prog_var)::in, instmap::in,
     list(mer_inst)::in, prog_var::in, case::in, case::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var, Case0, Case,
-        !ModeInfo) :-
+modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
+        Var, Case0, Case, !ModeInfo) :-
+    mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     mode_info_set_instmap(InstMap0, !ModeInfo),
 
@@ -1056,34 +1069,40 @@ modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var, Case0, Case,
 
     % Don't lose the information added by the functor test above.
     fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal1, Goal2),
+    mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(HeadVars, no, ArgFinalInsts0,
         _ArgFinalInsts, Goal2, Goal, !ModeInfo),
     Case = case(MainConsId, OtherConsIds, Goal).
 
-:- pred unique_modecheck_clause_disj(list(prog_var)::in, instmap::in,
-    list(mer_inst)::in, determinism::in, set_of_progvar::in, bag(prog_var)::in,
-    hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out) is det.
+:- pred unique_modecheck_clause_disj(string::in, list(prog_var)::in,
+    instmap::in, list(mer_inst)::in, determinism::in, set_of_progvar::in,
+    bag(prog_var)::in, hlds_goal::in, hlds_goal::out,
+    mode_info::in, mode_info::out) is det.
 
-unique_modecheck_clause_disj(HeadVars, InstMap0, ArgFinalInsts0, DisjDetism,
-        DisjNonLocals, NondetLiveVars0, Disjunct0, Disjunct, !ModeInfo) :-
+unique_modecheck_clause_disj(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
+        DisjDetism, DisjNonLocals, NondetLiveVars0,
+        Disjunct0, Disjunct, !ModeInfo) :-
+    mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
     mode_info_set_nondet_live_vars(NondetLiveVars0, !ModeInfo),
     unique_modes.prepare_for_disjunct(Disjunct0, DisjDetism, DisjNonLocals,
         !ModeInfo),
     unique_modes_check_goal(Disjunct0, Disjunct1, !ModeInfo),
+    mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(HeadVars, no, ArgFinalInsts0,
         _ArgFinalInsts, Disjunct1, Disjunct, !ModeInfo).
 
-:- pred unique_modecheck_clause_switch(list(prog_var)::in, instmap::in,
-    list(mer_inst)::in, prog_var::in, case::in, case::out,
+:- pred unique_modecheck_clause_switch(string::in, list(prog_var)::in,
+    instmap::in, list(mer_inst)::in, prog_var::in, case::in, case::out,
     mode_info::in, mode_info::out) is det.
 
-unique_modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var,
-        Case0, Case, !ModeInfo) :-
+unique_modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0,
+        ArgFinalInsts0, Var, Case0, Case, !ModeInfo) :-
+    mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     mode_info_set_instmap(InstMap0, !ModeInfo),
 
@@ -1102,6 +1121,7 @@ unique_modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var,
     % Don't lose the information added by the functor test above.
     mode_info_get_instmap(!.ModeInfo, InstMap),
     fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal1, Goal2),
+    mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(HeadVars, no, ArgFinalInsts0, _ArgFinalInsts,

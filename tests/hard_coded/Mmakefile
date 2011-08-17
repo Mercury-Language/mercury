@@ -33,6 +33,7 @@ ORDINARY_PROGS=	\
 	compare_spec \
 	comparison \
 	complicated_unify_bug \
+	conditional_trace_scope \
 	constant_prop_1 \
 	constraint \
 	constraint_order \

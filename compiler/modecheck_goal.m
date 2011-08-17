@@ -217,8 +217,7 @@ modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             GoalInfo0, GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = conj(ConjType, Goals),
-        modecheck_goal_conj(ConjType, Goals, GoalInfo0, GoalExpr,
-            !ModeInfo)
+        modecheck_goal_conj(ConjType, Goals, GoalInfo0, GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = disj(Goals),
         modecheck_goal_disj(Goals, GoalInfo0, GoalExpr, !ModeInfo)
@@ -786,7 +785,7 @@ modecheck_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
 modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
     (
         Reason = trace_goal(_, _, _, _, _),
-        mode_checkpoint(enter, "scope", !ModeInfo),
+        mode_checkpoint(enter, "trace scope", !ModeInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         % We need to lock the non-local variables, to ensure that
@@ -797,7 +796,7 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         mode_info_unlock_vars(var_lock_trace_goal, NonLocals, !ModeInfo),
         mode_info_set_instmap(InstMap0, !ModeInfo),
         GoalExpr = scope(Reason, SubGoal),
-        mode_checkpoint(exit, "scope", !ModeInfo)
+        mode_checkpoint(exit, "trace scope", !ModeInfo)
     ;
         ( Reason = exist_quant(_)
         ; Reason = promise_solutions(_, _)
@@ -812,10 +811,10 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         mode_checkpoint(exit, "scope", !ModeInfo)
     ;
         Reason = from_ground_term(TermVar, _),
-        mode_checkpoint(enter, "scope", !ModeInfo),
+        mode_checkpoint(enter, "from_ground_term scope", !ModeInfo),
         modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
             MaybeKind1AndSubGoal1, !ModeInfo),
-        mode_checkpoint(exit, "scope", !ModeInfo),
+        mode_checkpoint(exit, "from_ground_term scope", !ModeInfo),
         (
             MaybeKind1AndSubGoal1 = yes(Kind1 - SubGoal1),
             mode_info_set_had_from_ground_term(had_from_ground_term_scope,
@@ -851,10 +850,10 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         mode_info_get_in_promise_purity_scope(!.ModeInfo, InPPScope),
         mode_info_set_in_promise_purity_scope(in_promise_purity_scope,
             !ModeInfo),
-        mode_checkpoint(enter, "scope", !ModeInfo),
+        mode_checkpoint(enter, "promise_purity scope", !ModeInfo),
         modecheck_goal(SubGoal0, SubGoal, !ModeInfo),
         GoalExpr = scope(Reason, SubGoal),
-        mode_checkpoint(exit, "scope", !ModeInfo),
+        mode_checkpoint(exit, "promise_purity scope", !ModeInfo),
         mode_info_set_in_promise_purity_scope(InPPScope, !ModeInfo)
     ).
 

@@ -304,7 +304,8 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             !ModeInfo)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
-        unique_modes_check_goal_scope(Reason0, SubGoal0, GoalExpr, !ModeInfo)
+        unique_modes_check_goal_scope(Reason0, SubGoal0, GoalInfo0, GoalExpr,
+            !ModeInfo)
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
@@ -494,11 +495,28 @@ unique_modes_check_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_checkpoint(exit, "not", !ModeInfo).
 
 :- pred unique_modes_check_goal_scope(scope_reason::in, hlds_goal::in,
-    hlds_goal_expr::out, mode_info::in, mode_info::out) is det.
+    hlds_goal_info::in, hlds_goal_expr::out, mode_info::in, mode_info::out)
+    is det.
 
-unique_modes_check_goal_scope(Reason, SubGoal0, GoalExpr, !ModeInfo) :-
-    mode_checkpoint(enter, "scope", !ModeInfo),
-    ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
+        !ModeInfo) :-
+    (
+        Reason = trace_goal(_, _, _, _, _),
+        mode_checkpoint(enter, "trace scope", !ModeInfo),
+        mode_info_get_instmap(!.ModeInfo, InstMap0),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
+        % We need to lock the non-local variables, to ensure that
+        % the trace goal does not bind them. If it did, then the code
+        % would not be valid with the trace goal disabled.
+        mode_info_lock_vars(var_lock_trace_goal, NonLocals, !ModeInfo),
+        unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo),
+        mode_info_unlock_vars(var_lock_trace_goal, NonLocals, !ModeInfo),
+        mode_info_set_instmap(InstMap0, !ModeInfo),
+        mode_checkpoint(exit, "trace scope", !ModeInfo),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        Reason = from_ground_term(TermVar, from_ground_term_construct),
+        mode_checkpoint(enter, "from_ground_term_construct scope", !ModeInfo),
         mode_info_var_is_live(!.ModeInfo, TermVar, LiveTermVar),
         (
             LiveTermVar = is_live,
@@ -520,12 +538,24 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalExpr, !ModeInfo) :-
             LiveTermVar = is_dead,
             % The term constructed by the scope is not used anywhere.
             GoalExpr = conj(plain_conj, [])
-        )
+        ),
+        mode_checkpoint(exit, "from_ground_term_construct scope", !ModeInfo)
     ;
+        ( Reason = from_ground_term(_, from_ground_term_deconstruct)
+        ; Reason = from_ground_term(_, from_ground_term_other)
+        ; Reason = exist_quant(_)
+        ; Reason = promise_solutions(_, _)
+        ; Reason = promise_purity(_)
+        ; Reason = require_detism(_)
+        ; Reason = require_complete_switch(_)
+        ; Reason = commit(_)
+        ; Reason = barrier(_)
+        ),
+        mode_checkpoint(enter, "scope", !ModeInfo),
         unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo),
+        mode_checkpoint(exit, "scope", !ModeInfo),
         GoalExpr = scope(Reason, SubGoal)
-    ),
-    mode_checkpoint(exit, "scope", !ModeInfo).
+    ).
 
 :- pred unique_modes_check_goal_generic_call(generic_call::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
