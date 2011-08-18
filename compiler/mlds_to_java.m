@@ -4913,6 +4913,7 @@ output_std_unop(Info, UnaryOp, Expr, !IO) :-
     mlds_rval::in, io::di, io::uo) is det.
 
 output_binop(Info, Op, X, Y, !IO) :-
+    % XXX This should be a single complete switch on Op.
     ( Op = array_index(_Type) ->
         output_bracketed_rval(Info, X, !IO),
         io.write_string("[", !IO),
@@ -4933,6 +4934,12 @@ output_binop(Info, Op, X, Y, !IO) :-
             io.write_string(OpStr, !IO),
             io.write_string(" 0)", !IO)
         )
+    ; Op = str_cmp ->
+        io.write_string("(", !IO),
+        output_rval(Info, X, !IO),
+        io.write_string(".compareTo(", !IO),
+        output_rval(Info, Y, !IO),
+        io.write_string(")) ", !IO)
     ; rval_is_enum_object(X) ->
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),

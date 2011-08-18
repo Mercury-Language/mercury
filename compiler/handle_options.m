@@ -1303,6 +1303,18 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(allow_multi_arm_switches, bool(no), !Globals)
     ),
 
+    (
+        ( Target = target_csharp
+        ; Target = target_java
+        )
+    ->
+        % Switch off string hash switches until these backends implement
+        % the hash operations.
+        globals.set_option(string_hash_switch_size, int(999999), !Globals)
+    ;
+        true
+    ),
+
     option_implies(target_debug, strip, bool(no), !Globals),
 
     % Profile for implicit parallelism implies a particular coverage
