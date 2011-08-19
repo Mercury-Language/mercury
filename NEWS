@@ -24,6 +24,13 @@ Changes to the Mercury standard library:
   bag, bimap, eqvclass, map, multi_map, queue and set modules in order
   to make them more conducive to the use of state variable notation.
 
+Changes to the Mercury profiler:
+
+* We have added a new form of profiling, memory retention profiling, to mprof
+  that allows it to generate reports describing the origin of objects that
+  are live on the heap at selected points in a program.
+  See the Mercury User's Guide for details.
+  
 
 DETAILED LISTING
 ================
