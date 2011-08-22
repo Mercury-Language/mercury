@@ -1221,13 +1221,10 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
 find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
     type_to_ctor_and_args(Type, TypeCtor, _),
     module_info_get_cons_table(ModuleInfo, ConsTable),
-    map.search(ConsTable, ConsId, ConsDefns),
-    list.member(ConsDefn, ConsDefns),
+    search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn),
 
     % Overloading resolution ignores the class constraints.
-    ConsDefn = hlds_cons_defn(ConsTypeCtor, _, _, _, ConsExistQVars, _,
-        ConsArgs, _),
-    ConsTypeCtor = TypeCtor,
+    ConsDefn = hlds_cons_defn(_, _, _, _, ConsExistQVars, _, ConsArgs, _),
 
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),

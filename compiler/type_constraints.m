@@ -1701,10 +1701,10 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             % If it is a data constructor, create a disjunction constraint
             % with each possible type of the constructor.
             Environment = tconstr_environment(_, _, FuncEnv, PredEnv),
-            ( map.search(FuncEnv, ConsId, Cons_Defns) ->
+            ( search_cons_table(FuncEnv, ConsId, ConsDefns) ->
                 list.map_foldl(
                     functor_unif_constraint(LTVar, ArgTypeVars, GoalInfo),
-                    Cons_Defns, TypeConstraints, !TCInfo)
+                    ConsDefns, TypeConstraints, !TCInfo)
             ;
                 TypeConstraints = []
             ),

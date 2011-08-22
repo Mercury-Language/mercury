@@ -919,7 +919,7 @@ module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
     TypeTable = init_type_table,
     inst_table_init(Insts),
     mode_table_init(Modes),
-    map.init(Ctors),
+    Ctors = init_cons_table,
     map.init(ClassTable),
     map.init(InstanceTable),
     assertion_table_init(AssertionTable),
@@ -1368,7 +1368,7 @@ module_info_optimize(!ModuleInfo) :-
     module_info_set_mode_table(Modes, !ModuleInfo),
 
     module_info_get_cons_table(!.ModuleInfo, Ctors0),
-    map.optimize(Ctors0, Ctors),
+    cons_table_optimize(Ctors0, Ctors),
     module_info_set_cons_table(Ctors, !ModuleInfo).
 
 visible_module(VisibleModule, ModuleInfo) :-

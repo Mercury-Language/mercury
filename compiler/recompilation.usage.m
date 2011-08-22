@@ -730,15 +730,15 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
     % Is it a constructor.
     module_info_get_cons_table(ModuleInfo, Ctors),
     ConsId = cons(SymName, Arity, cons_id_dummy_type_ctor),
-    ( map.search(Ctors, ConsId, ConsDefns0) ->
+    ( search_cons_table(Ctors, ConsId, ConsDefns0) ->
         ConsDefns1 = ConsDefns0
     ;
         ConsDefns1 = []
     ),
     (
         remove_new_prefix(SymName, SymNameMinusNew),
-        ConsIdMinumNew = cons(SymNameMinusNew, Arity, cons_id_dummy_type_ctor),
-        map.search(Ctors, ConsIdMinumNew, ConsDefns2)
+        ConsIdMinusNew = cons(SymNameMinusNew, Arity, cons_id_dummy_type_ctor),
+        search_cons_table(Ctors, ConsIdMinusNew, ConsDefns2)
     ->
         ConsDefns = ConsDefns1 ++ ConsDefns2
     ;

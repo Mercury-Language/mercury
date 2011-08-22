@@ -1087,15 +1087,11 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity) = Spec :-
         Functor = cons(Constructor, FunctorArity, _),
         expect(unify(Arity, FunctorArity), $module, $pred, "arity mismatch"),
         typecheck_info_get_ctors(Info, ConsTable),
-        solutions.solutions(
-            (pred(N::out) is nondet :-
-                map.member(ConsTable, cons(Constructor, N, _), _),
-                N \= Arity
-            ), ActualArities),
-        ActualArities = [_ | _]
+        return_other_arities(ConsTable, Constructor, Arity, OtherArities),
+        OtherArities = [_ | _]
     ->
         FunctorPieces = wrong_arity_constructor_to_pieces(Constructor, Arity,
-            ActualArities),
+            OtherArities),
         FunctorComps = [always(FunctorPieces)],
         ReportConsErrors = yes
     ;

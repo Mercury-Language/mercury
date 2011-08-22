@@ -1015,11 +1015,8 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 
     % XXX We should look it up in a type_ctor-specific table, not a global one.
     module_info_get_cons_table(ModuleInfo, Ctors),
-    map.lookup(Ctors, ConsId, ConsDefns),
-    list.member(ConsDefn, ConsDefns),
-
-    ConsDefn = hlds_cons_defn(TypeCtor, _, TypeParams, _, ExistQVars0, _,
-        Args, _),
+    search_cons_table_of_type_ctor(Ctors, TypeCtor, ConsId, ConsDefn),
+    ConsDefn = hlds_cons_defn(_, _, TypeParams, _, ExistQVars0, _, Args, _),
 
     % XXX handle ExistQVars
     ExistQVars0 = [],
@@ -1038,13 +1035,8 @@ get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     % XXX We should look it up in a type_ctor-specific table, not a global one.
     module_info_get_cons_table(ModuleInfo, Ctors),
 
-    % will fail for builtin cons_ids.
-    map.search(Ctors, ConsId, ConsDefns),
-    MatchingCons =
-        (pred(ThisConsDefn::in) is semidet :-
-            ThisConsDefn ^ cons_type_ctor = TypeCtor
-        ),
-    list.filter(MatchingCons, ConsDefns, [ConsDefn]).
+    % Will fail for builtin cons_ids.
+    search_cons_table_of_type_ctor(Ctors, TypeCtor, ConsId, ConsDefn).
 
 get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     ( get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefnPrime) ->

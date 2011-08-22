@@ -460,7 +460,9 @@ report_sizes(ModuleInfo, !IO) :-
     io.format("Type table size = %d\n", [i(list.length(TypeCtorDefns))], !IO),
 
     module_info_get_cons_table(ModuleInfo, CtorTable),
-    io.format("Constructor table size = %d\n", [i(map.count(CtorTable))], !IO).
+    get_all_cons_defns(CtorTable, CtorDefns),
+    io.format("Constructor table size = %d\n",
+        [i(list.length(CtorDefns))], !IO).
 
 %-----------------------------------------------------------------------------%
 

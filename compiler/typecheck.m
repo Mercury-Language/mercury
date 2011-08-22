@@ -2778,12 +2778,7 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
         IsFieldAccessFunc = yes
     ),
     module_info_get_cons_table(ModuleInfo, Ctors),
-    map.lookup(Ctors, ConsId, ConsDefns0),
-    list.filter(
-        (pred(CtorDefn::in) is semidet :-
-            TypeCtor = CtorDefn ^ cons_type_ctor
-        ), ConsDefns0, ConsDefns),
-    ConsDefns = [ConsDefn],
+    lookup_cons_table_of_type_ctor(Ctors, TypeCtor, ConsId, ConsDefn),
     (
         AccessType = get,
         ConsAction = do_not_flip_constraints
@@ -2792,8 +2787,7 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
         ConsAction = flip_constraints_for_field_set
     ),
     OrigExistTVars = ConsDefn ^ cons_exist_tvars,
-    convert_cons_defn(Info, GoalId, ConsAction, ConsDefn,
-        FunctorConsTypeInfo).
+    convert_cons_defn(Info, GoalId, ConsAction, ConsDefn, FunctorConsTypeInfo).
 
 :- type maybe_cons_type_info
     --->    ok(cons_type_info)
@@ -3023,7 +3017,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalId, ConsInfos,
     typecheck_info_get_ctors(Info, Ctors),
     (
         Functor = cons(_, _, _),
-        map.search(Ctors, Functor, HLDS_ConsDefns)
+        search_cons_table(Ctors, Functor, HLDS_ConsDefns)
     ->
         convert_cons_defn_list(Info, GoalId, do_not_flip_constraints,
             HLDS_ConsDefns, PlainMaybeConsInfos)
@@ -3051,7 +3045,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalId, ConsInfos,
         Functor = cons(Name, Arity, FunctorTypeCtor),
         remove_new_prefix(Name, OrigName),
         OrigFunctor = cons(OrigName, Arity, FunctorTypeCtor),
-        map.search(Ctors, OrigFunctor, HLDS_ExistQConsDefns)
+        search_cons_table(Ctors, OrigFunctor, HLDS_ExistQConsDefns)
     ->
         convert_cons_defn_list(Info, GoalId, flip_constraints_for_new,
             HLDS_ExistQConsDefns, UnivQuantifiedMaybeConsInfos)

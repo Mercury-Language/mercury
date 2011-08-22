@@ -980,7 +980,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
     (
         ConsId = cons(InstanceMethodName0, MethodArity,
             cons_id_dummy_type_ctor),
-        map.search(Ctors, ConsId, MatchingConstructors)
+        search_cons_table(Ctors, ConsId, MatchingConstructors)
     ->
         TypeCtors1 = list.map(
             (func(ConsDefn) = TypeCtor :-

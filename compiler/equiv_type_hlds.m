@@ -302,13 +302,8 @@ replace_in_maybe_inst_det(EqvMap, inst_det_known(Inst0, Det),
     is det.
 
 replace_in_cons_table(EqvMap, !ConsTable) :-
-    map.map_values_only(replace_in_cons_defns(EqvMap), !ConsTable).
-
-:- pred replace_in_cons_defns(eqv_map::in,
-    list(hlds_cons_defn)::in, list(hlds_cons_defn)::out) is det.
-
-replace_in_cons_defns(EqvMap, !ConsDefns) :-
-    list.map(replace_in_cons_defn(EqvMap), !ConsDefns).
+    replace_cons_defns_in_cons_table(replace_in_cons_defn(EqvMap),
+        !ConsTable).
 
 :- pred replace_in_cons_defn(eqv_map::in,
     hlds_cons_defn::in, hlds_cons_defn::out) is det.
