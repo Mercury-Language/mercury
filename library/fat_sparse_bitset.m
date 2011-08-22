@@ -1,46 +1,21 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007, 2011 The University of Melbourne.
+% Copyright (C) 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: sparse_bitset.m.
-% Author: stayl.
+% File: fat_sparse_bitset.m.
+% Author: zs.
 % Stability: medium.
 %
-% This module provides an ADT for storing sets of integers.
-% If the integers stored are closely grouped, a sparse_bitset
-% is much more compact than the representation provided by set.m,
-% and the operations will be much faster.
-%
-% Efficiency notes:
-%
-% A sparse bitset is represented as a sorted list of pairs of integers.
-% For a pair `Offset - Bits', `Offset' is a multiple of `int.bits_per_int'.
-% The bits of `Bits' describe which of the elements of the range
-% `Offset' .. `Offset + bits_per_int - 1' are in the set.
-% Pairs with the same value of `Offset' are merged.
-% Pairs for which `Bits' is zero are removed.
-%
-% The values of `Offset' in the list need not be contiguous multiples
-% of `bits_per_int', hence the name _sparse_ bitset.
-%
-% A sparse_bitset is suitable for storing sets of integers which
-% can be represented using only a few `Offset - Bits' pairs.
-% In the worst case, where the integers stored are not closely
-% grouped, a sparse_bitset will take more memory than an
-% ordinary set, but the operations should not be too much slower.
-%
-% In the asymptotic complexities of the operations below,
-% `rep_size(Set)' is the number of pairs needed to represent `Set',
-% and `card(Set)' is the number of elements in `Set'.
+% This is a variant of the sparse_bitset module using fat lists.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module sparse_bitset.
+:- module fat_sparse_bitset.
 :- interface.
 
 :- import_module enum.
@@ -51,129 +26,133 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type sparse_bitset(T). % <= enum(T).
+:- type fat_sparse_bitset(T). % <= enum(T).
 
     % Return an empty set.
     %
-:- func init = sparse_bitset(T).
-:- pred init(sparse_bitset(T)::out) is det.
+:- func init = fat_sparse_bitset(T).
+:- pred init(fat_sparse_bitset(T)::out) is det.
 
-:- pred empty(sparse_bitset(T)).
+:- pred empty(fat_sparse_bitset(T)).
 :- mode empty(in) is semidet.
 :- mode empty(out) is det.
 
-:- pred is_empty(sparse_bitset(T)::in) is semidet.
+:- pred is_empty(fat_sparse_bitset(T)::in) is semidet.
 
-:- pred is_non_empty(sparse_bitset(T)::in) is semidet.
+:- pred is_non_empty(fat_sparse_bitset(T)::in) is semidet.
 
     % `equal(SetA, SetB' is true iff `SetA' and `SetB' contain the same
     % elements. Takes O(min(rep_size(SetA), rep_size(SetB))) time.
     %
-:- pred equal(sparse_bitset(T)::in, sparse_bitset(T)::in) is semidet.
+:- pred equal(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in) is semidet.
 
     % `list_to_set(List)' returns a set containing only the members of `List'.
     % In the worst case this will take O(length(List)^2) time and space.
     % If the elements of the list are closely grouped, it will be closer
     % to O(length(List)).
     %
-:- func list_to_set(list(T)) = sparse_bitset(T) <= enum(T).
-:- pred list_to_set(list(T)::in, sparse_bitset(T)::out) is det <= enum(T).
+:- func list_to_set(list(T)) = fat_sparse_bitset(T) <= enum(T).
+:- pred list_to_set(list(T)::in, fat_sparse_bitset(T)::out) is det <= enum(T).
 
     % `sorted_list_to_set(List)' returns a set containing only the members
     % of `List'. `List' must be sorted. Takes O(length(List)) time and space.
     %
-:- func sorted_list_to_set(list(T)) = sparse_bitset(T) <= enum(T).
-:- pred sorted_list_to_set(list(T)::in, sparse_bitset(T)::out)
+:- func sorted_list_to_set(list(T)) = fat_sparse_bitset(T) <= enum(T).
+:- pred sorted_list_to_set(list(T)::in, fat_sparse_bitset(T)::out)
     is det <= enum(T).
 
     % `from_set(Set)' returns a bitset containing only the members of `Set'.
     % Takes O(card(Set)) time and space.
     %
-:- func from_set(set.set(T)) = sparse_bitset(T) <= enum(T).
+:- func from_set(set.set(T)) = fat_sparse_bitset(T) <= enum(T).
 
     % `to_sorted_list(Set)' returns a list containing all the members of `Set',
     % in sorted order. Takes O(card(Set)) time and space.
     %
-:- func to_sorted_list(sparse_bitset(T)) = list(T) <= enum(T).
-:- pred to_sorted_list(sparse_bitset(T)::in, list(T)::out) is det <= enum(T).
+:- func to_sorted_list(fat_sparse_bitset(T)) = list(T) <= enum(T).
+:- pred to_sorted_list(fat_sparse_bitset(T)::in, list(T)::out)
+    is det <= enum(T).
 
     % `to_sorted_list(Set)' returns a set.set containing all the members
     % of `Set', in sorted order. Takes O(card(Set)) time and space.
     %
-:- func to_set(sparse_bitset(T)) = set.set(T) <= enum(T).
+:- func to_set(fat_sparse_bitset(T)) = set.set(T) <= enum(T).
 
     % `make_singleton_set(Elem)' returns a set containing just the single
     % element `Elem'.
     %
-:- func make_singleton_set(T) = sparse_bitset(T) <= enum(T).
+:- func make_singleton_set(T) = fat_sparse_bitset(T) <= enum(T).
 
     % Note: set.m contains the reverse mode of this predicate, but it is
     % difficult to implement both modes using the representation in this
     % module.
     %
-:- pred singleton_set(sparse_bitset(T)::out, T::in) is det <= enum(T).
+:- pred singleton_set(fat_sparse_bitset(T)::out, T::in) is det <= enum(T).
 
     % Is the given set a singleton, and if yes, what is the element?
     %
-:- pred is_singleton(sparse_bitset(T)::in, T::out) is semidet <= enum(T).
+:- pred is_singleton(fat_sparse_bitset(T)::in, T::out) is semidet <= enum(T).
 
     % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
     % Same as `intersect(Set, Subset, Subset)', but may be more efficient.
     %
-:- pred subset(sparse_bitset(T)::in, sparse_bitset(T)::in) is semidet.
+:- pred subset(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in) is semidet.
 
     % `superset(Superset, Set)' is true iff `Superset' is a superset of `Set'.
     % Same as `intersect(Superset, Set, Set)', but may be more efficient.
     %
-:- pred superset(sparse_bitset(T)::in, sparse_bitset(T)::in) is semidet.
+:- pred superset(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in)
+    is semidet.
 
     % `contains(Set, X)' is true iff `X' is a member of `Set'.
     % Takes O(rep_size(Set)) time.
     %
-:- pred contains(sparse_bitset(T)::in, T::in) is semidet <= enum(T).
+:- pred contains(fat_sparse_bitset(T)::in, T::in) is semidet <= enum(T).
 
     % `member(X, Set)' is true iff `X' is a member of `Set'.
     % Takes O(rep_size(Set)) time.
     %
-:- pred member(T, sparse_bitset(T)) <= enum(T).
+:- pred member(T, fat_sparse_bitset(T)) <= enum(T).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
     % `insert(Set, X)' returns the union of `Set' and the set containing
     % only `X'. Takes O(rep_size(Set)) time and space.
     %
-:- func insert(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
-:- pred insert(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
+:- func insert(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
+:- pred insert(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= enum(T).
 
     % `insert_list(Set, X)' returns the union of `Set' and the set containing
     % only the members of `X'. Same as `union(Set, list_to_set(X))', but may be
     % more efficient.
     %
-:- func insert_list(sparse_bitset(T), list(T)) = sparse_bitset(T) <= enum(T).
-:- pred insert_list(list(T)::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
-    is det <= enum(T).
+:- func insert_list(fat_sparse_bitset(T), list(T)) = fat_sparse_bitset(T)
+    <= enum(T).
+:- pred insert_list(list(T)::in,
+    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is det <= enum(T).
 
     % `delete(Set, X)' returns the difference of `Set' and the set containing
     % only `X'. Takes O(rep_size(Set)) time and space.
     %
-:- func delete(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
-:- pred delete(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
+:- func delete(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
+:- pred delete(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= enum(T).
 
     % `delete_list(Set, X)' returns the difference of `Set' and the set
     % containing only the members of `X'. Same as
     % `difference(Set, list_to_set(X))', but may be more efficient.
     %
-:- func delete_list(sparse_bitset(T), list(T)) = sparse_bitset(T) <= enum(T).
-:- pred delete_list(list(T)::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
-    is det <= enum(T).
+:- func delete_list(fat_sparse_bitset(T), list(T)) = fat_sparse_bitset(T)
+    <= enum(T).
+:- pred delete_list(list(T)::in,
+    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is det <= enum(T).
 
     % `remove(X, Set0, Set)' returns in `Set' the difference of `Set0'
     % and the set containing only `X', failing if `Set0' does not contain `X'.
     % Takes O(rep_size(Set)) time and space.
     %
-:- pred remove(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
+:- pred remove(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is semidet <= enum(T).
 
     % `remove_list(X, Set0, Set)' returns in `Set' the difference of `Set0'
@@ -181,95 +160,99 @@
     % of `X' is not in `Set0'. Same as `subset(list_to_set(X), Set0),
     % difference(Set0, list_to_set(X), Set)', but may be more efficient.
     %
-:- pred remove_list(list(T)::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
-    is semidet <= enum(T).
+:- pred remove_list(list(T)::in,
+    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet <= enum(T).
 
     % `remove_leq(Set, X)' returns `Set' with all elements less than or equal
     % to `X' removed. In other words, it returns the set containing all the
     % elements of `Set' which are greater than `X'.
     %
-:- func remove_leq(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
-:- pred remove_leq(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
+:- func remove_leq(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
+:- pred remove_leq(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= enum(T).
 
     % `remove_gt(Set, X)' returns `Set' with all elements greater than `X'
     % removed. In other words, it returns the set containing all the elements
     % of `Set' which are less than or equal to `X'.
     %
-:- func remove_gt(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
-:- pred remove_gt(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
+:- func remove_gt(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
+:- pred remove_gt(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= enum(T).
 
     % `remove_least(Set0, X, Set)' is true iff `X' is the least element in
     % `Set0', and `Set' is the set which contains all the elements of `Set0'
     % except `X'. Takes O(1) time and space.
     %
-:- pred remove_least(T::out, sparse_bitset(T)::in, sparse_bitset(T)::out)
-    is semidet <= enum(T).
+:- pred remove_least(T::out,
+    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet <= enum(T).
 
     % `union(SetA, SetB)' returns the union of `SetA' and `SetB'. The
     % efficiency of the union operation is not sensitive to the argument
     % ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and space.
     %
-:- func union(sparse_bitset(T), sparse_bitset(T)) = sparse_bitset(T).
-:- pred union(sparse_bitset(T)::in, sparse_bitset(T)::in,
-    sparse_bitset(T)::out) is det.
+:- func union(fat_sparse_bitset(T), fat_sparse_bitset(T)) =
+    fat_sparse_bitset(T).
+:- pred union(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
+    fat_sparse_bitset(T)::out) is det.
 
     % `union_list(Sets, Set)' returns the union of all the sets in Sets.
     %
-:- func union_list(list(sparse_bitset(T))) = sparse_bitset(T).
-:- pred union_list(list(sparse_bitset(T))::in, sparse_bitset(T)::out) is det.
+:- func union_list(list(fat_sparse_bitset(T))) = fat_sparse_bitset(T).
+:- pred union_list(list(fat_sparse_bitset(T))::in,
+    fat_sparse_bitset(T)::out) is det.
 
     % `intersect(SetA, SetB)' returns the intersection of `SetA' and `SetB'.
     % The efficiency of the intersection operation is not sensitive to the
     % argument ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and
     % O(min(rep_size(SetA)), rep_size(SetB)) space.
     %
-:- func intersect(sparse_bitset(T), sparse_bitset(T)) = sparse_bitset(T).
-:- pred intersect(sparse_bitset(T)::in, sparse_bitset(T)::in,
-    sparse_bitset(T)::out) is det.
+:- func intersect(fat_sparse_bitset(T), fat_sparse_bitset(T)) =
+    fat_sparse_bitset(T).
+:- pred intersect(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
+    fat_sparse_bitset(T)::out) is det.
 
     % `intersect_list(Sets, Set)' returns the intersection of all the sets
     % in Sets.
     %
-:- func intersect_list(list(sparse_bitset(T))) = sparse_bitset(T).
-:- pred intersect_list(list(sparse_bitset(T))::in, sparse_bitset(T)::out)
-    is det.
+:- func intersect_list(list(fat_sparse_bitset(T))) = fat_sparse_bitset(T).
+:- pred intersect_list(list(fat_sparse_bitset(T))::in,
+    fat_sparse_bitset(T)::out) is det.
 
     % `difference(SetA, SetB)' returns the set containing all the elements
     % of `SetA' except those that occur in `SetB'. Takes
     % O(rep_size(SetA) + rep_size(SetB)) time and O(rep_size(SetA)) space.
     %
-:- func difference(sparse_bitset(T), sparse_bitset(T)) = sparse_bitset(T).
-:- pred difference(sparse_bitset(T)::in, sparse_bitset(T)::in,
-    sparse_bitset(T)::out) is det.
+:- func difference(fat_sparse_bitset(T), fat_sparse_bitset(T)) =
+    fat_sparse_bitset(T).
+:- pred difference(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
+    fat_sparse_bitset(T)::out) is det.
 
     % divide(Pred, Set, InPart, OutPart):
     % InPart consists of those elements of Set for which Pred succeeds;
     % OutPart consists of those elements of Set for which Pred fails.
     %
-:- pred divide(pred(T)::in(pred(in) is semidet), sparse_bitset(T)::in,
-    sparse_bitset(T)::out, sparse_bitset(T)::out) is det <= enum(T).
+:- pred divide(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in,
+    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= enum(T).
 
     % divide_by_set(DivideBySet, Set, InPart, OutPart):
     % InPart consists of those elements of Set which are also in DivideBySet;
     % OutPart consists of those elements of Set which are not in DivideBySet.
     %
-:- pred divide_by_set(sparse_bitset(T)::in, sparse_bitset(T)::in,
-    sparse_bitset(T)::out, sparse_bitset(T)::out) is det <= enum(T).
+:- pred divide_by_set(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
+    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= enum(T).
 
     % `count(Set)' returns the number of elements in `Set'.
     % Takes O(card(Set)) time.
     %
-:- func count(sparse_bitset(T)) = int <= enum(T).
+:- func count(fat_sparse_bitset(T)) = int <= enum(T).
 
     % `foldl(Func, Set, Start)' calls Func with each element of `Set'
     % (in sorted order) and an accumulator (with the initial value of `Start'),
     % and returns the final value. Takes O(card(Set)) time.
     %
-:- func foldl(func(T, U) = U, sparse_bitset(T), U) = U <= enum(T).
+:- func foldl(func(T, U) = U, fat_sparse_bitset(T), U) = U <= enum(T).
 
-:- pred foldl(pred(T, U, U), sparse_bitset(T), U, U) <= enum(T).
+:- pred foldl(pred(T, U, U), fat_sparse_bitset(T), U, U) <= enum(T).
 :- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
@@ -277,7 +260,8 @@
 :- mode foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
-:- pred foldl2(pred(T, U, U, V, V), sparse_bitset(T), U, U, V, V) <= enum(T).
+:- pred foldl2(pred(T, U, U, V, V), fat_sparse_bitset(T), U, U, V, V)
+    <= enum(T).
 :- mode foldl2(pred(in, di, uo, di, uo) is det, in, di, uo, di, uo) is det.
 :- mode foldl2(pred(in, in, out, di, uo) is det, in, in, out, di, uo) is det.
 :- mode foldl2(pred(in, in, out, in, out) is det, in, in, out, in, out) is det.
@@ -296,9 +280,9 @@
     % (in reverse sorted order) and an accumulator (with the initial value
     % of `Start'), and returns the final value. Takes O(card(Set)) time.
     %
-:- func foldr(func(T, U) = U, sparse_bitset(T), U) = U <= enum(T).
+:- func foldr(func(T, U) = U, fat_sparse_bitset(T), U) = U <= enum(T).
 
-:- pred foldr(pred(T, U, U), sparse_bitset(T), U, U) <= enum(T).
+:- pred foldr(pred(T, U, U), fat_sparse_bitset(T), U, U) <= enum(T).
 :- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode foldr(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
@@ -306,7 +290,8 @@
 :- mode foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
-:- pred foldr2(pred(T, U, U, V, V), sparse_bitset(T), U, U, V, V) <= enum(T).
+:- pred foldr2(pred(T, U, U, V, V), fat_sparse_bitset(T), U, U, V, V)
+    <= enum(T).
 :- mode foldr2(pred(in, di, uo, di, uo) is det, in, di, uo, di, uo) is det.
 :- mode foldr2(pred(in, in, out, di, uo) is det, in, in, out, di, uo) is det.
 :- mode foldr2(pred(in, in, out, in, out) is det, in, in, out, in, out) is det.
@@ -324,14 +309,15 @@
     % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
     % Pred succeeds.
     %
-:- func filter(pred(T), sparse_bitset(T)) = sparse_bitset(T) <= enum(T).
+:- func filter(pred(T), fat_sparse_bitset(T)) = fat_sparse_bitset(T)
+    <= enum(T).
 :- mode filter(pred(in) is semidet, in) = out is det.
 
     % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
     % for which Pred succeeds, and those for which it fails.
     %
-:- pred filter(pred(T), sparse_bitset(T), sparse_bitset(T), sparse_bitset(T))
-    <= enum(T).
+:- pred filter(pred(T), fat_sparse_bitset(T),
+    fat_sparse_bitset(T), fat_sparse_bitset(T)) <= enum(T).
 :- mode filter(pred(in) is semidet, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -425,37 +411,38 @@
 
     % The number of variables for most procedures
     % should fit into one or two words.
-:- type sparse_bitset(T)    % <= enum(T)
-    --->    sparse_bitset(bitset_impl).
+:- type fat_sparse_bitset(T)    % <= enum(T)
+    --->    fat_sparse_bitset(fat_bitset_impl).
 
     % The list of elements, sorted on offset.
     % No two elements have the same offset.
-:- type bitset_impl == list(bitset_elem).
+:- type fat_bitset_impl
+    --->    empty
+    ;       node(
+                % This must be a multiple of bits_per_int.
+                offset  :: int,
 
-    % Cells of this type should only be
-    % constructed using make_bitset_elem/2.
-:- type bitset_elem
-    --->    bitset_elem(
-                offset  :: int, % multiple of bits_per_int
-                bits    :: int  % bits offset .. offset + bits_per_int - 1
-                                % The sparse_bitset operations all remove
-                                % elements of the list with a `bits'
-                                % field of zero.
+                % bits offset .. offset + bits_per_int - 1
+                % The fat_sparse_bitset operations all remove elements
+                % of the list with a `bits' field of zero.
+                bits    :: int,
+
+                rest    :: fat_bitset_impl
             ).
 
 %-----------------------------------------------------------------------------%
 
-init = sparse_bitset([]).
+init = fat_sparse_bitset(empty).
 
-init(init).
+init(fat_sparse_bitset(empty)).
 
-empty(init).
+empty(fat_sparse_bitset(empty)).
 
 equal(X, X).
 
-is_empty(sparse_bitset([])).
+is_empty(fat_sparse_bitset(empty)).
 
-is_non_empty(sparse_bitset([_ | _])).
+is_non_empty(fat_sparse_bitset(node(_, _, _))).
 
 %-----------------------------------------------------------------------------%
 
@@ -473,19 +460,19 @@ from_set(Set) = sorted_list_to_set(set.to_sorted_list(Set)).
     --->    low_to_high
     ;       high_to_low.
 
-foldl(F, sparse_bitset(Set), Acc0) = Acc :-
+foldl(F, fat_sparse_bitset(Set), Acc0) = Acc :-
     do_foldl_pred(
         (pred(E::in, Acc1::in, Acc2::out) is det :-
             Acc2 = F(E, Acc1)
         ), Set, Acc0, Acc).
 
-foldl(P, sparse_bitset(Set), !Acc) :-
+foldl(P, fat_sparse_bitset(Set), !Acc) :-
     do_foldl_pred(P, Set, !Acc).
 
-foldl2(P, sparse_bitset(Set), !Acc1, !Acc2) :-
+foldl2(P, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
     do_foldl2_pred(P, Set, !Acc1, !Acc2).
 
-:- pred do_foldl_pred(pred(T, U, U), bitset_impl, U, U) <= enum(T).
+:- pred do_foldl_pred(pred(T, U, U), fat_bitset_impl, U, U) <= enum(T).
 :- mode do_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode do_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
 :- mode do_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
@@ -496,12 +483,12 @@ foldl2(P, sparse_bitset(Set), !Acc1, !Acc2) :-
 :- pragma type_spec(do_foldl_pred/4, T = int).
 :- pragma type_spec(do_foldl_pred/4, T = var(_)).
 
-do_foldl_pred(_, [], !Acc).
-do_foldl_pred(P, [H | T], !Acc) :-
-    fold_bits(low_to_high, P, H ^ offset, H ^ bits, bits_per_int, !Acc),
-    do_foldl_pred(P, T, !Acc).
+do_foldl_pred(_, empty, !Acc).
+do_foldl_pred(P, node(Offset, Bits, Rest), !Acc) :-
+    fold_bits(low_to_high, P, Offset, Bits, bits_per_int, !Acc),
+    do_foldl_pred(P, Rest, !Acc).
 
-:- pred do_foldl2_pred(pred(T, U, U, V, V), bitset_impl, U, U, V, V)
+:- pred do_foldl2_pred(pred(T, U, U, V, V), fat_bitset_impl, U, U, V, V)
     <= enum(T).
 :- mode do_foldl2_pred(pred(in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
@@ -523,25 +510,24 @@ do_foldl_pred(P, [H | T], !Acc) :-
 :- pragma type_spec(do_foldl2_pred/6, T = int).
 :- pragma type_spec(do_foldl2_pred/6, T = var(_)).
 
-do_foldl2_pred(_, [], !Acc1, !Acc2).
-do_foldl2_pred(P, [H | T], !Acc1, !Acc2) :-
-    fold2_bits(low_to_high, P, H ^ offset, H ^ bits, bits_per_int,
-        !Acc1, !Acc2),
-    do_foldl2_pred(P, T, !Acc1, !Acc2).
+do_foldl2_pred(_, empty, !Acc1, !Acc2).
+do_foldl2_pred(P, node(Offset, Bits, Rest), !Acc1, !Acc2) :-
+    fold2_bits(low_to_high, P, Offset, Bits, bits_per_int, !Acc1, !Acc2),
+    do_foldl2_pred(P, Rest, !Acc1, !Acc2).
 
-foldr(F, sparse_bitset(Set), Acc0) = Acc :-
+foldr(F, fat_sparse_bitset(Set), Acc0) = Acc :-
     do_foldr_pred(
         (pred(E::in, Acc1::in, Acc2::out) is det :-
             Acc2 = F(E, Acc1)
         ), Set, Acc0, Acc).
 
-foldr(P, sparse_bitset(Set), !Acc) :-
+foldr(P, fat_sparse_bitset(Set), !Acc) :-
     do_foldr_pred(P, Set, !Acc).
 
-foldr2(P, sparse_bitset(Set), !Acc1, !Acc2) :-
+foldr2(P, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
     do_foldr2_pred(P, Set, !Acc1, !Acc2).
 
-:- pred do_foldr_pred(pred(T, U, U), bitset_impl, U, U) <= enum(T).
+:- pred do_foldr_pred(pred(T, U, U), fat_bitset_impl, U, U) <= enum(T).
 :- mode do_foldr_pred(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode do_foldr_pred(pred(in, in, out) is det, in, in, out) is det.
 :- mode do_foldr_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
@@ -555,12 +541,12 @@ foldr2(P, sparse_bitset(Set), !Acc1, !Acc2) :-
     % We don't just use list.foldr here because the overhead of allocating
     % the closure for fold_bits is significant for the compiler's runtime,
     % so it's best to avoid that even if `--optimize-higher-order' is not set.
-do_foldr_pred(_, [], !Acc).
-do_foldr_pred(P, [H | T], !Acc) :-
-    do_foldr_pred(P, T, !Acc),
-    fold_bits(high_to_low, P, H ^ offset, H ^ bits, bits_per_int, !Acc).
+do_foldr_pred(_, empty, !Acc).
+do_foldr_pred(P, node(Offset, Bits, Rest), !Acc) :-
+    do_foldr_pred(P, Rest, !Acc),
+    fold_bits(high_to_low, P, Offset, Bits, bits_per_int, !Acc).
 
-:- pred do_foldr2_pred(pred(T, U, U, V, V), bitset_impl, U, U, V, V)
+:- pred do_foldr2_pred(pred(T, U, U, V, V), fat_bitset_impl, U, U, V, V)
     <= enum(T).
 :- mode do_foldr2_pred(pred(in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
@@ -585,14 +571,12 @@ do_foldr_pred(P, [H | T], !Acc) :-
     % We don't just use list.foldr here because the overhead of allocating
     % the closure for fold_bits is significant for the compiler's runtime,
     % so it's best to avoid that even if `--optimize-higher-order' is not set.
-do_foldr2_pred(_, [], !Acc1, !Acc2).
-do_foldr2_pred(P, [H | T], !Acc1, !Acc2) :-
-    do_foldr2_pred(P, T, !Acc1, !Acc2),
-    fold2_bits(high_to_low, P, H ^ offset, H ^ bits, bits_per_int,
-        !Acc1, !Acc2).
+do_foldr2_pred(_, empty, !Acc1, !Acc2).
+do_foldr2_pred(P, node(Offset, Bits, Rest), !Acc1, !Acc2) :-
+    do_foldr2_pred(P, Rest, !Acc1, !Acc2),
+    fold2_bits(high_to_low, P, Offset, Bits, bits_per_int, !Acc1, !Acc2).
 
     % Do a binary search for the 1 bits in an int.
-    %
 :- pred fold_bits(fold_direction, pred(T, U, U),
     int, int, int, U, U) <= enum(T).
 :- mode fold_bits(in, pred(in, in, out) is det,
@@ -722,8 +706,7 @@ make_singleton_set(A) = insert(init, A).
 
 singleton_set(make_singleton_set(A), A).
 
-is_singleton(sparse_bitset([Node]), Elem) :-
-    Node = bitset_elem(Offset, Bits),
+is_singleton(fat_sparse_bitset(node(Offset, Bits, empty)), Elem) :-
     count_bits(Offset, bits_per_int, Bits, [], SetOffsets),
     SetOffsets = [SetOffset],
     ( ElemPrime = from_int(SetOffset) ->
@@ -764,29 +747,29 @@ count_bits(BitOffset, Size, Bits, !SetOffsets) :-
 insert(E, !Set) :-
     !:Set = insert(!.Set, E).
 
-insert(sparse_bitset(Set), Elem) =
-    sparse_bitset(insert_2(Set, enum.to_int(Elem))).
+insert(fat_sparse_bitset(Set), Elem) =
+    fat_sparse_bitset(insert_2(Set, enum.to_int(Elem))).
 
-:- func insert_2(bitset_impl, int) = bitset_impl.
+:- func insert_2(fat_bitset_impl, int) = fat_bitset_impl.
 
-insert_2([], Index) = [make_bitset_elem(Offset, Bits)] :-
-    bits_for_index(Index, Offset, Bits).
-insert_2(Set0, Index) = Set :-
-    Set0 = [Data0 | Rest],
-    Offset0 = Data0 ^ offset,
+insert_2(empty, Index) = Set :-
+    bits_for_index(Index, Offset, Bits),
+    Set = node(Offset, Bits, empty).
+insert_2(Set0 @ node(Offset0, Bits0, Rest0), Index) = Set :-
+    % Set0 = [Data0 | Rest],
+    % Offset0 = Data0 ^ offset,
     ( Index < Offset0 ->
         bits_for_index(Index, Offset, Bits),
-        Set = [make_bitset_elem(Offset, Bits) | Set0]
+        Set = node(Offset, Bits, Set0)
     ; BitToSet = Index - Offset0, BitToSet < bits_per_int ->
-        Bits0 = Data0 ^ bits,
-        ( get_bit(Bits0, BitToSet) \= 0 ->
-            Set = Set0
-        ;
+        ( get_bit(Bits0, BitToSet) = 0 ->
             Bits = set_bit(Bits0, BitToSet),
-            Set = [make_bitset_elem(Offset0, Bits) | Rest]
+            Set = node(Offset0, Bits, Rest0)
+        ;
+            Set = Set0
         )
     ;
-        Set = [Data0 | insert_2(Rest, Index)]
+        Set = node(Offset0, Bits0, insert_2(Rest0, Index))
     ).
 
 insert_list(List, !Set) :-
@@ -822,28 +805,24 @@ remove_list(Elems, !Set) :-
 remove_leq(E, !Set) :-
     !:Set = remove_leq(!.Set, E).
 
-remove_leq(sparse_bitset(Set), Elem) =
-    sparse_bitset(remove_leq_2(Set, enum.to_int(Elem))).
+remove_leq(fat_sparse_bitset(Set), Elem) =
+    fat_sparse_bitset(remove_leq_2(Set, enum.to_int(Elem))).
 
-:- func remove_leq_2(bitset_impl, int) = bitset_impl.
+:- func remove_leq_2(fat_bitset_impl, int) = fat_bitset_impl.
 
-remove_leq_2([], _) = [].
-remove_leq_2([Data | Rest], Index) = Result :-
-    Offset = Data ^ offset,
+remove_leq_2(empty, _) = empty.
+remove_leq_2(node(Offset, Bits, Rest), Index) = Result :-
     ( Offset + bits_per_int =< Index ->
         Result = remove_leq_2(Rest, Index)
     ; Offset =< Index ->
-        (
-            Bits = Data ^ bits /\
-                unchecked_left_shift(\ 0, Index - Offset + 1),
-            Bits \= 0
-        ->
-            Result = [make_bitset_elem(Offset, Bits) | Rest]
-        ;
+        NewBits = Bits /\ unchecked_left_shift(\ 0, Index - Offset + 1),
+        ( NewBits = 0 ->
             Result = Rest
+        ;
+            Result = node(Offset, NewBits, Rest)
         )
     ;
-        Result = [Data | Rest]
+        Result = node(Offset, Bits, Rest)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -851,36 +830,30 @@ remove_leq_2([Data | Rest], Index) = Result :-
 remove_gt(E, !Set) :-
     !:Set = remove_gt(!.Set, E).
 
-remove_gt(sparse_bitset(Set), Elem) =
-    sparse_bitset(remove_gt_2(Set, enum.to_int(Elem))).
+remove_gt(fat_sparse_bitset(Set), Elem) =
+    fat_sparse_bitset(remove_gt_2(Set, enum.to_int(Elem))).
 
-:- func remove_gt_2(bitset_impl, int) = bitset_impl.
+:- func remove_gt_2(fat_bitset_impl, int) = fat_bitset_impl.
 
-remove_gt_2([], _) = [].
-remove_gt_2([Data | Rest], Index) = Result :-
-    Offset = Data ^ offset,
+remove_gt_2(empty, _) = empty.
+remove_gt_2(node(Offset, Bits, Rest), Index) = Result :-
     ( Offset + bits_per_int - 1 =< Index ->
-        Result = [Data | remove_gt_2(Rest, Index)]
+        Result = node(Offset, Bits, remove_gt_2(Rest, Index))
     ; Offset =< Index ->
-        (
-            Bits = Data ^ bits /\
-                \ unchecked_left_shift(\ 0, Index - Offset + 1),
-            Bits \= 0
-        ->
-            Result = [make_bitset_elem(Offset, Bits)]
+        NewBits = Bits /\ \ unchecked_left_shift(\ 0, Index - Offset + 1),
+        ( NewBits = 0 ->
+            Result = empty
         ;
-            Result = []
+            Result = node(Offset, NewBits, empty)
         )
     ;
-        Result = []
+        Result = empty
     ).
 
 %-----------------------------------------------------------------------------%
 
-remove_least(Elem, sparse_bitset(Set0), sparse_bitset(Set)) :-
-    Set0 = [First | Rest],
-    Bits0 = First ^ bits,
-    Offset = First ^ offset,
+remove_least(Elem, fat_sparse_bitset(Set0), fat_sparse_bitset(Set)) :-
+    Set0 = node(Offset, Bits0, Rest),
     Bit = find_least_bit(Bits0),
     ( Elem0 = from_int(Offset + Bit) ->
         Elem = Elem0
@@ -893,7 +866,7 @@ remove_least(Elem, sparse_bitset(Set0), sparse_bitset(Set)) :-
     ( Bits = 0 ->
         Set = Rest
     ;
-        Set = [make_bitset_elem(Offset, Bits) | Rest]
+        Set = node(Offset, Bits, Rest)
     ).
 
 :- func find_least_bit(int) = int.
@@ -927,14 +900,14 @@ find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
 list_to_set(A, list_to_set(A)).
 
 list_to_set(List) =
-    sparse_bitset(list_to_set_2(List, [])).
+    fat_sparse_bitset(list_to_set_2(List, empty)).
 
     % Each pass over the input list selects out the elements which belong
-    % in the same bitset_elem as the first element. The assumption here is that
+    % in the same node as the first element. The assumption here is that
     % the items in the input list will have similar values, so that only a few
     % passes will be needed.
     %
-:- func list_to_set_2(list(T), bitset_impl) = bitset_impl <= enum(T).
+:- func list_to_set_2(list(T), fat_bitset_impl) = fat_bitset_impl <= enum(T).
 :- pragma type_spec(list_to_set_2/2, T = var(_)).
 :- pragma type_spec(list_to_set_2/2, T = int).
 
@@ -942,11 +915,11 @@ list_to_set_2([], List) = List.
 list_to_set_2([H | T], List0) = List :-
     bits_for_index(enum.to_int(H), Offset, Bits0),
     list_to_set_3(T, Offset, Bits0, Bits, [], Rest),
-    List1 = insert_bitset_elem(make_bitset_elem(Offset, Bits), List0),
+    List1 = insert_node(Offset, Bits, List0),
     List = list_to_set_2(Rest, List1).
 
     % Go through the list picking out the elements which belong in the same
-    % bitset_elem as the first element, returning the uncollected elements.
+    % node as the first element, returning the uncollected elements.
     %
 :- pred list_to_set_3(list(T)::in, int::in, int::in, int::out,
     list(T)::in, list(T)::out) is det <= enum(T).
@@ -966,41 +939,41 @@ list_to_set_3([H | T], Offset, !Bits, !Rest) :-
     % The list of elements here is pretty much guaranteed to be small,
     % so use an insertion sort.
     %
-:- func insert_bitset_elem(bitset_elem, bitset_impl) = bitset_impl.
+:- func insert_node(int, int, fat_bitset_impl) = fat_bitset_impl.
 
-insert_bitset_elem(Data, []) = [Data].
-insert_bitset_elem(Data, [Head | Tail]) = List :-
-    ( Data ^ offset < Head ^ offset ->
-        List = [Data, Head | Tail]
+insert_node(Offset, Bits, empty) = node(Offset, Bits, empty).
+insert_node(Offset, Bits, Old@node(OldOffset, OldBits, OldRest)) = List :-
+    ( Offset < OldOffset ->
+        List = node(Offset, Bits, Old)
     ;
-        List = [Head | insert_bitset_elem(Data, Tail)]
+        List = node(OldOffset, OldBits, insert_node(Offset, Bits, OldRest))
     ).
 
 %-----------------------------------------------------------------------------%
 
 sorted_list_to_set(A, sorted_list_to_set(A)).
 
-sorted_list_to_set(L) = sparse_bitset(sorted_list_to_set_2(L)).
+sorted_list_to_set(L) = fat_sparse_bitset(sorted_list_to_set_2(L)).
 
-:- func sorted_list_to_set_2(list(T)) = bitset_impl <= enum(T).
+:- func sorted_list_to_set_2(list(T)) = fat_bitset_impl <= enum(T).
 :- pragma type_spec(sorted_list_to_set_2/1, T = var(_)).
 :- pragma type_spec(sorted_list_to_set_2/1, T = int).
 
-sorted_list_to_set_2([]) = [].
+sorted_list_to_set_2([]) = empty.
 sorted_list_to_set_2([H | T]) = Set :-
     sorted_list_to_set_3(H, T, Offset, Bits, Set0),
     ( Bits = 0 ->
         Set = Set0
     ;
-        Set = [make_bitset_elem(Offset, Bits) | Set0]
+        Set = node(Offset, Bits, Set0)
     ).
 
 :- pred sorted_list_to_set_3(T::in, list(T)::in, int::out, int::out,
-    bitset_impl::out) is det <= enum(T).
+    fat_bitset_impl::out) is det <= enum(T).
 :- pragma type_spec(sorted_list_to_set_3/5, T = var(_)).
 :- pragma type_spec(sorted_list_to_set_3/5, T = int).
 
-sorted_list_to_set_3(Elem, [], Offset, Bits, []) :-
+sorted_list_to_set_3(Elem, [], Offset, Bits, empty) :-
     bits_for_index(enum.to_int(Elem), Offset, Bits).
 sorted_list_to_set_3(Elem1, [Elem2 | Elems], Offset, Bits, Rest) :-
     sorted_list_to_set_3(Elem2, Elems, Offset0, Bits0, Rest0),
@@ -1010,7 +983,7 @@ sorted_list_to_set_3(Elem1, [Elem2 | Elems], Offset, Bits, Rest) :-
         Offset = Offset1,
         Rest = Rest0
     ;
-        Rest = [make_bitset_elem(Offset0, Bits0) | Rest0],
+        Rest = node(Offset0, Bits0, Rest0),
         Offset = Offset1,
         Bits = Bits1
     ).
@@ -1025,16 +998,15 @@ superset(Superset, Set) :-
 
 %-----------------------------------------------------------------------------%
 
-contains(sparse_bitset(Set), Elem) :-
+contains(fat_sparse_bitset(Set), Elem) :-
     contains_search_nodes(Set, enum.to_int(Elem)).
 
-:- pred contains_search_nodes(bitset_impl::in, int::in) is semidet.
+:- pred contains_search_nodes(fat_bitset_impl::in, int::in) is semidet.
 
-contains_search_nodes([Data | Rest], Index) :-
-    Offset = Data ^ offset,
+contains_search_nodes(node(Offset, Bits, Rest), Index) :-
     Index >= Offset,
     ( Index < Offset + bits_per_int ->
-        get_bit(Data ^ bits, Index - Offset) \= 0
+        get_bit(Bits, Index - Offset) \= 0
     ;
         contains_search_nodes(Rest, Index)
     ).
@@ -1045,21 +1017,21 @@ contains_search_nodes([Data | Rest], Index) :-
 
 member(Elem::in, Set::in) :-
     contains(Set, Elem).
-member(Elem::out, sparse_bitset(Set)::in) :-
+member(Elem::out, fat_sparse_bitset(Set)::in) :-
     member_search_nodes(Index, Set),
     ( Elem0 = from_int(Index) ->
         Elem = Elem0
     ;
         % We only apply `from_int/1' to integers returned
         % by `to_int/1', so it should never fail.
-        unexpected($module, $pred, "`enum.from_int/1' failed")
+        unexpected($pred, $module, "`enum.from_int/1' failed")
     ).
 
-:- pred member_search_nodes(int::out, bitset_impl::in) is nondet.
+:- pred member_search_nodes(int::out, fat_bitset_impl::in) is nondet.
 
-member_search_nodes(Index, [Elem | Elems]) :-
-    ( member_search_one_node(Index, Elem ^ offset, bits_per_int, Elem ^ bits)
-    ; member_search_nodes(Index, Elems)
+member_search_nodes(Index, node(Offset, Bits, Rest)) :-
+    ( member_search_one_node(Index, Offset, bits_per_int, Bits)
+    ; member_search_nodes(Index, Rest)
     ).
 
 :- pred member_search_one_node(int::out, int::in, int::in, int::in) is nondet.
@@ -1086,101 +1058,81 @@ member_search_one_node(Index, Offset, Size, Bits) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func rest(bitset_impl::in(bound([ground | ground]))) =
-    (bitset_impl::out) is det.
-
-rest([_ | Rest]) = Rest.
-
 union(A, B, union(A, B)).
 
-union(sparse_bitset(Set1), sparse_bitset(Set2)) =
-    sparse_bitset(union_2(Set1, Set2)).
+union(fat_sparse_bitset(Set1), fat_sparse_bitset(Set2)) =
+    fat_sparse_bitset(union_2(Set1, Set2)).
 
-:- func union_2(bitset_impl, bitset_impl) = bitset_impl.
+:- func union_2(fat_bitset_impl, fat_bitset_impl) = fat_bitset_impl.
 
-union_2([], []) = [].
-union_2([], B) = B :-
-    B = [_ | _].
-union_2(A, []) = A :-
-    A = [_ | _].
-union_2(Set1, Set2) = Set :-
-    Set1 = [Data1 | _],
-    Set2 = [Data2 | _],
-    Offset1 = Data1 ^ offset,
-    Offset2 = Data2 ^ offset,
-    ( Offset1 = Offset2 ->
-        Elem = make_bitset_elem(Offset1, (Data1 ^ bits) \/ (Data2 ^ bits)),
-        Set = [Elem | union_2(Set1 ^ rest, Set2 ^ rest)]
-    ; Offset1 < Offset2 ->
-        Set = [Data1 | union_2(Set1 ^ rest, Set2)]
+union_2(empty, B) = B.
+union_2(A@node(_, _, _), empty) = A.
+union_2(A, B) = Set :-
+    A = node(OffsetA, BitsA, RestA),
+    B = node(OffsetB, BitsB, RestB),
+    ( OffsetA = OffsetB ->
+        Bits = BitsA \/ BitsB,
+        Set = node(OffsetA, Bits, union_2(RestA, RestB))
+    ; OffsetA < OffsetB ->
+        Set = node(OffsetA, BitsA, union_2(RestA, B))
     ;
-        Set = [Data2 | union_2(Set1, Set2 ^ rest)]
+        Set = node(OffsetB, BitsB, union_2(A, RestB))
     ).
 
 %-----------------------------------------------------------------------------%
 
 intersect(A, B, intersect(A, B)).
 
-intersect(sparse_bitset(Set1), sparse_bitset(Set2)) =
-    sparse_bitset(intersect_2(Set1, Set2)).
+intersect(fat_sparse_bitset(Set1), fat_sparse_bitset(Set2)) =
+    fat_sparse_bitset(intersect_2(Set1, Set2)).
 
-:- func intersect_2(bitset_impl, bitset_impl) = bitset_impl.
+:- func intersect_2(fat_bitset_impl, fat_bitset_impl) = fat_bitset_impl.
 
-intersect_2([], []) = [].
-intersect_2([], B) = [] :-
-    B = [_ | _].
-intersect_2(A, []) = [] :-
-    A = [_ | _].
-intersect_2(Set1, Set2) = Set :-
-    Set1 = [Data1 | _],
-    Set2 = [Data2 | _],
-    Offset1 = Data1 ^ offset,
-    Offset2 = Data2 ^ offset,
-    ( Offset1 = Offset2 ->
-        Bits = Data1 ^ bits /\ Data2 ^ bits,
+intersect_2(empty, empty) = empty.
+intersect_2(empty, node(_, _, _)) = empty.
+intersect_2(node(_, _, _), empty) = empty.
+intersect_2(A, B) = Set :-
+    A = node(OffsetA, BitsA, RestA),
+    B = node(OffsetB, BitsB, RestB),
+    ( OffsetA = OffsetB ->
+        Bits = BitsA /\ BitsB,
         ( Bits = 0 ->
-            Set = intersect_2(Set1 ^ rest, Set2 ^ rest)
+            Set = intersect_2(RestA, RestB)
         ;
-            Set = [make_bitset_elem(Offset1, Bits) |
-                intersect_2(Set1 ^ rest, Set2 ^ rest)]
+            Set = node(OffsetA, Bits, intersect_2(RestA, RestB))
         )
-    ; Offset1 < Offset2 ->
-        Set = intersect_2(Set1 ^ rest, Set2)
+    ; OffsetA < OffsetB ->
+        Set = intersect_2(RestA, B)
     ;
-        Set = intersect_2(Set1, Set2 ^ rest)
+        Set = intersect_2(A, RestB)
     ).
 
 %-----------------------------------------------------------------------------%
 
 difference(A, B, difference(A, B)).
 
-difference(sparse_bitset(Set1), sparse_bitset(Set2)) =
-    sparse_bitset(difference_2(Set1, Set2)).
+difference(fat_sparse_bitset(Set1), fat_sparse_bitset(Set2)) =
+    fat_sparse_bitset(difference_2(Set1, Set2)).
 
-:- func difference_2(bitset_impl, bitset_impl) = bitset_impl.
+:- func difference_2(fat_bitset_impl, fat_bitset_impl) = fat_bitset_impl.
 
-difference_2([], []) = [].
-difference_2([], B) = [] :-
-    B = [_ | _].
-difference_2(A, []) = A :-
-    A = [_ | _].
-difference_2(Set1, Set2) = Set :-
-    Set1 = [Data1 | _],
-    Set2 = [Data2 | _],
-    Offset1 = Data1 ^ offset,
-    Offset2 = Data2 ^ offset,
-    ( Offset1 = Offset2 ->
-        Bits = (Data1 ^ bits) /\ \ (Data2 ^ bits),
+difference_2(empty, empty) = empty.
+difference_2(empty, node(_, _, _)) = empty.
+difference_2(A@node(_, _, _), empty) = A.
+difference_2(A, B) = Set :-
+    A = node(OffsetA, BitsA, RestA),
+    B = node(OffsetB, BitsB, RestB),
+    ( OffsetA = OffsetB ->
+        Bits = BitsA /\ \ BitsB,
         ( Bits = 0 ->
-            Set = difference_2(Set1 ^ rest, Set2 ^ rest)
+            Set = difference_2(RestA, RestB)
         ;
-            Set = [make_bitset_elem(Offset1, Bits) |
-                difference_2(Set1 ^ rest, Set2 ^ rest)]
+            Set = node(OffsetA, Bits, difference_2(RestA, RestB))
         )
-    ; Offset1 < Offset2 ->
-        Set = [Data1 | difference_2(Set1 ^ rest, Set2)]
+    ; OffsetA < OffsetB ->
+        Set = node(OffsetA, BitsA, difference_2(RestA, B))
     ;
-        Set = difference_2(Set1, Set2 ^ rest)
+        Set = difference_2(A, RestB)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1188,7 +1140,7 @@ difference_2(Set1, Set2) = Set :-
 union_list(Sets) = Set :-
     union_list(Sets, Set).
 
-union_list([], sparse_bitset.init).
+union_list([], fat_sparse_bitset.init).
 union_list([Set], Set).
 union_list(Sets @ [_, _ | _], Set) :-
     union_list_pass(Sets, [], MergedSets),
@@ -1208,8 +1160,8 @@ union_list(Sets @ [_, _ | _], Set) :-
     % We expect that this approach should yield performance closer to NlogN
     % than to N^2 when unioning a list of N sets.
     %
-:- pred union_list_pass(list(sparse_bitset(T))::in,
-    list(sparse_bitset(T))::in, list(sparse_bitset(T))::out)
+:- pred union_list_pass(list(fat_sparse_bitset(T))::in,
+    list(fat_sparse_bitset(T))::in, list(fat_sparse_bitset(T))::out)
     is det.
 
 union_list_pass([], !MergedSets).
@@ -1225,7 +1177,7 @@ union_list_pass([SetA, SetB | Sets0], !MergedSets) :-
 intersect_list(Sets) = Set :-
     intersect_list(Sets, Set).
 
-intersect_list([], sparse_bitset.init).
+intersect_list([], fat_sparse_bitset.init).
 intersect_list([Set], Set).
 intersect_list(Sets @ [_, _ | _], Set) :-
     intersect_list_pass(Sets, [], MergedSets),
@@ -1246,8 +1198,8 @@ intersect_list(Sets @ [_, _ | _], Set) :-
     % We expect that this approach should yield performance closer to NlogN
     % than to N^2 when intersecting a list of N sets.
     %
-:- pred intersect_list_pass(list(sparse_bitset(T))::in,
-    list(sparse_bitset(T))::in, list(sparse_bitset(T))::out) is det.
+:- pred intersect_list_pass(list(fat_sparse_bitset(T))::in,
+    list(fat_sparse_bitset(T))::in, list(fat_sparse_bitset(T))::out) is det.
 
 intersect_list_pass([], !MergedSets).
 intersect_list_pass([Set], !MergedSets) :-
@@ -1260,29 +1212,28 @@ intersect_list_pass([SetA, SetB | Sets0], !MergedSets) :-
 %-----------------------------------------------------------------------------%
 
 divide(Pred, Set, InSet, OutSet) :-
-    Set = sparse_bitset(Nodes),
+    Set = fat_sparse_bitset(Nodes),
     divide_nodes(Pred, Nodes, InNodes, OutNodes),
-    InSet = sparse_bitset(InNodes),
-    OutSet = sparse_bitset(OutNodes).
+    InSet = fat_sparse_bitset(InNodes),
+    OutSet = fat_sparse_bitset(OutNodes).
 
 :- pred divide_nodes(pred(T)::in(pred(in) is semidet),
-    list(bitset_elem)::in, list(bitset_elem)::out, list(bitset_elem)::out)
+    fat_bitset_impl::in, fat_bitset_impl::out, fat_bitset_impl::out)
     is det <= enum(T).
 
-divide_nodes(_Pred, [], [], []).
-divide_nodes(Pred, [Node | Nodes], InNodes, OutNodes) :-
+divide_nodes(_Pred, empty, empty, empty).
+divide_nodes(Pred, node(Offset, Bits, Nodes), InNodes, OutNodes) :-
     divide_nodes(Pred, Nodes, InNodesTail, OutNodesTail),
-    Node = bitset_elem(Offset, Bits),
     divide_bits(Pred, Offset, 0, Bits, bits_per_int, 0, In, 0, Out),
     ( In = 0 ->
         InNodes = InNodesTail
     ;
-        InNodes = [make_bitset_elem(Offset, In) | InNodesTail]
+        InNodes = node(Offset, In, InNodesTail)
     ),
     ( Out = 0 ->
         OutNodes = OutNodesTail
     ;
-        OutNodes = [make_bitset_elem(Offset, Out) | OutNodesTail]
+        OutNodes = node(Offset, Out, OutNodesTail)
     ).
 
     % Do a binary search for the 1 bits in an int.
@@ -1324,27 +1275,25 @@ divide_bits(P, BaseOffset, OffsetInWord, Bits, Size, !In, !Out) :-
     ).
 
 divide_by_set(DivideBySet, Set, InSet, OutSet) :-
-    DivideBySet = sparse_bitset(DivideByNodes),
-    Set = sparse_bitset(Nodes),
+    DivideBySet = fat_sparse_bitset(DivideByNodes),
+    Set = fat_sparse_bitset(Nodes),
     divide_nodes_by_set(DivideByNodes, Nodes, InNodes, OutNodes),
-    InSet = sparse_bitset(InNodes),
-    OutSet = sparse_bitset(OutNodes).
+    InSet = fat_sparse_bitset(InNodes),
+    OutSet = fat_sparse_bitset(OutNodes).
 
-:- pred divide_nodes_by_set(list(bitset_elem)::in, list(bitset_elem)::in,
-    list(bitset_elem)::out, list(bitset_elem)::out) is det.
+:- pred divide_nodes_by_set(fat_bitset_impl::in, fat_bitset_impl::in,
+    fat_bitset_impl::out, fat_bitset_impl::out) is det.
 
-divide_nodes_by_set(_DivideByNodes, [], [], []).
-divide_nodes_by_set([], [Node | Nodes], [], [Node | Nodes]).
-divide_nodes_by_set([DivideByNode | DivideByNodes], [Node | Nodes],
-        InNodes, OutNodes) :-
-    DivideByNode = bitset_elem(DivideByOffset, DivideByBits),
-    Node = bitset_elem(Offset, Bits),
+divide_nodes_by_set(_DivideByNodes, empty, empty, empty).
+divide_nodes_by_set(empty, Node @ node(_, _, _), empty, Node).
+divide_nodes_by_set(DivideByNode, Node, InNodes, OutNodes) :-
+    DivideByNode = node(DivideByOffset, DivideByBits, DivideByNodes),
+    Node = node(Offset, Bits, Nodes),
     ( DivideByOffset < Offset ->
-        divide_nodes_by_set(DivideByNodes, [Node | Nodes], InNodes, OutNodes)
+        divide_nodes_by_set(DivideByNodes, Node, InNodes, OutNodes)
     ; DivideByOffset > Offset ->
-        divide_nodes_by_set([DivideByNode | DivideByNodes], Nodes,
-            InNodes, OutNodesTail),
-        OutNodes = [Node | OutNodesTail]
+        divide_nodes_by_set(DivideByNode, Nodes, InNodes, OutNodesTail),
+        OutNodes = node(Offset, Bits, OutNodesTail)
     ;
         divide_nodes_by_set(DivideByNodes, Nodes, InNodesTail, OutNodesTail),
         divide_bits_by_set(DivideByBits, Offset, Bits, bits_per_int,
@@ -1352,12 +1301,12 @@ divide_nodes_by_set([DivideByNode | DivideByNodes], [Node | Nodes],
         ( In = 0 ->
             InNodes = InNodesTail
         ;
-            InNodes = [make_bitset_elem(Offset, In) | InNodesTail]
+            InNodes = node(Offset, In, InNodesTail)
         ),
         ( Out = 0 ->
             OutNodes = OutNodesTail
         ;
-            OutNodes = [make_bitset_elem(Offset, Out) | OutNodesTail]
+            OutNodes = node(Offset, Out, OutNodesTail)
         )
     ).
 
@@ -1428,11 +1377,6 @@ clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1, Bit).
 
 mask(N) = \ unchecked_left_shift(\ 0, N).
 
-:- func make_bitset_elem(int, int) = bitset_elem.
-:- pragma inline(make_bitset_elem/2).
-
-make_bitset_elem(Offset, Bits) = bitset_elem(Offset, Bits).
-
 %-----------------------------------------------------------------------------%
-:- end_module sparse_bitset.
+:- end_module fat_sparse_bitset.
 %-----------------------------------------------------------------------------%

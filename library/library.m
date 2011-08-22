@@ -68,6 +68,7 @@
 :- import_module enum.
 :- import_module eqvclass.
 :- import_module exception.
+:- import_module fat_sparse_bitset.
 :- import_module float.
 :- import_module gc.
 :- import_module getopt.
@@ -239,6 +240,7 @@ mercury_std_library_module("eqvclass").
 mercury_std_library_module("erlang_builtin").
 mercury_std_library_module("erlang_rtti_implementation").
 mercury_std_library_module("exception").
+mercury_std_library_module("fat_sparse_bitset").
 mercury_std_library_module("float").
 mercury_std_library_module("gc").
 mercury_std_library_module("getopt").
