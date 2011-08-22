@@ -203,6 +203,7 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
         ( Type = mlds_mercury_array_type(_)
         ; Type = mlds_ptr_type(_)
         ; Type = mlds_array_type(_)
+        ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_generic_type
         ; Type = mlds_generic_env_ptr_type
         ; Type = mlds_type_info_type

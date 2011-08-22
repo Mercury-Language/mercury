@@ -946,8 +946,6 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
         MR_Pred pred, MR_Pred handler_pred, MR_Box *output,
         MR_CONT_PARAMS);
 
-  #ifndef MR_AVOID_MACROS
-
     /* det ==> model_det */
     #define mercury__exception__builtin_catch_3_p_0 \
         mercury__exception__builtin_catch_model_det
@@ -971,8 +969,6 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
     /* nondet ==> model_non */
     #define mercury__exception__builtin_catch_3_p_5 \
         mercury__exception__builtin_catch_model_non
-
-  #endif /* !MR_AVOID_MACROS */
 
     void MR_CALL mercury__exception__builtin_throw_1_p_0(MR_Univ exception);
 

@@ -282,7 +282,15 @@ ml_gen_preds(!ModuleInfo, PredDefns, GlobalData) :-
         ),
         UseCommonCells = do_not_use_common_cells
     ),
-    GlobalData0 = ml_global_data_init(UseCommonCells),
+    globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloats),
+    (
+        UnboxedFloats = yes,
+        HaveUnboxedFloats = have_unboxed_floats
+    ;
+        UnboxedFloats = no,
+        HaveUnboxedFloats = do_not_have_unboxed_floats
+    ),
+    GlobalData0 = ml_global_data_init(UseCommonCells, HaveUnboxedFloats),
     ml_gen_preds_2(!ModuleInfo, PredIds, [], PredDefns,
          GlobalData0, GlobalData).
 

@@ -41,6 +41,10 @@
     --->    do_not_use_common_cells
     ;       use_common_cells.
 
+:- type have_unboxed_floats
+    --->    have_unboxed_floats
+    ;       do_not_have_unboxed_floats.
+
 :- type ml_scalar_cell_map ==
     map(ml_scalar_common_type_num, ml_scalar_cell_group).
 
@@ -79,7 +83,11 @@
     % Initialize the ml_global_data structure to a value that represents
     % no global data structures known yet.
     %
-:- func ml_global_data_init(use_common_cells) = ml_global_data.
+:- func ml_global_data_init(use_common_cells, have_unboxed_floats) =
+    ml_global_data.
+
+:- func ml_global_data_have_unboxed_floats(ml_global_data) =
+    have_unboxed_floats.
 
     % ml_global_data_get_global_defns(GlobalData, ScalarCellTypeMap,
     %   RevFlatCellDefns, RevFlatRttiDefns, RevMaybeNonFlatDefns):
@@ -202,10 +210,13 @@
 
 :- implementation.
 
+:- import_module backend_libs.builtin_ops.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module ml_backend.ml_type_gen.
+:- import_module parse_tree.prog_type.
 
+:- import_module bool.
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
@@ -228,6 +239,7 @@
     --->    ml_global_data(
                 mgd_pdup_rval_type_map          :: ml_rtti_rval_type_map,
                 mgd_use_common_cells            :: use_common_cells,
+                mgd_have_unboxed_floats         :: have_unboxed_floats,
                 mgd_const_counter               :: counter,
                 mgd_rev_flat_cell_defns         :: list(mlds_defn),
                 mgd_rev_flat_rtti_defns         :: list(mlds_defn),
@@ -247,17 +259,20 @@
 
 %-----------------------------------------------------------------------------%
 
-ml_global_data_init(UseCommonCells) = GlobalData :-
-    GlobalData = ml_global_data(map.init, UseCommonCells,
+ml_global_data_init(UseCommonCells, HaveUnboxedFloats) = GlobalData :-
+    GlobalData = ml_global_data(map.init, UseCommonCells, HaveUnboxedFloats,
         counter.init(1), [], [], [],
         counter.init(1), map.init, map.init, map.init, map.init,
         counter.init(0), bimap.init).
+
+ml_global_data_have_unboxed_floats(GlobalData) =
+    GlobalData ^ mgd_have_unboxed_floats.
 
 ml_global_data_get_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap,
         RevFlatCellDefns, RevFlatRttiDefns, RevMaybeNonFlatDefns) :-
     GlobalData = ml_global_data(_PDupRvalTypeMap, _UseCommonCells,
-        _ConstCounter,
+        _HaveUnboxedFloats, _ConstCounter,
         RevFlatCellDefns, RevFlatRttiDefns, RevMaybeNonFlatDefns,
         _TypeNumCounter,
         _ScalarTypeNumMap, ScalarCellGroupMap,
@@ -267,7 +282,7 @@ ml_global_data_get_global_defns(GlobalData,
 ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, AllocIds, Defns) :-
     GlobalData = ml_global_data(_PDupRvalTypeMap, _UseCommonCells,
-        _ConstCounter,
+        _HaveUnboxedFloats, _ConstCounter,
         RevFlatCellDefns, RevFlatRttiDefns, RevMaybeNonFlatDefns,
         _TypeNumCounter,
         _ScalarTypeNumMap, ScalarCellGroupMap,
@@ -354,8 +369,11 @@ ml_global_data_add_maybe_nonflat_defns(Defns, !GlobalData) :-
 
 %-----------------------------------------------------------------------------%
 
-ml_gen_static_scalar_const_value(MLDS_ModuleName, ConstBaseName, ConstType,
-        Initializer, Context, DataRval, !GlobalData) :-
+ml_gen_static_scalar_const_value(MLDS_ModuleName, ConstBaseName, ConstType0,
+        Initializer0, Context, DataRval, !GlobalData) :-
+    HaveUnboxedFloats = !.GlobalData ^ mgd_have_unboxed_floats,
+    ml_maybe_specialize_generic_array_type(HaveUnboxedFloats,
+        ConstType0, ConstType, Initializer0, Initializer),
     UseCommonCells = !.GlobalData ^ mgd_use_common_cells,
     (
         UseCommonCells = use_common_cells,
@@ -371,8 +389,11 @@ ml_gen_static_scalar_const_value(MLDS_ModuleName, ConstBaseName, ConstType,
         DataRval = ml_lval(DataVar)
     ).
 
-ml_gen_static_scalar_const_addr(MLDS_ModuleName, ConstBaseName, ConstType,
-        Initializer, Context, DataAddrRval, !GlobalData) :-
+ml_gen_static_scalar_const_addr(MLDS_ModuleName, ConstBaseName, ConstType0,
+        Initializer0, Context, DataAddrRval, !GlobalData) :-
+    HaveUnboxedFloats = !.GlobalData ^ mgd_have_unboxed_floats,
+    ml_maybe_specialize_generic_array_type(HaveUnboxedFloats,
+        ConstType0, ConstType, Initializer0, Initializer),
     UseCommonCells = !.GlobalData ^ mgd_use_common_cells,
     (
         UseCommonCells = use_common_cells,
@@ -467,6 +488,125 @@ ml_gen_plain_static_defn(ConstBaseName, ConstType,
     ml_global_data_get_rev_flat_cell_defns(!.GlobalData, RevDefns0),
     RevDefns = [Defn | RevDefns0],
     ml_global_data_set_rev_flat_cell_defns(RevDefns, !GlobalData).
+
+:- pred ml_maybe_specialize_generic_array_type(have_unboxed_floats::in,
+    mlds_type::in, mlds_type::out, mlds_initializer::in, mlds_initializer::out)
+    is det.
+
+ml_maybe_specialize_generic_array_type(HaveUnboxedFloats,
+        ConstType0, ConstType, Initializer0, Initializer) :-
+    (
+        HaveUnboxedFloats = have_unboxed_floats,
+        ConstType0 = mlds_array_type(mlds_generic_type),
+        Initializer0 = init_array(Inits0),
+        list.map2(ml_specialize_generic_array_init, Inits0, Inits, Types),
+        list.member(mlds_native_float_type, Types)
+    ->
+        ConstType = mlds_mostly_generic_array_type(Types),
+        Initializer = init_array(Inits)
+    ;
+        ConstType = ConstType0,
+        Initializer = Initializer0
+    ).
+
+:- pred ml_specialize_generic_array_init(mlds_initializer::in,
+    mlds_initializer::out, mlds_type::out) is det.
+
+ml_specialize_generic_array_init(Init0, Init, Type) :-
+    (
+        Init0 = init_obj(Rval0),
+        ml_specialize_generic_array_rval(Rval0, Rval)
+    ->
+        Init = init_obj(Rval),
+        Type = mlds_native_float_type
+    ;
+        Init = Init0,
+        Type = mlds_generic_type
+    ).
+
+:- pred ml_specialize_generic_array_rval(mlds_rval::in, mlds_rval::out)
+    is semidet.
+
+ml_specialize_generic_array_rval(!Rval) :-
+    (
+        !.Rval = ml_const(mlconst_float(_))
+    ;
+        !.Rval = ml_unop(Op, SubRval),
+        (
+            Op = box(Type)
+        ;
+            Op = unbox(Type)
+        ;
+            Op = cast(Type)
+        ),
+        (
+            Type = mlds_native_float_type,
+            !:Rval = SubRval
+        ;
+            Type = mercury_type(_, CtorCat, _),
+            (
+                CtorCat = ctor_cat_builtin(cat_builtin_float),
+                !:Rval = SubRval
+            ;
+                CtorCat = ctor_cat_user(cat_user_notag),
+                ml_specialize_generic_array_rval(SubRval, !:Rval)
+            )
+        )
+    ;
+        !.Rval = ml_binop(Op, _, _),
+        ml_specialize_generic_array_binop(Op, yes)
+    ).
+
+:- pred ml_specialize_generic_array_binop(binary_op::in, bool::out) is det.
+
+ml_specialize_generic_array_binop(Op, IsFloat) :-
+    (
+        ( Op = int_add
+        ; Op = int_sub
+        ; Op = int_mul
+        ; Op = int_div
+        ; Op = int_mod
+        ; Op = unchecked_left_shift
+        ; Op = unchecked_right_shift
+        ; Op = bitwise_and
+        ; Op = bitwise_or
+        ; Op = bitwise_xor
+        ; Op = logical_and
+        ; Op = logical_or
+        ; Op = eq
+        ; Op = ne
+        ; Op = str_eq
+        ; Op = str_ne
+        ; Op = str_lt
+        ; Op = str_gt
+        ; Op = str_le
+        ; Op = str_ge
+        ; Op = str_cmp
+        ; Op = int_lt
+        ; Op = int_gt
+        ; Op = int_le
+        ; Op = int_ge
+        ; Op = unsigned_le
+        ; Op = float_eq
+        ; Op = float_ne
+        ; Op = float_lt
+        ; Op = float_gt
+        ; Op = float_le
+        ; Op = float_ge
+        ; Op = body
+        ; Op = array_index(_)   % should not be an initializer anyway
+        ; Op = compound_eq
+        ; Op = compound_lt
+        ),
+        IsFloat = no
+    ;
+        ( Op = float_plus
+        ; Op = float_minus
+        ; Op = float_times
+        ; Op = float_divide
+        ),
+        IsFloat = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 

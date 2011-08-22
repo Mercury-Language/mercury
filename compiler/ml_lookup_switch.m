@@ -743,6 +743,7 @@ ml_default_value_for_type(MLDS_Type) = DefaultRval :-
         ; MLDS_Type = mlds_foreign_type(_)
         ; MLDS_Type = mlds_class_type(_, _, _)
         ; MLDS_Type = mlds_array_type(_)
+        ; MLDS_Type = mlds_mostly_generic_array_type(_)
         ; MLDS_Type = mlds_func_type(_)
         ; MLDS_Type = mlds_generic_type
         ; MLDS_Type = mlds_type_info_type

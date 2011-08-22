@@ -83,7 +83,7 @@ MR_OUTLINE_DEFN(
     }
 )
 
-#if defined(MR_AVOID_MACROS) || !defined(MR_GNUC)
+#if defined(MR_BOXED_FLOAT) && !defined(MR_GNUC)
 
 MR_OUTLINE_DEFN(
     MR_Box
@@ -93,45 +93,14 @@ MR_OUTLINE_DEFN(
         MR_Float *ptr;
 
         MR_make_hp_float_aligned();
-        ptr = (MR_Float *) MR_new_object(MR_Float, sizeof(MR_Float),
+        ptr = (MR_Float *) MR_new_object_atomic(MR_Float, sizeof(MR_Float),
             MR_ALLOC_SITE_FLOAT, NULL);
         *ptr = f;
         return (MR_Box) ptr;
     }
 )
 
-#endif /* MR_AVOID_MACROS || !MR_GNUC */
-
-#if defined(MR_AVOID_MACROS)
-
-MR_OUTLINE_DEFN(
-    MR_Float
-    MR_unbox_float(MR_Box b)
-,
-    {
-        return * (MR_Float *) b;
-    }
-)
-
-#endif /* MR_AVOID_MACROS */
-
-/*
-** This is exactly the same as MR_box_float(), except that
-** it is unconditionally defined as an external function,
-** not as a macro, static function, or inline function.
-** It is used by the `--target asm' GCC back-end interface.
-*/
-MR_Box
-MR_asm_box_float(MR_Float f)
-{
-    MR_Float *ptr;
-
-    MR_make_hp_float_aligned();
-    ptr = (MR_Float *) MR_new_object(MR_Float, sizeof(MR_Float),
-        MR_ALLOC_SITE_FLOAT, NULL);
-    *ptr = f;
-    return (MR_Box) ptr;
-}
+#endif /* MR_BOXED_FLOAT && !MR_GNUC */
 
 #endif /* ! MR_HIGHLEVEL_CODE */
 

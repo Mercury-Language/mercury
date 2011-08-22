@@ -1477,6 +1477,10 @@ rename_class_names_type(Renaming, !Type) :-
         rename_class_names_type(Renaming, Type0, Type),
         !:Type = mlds_array_type(Type)
     ;
+        !.Type = mlds_mostly_generic_array_type(Types0),
+        list.map(rename_class_names_type(Renaming), Types0, Types),
+        !:Type = mlds_mostly_generic_array_type(Types)
+    ;
         !.Type = mlds_ptr_type(Type0),
         rename_class_names_type(Renaming, Type0, Type),
         !:Type = mlds_ptr_type(Type)
@@ -2781,6 +2785,7 @@ get_java_type_initializer(Type) = Initializer :-
         ; Type = mlds_foreign_type(_)
         ; Type = mlds_class_type(_, _, _)
         ; Type = mlds_array_type(_)
+        ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)
         ; Type = mlds_func_type(_)
         ; Type = mlds_generic_type
@@ -3473,6 +3478,11 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         type_to_string(Info, Type, String, ArrayDims)
     ;
         MLDS_Type = mlds_array_type(Type),
+        type_to_string(Info, Type, String, ArrayDims0),
+        ArrayDims = [0 | ArrayDims0]
+    ;
+        MLDS_Type = mlds_mostly_generic_array_type(_Type),
+        Type = mlds_generic_type,
         type_to_string(Info, Type, String, ArrayDims0),
         ArrayDims = [0 | ArrayDims0]
     ;

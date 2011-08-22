@@ -107,10 +107,6 @@
 **	For details, see the definition of the MR_CALL macro in
 **	runtime/mercury_std.h.
 **
-** MR_AVOID_MACROS:
-**	For the MLDS back-end (i.e. MR_HIGHLEVEL_CODE),
-**	use inline functions rather than macros for a few builtins.
-**
 ** MR_THREAD_SAFE
 **	Enable support for parallelism.
 **
@@ -592,15 +588,6 @@
 ** Settings of configuration parameters which can be passed on
 ** the command line, but which are also implied by other parameters.
 */
-
-/*
-** MR_HIGHLEVEL_CODE implies MR_BOXED_FLOAT,
-** since unboxed float is currently not yet implemented for the MLDS back-end.
-** XXX we really ought to fix that...
-*/
-#ifdef MR_HIGHLEVEL_CODE
-  #define MR_BOXED_FLOAT 1
-#endif
 
 /*
 ** MR_PIC means that we are generating position independent code,

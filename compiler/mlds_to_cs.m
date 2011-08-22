@@ -1499,6 +1499,7 @@ get_type_initializer(Info, Type) = Initializer :-
         ; Type = mlds_commit_type
         ; Type = mlds_class_type(_, _, _)
         ; Type = mlds_array_type(_)
+        ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)
         ; Type = mlds_func_type(_)
         ; Type = mlds_generic_type
@@ -2262,6 +2263,11 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         type_to_string(Info, Type, String, ArrayDims0),
         ArrayDims = [0 | ArrayDims0]
     ;
+        MLDS_Type = mlds_mostly_generic_array_type(_),
+        Type = mlds_generic_type,
+        type_to_string(Info, Type, String, ArrayDims0),
+        ArrayDims = [0 | ArrayDims0]
+    ;
         MLDS_Type = mlds_func_type(mlds_func_params(Args, RetTypes)),
         ArgTypes = list.map(func(mlds_argument(_, Type, _)) = Type, Args),
         String = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
@@ -2417,6 +2423,8 @@ generic_args_types_to_string(Info, ArgsTypes, String) :-
 
 type_is_array(Type) = IsArray :-
     ( Type = mlds_array_type(_) ->
+        IsArray = is_array
+    ; Type = mlds_mostly_generic_array_type(_) ->
         IsArray = is_array
     ; Type = mlds_mercury_array_type(_) ->
         IsArray = is_array

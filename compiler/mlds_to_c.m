@@ -98,6 +98,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
+:- import_module float.
 :- import_module int.
 :- import_module library.
 :- import_module list.
@@ -1090,6 +1091,7 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
             ; MLDS_Type = mlds_commit_type
             ; MLDS_Type = mlds_class_type(_, _, _)
             ; MLDS_Type = mlds_array_type(_)
+            ; MLDS_Type = mlds_mostly_generic_array_type(_)
             ; MLDS_Type = mlds_func_type(_)
             ; MLDS_Type = mlds_generic_type
             ; MLDS_Type = mlds_generic_env_ptr_type
@@ -1546,16 +1548,63 @@ mlds_output_scalar_cell_group_decl(Opts, Indent, MangledModuleName,
         TypeNum - CellGroup, !IO) :-
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
     CellGroup = ml_scalar_cell_group(Type, InitArraySize,
-        _Counter, _Members, RevRows),
+        _Counter, _Members, Rows),
+
+    ( Type = mlds_mostly_generic_array_type(ElemTypes) ->
+        mlds_output_scalar_cell_group_struct_defn(Opts, Indent,
+            MangledModuleName, TypeRawNum, ElemTypes, !IO)
+    ;
+        true
+    ),
 
     mlds_indent(Indent, !IO),
     io.write_string("\nstatic /* final */ const ", !IO),
-    mlds_output_type_prefix(Opts, Type, !IO),
-    NumRows = cord.length(RevRows), 
+    NumRows = cord.length(Rows),
+    mlds_output_scalar_cell_group_type_and_name(Opts, MangledModuleName,
+        TypeRawNum, Type, InitArraySize, NumRows, !IO),
+    io.write_string(";\n", !IO).
+
+:- pred mlds_output_scalar_cell_group_struct_defn(mlds_to_c_opts::in, int::in,
+    string::in, int::in, list(mlds_type)::in, io::di, io::uo) is det.
+
+mlds_output_scalar_cell_group_struct_defn(Opts, Indent, MangledModuleName,
+        TypeRawNum, ElemTypes, !IO) :-
+    mlds_indent(Indent, !IO),
+    io.format("\nstruct %s_scalar_cell_group_%d {\n",
+        [s(MangledModuleName), i(TypeRawNum)], !IO),
+    list.foldl2(mlds_output_scalar_cell_group_struct_field(Opts, Indent + 1),
+        ElemTypes, 1, _, !IO),
+    mlds_indent(Indent, !IO),
+    io.write_string("};\n", !IO).
+
+:- pred mlds_output_scalar_cell_group_struct_field(mlds_to_c_opts::in,
+    indent::in, mlds_type::in, int::in, int::out, io::di, io::uo) is det.
+
+mlds_output_scalar_cell_group_struct_field(Opts, Indent, FieldType,
+        Num, Num + 1, !IO) :-
+    mlds_indent(Indent, !IO),
+    mlds_output_type_prefix(Opts, FieldType, !IO),
+    io.format(" f%d;\n", [i(Num)], !IO).
+
+:- pred mlds_output_scalar_cell_group_type_and_name(mlds_to_c_opts::in,
+    string::in, int::in, mlds_type::in, initializer_array_size::in, int::in,
+    io::di, io::uo) is det.
+
+mlds_output_scalar_cell_group_type_and_name(Opts, MangledModuleName,
+        TypeRawNum, Type, InitArraySize, NumRows, !IO) :-
+    ( Type = mlds_mostly_generic_array_type(_) ->
+        io.format("struct %s_scalar_cell_group_%d",
+            [s(MangledModuleName), i(TypeRawNum)], !IO)
+    ;
+        mlds_output_type_prefix(Opts, Type, !IO)
+    ),
     io.format(" %s_scalar_common_%d[%d]",
         [s(MangledModuleName), i(TypeRawNum), i(NumRows)], !IO),
-    mlds_output_type_suffix(Opts, Type, InitArraySize, !IO),
-    io.write_string(";\n", !IO).
+    ( Type = mlds_mostly_generic_array_type(_) ->
+        true
+    ;
+        mlds_output_type_suffix(Opts, Type, InitArraySize, !IO)
+    ).
 
 :- pred mlds_output_vector_cell_group_decls(mlds_to_c_opts::in, indent::in,
     mlds_module_name::in, string::in,
@@ -1580,13 +1629,13 @@ mlds_output_vector_cell_group_decl(Opts, Indent, ModuleName, MangledModuleName,
         TypeNum - CellGroup, !IO) :-
     TypeNum = ml_vector_common_type_num(TypeRawNum),
     CellGroup = ml_vector_cell_group(Type, ClassDefn, _FieldNames,
-        _NextRow, RevRows),
+        _NextRow, Rows),
     mlds_output_defn(Opts, Indent, yes, ModuleName, ClassDefn, !IO),
 
     mlds_indent(Indent, !IO),
     io.write_string("\nstatic /* final */ const ", !IO),
     mlds_output_type_prefix(Opts, Type, !IO),
-    NumRows = cord.length(RevRows), 
+    NumRows = cord.length(Rows),
     io.format(" %s_vector_common_%d[%d]",
         [s(MangledModuleName), i(TypeRawNum), i(NumRows)], !IO),
     mlds_output_type_suffix(Opts, Type, no_size, !IO),
@@ -1619,10 +1668,8 @@ mlds_output_scalar_cell_group_defn(Opts, Indent, MangledModuleName,
     list.length(Rows, NumRows),
     mlds_indent(Indent, !IO),
     io.write_string("\nstatic /* final */ const ", !IO),
-    mlds_output_type_prefix(Opts, Type, !IO),
-    io.format(" %s_scalar_common_%d[%d]",
-        [s(MangledModuleName), i(TypeRawNum), i(NumRows)], !IO),
-    mlds_output_type_suffix(Opts, Type, InitArraySize, !IO),
+    mlds_output_scalar_cell_group_type_and_name(Opts, MangledModuleName,
+        TypeRawNum, Type, InitArraySize, NumRows, !IO),
     io.write_string(" = {\n", !IO),
     list.foldl2(mlds_output_cell(Opts, Indent + 1), Rows, 0, _, !IO),
     io.write_string("};\n", !IO).
@@ -2745,6 +2792,10 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
         % suffix.
         mlds_output_type(Opts, Type, !IO)
     ;
+        MLDS_Type = mlds_mostly_generic_array_type(_),
+        Type = mlds_generic_type,
+        mlds_output_type(Opts, Type, !IO)
+    ;
         MLDS_Type = mlds_func_type(FuncParams),
         mlds_output_func_type_prefix(Opts, FuncParams, !IO)
     ;
@@ -2896,6 +2947,8 @@ mlds_output_type_suffix(Opts, MLDS_Type, ArraySize, !IO) :-
     (
         MLDS_Type = mlds_array_type(_),
         mlds_output_array_type_suffix(ArraySize, !IO)
+    ;
+        MLDS_Type = mlds_mostly_generic_array_type(_)
     ;
         MLDS_Type = mlds_func_type(FuncParams),
         mlds_output_func_type_suffix(Opts, FuncParams, !IO)
@@ -3905,6 +3958,7 @@ type_needs_forwarding_pointer_space(mlds_native_char_type) = no.
 type_needs_forwarding_pointer_space(mlds_foreign_type(_)) = no.
 type_needs_forwarding_pointer_space(mlds_class_type(_, _, _)) = no.
 type_needs_forwarding_pointer_space(mlds_array_type(_)) = no.
+type_needs_forwarding_pointer_space(mlds_mostly_generic_array_type(_)) = no.
 type_needs_forwarding_pointer_space(mlds_ptr_type(_)) = no.
 type_needs_forwarding_pointer_space(mlds_func_type(_)) = no.
 type_needs_forwarding_pointer_space(mlds_generic_type) = no.
@@ -4252,7 +4306,14 @@ mlds_output_unop(Opts, Unop, Expr, !IO) :-
 
 mlds_output_cast_rval(Opts, Type, Expr, !IO) :-
     mlds_output_cast(Opts, Type, !IO),
-    mlds_output_rval(Opts, Expr, !IO).
+    (
+        Opts ^ m2co_highlevel_data = yes,
+        Expr = ml_const(mlconst_float(Float))
+    ->
+        mlds_output_float_bits(Opts, Float, !IO)
+    ;
+        mlds_output_rval(Opts, Expr, !IO)
+    ).
 
 :- pred mlds_output_cast(mlds_to_c_opts::in, mlds_type::in, io::di, io::uo)
     is det.
@@ -4288,9 +4349,16 @@ mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
         ; Type = mlds_native_float_type
         )
     ->
-        io.write_string("MR_box_float(", !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string(")", !IO)
+        (
+            Opts ^ m2co_highlevel_data = yes,
+            Expr = ml_const(mlconst_float(Float))
+        ->
+            mlds_output_float_bits(Opts, Float, !IO)
+        ;
+            io.write_string("MR_box_float(", !IO),
+            mlds_output_rval(Opts, Expr, !IO),
+            io.write_string(")", !IO)
+        )
     ;
         ( Type = mercury_type(builtin_type(builtin_type_char), _, _)
         ; Type = mlds_native_char_type
@@ -4504,6 +4572,38 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         Const = mlconst_null(_),
         io.write_string("NULL", !IO)
     ).
+
+    % Output the bit layout of a floating point literal as an integer, so that
+    % it can be cast to a pointer type. We manage to avoid this in all but one
+    % situation: in high-level data grades, when the program contains a ground
+    % term, of which a sub-term is a no-tag wrapper around float.
+    %
+    % Technically we should avoid doing this when --cross-compiling is
+    % enabled.
+    %
+    % XXX the problem is the field type in the C struct which is generated for
+    % the type which has the no-tag argument. The generated field type is a
+    % pointer to the struct for the no-tag type, yet the no-tag optimisation is
+    % used, so the field type should either be the struct for the no-tag type
+    % (not a pointer) or the type which the no-tag type wraps (which itself may
+    % be a no-tag type, etc.)
+    %
+:- pred mlds_output_float_bits(mlds_to_c_opts::in, float::in, io::di, io::uo)
+    is det.
+
+mlds_output_float_bits(Opts, Float, !IO) :-
+    expect(unify(Opts ^ m2co_highlevel_data, yes), $module, $pred,
+        "should only be required with --high-level-data"),
+    Globals = Opts ^ m2co_all_globals,
+    globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
+    (
+        SinglePrecFloat = yes,
+        String = float32_bits_string(Float)
+    ;
+        SinglePrecFloat = no,
+        String = float64_bits_string(Float)
+    ),
+    io.format("%s /* float-bits: %g */", [s(String), f(Float)], !IO).
 
 %-----------------------------------------------------------------------------%
 

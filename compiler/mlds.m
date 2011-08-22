@@ -815,6 +815,17 @@
             %     MLDS code generator, e.g. the arrays used for
             %     string switches.
 
+    ;       mlds_mostly_generic_array_type(list(mlds_type))
+            % A generic array with some float elements. All other elements
+            % are mlds_generic_type.
+            %
+            % This is the same as mlds_array_type(mlds_generic_type) except
+            % that some element types are mlds_native_float_type instead of
+            % mlds_generic_type. In C, it is not possible to initialize an
+            % element of a generic array with a float literal, so we replace
+            % the generic array type with a structure type containing a
+            % combination of generic fields and float fields.
+
     ;       mlds_ptr_type(mlds_type)
             % Pointer types.
             % Currently these are used for handling output arguments.
@@ -1320,14 +1331,9 @@
 
                 % The types of the arguments to the constructor.
                 %
-                % Note that for --low-level-data, we box all fields of objects
-                % created with new_object, i.e. they are represented with type
-                % mlds_generic_type. We also do that for some fields even
-                % for --high-level-data (e.g. floating point fields for the
-                % MLDS->C and MLDS->asm back-ends). In such cases, the type
-                % here should be mlds_generic_type; it is the responsibility
-                % of the HLDS->MLDS code generator to insert code to box/unbox
-                % the arguments.
+                % For boxed fields, the type here should be mlds_generic_type;
+                % it is the responsibility of the HLDS->MLDS code generator to
+                % insert code to box/unbox the arguments.
                 list(mlds_type),
 
                 % Can we use a cell allocated with GC_malloc_atomic to hold
@@ -1539,15 +1545,11 @@
                 % The FieldType is the type of the field. The PtrType is the
                 % type of the pointer from which we are fetching the field.
                 %
-                % Note that for --low-level-data, we box all fields of objects
-                % created with new_object, i.e. they are reprsented with type
-                % mlds_generic_type. We also do that for some fields even
-                % for --high-level-data (e.g. floating point fields for the
-                % MLDS->C and MLDS->asm back-ends). In such cases, the type
-                % here should be mlds_generic_type, not the actual type of
-                % the field. If the actual type is different, then it is the
-                % HLDS->MLDS code generator's responsibility to insert the
-                % necessary code to handle boxing/unboxing.
+                % For boxed fields, the type here should be mlds_generic_type,
+                % not the actual type of the field. If the actual type is
+                % different, then it is the HLDS->MLDS code generator's
+                % responsibility to insert the necessary code to handle
+                % boxing/unboxing.
 
                 field_tag       :: maybe(mlds_tag),
                 field_addr      :: mlds_rval,

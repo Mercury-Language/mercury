@@ -759,8 +759,8 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
             % Box *all* the arguments, including the ExtraRvals.
             list.map(ml_gen_info_lookup_const_var(!.Info), ArgVars,
                 ArgGroundTerms),
-            ml_gen_box_extra_const_rval_list(ModuleInfo, Context, ExtraTypes,
-                ExtraRvals, ExtraArgRvals, !GlobalData),
+            ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
+                ExtraTypes, ExtraRvals, ExtraArgRvals, !GlobalData),
             ml_gen_box_const_rval_list(ModuleInfo, Context, ArgGroundTerms,
                 ArgRvals1, !GlobalData)
         ;
@@ -769,7 +769,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
                 ArgRvals0),
             list.map(ml_type_as_field(ModuleInfo, HighLevelData),
                 ConsArgTypes, FieldTypes),
-            ml_gen_box_or_unbox_const_rval_list(ModuleInfo, ArgTypes,
+            ml_gen_box_or_unbox_const_rval_list_hld(ModuleInfo, ArgTypes,
                 FieldTypes, ArgRvals0, Context, ArgRvals1, !GlobalData),
             % For --high-level-data, the ExtraRvals should already have
             % the right type, so we don't need to worry about boxing
@@ -786,8 +786,8 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
             UsesBaseClass = tag_uses_base_class
         ),
         ml_gen_info_get_target(!.Info, Target),
-        ConstType = get_type_for_cons_id(Target, HighLevelData, MLDS_Type,
-            UsesBaseClass, MaybeConsId),
+        ConstType = get_const_type_for_cons_id(Target, HighLevelData,
+            MLDS_Type, UsesBaseClass, MaybeConsId),
         % XXX If the secondary tag is in a base class, then ideally its
         % initializer should be wrapped in `init_struct([init_obj(X)])'
         % rather than just `init_obj(X)' -- the fact that we don't leads to
@@ -966,10 +966,14 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
     % Return the MLDS type suitable for constructing a constant static
     % ground term with the specified cons_id.
     %
-:- func get_type_for_cons_id(compilation_target, bool, mlds_type,
+    % In all cases, mlds_array_type(mlds_generic_type) is provisional.
+    % ml_gen_static_scalar_const* will replace it by a more specialized type,
+    % mlds_mostly_generic_array_type(_), if required by the elements.
+    %
+:- func get_const_type_for_cons_id(compilation_target, bool, mlds_type,
     tag_uses_base_class, maybe(cons_id)) = mlds_type.
 
-get_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
+get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
         MaybeConsId) = ConstType :-
     (
         HighLevelData = no,
@@ -1048,8 +1052,8 @@ get_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
 
 ml_type_as_field(ModuleInfo, HighLevelData, FieldType, BoxedFieldType) :-
     (
-        % With the low-level data representation, we store all fields as boxed,
-        % so we ignore the original field type and instead generate a
+        % With the low-level data representation, we store all fields as
+        % "boxed" so we ignore the original field type and instead generate a
         % polymorphic type BoxedFieldType which we use for the type of the
         % field. This type is used in the calls to ml_gen_box_or_unbox_rval
         % to ensure that we box values when storing them into fields and
@@ -1057,7 +1061,7 @@ ml_type_as_field(ModuleInfo, HighLevelData, FieldType, BoxedFieldType) :-
         %
         % With the high-level data representation, we don't box everything,
         % but for the MLDS->C and MLDS->asm back-ends we still need to box
-        % floating point fields.
+        % floating point fields if they are wider than a word.
 
         (
             HighLevelData = no
@@ -1169,13 +1173,13 @@ ml_cast_cons_tag(Type, Tag, Rval) = CastRval :-
     ),
     CastRval = ml_unop(cast(Type), TagRval).
 
-:- pred ml_gen_box_or_unbox_const_rval_list(module_info::in,
+:- pred ml_gen_box_or_unbox_const_rval_list_hld(module_info::in,
     list(mer_type)::in, list(mer_type)::in, list(mlds_rval)::in,
     prog_context::in, list(mlds_rval)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_box_or_unbox_const_rval_list(ModuleInfo, ArgTypes, FieldTypes, ArgRvals,
-        Context, FieldRvals, !GlobalData) :-
+ml_gen_box_or_unbox_const_rval_list_hld(ModuleInfo, ArgTypes, FieldTypes,
+        ArgRvals, Context, FieldRvals, !GlobalData) :-
     (
         ArgTypes = [],
         FieldTypes = [],
@@ -1187,9 +1191,9 @@ ml_gen_box_or_unbox_const_rval_list(ModuleInfo, ArgTypes, FieldTypes, ArgRvals,
         FieldTypes = [FieldType | FieldTypesTail],
         ArgRvals = [ArgRval | ArgRvalsTail]
     ->
-        ml_gen_box_or_unbox_const_rval(ModuleInfo,
+        ml_gen_box_or_unbox_const_rval_hld(ModuleInfo,
             ArgType, FieldType, ArgRval, Context, FieldRval, !GlobalData),
-        ml_gen_box_or_unbox_const_rval_list(ModuleInfo,
+        ml_gen_box_or_unbox_const_rval_list_hld(ModuleInfo,
             ArgTypesTail, FieldTypesTail, ArgRvalsTail, Context,
             FieldRvalsTail, !GlobalData),
         FieldRvals = [FieldRval | FieldRvalsTail]
@@ -1197,11 +1201,11 @@ ml_gen_box_or_unbox_const_rval_list(ModuleInfo, ArgTypes, FieldTypes, ArgRvals,
         unexpected($module, $pred, "list length mismatch")
     ).
 
-:- pred ml_gen_box_or_unbox_const_rval(module_info::in,
+:- pred ml_gen_box_or_unbox_const_rval_hld(module_info::in,
     mer_type::in, mer_type::in, mlds_rval::in, prog_context::in,
     mlds_rval::out, ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_box_or_unbox_const_rval(ModuleInfo, ArgType, FieldType, ArgRval,
+ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, ArgType, FieldType, ArgRval,
         Context, FieldRval, !GlobalData) :-
     (
         % Handle the case where the field type is a boxed type
@@ -1238,20 +1242,20 @@ ml_gen_box_const_rval_list(ModuleInfo, Context, [GroundTerm | GroundTerms],
     ml_gen_box_const_rval_list(ModuleInfo, Context, GroundTerms,
         BoxedRvals, !GlobalData).
 
-:- pred ml_gen_box_extra_const_rval_list(module_info::in, prog_context::in,
+:- pred ml_gen_box_extra_const_rval_list_lld(module_info::in, prog_context::in,
     list(mlds_type)::in, list(mlds_rval)::in, list(mlds_rval)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_box_extra_const_rval_list(_, _, [], [], [], !GlobalData).
-ml_gen_box_extra_const_rval_list(ModuleInfo, Context, [Type | Types],
+ml_gen_box_extra_const_rval_list_lld(_, _, [], [], [], !GlobalData).
+ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context, [Type | Types],
         [Rval | Rvals], [BoxedRval | BoxedRvals], !GlobalData) :-
     ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval,
         BoxedRval, !GlobalData),
-    ml_gen_box_extra_const_rval_list(ModuleInfo, Context, Types, Rvals,
+    ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context, Types, Rvals,
         BoxedRvals, !GlobalData).
-ml_gen_box_extra_const_rval_list(_, _, [], [_ | _], _, !GlobalData) :-
+ml_gen_box_extra_const_rval_list_lld(_, _, [], [_ | _], _, !GlobalData) :-
     unexpected($module, $pred, "length mismatch").
-ml_gen_box_extra_const_rval_list(_, _, [_ | _], [], _, !GlobalData) :-
+ml_gen_box_extra_const_rval_list_lld(_, _, [_ | _], [], _, !GlobalData) :-
     unexpected($module, $pred, "length mismatch").
 
 :- pred ml_cons_name(compilation_target::in, cons_id::in, ctor_name::out)
@@ -1336,8 +1340,7 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
     % is actually the same as integer.
     update_type_may_use_atomic_alloc(ModuleInfo, ArgType, !MayUseAtomic),
 
-    % Figure out the type of the field. Note that for the MLDS->C and
-    % MLDS->asm back-ends, we need to box floating point fields.
+    % Figure out the type of the field.
     ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, BoxedArgType),
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
 
@@ -2517,7 +2520,7 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     SubInitializers = ExtraInitializers ++ ArgInitializers,
 
     % Generate a local static constant for this term.
-    ConstType = get_type_for_cons_id(Target, HighLevelData, MLDS_Type,
+    ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
         ml_tag_uses_base_class(ConsTag), yes(ConsId)),
     % XXX If the secondary tag is in a base class, then ideally its
     % initializer should be wrapped in `init_struct([init_obj(X)])'
@@ -2590,7 +2593,7 @@ construct_ground_term_initializer_hld(ModuleInfo, Context,
     map.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, ArgType, _MLDS_ArgType),
     ml_type_as_field(ModuleInfo, yes, ConsArgType, BoxedArgType),
-    ml_gen_box_or_unbox_const_rval(ModuleInfo, ArgType, BoxedArgType,
+    ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, ArgType, BoxedArgType,
         ArgRval0, Context, ArgRval, !GlobalData).
 
 :- pred construct_ground_term_initializer_lld(module_info::in,

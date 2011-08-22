@@ -379,7 +379,8 @@ il_transform_mlds(MLDS0, MLDS) :-
     expect(map.is_empty(VectorCellGroupMap), $module, $pred,
         "nonempty VectorCellGroupMap"),
     Defns1 = GlobalDefns ++ Defns0 ++ ExportDefns,
-    GlobalData = ml_global_data_init(do_not_use_common_cells),
+    GlobalData = ml_global_data_init(do_not_use_common_cells,
+        do_not_have_unboxed_floats),
 
     IsFunctionOrData =
         (pred(D::in) is semidet :-
@@ -3111,6 +3112,9 @@ mlds_type_to_ilds_type(DataRep, mlds_mercury_array_type(ElementType)) =
 
 mlds_type_to_ilds_type(DataRep, mlds_array_type(ElementType)) =
     il_type([], '[]'(mlds_type_to_ilds_type(DataRep, ElementType), [])).
+
+mlds_type_to_ilds_type(_, mlds_mostly_generic_array_type(_)) = _ :-
+    sorry($module, $pred, "mlds_mostly_generic_array_type").
 
     % XXX Should be checked.
 mlds_type_to_ilds_type(_, mlds_type_info_type) = il_generic_type.

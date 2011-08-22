@@ -139,6 +139,7 @@ is_integral_type(MLDSType) = IsIntegral :-
         ; MLDSType = mlds_generic_type
         ; MLDSType = mlds_generic_env_ptr_type
         ; MLDSType = mlds_array_type(_)
+        ; MLDSType = mlds_mostly_generic_array_type(_)
         ; MLDSType = mlds_pseudo_type_info_type
         ; MLDSType = mlds_rtti_type(_)
         ; MLDSType = mlds_tabling_type(_)

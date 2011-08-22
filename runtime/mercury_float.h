@@ -73,7 +73,7 @@
 
 #else /* not MR_BOXED_FLOAT */
 
-  /* unboxed float means we can assume sizeof(MR_Float) == sizeof(MR_Word) */
+  /* unboxed float means we can assume sizeof(MR_Float) <= sizeof(MR_Word) */
 
   #define MR_make_hp_float_aligned() ((void)0)
 

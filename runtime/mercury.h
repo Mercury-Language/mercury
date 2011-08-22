@@ -259,55 +259,61 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 
 #endif
 
+/*---------------------------------------------------------------------------*/
 /*
-** Code to box/unbox floats
+** Code to box/unbox floats in high-level C grades.
+** The low-level C grades only use MR_float_to_word and MR_word_to_float.
 **
-** Note that this code is also duplicated in mercury.c.
-** XXX we should optimize the case where sizeof(MR_Float) == sizeof(MR_Box)
-*/ 
-
-#if defined(MR_GNUC) && !defined(MR_AVOID_MACROS)
-  #define MR_box_float(f) ({						\
-	MR_Float *MR_box_float_ptr;					\
-									\
-	MR_make_hp_float_aligned();					\
-	MR_box_float_ptr = MR_new_object_atomic(MR_Float,		\
-	    sizeof(MR_Float), MR_ALLOC_SITE_FLOAT, NULL);		\
-	*MR_box_float_ptr = (f);					\
-	/* return */ (MR_Box) MR_box_float_ptr;				\
-  })
-#else
-  MR_EXTERN_INLINE MR_Box MR_box_float(MR_Float f);
-
-  MR_EXTERN_INLINE MR_Box
-  MR_box_float(MR_Float f) {
-	MR_Float *ptr;
-
-	MR_make_hp_float_aligned();
-	ptr = MR_new_object_atomic(MR_Float, sizeof(MR_Float),
-	    MR_ALLOC_SITE_FLOAT, NULL);
-	*ptr = f;
-	return (MR_Box) ptr;
-  }
-#endif
-
-#ifdef MR_AVOID_MACROS
-  MR_EXTERN_INLINE MR_Float MR_unbox_float(MR_Box b);
-
-  MR_EXTERN_INLINE
-  MR_Float MR_unbox_float(MR_Box b) {
-	return *(MR_Float *)b;
-  }
-#else
-  #define MR_unbox_float(ptr) (*(MR_Float *)ptr)
-#endif
-
-/*
-** Like MR_box_float, but always an external function, never a macro
-** or an inline function.  This is used by the `--target asm'
-** GCC back-end interface.
+** This code is not in mercury_float.h because the function definition
+** requires the declaration of MR_new_object_atomic.
+**
+** When sizeof(MR_Float) <= sizeof(MR_Box), the names "box" and "unbox" should
+** be interpreted as casts to and from MR_Box, as we do not truly box the
+** floats then.
 */
-MR_Box MR_asm_box_float(MR_Float f);
+
+#ifdef MR_HIGHLEVEL_CODE
+  #ifdef MR_BOXED_FLOAT
+
+    #if defined(MR_GNUC)
+      #define MR_box_float(f)                                           \
+      ({                                                                \
+          MR_Float *MR_box_float_ptr;                                   \
+                                                                        \
+          MR_make_hp_float_aligned();                                   \
+          MR_box_float_ptr = (MR_Float *) MR_new_object_atomic(MR_Float,\
+              sizeof(MR_Float), MR_ALLOC_SITE_FLOAT, NULL);             \
+          *MR_box_float_ptr = (f);                                      \
+          /* return */ (MR_Box) MR_box_float_ptr;                       \
+      })
+    #else
+      /* Note that this code is also duplicated in mercury.c. */
+      MR_EXTERN_INLINE MR_Box MR_box_float(MR_Float f);
+
+      MR_EXTERN_INLINE MR_Box
+      MR_box_float(MR_Float f)
+      {
+          MR_Float *ptr;
+
+          MR_make_hp_float_aligned();
+          ptr = MR_new_object_atomic(MR_Float, sizeof(MR_Float),
+              MR_ALLOC_SITE_FLOAT, NULL);
+          *ptr = f;
+          return (MR_Box) ptr;
+      }
+    #endif
+
+    #define MR_unbox_float(ptr) (*(MR_Float *)ptr)
+
+  #else  /* ! MR_BOXED_FLOAT */
+
+    #define MR_box_float(F)     ((MR_Box) MR_float_to_word(F))
+    #define MR_unbox_float(B)   MR_word_to_float((MR_Word)(B))
+
+  #endif /* ! MR_BOXED_FLOAT */
+#endif /* MR_HIGHLEVEL_CODE */
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** MR_GC_check():

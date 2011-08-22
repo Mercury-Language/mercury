@@ -226,6 +226,26 @@
 :- func float.float_to_doc(float) = doc.
 
 %---------------------------------------------------------------------------%
+
+:- interface.
+
+% These functions are hidden for now.  `int' is not guaranteed to be able to
+% represent a double, so we return strings for now. Endianness and treatment
+% of special values also needs to be considered.
+
+    % Convert a float to an IEEE single-precision floating point value, then
+    % return the integer representation of the bit layout of that value as a
+    % string.
+    %
+:- func float32_bits_string(float::in) = (string::uo) is det.
+
+    % Convert a float to an IEEE double-precision floating point value, then
+    % return the integer representation of the bit layout of that value as a
+    % string.
+    %
+:- func float64_bits_string(float::in) = (string::uo) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -866,6 +886,90 @@ float.max_exponent = 1024.
     % Convert a float to a pretty_printer.doc.
     %
 float.float_to_doc(X) = str(string.float_to_string(X)).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    float32_bits_string(Flt::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    union {
+        float f;
+        MR_int_least32_t i;
+    } u;
+    char buf[64];
+
+    u.f = (float) Flt;
+    sprintf(buf, ""%d"", u.i);
+    MR_make_aligned_string_copy(Str, buf);
+").
+
+:- pragma foreign_proc("Java",
+    float32_bits_string(Flt::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    float f = (float) Flt;
+    int i = Float.floatToIntBits(f);
+    Str = Integer.toString(i);
+").
+
+:- pragma foreign_proc("C#",
+    float32_bits_string(Flt::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    float f = (float) Flt;
+    int i = System.BitConverter.ToInt32(System.BitConverter.GetBytes(f), 0);
+    Str = i.ToString();
+").
+
+:- pragma foreign_proc("Erlang",
+    float32_bits_string(Flt::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    <<Int:32/signed-integer>> = <<Flt:32/float>>,
+    Str = integer_to_list(Int)
+").
+
+:- pragma foreign_proc("C",
+    float64_bits_string(Flt::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    union {
+        double f;
+        MR_int_least64_t i;
+    } u;
+    char buf[64];
+
+    u.f = (double) Flt;
+    sprintf(buf, ""%ld"", u.i);
+    MR_make_aligned_string_copy(Str, buf);
+").
+
+:- pragma foreign_proc("Java",
+    float64_bits_string(Flt::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    double d = (double) Flt;
+    long i = Double.doubleToLongBits(d);
+    Str = Long.toString(i);
+").
+
+:- pragma foreign_proc("C#",
+    float64_bits_string(Flt::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    double d = (double) Flt;
+    long i = System.BitConverter.DoubleToInt64Bits(d);
+    Str = i.ToString();
+").
+
+:- pragma foreign_proc("Erlang",
+    float64_bits_string(Flt::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    <<Int:64/signed-integer>> = <<Flt:64/float>>,
+    Str = integer_to_list(Int)
+").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -299,7 +299,8 @@ compile_to_asm(Globals, MLDS, ContainsCCode, !IO) :-
         % them from the asm file!) and pass that to mlds_to_c.m
         % to create the .mih file, and if necessary the .c file.
         ForeignMLDS = mlds(ModuleName, AllForeignCode, Imports,
-            ml_global_data_init(do_not_use_common_cells),
+            ml_global_data_init(do_not_use_common_cells,
+                do_not_have_unboxed_floats),
             list.map(make_public, ForeignDefns),
             InitPreds, FinalPreds, ExportedEnums),
         mlds_to_c.output_c_file(ForeignMLDS, Globals, "", !IO)
@@ -1758,6 +1759,11 @@ build_type(Type, ArraySize, GlobalInfo, GCC_Type, !IO) :-
         gcc.build_pointer_type(GCC_BaseType, GCC_Type, !IO)
     ;
         Type = mlds_array_type(BaseType),
+        build_type(BaseType, GlobalInfo, GCC_BaseType, !IO),
+        build_sized_array_type(GCC_BaseType, ArraySize, GCC_Type, !IO)
+    ;
+        Type = mlds_mostly_generic_array_type(_),
+        BaseType = mlds_generic_type,
         build_type(BaseType, GlobalInfo, GCC_BaseType, !IO),
         build_sized_array_type(GCC_BaseType, ArraySize, GCC_Type, !IO)
     ;
