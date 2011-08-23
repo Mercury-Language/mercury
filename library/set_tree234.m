@@ -20,6 +20,7 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module set.
 
 %--------------------------------------------------------------------------%
 
@@ -38,6 +39,8 @@
 
 :- func set_tree234.make_singleton_set(T) = set_tree234(T).
 
+:- pred set_tree234.is_singleton(set_tree234(T)::in, T::out) is semidet.
+
     % `set_tree234.empty(Set)' is true iff `Set' is an empty set.
     %
 :- pred set_tree234.empty(set_tree234(_T)::in) is semidet.
@@ -47,6 +50,7 @@
 :- pred set_tree234.is_empty(set_tree234(_T)::in) is semidet.
 
 :- pred set_tree234.non_empty(set_tree234(T)::in) is semidet.
+:- pred set_tree234.is_non_empty(set_tree234(T)::in) is semidet.
 
     % `set_tree234.member(X, Set)' is true iff `X' is a member of `Set'.
     %
@@ -68,18 +72,32 @@
     % containing only the members of `List'.
     %
 :- func set_tree234.list_to_set(list(T)) = set_tree234(T).
+:- pred set_tree234.list_to_set(list(T)::in, set_tree234(T)::out) is det.
 
 :- func set_tree234.from_list(list(T)) = set_tree234(T).
+:- pred set_tree234.from_list(list(T)::in, set_tree234(T)::out) is det.
 
     % `set_tree234.sorted_list_to_set(List) = Set' is true iff `Set' is
     % the set containing only the members of `List'. `List' must be sorted.
     %
 :- func set_tree234.sorted_list_to_set(list(T)) = set_tree234(T).
+:- pred set_tree234.sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
+
+    % `from_set(Set)' returns a set_tree234 containing only the members of
+    % `Set'. Takes O(card(Set)) time and space.
+    %
+:- func from_set(set.set(T)) = set_tree234(T).
 
     % `set_tree234.to_sorted_list(Set) = List' is true iff `List' is the
     % list of all the members of `Set', in sorted order.
     %
 :- func set_tree234.to_sorted_list(set_tree234(T)) = list(T).
+:- pred set_tree234.to_sorted_list(set_tree234(T)::in, list(T)::out) is det.
+
+    % `to_sorted_list(Set)' returns a set.set containing all the members
+    % of `Set', in sorted order. Takes O(card(Set)) time and space.
+    %
+:- func to_set(set_tree234(T)) = set.set(T).
 
     % `set_tree234.equal(SetA, SetB)' is true iff
     % `SetA' and `SetB' contain the same elements.
@@ -184,11 +202,15 @@
     %
 :- func set_tree234.power_intersect(set_tree234(set_tree234(T)))
     = set_tree234(T).
+:- pred set_tree234.power_intersect(set_tree234(set_tree234(T))::in,
+    set_tree234(T)::out) is det.
 
     % `set_tree234.intersect_list(A, B)' is true iff `B' is the
     % intersection of all the sets in `A'.
     %
 :- func set_tree234.intersect_list(list(set_tree234(T))) = set_tree234(T).
+:- pred set_tree234.intersect_list(list(set_tree234(T))::in,
+    set_tree234(T)::out) is det.
 
     % `set_tree234.difference(SetA, SetB, Set)' is true iff `Set' is the
     % set containing all the elements of `SetA' except those that
@@ -323,6 +345,8 @@
 
     % Return the set of items for which the predicate succeeds.
     %
+:- func set_tree234.filter(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in) = (set_tree234(T)::out) is det.
 :- pred set_tree234.filter(pred(T)::in(pred(in) is semidet),
     set_tree234(T)::in, set_tree234(T)::out) is det.
 
@@ -415,6 +439,8 @@ set_tree234.singleton_set(X, two(X, empty, empty)).
 
 set_tree234.make_singleton_set(X) = two(X, empty, empty).
 
+set_tree234.is_singleton(two(X, empty, empty), X).
+
 set_tree234.empty(empty).
 
 set_tree234.is_empty(empty).
@@ -422,6 +448,10 @@ set_tree234.is_empty(empty).
 set_tree234.non_empty(two(_, _, _)).
 set_tree234.non_empty(three(_, _, _, _, _)).
 set_tree234.non_empty(four(_, _, _, _, _, _, _)).
+
+set_tree234.is_non_empty(two(_, _, _)).
+set_tree234.is_non_empty(three(_, _, _, _, _)).
+set_tree234.is_non_empty(four(_, _, _, _, _, _, _)).
 
 :- pragma promise_equivalent_clauses(set_tree234.member/2).
 
@@ -556,9 +586,19 @@ set_tree234.contains(T, E) :-
 set_tree234.list_to_set(List) = Tree :-
     set_tree234.list_to_set_2(List, empty, Tree).
 
+set_tree234.list_to_set(List, Tree) :-
+    set_tree234.list_to_set_2(List, empty, Tree).
+
 set_tree234.from_list(List) = set_tree234.list_to_set(List).
 
+set_tree234.from_list(List, Tree) :-
+    Tree = set_tree234.list_to_set(List).
+
 set_tree234.sorted_list_to_set(List) = Tree :-
+        % XXX We should exploit the sortedness of List.
+    set_tree234.list_to_set_2(List, empty, Tree).
+
+set_tree234.sorted_list_to_set(List, Tree) :-
         % XXX We should exploit the sortedness of List.
     set_tree234.list_to_set_2(List, empty, Tree).
 
@@ -570,9 +610,15 @@ set_tree234.list_to_set_2([E | Es], !Tree) :-
     set_tree234.insert(E, !Tree),
     set_tree234.list_to_set_2(Es, !Tree).
 
+set_tree234.to_set(Tree) =
+    set.sorted_list_to_set(set_tree234.to_sorted_list(Tree)).
+
 %------------------------------------------------------------------------------%
 
 set_tree234.to_sorted_list(Tree) = List :-
+    set_tree234.to_sorted_list_2(Tree, [], List).
+
+set_tree234.to_sorted_list(Tree, List) :-
     set_tree234.to_sorted_list_2(Tree, [], List).
 
 :- pred set_tree234.to_sorted_list_2(set_tree234(T)::in,
@@ -592,11 +638,14 @@ set_tree234.to_sorted_list_2(four(E0, E1, E2, T0, T1, T2, T3), L0, L) :-
     set_tree234.to_sorted_list_2(T1, [E1 | L2], L3),
     set_tree234.to_sorted_list_2(T0, [E0 | L3], L).
 
+set_tree234.from_set(Set) =
+    set_tree234.sorted_list_to_set(set.to_sorted_list(Set)).
+
 %------------------------------------------------------------------------------%
 
 set_tree234.equal(SetA, SetB) :-
-    ListA = set_tree234.to_sorted_list(SetA),
-    ListB = set_tree234.to_sorted_list(SetB),
+    set_tree234.to_sorted_list(SetA, ListA),
+    set_tree234.to_sorted_list(SetB, ListB),
     ListA = ListB.
 
 set_tree234.subset(empty, _Set).
@@ -1937,9 +1986,12 @@ set_tree234.intersect_2(four(E0, E1, E2, T0, T1, T2, T3), SetB, !Intersect) :-
     ),
     set_tree234.intersect_2(T3, SetB, !Intersect).
 
-set_tree234.intersect_list([]) = empty.
-set_tree234.intersect_list([Set | Sets]) =
-    set_tree234.intersect_list_2(Set, Sets).
+set_tree234.intersect_list(Sets) = Intersect :-
+    set_tree234.intersect_list(Sets, Intersect).
+
+set_tree234.intersect_list([], empty).
+set_tree234.intersect_list([Set | Sets], Intersect) :-
+    Intersect = set_tree234.intersect_list_2(Set, Sets).
 
 :- func set_tree234.intersect_list_2(set_tree234(T), list(set_tree234(T)))
     = set_tree234(T).
@@ -1952,8 +2004,11 @@ set_tree234.intersect_list_2(Set, [Head | Tail]) =
         set_tree234.intersect_list_2(set_tree234.intersect(Set, Head), Tail)
     ).
 
-set_tree234.power_intersect(Sets) =
-    set_tree234.intersect_list(set_tree234.to_sorted_list(Sets)).
+set_tree234.power_intersect(Sets) = Intersect :-
+    set_tree234.power_intersect(Sets, Intersect).
+
+set_tree234.power_intersect(Sets, Intersect) :-
+    Intersect = set_tree234.intersect_list(set_tree234.to_sorted_list(Sets)).
 
 %------------------------------------------------------------------------------%
 
@@ -2343,6 +2398,10 @@ set_tree234.filter_map_func(Func, Tin, !List) :-
     set_tree234.filter_map_func(Func, T3, !List).
 
 %------------------------------------------------------------------------------%
+
+set_tree234.filter(Pred, Set) = TrueSet :-
+    % XXX This should be more efficient.
+    set_tree234.divide(Pred, Set, TrueSet, _FalseSet).
 
 set_tree234.filter(Pred, Set, TrueSet) :-
     % XXX This should be more efficient.

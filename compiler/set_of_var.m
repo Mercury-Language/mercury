@@ -164,7 +164,7 @@
 %   representation and on set_ordlist, aborting on any discrepancy),
 %
 % - change every occurrence of tree_bitset in this file that is on a line
-%   containing MODULE to tree_bitset.
+%   containing MODULE to test_bitset.
 %
 % Once the representation has been proven, you can change all those occurrences
 % of test_bitset to the name of the module implementing the new representation.
@@ -233,9 +233,15 @@ sorted_list_to_set(List, Set) :-
 to_sorted_list(Set, List) :-
     List = set_of_var.to_sorted_list(Set).
 
-set_to_bitset(OrdSet) = tree_bitset.from_set(OrdSet).               % MODULE
+set_to_bitset(OrdSet) = BitSet :-
+    % We don't use from_set, since set.m itself doesn't have that.
+    set.to_sorted_list(OrdSet, List),
+    tree_bitset.sorted_list_to_set(List, BitSet).                   % MODULE
 
-bitset_to_set(Set) = tree_bitset.to_set(Set).                       % MODULE
+bitset_to_set(BitSet) = OrdSet :-
+    % We don't use to_set, since set.m itself doesn't have that.
+    tree_bitset.to_sorted_list(BitSet, List),                       % MODULE
+    set.sorted_list_to_set(List, OrdSet).
 
 %---------------
 % Updates.

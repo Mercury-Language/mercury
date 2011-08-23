@@ -67,11 +67,13 @@
     % Takes O(length(List)) time and space.
     %
 :- func list_to_set(list(T)) = tree_bitset(T) <= enum(T).
+:- pred list_to_set(list(T)::in, tree_bitset(T)::out) is det <= enum(T).
 
     % `sorted_list_to_set(List)' returns a set containing only the members
     % of `List'. `List' must be sorted. Takes O(length(List)) time and space.
     %
 :- func sorted_list_to_set(list(T)) = tree_bitset(T) <= enum(T).
+:- pred sorted_list_to_set(list(T)::in, tree_bitset(T)::out) is det <= enum(T).
 
     % `from_set(Set)' returns a bitset containing only the members of `Set'.
     % Takes O(card(Set)) time and space.
@@ -82,6 +84,7 @@
     % in sorted order. Takes O(card(Set)) time and space.
     %
 :- func to_sorted_list(tree_bitset(T)) = list(T) <= enum(T).
+:- pred to_sorted_list(tree_bitset(T)::in, list(T)::out) is det <= enum(T).
 
     % `to_sorted_list(Set)' returns a set.set containing all the members
     % of `Set', in sorted order. Takes O(card(Set)) time and space.
@@ -339,15 +342,21 @@
 
 :- pragma type_spec(list_to_set/1, T = var(_)).
 :- pragma type_spec(list_to_set/1, T = int).
+:- pragma type_spec(list_to_set/2, T = var(_)).
+:- pragma type_spec(list_to_set/2, T = int).
 
 :- pragma type_spec(sorted_list_to_set/1, T = var(_)).
 :- pragma type_spec(sorted_list_to_set/1, T = int).
+:- pragma type_spec(sorted_list_to_set/2, T = var(_)).
+:- pragma type_spec(sorted_list_to_set/2, T = int).
 
 :- pragma type_spec(from_set/1, T = var(_)).
 :- pragma type_spec(from_set/1, T = int).
 
 :- pragma type_spec(to_sorted_list/1, T = var(_)).
 :- pragma type_spec(to_sorted_list/1, T = int).
+:- pragma type_spec(to_sorted_list/2, T = var(_)).
+:- pragma type_spec(to_sorted_list/2, T = int).
 
 :- pragma type_spec(to_set/1, T = var(_)).
 :- pragma type_spec(to_set/1, T = int).
@@ -898,8 +907,8 @@ is_non_empty(Set) :-
 equal(SetA, SetB) :-
     trace [compile_time(flag("tree-bitset-integrity"))] (
         (
-            ListA = to_sorted_list(SetA),
-            ListB = to_sorted_list(SetB),
+            to_sorted_list(SetA, ListA),
+            to_sorted_list(SetB, ListB),
             (
                  SetA = SetB
             <=>
@@ -916,6 +925,9 @@ equal(SetA, SetB) :-
 %-----------------------------------------------------------------------------%
 
 to_sorted_list(Set) = foldr(list.cons, Set, []).
+
+to_sorted_list(Set, List) :-
+    List = to_sorted_list(Set).
 
 to_set(Set) = set.sorted_list_to_set(to_sorted_list(Set)).
 
@@ -1374,6 +1386,9 @@ find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
 
 list_to_set(List) = sorted_list_to_set(list.sort(List)).
 
+list_to_set(List, Set) :-
+    Set = list_to_set(List).
+
 %-----------------------------------------------------------------------------%
 
 sorted_list_to_set(Elems) = Set :-
@@ -1401,6 +1416,9 @@ sorted_list_to_set(Elems) = Set :-
         ),
         Set = wrap_tree_bitset(List)
     ).
+
+sorted_list_to_set(List, Set) :-
+    Set = sorted_list_to_set(List).
 
 :- pred items_to_index(list(T)::in, list(int)::out) is det <= enum(T).
 :- pragma type_spec(items_to_index/2, T = var(_)).
