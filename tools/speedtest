@@ -1,34 +1,36 @@
 #!/bin/sh
+# vim: ts=4 sw=4 et
 #
 # A program to test different versions of the compiler.
 
-usage="Usage: speedtest [-dstz] [-l | -1] [-g grade] [-o option]* [-c cmd] [-nN] [-ON] [-fFILE] batchname"
+usage="Usage: speedtest [-dstz] [-l | -1] [-e dir] [-g grade] [-c cmd] [-o option]* [-nN] [-ON] [-fFILE] batchname"
 
 single_modulelist="typecheck.m"
 # As of 13 oct 2010, these are the eight largest modules of the compiler.
 short_modulelist="
-	options.m
-	mercury_to_mercury.m
-	mlds_to_java.m
-	modules.m
-	code_info.m
-	mlds_to_il.m
-	table_gen.m
-	mlds_to_c.m
+    options.m
+    mercury_to_mercury.m
+    mlds_to_java.m
+    modules.m
+    code_info.m
+    mlds_to_il.m
+    table_gen.m
+    mlds_to_c.m
 "
 # As of 13 oct 2010, these are the eight next largest modules of the compiler.
 long_modulelist="$short_modulelist
-	simplify.m
-	polymorphism.m
-	add_pragma.m
-	higher_order.m
-	typecheck.m
-	dep_par_conj.m
-	hlds_pred.m
-	prog_io_pragma.m
+    simplify.m
+    polymorphism.m
+    add_pragma.m
+    higher_order.m
+    typecheck.m
+    dep_par_conj.m
+    hlds_pred.m
+    prog_io_pragma.m
 "
 cmd=""
 debug=false
+execdir="arena"
 grade="--grade asm_fast.gc"
 framesizefile=""
 modulelist="$short_modulelist"
@@ -41,75 +43,111 @@ zip=false
 
 while test $# -gt 0
 do
-	case $1 in
+    case $1 in
 
-	-c|--cmd)
-		cmd="$2" ; shift ;;
-	-c*)
-		cmd="` expr $1 : '-c\(.*\)' `" ;;
+        -c|--cmd)
+            cmd="$2"
+            shift
+            ;;
+        -c*)
+            cmd="`expr $1 : '-c\(.*\)'`"
+            ;;
 
-	-d)
-		debug=true ;;
+        -d)
+            debug=true
+            ;;
 
-	-g)
-		grade="--grade $2" ; shift ;;
-	-g*)
-		grade="--grade ` expr $1 : '-g\(.*\)' `" ;;
+        -e)
+            execdir="$2"
+            shift
+            ;;
+        -e*)
+            execdir="`expr $1 : '-e\(.*\)'`"
+            ;;
 
-	-f)
-		framesizefile="$2" ; shift ;;
-	-f*)
-		framesizefile="` expr $1 : '-f\(.*\)' `" ;;
+        -g)
+            grade="--grade $2"
+            shift
+            ;;
+        -g*)
+            grade="--grade `expr $1 : '-g\(.*\)'`"
+            ;;
 
-	-l)
-		modulelist="$long_modulelist" ;;
+        -f)
+            framesizefile="$2"
+            shift
+            ;;
+        -f*)
+            framesizefile="`expr $1 : '-f\(.*\)'`"
+            ;;
 
-	-1)
-		modulelist="$single_modulelist" ;;
+        -l)
+            modulelist="${long_modulelist}"
+            ;;
 
-	-n)
-		limit="$2" ; shift ;;
-	-n*)
-		limit="` expr $1 : '-n\(.*\)' `" ;;
+        -1)
+            modulelist="${single_modulelist}"
+            ;;
 
-	-o)
-		options="$options $2" ; shift ;;
-	-o*)
-		options="$options ` expr $1 : '-f\(.*\)' `" ;;
+        -n)
+            limit="$2"
+            shift
+            ;;
+        -n*)
+            limit="`expr $1 : '-n\(.*\)'`"
+            ;;
 
-	-O)
-		optlevel="-O$2" ; shift ;;
-	-O*)
-		optlevel="$1" ;;
+        -o)
+            options="${options} $2"
+            shift
+            ;;
+        -o*)
+            options="${options} ` expr $1 : '-f\(.*\)' `"
+            ;;
 
-	-s)
-		size=true ;;
+        -O)
+            optlevel="-O$2"
+            shift
+            ;;
+        -O*)
+            optlevel="$1"
+            ;;
 
-	-t)
-		table_io=true ;;
+        -s)
+            size=true
+            ;;
 
-	-z)
-		zip=true ;;
+        -t)
+            table_io=true
+            ;;
 
-	-*)	echo "$0: unknown option \`$1'" 2>&1
-		echo $usage
-		exit 1 ;;
+        -z)
+            zip=true
+            ;;
 
-	*)	break ;;
+        -*)
+            echo "$0: unknown option \`$1'" 2>&1
+            echo ${usage}
+            exit 1
+            ;;
 
-	esac
-	shift
+        *)
+            break
+            ;;
+
+    esac
+    shift
 done
 
-if test "$cmd" = ""
+if test "${cmd}" = ""
 then
-	cmd="mmc -C $optlevel $options $grade $modulelist"
+    cmd="mmc -C $optlevel ${options} $grade $modulelist"
 fi
 
 if test $# != 1
 then
-	echo $usage
-	exit 1
+    echo ${usage}
+    exit 1
 fi
 
 batch=$1
@@ -119,81 +157,83 @@ files=`ls batch/$batch.mercury_compile.*`
 
 if $zip
 then
-	trap 'gzip $root/batch/$batch.mercury_compile.*[0-9] > /dev/null 2>&1; exit 0' 0 1 2 3 15
+    trap 'gzip ${root}/batch/${batch}.mercury_compile.*[0-9] > /dev/null 2>&1; exit 0' 0 1 2 3 15
 fi
 
 if test -x /usr/ucb/echo
 then
-	ECHO=/usr/ucb/echo
+    ECHO=/usr/ucb/echo
 else
-	ECHO=echo
+    ECHO=echo
 fi
 
-for file in $files
+for file in ${files}
 do
-	case $file in
-	*.gz)
-		gunzip $file
-		file=batch/`basename $file .gz`
-		;;
-	esac
+    case ${file} in
+    *.gz)
+        gunzip ${file}
+        file=batch/`basename ${file} .gz`
+        ;;
+    esac
 
-	paramfile=`echo $file | sed 's/mercury_compile/params/'`
-	if test -r $paramfile
-	then
-		cat $paramfile
-	fi
+    paramfile=`echo ${file} | sed 's/mercury_compile/params/'`
+    if test -r ${paramfile}
+    then
+        cat ${paramfile}
+    fi
 
-	if $size
-	then
-		size $file
-	fi
+    if ${size}
+    then
+        size ${file}
+    fi
 
-	MERCURY_COMPILER=$root/$file
-	export MERCURY_COMPILER
-	cd arena
-	count=1
-	while test $count -le $limit
-	do
-		if test "$framesizefile" != ""
-		then
-			rm $framesizefile > /dev/null 2>&1
-		fi
+    MERCURY_COMPILER=${root}/${file}
+    export MERCURY_COMPILER
+    cd ${execdir}
+    count=1
+    while test ${count} -le ${limit}
+    do
+        if test "${framesizefile}" != ""
+        then
+            rm ${framesizefile} > /dev/null 2>&1
+        fi
 
-		briefname=`echo "$file" | sed "s:batch/$batch.::"`
-		$ECHO -n "$briefname "
-		if $debug
-		then
-			if $table_io
-			then
-				(echo "table_io start" ; echo "c" ) | $root/tools/dotime mdb $cmd
-			else
-				echo "c" | $root/tools/dotime mdb $cmd
-			fi
-		else
-			$root/tools/dotime $cmd
-		fi
+        briefname=`echo "${file}" | sed "s:batch/$batch.::"`
+        $ECHO -n "${briefname} "
+        if ${debug}
+        then
+            if ${table_io}
+            then
+                (echo "table_io start" ; echo "c" ) \
+                    | ${root}/tools/dotime mdb ${cmd}
+            else
+                echo "c" | ${root}/tools/dotime mdb ${cmd}
+            fi
+        else
+            ${root}/tools/dotime ${cmd}
+        fi
 
-		if test -s Deep.data
-		then
-			mv Deep.data ../batch/Deep.data.`basename $file .gz`.run$count
-		fi
+        if test -s Deep.data
+        then
+            mv Deep.data \
+                ${root}/batch/Deep.data.`basename ${file} .gz`.run${count}
+        fi
 
-		if test "$count" -eq 1 -a "$framesizefile" != ""
-		then
-			echo
-			cat $framesizefile
-			echo
-		fi
+        if test "${count}" -eq 1 -a "${framesizefile}" != ""
+        then
+            echo
+            cat ${framesizefile}
+            echo
+        fi
 
-		count=`expr $count + 1`
-	done
+        count=`expr ${count} + 1`
+    done
 
-	cd $root
-	if $zip
-	then
-		gzip $file
-	fi
+    cd ${root}
+    if ${zip}
+    then
+        gzip ${file}
+    fi
 done
 
 exit 0
