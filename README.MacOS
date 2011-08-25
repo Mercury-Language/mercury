@@ -85,9 +85,8 @@ Mercury on older versions of Mac OS X
 -------------------------------------
 
 There may be problems with building Mercury on versions of Mac OS X less than
-10.3.  In particular there may be problems with building and using shared
-libraries.  On these systems you will need to invoke Mercury's configure
-script with the `--enable-darwin-flat-namespace' option.
+10.3.  In particular, building shared libraries with Mercury on these systems
+is not supported.
 
 The version of tar in /usr/bin/tar on some older versions of Mac OS X (e.g.
 10.1) doesn't work properly -- it truncates long path names.  Make sure you

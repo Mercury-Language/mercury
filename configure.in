@@ -4092,7 +4092,7 @@ fi
 
 #-----------------------------------------------------------------------------#
 
-AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
+AC_MSG_CHECKING([whether Mercury supports shared libraries on this system])
 # We ought to use $target here rather than $host - but we don't
 # support cross-compilation at the moment anyhow.
 
@@ -4378,42 +4378,19 @@ case "$host" in
         DEFAULT_LINKAGE=static
         ;;
     *apple*darwin*)
-        # If the compiler is gcc then use darwin style dynamic linking.
-        # Otherwise use static linking.
-        # XXX CLANG
-        if test "$GCC_PROG" != ""; then
-            AC_MSG_RESULT(yes)
-            # Check if the user has explicitly requested that flat
-            # namespaces be used.
-            darwin_flat_namespaces=no
-            AC_ARG_ENABLE(darwin-flat-namespace,
-              AC_HELP_STRING([--enable-darwin-flat-namespace],
-              [enable flat namespaces on Darwin.  This is the
-              default for Darwin versions less than 7 (Mac OS
-              10.3).  On versions greater than or equal to 7
-              two-level namespaces are used by default.  This
-              option therefore only affects Darwin versions
-              greater than or equal to 7.]),
-            [ darwin_flat_namespaces=yes ])
-            SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
-            SHLIB_INSTALL_NAME_FLAG="-install_name "
-            EXT_FOR_SHARED_LIB=dylib
-            EXT_FOR_LINK_WITH_PIC_OBJECTS=o
-            CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
-            ERROR_UNDEFINED="-undefined error"
-            # Test if the Darwin version is >= 7.  If it is
-            # then we can use the -undefined dynamic_lookup option
-            # and two-level namespaces.  If it isn't then we use
-            # flat namespaces.
-            AC_MSG_CHECKING(whether to use two-level namespaces)
-            if uname -r | sed "s/^\(@<:@0-9@:>@*\)\..*$/\1/" | \
-                    xargs test "$darwin_flat_namespaces" != "yes" \
-                -a 7 -le;
-            then
+        # If the compiler is gcc or clang then use Darwin style dynamic
+        # linking.  Otherwise use static linking.
+        case "$C_COMPILER_TYPE" in
+            gcc*|clang*)
                 AC_MSG_RESULT(yes)
-                # The MACOSX_DEPLOYMENT_TARGET environment variable
-                # needs to be set when linking with two level namespaces
-                # so we can use the `-undefined dynamic_lookup' option.
+                SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
+                SHLIB_INSTALL_NAME_FLAG="-install_name "
+                EXT_FOR_SHARED_LIB=dylib
+                EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+                CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
+                ERROR_UNDEFINED="-undefined error"
+                # The MACOSX_DEPLOYMENT_TARGET environment variable needs to be
+                # set so we can use the `-undefined dynamic_lookup' option.
                 #
                 # On 10.6, the deployment target needs to be at least 10.4.
                 # For earlier versions of Mac OS X we use 10.3.
@@ -4431,26 +4408,21 @@ case "$host" in
                     MACOSX_DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET; \
                     export MACOSX_DEPLOYMENT_TARGET"
                 AC_SUBST(SET_MACOSX_DEPLOYMENT_TARGET)
-                LINK_SHARED_OBJ="$GCC_PROG -multiply_defined suppress \
+                LINK_SHARED_OBJ="$CC -multiply_defined suppress \
                      -dynamiclib -single_module"
-                LINK_SHARED_OBJ_SH="$GCC_PROG -multiply_defined \
+                LINK_SHARED_OBJ_SH="$CC -multiply_defined \
                     suppress -dynamiclib -single_module"
                 ALLOW_UNDEFINED="-undefined dynamic_lookup"
-            else
+            ;;
+
+            *)
+                CFLAGS_FOR_PIC=
+                EXT_FOR_PIC_OBJECTS=o
+                EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+                DEFAULT_LINKAGE=static
                 AC_MSG_RESULT(no)
-                LINK_SHARED_OBJ="$GCC_PROG -flat_namespace \
-                    -dynamiclib -single_module"
-                LINK_SHARED_OBJ_SH="$GCC_PROG -flat_namespace \
-                    -dynamiclib -single_module"
-                ALLOW_UNDEFINED="-undefined error"
-            fi
-        else
-            CFLAGS_FOR_PIC=
-            EXT_FOR_PIC_OBJECTS=o
-            EXT_FOR_LINK_WITH_PIC_OBJECTS=o
-            DEFAULT_LINKAGE=static
-            AC_MSG_RESULT(no)
-        fi
+            ;;
+        esac
         ;;
     arm*-linux|arm*-linux-gnu)
         AC_MSG_RESULT(yes)
