@@ -1874,25 +1874,43 @@ fix_4node_t3(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
 set_tree234.union(SetA, SetB) = Set :-
     set_tree234.union(SetA, SetB, Set).
 
-set_tree234.union(empty, !Set).
-set_tree234.union(two(E0, T0, T1), !Set) :-
-    set_tree234.union(T0, !Set),
+set_tree234.union(SetA, SetB, Set) :-
+    % The amount of work that do_union has to do is proportional to the
+    % number of elements in its first argument. We therefore want to pick
+    % the smaller input set to be the first argument.
+    %
+    % We could count the number of arguments in both sets, but computing the
+    % tree height is *much* faster, and almost as precise.
+    set_tree234.height(SetA, HeightA),
+    set_tree234.height(SetB, HeightB),
+    ( HeightA =< HeightB ->
+        set_tree234.do_union(SetA, SetB, Set)
+    ;
+        set_tree234.do_union(SetB, SetA, Set)
+    ).
+
+:- pred set_tree234.do_union(set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::out) is det.
+
+set_tree234.do_union(empty, !Set).
+set_tree234.do_union(two(E0, T0, T1), !Set) :-
+    set_tree234.do_union(T0, !Set),
     set_tree234.insert(E0, !Set),
-    set_tree234.union(T1, !Set).
-set_tree234.union(three(E0, E1, T0, T1, T2), !Set) :-
-    set_tree234.union(T0, !Set),
+    set_tree234.do_union(T1, !Set).
+set_tree234.do_union(three(E0, E1, T0, T1, T2), !Set) :-
+    set_tree234.do_union(T0, !Set),
     set_tree234.insert(E0, !Set),
-    set_tree234.union(T1, !Set),
+    set_tree234.do_union(T1, !Set),
     set_tree234.insert(E1, !Set),
-    set_tree234.union(T2, !Set).
-set_tree234.union(four(E0, E1, E2, T0, T1, T2, T3), !Set) :-
-    set_tree234.union(T0, !Set),
+    set_tree234.do_union(T2, !Set).
+set_tree234.do_union(four(E0, E1, E2, T0, T1, T2, T3), !Set) :-
+    set_tree234.do_union(T0, !Set),
     set_tree234.insert(E0, !Set),
-    set_tree234.union(T1, !Set),
+    set_tree234.do_union(T1, !Set),
     set_tree234.insert(E1, !Set),
-    set_tree234.union(T2, !Set),
+    set_tree234.do_union(T2, !Set),
     set_tree234.insert(E2, !Set),
-    set_tree234.union(T3, !Set).
+    set_tree234.do_union(T3, !Set).
 
 set_tree234.union_list(Sets) = Union :-
     set_tree234.union_list(Sets, Union).
@@ -1937,54 +1955,66 @@ set_tree234.intersect(SetA, SetB) = Set :-
     set_tree234.intersect(SetA, SetB, Set).
 
 set_tree234.intersect(SetA, SetB, Intersect) :-
-    set_tree234.intersect_2(SetA, SetB, empty, Intersect).
+    % The amount of work that do_intersect has to do is proportional to the
+    % number of elements in its first argument. We therefore want to pick
+    % the smaller input set to be the first argument.
+    %
+    % We could count the number of arguments in both sets, but computing the
+    % tree height is *much* faster, and almost as precise.
+    set_tree234.height(SetA, HeightA),
+    set_tree234.height(SetB, HeightB),
+    ( HeightA =< HeightB ->
+        set_tree234.do_intersect(SetA, SetB, empty, Intersect)
+    ;
+        set_tree234.do_intersect(SetB, SetA, empty, Intersect)
+    ).
 
-:- pred set_tree234.intersect_2(set_tree234(T)::in, set_tree234(T)::in,
+:- pred set_tree234.do_intersect(set_tree234(T)::in, set_tree234(T)::in,
     set_tree234(T)::in, set_tree234(T)::out) is det.
 
-set_tree234.intersect_2(empty, _SetB, !Intersect).
-set_tree234.intersect_2(two(E0, T0, T1), SetB, !Intersect) :-
-    set_tree234.intersect_2(T0, SetB, !Intersect),
+set_tree234.do_intersect(empty, _SetB, !Intersect).
+set_tree234.do_intersect(two(E0, T0, T1), SetB, !Intersect) :-
+    set_tree234.do_intersect(T0, SetB, !Intersect),
     ( set_tree234.contains(SetB, E0) ->
         set_tree234.insert(E0, !Intersect)
     ;
         true
     ),
-    set_tree234.intersect_2(T1, SetB, !Intersect).
-set_tree234.intersect_2(three(E0, E1, T0, T1, T2), SetB, !Intersect) :-
-    set_tree234.intersect_2(T0, SetB, !Intersect),
+    set_tree234.do_intersect(T1, SetB, !Intersect).
+set_tree234.do_intersect(three(E0, E1, T0, T1, T2), SetB, !Intersect) :-
+    set_tree234.do_intersect(T0, SetB, !Intersect),
     ( set_tree234.contains(SetB, E0) ->
         set_tree234.insert(E0, !Intersect)
     ;
         true
     ),
-    set_tree234.intersect_2(T1, SetB, !Intersect),
+    set_tree234.do_intersect(T1, SetB, !Intersect),
     ( set_tree234.contains(SetB, E1) ->
         set_tree234.insert(E1, !Intersect)
     ;
         true
     ),
-    set_tree234.intersect_2(T2, SetB, !Intersect).
-set_tree234.intersect_2(four(E0, E1, E2, T0, T1, T2, T3), SetB, !Intersect) :-
-    set_tree234.intersect_2(T0, SetB, !Intersect),
+    set_tree234.do_intersect(T2, SetB, !Intersect).
+set_tree234.do_intersect(four(E0, E1, E2, T0, T1, T2, T3), SetB, !Intersect) :-
+    set_tree234.do_intersect(T0, SetB, !Intersect),
     ( set_tree234.contains(SetB, E0) ->
         set_tree234.insert(E0, !Intersect)
     ;
         true
     ),
-    set_tree234.intersect_2(T1, SetB, !Intersect),
+    set_tree234.do_intersect(T1, SetB, !Intersect),
     ( set_tree234.contains(SetB, E1) ->
         set_tree234.insert(E1, !Intersect)
     ;
         true
     ),
-    set_tree234.intersect_2(T2, SetB, !Intersect),
+    set_tree234.do_intersect(T2, SetB, !Intersect),
     ( set_tree234.contains(SetB, E2) ->
         set_tree234.insert(E2, !Intersect)
     ;
         true
     ),
-    set_tree234.intersect_2(T3, SetB, !Intersect).
+    set_tree234.do_intersect(T3, SetB, !Intersect).
 
 set_tree234.intersect_list(Sets) = Intersect :-
     set_tree234.intersect_list(Sets, Intersect).
@@ -2047,7 +2077,6 @@ set_tree234.difference_2(four(E0, E1, E2, T0, T1, T2, T3), !Set) :-
 
 %------------------------------------------------------------------------------%
 
-    % count the number of elements in a tree
 set_tree234.count(empty) = 0.
 set_tree234.count(two(_, T0, T1)) = N :-
     N0 = set_tree234.count(T0),
@@ -2064,6 +2093,21 @@ set_tree234.count(four(_, _, _, T0, T1, T2, T3)) = N :-
     N2 = set_tree234.count(T2),
     N3 = set_tree234.count(T3),
     N = 3 + N0 + N1 + N2 + N3.
+
+:- pred set_tree234.height(set_tree234(T)::in, int::out) is det.
+
+set_tree234.height(Tree, Height) :-
+    (
+        Tree = empty,
+        Height = 0
+    ;
+        ( Tree = two(_, T0, _)
+        ; Tree = three(_, _, T0, _, _)
+        ; Tree = four(_, _, _, T0, _, _, _)
+        ),
+        set_tree234.height(T0, T0Height),
+        Height = T0Height + 1
+    ).
 
 %------------------------------------------------------------------------------%
 
