@@ -100,7 +100,7 @@
     %  ModuleInfo       Stored in ModeInfo (constant)
     %  Context          Stored in ModeInfo (changing as we go along the clause)
     % Output only:
-    %  Error Messages   Output directly to stdout.
+    %  Error Messages   Stored in ModeInfo (updated as we find errors)
     %
 :- pred modecheck_goal(hlds_goal::in, hlds_goal::out,
     mode_info::in, mode_info::out) is det.
