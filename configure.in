@@ -4563,11 +4563,9 @@ AC_SUBST([C_COMPILER_TYPE])
 
 # Note that changes here may require changes in scripts/ml.in.
 
-# XXX Do we also need -static for clang?
-#
 LD_STATIC_FLAGS=
 case "$C_COMPILER_TYPE" in
-    gcc*|lcc)
+    gcc*|clang*|lcc)
         LD_STATIC_FLAGS=-static
         ;;
 esac
@@ -4579,6 +4577,9 @@ case "$FULLARCH" in
         # similar treatment for other OSs too.)
         case "$C_COMPILER_TYPE" in
             gcc*)
+                LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
+                ;;
+            clang*)
                 LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
                 ;;
             lcc)
