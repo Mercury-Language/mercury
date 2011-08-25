@@ -7,7 +7,7 @@ Mercury on Mac OS X 10.5 and 10.6
 
 Mercury should build and install "out-of-the-box" on Mac OS X 10.5 or 10.6
 using Apple's gcc version 4.2.  This version of gcc is included with the
-Developer Tools.
+Developer Tools.  On Mac OS X 10.6 you may also use clang.
 
 The 'asm_fast*' and 'reg*' grades are not currently available on Mac OS X 10.5
 or 10.6.  The only low-level C grades available are the 'none*' grades.  The
@@ -23,8 +23,8 @@ for compiling applications.
 By default, 64-bit versions of the executables and libraries in the Mercury
 system will be installed on x86-64 machines running Mac OS X 10.6.  To build a
 32-bit installation on such a machine, you need to arrange to have the option
-"-m32" passed to gcc.  This can be done by invoking Mercury's configure script
-with the option:
+"-m32" passed to gcc or clang.  This can be done by invoking Mercury's
+configure script with the option:
 
     --with-cc="gcc -m32"
 
@@ -47,8 +47,7 @@ Mmake.params at the top-level of the source tree:
 
     MCFLAGS = --cross-compiling
 
-Mercury can currently only be compiled by gcc on Mac OS X.  It cannot currently
-be compiled with llvm-gcc or clang.
+Mercury cannot currently be compiled with llvm-gcc on Mac OS X.
 
 If, after installing Mercury, you encounter errors about missing .mih files,
 and you have fink installed, then try removing the fink components from your
