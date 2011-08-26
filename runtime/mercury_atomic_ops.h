@@ -148,7 +148,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-#if (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)) && \
+#if (defined(MR_CLANG) || (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1))) && \
     !defined(MR_AVOID_COMPILER_INTRINSICS)
 
     /*
@@ -569,7 +569,8 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 /*
 ** Memory fence operations.
 */
-#if defined(MR_GNUC) && ( defined(__i386__) || defined(__x86_64__) ) && \
+#if ( defined(MR_CLANG) || defined(MR_GNUC) ) &&    \
+    ( defined(__i386__) || defined(__x86_64__) ) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /*
