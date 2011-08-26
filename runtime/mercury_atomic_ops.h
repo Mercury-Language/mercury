@@ -438,7 +438,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(MR_GNUC) && defined(__x86_64__) && \
+#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_DEC_INT_BODY                                          \
@@ -450,7 +450,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
                 );                                                          \
         } while (0)
 
-#elif defined(MR_GNUC) && defined(__i386__) && \
+#elif(defined(MR_CLANG) || defined(MR_GNUC)) && defined(__i386__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /* Really 486 or better. */
@@ -486,7 +486,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 ** Note that on x86(_64) we have to use the sub instruction rather than the
 ** dec instruction because we need it to set the CPU flags.
 */
-#if defined(MR_GNUC) && defined(__x86_64__) && \
+#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
 /*
@@ -511,7 +511,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
     #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY \
         MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
 
-#elif defined(MR_GNUC) && defined(__i386__)
+#elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__i386__)
 
     #define MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY                              \
         do {                                                                \
