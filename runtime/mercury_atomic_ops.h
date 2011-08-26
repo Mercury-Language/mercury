@@ -450,7 +450,7 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
                 );                                                          \
         } while (0)
 
-#elif(defined(MR_CLANG) || defined(MR_GNUC)) && defined(__i386__) && \
+#elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__i386__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /* Really 486 or better. */
