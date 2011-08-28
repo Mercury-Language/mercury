@@ -2564,12 +2564,12 @@ the database over a network, you would need declarations such as
 For example, the following declaration 
 
 @example
-:- inst maybeskel(Inst) ---> no ; yes(Inst).
+:- inst listskel(Inst) ---> [] ; [Inst | listskel(Inst)].
 @end example
 
 @noindent
 defines the inst @samp{listskel(Inst)} to be a list skeleton
-whose elements have inst @samp{Inst}; you can the use insts
+whose elements have inst @samp{Inst}; you can then use insts
 such as @samp{listskel(listskel(free))}, which represents
 the instantiation state of a list of lists of free variables.
 The standard library provides the parametric modes

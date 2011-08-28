@@ -145,7 +145,56 @@ AC_PROG_CC
 AC_SUBST([CC])
 
 # Ensure that AC_CANONICAl_HOST uses the value of CC we just determined.
+#
 export CC
+
+# NOTE: AC_PROG_CC will set the variable GCC if it thinks the C compiler is
+# GCC.  However, it also sets it if the C compiler is clang -- because they
+# both define __GNUC__ -- do *NOT* use the GCC variable to check the C compiler
+# type, instead use the value of C_COMPILER_TYPE (defined below).
+#
+MERCURY_CC_TYPE
+
+MERCURY_HAVE_CLANG=no
+MERCURY_HAVE_GCC=no
+MERCURY_HAVE_MSVC=no
+MERCURY_HAVE_LCC=no
+
+case "$mercury_cv_cc_type" in
+    clang)
+        MERCURY_HAVE_CLANG=yes
+        MERCURY_CLANG_VERSION
+        C_COMPILER_TYPE="clang_${mercury_cv_clang_version}"
+    ;;
+    
+    gcc)
+        MERCURY_HAVE_GCC=yes
+        MERCURY_GCC_VERSION
+        C_COMPILER_TYPE="gcc_${mercury_cv_gcc_version}"
+    ;;
+    
+    msvc)
+        MERCURY_HAVE_MSVC=yes
+        MERCURY_MSVC_VERSION
+        # XXX For historical reasons msvc is identified as "cl".
+        C_COMPILER_TYPE="cl_${mercury_cv_msvc_version}"
+    ;;
+
+    *)
+        # XXX is there a better way to test for lcc other than
+        # to pattern match on its name?
+        case "$CC" in
+            *lcc*)
+                MERCURY_HAVE_LCC=yes
+                C_COMPILER_TYPE="lcc"
+            ;;
+
+            *)
+                C_COMPILER_TYPE="unknown"
+            ;;
+        esac
+    ;;
+esac
 
 #-----------------------------------------------------------------------------#
 
@@ -827,10 +876,8 @@ AC_DEFINE_UNQUOTED(MR_HOSTNAMECMD, "$HOSTNAMECMD")
 
 MERCURY_CHECK_CC_NEEDS_TRAD_CPP
 
-# AC_PROG_CC sets GCC to yes if $CC is GNU C.
-# If the C compiler is GCC try to work out what version we are using.
-if test "$GCC" = "yes"; then
-    MERCURY_GCC_VERSION
+if test "$MERCURY_HAVE_GCC" = "yes"
+then
     GCC_PROG=$CC
 else
     AC_PATH_PROG(GCC_PROG,gcc)
@@ -4042,7 +4089,7 @@ fi
 
 #-----------------------------------------------------------------------------#
 
-AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
+AC_MSG_CHECKING([whether Mercury supports shared libraries on this system])
 # We ought to use $target here rather than $host - but we don't
 # support cross-compilation at the moment anyhow.
 
@@ -4051,7 +4098,8 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 LINK_EXE=$CC
 LINK_SHARED_OBJ="$CC -shared"
 LINK_SHARED_OBJ_SH="$CC -shared"
-if test "$GCC" = "yes"; then
+if test "$MERCURY_HAVE_GCC" = "yes"
+then
     SHARED_LIBS="\`$CC -print-libgcc-file-name\` \$(MATH_LIB) -lc"
     SHARED_LIBS_SH="\`$CC -print-libgcc-file-name\` \$MATH_LIB -lc"
 else
@@ -4126,8 +4174,8 @@ case "$host" in
                 rm -f conftest*
                 ;;
             *)
-                case "$CC" in
-                    lcc*)
+                case "$C_COMPILER_TYPE" in
+                    lcc)
                         AC_MSG_RESULT(yes)
                         EXT_FOR_SHARED_LIB=so
                         EXE_RPATH_OPT="-Wl-rpath -Wl"
@@ -4327,41 +4375,19 @@ case "$host" in
         DEFAULT_LINKAGE=static
         ;;
     *apple*darwin*)
-        # If the compiler is gcc then use darwin style dynamic linking.
-        # Otherwise use static linking.
-        if test "$GCC_PROG" != ""; then
-            AC_MSG_RESULT(yes)
-            # Check if the user has explicitly requested that flat
-            # namespaces be used.
-            darwin_flat_namespaces=no
-            AC_ARG_ENABLE(darwin-flat-namespace,
-              AC_HELP_STRING([--enable-darwin-flat-namespace],
-              [enable flat namespaces on Darwin.  This is the
-              default for Darwin versions less than 7 (Mac OS
-              10.3).  On versions greater than or equal to 7
-              two-level namespaces are used by default.  This
-              option therefore only affects Darwin versions
-              greater than or equal to 7.]),
-            [ darwin_flat_namespaces=yes ])
-            SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
-            SHLIB_INSTALL_NAME_FLAG="-install_name "
-            EXT_FOR_SHARED_LIB=dylib
-            EXT_FOR_LINK_WITH_PIC_OBJECTS=o
-            CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
-            ERROR_UNDEFINED="-undefined error"
-            # Test if the Darwin version is >= 7.  If it is
-            # then we can use the -undefined dynamic_lookup option
-            # and two-level namespaces.  If it isn't then we use
-            # flat namespaces.
-            AC_MSG_CHECKING(whether to use two-level namespaces)
-            if uname -r | sed "s/^\(@<:@0-9@:>@*\)\..*$/\1/" | \
-                    xargs test "$darwin_flat_namespaces" != "yes" \
-                -a 7 -le;
-            then
+        # If the compiler is gcc or clang then use Darwin style dynamic
+        # linking.  Otherwise use static linking.
+        case "$C_COMPILER_TYPE" in
+            gcc*|clang*)
                 AC_MSG_RESULT(yes)
-                # The MACOSX_DEPLOYMENT_TARGET environment variable
-                # needs to be set when linking with two level namespaces
-                # so we can use the `-undefined dynamic_lookup' option.
+                SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
+                SHLIB_INSTALL_NAME_FLAG="-install_name "
+                EXT_FOR_SHARED_LIB=dylib
+                EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+                CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
+                ERROR_UNDEFINED="-undefined error"
+                # The MACOSX_DEPLOYMENT_TARGET environment variable needs to be
+                # set so we can use the `-undefined dynamic_lookup' option.
                 #
                 # On 10.6, the deployment target needs to be at least 10.4.
                 # For earlier versions of Mac OS X we use 10.3.
@@ -4379,26 +4405,21 @@ case "$host" in
                     MACOSX_DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET; \
                     export MACOSX_DEPLOYMENT_TARGET"
                 AC_SUBST(SET_MACOSX_DEPLOYMENT_TARGET)
-                LINK_SHARED_OBJ="$GCC_PROG -multiply_defined suppress \
+                LINK_SHARED_OBJ="$CC -multiply_defined suppress \
                      -dynamiclib -single_module"
-                LINK_SHARED_OBJ_SH="$GCC_PROG -multiply_defined \
+                LINK_SHARED_OBJ_SH="$CC -multiply_defined \
                     suppress -dynamiclib -single_module"
                 ALLOW_UNDEFINED="-undefined dynamic_lookup"
-            else
+            ;;
+
+            *)
+                CFLAGS_FOR_PIC=
+                EXT_FOR_PIC_OBJECTS=o
+                EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+                DEFAULT_LINKAGE=static
                 AC_MSG_RESULT(no)
-                LINK_SHARED_OBJ="$GCC_PROG -flat_namespace \
-                    -dynamiclib -single_module"
-                LINK_SHARED_OBJ_SH="$GCC_PROG -flat_namespace \
-                    -dynamiclib -single_module"
-                ALLOW_UNDEFINED="-undefined error"
-            fi
-        else
-            CFLAGS_FOR_PIC=
-            EXT_FOR_PIC_OBJECTS=o
-            EXT_FOR_LINK_WITH_PIC_OBJECTS=o
-            DEFAULT_LINKAGE=static
-            AC_MSG_RESULT(no)
-        fi
+            ;;
+        esac
         ;;
     arm*-linux|arm*-linux-gnu)
         AC_MSG_RESULT(yes)
@@ -4427,79 +4448,72 @@ esac
 # compiler/compile_target_code.m.
 
 # AC_PROG_CC sets GCC to yes if $CC is GNU C.
-if test "$GCC" = "yes"
-then
-    C_COMPILER_TYPE="gcc_${mercury_cv_gcc_version}"
-    CFLAGS_FOR_ANSI="-ansi"
 
-    # For a full list of the other gcc warnings that we don't
-    # enable, and why, see scripts/mgnuc.in.
-    CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
+case "$C_COMPILER_TYPE" in
 
-    # Enabling -fomit-frame-pointer causes setjmp/longjmp to misbehave
-    # with MinGW on Windows XP.
-    case "$host" in
-        *mingw*) CFLAGS_FOR_OPT="-O2" ;;
-        *)       CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer" ;;
-    esac
+    gcc*)
+        CFLAGS_FOR_ANSI="-ansi"
 
-    CFLAGS_FOR_DEBUG="-g"
-    CFLAGS_FOR_NO_STRICT_ALIASING="-fno-strict-aliasing"
-    MCFLAGS_FOR_CC=
-else
+        # For a full list of the other gcc warnings that we don't
+        # enable, and why, see scripts/mgnuc.in.
+        CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
 
-    # XXX we should not rely on pattern matching against the executable name to
-    # determine the C compiler type.
+        # Enabling -fomit-frame-pointer causes setjmp/longjmp to misbehave
+        # with MinGW on Windows XP.
+        case "$host" in
+            *mingw*) CFLAGS_FOR_OPT="-O2" ;;
+            *)       CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer" ;;
+        esac
 
-    case "$CC" in
-        *lcc*)
-            C_COMPILER_TYPE=lcc
-            CFLAGS_FOR_ANSI=
+        CFLAGS_FOR_DEBUG="-g"
+        CFLAGS_FOR_NO_STRICT_ALIASING="-fno-strict-aliasing"
+        MCFLAGS_FOR_CC=
+        ;;
 
-            # Turn off all warnings due to spurious warnings.
-            CFLAGS_FOR_WARNINGS="-w"
+    lcc)
+        CFLAGS_FOR_ANSI=
 
-            CFLAGS_FOR_OPT=
-            CFLAGS_FOR_DEBUG="-g"
-            CFLAGS_FOR_NO_STRICT_ALIASING=
-            MCFLAGS_FOR_CC=
-            ;;
+        # Turn off all warnings due to spurious warnings.
+        CFLAGS_FOR_WARNINGS="-w"
 
-        *cl* | *CL*)
-            C_COMPILER_TYPE=cl
-            CFLAGS_FOR_ANSI=
-            CFLAGS_FOR_WARNINGS=
-            CFLAGS_FOR_OPT=
-            CFLAGS_FOR_DEBUG="-Zi"
-            CFLAGS_FOR_NO_STRICT_ALIASING=
+        CFLAGS_FOR_OPT=
+        CFLAGS_FOR_DEBUG="-g"
+        CFLAGS_FOR_NO_STRICT_ALIASING=
+        MCFLAGS_FOR_CC=
+        ;;
 
-            # Using the MSVC compiler implies that we must use
-            # a maximum jump table size of 512 to avoid a fixed limit
-            # in the compiler.
-            MCFLAGS_FOR_CC="--max-jump-table-size 512"
-            ;;
+    clang*)
+        # XXX we need go through the warning and optimization options for clang
+        # more carefully.
+        CFLAGS_FOR_WARNINGS="-w"
+        CFLAGS_FOR_OPT="-fomit-frame-pointer"
+        CFLAGS_FOR_DEBUG="-g"
+        CFLAGS_FOR_NO_STRICT_ALIASING="-fno-strict-aliasing"
+        MCFLAGS_FOR_CC=
+        ;;
 
-        cc* | */cc*)
-            C_COMPILER_TYPE=unknown
-            CFLAGS_FOR_ANSI=
-            CFLAGS_FOR_OPT="-O"
-            CFLAGS_FOR_WARNINGS=
-            CFLAGS_FOR_DEBUG="-g"
-            CFLAGS_FOR_NO_STRICT_ALIASING=
-            MCFLAGS_FOR_CC=
-            ;;
+    msvc*)
+        CFLAGS_FOR_ANSI=
+        CFLAGS_FOR_WARNINGS=
+        CFLAGS_FOR_OPT=
+        CFLAGS_FOR_DEBUG="-Zi"
+        CFLAGS_FOR_NO_STRICT_ALIASING=
 
-        *)
-            C_COMPILER_TYPE=unknown
-            CFLAGS_FOR_ANSI=
-            CFLAGS_FOR_OPT="-O"
-            CFLAGS_FOR_WARNINGS=
-            CFLAGS_FOR_DEBUG="-g"
-            CFLAGS_FOR_NO_STRICT_ALIASING=
-            MCFLAGS_FOR_CC=
-            ;;
-    esac
-fi
+        # Using the MSVC compiler implies that we must use
+        # a maximum jump table size of 512 to avoid a fixed limit
+        # in the compiler.
+        MCFLAGS_FOR_CC="--max-jump-table-size 512"
+        ;;
+
+    *)
+        CFLAGS_FOR_ANSI=
+        CFLAGS_FOR_OPT="-O"
+        CFLAGS_FOR_WARNINGS=
+        CFLAGS_FOR_DEBUG="-g"
+        CFLAGS_FOR_NO_STRICT_ALIASING=
+        MCFLAGS_FOR_CC=
+        ;;
+esac
 
 CFLAGS_FOR_OPT="$CFLAGS_FOR_OPT $CFLAGS_FOR_NO_STRICT_ALIASING"
 
@@ -4520,7 +4534,7 @@ AC_SUBST([C_COMPILER_TYPE])
 
 LD_STATIC_FLAGS=
 case "$C_COMPILER_TYPE" in
-    gcc*|lcc)
+    gcc*|clang*|lcc)
         LD_STATIC_FLAGS=-static
         ;;
 esac
@@ -4532,6 +4546,9 @@ case "$FULLARCH" in
         # similar treatment for other OSs too.)
         case "$C_COMPILER_TYPE" in
             gcc*)
+                LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
+                ;;
+            clang*)
                 LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
                 ;;
             lcc)
@@ -4574,7 +4591,7 @@ esac
 # We can't put the call to MSG_CHECKING at the start of the case statement
 # above, because of the nested check in the lcc case.  So we just put it
 # here immediately before the MSG_RESULT call.
-AC_MSG_CHECKING(options for static linking)
+AC_MSG_CHECKING([options for static linking])
 AC_MSG_RESULT($LD_STATIC_FLAGS)
 case "$LD_STATIC_FLAGS" in
     "")

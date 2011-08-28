@@ -69,6 +69,13 @@ case "$CC" in
         DEBUG_OPT="-g"
         COMPILER=gcc
         ;;
+    *clang*)
+        ANSI_OPTS="-ansi"
+        CHECK_OPTS="-w"
+        OPT_OPTS="-O0 $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
+        DEBUG_OPT="-g"
+        COMPILER=clang
+        ;;
     *lcc*)
         ANSI_OPTS=
         CHECK_OPTS="-w"     # turn off all warnings due to spurious warnings.

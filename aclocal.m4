@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999,2001-2004, 2006-2010 The University of Melbourne.
+# Copyright (C) 1999,2001-2004, 2006-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -517,6 +517,105 @@ if
     $CC -o conftest conftest.c
 then
     mercury_cv_gcc_version=`./conftest`
+else
+    # This shouldn't happen as we have already checked for this.
+    AC_MSG_ERROR([unexpected: $CC cannot create executable])
+fi
+])
+
+#-----------------------------------------------------------------------------#
+
+# Work out the C compiler type using a stronger test than AC_PROG_CC to
+# distinguish between clang and gcc.
+# (We don't handle lcc here - I don't think that it's possible to.)
+
+AC_DEFUN([MERCURY_CC_TYPE], [
+AC_REQUIRE([AC_PROG_CC])
+AC_MSG_CHECKING([what the C compiler type really is])
+
+cat > conftest.c << EOF
+
+#include <stdio.h>
+
+int main(int argc, char **argv)
+{
+    #if defined(__clang__)
+       printf("clang");
+    #elif defined(__GNUC__)
+       printf("gcc");
+    #elif defined(_MSC_VER)
+       printf("msvc");
+    #else
+       printf("unknown");
+    #endif
+   
+    return 0;
+}
+EOF
+
+echo "$CC -o conftest conftests.c" >&AC_FD_CC 2>&1
+if
+    $CC -o conftest conftest.c
+then
+    mercury_cv_cc_type=`./conftest`
+else
+    # This shouldn't happen as we have already checked for this.
+    AC_MSG_ERROR([unexpected: $CC cannot create executable])
+fi
+
+AC_MSG_RESULT([$mercury_cv_cc_type])
+])
+
+#-----------------------------------------------------------------------------#
+
+AC_DEFUN([MERCURY_CLANG_VERSION], [
+AC_REQUIRE([AC_PROG_CC])
+
+cat > conftest.c << EOF
+
+#include <stdio.h>
+
+int main(int argc, char **argv)
+{
+
+    printf("%d_%d_%d", __clang_major__, __clang_minor__, __clang_patchlevel__);
+    return 0;
+}
+EOF
+
+echo "$CC -o conftest contest.c" >&AC_FD_CC 2>&1
+if
+    $CC -o conftest conftest.c
+then
+    mercury_cv_clang_version=`./conftest`
+else
+    # This shouldn't happen as we have already checked for this.
+    AC_MSG_ERROR([unexpected: $CC cannot create executable])
+fi
+])
+
+#-----------------------------------------------------------------------------#
+
+AC_DEFUN([MERCURY_MSVC_VERSION], [
+AC_REQUIRE([AC_PROG_CC])
+
+cat > conftest.c << EOF
+
+#include <stdio.h>
+
+int main(int argc, char **argv)
+{
+
+    printf("%d", _MSC_VER);
+    return 0;
+}
+EOF
+
+echo "$CC -o conftest contest.c" >&AC_FD_CC 2>&1
+if
+    $CC -o conftest conftest.c
+then
+    mercury_cv_msvc_version=`./conftest`
 else
     # This shouldn't happen as we have already checked for this.
     AC_MSG_ERROR([unexpected: $CC cannot create executable])
