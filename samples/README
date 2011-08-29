@@ -72,3 +72,8 @@ muz			This directory contains a syntax checker / type checker
 
 solver_types		This directory contains an example solver type
 			implementation and some sample applications.
+
+lazy_list		This directory contains an example of the lazy module
+			can be used to implement lazy data structures, in this
+			case a lazy list.
+
