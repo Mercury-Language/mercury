@@ -196,7 +196,12 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
             ThisPredProcId, ErrorOrWarning, ModuleInfo, !Specs)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % These scopes cannot contain any calls.
             true
         ;
@@ -349,7 +354,12 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
             HighOrderLoops, ErrorOrWarning, ModuleInfo, !Specs)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % These scopes cannot contain any calls.
             true
         ;
@@ -829,7 +839,12 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
         stratify_analyze_goal(SubGoal, !Calls, !HasAT, !CallsHO)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % The code in these scopes does not make calls (either first order
             % or higher order), and it does not take addresses.
             true
@@ -948,7 +963,12 @@ get_called_procs(Goal, !Calls) :-
         get_called_procs(SubGoal, !Calls)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % The code in these scopes does not make calls.
             true
         ;

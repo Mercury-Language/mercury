@@ -184,8 +184,9 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
         ;
             ( Reason = require_detism(_)
             ; Reason = require_complete_switch(_)
+            ; Reason = from_ground_term(_, from_ground_term_initial)
             ),
-            % These scopes should have been deleted by now.
+            % These scopes should have been deleted or converted by now.
             unexpected($module, $pred, "unexpected scope")
         ;
             Reason = from_ground_term(_, from_ground_term_construct),
@@ -730,10 +731,20 @@ goal_is_simple(Goal) :-
     (
         goal_expr_has_subgoals(GoalExpr) = does_not_have_subgoals
     ;
-        ( GoalExpr = scope(_, SubGoal)
-        ; GoalExpr = negation(SubGoal)
-        ),
+        GoalExpr = negation(SubGoal),
         goal_is_simple(SubGoal)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
+            true
+        ;
+            goal_is_simple(SubGoal)
+        )
     ).
 
 %-----------------------------------------------------------------------------%

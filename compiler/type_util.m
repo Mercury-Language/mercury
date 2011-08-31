@@ -406,7 +406,7 @@ type_ctor_category_is_atomic(CtorCat) = IsAtomic :-
 
 type_to_type_defn(ModuleInfo, Type, TypeDefn) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
-    type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
+    type_to_ctor(Type, TypeCtor),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
 
 type_to_type_defn_body(ModuleInfo, Type, TypeBody) :-

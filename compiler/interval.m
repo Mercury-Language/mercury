@@ -280,6 +280,8 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             % the generated code will do.
             require_access([TermVar], !IntervalInfo)
         ;
+            % XXX We could treat from_ground_term_deconstruct scopes specially
+            % as well.
             build_interval_info_in_goal(SubGoal, !IntervalInfo, !Acc)
         )
     ;
@@ -967,6 +969,8 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             % There won't be any decisions to record.
             Goal = Goal0
         ;
+            % XXX We could treat from_ground_term_deconstruct scopes specially
+            % as well.
             record_decisions_in_goal(SubGoal0, SubGoal, !VarInfo, !VarRename,
                 InsertMap, MaybeFeature),
             GoalExpr = scope(Reason, SubGoal),

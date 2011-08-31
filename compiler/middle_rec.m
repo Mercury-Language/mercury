@@ -143,7 +143,12 @@ contains_only_builtins_expr(GoalExpr) = OnlyBuiltins :-
         OnlyBuiltins = contains_only_builtins(SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             OnlyBuiltins = yes
         ;
             OnlyBuiltins = contains_only_builtins(SubGoal)

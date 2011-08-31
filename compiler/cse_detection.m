@@ -315,14 +315,23 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
         detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
         GoalExpr = negation(SubGoal)
     ;
-        GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        GoalExpr0 = scope(Reason0, SubGoal0),
+        ( Reason0 = from_ground_term(_, from_ground_term_construct) ->
             % There are no deconstructions at all inside these scopes.
             GoalExpr = GoalExpr0,
             Redo = no
         ;
             detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
-            GoalExpr = scope(Reason, SubGoal)
+            (
+                Redo = yes,
+                Reason0 = from_ground_term(_, from_ground_term_deconstruct)
+            ->
+                % If we remove a goal from such a scope, what is left
+                % may no longer satisfy the invariants we expect it to satisfy.
+                SubGoal = hlds_goal(GoalExpr, _)
+            ;
+                GoalExpr = scope(Reason0, SubGoal)
+            )
         )
     ;
         GoalExpr0 = conj(ConjType, Goals0),

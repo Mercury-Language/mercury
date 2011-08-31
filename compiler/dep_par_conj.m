@@ -400,7 +400,12 @@ sync_dep_par_conjs_in_goal(Goal0, Goal, InstMap0, InstMap, !SyncInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             Goal = Goal0
         ;
             sync_dep_par_conjs_in_goal(SubGoal0, SubGoal, InstMap0, _,
@@ -829,6 +834,10 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
                 % These scopes do not consume anything.
                 unexpected($module, $pred, "from_ground_term_construct")
             ;
+                % XXX If Reason = from_ground_term(X,
+                % from_ground_term_deconstruct), then the only variable
+                % that we can wait for is X. We should be able to use that fact
+                % to avoid processing SubGoal0.
                 insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
                     FutureMap, ConsumedVar, WaitedOnAllSuccessPaths0,
                     SubGoal0, SubGoal, !VarSet, !VarTypes),
@@ -2575,6 +2584,10 @@ should_we_push_wait(Var, Goal, Wait) :-
             % static data structure, its cost in execution time is negligible.
             Wait = not_seen_wait_negligible_cost_so_far
         ;
+            % XXX If Reason = from_ground_term(X,
+            % from_ground_term_deconstruct), then the only variable
+            % that we can wait for is X. We should be able to use that fact
+            % to avoid processing SubGoal.
             should_we_push_wait(Var, SubGoal, Wait)
         )
     ;

@@ -306,6 +306,9 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
             % inside these scopes.
             SubGoal = SubGoal0
         ;
+            % XXX We could treat from_ground_term_deconstruct specially
+            % as well, since the only variable whose deconstruction could be of
+            % interest here is the one named in Reason.
             detect_switches_in_goal(InstMap0, SubGoal0, SubGoal, !LocalInfo)
         ),
         GoalExpr = scope(Reason, SubGoal)
@@ -913,8 +916,8 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
         FoundDeconstruct) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
-        GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        GoalExpr0 = scope(Reason0, SubGoal0),
+        ( Reason0 = from_ground_term(_, from_ground_term_construct) ->
             % There are no deconstruction unifications inside these scopes.
             Goal = Goal0,
             % Whether we want to keep looking at the code that follows them
@@ -925,7 +928,16 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
         ;
             find_bind_var_2(Var, ProcessUnify, SubGoal0, SubGoal, !Subst,
                 !Result, !Info, FoundDeconstruct),
-            Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo)
+            (
+                FoundDeconstruct = found_deconstruct,
+                Reason0 = from_ground_term(_, from_ground_term_deconstruct)
+            ->
+                % If we remove a goal from such a scope, what is left
+                % may no longer satisfy the invariants we expect it to satisfy.
+                Goal = SubGoal
+            ;
+                Goal = hlds_goal(scope(Reason0, SubGoal), GoalInfo)
+            )
         )
     ;
         GoalExpr0 = conj(ConjType, SubGoals0),

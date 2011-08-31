@@ -136,7 +136,12 @@ move_follow_code_in_goal(Goal0, Goal, RttiVarMaps, !Changed) :-
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             SubGoal = SubGoal0
         ;
             move_follow_code_in_goal(SubGoal0, SubGoal, RttiVarMaps, !Changed)

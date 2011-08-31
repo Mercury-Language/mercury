@@ -522,9 +522,6 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         GoalExpr = conj(_ConjType, Goals),
         candidate_init_vars_2(ModeInfo, Goals, !NonFree, !CandidateVars)
     ;
-        % XXX Is the determinism field of a generic_call valid at this point?
-        % Determinism analysis is run after mode analysis.
-        %
         % We assume that generic calls are deterministic. The modes field of
         % higher_order calls is junk until *after* mode analysis, hence we
         % can't handle them here.

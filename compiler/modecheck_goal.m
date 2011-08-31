@@ -518,7 +518,8 @@ goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
             Reason = from_ground_term(TermVar, from_ground_term_construct),
             LargeFlatConstructs = set_of_var.make_singleton(TermVar)
         ;
-            ( Reason = from_ground_term(_, from_ground_term_deconstruct)
+            ( Reason = from_ground_term(_, from_ground_term_initial)
+            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)
             ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
@@ -593,7 +594,8 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
                 Goal = Goal0
             )
         ;
-            ( Reason = from_ground_term(_, from_ground_term_deconstruct)
+            ( Reason = from_ground_term(_, from_ground_term_initial)
+            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)
             ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
@@ -810,40 +812,80 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         GoalExpr = scope(Reason, SubGoal),
         mode_checkpoint(exit, "scope", !ModeInfo)
     ;
-        Reason = from_ground_term(TermVar, _),
-        mode_checkpoint(enter, "from_ground_term scope", !ModeInfo),
-        modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
-            MaybeKind1AndSubGoal1, !ModeInfo),
-        mode_checkpoint(exit, "from_ground_term scope", !ModeInfo),
+        Reason = from_ground_term(TermVar, OldKind),
         (
-            MaybeKind1AndSubGoal1 = yes(Kind1 - SubGoal1),
-            mode_info_set_had_from_ground_term(had_from_ground_term_scope,
-                !ModeInfo),
-
-            mode_info_get_make_ground_terms_unique(!.ModeInfo,
-                MakeGroundTermsUnique),
+            OldKind = from_ground_term_construct,
+            mode_info_var_is_live(!.ModeInfo, TermVar, IsLive),
             (
-                MakeGroundTermsUnique = do_not_make_ground_terms_unique,
-                UpdatedReason1 = from_ground_term(TermVar, Kind1),
-                GoalExpr = scope(UpdatedReason1, SubGoal1)
+                IsLive = is_live,
+                % We have already modechecked the subgoal. If we had done
+                % anything to it that could invalidate its invariants,
+                % the part of the compiler that did this should have also
+                % updated the scope reason.
+                GoalExpr = scope(Reason, SubGoal0),
+
+                InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
+                instmap_delta_lookup_var(InstMapDelta0, TermVar, TermVarInst),
+                mode_info_get_instmap(!.ModeInfo, InstMap0),
+                instmap_set_var(TermVar, TermVarInst, InstMap0, InstMap),
+                mode_info_set_instmap(InstMap, !ModeInfo)
             ;
-                MakeGroundTermsUnique = make_ground_terms_unique,
-                (
-                    Kind1 = from_ground_term_construct,
-                    modecheck_goal_make_ground_term_unique(TermVar,
-                        SubGoal1, GoalInfo0, GoalExpr, !ModeInfo)
-                ;
-                    ( Kind1 = from_ground_term_deconstruct
-                    ; Kind1 = from_ground_term_other
-                    ),
-                    % Do not wrap the subgoal up in a scope, since these scopes
-                    % do not get useful any special treatment.
-                    SubGoal1 = hlds_goal(GoalExpr, _)
-                )
+                IsLive = is_dead,
+                % We delete construction unifications that construct dead
+                % variables; do the same with construct scopes.
+                GoalExpr = conj(plain_conj, [])
             )
         ;
-            MaybeKind1AndSubGoal1 = no,
-            GoalExpr = conj(plain_conj, [])
+            ( OldKind = from_ground_term_initial
+            ; OldKind = from_ground_term_deconstruct
+            ; OldKind = from_ground_term_other
+            ),
+            mode_checkpoint(enter, "from_ground_term scope", !ModeInfo),
+            modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
+                MaybeKind1AndSubGoal1, !ModeInfo),
+            mode_checkpoint(exit, "from_ground_term scope", !ModeInfo),
+            (
+                MaybeKind1AndSubGoal1 = yes(Kind1 - SubGoal1),
+                (
+                    Kind1 = from_ground_term_initial,
+                    unexpected($module, $pred, "from_ground_term_initial")
+                ;
+                    Kind1 = from_ground_term_construct,
+                    Kind2 = from_ground_term_construct
+                ;
+                    Kind1 = from_ground_term_deconstruct,
+                    Kind2 = from_ground_term_deconstruct
+                ;
+                    Kind1 = from_ground_term_other,
+                    Kind2 = from_ground_term_other
+                ),
+                mode_info_set_had_from_ground_term(had_from_ground_term_scope,
+                    !ModeInfo),
+
+                mode_info_get_make_ground_terms_unique(!.ModeInfo,
+                    MakeGroundTermsUnique),
+                (
+                    MakeGroundTermsUnique = do_not_make_ground_terms_unique,
+                    UpdatedReason2 = from_ground_term(TermVar, Kind2),
+                    GoalExpr = scope(UpdatedReason2, SubGoal1)
+                ;
+                    MakeGroundTermsUnique = make_ground_terms_unique,
+                    (
+                        Kind2 = from_ground_term_construct,
+                        modecheck_goal_make_ground_term_unique(TermVar,
+                            SubGoal1, GoalInfo0, GoalExpr, !ModeInfo)
+                    ;
+                        ( Kind2 = from_ground_term_deconstruct
+                        ; Kind2 = from_ground_term_other
+                        ),
+                        UpdatedReason2 = from_ground_term(TermVar, Kind2),
+                        GoalExpr = scope(UpdatedReason2, SubGoal1)
+                    )
+                )
+            ;
+                MaybeKind1AndSubGoal1 = no,
+                GoalExpr = conj(plain_conj, [])
+            )
         )
     ;
         Reason = promise_purity(_Purity),

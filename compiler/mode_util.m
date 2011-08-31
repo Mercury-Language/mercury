@@ -1188,10 +1188,22 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
-            SubGoal = SubGoal0,
-            SubGoal = hlds_goal(_, SubGoalInfo),
-            InstMapDelta = goal_info_get_instmap_delta(SubGoalInfo)
+        ( Reason = from_ground_term(_, FGT) ->
+            (
+                ( FGT = from_ground_term_construct
+                ; FGT = from_ground_term_deconstruct
+                ),
+                SubGoal = SubGoal0,
+                SubGoal = hlds_goal(_, SubGoalInfo),
+                InstMapDelta = goal_info_get_instmap_delta(SubGoalInfo)
+            ;
+                FGT = from_ground_term_initial,
+                unexpected($module, $pred, "from_ground_term_initial")
+            ;
+                FGT = from_ground_term_other,
+                recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal,
+                    VarTypes, InstMap0, InstMapDelta, !RI)
+            )
         ;
             recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal,
                 VarTypes, InstMap0, InstMapDelta, !RI)

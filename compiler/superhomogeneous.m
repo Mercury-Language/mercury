@@ -413,12 +413,7 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
         ground_term(RHS)
     ->
         Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-        % We don't yet know whether this scope is actually be a construction;
-        % that is decided during mode analysis. However, the code inside the
-        % scope actually maintains the invariants we expect from
-        % from_ground_term_construct scopes, and quantification can
-        % exploit this knowledge.
-        Kind = from_ground_term_construct,
+        Kind = from_ground_term_initial,
         goal_info_set_nonlocals(set_of_var.make_singleton(LHSVar),
             GoalInfo0, GoalInfo),
         ( GoalExpr0 = conj(plain_conj, Conjuncts0) ->

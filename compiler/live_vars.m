@@ -405,6 +405,8 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % !NondetLiveness, or !ParStackVars.
             set_of_var.insert(TermVar, !Liveness)
         ;
+            % XXX We could treat from_ground_term_deconstruct scopes specially
+            % as well.
             NondetLiveness0 = !.NondetLiveness,
             build_live_sets_in_goal(SubGoal0, SubGoal, ResumeVars0, AllocData,
                 !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),

@@ -134,6 +134,8 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
         ( Reason = from_ground_term(_, from_ground_term_construct) ->
             SubGoal = SubGoal0
         ;
+            % XXX We could treat from_ground_term_deconstruct specially
+            % as well.
             backward_use_in_goal(VarTypes, SubGoal0, SubGoal, !LBU)
         ),
         !:Expr = scope(Reason, SubGoal)

@@ -824,9 +824,8 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 :- type pragma_foreign_code_impl
     --->    fc_impl_ordinary(
                 % This is a foreign language definition of a model_det or
-                % model_semi procedure. (We also allow model_non, until
-                % everyone has had time to adapt to the new way of handling
-                % model_non pragmas.)
+                % model_semi procedure. (We used to allow model_non, but
+                % do not any more.)
 
                 string,             % The code of the procedure.
                 maybe(prog_context)

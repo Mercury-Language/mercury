@@ -752,7 +752,7 @@ do_process_clause_body_goal(!Goal, !Info) :-
 :- pred simplify_goal(hlds_goal::in, hlds_goal::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
+simplify_goal(Goal0, Goal, !Info) :-
     Goal0 = hlds_goal(_, GoalInfo0),
     simplify_info_get_inside_duplicated_for_switch(!.Info,
         InsideDuplForSwitch),
@@ -900,8 +900,8 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
         Goal1 = Goal0
     ),
 
-    % Remove unnecessary explicit quantifications before working
-    % out whether the goal can cause a stack flush.
+    % Remove unnecessary explicit quantifications before working out
+    % whether the goal can cause a stack flush.
 
     ( Goal1 = hlds_goal(scope(Reason1, SomeGoal1), GoalInfo1) ->
         nested_scopes(Reason1, SomeGoal1, GoalInfo1, Goal2)
@@ -915,9 +915,7 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
             Reason2 = barrier(removable)
         ;
             Reason2 = from_ground_term(_, Kind),
-            ( Kind = from_ground_term_deconstruct
-            ; Kind = from_ground_term_other
-            )
+            Kind = from_ground_term_other
         )
     ->
         Goal3 = SomeGoal2
@@ -926,14 +924,15 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
     ),
     simplify_info_maybe_clear_structs(before, Goal3, !Info),
     Goal3 = hlds_goal(GoalExpr3, GoalInfo3),
-    simplify_goal_expr(GoalExpr3, GoalExpr, GoalInfo3, GoalInfo4, !Info),
-    simplify_info_maybe_clear_structs(after, hlds_goal(GoalExpr, GoalInfo4),
-        !Info),
+    simplify_goal_expr(GoalExpr3, GoalExpr4, GoalInfo3, GoalInfo4, !Info),
+    Goal4 = hlds_goal(GoalExpr4, GoalInfo4),
+    simplify_info_maybe_clear_structs(after, Goal4, !Info),
     simplify_info_set_inside_duplicated_for_switch(InsideDuplForSwitch, !Info),
-    enforce_unreachability_invariant(GoalInfo4, GoalInfo, !Info).
+    enforce_unreachability_invariant(GoalInfo4, GoalInfo, !Info),
+    Goal = hlds_goal(GoalExpr4, GoalInfo).
 
-    % Ensure that the mode information and the determinism
-    % information say consistent things about unreachability.
+    % Ensure that the mode information and the determinism information
+    % say consistent things about unreachability.
     %
 :- pred enforce_unreachability_invariant(
     hlds_goal_info::in, hlds_goal_info::out,
@@ -3755,9 +3754,19 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
             SubGoal = SubGoal0,
             ContainsTrace = contains_trace_goal
         ;
-            Reason = from_ground_term(_, from_ground_term_construct),
-            SubGoal = SubGoal0,
-            ContainsTrace = contains_no_trace_goal
+            Reason = from_ground_term(_, FGT),
+            (
+                ( FGT = from_ground_term_construct
+                ; FGT = from_ground_term_deconstruct
+                ),
+                SubGoal = SubGoal0,
+                ContainsTrace = contains_no_trace_goal
+            ;
+                ( FGT = from_ground_term_initial
+                ; FGT = from_ground_term_other
+                ),
+                goal_contains_trace(SubGoal0, SubGoal, ContainsTrace)
+            )
         ;
             ( Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
@@ -3766,8 +3775,6 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
             ; Reason = require_complete_switch(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
-            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
-            ; Reason = from_ground_term(_, from_ground_term_other)
             ),
             goal_contains_trace(SubGoal0, SubGoal, ContainsTrace)
         ),

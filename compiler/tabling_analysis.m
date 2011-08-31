@@ -362,7 +362,12 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             MaybeAnalysisStatus, !ModuleInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             Result = mm_tabled_will_not_call,
             MaybeAnalysisStatus = yes(optimal)
         ;
@@ -678,7 +683,12 @@ annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         !:GoalExpr = negation(SubGoal)
     ;
         !.GoalExpr = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             Status = mm_tabled_will_not_call
         ;
             annotate_goal(VarTypes, SubGoal0, SubGoal, Status, !ModuleInfo),

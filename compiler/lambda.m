@@ -259,9 +259,14 @@ expand_lambdas_in_goal(Goal0, Goal, !Info) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % If the scope had any rhs_lambda_goals, modes.m wouldn't have
-            % left its kind field as from_ground_term_construct.
+            % left its kind field as from_ground_term_(de)construct.
             GoalExpr = GoalExpr0
         ;
             expand_lambdas_in_goal(SubGoal0, SubGoal, !Info),

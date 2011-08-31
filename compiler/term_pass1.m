@@ -372,7 +372,12 @@ check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo, !IO) :-
             !Errors, !ModuleInfo, !IO)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % The scope has no calls, let alone nonterminating calls.
             true
         ;

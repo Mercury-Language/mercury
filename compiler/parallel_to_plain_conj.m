@@ -79,7 +79,12 @@ parallel_to_plain_conjs_goal(Goal0, Goal) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % There cannot be parallel conjunctions inside these scopes.
             SubGoal = SubGoal0
         ;

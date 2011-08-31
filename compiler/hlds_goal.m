@@ -59,28 +59,24 @@
                 % A unification. Initially only the terms and the context
                 % are known. Mode analysis fills in the missing information.
 
+                % The variable on the left hand side of the unification.
+                % NOTE: for convenience this field is duplicated in the
+                % unification structure below.
                 unify_lhs           :: prog_var,
-                                    % The variable on the left hand side
-                                    % of the unification.  NOTE: for
-                                    % convenience this field is duplicated
-                                    % in the unification structure below.
 
+                % Whatever is on the right hand side of the unification.
                 unify_rhs           :: unify_rhs,
-                                    % Whatever is on the right hand side
-                                    % of the unification.
 
+                % The mode of the unification.
                 unify_mode          :: unify_mode,
-                                    % the mode of the unification.
 
+                % This field says what category of unification it is,
+                % and contains information specific to each category.
                 unify_kind          :: unification,
-                                    % This field says what category of
-                                    % unification it is, and contains
-                                    % information specific to each category.
 
+                % The location of the unification in the original source code
+                % (for use in error messages).
                 unify_context       :: unify_context
-                                    % The location of the unification
-                                    % in the original source code
-                                    % (for use in error messages).
             )
 
     ;       plain_call(
@@ -89,26 +85,25 @@
                 % pred_id. Mode analysis fills in the proc_id and
                 % builtin_state fields.
 
+                % Which predicate are we calling?
                 call_pred_id        :: pred_id,
-                                    % Which predicate are we calling?
 
+                % Which mode of the predicate?
                 call_proc_id        :: proc_id,
-                                    % Which mode of the predicate?
 
+                % The list of argument variables.
                 call_args           :: list(prog_var),
-                                    % The list of argument variables.
 
+                % Is the predicate builtin, and if yes,
+                % do we generate inline code for it?
                 call_builtin        :: builtin_state,
-                                    % Is the predicate builtin, and if yes,
-                                    % do we generate inline code for it?
 
+                % Was this predicate call originally a unification? If so,
+                % we store the context of the unification.
                 call_unify_context  :: maybe(call_unify_context),
-                                    % Was this predicate call originally
-                                    % a unification? If so, we store the
-                                    % context of the unification.
 
+                % The name of the predicate.
                 call_sym_name       :: sym_name
-                                    % The name of the predicate.
             )
 
     ;       generic_call(
@@ -118,19 +113,18 @@
                 % variable, or they take higher-order arguments of variable
                 % arity. This currently includes higher-order calls and
                 % class-method calls.
-                %
+
                 gcall_details       :: generic_call,
 
+                % The list of argument variables.
                 gcall_args          :: list(prog_var),
-                                    % The list of argument variables.
 
+                % The modes of the argument variables. For higher_order calls,
+                % this field is junk until after mode analysis.
                 gcall_modes         :: list(mer_mode),
-                                    % The modes of the argument variables.
-                                    % For higher_order calls, this field
-                                    % is junk until after mode analysis.
 
+                % The determinism of the call.
                 gcall_detism        :: determinism
-                                    % The determinism of the call.
             )
 
     ;       call_foreign_proc(
@@ -138,32 +132,26 @@
 
                 foreign_attr        :: pragma_foreign_proc_attributes,
 
+                % The called predicate and its mode.
                 foreign_pred_id     :: pred_id,
-                                    % The called predicate.
-
                 foreign_proc_id     :: proc_id,
-                                    % The mode of the predicate.
 
                 foreign_args        :: list(foreign_arg),
+
+                % Extra arguments added when compiler passes such as tabling
+                % stuff more code into a foreign proc than the declared
+                % interface of the called Mercury procedure would allow.
                 foreign_extra_args  :: list(foreign_arg),
-                                    % Extra arguments added when compiler
-                                    % passes such as tabling stuff more
-                                    % code into a foreign proc than the
-                                    % declared interface of the called
-                                    % Mercury procedure would allow.
 
+                % If set to yes(Cond), then this goal represents the evaluation
+                % of the runtime condition of a trace goal. In that case,
+                % the goal must be semidet, and the argument lists empty;
+                % the actual code in pragma_foreign_code_impl is ignored
+                % and replaced by the evaluation of Cond.
                 foreign_trace_cond  :: maybe(trace_expr(trace_runtime)),
-                                    % If set to yes(Cond), then this goal
-                                    % represents the evaluation of the runtime
-                                    % condition of a trace goal. In that case,
-                                    % the goal must be semidet, and the
-                                    % argument lists empty; the actual code
-                                    % in pragma_foreign_code_impl is ignored
-                                    % and replaced by the evaluation of Cond.
 
+                % The actual code of the foreign_proc.
                 foreign_impl        :: pragma_foreign_code_impl
-                                    % Extra information for model_non
-                                    % pragma_foreign_codes; none for others.
             )
 
     ;       conj(conj_type, list(hlds_goal))
@@ -179,13 +167,12 @@
                 % Deterministic disjunctions are converted into switches
                 % by the switch detection pass.
 
+                % The variable we are switching on.
                 switch_var          :: prog_var,
-                                    % The variable we are switching on.
 
+                % Whether or not the switch test itself can fail (i.e. whether
+                % or not it covers all the possible cases).
                 switch_canfail      :: can_fail,
-                                    % Whether or not the switch test itself
-                                    % can fail (i.e. whether or not it
-                                    % covers all the possible cases).
 
                 switch_cases        :: list(case)
             )
@@ -210,9 +197,8 @@
                 % <Vars> is over the <Condition> and the <Then> part,
                 % but not the <Else> part.
 
+                % The locally existentially quantified variables <Vars>.
                 ite_exist_vars      :: list(prog_var),
-                                    % The locally existentially quantified
-                                    % variables <Vars>.
 
                 ite_cond            :: hlds_goal,   % The <Condition>
                 ite_then            :: hlds_goal,   % The <Then> part
@@ -364,11 +350,13 @@
             ).
 
     % Each scope that is created from the expansion of a ground term above
-    % a certain size is classified into one of these three categories.
+    % a certain size is classified into one of these four categories.
     % The categories are for scopes that (a) construct a ground term, (b)
     % take an existing ground term and test whether it has a given shape, and
     % (c) everything else (perhaps some parts of the term are matched and some
-    % parts are bound, or some invariant listed below is not guaranteed).
+    % parts are bound, or some invariant listed below is not guaranteed), and
+    % (d) scopes that have not yet been classified into one of these three
+    % categories.
     %
     % Many parts of the compiler have special code for handling
     % from_ground_term_construct scopes, code that avoids scanning the code
@@ -389,34 +377,42 @@
     %    determinism says that the goal is det. The goal_info of the
     %    conjunction will be filled in similarly.
     % 4. None of the these unifications constructs a higher order value.
+    % 5. The unifications are ordered such that a variable constructed by
+    %    all unifications except the last occurs exactly once, as a functor
+    %    argument of a later unification (bottom up order).
     %
-    % Invariants 3 and 4 are established during mode checking, so code executed
-    % before then cannot rely on them.
+    % From_ground_term_deconstruct scopes obey invariants 1 and 2, and they
+    % also obey invariant 6:
     %
-    % If any compiler pass modifies a from_ground_term_construct scope in a way
-    % that invalidates these invariants, it must set the kind field of the
-    % scope to from_ground_term_other (or from_ground_term_deconstruct).
+    % 6. The unifications are ordered such that a variable on the LHS of
+    %    all unifications except the first occurs exactly once, as a functor
+    %    argument on the RHS of an *earlier* unification (top down order).
+    %
+    % From_ground_term_initial scopes obey invariant 1, and they obey weak
+    % forms of invariants 2 and 6. The difference is that some of the
+    % "unifications" may include things that look like function symbols
+    % but are in fact function calls. When typecheck.m discovers that this
+    % applies to a unification, it does not remove the scope or change its
+    % kind. The mode analysis pass will eventually change the kind to
+    % from_ground_term_other.
+    %
+    % Up to the first invocation of mode analysis, all from_ground_term scopes
+    % will have kind from_ground_term_initial. After that, they will have
+    % one of the three other kinds.
+    %
+    % If any later compiler pass modifies a from_ground_term_construct scope
+    % in a way that invalidates these invariants, it must set the kind field
+    % of the scope to from_ground_term_other (or from_ground_term_deconstruct).
     % If the original scope had the from_head feature, the code that does this
     % must also attach that feature to all the subgoals of the modified scope,
     % unless we can  be sure that it is executed *after* switch detection,
     % which is the only pass that looks for from_head features, and which looks
     % in all scopes *except* from_ground_term_construct scopes.
     %
-    % For now, we don't optimize from_ground_term_deconstruct and
-    % from_ground_term_other scopes, so there are no invariants required
-    % of them.
+    % For now, we don't optimize from_ground_term_other scopes, so there are
+    % no invariants required of them.
     %
-    % There are several possible alternative designs that could allow the
-    % special-casing of from_ground_term_construct scopes. Here are two
-    % of them.
-    %
-    % One alternative is to have fourth kind, from_ground_term_initial,
-    % which would promise only the first two invariants, so compiler writers
-    % wouldn't have to worry about when a piece of code is executed if they
-    % need to depend on invariants 3 and/or 4. This works, but it leads to
-    % a slight slowdown normal code (code without big ground terms).
-    %
-    % A second alternative is to have the mode checker turn any scope
+    % An alternative design would be to have the mode checker turn any scope
     % that it currently keeps as from_ground_term_construct into a new kind
     % of generic call, one which basically says "this goal binds this variable
     % to this ground term", with the ground term represented as a ground term,
@@ -432,7 +428,8 @@
     % generator.
     %
 :- type from_ground_term_kind
-    --->    from_ground_term_construct
+    --->    from_ground_term_initial
+    ;       from_ground_term_construct
     ;       from_ground_term_deconstruct
     ;       from_ground_term_other.
 
@@ -3245,7 +3242,12 @@ goal_has_foreign(Goal) = HasForeign :-
         HasForeign = goal_has_foreign(SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             HasForeign = no
         ;
             HasForeign = goal_has_foreign(SubGoal)

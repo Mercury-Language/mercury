@@ -1148,11 +1148,12 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
             (
                 Reason0 = from_ground_term(TermVar, Kind),
                 (
-                    Kind = from_ground_term_construct,
+                    Kind = from_ground_term_initial,
                     polymorphism_process_from_ground_term(TermVar, Reason,
                         GoalInfo0, SubGoal0, SubGoal, !Info)
                 ;
-                    ( Kind = from_ground_term_deconstruct
+                    ( Kind = from_ground_term_construct
+                    ; Kind = from_ground_term_deconstruct
                     ; Kind = from_ground_term_other
                     ),
                     polymorphism_process_goal(SubGoal0, SubGoal, !Info),
@@ -1292,14 +1293,14 @@ polymorphism_process_from_ground_term(TermVar, Reason, GoalInfo0,
             % If it turns out to be wrong, we would have to add a flag to
             % poly_infos that is set whenever this pass modifies a goal,
             % at least in ways that would invalidate the
-            % from_ground_term_construct invariant.
-            Reason = from_ground_term(TermVar, from_ground_term_construct),
+            % from_ground_term_initial invariant.
+            Reason = from_ground_term(TermVar, from_ground_term_initial),
             SubGoal = SubGoal1
         )
     ;
         % We did introduce some variables into the scope, so we cannot
         % guarantee that the scope still satisfies the invariants of
-        % from_ground_term_construct scopes.
+        % from_ground_term_initial scopes.
         Reason = from_ground_term(TermVar, from_ground_term_other),
         ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
             attach_features_to_all_goals([feature_from_head],

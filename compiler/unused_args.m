@@ -651,6 +651,8 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
             % unification that binds TermVar to a constant, i.e. nothing.
             true
         ;
+            % XXX We could treat from_ground_term_deconstruct specially
+            % as well.
             unused_args_traverse_goal(Info, SubGoal, !VarDep)
         )
     ;

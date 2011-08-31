@@ -535,7 +535,12 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % There are no calls in these scopes.
             Goal = Goal0
         ;

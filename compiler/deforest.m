@@ -152,8 +152,7 @@ deforestation(!ModuleInfo, !IO) :-
     module_info::in, module_info::out) is det.
 
 reset_inferred_proc_determinism(PredProcId, !ModuleInfo) :-
-    module_info_pred_proc_info(!.ModuleInfo, PredProcId,
-        PredInfo, ProcInfo0),
+    module_info_pred_proc_info(!.ModuleInfo, PredProcId, PredInfo, ProcInfo0),
     proc_info_get_inferred_determinism(ProcInfo0, Detism0),
     ( determinism_components(Detism0, _, at_most_many_cc) ->
         % `cc_multi' or `cc_nondet' determinisms are never inferred,
@@ -207,14 +206,11 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
         module_info_get_globals(!.ModuleInfo, Globals),
         simplify.find_simplifications(no, Globals, Simplifications),
         pd_util.pd_simplify_goal(Simplifications, !Goal, !PDInfo),
-
         pd_util.propagate_constraints(!Goal, !PDInfo),
-
         trace [io(!IO)] (
             pd_debug_output_goal(!.PDInfo, "after constraints\n", !.Goal, !IO)
         ),
         deforest_goal(!Goal, !PDInfo),
-
         pd_info_get_proc_info(!.PDInfo, !:ProcInfo),
         proc_info_set_goal(!.Goal, !ProcInfo),
         pd_info_get_changed(!.PDInfo, Changed),
@@ -230,12 +226,10 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
             recompute_instmap_delta(recompute_atomic_instmap_deltas, !Goal,
                 VarTypes, InstVarSet, InstMap0, !ModuleInfo),
             pd_info_set_module_info(!.ModuleInfo, !PDInfo),
-
             pd_info_get_pred_info(!.PDInfo, !:PredInfo),
             proc_info_set_goal(!.Goal, !ProcInfo),
             module_info_set_pred_proc_info(PredId, ProcId,
                 !.PredInfo, !.ProcInfo, !ModuleInfo),
-
             pd_info_get_rerun_det(!.PDInfo, RerunDet),
 
             (
@@ -349,7 +343,12 @@ deforest_goal_expr(GoalExpr0, GoalExpr, !GoalInfo, !PDInfo) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             SubGoal = SubGoal0
         ;
             deforest_goal(SubGoal0, SubGoal, !PDInfo)

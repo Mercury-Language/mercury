@@ -353,7 +353,12 @@ is_flat_simple_goal(hlds_goal(GoalExpr, _)) :-
         is_flat_simple_goal(Goal)
     ;
         GoalExpr = scope(Reason, Goal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % These scopes are flat and simple by construction.
             true
         ;
@@ -601,7 +606,12 @@ inlining_in_goal(Goal0, Goal, !Info) :-
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % The scope has no calls to inline.
             GoalExpr = GoalExpr0,
             GoalInfo = GoalInfo0

@@ -541,7 +541,12 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         figure_out_rec_call_numbers(SubGoal, !N, !TailCallSites)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             true
         ;
             figure_out_rec_call_numbers(SubGoal, !N, !TailCallSites)
@@ -1137,7 +1142,12 @@ deep_prof_transform_goal(Goal0, Goal, AddedImpurity, !DeepInfo) :-
                 AddForceCommit = yes
             )
         ),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % We must annotate the scope goal and its children with a default
             % deep profiling information structure, this is required by the
             % coverage profiling transformation.

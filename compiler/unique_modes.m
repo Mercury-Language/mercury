@@ -515,35 +515,52 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
         mode_checkpoint(exit, "trace scope", !ModeInfo),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        Reason = from_ground_term(TermVar, from_ground_term_construct),
-        mode_checkpoint(enter, "from_ground_term_construct scope", !ModeInfo),
-        mode_info_var_is_live(!.ModeInfo, TermVar, LiveTermVar),
+        Reason = from_ground_term(TermVar, FGT),
         (
-            LiveTermVar = is_live,
-            % The subgoal was left in its final state during (non-unique) mode
-            % checking. All we need to do here is to add the relevant
-            % information in the goal to ModeInfo.
-            SubGoal = SubGoal0,
-            SubGoal = hlds_goal(_, SubGoalInfo),
-            InstMapDelta = goal_info_get_instmap_delta(SubGoalInfo),
-            ( instmap_delta_search_var(InstMapDelta, TermVar, TermVarInst) ->
-                mode_info_get_instmap(!.ModeInfo, InstMap0),
-                instmap_set_var(TermVar, TermVarInst, InstMap0, InstMap),
-                mode_info_set_instmap(InstMap, !ModeInfo)
+            FGT = from_ground_term_construct,
+            mode_checkpoint(enter, "from_ground_term_construct scope",
+                !ModeInfo),
+            mode_info_var_is_live(!.ModeInfo, TermVar, LiveTermVar),
+            (
+                LiveTermVar = is_live,
+                % The subgoal was left in its final state during (non-unique)
+                % mode checking. All we need to do here is to add the relevant
+                % information in the goal to ModeInfo.
+                SubGoal = SubGoal0,
+                SubGoal = hlds_goal(_, SubGoalInfo),
+                InstMapDelta = goal_info_get_instmap_delta(SubGoalInfo),
+                (
+                    instmap_delta_search_var(InstMapDelta, TermVar,
+                        TermVarInst)
+                ->
+                    mode_info_get_instmap(!.ModeInfo, InstMap0),
+                    instmap_set_var(TermVar, TermVarInst, InstMap0, InstMap),
+                    mode_info_set_instmap(InstMap, !ModeInfo)
+                ;
+                    unexpected($module, $pred, "bad InstMapDelta")
+                ),
+                GoalExpr = scope(Reason, SubGoal)
             ;
-                unexpected($module, $pred, "bad InstMapDelta")
+                LiveTermVar = is_dead,
+                % The term constructed by the scope is not used anywhere.
+                GoalExpr = conj(plain_conj, [])
             ),
+            mode_checkpoint(exit, "from_ground_term_construct scope",
+                !ModeInfo)
+        ;
+            ( FGT = from_ground_term_deconstruct
+            ; FGT = from_ground_term_other
+            ),
+            mode_checkpoint(enter, "scope", !ModeInfo),
+            unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo),
+            mode_checkpoint(exit, "scope", !ModeInfo),
             GoalExpr = scope(Reason, SubGoal)
         ;
-            LiveTermVar = is_dead,
-            % The term constructed by the scope is not used anywhere.
-            GoalExpr = conj(plain_conj, [])
-        ),
-        mode_checkpoint(exit, "from_ground_term_construct scope", !ModeInfo)
+            FGT = from_ground_term_initial,
+            unexpected($module, $pred, "from_ground_term_initial")
+        )
     ;
-        ( Reason = from_ground_term(_, from_ground_term_deconstruct)
-        ; Reason = from_ground_term(_, from_ground_term_other)
-        ; Reason = exist_quant(_)
+        ( Reason = exist_quant(_)
         ; Reason = promise_solutions(_, _)
         ; Reason = promise_purity(_)
         ; Reason = require_detism(_)

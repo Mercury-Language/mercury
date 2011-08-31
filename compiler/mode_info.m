@@ -700,8 +700,7 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
 %-----------------------------------------------------------------------------%
 
     % We keep track of the live variables and the nondet-live variables
-    % a bag, represented as a list of sets of vars.
-    % This allows us to easily add and remove sets of variables.
+    % as two bags. This allows us to easily add and remove sets of variables.
     % It is probably not maximally efficient.
 
     % Add a set of vars to the bag of live vars and the bag of
@@ -709,7 +708,6 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
 
 mode_info_add_live_vars(NewLiveVars, !MI) :-
     set_of_var.to_sorted_list(NewLiveVars, NewLiveVarsList),
-
     mode_info_get_live_vars(!.MI, LiveVars0),
     mode_info_get_nondet_live_vars(!.MI, NondetLiveVars0),
     bag.insert_list(NewLiveVarsList, LiveVars0, LiveVars),
@@ -722,7 +720,6 @@ mode_info_add_live_vars(NewLiveVars, !MI) :-
 
 mode_info_remove_live_vars(OldLiveVars, !MI) :-
     set_of_var.to_sorted_list(OldLiveVars, OldLiveVarsList),
-
     mode_info_get_live_vars(!.MI, LiveVars0),
     mode_info_get_nondet_live_vars(!.MI, NondetLiveVars0),
     bag.det_remove_list(OldLiveVarsList, LiveVars0, LiveVars),
@@ -773,11 +770,11 @@ mode_info_get_types_of_vars(ModeInfo, Vars, TypesOfVars) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % The locked variables are stored as a stack
-    % of sets of variables.  A variable is locked if it is
-    % a member of any of the sets.  To lock a set of vars, we just
-    % push them on the stack, and to unlock a set of vars, we just
-    % pop them off the stack.  The stack is implemented as a list.
+    % The locked variables are stored as a stack of sets of variables.
+    % A variable is locked if it is a member of any of the sets.
+    % To lock a set of vars, we just push them on the stack,
+    % and to unlock a set of vars, we just pop them off the stack.
+    % The stack is implemented as a list.
 
 mode_info_lock_vars(Reason, Vars, !ModeInfo) :-
     mode_info_get_locked_vars(!.ModeInfo, LockedVars),

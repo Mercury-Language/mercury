@@ -434,7 +434,12 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
         check_goal_for_exceptions(SCC, VarTypes, SubGoal, !Result, !ModuleInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             true
         ;
             check_goal_for_exceptions(SCC, VarTypes, SubGoal, !Result,

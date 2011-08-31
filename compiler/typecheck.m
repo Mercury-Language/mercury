@@ -1174,9 +1174,6 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_goal(hlds_goal::in, hlds_goal::out,
-    typecheck_info::in, typecheck_info::out) is det.
-
     % Typecheck a goal.
     % Note that we save the context of the goal in the typecheck_info for
     % use in error messages. Also, if the context of the goal is empty,
@@ -1184,8 +1181,11 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info) :-
     % the typecheck_info. (That should probably be done in make_hlds,
     % but it was easier to do here.)
     %
-typecheck_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
-        !Info) :-
+:- pred typecheck_goal(hlds_goal::in, hlds_goal::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_goal(Goal0, Goal, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Context = goal_info_get_context(GoalInfo0),
     term.context_init(EmptyContext),
     ( Context = EmptyContext ->
@@ -1233,7 +1233,8 @@ typecheck_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
         )
     ;
         typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info)
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred typecheck_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, typecheck_info::in, typecheck_info::out) is det.
@@ -1986,20 +1987,25 @@ type_assign_list_var_has_type_list([TA | TAs], Args, Types, Info,
 :- pred typecheck_unification(prog_var::in, unify_rhs::in, unify_rhs::out,
     goal_id::in, typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_unification(X, rhs_var(Y), rhs_var(Y), _, !Info) :-
-    typecheck_unify_var_var(X, Y, !Info).
-typecheck_unification(X, rhs_functor(Functor, ExistConstraints, Args),
-        rhs_functor(Functor, ExistConstraints, Args), GoalId, !Info) :-
-    typecheck_unify_var_functor(X, Functor, Args, GoalId, !Info),
-    perform_context_reduction(!Info).
-typecheck_unification(X,
-        rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+typecheck_unification(X, RHS0, RHS, GoalId, !Info) :-
+    (
+        RHS0 = rhs_var(Y),
+        typecheck_unify_var_var(X, Y, !Info),
+        RHS = RHS0
+    ;
+        RHS0 = rhs_functor(Functor, _ExistConstraints, Args),
+        typecheck_unify_var_functor(X, Functor, Args, GoalId, !Info),
+        perform_context_reduction(!Info),
+        RHS = RHS0
+    ;
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal0),
-        rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, Vars, Modes, Det, Goal), _, !Info) :-
-    typecheck_lambda_var_has_type(Purity, PredOrFunc, EvalMethod, X, Vars,
-        !Info),
-    typecheck_goal(Goal0, Goal, !Info).
+        typecheck_lambda_var_has_type(Purity, PredOrFunc, EvalMethod, X, Vars,
+            !Info),
+        typecheck_goal(Goal0, Goal, !Info),
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocals, Vars, Modes, Det, Goal)
+    ).
 
 :- pred typecheck_unify_var_var(prog_var::in, prog_var::in,
     typecheck_info::in, typecheck_info::out) is det.
@@ -2968,7 +2974,7 @@ rename_constraint(TVarRenaming, Constraint0, Constraint) :-
 %-----------------------------------------------------------------------------%
 
     % Note: changes here may require changes to
-    % post_resolve_unify_functor,
+    % post_typecheck.resolve_unify_functor,
     % intermod.module_qualify_unify_rhs,
     % recompilation.usage.find_matching_constructors
     % and recompilation.check.check_functor_ambiguities.

@@ -390,6 +390,9 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
             expand_try_goals_in_goal(Instmap, InnerGoal0, InnerGoal, !Info),
             GoalExpr = scope(Reason, InnerGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ;
+            Reason = from_ground_term(_, from_ground_term_initial),
+            unexpected($module, $pred, "from_ground_term_initial")
         )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),

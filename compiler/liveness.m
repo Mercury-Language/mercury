@@ -475,6 +475,8 @@ detect_liveness_in_goal(Goal0, Goal, Liveness0, FinalLiveness, LiveInfo) :-
                 detect_liveness_in_construct(SubGoal0, SubGoal,
                     Liveness0, Liveness, LiveInfo, TermVar)
             ;
+                % XXX We could treat from_ground_term_deconstruct specially
+                % as well.
                 detect_liveness_in_goal(SubGoal0, SubGoal, Liveness0, Liveness,
                     LiveInfo)
             ),
@@ -802,6 +804,8 @@ detect_deadness_in_goal(Goal0, Goal, !Deadness, !.Liveness, LiveInfo) :-
             % The job on SubGoal0 was done by detect_liveness_in_goal.
             SubGoal = SubGoal0
         ;
+            % XXX We could treat from_ground_term_deconstruct specially
+            % as well.
             detect_deadness_in_goal(SubGoal0, SubGoal, !Deadness,
                 !.Liveness, LiveInfo)
         ),
@@ -1070,6 +1074,8 @@ update_liveness_expr(GoalExpr, LiveInfo, !Liveness) :-
                 set_of_var.make_singleton(TermVar), CompletedTermVars),
             set_of_var.union(CompletedTermVars, !Liveness)
         ;
+            % XXX We could treat from_ground_term_deconstruct specially
+            % as well.
             update_liveness_goal(SubGoal, LiveInfo, !Liveness)
         )
     ;
@@ -1259,6 +1265,8 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
             % be no point in delaying their death.
             Goal = Goal0
         ;
+            % XXX We could treat from_ground_term_deconstruct specially
+            % as well.
             delay_death_goal(Goal0, Goal, !.BornVars, _, !DelayedDead, VarSet)
         ),
         !:GoalExpr = scope(Reason, Goal)
@@ -1508,6 +1516,8 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
             % There are no resume points in these scopes.
             SubGoal = SubGoal0
         ;
+            % XXX We could treat from_ground_term_deconstruct specially
+            % as well.
             detect_resume_points_in_goal(SubGoal0, SubGoal, !Liveness,
                 LiveInfo, ResumeVars0)
         ),

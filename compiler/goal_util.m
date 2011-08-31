@@ -880,7 +880,12 @@ proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
         IsLeaf = proc_body_is_leaf(SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             IsLeaf = is_leaf
         ;
             IsLeaf = proc_body_is_leaf(SubGoal)
@@ -1113,8 +1118,13 @@ goal_expr_calls(if_then_else(_, Cond, Then, Else), PredProcId) :-
 goal_expr_calls(negation(Goal), PredProcId) :-
     goal_calls(Goal, PredProcId).
 goal_expr_calls(scope(Reason, Goal), PredProcId) :-
-    ( Reason = from_ground_term(_, from_ground_term_construct) ->
-        % These goals contain only construction unifications.
+    (
+        Reason = from_ground_term(_, FGT),
+        ( FGT = from_ground_term_construct
+        ; FGT = from_ground_term_deconstruct
+        )
+    ->
+        % These goals contain only construction/deconstruction unifications.
         fail
     ;
         goal_calls(Goal, PredProcId)
@@ -1176,8 +1186,13 @@ goal_expr_calls_pred_id(if_then_else(_, Cond, Then, Else), PredId) :-
 goal_expr_calls_pred_id(negation(Goal), PredId) :-
     goal_calls_pred_id(Goal, PredId).
 goal_expr_calls_pred_id(scope(Reason, Goal), PredId) :-
-    ( Reason = from_ground_term(_, from_ground_term_construct) ->
-        % These goals contain only construction unifications.
+    (
+        Reason = from_ground_term(_, FGT),
+        ( FGT = from_ground_term_construct
+        ; FGT = from_ground_term_deconstruct
+        )
+    ->
+        % These goals contain only construction/deconstruction unifications.
         fail
     ;
         goal_calls_pred_id(Goal, PredId)
@@ -1231,7 +1246,12 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
         goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
     ;
         GoalExpr = scope(Reason, Goal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             % These goals contain only construction unifications.
             true
         ;
@@ -1291,9 +1311,15 @@ goal_expr_contains_reconstruction(if_then_else(_, Cond, Then, Else)) :-
 goal_expr_contains_reconstruction(negation(Goal)) :-
     goal_contains_reconstruction(Goal).
 goal_expr_contains_reconstruction(scope(Reason, Goal)) :-
-    ( Reason = from_ground_term(_, from_ground_term_construct) ->
-        % These goals contain only construction unifications
-        % that do no reuse.
+    (
+        Reason = from_ground_term(_, FGT),
+        ( FGT = from_ground_term_construct
+        ; FGT = from_ground_term_deconstruct
+        )
+    ->
+        % Construct scopes contain only construction unifications
+        % that do no reuse. Deconstruct scopes do not contain any constructions
+        % at all.
         fail
     ;
         goal_contains_reconstruction(Goal)
@@ -1812,7 +1838,12 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             Goal = Goal0
         ;
             SubGoal = maybe_strip_equality_pretest(SubGoal0),

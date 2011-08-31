@@ -107,6 +107,10 @@
     pred_info::in, module_info::in, prog_context::in,
     sym_name::in, sym_name::out, pred_id::in, pred_id::out) is det.
 
+:- type is_plain_unify
+    --->    is_not_plain_unify
+    ;       is_plain_unify.
+
     % Work out whether a var-functor unification is actually a function call.
     % If so, replace the unification goal with a call.
     %
@@ -114,7 +118,7 @@
     list(prog_var)::in, unify_mode::in, unification::in, unify_context::in,
     hlds_goal_info::in, module_info::in, pred_info::in, pred_info::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
-    hlds_goal::out) is det.
+    hlds_goal::out, is_plain_unify::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1023,7 +1027,8 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
 %-----------------------------------------------------------------------------%
 
 resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
-        GoalInfo0, ModuleInfo, !PredInfo, !VarTypes, !VarSet, Goal) :-
+        GoalInfo0, ModuleInfo, !PredInfo, !VarTypes, !VarSet,
+        Goal, IsPlainUnify) :-
     map.lookup(!.VarTypes, X0, TypeOfX),
     list.length(ArgVars0, Arity),
     (
@@ -1050,7 +1055,8 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         HOCall = generic_call(
             higher_order(FuncVar, Purity, pf_function, FullArity),
             ArgVars, Modes, Det),
-        Goal = hlds_goal(HOCall, GoalInfo0)
+        Goal = hlds_goal(HOCall, GoalInfo0),
+        IsPlainUnify = is_not_plain_unify
     ;
         % Is the function symbol a user-defined function, rather than
         % a functor which represents a data constructor?
@@ -1104,7 +1110,8 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             rhs_functor(ConsId0, no, ArgVars0), UnifyContext),
         FuncCall = plain_call(PredId, ProcId, ArgVars, not_builtin,
             yes(FuncCallUnifyContext), QualifiedFuncName),
-        Goal = hlds_goal(FuncCall, GoalInfo0)
+        Goal = hlds_goal(FuncCall, GoalInfo0),
+        IsPlainUnify = is_not_plain_unify
     ;
         % Is the function symbol a higher-order predicate or function constant?
         ConsId0 = cons(Name, _, _),
@@ -1146,7 +1153,8 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
         GoalExpr = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
             Unification0, UnifyContext),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+        Goal = hlds_goal(GoalExpr, GoalInfo0),
+        IsPlainUnify = is_not_plain_unify
     ;
         % Is it a call to an automatically generated field access function.
         % This test must come after the tests for function calls and
@@ -1171,7 +1179,9 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             TypeOfX, ArgTypes0)
     ->
         finish_field_access_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
-            AccessType, FieldName, UnifyContext, X0, ArgVars0, GoalInfo0, Goal)
+            AccessType, FieldName, UnifyContext, X0, ArgVars0, GoalInfo0,
+            Goal),
+        IsPlainUnify = is_not_plain_unify
     ;
         % Module qualify ordinary construction/deconstruction unifications.
         type_to_ctor_det(TypeOfX, TypeCtorOfX),
@@ -1207,7 +1217,8 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         ),
         GoalExpr = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
             Unification0, UnifyContext),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+        Goal = hlds_goal(GoalExpr, GoalInfo0),
+        IsPlainUnify = is_plain_unify
     ).
 
 %-----------------------------------------------------------------------------%

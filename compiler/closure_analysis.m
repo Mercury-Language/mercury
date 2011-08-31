@@ -342,7 +342,12 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             SubGoal = SubGoal0
         ;
             process_goal(VarTypes, ModuleInfo, SubGoal0, SubGoal, !ClosureInfo)

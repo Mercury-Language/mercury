@@ -1912,6 +1912,9 @@ write_goal_scope(Info, GoalExpr, ModuleInfo, VarSet,
         mercury_output_var(VarSet, AppendVarNums, Var, !IO),
         io.write_string(", ", !IO),
         (
+            Kind = from_ground_term_initial,
+            io.write_string("initial", !IO)
+        ;
             Kind = from_ground_term_construct,
             io.write_string("construct", !IO)
         ;

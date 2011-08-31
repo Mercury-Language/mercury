@@ -196,7 +196,12 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             SubGoal = SubGoal0
         ;
             find_follow_vars_in_goal(SubGoal0, SubGoal, VarTypes, ModuleInfo,

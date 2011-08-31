@@ -541,9 +541,14 @@ region_transform_compound_goal(ModuleInfo, Graph,
         % instructions are added in these scopes. This expectation seems
         % reasonable because a region is often created before a heap
         % allocation.
+        % zs: This is very inefficient. Scopes that construct ground terms
+        % construct STATIC ground terms. Since these are not created
+        % dynamically, they cannot possibly refer to any dynamically created
+        % region, so RBMM transformations should ignore them.
         ( Reason0 = from_ground_term(Var, _Kind) ->
             Reason = from_ground_term(Var, from_ground_term_other)
-        ;   Reason = Reason0
+        ;
+            Reason = Reason0
         ),
         region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
             IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,

@@ -296,8 +296,14 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
         goal_can_throw(SubGoal, Result, !ModuleInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
-            % These scopes contain only construction unifications.
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
+            % These scopes contain only construction/deconstruction
+            % unifications.
             Result = cannot_throw
         ;
             goal_can_throw(SubGoal, Result, !ModuleInfo)
@@ -493,8 +499,14 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
         CanLoop = goal_can_loop_func(MaybeModuleInfo, SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
-            % These scopes contain only construction unifications.
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
+            % These scopes contain only construction/deconstruction
+            % unifications.
             CanLoop = no
         ;
             CanLoop = goal_can_loop_func(MaybeModuleInfo, SubGoal)
@@ -620,8 +632,14 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
         CanThrow = goal_can_throw_func(MaybeModuleInfo, SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
-            % These scopes contain only construction unifications.
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
+            % These scopes contain only construction/deconstruction
+            % unifications.
             CanThrow = no
         ;
             CanThrow = goal_can_throw_func(MaybeModuleInfo, SubGoal)
@@ -695,7 +713,12 @@ goal_is_flat_expr(GoalExpr) = IsFlat :-
         IsFlat = goal_is_flat(SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             IsFlat = yes
         ;
             IsFlat = goal_is_flat(SubGoal)
@@ -789,11 +812,17 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
         goal_may_allocate_heap(SubGoal, May)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
-            % These scopes construct ground terms, but they construct them
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
+            % Construct scopes construct ground terms, but they construct them
             % statically, so if we modify the code above to check the
             % construct_how field of construction unifications, we could
-            % return May = no here.
+            % return May = no for them.
+            % Deconstruct scopes do not construct new ground terms.
             May = yes
         ;
             goal_may_allocate_heap(SubGoal, May)
@@ -955,8 +984,14 @@ count_recursive_calls(Goal, PredId, ProcId, Min, Max) :-
         count_recursive_calls(SubGoal, PredId, ProcId, Min, Max)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
-            % These scopes contain only construction unifications.
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
+            % These scopes contain only construction/deconstruction
+            % unifications.
             Min = 0,
             Max = 0
         ;

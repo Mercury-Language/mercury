@@ -1792,6 +1792,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
                 RightFailingContexts, MaybePromiseEqvSolutionSets0,
                 Detism, GoalFailingContexts, !DetInfo)
+        ;
+            FromGroundTermKind = from_ground_term_initial,
+            unexpected($module, $pred, "from_ground_term_initial")
         )
     ).
 

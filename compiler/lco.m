@@ -535,7 +535,12 @@ lco_in_goal(Goal0, Goal, !Info, ConstInfo) :-
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             GoalExpr = GoalExpr0
         ;
             lco_in_goal(SubGoal0, SubGoal, !Info, ConstInfo),
@@ -1288,7 +1293,12 @@ lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
             GoalExpr = GoalExpr0,
             Changed = no
         ;

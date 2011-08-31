@@ -270,11 +270,12 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
         clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
         clauses_info_get_varset(!.ClausesInfo, VarSet0),
         PurityInfo0 = purity_info(ModuleInfo, run_post_typecheck,
-            !.PredInfo, VarTypes0, VarSet0, [], do_not_need_to_requantify),
+            !.PredInfo, VarTypes0, VarSet0, [], do_not_need_to_requantify,
+            have_not_converted_unify),
         compute_purity_for_clauses(Clauses0, Clauses, !.PredInfo,
             purity_pure, Purity, PurityInfo0, PurityInfo),
         PurityInfo = purity_info(_, _, !:PredInfo,
-            VarTypes, VarSet, GoalSpecs, _),
+            VarTypes, VarSet, GoalSpecs, _, _),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
         clauses_info_set_varset(VarSet, !ClausesInfo),
         set_clause_list(Clauses, ClausesRep),
@@ -325,10 +326,11 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
     proc_info_get_varset(ProcInfo0, VarSet0),
     PurityInfo0 = purity_info(ModuleInfo, do_not_run_post_typecheck,
-        !.PredInfo, VarTypes0, VarSet0, [], do_not_need_to_requantify),
+        !.PredInfo, VarTypes0, VarSet0, [], do_not_need_to_requantify,
+        have_not_converted_unify),
     compute_goal_purity(Goal0, Goal, Bodypurity, _, PurityInfo0, PurityInfo),
     PurityInfo = purity_info(_, _, !:PredInfo, VarTypes, VarSet, _,
-        NeedToRequantify),
+        NeedToRequantify, _),
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
     proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
     proc_info_set_varset(VarSet, ProcInfo2, ProcInfo3),
@@ -592,10 +594,16 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 post_typecheck.resolve_unify_functor(LHS, ConsId, Args, Mode,
                     Unification, UnifyContext, GoalInfo, ModuleInfo,
                     PredInfo0, PredInfo, VarTypes0, VarTypes, VarSet0, VarSet,
-                    Goal1),
+                    Goal1, IsPlainUnify),
                 !Info ^ pi_vartypes := VarTypes,
                 !Info ^ pi_varset := VarSet,
-                !Info ^ pi_pred_info := PredInfo
+                !Info ^ pi_pred_info := PredInfo,
+                (
+                    IsPlainUnify = is_plain_unify
+                ;
+                    IsPlainUnify = is_not_plain_unify,
+                    !Info ^ pi_converted_unify := have_converted_unify
+                )
             ;
                 RunPostTypecheck = do_not_run_post_typecheck,
                 Goal1 = hlds_goal(GoalExpr0, GoalInfo)
@@ -635,14 +643,17 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             NotGoal1 = hlds_goal(GoalExpr, _)
         )
     ;
-        GoalExpr0 = scope(Reason, Goal0),
+        GoalExpr0 = scope(Reason0, SubGoal0),
         (
-            Reason = exist_quant(_),
-            compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
+            Reason0 = exist_quant(_),
+            compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace,
+                !Info),
+            Reason = Reason0
         ;
-            Reason = promise_purity(PromisedPurity),
-            compute_goal_purity(Goal0, Goal, _, ContainsTrace, !Info),
-            Purity = PromisedPurity
+            Reason0 = promise_purity(PromisedPurity),
+            compute_goal_purity(SubGoal0, SubGoal, _, ContainsTrace, !Info),
+            Purity = PromisedPurity,
+            Reason = Reason0
         ;
             % We haven't yet classified from_ground_term scopes into
             % from_ground_term_construct and other kinds, which is a pity,
@@ -652,21 +663,37 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             % conjunctions of unifications, and we could take advantage of
             % that, e.g. by avoiding repeatedly taking the varset and vartypes
             % out of !Info and just as repeatedly putting it back again.
-            ( Reason = promise_solutions(_, _)
-            ; Reason = require_detism(_)
-            ; Reason = require_complete_switch(_)
-            ; Reason = commit(_)
-            ; Reason = barrier(_)
-            ; Reason = from_ground_term(_, _)
+            Reason0 = from_ground_term(TermVar, Kind0),
+            !Info ^ pi_converted_unify := have_not_converted_unify,
+            compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace,
+                !Info),
+            HaveConvertedUnify = !.Info ^ pi_converted_unify,
+            (
+                HaveConvertedUnify = have_not_converted_unify,
+                Kind = Kind0
+            ;
+                HaveConvertedUnify = have_converted_unify,
+                Kind = from_ground_term_other
             ),
-            compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
+            Reason = from_ground_term(TermVar, Kind)
         ;
-            Reason = trace_goal(_, _, _, _, _),
-            compute_goal_purity(Goal0, Goal, _SubPurity, _, !Info),
+            ( Reason0 = promise_solutions(_, _)
+            ; Reason0 = require_detism(_)
+            ; Reason0 = require_complete_switch(_)
+            ; Reason0 = commit(_)
+            ; Reason0 = barrier(_)
+            ),
+            compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace,
+                !Info),
+            Reason = Reason0
+        ;
+            Reason0 = trace_goal(_, _, _, _, _),
+            compute_goal_purity(SubGoal0, SubGoal, _SubPurity, _, !Info),
             Purity = purity_pure,
-            ContainsTrace = contains_trace_goal
+            ContainsTrace = contains_trace_goal,
+            Reason = Reason0
         ),
-        GoalExpr = scope(Reason, Goal)
+        GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         compute_goal_purity(Cond0, Cond, Purity1, ContainsTrace1, !Info),
@@ -1326,6 +1353,10 @@ mismatched_outer_var_types(Context) = Spec :-
     --->    run_post_typecheck
     ;       do_not_run_post_typecheck.
 
+:- type converted_unify
+    --->    have_not_converted_unify
+    ;       have_converted_unify.
+
 :- type purity_info
     --->    purity_info(
                 % Fields not changed by purity checking.
@@ -1337,7 +1368,8 @@ mismatched_outer_var_types(Context) = Spec :-
                 pi_vartypes             :: vartypes,
                 pi_varset               :: prog_varset,
                 pi_messages             :: list(error_spec),
-                pi_requant              :: need_to_requantify
+                pi_requant              :: need_to_requantify,
+                pi_converted_unify      :: converted_unify
             ).
 
 :- pred purity_info_add_message(error_spec::in,
