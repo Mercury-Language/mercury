@@ -395,8 +395,8 @@ difference(A, B, test_bitset.difference(A, B)).
 
 get_sets(_, [], [], []).
 get_sets(Op, [SetA - SetB | SetsAB], [SetA | SetsA], [SetB | SetsB]) :-
-    SetListA = tree_bitset.to_sorted_list(SetA),
-    SetListB = set_ordlist.to_sorted_list(SetB),
+    tree_bitset.to_sorted_list(SetA, SetListA),
+    set_ordlist.to_sorted_list(SetB, SetListB),
     ( SetListA = SetListB ->
         get_sets(Op, SetsAB, SetsA, SetsB)
     ;
@@ -407,12 +407,12 @@ divide(Pred, SetA - SetB, ResultIn, ResultOut) :-
     tree_bitset.divide(Pred, SetA, InSetA, OutSetA),
     set_ordlist.divide(Pred, SetB, InSetB, OutSetB),
 
-    SetListA = tree_bitset.to_sorted_list(SetA),
-    SetListB = set_ordlist.to_sorted_list(SetB),
-    InSetListA = tree_bitset.to_sorted_list(InSetA),
-    InSetListB = set_ordlist.to_sorted_list(InSetB),
-    OutSetListA = tree_bitset.to_sorted_list(OutSetA),
-    OutSetListB = set_ordlist.to_sorted_list(OutSetB),
+    tree_bitset.to_sorted_list(SetA, SetListA),
+    set_ordlist.to_sorted_list(SetB, SetListB),
+    tree_bitset.to_sorted_list(InSetA, InSetListA),
+    set_ordlist.to_sorted_list(InSetB, InSetListB),
+    tree_bitset.to_sorted_list(OutSetA, OutSetListA),
+    set_ordlist.to_sorted_list(OutSetB, OutSetListB),
     (
         SetListA = SetListB,
         InSetListA = InSetListB,
@@ -428,14 +428,14 @@ divide_by_set(DivideBySetA - DivideBySetB, SetA - SetB, ResultIn, ResultOut) :-
     tree_bitset.divide_by_set(DivideBySetA, SetA, InSetA, OutSetA),
     set_ordlist.divide_by_set(DivideBySetB, SetB, InSetB, OutSetB),
 
-    DivideBySetListA = tree_bitset.to_sorted_list(DivideBySetA),
-    DivideBySetListB = set_ordlist.to_sorted_list(DivideBySetB),
-    SetListA = tree_bitset.to_sorted_list(SetA),
-    SetListB = set_ordlist.to_sorted_list(SetB),
-    InSetListA = tree_bitset.to_sorted_list(InSetA),
-    InSetListB = set_ordlist.to_sorted_list(InSetB),
-    OutSetListA = tree_bitset.to_sorted_list(OutSetA),
-    OutSetListB = set_ordlist.to_sorted_list(OutSetB),
+    tree_bitset.to_sorted_list(DivideBySetA, DivideBySetListA),
+    set_ordlist.to_sorted_list(DivideBySetB, DivideBySetListB),
+    tree_bitset.to_sorted_list(SetA, SetListA),
+    set_ordlist.to_sorted_list(SetB, SetListB),
+    tree_bitset.to_sorted_list(InSetA, InSetListA),
+    set_ordlist.to_sorted_list(InSetB, InSetListB),
+    tree_bitset.to_sorted_list(OutSetA, OutSetListA),
+    set_ordlist.to_sorted_list(OutSetB, OutSetListB),
     (
         DivideBySetListA = DivideBySetListB,
         SetListA = SetListB,
@@ -451,8 +451,8 @@ divide_by_set(DivideBySetA - DivideBySetB, SetA - SetB, ResultIn, ResultOut) :-
 %-----------------------------------------------------------------------------%
 
 foldl(Pred, SetA - SetB, Acc0, Acc) :-
-    SetListA = tree_bitset.to_sorted_list(SetA),
-    SetListB = set_ordlist.to_sorted_list(SetB),
+    tree_bitset.to_sorted_list(SetA, SetListA),
+    set_ordlist.to_sorted_list(SetB, SetListB),
     tree_bitset.foldl(Pred, SetA, Acc0, AccA),
     set_ordlist.fold(Pred, SetB, Acc0, AccB),
     ( SetListA = SetListB, AccA = AccB ->
@@ -462,12 +462,12 @@ foldl(Pred, SetA - SetB, Acc0, Acc) :-
     ).
 
 filter(Pred, SetA - SetB) = Result :-
-    SetListA = tree_bitset.to_sorted_list(SetA),
-    SetListB = set_ordlist.to_sorted_list(SetB),
+    tree_bitset.to_sorted_list(SetA, SetListA),
+    set_ordlist.to_sorted_list(SetB, SetListB),
     InSetA = tree_bitset.filter(Pred, SetA),
     InSetB = set_ordlist.filter(Pred, SetB),
-    InSetListA = tree_bitset.to_sorted_list(InSetA),
-    InSetListB = set_ordlist.to_sorted_list(InSetB),
+    tree_bitset.to_sorted_list(InSetA, InSetListA),
+    set_ordlist.to_sorted_list(InSetB, InSetListB),
     ( SetListA = SetListB, InSetListA = InSetListB ->
         Result = InSetA - InSetB
     ;
@@ -475,14 +475,14 @@ filter(Pred, SetA - SetB) = Result :-
     ).
 
 filter(Pred, SetA - SetB, ResultIn, ResultOut) :-
-    SetListA = tree_bitset.to_sorted_list(SetA),
-    SetListB = set_ordlist.to_sorted_list(SetB),
+    tree_bitset.to_sorted_list(SetA, SetListA),
+    set_ordlist.to_sorted_list(SetB, SetListB),
     tree_bitset.filter(Pred, SetA, InSetA, OutSetA),
     set_ordlist.filter(Pred, SetB, InSetB, OutSetB),
-    InSetListA = tree_bitset.to_sorted_list(InSetA),
-    InSetListB = set_ordlist.to_sorted_list(InSetB),
-    OutSetListA = tree_bitset.to_sorted_list(OutSetA),
-    OutSetListB = set_ordlist.to_sorted_list(OutSetB),
+    tree_bitset.to_sorted_list(InSetA, InSetListA),
+    set_ordlist.to_sorted_list(InSetB, InSetListB),
+    tree_bitset.to_sorted_list(OutSetA, OutSetListA),
+    set_ordlist.to_sorted_list(OutSetB, OutSetListB),
     ( SetListA = SetListB, InSetListA = InSetListB, OutSetListA = OutSetListB ->
         ResultIn = InSetA - InSetB,
         ResultOut = OutSetA - OutSetB
@@ -497,8 +497,8 @@ filter(Pred, SetA - SetB, ResultIn, ResultOut) :-
 
 check0(Op, Tester, Result) :-
     Tester = BitSet - Set,
-    BitSetList = tree_bitset.to_sorted_list(BitSet),
-    SetList = set_ordlist.to_sorted_list(Set),
+    tree_bitset.to_sorted_list(BitSet, BitSetList),
+    set_ordlist.to_sorted_list(Set, SetList),
     ( BitSetList = SetList ->
         Result = Tester
     ;
@@ -510,11 +510,11 @@ check0(Op, Tester, Result) :-
 
 check1(Op, TesterA, Tester, Result) :-
     TesterA = BitSetA - SetA,
-    BitSetListA = tree_bitset.to_sorted_list(BitSetA),
-    SetListA = set_ordlist.to_sorted_list(SetA),
+    tree_bitset.to_sorted_list(BitSetA, BitSetListA),
+    set_ordlist.to_sorted_list(SetA, SetListA),
     Tester = BitSet - Set,
-    BitSetList = tree_bitset.to_sorted_list(BitSet),
-    SetList = set_ordlist.to_sorted_list(Set),
+    tree_bitset.to_sorted_list(BitSet, BitSetList),
+    set_ordlist.to_sorted_list(Set, SetList),
     ( BitSetListA = SetListA, BitSetList = SetList ->
         Result = Tester
     ;
@@ -526,14 +526,14 @@ check1(Op, TesterA, Tester, Result) :-
 
 check2(Op, TesterA, TesterB, Tester, Result) :-
     TesterA = BitSetA - SetA,
-    BitSetListA = tree_bitset.to_sorted_list(BitSetA),
-    SetListA = set_ordlist.to_sorted_list(SetA),
+    tree_bitset.to_sorted_list(BitSetA, BitSetListA),
+    set_ordlist.to_sorted_list(SetA, SetListA),
     TesterB = BitSetB - SetB,
-    BitSetListB = tree_bitset.to_sorted_list(BitSetB),
-    SetListB = set_ordlist.to_sorted_list(SetB),
+    tree_bitset.to_sorted_list(BitSetB, BitSetListB),
+    set_ordlist.to_sorted_list(SetB, SetListB),
     Tester = BitSet - Set,
-    BitSetList = tree_bitset.to_sorted_list(BitSet),
-    SetList = set_ordlist.to_sorted_list(Set),
+    tree_bitset.to_sorted_list(BitSet, BitSetList),
+    set_ordlist.to_sorted_list(Set, SetList),
 
     ( BitSetListA = SetListA, BitSetListB = SetListB, BitSetList = SetList ->
         Result = Tester
