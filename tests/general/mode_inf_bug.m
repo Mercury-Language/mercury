@@ -37,8 +37,6 @@ write_s(S) --> io__write_string(S).
 
 %% Description: Speed tests for meta predicates.
 
-%% RCS: $Id: mode_inf_bug.m,v 1.6 2009-08-14 03:21:53 wangp Exp $
-
 %%% Simple test predicate --------------------------------------------
 :- mode is_a(in) is semidet.
 is_a(a).
