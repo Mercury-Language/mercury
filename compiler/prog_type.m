@@ -540,9 +540,11 @@ type_to_ctor_and_args_det(Type, TypeCtor, Args) :-
     ).
 
 type_to_ctor(Type, TypeCtor) :-
+    % This should be subject to unused argument elimination.
     type_to_ctor_and_args(Type, TypeCtor, _Args).
 
 type_to_ctor_det(Type, TypeCtor) :-
+    % This should be subject to unused argument elimination.
     type_to_ctor_and_args_det(Type, TypeCtor, _Args).
 
 type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-

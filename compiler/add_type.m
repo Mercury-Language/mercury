@@ -691,52 +691,51 @@ ctors_add([Ctor | Rest], TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
 
     ConsDefn = hlds_cons_defn(TypeCtor, TVarSet, TypeParams, KindMap,
         ExistQVars, Constraints, Args, Context),
+    get_partial_qualifiers(TypeCtorModuleName, PQInfo, PartialQuals),
 
-    some [!OtherConsIds] (
-        MainConsId = QualifiedConsIdB,
-        !:OtherConsIds = [],
+    % Check that there is at most one definition of a given cons_id
+    % in each type.
+    (
+        search_cons_table(!.Ctors, QualifiedConsIdA, QualifiedConsDefnsA),
+        some [OtherConsDefn] (
+            list.member(OtherConsDefn, QualifiedConsDefnsA),
+            OtherConsDefn ^ cons_type_ctor = TypeCtor
+        )
+    ->
+        QualifiedConsIdStr = cons_id_and_arity_to_string(QualifiedConsIdA),
+        TypeCtorStr = type_ctor_to_string(TypeCtor),
+        Pieces = [words("Error: constructor"), quote(QualifiedConsIdStr),
+            words("for type"), quote(TypeCtorStr),
+            words("multiply defined."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ;
+        some [!OtherConsIds] (
+            % Schedule the addition of the fully-qualified cons_id
+            % into the cons_table.
+            MainConsId = QualifiedConsIdA,
+            !:OtherConsIds = [QualifiedConsIdB],
 
-        % Check that there is at most one definition of a given cons_id
-        % in each type.
-        (
-            search_cons_table(!.Ctors, QualifiedConsIdA, QualifiedConsDefnsA),
-            some [OtherConsDefn] (
-                list.member(OtherConsDefn, QualifiedConsDefnsA),
-                OtherConsDefn ^ cons_type_ctor = TypeCtor
-            )
-        ->
-            QualifiedConsIdStr = cons_id_and_arity_to_string(QualifiedConsIdA),
-            TypeCtorStr = type_ctor_to_string(TypeCtor),
-            Pieces = [words("Error: constructor"), quote(QualifiedConsIdStr),
-                words("for type"), quote(TypeCtorStr),
-                words("multiply defined."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs]
-        ;
-            !:OtherConsIds = [QualifiedConsIdA | !.OtherConsIds]
-        ),
+            % Schedule the addition of the unqualified version of the cons_id
+            % to the cons_table, if appropriate.
+            (
+                NeedQual = may_be_unqualified,
+                !:OtherConsIds =
+                    [UnqualifiedConsIdA, UnqualifiedConsIdB | !.OtherConsIds]
+            ;
+                NeedQual = must_be_qualified
+            ),
 
-        % Add the unqualified version of the cons_id to the cons_table,
-        % if appropriate.
-        (
-            NeedQual = may_be_unqualified,
-            !:OtherConsIds =
-                [UnqualifiedConsIdA, UnqualifiedConsIdB | !.OtherConsIds]
-        ;
-            NeedQual = must_be_qualified
-        ),
+            % Schedule the partially qualified versions of the cons_id.
+            list.foldl(add_ctor_to_list(TypeCtor, BaseName, Arity),
+                PartialQuals, !OtherConsIds),
 
-        % Add partially qualified versions of the cons_id.
-        get_partial_qualifiers(TypeCtorModuleName, PQInfo, PartialQuals),
-        list.foldl(add_ctor_to_list(TypeCtor, BaseName, Arity),
-            PartialQuals, !OtherConsIds),
-
-        insert_into_cons_table(MainConsId, !.OtherConsIds, ConsDefn,
-            !Ctors)
+            % Do the scheduled additions.
+            insert_into_cons_table(MainConsId, !.OtherConsIds, ConsDefn,
+                !Ctors)
+        )
     ),
-
-    % Insert the fully-qualified version of this cons_id into the cons_table.
 
     FieldNames = list.map(func(C) = C ^ arg_field_name, Args),
     FirstField = 1,

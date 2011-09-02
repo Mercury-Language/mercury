@@ -930,7 +930,7 @@ substitute_type_args_3(Subst, [Arg0 | Args0], [Arg | Args]) :-
 %-----------------------------------------------------------------------------%
 
 switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
-    type_to_ctor_and_args(Type, TypeCtor, _),
+    type_to_ctor(Type, TypeCtor),
     ( TypeCtor = type_ctor(unqualified("character"), 0) ->
         % XXX The following code uses the source machine's character size,
         % not the target's, so it won't work if cross-compiling to a machine
@@ -1051,13 +1051,13 @@ get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
         ExistQVars, Constraints, Args, _Context),
     ArgTypes = list.map(func(C) = C ^ arg_type, Args),
     prog_type.var_list_to_type_list(KindMap, TypeParams, TypeCtorArgs),
-    type_to_ctor_and_args(VarType, TypeCtor, _),
+    type_to_ctor(VarType, TypeCtor),
     construct_type(TypeCtor, TypeCtorArgs, RetType),
     CtorDefn = ctor_defn(TypeVarSet, ExistQVars, KindMap, Constraints,
         ArgTypes, RetType).
 
 is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
-    type_to_ctor_and_args(VarType, TypeCtor, _),
+    type_to_ctor(VarType, TypeCtor),
     get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
     ConsDefn ^ cons_exist_tvars = [_ | _].
 

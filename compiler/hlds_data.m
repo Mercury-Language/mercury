@@ -103,7 +103,7 @@
     cons_id::in, hlds_cons_defn::out) is det.
 
 :- pred get_all_cons_defns(cons_table::in,
-    assoc_list(cons_id, list(hlds_cons_defn))::out) is det.
+    assoc_list(cons_id, hlds_cons_defn)::out) is det.
 
 :- pred return_other_arities(cons_table::in, sym_name::in, int::in,
     list(int)::out) is det.
@@ -116,87 +116,133 @@
 
 :- implementation.
 
+    % Maps the raw, unqualified name of a functor to information about
+    % all the functors with that name.
 :- type cons_table  ==  map(string, inner_cons_table).
-:- type inner_cons_table == map(cons_id, list(hlds_cons_defn)).
+
+    % Every visible constructor will have exactly one entry in the list,
+    % and this entry lists all the cons_ids by which that constructor
+    % may be known. The cons_ids listed for a given constructor may give
+    % fully, partially or not-at-all qualified versions of the symbol name,
+    % they must agree on the arity, and may give the actual type_ctor
+    % or the standard dummy type_ctor. The main cons_id must give the
+    % fully qualified symname and the right type_ctor.
+    %
+    % The order of the list is not meaningful.
+:- type inner_cons_table == list(inner_cons_entry).
+:- type inner_cons_entry
+    --->    inner_cons_entry(
+                ice_fully_qual_cons_id      :: cons_id,
+                ice_other_cons_ids          :: list(cons_id),
+                ice_cons_defn               :: hlds_cons_defn
+            ).
 
 init_cons_table = map.init.
 
 insert_into_cons_table(MainConsId, OtherConsIds, ConsDefn, !ConsTable) :-
     ( MainConsId = cons(MainSymName, _, _) ->
         MainName = unqualify_name(MainSymName),
-        ( map.search(!.ConsTable, MainName, InnerConsTable0) ->
-            insert_into_inner_cons_table(MainName, [MainConsId | OtherConsIds],
-                ConsDefn, InnerConsTable0, InnerConsTable),
-            map.det_update(MainName, InnerConsTable, !ConsTable)
+        Entry = inner_cons_entry(MainConsId, OtherConsIds, ConsDefn),
+        ( map.search(!.ConsTable, MainName, InnerConsEntries0) ->
+            InnerConsEntries = [Entry | InnerConsEntries0],
+            map.det_update(MainName, InnerConsEntries, !ConsTable)
         ;
-            insert_into_inner_cons_table(MainName, [MainConsId | OtherConsIds],
-                ConsDefn, map.init, InnerConsTable),
-            map.det_insert(MainName, InnerConsTable, !ConsTable)
+            InnerConsEntries = [Entry],
+            map.det_insert(MainName, InnerConsEntries, !ConsTable)
         )
     ;
         unexpected($module, $pred, "MainConsId is not cons")
     ).
 
-:- pred insert_into_inner_cons_table(string::in, list(cons_id)::in,
-    hlds_cons_defn::in, inner_cons_table::in, inner_cons_table::out) is det.
-
-insert_into_inner_cons_table(_MainName, [], _ConsDefn, !InnerConsTable).
-insert_into_inner_cons_table(MainName, [ConsId | ConsIds], ConsDefn,
-        !InnerConsTable) :-
-    ( ConsId = cons(SymName, _, _) ->
-        Name = unqualify_name(SymName),
-        ( Name = MainName ->
-            multi_map.set(ConsId, ConsDefn, !InnerConsTable)
-        ;
-            unexpected($module, $pred, "SymName mismatch")
-        )
-    ;
-        unexpected($module, $pred, "ConsId is not cons")
-    ),
-    insert_into_inner_cons_table(MainName, ConsIds, ConsDefn, !InnerConsTable).
-
 search_cons_table(ConsTable, ConsId, ConsDefns) :-
     ConsId = cons(SymName, _, _),
     Name = unqualify_name(SymName),
     map.search(ConsTable, Name, InnerConsTable),
-    map.search(InnerConsTable, ConsId, ConsDefns).
+
+    % After post-typecheck, all calls should specify the main cons_id
+    % of the searched-for (single) constructor definition. Searching
+    % the main cons_ids is sufficient for such calls, and since there are
+    % many fewer main cons_ids than other cons_ids, it is fast as well.
+    %
+    % I (zs) don't think replacing a list with a different structure would
+    % help, since these lists should be very short.
+
+    ( search_inner_main_cons_ids(InnerConsTable, ConsId, MainConsDefn) ->
+        ConsDefns = [MainConsDefn]
+    ;
+        % Before and during typecheck, we may need to look up constructors
+        % using cons_ids that may not be even partially module qualified,
+        % and which will contain a dummy type_ctor. That is why we search
+        % the other cons_ids as well.
+        %
+        % After post-typecheck, we should get here only if there is a bug
+        % in the compiler, since
+        %
+        % - at that time, all cons_ids should be module-qualified and should
+        %   have non-dummy type-ctors,
+        %
+        % - this means that searches that find what they are looking for
+        %   will take the then-branch above, and
+        %
+        % - there should be no searches that fail, because mention of
+        %   an unknown cons_id in the program is a type error, which means
+        %   the compiler should never get to the passes following
+        %   post-typecheck.
+
+        search_inner_other_cons_ids(InnerConsTable, ConsId, ConsDefns),
+        % Do not return empty lists; let the call fail in that case.
+        ConsDefns = [_ | _]
+    ).
+
+:- pred search_inner_main_cons_ids(list(inner_cons_entry)::in, cons_id::in,
+    hlds_cons_defn::out) is semidet.
+
+search_inner_main_cons_ids([Entry | Entries], ConsId, ConsDefn) :-
+    ( ConsId = Entry ^ ice_fully_qual_cons_id ->
+        ConsDefn = Entry ^ ice_cons_defn
+    ;
+        search_inner_main_cons_ids(Entries, ConsId, ConsDefn)
+    ).
+
+:- pred search_inner_other_cons_ids(list(inner_cons_entry)::in, cons_id::in,
+    list(hlds_cons_defn)::out) is det.
+
+search_inner_other_cons_ids([], _ConsId, []).
+search_inner_other_cons_ids([Entry | Entries], ConsId, !:ConsDefns) :-
+    search_inner_other_cons_ids(Entries, ConsId, !:ConsDefns),
+    ( list.member(ConsId, Entry ^ ice_other_cons_ids) ->
+        !:ConsDefns = [Entry ^ ice_cons_defn | !.ConsDefns]
+    ;
+        true
+    ).
 
 search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn) :-
     ConsId = cons(SymName, _, _),
     Name = unqualify_name(SymName),
     map.search(ConsTable, Name, InnerConsTable),
-    map.search(InnerConsTable, ConsId, AllConsDefns),
-    search_cons_defns_for_type_ctor(TypeCtor, AllConsDefns, ConsDefn).
+    search_inner_cons_ids_type_ctor(InnerConsTable, TypeCtor, ConsId,
+        ConsDefn).
 
-:- pred search_cons_defns_for_type_ctor(type_ctor::in,
-    list(hlds_cons_defn)::in, hlds_cons_defn::out) is semidet.
+:- pred search_inner_cons_ids_type_ctor(list(inner_cons_entry)::in,
+    type_ctor::in, cons_id::in, hlds_cons_defn::out) is semidet.
 
-search_cons_defns_for_type_ctor(TypeCtor, [HeadConsDefn | TailConsDefns],
+search_inner_cons_ids_type_ctor([Entry | Entries], TypeCtor, ConsId,
         ConsDefn) :-
-    ( HeadConsDefn ^ cons_type_ctor = TypeCtor ->
-        verify_cons_defns_for_type_ctor(TypeCtor, HeadConsDefn, TailConsDefns,
-            ConsDefn)
-    ;
-        search_cons_defns_for_type_ctor(TypeCtor, TailConsDefns, ConsDefn)
-    ).
+    EntryConsDefn = Entry ^ ice_cons_defn,
+    (
+        % If a type has two functors with the same name but different arities,
+        % then it is possible for the TypeCtor test to succeed and the ConsId
+        % tests to fail (due to the arity mismatch). In such cases, we need
+        % to search the rest of the list.
 
-:- pred verify_cons_defns_for_type_ctor(type_ctor::in, hlds_cons_defn::in,
-    list(hlds_cons_defn)::in, hlds_cons_defn::out) is semidet.
-
-verify_cons_defns_for_type_ctor(_TypeCtor, FirstConsDefn, [], FirstConsDefn).
-verify_cons_defns_for_type_ctor(TypeCtor, FirstConsDefn,
-        [HeadConsDefn | TailConsDefns], ConsDefn) :-
-    ( HeadConsDefn ^ cons_type_ctor = TypeCtor ->
-        ( HeadConsDefn = FirstConsDefn ->
-            verify_cons_defns_for_type_ctor(TypeCtor, FirstConsDefn,
-                TailConsDefns, ConsDefn)
-        ;
-            unexpected($module, $pred,
-                "different cons_defns for same cons_id in same type")
+        EntryConsDefn ^ cons_type_ctor = TypeCtor,
+        ( ConsId = Entry ^ ice_fully_qual_cons_id
+        ; list.member(ConsId, Entry ^ ice_other_cons_ids)
         )
+    ->
+        ConsDefn = EntryConsDefn
     ;
-        verify_cons_defns_for_type_ctor(TypeCtor, FirstConsDefn,
-            TailConsDefns, ConsDefn)
+        search_inner_cons_ids_type_ctor(Entries, TypeCtor, ConsId, ConsDefn)
     ).
 
 lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn) :-
@@ -213,24 +259,61 @@ get_all_cons_defns(ConsTable, AllConsDefns) :-
     map.foldl(accumulate_all_inner_cons_defns, ConsTable, [], AllConsDefns).
 
 :- pred accumulate_all_inner_cons_defns(string::in, inner_cons_table::in,
-    assoc_list(cons_id, list(hlds_cons_defn))::in,
-    assoc_list(cons_id, list(hlds_cons_defn))::out) is det.
+    assoc_list(cons_id, hlds_cons_defn)::in,
+    assoc_list(cons_id, hlds_cons_defn)::out) is det.
 
 accumulate_all_inner_cons_defns(_Name, InnerConsTable, !AllConsDefns) :-
-    map.to_assoc_list(InnerConsTable, InnerConsList),
+    list.map(project_inner_cons_entry, InnerConsTable, InnerConsList),
     !:AllConsDefns = InnerConsList ++ !.AllConsDefns.
+
+:- pred project_inner_cons_entry(inner_cons_entry::in,
+    pair(cons_id, hlds_cons_defn)::out) is det.
+
+project_inner_cons_entry(Entry, Pair) :-
+    Entry = inner_cons_entry(MainConsId, _OtherConsIds, ConsDefn),
+    Pair = MainConsId - ConsDefn.
 
 return_other_arities(ConsTable, SymName, Arity, OtherArities) :-
     Name = unqualify_name(SymName),
     ( map.search(ConsTable, Name, InnerConsTable) ->
-        solutions.solutions(
-            (pred(N::out) is nondet :-
-                map.member(InnerConsTable, cons(SymName, N, _), _),
-                N \= Arity
-            ), OtherArities)
+        return_other_arities_inner(InnerConsTable, SymName, Arity,
+            [], OtherArities0),
+        list.sort_and_remove_dups(OtherArities0, OtherArities)
     ;
         OtherArities = []
     ).
+
+:- pred return_other_arities_inner(list(inner_cons_entry)::in,
+    sym_name::in, int::in, list(int)::in, list(int)::out) is det.
+
+return_other_arities_inner([], _, _, !OtherArities).
+return_other_arities_inner([Entry | Entries], SymName, Arity, !OtherArities) :-
+    MainConsId = Entry ^ ice_fully_qual_cons_id,
+    OtherConsIds = Entry ^ ice_other_cons_ids,
+    return_other_arities_inner_cons_ids([MainConsId | OtherConsIds],
+        SymName, Arity, !OtherArities),
+    return_other_arities_inner(Entries, SymName, Arity, !OtherArities).
+
+:- pred return_other_arities_inner_cons_ids(list(cons_id)::in,
+    sym_name::in, int::in, list(int)::in, list(int)::out) is det.
+
+return_other_arities_inner_cons_ids([], _, _, !OtherArities).
+return_other_arities_inner_cons_ids([ConsId | ConsIds], SymName, Arity,
+        !OtherArities) :-
+    ( ConsId = cons(ThisSymName, ThisArity, _) ->
+        (
+            ThisSymName = SymName,
+            ThisArity \= Arity
+        ->
+            !:OtherArities = [ThisArity | !.OtherArities]
+        ;
+            true
+        )
+    ;
+        unexpected($module, $pred, "ConsId is not cons")
+    ),
+    return_other_arities_inner_cons_ids(ConsIds, SymName, Arity,
+        !OtherArities).
 
 replace_cons_defns_in_cons_table(Replace, !ConsTable) :-
     map.map_values_only(replace_cons_defns_in_inner_cons_table(Replace),
@@ -241,15 +324,17 @@ replace_cons_defns_in_cons_table(Replace, !ConsTable) :-
     inner_cons_table::in, inner_cons_table::out) is det.
 
 replace_cons_defns_in_inner_cons_table(Replace, !InnerConsTable) :-
-    map.map_values_only(replace_cons_defns_in_cons_defns(Replace),
+    list.map(replace_cons_defns_in_inner_cons_entry(Replace),
         !InnerConsTable).
 
-:- pred replace_cons_defns_in_cons_defns(
+:- pred replace_cons_defns_in_inner_cons_entry(
     pred(hlds_cons_defn, hlds_cons_defn)::in(pred(in, out) is det),
-    list(hlds_cons_defn)::in, list(hlds_cons_defn)::out) is det.
+    inner_cons_entry::in, inner_cons_entry::out) is det.
 
-replace_cons_defns_in_cons_defns(Replace, !ConsDefns) :-
-    list.map(Replace, !ConsDefns).
+replace_cons_defns_in_inner_cons_entry(Replace, !Entry) :-
+    ConsDefn0 = !.Entry ^ ice_cons_defn,
+    Replace(ConsDefn0, ConsDefn),
+    !Entry ^ ice_cons_defn := ConsDefn.
 
 cons_table_optimize(!ConsTable) :-
     map.optimize(!ConsTable).
