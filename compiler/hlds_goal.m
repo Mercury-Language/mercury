@@ -60,7 +60,7 @@
                 % are known. Mode analysis fills in the missing information.
 
                 % The variable on the left hand side of the unification.
-                % NOTE: for convenience this field is duplicated in the
+                % NOTE: for convenience, this field is duplicated in the
                 % unification structure below.
                 unify_lhs           :: prog_var,
 
@@ -98,8 +98,8 @@
                 % do we generate inline code for it?
                 call_builtin        :: builtin_state,
 
-                % Was this predicate call originally a unification? If so,
-                % we store the context of the unification.
+                % Was this predicate call originally a unification?
+                % If so, we store the context of the unification.
                 call_unify_context  :: maybe(call_unify_context),
 
                 % The name of the predicate.
