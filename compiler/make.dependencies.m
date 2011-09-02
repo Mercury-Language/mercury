@@ -112,6 +112,12 @@
     set(module_name)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
+    % Remove all nested modules from a list of modules.
+    %
+:- pred remove_nested_modules(globals::in, list(module_name)::in,
+    list(module_name)::out, make_info::in, make_info::out, io::di, io::uo)
+    is det.
+
 %-----------------------------------------------------------------------------%
 
     % Find all modules in the current directory which are reachable (by import)
@@ -1251,6 +1257,26 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
             Success = no,
             Modules = Modules0
         )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+remove_nested_modules(Globals, Modules0, Modules, !Info, !IO) :-
+    list.foldl3(collect_nested_modules(Globals), Modules0,
+        set.init, NestedModules, !Info, !IO),
+    list.negated_filter(set.contains(NestedModules), Modules0, Modules).
+
+:- pred collect_nested_modules(globals::in, module_name::in,
+    set(module_name)::in, set(module_name)::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
+    get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+    (
+        MaybeImports = yes(Imports),
+        set.insert_list(Imports ^ mai_nested_children, !NestedModules)
+    ;
+        MaybeImports = no
     ).
 
 %-----------------------------------------------------------------------------%
