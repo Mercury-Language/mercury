@@ -2138,13 +2138,13 @@ difference(SetA, SetB) = Set :-
             LeafNodesA = [],
             List = ListA
         ;
-            LeafNodesA = [FirstNodeA | LaterNodesA],
-            raise_leaves_to_level(LevelB, FirstNodeA, LaterNodesA,
-                InteriorNodeA),
-            head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
-            interiornode_difference(LevelB, InteriorNodeA, [],
-                LevelB, InteriorHeadB, InteriorTailB, Level, InteriorNodes),
-            List = interior_list(Level, InteriorNodes)
+            LeafNodesA = [FirstNodeA | _LaterNodesA],
+            range_of_parent_node(FirstNodeA ^ leaf_offset, 0,
+                ParentInitOffsetA, ParentLimitOffsetA),
+            find_leaf_nodes_at_parent_offset(LevelB, InteriorNodesB,
+                ParentInitOffsetA, ParentLimitOffsetA, LeafNodesB),
+            leaflist_difference(LeafNodesA, LeafNodesB, LeafNodes),
+            List = leaf_list(LeafNodes)
         )
     ;
         ListA = interior_list(LevelA, InteriorNodesA),
@@ -2154,30 +2154,354 @@ difference(SetA, SetB) = Set :-
             List = ListA
         ;
             LeafNodesB = [FirstNodeB | LaterNodesB],
-            raise_leaves_to_level(LevelA, FirstNodeB, LaterNodesB,
-                InteriorNodeB),
-            head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
-            interiornode_difference(LevelA, InteriorHeadA, InteriorTailA,
-                LevelA, InteriorNodeB, [], Level, InteriorNodes),
+            raise_leaves_to_interior(FirstNodeB, LaterNodesB, InteriorNodeB),
+            descend_and_difference_one(LevelA, InteriorNodesA,
+                1, InteriorNodeB, Level, InteriorNodes),
             List = interior_list(Level, InteriorNodes)
         )
     ;
         ListA = interior_list(LevelA, InteriorNodesA),
         ListB = interior_list(LevelB, InteriorNodesB),
-        head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
-        head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
-
-        int.max(LevelA, LevelB, LevelAB),
-        raise_interiors_to_level(LevelAB, LevelA, InteriorHeadA, InteriorTailA,
-            RaisedHeadA, RaisedTailA),
-        raise_interiors_to_level(LevelAB, LevelB, InteriorHeadB, InteriorTailB,
-            RaisedHeadB, RaisedTailB),
-        interiornode_difference(LevelAB, RaisedHeadA, RaisedTailA,
-            LevelAB, RaisedHeadB, RaisedTailB, Level, InteriorNodes),
-        List = interior_list(Level, InteriorNodes)
+        ( LevelA > LevelB ->
+            head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
+            descend_and_difference_list(LevelA, InteriorNodesA,
+                LevelB, InteriorHeadB, InteriorTailB, Level, InteriorNodes),
+            List = interior_list(Level, InteriorNodes)
+        ; LevelA = LevelB ->
+            head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
+            head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
+            interiornode_difference(LevelA, InteriorHeadA, InteriorTailA,
+                LevelB, InteriorHeadB, InteriorTailB, Level, InteriorNodes),
+            List = interior_list(Level, InteriorNodes)
+        ;
+            % LevelA < LevelB
+            head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
+            range_of_parent_node(InteriorHeadA ^ init_offset, LevelA,
+                ParentInitOffsetA, ParentLimitOffsetA),
+            ParentLevelA = LevelA + 1,
+            % Find the list of nodes in B that are at LevelA, covering
+            % the same range as A's parent node would cover. These are the
+            % only nodes in B at Level A that InteriorNodesA can overlap with.
+            find_interior_nodes_at_parent_offset(LevelB, InteriorNodesB,
+                ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA,
+                SelectedNodesB),
+            (
+                SelectedNodesB = [],
+                List = ListA
+            ;
+                SelectedNodesB = [SelectedHeadB | SelectedTailB],
+                SelectedLevelB = LevelA,
+                interiornode_difference(LevelA, InteriorHeadA, InteriorTailA,
+                    SelectedLevelB, SelectedHeadB, SelectedTailB,
+                    Level, InteriorNodes),
+                List = interior_list(Level, InteriorNodes)
+            )
+        )
     ),
     prune_top_levels(List, PrunedList),
     Set = wrap_tree_bitset(PrunedList).
+
+:- pred find_leaf_nodes_at_parent_offset(int::in, list(interior_node)::in,
+    int::in, int::in, list(leaf_node)::out) is det.
+
+find_leaf_nodes_at_parent_offset(_LevelB, [],
+        _ParentInitOffsetA, _ParentLimitOffsetA, []).
+find_leaf_nodes_at_parent_offset(LevelB, [HeadB | TailB],
+        ParentInitOffsetA, ParentLimitOffsetA, LeafNodesB) :-
+    ( HeadB ^ init_offset > ParentInitOffsetA ->
+        % The leaf nodes in ListA cover at most one level 1 interior node's
+        % span of bits. Call that the hypothetical level 1 interior node.
+        % HeadB ^ init_offset should be a multiple of (a power of) that span,
+        % so if it is greater than the initial offset of that hypothetical
+        % node, then it should be greater than the final offset of that
+        % hypothetical node as well. The limit offset is one bigger than
+        % the final offset.
+        trace [compile_time(flag("tree-bitset-checks"))] (
+            ( HeadB ^ init_offset >= ParentLimitOffsetA ->
+                true
+            ;
+                unexpected($module, $pred, "screwed-up offsets")
+            )
+        ),
+        LeafNodesB = []
+    ; ParentInitOffsetA < HeadB ^ limit_offset ->
+        % ListA's range is inside HeadB's range.
+        HeadNodeListB = HeadB ^ components,
+        (
+            HeadNodeListB = leaf_list(HeadLeafNodesB),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(unify(LevelB, 1), $module, $pred, "LevelB != 1")
+            ),
+            LeafNodesB = HeadLeafNodesB
+        ;
+            HeadNodeListB = interior_list(HeadSubLevelB, HeadInteriorNodesB),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect_not(unify(LevelB, 1), $module, $pred, "LevelB = 1"),
+                expect(unify(HeadSubLevelB, LevelB - 1),
+                    $module, $pred, "HeadSubLevelB != LevelB - 1")
+            ),
+            find_leaf_nodes_at_parent_offset(HeadSubLevelB, HeadInteriorNodesB,
+                ParentInitOffsetA, ParentLimitOffsetA, LeafNodesB)
+        )
+    ;
+        find_leaf_nodes_at_parent_offset(LevelB, TailB,
+            ParentInitOffsetA, ParentLimitOffsetA, LeafNodesB)
+    ).
+
+:- pred find_interior_nodes_at_parent_offset(int::in, list(interior_node)::in,
+    int::in, int::in, int::in, list(interior_node)::out) is det.
+
+find_interior_nodes_at_parent_offset(_LevelB, [],
+        _ParentLevelA, _ParentInitOffsetA, _ParentLimitOffsetA, []).
+find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
+        ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA, NodesB) :-
+    ( LevelB > ParentLevelA ->
+        ( HeadB ^ init_offset > ParentInitOffsetA ->
+            % ListA's range is before HeadB's range.
+            % The nodes in ListA cover at most one level ParentLevelA interior
+            % node's span of bits. Call that the hypothetical level
+            % ParentLevelA interior node. HeadB ^ init_offset should be a
+            % multiple of (a power of) that span, so if it is greater than
+            % the initial offset of that hypothetical node, then it should be
+            % greater than the final offset of that hypothetical node as well.
+            % The limit offset is one bigger than the final offset.
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                ( HeadB ^ init_offset >= ParentLimitOffsetA ->
+                    true
+                ;
+                    unexpected($module, $pred, "screwed-up offsets")
+                )
+            ),
+            NodesB = []
+        ; ParentInitOffsetA < HeadB ^ limit_offset ->
+            % ListA's range is inside HeadB's range.
+            HeadNodeListB = HeadB ^ components,
+            (
+                HeadNodeListB = leaf_list(_),
+                unexpected($module, $pred, "HeadNodeListB is a leaf list")
+            ;
+                HeadNodeListB = interior_list(HeadSubLevelB,
+                    HeadInteriorNodesB),
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    expect_not(unify(LevelB, 1), $module, $pred, "LevelB = 1"),
+                    expect(unify(HeadSubLevelB, LevelB - 1),
+                        $module, $pred, "HeadSubLevelB != LevelB - 1")
+                ),
+                find_interior_nodes_at_parent_offset(HeadSubLevelB,
+                    HeadInteriorNodesB,
+                    ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA, NodesB)
+            )
+        ;
+            % ListA's range is after HeadB's range.
+            find_interior_nodes_at_parent_offset(LevelB, TailB,
+                ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA, NodesB)
+        )
+    ;
+        trace [compile_time(flag("tree-bitset-checks"))] (
+            expect(unify(ParentLevelA, LevelB), $module, $pred,
+                "ParentLevelA != LevelB")
+        ),
+        ( HeadB ^ init_offset > ParentInitOffsetA ->
+            % ListA's range is before HeadB's range.
+            % The nodes in ListA cover at most one level ParentLevelA interior
+            % node's span of bits. Call that the hypothetical level
+            % ParentLevelA interior node. HeadB ^ init_offset should be a
+            % multiple of (a power of) that span, so if it is greater than
+            % the initial offset of that hypothetical node, then it should be
+            % greater than the final offset of that hypothetical node as well.
+            % The limit offset is one bigger than the final offset.
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                ( HeadB ^ init_offset >= ParentLimitOffsetA ->
+                    true
+                ;
+                    unexpected($module, $pred, "screwed-up offsets")
+                )
+            ),
+            NodesB = []
+        ; HeadB ^ init_offset = ParentInitOffsetA ->
+            ComponentsB = HeadB ^ components,
+            (
+                ComponentsB = leaf_list(_),
+                unexpected($module, $pred, "leaf_list")
+            ;
+                ComponentsB = interior_list(_, NodesB)
+            )
+        ;
+            find_interior_nodes_at_parent_offset(LevelB, TailB,
+                ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA, NodesB)
+        )
+    ).
+
+:- pred descend_and_difference_one(int::in, list(interior_node)::in,
+    int::in, interior_node::in, int::out, list(interior_node)::out) is det.
+
+descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
+        Level, List) :-
+    ( LevelA > LevelB ->
+        (
+            InteriorNodesA = [],
+            Level = LevelA,
+            List = []
+        ;
+            InteriorNodesA = [HeadA | TailA],
+            ( HeadA ^ limit_offset =< InteriorNodeB ^ init_offset ->
+                % All of the region covered by HeadA is before the region
+                % covered by InteriorNodeB.
+                descend_and_difference_one(LevelA, TailA, LevelB, InteriorNodeB,
+                    LevelTail, ListTail),
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    expect(unify(LevelTail, LevelA),
+                        $module, $pred, "LevelTail != LevelA")
+                ),
+                Level = LevelA,
+                List = [HeadA | ListTail]
+            ; HeadA ^ init_offset =< InteriorNodeB ^ init_offset ->
+                % The region covered by HeadA contains the region
+                % covered by InteriorNodeB.
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    ( InteriorNodeB ^ limit_offset =< HeadA ^ limit_offset ->
+                        true
+                    ;
+                        unexpected($module, $pred, "weird region relationship")
+                    )
+                ),
+                (
+                    HeadA ^ components = leaf_list(_),
+                    % LevelB is at least 1, LevelA is greater than LevelB,
+                    % so stepping one level down from levelA should get us
+                    % to at least level 1; level 0 cannot happen.
+                    unexpected($module, $pred,
+                        "HeadA ^ components is leaf_list")
+                ;
+                    HeadA ^ components = interior_list(HeadASubLevel,
+                        HeadASubNodes)
+                ),
+                descend_and_difference_one(HeadASubLevel, HeadASubNodes,
+                    LevelB, InteriorNodeB, LevelSub, ListSub),
+                (
+                    ListSub = [],
+                    Level = LevelA,
+                    List = TailA
+                ;
+                    ListSub = [ListSubHead | ListSubTail],
+                    raise_interiors_to_level(LevelA, LevelSub,
+                        ListSubHead, ListSubTail, RaisedHead, RaisedTail),
+                    % We are here because LevelA > LevelB. By construction,
+                    % LevelA > HeadASubLevel, and HeadASubLevel >= LevelSub.
+                    % Since LevelA > LevelSub, when we raise ListSub to LevelA,
+                    % all its nodes should have been gathered under a single
+                    % LevelA interior node, RaisedHead.
+                    trace [compile_time(flag("tree-bitset-checks"))] (
+                        expect(unify(RaisedTail, []),
+                            $module, $pred, "RaisedTail != []")
+                    ),
+                    Level = LevelA,
+                    List = [RaisedHead | TailA]
+                )
+            ;
+                % All of the region covered by HeadA is after the region
+                % covered by InteriorNodeB, and therefore so are all the
+                % regions covered by TailA.
+                Level = LevelA,
+                List = InteriorNodesA
+            )
+        )
+    ; LevelA = LevelB ->
+        interiorlist_difference(InteriorNodesA, [InteriorNodeB], List),
+        Level = LevelA
+    ;
+        unexpected($module, $pred, "LevelA < LevelB")
+    ).
+
+:- pred descend_and_difference_list(int::in, list(interior_node)::in,
+    int::in, interior_node::in, list(interior_node)::in,
+    int::out, list(interior_node)::out) is det.
+
+descend_and_difference_list(LevelA, InteriorNodesA,
+        LevelB, InteriorNodeB, InteriorNodesB, Level, List) :-
+    ( LevelA > LevelB ->
+        (
+            InteriorNodesA = [],
+            Level = LevelA,
+            List = []
+        ;
+            InteriorNodesA = [HeadA | TailA],
+            ( HeadA ^ limit_offset =< InteriorNodeB ^ init_offset ->
+                % All of the region covered by HeadA is before the region
+                % covered by [InteriorNodeB | InteriorNodesB].
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    list.det_last([InteriorNodeB | InteriorNodesB], LastB),
+                    expect((HeadA ^ limit_offset =< LastB ^ init_offset),
+                        $module, $pred,
+                        "HeadA ^ limit_offset > LastB ^ init_offset")
+                ),
+                descend_and_difference_list(LevelA, TailA,
+                    LevelB, InteriorNodeB, InteriorNodesB,
+                    LevelTail, ListTail),
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    expect(unify(LevelTail, LevelA),
+                        $module, $pred, "LevelTail != LevelA")
+                ),
+                Level = LevelA,
+                List = [HeadA | ListTail]
+            ; HeadA ^ init_offset =< InteriorNodeB ^ init_offset ->
+                % The region covered by HeadA contains the region
+                % covered by InteriorNodeB.
+                trace [compile_time(flag("tree-bitset-checks"))] (
+                    ( InteriorNodeB ^ limit_offset =< HeadA ^ limit_offset ->
+                        true
+                    ;
+                        unexpected($module, $pred, "weird region relationship")
+                    )
+                ),
+                (
+                    HeadA ^ components = leaf_list(_),
+                    % LevelB is at least 1, LevelA is greater than LevelB,
+                    % so stepping one level down from levelA should get us
+                    % to at least level 1; level 0 cannot happen.
+                    unexpected($module, $pred,
+                        "HeadA ^ components is leaf_list")
+                ;
+                    HeadA ^ components = interior_list(HeadASubLevel,
+                        HeadASubNodes)
+                ),
+                descend_and_difference_list(HeadASubLevel, HeadASubNodes,
+                    LevelB, InteriorNodeB, InteriorNodesB, LevelSub, ListSub),
+                (
+                    ListSub = [],
+                    Level = LevelA,
+                    List = TailA
+                ;
+                    ListSub = [ListSubHead | ListSubTail],
+                    raise_interiors_to_level(LevelA, LevelSub,
+                        ListSubHead, ListSubTail, RaisedHead, RaisedTail),
+                    % We are here because LevelA > LevelB. By construction,
+                    % LevelA > HeadASubLevel, and HeadASubLevel >= LevelSub.
+                    % Since LevelA > LevelSub, when we raise ListSub to LevelA,
+                    % all its nodes should have been gathered under a single
+                    % LevelA interior node, RaisedHead.
+                    trace [compile_time(flag("tree-bitset-checks"))] (
+                        expect(unify(RaisedTail, []),
+                            $module, $pred, "RaisedTail != []")
+                    ),
+                    Level = LevelA,
+                    List = [RaisedHead | TailA]
+                )
+            ;
+                % All of the region covered by HeadA is after the region
+                % covered by InteriorNodeB, and therefore so are all the
+                % regions covered by TailA.
+                Level = LevelA,
+                List = InteriorNodesA
+            )
+        )
+    ; LevelA = LevelB ->
+        interiorlist_difference(InteriorNodesA,
+            [InteriorNodeB | InteriorNodesB], List),
+        Level = LevelA
+    ;
+        unexpected($module, $pred, "LevelA < LevelB")
+    ).
 
 :- pred interiornode_difference(
     int::in, interior_node::in, list(interior_node)::in,
