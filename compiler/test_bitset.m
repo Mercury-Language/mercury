@@ -47,7 +47,10 @@
 :- pred is_singleton(test_bitset(T)::in, T::out) is semidet <= enum(T).
 
 :- pred contains(test_bitset(T)::in, T::in) is semidet <= enum(T).
-:- pred member(T::in, test_bitset(T)::in) is semidet <= enum(T).
+:- pred member(T, test_bitset(T)) <= enum(T).
+:- mode member(in, in) is semidet.
+:- mode member(out, in) is nondet.
+
 :- pred equal(test_bitset(T)::in, test_bitset(T)::in) is semidet <= enum(T).
 
 :- pred subset(test_bitset(T)::in, test_bitset(T)::in) is semidet.
@@ -120,6 +123,9 @@
 :- mode foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
 
+:- func foldl(func(T, Acc) = Acc, test_bitset(T), Acc) = Acc <= enum(T).
+:- mode foldl(func(in, in) = out is det, in, in) = out is det.
+
 :- func filter(pred(T)::in(pred(in) is semidet), test_bitset(T)::in)
     = (test_bitset(T)::out) is det <= enum(T).
 :- pred filter(pred(T)::in(pred(in) is semidet),
@@ -138,6 +144,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set_ordlist.
+:- import_module solutions.
 :- import_module string.
 :- import_module tree_bitset.
 
@@ -204,11 +211,24 @@ contains(SetA - SetB, E) :-
         error("test_bitset: contains failed")
     ).
 
-member(E, SetA - SetB) :-
+:- pragma promise_equivalent_clauses(member/2).
+
+member(E::in, (SetA - SetB)::in) :-
     ( tree_bitset.member(E, SetA) -> InSetA = yes ; InSetA = no),
     ( set_ordlist.member(E, SetB) -> InSetB = yes ; InSetB = no),
     ( InSetA = InSetB ->
         InSetA = yes
+    ;
+        error("test_bitset: member failed")
+    ).
+
+member(E::out, (SetA - SetB)::in) :-
+    PredA = (pred(EA::out) is nondet :- tree_bitset.member(EA, SetA)),
+    PredB = (pred(EB::out) is nondet :- set_ordlist.member(EB, SetB)),
+    solutions(PredA, SolnsA),
+    solutions(PredB, SolnsB),
+    ( SolnsA = SolnsB ->
+        tree_bitset.member(E, SetA)
     ;
         error("test_bitset: member failed")
     ).
@@ -455,6 +475,17 @@ foldl(Pred, SetA - SetB, Acc0, Acc) :-
     set_ordlist.to_sorted_list(SetB, SetListB),
     tree_bitset.foldl(Pred, SetA, Acc0, AccA),
     set_ordlist.fold(Pred, SetB, Acc0, AccB),
+    ( SetListA = SetListB, AccA = AccB ->
+        Acc = AccA
+    ;
+        error("test_bitset: foldl failed")
+    ).
+
+foldl(Pred, SetA - SetB, Acc0) = Acc :-
+    tree_bitset.to_sorted_list(SetA, SetListA),
+    set_ordlist.to_sorted_list(SetB, SetListB),
+    tree_bitset.foldl(Pred, SetA, Acc0) = AccA,
+    set_ordlist.fold(Pred, SetB, Acc0) = AccB,
     ( SetListA = SetListB, AccA = AccB ->
         Acc = AccA
     ;
