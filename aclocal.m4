@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999,2001-2004, 2006-2010 The University of Melbourne.
+# Copyright (C) 1999,2001-2004, 2006-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -553,7 +553,7 @@ int main(int argc, char **argv)
 }
 EOF
 
-echo "$CC -o conftest conftests.c" >&AC_FD_CC 2>&1
+echo "$CC -o conftest conftest.c" >&AC_FD_CC 2>&1
 if
     $CC -o conftest conftest.c
 then
@@ -611,9 +611,9 @@ int main(int argc, char **argv)
 }
 EOF
 
-echo "$CC -o conftest contest.c" >&AC_FD_CC 2>&1
+echo "$CC conftest.c -Fecontest" >&AC_FD_CC 2>&1
 if
-    $CC -o conftest conftest.c
+    $CC conftest.c -Feconftest > /dev/null
 then
     mercury_cv_msvc_version=`./conftest`
 else
