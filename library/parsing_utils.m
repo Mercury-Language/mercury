@@ -437,13 +437,23 @@ skip_whitespace(Src, PS0, PS) :-
 
 src_to_line_numbers(Src) = LineNos :-
     Str = Src ^ input_string,
-    Lo = 0,
-    Hi = Src ^ input_length - 1,
-    F = ( func(I, Ns) =
-        ( if string.unsafe_index(Str, I) = ('\n') then [I | Ns] else Ns )
-    ),
-    LineNosList = int.fold_down(F, Lo, Hi, [Src ^ input_length]),
-    LineNos = array(LineNosList).
+    src_to_line_numbers_2(Str, 0, [], RevLineNosList),
+    LineNos = array.from_reverse_list(RevLineNosList).
+
+:- pred src_to_line_numbers_2(string::in, int::in,
+    list(int)::in, list(int)::out) is det.
+
+src_to_line_numbers_2(Str, Pos0, !RevLineNosList) :-
+    ( string.unsafe_index_next(Str, Pos0, Pos, Char) ->
+        ( Char = '\n' ->
+            !:RevLineNosList = [Pos0 | !.RevLineNosList]
+        ;
+            true
+        ),
+        src_to_line_numbers_2(Str, Pos, !RevLineNosList)
+    ;
+        !:RevLineNosList = [Pos0 | !.RevLineNosList]
+    ).
 
 %-----------------------------------------------------------------------------%
 
