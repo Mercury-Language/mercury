@@ -36,11 +36,6 @@ graphics	Some packages for doing graphics programming
 		GLUT, a simplified binding to Xlib, a binding
 		to Allegro/AllegroGL and a Mercury binding to Cairo.
 
-lazy_evaluation
-		Some examples of the use of the standard library's
-		`lazy' module, including a module `lazy_list' that defines
-		a lazy list data type.
-
 lex		A lexer package for Mercury that works over the I/O state,
 		strings, and so forth.  It comes with a rich set of
 		standard regular expressions and the user is free to add

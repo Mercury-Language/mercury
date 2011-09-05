@@ -194,7 +194,7 @@ typedef	char		MR_small_bool;
 
 /* A macro for declaring functions that never return */
 
-#if MR_GNUC
+#if defined(MR_GNUC) || defined(MR_CLANG)
   #define MR_NO_RETURN __attribute__((noreturn))
 #else
   #define MR_NO_RETURN

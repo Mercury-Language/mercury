@@ -5674,6 +5674,12 @@ io.get_io_output_stream_type(Type, !IO) :-
   #include <sys/wait.h>     /* for WIFEXITED, WEXITSTATUS, etc. */
 #endif
 
+#if defined(MR_MSVC)
+    typedef SSIZE_T ML_ssize_t;
+#else
+    typedef ssize_t ML_ssize_t;
+#endif
+
 extern MercuryFile mercury_stdin;
 extern MercuryFile mercury_stdout;
 extern MercuryFile mercury_stderr;
@@ -7516,8 +7522,8 @@ io.putback_char(input_stream(Stream), Character, !IO) :-
         }
     } else {
         /* This requires multiple pushback in the underlying C library. */
-        char    buf[5];
-        ssize_t len;
+        char        buf[5];
+        ML_ssize_t  len;
         len = MR_utf8_encode(buf, Character);
         for (; len > 0; len--) {
             if (MR_UNGETCH(*mf, buf[len - 1]) == EOF) {

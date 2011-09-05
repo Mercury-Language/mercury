@@ -193,8 +193,10 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
         get_target_modules(Globals, IntermediateTargetType, AllModulesList,
             ObjModulesAlpha, !Info, !IO),
         order_target_modules(Globals, ObjModulesAlpha, ObjModules, !Info, !IO),
-        IntermediateTargets = make_dependency_list(ObjModules,
-            IntermediateTargetType),
+        remove_nested_modules(Globals, ObjModules, ObjModulesNonnested, !Info,
+            !IO),
+        IntermediateTargetsNonnested =
+            make_dependency_list(ObjModulesNonnested, IntermediateTargetType),
         ObjTargets = make_dependency_list(ObjModules, ObjectTargetType),
 
         list.map_foldl2(get_foreign_object_targets(Globals, PIC),
@@ -211,7 +213,7 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
             BuildDepsSucceeded = no
         ;
             foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
-                make_module_target, Globals, IntermediateTargets,
+                make_module_target, Globals, IntermediateTargetsNonnested,
                 BuildDepsSucceeded0, !Info, !IO),
             (
                 BuildDepsSucceeded0 = yes,
@@ -908,19 +910,20 @@ make_misc_target_builder(MainModuleName - TargetType, Globals, _, Succeeded,
 :- pred make_all_interface_files(globals::in, list(module_name)::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_all_interface_files(Globals, AllModules, Succeeded, !Info, !IO) :-
-    list.foldl3(collect_modules_with_children(Globals), AllModules,
+make_all_interface_files(Globals, AllModules0, Succeeded, !Info, !IO) :-
+    remove_nested_modules(Globals, AllModules0, NonnestedModules, !Info, !IO),
+    list.foldl3(collect_modules_with_children(Globals), NonnestedModules,
         [], ParentModules, !Info, !IO),
-    ShortInts = make_dependency_list(AllModules,
+    ShortInts = make_dependency_list(NonnestedModules,
         module_target_unqualified_short_interface),
     PrivateInts = make_dependency_list(ParentModules,
         module_target_private_interface),
-    LongInts = make_dependency_list(AllModules,
+    LongInts = make_dependency_list(NonnestedModules,
         module_target_long_interface),
     globals.get_any_intermod(Globals, AnyIntermod),
     (
         AnyIntermod = yes,
-        OptFiles = make_dependency_list(AllModules,
+        OptFiles = make_dependency_list(NonnestedModules,
             module_target_intermodule_interface)
     ;
         AnyIntermod = no,
