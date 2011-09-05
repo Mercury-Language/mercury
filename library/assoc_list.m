@@ -117,8 +117,8 @@
 :- func assoc_list.negated_filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in) = (assoc_list(K, V)::out) is det.
 
-    % assoc_list.filter(Pred, List, FalseList) takes a closure with one
-    % input argument and for each member K - V of List X, calls the closure
+    % assoc_list.filter(Pred, List, TrueList, FalseList) takes a closure with
+    % one input argument and for each member K - V of List X, calls the closure
     % on the key. K - V is included in TrueList iff Pred(K) is true.
     % K - V is included in FalseList iff Pred(K) is false.
     %
