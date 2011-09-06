@@ -113,26 +113,39 @@ ml_gen_simple_lookup_switch(IndexRval, OutVars, CaseValues, CodeModel, Context,
     MLDS_Context = mlds_make_context(Context),
     ml_gen_info_get_target(!.Info, Target),
 
-    ml_gen_info_get_var_types(!.Info, VarTypes),
-    list.map(map.lookup(VarTypes), OutVars, FieldTypes),
-    MLDS_FieldTypes =
-        list.map(mercury_type_to_mlds_type(ModuleInfo), FieldTypes),
 
-    ml_gen_info_get_global_data(!.Info, GlobalData0),
-    ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
-        MLDS_FieldTypes, StructTypeNum, StructType, FieldIds,
-        GlobalData0, GlobalData1),
+    (
+        OutVars = [],
+        % There are no output parameters, so there is nothing to look up.
+        % Generating a structure with no fields would cause problems for
+        % Visual C, which cannot handle such structures.
+        %
+        % This should happen only for model_semi switches. If it happens for
+        % a model_det switch, that switch is effectively a no-op.
+        LookupStatements = []
+    ;
+        OutVars = [_ | _],
+        ml_gen_info_get_var_types(!.Info, VarTypes),
+        list.map(map.lookup(VarTypes), OutVars, FieldTypes),
+        MLDS_FieldTypes =
+            list.map(mercury_type_to_mlds_type(ModuleInfo), FieldTypes),
 
-    ml_construct_simple_switch_vector(ModuleInfo, StructType,
-        MLDS_FieldTypes, StartVal, CaseValues, RowInitializers),
+        ml_gen_info_get_global_data(!.Info, GlobalData0),
+        ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
+            MLDS_FieldTypes, StructTypeNum, StructType, FieldIds,
+            GlobalData0, GlobalData1),
 
-    ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum, RowInitializers,
-        VectorCommon, GlobalData1, GlobalData),
-    ml_gen_info_set_global_data(GlobalData, !Info),
+        ml_construct_simple_switch_vector(ModuleInfo, StructType,
+            MLDS_FieldTypes, StartVal, CaseValues, RowInitializers),
 
-    ml_generate_field_assigns(OutVars, MLDS_FieldTypes, FieldIds,
-        VectorCommon, StructType, IndexRval, MLDS_Context, LookupStatements,
-        !Info),
+        ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum,
+            RowInitializers, VectorCommon, GlobalData1, GlobalData),
+        ml_gen_info_set_global_data(GlobalData, !Info),
+
+        ml_generate_field_assigns(OutVars, MLDS_FieldTypes, FieldIds,
+            VectorCommon, StructType, IndexRval, MLDS_Context, LookupStatements,
+            !Info)
+    ),
 
     (
         CodeModel = model_det,

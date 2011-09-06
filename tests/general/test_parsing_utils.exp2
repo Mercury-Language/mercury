@@ -36,13 +36,13 @@ pass: keyword("αβγ", "αβγ") on "αβγα"
 	failed as expected
 pass: keyword("αβγ", "αβγ") on "αβγ 123"
 	returned unit as expected
-	[4 code points consumed]
+	[4 chars consumed]
 pass: keyword("ABC", "ABC") on "abc 123"
 	returned unit as expected
 	[4 chars consumed]
 pass: ikeyword("αβγ", "αβγ") on "αβγ 123"
 	returned unit as expected
-	[4 code points consumed]
+	[4 chars consumed]
 pass: identifier("ABC", "ABCabc_") on ""
 	failed as expected
 pass: identifier("ABC", "ABCabc_") on "abc"
@@ -68,10 +68,10 @@ pass: identifier("αβγ", "αβγ_") on "_"
 	failed as expected
 pass: identifier("αβγ", "αβγ_") on "α"
 	returned "α" as expected
-	[1 code points consumed]
+	[1 chars consumed]
 pass: identifier("αβγ", "αβγ_") on "αβ_γ"
 	returned "αβ_γ" as expected
-	[4 code points consumed]
+	[4 chars consumed]
 pass: whitespace on ""
 	returned unit as expected
 	[0 chars consumed]
@@ -190,10 +190,10 @@ pass: string_literal('‖') on ""
 	failed as expected
 pass: string_literal('‖') on "‖123‖   abc"
 	returned "123" as expected
-	[8 code points consumed]
+	[8 chars consumed]
 pass: string_literal('‖') on "‖αβγ‖   abc"
 	returned "αβγ" as expected
-	[8 code points consumed]
+	[8 chars consumed]
 pass: optional(punct("!")) on ""
 	returned no as expected
 	[0 chars consumed]
@@ -285,12 +285,12 @@ Line = 1, Pos = 1
 Line = 1, Pos = 2
 Line = 1, Pos = 3
 Line = 1, Pos = 4
-Line = 1, Pos = 5
 Line = 2, Pos = 1
 Line = 2, Pos = 2
-Line = 2, Pos = 3
-Line = 2, Pos = 4
 Line = 3, Pos = 1
+Line = 4, Pos = 1
+Line = 4, Pos = 2
+Line = 4, Pos = 3
 --
 expecting an operator
 12 + x-pow(x + 3; y)
