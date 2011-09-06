@@ -239,20 +239,32 @@ ml_gen_simple_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
     MLDS_Context = mlds_make_context(Context),
     ml_gen_info_get_target(!.Info, Target),
 
-    ml_gen_info_get_global_data(!.Info, GlobalData0),
-    ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
-        OutTypes, StructTypeNum, StructType, FieldIds,
-        GlobalData0, GlobalData1),
+    (
+        OutTypes = [],
+        % There are no output parameters, so there is nothing to look up.
+        % Generating a structure with no fields would cause problems for
+        % Visual C, which cannot handle such structures.
+        %
+        % This should happen only for model_semi switches. If it happens for
+        % a model_det switch, that switch is effectively a no-op.
+        LookupStatements = []
+    ;
+        OutTypes = [_ | _],
+        ml_gen_info_get_global_data(!.Info, GlobalData0),
+        ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
+            OutTypes, StructTypeNum, StructType, FieldIds,
+            GlobalData0, GlobalData1),
 
-    ml_construct_simple_switch_vector(ModuleInfo, StructType,
-        OutTypes, StartVal, CaseValues, RowInitializers),
+        ml_construct_simple_switch_vector(ModuleInfo, StructType,
+            OutTypes, StartVal, CaseValues, RowInitializers),
 
-    ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum, RowInitializers,
-        VectorCommon, GlobalData1, GlobalData),
-    ml_gen_info_set_global_data(GlobalData, !Info),
+        ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum,
+            RowInitializers, VectorCommon, GlobalData1, GlobalData),
+        ml_gen_info_set_global_data(GlobalData, !Info),
 
-    ml_generate_field_assigns(OutVars, OutTypes, FieldIds, VectorCommon,
-        StructType, IndexRval, MLDS_Context, LookupStatements, !Info),
+        ml_generate_field_assigns(OutVars, OutTypes, FieldIds, VectorCommon,
+            StructType, IndexRval, MLDS_Context, LookupStatements, !Info)
+    ),
 
     (
         CodeModel = model_det,
