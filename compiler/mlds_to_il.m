@@ -2729,6 +2729,12 @@ binaryop_to_il(ne, from_list(Instrs), !Info) :-
 binaryop_to_il(body, _, !Info) :-
     unexpected($module, $pred, "body").
 
+binaryop_to_il(float_word_bits, _, !Info) :-
+    unexpected($module, $pred, "float_word_bits").
+
+binaryop_to_il(float_from_dword, _, !Info) :-
+    unexpected($module, $pred, "float_from_dword").
+
 binaryop_to_il(array_index(ElemType), singleton(I), !Info) :-
     DataRep = !.Info ^ il_data_rep,
     MLDS_Type = ml_gen_array_elem_type(ElemType),

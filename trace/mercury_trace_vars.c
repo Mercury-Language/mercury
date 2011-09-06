@@ -1871,7 +1871,8 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
                 MR_Word storage;
 
                 MR_incr_hp(storage, 1);
-                ((MR_Word *) storage)[0] = MR_unpack_arg(*new_value, arg_locn);
+                ((MR_Word *) storage)[0] = MR_arg_value(new_value,
+                    arg_locn);
                 value = (MR_Word *) storage;
             }
         } else {

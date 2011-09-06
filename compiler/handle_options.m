@@ -739,6 +739,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %     and better for interoperability.
     %     (In theory --low-level-data should work too,
     %     but there's no reason to bother supporting it.)
+    %   - unboxed floats
     %   - turning off nested functions
     %     Because Java doesn't support nested functions.
     %   - using copy-out for both det and nondet output arguments
@@ -774,6 +775,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             !Globals),
         globals.set_option(highlevel_code, bool(yes), !Globals),
         globals.set_option(highlevel_data, bool(yes), !Globals),
+        globals.set_option(unboxed_float, bool(yes), !Globals),
         globals.set_option(gcc_nested_functions, bool(no), !Globals),
         globals.set_option(nondet_copy_out, bool(yes), !Globals),
         globals.set_option(det_copy_out, bool(yes), !Globals),
@@ -804,6 +806,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %   - gc_method `automatic' and no heap reclamation on failure
     %     because GC is handled automatically by the Erlang
     %     implementation.
+    %   - unboxed floats
     %   - delay-partial-instantiations
     %   - no-can-compare-constants-as-ints
     %   - can-compare-compound-values
@@ -817,6 +820,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         Target = target_erlang,
         globals.set_gc_method(gc_automatic, !Globals),
         globals.set_option(gc, string("automatic"), !Globals),
+        globals.set_option(unboxed_float, bool(yes), !Globals),
         globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
             !Globals),
         globals.set_option(reclaim_heap_on_semidet_failure, bool(no),

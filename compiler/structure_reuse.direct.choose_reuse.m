@@ -954,11 +954,12 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
         SameCons = yes
     ;
         SameCons = no,
-        % XXX All the reuse code was written before packed arguments were
-        % introduced. For now only allow reuse of cells with packed fields when
-        % the dead variable and the new variable have the same constructor.
-        cons_has_no_packed_fields(ModuleInfo, NewCons),
-        cons_has_no_packed_fields(ModuleInfo, DeadCons)
+        % XXX All the reuse code was written before packed and double word
+        % arguments were introduced. For now only allow reuse of cells with
+        % packed fields when the dead variable and the new variable have the
+        % same constructor.
+        cons_has_normal_fields(ModuleInfo, NewCons),
+        cons_has_normal_fields(ModuleInfo, DeadCons)
     ),
 
     NewNumArgs = list.length(NewCellArgs),
@@ -1008,9 +1009,9 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
     Weight > 0,
     ReuseType = reuse_type(SameCons, ReuseFields, float(Weight)).
 
-:- pred cons_has_no_packed_fields(module_info::in, cons_id::in) is semidet.
+:- pred cons_has_normal_fields(module_info::in, cons_id::in) is semidet.
 
-cons_has_no_packed_fields(ModuleInfo, Cons) :-
+cons_has_normal_fields(ModuleInfo, Cons) :-
     (
         Cons = cons(_, _, TypeCtor),
         get_cons_defn_det(ModuleInfo, TypeCtor, Cons, ConsDefn),

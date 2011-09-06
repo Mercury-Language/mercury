@@ -4503,13 +4503,32 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         io.write_string(")", !IO)
     ;
         Category = macro_binop,
-        io.write_string(OpStr, !IO),
-        io.write_string("(", !IO),
-        mlds_output_rval_as_op_arg(Opts, X, !IO),
-        io.write_string(", ", !IO),
-        mlds_output_rval_as_op_arg(Opts, Y, !IO),
-        io.write_string(")", !IO)
+        (
+            Op = float_from_dword,
+            consecutive_field_offsets(X, Y)
+        ->
+            % gcc produces faster code in this case.
+            io.write_string("MR_float_from_dword_ptr", !IO),
+            io.write_string("(&(", !IO),
+            mlds_output_rval(Opts, X, !IO),
+            io.write_string("))", !IO)
+        ;
+            io.write_string(OpStr, !IO),
+            io.write_string("(", !IO),
+            mlds_output_rval_as_op_arg(Opts, X, !IO),
+            io.write_string(", ", !IO),
+            mlds_output_rval_as_op_arg(Opts, Y, !IO),
+            io.write_string(")", !IO)
+        )
     ).
+
+:- pred consecutive_field_offsets(mlds_rval::in, mlds_rval::in) is semidet.
+
+consecutive_field_offsets(X, Y) :-
+    X = ml_lval(ml_field(Tag, Addr, FieldIdX, Type, PtrType)),
+    Y = ml_lval(ml_field(Tag, Addr, FieldIdY, Type, PtrType)),
+    FieldIdX = ml_field_offset(ml_const(mlconst_int(Offset))),
+    FieldIdY = ml_field_offset(ml_const(mlconst_int(Offset + 1))).
 
 :- pred mlds_output_rval_const(mlds_to_c_opts::in, mlds_rval_const::in,
     io::di, io::uo) is det.

@@ -588,6 +588,8 @@ binop_category_string(int_ge, int_or_bool_binary_infix_binop, ">=").
 
 binop_category_string(str_cmp, macro_binop, "MR_strcmp").
 binop_category_string(body, macro_binop, "MR_body").
+binop_category_string(float_word_bits, macro_binop, "MR_float_word_bits").
+binop_category_string(float_from_dword, macro_binop, "MR_float_from_dword").
 
 %-----------------------------------------------------------------------------%
 

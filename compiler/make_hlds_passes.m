@@ -171,19 +171,12 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
     (
         InvalidTypes1 = no,
         some [!TypeTable] (
-            % Figure out how arguments should be packed into fields,
+            % Figure out how arguments should be stored into fields
             % before constructors are added to the HLDS.
-            globals.lookup_bool_option(Globals, allow_argument_packing,
-                ArgPacking),
             module_info_get_type_table(!.ModuleInfo, !:TypeTable),
-            (
-                ArgPacking = yes,
-                foldl_over_type_ctor_defns(pack_du_type_args(!.ModuleInfo),
-                    !.TypeTable, !TypeTable),
-                module_info_set_type_table(!.TypeTable, !ModuleInfo)
-            ;
-                ArgPacking = no
-            ),
+            foldl_over_type_ctor_defns(decide_du_type_layout(!.ModuleInfo),
+                !.TypeTable, !TypeTable),
+            module_info_set_type_table(!.TypeTable, !ModuleInfo),
 
             % Add constructors and special preds to the HLDS. This must be done
             % after adding all type and `:- pragma foreign_type' declarations.
@@ -233,16 +226,16 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
 
 %-----------------------------------------------------------------------------%
 
-:- pred pack_du_type_args(module_info::in, type_ctor::in, hlds_type_defn::in,
-    type_table::in, type_table::out) is det.
+:- pred decide_du_type_layout(module_info::in, type_ctor::in,
+    hlds_type_defn::in, type_table::in, type_table::out) is det.
 
-pack_du_type_args(ModuleInfo, TypeCtor, TypeDefn, !TypeTable) :-
+decide_du_type_layout(ModuleInfo, TypeCtor, TypeDefn, !TypeTable) :-
     get_type_defn_body(TypeDefn, Body0),
     (
         Body0 = hlds_du_type(Ctors0, ConsTagValues, MaybeCheaperTagTest,
             DuKind, MaybeUserEqComp, DirectArgFunctors, ReservedTag,
             ReservedAddr, MaybeForeign),
-        list.map(decide_du_ctor_packing(ModuleInfo), Ctors0, Ctors),
+        list.map(layout_du_ctor_args(ModuleInfo), Ctors0, Ctors),
         Body = hlds_du_type(Ctors, ConsTagValues, MaybeCheaperTagTest,
             DuKind, MaybeUserEqComp, DirectArgFunctors, ReservedTag,
             ReservedAddr, MaybeForeign),
@@ -257,35 +250,81 @@ pack_du_type_args(ModuleInfo, TypeCtor, TypeDefn, !TypeTable) :-
         % Leave these types alone.
     ).
     
-:- pred decide_du_ctor_packing(module_info::in,
+:- pred layout_du_ctor_args(module_info::in,
     constructor::in, constructor::out) is det.
 
-decide_du_ctor_packing(ModuleInfo, Ctor0, Ctor) :-
+layout_du_ctor_args(ModuleInfo, Ctor0, Ctor) :-
     Ctor0 = ctor(ExistTVars, Constraints, Name, Args0, Context),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
-    pack_du_ctor_args(ModuleInfo, TargetWordBits, 0, Args0, Args, _),
-    list.length(Args0, UnpackedLength),
-    count_words(Args, 0, PackedLength),
+    use_double_word_floats(Globals, DoubleWordFloats),
     (
+        DoubleWordFloats = yes,
+        set_double_word_floats(ModuleInfo, Args0, Args1)
+    ;
+        DoubleWordFloats = no,
+        Args1 = Args0
+    ),
+    globals.lookup_bool_option(Globals, allow_argument_packing, ArgPacking),
+    (
+        ArgPacking = yes,
+        globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
+        pack_du_ctor_args(ModuleInfo, TargetWordBits, 0, Args1, Args2, _),
+        WorthPacking = worth_arg_packing(Args1, Args2),
         (
-            PackedLength = UnpackedLength
+            WorthPacking = yes,
+            Args = Args2
         ;
-            % Boehm GC will round up allocations (at least) to the next even
-            % number of words.  There is no point saving a single word if that
-            % word will be allocated anyway.
-            int.even(UnpackedLength),
-            PackedLength = UnpackedLength - 1
+            WorthPacking = no,
+            Args = Args1
         )
-    ->
-        Ctor = Ctor0
     ;
-        PackedLength < UnpackedLength
-    ->
-        Ctor = ctor(ExistTVars, Constraints, Name, Args, Context)
+        ArgPacking = no,
+        Args = Args1
+    ),
+    Ctor = ctor(ExistTVars, Constraints, Name, Args, Context).
+
+:- pred use_double_word_floats(globals::in, bool::out) is det.
+
+use_double_word_floats(Globals, DoubleWordFloats) :-
+    globals.get_target(Globals, Target),
+    globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
+    globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
+    (
+        Target = target_c,
+        (
+            TargetWordBits = 32,
+            SinglePrecFloat = no
+        ->
+            % Double-word floats are not yet supported in low-level C grades.
+            globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+            DoubleWordFloats = HighLevelCode
+        ;
+            DoubleWordFloats = no
+        )
     ;
-        unexpected($module, $pred, "packed length exceeds unpacked length")
+        ( Target = target_il
+        ; Target = target_csharp
+        ; Target = target_java
+        ; Target = target_asm
+        ; Target = target_x86_64
+        ; Target = target_erlang
+        ),
+        DoubleWordFloats = no
     ).
+
+:- pred set_double_word_floats(module_info::in,
+    list(constructor_arg)::in, list(constructor_arg)::out) is det.
+
+set_double_word_floats(_ModuleInfo, [], []).
+set_double_word_floats(ModuleInfo, [Arg0 | Args0], [Arg | Args]) :-
+    Arg0 = ctor_arg(Name, Type, _, Context),
+    ( type_is_float_eqv(ModuleInfo, Type) ->
+        ArgWidth = double_word,
+        Arg = ctor_arg(Name, Type, ArgWidth, Context)
+    ;
+        Arg = Arg0
+    ),
+    set_double_word_floats(ModuleInfo, Args0, Args).
 
 :- pred pack_du_ctor_args(module_info::in, int::in, int::in,
     list(constructor_arg)::in, list(constructor_arg)::out,
@@ -295,19 +334,19 @@ pack_du_ctor_args(_ModuleInfo, _TargetWordBits, _Shift, [], [],
         full_word).
 pack_du_ctor_args(ModuleInfo, TargetWordBits, Shift,
         [Arg0 | Args0], [Arg | Args], ArgWidth) :-
-    Arg0 = ctor_arg(Name, Type, _, Context),
+    Arg0 = ctor_arg(Name, Type, ArgWidth0, Context),
     ( type_is_enum_bits(ModuleInfo, Type, NumBits) ->
         Mask = int.pow(2, NumBits) - 1,
         % Try to place the argument in the current word, otherwise move on to
         % the next word.
         ( Shift + NumBits > TargetWordBits ->
-            ArgWidth0 = partial_word_first(Mask),
+            ArgWidth1 = partial_word_first(Mask),
             NextShift = NumBits
         ; Shift = 0 ->
-            ArgWidth0 = partial_word_first(Mask),
+            ArgWidth1 = partial_word_first(Mask),
             NextShift = NumBits
         ;
-            ArgWidth0 = partial_word_shifted(Shift, Mask),
+            ArgWidth1 = partial_word_shifted(Shift, Mask),
             NextShift = Shift + NumBits
         ),
         pack_du_ctor_args(ModuleInfo, TargetWordBits, NextShift, Args0, Args,
@@ -315,20 +354,17 @@ pack_du_ctor_args(ModuleInfo, TargetWordBits, Shift,
         % If this argument starts a word but the next argument is not packed
         % with it, then this argument is not packed.
         (
-            ArgWidth0 = partial_word_first(_),
-            ( NextArgWidth = full_word
-            ; NextArgWidth = partial_word_first(_)
-            )
+            ArgWidth1 = partial_word_first(_),
+            NextArgWidth \= partial_word_shifted(_, _)
         ->
             ArgWidth = full_word
         ;
-            ArgWidth = ArgWidth0
+            ArgWidth = ArgWidth1
         ),
         Arg = ctor_arg(Name, Type, ArgWidth, Context)
     ;
-        % This argument occupies a full word.
         Arg = Arg0,
-        ArgWidth = full_word,
+        ArgWidth = ArgWidth0,
         NextShift = 0,
         pack_du_ctor_args(ModuleInfo, TargetWordBits, NextShift, Args0, Args,
             _)
@@ -362,6 +398,22 @@ max_int_tag(ConsTag, !Max) :-
         unexpected($module, $pred, "non-integer value for enumeration")
     ).
 
+:- func worth_arg_packing(list(constructor_arg), list(constructor_arg)) = bool.
+
+worth_arg_packing(UnpackedArgs, PackedArgs) = Worthwhile :-
+    count_words(UnpackedArgs, 0, UnpackedLength),
+    count_words(PackedArgs, 0, PackedLength),
+    expect(PackedLength =< UnpackedLength, $module, $pred,
+        "packed length exceeds unpacked length"),
+    % Boehm GC will round up allocations (at least) to the next even
+    % number of words.  There is no point saving a single word if that
+    % word will be allocated anyway.
+    ( round_to_even(PackedLength) < round_to_even(UnpackedLength) ->
+        Worthwhile = yes
+    ;
+        Worthwhile = no
+    ).
+
 :- pred count_words(list(constructor_arg)::in, int::in, int::out) is det.
 
 count_words([], !Count).
@@ -371,12 +423,19 @@ count_words([Arg | Args], !Count) :-
         ArgWidth = full_word,
         !:Count = !.Count + 1
     ;
+        ArgWidth = double_word,
+        !:Count = !.Count + 2
+    ;
         ArgWidth = partial_word_first(_),
         !:Count = !.Count + 1
     ;
         ArgWidth = partial_word_shifted(_Shift, _Mask)
     ),
     count_words(Args, !Count).
+
+:- func round_to_even(int) = int.
+
+round_to_even(I) = (int.even(I) -> I ; I + 1).
 
 %-----------------------------------------------------------------------------%
 

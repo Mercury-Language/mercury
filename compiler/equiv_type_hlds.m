@@ -326,7 +326,9 @@ replace_in_constructor_arg(EqvMap, CtorArg0, CtorArg, !TVarSet) :-
     (
         Changed = yes,
         (
-            Width = full_word,
+            ( Width = full_word
+            ; Width = double_word
+            ),
             CtorArg = ctor_arg(MaybeFieldName, Type, Width, Context)
         ;
             ( Width = partial_word_first(_)

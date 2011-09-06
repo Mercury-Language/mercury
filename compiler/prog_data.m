@@ -1709,22 +1709,27 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
     % How much space does a constructor argument occupy in the underlying
     % representation.
     %
-    % `full_word' indicates that an argument occupies a full word.
-    % This is the case for all arguments except some enumeration arguments.
+    % `full_word' indicates that the argument occupies a single word.
+    % This is the usual case.
+    %
+    % `double_word' indicates that the argument occupies two words.
+    % Currently only double-precision floats may do so.
     %
     % `partial_word_begin(Mask)' indicates that the argument is the first of
-    % two or more arguments which share the same word. The argument occupies
-    % the lowest bits in the word so no shifting is required. The other
-    % arguments can be masked out with the bit-mask `Mask'. The actual number
-    % of bits occupied by the argument is `int.log2(Mask + 1)'.
+    % two or more enumeration arguments which share the same word. The argument
+    % occupies the lowest bits in the word so no shifting is required. The
+    % other arguments can be masked out with the bit-mask `Mask'. The actual
+    % number of bits occupied by the argument is `int.log2(Mask + 1)'.
     %
     % `partial_word_shifted(Shift, Mask)' indicates that the argument is one of
-    % the subsequent arguments which share the same word. `Shift' is the
-    % non-zero number of bits that the argument value is left-shifted by.
-    % `Mask' is the unshifted bit-mask to mask out other arguments.
+    % the subsequent enumeration arguments which share the same word.
+    % `Shift' is the non-zero number of bits that the argument value is
+    % left-shifted by. `Mask' is the unshifted bit-mask to mask out other
+    % arguments.
     %
 :- type arg_width
     --->    full_word
+    ;       double_word
     ;       partial_word_first(int)         % mask
     ;       partial_word_shifted(int, int). % shift, mask
 

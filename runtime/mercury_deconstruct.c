@@ -344,3 +344,33 @@ MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool wrap)
 
     return (MR_ConstString) str;
 }
+
+MR_Word
+MR_arg_value_uncommon(MR_Word *arg_ptr, const MR_DuArgLocn *arg_locn)
+{
+    MR_Float    flt;
+    MR_Word     val;
+
+    /*
+    ** MR_arg_bits == -1 means the argument is a double-precision floating
+    ** point value occupying two words.
+    */
+    if (arg_locn->MR_arg_bits == -1) {
+#ifdef MR_BOXED_FLOAT
+        flt = MR_float_from_dword_ptr(arg_ptr);
+    #ifdef MR_HIGHLEVEL_CODE
+        return (MR_Word) MR_box_float(flt);
+    #else
+        return MR_float_to_word(flt);
+    #endif
+#else
+        MR_fatal_error("double-word floats should not exist in this grade");
+#endif
+    }
+
+    /* The argument is a packed enumeration value. */
+    val = *arg_ptr;
+    val = (val >> arg_locn->MR_arg_shift)
+        & ((MR_Word) (1 << arg_locn->MR_arg_bits) - 1);
+    return val;
+}

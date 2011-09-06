@@ -3569,6 +3569,10 @@ convert_binary_op(float_lt, gcc.lt_expr,        gcc.boolean_type_node).
 convert_binary_op(float_gt, gcc.gt_expr,        gcc.boolean_type_node).
 convert_binary_op(float_le, gcc.le_expr,        gcc.boolean_type_node).
 convert_binary_op(float_ge, gcc.ge_expr,        gcc.boolean_type_node).
+convert_binary_op(float_word_bits, _, _) :-
+    unexpected($module, $pred, "float_word_bits").
+convert_binary_op(float_from_dword, _, _) :-
+    unexpected($module, $pred, "float_from_dword").
 convert_binary_op(compound_eq, _, _) :-
     unexpected($module, $pred, "compound_eq").
 convert_binary_op(compound_lt, _, _) :-

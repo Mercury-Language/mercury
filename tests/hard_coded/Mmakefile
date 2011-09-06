@@ -157,6 +157,7 @@ ORDINARY_PROGS=	\
 	intermod_unused_args \
 	java_rtti_bug \
 	join_list \
+	lco_double \
 	lco_mday_bug_1 \
 	lco_mday_bug_2 \
 	lco_no_inline \
@@ -199,6 +200,7 @@ ORDINARY_PROGS=	\
 	opt_format \
 	pack_args \
 	pack_args_copy \
+	pack_args_float \
 	pack_args_intermod1 \
 	ppc_bug \
 	pprint_test \

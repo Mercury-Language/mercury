@@ -71,6 +71,42 @@
   #define MR_float_const(f) MR_float_to_word(f)	/* inefficient */
 #endif
 
+#ifndef MR_USE_SINGLE_PREC_FLOAT
+  union MR_Float_Dword {
+	MR_Float f;
+	MR_Word	w[2];
+  };
+
+  #define MR_float_word_bits(F, I)                                          \
+    (((union MR_Float_Dword) (MR_Float) (F)).w[(I)])
+
+  #define MR_float_from_dword_ptr(ptr)                                      \
+    (((union MR_Float_Dword *) (ptr))->f)
+
+  #if defined(MR_GNUC) || defined(MR_CLANG)
+    #define MR_float_from_dword(w0, w1)                                     \
+      ({                                                                    \
+	union MR_Float_Dword __ffdw;                                        \
+	__ffdw.w[0] = (MR_Word) (w0);                                       \
+	__ffdw.w[1] = (MR_Word) (w1);                                       \
+	__ffdw.f;                                                           \
+      })
+  #else
+    MR_EXTERN_INLINE MR_Float
+    MR_float_from_dword(MR_Word w0, MR_Word w1);
+
+    MR_EXTERN_INLINE MR_Float
+    MR_float_from_dword(MR_Word w0, MR_Word w1)
+    {
+	union MR_Float_Dword __ffdw;
+	__ffdw.w[0] = (MR_Word) (w0);
+	__ffdw.w[1] = (MR_Word) (w1);
+	return __ffdw.f;
+    }
+  #endif
+
+#endif /* not MR_USE_SINGLE_PREC_FLOAT */
+
 #else /* not MR_BOXED_FLOAT */
 
   /* unboxed float means we can assume sizeof(MR_Float) <= sizeof(MR_Word) */

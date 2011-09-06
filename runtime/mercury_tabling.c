@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2007 The University of Melbourne.
+** Copyright (C) 1997-2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,6 +17,7 @@
 #include "mercury_type_info.h"
 #include "mercury_array_macros.h"
 #include "mercury_builtin_types.h"
+#include "mercury_deconstruct.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -62,10 +62,7 @@
         &argument_ptr, &arg_locn_ptr, NONCANON);
     MR_restore_transient_registers();
     if (success) {
-        value = *argument_ptr;
-        if (arg_locn_ptr != NULL) {
-            value = MR_unpack_arg(value, arg_locn_ptr);
-        }
+        value = MR_arg_value(argument_ptr, arg_locn_ptr);
 
         /*
         ** The following code is what *should* be here. The reason it is

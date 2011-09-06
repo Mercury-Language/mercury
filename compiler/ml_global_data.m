@@ -371,9 +371,8 @@ ml_global_data_add_maybe_nonflat_defns(Defns, !GlobalData) :-
 
 ml_gen_static_scalar_const_value(MLDS_ModuleName, ConstBaseName, ConstType0,
         Initializer0, Context, DataRval, !GlobalData) :-
-    HaveUnboxedFloats = !.GlobalData ^ mgd_have_unboxed_floats,
-    ml_maybe_specialize_generic_array_type(HaveUnboxedFloats,
-        ConstType0, ConstType, Initializer0, Initializer),
+    ml_maybe_specialize_generic_array_type(ConstType0, ConstType,
+        Initializer0, Initializer),
     UseCommonCells = !.GlobalData ^ mgd_use_common_cells,
     (
         UseCommonCells = use_common_cells,
@@ -391,9 +390,8 @@ ml_gen_static_scalar_const_value(MLDS_ModuleName, ConstBaseName, ConstType0,
 
 ml_gen_static_scalar_const_addr(MLDS_ModuleName, ConstBaseName, ConstType0,
         Initializer0, Context, DataAddrRval, !GlobalData) :-
-    HaveUnboxedFloats = !.GlobalData ^ mgd_have_unboxed_floats,
-    ml_maybe_specialize_generic_array_type(HaveUnboxedFloats,
-        ConstType0, ConstType, Initializer0, Initializer),
+    ml_maybe_specialize_generic_array_type(ConstType0, ConstType,
+        Initializer0, Initializer),
     UseCommonCells = !.GlobalData ^ mgd_use_common_cells,
     (
         UseCommonCells = use_common_cells,
@@ -489,14 +487,12 @@ ml_gen_plain_static_defn(ConstBaseName, ConstType,
     RevDefns = [Defn | RevDefns0],
     ml_global_data_set_rev_flat_cell_defns(RevDefns, !GlobalData).
 
-:- pred ml_maybe_specialize_generic_array_type(have_unboxed_floats::in,
-    mlds_type::in, mlds_type::out, mlds_initializer::in, mlds_initializer::out)
-    is det.
+:- pred ml_maybe_specialize_generic_array_type(mlds_type::in, mlds_type::out,
+    mlds_initializer::in, mlds_initializer::out) is det.
 
-ml_maybe_specialize_generic_array_type(HaveUnboxedFloats,
-        ConstType0, ConstType, Initializer0, Initializer) :-
+ml_maybe_specialize_generic_array_type(ConstType0, ConstType,
+        Initializer0, Initializer) :-
     (
-        HaveUnboxedFloats = have_unboxed_floats,
         ConstType0 = mlds_array_type(mlds_generic_type),
         Initializer0 = init_array(Inits0),
         list.map2(ml_specialize_generic_array_init, Inits0, Inits, Types),
@@ -593,6 +589,7 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = float_gt
         ; Op = float_le
         ; Op = float_ge
+        ; Op = float_word_bits
         ; Op = body
         ; Op = array_index(_)   % should not be an initializer anyway
         ; Op = compound_eq
@@ -604,6 +601,7 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = float_minus
         ; Op = float_times
         ; Op = float_divide
+        ; Op = float_from_dword
         ),
         IsFloat = yes
     ).

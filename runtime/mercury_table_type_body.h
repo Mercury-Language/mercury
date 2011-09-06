@@ -222,13 +222,14 @@
 
                 for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
                     const MR_DuArgLocn *arg_locn;
+                    MR_Word            *arg_ptr;
                     MR_Word             arg_value;
 
                     if (functor_desc->MR_du_functor_arg_locns != NULL) {
                         arg_locn = &functor_desc->MR_du_functor_arg_locns[i];
-                        arg_value = arg_vector[meta_args +
-                            arg_locn->MR_arg_offset];
-                        arg_value = MR_unpack_arg(arg_value, arg_locn);
+                        arg_ptr = &arg_vector[meta_args
+                            + arg_locn->MR_arg_offset];
+                        arg_value = MR_arg_value(arg_ptr, arg_locn);
                     } else {
                         arg_value = arg_vector[meta_args + i];
                     }

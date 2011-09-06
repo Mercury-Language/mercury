@@ -66,10 +66,10 @@
             } else {                                                \
                 const MR_DuArgLocn *locn =                          \
                     &(ei).args_field.arg_locns[i];                  \
-                val = (ei).args_field.arg_values[                   \
+                MR_Word *argp = &(ei).args_field.arg_values[        \
                     locn->MR_arg_offset +                           \
                     (ei).args_field.num_extra_args];                \
-                val = MR_unpack_arg(val, locn);                     \
+                val = MR_arg_value(argp, locn);                     \
             }                                                       \
                                                                     \
             /* Create an argument on the heap */                    \

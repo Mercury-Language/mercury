@@ -1598,6 +1598,8 @@ binop_return_type(float_lt, lt_bool).
 binop_return_type(float_gt, lt_bool).
 binop_return_type(float_le, lt_bool).
 binop_return_type(float_ge, lt_bool).
+binop_return_type(float_word_bits, lt_word).
+binop_return_type(float_from_dword, lt_float).
 binop_return_type(body, lt_word).
 binop_return_type(compound_eq, lt_bool).
 binop_return_type(compound_lt, lt_bool).

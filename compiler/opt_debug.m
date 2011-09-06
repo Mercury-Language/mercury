@@ -659,6 +659,8 @@ dump_binop(float_le) = "fl<=".
 dump_binop(float_ge) = "fl>=".
 dump_binop(float_lt) = "fl<".
 dump_binop(float_gt) = "fl>".
+dump_binop(float_word_bits) = "float_word_bits".
+dump_binop(float_from_dword) = "float_from_dword".
 dump_binop(int_add) = "+".
 dump_binop(int_sub) = "-".
 dump_binop(int_mul) = "*".

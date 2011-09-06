@@ -1055,6 +1055,8 @@ replace_in_ctor_arg_list_2(Location, EqvMap, Seen,
     (
         Width = full_word
     ;
+        Width = double_word
+    ;
         ( Width = partial_word_first(_)
         ; Width = partial_word_shifted(_, _)
         ),

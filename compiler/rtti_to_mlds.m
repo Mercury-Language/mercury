@@ -988,24 +988,35 @@ gen_field_locns(_ModuleInfo, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
 :- pred gen_field_locn(rtti_id::in, du_arg_info::in, mlds_initializer::out,
     int::in, int::out) is det.
 
-gen_field_locn(RttiId, ArgInfo, ArgLocnInitializer, !Offset) :-
+gen_field_locn(RttiId, ArgInfo, ArgLocnInitializer, PrevOffset,
+        NextPrevOffset) :-
     ArgWidth = ArgInfo ^ du_arg_width,
     (
         ArgWidth = full_word,
-        !:Offset = !.Offset + 1,
+        FieldOffset = PrevOffset + 1,
         Shift = 0,
-        Bits = 0
+        Bits = 0,
+        NextPrevOffset = FieldOffset
+    ;
+        ArgWidth = double_word,
+        FieldOffset = PrevOffset + 1,
+        Shift = 0,
+        Bits = -1,
+        NextPrevOffset = FieldOffset + 1
     ;
         ArgWidth = partial_word_first(Mask),
-        !:Offset = !.Offset + 1,
+        FieldOffset = PrevOffset + 1,
         Shift = 0,
-        int.log2(Mask + 1, Bits)
+        int.log2(Mask + 1, Bits),
+        NextPrevOffset = FieldOffset
     ;
         ArgWidth = partial_word_shifted(Shift, Mask),
-        int.log2(Mask + 1, Bits)
+        FieldOffset = PrevOffset,
+        int.log2(Mask + 1, Bits),
+        NextPrevOffset = FieldOffset
     ),
     ArgLocnInitializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-        gen_init_int(!.Offset),
+        gen_init_int(FieldOffset),
         gen_init_int(Shift),
         gen_init_int(Bits)
     ]).

@@ -1038,7 +1038,7 @@ gen_init_tag(Target, ClassType, SecondaryTagClassId, TagVal, Context)
 
 ml_gen_typeclass_info_member(ModuleInfo, Context, Constraint, Defn, !ArgNum) :-
     polymorphism.build_typeclass_info_type(Constraint, Type),
-    ml_gen_field(ModuleInfo, Context, no, Type, Defn, !ArgNum).
+    ml_gen_field(ModuleInfo, Context, no, Type, full_word, Defn, !ArgNum).
 
 :- pred ml_gen_type_info_member(module_info::in, prog_context::in, tvar::in,
     mlds_defn::out, int::in, int::out) is det.
@@ -1049,21 +1049,23 @@ ml_gen_type_info_member(ModuleInfo, Context, TypeVar, Defn, !ArgNum) :-
     % and won't be used in any other way.
     Kind = kind_star,
     polymorphism.build_type_info_type(type_variable(TypeVar, Kind), Type),
-    ml_gen_field(ModuleInfo, Context, no, Type, Defn, !ArgNum).
+    ml_gen_field(ModuleInfo, Context, no, Type, full_word, Defn, !ArgNum).
 
 :- pred ml_gen_du_ctor_field(module_info::in, prog_context::in,
     constructor_arg::in, mlds_defn::out, int::in, int::out) is det.
 
 ml_gen_du_ctor_field(ModuleInfo, Context, Arg, Defn, !ArgNum) :-
-    ml_gen_field(ModuleInfo, Context, Arg ^ arg_field_name, Arg ^ arg_type,
-        Defn, !ArgNum).
+    Arg = ctor_arg(MaybeFieldName, Type, Width, _Context),
+    ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, Width, Defn,
+        !ArgNum).
 
 :- pred ml_gen_field(module_info::in, prog_context::in,
-    maybe(ctor_field_name)::in, mer_type::in, mlds_defn::out,
+    maybe(ctor_field_name)::in, mer_type::in, arg_width::in, mlds_defn::out,
     int::in, int::out) is det.
 
-ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, Defn, !ArgNum) :-
-    ( ml_must_box_field_type(ModuleInfo, Type) ->
+ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, Width, Defn,
+        !ArgNum) :-
+    ( ml_must_box_field_type(ModuleInfo, Type, Width) ->
         MLDS_Type = mlds_generic_type
     ;
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type)

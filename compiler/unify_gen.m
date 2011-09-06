@@ -1180,20 +1180,26 @@ var_types(CI, Vars, Types) :-
     rval::in, int::in, int::in, list(uni_val)::out, list(uni_val)::out) is det.
 
 make_fields_and_argvars([], [], _, _, _, [], []).
-make_fields_and_argvars([Var | Vars], [Width | Widths], Rval, PrevOffset,
+make_fields_and_argvars([Var | Vars], [Width | Widths], Rval, PrevOffset0,
         TagNum, [F | Fs], [A | As]) :-
     (
         ( Width = full_word
         ; Width = partial_word_first(_Mask)
         ),
-        Offset = PrevOffset + 1
+        Offset = PrevOffset0 + 1,
+        PrevOffset = Offset
     ;
         Width = partial_word_shifted(_Shift, _Mask),
-        Offset = PrevOffset
+        Offset = PrevOffset0,
+        PrevOffset = Offset
+    ;
+        Width = double_word,
+        Offset = PrevOffset0 + 1,
+        PrevOffset = Offset + 1
     ),
     F = lval(field(yes(TagNum), Rval, const(llconst_int(Offset))), Width),
     A = ref(Var),
-    make_fields_and_argvars(Vars, Widths, Rval, Offset, TagNum, Fs, As).
+    make_fields_and_argvars(Vars, Widths, Rval, PrevOffset, TagNum, Fs, As).
 make_fields_and_argvars([], [_ | _], _, _, _, _, _) :-
     unexpected($module, $pred, "mismatched lists").
 make_fields_and_argvars([_ | _], [], _, _, _, _, _) :-
@@ -1443,6 +1449,10 @@ generate_sub_assign(Left, Right, Code, !CI) :-
             Combined = binop(bitwise_or, MaskOld, ShiftNew),
             AssignCode = singleton(llds_instr(assign(Lval, Combined),
                 "Update part of word"))
+        ;
+            LeftWidth = double_word,
+            % Not yet supported in LLDS grades.
+            sorry($module, $pred, "double_word")
         ),
         Code = SourceCode ++ MaterializeCode ++ AssignCode
     ;
@@ -1464,6 +1474,10 @@ generate_sub_assign(Left, Right, Code, !CI) :-
                     ),
                     Rval = binop(bitwise_and, Rval0, const(llconst_int(Mask))),
                     assign_field_lval_expr_to_var(Lvar, Lval, Rval, Code, !CI)
+                ;
+                    RightWidth = double_word,
+                    % Not yet supported in LLDS grades.
+                    sorry($module, $pred, "double_word")
                 )
             ;
                 Right = ref(Rvar),

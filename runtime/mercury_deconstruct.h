@@ -154,4 +154,13 @@ extern  MR_bool MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
 extern  MR_bool MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                     const char *arg_name, int *arg_num_ptr);
 
+#define MR_arg_value(arg_ptr, arg_locn)                                 \
+    ( ((arg_locn) == NULL || (arg_locn)->MR_arg_bits == 0)              \
+    ? *(arg_ptr)                                                        \
+    : MR_arg_value_uncommon(arg_ptr, arg_locn)                          \
+    )
+
+extern  MR_Word MR_arg_value_uncommon(MR_Word *arg_ptr,
+                    const MR_DuArgLocn *arg_locn);
+
 #endif /* MERCURY_DECONSTRUCT_H */

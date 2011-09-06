@@ -321,10 +321,11 @@
 
     % Succeeds iff the specified type must be boxed when used as a field.
     %
-:- pred ml_must_box_field_type(module_info::in, mer_type::in) is semidet.
+:- pred ml_must_box_field_type(module_info::in, mer_type::in, arg_width::in)
+    is semidet.
 
 :- pred ml_gen_box_const_rval(module_info::in, prog_context::in,
-    mlds_type::in, mlds_rval::in, mlds_rval::out,
+    mlds_type::in, bool::in, mlds_rval::in, mlds_rval::out,
     ml_global_data::in, ml_global_data::out) is det.
 
     % Given a source type and a destination type, and given an source rval
@@ -1371,7 +1372,7 @@ ml_gen_field_name(MaybeFieldName, ArgNum) = FieldName :-
     % XXX Currently we box such types even for the other MLDS based back-ends
     % that don't need it, e.g. the .NET back-end.
     %
-ml_must_box_field_type(ModuleInfo, Type) :-
+ml_must_box_field_type(ModuleInfo, Type, Width) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
@@ -1384,16 +1385,18 @@ ml_must_box_field_type(ModuleInfo, Type) :-
         ; Target = target_erlang
         ),
         classify_type(ModuleInfo, Type) = Category,
-        MustBox = ml_must_box_field_type_category(Category, UnboxedFloat)
+        MustBox = ml_must_box_field_type_category(Category, UnboxedFloat,
+            Width)
     ;
         Target = target_java,
         MustBox = no
     ),
     MustBox = yes.
 
-:- func ml_must_box_field_type_category(type_ctor_category, bool) = bool.
+:- func ml_must_box_field_type_category(type_ctor_category, bool, arg_width)
+    = bool.
 
-ml_must_box_field_type_category(CtorCat, UnboxedFloat) = MustBox :-
+ml_must_box_field_type_category(CtorCat, UnboxedFloat, Width) = MustBox :-
     (
         ( CtorCat = ctor_cat_builtin(cat_builtin_int)
         ; CtorCat = ctor_cat_builtin(cat_builtin_string)
@@ -1412,10 +1415,27 @@ ml_must_box_field_type_category(CtorCat, UnboxedFloat) = MustBox :-
         MustBox = yes
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_float),
-        MustBox = bool.not(UnboxedFloat)
+        (
+            UnboxedFloat = yes,
+            MustBox = no
+        ;
+            UnboxedFloat = no,
+            (
+                Width = full_word,
+                MustBox = yes
+            ;
+                Width = double_word,
+                MustBox = no
+            ;
+                ( Width = partial_word_first(_)
+                ; Width = partial_word_shifted(_, _)
+                ),
+                unexpected($module, $pred, "partial word for float")
+            )
+        )
     ).
 
-ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval, BoxedRval,
+ml_gen_box_const_rval(ModuleInfo, Context, Type, DoubleWidth, Rval, BoxedRval,
         !GlobalData) :-
     (
         ( Type = mercury_type(type_variable(_, _), _, _)
@@ -1441,6 +1461,8 @@ ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval, BoxedRval,
         HaveUnboxedFloats = ml_global_data_have_unboxed_floats(!.GlobalData),
         (
             HaveUnboxedFloats = do_not_have_unboxed_floats,
+            DoubleWidth = no
+        ->
             % Generate a local static constant for this float.
             module_info_get_name(ModuleInfo, ModuleName),
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
@@ -1452,7 +1474,6 @@ ml_gen_box_const_rval(ModuleInfo, Context, Type, Rval, BoxedRval,
             % cast to mlds_generic_type.
             BoxedRval = ml_unop(cast(mlds_generic_type), ConstAddrRval)
         ;
-            HaveUnboxedFloats = have_unboxed_floats,
             % This is not a real box, but a cast. The "box" is required as it
             % may be further cast to pointer types.
             BoxedRval = ml_unop(box(Type), Rval)

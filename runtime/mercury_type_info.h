@@ -893,9 +893,10 @@ typedef struct {
     MR_int_least8_t         MR_arg_bits;
     /*
     ** If MR_arg_bits is zero then the argument occupies the entire word.
-    ** Otherwise MR_arg_bits is non-zero and gives the number of bits used by
-    ** the argument. Storing the bit-mask would be more useful, but would not
-    ** be as compact. 
+    ** If MR_arg_bits is -1 then the argument is a double-precision floating
+    ** point value occupying two words. Otherwise MR_arg_bits is non-zero and
+    ** gives the number of bits used by the argument. Storing the bit-mask
+    ** would be more useful, but would not be as compact.
     */
 } MR_DuArgLocn;
 
@@ -942,12 +943,6 @@ typedef const MR_DuFunctorDesc              *MR_DuFunctorDescPtr;
 
 #define MR_some_arg_type_contains_var(functor_desc)                     \
     ((functor_desc)->MR_du_functor_arg_type_contains_var > 0)
-
-#define MR_unpack_arg(val, arg_locn)                                    \
-    ((arg_locn)->MR_arg_bits == 0                                       \
-     ? (val)                                                            \
-     : ((val) >> (arg_locn)->MR_arg_shift) &                            \
-        ((MR_Word) (1 << (arg_locn)->MR_arg_bits) - 1))
 
 /*---------------------------------------------------------------------------*/
 

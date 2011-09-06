@@ -1138,7 +1138,8 @@ output_du_arg_locns(Info, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
         !DeclSet, !IO) :-
     (
         list.member(ArgInfo, ArgInfos),
-        ArgInfo = du_arg_info(_, _, partial_word_first(_))
+        ArgInfo = du_arg_info(_, _, Width),
+        Width \= full_word
     ->
         output_generic_rtti_data_defn_start(Info,
             ctor_rtti_id(RttiTypeCtor, type_ctor_field_locns(Ordinal)),
@@ -1159,23 +1160,32 @@ output_du_arg_locns_2([ArgInfo | ArgInfos], PrevSlotNum, !IO) :-
     ArgWidth = ArgInfo ^ du_arg_width,
     (
         ArgWidth = full_word,
-        % Code which examines this structure must check for Bits = 0 as a
-        % special case, meaning that the argument is not packed.
+        % Bits = 0 is a special case.
         Shift = 0,
         Bits = 0,
-        SlotNum = PrevSlotNum + 1
+        SlotNum = PrevSlotNum + 1,
+        Skip = 0
+    ;
+        ArgWidth = double_word,
+        % Bits = -1 is a special case.
+        Shift = 0,
+        Bits = -1,
+        SlotNum = PrevSlotNum + 1,
+        Skip = 1
     ;
         ArgWidth = partial_word_first(Mask),
         Shift = 0,
         int.log2(Mask + 1, Bits),
-        SlotNum = PrevSlotNum + 1
+        SlotNum = PrevSlotNum + 1,
+        Skip = 0
     ;
         ArgWidth = partial_word_shifted(Shift, Mask),
         int.log2(Mask + 1, Bits),
-        SlotNum = PrevSlotNum
+        SlotNum = PrevSlotNum,
+        Skip = 0
     ),
     io.format("\t{ %d, %d, %d },\n", [i(SlotNum), i(Shift), i(Bits)], !IO),
-    output_du_arg_locns_2(ArgInfos, SlotNum, !IO).
+    output_du_arg_locns_2(ArgInfos, SlotNum + Skip, !IO).
 
 %-----------------------------------------------------------------------------%
 

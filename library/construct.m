@@ -719,8 +719,22 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                             MR_field(ptag, new_data, 1 + i) = arg_data;
                         } else {
                             const MR_DuArgLocn *locn = &arg_locns[i];
-                            MR_field(ptag, new_data, 1 + locn->MR_arg_offset)
-                                |= (arg_data << locn->MR_arg_shift);
+
+                            if (locn->MR_arg_bits == -1) {
+                              #ifdef MR_BOXED_FLOAT
+                                MR_memcpy(
+                                    &MR_field(ptag, new_data,
+                                        1 + locn->MR_arg_offset),
+                                    (MR_Word *) arg_data, sizeof(MR_Float));
+                              #else
+                                MR_fatal_error(
+                                    ""construct(): double precision float"");
+                              #endif
+                            } else {
+                                MR_field(ptag, new_data,
+                                    1 + locn->MR_arg_offset)
+                                    |= (arg_data << locn->MR_arg_shift);
+                            }
                         }
                         size += MR_term_size(arg_type_info, arg_data);
                         arg_list = MR_list_tail(arg_list);
@@ -760,8 +774,20 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                             MR_field(ptag, new_data, i) = arg_data;
                         } else {
                             const MR_DuArgLocn *locn = &arg_locns[i];
-                            MR_field(ptag, new_data, locn->MR_arg_offset)
-                                |= (arg_data << locn->MR_arg_shift);
+
+                            if (locn->MR_arg_bits == -1) {
+                              #ifdef MR_BOXED_FLOAT
+                                MR_memcpy(&MR_field(ptag, new_data,
+                                    locn->MR_arg_offset),
+                                    (MR_Word *) arg_data, sizeof(MR_Float));
+                              #else
+                                MR_fatal_error(
+                                    ""construct(): double-precision float"");
+                              #endif
+                            } else {
+                                MR_field(ptag, new_data, locn->MR_arg_offset)
+                                    |= (arg_data << locn->MR_arg_shift);
+                            }
                         }
                         size += MR_term_size(arg_type_info, arg_data);
                         arg_list = MR_list_tail(arg_list);

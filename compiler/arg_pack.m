@@ -77,6 +77,9 @@ do_pack_args(ShiftCombine, [Width | Widths], [Arg0 | Args0], [Arg | Args],
         Width = full_word,
         Shift = 0
     ;
+        Width = double_word,
+        Shift = 0
+    ;
         Width = partial_word_first(_Mask),
         Shift = 0
     ;
@@ -116,6 +119,9 @@ count_distinct_words([H | T]) = Words :-
         H = full_word,
         Words = 1 + count_distinct_words(T)
     ;
+        H = double_word,
+        Words = 2 + count_distinct_words(T)
+    ;
         H = partial_word_first(_),
         Words = 1 + count_distinct_words(T)
     ;
@@ -131,6 +137,10 @@ chunk_list_by_words([W | Ws], [X | Xs], Xss) :-
         W = full_word,
         chunk_list_by_words(Ws, Xs, Xss0),
         Xss = [[X] | Xss0]
+    ;
+        W = double_word,
+        % Not yet supported in LLDS grades.
+        sorry($module, $pred, "double_word")
     ;
         W = partial_word_first(_),
         split_at_next_word(Ws, WsTail, Xs, XsHead, XsTail),
@@ -152,6 +162,7 @@ split_at_next_word([], [], XsTail, [], XsTail).
 split_at_next_word([W | Ws], WsTail, [X | Xs], XsHead, XsTail) :-
     (
         ( W = full_word
+        ; W = double_word
         ; W = partial_word_first(_)
         ),
         WsTail = [W | Ws],

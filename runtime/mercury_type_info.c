@@ -907,10 +907,17 @@ MR_typeclass_ref_error(MR_Word tci, int n, const char *msg)
 int
 MR_cell_size_for_args(int arity, const MR_DuArgLocn *arg_locns)
 {
+    const MR_DuArgLocn *last_arg;
+
     if (arg_locns == NULL) {
         return arity;
+    }
+
+    last_arg = &arg_locns[arity - 1];
+    if (last_arg->MR_arg_bits == -1) {
+        return last_arg->MR_arg_offset + 2;
     } else {
-        return arg_locns[arity - 1].MR_arg_offset + 1;
+        return last_arg->MR_arg_offset + 1;
     }
 }
 

@@ -2,7 +2,7 @@
 ** vim:ts=8 sw=8 noexpandtab
 */
 /*
-** Copyright (C) 1995-2003, 2005-2010 The University of Melbourne.
+** Copyright (C) 1995-2003, 2005-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -97,8 +97,11 @@
 #undef	MR_LOW_TAG_BITS
 
 /*
-** MR_BOXED_FLOAT: defined if double precision floats might not fit
-** in a Word, and hence must be boxed.
+** MR_BOXED_FLOAT: defined if MR_Float is wider than a MR_Word,
+** i.e. when using double-precision floats on 32-bit architectures.
+** It does NOT mean that all floats are necessarily boxed.
+** A better name might be MR_OVERSIZED_FLOAT.
+**
 ** Note that when bootstrapping from the source distribution,
 ** we initially build things without MR_BOXED_FLOAT even on machines
 ** for which sizeof(MR_Float) <= sizeof(MR_Word).

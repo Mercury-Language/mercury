@@ -289,19 +289,27 @@ try_again:
                     }                                                       \
                                                                             \
                     for (i = 0; i < arity; i++) {                           \
-                        if (arg_locns != NULL &&                            \
-                            arg_locns[i].MR_arg_bits != 0)                  \
-                        {                                                   \
-                            /*                                              \
-                            ** Copy fields holding packed arguments when    \
-                            ** we encounter the first argument.             \
-                            */                                              \
-                            if (arg_locns[i].MR_arg_shift == 0) {           \
+                        if (arg_locns != NULL) {                            \
+                            if (arg_locns[i].MR_arg_bits == -1) {           \
+                                /* Double precision float. */               \
                                 MR_field(0, new_data, cur_slot) =           \
                                     data_value[cur_slot];                   \
-                                cur_slot++;                                 \
+                                MR_field(0, new_data, cur_slot + 1) =       \
+                                    data_value[cur_slot + 1];               \
+                                cur_slot += 2;                              \
+                                continue;                                   \
+                            } else if (arg_locns[i].MR_arg_bits > 0) {      \
+                                /*                                          \
+                                ** Copy fields holding packed arguments     \
+                                ** when we encounter the first argument.    \
+                                */                                          \
+                                if (arg_locns[i].MR_arg_shift == 0) {       \
+                                    MR_field(0, new_data, cur_slot) =       \
+                                        data_value[cur_slot];               \
+                                    cur_slot++;                             \
+                                }                                           \
+                                continue;                                   \
                             }                                               \
-                            continue;                                       \
                         }                                                   \
                                                                             \
                         if (MR_arg_type_may_contain_var(functor_desc, i)) { \
