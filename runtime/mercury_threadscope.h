@@ -154,9 +154,15 @@ extern void MR_threadscope_post_sparking(MR_Word* dynamic_conj_id,
 extern void MR_threadscope_post_calling_main(void);
 
 /*
-** Post this message when a thread begins looking for a context to run.
+** Post this message when an engine begins looking for a context to run.
 */
 extern void MR_threadscope_post_looking_for_global_context(void);
+
+/*
+** Post this message when an engine begins trying to run a spark from it's
+** local stack.
+*/
+extern void MR_threadscope_post_looking_for_local_spark(void);
 
 /*
 ** Post this message when a thread is about to attempt work stealing.

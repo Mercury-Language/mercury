@@ -1801,6 +1801,10 @@ do_local_spark(MR_Code *join_label)
 {
     volatile MR_Spark *spark;
 
+#ifdef MR_THREADSCOPE
+    MR_threadscope_post_looking_for_local_spark();
+#endif
+
     spark = MR_wsdeque_pop_bottom(&MR_ENGINE(MR_eng_spark_deque));
     if (NULL == spark) {
         return NULL;

@@ -55,7 +55,7 @@
 **       Word32         -- length of the next field in bytes
 **       Word8*         -- string describing the event
 **       Word32         -- length of the next field in bytes
-**       Word8*         -- extra info (for future extensions)
+**       EventTypeExt*  -- extensions
 **       EVENT_ET_END
 **
 ** Event :
@@ -63,6 +63,15 @@
 **       Word64         -- time (nanosecs)
 **       [Word16]       -- length of the rest (for variable-sized events only)
 **       ... extra event-specific info ...
+** EventTypeExt :
+**       Word16         -- unique identifier for this extension type.
+**       Word16         -- size of the payload in bytes.
+**       Word8          -- payload bytes, their meaning depends upon the type.
+**
+** EVENT_EXT_TYPE_EXTENSION
+**  This event extends another event also defined in this file, the payload of
+**  this extension is:
+**       Word16         -- unique identifier of the event being extended
 **
 ** All values are packed, no attempt is made to align them.
 **
@@ -113,8 +122,6 @@
 #define MR_TS_EVENT_STOP_THREAD          2 /* (thread, status)       */
 #define MR_TS_EVENT_THREAD_RUNNABLE      3 /* (thread)               */
 #define MR_TS_EVENT_MIGRATE_THREAD       4 /* (thread, new_cap)      */
-#define MR_TS_EVENT_RUN_SPARK            5 /* (thread, spark_id)     */
-#define MR_TS_EVENT_STEAL_SPARK          6 /* (thread, victim_cap, spark_id) */
 #define MR_TS_EVENT_SHUTDOWN             7 /* ()                     */
 #define MR_TS_EVENT_THREAD_WAKEUP        8 /* (thread, other_cap)    */
 #define MR_TS_EVENT_GC_START             9 /* ()                     */
@@ -146,15 +153,19 @@
 #define MR_TS_EVENT_PROGRAM_ARGS        30 /* (capset, commandline_vector)  */
 #define MR_TS_EVENT_PROGRAM_ENV         31 /* (capset, environment_vector)  */
 
-#define MR_TS_EVENT_OSPROCESS_PID       32 /* (capset, pid, parent_pid)     */
+#define MR_TS_EVENT_OSPROCESS_PID       32 /* (capset, pid) */
+#define MR_TS_EVENT_OSPROCESS_PPID      33 /* (capset, parent_pid) */
+#define MR_TS_EVENT_SPARK_COUNTERS      34 /* (crt,dud,ovf,cnv,fiz,gcd,rem) */
+#define MR_TS_EVENT_SPARK_CREATE        35 /* () */
+#define MR_TS_EVENT_SPARK_DUD           36 /* () */
+#define MR_TS_EVENT_SPARK_OVERFLOW      37 /* () */
+#define MR_TS_EVENT_SPARK_RUN           38 /* () */
+#define MR_TS_EVENT_SPARK_STEAL         39 /* (victim_cap) */
+#define MR_TS_EVENT_SPARK_FIZZLE        40 /* () */
+#define MR_TS_EVENT_SPARK_GC            41 /* () */
+#define MR_TS_EVENT_INTERN_STRING       42 /* (string, id) */
 
-/*
-** Duncan Coutts has reserved IDs 33-37 in a discussion via IRC.
-*/
-#define MR_TS_EVENT_STRING              39 /* (string, id) */
-#define MR_TS_EVENT_CALL_MAIN           40 /* () */
-
-#define MR_TS_NUM_EVENT_TAGS            41
+#define MR_TS_NUM_EVENT_TAGS            43
 
 #define MR_TS_MER_EVENT_START           100
 
@@ -167,7 +178,7 @@
 ** If other systems wish to use this event, they can move it
 ** to the main events section.
 */
-#define MR_TS_MER_EVENT_SPARKING            103 /* (int id, spark id) */
+#define MR_TS_MER_EVENT_SPARK_CREATE        103 /* (int id, spark id) */
 
 #define MR_TS_MER_EVENT_FUT_CREATE          104 /* (fut id, memo'd name id) */
 #define MR_TS_MER_EVENT_FUT_WAIT_NOSUSPEND  105 /* (fut id) */
@@ -178,11 +189,18 @@
 #define MR_TS_MER_EVENT_WORK_STEALING       109 /* () */
 #define MR_TS_MER_EVENT_RELEASE_CONTEXT     110 /* (context id) */
 #define MR_TS_MER_EVENT_ENGINE_SLEEPING     111 /* () */
-#define MR_TS_NUM_MER_EVENTS                 12
+#define MR_TS_MER_EVENT_LOOKING_FOR_LOCAL_SPARK \
+                                            112 /* () */
+#define MR_TS_MER_EVENT_CALLING_MAIN        113 /* () */
+#define MR_TS_MER_EVENT_SPARK_RUN           114 /* (spark id) */
+#define MR_TS_MER_EVENT_SPARK_STEAL         115 /* (victim cap, spark id) */
+#define MR_TS_NUM_MER_EVENTS                 16
 
 #if 0  /* DEPRECATED EVENTS: */
 #define EVENT_CREATE_SPARK        13 /* (cap, thread) */
 #define EVENT_SPARK_TO_THREAD     14 /* (cap, thread, spark_thread) */
+#define MR_TS_EVENT_RUN_SPARK     5 /* (thread, spark_id)     */
+#define MR_TS_EVENT_STEAL_SPARK   6 /* (thread, victim_cap, spark_id) */
 #endif
 
 /*
@@ -191,6 +209,11 @@
 #define MR_TS_ENGSET_TYPE_CUSTOM      1 /* reserved for end-user applications */
 #define MR_TS_ENGSET_TYPE_OSPROCESS   2 /* engines belong to same OS process  */
 #define MR_TS_ENGSET_TYPE_CLOCKDOMAIN 3 /* engines share a local clock/time   */
+
+/*
+** Event extension types
+*/
+#define MR_EXT_TYPE_EXTENSION         1 /* This event extends another event */
 
 /*
 ** GHC uses 2MB per buffer. Note that the minimum buffer size is the size of
@@ -247,14 +270,29 @@ typedef MR_int_least64_t    Timedelta;
 */
 typedef MR_uint_least32_t   EventlogOffset;
 
+/*
+** A descriptor used when writing the header of threadscope files.
+** The fields are:
+**
+** edt_event_type       The type of this event
+**
+** edt_description      A string description of this event
+**
+** edt_size             The event's size or -1 for variable length
+**
+** edt_extends_event    The event that this event extends, or 0xFFFF if this is
+**                      a base event
+*/
 typedef struct {
     EventType           etd_event_type;
     const char          *etd_description;
     MR_int_least16_t    etd_size;
+    EventType           edt_extends_event;
 } EventTypeDesc;
 
 /***************************************************************************/
 
+#define SZ_EVENT_TYPE           2
 #define SZ_CAPSET_ID            4
 #define SZ_CAPSET_TYPE          2
 #define SZ_CONTEXT_ID           4
@@ -278,7 +316,8 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_EVENT_STARTUP,
         "Startup (num_engines)",
-        SZ_ENGINE_ID
+        SZ_ENGINE_ID,
+        0xFFFF
     },
     {
         /*
@@ -286,7 +325,8 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_EVENT_SHUTDOWN,
         "Shutdown",
-        0
+        0,
+        0xFFFF
     },
     {
         /*
@@ -297,7 +337,8 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_EVENT_BLOCK_MARKER,
         "A block of events generated by a specific engine follows",
-        SZ_ENGINELOG_OFFSET + SZ_TIME + SZ_ENGINE_ID
+        SZ_ENGINELOG_OFFSET + SZ_TIME + SZ_ENGINE_ID,
+        0xFFFF
     },
     {
         /*
@@ -305,7 +346,8 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_EVENT_CREATE_THREAD,
         "A context is created or re-used",
-        SZ_CONTEXT_ID
+        SZ_CONTEXT_ID,
+        0xFFFF
     },
     {
         /*
@@ -313,24 +355,40 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_EVENT_THREAD_RUNNABLE,
         "The context is being placed on the run queue",
-        SZ_CONTEXT_ID
+        SZ_CONTEXT_ID,
+        0xFFFF
     },
     {
         /*
-        ** The named context has begun executing a spark from its local stack.
+        ** The engine has taken a spark from it's local stack and will run it.
         */
-        MR_TS_EVENT_RUN_SPARK,
+        MR_TS_EVENT_SPARK_RUN,
         "Run a spark from the local stack",
-        SZ_CONTEXT_ID + SZ_SPARK_ID
+        0,
+        0xFFFF
+    },
+    {
+        MR_TS_MER_EVENT_SPARK_RUN,
+        "Run a spark from the local stack, the spark is identified by an id",
+        SZ_SPARK_ID,
+        MR_TS_EVENT_SPARK_RUN
     },
     {
         /*
-        ** The named context has begun executing a spark from another engine's
-        ** stack.
+        ** The named context has begun executing a spark from another
+        ** engine's stack.
         */
-        MR_TS_EVENT_STEAL_SPARK,
+        MR_TS_EVENT_SPARK_STEAL,
         "Run a spark stolen from another engine",
-        SZ_CONTEXT_ID + SZ_ENGINE_ID + SZ_SPARK_ID
+        SZ_ENGINE_ID,
+        0XFFFF
+    },
+    {
+        MR_TS_MER_EVENT_SPARK_STEAL,
+        "Run a spark stolen from another engine, "
+            "the spark is identified by an id",
+        SZ_ENGINE_ID + SZ_SPARK_ID,
+        MR_TS_EVENT_SPARK_STEAL
     },
     {
         /*
@@ -339,7 +397,8 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_EVENT_RUN_THREAD,
         "Run context",
-        SZ_CONTEXT_ID
+        SZ_CONTEXT_ID,
+        0xFFFF
     },
     {
         /*
@@ -348,7 +407,8 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_EVENT_STOP_THREAD,
         "Context stopped",
-        SZ_CONTEXT_ID + SZ_CONTEXT_STOP_REASON
+        SZ_CONTEXT_ID + SZ_CONTEXT_STOP_REASON,
+        0xFFFF
     },
     {
         /*
@@ -356,12 +416,14 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_EVENT_CREATE_SPARK_THREAD,
         "Create a context for executing a spark",
-        SZ_CONTEXT_ID
+        SZ_CONTEXT_ID,
+        0xFFFF
     },
     {
         MR_TS_EVENT_LOG_MSG,
         "A user-provided log message",
-        -1 /* Variable length */
+        -1, /* Variable length */
+        0xFFFF
     },
     {
         /*
@@ -369,7 +431,8 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_EVENT_GC_START,
         "Start GC",
-        0
+        0,
+        0xFFFF
     },
     {
         /*
@@ -377,89 +440,102 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_EVENT_GC_END,
         "Stop GC",
-        0
+        0,
+        0xFFFF
     },
     {
         /*
         ** The runtime system registers a string and an ID for it
         ** so that the ID represents the string in future messages.
         */
-        MR_TS_EVENT_STRING,
+        MR_TS_EVENT_INTERN_STRING,
         "Register an id->string mapping",
-        -1
-    },
-    {
-        /*
-        ** The runtime system is about to call main/2.
-        ** This message has no parameters.
-        */
-        MR_TS_EVENT_CALL_MAIN,
-        "About to call main/2",
-        0
+        -1,
+        0xFFFF
     },
     {
         MR_TS_EVENT_CAPSET_CREATE,
         "Create an engine set",
-        SZ_CAPSET_ID + SZ_CAPSET_TYPE
+        SZ_CAPSET_ID + SZ_CAPSET_TYPE,
+        0xFFFF
     },
     {
         MR_TS_EVENT_CAPSET_DELETE,
         "Detete an engine set",
-        SZ_CAPSET_ID
+        SZ_CAPSET_ID,
+        0xFFFF
     },
     {
         MR_TS_EVENT_CAPSET_ASSIGN_CAP,
         "Add an engine to an engine set",
-        SZ_CAPSET_ID + SZ_ENGINE_ID
+        SZ_CAPSET_ID + SZ_ENGINE_ID,
+        0xFFFF
     },
     {
         MR_TS_EVENT_CAPSET_REMOVE_CAP,
         "Add an engine to an engine set",
-        SZ_CAPSET_ID + SZ_ENGINE_ID
+        SZ_CAPSET_ID + SZ_ENGINE_ID,
+        0xFFFF
     },
     {
         MR_TS_EVENT_RTS_IDENTIFIER,
         "The type of the runtime system for this capset",
-        -1
+        -1,
+        0xFFFF
     },
     {
         MR_TS_EVENT_PROGRAM_ARGS,
         "The command line arguments of this process",
-        -1
+        -1,
+        0xFFFF
     },
     {
         MR_TS_EVENT_PROGRAM_ENV,
         "The environment variables this process inherited",
-        -1
+        -1,
+        0xFFFF
     },
     {
         MR_TS_EVENT_OSPROCESS_PID,
-        "The pid and parent pid of this process",
-        2 * SZ_PID
+        "The pid of this process",
+        SZ_PID,
+        0xFFFF
     },
     {
-        MR_TS_MER_EVENT_SPARKING,
+        MR_TS_EVENT_OSPROCESS_PPID,
+        "The parent pid of this process",
+        SZ_PID,
+        0xFFFF
+    },
+    {
+        MR_TS_EVENT_SPARK_CREATE,
         "A spark is being created",
-        SZ_DYN_CONJ_ID + SZ_SPARK_ID
-        /*
-        ** Note that the dynamic conj ID is only useful for Mercury.
-        ** Other implementors may want different attributes here.
-        */
+        0,
+        0xFFFF
+    },
+    {
+        MR_TS_MER_EVENT_SPARK_CREATE,
+        "A spark is being created with attributes for Mercury",
+        SZ_DYN_CONJ_ID + SZ_SPARK_ID,
+        MR_TS_EVENT_SPARK_CREATE
     },
     {
         MR_TS_MER_EVENT_START_PAR_CONJ,
         "Start a parallel conjunction (dyn id, static id)",
-        SZ_DYN_CONJ_ID + SZ_STATIC_CONJ_ID
+        SZ_DYN_CONJ_ID + SZ_STATIC_CONJ_ID,
+        0xFFFF
     },
     {
         MR_TS_MER_EVENT_END_PAR_CONJ,
         "End a parallel conjunction (dyn id)",
-        SZ_DYN_CONJ_ID
+        SZ_DYN_CONJ_ID,
+        0xFFFF
     },
     {
         MR_TS_MER_EVENT_END_PAR_CONJUNCT,
         "End a parallel conjunct (dyn id)",
-        SZ_DYN_CONJ_ID
+        SZ_DYN_CONJ_ID,
+        0xFFFF
     },
     {
         /*
@@ -468,48 +544,73 @@ static EventTypeDesc event_type_descs[] = {
         */
         MR_TS_MER_EVENT_FUT_CREATE,
         "Create a future (future id)",
-        SZ_FUTURE_ID + SZ_VAR_NAME_ID
+        SZ_FUTURE_ID + SZ_VAR_NAME_ID,
+        0xFFFF
     },
     {
         MR_TS_MER_EVENT_FUT_WAIT_NOSUSPEND,
         "Wait on a future without suspending (future id)",
-        SZ_FUTURE_ID
+        SZ_FUTURE_ID,
+        0xFFFF
     },
     {
         MR_TS_MER_EVENT_FUT_WAIT_SUSPENDED,
         "Wait on a future by suspending this thread (future id)",
-        SZ_FUTURE_ID
+        SZ_FUTURE_ID,
+        0xFFFF
     },
     {
         MR_TS_MER_EVENT_FUT_SIGNAL,
         "Signal a future (future id)",
-        SZ_FUTURE_ID
+        SZ_FUTURE_ID,
+        0xFFFF
     },
     {
         MR_TS_MER_EVENT_LOOKING_FOR_GLOBAL_CONTEXT,
         "Engine begins looking for a context to execute",
-        0
+        0,
+        0xFFFF
+    },
+    {
+        MR_TS_MER_EVENT_LOOKING_FOR_LOCAL_SPARK,
+        "Engine begins looking for a local spark to execute",
+        0,
+        0xFFFF
     },
     {
         MR_TS_MER_EVENT_WORK_STEALING,
         "Engine begins attempt to steal work",
-        0
+        0,
+        0xFFFF
     },
     {
         MR_TS_MER_EVENT_RELEASE_CONTEXT,
         "Release this context to the free context pool",
-        SZ_CONTEXT_ID
+        SZ_CONTEXT_ID,
+        0xFFFF
     },
     {
         MR_TS_MER_EVENT_ENGINE_SLEEPING,
         "This engine is going to sleep",
-        0
+        0,
+        0xFFFF
+    },
+    {
+        /*
+        ** The runtime system is about to call main/2.
+        ** This message has no parameters.
+        */
+        MR_TS_MER_EVENT_CALLING_MAIN,
+        "About to call main/2",
+        0,
+        0xFFFF
     },
     {
         /* Mark the end of this array. */
         MR_TS_NUM_EVENT_TAGS,
         NULL,
-        0
+        0,
+        0xFFFF
     }
 };
 
@@ -1264,28 +1365,19 @@ void
 MR_threadscope_post_run_spark(MR_SparkId spark_id)
 {
     struct MR_threadscope_event_buffer  *buffer;
-    MR_Context                          *context;
-    MR_ContextId                        context_id;
 
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
-    context = MR_thread_engine_base->MR_eng_this_context;
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
-    if (!enough_room_for_event(buffer, MR_TS_EVENT_RUN_SPARK)) {
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_SPARK_RUN)) {
         flush_event_buffer(buffer);
         open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
         open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
-    put_event_header(buffer, MR_TS_EVENT_RUN_SPARK,
+    put_event_header(buffer, MR_TS_MER_EVENT_SPARK_RUN,
         get_current_time_nanosecs());
-    if (context) {
-        context_id = context->MR_ctxt_num_id;
-    } else {
-        context_id = 0xFFFFFFFF;
-    }
-    put_context_id(buffer, context_id);
     put_spark_id(buffer, spark_id);
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }
@@ -1294,29 +1386,20 @@ void
 MR_threadscope_post_steal_spark(MR_SparkId spark_id)
 {
     struct MR_threadscope_event_buffer  *buffer;
-    MR_Context                          *context;
-    MR_ContextId                        context_id;
     unsigned                            engine_id;
 
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
-    context = MR_thread_engine_base->MR_eng_this_context;
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
-    if (!enough_room_for_event(buffer, MR_TS_EVENT_STEAL_SPARK)) {
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_SPARK_STEAL)) {
         flush_event_buffer(buffer);
         open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
         open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
-    put_event_header(buffer, MR_TS_EVENT_STEAL_SPARK,
+    put_event_header(buffer, MR_TS_MER_EVENT_SPARK_STEAL,
         get_current_time_nanosecs());
-    if (context) {
-        context_id = context->MR_ctxt_num_id;
-    } else {
-        context_id = 0xFFFFFFFF;
-    }
-    put_context_id(buffer, context_id);
 
     /*
     ** The engine that created the spark (which may not be whom it was stolen
@@ -1335,14 +1418,14 @@ MR_threadscope_post_sparking(MR_Word* dynamic_conj_id, MR_SparkId spark_id)
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
-    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_SPARKING)) {
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_SPARK_CREATE)) {
         flush_event_buffer(buffer);
         open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
         open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
-    put_event_header(buffer, MR_TS_MER_EVENT_SPARKING,
+    put_event_header(buffer, MR_TS_MER_EVENT_SPARK_CREATE,
         get_current_time_nanosecs());
     put_par_conj_dynamic_id(buffer, dynamic_conj_id);
     put_spark_id(buffer, spark_id);
@@ -1356,14 +1439,14 @@ MR_threadscope_post_calling_main(void)
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
-    if (!enough_room_for_event(buffer, MR_TS_EVENT_CALL_MAIN)) {
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_CALLING_MAIN)) {
         flush_event_buffer(buffer);
         open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
         open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
-    put_event_header(buffer, MR_TS_EVENT_CALL_MAIN,
+    put_event_header(buffer, MR_TS_MER_EVENT_CALLING_MAIN,
         get_current_time_nanosecs());
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }
@@ -1384,6 +1467,24 @@ MR_threadscope_post_looking_for_global_context(void)
     }
 
     put_event_header(buffer, MR_TS_MER_EVENT_LOOKING_FOR_GLOBAL_CONTEXT,
+        get_current_time_nanosecs());
+    MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
+}
+
+void
+MR_threadscope_post_looking_for_local_spark(void)
+{
+    struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
+
+    MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_LOOKING_FOR_LOCAL_SPARK)) {
+        flush_event_buffer(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    } else if (!block_is_open(buffer)) {
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    }
+
+    put_event_header(buffer, MR_TS_MER_EVENT_LOOKING_FOR_LOCAL_SPARK,
         get_current_time_nanosecs());
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }
@@ -1489,7 +1590,7 @@ MR_threadscope_register_string(const char *string)
         flush_event_buffer(&global_buffer);
     }
 
-    put_event_header(&global_buffer, MR_TS_EVENT_STRING, 0);
+    put_event_header(&global_buffer, MR_TS_EVENT_INTERN_STRING, 0);
     id = MR_next_string_id++;
     put_be_uint16(&global_buffer, length + 4);
     put_raw_string(&global_buffer, string, length);
@@ -1823,8 +1924,15 @@ put_event_type(struct MR_threadscope_event_buffer *buffer,
 
     put_string_size32(buffer, event_type_desc->etd_description);
 
-    /* There is no extended data in any of our events */
-    put_be_uint32(buffer, 0);
+    if (event_type_desc->edt_extends_event != 0xFFFF) {
+        put_be_uint32(buffer, 2 + 2 + SZ_EVENT_TYPE);
+        put_be_uint16(buffer, MR_EXT_TYPE_EXTENSION);
+        put_be_uint16(buffer, SZ_EVENT_TYPE);
+        put_be_uint16(buffer, event_type_desc->edt_extends_event);
+    } else {
+        /* There is no extended data in this event */
+        put_be_uint32(buffer, 0);
+    }
 
     put_be_uint32(buffer, MR_TS_EVENT_ET_END);
 }
