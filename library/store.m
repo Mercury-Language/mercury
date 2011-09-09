@@ -291,7 +291,7 @@ store.init(S) :-
     store.do_init(_S0::uo),
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
-    /* TypeInfo_for_S */
+    TypeInfo_for_S = 0;
 ").
 :- pragma foreign_proc("C#",
     store.do_init(_S0::uo),

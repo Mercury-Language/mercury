@@ -1033,7 +1033,7 @@ if test "$ac_microsoft" = "yes" ; then
     LIB_LIBPATH="/LIBPATH:"
     LINK_LIB=""
     LINK_LIB_SUFFIX=".lib"
-    LINK_OPT_SEP="/link"
+    LINK_OPT_SEP="-link"
 
     OBJFILE_OPT="-Fo"
     AR="lib"

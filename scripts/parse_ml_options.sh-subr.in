@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2001-2007 The University of Melbourne.
+# Copyright (C) 2001-2007, 2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -28,8 +28,10 @@ trace=false
 ssdb=false
 readline=true
 case $FULLARCH in
-	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
+	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin|*mingw*)
 		# `gcc -s' is broken in gnu-win32
+		# XXX actually strip = true is fine for MinGW / GCC, but
+		# MSVC doesn't like it.
 		strip=false
 		;;
 	*-darwin*)
