@@ -74,7 +74,7 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
     % by setting the mode_info flag may_initialise_solver_vars to no.
     mode_info_set_may_init_solver_vars(may_not_init_solver_vars, !ModeInfo),
 
-    modecheck_conj_list_2(ConjType, Goals0, Goals1,
+    modecheck_conj_list_flatten_and_schedule(ConjType, Goals0, Goals1,
         [], RevImpurityErrors0, !ModeInfo),
 
     mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
@@ -126,40 +126,46 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
 :- type impurity_errors == list(mode_error_info).
 
     % Flatten conjunctions as we go, as long as they are of the same type.
-    % Call modecheck_conj_list_3 to do the actual scheduling.
+    % Call modecheck_conj_list_schedule to do the actual scheduling.
     %
-:- pred modecheck_conj_list_2(conj_type::in,
+    % NOTE: In some rare cases, when the compiler is compled in a in hlc grade
+    % and the conjunction is particularly large, the mutual recursion between
+    % modecheck_conj_list_flatten_and_schedule and modecheck_conj_list_schedule
+    % can exhaust the C stack, causing a core dump. This happens e.g. when
+    % compiling zm_enums.m in a compiler in which polymorphism's reuse of
+    % inserted typeinfo and related variables has been disabled.
+    %
+:- pred modecheck_conj_list_flatten_and_schedule(conj_type::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     impurity_errors::in, impurity_errors::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_conj_list_2(_ConjType, [], [], !ImpurityErrors, !ModeInfo).
-modecheck_conj_list_2(ConjType, [Goal0 | Goals0], Goals, !ImpurityErrors,
-        !ModeInfo) :-
+modecheck_conj_list_flatten_and_schedule(_ConjType, [], [],
+        !ImpurityErrors, !ModeInfo).
+modecheck_conj_list_flatten_and_schedule(ConjType, [Goal0 | Goals0], Goals,
+        !ImpurityErrors, !ModeInfo) :-
     (
         Goal0 = hlds_goal(conj(plain_conj, ConjGoals), _),
         ConjType = plain_conj
     ->
         Goals1 = ConjGoals ++ Goals0,
-        modecheck_conj_list_2(ConjType, Goals1, Goals, !ImpurityErrors,
-            !ModeInfo)
+        modecheck_conj_list_flatten_and_schedule(ConjType, Goals1, Goals,
+            !ImpurityErrors, !ModeInfo)
     ;
-        modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
-            !ModeInfo)
+        modecheck_conj_list_schedule(ConjType, Goal0, Goals0, Goals,
+            !ImpurityErrors, !ModeInfo)
     ).
 
-    % Schedule a conjunction. If it is empty, then there is nothing to do.
-    % For non-empty conjunctions, we attempt to schedule the first goal
-    % in the conjunction. If successful, we wakeup a newly pending goal
-    % (if any), and if not, we delay the goal. Then we continue attempting
-    % to schedule all the rest of the goals.
+    % We attempt to schedule the first goal in the conjunction. If successful,
+    % we try to wake up pending goals (if any), and if not, we delay the goal.
+    % Then we continue attempting to schedule all the rest of the conjuncts.
     %
-:- pred modecheck_conj_list_3(conj_type::in, hlds_goal::in,
+:- pred modecheck_conj_list_schedule(conj_type::in, hlds_goal::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     impurity_errors::in, impurity_errors::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
+modecheck_conj_list_schedule(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
         !ModeInfo) :-
     Purity = goal_get_purity(Goal0),
     (
@@ -238,8 +244,8 @@ modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
         Goals2  = []
     ;
         % The remaining goals may still need to be flattened.
-        modecheck_conj_list_2(ConjType, Goals1, Goals2, !ImpurityErrors,
-            !ModeInfo)
+        modecheck_conj_list_flatten_and_schedule(ConjType, Goals1, Goals2,
+            !ImpurityErrors, !ModeInfo)
     ),
     (
         Errors = [_ | _],
@@ -376,8 +382,8 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
 
             mode_info_add_goals_live_vars(ConjType, InitGoals, !ModeInfo),
 
-            modecheck_conj_list_2(ConjType, Goals1, Goals, !ImpurityErrors,
-                !ModeInfo),
+            modecheck_conj_list_flatten_and_schedule(ConjType, Goals1, Goals,
+                !ImpurityErrors, !ModeInfo),
 
             mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
             delay_info_leave_conj(DelayInfo2, DelayedGoals, DelayInfo3),
@@ -632,8 +638,8 @@ modecheck_delayed_goals_eager(ConjType, DelayedGoals0, DelayedGoals, Goals,
         expect(unify(OldMayInit, may_not_init_solver_vars), $module, $pred,
             "may init solver vars"),
         mode_info_set_may_init_solver_vars(may_init_solver_vars, !ModeInfo),
-        modecheck_conj_list_2(ConjType, Goals0, Goals1, !ImpurityErrors,
-            !ModeInfo),
+        modecheck_conj_list_flatten_and_schedule(ConjType, Goals0, Goals1,
+            !ImpurityErrors, !ModeInfo),
         mode_info_set_may_init_solver_vars(may_not_init_solver_vars,
             !ModeInfo),
 
