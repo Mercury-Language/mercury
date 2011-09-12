@@ -9,10 +9,10 @@ vim: ft=c ts=4 sw=4 et
 
 /*
 ** This module contains the definitions of the primitive operations we use to
-** implement dependent AND-parallelism as C macros. The macros can be invoked
-** either from the predicates representing the operations in par_builtin.m
-** in the library directory, or from a foreign_proc version of those
-** predicates inserted directly into compiler-generated code.
+** implement builtins for parallel grades as C macros. Some of these macros can
+** be invoked either from the predicates representing the operations in
+** par_builtin.m in the library directory, or from a foreign_proc version of
+** those predicates inserted directly into compiler-generated code.
 */
 
 #ifndef MERCURY_PAR_BUILTIN_H
@@ -22,6 +22,12 @@ vim: ft=c ts=4 sw=4 et
 #include "mercury_thread.h"
 #include "mercury_threadscope.h"
 #include "mercury_atomic_ops.h"
+
+/***************************************************************************
+**
+** Futures for dependant AND parallelism.
+**
+***************************************************************************/
 
 #ifdef MR_THREAD_SAFE
 
@@ -277,5 +283,148 @@ vim: ft=c ts=4 sw=4 et
         } while (0)
 
 #endif
+
+/***************************************************************************
+**
+** Builtins for loop coordination.
+**
+***************************************************************************/
+
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+
+typedef struct MR_LoopControl_Struct        MR_LoopControl;
+
+typedef struct MR_LoopControlSlot_Struct    MR_LoopControlSlot;
+
+struct MR_LoopControl_Struct
+{
+    MR_LoopControlSlot*                 MR_lc_slots;
+    unsigned                            MR_lc_num_slots;
+    MR_THREADSAFE_VOLATILE MR_Integer   MR_lc_outstanding_workers;
+    MR_Context*                         MR_lc_waiting_context;
+    MR_THREADSAFE_VOLATILE MR_bool      MR_lc_finished;
+    MercuryLock                         MR_lc_lock;
+};
+
+struct MR_LoopControlSlot_Struct
+{
+    MR_Context*         MR_lcs_context;
+    MR_bool             MR_lcs_is_free;
+};
+
+#else
+
+/*
+** We have to define these types so that par_builtin.m can use them as foreign
+** types, even in grades that don't support them.
+*/
+
+typedef MR_Word MR_LoopControl;
+typedef MR_Word MR_LoopControlSlot;
+
+#endif
+
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+
+/*
+** XXX: Make these functions macros, they're functions now to make debugging
+** and testing easier.
+*/
+
+/*
+** Create and initialize a loop control structure.
+*/
+extern MR_LoopControl* MR_lc_create(unsigned num_workers);
+
+/*
+** Wait for all workers and then finalize and free the loop control structure,
+** The caller must pass a module-unique (unquoted) string for resume_point_name
+** that will be used in the name for a C label.
+*/
+#define MR_lc_finish_part1(lc, label)                                       \
+    do {                                                                    \
+        (lc)->MR_lc_finished = MR_TRUE;                                     \
+        /*                                                                  \
+        ** This barrier ensures that MR_lc_finished before we read          \
+        ** MR_lc_outstanding_contexts, it works with another barrier in     \
+        ** MR_lc_join_and_terminate().  See MR_lc_join_and_terminate().     \
+        */                                                                  \
+        MR_CPU_MFENCE;                                                      \
+        if ((lc)->MR_lc_outstanding_workers > 0) {                          \
+            /*                                                              \
+            ** This context must wait until the workers are finished.       \
+            ** This must be implemented as a macro, we cannot move the C    \
+            ** stack pointer without extra work.                            \
+            */                                                              \
+            MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =                \
+                MR_LABEL(MR_add_prefix(label));                             \
+            MR_LOCK(&((lc)->MR_lc_lock), "MR_lc_finish_part1");             \
+            if ((lc)->MR_lc_outstanding_workers == 0) {                     \
+                MR_UNLOCK(&((lc)->MR_lc_lock), "MR_lc_finish_part1");       \
+                MR_GOTO_LOCAL(MR_add_prefix(label));                        \
+            }                                                               \
+            MR_save_context(MR_ENGINE(MR_eng_this_context));                \
+            (lc)->MR_lc_waiting_context = MR_ENGINE(MR_eng_this_context);   \
+            MR_UNLOCK(&((lc)->MR_lc_lock), "MR_lc_finish_part1");           \
+            MR_ENGINE(MR_eng_this_context) = NULL;                          \
+            MR_idle(); /* Release the engine to the idle loop */            \
+        }                                                                   \
+    } while (0);
+
+#define MR_lc_finish_part2(lc)                                              \
+    do {                                                                    \
+        unsigned i;                                                         \
+                                                                            \
+        /*                                                                  \
+        ** All the jobs have finished,                                      \
+        */                                                                  \
+        for (i = 0; i < (lc)->MR_lc_num_slots; i++) {                       \
+            if ((lc)->MR_lc_slots[i].MR_lcs_context != NULL) {              \
+                MR_destroy_context((lc)->MR_lc_slots[i].MR_lcs_context);    \
+            }                                                               \
+        }                                                                   \
+        pthread_mutex_destroy(&((lc)->MR_lc_lock));                         \
+    } while (0);
+
+/*
+** Get a free slot in the loop control if there is one.
+*/
+extern MR_LoopControlSlot* MR_lc_try_get_free_slot(MR_LoopControl* lc);
+
+/*
+** Try to spawn off this code using the free slot.
+*/
+#define MR_lc_spawn_off(lcs, label) \
+    MR_lc_spawn_off_((lcs), MR_LABEL(MR_add_prefix(label)))
+
+extern void MR_lc_spawn_off_(MR_LoopControlSlot* lcs, MR_Code* code_ptr);
+
+/*
+** Join and termiante a worker.
+*/
+#define MR_lc_join_and_terminate(lc, lcs)                                   \
+    do {                                                                    \
+        MR_lc_join((lc), (lcs));                                            \
+                                                                            \
+        /*                                                                  \
+        ** Termination of this context must be handled in a macro so that   \
+        ** C's stack pointer is set correctly.  It might appear that we     \
+        ** don't need to save the context since it doesn't hold a           \
+        ** computation, but we do so that we save bookkeeping information.  \
+        ** A similar mistake was the cause of a hard-to-diagnose bug in     \
+        ** parallel stack segments grades.                                  \
+        */                                                                  \
+        MR_save_context(MR_ENGINE(MR_eng_this_context));                    \
+        MR_ENGINE(MR_eng_this_context) = NULL;                              \
+        MR_idle();                                                          \
+    } while (0);
+
+/*
+** Join a worker context with the main thread.  Termination of the context
+** is handled in the macro above.
+*/
+extern void MR_lc_join(MR_LoopControl* lc, MR_LoopControlSlot* lcs);
+
+#endif /* MR_THREAD_SAFE && MR_LL_PARALLEL_CONJ */
 
 #endif /* not MERCURY_PAR_BUILTIN_H */

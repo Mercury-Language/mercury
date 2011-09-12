@@ -69,6 +69,35 @@
 :- impure pred signal_future(future(T)::in, T::in) is det.
 
 %---------------------------------------------------------------------------%
+%
+% These types and predicates are used by the loop control transformation.
+%
+
+:- type loop_control.
+
+:- type loop_control_slot.
+
+    % Create a loop control structure, see MR_lc_create in mercury_par_builtin.h
+    %
+:- pred lc_create(int::in, loop_control::out) is det.
+
+    % Finish a loop and finalize a loop control structure, see MR_lc_finish in
+    % mercury_par_builtin.h
+
+:- impure pred lc_finish(loop_control::in) is det.
+
+    % Allocate a free slot from the loop control structure and return it.
+    % See MR_lc_try_get_free_slot in mercury_par_builtin.h
+    %
+:- impure pred lc_free_slot(loop_control::in, loop_control_slot::out) is semidet.
+
+    % Finish one iteration of the loop.  This call does not return.
+    % See MR_lc_join_and_terminate in mercury_par_builtin.h
+    %
+:- impure pred lc_join_and_terminate(loop_control::in, loop_control_slot::in)
+    is det.
+
+%-----------------------------------------------------------------------------%
 
 % The following predicates are intended to be used as conditions to decide
 % whether the conjuncts of a conjunction should be executed in parallel or
@@ -233,6 +262,167 @@ INIT mercury_sys_init_par_builtin_modules
         /* no proc_statics to write out */
     }
     #endif
+").
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_type("C", loop_control, "MR_LoopControl *",
+    [can_pass_as_mercury_type]).
+
+    % Placeholders only.
+:- pragma foreign_type(il, loop_control, "class [mscorlib]System.Object").
+:- pragma foreign_type("Erlang", loop_control, "").
+:- pragma foreign_type("C#", loop_control, "object").
+:- pragma foreign_type("Java", loop_control, "java.lang.Object").
+
+:- pragma foreign_type("C", loop_control_slot, "MR_LoopControlSlot *",
+    [can_pass_as_mercury_type]).
+
+    % Placeholders only.
+:- pragma foreign_type(il, loop_control_slot, "class [mscorlib]System.Object").
+:- pragma foreign_type("Erlang", loop_control_slot, "").
+:- pragma foreign_type("C#", loop_control_slot, "object").
+:- pragma foreign_type("Java", loop_control_slot, "java.lang.Object").
+
+:- pragma foreign_proc("C",
+
+    lc_create(NumWorkers::in, LC::out),
+    [will_not_call_mercury, will_not_throw_exception, thread_safe,
+     promise_pure],
+"
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+    LC = MR_lc_create(NumWorkers);
+#else
+    MR_fatal_error(""lc_create is unavailable in this grade"");
+#endif
+").
+
+
+%
+% IMPORTANT: any changes or additions to external predicates should be
+% reflected in the definition of pred_is_external in
+% mdbcomp/program_representation.m.  The debugger needs to know what predicates
+% are defined externally, so that it knows not to expect events for those
+% predicates.
+%
+:- external(lc_finish/1).
+
+:- pragma foreign_code("C",
+"
+
+void mercury_sys_init_lc_init(void);
+void mercury_sys_init_lc_init_type_tables(void);
+#ifdef  MR_DEEP_PROFILING
+void mercury_sys_init_lc_write_out_proc_statics(FILE *deep_fp,
+    FILE *procrep_fp);
+#endif
+
+#ifndef MR_HIGHLEVEL_CODE
+
+MR_def_extern_entry(par_builtin__lc_finish_1_0)
+
+MR_decl_label1(par_builtin__lc_finish_1_0, 1)
+
+MR_BEGIN_MODULE(par_builtin_module_lc_finish)
+    MR_init_entry1(par_builtin__lc_finish_1_0);
+    MR_INIT_PROC_LAYOUT_ADDR(mercury__par_builtin__lc_finish_1_0);
+    MR_init_label1(par_builtin__lc_finish_1_0,1);
+MR_BEGIN_CODE
+
+#ifdef MR_maybe_local_thread_engine_base
+    #undef MR_maybe_local_thread_engine_base
+    #define MR_maybe_local_thread_engine_base MR_local_thread_engine_base
+#endif
+
+MR_define_entry(mercury__par_builtin__lc_finish_1_0)
+    MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
+
+    MR_incr_sp(1);
+    MR_sv(1) = MR_r1; /* LC */
+
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+    {
+        MR_LoopControl* LC = (MR_LoopControl*)MR_r1;
+        MR_lc_finish_part1(LC, par_builtin__lc_finish_1_0_i1);
+    }
+#else
+    MR_fatal_error(""lc_finish is unavailable in this grade"");
+#endif
+
+MR_def_label(par_builtin__lc_finish_1_0,1)
+    MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
+
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+    {
+        MR_LoopControl* LC = (MR_LoopControl*)MR_sv(1);
+        MR_lc_finish_part2(LC);
+    }
+#endif
+
+    MR_decr_sp(1);
+    MR_proceed();
+
+#ifdef MR_maybe_local_thread_engine_base
+    #undef MR_maybe_local_thread_engine_base
+    #define MR_maybe_local_thread_engine_base MR_thread_engine_base
+#endif
+MR_END_MODULE
+
+#endif /* ! MR_HIGHLEVEL_CODE */
+
+/*
+** Module initialization
+*/
+/*
+INIT mercury_sys_init_lc
+*/
+
+void
+mercury_sys_init_lc_init(void)
+{
+#ifndef MR_HIGHLEVEL_CODE
+    par_builtin_module_lc_finish();
+#endif
+}
+
+void
+mercury_sys_init_lc_init_type_tables(void)
+{
+    /* no types to register */
+}
+
+#ifdef  MR_DEEP_PROFILING
+void
+mercury_sys_init_lc_write_out_proc_statics(FILE *deep_fp,
+    FILE *procrep_fp)
+{
+    /* The deep profiler shouldn't notice loop control predicates. */
+}
+#endif
+
+").
+
+:- pragma foreign_proc("C",
+    lc_free_slot(LC::in, LCS::out),
+    [will_not_call_mercury, will_not_throw_exception, thread_safe],
+"
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+    LCS = MR_lc_try_get_free_slot(LC);
+    SUCCESS_INDICATOR = (LCS != NULL);
+#else
+    MR_fatal_error(""lc_free_slot is unavailable in this grade"");
+#endif
+").
+
+:- pragma foreign_proc("C",
+    lc_join_and_terminate(LC::in, LCS::in),
+    [will_not_call_mercury, will_not_throw_exception, thread_safe],
+"
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+    MR_lc_join_and_terminate(LC, LCS);
+#else
+    MR_fatal_error(""lc_join_and_terminate is unavailable in this grade"");
+#endif
 ").
 
 %-----------------------------------------------------------------------------%

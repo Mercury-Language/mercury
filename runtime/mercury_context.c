@@ -1253,7 +1253,7 @@ MR_schedule_context(MR_Context *ctxt)
                 &wake_action_data, NULL))
             {
                 /*
-                ** THe context has been given to a engine.
+                ** The context has been given to a engine.
                 */
                 return;
             }
