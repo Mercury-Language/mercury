@@ -343,7 +343,7 @@ esac
 # MSVC.
 if test $strip = "false" -a $COMPILER = "cl"
 then
-	DEBUG_FLAG="/DEBUG"
+	DEBUG_FLAG="-DEBUG"
 else
 	DEBUG_FLAG=""
 fi

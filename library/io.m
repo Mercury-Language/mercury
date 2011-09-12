@@ -5674,6 +5674,10 @@ io.get_io_output_stream_type(Type, !IO) :-
   #include <sys/wait.h>     /* for WIFEXITED, WEXITSTATUS, etc. */
 #endif
 
+#ifdef MR_WIN32
+  #include <windows.h>
+#endif
+
 #if defined(MR_MSVC)
     typedef SSIZE_T ML_ssize_t;
 #else
@@ -10497,8 +10501,6 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 ** invalidated by the function call.
 */
 #ifdef MR_WIN32
-
-#include <windows.h>
 
 #define ML_maybe_make_win32_err_msg(was_error, error, msg, alloc_id,        \\
         error_msg)                                                          \\
