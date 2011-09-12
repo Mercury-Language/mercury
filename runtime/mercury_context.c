@@ -139,12 +139,12 @@ MR_bool                 MR_profile_parallel_execution = MR_FALSE;
 
   #ifndef MR_HIGHLEVEL_CODE
 static MR_Stats         MR_profile_parallel_executed_global_sparks =
-        { 0, 0, 0, 0 };
+                            { 0, 0, 0, 0 };
 static MR_Stats         MR_profile_parallel_executed_contexts = { 0, 0, 0, 0 };
 static MR_Stats         MR_profile_parallel_executed_nothing = { 0, 0, 0, 0 };
 /* This cannot be static as it is used in macros by other modules. */
 MR_Stats                MR_profile_parallel_executed_local_sparks =
-        { 0, 0, 0, 0 };
+                            { 0, 0, 0, 0 };
 static MR_Integer       MR_profile_parallel_contexts_created_for_sparks = 0;
 
 /*
@@ -217,10 +217,10 @@ MR_SparkDeque           **MR_spark_deques = NULL;
 
 #ifdef MR_LL_PARALLEL_CONJ
 /*
-** Try to wake up a sleeping message and tell it to do action.  The engine is
-** only woken if the engine is in one of the states in the bitfield states.  If
-** the engine is woekn the result of this function is MR_TRUE, otherwise it's
-** MR_FALSE.
+** Try to wake up a sleeping message and tell it to do action. The engine
+** is only woken if the engine is in one of the states in the bitfield states.
+** If the engine is woken, this function returns MR_TRUE, otherwise it
+** returns MR_FALSE.
 */
 static MR_bool
 try_wake_engine(MR_EngineId engine_id, int action,
@@ -284,15 +284,15 @@ MR_init_context_stuff(void)
         } else {
             MR_num_threads = result;
             /*
-            ** On systems that don't support sched_setaffinity we don't try to
-            ** automatically enable thread pinning. This prevents a runtime
+            ** On systems that don't support sched_setaffinity, we don't try
+            ** to automatically enable thread pinning. This prevents a runtime
             ** warning that could unnecessarily confuse the user.
             **/
           #if defined(MR_LL_PARALLEL_CONJ) && \
               defined(MR_HAVE_SCHED_SETAFFINITY)
             /*
-            ** Comment this back in to enable thread pinning by default if we
-            ** autodetected the correct number of CPUs.
+            ** Comment this back in to enable thread pinning by default
+            ** if we autodetected the correct number of CPUs.
             */
             /* MR_thread_pinning = MR_TRUE; */
           #endif
@@ -316,7 +316,7 @@ MR_init_context_stuff(void)
         sem_init(&(engine_sleep_sync_data[i].d.es_wake_semaphore), 0, 1);
         /*
         ** All engines are initially working (because telling them to wake up
-        ** before they're started would be useless.
+        ** before they are started would be useless).
         */
         engine_sleep_sync_data[i].d.es_state = ENGINE_STATE_WORKING;
         engine_sleep_sync_data[i].d.es_action = MR_ENGINE_ACTION_NONE;
@@ -326,8 +326,8 @@ MR_init_context_stuff(void)
 }
 
 /*
-** Pin the primordial thread first to the CPU it is currently using (where
-** support is available).
+** Pin the primordial thread first to the CPU it is currently using
+** (if support is available for thread pinning).
 */
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
 unsigned
@@ -376,8 +376,9 @@ MR_pin_thread(void)
     unsigned cpu;
 
     /*
-    ** We go through the motions of thread pinning even when thread pinning is
-    ** not supported as the allocation of CPUs to threads may be used later.
+    ** We go through the motions of thread pinning even when thread pinning
+    ** is not supported, as the allocation of CPUs to threads may be
+    ** used later.
     */
     MR_LOCK(&MR_next_cpu_lock, "MR_pin_thread");
     if (MR_next_cpu == MR_primordial_thread_cpu) {
@@ -411,8 +412,8 @@ MR_do_pin_thread(int cpu)
         if (sched_setaffinity(0, sizeof(cpu_set_t), &cpus) == -1) {
             perror("Warning: Couldn't set CPU affinity: ");
             /*
-            ** If this failed once, it will probably fail again, so we
-            ** disable it.
+            ** If this failed once, it will probably fail again,
+            ** so we disable it.
             */
             MR_thread_pinning = MR_FALSE;
         }
@@ -451,8 +452,8 @@ fprint_stats(FILE *stream, const char *message, MR_Stats *stats);
 **
 ** This writes out a flat text file which may be parsed by a machine or easily
 ** read by a human. There is no advantage in using a binary format since we
-** do this once at the end of execution and it's a small amount of data.
-** Therefore a text file is used since it has the advantage of being human
+** do this once at the end of execution and it is a small amount of data.
+** Therefore we use a text file, since it has the advantage of being human
 ** readable.
 */
 
@@ -642,11 +643,13 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 #endif
     if (c->MR_ctxt_nondetstack_zone == NULL) {
         if (gen != NULL) {
-            c->MR_ctxt_nondetstack_zone = MR_create_or_reuse_zone("gen_nondetstack",
+            c->MR_ctxt_nondetstack_zone =
+                MR_create_or_reuse_zone("gen_nondetstack",
                     MR_gen_nondetstack_size, MR_next_offset(),
                     MR_gen_nondetstack_zone_size, MR_default_handler);
         } else {
-            c->MR_ctxt_nondetstack_zone = MR_create_or_reuse_zone(nondetstack_name,
+            c->MR_ctxt_nondetstack_zone =
+                MR_create_or_reuse_zone(nondetstack_name,
                     nondetstack_size, MR_next_offset(),
                     MR_nondetstack_zone_size, MR_default_handler);
         }
@@ -845,7 +848,7 @@ MR_destroy_context(MR_Context *c)
 #endif
 
     /*
-    ** Save the context first, even though we're not saving a computation
+    ** Save the context first, even though we are not saving a computation
     ** that's in progress we are saving some bookkeeping information.
     */
     /*
@@ -937,14 +940,16 @@ MR_find_ready_context(void)
     while (cur != NULL) {
 #ifdef MR_DEBUG_THREADS
         if (MR_debug_threads) {
-            fprintf(stderr, "%ld Eng: %d, c_depth: %d, Considering context %p\n",
+            fprintf(stderr,
+                "%ld Eng: %d, c_depth: %d, Considering context %p\n",
                 MR_SELF_THREAD_ID, engine_id, depth, cur);
         }
 #endif
         if (cur->MR_ctxt_resume_engine_required == MR_TRUE) {
 #ifdef MR_DEBUG_THREADS
             if (MR_debug_threads) {
-                fprintf(stderr, "%ld Context requires engine %d and c_depth %d\n",
+                fprintf(stderr,
+                    "%ld Context requires engine %d and c_depth %d\n",
                     MR_SELF_THREAD_ID, cur->MR_ctxt_resume_owner_engine,
                     cur->MR_ctxt_resume_c_depth);
             }
@@ -1101,10 +1106,10 @@ MR_sched_yield(void)
 }
 
 /*
-** Check to see if any contexts that blocked on IO have become
-** runnable. Return the number of contexts that are still blocked.
-** The parameter specifies whether or not the call to select should
-** block or not.
+** Check to see if any contexts that blocked on IO have become runnable.
+** Return the number of contexts that are still blocked.
+** The parameter specifies whether or not the call to select should block
+** or not.
 */
 
 static int
@@ -1239,13 +1244,13 @@ MR_schedule_context(MR_Context *ctxt)
             &wake_action_data, ENGINE_STATE_IDLE | ENGINE_STATE_SLEEPING))
         {
             /*
-            ** We've successfully given the context to the correct engine.
+            ** We have successfully given the context to the correct engine.
             */
             return;
         }
     } else {
         /*
-        ** If there is some idle engine try to wake it up, starting with the
+        ** If there is some idle engine, try to wake it up, starting with the
         ** preferred engine.
         */
         if (MR_num_idle_engines > 0) {
@@ -1253,7 +1258,7 @@ MR_schedule_context(MR_Context *ctxt)
                 &wake_action_data, NULL))
             {
                 /*
-                ** The context has been given to a engine.
+                ** The context has been given to an engine.
                 */
                 return;
             }
@@ -1275,7 +1280,7 @@ MR_schedule_context(MR_Context *ctxt)
 
 #ifdef MR_LL_PARALLEL_CONJ
 /*
-** Try to wake an engine, starting at the preferred engine
+** Try to wake an engine, starting at the preferred engine.
 */
 MR_bool
 MR_try_wake_an_engine(MR_EngineId preferred_engine, int action,
@@ -1294,7 +1299,7 @@ MR_try_wake_an_engine(MR_EngineId preferred_engine, int action,
         current_engine = (i + preferred_engine) % MR_num_threads;
         if (current_engine == MR_ENGINE(MR_eng_id)) {
             /*
-            ** Don't post superfluous events to ourself
+            ** Don't post superfluous events to ourself.
             */
             continue;
         }
@@ -1331,8 +1336,8 @@ try_wake_engine(MR_EngineId engine_id, int action,
         /*
         ** We now KNOW that the engine is in one of the correct states.
         **
-        ** We tell the engine what to do, and tell others that we've woken
-        ** it before actually waking it.
+        ** We tell the engine what to do, and tell others that we have woken it
+        ** before actually waking it.
         */
         esync->d.es_action = action;
         if (action_data) {
@@ -1340,7 +1345,8 @@ try_wake_engine(MR_EngineId engine_id, int action,
         }
         esync->d.es_state = ENGINE_STATE_WOKEN;
         MR_CPU_SFENCE;
-        MR_SEM_POST(&(esync->d.es_sleep_semaphore), "try_wake_engine sleep_sem");
+        MR_SEM_POST(&(esync->d.es_sleep_semaphore),
+            "try_wake_engine sleep_sem");
         success = MR_TRUE;
     }
     MR_SEM_POST(&(esync->d.es_wake_semaphore), "try_wake_engine wake_sem");
@@ -1380,13 +1386,13 @@ MR_shutdown_all_engines(void)
 */
 
 /*
-** The run queue used to include timing code, it's been removed and may be
+** The run queue used to include timing code. It has been removed and may be
 ** added in the future.
 */
 
 /*
 ** If the call returns a non-null code pointer then jump to that address,
-** otherwise fall-through
+** otherwise fall-through.
 */
 #define MR_MAYBE_TRAMPOLINE_AND_ACTION(call, action)                        \
     do {                                                                    \
@@ -1436,8 +1442,8 @@ static void
 prepare_engine_for_context(MR_Context *context);
 
 /*
-** Advertise that the engine is looking for work after being in the working state.
-** (Do not use this call when waking from sleep).
+** Advertise that the engine is looking for work after being in the
+** working state. (Do not use this call when waking from sleep).
 */
 static void
 advertise_engine_state_idle(void);
@@ -1471,7 +1477,7 @@ MR_define_entry(MR_do_idle);
   #else /* !MR_THREAD_SAFE */
 {
     /*
-    ** When an engine becomes idle in a non parallel grade it simply picks up
+    ** When an engine becomes idle in a non parallel grade, it simply picks up
     ** another context.
     */
     if (MR_runqueue_head == NULL && MR_pending_contexts == NULL) {
@@ -1509,8 +1515,8 @@ MR_define_entry(MR_do_idle_clean_context);
     MR_MAYBE_TRAMPOLINE(do_work_steal(NULL));
 
     /*
-     * XXX: I'm not convinced that the idle state is useful.
-     */
+    ** XXX: I'm not convinced that the idle state is useful.
+    */
     advertise_engine_state_idle();
 
     MR_GOTO(MR_ENTRY(MR_do_sleep));
@@ -1536,12 +1542,13 @@ MR_define_entry(MR_do_idle_dirty_context);
         MR_MAYBE_TRAMPOLINE(do_get_context());
 
         /*
-        ** If execution reaches this point then we lost a race for a free context.
-        ** Tell threadscope about it,
+        ** If execution reaches this point, then we lost a race for
+        ** a free context. Tell threadscope about it,
         ** XXX: Consider making this a first-class event in the future.
         */
 #ifdef MR_THREADSCOPE
-        MR_threadscope_post_log_msg("Runtime: Lost a race for a runnable context.");
+        MR_threadscope_post_log_msg(
+            "Runtime: Lost a race for a runnable context.");
 #endif
         join_label = NULL;
     }
@@ -1553,8 +1560,8 @@ MR_define_entry(MR_do_idle_dirty_context);
     MR_MAYBE_TRAMPOLINE(do_work_steal(join_label));
     if (join_label != NULL) {
         /*
-        ** Save the dirty context, we can't take it to sleep and it won't be used
-        ** if do_get_context() succeeds.
+        ** Save the dirty context. We cannot take it to sleep and
+        ** it won't be used if do_get_context() succeeds.
         */
         save_dirty_context(join_label);
         MR_ENGINE(MR_eng_this_context) = NULL;
@@ -1600,7 +1607,8 @@ MR_define_entry(MR_do_sleep);
             action = engine_sleep_sync_data[engine_id].d.es_action;
 #ifdef MR_DEBUG_THREADS
             if (MR_debug_threads) {
-                fprintf(stderr, "%ld Engine %d is awake and will do action %d\n",
+                fprintf(stderr,
+                    "%ld Engine %d is awake and will do action %d\n",
                     MR_SELF_THREAD_ID, engine_id, action);
             }
 #endif
@@ -1614,7 +1622,8 @@ MR_define_entry(MR_do_sleep);
                     assert(engine_id != 0);
                     MR_atomic_dec_int(&MR_num_idle_engines);
                     MR_destroy_thread(MR_cur_engine());
-                    MR_SEM_POST(&shutdown_semaphore, "MR_do_sleep shutdown_sem");
+                    MR_SEM_POST(&shutdown_semaphore,
+                        "MR_do_sleep shutdown_sem");
                     pthread_exit(0);
                     break;
 
@@ -1628,8 +1637,8 @@ MR_define_entry(MR_do_sleep);
 
                 case MR_ENGINE_ACTION_CONTEXT:
                     {
-                        MR_Context *context;
-                        MR_Code *resume_point;
+                        MR_Context  *context;
+                        MR_Code     *resume_point;
 
                         context = engine_sleep_sync_data[engine_id].d.
                             es_action_data.MR_ewa_context;
@@ -1655,7 +1664,7 @@ MR_define_entry(MR_do_sleep);
             }
         } else {
             /*
-            ** sem_wait reported an error
+            ** Sem_wait reported an error.
             */
             switch (errno) {
                 case EINTR:
@@ -1715,7 +1724,7 @@ do_get_context(void)
 static void
 prepare_engine_for_context(MR_Context *context) {
     /*
-    ** Discard whatever unused context we may have and switch to the new one.
+    ** Discard whatever unused context we may have, and switch to the new one.
     */
     if (MR_ENGINE(MR_eng_this_context) != NULL) {
     #ifdef MR_DEBUG_STACK_SEGMENTS
@@ -1785,8 +1794,8 @@ prepare_engine_for_spark(volatile MR_Spark *spark, MR_Code *join_label)
 #endif
 
     /*
-    ** At this point we have a context, either a dirty context that's
-    ** compatbile or a clean one.
+    ** At this point we have a context, either a dirty context that is
+    ** compatible, or a clean one.
     */
     MR_parent_sp = spark->MR_spark_sync_term->MR_st_parent_sp;
     MR_SET_THREAD_LOCAL_MUTABLES(spark->MR_spark_thread_local_mutables);
@@ -1856,8 +1865,8 @@ save_dirty_context(MR_Code *join_label) {
     this_context->MR_ctxt_resume_owner_engine = MR_ENGINE(MR_eng_id);
     MR_save_context(this_context);
     /*
-    ** Make sure the context gets saved before we set the join
-    ** label, use a memory barrier.
+    ** Make sure the context gets saved before we set the join label,
+    ** use a memory barrier.
     */
     MR_CPU_SFENCE;
     this_context->MR_ctxt_resume = join_label;
@@ -1898,7 +1907,7 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
 
     /*
     ** Atomically decrement and fetch the number of conjuncts yet to complete.
-    ** If we're the last conjunct to complete (the parallel conjunction is
+    ** If we are the last conjunct to complete (the parallel conjunction is
     ** finished) then jnc_last will be true.
     */
     /*
@@ -1915,7 +1924,7 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
         */
         if (jnc_last) {
             /*
-            ** All the conjuncts have finished so jump to the join label.
+            ** All the conjuncts have finished, so jump to the join label.
             */
             return join_label;
         } else {
@@ -1936,7 +1945,7 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
 #endif
             /*
             ** This context didn't originate this parallel conjunction and
-            ** we're the last branch to finish. The originating context should
+            ** we are the last branch to finish. The originating context should
             ** be suspended waiting for us to finish, we should run it using
             ** the current engine.
             **
@@ -1963,8 +1972,8 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
 #ifdef MR_LL_PARALLEL_CONJ
 
 /*
- * Debugging functions for runtime granularity control.
- */
+** Debugging functions for runtime granularity control.
+*/
 
 #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
 

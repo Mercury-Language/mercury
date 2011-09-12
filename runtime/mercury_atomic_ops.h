@@ -575,8 +575,8 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /*
-    ** Guarantees that any stores executed before this fence are globally
-    ** visible before those after this fence.
+    ** Guarantees that any stores executed before this fence are
+    ** globally visible before those after this fence.
     */
     #define MR_CPU_SFENCE                                                   \
         do {                                                                \
@@ -584,8 +584,8 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
         } while(0)
 
     /*
-    ** Guarantees that any loads executed before this fence are complete before
-    ** any loads after this fence.
+    ** Guarantees that any loads executed before this fence are complete
+    ** before any loads after this fence.
     */
     #define MR_CPU_LFENCE                                                   \
         do {                                                                \
@@ -615,8 +615,8 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 #else
 
-    #pragma error "Please implement memory fence operations for this " \
-        "compiler/architecture"
+    #pragma error "Please implement memory fence operations "               \
+        "for this compiler/architecture"
 
 #endif
 
@@ -630,8 +630,8 @@ MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 ** Roll our own cheap user-space mutual exclusion locks.  Blocking without
 ** spinning is not supported.  Storage for these locks should be volatile.
 **
-** I expect these to be faster than pthread mutexes when threads are pinned and
-** critical sections are short.
+** I expect these to be faster than pthread mutexes when threads are pinned
+** and critical sections are short.
 */
 typedef MR_Unsigned MR_Us_Lock;
 

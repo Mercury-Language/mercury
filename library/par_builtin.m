@@ -77,22 +77,24 @@
 
 :- type loop_control_slot.
 
-    % Create a loop control structure, see MR_lc_create in mercury_par_builtin.h
+    % Create a loop control structure.
+    % For documentation, see MR_lc_create in mercury_par_builtin.h.
     %
 :- pred lc_create(int::in, loop_control::out) is det.
 
-    % Finish a loop and finalize a loop control structure, see MR_lc_finish in
-    % mercury_par_builtin.h
-
+    % Finish a loop and finalize a loop control structure.
+    % For documentation, see MR_lc_finish in mercury_par_builtin.h.
+    %
 :- impure pred lc_finish(loop_control::in) is det.
 
     % Allocate a free slot from the loop control structure and return it.
-    % See MR_lc_try_get_free_slot in mercury_par_builtin.h
+    % For documentation, see MR_lc_try_get_free_slot in mercury_par_builtin.h
     %
-:- impure pred lc_free_slot(loop_control::in, loop_control_slot::out) is semidet.
+:- impure pred lc_free_slot(loop_control::in, loop_control_slot::out)
+    is semidet.
 
-    % Finish one iteration of the loop.  This call does not return.
-    % See MR_lc_join_and_terminate in mercury_par_builtin.h
+    % Finish one iteration of the loop. This call does not return.
+    % For documentation, see MR_lc_join_and_terminate in mercury_par_builtin.h.
     %
 :- impure pred lc_join_and_terminate(loop_control::in, loop_control_slot::in)
     is det.
@@ -285,10 +287,9 @@ INIT mercury_sys_init_par_builtin_modules
 :- pragma foreign_type("Java", loop_control_slot, "java.lang.Object").
 
 :- pragma foreign_proc("C",
-
     lc_create(NumWorkers::in, LC::out),
     [will_not_call_mercury, will_not_throw_exception, thread_safe,
-     promise_pure],
+        promise_pure],
 "
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
     LC = MR_lc_create(NumWorkers);
@@ -297,14 +298,12 @@ INIT mercury_sys_init_par_builtin_modules
 #endif
 ").
 
-
-%
 % IMPORTANT: any changes or additions to external predicates should be
-% reflected in the definition of pred_is_external in
-% mdbcomp/program_representation.m.  The debugger needs to know what predicates
+% reflected in the definition of pred_is_external in mdbcomp/
+% program_representation.m.  The debugger needs to know what predicates
 % are defined externally, so that it knows not to expect events for those
 % predicates.
-%
+
 :- external(lc_finish/1).
 
 :- pragma foreign_code("C",
@@ -342,7 +341,9 @@ MR_define_entry(mercury__par_builtin__lc_finish_1_0)
 
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
     {
-        MR_LoopControl* LC = (MR_LoopControl*)MR_r1;
+        MR_LoopControl  *LC;
+        
+        LC = (MR_LoopControl *) MR_r1;
         MR_lc_finish_part1(LC, par_builtin__lc_finish_1_0_i1);
     }
 #else
@@ -354,7 +355,9 @@ MR_def_label(par_builtin__lc_finish_1_0,1)
 
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
     {
-        MR_LoopControl* LC = (MR_LoopControl*)MR_sv(1);
+        MR_LoopControl  *LC;
+        
+        LC = (MR_LoopControl *) MR_sv(1);
         MR_lc_finish_part2(LC);
     }
 #endif

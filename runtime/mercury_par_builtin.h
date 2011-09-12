@@ -52,7 +52,6 @@ vim: ft=c ts=4 sw=4 et
 
 #endif /* !MR_THREAD_SAFE */
 
-
 /*
 ** The mutex needs to be destroyed when the future is garbage collected.
 ** For efficiency we might want to ignore this altogether, e.g. on Linux
@@ -115,10 +114,10 @@ vim: ft=c ts=4 sw=4 et
   #endif /* ! MR_THREADSCOPE */
 
     /*
-    ** If MR_fut_signalled is true then we guarantee that reading MR_fut_value
-    ** is safe, even without a lock, see the corresponding code in
-    ** MR_par_builtin_signal_future();
-    ** If MR_fut_signalled is false then we do take a lock and re-read the
+    ** If MR_fut_signalled is true, then we guarantee that reading MR_fut_value
+    ** is safe, even without a lock; see the corresponding code in
+    ** MR_par_builtin_signal_future().
+    ** If MR_fut_signalled is false, then we do take a lock and re-read
     ** this value (to ensure there was not a race).
     */
 
@@ -188,7 +187,7 @@ vim: ft=c ts=4 sw=4 et
                                                                             \
             /*                                                              \
             ** Post the threadscope signal future message before waking any \
-            ** threads (and posting those messages.                         \
+            ** threads (and posting those messages).                        \
             */                                                              \
             MR_maybe_post_signal_future(Future);                            \
             MR_LOCK(&(Future->MR_fut_lock), "future.signal");               \
@@ -293,30 +292,29 @@ vim: ft=c ts=4 sw=4 et
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
 
 typedef struct MR_LoopControl_Struct        MR_LoopControl;
-
 typedef struct MR_LoopControlSlot_Struct    MR_LoopControlSlot;
-
-struct MR_LoopControl_Struct
-{
-    MR_LoopControlSlot*                 MR_lc_slots;
-    unsigned                            MR_lc_num_slots;
-    MR_THREADSAFE_VOLATILE MR_Integer   MR_lc_outstanding_workers;
-    MR_Context*                         MR_lc_waiting_context;
-    MR_THREADSAFE_VOLATILE MR_bool      MR_lc_finished;
-    MercuryLock                         MR_lc_lock;
-};
 
 struct MR_LoopControlSlot_Struct
 {
-    MR_Context*         MR_lcs_context;
-    MR_bool             MR_lcs_is_free;
+    MR_Context                              *MR_lcs_context;
+    MR_bool                                 MR_lcs_is_free;
+};
+
+struct MR_LoopControl_Struct
+{
+    unsigned                                MR_lc_num_slots;
+    MR_THREADSAFE_VOLATILE MR_Integer       MR_lc_outstanding_workers;
+    MR_Context                              *MR_lc_waiting_context;
+    MR_THREADSAFE_VOLATILE MR_bool          MR_lc_finished;
+    MercuryLock                             MR_lc_lock;
+    MR_LoopControlSlot                      MR_lc_slots[1];
 };
 
 #else
 
 /*
-** We have to define these types so that par_builtin.m can use them as foreign
-** types, even in grades that don't support them.
+** We have to define these types so that par_builtin.m can use them
+** as foreign types, even in grades that do not support them.
 */
 
 typedef MR_Word MR_LoopControl;
@@ -327,41 +325,42 @@ typedef MR_Word MR_LoopControlSlot;
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
 
 /*
-** XXX: Make these functions macros, they're functions now to make debugging
+** XXX: Make these functions macros, they are now functions to make debugging
 ** and testing easier.
 */
 
 /*
 ** Create and initialize a loop control structure.
 */
-extern MR_LoopControl* MR_lc_create(unsigned num_workers);
+extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
 
 /*
-** Wait for all workers and then finalize and free the loop control structure,
+** Wait for all workers, and then finalize and free the loop control structure.
 ** The caller must pass a module-unique (unquoted) string for resume_point_name
 ** that will be used in the name for a C label.
 */
-#define MR_lc_finish_part1(lc, label)                                       \
+#define MR_lc_finish_part1(lc, part2_label)                                 \
     do {                                                                    \
         (lc)->MR_lc_finished = MR_TRUE;                                     \
         /*                                                                  \
-        ** This barrier ensures that MR_lc_finished before we read          \
-        ** MR_lc_outstanding_contexts, it works with another barrier in     \
+        ** This barrier ensures that MR_lc_finished has been set to MR_TRUE \
+        ** before we read MR_lc_outstanding_contexts.
+        ** it works with another barrier in     \
         ** MR_lc_join_and_terminate().  See MR_lc_join_and_terminate().     \
         */                                                                  \
         MR_CPU_MFENCE;                                                      \
         if ((lc)->MR_lc_outstanding_workers > 0) {                          \
             /*                                                              \
             ** This context must wait until the workers are finished.       \
-            ** This must be implemented as a macro, we cannot move the C    \
-            ** stack pointer without extra work.                            \
+            ** This must be implemented as a macro, since we cannot move    \
+            ** the C stack pointer without extra work.                      \
             */                                                              \
             MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =                \
-                MR_LABEL(MR_add_prefix(label));                             \
+                MR_LABEL(MR_add_prefix(part2_label));                       \
             MR_LOCK(&((lc)->MR_lc_lock), "MR_lc_finish_part1");             \
             if ((lc)->MR_lc_outstanding_workers == 0) {                     \
                 MR_UNLOCK(&((lc)->MR_lc_lock), "MR_lc_finish_part1");       \
-                MR_GOTO_LOCAL(MR_add_prefix(label));                        \
+                MR_GOTO_LOCAL(MR_add_prefix(part2_label));                  \
             }                                                               \
             MR_save_context(MR_ENGINE(MR_eng_this_context));                \
             (lc)->MR_lc_waiting_context = MR_ENGINE(MR_eng_this_context);   \
@@ -376,7 +375,7 @@ extern MR_LoopControl* MR_lc_create(unsigned num_workers);
         unsigned i;                                                         \
                                                                             \
         /*                                                                  \
-        ** All the jobs have finished,                                      \
+        ** All the jobs have finished.                                      \
         */                                                                  \
         for (i = 0; i < (lc)->MR_lc_num_slots; i++) {                       \
             if ((lc)->MR_lc_slots[i].MR_lcs_context != NULL) {              \
@@ -395,12 +394,12 @@ extern MR_LoopControlSlot* MR_lc_try_get_free_slot(MR_LoopControl* lc);
 ** Try to spawn off this code using the free slot.
 */
 #define MR_lc_spawn_off(lcs, label) \
-    MR_lc_spawn_off_((lcs), MR_LABEL(MR_add_prefix(label)))
+    MR_lc_spawn_off_func((lcs), MR_LABEL(MR_add_prefix(label)))
 
-extern void MR_lc_spawn_off_(MR_LoopControlSlot* lcs, MR_Code* code_ptr);
+extern void MR_lc_spawn_off_func(MR_LoopControlSlot* lcs, MR_Code* code_ptr);
 
 /*
-** Join and termiante a worker.
+** Join and terminate a worker.
 */
 #define MR_lc_join_and_terminate(lc, lcs)                                   \
     do {                                                                    \
@@ -413,6 +412,7 @@ extern void MR_lc_spawn_off_(MR_LoopControlSlot* lcs, MR_Code* code_ptr);
         ** computation, but we do so that we save bookkeeping information.  \
         ** A similar mistake was the cause of a hard-to-diagnose bug in     \
         ** parallel stack segments grades.                                  \
+        ** XXX give a pointer to a description of that bug.                 \
         */                                                                  \
         MR_save_context(MR_ENGINE(MR_eng_this_context));                    \
         MR_ENGINE(MR_eng_this_context) = NULL;                              \
