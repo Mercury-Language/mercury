@@ -40,8 +40,8 @@ MR_mdb_perror(const char *msg);
 ** Output a message to standard error and abort.
 ** This function is for fatal errors in the Mercury runtime.
 */
-extern void
-MR_fatal_error(const char *msg, ...) MR_NO_RETURN;
+MR_NO_RETURN(extern void \
+MR_fatal_error(const char *msg, ...));
 
 /*
 ** Output a message to standard error and abort.
@@ -49,8 +49,8 @@ MR_fatal_error(const char *msg, ...) MR_NO_RETURN;
 ** error.
 ** This is intended to be called from library bindings etc.
 */
-extern void
-MR_external_fatal_error(const char *locn, const char *msg, ...) MR_NO_RETURN;
+MR_NO_RETURN(extern void \
+MR_external_fatal_error(const char *locn, const char *msg, ...));
 
 /*
 ** Register a function to be called (as func(data)) when the program is

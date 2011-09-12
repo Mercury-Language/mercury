@@ -1045,12 +1045,6 @@ if test "$ac_microsoft" = "yes" ; then
     LD_STRIP_FLAG=
 
     USING_MICROSOFT_CL_COMPILER="yes"
-
-    case "$CYGPATH" in
-        "echo")
-            AC_MSG_WARN(cygpath required with Microsoft Visual C++)
-            ;;
-    esac
     FIX_PATH_FOR_CC="$CYGPATH"
 
     # MS doesn't use a ranlib.

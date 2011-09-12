@@ -39,7 +39,7 @@ ENDINIT
 
   #endif /* MR_USE_GCC_NONLOCAL_GOTOS */
 
-  static    void    call_engine_inner(MR_Code *entry_point) MR_NO_RETURN;
+  MR_NO_RETURN(static    void    call_engine_inner(MR_Code *entry_point));
 
   #ifndef MR_USE_GCC_NONLOCAL_GOTOS
     static MR_Code  *engine_done(void);
