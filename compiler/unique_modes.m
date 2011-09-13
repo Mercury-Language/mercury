@@ -567,6 +567,7 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
         ; Reason = require_complete_switch(_)
         ; Reason = commit(_)
         ; Reason = barrier(_)
+        ; Reason = loop_control(_, _)
         ),
         mode_checkpoint(enter, "scope", !ModeInfo),
         unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo),

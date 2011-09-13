@@ -752,6 +752,10 @@ find_used_vars_in_goal(Goal, !VarUses) :-
             Reason = from_ground_term(Var, _),
             mark_var_as_used(Var, !VarUses)
         ;
+            Reason = loop_control(LCVar, LCSVar),
+            mark_var_as_used(LCVar, !VarUses),
+            mark_var_as_used(LCSVar, !VarUses)
+        ;
             ( Reason = promise_purity(_)
             ; Reason = barrier(_)
             ; Reason = commit(_)

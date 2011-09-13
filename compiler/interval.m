@@ -962,6 +962,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             ; Reason0 = commit(_)
             ; Reason0 = barrier(_)
             ; Reason0 = trace_goal(_, _, _, _, _)
+            ; Reason0 = loop_control(_, _)
             ),
             Reason = Reason0
         ),

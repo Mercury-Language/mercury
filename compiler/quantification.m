@@ -731,6 +731,7 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
         ; Reason0 = require_complete_switch(_)
         ; Reason0 = commit(_)
         ; Reason0 = barrier(_)
+        ; Reason0 = loop_control(_, _)
         ),
         Reason = Reason0,
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
@@ -801,6 +802,7 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
             ; Reason0 = commit(_)
             ; Reason0 = barrier(_)
             ; Reason0 = from_ground_term(_, _)
+            ; Reason0 = loop_control(_, _)
             ),
             % We shouldn't invoke this predicate for these kinds of scopes.
             unexpected($module, $pred, "unexpected scope")
@@ -1824,12 +1826,7 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
         list.append(Vars, ExtraVars, AllVars),
         set_of_var.insert_list(AllVars, !Set)
     ;
-        GoalExpr = conj(ConjType, Goals),
-        (
-            ConjType = plain_conj
-        ;
-            ConjType = parallel_conj
-        ),
+        GoalExpr = conj(_, Goals),
         conj_vars_maybe_lambda(NonLocalsToRecompute, Goals, !Set, !LambdaSet)
     ;
         GoalExpr = disj(Goals),
@@ -1912,6 +1909,12 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
                 % TermVar should have been put into the relevant sets when we
                 % processed SubGoal, since it should appear in SubGoal.
             )
+        ;
+            Reason = loop_control(LCVar, LCSVar),
+            goal_vars_both_maybe_lambda(NonLocalsToRecompute, SubGoal,
+                !:Set, !:LambdaSet),
+            set_of_var.insert(LCVar, !Set),
+            set_of_var.insert(LCSVar, !Set)
         ),
         set_of_var.union(Set0, !Set),
         set_of_var.union(LambdaSet0, !LambdaSet)
@@ -2064,6 +2067,12 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
                 !:Set, !:LambdaSet)
             % TermVar should have been put into the relevant sets when we
             % processed SubGoal, since it should appear in SubGoal.
+        ;
+            Reason = loop_control(LCVar, LCSVar),
+            goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
+                !:Set, !:LambdaSet),
+            set_of_var.insert(LCVar, !Set),
+            set_of_var.insert(LCSVar, !Set)
         ),
         set_of_var.union(Set0, !Set),
         set_of_var.union(LambdaSet0, !LambdaSet)
@@ -2210,6 +2219,11 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
             goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set)
             % _TermVar should have been put into the relevant sets when we
             % processed SubGoal, since it should appear in SubGoal.
+        ;
+            Reason = loop_control(LCVar, LCSVar),
+            goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set),
+            set_of_var.insert(LCVar, !Set),
+            set_of_var.insert(LCSVar, !Set)
         ),
         set_of_var.union(Set0, !Set)
     ;

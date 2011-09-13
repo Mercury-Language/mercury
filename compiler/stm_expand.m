@@ -354,6 +354,7 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
+            ; Reason = loop_control(_, _)
             ),
             stm_process_goal(Instmap, InnerGoal0, InnerGoal, !Info),
             GoalExpr = scope(Reason, InnerGoal),

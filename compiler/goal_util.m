@@ -597,6 +597,10 @@ goal_vars_2(Goal, !Set) :-
             Reason = require_complete_switch(Var),
             set_of_var.insert(Var, !Set)
         ;
+            Reason = loop_control(LCVar, LCSVar),
+            set_of_var.insert(LCVar, !Set),
+            set_of_var.insert(LCSVar, !Set)
+        ;
             ( Reason = promise_purity(_)
             ; Reason = require_detism(_)
             ; Reason = commit(_)

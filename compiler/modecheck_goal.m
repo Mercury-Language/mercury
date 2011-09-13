@@ -529,6 +529,7 @@ goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
+            ; Reason = loop_control(_, _)
             ),
             LargeFlatConstructs = set_of_var.init
         )
@@ -605,6 +606,7 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
+            ; Reason = loop_control(_, _)
             ),
             Goal = Goal0
         )
@@ -800,12 +802,26 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         GoalExpr = scope(Reason, SubGoal),
         mode_checkpoint(exit, "trace scope", !ModeInfo)
     ;
-        ( Reason = exist_quant(_)
-        ; Reason = promise_solutions(_, _)
-        ; Reason = require_detism(_)
-        ; Reason = require_complete_switch(_)
-        ; Reason = commit(_)
-        ; Reason = barrier(_)
+        (
+            ( Reason = exist_quant(_)
+            ; Reason = promise_solutions(_, _)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            )
+        ;
+            Reason = loop_control(LCVar, LCSVar),
+            % Here I can double-check that the variables for the loop
+            % control are ground.  XXX Is this the right thing to do?
+            mode_info_get_instmap(!.ModeInfo, InstMap),
+            mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+            % Note that these errors are thrown for unreachable code since
+            % the loop control scope must be det or cc_multi.
+            expect(var_is_ground_in_instmap(ModuleInfo, InstMap, LCVar),
+                $module, $pred, "Loop control variable is not ground"),
+            expect(var_is_ground_in_instmap(ModuleInfo, InstMap, LCSVar),
+                $module, $pred, "Loop control slot variable is not ground")
         ),
         mode_checkpoint(enter, "scope", !ModeInfo),
         modecheck_goal(SubGoal0, SubGoal, !ModeInfo),

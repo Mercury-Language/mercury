@@ -1284,10 +1284,16 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         ),
         typecheck_goal(SubGoal0, SubGoal, !Info),
         (
-            Reason = exist_quant(Vars),
-            ensure_vars_have_a_type(Vars, !Info)
-        ;
-            Reason = promise_solutions(Vars, _),
+            (
+                ( Reason = exist_quant(Vars)
+                ; Reason = promise_solutions(Vars, _)
+                )
+            ;
+                % These variables are introduced by the compiler and may
+                % only have a single, specific type.
+                Reason = loop_control(LCVar, LCSVar),
+                Vars = [LCVar, LCSVar]
+            ),
             ensure_vars_have_a_type(Vars, !Info)
         ;
             ( Reason = promise_purity(_)

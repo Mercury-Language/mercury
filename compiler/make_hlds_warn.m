@@ -80,6 +80,7 @@
 
 :- import_module bool.
 :- import_module char.
+:- import_module require.
 :- import_module string.
 :- import_module varset.
 
@@ -250,6 +251,22 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             warn_singletons_goal_vars([TermVar], GoalInfo, NonLocals,
                 QuantVars, !Info)
+        ;
+            Reason = loop_control(_, _),
+            % XXX I understand what this code should do but I don't
+            % understand how it does it.  Therefore I don't know how to
+            % implement this branch.
+            %
+            % The variables used for loop control (LC and LCS) will not be
+            % mentioned by the code within this scope (the call that
+            % eventually uses them is introduced during HLDS->LLDS
+            % translation.
+            %
+            % However, the LCS will be incorrectly considered a singleton
+            % variable because the compiler cannot see its use within this
+            % scope.  Therefore I have to do something to tell the compiler
+            % that it is not a singleton (it has been seen a second time).
+            sorry($module, $pred, "loop_control")
         )
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),

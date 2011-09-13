@@ -277,6 +277,8 @@ skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
     %
     % NOTE: the logic of this predicate must match the logic of
     % saved_vars_delay_goal.
+    % XXX: I went to update saved_vars_delay_goal after changing this
+    % predicate and it already diverges from the algorithm here!
     %
 :- func can_push(prog_var, hlds_goal) = bool.
 
@@ -314,6 +316,7 @@ can_push(Var, Goal) = CanPush :-
                 ; Reason = commit(_)
                 ; Reason = barrier(_)
                 ; Reason = trace_goal(_, _, _, _, _)
+                ; Reason = loop_control(_, _)
                 ),
                 CanPush = no
             ;

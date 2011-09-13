@@ -522,7 +522,7 @@
                 trace_maybe_io      :: maybe(string),
                 trace_mutable_vars  :: list(trace_mutable_var_hlds),
                 trace_quant_vars    :: list(prog_var)
-            ).
+            )
             % The goal inside the scope is trace code that is executed only
             % conditionally, and should have no effect on the semantics of
             % the program even if executed.
@@ -535,6 +535,24 @@
             % The maybe_io and mutable_vars fields are advisory only in the
             % HLDS, since they are fully processed when the corresponding goal
             % in the parse tree is converted to HLDS.
+
+    ;       loop_control(
+                lc_lc_var           :: prog_var,
+                lc_lcs_var          :: prog_var
+            ).
+            % The goal inside the scope will be spawned off because the loop
+            % control transformation has been applied to this predicate.
+            %
+            % The goal will be executed by a different context, and the code
+            % generator must use the parent stack pointer to communicate with
+            % the parent.
+            %
+            % lc_lc_var identifies the variable that points to the loop
+            % control structure.
+            %
+            % lc_lcs_var identifies the variable that points to the slot in the
+            % loop control structure that should be used to spawn of the work
+            % within this scope.
 
 :- type promise_solutions_kind
     --->    equivalent_solutions
@@ -2556,6 +2574,11 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             Reason0 = trace_goal(Flag, Grade, Env, Vars, QuantVars0),
             rename_var_list(Must, Subn, QuantVars0, QuantVars),
             Reason = trace_goal(Flag, Grade, Env, Vars, QuantVars)
+        ;
+            Reason0 = loop_control(LCVar0, LCSVar0),
+            rename_var(Must, Subn, LCVar0, LCVar),
+            rename_var(Must, Subn, LCSVar0, LCSVar),
+            Reason = loop_control(LCVar, LCSVar)
         ),
         rename_vars_in_goal(Must, Subn, Goal0, Goal),
         Expr = scope(Reason, Goal)
@@ -2789,6 +2812,11 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
             Reason0 = trace_goal(Flag, Grade, Env, Vars, QuantVars0),
             rename_var_list(need_not_rename, Subn, QuantVars0, QuantVars),
             Reason = trace_goal(Flag, Grade, Env, Vars, QuantVars)
+        ;
+            Reason0 = loop_control(LCVar0, LCSVar0),
+            rename_var(need_not_rename, Subn, LCVar0, LCVar),
+            rename_var(need_not_rename, Subn, LCSVar0, LCSVar),
+            Reason = loop_control(LCVar, LCSVar)
         ),
         incremental_rename_vars_in_goal(Subn, SubnUpdates, Goal0, Goal),
         Expr = scope(Reason, Goal)

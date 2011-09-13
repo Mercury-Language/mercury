@@ -1129,6 +1129,30 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
             true
         )
     ;
+        Reason = loop_control(_, _),
+        SubGoal = hlds_goal(_, SubGoalInfo),
+        Detism = goal_info_get_determinism(SubGoalInfo),
+        (
+            ( Detism = detism_det
+            ; Detism = detism_cc_multi
+            )
+        ;
+            ( Detism = detism_semi
+            ; Detism = detism_multi
+            ; Detism = detism_non
+            ; Detism = detism_cc_non
+            ; Detism = detism_failure
+            % Note: One day we should make exceptions in parallel
+            % conjunctions work.
+            ; Detism = detism_erroneous
+            ),
+            % Since loop control structures are generated only by the
+            % compiler it is reasonable to abort here rather than present the
+            % user with an error.
+            unexpected($module, $pred,
+                "Loop control scope with strange determinism")
+        )
+    ;
         ( Reason = exist_quant(_)
         ; Reason = commit(_)
         ; Reason = barrier(_)

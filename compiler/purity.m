@@ -645,11 +645,6 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
         (
-            Reason0 = exist_quant(_),
-            compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace,
-                !Info),
-            Reason = Reason0
-        ;
             Reason0 = promise_purity(PromisedPurity),
             compute_goal_purity(SubGoal0, SubGoal, _, ContainsTrace, !Info),
             Purity = PromisedPurity,
@@ -682,6 +677,7 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             ; Reason0 = require_complete_switch(_)
             ; Reason0 = commit(_)
             ; Reason0 = barrier(_)
+            ; Reason0 = exist_quant(_)
             ),
             compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace,
                 !Info),
@@ -692,6 +688,14 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             Purity = purity_pure,
             ContainsTrace = contains_trace_goal,
             Reason = Reason0
+        ;
+            % XXX: Revisit this after writing the loop control
+            % transformation, the transformation and primitives will affect
+            % purity and it will be easier to consider what to do here
+            % _after_ that code has been written.
+            Reason0 = loop_control(_, _),
+            sorry($module, $pred,
+                "Revisit purity checking of loop control scopes")
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;

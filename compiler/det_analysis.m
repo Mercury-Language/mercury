@@ -1779,6 +1779,30 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             RightFailingContexts, MaybePromiseEqvSolutionSets0,
             Detism, GoalFailingContexts, !DetInfo)
     ;
+        Reason = loop_control(_, _),
+        det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
+            RightFailingContexts, MaybePromiseEqvSolutionSets0,
+            Detism, GoalFailingContexts, !DetInfo),
+        (
+            ( Detism = detism_det
+            ; Detism = detism_cc_multi
+            )
+        ;
+            ( Detism = detism_semi
+            ; Detism = detism_multi
+            ; Detism = detism_non
+            ; Detism = detism_cc_non
+            ; Detism = detism_failure
+            % Note: One day we should make exceptions in parallel
+            % conjunctions work.
+            ; Detism = detism_erroneous
+            ),
+            % Since loop control structures are generated only by the
+            % compiler it is reasonable to abort here.
+            unexpected($module, $pred,
+                "Loop control scope with strange determinism")
+        )
+    ;
         Reason = from_ground_term(_, FromGroundTermKind),
         (
             FromGroundTermKind = from_ground_term_construct,

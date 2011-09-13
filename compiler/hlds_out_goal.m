@@ -1964,6 +1964,11 @@ write_goal_scope(Info, GoalExpr, ModuleInfo, VarSet,
         io.write_string("% quantified vars ", !IO),
         mercury_output_vars(VarSet, AppendVarNums, QuantVars, !IO),
         io.nl(!IO)
+    ;
+        Reason = loop_control(LCVar, LCSVar),
+        io.write_string("loop_control_spawn_off(", !IO),
+        mercury_output_vars(VarSet, AppendVarNums, [LCVar, LCSVar], !IO),
+        io.write_string(") (\n", !IO)
     ),
     do_write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
         Indent + 1, "\n", TypeQual, !IO),

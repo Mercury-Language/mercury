@@ -386,6 +386,7 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
             ; Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)
             ; Reason = trace_goal(_, _, _, _, _)
+            ; Reason = loop_control(_, _)
             ),
             expand_try_goals_in_goal(Instmap, InnerGoal0, InnerGoal, !Info),
             GoalExpr = scope(Reason, InnerGoal),

@@ -174,6 +174,7 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
+            ; Reason = loop_control(_, _)
             ),
             % We can't safely propagate constraints into one of these scopes.
             % However, we can propagate constraints inside the scope goal.

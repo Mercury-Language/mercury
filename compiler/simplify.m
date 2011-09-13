@@ -1949,6 +1949,9 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 ( FinalReason = promise_purity(_)
                 ; FinalReason = from_ground_term(_, _)
                 ; FinalReason = barrier(removable)
+                % XXX: I don't want anything inside the scope moved out of
+                % it or vice versa.  Is this the correct way to ensure this?
+                ; FinalReason = loop_control(_, _)
                 ),
                 Goal = Goal1
             ;
@@ -3775,6 +3778,7 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
             ; Reason = require_complete_switch(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
+            ; Reason = loop_control(_, _)
             ),
             goal_contains_trace(SubGoal0, SubGoal, ContainsTrace)
         ),

@@ -1166,6 +1166,7 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
                 ; Reason0 = require_complete_switch(_)
                 ; Reason0 = commit(_)
                 ; Reason0 = barrier(_)
+                ; Reason0 = loop_control(_, _)
                 ),
                 polymorphism_process_goal(SubGoal0, SubGoal, !Info),
                 Reason = Reason0
