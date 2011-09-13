@@ -1949,9 +1949,6 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 ( FinalReason = promise_purity(_)
                 ; FinalReason = from_ground_term(_, _)
                 ; FinalReason = barrier(removable)
-                % XXX: I don't want anything inside the scope moved out of
-                % it or vice versa.  Is this the correct way to ensure this?
-                ; FinalReason = loop_control(_, _)
                 ),
                 Goal = Goal1
             ;
@@ -1964,6 +1961,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 ; FinalReason = exist_quant(_)
                 ; FinalReason = promise_solutions(_, _)
                 ; FinalReason = barrier(not_removable)
+                ; FinalReason = loop_control(_, _)
                 ),
                 Goal = Goal1,
                 % Replacing calls, constructions or deconstructions outside
@@ -1976,6 +1974,9 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 % processing the goal inside the commit, to ensure that we
                 % don't make any such replacements when processing the rest
                 % of the goal.
+                %
+                % We do the same for several other kinds of scopes from which
+                % we do not want to "export" common unifications.
                 simplify_info_set_common_info(Common, !Info)
             ;
                 FinalReason = trace_goal(MaybeCompiletimeExpr,

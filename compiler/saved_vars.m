@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: saved_vars.m.
 % Main author: zs.
-% 
+%
 % This module traverses the goal for each procedure, looking for and
 % exploiting opportunities to reduce the number of variables that have
 % to be saved across calls.
@@ -21,7 +21,7 @@
 %
 % We thread the SlotInfo structure through the module; this allows us
 % to define new variables.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.saved_vars.
@@ -343,18 +343,16 @@ can_push(Var, Goal) = CanPush :-
         CanPush = yes
     ).
 
-    % The main inputs of this predicate are a list of goals in a
-    % conjunction, and a goal Construct that assigns a constant to a
-    % variable Var.
+    % The main inputs of this predicate are a list of goals in a conjunction,
+    % and a goal Construct that assigns a constant to a variable Var.
     %
-    % When we find an atomic goal in the conjunction that refers to
-    % Var, we create a new variable NewVar, rename both this goal
-    % and Construct to refer to NewVar instead of Var, and insert
-    % the new version of Construct before the new version of the
-    % goal.
+    % When we find an atomic goal in the conjunction that refers to Var,
+    % we create a new variable NewVar, rename both this goal and Construct
+    % to refer to NewVar instead of Var, and insert the new version
+    % of Construct before the new version of the goal.
     %
-    % When we find a non-atomic goal in the conjunction that refers
-    % to Var, we push Construct into each of its components.
+    % When we find a non-atomic goal in the conjunction that refers to Var,
+    % we push Construct into each of its components.
     %
     % If Var is exported from the conjunction, we include Construct
     % at the end of the conjunction to give it its value.
@@ -501,10 +499,10 @@ push_into_goal(Goal0, Goal, Construct, Var, !SlotInfo) :-
     saved_vars_delay_goal(Conj1, Conj, Construct, Var, no, !SlotInfo),
     conj_list_to_goal(Conj, GoalInfo1, Goal).
 
-    % Push a renamed version of the given construction into the
-    % given goal.  If the goal does not refer to the variable bound
-    % by the construction, then this would have no effect, so we
-    % merely traverse the goal looking for other opportunities.
+    % Push a renamed version of the given construction into the given goal.
+    % If the goal does not refer to the variable bound by the construction,
+    % then this would have no effect, so we merely traverse the goal
+    % looking for other opportunities.
     %
 :- pred push_into_goal_rename(hlds_goal::in, hlds_goal::out, hlds_goal::in,
     prog_var::in, slot_info::in, slot_info::out) is det.
@@ -520,7 +518,7 @@ push_into_goal_rename(Goal0, Goal, Construct, Var, !SlotInfo) :-
     ;
         saved_vars_in_goal(Goal0, Goal, !SlotInfo)
     ).
-    
+
     % Push renamed versions of the given construction into each of
     % several goals.
     %
@@ -532,7 +530,7 @@ push_into_goals_rename([Goal0 | Goals0], [Goal | Goals], Construct, Var,
         !SlotInfo) :-
     push_into_goal_rename(Goal0, Goal, Construct, Var, !SlotInfo),
     push_into_goals_rename(Goals0, Goals, Construct, Var, !SlotInfo).
-    
+
     % Push renamed versions of the given construction into each of
     % several cases.
     %

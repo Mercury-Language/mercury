@@ -812,12 +812,9 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
             )
         ;
             Reason = loop_control(LCVar, LCSVar),
-            % Here I can double-check that the variables for the loop
-            % control are ground.  XXX Is this the right thing to do?
+            % We check that the variables for the loop control are ground.
             mode_info_get_instmap(!.ModeInfo, InstMap),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-            % Note that these errors are thrown for unreachable code since
-            % the loop control scope must be det or cc_multi.
             expect(var_is_ground_in_instmap(ModuleInfo, InstMap, LCVar),
                 $module, $pred, "Loop control variable is not ground"),
             expect(var_is_ground_in_instmap(ModuleInfo, InstMap, LCSVar),
