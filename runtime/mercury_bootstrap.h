@@ -105,10 +105,6 @@ typedef MR_Bool			Bool;
 #define min(a, b)		MR_min(a, b)
 #endif
 
-#ifndef NO_RETURN
-#define NO_RETURN		MR_NO_RETURN
-#endif
-
 #define MR_saved_reg(save_area, n)					\
 	MR_LVALUE_COND((n) > MR_MAX_REAL_R_REG,				\
 		(save_area)[(n) + MR_NUM_SPECIAL_REG - 1],		\
