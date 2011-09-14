@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000-2004, 2006 The University of Melbourne.
+# Copyright (C) 2000-2004, 2006, 2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -68,6 +68,14 @@ _GNU_SOURCE
 __EXTENSIONS__
 __GCC_HAVE_DWARF2_CFI_ASM
 __OPTIMIZE__
+__GCC_HAVE_SYNC_COMPARE_AND_SWAP_1
+__GCC_HAVE_SYNC_COMPARE_AND_SWAP_2
+__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4
+__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8
+__i686
+__i686__
+__pentiumpro
+__pentiumpro__
 #-----------------------------------------------------------------------------#
 # These are defined in when threads are enabled.
 _REENTRANT
