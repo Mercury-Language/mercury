@@ -3046,7 +3046,11 @@ case "$host" in
                 LD_LIBFLAGS_FOR_THREADS="/MD"
                 ;;
             *)
-                CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE $WIN32_GC_THREADLIB"
+                # By default the MinGW port of GCC targets the i386
+                # architecture.  We need to tell it to target a later
+                # architecture for the GCC built-in atomic ops to be available.
+                CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE $WIN32_GC_THREADLIB \
+                    -march=i686"
                 THREAD_LIBS="-lpthread"
                 ;;
         esac
