@@ -1030,7 +1030,7 @@ if test "$ac_microsoft" = "yes" ; then
     OBJ_SUFFIX="obj"
     LIB_SUFFIX="lib"
     LIB_PREFIX="lib"
-    LIB_LIBPATH="/LIBPATH:"
+    LIB_LIBPATH="-LIBPATH:"
     LINK_LIB=""
     LINK_LIB_SUFFIX=".lib"
     LINK_OPT_SEP="-link"
@@ -1038,10 +1038,10 @@ if test "$ac_microsoft" = "yes" ; then
     OBJFILE_OPT="-Fo"
     AR="lib"
     ARFLAGS=""
-    AR_LIBFILE_OPT="/OUT:"
+    AR_LIBFILE_OPT="-OUT:"
 
-    LDFLAGS_FOR_DEBUG="/DEBUG"
-    LD_LIBFLAGS_FOR_DEBUG="/DEBUG"
+    LDFLAGS_FOR_DEBUG="-DEBUG"
+    LD_LIBFLAGS_FOR_DEBUG="-DEBUG"
     LD_STRIP_FLAG=
 
     USING_MICROSOFT_CL_COMPILER="yes"

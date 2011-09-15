@@ -1961,9 +1961,9 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
             RestrictedCommandLine),
         (
             % If we have a restricted command line then it's possible
-            % that following link command will call sub-commands its self
+            % that following link command will call sub-commands itself
             % and thus overflow the command line, so in this case
-            % we first create an archive of all of the 
+            % we first create an archive of all of the object files.
             %
             RestrictedCommandLine = yes,
             io.make_temp(TmpFile, !IO),
@@ -1986,6 +1986,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
             % Note that LDFlags may contain `-l' options so it should come
             % after Objects.
             globals.lookup_string_option(Globals, CommandOpt, Command),
+            get_linker_output_option(Globals, LinkTargetType, OutputOpt), 
             string.append_list([
                     Command, " ",
                     StaticOpts, " ",
@@ -1993,7 +1994,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
                     UndefOpt, " ",
                     ThreadOpts, " ",
                     TraceOpts, " ",
-                    " -o ", quote_arg(OutputFileName), " ",
+                    OutputOpt, quote_arg(OutputFileName), " ",
                     Objects, " ",
                     LinkOptSep, " ",
                     LinkLibraryDirectories, " ",
@@ -2478,6 +2479,37 @@ shared_libraries_supported(Globals, Supported) :-
     globals.lookup_string_option(Globals, shared_library_extension,
         SharedLibExt),
     Supported = (if LibExt \= SharedLibExt then yes else no).
+
+:- pred get_linker_output_option(globals::in, linked_target_type::in,
+    string::out) is det.
+
+get_linker_output_option(Globals, LinkTargetType, OutputOpt) :-
+    get_c_compiler_type(Globals, C_CompilerType),
+    % XXX we should allow the user to override the compiler's choice of
+    % output option here.
+    % NOTE: the spacing around the value of OutputOpt here is important.
+    % Any changes should be reflected in predicate link_exe_or_shared_lib/9.
+    (
+        C_CompilerType = cc_cl(_),
+        ( if LinkTargetType = executable then
+            % NOTE: -Fe _must not_ be separated from its argument by any
+            % whitspace; the lack of a trailing space in the following
+            % is deliberate.
+            OutputOpt = " -Fe"
+          else
+            % XXX This is almost certainly wrong, but we don't currently
+            % support building shared libraries with mmc on Windows
+            % anyway.
+            OutputOpt = " -o "
+        )
+    ;
+        ( C_CompilerType = cc_gcc(_, _, _)
+        ; C_CompilerType = cc_clang(_)
+        ; C_CompilerType = cc_lcc
+        ; C_CompilerType = cc_unknown
+        ),
+        OutputOpt = " -o "
+    ).
 
 %-----------------------------------------------------------------------------%
 
