@@ -4448,9 +4448,7 @@ esac
 # Note that changes here may require changes in scripts/mgnuc.in and
 # compiler/compile_target_code.m.
 
-# AC_PROG_CC sets GCC to yes if $CC is GNU C.
-
-case "$C_COMPILER_TYPE" in
+case "$mercury_cv_cc_type" in
 
     gcc*)
         CFLAGS_FOR_ANSI="-ansi"
