@@ -6923,7 +6923,14 @@ be installed should be built to the standard output.
 @sp 1
 @item --output-cc
 @findex --output-cc
-Print the name of the C compiler to the standard output.
+Print the command used to invoke C compiler to the standard output.
+
+@sp 1
+@item --output-cc-type
+@itemx --output-c-compiler-type
+@findex --output-cc-type
+@findex --output-c-compiler-type
+Print the C compiler type to the standard output.
 
 @sp 1
 @item --output-cflags
