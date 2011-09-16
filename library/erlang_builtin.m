@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -140,12 +140,6 @@ trace_eval_runtime_cond({'or', CondA, CondB}) ->
 trace_eval_runtime_cond({'and', CondA, CondB}) ->
     trace_eval_runtime_cond(CondA) andalso trace_eval_runtime_cond(CondB).
 ").
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "erlang_builtin.m".
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

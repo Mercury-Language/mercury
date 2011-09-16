@@ -225,7 +225,7 @@ generic_unify(X, Y) :-
     ;
         ( TypeCtorRep = etcr_pred ; TypeCtorRep = etcr_func )
     ->
-        error("unify/2: higher order unification not possible")
+        unexpected($module, $pred, "higher order unification not possible")
     ;
         Arity = TypeCtorInfo ^ type_ctor_arity,
         UnifyPred = TypeCtorInfo ^ type_ctor_unify_pred,
@@ -261,7 +261,7 @@ generic_unify(X, Y) :-
                 TypeInfo ^ type_info_index(5),
                 X, Y)
         ;
-            error("unify/2: type arity > 5 not supported")
+            unexpected($module, $pred, "type arity > 5 not supported")
         )
     ).
 
@@ -302,7 +302,7 @@ generic_compare(Res, X, Y) :-
     ;
         ( TypeCtorRep = etcr_pred ; TypeCtorRep = etcr_func )
     ->
-        error("compare/3: higher order comparison not possible")
+        unexpected($module, $pred, "higher order comparison not possible")
     ;
         Arity = TypeCtorInfo ^ type_ctor_arity,
         ComparePred = TypeCtorInfo ^ type_ctor_compare_pred,
@@ -338,7 +338,7 @@ generic_compare(Res, X, Y) :-
                 TypeInfo ^ type_info_index(5),
                 X, Y)
         ;
-            error("compare/3: type arity > 5 not supported")
+            unexpected($module, $pred, "type arity > 5 not supported")
         )
     ).
 
@@ -793,7 +793,8 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             has_type(Elem, ElemType),
             same_array_elem_type(Array, Elem)
         ;
-            error("An array which doesn't have a type_ctor arg")
+            unexpected($module, $pred,
+                "An array which doesn't have a type_ctor arg")
         ),
 
         det_dynamic_cast(Term, Array),
@@ -849,7 +850,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         % There is no way to create values of type `void', so this
         % should never happen.
         TypeCtorRep = etcr_void,
-        error(this_file ++ " deconstruct: cannot deconstruct void types")
+        unexpected($module, $pred, "cannot deconstruct void types")
     ;
         TypeCtorRep = etcr_stable_c_pointer,
         det_dynamic_cast(Term, CPtr),
@@ -888,7 +889,8 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         ),
         (
             NonCanon = do_not_allow,
-            error("attempt to deconstruct noncanonical term")
+            unexpected($module, $pred,
+                "attempt to deconstruct noncanonical term")
         ;
             NonCanon = canonicalize,
             Functor = Name,
@@ -917,8 +919,8 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         ; TypeCtorRep = etcr_subgoal
         ; TypeCtorRep = etcr_ticket
         ),
-        error(this_file ++ " deconstruct_2: should never occur: " ++
-            string(TypeCtorRep))
+        unexpected($module, $pred,
+            "should never occur: " ++ string(TypeCtorRep))
     ).
 
     % matching_du_functor(FunctorReps, Term, FunctorRep)
@@ -930,7 +932,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     erlang_du_functor::out) is det.
 
 matching_du_functor([], _, _) :-
-    error(this_file ++ " matching_du_functor/2").
+    unexpected($module, $pred, "empty list").
 matching_du_functor([F | Fs], T, Functor) :-
     ( matches_du_functor(T, F) ->
         Functor = F
@@ -1206,7 +1208,7 @@ num_functors(TypeInfo, MaybeNumFunctors) :-
         ; TypeCtorRep = etcr_subgoal
         ; TypeCtorRep = etcr_ticket
         ),
-        error("num_functors: type_ctor_rep not handled")
+        unexpected($module, $pred, "type_ctor_rep not handled")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1318,7 +1320,7 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
         ; TypeCtorRep = etcr_subgoal
         ; TypeCtorRep = etcr_ticket
         ),
-        error("num_functors: type_ctor_rep not handled")
+        unexpected($module, $pred, "type_ctor_rep not handled")
     ).
 
 get_functor_ordinal(TypeDesc, FunctorNum, Ordinal) :-
@@ -1386,7 +1388,7 @@ matching_du_ordinal(Fs, Ordinal, Functor) :-
     ( Functor ^ edu_ordinal = Ordinal ->
         true
     ;
-        error(this_file ++ " matching_du_ordinal/3")
+        unexpected($module, $pred, "sanity check failed")
     ).
 
 :- pred matching_du_functor_number(list(erlang_du_functor)::in,
@@ -1459,8 +1461,8 @@ construct(TypeDesc, Index, Args) = Term :-
         ; TypeCtorRep = etcr_subgoal
         ; TypeCtorRep = etcr_ticket
         ),
-        error("construct: unable to construct something of type " ++
-                string(TypeCtorRep))
+        unexpected($module, $pred,
+            "unable to construct something of type " ++ string(TypeCtorRep))
     ).
 
 :- pred check_arg_types(list(univ)::in, list(type_info)::in) is semidet.
@@ -1964,7 +1966,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 
 semidet_unimplemented(S) :-
     ( semidet_succeed ->
-        error(this_file ++ ": unimplemented: " ++ S)
+        unexpected($module, $pred, "unimplemented: " ++ S)
     ;
         semidet_succeed
     ).
@@ -1973,7 +1975,7 @@ semidet_unimplemented(S) :-
 
 det_unimplemented(S) :-
     ( semidet_succeed ->
-        error(this_file ++ ": unimplemented: " ++ S)
+        unexpected($module, $pred, "unimplemented: " ++ S)
     ;
         true
     ).
@@ -2177,7 +2179,7 @@ concrete_type_info(Info, MaybePTI) = TypeInfo :-
                 ParentTypeInfo, MaybeFunctorAndTerm, PseudoThunk)
         ;
             Info = no,
-            error("type_info/2: missing parent type_info")
+            unexpected($module, $pred, "missing parent type_info")
         )
     ;
         MaybePTI = plain(PlainThunk),
@@ -2245,7 +2247,7 @@ exist_type_info(TypeInfo, Functor, Term, N) = ArgTypeInfo :-
         )
     ;
         MaybeExist = no,
-        error(this_file ++ " exist_type_info: no exist info")
+        unexpected($module, $pred, "no exist info")
     ).
 
 :- func eval_type_info_thunk(ti_info(T), type_info_thunk) = type_info.
@@ -2453,13 +2455,6 @@ eval_type_info_thunk_2(X) = erlang_rtti_implementation.unsafe_cast(X) :-
 
 is_erlang_backend :-
     semidet_fail.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "erlang_rtti_implementation.m".
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
