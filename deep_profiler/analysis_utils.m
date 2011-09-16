@@ -422,9 +422,3 @@ cost_and_callees_is_recursive(ParentCliquePtr, CostAndCallees) :-
     ParentCliquePtr = Callee ^ c_clique.
 
 %----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "analysis_utils.m".
-
-%----------------------------------------------------------------------------%
