@@ -1865,7 +1865,7 @@ count_temps_mem_ref(MemRef, !R, !F) :-
         ),
         count_temps_rval(Rval, !R, !F)
     ;
-        MemRef = heap_ref(CellRval, _Tag, FieldNumRval),
+        MemRef = heap_ref(CellRval, _MaybeTag, FieldNumRval),
         count_temps_rval(CellRval, !R, !F),
         count_temps_rval(FieldNumRval, !R, !F)
     ).
@@ -2704,10 +2704,10 @@ replace_labels_mem_ref(MemRef0, MemRef, ReplMap) :-
         ),
         MemRef = MemRef0
     ;
-        MemRef0 = heap_ref(CellRval0, Tag, FieldNumRval0),
+        MemRef0 = heap_ref(CellRval0, MaybeTag, FieldNumRval0),
         replace_labels_rval(CellRval0, CellRval, ReplMap),
         replace_labels_rval(FieldNumRval0, FieldNumRval, ReplMap),
-        MemRef = heap_ref(CellRval, Tag, FieldNumRval)
+        MemRef = heap_ref(CellRval, MaybeTag, FieldNumRval)
     ).
 
 :- pred replace_labels_rval_const(rval_const::in, rval_const::out,

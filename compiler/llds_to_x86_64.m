@@ -692,7 +692,7 @@ transform_rval(!RegMap, mem_addr(stackvar_ref(Rval)), Op, no) :-
     transform_rval(!RegMap, Rval, Op, _).
 transform_rval(!RegMap, mem_addr(framevar_ref(Rval)), Op, no) :-
     transform_rval(!RegMap, Rval, Op, _).
-transform_rval(!RegMap, mem_addr(heap_ref(Rval1, Tag, Rval2)), no, Instrs) :-
+transform_rval(!RegMap, mem_addr(heap_ref(Rval1, MaybeTag, Rval2)), no, Instrs) :-
     transform_rval(!RegMap, Rval1, Res0, Res1),
     transform_rval(!RegMap, Rval2, Res2, Res3),
     (
@@ -742,7 +742,13 @@ transform_rval(!RegMap, mem_addr(heap_ref(Rval1, Tag, Rval2)), no, Instrs) :-
     MemRef = operand_mem_ref(mem_abs(base_expr(Rval1Str))),
     LoadAddr = x86_64_instr(lea(MemRef, TempReg)),
     Instr0 = x86_64_instr(sub(Rval2Op, TempReg)),
-    Instr1 = x86_64_instr(add(operand_imm(imm32(int32(Tag))), TempReg)),
+    (
+        MaybeTag = yes(Tag),
+        Instr1 = x86_64_instr(add(operand_imm(imm32(int32(Tag))), TempReg))
+    ;
+        MaybeTag = no,
+        sorry($module, $pred, "unknown tag")
+    ),
     Instrs = yes(Instrs0 ++ [LoadAddr] ++ [Instr0] ++ [Instr1]).
 
     % Given an llds-lval, returns either an operand or instructions. (Actually,

@@ -42,10 +42,11 @@
     %
 :- func count_distinct_words(list(arg_width)) = int.
 
-    % Chunk a list of elements into sub-lists according to the word boundaries
-    % implied by the list of argument widths.
+    % Group elements into sub-lists according to the word boundaries implied by
+    % the list of argument widths. That is, elements which make up part of the
+    % same word (or double word) are grouped together in a sub-list.
     %
-:- pred chunk_list_by_words(list(arg_width)::in, list(T)::in,
+:- pred group_same_word_elements(list(arg_width)::in, list(T)::in,
     list(list(T))::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -131,28 +132,26 @@ count_distinct_words([H | T]) = Words :-
 
 %-----------------------------------------------------------------------------%
 
-chunk_list_by_words([], [], []).
-chunk_list_by_words([W | Ws], [X | Xs], Xss) :-
+group_same_word_elements([], [], []).
+group_same_word_elements([W | Ws], [X | Xs], Xss) :-
     (
-        W = full_word,
-        chunk_list_by_words(Ws, Xs, Xss0),
+        ( W = full_word
+        ; W = double_word
+        ),
+        group_same_word_elements(Ws, Xs, Xss0),
         Xss = [[X] | Xss0]
-    ;
-        W = double_word,
-        % Not yet supported in LLDS grades.
-        sorry($module, $pred, "double_word")
     ;
         W = partial_word_first(_),
         split_at_next_word(Ws, WsTail, Xs, XsHead, XsTail),
-        chunk_list_by_words(WsTail, XsTail, Xss0),
+        group_same_word_elements(WsTail, XsTail, Xss0),
         Xss = [[X | XsHead] | Xss0]
     ;
         W = partial_word_shifted(_, _),
         unexpected($module, $pred, "partial_word_shifted")
     ).
-chunk_list_by_words([], [_ | _], _) :-
+group_same_word_elements([], [_ | _], _) :-
     unexpected($module, $pred, "mismatched lists").
-chunk_list_by_words([_ | _], [], []) :-
+group_same_word_elements([_ | _], [], []) :-
     unexpected($module, $pred, "mismatched lists").
 
 :- pred split_at_next_word(list(arg_width)::in, list(arg_width)::out,

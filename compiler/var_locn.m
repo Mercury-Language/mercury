@@ -145,15 +145,15 @@
     static_cell_info::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-    % var_locn_assign_field_lval_expr_to_var(ModuleInfo, Var, FieldLval, Expr,
+    % var_locn_assign_field_lval_expr_to_var(ModuleInfo, Var, BaseVar, Expr,
     %   StaticCellInfo, Code, !VarLocnInfo);
     %
     % Reflects the effect of the assignment Var := Expr,
-    % where Expr contains on the field lval FieldLval.
+    % where Expr contains only field lvals with the base BaseVar.
     % Any code required to effect the assignment will be returned in Code.
     %
 :- pred var_locn_assign_field_lval_expr_to_var(prog_var::in,
-    lval::in, rval::in, llds_code::out,
+    prog_var::in, rval::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_const_to_var(ExprnOpts, Var, ConstRval,
@@ -193,8 +193,8 @@
     % obvious conflict.) Label can be used in the generated code if necessary.
     %
 :- pred var_locn_assign_cell_to_var(module_info::in, exprn_opts::in,
-    prog_var::in, bool::in, tag::in, list(maybe(rval))::in, bool::in,
-    how_to_construct::in, maybe(term_size_value)::in, list(int)::in,
+    prog_var::in, bool::in, tag::in, list(cell_arg)::in,
+    how_to_construct::in, maybe(term_size_value)::in,
     maybe(alloc_site_id)::in, may_use_atomic_alloc::in, label::in,
     llds_code::out, static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
@@ -770,18 +770,14 @@ var_locn_assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code,
 add_field_offset(Ptag, Offset, Base) =
     field(Ptag, lval(Base), Offset).
 
-var_locn_assign_field_lval_expr_to_var(Var, Lval, Expr, Code, !VLI) :-
+var_locn_assign_field_lval_expr_to_var(Var, BaseVar, Expr, Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
-    ( Lval = field(yes(_Ptag), var(BaseVar), const(llconst_int(_Offset))) ->
-        var_locn_get_var_state_map(!.VLI, VarStateMap0),
-        State = var_state(set.init, no, yes(Expr), set_of_var.init, doa_alive),
-        map.det_insert(Var, State, VarStateMap0, VarStateMap1),
-        add_use_ref(BaseVar, Var, VarStateMap1, VarStateMap),
-        var_locn_set_var_state_map(VarStateMap, !VLI),
-        Code = empty
-    ;
-        unexpected($module, $pred, "not field lval")
-    ).
+    var_locn_get_var_state_map(!.VLI, VarStateMap0),
+    State = var_state(set.init, no, yes(Expr), set_of_var.init, doa_alive),
+    map.det_insert(Var, State, VarStateMap0, VarStateMap1),
+    add_use_ref(BaseVar, Var, VarStateMap1, VarStateMap),
+    var_locn_set_var_state_map(VarStateMap, !VLI),
+    Code = empty.
 
 %----------------------------------------------------------------------------%
 
@@ -835,8 +831,8 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 %----------------------------------------------------------------------------%
 
 var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
-        Ptag, MaybeRvals0, AllFilled, HowToConstruct, MaybeSize, FieldAddrs,
-        MaybeAllocId, MayUseAtomic, Label, Code, !StaticCellInfo, !VLI) :-
+        Ptag, CellArgs0, HowToConstruct, MaybeSize, MaybeAllocId, MayUseAtomic,
+        Label, Code, !StaticCellInfo, !VLI) :-
     (
         MaybeSize = yes(SizeSource),
         (
@@ -846,11 +842,11 @@ var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
             SizeSource = dynamic_size(SizeVar),
             SizeRval = var(SizeVar)
         ),
-        MaybeRvals = [yes(SizeRval) | MaybeRvals0],
+        CellArgs = [cell_arg_full_word(SizeRval, complete) | CellArgs0],
         MaybeOffset = yes(1)
     ;
         MaybeSize = no,
-        MaybeRvals = MaybeRvals0,
+        CellArgs = CellArgs0,
         MaybeOffset = no
     ),
     var_locn_get_var_state_map(!.VLI, VarStateMap),
@@ -858,10 +854,8 @@ var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
     % We can make the cell a constant only if all its fields are filled in,
     % and they are all constants.
     (
-        AllFilled = yes,
         StaticGroundCells = have_static_ground_cells,
-        FieldAddrs = [],
-        cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes)
+        cell_is_constant(VarStateMap, ExprnOpts, CellArgs, RvalsTypes)
     ->
         add_scalar_static_cell(RvalsTypes, DataAddr, !StaticCellInfo),
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
@@ -870,12 +864,12 @@ var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
         Code = empty
     ;
         var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var,
-            ReserveWordAtStart, Ptag, MaybeRvals, HowToConstruct,
+            ReserveWordAtStart, Ptag, CellArgs, HowToConstruct,
             MaybeOffset, MaybeAllocId, MayUseAtomic, Label, Code, !VLI)
     ).
 
 :- pred var_locn_assign_dynamic_cell_to_var(module_info::in, prog_var::in,
-    bool::in, tag::in, list(maybe(rval))::in, how_to_construct::in,
+    bool::in, tag::in, list(cell_arg)::in, how_to_construct::in,
     maybe(int)::in, maybe(alloc_site_id)::in, may_use_atomic_alloc::in,
     label::in, llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
@@ -886,7 +880,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
 
     select_preferred_reg_or_stack(!.VLI, Var, Lval),
     get_var_name(!.VLI, Var, VarName),
-    list.length(Vector, Size),
+    Size = size_of_cell_args(Vector),
     (
         ReserveWordAtStart = yes,
         (
@@ -985,7 +979,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     Code = SetupReuseCode ++ CellCode ++ RegionVarCode ++ ArgsCode.
 
 :- pred assign_reused_cell_to_var(module_info::in, lval::in, tag::in,
-    list(maybe(rval))::in, cell_to_reuse::in, lval::in, llds_code::in,
+    list(cell_arg)::in, cell_to_reuse::in, lval::in, llds_code::in,
     int::in, label::in, llds_reuse::out, llds_code::out, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
@@ -1048,41 +1042,75 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
 
     list.foldl(var_locn_release_reg, TempRegs, !VLI).
 
-:- pred assign_all_cell_args(module_info::in, list(maybe(rval))::in,
+:- pred assign_all_cell_args(module_info::in, list(cell_arg)::in,
     maybe(tag)::in, rval::in, int::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 assign_all_cell_args(_, [], _, _, _, empty, !VLI).
-assign_all_cell_args(ModuleInfo, [MaybeRval | MaybeRvals], Ptag, Base, Offset,
+assign_all_cell_args(ModuleInfo, [CellArg | CellArgs], Ptag, Base, Offset,
         Code, !VLI) :-
     (
-        MaybeRval = yes(Rval),
-        assign_cell_arg(ModuleInfo, Rval, Ptag, Base, Offset, ThisCode, !VLI)
+        ( CellArg = cell_arg_full_word(Rval, _Completeness)
+        ; CellArg = cell_arg_take_addr(_, yes(Rval))
+        ),
+        assign_cell_arg(ModuleInfo, Rval, Ptag, Base, Offset, ThisCode, !VLI),
+        NextOffset = Offset + 1
     ;
-        MaybeRval = no,
-        ThisCode = empty
+        CellArg = cell_arg_double_word(Rval0),
+        materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI),
+        RvalA = binop(float_word_bits, Rval, const(llconst_int(0))),
+        RvalB = binop(float_word_bits, Rval, const(llconst_int(1))),
+        assign_cell_arg(ModuleInfo, RvalA, Ptag, Base, Offset,
+            ThisCodeA, !VLI),
+        assign_cell_arg(ModuleInfo, RvalB, Ptag, Base, Offset + 1,
+            ThisCodeB, !VLI),
+        ThisCode = EvalCode ++ ThisCodeA ++ ThisCodeB,
+        NextOffset = Offset + 2
+    ;
+        ( CellArg = cell_arg_skip
+        ; CellArg = cell_arg_take_addr(_, no)
+        ),
+        ThisCode = empty,
+        NextOffset = Offset + 1
     ),
-    assign_all_cell_args(ModuleInfo, MaybeRvals, Ptag, Base, Offset + 1,
+    assign_all_cell_args(ModuleInfo, CellArgs, Ptag, Base, NextOffset,
         RestCode, !VLI),
     Code = ThisCode ++ RestCode.
 
-:- pred assign_some_cell_args(module_info::in, list(maybe(rval))::in,
+:- pred assign_some_cell_args(module_info::in, list(cell_arg)::in,
     list(needs_update)::in, maybe(tag)::in, rval::in, int::in, llds_code::out,
     llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
 assign_some_cell_args(_, [], [], _, _, _, empty, empty, !VLI).
 assign_some_cell_args(ModuleInfo,
-        [MaybeRval | MaybeRvals], [NeedsUpdate | NeedsUpdates],
+        [CellArg | CellArgs], [NeedsUpdate | NeedsUpdates],
         Ptag, Base, Offset, CannotSkipArgsCode, CanSkipArgsCode, !VLI) :-
     (
-        MaybeRval = yes(Rval),
-        assign_cell_arg(ModuleInfo, Rval, Ptag, Base, Offset, ThisCode, !VLI)
+        ( CellArg = cell_arg_full_word(Rval, _Completeness)
+        ; CellArg = cell_arg_take_addr(_, yes(Rval))
+        ),
+        assign_cell_arg(ModuleInfo, Rval, Ptag, Base, Offset, ThisCode, !VLI),
+        NextOffset = Offset + 1
     ;
-        MaybeRval = no,
-        ThisCode = empty
+        CellArg = cell_arg_double_word(Rval0),
+        materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI),
+        RvalA = binop(float_word_bits, Rval, const(llconst_int(0))),
+        RvalB = binop(float_word_bits, Rval, const(llconst_int(1))),
+        assign_cell_arg(ModuleInfo, RvalA, Ptag, Base, Offset,
+            ThisCodeA, !VLI),
+        assign_cell_arg(ModuleInfo, RvalB, Ptag, Base, Offset + 1,
+            ThisCodeB, !VLI),
+        ThisCode = EvalCode ++ ThisCodeA ++ ThisCodeB,
+        NextOffset = Offset + 2
+    ;
+        ( CellArg = cell_arg_skip
+        ; CellArg = cell_arg_take_addr(_, no)
+        ),
+        ThisCode = empty,
+        NextOffset = Offset + 1
     ),
-    assign_some_cell_args(ModuleInfo, MaybeRvals, NeedsUpdates, Ptag, Base,
-        Offset + 1, RestCannotSkipArgsCode, RestCanSkipArgsCode, !VLI),
+    assign_some_cell_args(ModuleInfo, CellArgs, NeedsUpdates, Ptag, Base,
+        NextOffset, RestCannotSkipArgsCode, RestCanSkipArgsCode, !VLI),
     (
         NeedsUpdate = needs_update,
         CannotSkipArgsCode = ThisCode ++ RestCannotSkipArgsCode,
@@ -1105,15 +1133,7 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
     Target = field(Ptag, Base, const(llconst_int(Offset))),
     (
         Rval0 = var(Var),
-        find_var_availability(!.VLI, Var, no, Avail),
-        (
-            Avail = available(Rval),
-            EvalCode = empty
-        ;
-            Avail = needs_materialization,
-            materialize_var(ModuleInfo, Var, no, no, [], Rval, EvalCode,
-                !VLI)
-        ),
+        materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI),
         var_locn_get_vartypes(!.VLI, VarTypes),
         map.lookup(VarTypes, Var, Type),
         IsDummy = check_dummy_type(ModuleInfo, Type),
@@ -1151,6 +1171,33 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
         unexpected($module, $pred, "unknown rval")
     ),
     Code = EvalCode ++ AssignCode.
+
+:- pred materialize_if_var(module_info::in, rval::in, llds_code::out,
+    rval::out, var_locn_info::in, var_locn_info::out) is det.
+
+materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI) :-
+    (
+        Rval0 = var(Var),
+        find_var_availability(!.VLI, Var, no, Avail),
+        (
+            Avail = available(Rval),
+            EvalCode = empty
+        ;
+            Avail = needs_materialization,
+            materialize_var(ModuleInfo, Var, no, no, [], Rval, EvalCode,
+                !VLI)
+        )
+    ;
+        ( Rval0 = const(_)
+        ; Rval0 = mkword(_, _)
+        ; Rval0 = unop(_, _)
+        ; Rval0 = binop(_, _, _)
+        ; Rval0 = lval(_)
+        ; Rval0 = mem_addr(_)
+        ),
+        EvalCode = empty,
+        Rval = Rval0
+    ).
 
 var_locn_save_cell_fields(ModuleInfo, ReuseVar, ReuseLval, Code, Regs, !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap),
@@ -2126,14 +2173,28 @@ var_locn_max_reg_in_use(VLI, Max) :-
 %----------------------------------------------------------------------------%
 
 :- pred cell_is_constant(var_state_map::in, exprn_opts::in,
-    list(maybe(rval))::in, assoc_list(rval, llds_type)::out) is semidet.
+    list(cell_arg)::in, assoc_list(rval, llds_type)::out) is semidet.
 
 cell_is_constant(_VarStateMap, _ExprnOpts, [], []).
-cell_is_constant(VarStateMap, ExprnOpts, [yes(Rval0) | MaybeRvals],
+cell_is_constant(VarStateMap, ExprnOpts, [CellArg | CellArgs],
         [Rval - LldsType | RvalsTypes]) :-
+    require_complete_switch [CellArg]
+    (
+        CellArg = cell_arg_full_word(Rval0, complete),
+        ArgWidth = full_word
+    ;
+        CellArg = cell_arg_double_word(Rval0),
+        ArgWidth = double_word
+    ;
+        CellArg = cell_arg_take_addr(_, _),
+        fail
+    ;
+        CellArg = cell_arg_skip,
+        fail
+    ),
     expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval),
-    LldsType = rval_type_as_arg(get_unboxed_floats(ExprnOpts), Rval),
-    cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes).
+    LldsType = rval_type_as_arg(get_unboxed_floats(ExprnOpts), ArgWidth, Rval),
+    cell_is_constant(VarStateMap, ExprnOpts, CellArgs, RvalsTypes).
 
     % expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval):
     % Check if Rval0 is a constant rval, after substituting the values of the
@@ -2305,13 +2366,13 @@ var_locn_materialize_vars_in_mem_ref_avoid(ModuleInfo, MemRef0, MemRef, Avoid,
         MemRef = MemRef0,
         Code = empty
     ;
-        MemRef0 = heap_ref(PtrRval0, Ptag, FieldNumRval0),
+        MemRef0 = heap_ref(PtrRval0, MaybeTag, FieldNumRval0),
         var_locn_materialize_vars_in_rval_avoid(ModuleInfo, PtrRval0, no,
             Avoid, PtrRval, PtrCode, !VLI),
         var_locn_materialize_vars_in_rval_avoid(ModuleInfo, FieldNumRval0, no,
             Avoid, FieldNumRval, FieldNumCode, !VLI),
         Code = PtrCode ++ FieldNumCode,
-        MemRef = heap_ref(PtrRval, Ptag, FieldNumRval)
+        MemRef = heap_ref(PtrRval, MaybeTag, FieldNumRval)
     ).
 
 :- type var_avail

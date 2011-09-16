@@ -148,7 +148,8 @@
     ;       float_compare_binop
     ;       float_arith_binop
     ;       int_or_bool_binary_infix_binop
-    ;       macro_binop.
+    ;       macro_binop
+    ;       float_macro_binop.
 
 :- pred binop_category_string(binary_op::in, binop_category::out, string::out)
     is det.
@@ -588,8 +589,11 @@ binop_category_string(int_ge, int_or_bool_binary_infix_binop, ">=").
 
 binop_category_string(str_cmp, macro_binop, "MR_strcmp").
 binop_category_string(body, macro_binop, "MR_body").
-binop_category_string(float_word_bits, macro_binop, "MR_float_word_bits").
-binop_category_string(float_from_dword, macro_binop, "MR_float_from_dword").
+
+binop_category_string(float_word_bits, float_macro_binop,
+    "MR_float_word_bits").
+binop_category_string(float_from_dword, float_macro_binop,
+    "MR_float_from_dword").
 
 %-----------------------------------------------------------------------------%
 

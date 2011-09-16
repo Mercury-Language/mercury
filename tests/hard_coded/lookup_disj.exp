@@ -3,11 +3,11 @@ peek p 2
 peek p 3
 peek p 4
 peek p 5
-p soln 1.10 -   one, 11, a
-p soln 2.20 -   two, 12, b
-p soln 3.30 - three, 13, c
-p soln 4.40 -  four, 14, f(a)
-p soln 5.50 -  five, 15, g(a)
+p soln 1.10 -   one, 11, 10.10, a
+p soln 2.20 -   two, 12, 20.20, b
+p soln 3.30 - three, 13, 30.30, c
+p soln 4.40 -  four, 14, 40.40, f(a)
+p soln 5.50 -  five, 15, 50.50, g(a)
 peek q 1 11
 peek q 1 22
 peek q 1 33

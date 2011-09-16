@@ -916,6 +916,27 @@ output_rval(Info, Rval, !IO) :-
             io.write_string(", ", !IO),
             output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
             io.write_string(")", !IO)
+        ;
+            Category = float_macro_binop,
+            (
+                Op = float_word_bits
+            ->
+                io.write_string(OpStr, !IO),
+                io.write_string("(", !IO),
+                output_rval_as_type(Info, SubRvalA, lt_float, !IO),
+                io.write_string(", ", !IO),
+                output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
+                io.write_string(")", !IO)
+            ;
+                Op = float_from_dword,
+                consecutive_field_offsets(SubRvalA, SubRvalB, MemRef)
+            ->
+                io.write_string("MR_float_from_dword_ptr(", !IO),
+                output_rval(Info, mem_addr(MemRef), !IO),
+                io.write_string(")", !IO)
+            ;
+                sorry($module, $pred, "unknown float_macro_binop")
+            )
         )
     ;
         Rval = mkword(Tag, SubRval),
@@ -998,10 +1019,16 @@ output_rval(Info, Rval, !IO) :-
             ),
             io.write_string(")", !IO)
         ;
-            MemRef = heap_ref(BaseRval, Tag, FieldNumRval),
-            io.write_string("&MR_tfield(", !IO),
-            io.write_int(Tag, !IO),
-            io.write_string(", ", !IO),
+            MemRef = heap_ref(BaseRval, MaybeTag, FieldNumRval),
+            (
+                MaybeTag = yes(Tag),
+                io.write_string("&MR_tfield(", !IO),
+                io.write_int(Tag, !IO),
+                io.write_string(", ", !IO)
+            ;
+                MaybeTag = no,
+                io.write_string("&MR_mask_field(", !IO)
+            ),
             output_rval(Info, BaseRval, !IO),
             io.write_string(", ", !IO),
             % Don't clutter the output with unnecessary casts.
@@ -1012,6 +1039,23 @@ output_rval(Info, Rval, !IO) :-
             ),
             io.write_string(")", !IO)
         )
+    ).
+
+:- pred consecutive_field_offsets(rval::in, rval::in, mem_ref::out) is semidet.
+
+consecutive_field_offsets(lval(LvalA), lval(LvalB), MemRef) :-
+    (
+        LvalA = field(MaybeTag, Address, const(llconst_int(N))),
+        LvalB = field(MaybeTag, Address, const(llconst_int(N + 1))),
+        MemRef = heap_ref(Address, MaybeTag, const(llconst_int(N)))
+    ;
+        LvalA = stackvar(N),
+        LvalB = stackvar(N + 1),
+        MemRef = stackvar_ref(const(llconst_int(N)))
+    ;
+        LvalA = framevar(N),
+        LvalB = framevar(N + 1),
+        MemRef = framevar_ref(const(llconst_int(N)))
     ).
 
 :- pred output_rval_const(llds_out_info::in, rval_const::in,

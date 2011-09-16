@@ -295,7 +295,9 @@ use_double_word_floats(Globals, DoubleWordFloats) :-
             TargetWordBits = 32,
             SinglePrecFloat = no
         ->
-            % Double-word floats are not yet supported in low-level C grades.
+            % Until we implement float registers for low-level C grades,
+            % storing double-word floats in structures does more harm than
+            % good.
             globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
             DoubleWordFloats = HighLevelCode
         ;

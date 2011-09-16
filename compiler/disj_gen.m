@@ -219,7 +219,8 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
 
     BaseRegInitCode = cord.singleton(
         llds_instr(assign(BaseReg,
-            mem_addr(heap_ref(SolnVectorAddrRval, 0, const(llconst_int(0))))),
+            mem_addr(heap_ref(SolnVectorAddrRval, yes(0),
+                const(llconst_int(0))))),
             "Compute base address for this case")
     ),
     SaveSlotCode = cord.singleton(
@@ -281,7 +282,8 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
         llds_instr(label(AfterUndoLabel),
             "Return later answer code"),
         llds_instr(assign(LaterBaseReg,
-            mem_addr(heap_ref(SolnVectorAddrRval, 0, lval(LaterBaseReg)))),
+            mem_addr(heap_ref(SolnVectorAddrRval, yes(0),
+                lval(LaterBaseReg)))),
             "Compute base address in later array for this solution")
     ]),
 

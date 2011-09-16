@@ -3713,7 +3713,7 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
 :- pred assign_expr_to_var(prog_var::in, rval::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-:- pred assign_field_lval_expr_to_var(prog_var::in, lval::in, rval::in,
+:- pred assign_field_lval_expr_to_var(prog_var::in, list(lval)::in, rval::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
     % assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals,
@@ -3721,9 +3721,8 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
     %   Code, !CI).
     %
 :- pred assign_cell_to_var(prog_var::in, bool::in, tag::in,
-    list(maybe(rval))::in, bool::in, how_to_construct::in,
-    maybe(term_size_value)::in,
-    list(int)::in, maybe(alloc_site_id)::in, may_use_atomic_alloc::in,
+    list(cell_arg)::in, how_to_construct::in, maybe(term_size_value)::in,
+    maybe(alloc_site_id)::in, may_use_atomic_alloc::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred save_reused_cell_fields(prog_var::in, lval::in, llds_code::out,
@@ -3866,29 +3865,46 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
     ),
     set_var_locn_info(VarLocnInfo, !CI).
 
-assign_field_lval_expr_to_var(Var, FieldLval, Rval, Code, !CI) :-
-    get_var_locn_info(!.CI, VarLocnInfo0),
-    Lvals = lvals_in_rval(Rval),
-    ( Lvals = [FieldLval] ->
-        var_locn_assign_field_lval_expr_to_var(Var, FieldLval, Rval, Code,
-            VarLocnInfo0, VarLocnInfo)
+assign_field_lval_expr_to_var(Var, FieldLvals, Rval, Code, !CI) :-
+    (
+        FieldLvals = [field(MaybeTag, var(BaseVar), _) | RestFieldLvals],
+        list.all_true(is_var_field(MaybeTag, BaseVar), RestFieldLvals)
+    ->
+        (
+            Lvals = lvals_in_rval(Rval),
+            all [Lval] (
+                list.member(Lval, Lvals)
+            =>
+                list.member(Lval, FieldLvals)
+            )
+        ->
+            get_var_locn_info(!.CI, VarLocnInfo0),
+            var_locn_assign_field_lval_expr_to_var(Var, BaseVar, Rval, Code,
+                VarLocnInfo0, VarLocnInfo),
+            set_var_locn_info(VarLocnInfo, !CI)
+        ;
+            unexpected($module, $pred, "rval contains unexpected lval")
+        )
     ;
-        unexpected($module, $pred, "rval contains unexpected lval")
-    ),
-    set_var_locn_info(VarLocnInfo, !CI).
+        unexpected($module, $pred,
+            "FieldLvals not all fields of the same base variable")
+    ).
 
-assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, AllFilled,
-        HowToConstruct, MaybeSize, FieldAddrs, MaybeAllocId, MayUseAtomic,
-        Code, !CI) :-
+:- pred is_var_field(maybe(tag)::in, prog_var::in, lval::in) is semidet.
+
+is_var_field(MaybeTag, Var, field(MaybeTag, var(Var), _)).
+
+assign_cell_to_var(Var, ReserveWordAtStart, Ptag, CellArgs, HowToConstruct,
+        MaybeSize, MaybeAllocId, MayUseAtomic, Code, !CI) :-
     get_next_label(Label, !CI),
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_module_info(!.CI, ModuleInfo),
     get_exprn_opts(!.CI, ExprnOpts),
     var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
-        Ptag, MaybeRvals, AllFilled, HowToConstruct, MaybeSize, FieldAddrs,
-        MaybeAllocId, MayUseAtomic, Label, Code,
-        StaticCellInfo0, StaticCellInfo, VarLocnInfo0, VarLocnInfo),
+        Ptag, CellArgs, HowToConstruct, MaybeSize, MaybeAllocId, MayUseAtomic,
+        Label, Code, StaticCellInfo0, StaticCellInfo,
+        VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),
     set_var_locn_info(VarLocnInfo, !CI).
 

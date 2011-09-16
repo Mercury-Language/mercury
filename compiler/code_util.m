@@ -87,6 +87,8 @@
 :- pred build_input_arg_list(proc_info::in, assoc_list(prog_var, lval)::out)
     is det.
 
+:- func size_of_cell_args(list(cell_arg)) = int.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -411,6 +413,22 @@ build_input_arg_list_2([V - Arg | Rest0], VarArgs) :-
         VarArgs = VarArgs0
     ),
     build_input_arg_list_2(Rest0, VarArgs0).
+
+%-----------------------------------------------------------------------------%
+
+size_of_cell_args([]) = 0.
+size_of_cell_args([CellArg | CellArgs]) = Size + Sizes :-
+    (
+        ( CellArg = cell_arg_full_word(_, _)
+        ; CellArg = cell_arg_take_addr(_, _)
+        ; CellArg = cell_arg_skip
+        ),
+        Size = 1
+    ;
+        CellArg = cell_arg_double_word(_),
+        Size = 2
+    ),
+    Sizes = size_of_cell_args(CellArgs).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.code_util.

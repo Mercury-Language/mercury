@@ -4502,7 +4502,9 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_rval_as_op_arg(Opts, Y, !IO),
         io.write_string(")", !IO)
     ;
-        Category = macro_binop,
+        ( Category = macro_binop
+        ; Category = float_macro_binop
+        ),
         (
             Op = float_from_dword,
             consecutive_field_offsets(X, Y)

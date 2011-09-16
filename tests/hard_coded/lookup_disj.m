@@ -33,7 +33,8 @@ main(!IO) :-
     --->    p_soln(
                 pair(float, string),
                 int,
-                t
+                t,
+                float
             ).
 
 :- type q_soln
@@ -48,9 +49,9 @@ main(!IO) :-
 :- pred test_p(p_soln::out) is multi.
 
 test_p(Soln) :-
-    p(Pair, Int0, T),
+    p(Pair, Int0, T, F),
     peek_at_p_solution(Int0, Int),
-    Soln = p_soln(Pair, Int, T).
+    Soln = p_soln(Pair, Int, T, F).
 
 :- pred test_q(q_soln::out) is multi.
 
@@ -59,14 +60,14 @@ test_q(Soln) :-
     peek_at_q_solution(IntA0, IntA, IntB0, IntB),
     Soln = q_soln(Pair, IntA, TA, IntB, TB).
 
-:- pred p(pair(float, string)::out, int::out, t::out) is multi.
+:- pred p(pair(float, string)::out, int::out, t::out, float::out) is multi.
 
-p(A, B, C) :-
-    ( A = 1.1 - "one",   B = 1, C = a
-    ; A = 2.2 - "two",   B = 2, C = b
-    ; A = 3.3 - "three", B = 3, C = c
-    ; A = 4.4 - "four",  B = 4, C = f(a)
-    ; A = 5.5 - "five",  B = 5, C = g(a)
+p(A, B, C, D) :-
+    ( A = 1.1 - "one",   B = 1, C = a, D = 10.1
+    ; A = 2.2 - "two",   B = 2, C = b, D = 20.2
+    ; A = 3.3 - "three", B = 3, C = c, D = 30.3
+    ; A = 4.4 - "four",  B = 4, C = f(a), D = 40.4
+    ; A = 5.5 - "five",  B = 5, C = g(a), D = 50.5
     ).
 
 :- pred q(pair(float, string)::out, int::out, t::out, int::out, t::out)
@@ -106,8 +107,9 @@ peek_at_q_solution(IntA0, IntA, IntB0, IntB) :-
 :- pred write_p_solution(p_soln::in, io::di, io::uo) is det.
 
 write_p_solution(Soln, !IO) :-
-    Soln = p_soln(Float - Str, Int, T),
-    io.format("p soln %.2f - %5s, %d, ", [f(Float), s(Str), i(Int)], !IO),
+    Soln = p_soln(Float - Str, Int, T, Float2),
+    io.format("p soln %.2f - %5s, %d, %.2f, ",
+        [f(Float), s(Str), i(Int), f(Float2)], !IO),
     io.write(T, !IO),
     io.nl(!IO).
 

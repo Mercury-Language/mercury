@@ -1125,10 +1125,15 @@
             % stack.
 
 :- type mem_ref
-    --->    stackvar_ref(rval)          % Stack slot number.
-    ;       framevar_ref(rval)          % Stack slot number.
-    ;       heap_ref(rval, int, rval).  % The cell pointer, the tag to
-                                        % subtract, and the field number.
+    --->    stackvar_ref(rval)
+            % Stack slot number.
+
+    ;       framevar_ref(rval)
+            % Stack slot number.
+
+    ;       heap_ref(rval, maybe(int), rval).
+            % The cell pointer, the tag to subtract (if unknown, all the tag
+            % bits must be masked off), and the field number.
 
 :- type c_global_var_ref
     --->    env_var_ref(string).
@@ -1334,6 +1339,29 @@
             % Something that can be assigned to a value of C type `MR_Word',
             % i.e., something whose size is a word but which may be either
             % signed or unsigned (used for registers, stack slots, etc).
+
+:- type cell_arg
+    --->    cell_arg_full_word(rval, completeness)
+            % Fill a single word field of a cell with the given rval, which
+            % could hold a single constructor argument, or multiple constructor
+            % arguments if they are packed. If the second argument is
+            % `incomplete' it means that the rval covers multiple constructor
+            % arguments but some of the arguments are not instantiated.
+
+    ;       cell_arg_double_word(rval)
+            % Fill two words of a cell with the given rval, which must be a
+            % double precision float.
+
+    ;       cell_arg_skip
+            % Leave a single word of a cell unfilled.
+
+    ;       cell_arg_take_addr(prog_var, maybe(rval)).
+            % Take the address of a field. If the second argument is
+            % `yes(Rval)' then the field is set to Rval beforehand.
+
+:- type completeness
+    --->    complete
+    ;       incomplete.
 
 :- func region_stack_id_to_string(region_stack_id) = string.
 

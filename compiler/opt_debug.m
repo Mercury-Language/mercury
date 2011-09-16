@@ -355,9 +355,16 @@ dump_mem_ref(MaybeProcLabel, stackvar_ref(N)) =
     "stackvar_ref(" ++ dump_rval(MaybeProcLabel, N) ++ ")".
 dump_mem_ref(MaybeProcLabel, framevar_ref(N)) =
     "framevar_ref(" ++ dump_rval(MaybeProcLabel, N) ++ ")".
-dump_mem_ref(MaybeProcLabel, heap_ref(R, T, N)) =
-    "heap_ref(" ++ dump_rval(MaybeProcLabel, R) ++ ", " ++ int_to_string(T) ++ ", "
-        ++ dump_rval(MaybeProcLabel, N) ++ ")".
+dump_mem_ref(MaybeProcLabel, heap_ref(R, MaybeTag, N)) = String :-
+    (
+        MaybeTag = yes(Tag),
+        TagString = int_to_string(Tag)
+    ;
+        MaybeTag = no,
+        TagString = "unknown_tag"
+    ),
+    String = "heap_ref(" ++ dump_rval(MaybeProcLabel, R) ++ ", " ++ TagString
+        ++ ", " ++ dump_rval(MaybeProcLabel, N) ++ ")".
 
 dump_const(_, llconst_true) = "true".
 dump_const(_, llconst_false) = "false".

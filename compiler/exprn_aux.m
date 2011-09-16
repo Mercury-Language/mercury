@@ -530,10 +530,10 @@ transform_lval_in_mem_ref(Transform, MemRef0, MemRef, !Acc) :-
         transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         MemRef = framevar_ref(Rval)
     ;
-        MemRef0 = heap_ref(BaseRval0, Tag, FieldRval0),
+        MemRef0 = heap_ref(BaseRval0, MaybeTag, FieldRval0),
         transform_lval_in_rval(Transform, BaseRval0, BaseRval, !Acc),
         transform_lval_in_rval(Transform, FieldRval0, FieldRval, !Acc),
-        MemRef = heap_ref(BaseRval, Tag, FieldRval)
+        MemRef = heap_ref(BaseRval, MaybeTag, FieldRval)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -658,9 +658,9 @@ substitute_rval_in_mem_ref(OldRval, NewRval, MemRef0, MemRef) :-
         MemRef0 = framevar_ref(N),
         MemRef = framevar_ref(N)
     ;
-        MemRef0 = heap_ref(Rval0, Tag, N),
+        MemRef0 = heap_ref(Rval0, MaybeTag, N),
         substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval),
-        MemRef = heap_ref(Rval, Tag, N)
+        MemRef = heap_ref(Rval, MaybeTag, N)
     ).
 
 :- pred substitute_rval_in_lval(rval::in, rval::in,
@@ -883,7 +883,7 @@ lval_list_addrs([Lval | Lvals], CodeAddrs, DataIds) :-
 
 mem_ref_addrs(stackvar_ref(_SlotNum), [], []).
 mem_ref_addrs(framevar_ref(_SlotNum), [], []).
-mem_ref_addrs(heap_ref(Rval, _Tag, _FieldNum), CodeAddrs, DataIds) :-
+mem_ref_addrs(heap_ref(Rval, _MaybeTag, _FieldNum), CodeAddrs, DataIds) :-
     rval_addrs(Rval, CodeAddrs, DataIds).
 
     % Give a list of maybe(rval), return a list of the code and data

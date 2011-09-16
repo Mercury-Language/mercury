@@ -127,6 +127,7 @@ ORDINARY_PROGS=	\
 	hash_bug \
 	hash_init_bug \
 	hash_table_delete \
+	heap_ref_mask_tag \
 	higher_order_func_test \
 	higher_order_syntax \
 	higher_order_syntax2 \
@@ -436,6 +437,7 @@ ifeq "$(findstring debug,$(GRADE))" ""
 		bad_indirect_reuse3 \
 		pack_args_reuse \
 		reuse_array \
+		reuse_double \
 		reuse_ho \
 		sharing_comb \
 		uncond_reuse \

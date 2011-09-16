@@ -111,13 +111,13 @@
     list(scalar_common_data_array)::out, list(vector_common_data_array)::out)
     is det.
 
-    % Given an rval, and the value of the --unboxed_float option, figure out
-    % the type the rval would have as an argument. Normally that's the same
-    % as its usual type; the exception is that for boxed floats, the type
-    % is data_ptr (i.e. the type of the boxed value) rather than float
-    % (the type of the unboxed value).
+    % Given an rval, the value of the --unboxed_float option and the width of
+    % the constructor argument, figure out the type the rval would have as an
+    % argument. Normally that's the same as its usual type; the exception is
+    % that for boxed floats, the type is data_ptr (i.e. the type of the boxed
+    % value) rather than float (the type of the unboxed value).
     %
-:- func rval_type_as_arg(have_unboxed_floats, rval) = llds_type.
+:- func rval_type_as_arg(have_unboxed_floats, arg_width, rval) = llds_type.
 
 %-----------------------------------------------------------------------------%
 
@@ -362,8 +362,9 @@ init_static_cell_info(BaseName, UnboxFloat, CommonData) = Info0 :-
 %-----------------------------------------------------------------------------%
 
 add_scalar_static_cell_natural_types(Args, DataId, !Info) :-
-    list.map(associate_natural_type(!.Info ^ sci_sub_info ^ scsi_unbox_float),
-        Args, ArgsTypes),
+    UnboxFloat = !.Info ^ sci_sub_info ^ scsi_unbox_float,
+    ArgWidth = full_word,
+    list.map(associate_natural_type(UnboxFloat, ArgWidth), Args, ArgsTypes),
     add_scalar_static_cell(ArgsTypes, DataId, !Info).
 
 add_scalar_static_cell(ArgsTypes0, DataId, !Info) :-
@@ -449,7 +450,8 @@ search_scalar_static_cell_offset(Info, DataId, Offset, Rval) :-
 %-----------------------------------------------------------------------------%
 
 find_general_llds_types(UnboxFloat, Types, [Vector | Vectors], LLDSTypes) :-
-    list.map(natural_type(UnboxFloat), Vector, LLDSTypes0),
+    ArgWidth = full_word,
+    list.map(natural_type(UnboxFloat, ArgWidth), Vector, LLDSTypes0),
     find_general_llds_types_2(UnboxFloat, Types, Vectors,
         LLDSTypes0, LLDSTypes).
 
@@ -469,7 +471,8 @@ find_general_llds_types_2(UnboxFloat, Types, [Vector | Vectors], !LLDSTypes) :-
 find_general_llds_types_in_cell(_UnboxFloat, [], [], [], []).
 find_general_llds_types_in_cell(UnboxFloat, [_Type | Types], [Rval | Rvals],
         [LLDSType0 | LLDSTypes0], [LLDSType | LLDSTypes]) :-
-    natural_type(UnboxFloat, Rval, NaturalType),
+    ArgWidth = full_word,
+    natural_type(UnboxFloat, ArgWidth, Rval, NaturalType),
     % For user-defined types, some function symbols may be constants
     % (whose representations yield integer rvals) while others may be
     % non-constants (whose representations yield data_ptr rvals).
@@ -662,27 +665,29 @@ make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
 
 %-----------------------------------------------------------------------------%
 
-rval_type_as_arg(UnboxedFloat, Rval) = Type :-
-    natural_type(UnboxedFloat, Rval, Type).
+rval_type_as_arg(UnboxedFloat, ArgWidth, Rval) = Type :-
+    natural_type(UnboxedFloat, ArgWidth, Rval, Type).
 
-:- pred natural_type(have_unboxed_floats::in, rval::in, llds_type::out) is det.
+:- pred natural_type(have_unboxed_floats::in, arg_width::in, rval::in,
+    llds_type::out) is det.
 
-natural_type(UnboxFloat, Rval, Type) :-
+natural_type(UnboxFloat, ArgWidth, Rval, Type) :-
     llds.rval_type(Rval, Type0),
     (
         Type0 = lt_float,
-        UnboxFloat = do_not_have_unboxed_floats
+        UnboxFloat = do_not_have_unboxed_floats,
+        ArgWidth \= double_word
     ->
         Type = lt_data_ptr
     ;
         Type = Type0
     ).
 
-:- pred associate_natural_type(have_unboxed_floats::in, rval::in,
-    pair(rval, llds_type)::out) is det.
+:- pred associate_natural_type(have_unboxed_floats::in, arg_width::in,
+    rval::in, pair(rval, llds_type)::out) is det.
 
-associate_natural_type(UnboxFloat, Rval, Rval - Type) :-
-    natural_type(UnboxFloat, Rval, Type).
+associate_natural_type(UnboxFloat, ArgWidth, Rval, Rval - Type) :-
+    natural_type(UnboxFloat, ArgWidth, Rval, Type).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1312,9 +1317,9 @@ remap_mem_ref(Remap, MemRef0, MemRef) :-
         ),
         MemRef = MemRef0
     ;
-        MemRef0 = heap_ref(Ptr0, Tag, FieldNum),
+        MemRef0 = heap_ref(Ptr0, MaybeTag, FieldNum),
         remap_rval(Remap, Ptr0, Ptr),
-        MemRef = heap_ref(Ptr, Tag, FieldNum)
+        MemRef = heap_ref(Ptr, MaybeTag, FieldNum)
     ).
 
 %-----------------------------------------------------------------------------%

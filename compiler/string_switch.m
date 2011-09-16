@@ -308,7 +308,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
         RowStartReg = HashSwitchInfo ^ shsi_row_start_reg,
         SetBaseRegCode = singleton(
             llds_instr(assign(BaseReg,
-                mem_addr(heap_ref(VectorAddrRval, 0, lval(RowStartReg)))),
+                mem_addr(heap_ref(VectorAddrRval, yes(0), lval(RowStartReg)))),
                 "set up base reg")
         ),
         generate_offset_assigns(OutVars, NumPrevColumns, BaseReg, !CI)
@@ -464,7 +464,7 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     RowStartReg = HashSwitchInfo ^ shsi_row_start_reg,
     SetBaseRegCode = singleton(
         llds_instr(assign(BaseReg,
-            mem_addr(heap_ref(MainVectorAddrRval, 0, lval(RowStartReg)))),
+            mem_addr(heap_ref(MainVectorAddrRval, yes(0), lval(RowStartReg)))),
             "set up base reg")
     ),
     generate_code_for_all_kinds(DescendingSortedKinds, NumPrevColumns,
@@ -837,7 +837,7 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
             llds_instr(
                 assign(BaseReg,
                     mem_addr(
-                        heap_ref(VectorAddrRval, 0,
+                        heap_ref(VectorAddrRval, yes(0),
                             binop(int_mul,
                                 lval(MidReg),
                                 const(llconst_int(NumColumns)))))),
@@ -961,7 +961,7 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
         llds_instr(
             assign(BaseReg,
                 mem_addr(
-                    heap_ref(MainVectorAddrRval, 0,
+                    heap_ref(MainVectorAddrRval, yes(0),
                         binop(int_mul,
                             lval(MidReg),
                             const(llconst_int(MainNumColumns)))))),

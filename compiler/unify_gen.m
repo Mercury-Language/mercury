@@ -64,6 +64,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
@@ -101,19 +102,14 @@
 :- type uni_val
     --->    ref(prog_var)
     ;       lval(lval, arg_width).
-            % The argument may only occupy part of a word.
+            % The argument may occupy a word, two words, or only part of a
+            % word.
 
-    % The phantom type prevents us from mixing field_addrs which are computed
-    % with and without consideration for argument packing.
-    %
-:- type field_addr(T)
+:- type field_addr
     --->    field_addr(
-                fa_num  :: int,
-                fa_var  :: prog_var
+                fa_offset   :: int,
+                fa_var      :: prog_var
             ).
-
-:- type unpacked ---> unpacked.
-:- type packed   ---> packed.
 
 %---------------------------------------------------------------------------%
 
@@ -562,16 +558,13 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
             ConsTag = unshared_tag(Ptag)
         ),
         var_types(!.CI, Args, ArgTypes),
-        FirstOffset = 0,
-        generate_cons_args(Args, ArgTypes, Modes, FirstOffset, TakeAddr, !.CI,
-            MaybeRvals0, FieldAddrs0, MayUseAtomic),
-        pack_cell_rvals(ArgWidths, MaybeRvals0, MaybeRvals, AllFilled,
-            PackCode, !CI),
-        pack_field_addrs(ArgWidths, FieldAddrs0, FieldAddrs),
+        generate_cons_args(Args, ArgTypes, Modes, ArgWidths, TakeAddr, !.CI,
+            CellArgs0, MayUseAtomic),
+        pack_cell_rvals(ArgWidths, CellArgs0, CellArgs, PackCode, !CI),
         pack_how_to_construct(ArgWidths, HowToConstruct0, HowToConstruct),
         Context = goal_info_get_context(GoalInfo),
-        construct_cell(Var, Ptag, MaybeRvals, AllFilled, HowToConstruct,
-            MaybeSize, FieldAddrs, Context, MayUseAtomic, ConstructCode, !CI),
+        construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
+            MayUseAtomic, ConstructCode, !CI),
         Code = PackCode ++ ConstructCode
     ;
         ConsTag = direct_arg_tag(Ptag),
@@ -594,18 +587,15 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
     ;
         ConsTag = shared_remote_tag(Ptag, Sectag),
         var_types(!.CI, Args, ArgTypes),
-        % The first field holds the secondary tag.
-        FirstOffset = 1,
-        generate_cons_args(Args, ArgTypes, Modes, FirstOffset, TakeAddr, !.CI,
-            MaybeRvals0, FieldAddrs0, MayUseAtomic),
-        pack_cell_rvals(ArgWidths, MaybeRvals0, MaybeRvals1, AllFilled,
-            PackCode, !CI),
-        pack_field_addrs(ArgWidths, FieldAddrs0, FieldAddrs),
+        generate_cons_args(Args, ArgTypes, Modes, ArgWidths, TakeAddr, !.CI,
+            CellArgs0, MayUseAtomic),
+        pack_cell_rvals(ArgWidths, CellArgs0, CellArgs1, PackCode, !CI),
         pack_how_to_construct(ArgWidths, HowToConstruct0, HowToConstruct),
-        MaybeRvals = [yes(const(llconst_int(Sectag))) | MaybeRvals1],
+        CellArgs = [cell_arg_full_word(const(llconst_int(Sectag)), complete)
+            | CellArgs1],
         Context = goal_info_get_context(GoalInfo),
-        construct_cell(Var, Ptag, MaybeRvals, AllFilled, HowToConstruct,
-            MaybeSize, FieldAddrs, Context, MayUseAtomic, ConstructCode, !CI),
+        construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
+            MayUseAtomic, ConstructCode, !CI),
         Code = PackCode ++ ConstructCode
     ;
         ConsTag = shared_local_tag(Ptag, Sectag),
@@ -865,20 +855,19 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         generate_pred_args(!.CI, VarTypes, Args, ArgInfo, PredArgs,
             MayUseAtomic0, MayUseAtomic),
         Vector = [
-            yes(ClosureLayoutRval),
-            yes(CodeAddrRval),
-            yes(const(llconst_int(NumArgs)))
+            cell_arg_full_word(ClosureLayoutRval, complete),
+            cell_arg_full_word(CodeAddrRval, complete),
+            cell_arg_full_word(const(llconst_int(NumArgs)), complete)
             | PredArgs
         ],
-        AllFilled = yes,
         % XXX construct_dynamically is just a dummy value. We just want
         % something which is not construct_in_region(_).
         HowToConstruct = construct_dynamically,
         MaybeSize = no,
         maybe_add_alloc_site_info(Context, "closure", length(Vector),
             MaybeAllocId, !CI),
-        assign_cell_to_var(Var, no, 0, Vector, AllFilled, HowToConstruct,
-            MaybeSize, [], MaybeAllocId, MayUseAtomic, Code, !CI)
+        assign_cell_to_var(Var, no, 0, Vector, HowToConstruct,
+            MaybeSize, MaybeAllocId, MayUseAtomic, Code, !CI)
     ).
 
 :- pred generate_extra_closure_args(list(prog_var)::in, lval::in,
@@ -913,14 +902,14 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
     Code = ProduceCode ++ AssignCode ++ IncrCode ++ VarsCode.
 
 :- pred generate_pred_args(code_info::in, vartypes::in, list(prog_var)::in,
-    list(arg_info)::in, list(maybe(rval))::out,
+    list(arg_info)::in, list(cell_arg)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
 generate_pred_args(_, _, [], _, [], !MayUseAtomic).
 generate_pred_args(_, _, [_ | _], [], _, !MayUseAtomic) :-
     unexpected($module, $pred, "insufficient args").
 generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
-        [MaybeRval | MaybeRvals], !MayUseAtomic) :-
+        [CellArg | CellArgs], !MayUseAtomic) :-
     ArgInfo = arg_info(_, ArgMode),
     (
         ArgMode = top_in,
@@ -932,32 +921,31 @@ generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
             IsDummy = is_not_dummy_type,
             Rval = var(Var)
         ),
-        MaybeRval = yes(Rval)
+        CellArg = cell_arg_full_word(Rval, complete)
     ;
         ( ArgMode = top_out
         ; ArgMode = top_unused
         ),
-        MaybeRval = no
+        CellArg = cell_arg_skip
     ),
     map.lookup(VarTypes, Var, Type),
     get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
-    generate_pred_args(CI, VarTypes, Vars, ArgInfos, MaybeRvals,
+    generate_pred_args(CI, VarTypes, Vars, ArgInfos, CellArgs,
         !MayUseAtomic).
 
 :- pred generate_cons_args(list(prog_var)::in, list(mer_type)::in,
-    list(uni_mode)::in, int::in, list(int)::in, code_info::in,
-    list(maybe(rval))::out, list(field_addr(unpacked))::out,
-    may_use_atomic_alloc::out) is det.
+    list(uni_mode)::in, list(arg_width)::in, list(int)::in,
+    code_info::in, list(cell_arg)::out, may_use_atomic_alloc::out) is det.
 
-generate_cons_args(Vars, Types, Modes, FirstOffset, TakeAddr, CI,
-        !:Args, !:FieldAddrs, !:MayUseAtomic) :-
+generate_cons_args(Vars, Types, Modes, Widths, TakeAddr, CI, !:Args,
+        !:MayUseAtomic) :-
     get_module_info(CI, ModuleInfo),
     !:MayUseAtomic = initial_may_use_atomic(ModuleInfo),
     (
         FirstArgNum = 1,
-        generate_cons_args_2(Vars, Types, Modes, FirstOffset, FirstArgNum,
-            TakeAddr, CI, !:Args, !:FieldAddrs, !MayUseAtomic)
+        generate_cons_args_2(Vars, Types, Modes, Widths, FirstArgNum, TakeAddr,
+            CI, !:Args, !MayUseAtomic)
     ->
         true
     ;
@@ -970,48 +958,53 @@ generate_cons_args(Vars, Types, Modes, FirstOffset, TakeAddr, CI,
     % we just produce `no', meaning don't generate an assignment to that field.
     %
 :- pred generate_cons_args_2(list(prog_var)::in, list(mer_type)::in,
-    list(uni_mode)::in, int::in, int::in, list(int)::in, code_info::in,
-    list(maybe(rval))::out, list(field_addr(unpacked))::out,
+    list(uni_mode)::in, list(arg_width)::in, int::in, list(int)::in,
+    code_info::in, list(cell_arg)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
 
-generate_cons_args_2([], [], [], _, _, [], _, [], [], !MayUseAtomic).
+generate_cons_args_2([], [], [], [], _CurArgNum, _TakeAddr, _CI, [],
+        !MayUseAtomic).
 generate_cons_args_2([Var | Vars], [Type | Types], [UniMode | UniModes],
-        FirstOffset, CurArgNum, !.TakeAddr, CI, [MaybeRval | MaybeRvals],
-        FieldAddrs, !MayUseAtomic) :-
+        [Width | Widths], CurArgNum, !.TakeAddr, CI, [CellArg | CellArgs],
+        !MayUseAtomic) :-
     get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
     ( !.TakeAddr = [CurArgNum | !:TakeAddr] ->
         get_lcmc_null(CI, LCMCNull),
         (
             LCMCNull = no,
-            MaybeRval = no
+            MaybeNull = no
         ;
             LCMCNull = yes,
-            MaybeRval = yes(const(llconst_int(0)))
+            MaybeNull = yes(const(llconst_int(0)))
         ),
+        CellArg = cell_arg_take_addr(Var, MaybeNull),
         !:MayUseAtomic = may_not_use_atomic_alloc,
-        generate_cons_args_2(Vars, Types, UniModes, FirstOffset, CurArgNum + 1,
-            !.TakeAddr, CI, MaybeRvals, FieldAddrs1, !MayUseAtomic),
-        % Whereas CurArgNum starts numbering the arguments from 1, offsets
-        % into fields start from zero. However, if FirstOffset = 1, then the
-        % first word in the cell is the secondary tag. This offset calculation
-        % does not consider field packing; that is done subsequently.
-        Offset = CurArgNum - 1 + FirstOffset,
-        FieldAddrs = [field_addr(Offset, Var) | FieldAddrs1]
+        generate_cons_args_2(Vars, Types, UniModes, Widths, CurArgNum + 1,
+            !.TakeAddr, CI, CellArgs, !MayUseAtomic)
     ;
         UniMode = ((_LI - RI) -> (_LF - RF)),
         mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, ArgMode),
         (
             ArgMode = top_in,
-            MaybeRval = yes(var(Var))
+            (
+                ( Width = full_word
+                ; Width = partial_word_first(_)
+                ; Width = partial_word_shifted(_, _)
+                ),
+                CellArg = cell_arg_full_word(var(Var), complete)
+            ;
+                Width = double_word,
+                CellArg = cell_arg_double_word(var(Var))
+            )
         ;
             ( ArgMode = top_out
             ; ArgMode = top_unused
             ),
-            MaybeRval = no
+            CellArg = cell_arg_skip
         ),
-        generate_cons_args_2(Vars, Types, UniModes, FirstOffset, CurArgNum + 1,
-            !.TakeAddr, CI, MaybeRvals, FieldAddrs, !MayUseAtomic)
+        generate_cons_args_2(Vars, Types, UniModes, Widths, CurArgNum + 1,
+            !.TakeAddr, CI, CellArgs, !MayUseAtomic)
     ).
 
 :- func initial_may_use_atomic(module_info) = may_use_atomic_alloc.
@@ -1028,30 +1021,12 @@ initial_may_use_atomic(ModuleInfo) = InitMayUseAtomic :-
     ).
 
 :- pred pack_cell_rvals(list(arg_width)::in,
-    list(maybe(rval))::in, list(maybe(rval))::out, bool::out,
+    list(cell_arg)::in, list(cell_arg)::out,
     llds_code::out, code_info::in, code_info::out) is det.
 
-pack_cell_rvals(ArgWidths, Rvals0, Rvals, AllFilled, Code, !CI) :-
-    % Check whether all arguments are filled in.  This has to be done on the
-    % unpacked rvals list.
-    AllFilled = (list.contains(Rvals0, no) -> no ; yes),
-    pack_args(shift_combine_arg, ArgWidths, Rvals0, Rvals, empty, Code, !CI).
-
-:- pred pack_field_addrs(list(arg_width)::in,
-    list(field_addr(unpacked))::in, list(field_addr(packed))::out) is det.
-
-pack_field_addrs(ArgWidths, FieldAddrs0, FieldAddrs) :-
-    list.map(pack_field_addr(ArgWidths), FieldAddrs0, FieldAddrs).
-
-:- pred pack_field_addr(list(arg_width)::in,
-    field_addr(unpacked)::in, field_addr(packed)::out) is det.
-
-pack_field_addr(ArgWidths, field_addr(Num0, Var), field_addr(Num, Var)) :-
-    ( list.take(Num0, ArgWidths, ArgWidthsToVar) ->
-        Num = count_distinct_words(ArgWidthsToVar)
-    ;
-        unexpected($module, $pred, "more fields than arg_widths")
-    ).
+pack_cell_rvals(ArgWidths, CellArgs0, CellArgs, Code, !CI) :-
+    pack_args(shift_combine_arg, ArgWidths, CellArgs0, CellArgs, empty, Code,
+        !CI).
 
 :- pred pack_how_to_construct(list(arg_width)::in,
     how_to_construct::in, how_to_construct::out) is det.
@@ -1068,7 +1043,7 @@ pack_how_to_construct(ArgWidths, !HowToConstruct) :-
         % If an argument within a packed field needs updating,
         % the field needs updating.
         CellToReuse0 = cell_to_reuse(Var, ConsIds, NeedsUpdates0),
-        chunk_list_by_words(ArgWidths, NeedsUpdates0, NeedsUpdates1),
+        group_same_word_elements(ArgWidths, NeedsUpdates0, NeedsUpdates1),
         list.map(condense_needs_updates, NeedsUpdates1) = NeedsUpdates,
         CellToReuse = cell_to_reuse(Var, ConsIds, NeedsUpdates),
         !:HowToConstruct = reuse_cell(CellToReuse)
@@ -1083,13 +1058,13 @@ condense_needs_updates(NeedsUpdatess) =
         does_not_need_update
     ).
 
-:- pred construct_cell(prog_var::in, tag::in, list(maybe(rval))::in, bool::in,
-    how_to_construct::in, maybe(term_size_value)::in,
-    list(field_addr(packed))::in, prog_context::in, may_use_atomic_alloc::in,
-    llds_code::out, code_info::in, code_info::out) is det.
+:- pred construct_cell(prog_var::in, tag::in, list(cell_arg)::in,
+    how_to_construct::in, maybe(term_size_value)::in, prog_context::in,
+    may_use_atomic_alloc::in, llds_code::out, code_info::in, code_info::out)
+    is det.
 
-construct_cell(Var, Ptag, MaybeRvals, AllFilled, HowToConstruct, MaybeSize,
-        FieldAddrs, Context, MayUseAtomic, Code, !CI) :-
+construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
+        MayUseAtomic, Code, !CI) :-
     VarType = variable_type(!.CI, Var),
     var_type_msg(VarType, VarTypeMsg),
     % If we're doing accurate GC, then for types which hold RTTI that
@@ -1108,29 +1083,24 @@ construct_cell(Var, Ptag, MaybeRvals, AllFilled, HowToConstruct, MaybeSize,
     ;
         ReserveWordAtStart = no
     ),
-    FieldNums = list.map(get_field_num, FieldAddrs),
-    Size = list.length(MaybeRvals),
+    Size = size_of_cell_args(CellArgs),
     maybe_add_alloc_site_info(Context, VarTypeMsg, Size, MaybeAllocId, !CI),
-    assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals, AllFilled,
-        HowToConstruct, MaybeSize, FieldNums, MaybeAllocId, MayUseAtomic,
-        CellCode, !CI),
+    assign_cell_to_var(Var, ReserveWordAtStart, Ptag, CellArgs, HowToConstruct,
+        MaybeSize, MaybeAllocId, MayUseAtomic, CellCode, !CI),
+    generate_field_addrs(CellArgs, FieldAddrs),
     (
         FieldAddrs = [],
         % Optimize common case.
         Code = CellCode
     ;
         FieldAddrs = [_ | _],
-        % Any field whose address we take will be represented by a `no'
-        % in MaybeRvals, which should prevent the cell from being made
+        % Any field whose address we take will be represented by a
+        % `cell_arg_take_addr' which should prevent the cell from being made
         % into static data.
         generate_field_take_address_assigns(FieldAddrs, Var, Ptag,
             FieldCode, !CI),
         Code = CellCode ++ FieldCode
     ).
-
-:- func get_field_num(field_addr(packed)) = int.
-
-get_field_num(field_addr(Num, _Var)) = Num.
 
 :- pred maybe_add_alloc_site_info(prog_context::in, string::in, int::in,
     maybe(alloc_site_id)::out, code_info::in, code_info::out) is det.
@@ -1147,7 +1117,32 @@ maybe_add_alloc_site_info(Context, VarTypeMsg, Size, MaybeAllocId, !CI) :-
         MaybeAllocId = no
     ).
 
-:- pred generate_field_take_address_assigns(list(field_addr(packed))::in,
+:- pred generate_field_addrs(list(cell_arg)::in, list(field_addr)::out) is det.
+
+generate_field_addrs(CellArgs, FieldAddrs) :-
+    list.foldl2(generate_field_addr, CellArgs, 0, _, [], RevFieldAddrs),
+    list.reverse(RevFieldAddrs, FieldAddrs).
+
+:- pred generate_field_addr(cell_arg::in, int::in, int::out,
+    list(field_addr)::in, list(field_addr)::out) is det.
+
+generate_field_addr(CellArg, ArgOffset, NextOffset, !RevFieldAddrs) :-
+    (
+        ( CellArg = cell_arg_full_word(_, _)
+        ; CellArg = cell_arg_skip
+        ),
+        NextOffset = ArgOffset + 1
+    ;
+        CellArg = cell_arg_double_word(_),
+        NextOffset = ArgOffset + 2
+    ;
+        CellArg = cell_arg_take_addr(Var, _),
+        NextOffset = ArgOffset + 1,
+        FieldAddr = field_addr(ArgOffset, Var),
+        !:RevFieldAddrs = [FieldAddr | !.RevFieldAddrs]
+    ).
+
+:- pred generate_field_take_address_assigns(list(field_addr)::in,
     prog_var::in, int::in, llds_code::out, code_info::in, code_info::out)
     is det.
 
@@ -1156,7 +1151,7 @@ generate_field_take_address_assigns([FieldAddr | FieldAddrs],
         CellVar, CellPtag, ThisCode ++ RestCode, !CI) :-
     FieldAddr = field_addr(FieldNum, Var),
     FieldNumRval = const(llconst_int(FieldNum)),
-    Addr = mem_addr(heap_ref(var(CellVar), CellPtag, FieldNumRval)),
+    Addr = mem_addr(heap_ref(var(CellVar), yes(CellPtag), FieldNumRval)),
     assign_expr_to_var(Var, Addr, ThisCode, !CI),
     generate_field_take_address_assigns(FieldAddrs, CellVar, CellPtag,
         RestCode, !CI).
@@ -1451,8 +1446,17 @@ generate_sub_assign(Left, Right, Code, !CI) :-
                 "Update part of word"))
         ;
             LeftWidth = double_word,
-            % Not yet supported in LLDS grades.
-            sorry($module, $pred, "double_word")
+            ( field_offset_pair(Lval, LvalA, LvalB) ->
+                SrcA = binop(float_word_bits, Source, const(llconst_int(0))),
+                SrcB = binop(float_word_bits, Source, const(llconst_int(1))),
+                Comment = "Update double word",
+                AssignCode = from_list([
+                    llds_instr(assign(LvalA, SrcA), Comment),
+                    llds_instr(assign(LvalB, SrcB), Comment)
+                ])
+            ;
+                sorry($module, $pred, "double_word: non-field lval")
+            )
         ),
         Code = SourceCode ++ MaterializeCode ++ AssignCode
     ;
@@ -1473,11 +1477,18 @@ generate_sub_assign(Left, Right, Code, !CI) :-
                         Rval0 = right_shift_rval(lval(Lval), Shift)
                     ),
                     Rval = binop(bitwise_and, Rval0, const(llconst_int(Mask))),
-                    assign_field_lval_expr_to_var(Lvar, Lval, Rval, Code, !CI)
+                    assign_field_lval_expr_to_var(Lvar, [Lval], Rval, Code,
+                        !CI)
                 ;
                     RightWidth = double_word,
-                    % Not yet supported in LLDS grades.
-                    sorry($module, $pred, "double_word")
+                    ( field_offset_pair(Lval, LvalA, LvalB) ->
+                        Rval = binop(float_from_dword,
+                            lval(LvalA), lval(LvalB)),
+                        assign_field_lval_expr_to_var(Lvar, [LvalA, LvalB],
+                            Rval, Code, !CI)
+                    ;
+                        sorry($module, $pred, "double_word: non-field lval")
+                    )
                 )
             ;
                 Right = ref(Rvar),
@@ -1489,6 +1500,12 @@ generate_sub_assign(Left, Right, Code, !CI) :-
             Code = empty
         )
     ).
+
+:- pred field_offset_pair(lval::in, lval::out, lval::out) is semidet.
+
+field_offset_pair(LvalA, LvalA, LvalB) :-
+    LvalA = field(Ptag, Address, const(llconst_int(Offset))),
+    LvalB = field(Ptag, Address, const(llconst_int(Offset + 1))).
 
 %---------------------------------------------------------------------------%
 
@@ -1737,7 +1754,8 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         ;
             ConsTag = unshared_tag(Ptag)
         ),
-        generate_ground_term_args(Args, ArgRvalsTypes, !ActiveMap),
+        generate_ground_term_args(Args, ConsArgWidths, ArgRvalsTypes,
+            !ActiveMap),
         pack_ground_term_args(ConsArgWidths, ArgRvalsTypes, PackArgRvalsTypes),
         add_scalar_static_cell(PackArgRvalsTypes, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
@@ -1761,7 +1779,8 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         )
     ;
         ConsTag = shared_remote_tag(Ptag, Stag),
-        generate_ground_term_args(Args, ArgRvalsTypes, !ActiveMap),
+        generate_ground_term_args(Args, ConsArgWidths, ArgRvalsTypes,
+            !ActiveMap),
         pack_ground_term_args(ConsArgWidths, ArgRvalsTypes, PackArgRvalsTypes),
         StagRvalType = const(llconst_int(Stag)) - lt_integer,
         AllRvalsTypes = [StagRvalType | PackArgRvalsTypes],
@@ -1782,14 +1801,30 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         unexpected($module, $pred, "unexpected tag")
     ).
 
-:- pred generate_ground_term_args(list(prog_var)::in,
+:- pred generate_ground_term_args(list(prog_var)::in, list(arg_width)::in,
     assoc_list(rval, llds_type)::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_args([], [], !ActiveMap).
-generate_ground_term_args([Var | Vars], [RvalType | RvalsTypes], !ActiveMap) :-
-    map.det_remove(Var, RvalType, !ActiveMap),
-    generate_ground_term_args(Vars, RvalsTypes, !ActiveMap).
+generate_ground_term_args(Vars, ConsArgWidths, RvalsTypes, !ActiveMap) :-
+    list.map_corresponding_foldl(generate_ground_term_arg, Vars, ConsArgWidths,
+        RvalsTypes, !ActiveMap).
+
+:- pred generate_ground_term_arg(prog_var::in, arg_width::in,
+    pair(rval, llds_type)::out,
+    active_ground_term_map::in, active_ground_term_map::out) is det.
+
+generate_ground_term_arg(Var, ConsArgWidth, RvalType, !ActiveMap) :-
+    map.det_remove(Var, RvalType0, !ActiveMap),
+    % Though a standalone float might have needed to boxed, it may be stored in
+    % unboxed form as a constructor argument.
+    (
+        ConsArgWidth = double_word,
+        RvalType0 = Rval - lt_data_ptr
+    ->
+        RvalType = Rval - lt_float
+    ;
+        RvalType = RvalType0
+    ).
 
 :- pred pack_ground_term_args(list(arg_width)::in,
     assoc_list(rval, llds_type)::in, assoc_list(rval, llds_type)::out) is det.
@@ -1799,46 +1834,65 @@ pack_ground_term_args(Widths, !RvalsTypes) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred shift_combine_arg(maybe(rval)::in, int::in,
-    maybe(maybe(rval))::in, maybe(rval)::out,
-    llds_code::in, llds_code::out, code_info::in, code_info::out) is det.
+:- pred shift_combine_arg(cell_arg::in, int::in, maybe(cell_arg)::in,
+    cell_arg::out, llds_code::in, llds_code::out,
+    code_info::in, code_info::out) is det.
 
-shift_combine_arg(ArgA, Shift, MaybeArgB, FinalArg, !Code, !CI) :-
+shift_combine_arg(CellArgA, Shift, MaybeCellArgB, FinalCellArg, !Code, !CI) :-
     (
         Shift = 0,
-        MaybeArgB = no
+        MaybeCellArgB = no
     ->
-        FinalArg = ArgA
+        FinalCellArg = CellArgA
     ;
         (
-            ArgA = yes(RvalA),
+            CellArgA = cell_arg_full_word(RvalA, Completeness),
             ( RvalA = var(Var) ->
                 IsDummy = variable_is_of_dummy_type(!.CI, Var),
                 (
                     IsDummy = is_dummy_type,
-                    ShiftArgA = no
+                    ShiftCellArgA = cell_arg_skip
                 ;
                     IsDummy = is_not_dummy_type,
                     produce_variable(Var, VarCode, VarRval, !CI),
-                    ShiftArgA = yes(maybe_left_shift_rval(VarRval, Shift)),
+                    ShiftCellArgA = cell_arg_full_word(
+                        maybe_left_shift_rval(VarRval, Shift),
+                        Completeness),
                     !:Code = !.Code ++ VarCode
                 )
             ; RvalA = const(llconst_int(Int)) ->
                 NewInt = maybe_left_shift_int(Int, Shift),
-                ShiftArgA = yes(const(llconst_int(NewInt)))
+                ShiftCellArgA = cell_arg_full_word(const(llconst_int(NewInt)),
+                    Completeness)
             ;
                 unexpected($module, $pred, "non-var or int argument")
             )
         ;
-            ArgA = no,
-            ShiftArgA = no
+            CellArgA = cell_arg_double_word(RvalA),
+            expect(unify(Shift, 0), $module, $pred,
+                "double word rval cannot be shifted"),
+            ( RvalA = var(Var) ->
+                produce_variable(Var, VarCode, VarRval, !CI),
+                ShiftCellArgA = cell_arg_double_word(VarRval),
+                !:Code = !.Code ++ VarCode
+            ; RvalA = const(llconst_float(_)) ->
+                ShiftCellArgA = CellArgA
+            ;
+                unexpected($module, $pred, "non-var or float argument")
+            )
+        ;
+            CellArgA = cell_arg_skip,
+            ShiftCellArgA = cell_arg_skip
+        ;
+            CellArgA = cell_arg_take_addr(_, _),
+            unexpected($module, $pred, "cell_arg_take_addr")
         ),
         (
-            MaybeArgB = yes(ArgB),
-            FinalArg = bitwise_or_maybe_rval(ShiftArgA, ArgB)
+            MaybeCellArgB = yes(CellArgB),
+            FinalCellArg = bitwise_or_cell_arg(ShiftCellArgA, CellArgB)
         ;
-            MaybeArgB = no,
-            FinalArg = ShiftArgA
+            MaybeCellArgB = no,
+            FinalCellArg = ShiftCellArgA
         )
     ).
 
@@ -1885,26 +1939,45 @@ maybe_left_shift_int(X, Shift) =
 right_shift_rval(Rval, Shift) =
     binop(unchecked_right_shift, Rval, const(llconst_int(Shift))).
 
-:- func bitwise_or_maybe_rval(maybe(rval), maybe(rval)) = maybe(rval).
+:- func bitwise_or_cell_arg(cell_arg, cell_arg) = cell_arg.
 
-bitwise_or_maybe_rval(MaybeRvalA, MaybeRvalB) = MaybeRval :-
-    (
-        MaybeRvalA = yes(RvalA),
-        MaybeRvalB = yes(RvalB),
-        MaybeRval = yes(binop(bitwise_or, RvalA, RvalB))
+bitwise_or_cell_arg(CellArgA, CellArgB) = CellArg :-
+    ( bitwise_or_cell_arg(CellArgA, CellArgB, CellArgPrime) ->
+        CellArg = CellArgPrime
     ;
-        MaybeRvalA = yes(_),
-        MaybeRvalB = no,
-        MaybeRval = MaybeRvalA
-    ;
-        MaybeRvalA = no,
-        MaybeRvalB = yes(_),
-        MaybeRval = MaybeRvalB
-    ;
-        MaybeRvalA = no,
-        MaybeRvalB = no,
-        MaybeRval = no
+        unexpected($module, $pred, "invalid combination")
     ).
+
+:- pred bitwise_or_cell_arg(cell_arg::in, cell_arg::in, cell_arg::out)
+    is semidet.
+
+bitwise_or_cell_arg(CellArgA, CellArgB, CellArg) :-
+    (
+        CellArgA = cell_arg_full_word(RvalA, CompletenessA),
+        CellArgB = cell_arg_full_word(RvalB, CompletenessB),
+        Expr = binop(bitwise_or, RvalA, RvalB),
+        Completeness = combine_completeness(CompletenessA, CompletenessB),
+        CellArg = cell_arg_full_word(Expr, Completeness)
+    ;
+        CellArgA = cell_arg_full_word(Rval, _),
+        CellArgB = cell_arg_skip,
+        CellArg = cell_arg_full_word(Rval, incomplete)
+    ;
+        CellArgA = cell_arg_skip,
+        CellArgB = cell_arg_full_word(Rval, _),
+        CellArg = cell_arg_full_word(Rval, incomplete)
+    ;
+        CellArgA = cell_arg_skip,
+        CellArgB = cell_arg_skip,
+        CellArg = cell_arg_skip
+    ).
+
+:- func combine_completeness(completeness, completeness) = completeness.
+
+combine_completeness(complete, complete) = complete.
+combine_completeness(incomplete, complete) = incomplete.
+combine_completeness(complete, incomplete) = incomplete.
+combine_completeness(incomplete, incomplete) = incomplete.
 
 %---------------------------------------------------------------------------%
 

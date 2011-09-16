@@ -424,7 +424,7 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
         BaseRegInitCode = singleton(
             llds_instr(
                 assign(BaseReg,
-                    mem_addr(heap_ref(VectorAddrRval, 0, BaseRval))),
+                    mem_addr(heap_ref(VectorAddrRval, yes(0), BaseRval))),
                 "Compute base address for this case")
         ),
         generate_offset_assigns(OutVars, 0, BaseReg, !CI)
@@ -530,7 +530,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     BaseRegInitCode = singleton(
         llds_instr(
             assign(BaseReg,
-                mem_addr(heap_ref(MainVectorAddrRval, 0,
+                mem_addr(heap_ref(MainVectorAddrRval, yes(0),
                     binop(int_mul,
                         IndexRval,
                         const(llconst_int(MainNumColumns)))))),
@@ -689,7 +689,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             llds_instr(label(AfterUndoLabel),
                 "Return later answer code"),
             llds_instr(assign(LaterBaseReg,
-                mem_addr(heap_ref(LaterVectorAddrRval, 0,
+                mem_addr(heap_ref(LaterVectorAddrRval, yes(0),
                     lval(LaterBaseReg)))),
                 "Compute base address in later array for this solution")
         ]),
