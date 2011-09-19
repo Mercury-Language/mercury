@@ -316,7 +316,16 @@ void mercury_sys_init_lc_write_out_proc_statics(FILE *deep_fp,
     FILE *procrep_fp);
 #endif
 
-#ifndef MR_HIGHLEVEL_CODE
+
+#ifdef MR_HIGHLEVEL_CODE
+
+void MR_CALL
+mercury__par_builtin__lc_finish_1_p_0(MR_Box lc)
+{
+    MR_fatal_error(""lc_finish is unavailable with --highlevel-code"");
+}
+
+#else /* ! MR_HIGHLEVEL_CODE */
 
 MR_def_extern_entry(par_builtin__lc_finish_1_0)
 
