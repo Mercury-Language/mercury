@@ -151,13 +151,13 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
     list(format_component)::in, maybe1(goal)::out,
     prog_varset::in, prog_varset::out) is semidet.
 
+parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
     % Since (A -> B) has different semantics in standard Prolog
     % (A -> B ; fail) than it does in NU-Prolog or Mercury (A -> B ; true),
     % for the moment we'll just disallow it.
     % For consistency we also disallow if-then without the else.
 
     % XXX We should update ContextPieces as we recurse down.
-parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
     (
         Functor = "true",
         Args = [],
