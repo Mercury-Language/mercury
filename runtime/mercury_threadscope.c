@@ -1964,8 +1964,7 @@ maybe_close_block(struct MR_threadscope_event_buffer *buffer)
 {
     MR_Unsigned saved_pos;
 
-    if (buffer->MR_tsbuffer_block_open_pos != -1)
-    {
+    if (buffer->MR_tsbuffer_block_open_pos != -1) {
         saved_pos = buffer->MR_tsbuffer_pos;
         buffer->MR_tsbuffer_pos = buffer->MR_tsbuffer_block_open_pos +
             sizeof(EventType) + sizeof(Time);
@@ -1985,14 +1984,14 @@ open_block(struct MR_threadscope_event_buffer *buffer, MR_Unsigned eng_id)
 
     /*
     ** Save the old position. Close block uses this so that it knows
-    ** where the block maker is that it should write into.
+    ** where the block marker is that it should write into.
     */
     buffer->MR_tsbuffer_block_open_pos = buffer->MR_tsbuffer_pos;
 
     put_event_header(buffer, MR_TS_EVENT_BLOCK_MARKER,
         get_current_time_nanosecs());
 
-    /* Skip over the next two fields, they are filled in by close_block */
+    /* Skip over the next two fields, they are filled in by close_block. */
     buffer->MR_tsbuffer_pos += sizeof(EventlogOffset) + sizeof(Time);
 
     put_engine_id(buffer, eng_id);
