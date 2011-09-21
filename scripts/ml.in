@@ -375,8 +375,8 @@ esac
 use_msvcrt=@USE_MSVCRT@
 if test $use_msvcrt = "yes"
 then
-	MSVCRT_OPTS="/MD" 			# Enable linking with the MS Visual C runtime.
-	NODEFAULTLIB_FLAG="/nodefaultlib:libc"
+	MSVCRT_OPTS="-MD" 			# Enable linking with the MS Visual C runtime.
+	NODEFAULTLIB_FLAG="-nodefaultlib:libc"
 else
 	MSVCRT_OPTS=""
 	NODEFAULTLIB_FLAG=""
@@ -492,7 +492,7 @@ case $all_libs in
 esac
 
 RPATH_OPT_LIST=
-# only set RPATH_OPT_LIST if the system supports shared libraries
+# Only set RPATH_OPT_LIST if the system supports shared libraries.
 case $EXT_FOR_SHARED_LIB in
 	so)
 		prev=""

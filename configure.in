@@ -3024,12 +3024,11 @@ case "$host" in
 
     *cygwin*)
         THREAD_LIBS=""
-        case "$CC" in
-            *cl* | *CL*)
-                # cl is the Microsoft C compiler
-                CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_WIN32_THREADS /MD"
-                LDFLAGS_FOR_THREADS="/MD"
-                LD_LIBFLAGS_FOR_THREADS="/MD"
+        case "$mercury_cv_cc_type" in
+            msvc)
+                CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_WIN32_THREADS -MD"
+                LDFLAGS_FOR_THREADS="-MD"
+                LD_LIBFLAGS_FOR_THREADS="-MD"
                 ;;
             *)
                 CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -DMR_THREAD_SAFE" ;;
@@ -3038,12 +3037,11 @@ case "$host" in
 
     *mingw*)
         THREAD_LIBS=""
-        case "$CC" in
-            *cl* | *CL*)
-                # cl is the Microsoft C compiler
-                CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_WIN32_THREADS /MD"
-                LDFLAGS_FOR_THREADS="/MD"
-                LD_LIBFLAGS_FOR_THREADS="/MD"
+        case "$mercury_cv_cc_type" in
+            msvc)
+                CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_WIN32_THREADS -MD"
+                LDFLAGS_FOR_THREADS="-MD"
+                LD_LIBFLAGS_FOR_THREADS="-MD"
                 ;;
             *)
                 # By default the MinGW port of GCC targets the i386
