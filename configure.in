@@ -5295,11 +5295,8 @@ TESTS_MDB_DOC="`pwd`"/doc/mdb_doc
 AC_SUBST(TESTS_MDB_INIT_DIR)
 AC_SUBST(TESTS_MDB_DOC)
 
-# The references to $conf_h_copy and $had_old_conf_h below are in code that
-# autoconf puts into a subshell, so we must export them.
 conf_h_copy=/tmp/mercury_conf.h.$$
-# trap "rm -f $conf_h_copy" 0 1 2 3 13 15
-export conf_h_copy
+trap "rm -f $conf_h_copy" 0 1 2 3 13 15
 if test -f runtime/mercury_conf.h
 then
     /bin/rm -f $conf_h_copy
@@ -5308,6 +5305,9 @@ then
 else
     had_old_conf_h=false
 fi
+# The references to $conf_h_copy and $had_old_conf_h below are in code that
+# autoconf puts into a subshell, so we must export them.
+export conf_h_copy
 export had_old_conf_h
 
 executable_output_files='
