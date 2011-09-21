@@ -443,7 +443,7 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
             write_modes_progress_message(!.ModuleInfo, WhatToCheck,
                 PredId, PredInfo0, !IO)
         ),
-        modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck,
+        do_modecheck_pred(PredId, PredInfo0, WhatToCheck,
             MayChangeCalledProc, !ModuleInfo, !Changed,
             ThisPredDeclSpecs, ThisPredProcSpecs),
         !:Specs = ThisPredDeclSpecs ++ ThisPredProcSpecs ++ !.Specs,
@@ -491,12 +491,12 @@ write_modes_progress_message(ModuleInfo, WhatToCheck, PredId, PredInfo, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_pred_mode_2(pred_id::in, pred_info::in,
+:- pred do_modecheck_pred(pred_id::in, pred_info::in,
     how_to_check_goal::in, may_change_called_proc::in,
     module_info::in, module_info::out, bool::in, bool::out,
     list(error_spec)::out, list(error_spec)::out) is det.
 
-modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
+do_modecheck_pred(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
         !ModuleInfo, !Changed, DeclSpecs, ProcSpecs) :-
     (
         WhatToCheck = check_modes,
