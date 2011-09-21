@@ -6,7 +6,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2008 The University of Melbourne.
+** Copyright (C) 1997-2008, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -926,8 +926,7 @@ MR_trace_report(FILE *fp)
 
         if (MR_standardize_event_details) {
             fprintf(fp, "Last trace event was event #E%ld.\n",
-                (long) MR_standardize_event_num(
-                    MR_trace_event_number));
+                (long) MR_standardize_event_num(MR_trace_event_number));
         } else {
             fprintf(fp, "Last trace event was event #%ld.\n",
                 (long) MR_trace_event_number);
