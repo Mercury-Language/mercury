@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1922,12 +1922,14 @@ MR_var_name_stats(FILE *fp)
             }
 
             var_names = proc_layout->MR_sle_used_var_names;
-            num_var_nums = proc_layout->MR_sle_max_named_var_num + 1;
+            if (var_names != NULL) {
+                num_var_nums = proc_layout->MR_sle_max_named_var_num + 1;
 
-            total_var_num_table_entries += num_var_nums;
-            for (var_num = 0; var_num < num_var_nums; var_num++) {
-                if (var_names[var_num] != 0) {
-                    total_used_var_num_table_entries++;
+                total_var_num_table_entries += num_var_nums;
+                for (var_num = 0; var_num < num_var_nums; var_num++) {
+                    if (var_names[var_num] != 0) {
+                        total_used_var_num_table_entries++;
+                    }
                 }
             }
         }

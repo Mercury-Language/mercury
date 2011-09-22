@@ -2574,9 +2574,31 @@ create_archive(Globals, ErrorStream, LibFileName, Quote, ObjectList,
         join_string_list(ObjectList, "", "", " ", Objects)
     ),
 
+    % NOTE: when using the Windows Library Manager Tool (lib) there must
+    % _not_ be a space between the -OUT: option and its argument.
+    % XXX we actually check the C compiler type here since that is more
+    % robust than using the values of the configuration options used for
+    % archive creation.
+    get_c_compiler_type(Globals, C_CompilerType),
+    (
+        % If we are using Visual C then we must be using the Microsoft
+        % lib tool.
+        C_CompilerType = cc_cl(_),
+        ArOutputSpace = ""
+    ;
+        ( C_CompilerType = cc_gcc(_, _, _)
+        ; C_CompilerType = cc_clang(_)
+        ; C_CompilerType = cc_lcc
+        ; C_CompilerType = cc_unknown
+        ),
+        ArOutputSpace = " "
+    ),
+
     MakeLibCmdArgs = string.append_list([
-        ArFlags, " ", ArOutputFlag, " ",
-        LibFileName, " ", Objects]),
+        ArFlags, " ",
+        ArOutputFlag, ArOutputSpace, LibFileName, " ",
+        Objects]
+    ),
 
     invoke_long_system_command(Globals, ErrorStream, cmd_verbose_commands,
         ArCmd, MakeLibCmdArgs, MakeLibCmdSucceeded, !IO),

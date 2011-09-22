@@ -176,7 +176,7 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 **	Allocates memory on the garbage-collected heap.
 */
 
-#ifdef MR_CONSERVATIVE_GC
+#ifdef MR_BOEHM_GC
   #ifdef MR_INLINE_ALLOC
     #ifndef MR_GNUC
       #error "MR_INLINE_ALLOC requires GNU C"
@@ -208,10 +208,13 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
     ** Since the Boehm collector defined GC_MALLOC_WORDS but not
     ** GC_MALLOC_WORDS_ATOMIC, we can define MR_new_object_atomic here
     ** to call either MR_GC_MALLOC_ATOMIC or MR_GC_MALLOC_INLINE,
-    ** depending on whether we value atomicity or inline expansion more.
+    ** depending on whether we value atomicity or inline expansion more. 
+    ** XXX the above is out-of-date: Bohem GC does now provide
+    ** GC_MALLOC_ATOMIC_WORDS.
+    ** XXX we don't provide MR_GC_MALLOC_ATOMIC.
     */
     #define MR_new_object_atomic(type, size, alloc_id, name) \
-		((type *) MR_GC_MALLOC_ATOMIC(size))
+		((type *) GC_MALLOC_ATOMIC(size))
   #else /* !MR_INLINE_ALLOC */
 
     #ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
@@ -227,7 +230,7 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
     #endif
   #endif /* !MR_INLINE_ALLOC */
 
-#else /* !MR_CONSERVATIVE_GC */
+#else /* !MR_BOEHM_GC */
 
   #ifndef MR_GNUC
     /*
@@ -235,7 +238,7 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
     ** It's not worth worrying about compilers other than GNU C for
     ** this obscure combination of options.
     */
-    #error "For C compilers other than GNU C, `--high-level-code' requires `--gc conservative'"
+    #error "For C compilers other than GNU C, `--high-level-code' requires `--gc boehm'"
   #endif
 
   /*
