@@ -19,5 +19,6 @@ SSDB_FLAGS
 *.pic_o
 *.opt
 *.optdate
+*.prof
 mer_ssdb.init
 *.module_dep
