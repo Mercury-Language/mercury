@@ -700,8 +700,6 @@ string_to_trace_port("NEGF", port_neg_failure).
 string_to_trace_port("DSJF", port_disj_first).
 string_to_trace_port("DSJL", port_disj_later).
 string_to_trace_port("SWTC", port_switch).
-string_to_trace_port("FRST", port_nondet_foreign_proc_first).
-string_to_trace_port("LATR", port_nondet_foreign_proc_later).
 string_to_trace_port("USER", port_user).
 
 :- func string_to_goal_path(string) = reverse_goal_path is semidet.
@@ -734,8 +732,6 @@ make_path_port(GoalPath, port_neg_failure) =
 make_path_port(GoalPath, port_disj_first) = path_only(GoalPath).
 make_path_port(GoalPath, port_disj_later) = path_only(GoalPath).
 make_path_port(GoalPath, port_switch) = path_only(GoalPath).
-make_path_port(GoalPath, port_nondet_foreign_proc_first) = path_only(GoalPath).
-make_path_port(GoalPath, port_nondet_foreign_proc_later) = path_only(GoalPath).
 make_path_port(_GoalPath, port_user) = port_only(port_user).
 
 %-----------------------------------------------------------------------------%

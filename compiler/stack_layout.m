@@ -1127,8 +1127,6 @@ collect_event_data_addrs([Info | Infos], !RevInterfaces, !RevInternals) :-
             ; Port = port_disj_first
             ; Port = port_disj_later
             ; Port = port_switch
-            ; Port = port_nondet_foreign_proc_first
-            ; Port = port_nondet_foreign_proc_later
             ; Port = port_user
             ),
             LayoutName = layout_slot(label_layout_array(LabelVars), Slot),

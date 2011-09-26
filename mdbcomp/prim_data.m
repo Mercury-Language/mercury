@@ -1,6 +1,6 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2009 The University of Melbourne.
+% Copyright (C) 2005-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,7 +30,7 @@
     % by compiler-generated code, or by code in the standard library
     % referring to compiler-generated data structures.
     %
-    % This enumeration must be EXACTLY the same as the MR_trace_port enum
+    % This enumeration must be EXACTLY the same as the MR_TracePort enum
     % in runtime/mercury_trace_base.h, and in the same order, since the
     % code (in browser) assumes the representation is the same.
     %
@@ -50,8 +50,6 @@
     ;       port_disj_first
     ;       port_disj_later
     ;       port_switch
-    ;       port_nondet_foreign_proc_first
-    ;       port_nondet_foreign_proc_later
     ;       port_user.
 
     % The order that the sym_name function symbols appear in can be significant

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2009 The University of Melbourne.
+** Copyright (C) 1998-2009, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -781,11 +781,6 @@ MR_trace_construct_node(MR_EventInfo *event_info)
         case MR_PORT_NEG_FAILURE:
             trace = MR_trace_decl_neg_failure(event_info, trace);
             break;
-
-        case MR_PORT_FOREIGN_PROC_FIRST:
-        case MR_PORT_FOREIGN_PROC_LATER:
-            MR_fatal_error("MR_trace_construct_node: "
-                "foreign language code is not handled (yet)");
 
         case MR_PORT_EXCEPTION:
             trace = MR_trace_decl_excp(event_info, trace);

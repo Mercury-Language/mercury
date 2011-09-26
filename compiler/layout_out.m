@@ -2254,24 +2254,22 @@ output_rval_as_addr(Info, Rval, !IO) :-
         output_rval(Info, Rval, !IO)
     ).
 
-trace_port_to_string(port_call) =                "CALL".
-trace_port_to_string(port_exit) =                "EXIT".
-trace_port_to_string(port_redo) =                "REDO".
-trace_port_to_string(port_fail) =                "FAIL".
-trace_port_to_string(port_tailrec_call) =        "TAILREC_CALL".
-trace_port_to_string(port_exception) =           "EXCEPTION".
-trace_port_to_string(port_ite_cond) =            "COND".
-trace_port_to_string(port_ite_then) =            "THEN".
-trace_port_to_string(port_ite_else) =            "ELSE".
-trace_port_to_string(port_neg_enter) =           "NEG_ENTER".
-trace_port_to_string(port_neg_success) =         "NEG_SUCCESS".
-trace_port_to_string(port_neg_failure) =         "NEG_FAILURE".
-trace_port_to_string(port_disj_first) =          "DISJ_FIRST".
-trace_port_to_string(port_disj_later) =          "DISJ_LATER".
-trace_port_to_string(port_switch) =              "SWITCH".
-trace_port_to_string(port_nondet_foreign_proc_first) = "FOREIGN_PROC_FIRST".
-trace_port_to_string(port_nondet_foreign_proc_later) = "FOREIGN_PROC_LATER".
-trace_port_to_string(port_user) =                "USER".
+trace_port_to_string(port_call) =            "CALL".
+trace_port_to_string(port_exit) =            "EXIT".
+trace_port_to_string(port_redo) =            "REDO".
+trace_port_to_string(port_fail) =            "FAIL".
+trace_port_to_string(port_tailrec_call) =    "TAILREC_CALL".
+trace_port_to_string(port_exception) =       "EXCEPTION".
+trace_port_to_string(port_ite_cond) =        "COND".
+trace_port_to_string(port_ite_then) =        "THEN".
+trace_port_to_string(port_ite_else) =        "ELSE".
+trace_port_to_string(port_neg_enter) =       "NEG_ENTER".
+trace_port_to_string(port_neg_success) =     "NEG_SUCCESS".
+trace_port_to_string(port_neg_failure) =     "NEG_FAILURE".
+trace_port_to_string(port_disj_first) =      "DISJ_FIRST".
+trace_port_to_string(port_disj_later) =      "DISJ_LATER".
+trace_port_to_string(port_switch) =          "SWITCH".
+trace_port_to_string(port_user) =            "USER".
 
 %-----------------------------------------------------------------------------%
 

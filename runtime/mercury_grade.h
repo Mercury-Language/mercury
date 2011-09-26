@@ -347,8 +347,8 @@
 ** Parts 10-11 (i.e. tag bits, and (un)boxed float) are documented as
 ** "not for general use", and can't be set via the `--grade' option;
 ** we therefore can't make them part of the grade option string.
-** Single-precision floats, do form part of the grade option string
-** and implies unboxed floats.
+** Single-precision floats do form part of the grade option string
+** and they imply unboxed floats.
 **
 ** Part 12 (i.e. MR_NEW_MERCURYFILE_STRUCT) can't be set
 ** by the `--grade' option; it is intended to be set by the configure script

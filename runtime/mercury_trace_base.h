@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2009 The University of Melbourne.
+** Copyright (C) 1997-2009, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -50,8 +50,6 @@ typedef enum {
     MR_PORT_DISJ_FIRST,
     MR_PORT_DISJ_LATER,
     MR_PORT_SWITCH,
-    MR_PORT_FOREIGN_PROC_FIRST,
-    MR_PORT_FOREIGN_PROC_LATER,
     MR_PORT_USER,
     MR_PORT_NONE
 } MR_TracePort;
@@ -74,8 +72,6 @@ typedef enum {
     "DSJF", \
     "DSJL", \
     "SWTC", \
-    "FRST", \
-    "LATR", \
     "USER", \
     "NONE"
 
@@ -95,8 +91,6 @@ typedef enum {
     "DISJ", \
     "DISJ", \
     "SWTC", \
-    "FRST", \
-    "LATR", \
     "USER", \
     "NONE"
 

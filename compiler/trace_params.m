@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2008 The University of Melbourne.
+% Copyright (C) 2000-2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -493,12 +493,6 @@ convert_port_name("swtc") = port_switch.
 convert_port_name("switch") = port_switch.
 convert_port_name("disj_first") = port_disj_first.
 convert_port_name("disj_later") = port_disj_later.
-convert_port_name("frst") = port_nondet_foreign_proc_first.
-convert_port_name("nondet_foreign_proc_first") =
-    port_nondet_foreign_proc_first.
-convert_port_name("latr") = port_nondet_foreign_proc_later.
-convert_port_name("nondet_foreign_proc_later") =
-    port_nondet_foreign_proc_later.
 convert_port_name("tail") = port_tailrec_call.
 convert_port_name("user") = port_user.
 
@@ -583,8 +577,6 @@ trace_port_category(port_neg_failure)         = port_cat_context.
 trace_port_category(port_switch)              = port_cat_internal.
 trace_port_category(port_disj_first)          = port_cat_internal.
 trace_port_category(port_disj_later)          = port_cat_internal.
-trace_port_category(port_nondet_foreign_proc_first) = port_cat_internal.
-trace_port_category(port_nondet_foreign_proc_later) = port_cat_internal.
 trace_port_category(port_tailrec_call)        = port_cat_interface.
 trace_port_category(port_user)                = port_cat_user.
 
@@ -659,6 +651,4 @@ port_number(port_neg_failure) = 11.
 port_number(port_disj_first) = 12.
 port_number(port_disj_later) = 13.
 port_number(port_switch) = 14.
-port_number(port_nondet_foreign_proc_first) = 15.
-port_number(port_nondet_foreign_proc_later) = 16.
-port_number(port_user) = 17.
+port_number(port_user) = 15.
