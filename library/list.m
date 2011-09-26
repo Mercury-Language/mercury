@@ -2313,8 +2313,8 @@ list.split_last([H | T], AllButLast, Last) :-
         AllButLast = [],
         Last = H
     ;
-        T = [_ | _],
-        list.split_last(T, AllButLastTail, Last),
+        T = [TH | TT],
+        list.split_last_det_2(TH, TT, AllButLastTail, Last),
         AllButLast = [H | AllButLastTail]
     ).
 

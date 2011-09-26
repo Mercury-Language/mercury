@@ -455,12 +455,82 @@ slice_label_count_is_zero(SliceLabelCount) :-
     slice_label_count::in, slice_label_count::in,
     builtin.comparison_result::out) is det.
 
-slice_label_count_compare(SortStr, LabelCount1, LabelCount2, Result) :-
+slice_label_count_compare(SortStr, LabelCountA, LabelCountB, Result) :-
     ( SortStr = "" ->
-        builtin.compare(Result, LabelCount1, LabelCount2)
+        LabelCountA = slice_label_count(ProcLabelA, PathPortA, CountsA),
+        LabelCountB = slice_label_count(ProcLabelB, PathPortB, CountsB),
+        builtin.compare(ProcLabelResult, ProcLabelA, ProcLabelB),
+        (
+            ProcLabelResult = (<),
+            Result = (<)
+        ;
+            ProcLabelResult = (=),
+            compare_path_ports(PathPortA, PathPortB, PathPortResult),
+            (
+                PathPortResult = (<),
+                Result = (<)
+            ;
+                PathPortResult = (=),
+                builtin.compare(Result, CountsA, CountsB)
+            ;
+                PathPortResult = (>),
+                Result = (>)
+            )
+        ;
+            ProcLabelResult = (>),
+            Result = (>)
+        )
     ;
         slice_exec_count_compare(SortStr,
-            LabelCount1 ^ slc_counts, LabelCount2 ^ slc_counts, Result)
+            LabelCountA ^ slc_counts, LabelCountB ^ slc_counts, Result)
+    ).
+
+:- pred compare_path_ports(path_port::in, path_port::in,
+    builtin.comparison_result::out) is det.
+
+compare_path_ports(PathPortA, PathPortB, Result) :-
+    (
+        % Handle the case where PathPortA and PathPortB have the same
+        % functor.
+        (
+            PathPortA = port_only(PortA),
+            PathPortB = port_only(PortB),
+            require_det (
+                builtin.compare(ResultPrime, PortA, PortB)
+            )
+        ;
+            PathPortA = path_only(RevPathA),
+            PathPortB = path_only(RevPathB),
+            require_det (
+                rgp_to_fgp(RevPathA, PathA),
+                rgp_to_fgp(RevPathB, PathB),
+                builtin.compare(ResultPrime, PathA, PathB)
+            )
+        ;
+            PathPortA = port_and_path(PortA, RevPathA),
+            PathPortB = port_and_path(PortB, RevPathB),
+            require_det (
+                builtin.compare(PortResult, PortA, PortB),
+                (
+                    PortResult = (<),
+                    ResultPrime = (<)
+                ;
+                    PortResult = (=),
+                    rgp_to_fgp(RevPathA, PathA),
+                    rgp_to_fgp(RevPathB, PathB),
+                    builtin.compare(ResultPrime, PathA, PathB)
+                ;
+                    PortResult = (>),
+                    ResultPrime = (>)
+                )
+            )
+        )
+    ->
+        Result = ResultPrime
+    ;
+        % Handle the case where PathPortA and PathPortB have different
+        % functors.
+        builtin.compare(Result, PathPortA, PathPortB)
     ).
 
 :- pred slice_exec_count_compare(string::in,
@@ -468,9 +538,7 @@ slice_label_count_compare(SortStr, LabelCount1, LabelCount2, Result) :-
     builtin.comparison_result::out) is det.
 
 slice_exec_count_compare(SortStr, ExecCount1, ExecCount2, Result) :-
-    (
-        string.first_char(SortStr, C, Rest)
-    ->
+    ( string.first_char(SortStr, C, Rest) ->
         ( C = 'c' ->
             builtin.compare(Result0, ExecCount1 ^ slice_count,
                 ExecCount2 ^ slice_count)
@@ -650,12 +718,34 @@ dice_label_count_is_for_module(Module, dice_label_count(Label, _, _)) :-
     dice_label_count::in, dice_label_count::in,
     builtin.comparison_result::out) is det.
 
-dice_label_count_compare(SortStr, LabelCount1, LabelCount2, Result) :-
+dice_label_count_compare(SortStr, LabelCountA, LabelCountB, Result) :-
     ( SortStr = "" ->
-        builtin.compare(Result, LabelCount1, LabelCount2)
+        LabelCountA = dice_label_count(ProcLabelA, PathPortA, CountsA),
+        LabelCountB = dice_label_count(ProcLabelB, PathPortB, CountsB),
+        builtin.compare(ProcLabelResult, ProcLabelA, ProcLabelB),
+        (
+            ProcLabelResult = (<),
+            Result = (<)
+        ;
+            ProcLabelResult = (=),
+            compare_path_ports(PathPortA, PathPortB, PathPortResult),
+            (
+                PathPortResult = (<),
+                Result = (<)
+            ;
+                PathPortResult = (=),
+                builtin.compare(Result, CountsA, CountsB)
+            ;
+                PathPortResult = (>),
+                Result = (>)
+            )
+        ;
+            ProcLabelResult = (>),
+            Result = (>)
+        )
     ;
         dice_exec_count_compare(SortStr,
-            LabelCount1 ^ dlc_counts, LabelCount2 ^ dlc_counts, Result)
+            LabelCountA ^ dlc_counts, LabelCountB ^ dlc_counts, Result)
     ).
 
 :- pred dice_exec_count_compare(string::in,

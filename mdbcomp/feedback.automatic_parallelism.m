@@ -162,17 +162,17 @@
     % This goal describes 'push goal' transformations.
     %
     % This is where a goal may be pushed into the arms of a branching goal that
-    % occurs before it in the same conjunction.  It can allow the pushed goal
+    % occurs before it in the same conjunction. It can allow the pushed goal
     % to be parallelised against goals in one or more branches without
-    % parallelising the whole branch goal (whose per-call cost may be two
-    % small).
+    % parallelising the whole branch goal (whose per-call cost may be
+    % too small).
     %
 :- type push_goal
     --->    push_goal(
                 % The goal path of the conjunction in which the push is done.
                 pg_goal_path    :: goal_path_string,
 
-                % The range of conjuncts to push, (inclusive)
+                % The range of conjuncts to push (inclusive).
                 pg_pushee_lo    :: int,
                 pg_pushee_hi    :: int,
 

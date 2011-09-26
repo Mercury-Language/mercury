@@ -54,7 +54,6 @@
 :- import_module array.
 :- import_module bimap.
 :- import_module char.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 
@@ -66,17 +65,19 @@
 :- pred is_valid_goal_id(goal_id::in) is semidet.
 
 :- type forward_goal_path
-    --->    fgp(list(goal_path_step)).
+    --->    fgp_nil
+    ;       fgp_cons(goal_path_step, forward_goal_path).
 
 :- type reverse_goal_path
-    --->    rgp(list(goal_path_step)).
+    --->    rgp_nil
+    ;       rgp_cons(reverse_goal_path, goal_path_step).
 
 :- type goal_path_string == string.
 
 :- type goal_path_step
     --->    step_conj(int)
     ;       step_disj(int)
-    ;       step_switch(int, maybe(int))
+    ;       step_switch(int, maybe_switch_num_functors)
     ;       step_ite_cond
     ;       step_ite_then
     ;       step_ite_else
@@ -86,6 +87,12 @@
     ;       step_try
     ;       step_atomic_main
     ;       step_atomic_orelse(int).
+
+    % The number of functors in the type of the switched-on variable, if known.
+    %
+:- type maybe_switch_num_functors
+    --->    unknown_num_functors_in_type
+    ;       known_num_functors_in_type(int).
 
     % Does the scope goal have a different determinism inside than outside?
 :- type maybe_cut
@@ -168,6 +175,11 @@
     % Is this character the one that ends each goal path step?
     %
 :- pred is_goal_path_separator(char::in) is semidet.
+
+    % Convert one kind of goal path into the other.
+    %
+:- pred rgp_to_fgp(reverse_goal_path::in, forward_goal_path::out) is det.
+:- pred fgp_to_rgp(forward_goal_path::in, reverse_goal_path::out) is det.
 
     % goal_path_inside(PathA, PathB):
     %
@@ -301,6 +313,7 @@
 :- import_module assoc_list.
 :- import_module cord.
 :- import_module int.
+:- import_module list.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -310,43 +323,57 @@ is_valid_goal_id(goal_id(GoalIdNum)) :-
 
 whole_body_goal_id = goal_id(0).
 
-goal_path_add_at_end(GoalPath0, GoalPathStep) = GoalPath :-
-    GoalPath0 = fgp(Steps0),
-    Steps = Steps0 ++ [GoalPathStep],
-    GoalPath = fgp(Steps).
+goal_path_add_at_end(fgp_nil, NewStep) = fgp_cons(NewStep, fgp_nil).
+goal_path_add_at_end(fgp_cons(OldStep, GoalPath0), NewStep) =
+        fgp_cons(OldStep, GoalPath) :-
+    GoalPath = goal_path_add_at_end(GoalPath0, NewStep).
 
-rev_goal_path_add_at_end(GoalPath0, GoalPathStep) = GoalPath :-
-    GoalPath0 = rgp(Steps0),
-    Steps = [GoalPathStep | Steps0],
-    GoalPath = rgp(Steps).
+rev_goal_path_add_at_end(GoalPath0, NewStep) = GoalPath :-
+    GoalPath = rgp_cons(GoalPath0, NewStep).
 
-goal_path_remove_last(GoalPath0, GoalPath, LastStep) :-
-    GoalPath0 = fgp(Steps0),
-    list.split_last(Steps0, Steps, LastStep),
-    GoalPath = fgp(Steps).
+goal_path_remove_last(fgp_cons(HeadStep, TailSteps),
+        AllButLastGoalPath, LastStep) :-
+    goal_path_remove_last_loop(HeadStep, TailSteps,
+        AllButLastGoalPath, LastStep).
 
-goal_path_get_last(GoalPath, LastStep) :-
-    goal_path_remove_last(GoalPath, _, LastStep).
+:- pred goal_path_remove_last_loop(goal_path_step::in, forward_goal_path::in,
+    forward_goal_path::out, goal_path_step::out) is det.
 
-rev_goal_path_remove_last(GoalPath0, GoalPath, LastStep) :-
-    GoalPath0 = rgp(Steps0),
-    Steps0 = [LastStep | Steps],
-    GoalPath = rgp(Steps).
+goal_path_remove_last_loop(Head, fgp_nil, fgp_nil, Head).
+goal_path_remove_last_loop(Head, fgp_cons(TailHead, TailTail),
+        AllButLastGoalPath, LastStep) :-
+    goal_path_remove_last_loop(TailHead, TailTail,
+        AllButLastGoalPath0, LastStep),
+    AllButLastGoalPath = fgp_cons(Head, AllButLastGoalPath0).
 
-rev_goal_path_get_last(GoalPath, LastStep) :-
-    rev_goal_path_remove_last(GoalPath, _, LastStep).
+goal_path_get_last(fgp_cons(HeadStep, TailSteps), LastStep) :-
+    goal_path_last_loop(HeadStep, TailSteps, LastStep).
 
-goal_path_inside_relative(PathA, PathB, RelativePath) :-
-    PathA = fgp(StepsA),
-    PathB = fgp(StepsB),
-    list.append(StepsA, RelativeSteps, StepsB),
-    RelativePath = fgp(RelativeSteps).
+:- pred goal_path_last_loop(goal_path_step::in, forward_goal_path::in,
+    goal_path_step::out) is det.
 
-rev_goal_path_inside_relative(RevPathA, RevPathB, RevRelative) :-
-    RevPathA = rgp(RevStepsA),
-    RevPathB = rgp(RevStepsB),
-    list.remove_suffix(RevStepsB, RevStepsA, RevRelativeSteps),
-    RevRelative = rgp(RevRelativeSteps).
+goal_path_last_loop(Head, fgp_nil, Head).
+goal_path_last_loop(_Head, fgp_cons(TailHead, TailTail), LastStep) :-
+    goal_path_last_loop(TailHead, TailTail, LastStep).
+
+rev_goal_path_remove_last(rgp_cons(GoalPath, LastStep), GoalPath, LastStep).
+
+rev_goal_path_get_last(rgp_cons(_, LastStep), LastStep).
+
+goal_path_inside_relative(fgp_nil, PathB, PathB).
+goal_path_inside_relative(fgp_cons(StepA, PathA), fgp_cons(StepB, PathB),
+        RelativePath) :-
+    StepA = StepB,
+    goal_path_inside_relative(PathA, PathB, RelativePath).
+
+rev_goal_path_inside_relative(RevPathA, RevPathB, RevRelativePath) :-
+    % XXX It would be more efficient if we could do this test
+    % without having to translate twice the part of RevPathB that
+    % goal_path_inside_relative returns but does not test.
+    rgp_to_fgp(RevPathA, PathA),
+    rgp_to_fgp(RevPathB, PathB),
+    goal_path_inside_relative(PathA, PathB, RelativePath),
+    fgp_to_rgp(RelativePath, RevRelativePath).
 
 goal_path_inside(PathA, PathB) :-
     goal_path_inside_relative(PathA, PathB, _).
@@ -356,8 +383,15 @@ rev_goal_path_inside(RevPathA, RevPathB) :-
 
 goal_path_from_string(GoalPathStr, GoalPath) :-
     StepStrs = string.words_separator(is_goal_path_separator, GoalPathStr),
-    list.map(goal_path_step_from_string, StepStrs, Steps),
-    GoalPath = fgp(Steps).
+    goal_path_from_strings(StepStrs, GoalPath).
+
+:- pred goal_path_from_strings(list(string)::in, forward_goal_path::out)
+    is semidet.
+
+goal_path_from_strings([], fgp_nil).
+goal_path_from_strings([Str | Strs], fgp_cons(HeadStep, LaterSteps)) :-
+    goal_path_step_from_string(Str, HeadStep),
+    goal_path_from_strings(Strs, LaterSteps).
 
 goal_path_from_string_det(GoalPathStr, GoalPath) :-
     ( goal_path_from_string(GoalPathStr, GoalPathPrime) ->
@@ -368,9 +402,16 @@ goal_path_from_string_det(GoalPathStr, GoalPath) :-
 
 rev_goal_path_from_string(GoalPathStr, GoalPath) :-
     StepStrs = string.words_separator(is_goal_path_separator, GoalPathStr),
-    list.map(goal_path_step_from_string, StepStrs, Steps),
-    list.reverse(Steps, RevSteps),
-    GoalPath = rgp(RevSteps).
+    list.reverse(StepStrs, RevStepStrs),
+    rev_goal_path_from_rev_strings(RevStepStrs, GoalPath).
+
+:- pred rev_goal_path_from_rev_strings(list(string)::in,
+    reverse_goal_path::out) is semidet.
+
+rev_goal_path_from_rev_strings([], rgp_nil).
+rev_goal_path_from_rev_strings([Str | Strs], rgp_cons(HeadSteps, TailStep)) :-
+    rev_goal_path_from_rev_strings(Strs, HeadSteps),
+    goal_path_step_from_string(Str, TailStep).
 
 rev_goal_path_from_string_det(GoalPathStr, GoalPath) :-
     ( rev_goal_path_from_string(GoalPathStr, GoalPathPrime) ->
@@ -395,10 +436,10 @@ goal_path_step_from_string_2('s', Str, step_switch(N, MaybeM)) :-
     string.to_int(NStr, N),
     % "na" is short for "not applicable"
     ( MStr = "na" ->
-        MaybeM = no
+        MaybeM = unknown_num_functors_in_type
     ;
         string.to_int(MStr, M),
-        MaybeM = yes(M)
+        MaybeM = known_num_functors_in_type(M)
     ).
 goal_path_step_from_string_2('?', "", step_ite_cond).
 goal_path_step_from_string_2('t', "", step_ite_then).
@@ -415,24 +456,36 @@ goal_path_step_from_string_2('o', NStr, step_atomic_orelse(N)) :-
 is_goal_path_separator(';').
 
 goal_path_to_string(GoalPath) = GoalPathStr :-
-    GoalPath = fgp(Steps),
-    StepStrs = list.map(goal_path_step_to_string, Steps),
+    StepStrs = goal_path_to_strings(GoalPath),
     string.append_list(StepStrs, GoalPathStr).
 
+:- func goal_path_to_strings(forward_goal_path) = list(string).
+
+goal_path_to_strings(fgp_nil) = [].
+goal_path_to_strings(fgp_cons(Step, Steps)) = [Str | Strs] :-
+    Str = goal_path_step_to_string(Step),
+    Strs = goal_path_to_strings(Steps).
+
 rev_goal_path_to_string(GoalPath) = GoalPathStr :-
-    GoalPath = rgp(RevSteps),
-    list.reverse(RevSteps, Steps),
-    StepStrs = list.map(goal_path_step_to_string, Steps),
+    RevStepStrs = rev_goal_path_to_strings(GoalPath),
+    list.reverse(RevStepStrs, StepStrs),
     string.append_list(StepStrs, GoalPathStr).
+
+:- func rev_goal_path_to_strings(reverse_goal_path) = list(string).
+
+rev_goal_path_to_strings(rgp_nil) = [].
+rev_goal_path_to_strings(rgp_cons(Steps, Step)) = [Str | Strs] :-
+    Str = goal_path_step_to_string(Step),
+    Strs = rev_goal_path_to_strings(Steps).
 
 :- func goal_path_step_to_string(goal_path_step) = string.
 
 goal_path_step_to_string(step_conj(N)) = "c" ++ int_to_string(N) ++ ";".
 goal_path_step_to_string(step_disj(N)) = "d" ++ int_to_string(N) ++ ";".
-goal_path_step_to_string(step_switch(N, yes(M))) = "s" ++ int_to_string(N)
-    ++ "-" ++ int_to_string(M) ++ ";".
-goal_path_step_to_string(step_switch(N, no)) = "s" ++ int_to_string(N)
-    ++ "-na;".      % short for "not applicable"
+goal_path_step_to_string(step_switch(N, known_num_functors_in_type(M))) =
+    "s" ++ int_to_string(N) ++ "-" ++ int_to_string(M) ++ ";".
+goal_path_step_to_string(step_switch(N, unknown_num_functors_in_type)) =
+    "s" ++ int_to_string(N) ++ "-na;".      % short for "not applicable"
 goal_path_step_to_string(step_ite_cond) = "?;".
 goal_path_step_to_string(step_ite_then) = "t;".
 goal_path_step_to_string(step_ite_else) = "e;".
@@ -445,8 +498,11 @@ goal_path_step_to_string(step_atomic_main) = "a;".
 goal_path_step_to_string(step_atomic_orelse(N)) =
     "o" ++ int_to_string(N) ++ ";".
 
-rev_goal_path_remove_type_info(rgp(Steps0), rgp(Steps)) :-
-    map(goal_path_step_remove_type_info, Steps0, Steps).
+rev_goal_path_remove_type_info(rgp_nil, rgp_nil).
+rev_goal_path_remove_type_info(rgp_cons(Steps0, Step0),
+        rgp_cons(Steps, Step)) :-
+    goal_path_step_remove_type_info(Step0, Step),
+    rev_goal_path_remove_type_info(Steps0, Steps).
 
 :- pred goal_path_step_remove_type_info(goal_path_step::in,
     goal_path_step::out) is det.
@@ -467,7 +523,7 @@ goal_path_step_remove_type_info(!Step) :-
         )
     ;
         !.Step = step_switch(N, _),
-        !:Step = step_switch(N, no)
+        !:Step = step_switch(N, unknown_num_functors_in_type)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -482,38 +538,45 @@ goal_id_inside(ContainingGoalId, GoalIdA, GoalIdB) :-
     ).
 
 goal_id_to_forward_path(ContainingGoalMap, GoalId) = GoalPath :-
-    StepsCord = goal_id_to_steps(ContainingGoalMap, GoalId),
-    Steps = cord.list(StepsCord),
-    GoalPath = fgp(Steps).
+    RevGoalPath = goal_id_to_reverse_path(ContainingGoalMap, GoalId),
+    rgp_to_fgp(RevGoalPath, GoalPath).
 
 goal_id_to_reverse_path(ContainingGoalMap, GoalId) = GoalPath :-
-    StepsCord = goal_id_to_steps(ContainingGoalMap, GoalId),
-    Steps = cord.list(StepsCord),
-    list.reverse(Steps, RevSteps),
-    GoalPath = rgp(RevSteps).
-
-:- func goal_id_to_steps(containing_goal_map, goal_id) =
-    cord(goal_path_step).
-
-goal_id_to_steps(ContainingGoalMap, GoalId) = Steps :-
     map.lookup(ContainingGoalMap, GoalId, ContainingGoal),
     (
         ContainingGoal = whole_body_goal,
-        Steps = cord.empty
+        GoalPath = rgp_nil
     ;
         ContainingGoal = containing_goal(ParentGoalId, LastStep),
-        EarlierSteps = goal_id_to_steps(ContainingGoalMap, ParentGoalId),
-        Steps = cord.snoc(EarlierSteps, LastStep)
+        EarlierPath = goal_id_to_reverse_path(ContainingGoalMap, ParentGoalId),
+        GoalPath = rgp_cons(EarlierPath, LastStep)
     ).
 
 create_forward_goal_path_map(ContainingGoalMap) = ForwardGoalPathMap :-
     ReverseGoalPathMap = create_reverse_goal_path_map(ContainingGoalMap),
     map.map_values_only(rgp_to_fgp, ReverseGoalPathMap, ForwardGoalPathMap).
 
-:- pred rgp_to_fgp(reverse_goal_path::in, forward_goal_path::out) is det.
+rgp_to_fgp(ReverseGoalPath, ForwardGoalPath) :-
+    rgp_to_fgp_2(ReverseGoalPath, fgp_nil, ForwardGoalPath).
 
-rgp_to_fgp(rgp(RevSteps), fgp(Steps)) :-
-    list.reverse(RevSteps, Steps).
+:- pred rgp_to_fgp_2(reverse_goal_path::in,
+    forward_goal_path::in, forward_goal_path::out) is det.
+
+rgp_to_fgp_2(rgp_nil, !ForwardGoalPath).
+rgp_to_fgp_2(rgp_cons(EarlierSteps, LastStep), !ForwardGoalPath) :-
+    !:ForwardGoalPath = fgp_cons(LastStep, !.ForwardGoalPath),
+    rgp_to_fgp_2(EarlierSteps, !ForwardGoalPath).
+
+fgp_to_rgp(ForwardGoalPath, ReverseGoalPath) :-
+    fgp_to_rgp_2(ForwardGoalPath, rgp_nil, ReverseGoalPath).
+
+:- pred fgp_to_rgp_2(forward_goal_path::in,
+    reverse_goal_path::in, reverse_goal_path::out) is det.
+
+fgp_to_rgp_2(fgp_nil, !ReverseGoalPath).
+fgp_to_rgp_2(fgp_cons(FirstStep, LaterSteps), !ReverseGoalPath) :-
+    !:ReverseGoalPath = rgp_cons(!.ReverseGoalPath, FirstStep),
+    fgp_to_rgp_2(LaterSteps, !ReverseGoalPath).
 
 create_reverse_goal_path_map(ContainingGoalMap) = ReverseGoalPathMap :-
     map.to_assoc_list(ContainingGoalMap, ContainingGoalList),
@@ -530,14 +593,12 @@ create_reverse_goal_path_map_2([Head | Tail], !ReverseGoalPathMap) :-
     Head = GoalId - ContainingGoal,
     (
         ContainingGoal = whole_body_goal,
-        GoalReversePath = rgp([])
+        GoalReversePath = rgp_nil
     ;
         ContainingGoal = containing_goal(ContainingGoalId, Step),
         map.lookup(!.ReverseGoalPathMap, ContainingGoalId,
             ContainingGoalReversePath),
-        ContainingGoalReversePath = rgp(ContainingGoalReverseSteps),
-        GoalReverseSteps = [Step | ContainingGoalReverseSteps],
-        GoalReversePath = rgp(GoalReverseSteps)
+        GoalReversePath = rgp_cons(ContainingGoalReversePath, Step)
     ),
     map.det_insert(GoalId, GoalReversePath, !ReverseGoalPathMap),
     create_reverse_goal_path_map_2(Tail, !ReverseGoalPathMap).
@@ -557,14 +618,12 @@ create_reverse_goal_path_bimap_2([Head | Tail], !ReverseGoalPathBiMap) :-
     Head = GoalId - ContainingGoal,
     (
         ContainingGoal = whole_body_goal,
-        GoalReversePath = rgp([])
+        GoalReversePath = rgp_nil
     ;
         ContainingGoal = containing_goal(ContainingGoalId, Step),
         bimap.lookup(!.ReverseGoalPathBiMap, ContainingGoalId,
             ContainingGoalReversePath),
-        ContainingGoalReversePath = rgp(ContainingGoalReverseSteps),
-        GoalReverseSteps = [Step | ContainingGoalReverseSteps],
-        GoalReversePath = rgp(GoalReverseSteps)
+        GoalReversePath = rgp_cons(ContainingGoalReversePath, Step)
     ),
     bimap.det_insert(GoalId, GoalReversePath, !ReverseGoalPathBiMap),
     create_reverse_goal_path_bimap_2(Tail, !ReverseGoalPathBiMap).

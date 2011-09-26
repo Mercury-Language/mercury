@@ -47,7 +47,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred atomic_goal_build_use_map(atomic_goal_rep::in,
-    list(goal_path_step)::in, implicit_parallelism_info::in,
+    reverse_goal_path::in, implicit_parallelism_info::in,
     var_use_type::in, var_rep::in,
     map(var_rep, lazy(var_use_info))::in,
     map(var_rep, lazy(var_use_info))::out) is det.
@@ -150,7 +150,7 @@ simple_goal_cost(Calls) = Cost :-
 
 %-----------------------------------------------------------------------------%
 
-atomic_goal_build_use_map(AtomicGoal, RevGoalPathSteps, Info, VarUseType, Var,
+atomic_goal_build_use_map(AtomicGoal, RevGoalPath, Info, VarUseType, Var,
         !Map) :-
     atomic_goal_is_call(AtomicGoal, IsCall),
     (
@@ -168,17 +168,16 @@ atomic_goal_build_use_map(AtomicGoal, RevGoalPathSteps, Info, VarUseType, Var,
     ;
         IsCall = atomic_goal_is_call(Args),
         LazyUse = delay(
-            (func) = compute_var_use_lazy(Info, RevGoalPathSteps, Var,
+            (func) = compute_var_use_lazy(Info, RevGoalPath, Var,
                 Args, VarUseType))
     ),
     map.det_insert(Var, LazyUse, !Map).
 
-:- func compute_var_use_lazy(implicit_parallelism_info, list(goal_path_step),
+:- func compute_var_use_lazy(implicit_parallelism_info, reverse_goal_path,
     var_rep, list(var_rep), var_use_type) = var_use_info.
 
-compute_var_use_lazy(Info, RevGoalPathSteps, Var, Args, VarUseType) = Use :-
+compute_var_use_lazy(Info, RevGoalPath, Var, Args, VarUseType) = Use :-
     CliquePtr = Info ^ ipi_clique,
-    RevGoalPath = rgp(RevGoalPathSteps),
     map.lookup(Info ^ ipi_call_sites, RevGoalPath, CostAndCallee),
     (
         cost_and_callees_is_recursive(CliquePtr, CostAndCallee),

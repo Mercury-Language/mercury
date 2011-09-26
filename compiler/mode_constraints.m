@@ -1820,7 +1820,7 @@ constrict_to_vars(NonLocals, GoalVars, GoalId, !Constraint, !GCInfo) :-
     set_of_progvar::in, goal_id::in, set(goal_id)::in, inst_graph::in,
     rep_var::in) is semidet.
 
-keep_var(ForwardGoalPathMap, NonLocals, GoalVars, GoalId, AtomicGoals,
+keep_var(_ForwardGoalPathMap, NonLocals, GoalVars, _GoalId, AtomicGoals,
         InstGraph, RepVar) :-
     (
         RepVar = _V `at` RepGoalId,
@@ -1836,16 +1836,20 @@ keep_var(ForwardGoalPathMap, NonLocals, GoalVars, GoalId, AtomicGoals,
         =>
         (
             list.member(NonLocal, NonLocals),
-            inst_graph.reachable(InstGraph, NonLocal, V),
-            \+ (
-                RepVar = _ `at` RepGoalId,
-                % XXX What higher level operation is being implemented here?
-                map.lookup(ForwardGoalPathMap, GoalId, GoalPath),
-                map.lookup(ForwardGoalPathMap, RepGoalId, RepGoalPath),
-                GoalPath = fgp(GoalPathSteps),
-                RepGoalPath = fgp(RepGoalPathSteps),
-                list.remove_suffix(RepGoalPathSteps, GoalPathSteps, [_ | _])
-            )
+            inst_graph.reachable(InstGraph, NonLocal, V)
+            % The call to list.remove_suffix is equivalent to:
+            % list.append([_ | _], GoalPathSteps, RepGoalPathSteps)
+            % I (zs) do not see how that can possibly make sense,
+            % which is why I have disabled this test.
+%           \+ (
+%               RepVar = _ `at` RepGoalId,
+%               % XXX What higher level operation is being implemented here?
+%               map.lookup(ForwardGoalPathMap, GoalId, GoalPath),
+%               map.lookup(ForwardGoalPathMap, RepGoalId, RepGoalPath),
+%               GoalPath = fgp(GoalPathSteps),
+%               RepGoalPath = fgp(RepGoalPathSteps),
+%               list.remove_suffix(RepGoalPathSteps, GoalPathSteps, [_ | _])
+%           )
         )
     ).
 

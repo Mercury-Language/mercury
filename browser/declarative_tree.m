@@ -915,7 +915,7 @@ trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc, ArgNum,
     GoalRep = ProcDefnRep ^ pdr_goal,
     is_traced_grade(AllTraced),
     MaybePrims = make_primitive_list(Store,
-        [goal_and_path(GoalRep, rgp([]))], Contour, StartPath, ArgNum,
+        [goal_and_path(GoalRep, rgp_nil)], Contour, StartPath, ArgNum,
         TotalArgs, HeadVars, AllTraced, []),
     (
         MaybePrims = yes(primitive_list_and_var(Primitives, Var,

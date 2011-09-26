@@ -210,7 +210,7 @@ maybe_init_deep(ProgName, FlagsInt, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
             array.init(MaxCSS + 1,
                 call_site_static(
                     make_dummy_psptr, -1,
-                    normal_call_and_callee(make_dummy_psptr, ""), -1, rgp([])
+                    normal_call_and_callee(make_dummy_psptr, ""), -1, rgp_nil
                 )),
             array.init(MaxPS + 1,
                 proc_static(dummy_proc_id, "", "", "", "", "", -1, no,

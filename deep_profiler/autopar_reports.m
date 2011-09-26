@@ -270,26 +270,26 @@ create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
         Header2Str),
     Header3 = cord.singleton(Header2Str),
 
-    ( rev_goal_path_from_string(GoalPathString, RevGoalPath) ->
-        RevGoalPath = rgp(RevGoalPathSteps)
+    ( rev_goal_path_from_string(GoalPathString, RevGoalPathPrime) ->
+        RevGoalPath = RevGoalPathPrime
     ;
         unexpected($module, $pred, "couldn't parse goal path")
     ),
     some [!ConjNum] (
         !:ConjNum = FirstConjNum,
-        format_sequential_conjunction(VarTable, 4, RevGoalPathSteps,
+        format_sequential_conjunction(VarTable, 4, RevGoalPath,
             GoalsBefore, GoalsBeforeCost, !.ConjNum, ReportGoalsBefore0),
         ReportGoalsBefore = indent(3) ++ singleton("Goals before:\n") ++
             ReportGoalsBefore0,
 
         !:ConjNum = !.ConjNum + length(GoalsBefore),
-        format_parallel_conjunction(VarTable, 4, RevGoalPathSteps,
+        format_parallel_conjunction(VarTable, 4, RevGoalPath,
             !.ConjNum, Conjs, ReportParConj0),
         ReportParConj = indent(3) ++ singleton("Parallel conjunction:\n") ++
             ReportParConj0,
 
         !:ConjNum = !.ConjNum + 1,
-        format_sequential_conjunction(VarTable, 4, RevGoalPathSteps,
+        format_sequential_conjunction(VarTable, 4, RevGoalPath,
             GoalsAfter, GoalsAfterCost, !.ConjNum, ReportGoalsAfter0),
         ReportGoalsAfter = indent(3) ++ singleton("Goals after:\n") ++
             ReportGoalsAfter0
@@ -298,25 +298,25 @@ create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
         ++ ReportParConj ++ nl ++ ReportGoalsAfter ++ nl.
 
 :- pred format_parallel_conjunction(var_table::in, int::in,
-    list(goal_path_step)::in, int::in,
+    reverse_goal_path::in, int::in,
     list(seq_conj(pard_goal))::in, cord(string)::out) is det.
 
-format_parallel_conjunction(VarTable, Indent, RevGoalPathSteps, ConjNum, Conjs,
+format_parallel_conjunction(VarTable, Indent, RevGoalPath, ConjNum, Conjs,
         !:Report) :-
     IndentStr = indent(Indent),
     !:Report = IndentStr ++ singleton("(\n"),
     format_parallel_conjuncts(VarTable, Indent,
-        [step_conj(ConjNum) | RevGoalPathSteps], 1, Conjs, !Report).
+        rgp_cons(RevGoalPath, step_conj(ConjNum)), 1, Conjs, !Report).
 
 :- pred format_parallel_conjuncts(var_table::in, int::in,
-    list(goal_path_step)::in, int::in, list(seq_conj(pard_goal))::in,
+    reverse_goal_path::in, int::in, list(seq_conj(pard_goal))::in,
     cord(string)::in, cord(string)::out) is det.
 
-format_parallel_conjuncts(_VarTable, Indent, _RevGoalPathSteps, _ConjNum0,
+format_parallel_conjuncts(_VarTable, Indent, _RevGoalPath, _ConjNum0,
         [], !Report) :-
     IndentStr = indent(Indent),
     !:Report = snoc(!.Report ++ IndentStr, ")\n").
-format_parallel_conjuncts(VarTable, Indent, RevGoalPathSteps, ConjNum0,
+format_parallel_conjuncts(VarTable, Indent, RevGoalPath, ConjNum0,
         [Conj | Conjs], !Report) :-
     Conj = seq_conj(Goals),
     (
@@ -324,12 +324,12 @@ format_parallel_conjuncts(VarTable, Indent, RevGoalPathSteps, ConjNum0,
         unexpected($module, $pred, "empty conjunct in parallel conjunction")
     ;
         Goals = [Goal | GoalsTail],
-        RevInnerGoalPathSteps = [step_conj(ConjNum0) | RevGoalPathSteps],
+        RevInnerGoalPath = rgp_cons(RevGoalPath, step_conj(ConjNum0)),
         (
             GoalsTail = [],
             % A singleton conjunction gets printed as a single goal.
             print_goal_to_strings(print_goal_info(id, VarTable), Indent + 1,
-                RevInnerGoalPathSteps, Goal, ConjReport)
+                RevInnerGoalPath, Goal, ConjReport)
         ;
             GoalsTail = [_ | _],
             Cost = foldl(
@@ -337,7 +337,7 @@ format_parallel_conjuncts(VarTable, Indent, RevGoalPathSteps, ConjNum0,
                     Acc + GoalI ^ goal_annotation ^ pga_cost_percall),
                 Goals, 0.0),
             format_sequential_conjunction(VarTable, Indent + 1,
-                RevInnerGoalPathSteps, Goals, Cost, 1, ConjReport)
+                RevInnerGoalPath, Goals, Cost, 1, ConjReport)
         )
     ),
     !:Report = !.Report ++ ConjReport,
@@ -348,21 +348,21 @@ format_parallel_conjuncts(VarTable, Indent, RevGoalPathSteps, ConjNum0,
         !:Report = snoc(!.Report ++ indent(Indent), "&\n")
     ),
     ConjNum = ConjNum0 + 1,
-    format_parallel_conjuncts(VarTable, Indent, RevGoalPathSteps, ConjNum,
+    format_parallel_conjuncts(VarTable, Indent, RevGoalPath, ConjNum,
         Conjs, !Report).
 
 :- pred format_sequential_conjunction(var_table::in, int::in,
-    list(goal_path_step)::in, list(pard_goal)::in, float::in, int::in,
+    reverse_goal_path::in, list(pard_goal)::in, float::in, int::in,
     cord(string)::out) is det.
 
-format_sequential_conjunction(VarTable, Indent, RevGoalPathSteps, Goals, Cost,
+format_sequential_conjunction(VarTable, Indent, RevGoalPath, Goals, Cost,
         FirstConjNum, !:Report) :-
     !:Report = empty,
     ( FirstConjNum = 1 ->
         !:Report = !.Report ++
             indent(Indent) ++
             singleton(format("%% conjunction: %s",
-                [s(rev_goal_path_to_string(rgp(RevGoalPathSteps)))])) ++
+                [s(rev_goal_path_to_string(RevGoalPath))])) ++
             nl_indent(Indent) ++
             singleton(format("%% Cost: %s",
                 [s(two_decimal_fraction(Cost))])) ++
@@ -370,18 +370,18 @@ format_sequential_conjunction(VarTable, Indent, RevGoalPathSteps, Goals, Cost,
     ;
         true
     ),
-    format_sequential_conjuncts(VarTable, Indent, RevGoalPathSteps, Goals,
+    format_sequential_conjuncts(VarTable, Indent, RevGoalPath, Goals,
         FirstConjNum, _, !Report).
 
 :- pred format_sequential_conjuncts(var_table::in, int::in,
-    list(goal_path_step)::in, list(pard_goal)::in, int::in, int::out,
+    reverse_goal_path::in, list(pard_goal)::in, int::in, int::out,
     cord(string)::in, cord(string)::out) is det.
 
 format_sequential_conjuncts(_, _, _, [], !ConjNum, !Report).
-format_sequential_conjuncts(VarTable, Indent, RevGoalPathSteps, [Conj | Conjs],
+format_sequential_conjuncts(VarTable, Indent, RevGoalPath, [Conj | Conjs],
         !ConjNum, !Report) :-
     print_goal_to_strings(print_goal_info(id, VarTable), Indent,
-        [step_conj(!.ConjNum) | RevGoalPathSteps], Conj, ConjReport),
+        rgp_cons(RevGoalPath, step_conj(!.ConjNum)), Conj, ConjReport),
     !:Report = !.Report ++ ConjReport,
     !:ConjNum = !.ConjNum + 1,
     (
@@ -389,7 +389,7 @@ format_sequential_conjuncts(VarTable, Indent, RevGoalPathSteps, [Conj | Conjs],
     ;
         Conjs = [_ | _],
         !:Report = !.Report ++ indent(Indent) ++ singleton(",\n"),
-        format_sequential_conjuncts(VarTable, Indent, RevGoalPathSteps, Conjs,
+        format_sequential_conjuncts(VarTable, Indent, RevGoalPath, Conjs,
             !ConjNum, !Report)
     ).
 

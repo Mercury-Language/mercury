@@ -1951,15 +1951,14 @@ get_ite_relative_frequencies(ProcCounts, ReverseGoalPathMap,
 
 get_disjunct_relative_frequency(ProcCounts, ReverseGoalPathMap,
         GoalId, RelFreq) :-
-    map.lookup(ReverseGoalPathMap, GoalId, GoalPath),
-    GoalPath = rgp(RevGoalSteps),
+    map.lookup(ReverseGoalPathMap, GoalId, RevGoalPath),
     (
-        RevGoalSteps = [LastStep | PrevSteps],
+        RevGoalPath = rgp_cons(RevPrevGoalPath, LastStep),
         LastStep = step_disj(_)
     ->
-        FirstDisjGoalPath = rgp([step_disj(1) | PrevSteps]),
-        get_path_only_count(ProcCounts, GoalPath, DisjCount),
-        get_path_only_count(ProcCounts, FirstDisjGoalPath, FirstDisjCount),
+        RevFirstDisjGoalPath = rgp_cons(RevPrevGoalPath, step_disj(1)),
+        get_path_only_count(ProcCounts, RevGoalPath, DisjCount),
+        get_path_only_count(ProcCounts, RevFirstDisjGoalPath, FirstDisjCount),
         ( FirstDisjCount = 0 ->
             RelFreq = 0.0
         ;
@@ -2003,7 +2002,7 @@ get_switch_total_count_2(SwitchGoalPath, PathPort, LineNoAndCount,
 :- pred case_in_switch(reverse_goal_path::in, path_port::in) is semidet.
 
 case_in_switch(GoalPath, path_only(GoalPath)) :-
-    GoalPath = rgp([LastStep | _]),
+    GoalPath = rgp_cons(_, LastStep),
     LastStep = step_switch(_, _).
 
 %-----------------------------------------------------------------------------%

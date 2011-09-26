@@ -226,12 +226,11 @@ location_to_string(Level, Location, String) :-
     ;
         Location = pl_goal(ProcLabel, RevGoalPath),
         location_to_string(Level, pl_proc(ProcLabel), FirstLine),
-        RevGoalPath = rgp(RevGoalSteps),
         (
-            RevGoalSteps = [],
+            RevGoalPath = rgp_nil,
             GoalPathString = singleton("Root goal")
         ;
-            RevGoalSteps = [_ | _],
+            RevGoalPath = rgp_cons(_, _),
             GoalPathString = singleton("Goal: ") ++
                 singleton(rev_goal_path_to_string(RevGoalPath))
         ),

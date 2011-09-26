@@ -124,7 +124,7 @@
             % If-then-elses always have two alternatives: the then branch
             % (numbered 1) and the else branch (numbered 2).
 
-    ;       alt_switch(maybe(int)).
+    ;       alt_switch(maybe_switch_num_functors).
             % The number of alternatives in a switch is equal to the number of
             % function symbols in the type of the switched-on variable. This
             % number is given by the argument integer, if present; if the
@@ -1223,7 +1223,8 @@ get_parent_branch_point(ContainingGoalMap, GoalId, BranchGoalId,
 branch_point_is_complete(alt_ite, Alts) :-
     set.count(Alts, NumAlts),
     NumAlts = 2.
-branch_point_is_complete(alt_switch(yes(NumFunctors)), Alts) :-
+branch_point_is_complete(alt_switch(known_num_functors_in_type(NumFunctors)),
+        Alts) :-
     set.count(Alts, NumAlts),
     NumAlts = NumFunctors.
 

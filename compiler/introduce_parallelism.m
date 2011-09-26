@@ -614,25 +614,25 @@ report_already_parallelised(PredInfo) = Spec :-
     candidate_par_conjunction::in, comparison_result::out) is det.
 
 compare_candidate_par_conjunctions(CPCA, CPCB, Result) :-
-    goal_path_from_string_det(CPCA ^ cpc_goal_path, fgp(StepsA)),
-    goal_path_from_string_det(CPCB ^ cpc_goal_path, fgp(StepsB)),
-    compare_goal_paths(StepsA, StepsB, Result).
+    goal_path_from_string_det(CPCA ^ cpc_goal_path, PathA),
+    goal_path_from_string_det(CPCB ^ cpc_goal_path, PathB),
+    compare_goal_paths(PathA, PathB, Result).
 
-:- pred compare_goal_paths(list(goal_path_step)::in, list(goal_path_step)::in,
+:- pred compare_goal_paths(forward_goal_path::in, forward_goal_path::in,
     comparison_result::out) is det.
 
-compare_goal_paths(StepsA, StepsB, Result) :-
+compare_goal_paths(PathA, PathB, Result) :-
     (
-        StepsA = [FirstStepA | LaterStepsA],
+        PathA = fgp_cons(FirstStepA, LaterPathA),
         (
-            StepsB = [FirstStepB | LaterStepsB],
+            PathB = fgp_cons(FirstStepB, LaterPathB),
             compare(Result0, FirstStepA, FirstStepB),
             % Reverse the ordering here so that later goals are sorted before
             % earlier ones. This way parallelisations are placed inside later
             % goals first.
             (
                 Result0 = (=),
-                compare_goal_paths(LaterStepsA, LaterStepsB, Result)
+                compare_goal_paths(LaterPathA, LaterPathB, Result)
             ;
                 Result0 = (<),
                 Result = (>)
@@ -641,19 +641,19 @@ compare_goal_paths(StepsA, StepsB, Result) :-
                 Result = (<)
             )
         ;
-            StepsB = [],
-            % StepsA is longer than StepsB. Make A 'less than' B so that
+            PathB = fgp_nil,
+            % PathA is longer than PathB. Make A 'less than' B so that
             % deeper parallelisations are inserted first.
             Result = (<)
         )
     ;
-        StepsA = [],
+        PathA = fgp_nil,
         (
-            StepsB = [_ | _],
+            PathB = fgp_cons(_, _),
             % B is 'less than' A, see above.
             Result = (>)
         ;
-            StepsB = [],
+            PathB = fgp_nil,
             % Both goal paths are empty.
             Result = (=)
         )

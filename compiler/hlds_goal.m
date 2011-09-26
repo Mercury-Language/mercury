@@ -2066,7 +2066,7 @@ add_impurity_if_needed(AddedImpurity, !GoalInfo) :-
 
 hlds_goal_extra_info_init(Context) = ExtraInfo :-
     HO_Values = map.init,
-    ExtraInfo = extra_goal_info(Context, rgp([]), HO_Values, no, no, no, no).
+    ExtraInfo = extra_goal_info(Context, rgp_nil, HO_Values, no, no, no, no).
 
 :- func ctgc_goal_info_init = ctgc_goal_info.
 

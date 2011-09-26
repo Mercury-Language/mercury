@@ -429,9 +429,8 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
         G = hlds_goal(_, GI),
         GoalId = goal_info_get_goal_id(GI),
         map.lookup(ForwardGoalPathMap, GoalId, GoalPath),
-        GoalPath = fgp(GoalSteps),
         (
-            list.last(GoalSteps, LastStep),
+            goal_path_get_last(GoalPath, LastStep),
             LastStep = step_conj(Index0)
         ->
             Index = Index0

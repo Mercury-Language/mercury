@@ -161,8 +161,7 @@ do_push_list([PushGoal | PushGoals], PushInfo, OverallResult, !Goal) :-
 do_one_push(PushGoal, PushInfo, Result, !Goal) :-
     PushGoal = push_goal(GoalPathStr, _Lo, _Hi, _PushedInto),
     ( goal_path_from_string(GoalPathStr, GoalPath) ->
-        GoalPath = fgp(GoalPathSteps),
-        do_push_in_goal(GoalPathSteps, PushGoal, PushInfo, Result, !Goal)
+        do_push_in_goal(GoalPath, PushGoal, PushInfo, Result, !Goal)
     ;
         Result = push_failed,
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
@@ -172,18 +171,18 @@ do_one_push(PushGoal, PushInfo, Result, !Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred do_push_in_goal(list(goal_path_step)::in, push_goal::in, push_info::in,
+:- pred do_push_in_goal(forward_goal_path::in, push_goal::in, push_info::in,
     push_result::out, hlds_goal::in, hlds_goal::out) is det.
 
-do_push_in_goal([], PushGoal, PushInfo, Result, !Goal) :-
+do_push_in_goal(fgp_nil, PushGoal, PushInfo, Result, !Goal) :-
     % We have arrives at the goal in which the push should take place.
     perform_push_transform(PushGoal, PushInfo, Result, !Goal).
-do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
+do_push_in_goal(fgp_cons(Step, Path), PushGoal, PushInfo, Result, !Goal) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
         Step = step_conj(N),
         ( GoalExpr0 = conj(ConjType, Goals0) ->
-            do_push_in_goals(N, Steps, PushGoal, PushInfo, Result,
+            do_push_in_goals(N, Path, PushGoal, PushInfo, Result,
                 Goals0, Goals),
             GoalExpr = conj(ConjType, Goals),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -196,7 +195,7 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
     ;
         Step = step_disj(N),
         ( GoalExpr0 = disj(Goals0) ->
-            do_push_in_goals(N, Steps, PushGoal, PushInfo, Result,
+            do_push_in_goals(N, Path, PushGoal, PushInfo, Result,
                 Goals0, Goals),
             GoalExpr = disj(Goals),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -209,7 +208,7 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
     ;
         Step = step_switch(N, _),
         ( GoalExpr0 = switch(Var, CanFail, Cases0) ->
-            do_push_in_cases(N, Steps, PushGoal, PushInfo, Result,
+            do_push_in_cases(N, Path, PushGoal, PushInfo, Result,
                 Cases0, Cases),
             GoalExpr = switch(Var, CanFail, Cases),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -222,7 +221,7 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
     ;
         Step = step_ite_cond,
         ( GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0) ->
-            do_push_in_goal(Steps, PushGoal, PushInfo, Result, Cond0, Cond),
+            do_push_in_goal(Path, PushGoal, PushInfo, Result, Cond0, Cond),
             GoalExpr = if_then_else(Vars0, Cond, Then0, Else0),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
@@ -234,7 +233,7 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
     ;
         Step = step_ite_then,
         ( GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0) ->
-            do_push_in_goal(Steps, PushGoal, PushInfo, Result, Then0, Then),
+            do_push_in_goal(Path, PushGoal, PushInfo, Result, Then0, Then),
             GoalExpr = if_then_else(Vars0, Cond0, Then, Else0),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
@@ -246,7 +245,7 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
     ;
         Step = step_ite_else,
         ( GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0) ->
-            do_push_in_goal(Steps, PushGoal, PushInfo, Result, Else0, Else),
+            do_push_in_goal(Path, PushGoal, PushInfo, Result, Else0, Else),
             GoalExpr = if_then_else(Vars0, Cond0, Then0, Else),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
@@ -258,7 +257,7 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
     ;
         Step = step_neg,
         ( GoalExpr0 = negation(SubGoal0) ->
-            do_push_in_goal(Steps, PushGoal, PushInfo, Result,
+            do_push_in_goal(Path, PushGoal, PushInfo, Result,
                 SubGoal0, SubGoal),
             GoalExpr = negation(SubGoal),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -271,7 +270,7 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
     ;
         Step = step_scope(_),
         ( GoalExpr0 = scope(Reason, SubGoal0) ->
-            do_push_in_goal(Steps, PushGoal, PushInfo, Result,
+            do_push_in_goal(Path, PushGoal, PushInfo, Result,
                 SubGoal0, SubGoal),
             GoalExpr = scope(Reason, SubGoal),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -295,42 +294,42 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
         )
     ).
 
-:- pred do_push_in_goals(int::in, list(goal_path_step)::in, push_goal::in,
+:- pred do_push_in_goals(int::in, forward_goal_path::in, push_goal::in,
     push_info::in, push_result::out,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-do_push_in_goals(_N, _Steps, _PushGoal, _PushInfo, push_failed, [], []) :-
+do_push_in_goals(_N, _Path, _PushGoal, _PushInfo, push_failed, [], []) :-
     trace [compiletime(flag("debug_push_goals")), io(!IO)] (
         io.write_string("push_failed: couldn't find indicated disjunct\n", !IO)
     ).
-do_push_in_goals(N, Steps, PushGoal, PushInfo, Result,
+do_push_in_goals(N, Path, PushGoal, PushInfo, Result,
         [Goal0 | Goals0], [Goal | Goals]) :-
     ( N = 1 ->
-        do_push_in_goal(Steps, PushGoal, PushInfo, Result, Goal0, Goal),
+        do_push_in_goal(Path, PushGoal, PushInfo, Result, Goal0, Goal),
         Goals = Goals0
     ;
         Goal = Goal0,
-        do_push_in_goals(N - 1, Steps, PushGoal, PushInfo, Result,
+        do_push_in_goals(N - 1, Path, PushGoal, PushInfo, Result,
             Goals0, Goals)
     ).
 
-:- pred do_push_in_cases(int::in, list(goal_path_step)::in, push_goal::in,
+:- pred do_push_in_cases(int::in, forward_goal_path::in, push_goal::in,
     push_info::in, push_result::out, list(case)::in, list(case)::out) is det.
 
-do_push_in_cases(_N, _Steps, _PushGoal, _PushInfo, push_failed, [], []) :-
+do_push_in_cases(_N, _Path, _PushGoal, _PushInfo, push_failed, [], []) :-
     trace [compiletime(flag("debug_push_goals")), io(!IO)] (
         io.write_string("push_failed: couldn't find indicated case\n", !IO)
     ).
-do_push_in_cases(N, Steps, PushGoal, PushInfo, Result,
+do_push_in_cases(N, Path, PushGoal, PushInfo, Result,
         [Case0 | Cases0], [Case | Cases]) :-
     ( N = 1 ->
         Case0 = case(MainConsId, OtherConsIds, Goal0),
-        do_push_in_goal(Steps, PushGoal, PushInfo, Result, Goal0, Goal),
+        do_push_in_goal(Path, PushGoal, PushInfo, Result, Goal0, Goal),
         Case = case(MainConsId, OtherConsIds, Goal),
         Cases = Cases0
     ;
         Case = Case0,
-        do_push_in_cases(N - 1, Steps, PushGoal, PushInfo, Result,
+        do_push_in_cases(N - 1, Path, PushGoal, PushInfo, Result,
             Cases0, Cases)
     ).
 
@@ -347,13 +346,13 @@ perform_push_transform(PushGoal, PushInfo, Result, !Goal) :-
         GoalExpr0 = conj(plain_conj, Conjuncts),
         find_lo_hi_goals(PushInfo, Conjuncts, Lo, Hi, 1, Before0, LoHi, After,
             pushable),
-        find_relative_paths(GoalPath, PushedInto, RelGoalSteps),
-        RelGoalSteps = [HeadRelGoalSteps | TailRelGoalSteps],
-        HeadRelGoalSteps = [step_conj(PushConjNum) | HeadRestRelSteps],
+        find_relative_paths(GoalPath, PushedInto, RelGoalPaths),
+        RelGoalPaths = [HeadRelGoalPath | TailRelGoalPaths],
+        HeadRelGoalPath = fgp_cons(step_conj(PushConjNum), HeadRestRelPath),
         list.map(maybe_steps_after(step_conj(PushConjNum)),
-            TailRelGoalSteps, TailRestRelSteps),
+            TailRelGoalPaths, TailRestRelPaths),
         list.index1(Before0, PushConjNum, PushIntoGoal0),
-        push_into_goal(LoHi, HeadRestRelSteps, TailRestRelSteps,
+        push_into_goal(LoHi, HeadRestRelPath, TailRestRelPaths,
             PushIntoGoal0, PushIntoGoal, pushable),
         % If PushConjNum specifies a conjunct that is NOT the last conjunct
         % before Lo, then this transformation reorders the code.
@@ -565,11 +564,11 @@ is_non_rtti_var(RttiVarMaps, Arg) :-
 
 %-----------------------------------------------------------------------------%
 
-    % push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable):
+    % push_into_goal(LoHi, HeadPath, TailPaths, Goal0, Goal, Pushable):
     %
     % Push the goals LoHi into Goal0, putting them at the ends of the
     % (possibly implicit) conjunctions holding the expensive goals indicated
-    % by the goal paths [HeadSteps | TailSteps], which are all relative to
+    % by the goal paths [HeadPath | TailPaths], which are all relative to
     % Goal0, and at the ends of the branches that are alternatives to these.
     %
     % Return Pushable = pushable if the transformation was successful.
@@ -578,7 +577,7 @@ is_non_rtti_var(RttiVarMaps, Arg) :-
     % The returned goal will need to have its nonlocal sets and instmap deltas
     % recomputed.
     %
-    % For example, if HeadSteps and TailSteps together specified the two
+    % For example, if HeadPath and TailPaths together specified the two
     % expensive goals in the original goal below,
     %
     %   ( Cond ->
@@ -613,18 +612,18 @@ is_non_rtti_var(RttiVarMaps, Arg) :-
     %   )
     %
 :- pred push_into_goal(list(hlds_goal)::in,
-    list(goal_path_step)::in, list(list(goal_path_step))::in,
+    forward_goal_path::in, list(forward_goal_path)::in,
     hlds_goal::in, hlds_goal::out, maybe_pushable::out) is det.
 
-push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
+push_into_goal(LoHi, HeadPath, TailPaths, Goal0, Goal, Pushable) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
-        HeadSteps = [],
-        expect(unify(TailSteps, []), $module, "TailSteps != []"),
+        HeadPath = fgp_nil,
+        expect(unify(TailPaths, []), $module, "TailSteps != []"),
         add_goals_at_end(LoHi, Goal0, Goal),
         Pushable = pushable
     ;
-        HeadSteps = [FirstHeadStep | LaterHeadSteps],
+        HeadPath = fgp_cons(FirstHeadStep, LaterHeadPath),
         (
             ( GoalExpr0 = unify(_, _, _, _, _)
             ; GoalExpr0 = plain_call(_, _, _, _, _, _)
@@ -639,9 +638,9 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
                 % If the expensive goal is a conjunct in this conjunction,
                 % then put LoHi at the end of this conjunction.
                 FirstHeadStep = step_conj(_),
-                LaterHeadSteps = []
+                LaterHeadPath = fgp_nil
             ->
-                expect(unify(TailSteps, []), $module, "TailSteps != []"),
+                expect(unify(TailPaths, []), $module, "TailSteps != []"),
                 add_goals_at_end(LoHi, Goal0, Goal),
                 Pushable = pushable
             ;
@@ -652,8 +651,8 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
                 % would be a mode error.
                 %
                 FirstHeadStep = step_conj(ConjNum),
-                list.map(maybe_steps_after(step_conj(ConjNum)), TailSteps,
-                    LaterTailSteps),
+                list.map(maybe_steps_after(step_conj(ConjNum)), TailPaths,
+                    LaterTailPaths),
                 list.index1(Conjuncts0, ConjNum, SelectedConjunct0),
 
                 % If ConjNum specifies a conjunct that is NOT the last
@@ -666,7 +665,7 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
                 list.length(Conjuncts0, Length),
                 ConjNum = Length
             ->
-                push_into_goal(LoHi, LaterHeadSteps, LaterTailSteps,
+                push_into_goal(LoHi, LaterHeadPath, LaterTailPaths,
                     SelectedConjunct0, SelectedConjunct, Pushable),
                 list.det_replace_nth(Conjuncts0, ConjNum, SelectedConjunct,
                     Conjuncts),
@@ -679,11 +678,11 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
         ;
             GoalExpr0 = disj(Disjuncts0),
             (
-                build_disj_steps_map([HeadSteps | TailSteps], map.init,
-                    StepMap)
+                build_disj_paths_map([HeadPath | TailPaths],
+                    map.init, PathsMap)
             ->
-                map.to_assoc_list(StepMap, StepList),
-                push_into_disjuncts(LoHi, StepList, 1, Disjuncts0, Disjuncts,
+                map.to_assoc_list(PathsMap, PathsList),
+                push_into_disjuncts(LoHi, PathsList, 1, Disjuncts0, Disjuncts,
                     Pushable),
                 GoalExpr = disj(Disjuncts),
                 Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -694,11 +693,11 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
         ;
             GoalExpr0 = switch(Var, CanFail, Cases0),
             (
-                build_switch_steps_map([HeadSteps | TailSteps], map.init,
-                    StepMap)
+                build_switch_paths_map([HeadPath | TailPaths],
+                    map.init, PathsMap)
             ->
-                map.to_assoc_list(StepMap, StepList),
-                push_into_cases(LoHi, StepList, 1, Cases0, Cases, Pushable),
+                map.to_assoc_list(PathsMap, PathsList),
+                push_into_cases(LoHi, PathsList, 1, Cases0, Cases, Pushable),
                 GoalExpr = switch(Var, CanFail, Cases),
                 Goal = hlds_goal(GoalExpr, GoalInfo0)
             ;
@@ -708,25 +707,25 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
         ;
             GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
             (
-                build_ite_steps_map([HeadSteps | TailSteps],
-                    ThenSteps, ElseSteps)
+                build_ite_paths_map([HeadPath | TailPaths],
+                    ThenPaths, ElsePaths)
             ->
                 (
-                    ThenSteps = [],
+                    ThenPaths = [],
                     add_goals_at_end(LoHi, Then0, Then),
                     ThenPushable = pushable
                 ;
-                    ThenSteps = [ThenStepsHead | ThenStepsTail],
-                    push_into_goal(LoHi, ThenStepsHead, ThenStepsTail,
+                    ThenPaths = [ThenPathsHead | ThenPathsTail],
+                    push_into_goal(LoHi, ThenPathsHead, ThenPathsTail,
                         Then0, Then, ThenPushable)
                 ),
                 (
-                    ElseSteps = [],
+                    ElsePaths = [],
                     add_goals_at_end(LoHi, Else0, Else),
                     ElsePushable = pushable
                 ;
-                    ElseSteps = [ElseStepsHead | ElseStepsTail],
-                    push_into_goal(LoHi, ElseStepsHead, ElseStepsTail,
+                    ElsePaths = [ElsePathsHead | ElsePathsTail],
+                    push_into_goal(LoHi, ElsePathsHead, ElsePathsTail,
                         Else0, Else, ElsePushable)
                 ),
                 (
@@ -746,7 +745,8 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
             )
         ;
             GoalExpr0 = negation(_SubGoal0),
-            % Pushing goals into a negation changes the meaning of the program.
+            % Pushing goals into a negation would change the meaning of the
+            % program, so we do not do it.
             Goal = Goal0,
             Pushable = not_pushable
         ;
@@ -757,11 +757,11 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
             (
                 Detism = SubDetism,
                 maybe_steps_after(step_scope(scope_is_no_cut),
-                    HeadSteps, HeadStepsAfter),
+                    HeadPath, HeadPathAfter),
                 list.map(maybe_steps_after(step_scope(scope_is_no_cut)),
-                    TailSteps, TailStepsAfter)
+                    TailPaths, TailPathsAfter)
             ->
-                push_into_goal(LoHi, HeadStepsAfter, TailStepsAfter,
+                push_into_goal(LoHi, HeadPathAfter, TailPathsAfter,
                     SubGoal0, SubGoal, Pushable),
                 GoalExpr = scope(Reason, SubGoal),
                 Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -785,7 +785,7 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
     ).
 
 :- pred push_into_case(list(hlds_goal)::in,
-    list(goal_path_step)::in, list(list(goal_path_step))::in,
+    forward_goal_path::in, list(forward_goal_path)::in,
     case::in, case::out, maybe_pushable::out) is det.
 
 push_into_case(LoHi, HeadSteps, TailSteps, Case0, Case, Pushable) :-
@@ -794,35 +794,35 @@ push_into_case(LoHi, HeadSteps, TailSteps, Case0, Case, Pushable) :-
     Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred push_into_disjuncts(list(hlds_goal)::in,
-    assoc_list(int, one_or_more(list(goal_path_step)))::in,
+    assoc_list(int, one_or_more(forward_goal_path))::in,
     int::in, list(hlds_goal)::in, list(hlds_goal)::out, maybe_pushable::out)
     is det.
 
-push_into_disjuncts(_LoHi, DisjStepList, _Cur, [], [], Pushable) :-
+push_into_disjuncts(_LoHi, DisjPathList, _Cur, [], [], Pushable) :-
     (
-        DisjStepList = [],
+        DisjPathList = [],
         Pushable = pushable
     ;
-        DisjStepList = [_ | _],
+        DisjPathList = [_ | _],
         Pushable = not_pushable
     ).
-push_into_disjuncts(LoHi, StepList, Cur, [HeadDisjunct0 | TailDisjuncts0],
+push_into_disjuncts(LoHi, PathList, Cur, [HeadDisjunct0 | TailDisjuncts0],
         [HeadDisjunct | TailDisjuncts], Pushable) :-
     (
-        StepList = [],
+        PathList = [],
         add_goals_at_end(LoHi, HeadDisjunct0, HeadDisjunct),
         list.map(add_goals_at_end(LoHi), TailDisjuncts0, TailDisjuncts),
         Pushable = pushable
     ;
-        StepList = [StepListHead | StepListTail],
+        PathList = [PathListHead | PathListTail],
         (
-            StepListHead = StepListHeadNum - one_or_more(One, More),
-            ( StepListHeadNum = Cur ->
+            PathListHead = PathListHeadNum - one_or_more(One, More),
+            ( PathListHeadNum = Cur ->
                 push_into_goal(LoHi, One, More, HeadDisjunct0, HeadDisjunct,
                     GoalPushable),
                 (
                     GoalPushable = pushable,
-                    push_into_disjuncts(LoHi, StepListTail, Cur + 1,
+                    push_into_disjuncts(LoHi, PathListTail, Cur + 1,
                         TailDisjuncts0, TailDisjuncts, Pushable)
                 ;
                     GoalPushable = not_pushable,
@@ -831,41 +831,41 @@ push_into_disjuncts(LoHi, StepList, Cur, [HeadDisjunct0 | TailDisjuncts0],
                 )
             ;
                 add_goals_at_end(LoHi, HeadDisjunct0, HeadDisjunct),
-                push_into_disjuncts(LoHi, StepList, Cur + 1,
+                push_into_disjuncts(LoHi, PathList, Cur + 1,
                     TailDisjuncts0, TailDisjuncts, Pushable)
             )
         )
     ).
 
 :- pred push_into_cases(list(hlds_goal)::in,
-    assoc_list(int, one_or_more(list(goal_path_step)))::in,
+    assoc_list(int, one_or_more(forward_goal_path))::in,
     int::in, list(case)::in, list(case)::out, maybe_pushable::out) is det.
 
-push_into_cases(_LoHi, StepList, _Cur, [], [], Pushable) :-
+push_into_cases(_LoHi, PathList, _Cur, [], [], Pushable) :-
     (
-        StepList = [],
+        PathList = [],
         Pushable = pushable
     ;
-        StepList = [_ | _],
+        PathList = [_ | _],
         Pushable = not_pushable
     ).
-push_into_cases(LoHi, StepList, Cur, [HeadCase0 | TailCases0],
+push_into_cases(LoHi, PathList, Cur, [HeadCase0 | TailCases0],
         [HeadCase | TailCases], Pushable) :-
     (
-        StepList = [],
+        PathList = [],
         add_goals_at_end_of_case(LoHi, HeadCase0, HeadCase),
         list.map(add_goals_at_end_of_case(LoHi), TailCases0, TailCases),
         Pushable = pushable
     ;
-        StepList = [StepListHead | StepListTail],
+        PathList = [PathListHead | PathListTail],
         (
-            StepListHead = StepListHeadNum - one_or_more(One, More),
-            ( StepListHeadNum = Cur ->
+            PathListHead = PathListHeadNum - one_or_more(One, More),
+            ( PathListHeadNum = Cur ->
                 push_into_case(LoHi, One, More, HeadCase0, HeadCase,
                     GoalPushable),
                 (
                     GoalPushable = pushable,
-                    push_into_cases(LoHi, StepListTail, Cur + 1,
+                    push_into_cases(LoHi, PathListTail, Cur + 1,
                         TailCases0, TailCases, Pushable)
                 ;
                     GoalPushable = not_pushable,
@@ -874,7 +874,7 @@ push_into_cases(LoHi, StepList, Cur, [HeadCase0 | TailCases0],
                 )
             ;
                 add_goals_at_end_of_case(LoHi, HeadCase0, HeadCase),
-                push_into_cases(LoHi, StepList, Cur + 1,
+                push_into_cases(LoHi, PathList, Cur + 1,
                     TailCases0, TailCases, Pushable)
             )
         )
@@ -882,48 +882,49 @@ push_into_cases(LoHi, StepList, Cur, [HeadCase0 | TailCases0],
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_disj_steps_map(list(list(goal_path_step))::in,
-    map(int, one_or_more(list(goal_path_step)))::in,
-    map(int, one_or_more(list(goal_path_step)))::out) is semidet.
+:- pred build_disj_paths_map(list(forward_goal_path)::in,
+    map(int, one_or_more(forward_goal_path))::in,
+    map(int, one_or_more(forward_goal_path))::out) is semidet.
 
-build_disj_steps_map([], !DisjStepMap).
-build_disj_steps_map([Head | Tail], !DisjStepMap) :-
-    Head = [step_disj(N) | HeadSteps],
-    ( map.search(!.DisjStepMap, N, one_or_more(One, More)) ->
-        map.det_update(N, one_or_more(HeadSteps, [One | More]), !DisjStepMap)
+build_disj_paths_map([], !DisjPathsMap).
+build_disj_paths_map([Head | Tail], !DisjPathsMap) :-
+    Head = fgp_cons(step_disj(N), HeadLaterPath),
+    ( map.search(!.DisjPathsMap, N, one_or_more(One, More)) ->
+        map.det_update(N, one_or_more(HeadLaterPath, [One | More]),
+            !DisjPathsMap)
     ;
-        map.det_insert(N, one_or_more(HeadSteps, []), !DisjStepMap)
+        map.det_insert(N, one_or_more(HeadLaterPath, []), !DisjPathsMap)
     ),
-    build_disj_steps_map(Tail, !DisjStepMap).
+    build_disj_paths_map(Tail, !DisjPathsMap).
 
-:- pred build_switch_steps_map(list(list(goal_path_step))::in,
-    map(int, one_or_more(list(goal_path_step)))::in,
-    map(int, one_or_more(list(goal_path_step)))::out) is semidet.
+:- pred build_switch_paths_map(list(forward_goal_path)::in,
+    map(int, one_or_more(forward_goal_path))::in,
+    map(int, one_or_more(forward_goal_path))::out) is semidet.
 
-build_switch_steps_map([], !DisjStepMap).
-build_switch_steps_map([Head | Tail], !DisjStepMap) :-
-    Head = [step_switch(N, _) | HeadSteps],
-    ( map.search(!.DisjStepMap, N, one_or_more(One, More)) ->
-        map.det_update(N, one_or_more(HeadSteps, [One | More]), !DisjStepMap)
+build_switch_paths_map([], !DisjPathsMap).
+build_switch_paths_map([Head | Tail], !DisjPathsMap) :-
+    Head = fgp_cons(step_switch(N, _), HeadLaterPath),
+    ( map.search(!.DisjPathsMap, N, one_or_more(One, More)) ->
+        map.det_update(N, one_or_more(HeadLaterPath, [One | More]),
+            !DisjPathsMap)
     ;
-        map.det_insert(N, one_or_more(HeadSteps, []), !DisjStepMap)
+        map.det_insert(N, one_or_more(HeadLaterPath, []), !DisjPathsMap)
     ),
-    build_switch_steps_map(Tail, !DisjStepMap).
+    build_switch_paths_map(Tail, !DisjPathsMap).
 
-:- pred build_ite_steps_map(list(list(goal_path_step))::in,
-    list(list(goal_path_step))::out, list(list(goal_path_step))::out)
-    is semidet.
+:- pred build_ite_paths_map(list(forward_goal_path)::in,
+    list(forward_goal_path)::out, list(forward_goal_path)::out) is semidet.
 
-build_ite_steps_map([], [], []).
-build_ite_steps_map([Head | Tail], ThenSteps, ElseSteps) :-
-    build_ite_steps_map(Tail, ThenStepsTail, ElseStepsTail),
-    Head = [HeadFirstStep | HeadSteps],
+build_ite_paths_map([], [], []).
+build_ite_paths_map([Head | Tail], ThenPaths, ElsePaths) :-
+    build_ite_paths_map(Tail, ThenPathsTail, ElsePathsTail),
+    Head = fgp_cons(HeadFirstStep, HeadLaterPath),
     ( HeadFirstStep = step_ite_then ->
-        ThenSteps = [HeadSteps | ThenStepsTail],
-        ElseSteps = ElseStepsTail
+        ThenPaths = [HeadLaterPath | ThenPathsTail],
+        ElsePaths = ElsePathsTail
     ; HeadFirstStep = step_ite_then ->
-        ThenSteps = ThenStepsTail,
-        ElseSteps = [HeadSteps | ElseStepsTail]
+        ThenPaths = ThenPathsTail,
+        ElsePaths = [HeadLaterPath | ElsePathsTail]
     ;
         fail
     ).
@@ -952,25 +953,25 @@ add_goals_at_end_of_case(AddedGoals, Case0, Case) :-
 %-----------------------------------------------------------------------------%
 
 :- pred find_relative_paths(forward_goal_path::in, list(goal_path_string)::in,
-    list(list(goal_path_step))::out) is semidet.
+    list(forward_goal_path)::out) is semidet.
 
 find_relative_paths(_GoalPath, [], []).
 find_relative_paths(GoalPath, [HeadStr | TailStrs],
-        [HeadRelSteps | TailRelSteps]) :-
+        [HeadRelPath | TailRelPaths]) :-
     goal_path_from_string(HeadStr, HeadGoalPath),
-    GoalPath = fgp(GoalPathSteps),
-    HeadGoalPath = fgp(HeadGoalPathSteps),
-    list.append(GoalPathSteps, HeadRelSteps, HeadGoalPathSteps),
-    find_relative_paths(GoalPath, TailStrs, TailRelSteps).
+    goal_path_inside_relative(GoalPath, HeadGoalPath, HeadRelPath),
+    find_relative_paths(GoalPath, TailStrs, TailRelPaths).
 
 :- pred maybe_steps_after(goal_path_step::in,
-    list(goal_path_step)::in, list(goal_path_step)::out) is semidet.
+    forward_goal_path::in, forward_goal_path::out) is semidet.
 
-maybe_steps_after(Step, [Step | Tail], Tail).
+maybe_steps_after(Step, fgp_cons(Step, Tail), Tail).
 
 %-----------------------------------------------------------------------------%
 
 :- type one_or_more(T)
     --->    one_or_more(T, list(T)).
 
+%-----------------------------------------------------------------------------%
+:- end_module transform_hlds.implicit_parallelism.push_goals_together.
 %-----------------------------------------------------------------------------%

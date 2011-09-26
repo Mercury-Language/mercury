@@ -1888,29 +1888,12 @@ maybe_strip_equality_pretest_case(Case0) = Case :-
 
 maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
         Goal0, MaybeGoal) :-
-    TargetGoalPath = fgp(TargetGoalSteps),
-    maybe_transform_goal_at_goal_path_2(TransformP,
-        TargetGoalSteps, Goal0, MaybeGoal).
-
-maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
-        InstMap, Goal0, MaybeGoal) :-
-    TargetGoalPath = fgp(TargetGoalSteps),
-    maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
-        TargetGoalSteps, InstMap, Goal0, MaybeGoal).
-
-:- pred maybe_transform_goal_at_goal_path_2(
-    pred(hlds_goal, maybe_error(hlds_goal))::in(pred(in, out) is det),
-    list(goal_path_step)::in, hlds_goal::in, maybe_transformed_goal::out)
-    is det.
-
-maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
-        Goal0, MaybeGoal) :-
     (
-        TargetGoalSteps = [],
+        TargetGoalPath = fgp_nil,
         TransformP(Goal0, MaybeGoal0),
         maybe_error_to_maybe_transformed_goal(MaybeGoal0, MaybeGoal)
     ;
-        TargetGoalSteps = [FirstStep | LaterSteps],
+        TargetGoalPath = fgp_cons(FirstStep, LaterPath),
         GoalExpr0 = Goal0 ^ hlds_goal_expr,  
         (
             ( GoalExpr0 = unify(_, _, _, _, _) 
@@ -1926,7 +1909,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
                 FirstStep = step_conj(ConjNum),
                 list.index1(Conjs0, ConjNum, Conj0)
             ->
-                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
+                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     Conj0, MaybeConj),
                 (
                     MaybeConj = ok(Conj),
@@ -1948,7 +1931,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
                 FirstStep = step_disj(DisjNum),
                 list.index1(Disjs0, DisjNum, Disj0)
             ->
-                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
+                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     Disj0, MaybeDisj),
                 (
                     MaybeDisj = ok(Disj),
@@ -1971,7 +1954,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
                 list.index1(Cases0, CaseNum, Case0)
             ->
                 CaseGoal0 = Case0 ^ case_goal,
-                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
+                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     CaseGoal0, MaybeCaseGoal),
                 (
                     MaybeCaseGoal = ok(CaseGoal),
@@ -1991,7 +1974,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
         ;
             GoalExpr0 = negation(SubGoal0),
             ( FirstStep = step_neg ->
-                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
+                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
@@ -2008,7 +1991,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
             ( FirstStep = step_scope(_MaybeCut) ->
-                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
+                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
@@ -2026,7 +2009,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
             ( FirstStep = step_ite_cond ->
-                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
+                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     Cond0, MaybeCond),
                 (
                     MaybeCond = ok(Cond),
@@ -2039,7 +2022,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
                     MaybeGoal = MaybeCond 
                 )
             ; FirstStep = step_ite_then ->
-                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
+                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     Then0, MaybeThen),
                 (
                     MaybeThen = ok(Then),
@@ -2052,7 +2035,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
                     MaybeGoal = MaybeThen 
                 )
             ; FirstStep = step_ite_else ->
-                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
+                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     Else0, MaybeElse),
                 (
                     MaybeElse = ok(Else),
@@ -2073,20 +2056,14 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
         )
     ).
 
-:- pred maybe_transform_goal_at_goal_path_with_instmap_2(
-    pred(instmap, hlds_goal, maybe_error(hlds_goal))::
-        in(pred(in, in, out) is det), 
-    list(goal_path_step)::in, instmap::in, hlds_goal::in,
-    maybe_transformed_goal::out) is det. 
-
-maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
+maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
         Instmap0, Goal0, MaybeGoal) :-
     (
-        TargetGoalSteps = [],
+        TargetGoalPath = fgp_nil,
         TransformP(Instmap0, Goal0, MaybeGoal0),
         maybe_error_to_maybe_transformed_goal(MaybeGoal0, MaybeGoal)
     ;
-        TargetGoalSteps = [FirstStep | LaterSteps],
+        TargetGoalPath = fgp_cons(FirstStep, LaterPath),
         GoalExpr0 = Goal0 ^ hlds_goal_expr,  
         (
             ( GoalExpr0 = unify(_, _, _, _, _) 
@@ -2108,8 +2085,8 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
                     HeadConjs),
                 foldl(apply_instmap_delta_sv, HeadInstdeltas, 
                     Instmap0, Instmap),
-                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, 
-                    LaterSteps, Instmap, Conj0, MaybeConj),
+                maybe_transform_goal_at_goal_path_with_instmap(TransformP, 
+                    LaterPath, Instmap, Conj0, MaybeConj),
                 (
                     MaybeConj = ok(Conj),
                     list.det_replace_nth(Conjs0, ConjNum, Conj, Conjs),
@@ -2130,8 +2107,8 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
                 FirstStep = step_disj(DisjNum),
                 list.index1(Disjs0, DisjNum, Disj0)
             ->
-                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
-                    LaterSteps, Instmap0, Disj0, MaybeDisj),
+                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                    LaterPath, Instmap0, Disj0, MaybeDisj),
                 (
                     MaybeDisj = ok(Disj),
                     list.det_replace_nth(Disjs0, DisjNum, Disj, Disjs),
@@ -2152,8 +2129,8 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
                 list.index1(Cases0, CaseNum, Case0)
             ->
                 CaseGoal0 = Case0 ^ case_goal,
-                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
-                    LaterSteps, Instmap0, CaseGoal0, MaybeCaseGoal),
+                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                    LaterPath, Instmap0, CaseGoal0, MaybeCaseGoal),
                 (
                     MaybeCaseGoal = ok(CaseGoal),
                     Case = Case0 ^ case_goal := CaseGoal,
@@ -2172,8 +2149,8 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
         ;
             GoalExpr0 = negation(SubGoal0),
             ( FirstStep = step_neg ->
-                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
-                    LaterSteps, Instmap0, SubGoal0, MaybeSubGoal),
+                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                    LaterPath, Instmap0, SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
                     GoalExpr = negation(SubGoal),
@@ -2190,8 +2167,8 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
             ( FirstStep = step_scope(_MaybeCut) ->
-                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
-                    LaterSteps, Instmap0, SubGoal0, MaybeSubGoal),
+                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                    LaterPath, Instmap0, SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
                     GoalExpr = scope(Reason, SubGoal),
@@ -2208,8 +2185,8 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
             ( FirstStep = step_ite_cond ->
-                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
-                    LaterSteps, Instmap0, Cond0, MaybeCond),
+                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                    LaterPath, Instmap0, Cond0, MaybeCond),
                 (
                     MaybeCond = ok(Cond),
                     GoalExpr = if_then_else(ExistVars, Cond, Then0, Else0),
@@ -2224,8 +2201,8 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
                 apply_instmap_delta_sv(
                     goal_info_get_instmap_delta(Cond0 ^ hlds_goal_info),
                     Instmap0, Instmap),
-                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
-                    LaterSteps, Instmap, Then0, MaybeThen),
+                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                    LaterPath, Instmap, Then0, MaybeThen),
                 (
                     MaybeThen = ok(Then),
                     GoalExpr = if_then_else(ExistVars, Cond0, Then, Else0),
@@ -2237,8 +2214,8 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
                     MaybeGoal = MaybeThen
                 )
             ; FirstStep = step_ite_else ->
-                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
-                    LaterSteps, Instmap0, Else0, MaybeElse),
+                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                    LaterPath, Instmap0, Else0, MaybeElse),
                 (
                     MaybeElse = ok(Else),
                     GoalExpr = if_then_else(ExistVars, Cond0, Then0, Else),
@@ -2311,5 +2288,5 @@ transform_all_goals(TransformP, Goal0, Goal) :-
     TransformP(Goal1, Goal).
 
 %-----------------------------------------------------------------------------%
-:- end_module goal_util.
+:- end_module hlds.goal_util.
 %-----------------------------------------------------------------------------%

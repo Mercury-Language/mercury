@@ -1018,7 +1018,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     (
         PortInfo = port_info_external,
         LiveVars = LiveVars0,
-        Path = fgp([]),
+        Path = fgp_nil,
         TailRecResetCode = empty
     ;
         PortInfo = port_info_tailrec_call(Path, ArgsInfos),

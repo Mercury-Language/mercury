@@ -445,16 +445,17 @@ renaming_annotation_to_regions(RenameAnnotation, !LeftRegions,
     set(string)::in,
     goal_path_regions_table::in, goal_path_regions_table::out) is det.
 
-record_non_local_regions(Path, Created, Removed, !NonLocalRegionProc) :-
-    Path = rgp(RevSteps),
+record_non_local_regions(RevPath, Created, Removed, !NonLocalRegionProc) :-
     (
-        RevSteps = [LastStep | RevInitialSteps],
-        InitialPath = rgp(RevInitialSteps),
+        RevPath = rgp_cons(RevInitialPath, LastStep),
         ( LastStep = step_ite_else ->
             % The current NonLocalRegions are attached to the goal path
             % to the corresponding condition.
-            PathToCond = rgp([step_ite_cond | RevInitialSteps]),
-            ( map.search(!.NonLocalRegionProc, PathToCond, NonLocalRegions0) ->
+            RevPathToCond = rgp_cons(RevInitialPath, step_ite_cond),
+            (
+                map.search(!.NonLocalRegionProc, RevPathToCond,
+                    NonLocalRegions0)
+            ->
                 set.union(NonLocalRegions0, Created, NonLocalRegions1),
                 set.difference(NonLocalRegions1, Removed, NonLocalRegions)
             ;
@@ -464,7 +465,7 @@ record_non_local_regions(Path, Created, Removed, !NonLocalRegionProc) :-
             ( set.empty(NonLocalRegions) ->
                 true
             ;
-                map.set(PathToCond, NonLocalRegions, !NonLocalRegionProc)
+                map.set(RevPathToCond, NonLocalRegions, !NonLocalRegionProc)
             )
         ;
             true
@@ -472,10 +473,10 @@ record_non_local_regions(Path, Created, Removed, !NonLocalRegionProc) :-
 
         % Need to update the non-local sets of outer if-then-elses of this one,
         % if any.
-        record_non_local_regions(InitialPath, Created, Removed,
+        record_non_local_regions(RevInitialPath, Created, Removed,
             !NonLocalRegionProc)
     ;
-        RevSteps = []
+        RevPath = rgp_nil
     ).
 
 :- pred collect_non_local_regions_in_ite_compound_goal(rpt_graph::in,
@@ -630,13 +631,11 @@ collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
     set(string)::in, goal_path_regions_table::in,
     goal_path_regions_table::out) is det.
 
-record_regions_created_in_condition(Path, Created, !InCondRegionsProc) :-
-    Path = rgp(RevSteps),
+record_regions_created_in_condition(RevPath, Created, !InCondRegionsProc) :-
     (
-        RevSteps = [LastStep | RevInitialSteps],
-        InitialPath = rgp(RevInitialSteps),
+        RevPath = rgp_cons(RevInitialPath, LastStep),
         ( LastStep = step_ite_cond  ->
-            ( map.search(!.InCondRegionsProc, Path, InCondRegions0) ->
+            ( map.search(!.InCondRegionsProc, RevPath, InCondRegions0) ->
                 set.union(InCondRegions0, Created, InCondRegions)
             ;
                 InCondRegions = Created
@@ -646,15 +645,15 @@ record_regions_created_in_condition(Path, Created, !InCondRegionsProc) :-
             ( set.empty(InCondRegions) ->
                 true
             ;
-                map.set(Path, InCondRegions, !InCondRegionsProc)
+                map.set(RevPath, InCondRegions, !InCondRegionsProc)
             )
         ;
             true
         ),
-        record_regions_created_in_condition(InitialPath, Created,
+        record_regions_created_in_condition(RevInitialPath, Created,
             !InCondRegionsProc)
     ;
-        RevSteps = []
+        RevPath = rgp_nil
     ).
 
 :- pred collect_regions_created_in_condition_compound_goal(rpt_graph::in,
@@ -1001,22 +1000,20 @@ collect_ite_renaming_in_condition_case(IteRenamedRegionProc, Graph, Case,
 :- pred get_closest_condition_in_goal_path(reverse_goal_path::in,
     reverse_goal_path::out, int::in, int::out) is det.
 
-get_closest_condition_in_goal_path(Path, PathToCond, !HowMany) :-
-    Path = rgp(RevSteps),
+get_closest_condition_in_goal_path(RevPath, RevPathToCond, !HowMany) :-
     (
-        RevSteps = [LastStep | RevInitialSteps],
-        InitialPath = rgp(RevInitialSteps),
+        RevPath = rgp_cons(RevInitialPath, LastStep),
         ( LastStep = step_ite_cond ->
-            PathToCond = Path,
-            get_closest_condition_in_goal_path(InitialPath, _, !HowMany),
+            RevPathToCond = RevPath,
+            get_closest_condition_in_goal_path(RevInitialPath, _, !HowMany),
             !:HowMany = !.HowMany + 1
         ;
-            get_closest_condition_in_goal_path(InitialPath, PathToCond,
+            get_closest_condition_in_goal_path(RevInitialPath, RevPathToCond,
                 !HowMany)
         )
     ;
-        RevSteps = [],
-        PathToCond = rgp([])
+        RevPath = rgp_nil,
+        RevPathToCond = rgp_nil
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1052,21 +1049,20 @@ collect_ite_annotation_proc(ExecPathTable, RptaInfoTable, PPId,
     renaming_proc::in, renaming_proc::out,
     renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
 
-collect_ite_annotation_region_names(ExecPaths, Graph, PathToCond,
+collect_ite_annotation_region_names(ExecPaths, Graph, RevPathToCond,
         RenamedRegions, !IteRenamingProc, !IteAnnotationProc) :-
-    PathToCond = rgp(RevPathToCondSteps),
     (
-        RevPathToCondSteps = [LastStep | RevInitialSteps],
+        RevPathToCond = rgp_cons(RevInitialPath, LastStep),
         expect(unify(LastStep, step_ite_cond), $module, $pred,
             "not step_ite_cond"),
-        PathToThen = rgp([step_ite_then | RevInitialSteps]),
-        get_closest_condition_in_goal_path(PathToCond, _, 0, HowMany),
+        RevPathToThen = rgp_cons(RevInitialPath, step_ite_then),
+        get_closest_condition_in_goal_path(RevPathToCond, _, 0, HowMany),
         list.foldl2(
-            collect_ite_annotation_exec_path(Graph, PathToThen, RenamedRegions,
-                HowMany),
+            collect_ite_annotation_exec_path(Graph, RevPathToThen,
+                RenamedRegions, HowMany),
             ExecPaths, !IteRenamingProc, !IteAnnotationProc)
     ;
-        RevPathToCondSteps = [],
+        RevPathToCond = rgp_nil,
         unexpected($module, $pred, "empty path to condition")
     ).
 
@@ -1095,13 +1091,13 @@ collect_ite_annotation_exec_path(Graph, PathToThen,
 
 collect_ite_annotation_exec_path_2(_, _, _, _, _, [], !IteRenamingProc,
         !IteAnnotationProc).
-collect_ite_annotation_exec_path_2(Graph, PathToThen,
+collect_ite_annotation_exec_path_2(Graph, RevPathToThen,
         RenamedRegions, HowMany, PrevPoint, [ProgPoint - _ | ProgPointGoals],
         !IteRenamingProc, !IteAnnotationProc) :-
     ProgPoint = pp(_, RevGoalPath),
-    RevGoalPath = rgp(RevGoalPathSteps),
+    reverse_goal_path_to_steps(RevGoalPath, RevGoalPathSteps),
     list.reverse(RevGoalPathSteps, GoalPathSteps),
-    PathToThen = rgp(RevPathToThenSteps),
+    reverse_goal_path_to_steps(RevPathToThen, RevPathToThenSteps),
     list.reverse(RevPathToThenSteps, PathToThenSteps),
     ( list.append(PathToThenSteps, FromThenSteps, GoalPathSteps) ->
         ( list.member(step_ite_cond, FromThenSteps) ->
@@ -1113,7 +1109,7 @@ collect_ite_annotation_exec_path_2(Graph, PathToThen,
             ;
                 true
             ),
-            collect_ite_annotation_exec_path_2(Graph, PathToThen,
+            collect_ite_annotation_exec_path_2(Graph, RevPathToThen,
                 RenamedRegions, HowMany, ProgPoint, ProgPointGoals,
                 !IteRenamingProc, !IteAnnotationProc)
         ;
@@ -1126,10 +1122,18 @@ collect_ite_annotation_exec_path_2(Graph, PathToThen,
                 RenamedRegions, !IteAnnotationProc)
         )
     ;
-        collect_ite_annotation_exec_path_2(Graph, PathToThen,
+        collect_ite_annotation_exec_path_2(Graph, RevPathToThen,
             RenamedRegions, HowMany, ProgPoint, ProgPointGoals,
             !IteRenamingProc, !IteAnnotationProc)
     ).
+
+:- pred reverse_goal_path_to_steps(reverse_goal_path::in,
+    list(goal_path_step)::out) is det.
+
+reverse_goal_path_to_steps(rgp_nil, []).
+reverse_goal_path_to_steps(rgp_cons(EarlierPath, LaterStep),
+        [LaterStep | EarlierSteps]) :-
+    reverse_goal_path_to_steps(EarlierPath, EarlierSteps).
 
     % The reverse renaming annotation is in the form: R = R_ite_HowMany.
     % The annotation is attached to the program point but actually means

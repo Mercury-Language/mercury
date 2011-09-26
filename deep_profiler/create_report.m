@@ -1598,7 +1598,7 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
         UnQualRefinedName = "mercury_runtime",
         QualRefinedName = "mercury_runtime",
         SlotNumber = -1,
-        RevGoalPath = rgp([]),
+        RevGoalPath = rgp_nil,
         MaybeCalleeDesc = no
     ),
     CallSiteDesc = call_site_desc(CSSPtr, ContainingPSPtr,
