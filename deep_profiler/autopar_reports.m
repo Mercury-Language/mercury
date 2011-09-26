@@ -21,17 +21,11 @@
 :- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdbcomp.program_representation.
 
-:- import_module assoc_list.
 :- import_module cord.
-:- import_module pair.
+:- import_module io.
 
-:- pred create_feedback_autopar_report(candidate_par_conjunctions_params::in,
-    assoc_list(string_proc_label, candidate_par_conjunctions_proc)::in,
-    string::out) is det.
-
-:- pred create_candidate_parallel_conj_proc_report(
-    pair(string_proc_label, candidate_par_conjunctions_proc)::in,
-    cord(string)::out) is det.
+:- pred print_feedback_report(string::in, feedback_info::in, io::di, io::uo)
+    is det.
 
 :- pred create_candidate_parallel_conj_report(var_table::in,
     candidate_par_conjunction(pard_goal)::in, cord(string)::out) is det.
@@ -51,12 +45,39 @@
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
 
 %----------------------------------------------------------------------------%
+
+print_feedback_report(ProgName, Feedback, !IO) :-
+    get_all_feedback_data(Feedback, AllFeedback),
+    list.map(create_feedback_report, AllFeedback, Reports),
+    ReportStr = string.append_list(Reports),
+    io.format("Feedback report for %s:\n\n%s", [s(ProgName), s(ReportStr)],
+        !IO).
+
+:- pred create_feedback_report(feedback_data::in, string::out) is det.
+
+create_feedback_report(FeedbackData, Report) :-
+    (
+        FeedbackData = feedback_data_calls_above_threshold_sorted(_, _, _),
+        Report =
+            "  feedback_data_calls_above_threshold_sorted is not supported\n"
+    ;
+        FeedbackData = feedback_data_candidate_parallel_conjunctions(
+            Parameters, Conjs),
+        create_feedback_autopar_report(Parameters, Conjs, Report)
+    ).
+
+%----------------------------------------------------------------------------%
+
+:- pred create_feedback_autopar_report(candidate_par_conjunctions_params::in,
+    assoc_list(string_proc_label, candidate_par_conjunctions_proc)::in,
+    string::out) is det.
 
 create_feedback_autopar_report(Parameters, ProcConjs, Report) :-
     NumProcConjs = length(ProcConjs),
@@ -124,18 +145,26 @@ create_feedback_autopar_report(Parameters, ProcConjs, Report) :-
 :- pred count_conjunctions_in_procs(
     pair(T, candidate_par_conjunctions_proc)::in, int::in, int::out) is det.
 
-count_conjunctions_in_procs(_ -
-        candidate_par_conjunctions_proc(_VarTable, _Pushes, Conjs), !NumConjs) :-
+count_conjunctions_in_procs(_ - Cands, !NumConjs) :-
+    Cands = candidate_par_conjunctions_proc(_VarTable, _Pushes, Conjs),
     !:NumConjs = !.NumConjs + length(Conjs).
 
 :- pred best_par_algorithm_string(best_par_algorithm::in, string::out) is det.
 
-best_par_algorithm_string(bpa_greedy, "greedy").
-best_par_algorithm_string(bpa_complete_branches(N),
-    format("complete-branches(%d)", [i(N)])).
-best_par_algorithm_string(bpa_complete_size(N),
-    format("complete-size(%d)", [i(N)])).
-best_par_algorithm_string(bpa_complete, "complete").
+best_par_algorithm_string(Alg, Str) :-
+    (
+        Alg = bpa_greedy,
+        Str = "greedy"
+    ;
+        Alg = bpa_complete_branches(N),
+        Str = string.format("complete-branches(%d)", [i(N)])
+    ;
+        Alg = bpa_complete_size(N),
+        Str = string.format("complete-size(%d)", [i(N)])
+    ;
+        Alg = bpa_complete,
+        Str = "complete"
+    ).
 
 create_candidate_parallel_conj_proc_report(Proc - CandidateParConjunctionProc,
         Report) :-
@@ -145,9 +174,7 @@ create_candidate_parallel_conj_proc_report(Proc - CandidateParConjunctionProc,
     list.map(create_push_goal_report, PushGoals, PushGoalReports),
     list.map(create_candidate_parallel_conj_report(VarTable),
         CandidateParConjunctions, CandidateParConjunctionReports),
-    Header = string.format(
-        "    %s\n",
-        [s(ProcString)]),
+    Header = string.format("    %s\n", [s(ProcString)]),
     Report = cord.singleton(Header) ++
         cord_list_to_cord(PushGoalReports) ++
         cord.singleton("\n") ++
@@ -165,6 +192,10 @@ create_push_goal_report(PushGoal, Report) :-
     ),
     TailPushGoalStrs = list.map(FormatPushedGoals, PushedGoalPathStrs),
     Report = cord.from_list([HeadPushGoalStr | TailPushGoalStrs]).
+
+:- pred create_candidate_parallel_conj_proc_report(
+    pair(string_proc_label, candidate_par_conjunctions_proc)::in,
+    cord(string)::out) is det.
 
 create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
         Report) :-
@@ -188,9 +219,7 @@ create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
     TimeSaving = parallel_exec_metrics_get_time_saving(ParExecMetrics),
     TotalDeadTime = FirstConjDeadTime + FutureDeadTime,
 
-    string.format(
-        "      Path: %s\n",
-        [s(GoalPathString)], Header1Str),
+    string.format("      Path: %s\n", [s(GoalPathString)], Header1Str),
     Header1 = cord.singleton(Header1Str),
 
     (
