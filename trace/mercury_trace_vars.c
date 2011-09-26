@@ -655,7 +655,7 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         char            *num_addr;
 
         hlds_var_num = level_layout->MR_sll_var_nums[i];
-        name = MR_hlds_var_name(entry, hlds_var_num);
+        name = MR_hlds_var_name(entry, hlds_var_num, NULL);
 
 #ifdef  MR_DEBUG_LVAL_REP
         printf("i %d, hlds_var_num %d, name %s\n", i, hlds_var_num, name);
@@ -2125,7 +2125,7 @@ MR_trace_print_var_name(FILE *out, const MR_ProcLayout *proc,
 }
 
 /* this should be plenty big enough */
-#define  MR_TRACE_VAR_NAME_BUF_SIZE 256
+#define MR_TRACE_VAR_NAME_BUF_SIZE 256
 static  char    MR_var_name_buf[MR_TRACE_VAR_NAME_BUF_SIZE];
 
 static const char *
@@ -2139,8 +2139,8 @@ MR_trace_printed_var_name(const MR_ProcLayout *proc,
     switch (value->MR_value_kind) {
         case MR_VALUE_ATTRIBUTE:
             attr = &value->MR_value_attr;
-            attr_var_name =
-                MR_hlds_var_name(proc, attr->MR_attr_var_hlds_number);
+            attr_var_name = MR_hlds_var_name(proc,
+                attr->MR_attr_var_hlds_number, NULL);
 #ifdef  MR_HAVE_SNPRINTF
             if (attr_var_name != NULL && strcmp(attr_var_name, "") != 0) {
                 snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,

@@ -244,7 +244,7 @@ get_proc_label_from_layout(Layout) = ProcLabel :-
         ( special_pred_name_arity(SpecialIdPrime, _, PredName, _) ->
             SpecialId = SpecialIdPrime
         ;
-            error("get_proc_label_from_layout: bad special_pred_id")
+            unexpected($module, $pred, "bad special_pred_id")
         ),
         SymDefModule = string_to_sym_name(DefModule),
         SymTypeModule = string_to_sym_name(TypeModule),
@@ -325,6 +325,7 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
     const MR_ProcLayout     *proc;
     int                     out_hlds_num;
     const char              *out_name;
+    int                     should_copy_out;
 
     proc = Layout;
 
@@ -333,11 +334,12 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
     }
 
     out_hlds_num = proc->MR_sle_head_var_nums[OutArgNum - 1];
-    out_name = MR_hlds_var_name(proc, out_hlds_num);
+    out_name = MR_hlds_var_name(proc, out_hlds_num, &should_copy_out);
     if (out_name == NULL || MR_streq(out_name, """")) {
         /* out_hlds_num was not named by the user */
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
+        char                    out_name_buf[MR_MAX_VARNAME_SIZE];
         int                     out_base_name_len;
         int                     out_numerical_suffix;
         int                     num_matches;
@@ -351,6 +353,11 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
         int                     call_num_vars;
         const MR_LabelLayout    *call_label;
         MR_bool                 found;
+
+        if (should_copy_out) {
+            strncpy(out_name_buf, out_name, MR_MAX_VARNAME_SIZE);
+            out_name = (const char *) out_name_buf;
+        }
 
         start_of_num = MR_find_start_of_num_suffix(out_name);
         if (start_of_num < 0) {
@@ -368,7 +375,7 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
             head_var_num++)
         {
             in_hlds_num = proc->MR_sle_head_var_nums[head_var_num];
-            in_name = MR_hlds_var_name(proc, in_hlds_num);
+            in_name = MR_hlds_var_name(proc, in_hlds_num, NULL);
             if (in_name == NULL || MR_streq(in_name, """")) {
                 continue;
             }
@@ -620,24 +627,27 @@ module_common_string_table(ModuleCommonLayout) = StringTable :-
     Size = ModuleCommonLayout->MR_mlc_string_table_size;
 ").
 
-lookup_string_table(StringTable, StartOffset) = Str :-
+lookup_string_table(StringTable, NameCode) = Str :-
     StringTable = string_table(StringTableChars, Size),
-    (
-        0 =< StartOffset,
-        StartOffset < Size
-    ->
-        Str = lookup_string_table_2(StringTableChars, StartOffset)
-    ;
-        error("lookup_string_table: bounds violation")
-    ).
+    Str = lookup_string_table_2(StringTableChars, Size, NameCode).
 
-:- func lookup_string_table_2(string_table_chars, int) = string.
+:- func lookup_string_table_2(string_table_chars, int, int) = string.
 
 :- pragma foreign_proc("C",
-    lookup_string_table_2(StringTableChars::in, StartOffset::in) = (Str::out),
+    lookup_string_table_2(StringTableChars::in, StringTableSize::in,
+        NameCode::in) = (Str::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    MR_make_aligned_string(Str, StringTableChars + StartOffset);
+    MR_ConstString  str0;
+    int             should_copy;
+
+    str0 = MR_name_in_string_table(StringTableChars, StringTableSize,
+        NameCode, &should_copy);
+    if (should_copy) {
+        MR_make_aligned_string(Str, str0);
+    } else {
+        MR_make_aligned_string_copy(Str, str0);
+    }
 ").
 
 %-----------------------------------------------------------------------------%

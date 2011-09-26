@@ -2423,7 +2423,7 @@ init_label_layouts_info = Info :-
     % without losing their edge, (b) this algorithm is fast enough in most
     % cases, and when it isn't, even KMP is unlikely to be fast enough.
     %
-    % Turning this on optimization reduces the size of the generated .c and .o
+    % Turning on this optimization reduces the size of the generated .c and .o
     % files by about 12% and 11% respectively (measured on the files in the
     % library, mdbcomp and compiler directories in grade asm_fast.gc.debug),
     % but even without the type_spec pragmas, it increases sequential bootcheck
@@ -2560,10 +2560,146 @@ init_string_table = !:StringTable :-
     lookup_string_in_table("", _, !StringTable),
     lookup_string_in_table("<too many variables>", _, !StringTable).
 
-lookup_string_in_table(String, Offset, !StringTable) :-
+lookup_string_in_table(String, StringCode, !StringTable) :-
+    % The encoding used here is decoded by MR_name_in_string_table
+    % in runtime/mercury_stack_layout.c. The code here and there
+    % must be kept in sync.
+    (
+        is_var_name_in_special_form(String, KindCode, MaybeBaseName, N),
+        N < int.unchecked_left_shift(1, 10),
+        (
+            MaybeBaseName = yes(BaseName),
+            lookup_raw_string_in_table(BaseName, MaybeOffset, !StringTable),
+            MaybeOffset = yes(Offset),
+            Offset < int.unchecked_left_shift(1, 16)
+        ;
+            MaybeBaseName = no,
+            Offset = 0
+        )
+    ->
+        % | ... offset ... | ... N ... | Kind | 1 |
+        % special form indication: 1 bit:   bit 0
+        % kind indication:         5 bits:  bits 1-5
+        % N:                       10 bits: bits 6-15
+        % Offset:                  16 bits: bits 16-31
+        StringCode = 1 \/
+            int.unchecked_left_shift(KindCode, 1) \/
+            int.unchecked_left_shift(N, 6) \/
+            int.unchecked_left_shift(Offset, 16)
+    ;
+        lookup_raw_string_in_table(String, MaybeOffset, !StringTable),
+        (
+            MaybeOffset = yes(Offset)
+        ;
+            MaybeOffset = no,
+            % Says that the name of the variable is "TOO_MANY_VARIABLES".
+            Offset = 1
+        ),
+        StringCode = int.unchecked_left_shift(Offset, 1)
+    ).
+
+:- pred is_var_name_in_special_form(string::in,
+    int::out, maybe(string)::out, int::out) is semidet.
+
+is_var_name_in_special_form(String, KindCode, MaybeBaseName, N) :-
+    % state_var.m constructs variable names that always contain
+    % the state var name, and usually but not always a numeric suffix.
+    % The numeric suffic may be zero or positive. We could represent
+    % the lack of a suffix using a negative number, but mixing unsigned
+    % and signed fields in a single word is tricky, especially since
+    % the size of the variable name descriptor word we generate (32 bits)
+    % may or may not be the same as the word size of the compiler.
+    % Instead, we simply add one to any actual suffix values, and use
+    % zero to represent the absence of a numeric suffix.
+
+    % polymorphism.m adds a numeric suffix but no type name
+    % to type_ctor_infos and type_infos.
+
+    % polymorphism.m adds a class id but no numeric suffix to
+    % base_typeclass_infos and typeclass_infos. Since the usual string table
+    % already does a good enough job for these, the code for handling them
+    % specially is commented out.
+
+    ( string.remove_prefix("STATE_VARIABLE_", String, NoPrefix) ->
+        KindCode = 0,
+        string.to_char_list(NoPrefix, NoPrefixChars),
+        ( find_number_suffix(NoPrefixChars, BaseNameChars, Num) ->
+            string.from_char_list(BaseNameChars, BaseName),
+            MaybeBaseName = yes(BaseName),
+            N = Num + 1
+        ;
+            MaybeBaseName = yes(NoPrefix),
+            N = 0
+        )
+    ; string.remove_prefix("TypeCtorInfo_", String, NoPrefix) ->
+        ( string.to_int(NoPrefix, Num) ->
+            KindCode = 1,
+            MaybeBaseName = no,
+            N = Num
+        ;
+            fail
+        )
+    ; string.remove_prefix("TypeInfo_", String, NoPrefix) ->
+        ( string.to_int(NoPrefix, Num) ->
+            KindCode = 2,
+            MaybeBaseName = no,
+            N = Num
+        ;
+            fail
+        )
+%   ; string.remove_prefix("BaseTypeClassInfo_for_", String, NoPrefix) ->
+%       KindCode = 3,
+%       MaybeBaseName = yes(NoPrefix),
+%       N = 0
+%   ; string.remove_prefix("TypeClassInfo_for_", String, NoPrefix) ->
+%       KindCode = 4,
+%       MaybeBaseName = yes(NoPrefix),
+%       N = 0
+    ; string.remove_prefix("PolyConst", String, NoPrefix) ->
+        ( string.to_int(NoPrefix, Num) ->
+            KindCode = 5,
+            MaybeBaseName = no,
+            N = Num
+        ;
+            fail
+        )
+    ;
+        fail
+    ).
+
+    % Given e.g. "Info_15" as input, we return "Info" as BeforeNum
+    % and 15 as Num.
+    %
+:- pred find_number_suffix(list(char)::in, list(char)::out, int::out)
+    is semidet.
+
+find_number_suffix(String, BeforeNum, Num) :-
+    list.reverse(String, RevString),
+    rev_find_number_suffix(RevString, 0, Num, 1, Scale, RevRest),
+    Scale > 1,
+    list.reverse(RevRest, BeforeNum).
+
+:- pred rev_find_number_suffix(list(char)::in, int::in, int::out,
+    int::in, int::out, list(char)::out) is semidet.
+
+rev_find_number_suffix([RevHead | RevTail], !Num, !Scale, RevRest) :-
+    ( char.digit_to_int(RevHead, Digit) ->
+        !:Num = !.Num + (!.Scale * Digit),
+        !:Scale = !.Scale * 10,
+        rev_find_number_suffix(RevTail, !Num, !Scale, RevRest)
+    ; RevHead = '_' ->
+        RevRest = RevTail
+    ;
+        fail
+    ).
+
+:- pred lookup_raw_string_in_table(string::in, maybe(int)::out,
+    string_table::in, string_table::out) is det.
+
+lookup_raw_string_in_table(String, MaybeOffset, !StringTable) :-
     !.StringTable = string_table(TableMap0, TableList0, TableOffset0),
     ( map.search(TableMap0, String, OldOffset) ->
-        Offset = OldOffset
+        MaybeOffset = yes(OldOffset)
     ;
         Length = string.count_utf8_code_units(String),
         TableOffset = TableOffset0 + Length + 1,
@@ -2579,13 +2715,12 @@ lookup_string_in_table(String, Offset, !StringTable) :-
         % of other compiler structures.)
         TableOffset < (1 << ((4 * byte_bits) - 2))
     ->
-        Offset = TableOffset0,
+        MaybeOffset = yes(TableOffset0),
         map.det_insert(String, TableOffset0, TableMap0, TableMap),
         TableList = [String | TableList0],
         !:StringTable = string_table(TableMap, TableList, TableOffset)
     ;
-        % Says that the name of the variable is "TOO_MANY_VARIABLES".
-        Offset = 1
+        MaybeOffset = no
     ).
 
 %---------------------------------------------------------------------------%

@@ -59,13 +59,13 @@
 ** RTTI version number.
 **
 ** The MR_GRADE_EXEC_TRACE_VERSION_NO, MR_GRADE_DEEP_PROF_VERSION_NO and
-** MR_GRADE_LLC_PAR_VERSION_NO macros should be incremented when a change breaks
-** binary backwards compatibility only in debugging, deep profiling and
-** low-level C parallel grades respectively.
+** MR_GRADE_LLC_PAR_VERSION_NO macros should be incremented when a change
+** breaks binary backwards compatibility only in debugging, deep profiling
+** and low-level C parallel grades respectively.
 */
 
 #define MR_GRADE_PART_0 v18_
-#define MR_GRADE_EXEC_TRACE_VERSION_NO  9
+#define MR_GRADE_EXEC_TRACE_VERSION_NO  10
 #define MR_GRADE_DEEP_PROF_VERSION_NO   3
 #define MR_GRADE_LLC_PAR_VERSION_NO 1
 

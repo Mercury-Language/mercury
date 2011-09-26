@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2010 The University of Melbourne.
+** Copyright (C) 1998-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -518,7 +518,7 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
     ((MR_PROC_LAYOUT_HAS_EXEC_TRACE((layout)->MR_sll_entry)) ?              \
         ((layout)->MR_sll_entry->MR_sle_module_layout                       \
             ->MR_ml_string_table                                            \
-        + (layout)->MR_sll_goal_path)                                       \
+        + ((layout)->MR_sll_goal_path >> 1))                                \
     : "")
 
 #define MR_SHORT_COUNT_BITS 10
@@ -1339,13 +1339,37 @@ typedef struct MR_ProcLayout_Traversal_Struct {
     ((entry)->MR_sle_user.MR_user_arity -                                   \
         (((entry)->MR_sle_user.MR_user_pred_or_func == MR_FUNCTION) ? 1 : 0))
 
+#define MR_MAX_VARNAME_SIZE 160
+
 /*
 ** Return the name (if any) of the variable with the given HLDS variable number
 ** in the procedure indicated by the first argument.
+**
+** The name will actually be found by MR_name_in_string_table, so the
+** comments there about name size and should_copy apply here as well.
 */
 
 extern  MR_ConstString  MR_hlds_var_name(const MR_ProcLayout *entry,
-                            int hlds_var_num);
+                            int hlds_var_num, int *should_copy);
+
+/*
+** Return the name (if any) of the variable with the given name code
+** in the given string table.
+**
+** Sometimes, the returned name will point to static, const storage,
+** whose contents are valid until the end of the program's execution,
+** while at other times, it will point to a buffer whose contents
+** will be valid only until the next call to MR_name_in_string_table.
+**
+** Callers that want to know which is the case should pass a non-NULL
+** value for should_copy. The returned name will point to the buffer
+** if and only if *should_copy is true. The size of the buffer is
+** MR_MAX_VARNAME_SIZE bytes.
+*/
+
+extern  MR_ConstString  MR_name_in_string_table(const char *string_table,
+                            MR_Integer string_table_size,
+                            MR_uint_least32_t name_code, int *should_copy);
 
 /*
 ** Given a string, see whether its end consists a sequence of digits.
