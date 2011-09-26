@@ -421,7 +421,7 @@ trace_weight(Weighting, wrap(Store), dynamic(Ref), PrevWeight, Weight,
             )
         )
     ;
-        throw(internal_error("trace_weight", "not a final event"))
+        throw(internal_error($pred, "not a final event"))
     ).
 
 :- pred trace_context(wrap(S)::in, edt_node(R)::in, pair(string, int)::out,
@@ -517,8 +517,7 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
     det_trace_node_from_id(Store, NodeId, Node),
     (
         Node = node_call(_, _, _, _, _, _, _, _, _, _),
-        throw(internal_error("contour_children_2",
-            "unexpected start of contour"))
+        throw(internal_error($pred, "unexpected start of contour"))
     ;
         Node = node_exit(_, _, _, _, _, _, _, _),
         % Add a child for this node.
@@ -601,8 +600,7 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
         Node = node_cond(_, _, CondStatus),
         (
             CondStatus = failed,
-            throw(internal_error("contour_children_2",
-                "unexpected start of contour"))
+            throw(internal_error($pred, "unexpected start of contour"))
         ;
             ( CondStatus = succeeded
             ; CondStatus = undecided
@@ -613,14 +611,12 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
         Node = node_neg(_, _, NegStatus),
         (
             ContourType = normal,
-            throw(internal_error("contour_children_2",
-                "unexpected start of contour"))
+            throw(internal_error($pred, "unexpected start of contour"))
         ;
             ContourType = exception,
             (
                 NegStatus = failed,
-                throw(internal_error("contour_children_2",
-                    "unexpected start of contour"))
+                throw(internal_error($pred, "unexpected start of contour"))
             ;
                 ( NegStatus = succeeded
                 ; NegStatus = undecided
@@ -654,8 +650,7 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
         ( Node = node_call(_, _, _, _, _, _, _, _, _, _)
         ; Node = node_neg(_, _, _)
         ),
-        throw(internal_error("stratum_children_2",
-            "unexpected start of contour"))
+        throw(internal_error($pred, "unexpected start of contour"))
     ;
         ( Node = node_fail(_, _, _, _, _, _)
         ; Node = node_excp(_, _, _, _, _, _, _)
@@ -704,8 +699,7 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
             Ns1 = Ns0
         ;
             CondStatus = failed,
-            throw(internal_error("stratum_children_2",
-                "unexpected start of contour"))
+            throw(internal_error($pred, "unexpected start of contour"))
         )
     ),
     Next = step_in_stratum(Store, Node),
@@ -977,8 +971,7 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
                 ChainStart = require_explicit_subtree
             )
         ;
-            throw(internal_error("find_chain_start",
-                "unbound wrong answer term"))
+            throw(internal_error($pred, "unbound wrong answer term"))
         )
     ;
         Node = node_fail(_, CallId, _, _, _, _),
@@ -988,8 +981,7 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
             find_chain_start_inside(Store, CallId, CallNode,
                 ArgPos, ChainStart)
         ;
-            throw(internal_error("find_chain_start",
-                "unbound missing answer term"))
+            throw(internal_error($pred, "unbound missing answer term"))
         )
     ;
         Node = node_excp(_, CallId, _, _, _, _, _),
@@ -1002,8 +994,7 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
             find_chain_start_inside(Store, CallId, CallNode,
                 ArgPos, ChainStart)
         ;
-            throw(internal_error("find_chain_start",
-                "unbound exception term"))
+            throw(internal_error($pred, "unbound exception term"))
         )
     ).
 
@@ -1293,8 +1284,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
                 Primitives0)
         ;
-            throw(internal_error("match_goal_to_contour_event",
-                "mismatch on disj"))
+            throw(internal_error($pred, "mismatch on disj"))
         )
     ;
         GoalExpr = switch_rep(_SwitchVar, _SwitchCanFail, Cases),
@@ -1314,8 +1304,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
                 Primitives0)
         ;
-            throw(internal_error("match_goal_to_contour_event",
-                "mismatch on switch"))
+            throw(internal_error($pred, "mismatch on switch"))
         )
     ;
         GoalExpr = ite_rep(Cond, Then, Else),
@@ -1351,8 +1340,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
                 Primitives0)
         ;
-            throw(internal_error("match_goal_to_contour_event",
-                "mismatch on if-then-else"))
+            throw(internal_error($pred, "mismatch on if-then-else"))
         )
     ;
         GoalExpr = negation_rep(NegGoal),
@@ -1374,8 +1362,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             MaybePrims = make_primitive_list(Store, [NegAndPath], ContourTail,
                 MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0)
         ;
-            throw(internal_error("match_goal_to_contour_event",
-                "mismatch on negation"))
+            throw(internal_error($pred, "mismatch on negation"))
         )
     ).
 
@@ -1469,15 +1456,14 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                         ; AtomicGoal = builtin_call_rep(_, _, _)
                         ; AtomicGoal = event_call_rep(_, _)
                         ),
-                        throw(internal_error("make_primitive_list",
+                        throw(internal_error($pred,
                             "argument number mismatch"))
                     )
                 )
             ;
                 (
                     AllTraced = yes,
-                    throw(internal_error("match_atomic_goal_to_contour_event",
-                        "name mismatch on call"))
+                    throw(internal_error($pred, "name mismatch on call"))
                 ;
                     AllTraced = no,
                     Primitive = primitive(File, Line, BoundVars, AtomicGoal,
@@ -1489,8 +1475,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                 )
             )
         ;
-            throw(internal_error("match_atomic_goal_to_contour_event",
-                "goalpath mismatch on call"))
+            throw(internal_error($pred, "goalpath mismatch on call"))
         )
     ;
         (
@@ -1511,8 +1496,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                 ;
                     (
                         AllTraced = yes,
-                        throw(internal_error(
-                            "match_atomic_goal_to_contour_event",
+                        throw(internal_error($pred,
                             "atomic goal doesn't match exit event\n"))
                     ;
                         AllTraced = no,
@@ -1523,9 +1507,9 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
             ;
                 (
                     AllTraced = yes,
-                    throw(internal_error("match_atomic_goal_to_contour_event",
-                      "atomic goal with no exit event "
-                      ++ "when assuming all traced"))
+                    throw(internal_error($pred,
+                        "atomic goal with no exit event "
+                        ++ "when assuming all traced"))
                 ;
                     AllTraced = no,
                     CallInfo = no,
@@ -1550,8 +1534,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                     MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
                     Primitives1)
             ;
-                throw(internal_error("match_atomic_goal_to_contour_event",
-                    "premature contour end"))
+                throw(internal_error($pred, "premature contour end"))
             )
         )
     ).
@@ -1577,7 +1560,7 @@ find_variable_in_args(Args, ArgNum, TotalArgs, Var) :-
     ( index1(reverse(Args), TotalArgs - ArgNum + 1, FoundVar) ->
         Var = FoundVar
     ;
-        throw(internal_error("find_variable_in_args", "arg not found"))
+        throw(internal_error($pred, "arg not found"))
     ).
 
 :- pred traverse_primitives(list(annotated_primitive(R))::in,
@@ -1615,7 +1598,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
                 traverse_primitives(Prims, CellVar, [Pos | TermPath0],
                     Store, ProcDefnRep, Origin)
             ;
-                throw(internal_error("traverse_primitives", "bad deconstruct"))
+                throw(internal_error($pred, "bad deconstruct"))
             )
         ;
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
@@ -1668,8 +1651,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
                     % functor of Var0 without finding the unification which
                     % bound the TermPathStep0'th argument of that functor.
                     % So something has gone wrong.
-                    throw(internal_error("traverse_primitives",
-                        "input argument not found"))
+                    throw(internal_error($pred, "input argument not found"))
                 )
             )
         ;
@@ -1692,8 +1674,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
         AtomicGoal = cast_rep(ToVar, FromVar),
         % We handle casts the same as we handle assigns.
         ( list.member(Var0, BoundVars) ->
-            decl_require(unify(Var0, ToVar), "traverse_primitives",
-                "bad unsafe_cast"),
+            decl_require(unify(Var0, ToVar), $pred, "bad unsafe_cast"),
             traverse_primitives(Prims, FromVar, TermPath0, Store, ProcDefnRep,
                 Origin)
         ;
@@ -1711,7 +1692,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
     ;
         AtomicGoal = unify_simple_test_rep(_LVar, _RVar),
         ( list.member(Var0, BoundVars) ->
-            throw(internal_error("traverse_primitives", "bad test"))
+            throw(internal_error($pred, "bad test"))
         ;
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
@@ -1747,7 +1728,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
     ;
         AtomicGoal = event_call_rep(_, _),
         ( list.member(Var0, BoundVars) ->
-            throw(internal_error("traverse_primitives", "bad event"))
+            throw(internal_error($pred, "bad event"))
         ;
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
@@ -1841,7 +1822,7 @@ find_arg_pos(HeadVars, Var) = ArgPos :-
     arg_pos::out) is det.
 
 find_arg_pos_from_back([], _, _, _) :-
-    throw(internal_error("find_arg_pos_2", "empty list")).
+    throw(internal_error($pred, "empty list")).
 find_arg_pos_from_back([HeadVar | HeadVars], Var, Pos, ArgPos) :-
     ( HeadVar = Var ->
         ArgPos = any_head_var_from_back(Pos)
@@ -1886,8 +1867,7 @@ det_edt_return_node_from_id(Store, Ref, Node) :-
     ->
         Node = Node0
     ;
-        throw(internal_error("det_edt_return_node_from_id",
-            "not a return node"))
+        throw(internal_error($pred, "not a return node"))
     ).
 
 :- pred get_edt_call_node(S::in, R::in, R::out) is det
@@ -1906,7 +1886,7 @@ get_edt_call_node(Store, Ref, CallId) :-
     ->
         CallId = CallId0
     ;
-        throw(internal_error("get_edt_call_node", "not a return node"))
+        throw(internal_error($pred, "not a return node"))
     ).
 
 %-----------------------------------------------------------------------------%
