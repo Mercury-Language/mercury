@@ -10,8 +10,8 @@
 % Author: pbone.
 %
 % This module contains types and predicates for building messages used by the
-% mdprof_feedback tool.  These messages can represent information such as
-% warnings and errors.  Code is also included here to print them out.
+% mdprof_create_feedback tool. These messages can represent information such as
+% warnings and errors. Code is also included here to print them out.
 %
 %-----------------------------------------------------------------------------%
 

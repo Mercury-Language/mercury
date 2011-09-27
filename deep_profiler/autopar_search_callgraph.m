@@ -11,7 +11,7 @@
 %
 % This module contains the code for analysing deep profiles of programs in
 % order to determine how best to automatically parallelise the program.  This
-% code is used by the mdprof_feedback tool.
+% code is used by the mdprof_create_feedback tool.
 %
 %-----------------------------------------------------------------------------%
 
