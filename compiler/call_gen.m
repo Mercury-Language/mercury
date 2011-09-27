@@ -99,7 +99,7 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs, !CI),
 
     % Figure out what the call model is.
-    prepare_for_call(CodeModel, CallModel, TraceResetCode, !CI),
+    prepare_for_call(CodeModel, GoalInfo, CallModel, TraceResetCode, !CI),
 
     % Make the call. Note that the construction of CallCode will be moved
     % *after* the code that computes ReturnLiveLvalues.
@@ -232,7 +232,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
     extra_livevals(FirstImmInput, ExtraLiveVals),
     set.insert_list(ExtraLiveVals, LiveVals0, LiveVals),
 
-    call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI),
+    prepare_for_call(CodeModel, GoalInfo, CallModel, TraceCode, !CI),
 
     % Make the call.
     get_next_label(ReturnLabel, !CI),
@@ -449,17 +449,24 @@ generic_call_nonvar_setup(cast(_), _, _, _, _, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred prepare_for_call(code_model::in, call_model::out,
+:- pred prepare_for_call(code_model::in, hlds_goal_info::in, call_model::out,
     llds_code::out, code_info::in, code_info::out) is det.
 
-prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
+prepare_for_call(CodeModel, GoalInfo, CallModel, TraceCode, !CI) :-
     succip_is_used(!CI),
     (
+        goal_info_has_feature(GoalInfo, feature_do_not_tailcall)
+    ->
+        AllowLCO = do_not_allow_lco
+    ;
+        AllowLCO = allow_lco
+    ),
+    (
         CodeModel = model_det,
-        CallModel = call_model_det
+        CallModel = call_model_det(AllowLCO)
     ;
         CodeModel = model_semi,
-        CallModel = call_model_semidet
+        CallModel = call_model_semidet(AllowLCO)
     ;
         CodeModel = model_non,
         may_use_nondet_tailcall(!.CI, TailCallStatus),

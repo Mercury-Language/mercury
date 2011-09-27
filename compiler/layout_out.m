@@ -2564,6 +2564,7 @@ pred_transform_name(transform_tuple(Proc)) = "tup_" ++ int_to_string(Proc).
 pred_transform_name(transform_untuple(Proc)) = "untup_" ++ int_to_string(Proc).
 pred_transform_name(transform_dependent_parallel_conjunction) =
     "dep_par_conj_".
+pred_transform_name(transform_parallel_loop_control) = "par_lc".
 pred_transform_name(transform_return_via_ptr(ProcId, ArgPos)) =
     "retptr_" ++ int_to_string(proc_id_to_int(ProcId)) ++ "_args"
         ++ ints_to_string(ArgPos).

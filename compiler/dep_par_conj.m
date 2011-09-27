@@ -288,9 +288,9 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
         globals.lookup_bool_option(Globals, allow_some_paths_only_waits,
             AllowSomePathsOnly),
 
-        % We rely on dependency information in order to determine which calls a
-        % recursive.  The information is stored within !ModuleInfo so doesn't
-        % need to be kept here, this call simply forces an update.
+        % We rely on dependency information in order to determine which calls
+        % are recursive.  The information is stored within !ModuleInfo so
+        % doesn't need to be kept here, this call simply forces an update.
         module_info_rebuild_dependency_info(!ModuleInfo, _),
 
         GoalBeforeDepParConj = !.Goal,

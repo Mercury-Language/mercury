@@ -1560,9 +1560,15 @@
             % transformation but should be removed by the end of mode
             % checking.
 
-    ;       feature_contains_stm_inner_outer.
+    ;       feature_contains_stm_inner_outer
             % This goal is a goal inside an atomic scope, for which the calls
             % to convert inner and outer variables have been inserted.
+
+    ;       feature_do_not_tailcall.
+            % This goal is a call that should not be executed as a tail call.
+            % Currently this is only used by the loop control optimization
+            % since a spawned off task may need to use the parent's stack frame
+            % even after the parent makes a tail call.
 
 %-----------------------------------------------------------------------------%
 %

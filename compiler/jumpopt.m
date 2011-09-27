@@ -490,8 +490,8 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             % Look for det style tailcalls. We look for this even if
             % the call is semidet, because one of the optimizations below
             % turns a pair of semidet epilogs into a det epilog.
-            ( CallModel = call_model_det
-            ; CallModel = call_model_semidet
+            ( CallModel = call_model_det(allow_lco)
+            ; CallModel = call_model_semidet(allow_lco)
             ),
             ProcMap = JumpOptInfo ^ joi_proc_map,
             map.search(ProcMap, RetLabel, Between0),
@@ -504,7 +504,7 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             NewRemain = specified(NewInstrs, Instrs0)
         ;
             % Look for semidet style tailcalls.
-            CallModel = call_model_semidet,
+            CallModel = call_model_semidet(allow_lco),
             ForkMap = JumpOptInfo ^ joi_fork_map,
             map.search(ForkMap, RetLabel, Between),
             PrevInstr = livevals(Livevals)

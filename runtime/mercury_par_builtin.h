@@ -303,11 +303,14 @@ struct MR_LoopControlSlot_Struct
 struct MR_LoopControl_Struct
 {
     unsigned                                MR_lc_num_slots;
-    MR_THREADSAFE_VOLATILE MR_Integer       MR_lc_outstanding_workers;
-    MR_Context                              *MR_lc_waiting_context;
-    MR_THREADSAFE_VOLATILE MR_bool          MR_lc_finished;
-    MercuryLock                             MR_lc_lock;
     MR_LoopControlSlot                      MR_lc_slots[1];
+    /* Outstanding workers is manipulated with atomic instructions */
+    MR_THREADSAFE_VOLATILE MR_Integer       MR_lc_outstanding_workers;
+    /* This lock protects only the next field */
+    MR_THREADSAFE_VOLATILE MR_Us_Lock       MR_lc_master_context_lock;
+    MR_Context                              *MR_lc_master_context;
+    /* Unused atm */
+    MR_THREADSAFE_VOLATILE MR_bool          MR_lc_finished;
 };
 
 #else
@@ -355,18 +358,20 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
             ** This must be implemented as a macro, since we cannot move    \
             ** the C stack pointer without extra work.                      \
             */                                                              \
-            MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =                \
-                MR_LABEL(MR_add_prefix(part2_label));                       \
-            MR_LOCK(&((lc)->MR_lc_lock), "MR_lc_finish_part1");             \
-            if ((lc)->MR_lc_outstanding_workers == 0) {                     \
-                MR_UNLOCK(&((lc)->MR_lc_lock), "MR_lc_finish_part1");       \
-                MR_GOTO_LOCAL(MR_add_prefix(part2_label));                  \
+            MR_US_SPIN_LOCK(&((lc)->MR_lc_master_context_lock));            \
+            if ((lc)->MR_lc_outstanding_workers != 0) {                     \
+                MR_save_context(MR_ENGINE(MR_eng_this_context));            \
+                MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume_owner_engine = \
+                    MR_ENGINE(MR_eng_id);                                   \
+                MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =            \
+                    (part2_label);                                          \
+                (lc)->MR_lc_master_context = MR_ENGINE(MR_eng_this_context);\
+                MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));           \
+                MR_ENGINE(MR_eng_this_context) = NULL;                      \
+                MR_idle(); /* Release the engine to the idle loop */        \
             }                                                               \
-            MR_save_context(MR_ENGINE(MR_eng_this_context));                \
-            (lc)->MR_lc_waiting_context = MR_ENGINE(MR_eng_this_context);   \
-            MR_UNLOCK(&((lc)->MR_lc_lock), "MR_lc_finish_part1");           \
-            MR_ENGINE(MR_eng_this_context) = NULL;                          \
-            MR_idle(); /* Release the engine to the idle loop */            \
+            MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));               \
+            /* Fall through to part2 */                                     \
         }                                                                   \
     } while (0);
 
@@ -382,13 +387,68 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
                 MR_destroy_context((lc)->MR_lc_slots[i].MR_lcs_context);    \
             }                                                               \
         }                                                                   \
-        pthread_mutex_destroy(&((lc)->MR_lc_lock));                         \
     } while (0);
 
 /*
 ** Get a free slot in the loop control if there is one.
+**
+** Deprecated: this was part of our old loop control design.
 */
 extern MR_LoopControlSlot* MR_lc_try_get_free_slot(MR_LoopControl* lc);
+
+/*
+** Get a free slot in the loop control, or block until one is available.
+*/
+#define MR_lc_wait_free_slot(lc, lcs, retry_label)                          \
+    do {                                                                    \
+        unsigned    i;                                                      \
+                                                                            \
+        if ((lc)->MR_lc_outstanding_workers == (lc)->MR_lc_num_slots) {     \
+            MR_US_SPIN_LOCK(&((lc)->MR_lc_master_context_lock));            \
+            /*                                                              \
+            ** Re-check outstanding workers while holding the lock.  This   \
+            ** ensures that we only commit to sleeping while holding the    \
+            ** lock, But if there were a worker available we wouldn't need   \
+            ** to take the lock at all.                                     \
+            */                                                              \
+            if ((lc)->MR_lc_outstanding_workers == (lc)->MR_lc_num_slots) { \
+                MR_Context *ctxt;                                           \
+                                                                            \
+                /*                                                          \
+                ** Block this context and have it retry once it's           \
+                ** unblocked                                                \
+                */                                                          \
+                ctxt = MR_ENGINE(MR_eng_this_context);                      \
+                (lc)->MR_lc_master_context = ctxt;                          \
+                MR_save_context(ctxt);                                      \
+                ctxt->MR_ctxt_resume = MR_add_prefix(retry_label);          \
+                ctxt->MR_ctxt_resume_owner_engine = MR_ENGINE(MR_eng_id);   \
+                MR_US_UNLOCK(&(lc->MR_lc_master_context_lock));             \
+                MR_ENGINE(MR_eng_this_context) = NULL;                      \
+                MR_idle();                                                  \
+            }                                                               \
+            MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));               \
+        }                                                                   \
+                                                                            \
+        /*                                                                  \
+        ** Optimize this by using a hint to start the search at.            \
+        */                                                                  \
+        for (i = 0; i<(lc)->MR_lc_num_slots; i++) {                         \
+            if ((lc)->MR_lc_slots[i].MR_lcs_is_free) {                      \
+                (lc)->MR_lc_slots[i].MR_lcs_is_free = MR_FALSE;             \
+                MR_atomic_inc_int(&((lc)->MR_lc_outstanding_workers));      \
+                (lcs) = &((lc)->MR_lc_slots[i]);                            \
+                break;                                                      \
+            }                                                               \
+        }                                                                   \
+                                                                            \
+        /*                                                                  \
+        ** Since only one context can ever run MR_lc_wait_free_slot then we \
+        ** can never fail to find a since outstanding workers can never be  \
+        ** incremented by another engine.                                   \
+        */                                                                  \
+        MR_fatal_error("No free slot found in loop control");               \
+    } while (0);
 
 /*
 ** Try to spawn off this code using the free slot.

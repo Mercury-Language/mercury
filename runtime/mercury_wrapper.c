@@ -216,6 +216,12 @@ MR_Unsigned MR_max_contexts_per_thread = 2;
 #endif
 MR_Unsigned MR_max_outstanding_contexts;
 
+/*
+** The number of contexts per loop control per thread.
+*/
+MR_Unsigned MR_num_contexts_per_loop_control_per_thread = 4;
+MR_Unsigned MR_num_contexts_per_loop_control;
+
 /* file names for mdb's debugger I/O streams */
 const char  *MR_mdb_in_filename = NULL;
 const char  *MR_mdb_out_filename = NULL;
@@ -629,6 +635,8 @@ mercury_runtime_init(int argc, char **argv)
     MR_init_context_stuff();
     MR_init_thread_stuff();
     MR_max_outstanding_contexts = MR_max_contexts_per_thread * MR_num_threads;
+    MR_num_contexts_per_loop_control =
+        MR_num_contexts_per_loop_control_per_thread * MR_num_threads;
 #ifdef MR_LL_PARALLEL_CONJ
     MR_granularity_wsdeque_length = MR_granularity_wsdeque_length_factor * MR_num_threads;
 #endif
@@ -1298,6 +1306,7 @@ enum MR_long_option {
     MR_GEN_NONDETSTACK_REDZONE_SIZE,
     MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS,
     MR_MAX_CONTEXTS_PER_THREAD,
+    MR_NUM_CONTEXTS_PER_LC_PER_THREAD,
     MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR,
     MR_WORKSTEAL_MAX_ATTEMPTS,
     MR_WORKSTEAL_SLEEP_MSECS,
@@ -1400,6 +1409,7 @@ struct MR_option MR_long_opts[] = {
     { "gen-nondetstack-zone-size-kwords",
         1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
+    { "num-contexts-per-lc-per-thread", 1, 0, MR_NUM_CONTEXTS_PER_LC_PER_THREAD },
     { "runtime-granularity-wsdeque-length-factor", 1, 0,
         MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR },
     { "thread-pinning",                 0, 0, MR_THREAD_PINNING },
@@ -1822,6 +1832,14 @@ MR_process_options(int argc, char **argv)
                 }
 
                 MR_max_contexts_per_thread = size;
+                break;
+
+            case MR_NUM_CONTEXTS_PER_LC_PER_THREAD:
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                MR_num_contexts_per_loop_control_per_thread = size;
                 break;
 
             case MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR:

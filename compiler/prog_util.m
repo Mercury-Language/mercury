@@ -75,6 +75,7 @@
     ;       newpred_type_subst(tvarset, type_subst)
     ;       newpred_unused_args(list(int))
     ;       newpred_parallel_args(list(int))
+    ;       newpred_parallel_loop_control
     ;       newpred_structure_reuse(int, list(int))     % Mode, no-clobber
                                                         % arguments.
     ;       newpred_distance_granularity(int).          % Distance
@@ -550,6 +551,9 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
     ;
         NewPredId = newpred_distance_granularity(Distance),
         int_to_string(Distance, PredIdStr)
+    ;
+        NewPredId = newpred_parallel_loop_control,
+        PredIdStr = ""
     ),
 
     string.format("%s__%s__%s__%s",

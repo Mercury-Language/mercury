@@ -487,6 +487,7 @@
                 int % The procedure number of the original procedure.
             )
     ;       transform_dependent_parallel_conjunction
+    ;       transform_parallel_loop_control
     ;       transform_return_via_ptr(
                 proc_id,
                     % The id of the procedure this predicate is derived from.
@@ -557,8 +558,8 @@
     pred_info::out) is det.
 
     % pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin,
-    %   Status, Markers, TypeVarSet, ExistQVars, ArgTypes,
-    %   ClassContext, Assertions, User, VarNameRemap, ProcInfo, ProcId,
+    %   Status, Markers, ArgTypes, TypeVarSet, ExistQVars,
+    %   ClassContext, Assertions, VarNameRemap, ProcInfo, ProcId,
     %   PredInfo)
     %
     % Return a pred_info whose fields are filled in from the information

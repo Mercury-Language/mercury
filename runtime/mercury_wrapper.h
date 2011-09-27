@@ -259,6 +259,11 @@ extern	MR_Unsigned	MR_contexts_per_thread;
 */
 extern	MR_Unsigned	MR_max_outstanding_contexts;
 
+/*
+** number of contexts to create per loop controlled loop.
+*/
+extern  MR_Unsigned MR_num_contexts_per_loop_control;
+
 extern  MR_Unsigned MR_num_threads;
 
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)

@@ -829,11 +829,17 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
         Instr = llcall(Callee, ReturnLabel, _LiveInfo, _Context, _GoalPath,
             CallModel),
         (
-            CallModel = call_model_det,
+            CallModel = call_model_det(allow_lco),
             CallModelStr = "det"
         ;
-            CallModel = call_model_semidet,
+            CallModel = call_model_det(do_not_allow_lco),
+            CallModelStr = "det_no_lco"
+        ;
+            CallModel = call_model_semidet(allow_lco),
             CallModelStr = "semidet"
+        ;
+            CallModel = call_model_semidet(do_not_allow_lco),
+            CallModelStr = "semidet_no_lco"
         ;
             CallModel = call_model_nondet(no_tail_call),
             CallModelStr = "nondet no_tail_call"

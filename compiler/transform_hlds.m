@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -97,6 +97,7 @@
 :- include_module dep_par_conj.
 :- include_module parallel_to_plain_conj.
 :- include_module implicit_parallelism.
+:- include_module par_loop_control.
 
 :- include_module mmc_analysis.
 

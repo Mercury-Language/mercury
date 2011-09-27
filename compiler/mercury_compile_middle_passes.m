@@ -79,6 +79,7 @@
 :- import_module transform_hlds.lco.
 :- import_module transform_hlds.loop_inv.
 :- import_module transform_hlds.mmc_analysis.
+:- import_module transform_hlds.par_loop_control.
 :- import_module transform_hlds.parallel_to_plain_conj.
 :- import_module transform_hlds.rbmm.
 :- import_module transform_hlds.size_prof.
@@ -221,9 +222,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 173, "implicit_parallelism", !DumpInfo, !IO),
 
-    maybe_lco(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 175, "lco", !DumpInfo, !IO),
-
     maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
 
@@ -235,6 +233,12 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 205, "dependent_par_conj", !DumpInfo, !IO),
+
+    maybe_par_loop_control(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 206, "par_loop_control", !DumpInfo, !IO),
+
+    maybe_lco(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 210, "lco", !DumpInfo, !IO),
 
     % If we are compiling in a deep profiling grade then now rerun simplify.
     % The reason for doing this now is that we want to take advantage of any
@@ -1301,6 +1305,26 @@ maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO) :-
         )
     ;
         ContainsParConj = no
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred maybe_par_loop_control(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_par_loop_control(Verbose, Stats, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, par_loop_control, LoopControl),
+    (
+        LoopControl = yes,
+        maybe_write_string(Verbose,
+            "% Applying parallel loop control transformation...\n", !IO),
+        maybe_flush_output(Verbose, !IO),
+        maybe_par_loop_control_module(!HLDS),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        LoopControl = no
     ).
 
 %-----------------------------------------------------------------------------%

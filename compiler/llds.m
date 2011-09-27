@@ -273,9 +273,13 @@
             % Under these conditions, the call can be transformed into a tail
             % call whenever its return address leads to the procedure epilogue.
 
+:- type allow_lco
+    --->    do_not_allow_lco
+    ;       allow_lco.
+
 :- type call_model
-    --->    call_model_det
-    ;       call_model_semidet
+    --->    call_model_det(allow_lco)
+    ;       call_model_semidet(allow_lco)
     ;       call_model_nondet(nondet_tail_call).
 
     % The type defines the various LLDS virtual machine instructions.
@@ -311,9 +315,13 @@
             % on return. The fourth argument gives the context of the call.
             % The fifth gives the goal id of the call in the body of the
             % procedure; it is meaningful only if execution tracing is enabled.
-            % The last gives the code model of the called procedure, and if
-            % it is model_non, says whether tail recursion elimination is
-            % potentially applicable to the call.
+            % The last gives the code model of the called procedure, and says
+            % whether tail recursion elimination may be applied to the call.
+            % For model_non calls, this depends on whether there are any other
+            % stack frames on top of the stack frame of this procedure on the
+            % nondet stack. For model_det and model_semi calls, this depends on
+            % whether there is some other code, executing in parallel with this
+            % context, that uses the current stack frame.
             %
             % The ll prefix on call is to avoid the use of the call keyword
             % and to distinguish this function symbol from a similar one

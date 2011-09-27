@@ -123,6 +123,18 @@
 :- pred goal_path_get_last(forward_goal_path::in, goal_path_step::out)
     is semidet.
 
+    % Remove the first item from the goal path, returning it and the new
+    % goal path.
+    %
+:- pred goal_path_remove_first(forward_goal_path::in, forward_goal_path::out,
+    goal_path_step::out) is semidet.
+
+    % Get the first item from the goal path. This fails if the goal path is
+    % empty.
+    %
+:- pred goal_path_get_first(forward_goal_path::in, goal_path_step::out)
+    is semidet.
+
     % Remove the last item from the goal path, returning it and the new
     % goal path.
     %
@@ -355,6 +367,12 @@ goal_path_get_last(fgp_cons(HeadStep, TailSteps), LastStep) :-
 goal_path_last_loop(Head, fgp_nil, Head).
 goal_path_last_loop(_Head, fgp_cons(TailHead, TailTail), LastStep) :-
     goal_path_last_loop(TailHead, TailTail, LastStep).
+
+goal_path_remove_first(fgp_cons(FirstStep, OtherSteps), OtherSteps,
+    FirstStep).
+
+goal_path_get_first(GoalPath, FirstStep) :-
+    goal_path_remove_first(GoalPath, _, FirstStep).
 
 rev_goal_path_remove_last(rgp_cons(GoalPath, LastStep), GoalPath, LastStep).
 

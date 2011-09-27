@@ -36,7 +36,7 @@
     % handle_given_options(Args, OptionArgs, NonOptionArgs, Link,
     %   Errors, Globals, !IO).
     %
-:- pred handle_given_options(list(string)::in, 
+:- pred handle_given_options(list(string)::in,
     list(string)::out, list(string)::out, bool::out, list(string)::out,
     globals::out, io::di, io::uo) is det.
 
@@ -485,7 +485,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             "\t(must be `posix', `cygwin', `msys' or `windows').",
             !Errors)
     ).
-    
+
 :- pred add_error(string::in, list(string)::in, list(string)::out) is det.
 
 add_error(Error, Errors0, Errors) :-
@@ -584,14 +584,15 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         TagsMethod = TagsMethod0
     ),
-        
+
+    current_grade_supports_par_conj(!.Globals, GradeSupportsParConj),
     globals.lookup_bool_option(!.Globals, parallel, Parallel),
     globals.lookup_bool_option(!.Globals, threadscope, Threadscope),
     (
-        Parallel = no,
+        GradeSupportsParConj = no,
         Threadscope = yes
     ->
-        add_error("'threadscope' grade component requires a parallel grade", 
+        add_error("'threadscope' grade component requires a parallel grade",
             !Errors)
     ;
         true
@@ -605,20 +606,33 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     (
         ImplicitParallelism = yes,
         (
-            Parallel = yes,
+            GradeSupportsParConj = yes,
             globals.lookup_string_option(!.Globals, feedback_file,
                 FeedbackFile),
             (
                 FeedbackFile = ""
             ->
                 add_error(
-                    "'--implicit-parallelism' requires '--feedback-file'", 
+                    "'--implicit-parallelism' requires '--feedback-file'",
                     !Errors)
             ;
                 true
             )
         ;
-            Parallel = no,
+            % Report an error when used in parallel grades without parallel
+            % conjunction support.  In non-parallel grades simply ignore
+            % --implicit-parallelism.
+            GradeSupportsParConj = no,
+            (
+                Parallel = yes,
+                add_error(
+                    "'--implicit-parallelism' requires a grade that " ++
+                    "supports parallel conjunctions, use a low-level C " ++
+                    "grade without trailing.",
+                    !Errors)
+            ;
+                Parallel = no
+            ),
             globals.set_option(implicit_parallelism, bool(no), !Globals)
         )
     ;
@@ -628,6 +642,14 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % ensure that the HLDS more-closely matches the feedback data.
     option_implies(implicit_parallelism, pre_implicit_parallelism_simplify,
         bool(yes), !Globals),
+
+    % Loop control is not applicable in non-parallel grades.
+    (
+        GradeSupportsParConj = yes
+    ;
+        GradeSupportsParConj = no,
+        globals.set_option(par_loop_control, bool(no), !Globals)
+    ),
 
     % Generating IL implies:
     %   - gc_method `automatic' and no heap reclamation on failure
@@ -673,7 +695,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %     Because we use 32-bit integers which may be different to that of
     %     the host compiler.
 
-    ( 
+    (
         Target = target_il,
         globals.set_gc_method(gc_automatic, !Globals),
         globals.set_option(gc, string("automatic"), !Globals),
@@ -754,7 +776,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %   - store nondet environments on the heap
     %         Because Java has no way of allocating structs on the stack.
     %   - pretest-equality-cast-pointers
-    %   - no library grade installation check with `mmc --make'. 
+    %   - no library grade installation check with `mmc --make'.
     %   - cross compiling
     %     Because ints in Java are 32-bits wide which may be different to
     %     that of the host compiler.
@@ -816,7 +838,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %     Because Erlang has arbitrary precision integers which may
     %     different to that of the host compiler.
 
-    ( 
+    (
         Target = target_erlang,
         globals.set_gc_method(gc_automatic, !Globals),
         globals.set_option(gc, string("automatic"), !Globals),
@@ -847,7 +869,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % Generating assembler via the gcc back-end requires
     % using high-level code.
-    ( 
+    (
         Target = target_asm,
         globals.set_option(highlevel_code, bool(yes), !Globals),
         globals.set_option(highlevel_data, bool(no), !Globals)
@@ -953,11 +975,11 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % and they don't need to be recreated when compiling to C.
     option_implies(invoked_by_mmc_make,
         generate_mmc_make_module_dependencies, bool(no), !Globals),
-    
-    % --libgrade-install-check only works with --make
-    option_neg_implies(make, libgrade_install_check, bool(no), !Globals), 
 
-    % `--transitive-intermodule-optimization' and `--make' are 
+    % --libgrade-install-check only works with --make
+    option_neg_implies(make, libgrade_install_check, bool(no), !Globals),
+
+    % `--transitive-intermodule-optimization' and `--make' are
     % not compatible with each other.
     %
     globals.lookup_bool_option(!.Globals, transitive_optimization,
@@ -1330,11 +1352,11 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(coverage_profiling, bool(yes), !Globals),
         globals.set_option(coverage_profiling_static, bool(no), !Globals),
         globals.set_option(profile_deep_coverage_after_goal, bool(yes),
-            !Globals), 
+            !Globals),
         globals.set_option(profile_deep_coverage_branch_ite, bool(yes),
-            !Globals), 
+            !Globals),
         globals.set_option(profile_deep_coverage_branch_switch, bool(yes),
-            !Globals), 
+            !Globals),
         globals.set_option(profile_deep_coverage_branch_disj, bool(yes),
             !Globals),
 
@@ -1343,7 +1365,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         % coverage information propagation easier at the expense of
         % inserting more coverage points.
         globals.set_option(profile_deep_coverage_use_portcounts, bool(no),
-            !Globals), 
+            !Globals),
         globals.set_option(profile_deep_coverage_use_trivial, bool(no),
             !Globals)
     ;
@@ -1361,7 +1383,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % want so we disable inlining with deep profiling by default.  The
     % user can re-enable it with the `--profile-optimized' option.  Leave
     % inlineing enabled when profiling for implicit parallelism.
-    % 
+    %
     globals.lookup_bool_option(!.Globals, prof_optimized, ProfOptimized),
     (
         ProfOptimized = no,
@@ -1456,7 +1478,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             % For the IL backend we turn off optimize_peep
             % so that we don't optimize away references to the
             % local variables of a procedure.
-            ( 
+            (
                 Target = target_il,
                 globals.set_option(optimize_peep, bool(no), !Globals)
             ;
@@ -1971,12 +1993,12 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             intermod_directories, IntermodDirs0),
         globals.set_option(intermod_directories,
             accumulating(ExtraIntermodDirs ++ IntermodDirs0), !Globals),
-        
+
         ExtraInitDirs = list.map(
             (func(MercuryLibDir) =
                 MercuryLibDir / "modules" / GradeString
             ), MercuryLibDirs),
-        
+
         globals.lookup_accumulating_option(!.Globals,
             init_file_directories, InitDirs1),
         globals.set_option(init_file_directories,
@@ -2292,7 +2314,7 @@ postprocess_options_lowlevel(!Globals) :-
     ),
     globals.set_option(static_code_addresses, bool(StaticCodeAddrs), !Globals).
 
-    
+
     % option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue):
     % If the SourceBoolOption is set to yes, then the ImpliedOption is set
     % to ImpliedOptionValue.
@@ -2427,7 +2449,7 @@ long_usage(!IO) :-
     % copies of the long usage message. We can print both a short and along
     % usage message, but there is no simple way to avoid that.
     library.version(Version),
-    io.write_strings(["Name: mmc -- Melbourne Mercury Compiler, version ", 
+    io.write_strings(["Name: mmc -- Melbourne Mercury Compiler, version ",
         Version, "\n"], !IO),
     io.write_string("Copyright: Copyright (C) 1993-2011 " ++
         "The University of Melbourne\n", !IO),
@@ -2499,7 +2521,7 @@ string_to_grade_component(FilterDesc, Comp, !Comps, !Errors) :-
     ).
 
     % filter_grade(FilterPred, Components, GradeString, !Grades, !Errors):
-    % 
+    %
     % Convert `GradeString' into a list of grade component strings, and
     % then check whether the given grade should be filtered from the
     % library grade set by applying the closure `FilterPred(Components)',
@@ -2553,7 +2575,7 @@ must_not_contain(OmitComponents, GradeComponents) :-
     is det.
 
 grade_string_to_comp_strings(GradeString, MaybeGrade, !Errors) :-
-    ( 
+    (
         split_grade_string(GradeString, ComponentStrs),
         StrToComp = (pred(Str::in, Str::out) is semidet :-
             grade_component_table(Str, _, _, _, _)
@@ -2868,7 +2890,7 @@ grade_component_table("erlang", comp_gcc_ext, [
 grade_component_table("par", comp_par, [parallel - bool(yes)], no, yes).
 
     % Threadscope profiling in parallel grades.
-grade_component_table("threadscope", comp_par_threadscope, 
+grade_component_table("threadscope", comp_par_threadscope,
     [threadscope - bool(yes)], no, yes).
 
     % GC components.
@@ -2941,7 +2963,7 @@ grade_component_table("dmmos", comp_minimal_model,
     use_minimal_model_own_stacks - bool(yes),
     minimal_model_debug - bool(yes)], no, yes).
 
-grade_component_table("spf", comp_single_prec_float, 
+grade_component_table("spf", comp_single_prec_float,
     [single_prec_float - bool(yes),
     unboxed_float - bool(yes)], no, yes).
 
@@ -2967,20 +2989,20 @@ grade_component_table("exts", comp_stack_extend,
 grade_component_table("stseg", comp_stack_extend,
     [extend_stacks_when_needed - bool(no), stack_segments - bool(yes)],
     no, yes).
-    
+
     % Region-based memory managment components
 grade_component_table("rbmm", comp_regions,
     [use_regions - bool(yes),
     use_regions_debug - bool(no), use_regions_profiling - bool(no)],
-    no, yes).  
+    no, yes).
 grade_component_table("rbmmd", comp_regions,
     [use_regions - bool(yes),
     use_regions_debug - bool(yes), use_regions_profiling - bool(no)],
-    no, yes).  
+    no, yes).
 grade_component_table("rbmmp", comp_regions,
     [use_regions - bool(yes),
     use_regions_debug - bool(no), use_regions_profiling - bool(yes)],
-    no, yes).  
+    no, yes).
 grade_component_table("rbmmdp", comp_regions,
     [use_regions - bool(yes),
     use_regions_debug - bool(yes), use_regions_profiling - bool(yes)],

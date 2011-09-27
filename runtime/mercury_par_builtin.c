@@ -48,6 +48,7 @@ MR_lc_create(unsigned num_workers)
 
     lc = MR_GC_malloc(sizeof(MR_LoopControl) +
         (num_workers-1) * sizeof(MR_LoopControlSlot));
+    lc->MR_lc_num_slots = num_workers;
     for (i = 0; i < num_workers; i++) {
         /*
         ** We allocate contexts as necessary, so that we never allocate a
@@ -57,14 +58,17 @@ MR_lc_create(unsigned num_workers)
         lc->MR_lc_slots[i].MR_lcs_context = NULL;
         lc->MR_lc_slots[i].MR_lcs_is_free = MR_TRUE;
     }
-    lc->MR_lc_num_slots = num_workers;
     lc->MR_lc_outstanding_workers = 0;
-    lc->MR_lc_waiting_context = NULL;
-    pthread_mutex_init(&(lc->MR_lc_lock), MR_MUTEX_ATTR);
+    lc->MR_lc_master_context_lock = MR_US_LOCK_INITIAL_VALUE;
+    lc->MR_lc_master_context = NULL;
+    lc->MR_lc_finished = MR_FALSE;
 
     return lc;
 }
 
+/*
+** Deprecated, this was part of our old loop control design.
+*/
 MR_LoopControlSlot *
 MR_lc_try_get_free_slot(MR_LoopControl* lc)
 {
@@ -113,40 +117,31 @@ MR_lc_join(MR_LoopControl* lc, MR_LoopControlSlot* lcs)
     MR_Context  *wakeup_context;
 
     lcs->MR_lcs_is_free = MR_TRUE;
+    /* Ensure the slot is free before we perform the decrement. */
+    MR_CPU_SFENCE;
     last_worker =
         MR_atomic_dec_and_is_zero_int(&(lc->MR_lc_outstanding_workers));
 
     /*
-    ** This barrier ensures we update MR_lc_outstanding_contexts before
-    ** we read MR_lc_finished. It works together with another barrier
-    ** in MR_lc_finish(). Together these barriers prevent a race whereby
-    ** the original thread is not resumed because MR_lc_finished looked false
-    ** in the condition below but last_worker was true, and the original
-    ** thread is about to go to sleep.
-    **
-    ** We go through these checks to avoid taking the lock in the then branch
-    ** below in cases when MR_lc_outstanding_workers is zero but the original
-    ** thread has not called MR_lc_finish() yet.
+    ** If the master thread is suspended wake it up, provided that
+    ** either: The loop has finished and this is the last worker to exit.
+    **         The loop has not finished (so the master can create more work).
     */
-    MR_CPU_MFENCE;
-    if (last_worker && lc->MR_lc_finished) {
+    if (lc->MR_lc_master_context &&
+        ((lc->MR_lc_finished && last_worker) ||
+         (!lc->MR_lc_finished))) {
         /*
-        ** Wake up the first thread if it is sleeping.
-        ** XXX: a spinlock would do here, or maybe a CAS;
-        ** we never hold the lock for long.
+        ** Now take a lock and re-read the master context field.
         */
-        MR_LOCK(&(lc->MR_lc_lock), "MC_lc_join_and_terminate");
-        wakeup_context = lc->MR_lc_waiting_context;
-        /*
-        ** We don't need to clear the context field at this point: only one
-        ** worker can ever be the last worker, and therefore there is no danger
-        ** in adding this context to the run queue twice.
-        */
-        MR_UNLOCK(&(lc->MR_lc_lock), "MR_lc_join_and_terminate");
+        MR_US_SPIN_LOCK(&(lc->MR_lc_master_context_lock));
+        wakeup_context = lc->MR_lc_master_context;
+        lc->MR_lc_master_context = NULL;
+        MR_US_UNLOCK(&(lc->MR_lc_master_context_lock));
         if (wakeup_context != NULL) {
             /*
             ** XXX: it is faster to switch to this context ourselves
             ** since we are going to unload our own context.
+            ** Or we should switch to another worker context if there is one.
             */
             MR_schedule_context(wakeup_context);
         }

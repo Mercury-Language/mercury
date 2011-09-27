@@ -912,7 +912,7 @@ The following variables can also appear in options files but are
 @item GCC_FLAGS
 @vindex GCC_FLAGS
 Options to pass to the C compiler, but only if the C compiler is GCC.
-If the C compiler is not GCC then this variable is ignored. 
+If the C compiler is not GCC then this variable is ignored.
 These options will be passed @emph{after} any options given by the
 @samp{CFLAGS} variable.
 
@@ -9520,6 +9520,27 @@ mdprof_create_feedback. The profiling feedback file can be specified using the
 Use the specified profiling feedback file
 which may currently only be processed for implicit parallelism.
 
+@c @sp 1
+@c @item --loop-control
+@c @findex --loop-control
+@c Enable the loop control transformation for parallel conjunctions.
+@c This causes right-recursive parallel conjunctions to use fewer contexts while
+@c maintaining parallelism.
+@c This transformation is under development, when it is ready it will
+@c probably be enabled by default.
+@c
+@c @sp 1
+@c @item --no-loop-control-preserve-tail-recursion
+@c @findex --no-loop-control-preserve-tail-recursion
+@c Do not attempt to preserve tail recursion in the loop control transformation.
+@c This option causes all code spawned off using loop control to access it's
+@c parent stack frame through the parent stack pointer.
+@c Rather than copying (parts) of the stack frame into the child's stack frame and
+@c reading it from there.
+@c This allows us to compare the cost of copying the stack frame with the cost of
+@c non tail recursive code.
+@c It is intended for developers only.
+
 @end table
 
 @node Target code compilation options
@@ -10082,6 +10103,14 @@ can consume excess memory.
 This only has an effect if the executable was built in a low-level C parallel
 grade.
 
+@c @sp 1
+@c @item --num-contexts-per-lc-per-thread @var{num}
+@c @findex --num-contexts-per-lc-per-thread (runtime option)
+@c Tells the runtime system to use @var{num} contexts per POSIX thread to handle
+@c each loop controlled loop.
+@c This only has an effect if the executable was built in a low-level C parallel
+@c grade.
+@c
 @c @sp 1
 @c @item --runtime-granularity-wsdeque-length-factor @var{factor}
 @c @findex --runtime-granularity-wsdeque-length-factor (runtime option)
