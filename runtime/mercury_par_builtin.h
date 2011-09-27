@@ -302,15 +302,24 @@ struct MR_LoopControlSlot_Struct
 
 struct MR_LoopControl_Struct
 {
-    unsigned                                MR_lc_num_slots;
-    MR_LoopControlSlot                      MR_lc_slots[1];
     /* Outstanding workers is manipulated with atomic instructions */
     MR_THREADSAFE_VOLATILE MR_Integer       MR_lc_outstanding_workers;
+
     /* This lock protects only the next field */
     MR_THREADSAFE_VOLATILE MR_Us_Lock       MR_lc_master_context_lock;
     MR_Context                              *MR_lc_master_context;
+
     /* Unused atm */
     MR_THREADSAFE_VOLATILE MR_bool          MR_lc_finished;
+
+    /*
+    ** MR_lc_slots MUST be the last field, since in practice, we treat
+    ** the array as having as many slots as we need, adding the size of
+    ** all the elements except the first to sizeof(MR_LoopControl) when
+    ** we allocate memory for the structure.
+    */
+    unsigned                                MR_lc_num_slots;
+    MR_LoopControlSlot                      MR_lc_slots[1];
 };
 
 #else
@@ -347,8 +356,8 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
         (lc)->MR_lc_finished = MR_TRUE;                                     \
         /*                                                                  \
         ** This barrier ensures that MR_lc_finished has been set to MR_TRUE \
-        ** before we read MR_lc_outstanding_contexts.
-        ** it works with another barrier in     \
+        ** before we read MR_lc_outstanding_contexts.                       \
+        ** it works with another barrier in                                 \
         ** MR_lc_join_and_terminate().  See MR_lc_join_and_terminate().     \
         */                                                                  \
         MR_CPU_MFENCE;                                                      \
@@ -394,7 +403,7 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
 **
 ** Deprecated: this was part of our old loop control design.
 */
-extern MR_LoopControlSlot* MR_lc_try_get_free_slot(MR_LoopControl* lc);
+extern MR_LoopControlSlot   *MR_lc_try_get_free_slot(MR_LoopControl *lc);
 
 /*
 ** Get a free slot in the loop control, or block until one is available.
@@ -406,17 +415,17 @@ extern MR_LoopControlSlot* MR_lc_try_get_free_slot(MR_LoopControl* lc);
         if ((lc)->MR_lc_outstanding_workers == (lc)->MR_lc_num_slots) {     \
             MR_US_SPIN_LOCK(&((lc)->MR_lc_master_context_lock));            \
             /*                                                              \
-            ** Re-check outstanding workers while holding the lock.  This   \
-            ** ensures that we only commit to sleeping while holding the    \
-            ** lock, But if there were a worker available we wouldn't need   \
-            ** to take the lock at all.                                     \
+            ** Re-check outstanding workers while holding the lock.         \
+            ** This ensures that we only commit to sleeping while holding   \
+            ** the lock. But if there were a worker available, we would not \
+            ** need to take the lock at all.                                \
             */                                                              \
             if ((lc)->MR_lc_outstanding_workers == (lc)->MR_lc_num_slots) { \
                 MR_Context *ctxt;                                           \
                                                                             \
                 /*                                                          \
-                ** Block this context and have it retry once it's           \
-                ** unblocked                                                \
+                ** Block this context, and have it retry once it is         \
+                ** unblocked.                                               \
                 */                                                          \
                 ctxt = MR_ENGINE(MR_eng_this_context);                      \
                 (lc)->MR_lc_master_context = ctxt;                          \
@@ -431,7 +440,7 @@ extern MR_LoopControlSlot* MR_lc_try_get_free_slot(MR_LoopControl* lc);
         }                                                                   \
                                                                             \
         /*                                                                  \
-        ** Optimize this by using a hint to start the search at.            \
+        ** XXX Optimize this by using a hint to start the search at.        \
         */                                                                  \
         for (i = 0; i<(lc)->MR_lc_num_slots; i++) {                         \
             if ((lc)->MR_lc_slots[i].MR_lcs_is_free) {                      \
@@ -446,6 +455,7 @@ extern MR_LoopControlSlot* MR_lc_try_get_free_slot(MR_LoopControl* lc);
         ** Since only one context can ever run MR_lc_wait_free_slot then we \
         ** can never fail to find a since outstanding workers can never be  \
         ** incremented by another engine.                                   \
+        ** XXX This comment is so mangled it does not make sense.           \
         */                                                                  \
         MR_fatal_error("No free slot found in loop control");               \
     } while (0);
@@ -456,7 +466,7 @@ extern MR_LoopControlSlot* MR_lc_try_get_free_slot(MR_LoopControl* lc);
 #define MR_lc_spawn_off(lcs, label) \
     MR_lc_spawn_off_func((lcs), MR_LABEL(MR_add_prefix(label)))
 
-extern void MR_lc_spawn_off_func(MR_LoopControlSlot* lcs, MR_Code* code_ptr);
+extern void MR_lc_spawn_off_func(MR_LoopControlSlot *lcs, MR_Code *code_ptr);
 
 /*
 ** Join and terminate a worker.
@@ -467,7 +477,7 @@ extern void MR_lc_spawn_off_func(MR_LoopControlSlot* lcs, MR_Code* code_ptr);
                                                                             \
         /*                                                                  \
         ** Termination of this context must be handled in a macro so that   \
-        ** C's stack pointer is set correctly.  It might appear that we     \
+        ** C's stack pointer is set correctly. It might appear that we      \
         ** don't need to save the context since it doesn't hold a           \
         ** computation, but we do so that we save bookkeeping information.  \
         ** A similar mistake was the cause of a hard-to-diagnose bug in     \
@@ -480,10 +490,10 @@ extern void MR_lc_spawn_off_func(MR_LoopControlSlot* lcs, MR_Code* code_ptr);
     } while (0);
 
 /*
-** Join a worker context with the main thread.  Termination of the context
+** Join a worker context with the main thread. Termination of the context
 ** is handled in the macro above.
 */
-extern void MR_lc_join(MR_LoopControl* lc, MR_LoopControlSlot* lcs);
+extern void MR_lc_join(MR_LoopControl *lc, MR_LoopControlSlot *lcs);
 
 #endif /* MR_THREAD_SAFE && MR_LL_PARALLEL_CONJ */
 

@@ -278,13 +278,6 @@
 :- pred create_conj(hlds_goal::in, hlds_goal::in, conj_type::in,
     hlds_goal::out) is det.
 
-    % expand_plain_conj(Goal, Goals).
-    %
-    % If Goal represents a plain conjunction then Goals are its conjuncts,
-    % otherwise Goals is a singleton list containing Goal.
-    %
-:- pred expand_plain_conj(hlds_goal::in, list(hlds_goal)::out) is det.
-
     % can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
     %   InstmapBeforeGoal1, Goal1, InstmapBeforeGoal2, Goal2).
     %
@@ -1482,16 +1475,6 @@ create_conj_from_list(Conjuncts, ConjType, ConjGoal) :-
     ;
         Conjuncts = [],
         unexpected($module, $pred, "empty conjunction")
-    ).
-
-%-----------------------------------------------------------------------------%
-
-expand_plain_conj(Goal, Conjs) :-
-    Goal = hlds_goal(GoalExpr, _),
-    ( GoalExpr = conj(plain_conj, ConjsPrime) ->
-        Conjs = ConjsPrime
-    ;
-        Conjs = [Goal]
     ).
 
 %-----------------------------------------------------------------------------%

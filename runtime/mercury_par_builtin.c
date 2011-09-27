@@ -43,7 +43,7 @@ MR_finalize_future(void *obj, void *cd)
 MR_LoopControl *
 MR_lc_create(unsigned num_workers)
 {
-    MR_LoopControl* lc;
+    MR_LoopControl  *lc;
     unsigned        i;
 
     lc = MR_GC_malloc(sizeof(MR_LoopControl) +
@@ -52,8 +52,10 @@ MR_lc_create(unsigned num_workers)
     for (i = 0; i < num_workers; i++) {
         /*
         ** We allocate contexts as necessary, so that we never allocate a
-        ** context we don't use.  Also by delaying the allocation of contexts
+        ** context we don't use. Also, by delaying the allocation of contexts,
         ** all but the first may execute in parallel with one-another.
+        ** XXX I (zs) do not understand how the first half of the previous
+        ** sentence implies the seconf half; I don't think it does.
         */
         lc->MR_lc_slots[i].MR_lcs_context = NULL;
         lc->MR_lc_slots[i].MR_lcs_is_free = MR_TRUE;
@@ -70,7 +72,7 @@ MR_lc_create(unsigned num_workers)
 ** Deprecated, this was part of our old loop control design.
 */
 MR_LoopControlSlot *
-MR_lc_try_get_free_slot(MR_LoopControl* lc)
+MR_lc_try_get_free_slot(MR_LoopControl *lc)
 {
     if (lc->MR_lc_outstanding_workers == lc->MR_lc_num_slots) {
         return NULL;
@@ -78,7 +80,7 @@ MR_lc_try_get_free_slot(MR_LoopControl* lc)
         unsigned i;
 
         /*
-        ** Optimize this by using a hint to start the search at.
+        ** XXX Optimize this by using a hint to start the search at.
         */
         for (i = 0; i<lc->MR_lc_num_slots; i++) {
             if (lc->MR_lc_slots[i].MR_lcs_is_free) {
@@ -93,7 +95,7 @@ MR_lc_try_get_free_slot(MR_LoopControl* lc)
 }
 
 void
-MR_lc_spawn_off_func(MR_LoopControlSlot* lcs, MR_Code* code_ptr)
+MR_lc_spawn_off_func(MR_LoopControlSlot *lcs, MR_Code *code_ptr)
 {
     if (lcs->MR_lcs_context == NULL) {
         /*
@@ -111,7 +113,7 @@ MR_lc_spawn_off_func(MR_LoopControlSlot* lcs, MR_Code* code_ptr)
 }
 
 void
-MR_lc_join(MR_LoopControl* lc, MR_LoopControlSlot* lcs)
+MR_lc_join(MR_LoopControl *lc, MR_LoopControlSlot *lcs)
 {
     MR_bool     last_worker;
     MR_Context  *wakeup_context;
@@ -123,13 +125,13 @@ MR_lc_join(MR_LoopControl* lc, MR_LoopControlSlot* lcs)
         MR_atomic_dec_and_is_zero_int(&(lc->MR_lc_outstanding_workers));
 
     /*
-    ** If the master thread is suspended wake it up, provided that
-    ** either: The loop has finished and this is the last worker to exit.
-    **         The loop has not finished (so the master can create more work).
+    ** If the master thread is suspended, wake it up, provided that either:
+    ** - the loop has finished and this is the last worker to exit, or
+    ** - the loop has not finished (so the master can create more work).
     */
-    if (lc->MR_lc_master_context &&
-        ((lc->MR_lc_finished && last_worker) ||
-         (!lc->MR_lc_finished))) {
+    if ((lc->MR_lc_master_context != NULL) &&
+        ((lc->MR_lc_finished && last_worker) || (!lc->MR_lc_finished)))
+    {
         /*
         ** Now take a lock and re-read the master context field.
         */

@@ -777,7 +777,7 @@ par_conj_loop_control(Info, [LastConj0 | RevConjs], GoalInfo, Goal, !VarSet,
         !VarTypes) :-
     % Re-write the recursive call in the last conjunct.
     goal_rewrite_recursive_call(Info, LastConj0, LastConj, _),
-    expand_plain_conj(LastConj, LastConjGoals),
+    goal_to_conj_list(LastConj, LastConjGoals),
 
     % Process the remaining conjuncts, building up the nested set of ITEs from
     % inside to outside.
