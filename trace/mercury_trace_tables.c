@@ -1846,6 +1846,17 @@ MR_label_layout_stats(FILE *fp)
     MR_TracePort                port;
     int                         total;
     int                         histogram[MR_PORT_NUM_PORTS];
+    int                         var_count_neg;
+    int                         var_count_zero;
+    int                         var_count_pos;
+    int                         var_count_total;
+    int                         no_long;
+    int                         some_long;
+    int                         long_total;
+
+    var_count_neg  = 0;
+    var_count_zero = 0;
+    var_count_pos  = 0;
 
     total = 0;
     for (port = 0; port < MR_PORT_NUM_PORTS; port++) {
@@ -1873,6 +1884,20 @@ MR_label_layout_stats(FILE *fp)
                 {
                     histogram[label_layout->MR_sll_port]++;
                 }
+
+                if (label_layout->MR_sll_var_count < 0) {
+                    var_count_neg++;
+                } else if (label_layout->MR_sll_var_count == 0) {
+                    var_count_zero++;
+                } else {
+                    var_count_pos++;
+                }
+
+                if (MR_long_desc_var_count(label_layout) > 0) {
+                    some_long++;
+                } else {
+                    no_long++;
+                }
             }
         }
     }
@@ -1881,7 +1906,21 @@ MR_label_layout_stats(FILE *fp)
         fprintf(fp, "%4s %10d (%5.2f%%)\n", MR_actual_port_names[port],
             histogram[port], ((float) 100 * histogram[port]) / total);
     }
-    fprintf(fp, "%s %10d\n", "all ", total);
+    fprintf(fp, "%s %10d\n\n", "all ", total);
+
+    var_count_total = var_count_neg + var_count_zero + var_count_pos;
+    fprintf(fp, "var_count <0: %6d (%5.2f)\n",
+        var_count_neg, (float) var_count_neg / (float) var_count_total);
+    fprintf(fp, "var_count =0: %6d (%5.2f)\n",
+        var_count_zero, (float) var_count_zero / (float) var_count_total);
+    fprintf(fp, "var_count >0: %6d (%5.2f)\n\n",
+        var_count_pos, (float) var_count_pos / (float) var_count_total);
+
+    long_total = no_long + some_long;
+    fprintf(fp, "no long:      %6d (%5.2f)\n",
+        no_long, (float) no_long / (float) long_total);
+    fprintf(fp, "some long:    %6d (%5.2f)\n\n",
+        some_long, (float) some_long / (float) long_total);
 }
 
 void
