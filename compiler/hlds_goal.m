@@ -729,7 +729,7 @@
                 rhs_eval_method     :: lambda_eval_method,
 
                 % Non-locals of the goal excluding the lambda quantified
-                % variables.
+                % variables, in no particular order.
                 rhs_nonlocals       :: list(prog_var),
 
                 % Lambda quantified variables.
