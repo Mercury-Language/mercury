@@ -1360,6 +1360,10 @@ MR_trace_same_construct(const char *p1, const char *p2)
     ** If both strings are identical up to the last component, return MR_TRUE,
     ** otherwise return MR_FALSE. If the arguments point to identical strings,
     ** return MR_TRUE.
+    **
+    ** See the comment on the MR_sll_path field in
+    ** runtime/mercury_stack_layout.h for a possible way to do this test
+    ** in linear time, and why we currently do not do it that way.
     */
 
     while (*p1 == *p2) {

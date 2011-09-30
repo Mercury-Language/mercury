@@ -377,6 +377,33 @@ struct MR_UserEventSpec_Struct {
 ** MR_label_goal_path to convert the value in the MR_sll_goal_path field to a
 ** string.
 **
+** A possible alternative would be to represent goal paths using statically
+** allocated terms of the reverse_goal_path type. An almost-complete diff
+** making that change was posted to the mercury-reviews mailing list on
+** 30 Sep 2011, but it was not committed, since it lead to a 4% *increase*
+** in the size of asm_fast.gc.debug executables. Even though different goal
+** paths that share a tail (the part of the path near the root) with the
+** static reverse_goal_path term representation but not with the string
+** representation, the string representation is so much more compact
+** (usually taking 4 to 6 bytes for most steps) than the Mercury term
+** representation (1 to 4 words for a step, plus 2 words for the rgp_cons,
+** totalling at least 24 bytes per step on 64 bit systems), that the string
+** representation is significantly more compact overall. The Mercury term
+** representation does have the potential to speed up the implementation of
+** the operations in the declarative debugger that need to test whether
+** two goal paths represent two different direct components of the same parent
+** goal. If the two different goal paths are represented as reverse_goal_paths,
+** then doing this test on RGPA and RGPB simply requires the test
+**
+**      RGPA = rgp_cons(ParentRGPA, StepA),
+**      RGPB = rgp_cons(ParentRGPB, StepB),
+**      ParentRGPA = ParentRGPB
+**
+** and the last step can be done by a pointer comparison. This test can be done
+** in constant time, whereas the current implementation of the same test
+** (the function MR_trace_same_construct in trace/mercury_trace_declarative.c)
+** works in linear time.
+**
 ** If the label is the label of a user-defined event, then the
 ** MR_sll_user_event field will point to information about the user event;
 ** otherwise, the field will be NULL.
