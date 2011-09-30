@@ -208,6 +208,25 @@ output_record_instr_decls(Info, Instr, !DeclSet, !IO) :-
         Instr = join_and_continue(Lval, Label),
         output_record_lval_decls(Info, Lval, !DeclSet, !IO),
         output_record_code_addr_decls(Info, code_label(Label), !DeclSet, !IO)
+    ;
+        Instr = lc_create_loop_control(_, LCLval),
+        output_record_lval_decls(Info, LCLval, !DeclSet, !IO)
+    ;
+        Instr = lc_wait_free_slot(LCRval, LCSLval, InternalLabel),
+        output_record_rval_decls(Info, LCRval, !DeclSet, !IO),
+        output_record_lval_decls(Info, LCSLval, !DeclSet, !IO),
+        output_record_code_addr_decls(Info, code_label(InternalLabel),
+            !DeclSet, !IO)
+    ;
+        Instr = lc_spawn_off(LCRval, LCSRval, ChildLabel),
+        output_record_rval_decls(Info, LCRval, !DeclSet, !IO),
+        output_record_rval_decls(Info, LCSRval, !DeclSet, !IO),
+        output_record_code_addr_decls(Info, code_label(ChildLabel),
+            !DeclSet, !IO)
+    ;
+        Instr = lc_join_and_terminate(LCRval, LCSRval),
+        output_record_rval_decls(Info, LCRval, !DeclSet, !IO),
+        output_record_rval_decls(Info, LCSRval, !DeclSet, !IO)
     ).
 
 :- pred output_record_foreign_proc_component_decls(llds_out_info::in,
@@ -898,6 +917,42 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
         output_lval(Info, Lval, !IO),
         io.write_string(", ", !IO),
         output_label_as_code_addr(Label, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = lc_create_loop_control(NumSlots, Lval),
+        % XXX placeholder for pbone to fill in
+        io.write_string("\tMR_lc_create_loop_control(", !IO),
+        io.write_int(NumSlots, !IO),
+        io.write_string(", ", !IO),
+        output_lval(Info, Lval, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = lc_wait_free_slot(LCRval, LCSLval, InternalLabel),
+        % XXX placeholder for pbone to fill in
+        io.write_string("\tMR_lc_wait_free_slot(", !IO),
+        output_rval(Info, LCRval, !IO),
+        io.write_string(", ", !IO),
+        output_lval(Info, LCSLval, !IO),
+        io.write_string(", ", !IO),
+        output_label(InternalLabel, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = lc_spawn_off(LCRval, LCSRval, ChildLabel),
+        % XXX placeholder for pbone to fill in
+        io.write_string("\tMR_lc_spawn_off(", !IO),
+        output_rval(Info, LCRval, !IO),
+        io.write_string(", ", !IO),
+        output_rval(Info, LCSRval, !IO),
+        io.write_string(", ", !IO),
+        output_label(ChildLabel, !IO),
+        io.write_string(");\n", !IO)
+    ;
+        Instr = lc_join_and_terminate(LCRval, LCSRval),
+        % XXX placeholder for pbone to fill in
+        io.write_string("\tMR_lc_join_and_terminate(", !IO),
+        output_rval(Info, LCRval, !IO),
+        io.write_string(", ", !IO),
+        output_rval(Info, LCSRval, !IO),
         io.write_string(");\n", !IO)
     ).
 

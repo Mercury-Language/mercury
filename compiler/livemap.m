@@ -51,6 +51,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+build_livemap(Instrs, MaybeLivemap) :-
     % The method we follow is a backward scan of the instruction list,
     % keeping track of the set of live lvals as we go. We update this set
     % at each instruction. When we get to a label, we know that this set
@@ -59,11 +60,10 @@
     % At instructions that can branch away, every lval that is live at
     % any possible target is live before that instruction. Since some
     % branches may be backward branches, we may not have seen the branch
-    % target when we process the branch. Therefore we have to repeat the
-    % scan, this time with more knowledge about more labels, until we
-    % get to a fixpoint.
+    % target when we process the branch. Therefore we have to repeat the scan,
+    % this time with more knowledge about more labels, until we get to
+    % a fixpoint.
 
-build_livemap(Instrs, MaybeLivemap) :-
     map.init(Livemap0),
     list.reverse(Instrs, BackInstrs),
     build_livemap_fixpoint(BackInstrs, Livemap0, 0, MaybeLivemap).
@@ -71,9 +71,9 @@ build_livemap(Instrs, MaybeLivemap) :-
 :- pred build_livemap_fixpoint(list(instruction)::in, livemap::in, int::in,
     maybe(livemap)::out) is det.
 
-build_livemap_fixpoint(Backinstrs, Livemap0, CurIteration, MaybeLivemap) :-
+build_livemap_fixpoint(BackInstrs, Livemap0, CurIteration, MaybeLivemap) :-
     set.init(Livevals0),
-    livemap_do_build(Backinstrs, Livevals0, no, ContainsBadUserCode,
+    livemap_do_build(BackInstrs, Livevals0, no, ContainsBadUserCode,
         Livemap0, Livemap1),
     (
         ContainsBadUserCode = yes,
@@ -84,7 +84,7 @@ build_livemap_fixpoint(Backinstrs, Livemap0, CurIteration, MaybeLivemap) :-
             MaybeLivemap = yes(Livemap1)
         ;
             ( CurIteration < livemap_iteration_limit ->
-                build_livemap_fixpoint(Backinstrs, Livemap1, CurIteration + 1,
+                build_livemap_fixpoint(BackInstrs, Livemap1, CurIteration + 1,
                     MaybeLivemap)
             ;
                 MaybeLivemap = no
@@ -169,6 +169,24 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         set.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals([Rval | Rvals], !Livevals)
+    ;
+        Uinstr0 = lc_create_loop_control(_NumSlots, Lval),
+        set.delete(Lval, !Livevals)
+    ;
+        Uinstr0 = lc_wait_free_slot(LCRval, LCSLval, _InternalLabel),
+        set.delete(LCSLval, !Livevals),
+        opt_util.lval_access_rvals(LCSLval, LCSAccessRvals),
+        livemap.make_live_in_rvals([LCRval | LCSAccessRvals], !Livevals)
+    ;
+        Uinstr0 = lc_spawn_off(LCRval, LCSRval, Child),
+        livemap.make_live_in_rvals([LCRval, LCSRval], !Livevals),
+        % Everything that is live at Child is live before this instruction.
+        livemap_insert_label_livevals(!.Livemap, Child, !Livevals)
+    ;
+        Uinstr0 = lc_join_and_terminate(LCRval, LCSRval),
+        % Since this instruction terminates its context, nothing is live
+        % before it except its arguments and their components.
+        livemap.make_live_in_rvals([LCRval, LCSRval], set.init, !:Livevals)
     ;
         Uinstr0 = llcall(_, _, _, _, _, _),
         livemap.look_for_livevals(!Instrs, !Livevals, "call", yes, _)

@@ -441,6 +441,25 @@ standardize_instr(Instr0, Instr) :-
         standardize_lval(Lval0, Lval),
         Instr = join_and_continue(Lval, Label)
     ;
+        Instr0 = lc_create_loop_control(NumSlots, Lval0),
+        standardize_lval(Lval0, Lval),
+        Instr = lc_create_loop_control(NumSlots, Lval)
+    ;
+        Instr0 = lc_wait_free_slot(Rval0, Lval0, Label),
+        standardize_rval(Rval0, Rval),
+        standardize_lval(Lval0, Lval),
+        Instr = lc_wait_free_slot(Rval, Lval, Label)
+    ;
+        Instr0 = lc_spawn_off(LCRval0, LCSRval0, Label),
+        standardize_rval(LCRval0, LCRval),
+        standardize_rval(LCSRval0, LCSRval),
+        Instr = lc_spawn_off(LCRval, LCSRval, Label)
+    ;
+        Instr0 = lc_join_and_terminate(LCRval0, LCSRval0),
+        standardize_rval(LCRval0, LCRval),
+        standardize_rval(LCSRval0, LCSRval),
+        Instr = lc_join_and_terminate(LCRval, LCSRval)
+    ;
         ( Instr0 = comment(_)
         ; Instr0 = livevals(_)
         ; Instr0 = block(_, _, _)
@@ -826,6 +845,49 @@ most_specific_instr(InstrA, InstrB, MaybeInstr) :-
             most_specific_rval(RvalA, RvalB, Rval)
         ->
             MaybeInstr = yes(prune_tickets_to(Rval))
+        ;
+            MaybeInstr = no
+        )
+    ;
+        InstrA = lc_create_loop_control(NumSlots, LvalA),
+        (
+            InstrB = lc_create_loop_control(NumSlots, LvalB),
+            most_specific_lval(LvalA, LvalB, Lval)
+        ->
+            MaybeInstr = yes(lc_create_loop_control(NumSlots, Lval))
+        ;
+            MaybeInstr = no
+        )
+    ;
+        InstrA = lc_wait_free_slot(RvalA, LvalA, Label),
+        (
+            InstrB = lc_wait_free_slot(RvalB, LvalB, Label),
+            most_specific_rval(RvalA, RvalB, Rval),
+            most_specific_lval(LvalA, LvalB, Lval)
+        ->
+            MaybeInstr = yes(lc_wait_free_slot(Rval, Lval, Label))
+        ;
+            MaybeInstr = no
+        )
+    ;
+        InstrA = lc_spawn_off(LCRvalA, LCSRvalA, Label),
+        (
+            InstrB = lc_spawn_off(LCRvalB, LCSRvalB, Label),
+            most_specific_rval(LCRvalA, LCRvalB, LCRval),
+            most_specific_rval(LCSRvalA, LCSRvalB, LCSRval)
+        ->
+            MaybeInstr = yes(lc_spawn_off(LCRval, LCSRval, Label))
+        ;
+            MaybeInstr = no
+        )
+    ;
+        InstrA = lc_join_and_terminate(LCRvalA, LCSRvalA),
+        (
+            InstrB = lc_join_and_terminate(LCRvalB, LCSRvalB),
+            most_specific_rval(LCRvalA, LCRvalB, LCRval),
+            most_specific_rval(LCSRvalA, LCSRvalB, LCSRval)
+        ->
+            MaybeInstr = yes(lc_join_and_terminate(LCRval, LCSRval))
         ;
             MaybeInstr = no
         )

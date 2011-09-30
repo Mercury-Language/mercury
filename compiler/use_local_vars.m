@@ -599,16 +599,40 @@ substitute_lval_in_instr_until_defn(OldLval, NewLval,
 :- pred substitute_lval_in_instr_until_defn_2(lval::in, lval::in,
     instruction::in, instruction::out,
     list(instruction)::in, list(instruction)::out, int::in, int::out) is det.
+:- pragma inline(substitute_lval_in_instr_until_defn_2/8).
 
 substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
-    !.Instr = llds_instr(Uinstr0, _),
+    !.Instr = llds_instr(Uinstr0, Comment),
     (
         Uinstr0 = block(_, _, _),
         unexpected($module, $pred, "block")
     ;
-        Uinstr0 = assign(Lval, _),
+        Uinstr0 = assign(Lval, Rval0),
         ( assignment_updates_oldlval(Lval, OldLval) = yes ->
-            % XXX we should still substitute on the rhs
+            % If we alter any lval that occurs in OldLval, we must stop
+            % the substitutions.
+            exprn_aux.substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval),
+            Uinstr = assign(Lval, Rval),
+            !:Instr = llds_instr(Uinstr, Comment)
+        ;
+            exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
+            substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
+        )
+    ;
+        Uinstr0 = keep_assign(_, _),
+        ( assignment_updates_oldlval(Lval, OldLval) = yes ->
+            % If we alter any lval that occurs in OldLval, we must stop
+            % the substitutions.
+            exprn_aux.substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval),
+            Uinstr = keep_assign(Lval, Rval),
+            !:Instr = llds_instr(Uinstr, Comment)
+        ;
+            exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
+            substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
+        )
+    ;
+        Uinstr0 = lc_create_loop_control(_NumSlots, Lval),
+        ( assignment_updates_oldlval(Lval, OldLval) = yes ->
             % If we alter any lval that occurs in OldLval, we must stop
             % the substitutions.
             true
@@ -617,8 +641,17 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
             substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
         )
     ;
-        Uinstr0 = keep_assign(_, _),
-        exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N)
+        Uinstr0 = lc_wait_free_slot(Rval0, Lval, Label),
+        ( assignment_updates_oldlval(Lval, OldLval) = yes ->
+            % If we alter any lval that occurs in OldLval, we must stop
+            % the substitutions.
+            exprn_aux.substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval),
+            Uinstr = lc_wait_free_slot(Rval, Lval, Label),
+            !:Instr = llds_instr(Uinstr, Comment)
+        ;
+            exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
+            substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
+        )
     ;
         ( Uinstr0 = incr_hp(Lval, _, _, _, _, _, _, _)
         ; Uinstr0 = save_maxfr(Lval)
@@ -652,6 +685,8 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
         ; Uinstr0 = push_region_frame(_, _)
         ; Uinstr0 = region_set_fixed_slot(_, _, _)
         ; Uinstr0 = use_and_maybe_pop_region_frame(_, _)
+        ; Uinstr0 = lc_spawn_off(_, _, _)
+        ; Uinstr0 = lc_join_and_terminate(_, _)
         ),
         exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
         substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)

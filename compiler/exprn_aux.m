@@ -417,6 +417,25 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
         Uinstr0 = join_and_continue(Lval0, Label),
         Transform(Lval0, Lval, !Acc),
         Uinstr = join_and_continue(Lval, Label)
+    ;
+        Uinstr0 = lc_create_loop_control(NumSlots, Lval0),
+        Transform(Lval0, Lval, !Acc),
+        Uinstr = lc_create_loop_control(NumSlots, Lval)
+    ;
+        Uinstr0 = lc_wait_free_slot(LCRval0, LCSLval0, Label),
+        transform_lval_in_rval(Transform, LCRval0, LCRval, !Acc),
+        Transform(LCSLval0, LCSLval, !Acc),
+        Uinstr = lc_wait_free_slot(LCRval, LCSLval, Label)
+    ;
+        Uinstr0 = lc_spawn_off(LCRval0, LCSRval0, Label),
+        transform_lval_in_rval(Transform, LCRval0, LCRval, !Acc),
+        transform_lval_in_rval(Transform, LCSRval0, LCSRval, !Acc),
+        Uinstr = lc_spawn_off(LCRval, LCSRval, Label)
+    ;
+        Uinstr0 = lc_join_and_terminate(LCRval0, LCSRval0),
+        transform_lval_in_rval(Transform, LCRval0, LCRval, !Acc),
+        transform_lval_in_rval(Transform, LCSRval0, LCSRval, !Acc),
+        Uinstr = lc_join_and_terminate(LCRval, LCSRval)
     ).
 
 :- pred transform_lval_in_component(transform_lval(T)::in(transform_lval),

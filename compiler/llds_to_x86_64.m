@@ -183,254 +183,302 @@ transform_livevals(!.RegMap, [Lval | Lvals], [Instr | Instrs]) :-
 :- pred instr_to_x86_64(reg_map::in, reg_map::out,
     instr::in, list(x86_64_instr)::out) is det.
 
-instr_to_x86_64(!RegMap, comment(Comment), [x86_64_comment(Comment)]).
-instr_to_x86_64(!RegMap, livevals(RegsAndStackLocs), Instrs) :-
-    set.to_sorted_list(RegsAndStackLocs, List),
-    transform_livevals(!.RegMap, List, Instrs).
-instr_to_x86_64(!RegMap, block(_, _, CInstrs), Instrs) :-
-    transform_block_instr(!.RegMap, CInstrs, Instrs).
-instr_to_x86_64(!RegMap, Op, Instrs) :-
-    ( Op = assign(Lval, Rval)
-    ; Op = keep_assign(Lval, Rval)
-    ),
-    transform_lval(!RegMap, Lval, Res0, Res1),
-    transform_rval(!RegMap, Rval, Res2, Res3),
+instr_to_x86_64(!RegMap, Uinstr, Instrs) :-
     (
-        Res0 = yes(LvalOp),
-        (
-            Res2 = yes(RvalOp),
-            Instrs = [x86_64_instr(mov(RvalOp, LvalOp))]
-        ;
-            Res2 = no,
-            (
-                Res3 = yes(RvalInstrs),
-                get_last_instr_operand(RvalInstrs, LastOp),
-                LastInstr = x86_64_instr(mov(LastOp, LvalOp)),
-                Instrs = RvalInstrs ++ [LastInstr]
-            ;
-                Res3 = no,
-                unexpected($module, $pred, "assign: unexpected: Rval")
-            )
-        )
+        Uinstr = comment(Comment),
+        Instrs = [x86_64_comment(Comment)]
     ;
-        Res0 = no,
+        Uinstr = livevals(RegsAndStackLocs),
+        set.to_sorted_list(RegsAndStackLocs, List),
+        transform_livevals(!.RegMap, List, Instrs)
+    ;
+        Uinstr = block(_, _, CInstrs),
+        transform_block_instr(!.RegMap, CInstrs, Instrs)
+    ;
+        ( Uinstr = assign(Lval, Rval)
+        ; Uinstr = keep_assign(Lval, Rval)
+        ),
+        transform_lval(!RegMap, Lval, Res0, Res1),
+        transform_rval(!RegMap, Rval, Res2, Res3),
         (
-            Res1 = yes(LvalInstrs),
-            get_last_instr_operand(LvalInstrs, LvalLastOp),
+            Res0 = yes(LvalOp),
             (
                 Res2 = yes(RvalOp),
-                Instr1 = x86_64_instr(mov(RvalOp, LvalLastOp)),
-                Instrs = LvalInstrs ++ [Instr1]
+                Instrs = [x86_64_instr(mov(RvalOp, LvalOp))]
             ;
                 Res2 = no,
                 (
                     Res3 = yes(RvalInstrs),
-                    get_last_instr_operand(RvalInstrs, RvalLastOp),
-                    Instr1 = x86_64_instr(mov(RvalLastOp, LvalLastOp)),
-                    Instrs = LvalInstrs ++ RvalInstrs ++ [Instr1]
+                    get_last_instr_operand(RvalInstrs, LastOp),
+                    LastInstr = x86_64_instr(mov(LastOp, LvalOp)),
+                    Instrs = RvalInstrs ++ [LastInstr]
                 ;
                     Res3 = no,
                     unexpected($module, $pred, "assign: unexpected: Rval")
                 )
             )
         ;
-            Res1 = no,
-            unexpected($module, $pred, "assign: unexpected: Lval")
+            Res0 = no,
+            (
+                Res1 = yes(LvalInstrs),
+                get_last_instr_operand(LvalInstrs, LvalLastOp),
+                (
+                    Res2 = yes(RvalOp),
+                    Instr1 = x86_64_instr(mov(RvalOp, LvalLastOp)),
+                    Instrs = LvalInstrs ++ [Instr1]
+                ;
+                    Res2 = no,
+                    (
+                        Res3 = yes(RvalInstrs),
+                        get_last_instr_operand(RvalInstrs, RvalLastOp),
+                        Instr1 = x86_64_instr(mov(RvalLastOp, LvalLastOp)),
+                        Instrs = LvalInstrs ++ RvalInstrs ++ [Instr1]
+                    ;
+                        Res3 = no,
+                        unexpected($module, $pred, "assign: unexpected: Rval")
+                    )
+                )
+            ;
+                Res1 = no,
+                unexpected($module, $pred, "assign: unexpected: Lval")
+            )
         )
-    ).
-instr_to_x86_64(!RegMap, llcall(Target0, Continuation0, _, _, _, _), Instrs) :-
-    code_addr_type(Target0, Target1),
-    code_addr_type(Continuation0, Continuation1),
-    lval_reg_locn(!.RegMap, succip, Op0, Instr0),
-    ll_backend.x86_64_regs.reg_map_remove_scratch_reg(!RegMap),
-    (
-        Op0 = yes(Op)
     ;
-        Op0 = no,
+        Uinstr = llcall(Target0, Continuation0, _, _, _, _),
+        code_addr_type(Target0, Target1),
+        code_addr_type(Continuation0, Continuation1),
+        lval_reg_locn(!.RegMap, succip, Op0, Instr0),
+        ll_backend.x86_64_regs.reg_map_remove_scratch_reg(!RegMap),
         (
-            Instr0 = yes(Instr),
-            get_last_instr_operand(Instr, Op)
+            Op0 = yes(Op)
         ;
-            Instr0 = no,
-            unexpected($module, $pred, "llcall: lval_reg_locn failed")
-        )
-    ),
-    Instr1 = x86_64_instr(mov(operand_label(Continuation1), Op)),
-    Instr2 = x86_64_instr(jmp(operand_label(Target1))),
-    Instrs = [Instr1, Instr2].
-instr_to_x86_64(!RegMap, mkframe(_, _), [x86_64_comment("<<mkframe>>")]).
-instr_to_x86_64(!RegMap, label(Label), Instrs) :-
-    LabelStr = label_to_c_string(Label, no),
-    Instrs = [x86_64_label(LabelStr)].
-instr_to_x86_64(!RegMap, goto(CodeAddr), Instrs) :-
-    code_addr_type(CodeAddr, Label),
-    Instrs = [x86_64_instr(jmp(operand_label(Label)))].
-instr_to_x86_64(!RegMap, computed_goto(Rval, Labels), Instrs) :-
-    transform_rval(!RegMap, Rval, Res0, Res1),
-    (
-        Res0 = yes(RvalOp),
-        RvalInstrs = []
+            Op0 = no,
+            (
+                Instr0 = yes(Instr),
+                get_last_instr_operand(Instr, Op)
+            ;
+                Instr0 = no,
+                unexpected($module, $pred, "llcall: lval_reg_locn failed")
+            )
+        ),
+        Instr1 = x86_64_instr(mov(operand_label(Continuation1), Op)),
+        Instr2 = x86_64_instr(jmp(operand_label(Target1))),
+        Instrs = [Instr1, Instr2]
     ;
-        Res0 = no,
+        Uinstr = mkframe(_, _),
+        Instrs = [x86_64_comment("<<mkframe>>")]
+    ;
+        Uinstr = label(Label),
+        LabelStr = label_to_c_string(Label, no),
+        Instrs = [x86_64_label(LabelStr)]
+    ;
+        Uinstr = goto(CodeAddr),
+        code_addr_type(CodeAddr, Label),
+        Instrs = [x86_64_instr(jmp(operand_label(Label)))]
+    ;
+        Uinstr = computed_goto(Rval, Labels),
+        transform_rval(!RegMap, Rval, Res0, Res1),
         (
-            Res1 = yes(RvalInstrs),
-            get_last_instr_operand(RvalInstrs, RvalOp0),
-            RvalOp = RvalOp0
+            Res0 = yes(RvalOp),
+            RvalInstrs = []
         ;
-            Res1 = no,
-            unexpected($module, $pred, "computed_goto: Rval")
-        )
-    ),
-    maybe_labels_to_string(Labels, "", LabelStr),
-    ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
-    ll_backend.x86_64_regs.reg_map_remove_scratch_reg(!RegMap),
-    TempReg = operand_reg(ScratchReg),
-    Instr0 = x86_64_instr(mov(operand_mem_ref(mem_abs(base_expr(LabelStr))),
-        TempReg)),
-    Instr1 = x86_64_instr(add(RvalOp, TempReg)),
-    Instr2 = x86_64_instr(jmp(TempReg)),
-    Instrs = RvalInstrs ++ [Instr0] ++ [Instr1] ++ [Instr2].
-instr_to_x86_64(!RegMap, arbitrary_c_code(_, _, _), Instrs) :-
-    Instrs = [x86_64_comment("<<arbitrary_c_code>>")].
-instr_to_x86_64(!RegMap, if_val(Rval, CodeAddr), Instrs) :-
-    code_addr_type(CodeAddr, Target),
-    transform_rval(!RegMap, Rval, Res0, Res1),
-    (
-        Res0 = yes(RvalOp)
+            Res0 = no,
+            (
+                Res1 = yes(RvalInstrs),
+                get_last_instr_operand(RvalInstrs, RvalOp0),
+                RvalOp = RvalOp0
+            ;
+                Res1 = no,
+                unexpected($module, $pred, "computed_goto: Rval")
+            )
+            ),
+        maybe_labels_to_string(Labels, "", LabelStr),
+        ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
+        ll_backend.x86_64_regs.reg_map_remove_scratch_reg(!RegMap),
+        TempReg = operand_reg(ScratchReg),
+        Instr0 = x86_64_instr(
+            mov(operand_mem_ref(mem_abs(base_expr(LabelStr))), TempReg)),
+        Instr1 = x86_64_instr(add(RvalOp, TempReg)),
+        Instr2 = x86_64_instr(jmp(TempReg)),
+        Instrs = RvalInstrs ++ [Instr0] ++ [Instr1] ++ [Instr2]
     ;
-        Res0 = no,
+        Uinstr = arbitrary_c_code(_, _, _),
+        Instrs = [x86_64_comment("<<arbitrary_c_code>>")]
+    ;
+        Uinstr = if_val(Rval, CodeAddr),
+        code_addr_type(CodeAddr, Target),
+        transform_rval(!RegMap, Rval, Res0, Res1),
         (
-            Res1 = yes(RvalInstrs),
-            get_last_instr_operand(RvalInstrs, RvalOp)
+            Res0 = yes(RvalOp)
         ;
-            Res1 = no,
-            unexpected($module, $pred, "if_val: Rval")
-        )
-    ),
-    ll_backend.x86_64_out.operand_to_string(RvalOp, RvalStr),
-    Instrs = [x86_64_directive(x86_64_pseudo_if(RvalStr)),
-        x86_64_instr(j(operand_label(Target), e)), x86_64_directive(endif)].
-instr_to_x86_64(!RegMap, save_maxfr(_), Instr) :-
-    Instr = [x86_64_comment("<<save_maxfr>>")].
-instr_to_x86_64(!RegMap, restore_maxfr(_), Instr) :-
-    Instr = [x86_64_comment("<<restore_maxfr>>")].
-instr_to_x86_64(!RegMap,
-        incr_hp(Lval, Tag0, Words0, Rval, _, _, MaybeRegionRval,
-            MaybeReuse), Instrs) :-
-    (
-        MaybeRegionRval = no
-    ;
-        MaybeRegionRval = yes(_),
-        unexpected($module, $pred, "region")
-    ),
-    (
-        MaybeReuse = no_llds_reuse
-    ;
-        MaybeReuse = llds_reuse(_, _),
-        unexpected($module, $pred, "reuse")
-    ),
-    transform_rval(!RegMap, Rval, Res0, Res1),
-    transform_lval(!RegMap, Lval, Res2, Res3),
-    (
-        Res0 = yes(RvalOp)
-    ;
-        Res0 = no,
-        (
-            Res1 = yes(RvalInstrs),
-            get_last_instr_operand(RvalInstrs, RvalOp)
-        ;
-            Res1 = no,
-            unexpected($module, $pred, "incr_hp: Rval")
-        )
-    ),
-    (
-        Res2 = yes(LvalOp)
-    ;
-        Res2 = no,
-        (
-            Res3 = yes(LvalInstrs),
-            get_last_instr_operand(LvalInstrs, LvalOp)
-        ;
-            Res3 = no,
-            unexpected($module, $pred, "incr_hp: Lval")
-        )
-    ),
-    (
-        Words0 = yes(Words),
-        IncrVal = operand_imm(imm32(int32(Words))),
-        ScratchReg0 = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
-        reg_map_remove_scratch_reg(!RegMap),
-        TempReg1 = operand_reg(ScratchReg0),
+            Res0 = no,
+            (
+                Res1 = yes(RvalInstrs),
+                get_last_instr_operand(RvalInstrs, RvalOp)
+            ;
+                Res1 = no,
+                unexpected($module, $pred, "if_val: Rval")
+            )
+        ),
         ll_backend.x86_64_out.operand_to_string(RvalOp, RvalStr),
-        MemRef = operand_mem_ref(mem_abs(base_expr(RvalStr))),
-        LoadAddr = x86_64_instr(lea(MemRef, TempReg1)),
-        IncrAddInstr = x86_64_instr(add(IncrVal, TempReg1)),
-        IncrAddrInstrs = [LoadAddr, IncrAddInstr]
+        Instrs = [x86_64_directive(x86_64_pseudo_if(RvalStr)),
+            x86_64_instr(j(operand_label(Target), e)), x86_64_directive(endif)]
     ;
-        Words0 = no,
-        IncrAddrInstrs = []
-    ),
-    (
-        Tag0 = yes(Tag)
+        Uinstr = save_maxfr(_),
+        Instrs = [x86_64_comment("<<save_maxfr>>")]
     ;
-        Tag0 = no,
-        Tag = 0
-    ),
-    ScratchReg1 = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
-    reg_map_remove_scratch_reg(!RegMap),
-    TempReg2 = operand_reg(ScratchReg1),
-    ImmToReg = x86_64_instr(mov(RvalOp, TempReg2)),
-    SetTag = x86_64_instr(or(operand_imm(imm32(int32(Tag))), TempReg2)),
-    Instr1 = x86_64_instr(mov(TempReg2, LvalOp)),
-    Instrs = IncrAddrInstrs ++ [ImmToReg] ++ [SetTag] ++ [Instr1].
-instr_to_x86_64(!RegMap, mark_hp(_), Instr) :-
-    Instr = [x86_64_comment("<<mark_hp>>")].
-instr_to_x86_64(!RegMap, restore_hp(_), Instr) :-
-    Instr = [x86_64_comment("<<restore_hp>>")].
-instr_to_x86_64(!RegMap, free_heap(_), Instr) :-
-    Instr = [x86_64_comment("<<free_heap>>")].
-instr_to_x86_64(!RegMap, push_region_frame(_, _), Instr) :-
-    Instr = [x86_64_comment("<<push_region_frame>>")].
-instr_to_x86_64(!RegMap, region_fill_frame(_, _, _, _, _), Instr) :-
-    Instr = [x86_64_comment("<<region_fill_frame>>")].
-instr_to_x86_64(!RegMap, region_set_fixed_slot(_, _, _), Instr) :-
-    Instr = [x86_64_comment("<<region_set_fixed_slot>>")].
-instr_to_x86_64(!RegMap, use_and_maybe_pop_region_frame(_, _), Instr) :-
-    Instr = [x86_64_comment("<<use_and_maybe_pop_region_frame>>")].
-instr_to_x86_64(!RegMap, store_ticket(_), Instr) :-
-    Instr = [x86_64_comment("<<store_ticket>>")].
-instr_to_x86_64(!RegMap, reset_ticket(_, _), Instr) :-
-    Instr = [x86_64_comment("<<reset_ticket>>")].
-instr_to_x86_64(!RegMap, prune_ticket, Instr) :-
-    Instr = [x86_64_comment("<<prune_ticket>>")].
-instr_to_x86_64(!RegMap, discard_ticket, Instr) :-
-    Instr = [x86_64_comment("<<discard_ticket>>")].
-instr_to_x86_64(!RegMap, mark_ticket_stack(_), Instr) :-
-    Instr = [x86_64_comment("<<mark_ticket_stack>>")].
-instr_to_x86_64(!RegMap, prune_tickets_to(_), Instr) :-
-    Instr = [x86_64_comment("<<prune_tickets_to>>")].
-instr_to_x86_64(!RegMap, incr_sp(NumSlots, ProcName, _), Instrs) :-
-    Instr1 = x86_64_comment("<<incr_sp>> " ++ ProcName),
-    Instr2 = x86_64_instr(enter(uint16(NumSlots), uint8(0))),
-    Instrs = [Instr1, Instr2].
-instr_to_x86_64(!RegMap, decr_sp(NumSlots), Instrs) :-
-    DecrOp = operand_imm(imm32(int32(NumSlots))),
-    ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
-    ll_backend.x86_64_regs.reg_map_remove_scratch_reg(!RegMap),
-    Instr = x86_64_instr(sub(DecrOp, operand_reg(ScratchReg))),
-    Instrs = [x86_64_comment("<<decr_sp>> "), Instr].
-instr_to_x86_64(!RegMap, decr_sp_and_return(NumSlots), Instrs) :-
-    Instrs = [x86_64_comment("<<decr_sp_and_return>> " ++
-        string.int_to_string(NumSlots))].
-instr_to_x86_64(!RegMap, foreign_proc_code(_, _, _, _, _, _, _, _, _, _),
-        Instr) :-
-    Instr = [x86_64_comment("<<foreign_proc_code>>")].
-instr_to_x86_64(!RegMap, init_sync_term(_, _, _), Instr) :-
-    Instr = [x86_64_comment("<<init_sync_term>>")].
-instr_to_x86_64(!RegMap, fork_new_child(_, _), Instr) :-
-    Instr = [x86_64_comment("<<fork_new_child>>")].
-instr_to_x86_64(!RegMap, join_and_continue(_, _), Instr) :-
-    Instr = [x86_64_comment("<<join_and_continue>>")].
+        Uinstr = restore_maxfr(_),
+        Instrs = [x86_64_comment("<<restore_maxfr>>")]
+    ;
+        Uinstr = incr_hp(Lval, Tag0, Words0, Rval, _, _, MaybeRegionRval,
+            MaybeReuse),
+        (
+            MaybeRegionRval = no
+        ;
+            MaybeRegionRval = yes(_),
+            unexpected($module, $pred, "region")
+        ),
+        (
+            MaybeReuse = no_llds_reuse
+        ;
+            MaybeReuse = llds_reuse(_, _),
+            unexpected($module, $pred, "reuse")
+        ),
+        transform_rval(!RegMap, Rval, Res0, Res1),
+        transform_lval(!RegMap, Lval, Res2, Res3),
+        (
+            Res0 = yes(RvalOp)
+        ;
+            Res0 = no,
+            (
+                Res1 = yes(RvalInstrs),
+                get_last_instr_operand(RvalInstrs, RvalOp)
+            ;
+                Res1 = no,
+                unexpected($module, $pred, "incr_hp: Rval")
+            )
+        ),
+        (
+            Res2 = yes(LvalOp)
+        ;
+            Res2 = no,
+            (
+                Res3 = yes(LvalInstrs),
+                get_last_instr_operand(LvalInstrs, LvalOp)
+            ;
+                Res3 = no,
+                unexpected($module, $pred, "incr_hp: Lval")
+            )
+        ),
+        (
+            Words0 = yes(Words),
+            IncrVal = operand_imm(imm32(int32(Words))),
+            ScratchReg0 =
+                ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
+            reg_map_remove_scratch_reg(!RegMap),
+            TempReg1 = operand_reg(ScratchReg0),
+            ll_backend.x86_64_out.operand_to_string(RvalOp, RvalStr),
+            MemRef = operand_mem_ref(mem_abs(base_expr(RvalStr))),
+            LoadAddr = x86_64_instr(lea(MemRef, TempReg1)),
+            IncrAddInstr = x86_64_instr(add(IncrVal, TempReg1)),
+            IncrAddrInstrs = [LoadAddr, IncrAddInstr]
+        ;
+            Words0 = no,
+            IncrAddrInstrs = []
+        ),
+        (
+            Tag0 = yes(Tag)
+        ;
+            Tag0 = no,
+            Tag = 0
+        ),
+        ScratchReg1 = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
+        reg_map_remove_scratch_reg(!RegMap),
+        TempReg2 = operand_reg(ScratchReg1),
+        ImmToReg = x86_64_instr(mov(RvalOp, TempReg2)),
+        SetTag = x86_64_instr(or(operand_imm(imm32(int32(Tag))), TempReg2)),
+        Instr1 = x86_64_instr(mov(TempReg2, LvalOp)),
+        Instrs = IncrAddrInstrs ++ [ImmToReg] ++ [SetTag] ++ [Instr1]
+    ;
+        Uinstr = mark_hp(_),
+        Instrs = [x86_64_comment("<<mark_hp>>")]
+    ;
+        Uinstr = restore_hp(_),
+        Instrs = [x86_64_comment("<<restore_hp>>")]
+    ;
+        Uinstr = free_heap(_),
+        Instrs = [x86_64_comment("<<free_heap>>")]
+    ;
+        Uinstr = push_region_frame(_, _),
+        Instrs = [x86_64_comment("<<push_region_frame>>")]
+    ;
+        Uinstr = region_fill_frame(_, _, _, _, _),
+        Instrs = [x86_64_comment("<<region_fill_frame>>")]
+    ;
+        Uinstr = region_set_fixed_slot(_, _, _),
+        Instrs = [x86_64_comment("<<region_set_fixed_slot>>")]
+    ;
+        Uinstr = use_and_maybe_pop_region_frame(_, _),
+        Instrs = [x86_64_comment("<<use_and_maybe_pop_region_frame>>")]
+    ;
+        Uinstr = store_ticket(_),
+        Instrs = [x86_64_comment("<<store_ticket>>")]
+    ;
+        Uinstr = reset_ticket(_, _),
+        Instrs = [x86_64_comment("<<reset_ticket>>")]
+    ;
+        Uinstr = prune_ticket,
+        Instrs = [x86_64_comment("<<prune_ticket>>")]
+    ;
+        Uinstr = discard_ticket,
+        Instrs = [x86_64_comment("<<discard_ticket>>")]
+    ;
+        Uinstr = mark_ticket_stack(_),
+        Instrs = [x86_64_comment("<<mark_ticket_stack>>")]
+    ;
+        Uinstr = prune_tickets_to(_),
+        Instrs = [x86_64_comment("<<prune_tickets_to>>")]
+    ;
+        Uinstr = incr_sp(NumSlots, ProcName, _),
+        Instr1 = x86_64_comment("<<incr_sp>> " ++ ProcName),
+        Instr2 = x86_64_instr(enter(uint16(NumSlots), uint8(0))),
+        Instrs = [Instr1, Instr2]
+    ;
+        Uinstr = decr_sp(NumSlots),
+        DecrOp = operand_imm(imm32(int32(NumSlots))),
+        ScratchReg = ll_backend.x86_64_regs.reg_map_get_scratch_reg(!.RegMap),
+        ll_backend.x86_64_regs.reg_map_remove_scratch_reg(!RegMap),
+        Instr = x86_64_instr(sub(DecrOp, operand_reg(ScratchReg))),
+        Instrs = [x86_64_comment("<<decr_sp>> "), Instr]
+    ;
+        Uinstr = decr_sp_and_return(NumSlots),
+        Instrs = [x86_64_comment("<<decr_sp_and_return>> " ++
+            string.int_to_string(NumSlots))]
+    ;
+        Uinstr = foreign_proc_code(_, _, _, _, _, _, _, _, _, _),
+        Instrs = [x86_64_comment("<<foreign_proc_code>>")]
+    ;
+        Uinstr = init_sync_term(_, _, _),
+        Instrs = [x86_64_comment("<<init_sync_term>>")]
+    ;
+        Uinstr = fork_new_child(_, _),
+        Instrs = [x86_64_comment("<<fork_new_child>>")]
+    ;
+        Uinstr = join_and_continue(_, _),
+        Instrs = [x86_64_comment("<<join_and_continue>>")]
+    ;
+        Uinstr = lc_create_loop_control(_, _),
+        Instrs = [x86_64_comment("<<lc_create_loop_control>>")]
+    ;
+        Uinstr = lc_wait_free_slot(_, _, _),
+        Instrs = [x86_64_comment("<<lc_wait_free_slot>>")]
+    ;
+        Uinstr = lc_spawn_off(_, _, _),
+        Instrs = [x86_64_comment("<<lc_spawn_off>>")]
+    ;
+        Uinstr = lc_join_and_terminate(_, _),
+        Instrs = [x86_64_comment("<<lc_join_and_terminate>>")]
+    ).
 
     % Transform lval into either an x86_64 operand or x86_64 instructions.
     %
@@ -560,7 +608,8 @@ transform_lval(!RegMap, field(Tag0, Rval1, Rval2), no, Instrs) :-
     MemRef = operand_mem_ref(mem_abs(base_expr(RvalStr1))),
     LoadAddr = x86_64_instr(lea(MemRef, TempReg1)),
     FieldNum = x86_64_instr(add(RvalOp2, TempReg1)),
-    Instrs3 = Instrs1 ++ Instrs2 ++ [x86_64_comment("<<field>>")] ++ [LoadAddr],
+    Instrs3 = Instrs1 ++ Instrs2 ++ [x86_64_comment("<<field>>")] ++
+        [LoadAddr],
     (
         Tag0 = yes(Tag),
         Mrbody = x86_64_instr(sub(operand_imm(imm32(int32(Tag))), TempReg1)),
@@ -692,7 +741,8 @@ transform_rval(!RegMap, mem_addr(stackvar_ref(Rval)), Op, no) :-
     transform_rval(!RegMap, Rval, Op, _).
 transform_rval(!RegMap, mem_addr(framevar_ref(Rval)), Op, no) :-
     transform_rval(!RegMap, Rval, Op, _).
-transform_rval(!RegMap, mem_addr(heap_ref(Rval1, MaybeTag, Rval2)), no, Instrs) :-
+transform_rval(!RegMap, mem_addr(heap_ref(Rval1, MaybeTag, Rval2)), no,
+        Instrs) :-
     transform_rval(!RegMap, Rval1, Res0, Res1),
     transform_rval(!RegMap, Rval2, Res2, Res3),
     (

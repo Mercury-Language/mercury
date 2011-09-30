@@ -539,6 +539,8 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
             TypeMsg, MayUseAtomicAlloc, MaybeRegionId, MaybeReuse),
         ( Target = OldLval ->
             MaybeInstr = no
+        ; Target = mem_ref(_) ->
+            MaybeInstr = no
         ;
             replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
                 SizeRval0, SizeRval),
@@ -576,12 +578,46 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         Instr = llds_instr(Uinstr, Comment),
         MaybeInstr = yes(Instr)
     ;
+        Uinstr0 = lc_wait_free_slot(Rval0, Lval0, Label),
+        ( Lval0 = OldLval ->
+            MaybeInstr = no
+        ; Lval0 = mem_ref(_) ->
+            MaybeInstr = no
+        ;
+            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+                Rval0, Rval),
+            Uinstr = lc_wait_free_slot(Rval, Lval0, Label),
+            Instr = llds_instr(Uinstr, Comment),
+            MaybeInstr = yes(Instr)
+        )
+    ;
+        Uinstr0 = lc_spawn_off(LCRval0, LCSRval0, Label),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            LCRval0, LCRval),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            LCSRval0, LCSRval),
+        Uinstr = lc_spawn_off(LCRval, LCSRval, Label),
+        Instr = llds_instr(Uinstr, Comment),
+        MaybeInstr = yes(Instr)
+    ;
+        Uinstr0 = lc_join_and_terminate(LCRval0, LCSRval0),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            LCRval0, LCRval),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            LCSRval0, LCSRval),
+        Uinstr = lc_join_and_terminate(LCRval, LCSRval),
+        Instr = llds_instr(Uinstr, Comment),
+        MaybeInstr = yes(Instr)
+    ;
         ( Uinstr0 = save_maxfr(Lval0)
         ; Uinstr0 = mark_hp(Lval0)
         ; Uinstr0 = store_ticket(Lval0)
         ; Uinstr0 = mark_ticket_stack(Lval0)
+        ; Uinstr0 = lc_create_loop_control(_NumSlots, Lval0)
         ),
         ( Lval0 = OldLval ->
+            MaybeInstr = no
+        ; Lval0 = mem_ref(_) ->
             MaybeInstr = no
         ;
             MaybeInstr = yes(Instr0)
@@ -593,9 +629,7 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         ; Uinstr0 = prune_ticket
         ; Uinstr0 = discard_ticket
         ),
-        Uinstr = Uinstr0,
-        Instr = llds_instr(Uinstr, Comment),
-        MaybeInstr = yes(Instr)
+        MaybeInstr = yes(Instr0)
     ;
         ( Uinstr0 = block(_, _, _)
         ; Uinstr0 = llcall(_, _, _, _, _, _)

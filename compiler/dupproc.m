@@ -235,6 +235,22 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         Instr = foreign_proc_code(_, _, _, _, _, _, _, _, _, _),
         StdInstr = Instr
     ;
+        Instr = lc_wait_free_slot(Rval, Lval, Label),
+        standardize_rval(Rval, StdRval, DupProcMap),
+        standardize_label(Label, StdLabel, DupProcMap),
+        StdInstr = lc_wait_free_slot(StdRval, Lval, StdLabel)
+    ;
+        Instr = lc_spawn_off(LCRval, LCSRval, Label),
+        standardize_rval(LCRval, StdLCRval, DupProcMap),
+        standardize_rval(LCSRval, StdLCSRval, DupProcMap),
+        standardize_label(Label, StdLabel, DupProcMap),
+        StdInstr = lc_spawn_off(StdLCRval, StdLCSRval, StdLabel)
+    ;
+        Instr = lc_join_and_terminate(LCRval, LCSRval),
+        standardize_rval(LCRval, StdLCRval, DupProcMap),
+        standardize_rval(LCSRval, StdLCSRval, DupProcMap),
+        StdInstr = lc_join_and_terminate(StdLCRval, StdLCSRval)
+    ;
         % These instructions have no labels inside them, or anything else
         % that can be standardized.
         ( Instr = comment(_)
@@ -259,6 +275,7 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         ; Instr = decr_sp(_)
         ; Instr = decr_sp_and_return(_)
         ; Instr = init_sync_term(_, _, _)
+        ; Instr = lc_create_loop_control(_, _)
         ),
         StdInstr = Instr
     ).

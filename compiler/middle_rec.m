@@ -544,8 +544,7 @@ find_used_registers_instr(Uinstr, !Used) :-
         find_used_registers_lval(Lval, !Used),
         find_used_registers_rval(Rval, !Used)
     ;
-        Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
-            MaybeReuse),
+        Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval, MaybeReuse),
         find_used_registers_lval(Lval, !Used),
         find_used_registers_rval(Rval, !Used),
         (
@@ -598,6 +597,21 @@ find_used_registers_instr(Uinstr, !Used) :-
         ; Uinstr = join_and_continue(Lval, _)
         ),
         find_used_registers_lval(Lval, !Used)
+    ;
+        Uinstr = lc_create_loop_control(_, LCLval),
+        find_used_registers_lval(LCLval, !Used)
+    ;
+        Uinstr = lc_wait_free_slot(LCRval, LCSLval, _),
+        find_used_registers_rval(LCRval, !Used),
+        find_used_registers_lval(LCSLval, !Used)
+    ;
+        Uinstr = lc_spawn_off(LCRval, LCSRval, _),
+        find_used_registers_rval(LCRval, !Used),
+        find_used_registers_rval(LCSRval, !Used)
+    ;
+        Uinstr = lc_join_and_terminate(LCRval, LCSRval),
+        find_used_registers_rval(LCRval, !Used),
+        find_used_registers_rval(LCSRval, !Used)
     ).
 
 :- pred find_used_registers_components(

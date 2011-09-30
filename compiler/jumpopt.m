@@ -407,6 +407,24 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
             NewRemain = specified([Instr], Instrs0)
         )
     ;
+        Uinstr0 = lc_wait_free_slot(_, _, _),
+        % The label in the third argument should not be referred to
+        % from any code in the procedure's LLDS instruction sequence,
+        % so there is no way for it to be short circuited.
+        NewRemain = usual_case
+    ;
+        Uinstr0 = lc_spawn_off(LCRval, LCSRval, Child0),
+        InstrMap = JumpOptInfo ^ joi_instr_map,
+        short_label(InstrMap, Child0, Child),
+        ( Child = Child0 ->
+            NewRemain = usual_case
+        ;
+            Uinstr = lc_spawn_off(LCRval, LCSRval, Child),
+            Comment = Comment0 ++ " (redirect)",
+            Instr = llds_instr(Uinstr, Comment),
+            NewRemain = specified([Instr], Instrs0)
+        )
+    ;
         ( Uinstr0 = arbitrary_c_code(_, _, _)
         ; Uinstr0 = comment(_)
         ; Uinstr0 = livevals(_)
@@ -431,6 +449,8 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         ; Uinstr0 = incr_hp(_, _, _, _, _, _, _, _)
         ; Uinstr0 = restore_hp(_)
         ; Uinstr0 = init_sync_term(_, _, _)
+        ; Uinstr0 = lc_create_loop_control(_, _)
+        ; Uinstr0 = lc_join_and_terminate(_, _)
         ),
         NewRemain = usual_case
     ),

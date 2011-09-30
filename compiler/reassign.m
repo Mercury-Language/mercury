@@ -76,7 +76,6 @@
 %   ...
 %   MR_field(MR_mktag(1), MR_r5, 1) = r2;
 %
-%
 % The lvals on which TargetLval depends need not include TargetLval itself,
 % since an assignment to TargetLval will in any case override the previous
 % entry for TargetLval in the known contents map. This takes care of code
@@ -209,28 +208,19 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         Uinstr0 = if_val(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs]
     ;
-        Uinstr0 = save_maxfr(Target),
+        ( Uinstr0 = save_maxfr(Target)
+        ; Uinstr0 = incr_hp(Target, _, _, _, _, _, _, _)
+        ; Uinstr0 = mark_hp(Target)
+        ; Uinstr0 = restore_maxfr(_), Target = maxfr
+        ; Uinstr0 = restore_hp(_), Target = hp
+        ; Uinstr0 = store_ticket(Target)
+        ; Uinstr0 = mark_ticket_stack(Target)
+        ; Uinstr0 = lc_create_loop_control(_, Target)
+        ; Uinstr0 = lc_wait_free_slot(_, Target, _)
+        ),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
         map.delete(Target, !KnownContentsMap)
-    ;
-        Uinstr0 = restore_maxfr(_),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        clobber_dependents(hp, !KnownContentsMap, !DepLvalMap)
-    ;
-        Uinstr0 = incr_hp(Target, _, _, _, _, _, _, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
-        clobber_dependents(hp, !KnownContentsMap, !DepLvalMap)
-    ;
-        Uinstr0 = mark_hp(Target),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
-        map.delete(Target, !KnownContentsMap)
-    ;
-        Uinstr0 = restore_hp(_),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        clobber_dependents(hp, !KnownContentsMap, !DepLvalMap)
     ;
         Uinstr0 = free_heap(_),
         !:RevInstrs = [Instr0 | !.RevInstrs]
@@ -252,31 +242,20 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         map.delete(NumLval, !KnownContentsMap),
         map.delete(AddrLval, !KnownContentsMap)
     ;
-        Uinstr0 = store_ticket(Target),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        clobber_dependents(Target, !KnownContentsMap, !DepLvalMap)
-    ;
         Uinstr0 = reset_ticket(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The reset operation may modify any lval.
         !:KnownContentsMap = map.init,
         !:DepLvalMap = map.init
     ;
-        Uinstr0 = prune_ticket,
+        ( Uinstr0 = prune_ticket
+        ; Uinstr0 = discard_ticket
+        ; Uinstr0 = prune_tickets_to(_)
+        % ; Uinstr0 = discard_tickets_to(_)
+        ; Uinstr0 = lc_spawn_off(_, _, _)
+        ; Uinstr0 = lc_join_and_terminate(_, _)
+        ),
         !:RevInstrs = [Instr0 | !.RevInstrs]
-    ;
-        Uinstr0 = discard_ticket,
-        !:RevInstrs = [Instr0 | !.RevInstrs]
-    ;
-        Uinstr0 = mark_ticket_stack(Target),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        clobber_dependents(Target, !KnownContentsMap, !DepLvalMap)
-    ;
-        Uinstr0 = prune_tickets_to(_),
-        !:RevInstrs = [Instr0 | !.RevInstrs]
-%   ;
-%       Uinstr0 = discard_tickets_to(_),
-%       !:RevInstrs = [Instr0 | !.RevInstrs]
     ;
         Uinstr0 = incr_sp(_, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],

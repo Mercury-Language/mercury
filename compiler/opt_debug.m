@@ -1074,18 +1074,6 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
         Instr = decr_sp_and_return(Size),
         Str = "decr_sp_and_return(" ++ int_to_string(Size) ++ ")"
     ;
-        Instr = init_sync_term(Lval, N, TSStringIndex),
-        Str = "init_sync_term(" ++ dump_lval(MaybeProcLabel, Lval) ++ ", "
-            ++ int_to_string(N) ++ ", " ++ int_to_string(TSStringIndex) ++ ")"
-    ;
-        Instr = fork_new_child(Lval, Child),
-        Str = "fork_new_child(" ++ dump_lval(MaybeProcLabel, Lval)
-            ++ dump_label(MaybeProcLabel, Child) ++ ", " ++ ")"
-    ;
-        Instr = join_and_continue(Lval, Label),
-        Str = "join_and_continue(" ++ dump_lval(MaybeProcLabel, Lval) ++ ", "
-            ++ dump_label(MaybeProcLabel, Label) ++ ")"
-    ;
         Instr = foreign_proc_code(Decls, Comps, MCM, MFNL, MFL, MFOL, MNF, MDL,
             SSR, MD),
         Str = "foreign_proc_code(\n"
@@ -1100,6 +1088,36 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
             ++ dump_bool_msg("stack slot ref:", SSR)
             ++ dump_may_duplicate(MD) ++ "\n"
             ++ ")"
+    ;
+        Instr = init_sync_term(Lval, N, TSStringIndex),
+        Str = "init_sync_term(" ++ dump_lval(MaybeProcLabel, Lval) ++ ", "
+            ++ int_to_string(N) ++ ", " ++ int_to_string(TSStringIndex) ++ ")"
+    ;
+        Instr = fork_new_child(Lval, Child),
+        Str = "fork_new_child(" ++ dump_lval(MaybeProcLabel, Lval)
+            ++ dump_label(MaybeProcLabel, Child) ++ ", " ++ ")"
+    ;
+        Instr = join_and_continue(Lval, Label),
+        Str = "join_and_continue(" ++ dump_lval(MaybeProcLabel, Lval) ++ ", "
+            ++ dump_label(MaybeProcLabel, Label) ++ ")"
+    ;
+        Instr = lc_create_loop_control(NumSlots, LCLval),
+        Str = "lc_create_loop_control(" ++ int_to_string(NumSlots) ++ ", "
+            ++ dump_lval(MaybeProcLabel, LCLval) ++ ")"
+    ;
+        Instr = lc_wait_free_slot(LCRval, LCSLval, Label),
+        Str = "lc_wait_free_slot(" ++ dump_rval(MaybeProcLabel, LCRval)
+            ++ dump_lval(MaybeProcLabel, LCSLval)
+            ++ dump_label(MaybeProcLabel, Label) ++ ")"
+    ;
+        Instr = lc_spawn_off(LCRval, LCSRval, Label),
+        Str = "lc_spawn_off(" ++ dump_rval(MaybeProcLabel, LCRval)
+            ++ dump_rval(MaybeProcLabel, LCSRval)
+            ++ dump_label(MaybeProcLabel, Label) ++ ")"
+    ;
+        Instr = lc_join_and_terminate(LCRval, LCSRval),
+        Str = "lc_join_and_terminate(" ++ dump_rval(MaybeProcLabel, LCRval)
+            ++ dump_rval(MaybeProcLabel, LCSRval) ++ ")"
     ).
 
 :- func dump_embedded_stack_frame_id(embedded_stack_frame_id) = string.

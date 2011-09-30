@@ -1135,6 +1135,25 @@ remap_instr(GlobalDataRemap, Instr0, Instr) :-
         remap_lval(StaticCellRemap, Lval0, Lval),
         Instr = join_and_continue(Lval, Label)
     ;
+        Instr0 = lc_create_loop_control(NumSlots, Lval0),
+        remap_lval(StaticCellRemap, Lval0, Lval),
+        Instr = lc_create_loop_control(NumSlots, Lval)
+    ;
+        Instr0 = lc_wait_free_slot(Rval0, Lval0, Label),
+        remap_rval(StaticCellRemap, Rval0, Rval),
+        remap_lval(StaticCellRemap, Lval0, Lval),
+        Instr = lc_wait_free_slot(Rval, Lval, Label)
+    ;
+        Instr0 = lc_spawn_off(LCRval0, LCSRval0, Label),
+        remap_rval(StaticCellRemap, LCRval0, LCRval),
+        remap_rval(StaticCellRemap, LCSRval0, LCSRval),
+        Instr = lc_spawn_off(LCRval, LCSRval, Label)
+    ;
+        Instr0 = lc_join_and_terminate(LCRval0, LCSRval0),
+        remap_rval(StaticCellRemap, LCRval0, LCRval),
+        remap_rval(StaticCellRemap, LCSRval0, LCSRval),
+        Instr = lc_join_and_terminate(LCRval, LCSRval)
+    ;
         ( Instr0 = comment(_)
         ; Instr0 = livevals(_)
         ; Instr0 = llcall(_, _, _, _, _, _)

@@ -639,13 +639,44 @@
             % the synchronisation term. Control continues at the next
             % instruction.
 
-    ;       join_and_continue(lval, label).
+    ;       join_and_continue(lval, label)
             % Signal that this thread of execution has finished in the current
             % parallel conjunct. For details of how we at the end of a parallel
             % conjunct see runtime/mercury_context.{c,h}.
             % The synchronisation term is specified by the given lval.
             % The label gives the address of the code following the parallel
             % conjunction. 
+
+    ;       lc_create_loop_control(int, lval)
+            % Create a loop control structure with the given number of slots,
+            % and put its address in the given lval.
+
+    ;       lc_wait_free_slot(rval, lval, label)
+            % Given an rval that holds the address of a loop control structure,
+            % return the index of a free slot in that structure, waiting for
+            % one to become free if necessary. The label acts as a resumption
+            % point if the context suspends. It will be both defined and used
+            % in the C code generated for this instruction, and should not
+            % be referred to from anywhere else.
+
+    ;       lc_spawn_off(rval, rval, label)
+            % Spawn off an independent computation whose execution starts
+            % at the given label and which will terminate by executing
+            % a join_and_terminate_lc instruction. The first rval should
+            % hold the address of the loop control structure that controls
+            % the spawned-off computation, and the second should hold
+            % the index of the slot occupied by that computation.
+            %
+            % After spawning off that computation, the original thread
+            % will just fall through.
+
+    ;       lc_join_and_terminate(rval, rval).
+            % Terminate the current context, which was spawned off by a
+            % spawn_off instruction. The first rval gives the address of
+            % the loop control structure, and the second is the index of
+            % this goal's slot in it. These two rvals should be exactly
+            % the same as the two rval arguments in the original lc_spawn_off
+            % instruction.
 
 :- inst instr_llcall
     --->    llcall(ground, ground, ground, ground, ground, ground).

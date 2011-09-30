@@ -872,6 +872,7 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         ; Uinstr = arbitrary_c_code(_, _, _)
         ; Uinstr = discard_ticket
         ; Uinstr = prune_ticket
+        ; Uinstr = lc_join_and_terminate(_, _)
         ),
         Refers = no
     ;
@@ -887,6 +888,7 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         ; Uinstr = init_sync_term(_, _, _)
         ; Uinstr = fork_new_child(_, _)
         ; Uinstr = join_and_continue(_, _)
+        ; Uinstr = lc_spawn_off(_, _, _)
         ),
         Refers = yes
     ;
@@ -903,19 +905,27 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         Uinstr = goto(CodeAddr),
         Refers = code_addr_refers_to_stack(CodeAddr)
     ;
-        Uinstr = computed_goto(Rval, _Labels),
-        Refers = rval_refers_stackvars(Rval)
-    ;
         Uinstr = if_val(Rval, CodeAddr),
         Refers = bool.or(
             rval_refers_stackvars(Rval),
             code_addr_refers_to_stack(CodeAddr))
     ;
-        Uinstr = save_maxfr(Lval),
+        ( Uinstr = save_maxfr(Lval)
+        ; Uinstr = restore_maxfr(Lval)
+        ; Uinstr = mark_hp(Lval)
+        ; Uinstr = store_ticket(Lval)
+        ; Uinstr = mark_ticket_stack(Lval)
+        ; Uinstr = lc_create_loop_control(_, Lval)
+        ),
         Refers = lval_refers_stackvars(Lval)
     ;
-        Uinstr = restore_maxfr(Lval),
-        Refers = lval_refers_stackvars(Lval)
+        ( Uinstr = computed_goto(Rval, _Labels)
+        ; Uinstr = restore_hp(Rval)
+        ; Uinstr = free_heap(Rval)
+        ; Uinstr = reset_ticket(Rval, _Reason)
+        ; Uinstr = prune_tickets_to(Rval)
+        ),
+        Refers = rval_refers_stackvars(Rval)
     ;
         Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
             MaybeReuse),
@@ -944,30 +954,14 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
             Refers = !.Refers
         )
     ;
-        Uinstr = mark_hp(Lval),
-        Refers = lval_refers_stackvars(Lval)
-    ;
-        Uinstr = restore_hp(Rval),
-        Refers = rval_refers_stackvars(Rval)
-    ;
-        Uinstr = free_heap(Rval),
-        Refers = rval_refers_stackvars(Rval)
-    ;
-        Uinstr = store_ticket(Lval),
-        Refers = lval_refers_stackvars(Lval)
-    ;
-        Uinstr = reset_ticket(Rval, _Reason),
-        Refers = rval_refers_stackvars(Rval)
-    ;
-        Uinstr = mark_ticket_stack(Lval),
-        Refers = lval_refers_stackvars(Lval)
-    ;
-        Uinstr = prune_tickets_to(Rval),
-        Refers = rval_refers_stackvars(Rval)
-    ;
         Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
         Refers = bool.or_list(list.map(foreign_proc_component_refers_stackvars,
             Components))
+    ;
+        Uinstr = lc_wait_free_slot(Rval, Lval, _),
+        Refers = bool.or(
+            rval_refers_stackvars(Rval),
+            lval_refers_stackvars(Lval))
     ).
 
 :- func foreign_proc_component_refers_stackvars(foreign_proc_component) = bool.
@@ -1079,42 +1073,55 @@ is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
     Rval1 = Rval2,
     Taken = yes.
 
-can_instr_branch_away(comment(_)) = no.
-can_instr_branch_away(livevals(_)) = no.
-can_instr_branch_away(block(_, _, _)) = yes.
-can_instr_branch_away(assign(_, _)) = no.
-can_instr_branch_away(keep_assign(_, _)) = no.
-can_instr_branch_away(llcall(_, _, _, _, _, _)) = yes.
-can_instr_branch_away(mkframe(_, _)) = no.
-can_instr_branch_away(label(_)) = no.
-can_instr_branch_away(goto(_)) = yes.
-can_instr_branch_away(computed_goto(_, _)) = yes.
-can_instr_branch_away(arbitrary_c_code(_, _, _)) = no.
-can_instr_branch_away(if_val(_, _)) = yes.
-can_instr_branch_away(save_maxfr(_)) = no.
-can_instr_branch_away(restore_maxfr(_)) = no.
-can_instr_branch_away(incr_hp(_, _, _, _, _, _, _, _)) = no.
-can_instr_branch_away(mark_hp(_)) = no.
-can_instr_branch_away(restore_hp(_)) = no.
-can_instr_branch_away(free_heap(_)) = no.
-can_instr_branch_away(push_region_frame(_, _)) = no.
-can_instr_branch_away(region_fill_frame(_, _, _, _, _)) = no.
-can_instr_branch_away(region_set_fixed_slot(_, _, _)) = no.
-can_instr_branch_away(use_and_maybe_pop_region_frame(_, _)) = no.
-can_instr_branch_away(store_ticket(_)) = no.
-can_instr_branch_away(reset_ticket(_, _)) = no.
-can_instr_branch_away(discard_ticket) = no.
-can_instr_branch_away(prune_ticket) = no.
-can_instr_branch_away(mark_ticket_stack(_)) = no.
-can_instr_branch_away(prune_tickets_to(_)) = no.
-can_instr_branch_away(incr_sp(_, _, _)) = no.
-can_instr_branch_away(decr_sp(_)) = no.
-can_instr_branch_away(decr_sp_and_return(_)) = yes.
-can_instr_branch_away(init_sync_term(_, _, _)) = no.
-can_instr_branch_away(fork_new_child(_, _)) = no.
-can_instr_branch_away(join_and_continue(_, _)) = yes.
-can_instr_branch_away(foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _)) =
-    can_components_branch_away(Comps).
+can_instr_branch_away(Uinstr) = CanBranchAway :-
+    (
+        ( Uinstr = comment(_)
+        ; Uinstr = livevals(_)
+        ; Uinstr = assign(_, _)
+        ; Uinstr = keep_assign(_, _)
+        ; Uinstr = mkframe(_, _)
+        ; Uinstr = label(_)
+        ; Uinstr = arbitrary_c_code(_, _, _)
+        ; Uinstr = save_maxfr(_)
+        ; Uinstr = restore_maxfr(_)
+        ; Uinstr = incr_hp(_, _, _, _, _, _, _, _)
+        ; Uinstr = mark_hp(_)
+        ; Uinstr = restore_hp(_)
+        ; Uinstr = free_heap(_)
+        ; Uinstr = push_region_frame(_, _)
+        ; Uinstr = region_fill_frame(_, _, _, _, _)
+        ; Uinstr = region_set_fixed_slot(_, _, _)
+        ; Uinstr = use_and_maybe_pop_region_frame(_, _)
+        ; Uinstr = store_ticket(_)
+        ; Uinstr = reset_ticket(_, _)
+        ; Uinstr = discard_ticket
+        ; Uinstr = prune_ticket
+        ; Uinstr = mark_ticket_stack(_)
+        ; Uinstr = prune_tickets_to(_)
+        ; Uinstr = incr_sp(_, _, _)
+        ; Uinstr = decr_sp(_)
+        ; Uinstr = init_sync_term(_, _, _)
+        ; Uinstr = fork_new_child(_, _)
+        ; Uinstr = lc_create_loop_control(_, _)
+        ; Uinstr = lc_wait_free_slot(_, _, _)
+        ; Uinstr = lc_join_and_terminate(_, _)
+        ),
+        CanBranchAway = no
+    ;
+        ( Uinstr = block(_, _, _)
+        ; Uinstr = llcall(_, _, _, _, _, _)
+        ; Uinstr = goto(_)
+        ; Uinstr = computed_goto(_, _)
+        ; Uinstr = if_val(_, _)
+        ; Uinstr = decr_sp_and_return(_)
+        ; Uinstr = join_and_continue(_, _)
+        ; Uinstr = lc_spawn_off(_, _, _)
+        ),
+        CanBranchAway = yes
+    ;
+        Uinstr = foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _),
+        CanBranchAway = can_components_branch_away(Comps)
+    ).
 
 :- func can_components_branch_away(list(foreign_proc_component)) = bool.
 
@@ -1190,10 +1197,14 @@ can_instr_fall_through(prune_tickets_to(_)) = yes.
 can_instr_fall_through(incr_sp(_, _, _)) = yes.
 can_instr_fall_through(decr_sp(_)) = yes.
 can_instr_fall_through(decr_sp_and_return(_)) = no.
+can_instr_fall_through(foreign_proc_code(_, _, _, _, _, _, _, _, _, _)) = yes.
 can_instr_fall_through(init_sync_term(_, _, _)) = yes.
 can_instr_fall_through(fork_new_child(_, _)) = yes.
 can_instr_fall_through(join_and_continue(_, _)) = no.
-can_instr_fall_through(foreign_proc_code(_, _, _, _, _, _, _, _, _, _)) = yes.
+can_instr_fall_through(lc_create_loop_control(_, _)) = yes.
+can_instr_fall_through(lc_wait_free_slot(_, _, _)) = yes.
+can_instr_fall_through(lc_spawn_off(_, _, _)) = yes.
+can_instr_fall_through(lc_join_and_terminate(_, _)) = no.
 
     % Check whether an instruction sequence can possibly fall through
     % to the next instruction without using its label.
@@ -1241,10 +1252,14 @@ can_use_livevals(prune_tickets_to(_), no).
 can_use_livevals(incr_sp(_, _, _), no).
 can_use_livevals(decr_sp(_), no).
 can_use_livevals(decr_sp_and_return(_), yes).
+can_use_livevals(foreign_proc_code(_, _, _, _, _, _, _, _, _, _), no).
 can_use_livevals(init_sync_term(_, _, _), no).
 can_use_livevals(fork_new_child(_, _), no).
 can_use_livevals(join_and_continue(_, _), no).
-can_use_livevals(foreign_proc_code(_, _, _, _, _, _, _, _, _, _), no).
+can_use_livevals(lc_create_loop_control(_, _), no).
+can_use_livevals(lc_wait_free_slot(_, _, _), no).
+can_use_livevals(lc_spawn_off(_, _, _), yes).
+can_use_livevals(lc_join_and_terminate(_, _), no).
 
 instr_labels(Instr, Labels, CodeAddrs) :-
     instr_labels_2(Instr, Labels0, CodeAddrs1),
@@ -1289,6 +1304,8 @@ instr_labels_2(Uinstr, Labels, CodeAddrs) :-
         ; Uinstr = incr_sp(_, _, _)
         ; Uinstr = decr_sp(_)
         ; Uinstr = init_sync_term(_, _, _)
+        ; Uinstr = lc_create_loop_control(_, _)
+        ; Uinstr = lc_join_and_terminate(_, _)
         ),
         Labels = [],
         CodeAddrs = []
@@ -1316,7 +1333,10 @@ instr_labels_2(Uinstr, Labels, CodeAddrs) :-
         Labels = [Child],
         CodeAddrs = []
     ;
-        Uinstr = join_and_continue(_, Label),
+        ( Uinstr = join_and_continue(_, Label)
+        ; Uinstr = lc_wait_free_slot(_, _, Label)
+        ; Uinstr = lc_spawn_off(_, _, Label)
+        ),
         Labels = [Label],
         CodeAddrs = []
     ;
@@ -1378,6 +1398,11 @@ possible_targets(Uinstr, Labels, CodeAddrs) :-
         ; Uinstr = decr_sp(_)
         ; Uinstr = init_sync_term(_, _, _)
         ; Uinstr = fork_new_child(_, _)
+        ; Uinstr = lc_create_loop_control(_, _)
+        ; Uinstr = lc_join_and_terminate(_, _)
+        ; Uinstr = lc_wait_free_slot(_, _, _Label)
+        % The label in an lc_wait_free_slot instruction is NOT the possible
+        % target of a branch.
         ),
         Labels = [],
         CodeAddrs = []
@@ -1406,7 +1431,9 @@ possible_targets(Uinstr, Labels, CodeAddrs) :-
         % XXX see the comment in instr_labels_2.
         unexpected($module, $pred, "decr_sp_and_return")
     ;
-        Uinstr = join_and_continue(_, Label),
+        ( Uinstr = join_and_continue(_, Label)
+        ; Uinstr = lc_spawn_off(_, _, Label)
+        ),
         Labels = [Label],
         CodeAddrs = []
     ;
@@ -1544,12 +1571,17 @@ instr_rvals_and_lvals(prune_tickets_to(Rval), [Rval], []).
 instr_rvals_and_lvals(incr_sp(_, _, _), [], []).
 instr_rvals_and_lvals(decr_sp(_), [], []).
 instr_rvals_and_lvals(decr_sp_and_return(_), [], []).
-instr_rvals_and_lvals(init_sync_term(Lval, _, _), [], [Lval]).
-instr_rvals_and_lvals(fork_new_child(Lval, _), [], [Lval]).
-instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
 instr_rvals_and_lvals(foreign_proc_code(_, Cs, _, _, _, _, _, _, _, _),
         Rvals, Lvals) :-
     foreign_proc_components_get_rvals_and_lvals(Cs, Rvals, Lvals).
+instr_rvals_and_lvals(init_sync_term(Lval, _, _), [], [Lval]).
+instr_rvals_and_lvals(fork_new_child(Lval, _), [], [Lval]).
+instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
+instr_rvals_and_lvals(lc_create_loop_control(_, Lval), [], [Lval]).
+instr_rvals_and_lvals(lc_wait_free_slot(Rval, Lval, _), [Rval], [Lval]).
+instr_rvals_and_lvals(lc_spawn_off(LCRval, LCSRval, _), [LCRval, LCSRval], []).
+instr_rvals_and_lvals(lc_join_and_terminate(LCRval, LCSRval),
+    [LCRval, LCSRval], []).
 
     % Extract the rvals and lvals from the foreign_proc_components.
     %
@@ -1724,15 +1756,26 @@ count_temps_instr(prune_tickets_to(Rval), !R, !F) :-
 count_temps_instr(incr_sp(_, _, _), !R, !F).
 count_temps_instr(decr_sp(_), !R, !F).
 count_temps_instr(decr_sp_and_return(_), !R, !F).
+count_temps_instr(foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _),
+        !R, !F) :-
+    count_temps_components(Comps, !R, !F).
 count_temps_instr(init_sync_term(Lval, _, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(fork_new_child(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(join_and_continue(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
-count_temps_instr(foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _),
-        !R, !F) :-
-    count_temps_components(Comps, !R, !F).
+count_temps_instr(lc_create_loop_control(_, Lval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(lc_wait_free_slot(Rval, Lval, _), !R, !F) :-
+    count_temps_rval(Rval, !R, !F),
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(lc_spawn_off(LCRval, LCSRval, _), !R, !F) :-
+    count_temps_rval(LCRval, !R, !F),
+    count_temps_rval(LCSRval, !R, !F).
+count_temps_instr(lc_join_and_terminate(LCRval, LCSRval), !R, !F) :-
+    count_temps_rval(LCRval, !R, !F),
+    count_temps_rval(LCSRval, !R, !F).
 
 :- pred count_temps_components(list(foreign_proc_component)::in,
     int::in, int::out, int::in, int::out) is det.
@@ -1926,6 +1969,8 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
         ; Uinstr = incr_sp(_, _, _)
         ; Uinstr = decr_sp(_)
         ; Uinstr = decr_sp_and_return(_)
+        ; Uinstr = push_region_frame(_, _)
+        ; Uinstr = use_and_maybe_pop_region_frame(_, _)
         ),
         Touch = no
     ;
@@ -1943,16 +1988,39 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
         ),
         Touch = yes
     ;
-        Uinstr = block(_, _, _),
-        % Blocks aren't introduced until after the last user of this predicate.
-        unexpected($module, $pred, "block")
+        ( Uinstr = mark_hp(Lval)
+        ; Uinstr = store_ticket(Lval)
+        ; Uinstr = mark_ticket_stack(Lval)
+        ; Uinstr = lc_create_loop_control(_, Lval)
+        ),
+        Touch = touches_nondet_ctrl_lval(Lval)
+    ;
+        ( Uinstr = restore_hp(Rval)
+        ; Uinstr = free_heap(Rval)
+        ; Uinstr = region_set_fixed_slot(_SetOp, _EmbeddedStackFrame, Rval)
+        ; Uinstr = reset_ticket(Rval, _)
+        ; Uinstr = prune_tickets_to(Rval)
+        ),
+        Touch = touches_nondet_ctrl_rval(Rval)
     ;
         ( Uinstr = assign(Lval, Rval)
         ; Uinstr = keep_assign(Lval, Rval)
+        ; Uinstr = lc_wait_free_slot(Rval, Lval, _)
         ),
         TouchLval = touches_nondet_ctrl_lval(Lval),
         TouchRval = touches_nondet_ctrl_rval(Rval),
         bool.or(TouchLval, TouchRval, Touch)
+    ;
+        ( Uinstr = lc_spawn_off(LCRval, LCSRval, _)
+        ; Uinstr = lc_join_and_terminate(LCRval, LCSRval)
+        ),
+        TouchLC = touches_nondet_ctrl_rval(LCRval),
+        TouchLCS = touches_nondet_ctrl_rval(LCSRval),
+        bool.or(TouchLC, TouchLCS, Touch)
+    ;
+        Uinstr = block(_, _, _),
+        % Blocks aren't introduced until after the last user of this predicate.
+        unexpected($module, $pred, "block")
     ;
         Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
             MaybeReuse),
@@ -1981,18 +2049,6 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
             Touch = !.Touch
         )
     ;
-        Uinstr = mark_hp(Lval),
-        Touch = touches_nondet_ctrl_lval(Lval)
-    ;
-        Uinstr = restore_hp(Rval),
-        Touch = touches_nondet_ctrl_rval(Rval)
-    ;
-        Uinstr = free_heap(Rval),
-        Touch = touches_nondet_ctrl_rval(Rval)
-    ;
-        Uinstr = push_region_frame(_StackId, _EmbeddedStackFrame),
-        Touch = no
-    ;
         Uinstr = region_fill_frame(_FillOp, _EmbeddedStackFrame, IdRval,
             NumLval, AddrLval),
         Touch = bool.or(
@@ -2000,24 +2056,6 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
             bool.or(
                 touches_nondet_ctrl_lval(NumLval),
                 touches_nondet_ctrl_lval(AddrLval)))
-    ;
-        Uinstr = region_set_fixed_slot(_SetOp, _EmbeddedStackFrame, ValueRval),
-        Touch = touches_nondet_ctrl_rval(ValueRval)
-    ;
-        Uinstr = use_and_maybe_pop_region_frame(_UseOp, _EmbeddedStackFrame),
-        Touch = no
-    ;
-        Uinstr = store_ticket(Lval),
-        Touch = touches_nondet_ctrl_lval(Lval)
-    ;
-        Uinstr = reset_ticket(Rval, _),
-        Touch = touches_nondet_ctrl_rval(Rval)
-    ;
-        Uinstr = mark_ticket_stack(Lval),
-        Touch = touches_nondet_ctrl_lval(Lval)
-    ;
-        Uinstr = prune_tickets_to(Rval),
-        Touch = touches_nondet_ctrl_rval(Rval)
     ;
         Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
         Touch = touches_nondet_ctrl_components(Components)
@@ -2489,26 +2527,6 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
         ),
         Uinstr = prune_tickets_to(Rval)
     ;
-        Uinstr0 = init_sync_term(Lval0, NumConjuncts, TSStringIndex),
-        (
-            ReplData = yes,
-            replace_labels_lval(Lval0, Lval, ReplMap)
-        ;
-            ReplData = no,
-            Lval = Lval0
-        ),
-        Uinstr = init_sync_term(Lval, NumConjuncts, TSStringIndex)
-    ;
-        Uinstr0 = fork_new_child(Lval0, Child0),
-        replace_labels_lval(Lval0, Lval, ReplMap),
-        replace_labels_label(Child0, Child, ReplMap),
-        Uinstr = fork_new_child(Lval, Child)
-    ;
-        Uinstr0 = join_and_continue(Lval0, Label0),
-        replace_labels_label(Label0, Label, ReplMap),
-        replace_labels_lval(Lval0, Lval, ReplMap),
-        Uinstr = join_and_continue(Lval, Label)
-    ;
         Uinstr0 = foreign_proc_code(Decls, Comps0, MayCallMercury,
             MaybeFix, MaybeLayout, MaybeOnlyLayout, MaybeSub0, MaybeDef,
             StackSlotRef, MayDupl),
@@ -2561,6 +2579,47 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
         Uinstr = foreign_proc_code(Decls, Comps, MayCallMercury,
             MaybeFix, MaybeLayout, MaybeOnlyLayout, MaybeSub, MaybeDef,
             StackSlotRef, MayDupl)
+    ;
+        Uinstr0 = init_sync_term(Lval0, NumConjuncts, TSStringIndex),
+        (
+            ReplData = yes,
+            replace_labels_lval(Lval0, Lval, ReplMap)
+        ;
+            ReplData = no,
+            Lval = Lval0
+        ),
+        Uinstr = init_sync_term(Lval, NumConjuncts, TSStringIndex)
+    ;
+        Uinstr0 = fork_new_child(Lval0, Child0),
+        replace_labels_lval(Lval0, Lval, ReplMap),
+        replace_labels_label(Child0, Child, ReplMap),
+        Uinstr = fork_new_child(Lval, Child)
+    ;
+        Uinstr0 = join_and_continue(Lval0, Label0),
+        replace_labels_lval(Lval0, Lval, ReplMap),
+        replace_labels_label(Label0, Label, ReplMap),
+        Uinstr = join_and_continue(Lval, Label)
+    ;
+        Uinstr0 = lc_create_loop_control(NumSLots, Lval0),
+        replace_labels_lval(Lval0, Lval, ReplMap),
+        Uinstr = lc_create_loop_control(NumSLots, Lval)
+    ;
+        Uinstr0 = lc_wait_free_slot(Rval0, Lval0, Label0),
+        replace_labels_rval(Rval0, Rval, ReplMap),
+        replace_labels_lval(Lval0, Lval, ReplMap),
+        replace_labels_label(Label0, Label, ReplMap),
+        Uinstr = lc_wait_free_slot(Rval, Lval, Label)
+    ;
+        Uinstr0 = lc_spawn_off(LCRval0, LCSRval0, Label0),
+        replace_labels_rval(LCRval0, LCRval, ReplMap),
+        replace_labels_rval(LCSRval0, LCSRval, ReplMap),
+        replace_labels_label(Label0, Label, ReplMap),
+        Uinstr = lc_spawn_off(LCRval, LCSRval, Label)
+    ;
+        Uinstr0 = lc_join_and_terminate(LCRval0, LCSRval0),
+        replace_labels_rval(LCRval0, LCRval, ReplMap),
+        replace_labels_rval(LCSRval0, LCSRval, ReplMap),
+        Uinstr = lc_join_and_terminate(LCRval, LCSRval)
     ).
 
 replace_labels_comps([], [], _).
