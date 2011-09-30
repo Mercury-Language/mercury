@@ -15,6 +15,7 @@
 *.mih
 *.opt
 *.optdate
+*.prof
 mer_mdbcomp.init
 mer_mdbcomp.dv
 mer_mdbcomp.mh
