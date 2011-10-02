@@ -1000,9 +1000,6 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
         implicitly_quantify_goal_quant_info(Goal1, Goal, NonLocalsToRecompute,
             !Info),
 
-        !:RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            LambdaNonLocals, LambdaVars, Modes, Det, Goal),
-
         get_nonlocals(!.Info, RHSNonLocals0),
         % Lambda-quantified variables are local.
         set_of_var.delete_list(LambdaVars, RHSNonLocals0, RHSNonLocals),
@@ -1019,6 +1016,9 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
         LambdaGoalNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
         list.filter(set_of_var.contains(LambdaGoalNonLocals),
             LambdaNonLocals0, LambdaNonLocals),
+        
+        !:RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            LambdaNonLocals, LambdaVars, Modes, Det, Goal),
 
         % For a unification that constructs a lambda expression, the argument
         % variables of the construction are the nonlocal variables of the
