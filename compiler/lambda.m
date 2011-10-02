@@ -376,10 +376,18 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
     set.insert_list(Vars, LambdaGoalNonLocals, LambdaNonLocals),
     goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         LambdaNonLocals, ExtraTypeInfos),
-    OrigVars = OrigNonLocals0,
 
     (
-        Unification0 = construct(Var, _, _, UniModes0, _, _, _)
+        Unification0 = construct(Var, _, OrigNonLocals1, UniModes0, _, _, _),
+        % We use to use OrigVars = OrigNonLocals0 (from rhs_lambda_goal) but
+        % the order of the variables does not necessarily match UniModes0.
+        OrigVars = OrigNonLocals1,
+        trace [compiletime(flag("lambda_var_order"))] (
+            list.sort(OrigNonLocals0, SortedOrigNonLocals0),
+            list.sort(OrigNonLocals1, SortedOrigNonLocals1),
+            expect(unify(SortedOrigNonLocals0, SortedOrigNonLocals1),
+                $module, $pred, "OrigNonLocals0 != OrigNonLocals1")
+        )
     ;
         ( Unification0 = deconstruct(_, _, _, _, _, _)
         ; Unification0 = assign(_, _)
@@ -533,6 +541,8 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
 
         list.append(ArgModes1, Modes, AllArgModes),
         map.apply_to_list(AllArgVars, VarTypes, ArgTypes),
+        list.foldl_corresponding(check_lambda_arg_type_and_mode(ModuleInfo1),
+            ArgTypes, AllArgModes, 0, _),
 
         purity_to_markers(Purity, LambdaMarkers),
 
@@ -614,6 +624,26 @@ uni_modes_to_modes([UniMode | UniModes], [Mode | Modes]) :-
     UniMode = ((_Initial0 - Initial1) -> (_Final0 - _Final1)),
     Mode = (Initial1 -> Initial1),
     uni_modes_to_modes(UniModes, Modes).
+
+    % Make sure the arguments and modes are not misordered.  An obvious
+    % indicator is if a non-higher order argument is paired a higher order
+    % inst.
+    %
+:- pred check_lambda_arg_type_and_mode(module_info::in, mer_type::in,
+    mer_mode::in, int::in, int::out) is det.
+
+check_lambda_arg_type_and_mode(ModuleInfo, Type, Mode, X, X) :-
+    Inst = mode_get_initial_inst(ModuleInfo, Mode),
+    ( Inst = ground(_, higher_order(_)) ->
+        ( type_is_higher_order(Type) ->
+            true
+        ;
+            unexpected($module, $pred,
+                "non-higher order argument with higher order inst")
+        )
+    ;
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 
