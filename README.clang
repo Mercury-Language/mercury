@@ -1,7 +1,7 @@
 This file documents how to use clang as the C compiler with Mercury.  Support
-for Mercury with clang has been tested on Linux and Mac OS X.  To use clang as
-the C compiler for Mercury invoke Mercury's configure script with the --with-cc
-option set as follows:
+for Mercury with clang has been tested on Linux, Mac OS X and Windows.  To use
+clang as the C compiler for Mercury invoke Mercury's configure script with the
+--with-cc option set as follows:
 
     $ ./configure --with-cc=clang
 
