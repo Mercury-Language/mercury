@@ -12,40 +12,5 @@ Versions of LLVM (the underlying compiler infrastructure used by clang) before
 about 2.9 contain bugs that require most C compiler optimizations to be
 disabled when compiling Mercury generated C code with clang (i.e. the generated
 C files have to be compiled at -O0).  If you are using a more recent version of
-LLVM then you should be able to safely increase the optimization level used by
-clang by applying the following patch:
-
-Index: configure.in
-===================================================================
-RCS file: /home/mercury/mercury1/repository/mercury/configure.in,v
-retrieving revision 1.593
-diff -u -r1.593 configure.in
---- configure.in	21 Sep 2011 06:11:30 -0000	1.593
-+++ configure.in	2 Oct 2011 12:57:59 -0000
-@@ -4483,7 +4483,7 @@
-         # XXX we need go through the warning and optimization options for clang
-         # more carefully.
-         CFLAGS_FOR_WARNINGS="-w"
--        CFLAGS_FOR_OPT="-fomit-frame-pointer"
-+        CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer"
-         CFLAGS_FOR_DEBUG="-g"
-         CFLAGS_FOR_NO_STRICT_ALIASING="-fno-strict-aliasing"
-         MCFLAGS_FOR_CC=
-Index: scripts/mgnuc.in
-===================================================================
-RCS file: /home/mercury/mercury1/repository/mercury/scripts/mgnuc.in,v
-retrieving revision 1.137
-diff -u -r1.137 mgnuc.in
---- scripts/mgnuc.in	25 Aug 2011 14:16:53 -0000	1.137
-+++ scripts/mgnuc.in	2 Oct 2011 12:57:37 -0000
-@@ -72,7 +72,7 @@
-     *clang*)
-         ANSI_OPTS="-ansi"
-         CHECK_OPTS="-w"
--        OPT_OPTS="-O0 $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
-+        OPT_OPTS="-O2 $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
-         DEBUG_OPT="-g"
-         COMPILER=clang
-         ;;
-
-
+LLVM then the configure script will automatically enable a higher level of
+optimization.

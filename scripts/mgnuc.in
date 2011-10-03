@@ -72,7 +72,7 @@ case "$CC" in
     *clang*)
         ANSI_OPTS="-ansi"
         CHECK_OPTS="-w"
-        OPT_OPTS="-O0 $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
+        OPT_OPTS="@OPT_FLAGS_FOR_CLANG@ $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
         DEBUG_OPT="-g"
         COMPILER=clang
         ;;
