@@ -35,7 +35,8 @@ case $FULLARCH in
 		strip=false
 		;;
 	*-darwin*)
-		# `gcc -s' doesn't seem to do the right thing on Mac OS X
+		# `gcc -s' is deprecated on Mac OS X.  Enabling it will cause
+		# a warning to be emitted.
 		strip=false
 		;;
 	*)

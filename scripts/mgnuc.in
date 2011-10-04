@@ -72,7 +72,7 @@ case "$CC" in
     *clang*)
         ANSI_OPTS="-ansi"
         CHECK_OPTS="-w"
-        OPT_OPTS="-O0 $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
+        OPT_OPTS="@OPT_FLAGS_FOR_CLANG@ $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
         DEBUG_OPT="-g"
         COMPILER=clang
         ;;
@@ -316,12 +316,12 @@ esac
 use_msvcrt=@USE_MSVCRT@
 if test $use_msvcrt = "yes"; then
     case $thread_safe in
-        # /MD states that we will use the MSVC runtime, the boehm_gc collector
+        # -MD states that we will use the MSVC runtime, the boehm_gc collector
         # assumes that the collector has been built as a DLL if we are using
         # the MSVC runtime so we need to define GC_NOT_DLL when the collector
         # isn't built as a DLL.
-        true)   MSVCRT_OPTS="/MD" ;;
-        false)  MSVCRT_OPTS="/DGC_NOT_DLL /MD" ;;
+        true)   MSVCRT_OPTS="-MD" ;;
+        false)  MSVCRT_OPTS="-DGC_NOT_DLL -MD" ;;
     esac
 else
     MSVCRT_OPTS=""

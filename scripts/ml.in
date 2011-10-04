@@ -376,7 +376,7 @@ use_msvcrt=@USE_MSVCRT@
 if test $use_msvcrt = "yes"
 then
 	MSVCRT_OPTS="-MD" 			# Enable linking with the MS Visual C runtime.
-	NODEFAULTLIB_FLAG="-nodefaultlib:libc"
+	NODEFAULTLIB_FLAG="-nodefaultlib:libcmt"
 else
 	MSVCRT_OPTS=""
 	NODEFAULTLIB_FLAG=""
