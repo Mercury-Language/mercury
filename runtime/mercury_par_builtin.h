@@ -313,6 +313,12 @@ struct MR_LoopControl_Struct
     MR_THREADSAFE_VOLATILE MR_bool          MR_lc_finished;
 
     /*
+    ** When a slot becomes free its index is stored here so that when a free
+    ** slot is requested the slot with this index is checked first.
+    */
+    unsigned                                MR_lc_free_slot_hint;
+
+    /*
     ** MR_lc_slots MUST be the last field, since in practice, we treat
     ** the array as having as many slots as we need, adding the size of
     ** all the elements except the first to sizeof(MR_LoopControl) when
@@ -410,7 +416,7 @@ extern MR_LoopControlSlot   *MR_lc_try_get_free_slot(MR_LoopControl *lc);
 */
 #define MR_lc_wait_free_slot(lc, lcs, retry_label)                          \
     do {                                                                    \
-        unsigned    i;                                                      \
+        unsigned    hint, offset, i;                                        \
                                                                             \
         if ((lc)->MR_lc_outstanding_workers == (lc)->MR_lc_num_slots) {     \
             MR_US_SPIN_LOCK(&((lc)->MR_lc_master_context_lock));            \
@@ -439,25 +445,20 @@ extern MR_LoopControlSlot   *MR_lc_try_get_free_slot(MR_LoopControl *lc);
             MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));               \
         }                                                                   \
                                                                             \
-        /*                                                                  \
-        ** XXX Optimize this by using a hint to start the search at.        \
-        */                                                                  \
-        for (i = 0; i<(lc)->MR_lc_num_slots; i++) {                         \
+        hint = (lc)->MR_lc_free_slot_hint;                                  \
+                                                                            \
+        for (offset = 0; offset < (lc)->MR_lc_num_slots; offset++) {        \
+            i = (hint + offset) % (lc)->MR_lc_num_slots;                    \
             if ((lc)->MR_lc_slots[i].MR_lcs_is_free) {                      \
                 (lc)->MR_lc_slots[i].MR_lcs_is_free = MR_FALSE;             \
+                (lc)->MR_lc_free_slot_hint =                                \
+                    (i + 1) % (lc)->MR_lc_free_slot_hint;                   \
                 MR_atomic_inc_int(&((lc)->MR_lc_outstanding_workers));      \
                 (lcs) = &((lc)->MR_lc_slots[i]);                            \
                 break;                                                      \
             }                                                               \
         }                                                                   \
                                                                             \
-        /*                                                                  \
-        ** Since only one context can ever run MR_lc_wait_free_slot then we \
-        ** can never fail to find a since outstanding workers can never be  \
-        ** incremented by another engine.                                   \
-        ** XXX This comment is so mangled it does not make sense.           \
-        */                                                                  \
-        MR_fatal_error("No free slot found in loop control");               \
     } while (0);
 
 /*

@@ -52,10 +52,10 @@ MR_lc_create(unsigned num_workers)
     for (i = 0; i < num_workers; i++) {
         /*
         ** We allocate contexts as necessary, so that we never allocate a
-        ** context we don't use. Also, by delaying the allocation of contexts,
-        ** all but the first may execute in parallel with one-another.
-        ** XXX I (zs) do not understand how the first half of the previous
-        ** sentence implies the seconf half; I don't think it does.
+        ** context we don't use.  Also, by allocating the contexts in
+        ** MR_lc_spawn_off, already spawned off computations can run in
+        ** parallel with the allocation of contexts for computations that are
+        ** about to be spawned off.
         */
         lc->MR_lc_slots[i].MR_lcs_context = NULL;
         lc->MR_lc_slots[i].MR_lcs_is_free = MR_TRUE;
@@ -64,6 +64,7 @@ MR_lc_create(unsigned num_workers)
     lc->MR_lc_master_context_lock = MR_US_LOCK_INITIAL_VALUE;
     lc->MR_lc_master_context = NULL;
     lc->MR_lc_finished = MR_FALSE;
+    lc->MR_lc_free_slot_hint = 0;
 
     return lc;
 }
@@ -77,14 +78,20 @@ MR_lc_try_get_free_slot(MR_LoopControl *lc)
     if (lc->MR_lc_outstanding_workers == lc->MR_lc_num_slots) {
         return NULL;
     } else {
-        unsigned i;
+        unsigned hint, offset, i;
 
         /*
-        ** XXX Optimize this by using a hint to start the search at.
+        ** We start indexing into the array starting at this hint, it is either
+        ** set to a known free slot or the next unchecked slot after finding a
+        ** free slot.
         */
-        for (i = 0; i<lc->MR_lc_num_slots; i++) {
+        hint = lc->MR_lc_free_slot_hint;
+
+        for (offset = 0; offset < lc->MR_lc_num_slots; offset++) {
+            i = (hint + offset) % lc->MR_lc_num_slots;
             if (lc->MR_lc_slots[i].MR_lcs_is_free) {
                 lc->MR_lc_slots[i].MR_lcs_is_free = MR_FALSE;
+                lc->MR_lc_free_slot_hint = (i+1) % lc->MR_lc_num_slots;
                 MR_atomic_inc_int(&(lc->MR_lc_outstanding_workers));
                 return &(lc->MR_lc_slots[i]);
             }
@@ -99,7 +106,7 @@ MR_lc_spawn_off_func(MR_LoopControlSlot *lcs, MR_Code *code_ptr)
 {
     if (lcs->MR_lcs_context == NULL) {
         /*
-        ** We need a new context.
+        ** Allocate a new context.
         */
         lcs->MR_lcs_context = MR_create_context("Loop control",
             MR_CONTEXT_SIZE_FOR_LOOP_CONTROL_WORKER, NULL);
@@ -119,6 +126,8 @@ MR_lc_join(MR_LoopControl *lc, MR_LoopControlSlot *lcs)
     MR_Context  *wakeup_context;
 
     lcs->MR_lcs_is_free = MR_TRUE;
+    lc->MR_lc_free_slot_hint = (((MR_Word)lcs - (MR_Word)lc - sizeof(MR_LoopControl)) /
+        sizeof(MR_LoopControlSlot)) + 1;
     /* Ensure the slot is free before we perform the decrement. */
     MR_CPU_SFENCE;
     last_worker =
