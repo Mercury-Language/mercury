@@ -1036,6 +1036,7 @@ if test "$ac_microsoft" = "yes" ; then
     LINK_OPT_SEP="-link"
 
     OBJFILE_OPT="-Fo"
+    EXEFILE_OPT="-Fe"
     AR="lib"
     ARFLAGS=""
     AR_LIBFILE_OPT="-OUT:"
@@ -1062,6 +1063,7 @@ else
     LINK_OPT_SEP=""
 
     OBJFILE_OPT="-o "
+    EXEFILE_OPT="-o "
     AR="ar"
     ARFLAGS="cr"
     AR_LIBFILE_OPT=""
@@ -1125,6 +1127,7 @@ fi
 
 AC_SUBST(RANLIBFLAGS)
 AC_SUBST(OBJFILE_OPT)
+AC_SUBST(EXEFILE_OPT)
 AC_SUBST(AR)
 AC_SUBST(ARFLAGS)
 AC_SUBST(AR_LIBFILE_OPT)
