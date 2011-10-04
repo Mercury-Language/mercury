@@ -67,6 +67,7 @@ case "$CC" in
               ;;
         esac
         DEBUG_OPT="-g"
+        DISABLE_OPTS_OPT="-O0"
         COMPILER=gcc
         ;;
     *clang*)
@@ -74,6 +75,7 @@ case "$CC" in
         CHECK_OPTS="-w"
         OPT_OPTS="@OPT_FLAGS_FOR_CLANG@ $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
         DEBUG_OPT="-g"
+        DISABLE_OPTS_OPT="-O0"
         COMPILER=clang
         ;;
     *lcc*)
@@ -81,6 +83,7 @@ case "$CC" in
         CHECK_OPTS="-w"     # turn off all warnings due to spurious warnings.
         OPT_OPTS=""
         DEBUG_OPT="-g"
+        DISABLE_OPTS_OPT="-O0"
         COMPILER=lcc
         ;;
     *cl* | *CL*)
@@ -88,6 +91,7 @@ case "$CC" in
         CHECK_OPTS=""
         OPT_OPTS=""
         DEBUG_OPT="-Zi"
+        DISABLE_OPTS_OPT="-Od"
         COMPILER=cl
         ;;
     *)
@@ -95,6 +99,7 @@ case "$CC" in
         CHECK_OPTS=
         OPT_OPTS="-O"
         DEBUG_OPT="-g"
+        DISABLE_OPTS_OPT="-O0"
         COMPILER=unknown
         ;;
 esac
@@ -444,7 +449,7 @@ case $ss_debug in
 esac
 
 case $ll_debug in
-    true)           LL_DEBUG_OPTS="-DMR_LL_DEBUG $DEBUG_OPT -O0" ;;
+    true)           LL_DEBUG_OPTS="-DMR_LL_DEBUG $DEBUG_OPT $DISABLE_OPTS_OPT" ;;
     false)          LL_DEBUG_OPTS="" ;;
 esac
 
