@@ -1,4 +1,8 @@
 
+MCFLAGS-g12_fe_bug = 			--intermodule-optimization
+MCFLAGS-g12_fe_bug.generic_search = --no-warn-interface-imports --intermodule-optimization
+MCFLAGS-g12_fe_bug.solvers = 		--intermodule-optimization
+MCFLAGS-g12_fe_bug.solvers.bounds = 	--intermodule-optimization
 MCFLAGS-nested_intermod	=	--intermodule-optimization
 MCFLAGS-nested_intermod_main =	--intermodule-optimization
 MCFLAGS-non_word_mutable =	--intermodule-optimization --no-intermodule-analysis

@@ -1093,7 +1093,11 @@ add_pragma_foreign_enum(Lang, TypeName, TypeArity, ForeignTagValues,
                 )
             ;
                 DuTypeKind0 = du_type_kind_foreign_enum(_),
-                ( LangForForeignEnums \= Lang ->
+                ( 
+                    ( LangForForeignEnums \= Lang
+                    ; ImportStatus = status_opt_imported
+                    )
+                ->
                      MaybeSeverity = no,
                      ErrorPieces = []
                 ;
