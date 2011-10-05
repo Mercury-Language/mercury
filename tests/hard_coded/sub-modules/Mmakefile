@@ -20,6 +20,7 @@ SUB_MODULE_PROGS= \
 	class \
 	deeply_nested \
 	finalise_parent \
+	g12_fe_bug \
 	initialise_parent \
 	mutable_parent \
 	nested \
