@@ -2841,7 +2841,7 @@ io.file_modification_time(File, Result, !IO) :-
 :- pragma foreign_proc("C",
     io.file_modification_time_2(FileName::in, Status::out, Msg::out,
         Time::out, IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_HAVE_STAT
