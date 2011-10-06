@@ -1690,6 +1690,7 @@
 
 %-----------------------------------------------------------------------------%
 
+:- pragma foreign_import_module("C", time).   % For ML_construct_time_t.
 :- pragma foreign_import_module("C", string).
 
     % Values of type `io.state' are never really used:
@@ -2846,8 +2847,7 @@ io.file_modification_time(File, Result, !IO) :-
 #ifdef MR_HAVE_STAT
     struct stat s;
     if (stat(FileName, &s) == 0) {
-        /* XXX This assumes that a time_t will fit into an MR_Word. */
-        Time = s.st_mtime;
+        Time = ML_construct_time_t(s.st_mtime);
         Msg = MR_string_const("""", 0);
         Status = 1;
     } else {
