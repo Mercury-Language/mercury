@@ -1881,6 +1881,13 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
 
     % Find which system libraries are needed.
     get_system_libs(Globals, LinkTargetType, SystemLibs),
+    
+    % With --restricted-command-line we may need to some additional
+    % options to the linker.
+    % (See the comment above get_restricted_command_lin_link_opts/3 for
+    % details.)
+    get_restricted_command_line_link_opts(Globals, LinkTargetType,
+        ResCmdLinkOpts),
 
     globals.lookup_accumulating_option(Globals, LDFlagsOpt, LDFlagsList),
     join_string_list(LDFlagsList, "", "", " ", LDFlags),
@@ -1979,6 +1986,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
                     InstallNameOpt, " ",
                     DebugOpts, " ",
                     Frameworks, " ",
+                    ResCmdLinkOpts, " ",
                     LDFlags, " ",
                     LinkLibraries, " ",
                     MercuryStdLibs, " ",
@@ -2362,7 +2370,61 @@ use_thread_libs(Globals, UseThreadLibs) :-
     globals.lookup_bool_option(Globals, parallel, Parallel),
     globals.get_gc_method(Globals, GCMethod),
     UseThreadLibs = ( ( Parallel = yes ; GCMethod = gc_mps ) -> yes ; no ).
-    
+
+    % When using --restricted-command-line with Visual C we add all the object
+    % files to a temporary archive before linking an executable.
+    % However, if only .lib files are given on the command line then 
+    % the linker needs to manually told some details that it usually infers
+    % from the object files, for example the program entry point and the
+    % target machine type.
+    %
+:- pred get_restricted_command_line_link_opts(globals::in,
+    linked_target_type::in, string::out) is det.
+
+get_restricted_command_line_link_opts(Globals, LinkTargetType, ResCmdLinkOpts) :-
+    globals.lookup_bool_option(Globals, restricted_command_line,
+        RestrictedCommandLine),
+    (
+        RestrictedCommandLine = yes,
+        (
+            LinkTargetType = executable,
+            get_c_compiler_type(Globals, C_CompilerType),
+            (
+                C_CompilerType = cc_cl(_),
+                % XXX WIN64 - this will need to be revisited when we begin
+                % supporting 64-bit Windows.
+                ResCmdLinkFlags = [
+                    "-subsystem:console",
+                    "-machine:x86",
+                    "-entry:mainCRTStartup",
+                    "-defaultlib:libcmt"
+                ],
+                join_string_list(ResCmdLinkFlags, "", "", " ", ResCmdLinkOpts)
+            ;
+                ( C_CompilerType = cc_gcc(_, _, _)
+                ; C_CompilerType = cc_clang(_)
+                ; C_CompilerType = cc_lcc
+                ; C_CompilerType = cc_unknown
+                ),
+                ResCmdLinkOpts = ""
+            )
+        ;
+            ( LinkTargetType = static_library
+            ; LinkTargetType = shared_library
+            ; LinkTargetType = csharp_executable
+            ; LinkTargetType = csharp_library
+            ; LinkTargetType = java_launcher
+            ; LinkTargetType = java_archive
+            ; LinkTargetType = erlang_launcher
+            ; LinkTargetType = erlang_archive
+            ),
+            ResCmdLinkOpts = ""
+        )
+    ;
+        RestrictedCommandLine = no,
+        ResCmdLinkOpts = ""
+    ).
+
 post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
         Globals, Succeeded, MadeSymlinkOrCopy, !IO) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
