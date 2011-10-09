@@ -3033,6 +3033,7 @@ grade_start_values(profile_time - bool(no)).
 grade_start_values(profile_calls - bool(no)).
 grade_start_values(profile_memory - bool(no)).
 grade_start_values(use_trail - bool(no)).
+grade_start_values(trail_segments - bool(no)).    
 grade_start_values(use_minimal_model_stack_copy - bool(no)).
 grade_start_values(use_minimal_model_own_stacks - bool(no)).
 grade_start_values(minimal_model_debug - bool(no)).
@@ -3041,6 +3042,11 @@ grade_start_values(exec_trace - bool(no)).
 grade_start_values(decl_debug - bool(no)).
 grade_start_values(source_to_source_debug - bool(no)).
 grade_start_values(extend_stacks_when_needed - bool(no)).
+grade_start_values(stack_segments - bool(no)).
+grade_start_values(use_regions - bool(no)).
+grade_start_values(use_regions_debug - bool(no)).
+grade_start_values(use_regions_profiling - bool(no)).
+grade_start_values(low_level_debug - bool(no)).
 
 :- pred split_grade_string(string::in, list(string)::out) is semidet.
 
