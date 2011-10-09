@@ -248,6 +248,11 @@
 :- pred get_containing_goal_map_det(code_info::in, containing_goal_map::out)
     is det.
 
+:- pred add_out_of_line_code(llds_code::in, code_info::in, code_info::out)
+    is det.
+
+:- pred get_out_of_line_code(code_info::in, llds_code::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -483,7 +488,12 @@
                 % and their IDs are placed in an array slot which can be
                 % referred to statically.
                 cip_ts_string_table_size    :: int,
-                cip_ts_rev_string_table     :: list(string)
+                cip_ts_rev_string_table     :: list(string),
+
+                % Code that is part of this procedure, but that can be placed
+                % after the procedure without a cache penalty.  For example,
+                % code that is spawned off by loop control is placed here.
+                cip_out_of_line_code        :: llds_code
             ).
 
 %---------------------------------------------------------------------------%
@@ -605,7 +615,8 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             set_tree234.init,
             set.init,
             TSStringTableSize,
-            TSRevStringTable
+            TSRevStringTable,
+            cord.empty
         )
     ),
     init_maybe_trace_info(TraceLevel, Globals, ModuleInfo,
@@ -782,6 +793,13 @@ get_containing_goal_map_det(CI, ContainingGoalMap) :-
         MaybeContainingGoalMap = no,
         unexpected($module, $pred, "no map")
     ).
+
+add_out_of_line_code(NewCode, !CI) :-
+    Code0 = !.CI ^ code_info_persistent ^ cip_out_of_line_code,
+    Code = Code0 ++ NewCode,
+    !CI ^ code_info_persistent ^ cip_out_of_line_code := Code.
+
+get_out_of_line_code(CI, CI ^ code_info_persistent ^ cip_out_of_line_code).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

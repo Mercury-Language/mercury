@@ -373,8 +373,10 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
 
     % Generate code for the procedure.
     generate_category_code(CodeModel, ProcContext, Goal, OutsideResumePoint,
-        TraceSlotInfo, CodeTree, MaybeTraceCallLabel, FrameInfo,
+        TraceSlotInfo, CodeTree0, MaybeTraceCallLabel, FrameInfo,
         CodeInfo0, CodeInfo),
+    get_out_of_line_code(CodeInfo, OutOfLineCode),
+    CodeTree = CodeTree0 ++ OutOfLineCode,
     get_max_reg_in_use_at_trace(CodeInfo, MaxTraceReg),
     get_static_cell_info(CodeInfo, StaticCellInfo),
     global_data_set_static_cell_info(StaticCellInfo, !GlobalData),

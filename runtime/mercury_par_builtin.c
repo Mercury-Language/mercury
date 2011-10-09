@@ -66,17 +66,21 @@ MR_lc_create(unsigned num_workers)
     lc->MR_lc_finished = MR_FALSE;
     lc->MR_lc_free_slot_hint = 0;
 
+#ifdef MR_DEBUG_LOOP_CONTROL
+    fprintf(stderr, "lc_create(%d) -> %p)\n", num_workers, lc);
+#endif
+
     return lc;
 }
 
 /*
 ** Deprecated, this was part of our old loop control design.
 */
-MR_LoopControlSlot *
-MR_lc_try_get_free_slot(MR_LoopControl *lc)
+MR_Bool
+MR_lc_try_get_free_slot(MR_LoopControl *lc, MR_Unsigned *lcs_idx)
 {
     if (lc->MR_lc_outstanding_workers == lc->MR_lc_num_slots) {
-        return NULL;
+        return MR_FALSE;
     } else {
         unsigned hint, offset, i;
 
@@ -93,17 +97,24 @@ MR_lc_try_get_free_slot(MR_LoopControl *lc)
                 lc->MR_lc_slots[i].MR_lcs_is_free = MR_FALSE;
                 lc->MR_lc_free_slot_hint = (i+1) % lc->MR_lc_num_slots;
                 MR_atomic_inc_int(&(lc->MR_lc_outstanding_workers));
-                return &(lc->MR_lc_slots[i]);
+                *lcs_idx = i;
+                return MR_TRUE;
             }
         }
 
-        return NULL;
+        return MR_FALSE;
     }
 }
 
 void
-MR_lc_spawn_off_func(MR_LoopControlSlot *lcs, MR_Code *code_ptr)
+MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx, MR_Code
+        *code_ptr)
 {
+    MR_LoopControlSlot *lcs = &(lc->MR_lc_slots[lcs_idx]);
+
+#if MR_DEBUG_LOOP_CONTROL
+    fprintf(stderr, "lc_spawn_off(%p, %d, %p)\n", lc, lcs_idx, code_ptr);
+#endif
     if (lcs->MR_lcs_context == NULL) {
         /*
         ** Allocate a new context.
@@ -120,14 +131,20 @@ MR_lc_spawn_off_func(MR_LoopControlSlot *lcs, MR_Code *code_ptr)
 }
 
 void
-MR_lc_join(MR_LoopControl *lc, MR_LoopControlSlot *lcs)
+MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
 {
-    MR_bool     last_worker;
-    MR_Context  *wakeup_context;
+    MR_LoopControlSlot  *lcs;
+    MR_bool             last_worker;
+    MR_Context          *wakeup_context;
+
+    lcs = &(lc->MR_lc_slots[lcs_idx]);
+
+#ifdef MR_DEBUG_LOOP_CONTROL
+    fprintf(stderr, "lc_join(%p, %d)\n", lc, lcs_idx);
+#endif
 
     lcs->MR_lcs_is_free = MR_TRUE;
-    lc->MR_lc_free_slot_hint = (((MR_Word)lcs - (MR_Word)lc - sizeof(MR_LoopControl)) /
-        sizeof(MR_LoopControlSlot)) + 1;
+    lc->MR_lc_free_slot_hint = lcs_idx;
     /* Ensure the slot is free before we perform the decrement. */
     MR_CPU_SFENCE;
     last_worker =
@@ -149,6 +166,9 @@ MR_lc_join(MR_LoopControl *lc, MR_LoopControlSlot *lcs)
         lc->MR_lc_master_context = NULL;
         MR_US_UNLOCK(&(lc->MR_lc_master_context_lock));
         if (wakeup_context != NULL) {
+#ifdef MR_DEBUG_LOOP_CONTROL
+            fprintf(stderr, "Waking up master\n");
+#endif
             /*
             ** XXX: it is faster to switch to this context ourselves
             ** since we are going to unload our own context.

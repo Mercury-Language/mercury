@@ -342,6 +342,18 @@ typedef MR_Word MR_LoopControlSlot;
 
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
 
+#ifdef MR_DEBUG_LOOP_CONTROL
+    #define MR_IF_DEBUG_LOOP_CONTORL(stmt) \
+        do { \
+            stmt; \
+        } while (0);
+#else
+    #define MR_IF_DEBUG_LOOP_CONTORL(stmt) \
+        do { \
+            ; \
+        } while (0);
+#endif
+
 /*
 ** XXX: Make these functions macros, they are now functions to make debugging
 ** and testing easier.
@@ -358,6 +370,9 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
 ** that will be used in the name for a C label.
 */
 #define MR_lc_finish_part1(lc, part2_label)                                 \
+    MR_IF_DEBUG_LOOP_CONTORL(                                               \
+        fprintf(stderr, "lc_finish_part1(%p, %p)\n", (lc), (part2_label))); \
+                                                                            \
     do {                                                                    \
         (lc)->MR_lc_finished = MR_TRUE;                                     \
         /*                                                                  \
@@ -391,6 +406,9 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
     } while (0);
 
 #define MR_lc_finish_part2(lc)                                              \
+    MR_IF_DEBUG_LOOP_CONTORL(                                               \
+        fprintf(stderr, "lc_finish_part2(%p)\n", (lc)));                    \
+                                                                            \
     do {                                                                    \
         unsigned i;                                                         \
                                                                             \
@@ -409,12 +427,17 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
 **
 ** Deprecated: this was part of our old loop control design.
 */
-extern MR_LoopControlSlot   *MR_lc_try_get_free_slot(MR_LoopControl *lc);
+extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
+    MR_Unsigned *lcs_idx);
 
 /*
 ** Get a free slot in the loop control, or block until one is available.
 */
-#define MR_lc_wait_free_slot(lc, lcs, retry_label)                          \
+#define MR_lc_wait_free_slot(lc, lcs_idx, retry_label)                      \
+    MR_IF_DEBUG_LOOP_CONTORL(                                               \
+        fprintf(stderr, "lc_wait_free_slot(%p, _, %p)\n", (lc),             \
+            retry_label));                                                  \
+                                                                            \
     do {                                                                    \
         unsigned    hint, offset, i;                                        \
                                                                             \
@@ -436,9 +459,9 @@ extern MR_LoopControlSlot   *MR_lc_try_get_free_slot(MR_LoopControl *lc);
                 ctxt = MR_ENGINE(MR_eng_this_context);                      \
                 (lc)->MR_lc_master_context = ctxt;                          \
                 MR_save_context(ctxt);                                      \
-                ctxt->MR_ctxt_resume = MR_add_prefix(retry_label);          \
+                ctxt->MR_ctxt_resume = retry_label;                         \
                 ctxt->MR_ctxt_resume_owner_engine = MR_ENGINE(MR_eng_id);   \
-                MR_US_UNLOCK(&(lc->MR_lc_master_context_lock));             \
+                MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));           \
                 MR_ENGINE(MR_eng_this_context) = NULL;                      \
                 MR_idle();                                                  \
             }                                                               \
@@ -452,29 +475,33 @@ extern MR_LoopControlSlot   *MR_lc_try_get_free_slot(MR_LoopControl *lc);
             if ((lc)->MR_lc_slots[i].MR_lcs_is_free) {                      \
                 (lc)->MR_lc_slots[i].MR_lcs_is_free = MR_FALSE;             \
                 (lc)->MR_lc_free_slot_hint =                                \
-                    (i + 1) % (lc)->MR_lc_free_slot_hint;                   \
+                    (i + 1) % (lc)->MR_lc_num_slots;                        \
                 MR_atomic_inc_int(&((lc)->MR_lc_outstanding_workers));      \
-                (lcs) = &((lc)->MR_lc_slots[i]);                            \
+                (lcs_idx) = i;                                              \
                 break;                                                      \
             }                                                               \
         }                                                                   \
+                                                                            \
+        MR_IF_DEBUG_LOOP_CONTORL(                                           \
+            fprintf(stderr, "lc_wait_free_slot returning %d\n", (lcs_idx)));\
                                                                             \
     } while (0);
 
 /*
 ** Try to spawn off this code using the free slot.
 */
-#define MR_lc_spawn_off(lcs, label) \
-    MR_lc_spawn_off_func((lcs), MR_LABEL(MR_add_prefix(label)))
+#define MR_lc_spawn_off(lc, lcs_idx, label) \
+    MR_lc_spawn_off_func((lc), (lcs_idx), label)
 
-extern void MR_lc_spawn_off_func(MR_LoopControlSlot *lcs, MR_Code *code_ptr);
+extern void MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx,
+    MR_Code *code_ptr);
 
 /*
 ** Join and terminate a worker.
 */
-#define MR_lc_join_and_terminate(lc, lcs)                                   \
+#define MR_lc_join_and_terminate(lc, lcs_idx)                               \
     do {                                                                    \
-        MR_lc_join((lc), (lcs));                                            \
+        MR_lc_join((lc), (lcs_idx));                                        \
                                                                             \
         /*                                                                  \
         ** Termination of this context must be handled in a macro so that   \
@@ -494,7 +521,7 @@ extern void MR_lc_spawn_off_func(MR_LoopControlSlot *lcs, MR_Code *code_ptr);
 ** Join a worker context with the main thread. Termination of the context
 ** is handled in the macro above.
 */
-extern void MR_lc_join(MR_LoopControl *lc, MR_LoopControlSlot *lcs);
+extern void MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx);
 
 #endif /* MR_THREAD_SAFE && MR_LL_PARALLEL_CONJ */
 

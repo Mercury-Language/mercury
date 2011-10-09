@@ -91,6 +91,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -98,6 +99,9 @@
 
 :- pred generate_par_conj(list(hlds_goal)::in, hlds_goal_info::in,
     code_model::in, llds_code::out, code_info::in, code_info::out) is det.
+
+:- pred generate_loop_control(hlds_goal::in, prog_var::in, prog_var::in,
+    llds_code::out, code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -113,18 +117,21 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.code_gen.
+:- import_module ll_backend.code_info.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.exprn_aux.
+:- import_module ll_backend.var_locn.
 :- import_module mdbcomp.goal_path.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -318,6 +325,56 @@ ts_finish_par_conj_instr(SyncTermBaseSlot, SyncTermBaseSlotLval) =
 MR_threadscope_post_end_par_conj(&MR_sv(%d));
 #endif
 ".
+
+%-----------------------------------------------------------------------------%
+
+generate_loop_control(Goal, LCVar, LCSVar, Code, !CI) :-
+    % We don't need to save the parent stack pointer, we do not use it in the
+    % main context and all the worker contexts will never have some data that
+    % we shouldn't clobber there.
+    % We also expect the runtime code to setup the parent stack pointer for us.
+
+    get_known_variables(!.CI, KnownVars),
+    NonLocals = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
+    InputVars = set_of_var.intersect(NonLocals, list_to_set(KnownVars)),
+    save_variables_on_stack(to_sorted_list(InputVars), SaveCode, !CI),
+
+    % Create the call to spawn_off.
+    place_var(LCVar, reg(reg_r, 1), PlaceLCVar, !CI),
+    place_var(LCSVar, reg(reg_r, 2), PlaceLCSVar, !CI),
+    remember_position(!.CI, PositionBeforeSpawnOff),
+
+    get_next_label(SpawnOffLabel, !CI),
+    SpawnOffCallCode =
+        singleton(llds_instr(lc_spawn_off(lval(reg(reg_r, 1)),
+                lval(reg(reg_r, 2)), SpawnOffLabel),
+            "Spawn off job for worker using loop control")),
+    SpawnOffCode = PlaceLCVar ++ PlaceLCSVar ++ SpawnOffCallCode,
+    remember_position(!.CI, PositionAfterSpawnOff),
+
+    % Code to spawn off.
+    LabelCode = singleton(llds_instr(label(SpawnOffLabel),
+        "Label for spawned off code")),
+    reset_to_position(PositionBeforeSpawnOff, !CI),
+    clear_all_registers(no, !CI),
+    generate_goal(model_det, Goal, GoalCode, !CI),
+    % We expect that the join_and_terminate call is already in Goal.
+    SpawnedOffCode0 = LabelCode ++ GoalCode,
+    % Note: Zoltan, Peter and I (Paul) have discussed compressing the stack
+    % frame of the spawned off computation.  This would be _instead of_ using
+    % the parent stack pointer.  TODO: Before we can do this we need to
+    % determine in which loop controls we should use the parent's stack frame,
+    % and then perform this selectively.  The primitives in the runtime system
+    % also need to support this.
+    replace_stack_vars_by_parent_sv(SpawnedOffCode0, SpawnedOffCode),
+
+    reset_to_position(PositionAfterSpawnOff, !CI),
+
+    % The spawned off code is written into the procedure seperatly.
+    add_out_of_line_code(SpawnedOffCode, !CI),
+
+    % Concatentate the inline code.
+    Code = SaveCode ++ SpawnOffCode.
 
 %-----------------------------------------------------------------------------%
 

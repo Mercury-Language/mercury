@@ -600,7 +600,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         PredProcId = proc(PredId, ProcId),
 
         % Now transform the predicate, this could not be done earlier because
-        % we needed to know the knew PredProcId to re-write the recursive calls
+        % we needed to know the new PredProcId to re-write the recursive calls
         % in the body.
         proc_info_get_argmodes(OldProcInfo, ArgModes0),
         proc_info_get_headvars(OldProcInfo, HeadVars0),
@@ -611,13 +611,21 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         varset.new_named_var("LC", LCVar, VarSet0, VarSet1),
         map.det_insert(LCVar, loop_control_var_type, VarTypes0, VarTypes1),
         should_preserve_tail_recursion(!.ModuleInfo, PreserveTailRecursion),
-        get_wait_free_slot_proc(!.ModuleInfo, WaitFreeSlotProc),
+        get_lc_wait_free_slot_proc(!.ModuleInfo, WaitFreeSlotProc),
+        get_lc_join_and_terminate_proc(!.ModuleInfo, JoinAndTerminateProc),
 
-        Info = loop_control_info(LCVar, OldPredProcId, PredProcId, PredSym,
-            PreserveTailRecursion, WaitFreeSlotProc, lc_wait_free_slot_name),
+        Info = loop_control_info(!.ModuleInfo, LCVar, OldPredProcId,
+            PredProcId, PredSym, PreserveTailRecursion, WaitFreeSlotProc,
+            lc_wait_free_slot_name, JoinAndTerminateProc,
+            lc_join_and_terminate_name),
         goal_loop_control_all_paths(Info, RecParConjIds,
-            ContainingGoalMap, Body0, Body, VarSet1, VarSet,
+            ContainingGoalMap, Body0, Body1, VarSet1, VarSet,
             VarTypes1, VarTypes),
+
+        % Fixup the remaining recursive calls, and add barriers in the base
+        % cases.
+        goal_loop_control_fixup(Info, RecParConjIds, _,
+            Body1, Body),
 
         % Now create the new proc_info structure.
         HeadVars = [LCVar | HeadVars0],
@@ -656,13 +664,16 @@ should_preserve_tail_recursion(ModuleInfo, PreserveTailRecursion) :-
 
 :- type loop_control_info
     --->    loop_control_info(
-                lci_lc_var                      :: prog_var,
-                lci_rec_pred_proc_id            :: pred_proc_id,
-                lci_inner_pred_proc_id          :: pred_proc_id,
-                lci_inner_pred_name             :: sym_name,
-                lci_preserve_tail_recursion     :: preserve_tail_recursion,
-                lci_wait_free_slot_proc         :: pred_proc_id,
-                lci_wait_free_slot_proc_name    :: sym_name
+                lci_module_info                     :: module_info,
+                lci_lc_var                          :: prog_var,
+                lci_rec_pred_proc_id                :: pred_proc_id,
+                lci_inner_pred_proc_id              :: pred_proc_id,
+                lci_inner_pred_name                 :: sym_name,
+                lci_preserve_tail_recursion         :: preserve_tail_recursion,
+                lci_wait_free_slot_proc             :: pred_proc_id,
+                lci_wait_free_slot_proc_name        :: sym_name,
+                lci_join_and_terminate_proc         :: pred_proc_id,
+                lci_join_and_terminate_proc_name    :: sym_name
             ).
 
 :- type preserve_tail_recursion
@@ -779,8 +790,7 @@ par_conj_loop_control(Info, [LastConj0 | RevConjs], GoalInfo, Goal, !VarSet,
     goal_rewrite_recursive_call(Info, LastConj0, LastConj, _),
     goal_to_conj_list(LastConj, LastConjGoals),
 
-    % Process the remaining conjuncts, building up the nested set of ITEs from
-    % inside to outside.
+    % Process the remaining conjuncts.
     par_conj_loop_control2(Info, RevConjs, LastConjGoals, Goals, !VarSet,
         !VarTypes),
     create_conj_from_list(Goals, plain_conj, Goal0),
@@ -795,21 +805,28 @@ par_conj_loop_control(Info, [LastConj0 | RevConjs], GoalInfo, Goal, !VarSet,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 par_conj_loop_control2(_, [], LaterGoals, LaterGoals, !VarSet, !VarTypes).
-par_conj_loop_control2(Info, [Conj | RevConjs], LaterGoals, Goals, !VarSet,
+par_conj_loop_control2(Info, [Conj0 | RevConjs], LaterGoals, Goals, !VarSet,
         !VarTypes) :-
     % Create the "get free slot" call..
     create_get_free_slot_goal(Info, LCSVar, GetFreeSlotGoal, !VarSet,
         !VarTypes),
 
-    % Wrap Conj in the loop control scope.
-    LCVar = Info ^ lci_lc_var,
-    ConjGoalInfo = Conj ^ hlds_goal_info,
+    % Add a join_and_terminate goal to the end of Conj0 forming Conj.
+    create_join_and_termiate_goal(Info, LCVar, LCSVar, JoinAndTermiateGoal),
+    Conj0GoalInfo = Conj0 ^ hlds_goal_info,
+    goal_to_conj_list(Conj0, Conj0Goals),
+    ConjGoals = Conj0Goals ++ [JoinAndTermiateGoal],
     some [!NonLocals] (
-        !:NonLocals = goal_info_get_nonlocals(ConjGoalInfo),
+        !:NonLocals = goal_info_get_nonlocals(Conj0GoalInfo),
         insert(LCSVar, !NonLocals),
         insert(LCVar, !NonLocals),
-        goal_info_set_nonlocals(!.NonLocals, ConjGoalInfo, ScopeGoalInfo)
+        goal_info_set_nonlocals(!.NonLocals, Conj0GoalInfo, ConjGoalInfo)
     ),
+    conj_list_to_goal(ConjGoals, ConjGoalInfo, Conj),
+
+    % Wrap Conj in the loop control scope.
+    LCVar = Info ^ lci_lc_var,
+    ScopeGoalInfo = ConjGoalInfo,
     ScopeGoal = hlds_goal(scope(loop_control(LCVar, LCSVar), Conj),
         ScopeGoalInfo),
 
@@ -927,6 +944,155 @@ goals_fixup_goal_info(List, Fixup) :-
 
 %----------------------------------------------------------------------------%
 
+    % This predicate does two things:
+    %   + It inserts a loop control barrier into the base case(s) of the
+    %     predicate.
+    %   + It re-writes the recursive calls that aren't part of parallel
+    %     conjunctions so that they call the inner procedure and pass the loop
+    %     control variable.
+    %
+:- pred goal_loop_control_fixup(loop_control_info::in,
+    list(goal_id)::in, fixup_goal_info::out,
+    hlds_goal::in, hlds_goal::out) is det.
+
+goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo, !Goal) :-
+    GoalInfo0 = !.Goal ^ hlds_goal_info,
+    GoalId = goal_info_get_goal_id(GoalInfo0),
+    (
+        % This goal is one of the trasnformed parallel conjunctions, nothing
+        % needs to be done.
+        % XXX: This may not work, I don't know if the goal ID is maintained.
+        member(GoalId, RecParConjIds)
+    ->
+        FixupGoalInfo = do_not_fixup_goal_info
+    ;
+        % This goal is a base case, insert the barrier.
+        not ( some [Callee] (
+            goal_calls(!.Goal, Callee),
+            (
+                Callee = Info ^ lci_rec_pred_proc_id
+            ;
+                Callee = Info ^ lci_inner_pred_proc_id
+            )
+        ) )
+    ->
+        goal_to_conj_list(!.Goal, Conjs0),
+        create_finish_loop_control_goal(Info, FinishLCGoal),
+        Conjs = Conjs0 ++ [FinishLCGoal],
+        conj_list_to_goal(Conjs, GoalInfo0, !:Goal),
+        fixup_goal_info(Info, !Goal),
+        FixupGoalInfo = fixup_goal_info
+    ;
+        !.Goal = hlds_goal(GoalExpr0, _),
+        (
+            ( GoalExpr0 = unify(_, _, _, _, _)
+            ; GoalExpr0 = generic_call(_, _, _, _)
+            ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+            ),
+            % These cannot be a recursive call and they cannot be a base case
+            % since that is detected above.
+            unexpected($module, $pred, "Non-recursive atomic goal")
+        ;
+            GoalExpr0 = plain_call(PredId, ProcId, Args0, Builtin,
+                MaybeContext, _SymName0),
+            % This can only be a recursive call, it must be re-written
+            RecPredProcId = Info ^ lci_rec_pred_proc_id,
+            expect(unify(RecPredProcId, proc(PredId, ProcId)), $module, $pred,
+                "Expected recursive call"),
+            proc(InnerPredId, InnerProcId) = Info ^ lci_inner_pred_proc_id,
+            LCVar = Info ^ lci_lc_var,
+            Args = [LCVar | Args0],
+            SymName = Info ^ lci_inner_pred_name,
+            GoalExpr = plain_call(InnerPredId, InnerProcId, Args, Builtin,
+                MaybeContext, SymName),
+            FixupGoalInfo = fixup_goal_info
+        ;
+            GoalExpr0 = conj(ConjType, Conjs0),
+            conj_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo,
+                Conjs0, Conjs),
+            GoalExpr = conj(ConjType, Conjs)
+        ;
+            GoalExpr0 = disj(_),
+            sorry($module, $pred, "disjunction")
+        ;
+            GoalExpr0 = switch(Var, CanFail, Cases0),
+            map2(case_loop_control_fixup(Info, RecParConjIds), Cases0, Cases,
+                FixupGoalInfos),
+            goals_fixup_goal_info(FixupGoalInfos, FixupGoalInfo),
+            GoalExpr = switch(Var, CanFail, Cases)
+        ;
+            GoalExpr0 = negation(_),
+            sorry($module, $pred, "negation")
+        ;
+            GoalExpr0 = scope(Reason, SubGoal0),
+            goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo,
+                SubGoal0, SubGoal),
+            GoalExpr = scope(Reason, SubGoal)
+        ;
+            GoalExpr0 = if_then_else(ExistVars, Cond, Then0, Else0),
+            goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfoThen,
+                Then0, Then),
+            goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfoElse,
+                Else0, Else),
+            goals_fixup_goal_info([FixupGoalInfoThen, FixupGoalInfoElse],
+                FixupGoalInfo),
+            GoalExpr = if_then_else(ExistVars, Cond, Then, Else)
+        ;
+            GoalExpr0 = shorthand(_),
+            unexpected($module, $pred, "shorthand")
+        ),
+        !Goal ^ hlds_goal_expr := GoalExpr,
+        (
+            FixupGoalInfo = fixup_goal_info,
+            some [!NonLocals, !GoalInfo] (
+                !:GoalInfo = !.Goal ^ hlds_goal_info,
+                !:NonLocals = goal_info_get_nonlocals(!.GoalInfo),
+                insert(Info ^ lci_lc_var, !NonLocals),
+                goal_info_set_nonlocals(!.NonLocals, !GoalInfo),
+                goal_info_set_purity(purity_impure, !GoalInfo),
+                !Goal ^ hlds_goal_info := !.GoalInfo
+            )
+        ;
+            FixupGoalInfo = do_not_fixup_goal_info
+        )
+    ).
+
+:- pred conj_loop_control_fixup(loop_control_info::in, list(goal_id)::in,
+    fixup_goal_info::out, list(hlds_goal)::in, list(hlds_goal)::out) is det.
+
+conj_loop_control_fixup(_Info, _RecGoalIds, do_not_fixup_goal_info, [], []).
+conj_loop_control_fixup(Info, RecGoalIds, FixupGoalInfo,
+        [!.Conj | !.Conjs], [!:Conj | !:Conjs]) :-
+    (
+        not goal_calls(!.Conj, Callee),
+        (
+            Callee = Info ^ lci_rec_pred_proc_id
+        ;
+            Callee = Info ^ lci_inner_pred_proc_id
+        )
+    ->
+        % This Conj does not make a recursive call or contain a recursive
+        % parallel conjunction.  We don't need to transform it.
+        conj_loop_control_fixup(Info, RecGoalIds, FixupGoalInfo, !Conjs)
+    ;
+        % This Conj has something that needs to be transformed.
+        goal_loop_control_fixup(Info, RecGoalIds, FixupGoalInfo, !Conj)
+        % There's not going to be anything else in this conjunct that needs to
+        % be transformed, we don't make a recursive call.
+    ).
+
+:- pred case_loop_control_fixup(loop_control_info::in, list(goal_id)::in,
+    case::in, case::out, fixup_goal_info::out) is det.
+
+case_loop_control_fixup(Info, RecParConjIds, !Case, FixupGoalInfo) :-
+    some [!Goal] (
+        !:Goal = !.Case ^ case_goal,
+        goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo, !Goal),
+        !Case ^ case_goal := !.Goal
+    ).
+
+%----------------------------------------------------------------------------%
+
 :- pred create_get_free_slot_goal(loop_control_info::in, prog_var::out,
     hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
@@ -943,6 +1109,57 @@ create_get_free_slot_goal(Info, LCSVar, Goal, !VarSet,
         SymName),
     NonLocals = list_to_set([LCVar, LCSVar]),
     InstmapDelta = instmap_delta_bind_var(LCSVar),
+    GoalInfo = impure_init_goal_info(NonLocals, InstmapDelta, detism_det),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+%----------------------------------------------------------------------------%
+
+:- pred create_create_loop_control_goal(module_info::in, prog_var::in,
+    prog_var::out, hlds_goal::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out) is det.
+
+create_create_loop_control_goal(ModuleInfo, NumContextsVar, LCVar, Goal,
+        !VarSet, !VarTypes) :-
+    varset.new_named_var("LC", LCVar, !VarSet),
+    map.det_insert(LCVar, loop_control_var_type, !VarTypes),
+    get_lc_create_proc(ModuleInfo, LCCreatePredId, LCCreateProcId),
+    goal_info_init(list_to_set([NumContextsVar, LCVar]),
+        instmap_delta_bind_var(LCVar), detism_det, purity_pure,
+        LCCreateGoalInfo),
+    Goal = hlds_goal(plain_call(LCCreatePredId,
+            LCCreateProcId, [NumContextsVar, LCVar], not_builtin, no,
+            lc_create_name),
+        LCCreateGoalInfo).
+
+%----------------------------------------------------------------------------%
+
+:- pred create_join_and_termiate_goal(loop_control_info::in, prog_var::in,
+    prog_var::in, hlds_goal::out) is det.
+
+create_join_and_termiate_goal(Info, LCVar, LCSVar, Goal) :-
+    proc(PredId, ProcId) = Info ^ lci_join_and_terminate_proc,
+    SymName = Info ^ lci_join_and_terminate_proc_name,
+
+    GoalExpr = plain_call(PredId, ProcId, [LCVar, LCSVar], not_builtin, no,
+        SymName),
+    NonLocals = list_to_set([LCVar, LCSVar]),
+    instmap_delta_init_reachable(InstmapDelta),
+    GoalInfo = impure_init_goal_info(NonLocals, InstmapDelta, detism_det),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+%----------------------------------------------------------------------------%
+
+:- pred create_finish_loop_control_goal(loop_control_info::in, hlds_goal::out)
+    is det.
+
+create_finish_loop_control_goal(Info, Goal) :-
+    get_lc_finish_loop_control_proc(Info ^ lci_module_info, PredId, ProcId),
+    LCVar = Info ^ lci_lc_var,
+
+    GoalExpr = plain_call(PredId, ProcId, [LCVar], not_builtin, no,
+        lc_finish_loop_control_name),
+    NonLocals = list_to_set([LCVar]),
+    instmap_delta_init_reachable(InstmapDelta),
     GoalInfo = impure_init_goal_info(NonLocals, InstmapDelta, detism_det),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -1015,16 +1232,8 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
             GetNumContextsGoalInfo),
 
         % Create the call to lc_create
-        varset.new_named_var("LC", LCVar, !VarSet),
-        map.det_insert(LCVar, loop_control_var_type, !VarTypes),
-        get_lc_create_proc(ModuleInfo, LCCreatePredId, LCCreateProcId),
-        goal_info_init(list_to_set([NumContextsVar, LCVar]),
-            instmap_delta_bind_var(LCVar), detism_det, purity_pure,
-            LCCreateGoalInfo),
-        LCCreateGoal = hlds_goal(plain_call(LCCreatePredId,
-                LCCreateProcId, [NumContextsVar, LCVar], not_builtin, no,
-                lc_create_name),
-            LCCreateGoalInfo),
+        create_create_loop_control_goal(ModuleInfo, NumContextsVar, LCVar,
+            LCCreateGoal, !VarSet, !VarTypes),
 
         % Create the inner call.
         InnerCallArgs = [LCVar | HeadVars],
@@ -1101,8 +1310,9 @@ loop_control_var_type = defined_type(Sym, [], kind_star) :-
 
 :- func loop_control_slot_var_type = mer_type.
 
-loop_control_slot_var_type = defined_type(Sym, [], kind_star) :-
-    Sym = qualified(par_builtin_module_sym, "loop_control_slot").
+loop_control_slot_var_type = builtin_type(builtin_type_int).
+
+%----------------------------------------------------------------------------%
 
 :- func lc_wait_free_slot_name = sym_name.
 
@@ -1113,11 +1323,11 @@ lc_wait_free_slot_name =
 
 lc_wait_free_slot_name_unqualified = "lc_wait_free_slot".
 
-:- pred get_wait_free_slot_proc(module_info::in, pred_proc_id::out) is det.
+:- pred get_lc_wait_free_slot_proc(module_info::in, pred_proc_id::out) is det.
 
-get_wait_free_slot_proc(ModuleInfo, proc(PredId, ProcId)) :-
-    lookup_lc_pred_proc(ModuleInfo, lc_wait_free_slot_name_unqualified, 2, PredId,
-        ProcId).
+get_lc_wait_free_slot_proc(ModuleInfo, proc(PredId, ProcId)) :-
+    lookup_lc_pred_proc(ModuleInfo, lc_wait_free_slot_name_unqualified, 2,
+        PredId, ProcId).
 
 :- func lc_default_num_contexts_name_unqualified = string.
 
@@ -1151,12 +1361,48 @@ get_lc_create_proc(ModuleInfo, PredId, ProcId) :-
     lookup_lc_pred_proc(ModuleInfo, lc_create_name_unqualified, 2, PredId,
         ProcId).
 
+:- func lc_join_and_terminate_name_unqualified = string.
+
+lc_join_and_terminate_name_unqualified = "lc_join_and_terminate".
+
+:- func lc_join_and_terminate_name = sym_name.
+
+lc_join_and_terminate_name =
+    qualified(par_builtin_module_sym, lc_join_and_terminate_name_unqualified).
+
+:- pred get_lc_join_and_terminate_proc(module_info::in, pred_proc_id::out)
+    is det.
+
+get_lc_join_and_terminate_proc(ModuleInfo, proc(PredId, ProcId)) :-
+    lookup_lc_pred_proc(ModuleInfo, lc_join_and_terminate_name_unqualified, 2,
+        PredId, ProcId).
+
+:- func lc_finish_loop_control_name_unqualified = string.
+
+lc_finish_loop_control_name_unqualified = "lc_finish".
+
+:- func lc_finish_loop_control_name = sym_name.
+
+lc_finish_loop_control_name =
+    qualified(par_builtin_module_sym, lc_finish_loop_control_name_unqualified).
+
+:- pred get_lc_finish_loop_control_proc(module_info::in,
+    pred_id::out, proc_id::out) is det.
+
+get_lc_finish_loop_control_proc(ModuleInfo, PredId, ProcId) :-
+    lookup_lc_pred_proc(ModuleInfo, lc_finish_loop_control_name_unqualified, 1,
+        PredId, ProcId).
+
+%----------------------------------------------------------------------------%
+
 :- pred lookup_lc_pred_proc(module_info::in, string::in, arity::in,
     pred_id::out, proc_id::out) is det.
 
 lookup_lc_pred_proc(ModuleInfo, Sym, Arity, PredId, ProcId) :-
     lookup_builtin_pred_proc_id(ModuleInfo, par_builtin_module_sym,
         Sym, pf_predicate, Arity, only_mode, PredId, ProcId).
+
+%----------------------------------------------------------------------------%
 
 :- func par_builtin_module_sym = sym_name.
 

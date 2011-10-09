@@ -938,13 +938,12 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
         io.write_string(");\n", !IO)
     ;
         Instr = lc_spawn_off(LCRval, LCSRval, ChildLabel),
-        % XXX placeholder for pbone to fill in
-        io.write_string("\tMR_lc_spawn_off(", !IO),
+        io.write_string("\tMR_lc_spawn_off((MR_LoopControl*)", !IO),
         output_rval(Info, LCRval, !IO),
         io.write_string(", ", !IO),
         output_rval(Info, LCSRval, !IO),
         io.write_string(", ", !IO),
-        output_label(ChildLabel, !IO),
+        output_label_as_code_addr(ChildLabel, !IO),
         io.write_string(");\n", !IO)
     ;
         Instr = lc_join_and_terminate(LCRval, LCSRval),

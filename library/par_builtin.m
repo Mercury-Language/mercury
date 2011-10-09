@@ -75,8 +75,6 @@
 
 :- type loop_control.
 
-:- type loop_control_slot.
-
     % Create a loop control structure.
     % For documentation, see MR_lc_create in mercury_par_builtin.h.
     %
@@ -91,19 +89,19 @@
     % For documentation, see MR_lc_try_get_free_slot in mercury_par_builtin.h
     % This call fails if there is no free slot available.
     %
-:- impure pred lc_free_slot(loop_control::in, loop_control_slot::out)
+:- impure pred lc_free_slot(loop_control::in, int::out)
     is semidet.
 
     % Allocate a free slot from the loop control structure and return it.
     % This call blocks the context until a free slot is available.
     %
-:- impure pred lc_wait_free_slot(loop_control::in, loop_control_slot::out)
+:- impure pred lc_wait_free_slot(loop_control::in, int::out)
     is det.
 
     % Finish one iteration of the loop. This call does not return.
     % For documentation, see MR_lc_join_and_terminate in mercury_par_builtin.h.
     %
-:- impure pred lc_join_and_terminate(loop_control::in, loop_control_slot::in)
+:- impure pred lc_join_and_terminate(loop_control::in, int::in)
     is det.
 
     % Get the default number of contexts to use for loop control.
@@ -288,15 +286,6 @@ INIT mercury_sys_init_par_builtin_modules
 :- pragma foreign_type("C#", loop_control, "object").
 :- pragma foreign_type("Java", loop_control, "java.lang.Object").
 
-:- pragma foreign_type("C", loop_control_slot, "MR_LoopControlSlot *",
-    [can_pass_as_mercury_type]).
-
-    % Placeholders only.
-:- pragma foreign_type(il, loop_control_slot, "class [mscorlib]System.Object").
-:- pragma foreign_type("Erlang", loop_control_slot, "").
-:- pragma foreign_type("C#", loop_control_slot, "object").
-:- pragma foreign_type("Java", loop_control_slot, "java.lang.Object").
-
 :- pragma foreign_proc("C",
     lc_create(NumWorkers::in, LC::out),
     [will_not_call_mercury, will_not_throw_exception, thread_safe,
@@ -370,7 +359,7 @@ MR_define_entry(mercury__par_builtin__lc_finish_1_0)
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
     {
         MR_LoopControl  *LC;
-        
+
         LC = (MR_LoopControl *) MR_r1;
         MR_lc_finish_part1(LC, MR_LABEL_AP(par_builtin__lc_finish_1_0_i1));
     }
@@ -384,7 +373,7 @@ MR_def_label(par_builtin__lc_finish_1_0,1)
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
     {
         MR_LoopControl  *LC;
-        
+
         LC = (MR_LoopControl *) MR_sv(1);
         MR_lc_finish_part2(LC);
     }
@@ -399,9 +388,12 @@ MR_def_label(par_builtin__lc_finish_1_0,1)
 #endif
 MR_END_MODULE
 
+MR_decl_label1(par_builtin__lc_wait_free_slot_2_0, 1)
+
 MR_BEGIN_MODULE(par_builtin_module_lc_wait_free_slot)
     MR_init_entry1(par_builtin__lc_wait_free_slot_2_0);
     MR_INIT_PROC_LAYOUT_ADDR(mercury__par_builtin__lc_wait_free_slot_2_0);
+    MR_init_label1(par_builtin__lc_wait_free_slot_2_0,1);
 MR_BEGIN_CODE
 
 #ifdef MR_maybe_local_thread_engine_base
@@ -412,19 +404,30 @@ MR_BEGIN_CODE
 MR_define_entry(mercury__par_builtin__lc_wait_free_slot_2_0)
     MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
 
+    MR_incr_sp(1);
+    MR_sv(1) = MR_r1; /* LC */
+    /*
+    ** LC must be saved to the stack so that we can resume from the label below
+    ** and retrieve it.
+    */
+
+MR_def_label(par_builtin__lc_wait_free_slot_2_0,1)
+    MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
+
 #if defined(MR_LL_PARALLEL_CONJ)
     {
-        MR_LoopControl *lc;
-        MR_LoopControlSlot *lcs;
+        MR_LoopControl  *lc;
+        MR_Unsigned     lcs_idx;
 
-        lc = (MR_LoopControl *) MR_r1;
-        MR_lc_wait_free_slot(lc, lcs, par_builtin__lc_wait_free_slot_2_0);
-        MR_r1 = (MR_Word)lcs;
+        lc = (MR_LoopControl *) MR_sv(1);
+        MR_lc_wait_free_slot(lc, lcs_idx, MR_LABEL_AP(par_builtin__lc_wait_free_slot_2_0_i1));
+        MR_r1 = (MR_Word)lcs_idx;
     }
 #else
     MR_fatal_error(""lc_wait_free_slot is unavailable in this grade"");
 #endif
 
+    MR_decr_sp(1);
     MR_proceed();
 
 #ifdef MR_maybe_local_thread_engine_base
@@ -473,8 +476,11 @@ mercury_sys_init_lc_write_out_proc_statics(FILE *deep_fp,
     [will_not_call_mercury, will_not_throw_exception, thread_safe],
 "
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
-    LCS = MR_lc_try_get_free_slot(LC);
-    SUCCESS_INDICATOR = (LCS != NULL);
+    {
+        MR_Unsigned LCS_0;
+        SUCCESS_INDICATOR = MR_lc_try_get_free_slot(LC, &LCS_0);
+        LCS = (MR_Integer)LCS_0;
+    }
 #else
     MR_fatal_error(""lc_free_slot is unavailable in this grade"");
 #endif
