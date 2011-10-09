@@ -327,7 +327,7 @@ mercury__par_builtin__lc_finish_1_p_0(MR_Box lc)
 }
 
 void MR_CALL
-mercury__par_builtin__lc_wait_free_slot_2_p_0(MR_Box lc, MR_Box *lcs)
+mercury__par_builtin__lc_wait_free_slot_2_p_0(MR_Box lc, MR_Integer *slot)
 {
     MR_fatal_error(""lc_wait_free_slot is unavailable with --highlevel-code"");
 }
