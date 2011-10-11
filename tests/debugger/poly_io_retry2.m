@@ -48,7 +48,7 @@ list_foldl2(P, [H | T], !A, !B) :-
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Globals = poly_io_retry_test_globals;
-	MR_update_io(IOState0, IOState);
+	IOState = IOState0;
 ").
 
 :- pragma foreign_proc("C",
@@ -56,5 +56,5 @@ list_foldl2(P, [H | T], !A, !B) :-
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	poly_io_retry_test_globals = Globals;
-	MR_update_io(IOState0, IOState);
+	IOState = IOState0;
 ").

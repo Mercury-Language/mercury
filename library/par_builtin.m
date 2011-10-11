@@ -520,7 +520,7 @@ mercury_sys_init_lc_write_out_proc_statics(FILE *deep_fp,
 ").
 
 :- pragma foreign_proc("C",
-    par_cond_close_stats_file(IO0::di, IO::uo),
+    par_cond_close_stats_file(_IO0::di, _IO::uo),
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
 #if defined(MR_LL_PARALLEL_CONJ) && \
@@ -529,7 +529,6 @@ mercury_sys_init_lc_write_out_proc_statics(FILE *deep_fp,
 #else
     MR_fatal_error(""par_cond_close_stats_file is unavailable in this grade"");
 #endif
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

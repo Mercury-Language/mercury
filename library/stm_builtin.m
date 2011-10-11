@@ -229,11 +229,10 @@
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    new_stm_var(T::in, TVar::out, IO0::di, IO::uo),
+    new_stm_var(T::in, TVar::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     MR_STM_new_stm_var(T, TVar);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",

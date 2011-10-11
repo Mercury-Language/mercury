@@ -1309,14 +1309,13 @@ dump_trace_counts_to(_, 1, !IO).
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    log_threadscope_message(Message::in, IO0::di, IO::uo),
+    log_threadscope_message(Message::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, will_not_throw_exception, thread_safe, 
         promise_pure, tabled_for_io],
 "
 #if MR_THREADSCOPE
     MR_threadscope_post_log_msg(Message);
 #endif
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
