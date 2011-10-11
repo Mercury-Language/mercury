@@ -88,7 +88,7 @@ case "$CC" in
         ;;
     *cl* | *CL*)
         ANSI_OPTS=""
-        CHECK_OPTS=""
+        CHECK_OPTS="-nologo"    # Suppress the MSVC banner message.
         OPT_OPTS=""
         DEBUG_OPT="-Zi"
         DISABLE_OPTS_OPT="-Od"
@@ -388,7 +388,7 @@ case $use_trail in
         case $trail_segments in
             true) TRAIL_OPTS="$TRAIL_OPTS -DMR_TRAIL_SEGMENTS" ;;
         esac
-        # See the comment in compile_c_file/7 in compiler/comipler_target_code.m
+        # See the comment in compile_c_file/7 in compiler/compile_target_code.m
         # for an explanation of this.
         case $COMPILER in
             gcc)    FN_ALIGN_OPTS="-falign-functions=$BYTES_PER_WORD" ;;
@@ -530,7 +530,7 @@ case "$FULLARCH" in
     i*86-*|x86_64*)
         # The use of stack_pointer in the ASM_JUMP macro defined in
         # runtime/mercury_goto.h causes lots of warnings about using possibly
-        # uninitialized variables; there's no easy way to supress them except
+        # uninitialized variables; there's no easy way to suppress them except
         # by disabling the warning.
         case "$COMPILER" in
             gcc)

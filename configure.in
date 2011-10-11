@@ -4500,7 +4500,8 @@ case "$mercury_cv_cc_type" in
 
     msvc*)
         CFLAGS_FOR_ANSI=
-        CFLAGS_FOR_WARNINGS=
+        # Suppress the MSVC banner message.
+        CFLAGS_FOR_WARNINGS="-nologo"
         CFLAGS_FOR_OPT=
         CFLAGS_FOR_DEBUG="-Zi"
         CFLAGS_FOR_NO_STRICT_ALIASING=
