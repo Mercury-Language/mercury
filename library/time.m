@@ -4,7 +4,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2007,2009-2010 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2007,2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -212,8 +212,6 @@
         #include <unistd.h>
     #endif
 
-    #define MR_update_io(r_src, r_dest) ((r_dest) = (r_src))
-
     #include ""mercury_timing.h"" /* for MR_CLOCK_TICKS_PER_SECOND */
 ").
 
@@ -265,11 +263,10 @@ time.clock(Result, !IO) :-
 :- pred time.c_clock(int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    time.c_clock(Ret::out, IO0::di, IO::uo),
+    time.c_clock(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Ret = (MR_Integer) clock();
-    MR_update_io(IO0, IO);
 ").
 /* XXX need to add System.dll to the references list.
 :- pragma foreign_proc("C#",
@@ -347,8 +344,9 @@ time.times(Tms, Result, !IO) :-
 
 :- pragma foreign_proc("C",
     time.c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
-        IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io, may_not_duplicate],
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
 "{
 #ifdef MR_HAVE_POSIX_TIMES
     struct tms t;
@@ -385,7 +383,6 @@ time.times(Tms, Result, !IO) :-
     Ret = -1;
   #endif
 #endif
-    MR_update_io(IO0, IO);
 }").
 
 :- pragma foreign_proc("Java",
@@ -473,11 +470,10 @@ time.time(Result, !IO) :-
 :- pred time.c_time(time_t_rep::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    time.c_time(Ret::out, IO0::di, IO::uo),
+    time.c_time(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Ret = time(NULL);
-    MR_update_io(IO0, IO);
 ").
 :- pragma foreign_proc("C#",
     time.c_time(Ret::out, _IO0::di, _IO::uo),

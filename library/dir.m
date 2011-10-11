@@ -857,7 +857,7 @@ dir.relative_path_name_from_components(Components) = PathName :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    dir.current_directory(Res::out, IO0::di, IO::uo),
+    dir.current_directory(Res::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         may_not_duplicate],
 "
@@ -890,8 +890,6 @@ dir.relative_path_name_from_components(Components) = PathName :-
         /* Buffer too small.  Resize and try again. */
         size *= 1.5;
     }
-
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C#",
@@ -1088,11 +1086,11 @@ dir.make_single_directory(DirName, Result, !IO) :-
 
 :- pragma foreign_proc("C",
     dir.make_single_directory_2(ErrorIfExists::in, DirName::in,
-        Result::out, IO0::di, IO::uo),
+        Result::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
         terminates, will_not_modify_trail, does_not_affect_liveness,
         may_not_duplicate],
-"{
+"
 #if defined(MR_WIN32)
     if (CreateDirectory(DirName, NULL)) {
         Result = ML_make_mkdir_res_ok();
@@ -1120,8 +1118,7 @@ dir.make_single_directory(DirName, Result, !IO) :-
     MR_fatal_error(
         ""dir.make_single_directory_2 called but not supported"");
 #endif
-    IO = IO0;
-}").
+").
 :- pragma foreign_proc("C#",
     dir.make_single_directory_2(ErrorIfExists::in, DirName::in,
         Result::out, _IO0::di, _IO::uo),
@@ -1625,10 +1622,10 @@ dir.open(DirName, Res, !IO) :-
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    dir.open_2(DirName::in, Result::out, IO0::di, IO::uo),
+    dir.open_2(DirName::in, Result::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
         terminates, will_not_modify_trail, does_not_affect_liveness],
-"{
+"
 #if defined(MR_WIN32)
     WIN32_FIND_DATA file_data;
     ML_DIR_STREAM Dir;
@@ -1667,8 +1664,7 @@ dir.open(DirName, Res, !IO) :-
 #else /* !MR_WIN32 && !(MR_HAVE_OPENDIR etc.) */
     MR_fatal_error(""dir.open called but not supported"");
 #endif
-    IO = IO0;
-}").
+").
 
 :- pragma foreign_proc("C#",
     dir.open_2(DirName::in, Result::out, _IO0::di, _IO::uo),
@@ -1869,11 +1865,10 @@ dir.close(Dir, Res, !IO) :-
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    dir.close_2(Dir::in, Status::out, Error::out, IO0::di, IO::uo),
+    dir.close_2(Dir::in, Status::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         will_not_modify_trail, does_not_affect_liveness],
-"{
-    IO = IO0;
+"
 #if defined(MR_WIN32)
     Status = FindClose(Dir);
     Error = GetLastError();
@@ -1883,7 +1878,7 @@ dir.close(Dir, Res, !IO) :-
 #else
     MR_fatal_error(""dir.open called but not supported"");
 #endif
-}").
+").
 
 :- pragma foreign_proc("C#",
     dir.close_2(_Dir::in, Status::out, Error::out, _IO0::di, _IO::uo),
@@ -1945,15 +1940,14 @@ dir.read_entry(Dir0, Res, !IO) :-
 
 :- pragma foreign_proc("C",
     dir.read_entry_2(Dir0::in, Dir::out, Status::out, Error::out,
-        FileName::out, IO0::di, IO::uo),
+        FileName::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         will_not_modify_trail, does_not_affect_liveness],
-"{
+"
 #if defined(MR_WIN32)
     WIN32_FIND_DATA file_data;
 
     Dir = Dir0;
-    IO = IO0;
     if (FindNextFile(Dir, &file_data)) {
         Status = 1;
         MR_make_aligned_string_copy_msg(FileName, file_data.cFileName,
@@ -1968,7 +1962,6 @@ dir.read_entry(Dir0, Res, !IO) :-
     struct dirent *dir_entry;
 
     Dir = Dir0;
-    IO = IO0;
     errno = 0;
     dir_entry = readdir(Dir);
     if (dir_entry == NULL) {
@@ -1985,7 +1978,7 @@ dir.read_entry(Dir0, Res, !IO) :-
 #else /* !MR_WIN32 && !(MR_HAVE_READDIR etc.) */
     MR_fatal_error(""dir.read_entry_2 called but not supported"");
 #endif
-}").
+").
 
 :- pragma foreign_proc("C#",
     dir.read_entry_2(Dir0::in, Dir::out, Status::out, Error::out,

@@ -1973,10 +1973,9 @@ io.do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, !IO) :-
 :- pragma foreign_proc("C",
     io.do_read_bitmap(Stream::in, StartByte::in, NumBytes::in,
         Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    MR_update_io(IO0, IO);
     Bitmap = Bitmap0,
     BytesRead = BytesRead0 +
                     MR_READ(*Stream, Bitmap->elements + StartByte, NumBytes);
@@ -2163,7 +2162,7 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
 
 :- pragma foreign_proc("C",
     io.read_line_as_string_2(Stream::in, _FirstCall::in, Res::out,
-        RetString::out, IO0::di, IO::uo),
+        RetString::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -2223,12 +2222,11 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
     if (read_buffer != initial_read_buffer) {
         MR_free(read_buffer);
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("Java",
     io.read_line_as_string_2(Stream::in, _FirstCall::in, Res::out,
-        RetString::out, IO0::di, IO::uo),
+        RetString::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -2240,7 +2238,6 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
         Res = -3;
         RetString = """";
     }
-    IO = IO0;
 ").
 
 io.read_line_as_string_2(Stream, FirstCall, Res, String, !IO) :-
@@ -2483,7 +2480,7 @@ io.output_clear_err(output_stream(Stream), !IO) :-
 :- pred io.clear_err(stream::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.clear_err(Stream::in, IO0::di, IO::uo),
+    io.clear_err(Stream::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -2492,7 +2489,6 @@ io.output_clear_err(output_stream(Stream), !IO) :-
     } else {
         /* Not a file stream so do nothing */
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -2540,7 +2536,7 @@ io.check_err(Stream, Res, !IO) :-
 :- pred io.ferror(stream::in, int::out, string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    ferror(Stream::in, RetVal::out, RetStr::out, IO0::di, IO::uo),
+    ferror(Stream::in, RetVal::out, RetStr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -2552,7 +2548,6 @@ io.check_err(Stream, Res, !IO) :-
 
     ML_maybe_make_err_msg(RetVal != 0, errno, ""read failed: "",
         MR_ALLOC_ID, MR_TRUE, RetStr);
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -2589,7 +2584,7 @@ io.make_err_msg(Msg0, Msg, !IO) :-
 :- pred io.get_system_error(io.system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.get_system_error(Error::out, IO0::di, IO::uo),
+    io.get_system_error(Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "{
@@ -2600,7 +2595,6 @@ io.make_err_msg(Msg0, Msg, !IO) :-
     ** the same thread in the meantime, the errno could have been clobbered.
     */
     Error = errno;
-    MR_update_io(IO0, IO);
 }").
 
 :- pragma foreign_proc("C#",
@@ -2632,12 +2626,11 @@ io.make_err_msg(Msg0, Msg, !IO) :-
     "ML_make_err_msg").
 
 :- pragma foreign_proc("C",
-    make_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
+    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_ALLOC_ID, MR_FALSE, Msg);
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -2723,12 +2716,11 @@ make_win32_err_msg(_, _, "", !IO) :-
     ).
 
 :- pragma foreign_proc("C",
-    make_win32_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
+    make_win32_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     ML_maybe_make_win32_err_msg(MR_TRUE, Error, Msg0, MR_ALLOC_ID, Msg);
-    MR_update_io(IO0, IO);
 ").
 
 make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
@@ -2776,7 +2768,7 @@ io.output_stream_file_size(output_stream(Stream), Size, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.stream_file_size(Stream::in, Size::out, IO0::di, IO::uo),
+    io.stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -2795,7 +2787,6 @@ io.output_stream_file_size(output_stream(Stream), Size, !IO) :-
 #else
     Size = -1;
 #endif
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -2840,7 +2831,7 @@ io.file_modification_time(File, Result, !IO) :-
 
 :- pragma foreign_proc("C",
     io.file_modification_time_2(FileName::in, Status::out, Msg::out,
-        Time::out, IO0::di, IO::uo),
+        Time::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -2860,8 +2851,6 @@ io.file_modification_time(File, Result, !IO) :-
     Msg = MR_make_string_const(
         ""io.file_modification_time not available on this platform"");
 #endif
-    MR_update_io(IO0, IO);
-
 ").
 :- pragma foreign_proc("C#",
     io.file_modification_time_2(FileName::in, Status::out, Msg::out,
@@ -2985,7 +2974,7 @@ file_type_implemented :-
 
 :- pragma foreign_proc("C",
     io.file_type_2(FollowSymLinks::in, FileName::in, Result::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -3111,7 +3100,6 @@ file_type_implemented :-
     MR_fatal_error(
         ""Sorry, io.file_type not implemented on this platform"") }
 #endif
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -3335,7 +3323,7 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 
 :- pragma foreign_proc("C",
     io.check_file_accessibility_2(FileName::in, AccessTypes::in, Result::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -3386,7 +3374,6 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     Result = ML_make_io_res_0_error_msg(
         ""io.check_file_accessibility not supported on this platform"");
 #endif
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("Java",
@@ -3923,10 +3910,10 @@ io.file_id(FileName, Result, !IO) :-
 
 :- pragma foreign_proc("C",
     io.file_id_2(FileName::in, Status::out, Msg::out,
-        FileId::out, IO0::di, IO::uo),
+        FileId::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
-"{
+"
 #ifdef MR_HAVE_STAT
     struct stat s;
 
@@ -3940,11 +3927,10 @@ io.file_id(FileName, Result, !IO) :-
             MR_ALLOC_ID, MR_TRUE, Msg);
         Status = 0;
     }
-    MR_update_io(IO0, IO);
 #else
     MR_fatal_error(""io.file_id_2 called but not supported"");
 #endif
-}").
+").
 
 :- pragma foreign_proc("Java",
     io.file_id_2(_FileName::in, _Status::out, _Msg::out,
@@ -4113,10 +4099,10 @@ io.buffer_to_string(buffer(Array), Len, String) :-
 
 :- pragma foreign_proc("C",
     io.read_into_buffer(Stream::in, Buffer0::buffer_di, Buffer::buffer_uo,
-        Pos0::in, Pos::out, Size::in, IO0::di, IO::uo),
+        Pos0::in, Pos::out, Size::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
-"{
+"
     int items_read;
 
     MR_CHECK_EXPR_TYPE(Buffer0, char *);
@@ -4126,8 +4112,7 @@ io.buffer_to_string(buffer(Array), Len, String) :-
 
     Buffer = Buffer0;
     Pos = Pos0 + items_read;
-    MR_update_io(IO0, IO);
-}").
+").
 
 io.read_into_buffer(Stream, buffer(Array0), buffer(Array), !Pos, Size, !IO) :-
     io.read_into_array(Stream, Array0, Array, !Pos, Size, !IO).
@@ -5043,12 +5028,11 @@ source_name(stderr) = "<standard error>".
     % Caller must hold the stream_db lock.
     %
 :- pragma foreign_proc("C",
-    io.get_stream_db(StreamDb::out, IO0::di, IO::uo),
+    io.get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness],
 "
     StreamDb = ML_io_stream_db;
-    MR_update_io(IO0, IO);
 ").
 
     % Caller must hold the stream_db lock.
@@ -5056,23 +5040,21 @@ source_name(stderr) = "<standard error>".
 :- pred io.set_stream_db(io.stream_db::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.set_stream_db(StreamDb::in, IO0::di, IO::uo),
+    io.set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     ML_io_stream_db = StreamDb;
-    MR_update_io(IO0, IO);
 ").
 
 :- pred io.lock_stream_db(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.lock_stream_db(IO0::di, IO::uo),
+    io.lock_stream_db(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         no_sharing],
 "
     MR_LOCK(&ML_io_stream_db_lock, ""io.lock_stream_db/2"");
-    IO = IO0;
 ").
 
 io.lock_stream_db(!IO).
@@ -5080,12 +5062,11 @@ io.lock_stream_db(!IO).
 :- pred io.unlock_stream_db(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.unlock_stream_db(IO0::di, IO::uo),
+    io.unlock_stream_db(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         no_sharing],
 "
     MR_UNLOCK(&ML_io_stream_db_lock, ""io.unlock_stream_db/2"");
-    IO = IO0;
 ").
 
 io.unlock_stream_db(!IO).
@@ -5192,12 +5173,11 @@ io.maybe_delete_stream_info(Stream, !IO) :-
 :- pred io.may_delete_stream_info(int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.may_delete_stream_info(MayDelete::out, IO0::di, IO::uo),
+    io.may_delete_stream_info(MayDelete::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
     MayDelete = !MR_debug_ever_enabled;
-    IO = IO0;
 ").
 
 io.may_delete_stream_info(1, !IO).
@@ -5243,15 +5223,13 @@ io.update_globals(UpdatePred, !IO) :-
 
 :- pred io.lock_globals(io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.lock_globals(IO0::di, IO::uo),
+    io.lock_globals(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     #ifdef MR_THREAD_SAFE
         MR_LOCK(&ML_io_user_globals_lock, \"io.lock_globals/2\");
     #endif
-
-    MR_update_io(IO0, IO);
 ").
 
     % For the non-C backends.
@@ -5260,15 +5238,13 @@ lock_globals(!IO).
 
 :- pred io.unlock_globals(io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.unlock_globals(IO0::di, IO::uo),
+    io.unlock_globals(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     #ifdef MR_THREAD_SAFE
         MR_UNLOCK(&ML_io_user_globals_lock, \"io.unlock_globals/2\");
     #endif
-
-    MR_update_io(IO0, IO);
 ").
 
     % For the non-C backends.
@@ -5297,23 +5273,21 @@ io.unlock_globals :-
     %
 :- pred io.unsafe_get_globals(univ::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.unsafe_get_globals(Globals::out, IO0::di, IO::uo),
+    io.unsafe_get_globals(Globals::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "
     Globals = ML_io_user_globals;
-    MR_update_io(IO0, IO);
 ").
 
 :- pred io.unsafe_set_globals(univ::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.unsafe_set_globals(Globals::in, IO0::di, IO::uo),
+    io.unsafe_set_globals(Globals::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
     /* XXX need to globalize the memory */
     ML_io_user_globals = Globals;
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -5552,17 +5526,16 @@ io.finalize_state(!IO).
 :- pred io.gc_init(type_desc::in, type_desc::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.gc_init(StreamDbType::in, UserGlobalsType::in, IO0::di, IO::uo),
+    io.gc_init(StreamDbType::in, UserGlobalsType::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     /* for Windows DLLs, we need to call GC_INIT() from each DLL */
-#ifdef MR_CONSERVATIVE_GC
+#ifdef MR_BOEHM_GC
     GC_INIT();
 #endif
     MR_add_root(&ML_io_stream_db, (MR_TypeInfo) StreamDbType);
     MR_add_root(&ML_io_user_globals, (MR_TypeInfo) UserGlobalsType);
-    MR_update_io(IO0, IO);
 ").
 
 io.gc_init(_, _, !IO).
@@ -5696,8 +5669,6 @@ extern MR_Unsigned mercury_current_binary_output_index;
 
 #define MR_initial_io_state()       0   /* some random number */
 #define MR_final_io_state(r)        ((void)0)
-
-#define MR_update_io(r_src, r_dest) ((r_dest) = (r_src))
 
 void            mercury_init_io(void);
 MercuryFilePtr  mercury_current_text_input(void);
@@ -7444,7 +7415,7 @@ io.read_char_code(input_stream(Stream), CharCode, !IO) :-
     is det.
 
 :- pragma foreign_proc("C",
-    io.read_char_code_2(Stream::in, CharCode::out, IO0::di, IO::uo),
+    io.read_char_code_2(Stream::in, CharCode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing, may_not_duplicate],
 "
@@ -7489,8 +7460,6 @@ io.read_char_code(input_stream(Stream), CharCode, !IO) :-
             CharCode = -2;
         }
     }
-
-    MR_update_io(IO0, IO);
 ").
 
 io.read_byte_val(input_stream(Stream), ByteVal, !IO) :-
@@ -7499,12 +7468,11 @@ io.read_byte_val(input_stream(Stream), ByteVal, !IO) :-
 :- pred io.read_byte_val_2(io.stream::in, int::out, io::di, io::uo)
     is det.
 :- pragma foreign_proc("C",
-    io.read_byte_val_2(Stream::in, ByteVal::out, IO0::di, IO::uo),
+    io.read_byte_val_2(Stream::in, ByteVal::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     ByteVal = mercury_get_byte(Stream);
-    MR_update_io(IO0, IO);
 ").
 
 io.putback_char(input_stream(Stream), Character, !IO) :-
@@ -7512,7 +7480,7 @@ io.putback_char(input_stream(Stream), Character, !IO) :-
 
 :- pred io.putback_char_2(io.stream::in, char::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.putback_char_2(Stream::in, Character::in, IO0::di, IO::uo),
+    io.putback_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, terminates,
         does_not_affect_liveness, no_sharing, may_not_duplicate],
 "
@@ -7535,7 +7503,6 @@ io.putback_char(input_stream(Stream), Character, !IO) :-
             }
         }
     }
-    MR_update_io(IO0, IO);
 ").
 
 io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
@@ -7543,7 +7510,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 
 :- pred io.putback_byte_2(io.stream::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.putback_byte_2(Stream::in, Character::in, IO0::di, IO::uo),
+    io.putback_byte_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -7551,7 +7518,6 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     if (MR_UNGETCH(*mf, Character) == EOF) {
         mercury_io_error(mf, ""io.putback_byte: ungetc failed"");
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -7669,16 +7635,15 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 %
 
 :- pragma foreign_proc("C",
-    io.write_string(Message::in, IO0::di, IO::uo),
+    io.write_string(Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
     mercury_print_string(mercury_current_text_output(), Message);
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.write_char(Character::in, IO0::di, IO::uo),
+    io.write_char(Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -7702,11 +7667,10 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
             }
         }
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.write_int(Val::in, IO0::di, IO::uo),
+    io.write_int(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -7714,11 +7678,10 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     if (ML_fprintf(out, ""%ld"", (long) Val) < 0) {
         mercury_output_error(out);
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.write_float(Val::in, IO0::di, IO::uo),
+    io.write_float(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -7730,11 +7693,10 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     if (ML_fprintf(out, ""%s"", buf) < 0) {
         mercury_output_error(out);
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.write_byte(Byte::in, IO0::di, IO::uo),
+    io.write_byte(Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -7744,7 +7706,6 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     {
         mercury_output_error(mercury_current_text_output());
     }
-    MR_update_io(IO0, IO);
 ").
 
 io.write_bitmap(Bitmap, !IO) :-
@@ -7756,7 +7717,7 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     io.write_bitmap(Stream, Bitmap, Start, NumBytes, !IO).
 
 :- pragma foreign_proc("C",
-    io.flush_output(IO0::di, IO::uo),
+    io.flush_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -7764,11 +7725,10 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     if (MR_FLUSH(*out) < 0) {
         mercury_output_error(out);
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.flush_binary_output(IO0::di, IO::uo),
+    io.flush_binary_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -7776,7 +7736,6 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     if (MR_FLUSH(*out) < 0) {
         mercury_output_error(out);
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -7969,7 +7928,7 @@ io.seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.seek_binary_2(Stream::in, Flag::in, Off::in, IO0::di, IO::uo),
+    io.seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -7982,7 +7941,6 @@ io.seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
     } else {
         mercury_io_error(Stream, ""io.seek_binary_2: unseekable stream"");
     }
-    MR_update_io(IO0, IO);
 ").
 
 io.binary_input_stream_offset(binary_input_stream(Stream), Offset, !IO) :-
@@ -7994,7 +7952,7 @@ io.binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
 :- pred io.binary_stream_offset_2(io.stream::in, int::out,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.binary_stream_offset_2(Stream::in, Offset::out, IO0::di, IO::uo),
+    io.binary_stream_offset_2(Stream::in, Offset::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -8006,7 +7964,6 @@ io.binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
         mercury_io_error(Stream,
             ""io.primitive_binary_stream_offset: untellable stream"");
     }
-    MR_update_io(IO0, IO);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -8019,12 +7976,11 @@ io.write_string(output_stream(Stream), Message, !IO) :-
 
 :- pred io.write_string_2(io.stream::in, string::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.write_string_2(Stream::in, Message::in, IO0::di, IO::uo),
+    io.write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
     mercury_print_string(Stream, Message);
-    MR_update_io(IO0, IO);
 ").
 
 io.write_char(output_stream(Stream), Character, !IO) :-
@@ -8032,7 +7988,7 @@ io.write_char(output_stream(Stream), Character, !IO) :-
 
 :- pred io.write_char_2(io.stream::in, char::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.write_char_2(Stream::in, Character::in, IO0::di, IO::uo),
+    io.write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8055,7 +8011,6 @@ io.write_char(output_stream(Stream), Character, !IO) :-
             }
         }
     }
-    MR_update_io(IO0, IO);
 ").
 
 io.write_int(output_stream(Stream), Val, !IO) :-
@@ -8063,14 +8018,13 @@ io.write_int(output_stream(Stream), Val, !IO) :-
 
 :- pred io.write_int_2(io.stream::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.write_int_2(Stream::in, Val::in, IO0::di, IO::uo),
+    io.write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
     if (ML_fprintf(Stream, ""%ld"", (long) Val) < 0) {
         mercury_output_error(Stream);
     }
-    MR_update_io(IO0, IO);
 ").
 
 io.write_float(output_stream(Stream), Val, !IO) :-
@@ -8078,7 +8032,7 @@ io.write_float(output_stream(Stream), Val, !IO) :-
 
 :- pred io.write_float_2(io.stream::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.write_float_2(Stream::in, Val::in, IO0::di, IO::uo),
+    io.write_float_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8087,7 +8041,6 @@ io.write_float(output_stream(Stream), Val, !IO) :-
     if (ML_fprintf(Stream, ""%s"", buf) < 0) {
         mercury_output_error(Stream);
     }
-    MR_update_io(IO0, IO);
 ").
 
 io.write_byte(binary_output_stream(Stream), Byte, !IO) :-
@@ -8095,7 +8048,7 @@ io.write_byte(binary_output_stream(Stream), Byte, !IO) :-
 
 :- pred io.write_byte_2(io.stream::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.write_byte_2(Stream::in, Byte::in, IO0::di, IO::uo),
+    io.write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
@@ -8103,7 +8056,6 @@ io.write_byte(binary_output_stream(Stream), Byte, !IO) :-
     if (MR_PUTCH(*Stream, (int) ((unsigned char) Byte)) < 0) {
         mercury_output_error(Stream);
     }
-    MR_update_io(IO0, IO);
 ").
 
 io.write_bitmap(binary_output_stream(Stream), Bitmap, !IO) :-
@@ -8141,7 +8093,7 @@ io.do_write_bitmap(Stream, Bitmap, Start, Length, !IO) :-
 
 :- pragma foreign_proc("C",
     io.do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         no_sharing],
 "
@@ -8150,7 +8102,6 @@ io.do_write_bitmap(Stream, Bitmap, Start, Length, !IO) :-
     if (bytes_written != Length) {
         mercury_io_error(Stream, \"Error writing bitmap.\");
     }
-    MR_update_io(IO0, IO);
 ").
 
 io.flush_output(output_stream(Stream), !IO) :-
@@ -8158,14 +8109,13 @@ io.flush_output(output_stream(Stream), !IO) :-
 
 :- pred io.flush_output_2(io.stream::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.flush_output_2(Stream::in, IO0::di, IO::uo),
+    io.flush_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
     if (MR_FLUSH(*Stream) < 0) {
         mercury_output_error(Stream);
     }
-    MR_update_io(IO0, IO);
 ").
 
 io.flush_binary_output(binary_output_stream(Stream), !IO) :-
@@ -8173,14 +8123,13 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 
 :- pred io.flush_binary_output_2(io.stream::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.flush_binary_output_2(Stream::in, IO0::di, IO::uo),
+    io.flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
     if (MR_FLUSH(*Stream) < 0) {
         mercury_output_error(Stream);
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -8445,13 +8394,12 @@ io.stdin_stream(input_stream(Stream), !IO) :-
 
 :- pred io.stdin_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.stdin_stream_2(Stream::out, IO0::di, IO::uo),
+    io.stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdin;
-    MR_update_io(IO0, IO);
 ").
 
 io.stdout_stream = output_stream(io.stdout_stream_2).
@@ -8487,13 +8435,12 @@ io.stdout_stream(output_stream(Stream), !IO) :-
 
 :- pred io.stdout_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.stdout_stream_2(Stream::out, IO0::di, IO::uo),
+    io.stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdout;
-    MR_update_io(IO0, IO);
 ").
 
 io.stderr_stream = output_stream(io.stderr_stream_2).
@@ -8529,13 +8476,12 @@ io.stderr_stream(output_stream(Stream), !IO) :-
 
 :- pred io.stderr_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.stderr_stream_2(Stream::out, IO0::di, IO::uo),
+    io.stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stderr;
-    MR_update_io(IO0, IO);
 ").
 
 io.stdin_binary_stream(binary_input_stream(Stream), !IO) :-
@@ -8543,13 +8489,12 @@ io.stdin_binary_stream(binary_input_stream(Stream), !IO) :-
 
 :- pred io.stdin_binary_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.stdin_binary_stream_2(Stream::out, IO0::di, IO::uo),
+    io.stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdin_binary;
-    MR_update_io(IO0, IO);
 ").
 
 io.stdout_binary_stream(binary_output_stream(Stream), !IO) :-
@@ -8557,13 +8502,12 @@ io.stdout_binary_stream(binary_output_stream(Stream), !IO) :-
 
 :- pred io.stdout_binary_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.stdout_binary_stream_2(Stream::out, IO0::di, IO::uo),
+    io.stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdout_binary;
-    MR_update_io(IO0, IO);
 ").
 
 io.input_stream(input_stream(Stream), !IO) :-
@@ -8571,13 +8515,12 @@ io.input_stream(input_stream(Stream), !IO) :-
 
 :- pred io.input_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.input_stream_2(Stream::out, IO0::di, IO::uo),
+    io.input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = mercury_current_text_input();
-    MR_update_io(IO0, IO);
 ").
 
 io.output_stream(output_stream(Stream), !IO) :-
@@ -8585,13 +8528,12 @@ io.output_stream(output_stream(Stream), !IO) :-
 
 :- pred io.output_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.output_stream_2(Stream::out, IO0::di, IO::uo),
+    io.output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = mercury_current_text_output();
-    MR_update_io(IO0, IO);
 ").
 
 io.binary_input_stream(binary_input_stream(Stream), !IO) :-
@@ -8599,13 +8541,12 @@ io.binary_input_stream(binary_input_stream(Stream), !IO) :-
 
 :- pred io.binary_input_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.binary_input_stream_2(Stream::out, IO0::di, IO::uo),
+    io.binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = mercury_current_binary_input();
-    MR_update_io(IO0, IO);
 ").
 
 io.binary_output_stream(binary_output_stream(Stream), !IO) :-
@@ -8613,22 +8554,20 @@ io.binary_output_stream(binary_output_stream(Stream), !IO) :-
 
 :- pred io.binary_output_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.binary_output_stream_2(Stream::out, IO0::di, IO::uo),
+    io.binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = mercury_current_binary_output();
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.get_line_number(LineNum::out, IO0::di, IO::uo),
+    io.get_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     LineNum = MR_line_number(*mercury_current_text_input());
-    MR_update_io(IO0, IO);
 ").
 
 io.get_line_number(input_stream(Stream), LineNum, !IO) :-
@@ -8636,21 +8575,19 @@ io.get_line_number(input_stream(Stream), LineNum, !IO) :-
 
 :- pred io.get_line_number_2(io.stream::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.get_line_number_2(Stream::in, LineNum::out, IO0::di, IO::uo),
+    io.get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     LineNum = MR_line_number(*Stream);
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.set_line_number(LineNum::in, IO0::di, IO::uo),
+    io.set_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     MR_line_number(*mercury_current_text_input()) = LineNum;
-    MR_update_io(IO0, IO);
 ").
 
 io.set_line_number(input_stream(Stream), LineNum, !IO) :-
@@ -8660,21 +8597,19 @@ io.set_line_number(input_stream(Stream), LineNum, !IO) :-
     is det.
 
 :- pragma foreign_proc("C",
-    io.set_line_number_2(Stream::in, LineNum::in, IO0::di, IO::uo),
+    io.set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     MR_line_number(*Stream) = LineNum;
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.get_output_line_number(LineNum::out, IO0::di, IO::uo),
+    io.get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     LineNum = MR_line_number(*mercury_current_text_output());
-    MR_update_io(IO0, IO);
 ").
 
 io.get_output_line_number(output_stream(Stream), LineNum, !IO) :-
@@ -8684,21 +8619,19 @@ io.get_output_line_number(output_stream(Stream), LineNum, !IO) :-
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.get_output_line_number_2(Stream::in, LineNum::out, IO0::di, IO::uo),
+    io.get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     LineNum = MR_line_number(*Stream);
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.set_output_line_number(LineNum::in, IO0::di, IO::uo),
+    io.set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     MR_line_number(*mercury_current_text_output()) = LineNum;
-    MR_update_io(IO0, IO);
 ").
 
 io.set_output_line_number(output_stream(Stream), LineNum, !IO) :-
@@ -8707,12 +8640,11 @@ io.set_output_line_number(output_stream(Stream), LineNum, !IO) :-
 :- pred io.set_output_line_number_2(io.stream::in, int::in,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.set_output_line_number_2(Stream::in, LineNum::in, IO0::di, IO::uo),
+    io.set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     MR_line_number(*Stream) = LineNum;
-    MR_update_io(IO0, IO);
 ").
 
 io.set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
@@ -8721,7 +8653,7 @@ io.set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
 :- pred io.set_input_stream_2(io.stream::in, io.stream::out,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.set_input_stream_2(NewStream::in, OutStream::out, IO0::di, IO::uo),
+    io.set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8729,7 +8661,6 @@ io.set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
     OutStream = mercury_current_text_input();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
         mercury_current_text_input_index);
-    MR_update_io(IO0, IO);
 ").
 
 io.set_output_stream(output_stream(NewStream), output_stream(OutStream),
@@ -8740,7 +8671,7 @@ io.set_output_stream(output_stream(NewStream), output_stream(OutStream),
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.set_output_stream_2(NewStream::in, OutStream::out, IO0::di, IO::uo),
+    io.set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8748,7 +8679,6 @@ io.set_output_stream(output_stream(NewStream), output_stream(OutStream),
     OutStream = mercury_current_text_output();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
         mercury_current_text_output_index);
-    MR_update_io(IO0, IO);
 ").
 
 io.set_binary_input_stream(binary_input_stream(NewStream),
@@ -8759,7 +8689,7 @@ io.set_binary_input_stream(binary_input_stream(NewStream),
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.set_binary_input_stream_2(NewStream::in, OutStream::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8767,7 +8697,6 @@ io.set_binary_input_stream(binary_input_stream(NewStream),
     OutStream = mercury_current_binary_input();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
         mercury_current_binary_input_index);
-    MR_update_io(IO0, IO);
 ").
 
 io.set_binary_output_stream(binary_output_stream(NewStream),
@@ -8778,7 +8707,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.set_binary_output_stream_2(NewStream::in, OutStream::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
@@ -8786,7 +8715,6 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     OutStream = mercury_current_binary_output();
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
         mercury_current_binary_output_index);
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -9304,7 +9232,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 
 :- pragma foreign_proc("C",
     io.do_open_text(FileName::in, Mode::in, ResultCode::out,
-        StreamId::out, Stream::out, IO0::di, IO::uo),
+        StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -9316,12 +9244,11 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
         ResultCode = -1;
         StreamId = -1;
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
     io.do_open_binary(FileName::in, Mode::in, ResultCode::out,
-        StreamId::out, Stream::out, IO0::di, IO::uo),
+        StreamId::out, Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -9333,7 +9260,6 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
         ResultCode = -1;
         StreamId = -1;
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -9497,12 +9423,11 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 :- pred io.close_stream(stream::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    io.close_stream(Stream::in, IO0::di, IO::uo),
+    io.close_stream(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
     mercury_close(Stream);
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
@@ -9535,7 +9460,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 % Miscellaneous predicates.
 
 :- pragma foreign_proc("C",
-    io.progname(DefaultProgname::in, PrognameOut::out, IO0::di, IO::uo),
+    io.progname(DefaultProgname::in, PrognameOut::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -9544,11 +9469,10 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     } else {
         PrognameOut = DefaultProgname;
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.command_line_arguments(Args::out, IO0::di, IO::uo),
+    io.command_line_arguments(Args::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, may_not_duplicate,
         no_sharing],
@@ -9565,25 +9489,22 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
         Args = MR_string_list_cons_msg((MR_Word) mercury_argv[i], Args,
             MR_ALLOC_ID);
     }
-    MR_update_io(IO0, IO);
 }").
 
 :- pragma foreign_proc("C",
-    io.get_exit_status(ExitStatus::out, IO0::di, IO::uo),
+    io.get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     ExitStatus = mercury_exit_status;
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
-    io.set_exit_status(ExitStatus::in, IO0::di, IO::uo),
+    io.set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     mercury_exit_status = ExitStatus;
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_decl("C", "
@@ -9623,7 +9544,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 
 :- pragma foreign_proc("C",
     io.call_system_code(Command::in, Status::out, Msg::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -9701,8 +9622,6 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     }
 
 #endif  /* !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON */
-
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -10210,10 +10129,10 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 
 :- pragma foreign_proc("C",
     io.do_make_temp(Dir::in, Prefix::in, Sep::in, FileName::out,
-        Error::out, ErrorMessage::out, IO0::di, IO::uo),
+        Error::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
-"{
+"
 #ifdef MR_HAVE_MKSTEMP
     int err, fd;
 
@@ -10286,8 +10205,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         Error = err;
     }
 #endif
-    MR_update_io(IO0, IO);
-}").
+").
 
 :- pragma foreign_proc("C#",
     io.do_make_temp(_Dir::in, _Prefix::in, _Sep::in, FileName::out,
@@ -10566,15 +10484,14 @@ io.remove_file(FileName, Result, !IO) :-
 
 :- pragma foreign_proc("C",
     io.remove_file_2(FileName::in, RetVal::out, RetStr::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
-"{
+"
     RetVal = remove(FileName);
     ML_maybe_make_err_msg(RetVal != 0, errno, ""remove failed: "",
         MR_ALLOC_ID, MR_TRUE, RetStr);
-    MR_update_io(IO0, IO);
-}").
+").
 
 :- pragma foreign_proc("C#",
     io.remove_file_2(FileName::in, RetVal::out, RetStr::out,
@@ -10705,15 +10622,14 @@ io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 
 :- pragma foreign_proc("C",
     io.rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
-        RetStr::out, IO0::di, IO::uo),
+        RetStr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
-"{
+"
     RetVal = rename(OldFileName, NewFileName);
     ML_maybe_make_err_msg(RetVal != 0, errno, ""rename failed: "",
         MR_ALLOC_ID, MR_TRUE, RetStr);
-    MR_update_io(IO0, IO);
-}").
+").
 
 :- pragma foreign_proc("C#",
     io.rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
@@ -10823,7 +10739,7 @@ io.make_symlink(FileName, LinkFileName, Result, !IO) :-
 
 :- pragma foreign_proc("C",
     io.make_symlink_2(FileName::in, LinkFileName::in, Status::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -10832,7 +10748,6 @@ io.make_symlink(FileName, LinkFileName, Result, !IO) :-
 #else
     Status = 0;
 #endif
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -10871,7 +10786,7 @@ io.read_symlink(FileName, Result, !IO) :-
 
 :- pragma foreign_proc("C",
     io.read_symlink_2(FileName::in, TargetFileName::out,
-        Status::out, Error::out, IO0::di, IO::uo),
+        Status::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -10922,7 +10837,6 @@ io.read_symlink(FileName, Result, !IO) :-
     TargetFileName = MR_make_string_const("""");
     Status = 0;
 #endif
-    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("Erlang",

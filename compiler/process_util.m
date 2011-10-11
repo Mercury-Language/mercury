@@ -214,10 +214,9 @@ MC_mercury_compile_signal_handler(int sig)
 setup_signal_handlers(signal_action::out, IO::di, IO::uo).
 
 :- pragma foreign_proc("C",
-    setup_signal_handlers(SigintHandler::out, IO0::di, IO::uo),
+    setup_signal_handlers(SigintHandler::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
-    IO = IO0;
+"
     MC_signalled = MR_FALSE;
 
     /*
@@ -234,17 +233,16 @@ setup_signal_handlers(signal_action::out, IO::di, IO::uo).
 #ifdef SIGQUIT
     MC_SETUP_SIGNAL_HANDLER(SIGQUIT, MC_mercury_compile_signal_handler);
 #endif
-}").
+").
 
 :- pred restore_signal_handlers(signal_action::in, io::di, io::uo) is det.
 
 restore_signal_handlers(_::in, IO::di, IO::uo).
 
 :- pragma foreign_proc("C",
-    restore_signal_handlers(SigintHandler::in, IO0::di, IO::uo),
+    restore_signal_handlers(SigintHandler::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
-    IO = IO0;
+"
     MR_set_signal_action(SIGINT, &SigintHandler,
         ""error resetting SIGINT handler"");
     MC_SETUP_SIGNAL_HANDLER(SIGTERM, SIG_DFL);
@@ -254,7 +252,7 @@ restore_signal_handlers(_::in, IO::di, IO::uo).
 #ifdef SIGQUIT
     MC_SETUP_SIGNAL_HANDLER(SIGQUIT, SIG_DFL);
 #endif
-}").
+").
 
     % Restore all signal handlers to default values in the child so that
     % the child will be killed by the signals the parent is catching.
@@ -280,10 +278,9 @@ sig_dfl = (signal_action::out).
 check_for_signal(0::out, 0::out, IO::di, IO::uo).
 
 :- pragma foreign_proc("C",
-    check_for_signal(Signalled::out, Signal::out, IO0::di, IO::uo),
+    check_for_signal(Signalled::out, Signal::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    IO = IO0;
     Signalled = (MC_signalled ? 1 : 0);
     Signal = MC_signal_received;
 ").
@@ -297,18 +294,16 @@ check_for_signal(0::out, 0::out, IO::di, IO::uo).
 raise_signal(_::in, IO::di, IO::uo).
 
 :- pragma foreign_proc("C",
-    raise_signal(Signal::in, IO0::di, IO::uo),
+    raise_signal(Signal::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    IO = IO0;
     raise(Signal);
 ").
 
 :- pragma foreign_proc("C",
-    send_signal(Pid::in, Signal::in, IO0::di, IO::uo),
+    send_signal(Pid::in, Signal::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    IO = IO0;
 #ifdef MR_HAVE_KILL
     kill(Pid, Signal);
 #endif
@@ -386,12 +381,10 @@ start_in_forked_process_2(_, _, !IO) :-
 
 :- pragma foreign_proc("C",
     start_in_forked_process_2(Pred::in(io_pred), Pid::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io],
 "
 #ifdef MC_CAN_FORK
-
-    IO = IO0;
 
     Pid = fork();
     if (Pid == -1) {                        /* error */
@@ -405,7 +398,6 @@ start_in_forked_process_2(_, _, !IO) :-
     }
 
 #else /* ! MC_CAN_FORK */
-    IO = IO0;
     Pid = 0;
 #endif /* ! MC_CAN_FORK */
 ").
@@ -437,7 +429,7 @@ call_child_process_io_pred(P, Status, !IO) :-
 :- pred do_wait(pid::in, pid::out, int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    do_wait(Pid::in, WaitedPid::out, Status::out, IO0::di, IO::uo),
+    do_wait(Pid::in, WaitedPid::out, Status::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
 #ifdef MC_CAN_FORK
@@ -503,7 +495,6 @@ call_child_process_io_pred(P, Status, !IO) :-
 
 #else /* ! MC_CAN_FORK */
     MR_perror(""cannot wait() when fork() is unavailable: "");
-    IO = IO0;
     Status = 1;
 #endif /* ! MC_CAN_FORK */
 ").

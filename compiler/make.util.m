@@ -753,7 +753,7 @@ have_job_ctl_ipc :-
 :- pred create_job_ctl(int::in, maybe(job_ctl)::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    create_job_ctl(TotalJobs::in, MaybeJobCtl::out, IO0::di, IO::uo),
+    create_job_ctl(TotalJobs::in, MaybeJobCtl::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -769,7 +769,6 @@ have_job_ctl_ipc :-
 #else
     MaybeJobCtl = MC_make_no_job_ctl();
 #endif
-    IO = IO0;
 ").
 
 create_job_ctl(_, _, _, _) :-
@@ -778,7 +777,7 @@ create_job_ctl(_, _, _, _) :-
 :- pred destroy_job_ctl(job_ctl::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    destroy_job_ctl(JobCtl::in, IO0::di, IO::uo),
+    destroy_job_ctl(JobCtl::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -791,7 +790,6 @@ create_job_ctl(_, _, _, _) :-
 
     munmap(JobCtl, MC_JOB_CTL_SIZE(JobCtl->jc_total_tasks));
 #endif
-    IO = IO0;
 ").
 
 destroy_job_ctl(_, _, _) :-
@@ -800,7 +798,7 @@ destroy_job_ctl(_, _, _) :-
 :- pred accept_task(job_ctl::in, int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    accept_task(JobCtl::in, TaskNumber::out, IO0::di, IO::uo),
+    accept_task(JobCtl::in, TaskNumber::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -823,8 +821,6 @@ destroy_job_ctl(_, _, _) :-
 
     MC_unlock_job_ctl(JobCtl);
 #endif
-
-    IO = IO0;
 ").
 
 accept_task(_, _, _, _) :-
@@ -833,7 +829,7 @@ accept_task(_, _, _, _) :-
 :- pred mark_task_done(job_ctl::in, int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    mark_task_done(JobCtl::in, TaskNumber::in, IO0::di, IO::uo),
+    mark_task_done(JobCtl::in, TaskNumber::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -842,7 +838,6 @@ accept_task(_, _, _, _) :-
     JobCtl->jc_tasks[TaskNumber] = TASK_DONE;
     MC_unlock_job_ctl(JobCtl);
 #endif
-    IO = IO0;
 ").
 
 mark_task_done(_, _, _, _) :-
@@ -852,7 +847,7 @@ mark_task_done(_, _, _, _) :-
 
 :- pragma foreign_proc("C",
     mark_task_error(JobCtl::in, TaskNumber::in, KeepGoing::in,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -866,7 +861,6 @@ mark_task_done(_, _, _, _) :-
 
     MC_unlock_job_ctl(JobCtl);
 #endif
-    IO = IO0;
 ").
 
 mark_task_error(_, _, _, _, _) :-
@@ -875,7 +869,7 @@ mark_task_error(_, _, _, _, _) :-
 :- pred mark_abort(job_ctl::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    mark_abort(JobCtl::in, IO0::di, IO::uo),
+    mark_abort(JobCtl::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -884,7 +878,6 @@ mark_task_error(_, _, _, _, _) :-
     JobCtl->jc_abort = MR_TRUE;
     MC_unlock_job_ctl(JobCtl);
 #endif
-    IO = IO0;
 ").
 
 mark_abort(_, _, _) :-
@@ -1826,28 +1819,25 @@ make_write_module_or_linked_target(Globals, ModuleName - FileType, !IO) :-
 %
 
 :- pragma foreign_proc("C",
-    get_real_milliseconds(Time::out, IO0::di, IO::uo),
+    get_real_milliseconds(Time::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Time = MR_get_real_milliseconds();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C#",
-    get_real_milliseconds(Time::out, IO0::di, IO::uo),
+    get_real_milliseconds(Time::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Time = System.Environment.TickCount;
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("Java",
-    get_real_milliseconds(Time::out, IO0::di, IO::uo),
+    get_real_milliseconds(Time::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     // The loss of precision is acceptable for mmc --make.
     Time = (int) System.currentTimeMillis();
-    IO = IO0;
 ").
 
 get_real_milliseconds(_, _, _) :-

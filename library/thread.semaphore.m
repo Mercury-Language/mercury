@@ -194,7 +194,7 @@ ML_finalize_semaphore(void *obj, void *cd)
     %
 :- pragma no_inline(semaphore.signal/3).
 :- pragma foreign_proc("C",
-    signal(Semaphore::in, IO0::di, IO::uo),
+    signal(Semaphore::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     ML_Semaphore    *sem;
@@ -262,7 +262,6 @@ ML_finalize_semaphore(void *obj, void *cd)
     MR_SIGNAL(&(sem->cond), ""semaphore.signal"");
     MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
 #endif
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C#",
