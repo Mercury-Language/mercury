@@ -127,10 +127,15 @@
 % the set of vars that definitely need their own stack slots, and which this
 % optimization should not try to make reachable from a heap cell. At the
 % moment, the only variables we treat this way are those that are required to
-% be on the stack by a parallel conjunction.
+% be on the stack by a parallel conjunction or loop control scope.
 
 :- type opt_stack_alloc
     --->    opt_stack_alloc(
+                % XXX: this is an over-simplification, it gives stack slots to
+                % variables that may not need them.  For example, vars local to
+                % loop control scopes and parallel conjunctions, And vars used
+                % after a loop control scope but before a recursive call don't
+                % need to be placed here.
                 par_conj_own_slots      :: set_of_progvar
             ).
 
@@ -179,8 +184,8 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
     globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
     array.init(1, is_not_dummy_type, DummyDummyTypeArray),
-    AllocData = alloc_data(!.ModuleInfo, !.ProcInfo, TypeInfoLiveness,
-        OptNoReturnCalls, DummyDummyTypeArray),
+    AllocData = alloc_data(!.ModuleInfo, !.ProcInfo, PredProcId,
+        TypeInfoLiveness, OptNoReturnCalls, DummyDummyTypeArray),
     fill_goal_id_slots_in_proc(!.ModuleInfo, _, !ProcInfo),
     proc_info_get_goal(!.ProcInfo, Goal2),
     OptStackAlloc0 = init_opt_stack_alloc,
@@ -323,7 +328,9 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
 :- instance stack_alloc_info(opt_stack_alloc) where [
     pred(at_call_site/4) is opt_at_call_site,
     pred(at_resume_site/4) is opt_at_resume_site,
-    pred(at_par_conj/4) is opt_at_par_conj
+    pred(at_par_conj/4) is opt_at_par_conj,
+    pred(at_recursive_call_for_loop_control/4) is
+        opt_at_recursive_call_for_loop_control
 ].
 
 :- pred opt_at_call_site(need_across_call::in, alloc_data::in,
@@ -341,6 +348,16 @@ opt_at_resume_site(_NeedAtResume, _AllocData, !StackAlloc).
 
 opt_at_par_conj(NeedParConj, _AllocData, !StackAlloc) :-
     NeedParConj = need_in_par_conj(StackVars),
+    ParConjOwnSlots0 = !.StackAlloc ^ par_conj_own_slots,
+    ParConjOwnSlots = set_of_var.union(StackVars, ParConjOwnSlots0),
+    !StackAlloc ^ par_conj_own_slots := ParConjOwnSlots.
+
+:- pred opt_at_recursive_call_for_loop_control(need_for_loop_control::in,
+    alloc_data::in, opt_stack_alloc::in, opt_stack_alloc::out) is det.
+
+opt_at_recursive_call_for_loop_control(NeedLC, _AllocData, !StackAlloc) :-
+    NeedLC = need_for_loop_control(StackVarsSets),
+    StackVars = set_of_var.union_list(StackVarsSets),
     ParConjOwnSlots0 = !.StackAlloc ^ par_conj_own_slots,
     ParConjOwnSlots = set_of_var.union(StackVars, ParConjOwnSlots0),
     !StackAlloc ^ par_conj_own_slots := ParConjOwnSlots.

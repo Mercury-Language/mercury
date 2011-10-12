@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File stack_alloc.m.
 % Authors: zs, conway.
-% 
+%
 % This module allocates stack slots to the variables that need to be saved
 % across a call, across a goal that may fail, or in a parallel conjunction.
-% 
+%
 % The jobs is done in two steps. First we traverse the predicate definition
 % looking for sets of variables that must be saved on the stack at the same
 % time. If --optimize-stack-slots is set, then this phase is done by
@@ -19,7 +19,7 @@
 % module. Then we use a graph colouring algorithm to find an allocation of
 % stack slots (colours) to variables such that in each set of variables that
 % must be saved at the same time, each variable has a different colour.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.stack_alloc.
@@ -63,7 +63,7 @@
 
 %-----------------------------------------------------------------------------%
 
-allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
+allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
     initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     module_info_get_globals(ModuleInfo, Globals),
@@ -81,8 +81,8 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
         OptNoReturnCalls),
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
     build_dummy_type_array(ModuleInfo, VarTypes, DummyTypeArray, DummyVars),
-    AllocData = alloc_data(ModuleInfo, !.ProcInfo, TypeInfoLiveness,
-        OptNoReturnCalls, DummyTypeArray),
+    AllocData = alloc_data(ModuleInfo, !.ProcInfo, proc(PredId, ProcId),
+        TypeInfoLiveness, OptNoReturnCalls, DummyTypeArray),
     NondetLiveness0 = set_of_var.init,
     SimpleStackAlloc0 = stack_alloc(set.make_singleton_set(FailVars)),
     proc_info_get_goal(!.ProcInfo, Goal0),
@@ -126,7 +126,9 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
 :- instance stack_alloc_info(stack_alloc) where [
     pred(at_call_site/4) is alloc_at_call_site,
     pred(at_resume_site/4) is alloc_at_resume_site,
-    pred(at_par_conj/4) is alloc_at_par_conj
+    pred(at_par_conj/4) is alloc_at_par_conj,
+    pred(at_recursive_call_for_loop_control/4) is
+        alloc_at_recursive_call_for_loop_control
 ].
 
 :- pred alloc_at_call_site(need_across_call::in, alloc_data::in,
@@ -167,6 +169,22 @@ alloc_at_par_conj(NeedParConj, AllocData, !StackAlloc) :-
 
     !.StackAlloc = stack_alloc(LiveSets0),
     LiveSets = set.insert(LiveSets0, StackVars),
+    !:StackAlloc = stack_alloc(LiveSets).
+
+:- pred alloc_at_recursive_call_for_loop_control(need_for_loop_control::in,
+    alloc_data::in, stack_alloc::in, stack_alloc::out) is det.
+
+alloc_at_recursive_call_for_loop_control(NeedLC, AllocData, !StackAlloc) :-
+    NeedLC = need_for_loop_control(StackVarsSets),
+    list.foldl(set_for_loop_control(AllocData), StackVarsSets, !StackAlloc).
+
+:- pred set_for_loop_control(alloc_data::in, set_of_progvar::in,
+    stack_alloc::in, stack_alloc::out) is det.
+
+set_for_loop_control(AllocData, Set0, !StackAlloc) :-
+    !.StackAlloc = stack_alloc(LiveSets0),
+    filter_out_dummy_vars(AllocData, Set0, Set),
+    LiveSets = set.insert(LiveSets0, Set),
     !:StackAlloc = stack_alloc(LiveSets).
 
 :- pred filter_out_dummy_vars(alloc_data::in,

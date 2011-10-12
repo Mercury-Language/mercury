@@ -886,7 +886,7 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
         globals.lookup_bool_option(Globals,
             opt_no_return_calls, OptNoReturnCalls),
         array.init(1, is_not_dummy_type, DummyDummyTypeArray),
-        AllocData = alloc_data(!.ModuleInfo, !.ProcInfo,
+        AllocData = alloc_data(!.ModuleInfo, !.ProcInfo, PredProcId,
             TypeInfoLiveness, OptNoReturnCalls, DummyDummyTypeArray),
         fill_goal_id_slots_in_proc(!.ModuleInfo, ContainingGoalMap, !ProcInfo),
         ReverseGoalPathMap = create_reverse_goal_path_map(ContainingGoalMap),
@@ -916,7 +916,9 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
 :- instance stack_alloc_info(opt_tuple_alloc) where [
     pred(at_call_site/4) is opt_at_call_site,
     pred(at_resume_site/4) is opt_at_resume_site,
-    pred(at_par_conj/4) is opt_at_par_conj
+    pred(at_par_conj/4) is opt_at_par_conj,
+    pred(at_recursive_call_for_loop_control/4) is
+        opt_at_recursive_call_for_loop_control
 ].
 
 :- pred opt_at_call_site(need_across_call::in, alloc_data::in,
@@ -933,6 +935,11 @@ opt_at_resume_site(_NeedAtResume, _AllocData, !StackAlloc).
     opt_tuple_alloc::in, opt_tuple_alloc::out) is det.
 
 opt_at_par_conj(_NeedParConj, _AllocData, !StackAlloc).
+
+:- pred opt_at_recursive_call_for_loop_control(need_for_loop_control::in,
+    alloc_data::in, opt_tuple_alloc::in, opt_tuple_alloc::out) is det.
+
+opt_at_recursive_call_for_loop_control(_NeedLC, _AllocData, !StackAlloc).
 
 %-----------------------------------------------------------------------------%
 

@@ -23,6 +23,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 
@@ -121,6 +122,15 @@
 :- type need_in_par_conj
     --->    need_in_par_conj(
                 par_conj_engine_vars    :: set_of_progvar
+            ).
+
+    % loop_control_distinct_stackvars gives sets of variables that must not
+    % have overlapping stack slot allocations so that concurrent access to the
+    % same stack frame is safe.
+    %
+:- type need_for_loop_control
+    --->    need_for_loop_control(
+                loop_control_distinct_stackvars :: list(set_of_progvar)
             ).
 
 :- type llds_code_gen_details.
@@ -382,10 +392,11 @@ explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
                 % specifies what variables need to be stored on the stack
                 % at the resumption point established by the goal.
                 %
-                % For parallel conjunctions, the stackvars pass will set
-                % this argument to need_par_conj(NPC), where NPC specifies
-                % what variables are required to be stored on the stack
-                % by the parallel conjunction execution mechanism.
+                % For parallel conjunctions and loop control scopes, the
+                % stackvars pass will set this argument to need_par_conj(NPC),
+                % where NPC specifies what variables are required to be stored
+                % on the stack by the parallel conjunction and loop control
+                % execution mechanisms.
                 maybe_need          :: maybe_need
             ).
 

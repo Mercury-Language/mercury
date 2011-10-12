@@ -340,23 +340,28 @@ generate_loop_control(Goal, LCVar, LCSVar, Code, !CI) :-
     save_variables_on_stack(to_sorted_list(InputVars), SaveCode, !CI),
 
     % Create the call to spawn_off.
-    place_var(LCVar, reg(reg_r, 1), PlaceLCVar, !CI),
-    place_var(LCSVar, reg(reg_r, 2), PlaceLCSVar, !CI),
     remember_position(!.CI, PositionBeforeSpawnOff),
 
     get_next_label(SpawnOffLabel, !CI),
+    best_variable_location_det(!.CI, LCVar, LCVarLocn),
+    best_variable_location_det(!.CI, LCSVar, LCSVarLocn),
     SpawnOffCallCode =
-        singleton(llds_instr(lc_spawn_off(lval(reg(reg_r, 1)),
-                lval(reg(reg_r, 2)), SpawnOffLabel),
+        singleton(llds_instr(lc_spawn_off(lval(LCVarLocn), lval(LCSVarLocn),
+                SpawnOffLabel),
             "Spawn off job for worker using loop control")),
-    SpawnOffCode = PlaceLCVar ++ PlaceLCSVar ++ SpawnOffCallCode,
+    SpawnOffCode = SpawnOffCallCode,
     remember_position(!.CI, PositionAfterSpawnOff),
 
     % Code to spawn off.
     LabelCode = singleton(llds_instr(label(SpawnOffLabel),
         "Label for spawned off code")),
     reset_to_position(PositionBeforeSpawnOff, !CI),
-    clear_all_registers(no, !CI),
+
+    % We don't need to clear all the registers, all the variables except for
+    % LC and LCS are considered to be on the stack.
+    % mark only the registers used by LC and LCS as clobbered.
+    clobber_regs([LCVarLocn, LCSVarLocn], !CI),
+
     generate_goal(model_det, Goal, GoalCode, !CI),
     % We expect that the join_and_terminate call is already in Goal.
     SpawnedOffCode0 = LabelCode ++ GoalCode,
@@ -375,6 +380,38 @@ generate_loop_control(Goal, LCVar, LCSVar, Code, !CI) :-
 
     % Concatentate the inline code.
     Code = SaveCode ++ SpawnOffCode.
+
+%----------------------------------------------------------------------------%
+
+:- pred best_variable_location_det(code_info::in, prog_var::in, lval::out)
+    is det.
+
+best_variable_location_det(CI, Var, Locn) :-
+    promise_equivalent_solutions [Locn] (
+        ( best_variable_location(CI, Var, LocnPrime) ->
+            Locn = LocnPrime
+        ;
+            unexpected($module, $pred, "Could not find location for variable")
+        )
+    ).
+
+:- pred best_variable_location(code_info::in, prog_var::in, lval::out)
+    is nondet.
+
+best_variable_location(CI, Var, Locn) :-
+    variable_locations(CI, Map),
+    map.search(Map, Var, AllLocns),
+    filter(lval_is_reg, AllLocns, RegLocns),
+    ( member(LocnPrime, RegLocns) ->
+        % Commit to register locations before trying any location.
+        LocnPrime = Locn
+    ;
+        member(Locn, AllLocns)
+    ).
+
+:- pred lval_is_reg(lval::in) is semidet.
+
+lval_is_reg(reg(_, _)).
 
 %-----------------------------------------------------------------------------%
 

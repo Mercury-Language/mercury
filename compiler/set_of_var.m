@@ -111,6 +111,12 @@
 :- pred divide_by_set(set_of_var(T)::in, set_of_var(T)::in,
     set_of_var(T)::out, set_of_var(T)::out) is det.
 
+:- pred cartesian_product(set_of_var(T)::in, set_of_var(T)::in,
+    list(set_of_var(T))::out) is det.
+
+:- pred cartesian_product_list(list(set_of_var(T))::in,
+    list(set_of_var(T))::out) is det.
+
 %---------------
 % Traversals.
 
@@ -295,6 +301,28 @@ divide(Pred, Set, InPart, OutPart) :-
 
 divide_by_set(DivideBySet, Set, InPart, OutPart) :-
     tree_bitset.divide_by_set(DivideBySet, Set, InPart, OutPart).   % MODULE
+
+cartesian_product(A, B, Product) :-
+    fold(cartesian_product2(A), B, [], Product).
+
+:- pred cartesian_product2(set_of_var(T)::in, var(T)::in,
+    list(set_of_var(T))::in, list(set_of_var(T))::out) is det.
+
+cartesian_product2(SetA, VarB, !Sets) :-
+    set_of_var.fold((pred(VarA::in, SetsI0::in, SetsI::out) is det :-
+            Set = set_of_var.list_to_set([VarA, VarB]),
+            SetsI = [Set | SetsI0]
+        ), SetA, !Sets).
+
+cartesian_product_list([], []).
+cartesian_product_list([FirstSet | OtherSets], Product) :-
+    list.foldl(cartesian_product_list2(FirstSet), OtherSets, [], Product).
+
+:- pred cartesian_product_list2(set_of_var(T)::in, set_of_var(T)::in,
+    list(set_of_var(T))::in, list(set_of_var(T))::out) is det.
+
+cartesian_product_list2(A, B, SetsAcc, Product ++ SetsAcc) :-
+    cartesian_product(A, B, Product).
 
 %---------------
 % Traversals.

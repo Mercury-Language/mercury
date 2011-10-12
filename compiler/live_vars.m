@@ -45,6 +45,7 @@
     --->    alloc_data(
                 ad_module_info          ::  module_info,
                 ad_proc_info            ::  proc_info,
+                ad_pred_proc_id         ::  pred_proc_id,
                 ad_typeinfo_liveness    ::  bool,
                 ad_opt_no_return_calls  ::  bool,
 
@@ -64,7 +65,9 @@
     pred at_resume_site(need_in_resume::in, alloc_data::in,
         T::in, T::out) is det,
     pred at_par_conj(need_in_par_conj::in, alloc_data::in,
-        T::in, T::out) is det
+        T::in, T::out) is det,
+    pred at_recursive_call_for_loop_control(need_for_loop_control::in,
+        alloc_data::in, T::in, T::out) is det
 ].
 
 :- pred build_live_sets_in_goal_no_par_stack(hlds_goal::in, hlds_goal::out,
@@ -89,6 +92,7 @@
 :- import_module enum.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 
@@ -132,33 +136,13 @@ set_dummy_array_elements(ModuleInfo, [VarType | VarsTypes],
 
 %-----------------------------------------------------------------------------%
 
-    % Information about which variables in a parallel conjunction need stack
-    % slots.
-    %
-:- type parallel_stackvars
-    --->    parallel_stackvars(
-                % Variables nonlocal to the parallel conjunction which need
-                % their own stack slots.
-                set_of_progvar,
-
-                % Variables local to parallel conjuncts prior to the
-                % current conjunct which need stack slots.
-                list(set_of_progvar),
-
-                % Accumulating set of variables local to the current
-                % parallel conjunct which need stack slots.
-                set_of_progvar
-            ).
-
-%-----------------------------------------------------------------------------%
-
 % The stack_slots structure (map(prog_var, lval)) is threaded through the
 % traversal of the goal. The liveness information is computed from the liveness
 % delta annotations.
 
 build_live_sets_in_goal_no_par_stack(Goal0, Goal,
         ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
-    ParStackVars0 = parallel_stackvars(set_of_var.init, [], set_of_var.init),
+    empty_par_stackvars(ParStackVars0),
     build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
         AllocData, !StackAlloc, !Liveness, !NondetLiveness,
         ParStackVars0, _ParStackVars).
@@ -264,8 +248,6 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars)
         ;
             ConjType = parallel_conj,
-            !.ParStackVars = parallel_stackvars(OuterNonLocals,
-                OuterLocalStackVars, OuterAccStackVars0),
 
             % Since each parallel conjunct may be run in a different Mercury
             % context to the current context, we must save all the variables
@@ -279,35 +261,28 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             LiveSet =
                 set_of_var.union_list([NonLocals, !.Liveness, ResumeVars0]),
 
-            InnerNonLocals = LiveSet `set_of_var.union` OuterNonLocals,
-            InnerParStackVars0 =
-                parallel_stackvars(InnerNonLocals, [], set_of_var.init),
+            par_stack_vars_get_nonlocals(!.ParStackVars, OuterNonLocals),
+
+            OuterParStackVars = !.ParStackVars,
+            par_stack_vars_start_parallel_conjunction(LiveSet, !ParStackVars),
             build_live_sets_in_par_conj(Goals0, Goals, ResumeVars0, AllocData,
                 !StackAlloc, !Liveness, !NondetLiveness,
-                InnerParStackVars0, InnerParStackVars),
-            InnerParStackVars = parallel_stackvars(_, InnerStackVars, _),
+                !ParStackVars),
+            par_stack_vars_get_stackvars(!.ParStackVars, InnerStackVars),
 
             % This is safe but suboptimal. It causes all variables which need
             % stack slots in a parallel conjunction to have distinct stack
             % slots. Variables local to a single conjunct could share stack
             % slots, as long as the _sets_ of stack slots allocated to
             % different parallel conjuncts are distinct.
+            InnerNonLocals = LiveSet `set_of_var.union` OuterNonLocals,
             NeedInParConj = need_in_par_conj(InnerNonLocals `set_of_var.union`
-                set_of_var.union_list(InnerStackVars)),
+                InnerStackVars),
             record_par_conj(NeedInParConj, AllocData,
                 GoalInfo0, GoalInfo, !StackAlloc),
 
-            % All the local variables which needed stack slots in the parallel
-            % conjuncts (InnerStackVars) become part of the accumulating set of
-            % variables that have stack slots.  Variables which are not local
-            % to but are needed in the parallel conjunctions also become part
-            % of the accumulating set.
-            OuterAccStackVars = OuterAccStackVars0
-                `set_of_var.union` set_of_var.union_list(InnerStackVars)
-                `set_of_var.union`
-                    (LiveSet `set_of_var.difference` OuterNonLocals),
-            !:ParStackVars = parallel_stackvars(OuterNonLocals,
-                OuterLocalStackVars, OuterAccStackVars)
+            par_stack_vars_end_parallel_conjunction(LiveSet, OuterParStackVars,
+                !ParStackVars)
         ),
         GoalExpr = conj(ConjType, Goals)
     ;
@@ -404,9 +379,47 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % conjunctions, so there are no updates to !StackAlloc,
             % !NondetLiveness, or !ParStackVars.
             set_of_var.insert(TermVar, !Liveness)
-        ;
+
             % XXX We could treat from_ground_term_deconstruct scopes specially
             % as well.
+        ; Reason = loop_control(LCVar, LCSVar) ->
+            % We must handle loop control scopes specially, see the comment for
+            % parallel conjunctions above.  Like parallel conjunctions, we need
+            % stack slots for the NonLocals, but we also need non-overlapping
+            % slots for LC and LCS.
+            %
+
+            NonLocals = goal_info_get_code_gen_nonlocals(GoalInfo0),
+            % Include NonLocals as these need to be on the stack to communicate
+            % with the spawned off context,
+            % Include ResumeVars0 because this goal may be backtracked over,
+            % (Except that loop control is only applied to deterministic
+            % predicates and it would mean entering a recursive call more than
+            % once.  So I think that ResumeVars0 will always be empty.
+            % The loop control variables must also be allocated stack slots.
+            % Inclusion of !.Liveness is a conservative approximation.  Values
+            % in !.Liveness don't need to have stack slots but if they already
+            % have stack slots then those slots most be distinct from others by
+            % the spawn off scope.  So what we want here is the intersection of
+            % !.Liveness and AlreadyHasStackSlot.
+            OuterParStackVars = !.ParStackVars,
+            LCStackVars =
+                set_of_var.union_list([NonLocals, !.Liveness, ResumeVars0])
+                `set_of_var.union` list_to_set([LCVar, LCSVar]),
+            par_stack_vars_start_loop_control(LCStackVars, !ParStackVars),
+            build_live_sets_in_goal(SubGoal0, SubGoal, ResumeVars0, AllocData,
+                !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
+            par_stack_vars_get_stackvars(!.ParStackVars, InnerStackVars),
+
+            NeedInParConj =
+                need_in_par_conj(LCStackVars `set_of_var.union` InnerStackVars),
+            record_par_conj(NeedInParConj, AllocData,
+                GoalInfo0, GoalInfo, !StackAlloc),
+
+            par_stack_vars_end_loop_control(OuterParStackVars, !ParStackVars),
+
+            GoalExpr = scope(Reason, SubGoal)
+        ;
             NondetLiveness0 = !.NondetLiveness,
             build_live_sets_in_goal(SubGoal0, SubGoal, ResumeVars0, AllocData,
                 !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
@@ -466,6 +479,23 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             build_live_sets_in_call(set_to_bitset(OutVars),
                 GoalInfo0, GoalInfo, ResumeVars0, AllocData,
                 !StackAlloc, !.Liveness, !NondetLiveness, !ParStackVars)
+        ),
+        CalleePredProcId = AllocData ^ ad_pred_proc_id,
+        ( CalleePredProcId = proc(PredId, ProcId) ->
+            % If a call is recursive and a loop control scope has been seen
+            % then the recursive call is a barrier for loop control, we have to
+            % ensure that spawned off computations use distinct stack slots
+            % from one another and the code up to and including this call.
+            par_stack_vars_recursive_call(MaybeNeedLC, !ParStackVars),
+            (
+                MaybeNeedLC = yes(NeedLC),
+                at_recursive_call_for_loop_control(NeedLC, AllocData,
+                    !StackAlloc)
+            ;
+                MaybeNeedLC = no
+            )
+        ;
+            true
         )
     ;
         GoalExpr0 = unify(_, _, _, Unification, _),
@@ -574,11 +604,7 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
     % In a parallel conjunction all the stack slots we need must not be reused
     % in other parallel conjuncts.  We keep track of which variables have been
     % allocated stack slots in each conjunct.
-
-    !.ParStackVars = parallel_stackvars(Nonlocals, ParallelVars, AccVars0),
-    AccVars = AccVars0 `set_of_var.union`
-        (ForwardVars `set_of_var.difference` Nonlocals),
-    !:ParStackVars = parallel_stackvars(Nonlocals, ParallelVars, AccVars).
+    par_stack_vars_accumulate_stack_vars(ForwardVars, !ParStackVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -618,20 +644,15 @@ build_live_sets_in_conj([Goal0 | Goals0], [Goal | Goals], ResumeVars0,
     is det <= stack_alloc_info(T).
 
 build_live_sets_in_par_conj([], [], _, _,
-        !StackAlloc, Liveness, Liveness, !NondetLiveness,
-        ParStackVars, ParStackVars).
+        !StackAlloc, Liveness, Liveness, !NondetLiveness, !ParStackVars).
 build_live_sets_in_par_conj([Goal0 | Goals0], [Goal | Goals], ResumeVars0,
         AllocData, !StackAlloc, Liveness0, Liveness, !NondetLiveness,
-        ParStackVars0, ParStackVars) :-
+        !ParStackVars) :-
     build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
-        !StackAlloc, Liveness0, Liveness, !NondetLiveness,
-        ParStackVars0, ParStackVars1),
-    ParStackVars1 = parallel_stackvars(Nonlocals, PrevSets1, CurSet1),
-    ParStackVars2 = parallel_stackvars(Nonlocals, [CurSet1 | PrevSets1],
-        set_of_var.init),
+        !StackAlloc, Liveness0, Liveness, !NondetLiveness, !ParStackVars),
+    par_stack_vars_next_par_conjunct(!ParStackVars),
     build_live_sets_in_par_conj(Goals0, Goals, ResumeVars0, AllocData,
-        !StackAlloc, Liveness0, _Liveness1, !NondetLiveness,
-        ParStackVars2, ParStackVars).
+        !StackAlloc, Liveness0, _Liveness1, !NondetLiveness, !ParStackVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -763,6 +784,213 @@ record_resume_site(NeedInResume, AllocData, !GoalInfo, !StackAlloc) :-
 record_par_conj(NeedInParConj, AllocData, !GoalInfo, !StackAlloc) :-
     goal_info_set_need_in_par_conj(NeedInParConj, !GoalInfo),
     at_par_conj(NeedInParConj, AllocData, !StackAlloc).
+
+%-----------------------------------------------------------------------------%
+
+    % Information about which variables in a parallel conjunction need stack
+    % slots.
+    %
+:- type parallel_stackvars
+    --->    not_in_parallel_context
+    ;       parallel_conjunction(
+                % Variables nonlocal to the parallel conjunction which need
+                % their own stack slots.
+                set_of_progvar,
+
+                % Variables local to parallel conjuncts prior to the
+                % current conjunct which need stack slots.
+                list(set_of_progvar),
+
+                % Accumulating set of variables local to the current
+                % parallel conjunct which need stack slots.
+                set_of_progvar
+            )
+    ;       loop_control_scope(
+                % Variables nonlocal to the scope, these all need stack slots.
+                % This field may be unnecessary since it's used to remove items
+                % from sets when adding them to the set below.  And then a
+                % union of it and the set below is calculated to set
+                % need_in_par_conj.
+                set_of_progvar,
+
+                % Accumulating set of variables local to the scope that need
+                % stack slots, these are allocated on the parent's stack frame
+                % (for now).
+                set_of_progvar
+            )
+    ;       after_loop_control_scope(
+                % List of variables local to each of the previous loop control
+                % scopes.
+                list(set_of_progvar),
+
+                % Accumulating set of variables that need stack slots between a
+                % loop control scope and either another loop control scope or a
+                % recursive call.
+                set_of_progvar
+            ).
+
+:- pred empty_par_stackvars(parallel_stackvars::out) is det.
+
+empty_par_stackvars(not_in_parallel_context).
+
+:- pred par_stack_vars_start_parallel_conjunction(set_of_progvar::in,
+    parallel_stackvars::in, parallel_stackvars::out) is det.
+
+par_stack_vars_start_parallel_conjunction(LiveSet, OuterParStackVars,
+        parallel_conjunction(InnerNonLocals, [], set_of_var.init)) :-
+    par_stack_vars_get_nonlocals(OuterParStackVars, OuterNonLocals),
+    InnerNonLocals = OuterNonLocals `set_of_var.union` LiveSet.
+
+:- pred par_stack_vars_end_parallel_conjunction(set_of_progvar::in,
+    parallel_stackvars::in, parallel_stackvars::in, parallel_stackvars::out)
+    is det.
+
+par_stack_vars_end_parallel_conjunction(LiveSet, OuterParStackVars,
+        ParStackVars0, ParStackVars) :-
+    par_stack_vars_get_stackvars(ParStackVars0, InnerStackVars),
+    (
+        OuterParStackVars = not_in_parallel_context,
+        ParStackVars = not_in_parallel_context
+    ;
+        OuterParStackVars = parallel_conjunction(OuterNonLocals,
+            OuterLocalStackVars, OuterAccStackVars0),
+        % All the local variables which needed stack slots in the parallel
+        % conjuncts (InnerStackVars) become part of the accumulating set of
+        % variables that have stack slots.  Variables which are not local to
+        % but are needed in the parallel conjunctions also become part of the
+        % accumulating set.
+        OuterAccStackVars = OuterAccStackVars0
+            `set_of_var.union` InnerStackVars
+            `set_of_var.union` (LiveSet `set_of_var.difference` OuterNonLocals),
+        ParStackVars = parallel_conjunction(OuterNonLocals,
+            OuterLocalStackVars, OuterAccStackVars)
+    ;
+        OuterParStackVars = loop_control_scope(OuterNonLocals, StackVars0),
+        % The loop control scope must ensure that any stackvars needed by a
+        % parallel conjunction are distinct from those already needed by loop
+        % control.  The same is true in the case for
+        % after_loop_control_scope/2 below.
+        StackVars = StackVars0 `set_of_var.union` InnerStackVars
+            `set_of_var.union` (LiveSet `set_of_var.difference` OuterNonLocals),
+        ParStackVars = loop_control_scope(OuterNonLocals, StackVars)
+    ;
+        OuterParStackVars = after_loop_control_scope(StackVarsList, StackVars0),
+        % In this case we don't have access to an OuterNonLocals set, so this
+        % is a conservative approximation.
+        StackVars = StackVars0 `set_of_var.union` InnerStackVars
+            `set_of_var.union` LiveSet,
+        ParStackVars =
+            after_loop_control_scope(StackVarsList, StackVars)
+    ).
+
+:- pred par_stack_vars_start_loop_control(set_of_progvar::in,
+    parallel_stackvars::in, parallel_stackvars::out) is det.
+
+par_stack_vars_start_loop_control(NonLocals, ParStackVars0,
+        loop_control_scope(NonLocals, set_of_var.init)) :-
+    (
+        ( ParStackVars0 = not_in_parallel_context
+        ; ParStackVars0 = after_loop_control_scope(_, _)
+        )
+    ;
+        ( ParStackVars0 = parallel_conjunction(_, _, _)
+        ; ParStackVars0 = loop_control_scope(_, _)
+        ),
+        unexpected($module, $pred,
+            "Loop control scope found in other parallel context")
+    ).
+
+:- pred par_stack_vars_end_loop_control(parallel_stackvars::in,
+    parallel_stackvars::in, parallel_stackvars::out) is det.
+
+par_stack_vars_end_loop_control(OldParStackVars, ParStackVars0, ParStackVars) :-
+    par_stack_vars_get_stackvars(ParStackVars0, NewStackVars),
+    (
+        OldParStackVars = not_in_parallel_context,
+        ParStackVars = after_loop_control_scope([NewStackVars], set_of_var.init)
+    ;
+        OldParStackVars = after_loop_control_scope(StackVarsList, StackVarsAcc),
+        ParStackVars =
+            after_loop_control_scope([NewStackVars | StackVarsList],
+                StackVarsAcc)
+    ;
+        ( OldParStackVars = parallel_conjunction(_, _, _)
+        ; OldParStackVars = loop_control_scope(_, _)
+        ),
+        unexpected($module, $pred,
+            "Loop control scope found in other parallel context")
+    ).
+
+
+:- pred par_stack_vars_get_stackvars(parallel_stackvars::in,
+    set_of_progvar::out) is det.
+
+par_stack_vars_get_stackvars(not_in_parallel_context, set_of_var.init).
+par_stack_vars_get_stackvars(parallel_conjunction(_, StackVarss, _),
+        StackVars) :-
+    StackVars = set_of_var.union_list(StackVarss).
+par_stack_vars_get_stackvars(loop_control_scope(_, StackVars), StackVars).
+par_stack_vars_get_stackvars(after_loop_control_scope(_, StackVars),
+    StackVars).
+
+:- pred par_stack_vars_accumulate_stack_vars(set_of_progvar::in,
+    parallel_stackvars::in, parallel_stackvars::out) is det.
+
+par_stack_vars_accumulate_stack_vars(_,
+        not_in_parallel_context, not_in_parallel_context).
+par_stack_vars_accumulate_stack_vars(ForwardVars,
+        parallel_conjunction(Nonlocals, ParallelVars, AccStackVars0),
+        parallel_conjunction(Nonlocals, ParallelVars, AccStackVars)) :-
+    AccStackVars = AccStackVars0 `set_of_var.union`
+        (ForwardVars `set_of_var.difference` Nonlocals).
+par_stack_vars_accumulate_stack_vars(NewStackVars,
+        loop_control_scope(NonLocals, AccStackVars0),
+        loop_control_scope(NonLocals, AccStackVars)) :-
+    AccStackVars = AccStackVars0 `set_of_var.union` NewStackVars.
+par_stack_vars_accumulate_stack_vars(NewStackVars,
+        after_loop_control_scope(LocalStackVars, AccStackVars0),
+        after_loop_control_scope(LocalStackVars, AccStackVars)) :-
+    AccStackVars = AccStackVars0 `set_of_var.union` NewStackVars.
+
+:- pred par_stack_vars_get_nonlocals(parallel_stackvars::in,
+    set_of_progvar::out) is det.
+
+par_stack_vars_get_nonlocals(not_in_parallel_context, set_of_var.init).
+par_stack_vars_get_nonlocals(parallel_conjunction(NonLocals, _, _), NonLocals).
+par_stack_vars_get_nonlocals(loop_control_scope(NonLocals, _), NonLocals).
+par_stack_vars_get_nonlocals(after_loop_control_scope(_, _), set_of_var.init).
+
+:- pred par_stack_vars_next_par_conjunct(
+    parallel_stackvars::in, parallel_stackvars::out) is det.
+
+par_stack_vars_next_par_conjunct(!ParStackVars) :-
+    ( !.ParStackVars = parallel_conjunction(Nonlocals, PrevSets, CurSet) ->
+        !:ParStackVars =
+            parallel_conjunction(Nonlocals, [CurSet | PrevSets],
+                set_of_var.init)
+    ;
+        unexpected($module, $pred, "expected parallel_conjunction/3")
+    ).
+
+:- pred par_stack_vars_recursive_call(maybe(need_for_loop_control)::out,
+    parallel_stackvars::in, parallel_stackvars::out) is det.
+
+par_stack_vars_recursive_call(MaybeNeedLC, !ParStackVars) :-
+    (
+        ( !.ParStackVars = not_in_parallel_context
+        ; !.ParStackVars = parallel_conjunction(_, _, _)
+        ),
+        MaybeNeedLC = no
+    ;
+        !.ParStackVars = loop_control_scope(_, _),
+        unexpected($module, $pred, "recursive call in loop control scope")
+    ;
+        !.ParStackVars = after_loop_control_scope(StackVarsList0, StackVars),
+        StackVarsList = [StackVars | StackVarsList0],
+        cartesian_product_list(StackVarsList, NonoverlapSets),
+        MaybeNeedLC = yes(need_for_loop_control(NonoverlapSets)),
+        !:ParStackVars = not_in_parallel_context
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.live_vars.
