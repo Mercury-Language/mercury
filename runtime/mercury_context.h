@@ -468,11 +468,18 @@ extern  void        MR_init_context_stuff(void);
 ** be pinned to if pinning was both enabled and supported.  That is a valid
 ** value is always returned even if the thread is not actually pinned.
 */
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
-extern unsigned
+#if defined(MR_LL_PARALLEL_CONJ)
+#if defined(MR_HAVE_THREAD_PINNING)
+extern void
 MR_pin_primordial_thread(void);
 extern unsigned
 MR_pin_thread(void);
+
+/*
+** The CPU that the primordial thread is running on.
+*/
+extern MR_Unsigned        MR_primordial_thread_cpu;
+#endif
 
 /*
 ** Shutdown all the engines.

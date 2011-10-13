@@ -115,7 +115,7 @@ MR_init_thread(MR_when_to_use when_to_use)
     MercuryEngine   *eng;
 
 #ifdef MR_THREAD_SAFE
-  #ifdef MR_LL_PARALLEL_CONJ
+  #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_THREAD_PINNING)
     unsigned        cpu;
   #endif
 
@@ -129,13 +129,17 @@ MR_init_thread(MR_when_to_use when_to_use)
   #ifdef MR_LL_PARALLEL_CONJ
     switch (when_to_use) {
         case MR_use_later:
+#ifdef MR_HAVE_THREAD_PINNING
             cpu = MR_pin_thread();
+#endif
             break;
         case MR_use_now:
             /*
             ** Don't pin the primordial thread here, it's already been done.
             */
+#ifdef MR_HAVE_THREAD_PINNING
             cpu = MR_primordial_thread_cpu;
+#endif
             break;
         /*
         ** TODO: We may use the cpu value here to determine which CPUs which

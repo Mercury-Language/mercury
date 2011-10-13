@@ -370,6 +370,9 @@ cleanint:
 
 #-----------------------------------------------------------------------------#
 
+aclocal.m4: configure.in acinclude.m4
+	aclocal
+
 configure: configure.in aclocal.m4
 	autoconf
 

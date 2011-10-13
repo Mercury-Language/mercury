@@ -667,7 +667,9 @@ mercury_runtime_init(int argc, char **argv)
 #else
 
 #if defined(MR_LL_PARALLEL_CONJ)
+#if defined(MR_HAVE_THREAD_PINNING)
     MR_pin_primordial_thread();
+#endif
   #if defined(MR_THREADSCOPE)
     /*
     ** We must setup threadscope before we setup the first engine.

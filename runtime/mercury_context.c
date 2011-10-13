@@ -46,6 +46,10 @@ ENDINIT
   #include <sys/timeb.h>    /* for _ftime() */
 #endif
 
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_HWLOC)
+  #include <hwloc.h>
+#endif
+
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
 #include "mercury_engine.h"             /* for `MR_memdebug' */
@@ -161,12 +165,19 @@ static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
 /*
 ** Local variables for thread pinning.
 */
-#ifdef MR_LL_PARALLEL_CONJ
-static MercuryLock      MR_next_cpu_lock;
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_THREAD_PINNING)
 MR_bool                 MR_thread_pinning = MR_FALSE;
-static MR_Unsigned      MR_next_cpu = 0;
-/* This is initialised the first the MR_pin_primordial_thread() is called */
+
+static MercuryLock      MR_thread_pinning_lock;
+static unsigned         MR_num_threads_left_to_pin;
+static unsigned         MR_num_processors;
 MR_Unsigned             MR_primordial_thread_cpu;
+#ifdef MR_HAVE_HWLOC
+static hwloc_topology_t MR_hw_topology;
+static hwloc_cpuset_t   MR_hw_available_pus = NULL;
+#else /* MR_HAVE_SCHED_SETAFFINITY */
+static cpu_set_t        *MR_available_cpus;
+#endif
 #endif
 
 #if defined(MR_LL_PARALLEL_CONJ) && \
@@ -217,7 +228,7 @@ MR_SparkDeque           **MR_spark_deques = NULL;
 
 #ifdef MR_LL_PARALLEL_CONJ
 /*
-** Try to wake up a sleeping message and tell it to do action. The engine
+** Try to wake up a sleeping engine and tell it to do action. The engine
 ** is only woken if the engine is in one of the states in the bitfield states.
 ** If the engine is woken, this function returns MR_TRUE, otherwise it
 ** returns MR_FALSE.
@@ -233,9 +244,35 @@ try_wake_engine(MR_EngineId engine_id, int action,
 static void
 MR_write_out_profiling_parallel_execution(void);
 
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
+#if defined(MR_LL_PARALLEL_CONJ)
 static void
+MR_setup_thread_pinning(void);
+
+static MR_bool
 MR_do_pin_thread(int cpu);
+
+/*
+** Determine which CPU this thread is currently running on.
+*/
+static int
+MR_current_cpu(void);
+
+/*
+** Reset or initialize the cpuset that tracks which CPUs are available for
+** binding.
+*/
+static void
+MR_reset_available_cpus(void);
+
+/*
+** Mark the given CPU as unavailable for thread pinning.  This may mark other
+** CPUs as unavailable, if, for instance they share resources with this
+** processor and we can place other tasks elsewhere to avoid this sharing.
+** These resources are usually only considered for hardware threads that share
+** cores.
+*/
+static void
+MR_make_cpu_unavailable(int cpu);
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -253,9 +290,6 @@ MR_init_context_stuff(void)
     pthread_mutex_init(&free_context_list_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_pending_contexts_lock, MR_MUTEX_ATTR);
   #ifdef MR_LL_PARALLEL_CONJ
-    #ifdef MR_HAVE_SCHED_SETAFFINITY
-    pthread_mutex_init(&MR_next_cpu_lock, MR_MUTEX_ATTR);
-    #endif
     #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     pthread_mutex_init(&MR_par_cond_stats_lock, MR_MUTEX_ATTR);
     #endif
@@ -268,40 +302,10 @@ MR_init_context_stuff(void)
     MR_KEY_CREATE(&MR_backjump_next_choice_id_key, (void *)0);
   #endif
 
-    /*
-    ** If MR_num_threads is unset, configure it to match number of processors
-    ** on the system. If we do this, then we prepare to set processor
-    ** affinities later on.
-    */
-    if (MR_num_threads == 0) {
-      #if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
-        long result;
-
-        result = sysconf(_SC_NPROCESSORS_ONLN);
-        if (result < 1) {
-            /* We couldn't determine the number of processors. */
-            MR_num_threads = 1;
-        } else {
-            MR_num_threads = result;
-            /*
-            ** On systems that don't support sched_setaffinity, we don't try
-            ** to automatically enable thread pinning. This prevents a runtime
-            ** warning that could unnecessarily confuse the user.
-            **/
-          #if defined(MR_LL_PARALLEL_CONJ) && \
-              defined(MR_HAVE_SCHED_SETAFFINITY)
-            /*
-            ** Comment this back in to enable thread pinning by default
-            ** if we autodetected the correct number of CPUs.
-            */
-            /* MR_thread_pinning = MR_TRUE; */
-          #endif
-        }
-      #else /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
-        MR_num_threads = 1;
-      #endif /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
-    }
   #ifdef MR_LL_PARALLEL_CONJ
+    #if defined(MR_HAVE_THREAD_PINNING)
+    MR_setup_thread_pinning();
+    #endif
     MR_granularity_wsdeque_length =
         MR_granularity_wsdeque_length_factor * MR_num_threads;
 
@@ -329,101 +333,352 @@ MR_init_context_stuff(void)
 ** Pin the primordial thread first to the CPU it is currently using
 ** (if support is available for thread pinning).
 */
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
-unsigned
-MR_pin_primordial_thread(void)
+#if defined(MR_HAVE_THREAD_PINNING) && defined(MR_LL_PARALLEL_CONJ)
+static unsigned
+MR_pin_thread_no_locking(void)
 {
     unsigned    cpu;
-    int         temp;
+    unsigned    i = 0;
 
-    /*
-    ** We don't need locking to pin the primordial thread as it is called
-    ** before any other threads exist.
-    */
-    /*
-    ** We go through the motions of thread pinning even when thread pinning is
-    ** not supported as the allocation of CPUs to threads may be used later.
-    */
-  #ifdef MR_HAVE_SCHED_GETCPU
-    temp = sched_getcpu();
-    if (temp == -1) {
-        MR_primordial_thread_cpu = 0;
-      #ifdef MR_HAVE_SCHED_SET_AFFINITY
-        if (MR_thread_pinning) {
-            perror("Warning: unable to determine the current CPU for "
-                "the primordial thread: ");
+    cpu = MR_current_cpu();
+#ifdef MR_DEBUG_THREAD_PINNING
+    fprintf(stderr, "Currently running on cpu %d\n", cpu);
+#endif
+
+    for (i = 0; i < MR_num_processors && MR_thread_pinning; i++) {
+        if (MR_do_pin_thread((cpu + i) % MR_num_processors)) {
+#ifdef MR_DEBUG_THREAD_PINNING
+            fprintf(stderr, "Pinned to cpu %d\n", (cpu + i) % MR_num_processors);
+            fprintf(stderr, "Now running on cpu %d\n", MR_current_cpu());
+#endif
+            MR_num_threads_left_to_pin--;
+            MR_make_cpu_unavailable((cpu + i) % MR_num_processors);
+            break;
         }
-      #endif
-    } else {
-        MR_primordial_thread_cpu = temp;
+        if (!MR_thread_pinning) {
+            /*
+            ** If MR_thread_pinning becomes false then an error prevented us
+            ** from pinning the thread.
+            ** When we fail to pin a thread but MR_thread_pinning remains true
+            ** it means that that CPU has already had a thread pinned to it.
+            */
+            fprintf(stderr, "Couldn't pin Mercury engine to processor");
+            break;
+        }
     }
-  #else
-    MR_primordial_thread_cpu = 0;
-  #endif
-  #ifdef MR_HAVE_SCHED_SET_AFFINITY
-    if (MR_thread_pinning) {
-        MR_do_pin_thread(MR_primordial_thread_cpu);
-    }
-  #endif
-    return MR_primordial_thread_cpu;
+    return (cpu + 1) % MR_num_processors;
 }
-#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) */
 
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
 unsigned
 MR_pin_thread(void)
 {
     unsigned cpu;
 
-    /*
-    ** We go through the motions of thread pinning even when thread pinning
-    ** is not supported, as the allocation of CPUs to threads may be
-    ** used later.
-    */
-    MR_LOCK(&MR_next_cpu_lock, "MR_pin_thread");
-    if (MR_next_cpu == MR_primordial_thread_cpu) {
-        /*
-        ** Skip the CPU that the primordial thread was pinned on.
-        */
-        MR_next_cpu++;
-    }
-    cpu = MR_next_cpu++;
-    MR_UNLOCK(&MR_next_cpu_lock, "MR_pin_thread");
-
-#ifdef MR_HAVE_SCHED_SETAFFINITY
-    if (MR_thread_pinning) {
-        MR_do_pin_thread(cpu);
-    }
-#endif
+    MR_LOCK(&MR_thread_pinning_lock, "MR_pin_thread");
+    cpu = MR_pin_thread_no_locking();
+    MR_UNLOCK(&MR_thread_pinning_lock, "MR_pin_thread");
 
     return cpu;
 }
-#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) */
 
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
-static void
+void
+MR_pin_primordial_thread(void)
+{
+    /*
+    ** We don't need locking to pin the primordial thread as it is called
+    ** before any other threads exist.
+    */
+    MR_primordial_thread_cpu = MR_pin_thread_no_locking();
+}
+
+static void MR_setup_thread_pinning(void)
+{
+    unsigned num_processors;
+
+#ifdef MR_HAVE_HWLOC
+    if (-1 == hwloc_topology_init(&MR_hw_topology)) {
+        MR_fatal_error("Error allocating libhwloc topology object");
+    }
+    if (-1 == hwloc_topology_load(MR_hw_topology)) {
+        MR_fatal_error("Error detecting hardware topology (hwloc)");
+    }
+#endif
+
+    /*
+    ** Setup num processors
+    */
+    MR_reset_available_cpus();
+#ifdef MR_HAVE_HWLOC
+    num_processors = hwloc_cpuset_weight(MR_hw_available_pus);
+#elif defined(MR_HAVE_SCHED_GETAFFINITY)
+    /*
+    ** This looks redundant but its not.  MR_num_processors is a guess that was
+    ** gathered by using sysconf.  But the number of CPUs in the CPU_SET is the
+    ** actual number of CPUs that this process is restricted to.
+    */
+  #if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
+    num_processors = sysconf(_SC_NPROCESSORS_ONLN);
+  #else
+    /*
+    ** The user may have supplied MR_num_processors
+    */
+    num_processors = (MR_num_processors > 1 ? MR_num_processors : 1)
+  #endif
+    num_processors = CPU_COUNT_S(num_processors, MR_available_cpus);
+#endif
+    MR_num_processors = num_processors;
+
+    /*
+    ** If MR_num_threads is unset, configure it to match number of processors
+    ** on the system. If we do this, then we prepare to set processor
+    ** affinities later on.
+    */
+    if (MR_num_threads == 0) {
+        MR_num_threads = num_processors;
+    }
+    MR_num_threads_left_to_pin = MR_num_threads;
+
+#ifdef MR_DEBUG_THREAD_PINNING
+    fprintf(stderr, "Detected %d available processors, will use %d threads\n",
+        MR_num_processors, MR_num_threads);
+#endif
+
+    pthread_mutex_init(&MR_thread_pinning_lock, MR_MUTEX_ATTR);
+
+  /*
+  ** Comment this back in to enable thread pinning by default
+  ** if we autodetected the number of CPUs without error.
+  */
+#if 0
+    if (MR_num_threads > 1) {
+        MR_thread_pinning = MR_TRUE;
+    }
+#endif
+}
+
+/*
+** Determine which CPU this thread is currently running on.
+*/
+static int MR_current_cpu(void)
+{
+#if defined(MR_HAVE_SCHED_GETCPU)
+    int         os_cpu;
+#if defined(MR_HAVE_HWLOC)
+    hwloc_obj_t pu;
+#endif
+
+    os_cpu = sched_getcpu();
+    if (-1 == os_cpu) {
+        os_cpu = 0;
+
+        if (MR_thread_pinning) {
+            perror("Warning: unable to determine the current CPU for "
+                "this thread: ");
+        }
+    }
+
+#if defined(MR_HAVE_HWLOC)
+    pu = hwloc_get_pu_obj_by_os_index(MR_hw_topology, os_cpu);
+    return pu->logical_index;
+#else
+    return os_cpu;
+#endif
+
+#else /* ! MR_HAVE_SCHED_GETCPU */
+    /* We have no idea! */
+    return 0;
+#endif
+}
+
+static MR_bool
 MR_do_pin_thread(int cpu)
 {
-    cpu_set_t   cpus;
+    /*
+    ** Make sure that we're allowed to bind to this CPU.
+    */
+#if defined(MR_HAVE_HWLOC)
+    hwloc_obj_t pu;
 
-    if (cpu < CPU_SETSIZE) {
-        CPU_ZERO(&cpus);
-        CPU_SET(cpu, &cpus);
-        if (sched_setaffinity(0, sizeof(cpu_set_t), &cpus) == -1) {
-            perror("Warning: Couldn't set CPU affinity: ");
-            /*
-            ** If this failed once, it will probably fail again,
-            ** so we disable it.
-            */
-            MR_thread_pinning = MR_FALSE;
-        }
-    } else {
-        perror("Warning: Couldn't set CPU affinity due to a static "
-            "system limit: ");
-        MR_thread_pinning = MR_FALSE;
+    if (hwloc_cpuset_iszero(MR_hw_available_pus)) {
+        /*
+        ** Each available CPU already has a thread pinned to it.  Reset the
+        ** available_pus set so that we can oversubscribe CPUs but still
+        ** attempt to balance load.
+        */
+        MR_reset_available_cpus();
     }
+
+    pu = hwloc_get_obj_by_type(MR_hw_topology, HWLOC_OBJ_PU, cpu);
+    if (!hwloc_cpuset_intersects(MR_hw_available_pus, pu->cpuset)) {
+        return MR_FALSE;
+    }
+#elif defined(MR_HAVE_SCHED_SETAFFINITY)
+    if (CPU_COUNT_S(MR_num_processors, MR_available_cpus) == 0) {
+        /*
+        ** As above, reset the available cpus.
+        */
+        MR_reset_available_cpus();
+    }
+    if (!CPU_ISSET_S(cpu, MR_num_processors, MR_available_cpus)) {
+        return MR_FALSE;
+    }
+#endif
+
+#if defined(MR_HAVE_HWLOC)
+    errno = hwloc_set_cpubind(MR_hw_topology, pu->cpuset,
+        HWLOC_CPUBIND_THREAD);
+    if (errno != 0) {
+        perror("Warning: Couldn't set CPU affinity: ");
+        MR_thread_pinning = MR_FALSE;
+        return MR_FALSE;
+    }
+#elif defined(MR_HAVE_SCHED_SETAFFINITY)
+    cpu_set_t   *cpus;
+
+    cpus = CPU_ALLOC(MR_num_processors);
+
+    CPU_ZERO_S(MR_num_processors, cpus);
+    CPU_SET_S(cpu, MR_num_processors, cpus);
+    if (sched_setaffinity(0, CPU_ALLOC_SIZE(MR_num_processors), cpus) == -1) {
+        perror("Warning: Couldn't set CPU affinity: ");
+        /*
+        ** If this failed once, it will probably fail again,
+        ** so we disable it.
+        */
+        MR_thread_pinning = MR_FALSE;
+        return MR_FALSE;
+    }
+#endif
+
+    return MR_TRUE;
+}
+
+static void MR_reset_available_cpus(void)
+{
+#if defined(MR_HAVE_HWLOC)
+    hwloc_cpuset_t  inherited_binding;
+
+    /*
+    ** Gather the cpuset that our parent process bound this process to.
+    **
+    ** (For information about how to deliberately restrict a process and it's
+    ** sub-processors to a set of CPUs on Linux see cpuset(7).
+    */
+    inherited_binding = hwloc_cpuset_alloc();
+    hwloc_get_cpubind(MR_hw_topology, inherited_binding, HWLOC_CPUBIND_PROCESS);
+
+    /*
+    ** Set the available processors to the union of inherited_binding and the
+    ** cpuset we're allowed to use as reported by libhwloc.  In my tests with
+    ** libhwloc_1.0-1 (Debian) hwloc reported that all cpus on the system are
+    ** avaliable, it didn't exclude cpus not in the processor's cpuset(7).
+    */
+    if (MR_hw_available_pus == NULL) {
+        MR_hw_available_pus = hwloc_cpuset_alloc();
+    }
+    hwloc_cpuset_and(MR_hw_available_pus, inherited_binding,
+        hwloc_topology_get_allowed_cpuset(MR_hw_topology));
+
+    hwloc_cpuset_free(inherited_binding);
+#elif defined(MR_HAVE_SCHED_GETAFFINITY)
+    unsigned num_processors;
+
+  #if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
+    num_processors = sysconf(_SC_NPROCESSORS_ONLN);
+  #else
+    /*
+    ** The user may have supplied MR_num_processors
+    */
+    num_processors = (MR_num_processors > 1 ? MR_num_processors : 1)
+  #endif
+
+    if (MR_available_cpus == NULL) {
+        MR_available_cpus = CPU_ALLOC(num_processors);
+    }
+
+    if (-1 == sched_getaffinity(0, CPU_ALLOC_SIZE(num_processors),
+        MR_available_cpus))
+    {
+        perror("Couldn't get CPU affinity");
+        MR_thread_pinning = MR_FALSE;
+        CPU_FREE(MR_available_cpus);
+        MR_available_cpus = NULL;
+    }
+#endif
+}
+
+#if defined(MR_HAVE_HWLOC)
+static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu);
+#endif
+
+static void MR_make_cpu_unavailable(int cpu)
+{
+#if defined(MR_HAVE_HWLOC)
+    hwloc_obj_t pu;
+    pu = hwloc_get_obj_by_type(MR_hw_topology, HWLOC_OBJ_PU, cpu);
+    MR_make_pu_unavailable(pu);
+#elif defined(MR_HAVE_SCHED_SETAFFINITY)
+    CPU_CLR_S(cpu, MR_num_processors, MR_available_cpus);
+#endif
+}
+
+#if defined(MR_HAVE_HWLOC)
+static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu) {
+    hwloc_obj_t core;
+    static int  siblings_to_make_unavailable;
+    int         i;
+
+#ifdef MR_DEBUG_THREAD_PINNING
+    char *      cpusetstr;
+
+    hwloc_cpuset_asprintf(&cpusetstr, MR_hw_available_pus);
+    fprintf(stderr, "Old available CPU set: %s\n", cpusetstr);
+    free(cpusetstr);
+    hwloc_cpuset_asprintf(&cpusetstr, pu->cpuset);
+    fprintf(stderr, "Making this CPU set unavailable: %s\n", cpusetstr);
+    free(cpusetstr);
+#endif
+
+    hwloc_cpuset_andnot(MR_hw_available_pus, MR_hw_available_pus, pu->cpuset);
+
+#ifdef MR_DEBUG_THREAD_PINNING
+    hwloc_cpuset_asprintf(&cpusetstr, MR_hw_available_pus);
+    fprintf(stderr, "New available CPU set: %s\n", cpusetstr);
+    free(cpusetstr);
+#endif
+
+    siblings_to_make_unavailable = hwloc_cpuset_weight(MR_hw_available_pus) -
+        MR_num_threads_left_to_pin;
+
+    if (siblings_to_make_unavailable > 0) {
+        /*
+        ** Remove sibling processing units that share a core with the one we've just removed.
+        */
+        core = pu->parent;
+        if (core->type != HWLOC_OBJ_CORE) {
+            return MR_FALSE;
+        }
+
+        for (i = 0;
+             (i < core->arity && siblings_to_make_unavailable > 0);
+             i++) {
+            if (core->children[i] == pu) {
+                continue;
+            }
+            if (hwloc_cpuset_intersects(core->children[i]->cpuset,
+                    MR_hw_available_pus)) {
+                if (!MR_make_pu_unavailable(core->children[i])) {
+                    return MR_FALSE;
+                }
+            }
+        }
+    }
+
+    return MR_TRUE;
 }
 #endif
+
+#endif /* MR_HAVE_THREAD_PINNING && MR_LL_PARALLEL_CONJ */
 
 void
 MR_finalize_context_stuff(void)

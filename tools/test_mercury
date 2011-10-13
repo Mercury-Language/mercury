@@ -735,6 +735,7 @@ esac
 # XXX building the depend target in parallel sometimes fails so we don't
 # do that at the moment - it's probably not worth doing anyway.
 #
+aclocal || { false; exit 1; }
 autoconf || { false; exit 1; }
 rm -f config.cache
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
@@ -862,6 +863,7 @@ case $HOST in $ROTD_HOST)
     : > Mmake.params &&
     rm -f so_locations &&
     rm -f .enable_lib_grades &&
+    aclocal &&
     autoconf &&
     mercury_cv_low_tag_bits=2 \
     mercury_cv_bits_per_word=32 \

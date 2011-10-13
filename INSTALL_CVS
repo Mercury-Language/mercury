@@ -9,7 +9,7 @@
 #	You also need autoconf (version 2.58 or later) (and hence GNU m4)
 #	installed.
 #
-# Step 0.  autoconf
+# Step 0.  aclocal && autoconf
 #
 # Step 1.  ./configure
 #
@@ -40,6 +40,7 @@
 
 parallel=-j3
 
+aclocal &&
 autoconf &&
 ./configure &&
 touch Mmake.params &&

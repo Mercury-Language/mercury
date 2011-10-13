@@ -211,11 +211,6 @@ MR_null_thread(void);
   */
   extern MercuryThreadKey   MR_exception_handler_key;
 
-  /*
-  ** The CPU that the primordial thread is running on.
-  */
-  extern MR_Unsigned        MR_primordial_thread_cpu;
-
 #else /* not MR_THREAD_SAFE */
 
   #define MR_LOCK(nothing, from)        do { } while (0)

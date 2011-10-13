@@ -1265,7 +1265,7 @@ mercury_check_for_functions \
         grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
         access sleep opendir readdir closedir mkdir symlink readlink \
         gettimeofday setenv putenv _putenv posix_spawn sched_setaffinity \
-        sched_getcpu sched_yield mkstemp
+        sched_getaffinity sched_getcpu sched_yield mkstemp
 
 #-----------------------------------------------------------------------------#
 
@@ -5105,6 +5105,30 @@ AC_SUBST(USE_MSVCRT)
 #
 
 MERCURY_CHECK_READLINE
+
+#-----------------------------------------------------------------------------#
+#
+# Check for libhwloc, http://www.open-mpi.org/projects/hwloc/
+#
+PKG_PROG_PKG_CONFIG
+PKG_CHECK_MODULES(libhwloc, hwloc >= 1.0,
+    [
+        AC_DEFINE(MR_HAVE_HWLOC)
+    ],
+    [
+        case "$LIBGRADES" in
+            $BEST_LLDS_BASE_GRADE.par.gc*)
+                MERCURY_MSG(["Warning: libhwloc not found, thread pinning in"])
+                MERCURY_MSG(["low-level C parallel grades may be less accurate."])
+                ;;
+            *)
+                ;;
+        esac
+    ])
+HWLOC_LIBS="$libhwloc_LIBS"
+HWLOC_CFLAGS="$libhwloc_CFLAGS"
+AC_SUBST(HWLOC_LIBS)
+AC_SUBST(HWLOC_CFLAGS)
 
 #-----------------------------------------------------------------------------#
 #

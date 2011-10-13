@@ -274,6 +274,7 @@
 **	MR_HAVE_POSIX_SPAWN	we have the posix_spawn() function.
 **	MR_HAVE_FESETROUND	we have the fesetround() function.
 **	MR_HAVE_SCHED_SETAFFINITY we have the sched_setaffinity() function.
+**	MR_HAVE_SCHED_GETAFFINITY we have the sched_gettaffinity() function.
 **	MR_HAVE_SCHED_GETCPU	we have the sched_getcpu() function (glibc specific).
 **	MR_HAVE_SCHED_YIELD	we have the sched_yield() function.
 **	MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED we have the
@@ -342,6 +343,7 @@
 #undef	MR_HAVE_POSIX_SPAWN
 #undef	MR_HAVE_FESETROUND
 #undef	MR_HAVE_SCHED_SETAFFINITY
+#undef	MR_HAVE_SCHED_GETAFFINITY
 #undef	MR_HAVE_SCHED_GETCPU
 #undef	MR_HAVE_SCHED_YIELD
 #undef	MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED
@@ -418,6 +420,11 @@
 #undef MR_DIGITAL_UNIX_PTHREADS
 #undef MR_THREAD_LOCAL_STORAGE
 #undef MR_PTHREADS_WIN32
+
+/*
+** MR_HAVE_HWLOC is defined if the hwloc library is available.
+*/
+#undef MR_HAVE_HWLOC
 
 /*
 ** The bytecode files represent floats in 64-bit IEEE format.

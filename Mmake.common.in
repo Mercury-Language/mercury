@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2006, 2009-2010 The University of Melbourne.
+# Copyright (C) 1995-2006, 2009-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -234,6 +234,8 @@ NSL_LIBRARY=@NSL_LIBRARY@
 DL_LIBRARY=@DL_LIBRARY@
 READLINE_LIBRARIES=@READLINE_LIBRARIES@
 TERMCAP_LIBRARY=@TERMCAP_LIBRARY@
+HWLOC_CFLAGS=@HWLOC_CFLAGS@
+HWLOC_LIBS=@HWLOC_LIBS@
 
 # Extensions to use
 O=@OBJ_SUFFIX@

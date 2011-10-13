@@ -50,6 +50,7 @@ LDFLAGS_FOR_THREADS="@LDFLAGS_FOR_THREADS@"
 LDFLAGS_FOR_TRACE="@LDFLAGS_FOR_TRACE@"
 LD_LIBFLAGS_FOR_THREADS="@LD_LIBFLAGS_FOR_THREADS@"
 THREAD_LIBS="@THREAD_LIBS@"
+HWLOC_LIBS="@HWLOC_LIBS@"
 TRACE_BASE_LIBS_SYSTEM="@TRACE_BASE_LIBS_SYSTEM@"
 
 TMPDIR=${TMPDIR=/tmp}
@@ -368,6 +369,13 @@ case $use_thread_libs.$make_shared_lib in
 		;;
 	false.*)
 		THREAD_LIBS=""
+		;;
+esac
+case "$GRADE" in
+	hlc.*.par*)
+		;;
+	*.par*)
+		THREAD_LIBS="$THREAD_LIBS $HWLOC_LIBS"
 		;;
 esac
 
