@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: options.m.
 % Main author: fjh.
-% 
+%
 % This defines the stuff necessary so that getopt_io.m can parse the
 % command-line options.
-% 
+%
 % IMPORTANT NOTE: any changes to the options should be reflected in both the
 % help message produced below, and in the Mercury User's Guide
 % (../doc/user_guide.texi).
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module libs.options.
@@ -163,7 +163,7 @@
     ;       debug_det
     ;       debug_code_gen_pred_id
     ;       debug_opt
-    ;       debug_term          % term = constraint termination analysis 
+    ;       debug_term          % term = constraint termination analysis
     ;       debug_opt_pred_id
     ;       debug_opt_pred_name
     ;       debug_pd            % pd = partial deduction/deforestation
@@ -173,7 +173,7 @@
     ;       debug_make
     ;       debug_closure
     ;       debug_trail_usage
-    ;       debug_mode_constraints 
+    ;       debug_mode_constraints
     ;       debug_intermodule_analysis
     ;       debug_mm_tabling_analysis
     ;       debug_indirect_reuse
@@ -330,7 +330,7 @@
             % we only want to use the `yes' value, but we keep support for
             % the `no' value for benchmarks for the paper.
 
-    ;       pre_prof_transforms_simplify 
+    ;       pre_prof_transforms_simplify
             % Run the simplification pass at before profiling (stage 215) this
             % is implied by some of the profiling settings.  Specifying this
             % option causes this simplification pass to run even when profiling
@@ -724,8 +724,8 @@
     ;          check_termination2
     ;          verbose_check_termination2
     ;          termination2_norm
-    ;          widening_limit       
-    ;          arg_size_analysis_only      
+    ;          widening_limit
+    ;          arg_size_analysis_only
     ;          propagate_failure_constrs
     ;          term2_maximum_matrix_size
     ;       analyse_exceptions
@@ -1008,6 +1008,7 @@
             % recompiling most of the modules in the compiler. Having this
             % option permanently here should reduce the need for that.
 
+    ;       ignore_par_conjunctions
     ;       control_granularity
     ;       distance_granularity
     ;       implicit_parallelism
@@ -1392,7 +1393,7 @@ option_defaults_2(internal_use_option, [
     disable_minimal_model_stack_copy_pneg - bool(no),
     disable_minimal_model_stack_copy_cut -  bool(no),
     use_minimal_model_stack_copy_pneg   -   bool(no),
-    use_minimal_model_stack_copy_cut    -   bool(no), 
+    use_minimal_model_stack_copy_cut    -   bool(no),
     disable_trail_ops                   -   bool(no),
     % The size_* values below *must* be consistent with the corresponding
     % values or data structures in mercury_region.h.
@@ -1475,9 +1476,9 @@ option_defaults_2(special_optimization_option, [
     analysis_file_cache                 -   bool(no),
     termination_check                   -   bool(no),
     verbose_check_termination           -   bool(no),
-    structure_sharing_analysis          -   bool(no), 
+    structure_sharing_analysis          -   bool(no),
     structure_sharing_widening          -   int(0),
-    structure_reuse_analysis            -   bool(no), 
+    structure_reuse_analysis            -   bool(no),
     structure_reuse_constraint        -   string("within_n_cells_difference"),
     structure_reuse_constraint_arg      -   int(0),
     structure_reuse_max_conditions      -   int(10),
@@ -1877,6 +1878,7 @@ option_defaults_2(miscellaneous_option, [
     analysis_file_cache_dir             -   string(""),
     compiler_sufficiently_recent        -   bool(no),
     experiment                          -   string(""),
+    ignore_par_conjunctions             -   bool(no),
     control_granularity                 -   bool(no),
     distance_granularity                -   int(0),
     implicit_parallelism                -   bool(no),
@@ -2171,9 +2173,9 @@ long_option("use-activation-counts",    use_activation_counts).
 long_option("pre-prof-transforms-simplify", pre_prof_transforms_simplify).
 long_option("pre-implicit-parallelism-simplify",
     pre_implicit_parallelism_simplify).
-long_option("coverage-profiling", 
+long_option("coverage-profiling",
                     coverage_profiling).
-long_option("coverage-profiling-via-calls", 
+long_option("coverage-profiling-via-calls",
                     coverage_profiling_via_calls).
 long_option("coverage-profiling-static",
                     coverage_profiling_static).
@@ -2387,7 +2389,7 @@ long_option("optimise-saved-vars-cell", optimize_saved_vars_cell).
 long_option("osv-loop",             optimize_saved_vars_cell_loop).
 long_option("osv-full-path",        optimize_saved_vars_cell_full_path).
 long_option("osv-on-stack",         optimize_saved_vars_cell_on_stack).
-long_option("osv-cand-head",        
+long_option("osv-cand-head",
                             optimize_saved_vars_cell_candidate_headvars).
 % The next four options are used by tupling.m as well; changes to them
 % may require changes there as well.
@@ -2846,6 +2848,8 @@ long_option("java-export-ref-out",  compiler_sufficiently_recent).
 long_option("java-generics-2010-04-13",
                                     compiler_sufficiently_recent).
 long_option("experiment",           experiment).
+long_option("ignore-par-conjunctions",
+                                    ignore_par_conjunctions).
 long_option("control-granularity",  control_granularity).
 long_option("distance-granularity", distance_granularity).
 long_option("implicit-parallelism", implicit_parallelism).
@@ -4010,7 +4014,7 @@ options_help_ctgc -->
         "\tlarger than <n>. When n=0, widening is not enabled.",
         "\t(default: 0).",
         "--structure-reuse, --ctgc",
-        "\tPerform structure reuse analysis (Compile Time Garbage ",            
+        "\tPerform structure reuse analysis (Compile Time Garbage ",
         "\tCollection).",
         "--structure-reuse-constraint {same_cons_id, ",
         "\twithin_n_cells_difference}, --ctgc-constraint {same_cons_id,",
@@ -4282,7 +4286,7 @@ options_help_compilation_model -->
 %       "--profile-memory\t\t(grade modifier: `.profmem')",
 %       "\tSimilar to `--memory-profiling', except that it only",
 %       "\tgathers memory usage information, not call counts.",
-        
+
         "--coverage-profiling",
         "\tEnable coverage profiling, implies --deep-profiling (above).",
 % The following options are for implementors only (intended for experiments).
@@ -4313,7 +4317,7 @@ options_help_compilation_model -->
 
 %       "Switches to tune the coverage profiling pass, useful for ",
 %       "debugging.",
-%       
+%
 %       "--no-profile-deep-coverage-use-portcounts",
 %       "\tTurn off usage of port counts in the deep profiler to provide",
 %       "\tsome coverage information.",
@@ -5532,7 +5536,7 @@ options_help_link -->
         "\thand-coded C code with `INIT' comments, rather than",
         "\tcontaining only C code that was automatically generated",
         "\tby the Mercury compiler.)",
-        
+
         "--link-executable-command <command>",
         "\tSpecify the command used to invoke the linker when linking",
         "\tan executable.",
@@ -5764,15 +5768,20 @@ options_help_misc -->
         % The `--local-module-id' option is used by `mmc --make'.
         % The `--analysis-file-cache-dir' option is used by `mmc --make'.
 
+%        "--ignore-parallel-conjunctions",
+%        "\tReplace parallel conjunctions with plain ones, this is useful",
+%        "\tfor benchmarking.  Note that it does not affect implicit",
+%        "\tparallelism",
+
         "--control-granularity",
         "\tDon't try to generate more parallelism than the machine can",
         "\thandle, which may be specified at runtime or detected",
         "\tautomatically.",
         "--distance-granularity <distance>",
         "\tControl the granularity of parallel execution using the",
-        "\tspecified distance value.", 
+        "\tspecified distance value.",
         "--implicit-parallelism",
-        "\tIntroduce parallel conjunctions where it could be worthwhile", 
+        "\tIntroduce parallel conjunctions where it could be worthwhile",
         "\t(implicit parallelism) using information generated by",
         "\tmdprof_create_feedback.",
         "\tThe profiling feedback file can be specified using the",

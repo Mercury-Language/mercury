@@ -96,6 +96,8 @@
     ;       simp_extra_common_struct    % do common structure elimination
                                         % even when it might increase stack
                                         % usage (used by deforestation).
+    ;       simp_ignore_par_conjs       % Replace parallel conjunctions with
+                                        % plain conjunctions.
     .
 
 :- type simplifications.
@@ -117,6 +119,7 @@
 :- pred simplify_do_const_prop(simplify_info::in) is semidet.
 :- pred simplify_do_common_struct(simplify_info::in) is semidet.
 :- pred simplify_do_extra_common_struct(simplify_info::in) is semidet.
+:- pred simplify_do_ignore_par_conjunctions(simplify_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -181,14 +184,15 @@
                 do_opt_duplicate_calls      :: bool,
                 do_constant_prop            :: bool,
                 do_common_struct            :: bool,
-                do_extra_common_struct      :: bool
+                do_extra_common_struct      :: bool,
+                do_ignore_par_conjunctions  :: bool
             ).
 
 simplifications_to_list(Simplifications) = List :-
     Simplifications = simplifications(WarnSimpleCode, WarnDupCalls,
         DoFormatCalls, WarnObsolete, DoOnce,
         AfterFrontEnd, ExcessAssign, ElimRemovableScopes, OptDuplicateCalls,
-        ConstantProp, CommonStruct, ExtraCommonStruct),
+        ConstantProp, CommonStruct, ExtraCommonStruct, RemoveParConjunctions),
     List =
         ( WarnSimpleCode = yes -> [simp_warn_simple_code] ; [] ) ++
         ( WarnDupCalls = yes -> [simp_warn_duplicate_calls] ; [] ) ++
@@ -201,7 +205,8 @@ simplifications_to_list(Simplifications) = List :-
         ( OptDuplicateCalls = yes -> [simp_opt_duplicate_calls] ; [] ) ++
         ( ConstantProp = yes -> [simp_constant_prop] ; [] ) ++
         ( CommonStruct = yes -> [simp_common_struct] ; [] ) ++
-        ( ExtraCommonStruct = yes -> [simp_extra_common_struct] ; [] ).
+        ( ExtraCommonStruct = yes -> [simp_extra_common_struct] ; [] ) ++
+        ( RemoveParConjunctions = yes -> [simp_ignore_par_conjs] ; [] ).
 
 list_to_simplifications(List) =
     simplifications(
@@ -216,7 +221,8 @@ list_to_simplifications(List) =
         ( list.member(simp_opt_duplicate_calls, List) -> yes ; no ),
         ( list.member(simp_constant_prop, List) -> yes ; no ),
         ( list.member(simp_common_struct, List) -> yes ; no ),
-        ( list.member(simp_extra_common_struct, List) -> yes ; no )
+        ( list.member(simp_extra_common_struct, List) -> yes ; no ),
+        ( list.member(simp_ignore_par_conjs, List) -> yes ; no )
     ).
 
 find_simplifications(WarnThisPass, Globals, Simplifications) :-
@@ -250,6 +256,8 @@ find_simplifications(WarnThisPass, Globals, Simplifications) :-
     AfterFrontEnd = no,
     ElimRemovableScopes = no,
     ExtraCommonStruct = no,
+    globals.lookup_bool_option(Globals, ignore_par_conjunctions,
+        RemoveParConjunctions),
 
     Simplifications = simplifications(
         ( WarnSimple = yes, WarnThisPass = yes -> yes ; no),
@@ -263,7 +271,8 @@ find_simplifications(WarnThisPass, Globals, Simplifications) :-
         OptDuplicateCalls,
         ConstantProp,
         CommonStruct,
-        ExtraCommonStruct
+        ExtraCommonStruct,
+        RemoveParConjunctions
     ).
 
 simplify_do_warn_simple_code(Info) :-
@@ -302,6 +311,9 @@ simplify_do_common_struct(Info) :-
 simplify_do_extra_common_struct(Info) :-
     simplify_info_get_simplifications(Info, Simplifications),
     Simplifications ^ do_extra_common_struct = yes.
+simplify_do_ignore_par_conjunctions(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_ignore_par_conjunctions = yes.
 
 %-----------------------------------------------------------------------------%
 
@@ -1087,10 +1099,15 @@ simplify_goal_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             GoalInfo, !Info)
     ;
         Goals0 = [_, _ | _],
-        GoalInfo = GoalInfo0,
-        simplify_par_conj(Goals0, Goals, !.Info, !Info),
-        GoalExpr = conj(parallel_conj, Goals),
-        simplify_info_set_has_parallel_conj(yes, !Info)
+        ( simplify_do_ignore_par_conjunctions(!.Info) ->
+            simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
+                !Info)
+        ;
+            GoalInfo = GoalInfo0,
+            simplify_par_conj(Goals0, Goals, !.Info, !Info),
+            GoalExpr = conj(parallel_conj, Goals),
+            simplify_info_set_has_parallel_conj(yes, !Info)
+        )
     ).
 
 :- pred simplify_goal_disj(

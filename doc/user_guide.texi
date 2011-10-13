@@ -9486,6 +9486,13 @@ excessively ambiguous overloading to @var{n}.
 If this limit is reached,
 the typechecker will not process the predicate or function any further.
 
+@c @sp 1
+@c @item --ignore-par-conjunctions
+@c @findex --ignore-par-conjunctions
+@c Replace parallel conjunctions with plain ones.
+@c This can help developers benchmark their code.
+@c This does not affect implicit parallelism.
+
 @sp 1
 @item --control-granularity
 @findex --control-granularity
