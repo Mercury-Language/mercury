@@ -835,7 +835,7 @@ then
             $LN_S $root/deep_profiler .
         fi
         $LN_S $root/conf* .
-        $LN_S $root/aclocal.m4 .
+        $LN_S $root/ac*.m4 .
         $LN_S $root/VERSION .
         $LN_S $root/install-sh .
         $LN_S $root/.*.in .
@@ -1235,7 +1235,7 @@ then
     $LN_S $root/$stage2dir/profiler .
     $LN_S $root/$stage2dir/deep_profiler .
     $LN_S $root/conf* .
-    $LN_S $root/aclocal.m4 .
+    $LN_S $root/ac*.m4 .
     $LN_S $root/VERSION .
     $LN_S $root/install-sh .
     $LN_S $root/.*.in .
