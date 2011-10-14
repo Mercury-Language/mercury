@@ -501,8 +501,6 @@ extern void MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx,
 */
 #define MR_lc_join_and_terminate(lc, lcs_idx)                               \
     do {                                                                    \
-        MR_lc_join((lc), (lcs_idx));                                        \
-                                                                            \
         /*                                                                  \
         ** Termination of this context must be handled in a macro so that   \
         ** C's stack pointer is set correctly. It might appear that we      \
@@ -511,9 +509,15 @@ extern void MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx,
         ** A similar mistake was the cause of a hard-to-diagnose bug in     \
         ** parallel stack segments grades.                                  \
         ** XXX give a pointer to a description of that bug.                 \
+        ** The context must be saved before we free the loop control slot,  \
+        ** otherwise another engine may begin using it before we've saved   \
+        ** it.                                                              \
         */                                                                  \
         MR_save_context(MR_ENGINE(MR_eng_this_context));                    \
         MR_ENGINE(MR_eng_this_context) = NULL;                              \
+                                                                            \
+        MR_lc_join((lc), (lcs_idx));                                        \
+                                                                            \
         MR_idle();                                                          \
     } while (0);
 
