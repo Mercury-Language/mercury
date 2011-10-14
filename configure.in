@@ -5114,6 +5114,7 @@ PKG_PROG_PKG_CONFIG
 PKG_CHECK_MODULES(libhwloc, hwloc >= 1.0,
     [
         AC_DEFINE(MR_HAVE_HWLOC)
+        hwloc_static_libs="`pkg-config --libs --static hwloc`"
     ],
     [
         case "$LIBGRADES" in
@@ -5124,11 +5125,14 @@ PKG_CHECK_MODULES(libhwloc, hwloc >= 1.0,
             *)
                 ;;
         esac
+        hwloc_static_libs=""
     ])
 HWLOC_LIBS="$libhwloc_LIBS"
 HWLOC_CFLAGS="$libhwloc_CFLAGS"
+HWLOC_STATIC_LIBS="$hwloc_static_libs"
 AC_SUBST(HWLOC_LIBS)
 AC_SUBST(HWLOC_CFLAGS)
+AC_SUBST(HWLOC_STATIC_LIBS)
 
 #-----------------------------------------------------------------------------#
 #
