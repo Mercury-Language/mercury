@@ -1103,18 +1103,13 @@ MR_destroy_context(MR_Context *c)
 #endif
 
     /*
-    ** Save the context first, even though we are not saving a computation
-    ** that's in progress we are saving some bookkeeping information.
-    */
-    /*
     ** TODO: When retrieving a context from the cached contexts, try to
     ** retrieve one with a matching engine ID, or give each engine a local
     ** cache of spare contexts.
-    */
 #ifdef MR_LL_PARALLEL_CONJ
     c->MR_ctxt_resume_owner_engine = MR_ENGINE(MR_eng_id);
 #endif
-    MR_save_context(c);
+    */
 
     /* XXX not sure if this is an overall win yet */
 #if 0 && defined(MR_CONSERVATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
@@ -1986,6 +1981,7 @@ prepare_engine_for_context(MR_Context *context) {
         MR_debug_log_message("destroying old context %p",
             MR_ENGINE(MR_eng_this_context));
     #endif
+        MR_save_context(MR_ENGINE(MR_eng_this_context));
         MR_destroy_context(MR_ENGINE(MR_eng_this_context));
     }
     MR_ENGINE(MR_eng_this_context) = context;
@@ -2217,6 +2213,12 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
             MR_threadscope_post_context_runnable(jnc_st->MR_st_orig_context);
 #endif
             prepare_engine_for_context(jnc_st->MR_st_orig_context);
+            jnc_st->MR_st_orig_context->MR_ctxt_resume = NULL;
+            /*
+            ** This field must be null before we execute MR_join_and_continue
+            ** next.
+            */
+            MR_CPU_SFENCE;
             return join_label;
         }
         return MR_ENTRY(MR_do_idle_clean_context);

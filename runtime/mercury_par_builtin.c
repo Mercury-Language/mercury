@@ -113,7 +113,8 @@ MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx, MR_Code
     MR_LoopControlSlot *lcs = &(lc->MR_lc_slots[lcs_idx]);
 
 #if MR_DEBUG_LOOP_CONTROL
-    fprintf(stderr, "lc_spawn_off(%p, %d, %p)\n", lc, lcs_idx, code_ptr);
+    fprintf(stderr, "lc_spawn_off(%p, %d, %p) sp: %p\n",
+        lc, lcs_idx, code_ptr, MR_sp);
 #endif
     if (lcs->MR_lcs_context == NULL) {
         /*
@@ -147,8 +148,27 @@ MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
     lc->MR_lc_free_slot_hint = lcs_idx;
     /* Ensure the slot is free before we perform the decrement. */
     MR_CPU_SFENCE;
+
+    /*
+    ** We have to determine if we're either the last of first workers to
+    ** finish.  To do this we cannot use atomic decrment since we need to do
+    ** more than one comparison, Therefore we use a CAS.
+    */
     last_worker =
         MR_atomic_dec_and_is_zero_int(&(lc->MR_lc_outstanding_workers));
+
+    /*
+    ** If this is the last worker to finish, then take the lock before checking
+    ** the master context feild, otherwise we might race and end up never
+    ** resuming the master.
+    */
+    if (last_worker) {
+        MR_US_SPIN_LOCK(&(lc->MR_lc_master_context_lock));
+        /*
+        ** Don't read the master field until after we have the lock
+        */
+        MR_CPU_MFENCE;
+    }
 
     /*
     ** If the master thread is suspended, wake it up, provided that either:
@@ -161,9 +181,16 @@ MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
         /*
         ** Now take a lock and re-read the master context field.
         */
-        MR_US_SPIN_LOCK(&(lc->MR_lc_master_context_lock));
+        if (!last_worker) {
+            MR_US_SPIN_LOCK(&(lc->MR_lc_master_context_lock));
+            /*
+            ** Don't read the master field until after we have the lock
+            */
+            MR_CPU_MFENCE;
+        }
         wakeup_context = lc->MR_lc_master_context;
         lc->MR_lc_master_context = NULL;
+        MR_CPU_SFENCE; /* Make sure the field to nULL */
         MR_US_UNLOCK(&(lc->MR_lc_master_context_lock));
         if (wakeup_context != NULL) {
 #ifdef MR_DEBUG_LOOP_CONTROL
@@ -176,6 +203,8 @@ MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
             */
             MR_schedule_context(wakeup_context);
         }
+    } else if (last_worker) {
+        MR_US_UNLOCK(&(lc->MR_lc_master_context_lock));
     }
 }
 

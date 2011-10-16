@@ -168,6 +168,7 @@ void MR_finalize_engine(MercuryEngine *eng)
     ** might need to be finalized.
     */
     if (eng->MR_eng_this_context) {
+        MR_save_context(eng->MR_eng_this_context);
         MR_destroy_context(eng->MR_eng_this_context);
     }
 

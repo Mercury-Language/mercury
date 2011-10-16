@@ -307,7 +307,7 @@ struct MR_LoopControl_Struct
 
     /* This lock protects only the next field */
     MR_THREADSAFE_VOLATILE MR_Us_Lock       MR_lc_master_context_lock;
-    MR_Context                              *MR_lc_master_context;
+    MR_THREADSAFE_VOLATILE MR_Context       *MR_lc_master_context;
 
     /* Unused atm */
     MR_THREADSAFE_VOLATILE MR_bool          MR_lc_finished;
@@ -371,7 +371,8 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
 */
 #define MR_lc_finish_part1(lc, part2_label)                                 \
     MR_IF_DEBUG_LOOP_CONTORL(                                               \
-        fprintf(stderr, "lc_finish_part1(%p, %p)\n", (lc), (part2_label))); \
+        fprintf(stderr, "lc_finish_part1(%p, %p), sp: %p\n",                \
+            (lc), (part2_label), MR_sp));                                   \
                                                                             \
     do {                                                                    \
         (lc)->MR_lc_finished = MR_TRUE;                                     \
@@ -382,13 +383,13 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
         ** MR_lc_join_and_terminate().  See MR_lc_join_and_terminate().     \
         */                                                                  \
         MR_CPU_MFENCE;                                                      \
+        MR_US_SPIN_LOCK(&((lc)->MR_lc_master_context_lock));                \
         if ((lc)->MR_lc_outstanding_workers > 0) {                          \
             /*                                                              \
             ** This context must wait until the workers are finished.       \
             ** This must be implemented as a macro, since we cannot move    \
             ** the C stack pointer without extra work.                      \
             */                                                              \
-            MR_US_SPIN_LOCK(&((lc)->MR_lc_master_context_lock));            \
             if ((lc)->MR_lc_outstanding_workers != 0) {                     \
                 MR_save_context(MR_ENGINE(MR_eng_this_context));            \
                 MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume_owner_engine = \
@@ -400,14 +401,14 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
                 MR_ENGINE(MR_eng_this_context) = NULL;                      \
                 MR_idle(); /* Release the engine to the idle loop */        \
             }                                                               \
-            MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));               \
-            /* Fall through to part2 */                                     \
         }                                                                   \
+        MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));                   \
+        /* Fall through to part2 */                                         \
     } while (0);
 
 #define MR_lc_finish_part2(lc)                                              \
     MR_IF_DEBUG_LOOP_CONTORL(                                               \
-        fprintf(stderr, "lc_finish_part2(%p)\n", (lc)));                    \
+        fprintf(stderr, "lc_finish_part2(%p), sp: %p\n", (lc), MR_sp));     \
                                                                             \
     do {                                                                    \
         unsigned i;                                                         \
@@ -417,6 +418,12 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
         */                                                                  \
         for (i = 0; i < (lc)->MR_lc_num_slots; i++) {                       \
             if ((lc)->MR_lc_slots[i].MR_lcs_context != NULL) {              \
+                /*                                                          \
+                ** Note that we don't need to save the context here, it is  \
+                ** saved in MR_join_and_terminate, which is important,      \
+                ** because if we did save it here we would write invalid    \
+                ** data into it.                                            \
+                */                                                          \
                 MR_destroy_context((lc)->MR_lc_slots[i].MR_lcs_context);    \
             }                                                               \
         }                                                                   \
@@ -435,14 +442,15 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
 */
 #define MR_lc_wait_free_slot(lc, lcs_idx, retry_label)                      \
     MR_IF_DEBUG_LOOP_CONTORL(                                               \
-        fprintf(stderr, "lc_wait_free_slot(%p, _, %p)\n", (lc),             \
-            retry_label));                                                  \
+        fprintf(stderr, "lc_wait_free_slot(%p, _, %p), sp: %p\n",           \
+            (lc), (retry_label), MR_sp));                                   \
                                                                             \
     do {                                                                    \
         unsigned    hint, offset, i;                                        \
                                                                             \
         if ((lc)->MR_lc_outstanding_workers == (lc)->MR_lc_num_slots) {     \
             MR_US_SPIN_LOCK(&((lc)->MR_lc_master_context_lock));            \
+            MR_CPU_MFENCE;                                                  \
             /*                                                              \
             ** Re-check outstanding workers while holding the lock.         \
             ** This ensures that we only commit to sleeping while holding   \
@@ -457,10 +465,11 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
                 ** unblocked.                                               \
                 */                                                          \
                 ctxt = MR_ENGINE(MR_eng_this_context);                      \
-                (lc)->MR_lc_master_context = ctxt;                          \
                 MR_save_context(ctxt);                                      \
                 ctxt->MR_ctxt_resume = retry_label;                         \
                 ctxt->MR_ctxt_resume_owner_engine = MR_ENGINE(MR_eng_id);   \
+                (lc)->MR_lc_master_context = ctxt;                          \
+                MR_CPU_SFENCE;                                              \
                 MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));           \
                 MR_ENGINE(MR_eng_this_context) = NULL;                      \
                 MR_idle();                                                  \
@@ -483,7 +492,8 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
         }                                                                   \
                                                                             \
         MR_IF_DEBUG_LOOP_CONTORL(                                           \
-            fprintf(stderr, "lc_wait_free_slot returning %d\n", (lcs_idx)));\
+            fprintf(stderr, "lc_wait_free_slot returning %d, sp: %p\n",     \
+                (lcs_idx), MR_sp));                                         \
                                                                             \
     } while (0);
 
@@ -501,6 +511,9 @@ extern void MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx,
 */
 #define MR_lc_join_and_terminate(lc, lcs_idx)                               \
     do {                                                                    \
+        MR_IF_DEBUG_LOOP_CONTORL(                                           \
+            fprintf(stderr, "lc_join_and_terminate(%p, %d) parent_sp: %p\n",\
+                (lc), (lcs_idx), MR_parent_sp));                             \
         /*                                                                  \
         ** Termination of this context must be handled in a macro so that   \
         ** C's stack pointer is set correctly. It might appear that we      \

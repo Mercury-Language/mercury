@@ -448,6 +448,13 @@ extern  MR_Context  *MR_create_context(const char *id,
 /*
 ** MR_destroy_context(context) returns the pointed-to context structure
 ** to the free list, and releases resources as necessary.
+**
+** VERY IMPORTANT:  Call MR_save_context() before you call
+** MR_destroy_context().  Contexts are cached and calling MR_save_context()
+** saves important book-keeping information, like the stack pointer and current
+** stack segment.  If you do not call these then an old, and since freed (or
+** re-used elsewhere) stack segment may still be referenced by the context.  If
+** that context is re-used later then it will clober another context's stack!
 */
 extern  void        MR_destroy_context(MR_Context *context);
 
