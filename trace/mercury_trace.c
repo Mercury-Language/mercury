@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2009 The University of Melbourne.
+** Copyright (C) 1997-2009, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -94,8 +94,8 @@ static  const char  *MR_undo_updates_of_maxfr(const MR_ProcLayout
                         MR_Word **maxfr_ptr);
 static  MR_Word     MR_trace_find_input_arg(const MR_LabelLayout *label,
                         MR_Word *saved_regs, MR_Word *base_sp,
-                        MR_Word *base_curfr, MR_uint_least16_t var_num,
-                        MR_bool *succeeded);
+                        MR_Word *base_curfr, MR_Float *saved_f_regs,
+                        MR_uint_least16_t var_num, MR_bool *succeeded);
 
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 static  MR_RetryResult
@@ -203,23 +203,29 @@ MR_trace_real(const MR_LabelLayout *layout)
 #ifdef MR_USE_EXTERNAL_DEBUGGER
                 MR_EventInfo    event_info;
                 MR_Word         *saved_regs = event_info.MR_saved_regs;
+                MR_Float        *saved_f_regs = event_info.MR_saved_f_regs;
                 const char      *path;
                 MR_bool         stop_collecting = MR_FALSE;
                 int             lineno = 0;
 
                 MR_compute_max_mr_num(event_info.MR_max_mr_num, layout);
+                event_info.MR_max_f_num =
+                    layout->MR_sll_entry->MR_sle_max_f_num;
                 port = (MR_TracePort) layout->MR_sll_port;
                 path = MR_label_goal_path(layout);
-                MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num,
-                    saved_regs);
-                MR_trace_init_point_vars(layout, saved_regs, port, MR_FALSE);
+                MR_copy_regs_to_saved_regs(
+                    event_info.MR_max_mr_num, saved_regs,
+                    event_info.MR_max_f_num, saved_f_regs);
+                MR_trace_init_point_vars(layout, saved_regs, saved_f_regs,
+                    port, MR_FALSE);
 
                 lineno = MR_get_line_number(saved_regs, layout, port);
 
                 MR_COLLECT_filter(MR_trace_ctrl.MR_filter_ptr, seqno, depth,
                     port, layout, path, lineno, &stop_collecting);
-                MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num,
-                    saved_regs);
+                MR_copy_saved_regs_to_regs(
+                    event_info.MR_max_mr_num, saved_regs,
+                    event_info.MR_max_f_num, saved_f_regs);
                 if (stop_collecting) {
                     MR_trace_ctrl.MR_trace_cmd = MR_CMD_STEP;
                     return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout,
@@ -533,6 +539,7 @@ MR_trace_interrupt_handler(void)
     MR_Code         *jumpaddr;                                                \
     MR_EventInfo    event_info;                                               \
     MR_Word         *saved_regs = event_info.MR_saved_regs;                   \
+    MR_Float        *saved_f_regs = event_info.MR_saved_f_regs;               \
                                                                               \
     event_info.MR_event_number = MR_trace_event_number;                       \
     event_info.MR_call_seqno = seqno;                                         \
@@ -542,8 +549,10 @@ MR_trace_interrupt_handler(void)
     event_info.MR_event_path = MR_label_goal_path(layout);                    \
                                                                               \
     MR_compute_max_mr_num(event_info.MR_max_mr_num, layout);                  \
+    event_info.MR_max_f_num = layout->MR_sll_entry->MR_sle_max_f_num;         \
     /* This also saves the regs in MR_fake_regs. */                           \
-    MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
+    MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs,          \
+        event_info.MR_max_f_num, saved_f_regs);
 
 /*
 ** The MR_TRACE_EVENT_TEARDOWN macro is the final part of
@@ -567,7 +576,8 @@ MR_trace_interrupt_handler(void)
     /* In case MR_global_hp is transient. */                                  \
     MR_restore_transient_registers();                                         \
     MR_saved_global_hp_word(saved_regs) = (MR_Word) MR_global_hp;             \
-    MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, saved_regs);         \
+    MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, saved_regs,          \
+        event_info.MR_max_f_num, saved_f_regs);                               \
     return jumpaddr;
 
 static MR_Code *
@@ -694,14 +704,18 @@ MR_trace_retry(MR_EventInfo *event_info,
     const MR_ProcLayout     *level_layout;
     int                     call_all_var_count;
     int                     call_long_var_count;
-    MR_Word                 *args;
-    int                     arg_max;
+    MR_Word                 *r_args;
+    int                     r_arg_max;
+    MR_Word                 *f_args;
+    int                     f_arg_max;
     int                     arg_num;
     MR_Word                 arg_value;
+    MR_bool                 reg_f;
     MR_TypeInfoParams       type_params;
     int                     i;
     MR_bool                 succeeded;
     MR_Word                 *saved_regs;
+    MR_Float                *saved_f_regs;
     MR_Unsigned             reused_frames;
     MR_bool                 has_io_state;
     MR_bool                 io_actions_were_performed;
@@ -717,10 +731,12 @@ MR_trace_retry(MR_EventInfo *event_info,
     return MR_RETRY_ERROR;
 #endif
 
-    args = NULL;
+    r_args = NULL;
+    f_args = NULL;
     MR_init_call_table_array();
 
     saved_regs = event_info->MR_saved_regs;
+    saved_f_regs = event_info->MR_saved_f_regs;
 #ifdef  MR_DEBUG_RETRY
     MR_print_stack_regs(stdout, saved_regs);
 #endif
@@ -772,7 +788,8 @@ MR_trace_retry(MR_EventInfo *event_info,
     ** no native garbage collection can be triggered.
     */
 
-    arg_max = 0;
+    r_arg_max = 0;
+    f_arg_max = 0;
 
     /*
     ** Check if any of the (non-polymorphic) arguments are of type io.state.
@@ -811,7 +828,7 @@ MR_trace_retry(MR_EventInfo *event_info,
             has_io_state = MR_TRUE;
         } else {
             arg_value = MR_trace_find_input_arg(return_label_layout,
-                saved_regs, base_sp, base_curfr,
+                saved_regs, base_sp, base_curfr, saved_f_regs,
                 call_label->MR_sll_var_nums[i], &succeeded);
 
             if (! succeeded) {
@@ -824,18 +841,29 @@ MR_trace_retry(MR_EventInfo *event_info,
                 MR_LongLval     long_locn;
 
                 long_locn = MR_long_desc_var_locn(call_label, i);
+                reg_f = (MR_LONG_LVAL_TYPE(long_locn) == MR_LONG_LVAL_TYPE_F);
                 arg_num = MR_get_register_number_long(long_locn);
             } else {
                 MR_ShortLval    short_locn;
 
                 short_locn = MR_short_desc_var_locn(call_label,
                     i - call_long_var_count);
+                reg_f = MR_FALSE;
                 arg_num = MR_get_register_number_short(short_locn);
             }
 
             if (arg_num > 0) {
-                MR_ensure_big_enough(arg_num, arg, MR_Word, MR_INIT_ARG_COUNT);
-                args[arg_num] = arg_value;
+                if (reg_f) {
+                    /* This sets f_arg, f_arg_max. */
+                    MR_ensure_big_enough(arg_num, f_arg, MR_Word,
+                        MR_INIT_ARG_COUNT);
+                    f_args[arg_num] = arg_value;
+                } else {
+                    /* This sets r_arg, r_arg_max. */
+                    MR_ensure_big_enough(arg_num, r_arg, MR_Word,
+                        MR_INIT_ARG_COUNT);
+                    r_args[arg_num] = arg_value;
+                }
             } else {
                 MR_fatal_error("illegal location for input argument");
             }
@@ -1080,15 +1108,19 @@ MR_trace_retry(MR_EventInfo *event_info,
 #endif
     }
 
-    for (i = 1; i < arg_max; i++) {
-        MR_saved_reg_assign(saved_regs, i, args[i]);
+    for (i = 1; i < r_arg_max; i++) {
+        MR_saved_reg_assign(saved_regs, i, r_args[i]);
+    }
+    for (i = 1; i < f_arg_max; i++) {
+        MR_saved_reg_assign(saved_f_regs, i, MR_word_to_float(f_args[i]));
     }
 
     if (io_actions_were_performed && found_io_action_counter) {
         MR_io_tabling_counter = saved_io_action_counter;
     }
 
-    event_info->MR_max_mr_num = MR_max(event_info->MR_max_mr_num, arg_max);
+    event_info->MR_max_mr_num = MR_max(event_info->MR_max_mr_num, r_arg_max);
+    event_info->MR_max_f_num = MR_max(event_info->MR_max_f_num, f_arg_max);
     *jumpaddr = level_layout->MR_sle_code_addr;
 #ifdef  MR_DEBUG_RETRY
     printf("jumpaddr is ");
@@ -1096,8 +1128,11 @@ MR_trace_retry(MR_EventInfo *event_info,
     printf("\n");
 #endif
 
-    if (args != NULL) {
-        MR_free(args);
+    if (r_args != NULL) {
+        MR_free(r_args);
+    }
+    if (f_args != NULL) {
+        MR_free(f_args);
     }
 
     MR_reset_call_table_array();
@@ -1107,8 +1142,11 @@ MR_trace_retry(MR_EventInfo *event_info,
     return MR_RETRY_OK_DIRECT;
 
 report_problem:
-    if (args != NULL) {
-        MR_free(args);
+    if (r_args != NULL) {
+        MR_free(r_args);
+    }
+    if (f_args != NULL) {
+        MR_free(f_args);
     }
 
     MR_abandon_call_table_array();
@@ -1376,7 +1414,7 @@ MR_undo_updates_of_maxfr(const MR_ProcLayout *level_layout,
 static MR_Word
 MR_trace_find_input_arg(const MR_LabelLayout *label_layout,
     MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
-    MR_uint_least16_t var_num, MR_bool *succeeded)
+    MR_Float *saved_f_regs, MR_uint_least16_t var_num, MR_bool *succeeded)
 {
     int i;
     int all_var_count;
@@ -1396,7 +1434,8 @@ MR_trace_find_input_arg(const MR_LabelLayout *label_layout,
 
                 long_locn = MR_long_desc_var_locn(label_layout, i);
                 return MR_lookup_long_lval_base(long_locn,
-                    saved_regs, base_sp, base_curfr, succeeded);
+                    saved_regs, base_sp, base_curfr, saved_f_regs,
+                    succeeded);
             } else {
                 MR_ShortLval    short_locn;
 

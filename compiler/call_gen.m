@@ -212,9 +212,9 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
         FirstOutput = 1
     ),
 
-    give_vars_consecutive_arg_infos(InVars, FirstImmInput, top_in,
+    give_vars_consecutive_arg_infos(InVars, reg_r, FirstImmInput, top_in,
         InVarArgInfos),
-    give_vars_consecutive_arg_infos(OutVars, FirstOutput, top_out,
+    give_vars_consecutive_arg_infos(OutVars, reg_r, FirstOutput, top_out,
         OutArgsInfos),
     ArgInfos = SpecifierArgInfos ++ InVarArgInfos ++ OutArgsInfos,
 
@@ -349,7 +349,8 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
         SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant) :-
     (
         GenericCall = higher_order(PredVar, _, _, _),
-        SpecifierArgInfos = [PredVar - arg_info(1, top_in)],
+        Reg = reg(reg_r, 1),
+        SpecifierArgInfos = [PredVar - arg_info(Reg, top_in)],
         globals.lookup_int_option(Globals,
             max_specialized_do_call_closure, MaxSpec),
         (
@@ -366,7 +367,8 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
         )
     ;
         GenericCall = class_method(TCVar, _, _, _),
-        SpecifierArgInfos = [TCVar - arg_info(1, top_in)],
+        Reg = reg(reg_r, 1),
+        SpecifierArgInfos = [TCVar - arg_info(Reg, top_in)],
         globals.lookup_int_option(Globals,
             max_specialized_do_call_class_method, MaxSpec),
         (
@@ -778,15 +780,15 @@ generate_call_vn_livevals(InputArgLocs, OutputArgs, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred give_vars_consecutive_arg_infos(list(prog_var)::in, int::in,
-    arg_mode::in, assoc_list(prog_var, arg_info)::out) is det.
+:- pred give_vars_consecutive_arg_infos(list(prog_var)::in,
+    reg_type::in, int::in, arg_mode::in, assoc_list(prog_var, arg_info)::out)
+    is det.
 
-give_vars_consecutive_arg_infos([], _N, _M, []).
-give_vars_consecutive_arg_infos([Var | Vars], N0, ArgMode,
+give_vars_consecutive_arg_infos([], _RegType, _N, _M, []).
+give_vars_consecutive_arg_infos([Var | Vars], RegType, N, ArgMode,
         [Var - ArgInfo | ArgInfos]) :-
-    ArgInfo = arg_info(N0, ArgMode),
-    N1 = N0 + 1,
-    give_vars_consecutive_arg_infos(Vars, N1, ArgMode, ArgInfos).
+    ArgInfo = arg_info(reg(RegType, N), ArgMode),
+    give_vars_consecutive_arg_infos(Vars, RegType, N + 1, ArgMode, ArgInfos).
 
 %---------------------------------------------------------------------------%
 :- end_module call_gen.

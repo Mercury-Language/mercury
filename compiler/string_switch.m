@@ -298,7 +298,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
         % Since we release BaseReg only after the call to
         % generate_branch_end, we must make sure that generate_branch_end
         % won't want to overwrite BaseReg.
-        acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+        acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CI),
         MaybeBaseReg = yes(BaseReg),
 
         % Generate code to look up each of the variables in OutVars
@@ -455,7 +455,7 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
     % BaseReg.
-    acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CI),
 
     % Generate code to look up each of the variables in OutVars
     % in its slot in the table row RowStartReg. Most of the change is done
@@ -825,7 +825,7 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
         % Since we release BaseReg only after the call to
         % generate_branch_end, we must make sure that generate_branch_end
         % won't want to overwrite BaseReg.
-        acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+        acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CI),
         MaybeBaseReg = yes(BaseReg),
 
         % Generate code to look up each of the variables in OutVars
@@ -955,7 +955,7 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
     % BaseReg.
-    acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CI),
     MidReg = BinarySwitchInfo ^ sbsi_mid_reg,
     SetBaseRegCode = singleton(
         llds_instr(

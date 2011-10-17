@@ -61,8 +61,8 @@
 
 :- pred arg_loc_to_register(arg_loc::in, lval::out) is det.
 
-:- pred max_mentioned_reg(list(lval)::in, int::out) is det.
-:- pred max_mentioned_abs_reg(list(abs_locn)::in, int::out) is det.
+:- pred max_mentioned_regs(list(lval)::in, int::out, int::out) is det.
+:- pred max_mentioned_abs_regs(list(abs_locn)::in, int::out, int::out) is det.
 
 :- pred goal_may_alloc_temp_frame(hlds_goal::in, bool::out) is det.
 
@@ -188,37 +188,51 @@ extract_proc_label_from_code_addr(CodeAddr) = ProcLabel :-
 
 %-----------------------------------------------------------------------------%
 
-arg_loc_to_register(ArgLoc, reg(reg_r, ArgLoc)).
+arg_loc_to_register(reg(RegType, N), reg(RegType, N)).
 
 %-----------------------------------------------------------------------------%
 
-max_mentioned_reg(Lvals, MaxRegNum) :-
-    max_mentioned_reg_2(Lvals, 0, MaxRegNum).
+max_mentioned_regs(Lvals, MaxRegR, MaxRegF) :-
+    max_mentioned_reg_2(Lvals, 0, MaxRegR, 0, MaxRegF).
 
-:- pred max_mentioned_reg_2(list(lval)::in, int::in, int::out) is det.
+:- pred max_mentioned_reg_2(list(lval)::in, int::in, int::out,
+    int::in, int::out) is det.
 
-max_mentioned_reg_2([], !MaxRegNum).
-max_mentioned_reg_2([Lval | Lvals], !MaxRegNum) :-
-    ( Lval = reg(reg_r, N) ->
-        int.max(N, !MaxRegNum)
+max_mentioned_reg_2([], !MaxRegR, !MaxRegF).
+max_mentioned_reg_2([Lval | Lvals], !MaxRegR, !MaxRegF) :-
+    ( Lval = reg(RegType, N) ->
+        (
+            RegType = reg_r,
+            int.max(N, !MaxRegR)
+        ;
+            RegType = reg_f,
+            int.max(N, !MaxRegF)
+        )
     ;
         true
     ),
-    max_mentioned_reg_2(Lvals, !MaxRegNum).
+    max_mentioned_reg_2(Lvals, !MaxRegR, !MaxRegF).
 
-max_mentioned_abs_reg(Lvals, MaxRegNum) :-
-    max_mentioned_abs_reg_2(Lvals, 0, MaxRegNum).
+max_mentioned_abs_regs(Lvals, MaxRegR, MaxRegF) :-
+    max_mentioned_abs_reg_2(Lvals, 0, MaxRegR, 0, MaxRegF).
 
-:- pred max_mentioned_abs_reg_2(list(abs_locn)::in, int::in, int::out) is det.
+:- pred max_mentioned_abs_reg_2(list(abs_locn)::in,
+    int::in, int::out, int::in, int::out) is det.
 
-max_mentioned_abs_reg_2([], !MaxRegNum).
-max_mentioned_abs_reg_2([Lval | Lvals], !MaxRegNum) :-
-    ( Lval = abs_reg(N) ->
-        int.max(N, !MaxRegNum)
+max_mentioned_abs_reg_2([], !MaxRegR, !MaxRegF).
+max_mentioned_abs_reg_2([Lval | Lvals], !MaxRegR, !MaxRegF) :-
+    ( Lval = abs_reg(RegType, N) ->
+        (
+            RegType = reg_r,
+            int.max(N, !MaxRegR)
+        ;
+            RegType = reg_f,
+            int.max(N, !MaxRegF)
+        )
     ;
         true
     ),
-    max_mentioned_abs_reg_2(Lvals, !MaxRegNum).
+    max_mentioned_abs_reg_2(Lvals, !MaxRegR, !MaxRegF).
 
 %-----------------------------------------------------------------------------%
 
@@ -363,6 +377,7 @@ lvals_in_lval(reg(_, _)) = [].
 lvals_in_lval(stackvar(_)) = [].
 lvals_in_lval(parent_stackvar(_)) = [].
 lvals_in_lval(framevar(_)) = [].
+lvals_in_lval(double_stackvar(_, _)) = [].
 lvals_in_lval(succip) = [].
 lvals_in_lval(maxfr) = [].
 lvals_in_lval(curfr) = [].

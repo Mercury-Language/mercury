@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2003, 2005-2007 The University of Melbourne.
+** Copyright (C) 1997-2003, 2005-2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -48,6 +48,8 @@ typedef struct MR_EventInfo_Struct {
     const char              *MR_event_path;
     MR_Word                 MR_saved_regs[MR_MAX_FAKE_REG];
     int                     MR_max_mr_num;
+    MR_Float                MR_saved_f_regs[MR_MAX_VIRTUAL_F_REG];
+    int                     MR_max_f_num;
 } MR_EventInfo;
 
 /*

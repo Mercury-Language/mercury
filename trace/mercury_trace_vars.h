@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2008 The University of Melbourne.
+** Copyright (C) 1999-2008, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -99,8 +99,8 @@ extern  void        MR_print_var_spec(FILE *fp, MR_VarSpec *var_spec);
 */
 
 extern  void        MR_trace_init_point_vars(const MR_LabelLayout *top_layout,
-                        MR_Word *saved_regs, MR_TracePort port,
-                        MR_bool print_optionals);
+                        MR_Word *saved_regs, MR_Float *saved_f_regs,
+                        MR_TracePort port, MR_bool print_optionals);
 extern  const char  *MR_trace_set_level(int ancestor_level,
                         MR_bool print_optionals);
 extern  const char  *MR_trace_set_level_from_layout(

@@ -196,7 +196,7 @@
 /*
 ** The Mercury abstract machine registers layer.
 **
-** The Mercury abstract machine registers consist of four groups.
+** The Mercury abstract machine registers consist of five groups.
 **
 ** - The general purpose registers that may be allocated to real machine
 **   registers, MR_rN for 1 <= N <= MR_MAX_REAL_R_REG.
@@ -243,6 +243,9 @@
 **   They need to be fields in the Mercury engine structure.  We already
 **   do this for MR_parent_sp, but incompletely for a few of the others.
 **
+** - The floating point registers, if present, are always stored in the
+**   float_reg array and not a physical register.
+**
 ** The Mercury abstract machine registers layer also provides MR_virtual_r(),
 ** MR_virtual_succip, MR_virtual_hp, etc., which are similar to mr<N>,
 ** MR_succip, MR_hp, etc. except that they always map to the underlying
@@ -265,6 +268,18 @@
   #define MR_count_usage(num,reg)	MR_LVALUE_SEQ(MR_num_uses[num]++, reg)
 #else
   #define MR_count_usage(num,reg)	(reg)
+#endif
+
+/*
+** The float registers only exist if MR_BOXED_FLOAT is defined. To reduce the
+** need for #ifdefs, we define MR_MAX_VIRTUAL_F_REG even when float registers
+** aren't used, to a small number to minimise space allocated in arrays.
+*/
+
+#ifdef MR_BOXED_FLOAT
+  #define MR_MAX_VIRTUAL_F_REG		1024
+#else
+  #define MR_MAX_VIRTUAL_F_REG		1
 #endif
 
 /*
@@ -548,6 +563,7 @@
 					MR_min_sol_hp_rec_var)
 #define MR_global_hp		MR_count_usage(MR_GLOBAL_HP_SLOT,	\
 					MR_global_hp_var)
+
 #if defined(MR_THREAD_SAFE)
 
 #define MR_trail_ptr		MR_count_usage(MR_TRAIL_PTR_SLOT,	\
@@ -765,6 +781,18 @@
 #else
   #define MR_save_par_registers()	((void) 0)
   #define MR_restore_par_registers()	((void) 0)
+#endif
+
+#ifdef MR_BOXED_FLOAT
+  #define MR_float_reg			(MR_ENGINE(MR_eng_float_reg))
+  #define MR_f(n)			(MR_float_reg[n])
+
+  #define MR_saved_f_reg_value(save_area, n)				\
+	(save_area)[(n)]
+  #define MR_saved_f_reg_assign(save_area, n, val)			\
+	do {								\
+		(save_area)[(n)] = (val);				\
+	} while (0)
 #endif
 
 /*

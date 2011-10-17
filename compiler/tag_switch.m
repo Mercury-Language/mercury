@@ -42,6 +42,7 @@
 :- import_module backend_libs.rtti.
 :- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_llds.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.switch_case.

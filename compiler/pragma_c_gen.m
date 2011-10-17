@@ -71,6 +71,7 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
@@ -615,7 +616,16 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     ),
 
     % <assignment of the output values from local variables to registers>
-    foreign_proc_acquire_regs(OutCArgs, Regs, !CI),
+    get_exprn_opts(!.CI, ExprnOpts),
+    UseFloatRegs = get_float_registers(ExprnOpts),
+    (
+        UseFloatRegs = use_float_registers,
+        FloatRegType = reg_f
+    ;
+        UseFloatRegs = do_not_use_float_registers,
+        FloatRegType = reg_r
+    ),
+    foreign_proc_acquire_regs(FloatRegType, OutCArgs, Regs, !CI),
     place_foreign_proc_output_args_in_regs(OutCArgs, Regs,
         CanOptAwayUnnamedArgs, OutputDescs, !CI),
     OutputComp = foreign_proc_outputs(OutputDescs),
@@ -792,15 +802,22 @@ make_c_arg_list([_ | _], [], _) :-
     list(arg_info)::in, list(c_arg)::out) is det.
 
 make_extra_c_arg_list(ExtraArgs, ModuleInfo, ArgInfos, ExtraCArgs) :-
-    get_highest_arg_num(ArgInfos, 0, MaxArgNum),
-    make_extra_c_arg_list_seq(ExtraArgs, ModuleInfo, MaxArgNum, ExtraCArgs).
+    get_highest_arg_num(ArgInfos, 0, MaxR, 0, _MaxF),
+    make_extra_c_arg_list_seq(ExtraArgs, ModuleInfo, MaxR, ExtraCArgs).
 
-:- pred get_highest_arg_num(list(arg_info)::in, int::in, int::out) is det.
+:- pred get_highest_arg_num(list(arg_info)::in, int::in, int::out,
+    int::in, int::out) is det.
 
-get_highest_arg_num([], !Max).
-get_highest_arg_num([arg_info(Loc, _) | ArgInfos], !Max) :-
-    int.max(Loc, !Max),
-    get_highest_arg_num(ArgInfos, !Max).
+get_highest_arg_num([], !MaxR, !MaxF).
+get_highest_arg_num([arg_info(Loc, _) | ArgInfos], !MaxR, !MaxF) :-
+    (
+        Loc = reg(reg_r, RegNum),
+        int.max(RegNum, !MaxR)
+    ;
+        Loc = reg(reg_f, RegNum),
+        int.max(RegNum, !MaxF)
+    ),
+    get_highest_arg_num(ArgInfos, !MaxR, !MaxF).
 
 :- pred make_extra_c_arg_list_seq(list(foreign_arg)::in, module_info::in,
     int::in, list(c_arg)::out) is det.
@@ -816,9 +833,10 @@ make_extra_c_arg_list_seq([ExtraArg | ExtraArgs], ModuleInfo, LastReg,
         MaybeNameMode = no,
         unexpected($module, $pred, "no name")
     ),
+    % Extra args are always input, and passed in regular registers.
+    RegType = reg_r,
     NextReg = LastReg + 1,
-    % Extra args are always input.
-    ArgInfo = arg_info(NextReg, ArgMode),
+    ArgInfo = arg_info(reg(RegType, NextReg), ArgMode),
     CArg = c_arg(Var, yes(Name), OrigType, BoxPolicy, ArgInfo),
     make_extra_c_arg_list_seq(ExtraArgs, ModuleInfo, NextReg, CArgs).
 
@@ -1023,14 +1041,31 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
     % foreign_proc_acquire_regs acquires a list of registers in which to place
     % each of the given arguments.
     %
-:- pred foreign_proc_acquire_regs(list(c_arg)::in, list(lval)::out,
-    code_info::in, code_info::out) is det.
+:- pred foreign_proc_acquire_regs(reg_type::in,
+    list(c_arg)::in, list(lval)::out, code_info::in, code_info::out) is det.
 
-foreign_proc_acquire_regs([], [], !CI).
-foreign_proc_acquire_regs([Arg | Args], [Reg | Regs], !CI) :-
-    Arg = c_arg(Var, _, _, _, _),
-    acquire_reg_for_var(Var, Reg, !CI),
-    foreign_proc_acquire_regs(Args, Regs, !CI).
+foreign_proc_acquire_regs(_, [], [], !CI).
+foreign_proc_acquire_regs(FloatRegType, [Arg | Args], [Reg | Regs], !CI) :-
+    Arg = c_arg(Var, _, VarType, BoxPolicy, _),
+    foreign_proc_arg_reg_type(FloatRegType, VarType, BoxPolicy, RegType),
+    acquire_reg_for_var(Var, RegType, Reg, !CI),
+    foreign_proc_acquire_regs(FloatRegType, Args, Regs, !CI).
+
+:- pred foreign_proc_arg_reg_type(reg_type::in, mer_type::in, box_policy::in,
+    reg_type::out) is det.
+
+foreign_proc_arg_reg_type(FloatRegType, VarType, BoxPolicy, RegType) :-
+    (
+        BoxPolicy = native_if_possible,
+        ( VarType = float_type ->
+            RegType = FloatRegType
+        ;
+            RegType = reg_r
+        )
+    ;
+        BoxPolicy = always_boxed,
+        RegType = reg_r
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1090,8 +1125,8 @@ input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
     (
         MaybeName = yes(Name),
         VarType = variable_type(CI, Var),
-        ArgInfo = arg_info(N, _),
-        Reg = reg(reg_r, N),
+        ArgInfo = arg_info(Loc, _),
+        arg_loc_to_register(Loc, Reg),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
         get_module_info(CI, ModuleInfo),
         IsDummy = check_dummy_type(ModuleInfo, VarType),
@@ -1120,8 +1155,8 @@ output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
     (
         MaybeName = yes(Name),
         VarType = variable_type(CI, Var),
-        ArgInfo = arg_info(N, _),
-        Reg = reg(reg_r, N),
+        ArgInfo = arg_info(Loc, _),
+        arg_loc_to_register(Loc, Reg),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
         get_module_info(CI, ModuleInfo),
         IsDummy = check_dummy_type(ModuleInfo, VarType),

@@ -526,11 +526,13 @@ write_llds_code_gen_info(Info, GoalInfo, VarSet, AppendVarNums, Indent, !IO) :-
         goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
         (
             MaybeFollowVars = yes(FollowVars),
-            FollowVars = abs_follow_vars(FollowVarsMap, NextReg),
+            FollowVars = abs_follow_vars(FollowVarsMap, NextRegR, NextRegF),
             map.to_assoc_list(FollowVarsMap, FVlist),
             write_indent(Indent, !IO),
-            io.write_string("% follow vars: ", !IO),
-            io.write_int(NextReg, !IO),
+            io.write_string("% follow vars: r", !IO),
+            io.write_int(NextRegR, !IO),
+            io.write_string(", f", !IO),
+            io.write_int(NextRegF, !IO),
             io.write_string("\n", !IO),
             write_var_to_abs_locns(FVlist, VarSet, AppendVarNums, Indent, !IO)
         ;
@@ -689,7 +691,15 @@ write_var_to_abs_locns([Var - Loc | VarLocs], VarSet, AppendVarNums,
     io.write_string("%\t", !IO),
     mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string("\t-> ", !IO),
-    io.write_string(abs_locn_to_string(Loc), !IO),
+    abs_locn_to_string(Loc, LocnStr, MaybeWidth),
+    io.write_string(LocnStr, !IO),
+    (
+        MaybeWidth = yes(Width),
+        io.write_string(" ", !IO),
+        io.write_string(Width, !IO)
+    ;
+        MaybeWidth = no
+    ),
     io.write_string("\n", !IO),
     write_var_to_abs_locns(VarLocs, VarSet, AppendVarNums, Indent, !IO).
 

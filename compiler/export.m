@@ -19,6 +19,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
@@ -56,17 +57,18 @@
 % The {MLDS,LLDS}->C backends and fact tables use this code.
 
     % Generate C code to convert an rval (represented as a string), from
-    % a C type to a mercury C type (ie. convert strings and floats to
+    % a C type to a Mercury C type (i.e. convert strings and floats to
     % words) and return the resulting C code as a string.
     %
-:- pred convert_type_to_mercury(string::in, mer_type::in, string::out) is det.
+:- pred convert_type_to_mercury(string::in, mer_type::in, arg_loc::in,
+    string::out) is det.
 
     % Generate C code to convert an rval (represented as a string), from
-    % a mercury C type to a C type. (ie. convert words to strings and
+    % a Mercury C type to a C type (i.e. convert words to strings and
     % floats if required) and return the resulting C code as a string.
     %
-:- pred convert_type_from_mercury(string::in, mer_type::in, string::out)
-    is det.
+:- pred convert_type_from_mercury(arg_loc::in, string::in, mer_type::in,
+    string::out) is det.
 
     % Succeeds iff the given C type is known by the compiler to be an integer
     % or pointer type the same size as MR_Word.
@@ -87,7 +89,7 @@
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_llds.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
@@ -386,7 +388,8 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
         ArgInfos = ArgInfos0
     ;
         MaybeArgInfos = no,
-        generate_proc_arg_info(ArgTypes, ModuleInfo, ProcInfo, NewProcInfo),
+        generate_proc_arg_info(Status, ArgTypes, ModuleInfo, ProcInfo,
+            NewProcInfo),
         proc_info_arg_info(NewProcInfo, ArgInfos)
     ),
     CodeModel = proc_info_interface_code_model(ProcInfo),
@@ -405,8 +408,9 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
         ->
             Export_RetType = foreign.to_exported_type(ModuleInfo, RetType),
             C_RetType = exported_type_to_string(lang_c, Export_RetType),
-            argloc_to_string(RetArgLoc, RetArgString0),
-            convert_type_from_mercury(RetArgString0, RetType, RetArgString),
+            arg_loc_to_string(RetArgLoc, RetArgString0),
+            convert_type_from_mercury(RetArgLoc, RetArgString0, RetType,
+                RetArgString),
             MaybeDeclareRetval = "\t" ++ C_RetType ++ " return_value;\n",
             % We need to unbox non-word-sized foreign types
             % before returning them to C code
@@ -528,8 +532,8 @@ get_input_args([AT | ATs], Num0, ModuleInfo, Result) :-
         Mode = top_in,
         string.int_to_string(Num, NumString),
         ArgName0 = "Mercury__argument" ++ NumString,
-        convert_type_to_mercury(ArgName0, Type, ArgName),
-        argloc_to_string(ArgLoc, ArgLocString),
+        arg_loc_to_string(ArgLoc, ArgLocString),
+        convert_type_to_mercury(ArgName0, Type, ArgLoc, ArgName),
         Export_Type = foreign.to_exported_type(ModuleInfo, Type),
         % We need to box non-word-sized foreign types
         % before passing them to Mercury code
@@ -565,8 +569,8 @@ copy_output_args([AT | ATs], Num0, ModuleInfo, Result) :-
         Mode = top_out,
         string.int_to_string(Num, NumString),
         string.append("Mercury__argument", NumString, ArgName),
-        argloc_to_string(ArgLoc, ArgLocString0),
-        convert_type_from_mercury(ArgLocString0, Type, ArgLocString),
+        arg_loc_to_string(ArgLoc, ArgLocString0),
+        convert_type_from_mercury(ArgLoc, ArgLocString0, Type, ArgLocString),
         Export_Type = foreign.to_exported_type(ModuleInfo, Type),
         % We need to unbox non-word-sized foreign types
         % before returning them to C code
@@ -584,20 +588,27 @@ copy_output_args([AT | ATs], Num0, ModuleInfo, Result) :-
     copy_output_args(ATs, Num, ModuleInfo, TheRest),
     string.append(OutputArg, TheRest, Result).
 
-    % convert an argument location (currently just a register number)
-    % to a string representing a C code fragment that names it.
-:- pred argloc_to_string(arg_loc::in, string::out) is det.
+    % Convert an argument location to a string representing a C code fragment
+    % that names it.
+    %
+:- pred arg_loc_to_string(arg_loc::in, string::out) is det.
 
-argloc_to_string(RegNum, RegName) :-
-    % XXX We should handle float registers.
-    % XXX This magic number can't be good.
-    ( RegNum > 32 ->
-        RegName = "MR_r(" ++ int_to_string(RegNum) ++ ")"
+arg_loc_to_string(reg(RegType, RegNum), RegName) :-
+    % XXX this should reuse llds_out_data.reg_to_string
+    (
+        RegType = reg_r,
+        % XXX This magic number can't be good.
+        ( RegNum > 32 ->
+            RegName = "MR_r(" ++ int_to_string(RegNum) ++ ")"
+        ;
+            RegName = "MR_r" ++ int_to_string(RegNum)
+        )
     ;
-        RegName = "MR_r" ++ int_to_string(RegNum)
+        RegType = reg_f,
+        RegName = "MR_f(" ++ int_to_string(RegNum) ++ ")"
     ).
 
-convert_type_to_mercury(Rval, Type, ConvertedRval) :-
+convert_type_to_mercury(Rval, Type, TargetArgLoc, ConvertedRval) :-
     (
         Type = builtin_type(BuiltinType),
         (
@@ -605,7 +616,13 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
             ConvertedRval = "(MR_Word) " ++ Rval
         ;
             BuiltinType = builtin_type_float,
-            ConvertedRval = "MR_float_to_word(" ++ Rval ++ ")"
+            (
+                TargetArgLoc = reg(reg_r, _),
+                ConvertedRval = "MR_float_to_word(" ++ Rval ++ ")"
+            ;
+                TargetArgLoc = reg(reg_f, _),
+                ConvertedRval = Rval
+            )
         ;
             BuiltinType = builtin_type_char,
             % We need to explicitly cast to MR_UnsignedChar
@@ -627,7 +644,7 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
         ConvertedRval = Rval
     ).
 
-convert_type_from_mercury(Rval, Type, ConvertedRval) :-
+convert_type_from_mercury(SourceArgLoc, Rval, Type, ConvertedRval) :-
     (
         Type = builtin_type(BuiltinType),
         (
@@ -635,7 +652,13 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
             ConvertedRval = "(MR_String) " ++ Rval
         ;
             BuiltinType = builtin_type_float,
-            ConvertedRval = "MR_word_to_float(" ++ Rval ++ ")"
+            (
+                SourceArgLoc = reg(reg_r, _),
+                ConvertedRval = "MR_word_to_float(" ++ Rval ++ ")"
+            ;
+                SourceArgLoc = reg(reg_f, _),
+                ConvertedRval = Rval
+            )
         ;
             ( BuiltinType = builtin_type_int
             ; BuiltinType = builtin_type_char

@@ -220,6 +220,7 @@ vars_in_lval(parent_sp, []).
 vars_in_lval(stackvar(_SlotNum), []).
 vars_in_lval(parent_stackvar(_SlotNum), []).
 vars_in_lval(framevar(_SlotNum), []).
+vars_in_lval(double_stackvar(_, _), []).
 vars_in_lval(succip_slot(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
 vars_in_lval(redoip_slot(Rval), Vars) :-
@@ -597,6 +598,7 @@ substitute_lval_in_lval_count_2(OldLval, NewLval, Lval0, Lval, !N) :-
         ; Lval0 = stackvar(_SlotNum)
         ; Lval0 = parent_stackvar(_SlotNum)
         ; Lval0 = framevar(_SlotNum)
+        ; Lval0 = double_stackvar(_Type, _SlotNum)
         ; Lval0 = lvar(_Var)
         ; Lval0 = global_var_ref(_GlobalVarName)
         ),
@@ -698,6 +700,7 @@ substitute_rval_in_lval(OldRval, NewRval, Lval0, Lval) :-
         ; Lval0 = stackvar(_)
         ; Lval0 = parent_stackvar(_)
         ; Lval0 = framevar(_)
+        ; Lval0 = double_stackvar(_, _)
         ; Lval0 = global_var_ref(_)
         ; Lval0 = lvar(_)
         ),
@@ -856,6 +859,7 @@ lval_addrs(reg(_Type, _RegNum), [], []).
 lval_addrs(stackvar(_SlotNum), [], []).
 lval_addrs(parent_stackvar(_SlotNum), [], []).
 lval_addrs(framevar(_SlotNum), [], []).
+lval_addrs(double_stackvar(_Type, _SlotNum), [], []).
 lval_addrs(succip, [], []).
 lval_addrs(maxfr, [], []).
 lval_addrs(curfr, [], []).

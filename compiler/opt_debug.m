@@ -19,6 +19,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_llds.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.livemap.
 :- import_module ll_backend.llds.
@@ -274,6 +275,18 @@ dump_lval(_, parent_stackvar(N)) =
     "parent_sv" ++ int_to_string(N).
 dump_lval(_, framevar(N)) =
     "fv" ++ int_to_string(N).
+dump_lval(_, double_stackvar(Type, N)) = Str :-
+    (
+        Type = double_stackvar,
+        Macro = "sv"
+    ;
+        Type = double_parent_stackvar,
+        Macro = "parent_sv"
+    ;
+        Type= double_framevar,
+        Macro = "fv"
+    ),
+    string.format("%s%d,%s%d", [s(Macro), i(N), s(Macro), i(N + 1)], Str).
 dump_lval(_, succip) = "succip".
 dump_lval(_, maxfr) = "maxfr".
 dump_lval(_, curfr) = "curfr".

@@ -443,6 +443,18 @@ replace_stack_vars_by_parent_sv_lval(Lval0, Lval, !Acc) :-
         ),
         Lval = parent_stackvar(SlotNum)
     ;
+        Lval0 = double_stackvar(Type, SlotNum),
+        (
+            Type = double_stackvar,
+            Lval = double_stackvar(double_parent_stackvar, SlotNum)
+        ;
+            Type = double_parent_stackvar,
+            Lval = Lval0
+        ;
+            Type = double_framevar,
+            Lval = Lval0
+        )
+    ;
         ( Lval0 = reg(_Type, _RegNum)
         ; Lval0 = succip
         ; Lval0 = maxfr

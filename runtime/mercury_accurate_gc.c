@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007, 2009 The University of Melbourne.
+** Copyright (C) 1998-2007, 2009, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -781,6 +781,7 @@ copy_long_value(MR_LongLval locn, MR_TypeInfo type_info,
         break;
 
     case MR_LONG_LVAL_TYPE_F:
+        MR_fatal_error("copy_long_value: MR_LONG_LVAL_TYPE_F");
         break;
 
     case MR_LONG_LVAL_TYPE_STACKVAR:
@@ -797,6 +798,14 @@ copy_long_value(MR_LongLval locn, MR_TypeInfo type_info,
                 type_info,
                 MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
                 MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
+        break;
+
+    case MR_LONG_LVAL_TYPE_DOUBLE_STACKVAR:
+        MR_fatal_error("copy_long_value: MR_LONG_LVAL_TYPE_DOUBLE_STACKVAR");
+        break;
+
+    case MR_LONG_LVAL_TYPE_DOUBLE_FRAMEVAR:
+        MR_fatal_error("copy_long_value: MR_LONG_LVAL_TYPE_DOUBLE_FRAMEVAR");
         break;
 
     case MR_LONG_LVAL_TYPE_SUCCIP:

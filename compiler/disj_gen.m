@@ -215,7 +215,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     % Since we release BaseReg only after the calls to generate_branch_end
     % (invoked through set_liveness_and_end_branch) we must ensure that
     % generate_branch_end won't want to overwrite BaseReg.
-    acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CI),
 
     BaseRegInitCode = cord.singleton(
         llds_instr(assign(BaseReg,
@@ -258,7 +258,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo, RestoreTicketCode),
     maybe_restore_hp(MaybeHpSlot, RestoreHpCode),
 
-    acquire_reg_not_in_storemap(StoreMap, LaterBaseReg, !CI),
+    acquire_reg_not_in_storemap(StoreMap, reg_r, LaterBaseReg, !CI),
     get_next_label(UndoLabel, !CI),
     get_next_label(AfterUndoLabel, !CI),
     MaxSlot = (NumSolns - 1) * NumOutVars,

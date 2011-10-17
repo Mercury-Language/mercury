@@ -418,6 +418,7 @@
     ;       gcc_global_registers
     ;       asm_labels
     ;       pic_reg
+    ;       use_float_registers
 
     % MLDS back-end compilation model options
     ;       highlevel_code
@@ -1349,6 +1350,7 @@ option_defaults_2(compilation_model_option, [
     gcc_non_local_gotos                 -   bool(yes),
     gcc_global_registers                -   bool(yes),
     asm_labels                          -   bool(yes),
+    use_float_registers                 -   bool(no),
 
     % MLDS back-end compilation model options
     highlevel_code                      -   bool(no),
@@ -2242,6 +2244,7 @@ long_option("high-level-data",      highlevel_data).
 long_option("gcc-non-local-gotos",  gcc_non_local_gotos).
 long_option("gcc-global-registers", gcc_global_registers).
 long_option("asm-labels",           asm_labels).
+long_option("use-float-registers",  use_float_registers).
 % MLDS back-end compilation model options
 long_option("highlevel-code",       highlevel_code).
 long_option("high-level-code",      highlevel_code).
@@ -4436,6 +4439,10 @@ options_help_compilation_model -->
         "\texhaustion at the cost of increased execution time.",
         "\tThis option is ignored if the `--high-level-code' option is",
         "\tenabled."
+        % This is a developer only option.
+%       "--use-float-registers",
+%       "(This option is not for general use.)",
+%       "\tUse float registers for argument passing."
     ]),
 
     io.write_string("\n    MLDS back-end compilation model options:\n"),

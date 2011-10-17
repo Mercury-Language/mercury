@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2003, 2005-2006 The University of Melbourne.
+** Copyright (C) 1998-2003, 2005-2006, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,11 +18,14 @@
 
 /*
 ** These two functions copy the register state to and from the provided
-** saved_regs array, which should have room for MR_MAX_FAKE_REG MR_Words.
+** saved_regs and saved_f_regs arrays, which should have room for
+** MR_MAX_FAKE_REG MR_Words and MR_MAX_VIRTUAL_F_REG MR_Floats respectively.
 */
 
-extern  void    MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs);
-extern  void    MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs);
+extern  void    MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs,
+                    int max_f_num, MR_Float *saved_f_regs);
+extern  void    MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs,
+                    int max_f_num, MR_Float *saved_f_regs);
 
 /*
 ** A MR_LabelLayout describes the variables that are live at a given
@@ -100,10 +103,12 @@ extern  int MR_get_register_number_short(MR_ShortLval locn);
 */
 
 extern  MR_Word MR_lookup_long_lval(MR_LongLval locn,
-                    MR_Word *saved_regs, MR_bool *succeeded);
+                    MR_Word *saved_regs, MR_Float *saved_f_regs,
+                    MR_bool *succeeded);
 extern  MR_Word MR_lookup_long_lval_base(MR_LongLval locn,
                     MR_Word *saved_regs, MR_Word *base_sp,
-                    MR_Word *base_curfr, MR_bool *succeeded);
+                    MR_Word *base_curfr, MR_Float *saved_f_regs,
+                    MR_bool *succeeded);
 extern  MR_Word MR_lookup_short_lval(MR_ShortLval locn,
                     MR_Word *saved_regs, MR_bool *succeeded);
 extern  MR_Word MR_lookup_short_lval_base(MR_ShortLval locn,
@@ -136,11 +141,12 @@ extern  MR_Word MR_lookup_short_lval_base(MR_ShortLval locn,
 */
 
 extern  MR_bool MR_get_type_and_value(const MR_LabelLayout *label_layout,
-                    int var, MR_Word *saved_regs, MR_TypeInfo *type_params,
-                    MR_TypeInfo *type_info, MR_Word *value);
+                    int var, MR_Word *saved_regs, MR_Float *saved_f_regs,
+                    MR_TypeInfo *type_params, MR_TypeInfo *type_info,
+                    MR_Word *value);
 extern  MR_bool MR_get_type_and_value_base(const MR_LabelLayout *label_layout,
-                    int var, MR_Word *saved_regs,
-                    MR_Word *base_sp, MR_Word *base_curfr,
+                    int var, MR_Word *saved_regs, MR_Word *base_sp,
+                    MR_Word *base_curfr, MR_Float *saved_f_regs,
                     MR_TypeInfo *type_params, MR_TypeInfo *type_info,
                     MR_Word *value);
 extern  MR_bool MR_get_type(const MR_LabelLayout *label_layout, int var,

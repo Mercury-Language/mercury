@@ -206,7 +206,8 @@
     ;       top_out
     ;       top_unused.
 
-:- type arg_loc     ==  int.
+:- type arg_loc
+    --->    reg(reg_type, int).
 
     % The type `import_status' describes whether an entity (a predicate,
     % type, inst, or mode) is local to the current module, exported from

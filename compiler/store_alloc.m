@@ -49,12 +49,14 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.follow_vars.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.trace_gen.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
@@ -76,12 +78,14 @@ allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
         RunType = final_allocation,
         proc_info_get_goal(!.ProcInfo, Goal0),
 
-        find_final_follow_vars(!.ProcInfo, FollowVarsMap0, NextNonReserved0),
-        proc_info_get_vartypes(!.ProcInfo, VarTypes),
+        find_final_follow_vars(!.ProcInfo, FollowVarsMap0, NextNonReservedR0,
+            NextNonReservedF0),
         find_follow_vars_in_goal(Goal0, Goal1, VarTypes, ModuleInfo,
-            FollowVarsMap0, FollowVarsMap, NextNonReserved0, NextNonReserved),
+            FollowVarsMap0, FollowVarsMap, NextNonReservedR0, NextNonReservedR,
+            NextNonReservedF0, NextNonReservedF),
         Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
-        FollowVars = abs_follow_vars(FollowVarsMap, NextNonReserved),
+        FollowVars = abs_follow_vars(FollowVarsMap, NextNonReservedR,
+            NextNonReservedF),
         goal_info_set_follow_vars(yes(FollowVars), GoalInfo1, GoalInfo2),
         Goal2 = hlds_goal(GoalExpr1, GoalInfo2)
     ;
@@ -102,7 +106,16 @@ allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
     build_input_arg_list(!.ProcInfo, InputArgLvals),
     LastLocns0 = initial_last_locns(InputArgLvals),
     proc_info_get_stack_slots(!.ProcInfo, StackSlots),
-    StoreAllocInfo = store_alloc_info(ModuleInfo, StackSlots),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    globals.lookup_bool_option(Globals, use_float_registers, FloatRegs),
+    (
+        FloatRegs = yes,
+        FloatRegType = reg_f
+    ;
+        FloatRegs = no,
+        FloatRegType = reg_r
+    ),
+    StoreAllocInfo = store_alloc_info(StackSlots, VarTypes, FloatRegType),
     store_alloc_in_goal(Goal2, Goal, Liveness0, _, LastLocns0, _,
         ResumeVars, StoreAllocInfo),
     proc_info_set_goal(Goal, !ProcInfo).
@@ -118,10 +131,10 @@ initial_last_locns([Var - Lval | VarLvals]) =
 
 :- type store_alloc_info
     --->    store_alloc_info(
-                sai_module_info     :: module_info,
-
                 % Maps each var to its stack slot (if it has one).
-                sai_stack_slots     :: stack_slots
+                sai_stack_slots     :: stack_slots,
+                sai_vartypes        :: vartypes,
+                sai_float_reg       :: reg_type
             ).
 
 :- type where_stored    == set(lval).   % These lvals may contain var() rvals.
@@ -390,11 +403,11 @@ store_alloc_allocate_storage(LiveVars, StoreAllocInfo, FollowVars,
     % This addresses points 3 and 4.
     map.keys(!.StoreMap, StoreVars),
     set.init(SeenLvals0),
-    store_alloc_handle_conflicts_and_nonreal(StoreVars, 1, N,
-        SeenLvals0, SeenLvals, !StoreMap),
+    store_alloc_handle_conflicts_and_nonreal(StoreAllocInfo, StoreVars,
+        1, N, SeenLvals0, SeenLvals, !StoreMap),
 
     % This addresses point 2.
-    store_alloc_allocate_extras(LiveVars, N, SeenLvals, StoreAllocInfo,
+    store_alloc_allocate_extras(StoreAllocInfo, LiveVars, N, SeenLvals,
         !StoreMap).
 
 :- pred store_alloc_remove_nonlive(list(prog_var)::in, list(prog_var)::in,
@@ -409,35 +422,41 @@ store_alloc_remove_nonlive([Var | Vars], LiveVars, !StoreMap) :-
     ),
     store_alloc_remove_nonlive(Vars, LiveVars, !StoreMap).
 
-:- pred store_alloc_handle_conflicts_and_nonreal(list(prog_var)::in,
-    int::in, int::out, set(abs_locn)::in, set(abs_locn)::out,
+:- pred store_alloc_handle_conflicts_and_nonreal(store_alloc_info::in,
+    list(prog_var)::in, int::in, int::out,
+    set(abs_locn)::in, set(abs_locn)::out,
     abs_store_map::in, abs_store_map::out) is det.
 
-store_alloc_handle_conflicts_and_nonreal([], !N, !SeenLocns, !StoreMap).
-store_alloc_handle_conflicts_and_nonreal([Var | Vars], !N, !SeenLocns,
-        !StoreMap) :-
+store_alloc_handle_conflicts_and_nonreal(_, [],
+        !N, !SeenLocns, !StoreMap).
+store_alloc_handle_conflicts_and_nonreal(StoreAllocInfo, [Var | Vars],
+        !N, !SeenLocns, !StoreMap) :-
     map.lookup(!.StoreMap, Var, Locn),
     (
         ( Locn = any_reg
         ; set.member(Locn, !.SeenLocns)
         )
     ->
-        next_free_reg(!.SeenLocns, !N),
-        FinalLocn = abs_reg(!.N),
+        ( Locn = abs_reg(RegTypePrime, _) ->
+            RegType = RegTypePrime
+        ;
+            reg_type_for_var(StoreAllocInfo, Var, RegType)
+        ),
+        next_free_reg(RegType, !.SeenLocns, !N),
+        FinalLocn = abs_reg(RegType, !.N),
         map.det_update(Var, FinalLocn, !StoreMap)
     ;
         FinalLocn = Locn
     ),
     set.insert(FinalLocn, !SeenLocns),
-    store_alloc_handle_conflicts_and_nonreal(Vars, !N, !SeenLocns,
-        !StoreMap).
+    store_alloc_handle_conflicts_and_nonreal(StoreAllocInfo, Vars,
+        !N, !SeenLocns, !StoreMap).
 
-:- pred store_alloc_allocate_extras(list(prog_var)::in, int::in,
-    set(abs_locn)::in, store_alloc_info::in,
-    abs_store_map::in, abs_store_map::out) is det.
+:- pred store_alloc_allocate_extras(store_alloc_info::in, list(prog_var)::in,
+    int::in, set(abs_locn)::in, abs_store_map::in, abs_store_map::out) is det.
 
-store_alloc_allocate_extras([], _, _, _, !StoreMap).
-store_alloc_allocate_extras([Var | Vars], !.N, !.SeenLocns, StoreAllocInfo,
+store_alloc_allocate_extras(_, [], _, _, !StoreMap).
+store_alloc_allocate_extras(StoreAllocInfo, [Var | Vars], !.N, !.SeenLocns,
         !StoreMap) :-
     ( map.contains(!.StoreMap, Var) ->
         % We have already allocated a slot for this variable.
@@ -445,7 +464,7 @@ store_alloc_allocate_extras([Var | Vars], !.N, !.SeenLocns, StoreAllocInfo,
     ;
         % We have not yet allocated a slot for this variable,
         % which means it is not in the follow vars (if any).
-        StoreAllocInfo = store_alloc_info(_, StackSlots),
+        StoreAllocInfo = store_alloc_info(StackSlots, _, _),
         (
             map.search(StackSlots, Var, StackSlot),
             StackSlotLocn = stack_slot_to_abs_locn(StackSlot),
@@ -456,23 +475,43 @@ store_alloc_allocate_extras([Var | Vars], !.N, !.SeenLocns, StoreAllocInfo,
         ->
             Locn = StackSlotLocn
         ;
-            next_free_reg(!.SeenLocns, !N),
-            Locn = abs_reg(!.N)
+            reg_type_for_var(StoreAllocInfo, Var, RegType),
+            next_free_reg(RegType, !.SeenLocns, !N),
+            Locn = abs_reg(RegType, !.N)
         ),
         map.det_insert(Var, Locn, !StoreMap),
         set.insert(Locn, !SeenLocns)
     ),
-    store_alloc_allocate_extras(Vars, !.N, !.SeenLocns, StoreAllocInfo,
+    store_alloc_allocate_extras(StoreAllocInfo, Vars, !.N, !.SeenLocns,
         !StoreMap).
+
+:- pred reg_type_for_var(store_alloc_info::in, prog_var::in, reg_type::out)
+    is det.
+
+reg_type_for_var(StoreAllocInfo, Var, RegType) :-
+    StoreAllocInfo = store_alloc_info(_, VarTypes, FloatRegType),
+    (
+        FloatRegType = reg_r,
+        RegType = reg_r
+    ;
+        FloatRegType = reg_f,
+        map.lookup(VarTypes, Var, VarType),
+        ( VarType = float_type ->
+            RegType = reg_f
+        ;
+            RegType = reg_r
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred next_free_reg(set(abs_locn)::in, int::in, int::out) is det.
+:- pred next_free_reg(reg_type::in, set(abs_locn)::in, int::in, int::out)
+    is det.
 
-next_free_reg(Values, N0, N) :-
-    ( set.member(abs_reg(N0), Values) ->
+next_free_reg(RegType, Values, N0, N) :-
+    ( set.member(abs_reg(RegType, N0), Values) ->
         N1 = N0 + 1,
-        next_free_reg(Values, N1, N)
+        next_free_reg(RegType, Values, N1, N)
     ;
         N = N0
     ).

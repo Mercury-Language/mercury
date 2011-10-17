@@ -399,7 +399,7 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
         % Since we release BaseReg only after the call to generate_branch_end,
         % we must make sure that generate_branch_end won't want to overwrite
         % BaseReg.
-        acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+        acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CI),
         MaybeBaseReg = yes(BaseReg),
 
         % Generate the static lookup table for this switch.
@@ -525,7 +525,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
     % BaseReg.
-    acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CI),
     % IndexRval has already had Start subtracted from it.
     BaseRegInitCode = singleton(
         llds_instr(
@@ -666,7 +666,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             RestoreTicketCode),
         maybe_restore_hp(MaybeHpSlot, RestoreHpCode),
 
-        acquire_reg_not_in_storemap(StoreMap, LaterBaseReg, !CI),
+        acquire_reg_not_in_storemap(StoreMap, reg_r, LaterBaseReg, !CI),
         get_next_label(UndoLabel, !CI),
         get_next_label(AfterUndoLabel, !CI),
         list.length(OutVars, NumOutVars),

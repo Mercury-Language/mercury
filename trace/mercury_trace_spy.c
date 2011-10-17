@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2002, 2005-2008 The University of Melbourne.
+** Copyright (C) 1998-2002, 2005-2008, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -529,6 +529,8 @@ MR_spy_cond_is_true(MR_SpyPoint *point, const MR_LabelLayout *label_layout)
 {
     int             max_mr_num;
     MR_Word         saved_regs[MR_MAX_FAKE_REG];
+    int             max_f_num;
+    MR_Float        saved_f_regs[MR_MAX_VIRTUAL_F_REG];
     MR_VarSpec      var_spec;
     char            *path;
     const char      *problem;
@@ -562,9 +564,11 @@ MR_spy_cond_is_true(MR_SpyPoint *point, const MR_LabelLayout *label_layout)
     retval = MR_TRUE;
 
     MR_compute_max_mr_num(max_mr_num, label_layout);
+    max_f_num = label_layout->MR_sll_entry->MR_sle_max_f_num;
     /* This also saves the regs in MR_fake_regs. */
-    MR_copy_regs_to_saved_regs(max_mr_num, saved_regs);
-    MR_trace_init_point_vars(label_layout, saved_regs,
+    MR_copy_regs_to_saved_regs(max_mr_num, saved_regs,
+        max_f_num, saved_f_regs);
+    MR_trace_init_point_vars(label_layout, saved_regs, saved_f_regs,
         (MR_TracePort) label_layout->MR_sll_port, MR_FALSE);
 
     problem = MR_lookup_unambiguous_var_spec(cond->MR_cond_var_spec,
@@ -643,7 +647,8 @@ MR_spy_cond_is_true(MR_SpyPoint *point, const MR_LabelLayout *label_layout)
     }
 
 end:
-    MR_copy_saved_regs_to_regs(max_mr_num, saved_regs);
+    MR_copy_saved_regs_to_regs(max_mr_num, saved_regs,
+        max_f_num, saved_f_regs);
     MR_save_transient_registers();
     return retval;
 }

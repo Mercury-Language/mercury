@@ -107,9 +107,10 @@
                 % associated with the call event, whose stack layout says
                 % which variables were live and where on entry.
 
-                pli_max_trace_reg       :: int,
-                % The number of the highest numbered rN register that can
-                % contain useful information during a call to MR_trace from
+                pli_max_trace_reg_r     :: int,
+                pli_max_trace_reg_f     :: int,
+                % The number of the highest numbered rN and fN registers that
+                % can contain useful information during a call to MR_trace from
                 % within this procedure.
 
                 pli_head_vars           :: list(prog_var),
@@ -734,6 +735,8 @@ generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo, ModuleInfo,
         expect(N > 0, $module, $pred, "bad stackvar")
     ; Lval = stackvar(N) ->
         expect(N > 0, $module, $pred, "bad framevar")
+    ; Lval = double_stackvar(_, N) ->
+        expect(N > 0, $module, $pred, "bad stackvar")
     ;
         true
     ),
@@ -819,8 +822,8 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
 
 :- pred build_closure_info(list(prog_var)::in,
     list(mer_type)::in, list(arg_info)::in,  list(closure_arg_info)::out,
-    instmap::in, map(prog_var, set(lval))::in,
-    map(prog_var, set(lval))::out, set(tvar)::in, set(tvar)::out) is semidet.
+    instmap::in, map(prog_var, set(lval))::in, map(prog_var, set(lval))::out,
+    set(tvar)::in, set(tvar)::out) is semidet.
 
 build_closure_info([], [], [], [], _, !VarLocs, !TypeVars).
 build_closure_info([Var | Vars], [Type | Types],
@@ -829,7 +832,8 @@ build_closure_info([Var | Vars], [Type | Types],
     ArgInfo = arg_info(ArgLoc, _ArgMode),
     instmap_lookup_var(InstMap, Var, Inst),
     Layout = closure_arg_info(Type, Inst),
-    set.singleton_set(Locations, reg(reg_r, ArgLoc)),
+    arg_loc_to_register(ArgLoc, Reg),
+    Locations = set.make_singleton_set(Reg),
     map.det_insert(Var, Locations, !VarLocs),
     type_vars(Type, VarTypeVars),
     set.insert_list(VarTypeVars, !TypeVars),
@@ -952,6 +956,7 @@ live_value_type(slot_lval(reg(_, _)), live_value_unwanted).
 live_value_type(slot_lval(stackvar(_)), live_value_unwanted).
 live_value_type(slot_lval(parent_stackvar(_)), live_value_unwanted).
 live_value_type(slot_lval(framevar(_)), live_value_unwanted).
+live_value_type(slot_lval(double_stackvar(_, _)), live_value_unwanted).
 live_value_type(slot_lval(mem_ref(_)), live_value_unwanted). % XXX
 live_value_type(slot_lval(global_var_ref(_)), live_value_unwanted).
 live_value_type(slot_success_record, live_value_unwanted).

@@ -55,6 +55,7 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module ll_backend.
@@ -329,7 +330,14 @@ gen_places([], _, empty).
 gen_places([Var - Loc | OutputArgs], ByteInfo, Code) :-
     gen_places(OutputArgs, ByteInfo, OtherCode),
     map_var(ByteInfo, Var, ByteVar),
-    Code = singleton(byte_place_arg(byte_reg_r, Loc, ByteVar)) ++ OtherCode.
+    (
+        Loc = reg(reg_r, RegNum)
+    ;
+        Loc = reg(reg_f, _),
+        sorry($module, $pred, "floating point register")
+    ),
+    Code = singleton(byte_place_arg(byte_reg_r, RegNum, ByteVar)) ++
+        OtherCode.
 
 :- pred gen_pickups(list(pair(prog_var, arg_loc))::in,
     byte_info::in, byte_tree::out) is det.
@@ -338,7 +346,14 @@ gen_pickups([], _, empty).
 gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
     gen_pickups(OutputArgs, ByteInfo, OtherCode),
     map_var(ByteInfo, Var, ByteVar),
-    Code = singleton(byte_pickup_arg(byte_reg_r, Loc, ByteVar)) ++ OtherCode.
+    (
+        Loc = reg(reg_r, RegNum)
+    ;
+        Loc = reg(reg_f, _),
+        sorry($module, $pred, "floating point register")
+    ),
+    Code = singleton(byte_pickup_arg(byte_reg_r, RegNum, ByteVar)) ++
+        OtherCode.
 
 %---------------------------------------------------------------------------%
 
@@ -351,7 +366,10 @@ gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
     determinism_to_code_model(Detism, CodeModel),
     get_module_info(ByteInfo, ModuleInfo),
     list.map(get_var_type(ByteInfo), ArgVars, ArgTypes),
-    make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
+    % Higher order calls use regular registers for all arguments.
+    FloatRegType = reg_r,
+    make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, FloatRegType,
+        ArgInfo),
     assoc_list.from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
     arg_info.partition_args(ArgVarsInfos, InVars, OutVars),

@@ -82,6 +82,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_llds.
 :- import_module ll_backend.basic_block.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
@@ -212,7 +213,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             not set.member(ToLval, CompulsoryLvals)
         ->
             counter.allocate(TempNum, !TempCounter),
-            NewLval = temp(reg_r, TempNum),
+            NewLval = temp(reg_type_for_lval(ToLval), TempNum),
             substitute_lval_in_defn(ToLval, NewLval, Instr0, Instr),
             list.map_foldl(
                 exprn_aux.substitute_lval_in_instr(ToLval, NewLval),
@@ -231,7 +232,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             )
         ;
             counter.allocate(TempNum, !TempCounter),
-            NewLval = temp(reg_r, TempNum),
+            NewLval = temp(reg_type_for_lval(ToLval), TempNum),
             substitute_lval_in_instr_until_defn(ToLval, NewLval,
                 TailInstrs0, TailInstrs1, 0, NumSubst),
             NumSubst > 1
@@ -413,7 +414,7 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
     ->
         OrigTempCounter = !.TempCounter,
         counter.allocate(TempNum, !TempCounter),
-        TempLval = temp(reg_r, TempNum),
+        TempLval = temp(reg_type_for_lval(ChosenLval), TempNum),
         SubChosenLvals = lvals_in_lval(ChosenLval),
         expect(unify(SubChosenLvals, []), $module, $pred,
             "nonempty SubChosenLvals"),
@@ -455,9 +456,13 @@ base_lval_worth_replacing(NumRealRRegs, Lval) :-
         Lval = reg(reg_r, RegNum),
         RegNum > NumRealRRegs
     ;
+        Lval = reg(reg_f, _)
+    ;
         Lval = stackvar(_)
     ;
         Lval = framevar(_)
+    ;
+        Lval = double_stackvar(_, _)
     ).
 
 :- pred base_lval_worth_replacing_not_tried(lvalset::in, int::in, lval::in)
@@ -466,6 +471,39 @@ base_lval_worth_replacing(NumRealRRegs, Lval) :-
 base_lval_worth_replacing_not_tried(AlreadyTried, NumRealRRegs, Lval) :-
     \+ set.member(Lval, AlreadyTried),
     base_lval_worth_replacing(NumRealRRegs, Lval).
+
+:- func reg_type_for_lval(lval) = reg_type.
+
+reg_type_for_lval(Lval) = RegType :-
+    (
+        Lval = reg(RegType, _)
+    ;
+        Lval = temp(RegType, _)
+    ;
+        Lval = double_stackvar(_, _),
+        RegType = reg_f
+    ;
+        ( Lval = succip
+        ; Lval = maxfr
+        ; Lval = curfr
+        ; Lval = hp
+        ; Lval = sp
+        ; Lval = parent_sp
+        ; Lval = stackvar(_)
+        ; Lval = parent_stackvar(_)
+        ; Lval = framevar(_)
+        ; Lval = succip_slot(_)
+        ; Lval = succfr_slot(_)
+        ; Lval = redoip_slot(_)
+        ; Lval = redofr_slot(_)
+        ; Lval = prevfr_slot(_)
+        ; Lval = field(_, _, _)
+        ; Lval = mem_ref(_)
+        ; Lval = global_var_ref(_)
+        ; Lval = lvar(_)
+        ),
+        RegType = reg_r
+    ).
 
 %-----------------------------------------------------------------------------%
 

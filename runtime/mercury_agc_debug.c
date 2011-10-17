@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007, 2009 The University of Melbourne.
+** Copyright (C) 1998-2007, 2009, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -50,6 +50,7 @@ MR_agc_dump_roots(MR_RootList roots)
 {
 #ifndef MR_HIGHLEVEL_CODE
     MR_Word saved_regs[MR_MAX_FAKE_REG];
+    MR_Float saved_f_regs[MR_MAX_VIRTUAL_F_REG];
 #endif
 
     fflush(NULL);
@@ -64,7 +65,8 @@ MR_agc_dump_roots(MR_RootList roots)
             ** and we don't want it messing with the saved registers).
             */
             MR_restore_registers();
-            MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1, saved_regs);
+            MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1, saved_regs,
+                MR_MAX_VIRTUAL_F_REG - 1, saved_f_regs);
 
             MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
             MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
@@ -242,6 +244,7 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
     MR_Word             value;
     MR_TypeInfoParams   type_params;
     MR_Word             saved_regs[MR_MAX_FAKE_REG];
+    MR_Float            saved_f_regs[MR_MAX_VIRTUAL_F_REG];
     MR_Word             *current_regs;
 
     long_var_count = MR_long_desc_var_count(label_layout);
@@ -255,7 +258,8 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
     */
 
     MR_restore_registers();
-    MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1, saved_regs);
+    MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1, saved_regs,
+        MR_MAX_VIRTUAL_F_REG - 1, saved_f_regs);
     if (top_frame) {
         current_regs = saved_regs;
     } else {

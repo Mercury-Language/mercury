@@ -1086,6 +1086,12 @@
             % value of `curfr'. These are used in nondet code. Framevar slot
             % numbers start at 1.
 
+    ;       double_stackvar(double_stack_type, int)
+            % Two consecutive stack slots for storing a double-precision float:
+            % - stackvar(Slot), stackvar(Slot + 1)
+            % - parent_stackvar(Slot), parent_stackvar(Slot + 1)
+            % - framevar(Slot), framevar(Slot + 1)
+
     ;       succip_slot(rval)
             % The succip slot of the specified nondet stack frame; holds the
             % code address to jump to on successful exit from this nondet
@@ -1136,6 +1142,11 @@
             % The location of the specified variable. `var' lvals are used
             % during code generation, but should not be present in the LLDS
             % at any stage after code generation.
+
+:- type double_stack_type
+    --->    double_stackvar
+    ;       double_parent_stackvar
+    ;       double_framevar.
 
     % An rval is an expression that represents a value.
     %
@@ -1234,10 +1245,6 @@
 
 :- type layout_slot_id_kind
     --->    table_io_decl_id.
-
-:- type reg_type
-    --->    reg_r       % general-purpose (integer) regs
-    ;       reg_f.      % floating point regs
 
     % There are two kinds of labels: entry labels and internal labels.
     % Entry labels are the entry points of procedures; internal labels are not.
@@ -1450,6 +1457,10 @@
     --->    have_unboxed_floats
     ;       do_not_have_unboxed_floats.
 
+:- type use_float_registers
+    --->    use_float_registers
+    ;       do_not_use_float_registers.
+
 :- type have_static_ground_cells
     --->    have_static_ground_cells
     ;       do_not_have_static_ground_cells.
@@ -1467,6 +1478,7 @@
                 non_local_gotos         :: have_non_local_gotos,
                 asm_labels              :: have_asm_labels,
                 unboxed_floats          :: have_unboxed_floats,
+                float_registers         :: use_float_registers,
                 static_ground_cells     :: have_static_ground_cells,
                 static_ground_floats    :: have_static_ground_floats,
                 static_code_addresses   :: have_static_code_addresses
@@ -1475,6 +1487,7 @@
 :- func get_nonlocal_gotos(exprn_opts) = have_non_local_gotos.
 :- func get_asm_labels(exprn_opts) = have_asm_labels.
 :- func get_unboxed_floats(exprn_opts) = have_unboxed_floats.
+:- func get_float_registers(exprn_opts) = use_float_registers.
 :- func get_static_ground_cells(exprn_opts) = have_static_ground_cells.
 :- func get_static_ground_floats(exprn_opts) = have_static_ground_floats.
 :- func get_static_code_addresses(exprn_opts) = have_static_code_addresses.
@@ -1498,26 +1511,57 @@ first_nonfixed_embedded_slot_addr(EmbeddedStackId, FixedSize) = Rval :-
     LowestAddrNonfixedSlot = LastSlot - FixedSize,
     Rval = stack_slot_num_to_lval_ref(MainStackId, LowestAddrNonfixedSlot).
 
-stack_slot_to_lval(det_slot(N)) = stackvar(N).
-stack_slot_to_lval(parent_det_slot(N)) = parent_stackvar(N).
-stack_slot_to_lval(nondet_slot(N)) = framevar(N).
+stack_slot_to_lval(Slot) = Lval :-
+    (
+        Slot = det_slot(N, Width),
+        (
+            Width = single_width,
+            Lval = stackvar(N)
+        ;
+            Width = double_width,
+            Lval = double_stackvar(double_stackvar, N)
+        )
+    ;
+        Slot = parent_det_slot(N, Width),
+        (
+            Width = single_width,
+            Lval = parent_stackvar(N)
+        ;
+            Width = double_width,
+            Lval = double_stackvar(double_parent_stackvar, N)
+        )
+    ;
+        Slot = nondet_slot(N, Width),
+        (
+            Width = single_width,
+            Lval = framevar(N)
+        ;
+            Width = double_width,
+            Lval = double_stackvar(double_framevar, N)
+        )
+    ).
 
 key_stack_slot_to_lval(_, Slot) =
     stack_slot_to_lval(Slot).
 
 abs_locn_to_lval_or_any_reg(any_reg) = loa_any_reg.
-abs_locn_to_lval_or_any_reg(abs_reg(N)) = loa_lval(reg(reg_r, N)).
-abs_locn_to_lval_or_any_reg(abs_stackvar(N)) = loa_lval(stackvar(N)).
-abs_locn_to_lval_or_any_reg(abs_parent_stackvar(N))
-    = loa_lval(parent_stackvar(N)).
-abs_locn_to_lval_or_any_reg(abs_framevar(N)) = loa_lval(framevar(N)).
+abs_locn_to_lval_or_any_reg(abs_reg(Type, N)) = loa_lval(reg(Type, N)).
+abs_locn_to_lval_or_any_reg(abs_stackvar(N, Width)) =
+    loa_lval(stack_slot_to_lval(det_slot(N, Width))).
+abs_locn_to_lval_or_any_reg(abs_parent_stackvar(N, Width)) =
+    loa_lval(stack_slot_to_lval(parent_det_slot(N, Width))).
+abs_locn_to_lval_or_any_reg(abs_framevar(N, Width)) =
+    loa_lval(stack_slot_to_lval(nondet_slot(N, Width))).
 
 abs_locn_to_lval(any_reg) = _ :-
     unexpected($module, $pred, "any_reg").
-abs_locn_to_lval(abs_reg(N)) = reg(reg_r, N).
-abs_locn_to_lval(abs_stackvar(N)) = stackvar(N).
-abs_locn_to_lval(abs_parent_stackvar(N)) = parent_stackvar(N).
-abs_locn_to_lval(abs_framevar(N)) = framevar(N).
+abs_locn_to_lval(abs_reg(Type, N)) = reg(Type, N).
+abs_locn_to_lval(abs_stackvar(N, Width)) =
+    stack_slot_to_lval(det_slot(N, Width)).
+abs_locn_to_lval(abs_parent_stackvar(N, Width)) =
+    stack_slot_to_lval(parent_det_slot(N, Width)).
+abs_locn_to_lval(abs_framevar(N, Width)) =
+    stack_slot_to_lval(nondet_slot(N, Width)).
 
 key_abs_locn_to_lval(_, AbsLocn) =
     abs_locn_to_lval(AbsLocn).
@@ -1559,6 +1603,7 @@ lval_type(temp(RegType, _), Type) :-
 lval_type(stackvar(_), lt_word).
 lval_type(parent_stackvar(_), lt_word).
 lval_type(framevar(_), lt_word).
+lval_type(double_stackvar(_, _), lt_float).
 lval_type(succip_slot(_), lt_code_ptr).
 lval_type(redoip_slot(_), lt_code_ptr).
 lval_type(redofr_slot(_), lt_data_ptr).
@@ -1686,6 +1731,7 @@ get_nonlocal_gotos(ExprnOpts) = ExprnOpts ^ non_local_gotos.
 get_asm_labels(ExprnOpts) = ExprnOpts ^ asm_labels.
 get_static_ground_cells(ExprnOpts) = ExprnOpts ^ static_ground_cells.
 get_unboxed_floats(ExprnOpts) = ExprnOpts ^ unboxed_floats.
+get_float_registers(ExprnOpts) = ExprnOpts ^ float_registers.
 get_static_ground_floats(ExprnOpts) = ExprnOpts ^ static_ground_floats.
 get_static_code_addresses(ExprnOpts) = ExprnOpts ^ static_code_addresses.
 

@@ -49,6 +49,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.name_mangle.
+:- import_module hlds.hlds_llds.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.x86_64_out.
@@ -555,6 +556,8 @@ transform_lval(!RegMap, framevar(Offset), Op, Instr) :-
         Instr = yes([x86_64_instr(mov(
             operand_label(FakeRegVal), operand_reg(ScratchReg)))])
     ).
+transform_lval(!RegMap, double_stackvar(_, _), _, _) :-
+    sorry($module, $pred, "double_stackvar").
 transform_lval(!RegMap, succip_slot(Rval), Op, Instr) :-
     transform_rval(!RegMap, Rval, Op, Instr).
 transform_lval(!RegMap, redoip_slot(Rval), Op, Instr) :-

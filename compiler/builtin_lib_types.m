@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -213,7 +213,7 @@ future_type(ValueType) = defined_type(Name, [ValueType], kind_star) :-
 int_type_ctor = type_ctor(Name, 0) :-
     Name = unqualified("int").
 float_type_ctor = type_ctor(Name, 0) :-
-    Name = unqualified("int").
+    Name = unqualified("float").
 char_type_ctor = type_ctor(Name, 0) :-
     Name = unqualified("character").
 string_type_ctor = type_ctor(Name, 0) :-

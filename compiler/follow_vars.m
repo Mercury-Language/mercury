@@ -39,12 +39,12 @@
 %-----------------------------------------------------------------------------%
 
 :- pred find_final_follow_vars(proc_info::in, abs_follow_vars_map::out,
-    int::out) is det.
+    int::out, int::out) is det.
 
 :- pred find_follow_vars_in_goal(hlds_goal::in, hlds_goal::out,
     vartypes::in, module_info::in,
     abs_follow_vars_map::in, abs_follow_vars_map::out,
-    int::in, int::out) is det.
+    int::in, int::out, int::in, int::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -67,61 +67,74 @@
 
 %-----------------------------------------------------------------------------%
 
-find_final_follow_vars(ProcInfo, FollowVarsMap, NextNonReserved) :-
+find_final_follow_vars(ProcInfo, FollowVarsMap, NextNonReservedR,
+        NextNonReservedF) :-
     proc_info_arg_info(ProcInfo, ArgInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
     assoc_list.from_corresponding_lists(ArgInfo, HeadVars, ArgInfoHeadVars),
     map.init(FollowVarsMap0),
     find_final_follow_vars_2(ArgInfoHeadVars,
-        FollowVarsMap0, FollowVarsMap, 1, NextNonReserved).
+        FollowVarsMap0, FollowVarsMap, 1, NextNonReservedR,
+        1, NextNonReservedF).
 
 :- pred find_final_follow_vars_2(assoc_list(arg_info, prog_var)::in,
-    abs_follow_vars_map::in, abs_follow_vars_map::out, int::in, int::out)
-    is det.
+    abs_follow_vars_map::in, abs_follow_vars_map::out, int::in, int::out,
+    int::in, int::out) is det.
 
-find_final_follow_vars_2([], !FollowMap, !NextNonReserved).
-find_final_follow_vars_2([arg_info(RegNum, Mode) - Var | ArgInfoVars],
-        !FollowVarsMap, !NextNonReserved) :-
+find_final_follow_vars_2([], !FollowMap, !NextNonReservedR, !NextNonReservedF).
+find_final_follow_vars_2([arg_info(ArgLoc, Mode) - Var | ArgInfoVars],
+        !FollowVarsMap, !NextNonReservedR, !NextNonReservedF) :-
     (
         Mode = top_out,
-        Locn = abs_reg(RegNum),
+        ArgLoc = reg(RegType, RegNum),
+        Locn = abs_reg(RegType, RegNum),
         map.det_insert(Var, Locn, !FollowVarsMap),
-        int.max(RegNum + 1, !NextNonReserved)
+        (
+            RegType = reg_r,
+            int.max(RegNum + 1, !NextNonReservedR)
+        ;
+            RegType = reg_f,
+            int.max(RegNum + 1, !NextNonReservedF)
+        )
     ;
         Mode = top_in
     ;
         Mode = top_unused
     ),
-    find_final_follow_vars_2(ArgInfoVars, !FollowVarsMap, !NextNonReserved).
+    find_final_follow_vars_2(ArgInfoVars, !FollowVarsMap, !NextNonReservedR,
+        !NextNonReservedF).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 find_follow_vars_in_goal(hlds_goal(GoalExpr0, GoalInfo0),
         hlds_goal(GoalExpr, GoalInfo), VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved) :-
+        !FollowVarsMap, !NextNonReservedR, !NextNonReservedF) :-
     find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
-        VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReserved).
+        VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReservedR,
+        !NextNonReservedF).
 
 %-----------------------------------------------------------------------------%
 
 :- pred find_follow_vars_in_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out, vartypes::in, module_info::in,
     abs_follow_vars_map::in, abs_follow_vars_map::out,
-    int::in, int::out) is det.
+    int::in, int::out, int::in, int::out) is det.
 
 find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
-        VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
+        VarTypes, ModuleInfo, !FollowVarsMap,
+        !NextNonReservedR, !NextNonReservedF) :-
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
             find_follow_vars_in_conj(Goals0, Goals, VarTypes, ModuleInfo,
-                no, !FollowVarsMap, !NextNonReserved)
+                no, !FollowVarsMap, !NextNonReservedR, !NextNonReservedF)
         ;
             ConjType = parallel_conj,
             find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes,
-                ModuleInfo, !FollowVarsMap, !NextNonReserved)
+                ModuleInfo, !FollowVarsMap, !NextNonReservedR,
+                !NextNonReservedF)
         ),
         GoalExpr = conj(ConjType, Goals)
     ;
@@ -131,7 +144,7 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
         % the requirements of the code following the disjunction.
         goal_info_set_store_map(!.FollowVarsMap, !GoalInfo),
         find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes,
-            ModuleInfo, !FollowVarsMap, !NextNonReserved),
+            ModuleInfo, !FollowVarsMap, !NextNonReservedR, !NextNonReservedF),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, Det, Cases0),
@@ -140,12 +153,13 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
         % reflects the requirements of the code following the switch.
         goal_info_set_store_map(!.FollowVarsMap, !GoalInfo),
         find_follow_vars_in_cases(Cases0, Cases, VarTypes, ModuleInfo,
-            !FollowVarsMap, !NextNonReserved),
+            !FollowVarsMap, !NextNonReservedR, !NextNonReservedF),
         GoalExpr = switch(Var, Det, Cases)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         FollowVarsMap0 = !.FollowVarsMap,
-        NextNonReserved0 = !.NextNonReserved,
+        NextNonReservedR0 = !.NextNonReservedR,
+        NextNonReservedF0 = !.NextNonReservedF,
 
         % Set the follow_vars field for the condition, the then-part and the
         % else-part, since in general they have requirements about where
@@ -165,34 +179,38 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
         % following the if-then-else.
         find_follow_vars_in_goal(Then0, Then1, VarTypes, ModuleInfo,
             FollowVarsMap0, FollowVarsMapThen,
-            NextNonReserved0, NextNonReservedThen),
-        FollowVarsThen =
-            abs_follow_vars(FollowVarsMapThen, NextNonReservedThen),
+            NextNonReservedR0, NextNonReservedThenR,
+            NextNonReservedF0, NextNonReservedThenF),
+        FollowVarsThen = abs_follow_vars(FollowVarsMapThen,
+            NextNonReservedThenR, NextNonReservedThenF),
         goal_set_follow_vars(yes(FollowVarsThen), Then1, Then),
 
         find_follow_vars_in_goal(Cond0, Cond1, VarTypes, ModuleInfo,
             FollowVarsMapThen, FollowVarsMapCond,
-            NextNonReservedThen, NextNonReservedCond),
-        FollowVarsCond =
-            abs_follow_vars(FollowVarsMapCond, NextNonReservedCond),
+            NextNonReservedThenR, NextNonReservedCondR,
+            NextNonReservedThenF, NextNonReservedCondF),
+        FollowVarsCond = abs_follow_vars(FollowVarsMapCond,
+            NextNonReservedCondR, NextNonReservedCondF),
         goal_set_follow_vars(yes(FollowVarsCond), Cond1, Cond),
 
         find_follow_vars_in_goal(Else0, Else1, VarTypes, ModuleInfo,
             FollowVarsMap0, FollowVarsMapElse,
-            NextNonReserved0, NextNonReservedElse),
-        FollowVarsElse =
-            abs_follow_vars(FollowVarsMapElse, NextNonReservedElse),
+            NextNonReservedR0, NextNonReservedElseR,
+            NextNonReservedF0, NextNonReservedElseF),
+        FollowVarsElse = abs_follow_vars(FollowVarsMapElse,
+            NextNonReservedElseR, NextNonReservedElseF),
         goal_set_follow_vars(yes(FollowVarsElse), Else1, Else),
 
         goal_info_set_store_map(FollowVarsMap0, !GoalInfo),
 
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         !:FollowVarsMap = FollowVarsMapCond,
-        !:NextNonReserved = NextNonReservedCond
+        !:NextNonReservedR = NextNonReservedCondR,
+        !:NextNonReservedF = NextNonReservedCondF
     ;
         GoalExpr0 = negation(SubGoal0),
         find_follow_vars_in_goal(SubGoal0, SubGoal, VarTypes, ModuleInfo,
-            !FollowVarsMap, !NextNonReserved),
+            !FollowVarsMap, !NextNonReservedR, !NextNonReservedF),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
@@ -205,7 +223,7 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
             SubGoal = SubGoal0
         ;
             find_follow_vars_in_goal(SubGoal0, SubGoal, VarTypes, ModuleInfo,
-                !FollowVarsMap, !NextNonReserved)
+                !FollowVarsMap, !NextNonReservedR, !NextNonReservedF)
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;
@@ -229,7 +247,7 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
             ; State = not_builtin
             ),
             find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo,
-                !:FollowVarsMap, !:NextNonReserved)
+                !:FollowVarsMap, !:NextNonReservedR, !:NextNonReservedF)
         )
     ;
         GoalExpr0 = generic_call(GenericCall, Args, Modes, Det),
@@ -244,7 +262,9 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
             ),
             determinism_to_code_model(Det, CodeModel),
             map.apply_to_list(Args, VarTypes, Types),
-            make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfos),
+            % Generic calls use rN registers for all arguments.
+            make_arg_infos(Types, Modes, CodeModel, ModuleInfo, reg_r,
+                ArgInfos),
             assoc_list.from_corresponding_lists(Args, ArgInfos, ArgsInfos),
             arg_info.partition_args(ArgsInfos, InVarInfos, _),
             assoc_list.keys(InVarInfos, InVars),
@@ -252,9 +272,10 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
             call_gen.generic_call_info(Globals, GenericCall,
                 length(InVars), _, SpecifierArgInfos, FirstInput, _),
             find_follow_vars_from_arginfo(SpecifierArgInfos,
-                map.init, !:FollowVarsMap, 1, _),
-            find_follow_vars_from_sequence(InVars, FirstInput,
-                !FollowVarsMap, !:NextNonReserved)
+                map.init, !:FollowVarsMap, 1, _, 1, _),
+            find_follow_vars_from_generic_in_vars(InVars, !FollowVarsMap,
+                FirstInput, !:NextNonReservedR),
+            !:NextNonReservedF = 1
         )
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
@@ -268,26 +289,28 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred find_follow_vars_in_call(pred_id::in, proc_id::in, list(prog_var)::in,
-    module_info::in, abs_follow_vars_map::out, int::out) is det.
+    module_info::in, abs_follow_vars_map::out, int::out, int::out) is det.
 
 find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo,
-        FollowVarsMap, NextNonReserved) :-
+        FollowVarsMap, NextNonReservedR, NextNonReservedF) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_arg_info(ProcInfo, ArgInfo),
     assoc_list.from_corresponding_lists(Args, ArgInfo, ArgsInfos),
     find_follow_vars_from_arginfo(ArgsInfos, map.init, FollowVarsMap,
-        1, NextNonReserved).
+        1, NextNonReservedR, 1, NextNonReservedF).
 
 :- pred find_follow_vars_from_arginfo(assoc_list(prog_var, arg_info)::in,
     abs_follow_vars_map::in, abs_follow_vars_map::out,
-    int::in, int::out) is det.
+    int::in, int::out, int::in, int::out) is det.
 
-find_follow_vars_from_arginfo([], !FollowVarsMap, !NextNonReserved).
-find_follow_vars_from_arginfo([ArgVar - arg_info(RegNum, Mode) | ArgsInfos],
-        !FollowVarsMap, !NextNonReserved) :-
+find_follow_vars_from_arginfo([],
+        !FollowVarsMap, !NextNonReservedR, !NextNonReservedF).
+find_follow_vars_from_arginfo([ArgVar - arg_info(ArgLoc, Mode) | ArgsInfos],
+        !FollowVarsMap, !NextNonReservedR, !NextNonReservedF) :-
     (
         Mode = top_in,
-        Locn = abs_reg(RegNum),
+        ArgLoc = reg(RegType, RegNum),
+        Locn = abs_reg(RegType, RegNum),
         ( map.insert(ArgVar, Locn, !FollowVarsMap) ->
             true    % FollowVarsMap is updated
         ;
@@ -298,24 +321,33 @@ find_follow_vars_from_arginfo([ArgVar - arg_info(RegNum, Mode) | ArgsInfos],
             % we would give to this appearance of the variable.
             true    % FollowVarsMap is not updated
         ),
-        int.max(RegNum + 1, !NextNonReserved)
+        (
+            RegType = reg_r,
+            int.max(RegNum + 1, !NextNonReservedR)
+        ;
+            RegType = reg_f,
+            int.max(RegNum + 1, !NextNonReservedF)
+        )
     ;
         ( Mode = top_out
         ; Mode = top_unused
         )
     ),
     find_follow_vars_from_arginfo(ArgsInfos,
-        !FollowVarsMap, !NextNonReserved).
+        !FollowVarsMap, !NextNonReservedR, !NextNonReservedF).
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_follow_vars_from_sequence(list(prog_var)::in, int::in,
-    abs_follow_vars_map::in, abs_follow_vars_map::out, int::out) is det.
+    % Generic calls use regular registers (rN) only.
+    %
+:- pred find_follow_vars_from_generic_in_vars(list(prog_var)::in,
+    abs_follow_vars_map::in, abs_follow_vars_map::out, int::in, int::out)
+    is det.
 
-find_follow_vars_from_sequence([], NextRegNum, !FollowVarsMap, NextRegNum).
-find_follow_vars_from_sequence([InVar | InVars], NextRegNum, !FollowVarsMap,
-        NextNonReserved) :-
-    Locn = abs_reg(NextRegNum),
+find_follow_vars_from_generic_in_vars([], !FollowVarsMap, !NextRegR).
+find_follow_vars_from_generic_in_vars([InVar | InVars], !FollowVarsMap,
+        !NextRegR) :-
+    Locn = abs_reg(reg_r, !.NextRegR),
     ( map.insert(InVar, Locn, !FollowVarsMap) ->
         true    % FollowVarsMap is updated
     ;
@@ -326,8 +358,8 @@ find_follow_vars_from_sequence([InVar | InVars], NextRegNum, !FollowVarsMap,
         % variable.
         true    % FollowVarsMap is not updated
     ),
-    find_follow_vars_from_sequence(InVars, NextRegNum + 1,
-        !FollowVarsMap, NextNonReserved).
+    !:NextRegR = !.NextRegR + 1,
+    find_follow_vars_from_generic_in_vars(InVars, !FollowVarsMap, !NextRegR).
 
 %-----------------------------------------------------------------------------%
 
@@ -352,23 +384,27 @@ find_follow_vars_from_sequence([InVar | InVars], NextRegNum, !FollowVarsMap,
     %
 :- pred find_follow_vars_in_independent_goals(list(hlds_goal)::in,
     list(hlds_goal)::out, vartypes::in, module_info::in,
-    abs_follow_vars_map::in, abs_follow_vars_map::out, int::in, int::out)
-    is det.
+    abs_follow_vars_map::in, abs_follow_vars_map::out, int::in, int::out,
+    int::in, int::out) is det.
 
 find_follow_vars_in_independent_goals([], [], _, _ModuleInfo,
-        FollowVarsMap,  FollowVarsMap,
-        NextNonReserved, NextNonReserved).
+        FollowVarsMap, FollowVarsMap, NextNonReservedR, NextNonReservedR,
+        NextNonReservedF, NextNonReservedF).
 find_follow_vars_in_independent_goals([Goal0 | Goals0], [Goal | Goals],
         VarTypes, ModuleInfo, FollowVarsMap0, FollowVarsMap,
-        NextNonReserved0, NextNonReserved) :-
+        NextNonReservedR0, NextNonReservedR,
+        NextNonReservedF0, NextNonReservedF) :-
     find_follow_vars_in_goal(Goal0, Goal1, VarTypes, ModuleInfo,
         FollowVarsMap0, FollowVarsMap,
-        NextNonReserved0, NextNonReserved),
-    FollowVars = abs_follow_vars(FollowVarsMap, NextNonReserved),
+        NextNonReservedR0, NextNonReservedR,
+        NextNonReservedF0, NextNonReservedF),
+    FollowVars = abs_follow_vars(FollowVarsMap, NextNonReservedR,
+        NextNonReservedF),
     goal_set_follow_vars(yes(FollowVars), Goal1, Goal),
     find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes, ModuleInfo,
         FollowVarsMap0, _FollowVarsMap,
-        NextNonReserved0, _NextNonReserved).
+        NextNonReservedR0, _NextNonReservedR,
+        NextNonReservedF0, _NextNonReservedF).
 
 %-----------------------------------------------------------------------------%
 
@@ -386,22 +422,27 @@ find_follow_vars_in_independent_goals([Goal0 | Goals0], [Goal | Goals],
 :- pred find_follow_vars_in_cases(list(case)::in, list(case)::out,
     vartypes::in, module_info::in,
     abs_follow_vars_map::in, abs_follow_vars_map::out,
-    int::in, int::out) is det.
+    int::in, int::out, int::in, int::out) is det.
 
-find_follow_vars_in_cases([], [], _, _, !FollowVarsMap, !NextNonReserved).
+find_follow_vars_in_cases([], [], _, _, !FollowVarsMap, !NextNonReservedR,
+        !NextNonReservedF).
 find_follow_vars_in_cases([Case0 | Cases0], [Case | Cases],
         VarTypes, ModuleInfo, FollowVarsMap0, FollowVarsMap,
-        NextNonReserved0, NextNonReserved) :-
+        NextNonReservedR0, NextNonReservedR,
+        NextNonReservedF0, NextNonReservedF) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     find_follow_vars_in_goal(Goal0, Goal1, VarTypes, ModuleInfo,
         FollowVarsMap0, FollowVarsMap,
-        NextNonReserved0, NextNonReserved),
-    FollowVars = abs_follow_vars(FollowVarsMap, NextNonReserved),
+        NextNonReservedR0, NextNonReservedR,
+        NextNonReservedF0, NextNonReservedF),
+    FollowVars = abs_follow_vars(FollowVarsMap, NextNonReservedR,
+        NextNonReservedF),
     goal_set_follow_vars(yes(FollowVars), Goal1, Goal),
     Case = case(MainConsId, OtherConsIds, Goal),
     find_follow_vars_in_cases(Cases0, Cases, VarTypes, ModuleInfo,
         FollowVarsMap0, _FollowVarsMap,
-        NextNonReserved, _NextNonReserved).
+        NextNonReservedR, _NextNonReservedR,
+        NextNonReservedF, _NextNonReservedF).
 
 %-----------------------------------------------------------------------------%
 
@@ -411,12 +452,13 @@ find_follow_vars_in_cases([Case0 | Cases0], [Case | Cases],
 :- pred find_follow_vars_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     vartypes::in, module_info::in, bool::in,
     abs_follow_vars_map::in, abs_follow_vars_map::out,
-    int::in, int::out) is det.
+    int::in, int::out, int::in, int::out) is det.
 
 find_follow_vars_in_conj([], [], _, _ModuleInfo, _AttachToFirst,
-        !FollowVarsMap, !NextNonReserved).
+        !FollowVarsMap, !NextNonReservedR, !NextNonReservedF).
 find_follow_vars_in_conj([Goal0 | Goals0], [Goal | Goals], VarTypes,
-        ModuleInfo, AttachToFirst, !FollowVarsMap, !NextNonReserved) :-
+        ModuleInfo, AttachToFirst, !FollowVarsMap, !NextNonReservedR,
+        !NextNonReservedF) :-
     (
         Goal0 = hlds_goal(GoalExpr0, _),
         (
@@ -432,12 +474,13 @@ find_follow_vars_in_conj([Goal0 | Goals0], [Goal | Goals], VarTypes,
         AttachToNext = yes
     ),
     find_follow_vars_in_conj(Goals0, Goals, VarTypes, ModuleInfo,
-        AttachToNext, !FollowVarsMap, !NextNonReserved),
+        AttachToNext, !FollowVarsMap, !NextNonReservedR, !NextNonReservedF),
     find_follow_vars_in_goal(Goal0, Goal1, VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved),
+        !FollowVarsMap, !NextNonReservedR, !NextNonReservedF),
     (
         AttachToFirst = yes,
-        FollowVars = abs_follow_vars(!.FollowVarsMap, !.NextNonReserved),
+        FollowVars = abs_follow_vars(!.FollowVarsMap, !.NextNonReservedR,
+            !.NextNonReservedF),
         goal_set_follow_vars(yes(FollowVars), Goal1, Goal)
     ;
         AttachToFirst = no,

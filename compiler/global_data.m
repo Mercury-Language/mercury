@@ -1237,6 +1237,7 @@ remap_lval(Remap, Lval0, Lval) :-
         ; Lval0 = stackvar(_)
         ; Lval0 = parent_stackvar(_)
         ; Lval0 = framevar(_)
+        ; Lval0 = double_stackvar(_, _)
         ; Lval0 = succip_slot(_)
         ; Lval0 = redoip_slot(_)
         ; Lval0 = redofr_slot(_)

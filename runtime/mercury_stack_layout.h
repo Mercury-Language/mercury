@@ -135,25 +135,31 @@ typedef MR_int_least16_t    MR_Determinism;
 typedef MR_Unsigned MR_LongLval;
 
 typedef enum {
-    MR_LONG_LVAL_TYPE_CONS_0,
-    MR_LONG_LVAL_TYPE_R,
-    MR_LONG_LVAL_TYPE_F,
-    MR_LONG_LVAL_TYPE_STACKVAR,
-    MR_LONG_LVAL_TYPE_CONS_1,
-    MR_LONG_LVAL_TYPE_FRAMEVAR,
-    MR_LONG_LVAL_TYPE_SUCCIP,
-    MR_LONG_LVAL_TYPE_MAXFR,
-    MR_LONG_LVAL_TYPE_CONS_2,
-    MR_LONG_LVAL_TYPE_CURFR,
-    MR_LONG_LVAL_TYPE_HP,
-    MR_LONG_LVAL_TYPE_SP,
-    MR_LONG_LVAL_TYPE_CONS_3,
-    MR_LONG_LVAL_TYPE_INDIRECT,
-    MR_LONG_LVAL_TYPE_UNKNOWN
+    MR_LONG_LVAL_TYPE_CONS_0          = 0,
+    MR_LONG_LVAL_TYPE_R               = 1,
+    MR_LONG_LVAL_TYPE_F               = 2,
+    MR_LONG_LVAL_TYPE_STACKVAR        = 3,
+    MR_LONG_LVAL_TYPE_CONS_1          = 4,
+    MR_LONG_LVAL_TYPE_FRAMEVAR        = 5,
+    MR_LONG_LVAL_TYPE_SUCCIP          = 6,
+    MR_LONG_LVAL_TYPE_MAXFR           = 7,
+    MR_LONG_LVAL_TYPE_CONS_2          = 8,
+    MR_LONG_LVAL_TYPE_CURFR           = 9,
+    MR_LONG_LVAL_TYPE_HP              = 10,
+    MR_LONG_LVAL_TYPE_SP              = 11,
+    MR_LONG_LVAL_TYPE_CONS_3          = 12,
+    MR_LONG_LVAL_TYPE_DOUBLE_STACKVAR = 13,
+    MR_LONG_LVAL_TYPE_DOUBLE_FRAMEVAR = 14,
+    MR_LONG_LVAL_TYPE_INDIRECT        = 15,
+    MR_LONG_LVAL_TYPE_CONS_4          = 16,
+    MR_LONG_LVAL_TYPE_UNKNOWN         = 17,
+    MR_LONG_LVAL_TYPE_CONS_5          = 20,
+    MR_LONG_LVAL_TYPE_CONS_6          = 24,
+    MR_LONG_LVAL_TYPE_CONS_7          = 28
 } MR_LongLvalType;
 
 /* This must be in sync with stack_layout.long_lval_tag_bits */
-#define MR_LONG_LVAL_TAGBITS        4
+#define MR_LONG_LVAL_TAGBITS        5
 
 #define MR_LONG_LVAL_CONST_TAGBITS  2
 
@@ -937,6 +943,7 @@ typedef struct MR_ExecTrace_Struct {
     MR_uint_least16_t           MR_exec_num_head_vars;
     MR_uint_least16_t           MR_exec_max_named_var_num;
     MR_uint_least16_t           MR_exec_max_r_num;
+    MR_uint_least16_t           MR_exec_max_f_num;
     MR_int_least8_t             MR_exec_maybe_from_full;
     MR_int_least8_t             MR_exec_maybe_io_seq;
     MR_int_least8_t             MR_exec_maybe_trail;
@@ -1115,6 +1122,7 @@ typedef struct MR_ProcLayout_Traversal_Struct {
 #define MR_sle_used_var_names   MR_sle_exec_trace->MR_exec_used_var_names
 #define MR_sle_max_named_var_num MR_sle_exec_trace->MR_exec_max_named_var_num
 #define MR_sle_max_r_num        MR_sle_exec_trace->MR_exec_max_r_num
+#define MR_sle_max_f_num        MR_sle_exec_trace->MR_exec_max_f_num
 #define MR_sle_maybe_from_full  MR_sle_exec_trace->MR_exec_maybe_from_full
 #define MR_sle_maybe_io_seq     MR_sle_exec_trace->MR_exec_maybe_io_seq
 #define MR_sle_maybe_trail      MR_sle_exec_trace->MR_exec_maybe_trail

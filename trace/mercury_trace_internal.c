@@ -238,8 +238,8 @@ MR_trace_event_internal(MR_TraceCmdInfo *cmd, MR_bool interactive,
     MR_trace_maybe_sync_source_window(event_info, MR_FALSE);
 
     MR_trace_init_point_vars(event_info->MR_event_sll,
-        event_info->MR_saved_regs, event_info->MR_trace_port,
-        MR_print_optionals);
+        event_info->MR_saved_regs, event_info->MR_saved_f_regs,
+        event_info->MR_trace_port, MR_print_optionals);
 
     (void) MR_trace_var_print_list(print_list);
 
@@ -1379,8 +1379,8 @@ MR_trace_event_internal_report(MR_TraceCmdInfo *cmd,
 
     if (print_list != NULL) {
         MR_trace_init_point_vars(event_info->MR_event_sll,
-            event_info->MR_saved_regs, event_info->MR_trace_port,
-            MR_print_optionals);
+            event_info->MR_saved_regs, event_info->MR_saved_f_regs,
+            event_info->MR_trace_port, MR_print_optionals);
         MR_scroll_next += MR_trace_var_print_list(print_list);
     }
 

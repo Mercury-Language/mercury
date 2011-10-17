@@ -40,8 +40,8 @@
 
 :- type var_locn_info.
 
-    % init_var_locn_state(Arguments, Liveness, VarSet, VarTypes, StackSlots,
-    %   FollowVars, VarLocnInfo):
+    % init_var_locn_state(Arguments, Liveness, VarSet, VarTypes, FloatRegType,
+    %   StackSlots, FollowVars, VarLocnInfo):
     %
     % Produces an initial state of the VarLocnInfo given
     % an association list of variables and lvalues. The initial
@@ -51,14 +51,15 @@
     % used in the body). The VarSet parameter contains a mapping from
     % variables to names, which is used when code is generated
     % to provide meaningful comments. VarTypes gives the types of
-    % of all the procedure's variables. StackSlots maps each variable
+    % of all the procedure's variables. FloatRegType gives the preferred
+    % register type for floats. StackSlots maps each variable
     % to its stack slot, if it has one. FollowVars is the initial
     % follow_vars set; such sets give guidance as to what lvals
     % (if any) each variable will be needed in next.
     %
 :- pred init_var_locn_state(assoc_list(prog_var, lval)::in, set_of_progvar::in,
-    prog_varset::in, vartypes::in, stack_slots::in, abs_follow_vars::in,
-    var_locn_info::out) is det.
+    prog_varset::in, vartypes::in, reg_type::in, stack_slots::in,
+    abs_follow_vars::in, var_locn_info::out) is det.
 
     % reinit_var_locn_state(VarLocs, !VarLocnInfo):
     %
@@ -261,7 +262,7 @@
     %
     % Finds an unused register and marks it as 'in use'.
     %
-:- pred var_locn_acquire_reg(lval::out,
+:- pred var_locn_acquire_reg(reg_type::in, lval::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_acquire_reg_require_given(Reg, Lval, !VarLocInfo):
@@ -271,12 +272,12 @@
 :- pred var_locn_acquire_reg_require_given(lval::in,
     var_locn_info::in, var_locn_info::out) is det.
 
-    % var_locn_acquire_reg_prefer_given(Pref, Lval, !VarLocInfo):
+    % var_locn_acquire_reg_prefer_given(Type, Pref, Lval, !VarLocInfo):
     %
     % Finds an unused register, and marks it as 'in use'.
     % If Pref itself is free, assigns that.
     %
-:- pred var_locn_acquire_reg_prefer_given(int::in, lval::out,
+:- pred var_locn_acquire_reg_prefer_given(reg_type::in, int::in, lval::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_acquire_reg_start_at_given(Start, Lval, !VarLocInfo):
@@ -285,7 +286,7 @@
     % It starts the search at the one numbered Start,
     % continuing towards higher register numbers.
     %
-:- pred var_locn_acquire_reg_start_at_given(int::in, lval::out,
+:- pred var_locn_acquire_reg_start_at_given(reg_type::in, int::in, lval::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_release_reg(Lval, !VarLocnInfo):
@@ -295,14 +296,15 @@
 :- pred var_locn_release_reg(lval::in, var_locn_info::in, var_locn_info::out)
     is det.
 
-    % var_locn_lock_regs(N, Exceptions, !VarLocnInfo):
+    % var_locn_lock_regs(R, F, Exceptions, !VarLocnInfo):
     %
-    % Prevents registers r1 through rN from being reused, even if there are
-    % no variables referring to them, with the exceptions of the registers
-    % named in Exceptions, which however can only be used to store their
-    % corresponding variables. Should be followed by a call to unlock_regs.
+    % Prevents registers r1 through rR and registers f1 through fF from being
+    % reused, even if there are no variables referring to them, with the
+    % exceptions of the registers named in Exceptions, which however can only
+    % be used to store their corresponding variables. Should be followed by a
+    % call to unlock_regs.
     %
-:- pred var_locn_lock_regs(int::in, assoc_list(prog_var, lval)::in,
+:- pred var_locn_lock_regs(int::in, int::in, assoc_list(prog_var, lval)::in,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_unlock_regs(!VarLocnInfo):
@@ -361,7 +363,8 @@
     % Returns the number of the first register which is free for general use.
     % It does not reserve the register.
     %
-:- pred var_locn_get_next_non_reserved(var_locn_info::in, int::out) is det.
+:- pred var_locn_get_next_non_reserved(var_locn_info::in, reg_type::in,
+    int::out) is det.
 
     % var_locn_set_follow_vars(FollowVars):
     %
@@ -371,11 +374,12 @@
 :- pred var_locn_set_follow_vars(abs_follow_vars::in,
     var_locn_info::in, var_locn_info::out) is det.
 
-    % var_locn_max_reg_in_use(MaxReg):
+    % var_locn_max_reg_in_use(MaxRegR, MaxRegF):
     %
-    % Returns the number of the highest numbered rN register in use.
+    % Returns the number of the highest numbered rN and fN registers in use.
     %
-:- pred var_locn_max_reg_in_use(var_locn_info::in, int::out) is det.
+:- pred var_locn_max_reg_in_use(var_locn_info::in, int::out, int::out)
+    is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -384,8 +388,11 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.type_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
+:- import_module parse_tree.builtin_lib_types.
 
 :- import_module cord.
 :- import_module int.
@@ -472,14 +479,18 @@
                 vli_varset          :: prog_varset,
                 vli_vartypes        :: vartypes,
 
+                % The register type to use for float vars.
+                vli_float_reg_type  :: reg_type,
+
                 % Maps each var to its stack slot, if it has one.
                 vli_stack_slots     :: stack_slots,
 
                 % Where vars are needed next.
                 vli_follow_vars_map :: abs_follow_vars_map,
 
-                % Next register that isn't reserved in follow_vars_map.
-                vli_next_non_res    :: int,
+                % Next rN, fN register that isn't reserved in follow_vars_map.
+                vli_next_non_res_r  :: int,
+                vli_next_non_res_f  :: int,
 
                 % Documented above.
                 vli_var_state_map   :: var_state_map,
@@ -489,13 +500,15 @@
                 % holding the tags of variables during switches.
                 vli_acquired        :: set(lval),
 
-                % If this slot contains N, then registers r1 through rN
-                % can only be modified by a place_var operation, or by a
-                % free_up_lval operation that moves a variable to the
-                % (free or freeable) lval associated with it in the exceptions
-                % field. Used to implement calls, foreign_procs and the
-                % store_maps at the ends of branched control structures.
-                vli_locked          :: int,
+                % If these slots contain R and F then registers r1 through rR
+                % and f1 through fF can only be modified by a place_var
+                % operation, or by a free_up_lval operation that moves a
+                % variable to the (free or freeable) lval associated with it in
+                % the exceptions field. Used to implement calls, foreign_procs
+                % and the store_maps at the ends of branched control
+                % structures.
+                vli_locked_r        :: int,
+                vli_locked_f        :: int,
 
                 % See the documentation of the locked field above.
                 vli_exceptions      :: assoc_list(prog_var, lval)
@@ -503,17 +516,18 @@
 
 %----------------------------------------------------------------------------%
 
-init_var_locn_state(VarLocs, Liveness, VarSet, VarTypes, StackSlots,
-        FollowVars, VarLocnInfo) :-
+init_var_locn_state(VarLocs, Liveness, VarSet, VarTypes, FloatRegType,
+        StackSlots, FollowVars, VarLocnInfo) :-
     map.init(VarStateMap0),
     map.init(LocVarMap0),
     init_var_locn_state_2(VarLocs, yes(Liveness), VarStateMap0, VarStateMap,
         LocVarMap0, LocVarMap),
-    FollowVars = abs_follow_vars(FollowVarMap, NextNonReserved),
+    FollowVars = abs_follow_vars(FollowVarMap, NextNonReservedR,
+        NextNonReservedF),
     set.init(AcquiredRegs),
-    VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots,
-        FollowVarMap, NextNonReserved, VarStateMap, LocVarMap,
-        AcquiredRegs, 0, []).
+    VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
+        FollowVarMap, NextNonReservedR, NextNonReservedF, VarStateMap,
+        LocVarMap, AcquiredRegs, 0, 0, []).
 
 reinit_var_locn_state(VarLocs, !VarLocnInfo) :-
     map.init(VarStateMap0),
@@ -521,11 +535,11 @@ reinit_var_locn_state(VarLocs, !VarLocnInfo) :-
     init_var_locn_state_2(VarLocs, no, VarStateMap0, VarStateMap,
         LocVarMap0, LocVarMap),
     set.init(AcquiredRegs),
-    !.VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots,
-        FollowVarMap, NextNonReserved, _, _, _, _, _),
-    !:VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots,
-        FollowVarMap, NextNonReserved, VarStateMap, LocVarMap,
-        AcquiredRegs, 0, []).
+    !.VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
+        FollowVarMap, NextNonReservedR, NextNonReservedF, _, _, _, _, _, _),
+    !:VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
+        FollowVarMap, NextNonReservedR, NextNonReservedF, VarStateMap,
+        LocVarMap, AcquiredRegs, 0, 0, []).
 
 :- pred init_var_locn_state_2(assoc_list(prog_var, lval)::in,
     maybe(set_of_progvar)::in, var_state_map::in, var_state_map::out,
@@ -577,7 +591,7 @@ convert_live_to_lval_set(Var - State, Var - Lvals) :-
 
 var_locn_clobber_all_regs(OkToDeleteAny, !VLI) :-
     var_locn_set_acquired(set.init, !VLI),
-    var_locn_set_locked(0, !VLI),
+    var_locn_set_locked(0, 0, !VLI),
     var_locn_set_exceptions([], !VLI),
     var_locn_get_loc_var_map(!.VLI, LocVarMap0),
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
@@ -878,7 +892,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
-    select_preferred_reg_or_stack(!.VLI, Var, Lval),
+    select_preferred_reg_or_stack(!.VLI, Var, reg_r, Lval),
     get_var_name(!.VLI, Var, VarName),
     Size = size_of_cell_args(Vector),
     (
@@ -998,7 +1012,7 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
     % temporary register to record whether we actually are reusing a structure
     % or if a new object was allocated.
     ( list.member(does_not_need_update, NeedsUpdates0) ->
-        var_locn_acquire_reg(FlagReg, !VLI),
+        var_locn_acquire_reg(reg_r, FlagReg, !VLI),
         MaybeFlag = yes(FlagReg),
         TempRegs = [FlagReg | TempRegs0]
     ;
@@ -1235,7 +1249,8 @@ var_locn_save_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
             rval_depends_on_search_lval(DepVarRval,
                 specific_reg_or_stack(ReuseLval))
         ->
-            var_locn_acquire_reg(Target, !VLI),
+            reg_type_for_type(!.VLI, DepVarType, RegType),
+            var_locn_acquire_reg(RegType, Target, !VLI),
             add_additional_lval_for_var(DepVar, Target, !VLI),
             get_var_name(!.VLI, DepVar, DepVarName),
             AssignCode = singleton(
@@ -1248,6 +1263,16 @@ var_locn_save_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
         )
     ),
     SaveDepVarCode = EvalCode ++ AssignCode.
+
+:- pred reg_type_for_type(var_locn_info::in, mer_type::in, reg_type::out)
+    is det.
+
+reg_type_for_type(VLI, Type, RegType) :-
+    ( Type = float_type ->
+        var_locn_get_float_reg_type(VLI, RegType)
+    ;
+        RegType = reg_r
+    ).
 
 %----------------------------------------------------------------------------%
 
@@ -1371,7 +1396,8 @@ var_locn_produce_var(ModuleInfo, Var, Rval, Code, !VLI) :-
         Rval = Rval2,
         Code = empty
     ;
-        select_preferred_reg(!.VLI, Var, Lval),
+        reg_type_for_var(!.VLI, Var, RegType),
+        select_preferred_reg(!.VLI, Var, RegType, Lval),
         var_locn_place_var(ModuleInfo, Var, Lval, Code, !VLI),
         Rval = lval(Lval)
     ).
@@ -1385,7 +1411,8 @@ var_locn_produce_var_in_reg(ModuleInfo, Var, Lval, Code, !VLI) :-
         Lval = SelectLval,
         Code = empty
     ;
-        select_preferred_reg(!.VLI, Var, Lval),
+        reg_type_for_var(!.VLI, Var, RegType),
+        select_preferred_reg(!.VLI, Var, RegType, Lval),
         var_locn_place_var(ModuleInfo, Var, Lval, Code, !VLI)
     ).
 
@@ -1398,8 +1425,28 @@ var_locn_produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code, !VLI) :-
         Lval = SelectLval,
         Code = empty
     ;
-        select_preferred_reg_or_stack(!.VLI, Var, Lval),
+        reg_type_for_var(!.VLI, Var, RegType),
+        select_preferred_reg_or_stack(!.VLI, Var, RegType, Lval),
         var_locn_place_var(ModuleInfo, Var, Lval, Code, !VLI)
+    ).
+
+:- pred reg_type_for_var(var_locn_info::in, prog_var::in, reg_type::out)
+    is det.
+
+reg_type_for_var(VLI, Var, RegType) :-
+    var_locn_get_float_reg_type(VLI, FloatRegType),
+    (
+        FloatRegType = reg_r,
+        RegType = reg_r
+    ;
+        FloatRegType = reg_f,
+        var_locn_get_vartypes(VLI, VarTypes),
+        map.lookup(VarTypes, Var, VarType),
+        ( VarType = float_type ->
+            RegType = reg_f
+        ;
+            RegType = reg_r
+        )
     ).
 
 %----------------------------------------------------------------------------%
@@ -1425,8 +1472,8 @@ var_locn_place_vars(ModuleInfo, VarLocns, Code, !VLI) :-
     % moved by a freeing up operation is in VarLocns, then it is OK to move it
     % to the location assigned to it by VarLocns.
     assoc_list.values(VarLocns, Lvals),
-    code_util.max_mentioned_reg(Lvals, MaxReg),
-    var_locn_lock_regs(MaxReg, VarLocns, !VLI),
+    code_util.max_mentioned_regs(Lvals, MaxRegR, MaxRegF),
+    var_locn_lock_regs(MaxRegR, MaxRegF, VarLocns, !VLI),
     actually_place_vars(ModuleInfo, VarLocns, Code, !VLI),
     var_locn_unlock_regs(!VLI).
 
@@ -1610,7 +1657,8 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
             EffAffectedVars = [MovedVar]
         ),
 
-        select_preferred_reg_or_stack(!.VLI, MovedVar, Pref),
+        reg_type_for_var(!.VLI, MovedVar, RegType),
+        select_preferred_reg_or_stack(!.VLI, MovedVar, RegType, Pref),
         \+ Pref = Lval,
         \+ list.member(Pref, ForbiddenLvals),
         ( \+ var_locn_lval_in_use(!.VLI, Pref) ->
@@ -1619,14 +1667,15 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
             % The code generator assumes that values in stack slots don't get
             % clobbered without an explicit assignment (via a place_var
             % operation with a stack var as a target).
-            Pref = reg(reg_r, RegNum),
-            reg_is_not_locked_for_var(!.VLI, RegNum, MovedVar)
+            Pref = reg(PrefRegType, RegNum),
+            reg_is_not_locked_for_var(!.VLI, PrefRegType, RegNum, MovedVar)
         )
     ->
         actually_place_var(ModuleInfo, MovedVar, Pref, [Lval | ForbiddenLvals],
             Code, !VLI)
     ;
-        get_spare_reg(!.VLI, Target),
+        RegType = lval_spare_reg_type(Lval),
+        get_spare_reg(!.VLI, RegType, Target),
         record_copy(Lval, Target, !VLI),
         (
             ( Lval = stackvar(N)
@@ -1695,6 +1744,17 @@ ensure_copies_are_present_lval([OtherSource | OtherSources], OneSource, Lval,
     SubstLval = substitute_lval_in_lval(OneSource, OtherSource, Lval),
     set.insert(SubstLval, !LvalSet),
     ensure_copies_are_present_lval(OtherSources, OneSource, Lval, !LvalSet).
+
+:- func lval_spare_reg_type(lval) = reg_type.
+
+lval_spare_reg_type(Lval) = RegType :-
+    ( Lval = reg(reg_f, _) ->
+        RegType = reg_f
+    ; Lval = double_stackvar(_, _) ->
+        RegType = reg_f
+    ;
+        RegType = reg_r
+    ).
 
 %----------------------------------------------------------------------------%
 
@@ -1924,7 +1984,12 @@ select_reg_lval([Lval0 | Lvals0], Lval) :-
 :- pred select_stack_lval(list(lval)::in, lval::out) is semidet.
 
 select_stack_lval([Lval0 | Lvals0], Lval) :-
-    ( ( Lval0 = stackvar(_) ; Lval0 = framevar(_)) ->
+    (
+        ( Lval0 = stackvar(_)
+        ; Lval0 = framevar(_)
+        ; Lval0 = double_stackvar(_, _)
+        )
+    ->
         Lval = Lval0
     ;
         select_stack_lval(Lvals0, Lval)
@@ -1938,6 +2003,7 @@ select_reg_or_stack_lval([Lval0 | Lvals0], Lval) :-
         ( Lval0 = reg(_, _)
         ; Lval0 = stackvar(_)
         ; Lval0 = framevar(_)
+        ; Lval0 = double_stackvar(_, _)
         )
     ->
         Lval = Lval0
@@ -1955,39 +2021,39 @@ select_cheapest_lval([Lval | _], Lval).
 
 %----------------------------------------------------------------------------%
 
-:- pred select_preferred_reg(var_locn_info::in, prog_var::in, lval::out)
-    is det.
+:- pred select_preferred_reg(var_locn_info::in, prog_var::in, reg_type::in,
+    lval::out) is det.
 
-select_preferred_reg(VLI, Var, Lval) :-
-    select_preferred_reg_avoid(VLI, Var, [], Lval).
+select_preferred_reg(VLI, Var, RegType, Lval) :-
+    select_preferred_reg_avoid(VLI, Var, RegType, [], Lval).
 
     % Select the register into which Var should be put. If the follow_vars map
     % maps Var to a register, then select that register, unless it is already
     % in use.
     %
 :- pred select_preferred_reg_avoid(var_locn_info::in, prog_var::in,
-    list(lval)::in, lval::out) is det.
+    reg_type::in, list(lval)::in, lval::out) is det.
 
-select_preferred_reg_avoid(VLI, Var, Avoid, Lval) :-
+select_preferred_reg_avoid(VLI, Var, RegType, Avoid, Lval) :-
     var_locn_get_follow_var_map(VLI, FollowVarMap),
     (
         map.search(FollowVarMap, Var, PrefLocn),
-        ( PrefLocn = abs_reg(_)
+        ( PrefLocn = abs_reg(_, _)
         ; PrefLocn = any_reg
         )
     ->
         (
-            PrefLocn = abs_reg(N),
-            PrefLval = reg(reg_r, N),
+            PrefLocn = abs_reg(PrefRegType, N),
+            PrefLval = reg(PrefRegType, N),
             \+ var_locn_lval_in_use(VLI, PrefLval),
             \+ list.member(PrefLval, Avoid)
         ->
             Lval = PrefLval
         ;
-            get_spare_reg_avoid(VLI, Avoid, Lval)
+            get_spare_reg_avoid(VLI, RegType, Avoid, Lval)
         )
     ;
-        get_spare_reg_avoid(VLI, Avoid, Lval)
+        get_spare_reg_avoid(VLI, RegType, Avoid, Lval)
     ).
 
     % Select the register or stack slot into which Var should be put. If the
@@ -2000,24 +2066,24 @@ select_preferred_reg_avoid(VLI, Var, Avoid, Lval) :-
     % this predicate to try to put far too many things in stack slots.)
     %
 :- pred select_preferred_reg_or_stack(var_locn_info::in, prog_var::in,
-    lval::out) is det.
+    reg_type::in, lval::out) is det.
 
-select_preferred_reg_or_stack(VLI, Var, Lval) :-
+select_preferred_reg_or_stack(VLI, Var, RegType, Lval) :-
     var_locn_get_follow_var_map(VLI, FollowVarMap),
     (
         map.search(FollowVarMap, Var, PrefLocn),
-        ( PrefLocn = abs_reg(_)
+        ( PrefLocn = abs_reg(_, _)
         ; PrefLocn = any_reg
         )
     ->
         (
-            PrefLocn = abs_reg(N),
-            PrefLval = reg(reg_r, N),
+            PrefLocn = abs_reg(RegType, N),
+            PrefLval = reg(RegType, N),
             \+ var_locn_lval_in_use(VLI, PrefLval)
         ->
             Lval = PrefLval
         ;
-            get_spare_reg(VLI, Lval)
+            get_spare_reg(VLI, RegType, Lval)
         )
     ;
         (
@@ -2028,7 +2094,7 @@ select_preferred_reg_or_stack(VLI, Var, Lval) :-
         ->
             Lval = StackSlot
         ;
-            get_spare_reg(VLI, Lval)
+            get_spare_reg(VLI, RegType, Lval)
         )
     ).
 
@@ -2045,28 +2111,28 @@ real_lval(Lval) :-
     % Get a register that is not in use. We start the search at the next
     % register that is needed for the next call.
     %
-:- pred get_spare_reg_avoid(var_locn_info::in, list(lval)::in,
+:- pred get_spare_reg_avoid(var_locn_info::in, reg_type::in, list(lval)::in,
     lval::out) is det.
 
-get_spare_reg_avoid(VLI, Avoid, Lval) :-
-    var_locn_get_next_non_reserved(VLI, NextNonReserved),
-    get_spare_reg_2(VLI, Avoid, NextNonReserved, Lval).
+get_spare_reg_avoid(VLI, RegType, Avoid, Lval) :-
+    var_locn_get_next_non_reserved(VLI, RegType, NextNonReserved),
+    get_spare_reg_2(VLI, RegType, Avoid, NextNonReserved, Lval).
 
-:- pred get_spare_reg(var_locn_info::in, lval::out) is det.
+:- pred get_spare_reg(var_locn_info::in, reg_type::in, lval::out) is det.
 
-get_spare_reg(VLI, Lval) :-
-    var_locn_get_next_non_reserved(VLI, NextNonReserved),
-    get_spare_reg_2(VLI, [], NextNonReserved, Lval).
+get_spare_reg(VLI, RegType, Lval) :-
+    var_locn_get_next_non_reserved(VLI, RegType, NextNonReserved),
+    get_spare_reg_2(VLI, RegType, [], NextNonReserved, Lval).
 
-:- pred get_spare_reg_2(var_locn_info::in, list(lval)::in, int::in,
-    lval::out) is det.
+:- pred get_spare_reg_2(var_locn_info::in, reg_type::in, list(lval)::in,
+    int::in, lval::out) is det.
 
-get_spare_reg_2(VLI, Avoid, N0, Lval) :-
-    TryLval = reg(reg_r, N0),
+get_spare_reg_2(VLI, RegType, Avoid, N0, Lval) :-
+    TryLval = reg(RegType, N0),
     ( var_locn_lval_in_use(VLI, TryLval) ->
-        get_spare_reg_2(VLI, Avoid, N0 + 1, Lval)
+        get_spare_reg_2(VLI, RegType, Avoid, N0 + 1, Lval)
     ; list.member(TryLval, Avoid) ->
-        get_spare_reg_2(VLI, Avoid, N0 + 1, Lval)
+        get_spare_reg_2(VLI, RegType, Avoid, N0 + 1, Lval)
     ;
         Lval = TryLval
     ).
@@ -2074,7 +2140,7 @@ get_spare_reg_2(VLI, Avoid, N0, Lval) :-
 var_locn_lval_in_use(VLI, Lval) :-
     var_locn_get_loc_var_map(VLI, LocVarMap),
     var_locn_get_acquired(VLI, Acquired),
-    var_locn_get_locked(VLI, Locked),
+    var_locn_get_locked(VLI, LockedR, LockedF),
     (
         map.search(LocVarMap, Lval, UsingVars),
         set_of_var.is_non_empty(UsingVars)
@@ -2082,28 +2148,37 @@ var_locn_lval_in_use(VLI, Lval) :-
         set.member(Lval, Acquired)
     ;
         Lval = reg(reg_r, N),
-        N =< Locked
+        N =< LockedR
+    ;
+        Lval = reg(reg_f, N),
+        N =< LockedF
     ).
 
     % Succeeds if Var may be stored in Reg, possibly after copying its contents
     % somewhere else. This requires Reg to be either not locked, or if it is
     % locked, to be locked for Var.
     %
-:- pred reg_is_not_locked_for_var(var_locn_info::in, int::in, prog_var::in)
-    is semidet.
+:- pred reg_is_not_locked_for_var(var_locn_info::in, reg_type::in, int::in,
+    prog_var::in) is semidet.
 
-reg_is_not_locked_for_var(VLI, RegNum, Var) :-
+reg_is_not_locked_for_var(VLI, RegType, RegNum, Var) :-
     var_locn_get_acquired(VLI, Acquired),
-    var_locn_get_locked(VLI, Locked),
     var_locn_get_exceptions(VLI, Exceptions),
-    Reg = reg(reg_r, RegNum),
+    (
+        RegType = reg_r,
+        var_locn_get_locked(VLI, Locked, _LockedF)
+    ;
+        RegType = reg_f,
+        var_locn_get_locked(VLI, _LockedR, Locked)
+    ),
+    Reg = reg(RegType, RegNum),
     \+ set.member(Reg, Acquired),
     RegNum =< Locked => list.member(Var - Reg, Exceptions).
 
 %----------------------------------------------------------------------------%
 
-var_locn_acquire_reg(Lval, !VLI) :-
-    get_spare_reg(!.VLI, Lval),
+var_locn_acquire_reg(Type, Lval, !VLI) :-
+    get_spare_reg(!.VLI, Type, Lval),
     var_locn_get_acquired(!.VLI, Acquired0),
     set.insert(Lval, Acquired0, Acquired),
     var_locn_set_acquired(Acquired, !VLI).
@@ -2118,10 +2193,10 @@ var_locn_acquire_reg_require_given(Lval, !VLI) :-
     set.insert(Lval, Acquired0, Acquired),
     var_locn_set_acquired(Acquired, !VLI).
 
-var_locn_acquire_reg_prefer_given(Pref, Lval, !VLI) :-
-    PrefLval = reg(reg_r, Pref),
+var_locn_acquire_reg_prefer_given(Type, Pref, Lval, !VLI) :-
+    PrefLval = reg(Type, Pref),
     ( var_locn_lval_in_use(!.VLI, PrefLval) ->
-        get_spare_reg(!.VLI, Lval)
+        get_spare_reg(!.VLI, Type, Lval)
     ;
         Lval = PrefLval
     ),
@@ -2129,10 +2204,10 @@ var_locn_acquire_reg_prefer_given(Pref, Lval, !VLI) :-
     set.insert(Lval, Acquired0, Acquired),
     var_locn_set_acquired(Acquired, !VLI).
 
-var_locn_acquire_reg_start_at_given(Start, Lval, !VLI) :-
-    StartLval = reg(reg_r, Start),
+var_locn_acquire_reg_start_at_given(Type, Start, Lval, !VLI) :-
+    StartLval = reg(Type, Start),
     ( var_locn_lval_in_use(!.VLI, StartLval) ->
-        var_locn_acquire_reg_start_at_given(Start + 1, Lval, !VLI)
+        var_locn_acquire_reg_start_at_given(Type, Start + 1, Lval, !VLI)
     ;
         Lval = StartLval,
         var_locn_get_acquired(!.VLI, Acquired0),
@@ -2151,24 +2226,25 @@ var_locn_release_reg(Lval, !VLI) :-
 
 %----------------------------------------------------------------------------%
 
-var_locn_lock_regs(N, Exceptions, !VLI) :-
-    var_locn_set_locked(N, !VLI),
+var_locn_lock_regs(R, F, Exceptions, !VLI) :-
+    var_locn_set_locked(R, F, !VLI),
     var_locn_set_exceptions(Exceptions, !VLI).
 
 var_locn_unlock_regs(!VLI) :-
-    var_locn_set_locked(0, !VLI),
+    var_locn_set_locked(0, 0, !VLI),
     var_locn_set_exceptions([], !VLI).
 
 %----------------------------------------------------------------------------%
 
-var_locn_max_reg_in_use(VLI, Max) :-
+var_locn_max_reg_in_use(VLI, MaxR, MaxF) :-
     var_locn_get_loc_var_map(VLI, LocVarMap),
     map.keys(LocVarMap, VarLocs),
-    code_util.max_mentioned_reg(VarLocs, Max1),
+    code_util.max_mentioned_regs(VarLocs, MaxR1, MaxF1),
     var_locn_get_acquired(VLI, Acquired),
     set.to_sorted_list(Acquired, AcquiredList),
-    code_util.max_mentioned_reg(AcquiredList, Max2),
-    int.max(Max1, Max2, Max).
+    code_util.max_mentioned_regs(AcquiredList, MaxR2, MaxF2),
+    int.max(MaxR1, MaxR2, MaxR),
+    int.max(MaxF1, MaxF2, MaxF).
 
 %----------------------------------------------------------------------------%
 
@@ -2240,6 +2316,7 @@ var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0, Avoid, Lval, Code,
         ; Lval0 = stackvar(_)
         ; Lval0 = parent_stackvar(_)
         ; Lval0 = framevar(_)
+        ; Lval0 = double_stackvar(_, _)
         ; Lval0 = global_var_ref(_)
         ; Lval0 = succip
         ; Lval0 = maxfr
@@ -2424,7 +2501,8 @@ materialize_var(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code,
         NumUsingVars = set_of_var.count(UsingVars),
         NumUsingVars > 1
     ->
-        select_preferred_reg_avoid(!.VLI, Var, Avoid, Lval),
+        reg_type_for_var(!.VLI, Var, RegType),
+        select_preferred_reg_avoid(!.VLI, Var, RegType, Avoid, Lval),
         var_locn_place_var(ModuleInfo, Var, Lval, PlaceCode, !VLI),
         Rval = lval(Lval),
         Code = ExprCode ++ PlaceCode
@@ -2487,10 +2565,11 @@ make_var_not_depend_on_root_lval(Var, Lval, !LocVarMap) :-
 
 :- pred is_root_lval(lval::in) is semidet.
 
-is_root_lval(reg(reg_r, _)).
+is_root_lval(reg(_, _)).
 is_root_lval(stackvar(_)).
 is_root_lval(parent_stackvar(_)).
 is_root_lval(framevar(_)).
+is_root_lval(double_stackvar(_, _)).
 
 %----------------------------------------------------------------------------%
 
@@ -2524,47 +2603,61 @@ rval_depends_on_search_lval(binop(_Op, Rval0, Rval1), SearchLval) :-
 
 :- pred lval_depends_on_search_lval(lval::in, dep_search_lval::in) is semidet.
 
-lval_depends_on_search_lval(reg(Type, Num), SearchLval) :-
+lval_depends_on_search_lval(Lval, SearchLval) :-
+    require_complete_switch [Lval]
     (
-        SearchLval = all_regs
+        Lval = reg(_Type, _Num),
+        (
+            SearchLval = all_regs
+        ;
+            SearchLval = specific_reg_or_stack(Lval)
+        )
     ;
-        SearchLval = specific_reg_or_stack(Lval),
-        Lval = reg(Type, Num)
-    ).
-lval_depends_on_search_lval(stackvar(Num), SearchLval) :-
-    SearchLval = specific_reg_or_stack(Lval),
-    Lval = stackvar(Num).
-lval_depends_on_search_lval(framevar(Num), SearchLval) :-
-    SearchLval = specific_reg_or_stack(Lval),
-    Lval = framevar(Num).
-lval_depends_on_search_lval(lvar(_Var), _SearchLval) :-
-    unexpected($module, $pred, "lvar").
-lval_depends_on_search_lval(field(_Tag, Rval0, Rval1), SearchLval) :-
-    (
-        rval_depends_on_search_lval(Rval0, SearchLval)
+        Lval = stackvar(_Num),
+        SearchLval = specific_reg_or_stack(Lval)
     ;
-        rval_depends_on_search_lval(Rval1, SearchLval)
-    ).
-
-:- pred args_depend_on_search_lval(list(maybe(rval))::in, dep_search_lval::in)
-    is semidet.
-
-args_depend_on_search_lval([], _SearchLval) :-
-    fail.
-args_depend_on_search_lval([Arg | Args], SearchLval) :-
-    (
-        Arg = yes(Rval),
-        rval_depends_on_search_lval(Rval, SearchLval)
+        Lval = framevar(_Num),
+        SearchLval = specific_reg_or_stack(Lval)
     ;
-        args_depend_on_search_lval(Args, SearchLval)
+        Lval = field(_Tag, Rval0, Rval1),
+        (
+            rval_depends_on_search_lval(Rval0, SearchLval)
+        ;
+            rval_depends_on_search_lval(Rval1, SearchLval)
+        )
+    ;
+        Lval = double_stackvar(_, _),
+        SearchLval = specific_reg_or_stack(Lval)
+    ;
+        ( Lval = succip
+        ; Lval = maxfr
+        ; Lval = curfr
+        ; Lval = hp
+        ; Lval = sp
+        ; Lval = parent_sp
+        ; Lval = temp(_, _)
+        ; Lval = parent_stackvar(_)
+        ; Lval = succip_slot(_)
+        ; Lval = succfr_slot(_)
+        ; Lval = redoip_slot(_)
+        ; Lval = redofr_slot(_)
+        ; Lval = redofr_slot(_)
+        ; Lval = prevfr_slot(_)
+        ; Lval = mem_ref(_)
+        ; Lval = global_var_ref(_)
+        ),
+        fail
+    ;
+        Lval = lvar(_Var),
+        unexpected($module, $pred, "lvar")
     ).
 
 %----------------------------------------------------------------------------%
 
-var_locn_set_follow_vars(abs_follow_vars(FollowVarMap, NextNonReserved),
-        !VLI) :-
+var_locn_set_follow_vars(abs_follow_vars(FollowVarMap, NextNonReservedR,
+        NextNonReservedF), !VLI) :-
     var_locn_set_follow_var_map(FollowVarMap, !VLI),
-    var_locn_set_next_non_reserved(NextNonReserved, !VLI).
+    var_locn_set_next_non_reserved(NextNonReservedR, NextNonReservedF, !VLI).
 
 %----------------------------------------------------------------------------%
 
@@ -2589,17 +2682,18 @@ nonempty_state(State) :-
 
 :- pred var_locn_get_varset(var_locn_info::in, prog_varset::out) is det.
 :- pred var_locn_get_vartypes(var_locn_info::in, vartypes::out) is det.
+:- pred var_locn_get_float_reg_type(var_locn_info::in, reg_type::out) is det.
 :- pred var_locn_get_var_state_map(var_locn_info::in, var_state_map::out)
     is det.
 :- pred var_locn_get_loc_var_map(var_locn_info::in, loc_var_map::out) is det.
 :- pred var_locn_get_acquired(var_locn_info::in, set(lval)::out) is det.
-:- pred var_locn_get_locked(var_locn_info::in, int::out) is det.
+:- pred var_locn_get_locked(var_locn_info::in, int::out, int::out) is det.
 :- pred var_locn_get_exceptions(var_locn_info::in,
     assoc_list(prog_var, lval)::out) is det.
 
 :- pred var_locn_set_follow_var_map(abs_follow_vars_map::in,
     var_locn_info::in, var_locn_info::out) is det.
-:- pred var_locn_set_next_non_reserved(int::in,
+:- pred var_locn_set_next_non_reserved(int::in, int::in,
     var_locn_info::in, var_locn_info::out) is det.
 :- pred var_locn_set_var_state_map(var_state_map::in,
     var_locn_info::in, var_locn_info::out) is det.
@@ -2607,28 +2701,34 @@ nonempty_state(State) :-
     var_locn_info::in, var_locn_info::out) is det.
 :- pred var_locn_set_acquired(set(lval)::in,
     var_locn_info::in, var_locn_info::out) is det.
-:- pred var_locn_set_locked(int::in,
+:- pred var_locn_set_locked(int::in, int::in,
     var_locn_info::in, var_locn_info::out) is det.
 :- pred var_locn_set_exceptions(assoc_list(prog_var, lval)::in,
     var_locn_info::in, var_locn_info::out) is det.
 
 var_locn_get_varset(VI, VI ^ vli_varset).
 var_locn_get_vartypes(VI, VI ^ vli_vartypes).
+var_locn_get_float_reg_type(VI, VI ^ vli_float_reg_type).
 var_locn_get_stack_slots(VI, VI ^ vli_stack_slots).
 var_locn_get_follow_var_map(VI, VI ^ vli_follow_vars_map).
-var_locn_get_next_non_reserved(VI, VI ^ vli_next_non_res).
+var_locn_get_next_non_reserved(VI, reg_r, VI ^ vli_next_non_res_r).
+var_locn_get_next_non_reserved(VI, reg_f, VI ^ vli_next_non_res_f).
 var_locn_get_var_state_map(VI, VI ^ vli_var_state_map).
 var_locn_get_loc_var_map(VI, VI ^ vli_loc_var_map).
 var_locn_get_acquired(VI, VI ^ vli_acquired).
-var_locn_get_locked(VI, VI ^ vli_locked).
+var_locn_get_locked(VI, VI ^ vli_locked_r, VI ^ vli_locked_f).
 var_locn_get_exceptions(VI, VI ^ vli_exceptions).
 
 var_locn_set_follow_var_map(FVM, VI, VI ^ vli_follow_vars_map := FVM).
-var_locn_set_next_non_reserved(NNR, VI, VI ^ vli_next_non_res := NNR).
+var_locn_set_next_non_reserved(NNR, NNF, !VI) :-
+    !VI ^ vli_next_non_res_r := NNR,
+    !VI ^ vli_next_non_res_f := NNF.
 var_locn_set_var_state_map(VSM, VI, VI ^ vli_var_state_map := VSM).
 var_locn_set_loc_var_map(LVM, VI, VI ^ vli_loc_var_map := LVM).
 var_locn_set_acquired(A, VI, VI ^ vli_acquired := A).
-var_locn_set_locked(L, VI, VI ^ vli_locked := L).
+var_locn_set_locked(R, F, !VI) :-
+    !VI ^ vli_locked_r := R,
+    !VI ^ vli_locked_f := F.
 var_locn_set_exceptions(E, VI, VI ^ vli_exceptions := E).
 
 %----------------------------------------------------------------------------%

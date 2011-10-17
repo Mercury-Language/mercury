@@ -213,7 +213,8 @@
                 plet_var_names              :: maybe(layout_slot_name),
 
                 plet_max_var_num            :: int,
-                plet_max_r_num              :: int,
+                plet_max_reg_r_num          :: int,
+                plet_max_reg_f_num          :: int,
                 plet_maybe_from_full_slot   :: maybe(int),
                 plet_maybe_io_seq_slot      :: maybe(int),
                 plet_maybe_trail_slot       :: maybe(int),

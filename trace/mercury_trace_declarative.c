@@ -403,7 +403,8 @@ static    MR_bool           MR_trace_same_construct(const char *p1,
 static    MR_bool           MR_trace_single_component(const char *path);
 static    MR_Word           MR_decl_make_atom_args(
                                 const MR_LabelLayout *layout,
-                                MR_Word *saved_regs, MR_TracePort port);
+                                MR_Word *saved_regs, MR_Float *saved_f_regs,
+                                MR_TracePort port);
 static    MR_Word           MR_decl_atom_args(const MR_LabelLayout *layout,
                                 MR_Word *saved_regs);
 static    const char        *MR_trace_start_collecting(MR_Unsigned event,
@@ -885,7 +886,7 @@ MR_trace_decl_call(MR_EventInfo *event_info, MR_TraceNode prev)
     event_label_layout = event_info->MR_event_sll;
     event_proc_layout = event_label_layout->MR_sll_entry;
     atom_args = MR_decl_make_atom_args(event_label_layout,
-        event_info->MR_saved_regs, MR_PORT_CALL);
+        event_info->MR_saved_regs, event_info->MR_saved_f_regs, MR_PORT_CALL);
     base_sp = MR_saved_sp(event_info->MR_saved_regs);
     base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
     result = MR_stack_walk_step(event_proc_layout, &return_label_layout,
@@ -925,7 +926,7 @@ MR_trace_decl_exit(MR_EventInfo *event_info, MR_TraceNode prev)
     MR_Word         atom_args;
 
     atom_args = MR_decl_make_atom_args(event_info->MR_event_sll,
-        event_info->MR_saved_regs, MR_PORT_EXIT);
+        event_info->MR_saved_regs, event_info->MR_saved_f_regs, MR_PORT_EXIT);
 
     call = MR_trace_matching_call(prev);
     MR_decl_checkpoint_match(call);
@@ -1402,7 +1403,7 @@ MR_trace_single_component(const char *path)
 
 static MR_Word
 MR_decl_make_atom_args(const MR_LabelLayout *layout, MR_Word *saved_regs,
-    MR_TracePort port)
+    MR_Float *saved_f_regs, MR_TracePort port)
 {
     MR_PredFunc             pred_or_func;
     int                     arity;
@@ -1413,7 +1414,7 @@ MR_decl_make_atom_args(const MR_LabelLayout *layout, MR_Word *saved_regs,
     const MR_ProcLayout     *entry;
 
     entry = layout->MR_sll_entry;
-    MR_trace_init_point_vars(layout, saved_regs, port, MR_TRUE);
+    MR_trace_init_point_vars(layout, saved_regs, saved_f_regs, port, MR_TRUE);
     MR_proc_id_arity_addedargs_predfunc(entry, &arity, &num_added_args,
         &pred_or_func);
 

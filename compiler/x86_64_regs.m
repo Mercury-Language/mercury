@@ -90,6 +90,8 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_llds.
+
 :- import_module bool.
 :- import_module list. 
 :- import_module map.
@@ -171,6 +173,7 @@ reg_map_lookup_reg_locn(Map, Lval) = RegLocn :-
     Map = reg_map(_, RegMap),
     (
         ( Lval = parent_stackvar(_)
+        ; Lval = double_stackvar(_, _)
         ; Lval = succip_slot(_)
         ; Lval = redoip_slot(_)
         ; Lval = redofr_slot(_)

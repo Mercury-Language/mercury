@@ -104,6 +104,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.globals.
@@ -400,7 +401,7 @@ construct_proc_and_label_layouts_for_proc(Params, PLI, !LabelTables,
         !StringTable, !StaticCellInfo, !LabelLayoutInfo, !ProcLayoutInfo) :-
     PLI = proc_layout_info(RttiProcLabel, EntryLabel,
         _Detism, _StackSlots, _SuccipLoc, _EvalMethod, _EffTraceLevel,
-        _MaybeCallLabel, _MaxTraceReg, HeadVars, _ArgModes,
+        _MaybeCallLabel, _MaxTraceRegR, _MaxTraceRegF, HeadVars, _ArgModes,
         Goal, _NeedGoalRep, _InstMap,
         _TraceSlotInfo, ForceProcIdLayout, VarSet, _VarTypes,
         InternalMap, MaybeTableIoDecl, _NeedsAllNames, _MaybeDeepProfInfo),
@@ -555,7 +556,7 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind,
         !StringTable, !StaticCellInfo, !ProcLayoutInfo) :-
     PLI = proc_layout_info(RttiProcLabel, EntryLabel,
         Detism, StackSlots, SuccipLoc, EvalMethod, EffTraceLevel,
-        MaybeCallLabel, MaxTraceReg, HeadVars, ArgModes,
+        MaybeCallLabel, MaxTraceRegR, MaxTraceRegF, HeadVars, ArgModes,
         Goal, NeedGoalRep, InstMap,
         TraceSlotInfo, _ForceProcIdLayout, VarSet, VarTypes,
         InternalMap, MaybeTableInfo, NeedsAllNames, MaybeDeepProfInfo),
@@ -589,7 +590,7 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind,
             ExecTraceInfo0 = !.ProcLayoutInfo ^ pli_exec_traces,
             construct_exec_trace_layout(Params, RttiProcLabel,
                 EvalMethod, EffTraceLevel, MaybeCallLabel, MaybeTableSlotName,
-                MaxTraceReg, HeadVars, ArgModes, TraceSlotInfo,
+                MaxTraceRegR, MaxTraceRegF, HeadVars, ArgModes, TraceSlotInfo,
                 VarSet, VarTypes, MaybeTableInfo, NeedsAllNames,
                 VarNumMap, InternalLabelInfos, ExecTraceSlotName,
                 LabelLayoutInfo, !StringTable,
@@ -866,7 +867,7 @@ init_proc_statics_info = Info :-
 
 :- pred construct_exec_trace_layout(stack_layout_params::in,
     rtti_proc_label::in, eval_method::in, trace_level::in, maybe(label)::in,
-    maybe(layout_slot_name)::in, int::in,
+    maybe(layout_slot_name)::in, int::in, int::in,
     list(prog_var)::in, list(mer_mode)::in,
     trace_slot_info::in, prog_varset::in, vartypes::in,
     maybe(proc_layout_table_info)::in, bool::in, var_num_map::in,
@@ -876,7 +877,8 @@ init_proc_statics_info = Info :-
     exec_traces_info::in, exec_traces_info::out) is det.
 
 construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
-        EffTraceLevel, MaybeCallLabel, MaybeTableSlotName, MaxTraceReg,
+        EffTraceLevel, MaybeCallLabel, MaybeTableSlotName,
+        MaxTraceRegR, MaxTraceRegF,
         HeadVars, ArgModes, TraceSlotInfo, _VarSet, VarTypes, MaybeTableInfo,
         NeedsAllNames, VarNumMap, InternalLabelInfos, ExecTraceName,
         LabelLayoutInfo, !StringTable, !ExecTraceInfo) :-
@@ -1005,8 +1007,8 @@ construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
     ExecTrace = proc_layout_exec_trace(MaybeCallLabelSlotName,
         EventLayoutsSlotName, NumProcEventLayouts, MaybeTable,
         MaybeHeadVarsSlotName, NumHeadVars, MaybeVarNamesSlotName,
-        MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
-        MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
+        MaxVarNum, MaxTraceRegR, MaxTraceRegF, MaybeFromFullSlot,
+        MaybeIoSeqSlot, MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
         MaybeCallTableSlot, MaybeTailRecSlot, EffTraceLevel, Flags),
 
     RevExecTraces0 = !.ExecTraceInfo ^ eti_rev_exec_traces,
@@ -1632,8 +1634,20 @@ select_trace_return(LocnInfo) :-
     LocnInfo = layout_var_info(Locn, LvalType, _),
     LvalType = live_value_var(_, Name, _, _),
     Name \= "",
-    ( Locn = locn_direct(Lval) ; Locn = locn_indirect(Lval, _)),
-    ( Lval = stackvar(_) ; Lval = framevar(_) ).
+    (
+        Locn = locn_direct(Lval)
+    ;
+        Locn = locn_indirect(Lval, _)
+    ),
+    (
+        Lval = stackvar(_)
+    ;
+        Lval = framevar(_)
+    ;
+        Lval = double_stackvar(double_stackvar, _)
+    ;
+        Lval = double_stackvar(double_framevar, _)
+    ).
 
     % Given a list of layout_var_infos, put the ones that tracing can be
     % interested in (whether at an internal port or for uplevel printing)
@@ -2195,6 +2209,18 @@ represent_lval(parent_stackvar(Num), Word) :-
 represent_lval(framevar(Num), Word) :-
     expect(Num > 0, $module, $pred, "bad framevar"),
     make_tagged_word(lval_framevar, Num, Word).
+represent_lval(double_stackvar(StackType, Num), Word) :-
+    expect(Num > 0, $module, $pred, "bad stackvar"),
+    (
+        StackType = double_stackvar,
+        make_tagged_word(lval_double_stackvar, Num, Word)
+    ;
+        StackType = double_parent_stackvar,
+        make_tagged_word(lval_double_parent_stackvar, Num, Word)
+    ;
+        StackType = double_framevar,
+        make_tagged_word(lval_double_framevar, Num, Word)
+    ).
 represent_lval(succip, Word) :-
     make_tagged_word(lval_succip, 0, Word).
 represent_lval(maxfr, Word) :-
@@ -2258,13 +2284,18 @@ make_tagged_word(Locn, Value, TaggedValue) :-
     ;       lval_sp
     ;       lval_indirect
     ;       lval_parent_sp
-    ;       lval_parent_stackvar.
+    ;       lval_parent_stackvar
+    ;       lval_double_stackvar
+    ;       lval_double_parent_stackvar
+    ;       lval_double_framevar.
 
 :- pred locn_type_code(locn_type::in, int::out) is det.
 
 % The code of this predicate should be kept in sync with the enum type
 % MR_LongLvalType in runtime/mercury_stack_layout.h. Note that the values
-% equal to 0 modulo 4 are reserved for representing constants.
+% equal to 0 modulo 4 are reserved for representing constants (aligned
+% pointers to static data).
+
 locn_type_code(lval_r_reg,           1).
 locn_type_code(lval_f_reg,           2).
 locn_type_code(lval_stackvar,        3).
@@ -2276,14 +2307,17 @@ locn_type_code(lval_curfr,           9).
 locn_type_code(lval_hp,              10).
 locn_type_code(lval_sp,              11).
 locn_type_code(lval_parent_sp,       11).    % XXX placeholder only
-locn_type_code(lval_indirect,        13).
+locn_type_code(lval_double_stackvar, 13).
+locn_type_code(lval_double_parent_stackvar, 13). % XXX placeholder only
+locn_type_code(lval_double_framevar, 14).
+locn_type_code(lval_indirect,        15).
 
     % This number of tag bits must be able to encode all values of
     % locn_type_code.
     %
 :- func long_lval_tag_bits = int.
 
-long_lval_tag_bits = 4.
+long_lval_tag_bits = 5.
 
     % This number of tag bits must be able to encode the largest offset
     % of a type_info within a typeclass_info.

@@ -27,10 +27,23 @@
 :- import_module map.
 :- import_module maybe.
 
+    % reg_r are the general purpose registers.
+    %
+    % reg_f are float registers.
+    % They are only present when float is wider than a word.
+    %
+:- type reg_type
+    --->    reg_r
+    ;       reg_f.
+
 :- type stack_slot
-    --->    det_slot(int)
-    ;       parent_det_slot(int)
-    ;       nondet_slot(int).
+    --->    det_slot(int, stack_slot_width)
+    ;       parent_det_slot(int, stack_slot_width)
+    ;       nondet_slot(int, stack_slot_width).
+
+:- type stack_slot_width
+    --->    single_width
+    ;       double_width.   % occupies slots N and N+1
 
     % Maps variables to their stack slots.
     %
@@ -40,10 +53,10 @@
 
 :- type abs_locn
     --->    any_reg
-    ;       abs_reg(int)
-    ;       abs_stackvar(int)
-    ;       abs_parent_stackvar(int)
-    ;       abs_framevar(int).
+    ;       abs_reg(reg_type, int)
+    ;       abs_stackvar(int, stack_slot_width)
+    ;       abs_parent_stackvar(int, stack_slot_width)
+    ;       abs_framevar(int, stack_slot_width).
 
 :- type abs_follow_vars_map ==  map(prog_var, abs_locn).
 
@@ -51,12 +64,16 @@
     % Variables may or may not appear in the map. If they do, then the
     % associated locn says where the value of that variable ought to be put
     % when it is computed, or, if the locn is any_reg, it says that it
-    % should be put into any available register. The integer in the
-    % second half of the pair gives the number of the first register that
-    % is not reserved for other purposes, and is free to hold such variables.
+    % should be put into any available register. The two integers give the
+    % first regular and float registers, respectively, that are not reserved
+    % for other purposes, and so are free to hold such variables.
     %
 :- type abs_follow_vars
-    --->    abs_follow_vars(abs_follow_vars_map, int).
+    --->    abs_follow_vars(
+                afv_map                 :: abs_follow_vars_map,
+                afv_next_non_res_reg_r  :: int,
+                afv_next_non_res_reg_f  :: int
+            ).
 
     % Authoritative information about where variables must be put
     % at the ends of branches of branched control structures.
@@ -280,7 +297,8 @@
 :- func stack_slot_to_abs_locn(stack_slot) = abs_locn.
 :- func key_stack_slot_to_abs_locn(_, stack_slot) = abs_locn.
 
-:- func abs_locn_to_string(abs_locn) = string.
+:- pred abs_locn_to_string(abs_locn::in, string::out, maybe(string)::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -308,18 +326,25 @@ explain_stack_slots_2([], _, !Explanation).
 explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
     explain_stack_slots_2(Rest, VarSet, !Explanation),
     (
-        Slot = det_slot(SlotNum),
+        Slot = det_slot(SlotNum, Width),
         StackStr = "sv"
     ;
-        Slot = parent_det_slot(SlotNum),
+        Slot = parent_det_slot(SlotNum, Width),
         StackStr = "parent_sv"
     ;
-        Slot = nondet_slot(SlotNum),
+        Slot = nondet_slot(SlotNum, Width),
         StackStr = "fv"
     ),
     int_to_string(SlotNum, SlotStr),
+    (
+        Width = single_width,
+        WidthStr = ""
+    ;
+        Width = double_width,
+        WidthStr = " (double width)"
+    ),
     varset.lookup_name(VarSet, Var, VarName),
-    string.append_list([VarName, "\t ->\t", StackStr, SlotStr, "\n",
+    string.append_list([VarName, "\t ->\t", StackStr, SlotStr, WidthStr, "\n",
         !.Explanation], !:Explanation).
 
 %----------------------------------------------------------------------------%
@@ -690,10 +715,12 @@ rename_vars_in_llds_code_gen_info(Must, Subn, Details0, Details) :-
         MaybeFollowVars = no
     ;
         MaybeFollowVars0 = yes(FollowVars0),
-        FollowVars0 = abs_follow_vars(FollowVarsMap0, FirstFreeReg),
+        FollowVars0 = abs_follow_vars(FollowVarsMap0, FirstFreeRegR,
+            FirstFreeRegF),
         rename_vars_in_var_locn_map(Must, Subn,
             FollowVarsMap0, FollowVarsMap),
-        FollowVars = abs_follow_vars(FollowVarsMap, FirstFreeReg),
+        FollowVars = abs_follow_vars(FollowVarsMap, FirstFreeRegR,
+            FirstFreeRegF),
         MaybeFollowVars = yes(FollowVars)
     ),
     rename_vars_in_var_locn_map(Must, Subn, StoreMap0, StoreMap),
@@ -760,23 +787,67 @@ rename_vars_in_var_locn_list(Must, Subn,
 
 %-----------------------------------------------------------------------------%
 
-stack_slot_num(det_slot(N)) = N.
-stack_slot_num(parent_det_slot(N)) = N.
-stack_slot_num(nondet_slot(N)) = N.
+stack_slot_num(StackSlot) = N :-
+    (
+        StackSlot = det_slot(N, Width)
+    ;
+        StackSlot = parent_det_slot(N, Width)
+    ;
+        StackSlot = nondet_slot(N, Width)
+    ),
+    (
+        Width = single_width
+    ;
+        Width = double_width,
+        unexpected($module, $pred, "double_width")
+    ).
 
-stack_slot_to_abs_locn(det_slot(N)) = abs_stackvar(N).
-stack_slot_to_abs_locn(parent_det_slot(N)) = abs_parent_stackvar(N).
-stack_slot_to_abs_locn(nondet_slot(N)) = abs_framevar(N).
+stack_slot_to_abs_locn(StackSlot) = AbsLocn :-
+    (
+        StackSlot = det_slot(N, Width),
+        AbsLocn = abs_stackvar(N, Width)
+    ;
+        StackSlot = parent_det_slot(N, Width),
+        AbsLocn = abs_parent_stackvar(N, Width)
+    ;
+        StackSlot = nondet_slot(N, Width),
+        AbsLocn = abs_framevar(N, Width)
+    ).
 
 key_stack_slot_to_abs_locn(_, Slot) =
     stack_slot_to_abs_locn(Slot).
 
-abs_locn_to_string(any_reg) = "any_reg".
-abs_locn_to_string(abs_reg(N)) = "r" ++ int_to_string(N).
-abs_locn_to_string(abs_stackvar(N)) = "stackvar" ++ int_to_string(N).
-abs_locn_to_string(abs_parent_stackvar(N)) =
-    "parent_stackvar" ++ int_to_string(N).
-abs_locn_to_string(abs_framevar(N)) = "framevar" ++ int_to_string(N).
+abs_locn_to_string(Locn, Str, MaybeWidth) :-
+    (
+        Locn = any_reg,
+        Str = "any_reg",
+        MaybeWidth = no
+    ;
+        Locn = abs_reg(reg_r, N),
+        Str = "r" ++ int_to_string(N),
+        MaybeWidth = no
+    ;
+        Locn = abs_reg(reg_f, N),
+        Str = "f" ++ int_to_string(N),
+        MaybeWidth = no
+    ;
+        Locn = abs_stackvar(N, Width),
+        Str = "stackvar" ++ int_to_string(N),
+        MaybeWidth = stack_slot_width_to_string(Width)
+    ;
+        Locn = abs_parent_stackvar(N, Width),
+        Str = "parent_stackvar" ++ int_to_string(N),
+        MaybeWidth = stack_slot_width_to_string(Width)
+    ;
+        Locn = abs_framevar(N, Width),
+        Str = "framevar" ++ int_to_string(N),
+        MaybeWidth = stack_slot_width_to_string(Width)
+    ).
+
+:- func stack_slot_width_to_string(stack_slot_width) = maybe(string).
+
+stack_slot_width_to_string(single_width) = no.
+stack_slot_width_to_string(double_width) = yes("(double width)").
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_llds.

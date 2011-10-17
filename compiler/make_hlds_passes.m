@@ -295,11 +295,17 @@ use_double_word_floats(Globals, DoubleWordFloats) :-
             TargetWordBits = 32,
             SinglePrecFloat = no
         ->
-            % Until we implement float registers for low-level C grades,
-            % storing double-word floats in structures does more harm than
-            % good.
             globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-            DoubleWordFloats = HighLevelCode
+            (
+                HighLevelCode = yes,
+                DoubleWordFloats = yes
+            ;
+                HighLevelCode = no,
+                % Double word floats in structures works best in conjunction
+                % with float registers. Work on the latter is in progress.
+                globals.lookup_bool_option(Globals, use_float_registers,
+                    DoubleWordFloats)
+            )
         ;
             DoubleWordFloats = no
         )

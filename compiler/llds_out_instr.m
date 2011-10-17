@@ -2004,29 +2004,44 @@ output_foreign_proc_output(Info, Output, !IO) :-
             )
         ;
             MaybeForeignType = no,
-            output_lval_as_word(Info, Lval, !IO),
-            io.write_string(" = ", !IO),
             ( OrigType = builtin_type(BuiltinType) ->
                 (
                     BuiltinType = builtin_type_string,
+                    output_lval_as_word(Info, Lval, !IO),
+                    io.write_string(" = ", !IO),
                     output_llds_type_cast(lt_word, !IO),
                     io.write_string(VarName, !IO)
                 ;
                     BuiltinType = builtin_type_float,
-                    io.write_string("MR_float_to_word(", !IO),
-                    io.write_string(VarName, !IO),
-                    io.write_string(")", !IO)
+                    llds.lval_type(Lval, ActualType),
+                    ( ActualType = lt_float ->
+                        output_lval(Info, Lval, !IO),
+                        io.write_string(" = ", !IO),
+                        io.write_string(VarName, !IO)
+                    ;
+                        output_lval_as_word(Info, Lval, !IO),
+                        io.write_string(" = ", !IO),
+                        io.write_string("MR_float_to_word(", !IO),
+                        io.write_string(VarName, !IO),
+                        io.write_string(")", !IO)
+                    )
                 ;
                     BuiltinType = builtin_type_char,
+                    output_lval_as_word(Info, Lval, !IO),
+                    io.write_string(" = ", !IO),
                     % Characters must be cast to MR_UnsignedChar to
                     % prevent sign-extension.
                     io.write_string("(MR_UnsignedChar) ", !IO),
                     io.write_string(VarName, !IO)
                 ;
                     BuiltinType = builtin_type_int,
+                    output_lval_as_word(Info, Lval, !IO),
+                    io.write_string(" = ", !IO),
                     io.write_string(VarName, !IO)
                 )
             ;
+                output_lval_as_word(Info, Lval, !IO),
+                io.write_string(" = ", !IO),
                 io.write_string(VarName, !IO)
             )
         )

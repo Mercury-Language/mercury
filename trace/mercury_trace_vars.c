@@ -154,6 +154,7 @@ typedef struct {
 typedef struct {
     const MR_LabelLayout    *MR_point_top_layout;
     MR_Word                 *MR_point_top_saved_regs;
+    MR_Float                *MR_point_top_saved_f_regs;
     MR_TracePort            MR_point_top_port;
     const char              *MR_point_problem;
     int                     MR_point_level;
@@ -332,10 +333,12 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info,
 
 void
 MR_trace_init_point_vars(const MR_LabelLayout *top_layout,
-    MR_Word *saved_regs, MR_TracePort port, MR_bool print_optionals)
+    MR_Word *saved_regs, MR_Float *saved_f_regs, MR_TracePort port,
+    MR_bool print_optionals)
 {
     MR_point.MR_point_top_layout = top_layout;
     MR_point.MR_point_top_saved_regs = saved_regs;
+    MR_point.MR_point_top_saved_f_regs = saved_f_regs;
     MR_point.MR_point_top_port = port;
     MR_point.MR_point_level = 0;
     MR_point.MR_point_problem = MR_trace_set_level(0, print_optionals);
@@ -385,6 +388,7 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
     const MR_UserEvent      *user;
     MR_UserEventSpec        *user_spec;
     MR_Word                 *valid_saved_regs;
+    MR_Float                *valid_saved_f_regs;
     int                     var_count;
     int                     attr_count;
     int                     total_count;
@@ -476,8 +480,10 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         && MR_point.MR_point_top_port != MR_PORT_EXCEPTION)
     {
         valid_saved_regs = MR_point.MR_point_top_saved_regs;
+        valid_saved_f_regs = MR_point.MR_point_top_saved_f_regs;
     } else {
         valid_saved_regs = NULL;
+        valid_saved_f_regs = NULL;
     }
 
     type_params = MR_materialize_type_params_base(level_layout,
@@ -534,7 +540,8 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
             } else {
                 succeeded = MR_FALSE;
                 value = MR_lookup_long_lval_base(user->MR_ue_attr_locns[i],
-                    valid_saved_regs, base_sp, base_curfr, &succeeded);
+                    valid_saved_regs, base_sp, base_curfr, valid_saved_f_regs,
+                    &succeeded);
 
                 if (! succeeded) {
                     MR_fatal_error("cannot look up value of attribute");
@@ -672,7 +679,8 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         }
 
         if (! MR_get_type_and_value_base(level_layout, i, valid_saved_regs,
-            base_sp, base_curfr, type_params, &type_info, &value))
+            base_sp, base_curfr, valid_saved_f_regs, type_params, &type_info,
+            &value))
         {
             /* This value is not a variable. */
             continue;
@@ -2277,6 +2285,8 @@ MR_trace_check_integrity(const MR_LabelLayout *layout, MR_TracePort port)
     MR_bool         saved_debug_enabled;
     int             MR_check_max_mr_num;
     MR_Word         MR_check_saved_regs[MR_MAX_FAKE_REG];
+    int             MR_check_max_f_num;
+    MR_Float        MR_check_saved_f_regs[MR_MAX_VIRTUAL_F_REG];
     static  int     MR_check_integrity_seq_num = 0;
 
     saved_debug_enabled = MR_debug_enabled;
@@ -2284,10 +2294,13 @@ MR_trace_check_integrity(const MR_LabelLayout *layout, MR_TracePort port)
     MR_update_trace_func_enabled();
 
     MR_compute_max_mr_num(MR_check_max_mr_num, layout);
+    MR_check_max_f_num = layout->MR_sll_entry->MR_sle_max_f_num;
     MR_restore_transient_registers();
     /* This also saves the regs in MR_fake_regs. */
-    MR_copy_regs_to_saved_regs(MR_check_max_mr_num, MR_check_saved_regs);
-	MR_trace_init_point_vars(layout, MR_check_saved_regs, port, MR_TRUE);
+    MR_copy_regs_to_saved_regs(MR_check_max_mr_num, MR_check_saved_regs,
+        MR_check_max_f_num, MR_check_saved_f_regs);
+    MR_trace_init_point_vars(layout, MR_check_saved_regs,
+        MR_check_saved_f_regs, port, MR_TRUE);
 
     if (MR_point.MR_point_problem != NULL) {
         MR_fatal_error(problem);
@@ -2311,7 +2324,8 @@ MR_trace_check_integrity(const MR_LabelLayout *layout, MR_TracePort port)
 
     MR_restore_transient_registers();
     MR_saved_global_hp(MR_check_saved_regs) = MR_global_hp;
-    MR_copy_saved_regs_to_regs(MR_check_max_mr_num, MR_check_saved_regs);
+    MR_copy_saved_regs_to_regs(MR_check_max_mr_num, MR_check_saved_regs,
+        MR_check_max_f_num, MR_check_saved_f_regs);
     MR_trace_report_msg = NULL;
     MR_debug_enabled = saved_debug_enabled;
     MR_update_trace_func_enabled();

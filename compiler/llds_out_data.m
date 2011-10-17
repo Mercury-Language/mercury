@@ -17,6 +17,7 @@
 :- module ll_backend.llds_out.llds_out_data.
 :- interface.
 
+:- import_module hlds.hlds_llds.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.llds_out_util.
 
@@ -202,6 +203,7 @@ output_record_lval_decls_format(Info, Lval, FirstIndent, LaterIndent,
         ; Lval = stackvar(_)
         ; Lval = parent_stackvar(_)
         ; Lval = framevar(_)
+        ; Lval = double_stackvar(_, _)
         ; Lval = succip
         ; Lval = maxfr
         ; Lval = curfr
@@ -261,6 +263,11 @@ output_lval(Info, Lval, !IO) :-
         ),
         io.write_string("MR_fv(", !IO),
         io.write_int(N, !IO),
+        io.write_string(")", !IO)
+    ;
+        Lval = double_stackvar(StackType, SlotNum),
+        io.write_string("MR_float_from_dword_ptr(", !IO),
+        output_double_stackvar_ptr(Info, StackType, SlotNum, !IO),
         io.write_string(")", !IO)
     ;
         Lval = succip,
@@ -352,8 +359,13 @@ output_lval(Info, Lval, !IO) :-
 output_lval_for_assign(Info, Lval, Type, !IO) :-
     (
         Lval = reg(RegType, Num),
-        Type = lt_word,
-        expect(unify(RegType, reg_r), $module, $pred, "float reg"),
+        (
+            RegType = reg_r,
+            Type = lt_word
+        ;
+            RegType = reg_f,
+            Type = lt_float
+        ),
         output_reg(RegType, Num, !IO)
     ;
         Lval = stackvar(N),
@@ -388,6 +400,11 @@ output_lval_for_assign(Info, Lval, Type, !IO) :-
         io.write_string("MR_fv(", !IO),
         io.write_int(N, !IO),
         io.write_string(")", !IO)
+    ;
+        Lval = double_stackvar(StackType, SlotNum),
+        Type = lt_float,
+        io.write_string("* (MR_Float *) ", !IO),
+        output_double_stackvar_ptr(Info, StackType, SlotNum, !IO)
     ;
         Lval = succip,
         Type = lt_word,
@@ -502,6 +519,25 @@ output_lval_as_word(Info, Lval, !IO) :-
         io.write_string(")", !IO)
     ).
 
+:- pred output_double_stackvar_ptr(llds_out_info::in,
+    double_stack_type::in, int::in, io::di, io::uo) is det.
+
+output_double_stackvar_ptr(Info, StackType, SlotNum, !IO) :-
+    % We take the address of the second slot because our stacks grow downwards,
+    % i.e. &MR_sv(n + 1) < &MR_sv(n).
+    (
+        StackType = double_stackvar,
+        Lval = stackvar(SlotNum + 1)
+    ;
+        StackType = double_parent_stackvar,
+        Lval = parent_stackvar(SlotNum + 1)
+    ;
+        StackType = double_framevar,
+        Lval = framevar(SlotNum + 1)
+    ),
+    io.write_string("&", !IO),
+    output_lval(Info, Lval, !IO).
+
     % llds_types_match(DesiredType, ActualType) is true iff
     % a value of type ActualType can be used as a value of
     % type DesiredType without casting.
@@ -551,14 +587,26 @@ output_llds_type(lt_data_ptr, !IO) :-
 output_llds_type(lt_code_ptr, !IO) :-
     io.write_string("MR_Code *", !IO).
 
+lval_to_string(reg(RegType, RegNum)) =
+    "reg(" ++ reg_to_string(RegType, RegNum) ++ ")".
 lval_to_string(framevar(N)) =
     "MR_fv(" ++ int_to_string(N) ++ ")".
 lval_to_string(stackvar(N)) =
     "MR_sv(" ++ int_to_string(N) ++ ")".
 lval_to_string(parent_stackvar(N)) =
     "MR_parent_sv(" ++ int_to_string(N) ++ ")".
-lval_to_string(reg(RegType, RegNum)) =
-    "reg(" ++ reg_to_string(RegType, RegNum) ++ ")".
+lval_to_string(double_stackvar(Type, N)) = String :-
+    (
+        Type = double_stackvar,
+        Macro = "MR_sv"
+    ;
+        Type = double_parent_stackvar,
+        Macro = "MR_parent_sv"
+    ;
+        Type = double_framevar,
+        Macro = "MR_fv"
+    ),
+    string.format("%s(%d,%d)", [s(Macro), i(N), i(N + 1)], String).
 
 reg_to_string(reg_r, N) =
     ( N =< max_real_r_reg ->
@@ -569,7 +617,11 @@ reg_to_string(reg_r, N) =
         unexpected($module, $pred, "register number too large")
     ).
 reg_to_string(reg_f, N) =
-    "MR_f(" ++ int_to_string(N) ++ ")".
+    ( N =< max_virtual_f_reg ->
+        "MR_f(" ++ int_to_string(N) ++ ")"
+    ;
+        unexpected($module, $pred, "register number too large")
+    ).
 
 :- func max_real_r_reg = int.
 :- func max_virtual_r_reg = int.
@@ -577,12 +629,14 @@ reg_to_string(reg_f, N) =
 max_real_r_reg = 32.
 max_virtual_r_reg = 1024.
 
+:- func max_virtual_f_reg = int.
+
+max_virtual_f_reg = 1024.
+
 :- pred output_reg(reg_type::in, int::in, io::di, io::uo) is det.
 
-output_reg(reg_r, N, !IO) :-
-    io.write_string(reg_to_string(reg_r, N), !IO).
-output_reg(reg_f, _, !IO) :-
-    sorry($module, $pred, "Floating point registers not implemented").
+output_reg(RegType, N, !IO) :-
+    io.write_string(reg_to_string(RegType, N), !IO).
 
 % The calls to env_var_is_acceptable_char in prog_io_goal.m ensure that
 % EnvVarName is acceptable as part of a C identifier.

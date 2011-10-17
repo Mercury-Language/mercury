@@ -101,6 +101,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_llds.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -2976,7 +2977,17 @@ generate_argument_vars_code(PragmaVars, Types, ModuleInfo, DeclCode, InputCode,
         OutputCode, SaveRegsCode, GetRegsCode, NumInputArgs) :-
     list.map((pred(X::in, Y::out) is det :- X = pragma_var(_, _, Y, _)),
         PragmaVars, Modes),
-    make_arg_infos(Types, Modes, model_non, ModuleInfo, ArgInfos),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, use_float_registers, FloatRegs),
+    (
+        FloatRegs = yes,
+        FloatRegType = reg_f
+    ;
+        FloatRegs = no,
+        FloatRegType = reg_r
+    ),
+    make_arg_infos(Types, Modes, model_non, ModuleInfo, FloatRegType,
+        ArgInfos),
     generate_argument_vars_code_2(PragmaVars, ArgInfos, Types, ModuleInfo,
         DeclCode, InputCode, OutputCode, SaveRegsCode, GetRegsCode, 1,
         NumInputArgs).
@@ -3035,38 +3046,39 @@ generate_arg_decl_code(Name, Type, Module, DeclCode) :-
     C_Type = mercury_exported_type_to_string(Module, lang_c, Type),
     string.format("\t\t%s %s;\n", [s(C_Type), s(Name)], DeclCode).
 
-:- pred generate_arg_input_code(string::in, mer_type::in, int::in, int::in,
+:- pred generate_arg_input_code(string::in, mer_type::in, arg_loc::in, int::in,
     string::out, string::out, string::out) is det.
 
-generate_arg_input_code(Name, Type, RegNum, FrameVarNum, InputCode,
+generate_arg_input_code(Name, Type, ArgLoc, FrameVarNum, InputCode,
         SaveRegCode, GetRegCode) :-
-    get_reg_name(RegNum, RegName),
-    convert_type_from_mercury(RegName, Type, Converted),
+    ArgLoc = reg(RegType, RegNum),
+    (
+        RegType = reg_r,
+        ConvertToFrameVar = "",
+        ConvertFromFrameVar = ""
+    ;
+        RegType = reg_f,
+        ConvertToFrameVar = "MR_float_to_word",
+        ConvertFromFrameVar = "MR_word_to_float"
+    ),
+    RegName = reg_to_string(RegType, RegNum),
+    convert_type_from_mercury(ArgLoc, RegName, Type, Converted),
     Template = "\t\t%s = %s;\n",
     string.format(Template, [s(Name), s(Converted)], InputCode),
-    string.format("\t\tMR_framevar(%d) = %s;\n",
-        [i(FrameVarNum), s(RegName)], SaveRegCode),
-    string.format("\t\t%s = MR_framevar(%d);\n",
-        [s(RegName), i(FrameVarNum)], GetRegCode).
+    string.format("\t\tMR_framevar(%d) = %s(%s);\n",
+        [i(FrameVarNum), s(ConvertToFrameVar), s(RegName)], SaveRegCode),
+    string.format("\t\t%s = %s(MR_framevar(%d));\n",
+        [s(RegName), s(ConvertFromFrameVar), i(FrameVarNum)], GetRegCode).
 
-:- pred generate_arg_output_code(string::in, mer_type::in, int::in,
+:- pred generate_arg_output_code(string::in, mer_type::in, arg_loc::in,
     string::out) is det.
 
-generate_arg_output_code(Name, Type, RegNum, OutputCode) :-
-    get_reg_name(RegNum, RegName),
-    convert_type_to_mercury(Name, Type, Converted),
+generate_arg_output_code(Name, Type, ArgLoc, OutputCode) :-
+    ArgLoc = reg(RegType, RegNum),
+    RegName = reg_to_string(RegType, RegNum),
+    convert_type_to_mercury(Name, Type, ArgLoc, Converted),
     Template = "\t\t%s = %s;\n",
     string.format(Template, [s(RegName), s(Converted)], OutputCode).
-
-:- pred get_reg_name(int::in, string::out) is det.
-
-get_reg_name(RegNum, RegName) :-
-    code_util.arg_loc_to_register(RegNum, Lval),
-    ( Lval = reg(RegType, N) ->
-        RegName = reg_to_string(RegType, N)
-    ;
-        unexpected($module, $pred, "lval is not a register")
-    ).
 
     % Generate code to test that the fact found matches the input arguments.
     % This is only required for generate_primary_nondet_code. Other procedures

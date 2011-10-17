@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2008 The University of Melbourne.
+** Copyright (C) 1998-2008, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -535,7 +535,8 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
     MR_update_trace_func_enabled();
 
     MR_trace_init_point_vars(event_info->MR_event_sll,
-        event_info->MR_saved_regs, event_info->MR_trace_port, MR_FALSE);
+        event_info->MR_saved_regs, event_info->MR_saved_f_regs,
+        event_info->MR_trace_port, MR_FALSE);
 
     switch(external_debugger_mode) {
         case MR_searching:

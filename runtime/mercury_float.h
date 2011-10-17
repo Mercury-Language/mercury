@@ -71,7 +71,10 @@
   #define MR_float_const(f) MR_float_to_word(f)	/* inefficient */
 #endif
 
-#ifndef MR_USE_SINGLE_PREC_FLOAT
+  /*
+  ** MR_BOXED_FLOAT is never defined if using single-precision floats,
+  ** so MR_Float must be double.
+  */
   union MR_Float_Dword {
 	MR_Float f;
 	MR_Word	w[2];
@@ -104,8 +107,6 @@
 	return __ffdw.f;
     }
   #endif
-
-#endif /* not MR_USE_SINGLE_PREC_FLOAT */
 
 #else /* not MR_BOXED_FLOAT */
 

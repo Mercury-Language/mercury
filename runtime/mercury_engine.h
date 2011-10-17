@@ -26,6 +26,7 @@
 
 #include "mercury_std.h"            /* for `MR_bool' */
 #include "mercury_types.h"          /* for `MR_Code *' */
+#include "mercury_float.h"          /* for `MR_Float' */
 #include "mercury_goto.h"           /* for `MR_define_entry()' */
 #include "mercury_thread.h"         /* for pthread types */
 #include "mercury_context.h"        /* for MR_Context, MR_IF_USE_TRAIL */
@@ -308,6 +309,11 @@ typedef struct {
 **              for the engine, and then invokes MR_load_context to copy the
 **              info from there into the MR_eng_context field.
 **
+** float_reg
+**              The float reg vector for this engine. This exists only if
+**              MR_BOXED_FLOAT is defined, i.e. when sizeof(MR_Float) >
+**              sizeof(MR_Word).
+**
 ** trail_ptr 
 ** ticket_counter
 ** ticket_high_water
@@ -348,7 +354,8 @@ typedef struct {
 **              finishes, c_depth is decremented.
 **
 ** cpu_clock_ticks_offset
-**              The offset to be added to the CPU's TSC to give a time relative to the start of the program.
+**              The offset to be added to the CPU's TSC to give a time relative
+**              to the start of the program.
 **
 ** ts_buffer
 **              The buffer object used by threadscope for this engine.
@@ -402,6 +409,9 @@ typedef struct MR_mercury_engine_struct {
 #endif
     MR_Context          *MR_eng_this_context;
     MR_Context          MR_eng_context;
+#ifdef MR_BOXED_FLOAT
+    MR_Float            MR_eng_float_reg[MR_MAX_VIRTUAL_F_REG];
+#endif
 #if defined(MR_THREAD_SAFE) && defined(MR_USE_TRAIL)
     MR_TrailEntry       *MR_eng_trail_ptr;
     MR_Unsigned         MR_eng_ticket_counter;

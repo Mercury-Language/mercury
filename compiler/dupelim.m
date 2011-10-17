@@ -499,6 +499,7 @@ standardize_lval(Lval0, Lval) :-
         ; Lval0 = stackvar(_)
         ; Lval0 = parent_stackvar(_)
         ; Lval0 = framevar(_)
+        ; Lval0 = double_stackvar(_, _)
         ; Lval0 = succip_slot(_)
         ; Lval0 = redoip_slot(_)
         ; Lval0 = succfr_slot(_)
@@ -940,12 +941,14 @@ most_specific_lval(LvalA, LvalB, Lval) :-
         ; LvalA = stackvar(_)
         ; LvalA = parent_stackvar(_)
         ; LvalA = framevar(_)
+        ; LvalA = double_stackvar(_, _)
         ; LvalA = succip_slot(_)
         ; LvalA = redoip_slot(_)
         ; LvalA = redofr_slot(_)
         ; LvalA = succfr_slot(_)
         ; LvalA = prevfr_slot(_)
         ; LvalA = mem_ref(_)
+        ; LvalA = global_var_ref(_)
         ),
         LvalA = LvalB,
         Lval = LvalA

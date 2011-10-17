@@ -47,7 +47,9 @@
 :- import_module libs.trace_params.
 :- import_module ll_backend.live_vars.
 :- import_module ll_backend.liveness.
+:- import_module ll_backend.llds.
 :- import_module ll_backend.trace_gen.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
@@ -59,6 +61,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -107,11 +110,33 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
     set.to_sorted_list(ColourSets, ColourList),
 
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
-    allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
-        MaybeReservedVarInfo, StackSlots1),
-    allocate_dummy_stack_slots(DummyVars, CodeModel, -1,
+    MainStack = code_model_to_main_stack(CodeModel),
+    FloatWidth = get_float_width(Globals),
+    allocate_stack_slots(ColourList, MainStack, VarTypes, FloatWidth,
+        NumReservedSlots, MaybeReservedVarInfo, StackSlots1),
+    allocate_dummy_stack_slots(DummyVars, MainStack, -1,
         StackSlots1, StackSlots),
     proc_info_set_stack_slots(StackSlots, !ProcInfo).
+
+:- func get_float_width(globals) = stack_slot_width.
+
+get_float_width(Globals) = FloatWidth :-
+    globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
+    ( TargetWordBits = 64 ->
+        FloatWidth = single_width
+    ; TargetWordBits = 32 ->
+        globals.lookup_bool_option(Globals, single_prec_float,
+            SinglePrecFloat),
+        (
+            SinglePrecFloat = yes,
+            FloatWidth = single_width
+        ;
+            SinglePrecFloat = no,
+            FloatWidth = double_width
+        )
+    ;
+        unexpected($module, $pred, "bits_per_word not 32 or 64")
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -204,55 +229,98 @@ var_is_not_dummy(DummyVarArray, Var) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred allocate_stack_slots(list(set_of_progvar)::in, code_model::in, int::in,
+:- pred allocate_stack_slots(list(set_of_progvar)::in, main_stack::in,
+    vartypes::in, stack_slot_width::in, int::in,
     maybe(pair(prog_var, int))::in, stack_slots::out) is det.
 
-allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
-        MaybeReservedVarInfo, StackSlots) :-
+allocate_stack_slots(ColourList, MainStack, VarTypes, FloatWidth,
+        NumReservedSlots, MaybeReservedVarInfo, StackSlots) :-
     % The reserved slots are referred to by fixed number
     % (e.g. framevar(1)) in trace.setup.
     FirstVarSlot = NumReservedSlots + 1,
-    allocate_stack_slots_2(ColourList, CodeModel, FirstVarSlot,
-        MaybeReservedVarInfo, map.init, StackSlots).
+    allocate_stack_slots_2(ColourList, MainStack, VarTypes, FloatWidth,
+        MaybeReservedVarInfo, FirstVarSlot, map.init, StackSlots).
 
-:- pred allocate_stack_slots_2(list(set_of_progvar)::in, code_model::in,
-    int::in, maybe(pair(prog_var, int))::in,
+:- pred allocate_stack_slots_2(list(set_of_progvar)::in, main_stack::in,
+    vartypes::in, stack_slot_width::in, maybe(pair(prog_var, int))::in,
+    int::in, stack_slots::in, stack_slots::out) is det.
+
+allocate_stack_slots_2([], _, _, _, _, _, !StackSlots).
+allocate_stack_slots_2([Vars | VarSets], MainStack, VarTypes, FloatWidth,
+        MaybeReservedVarInfo, N0, !StackSlots) :-
+    (
+        FloatWidth = single_width,
+        SingleWidthVars = Vars,
+        DoubleWidthVars = set_of_var.init
+    ;
+        FloatWidth = double_width,
+        set_of_var.divide(var_is_float(VarTypes), Vars,
+            DoubleWidthVars, SingleWidthVars)
+    ),
+    ( set_of_var.is_non_empty(SingleWidthVars) ->
+        allocate_stack_slots_3(SingleWidthVars, MainStack, single_width,
+            MaybeReservedVarInfo, N0, N1, !StackSlots)
+    ;
+        N1 = N0
+    ),
+    ( set_of_var.is_non_empty(DoubleWidthVars) ->
+        % XXX We do NOT currently allow single-width vars to overlap with
+        % double-width vars. The code generator does not understand that
+        % clobbering one of the pair of slots is equivalent to clobbering
+        % both of them.
+        allocate_stack_slots_3(DoubleWidthVars, MainStack, double_width,
+            MaybeReservedVarInfo, N1, N, !StackSlots)
+    ;
+        N = N1
+    ),
+    allocate_stack_slots_2(VarSets, MainStack, VarTypes, FloatWidth,
+        MaybeReservedVarInfo, N, !StackSlots).
+
+:- pred allocate_stack_slots_3(set_of_progvar::in, main_stack::in,
+    stack_slot_width::in, maybe(pair(prog_var, int))::in, int::in, int::out,
     stack_slots::in, stack_slots::out) is det.
 
-allocate_stack_slots_2([], _, _, _, !StackSlots).
-allocate_stack_slots_2([Vars | VarSets], CodeModel, N0, MaybeReservedVarInfo,
-        !StackSlots) :-
+allocate_stack_slots_3(Vars, MainStack, StackSlotWidth, MaybeReservedVarInfo,
+        !N, !StackSlots) :-
     (
         MaybeReservedVarInfo = yes(ResVar - ResSlotNum),
         set_of_var.member(Vars, ResVar)
     ->
-        SlotNum = ResSlotNum,
-        N1 = N0
+        expect(unify(StackSlotWidth, single_width), $module, $pred,
+            "reserved multiple stack slots"),
+        SlotNum = ResSlotNum
     ;
-        SlotNum = N0,
-        N1 = N0 + 1
+        SlotNum = !.N,
+        (
+            StackSlotWidth = single_width,
+            !:N = !.N + 1
+        ;
+            StackSlotWidth = double_width,
+            !:N = !.N + 2
+        )
+    ),
+    (
+        MainStack = det_stack,
+        Locn = det_slot(SlotNum, StackSlotWidth)
+    ;
+        MainStack = nondet_stack,
+        Locn = nondet_slot(SlotNum, StackSlotWidth)
     ),
     VarList = set_of_var.to_sorted_list(Vars),
-    allocate_same_stack_slot(VarList, CodeModel, SlotNum, !StackSlots),
-    allocate_stack_slots_2(VarSets, CodeModel, N1, MaybeReservedVarInfo,
-        !StackSlots).
+    allocate_same_stack_slot(VarList, Locn, !StackSlots).
 
-:- pred allocate_same_stack_slot(list(prog_var)::in, code_model::in, int::in,
+:- pred var_is_float(vartypes::in, prog_var::in) is semidet.
+
+var_is_float(VarTypes, Var) :-
+    map.lookup(VarTypes, Var, float_type).
+
+:- pred allocate_same_stack_slot(list(prog_var)::in, stack_slot::in,
     stack_slots::in, stack_slots::out) is det.
 
-allocate_same_stack_slot([], _CodeModel, _Slot, !StackSlots).
-allocate_same_stack_slot([Var | Vars], CodeModel, Slot, !StackSlots) :-
-    (
-        CodeModel = model_non,
-        Locn = nondet_slot(Slot)
-    ;
-        ( CodeModel = model_det
-        ; CodeModel = model_semi
-        ),
-        Locn = det_slot(Slot)
-    ),
-    map.det_insert(Var, Locn, !StackSlots),
-    allocate_same_stack_slot(Vars, CodeModel, Slot, !StackSlots).
+allocate_same_stack_slot([], _Slot, !StackSlots).
+allocate_same_stack_slot([Var | Vars], Slot, !StackSlots) :-
+    map.det_insert(Var, Slot, !StackSlots),
+    allocate_same_stack_slot(Vars, Slot, !StackSlots).
 
     % We must not allocate the same stack slot to dummy variables. If we do,
     % then the code that saves variables on the stack at calls will get
@@ -265,13 +333,20 @@ allocate_same_stack_slot([Var | Vars], CodeModel, Slot, !StackSlots) :-
     % grades, due to our policy of extending variable lifetimes, more than
     % one io.state may be live at the same time.
     %
-:- pred allocate_dummy_stack_slots(list(prog_var)::in, code_model::in,
+:- pred allocate_dummy_stack_slots(list(prog_var)::in, main_stack::in,
     int::in, stack_slots::in, stack_slots::out) is det.
 
 allocate_dummy_stack_slots([], _, _, !StackSlots).
-allocate_dummy_stack_slots([Var | Vars], CodeModel, N0, !StackSlots) :-
-    allocate_same_stack_slot([Var], CodeModel, N0, !StackSlots),
-    allocate_dummy_stack_slots(Vars, CodeModel, N0 - 1, !StackSlots).
+allocate_dummy_stack_slots([Var | Vars], MainStack, N0, !StackSlots) :-
+    (
+        MainStack = det_stack,
+        Locn = det_slot(N0, single_width)
+    ;
+        MainStack = nondet_stack,
+        Locn = nondet_slot(N0, single_width)
+    ),
+    allocate_same_stack_slot([Var], Locn, !StackSlots),
+    allocate_dummy_stack_slots(Vars, MainStack, N0 - 1, !StackSlots).
 
 %-----------------------------------------------------------------------------%
 :- end_module stack_alloc.

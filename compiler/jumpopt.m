@@ -64,6 +64,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_util.
 :- import_module parse_tree.prog_data.
@@ -1188,6 +1189,7 @@ short_labels_lval(_, temp(T, N), temp(T, N)).
 short_labels_lval(_, stackvar(N), stackvar(N)).
 short_labels_lval(_, parent_stackvar(N), parent_stackvar(N)).
 short_labels_lval(_, framevar(N), framevar(N)).
+short_labels_lval(_, double_stackvar(Type, N), double_stackvar(Type, N)).
 short_labels_lval(_, global_var_ref(Var), global_var_ref(Var)).
 short_labels_lval(InstrMap, succip_slot(Rval0), succip_slot(Rval)) :-
     short_labels_rval(InstrMap, Rval0, Rval).

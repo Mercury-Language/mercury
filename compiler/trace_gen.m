@@ -1055,12 +1055,17 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     get_instmap(!.CI, InstMap),
     trace_produce_vars(LiveVars, VarSet, VarTypes, InstMap, Port,
         set.init, TvarSet, [], VarInfoList, ProduceCode, !CI),
-    max_reg_in_use(!.CI, MaxReg),
-    get_max_reg_in_use_at_trace(!.CI, MaxTraceReg0),
-    ( MaxTraceReg0 < MaxReg ->
-        set_max_reg_in_use_at_trace(MaxReg, !CI)
-    ;
+    max_reg_in_use(!.CI, MaxRegR, MaxRegF),
+    get_max_reg_in_use_at_trace(!.CI, MaxTraceRegR0, MaxTraceRegF0),
+    int.max(MaxRegR, MaxTraceRegR0, MaxTraceRegR),
+    int.max(MaxRegF, MaxTraceRegF0, MaxTraceRegF),
+    (
+        MaxTraceRegR0 = MaxTraceRegR,
+        MaxTraceRegF0 = MaxTraceRegF
+    ->
         true
+    ;
+        set_max_reg_in_use_at_trace(MaxTraceRegR, MaxTraceRegF, !CI)
     ),
     variable_locations(!.CI, VarLocs),
     get_proc_info(!.CI, ProcInfo),
@@ -1271,6 +1276,9 @@ stackref_to_string(Lval, LvalStr) :-
     ; Lval = framevar(Slot) ->
         string.int_to_string(Slot, SlotString),
         LvalStr = "MR_fv(" ++ SlotString ++ ")"
+    ; Lval = double_stackvar(_, _) ->
+        % XXX how do we get here?
+        sorry($module, $pred, "double-width stack slot")
     ;
         unexpected($module, $pred, "non-stack lval")
     ).

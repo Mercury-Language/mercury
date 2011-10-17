@@ -322,6 +322,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_llds.
 :- import_module hlds.special_pred.
 :- import_module ll_backend.exprn_aux.
 :- import_module parse_tree.prog_data.
@@ -710,6 +711,7 @@ lval_refers_stackvars(reg(_, _)) = no.
 lval_refers_stackvars(stackvar(_)) = yes.
 lval_refers_stackvars(parent_stackvar(_)) = yes.
 lval_refers_stackvars(framevar(_)) = yes.
+lval_refers_stackvars(double_stackvar(_, _)) = yes.
 lval_refers_stackvars(succip) = no.
 lval_refers_stackvars(maxfr) = no.
 lval_refers_stackvars(curfr) = no.
@@ -1842,17 +1844,15 @@ count_temps_lval(Lval, !R, !F) :-
         ; Lval = stackvar(_)
         ; Lval = framevar(_)
         ; Lval = parent_stackvar(_)
+        ; Lval = double_stackvar(_, _)
         ; Lval = global_var_ref(_)
         )
     ;
-        Lval = temp(Type, N),
-        (
-            Type = reg_r,
-            int.max(N, !R)
-        ;
-            Type = reg_f,
-            int.max(N, !F)
-        )
+        Lval = temp(reg_r, N),
+        int.max(N, !R)
+    ;
+        Lval = temp(reg_f, N),
+        int.max(N, !F)
     ;
         Lval = field(_, BaseAddrRval, FieldNumRval),
         count_temps_rval(BaseAddrRval, !R, !F),
@@ -2067,6 +2067,7 @@ touches_nondet_ctrl_lval(reg(_, _)) = no.
 touches_nondet_ctrl_lval(stackvar(_)) = no.
 touches_nondet_ctrl_lval(parent_stackvar(_)) = no.
 touches_nondet_ctrl_lval(framevar(_)) = no.
+touches_nondet_ctrl_lval(double_stackvar(_, _)) = no.
 touches_nondet_ctrl_lval(succip) = no.
 touches_nondet_ctrl_lval(maxfr) = yes.
 touches_nondet_ctrl_lval(curfr) = yes.
@@ -2142,6 +2143,7 @@ lval_access_rvals(reg(_, _), []).
 lval_access_rvals(stackvar(_), []).
 lval_access_rvals(parent_stackvar(_), []).
 lval_access_rvals(framevar(_), []).
+lval_access_rvals(double_stackvar(_, _), []).
 lval_access_rvals(succip, []).
 lval_access_rvals(maxfr, []).
 lval_access_rvals(curfr, []).
@@ -2679,6 +2681,7 @@ replace_labels_lval(Lval0, Lval, ReplMap) :-
         ; Lval0 = stackvar(_)
         ; Lval0 = framevar(_)
         ; Lval0 = parent_stackvar(_)
+        ; Lval0 = double_stackvar(_, _)
         ; Lval0 = succip
         ; Lval0 = maxfr
         ; Lval0 = curfr
