@@ -9,17 +9,25 @@
 % File: par_loop_control.m.
 % Author: pbone.
 %
-% This module implements the parallel loop control transformation.  Parallel
-% conjunctions spawn off their second operand, execute the first and then block
-% waiting for the completion of the second.  Therefore, when the second operand
-% contains a recursive call the blocked resource consumes memory that orght to
-% be avoided.
+% This module implements the parallel loop control transformation.
+% This transformation operates on procedure bodies that contain exactly one
+% recursive call which occurs in the second and last conjunct of a parallel
+% conjunction.
 %
-% This can be avoided by spawning off the first operand and continuing with the
-% second.  This is acheived by the loop control transformation which provides
-% further optimization by using a different structure for synchronization.
-% There is one barrier in a loop rather than N (for N recursions) and the
-% maximum number of contexts the loop may used is fixed.
+% Normally, this parallel conjunction would spawn off their second conjunct,
+% execute the first conjunct, and then block waiting for the completion of
+% the second. When the second conjunct contains a recursive call, the blocked
+% first computation will be a context, and will thus have a high memory
+% footprint due to its stacks. The objective of our transformation is to reduce
+% this memory footprint.
+%
+% The way we do this is by spawning off the first parallel conjunct, and
+% continuing execution of the second. Since the second conjunct is a recursive
+% call, we will continue spawning off first conjuncts until we reach a limit
+% that is imposed by a loop control structure. This limit prevents us from
+% swamping the available CPUs with too much work. It also allows us to
+% use one barrier for ALL the loop iterations, rather than one barrier
+% for EACH loop iteration.
 %
 % Consider this loop:
 %
@@ -47,25 +55,26 @@
 %       ),
 %       map(LC, M, Xs, Ys). % May not use tail recursion.
 %
-% The parallel conjunction is replaced with a wait_free_slot and spawn_off goals
-% for each conjunct except for the last, which is re-written to call the loop
-% control version of the predicate.
+% The parallel conjunction is replaced with a wait_free_slot goal and a
+% spawn_off goal for each conjunct except for the last. The last is re-written
+% to call the loop control version of the predicate.
 %
 % Rules:
 %
 % 1. This transformation works when there are multiple parallel conjunctions in
-%    different branches.  It also works when the parallel conjunction has more
+%    different branches. It also works when the parallel conjunction has more
 %    than two conjuncts, in which case all but the right most branch are
 %    replaced with the call to spawn_off.
 %
 % 2. There may be code _after_ the recursive call that consumes variables
-%    produced in the first conjunct.  This is safe because the barrier in the
-%    base case has been executed.  Any consumption before the recursive call
-%    will already be using a future and is safe.
+%    produced in the first conjunct. This is safe because we get to such code
+%    only *after* the barrier in the base case has been executed. Any
+%    consumption before the recursive call will already be using a future,
+%    and is therefore safe.
 %
-% 3. There _may not_ be more than one recursive call along any code-path.  That
-%    is to say, the code must be singly recursive so that the base case (and
-%    the barrier within) is executed exactly once.
+% 3. The predicate must be singly recursive, i.e. its body cannot have
+%    more than one recursive call along any execution path. We need this
+%    to ensure that the base case (and its barrier) is executed exactly once.
 %
 % 4. Multiple parallel conjunctions may exist within the body, but due to rule
 %    3, only one of them may contain a recursive call.
@@ -198,26 +207,26 @@ proc_is_self_recursive(DepInfo, PredProcId) :-
 
 :- type seen_usable_recursion
     --->    have_not_seen_recursive_call
-                % There is no reachable recursive call in this goal.
+            % There is no reachable recursive call in this goal.
 
     ;       seen_one_recursive_call_on_every_branch
-                % There is exactly one recursive call on every reachable
-                % branch, Therefore this single recursion can be used if it is
-                % within a parallel conjunction.
+            % There is exactly one recursive call on every reachable branch.
+            % Therefore this single recursion can be used if it is within
+            % a parallel conjunction.
 
     ;       seen_unusable_recursion
-                % There is recursion but we cannot use it.  This is caused
-                % by a number of different reasons, some are:
-                %   + Multiple recursion.
-                %   + Recursion on some but not all branches or in code that is
-                %     not det/cc_multi.
-                %   + Usable recursion inside a parallel conjunction that is
-                %     inside _another_ parallel conjunction.
+            % There is recursion, but we cannot use it. There may be several
+            % reasons for why we cannot use the transformation, including
+            %   + Multiple recursion.
+            %   + Recursion on some but not all branches or in code that is
+            %     not det/cc_multi.
+            %   + Usable recursion inside a parallel conjunction that is
+            %     inside _another_ parallel conjunction.
 
     ;       seen_usable_recursion_in_par_conj(list(goal_id)).
-                % There is recursion within the right-most conjunct of a
-                % parallel conjunction.  There may be multiple cases of this
-                % (different parallel conjunctions in different branches).
+            % There is recursion within the right-most conjunct of a
+            % parallel conjunction. There may be multiple cases of this
+            % (different parallel conjunctions in different branches).
 
     % This subtype of seen usable recursion is the set of values for which we
     % should keep searching.
@@ -249,7 +258,7 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
         ;
             GoalExpr = generic_call(_, _, _, _),
             % We cannot determine if a generic call is recursive or not,
-            % however it most likely is not.  In either case we cannot perform
+            % however it most likely is not. In either case, we cannot perform
             % the loop control transformation.
             SeenUsableRecursion0 = have_not_seen_recursive_call
         ;
@@ -268,25 +277,22 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
                     GoalId, SeenUsableRecursion0)
             )
         ;
-            GoalExpr = disj(Disjs),
-            % If the disjunction contains a recursive call at all then the
+            GoalExpr = disj(_),
+            % If the disjunction contains a recursive call at all, then the
             % recursive call is in an unusable context.
-            (
-                member(Disj, Disjs),
-                goal_calls(Disj, SelfPredProcId)
-            ->
+            ( goal_calls(Goal, SelfPredProcId) ->
                 SeenUsableRecursion0 = seen_unusable_recursion
             ;
                 SeenUsableRecursion0 = have_not_seen_recursive_call
             )
         ;
             GoalExpr = switch(_, _CanFail, Cases),
-            map(case_get_loop_control_par_conjs(SelfPredProcId), Cases,
+            list.map(case_get_loop_control_par_conjs(SelfPredProcId), Cases,
                 SeenUsableRecursionCases),
-            % If the switch can fail then there is effectively another branch
-            % that has no recursive call.  However, we don not need to test for
-            % it here as checking the determinism of the goal will detect such
-            % a case.
+            % If the switch can fail, then there is effectively another branch
+            % that has no recursive call. However, we do not need to test for
+            % this here, as checking the determinism of the goal will detect
+            % such cases.
             merge_loop_control_par_conjs_between_branches_list(
                 SeenUsableRecursionCases, SeenUsableRecursion0)
         ;
@@ -301,6 +307,8 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
             GoalExpr = scope(_, SubGoal),
             goal_get_loop_control_par_conjs(SubGoal, SelfPredProcId,
                 SeenUsableRecursion0)
+            % If the scope does a cut, then any recursion inside SubGoal
+            % is unusable, but the determinism check below will catch that.
         ;
             GoalExpr = if_then_else(_, Cond, Then, Else),
             goal_get_loop_control_par_conjs(Cond, SelfPredProcId,
@@ -315,12 +323,13 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
                     SeenUsableRecursionThen, SeenUsableRecursionElse,
                     SeenUsableRecursion0)
             ;
-                % We can't make use of any recursion found in the condition of
-                % an if-then-else.
+                % We cannot make use of any recursion found in the condition
+                % of an if-then-else.
                 ( SeenUsableRecursionCond =
-                        seen_one_recursive_call_on_every_branch
+                    seen_one_recursive_call_on_every_branch
                 ; SeenUsableRecursionCond = seen_unusable_recursion
-                ; SeenUsableRecursionCond = seen_usable_recursion_in_par_conj(_)
+                ; SeenUsableRecursionCond =
+                    seen_usable_recursion_in_par_conj(_)
                 ),
                 SeenUsableRecursion0 = seen_unusable_recursion
             )
@@ -329,8 +338,8 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
             unexpected($module, $pred, "shorthand")
         ),
 
-        % If the goal might fail or might succeed more than once then the
-        % recursion is unusable for loop control.
+        % If the goal might fail or might succeed more than once, then any
+        % recursion in it is unusable for loop control.
         (
             ( SeenUsableRecursion0 = have_not_seen_recursive_call
             ; SeenUsableRecursion0 = seen_unusable_recursion
@@ -344,7 +353,7 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
                 ( Detism = detism_det
                 ; Detism = detism_cc_multi
                 ),
-                SeenUsableRecursion0 = SeenUsableRecursion
+                SeenUsableRecursion = SeenUsableRecursion0
             ;
                 ( Detism = detism_semi
                 ; Detism = detism_multi
@@ -363,9 +372,9 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
 
     % Analyze the parallel conjunction for a usable recursive call.
     %
-    % If any but the last conjunct contain a recursive call then that call is
-    % unusable.  If only the last conjunct contains a recursive call then it is
-    % usable.
+    % If any but the last conjunct contains a recursive call, then that
+    % recursive call is unusable. If only the last conjunct contains
+    % a recursive call, then that recursion is usable.
     %
 :- pred par_conj_get_loop_control_par_conjs(list(hlds_goal)::in,
     pred_proc_id::in, goal_id::in, seen_usable_recursion::out) is det.
@@ -376,8 +385,8 @@ par_conj_get_loop_control_par_conjs(Conjs, SelfPredProcId,
         Conjs = [],
         unexpected($module, $pred, "Empty parallel conjunction")
     ;
-        Conjs = [_ | _],
-        par_conj_get_loop_control_par_conjs_2(Conjs, SelfPredProcId,
+        Conjs = [Head | Tail],
+        par_conj_get_loop_control_par_conjs_lag(Head, Tail, SelfPredProcId,
             SeenUsableRecursion0),
         (
             SeenUsableRecursion0 = have_not_seen_recursive_call,
@@ -393,22 +402,21 @@ par_conj_get_loop_control_par_conjs(Conjs, SelfPredProcId,
         )
     ).
 
-:- pred par_conj_get_loop_control_par_conjs_2(
-    list(hlds_goal)::in(non_empty_list), pred_proc_id::in,
-    seen_usable_recursion::out) is det.
+:- pred par_conj_get_loop_control_par_conjs_lag(hlds_goal::in,
+    list(hlds_goal)::in, pred_proc_id::in, seen_usable_recursion::out) is det.
 
-par_conj_get_loop_control_par_conjs_2([Conj | Conjs], SelfPredProcId,
+par_conj_get_loop_control_par_conjs_lag(Conj, Conjs, SelfPredProcId,
         SeenUsableRecursion) :-
     goal_get_loop_control_par_conjs(Conj, SelfPredProcId,
         SeenUsableRecursion0),
     (
-        % This is the last conjunct.  Therefore, if it contains a recursive
+        % This is the last conjunct. Therefore, if it contains a recursive
         % call it is a the recursion we're looking for.
         Conjs = [],
         SeenUsableRecursion = SeenUsableRecursion0
     ;
-        Conjs = [_ | _],
-        % This is not the last conjunct.  Therefore any recursion it contains
+        Conjs = [Head | Tail],
+        % This is not the last conjunct. Therefore any recursion it contains
         % is unusable.
         (
             ( SeenUsableRecursion0 = seen_one_recursive_call_on_every_branch
@@ -419,7 +427,7 @@ par_conj_get_loop_control_par_conjs_2([Conj | Conjs], SelfPredProcId,
         ;
             SeenUsableRecursion0 = have_not_seen_recursive_call,
             % Analyze the rest of the conjunction.
-            par_conj_get_loop_control_par_conjs_2(Conjs, SelfPredProcId,
+            par_conj_get_loop_control_par_conjs_lag(Head, Tail, SelfPredProcId,
                 SeenUsableRecursion)
         )
     ).
@@ -492,7 +500,8 @@ merge_loop_control_par_conjs_sequential(
 merge_loop_control_par_conjs_between_branches_list([],
         have_not_seen_recursive_call).
 merge_loop_control_par_conjs_between_branches_list([Seen | Seens], Result) :-
-    foldl(merge_loop_control_par_conjs_between_branches, Seens, Seen, Result).
+    list.foldl(merge_loop_control_par_conjs_between_branches, Seens,
+        Seen, Result).
 
 :- pred merge_loop_control_par_conjs_between_branches(
     seen_usable_recursion::in, seen_usable_recursion::in,
@@ -583,8 +592,8 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
     pred_info_get_class_context(OldPredInfo, ClassConstraints),
     pred_info_get_arg_types(OldPredInfo, ArgTypes0),
 
-    some [!PredInfo] (
-        % Construct the pred info structure.  We initially construct it with
+    some [!PredInfo, !Body, !VarSet, !VarTypes] (
+        % Construct the pred info structure. We initially construct it with
         % the old proc info which will be replaced below.
         pred_info_create(ModuleName, PredSym, PredOrFunc, Context, Origin,
             status_local, Markers, ArgTypes0, TypeVarSet, ExistQVars,
@@ -599,17 +608,17 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         ),
         PredProcId = proc(PredId, ProcId),
 
-        % Now transform the predicate, this could not be done earlier because
+        % Now transform the predicate. This could not be done earlier because
         % we needed to know the new PredProcId to re-write the recursive calls
         % in the body.
         proc_info_get_argmodes(OldProcInfo, ArgModes0),
         proc_info_get_headvars(OldProcInfo, HeadVars0),
-        proc_info_get_varset(OldProcInfo, VarSet0),
-        proc_info_get_vartypes(OldProcInfo, VarTypes0),
-        proc_info_get_goal(OldProcInfo, Body0),
+        proc_info_get_varset(OldProcInfo, !:VarSet),
+        proc_info_get_vartypes(OldProcInfo, !:VarTypes),
+        proc_info_get_goal(OldProcInfo, !:Body),
 
-        varset.new_named_var("LC", LCVar, VarSet0, VarSet1),
-        map.det_insert(LCVar, loop_control_var_type, VarTypes0, VarTypes1),
+        varset.new_named_var("LC", LCVar, !VarSet),
+        map.det_insert(LCVar, loop_control_var_type, !VarTypes),
         should_preserve_tail_recursion(!.ModuleInfo, PreserveTailRecursion),
         get_lc_wait_free_slot_proc(!.ModuleInfo, WaitFreeSlotProc),
         get_lc_join_and_terminate_proc(!.ModuleInfo, JoinAndTerminateProc),
@@ -618,14 +627,12 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
             PredProcId, PredSym, PreserveTailRecursion, WaitFreeSlotProc,
             lc_wait_free_slot_name, JoinAndTerminateProc,
             lc_join_and_terminate_name),
-        goal_loop_control_all_paths(Info, RecParConjIds,
-            ContainingGoalMap, Body0, Body1, VarSet1, VarSet,
-            VarTypes1, VarTypes),
+        goal_loop_control_all_recursive_paths(Info, RecParConjIds,
+            ContainingGoalMap, !Body, !VarSet, !VarTypes),
 
         % Fixup the remaining recursive calls, and add barriers in the base
         % cases.
-        goal_loop_control_fixup(Info, RecParConjIds, _,
-            Body1, Body),
+        goal_update_non_loop_control_paths(Info, RecParConjIds, _, !Body),
 
         % Now create the new proc_info structure.
         HeadVars = [LCVar | HeadVars0],
@@ -637,8 +644,8 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         proc_info_get_inst_varset(OldProcInfo, InstVarSet),
         proc_info_get_rtti_varmaps(OldProcInfo, RttiVarMaps),
         proc_info_get_inferred_determinism(OldProcInfo, Detism),
-        proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
-            ArgModes, detism_decl_none, Detism, Body, RttiVarMaps,
+        proc_info_create(Context, !.VarSet, !.VarTypes, HeadVars, InstVarSet,
+            ArgModes, detism_decl_none, Detism, !.Body, RttiVarMaps,
             address_is_not_taken, map.init, ProcInfo),
 
         % Update the other structures
@@ -680,21 +687,22 @@ should_preserve_tail_recursion(ModuleInfo, PreserveTailRecursion) :-
     --->    preserve_tail_recursion
     ;       do_not_preserve_tail_recursion.
 
-:- pred goal_loop_control_all_paths(loop_control_info::in, list(goal_id)::in,
-    containing_goal_map::in, hlds_goal::in, hlds_goal::out,
+:- pred goal_loop_control_all_recursive_paths(loop_control_info::in,
+    list(goal_id)::in, containing_goal_map::in, hlds_goal::in, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-goal_loop_control_all_paths(Info, GoalIds, ContainingGoalMap, !Goal,
+goal_loop_control_all_recursive_paths(Info, GoalIds, ContainingGoalMap, !Goal,
         !VarSet, !VarTypes) :-
-    GoalPaths = map(goal_id_to_forward_path(ContainingGoalMap), GoalIds),
-    foldl3(goal_loop_control(Info), GoalPaths, !Goal, !VarSet,
-        !VarTypes).
+    GoalPaths = list.map(goal_id_to_forward_path(ContainingGoalMap), GoalIds),
+    list.foldl3(goal_loop_control_one_recursive_path(Info), GoalPaths,
+        !Goal, !VarSet, !VarTypes).
 
-:- pred goal_loop_control(loop_control_info::in, forward_goal_path::in,
-    hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+:- pred goal_loop_control_one_recursive_path(loop_control_info::in,
+    forward_goal_path::in, hlds_goal::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-goal_loop_control(Info, GoalPath0, !Goal, !VarSet, !VarTypes) :-
+goal_loop_control_one_recursive_path(Info, GoalPath0, !Goal,
+        !VarSet, !VarTypes) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo),
     ( goal_path_remove_first(GoalPath0, GoalPath, Step) ->
         format("Couldn't follow goal path step: \"%s\"", [s(string(Step))],
@@ -705,8 +713,8 @@ goal_loop_control(Info, GoalPath0, !Goal, !VarSet, !VarTypes) :-
                 GoalExpr0 = conj(plain_conj, Conjs0),
                 list.index1(Conjs0, N, Conj0)
             ->
-                goal_loop_control(Info, GoalPath, Conj0, Conj,
-                    !VarSet, !VarTypes),
+                goal_loop_control_one_recursive_path(Info, GoalPath,
+                    Conj0, Conj, !VarSet, !VarTypes),
                 det_replace_nth(Conjs0, N, Conj, Conjs),
                 GoalExpr = conj(plain_conj, Conjs)
             ;
@@ -719,8 +727,8 @@ goal_loop_control(Info, GoalPath0, !Goal, !VarSet, !VarTypes) :-
                 list.index1(Cases0, N, Case0)
             ->
                 Goal0 = Case0 ^ case_goal,
-                goal_loop_control(Info, GoalPath, Goal0, Goal,
-                    !VarSet, !VarTypes),
+                goal_loop_control_one_recursive_path(Info, GoalPath,
+                    Goal0, Goal, !VarSet, !VarTypes),
                 Case = Case0 ^ case_goal := Goal,
                 det_replace_nth(Cases0, N, Case, Cases),
                 GoalExpr = switch(Var, CanFail, Cases)
@@ -730,8 +738,8 @@ goal_loop_control(Info, GoalPath0, !Goal, !VarSet, !VarTypes) :-
         ;
             Step = step_ite_then,
             ( GoalExpr0 = if_then_else(Vars, Cond, Then0, Else) ->
-                goal_loop_control(Info, GoalPath, Then0, Then,
-                    !VarSet, !VarTypes),
+                goal_loop_control_one_recursive_path(Info, GoalPath,
+                    Then0, Then, !VarSet, !VarTypes),
                 GoalExpr = if_then_else(Vars, Cond, Then, Else)
             ;
                 unexpected($module, $pred, ErrorString)
@@ -739,8 +747,8 @@ goal_loop_control(Info, GoalPath0, !Goal, !VarSet, !VarTypes) :-
         ;
             Step = step_ite_else,
             ( GoalExpr0 = if_then_else(Vars, Cond, Then, Else0) ->
-                goal_loop_control(Info, GoalPath, Else0, Else,
-                    !VarSet, !VarTypes),
+                goal_loop_control_one_recursive_path(Info, GoalPath,
+                    Else0, Else, !VarSet, !VarTypes),
                 GoalExpr = if_then_else(Vars, Cond, Then, Else)
             ;
                 unexpected($module, $pred, ErrorString)
@@ -748,8 +756,8 @@ goal_loop_control(Info, GoalPath0, !Goal, !VarSet, !VarTypes) :-
         ;
             Step = step_scope(_),
             ( GoalExpr0 = scope(Reason, SubGoal0) ->
-                goal_loop_control(Info, GoalPath, SubGoal0, SubGoal,
-                    !VarSet, !VarTypes),
+                goal_loop_control_one_recursive_path(Info, GoalPath,
+                    SubGoal0, SubGoal, !VarSet, !VarTypes),
                 GoalExpr = scope(Reason, SubGoal)
             ;
                 unexpected($module, $pred, ErrorString)
@@ -771,7 +779,7 @@ goal_loop_control(Info, GoalPath0, !Goal, !VarSet, !VarTypes) :-
         fixup_goal_info(Info, !Goal)
     ;
         ( GoalExpr0 = conj(parallel_conj, Conjs) ->
-            par_conj_loop_control(Info, reverse(Conjs), GoalInfo, !:Goal,
+            par_conj_loop_control(Info, Conjs, GoalInfo, !:Goal,
                 !VarSet, !VarTypes)
         ;
             unexpected($module, $pred, "expected parallel conjunction")
@@ -782,57 +790,61 @@ goal_loop_control(Info, GoalPath0, !Goal, !VarSet, !VarTypes) :-
     hlds_goal_info::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
-par_conj_loop_control(_, [], _, _, !VarSet, !VarTypes) :-
-    unexpected($module, $pred, "empty parallel conjunction").
-par_conj_loop_control(Info, [LastConj0 | RevConjs], GoalInfo, Goal, !VarSet,
+par_conj_loop_control(Info, Conjuncts0, GoalInfo, Goal, !VarSet,
         !VarTypes) :-
+    list.det_split_last(Conjuncts0, EarlierConjuncts0, LastConjunct0),
     % Re-write the recursive call in the last conjunct.
-    goal_rewrite_recursive_call(Info, LastConj0, LastConj, _),
-    goal_to_conj_list(LastConj, LastConjGoals),
+    goal_rewrite_recursive_call(Info, LastConjunct0, LastConjunct, _),
+    goal_to_conj_list(LastConjunct, LastConjGoals),
 
     % Process the remaining conjuncts.
-    par_conj_loop_control2(Info, RevConjs, LastConjGoals, Goals, !VarSet,
-        !VarTypes),
-    create_conj_from_list(Goals, plain_conj, Goal0),
+    rewrite_nonrecursive_par_conjuncts(Info,
+        EarlierConjuncts0, EarlierConjuncts, !VarSet, !VarTypes),
+    Conjuncts = EarlierConjuncts ++ LastConjGoals,
+    % XXX The point of calling create_conj_from_list is that it sets up
+    % the goal_info of Goal0 appropriately. Why call it if we then immediately
+    % overwrite the goal_info?
+    create_conj_from_list(Conjuncts, plain_conj, Goal0),
     Goal1 = Goal0 ^ hlds_goal_info := GoalInfo,
     fixup_goal_info(Info, Goal1, Goal).
 
     % Process each of the conjuncts in reverse order, building the new
     % expression from them.
     %
-:- pred par_conj_loop_control2(loop_control_info::in, list(hlds_goal)::in,
+:- pred rewrite_nonrecursive_par_conjuncts(loop_control_info::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-par_conj_loop_control2(_, [], LaterGoals, LaterGoals, !VarSet, !VarTypes).
-par_conj_loop_control2(Info, [Conj0 | RevConjs], LaterGoals, Goals, !VarSet,
-        !VarTypes) :-
+rewrite_nonrecursive_par_conjuncts(_, [], [], !VarSet, !VarTypes).
+rewrite_nonrecursive_par_conjuncts(Info, [Conjunct0 | Conjuncts0], Goals,
+        !VarSet, !VarTypes) :-
     % Create the "get free slot" call..
-    create_get_free_slot_goal(Info, LCSVar, GetFreeSlotGoal, !VarSet,
-        !VarTypes),
+    create_get_free_slot_goal(Info, LCSVar, GetFreeSlotGoal,
+        !VarSet, !VarTypes),
 
     % Add a join_and_terminate goal to the end of Conj0 forming Conj.
-    create_join_and_termiate_goal(Info, LCVar, LCSVar, JoinAndTermiateGoal),
-    Conj0GoalInfo = Conj0 ^ hlds_goal_info,
-    goal_to_conj_list(Conj0, Conj0Goals),
-    ConjGoals = Conj0Goals ++ [JoinAndTermiateGoal],
+    create_join_and_terminate_goal(Info, LCVar, LCSVar, JoinAndTerminateGoal),
+    Conjunct0GoalInfo = Conjunct0 ^ hlds_goal_info,
+    goal_to_conj_list(Conjunct0, Conjunct0Goals),
+    ConjunctGoals = Conjunct0Goals ++ [JoinAndTerminateGoal],
     some [!NonLocals] (
-        !:NonLocals = goal_info_get_nonlocals(Conj0GoalInfo),
-        insert(LCSVar, !NonLocals),
-        insert(LCVar, !NonLocals),
-        goal_info_set_nonlocals(!.NonLocals, Conj0GoalInfo, ConjGoalInfo)
+        !:NonLocals = goal_info_get_nonlocals(Conjunct0GoalInfo),
+        set_of_var.insert(LCSVar, !NonLocals),
+        set_of_var.insert(LCVar, !NonLocals),
+        goal_info_set_nonlocals(!.NonLocals,
+            Conjunct0GoalInfo, ConjunctGoalInfo)
     ),
-    conj_list_to_goal(ConjGoals, ConjGoalInfo, Conj),
+    conj_list_to_goal(ConjunctGoals, ConjunctGoalInfo, Conjunct),
 
-    % Wrap Conj in the loop control scope.
+    % Wrap Conjunct in the loop control scope.
     LCVar = Info ^ lci_lc_var,
-    ScopeGoalInfo = ConjGoalInfo,
-    ScopeGoal = hlds_goal(scope(loop_control(LCVar, LCSVar), Conj),
-        ScopeGoalInfo),
+    ScopeGoalInfo = ConjunctGoalInfo,
+    ScopeGoalExpr = scope(loop_control(LCVar, LCSVar), Conjunct),
+    ScopeGoal = hlds_goal(ScopeGoalExpr, ScopeGoalInfo),
 
-    % Process earlier conjuncts.
-    Goals0 = [GetFreeSlotGoal, ScopeGoal | LaterGoals],
-    par_conj_loop_control2(Info, RevConjs, Goals0, Goals, !VarSet, !VarTypes).
+    rewrite_nonrecursive_par_conjuncts(Info, Conjuncts0, TailGoals,
+        !VarSet, !VarTypes),
+    Goals = [GetFreeSlotGoal, ScopeGoal | TailGoals].
 
     % Re-write any recursive calls in this goal.
     %
@@ -871,31 +883,29 @@ goal_rewrite_recursive_call(Info, !Goal, FixupGoalInfo) :-
         )
     ;
         GoalExpr0 = conj(ConjType, Conjs0),
-        map2(goal_rewrite_recursive_call(Info), Conjs0, Conjs,
+        list.map2(goal_rewrite_recursive_call(Info), Conjs0, Conjs,
             FixupGoalInfoConjs),
         goals_fixup_goal_info(FixupGoalInfoConjs, FixupGoalInfo),
         GoalExpr = conj(ConjType, Conjs)
     ;
         GoalExpr0 = disj(Disjs0),
-        map2(goal_rewrite_recursive_call(Info), Disjs0, Disjs,
+        list.map2(goal_rewrite_recursive_call(Info), Disjs0, Disjs,
             FixupGoalInfoDisjs),
         goals_fixup_goal_info(FixupGoalInfoDisjs, FixupGoalInfo),
         GoalExpr = disj(Disjs)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        map2(case_rewrite_recursive_call(Info), Cases0, Cases,
+        list.map2(case_rewrite_recursive_call(Info), Cases0, Cases,
             FixupGoalInfoCases),
         goals_fixup_goal_info(FixupGoalInfoCases, FixupGoalInfo),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = negation(SubGoal0),
-        goal_rewrite_recursive_call(Info, SubGoal0, SubGoal,
-            FixupGoalInfo),
+        goal_rewrite_recursive_call(Info, SubGoal0, SubGoal, FixupGoalInfo),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        goal_rewrite_recursive_call(Info, SubGoal0, SubGoal,
-            FixupGoalInfo),
+        goal_rewrite_recursive_call(Info, SubGoal0, SubGoal, FixupGoalInfo),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
@@ -903,7 +913,7 @@ goal_rewrite_recursive_call(Info, !Goal, FixupGoalInfo) :-
         goal_rewrite_recursive_call(Info, Then0, Then, FixupGoalInfoThen),
         goal_rewrite_recursive_call(Info, Else0, Else, FixupGoalInfoElse),
         goals_fixup_goal_info([FixupGoalInfoCond, FixupGoalInfoThen,
-                FixupGoalInfoElse], FixupGoalInfo),
+            FixupGoalInfoElse], FixupGoalInfo),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = shorthand(_),
@@ -951,18 +961,20 @@ goals_fixup_goal_info(List, Fixup) :-
     %     conjunctions so that they call the inner procedure and pass the loop
     %     control variable.
     %
-:- pred goal_loop_control_fixup(loop_control_info::in,
+:- pred goal_update_non_loop_control_paths(loop_control_info::in,
     list(goal_id)::in, fixup_goal_info::out,
     hlds_goal::in, hlds_goal::out) is det.
 
-goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo, !Goal) :-
+goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
+        !Goal) :-
     GoalInfo0 = !.Goal ^ hlds_goal_info,
     GoalId = goal_info_get_goal_id(GoalInfo0),
     (
-        % This goal is one of the trasnformed parallel conjunctions, nothing
-        % needs to be done.
-        % XXX: This may not work, I don't know if the goal ID is maintained.
-        member(GoalId, RecParConjIds)
+        % This goal is one of the transformed parallel conjunctions,
+        % nothing needs to be done.
+        % XXX What if the last conjunct contains a base case?
+        % XXX This may not work, I don't know if the goal ID is maintained.
+        list.member(GoalId, RecParConjIds)
     ->
         FixupGoalInfo = do_not_fixup_goal_info
     ;
@@ -990,7 +1002,7 @@ goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo, !Goal) :-
             ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             % These cannot be a recursive call and they cannot be a base case
-            % since that is detected above.
+            % since base cases are detected above.
             unexpected($module, $pred, "Non-recursive atomic goal")
         ;
             GoalExpr0 = plain_call(PredId, ProcId, Args0, Builtin,
@@ -1008,16 +1020,18 @@ goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo, !Goal) :-
             FixupGoalInfo = fixup_goal_info
         ;
             GoalExpr0 = conj(ConjType, Conjs0),
-            conj_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo,
-                Conjs0, Conjs),
+            expect(unify(ConjType, plain_conj), $module, $pred,
+                "parallel conjunction"),
+            conj_update_non_loop_control_paths(Info, RecParConjIds,
+                FixupGoalInfo, Conjs0, Conjs),
             GoalExpr = conj(ConjType, Conjs)
         ;
             GoalExpr0 = disj(_),
             sorry($module, $pred, "disjunction")
         ;
             GoalExpr0 = switch(Var, CanFail, Cases0),
-            map2(case_loop_control_fixup(Info, RecParConjIds), Cases0, Cases,
-                FixupGoalInfos),
+            list.map2(case_update_non_loop_control_paths(Info, RecParConjIds),
+                Cases0, Cases, FixupGoalInfos),
             goals_fixup_goal_info(FixupGoalInfos, FixupGoalInfo),
             GoalExpr = switch(Var, CanFail, Cases)
         ;
@@ -1025,15 +1039,17 @@ goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo, !Goal) :-
             sorry($module, $pred, "negation")
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
-            goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo,
-                SubGoal0, SubGoal),
+            goal_update_non_loop_control_paths(Info, RecParConjIds,
+                FixupGoalInfo, SubGoal0, SubGoal),
             GoalExpr = scope(Reason, SubGoal)
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond, Then0, Else0),
-            goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfoThen,
-                Then0, Then),
-            goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfoElse,
-                Else0, Else),
+            % There may not be any recursive calls in Cond; if there are,
+            % we don not apply the transformation.
+            goal_update_non_loop_control_paths(Info, RecParConjIds,
+                FixupGoalInfoThen, Then0, Then),
+            goal_update_non_loop_control_paths(Info, RecParConjIds,
+                FixupGoalInfoElse, Else0, Else),
             goals_fixup_goal_info([FixupGoalInfoThen, FixupGoalInfoElse],
                 FixupGoalInfo),
             GoalExpr = if_then_else(ExistVars, Cond, Then, Else)
@@ -1047,7 +1063,7 @@ goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo, !Goal) :-
             some [!NonLocals, !GoalInfo] (
                 !:GoalInfo = !.Goal ^ hlds_goal_info,
                 !:NonLocals = goal_info_get_nonlocals(!.GoalInfo),
-                insert(Info ^ lci_lc_var, !NonLocals),
+                set_of_var.insert(Info ^ lci_lc_var, !NonLocals),
                 goal_info_set_nonlocals(!.NonLocals, !GoalInfo),
                 goal_info_set_purity(purity_impure, !GoalInfo),
                 !Goal ^ hlds_goal_info := !.GoalInfo
@@ -1057,37 +1073,54 @@ goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo, !Goal) :-
         )
     ).
 
-:- pred conj_loop_control_fixup(loop_control_info::in, list(goal_id)::in,
-    fixup_goal_info::out, list(hlds_goal)::in, list(hlds_goal)::out) is det.
+    % As goal_update_non_loop_control_paths, but for a conjunction.
+    %
+:- pred conj_update_non_loop_control_paths(loop_control_info::in,
+    list(goal_id)::in, fixup_goal_info::out,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-conj_loop_control_fixup(_Info, _RecGoalIds, do_not_fixup_goal_info, [], []).
-conj_loop_control_fixup(Info, RecGoalIds, FixupGoalInfo,
-        [!.Conj | !.Conjs], [!:Conj | !:Conjs]) :-
+conj_update_non_loop_control_paths(_Info, _RecGoalIds, do_not_fixup_goal_info,
+        [], []).
+conj_update_non_loop_control_paths(Info, RecGoalIds, FixupGoalInfo,
+        [Conj0 | Conjs0], [Conj | Conjs]) :-
     (
-        not goal_calls(!.Conj, Callee),
+        not goal_calls(Conj0, Callee),
         (
+            % XXX At the moment, we require that all recursive calls be
+            % inside parallel conjunctions, and all those recursive calls
+            % have by now been transformed to call the inner procedure instead.
+            % So the first part of this disjunction cannot succeed.
             Callee = Info ^ lci_rec_pred_proc_id
         ;
             Callee = Info ^ lci_inner_pred_proc_id
         )
     ->
-        % This Conj does not make a recursive call or contain a recursive
-        % parallel conjunction.  We don't need to transform it.
-        conj_loop_control_fixup(Info, RecGoalIds, FixupGoalInfo, !Conjs)
+        % Conj0 does not make a recursive call or contain a recursive
+        % parallel conjunction. We don't need to transform it.
+        Conj = Conj0,
+        conj_update_non_loop_control_paths(Info, RecGoalIds, FixupGoalInfo,
+            Conjs0, Conjs)
     ;
         % This Conj has something that needs to be transformed.
-        goal_loop_control_fixup(Info, RecGoalIds, FixupGoalInfo, !Conj)
-        % There's not going to be anything else in this conjunct that needs to
-        % be transformed, we don't make a recursive call.
+        goal_update_non_loop_control_paths(Info, RecGoalIds, FixupGoalInfo,
+            Conj0, Conj),
+        % There is not going to be anything else in this conjunct
+        % that needs to be transformed, we don't make a recursive call.
+        Conjs = Conjs0
     ).
 
-:- pred case_loop_control_fixup(loop_control_info::in, list(goal_id)::in,
-    case::in, case::out, fixup_goal_info::out) is det.
+    % As goal_update_non_loop_control_paths, but for a case.
+    % Note that this argument order is needed by a higher order call above.
+    %
+:- pred case_update_non_loop_control_paths(loop_control_info::in,
+    list(goal_id)::in, case::in, case::out, fixup_goal_info::out) is det.
 
-case_loop_control_fixup(Info, RecParConjIds, !Case, FixupGoalInfo) :-
+case_update_non_loop_control_paths(Info, RecParConjIds, !Case,
+        FixupGoalInfo) :-
     some [!Goal] (
         !:Goal = !.Case ^ case_goal,
-        goal_loop_control_fixup(Info, RecParConjIds, FixupGoalInfo, !Goal),
+        goal_update_non_loop_control_paths(Info, RecParConjIds,
+            FixupGoalInfo, !Goal),
         !Case ^ case_goal := !.Goal
     ).
 
@@ -1123,20 +1156,18 @@ create_create_loop_control_goal(ModuleInfo, NumContextsVar, LCVar, Goal,
     varset.new_named_var("LC", LCVar, !VarSet),
     map.det_insert(LCVar, loop_control_var_type, !VarTypes),
     get_lc_create_proc(ModuleInfo, LCCreatePredId, LCCreateProcId),
-    goal_info_init(list_to_set([NumContextsVar, LCVar]),
-        instmap_delta_bind_var(LCVar), detism_det, purity_pure,
-        LCCreateGoalInfo),
-    Goal = hlds_goal(plain_call(LCCreatePredId,
-            LCCreateProcId, [NumContextsVar, LCVar], not_builtin, no,
-            lc_create_name),
-        LCCreateGoalInfo).
+    GoalExpr = plain_call(LCCreatePredId, LCCreateProcId,
+        [NumContextsVar, LCVar], not_builtin, no, lc_create_name),
+    goal_info_init(set_of_var.list_to_set([NumContextsVar, LCVar]),
+        instmap_delta_bind_var(LCVar), detism_det, purity_pure, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %----------------------------------------------------------------------------%
 
-:- pred create_join_and_termiate_goal(loop_control_info::in, prog_var::in,
+:- pred create_join_and_terminate_goal(loop_control_info::in, prog_var::in,
     prog_var::in, hlds_goal::out) is det.
 
-create_join_and_termiate_goal(Info, LCVar, LCSVar, Goal) :-
+create_join_and_terminate_goal(Info, LCVar, LCSVar, Goal) :-
     proc(PredId, ProcId) = Info ^ lci_join_and_terminate_proc,
     SymName = Info ^ lci_join_and_terminate_proc_name,
 
@@ -1174,15 +1205,19 @@ create_finish_loop_control_goal(Info, Goal) :-
 :- pred fixup_goal_info(loop_control_info::in, hlds_goal::in, hlds_goal::out)
     is det.
 
-fixup_goal_info(Info, hlds_goal(GoalExpr, !.GoalInfo),
-        hlds_goal(GoalExpr, !:GoalInfo)) :-
-    LCVar = Info ^ lci_lc_var,
-    some [!NonLocals] (
+fixup_goal_info(Info, Goal0, Goal) :-
+    some [!GoalInfo, !NonLocals] (
+        Goal0 = hlds_goal(GoalExpr, !:GoalInfo),
+
+        LCVar = Info ^ lci_lc_var,
         !:NonLocals = goal_info_get_nonlocals(!.GoalInfo),
-        insert(LCVar, !NonLocals),
-        goal_info_set_nonlocals(!.NonLocals, !GoalInfo)
-    ),
-    goal_info_set_purity(purity_impure, !GoalInfo).
+        set_of_var.insert(LCVar, !NonLocals),
+        goal_info_set_nonlocals(!.NonLocals, !GoalInfo),
+
+        goal_info_set_purity(purity_impure, !GoalInfo),
+
+        Goal = hlds_goal(GoalExpr, !.GoalInfo)
+    ).
 
 %----------------------------------------------------------------------------%
 
@@ -1216,13 +1251,13 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
 
         % Create a variable for the number of worker contexts, we control this
         % in the compiler so that it can be adjusted using profiler feedback
-        % (for auto-parallelisation), but for now we just set it using a runtime
-        % call so that it can be tuned.
+        % (for auto-parallelisation), but for now we just set it using
+        % a runtime call so that it can be tuned.
         varset.new_named_var("NumContexts", NumContextsVar, !VarSet),
         map.det_insert(NumContextsVar, builtin_type(builtin_type_int),
             !VarTypes),
-        get_lc_default_num_contexts_proc(ModuleInfo, LCDefaultNumContextsPredId,
-            LCDefaultNumContextsProcId),
+        get_lc_default_num_contexts_proc(ModuleInfo,
+            LCDefaultNumContextsPredId, LCDefaultNumContextsProcId),
         goal_info_init(list_to_set([NumContextsVar]),
             instmap_delta_bind_var(NumContextsVar),
             detism_det, purity_pure, GetNumContextsGoalInfo),
