@@ -15,7 +15,7 @@ include $(MERCURY_DIR)/Mmake.common
 #
 C2INITFLAGS = \
 	--trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
-	--trace-init-file $(SSDB_DIR)/$(SSDB_LIB_NAME).init
+	--ssdb-init-file $(SSDB_DIR)/$(SSDB_LIB_NAME).init
 
 -include Mmake.compiler.params
 
