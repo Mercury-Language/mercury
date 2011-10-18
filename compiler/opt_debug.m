@@ -1124,8 +1124,8 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
             ++ dump_label(MaybeProcLabel, Label) ++ ")"
     ;
         Instr = lc_spawn_off(LCRval, LCSRval, Label),
-        Str = "lc_spawn_off(" ++ dump_rval(MaybeProcLabel, LCRval)
-            ++ dump_rval(MaybeProcLabel, LCSRval)
+        Str = "lc_spawn_off(" ++ dump_rval(MaybeProcLabel, LCRval) ++ ", "
+            ++ dump_rval(MaybeProcLabel, LCSRval) ++ ", "
             ++ dump_label(MaybeProcLabel, Label) ++ ")"
     ;
         Instr = lc_join_and_terminate(LCRval, LCSRval),
