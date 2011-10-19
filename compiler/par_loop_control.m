@@ -687,6 +687,14 @@ should_preserve_tail_recursion(ModuleInfo, PreserveTailRecursion) :-
     --->    preserve_tail_recursion
     ;       do_not_preserve_tail_recursion.
 
+    % Is the current goal the last goal on an execution path through the
+    % procedure.  In other words, can the last goal within the current goal use
+    % a tailcall?
+    %
+:- type goal_is_last_goal_on_path
+    --->    goal_is_last_goal_on_path
+    ;       goal_is_not_last_goal_on_path.
+
 :- pred goal_loop_control_all_recursive_paths(loop_control_info::in,
     list(goal_id)::in, containing_goal_map::in, hlds_goal::in, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
@@ -694,14 +702,16 @@ should_preserve_tail_recursion(ModuleInfo, PreserveTailRecursion) :-
 goal_loop_control_all_recursive_paths(Info, GoalIds, ContainingGoalMap, !Goal,
         !VarSet, !VarTypes) :-
     GoalPaths = list.map(goal_id_to_forward_path(ContainingGoalMap), GoalIds),
-    list.foldl3(goal_loop_control_one_recursive_path(Info), GoalPaths,
-        !Goal, !VarSet, !VarTypes).
+    list.foldl3(goal_loop_control_one_recursive_path(Info,
+            goal_is_last_goal_on_path),
+        GoalPaths, !Goal, !VarSet, !VarTypes).
 
 :- pred goal_loop_control_one_recursive_path(loop_control_info::in,
-    forward_goal_path::in, hlds_goal::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    goal_is_last_goal_on_path::in, forward_goal_path::in,
+    hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out) is det.
 
-goal_loop_control_one_recursive_path(Info, GoalPath0, !Goal,
+goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
         !VarSet, !VarTypes) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo),
     ( goal_path_remove_first(GoalPath0, GoalPath, Step) ->
@@ -713,8 +723,19 @@ goal_loop_control_one_recursive_path(Info, GoalPath0, !Goal,
                 GoalExpr0 = conj(plain_conj, Conjs0),
                 list.index1(Conjs0, N, Conj0)
             ->
-                goal_loop_control_one_recursive_path(Info, GoalPath,
-                    Conj0, Conj, !VarSet, !VarTypes),
+                (
+                    IsLastGoal = goal_is_last_goal_on_path,
+                    ( N = length(Conjs0) ->
+                        IsLastGoalConj = goal_is_last_goal_on_path
+                    ;
+                        IsLastGoalConj = goal_is_not_last_goal_on_path
+                    )
+                ;
+                    IsLastGoal = goal_is_not_last_goal_on_path,
+                    IsLastGoalConj = IsLastGoal
+                ),
+                goal_loop_control_one_recursive_path(Info, IsLastGoalConj,
+                    GoalPath, Conj0, Conj, !VarSet, !VarTypes),
                 det_replace_nth(Conjs0, N, Conj, Conjs),
                 GoalExpr = conj(plain_conj, Conjs)
             ;
@@ -727,8 +748,8 @@ goal_loop_control_one_recursive_path(Info, GoalPath0, !Goal,
                 list.index1(Cases0, N, Case0)
             ->
                 Goal0 = Case0 ^ case_goal,
-                goal_loop_control_one_recursive_path(Info, GoalPath,
-                    Goal0, Goal, !VarSet, !VarTypes),
+                goal_loop_control_one_recursive_path(Info, IsLastGoal,
+                    GoalPath, Goal0, Goal, !VarSet, !VarTypes),
                 Case = Case0 ^ case_goal := Goal,
                 det_replace_nth(Cases0, N, Case, Cases),
                 GoalExpr = switch(Var, CanFail, Cases)
@@ -738,8 +759,8 @@ goal_loop_control_one_recursive_path(Info, GoalPath0, !Goal,
         ;
             Step = step_ite_then,
             ( GoalExpr0 = if_then_else(Vars, Cond, Then0, Else) ->
-                goal_loop_control_one_recursive_path(Info, GoalPath,
-                    Then0, Then, !VarSet, !VarTypes),
+                goal_loop_control_one_recursive_path(Info, IsLastGoal,
+                    GoalPath, Then0, Then, !VarSet, !VarTypes),
                 GoalExpr = if_then_else(Vars, Cond, Then, Else)
             ;
                 unexpected($module, $pred, ErrorString)
@@ -747,8 +768,8 @@ goal_loop_control_one_recursive_path(Info, GoalPath0, !Goal,
         ;
             Step = step_ite_else,
             ( GoalExpr0 = if_then_else(Vars, Cond, Then, Else0) ->
-                goal_loop_control_one_recursive_path(Info, GoalPath,
-                    Else0, Else, !VarSet, !VarTypes),
+                goal_loop_control_one_recursive_path(Info, IsLastGoal,
+                    GoalPath, Else0, Else, !VarSet, !VarTypes),
                 GoalExpr = if_then_else(Vars, Cond, Then, Else)
             ;
                 unexpected($module, $pred, ErrorString)
@@ -756,8 +777,8 @@ goal_loop_control_one_recursive_path(Info, GoalPath0, !Goal,
         ;
             Step = step_scope(_),
             ( GoalExpr0 = scope(Reason, SubGoal0) ->
-                goal_loop_control_one_recursive_path(Info, GoalPath,
-                    SubGoal0, SubGoal, !VarSet, !VarTypes),
+                goal_loop_control_one_recursive_path(Info, IsLastGoal,
+                    GoalPath, SubGoal0, SubGoal, !VarSet, !VarTypes),
                 GoalExpr = scope(Reason, SubGoal)
             ;
                 unexpected($module, $pred, ErrorString)
@@ -779,7 +800,7 @@ goal_loop_control_one_recursive_path(Info, GoalPath0, !Goal,
         fixup_goal_info(Info, !Goal)
     ;
         ( GoalExpr0 = conj(parallel_conj, Conjs) ->
-            par_conj_loop_control(Info, Conjs, GoalInfo, !:Goal,
+            par_conj_loop_control(Info, Conjs, IsLastGoal, GoalInfo, !:Goal,
                 !VarSet, !VarTypes)
         ;
             unexpected($module, $pred, "expected parallel conjunction")
@@ -787,18 +808,19 @@ goal_loop_control_one_recursive_path(Info, GoalPath0, !Goal,
     ).
 
 :- pred par_conj_loop_control(loop_control_info::in, list(hlds_goal)::in,
-    hlds_goal_info::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    goal_is_last_goal_on_path::in, hlds_goal_info::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-par_conj_loop_control(Info, Conjuncts0, GoalInfo, Goal, !VarSet,
+par_conj_loop_control(Info, Conjuncts0, IsLastGoal, GoalInfo, Goal, !VarSet,
         !VarTypes) :-
     list.det_split_last(Conjuncts0, EarlierConjuncts0, LastConjunct0),
     % Re-write the recursive call in the last conjunct.
-    goal_rewrite_recursive_call(Info, LastConjunct0, LastConjunct, _),
+    goal_rewrite_recursive_call(Info, IsLastGoal, LastConjunct0, LastConjunct,
+        UseParentStack, _),
     goal_to_conj_list(LastConjunct, LastConjGoals),
 
     % Process the remaining conjuncts.
-    rewrite_nonrecursive_par_conjuncts(Info,
+    rewrite_nonrecursive_par_conjuncts(Info, UseParentStack,
         EarlierConjuncts0, EarlierConjuncts, !VarSet, !VarTypes),
     Conjuncts = EarlierConjuncts ++ LastConjGoals,
     % XXX The point of calling create_conj_from_list is that it sets up
@@ -808,16 +830,15 @@ par_conj_loop_control(Info, Conjuncts0, GoalInfo, Goal, !VarSet,
     Goal1 = Goal0 ^ hlds_goal_info := GoalInfo,
     fixup_goal_info(Info, Goal1, Goal).
 
-    % Process each of the conjuncts in reverse order, building the new
-    % expression from them.
+    % Process each of the conjuncts, building the new expression from them.
     %
 :- pred rewrite_nonrecursive_par_conjuncts(loop_control_info::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
+    lc_use_parent_stack::in, list(hlds_goal)::in, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-rewrite_nonrecursive_par_conjuncts(_, [], [], !VarSet, !VarTypes).
-rewrite_nonrecursive_par_conjuncts(Info, [Conjunct0 | Conjuncts0], Goals,
-        !VarSet, !VarTypes) :-
+rewrite_nonrecursive_par_conjuncts(_, _, [], [], !VarSet, !VarTypes).
+rewrite_nonrecursive_par_conjuncts(Info, UseParentStack,
+        [Conjunct0 | Conjuncts0], Goals, !VarSet, !VarTypes) :-
     % Create the "get free slot" call..
     create_get_free_slot_goal(Info, LCSVar, GetFreeSlotGoal,
         !VarSet, !VarTypes),
@@ -839,13 +860,12 @@ rewrite_nonrecursive_par_conjuncts(Info, [Conjunct0 | Conjuncts0], Goals,
     % Wrap Conjunct in the loop control scope.
     LCVar = Info ^ lci_lc_var,
     ScopeGoalInfo = ConjunctGoalInfo,
-    % XXX: Which stack frame should this use?
     ScopeGoalExpr = scope(
-        loop_control(LCVar, LCSVar, lc_use_parent_stack_frame), Conjunct),
+        loop_control(LCVar, LCSVar, UseParentStack), Conjunct),
     ScopeGoal = hlds_goal(ScopeGoalExpr, ScopeGoalInfo),
 
-    rewrite_nonrecursive_par_conjuncts(Info, Conjuncts0, TailGoals,
-        !VarSet, !VarTypes),
+    rewrite_nonrecursive_par_conjuncts(Info, UseParentStack, Conjuncts0,
+        TailGoals, !VarSet, !VarTypes),
     Goals = [GetFreeSlotGoal, ScopeGoal | TailGoals].
 
     % Re-write any recursive calls in this goal.
@@ -854,19 +874,18 @@ rewrite_nonrecursive_par_conjuncts(Info, [Conjunct0 | Conjuncts0], Goals,
     % standards, this is deliberate as it makes it easier to call from
     % list.map2.
     %
+    % UseParentStack is lc_use_parent_stack_frame if, from this goal's
+    % perspective it is save to use the parent stack in any spawned off code
+    % running in parallel with this goal.  Otherwise it is
+    % lc_create_frame_on_child_stack.
 :- pred goal_rewrite_recursive_call(loop_control_info::in,
-    hlds_goal::in, hlds_goal::out, fixup_goal_info::out) is det.
+    goal_is_last_goal_on_path::in, hlds_goal::in, hlds_goal::out,
+    lc_use_parent_stack::out, fixup_goal_info::out) is det.
 
-goal_rewrite_recursive_call(Info, !Goal, FixupGoalInfo) :-
+goal_rewrite_recursive_call(Info, IsLastGoal, !Goal, UseParentStack,
+        FixupGoalInfo) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo),
     (
-        ( GoalExpr0 = unify(_, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
-        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
-        ),
-        GoalExpr = GoalExpr0,
-        FixupGoalInfo = do_not_fixup_goal_info
-    ;
         GoalExpr0 = plain_call(CallPredId0, CallProcId0, Args0, Builtin,
             MaybeUnify, _Name0),
         RecPredProcId = Info ^ lci_rec_pred_proc_id,
@@ -878,69 +897,127 @@ goal_rewrite_recursive_call(Info, !Goal, FixupGoalInfo) :-
             Name = Info ^ lci_inner_pred_name,
             GoalExpr = plain_call(CallPredId, CallProcId, Args, Builtin,
                 MaybeUnify, Name),
+            PreserveTailRecursion = Info ^ lci_preserve_tail_recursion,
+            !:Goal = hlds_goal(GoalExpr, GoalInfo),
+            (
+                IsLastGoal = goal_is_last_goal_on_path,
+                PreserveTailRecursion = preserve_tail_recursion
+            ->
+                % Create a frame on the child's stack so that the parent can
+                % tail-call.
+                UseParentStack = lc_create_frame_on_child_stack
+            ;
+                UseParentStack = lc_use_parent_stack_frame,
+                % Inform the code generator that this call may not be a tail
+                % call.
+                goal_add_feature(feature_do_not_tailcall, !Goal)
+            ),
+            fixup_goal_info(Info, !Goal),
             FixupGoalInfo = fixup_goal_info
         ;
-            GoalExpr = GoalExpr0,
+            UseParentStack = lc_use_parent_stack_frame,
             FixupGoalInfo = do_not_fixup_goal_info
         )
     ;
-        GoalExpr0 = conj(ConjType, Conjs0),
-        list.map2(goal_rewrite_recursive_call(Info), Conjs0, Conjs,
-            FixupGoalInfoConjs),
-        goals_fixup_goal_info(FixupGoalInfoConjs, FixupGoalInfo),
-        GoalExpr = conj(ConjType, Conjs)
-    ;
-        GoalExpr0 = disj(Disjs0),
-        list.map2(goal_rewrite_recursive_call(Info), Disjs0, Disjs,
-            FixupGoalInfoDisjs),
-        goals_fixup_goal_info(FixupGoalInfoDisjs, FixupGoalInfo),
-        GoalExpr = disj(Disjs)
-    ;
-        GoalExpr0 = switch(Var, CanFail, Cases0),
-        list.map2(case_rewrite_recursive_call(Info), Cases0, Cases,
-            FixupGoalInfoCases),
-        goals_fixup_goal_info(FixupGoalInfoCases, FixupGoalInfo),
-        GoalExpr = switch(Var, CanFail, Cases)
-    ;
-        GoalExpr0 = negation(SubGoal0),
-        goal_rewrite_recursive_call(Info, SubGoal0, SubGoal, FixupGoalInfo),
-        GoalExpr = negation(SubGoal)
-    ;
-        GoalExpr0 = scope(Reason, SubGoal0),
-        goal_rewrite_recursive_call(Info, SubGoal0, SubGoal, FixupGoalInfo),
-        GoalExpr = scope(Reason, SubGoal)
-    ;
-        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        goal_rewrite_recursive_call(Info, Cond0, Cond, FixupGoalInfoCond),
-        goal_rewrite_recursive_call(Info, Then0, Then, FixupGoalInfoThen),
-        goal_rewrite_recursive_call(Info, Else0, Else, FixupGoalInfoElse),
-        goals_fixup_goal_info([FixupGoalInfoCond, FixupGoalInfoThen,
-            FixupGoalInfoElse], FixupGoalInfo),
-        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+        ( GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = conj(_, _)
+        ; GoalExpr0 = disj(_)
+        ; GoalExpr0 = switch(_, _, _)
+        ; GoalExpr0 = negation(_)
+        ; GoalExpr0 = scope(_, _)
+        ; GoalExpr0 = if_then_else(_, _, _, _)
+        ),
+        (
+            ( GoalExpr0 = unify(_, _, _, _, _)
+            ; GoalExpr0 = generic_call(_, _, _, _)
+            ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+            ),
+            GoalExpr = GoalExpr0,
+            % lc_use_parent_stack_frame is the most indifferent option.
+            UseParentStack = lc_use_parent_stack_frame,
+            FixupGoalInfo = do_not_fixup_goal_info
+        ;
+            GoalExpr0 = conj(ConjType, Conjs0),
+            list.split_last_det(Conjs0, EarlierConjs0, LastConj0),
+            goal_rewrite_recursive_call(Info, IsLastGoal, LastConj0, LastConj,
+                UseParentStackLastConj, FixupGoalInfoLastConj),
+            list.map3(goal_rewrite_recursive_call(Info,
+                    goal_is_not_last_goal_on_path),
+                EarlierConjs0, EarlierConjs, UseParentStackEarlierConjs,
+                FixupGoalInfoEarlierConjs),
+            FixupGoalInfoConjs =
+                [FixupGoalInfoLastConj | FixupGoalInfoEarlierConjs],
+            goals_fixup_goal_info(FixupGoalInfoConjs, FixupGoalInfo),
+            goals_use_parent_stack(UseParentStackEarlierConjs, UseParentStack0),
+            combine_use_parent_stack(UseParentStackLastConj, UseParentStack0,
+                UseParentStack),
+            Conjs = EarlierConjs ++ [LastConj],
+            GoalExpr = conj(ConjType, Conjs)
+        ;
+            GoalExpr0 = disj(Disjs0),
+            % I don't care about disjunctions enough to try to preserve tail
+            % calls in them,
+            list.map3(goal_rewrite_recursive_call(Info,
+                    goal_is_not_last_goal_on_path),
+                Disjs0, Disjs, UseParentStackDisjs, FixupGoalInfoDisjs),
+            goals_use_parent_stack(UseParentStackDisjs, UseParentStack),
+            goals_fixup_goal_info(FixupGoalInfoDisjs, FixupGoalInfo),
+            GoalExpr = disj(Disjs)
+        ;
+            GoalExpr0 = switch(Var, CanFail, Cases0),
+            list.map3(case_rewrite_recursive_call(Info, IsLastGoal),
+                Cases0, Cases, UseParentStackCases, FixupGoalInfoCases),
+            goals_use_parent_stack(UseParentStackCases, UseParentStack),
+            goals_fixup_goal_info(FixupGoalInfoCases, FixupGoalInfo),
+            GoalExpr = switch(Var, CanFail, Cases)
+        ;
+            GoalExpr0 = negation(SubGoal0),
+            goal_rewrite_recursive_call(Info, IsLastGoal, SubGoal0, SubGoal,
+                UseParentStack, FixupGoalInfo),
+            GoalExpr = negation(SubGoal)
+        ;
+            GoalExpr0 = scope(Reason, SubGoal0),
+            goal_rewrite_recursive_call(Info, IsLastGoal, SubGoal0, SubGoal,
+                UseParentStack, FixupGoalInfo),
+            GoalExpr = scope(Reason, SubGoal)
+        ;
+            GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+            goal_rewrite_recursive_call(Info, goal_is_last_goal_on_path,
+                Cond0, Cond, UseParentStackCond, FixupGoalInfoCond),
+            goal_rewrite_recursive_call(Info, IsLastGoal, Then0, Then,
+                UseParentStackThen, FixupGoalInfoThen),
+            goal_rewrite_recursive_call(Info, IsLastGoal, Else0, Else,
+                UseParentStackElse, FixupGoalInfoElse),
+            goals_fixup_goal_info([FixupGoalInfoCond, FixupGoalInfoThen,
+                FixupGoalInfoElse], FixupGoalInfo),
+            goals_use_parent_stack([UseParentStackCond, UseParentStackThen,
+                UseParentStackElse], UseParentStack),
+            GoalExpr = if_then_else(Vars, Cond, Then, Else)
+        ),
+        !:Goal = hlds_goal(GoalExpr, GoalInfo),
+        (
+            FixupGoalInfo = fixup_goal_info,
+            fixup_goal_info(Info, !Goal)
+        ;
+            FixupGoalInfo = do_not_fixup_goal_info
+        )
     ;
         GoalExpr0 = shorthand(_),
         unexpected($module, $pred, "shorthand")
-    ),
-    !:Goal = hlds_goal(GoalExpr, GoalInfo),
-    (
-        FixupGoalInfo = fixup_goal_info,
-        fixup_goal_info(Info, !Goal),
-        ( GoalExpr = plain_call(_, _, _, _, _, _) ->
-            goal_add_feature(feature_do_not_tailcall, !Goal)
-        ;
-            true
-        )
-    ;
-        FixupGoalInfo = do_not_fixup_goal_info
     ).
 
 :- pred case_rewrite_recursive_call(loop_control_info::in,
-    case::in, case::out, fixup_goal_info::out) is det.
+    goal_is_last_goal_on_path::in, case::in, case::out,
+    lc_use_parent_stack::out, fixup_goal_info::out) is det.
 
-case_rewrite_recursive_call(Info, !Case, FixupGoalInfo) :-
+case_rewrite_recursive_call(Info, IsLastGoal, !Case, UseParentStack,
+        FixupGoalInfo) :-
     some [!Goal] (
         !:Goal = !.Case ^ case_goal,
-        goal_rewrite_recursive_call(Info, !Goal, FixupGoalInfo),
+        goal_rewrite_recursive_call(Info, IsLastGoal, !Goal, UseParentStack,
+            FixupGoalInfo),
         !Case ^ case_goal := !.Goal
     ).
 
@@ -953,6 +1030,26 @@ goals_fixup_goal_info(List, Fixup) :-
     ;
         Fixup = do_not_fixup_goal_info
     ).
+
+:- pred goals_use_parent_stack(list(lc_use_parent_stack)::in,
+    lc_use_parent_stack::out) is det.
+
+goals_use_parent_stack([], lc_use_parent_stack_frame).
+goals_use_parent_stack([X | Xs], UseParentStack) :-
+    goals_use_parent_stack(Xs, UseParentStack0),
+    combine_use_parent_stack(X, UseParentStack0, UseParentStack).
+
+:- pred combine_use_parent_stack(lc_use_parent_stack::in,
+    lc_use_parent_stack::in, lc_use_parent_stack::out) is det.
+
+combine_use_parent_stack(lc_use_parent_stack_frame,
+    lc_use_parent_stack_frame, lc_use_parent_stack_frame).
+combine_use_parent_stack(lc_use_parent_stack_frame,
+    lc_create_frame_on_child_stack, lc_create_frame_on_child_stack).
+combine_use_parent_stack(lc_create_frame_on_child_stack,
+    lc_use_parent_stack_frame, lc_create_frame_on_child_stack).
+combine_use_parent_stack(lc_create_frame_on_child_stack,
+    lc_create_frame_on_child_stack, lc_create_frame_on_child_stack).
 
 %----------------------------------------------------------------------------%
 
@@ -974,7 +1071,9 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
     (
         % This goal is one of the transformed parallel conjunctions,
         % nothing needs to be done.
-        % XXX What if the last conjunct contains a base case?
+        % The last conjunct always recurses, this is inforced by
+        % merge_loop_control_par_conjs_between_branches, but we should check
+        % to see how often this happens and if we should handle it.
         % XXX This may not work, I don't know if the goal ID is maintained.
         list.member(GoalId, RecParConjIds)
     ->

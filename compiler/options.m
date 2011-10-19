@@ -1886,7 +1886,7 @@ option_defaults_2(miscellaneous_option, [
     implicit_parallelism                -   bool(no),
     feedback_file                       -   string(""),
     par_loop_control                    -   bool(no),
-    par_loop_control_preserve_tail_recursion - bool(yes)
+    par_loop_control_preserve_tail_recursion - bool(no)
 ]).
 
     % please keep this in alphabetic order
@@ -2858,7 +2858,7 @@ long_option("distance-granularity", distance_granularity).
 long_option("implicit-parallelism", implicit_parallelism).
 long_option("feedback-file",        feedback_file).
 long_option("par-loop-control",     par_loop_control).
-long_option("no-par-loop-control-preserve-tail-recursion",
+long_option("par-loop-control-preserve-tail-recursion",
                                     par_loop_control_preserve_tail_recursion).
 
 %-----------------------------------------------------------------------------%
