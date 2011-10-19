@@ -177,6 +177,8 @@ static hwloc_topology_t MR_hw_topology;
 static hwloc_cpuset_t   MR_hw_available_pus = NULL;
 #else /* MR_HAVE_SCHED_SETAFFINITY */
 static cpu_set_t        *MR_available_cpus;
+/* The number of CPUs that MR_available_cpus can refer to */
+static unsigned         MR_cpuset_size = 0;
 #endif
 #endif
 
@@ -345,7 +347,7 @@ MR_pin_thread_no_locking(void)
     fprintf(stderr, "Currently running on cpu %d\n", cpu);
 #endif
 
-    for (i = 0; i < MR_num_processors && MR_thread_pinning; i++) {
+    for (i = 0; (i < MR_num_processors) && MR_thread_pinning; i++) {
         if (MR_do_pin_thread((cpu + i) % MR_num_processors)) {
 #ifdef MR_DEBUG_THREAD_PINNING
             fprintf(stderr, "Pinned to cpu %d\n", (cpu + i) % MR_num_processors);
@@ -353,7 +355,7 @@ MR_pin_thread_no_locking(void)
 #endif
             MR_num_threads_left_to_pin--;
             MR_make_cpu_unavailable((cpu + i) % MR_num_processors);
-            break;
+            return (cpu + i) % MR_num_processors;
         }
         if (!MR_thread_pinning) {
             /*
@@ -366,7 +368,8 @@ MR_pin_thread_no_locking(void)
             break;
         }
     }
-    return (cpu + 1) % MR_num_processors;
+
+    return cpu;
 }
 
 unsigned
@@ -416,15 +419,7 @@ static void MR_setup_thread_pinning(void)
     ** gathered by using sysconf.  But the number of CPUs in the CPU_SET is the
     ** actual number of CPUs that this process is restricted to.
     */
-  #if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
-    num_processors = sysconf(_SC_NPROCESSORS_ONLN);
-  #else
-    /*
-    ** The user may have supplied MR_num_processors
-    */
-    num_processors = (MR_num_processors > 1 ? MR_num_processors : 1)
-  #endif
-    num_processors = CPU_COUNT_S(num_processors, MR_available_cpus);
+    num_processors = CPU_COUNT_S(MR_cpuset_size, MR_available_cpus);
 #endif
     MR_num_processors = num_processors;
 
@@ -450,7 +445,7 @@ static void MR_setup_thread_pinning(void)
   ** if we autodetected the number of CPUs without error.
   */
 #if 0
-    if (MR_num_threads > 1) {
+    if (MR_num_processors > 1) {
         MR_thread_pinning = MR_TRUE;
     }
 #endif
@@ -513,13 +508,13 @@ MR_do_pin_thread(int cpu)
         return MR_FALSE;
     }
 #elif defined(MR_HAVE_SCHED_SETAFFINITY)
-    if (CPU_COUNT_S(MR_num_processors, MR_available_cpus) == 0) {
+    if (CPU_COUNT_S(MR_cpuset_size, MR_available_cpus) == 0) {
         /*
         ** As above, reset the available cpus.
         */
         MR_reset_available_cpus();
     }
-    if (!CPU_ISSET_S(cpu, MR_num_processors, MR_available_cpus)) {
+    if (!CPU_ISSET_S(cpu, MR_cpuset_size, MR_available_cpus)) {
         return MR_FALSE;
     }
 #endif
@@ -537,9 +532,9 @@ MR_do_pin_thread(int cpu)
 
     cpus = CPU_ALLOC(MR_num_processors);
 
-    CPU_ZERO_S(MR_num_processors, cpus);
-    CPU_SET_S(cpu, MR_num_processors, cpus);
-    if (sched_setaffinity(0, CPU_ALLOC_SIZE(MR_num_processors), cpus) == -1) {
+    CPU_ZERO_S(MR_cpuset_size, cpus);
+    CPU_SET_S(cpu, MR_cpuset_size, cpus);
+    if (sched_setaffinity(0, MR_cpuset_size, cpus) == -1) {
         perror("Warning: Couldn't set CPU affinity: ");
         /*
         ** If this failed once, it will probably fail again,
@@ -581,23 +576,30 @@ static void MR_reset_available_cpus(void)
 
     hwloc_cpuset_free(inherited_binding);
 #elif defined(MR_HAVE_SCHED_GETAFFINITY)
+    unsigned cpuset_size;
     unsigned num_processors;
 
+    if (MR_cpuset_size) {
+        cpuset_size = MR_cpuset_size;
+        num_processors = MR_num_processors;
+    } else {
   #if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
-    num_processors = sysconf(_SC_NPROCESSORS_ONLN);
+        num_processors = sysconf(_SC_NPROCESSORS_ONLN);
   #else
-    /*
-    ** The user may have supplied MR_num_processors
-    */
-    num_processors = (MR_num_processors > 1 ? MR_num_processors : 1)
+        /*
+        ** Make the CPU set at least 32 processors wide.
+        */
+        num_processors = 32;
   #endif
+        cpuset_size = CPU_ALLOC_SIZE(num_processors);
+        MR_cpuset_size = cpuset_size;
+    }
 
     if (MR_available_cpus == NULL) {
         MR_available_cpus = CPU_ALLOC(num_processors);
     }
 
-    if (-1 == sched_getaffinity(0, CPU_ALLOC_SIZE(num_processors),
-        MR_available_cpus))
+    if (-1 == sched_getaffinity(0, cpuset_size, MR_available_cpus))
     {
         perror("Couldn't get CPU affinity");
         MR_thread_pinning = MR_FALSE;
@@ -618,7 +620,7 @@ static void MR_make_cpu_unavailable(int cpu)
     pu = hwloc_get_obj_by_type(MR_hw_topology, HWLOC_OBJ_PU, cpu);
     MR_make_pu_unavailable(pu);
 #elif defined(MR_HAVE_SCHED_SETAFFINITY)
-    CPU_CLR_S(cpu, MR_num_processors, MR_available_cpus);
+    CPU_CLR_S(cpu, MR_cpuset_size, MR_available_cpus);
 #endif
 }
 
