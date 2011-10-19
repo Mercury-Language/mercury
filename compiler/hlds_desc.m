@@ -157,7 +157,7 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
             Reason = trace_goal(_, _, _, _, _),
             Desc = "scope trace goal"
         ;
-            Reason = loop_control(_, _),
+            Reason = loop_control(_, _, _),
             Desc = "scope loop control goal"
         )
     ;

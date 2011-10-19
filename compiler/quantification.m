@@ -731,7 +731,7 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
         ; Reason0 = require_complete_switch(_)
         ; Reason0 = commit(_)
         ; Reason0 = barrier(_)
-        ; Reason0 = loop_control(_, _)
+        ; Reason0 = loop_control(_, _, _)
         ),
         Reason = Reason0,
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
@@ -802,7 +802,7 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
             ; Reason0 = commit(_)
             ; Reason0 = barrier(_)
             ; Reason0 = from_ground_term(_, _)
-            ; Reason0 = loop_control(_, _)
+            ; Reason0 = loop_control(_, _, _)
             ),
             % We shouldn't invoke this predicate for these kinds of scopes.
             unexpected($module, $pred, "unexpected scope")
@@ -1910,7 +1910,7 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
                 % processed SubGoal, since it should appear in SubGoal.
             )
         ;
-            Reason = loop_control(LCVar, LCSVar),
+            Reason = loop_control(LCVar, LCSVar, _),
             goal_vars_both_maybe_lambda(NonLocalsToRecompute, SubGoal,
                 !:Set, !:LambdaSet),
             set_of_var.insert(LCVar, !Set),
@@ -2068,7 +2068,7 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
             % TermVar should have been put into the relevant sets when we
             % processed SubGoal, since it should appear in SubGoal.
         ;
-            Reason = loop_control(LCVar, LCSVar),
+            Reason = loop_control(LCVar, LCSVar, _),
             goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
                 !:Set, !:LambdaSet),
             set_of_var.insert(LCVar, !Set),
@@ -2220,7 +2220,7 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
             % _TermVar should have been put into the relevant sets when we
             % processed SubGoal, since it should appear in SubGoal.
         ;
-            Reason = loop_control(LCVar, LCSVar),
+            Reason = loop_control(LCVar, LCSVar, _),
             goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set),
             set_of_var.insert(LCVar, !Set),
             set_of_var.insert(LCSVar, !Set)

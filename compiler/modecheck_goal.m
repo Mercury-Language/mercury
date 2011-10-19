@@ -529,7 +529,7 @@ goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
-            ; Reason = loop_control(_, _)
+            ; Reason = loop_control(_, _, _)
             ),
             LargeFlatConstructs = set_of_var.init
         )
@@ -606,7 +606,7 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
-            ; Reason = loop_control(_, _)
+            ; Reason = loop_control(_, _, _)
             ),
             Goal = Goal0
         )
@@ -811,7 +811,7 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
             ; Reason = barrier(_)
             )
         ;
-            Reason = loop_control(LCVar, LCSVar),
+            Reason = loop_control(LCVar, LCSVar, _),
             % We check that the variables for the loop control are ground.
             mode_info_get_instmap(!.ModeInfo, InstMap),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),

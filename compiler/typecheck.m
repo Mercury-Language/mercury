@@ -1291,7 +1291,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             ;
                 % These variables are introduced by the compiler and may
                 % only have a single, specific type.
-                Reason = loop_control(LCVar, LCSVar),
+                Reason = loop_control(LCVar, LCSVar, _),
                 Vars = [LCVar, LCSVar]
             ),
             ensure_vars_have_a_type(Vars, !Info)

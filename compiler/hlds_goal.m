@@ -537,8 +537,9 @@
             % in the parse tree is converted to HLDS.
 
     ;       loop_control(
-                lc_lc_var           :: prog_var,
-                lc_lcs_var          :: prog_var
+                lc_lc_var               :: prog_var,
+                lc_lcs_var              :: prog_var,
+                lc_use_parent_stack     :: lc_use_parent_stack
             ).
             % The goal inside the scope will be spawned off because the loop
             % control transformation has been applied to this predicate.
@@ -576,6 +577,10 @@
 :- type is_first_disjunct
     --->    is_first_disjunct
     ;       is_not_first_disjunct.
+
+:- type lc_use_parent_stack
+    --->    lc_use_parent_stack_frame
+    ;       lc_create_frame_on_child_stack.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2581,10 +2586,10 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             rename_var_list(Must, Subn, QuantVars0, QuantVars),
             Reason = trace_goal(Flag, Grade, Env, Vars, QuantVars)
         ;
-            Reason0 = loop_control(LCVar0, LCSVar0),
+            Reason0 = loop_control(LCVar0, LCSVar0, UseParentStack),
             rename_var(Must, Subn, LCVar0, LCVar),
             rename_var(Must, Subn, LCSVar0, LCSVar),
-            Reason = loop_control(LCVar, LCSVar)
+            Reason = loop_control(LCVar, LCSVar, UseParentStack)
         ),
         rename_vars_in_goal(Must, Subn, Goal0, Goal),
         Expr = scope(Reason, Goal)
@@ -2819,10 +2824,10 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
             rename_var_list(need_not_rename, Subn, QuantVars0, QuantVars),
             Reason = trace_goal(Flag, Grade, Env, Vars, QuantVars)
         ;
-            Reason0 = loop_control(LCVar0, LCSVar0),
+            Reason0 = loop_control(LCVar0, LCSVar0, UseParentStack),
             rename_var(need_not_rename, Subn, LCVar0, LCVar),
             rename_var(need_not_rename, Subn, LCSVar0, LCSVar),
-            Reason = loop_control(LCVar, LCSVar)
+            Reason = loop_control(LCVar, LCSVar, UseParentStack)
         ),
         incremental_rename_vars_in_goal(Subn, SubnUpdates, Goal0, Goal),
         Expr = scope(Reason, Goal)

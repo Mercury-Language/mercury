@@ -252,7 +252,7 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
             warn_singletons_goal_vars([TermVar], GoalInfo, NonLocals,
                 QuantVars, !Info)
         ;
-            Reason = loop_control(_, _),
+            Reason = loop_control(_, _, _),
             % These scopes are introduced only by compiler passes
             % that execute after us.
             sorry($module, $pred, "loop_control")

@@ -317,7 +317,7 @@ can_push(Var, Goal) = CanPush :-
                 ; Reason = commit(_)
                 ; Reason = barrier(_)
                 ; Reason = trace_goal(_, _, _, _, _)
-                ; Reason = loop_control(_, _)
+                ; Reason = loop_control(_, _, _)
                 ),
                 CanPush = no
             ;

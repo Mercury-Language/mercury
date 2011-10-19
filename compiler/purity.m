@@ -689,13 +689,10 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             ContainsTrace = contains_trace_goal,
             Reason = Reason0
         ;
-            % XXX: Revisit this after writing the loop control
-            % transformation, the transformation and primitives will affect
-            % purity and it will be easier to consider what to do here
-            % _after_ that code has been written.
-            Reason0 = loop_control(_, _),
-            sorry($module, $pred,
-                "Revisit purity checking of loop control scopes")
+            % Purity checking happens before the introduction of loop control
+            % scopes.
+            Reason0 = loop_control(_, _, _),
+            unexpected($module, $pred, "loop_control")
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;

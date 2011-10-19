@@ -631,7 +631,7 @@ erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
             erl_gen_commit(SubGoal, CodeModel, Detism, InstMap, Context,
                 MaybeSuccessExpr, Statement, !Info)
         ;
-            Reason = loop_control(_, _),
+            Reason = loop_control(_, _, _),
             unexpected($module, $pred, "loop_control")
         ;
             Reason = require_detism(_),

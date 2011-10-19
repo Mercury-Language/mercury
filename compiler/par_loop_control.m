@@ -839,7 +839,9 @@ rewrite_nonrecursive_par_conjuncts(Info, [Conjunct0 | Conjuncts0], Goals,
     % Wrap Conjunct in the loop control scope.
     LCVar = Info ^ lci_lc_var,
     ScopeGoalInfo = ConjunctGoalInfo,
-    ScopeGoalExpr = scope(loop_control(LCVar, LCSVar), Conjunct),
+    % XXX: Which stack frame should this use?
+    ScopeGoalExpr = scope(
+        loop_control(LCVar, LCSVar, lc_use_parent_stack_frame), Conjunct),
     ScopeGoal = hlds_goal(ScopeGoalExpr, ScopeGoalInfo),
 
     rewrite_nonrecursive_par_conjuncts(Info, Conjuncts0, TailGoals,

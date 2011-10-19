@@ -1975,8 +1975,15 @@ write_goal_scope(Info, GoalExpr, ModuleInfo, VarSet,
         mercury_output_vars(VarSet, AppendVarNums, QuantVars, !IO),
         io.nl(!IO)
     ;
-        Reason = loop_control(LCVar, LCSVar),
-        io.write_string("loop_control_spawn_off(", !IO),
+        Reason = loop_control(LCVar, LCSVar, UseParentStack),
+        (
+            UseParentStack = lc_use_parent_stack_frame,
+            UseParentStackStr = "using_parent_stack_frame"
+        ;
+            UseParentStack = lc_create_frame_on_child_stack,
+            UseParentStackStr = "using_child_stack"
+        ),
+        io.format("loop_control_spawn_off_%s(", [s(UseParentStackStr)], !IO),
         mercury_output_vars(VarSet, AppendVarNums, [LCVar, LCSVar], !IO),
         io.write_string(") (\n", !IO)
     ),

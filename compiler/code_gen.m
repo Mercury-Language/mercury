@@ -266,9 +266,9 @@ generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
         ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
             unify_gen.generate_ground_term(TermVar, SubGoal, !CI),
             Code = empty
-        ; Reason = loop_control(LCVar, LCSVar) ->
-            par_conj_gen.generate_loop_control(SubGoal, LCVar, LCSVar, Code,
-                !CI)
+        ; Reason = loop_control(LCVar, LCSVar, UseParentStack) ->
+            par_conj_gen.generate_loop_control(SubGoal, LCVar, LCSVar,
+                UseParentStack, Code, !CI)
         ;
             commit_gen.generate_scope(Reason, CodeModel, GoalInfo,
                 ForwardLiveVarsBeforeGoal, SubGoal, Code, !CI)

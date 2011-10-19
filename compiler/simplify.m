@@ -1978,7 +1978,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 ; FinalReason = exist_quant(_)
                 ; FinalReason = promise_solutions(_, _)
                 ; FinalReason = barrier(not_removable)
-                ; FinalReason = loop_control(_, _)
+                ; FinalReason = loop_control(_, _, _)
                 ),
                 Goal = Goal1,
                 % Replacing calls, constructions or deconstructions outside
@@ -3796,7 +3796,7 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
             ; Reason = require_complete_switch(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
-            ; Reason = loop_control(_, _)
+            ; Reason = loop_control(_, _, _)
             ),
             goal_contains_trace(SubGoal0, SubGoal, ContainsTrace)
         ),

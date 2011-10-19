@@ -382,12 +382,18 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 
             % XXX We could treat from_ground_term_deconstruct scopes specially
             % as well.
-        ; Reason = loop_control(LCVar, LCSVar) ->
+        ; Reason = loop_control(LCVar, LCSVar, _) ->
             % We must handle loop control scopes specially, see the comment for
             % parallel conjunctions above.  Like parallel conjunctions, we need
             % stack slots for the NonLocals, but we also need non-overlapping
             % slots for LC and LCS.
             %
+
+            % XXX: When we use a frame on the child's stack rather than the
+            % parent's we may be able to save fewer variables to the stack at
+            % this time.  This is an optimization for later, not doing it now
+            % will make it easier to generate the code in the spawned off
+            % computation (since it can have the same layout as the parent).
 
             NonLocals = goal_info_get_code_gen_nonlocals(GoalInfo0),
             % Include NonLocals as these need to be on the stack to communicate

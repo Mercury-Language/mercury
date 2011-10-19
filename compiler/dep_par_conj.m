@@ -1754,7 +1754,9 @@ specialize_sequences_in_goal(Goal0, Goal, !SpecInfo) :-
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            specialize_sequences_in_conj(Goals0, Goals, !SpecInfo),
+            NonLocals = goal_get_nonlocals(Goal0),
+            specialize_sequences_in_conj(Goals0, Goals, NonLocals,
+                !SpecInfo),
             conj_list_to_goal(Goals, GoalInfo0, Goal)
         ;
             ConjType = parallel_conj,
@@ -1808,22 +1810,22 @@ specialize_sequences_in_goal(Goal0, Goal, !SpecInfo) :-
     ).
 
 :- pred specialize_sequences_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    spec_info::in, spec_info::out) is det.
+    set_of_progvar::in, spec_info::in, spec_info::out) is det.
 
-specialize_sequences_in_conj(Goals0, Goals, !SpecInfo) :-
+specialize_sequences_in_conj(Goals0, Goals, NonLocals, !SpecInfo) :-
     % For each call goal, look backwards for as many wait calls as possible
     % and forward for as many signal calls as possible. To allow us to look
     % backwards, we maintain a stack of the preceding goals.
-    specialize_sequences_in_conj_2([], Goals0, Goals, !SpecInfo).
+    specialize_sequences_in_conj_2([], Goals0, Goals, NonLocals, !SpecInfo).
 
 :- pred specialize_sequences_in_conj_2(list(hlds_goal)::in,
-    list(hlds_goal)::in, list(hlds_goal)::out, spec_info::in, spec_info::out)
-    is det.
+    list(hlds_goal)::in, list(hlds_goal)::out, set_of_progvar::in,
+    spec_info::in, spec_info::out) is det.
 
 specialize_sequences_in_conj_2(RevGoals, [], list.reverse(RevGoals),
-        !SpecInfo).
+        _, !SpecInfo).
 specialize_sequences_in_conj_2(RevGoals0, [Goal0 | Goals0], Goals,
-        !SpecInfo) :-
+        NonLocals, !SpecInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = plain_call(_, _, _, _, _, _),
@@ -1832,12 +1834,13 @@ specialize_sequences_in_conj_2(RevGoals0, [Goal0 | Goals0], Goals,
     ->
         CallGoal0 = hlds_goal(GoalExpr0, GoalInfo0),  % dumb mode system
         maybe_specialize_call_and_goals(RevGoals0, CallGoal0, Goals0,
-            RevGoals1, Goals1, !SpecInfo),
-        specialize_sequences_in_conj_2(RevGoals1, Goals1, Goals, !SpecInfo)
+            RevGoals1, Goals1, NonLocals, !SpecInfo),
+        specialize_sequences_in_conj_2(RevGoals1, Goals1, Goals,
+            NonLocals, !SpecInfo)
     ;
         specialize_sequences_in_goal(Goal0, Goal, !SpecInfo),
         specialize_sequences_in_conj_2([Goal | RevGoals0], Goals0, Goals,
-            !SpecInfo)
+            NonLocals, !SpecInfo)
     ).
 
 :- pred specialize_sequences_in_goals(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1869,10 +1872,10 @@ specialize_sequences_in_cases([Case0 | Cases0], [Case | Cases], !SpecInfo) :-
 :- pred maybe_specialize_call_and_goals(list(hlds_goal)::in,
     hlds_goal::in(call_goal), list(hlds_goal)::in,
     list(hlds_goal)::out, list(hlds_goal)::out,
-    spec_info::in, spec_info::out) is det.
+    set_of_progvar::in, spec_info::in, spec_info::out) is det.
 
 maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
-        RevGoals, FwdGoals, !SpecInfo) :-
+        RevGoals, FwdGoals, NonLocals, !SpecInfo) :-
     Goal0 = hlds_goal(GoalExpr0, _),
     GoalExpr0 = plain_call(PredId, ProcId, CallVars, _, _, _),
 
@@ -1947,17 +1950,14 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
                 MaybeGoal = yes(Goal),
 
                 % After the replaced call may be further references to a
-                % signalled or waited variable.  Add `get' goals after the
-                % transformed goal to make sure the variable is bound.  We
-                % assume the get goals will be simplified away if they turn out
-                % to be unnecessary.
-                %
-                % XXX The simplify pass that comes later doesn't always remove
-                % these calls, even if they're unnecessary.
-
+                % signalled or waited variable.  If so, add `get' goals after
+                % the transformed goal to make sure the variable is bound.
+                PushedPairs = PushedSignalPairs ++ PushedWaitPairs,
+                list.filter(should_add_get_goal(NonLocals, RevGoals1),
+                    PushedPairs, PushedPairsNeedGets),
                 VarTypes = !.SpecInfo ^ spec_vartypes,
                 list.map(make_get_goal(!.SpecInfo ^ spec_module_info, VarTypes),
-                    PushedSignalPairs ++ PushedWaitPairs, GetGoals),
+                    PushedPairsNeedGets, GetGoals),
 
                 RevGoals = GetGoals ++ [Goal] ++ UnPushedWaitGoals ++ RevGoals1,
                 FwdGoals = UnPushedSignalGoals ++ FwdGoals1
@@ -2215,6 +2215,34 @@ number_future_args(ArgNo, [Arg | Args], WaitSignalVars, !RevAcc) :-
         true
     ),
     number_future_args(ArgNo+1, Args, WaitSignalVars, !RevAcc).
+
+    % should_add_get_goal(NonLocals, FwdGoals, FutureVarPair).
+    %
+    % True the variable wrapped in the FutureVarPair is needed by a another
+    % goal, as indicated by NonLocals (of the conjuction) or FwdGoals (the
+    % remaining goals in the conjunction).
+    %
+:- pred should_add_get_goal(set_of_progvar::in, list(hlds_goal)::in,
+    future_var_pair::in) is semidet.
+
+should_add_get_goal(NonLocals, RevGoals, future_var_pair(_, Var)) :-
+    (
+        % If the variable is in the nonlocals set of the entire conjunction
+        % then we need to add a get goal, because that means that a goal
+        % outside the conjunction also uses the variable.
+        set_of_var.contains(NonLocals, Var)
+    ;
+        % If any of the other goals in the conjunction mention the variable
+        % then we should also add a get_future variable call.  We don't need to
+        % check RevGoals, the only reason the variable might be mentioned there
+        % would be because it was previously partially instantiated.  But since
+        % we're adding a get_future call that does not make sense.  I'm
+        % assuming that only free -> ground instantiation state changes are
+        % allowed for these variables.
+        member(Goal, RevGoals),
+        GoalNonLocals = goal_get_nonlocals(Goal),
+        set_of_var.contains(GoalNonLocals, Var)
+    ).
 
 %-----------------------------------------------------------------------------%
 

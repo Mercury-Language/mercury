@@ -1779,7 +1779,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             RightFailingContexts, MaybePromiseEqvSolutionSets0,
             Detism, GoalFailingContexts, !DetInfo)
     ;
-        Reason = loop_control(_, _),
+        Reason = loop_control(_, _, _),
         det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
             RightFailingContexts, MaybePromiseEqvSolutionSets0,
             Detism, GoalFailingContexts, !DetInfo),

@@ -101,7 +101,8 @@
     code_model::in, llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_loop_control(hlds_goal::in, prog_var::in, prog_var::in,
-    llds_code::out, code_info::in, code_info::out) is det.
+    lc_use_parent_stack::in, llds_code::out, code_info::in, code_info::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -328,16 +329,25 @@ MR_threadscope_post_end_par_conj(&MR_sv(%d));
 
 %-----------------------------------------------------------------------------%
 
-generate_loop_control(Goal, LCVar, LCSVar, Code, !CI) :-
+generate_loop_control(Goal, LCVar, LCSVar, UseParentStack, Code, !CI) :-
     % We don't need to save the parent stack pointer, we do not use it in the
     % main context and all the worker contexts will never have some data that
     % we shouldn't clobber there.
     % We also expect the runtime code to setup the parent stack pointer for us.
 
-    get_known_variables(!.CI, KnownVars),
-    NonLocals = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
-    InputVars = set_of_var.intersect(NonLocals, list_to_set(KnownVars)),
-    save_variables_on_stack(to_sorted_list(InputVars), SaveCode, !CI),
+    (
+        UseParentStack = lc_use_parent_stack_frame,
+        get_known_variables(!.CI, KnownVars),
+        NonLocals = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
+        InputVars = set_of_var.intersect(NonLocals, list_to_set(KnownVars)),
+        save_variables_on_stack(to_sorted_list(InputVars), SaveCode, !CI)
+    ;
+        UseParentStack = lc_create_frame_on_child_stack,
+        % XXX: Allocate a frame on the child's stack.
+        % Copy the variables to the child's stack.
+        % I'll (Paul) provide C macros in the runtime system for these actions.
+        sorry($module, $pred, "unimplemented")
+    ),
 
     % Create the call to spawn_off.
     remember_position(!.CI, PositionBeforeSpawnOff),
@@ -365,13 +375,20 @@ generate_loop_control(Goal, LCVar, LCSVar, Code, !CI) :-
     generate_goal(model_det, Goal, GoalCode, !CI),
     % We expect that the join_and_terminate call is already in Goal.
     SpawnedOffCode0 = LabelCode ++ GoalCode,
-    % Note: Zoltan, Peter and I (Paul) have discussed compressing the stack
-    % frame of the spawned off computation.  This would be _instead of_ using
-    % the parent stack pointer.  TODO: Before we can do this we need to
-    % determine in which loop controls we should use the parent's stack frame,
-    % and then perform this selectively.  The primitives in the runtime system
-    % also need to support this.
-    replace_stack_vars_by_parent_sv(SpawnedOffCode0, SpawnedOffCode),
+
+    (
+        UseParentStack = lc_use_parent_stack_frame,
+        replace_stack_vars_by_parent_sv(SpawnedOffCode0, SpawnedOffCode)
+
+% XXX: Comment back in this case after addressing the one above.  The compiler
+% won't let me include this case if the one above is erroneous.
+%    ;
+%        UseParentStack = lc_create_frame_on_child_stack,
+%
+%        % XXX: We could take this opportunity to remove gaps in the stack
+%        % frame as discussed in our meetings.
+%        sorry($module, $pred, "unimplemented")
+    ),
 
     reset_to_position(PositionAfterSpawnOff, !CI),
 

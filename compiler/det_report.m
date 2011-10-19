@@ -1129,7 +1129,7 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
             true
         )
     ;
-        Reason = loop_control(_, _),
+        Reason = loop_control(_, _, _),
         SubGoal = hlds_goal(_, SubGoalInfo),
         Detism = goal_info_get_determinism(SubGoalInfo),
         (
