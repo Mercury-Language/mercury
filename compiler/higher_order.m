@@ -224,7 +224,7 @@ recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
     --->    higher_order_info(
                 hoi_global_info         :: higher_order_global_info,
 
-                % Higher_order variables.
+                % Higher order variables with unique known values.
                 hoi_pred_vars           :: pred_vars,
 
                 % The pred_proc_id, pred_info and proc_info of the procedure
@@ -307,9 +307,9 @@ recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
 :- type goal_sizes == map(pred_id, int).
 
     % Used to hold the value of known higher order variables.
-    % If a variable is not in the map, it does not have a value yet.
+    % If a variable is not in the map, it does not have a unique known value.
     %
-:- type pred_vars == map(prog_var, maybe_const).
+:- type pred_vars == map(prog_var, ho_const).
 
 :- type new_preds == map(pred_proc_id, set(new_pred)).
 
@@ -319,12 +319,8 @@ recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
     % must be constants. For pred_consts and type_infos, non-constant
     % arguments are passed through to any specialised version.
     %
-:- type maybe_const
-    --->    constant(cons_id, list(prog_var))
-                                    % Unique possible value.
-
-    ;       multiple_values.        % Multiple possible values,
-                                    % cannot specialise.
+:- type ho_const
+    --->    constant(cons_id, list(prog_var)).
 
 :- type ho_params
     --->    ho_params(
@@ -586,10 +582,10 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
         get_pre_branch_info(!.Info, PreInfo),
         ho_traverse_goal(Cond0, Cond, !Info),
         ho_traverse_goal(Then0, Then, !Info),
-        get_post_branch_info(!.Info, PostThenInfo),
+        get_post_branch_info_for_goal(!.Info, Then, PostThenInfo),
         set_pre_branch_info(PreInfo, !Info),
         ho_traverse_goal(Else0, Else, !Info),
-        get_post_branch_info(!.Info, PostElseInfo),
+        get_post_branch_info_for_goal(!.Info, Else, PostElseInfo),
         merge_post_branch_infos(PostThenInfo, PostElseInfo, PostInfo),
         set_post_branch_info(PostInfo, !Info),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
@@ -664,7 +660,7 @@ ho_traverse_parallel_conj_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
         !PostInfos, !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     ho_traverse_goal(Goal0, Goal, !Info),
-    get_post_branch_info(!.Info, GoalPostInfo),
+    get_post_branch_info_for_goal(!.Info, Goal, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
     ho_traverse_parallel_conj_2(PreInfo, Goals0, Goals, !PostInfos, !Info).
 
@@ -699,7 +695,7 @@ ho_traverse_disj_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
         !PostInfos, !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     ho_traverse_goal(Goal0, Goal, !Info),
-    get_post_branch_info(!.Info, GoalPostInfo),
+    get_post_branch_info_for_goal(!.Info, Goal, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
     ho_traverse_disj_2(PreInfo, Goals0, Goals, !PostInfos, !Info).
 
@@ -734,15 +730,19 @@ ho_traverse_cases_2(PreInfo, [Case0 | Cases0], [Case | Cases], !PostInfos,
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     ho_traverse_goal(Goal0, Goal, !Info),
     Case = case(MainConsId, OtherConsIds, Goal),
-    get_post_branch_info(!.Info, GoalPostInfo),
+    get_post_branch_info_for_goal(!.Info, Goal, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
     ho_traverse_cases_2(PreInfo, Cases0, Cases, !PostInfos, !Info).
 
 :- type pre_branch_info
     --->    pre_branch_info(pred_vars).
 
+:- type reachability
+    --->    reachable
+    ;       unreachable.
+
 :- type post_branch_info
-    --->    post_branch_info(pred_vars).
+    --->    post_branch_info(pred_vars, reachability).
 
 :- pred get_pre_branch_info(higher_order_info::in, pre_branch_info::out)
     is det.
@@ -755,23 +755,25 @@ get_pre_branch_info(Info, pre_branch_info(Info ^ hoi_pred_vars)).
 set_pre_branch_info(pre_branch_info(PreInfo),
     Info, Info ^ hoi_pred_vars := PreInfo).
 
-:- pred get_post_branch_info(higher_order_info::in, post_branch_info::out)
-    is det.
+:- pred get_post_branch_info_for_goal(higher_order_info::in, hlds_goal::in,
+    post_branch_info::out) is det.
 
-get_post_branch_info(Info, post_branch_info(Info ^ hoi_pred_vars)).
+get_post_branch_info_for_goal(HOInfo, Goal, PostBranchInfo) :-
+    InstMapDelta = goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
+    ( instmap_delta_is_reachable(InstMapDelta) ->
+        Reachability = reachable
+    ;
+        Reachability = unreachable
+    ),
+    PostBranchInfo = post_branch_info(HOInfo ^ hoi_pred_vars, Reachability).
 
 :- pred set_post_branch_info(post_branch_info::in,
     higher_order_info::in, higher_order_info::out) is det.
 
-set_post_branch_info(post_branch_info(PostInfo),
-    Info, Info ^ hoi_pred_vars := PostInfo).
+set_post_branch_info(post_branch_info(PredVars, _),
+    Info, Info ^ hoi_pred_vars := PredVars).
 
     % Merge a bunch of post_branch_infos into one.
-    %
-    % The algorithm we use has a complexity of N log N, whereas the obvious
-    % algorithm is quadratic. Since N can be very large for predicates defined
-    % lots of facts, this can be the difference between being able to compile
-    % them and having the compiler exhaust available memory in the attempt.
     %
 :- pred merge_post_branch_infos_into_one(list(post_branch_info)::in,
     post_branch_info::out) is det.
@@ -796,48 +798,53 @@ merge_post_branch_info_pass([PostInfo1, PostInfo2 | Rest], !MergedPostInfos) :-
 
     % Merge two post_branch_infos.
     %
-    % The algorithm we use is designed to minimize worst case complexity,
-    % to minimize compilation time for predicates defined by clauses in which
-    % each clause contains lots of variables. This will happen e.g. when the
-    % clause contains some large ground terms.
-    %
-    % We separate out the variables that occur in only one post_branch_info
-    % to avoid having to process them at all, while allowing the variables
-    % occur in both post_branch_infos to be processed using a linear algorithm.
-    % The algorithm here is mostly linear, with an extra log N factor coming in
-    % from the operations on maps.
+    % If a variable appears in one post_branch_info, but not the
+    % other, it is dropped.  Such a variable is either local to
+    % the branch arm, in which case no subsequent specialization
+    % opportunities exist, or it does not have a unique constant
+    % value in one of the branch arms, so we can't specialize it
+    % outside the branch anyway.  A third possibility is that
+    % the branch without the variable is unreachable.  In that
+    % case we include the variable in the result.
     %
 :- pred merge_post_branch_infos(post_branch_info::in,
     post_branch_info::in, post_branch_info::out) is det.
 
 merge_post_branch_infos(PostA, PostB, Post) :-
-    PostA = post_branch_info(VarConstMapA),
-    PostB = post_branch_info(VarConstMapB),
-    map.keys(VarConstMapA, VarListA),
-    map.keys(VarConstMapB, VarListB),
-    set.sorted_list_to_set(VarListA, VarsA),
-    set.sorted_list_to_set(VarListB, VarsB),
-    set.intersect(VarsA, VarsB, CommonVars),
-    VarConstCommonMapA = map.select(VarConstMapA, CommonVars),
-    VarConstCommonMapB = map.select(VarConstMapB, CommonVars),
-    map.to_assoc_list(VarConstCommonMapA, VarConstCommonListA),
-    map.to_assoc_list(VarConstCommonMapB, VarConstCommonListB),
-    merge_common_var_const_list(VarConstCommonListA, VarConstCommonListB,
-        [], VarConstCommonList),
-    set.difference(VarsA, CommonVars, OnlyVarsA),
-    set.difference(VarsB, CommonVars, OnlyVarsB),
-    VarConstOnlyMapA = map.select(VarConstMapA, OnlyVarsA),
-    VarConstOnlyMapB = map.select(VarConstMapB, OnlyVarsB),
-    map.to_assoc_list(VarConstOnlyMapA, VarConstOnlyListA),
-    map.to_assoc_list(VarConstOnlyMapB, VarConstOnlyListB),
-    FinalList = VarConstOnlyListA ++ VarConstOnlyListB ++ VarConstCommonList,
-    map.from_assoc_list(FinalList, FinalVarConstMap),
-    Post = post_branch_info(FinalVarConstMap).
+    (
+        PostA = post_branch_info(VarConstMapA, reachable),
+        PostB = post_branch_info(VarConstMapB, reachable),
+        map.keys(VarConstMapA, VarListA),
+        map.keys(VarConstMapB, VarListB),
+        set.sorted_list_to_set(VarListA, VarsA),
+        set.sorted_list_to_set(VarListB, VarsB),
+        set.intersect(VarsA, VarsB, CommonVars),
+        VarConstCommonMapA = map.select(VarConstMapA, CommonVars),
+        VarConstCommonMapB = map.select(VarConstMapB, CommonVars),
+        map.to_assoc_list(VarConstCommonMapA, VarConstCommonListA),
+        map.to_assoc_list(VarConstCommonMapB, VarConstCommonListB),
+        merge_common_var_const_list(VarConstCommonListA, VarConstCommonListB,
+            [], VarConstCommonList),
+        map.from_assoc_list(VarConstCommonList, FinalVarConstMap),
+        Post = post_branch_info(FinalVarConstMap, reachable)
+    ;
+        PostA = post_branch_info(_, unreachable),
+        PostB = post_branch_info(_, reachable),
+        Post = PostB
+    ;
+        PostA = post_branch_info(_, reachable),
+        PostB = post_branch_info(_, unreachable),
+        Post = PostA
+    ;
+        PostA = post_branch_info(_, unreachable),
+        PostB = post_branch_info(_, unreachable),
+        Post = post_branch_info(map.init, unreachable)
+    ).
 
-:- pred merge_common_var_const_list(assoc_list(prog_var, maybe_const)::in,
-    assoc_list(prog_var, maybe_const)::in,
-    assoc_list(prog_var, maybe_const)::in,
-    assoc_list(prog_var, maybe_const)::out) is det.
+:- pred merge_common_var_const_list(assoc_list(prog_var, ho_const)::in,
+    assoc_list(prog_var, ho_const)::in,
+    assoc_list(prog_var, ho_const)::in,
+    assoc_list(prog_var, ho_const)::out) is det.
 
 merge_common_var_const_list([], [], !List).
 merge_common_var_const_list([], [_ | _], !MergedList) :-
@@ -848,17 +855,10 @@ merge_common_var_const_list([VarA - ValueA | ListA], [VarB - ValueB | ListB],
         !MergedList) :-
     expect(unify(VarA, VarB), $module, $pred, "var mismatch"),
     ( ValueA = ValueB ->
-        % It does not matter whether ValueA is bound to constant(_, _)
-        % or to multiple_values, in both cases, if ValueA = ValueB, the
-        % right value for Value is ValueA.
-        Value = ValueA
+        !:MergedList = [VarA - ValueA | !.MergedList]
     ;
-        % Either ValueA and ValueB are both bound to different constants,
-        % or one is constant and the other is multiple_values. In both cases,
-        % the right value for Value is multiple_values.
-        Value = multiple_values
+        !:MergedList = !.MergedList
     ),
-    !:MergedList = [VarA - Value | !.MergedList],
     merge_common_var_const_list(ListA, ListB, !MergedList).
 
 :- pred check_unify(unification::in,
@@ -881,18 +881,9 @@ check_unify(Unification, !Info) :-
         (
             IsInteresting = yes,
             PredVars0 = !.Info ^ hoi_pred_vars,
-            ( map.search(PredVars0, LVar, Specializable) ->
-                (
-                    % We cannot specialize calls involving a variable with
-                    % more than one possible value.
-                    Specializable = constant(_, _),
-                    map.det_update(LVar, multiple_values, PredVars0, PredVars),
-                    !Info ^ hoi_pred_vars := PredVars
-                ;
-                    % If a variable is already non-specializable, it can't
-                    % become specializable.
-                    Specializable = multiple_values
-                )
+            ( map.search(PredVars0, LVar, _) ->
+                % A variable cannot be constructed twice.
+                unexpected($module, $pred, "variable constructed twice")
             ;
                 map.det_insert(LVar, constant(ConsId, Args),
                     PredVars0, PredVars),
