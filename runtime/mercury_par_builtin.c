@@ -116,15 +116,6 @@ MR_lc_spawn_off_func(MR_LoopControl *lc, MR_Unsigned lcs_idx, MR_Code
     fprintf(stderr, "lc_spawn_off(%p, %d, %p) sp: %p\n",
         lc, lcs_idx, code_ptr, MR_sp);
 #endif
-    if (lcs->MR_lcs_context == NULL) {
-        /*
-        ** Allocate a new context.
-        */
-        lcs->MR_lcs_context = MR_create_context("Loop control",
-            MR_CONTEXT_SIZE_FOR_LOOP_CONTROL_WORKER, NULL);
-        lcs->MR_lcs_context->MR_ctxt_thread_local_mutables =
-            MR_THREAD_LOCAL_MUTABLES;
-    }
 
     lcs->MR_lcs_context->MR_ctxt_resume = code_ptr;
     lcs->MR_lcs_context->MR_ctxt_parent_sp = MR_sp;

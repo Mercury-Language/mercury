@@ -423,7 +423,15 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
                 ** saved in MR_join_and_terminate, which is important,      \
                 ** because if we did save it here we would write invalid    \
                 ** data into it.                                            \
+                **                                                          \
+                ** Reset the stack pointer, because loop control can some   \
+                ** times leave a stack frame on the stack, and the rest     \
+                ** of the runtime system will assume that the stack is      \
+                ** clean.                                                   \
                 */                                                          \
+                (lc)->MR_lc_slots[i].MR_lcs_context->MR_ctxt_sp =           \
+                    (lc)->MR_lc_slots[i].MR_lcs_context->                   \
+                    MR_ctxt_detstack_zone->MR_zone_min;                     \
                 MR_destroy_context((lc)->MR_lc_slots[i].MR_lcs_context);    \
             }                                                               \
         }                                                                   \
@@ -491,11 +499,46 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
             }                                                               \
         }                                                                   \
                                                                             \
+        if ((lc)->MR_lc_slots[i].MR_lcs_context == NULL) {                  \
+            /*                                                              \
+            ** Allocate a new context.                                      \
+            */                                                              \
+            (lc)->MR_lc_slots[i].MR_lcs_context =                           \
+                MR_create_context("Loop control",                           \
+                    MR_CONTEXT_SIZE_FOR_LOOP_CONTROL_WORKER, NULL);         \
+            (lc)->MR_lc_slots[i].MR_lcs_context->                           \
+                MR_ctxt_thread_local_mutables = MR_THREAD_LOCAL_MUTABLES;   \
+        }                                                                   \
+        /*                                                                  \
+        ** Reset the stack pointer of the context, it may have been left    \
+        ** in an inconsitent state.                                         \
+        */                                                                  \
+        (lc)->MR_lc_slots[i].MR_lcs_context->MR_ctxt_sp =                   \
+            (lc)->MR_lc_slots[i].MR_lcs_context->                           \
+            MR_ctxt_detstack_zone->MR_zone_min;                             \
+                                                                            \
         MR_IF_DEBUG_LOOP_CONTORL(                                           \
             fprintf(stderr, "lc_wait_free_slot returning %d, sp: %p\n",     \
                 (lcs_idx), MR_sp));                                         \
                                                                             \
     } while (0);
+
+/*
+** Add a frame to the stack of the worker context in the loop control slot.
+*/
+#define MR_lc_inc_worker_sp(lc, lcs_idx, N)                                 \
+    do {                                                                    \
+        MR_Context *ctxt;                                                   \
+                                                                            \
+        ctxt = (lc)->MR_lc_slots[lcs_idx].MR_lcs_context;                   \
+        MR_lcs_context->MR_ctxt_sp += N;                                    \
+    } while (0);
+
+/*
+** Access a slot on the stack of the worker context in the loop control slot.
+*/
+#define MR_lc_worker_sv(lc, lcs_idx, N)                                     \
+  MR_based_stackvar((lc)->MR_lc_slots[lc_idx].MR_lcs_context->MR_ctxt_sp, (N))
 
 /*
 ** Try to spawn off this code using the free slot.
