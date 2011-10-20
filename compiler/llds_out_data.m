@@ -588,7 +588,7 @@ output_llds_type(lt_code_ptr, !IO) :-
     io.write_string("MR_Code *", !IO).
 
 lval_to_string(reg(RegType, RegNum)) =
-    "reg(" ++ reg_to_string(RegType, RegNum) ++ ")".
+    reg_to_string(RegType, RegNum).
 lval_to_string(framevar(N)) =
     "MR_fv(" ++ int_to_string(N) ++ ")".
 lval_to_string(stackvar(N)) =

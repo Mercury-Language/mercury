@@ -100,7 +100,7 @@
 :- pred generate_par_conj(list(hlds_goal)::in, hlds_goal_info::in,
     code_model::in, llds_code::out, code_info::in, code_info::out) is det.
 
-:- pred generate_loop_control(hlds_goal::in, prog_var::in, prog_var::in,
+:- pred generate_lc_spawn_off(hlds_goal::in, prog_var::in, prog_var::in,
     lc_use_parent_stack::in, llds_code::out, code_info::in, code_info::out)
     is det.
 
@@ -121,6 +121,8 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.exprn_aux.
+:- import_module ll_backend.llds_out.
+:- import_module ll_backend.llds_out.llds_out_data.
 :- import_module ll_backend.var_locn.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.set_of_var.
@@ -329,47 +331,91 @@ MR_threadscope_post_end_par_conj(&MR_sv(%d));
 
 %-----------------------------------------------------------------------------%
 
-generate_loop_control(Goal, LCVar, LCSVar, UseParentStack, Code, !CI) :-
+generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI) :-
     % We don't need to save the parent stack pointer, we do not use it in the
     % main context and all the worker contexts will never have some data that
     % we shouldn't clobber there.
     % We also expect the runtime code to setup the parent stack pointer for us.
 
+    get_known_variables(!.CI, KnownVars),
+    KnownVarsSet = set_of_var.list_to_set(KnownVars),
+    NonLocalsSet = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
+    InputVarsSet = set_of_var.intersect(NonLocalsSet, KnownVarsSet),
+    InputVars = set_of_var.to_sorted_list(InputVarsSet),
+    save_variables_on_stack(InputVars, SaveCode, !CI),
+
+    best_variable_location_det(!.CI, LCVar, LCVarLocn),
+    best_variable_location_det(!.CI, LCSVar, LCSVarLocn),
+
     (
         UseParentStack = lc_use_parent_stack_frame,
-        get_known_variables(!.CI, KnownVars),
-        NonLocals = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
-        InputVars = set_of_var.intersect(NonLocals, list_to_set(KnownVars)),
-        save_variables_on_stack(to_sorted_list(InputVars), SaveCode, !CI)
+        CopyCode = cord.empty
     ;
         UseParentStack = lc_create_frame_on_child_stack,
-        % XXX: Allocate a frame on the child's stack.
-        % Copy the variables to the child's stack.
-        % I'll (Paul) provide C macros in the runtime system for these actions.
-        sorry($module, $pred, "unimplemented")
+        list.map(get_variable_slot(!.CI), InputVars, InputStackSlots),
+
+        % XXX We only know the size of the stack frame for certain
+        % after we have finished generating code for the procedure.
+        %
+        % There are several different ways we can set the size of the first
+        % stack frame on the stack of the child context.
+        %
+        % The simplest way is to make a hopefully conservative estimate of the
+        % size of the current procedure's stack frame. If necessary, we can
+        % ENSURE that this estimate is conservative by testing whether it is at
+        % the end of generate_proc_code, and if not, recording the actual stack
+        % frame size in the code_info and redoing the code generation for the
+        % entire procedure, this time using the recorded size instead of the
+        % estimate.
+        %
+        % A second way is to move this code AFTER we have computed GoalCode,
+        % collect all the stackvar references in it, and base the size of the
+        % child stack frame on the highest numbered stackvar reference in
+        % there.
+        %
+        % The third way is the same as the second, except it compresses
+        % out any stack slots that are not used by GoalCode. This would require
+        % remapping all the stackvar references in GoalCode, as well as
+        % applying the compression map during the creation of CopyStr.
+        %
+        % For now, we use the first method without the fallback. This should
+        % be sufficient for the correctness of our benchmark programs, and
+        % *shouldn't* lose too much efficiency.
+
+        FrameSize = 100,
+        copy_slots_to_child_stack(FrameSize, LCVarLocn, LCSVarLocn,
+            InputStackSlots, CopyStr),
+        AffectsLiveness = proc_does_not_affect_liveness,
+        LiveLvalsInfo = live_lvals_info(
+            set.list_to_set([LCVarLocn, LCSVarLocn | InputStackSlots])),
+        CopyUinstr = arbitrary_c_code(AffectsLiveness, LiveLvalsInfo,
+            CopyStr),
+        CopyInstr = llds_instr(CopyUinstr, ""),
+        CopyCode = singleton(CopyInstr)
     ),
 
     % Create the call to spawn_off.
     remember_position(!.CI, PositionBeforeSpawnOff),
 
     get_next_label(SpawnOffLabel, !CI),
-    best_variable_location_det(!.CI, LCVar, LCVarLocn),
-    best_variable_location_det(!.CI, LCSVar, LCSVarLocn),
-    SpawnOffCallCode =
-        singleton(llds_instr(lc_spawn_off(lval(LCVarLocn), lval(LCSVarLocn),
-                SpawnOffLabel),
-            "Spawn off job for worker using loop control")),
-    SpawnOffCode = SpawnOffCallCode,
+    SpawnUinstr = lc_spawn_off(lval(LCVarLocn), lval(LCSVarLocn),
+        SpawnOffLabel),
+    SpawnInstr = llds_instr(SpawnUinstr, ""),
+    SpawnOffCode = singleton(SpawnInstr),
+    % XXX This snapshot seems unnecessary; it is guaranteed to be the same
+    % as the previous snapshot.
     remember_position(!.CI, PositionAfterSpawnOff),
 
     % Code to spawn off.
-    LabelCode = singleton(llds_instr(label(SpawnOffLabel),
-        "Label for spawned off code")),
+    LabelUinstr = label(SpawnOffLabel),
+    LabelInstr = llds_instr(LabelUinstr, "Label for spawned off code"),
+    LabelCode = singleton(LabelInstr),
+    % XXX This reset seems unnecessary; no code
     reset_to_position(PositionBeforeSpawnOff, !CI),
 
     % We don't need to clear all the registers, all the variables except for
     % LC and LCS are considered to be on the stack.
-    % mark only the registers used by LC and LCS as clobbered.
+    % Mark only the registers used by LC and LCS as clobbered.
     clobber_regs([LCVarLocn, LCSVarLocn], !CI),
 
     generate_goal(model_det, Goal, GoalCode, !CI),
@@ -379,24 +425,62 @@ generate_loop_control(Goal, LCVar, LCSVar, UseParentStack, Code, !CI) :-
     (
         UseParentStack = lc_use_parent_stack_frame,
         replace_stack_vars_by_parent_sv(SpawnedOffCode0, SpawnedOffCode)
+    ;
+        UseParentStack = lc_create_frame_on_child_stack,
+        SpawnedOffCode = SpawnedOffCode0
 
-% XXX: Comment back in this case after addressing the one above.  The compiler
-% won't let me include this case if the one above is erroneous.
-%    ;
-%        UseParentStack = lc_create_frame_on_child_stack,
-%
-%        % XXX: We could take this opportunity to remove gaps in the stack
-%        % frame as discussed in our meetings.
-%        sorry($module, $pred, "unimplemented")
+        % XXX: We could take this opportunity to remove gaps in the stack
+        % frame as discussed in our meetings.
+        % sorry($module, $pred, "unimplemented")
     ),
 
     reset_to_position(PositionAfterSpawnOff, !CI),
 
-    % The spawned off code is written into the procedure seperatly.
+    % The spawned off code is written into the procedure separately.
     add_out_of_line_code(SpawnedOffCode, !CI),
 
-    % Concatentate the inline code.
-    Code = SaveCode ++ SpawnOffCode.
+    % Concatenate the inline code.
+    Code = SaveCode ++ CopyCode ++ SpawnOffCode.
+
+:- pred copy_slots_to_child_stack(int::in, lval::in, lval::in, list(lval)::in,
+    string::out) is det.
+
+copy_slots_to_child_stack(FrameSize, LCVarLocn, LCSVarLocn, StackSlots,
+        CodeStr) :-
+    (
+        LCVarNamePrime = lval_to_string(LCVarLocn),
+        LCSVarNamePrime = lval_to_string(LCSVarLocn)
+    ->
+        LCVarName = LCVarNamePrime,
+        LCSVarName = LCSVarNamePrime
+    ;
+        unexpected($module, $pred, "cannot convert to string")
+    ),
+
+    BaseVarName = "BaseSp",
+    FirstLine = "{\n",
+    DeclLine = string.format("\tMR_Word *%s;\n", [s(BaseVarName)]),
+    AssignLine = string.format("\t%s = MR_lc_child_stack_sp(%s, %s, %d);\n",
+        [s(BaseVarName), s(LCVarName), s(LCSVarName), i(FrameSize)]),
+    list.map(copy_one_slot_to_child_stack(BaseVarName),
+        StackSlots, CopyStrs),
+    string.append_list(CopyStrs, CopyLines),
+    LastLine = "\t}\n",
+    CodeStr = FirstLine ++ DeclLine ++ AssignLine ++ CopyLines ++ LastLine.
+
+:- pred copy_one_slot_to_child_stack(string::in, lval::in, string::out) is det.
+
+copy_one_slot_to_child_stack(BaseVarName, StackSlot, CopyStr) :-
+    ( StackSlotName = lval_to_string(StackSlot) ->
+        ( StackSlot = stackvar(N) ->
+            CopyStr = string.format("\tMR_based_stackvar(%s, %d) = %s;\n",
+                [s(BaseVarName), i(N), s(StackSlotName)])
+        ;
+            unexpected($module, $pred, "not stack slot")
+        )
+    ;
+        unexpected($module, $pred, "cannot convert to string")
+    ).
 
 %----------------------------------------------------------------------------%
 
