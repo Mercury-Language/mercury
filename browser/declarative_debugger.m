@@ -969,11 +969,10 @@ extern  int MR_DD_debug_origin;
 :- pred debug_origin(int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    debug_origin(Flag::out, IO0::di, IO::uo),
+    debug_origin(Flag::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Flag = MR_DD_debug_origin;
-    IO = IO0;
 ").
 debug_origin(_, !IO) :-
     private_builtin.sorry("declarative_debugger.debug_origin").

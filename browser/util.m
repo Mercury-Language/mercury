@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2002, 2004-2007, 2010 The University of Melbourne.
+% Copyright (C) 1998-2002, 2004-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -90,7 +90,7 @@ trace_getline(Prompt, Result, MdbIn, MdbOut, !IO) :-
 
 :- pragma foreign_proc("C",
     call_trace_getline(MdbIn::in, MdbOut::in, Prompt::in, Line::out,
-        Success::out, IO0::di, IO::uo),
+        Success::out, _IO0::di, _IO::uo),
     % We need to use will_not_call_mercury here,
     % because MR_make_aligned_string_copy() references MR_hp,
     % which only works for will_not_call_mercury foreign_procs.
@@ -117,8 +117,6 @@ trace_getline(Prompt, Result, MdbIn, MdbOut, !IO) :-
         MR_free(line);
         Success = 1;
     }
-
-    IO = IO0;
 ").
 
 call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success, !IO) :-
