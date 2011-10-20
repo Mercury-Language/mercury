@@ -23,6 +23,7 @@
 :- module thread.mvar.
 :- interface.
 
+:- import_module bool.
 :- import_module io.
 :- import_module maybe.
 
@@ -54,6 +55,17 @@
     %
 :- pred mvar.put(mvar(T)::in, T::in, io::di, io::uo) is det.
 
+    % Place the value of type T into an empty mvar, returning yes on success.
+    % If the mvar is full, return no immediately without blocking.
+    %
+:- pred mvar.try_put(mvar(T)::in, T::in, bool::out, io::di, io::uo) is det.
+
+    % Read the contents of mvar, without taking it out.
+    % If the mvar is empty, block until it is full.
+    % This is equivalent to mvar.take followed by mvar.put.
+    %
+:- pred mvar.read(mvar(T)::in, T::out, io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -74,40 +86,59 @@
 
 mvar.init(mvar.init, !IO).
 
-:- pragma promise_pure(mvar.init/0).
-
 mvar.init = mvar(Full, Empty, Ref) :-
-    Full = semaphore.init(0),
-    Empty = semaphore.init(1),      % Initially a mvar starts empty.
-    impure new_mutvar0(Ref).
-
-:- pragma promise_pure(mvar.take/4).
-
-mvar.take(mvar(Full, Empty, Ref), Data, !IO) :-
-    semaphore.wait(Full, !IO),
-    impure get_mutvar(Ref, Data),
-    semaphore.signal(Empty, !IO).
-
-:- pragma promise_pure(mvar.try_take/4).
-
-mvar.try_take(mvar(Full, Empty, Ref), MaybeData, !IO) :-
-    semaphore.try_wait(Full, Success, !IO),
-    (
-        Success = yes,
-        impure get_mutvar(Ref, Data),
-        semaphore.signal(Empty, !IO),
-        MaybeData = yes(Data)
-    ;
-        Success = no,
-        MaybeData = no
+    promise_pure (
+        Full = semaphore.init(0),
+        Empty = semaphore.init(1),      % Initially a mvar starts empty.
+        impure new_mutvar0(Ref)
     ).
 
-:- pragma promise_pure(mvar.put/4).
+mvar.take(mvar(Full, Empty, Ref), Data, !IO) :-
+    promise_pure (
+        semaphore.wait(Full, !IO),
+        impure get_mutvar(Ref, Data),
+        semaphore.signal(Empty, !IO)
+    ).
+
+mvar.try_take(mvar(Full, Empty, Ref), MaybeData, !IO) :-
+    promise_pure (
+        semaphore.try_wait(Full, Success, !IO),
+        (
+            Success = yes,
+            impure get_mutvar(Ref, Data),
+            semaphore.signal(Empty, !IO),
+            MaybeData = yes(Data)
+        ;
+            Success = no,
+            MaybeData = no
+        )
+    ).
 
 mvar.put(mvar(Full, Empty, Ref), Data, !IO) :-
-    semaphore.wait(Empty, !IO),
-    impure set_mutvar(Ref, Data),
-    semaphore.signal(Full, !IO).
+    promise_pure (
+        semaphore.wait(Empty, !IO),
+        impure set_mutvar(Ref, Data),
+        semaphore.signal(Full, !IO)
+    ).
+
+mvar.try_put(mvar(Full, Empty, Ref), Data, Success, !IO) :-
+    promise_pure (
+        semaphore.try_wait(Empty, Success, !IO),
+        (
+            Success = yes,
+            impure set_mutvar(Ref, Data),
+            semaphore.signal(Full, !IO)
+        ;
+            Success = no
+        )
+    ).
+
+mvar.read(mvar(Full, _Empty, Ref), Data, !IO) :-
+    promise_pure (
+        semaphore.wait(Full, !IO),
+        impure get_mutvar(Ref, Data),
+        semaphore.signal(Full, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
