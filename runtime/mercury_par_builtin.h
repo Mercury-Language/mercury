@@ -530,15 +530,16 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
     do {                                                                    \
         MR_Context *ctxt;                                                   \
                                                                             \
-        ctxt = (lc)->MR_lc_slots[lcs_idx].MR_lcs_context;                   \
-        MR_lcs_context->MR_ctxt_sp += N;                                    \
+        ctxt = ((MR_LoopControl*)lc)->MR_lc_slots[lcs_idx].MR_lcs_context;  \
+        ctxt->MR_ctxt_sp += N;                                              \
     } while (0);
 
 /*
 ** Access a slot on the stack of the worker context in the loop control slot.
 */
 #define MR_lc_worker_sv(lc, lcs_idx, N)                                     \
-  MR_based_stackvar((lc)->MR_lc_slots[lc_idx].MR_lcs_context->MR_ctxt_sp, (N))
+  MR_based_stackvar(((MR_LoopControl*)lc)->MR_lc_slots[lcs_idx].            \
+    MR_lcs_context->MR_ctxt_sp, (N))
 
 /*
 ** Try to spawn off this code using the free slot.

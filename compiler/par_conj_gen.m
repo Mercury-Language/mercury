@@ -457,24 +457,23 @@ copy_slots_to_child_stack(FrameSize, LCVarLocn, LCSVarLocn, StackSlots,
         unexpected($module, $pred, "cannot convert to string")
     ),
 
-    BaseVarName = "BaseSp",
     FirstLine = "{\n",
-    DeclLine = string.format("\tMR_Word *%s;\n", [s(BaseVarName)]),
-    AssignLine = string.format("\t%s = MR_lc_child_stack_sp(%s, %s, %d);\n",
-        [s(BaseVarName), s(LCVarName), s(LCSVarName), i(FrameSize)]),
-    list.map(copy_one_slot_to_child_stack(BaseVarName),
+    IncrLine = string.format("\tMR_lc_inc_worker_sp(%s, %s, %d);\n",
+        [s(LCVarName), s(LCSVarName), i(FrameSize)]),
+    list.map(copy_one_slot_to_child_stack(LCVarName, LCSVarName),
         StackSlots, CopyStrs),
     string.append_list(CopyStrs, CopyLines),
     LastLine = "\t}\n",
-    CodeStr = FirstLine ++ DeclLine ++ AssignLine ++ CopyLines ++ LastLine.
+    CodeStr = FirstLine ++ IncrLine ++ CopyLines ++ LastLine.
 
-:- pred copy_one_slot_to_child_stack(string::in, lval::in, string::out) is det.
+:- pred copy_one_slot_to_child_stack(string::in, string::in, lval::in,
+    string::out) is det.
 
-copy_one_slot_to_child_stack(BaseVarName, StackSlot, CopyStr) :-
+copy_one_slot_to_child_stack(LCVarName, LCSVarName, StackSlot, CopyStr) :-
     ( StackSlotName = lval_to_string(StackSlot) ->
         ( StackSlot = stackvar(N) ->
-            CopyStr = string.format("\tMR_based_stackvar(%s, %d) = %s;\n",
-                [s(BaseVarName), i(N), s(StackSlotName)])
+            CopyStr = string.format("\tMR_lc_worker_sv(%s, %s, %d) = %s;\n",
+                [s(LCVarName), s(LCSVarName), i(N), s(StackSlotName)])
         ;
             unexpected($module, $pred, "not stack slot")
         )
