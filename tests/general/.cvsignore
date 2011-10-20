@@ -20,3 +20,7 @@ base_string_to_integer
 *.d
 *.mih
 *.mh
+Prof.CallPair
+Prof.Decl
+Prof.MemoryCells
+Prof.MemoryWords

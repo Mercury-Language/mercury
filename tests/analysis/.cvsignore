@@ -3,3 +3,7 @@ FAILED_TESTS
 NOMAKE_DIRS
 .mgnuc_opts
 .mgnuc_copts
+Prof.CallPair
+Prof.Decl
+Prof.MemoryCells
+Prof.MemoryWords

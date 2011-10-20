@@ -9,3 +9,5 @@
 library-menu.texi library-chapters.texi
 mercury.html mercury.info
 mdb_doc mdb_command_list mdb_command_test.inp
+Prof.MemoryCells
+Prof.MemoryWords

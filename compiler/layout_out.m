@@ -375,9 +375,10 @@ output_layout_array_decls(Info, PseudoTypeInfos, HLDSVarNums,
     ;
         AllocSites = [_ | _],
         AllocSiteArrayName = alloc_site_array,
+        list.length(AllocSites, NumAllocSites),
         output_layout_array_name_storage_type_name(MangledModuleName,
             AllocSiteArrayName, not_being_defined, !IO),
-        io.write_string("[];\n", !IO)
+        io.format("[%d];\n", [i(NumAllocSites)], !IO)
     ).
 
 output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums,

@@ -11,3 +11,7 @@ CLEAN
 .mgnuc_copts
 .mgnuc_opts
 table_foreign_enum
+Prof.CallPair
+Prof.Decl
+Prof.MemoryCells
+Prof.MemoryWords

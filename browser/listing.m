@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -192,11 +192,10 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
 :- pred write_to_c_file(c_file_ptr::in, string::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    write_to_c_file(ErrStrm::in, Str::in, IO0::di, IO::uo),
+    write_to_c_file(ErrStrm::in, Str::in, _IO0::di, _IO::uo),
     [promise_pure, thread_safe, will_not_call_mercury],
 "
     fputs(Str, (FILE *)ErrStrm);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -279,7 +278,7 @@ find_and_open_file([Dir | Path], FileName, Result, !IO) :-
 
 :- pragma foreign_proc("C",
     print_lines_in_range_c(InStrm::in, OutStrm::in, ThisLine::in, FirstLine::in,
-        LastLine::in, MarkLine::in, IO0::di, IO::uo),
+        LastLine::in, MarkLine::in, _IO0::di, _IO::uo),
     [promise_pure, thread_safe, will_not_call_mercury],
 "
     if (FirstLine <= ThisLine && ThisLine <= LastLine) {
@@ -303,7 +302,6 @@ find_and_open_file([Dir | Path], FileName, Result, !IO) :-
             }
         }
     }
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

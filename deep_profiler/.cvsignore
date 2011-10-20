@@ -25,6 +25,8 @@ mdprof_server
 mdprof_dump
 mdprof_feedback
 mdprof_procrep
+mdprof_create_feedback
+mdprof_report_feedback
 Mercury
 Mercury.modules
 .deep.tags
