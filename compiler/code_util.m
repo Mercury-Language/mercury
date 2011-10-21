@@ -29,6 +29,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -88,6 +89,14 @@
     is det.
 
 :- func size_of_cell_args(list(cell_arg)) = int.
+
+    % Determine all the rvals and lvals referenced by an instruction.
+    %
+:- pred instr_rvals_and_lvals(instr::in, set(rval)::out, set(lval)::out)
+    is det.
+
+:- pred instrs_rvals_and_lvals(list(instruction)::in, set(rval)::out,
+    set(lval)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -444,6 +453,170 @@ size_of_cell_args([CellArg | CellArgs]) = Size + Sizes :-
         Size = 2
     ),
     Sizes = size_of_cell_args(CellArgs).
+
+%-----------------------------------------------------------------------------%
+
+instr_rvals_and_lvals(comment(_), set.init, set.init).
+instr_rvals_and_lvals(livevals(_), set.init, set.init).
+instr_rvals_and_lvals(block(_, _, Instrs), Rvals, Lvals) :-
+    instrs_rvals_and_lvals(Instrs, Rvals, Lvals).
+instr_rvals_and_lvals(assign(Lval,Rval), make_singleton_set(Rval),
+    make_singleton_set(Lval)).
+instr_rvals_and_lvals(keep_assign(Lval,Rval), make_singleton_set(Rval),
+    make_singleton_set(Lval)).
+instr_rvals_and_lvals(llcall(_, _, _, _, _, _), set.init, set.init).
+instr_rvals_and_lvals(mkframe(_, _), set.init, set.init).
+instr_rvals_and_lvals(label(_), set.init, set.init).
+instr_rvals_and_lvals(goto(_), set.init, set.init).
+instr_rvals_and_lvals(computed_goto(Rval, _), make_singleton_set(Rval),
+    set.init).
+instr_rvals_and_lvals(arbitrary_c_code(_, _, _), set.init, set.init).
+instr_rvals_and_lvals(if_val(Rval, _), make_singleton_set(Rval), set.init).
+instr_rvals_and_lvals(save_maxfr(Lval), set.init, make_singleton_set(Lval)).
+instr_rvals_and_lvals(restore_maxfr(Lval), set.init, make_singleton_set(Lval)).
+instr_rvals_and_lvals(incr_hp(Lval, _, _, SizeRval, _, _, MaybeRegionRval,
+        MaybeReuse), Rvals, Lvals) :-
+    some [!Rvals, !Lvals] (
+        !:Rvals = make_singleton_set(SizeRval),
+        !:Lvals = make_singleton_set(Lval),
+        (
+            MaybeRegionRval = yes(RegionRval),
+            set.insert(RegionRval, !Rvals)
+        ;
+            MaybeRegionRval = no
+        ),
+        (
+            MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
+            set.insert(ReuseRval, !Rvals),
+            (
+                MaybeFlagLval = yes(FlagLval),
+                set.insert(FlagLval, !Lvals)
+            ;
+                MaybeFlagLval = no
+            )
+        ;
+            MaybeReuse = no_llds_reuse
+        ),
+        Rvals = !.Rvals,
+        Lvals = !.Lvals
+    ).
+instr_rvals_and_lvals(mark_hp(Lval), set.init, make_singleton_set(Lval)).
+instr_rvals_and_lvals(restore_hp(Rval), make_singleton_set(Rval), set.init).
+instr_rvals_and_lvals(free_heap(Rval), make_singleton_set(Rval), set.init).
+    % The region instructions implicitly specify some stackvars or framevars,
+    % but they cannot reference lvals or rvals that involve code addresses or
+    % labels, and that is the motivation of the reason this code was originally
+    % written.
+    % More recently code generation for loop_control scopes uses this
+    % predicate, but it is not likly to be used with rbmm.
+instr_rvals_and_lvals(push_region_frame(_, _), set.init, set.init).
+instr_rvals_and_lvals(region_fill_frame(_, _, IdRval, NumLval, AddrLval),
+    make_singleton_set(IdRval), list_to_set([NumLval, AddrLval])).
+instr_rvals_and_lvals(region_set_fixed_slot(_, _, ValueRval),
+    make_singleton_set(ValueRval), set.init).
+instr_rvals_and_lvals(use_and_maybe_pop_region_frame(_, _), set.init,
+    set.init).
+instr_rvals_and_lvals(store_ticket(Lval), set.init, make_singleton_set(Lval)).
+instr_rvals_and_lvals(reset_ticket(Rval, _Reason), make_singleton_set(Rval),
+    set.init).
+instr_rvals_and_lvals(discard_ticket, set.init, set.init).
+instr_rvals_and_lvals(prune_ticket, set.init, set.init).
+instr_rvals_and_lvals(mark_ticket_stack(Lval), set.init,
+    make_singleton_set(Lval)).
+instr_rvals_and_lvals(prune_tickets_to(Rval), make_singleton_set(Rval),
+    set.init).
+instr_rvals_and_lvals(incr_sp(_, _, _), set.init, set.init).
+instr_rvals_and_lvals(decr_sp(_), set.init, set.init).
+instr_rvals_and_lvals(decr_sp_and_return(_), set.init, set.init).
+instr_rvals_and_lvals(foreign_proc_code(_, Cs, _, _, _, _, _, _, _, _),
+        list_to_set(Rvals), list_to_set(Lvals)) :-
+    foreign_proc_components_get_rvals_and_lvals(Cs, Rvals, Lvals).
+instr_rvals_and_lvals(init_sync_term(Lval, _, _), set.init,
+    make_singleton_set(Lval)).
+instr_rvals_and_lvals(fork_new_child(Lval, _), set.init,
+    make_singleton_set(Lval)).
+instr_rvals_and_lvals(join_and_continue(Lval, _), set.init,
+    make_singleton_set(Lval)).
+instr_rvals_and_lvals(lc_create_loop_control(_, Lval), set.init,
+    make_singleton_set(Lval)).
+instr_rvals_and_lvals(lc_wait_free_slot(Rval, Lval, _),
+    make_singleton_set(Rval), make_singleton_set(Lval)).
+instr_rvals_and_lvals(lc_spawn_off(LCRval, LCSRval, _),
+    list_to_set([LCRval, LCSRval]), set.init).
+instr_rvals_and_lvals(lc_join_and_terminate(LCRval, LCSRval),
+    list_to_set([LCRval, LCSRval]), set.init).
+
+    % Determine all the rvals and lvals referenced by a list of instructions.
+    %
+instrs_rvals_and_lvals(Instrs, Rvals, Lvals) :-
+    foldl2(instrs_rvals_and_lvals_acc, Instrs, set.init, Rvals,
+        set.init, Lvals).
+
+:- pred instrs_rvals_and_lvals_acc(instruction::in,
+    set(rval)::in, set(rval)::out, set(lval)::in, set(lval)::out) is det.
+
+instrs_rvals_and_lvals_acc(llds_instr(Uinstr, _), !Rvals, !Lvals) :-
+    instr_rvals_and_lvals(Uinstr, NewRvals, NewLvals),
+    % The accumulator is the first argument since that suits the performance
+    % charicteristics of set.union.
+    set.union(!.Rvals, NewRvals, !:Rvals),
+    set.union(!.Lvals, NewLvals, !:Lvals).
+
+    % Extract the rvals and lvals from the foreign_proc_components.
+    %
+:- pred foreign_proc_components_get_rvals_and_lvals(
+    list(foreign_proc_component)::in,
+    list(rval)::out, list(lval)::out) is det.
+
+foreign_proc_components_get_rvals_and_lvals([], [], []).
+foreign_proc_components_get_rvals_and_lvals([Comp | Comps], !:Rvals, !:Lvals) :-
+    foreign_proc_components_get_rvals_and_lvals(Comps, !:Rvals, !:Lvals),
+    foreign_proc_component_get_rvals_and_lvals(Comp, !Rvals, !Lvals).
+
+    % Extract the rvals and lvals from the foreign_proc_component
+    % and add them to the list.
+    %
+:- pred foreign_proc_component_get_rvals_and_lvals(foreign_proc_component::in,
+    list(rval)::in, list(rval)::out, list(lval)::in, list(lval)::out) is det.
+
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_inputs(Inputs),
+        !Rvals, !Lvals) :-
+    NewRvals = foreign_proc_inputs_get_rvals(Inputs),
+    list.append(NewRvals, !Rvals).
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_outputs(Outputs),
+        !Rvals, !Lvals) :-
+    NewLvals = foreign_proc_outputs_get_lvals(Outputs),
+    list.append(NewLvals, !Lvals).
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_user_code(_, _, _),
+        !Rvals, !Lvals).
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_raw_code(_, _, _, _),
+        !Rvals, !Lvals).
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_fail_to(_),
+        !Rvals, !Lvals).
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_alloc_id(_),
+        !Rvals, !Lvals).
+foreign_proc_component_get_rvals_and_lvals(foreign_proc_noop,
+        !Rvals, !Lvals).
+
+    % Extract the rvals from the foreign_proc_input.
+    %
+:- func foreign_proc_inputs_get_rvals(list(foreign_proc_input)) = list(rval).
+
+foreign_proc_inputs_get_rvals([]) = [].
+foreign_proc_inputs_get_rvals([Input | Inputs]) = [Rval | Rvals] :-
+    Input = foreign_proc_input(_Name, _VarType, _IsDummy, _OrigType, Rval,
+        _, _),
+    Rvals = foreign_proc_inputs_get_rvals(Inputs).
+
+    % Extract the lvals from the foreign_proc_output.
+    %
+:- func foreign_proc_outputs_get_lvals(list(foreign_proc_output)) = list(lval).
+
+foreign_proc_outputs_get_lvals([]) = [].
+foreign_proc_outputs_get_lvals([Output | Outputs]) = [Lval | Lvals] :-
+    Output = foreign_proc_output(Lval, _VarType, _IsDummy, _OrigType,
+        _Name, _, _),
+    Lvals = foreign_proc_outputs_get_lvals(Outputs).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.code_util.

@@ -417,12 +417,22 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
             par_stack_vars_get_stackvars(!.ParStackVars, InnerStackVars),
 
+            NeedInParConjSet = LCStackVars `set_of_var.union` InnerStackVars,
             NeedInParConj =
-                need_in_par_conj(LCStackVars `set_of_var.union` InnerStackVars),
+                need_in_par_conj(NeedInParConjSet),
             record_par_conj(NeedInParConj, AllocData,
                 GoalInfo0, GoalInfo, !StackAlloc),
 
-            par_stack_vars_end_loop_control(OuterParStackVars, !ParStackVars),
+            % NeedInParConjSet says live, any calls between now and the
+            % recursive call must include this set in the set of stack
+            % variables.
+            WouldDieSet = set_of_var.difference(NeedInParConjSet, !.Liveness),
+            !:Liveness = set_of_var.union(!.Liveness, WouldDieSet),
+            % WouldDieSet are variables that would normally die if this where
+            % not a parallel goal, but we only want them to die after the
+            % recursive call.
+            par_stack_vars_end_loop_control(WouldDieSet, OuterParStackVars,
+                !ParStackVars),
 
             GoalExpr = scope(Reason, SubGoal)
         ;
@@ -492,14 +502,16 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % then the recursive call is a barrier for loop control, we have to
             % ensure that spawned off computations use distinct stack slots
             % from one another and the code up to and including this call.
-            par_stack_vars_recursive_call(MaybeNeedLC, !ParStackVars),
+            par_stack_vars_recursive_call(MaybeNeedLC, DelayDeathSet,
+                !ParStackVars),
             (
                 MaybeNeedLC = yes(NeedLC),
                 at_recursive_call_for_loop_control(NeedLC, AllocData,
                     !StackAlloc)
             ;
                 MaybeNeedLC = no
-            )
+            ),
+            !:Liveness = set_of_var.difference(!.Liveness, DelayDeathSet)
         ;
             true
         )
@@ -829,6 +841,11 @@ record_par_conj(NeedInParConj, AllocData, !GoalInfo, !StackAlloc) :-
                 % scopes.
                 list(set_of_progvar),
 
+                % The set of variables whose death we must delay until after
+                % the recursive call.  they may still be using their slots on
+                % our stack frame.
+                set_of_progvar,
+
                 % Accumulating set of variables that need stack slots between a
                 % loop control scope and either another loop control scope or a
                 % recursive call.
@@ -880,13 +897,14 @@ par_stack_vars_end_parallel_conjunction(LiveSet, OuterParStackVars,
             `set_of_var.union` (LiveSet `set_of_var.difference` OuterNonLocals),
         ParStackVars = loop_control_scope(OuterNonLocals, StackVars)
     ;
-        OuterParStackVars = after_loop_control_scope(StackVarsList, StackVars0),
+        OuterParStackVars = after_loop_control_scope(StackVarsList,
+            WouldDieSet, StackVars0),
         % In this case we don't have access to an OuterNonLocals set, so this
         % is a conservative approximation.
         StackVars = StackVars0 `set_of_var.union` InnerStackVars
             `set_of_var.union` LiveSet,
         ParStackVars =
-            after_loop_control_scope(StackVarsList, StackVars)
+            after_loop_control_scope(StackVarsList, WouldDieSet, StackVars)
     ).
 
 :- pred par_stack_vars_start_loop_control(set_of_progvar::in,
@@ -896,7 +914,7 @@ par_stack_vars_start_loop_control(NonLocals, ParStackVars0,
         loop_control_scope(NonLocals, set_of_var.init)) :-
     (
         ( ParStackVars0 = not_in_parallel_context
-        ; ParStackVars0 = after_loop_control_scope(_, _)
+        ; ParStackVars0 = after_loop_control_scope(_, _, _)
         )
     ;
         ( ParStackVars0 = parallel_conjunction(_, _, _)
@@ -906,19 +924,24 @@ par_stack_vars_start_loop_control(NonLocals, ParStackVars0,
             "Loop control scope found in other parallel context")
     ).
 
-:- pred par_stack_vars_end_loop_control(parallel_stackvars::in,
+:- pred par_stack_vars_end_loop_control(set_of_progvar::in,
+    parallel_stackvars::in,
     parallel_stackvars::in, parallel_stackvars::out) is det.
 
-par_stack_vars_end_loop_control(OldParStackVars, ParStackVars0, ParStackVars) :-
+par_stack_vars_end_loop_control(NewWouldDieSet, OldParStackVars, ParStackVars0,
+        ParStackVars) :-
     par_stack_vars_get_stackvars(ParStackVars0, NewStackVars),
     (
         OldParStackVars = not_in_parallel_context,
-        ParStackVars = after_loop_control_scope([NewStackVars], set_of_var.init)
+        ParStackVars = after_loop_control_scope([NewStackVars], NewWouldDieSet,
+            set_of_var.init)
     ;
-        OldParStackVars = after_loop_control_scope(StackVarsList, StackVarsAcc),
+        OldParStackVars = after_loop_control_scope(StackVarsList, WouldDieSet0,
+            StackVarsAcc),
+        WouldDieSet = WouldDieSet0 `set_of_var.union` NewWouldDieSet,
         ParStackVars =
             after_loop_control_scope([NewStackVars | StackVarsList],
-                StackVarsAcc)
+                WouldDieSet, StackVarsAcc)
     ;
         ( OldParStackVars = parallel_conjunction(_, _, _)
         ; OldParStackVars = loop_control_scope(_, _)
@@ -936,7 +959,7 @@ par_stack_vars_get_stackvars(parallel_conjunction(_, StackVarss, _),
         StackVars) :-
     StackVars = set_of_var.union_list(StackVarss).
 par_stack_vars_get_stackvars(loop_control_scope(_, StackVars), StackVars).
-par_stack_vars_get_stackvars(after_loop_control_scope(_, StackVars),
+par_stack_vars_get_stackvars(after_loop_control_scope(_, _, StackVars),
     StackVars).
 
 :- pred par_stack_vars_accumulate_stack_vars(set_of_progvar::in,
@@ -954,8 +977,8 @@ par_stack_vars_accumulate_stack_vars(NewStackVars,
         loop_control_scope(NonLocals, AccStackVars)) :-
     AccStackVars = AccStackVars0 `set_of_var.union` NewStackVars.
 par_stack_vars_accumulate_stack_vars(NewStackVars,
-        after_loop_control_scope(LocalStackVars, AccStackVars0),
-        after_loop_control_scope(LocalStackVars, AccStackVars)) :-
+        after_loop_control_scope(LocalStackVars, WouldDieSet, AccStackVars0),
+        after_loop_control_scope(LocalStackVars, WouldDieSet, AccStackVars)) :-
     AccStackVars = AccStackVars0 `set_of_var.union` NewStackVars.
 
 :- pred par_stack_vars_get_nonlocals(parallel_stackvars::in,
@@ -964,7 +987,7 @@ par_stack_vars_accumulate_stack_vars(NewStackVars,
 par_stack_vars_get_nonlocals(not_in_parallel_context, set_of_var.init).
 par_stack_vars_get_nonlocals(parallel_conjunction(NonLocals, _, _), NonLocals).
 par_stack_vars_get_nonlocals(loop_control_scope(NonLocals, _), NonLocals).
-par_stack_vars_get_nonlocals(after_loop_control_scope(_, _), set_of_var.init).
+par_stack_vars_get_nonlocals(after_loop_control_scope(_, _, _), set_of_var.init).
 
 :- pred par_stack_vars_next_par_conjunct(
     parallel_stackvars::in, parallel_stackvars::out) is det.
@@ -979,19 +1002,22 @@ par_stack_vars_next_par_conjunct(!ParStackVars) :-
     ).
 
 :- pred par_stack_vars_recursive_call(maybe(need_for_loop_control)::out,
-    parallel_stackvars::in, parallel_stackvars::out) is det.
+    set_of_progvar::out, parallel_stackvars::in, parallel_stackvars::out)
+    is det.
 
-par_stack_vars_recursive_call(MaybeNeedLC, !ParStackVars) :-
+par_stack_vars_recursive_call(MaybeNeedLC, DelayDeathSet, !ParStackVars) :-
     (
         ( !.ParStackVars = not_in_parallel_context
         ; !.ParStackVars = parallel_conjunction(_, _, _)
         ),
-        MaybeNeedLC = no
+        MaybeNeedLC = no,
+        DelayDeathSet = set_of_var.init
     ;
         !.ParStackVars = loop_control_scope(_, _),
         unexpected($module, $pred, "recursive call in loop control scope")
     ;
-        !.ParStackVars = after_loop_control_scope(StackVarsList0, StackVars),
+        !.ParStackVars = after_loop_control_scope(StackVarsList0, DelayDeathSet,
+            StackVars),
         StackVarsList = [StackVars | StackVarsList0],
         cartesian_product_list(StackVarsList, NonoverlapSets),
         MaybeNeedLC = yes(need_for_loop_control(NonoverlapSets)),

@@ -480,10 +480,20 @@ maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
     ( set_of_var.is_empty(SharedVars) ->
         % Independant parallel conjunctions can somtimes be re-ordered to
         % generate faster code.
-        reorder_indep_par_conj(PredProcId, VarTypes0, InstMap, Conjuncts,
-            GoalInfo, NewGoal, ModuleInfo0, ModuleInfo),
-        !:SyncInfo = sync_info(ModuleInfo, IgnoreVars, AllowSomePathsOnly,
-            VarSet0, VarTypes0, PredProcId, TSStringTable0)
+        module_info_get_globals(ModuleInfo0, Globals),
+        globals.lookup_bool_option(Globals, par_loop_control, ParLoopControl),
+        (
+            ParLoopControl = no,
+            reorder_indep_par_conj(PredProcId, VarTypes0, InstMap, Conjuncts,
+                GoalInfo, NewGoal, ModuleInfo0, ModuleInfo),
+            !:SyncInfo = sync_info(ModuleInfo, IgnoreVars, AllowSomePathsOnly,
+                VarSet0, VarTypes0, PredProcId, TSStringTable0)
+        ;
+            ParLoopControl = yes,
+            % Don't swap the conjuncts, parallel loop control can do a better
+            % job of optimizing this code.
+            NewGoal = hlds_goal(conj(parallel_conj, Conjuncts), GoalInfo)
+        )
     ;
         sync_dep_par_conj(ModuleInfo0, AllowSomePathsOnly, SharedVars,
             Conjuncts, GoalInfo, NewGoal, InstMap,
@@ -1953,7 +1963,7 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
                 % signalled or waited variable.  If so, add `get' goals after
                 % the transformed goal to make sure the variable is bound.
                 PushedPairs = PushedSignalPairs ++ PushedWaitPairs,
-                list.filter(should_add_get_goal(NonLocals, RevGoals1),
+                list.filter(should_add_get_goal(NonLocals, FwdGoals1),
                     PushedPairs, PushedPairsNeedGets),
                 VarTypes = !.SpecInfo ^ spec_vartypes,
                 list.map(make_get_goal(!.SpecInfo ^ spec_module_info, VarTypes),
@@ -2225,7 +2235,7 @@ number_future_args(ArgNo, [Arg | Args], WaitSignalVars, !RevAcc) :-
 :- pred should_add_get_goal(set_of_progvar::in, list(hlds_goal)::in,
     future_var_pair::in) is semidet.
 
-should_add_get_goal(NonLocals, RevGoals, future_var_pair(_, Var)) :-
+should_add_get_goal(NonLocals, FwdGoals, future_var_pair(_, Var)) :-
     (
         % If the variable is in the nonlocals set of the entire conjunction
         % then we need to add a get goal, because that means that a goal
@@ -2239,7 +2249,7 @@ should_add_get_goal(NonLocals, RevGoals, future_var_pair(_, Var)) :-
         % we're adding a get_future call that does not make sense.  I'm
         % assuming that only free -> ground instantiation state changes are
         % allowed for these variables.
-        member(Goal, RevGoals),
+        member(Goal, FwdGoals),
         GoalNonLocals = goal_get_nonlocals(Goal),
         set_of_var.contains(GoalNonLocals, Var)
     ).

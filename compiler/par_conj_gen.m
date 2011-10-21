@@ -119,6 +119,7 @@
 :- import_module libs.options.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.llds_out.
@@ -347,71 +348,17 @@ generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI) :-
     best_variable_location_det(!.CI, LCVar, LCVarLocn),
     best_variable_location_det(!.CI, LCSVar, LCSVarLocn),
 
-    (
-        UseParentStack = lc_use_parent_stack_frame,
-        CopyCode = cord.empty
-    ;
-        UseParentStack = lc_create_frame_on_child_stack,
-        list.map(get_variable_slot(!.CI), InputVars, InputStackSlots),
-
-        % XXX We only know the size of the stack frame for certain
-        % after we have finished generating code for the procedure.
-        %
-        % There are several different ways we can set the size of the first
-        % stack frame on the stack of the child context.
-        %
-        % The simplest way is to make a hopefully conservative estimate of the
-        % size of the current procedure's stack frame. If necessary, we can
-        % ENSURE that this estimate is conservative by testing whether it is at
-        % the end of generate_proc_code, and if not, recording the actual stack
-        % frame size in the code_info and redoing the code generation for the
-        % entire procedure, this time using the recorded size instead of the
-        % estimate.
-        %
-        % A second way is to move this code AFTER we have computed GoalCode,
-        % collect all the stackvar references in it, and base the size of the
-        % child stack frame on the highest numbered stackvar reference in
-        % there.
-        %
-        % The third way is the same as the second, except it compresses
-        % out any stack slots that are not used by GoalCode. This would require
-        % remapping all the stackvar references in GoalCode, as well as
-        % applying the compression map during the creation of CopyStr.
-        %
-        % For now, we use the first method without the fallback. This should
-        % be sufficient for the correctness of our benchmark programs, and
-        % *shouldn't* lose too much efficiency.
-
-        FrameSize = 100,
-        copy_slots_to_child_stack(FrameSize, LCVarLocn, LCSVarLocn,
-            InputStackSlots, CopyStr),
-        AffectsLiveness = proc_does_not_affect_liveness,
-        LiveLvalsInfo = live_lvals_info(
-            set.list_to_set([LCVarLocn, LCSVarLocn | InputStackSlots])),
-        CopyUinstr = arbitrary_c_code(AffectsLiveness, LiveLvalsInfo,
-            CopyStr),
-        CopyInstr = llds_instr(CopyUinstr, ""),
-        CopyCode = singleton(CopyInstr)
-    ),
-
-    % Create the call to spawn_off.
-    remember_position(!.CI, PositionBeforeSpawnOff),
-
     get_next_label(SpawnOffLabel, !CI),
     SpawnUinstr = lc_spawn_off(lval(LCVarLocn), lval(LCSVarLocn),
         SpawnOffLabel),
     SpawnInstr = llds_instr(SpawnUinstr, ""),
     SpawnOffCode = singleton(SpawnInstr),
-    % XXX This snapshot seems unnecessary; it is guaranteed to be the same
-    % as the previous snapshot.
     remember_position(!.CI, PositionAfterSpawnOff),
 
     % Code to spawn off.
     LabelUinstr = label(SpawnOffLabel),
     LabelInstr = llds_instr(LabelUinstr, "Label for spawned off code"),
     LabelCode = singleton(LabelInstr),
-    % XXX This reset seems unnecessary; no code
-    reset_to_position(PositionBeforeSpawnOff, !CI),
 
     % We don't need to clear all the registers, all the variables except for
     % LC and LCS are considered to be on the stack.
@@ -422,19 +369,57 @@ generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI) :-
     % We expect that the join_and_terminate call is already in Goal.
     SpawnedOffCode0 = LabelCode ++ GoalCode,
 
+    reset_to_position(PositionAfterSpawnOff, !CI),
+
     (
         UseParentStack = lc_use_parent_stack_frame,
-        replace_stack_vars_by_parent_sv(SpawnedOffCode0, SpawnedOffCode)
+        replace_stack_vars_by_parent_sv(SpawnedOffCode0, SpawnedOffCode),
+        CopyCode = cord.empty,
+
+        % Mark the output values as available in registers, code inserted after
+        % the recursive call expects to be able to read them.  Because they're
+        % gaurnteed to be placed in distinct stack slots it's okay to produce
+        % them a little early - really they could be produced from any point
+        % after spawn_off until the barrier in the base case.
+
+        % This module has a find_outputs predicate, but I can't see how set
+        % difference wouldn't work.
+        OutputVars = set_of_var.difference(NonLocalsSet, KnownVarsSet),
+        place_all_outputs(set_of_var.to_sorted_list(OutputVars), !CI)
     ;
         UseParentStack = lc_create_frame_on_child_stack,
-        SpawnedOffCode = SpawnedOffCode0
+        list.map(get_variable_slot(!.CI), InputVars, InputStackSlots),
 
         % XXX: We could take this opportunity to remove gaps in the stack
         % frame as discussed in our meetings.
-        % sorry($module, $pred, "unimplemented")
-    ),
+        instr_list_max_stack_ref(SpawnedOffCode0, MaxStackRef),
+        SpawnedOffCode = SpawnedOffCode0,
 
-    reset_to_position(PositionAfterSpawnOff, !CI),
+        % We only know the size of the stack frame for certain after we have
+        % finished generating code for the procedure.
+        %
+        % There are several different ways we can set the size of the first
+        % stack frame on the stack of the child context.
+        %
+        % We have choosen to implement this by collecting all the stackvar
+        % references in SpawnedOffCode0, and base the size of the child stack
+        % frame on the highest numbered stackvar reference in there.
+        %
+        % We could also compress out any stack slots that are not used by
+        % GoalCode. This would require remapping all the stackvar references in
+        % GoalCode, as well as applying the compression map during the creation
+        % of CopyStr.
+        FrameSize = MaxStackRef,
+        copy_slots_to_child_stack(FrameSize, LCVarLocn, LCSVarLocn,
+            InputStackSlots, CopyStr),
+        AffectsLiveness = proc_does_not_affect_liveness,
+        LiveLvalsInfo = live_lvals_info(
+            set.list_to_set([LCVarLocn, LCSVarLocn | InputStackSlots])),
+        CopyUinstr = arbitrary_c_code(AffectsLiveness, LiveLvalsInfo,
+            CopyStr),
+        CopyInstr = llds_instr(CopyUinstr, ""),
+        CopyCode = singleton(CopyInstr)
+    ),
 
     % The spawned off code is written into the procedure separately.
     add_out_of_line_code(SpawnedOffCode, !CI),
@@ -597,6 +582,29 @@ replace_stack_vars_by_parent_sv_lval(Lval0, Lval, !Acc) :-
         Lval0 = mem_ref(Rval0),
         transform_lval_in_rval(TransformRval, Rval0, Rval, !Acc),
         Lval = mem_ref(Rval)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred instr_list_max_stack_ref(cord(instruction)::in, int::out) is det.
+
+instr_list_max_stack_ref(Instrs, MaxRef) :-
+    instrs_rvals_and_lvals(cord.list(Instrs), RVals, LVals0),
+    LValsInRvalsLists = map(lvals_in_rval, to_sorted_list(RVals)),
+    LValsSets = map(set, LValsInRvalsLists),
+    LVals = set.union_list(LValsSets) `set.union` LVals0,
+    set.fold(max_stack_ref_acc, LVals, 0, MaxRef).
+
+:- pred max_stack_ref_acc(lval::in, int::in, int::out) is det.
+
+max_stack_ref_acc(LVal, Max0, Max) :-
+    (
+        LVal = stackvar(N),
+        N > Max0
+    ->
+        Max = N
+    ;
+        Max = Max0
     ).
 
 %-----------------------------------------------------------------------------%
