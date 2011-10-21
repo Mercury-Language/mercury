@@ -1756,6 +1756,7 @@ string.from_char_list(Chars::in, Str::uo) :-
     /* mode (uo, in) is det */
     MR_Word char_list_ptr;
     size_t size;
+    MR_Char c;
 
     /*
     ** Loop to calculate list length + sizeof(MR_Word) in `size'
@@ -1764,7 +1765,12 @@ string.from_char_list(Chars::in, Str::uo) :-
     size = 0;
     char_list_ptr = CharList;
     while (! MR_list_is_empty(char_list_ptr)) {
-        size += MR_utf8_width(MR_list_head(char_list_ptr));
+        c = (MR_Char) MR_list_head(char_list_ptr);
+        if (MR_is_ascii(c)) {
+            size++;
+        } else {
+            size += MR_utf8_width(c);
+        }
         char_list_ptr = MR_list_tail(char_list_ptr);
     }
 
@@ -1780,8 +1786,7 @@ string.from_char_list(Chars::in, Str::uo) :-
     size = 0;
     char_list_ptr = CharList;
     while (! MR_list_is_empty(char_list_ptr)) {
-        int c;
-        c = MR_list_head(char_list_ptr);
+        c = (MR_Char) MR_list_head(char_list_ptr);
         /*
         ** It is an error to put a null character in a string
         ** (see the comments at the top of this file).
@@ -1790,7 +1795,12 @@ string.from_char_list(Chars::in, Str::uo) :-
             SUCCESS_INDICATOR = MR_FALSE;
             break;
         }
-        size += MR_utf8_encode(Str + size, c);
+        if (MR_is_ascii(c)) {
+            Str[size] = c;
+            size++;
+        } else {
+            size += MR_utf8_encode(Str + size, c);
+        }
         char_list_ptr = MR_list_tail(char_list_ptr);
     }
 
@@ -1877,6 +1887,7 @@ string.from_rev_char_list(Chars, Str) :-
 "{
     MR_Word list_ptr;
     MR_Word size;
+    MR_Char c;
 
     /*
     ** Loop to calculate list length in `size' using list in `list_ptr'
@@ -1884,7 +1895,12 @@ string.from_rev_char_list(Chars, Str) :-
     size = 0;
     list_ptr = Chars;
     while (!MR_list_is_empty(list_ptr)) {
-        size += MR_utf8_width(MR_list_head(list_ptr));
+        c = (MR_Char) MR_list_head(list_ptr);
+        if (MR_is_ascii(c)) {
+            size++;
+        } else {
+            size += MR_utf8_width(c);
+        }
         list_ptr = MR_list_tail(list_ptr);
     }
 
@@ -1906,14 +1922,18 @@ string.from_rev_char_list(Chars, Str) :-
     list_ptr = Chars;
     SUCCESS_INDICATOR = MR_TRUE;
     while (!MR_list_is_empty(list_ptr)) {
-        MR_Char c;
         c = (MR_Char) MR_list_head(list_ptr);
         if (c == '\\0') {
             SUCCESS_INDICATOR = MR_FALSE;
             break;
         }
-        size -= MR_utf8_width(c);
-        MR_utf8_encode(Str + size, c);
+        if (MR_is_ascii(c)) {
+            size--;
+            Str[size] = c;
+        } else {
+            size -= MR_utf8_width(c);
+            MR_utf8_encode(Str + size, c);
+        }
         list_ptr = MR_list_tail(list_ptr);
     }
 }").
