@@ -1799,7 +1799,7 @@ static {
 
 %-----------------------------------------------------------------------------%
 %
-% The --no-high-level-code implementation
+% The --no-high-level-code implementation.
 %
 
 :- pragma foreign_decl("C",
@@ -1912,7 +1912,7 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
   #endif
 
         /*
-        ** Check if we've reached a frame with an exception handler.
+        ** Check if we have reached a frame with an exception handler.
         */
 
         entry_layout = return_label_layout->MR_sll_entry;
@@ -2671,10 +2671,10 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
         /*
         ** If the code inside the try (catch) was nondet, then its caller
         ** (which may be solutions/2) may have put some more stuff on the
-        ** solutions-heap after the goal succeeded; the goal may have only thrown
-        ** after being re-entered on backtracking. Thus we can only reset the
-        ** solutions heap to where it was before copying the exception object
-        ** to it.
+        ** solutions-heap after the goal succeeded; the goal may have only
+        ** thrown after being re-entered on backtracking. Thus we can only
+        ** reset the solutions heap to where it was before copying the
+        ** exception object to it.
         */
         MR_sol_hp = saved_solns_heap_ptr;
     } else {
