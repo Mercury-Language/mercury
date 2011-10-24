@@ -21,3 +21,7 @@ CLEAN
 .mgnuc_copts
 FAILED_TESTS
 runtests.errs
+Prof.CallPair
+Prof.Decl
+Prof.MemoryCells
+Prof.MemoryWords

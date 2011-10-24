@@ -30,6 +30,7 @@ ORDINARY_PROGS=	\
 		hello_again \
 		higher_order \
 		hlc_name_mangling \
+		ho_spec_branch_bug \
 		intermod_type \
 		interpreter \
 		io_foldl \

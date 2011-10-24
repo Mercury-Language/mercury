@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2007 The University of Melbourne
+% Copyright (C) 2000, 2007, 2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %-----------------------------------------------------------------------------%
@@ -146,7 +146,7 @@ tcp.shutdown(tcp(_, Handle), !IO) :-
 
 :- pred handle_shutdown(tcp_handle::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    handle_shutdown(TCP::in, IO0::di, IO::uo),
+    handle_shutdown(TCP::in, _IO0::di, _IO::uo),
     [may_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
     struct linger sockets_linger = { MR_TRUE, 2 };
@@ -162,8 +162,6 @@ tcp.shutdown(tcp(_, Handle), !IO) :-
     if (close(((int)sock->socket)) == SOCKET_ERROR) {
         ML_throw_tcp_exception((MR_String) ""tcp.shutdown failed (close)"");
     }
-
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -249,7 +247,8 @@ void ML_tcp_init(void)
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    handle_connect(Host::in, Port::in, TCP::out, Errno::out, IO0::di, IO::uo), 
+    handle_connect(Host::in, Port::in, TCP::out, Errno::out,
+        _IO0::di, _IO::uo), 
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
     ML_tcp              *sock;
@@ -294,7 +293,6 @@ void ML_tcp_init(void)
 
     Errno = sock->error;
     TCP = (MR_Word) sock;
-    IO = IO0;
 ").
 
 socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
@@ -315,7 +313,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 
 :- pragma foreign_proc("C",
     handle_bind(Host::in, Port::in, Socket::out, Addr::out, Errno::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
     struct hostent      *host = NULL;
@@ -351,7 +349,6 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     }
 
     Addr = (MR_Word) addr;
-    IO = IO0;
 ").
 
 :- pred handle_accept(int::in, c_pointer::in, tcp_handle::out, int::out,
@@ -359,12 +356,21 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 
 :- pragma foreign_proc("C",
     handle_accept(Socket::in, Addr::in, TCP::out, Errno::out,
-        IO0::di, IO::uo), 
+        _IO0::di, _IO::uo), 
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
     ML_tcp              *sock;
     struct sockaddr     *addr;
-    int size = sizeof(struct sockaddr_in);
+
+    /*
+    ** For Winsock the third argument of accept is pointer to a signed
+    ** int.  On POSIX, systems, it has type socklen_t which is unsigned.
+    */
+    #if defined(MR_WIN32)
+        int size = sizeof(struct sockaddr_in);
+    #else
+        socklen_t size = sizeof(struct sockaddr_in); 
+    #endif
 
     sock = MR_GC_NEW(ML_tcp);
     addr = (struct sockaddr *) Addr;
@@ -380,7 +386,6 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 
     TCP = (MR_Word) sock;
     Errno = sock->error;
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -510,7 +515,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     tcp.read_line_as_string_2(TCP::in, Res::out, RetString::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 #define TCP_IO_READ_LINE_GROW(n) ((n) * 3 / 2)
@@ -570,7 +575,6 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     if (read_buffer != initial_read_buffer) {
         MR_free(read_buffer);
     }
-    MR_update_io(IO0, IO);
 ").
 
 :- pred tcp.write_char(tcp_handle::in, char::in, bool::out,
@@ -628,7 +632,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    tcp.data_available(Socket::in, Wait::in, Int::out, IO0::di, IO::uo),
+    tcp.data_available(Socket::in, Wait::in, Int::out, _IO0::di, _IO::uo),
     [promise_pure, tabled_for_io],
 "
     ML_tcp *sock = (ML_tcp *) Socket;
@@ -665,7 +669,6 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
         } else {
             Int = 0;
         }
-        IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -701,19 +704,17 @@ throw_tcp_exception(S) :-
 ").
 
 :- pragma foreign_proc("C",
-    tcp.ignore_sigpipe(IO0::di, IO::uo),
+    tcp.ignore_sigpipe(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     TCP__prev_sigpipe_handler = signal(SIGPIPE, SIG_IGN);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    tcp.unignore_sigpipe(IO0::di, IO::uo),
+    tcp.unignore_sigpipe(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     signal(SIGPIPE, TCP__prev_sigpipe_handler);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

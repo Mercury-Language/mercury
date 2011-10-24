@@ -10,3 +10,5 @@ Prof.MemoryWords Prof.MemoryCells
 CLEAN
 .mgnuc_copts
 .mgnuc_opts
+Prof.CallPair
+Prof.Decl

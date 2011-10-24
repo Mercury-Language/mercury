@@ -1952,112 +1952,122 @@ output_layout_name(Name, !IO) :-
         io.write_string(ModuleNameStr, !IO)
     ).
 
-output_layout_array_name_storage_type_name(ModuleName, Name, _BeingDefined,
+output_layout_array_name_storage_type_name(ModuleName, Name, BeingDefined,
         !IO) :-
     (
+        BeingDefined = being_defined,
+        io.write_string("static ", !IO)
+    ;  
+        % Avoid problems with MS Visual C. 
+        % See the comments in llds_out_file.output_static_linkage_define/2
+        % for a further explanation.
+        BeingDefined = not_being_defined,
+        io.write_string("MR_STATIC_LINKAGE ", !IO)
+    ),
+    (
         Name = label_layout_array(label_has_no_var_info),
-        io.write_string("static const MR_LabelLayoutNoVarInfo ", !IO),
+        io.write_string("const MR_LabelLayoutNoVarInfo ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = label_layout_array(label_has_short_var_info),
-        io.write_string("static const MR_LabelLayoutShort ", !IO),
+        io.write_string("const MR_LabelLayoutShort ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = label_layout_array(label_has_long_var_info),
-        io.write_string("static const MR_LabelLayout ", !IO),
+        io.write_string("const MR_LabelLayout ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = pseudo_type_info_array,
-        io.write_string("static const MR_PseudoTypeInfo ", !IO),
+        io.write_string("const MR_PseudoTypeInfo ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = long_locns_array,
-        io.write_string("static const MR_LongLval ", !IO),
+        io.write_string("const MR_LongLval ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = short_locns_array,
-        io.write_string("static const MR_ShortLval ", !IO),
+        io.write_string("const MR_ShortLval ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = hlds_var_nums_array,
-        io.write_string("static const MR_HLDSVarNum ", !IO),
+        io.write_string("const MR_HLDSVarNum ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = user_event_var_nums_array,
-        io.write_string("static const MR_HLDSVarNum ", !IO),
+        io.write_string("const MR_HLDSVarNum ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = user_event_layout_array,
-        io.write_string("static const struct MR_UserEvent_Struct ", !IO),
+        io.write_string("const struct MR_UserEvent_Struct ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = proc_static_call_sites_array,
-        io.write_string("static const MR_CallSiteStatic ", !IO),
+        io.write_string("const MR_CallSiteStatic ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = proc_static_cp_static_array,
-        io.write_string("static const MR_CoveragePointStatic ", !IO),
+        io.write_string("const MR_CoveragePointStatic ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = proc_static_cp_dynamic_array,
-        io.write_string("static MR_Unsigned ", !IO),
+        io.write_string("MR_Unsigned ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = proc_static_array,
-        io.write_string("static MR_ProcStatic ", !IO),
+        io.write_string("MR_ProcStatic ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = proc_head_var_nums_array,
-        io.write_string("static const MR_uint_least16_t ", !IO),
+        io.write_string("const MR_uint_least16_t ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = proc_var_names_array,
-        io.write_string("static const MR_uint_least32_t ", !IO),
+        io.write_string("const MR_uint_least32_t ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = proc_body_bytecodes_array,
-        io.write_string("static const MR_uint_least8_t ", !IO),
+        io.write_string("const MR_uint_least8_t ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = proc_table_io_decl_array,
-        io.write_string("static const MR_TableIoDecl ", !IO),
+        io.write_string("const MR_TableIoDecl ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = proc_event_layouts_array,
-        io.write_string("static const MR_LabelLayout *", !IO),
+        io.write_string("const MR_LabelLayout *", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = proc_exec_trace_array,
-        io.write_string("static MR_STATIC_CODE_CONST MR_ExecTrace ", !IO),
+        io.write_string("MR_STATIC_CODE_CONST MR_ExecTrace ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = threadscope_string_table_array,
-        io.write_string("static MR_Threadscope_String ", !IO),
+        io.write_string("MR_Threadscope_String ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
         Name = alloc_site_array,
         % The type field may be updated at runtime so this array is not const.
-        io.write_string("static MR_AllocSiteInfo ", !IO),
+        io.write_string("MR_AllocSiteInfo ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ).

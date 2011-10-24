@@ -111,6 +111,8 @@ Changes to the Mercury standard library:
 	hash_table.init/3
 	hash_table.init_default/1
 	mvar.init/0
+	mvar.read/4
+	mvar.try_put/5
 	store.init/1
 	semaphore.init/1
 	semaphore.init/3

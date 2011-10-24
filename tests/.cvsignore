@@ -13,3 +13,7 @@ UNEXPECTED_FAILED_TESTS
 mdbrc
 mdbrc.in
 runtests.errs
+Prof.CallPair
+Prof.Decl
+Prof.MemoryCells
+Prof.MemoryWords

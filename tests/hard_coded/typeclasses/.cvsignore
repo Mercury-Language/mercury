@@ -26,3 +26,7 @@ FAILED_TESTS
 .mgnuc_copts
 .mgnuc_opts
 runtests.errs
+Prof.CallPair
+Prof.Decl
+Prof.MemoryCells
+Prof.MemoryWords

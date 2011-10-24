@@ -125,3 +125,7 @@ runtests.errs
 FAILED_TESTS
 NOMAKE_DIRS
 Mercury.modules
+Prof.CallPair
+Prof.Decl
+Prof.MemoryCells
+Prof.MemoryWords
