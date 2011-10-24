@@ -6096,7 +6096,7 @@ If no @samp{catch_any} branch is present, let @samp{CAG = fail}.
 An example of a try goal that performs I/O is:
 
 @example
-:- pred p_carefully(io::di, io::uo) is det.
+:- pred p_carefully(io::di, io::uo) is cc_multi.
 
 p_carefully(!IO) :-
         (try [io(!IO)] (
