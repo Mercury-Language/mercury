@@ -91,7 +91,7 @@ MR_fatal_error(const char *fmt, ...)
     fflush(stdout);     /* in case stdout and stderr are the same */
 
     if (error != 0) {
-        fprintf(stderr, "Errno = %d: %s \n", error, strerror(error));
+        fprintf(stderr, "Errno = %d: %s\n", error, strerror(error));
     }
     fprintf(stderr, "Mercury runtime: ");
     va_start(args, fmt);
