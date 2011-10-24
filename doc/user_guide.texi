@@ -6482,7 +6482,7 @@ Disable warnings from the smart recompilation system.
 @item --no-warn-undefined-options-variables
 @findex --no-warn-undefined-options-variables
 @findex --make
-Warn about references to undefined variables in
+Do not warn about references to undefined variables in
 options files with @samp{--make}.
 
 @sp 1

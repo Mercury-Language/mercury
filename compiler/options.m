@@ -3498,7 +3498,7 @@ options_help_warning -->
         "--no-warn-smart-recompilation",
         "\tDisable warnings from the smart recompilation system.",
         "--no-warn-undefined-options-variables",
-        "\tWarn about references to undefined variables in",
+        "\tDo not warn about references to undefined variables in",
         "\toptions files with `--make'.",
         "--warn-non-tail-recursion",
         "\tWarn about any directly recursive calls that are not tail calls.",
