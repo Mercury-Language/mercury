@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000, 2007 The University of Melbourne.
+% Copyright (C) 2000, 2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %-----------------------------------------------------------------------------%
@@ -115,20 +115,17 @@
     WSADATA wsaData;
     int err; 
 
-    if (!initialiased) {
-        wVersionRequested = MAKEWORD( 2, 2 ); 
-        err = WSAStartup(wVersionRequested, &wsaData);
+    wVersionRequested = MAKEWORD( 2, 2 ); 
+    err = WSAStartup(wVersionRequested, &wsaData);
 
-        if ( err != 0 ) {
-            MR_fatal_error(""Unable to find a usable winsock.dll\\n"");
-        }
+    if ( err != 0 ) {
+        MR_fatal_error(""Unable to find a usable winsock.dll\\n"");
+    }
 
-        if ( LOBYTE( wsaData.wVersion ) != 2 ||
-                HIBYTE( wsaData.wVersion ) != 2 ) {
-            WSACleanup();
-            MR_fatal_error(""Unable to find a usable winsock.dll\\n"");
-        }
-        initialiased = MR_TRUE;
+    if ( LOBYTE( wsaData.wVersion ) != 2 ||
+            HIBYTE( wsaData.wVersion ) != 2 ) {
+        WSACleanup();
+        MR_fatal_error(""Unable to find a usable winsock.dll\\n"");
     }
 #endif /* MR_WIN32 */
 ").

@@ -173,6 +173,7 @@ tcp.shutdown(tcp(_, Handle), !IO) :-
 #ifdef MR_WIN32
   #include <windows.h>
   #include <winsock.h>
+  #include <sys/types.h>
 
   #define  ML_error()       WSAGetLastError()
 
@@ -694,27 +695,40 @@ throw_tcp_exception(S) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
+
     #include <signal.h>
 
-    extern void *TCP__prev_sigpipe_handler;
+    #if defined(SIGPIPE)
+        extern void *TCP__prev_sigpipe_handler;
+     #endif
 ").
 
 :- pragma foreign_code("C", "
-    void *TCP__prev_sigpipe_handler = SIG_DFL;
+    #if defined(SIGPIPE)
+        void *TCP__prev_sigpipe_handler = SIG_DFL;
+    #endif
 ").
 
 :- pragma foreign_proc("C",
     tcp.ignore_sigpipe(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
+#if defined(SIGPIPE)
     TCP__prev_sigpipe_handler = signal(SIGPIPE, SIG_IGN);
+#else
+    MR_external_fatal_error(""tcp"", ""SIGPIPE not available on this system."")
+#endif
 ").
 
 :- pragma foreign_proc("C",
     tcp.unignore_sigpipe(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
+#if defined(SIGPIPE)
     signal(SIGPIPE, TCP__prev_sigpipe_handler);
+#else
+    MR_external_fatal_error(""tcp"", ""SIGPIPE not available on this system."")
+#endif
 ").
 
 %-----------------------------------------------------------------------------%
