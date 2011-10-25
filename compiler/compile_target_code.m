@@ -2418,6 +2418,7 @@ get_restricted_command_line_link_opts(Globals, LinkTargetType, ResCmdLinkOpts) :
                 % XXX WIN64 - this will need to be revisited when we begin
                 % supporting 64-bit Windows.
                 ResCmdLinkFlags = [
+                    "-nologo",
                     "-subsystem:console",
                     "-machine:x86",
                     "-entry:mainCRTStartup",
