@@ -81,7 +81,7 @@ case "$CC" in
 		COMPILER=clang
 		;;
 	*cl* | *CL*)
-		COMPILER=cl
+		COMPILER=msvc
 		;;
 	cc* | */cc*)
 		COMPILER=cc
@@ -343,7 +343,7 @@ esac
 
 # Determine whether to link the executable with debugging symbols when using
 # MSVC.
-if test $strip = "false" -a $COMPILER = "cl"
+if test $strip = "false" -a $COMPILER = "msvc"
 then
 	DEBUG_FLAG="-DEBUG"
 else
@@ -528,14 +528,20 @@ case $EXT_FOR_SHARED_LIB in
 		;;
 esac
 
-
 case "$MKFIFO" in
     none)
 		demangle=false
 		;;
 esac
 
-LINKER_PRE_FLAGS="$MSVCRT_OPTS $PRINT_MAP_OPT $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
+if test $COMPILER = "msvc"
+then
+	NOLOGO_OPTS="-nologo"
+else
+	NOLOGO_OPTS=""
+fi
+
+LINKER_PRE_FLAGS="$NOLOGO_OPTS $MSVCRT_OPTS $PRINT_MAP_OPT $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
 LINKER_POST_FLAGS="@LINK_OPT_SEP@ $NODEFAULTLIB_FLAG $DEBUG_FLAG $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS"
 
 case $verbose in
