@@ -5648,7 +5648,7 @@ io.get_io_output_stream_type(Type, !IO) :-
 #endif
 
 #ifdef MR_WIN32
-  #include <windows.h>
+  #include ""mercury_windows.h""
 #endif
 
 #if defined(MR_MSVC)

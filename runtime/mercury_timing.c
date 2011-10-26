@@ -29,7 +29,7 @@
 #endif
 
 #ifdef MR_WIN32_GETPROCESSTIMES
-  #include <windows.h>
+  #include "mercury_windows.h"
 #endif
 
 #include "mercury_timing.h"

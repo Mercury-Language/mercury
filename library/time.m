@@ -329,9 +329,9 @@ time.times(Tms, Result, !IO) :-
         Result = Ret
     ).
 
-:- pragma foreign_decl(c, local, "
+:- pragma foreign_decl("C", local, "
 #ifdef MR_WIN32
-    #include <windows.h>
+    #include ""mercury_windows.h""
     typedef union
     {
         FILETIME ft;
@@ -985,8 +985,6 @@ mon_name(10, "Nov").
 mon_name(11, "Dec").
 
 %-----------------------------------------------------------------------------%
-
-%:- func time.ctime(time_t) = string.
 
 time.ctime(Time) = asctime(localtime(Time)).
 

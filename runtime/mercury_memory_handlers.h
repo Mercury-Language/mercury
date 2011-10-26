@@ -60,7 +60,7 @@ extern	void	MR_setup_signals(void);
 **  execution at the assembly instruction that was executing
 **  when the exception was raised. 
 */
-#include <windows.h>
+#include "mercury_windows.h"
 
 int MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs);
 #endif

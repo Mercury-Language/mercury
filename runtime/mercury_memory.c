@@ -86,7 +86,7 @@
   #define   getpagesize()   sysconf(_SC_PAGESIZE)
 #elif !defined(MR_HAVE_GETPAGESIZE) || defined(MR_MINGW)
   #if defined(MR_WIN32_GETSYSTEMINFO)
-    #include <windows.h>
+    #include "mercury_windows.h"
 
     #define getpagesize() MR_win32_getpagesize()
 
