@@ -532,4 +532,15 @@ mercury_sys_init_lc_write_out_proc_statics(FILE *deep_fp,
 ").
 
 %-----------------------------------------------------------------------------%
+
+:- pragma foreign_code("Erlang",
+"
+lc_finish_1_p_0(_) ->
+    throw(""lc_finish is unavailable in this grade"").
+
+lc_wait_free_slot_2_p_0(_) ->
+    throw(""lc_wait_free_slot is unavailable in this grade"").
+").
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
