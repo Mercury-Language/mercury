@@ -1533,7 +1533,7 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 #include ""mercury_types.h""
 
 #if defined(MR_WIN32) && defined(MR_HAVE_WINDOWS_H)
-  #include <windows.h>
+  #include ""mercury_windows.h""
 #endif
 
 #ifdef HAVE_UNISTD_H

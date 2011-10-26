@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998,2000 The University of Melbourne.
+** Copyright (C) 1998,2000, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -60,7 +60,7 @@ extern	void	MR_setup_signals(void);
 **  execution at the assembly instruction that was executing
 **  when the exception was raised. 
 */
-#include <windows.h>
+#include "mercury_windows.h"
 
 int MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs);
 #endif

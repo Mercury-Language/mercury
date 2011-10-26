@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1993-1994,1997,2000, 2005-2006 The University of Melbourne.
+** Copyright (C) 1993-1994,1997,2000, 2005-2006, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,7 +29,7 @@
 #endif
 
 #ifdef MR_WIN32_GETPROCESSTIMES
-  #include <windows.h>
+  #include "mercury_windows.h"
 #endif
 
 #include "mercury_timing.h"

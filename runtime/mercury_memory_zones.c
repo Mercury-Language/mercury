@@ -73,7 +73,7 @@
 ** includes?
 */
 #ifdef MR_WIN32_VIRTUAL_ALLOC
-  #include <windows.h>
+  #include "mercury_windows.h"
 #endif
 
 static  void    MR_setup_redzones(MR_MemoryZone *zone);
