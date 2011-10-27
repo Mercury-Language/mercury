@@ -1843,6 +1843,8 @@ MR_define_entry(MR_do_sleep);
     MR_EngineId engine_id = MR_ENGINE(MR_eng_id);
     unsigned action;
     int result;
+    struct timespec ts;
+    struct timeval tv;
 
     while (1) {
         engine_sleep_sync_data[engine_id].d.es_state = ENGINE_STATE_SLEEPING;
@@ -1850,9 +1852,25 @@ MR_define_entry(MR_do_sleep);
 #ifdef MR_THREADSCOPE
         MR_threadscope_post_engine_sleeping();
 #endif
-        result = MR_SEM_WAIT(
+#if defined(MR_HAVE_GETTIMEOFDAY) && defined(MR_HAVE_SEMAPHORE_H)
+        gettimeofday(&tv, NULL);
+        /* Sleep for 2ms */
+        tv.tv_usec += 2000;
+
+        if (tv.tv_usec > 1000000) {
+            tv.tv_usec = tv.tv_sec % 1000000;
+            tv.tv_sec += 1;
+        }
+        ts.tv_sec = tv.tv_sec;
+        ts.tv_nsec = tv.tv_usec * 1000;
+        result = sem_timedwait(
             &(engine_sleep_sync_data[engine_id].d.es_sleep_semaphore),
-            "MR_do_sleep sleep_sem");
+            &ts);
+#else
+        MR_fatal_error(
+            "low-level parallel grades need gettimeofday() and "
+            "sem_timedwait()\n");
+#endif
 
         if (0 == result) {
             MR_CPU_LFENCE;
@@ -1923,6 +1941,12 @@ MR_define_entry(MR_do_sleep);
                     /*
                     ** An interrupt woke the engine, go back to sleep.
                     */
+                    break;
+                case ETIMEDOUT:
+                    /*
+                    ** A wait timed out, check for any sparks.
+                    */
+                    MR_MAYBE_TRAMPOLINE(do_work_steal(NULL));
                     break;
                 default:
                     perror("sem_post");
