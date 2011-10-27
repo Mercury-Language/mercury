@@ -17,21 +17,21 @@
 #ifndef MERCURY_WINDOWS_H
 #define MERCURY_WINDOWS_H
 
-/*
-** NOTE: the following is not protected by any guards - it is the
-** responsibility of modules that #include this one to ensure that
-** the windows.h is available before #including this file.
-*/
+#include "mercury_conf_param.h"
 
-/*
-** Defining WIN32_LEAN_AND_MEAN disables a series of #includes inside
-** windows.h -- notably it disables the #include of winsock.h, the inclusion
-** of which renders the winsock2 API unusable in Mercury foreign_procs.
-*/
-#if !defined(WIN32_LEAN_AND_MEAN)
-    #define WIN2_LEAN_AND_MEAN
+#if defined(MR_WIN32)
+    
+    /*
+    ** Defining WIN32_LEAN_AND_MEAN disables a series of #includes inside
+    ** windows.h -- notably it disables the #include of winsock.h, the
+    ** inclusion of which renders the winsock2 API unusable in Mercury
+    ** foreign_procs.
+    */
+    #if !defined(WIN32_LEAN_AND_MEAN)
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+
+    #include <windows.h>
 #endif
-
-#include <windows.h>
 
 #endif /* not MERCURY_WINDOWS_H */
