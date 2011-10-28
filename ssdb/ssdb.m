@@ -425,7 +425,7 @@ get_debugger_state_safer(DebuggerState, !IO) :-
     get_debugger_state(DebuggerState, !IO).
 
 :- pragma foreign_proc("Java",
-    get_debugger_state_safer(DebuggerState::out, IO0::di, IO::uo),
+    get_debugger_state_safer(DebuggerState::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     /*
@@ -441,7 +441,6 @@ get_debugger_state_safer(DebuggerState, !IO) :-
     } else {
         DebuggerState = (ssdb.Debugger_state_0) X;
     }
-    IO = IO0;
 ").
 
 :- pragma foreign_export_enum("Java", debugger_state/0, [],
@@ -454,12 +453,11 @@ get_debugger_state_safer(DebuggerState, !IO) :-
 install_sigint_handler(!IO).
 
 :- pragma foreign_proc("C",
-    install_sigint_handler(IO0::di, IO::uo),
+    install_sigint_handler(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     MR_setup_signal(SIGINT, (MR_Code *) MR_ssdb_sigint_handler,
         MR_FALSE, ""ssdb: cannot install SIGINT signal handler"");
-    IO = IO0;
 ").
 
 :- pragma foreign_code("C",
@@ -3412,11 +3410,10 @@ restore_streams(!IO) :-
 :- pred exit_process(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    exit_process(IO0::di, IO::uo),
+    exit_process(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     exit(0);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C#",
