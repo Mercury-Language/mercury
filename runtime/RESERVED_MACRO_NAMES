@@ -81,3 +81,6 @@ __pentiumpro__
 _REENTRANT
 _THREAD_SAFE
 #-----------------------------------------------------------------------------#
+# This is defined on Windows to workaround problems with windows.h.
+WIN32_LEAN_AND_MEAN
+#-----------------------------------------------------------------------------#
