@@ -4795,7 +4795,7 @@ are equivalent to, the builtin insts @samp{free}, @samp{unique},
 
 The initial value of a mutable, @samp{initial_value}, may be any Mercury
 expression with type @samp{vartype} and inst @samp{varinst} subject to
-the above restrictions.
+the above restrictions. It may be impure or semipure.
 
 The following @samp{attributes} must be supported:
 

@@ -58,7 +58,8 @@
 %
 %   initialise_mutable_<varname> :-
 %       impure pre_initialise_mutable_<varname>,
-%       impure set_<varname>(<initval>).
+%       impure X = <initval>,
+%       impure set_<varname>(X).
 % 
 %   :- impure pred pre_initialise_mutable_<varname> is det.
 %   :- pragma foreign_proc("C",
@@ -209,7 +210,8 @@
 %   :- impure pred initialise_mutable_<varname> is det.
 %
 %   initialise_mutable_<varname> :-
-%       impure secret_initialization_only_set_<varname>(<initval>).
+%       impure X = <initval>,
+%       impure secret_initialization_only_set_<varname>(X).
 %
 %-----------------------------------------------------------------------------%
 %
@@ -230,7 +232,8 @@
 %   :- impure pred initialise_mutable_<varname> is det.
 %
 %   initialise_mutable_<varname> :-
-%       impure set_<varname>(<initval>).
+%       impure X = <initval>,
+%       impure set_<varname>(X).
 %
 % <JType> is either `int' or `java.lang.Object' (all other types).
 %
@@ -335,7 +338,8 @@
 %   :- impure pred initialise_mutable_<varname> is det.
 %
 %   initialise_mutable_<varname> :-
-%       impure secret_initialization_only_set_<varname>(<initval>).
+%       impure X = <initval>,
+%       impure secret_initialization_only_set_<varname>(X).
 %
 %-----------------------------------------------------------------------------%
 %
@@ -358,7 +362,8 @@
 %
 %   initialise_mutable_<varname> :-
 %       impure pre_initialise_mutable_<varname>,
-%       impure set_<varname>(<initvalue>).
+%       impure X = <initvalue>,
+%       impure set_<varname>(X).
 %
 %   :- pragma foreign_proc("C#",
 %       pre_initialise_mutable_<varname>,
@@ -407,7 +412,8 @@
 %   :- impure pred initialise_mutable_<varname> is det.
 %
 %   initialise_mutable_<varname> :-
-%       impure set_<varname>(<initval>).
+%       impure X = <initval>,
+%       impure set_<varname>(X).
 %
 %   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
 %   :- pragma foreign_proc("Erlang",
@@ -464,7 +470,8 @@
 %   :- impure pred initialise_mutable_<varname> is det.
 %
 %   initialise_mutable_<varname> :-
-%       impure secret_initialization_only_set_<varname>(<initval>).
+%       impure X = <initval>,
+%       impure secret_initialization_only_set_<varname>(X).
 %
 % The transformation for thread_local mutables has not been decided (we need a
 % way for spawned processes to inherit all the thread-local mutable values of

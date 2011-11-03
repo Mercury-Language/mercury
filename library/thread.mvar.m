@@ -33,7 +33,7 @@
 
     % Create an empty mvar.
     %
-:- func mvar.init = (mvar(T)::uo) is det.
+:- impure func mvar.init = (mvar(T)::uo) is det.
 
     % Create an empty mvar.
     %
@@ -84,14 +84,15 @@
                 mutvar(T)   % data
             ).
 
-mvar.init(mvar.init, !IO).
+mvar.init(Mvar, !IO) :-
+    promise_pure (
+        impure Mvar = mvar.init
+    ).
 
 mvar.init = mvar(Full, Empty, Ref) :-
-    promise_pure (
-        Full = semaphore.init(0),
-        Empty = semaphore.init(1),      % Initially a mvar starts empty.
-        impure new_mutvar0(Ref)
-    ).
+    impure Full = semaphore.init(0),
+    impure Empty = semaphore.init(1),   % Initially a mvar starts empty.
+    impure new_mutvar0(Ref).
 
 mvar.take(mvar(Full, Empty, Ref), Data, !IO) :-
     promise_pure (

@@ -184,6 +184,7 @@ ORDINARY_PROGS=	\
 	multi_map_test \
 	multimode \
 	multimode_addr \
+	mutable_init_impure \
 	mutable_init_order \
 	myset_test \
 	name_mangling \

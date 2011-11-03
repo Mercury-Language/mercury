@@ -855,20 +855,20 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     % variable's type.
     VarTypes = !.Info ^ pi_vartypes,
     map.lookup(VarTypes, Var, TypeOfVar),
+    PredInfo = !.Info ^ pi_pred_info,
+    pred_info_get_markers(PredInfo, CallerMarkers),
     Context = goal_info_get_context(GoalInfo),
     (
         ConsId = cons(PName, _, _),
         type_is_higher_order_details(TypeOfVar, TypePurity, PredOrFunc,
             _EvalMethod, VarArgTypes)
     ->
-        PredInfo = !.Info ^ pi_pred_info,
         pred_info_get_typevarset(PredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(PredInfo, ExistQTVars),
         pred_info_get_head_type_params(PredInfo, HeadTypeParams),
         map.apply_to_list(Args, VarTypes, ArgTypes0),
         list.append(ArgTypes0, VarArgTypes, PredArgTypes),
         ModuleInfo = !.Info ^ pi_module_info,
-        pred_info_get_markers(PredInfo, CallerMarkers),
         (
             get_pred_id_by_types(calls_are_fully_qualified(CallerMarkers),
                 PName, PredOrFunc, TVarSet, ExistQTVars, PredArgTypes,
@@ -897,8 +897,14 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         ( DeclaredPurity = purity_semipure
         ; DeclaredPurity = purity_impure
         ),
-        Spec = impure_unification_expr_error(Context, DeclaredPurity),
-        purity_info_add_message(Spec, !Info)
+        % Don't warn about bogus purity annotations in compiler-generated
+        % mutable predicates.
+        ( check_marker(CallerMarkers, marker_mutable_access_pred) ->
+            true
+        ;
+            Spec = impure_unification_expr_error(Context, DeclaredPurity),
+            purity_info_add_message(Spec, !Info)
+        )
     ;
         DeclaredPurity = purity_pure
     ).
@@ -1034,12 +1040,16 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
         % We don't warn about exaggerated impurity decls in class methods
         % or instance methods --- it just means that the predicate provided
         % as an implementation was more pure than necessary.
+        % Don't warn about exaggerated impurity decls in compiler-generated
+        % mutable predicates either.
 
         pred_info_get_markers(PredInfo, Markers),
         (
             check_marker(Markers, marker_class_method)
         ;
             check_marker(Markers, marker_class_instance_method)
+        ;
+            check_marker(Markers, marker_mutable_access_pred)
         )
     ->
         true
