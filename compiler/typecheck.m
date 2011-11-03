@@ -318,8 +318,11 @@ construct_type_inference_message(PredInfo) = Spec :-
             AppendVarNums)
     ),
     Pieces = [words("Inferred"), words(TypeStr), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_informational, phase_type_check, [Msg]).
+    Msg = simple_msg(Context,
+        [option_is_set(inform_inferred_types, yes, [always(Pieces)])]),
+    Severity = severity_conditional(inform_inferred_types, yes,
+        severity_informational, no),
+    Spec = error_spec(Severity, phase_type_check, [Msg]).
 
 :- func typecheck_report_max_iterations_exceeded(int) = error_spec.
 

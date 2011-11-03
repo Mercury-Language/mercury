@@ -1376,8 +1376,11 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
                 FuncArgModes, RetMode, !.MaybeDet, Context)
         ),
         Pieces = [words(Verb), words(Detail), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_informational,
+        Msg = simple_msg(Context,
+            [option_is_set(inform_inferred_modes, yes, [always(Pieces)])]),
+        Severity = severity_conditional(inform_inferred_modes, yes,
+            severity_informational, no),
+        Spec = error_spec(Severity,
             phase_mode_check(report_in_any_mode), [Msg])
     ).
 
