@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007-2009 The University of Melbourne.
+** Copyright (C) 2007-2009, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -41,7 +41,7 @@
 */
 #define     MR_REGION_ITE_FRAME_FIXED_SIZE                  4
 #define     MR_REGION_DISJ_FRAME_FIXED_SIZE                 4
-#define     MR_REGION_COMMIT_FRAME_FIXED_SIZE               4
+#define     MR_REGION_COMMIT_FRAME_FIXED_SIZE               5
 #define     MR_REGION_ITE_PROT_SIZE                         1
 #define     MR_REGION_ITE_SNAPSHOT_SIZE                     3
 #define     MR_REGION_SEMI_DISJ_PROT_SIZE                   1
@@ -158,6 +158,7 @@ struct MR_RegionCommitFixedFrame_Struct {
     MR_RegionCommitFixedFrame       *MR_rcff_previous_commit_frame;
     MR_Word                         MR_rcff_saved_sequence_number;
     MR_RegionDisjFixedFrame         *MR_rcff_saved_disj_sp;
+    MR_RegionITEFixedFrame          *MR_rcff_saved_ite_sp;
     MR_Word                         MR_rcff_num_saved_regions;
 };
 
@@ -298,6 +299,7 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 new_commit_frame->MR_rcff_saved_sequence_number =           \
                     MR_region_sequence_number;                              \
                 new_commit_frame->MR_rcff_saved_disj_sp = MR_region_disj_sp;\
+                new_commit_frame->MR_rcff_saved_ite_sp = MR_region_ite_sp;  \
                 MR_region_commit_sp = new_commit_frame;                     \
                 MR_region_profile_push_commit_frame;                        \
                 MR_region_debug_push_commit_frame(new_commit_frame);        \
@@ -995,6 +997,9 @@ extern  int             MR_region_is_disj_protected(MR_RegionHeader *region);
                 MR_region_profile_pop_disj_frame(MR_region_disj_sp,         \
                     top_commit_frame->MR_rcff_saved_disj_sp);               \
                 MR_region_disj_sp = top_commit_frame->MR_rcff_saved_disj_sp;\
+                MR_region_profile_pop_ite_frame(MR_region_ite_sp,           \
+                    top_commit_frame->MR_rcff_saved_ite_sp);                \
+                MR_region_ite_sp = top_commit_frame->MR_rcff_saved_ite_sp;  \
                 MR_pop_region_commit_frame(top_commit_frame);               \
                 MR_region_debug_end("use_region_commit_success");           \
             } while (0)

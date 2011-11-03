@@ -1401,7 +1401,7 @@ option_defaults_2(internal_use_option, [
     % values or data structures in mercury_region.h.
     size_region_ite_fixed               -   int(4),
     size_region_disj_fixed              -   int(4),
-    size_region_commit_fixed            -   int(4),
+    size_region_commit_fixed            -   int(5),
     size_region_ite_protect             -   int(1),
     size_region_ite_snapshot            -   int(3),
     size_region_semi_disj_protect       -   int(1),
