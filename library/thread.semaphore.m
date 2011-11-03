@@ -40,12 +40,12 @@
 
     % Returns a new semaphore `Sem' with its counter initialized to Count.
     %
-:- func semaphore.init(int::in) = (semaphore::uo) is det.
+:- impure func semaphore.init(int::in) = (semaphore::uo) is det.
 
     % A synonym for the above.
     %
 :- pragma obsolete(semaphore.new/1).
-:- func semaphore.new(int::in) = (semaphore::uo) is det.
+:- impure func semaphore.new(int::in) = (semaphore::uo) is det.
 
     % wait(Sem, !IO) blocks until the counter associated with `Sem'
     % becomes greater than 0, whereupon it wakes, decrements the
@@ -100,7 +100,8 @@ public class ML_Semaphore {
 };
 ").
 
-:- pragma foreign_type("C",  semaphore, "ML_Semaphore *",
+    % XXX the struct tag works around bug #19 in high-level C grades
+:- pragma foreign_type("C",  semaphore, "struct ML_SEMAPHORE_STRUCT *",
     [can_pass_as_mercury_type]).
 :- pragma foreign_type("IL", semaphore,
     "class [mercury]mercury.thread.semaphore__csharp_code.mercury_code.ML_Semaphore").
@@ -118,14 +119,17 @@ ML_finalize_semaphore(void *obj, void *cd);
 new(Semaphore, !IO) :-
     init(Semaphore, !IO).
 
-new(Count) = init(Count).
+new(Count) = Semaphore :-
+    impure Semaphore = init(Count).
 
 init(Semaphore, !IO) :-
-    Semaphore = init(0).
+    promise_pure (
+        impure Semaphore = init(0)
+    ).
 
 :- pragma foreign_proc("C",
     init(Count::in) = (Semaphore::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe],
 "
     ML_Semaphore    *sem;
 
@@ -155,7 +159,7 @@ init(Semaphore, !IO) :-
 
 :- pragma foreign_proc("C#",
     init(Count::in) = (Semaphore::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe],
 "
     Semaphore = new thread__semaphore.ML_Semaphore();
     Semaphore.count = Count;
@@ -163,7 +167,7 @@ init(Semaphore, !IO) :-
 
 :- pragma foreign_proc("Java",
     init(Count::in) = (Semaphore::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe],
 "
     Semaphore = new java.util.concurrent.Semaphore(Count);
 ").
