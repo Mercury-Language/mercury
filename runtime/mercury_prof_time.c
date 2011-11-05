@@ -31,7 +31,7 @@ const char      *MR_time_method;
   #include  <sys/time.h>
 #endif
 
-#if defined(MR_MPROF_PROFILE_TIME) || defined(MR_DEEP_PROFILING)
+#if defined(MR_MPROF_PROFILE_TIME) || defined(MR_DEEP_PROFILING_TIMING)
 
 #if !defined(MR_CLOCK_TICKS_PER_SECOND) || !defined(MR_HAVE_SETITIMER)
   #error "Time profiling not supported on this system"
@@ -144,4 +144,4 @@ MR_checked_setitimer(int which, struct itimerval *value)
     }
 }
 
-#endif /* MR_MPROF_PROFILE_TIME || MR_DEEP_PROFILING */
+#endif /* MR_MPROF_PROFILE_TIME || MR_DEEP_PROFILING_TIMING */

@@ -12,7 +12,7 @@
 
 extern	const char	*MR_time_method;
 
-#if defined(MR_MPROF_PROFILE_TIME) || defined(MR_DEEP_PROFILING)
+#if defined(MR_MPROF_PROFILE_TIME) || defined(MR_DEEP_PROFILING_TIMING)
 
 typedef	void	MR_time_signal_handler(int signum);
 
@@ -21,6 +21,6 @@ extern	void	MR_turn_off_time_profiling(void);
 
 extern	void	MR_init_time_profile_method(void);
 
-#endif	/* MR_MPROF_PROFILE_TIMING || MR_DEEP_PROFILING */
+#endif	/* MR_MPROF_PROFILE_TIMING || MR_DEEP_PROFILING_TIMING */
 
 #endif	/* MERCURY_PROF_TIME_H */

@@ -31,6 +31,86 @@
 #define MERCURY_CONF_PARAM_H
 
 /*---------------------------------------------------------------------------*/
+
+/*
+** Win32 API specific.
+*/
+
+/*
+** MR_WIN32 -- The Win32 API is available.
+**
+** MR_WIN32_GETSYSTEMINFO -- Is GetSystemInfo() available?
+**
+** MR_WIN32_VIRTUAL_ALLOC -- Is VirtualAlloc() available?
+**
+** MR_BROKEN_ST_INO - Is the st_ino field of `struct stat' junk.
+**	Windows doesn't fill in this field correctly.
+*/
+#ifdef _WIN32
+  #define MR_WIN32
+  #define MR_WIN32_GETSYSTEMINFO
+  #define MR_WIN32_VIRTUAL_ALLOC
+  #define MR_WIN32_GETPROCESSTIMES
+  #define MR_BROKEN_ST_INO
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Mac OS X specific.
+*/
+
+#if defined(__APPLE__) && defined(__MACH__)
+   #define MR_MAC_OSX
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** MinGW specific.
+*/
+
+#if defined(__MINGW32__)
+   #define MR_MINGW
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Cygwin specific.
+*/
+
+#if defined(__CYGWIN__)
+   #define MR_CYGWIN
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** C compilers.
+*/
+
+/*
+** MR_CLANG -- The C compiler is clang.
+**
+** MR_GNUC -- The C compiler is GCC.  
+**            The value of this macro gives the major version number.
+**            We use this macro instead of __GNUC__ since clang also
+**            defines __GNUC__.
+**
+** MR_MSVC -- The C compiler is Visual C.
+**            The value of this macro gives the version number.
+*/
+
+#if defined(__clang__)
+    #define MR_CLANG __clang__
+#elif defined(__GNUC__)
+    #define MR_GNUC __GNUC__
+#elif defined(_MSC_VER)
+    #define MR_MSVC _MSC_VER
+#endif
+
+/*---------------------------------------------------------------------------*/
 /*
 ** Documentation for configuration parameters which can be set on the
 ** command line via `-D'.
@@ -630,6 +710,8 @@
 **
 ** MR_DEEP_PROFILING_TIMING.
 ** Enables deep profiling of time (obtained via clock interrupt signals).
+** This is not currently supported on Windows; we always disable it on that
+** platform.
 **
 ** MR_DEEP_PROFILING_CALL_SEQ.
 ** Enables deep profiling of time (obtained by counting call sequence numbers).
@@ -653,7 +735,7 @@
 */
 
 #ifdef	MR_DEEP_PROFILING
-  /* this is the default set of measurements in deep profiling grades */
+  /* This is the default set of measurements in deep profiling grades. */
   #define MR_DEEP_PROFILING_PORT_COUNTS
   #ifndef MR_DEEP_PROFILING_PERF_TEST
     #define MR_DEEP_PROFILING_TIMING
@@ -689,6 +771,13 @@
 
 #if !defined(MR_DISABLE_CHECK_DU_EQ)
   #define MR_CHECK_DU_EQ
+#endif
+
+/*
+** Time profiling is not currently supported on Windows.
+*/
+#if defined(MR_WIN32)
+  #undef MR_DEEP_PROFILING_TIMING
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -983,86 +1072,6 @@
 */
 #if defined(_MSC_VER)
   #define MR_MSVC_STRUCTURED_EXCEPTIONS
-#endif
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** Win32 API specific.
-*/
-
-/*
-** MR_WIN32 -- The Win32 API is available.
-**
-** MR_WIN32_GETSYSTEMINFO -- Is GetSystemInfo() available?
-**
-** MR_WIN32_VIRTUAL_ALLOC -- Is VirtualAlloc() available?
-**
-** MR_BROKEN_ST_INO - Is the st_ino field of `struct stat' junk.
-**	Windows doesn't fill in this field correctly.
-*/
-#ifdef _WIN32
-  #define MR_WIN32
-  #define MR_WIN32_GETSYSTEMINFO
-  #define MR_WIN32_VIRTUAL_ALLOC
-  #define MR_WIN32_GETPROCESSTIMES
-  #define MR_BROKEN_ST_INO
-#endif
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** Mac OS X specific.
-*/
-
-#if defined(__APPLE__) && defined(__MACH__)
-   #define MR_MAC_OSX
-#endif
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** MinGW specific.
-*/
-
-#if defined(__MINGW32__)
-   #define MR_MINGW
-#endif
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** Cygwin specific.
-*/
-
-#if defined(__CYGWIN__)
-   #define MR_CYGWIN
-#endif
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** C compilers.
-*/
-
-/*
-** MR_CLANG -- The C compiler is clang.
-**
-** MR_GNUC -- The C compiler is GCC.  
-**            The value of this macro gives the major version number.
-**            We use this macro instead of __GNUC__ since clang also
-**            defines __GNUC__.
-**
-** MR_MSVC -- The C compiler is Visual C.
-**            The value of this macro gives the version number.
-*/
-
-#if defined(__clang__)
-    #define MR_CLANG __clang__
-#elif defined(__GNUC__)
-    #define MR_GNUC __GNUC__
-#elif defined(_MSC_VER)
-    #define MR_MSVC _MSC_VER
 #endif
 
 /*---------------------------------------------------------------------------*/
