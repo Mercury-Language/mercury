@@ -138,6 +138,9 @@
     ;       warn_unresolved_polymorphism
     ;       warn_suspicious_foreign_procs
     ;       warn_state_var_shadowing
+    ;       inform_inferred
+    ;       inform_inferred_types
+    ;       inform_inferred_modes
 
     % Verbosity options
     ;       verbose
@@ -1098,7 +1101,10 @@ option_defaults_2(warning_option, [
     inform_ite_instead_of_switch        -   bool(no),
     warn_unresolved_polymorphism        -   bool(yes),
     warn_suspicious_foreign_procs       -   bool(no),
-    warn_state_var_shadowing            -   bool(yes)
+    warn_state_var_shadowing            -   bool(yes),
+    inform_inferred                     -   bool_special,
+    inform_inferred_types               -   bool(yes),
+    inform_inferred_modes               -   bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -1384,7 +1390,7 @@ option_defaults_2(internal_use_option, [
     % values or data structures in mercury_region.h.
     size_region_ite_fixed               -   int(4),
     size_region_disj_fixed              -   int(4),
-    size_region_commit_fixed            -   int(4),
+    size_region_commit_fixed            -   int(5),
     size_region_ite_protect             -   int(1),
     size_region_ite_snapshot            -   int(3),
     size_region_semi_disj_protect       -   int(1),
@@ -1944,6 +1950,9 @@ long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch).
 long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism).
 long_option("warn-suspicious-foreign-procs", warn_suspicious_foreign_procs).
 long_option("warn-state-var-shadowing", warn_state_var_shadowing).
+long_option("inform-inferred",          inform_inferred).
+long_option("inform-inferred-types",    inform_inferred_types).
+long_option("inform-inferred-modes",    inform_inferred_modes).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -3018,6 +3027,13 @@ special_handler(env_type, string(EnvTypeStr), OptionTable0, ok(OptionTable)) :-
         host_env_type, string(EnvTypeStr)),
         target_env_type, string(EnvTypeStr)).
 
+special_handler(inform_inferred, bool(Inform), !.OptionTable,
+        ok(!:OptionTable)) :-
+    override_options([
+            inform_inferred_types -   bool(Inform),
+            inform_inferred_modes -   bool(Inform)
+        ], !OptionTable).
+
 %-----------------------------------------------------------------------------%
 
 option_table_add_mercury_library_directory(OptionTable0, Dir) =
@@ -3490,7 +3506,13 @@ options_help_warning -->
         "\tWarn about possible errors in the bodies of foreign",
         "\tprocedures.",
         "--no-warn-state-var-shadowing",
-        "\tDo not warn about one state variable shadowing another."
+        "\tDo not warn about one state variable shadowing another.",
+        "--no-inform-inferred",
+        "\tDo not generate messages about inferred types or modes.",
+        "--no-inform-inferred-types",
+        "\tDo not generate messages about inferred types.",
+        "--no-inform-inferred-modes",
+        "\tDo not generate messages about inferred modes."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.

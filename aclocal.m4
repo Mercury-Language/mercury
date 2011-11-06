@@ -533,6 +533,19 @@ AC_DEFUN([MERCURY_CC_TYPE], [
 AC_REQUIRE([AC_PROG_CC])
 AC_MSG_CHECKING([what the C compiler type really is])
 
+# MSVC uses different command line options to most other C compilers.
+# Try to determine whether CC is MSVC based on the usage message.
+#
+$CC 2>&1 | grep -q "^Microsoft"
+if test $? -eq 0
+then
+    cc_out_opt="-Fe"
+    nologo_opt="-nologo"
+else
+    cc_out_opt="-o "
+    nologo_opt=
+fi
+
 cat > conftest.c << EOF
 
 #include <stdio.h>
@@ -553,9 +566,11 @@ int main(int argc, char **argv)
 }
 EOF
 
-echo "$CC -o conftest conftest.c" >&AC_FD_CC 2>&1
+echo "$CC $nologo_opt ${cc_out_opt}conftest conftest.c" >&AC_FD_CC 2>&1
 if
-    $CC -o conftest conftest.c
+    # We direct the output to /dev/null because it appears to be the
+    # only way to shut some C compilers up.
+    $CC $nologo_opt ${cc_out_opt}conftest conftest.c 2>&1 > /dev/null
 then
     mercury_cv_cc_type=`./conftest`
 else

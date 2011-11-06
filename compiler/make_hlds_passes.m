@@ -2260,7 +2260,7 @@ add_ccsj_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
-        ModuleName, MutableName, MutVarset, InitSetPredName, InitTerm, Attrs,
+        ModuleName, MutableName, MutVarset0, InitSetPredName, InitTerm, Attrs,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     % Add the `:- initialise' declaration for the mutable initialisation
     % predicate.
@@ -2273,11 +2273,16 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
     add_item_pass_3(InitItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     % Add the clause for the mutable initialisation predicate.
+    varset.new_named_var("X", X, MutVarset0, MutVarset),
+    UnifyExpr =
+        unify_expr(variable(X, Context), InitTerm, purity_impure)
+            - Context,
     (
         IsConstant = yes,
-        InitClauseExpr =
-            call_expr(InitSetPredName, [InitTerm], purity_impure)
-                - Context
+        CallExpr =
+            call_expr(InitSetPredName, [variable(X, Context)], purity_impure)
+                - Context,
+        InitClauseExpr = conj_expr(UnifyExpr, CallExpr) - Context
     ;
         IsConstant = no,
         (
@@ -2316,9 +2321,10 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
         CallPreInitExpr =
             call_expr(PreInitPredName, [], purity_impure) - Context,
         CallSetPredExpr =
-            call_expr(InitSetPredName, [InitTerm], purity_impure) - Context,
-        InitClauseExpr = conj_expr(CallPreInitExpr, CallSetPredExpr)
-            - Context
+            call_expr(InitSetPredName, [variable(X, Context)], purity_impure)
+                - Context,
+        InitClauseExpr = goal_list_to_conj(Context,
+            [CallPreInitExpr, UnifyExpr, CallSetPredExpr])
     ),
 
     % See the comments for prog_io.parse_mutable_decl for the reason
@@ -2600,7 +2606,7 @@ add_csharp_java_mutable_primitive_preds(Lang, TargetMutableName, ModuleName,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_csharp_java_mutable_initialisation(ModuleName, MutableName, MutVarset,
+add_csharp_java_mutable_initialisation(ModuleName, MutableName, MutVarset0,
         CallPreInitExpr, InitSetPredName, InitTerm,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     % Add the `:- initialise' declaration for the mutable initialisation
@@ -2614,12 +2620,15 @@ add_csharp_java_mutable_initialisation(ModuleName, MutableName, MutVarset,
     add_item_pass_3(InitItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     % Add the clause for the mutable initialisation predicate.
+    varset.new_named_var("X", X, MutVarset0, MutVarset),
+    UnifyExpr =
+        unify_expr(variable(X, Context), InitTerm, purity_impure)
+            - Context,
     CallSetPredExpr =
-        call_expr(InitSetPredName, [InitTerm], purity_impure)
+        call_expr(InitSetPredName, [variable(X, Context)], purity_impure)
             - Context,
-    InitClauseExpr =
-        conj_expr(CallPreInitExpr, CallSetPredExpr)
-            - Context,
+    InitClauseExpr = goal_list_to_conj(Context,
+        [CallPreInitExpr, UnifyExpr, CallSetPredExpr]),
 
     % See the comments for prog_io.parse_mutable_decl for the reason
     % why we _must_ use MutVarset here.
@@ -2848,7 +2857,7 @@ erlang_mutable_set_code(TargetMutableName) =
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_erlang_mutable_initialisation(ModuleName, MutableName,
-        MutVarset, InitSetPredName, InitTerm,
+        MutVarset0, InitSetPredName, InitTerm,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     % Add the `:- initialise' declaration for the mutable initialisation
     % predicate.
@@ -2863,11 +2872,16 @@ add_erlang_mutable_initialisation(ModuleName, MutableName,
     %
     % See the comments for prog_io.parse_mutable_decl for the reason
     % why we _must_ use MutVarset here.
+    varset.new_named_var("X", X, MutVarset0, MutVarset),
+    UnifyExpr =
+        unify_expr(variable(X, Context), InitTerm, purity_impure)
+            - Context,
+    CallExpr =
+        call_expr(InitSetPredName, [variable(X, Context)], purity_impure)
+            - Context,
+    InitClauseExpr = conj_expr(UnifyExpr, CallExpr) - Context,
     PredItemClause = item_clause_info(compiler(mutable_decl), MutVarset,
-        pf_predicate, InitPredName, [],
-        call_expr(InitSetPredName, [InitTerm], purity_impure) - Context,
-        Context, -1
-    ),
+        pf_predicate, InitPredName, [], InitClauseExpr, Context, -1),
     PredItem = item_clause(PredItemClause),
     add_item_pass_3(PredItem, !Status, !ModuleInfo, !QualInfo, !Specs).
 

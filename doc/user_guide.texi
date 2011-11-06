@@ -6550,6 +6550,21 @@ some actual errors may not be detected at all.
 @item --no-warn-state-var-shadowing
 @findex --no-warn-state-var-shadowing
 Do not warn about one state variable shadowing another.
+
+@sp 1
+@item --no-inform-inferred
+@findex --no-inform-inferred
+Do not generate messages about inferred types or modes.
+
+@sp 1
+@item --no-inform-inferred-types
+@findex --no-inform-inferred-types
+Do not generate messages about inferred types.
+
+@sp 1
+@item --no-inform-inferred-modes
+@findex --no-inform-inferred-modes
+Do not generate messages about inferred modes.
 @end table
 
 @node Verbosity options

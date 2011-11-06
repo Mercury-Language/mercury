@@ -13,6 +13,9 @@ Changes to the Mercury language:
   (or XXXXXXXX) is a Unicode character code in hexadecimal, is replaced with
   the corresponding Unicode character.
 
+* Expressions used to initialise mutables may now contain impure
+  or semipure function calls.
+
 Changes to the Mercury standard library:
 
 * We have improved Unicode support in the standard library.
