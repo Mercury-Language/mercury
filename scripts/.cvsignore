@@ -11,3 +11,4 @@ prepare_tmp_dir_fixed_part
 config.log
 mtags
 prepare_install_dir
+mdb.bat mprof.bat
