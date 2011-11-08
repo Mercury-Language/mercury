@@ -113,7 +113,7 @@ DEFAULT_MCFLAGS=\
 		--linker-allow-undefined-flag "@ALLOW_UNDEFINED@" \
 		--linker-error-undefined-flag "@ERROR_UNDEFINED@" \
 		--fullarch "@FULLARCH@" \
-		--install-prefix "@prefix@" \
+		--install-prefix "@PREFIX@" \
 		--num-real-r-regs "@NUM_REAL_R_REGS@" \
 		--num-real-r-temps "@NUM_REAL_R_TEMPS@" \
 		--conf-low-tag-bits "@LOW_TAG_BITS@" \

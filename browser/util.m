@@ -142,7 +142,7 @@ trace_get_command(Prompt, Result, !IO) :-
 
 :- pragma foreign_proc("C",
     trace_get_command(Prompt::in, Line::out, MdbIn::in,
-        MdbOut::in, State0::di, State::uo),
+        MdbOut::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io],
 "
     char        *line;
@@ -160,8 +160,6 @@ trace_get_command(Prompt, Result, !IO) :-
     } else {
         ML_BROWSER_trace_get_command_fallback(Prompt, &Line, MdbIn, MdbOut);
     }
-
-    State = State0;
 ").
 
 trace_get_command(Prompt, Line, MdbIn, MdbOut, !IO) :-

@@ -5366,12 +5366,14 @@ executable_output_files='
 scripts/mmc
 scripts/mercury.bat
 scripts/mprof
+scripts/mprof.bat
 scripts/mercury_update_interface
 scripts/mgnuc
 scripts/ml
 scripts/c2init
 scripts/mmake
 scripts/mdb
+scripts/mdb.bat
 scripts/mdprof
 scripts/mtags
 scripts/canonical_grade

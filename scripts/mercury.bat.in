@@ -10,8 +10,6 @@ rem mercury.bat - Melbourne Mercury Compiler.
 rem
 rem Use `mercury -h' for help.
 rem
-rem Environment variables: 
-rem MERCURY_COMPILER, MERCURY_CONFIG_DIR.
 rem ---------------------------------------------------------------------------
 rem This is a Windows batch file version of the `mmc' Bourne shell script.
 rem (We don't use that name because it conflicts with that of the Microsoft
@@ -21,26 +19,7 @@ rem ---------------------------------------------------------------------------
 rem Don't export any local environment changes.
 setlocal
 
-if "%MERCURY_CONFIG_DIR%"=="^%MERCURY_CONFIG_DIR^%" goto :config_dir_not_set
-
-goto :config_dir_set
-
-:config_dir_not_set
-
-if "%MERCURY_STDLIB_DIR%"=="" goto :stdlib_dir_not_set
-if "%MERCURY_STDLIB_DIR%"=="^%MERCURY_STDLIB_DIR^%" goto :stdlib_dir_not_set
-
-set MERCURY_CONFIG_DIR="%MERCURY_CONFIG_DIR%"
-
-goto :config_dir_set
-
-:stdlib_dir_not_set
-
 set MERCURY_CONFIG_DIR="@CONFIG_LIBDIR@"
-
-:config_dir_set
-
-if "%MERCURY_COMPILER%"=="" set MERCURY_COMPILER="@PREFIX@\bin\mercury_compile"
-if "%MERCURY_COMPILER%"=="^%MERCURY_COMPILER^%" set MERCURY_COMPILER="@PREFIX@\bin\mercury_compile"
+set MERCURY_COMPILER="@PREFIX@\bin\mercury_compile"
 
 %MERCURY_COMPILER% %*
