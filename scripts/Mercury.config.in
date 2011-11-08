@@ -4,7 +4,7 @@
 #
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2003-2007, 2010 The University of Melbourne.
+# Copyright (C) 2003-2007, 2010-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -85,6 +85,8 @@ DEFAULT_MCFLAGS=\
 		--link-shared-lib-command "@LINK_SHARED_OBJ@" \
 		--trace-libs "@TRACE_BASE_LIBS_SYSTEM@" \
 		--thread-libs "@THREAD_LIBS@" \
+		--hwloc-libs "@HWLOC_LIBS@" \
+		--hwloc-static-libs "@HWLOC_STATIC_LIBS@" \
 		--shared-libs "@SHARED_LIBS@" \
 		--math-lib "@MATH_LIB@" \
 		--readline-libs "@READLINE_LIBRARIES@" \

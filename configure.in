@@ -5111,22 +5111,37 @@ MERCURY_CHECK_READLINE
 # Check for libhwloc, http://www.open-mpi.org/projects/hwloc/
 #
 PKG_PROG_PKG_CONFIG
-PKG_CHECK_MODULES(libhwloc, hwloc >= 1.0,
-    [
-        AC_DEFINE(MR_HAVE_HWLOC)
-        hwloc_static_libs="`pkg-config --libs --static hwloc`"
-    ],
-    [
-        case "$LIBGRADES" in
-            $BEST_LLDS_BASE_GRADE.par.gc*)
-                MERCURY_MSG(["Warning: libhwloc not found, thread pinning in"])
-                MERCURY_MSG(["low-level C parallel grades may be less accurate."])
-                ;;
-            *)
-                ;;
-        esac
-        hwloc_static_libs=""
-    ])
+
+AC_ARG_WITH([hwloc],
+    [AS_HELP_STRING([--without-hwloc],
+        [Do not use libhwloc to detect the processors available in low-level C
+         parallel grades.])],
+    [],
+    [with_hwloc=check])
+
+if test "$with_hwloc" != "no"; then
+    PKG_CHECK_MODULES(libhwloc, hwloc >= 1.0,
+        [
+            AC_DEFINE(MR_HAVE_HWLOC)
+            hwloc_static_libs="`pkg-config --libs --static hwloc`"
+        ],
+        [
+            case "$LIBGRADES" in
+                $BEST_LLDS_BASE_GRADE.par.gc*)
+                    MERCURY_MSG(["Warning: libhwloc not found, thread pinning in"])
+                    MERCURY_MSG(["low-level C parallel grades may be less accurate."])
+                    ;;
+                *)
+                    ;;
+            esac
+            hwloc_static_libs=""
+        ])
+else
+    libhwloc_LIBS=""
+    libhwloc_CFLAGS=""
+    libhwloc_static_libs=""
+fi
+
 HWLOC_LIBS="$libhwloc_LIBS"
 HWLOC_CFLAGS="$libhwloc_CFLAGS"
 HWLOC_STATIC_LIBS="$hwloc_static_libs"

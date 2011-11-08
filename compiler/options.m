@@ -918,6 +918,8 @@
     ;       filtercc_command
     ;       trace_libs
     ;       thread_libs
+    ;       hwloc_libs
+    ;       hwloc_static_libs
     ;       shared_libs
     ;       math_lib
     ;       readline_libs
@@ -1801,6 +1803,8 @@ option_defaults_2(link_option, [
     filtercc_command                    -   string("mfiltercc"),
     trace_libs                          -   string(""),
     thread_libs                         -   string(""),
+    hwloc_libs                          -   string(""),
+    hwloc_static_libs                   -   string(""),
     shared_libs                         -   string(""),
     math_lib                            -   string(""),
     readline_libs                       -   string(""),
@@ -2748,6 +2752,8 @@ long_option("demangle-command",     demangle_command).
 long_option("filtercc-command",     filtercc_command).
 long_option("trace-libs",           trace_libs).
 long_option("thread-libs",          thread_libs).
+long_option("hwloc-libs",           hwloc_libs).
+long_option("hwloc-static-libs",    hwloc_static_libs).
 long_option("shared-libs",          shared_libs).
 long_option("math-lib",             math_lib).
 long_option("readline-libs",        readline_libs).
@@ -5591,6 +5597,7 @@ options_help_link -->
         % --mkinit-command, --demangle-command, --filtercc-command,
         % --trace-libs,
         % --thread-libs, --shared-libs, --math-lib, --readline-libs,
+        % --hwloc-libs, --hwloc-static-libs,
         % --linker-opt-separator,
         % --linker-debug-flags, --shlib-linker-debug-flags,
         % --linker-trace-flags, --shlib-linker-trace-flags,

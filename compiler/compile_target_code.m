@@ -1894,10 +1894,29 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
     use_thread_libs(Globals, UseThreadLibs),
     (
         UseThreadLibs = yes,
-        globals.lookup_string_option(Globals, ThreadFlagsOpt, ThreadOpts)
+        globals.lookup_string_option(Globals, ThreadFlagsOpt, ThreadOpts),
+
+        % Determine which options are needed to link to libhwloc, if libhwloc
+        % is used at all.
+        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+        (
+            HighLevelCode = yes,
+            HwlocOpts = ""
+        ;
+            HighLevelCode = no,
+            ( Linkage = "shared" ->
+                HwlocFlagsOpt = hwloc_libs
+            ; Linkage = "static" ->
+                HwlocFlagsOpt = hwloc_static_libs
+            ;
+                unexpected($module, $pred, "Invalid linkage")
+            ),
+            globals.lookup_string_option(Globals, HwlocFlagsOpt, HwlocOpts)
+        )
     ;
         UseThreadLibs = no,
-        ThreadOpts = ""
+        ThreadOpts = "",
+        HwlocOpts = ""
     ),
 
     % Find the Mercury standard libraries.
@@ -2014,6 +2033,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
                     LDFlags, " ",
                     LinkLibraries, " ",
                     MercuryStdLibs, " ",
+                    HwlocOpts, " ",
                     SystemLibs], LinkCmd),
 
             globals.lookup_bool_option(Globals, demangle, Demangle),

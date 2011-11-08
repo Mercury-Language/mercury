@@ -40,7 +40,7 @@
 
 parallel=-j3
 
-aclocal &&
+aclocal -I m4 &&
 autoconf &&
 ./configure &&
 touch Mmake.params &&

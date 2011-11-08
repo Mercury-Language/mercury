@@ -370,8 +370,8 @@ cleanint:
 
 #-----------------------------------------------------------------------------#
 
-aclocal.m4: configure.in acinclude.m4
-	aclocal
+aclocal.m4: configure.in $(wildcard m4/*.m4)
+	aclocal -I m4
 
 configure: configure.in aclocal.m4
 	autoconf
