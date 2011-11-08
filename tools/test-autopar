@@ -1,0 +1,155 @@
+#!/bin/sh
+
+#
+# Copyright (C) 2011 The University of Melbourne
+#
+# test-autopar, this script tests autoparallelization on the Mercury compiler.
+#
+
+set -e
+
+# Run the profiling version.
+root=`pwd`
+
+OPTS=`getopt -o "abcfhj:p" -n "test-autopar" -- "$@"`
+
+eval set -- "$OPTS"
+
+phase_batch=false
+phase_build_profile=false
+phase_feedback=false
+phase_profile=false
+usage=false
+jfactor=1
+
+while true ; do
+    case "$1" in
+        -a)
+            phase_batch=true
+            shift
+            ;;
+        -b)
+            phase_batch=true
+            shift
+            ;;
+        -c)
+            phase_build_profile=true
+            shift
+            ;;
+        -f)
+            phase_feedback=true
+            shift
+            ;;
+        -h)
+            usage=true
+            shift
+            ;;
+        -j)
+            jfactor=$2
+            shift; shift;
+            ;;
+        -p)
+            phase_profile=true
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            usage=true
+            break
+            ;;
+    esac
+done
+
+if [ "(" "x" != "x$@" ")" -o "(" "x" = "x$jfactor" ")" ]; then
+    usage=true
+fi
+
+if [ "$usage" = "true" ]; then
+    echo "Usage: test-autopar [-abcpfh] [-jN]"
+    echo ""
+    echo "test_autopar will attempt to auto-parallelize the compiler, "
+    echo "it sxpects that 'mmake all' has been run.  Different phases "
+    echo "of the test can be selectivly enabled:"
+    echo ""
+    echo "    -a\tAll phases"
+    echo "    -b\tSetup 'batch' directory"
+    echo "    -c\tBuild profiling version of the compiler"
+    echo "    -p\tProfile the compiler (generate Deep.data)"
+    echo "    -f\tAnalyze the profile (generate .feedback file)"
+    echo ""
+    echo "    -jN\tRun N jobs in parallel when calling make"
+    echo ""
+    echo "    -h\tPrint this usage message"
+    exit 1
+fi
+
+if [ "$phase_batch" = "true" ]; then
+    rm -rf batch
+    mkdir batch
+
+    # Setup profiling options.
+    cat > batch/profile.GRADE <<EOF
+asm_fast.gc.profdeep
+EOF
+    cat > batch/profile.MCFLAGS <<EOF
+--profile-for-implicit-parallelism
+EOF
+
+    # Setup four tests (three controls) for auto-parallelism.
+    # TODO: Add loop control.
+    cat > batch/auto_par.GRADE <<EOF
+asm_fast.gc
+asm_fast.gc.stseg
+asm_fast.par.gc.stseg
+asm_fast.par.gc.stseg
+EOF
+    cat > batch/auto_par.MCFLAGS <<EOF
+
+
+
+--implicit-parallelism --feedback-file $root/autopar_data/mercury_compiler.feedback
+EOF
+
+    # Also create a batch containing a sigle threadscope grade.
+    cat > batch/auto_par_ts.GRADE <<EOF
+asm_fast.par.gc.stseg.threadscope
+EOF
+    cat > batch/auto_par_ts.MCFLAGS <<EOF
+--implicit-parallelism --feedback-file $root/autopar_data/mercury_compiler.feedback
+EOF
+
+fi
+
+if [ "$phase_build_profile" = "true" ]; then
+    ./tools/makebatch -j$jfactor -q profile
+fi
+
+if [ "$phase_profile" = "true" ]; then
+    rm -rf arena
+    ./tools/make_arena
+
+    MERCURY_OPTIONS="--deep-procrep-file" \
+    $root/tools/speedtest -n1 -c \
+        "../batch/profile.mercury_compile.01 --grade asm_fast.gc -O5 --no-trad-passes --compile-to-c typecheck.m" profile
+
+    rm -rf $root/autopar_data
+    mkdir $root/autopar_data
+
+    cp $root/arena/Deep.procrep $root/autopar_data/
+    cp $root/batch/Deep.data.profile.mercury_compile.01.run1 $root/autopar_data/Deep.data
+fi
+
+if [ "$phase_feedback" = "true" ]; then
+    cd $root/autopar_data/
+
+    $root/deep_profiler/mdprof_create_feedback \
+        --implicit-parallelism --desired-parallelism 8 \
+        Deep.data mmc.overlap.feedback
+
+    cd $root
+fi
+
+exit 0
