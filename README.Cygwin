@@ -138,26 +138,6 @@ run `mmc' and/or `mmake' for you.
 
 -----------------------------------------------------------------------------
 
-OTHER PACKAGES YOU MIGHT NEED
-
-If you want to use the mtags tool from the Mercury distribution, you'll
-need to install perl.  A binary distribution of Perl is available at the
-Cygwin porting project:
-	
-	<http://www.student.uni-koeln.de/cygwin/>
-
-If you want to build your own Mercury releases from the CVS sources, you
-will need a previously installed Mercury compiler (for example, one of
-the recent releases of the day).  You will also need GNU autoconf, which
-can be downloaded from:
-
-	<ftp://ftp.gnu.org/pub/gnu/autoconf/>
-
-Autoconf should configure, build and install directly from the source
-package.
-
------------------------------------------------------------------------------
-
 MEMORY ALLOCATION
 
 By default no Cygwin program can allocate more than 384 MB of memory

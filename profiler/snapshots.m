@@ -86,7 +86,7 @@
 :- type snapshot_options
     --->    snapshot_options(
                 major_axis      :: major_axis,
-                hide_details    :: bool,
+                brief           :: bool,
                 recalc_words    :: bool,
                 include_runtime :: bool
             ).
@@ -99,16 +99,18 @@
 
 show_snapshots(!IO) :-
     globals.io_lookup_string_option(snapshots_file, SnapshotsFile, !IO),
-    globals.io_lookup_string_option(snapshots_grouping, SnapshotsGroup, !IO),
-    globals.io_lookup_bool_option(snapshots_hide_details, HideDetails, !IO),
+    globals.io_lookup_bool_option(snapshots_by_type, ByType, !IO),
+    globals.io_lookup_bool_option(snapshots_brief, Brief, !IO),
     globals.io_lookup_bool_option(snapshots_recalc_size, RecalcSize, !IO),
     globals.io_lookup_bool_option(snapshots_include_runtime, InclRuntime, !IO),
-    ( valid_grouping(SnapshotsGroup, MajorAxis0) ->
-        MajorAxis = MajorAxis0
+    (
+        ByType = yes,
+        MajorAxis = major_axis_type
     ;
-        error("unexpected grouping option `" ++ SnapshotsGroup ++ "'")
+        ByType = no,
+        MajorAxis = major_axis_proc
     ),
-    Options = snapshot_options(MajorAxis, HideDetails, RecalcSize, InclRuntime),
+    Options = snapshot_options(MajorAxis, Brief, RecalcSize, InclRuntime),
     io.open_input(SnapshotsFile, OpenDeclRes, !IO),
     (
         OpenDeclRes = ok(DeclStream),
@@ -131,12 +133,6 @@ show_snapshots(!IO) :-
             "': " ++ io.error_message(Error) ++ "\n",
         error(ErrorStr)
     ).
-
-:- pred valid_grouping(string::in, major_axis::out) is semidet.
-
-valid_grouping("type", major_axis_type).
-valid_grouping("proc", major_axis_proc).
-valid_grouping("procedure", major_axis_proc).
 
 %-----------------------------------------------------------------------------%
 
@@ -378,11 +374,11 @@ output_snapshot(Options, Grouped, !IO) :-
     list.foldl2(sum_groups, Grouped, 0, TotalCells, 0, TotalWords),
     io.format(" %7d%17d%14s  %s\n",
         [i(TotalCells), i(TotalWords), s(""), s("total")], !IO),
-    HideDetails = Options ^ hide_details,
+    Brief = Options ^ brief,
     (
-        HideDetails = yes
+        Brief = yes
     ;
-        HideDetails = no,
+        Brief = no,
         io.nl(!IO)
     ),
     list.foldl2(output_group(Options, TotalCells, TotalWords),
@@ -421,7 +417,7 @@ output_group(Options, TotalCells, TotalWords, Group, !CumulWords, !IO) :-
         true
     ;
         MajorAxis = Options ^ major_axis,
-        HideDetails = Options ^ hide_details,
+        Brief = Options ^ brief,
         (
             MajorAxis = major_axis_proc,
             RightLabel = AllocSite ^ alloc_proc
@@ -430,10 +426,10 @@ output_group(Options, TotalCells, TotalWords, Group, !CumulWords, !IO) :-
             RightLabel = AllocSite ^ alloc_type
         ),
         (
-            HideDetails = yes,
+            Brief = yes,
             Star = ' '
         ;
-            HideDetails = no,
+            Brief = no,
             Star = ('*')
         ),
         io.format("%c%7d/%5.1f%% %9d/%5.1f%% %5.1f%%  %s\n",
@@ -442,9 +438,9 @@ output_group(Options, TotalCells, TotalWords, Group, !CumulWords, !IO) :-
             i(NumWords), f(WordsPercent), f(CumulPercent),
             s(RightLabel)], !IO),
         (
-            HideDetails = yes
+            Brief = yes
         ;
-            HideDetails = no,
+            Brief = no,
             Single = ( Counts = [_] -> yes ; no ),
             list.foldl(output_site(MajorAxis, TotalCells, TotalWords, Single),
                 Counts, !IO),

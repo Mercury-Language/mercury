@@ -6046,9 +6046,10 @@ You will see the memory cells which were on the heap at each time
 that @samp{report_memory_attribution} was called: the origin of the cells, and
 their type constructors.
 
-Passing the additional option @samp{-g type} will group the profile first by
-type constructors, then by procedure.  The @samp{-H} option hides the secondary
-level of information.  Memory cells allocated by the Mercury runtime system
+Passing the option @samp{-T} will group the profile first by
+type constructors, then by procedure.  The @samp{-b} option produces a brief
+profile by hiding the secondary level of information.
+Memory cells allocated by the Mercury runtime system
 itself are normally excluded from the profile; they can be viewed by passing
 the @samp{-r} option.
 

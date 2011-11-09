@@ -1,0 +1,18 @@
+@echo off
+rem @configure_input@
+rem ---------------------------------------------------------------------------
+rem Copyright (C), 2011 The University of Melbourne.
+rem This file may only be copied under the terms of the GNU General
+rem Public License - see the file COPYING in the Mercury distribution.
+rem ---------------------------------------------------------------------------
+rem
+rem mdb.bat - Mercury debugger
+rem Usage: mdb [<options>] <executable> [<args>] ...
+rem
+rem ---------------------------------------------------------------------------
+@echo off
+setlocal
+
+set MERCURY_OPTIONS=%MERCURY_OPTIONS% -Di
+set MERCURY_DEBUGGER_INIT="@PREFIX@\lib\mercury\mdb\mdbrc"
+%*
