@@ -978,8 +978,7 @@ gen_field_locns(_ModuleInfo, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
         RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
         list.map_foldl(gen_field_locn(RttiId), ArgInfos, ArgLocnInitializers,
             -1, _Offset),
-        Initializer = init_struct(mlds_rtti_type(item_type(RttiId)),
-            ArgLocnInitializers),
+        Initializer = init_array(ArgLocnInitializers),
         rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData)
     ;
         HaveArgLocns = no
