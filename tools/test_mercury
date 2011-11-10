@@ -735,7 +735,16 @@ esac
 # XXX building the depend target in parallel sometimes fails so we don't
 # do that at the moment - it's probably not worth doing anyway.
 #
-aclocal -I m4 || { false; exit 1; }
+
+# XXX the 11.07 version of the compiler doesn't need to run aclocal
+# (and doesn't have an m4 directory).  We can remove this once the
+# 11.07 branch is no longer the release branch.
+#
+case $BRANCH in
+    latest)
+        aclocal -I m4 || { false; exit 1; }
+    ;;
+esac
 autoconf || { false; exit 1; }
 rm -f config.cache
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
