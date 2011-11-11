@@ -79,9 +79,22 @@
 	MR_Float f;
 	MR_Word	w[2];
   };
+   
+  #if defined(MR_GNUC) || defined(MR_CLANG)
+    #define MR_float_word_bits(F, I)                                        \
+      (((union MR_Float_Dword) (MR_Float) (F)).w[(I)])
+  #else
+    MR_EXTERN_INLINE MR_Word
+    MR_float_word_bits(MR_Float f, MR_Integer n);
 
-  #define MR_float_word_bits(F, I)                                          \
-    (((union MR_Float_Dword) (MR_Float) (F)).w[(I)])
+    MR_EXTERN_INLINE MR_Word
+    MR_float_word_bits(MR_Float f, MR_Integer n)
+    {
+       union MR_Float_Dword __ffdw;
+       __ffdw.f = f;
+       return __ffdw.w[n];
+    }
+  #endif
 
   #define MR_float_from_dword_ptr(ptr)                                      \
     (((union MR_Float_Dword *) (ptr))->f)
