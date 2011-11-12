@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2007, 2009 The University of Melbourne.
+** Copyright (C) 2007, 2009, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -257,6 +257,7 @@ MR_region_nullify_in_ite_frame(MR_RegionHeader *region)
     /*
     ** Loop through the protected regions and nullify the entry of the input
     ** region if found.
+    ** XXX FIXME num_protected_regions is not initialized at this point.
     */
     for (i = 0; i < num_protected_regions; i++) {
         if (ite_prot != NULL && ite_prot->MR_ite_prot_region == region) {

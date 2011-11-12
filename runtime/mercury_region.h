@@ -158,7 +158,7 @@ struct MR_RegionCommitFixedFrame_Struct {
     MR_RegionCommitFixedFrame       *MR_rcff_previous_commit_frame;
     MR_Word                         MR_rcff_saved_sequence_number;
     MR_RegionDisjFixedFrame         *MR_rcff_saved_disj_sp;
-    MR_RegionITEFixedFrame          *MR_rcff_saved_ite_sp;
+    MR_RegionIteFixedFrame          *MR_rcff_saved_ite_sp;
     MR_Word                         MR_rcff_num_saved_regions;
 };
 
