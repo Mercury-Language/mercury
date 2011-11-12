@@ -176,6 +176,11 @@ typedef	char		MR_small_bool;
   #define MR_INLINE			static __inline__
   #define MR_EXTERN_INLINE		extern __inline__
   #define MR_OUTLINE_DEFN(DECL,BODY)	DECL BODY
+#elif defined(MR_MSVC)
+  #define MR_STATIC_INLINE              static __inline
+  #define MR_INLINE                     static __inline
+  #define MR_EXTERN_INLINE              extern __inline
+  #define MR_OUTLINE_DEFN(DECL, BODY)
 #elif __STDC_VERSION__ >= 199901
   /* C99 */
   #define MR_STATIC_INLINE		static inline
