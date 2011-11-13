@@ -865,6 +865,18 @@ case $HOST in $ROTD_HOST)
     # it is enabled.  (See bug #115 for further details -- it should be re-enbled
     # once bug #115 has been fixed.)
     #
+    # See above for an explanation of why we handle aclocal like this.
+    #
+    case $BRANCH in
+        latest)
+            ACLOCAL_CMD="alcocal -I m4"
+        ;;
+
+        *)
+            ACLOCAL_CMD="true"
+        ;;
+    esac
+
     { cd $DIR/mercury &&
     $MMAKE realclean MMAKEFLAGS=$PARALLEL &&
     (cd $DIR/tests &&
@@ -872,7 +884,7 @@ case $HOST in $ROTD_HOST)
     : > Mmake.params &&
     rm -f so_locations &&
     rm -f .enable_lib_grades &&
-    aclocal -I m4 &&
+    $ACLOCAL_CMD &&
     autoconf &&
     mercury_cv_low_tag_bits=2 \
     mercury_cv_bits_per_word=32 \
