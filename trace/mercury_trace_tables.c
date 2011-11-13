@@ -1857,6 +1857,8 @@ MR_label_layout_stats(FILE *fp)
     var_count_neg  = 0;
     var_count_zero = 0;
     var_count_pos  = 0;
+    no_long = 0;
+    some_long = 0;
 
     total = 0;
     for (port = 0; port < MR_PORT_NUM_PORTS; port++) {
