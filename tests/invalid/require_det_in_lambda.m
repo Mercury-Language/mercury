@@ -1,0 +1,33 @@
+% vim: ts=4 sw=4 et ft=mercury
+
+:- module require_det_in_lambda.
+:- interface.
+
+:- import_module io.
+
+:- pred main(io::di, io::uo) is det.
+
+:- implementation.
+:- import_module int.
+
+main(!IO) :-
+    % The compiler was incorrectly simplifying this to `F = bar' in the erlang
+    % grade.
+    T = (pred(X::in, Y::out) is semidet :-
+        require_det (
+            X < 10,
+            Y = X + 1
+        )
+    ),
+    test(T, 5, !IO).
+
+:- pred test((pred(int, int))::in(pred(in, out) is semidet), int::in,
+    io::di, io::uo) is det.
+
+test(T, A, !IO) :-
+    ( T(A, B) ->
+        io.write_int(B, !IO),
+        io.nl(!IO)
+    ;
+        io.write_string("test failed\n", !IO)
+    ).

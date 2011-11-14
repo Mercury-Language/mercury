@@ -1,0 +1,2 @@
+require_det_in_lambda.m:017: Error: required determinism is `det', but actual
+require_det_in_lambda.m:017:   determinism is `semidet'.

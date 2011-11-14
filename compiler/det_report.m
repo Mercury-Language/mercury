@@ -1058,9 +1058,23 @@ reqscope_check_goal(Goal, InstMap0, !DetInfo) :-
             unexpected($module, $pred, "bi_implication")
         )
     ;
+        GoalExpr = unify(_, RHS, _, _, _),
+        (
+            ( RHS = rhs_var(_)
+            ; RHS = rhs_functor(_, _, _)
+            )
+        ;
+            RHS = rhs_lambda_goal(_Purity, _Groundness, _PorF, _EvalMethod,
+                _LambdaNonLocals, Vars, Modes, _Detism, LambdaGoal),
+            assoc_list.from_corresponding_lists(Vars, Modes, VarsModes),
+            det_info_get_module_info(!.DetInfo, ModuleInfo),
+            lambda_update_instmap(VarsModes, ModuleInfo,
+                InstMap0, LambdaInstMap0),
+            reqscope_check_goal(LambdaGoal, LambdaInstMap0, !DetInfo)
+        )
+    ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
         ; GoalExpr = generic_call(_, _, _, _)
-        ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         )
     ).
@@ -1192,6 +1206,17 @@ reqscope_check_switch(Var, VarType, [Case | Cases], InstMap0, !DetInfo) :-
     det_info_set_module_info(ModuleInfo, !DetInfo),
     reqscope_check_goal(Goal, InstMap1, !DetInfo),
     reqscope_check_switch(Var, VarType, Cases, InstMap0, !DetInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred lambda_update_instmap(assoc_list(prog_var, mer_mode)::in,
+    module_info::in, instmap::in, instmap::out) is det.
+
+lambda_update_instmap([], _ModuleInfo, !InstMap).
+lambda_update_instmap([Var - Mode | VarsModes], ModuleInfo, !InstMap) :-
+    mode_get_insts(ModuleInfo, Mode, InitInst, _FinalInst),
+    instmap_set_var(Var, InitInst, !InstMap),
+    lambda_update_instmap(VarsModes, ModuleInfo, !InstMap).
 
 %-----------------------------------------------------------------------------%
 
