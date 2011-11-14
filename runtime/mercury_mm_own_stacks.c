@@ -200,6 +200,7 @@ MR_cons_addr_short_name(MR_Consumer *consumer)
         return "NULL";
     }
 
+    cons_debug = MR_lookup_cons_debug_addr(consumer);
     sprintf(buf, "con%d", cons_debug->MR_cod_sequence_num);
     return strdup(buf);
 }

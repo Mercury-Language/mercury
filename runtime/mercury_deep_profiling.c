@@ -295,7 +295,7 @@ static  void    MR_write_out_coverage_points_static(FILE *fp,
 static  void    MR_write_out_coverage_points_dynamic(FILE *fp,
                     const MR_ProcDynamic *pd);
 #endif
-static  void    MR_write_ptr(FILE *fp, MR_NodeKind kind, const int node_id);
+static  void    MR_write_ptr(FILE *fp, MR_NodeKind kind, int node_id);
 static  void    MR_write_kind(FILE *fp, MR_CallSiteKind kind);
 static  void    MR_write_byte(FILE *fp, const char byte);
 static  void    MR_write_num(FILE *fp, unsigned long num);
@@ -1429,12 +1429,15 @@ static void
 MR_write_out_coverage_points_static(FILE *fp, const MR_ProcStatic *ps)
 {
     const MR_CoveragePointStatic *cps_static;
-    cps_static = ps->MR_ps_coverage_points_static;
 #ifdef MR_DEEP_PROFILING_COVERAGE_STATIC
     const MR_Unsigned *cps;
-    cps = ps->MR_ps_coverage_points;
 #endif
     unsigned int i;
+
+    cps_static = ps->MR_ps_coverage_points_static;
+#ifdef MR_DEEP_PROFILING_COVERAGE_STATIC
+    cps = ps->MR_ps_coverage_points;
+#endif
 
     MR_write_num(fp, ps->MR_ps_num_coverage_points);
     for (i = 0; i < ps->MR_ps_num_coverage_points; i++) {

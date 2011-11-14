@@ -441,7 +441,7 @@ MR_GC_free_attrib(void *ptr)
 #ifdef  MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
     ptr = (char *) ptr - sizeof(MR_Word);
 #endif
-    GC_free(ptr);
+    MR_GC_free(ptr);
 }
 
 /*---------------------------------------------------------------------------*/

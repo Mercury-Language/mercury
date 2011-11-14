@@ -32,6 +32,9 @@ Changes to the Mercury compiler:
 * Support for using clang (<http://clang.llvm.org/>) as a C compiler with
   Mercury has been added.  See README.clang for further details
 
+* We have significantly improved support for using Microsoft Visual C as
+  a C compiler with Mercury.  See README.MS-VisualC for further details.
+
 Changes to the Mercury profiler:
 
 * We have added a new form of profiling, memory retention profiling, to mprof
