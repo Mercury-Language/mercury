@@ -869,7 +869,7 @@ case $HOST in $ROTD_HOST)
     #
     case $BRANCH in
         latest)
-            ACLOCAL_CMD="alcocal -I m4"
+            ACLOCAL_CMD="aclocal -I m4"
         ;;
 
         *)
