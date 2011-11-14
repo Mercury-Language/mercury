@@ -257,8 +257,8 @@ MR_region_nullify_in_ite_frame(MR_RegionHeader *region)
     /*
     ** Loop through the protected regions and nullify the entry of the input
     ** region if found.
-    ** XXX FIXME num_protected_regions is not initialized at this point.
     */
+    num_protected_regions = ite_frame->MR_riff_num_prot_regions;
     for (i = 0; i < num_protected_regions; i++) {
         if (ite_prot != NULL && ite_prot->MR_ite_prot_region == region) {
             ite_prot->MR_ite_prot_region = NULL;
