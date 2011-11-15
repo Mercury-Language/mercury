@@ -11,8 +11,8 @@
 :- import_module int.
 
 main(!IO) :-
-    % The compiler was incorrectly simplifying this to `F = bar' in the erlang
-    % grade.
+    % The compiler did not look for violations of require_detism scopes inside
+    % lambda goals.
     T = (pred(X::in, Y::out) is semidet :-
         require_det (
             X < 10,
