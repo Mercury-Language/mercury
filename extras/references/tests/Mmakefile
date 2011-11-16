@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2000, 2003-2004 The University of Melbourne.
+# Copyright (C) 1997-2000, 2003-2004, 2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -7,22 +7,10 @@
 MAIN_TARGET = all
 
 # We need to use a grade with trailing
-GRADEFLAGS += --use-trail
+GRADEFLAGS += --use-trail --trail-segments
 
-CFLAGS= -I..
-
-# Link in the reference library from ..
-MCFLAGS += -I.. $(EXTRA_MCFLAGS)
-MLFLAGS += -R`pwd`/.. -L.. $(EXTRA_MLFLAGS)
-MLLIBS = -lglobal $(EXTRA_MLLIBS)
-VPATH = ..:$(MMAKE_VPATH)
-C2INITARGS = ../global.init
-
-# We need the following to use shared libraries on Linux
-#CFLAGS += -DPIC_REG
-#MLFLAGS += --shared
-
-#MLFLAGS += --static
+EXTRA_LIB_DIRS = $(INSTALL_PREFIX)/extras/lib/mercury
+EXTRA_LIBRARIES = global
 
 #-----------------------------------------------------------------------------#
 
@@ -34,7 +22,7 @@ RESS	=	$(PROGS:%=%.res)
 
 #-----------------------------------------------------------------------------#
 
-$(PROGS): ../libglobal.a
+$(PROGS): ../global.init
 
 %.out: %
 	./$< > $@ 2>&1;

@@ -9,7 +9,7 @@
 %   The changes made by Rationalizer are contributed under the terms 
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
-% Copyright (C) 2002, 2006, 2010 The University of Melbourne
+% Copyright (C) 2002, 2006, 2010-2011 The University of Melbourne
 %
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -697,7 +697,7 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
             R = null
           else
             L = string.length(S),
-            C = string.index_det(S, L - 1),
+            C = string.det_index(S, L - 1),
             R = str_foldr(func(Cx, Rx) = (Cx ++ Rx), S, re(C), L - 2)
         )
 ].
@@ -719,7 +719,7 @@ any(S) = R :-
         R = null
       else
         L = string.length(S),
-        C = string.index_det(S, L - 1),
+        C = string.det_index(S, L - 1),
         R = str_foldr(func(Cx, Rx) = (Cx or Rx), S, re(C), L - 2)
     ).
 
@@ -739,7 +739,7 @@ anybut(S0) = R :-
 
 str_foldr(Fn, S, X, I) =
     ( if I < 0 then X
-               else str_foldr(Fn, S, Fn(string.index_det(S, I), X), I - 1)
+               else str_foldr(Fn, S, Fn(string.det_index(S, I), X), I - 1)
     ).
 
 ?(R) = (R or null).
