@@ -1,5 +1,6 @@
-dl.m name_mangle.m
 Mercury
+moose
+moose.exe
 *.err
 *.mh
 *.d
