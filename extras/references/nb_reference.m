@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002-2003, 2006 The University of Melbourne.
+% Copyright (C) 1998-2000,2002-2003, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -129,12 +129,12 @@ update(nb_reference(Ref), X) :-
 % from_c_pointer(CPointer) = Ref
 %	Convert a c_pointer to a nb_reference.
 
-:- func nb_reference__from_c_pointer(c_pointer) = nb_reference(T).
+:- func nb_reference.from_c_pointer(c_pointer) = nb_reference(T).
 
 % to_c_pointer(Ref) = CPointer
 %	Convert a nb_reference to a c_pointer.
 
-:- func nb_reference__to_c_pointer(nb_reference(T)) = c_pointer.
+:- func nb_reference.to_c_pointer(nb_reference(T)) = c_pointer.
 
 :- implementation.
 
@@ -142,11 +142,11 @@ update(nb_reference(Ref), X) :-
 init(Ref, X) :-
 	impure update(Ref, X).
 
-:- pragma inline(nb_reference__from_c_pointer/1).
-nb_reference__from_c_pointer(CPointer) = nb_reference(Ref) :-
+:- pragma inline(nb_reference.from_c_pointer/1).
+nb_reference.from_c_pointer(CPointer) = nb_reference(Ref) :-
 	private_builtin.unsafe_type_cast(CPointer, Ref).
 
-:- pragma inline(nb_reference__to_c_pointer/1).
-nb_reference__to_c_pointer(nb_reference(Ref)) = CPointer :-
+:- pragma inline(nb_reference.to_c_pointer/1).
+nb_reference.to_c_pointer(nb_reference(Ref)) = CPointer :-
 	private_builtin.unsafe_type_cast(Ref, CPointer).
 

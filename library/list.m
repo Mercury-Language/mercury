@@ -1788,11 +1788,17 @@ list.det_index1_of_first_occurrence(List, Elem) = N :-
 list.condense(Xss) = Ys :-
     list.condense(Xss, Ys).
 
-list.condense([], []).
-list.condense([L | Ls], R) :-
-    list.condense(Ls, R1),
-    list.append(L, R1, R).
+list.condense(Xss, Ys) :-
+    list.reverse(Xss, RevXss),
+    list.condense_2(RevXss, [], Ys).
 
+:- pred list.condense_2(list(list(T))::in, list(T)::in, list(T)::out) is det.
+
+list.condense_2([], !Ys).
+list.condense_2([L | Ls], !Ys) :-
+    list.append(L, !Ys),
+    list.condense_2(Ls, !Ys).
+    
 %-----------------------------------------------------------------------------%
 
 list.same_length([], []).

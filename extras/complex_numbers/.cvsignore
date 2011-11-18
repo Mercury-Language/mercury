@@ -1,4 +1,3 @@
-dl.m name_mangle.m
 Mercury
 *.err
 *.mh
@@ -12,6 +11,7 @@ Mercury
 *.pic_o
 *.c_date
 *.date
+*.date0
 *.date3
 *.dep
 *.dv

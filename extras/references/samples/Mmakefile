@@ -1,23 +1,21 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1999 The University of Melbourne.
+# Copyright (C) 1997-1999, 2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 MAIN_TARGET = all
 
-# We need to use a grade with trailing
-GRADEFLAGS += --use-trail
+# We need to use a grade with trailing.
+# The following causes the compiler to attempt to use the default grade
+# with trail segments enabled.  It won't work unless the trseg variant
+# of the default grade is also installed.
+#
+GRADEFLAGS += --use-trail --trail-segments
 
 EXTRA_LIB_DIRS = $(INSTALL_PREFIX)/extras/lib/mercury
 
 EXTRA_LIBRARIES = global
-
-# We need the following to use shared libraries on Linux
-#MGNUCFLAGS += -DPIC_REG
-#MLFLAGS += --shared
-
-#MLFLAGS += --static
 
 #-----------------------------------------------------------------------------#
 
