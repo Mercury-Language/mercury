@@ -180,6 +180,7 @@ SINGLEMODULE= \
 	quant_constraint_2 \
 	range_restrict \
 	record_syntax_errors \
+	require_det_in_lambda \
 	require_scopes \
 	some \
 	specified \
