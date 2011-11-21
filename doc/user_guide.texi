@@ -6771,6 +6771,11 @@ Output detailed debugging traces of the `--intermodule-analysis' option.
 Output detailed debugging traces of the indirect reuse pass of
 `--structure-reuse' option.
 
+@sp 1
+@item --debug-type-rep
+@findex --debug-type-rep
+Output debugging traces of type representation choices.
+
 @end table
 
 @node Output options

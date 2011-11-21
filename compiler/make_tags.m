@@ -9,50 +9,43 @@
 % File: make_tags.m.
 % Main author: fjh.
 %
-% This module is where we determine the representation for
-% discriminated union types.  Each d.u. type is represented as
-% a word.  In the case of functors with arguments, we allocate
-% the arguments on the heap, and the word contains a pointer to
-% those arguments.
+% This module is where we determine the representation for discriminated union
+% types.  Each d.u. type is represented as a word.  In the case of functors
+% with arguments, we allocate the arguments on the heap, and the word contains
+% a pointer to those arguments.
 %
-% For types which are just enumerations (all the constructors
-% are constants), we just assign a different value for each
-% constructor.
+% For types which are just enumerations (all the constructors are constants),
+% we just assign a different value for each constructor.
 %
-% For types which have only one functor of arity one, there is
-% no need to store the functor, and we just store the argument
-% value directly; construction and deconstruction unifications
-% on these type are no-ops.
+% For types which have only one functor of arity one, there is no need to store
+% the functor, and we just store the argument value directly; construction and
+% deconstruction unifications on these type are no-ops.
 %
-% For other types, we use a couple of bits of the word as a
-% tag.  We split the constructors into constants and functors,
-% and assign tag zero to the constants (if any).  If there is
-% more than one constant, we distinguish between the different
-% constants by the value of the rest of the word.  Then we
-% assign one tag bit each to the first few functors.  The
-% remaining functors all get the last remaining two-bit tag.
-% These functors are distinguished by a secondary tag which is
-% the first word of the argument vector for those functors.
+% For other types, we use a couple of bits of the word as a tag.  We split the
+% constructors into constants and functors, and assign tag zero to the
+% constants (if any).  If there is more than one constant, we distinguish
+% between the different constants by the value of the rest of the word.  Then
+% we assign one tag bit each to the first few functors.  The remaining functors
+% all get the last remaining two-bit tag.  These functors are distinguished by
+% a secondary tag which is the first word of the argument vector for those
+% functors.
 %
-% If there are no tag bits available, then we try using reserved
-% addresses (e.g. NULL, (void *)1, (void *)2, etc.) instead.
-% We split the constructors into constants and functors,
-% and assign numerical reserved addresses to the first constants,
-% up to the limit set by --num-reserved-addresses.
-% After that, for the MLDS back-end, we assign symbolic reserved
-% addresses to the remaining constants, up to the limit set by
-% --num-reserved-objects; these symbolic reserved addresses
-% are the addresses of global variables that we generate specially
-% for this purpose.  Finally, the functors and any remaining
-% constants are distinguished by a secondary tag, if there are more
-% than one of them.
+% If there are no tag bits available, then we try using reserved addresses
+% (e.g. NULL, (void *)1, (void *)2, etc.) instead.  We split the constructors
+% into constants and functors, and assign numerical reserved addresses to the
+% first constants, up to the limit set by --num-reserved-addresses.  After
+% that, for the MLDS back-end, we assign symbolic reserved addresses to the
+% remaining constants, up to the limit set by --num-reserved-objects; these
+% symbolic reserved addresses are the addresses of global variables that we
+% generate specially for this purpose.  Finally, the functors and any remaining
+% constants are distinguished by a secondary tag, if there are more than one of
+% them.
 %
-% If there is a `pragma reserve_tag' declaration for the type,
-% or if the `--reserve-tag' option is set,
-% then we reserve the first primary tag (for representing
-% unbound variables).  This is used by HAL, for Herbrand constraints
-% (i.e. Prolog-style logic variables).
-% This also disables enumerations and no_tag types.
+% If there is a `pragma reserve_tag' declaration for the type, or if the
+% `--reserve-tag' option is set, then we reserve the first primary tag (for
+% representing unbound variables).  This is used by HAL, for Herbrand
+% constraints (i.e. Prolog-style logic variables).  This also disables
+% enumerations and no_tag types.
 %
 %-----------------------------------------------------------------------------%
 
@@ -105,14 +98,18 @@
 :- implementation.
 
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
@@ -445,11 +442,13 @@ post_process_type_defns(!HLDS, Specs) :-
             TermSizeCells = no
         ->
             module_info_get_type_table(!.HLDS, TypeTable0),
+            module_info_get_name(!.HLDS, ModuleName),
             get_all_type_ctor_defns(TypeTable0, TypeCtorsDefns),
             globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
+            globals.lookup_bool_option(Globals, debug_type_rep, DebugTypeRep),
             MaxTag = max_num_tags(NumTagBits) - 1,
-            convert_direct_arg_functors(MaxTag, TypeCtorsDefns,
-                TypeTable0, TypeTable, [], Specs),
+            convert_direct_arg_functors(ModuleName, DebugTypeRep, MaxTag,
+                TypeCtorsDefns, TypeTable0, TypeTable, [], Specs),
             module_info_set_type_table(TypeTable, !HLDS)
         ;
             % We cannot use direct arg functors in term size grades.
@@ -467,24 +466,25 @@ post_process_type_defns(!HLDS, Specs) :-
         Specs = []
     ).
 
-:- pred convert_direct_arg_functors(int::in,
+:- pred convert_direct_arg_functors(module_name::in, bool::in, int::in,
     assoc_list(type_ctor, hlds_type_defn)::in, type_table::in, type_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-convert_direct_arg_functors(_, [], !TypeTable, !Specs).
-convert_direct_arg_functors(MaxTag, [TypeCtor - TypeDefn | TypeCtorsDefns],
-        !TypeTable, !Specs) :-
-    convert_direct_arg_functors_if_suitable(MaxTag, TypeCtor, TypeDefn,
-        !TypeTable, !Specs),
-    convert_direct_arg_functors(MaxTag, TypeCtorsDefns,
-        !TypeTable, !Specs).
+convert_direct_arg_functors(_, _, _, [], !TypeTable, !Specs).
+convert_direct_arg_functors(ModuleName, DebugTypeRep, MaxTag,
+        [TypeCtorDefn | TypeCtorsDefns], !TypeTable, !Specs) :-
+    TypeCtorDefn = TypeCtor - TypeDefn,
+    convert_direct_arg_functors_if_suitable(ModuleName, DebugTypeRep, MaxTag,
+        TypeCtor, TypeDefn, !TypeTable, !Specs),
+    convert_direct_arg_functors(ModuleName, DebugTypeRep, MaxTag,
+        TypeCtorsDefns, !TypeTable, !Specs).
 
-:- pred convert_direct_arg_functors_if_suitable(int::in,
-    type_ctor::in, hlds_type_defn::in, type_table::in, type_table::out,
+:- pred convert_direct_arg_functors_if_suitable(module_name::in, bool::in,
+    int::in, type_ctor::in, hlds_type_defn::in, type_table::in, type_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-convert_direct_arg_functors_if_suitable(MaxTag, TypeCtor, TypeDefn,
-        !TypeTable, !Specs) :-
+convert_direct_arg_functors_if_suitable(ModuleName, DebugTypeRep, MaxTag,
+        TypeCtor, TypeDefn, !TypeTable, !Specs) :-
     get_type_defn_body(TypeDefn, Body),
     (
         Body = hlds_du_type(Ctors, _ConsTagValues, _MaybeCheaperTagTest,
@@ -543,6 +543,15 @@ convert_direct_arg_functors_if_suitable(MaxTag, TypeCtor, TypeDefn,
                 DirectArgFunctorNames =
                     list.map(constructor_to_sym_name_and_arity,
                     DirectArgFunctors),
+                (
+                    DebugTypeRep = yes,
+                    trace [io(!IO)] (
+                        output_direct_arg_functor_summary(ModuleName, TypeCtor,
+                            DirectArgFunctorNames, !IO) 
+                    )
+                ;
+                    DebugTypeRep = no
+                ),
                 DirectArgBody = hlds_du_type(Ctors, DirectArgConsTagValues,
                     MaybeCheaperTagTest, DuKind, MaybeUserEqComp,
                     yes(DirectArgFunctorNames), ReservedTag, ReservedAddr,
@@ -584,7 +593,7 @@ is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
         % Trust the `direct_arg' attribute of an imported type.
         status_is_imported(TypeStatus) = yes,
         list.contains(AssertedDirectArgCtors, ConsName / Arity)
-    ->
+    -> 
         ArgCond = direct_arg_asserted
     ;
         % Tuples are always acceptable argument types as they are represented
@@ -623,9 +632,9 @@ is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
         (
             status_defined_in_this_module(TypeStatus) = yes,
             list.contains(AssertedDirectArgCtors, ConsName / Arity)
-        ->
+        -> 
             ArgCond = direct_arg_asserted
-        ;
+        ; 
             ArgTypeCtor = type_ctor(ArgTypeCtorSymName, _ArgTypeCtorArity),
             sym_name_get_module_name(ArgTypeCtorSymName, ArgTypeCtorModule),
             ( TypeCtorModule = ArgTypeCtorModule ->
@@ -636,7 +645,6 @@ is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
             )
         )
     ),
-
     check_direct_arg_cond(TypeStatus, ArgCond).
 
 :- type direct_arg_cond
@@ -765,6 +773,18 @@ check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors],
 
 constructor_to_sym_name_and_arity(ctor(_, _, Name, Args, _)) =
     Name / list.length(Args).
+
+:- pred output_direct_arg_functor_summary(module_name::in, type_ctor::in,
+    list(sym_name_and_arity)::in, io::di, io::uo) is det.
+
+output_direct_arg_functor_summary(ModuleName, TypeCtor, DirectArgFunctorNames,
+        !IO) :-
+    write_sym_name(ModuleName, !IO),
+    io.write_string(" : ", !IO),
+    write_type_ctor(TypeCtor, !IO),
+    io.write_string(" : ", !IO),
+    io.write_list(DirectArgFunctorNames, ", ", write_sym_name_and_arity, !IO),
+    io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
 %
