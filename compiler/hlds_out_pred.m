@@ -498,7 +498,7 @@ import_status_to_string(status_imported(import_locn_interface)) =
 import_status_to_string(status_imported(import_locn_implementation)) =
     "imported in the implementation".
 import_status_to_string(status_imported(
-        import_locn_ancestor_private_interface)) =
+        import_locn_ancestor_private_interface_proper)) =
     "imported from an ancestor's private interface".
 import_status_to_string(status_imported(import_locn_ancestor)) =
     "imported by an ancestor".

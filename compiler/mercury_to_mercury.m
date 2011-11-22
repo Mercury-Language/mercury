@@ -1166,9 +1166,9 @@ mercury_output_module_defn(ModuleDefn, _Context, !IO) :-
         ( ModuleDefn = md_abstract_imported
         ; ModuleDefn = md_export(_)
         ; ModuleDefn = md_external(_, _)
+        ; ModuleDefn = md_implementation_but_exported_to_submodules
         ; ModuleDefn = md_imported(_)
         ; ModuleDefn = md_opt_imported
-        ; ModuleDefn = md_private_interface
         ; ModuleDefn = md_transitively_imported
         ; ModuleDefn = md_used(_)
         ),

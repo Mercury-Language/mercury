@@ -2194,8 +2194,9 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     ;       import_locn_ancestor
             % The item is from a module imported by an ancestor.
 
-    ;       import_locn_ancestor_private_interface.
-            % The item is from the private interface of an ancestor module.
+    ;       import_locn_ancestor_private_interface_proper.
+            % The item is from the _actual_ private interface of an ancestor
+            % module, i.e. the implementation section of a `.int0' file.
 
 :- type sym_name_specifier
     --->    name(sym_name)

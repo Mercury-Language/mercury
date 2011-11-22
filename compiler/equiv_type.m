@@ -245,7 +245,7 @@ skip_abstract_imported_items([Item0 | Items0], Items) :-
 
 is_section_defn(md_interface) = yes.
 is_section_defn(md_implementation) = yes.
-is_section_defn(md_private_interface) = yes.
+is_section_defn(md_implementation_but_exported_to_submodules) = yes.
 is_section_defn(md_imported(_)) = yes.
 is_section_defn(md_used(_)) = yes.
 is_section_defn(md_abstract_imported) = yes.
@@ -282,7 +282,7 @@ replace_in_item_list(ModuleName, Location0, [Item0 | Items0],
             Location = eqv_type_in_interface
         ;
             ( ModuleDefn = md_implementation
-            ; ModuleDefn = md_private_interface
+            ; ModuleDefn = md_implementation_but_exported_to_submodules
             ),
             Location = eqv_type_in_implementation
         ;

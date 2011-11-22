@@ -878,7 +878,7 @@
     --->    md_interface
     ;       md_implementation
 
-    ;       md_private_interface
+    ;       md_implementation_but_exported_to_submodules
             % This is used internally by the compiler, to identify items
             % which originally came from an implementation section for a
             % module that contains sub-modules; such items need to be exported

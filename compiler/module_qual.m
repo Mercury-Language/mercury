@@ -456,7 +456,7 @@ process_module_defn(md_include_module(ModuleNameList), !Info) :-
     list.foldl(add_module_defn, ModuleNameList, !Info).
 process_module_defn(md_interface, !Info) :-
     mq_info_set_import_status(mq_status_exported, !Info).
-process_module_defn(md_private_interface, !Info) :-
+process_module_defn(md_implementation_but_exported_to_submodules, !Info) :-
     mq_info_set_import_status(mq_status_local, !Info).
 process_module_defn(md_implementation, !Info) :-
     mq_info_set_import_status(mq_status_local, !Info).
@@ -498,13 +498,14 @@ add_module_defn(ModuleName, !Info) :-
 add_imports(Imports, !Info) :-
     mq_info_get_import_status(!.Info, Status),
 
-    % Modules imported from the the private interface of ancestors of
+    % Modules imported from the the proper private interface of ancestors of
     % the current module are treated as if they were directly imported
     % by the current module.
     (
         ( Status = mq_status_local
         ; Status = mq_status_exported
-        ; Status = mq_status_imported(import_locn_ancestor_private_interface)
+        ; Status = mq_status_imported(
+            import_locn_ancestor_private_interface_proper)
         )
     ->
         mq_info_get_imported_modules(!.Info, Modules0),
@@ -530,7 +531,8 @@ add_imports(Imports, !Info) :-
     % interface of ancestor modules may be used in the interface.
     (
         ( Status = mq_status_exported
-        ; Status = mq_status_imported(import_locn_ancestor_private_interface)
+        ; Status = mq_status_imported(
+            import_locn_ancestor_private_interface_proper)
         )
     ->
         mq_info_get_interface_visible_modules(!.Info, IntModules0),
@@ -977,7 +979,8 @@ update_import_status(md_interface, !Info, yes) :-
     mq_info_set_import_status(mq_status_exported, !Info).
 update_import_status(md_implementation, !Info, yes) :-
     mq_info_set_import_status(mq_status_local, !Info).
-update_import_status(md_private_interface, !Info, yes) :-
+update_import_status(md_implementation_but_exported_to_submodules, !Info, yes)
+        :-
     mq_info_set_import_status(mq_status_local, !Info).
 update_import_status(md_imported(_), !Info, no).
 update_import_status(md_used(_), !Info, no).

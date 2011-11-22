@@ -50,6 +50,7 @@ ORDINARY_PROGS=	\
 	cut_test \
 	cycles \
 	cycles2 \
+	daf_bug \
 	deconstruct_arg \
 	deep_copy \
 	deep_copy_bug \

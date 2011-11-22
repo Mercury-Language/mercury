@@ -668,6 +668,7 @@ is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
     is semidet.
 
 check_direct_arg_cond(TypeStatus, ArgCond) :-
+    require_complete_switch [TypeStatus]
     (
         % If the outer type _definition_ is not exported from this module then
         % the direct arg representation may be used.  In the absence of
@@ -694,9 +695,13 @@ check_direct_arg_cond(TypeStatus, ArgCond) :-
         ( ArgCond = direct_arg_builtin_type
         ; ArgCond = direct_arg_asserted
         ; ArgCond = direct_arg_same_module(status_exported)
-        ; ArgCond = direct_arg_same_module(TypeStatus)
-            % If the outer type is exported to sub-modules only, the argument
-            % type only needs to be exported to sub-modules as well.
+        )
+    ;
+        % If the outer type is exported to sub-modules only, the argument
+        % type only needs to be exported to sub-modules as well.
+        TypeStatus = status_exported_to_submodules,
+        ( ArgCond = direct_arg_same_module(status_exported_to_submodules)
+        ; ArgCond = direct_arg_same_module(status_abstract_exported)
         )
     ;
         % The direct arg representation is required if the outer type is
@@ -704,10 +709,22 @@ check_direct_arg_cond(TypeStatus, ArgCond) :-
         % - if the argument type is an acceptable builtin type
         % - a `where direct_arg' attribute says so
         % - if the argument type is imported from the same module
-        TypeStatus = status_imported(_),
-        ( ArgCond = direct_arg_builtin_type
-        ; ArgCond = direct_arg_asserted
-        ; ArgCond = direct_arg_same_module(status_imported(_))
+        TypeStatus = status_imported(TypeImportLocn),
+        (
+            ArgCond = direct_arg_builtin_type
+        ;
+            ArgCond = direct_arg_asserted
+        ;
+            ArgCond = direct_arg_same_module(status_imported(ArgImportLocn)),
+            % If the argument type is only exported by an ancestor to its
+            % sub-modules (of which we are one), the outer type must also only
+            % be exported to sub-modules. Otherwise sub-modules and
+            % non-sub-modules would infer different things.
+            (
+                ArgImportLocn = import_locn_ancestor_private_interface_proper
+            =>
+                TypeImportLocn = import_locn_ancestor_private_interface_proper
+            )
         )
     ;
         % If the outer type is opt-imported, there will always be a
@@ -717,6 +734,12 @@ check_direct_arg_cond(TypeStatus, ArgCond) :-
         ; TypeStatus = status_abstract_imported
         ),
         ArgCond = direct_arg_asserted
+    ;
+        ( TypeStatus = status_external(_)
+        ; TypeStatus = status_pseudo_exported
+        ; TypeStatus = status_pseudo_imported
+        ),
+        unexpected($module, $pred, "inappropriate status for type")
     ).
 
 :- pred assign_direct_arg_tags(type_ctor::in, list(constructor)::in,

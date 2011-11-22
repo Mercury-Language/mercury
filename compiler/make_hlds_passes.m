@@ -729,7 +729,7 @@ add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs) :-
         ;
             ( ModuleDefn = md_interface
             ; ModuleDefn = md_implementation
-            ; ModuleDefn = md_private_interface
+            ; ModuleDefn = md_implementation_but_exported_to_submodules
             ; ModuleDefn = md_imported(_)
             ; ModuleDefn = md_used(_)
             ; ModuleDefn = md_opt_imported
@@ -915,7 +915,7 @@ add_solver_type_mutable_items_pass_1([Item | Items], !Status,
 add_module_specifiers(Specifiers, IStat, !ModuleInfo) :-
     ( status_defined_in_this_module(IStat) = yes ->
         module_add_imported_module_specifiers(IStat, Specifiers, !ModuleInfo)
-    ; IStat = status_imported(import_locn_ancestor_private_interface) ->
+    ; IStat = status_imported(import_locn_ancestor_private_interface_proper) ->
         module_add_imported_module_specifiers(IStat, Specifiers, !ModuleInfo),
 
             % Any import_module which comes from a private interface
@@ -3150,7 +3150,7 @@ module_defn_update_import_status(ModuleDefn, Status) :-
         ModuleDefn = md_implementation,
         Status = item_status(status_local, may_be_unqualified)
     ;
-        ModuleDefn = md_private_interface,
+        ModuleDefn = md_implementation_but_exported_to_submodules,
         Status = item_status(status_exported_to_submodules, may_be_unqualified)
     ;
         ModuleDefn = md_imported(Section),

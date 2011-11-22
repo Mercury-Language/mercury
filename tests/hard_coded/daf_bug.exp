@@ -1,0 +1,4 @@
+Parent Value = [outer_public1(inner_public(geq, 561, 42)), outer_public2(inner_private(geq, 561, 42))]
+Child Value =  [outer_public1(inner_public(geq, 561, 42)), outer_public2(inner_private(geq, 561, 42))]
+Parent Value2 = univ_cons([outer_private1(inner_public(geq, 561, 42)), outer_private2(inner_private(geq, 561, 42))])
+Child Value2 =  univ_cons([outer_private1(inner_public(geq, 561, 42)), outer_private2(inner_private(geq, 561, 42))])

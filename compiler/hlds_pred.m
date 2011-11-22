@@ -250,7 +250,9 @@
                 % due to its presence in the .opt files
                 % (intermod.adjust_pred_import_status).
     ;       status_abstract_exported
-                % Describes a type with only an abstract declaration exported.
+                % Describes a type with only an abstract declaration exported
+                % to non-sub-modules. The definition of the type is exported to
+                % sub-modules.
     ;       status_pseudo_exported
                 % The converse of pseudo_imported; this means that only the
                 % (in, in) mode of a unification is exported.
@@ -965,8 +967,8 @@ status_defined_in_impl_section(status_imported(ImportLocn)) =
 import_locn_defined_in_impl_section(import_locn_implementation) = yes.
 import_locn_defined_in_impl_section(import_locn_interface) = yes.
 import_locn_defined_in_impl_section(import_locn_ancestor) = yes.
-import_locn_defined_in_impl_section(import_locn_ancestor_private_interface)
-    = yes.
+import_locn_defined_in_impl_section(
+    import_locn_ancestor_private_interface_proper) = yes.
 
 calls_are_fully_qualified(Markers) =
     ( check_marker(Markers, marker_calls_are_fully_qualified) ->

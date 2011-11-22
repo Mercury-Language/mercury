@@ -442,23 +442,30 @@ make_private_interface(Globals, SourceFileName, SourceFileModuleName,
             Specs = [],
 
             % Write out the `.int0' file.
-            %
-            % XXX The following sequence of operations relies on the fact that
-            % any reversals done while processing it are undone by subsequent
-            % operations. Also, we should sort the contents of the .int0 file
-            % as we do for the other types of interface file. We don't do that
-            % at the moment because the code for doing that cannot handle
-            % the structure of lists of items that represent private
-            % interfaces.
 
             strip_imported_items(Items2, Items3),
-            strip_clauses_from_interface(Items3, Items4),
-            handle_mutables_in_private_interface(ModuleName, Items4, Items5),
-            list.map(make_any_instances_abstract, Items5, Items6),
-            list.reverse(Items6, Items),
+            some [!IntItems, !ImplItems] (
+                list.foldl3(strip_clauses_private_interface, Items3,
+                    section_interface, _Section,
+                    [], !:IntItems, [], !:ImplItems),
+                handle_mutables_in_private_interface(ModuleName, !IntItems),
+                handle_mutables_in_private_interface(ModuleName, !ImplItems),
+                list.map(make_any_instances_abstract, !IntItems),
+                list.map(make_any_instances_abstract, !ImplItems),
+                order_items(!IntItems),
+                order_items(!ImplItems),
+                Items4 = [make_pseudo_decl(md_interface) | !.IntItems],
+                (
+                    !.ImplItems = [],
+                    Items = Items4
+                ;
+                    !.ImplItems = [_ | _],
+                    Items = Items4 ++
+                        [make_pseudo_decl(md_implementation) | !.ImplItems]
+                )
+            ),
             write_interface_file(Globals, SourceFileName, ModuleName,
-                ".int0", MaybeTimestamp,
-                [make_pseudo_decl(md_interface) | Items], !IO),
+                ".int0", MaybeTimestamp, Items, !IO),
             touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
         )
     ).
@@ -480,7 +487,7 @@ make_any_instances_abstract(Item0, Item) :-
 :- pred handle_mutables_in_private_interface(module_name::in,
     list(item)::in, list(item)::out) is det.
 
- handle_mutables_in_private_interface(ModuleName, !Items) :-
+handle_mutables_in_private_interface(ModuleName, !Items) :-
     list.foldl(handle_mutable_in_private_interface(ModuleName), !.Items,
         [], !:Items).
 
@@ -655,7 +662,7 @@ strip_imported_items_2([Item | Items], !RevItems) :-
             % XXX Some of these should probably cause an error message.
             ( ModuleDefn = md_interface
             ; ModuleDefn = md_implementation
-            ; ModuleDefn = md_private_interface
+            ; ModuleDefn = md_implementation_but_exported_to_submodules
             ; ModuleDefn = md_opt_imported
             ; ModuleDefn = md_transitively_imported
             ; ModuleDefn = md_external(_, _)
@@ -876,7 +883,7 @@ do_standardize_impl_items([Item | Items], !Unexpected,
             ; ModuleDefn = md_export(_)
             ; ModuleDefn = md_interface
             ; ModuleDefn = md_implementation
-            ; ModuleDefn = md_private_interface
+            ; ModuleDefn = md_implementation_but_exported_to_submodules
             ; ModuleDefn = md_version_numbers(_, _)
             ),
             !:Unexpected = yes
@@ -1540,22 +1547,78 @@ clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
     Spec = error_spec(severity_warning, phase_term_to_parse_tree,
         [simple_msg(Context, [always(Pieces)])]).
 
-    % strip_clauses_from_interface is the same as
-    % check_for_clauses_in_interface except that it doesn't issue any
-    % warnings, and that it also strips out the `:- interface' and `:-
-    % implementation' declarations.
+    % strip_clauses_private_interface is used when creating the private
+    % interface (`.int0') files for packages with sub-modules. It removes
+    % unnecessary items and separates interface and implementation items.
     %
-    % This is used when creating the private interface (`.int0') files for
-    % packages with sub-modules.
+    % The `.int0' file contains items which are available to any module in the
+    % interface section, and items which are only available to sub-modules in
+    % the implementation section. The term "private interface" is ambiguous:
+    % sometimes it refers to the `.int0' file which, as just explained,
+    % contains the public interface as well. The term "private interface
+    % proper" may be used to refer to the information in the implementation
+    % section of the `.int0' file.
+    %
+    % (Historically, the `.int0' file did not distinguish between the public
+    % and private interfaces.)
     %
     % We treat initialise and finalise declarations as special kinds of
     % clause, since they should always be grouped together with the clauses
     % and should not appear in private interfaces.
     %
-:- pred strip_clauses_from_interface(list(item)::in, list(item)::out) is det.
+:- pred strip_clauses_private_interface(item::in, section::in, section::out,
+    list(item)::in, list(item)::out, list(item)::in, list(item)::out) is det.
 
-strip_clauses_from_interface(Items0, Items) :-
-    split_clauses_and_decls(Items0, _Clauses, Items).
+strip_clauses_private_interface(Item, !Section, !InterfaceItems, !ImplItems) :-
+    (
+        Item = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
+        (
+            ModuleDefn = md_interface,
+            !:Section = section_interface
+        ;
+            ModuleDefn = md_implementation,
+            !:Section = section_implementation
+        ;
+            ModuleDefn = md_import(_),
+            % Only imports listed in the implementation section will be
+            % directly imported by sub-modules. Import declarations in the
+            % interface section must be duplicated into the implementation
+            % section of the `.int0' file.
+            (
+                !.Section = section_interface,
+                list.cons(Item, !InterfaceItems),
+                list.cons(Item, !ImplItems)
+            ;
+                !.Section = section_implementation,
+                list.cons(Item, !ImplItems)
+            )
+        )
+    ->
+        true
+    ;
+        (
+            Item = item_clause(_)
+        ;
+            Item = item_pragma(ItemPragma),
+            ItemPragma = item_pragma_info(_, Pragma, _, _),
+            pragma_allowed_in_interface(Pragma) = no
+        ;
+            Item = item_initialise(_)
+        ;
+            Item = item_finalise(_)
+        )
+     ->
+        true
+    ;
+        (
+            !.Section = section_interface,
+            list.cons(Item, !InterfaceItems)
+        ;
+            !.Section = section_implementation,
+            list.cons(Item, !ImplItems)
+        )
+    ).
 
 :- pred split_clauses_and_decls(list(item)::in,
     list(item)::out, list(item)::out) is det.
@@ -1832,7 +1895,7 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         % we need to make everything in the implementation of this module
         % exported_to_submodules.  We do that by splitting out the
         % implementation declarations and putting them in a special
-        % `:- private_interface' section.
+        % `implementation_but_exported_to_submodules' section.
 
         get_children(Items0, Children),
         (
@@ -1843,7 +1906,8 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
             split_clauses_and_decls(ImplItems, Clauses, ImplDecls),
             Items1 =
                 [make_pseudo_decl(md_interface) | InterfaceItems] ++
-                [make_pseudo_decl(md_private_interface) | ImplDecls] ++
+                [make_pseudo_decl(md_implementation_but_exported_to_submodules)
+                    | ImplDecls] ++
                 [make_pseudo_decl(md_implementation) | Clauses],
             !Module ^ mai_items_cord := cord.from_list(Items1)
         ),
@@ -1860,9 +1924,9 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         % to be visible in the current module.
         process_module_private_interfaces(Globals, HaveReadModuleMap,
             AncestorModules,
-            make_pseudo_decl(
-                md_imported(import_locn_ancestor_private_interface)),
-            make_pseudo_decl(md_abstract_imported),
+            make_pseudo_decl(md_imported(import_locn_interface)),
+            make_pseudo_decl(md_imported(
+                import_locn_ancestor_private_interface_proper)),
             IntImportedModules2, IntImportedModules,
             IntUsedModules2, IntUsedModules, !Module, !IO),
 
@@ -1966,8 +2030,9 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
 
     % First the .int0s for parent modules.
     process_module_private_interfaces(Globals, HaveReadModuleMap, ParentDeps,
-        make_pseudo_decl(md_imported(import_locn_ancestor_private_interface)),
-        make_pseudo_decl(md_abstract_imported),
+        make_pseudo_decl(md_imported(import_locn_interface)),
+        make_pseudo_decl(md_imported(
+            import_locn_ancestor_private_interface_proper)),
         [], ParentImportDeps, [], ParentUseDeps, !Module, !IO),
 
     % Then the .int3s for `:- import'-ed modules.
@@ -3214,7 +3279,7 @@ get_accessible_children_2(!.Visible, [Item | Items], !IncludeDeps) :-
             ; ModuleDefn = md_used(_)
             ; ModuleDefn = md_interface
             ; ModuleDefn = md_implementation
-            ; ModuleDefn = md_private_interface
+            ; ModuleDefn = md_implementation_but_exported_to_submodules
             ),
             !:Visible = yes
         ;
@@ -3868,7 +3933,7 @@ include_in_int_file_implementation(Item) = Include :-
             % XXX Some of these should yield an exception.
             ( ModuleDefn = md_interface
             ; ModuleDefn = md_implementation
-            ; ModuleDefn = md_private_interface
+            ; ModuleDefn = md_implementation_but_exported_to_submodules
             ; ModuleDefn = md_imported(_)
             ; ModuleDefn = md_used(_)
             ; ModuleDefn = md_abstract_imported
@@ -4308,8 +4373,8 @@ reorderable_module_defn(ModuleDefn) = Reorderable :-
         ; ModuleDefn = md_imported(_)
         ; ModuleDefn = md_include_module(_)
         ; ModuleDefn = md_interface
+        ; ModuleDefn = md_implementation_but_exported_to_submodules
         ; ModuleDefn = md_opt_imported
-        ; ModuleDefn = md_private_interface
         ; ModuleDefn = md_transitively_imported
         ; ModuleDefn = md_used(_)
         ; ModuleDefn = md_version_numbers(_, _)
@@ -4423,8 +4488,8 @@ chunkable_module_defn(ModuleDefn) = Reorderable :-
         ; ModuleDefn = md_imported(_)
         ; ModuleDefn = md_include_module(_)
         ; ModuleDefn = md_interface
+        ; ModuleDefn = md_implementation_but_exported_to_submodules
         ; ModuleDefn = md_opt_imported
-        ; ModuleDefn = md_private_interface
         ; ModuleDefn = md_transitively_imported
         ; ModuleDefn = md_used(_)
         ; ModuleDefn = md_version_numbers(_, _)

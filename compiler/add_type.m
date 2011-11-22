@@ -550,8 +550,19 @@ combine_status(StatusA, StatusB, Status) :-
 :- pred combine_status_2(import_status::in, import_status::in,
     import_status::out) is semidet.
 
-combine_status_2(status_imported(_), Status2, Status) :-
-    combine_status_imported(Status2, Status).
+combine_status_2(status_imported(ImportLocn), Status2, Status) :-
+    require_complete_switch [ImportLocn]
+    (
+        ( ImportLocn = import_locn_implementation
+        ; ImportLocn = import_locn_interface
+        ; ImportLocn = import_locn_ancestor
+        ),
+        combine_status_imported_non_private(Status2, Status)
+    ;
+        ImportLocn = import_locn_ancestor_private_interface_proper,
+        % If it's private, it's private.
+        Status = status_imported(import_locn_ancestor_private_interface_proper)
+    ).
 combine_status_2(status_local, Status2, Status) :-
     combine_status_local(Status2, Status).
 combine_status_2(status_exported, _Status2, status_exported).
@@ -568,17 +579,29 @@ combine_status_2(status_abstract_imported, Status2, Status) :-
 combine_status_2(status_abstract_exported, Status2, Status) :-
     combine_status_abstract_exported(Status2, Status).
 
-:- pred combine_status_imported(import_status::in, import_status::out)
-    is semidet.
+:- pred combine_status_imported_non_private(import_status::in,
+    import_status::out) is semidet.
 
-combine_status_imported(status_imported(Section),  status_imported(Section)).
-combine_status_imported(status_local,
-    status_imported(import_locn_implementation)).
-combine_status_imported(status_exported,           status_exported).
-combine_status_imported(status_opt_imported,       status_opt_imported).
-combine_status_imported(status_abstract_imported,
-    status_imported(import_locn_interface)).
-combine_status_imported(status_abstract_exported,  status_abstract_exported).
+combine_status_imported_non_private(Status2, Status) :-
+    (
+        Status2 = status_imported(Section),
+        Status = status_imported(Section)
+    ;
+        Status2 = status_local,
+        Status = status_imported(import_locn_implementation)
+    ;
+        Status2 = status_exported,
+        Status = status_exported
+    ;
+        Status2 = status_opt_imported,
+        Status = status_opt_imported
+    ;
+        Status2 = status_abstract_imported,
+        Status = status_imported(import_locn_interface)
+    ;
+        Status2 = status_abstract_exported,
+        Status = status_abstract_exported
+    ).
 
 :- pred combine_status_local(import_status::in, import_status::out) is semidet.
 
