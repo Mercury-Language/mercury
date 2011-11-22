@@ -432,6 +432,10 @@ compute_cheaper_tag_test(CtorTagMap, CheaperTagTest) :-
 %-----------------------------------------------------------------------------%
 
 post_process_type_defns(!HLDS, Specs) :-
+    Specs = [].
+% Direct arg functors do not work correctly on the 11.07 branch so they
+% are disabled here.  (See bug #230 for details.)
+/*
     module_info_get_globals(!.HLDS, Globals),
     globals.get_target(Globals, Target),
     (
@@ -466,6 +470,7 @@ post_process_type_defns(!HLDS, Specs) :-
         % Direct arg functors have not (yet) been implemented on these targets.
         Specs = []
     ).
+*/
 
 :- pred convert_direct_arg_functors(int::in,
     assoc_list(type_ctor, hlds_type_defn)::in, type_table::in, type_table::out,
