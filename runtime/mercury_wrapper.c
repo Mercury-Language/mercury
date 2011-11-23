@@ -2629,6 +2629,10 @@ mercury_runtime_main(void)
     MR_print_stack_frame_stats();
 #endif  /* MR_STACK_FRAME_STATS */
 
+#ifdef MR_PROFILE_ZONES
+    MR_print_zone_stats();
+#endif
+
     /*
     ** Save the Mercury registers and restore the C callee-save registers
     ** before returning, since they may be used by the C code that called us.

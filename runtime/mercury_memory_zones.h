@@ -296,4 +296,11 @@ extern	void		MR_debug_memory_zone(FILE *fp, MR_MemoryZone *zone);
 
 extern	size_t		MR_next_offset(void);
 
+/*
+** MR_print_zone_stats() print statistics about memory zone allocation.
+*/
+#ifdef MR_PROFILE_ZONES
+extern  void            MR_print_zone_stats(void);
+#endif
+
 #endif /* not MERCURY_MEMORY_ZONES_H */

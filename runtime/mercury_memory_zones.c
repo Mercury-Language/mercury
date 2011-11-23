@@ -76,6 +76,33 @@
   #include "mercury_windows.h"
 #endif
 
+/*
+** This macro can be used to update a high water mark of a statistic.
+*/
+#define MR_UPDATE_HIGHWATER(max, cur)                                       \
+    do {                                                                    \
+        if ((max) < (cur)) {                                                \
+            (max) = (cur);                                                  \
+        }                                                                   \
+    } while (0);
+
+#ifdef MR_PROFILE_ZONES
+/*
+** These values track the number of zones and the total size.
+*/
+#ifdef MR_THREAD_SAFE
+static  MercuryLock memory_zones_stats_lock;
+#endif
+
+static  MR_Integer  MR_num_zones = 0;
+static  MR_Integer  MR_total_zone_size_net = 0;
+static  MR_Integer  MR_total_zone_size_gross = 0;
+
+static  MR_Integer  MR_max_num_zones = 0;
+static  MR_Integer  MR_max_total_zone_size_net = 0;
+static  MR_Integer  MR_max_total_zone_size_gross = 0;
+#endif
+
 static  void    MR_setup_redzones(MR_MemoryZone *zone);
 
 static  void    *MR_alloc_zone_memory(size_t size);
@@ -433,6 +460,9 @@ MR_init_zones()
 {
 #ifdef  MR_THREAD_SAFE
     pthread_mutex_init(&memory_zones_lock, MR_MUTEX_ATTR);
+#ifdef MR_PROFILE_ZONES
+    pthread_mutex_init(&memory_zones_stats_lock, MR_MUTEX_ATTR);
+#endif
 #if ! defined(MR_LL_PARALLEL_CONJ)
     pthread_mutex_init(&zone_id_counter_lock, MR_MUTEX_ATTR);
 #endif
@@ -493,6 +523,15 @@ MR_free_zone(MR_MemoryZone *zone)
     }
 #endif
 
+#ifdef MR_PROFILE_ZONES
+    MR_LOCK(&memory_zones_stats_lock, "MR_free_zone");
+    MR_num_zones--;
+    MR_total_zone_size_net -= zone->MR_zone_desired_size;
+    MR_total_zone_size_gross -=
+        (MR_Integer)zone->MR_zone_top - (MR_Integer)zone->MR_zone_bottom;
+    MR_UNLOCK(&memory_zones_stats_lock, "MR_free_zone");
+#endif
+
     MR_dealloc_zone_memory(zone->MR_zone_bottom,
         ((char *) zone->MR_zone_top) - ((char *) zone->MR_zone_bottom));
 }
@@ -531,6 +570,10 @@ MR_remove_zone_from_used_list(MR_MemoryZone *zone)
 static size_t
 get_zone_alloc_size(MR_MemoryZone *zone)
 {
+    /*
+    ** XXX: Check this, it seems at odds with the description with the
+    ** MR_zone_top and MR_zone_bottom fields.
+    */
 #ifdef  MR_PROTECTPAGE
     return (size_t)((char *)zone->MR_zone_hardmax - (char *)zone->MR_zone_min);
 #else
@@ -660,6 +703,17 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size)
     */
     total_size = MR_round_up(total_size, MR_page_size);
 
+#ifdef MR_PROFILE_ZONES
+    MR_LOCK(&memory_zones_stats_lock, "MR_create_new_zone");
+    MR_num_zones++;
+    MR_total_zone_size_net += desired_size;
+    MR_total_zone_size_gross += total_size;
+    MR_UPDATE_HIGHWATER(MR_max_num_zones, MR_num_zones);
+    MR_UPDATE_HIGHWATER(MR_max_total_zone_size_net, MR_total_zone_size_net);
+    MR_UPDATE_HIGHWATER(MR_max_total_zone_size_gross, MR_total_zone_size_gross);
+    MR_UNLOCK(&memory_zones_stats_lock, "MR_create_new_zone");
+#endif
+
     base = (MR_Word *) MR_alloc_zone_memory(total_size);
     if (base == NULL) {
         MR_fatal_error("Unable to allocate memory for zone");
@@ -710,6 +764,9 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     size_t          new_total_size;
     MR_Integer      base_incr;
     int             res;
+#ifdef MR_PROFILE_ZONES
+    size_t          size_delta;
+#endif
 
     if (zone == NULL) {
         MR_fatal_error("MR_extend_zone called with NULL pointer");
@@ -729,6 +786,14 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     old_base = zone->MR_zone_bottom;
     copy_size = zone->MR_zone_end - zone->MR_zone_bottom;
     offset = zone->MR_zone_min - zone->MR_zone_bottom;
+
+#ifdef MR_PROFILE_ZONES
+    MR_LOCK(&memory_zones_stats_lock, "MR_extend_zone");
+    MR_total_zone_size_net += new_size - zone->MR_zone_desired_size;
+    MR_total_zone_size_gross += new_total_size -
+        ((MR_Integer)zone->MR_zone_top - (MR_Integer)zone->MR_zone_bottom);
+    MR_UNLOCK(&memory_zones_stats_lock, "MR_extend_zone");
+#endif
 
 #ifdef  MR_CHECK_OVERFLOW_VIA_MPROTECT
     /* unprotect the entire zone area */
@@ -1393,3 +1458,18 @@ MR_debug_memory_zone(FILE *fp, MR_MemoryZone *zone)
         get_zone_alloc_size(zone));
     fprintf(fp, "\n");
 }
+
+#ifdef MR_PROFILE_ZONES
+void MR_print_zone_stats(void) {
+    MR_LOCK(&memory_zones_stats_lock, "MR_print_zone_stats");
+    printf("Number of zones allocated: %d\n", MR_num_zones);
+    printf("Maximum number of zones allocated: %d\n", MR_max_num_zones);
+    printf("Allocated space within zones (KB) Net: %d Gross: %d\n",
+        MR_total_zone_size_net / 1024, MR_total_zone_size_gross / 1024);
+    printf("Maximum allocated space within zones (KB) Net: %d Gross: %d\n",
+        MR_max_total_zone_size_net / 1024,
+        MR_max_total_zone_size_gross / 1024);
+    MR_UNLOCK(&memory_zones_stats_lock, "MR_print_zone_stats");
+}
+#endif
+
