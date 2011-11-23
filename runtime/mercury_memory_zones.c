@@ -1225,13 +1225,14 @@ MR_maybe_gc_zones(void) {
 static void
 MR_gc_zones(void)
 {
+    MR_LOCK(&memory_zones_lock, "MR_gc_zones");
     do {
 
         MR_MemoryZonesFree  *cur_list;
         MR_Unsigned         oldest_lru_token;
         MR_Unsigned         cur_lru_token;
-        
-        MR_LOCK(&memory_zones_lock, "MR_gc_zones");
+        MR_MemoryZone       *zone;
+        MR_MemoryZone       *prev_zone;
 
         if (NULL == lru_free_memory_zones) {
             /*
@@ -1266,9 +1267,59 @@ MR_gc_zones(void)
             return;
         }
 
+        zone = lru_free_memory_zones->MR_zonesfree_minor_head;
+        prev_zone = NULL;
+        MR_assert(NULL != zone);
+        while(NULL != zone)
+        {
+            if (zone == lru_free_memory_zones->MR_zonesfree_minor_tail) {
+                break;
+            }
 
-        MR_UNLOCK(&memory_zones_lock, "MR_gc_zones");
-    } while (MR_should_stop_gc_memory_zones());
+            prev_zone = zone;
+            zone = zone->MR_zone_next;
+        }
+        MR_assert(NULL != zone);
+
+        /*
+         * Unlink zone from the free list.
+         */
+        if (prev_zone == NULL) {
+            /*
+             * The list that contained zone is now free, unlink it from it's list.
+             */
+            if (NULL != lru_free_memory_zones->MR_zonesfree_major_prev) {
+                lru_free_memory_zones->MR_zonesfree_major_prev->
+                        MR_zonesfree_major_next =
+                    lru_free_memory_zones->MR_zonesfree_major_next;
+            } else {
+                free_memory_zones =
+                    lru_free_memory_zones->MR_zonesfree_major_next;
+            }
+            if (NULL != lru_free_memory_zones->MR_zonesfree_major_next) {
+                lru_free_memory_zones->MR_zonesfree_major_next->
+                        MR_zonesfree_major_prev =
+                    lru_free_memory_zones->MR_zonesfree_major_prev;
+            }
+        } else {
+            /*
+             * Simply unlink zone
+             */
+            prev_zone->MR_zone_next = NULL;
+            lru_free_memory_zones->MR_zonesfree_minor_tail = prev_zone;
+        }
+
+        free_memory_zones_num--;
+        free_memory_zones_pages -= get_zone_alloc_size(zone) / MR_page_size;
+        MR_free_zone(zone);
+
+        /*
+         * Clear the LRU information
+         */
+        lru_free_memory_zones = NULL;
+
+    } while (!MR_should_stop_gc_memory_zones());
+    MR_UNLOCK(&memory_zones_lock, "MR_gc_zones");
 }
 
 #endif /* ! MR_DO_NOT_CACHE_FREE_MEMORY_ZONES */
