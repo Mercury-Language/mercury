@@ -53,7 +53,7 @@ CONFIGURATION AND INSTALLATION
 
 The MSVC port of Mercury is compatible with the prebuilt C files contained in
 the Mercury source distribution.  The 'asm_fast' and 'reg' grades will not work
-with MSVC (see below), so when using prebuilt C files the compiler will be
+with MSVC (see below).  When using the prebuilt C files the compiler will be
 built in the 'none.gc' grade.
 
 Alternatively, if you have an existing Mercury installation that uses the MinGW
@@ -73,12 +73,17 @@ runtime.
 
 On Cygwin, configure and mmake will do translation of Unix style paths, so you
 may specify the installation directory using either a Unix- or Window-style
-path.  On MSYS, you must use a Window-style path.
+path.  On MSYS, you must use a full Windows-style path with a drive letter,
+except that you must use '/' instead of `\' as a directory separator.
+For example, this is acceptable:
 
-Be sure to quote Windows style paths used as arguments to the configure
-script's `--prefix' option, otherwise the shell will get confused.
+    $ ./configure --prefix="c:/where/to/install/mercury"
 
-Once configure has run, then you should do
+whereas the following is not:
+
+    $ ./configure --prefix="c:\where\to\install\mercury"
+
+Once configure has successfully finished, then you should do
 
     $ make 
     $ make install
