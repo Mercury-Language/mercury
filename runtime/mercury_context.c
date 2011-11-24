@@ -1857,7 +1857,7 @@ MR_define_entry(MR_do_sleep);
         /* Sleep for 2ms */
         tv.tv_usec += 2000;
 
-        if (tv.tv_usec > 1000000) {
+        if (tv.tv_usec >= 1000000) {
             tv.tv_usec = tv.tv_sec % 1000000;
             tv.tv_sec += 1;
         }
@@ -1949,7 +1949,7 @@ MR_define_entry(MR_do_sleep);
                     MR_MAYBE_TRAMPOLINE(do_work_steal(NULL));
                     break;
                 default:
-                    perror("sem_post");
+                    perror("sem_timedwait");
                     abort();
             }
         }
