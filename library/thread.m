@@ -112,7 +112,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    spawn(Goal::(pred(di, uo) is cc_multi), IO0::di, IO::uo),
+    spawn(Goal::(pred(di, uo) is cc_multi), _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -145,7 +145,6 @@
 #endif
 
 #endif /* MR_HIGHLEVEL_CODE */
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C#",
@@ -175,7 +174,7 @@
 
 :- pragma no_inline(yield/2).
 :- pragma foreign_proc("C",
-    yield(IO0::di, IO::uo),
+    yield(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -196,7 +195,6 @@
     yield_skip_to_the_end:
   #endif
 #endif
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C#",
