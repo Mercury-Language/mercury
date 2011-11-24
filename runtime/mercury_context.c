@@ -2116,9 +2116,12 @@ do_work_steal(MR_Code *join_label)
     ** A context may be created to execute a spark, so only attempt to
     ** steal sparks if doing so would not exceed the limit of outstanding
     ** contexts.
+    **
+    ** We used to check to see if the engine already had a context, in which
+    ** case it can often re-use that context, but somethines it can't and a new
+    ** context would be created anyway.  Therefore that check has been removed.
     */
-    if (!((MR_ENGINE(MR_eng_this_context) == NULL) &&
-         (MR_max_outstanding_contexts <= MR_num_outstanding_contexts))) {
+    if (MR_num_outstanding_contexts <= MR_max_outstanding_contexts) {
         /* Attempt to steal a spark */
         if (MR_attempt_steal_spark(&spark)) {
 #ifdef MR_THREADSCOPE
