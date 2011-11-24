@@ -67,7 +67,7 @@ goal_mark_static_terms(Goal0, Goal, !SI) :-
         GoalExpr0 = conj(ConjType, Goals0),
         % It's OK to treat parallel conjunctions as if they were sequential
         % here, since if we mark any variables as static, the computation
-        %of those variables will be done at compile time.
+        % of those variables will be done at compile time.
         conj_mark_static_terms(Goals0, Goals, !SI),
         GoalExpr = conj(ConjType, Goals)
     ;
@@ -87,9 +87,10 @@ goal_mark_static_terms(Goal0, Goal, !SI) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_TermVar, from_ground_term_construct) ->
+        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
             % These scopes already have all their unifications marked
             % as construct_statically.
+            set_tree234.insert(TermVar, !SI),
             GoalExpr = GoalExpr0
         ;
             goal_mark_static_terms(SubGoal0, SubGoal, !SI),

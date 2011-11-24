@@ -112,6 +112,7 @@ MCFLAGS-livevars_shallow	= --no-intermodule-optimization --grade none --trace sh
 MCFLAGS-livevars_shallow2	= --no-intermodule-optimization --grade none --trace shallow
 MCFLAGS-lco_term		= --optimize-constructor-last-call
 MCFLAGS-loop_inv_bug		= --common-struct --loop-invariants
+MCFLAGS-mark_static_bug		= --lookup-switch-size 1
 MCFLAGS-mc_bag			= --prop-mode-constraints
 MCFLAGS-mc_extra_nonlocals	= --prop-mode-constraints
 MCFLAGS-mc_graph		= --prop-mode-constraints
