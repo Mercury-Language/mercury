@@ -1664,7 +1664,7 @@ MR_define_entry(MR_do_sleep);
                     */
                     break;
                 default:
-                    perror("sem_post");
+                    perror("sem_timedwait");
                     abort();
             }
         }
