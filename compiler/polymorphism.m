@@ -1158,8 +1158,20 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
                     Reason = Reason0
                 )
             ;
-                ( Reason0 = promise_solutions(_, _)
-                ; Reason0 = promise_purity(_)
+                Reason0 = promise_solutions(_, _),
+                % polymorphism_process_goal may cause SubGoal to bind
+                % variables (such as PolyConst variables) that SubGoal0 does
+                % not bind. If we allowed such variables to be reused outside
+                % the scope, that would change the set of variables that the
+                % promise would have to cover. We cannot expect and do not want
+                % user level programmers making promises about variables added
+                % by the compiler.
+                get_maps_snapshot(!.Info, InitialSnapshot),
+                polymorphism_process_goal(SubGoal0, SubGoal, !Info),
+                set_maps_snapshot(InitialSnapshot, !Info),
+                Reason = Reason0
+            ;
+                ( Reason0 = promise_purity(_)
                 ; Reason0 = require_detism(_)
                 ; Reason0 = require_complete_switch(_)
                 ; Reason0 = commit(_)

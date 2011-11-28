@@ -208,6 +208,7 @@ ORDINARY_PROGS=	\
 	promise_equiv_with_svars \
 	promise_equivalent_clauses \
 	promise_equivalent_solutions_test \
+	promise_eqv_solns_typeclasses \
 	pure_mutable \
 	puzzle_detism_bug \
 	qual_adv_test \
