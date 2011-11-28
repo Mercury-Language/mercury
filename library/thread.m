@@ -382,6 +382,8 @@ INIT mercury_sys_init_thread_modules
 
     ML_call_back_to_mercury_cc_multi(goal);
 
+    MR_finalize_thread_engine();;
+
     MR_LOCK(&MR_thread_barrier_lock, ""ML_thread_wrapper"");
     MR_thread_barrier_count--;
     if (MR_thread_barrier_count == 0) {

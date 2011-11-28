@@ -241,11 +241,7 @@ MR_finalize_thread_engine(void)
 
     eng = MR_thread_engine_base;
     MR_set_thread_engine_base(NULL);
-    /*
-    ** XXX calling destroy_engine(eng) here appears to segfault.
-    ** This should probably be investigated and fixed.
-    */
-    MR_finalize_engine(eng);
+    MR_destroy_engine(eng);
 #endif
 }
 
