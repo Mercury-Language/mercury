@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -101,6 +101,11 @@
     % Domain restriction: X >= 0
     %
 :- func math.sqrt(float) = float.
+
+    % As above, but the behaviour is undefined if the argument is less
+    % than zero.
+    %
+:- func math.unchecked_sqrt(float) = float.
 
 :- type math.quadratic_roots
     --->    no_roots
@@ -460,39 +465,37 @@ math.sqrt(X) = SquareRoot :-
     ( math_domain_checks, X < 0.0 ->
         throw(domain_error("math.sqrt"))
     ;
-        SquareRoot = math.sqrt_2(X)
+        SquareRoot = math.unchecked_sqrt(X)
     ).
 
-:- func math.sqrt_2(float) = float.
-
 :- pragma foreign_proc("C",
-    math.sqrt_2(X::in) = (SquareRoot::out),
+    math.unchecked_sqrt(X::in) = (SquareRoot::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     SquareRoot = sqrt(X);
 ").
 :- pragma foreign_proc("C#",
-    math.sqrt_2(X::in) = (SquareRoot::out),
+    math.unchecked_sqrt(X::in) = (SquareRoot::out),
     [thread_safe, promise_pure],
 "
     SquareRoot = System.Math.Sqrt(X);
 ").
 :- pragma foreign_proc("Java",
-    math.sqrt_2(X::in) = (SquareRoot::out),
+    math.unchecked_sqrt(X::in) = (SquareRoot::out),
     [thread_safe, promise_pure],
 "
     SquareRoot = java.lang.Math.sqrt(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.sqrt_2(X::in) = (SquareRoot::out),
+    math.unchecked_sqrt(X::in) = (SquareRoot::out),
     [thread_safe, promise_pure],
 "
     SquareRoot = math:sqrt(X)
 ").
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-math.sqrt_2(X) = math.exp(math.ln(X) / 2.0).
+math.unchecked_sqrt(X) = math.exp(math.ln(X) / 2.0).
 
 math.solve_quadratic(A, B, C) = Roots :-
     % This implementation is designed to minimise numerical errors;

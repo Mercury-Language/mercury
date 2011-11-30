@@ -224,4 +224,7 @@ Changes to the Mercury standard library:
   conforms to the documented behaviour.  The new predicate multi_map.replace/4
   has been added.
 
+* We have added a version of math.sqrt/1, math.unchecked_sqrt/1, that omits
+  the domain check.
+
 For news about earlier versions, see the HISTORY file.
