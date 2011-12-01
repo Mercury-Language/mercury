@@ -22,3 +22,5 @@ SSDB_FLAGS
 *.prof
 mer_ssdb.init
 *.module_dep
+Mercury
+mer_ssdb.jar

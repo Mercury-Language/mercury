@@ -45,3 +45,4 @@ libmer_std.dylib
 LIB_FLAGS
 config.log
 erlang_conf.hrl
+jmercury

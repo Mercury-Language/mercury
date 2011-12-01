@@ -21,6 +21,7 @@ mer_mdbcomp.dv
 mer_mdbcomp.mh
 mer_mdbcomp
 mer_mdbcomp.dep
+mer_mdbcomp.jar
 Mercury
 Mercury.modules
 MDBCOMP_FLAGS
