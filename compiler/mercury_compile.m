@@ -1583,7 +1583,8 @@ mercury_compile(Globals, ModuleAndImports, NestedSubModules,
         HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
     (
         Errors1 = no,
-        Errors2 = no
+        Errors2 = no,
+        contains_errors(Globals, !.Specs) = no
     ->
         globals.lookup_bool_option(Globals, verbose, Verbose),
         globals.lookup_bool_option(Globals, statistics, Stats),

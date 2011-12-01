@@ -1,0 +1,4 @@
+bug238.m:022: Error: call to predicate `solutions.unsorted_solutions'/2 with
+bug238.m:022:   determinism `cc_multi' occurs in a context which requires all
+bug238.m:022:   solutions.
+bug238.m:022:   Unification of V_2 and V_5 can fail.
