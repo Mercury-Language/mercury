@@ -12,6 +12,8 @@ MCFLAGS-assert_in_interface =	--no-intermodule-optimization \
 				--verbose-error-messages
 
 MCFLAGS-actual_expected =       --no-intermodule-optimization
+# Mantis bug 238 shows up in bug238.m only with --constraint-propagation.
+MCFLAGS-bug238 =		--constraint-propagation
 MCFLAGS-children =		--no-intermodule-optimization
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-ee_invalid = 		--verbose-error-messages
