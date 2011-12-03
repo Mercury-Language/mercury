@@ -568,7 +568,7 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             Functor = "require_det",
             Detism = detism_det
         ;
-            Functor = "require_semi",
+            Functor = "require_semidet",
             Detism = detism_semi
         ;
             Functor = "require_multi",

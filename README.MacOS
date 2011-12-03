@@ -13,8 +13,8 @@ need to use one of the other C compilers available on the system, either GCC
 Alternatively, the MacPorts project, <http://www.macports.org/>, provides more
 recent versions of GCC for Mac OS X.
 
-As llvm-gcc has been deprecated by the LLVM project, we have no intention of
-ever supporting Mercury with it.
+As llvm-gcc is no longer supported as of version 3.0 of LLVM, we have no
+intention of ever supporting Mercury with it.
 
 ----------------------------------
 Mercury on Mac OS X 10.5 and 10.6

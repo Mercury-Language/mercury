@@ -21,3 +21,5 @@ SSDB_FLAGS
 *.optdate
 mer_ssdb.init
 *.module_dep
+Mercury
+mer_ssdb.jar
