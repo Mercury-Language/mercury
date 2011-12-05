@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003, 2005-2010 The University of Melbourne. 
+# Copyright (C) 1995-2003, 2005-2011 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -98,8 +98,8 @@ endif
 # This bumps up the memory when building the compiler if the javac executable
 # accepts the -J-Xmx flag, without bumping up the memory requirements in
 # general.
-ifneq ("$(findstring -J-Xmx,$(JAVACFLAGS))","")
-JAVACFLAGS   += -J-Xmx2048m
+ifneq ("$(findstring -J\"-Xmx,$(JAVACFLAGS))","")
+JAVACFLAGS   += -J\"-Xmx2048m\"
 endif
 
 #-----------------------------------------------------------------------------#

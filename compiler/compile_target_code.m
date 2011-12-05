@@ -1048,10 +1048,10 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
     % Be careful with the order here!  Some options may override others.
     % Also be careful that each option is separated by spaces.
     JoinedJavaFiles = string.join_list(" ", JavaFiles),
-    string.append_list([JavaCompiler, " ", InclOpt, DirOpts,
-        Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], Command),
-    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
-        Succeeded, !IO).
+    string.append_list([InclOpt, DirOpts,
+        Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], CommandArgs),
+    invoke_long_system_command(Globals, ErrorStream, cmd_verbose_commands,
+        JavaCompiler, CommandArgs, Succeeded, !IO).
 
 :- func java_classpath_separator = string.
 
