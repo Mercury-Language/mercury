@@ -1,0 +1,62 @@
+Feedback report for ./mandelbrot:
+
+  Candidate parallel conjunctions:
+    Desired parallelism:       8.000000
+    Intermodule var use:       no
+    Sparking cost:             100
+    Sparking delay:            1000
+    Barrier cost:              100
+    Future signal cost:        100
+    Future wait cost:          200
+    Context wakeup delay:      1000
+    Clique threshold:          2000
+    Call site threshold:       2000
+    Speedup threshold:         1.010000
+    Dependent conjs:           yes, use overlap calculation
+    BestParAlgorithm:          complete-branches(1000)
+    # of par procs with conjs: 1
+    # of par conjunctions:     1
+    Parallel conjunctions:
+
+    pred mandelbrot.my_map/3-0
+
+      Path: s2-na;
+      Dependent: no
+      NumCalls: 200
+      SeqTime: 2,023,529.72
+      ParTime: 1,013,765.36
+      SparkCost: 100.00
+      BarrierCost: 200.00
+      SignalsCost: 0.00
+      WaitsCost: 0.00
+      ParOverheads total: 300.00
+      Speedup: 1.9961
+      Time saving: 1,009,764.36
+      First conj dead time: 1,001.00
+      Future dead time: 0.00
+      Total dead time: 1,001.00
+
+      Goals before:
+        % conjunction: s2-na;
+        % Cost: 0.00
+
+        % s2-na;c1;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_2 => [|](X, Xs)
+
+      Parallel conjunction:
+        (
+          % s2-na;c2;c1;
+          % det
+          % cost: 1,011,764.36 (above threshold)
+          M((X, Y))
+        &
+          % s2-na;c2;c2;
+          % det
+          % cost: 1,011,765.36 (above threshold)
+          mandelbrot.my_map(V_8, V_9, M, Xs, Ys)
+        )
+
+      Goals after:
+

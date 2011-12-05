@@ -191,9 +191,8 @@ help_message(ProgName) = HelpMessage :-
     --debug-read-profile
                     Generate debugging messages when reading the deep profile
                     and creating the deep structure.
-    --no-report     Suppress the report about the feedback information in the
-                    file that is usually displayed after any processing has
-                    been done.
+    --report        Print a report about the feedback information after any
+                    processing has been done.
 
     The following options select sets of feedback information useful
     for particular compiler optimizations:
@@ -435,7 +434,7 @@ defaults(help,                              bool(no)).
 defaults(verbosity,                         int(2)).
 defaults(version,                           bool(no)).
 defaults(debug_read_profile,                bool(no)).
-defaults(report,                            bool(yes)).
+defaults(report,                            bool(no)).
 
 defaults(candidate_parallel_conjunctions,   bool(no)).
 

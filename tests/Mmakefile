@@ -6,6 +6,7 @@ SUBDIRS = \
 	benchmarks \
 	debugger \
 	dppd \
+	feedback \
 	general \
 	grade_subdirs \
 	hard_coded \

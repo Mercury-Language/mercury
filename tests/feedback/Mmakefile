@@ -1,0 +1,34 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = feedback
+
+#-----------------------------------------------------------------------------#
+
+AUTOPAR_REPORTS=mandelbrot \
+		        mmc
+
+REPORTS=$(patsubst %,autopar_%,$(AUTOPAR_REPORTS))
+
+TESTS = $(patsubst %,%-nodepend,$(sort $(REPORTS)))
+TESTS_DIR = ..
+SUBDIRS=
+include $(TESTS_DIR)/Mmake.common
+
+FB_CREATE = ../../deep_profiler/mdprof_create_feedback
+FB_REPORT = ../../deep_profiler/mdprof_report_feedback
+
+%.runtest: %.res ;
+
+%.out: %.feedback
+	$(FB_REPORT) $< > $@
+
+autopar_%.feedback: %/Deep.data %/Deep.procrep
+	$(FB_CREATE) --implicit-parallelism $< $@
+
+%.realclean:
+	rm -rf $(@:.realclean=.feedback) \
+		$(@:.realclean=.out) \
+		$(@:.realclean=.res) \
+		$(@:.realclean=.res1) \
+		$(@:.realclean=.log)
+
