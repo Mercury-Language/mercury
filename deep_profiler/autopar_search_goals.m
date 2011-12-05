@@ -674,22 +674,7 @@ push_goals_create_candidate(Info, RevCurPath,
 fix_goal_counts(Info, Count, !Goal) :-
     Annotation0 = !.Goal ^ goal_annotation,
     Cost0 = Annotation0 ^ pgd_cost,
-    (
-        GoalType = Annotation0 ^ pgd_pg_type,
-        GoalType = pgt_call(_, CostAndCallees),
-        % XXX This doesn't work if this is a non-atomic goal containing a
-        % recursive call.
-        set.member(Callee, CostAndCallees ^ cac_callees),
-        % The call is recursive if it calls into the current clique.
-        Info ^ ipi_clique = Callee ^ c_clique
-    ->
-        % for recursive calls.
-        CostTotal = goal_cost_get_total(Cost0),
-        PercallCost = CostTotal / float(Count)
-    ;
-        PercallCost = goal_cost_get_percall(Cost0)
-    ),
-    Cost = call_goal_cost(Count, PercallCost),
+    Cost = goal_cost_change_calls(Cost0, Count),
     !Goal ^ goal_annotation ^ pgd_cost := Cost,
     ( goal_cost_above_par_threshold(Info, Cost) ->
         AboveThreshold = cost_above_par_threshold

@@ -189,6 +189,8 @@
 
 :- func goal_cost_get_calls(goal_cost_csq) = int.
 
+:- func goal_cost_change_calls(goal_cost_csq, int) = goal_cost_csq.
+
 %-----------------------------------------------------------------------------%
 
 :- type recursion_depth.
@@ -846,6 +848,13 @@ goal_cost_get_total(non_trivial_goal(Cost, Calls)) =
 goal_cost_get_calls(dead_goal) = 0.
 goal_cost_get_calls(trivial_goal(Calls)) = Calls.
 goal_cost_get_calls(non_trivial_goal(_, Calls)) = Calls.
+
+goal_cost_change_calls(dead_goal, _) =
+    unexpected($module, $pred, "Cannot compute new cost").
+goal_cost_change_calls(trivial_goal(_), Calls) = trivial_goal(Calls).
+goal_cost_change_calls(non_trivial_goal(Cost0, Calls0), Calls) =
+        non_trivial_goal(Cost, Calls) :-
+    Cost = cost_per_call(cost_get_percall(float(Calls0), Cost0)).
 
 %----------------------------------------------------------------------------%
 
