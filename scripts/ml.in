@@ -213,6 +213,18 @@ esac
 
 # Compute the gc grade from the grade
 case "$GRADE" in
+	*.par*.gcd*.ll_debug*.prof*)
+		gc_grade=par_gc_debug_ll_debug_prof
+		;;
+	*.gcd*.ll_debug*.prof*)
+		gc_grade=gc_debug_ll_debug_prof
+		;;
+	*.par*.gcd*.ll_debug*)
+		gc_grade=par_gc_debug_ll_debug
+		;;
+	*.gcd*.ll_debug*)
+		gc_grade=gc_debug_ll_debug
+		;;
 	*.par*.gcd*.prof*)
 		gc_grade=par_gc_debug_prof
 		;;
@@ -224,6 +236,18 @@ case "$GRADE" in
 		;;
 	*.gcd*)
 		gc_grade=gc_debug
+		;;
+	*.par*.gc*.ll_debug*.prof*)
+		gc_grade=par_gc_ll_debug_prof
+		;;
+	*.par*.gc*.ll_debug*)
+		gc_grade=par_gc_ll_debug
+		;;
+	*.gc*.ll_debug*.prof*)
+		gc_grade=gc_ll_debug_prof
+		;;
+	*.gc*.ll_debug*)
+		gc_grade=gc_ll_debug
 		;;
 	*.par*.gc*.prof*)
 		gc_grade=par_gc_prof

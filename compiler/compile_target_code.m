@@ -2126,6 +2126,14 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 GCMethod = gc_boehm_debug,
                 GCGrade0 = "gc_debug"
             ),
+            globals.lookup_bool_option(Globals, low_level_debug, LLDebug),
+            ( 
+                LLDebug = yes,
+                GCGrade1 = GCGrade0 ++ "_ll_debug"
+            ;
+                LLDebug = no,
+                GCGrade1 = GCGrade0
+            ),
             globals.lookup_bool_option(Globals, profile_time, ProfTime),
             globals.lookup_bool_option(Globals, profile_deep, ProfDeep),
             (
@@ -2133,17 +2141,17 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 ; ProfDeep = yes
                 )
             ->
-                GCGrade1 = GCGrade0 ++ "_prof"
+                GCGrade2 = GCGrade1 ++ "_prof"
             ;
-                GCGrade1 = GCGrade0
+                GCGrade2 = GCGrade1
             ),
             globals.lookup_bool_option(Globals, parallel, Parallel),
             (
                 Parallel = yes,
-                GCGrade = "par_" ++ GCGrade1
+                GCGrade = "par_" ++ GCGrade2
             ;
                 Parallel = no,
-                GCGrade = GCGrade1
+                GCGrade = GCGrade2
             ),
             link_lib_args(Globals, TargetType, StdLibDir, "", LibExt,
                 GCGrade, StaticGCLibs, SharedGCLibs)
