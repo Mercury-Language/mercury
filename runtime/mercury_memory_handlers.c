@@ -124,7 +124,7 @@ static  void    leave_signal_handler(int sig);
 static MR_bool
 MR_try_munprotect(void *addr, void *context)
 {
-#if !(defined(MR_HAVE_SIGINFO) || defined(MR_WIN32_VIRTUAL_ALLOC))
+#if !defined(MR_HAVE_SIGINFO)
     return MR_FALSE;
 #else
     MR_Word         *fault_addr;
@@ -706,6 +706,7 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
                         access_mode);
             }
 
+            #if defined(MR_CHECK_OVERFLOW_VIA_MPROTECT)
             fprintf(stderr, "\n***   Trying to see if this "
                     "stands within a mercury zone...");
             /*
@@ -748,6 +749,7 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
                         zone, rec); */
                 zone = zone->MR_zone_next;
             }
+            #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
         }
         return;
     }

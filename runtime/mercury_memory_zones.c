@@ -69,14 +69,6 @@
 #include "mercury_memory_handlers.h"
 
 /*
-** XXX: Why is this included here and not above with the other system
-** includes?
-*/
-#ifdef MR_WIN32_VIRTUAL_ALLOC
-  #include "mercury_windows.h"
-#endif
-
-/*
 ** This macro can be used to update a high water mark of a statistic.
 */
 #define MR_UPDATE_HIGHWATER(max, cur)                                       \
@@ -124,95 +116,11 @@ MR_protect_pages(void *addr, size_t size, int prot_flags)
 {
     return mprotect((char *) addr, size, prot_flags);
 }
-
-#elif defined(MR_WIN32_VIRTUAL_ALLOC)
-
-/*
-** Emulate mprotect under Win32.
-** Return -1 on failure
-*/
-
-int
-MR_protect_pages(void *addr, size_t size, int prot_flags)
-{
-    int     rc;
-    DWORD   flags;
-
-    if (prot_flags & PROT_WRITE) {
-        flags = PAGE_READWRITE;
-    } else if (prot_flags & PROT_READ) {
-        flags = PAGE_READONLY;
-    } else {
-        flags = PAGE_NOACCESS;
-    }
-
-    rc = (VirtualAlloc(addr, size, MEM_COMMIT, flags) ? 0 : -1);
-    if (rc < 0) {
-        fprintf(stderr,
-            "Error in VirtualAlloc(addr=0x%08lx, size=0x%08lx): 0x%08lx\n",
-            (unsigned long) addr, (unsigned long) size,
-            (unsigned long) GetLastError());
-    }
-
-    return rc;
-}
-
-#endif  /* MR_WIN32_VIRTUAL_ALLOC */
+#endif
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(MR_WIN32_VIRTUAL_ALLOC)
-
-/*
-** Under Win32, we use VirtualAlloc instead of the standard malloc,
-** since we will have to call VirtualProtect later on the pages
-** allocated here.
-*/
-
-static void *
-MR_alloc_zone_memory(size_t size)
-{
-    void    *ptr;
-
-    ptr = VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
-    if (ptr == NULL) {
-        fprintf(stderr, "Error in VirtualAlloc(size=0x%08lx): 0x%08lx\n",
-            (unsigned long) size, (unsigned long) GetLastError());
-    }
-
-  #if defined(MR_HGC)
-    if (ptr != NULL) {
-        MR_hgc_add_roots_range((char *) ptr, ((char *) ptr) + size);
-    }
-  #elif defined(MR_CONSERVATIVE_GC)
-    if (ptr != NULL) {
-        GC_add_roots((char *) ptr, (char *) ptr + size);
-    }
-  #endif
-    return ptr;
-}
-
-static void *
-MR_realloc_zone_memory(void *old_base, size_t copy_size, size_t new_size)
-{
-    void    *ptr;
-
-    ptr = MR_alloc_zone_memory(new_size);
-    (void) MR_memcpy(ptr, old_base, copy_size);
-    /*
-    ** XXX We should of course release old_base's memory, but I don't know
-    ** enough about Windows even to implement that. -zs
-    */
-    return ptr;
-}
-
-static void
-MR_dealloc_zone_memory(void *base, size_t size)
-{
-    VirtualFree(base, size, MEM_RELEASE);
-}
-
-#elif defined(MR_CONSERVATIVE_GC)
+#if defined(MR_CONSERVATIVE_GC)
 
 static void *
 MR_alloc_zone_memory(size_t size)

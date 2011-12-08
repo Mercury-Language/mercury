@@ -98,8 +98,8 @@ endif
 # This bumps up the memory when building the compiler if the javac executable
 # accepts the -J-Xmx flag, without bumping up the memory requirements in
 # general.
-ifneq ("$(findstring -J-Xmx,$(JAVACFLAGS))","")
-JAVACFLAGS   += -J-Xmx2048m
+ifneq ("$(findstring -J\"-Xmx,$(JAVACFLAGS))","")
+JAVACFLAGS   += -J\"-Xmx2048m\"
 endif
 
 #-----------------------------------------------------------------------------#

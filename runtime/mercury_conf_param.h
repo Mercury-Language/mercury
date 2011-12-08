@@ -978,7 +978,7 @@
 **					memory zones using mprotect() like
 **					functionality.
 */
-#if (defined(MR_HAVE_MPROTECT) && defined(MR_HAVE_SIGINFO)) || defined(_WIN32)
+#if (defined(MR_HAVE_MPROTECT) && defined(MR_HAVE_SIGINFO))
   #define MR_CHECK_OVERFLOW_VIA_MPROTECT
 #endif
 
@@ -986,7 +986,7 @@
 ** MR_PROTECTPAGE   -- 	MR_protect_pages() can be defined to provide the same
 **			functionality as the system call mprotect().
 */
-#if defined(MR_HAVE_MPROTECT) || defined(_WIN32)
+#if defined(MR_HAVE_MPROTECT)
   #define MR_PROTECTPAGE
 #endif
 
@@ -1009,15 +1009,12 @@
 **
 ** MR_WIN32_GETSYSTEMINFO -- Is GetSystemInfo() available?
 **
-** MR_WIN32_VIRTUAL_ALLOC -- Is VirtualAlloc() available?
-**
 ** MR_BROKEN_ST_INO - Is the st_ino field of `struct stat' junk.
 **	Windows doesn't fill in this field correctly.
 */
 #ifdef _WIN32
   #define MR_WIN32
   #define MR_WIN32_GETSYSTEMINFO
-  #define MR_WIN32_VIRTUAL_ALLOC
   #define MR_WIN32_GETPROCESSTIMES
   #define MR_BROKEN_ST_INO
 #endif

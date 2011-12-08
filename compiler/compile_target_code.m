@@ -1024,10 +1024,10 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
     % Be careful with the order here!  Some options may override others.
     % Also be careful that each option is separated by spaces.
     JoinedJavaFiles = string.join_list(" ", JavaFiles),
-    string.append_list([JavaCompiler, " ", InclOpt, DirOpts,
-        Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], Command),
-    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
-        Succeeded, !IO).
+    string.append_list([InclOpt, DirOpts,
+        Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], CommandArgs),
+    invoke_long_system_command(Globals, ErrorStream, cmd_verbose_commands,
+        JavaCompiler, CommandArgs, Succeeded, !IO).
 
 :- func java_classpath_separator = string.
 
@@ -2082,6 +2082,14 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 GCMethod = gc_boehm_debug,
                 GCGrade0 = "gc_debug"
             ),
+            globals.lookup_bool_option(Globals, low_level_debug, LLDebug),
+            ( 
+                LLDebug = yes,
+                GCGrade1 = GCGrade0 ++ "_ll_debug"
+            ;
+                LLDebug = no,
+                GCGrade1 = GCGrade0
+            ),
             globals.lookup_bool_option(Globals, profile_time, ProfTime),
             globals.lookup_bool_option(Globals, profile_deep, ProfDeep),
             (
@@ -2089,17 +2097,17 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 ; ProfDeep = yes
                 )
             ->
-                GCGrade1 = GCGrade0 ++ "_prof"
+                GCGrade2 = GCGrade1 ++ "_prof"
             ;
-                GCGrade1 = GCGrade0
+                GCGrade2 = GCGrade1
             ),
             globals.lookup_bool_option(Globals, parallel, Parallel),
             (
                 Parallel = yes,
-                GCGrade = "par_" ++ GCGrade1
+                GCGrade = "par_" ++ GCGrade2
             ;
                 Parallel = no,
-                GCGrade = GCGrade1
+                GCGrade = GCGrade2
             ),
             link_lib_args(Globals, TargetType, StdLibDir, "", LibExt,
                 GCGrade, StaticGCLibs, SharedGCLibs)

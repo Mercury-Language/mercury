@@ -422,7 +422,7 @@ AC_DEFUN(MERCURY_CHECK_JAVAC_HEAP_SIZE,
 AC_CACHE_VAL(mercury_cv_javac_flags_for_heap_size, [
 if test "$mercury_cv_java" = "yes"; then
 	AC_MSG_CHECKING(if the Java compiler accepts the max heap size option)
-	mercury_cv_javac_flags_for_heap_size="-J-Xmx256m"
+	mercury_cv_javac_flags_for_heap_size="-J\"-Xmx256m\""
 	if "$JAVAC" "$mercury_cv_javac_flags_for_heap_size" -version \
                 2> /dev/null
         then

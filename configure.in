@@ -5459,7 +5459,7 @@ fi
 MERCURY_MSG("You can make the install faster by installing fewer grades")
 MERCURY_MSG("as shown by the fine-tuning section of the INSTALL file or by")
 MERCURY_MSG("compiling the files of each grade in parallel which you can do")
-MERCURY_MSG("via a command such as make install -j2.")
+MERCURY_MSG("via a command such as make PARALLEL=-j2 install.")
 
 case "$remake_dependencies.$reconfiguring" in
     "true.no")
