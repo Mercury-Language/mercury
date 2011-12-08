@@ -168,6 +168,15 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+    % Output #pragma pack directives to change the packing alignment value
+    % for MSVC. See MR_Float_Aligned in mercury_float.h.
+    %
+:- pred output_pragma_pack_push(io::di, io::uo) is det.
+
+:- pred output_pragma_pack_pop(io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 %
 % Utility predicates for working with C code
 %
@@ -628,6 +637,24 @@ output_c_file_intro_and_grade(Globals, SourceFileName, Version, !IO) :-
 
 convert_bool_to_string(no) = "no".
 convert_bool_to_string(yes) = "yes".
+
+%-----------------------------------------------------------------------------%
+
+    % We could hide these blocks behind macros using the __pragma keyword
+    % introduced in MSVC 9 (2008):
+    %
+    %   #define MR_PRAGMA_PACK_PUSH  __pragma(pack(push, MR_BYTES_PER_WORD))
+    %   #define MR_PRAGMA_PACK_POP   __pragma(pack(pop))
+    %
+output_pragma_pack_push(!IO) :-
+    io.write_string("\n#ifdef MR_MSVC\n", !IO),
+    io.write_string("#pragma pack(push, MR_BYTES_PER_WORD)\n", !IO),
+    io.write_string("#endif\n", !IO).
+
+output_pragma_pack_pop(!IO) :-
+    io.write_string("#ifdef MR_MSVC\n", !IO),
+    io.write_string("#pragma pack(pop)\n", !IO),
+    io.write_string("#endif\n", !IO).
 
 %-----------------------------------------------------------------------------%
 

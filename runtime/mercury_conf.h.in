@@ -48,6 +48,11 @@
 */
 #undef	MR_WORD_TYPE
 
+/*
+** MR_BYTES_PER_WORD: the number of bytes per MR_WORD_TYPE.
+*/
+#undef	MR_BYTES_PER_WORD
+
 /* 
 ** MR_INTEGER_LENGTH_MODIFIER: the printf() length modifier for a MR_Integer.
 */

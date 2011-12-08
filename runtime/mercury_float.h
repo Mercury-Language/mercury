@@ -29,6 +29,23 @@
 #define MR_FLOAT_WORDS		((sizeof(MR_Float) + sizeof(MR_Word) - 1) \
 					/ sizeof(MR_Word))
 
+  /*
+  ** MR_Float_Aligned and #pragma pack are used convince the C compiler to lay
+  ** out structures containing MR_Float members as expected by the Mercury
+  ** compiler, without additional padding or packing.
+  **
+  ** For MSVC, __declspec(align) only increases alignment, e.g. for single
+  ** precision floats on 64-bit platforms. #pragma pack is required to
+  ** reduce packing size, e.g. double precision floats on 32-bit platform.
+  */
+#if defined(MR_GNUC) || defined(MR_CLANG)
+  typedef MR_Float MR_Float_Aligned __attribute__((aligned(sizeof(MR_Word))));
+#elif defined(MR_MSVC)
+  typedef __declspec(align(MR_BYTES_PER_WORD)) MR_Float MR_Float_Aligned;
+#else
+  typedef MR_Float MR_Float_Aligned;
+#endif
+
 #ifdef MR_BOXED_FLOAT 
 
 #define MR_word_to_float(w)	(* (MR_Float *) (w))

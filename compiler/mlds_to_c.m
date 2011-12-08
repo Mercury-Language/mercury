@@ -1569,13 +1569,14 @@ mlds_output_scalar_cell_group_decl(Opts, Indent, MangledModuleName,
 
 mlds_output_scalar_cell_group_struct_defn(Opts, Indent, MangledModuleName,
         TypeRawNum, ElemTypes, !IO) :-
-    mlds_indent(Indent, !IO),
-    io.format("\nstruct %s_scalar_cell_group_%d {\n",
+    output_pragma_pack_push(!IO),
+    io.format("struct %s_scalar_cell_group_%d {\n",
         [s(MangledModuleName), i(TypeRawNum)], !IO),
     list.foldl2(mlds_output_scalar_cell_group_struct_field(Opts, Indent + 1),
         ElemTypes, 1, _, !IO),
     mlds_indent(Indent, !IO),
-    io.write_string("};\n", !IO).
+    io.write_string("};\n", !IO),
+    output_pragma_pack_pop(!IO).
 
 :- pred mlds_output_scalar_cell_group_struct_field(mlds_to_c_opts::in,
     indent::in, mlds_type::in, int::in, int::out, io::di, io::uo) is det.
@@ -1583,7 +1584,12 @@ mlds_output_scalar_cell_group_struct_defn(Opts, Indent, MangledModuleName,
 mlds_output_scalar_cell_group_struct_field(Opts, Indent, FieldType,
         Num, Num + 1, !IO) :-
     mlds_indent(Indent, !IO),
-    mlds_output_type_prefix(Opts, FieldType, !IO),
+    ( FieldType = mlds_native_float_type ->
+        % Ensure float structure members are word-aligned.
+        io.write_string("MR_Float_Aligned", !IO)
+    ;
+        mlds_output_type_prefix(Opts, FieldType, !IO)
+    ),
     io.format(" f%d;\n", [i(Num)], !IO).
 
 :- pred mlds_output_scalar_cell_group_type_and_name(mlds_to_c_opts::in,

@@ -416,6 +416,7 @@ output_common_type_defn(TypeNum, CellType, !DeclSet, !IO) :-
     ( decl_set_is_member(TypeDeclId, !.DeclSet) ->
         true
     ;
+        output_pragma_pack_push(!IO),
         io.write_string("struct ", !IO),
         output_common_cell_type_name(TypeNum, !IO),
         io.write_string(" {\n", !IO),
@@ -427,6 +428,7 @@ output_common_type_defn(TypeNum, CellType, !DeclSet, !IO) :-
             output_cons_arg_group_types(ArgGroups, "\t", 1, !IO)
         ),
         io.write_string("};\n", !IO),
+        output_pragma_pack_pop(!IO),
         decl_set_insert(TypeDeclId, !DeclSet)
     ).
 
@@ -516,7 +518,12 @@ common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
 output_cons_arg_types([], _, _, !IO).
 output_cons_arg_types([Type | Types], Indent, ArgNum, !IO) :-
     io.write_string(Indent, !IO),
-    output_llds_type(Type, !IO),
+    ( Type = lt_float ->
+        % Ensure float structure members are word-aligned.
+        io.write_string("MR_Float_Aligned", !IO)
+    ;
+        output_llds_type(Type, !IO)
+    ),
     io.write_string(" f", !IO),
     io.write_int(ArgNum, !IO),
     io.write_string(";\n", !IO),
