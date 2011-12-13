@@ -673,7 +673,17 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
 
 ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag, ExplicitSecTag,
         _Var, VarLval, VarType, MLDS_Type, ExtraRvals, ExtraTypes,
-        ArgVars, ArgTypes, ArgModes, TakeAddr, Context, Statements, !Info) :-
+        ArgVars0, ArgTypes0, ArgModes0, TakeAddr, Context, Statements, !Info) :-
+
+    % Fixup type_info_cell_constructor argument lists for the Java backend.
+    % (See below for an explanation.)
+    maybe_fixup_type_info_cell_constructor_args(!.Info, MaybeConsId,
+        ArgVars0, ArgVars),
+    maybe_fixup_type_info_cell_constructor_args(!.Info, MaybeConsId,
+        ArgTypes0, ArgTypes),
+    maybe_fixup_type_info_cell_constructor_args(!.Info, MaybeConsId,
+        ArgModes0, ArgModes),
+    
     % Find out the types of the constructor arguments and generate rvals
     % for them (boxing/unboxing if needed).
     ml_gen_var_list(!.Info, ArgVars, ArgLvals),
@@ -743,10 +753,18 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag, ExplicitSecT
 
 ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
         Var, VarLval, VarType, MLDS_Type, ExtraRvals, ExtraTypes,
-        ArgVars, ArgTypes, Context, Statements, !Info) :-
+        ArgVars0, ArgTypes0, Context, Statements, !Info) :-
     % Find out the types of the constructor arguments.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
+    
+    % Fixup type_info_cell_constructor argument lists for the Java backend.
+    % (See below for an explanation.)
+    maybe_fixup_type_info_cell_constructor_args(!.Info, MaybeConsId,
+        ArgVars0, ArgVars),
+    maybe_fixup_type_info_cell_constructor_args(!.Info, MaybeConsId,
+        ArgTypes0, ArgTypes),
+
     get_maybe_cons_id_arg_types(ModuleInfo, MaybeConsId, ArgTypes, VarType,
         ConsArgTypes),
 
@@ -831,6 +849,61 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     AssignStatement = ml_gen_assign(VarLval, Rval, Context),
     Statements = [AssignStatement].
 
+    % Fixup the arguments of type_info_cell_constructors to conform
+    % to what the Java version of the runtime expects.
+    %
+    % For the Java backend we need to treat type_info_cell_constructors with a
+    % variable arity type_ctor specially.  polymorphism.m generates these so
+    % that the second argument is an integer giving the arity of the type_ctor,
+    % but there is no corresponding constructor with an integer argument in
+    % the TypeInfo_Struct class in the Java version of the runtime.
+    % Having such a constructor would cause problems with restrictions on
+    % overloading in Java.  (In any case, it is unnecessary since the arity
+    % can be obtained from the length of the array holding the remaining
+    % arguments.)
+    %
+    % The job of this predicate is to remove the arity argument from the
+    % argument list of a type_info_cell_constructor if we are compiling to
+    % Java and we have a varaible arity type_ctor.
+    %
+    % NOTE: this code needs to kept consistent with:
+    %
+    %       compiler/rtti_to_mods.gen_type_info_defn/6
+    %       java/runtime/TypeInfo_Struct.java
+    %
+    % XXX it might be better to modify polymoprhism.m so that it never
+    % inserts the arity argument in the first place.
+    %
+:- pred maybe_fixup_type_info_cell_constructor_args(ml_gen_info::in,
+    maybe(cons_id)::in, list(T)::in, list(T)::out) is det.
+
+maybe_fixup_type_info_cell_constructor_args(Info, MaybeConsId, !Args) :-
+    ml_gen_info_get_target(Info, Target),
+    ( Target = target_java ->
+        ( 
+            MaybeConsId = no
+        ;
+            MaybeConsId = yes(ConsId),
+            (
+                ConsId = type_info_cell_constructor(TypeCtor),
+                ( type_ctor_is_higher_order(TypeCtor, _, _, _)
+                ; type_ctor_is_tuple(TypeCtor)
+                )
+            ->
+                ( !.Args = [TypeInfoCtorArg, _ArityArg | OtherArgs] ->
+                    !:Args = [TypeInfoCtorArg | OtherArgs]
+                ;
+                    unexpected($module, $pred,
+                        "misformed type_info_cell_constructor args")
+                )
+            ;
+                true
+            )
+        )
+    ;
+        true
+    ).
+    
 :- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in, maybe(ctor_name)::in,
     mlds_tag::in, maybe(mlds_tag)::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,

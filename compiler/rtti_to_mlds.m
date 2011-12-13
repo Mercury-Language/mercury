@@ -467,6 +467,14 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
                 % TypeInfo_Struct class doesn't have a constructor that
                 % supports it -- see java/runtime/TypeInfo_Struct.java for
                 % details.
+                %
+                % NOTE: this needs to be kept consistent with
+                %
+                %     ml_unify_gen.maybe_fixup_type_info_cell_constructor_args/4
+                %     java/runtime/TypeInfo_Struct.java
+                %
+                % as well as the code for handling pseudo type-infos below.
+                %
                 InitializerArgs = [InitRttiName, InitCastRttiDatasArray]
             ; 
                 InitializerArgs = [
@@ -542,13 +550,29 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
                 !GlobalData),
             RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
             module_info_get_name(ModuleInfo, ModuleName),
-            Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-                gen_init_rtti_name(ModuleName, RttiTypeCtor,
-                    type_ctor_type_ctor_info),
-                gen_init_int(list.length(ArgTypes)),
-                gen_init_cast_rtti_datas_array(mlds_pseudo_type_info_type,
-                    ModuleName, ArgRttiDatas)
-            ]),
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.get_target(Globals, TargetLang),
+            
+            InitRttiName = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+                type_ctor_type_ctor_info),
+            InitCastRttiDatasArray = gen_init_cast_rtti_datas_array(
+                mlds_pseudo_type_info_type, ModuleName, ArgRttiDatas),
+            ( TargetLang = target_java ->
+                % For Java we need to omit the arity argument as the
+                % TypeInfo_Struct class doesn't have a constructor that
+                % supports it.  The TypeInfo_Struct class is used to
+                % represent pseudo type-infos with the Java backend.
+                % (See java/runtime/PseudoTypeInfo.java for details.)
+                InitializerArgs = [InitRttiName, InitCastRttiDatasArray]
+            ;
+                InitializerArgs = [
+                    InitRttiName,
+                    gen_init_int(list.length(ArgTypes)),
+                    InitCastRttiDatasArray
+                ]
+            ),
+            Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), 
+                InitializerArgs),
             rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
                 !GlobalData),
 
