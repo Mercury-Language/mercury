@@ -2836,8 +2836,15 @@ io.file_modification_time(File, Result, !IO) :-
         does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_HAVE_STAT
+  #ifdef MR_WIN32
+    struct _stat s;
+    int stat_result = _wstat(ML_utf8_to_wide(FileName), &s);
+  #else
     struct stat s;
-    if (stat(FileName, &s) == 0) {
+    int stat_result = stat(FileName, &s);
+  #endif
+
+    if (stat_result == 0) {
         Time = ML_construct_time_t(s.st_mtime);
         Msg = MR_string_const("""", 0);
         Status = 1;
@@ -2852,6 +2859,7 @@ io.file_modification_time(File, Result, !IO) :-
         ""io.file_modification_time not available on this platform"");
 #endif
 ").
+
 :- pragma foreign_proc("C#",
     io.file_modification_time_2(FileName::in, Status::out, Msg::out,
         Time::out, _IO0::di, _IO::uo),
@@ -2979,8 +2987,12 @@ file_type_implemented :-
         does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_HAVE_STAT
+  #ifdef MR_WIN32
+    struct _stat s;
+    int stat_result = _wstat(ML_utf8_to_wide(FileName), &s);
+  #else
     struct stat s;
-    int         stat_result;
+    int stat_result;
 
     if (FollowSymLinks == 1) {
         stat_result = stat(FileName, &s);
@@ -2991,6 +3003,7 @@ file_type_implemented :-
             stat_result = stat(FileName, &s);
         #endif
     }
+  #endif
 
     if (stat_result == 0) {
         MR_Word type;
@@ -3363,7 +3376,12 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
   #endif
     }
 
+  #ifdef MR_WIN32
+    access_result = _waccess(ML_utf8_to_wide(FileName), mode);
+  #else
     access_result = access(FileName, mode);
+  #endif
+
     if (access_result == 0) {
         Result = ML_make_io_res_0_ok();
     } else {
@@ -3915,9 +3933,15 @@ io.file_id(FileName, Result, !IO) :-
         does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_HAVE_STAT
+  #ifdef MR_WIN32
+    struct _stat s;
+    int stat_result = _wstat(ML_utf8_to_wide(FileName), &s);
+  #else
     struct stat s;
+    int stat_result = stat(FileName, &s);
+  #endif
 
-    if (stat(FileName, &s) == 0) {
+    if (stat_result == 0) {
         FileId.device = s.st_dev;
         FileId.inode = s.st_ino;
         Msg = MR_string_const("""", 0);
@@ -5384,7 +5408,7 @@ io.progname_base(DefaultName, PrognameBase, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% environment interface predicates
+% Environment interface predicates
 
 :- pragma promise_pure(io.get_environment_var/4).
 
@@ -5684,6 +5708,12 @@ void            mercury_print_string(MercuryFilePtr mf, const char *s);
 int             mercury_get_byte(MercuryFilePtr mf);
 void            mercury_close(MercuryFilePtr mf);
 int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
+
+#ifdef MR_WIN32
+    wchar_t     *ML_utf8_to_wide(const char *s);
+    char        *ML_wide_to_utf8(const wchar_t *ws,
+                    MR_AllocSiteInfoPtr alloc_id);
+#endif
 ").
 
 :- pragma foreign_code("C#", "
@@ -6908,7 +6938,12 @@ mercury_open(const char *filename, const char *openmode,
     MercuryFilePtr  mf;
     FILE            *f;
 
+#ifdef MR_WIN32
+    f = _wfopen(ML_utf8_to_wide(filename), ML_utf8_to_wide(openmode));
+#else
     f = fopen(filename, openmode);
+#endif
+
     if (f == NULL) {
         return NULL;
     }
@@ -7401,6 +7436,50 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
     return rc;
 }
+").
+
+:- pragma foreign_code("C", "
+#ifdef MR_WIN32
+
+/*
+** Accessing Unicode file names on Windows requires that we use the functions
+** taking wide character strings.
+*/
+wchar_t *
+ML_utf8_to_wide(const char *s)
+{
+    int     wslen;
+    wchar_t *ws;
+
+    wslen = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
+    if (wslen == 0) {
+        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
+    }
+    ws = MR_GC_NEW_ARRAY(wchar_t, wslen);
+    if (0 == MultiByteToWideChar(CP_UTF8, 0, s, -1, ws, wslen)) {
+        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
+    }
+    return ws;
+}
+
+char *
+ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
+{
+    char    *s;
+    int     bytes;
+
+    bytes = WideCharToMultiByte(CP_UTF8, 0, ws, -1, NULL, 0, NULL, NULL);
+    if (bytes == 0) {
+        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
+    }
+    MR_allocate_aligned_string_msg(s, bytes, alloc_id);
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, ws, -1, s, bytes, NULL, NULL)) {
+        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
+    }
+    return s;
+}
+
+#endif /* MR_WIN32 */
 ").
 
 %----------------------------------------------------------------------------%
@@ -9606,7 +9685,12 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 
 #else   /* !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON */
 
+  #ifdef MR_WIN32
+    Status = _wsystem(ML_utf8_to_wide(Command));
+  #else
     Status = system(Command);
+  #endif
+
     if (Status == -1) {
         /*
         ** Return values of 127 or -1 from system() indicate that
@@ -9941,7 +10025,7 @@ command_line_argument(_, "") :-
     }
 ").
 
-/*---------------------------------------------------------------------------*/
+%-----------------------------------------------------------------------------%
 
 % io.getenv and io.setenv.
 
@@ -9954,7 +10038,16 @@ command_line_argument(_, "") :-
     [promise_semipure, will_not_call_mercury, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
+#ifdef MR_WIN32
+    wchar_t *ValueW = _wgetenv(ML_utf8_to_wide(Var));
+    if (ValueW != NULL) {
+        Value = ML_wide_to_utf8(ValueW, MR_ALLOC_ID);
+    } else {
+        Value = NULL;
+    }
+#else
     Value = getenv(Var);
+#endif
     SUCCESS_INDICATOR = (Value != 0);
 ").
 
@@ -10002,7 +10095,11 @@ io.setenv(Var, Value) :-
     [will_not_call_mercury, tabled_for_io, does_not_affect_liveness,
         no_sharing],
 "
+#ifdef MR_WIN32
+    SUCCESS_INDICATOR = (_wputenv(ML_utf8_to_wide(VarAndValue)) == 0);
+#else
     SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
+#endif
 ").
 
 :- pragma foreign_proc("C#",
@@ -10100,7 +10197,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         true
     ).
 
-/*---------------------------------------------------------------------------*/
+%-----------------------------------------------------------------------------%
 
 :- pred io.do_make_temp(string::in, string::in, string::in,
     string::out, int::out, string::out, io::di, io::uo) is det.
@@ -10164,6 +10261,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
     int     len, err, fd, num_tries;
     char    countstr[256];
     MR_Word filename_word;
+    int     flags;
 
     len = strlen(Dir) + 1 + 5 + 3 + 1 + 3 + 1;
     /* Dir + / + Prefix + counter_high + . + counter_low + \\0 */
@@ -10183,8 +10281,13 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         strncat(FileName, countstr, 3);
         strcat(FileName, ""."");
         strncat(FileName, countstr + 3, 3);
+        flags = O_WRONLY | O_CREAT | O_EXCL;
         do {
-            fd = open(FileName, O_WRONLY | O_CREAT | O_EXCL, 0600);
+            #ifdef MR_WIN32
+                fd = _wopen(ML_utf8_to_wide(FileName), flags, 0600);
+            #else
+                fd = open(FileName, flags, 0600);
+            #endif
         } while (fd == -1 && MR_is_eintr(errno));
         num_tries++;
         ML_io_tempnam_counter += (1 << num_tries);
@@ -10349,7 +10452,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         end.
 ").
 
-/*---------------------------------------------------------------------------*/
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
 
@@ -10488,7 +10591,11 @@ io.remove_file(FileName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
+#ifdef MR_WIN32
+    RetVal = _wremove(ML_utf8_to_wide(FileName));
+#else
     RetVal = remove(FileName);
+#endif
     ML_maybe_make_err_msg(RetVal != 0, errno, ""remove failed: "",
         MR_ALLOC_ID, MR_TRUE, RetStr);
 ").
@@ -10626,7 +10733,12 @@ io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
+#ifdef MR_WIN32
+    RetVal = _wrename(ML_utf8_to_wide(OldFileName),
+        ML_utf8_to_wide(NewFileName));
+#else
     RetVal = rename(OldFileName, NewFileName);
+#endif
     ML_maybe_make_err_msg(RetVal != 0, errno, ""rename failed: "",
         MR_ALLOC_ID, MR_TRUE, RetStr);
 ").
