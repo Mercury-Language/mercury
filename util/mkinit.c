@@ -577,6 +577,7 @@ static const char main_func[] =
     "   argv = mercury_win32_args(&argc);\n"
     "#endif\n"
     "   result = mercury_main(argc, argv);\n"
+    "   return result;"
     "}\n"
     ;
 
