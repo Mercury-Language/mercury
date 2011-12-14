@@ -352,7 +352,6 @@ int                 mercury_exit_status = 0;
 
 MR_bool             MR_profiling = MR_TRUE;
 MR_bool             MR_print_deep_profiling_statistics = MR_FALSE;
-MR_bool             MR_output_deep_procrep_file;
 static  unsigned    MR_deep_prof_random_write = 0;
 static  MR_bool     MR_deep_profiling_save_results = MR_TRUE;
 static  MR_bool     MR_complexity_save_results = MR_TRUE;
@@ -1325,7 +1324,6 @@ enum MR_long_option {
     MR_NUM_OUTPUT_ARGS,
     MR_DEBUG_THREADS_OPT,
     MR_DEEP_PROF_DEBUG_FILE_OPT,
-    MR_DEEP_PROF_PROCREP_FILE_OPT,
     MR_DEEP_PROF_RANDOM_WRITE,
     MR_DEEP_PROF_LOG_FILE_OPT,
     MR_DEEP_PROF_LOG_PROG_OPT,
@@ -1427,7 +1425,6 @@ struct MR_option MR_long_opts[] = {
     { "num-output-args",                1, 0, MR_NUM_OUTPUT_ARGS },
     { "debug-threads",                  0, 0, MR_DEBUG_THREADS_OPT },
     { "deep-debug-file",                0, 0, MR_DEEP_PROF_DEBUG_FILE_OPT },
-    { "deep-procrep-file",              0, 0, MR_DEEP_PROF_PROCREP_FILE_OPT },
     /*
     ** The --deep-random-write option is only for use by tools/bootcheck.
     ** It is deliberately not documented.
@@ -1932,10 +1929,6 @@ MR_process_options(int argc, char **argv)
 
             case MR_DEEP_PROF_DEBUG_FILE_OPT:
                 MR_deep_prof_debug_file_flag = MR_TRUE;
-                break;
-
-            case MR_DEEP_PROF_PROCREP_FILE_OPT:
-                MR_output_deep_procrep_file = MR_TRUE;
                 break;
 
             case MR_DEEP_PROF_RANDOM_WRITE:

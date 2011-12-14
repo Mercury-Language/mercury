@@ -1348,34 +1348,9 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     option_implies(target_debug, strip, bool(no), !Globals),
 
-    % Profile for implicit parallelism implies a particular coverage
-    % profiling configuration, since that's what is supported.
-    globals.lookup_bool_option(!.Globals, profile_for_implicit_parallelism,
-        ProfForImplicitParallelism),
-    (
-        ProfForImplicitParallelism = yes,
-        globals.set_option(coverage_profiling, bool(yes), !Globals),
-        globals.set_option(coverage_profiling_static, bool(no), !Globals),
-        globals.set_option(profile_deep_coverage_after_goal, bool(yes),
-            !Globals),
-        globals.set_option(profile_deep_coverage_branch_ite, bool(yes),
-            !Globals),
-        globals.set_option(profile_deep_coverage_branch_switch, bool(yes),
-            !Globals),
-        globals.set_option(profile_deep_coverage_branch_disj, bool(yes),
-            !Globals),
-
-        % Disabling these two options causes the coverage profiling
-        % transformation to make a single backwards traversal.  This makes
-        % coverage information propagation easier at the expense of
-        % inserting more coverage points.
-        globals.set_option(profile_deep_coverage_use_portcounts, bool(no),
-            !Globals),
-        globals.set_option(profile_deep_coverage_use_trivial, bool(no),
-            !Globals)
-    ;
-        ProfForImplicitParallelism = no
-    ),
+    % Profile for feedback requires coverage profiling.
+    option_implies(profile_for_feedback, coverage_profiling, bool(yes),
+        !Globals),
 
     % At the moment coverage profiling is not compatible with the tail
     % recursion preservation optimization used by the deep profiler.
@@ -1389,14 +1364,13 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % user can re-enable it with the `--profile-optimized' option.  Leave
     % inlineing enabled when profiling for implicit parallelism.
     %
+    option_implies(profile_for_feedback, prof_optimized, bool(yes), !Globals),
     globals.lookup_bool_option(!.Globals, prof_optimized, ProfOptimized),
     (
         ProfOptimized = no,
-        ProfForImplicitParallelism = no
-    ->
         option_implies(profile_deep, allow_inlining, bool(no), !Globals)
     ;
-        true
+        ProfOptimized = yes
     ),
 
     % Perform a simplification pass before the profiling passes if one of

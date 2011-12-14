@@ -339,7 +339,6 @@ extern	enum MR_TimeProfileMethod
 			MR_time_profile_method;
 
 extern	MR_bool		MR_profiling;
-extern	MR_bool		MR_output_deep_procrep_file;
 extern	MR_bool		MR_print_deep_profiling_statistics;
 
 #ifdef  MR_TYPE_CTOR_STATS

@@ -167,6 +167,13 @@ endif
 
 #-----------------------------------------------------------------------------#
 
+# The standard library is compiled with --profile-optimized so that it is
+# compatible with applications compiled with --profile-for-feedback.
+
+MCFLAGS += --profile-optimized
+
+#-----------------------------------------------------------------------------#
+
 # targets
 
 .PHONY: all

@@ -397,13 +397,10 @@ MR_write_out_profiling_tree(void)
             MR_MDPROF_DATA_FILENAME, strerror(errno));
     }
 
-    procrep_fp = NULL;
-    if (MR_output_deep_procrep_file) {
-        procrep_fp = fopen(MR_MDPROF_PROCREP_FILENAME, "wb+");
-        if (procrep_fp == NULL) {
-            MR_fatal_error("cannot open `%s' for writing: %s",
-                MR_MDPROF_PROCREP_FILENAME, strerror(errno));
-        }
+    procrep_fp = fopen(MR_MDPROF_PROCREP_FILENAME, "wb+");
+    if (procrep_fp == NULL) {
+        MR_fatal_error("cannot open `%s' for writing: %s",
+            MR_MDPROF_PROCREP_FILENAME, strerror(errno));
     }
 
 #ifdef  MR_DEEP_PROFILING_DEBUG
@@ -431,9 +428,7 @@ MR_write_out_profiling_tree(void)
     MR_write_fixed_size_int(deep_fp, 0);
     MR_write_fixed_size_int(deep_fp, 0);
 
-    if (procrep_fp != NULL) {
-        MR_write_out_procrep_id_string(procrep_fp);
-    }
+    MR_write_out_procrep_id_string(procrep_fp);
 
 #ifdef  MR_CLOCK_TICKS_PER_SECOND
     ticks_per_sec = MR_CLOCK_TICKS_PER_SECOND;
@@ -492,12 +487,10 @@ MR_write_out_profiling_tree(void)
         MR_deep_data_output_error("cannot close", MR_MDPROF_DATA_FILENAME);
     }
 
-    if (procrep_fp != NULL) {
-        putc(MR_no_more_modules, procrep_fp);
-        if (fclose(procrep_fp) != 0) {
-            MR_deep_data_output_error("cannot close",
-                MR_MDPROF_PROCREP_FILENAME);
-        }
+    putc(MR_no_more_modules, procrep_fp);
+    if (fclose(procrep_fp) != 0) {
+        MR_deep_data_output_error("cannot close",
+            MR_MDPROF_PROCREP_FILENAME);
     }
 
 #ifdef MR_DEEP_PROFILING_STATISTICS
@@ -805,24 +798,20 @@ void
 MR_write_out_module_proc_reps_start(FILE *procrep_fp,
     const MR_ModuleCommonLayout *module_common)
 {
-    if (procrep_fp != NULL) {
-        int         i;
+    int         i;
 
-        putc(MR_next_module, procrep_fp);
-        MR_write_string(procrep_fp, module_common->MR_mlc_name);
-        MR_write_num(procrep_fp, module_common->MR_mlc_string_table_size);
-        for (i = 0; i < module_common->MR_mlc_string_table_size; i++) {
-            putc(module_common->MR_mlc_string_table[i], procrep_fp);
-        }
+    putc(MR_next_module, procrep_fp);
+    MR_write_string(procrep_fp, module_common->MR_mlc_name);
+    MR_write_num(procrep_fp, module_common->MR_mlc_string_table_size);
+    for (i = 0; i < module_common->MR_mlc_string_table_size; i++) {
+        putc(module_common->MR_mlc_string_table[i], procrep_fp);
     }
 }
 
 void
 MR_write_out_module_proc_reps_end(FILE *procrep_fp)
 {
-    if (procrep_fp != NULL) {
-        putc(MR_no_more_procs, procrep_fp);
-    }
+    putc(MR_no_more_procs, procrep_fp);
 }
 
 void
@@ -1013,38 +1002,36 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
         MR_write_out_call_site_static(deep_fp, &ps->MR_ps_call_sites[i]);
     }
 
-    if (procrep_fp != NULL) {
-        const MR_uint_least8_t  *bytecode;
+    const MR_uint_least8_t  *bytecode;
 
-        /*
-        ** Some predicates in the Mercury standard library, such as
-        ** exception.builtin_catch, have Mercury declarations but no Mercury
-        ** implementation, even as foreign_proc code. We do still generate
-        ** proc_static structures for them, since we *want* the hand-written
-        ** C code to be able to collect deep profiling data (in this case,
-        ** to count the number of executions of the EXCP port). This means that
-        ** (a) they will have proc_layout structures, and (b) the bytecode
-        ** pointer field in these structures will be NULL.
-        **
-        ** We handle such procedures by simply not including them in the
-        ** module representation. This is fine, as long as any code that reads
-        ** and processes the program representation is aware that the bodies
-        ** of procedures defined outside Mercury may be missing.
-        */
+    /*
+    ** Some predicates in the Mercury standard library, such as
+    ** exception.builtin_catch, have Mercury declarations but no Mercury
+    ** implementation, even as foreign_proc code. We do still generate
+    ** proc_static structures for them, since we *want* the hand-written
+    ** C code to be able to collect deep profiling data (in this case,
+    ** to count the number of executions of the EXCP port). This means that
+    ** (a) they will have proc_layout structures, and (b) the bytecode
+    ** pointer field in these structures will be NULL.
+    **
+    ** We handle such procedures by simply not including them in the
+    ** module representation. This is fine, as long as any code that reads
+    ** and processes the program representation is aware that the bodies
+    ** of procedures defined outside Mercury may be missing.
+    */
 
-        bytecode = proc_layout->MR_sle_body_bytes;
-        if (bytecode != NULL) {
-            int size;
-            int bytenum;
+    bytecode = proc_layout->MR_sle_body_bytes;
+    if (bytecode != NULL) {
+        int size;
+        int bytenum;
 
-            putc(MR_next_proc, procrep_fp);
-            MR_write_out_str_proc_label(procrep_fp, procid);
+        putc(MR_next_proc, procrep_fp);
+        MR_write_out_str_proc_label(procrep_fp, procid);
 
-            size = (bytecode[0] << 24) + (bytecode[1] << 16) +
-                (bytecode[2] << 8) + bytecode[3];
-            for (bytenum = 0; bytenum < size; bytenum++) {
-                putc(bytecode[bytenum], procrep_fp);
-            }
+        size = (bytecode[0] << 24) + (bytecode[1] << 16) +
+            (bytecode[2] << 8) + bytecode[3];
+        for (bytenum = 0; bytenum < size; bytenum++) {
+            putc(bytecode[bytenum], procrep_fp);
         }
     }
 }

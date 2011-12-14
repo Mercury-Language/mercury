@@ -583,8 +583,6 @@ then
     MERCURY_OPTIONS="$MERCURY_OPTIONS --deep-debug-file"
 fi
 
-MERCURY_OPTIONS="$MERCURY_OPTIONS --deep-procrep-file"
-
 if $trace_count
 then
     MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count-if-exec=mercury_compile"

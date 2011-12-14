@@ -361,9 +361,9 @@
     ;       profile_deep_coverage_use_portcounts
     ;       profile_deep_coverage_use_trivial
 
-            % Turn on flags relevant for profiler directed implicit
-            % parallelism.
-    ;       profile_for_implicit_parallelism
+            % Turn on flags relevant for profiler directed feedback analysis.
+            % Currently the only feedback analysis is automatic parallelism.
+    ;       profile_for_feedback
 
     ;       use_zeroing_for_ho_cycles
     ;       use_lots_of_ho_specialization
@@ -1293,7 +1293,7 @@ option_defaults_2(compilation_model_option, [
     use_activation_counts               -   bool(no),
     pre_prof_transforms_simplify        -   bool(no),
     pre_implicit_parallelism_simplify   -   bool(no),
-    coverage_profiling                  -   bool(no),
+    coverage_profiling                  -   bool(yes),
     coverage_profiling_via_calls        -   bool(no),
     coverage_profiling_static           -   bool(no),
     profile_deep_coverage_after_goal    -   bool(yes),
@@ -1302,7 +1302,7 @@ option_defaults_2(compilation_model_option, [
     profile_deep_coverage_branch_disj   -   bool(yes),
     profile_deep_coverage_use_portcounts -  bool(no),
     profile_deep_coverage_use_trivial   -   bool(no),
-    profile_for_implicit_parallelism    -   bool(no),
+    profile_for_feedback                -   bool(no),
     use_zeroing_for_ho_cycles           -   bool(yes),
     use_lots_of_ho_specialization       -   bool(no),
     deep_profile_tail_recursion         -   bool(no),
@@ -2210,7 +2210,9 @@ long_option("profile-deep-coverage-use-portcounts",
 long_option("profile-deep-coverage-use-trivial",
                     profile_deep_coverage_use_trivial).
 long_option("profile-for-implicit-parallelism",
-                    profile_for_implicit_parallelism).
+                    profile_for_feedback).
+long_option("profile-for-feedback",
+                    profile_for_feedback).
 long_option("use-zeroing-for-ho-cycles",
                     use_zeroing_for_ho_cycles).
 long_option("use-lots-of-ho-specialization",
@@ -4323,34 +4325,30 @@ options_help_compilation_model -->
 %       "\tSimilar to `--memory-profiling', except that it only",
 %       "\tgathers memory usage information, not call counts.",
 
-        "--coverage-profiling",
-        "\tEnable coverage profiling, implies --deep-profiling (above).",
+        "--no-coverage-profiling",
+        "\tDisable coverage profiling.",
 % The following options are for implementors only (intended for experiments).
 %       "--coverage-profiling-via-calls",
 %       "\tUse calls to implement coverage points, not inline foreign code.",
 
-%       "--no-coverage-profiling-dynamic",
+%       "--coverage-profiling-static",
 %       "\tDisable dynamic coverage profiling, this uses less memory and may ",
 %       "\tbe faster.",
 
 %       "Switches to effect coverage profiling (part of deep profiling). ",
 %       "they enable different types of coverage points.",
 
-%       "--profile-deep-coverage-may-fail",
-%       "\tEnable coverage points after goals that may fail.",
-%       "--profile-deep-coverage-multi",
-%       "\tEnable coverage points after goals that may succeed more than ",
-%       "\tonce.",
-%       "--profile-deep-coverage-any",
-%       "\tEnable coverage points after goals that may succeed more than ",
-%       "\tonce or fail.",
-%       "--profile-deep-coverage-branch-if",
-%       "\tEnable coverage points at the beginning of if branches.",
-%       "--profile-deep-coverage-branch-switch",
-%       "\tEnable coverage points at the beginning of switch branches.",
-%       "--profile-deep-coverage-branch-disj",
-%       "\tEnable coverage points at the beginning of disjunction branches.",
+%       "--no-profile-deep-coverage-after-goal",
+%       "\tDisable coverage points after goals.",
+%       "--no-profile-deep-coverage-branch-ite",
+%       "\tDisable coverage points at the beginning of then and else",
+%       "\tbranches.",
+%       "--no-profile-deep-coverage-branch-switch",
+%       "\tDisable coverage points at the beginning of switch branches.",
+%       "--no-profile-deep-coverage-branch-disj",
+%       "\tDisable coverage points at the beginning of disjunction branches.",
 
+%       I beleive these options are broken - pbone.
 %       "Switches to tune the coverage profiling pass, useful for ",
 %       "debugging.",
 %
@@ -4360,9 +4358,11 @@ options_help_compilation_model -->
 %       "--no-profile-deep-coverage-use-trivial",
 %       "\tTurn off usage of trivial goal information",
 
-        "--profile-for-implicit-parallelism",
+        "--profile-for-feedback",
         "\tSelect deep profiling options suitable for profiler directed",
-        "\timplicit parallelism",
+        "\timplicit parallelism.",
+        "\t--profile-for-implicit-parallelism is a deprecated synonym for",
+        "\tthis option",
 
         "--record-term-sizes-as-words\t\t(grade modifier: `.tsw')",
         "\tAugment each heap cells with its size in words.",
