@@ -2519,11 +2519,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         unexpected($module, $pred, "constraint not in constraint list")
     ),
 
-    poly_info_get_varset(!.Info, VarSet0),
-    poly_info_get_var_types(!.Info, VarTypes0),
-    make_int_const_construction_alloc(SuperClassIndex, yes("SuperClassIndex"),
-        IndexGoal, IndexVar, VarSet0, VarSet, VarTypes0, VarTypes),
-    poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+    get_poly_const(SuperClassIndex, IndexVar, IndexGoals, !Info),
 
     % We extract the superclass typeclass_info by inserting a call
     % to superclass_from_typeclass_info in private_builtin.
@@ -2532,7 +2528,8 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         purity_pure, [SubClassVar, IndexVar, TypeClassInfoVar], [],
         instmap_delta_bind_no_var, ModuleInfo, term.context_init,
         SuperClassGoal),
-    !:ExtraGoals = !.ExtraGoals ++ cord.from_list([IndexGoal, SuperClassGoal]).
+    !:ExtraGoals = !.ExtraGoals ++
+        cord.from_list(IndexGoals ++ [SuperClassGoal]).
 
 :- pred construct_base_typeclass_info(prog_constraint::in,
     int::in, list(mer_type)::in, prog_var::out, hlds_goal::out,
@@ -2986,26 +2983,12 @@ maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity, ArgTypeInfoVars,
         % Unfortunately, if the type's type constructor has variable arity,
         % we cannot use a one-cell representation for that type.
         list.length(ArgTypeInfoVars, ActualArity),
+        get_poly_const(ActualArity, ArityVar, ArityGoals, !Info),
         poly_info_get_varset(!.Info, VarSet0),
         poly_info_get_var_types(!.Info, VarTypes0),
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-        poly_info_get_int_const_map(!.Info, IntConstMap0),
-        ( map.search(IntConstMap0, ActualArity, ArityVarPrime) ->
-            poly_info_get_num_reuses(!.Info, NumReuses),
-            poly_info_set_num_reuses(NumReuses + 1, !Info),
-            VarSet1 = VarSet0,
-            VarTypes1 = VarTypes0,
-            ArityVar = ArityVarPrime,
-            ArityGoals = []
-        ;
-            make_int_const_construction_alloc(ActualArity, yes("ActualArity"),
-                ArityGoal, ArityVar, VarSet0, VarSet1, VarTypes0, VarTypes1),
-            map.det_insert(ActualArity, ArityVar, IntConstMap0, IntConstMap),
-            poly_info_set_int_const_map(IntConstMap, !Info),
-            ArityGoals = [ArityGoal]
-        ),
         init_type_info_var(Type, [TypeCtorVar, ArityVar | ArgTypeInfoVars],
-            no, Var, TypeInfoGoal, VarSet1, VarSet, VarTypes1, VarTypes,
+            no, Var, TypeInfoGoal, VarSet0, VarSet, VarTypes0, VarTypes,
             RttiVarMaps0, RttiVarMaps),
         poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
@@ -3271,32 +3254,17 @@ get_type_info(TypeInfoLocn, TypeVar, ExtraGoals, Var, !Info) :-
 
 polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Goals,
         TypeInfoVar, !Info) :-
+    get_poly_const(Index, IndexVar, IndexGoals, !Info),
     poly_info_get_varset(!.Info, VarSet0),
     poly_info_get_var_types(!.Info, VarTypes0),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     poly_info_get_module_info(!.Info, ModuleInfo),
     poly_info_get_tvar_kinds(!.Info, TVarKinds),
     get_tvar_kind(TVarKinds, TypeVar, Kind),
-    poly_info_get_int_const_map(!.Info, IntConstMap0),
-    ( map.search(IntConstMap0, Index, IndexVarPrime) ->
-        poly_info_get_num_reuses(!.Info, NumReuses),
-        poly_info_set_num_reuses(NumReuses + 1, !Info),
-        VarSet1 = VarSet0,
-        VarTypes1 = VarTypes0,
-        IndexVar = IndexVarPrime,
-        IndexGoals = []
-    ;
-        make_int_const_construction_alloc(Index,
-            yes("PolyConst" ++ string.int_to_string(Index)),
-            IndexGoal, IndexVar, VarSet0, VarSet1, VarTypes0, VarTypes1),
-        map.det_insert(Index, IndexVar, IntConstMap0, IntConstMap),
-        poly_info_set_int_const_map(IntConstMap, !Info),
-        IndexGoals = [IndexGoal]
-    ),
     IndexIntOrVar = iov_var(IndexVar),
     gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
         IndexIntOrVar, ExtractGoals, TypeInfoVar,
-        VarSet1, VarSet, VarTypes1, VarTypes, RttiVarMaps0, RttiVarMaps),
+        VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
     Goals = IndexGoals ++ ExtractGoals,
     poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
     poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
@@ -3305,6 +3273,7 @@ gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
         IndexIntOrVar, Goals, TypeInfoVar, !VarSet, !VarTypes, !RttiVarMaps) :-
     (
         IndexIntOrVar = iov_int(Index),
+        % We cannot call get_poly_const since we don't have a poly_info.
         make_int_const_construction_alloc(Index, yes("TypeInfoIndex"),
             IndexGoal, IndexVar, !VarSet, !VarTypes),
         IndexGoals = [IndexGoal]
@@ -3321,6 +3290,29 @@ gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
         instmap_delta_bind_var(TypeInfoVar), ModuleInfo, term.context_init,
         CallGoal),
     Goals = IndexGoals ++ [CallGoal].
+
+:- pred get_poly_const(int::in, prog_var::out, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
+
+get_poly_const(IntConst, IntVar, Goals, !Info) :-
+    poly_info_get_varset(!.Info, VarSet0),
+    poly_info_get_var_types(!.Info, VarTypes0),
+
+    poly_info_get_int_const_map(!.Info, IntConstMap0),
+    ( map.search(IntConstMap0, IntConst, IntVarPrime) ->
+        poly_info_get_num_reuses(!.Info, NumReuses),
+        poly_info_set_num_reuses(NumReuses + 1, !Info),
+        IntVar = IntVarPrime,
+        Goals = []
+    ;
+        make_int_const_construction_alloc(IntConst,
+            yes("PolyConst" ++ string.int_to_string(IntConst)),
+            Goal, IntVar, VarSet0, VarSet, VarTypes0, VarTypes),
+        map.det_insert(IntConst, IntVar, IntConstMap0, IntConstMap),
+        poly_info_set_int_const_map(IntConstMap, !Info),
+        poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+        Goals = [Goal]
+    ).
 
 %-----------------------------------------------------------------------------%
 

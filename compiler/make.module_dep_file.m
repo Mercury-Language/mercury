@@ -18,7 +18,7 @@
 :- interface.
 
 :- import_module libs.globals.
-:- import_module parse_tree.module_imports.
+:- import_module mdbcomp.prim_data.
 
 :- import_module io.
 :- import_module maybe.

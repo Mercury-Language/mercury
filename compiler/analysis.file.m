@@ -17,6 +17,8 @@
 :- module analysis.file.
 :- interface.
 
+:- import_module libs.globals.
+
     % read_module_overall_status(Compiler, Globals, ModuleName,
     %   MaybeModuleStatus, !IO)
     %

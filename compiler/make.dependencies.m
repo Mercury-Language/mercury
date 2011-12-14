@@ -17,7 +17,17 @@
 :- module make.dependencies.
 :- interface.
 
+:- import_module libs.file_util.
+:- import_module libs.globals.
+:- import_module make.util.
+:- import_module mdbcomp.prim_data.
+
+:- import_module bool.
 :- import_module enum.
+:- import_module io.
+:- import_module maybe.
+:- import_module set.
+:- import_module sparse_bitset.
 
 %-----------------------------------------------------------------------------%
 

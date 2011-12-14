@@ -21,6 +21,7 @@
 :- import_module parse_tree.prog_io_util.
 
 :- import_module io.
+:- import_module list.
 :- import_module maybe.
 :- import_module term.
 

@@ -18,6 +18,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.module_imports.
 
@@ -26,6 +27,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module set.
 
     % The resolved_used_items records the possible matches for a program item.

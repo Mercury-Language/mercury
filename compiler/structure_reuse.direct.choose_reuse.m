@@ -99,6 +99,9 @@
 :- interface.
 
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_module.
+:- import_module transform_hlds.ctgc.structure_reuse.domain.
 
 %-----------------------------------------------------------------------------%
 

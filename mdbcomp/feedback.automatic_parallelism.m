@@ -25,6 +25,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
