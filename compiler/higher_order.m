@@ -12,16 +12,18 @@
 % Specializes calls to higher order or polymorphic predicates where the value
 % of one or more higher order, type_info or typeclass_info arguments are known.
 %
-% Since this creates a new copy of the called procedure I have limited the
+% Since this creates a new copy of the called procedure, I have limited the
 % specialization to cases where the called procedure's goal contains less than
-% 20 calls and unifications. For predicates above this size the overhead of
+% 20 calls and unifications. For predicates above this size, the overhead of
 % the higher order call becomes less significant while the increase in code
 % size becomes significant. The limit can be changed using
 % `--higher-order-size-limit'.
 %
-% If a specialization creates new opportunities for specialization, the
-% specialization process will be iterated until no further opportunities
-% arise.  The specialized version for predicate 'foo' is named 'foo.ho<n>',
+% If a specialization creates new opportunities for specialization, we will
+% continue iterating the specialization process until we find no further
+% opportunities, i.e. until we reach a fixpoint.
+%
+% The specialized version of a predicate 'foo' is named 'foo.ho<n>',
 % where n is a number that uniquely identifies this specialized version.
 %
 %-----------------------------------------------------------------------------%
@@ -113,10 +115,10 @@ specialize_higher_order(!ModuleInfo, !IO) :-
         TypeSpecInfo = type_spec_info(_, UserSpecPreds, _, _),
 
         % Make sure the user requested specializations are processed first,
-        % since we don't want to create more versions if one of these
-        % matches. We need to process these even if specialization is
-        % not being performed in case any of the specialized versions
-        % are called from other modules.
+        % since we don't want to create more versions if one of these matches.
+        % We need to process these even if specialization is not being
+        % performed in case any of the specialized versions are called
+        % from other modules.
 
         ( set.empty(UserSpecPreds) ->
             PredIds = PredIds0,
@@ -145,8 +147,8 @@ specialize_higher_order(!ModuleInfo, !IO) :-
         % Remove the predicates which were used to force the production of
         % user-requested type specializations, since they are not called
         % from anywhere and are no longer needed.
-        list.foldl(module_info_remove_predicate,
-            UserSpecPredList, !.GlobalInfo ^ hogi_module_info, !:ModuleInfo)
+        list.foldl(module_info_remove_predicate, UserSpecPredList,
+            !.GlobalInfo ^ hogi_module_info, !:ModuleInfo)
     ).
 
     % Process one lot of requests, returning requests for any
@@ -472,24 +474,28 @@ ho_traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo) :-
 :- pred ho_fixup_proc_info(must_recompute::in, hlds_goal::in,
     higher_order_info::in, higher_order_info::out) is det.
 
-ho_fixup_proc_info(MustRecompute, Goal0, !Info) :-
+ho_fixup_proc_info(MustRecompute, !.Goal, !Info) :-
     (
         ( !.Info ^ hoi_changed = ho_changed
         ; MustRecompute = must_recompute
         )
     ->
+        % XXX The code whose effects we are now fixing up can eliminate
+        % some variables from the code of the procedure. Some of those
+        % variables appear in the RTTI varmaps, yet we do not delete them
+        % from there. This is a bug.
         some [!ModuleInfo, !ProcInfo] (
             !:ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
             !:ProcInfo   = !.Info ^ hoi_proc_info,
-            proc_info_set_goal(Goal0, !ProcInfo),
+            proc_info_set_goal(!.Goal, !ProcInfo),
             requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-            proc_info_get_goal(!.ProcInfo, Goal2),
+            proc_info_get_goal(!.ProcInfo, !:Goal),
             proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap),
             proc_info_get_vartypes(!.ProcInfo, VarTypes),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
             recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-                Goal2, Goal3, VarTypes, InstVarSet, InstMap, !ModuleInfo),
-            proc_info_set_goal(Goal3, !ProcInfo),
+                !Goal, VarTypes, InstVarSet, InstMap, !ModuleInfo),
+            proc_info_set_goal(!.Goal, !ProcInfo),
             !Info ^ hoi_proc_info := !.ProcInfo,
             !Info ^ hoi_global_info ^ hogi_module_info := !.ModuleInfo
         )
@@ -516,11 +522,17 @@ ho_traverse_proc_body(MustRecompute, !Info) :-
     ho_traverse_goal(Goal0, Goal, !Info),
     ho_fixup_proc_info(MustRecompute, Goal, !Info).
 
-    % Traverses the goal collecting higher order variables for which the value
-    % is known, and specializing calls and adding specialization requests
-    % to the request_info structure. The first time through the only predicate
-    % we can specialize is call/N. The pred_proc_id is that of the current
-    % procedure, used to find out which procedures need fixing up later.
+    % Traverse the goal collecting higher order variables for which the value
+    % is known, specialize calls, and add specialization requests to the
+    % request_info structure.
+    %
+    % XXX I (zs) don't know what the second sentence below is talking about,
+    % but the first sentence is false: we also interpret predicates that look
+    % things up in typeclass infos.
+    %
+    % The first time through, the only predicate we can specialize is call/N.
+    % The pred_proc_id is that of the current % procedure, used to find out
+    % which procedures need fixing up later.
     %
 :- pred ho_traverse_goal(hlds_goal::in, hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
