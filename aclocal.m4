@@ -419,11 +419,16 @@ AC_DEFUN(MERCURY_CHECK_JAVAC_HEAP_SIZE,
 # The default maximum heap size is too small to build the standard library and
 # other programs so we need to increase it.  The option to do that is
 # non-standard so we have to check that it is accepted.
-AC_CACHE_VAL(mercury_cv_javac_flags_for_heap_size, [
+AC_CACHE_VAL([mercury_cv_javac_flags_for_heap_size], [
 if test "$mercury_cv_java" = "yes"; then
-	AC_MSG_CHECKING(if the Java compiler accepts the max heap size option)
+	AC_MSG_CHECKING([if the Java compiler accepts the max heap size option])
+	# There are two versions of this.  The _test version is the one we test
+	# here.  The second one, with the escaped quotes, is the one that gets
+	# included in the output files.  The quotes are necessary in order for
+	# --restricted-command-line to work with the Java backend.
+	mercury_cv_javac_flags_for_heap_size_test="-J-Xmx256m"
 	mercury_cv_javac_flags_for_heap_size="-J\"-Xmx256m\""
-	if "$JAVAC" "$mercury_cv_javac_flags_for_heap_size" -version \
+	if "$JAVAC" "$mercury_cv_javac_flags_for_heap_size_test" -version \
                 2> /dev/null
         then
 		AC_MSG_RESULT(yes)
