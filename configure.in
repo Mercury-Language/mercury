@@ -3703,7 +3703,7 @@ fi
 if test "$enable_par_grades" = yes -a "$CFLAGS_FOR_THREADS" != "" \
     -a "$MR_HAVE_PTHREAD_H" = 1
 then
-    LIBGRADES="$LIBGRADES hlc.par.gc $BEST_LLDS_BASE_GRADE.par.gc"
+    LIBGRADES="$LIBGRADES hlc.par.gc $BEST_LLDS_BASE_GRADE.par.gc.stseg"
 fi
 
 # Add the .stseg (stack segments) version of the library.
