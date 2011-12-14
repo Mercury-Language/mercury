@@ -3070,7 +3070,7 @@ char_is_not(A, B) :-
 convert_dump_alias("ALL", "abcdEfgilmnprstuvzBCDIMPRSTUZ").
 convert_dump_alias("allD", "abcdEfgilmnprstuvzBCDMPT").
 convert_dump_alias("all", "abcdEfgilmnprstuvzBCMPSTZ").
-convert_dump_alias("most", "bcdfgilmnprstuvzP").
+convert_dump_alias("most", "bcdfgilmnprstvzP").
 convert_dump_alias("cmp", "bdfgilmnprstuvzP").
 convert_dump_alias("trans", "bcdglmnstuvz").
 convert_dump_alias("mintrans", "bcdglmnstvz").
