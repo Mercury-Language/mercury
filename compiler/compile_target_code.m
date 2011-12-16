@@ -2405,7 +2405,7 @@ get_restricted_command_line_link_opts(Globals, LinkTargetType, ResCmdLinkOpts) :
                     "-nologo",
                     "-subsystem:console",
                     "-machine:x86",
-                    "-entry:mainCRTStartup",
+                    "-entry:wmainCRTStartup",
                     "-defaultlib:libcmt"
                 ],
                 join_string_list(ResCmdLinkFlags, "", "", " ", ResCmdLinkOpts)
