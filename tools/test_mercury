@@ -187,21 +187,21 @@ case $BRANCH in
 
     11.07)
         # This is for the 11.07 betas.
-        CHECKOUT_OPTS=-rversion-11_07-branch
-        BASE_TAG_NAME=version-11_07-branch
-        FTP_DIR_NAME=11.07-beta
-        RELEASE_VERSION=11.07-beta-$DATE
-        RELEASE_VERSION_PATTERN=11.07-beta-*
-        ;;
+        #CHECKOUT_OPTS=-rversion-11_07-branch
+        #BASE_TAG_NAME=version-11_07-branch
+        #FTP_DIR_NAME=11.07-beta
+        #RELEASE_VERSION=11.07-beta-$DATE
+        #RELEASE_VERSION_PATTERN=11.07-beta-*
+        #;;
         
         # This is for the 11.07 release.
         #
-        #CHECKOUT_OPTS=-rversion-11_07
-        #BASE_TAG_NAME=version-11_07
-        #FTP_DIR_NAME=11.07
-        #RELEASE_VERSION=11.07
-        #RELEASE_VERSION_PATTERN=11.07*
-        #;;
+        CHECKOUT_OPTS=-rversion-11_07
+        BASE_TAG_NAME=version-11_07
+        FTP_DIR_NAME=11.07
+        RELEASE_VERSION=11.07
+        RELEASE_VERSION_PATTERN=11.07*
+        ;;
 esac
 
 case "$C_COMPILER" in
