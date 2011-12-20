@@ -8,7 +8,8 @@ IMPORTANT NOTE FOR FOR USERS OF MAC OS X 10.7 AND XCODE 4
 The default C compiler provided in XCode 4 is llvm-gcc.
 Mercury does NOT work with llvm-gcc.  In order to build Mercury you will either
 need to use one of the other C compilers available on the system, either GCC
-4.2 or clang.
+4.2 or clang.  With XCode 4 "gcc" is actually a symbolic link for llvm-gcc; the
+GCC 4.2 executable is named "gcc-4.2".
 
 Alternatively, the MacPorts project, <http://www.macports.org/>, provides more
 recent versions of GCC for Mac OS X.
