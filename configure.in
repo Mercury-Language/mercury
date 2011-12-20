@@ -4457,6 +4457,18 @@ case "$mercury_cv_cc_type" in
             *)       CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer" ;;
         esac
 
+        # Disable the GCC optimization -ftree-vrp with GCC 4.2. on Darwin
+        # since enabling it causes code in the hlc.gc grade to be miscompiled.
+        case "$host" in
+            *apple*darwin*)
+                case "$C_COMPILER_TYPE" in
+                    gcc_4_2_*)
+                        CFLAGS_FOR_OPT="$CFLAGS_FOR_OPT -fno-tree-vrp"
+                    ;;
+                esac
+            ;;
+        esac
+
         CFLAGS_FOR_DEBUG="-g"
         CFLAGS_FOR_NO_STRICT_ALIASING="-fno-strict-aliasing"
         MCFLAGS_FOR_CC=
