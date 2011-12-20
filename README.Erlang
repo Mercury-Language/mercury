@@ -167,7 +167,7 @@ A. The goal is to take advantage of the Erlang implementation for writing
 
 Q. What version of Erlang should I be using?
 
-A. We have tested with Erlang/OTP R11-R3 and up.
+A. Erlang/OTP R14B04 or later is required.
 
 
 Q. What features are not yet implemented for the Erlang back-end?
