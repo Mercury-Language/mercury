@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -940,7 +940,7 @@ goal_rewrite_recursive_call(Info, IsLastGoal, !Goal, UseParentStack,
             FixupGoalInfo = do_not_fixup_goal_info
         ;
             GoalExpr0 = conj(ConjType, Conjs0),
-            list.split_last_det(Conjs0, EarlierConjs0, LastConj0),
+            list.det_split_last(Conjs0, EarlierConjs0, LastConj0),
             goal_rewrite_recursive_call(Info, IsLastGoal, LastConj0, LastConj,
                 UseParentStackLastConj, FixupGoalInfoLastConj),
             list.map3(goal_rewrite_recursive_call(Info,

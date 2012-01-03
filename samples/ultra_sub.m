@@ -46,7 +46,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module string.
-:- import_module svmap.
 
 %------------------------------------------------------------------------------%
 
@@ -121,7 +120,7 @@ match_2(X, Chars, Tail, Ts, !Match) :-
     ->
         true
     ;
-        svmap.set(X, Chars, !Match)
+        map.set(X, Chars, !Match)
     ),
     (
         % Try and match the remainder of the pattern.

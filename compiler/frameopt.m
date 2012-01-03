@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001,2003-2011 The University of Melbourne.
+% Copyright (C) 1994-2001,2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1175,7 +1175,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
     ),
     (
         Label = BlockLabel, % sanity check
-        list.split_last_det(BlockInstrs0, AllButLastInstrs, LastInstr0)
+        list.det_split_last(BlockInstrs0, AllButLastInstrs, LastInstr0)
     ->
         LastInstr0 = llds_instr(LastUinstr0, Comment),
         (
@@ -1922,7 +1922,7 @@ transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0, OrdNeedsFrame,
         AssocLabelMap = SideAssocLabelMap,
         RedirectFallThrough = []
     ),
-    list.split_last_det(Instrs0, PrevInstrs, LastInstr0),
+    list.det_split_last(Instrs0, PrevInstrs, LastInstr0),
     map.from_assoc_list(AssocLabelMap, LabelMap),
     opt_util.replace_labels_instruction(LastInstr0, LastInstr, LabelMap, no),
     Instrs = PrevInstrs ++ [LastInstr | RedirectFallThrough],

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -205,7 +205,6 @@
 :- import_module require.
 :- import_module pair.
 :- import_module string.
-:- import_module svmap.
 
 :- import_module wix_language.
 
@@ -416,7 +415,7 @@ annotate_control(Language, Control, AnnControl, !DialogIdMap, !IdSupply,
             BitMapSourceId = FoundSourceId
         else
             allocate_id(BitMapSourceId, !IdSupply),
-            svmap.det_insert(Source, BitMapSourceId, !BitMaps)
+            map.det_insert(Source, BitMapSourceId, !BitMaps)
         ),
         AnnControl = annotated_bitmap(BitMapControlId, Pos, Size, 
             BitMapSourceId)
@@ -641,7 +640,7 @@ lookup_dialog_id(DialogToken, DialogId, !DialogIdMap, !IdSupply) :-
         DialogId = FoundDialogId
     else
         allocate_id(DialogId, !IdSupply),
-        svmap.det_insert(DialogToken, DialogId, !DialogIdMap)
+        map.det_insert(DialogToken, DialogId, !DialogIdMap)
     ).
 
 generate_wizard_dialogs(Title, Next, Back, Cancel, Install, BannerSrc, 

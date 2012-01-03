@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -82,6 +82,6 @@ synthetic_term_to_browser_term(FunctorString, Args, IsFunc) = BrowserTerm :-
         BrowserTerm = synthetic_term(FunctorString, Args, no)
     ;
         IsFunc = yes,
-        list.split_last_det(Args, FuncArgs, Return),
+        list.det_split_last(Args, FuncArgs, Return),
         BrowserTerm = synthetic_term(FunctorString, FuncArgs, yes(Return))
     ).

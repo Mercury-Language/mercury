@@ -4,7 +4,7 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
+:- pred main(io.state, io.state).
 :- mode main(di, uo) is det.
 
 :- implementation.
@@ -12,7 +12,7 @@
 :- import_module float, int, list.
 
 main -->
-	{ rnd__init(17, Rnd) },
+	{ rnd.init(17, Rnd) },
 	{ gen_nums(10, Rnd, [], Nums) },
 	foldl((pred(Num::in, di, uo) is det -->
 		print(Num), nl
@@ -31,8 +31,8 @@ gen_nums(N, Rnd0, Acc0, Acc) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred rnd__init(int, rnd).
-:- mode rnd__init(in, out) is det.
+:- pred rnd.init(int, rnd).
+:- mode rnd.init(in, out) is det.
 
 :- pred rnd(float, rnd, rnd).
 :- mode rnd(out, in, out) is det.
@@ -62,7 +62,7 @@ frange(Min, Max, Val, R0, R) :-
 	Val = J*(Max - Min)+Min.
 
 shuffle(Ins, Outs, R0, R) :-
-	list__length(Ins, N),
+	list.length(Ins, N),
 	shuffle2(N, Ins, [], T0, R0, R1),
 	shuffle2(N, T0, [], T1, R1, R2),
 	shuffle2(N, T1, [], T2, R2, R3),
@@ -98,9 +98,9 @@ delnth([X|Xs], N, Zs, Z) :-
 	).
 
 oneof(Things, Thing, R0, R) :-
-	list__length(Things, Num),
+	list.length(Things, Num),
 	irange(0, Num-1, X, R0, R),
-	list__index0_det(Things, X, Thing).
+	list.det_index0(Things, X, Thing).
 
 %---------------------------------------------------------------------------%
 
@@ -114,7 +114,7 @@ oneof(Things, Thing, R0, R) :-
 		int
 	).
 
-rnd__init(Seed, rnd(M1, M2, Seed)) :-
+rnd.init(Seed, rnd(M1, M2, Seed)) :-
 	SN = Seed /\ ((1 << 15) - 1),
 	N  = Seed /\ ((1 << 30) - 1),
 	M1a = vec(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),

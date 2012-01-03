@@ -8,18 +8,18 @@
 
 :- implementation.
 
-:- import_module term_to_xml, map, pair, svmap, list, string.
+:- import_module term_to_xml, map, pair, list, string.
 
 main(!IO) :-
 	map.init(Map),
 	some [!Map] (
 		!:Map = Map,
-		svmap.set(1, "one", !Map),
-		svmap.set(2, "two", !Map),
-		svmap.set(3, "three", !Map),
-		svmap.set(4, "four", !Map),
-		svmap.set(5, "five", !Map),
-		svmap.set(6, "six &<>!@$%^`&*()-+='", !Map),
+		map.set(1, "one", !Map),
+		map.set(2, "two", !Map),
+		map.set(3, "three", !Map),
+		map.set(4, "four", !Map),
+		map.set(5, "five", !Map),
+		map.set(6, "six &<>!@$%^`&*()-+='", !Map),
 		write_xml_doc_style_dtd(io.stdout_stream, !.Map, no_stylesheet,
 			external_dtd(
 			public_system("-//W3C//DTD XHTML 1.0 Strict//EN",

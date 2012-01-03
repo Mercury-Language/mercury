@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -147,11 +147,6 @@
     % with Suffix.
     %
 :- func string.det_remove_suffix(string, string) = string.
-
-    % An obsolete synonym for the above.
-    %
-:- pragma obsolete(string.remove_suffix_det/2).
-:- func string.remove_suffix_det(string, string) = string.
 
     % string.remove_suffix_if_present(Suffix, String) returns `String' minus
     % `Suffix' if `String' ends with `Suffix', `String' otherwise.
@@ -506,11 +501,6 @@
     %
 :- func string.det_index(string, int) = char.
 :- pred string.det_index(string::in, int::in, char::uo) is det.
-
-:- pragma obsolete(string.index_det/2).
-:- func string.index_det(string, int) = char.
-:- pragma obsolete(string.index_det/3).
-:- pred string.index_det(string::in, int::in, char::uo) is det.
 
     % A synonym for det_index/2:
     % String ^ elem(Index) = string.det_index(String, Index).
@@ -1228,9 +1218,6 @@ accumulate_negative_int(Base, Char, N0, N) :-
 % on calls to string.length that occur in loops.
 :- pragma inline(string.det_index/3).
 
-string.index_det(String, Int, Char) :-
-    string.det_index(String, Int, Char).
-
 string.det_index(String, Int, Char) :-
     ( string.index(String, Int, Char0) ->
         Char = Char0
@@ -1404,9 +1391,6 @@ string.right_by_codepoint(String, RightCount, RightString) :-
 string.remove_suffix(String, Suffix, StringWithoutSuffix) :-
     string.suffix(String, Suffix),
     string.left(String, length(String) - length(Suffix), StringWithoutSuffix).
-
-string.remove_suffix_det(String, Suffix) =
-    string.det_remove_suffix(String, Suffix).
 
 string.det_remove_suffix(String, Suffix) = StringWithoutSuffix :-
     ( string.remove_suffix(String, Suffix, StringWithoutSuffixPrime) ->
@@ -6124,8 +6108,6 @@ string.pad_right(S1, C, N) = S2 :-
 
 string.duplicate_char(C, N) = S :-
     string.duplicate_char(C, N, S).
-
-string.index_det(S, N) = string.det_index(S, N).
 
 string.det_index(S, N) = C :-
     string.det_index(S, N, C).

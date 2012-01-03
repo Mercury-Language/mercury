@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 2002-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -68,11 +68,6 @@
     % If the pseudo_type_desc describes a non-ground type, abort.
     %
 :- func det_ground_pseudo_type_desc_to_type_desc(pseudo_type_desc) = type_desc.
-
-    % An obsolete synonym for the above.
-    %
-:- pragma obsolete(ground_pseudo_type_desc_to_type_desc_det/1).
-:- func ground_pseudo_type_desc_to_type_desc_det(pseudo_type_desc) = type_desc.
 
     % The function type_of/1 returns a representation of the type
     % of its argument.
@@ -448,9 +443,6 @@ ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
     ;
         fail
     ).
-
-ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) =
-    det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc).
 
 det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
     ( pseudo_type_desc_is_ground(PseudoTypeDesc) ->

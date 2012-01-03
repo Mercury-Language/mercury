@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997-1999, 2005-2006, 2011 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997-1999, 2005-2006, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -63,13 +63,6 @@
 :- pred stack.det_top(stack(T)::in, T::out) is det.
 :- func stack.det_top(stack(T)) = T.
 
-    % Obsolete synonyms for the above.
-    %
-:- pragma obsolete(stack.top_det/2).
-:- pred stack.top_det(stack(T)::in, T::out) is det.
-:- pragma obsolete(stack.top_det/1).
-:- func stack.top_det(stack(T)) = T.
-
 	% `stack.pop(Stack0, Elem, Stack)' is true iff `Stack0' is
 	% a non-empty stack whose top element is `Elem', and `Stack'
 	% the stack which results from popping `Elem' off `Stack0'.
@@ -80,8 +73,6 @@
 	% call error/1 rather than failing if given an empty stack.
 	%
 :- pred stack.det_pop(stack(T)::in, T::out, stack(T)::out) is det.
-:- pragma obsolete(stack.pop_det/3).
-:- pred stack.pop_det(stack(T)::in, T::out, stack(T)::out) is det.
 
 	% `stack.depth(Stack, Depth)' is true iff `Stack' is a stack
 	% containing `Depth' elements.
@@ -137,10 +128,6 @@ stack.det_top(Stack, Elem) :-
 		error("stack.det_top: top of empty stack")
 	).
 
-stack.top_det(S) = stack.det_top(S).
-stack.top_det(S, E) :-
-    stack.det_top(S, E).
-
 stack.pop(stack([Elem | Elems]), Elem, stack(Elems)).
 
 stack.det_pop(Stack0, Elem, Stack) :-
@@ -151,9 +138,6 @@ stack.det_pop(Stack0, Elem, Stack) :-
         Stack0 = stack([]),
 		error("stack.det_pop: pop from empty stack")
 	).
-
-stack.pop_det(Stack0, Elem, Stack) :-
-	stack.det_pop(Stack0, Elem, Stack).
 
 stack.depth(S) = N :-
 	stack.depth(S, N).

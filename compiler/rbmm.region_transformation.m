@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2011 The University of Melbourne.
+% Copyright (C) 2007-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -154,7 +154,7 @@ annotate_pred(PPId, FormalRegionArgs, !Processed, !ModuleInfo) :-
             ;
                 PredOrFunc = pf_function,
                 % The output of function is always at the last.
-                list.split_last_det(ArgTypes0, BeforeLast, Last),
+                list.det_split_last(ArgTypes0, BeforeLast, Last),
                 ArgTypes = BeforeLast ++ RegionTypes ++ [Last]
             ),
             pred_info_set_arg_types(TypeVarSet, ExistQuantTVars, ArgTypes,
@@ -310,9 +310,9 @@ annotate_proc(ModuleInfo, PredInfo, Graph, FormalRegionArgProc,
         !:ActualArgModes = !.ActualArgModes ++ InModes ++ OutModes
     ;
         PredOrFunc = pf_function,
-        list.split_last_det(!.HeadVars, BeforeLastHeadVar, LastHeadVar),
+        list.det_split_last(!.HeadVars, BeforeLastHeadVar, LastHeadVar),
         !:HeadVars = BeforeLastHeadVar ++ FormalRegionArgs ++ [LastHeadVar],
-        list.split_last_det(!.ActualArgModes, BeforeLastHeadMode,
+        list.det_split_last(!.ActualArgModes, BeforeLastHeadMode,
             LastHeadMode),
         !:ActualArgModes = BeforeLastHeadMode ++ InModes
             ++ OutModes ++ [LastHeadMode]
@@ -440,7 +440,7 @@ region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming, IteRenaming,
     ;
         CalleePredOrFunc = pf_function,
         % The output of function is always at the last.
-        list.split_last_det(Args0, BeforeLast, Last),
+        list.det_split_last(Args0, BeforeLast, Last),
         Args = BeforeLast ++ ActualRegionArgs ++ [Last]
     ),
 

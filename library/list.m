@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -335,12 +335,6 @@
 :- pred list.det_replace_nth(list(T)::in, int::in, T::in, list(T)::out) is det.
 :- func list.det_replace_nth(list(T), int, T) = list(T).
 
-:- pragma obsolete(list.replace_nth_det/4).
-:- pred list.replace_nth_det(list(T)::in, int::in, T::in, list(T)::out)
-    is det.
-:- pragma obsolete(list.replace_nth_det/3).
-:- func list.replace_nth_det(list(T), int, T) = list(T).
-
     % list.sort_and_remove_dups(List0, List):
     %
     % List is List0 sorted with the second and subsequent occurrence of
@@ -399,15 +393,6 @@
 :- pred list.det_index0(list(T)::in, int::in, T::out) is det.
 :- pred list.det_index1(list(T)::in, int::in, T::out) is det.
 
-:- pragma obsolete(list.index0_det/3).
-:- pred list.index0_det(list(T)::in, int::in, T::out) is det.
-:- pragma obsolete(list.index1_det/3).
-:- pred list.index1_det(list(T)::in, int::in, T::out) is det.
-
-:- pragma obsolete(list.index0_det/2).
-:- func list.index0_det(list(T), int) = T.
-:- pragma obsolete(list.index1_det/2).
-:- func list.index1_det(list(T), int) = T.
 :- func list.det_index0(list(T), int) = T.
 :- func list.det_index1(list(T), int) = T.
 
@@ -478,9 +463,6 @@
 :- pred list.det_last(list(T)::in, T::out) is det.
 :- func list.det_last(list(T)) = T.
 
-:- pragma obsolete(list.last_det/2).
-:- pred list.last_det(list(T)::in, T::out) is det.
-
     % list.split_last(List, AllButLast, Last) is true if Last is the
     % last element of List and AllButLast is the list of elements before it.
     %
@@ -489,7 +471,6 @@
     % A deterministic version of list.split_last, which aborts instead of
     % failing if the input list is empty.
     %
-:- pred list.split_last_det(list(T)::in, list(T)::out, T::out) is det.
 :- pred list.det_split_last(list(T)::in, list(T)::out, T::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -1732,12 +1713,6 @@ list.det_index0(List, N, Elem) :-
         error("list.det_index0: index out of range")
     ).
 
-list.index0_det(Xs, N) = A :-
-    list.index0_det(Xs, N, A).
-
-list.index0_det(List, N, Elem) :-
-    list.det_index0(List, N, Elem).
-
 list.index1(List, N, Elem) :-
     list.index0(List, N - 1, Elem).
 
@@ -1746,12 +1721,6 @@ list.det_index1(Xs, N) = A :-
 
 list.det_index1(List, N, Elem) :-
     list.det_index0(List, N - 1, Elem).
-
-list.index1_det(List, N, Elem) :-
-    list.det_index1(List, N, Elem).
-
-list.index1_det(Xs, N) = A :-
-    list.det_index1(Xs, N, A).
 
 %-----------------------------------------------------------------------------%
 
@@ -1874,12 +1843,6 @@ list.replace_all([X | Xs], Y, Z, L) :-
 list.replace_nth(Xs, P, R, L) :-
     P > 0,
     list.replace_nth_2(Xs, P, R, L).
-
-list.replace_nth_det(Xs, N, A) = Ys :-
-    list.det_replace_nth(Xs, N, A, Ys).
-
-list.replace_nth_det(Xs, P, R, L) :-
-    list.det_replace_nth(Xs, P, R, L).
 
 list.det_replace_nth(Xs, N, A) = Ys :-
     list.det_replace_nth(Xs, N, A, Ys).
@@ -2310,9 +2273,6 @@ list.det_last_2(H, T, Last) :-
         list.det_last_2(TH, TT, Last)
     ).
 
-list.last_det(List, Last) :-
-    list.det_last(List, Last).
-
 list.split_last([H | T], AllButLast, Last) :-
     (
         T = [],
@@ -2320,38 +2280,35 @@ list.split_last([H | T], AllButLast, Last) :-
         Last = H
     ;
         T = [TH | TT],
-        list.split_last_det_2(TH, TT, AllButLastTail, Last),
+        list.det_split_last_2(TH, TT, AllButLastTail, Last),
         AllButLast = [H | AllButLastTail]
     ).
 
-list.split_last_det([], _, _) :-
-    error("list.split_last_det: empty list").
-list.split_last_det([H | T], AllButLast, Last) :-
+list.det_split_last([], _, _) :-
+    error("list.det_split_last: empty list").
+list.det_split_last([H | T], AllButLast, Last) :-
     (
         T = [],
         AllButLast = [],
         Last = H
     ;
         T = [TH | TT],
-        list.split_last_det_2(TH, TT, AllButLastTail, Last),
+        list.det_split_last_2(TH, TT, AllButLastTail, Last),
         AllButLast = [H | AllButLastTail]
     ).
 
-:- pred list.split_last_det_2(T::in, list(T)::in, list(T)::out, T::out) is det.
+:- pred list.det_split_last_2(T::in, list(T)::in, list(T)::out, T::out) is det.
 
-list.split_last_det_2(H, T, AllButLast, Last) :-
+list.det_split_last_2(H, T, AllButLast, Last) :-
     (
         T = [],
         AllButLast = [],
         Last = H
     ;
         T = [TH | TT],
-        list.split_last_det_2(TH, TT, AllButLastTail, Last),
+        list.det_split_last_2(TH, TT, AllButLastTail, Last),
         AllButLast = [H | AllButLastTail]
     ).
-
-list.det_split_last(List, AllButLast, Last) :-
-    list.split_last_det(List, AllButLast, Last).
 
 %-----------------------------------------------------------------------------%
 
