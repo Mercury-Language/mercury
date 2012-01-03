@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006, 2009, 2011 The University of Melbourne.
+% Copyright (C) 1994-2006, 2009, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -28,23 +28,6 @@
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
-
-% External interface: exported predicates
-
-% The following are not yet implemented.
-%
-% :- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fyx; fyy.
-%
-%   % term_io.op(Prec, Type, OpName, !IO):
-%   % Define an operator as per Prolog op/3 for future calls
-%   % to term_io.read_term.
-% :- pred term_io.op(int::in, op_type::in, string::in, io::di, io::uo) is det.
-%
-% :- type op_details ---> op(int, op_type, string).
-%
-%   % Return a list containing all the current operator definitions.
-%   % Does not modify the io.state.
-% :- pred term_io.current_ops(list(op_details)::out, io::di, io::uo) is det.
 
 :- type read_term(T)
     --->    eof

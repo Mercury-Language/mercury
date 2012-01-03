@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2009, 2011 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2009, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -745,9 +745,7 @@ univ_to_term_special_case("type_desc", "type_desc", [], Univ, Context,
 univ_to_term_special_case("univ", "univ", [], Univ, Context, Term) :-
     det_univ_to_type(Univ, NestedUniv),
     Term = functor(atom("univ"),
-        % XXX what operator should we use for type qualification?
-        [functor(atom(":"),  % TYPE_QUAL_OP
-            [ValueTerm, TypeTerm], Context)], Context),
+        [functor(atom(":"), [ValueTerm, TypeTerm], Context)], Context),
     type_info_to_term(Context, univ_type(NestedUniv), TypeTerm),
     NestedUnivValue = univ_value(NestedUniv),
     type_to_term(NestedUnivValue, ValueTerm).
