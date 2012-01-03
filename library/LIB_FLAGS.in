@@ -1,5 +1,6 @@
 @BOOTSTRAP_MC_ARGS@
 --optimize-constructor-last-call
+--profile-optimized
 --no-infer-all
 --halt-at-warn
 --no-warn-inferred-erroneous
