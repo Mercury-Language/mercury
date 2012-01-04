@@ -1,0 +1,1 @@
+MCFLAGS = --use-grade-subdirs --trail-segments
