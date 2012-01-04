@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997-2005, 2011 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-2005, 2011-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -171,11 +171,23 @@ typedef	char		MR_small_bool;
   #define MR_EXTERN_INLINE		static
   #define MR_OUTLINE_DEFN(DECL,BODY)
 #elif defined(MR_GNUC) 
-  /* GNU C */
-  #define MR_STATIC_INLINE		static __inline__
-  #define MR_INLINE			static __inline__
-  #define MR_EXTERN_INLINE		extern __inline__
-  #define MR_OUTLINE_DEFN(DECL,BODY)	DECL BODY
+  /* GNU C: in (GNU) C99 or later mode GCC will use C99 style
+  ** inline functions; otherwise GNU style inline functions will
+  ** will be used.
+  */
+  #if defined(__GNUC_STDC_INLINE__)
+    /* C99 style inlining. */
+    #define MR_STATIC_INLINE		static inline
+    #define MR_INLINE			static inline
+    #define MR_EXTERN_INLINE		inline
+    #define MR_OUTLINE_DEFN(DECL,BODY)	extern DECL;
+  #else
+    /* GNU C90 style inlining. */
+    #define MR_STATIC_INLINE		static __inline__
+    #define MR_INLINE			static __inline__
+    #define MR_EXTERN_INLINE		extern __inline__
+    #define MR_OUTLINE_DEFN(DECL,BODY)	DECL BODY
+  #endif /* ! __GNUC_STDC_INLINE */
 #elif defined(MR_MSVC)
   #define MR_STATIC_INLINE              static __inline
   #define MR_INLINE                     static __inline
