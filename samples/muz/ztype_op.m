@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999, 2006 The University of Melbourne.
+% Copyright (C) 1995-1999, 2006, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -416,7 +416,7 @@ ztdup(_, given(I), given(I)).
 ztdup(P, power(T0), power(T)) :- ztdup(P, T0, T).
 ztdup(P, cross(L0), cross(L)) :- list__map(ztdup(P), L0, L).
 ztdup(P, schema(DL0), schema(DL)) :- list__map(do_decl(ztdup(P)), DL0, DL).
-ztdup(P, var(ztvar(_, I)), V) :- list__index1_det(P, I, V).	% Assert: _ = 0
+ztdup(P, var(ztvar(_, I)), V) :- list__det_index1(P, I, V).	% Assert: _ = 0
 ztdup(_, parameter(_I), _) :- error("ztdup/3: parameter being duplicated").
 ztdup(_, unity, unity).
 ztdup(P, abbreviation(I, L0, D, N, T), abbreviation(I, L, D, N, T)) :-
