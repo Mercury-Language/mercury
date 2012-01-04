@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2000, 2002-2007, 2010-2011 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002-2007, 2010-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1363,7 +1363,7 @@ MR_debug_memory_zone(FILE *fp, MR_MemoryZone *zone)
 #endif
     fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-size      = %lu\n",
         zone->MR_zone_name, zone->MR_zone_id,
-        get_zone_alloc_size(zone));
+        (unsigned long) get_zone_alloc_size(zone));
     fprintf(fp, "\n");
 }
 
