@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1314,7 +1314,7 @@ report_ambiguity_error(Info, TypeAssign1, TypeAssign2) = Spec :-
         AmbiguityPieces = [_ | _],
         Pieces2 = [words("Possible type assignments include:"), nl
             | AmbiguityPieces],
-        VerboseComponents = [verbose_only([words(add_qualifiers_reminder)])],
+        VerboseComponents = [verbose_only(add_qualifiers_reminder)],
         WarningMsgs = []
     ),
 
@@ -1324,15 +1324,17 @@ report_ambiguity_error(Info, TypeAssign1, TypeAssign2) = Spec :-
     Spec = error_spec(severity_error, phase_type_check,
         [MainMsg | WarningMsgs]).
 
-:- func add_qualifiers_reminder = string.
+:- func add_qualifiers_reminder = list(format_component).
 
-add_qualifiers_reminder =
-    "You will need to add an explicit type qualification" ++
-    "to resolve the type ambiguity." ++
-    "The way to add an explicit type qualification is to use ""with_type""." ++
-    "For details see the ""Explicit type qualification"" sub-section" ++
-    "of the ""Data-terms"" section of the ""Syntax"" chapter" ++
-    "of the Mercury language reference manual.".
+add_qualifiers_reminder = [
+    words("You will need to add an explicit type qualification"),
+    words("to resolve the type ambiguity."),
+    words("The way to add an explicit type qualification"),
+    words("is to use \"with_type\"."),
+    words("For details see the"),  fixed("\"Explicit type qualification\""),
+    words(" sub-section of the \"Data-terms\" section of the"),
+    words("\"Syntax\" chapter of the Mercury language reference manual.")
+].
 
 :- func ambiguity_error_possibilities_to_pieces(list(prog_var), prog_varset,
     type_assign, type_assign) = list(format_component).
