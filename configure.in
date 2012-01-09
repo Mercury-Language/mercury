@@ -326,7 +326,7 @@ AC_SUBST(CONFIG_PREFIX)
 AC_SUBST(CONFIG_LIBDIR)
 #-----------------------------------------------------------------------------#
 
-case "$host" in
+case "$build" in
     i*86-*-solaris2.*)  link_static_opt= ;;
     *solaris2.10)       link_static_opt= ;;
     *apple*darwin*)     link_static_opt= ;;
@@ -1081,7 +1081,7 @@ else
 
     OBJFILE_OPT="-o "
     EXEFILE_OPT="-o "
-    AR="${HOST_TOOL_PREFIX}ar"
+    AC_CHECK_TOOL([AR], [ar], [ar])
     ARFLAGS="cr"
     AR_LIBFILE_OPT=""
 
