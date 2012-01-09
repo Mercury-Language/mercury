@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002, 2005, 2006-2007, 2010 The University of Melbourne.
+# Copyright (C) 1995-2002, 2005, 2006-2007, 2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -46,33 +46,33 @@ MGNUCFLAGS-mfiltercc = --no-filter-cc
 
 #-----------------------------------------------------------------------------#
 
-all:	$(PROGS) $(TAGS_FILE_EXISTS)
+all:	$(PROGFILENAMES) $(TAGS_FILE_EXISTS)
 
 ifeq ($(USING_MICROSOFT_CL_COMPILER),yes)
-.c:
+.c$(EXT_FOR_EXE):
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -Fe$@ $< $(GETOPT_SRC)
 
-mkinit: mkinit.c mkinit_common.c mkinit_common.h
+mkinit$(EXT_FOR_EXE): mkinit.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -Fe$@ \
 			mkinit.c mkinit_common.c $(GETOPT_SRC)
 
-mkinit_erl: mkinit_erl.c mkinit_common.c mkinit_common.h
+mkinit_erl$(EXT_FOR_EXE): mkinit_erl.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -Fe$@ \
 			mkinit_erl.c mkinit_common.c $(GETOPT_SRC)
 else
-.c:
+.c$(EXT_FOR_EXE):
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
 
-mkinit: mkinit.c mkinit_common.c mkinit_common.h
+mkinit$(EXT_FOR_EXE): mkinit.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ \
 			mkinit.c mkinit_common.c $(GETOPT_SRC)
 
-mkinit_erl: mkinit_erl.c mkinit_common.c mkinit_common.h
+mkinit_erl$(EXT_FOR_EXE): mkinit_erl.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ \
 			mkinit_erl.c mkinit_common.c $(GETOPT_SRC)
@@ -90,7 +90,7 @@ tags_file_exists:
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: $(PROGS)
+install: $(PROGFILENAMES)
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	cp `vpath_find $(PROGFILENAMES)` $(INSTALL_BINDIR)
 

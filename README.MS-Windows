@@ -40,3 +40,11 @@ MS Visual C compiler.
 
 NOTE: while a Unix emulation environment is required to build Mercury on
 Windows, one is NOT required to use Mercury on Windows.
+
+
+-------------------------------------
+Building Mercury for Windows on Linux
+-------------------------------------
+
+Alternatively, you can cross-compile Mercury on Linux with a MinGW
+cross-compiler.  See README.MinGW-cross.

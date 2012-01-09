@@ -107,7 +107,11 @@ endif
 # part of the build process, i.e. on the build machine.  These will usually
 # be the same as CC and CFLAGS, except in a cross-compilation environment.
 # Note that HOSTCFLAGS should include any -D flags that affect thread support.
+#
+# Mercury-specific: we set HOSTCC in Mmake.common
+ifndef HOSTCC
 HOSTCC=$(CC)
+endif
 HOSTCFLAGS=$(CFLAGS)
 
 # For dynamic library builds, it may be necessary to add flags to generate
@@ -226,8 +230,9 @@ all: gc.a gctest
 
 # if AO_INSTALL_DIR doesn't exist, we assume that it is pointing to
 # the default location, and we need to build
+# Mercury-specific: pass FULLARCH for cross-compilation
 $(AO_INSTALL_DIR):
-	CC="$(CC)" MAKE=$(MAKE) $(srcdir)/build_atomic_ops.sh
+	CC="$(CC)" MAKE=$(MAKE) $(srcdir)/build_atomic_ops.sh --host=$(FULLARCH)
 
 LEAKFLAGS=$(CFLAGS) -DFIND_LEAK
 

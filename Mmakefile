@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2011 The University of Melbourne.
+# Copyright (C) 1995-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -230,7 +230,7 @@ all: 	$(GENERATED_DOCS) mercury-compiler.spec util_no_rt $(SUBDIRS)
 
 .PHONY: util_no_rt
 util_no_rt: scripts
-	+cd util && $(SUBDIR_MMAKE) mfiltercc
+	+cd util && $(SUBDIR_MMAKE) mfiltercc$(EXT_FOR_EXE)
 
 .PHONY: util
 util: 	scripts runtime
@@ -644,12 +644,18 @@ install_deep_profiler: deep_profiler
 # LIBGRADE_SUFFIXES = .m .int3 .date3 .int2 .int .date .opt .optdate \
 #	.trans_opt .trans_opt_date .d .mh .mih .c_date  .c .o .pic_o
 
+ifeq ($(CROSS_COMPILING),yes)
+OVERRIDE_MC_FOR_LIBGRADE =
+else
+OVERRIDE_MC_FOR_LIBGRADE = MC=mmc
+endif
+
 .PHONY: install_grades
 install_grades: install_main
 	# Use the newly installed compiler to build the libraries in various
-	# different grades. We need to override MC=mmc so that we use the mmc
-	# from the scripts directory, which runs the newly installed compiler,
-	# rather than using the bootstrap compiler.
+	# different grades. Except when cross-compiling, we override MC=mmc so
+	# that we use the mmc from the scripts directory, which runs the newly
+	# installed compiler, rather than using the bootstrap compiler.
 	#
 	# Compile different grades in different directories, so that we can
 	# optionally preserve all the directories, and include them in
@@ -668,33 +674,44 @@ install_grades: install_main
 		esac;                                                         \
 		scripts/prepare_install_dir $${IWS} &&                        \
 		( cd $${IWS}/boehm_gc &&                                      \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			GC_GRADE=$${gc_grade} install_lib ) &&                \
 		( cd $${IWS}/runtime &&                                       \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			install_lib ) &&                                      \
 		( cd $${IWS}/library &&                                       \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			depend &&                                             \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			install_library ) &&                                  \
 		( cd $${IWS}/mdbcomp &&                                       \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			depend &&                                             \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			install_library ) &&                                  \
 		( cd $${IWS}/browser &&                                       \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			depend &&                                             \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			install_library ) &&                                  \
 		( cd $${IWS}/ssdb &&                                          \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			depend &&                                             \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			install_library ) &&                                  \
 		( cd $${IWS}/trace &&                                         \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \
+		  $(SUBDIR_MMAKE) $(OVERRIDE_MC_FOR_LIBGRADE)                 \
+			GRADE=$${grade} WORKSPACE=$${IWS}                     \
 			install_lib ) &&                                      \
 		true                                                          \
 	    ) ||                                                              \

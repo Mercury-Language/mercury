@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------------#
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2011 The University of Melbourne.
+# Copyright (C) 1995-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -144,7 +144,7 @@ esac
 AC_PROG_CC
 AC_SUBST([CC])
 
-# Ensure that AC_CANONICAl_HOST uses the value of CC we just determined.
+# Ensure that AC_CANONICAL_HOST uses the value of CC we just determined.
 #
 export CC
 
@@ -226,6 +226,26 @@ case "$PREFIX" in
         exit 1
         ;;
 esac
+
+#-----------------------------------------------------------------------------#
+
+case "$cross_compiling" in
+    yes)
+        CROSS_COMPILING=yes
+        BUILD_C_PROGS_FOR_BUILD_SYSTEM=cc
+        HOST_TOOL_PREFIX="$host-"
+        ;;
+    *)
+        CROSS_COMPILING=no
+        BUILD_C_PROGS_FOR_BUILD_SYSTEM="$CC"
+        HOST_TOOL_PREFIX=
+        ;;
+esac
+
+AC_SUBST(CROSS_COMPILING)
+AC_SUBST(BUILD_C_PROGS_FOR_BUILD_SYSTEM)
+
+#-----------------------------------------------------------------------------#
 
 # Using `cygpath -m' gives a path that works under both Cygwin and native
 # Windows, without causing quoting problems in shell scripts.
@@ -1061,7 +1081,7 @@ else
 
     OBJFILE_OPT="-o "
     EXEFILE_OPT="-o "
-    AR="ar"
+    AR="${HOST_TOOL_PREFIX}ar"
     ARFLAGS="cr"
     AR_LIBFILE_OPT=""
 

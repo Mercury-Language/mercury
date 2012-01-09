@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2005-2007, 2009-2011 The University of Melbourne. 
+# Copyright (C) 2005-2007, 2009-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -129,11 +129,11 @@ mtc_diff: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 mtc_diff: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
 endif
 
-$(cs_subdir)mslice_init.c: $(UTIL_DIR)/mkinit
-$(cs_subdir)mdice_init.c: $(UTIL_DIR)/mkinit
-$(cs_subdir)mtc_union.c: $(UTIL_DIR)/mkinit
-$(cs_subdir)mcov.c: $(UTIL_DIR)/mkinit
-$(cs_subdir)mtc_diff.c: $(UTIL_DIR)/mkinit
+$(cs_subdir)mslice_init.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mdice_init.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mtc_union.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mcov.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mtc_diff.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
 

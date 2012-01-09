@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2006, 2009-2011 The University of Melbourne.
+# Copyright (C) 1995-2006, 2009-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -23,8 +23,22 @@ include $(MERCURY_DIR)/VERSION
 # directory, not $(MERCURY_DIR)/runtime etc.
 SET_RPATH=no
 
+# This affects the tools set in Mmake.workspace so must be set first.
+CROSS_COMPILING=@CROSS_COMPILING@
+
 WORKSPACE=$(MERCURY_DIR)
 include $(MERCURY_DIR)/Mmake.workspace
+
+#-----------------------------------------------------------------------------#
+
+# The host triplet is used to configure libatomic_ops.
+FULLARCH=@FULLARCH@
+
+# Specify a C compiler to build executables that can be executed on the build
+# system itself, as part of the Boehm GC build process. The name is confusing
+# because it conflicts with the autoconf meaning of "host", but it comes from
+# upstream.
+HOSTCC=@BUILD_C_PROGS_FOR_BUILD_SYSTEM@
 
 #-----------------------------------------------------------------------------#
 

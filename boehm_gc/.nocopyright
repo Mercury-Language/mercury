@@ -20,6 +20,7 @@ alpha_mach_dep.s
 backgraph.c
 backptr.h
 blacklst.c
+build_atomic_ops.sh
 checksums.c
 config.guess
 config.sub

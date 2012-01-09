@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2008, 2010 The University of Melbourne.
+# Copyright (C) 2002-2008, 2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -29,6 +29,12 @@
 # and library directories to be included in MLFLAGS, MLLIBS and CFLAGS.
 
 #-----------------------------------------------------------------------------#
+# CROSS_COMPILING is set in Mmake.common but that is not used in the test
+# suite. We don't support testing when cross-compiling anyway.
+ifeq ($(origin CROSS_COMPILING),undefined)
+CROSS_COMPILING = no
+endif
+
 ifeq ($(origin LINK_STATIC),undefined)
 LINK_STATIC = no
 endif
@@ -95,8 +101,12 @@ export SO_LOCATIONS_DIR
 MC =		$(SCRIPTS_DIR)/mmc
 MGNUC =		$(SCRIPTS_DIR)/mgnuc
 ML =		$(SCRIPTS_DIR)/ml
+# We cannot use the binaries in util when cross-compiling.
+# Just assume that the default c2init and mkinit are usable.
+ifneq ($(CROSS_COMPILING),yes)
 C2INIT =	MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 MKLIBINIT =	$(UTIL_DIR)/mkinit -k
+endif
 MTAGS =		$(SCRIPTS_DIR)/mtags
 MTAGSFLAGS +=	$(EXTRA_MTAGSFLAGS)
 

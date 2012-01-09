@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003, 2005-2011 The University of Melbourne. 
+# Copyright (C) 1995-2003, 2005-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -282,7 +282,7 @@ $(MC_PROG): $(GCC_MAIN_LIBS)
 endif
 endif
 
-$(MC_PROG)_init.c: $(UTIL_DIR)/mkinit
+$(MC_PROG)_init.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
 

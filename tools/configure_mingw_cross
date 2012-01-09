@@ -1,0 +1,93 @@
+#!/bin/sh -e
+#---------------------------------------------------------------------------#
+# Copyright (C) 2012 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+#
+# This script prepares the Mercury source tree for building with a MinGW
+# cross-compiler.  Please see README.MinGW-cross for details.
+#
+#-----------------------------------------------------------------------------#
+
+for arg
+do
+    case $arg in
+        --host=*)
+            host=${arg#--host=}
+            break
+            ;;
+    esac
+done
+
+host=${host:-i686-pc-mingw32}
+hostcc=$host-gcc
+
+echo "Configuring for host $host"
+
+if which $hostcc >/dev/null
+then
+    true
+else
+    echo "You need $hostcc in your PATH."
+    exit 1
+fi
+
+if which mmc >/dev/null && mmc -v 2>&1 | grep -q Mercury
+then
+    true
+else
+    echo "You need a working native mmc in your PATH."
+    exit 2
+fi
+
+if test configure -ot configure.in
+then
+    aclocal -I m4 && autoconf
+fi
+
+if ! test -f configure.in
+then
+    echo "You need to run this script at the top of the Mercury tree."
+    exit 3
+fi
+
+# Set values which would otherwise be determined with AC_TRY_RUN.
+# Taken from the config.cache file after running configure -C in msys.
+
+mercury_cv_cc_type=gcc \
+mercury_cv_sigaction_field=no \
+mercury_cv_sigcontext_struct_2arg=no \
+mercury_cv_sigcontext_struct_3arg=no \
+mercury_cv_siginfo_t=no \
+mercury_cv_word_type=int \
+mercury_cv_int_least64_type='long long' \
+mercury_cv_int_least32_type=int \
+mercury_cv_int_least16_type=short \
+mercury_cv_low_tag_bits=2 \
+mercury_cv_bytes_per_word=4 \
+mercury_cv_sync_term_size=3 \
+mercury_cv_bits_per_word=32 \
+mercury_cv_unboxed_floats=no \
+mercury_cv_float_is_64_bit=no \
+mercury_cv_double_is_64_bit=yes \
+mercury_cv_long_double_is_64_bit=no \
+mercury_cv_is_bigender=no \
+mercury_cv_is_littleender=yes \
+mercury_cv_normal_system_retval=no \
+mercury_cv_can_do_pending_io=no \
+mercury_cv_gcc_labels=yes \
+mercury_cv_asm_labels=yes \
+mercury_cv_gcc_model_fast=yes \
+mercury_cv_gcc_model_reg=yes \
+mercury_cv_cannot_use_structure_assignment=yes \
+sh configure "$@" \
+    --host=$host \
+    --with-cc=$hostcc
+
+echo
+echo "If you wish to run mmake in the subdirectories, you will need to set"
+echo "MMAKE_DIR=`pwd`/scripts"
+echo
+
+exit
