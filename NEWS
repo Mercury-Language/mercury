@@ -107,7 +107,7 @@ Changes to the Mercury standard library:
   tree_bitset.delete/3, tree_bitset.delete_list/3, tree_bitset.remove/3,
   tree_bitset.remove_list/3 and tree_bitset.remove_least/3
 
-* We have add the following new functions for creating singleton
+* We have added the following new functions for creating singleton
   maps: bimap.singleton/2, injection.singleton/2, map.singleton/2,
   rbtree.singleton/2 and tree234.singleton/2 .
 
