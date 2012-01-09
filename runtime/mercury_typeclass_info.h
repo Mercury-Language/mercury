@@ -2,15 +2,17 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2005, 2007 The University of Melbourne.
+** Copyright (C) 2002-2005, 2007, 2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
 ** This file contains design for a new runtime representation of typeclass
-** information. It is not used yet. The mail that introduced this file
-** follows.
+** information. It is not used yet; the design we DO use is implemented
+** in mercury_type_info.h.
+**
+** The mail that introduced this file follows.
 */
 
 /*
@@ -50,7 +52,7 @@ the growth is mostly in statically allocated data structures. Also, the new
 design is in type-safe C, for ease of debugging its implementation. There
 should be a type-safe Mercury version of it as well, for future use in the
 Java and IL backends. The reason why there isn't one yet is that some these
-structures must contain references to polymporphic procedures, since methods
+structures must contain references to polymorphic procedures, since methods
 may be polymorphic. Mercury doesn't (yet) support polymorphic procedures,
 even if (as here) only the compiler can create them.
 
