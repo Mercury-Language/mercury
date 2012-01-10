@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2008, 2010 The University of Melbourne.
+% Copyright (C) 1995-2008, 2010, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,9 +18,6 @@
 % Mercury operator table defined in the Mercury Language Reference Manual.
 %
 % See samples/calculator2.m for an example program.
-%
-% XXX In the current implementation the table of Mercury operators
-% is fixed and cannot be modified at run-time.
 % 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
