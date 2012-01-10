@@ -207,6 +207,7 @@
     ;       output_libgrades
     ;       output_cc
     ;       output_c_compiler_type
+    ;       output_csharp_compiler_type
     ;       output_cflags
     ;       output_library_link_flags
 
@@ -834,6 +835,7 @@
     ;       pic_object_file_extension
     ;       link_with_pic_object_file_extension
     ;       c_compiler_type
+    ;       csharp_compiler_type
 
     % Java
     ;       java_compiler
@@ -1191,6 +1193,7 @@ option_defaults_2(output_option, [
     output_libgrades                    -   bool(no),
     output_cc                           -   bool(no),
     output_c_compiler_type              -   bool(no),
+    output_csharp_compiler_type         -   bool(no),
     output_cflags                       -   bool(no),
     output_library_link_flags           -   bool(no)
 ]).
@@ -1708,9 +1711,11 @@ option_defaults_2(target_code_compilation_option, [
     pic_object_file_extension           -   string(".o"),
     link_with_pic_object_file_extension -   string(".o"),
     c_compiler_type                     -   string("gcc"),
+    csharp_compiler_type                -   string("mono"),
                                         % The `mmc' script will override the
                                         % default with a value determined at
-                                        % configuration time.
+                                        % configuration time for the above
+                                        % two options
     % Java
     java_compiler                       -   string("javac"),
     java_interpreter                    -   string("java"),
@@ -2074,6 +2079,7 @@ long_option("output-libgrades",         output_libgrades).
 long_option("output-cc",                output_cc).
 long_option("output-cc-type",           output_c_compiler_type).
 long_option("output-c-compiler-type",   output_c_compiler_type).
+long_option("output-csharp-compiler-type", output_csharp_compiler_type).
 long_option("output-cflags",            output_cflags).
 long_option("output-library-link-flags",    output_library_link_flags).
 
@@ -2664,6 +2670,7 @@ long_option("pic-object-file-extension", pic_object_file_extension).
 long_option("link-with-pic-object-file-extension",
                     link_with_pic_object_file_extension).
 long_option("c-compiler-type",      c_compiler_type).
+long_option("csharp-compiler-type", csharp_compiler_type).
 
 
 long_option("java-compiler",        java_compiler).
@@ -3794,6 +3801,8 @@ options_help_output -->
         "--output-cflags",
         "\tPrint the flags with which the C compiler will be invoked",
         "\tto the standard output.",
+        "--output-csharp-compiler-type",
+        "\tPrint the C# compiler type to the standard output.",
         "--output-library-link-flags",
         "\tPrint the flags that are passed to linker in order to link",
         "\tagainst the current set of libraries.  This includes the",

@@ -340,6 +340,7 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
     globals.lookup_bool_option(Globals, output_cc, OutputCC),
     globals.lookup_bool_option(Globals, output_c_compiler_type, OutputCCType),
     globals.lookup_bool_option(Globals, output_cflags, OutputCFlags),
+    globals.lookup_bool_option(Globals, output_csharp_compiler_type, OutputCSCType),
     globals.lookup_bool_option(Globals, output_library_link_flags,
         OutputLibraryLinkFlags),
     globals.lookup_bool_option(Globals, make, Make),
@@ -393,6 +394,10 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
     ; OutputCFlags = yes ->
         io.stdout_stream(StdOut, !IO),
         output_c_compiler_flags(Globals, StdOut, !IO)
+    ; OutputCSCType = yes ->
+        globals.lookup_string_option(Globals, csharp_compiler_type, CSC_Type),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CSC_Type ++ "\n", !IO)
     ; OutputLibraryLinkFlags = yes ->
         io.stdout_stream(StdOut, !IO),
         output_library_link_flags(Globals, StdOut, !IO)
