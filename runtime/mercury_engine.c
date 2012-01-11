@@ -638,6 +638,7 @@ engine_done(void)
     MR_save_registers();
     MR_debugmsg0("longjmping out...\n");
     longjmp(*(MR_ENGINE(MR_eng_jmp_buf)), 1);
+    return NULL;    /* Not executed, but required to suppress warnings. */
 }
 
 static MR_Code *
