@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1995-2008, 2010-2011 The University of Melbourne.
+** Copyright (C) 1995-2008, 2010-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -380,11 +380,16 @@ static const char mercury_funcs1[] =
     "   ** GC knows where it starts.  This is necessary for AIX 4.1\n"
     "   ** on RS/6000, and for gnu-win32 on Windows 95 or NT.\n"
     "   ** It may also be helpful on other systems.\n"
+    "   ** For the Boehm GC, if the stackbottom argument is NULL then\n"
+    "   ** do not explicitly register the bottom of the stack, but\n"
+    "   ** let the collector determine an appropriate value itself.\n"
     "   */\n"
     "   #if defined(MR_HGC)\n"
     "    MR_hgc_set_stack_bot(stackbottom);\n"
     "   #elif defined(MR_BOEHM_GC)\n"
-    "    GC_stackbottom = stackbottom;\n"
+    "       if (stackbottom != NULL) {\n"
+    "           GC_stackbottom = stackbottom;\n"
+    "       }\n"
     "   #endif\n"
     "#endif\n"
     "\n"
