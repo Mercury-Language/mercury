@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -656,7 +656,7 @@ create_goal_id_array(goal_id(LastGoalIdNum), Default) =
 
 update_goal_attribute(goal_id(Index), Value, goal_attr_array(!.Array),
         goal_attr_array(!:Array)) :-
-    array.svset(Index, yes(Value), !Array).
+    array.set(Index, yes(Value), !Array).
 
 get_goal_attribute_det(goal_attr_array(Array), goal_id(Index)) = Attr :-
     MaybeAttr = array.lookup(Array, Index),

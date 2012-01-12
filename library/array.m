@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2011 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,22 +12,6 @@
 %
 % This module provides dynamically-sized one-dimensional arrays.
 % Array indices start at zero.
-%
-% By default, the array.set and array.lookup procedures will check
-% for bounds errors.  But for better performance, it is possible to
-% disable some of the checking by compiling with `--intermodule-optimization'
-% and with the C macro symbol `ML_OMIT_ARRAY_BOUNDS_CHECKS'
-% defined, e.g. by using `MCFLAGS=--intermodule-optimization' and
-% `CFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmakefile,
-% or by compiling with the command
-% `mmc --intermodule-optimization --cflags -DML_OMIT_ARRAY_BOUNDS_CHECKS'.
-%
-% For maximum performance, all bounds checking can be disabled by
-% recompiling this module using `CFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS'
-% or `mmc --cflags -DML_OMIT_ARRAY_BOUNDS_CHECKS' as above. You can
-% either recompile the entire library, or just copy `array.m' to your
-% application's source directory and link with it directly instead of as
-% part of the library.
 %
 % WARNING!
 %
@@ -239,14 +223,14 @@
 :- pred array.set(int, T, array(T), array(T)).
 :- mode array.set(in, in, array_di, array_uo) is det.
 
-    % The same as array.set, except the arguments are in an order
-    % that allows the use of state variables.
-    %
-:- pred array.svset(int, T, array(T), array(T)).
-:- mode array.svset(in, in, array_di, array_uo) is det.
-
 :- func array.set(array(T), int, T) = array(T).
 :- mode array.set(array_di, in, in) = array_uo is det.
+
+    % An obsolete synonym for array.set/4.
+    %
+:- pragma obsolete(array.svset/4).
+:- pred array.svset(int, T, array(T), array(T)).
+:- mode array.svset(in, in, array_di, array_uo) is det.
 
     % array.semidet_set sets the nth element of an array, and returns
     % the resulting array. It fails if the index is out of bounds.
@@ -260,9 +244,9 @@
 :- pred array.unsafe_set(int, T, array(T), array(T)).
 :- mode array.unsafe_set(in, in, array_di, array_uo) is det.
 
-    % The same as array.unsafe_set, except the arguments are in an order
-    % that allows the use of state variables.
+    % An obsolete synonym for array.unsafe_set/4.
     %
+:- pragma obsolete(array.unsafe_svset/4).
 :- pred array.unsafe_svset(int, T, array(T), array(T)).
 :- mode array.unsafe_svset(in, in, array_di, array_uo) is det.
 
@@ -389,7 +373,6 @@
     % predicate and returns the position of the first occurrence in the array
     % of an element which is equivalent to the given one in the ordering
     % provided. Assumes the array is sorted according to this ordering.
-    % Fails if the element is not present.
     %
 :- pred array.bsearch(array(T), T, comparison_pred(T), maybe(int)).
 %:- mode array.bsearch(array_ui, in, in(comparison_pred), out) is det.
@@ -2876,15 +2859,15 @@ merge_subarrays(A, Lo1, Hi1, Lo2, Hi2, I, !B) :-
         compare(R, X1, X2),
         (
             R = (<),
-            array.svset(I, X1, !B),
+            array.set(I, X1, !B),
             merge_subarrays(A, Lo1 + 1, Hi1, Lo2, Hi2, I + 1, !B)
         ;
             R = (=),
-            array.svset(I, X1, !B),
+            array.set(I, X1, !B),
             merge_subarrays(A, Lo1 + 1, Hi1, Lo2, Hi2, I + 1, !B)
         ;
             R = (>),
-            array.svset(I, X2, !B),
+            array.set(I, X2, !B),
             merge_subarrays(A, Lo1, Hi1, Lo2 + 1, Hi2, I + 1, !B)
         )
     ).

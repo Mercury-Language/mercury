@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -710,7 +710,7 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
                     true
                 ;
                     decl_set_insert(FloatLabel, !DeclSet),
-                    FloatString = c_util.make_float_literal( FloatVal),
+                    FloatString = c_util.make_float_literal(FloatVal),
                     output_indent(FirstIndent, LaterIndent, !.N, !IO),
                     !:N = !.N + 1,
                     io.write_strings(["static const MR_Float ",
