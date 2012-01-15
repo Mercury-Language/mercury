@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -186,6 +186,8 @@
     %
 :- func map.values(map(_K, V)) = list(V).
 :- pred map.values(map(_K, V)::in, list(V)::out) is det.
+
+:- pred map.keys_and_values(map(K, V)::in, list(K)::out, list(V)::out) is det.
 
     % Convert a map to an association list.
     %
@@ -896,6 +898,9 @@ map.values(M) = Vs :-
 
 map.values(Map, KeyList) :-
     tree234.values(Map, KeyList).
+
+map.keys_and_values(Map, KeyList, ValueList) :-
+    tree234.keys_and_values(Map, KeyList, ValueList).
 
 map.to_assoc_list(M) = AL :-
     map.to_assoc_list(M, AL).

@@ -4,6 +4,14 @@ NEWS since Mercury 11.07
 * There is no news yet.
 
 
+NEWS for Mercury 11.07.1-beta
+-----------------------------
+
+Changes to the Mercury standrad library:
+
+* We have added the predicate map.keys_and_values/3.
+
+
 NEWS for Mercury 11.07
 ----------------------
 
