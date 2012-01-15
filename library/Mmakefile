@@ -373,12 +373,7 @@ endif
 # For C# we include the runtime module directly into mer_std.dll.
 ifneq ("$(filter csharp%,$(GRADE))","")
 LINK_LIB_OPTS :=
-# Don't use Unix style paths with the Microsoft C# compiler.
-ifeq ($(CSC),csc)
-MLOBJS += ..\runtime\mercury_dotnet.cs
-else
 MLOBJS += ../runtime/mercury_dotnet.cs
-endif
 endif
 
 #-----------------------------------------------------------------------------#

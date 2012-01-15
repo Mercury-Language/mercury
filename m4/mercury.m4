@@ -253,6 +253,21 @@ GACUTIL=`basename "$GACUTIL"`
 AC_PATH_PROGS(CSC, csc gmcs cscc)
 CSC=`basename "$CSC"`
 
+case "$CSC" in
+	csc*)
+		CSHARP_COMPILER_TYPE=microsoft
+	;;
+
+	gmcs*)
+		CSHARP_COMPILER_TYPE=mono
+	;;
+
+	*)
+		CSHARP_COMPILER_TYPE=unknown
+	;;
+esac
+
+
 # We default to the Beta 2 version of the library
 mercury_cv_microsoft_dotnet_library_version=1.0.2411.0
 if	test $mercury_cv_microsoft_dotnet = "yes" &&
@@ -305,6 +320,7 @@ MONO=`basename "$CLI_INTERPRETER"`
 AC_SUBST(ILASM)
 AC_SUBST(GACUTIL)
 AC_SUBST(CSC)
+AC_SUBST(CSHARP_COMPILER_TYPE)
 AC_SUBST(MS_AL)
 AC_SUBST(MS_DOTNET_SDK_DIR)
 AC_SUBST(MS_DOTNET_LIBRARY_VERSION)

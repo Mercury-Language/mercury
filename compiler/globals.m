@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,6 +146,14 @@
     ;       cc_cl(maybe(int))
     ;       cc_unknown.
 
+    % For the csharp backend, which csharp compiler are we using?
+    %
+:- type csharp_compiler_type
+    --->    csharp_microsoft
+    ;       csharp_mono
+    ;       csharp_unknown
+    .
+
 :- type clang_version
     --->    clang_version(int, int, int).
 
@@ -194,6 +202,8 @@
     is semidet.
 :- pred convert_c_compiler_type(string::in, c_compiler_type::out)
     is semidet.
+:- pred convert_csharp_compiler_type(string::in, csharp_compiler_type::out)
+    is semidet.
 :- pred convert_reuse_strategy(string::in, int::in, reuse_strategy::out)
     is semidet.
 :- pred convert_env_type(string::in, env_type::out) is semidet.
@@ -214,7 +224,8 @@
 :- pred globals_init(option_table::in, compilation_target::in, gc_method::in,
     tags_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in,
-    may_be_thread_safe::in, c_compiler_type::in, reuse_strategy::in,
+    may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
+    reuse_strategy::in,
     maybe(il_version_number)::in, maybe(feedback_info)::in, env_type::in,
     env_type::in, globals::out) is det.
 
@@ -230,6 +241,7 @@
 :- pred get_trace_suppress(globals::in, trace_suppress_items::out) is det.
 :- pred get_maybe_thread_safe(globals::in, may_be_thread_safe::out) is det.
 :- pred get_c_compiler_type(globals::in, c_compiler_type::out) is det.
+:- pred get_csharp_compiler_type(globals::in, csharp_compiler_type::out) is det.
 :- pred get_reuse_strategy(globals::in, reuse_strategy::out) is det.
 :- pred get_maybe_il_version_number(globals::in, maybe(il_version_number)::out)
     is det.
@@ -504,6 +516,10 @@ convert_msvc_version(VersionStr, C_CompilerType) :-
     Version > 0,
     C_CompilerType = cc_cl(yes(Version)).
 
+convert_csharp_compiler_type("microsoft", csharp_microsoft).
+convert_csharp_compiler_type("mono", csharp_mono).
+convert_csharp_compiler_type("unknown", csharp_unknown).
+
 convert_env_type("posix",   env_type_posix).
 convert_env_type("cygwin",  env_type_cygwin).
 convert_env_type("msys",    env_type_msys).
@@ -555,6 +571,7 @@ gc_is_conservative(gc_automatic) = no.
                 g_trace_suppress_items      :: trace_suppress_items,
                 g_may_be_thread_safe        :: bool,
                 g_c_compiler_type           :: c_compiler_type,
+                g_csharp_compiler_type      :: csharp_compiler_type,
                 g_reuse_strategy            :: reuse_strategy,
                 g_maybe_il_version_number   :: maybe(il_version_number),
                 g_maybe_feedback            :: maybe(feedback_info),
@@ -564,11 +581,13 @@ gc_is_conservative(gc_automatic) = no.
 
 globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe, C_CompilerType, ReuseStrategy, MaybeILVersion,
+        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+        ReuseStrategy, MaybeILVersion,
         MaybeFeedback, HostEnvType, TargetEnvType, Globals) :-
     Globals = globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe, C_CompilerType, ReuseStrategy, MaybeILVersion,
+        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+        ReuseStrategy, MaybeILVersion,
         MaybeFeedback, HostEnvType, TargetEnvType).
 
 get_options(Globals, Globals ^ g_options).
@@ -581,6 +600,7 @@ get_trace_level(Globals, Globals ^ g_trace_level).
 get_trace_suppress(Globals, Globals ^ g_trace_suppress_items).
 get_maybe_thread_safe(Globals, Globals ^ g_may_be_thread_safe).
 get_c_compiler_type(Globals, Globals ^ g_c_compiler_type).
+get_csharp_compiler_type(Globals, Globals ^ g_csharp_compiler_type).
 get_reuse_strategy(Globals, Globals ^ g_reuse_strategy).
 get_maybe_il_version_number(Globals, Globals ^ g_maybe_il_version_number).
 get_maybe_feedback_info(Globals, Globals ^ g_maybe_feedback).

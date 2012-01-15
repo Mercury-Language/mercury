@@ -4,7 +4,7 @@
 #
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2003-2007, 2010-2011 The University of Melbourne.
+# Copyright (C) 2003-2007, 2010-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -31,6 +31,7 @@ MERCURY_MATH_LIB=@MATH_LIB@
 MERCURY_JAVA_COMPILER=@JAVAC@
 MERCURY_JAVA_INTERPRETER=@JAVA_INTERPRETER@
 MERCURY_CSHARP_COMPILER=@CSC@
+MERCURY_CSHARP_COMPILER_TYPE=@CSHARP_COMPILER_TYPE@
 MERCURY_CLI_INTERPRETER=@CLI_INTERPRETER@
 MERCURY_ERLANG_COMPILER=@ERLC@
 MERCURY_ERLANG_INTERPRETER=@ERL@
@@ -57,6 +58,7 @@ DEFAULT_MCFLAGS=\
 		--java-compiler "$(MERCURY_JAVA_COMPILER)" \
 		--java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
 		--csharp-compiler "$(MERCURY_CSHARP_COMPILER)" \
+		--csharp-compiler-type "$(MERCURY_CSHARP_COMPILER_TYPE)" \
 		--cli-interpreter "$(MERCURY_CLI_INTERPRETER)" \
 		--erlang-compiler "$(MERCURY_ERLANG_COMPILER)" \
 		--erlang-interpreter "$(MERCURY_ERLANG_INTERPRETER)" \

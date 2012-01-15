@@ -213,13 +213,15 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
         Globals, !IO) :-
     check_option_values(OptionTable0, OptionTable, Target, GC_Method,
         TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe, C_CompilerType, ReuseStrategy, MaybeILVersion,
+        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+        ReuseStrategy, MaybeILVersion,
         MaybeFeedbackInfo, HostEnvType, TargetEnvType, [], CheckErrors, !IO),
     (
         CheckErrors = [],
         convert_options_to_globals(OptionTable, Target, GC_Method,
             TagsMethod, TermNorm, Term2Norm, TraceLevel,
-            TraceSuppress, MaybeThreadSafe, C_CompilerType, ReuseStrategy,
+            TraceSuppress, MaybeThreadSafe, C_CompilerType,
+            CSharp_CompilerType, ReuseStrategy,
             MaybeILVersion, MaybeFeedbackInfo, HostEnvType, TargetEnvType,
             [], Errors, Globals, !IO)
     ;
@@ -232,13 +234,15 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
     compilation_target::out, gc_method::out, tags_method::out,
     termination_norm::out, termination_norm::out, trace_level::out,
     trace_suppress_items::out, may_be_thread_safe::out,
-    c_compiler_type::out, reuse_strategy::out, maybe(il_version_number)::out,
+    c_compiler_type::out, csharp_compiler_type::out,
+    reuse_strategy::out, maybe(il_version_number)::out,
     maybe(feedback_info)::out, env_type::out, env_type::out,
     list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
+        C_CompilerType, CSharp_CompilerType,
+        ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         HostEnvType, TargetEnvType, !Errors, !IO) :-
     map.lookup(!.OptionTable, target, Target0),
     (
@@ -399,6 +403,20 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             !Errors)
     ),
 
+    map.lookup(!.OptionTable, csharp_compiler_type, CSharp_CompilerType0),
+    (
+        CSharp_CompilerType0 = string(CSharp_CompilerTypeStr),
+        convert_csharp_compiler_type(CSharp_CompilerTypeStr, CSharp_CompilerTypePrime)
+    ->
+        CSharp_CompilerType = CSharp_CompilerTypePrime
+    ;
+        CSharp_CompilerType = csharp_unknown,   % dummy
+        add_error("Invalid argument to option `--csharp-compiler-type'\n" ++
+            "\t(must be `microsoft', `mono', or `unknown').",
+            !Errors),
+        true
+    ),
+
     map.lookup(!.OptionTable, structure_reuse_constraint, ReuseConstraint0),
     map.lookup(!.OptionTable, structure_reuse_constraint_arg,
         ReuseConstraintArg0),
@@ -484,6 +502,15 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             "Invalid argument to option `--target-env-type'\n" ++
             "\t(must be `posix', `cygwin', `msys' or `windows').",
             !Errors)
+    ),
+
+    ( HostEnvType = env_type_posix, CSharp_CompilerType = csharp_microsoft ->
+        add_error(
+            "`--host-env-type posix` is incompatible with\n" ++
+            "`--csharp-compiler-type microsoft'.",
+            !Errors)
+    ;
+        true
     ).
 
 :- pred add_error(string::in, list(string)::in, list(string)::out) is det.
@@ -499,17 +526,20 @@ add_error(Error, Errors0, Errors) :-
     compilation_target::in, gc_method::in, tags_method::in,
     termination_norm::in, termination_norm::in, trace_level::in,
     trace_suppress_items::in, may_be_thread_safe::in, c_compiler_type::in,
+    csharp_compiler_type::in,
     reuse_strategy::in, maybe(il_version_number)::in, maybe(feedback_info)::in,
     env_type::in, env_type::in, list(string)::in, list(string)::out,
     globals::out, io::di, io::uo) is det.
 
 convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
+        C_CompilerType, CSharp_CompilerType,
+        ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         HostEnvType, TargetEnvType, !Errors, !:Globals, !IO) :-
     globals_init(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
+        C_CompilerType, CSharp_CompilerType,
+        ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         HostEnvType, TargetEnvType, !:Globals),
 
     globals.lookup_string_option(!.Globals, event_set_file_name,
