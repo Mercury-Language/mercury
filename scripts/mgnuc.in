@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 et
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2007, 2010-2011 The University of Melbourne.
+# Copyright (C) 1995-2007, 2010-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -300,7 +300,7 @@ case $global_regs in
 esac
 
 case $thread_safe in
-    true)       THREAD_OPTS="$CFLAGS_FOR_THREADS"
+    true)       THREAD_OPTS="-DMR_THREAD_SAFE $CFLAGS_FOR_THREADS"
                 case $FULLARCH in *linux*)
                     # Don't use -ansi under Linux or we get parse errors
                     # at sigset_t in the pthreads headers. This doesn't seem

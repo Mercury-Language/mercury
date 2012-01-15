@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -494,10 +494,12 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     globals.lookup_bool_option(Globals, parallel, Parallel),
     (
         Parallel = yes,
+        ParallelOpt = "-DMR_THREAD_SAFE ",
         globals.lookup_string_option(Globals, cflags_for_threads,
             CFLAGS_FOR_THREADS)
     ;
         Parallel = no,
+        ParallelOpt = "",
         CFLAGS_FOR_THREADS = ""
     ),
     globals.lookup_bool_option(Globals, threadscope, Threadscope),
@@ -895,6 +897,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         NestedFunctionsOpt, 
         HighLevelDataOpt,
         RegOpt, GotoOpt, AsmOpt,
+        ParallelOpt,
         CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
         CFLAGS_FOR_THREADS, " ", CFLAGS_FOR_PIC, " ",
         ThreadscopeOpt,

@@ -3017,8 +3017,7 @@ BOEHM_MISC_CFLAGS_FOR_THREADS=
 
 case "$host" in
     *solaris*)
-        CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE \
-            -DGC_SOLARIS_PTHREADS -D_REENTRANT"
+        CFLAGS_FOR_THREADS="-DGC_SOLARIS_PTHREADS -D_REENTRANT"
         THREAD_LIBS="-lpthread -lrt -ldl"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
         ;;
@@ -3027,8 +3026,7 @@ case "$host" in
         # Note that for old versions of Linux / glibc,
         # you may also need to make sure that you don't
         # pass -ansi to gcc.
-        CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DLINUX_THREADS \
-            -D_THREAD_SAFE -D_REENTRANT"
+        CFLAGS_FOR_THREADS="-DLINUX_THREADS -D_THREAD_SAFE -D_REENTRANT"
         THREAD_LIBS="-lpthread -ldl"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
@@ -3046,12 +3044,12 @@ case "$host" in
         THREAD_LIBS=""
         case "$mercury_cv_cc_type" in
             msvc)
-                CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_WIN32_THREADS -MD"
+                CFLAGS_FOR_THREADS="-DGC_WIN32_THREADS -MD"
                 LDFLAGS_FOR_THREADS="-MD"
                 LD_LIBFLAGS_FOR_THREADS="-MD"
                 ;;
             *)
-                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -DMR_THREAD_SAFE" ;;
+                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB" ;;
         esac
         ;;
 
@@ -3059,7 +3057,7 @@ case "$host" in
         THREAD_LIBS=""
         case "$mercury_cv_cc_type" in
             msvc)
-                CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_WIN32_THREADS -MD"
+                CFLAGS_FOR_THREADS="-DGC_WIN32_THREADS -MD"
                 LDFLAGS_FOR_THREADS="-MD"
                 LD_LIBFLAGS_FOR_THREADS="-MD"
                 ;;
@@ -3067,15 +3065,14 @@ case "$host" in
                 # By default the MinGW port of GCC targets the i386
                 # architecture.  We need to tell it to target a later
                 # architecture for the GCC built-in atomic ops to be available.
-                CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE $WIN32_GC_THREADLIB \
-                    -march=i686"
+                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -march=i686"
                 THREAD_LIBS="-lpthread"
                 ;;
         esac
         ;;
 
     *apple*darwin*)
-        CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_DARWIN_THREADS"
+        CFLAGS_FOR_THREADS="-DGC_DARWIN_THREADS"
         THREAD_LIBS=""
         ;;
 
@@ -3085,21 +3082,21 @@ case "$host" in
 ### #     use an *.par.gc* grade
 ### # XXX is this fixed in the Boehm collector now?
 ### *-osf*)
-###     CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE"
+###     CFLAGS_FOR_THREADS=""
 ###     THREAD_LIBS="-lpthreads -lmach -lc_r"
 ###     ;;
 
 ### # The threads stuff on HPUX is not yet enabled because
 ### # we don't have an HPUX box to test it on.
 ### *hpux*)
-###     CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE" # XXX incomplete
+###     CFLAGS_FOR_THREADS="" # XXX incomplete
 ###     THREAD_LIBS="-lpthread -lrt" ;;
 
 ### # The threads stuff on IRIX is not yet enabled because
 ### # we don't have an IRIX box to test it on.
 ### # (XXX perhaps we should enable it anyway, so it is easier to test?)
 ### *irix*)
-###     CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DIRIX_THREADS"
+###     CFLAGS_FOR_THREADS="-DIRIX_THREADS"
 ###     THREAD_LIBS="-lpthread"
 ###     ;;
 
