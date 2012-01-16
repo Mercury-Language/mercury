@@ -2839,11 +2839,13 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     %
 :- func csharp_file_name(env_type, csharp_compiler_type, file_name) = file_name.
 
-csharp_file_name(env_type_posix, csharp_microsoft, Filename) = unexpected($module, $pred, "microsoft c# compiler in posix env").
+csharp_file_name(env_type_posix, csharp_microsoft, _FileName) =
+    unexpected($module, $pred, "microsoft c# compiler in posix env").
 csharp_file_name(env_type_posix, csharp_mono, Filename) = Filename.
 csharp_file_name(env_type_posix, csharp_unknown, Filename) = Filename.
 
-csharp_file_name(env_type_cygwin, csharp_microsoft, Filename) = convert_to_windows_path_format(Filename).
+csharp_file_name(env_type_cygwin, csharp_microsoft, Filename) =
+    convert_to_windows_path_format(Filename).
 csharp_file_name(env_type_cygwin, csharp_mono, Filename) = Filename.
 csharp_file_name(env_type_cygwin, csharp_unknown, Filename) = Filename.
 
@@ -2852,13 +2854,16 @@ csharp_file_name(env_type_msys, csharp_microsoft, Filename) = Filename.
 csharp_file_name(env_type_msys, csharp_mono, Filename) = Filename.
 csharp_file_name(env_type_msys, csharp_unknown, Filename) = Filename.
 
-csharp_file_name(env_type_win_cmd, csharp_microsoft, Filename) = convert_to_windows_path_format(Filename).
+csharp_file_name(env_type_win_cmd, csharp_microsoft, Filename) =
+    convert_to_windows_path_format(Filename).
 csharp_file_name(env_type_win_cmd, csharp_mono, Filename) = Filename.
-csharp_file_name(env_type_win_cmd, csharp_unknown, Filename) = convert_to_windows_path_format(Filename).
+csharp_file_name(env_type_win_cmd, csharp_unknown, Filename) =
+    convert_to_windows_path_format(Filename).
 
 :- func convert_to_windows_path_format(file_name) = file_name.
 
-convert_to_windows_path_format(FileName) = string.replace_all(FileName, "/", "\\\\").
+convert_to_windows_path_format(FileName) =
+    string.replace_all(FileName, "/", "\\\\").
 
 :- pred write_cli_shell_script(globals::in, string::in, io.output_stream::in,
     io::di, io::uo) is det.
