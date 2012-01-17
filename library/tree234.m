@@ -3488,7 +3488,7 @@ find_level(Len, !Level, !AllThrees) :-
 
 well_formed(Tree, WellFormed) :-
     depth_levels(Tree, 0, set.init, Depths),
-    ( set.singleton_set(Depths, Depth) ->
+    ( set.is_singleton(Depths, Depth) ->
         WellFormed = yes(Depth)
     ;
         WellFormed = no

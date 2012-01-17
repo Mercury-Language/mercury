@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=4 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -511,7 +511,7 @@ find_variable_type(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
             Error = no
         ;
             Domain = tdomain(Types),
-            ( set.singleton_set(Types, Type0) ->
+            ( set.is_singleton(Types, Type0) ->
                 Type = Type0,
                 Error = no
             ; set.empty(Types) ->
@@ -1059,7 +1059,7 @@ type_domain_intersect(DomainA, DomainB, Domain) :-
         DomainB = tdomain(TypesB),
         % Symmetrical case below.
         set.filter_map(unify_types(TypeA), TypesB, UnifiedTypes),
-        ( set.singleton_set(UnifiedTypes, SingletonType) ->
+        ( set.is_singleton(UnifiedTypes, SingletonType) ->
             Domain = tdomain_singleton(SingletonType)
         ;
             Domain = tdomain(UnifiedTypes)
@@ -1073,7 +1073,7 @@ type_domain_intersect(DomainA, DomainB, Domain) :-
         DomainB = tdomain_singleton(TypeB),
         % Symmetrical case above.
         set.filter_map(unify_types(TypeB), TypesA, UnifiedTypes),
-        ( set.singleton_set(UnifiedTypes, SingletonType) ->
+        ( set.is_singleton(UnifiedTypes, SingletonType) ->
             Domain = tdomain_singleton(SingletonType)
         ;
             Domain = tdomain(UnifiedTypes)
@@ -1301,13 +1301,13 @@ has_empty_domain(TVar - tdomain(Domain), TVar) :-
 
 has_singleton_domain(DomainMap, TVar) :-
     map.search(DomainMap, TVar, tdomain(Domain)),
-    set.singleton_set(Domain, _).
+    set.is_singleton(Domain, _).
 
 :- pred is_singleton_domain(type_domain::in, mer_type::out) is semidet.
 
 is_singleton_domain(tdomain_singleton(Type), Type).
 is_singleton_domain(tdomain(Domain), Type) :-
-    set.singleton_set(Domain, Type).
+    set.is_singleton(Domain, Type).
 
 :- pred update_singleton_domain(tvar::in, type_domain_map::in,
     type_domain_map::out) is det.
@@ -1315,7 +1315,7 @@ is_singleton_domain(tdomain(Domain), Type) :-
 update_singleton_domain(TVar, !DomainMap) :-
     (
         map.search(!.DomainMap, TVar, tdomain(Domain)),
-        set.singleton_set(Domain, Type)
+        set.is_singleton(Domain, Type)
     ->
         map.set(TVar, tdomain_singleton(Type), !DomainMap)
     ;

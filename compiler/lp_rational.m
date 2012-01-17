@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002, 2005-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 1997-2002, 2005-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1509,7 +1509,7 @@ fm_standardize(gte(Terms0, Constant), !Labels, !Matrix) :-
 :- pred make_label(set(int)::out, int::in, int::out) is det.
 
 make_label(Label, Labels, Labels + 1) :-
-    set.singleton_set(Label, Labels).
+    Label = set.make_singleton_set(Labels).
 
 :- func matrix_to_constraints(matrix) = constraints.
 

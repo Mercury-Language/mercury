@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2011 The University of Melbourne.
+% Copyright (C) 2000-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -940,7 +940,7 @@ add_alt_start(ContainingGoalMap, [Var - BranchWhere0 | WhereNeededList],
         BranchPoint, BranchNum, CurrentId, !WhereNeededMap) :-
     (
         BranchWhere0 = everywhere,
-        set.singleton_set(BranchNumSet, BranchNum),
+        BranchNumSet = set.make_singleton_set(BranchNum),
         BranchMap = map.singleton(BranchPoint, BranchNumSet),
         BranchWhere = branches(BranchMap)
     ;
@@ -1164,7 +1164,7 @@ where_needed_branches_upper_bound_2(ContainingGoalMap, CurrentId,
                 map.delete(BranchPoint, Branches0, Branches1),
                 ParentBranchPoint = branch_point(ParentBranchGoalId,
                     ParentBranchAlt),
-                set.singleton_set(ParentAlts, ParentBranchNum),
+                ParentAlts = set.make_singleton_set(ParentBranchNum),
                 where_needed_branches_upper_bound_2(ContainingGoalMap,
                     CurrentId, [ParentBranchPoint - ParentAlts | Rest],
                     Branches1, WhereNeeded)

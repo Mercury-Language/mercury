@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,1999-2002, 2004-2006, 2008-2011 The University of Melbourne.
+% Copyright (C) 1996-1997,1999-2002, 2004-2006, 2008-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -61,9 +61,9 @@
     % `set_ordlist.singleton_set(Set, Elem)' is true iff `Set' is the set
     % containing just the single element `Elem'.
     %
-:- pred set_ordlist.singleton_set(set_ordlist(T), T).
-:- mode set_ordlist.singleton_set(in, out) is semidet.
-:- mode set_ordlist.singleton_set(out, in) is det.
+:- pred set_ordlist.singleton_set(T, set_ordlist(T)).
+:- mode set_ordlist.singleton_set(in, out) is det.
+:- mode set_ordlist.singleton_set(out, in) is semidet.
 
 :- func set_ordlist.make_singleton_set(T) = set_ordlist(T).
 :- pred set_ordlist.is_singleton(set_ordlist(T)::in, T::out) is semidet.
@@ -418,9 +418,9 @@ set_ordlist.init = S :-
 set_ordlist.init(sol([])).
 
 set_ordlist.make_singleton_set(T) = S :-
-    set_ordlist.singleton_set(S, T).
+    set_ordlist.singleton_set(T, S).
 
-set_ordlist.singleton_set(sol([X]), X).
+set_ordlist.singleton_set(X, sol([X])).
 
 set_ordlist.is_singleton(sol([X]), X).
 

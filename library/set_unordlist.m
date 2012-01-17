@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997,1999-2002, 2004-2006, 2010-2011 The University of Melbourne.
+% Copyright (C) 1995-1997,1999-2002, 2004-2006, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -62,11 +62,13 @@
     % `set_unordlist.singleton_set(Set, Elem)' is true iff `Set' is the set
     % containing just the single element `Elem'.
     %
-:- pred set_unordlist.singleton_set(set_unordlist(T), T).
-:- mode set_unordlist.singleton_set(in, out) is semidet.
-:- mode set_unordlist.singleton_set(out, in) is det.
+:- pred set_unordlist.singleton_set(T, set_unordlist(T)).
+:- mode set_unordlist.singleton_set(in, out) is det.
+:- mode set_unordlist.singleton_set(out, in) is semidet.
 
 :- func set_unordlist.make_singleton_set(T) = set_unordlist(T).
+
+:- pred set_unordlist.is_singleton(set_unordlist(T)::in, T::out) is semidet.
 
     % `set_unordlist.equal(SetA, SetB)' is true iff
     % `SetA' and `SetB' contain the same elements.
@@ -395,7 +397,17 @@ set_unordlist.insert(E, sul(S0), sul([E | S0])).
 
 set_unordlist.init(sul([])).
 
-set_unordlist.singleton_set(sul([X]), X).
+:- pragma promise_equivalent_clauses(set_unordlist.singleton_set/2).
+
+set_unordlist.singleton_set(X::in, Set::out) :-
+    Set = sul([X]).
+
+set_unordlist.singleton_set(X::out, Set::in) :-
+    Set = sul(Xs),
+    list.sort_and_remove_dups(Xs, [X]).
+
+set_unordlist.is_singleton(sul(Xs), X) :-
+    list.sort_and_remove_dups(Xs, [X]).
 
 set_unordlist.equal(SetA, SetB) :-
     set_unordlist.subset(SetA, SetB),
@@ -560,7 +572,7 @@ set_unordlist.init = S :-
     set_unordlist.init(S).
 
 set_unordlist.make_singleton_set(T) = S :-
-    set_unordlist.singleton_set(S, T).
+    set_unordlist.singleton_set(T, S).
 
 set_unordlist.insert(!.S, T) = !:S :-
     set_unordlist.insert(T, !S).

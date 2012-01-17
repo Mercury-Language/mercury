@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2006, 2010-2011 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2006, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -77,16 +77,17 @@
 :- mode set_bbbtree.largest(in, out) is semidet.
 :- mode set_bbbtree.largest(in, in) is semidet.
 
-    % `set_bbbtree.singleton_set(Set, X)' is true iff `Set' is the set
+    % `set_bbbtree.singleton_set(X, Set)' is true iff `Set' is the set
     % containing just the single element `X'.
     %
-:- pred set_bbbtree.singleton_set(set_bbbtree(T), T).
-:- mode set_bbbtree.singleton_set(uo, di) is det.
-:- mode set_bbbtree.singleton_set(in, out) is semidet.
+:- pred set_bbbtree.singleton_set(T, set_bbbtree(T)).
+:- mode set_bbbtree.singleton_set(in, out) is det.
 :- mode set_bbbtree.singleton_set(in, in) is semidet.
-:- mode set_bbbtree.singleton_set(out, in) is det.
+:- mode set_bbbtree.singleton_set(out, in) is semidet.
 
 :- func set_bbbtree.make_singleton_set(T) = set_bbbtree(T).
+
+:- pred set_bbbtree.is_singleton(set_bbbtree(T)::in, T::out) is semidet.
 
     % `set_bbbtree.equal(SetA, SetB)' is true iff `SetA' and `SetB'
     % contain the same elements.
@@ -535,9 +536,11 @@ set_bbbtree.largest(tree(V, _N, _L, R), X) :-
 %------------------------------------------------------------------------------%
 
 set_bbbtree.make_singleton_set(T) = S :-
-    set_bbbtree.singleton_set(S, T).
+    set_bbbtree.singleton_set(T, S).
 
-set_bbbtree.singleton_set(tree(V, 1, empty, empty), V).
+set_bbbtree.singleton_set(V, tree(V, 1, empty, empty)).
+
+set_bbbtree.is_singleton(tree(V, 1, empty, empty), V).
 
 %------------------------------------------------------------------------------%
 

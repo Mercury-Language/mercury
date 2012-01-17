@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2011 University of Melbourne.
+% Copyright (C) 1998-2012 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -631,7 +631,7 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
                 ( map.search(Vars0, ChangedVar, Set0) ->
                     set.insert(BranchNo, Set0, Set)
                 ;
-                    set.singleton_set(Set, BranchNo)
+                    Set = set.make_singleton_set(BranchNo)
                 ),
                 map.set(ChangedVar, Set, Vars0, Vars)
             ;
@@ -648,7 +648,7 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
         ( map.search(!.ExtraVars, SwitchVar, SwitchVarSet0) ->
             set.insert(BranchNo, SwitchVarSet0, SwitchVarSet)
         ;
-            set.singleton_set(SwitchVarSet, BranchNo)
+            SwitchVarSet = set.make_singleton_set(BranchNo)
         ),
         map.set(SwitchVar, SwitchVarSet, !ExtraVars)
     ;
@@ -783,7 +783,7 @@ combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
         set.insert(BranchNo, Branches0, Branches),
         map.det_update(ExtraVar, Branches, !Vars)
     ;
-        set.singleton_set(Branches, BranchNo),
+        Branches = set.make_singleton_set(BranchNo),
         map.det_insert(ExtraVar, Branches, !Vars)
     ),
     combine_vars(BranchNo, ExtraVars, !Vars).

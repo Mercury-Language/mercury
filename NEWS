@@ -1,15 +1,23 @@
 NEWS since Mercury 11.07
 ------------------------
 
-* There is no news yet.
+Changes to the Mercury standard library:
+
+* We have swapped the argument order of the predicates set.singleton_set/2,
+  set_bbbtree.singleton_set/2, set_ordlist.singleton_set/2 and 
+  set_unordlist.singleton_set/2 so that it conforms with the order in the
+  other set modules.
 
 
 NEWS for Mercury 11.07.1-beta
 -----------------------------
 
-Changes to the Mercury standrad library:
+Changes to the Mercury standard library:
 
 * We have added the predicate map.keys_and_values/3.
+
+* We have added the predicates set.is_singleton/2, set_bbbtree.is_singleton/2,
+  set_ctree234.is_singleton/2 and set_unordlist.is_singleton/2.
 
 
 NEWS for Mercury 11.07

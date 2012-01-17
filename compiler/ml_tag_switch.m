@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003-2011 The University of Melbourne.
+% Copyright (C) 2000, 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -133,7 +133,7 @@ find_any_split_cases(CaseNumPtagsMap, IsAnyCaseSplit) :-
     is det.
 
 find_any_split_cases_2(_CaseNum, Ptags, !IsAnyCaseSplit) :-
-    ( set.singleton_set(Ptags, _OnlyPtag) ->
+    ( set.is_singleton(Ptags, _OnlyPtag) ->
         true
     ;
         !:IsAnyCaseSplit = some_case_is_split_between_ptags

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -698,7 +698,7 @@ generate_category_code(model_det, ProcContext, Goal, ResumePoint,
 
 generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
         TraceSlotInfo, Code, MaybeTraceCallLabel, FrameInfo, !CI) :-
-    set.singleton_set(FailureLiveRegs, reg(reg_r, 1)),
+    FailureLiveRegs = set.make_singleton_set(reg(reg_r, 1)),
     FailCode = from_list([
         llds_instr(assign(reg(reg_r, 1), const(llconst_false)), "Fail"),
         llds_instr(livevals(FailureLiveRegs), ""),

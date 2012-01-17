@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2729,7 +2729,7 @@ add_new_pred(CalledPredProcId, NewPred, !Info) :-
         set.insert(NewPred, SpecVersions0, SpecVersions),
         map.det_update(CalledPredProcId, SpecVersions, NewPreds0, NewPreds)
     ;
-        set.singleton_set(SpecVersions, NewPred),
+        SpecVersions = set.make_singleton_set(NewPred),
         map.det_insert(CalledPredProcId, SpecVersions, NewPreds0, NewPreds)
     ),
     !Info ^ hogi_new_preds := NewPreds.

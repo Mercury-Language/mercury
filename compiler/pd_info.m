@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2011 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -149,7 +149,7 @@ pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo, !PDInfo) :-
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
     CostDelta = 0,
     pd_term.local_term_info_init(LocalTermInfo),
-    set.singleton_set(Parents, PredProcId),
+    Parents = set.make_singleton_set(PredProcId),
     UnfoldInfo = unfold_info(ProcInfo, InstMap, CostDelta, LocalTermInfo,
         PredInfo, Parents, PredProcId, no, 0, no),
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).

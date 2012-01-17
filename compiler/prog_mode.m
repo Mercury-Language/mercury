@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006, 2008-2011 The University of Melbourne.
+% Copyright (C) 2004-2006, 2008-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -296,7 +296,7 @@ inst_apply_substitution(Subst, inst_var(Var), Result) :-
         Result = inst_var(Var)
     ).
 inst_apply_substitution(Subst, constrained_inst_vars(Vars, Inst0), Result) :-
-    ( set.singleton_set(Vars, Var0) ->
+    ( set.is_singleton(Vars, Var0) ->
         Var = Var0
     ;
         unexpected($module, $pred, "multiple inst_vars found")

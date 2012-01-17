@@ -36,7 +36,7 @@ main -->
 	(
 		{ set_bbbtree__is_member(5, Set10, yes) },
 		{ set_bbbtree__is_member(6, Set10, no) },
-		{ set_bbbtree__singleton_set(Set10, 5) },
+		{ set_bbbtree__singleton_set(5, Set10) },
 		{ set_bbbtree__least(Set10, 5) },
 		{ set_bbbtree__largest(Set10, 5) }
 	->

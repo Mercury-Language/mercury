@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1996, 2004-2006, 2010-2011 The University of Melbourne.
+% Copyright (C) 1995-1996, 2004-2006, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -106,7 +106,7 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
             ( set.empty(RestVars) ->
                 % There were no variables left that could share a colour,
                 % so create a singleton set containing this variable.
-                set.singleton_set(SameColour, Var),
+                SameColour = set.make_singleton_set(Var),
                 ResidueSets = NotContaining
             ;
                 % If there is at least one variable that can share a colour
@@ -124,7 +124,7 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
             % by assigning any variable a colour the same as the current
             % variable, so create a signleton set with the current var,
             % and assign the residue to the empty set.
-            set.singleton_set(SameColour, Var),
+            SameColour = set.make_singleton_set(Var),
             ResidueSets = []
         ),
         % The remaining constraints are the residue sets that could not be

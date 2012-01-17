@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -888,7 +888,7 @@ call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Time) :-
         ( empty(Callees) ->
             % There are no callees, this code is never called.
             pessimistic_var_use_time(VarUseType, Cost, Time)
-        ; singleton_set(Callees, SingletonCallee) ->
+        ; is_singleton(Callees, SingletonCallee) ->
             CSDPtr = SingletonCallee ^ c_csd,
             call_site_dynamic_var_use_info(CliquePtr, CSDPtr,
                 ArgNum, RecursionType, yes(CurDepth), Cost, CallStack,

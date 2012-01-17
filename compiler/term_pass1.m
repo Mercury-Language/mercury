@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -236,7 +236,7 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
 
     partition_call_args(!.ModuleInfo, ArgModes, Args, InVars, OutVars),
     Path0 = term_path_info(PPId, no, 0, [], OutVars),
-    set.singleton_set(PathSet0, Path0),
+    PathSet0 = set.make_singleton_set(Path0),
     Info0 = term_traversal_ok(PathSet0, []),
     term_traverse_goal(Goal, Params, Info0, Info, !ModuleInfo, !IO),
 

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2168,7 +2168,7 @@ leave_simple_neg(GoalInfo, FailInfo, !CI) :-
 make_fake_resume_map([], !ResumeMap).
 make_fake_resume_map([Var | Vars], !ResumeMap) :-
     % A visibly fake location.
-    set.singleton_set(Locns, reg(reg_r, -1)),
+    Locns = set.make_singleton_set(reg(reg_r, -1)),
     map.det_insert(Var, Locns, !ResumeMap),
     make_fake_resume_map(Vars, !ResumeMap).
 
@@ -2921,7 +2921,7 @@ produce_vars([], Map, empty, !CI) :-
 produce_vars([Var | Vars], Map, Code, !CI) :-
     produce_vars(Vars, Map0, CodeVars, !CI),
     produce_variable_in_reg_or_stack(Var, CodeVar, Lval, !CI),
-    set.singleton_set(Lvals, Lval),
+    Lvals = set.make_singleton_set(Lval),
     map.set(Var, Lvals, Map0, Map),
     Code = CodeVars ++ CodeVar.
 
@@ -3090,7 +3090,7 @@ make_stack_resume_map(ResumeVars, StackSlots, StackMap) :-
 
 make_singleton_sets([], []).
 make_singleton_sets([Var - Lval | Tail], [Var - Lvals | SetTail]) :-
-    set.singleton_set(Lvals, Lval),
+    Lvals = set.make_singleton_set(Lval),
     make_singleton_sets(Tail, SetTail).
 
 %---------------------------------------------------------------------------%

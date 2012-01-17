@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2011 The University of Melbourne.
+% Copyright (C) 2000-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2528,7 +2528,7 @@ make_var_depend_on_lvals_roots(Var, Lvals, !LocVarMap) :-
     lval::in, loc_var_map::in, loc_var_map::out) is det.
 
 make_var_depend_on_lval_roots(Var, Lval, !LocVarMap) :-
-    set.singleton_set(Lvals, Lval),
+    Lvals = set.make_singleton_set(Lval),
     make_var_depend_on_lvals_roots(Var, Lvals, !LocVarMap).
 
 :- pred make_var_depend_on_root_lval(prog_var::in, lval::in,
