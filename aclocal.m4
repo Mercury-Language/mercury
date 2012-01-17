@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999,2001-2004, 2006-2011 The University of Melbourne.
+# Copyright (C) 1999,2001-2004, 2006-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -253,6 +253,20 @@ GACUTIL=`basename "$GACUTIL"`
 AC_PATH_PROGS(CSC, csc gmcs cscc)
 CSC=`basename "$CSC"`
 
+case "$CSC" in                                                                                                                                                           
+       csc*)                                                                                                                                                             
+               CSHARP_COMPILER_TYPE=microsoft                                                                                                                            
+       ;;                                                                                                                                                                
+                                                                                                                                                                         
+       gmcs*)                                                                                                                                                            
+               CSHARP_COMPILER_TYPE=mono                                                                                                                                 
+       ;;                                                                                                                                                                
+                                                                                                                                                                         
+       *)                                                                                                                                                                
+               CSHARP_COMPILER_TYPE=unknown                                                                                                                              
+       ;;                                                                                                                                                                
+esac
+
 # We default to the Beta 2 version of the library
 mercury_cv_microsoft_dotnet_library_version=1.0.2411.0
 if	test $mercury_cv_microsoft_dotnet = "yes" &&
@@ -305,6 +319,7 @@ MONO=`basename "$CLI_INTERPRETER"`
 AC_SUBST(ILASM)
 AC_SUBST(GACUTIL)
 AC_SUBST(CSC)
+AC_SUBST(CSHARP_COMPILER_TYPE)
 AC_SUBST(MS_AL)
 AC_SUBST(MS_DOTNET_SDK_DIR)
 AC_SUBST(MS_DOTNET_LIBRARY_VERSION)

@@ -6955,6 +6955,11 @@ Print the flags with which the C compiler will be invoked
 to the standard output.
 
 @sp 1
+@itemx --output-csharp-compiler-type
+@findex --output-csharp-compiler-type
+Print the C# compiler type to the standard output.
+
+@sp 1
 @item --output-library-link-flags
 @findex --output-library-link-flags
 Print the flags that are passed to the linker in order to link
@@ -10693,6 +10698,8 @@ Note that the address of the stack base should be word aligned as
 some garbage collectors rely upon this.
 (This is why the type of the dummy variable in the above example is
 @code{void *}.)
+If the value of @var{stackbottom} is @code{NULL} then the collector will attempt
+to determine the address of the base of the stack itself.
 Note that modifying the argument vector, @var{argv}, after the Mercury runtime
 has been initialised will result in undefined behaviour since the runtime
 maintains a reference into @var{argv}.

@@ -6,7 +6,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-2001, 2003-2007, 2009-2011 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003-2007, 2009-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -637,6 +637,7 @@ engine_done(void)
     MR_save_registers();
     MR_debugmsg0("longjmping out...\n");
     longjmp(*(MR_ENGINE(MR_eng_jmp_buf)), 1);
+    return NULL;    /* Not executed, but required to suppress warnings. */
 }
 
 static MR_Code *

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997,1999-2000,2002-2011 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -98,6 +98,9 @@
 
 :- func tree234.values(tree234(K, V)) = list(V).
 :- pred tree234.values(tree234(K, V)::in, list(V)::out) is det.
+
+:- pred tree234.keys_and_values(tree234(K, V)::in, list(K)::out, list(V)::out)
+    is det.
 
 :- pred tree234.update(K::in, V::in, tree234(K, V)::in, tree234(K, V)::out)
     is semidet.
@@ -2592,6 +2595,41 @@ tree234.values_2(four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3), L0, L) :-
     tree234.values_2(T2, [V2 | L1], L2),
     tree234.values_2(T1, [V1 | L2], L3),
     tree234.values_2(T0, [V0 | L3], L).
+
+%------------------------------------------------------------------------------%
+
+tree234.keys_and_values(Tree, Keys, Values) :-
+    tree234.keys_and_values_2(Tree, [], Keys, [], Values).
+
+:- pred tree234.keys_and_values_2(tree234(K, V)::in, list(K)::in, list(K)::out,
+    list(V)::in, list(V)::out) is det.
+
+tree234.keys_and_values_2(empty, !Keys, !Values).
+tree234.keys_and_values_2(two(K0, V0, T0, T1), !Keys, !Values) :-
+    tree234.keys_and_values_2(T1, !Keys, !Values),
+    !:Keys = [K0 | !.Keys],
+    !:Values = [V0 | !.Values],
+    tree234.keys_and_values_2(T0, !Keys, !Values).
+tree234.keys_and_values_2(three(K0, V0, K1, V1, T0, T1, T2), !Keys, !Values) :-
+    tree234.keys_and_values_2(T2, !Keys, !Values),
+    !:Keys = [K1 | !.Keys],
+    !:Values = [V1 | !.Values],
+    tree234.keys_and_values_2(T1, !Keys, !Values),
+    !:Keys = [K0 | !.Keys],
+    !:Values = [V0 | !.Values],
+    tree234.keys_and_values_2(T0, !Keys, !Values).
+tree234.keys_and_values_2(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+        !Keys, !Values) :- 
+    tree234.keys_and_values_2(T3, !Keys, !Values),
+    !:Keys = [K2 | !.Keys],
+    !:Values = [V2 | !.Values],
+    tree234.keys_and_values_2(T2, !Keys, !Values),
+    !:Keys = [K1 | !.Keys],
+    !:Values = [V1 | !.Values],
+    tree234.keys_and_values_2(T1, !Keys, !Values),
+    !:Keys = [K0 | !.Keys],
+    !:Values = [V0 | !.Values],
+    tree234.keys_and_values_2(T0, !Keys, !Values).
 
 %------------------------------------------------------------------------------%
 

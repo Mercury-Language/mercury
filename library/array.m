@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2011 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -389,7 +389,6 @@
     % predicate and returns the position of the first occurrence in the array
     % of an element which is equivalent to the given one in the ordering
     % provided. Assumes the array is sorted according to this ordering.
-    % Fails if the element is not present.
     %
 :- pred array.bsearch(array(T), T, comparison_pred(T), maybe(int)).
 %:- mode array.bsearch(array_ui, in, in(comparison_pred), out) is det.

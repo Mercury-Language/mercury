@@ -276,6 +276,7 @@ ORDINARY_PROGS=	\
 	test_bitset \
 	test_cord \
 	test_imported_no_tag \
+	test_keys_and_values \
 	test_pretty_printer \
 	test_pretty_printer_defaults \
 	test_semaphore \
