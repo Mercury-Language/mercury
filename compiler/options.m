@@ -210,6 +210,8 @@
     ;       output_csharp_compiler_type
     ;       output_cflags
     ;       output_library_link_flags
+    ;       output_grade_defines
+    ;       output_c_include_directory_flags
 
     % Auxiliary output options
     ;       smart_recompilation
@@ -1195,7 +1197,9 @@ option_defaults_2(output_option, [
     output_c_compiler_type              -   bool(no),
     output_csharp_compiler_type         -   bool(no),
     output_cflags                       -   bool(no),
-    output_library_link_flags           -   bool(no)
+    output_library_link_flags           -   bool(no),
+    output_grade_defines                -   bool(no),
+    output_c_include_directory_flags    -   bool(no)
 ]).
 option_defaults_2(aux_output_option, [
     % Auxiliary Output Options
@@ -2082,6 +2086,11 @@ long_option("output-c-compiler-type",   output_c_compiler_type).
 long_option("output-csharp-compiler-type", output_csharp_compiler_type).
 long_option("output-cflags",            output_cflags).
 long_option("output-library-link-flags",    output_library_link_flags).
+long_option("output-grade-defines",     output_grade_defines).
+long_option("output-c-include-directory-flags",
+    output_c_include_directory_flags).
+long_option("output-c-include-dir-flags",
+    output_c_include_directory_flags).
 
 % aux output options
 long_option("smart-recompilation",      smart_recompilation).
@@ -3808,9 +3817,18 @@ options_help_output -->
         "\tagainst the current set of libraries.  This includes the",
         "\tstandard library as well as any other libraries specified",
         "\tvia the --ml option.  The flags are printed to the standard",
-        "\toutput."
+        "\toutput.",
+        "--output-grade-defines",
+        "\tPrint the flags that are passed to the C compiler to define the",
+        "\tmacros used to specify the compilation grade.",
+        "\tThe flags are printed to the standard output.",
+        "--output-c-include-dir-flags, --output-c-include-directory-flags", 
+        "\tPrint the flags that are passed to the C compiler to specify",
+        "\twhich directories to search for C header files.",
+        "\tThis includes the C header files from the standard library.",
+        "\tThe flags are printed to the standard output."
     ]).
-
+        
 :- pred options_help_aux_output(io::di, io::uo) is det.
 
 options_help_aux_output -->

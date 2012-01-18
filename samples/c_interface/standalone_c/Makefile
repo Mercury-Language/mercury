@@ -65,9 +65,40 @@ MERCURY_LIB_LDFLAGS = libmercury_lib.a
 #
 CC = $(shell $(MMC) --output-cc)
 
-# Ask the Mercury compiler what flags it passes to the C compiler?
+# We need to tell the C compiler to define the macros used to specify the
+# compilation grade in which any Mercury libraries we are using were compiled.
+# We also need to tell the C compiler where to find the C header files
+# associated with those libraries.  The simplest way to find out both of these
+# is to ask the Mercury compiler what flags it passes to the C compiler.
+# This can be done as follows:
 #
-CFLAGS=$(shell $(MMC) $(GRADEOPT) --output-cflags)
+# CFLAGS = $(shell $(MMC) $(GRADEOPT) --output-cflags)
+#
+# Note that the output of the `--output-cflags' option also includes any other
+# flags that the Mercury compiler passes to the C compiler, for example options
+# that control optimisation settings. 
+# 
+# We use a finer grained approach here that only queries the Mercury compiler
+# about which macros to define for the current grade and what directories to
+# search for header files in.  This finer grained approach is useful if a
+# foreign application is written in, for example, C++ instead of C.  In that
+# case not all of the flags in output of --output-cflags may be valid for the
+# C++ compiler.
+
+# Ask the Mercury compiler what flags to pass to the C compiler in order to
+# define the macros used to specify the compilation grade we are using.
+#
+CFLAGS_FOR_GRADE = $(shell $(MMC) $(GRADEOPT) --output-grade-defines)
+
+# Ask the Mercury compiler what flags to pass to the C compiler in order to
+# tell it where to search for C header files that are part of any Mercury
+# libraries we are using (including the standard library).
+#
+CFLAGS_FOR_INCLUDES = $(shell $(MMC) $(GRADEOPT) --output-c-include-dir-flags)
+
+# Gather together all the flags to pass to the C compiler.
+#
+CFLAGS = $(CFLAGS_FOR_GRADE) $(CFLAGS_FOR_INCLUDES)
 
 # Ask the Mercury compiler what command it uses to invoke the linker when
 # creating an executable?

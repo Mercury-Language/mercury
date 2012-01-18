@@ -218,6 +218,21 @@
 :- pred output_c_compiler_flags(globals::in, io.output_stream::in,
     io::di, io::uo) is det.
 
+    % Output the C compiler flags that define the macros used to specify the
+    % current compilation grade to the given stream.
+    % This predicate is used to implement the `--output-grade-defines' option.
+    %
+:- pred output_grade_defines(globals::in, io.output_stream::in,
+    io::di, io::uo) is det.
+    
+    % Output the C compiler flags that specify where the C compiler should
+    % search for header files to the given stream.
+    % This predicate is used to implement the `--output-c-include-dir-flags'
+    % option.
+    %
+:- pred output_c_include_directory_flags(globals::in, io.output_stream::in,
+    io::di, io::uo) is det.
+
     % Output the list of flags required to link against the selected set
     % of Mercury libraries (the standard libraries, plus any other specified
     % via the --ml option) in the current grade.
@@ -429,13 +444,199 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         UseSubdirs = no,
         SubDirInclOpt = ""
     ),
-    globals.lookup_accumulating_option(Globals, c_include_directory,
-        C_Incl_Dirs),
-    InclOpt = string.append_list(list.condense(list.map(
-        (func(C_INCL) = ["-I", quote_arg(C_INCL), " "]), C_Incl_Dirs))),
 
+    gather_c_include_dir_flags(Globals, InclOpt),
     get_framework_directories(Globals, FrameworkInclOpt),
+    gather_grade_defines(Globals, PIC, GradeDefinesOpts),
 
+    globals.lookup_bool_option(Globals, gcc_global_registers, GCC_Regs),
+    (
+        GCC_Regs = yes,
+        globals.lookup_string_option(Globals, cflags_for_regs,
+            CFLAGS_FOR_REGS)
+    ;
+        GCC_Regs = no,
+        CFLAGS_FOR_REGS = ""
+    ),
+    globals.lookup_bool_option(Globals, gcc_non_local_gotos, GCC_Gotos),
+    (
+        GCC_Gotos = yes,
+        globals.lookup_string_option(Globals, cflags_for_gotos,
+            CFLAGS_FOR_GOTOS)
+    ;
+        GCC_Gotos = no,
+        CFLAGS_FOR_GOTOS = ""
+    ),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    (
+        Parallel = yes,
+        globals.lookup_string_option(Globals, cflags_for_threads,
+            CFLAGS_FOR_THREADS)
+    ;
+        Parallel = no,
+        CFLAGS_FOR_THREADS = ""
+    ),
+    (
+        PIC = pic,
+        globals.lookup_string_option(Globals, cflags_for_pic, CFLAGS_FOR_PIC)
+    ;
+        ( PIC = link_with_pic
+        ; PIC = non_pic
+        ),
+        CFLAGS_FOR_PIC = ""
+    ),
+    globals.lookup_bool_option(Globals, target_debug, Target_Debug),
+    (
+        Target_Debug = yes,
+        globals.lookup_string_option(Globals, cflags_for_debug,
+            Target_DebugOpt0),
+        Target_DebugOpt = Target_DebugOpt0 ++ " "
+    ;
+        Target_Debug = no,
+        Target_DebugOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
+    (
+        UseTrail = yes,
+        % With tagged trail entries function trailing will not work unless the
+        % C functions stored on the trail are aligned on word boundaries (or a
+        % multiple thereof).  The assemblers on some systems, and some gcc
+        % optimisation settings, do not align functions, so we need to
+        % explicitly pass -falign-functions in trailing grades to ensure that
+        % C functions are appropriately aligned.
+        %
+        % Note that this will also affect the untagged version of the trail,
+        % but that shouldn't matter.
+        %
+        globals.get_c_compiler_type(Globals, C_CompilerType),
+        (
+            C_CompilerType = cc_gcc(_, _, _),
+            globals.lookup_int_option(Globals, bytes_per_word, BytesPerWord),
+            C_FnAlignOpt = string.format("-falign-functions=%d ",
+                [i(BytesPerWord)])
+        ;
+            % XXX Check whether we need to do anything for these C compilers?
+            ( C_CompilerType = cc_clang(_)
+            ; C_CompilerType = cc_lcc
+            ; C_CompilerType = cc_cl(_)
+            ),
+            C_FnAlignOpt = ""
+        ;
+            C_CompilerType = cc_unknown,
+            C_FnAlignOpt = ""
+        )
+    ;
+        UseTrail = no,
+        C_FnAlignOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, type_layout, TypeLayoutOption),
+    (
+        TypeLayoutOption = no,
+        TypeLayoutOpt = "-DMR_NO_TYPE_LAYOUT "
+    ;
+        TypeLayoutOption = yes,
+        TypeLayoutOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, c_optimize, C_optimize),
+    (
+        C_optimize = yes,
+        globals.lookup_string_option(Globals, cflags_for_optimization,
+            OptimizeOpt)
+    ;
+        C_optimize = no,
+        OptimizeOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, ansi_c, Ansi),
+    (
+        Ansi = yes,
+        globals.lookup_string_option(Globals, cflags_for_ansi, AnsiOpt)
+    ;
+        Ansi = no,
+        AnsiOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, inline_alloc, InlineAlloc),
+    (
+        InlineAlloc = yes,
+        % XXX disabled because inline allocation is broken in gc7.0 alpha6.
+        % InlineAllocOpt = "-DMR_INLINE_ALLOC "
+        InlineAllocOpt = ""
+    ;
+        InlineAlloc = no,
+        InlineAllocOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, warn_target_code, Warn),
+    (
+        Warn = yes,
+        globals.lookup_string_option(Globals, cflags_for_warnings, WarningOpt)
+    ;
+        Warn = no,
+        WarningOpt = ""
+    ),
+
+    % The -floop-optimize option is incompatible with the global
+    % register code we generate on Darwin PowerPC.
+    % See the hard_coded/ppc_bug test case for an example
+    % program which fails with this optimization.
+
+    globals.lookup_string_option(Globals, fullarch, FullArch),
+    (
+        globals.lookup_bool_option(Globals, highlevel_code, no),
+        globals.lookup_bool_option(Globals, gcc_global_registers, yes),
+        string.prefix(FullArch, "powerpc-apple-darwin")
+    ->
+        AppleGCCRegWorkaroundOpt = "-fno-loop-optimize "
+    ;
+        AppleGCCRegWorkaroundOpt = ""
+    ),
+  
+    % Workaround performance problem(s) with gcc that causes the C files
+    % generated in debugging grades to compile very slowly at -O1 and above.
+    % (Changes here need to be reflected in scripts/mgnuc.in.)
+    (
+        globals.lookup_bool_option(Globals, exec_trace, yes),
+        arch_is_apple_darwin(FullArch)
+    ->
+        OverrideOpts = "-O0"
+    ;
+        OverrideOpts = ""
+    ),
+ 
+    % Be careful with the order here!  Some options override others,
+    % e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
+    % it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
+    % Also be careful that each option is separated by spaces.
+    % 
+    % In general, user supplied C compiler flags, i.e. CFLAGS and
+    % CC_Specific_CFLAGS below, should be able to override those introduced by
+    % the Mercury compiler.
+    % In some circumstances we want to prevent the user doing this, typically
+    % where we know the behaviour of a particular C compiler is buggy; the
+    % last option, OverrideOpts, does this -- because of this it must be
+    % listed after CFLAGS and CC_Specific_CFLAGS.
+    %
+    string.append_list([
+        SubDirInclOpt, InclOpt, " ",
+        FrameworkInclOpt, " ",
+        OptimizeOpt, " ",
+        GradeDefinesOpts,
+        CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
+        CFLAGS_FOR_THREADS, " ", CFLAGS_FOR_PIC, " ",
+        Target_DebugOpt,
+        TypeLayoutOpt,
+        InlineAllocOpt,
+        AnsiOpt, " ", 
+        AppleGCCRegWorkaroundOpt,
+        C_FnAlignOpt, 
+        WarningOpt, " ", 
+        CFLAGS, " ",
+        CC_Specific_CFLAGS, " ",
+        OverrideOpts], AllCFlags).
+
+%-----------------------------------------------------------------------------%
+
+:- pred gather_grade_defines(globals::in, pic::in, string::out) is det.
+
+gather_grade_defines(Globals, PIC, GradeDefines) :-
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     (
         HighLevelCode = yes,
@@ -464,24 +665,18 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     globals.lookup_bool_option(Globals, gcc_global_registers, GCC_Regs),
     (
         GCC_Regs = yes,
-        globals.lookup_string_option(Globals, cflags_for_regs,
-            CFLAGS_FOR_REGS),
         RegOpt = "-DMR_USE_GCC_GLOBAL_REGISTERS "
     ;
         GCC_Regs = no,
-        CFLAGS_FOR_REGS = "",
         RegOpt = ""
     ),
     globals.lookup_bool_option(Globals, gcc_non_local_gotos, GCC_Gotos),
     (
         GCC_Gotos = yes,
-        GotoOpt = "-DMR_USE_GCC_NONLOCAL_GOTOS ",
-        globals.lookup_string_option(Globals, cflags_for_gotos,
-            CFLAGS_FOR_GOTOS)
+        GotoOpt = "-DMR_USE_GCC_NONLOCAL_GOTOS "
     ;
         GCC_Gotos = no,
-        GotoOpt = "",
-        CFLAGS_FOR_GOTOS = ""
+        GotoOpt = ""
     ),
     globals.lookup_bool_option(Globals, asm_labels, ASM_Labels),
     (
@@ -494,13 +689,10 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     globals.lookup_bool_option(Globals, parallel, Parallel),
     (
         Parallel = yes,
-        ParallelOpt = "-DMR_THREAD_SAFE ",
-        globals.lookup_string_option(Globals, cflags_for_threads,
-            CFLAGS_FOR_THREADS)
+        ParallelOpt = "-DMR_THREAD_SAFE "
     ;
         Parallel = no,
-        ParallelOpt = "",
-        CFLAGS_FOR_THREADS = ""
+        ParallelOpt = ""
     ),
     globals.lookup_bool_option(Globals, threadscope, Threadscope),
     (
@@ -592,15 +784,12 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     ),
     (
         PIC = pic,
-        globals.lookup_string_option(Globals, cflags_for_pic, CFLAGS_FOR_PIC),
         PIC_Reg = yes
     ;
         PIC = link_with_pic,
-        CFLAGS_FOR_PIC = "",
         PIC_Reg = yes
     ;
         PIC = non_pic,
-        CFLAGS_FOR_PIC = "",
         globals.lookup_bool_option(Globals, pic_reg, PIC_Reg)
     ),
     (
@@ -670,16 +859,6 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         ExtendOpt = unexpected($module, $pred,
             "--extend-stacks-when-needed and --stack-segments")
     ),
-    globals.lookup_bool_option(Globals, target_debug, Target_Debug),
-    (
-        Target_Debug = yes,
-        globals.lookup_string_option(Globals, cflags_for_debug,
-            Target_DebugOpt0),
-        Target_DebugOpt = Target_DebugOpt0 ++ " "
-    ;
-        Target_Debug = no,
-        Target_DebugOpt = ""
-    ),
     globals.lookup_bool_option(Globals, low_level_debug, LL_Debug),
     (
         LL_Debug = yes,
@@ -692,33 +871,6 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     (
         UseTrail = yes,
         UseTrailOpt = "-DMR_USE_TRAIL ",
-        % With tagged trail entries function trailing will not work unless the
-        % C functions stored on the trail are aligned on word boundaries (or a
-        % multiple thereof).  The assemblers on some systems, and some gcc
-        % optimisation settings, do not align functions, so we need to
-        % explicitly pass -falign-functions in trailing grades to ensure that
-        % C functions are appropriately aligned.
-        %
-        % Note that this will also affect the untagged version of the trail,
-        % but that shouldn't matter.
-        %
-        globals.get_c_compiler_type(Globals, C_CompilerType),
-        (
-            C_CompilerType = cc_gcc(_, _, _),
-            globals.lookup_int_option(Globals, bytes_per_word, BytesPerWord),
-            C_FnAlignOpt = string.format("-falign-functions=%d ",
-                [i(BytesPerWord)])
-        ;
-            % XXX Check whether we need to do anything for these C compilers?
-            ( C_CompilerType = cc_clang(_)
-            ; C_CompilerType = cc_lcc
-            ; C_CompilerType = cc_cl(_)
-            ),
-            C_FnAlignOpt = ""
-        ;
-            C_CompilerType = cc_unknown,
-            C_FnAlignOpt = ""
-        ),
         globals.lookup_bool_option(Globals, trail_segments, TrailSegments),
         (
             TrailSegments = yes,
@@ -730,7 +882,6 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     ;
         UseTrail = no,
         UseTrailOpt = "",
-        C_FnAlignOpt = "",
         TrailSegOpt = ""
     ),
     globals.lookup_bool_option(Globals, use_minimal_model_stack_copy,
@@ -804,102 +955,12 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         UseRegions = no,
         UseRegionsOpt = ""
     ),
-    globals.lookup_bool_option(Globals, type_layout, TypeLayoutOption),
-    (
-        TypeLayoutOption = no,
-        TypeLayoutOpt = "-DMR_NO_TYPE_LAYOUT "
-    ;
-        TypeLayoutOption = yes,
-        TypeLayoutOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, c_optimize, C_optimize),
-    (
-        C_optimize = yes,
-        globals.lookup_string_option(Globals, cflags_for_optimization,
-            OptimizeOpt)
-    ;
-        C_optimize = no,
-        OptimizeOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, ansi_c, Ansi),
-    (
-        Ansi = yes,
-        globals.lookup_string_option(Globals, cflags_for_ansi, AnsiOpt)
-    ;
-        Ansi = no,
-        AnsiOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, inline_alloc, InlineAlloc),
-    (
-        InlineAlloc = yes,
-        % XXX disabled because inline allocation is broken in gc7.0 alpha6.
-        % InlineAllocOpt = "-DMR_INLINE_ALLOC "
-        InlineAllocOpt = ""
-    ;
-        InlineAlloc = no,
-        InlineAllocOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, warn_target_code, Warn),
-    (
-        Warn = yes,
-        globals.lookup_string_option(Globals, cflags_for_warnings, WarningOpt)
-    ;
-        Warn = no,
-        WarningOpt = ""
-    ),
-
-    % The -floop-optimize option is incompatible with the global
-    % register code we generate on Darwin PowerPC.
-    % See the hard_coded/ppc_bug test case for an example
-    % program which fails with this optimization.
-
-    globals.lookup_string_option(Globals, fullarch, FullArch),
-    (
-        HighLevelCode = no,
-        GCC_Regs = yes,
-        string.prefix(FullArch, "powerpc-apple-darwin")
-    ->
-        AppleGCCRegWorkaroundOpt = "-fno-loop-optimize "
-    ;
-        AppleGCCRegWorkaroundOpt = ""
-    ),
-  
-    % Workaround performance problem(s) with gcc that causes the C files
-    % generated in debugging grades to compile very slowly at -O1 and above.
-    % (Changes here need to be reflected in scripts/mgnuc.in.)
-    (
-        ExecTrace = yes,
-        arch_is_apple_darwin(FullArch)
-    ->
-        OverrideOpts = "-O0"
-    ;
-        OverrideOpts = ""
-    ),
- 
-    % Be careful with the order here!  Some options override others,
-    % e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
-    % it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
-    % Also be careful that each option is separated by spaces.
-    % 
-    % In general, user supplied C compiler flags, i.e. CFLAGS and
-    % CC_Specific_CFLAGS below, should be able to override those introduced by
-    % the Mercury compiler.
-    % In some circumstances we want to prevent the user doing this, typically
-    % where we know the behaviour of a particular C compiler is buggy; the
-    % last option, OverrideOpts, does this -- because of this it must be
-    % listed after CFLAGS and CC_Specific_CFLAGS.
-    %
     string.append_list([
-        SubDirInclOpt, InclOpt, " ",
-        FrameworkInclOpt, " ",
-        OptimizeOpt, " ",
         HighLevelCodeOpt, 
         NestedFunctionsOpt, 
         HighLevelDataOpt,
         RegOpt, GotoOpt, AsmOpt,
         ParallelOpt,
-        CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
-        CFLAGS_FOR_THREADS, " ", CFLAGS_FOR_PIC, " ",
         ThreadscopeOpt,
         GC_Opt, 
         ProfileCallsOpt, ProfileTimeOpt, 
@@ -908,23 +969,26 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         PIC_Reg_Opt, 
         TagsOpt, NumTagBitsOpt, 
         ExtendOpt,
-        Target_DebugOpt, LL_DebugOpt, DeclDebugOpt,
+        LL_DebugOpt, DeclDebugOpt,
         SourceDebugOpt,
         ExecTraceOpt,
         UseTrailOpt, 
         TrailSegOpt,
         MinimalModelOpt, 
         SinglePrecFloatOpt,
-        UseRegionsOpt,
-        TypeLayoutOpt,
-        InlineAllocOpt,
-        AnsiOpt, " ", 
-        AppleGCCRegWorkaroundOpt,
-        C_FnAlignOpt, 
-        WarningOpt, " ", 
-        CFLAGS, " ",
-        CC_Specific_CFLAGS, " ",
-        OverrideOpts], AllCFlags).
+        UseRegionsOpt], GradeDefines).
+    
+%-----------------------------------------------------------------------------%
+
+:- pred gather_c_include_dir_flags(globals::in, string::out) is det.
+
+gather_c_include_dir_flags(Globals, InclOpt) :-
+    globals.lookup_accumulating_option(Globals, c_include_directory,
+        C_Incl_Dirs),
+    InclOpt = string.append_list(list.condense(list.map(
+        (func(C_INCL) = ["-I", quote_arg(C_INCL), " "]), C_Incl_Dirs))).
+
+%-----------------------------------------------------------------------------%
 
 :- pred gather_compiler_specific_flags(globals::in, string::out) is det.
 
@@ -3424,6 +3488,27 @@ output_c_compiler_flags(Globals, Stream, !IO) :-
     get_object_code_type(Globals, executable, PIC),
     gather_c_compiler_flags(Globals, PIC, CFlags),
     io.write_string(Stream, CFlags, !IO).    
+ 
+%-----------------------------------------------------------------------------%
+%
+% Grade defines flags.
+%
+
+output_grade_defines(Globals, Stream, !IO) :-
+    get_object_code_type(Globals, executable, PIC),
+    gather_grade_defines(Globals, PIC, GradeDefines),
+    io.write_string(Stream, GradeDefines, !IO),
+    io.nl(Stream, !IO).
+
+%-----------------------------------------------------------------------------%
+%
+% C include directory flags.
+%
+
+output_c_include_directory_flags(Globals, Stream, !IO) :-
+    gather_c_include_dir_flags(Globals, InclOpts),
+    io.write_string(Stream, InclOpts, !IO),
+    io.nl(Stream, !IO).
 
 %-----------------------------------------------------------------------------%
 %

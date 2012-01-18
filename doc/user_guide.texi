@@ -7003,6 +7003,23 @@ against the current set of libraries.  This includes the standard
 library as well as any other libraries specified via the
 @samp{--ml} option.  The flags are printed to the standard output.
 
+@sp 1
+@item --output-grade-defines
+@findex --output-grade-defines
+Print the flags that are passed to the C compiler to define the macros used to
+specify the compilation grade.
+The flags are printed to the standard outut.
+
+@sp 1
+@item --output-c-include-dir-flags
+@item --output-c-include-directory-flags
+@findex --output-c-include-dir-flags
+@findex --output-c-include-directory-flags
+Print the flags that are passed to the C compiler to specify which directories
+to search for C header files.
+This includes the C header files from the standard library.
+The flags are printed to the standard output.
+
 @end table
 
 @node Auxiliary output options
