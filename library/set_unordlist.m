@@ -64,6 +64,7 @@
     %
 :- pred set_unordlist.singleton_set(T, set_unordlist(T)).
 :- mode set_unordlist.singleton_set(in, out) is det.
+:- mode set_unordlist.singleton_set(in, in) is semidet.     % Implied.
 :- mode set_unordlist.singleton_set(out, in) is semidet.
 
 :- func set_unordlist.make_singleton_set(T) = set_unordlist(T).
@@ -401,6 +402,10 @@ set_unordlist.init(sul([])).
 
 set_unordlist.singleton_set(X::in, Set::out) :-
     Set = sul([X]).
+
+set_unordlist.singleton_set(X::in, Set::in) :-
+    Set = sul(Xs),
+    list.sort_and_remove_dups(Xs, [X]).
 
 set_unordlist.singleton_set(X::out, Set::in) :-
     Set = sul(Xs),

@@ -24,4 +24,18 @@ main(!IO) :-
            else
             io.write_string("Not a singleton set\n", !IO)
         )
+    ),
+
+    % Check that the implied (in, in) is semidet mode works correctly.
+    % 
+    some [!Set2] (
+        set_unordlist.init(!:Set2),
+        set_unordlist.insert(2, !Set2),
+        set_unordlist.insert(2, !Set2),
+        set_unordlist.insert(2, !Set2),
+        ( if set_unordlist.singleton_set(2, !.Set2) then
+            io.write_string("(in, in) test passed.\n", !IO)
+          else
+            io.write_string("(in, in) test FAILED.\n", !IO)
+        )
     ).
