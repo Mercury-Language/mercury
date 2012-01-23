@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999, 2003-2006, 2011 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999, 2003-2006, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -220,7 +220,7 @@ eqvclass.add_element(Element, Id, !EqvClass) :-
     !.EqvClass = eqvclass(Counter0, PartitionMap0, ElementMap0),
     counter.allocate(Id, Counter0, Counter),
     map.det_insert(Element, Id, ElementMap0, ElementMap),
-    set.singleton_set(Partition, Element),
+    Partition = set.make_singleton_set(Element),
     map.det_insert(Id, Partition, PartitionMap0, PartitionMap),
     !:EqvClass = eqvclass(Counter, PartitionMap, ElementMap).
 

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2006, 2010-2011 The University of Melbourne.
+% Copyright (C) 2005-2006, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -46,6 +46,8 @@
 :- mode set_ctree234.singleton_set(out, in) is semidet.
 
 :- func set_ctree234.make_singleton_set(T) = set_ctree234(T).
+
+:- pred set_ctree234.is_singleton(set_ctree234(T)::in, T::out) is semidet.
 
     % `set_ctree234.empty(Set)' is true iff `Set' is an empty set.
     %
@@ -432,6 +434,8 @@ set_ctree234.init = ct(0, empty).
 set_ctree234.singleton_set(X, ct(1, two(X, empty, empty))).
 
 set_ctree234.make_singleton_set(X) = ct(1, two(X, empty, empty)).
+
+set_ctree234.is_singleton(ct(1, two(X, empty, empty)), X).
 
 set_ctree234.empty(ct(0, _)).
 

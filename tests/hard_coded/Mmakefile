@@ -234,6 +234,7 @@ ORDINARY_PROGS=	\
 	setjmp_test \
 	shift_test \
 	simplify_multi_arm_switch \
+	singleton_dups \
 	solve_quadratic \
 	space \
 	special_char \

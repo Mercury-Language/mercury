@@ -1,9 +1,12 @@
 NEWS for Mercury 11.07.1-beta
 -----------------------------
 
-Changes to the Mercury standrad library:
+Changes to the Mercury standard library:
 
 * We have added the predicate map.keys_and_values/3.
+
+* We have added the predicates set.is_singleton/2, set_bbbtree.is_singleton/2,
+  set_ctree234.is_singleton/2 and set_unordlist.is_singleton/2.
 
 
 NEWS for Mercury 11.07
