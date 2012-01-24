@@ -44,13 +44,13 @@
     % and return the new priority queue.
     %
 :- func pqueue.insert(pqueue(K, V), K, V) = pqueue(K, V).
-:- pred pqueue.insert(pqueue(K, V)::in, K::in, V::in, pqueue(K, V)::out)
+:- pred pqueue.insert(K::in, V::in, pqueue(K, V)::in, pqueue(K, V)::out)
     is det.
 
     % Remove the smallest item from the priority queue.
     % Fails if the priority queue is empty.
     %
-:- pred pqueue.remove(pqueue(K, V)::in, K::out, V::out, pqueue(K, V)::out)
+:- pred pqueue.remove(K::out, V::out, pqueue(K, V)::in, pqueue(K, V)::out)
     is semidet.
 
     % As above, but calls error/1 if the priority queue is empty.
@@ -106,11 +106,11 @@ pqueue.init(empty).
 
 %---------------------------------------------------------------------------%
 
-pqueue.insert(PQ1, K, V) = PQ2 :-
-    pqueue.insert(PQ1, K, V, PQ2).
+pqueue.insert(!.PQ, K, V) = !:PQ :-
+    pqueue.insert(K, V, !PQ).
 
-pqueue.insert(empty, K, V, pqueue(0, K, V, empty, empty)).
-pqueue.insert(pqueue(D0, K0, V0, L0, R0), K, V, PQ) :-
+pqueue.insert(K, V, empty, pqueue(0, K, V, empty, empty)).
+pqueue.insert(K, V, pqueue(D0, K0, V0, L0, R0), PQ) :-
     D = D0 + 1,
     compare(CMP, K, K0),
     ( CMP = (<) ->
@@ -135,24 +135,24 @@ pqueue.insert_2(K, V, empty, pqueue(D0, K0, V0, L0, R0),
 pqueue.insert_2(K, V, pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1),
         PQ1, PQ2) :-
     ( D0 > D1 ->
-        pqueue.insert(pqueue(D1, K1, V1, L1, R1), K, V, PQ2),
+        pqueue.insert(K, V, pqueue(D1, K1, V1, L1, R1), PQ2),
         PQ1 = pqueue(D0, K0, V0, L0, R0)
     ;
-        pqueue.insert(pqueue(D0, K0, V0, L0, R0), K, V, PQ1),
+        pqueue.insert(K, V, pqueue(D0, K0, V0, L0, R0), PQ1),
         PQ2 = pqueue(D1, K1, V1, L1, R1)
     ).
 
 %---------------------------------------------------------------------------%
 
 pqueue.det_remove(K, V, !PQ) :-
-    ( if pqueue.remove(!.PQ, K0, V0, !:PQ) then
+    ( if pqueue.remove(K0, V0, !PQ) then
         K = K0,
         V = V0
       else
         error("pqueue.det_remove/4: empty priority queue")
     ). 
 
-pqueue.remove(pqueue(_, K, V, L0, R0), K, V, PQ) :-
+pqueue.remove(K, V, pqueue(_, K, V, L0, R0), PQ) :-
     pqueue.remove_2(L0, R0, PQ).
 
 :- pred pqueue.remove_2(pqueue(K, V)::in, pqueue(K, V)::in, pqueue(K, V)::out)
@@ -181,7 +181,7 @@ pqueue.to_assoc_list(PQ) = AL :-
     pqueue.to_assoc_list(PQ, AL).
 
 pqueue.to_assoc_list(Q0, L) :-
-    ( pqueue.remove(Q0, K, V, Q1) ->
+    ( pqueue.remove(K, V, Q0, Q1) ->
         pqueue.to_assoc_list(Q1, L0),
         L = [K - V | L0]
     ;
@@ -195,7 +195,7 @@ pqueue.assoc_list_to_pqueue([], Q) :-
     pqueue.init(Q).
 pqueue.assoc_list_to_pqueue([K - V | L], Q) :-
     pqueue.assoc_list_to_pqueue(L, Q0),
-    pqueue.insert(Q0, K, V, Q).
+    pqueue.insert(K, V, Q0, Q).
 
 pqueue.from_assoc_list(List) = PQueue :-
     pqueue.assoc_list_to_pqueue(List, PQueue).

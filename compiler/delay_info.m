@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998, 2003-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 1994-1998, 2003-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -238,8 +238,8 @@ delay_info_enter_conj(DelayInfo0, DelayInfo) :-
     DelayInfo0 = delay_info(CurrentDepth0, DelayedGoalStack0,
         WaitingGoalsTable, PendingGoals, NextSeqNums0),
     map.init(DelayedGoals),
-    stack.push(DelayedGoalStack0, DelayedGoals, DelayedGoalStack),
-    stack.push(NextSeqNums0, 0, NextSeqNums),
+    stack.push(DelayedGoals, DelayedGoalStack0, DelayedGoalStack),
+    stack.push(0, NextSeqNums0, NextSeqNums),
     CurrentDepth = CurrentDepth0 + 1,
     DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
         WaitingGoalsTable, PendingGoals, NextSeqNums),
@@ -251,11 +251,11 @@ delay_info_leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
     delay_info_check_invariant(DelayInfo0),
     DelayInfo0 = delay_info(CurrentDepth0, DelayedGoalStack0,
         WaitingGoalsTable0, PendingGoals, NextSeqNums0),
-    stack.det_pop(DelayedGoalStack0, DelayedGoals, DelayedGoalStack),
+    stack.det_pop(DelayedGoals, DelayedGoalStack0, DelayedGoalStack),
     map.keys(DelayedGoals, SeqNums),
     remove_delayed_goals(SeqNums, DelayedGoals, CurrentDepth0,
         WaitingGoalsTable0, WaitingGoalsTable),
-    stack.det_pop(NextSeqNums0, _, NextSeqNums),
+    stack.det_pop(_, NextSeqNums0, NextSeqNums),
     CurrentDepth = CurrentDepth0 - 1,
     map.values(DelayedGoals, DelayedGoalsList),
     DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
@@ -293,15 +293,15 @@ delay_info_delay_goal(Error, Goal, DelayInfo0, DelayInfo) :-
         WaitingGoalsTable0, PendingGoals, NextSeqNums0),
 
     % Get the next sequence number
-    stack.det_pop(NextSeqNums0, SeqNum, NextSeqNums1),
+    stack.det_pop(SeqNum, NextSeqNums0, NextSeqNums1),
     NextSeq = SeqNum + 1,
-    stack.push(NextSeqNums1, NextSeq, NextSeqNums),
+    stack.push(NextSeq, NextSeqNums1, NextSeqNums),
 
     % Store the goal in the delayed goal stack
-    stack.det_pop(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
+    stack.det_pop(DelayedGoals0, DelayedGoalStack0, DelayedGoalStack1),
     map.set(SeqNum, delayed_goal(Vars, Error, Goal),
         DelayedGoals0, DelayedGoals),
-    stack.push(DelayedGoalStack1, DelayedGoals, DelayedGoalStack),
+    stack.push(DelayedGoals, DelayedGoalStack1, DelayedGoalStack),
 
     % Store indexes to the goal in the waiting goals table
     GoalNum = delay_goal_num(CurrentDepth, SeqNum),
@@ -462,11 +462,11 @@ delay_info_wakeup_goal(Goal, !DelayInfo) :-
     PendingGoals0 = [SeqNum | PendingGoals],
     map.set(CurrentDepth, PendingGoals,
         PendingGoalsTable0, PendingGoalsTable),
-    stack.det_pop(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
+    stack.det_pop(DelayedGoals0, DelayedGoalStack0, DelayedGoalStack1),
     map.lookup(DelayedGoals0, SeqNum, DelayedGoal),
     DelayedGoal = delayed_goal(_Vars, _ErrorReason, Goal),
     map.delete(SeqNum, DelayedGoals0, DelayedGoals),
-    stack.push(DelayedGoalStack1, DelayedGoals, DelayedGoalStack),
+    stack.push(DelayedGoals, DelayedGoalStack1, DelayedGoalStack),
     !:DelayInfo = delay_info(CurrentDepth, DelayedGoalStack, WaitingGoals,
         PendingGoalsTable, NextSeqNums),
     delay_info_check_invariant(!.DelayInfo).

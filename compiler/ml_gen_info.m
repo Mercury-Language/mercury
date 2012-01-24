@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009, 2011 The University of Melbourne.
+% Copyright (C) 2009, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -573,12 +573,12 @@ ml_gen_info_search_const_var(Info, Var, GroundTerm) :-
 
 ml_gen_info_push_success_cont(SuccCont, !Info) :-
     ml_gen_info_get_success_cont_stack(!.Info, Stack0),
-    stack.push(Stack0, SuccCont, Stack),
+    stack.push(SuccCont, Stack0, Stack),
     ml_gen_info_set_success_cont_stack(Stack, !Info).
 
 ml_gen_info_pop_success_cont(!Info) :-
     ml_gen_info_get_success_cont_stack(!.Info, Stack0),
-    stack.det_pop(Stack0, _SuccCont, Stack),
+    stack.det_pop(_SuccCont, Stack0, Stack),
     ml_gen_info_set_success_cont_stack(Stack, !Info).
 
 ml_gen_info_current_success_cont(Info, SuccCont) :-

@@ -1762,7 +1762,7 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
                 (
                     CurfrMaxfr = must_be_equal,
                     ResumeKnown = resume_point_known(has_been_done),
-                    stack.pop(ResumePoints, TopResumePoint, RestResumePoints),
+                    stack.pop(TopResumePoint, ResumePoints, RestResumePoints),
                     stack.is_empty(RestResumePoints),
                     TopResumePoint = stack_only(_, do_fail)
                 ->
@@ -2032,7 +2032,7 @@ prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
 ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr, _, Allow),
-    stack.det_pop(ResumePoints0, _, ResumePoints),
+    stack.det_pop(_, ResumePoints0, ResumePoints),
     HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType,
         MaybeRegionInfo),
     (
@@ -2299,7 +2299,7 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
         Allow),
     stack.det_top(ResumePoints0, TopResumePoint),
     clone_resume_point(TopResumePoint, NewResumePoint, !CI),
-    stack.push(ResumePoints0, NewResumePoint, ResumePoints),
+    stack.push(NewResumePoint, ResumePoints0, ResumePoints),
     FailInfo = fail_info(ResumePoints, resume_point_known(has_been_done),
         CurfrMaxfr, CondEnv, Allow),
     set_fail_info(FailInfo, !CI),
@@ -2678,7 +2678,7 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
     ;
         true
     ),
-    stack.push(ResumePoints0, ResumePoint, ResumePoints),
+    stack.push(ResumePoint, ResumePoints0, ResumePoints),
     (
         CodeModel = model_non,
         pick_stack_resume_point(ResumePoint, _, StackLabel),
@@ -2703,7 +2703,7 @@ pop_resume_point(!CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr,
         CondEnv, Allow),
-    stack.det_pop(ResumePoints0, _, ResumePoints),
+    stack.det_pop(_, ResumePoints0, ResumePoints),
     FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
         CondEnv, Allow),
     set_fail_info(FailInfo, !CI).
@@ -2808,7 +2808,7 @@ may_use_nondet_tailcall(CI, TailCallStatus) :-
     get_fail_info(CI, FailInfo),
     FailInfo = fail_info(ResumePoints0, ResumeKnown, _, _, _),
     (
-        stack.pop(ResumePoints0, ResumePoint1, ResumePoints1),
+        stack.pop(ResumePoint1, ResumePoints0, ResumePoints1),
         stack.is_empty(ResumePoints1),
         ResumePoint1 = stack_only(_, do_fail)
     ->
@@ -2988,7 +2988,7 @@ init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
     ),
     ResumePoint = stack_only(StackMap, ResumeAddress),
     stack.init(ResumeStack0),
-    stack.push(ResumeStack0, ResumePoint, ResumeStack),
+    stack.push(ResumePoint, ResumeStack0, ResumeStack),
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(_, _, _, _, Allow),
     FailInfo = fail_info(ResumeStack, ResumeKnown, CurfrMaxfr,

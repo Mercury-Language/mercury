@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2011 The University of Melbourne.
+% Copyright (C) 2001-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -173,7 +173,7 @@ enter_lambda_goal(GoalId, !MOI) :-
 
 leave_lambda_goal(!MOI) :-
     LambdaNesting0 = !.MOI ^ moi_lambda_nesting,
-    stack.det_pop(LambdaNesting0, _, LambdaNesting),
+    stack.det_pop(_, LambdaNesting0, LambdaNesting),
     !MOI ^ moi_lambda_nesting := LambdaNesting.
 
 :- pred mode_order_goal(hlds_goal::in, hlds_goal::out,

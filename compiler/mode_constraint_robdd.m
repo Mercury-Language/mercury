@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2001-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -255,7 +255,7 @@ enter_lambda_goal(GoalId, !MCI) :-
 
 leave_lambda_goal(!MCI) :-
     LambdaPath0 = !.MCI ^ mci_lambda_path,
-    stack.det_pop(LambdaPath0, _GoalPath, LambdaPath),
+    stack.det_pop(_GoalPath, LambdaPath0, LambdaPath),
     !MCI ^ mci_lambda_path := LambdaPath.
 
 :- type prog_var_and_level
@@ -414,7 +414,7 @@ atomic_prodvars_map(Constraint, MCI) = ProdVarsMap :-
                     Key = key(RepVar, PredId, LambdaId0),
                     PredId = MCI ^ mci_pred_id,
                     RepVar = ProgVar `at` GoalId,
-                    stack.push(LambdaId0, GoalId, LambdaId)
+                    stack.push(GoalId, LambdaId0, LambdaId)
                 ->
                     ( map.search(PVM0, LambdaId, Vs0) ->
                         set_of_var.insert(ProgVar, Vs0, Vs),
