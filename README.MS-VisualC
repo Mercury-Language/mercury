@@ -157,9 +157,12 @@ directory
    
   + Replace any Unix-style paths with their Windows-style equivalent. 
 
-  + Add the following option in the value of the variable DEFAULT_MCFLAGS
- 
-    --env-type windows
+  + Modify the values of the options --host-env-type and --target-env-type
+    in the value of the variable DEFAULT_MCFLAGS so that their values are as
+    follows:
+
+    --host-env-type "windows"
+    --target-env-type "windows"
 
   + To specify the commands used to install files and directories include
     the following options in the value of the variable DEFAULT_MCFLAGS

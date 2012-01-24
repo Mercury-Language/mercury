@@ -4639,12 +4639,18 @@ esac
 case "$host" in
     *-cygwin*)
         EXT_FOR_EXE=".exe"
+        HOST_ENV_TYPE=cygwin
+        TARGET_ENV_TYPE=cygwin
         ;;
     *mingw*)
         EXT_FOR_EXE=".exe"
+        HOST_ENV_TYPE=msys
+        TARGET_ENV_TYPE=msys
         ;;
     *)
         EXT_FOR_EXE=
+        HOST_ENV_TYPE=posix
+        TARGET_ENV_TYPE=posix
         ;;
 esac
 
@@ -4668,6 +4674,8 @@ AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_LINK_WITH_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(EXT_FOR_EXE)
+AC_SUBST(HOST_ENV_TYPE)
+AC_SUBST(TARGET_ENV_TYPE)
 AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
 AC_SUBST(SHARED_LIBS_SH)
