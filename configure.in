@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------------#
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2011 The University of Melbourne.
+# Copyright (C) 1995-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -4619,12 +4619,18 @@ esac
 case "$host" in
     *-cygwin*)
         EXT_FOR_EXE=".exe"
+        HOST_ENV_TYPE=cygwin
+        TARGET_ENV_TYPE=cygwin
         ;;
     *mingw*)
         EXT_FOR_EXE=".exe"
+        HOST_ENV_TYPE=msys
+        TARGET_ENV_TYPE=msys
         ;;
     *)
         EXT_FOR_EXE=
+        HOST_ENV_TYPE=posix
+        TARGET_ENV_TYPE=posix
         ;;
 esac
 
@@ -4648,6 +4654,8 @@ AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_LINK_WITH_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(EXT_FOR_EXE)
+AC_SUBST(HOST_ENV_TYPE)
+AC_SUBST(TARGET_ENV_TYPE)
 AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
 AC_SUBST(SHARED_LIBS_SH)
