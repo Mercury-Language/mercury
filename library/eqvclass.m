@@ -272,7 +272,9 @@ eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
             NextId0 = EqvClass0 ^ next_id,
             counter.allocate(Id, NextId0, NextId),
             map.det_insert(ElementA, Id, ElementMap0, ElementMap1),
-            map.det_insert(ElementB, Id, ElementMap1, ElementMap),
+            % We cannot call map.det_insert for ElementB, since it may be
+            % that ElementA = ElementB.
+            map.set(ElementB, Id, ElementMap1, ElementMap),
             PartitionMap0 = EqvClass0 ^ partitions,
             set.list_to_set([ElementA, ElementB], Partition),
             map.det_insert(Id, Partition, PartitionMap0, PartitionMap),

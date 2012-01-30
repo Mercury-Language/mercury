@@ -83,6 +83,7 @@ ORDINARY_PROGS=	\
 	elim_special_pred \
 	equality_pred_which_requires_boxing \
 	eqv_type_bug \
+	eqvclass_bug \
 	erlang_deconstruct \
 	erroneous_liveness \
 	error_func \
