@@ -24,6 +24,8 @@ Changes to the Mercury standard library:
 * We have added the predicates set.is_singleton/2, set_bbbtree.is_singleton/2,
   set_ctree234.is_singleton/2 and set_unordlist.is_singleton/2.
 
+* We have added the function list.foldl_corresponding/4.
+
 
 NEWS for Mercury 11.07
 ----------------------
