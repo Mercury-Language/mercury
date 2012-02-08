@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2008,2010 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2008,2010, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -226,6 +226,9 @@
 :- func float.float_to_doc(float) = doc.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- implementation.
 
 :- interface.
 
@@ -244,9 +247,6 @@
     % string.
     %
 :- func float64_bits_string(float::in) = (string::uo) is det.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
 :- implementation.
 
