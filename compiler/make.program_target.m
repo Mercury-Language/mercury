@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -849,15 +849,24 @@ make_misc_target_builder(MainModuleName - TargetType, Globals, _, Succeeded,
         get_target_modules(Globals, ModuleTargetType, AllModules,
             TargetModules, !Info, !IO),
         globals.lookup_bool_option(Globals, keep_going, KeepGoing),
-        ( Succeeded0 = no, KeepGoing = no ->
+        ( Succeeded0 = no, KeepGoing = no -> 
             Succeeded = no
         ;
-            maybe_with_analysis_cache_dir(Globals,
-                foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
-                    Globals,
-                    make_dependency_list(TargetModules, ModuleTargetType)),
-                Succeeded1, !Info, !IO),
-            Succeeded = Succeeded0 `and` Succeeded1
+            % Ensure all interface files are present before continuing.
+            % This prevents a problem when two parallel branches try to generate
+            % the same missing interface file later.
+            make_all_interface_files(Globals, AllModules, Succeeded1,
+                !Info, !IO),
+            ( Succeeded1 = no, KeepGoing = no ->
+                Succeeded = no
+            ;
+                maybe_with_analysis_cache_dir(Globals,
+                    foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+                        make_module_target, Globals, 
+                        make_dependency_list(TargetModules, ModuleTargetType)),
+                    Succeeded2, !Info, !IO),
+                Succeeded = Succeeded0 `and` Succeeded1 `and` Succeeded2
+            )
         )
     ;
         TargetType = misc_target_build_analyses,
