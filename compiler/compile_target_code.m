@@ -352,7 +352,7 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
         % XXX This needs testing before it can be enabled (see the comments
         % for install_debug_library in library/Mmakefile).
 
-        % DebugOpt = "/debug+ /debug:full "
+        % DebugOpt = "-debug+ -debug:full "
         DebugOpt = ""
     ;
         Debug = no,
@@ -360,16 +360,18 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
     ),
 
     % XXX Should we use a separate dll_directories options?
+    % NOTE: we use the -option style options in preference to the /option
+    % style in order to avoid problems with POSIX style shells.
     globals.lookup_accumulating_option(Globals, link_library_directories,
         DLLDirs),
-    DLLDirOpts = "/lib:Mercury/dlls " ++
+    DLLDirOpts = "-lib:Mercury/dlls " ++
         string.append_list(list.condense(list.map(
-            (func(DLLDir) = ["/lib:", DLLDir, " "]), DLLDirs))),
+            (func(DLLDir) = ["-lib:", DLLDir, " "]), DLLDirs))),
 
     ( mercury_std_library_module_name(Imports ^ mai_module_name) ->
-        Prefix = "/addmodule:"
+        Prefix = "-addmodule:"
     ;
-        Prefix = "/r:"
+        Prefix = "-r:"
     ),
     ForeignDeps = list.map(
         (func(M) =
@@ -388,8 +390,8 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
         list.condense(ReferencedDllsList)),
 
     string.append_list([CSC, DebugOpt,
-        " /t:library ", DLLDirOpts, CSCFlags, ReferencedDllsStr,
-        " /out:", DLLFileName, " ", CSharpFileName], Command),
+        " -t:library ", DLLDirOpts, CSCFlags, ReferencedDllsStr,
+        " -out:", DLLFileName, " ", CSharpFileName], Command),
     invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 
@@ -2382,7 +2384,7 @@ make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
         ( TargetType = csharp_executable
         ; TargetType = csharp_library
         ),
-        LinkLibOpt = "/r:",
+        LinkLibOpt = "-r:",
         Suffix = ".dll",
         LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix)
     ;
@@ -2688,7 +2690,7 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
     ;
         Target = target_csharp,
         MercuryLinkage = "shared",
-        LinkOpt = "/r:",
+        LinkOpt = "-r:",
         LibSuffix = ".dll"
     ;
         Target = target_il,
@@ -2807,14 +2809,18 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     get_host_env_type(Globals, EnvType),
     get_csharp_compiler_type(Globals, CSharpCompilerType),
 
-    OutputFileName = csharp_file_name(EnvType, CSharpCompilerType, OutputFileName0),
-    SourceList = list.map(csharp_file_name(EnvType, CSharpCompilerType), SourceList0),
+    OutputFileName = csharp_file_name(EnvType, CSharpCompilerType,
+        OutputFileName0),
+    SourceList = list.map(csharp_file_name(EnvType, CSharpCompilerType),
+        SourceList0),
 
+    % NOTE: we use the -option style options in preference to the /option
+    % style in order to avoid problems with POSIX style shells.
     globals.lookup_string_option(Globals, csharp_compiler, CSharpCompiler),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
         HighLevelData = yes,
-        HighLevelDataOpt = "/define:MR_HIGHLEVEL_DATA"
+        HighLevelDataOpt = "-define:MR_HIGHLEVEL_DATA"
     ;
         HighLevelData = no,
         HighLevelDataOpt = ""
@@ -2822,7 +2828,7 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     globals.lookup_bool_option(Globals, target_debug, Debug),
     (
         Debug = yes,
-        DebugOpt = "/debug "
+        DebugOpt = "-debug "
     ;
         Debug = no,
         DebugOpt = ""
@@ -2830,10 +2836,10 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
     (
         LinkTargetType = csharp_executable,
-        TargetOption = "/target:exe"
+        TargetOption = "-target:exe"
     ;
         LinkTargetType = csharp_library,
-        TargetOption = "/target:library"
+        TargetOption = "-target:library"
     ;
         ( LinkTargetType = executable
         ; LinkTargetType = static_library
@@ -2848,15 +2854,19 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
 
     globals.lookup_accumulating_option(Globals, link_library_directories,
         LinkLibraryDirectoriesList0),
-    LinkLibraryDirectoriesList = list.map(csharp_file_name(EnvType, CSharpCompilerType), LinkLibraryDirectoriesList0),
-    LinkerPathFlag = "/lib:",
+    LinkLibraryDirectoriesList =
+        list.map(csharp_file_name(EnvType, CSharpCompilerType),
+        LinkLibraryDirectoriesList0),
+    LinkerPathFlag = "-lib:",
     join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
         " ", LinkLibraryDirectories),
 
     get_link_libraries(Globals, MaybeLinkLibraries, !IO),
     (   
         MaybeLinkLibraries = yes(LinkLibrariesList0),
-        LinkLibrariesList = list.map(csharp_file_name(EnvType, CSharpCompilerType), LinkLibrariesList0),
+        LinkLibrariesList =
+            list.map(csharp_file_name(EnvType, CSharpCompilerType),
+            LinkLibrariesList0),
         join_quoted_string_list(LinkLibrariesList, "", "", " ",
             LinkLibraries)
     ;
@@ -2871,7 +2881,7 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         HighLevelDataOpt,
         DebugOpt,
         TargetOption,
-        "/out:" ++ OutputFileName,
+        "-out:" ++ OutputFileName,
         LinkLibraryDirectories,
         LinkLibraries,
         MercuryStdLibs] ++

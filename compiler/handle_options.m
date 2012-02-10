@@ -406,7 +406,8 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     map.lookup(!.OptionTable, csharp_compiler_type, CSharp_CompilerType0),
     (
         CSharp_CompilerType0 = string(CSharp_CompilerTypeStr),
-        convert_csharp_compiler_type(CSharp_CompilerTypeStr, CSharp_CompilerTypePrime)
+        convert_csharp_compiler_type(CSharp_CompilerTypeStr,
+            CSharp_CompilerTypePrime)
     ->
         CSharp_CompilerType = CSharp_CompilerTypePrime
     ;
