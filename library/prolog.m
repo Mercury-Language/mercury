@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 1997-2003, 2005-2006, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -69,9 +69,11 @@ is/2 is currently defined in int.m, for historical reasons.
 % :- type univ_result ---> '.'(string, list(univ)).
 :- type univ_result == pair(string, list(univ)).
 
-    % arg/3.  In Mercury, use argument/3 (defined in module std_util)
-    % instead:
-    %      arg(ArgNum, Term, Data) :- argument(Term, ArgNum - 1, Data).
+    % arg/3.
+    % In Mercury, use arg/4 (defined in module deconstruct) instead:
+    %
+    %   arg(ArgNum, Term, Data) :-
+    %       deconstruct.arg(Term, canonicalize, ArgNum - 1, Data).
     %
 :- pred arg(int::in, T::in, univ::out) is semidet.
 

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -961,8 +961,8 @@
 :- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     in, out) is nondet,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
-
-    % list.foldl_corresponding(F, As, Bs, !Acc):
+    
+    % list.foldl_corresponding(P, As, Bs, !Acc):
     % Does the same job as list.foldl, but works on two lists in
     % parallel.  An exception is raised if the list arguments differ
     % in length.
@@ -988,6 +988,8 @@
     in, in, in, out) is cc_multi.
 :- mode list.foldl_corresponding(pred(in, in, di, uo) is cc_multi,
     in, in, di, uo) is cc_multi.
+
+:- func list.foldl_corresponding(func(A, B, C) = C, list(A), list(B), C) = C.
 
     % list.foldl2_corresponding(F, As, Bs, !Acc1, !Acc2):
     % Does the same job as list.foldl_corresponding, but has two
@@ -2561,6 +2563,15 @@ list.foldl_corresponding(_, [_ | _], [], _, _) :-
 list.foldl_corresponding(P, [A | As], [B | Bs], !Acc) :-
     P(A, B, !Acc),
     list.foldl_corresponding(P, As, Bs, !Acc).
+
+list.foldl_corresponding(_, [], [], Acc) = Acc.
+list.foldl_corresponding(_, [], [_ | _], _) = _ :-
+    error("list.foldl_corresponding/4: mismatched list arguments").
+list.foldl_corresponding(_, [_ | _], [], _) = _ :-
+    error("list.foldl_corresponding/4: mismatched list arguments").
+list.foldl_corresponding(F, [A | As], [B | Bs], !.Acc) = !:Acc :-
+    !:Acc = F(A, B, !.Acc),
+    !:Acc = list.foldl_corresponding(F, As, Bs, !.Acc).
 
 list.foldl2_corresponding(_, [], [], !Acc1, !Acc2).
 list.foldl2_corresponding(_, [], [_ | _], _, _, _, _) :-

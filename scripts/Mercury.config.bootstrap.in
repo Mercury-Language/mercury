@@ -4,7 +4,7 @@
 #
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2003-2004, 2006-2007, 2010 The University of Melbourne.
+# Copyright (C) 2003-2004, 2006-2007, 2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -27,10 +27,15 @@ MERCURY_STDLIB_DIR=@LIBDIR@
 MERCURY_DEFAULT_OPT_LEVEL=-O2
 MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@
 MERCURY_C_COMPILER=@CC@
+MERCURY_C_COMPILER_TYPE=@C_COMPILER_TYPE@
 MERCURY_MATH_LIB=@MATH_LIB@
 MERCURY_JAVA_COMPILER=@JAVAC@
 MERCURY_JAVA_INTERPRETER=@JAVA_INTERPRETER@
 MERCURY_CSHARP_COMPILER=@CSC@
+MERCURY_CSHARP_COMPILER_TYPE=@CSHARP_COMPILER_TYPE@
+MERCURY_CLI_INTERPRETER=@CLI_INTERPRETER@
+MERCURY_ERLANG_COMPILER=@ERLC@
+MERCURY_ERLANG_INTERPRETER=@ERL@
 # $(MATH_LIB) needs to be defined because it may
 # be used by the substitution for SHARED_LIBS.
 MATH_LIB=$(MERCURY_MATH_LIB)
@@ -51,9 +56,14 @@ DEFAULT_MCFLAGS=\
 		@ALL_LOCAL_C_INCL_DIR_MMC_OPTS@ \
 		@ALL_LOCAL_C_LIB_DIR_MMC_OPTS@ \
 		--cc "$(MERCURY_C_COMPILER)" \
+		--c-compiler-type "$(MERCURY_C_COMPILER_TYPE)" \
 		--java-compiler "$(MERCURY_JAVA_COMPILER)" \
 		--java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
 		--csharp-compiler "$(MERCURY_CSHARP_COMPILER)" \
+		--csharp-compiler-type "$(MERCURY_CSHARP_COMPILER_TYPE)" \
+		--cli-interpreter "$(MERCURY_CLI_INTERPRETER)" \
+		--erlang-compiler "$(MERCURY_ERLANG_COMPILER)" \
+		--erlang-interpreter "$(MERCURY_ERLANG_INTERPRETER)" \
 		--grade "$(MERCURY_DEFAULT_GRADE)" \
 		--cflags-for-ansi "@CFLAGS_FOR_ANSI@" \
 		--cflags-for-optimization "@CFLAGS_FOR_OPT@" \
@@ -116,6 +126,8 @@ DEFAULT_MCFLAGS=\
 		--bytes-per-word "@BYTES_PER_WORD@" \
 		--sync-term-size "@SYNC_TERM_SIZE@" \
 		--dotnet-library-version "@MS_DOTNET_LIBRARY_VERSION@" \
+		--host-env-type "@HOST_ENV_TYPE@" \
+		--target-env-type "@TARGET_ENV_TYPE@" \
 		@HAVE_DELAY_SLOT@ \
 		@HAVE_BOXED_FLOATS@ \
 		@MCFLAGS_FOR_CC@ \
