@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2011 The University of Melbourne.
+% Copyright (C) 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -315,7 +315,7 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
         !Info ^ spi_rev_type_ctor_map := map.init,
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = generic_call(_, _, _, _),
+        GoalExpr0 = generic_call(_, _, _, _, _),
         % We don't want to save type_ctor_info variables across calls,
         % because saving/restoring them is more expensive than defining
         % them again.

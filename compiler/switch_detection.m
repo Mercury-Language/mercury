@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -332,7 +332,7 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
             GoalExpr = GoalExpr0
         )
     ;
-        ( GoalExpr0 = generic_call(_, _, _, _)
+        ( GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
@@ -986,7 +986,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
         )
     ;
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr0 = disj(_)
         ; GoalExpr0 = switch(_, _, _)

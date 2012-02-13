@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2011 The University of Melbourne.
+% Copyright (C) 1997-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -260,7 +260,7 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
             )
         )
     ;
-        GoalExpr = generic_call(Details, Args, ArgModes, _),
+        GoalExpr = generic_call(Details, Args, ArgModes, _, _),
         Context = goal_info_get_context(GoalInfo),
         (
             Details = higher_order(Var, _, _, _),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2011 The University of Melbourne.
+% Copyright (C) 2007-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -255,7 +255,7 @@ keep_allocated_regions([Input | Inputs], [RemovedRegion | RemovedRegions],
     % forgotten when we deal with these explicitly in the future.
     %
 collect_rbmm_goal_info_goal_expr(_, _, _, _, _, _, _, !Expr, !Info) :-
-    !.Expr = generic_call(_, _, _, _),
+    !.Expr = generic_call(_, _, _, _, _),
     sorry($module, $pred, "generic call not handled"). 
 collect_rbmm_goal_info_goal_expr(_, _, _, _, _, _, _, !Expr, !Info) :-
     !.Expr = call_foreign_proc(_, _, _, _, _, _, _),

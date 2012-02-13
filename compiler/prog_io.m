@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2309,9 +2309,9 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
     pred_inst_info::in, pred_inst_info::out) is det.
 
 constrain_inst_vars_in_pred_inst_info(InstConstraints, PII0, PII) :-
-    PII0 = pred_inst_info(PredOrFunc, Modes0, Det),
+    PII0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
     list.map(constrain_inst_vars_in_mode(InstConstraints), Modes0, Modes),
-    PII = pred_inst_info(PredOrFunc, Modes, Det).
+    PII = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det).
 
 :- pred constrain_inst_vars_in_inst_name(inst_var_sub::in,
     inst_name::in, inst_name::out) is det.
@@ -2394,7 +2394,7 @@ inst_var_constraints_are_consistent_in_inst(Inst, !Sub) :-
         (
             HOInstInfo = none
         ;
-            HOInstInfo = higher_order(pred_inst_info(_, Modes, _)),
+            HOInstInfo = higher_order(pred_inst_info(_, Modes, _, _)),
             inst_var_constraints_are_consistent_in_modes(Modes, !Sub)
         )
     ;

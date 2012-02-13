@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2011 The University of Melbourne.
+% Copyright (C) 1995-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -386,7 +386,7 @@ add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
             add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
         )
     ;
-        GoalExpr = generic_call(_, _, _, _)
+        GoalExpr = generic_call(_, _, _, _, _)
     ;
         GoalExpr = plain_call(PredId, ProcId, _, Builtin, _, _),
         (

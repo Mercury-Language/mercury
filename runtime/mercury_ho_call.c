@@ -334,8 +334,12 @@ static  MR_Word MR_compare_closures_representation(MR_Closure *x,
 ** returned in registers MR_r1, MR_r2, etc for det and nondet calls or
 ** registers MR_r2, MR_r3, etc for semidet calls.
 **
-** The placement of the extra input arguments into MR_r3, MR_r4 etc is done by
-** the code generator, as is the movement of the output arguments to their
+** When float registers are enabled, float input arguments are passed
+** in MR_f1, MR_f2, etc. Float output arguments are returned in registers
+** MR_f1, MR_f2, etc.
+**
+** The placement of the extra input arguments into MR_rN and MR_fN etc. is done
+** by the code generator, as is the movement of the output arguments to their
 ** eventual destinations.
 **
 ** Each do_call_closure_N variant is specialized for the case where the number
@@ -346,7 +350,10 @@ static  MR_Word MR_compare_closures_representation(MR_Closure *x,
     /*
     ** Number of input arguments to do_call_*_closure_compact,
     ** MR_r1 -> closure
-    ** MR_r2 -> number of immediate input arguments.
+    ** MR_r2 -> number of immediate input arguments: (R | F<<16)
+    **
+    ** R is the number of regular register input arguments
+    ** F is the number of float register input arguments.
     */
 #define MR_HO_CALL_INPUTS_COMPACT   2
 
@@ -355,6 +362,8 @@ static  MR_Word MR_compare_closures_representation(MR_Closure *x,
     ** MR_r1 -> typeclass info
     ** MR_r2 -> index of method in typeclass info
     ** MR_r3 -> number of immediate input arguments.
+    **
+    ** Method calls do not yet use float registers for input or output.
     */
 #define MR_CLASS_METHOD_CALL_INPUTS_COMPACT 3
 
@@ -809,6 +818,8 @@ MR_compare_closures_representation(MR_Closure *x, MR_Closure *y)
     int                 x_num_args;
     int                 y_num_args;
     int                 num_args;
+    int                 r_offset;
+    int                 f_offset;
     int                 i;
     int                 result;
 
@@ -856,8 +867,8 @@ MR_compare_closures_representation(MR_Closure *x, MR_Closure *y)
         }
     }
 
-    x_num_args = x->MR_closure_num_hidden_args;
-    y_num_args = y->MR_closure_num_hidden_args;
+    x_num_args = MR_closure_num_hidden_r_args(x) + MR_closure_num_hidden_f_args(x);
+    y_num_args = MR_closure_num_hidden_r_args(y) + MR_closure_num_hidden_f_args(y);
     if (x_num_args < y_num_args) {
         return MR_COMPARE_LESS;
     } else if (x_num_args > y_num_args) {
@@ -867,10 +878,15 @@ MR_compare_closures_representation(MR_Closure *x, MR_Closure *y)
     num_args = x_num_args;
     x_type_params = MR_materialize_closure_type_params(x);
     y_type_params = MR_materialize_closure_type_params(y);
+
+    r_offset = 0;
+    f_offset = MR_closure_num_hidden_r_args(x);
+
     for (i = 0; i < num_args; i++) {
         MR_TypeInfo x_arg_type_info;
         MR_TypeInfo y_arg_type_info;
         MR_TypeInfo arg_type_info;
+        MR_Unsigned offset;
 
         x_arg_type_info = MR_create_type_info(x_type_params,
             x_layout->MR_closure_arg_pseudo_type_info[i]);
@@ -882,9 +898,20 @@ MR_compare_closures_representation(MR_Closure *x, MR_Closure *y)
         }
 
         arg_type_info = x_arg_type_info;
+#ifdef MR_MAY_REORDER_CLOSURE_HIDDEN_ARGS
+        if (MR_unify_type_ctor_info((MR_TypeCtorInfo) MR_FLOAT_CTOR_ADDR,
+            MR_TYPEINFO_GET_TYPE_CTOR_INFO(arg_type_info)))
+        {
+            offset = f_offset++;
+        } else {
+            offset = r_offset++;
+        }
+#else
+        offset = i;
+#endif
         result = MR_generic_compare_representation(arg_type_info,
-            x->MR_closure_hidden_args_0[i],
-            y->MR_closure_hidden_args_0[i]);
+            x->MR_closure_hidden_args_0[offset],
+            y->MR_closure_hidden_args_0[offset]);
         if (result != MR_COMPARE_EQUAL) {
             goto finish_closure_compare;
         }
@@ -928,7 +955,7 @@ MR_make_closure(MR_Code *proc_addr)
     MR_ClosureId                *closure_id;
     MR_Closure_Dyn_Link_Layout  *closure_layout;
     char                        buf[80];
-    int                         num_hidden_args;
+    int                         num_hidden_r_args;
 
     MR_restore_transient_hp();
 
@@ -973,17 +1000,17 @@ MR_make_closure(MR_Code *proc_addr)
     ** Construct the MR_Closure.
     */
 #ifdef MR_HIGHLEVEL_CODE
-    num_hidden_args = 1;
+    num_hidden_r_args = 1;
 #else
-    num_hidden_args = 0;
+    num_hidden_r_args = 0;
 #endif
-    MR_offset_incr_hp_msg(closure_word, 0, 3 + num_hidden_args,
+    MR_offset_incr_hp_msg(closure_word, 0, 3 + num_hidden_r_args,
         MR_ALLOC_SITE_RUNTIME, NULL);
     closure = (MR_Closure *) closure_word;
 
     closure->MR_closure_layout = (MR_Closure_Layout *) closure_layout;
     closure->MR_closure_code = proc_addr;
-    closure->MR_closure_num_hidden_args = num_hidden_args;
+    closure->MR_closure_num_hidden_args_rf = num_hidden_r_args;
 #ifdef MR_HIGHLEVEL_CODE
     closure->MR_closure_hidden_args(1) = (MR_Word) &MR_generic_closure_wrapper;
 #endif

@@ -27,13 +27,18 @@
 :- type mypred2 == (pred(float, int, int)).
 :- inst mypred == (pred(in, in, out) is det).
 
+:- type fpred
+    --->    fpred(mypred2).
+:- inst fpred
+    --->    fpred(mypred).
+
 main -->
 	{ foo(Pred0) },
 	{ type_to_univ(Pred0, Univ) },
 	( 
 		{ univ_to_type(Univ, Pred1) }
 	->
-		{ convert_inst(Pred1, Pred2) },
+		{ convert_inst(fpred(Pred1), fpred(Pred2)) },
 		{ Pred2(5.0, 1, X) },
 		io__write_int(X),
 		io__write_string("\n")
@@ -50,9 +55,9 @@ foo(X) :- X = (pred(A::in, B::in, C::out) is det :- C = A + B).
 % Some hacky pragma foreign_proc to allow use to change an
 % inst from `ground' to `pred(in, in, out) is det'.
 
-:- pred convert_inst(mypred2::in, mypred2::out(mypred)) is det.
+:- pred convert_inst(fpred::in, fpred::out(fpred)) is det.
 :- pragma foreign_proc("C",
-	convert_inst(Pred1::in, Pred2::out(mypred)),
+	convert_inst(Pred1::in, Pred2::out(fpred)),
 	[will_not_call_mercury, promise_pure],
 "
 {
@@ -60,14 +65,14 @@ foo(X) :- X = (pred(A::in, B::in, C::out) is det :- C = A + B).
 }
 ").
 :- pragma foreign_proc("C#",
-	convert_inst(Pred1::in, Pred2::out(mypred)),
+	convert_inst(Pred1::in, Pred2::out(fpred)),
 	[will_not_call_mercury, promise_pure], "
 {
 	Pred2 = Pred1;
 }
 ").
 :- pragma foreign_proc("Java",
-	convert_inst(Pred1::in, Pred2::out(mypred)),
+	convert_inst(Pred1::in, Pred2::out(fpred)),
 	[will_not_call_mercury, promise_pure],
 "
 {
@@ -75,7 +80,7 @@ foo(X) :- X = (pred(A::in, B::in, C::out) is det :- C = A + B).
 }
 ").
 :- pragma foreign_proc("Erlang",
-	convert_inst(Pred1::in, Pred2::out(mypred)),
+	convert_inst(Pred1::in, Pred2::out(fpred)),
 	[will_not_call_mercury, promise_pure], "
 	Pred2 = Pred1
 ").

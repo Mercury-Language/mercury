@@ -658,7 +658,7 @@ unneeded_process_goal_internal(UnneededInfo, Goal0, Goal,
     (
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         Goal = Goal0,
@@ -967,7 +967,7 @@ unneeded_refine_goal(Goal0, Goal, !RefinedGoals) :-
     (
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         Goal = Goal0

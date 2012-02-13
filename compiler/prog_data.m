@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2073,9 +2073,24 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
                                     % of the return value as the last element
                                     % of the list.
 
+                arg_reg_type_info,
+                                    % The register type to use for each of the
+                                    % additional arguments of the pred. This
+                                    % field is only needed when float registers
+                                    % exist, and is only set after the float
+                                    % reg wrappers pass.
+
                 determinism         % The determinism of the predicate or
                                     % function.
             ).
+
+:- type arg_reg_type_info
+    --->    arg_reg_types_unset     % Unneeded or simply unset yet.
+    ;       arg_reg_types(list(ho_arg_reg)).
+
+:- type ho_arg_reg
+    --->    ho_arg_reg_r
+    ;       ho_arg_reg_f.
 
 :- type inst_id
     --->    inst_id(sym_name, arity).

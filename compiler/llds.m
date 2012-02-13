@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1305,13 +1305,14 @@
 :- type ho_call_variant
     --->    generic
             % This calls for the use of one of do_call_closure_compact and
-            % do_call_class_method_compact, which work for any number of
+            % do_call_class_method_compact which works for any number of
             % visible input arguments.
 
     ;       specialized_known(int).
             % If the integer is N, this calls for the use of do_call_closure_N
             % or do_call_class_method_N. These are specialized to assume N
-            % visible input arguments.
+            % visible regular register input arguments, and zero visible float
+            % register input arguments.
 
     % A tag (used in mkword, create and field expressions and in incr_hp
     % instructions) is a small integer.

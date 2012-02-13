@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2011 The University of Melbourne.
+% Copyright (C) 2008-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -186,7 +186,7 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ),
         Goal = Goal0

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -212,7 +212,7 @@ gen_goal(hlds_goal(GoalExpr, GoalInfo), !ByteInfo, Code) :-
 gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
     (
         GoalExpr = generic_call(GenericCallType,
-            ArgVars, ArgModes, Detism),
+            ArgVars, ArgModes, _, Detism),
         (
             GenericCallType = higher_order(PredVar, _, _, _),
             gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism,
@@ -366,10 +366,7 @@ gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
     determinism_to_code_model(Detism, CodeModel),
     get_module_info(ByteInfo, ModuleInfo),
     list.map(get_var_type(ByteInfo), ArgVars, ArgTypes),
-    % Higher order calls use regular registers for all arguments.
-    FloatRegType = reg_r,
-    make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, FloatRegType,
-        ArgInfo),
+    make_standard_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
     assoc_list.from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
     arg_info.partition_args(ArgVarsInfos, InVars, OutVars),

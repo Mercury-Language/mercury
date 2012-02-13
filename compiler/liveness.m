@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -392,7 +392,7 @@ detect_liveness_in_goal(Goal0, Goal, Liveness0, FinalLiveness, LiveInfo) :-
 
     (
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_,_,  _, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ),
@@ -661,7 +661,7 @@ detect_deadness_in_goal(Goal0, Goal, !Deadness, !.Liveness, LiveInfo) :-
 
     (
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ),
@@ -1021,7 +1021,7 @@ update_liveness_goal(Goal, LiveInfo, !Liveness) :-
 update_liveness_expr(GoalExpr, LiveInfo, !Liveness) :-
     (
         ( GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         )
@@ -1192,7 +1192,7 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
     (
         !.GoalExpr = plain_call(_, _, _, _, _, _)
     ;
-        !.GoalExpr = generic_call(_, _, _, _)
+        !.GoalExpr = generic_call(_, _, _, _, _)
     ;
         !.GoalExpr = unify(_, _, _, _, _)
     ;
@@ -1523,7 +1523,7 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        ( GoalExpr0 = generic_call(_, _, _, _)
+        ( GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)

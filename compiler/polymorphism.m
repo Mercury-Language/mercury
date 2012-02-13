@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2011 The University of Melbourne.
+% Copyright (C) 1995-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1066,7 +1066,7 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
         % We don't need to add type_infos for higher order calls, since the
         % type_infos are added when the closures are constructed, not when
         % they are called.
-        GoalExpr0 = generic_call(_, _, _, _),
+        GoalExpr0 = generic_call(_, _, _, _, _),
         Goal = hlds_goal(GoalExpr0, GoalInfo0)
     ;
         GoalExpr0 = plain_call(PredId, _, ArgVars0, _, _, _),
@@ -3629,7 +3629,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
     BodyGoalExpr = generic_call(
         class_method(TypeClassInfoVar, !.ProcNum,
             class_id(ClassName, InstanceArity), CallId),
-        HeadVars, Modes, Detism),
+        HeadVars, Modes, arg_reg_types_unset, Detism),
 
     % Make the goal info for the call.
     set_of_var.list_to_set(HeadVars0, NonLocals),

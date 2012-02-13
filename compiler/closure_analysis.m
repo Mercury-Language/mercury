@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -226,7 +226,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         set_of_var.fold(insert_unknown, OutputArgs, !ClosureInfo),
         Goal = hlds_goal(GoalExpr0, GoalInfo)
     ;
-        GoalExpr0 = generic_call(Details, GCallArgs, GCallModes, _),
+        GoalExpr0 = generic_call(Details, GCallArgs, GCallModes, _, _),
         partition_arguments(ModuleInfo, VarTypes, GCallArgs, GCallModes,
             set_of_var.init, InputArgs0, set_of_var.init, OutputArgs),
 
@@ -456,7 +456,7 @@ dump_closure_info_expr(Varset, conj(_ConjType, Goals), _, !IO) :-
     list.foldl(dump_closure_info(Varset), Goals, !IO).
 dump_closure_info_expr(Varset, plain_call(_,_,_,_,_,_), GoalInfo, !IO) :-
     dump_ho_values(GoalInfo, Varset, !IO).
-dump_closure_info_expr(Varset, generic_call(_,_,_,_), GoalInfo, !IO) :-
+dump_closure_info_expr(Varset, generic_call(_,_,_,_,_), GoalInfo, !IO) :-
     dump_ho_values(GoalInfo, Varset, !IO).
 dump_closure_info_expr(Varset, scope(_, Goal), _, !IO) :-
     dump_closure_info(Varset, Goal, !IO).

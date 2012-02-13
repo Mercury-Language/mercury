@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -641,7 +641,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         )
     ;
         Inst0 = any(Uniq, higher_order(PredInstInfo0)),
-        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
+        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
         (
             type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
             list.same_length(ArgTypes, Modes0)
@@ -654,7 +654,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
             % with the inst.
             Modes = Modes0
         ),
-        PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+        PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
         Inst = any(Uniq, higher_order(PredInstInfo))
     ;
         Inst0 = free,
@@ -689,7 +689,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         )
     ;
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
-        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
+        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
         (
             type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
             list.same_length(ArgTypes, Modes0)
@@ -702,7 +702,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
             % with the inst.
             Modes = Modes0
         ),
-        PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+        PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
         Inst = ground(Uniq, higher_order(PredInstInfo))
     ;
         Inst0 = not_reached,
@@ -738,7 +738,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         )
     ;
         Inst0 = any(Uniq, higher_order(PredInstInfo0)),
-        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
+        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
         apply_type_subst(Type0, Subst, Type),
         (
             type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
@@ -752,7 +752,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
             % inst.
             Modes = Modes0
         ),
-        PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+        PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
         Inst = any(Uniq, higher_order(PredInstInfo))
     ;
         Inst0 = free,
@@ -789,7 +789,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         )
     ;
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
-        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
+        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
         apply_type_subst(Type0, Subst, Type),
         (
             type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
@@ -803,7 +803,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
             % inst.
             Modes = Modes0
         ),
-        PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+        PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
         Inst = ground(Uniq, higher_order(PredInstInfo))
     ;
         Inst0 = not_reached,
@@ -856,7 +856,8 @@ default_higher_order_func_inst(ModuleInfo, PredArgTypes, PredInstInfo) :-
     list.append(FuncArgModes, [FuncRetMode], PredArgModes0),
     propagate_types_into_mode_list(ModuleInfo, PredArgTypes,
         PredArgModes0, PredArgModes),
-    PredInstInfo = pred_inst_info(pf_function, PredArgModes, detism_det).
+    PredInstInfo = pred_inst_info(pf_function, PredArgModes,
+        arg_reg_types_unset, detism_det).
 
 constructors_to_bound_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
         BoundInsts) :-
@@ -1210,7 +1211,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr0 = generic_call(_Details, Vars, Modes, Detism),
+        GoalExpr0 = generic_call(_Details, Vars, Modes, _, Detism),
         ( determinism_components(Detism, _, at_most_zero) ->
             instmap_delta_init_unreachable(InstMapDelta)
         ;
@@ -1623,7 +1624,8 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         ;
             unexpected($module, $pred, "list.drop failed")
         ),
-        Inst = ground(shared, higher_order(pred_inst_info(PorF, Modes, Det))),
+        Inst = ground(shared, higher_order(pred_inst_info(PorF, Modes,
+            arg_reg_types_unset, Det))),
         MaybeInst = yes(Inst)
     ;
         ( ConsId = type_ctor_info_const(_, _, _)

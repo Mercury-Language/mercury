@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -273,9 +273,10 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             Builtin0, MaybeUnifyContext0, SymName0, GoalInfo0, GoalExpr,
             !ModeInfo)
     ;
-        GoalExpr0 = generic_call(GenericCall0, ArgVars0, ArgModes0, Detism0),
+        GoalExpr0 = generic_call(GenericCall0, ArgVars0, ArgModes0,
+            MaybeRegTypes, Detism0),
         unique_modes_check_goal_generic_call(GenericCall0, ArgVars0, ArgModes0,
-            Detism0, GoalExpr, !ModeInfo)
+            MaybeRegTypes, Detism0, GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = call_foreign_proc(Attributes0, PredId0, ProcId0,
             Args0, ExtraArgs0, MaybeTraceRuntimeCond0, PragmaCode0),
@@ -576,11 +577,12 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
     ).
 
 :- pred unique_modes_check_goal_generic_call(generic_call::in,
-    list(prog_var)::in, list(mer_mode)::in, determinism::in,
-    hlds_goal_expr::out, mode_info::in, mode_info::out) is det.
+    list(prog_var)::in, list(mer_mode)::in, arg_reg_type_info::in,
+    determinism::in, hlds_goal_expr::out, mode_info::in, mode_info::out)
+    is det.
 
-unique_modes_check_goal_generic_call(GenericCall, ArgVars, Modes, Detism,
-        GoalExpr, !ModeInfo) :-
+unique_modes_check_goal_generic_call(GenericCall, ArgVars, Modes,
+        MaybeRegTypes, Detism, GoalExpr, !ModeInfo) :-
     mode_checkpoint(enter, "generic_call", !ModeInfo),
     hlds_goal.generic_call_id(GenericCall, CallId),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
@@ -607,7 +609,8 @@ unique_modes_check_goal_generic_call(GenericCall, ArgVars, Modes, Detism,
     ),
     unique_modes_check_call_modes(ArgVars, Modes, ArgOffset, Detism,
         NeverSucceeds, !ModeInfo),
-    GoalExpr = generic_call(GenericCall, ArgVars, Modes, Detism),
+    GoalExpr = generic_call(GenericCall, ArgVars, Modes, MaybeRegTypes,
+        Detism),
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "generic_call", !ModeInfo).
 

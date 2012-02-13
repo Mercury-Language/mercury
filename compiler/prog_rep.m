@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2011 University of Melbourne.
+% Copyright (C) 2000-2012 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -293,7 +293,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
         GoalExprRep = scope_rep(SubGoalRep, MaybeCut)
     ;
         ( GoalExpr = unify(_, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = plain_call(_, _, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
@@ -342,7 +342,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 unexpected($module, $pred, "complicated_unify")
             )
         ;
-            GoalExpr = generic_call(GenericCall, Args, _, _),
+            GoalExpr = generic_call(GenericCall, Args, _, _, _),
             ArgsRep = map(var_to_var_rep(Info), Args),
             (
                 GenericCall = higher_order(PredVar, _, _, _),

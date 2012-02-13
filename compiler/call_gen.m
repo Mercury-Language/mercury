@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -35,8 +35,9 @@
     code_info::in, code_info::out) is det.
 
 :- pred generate_generic_call(code_model::in, generic_call::in,
-    list(prog_var)::in, list(mer_mode)::in, determinism::in,
-    hlds_goal_info::in, llds_code::out, code_info::in, code_info::out) is det.
+    list(prog_var)::in, list(mer_mode)::in, arg_reg_type_info::in,
+    determinism::in, hlds_goal_info::in, llds_code::out,
+    code_info::in, code_info::out) is det.
 
 :- pred generate_builtin(code_model::in, pred_id::in, proc_id::in,
     list(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
@@ -45,10 +46,11 @@
     --->    ho_call_known_num
     ;       ho_call_unknown.
 
-    % generic_call_info(Globals, GenericCall, NumImmediateInputArgs, CodeAddr,
-    %   SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant).
+    % generic_call_info(Globals, GenericCall, NumImmediateInputArgsR,
+    %   NumImmediateInputArgsF, CodeAddr, SpecifierArgInfos,
+    %   FirstImmediateInputReg, HoCallVariant).
     %
-:- pred generic_call_info(globals::in, generic_call::in, int::in,
+:- pred generic_call_info(globals::in, generic_call::in, int::in, int::in,
     code_addr::out, assoc_list(prog_var, arg_info)::out, int::out,
     known_call_variant::out) is det.
 
@@ -79,6 +81,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
@@ -157,8 +160,8 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-generate_generic_call(OuterCodeModel, GenericCall, Args, Modes, Det,
-        GoalInfo, Code, !CI) :-
+generate_generic_call(OuterCodeModel, GenericCall, Args, Modes,
+        MaybeRegTypes, Det, GoalInfo, Code, !CI) :-
     % For a generic_call, we split the arguments into inputs and outputs,
     % put the inputs in the locations expected by mercury.do_call_closure in
     % runtime/mercury_ho_call.c, generate the call to that code, and pick up
@@ -173,7 +176,7 @@ generate_generic_call(OuterCodeModel, GenericCall, Args, Modes, Det,
         ; GenericCall = class_method(_, _, _, _)
         ),
         generate_main_generic_call(OuterCodeModel, GenericCall, Args, Modes,
-            Det, GoalInfo, Code, !CI)
+            MaybeRegTypes, Det, GoalInfo, Code, !CI)
     ;
         GenericCall = event_call(EventName),
         generate_event_call(EventName, Args, GoalInfo, Code, !CI)
@@ -187,36 +190,45 @@ generate_generic_call(OuterCodeModel, GenericCall, Args, Modes, Det,
     ).
 
 :- pred generate_main_generic_call(code_model::in, generic_call::in,
-    list(prog_var)::in, list(mer_mode)::in, determinism::in,
-    hlds_goal_info::in, llds_code::out, code_info::in, code_info::out)
-    is det.
+    list(prog_var)::in, list(mer_mode)::in, arg_reg_type_info::in,
+    determinism::in, hlds_goal_info::in, llds_code::out,
+    code_info::in, code_info::out) is det.
 
-generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
-        GoalInfo, Code, !CI) :-
-    Types = list.map(variable_type(!.CI), Args),
-
+generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes,
+        MaybeRegTypes, Det, GoalInfo, Code, !CI) :-
     get_module_info(!.CI, ModuleInfo),
-    arg_info.compute_in_and_out_vars(ModuleInfo, Args, Modes, Types,
-        InVars, OutVars),
+    VarTypes = get_var_types(!.CI),
+    map.apply_to_list(Args, VarTypes, Types),
+    arg_info.generic_call_arg_reg_types(ModuleInfo, VarTypes, GenericCall,
+        Args, MaybeRegTypes, ArgRegTypes),
+    arg_info.compute_in_and_out_vars_sep_regs(ModuleInfo, Args, Modes, Types,
+        ArgRegTypes, InVarsR, InVarsF, OutVarsR, OutVarsF),
     module_info_get_globals(ModuleInfo, Globals),
-    generic_call_info(Globals, GenericCall, length(InVars), CodeAddr,
-        SpecifierArgInfos, FirstImmInput, HoCallVariant),
+    generic_call_info(Globals, GenericCall, length(InVarsR), length(InVarsF),
+        CodeAddr, SpecifierArgInfos, FirstImmInputR, HoCallVariant),
+    FirstImmInputF = 1,
     determinism_to_code_model(Det, CodeModel),
     (
         CodeModel = model_semi,
-        FirstOutput = 2
+        FirstOutputR = 2
     ;
         ( CodeModel = model_det
         ; CodeModel = model_non
         ),
-        FirstOutput = 1
+        FirstOutputR = 1
     ),
+    FirstOutputF = 1,
 
-    give_vars_consecutive_arg_infos(InVars, reg_r, FirstImmInput, top_in,
-        InVarArgInfos),
-    give_vars_consecutive_arg_infos(OutVars, reg_r, FirstOutput, top_out,
-        OutArgsInfos),
-    ArgInfos = SpecifierArgInfos ++ InVarArgInfos ++ OutArgsInfos,
+    give_vars_consecutive_arg_infos(InVarsR, reg_r, FirstImmInputR, top_in,
+        InVarArgInfosR),
+    give_vars_consecutive_arg_infos(InVarsF, reg_f, FirstImmInputF, top_in,
+        InVarArgInfosF),
+    give_vars_consecutive_arg_infos(OutVarsR, reg_r, FirstOutputR, top_out,
+        OutArgsInfosR),
+    give_vars_consecutive_arg_infos(OutVarsF, reg_f, FirstOutputF, top_out,
+        OutArgsInfosF),
+    ArgInfos = list.condense([SpecifierArgInfos, InVarArgInfosR, InVarArgInfosF,
+        OutArgsInfosR, OutArgsInfosF]),
 
     % Save the necessary vars on the stack and move the input args defined
     % by variables to their registers.
@@ -226,10 +238,10 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
     % Move the input args not defined by variables to their registers.
     % Setting up these arguments last results in slightly more efficient code,
     % since we can use their registers when placing the variables.
-    generic_call_nonvar_setup(GenericCall, HoCallVariant, InVars, OutVars,
-        NonVarCode, !CI),
+    generic_call_nonvar_setup(GenericCall, HoCallVariant, InVarsR, InVarsF,
+        OutVarsR, OutVarsF, NonVarCode, !CI),
 
-    extra_livevals(FirstImmInput, ExtraLiveVals),
+    extra_livevals(FirstImmInputR, ExtraLiveVals),
     set.insert_list(ExtraLiveVals, LiveVals0, LiveVals),
 
     prepare_for_call(CodeModel, GoalInfo, CallModel, TraceCode, !CI),
@@ -246,6 +258,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
     instmap.apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap),
 
     % Update the code generator state to reflect the situation after the call.
+    OutArgsInfos = OutArgsInfosR ++ OutArgsInfosF,
     handle_return(OutArgsInfos, GoalInfo, NonLiveOutputs,
         ReturnInstMap, ReturnLiveLvalues, !CI),
 
@@ -327,7 +340,7 @@ generate_event_attributes([Attribute | Attributes], !.Vars,
 
 %---------------------------------------------------------------------------%
 
-    % The registers before the first input argument are all live.
+    % The registers before the first reg_r input argument are all live.
     %
 :- pred extra_livevals(int::in, list(lval)::out) is det.
 
@@ -345,8 +358,8 @@ extra_livevals_from(Reg, FirstInput, ExtraLiveVals) :-
         ExtraLiveVals = []
     ).
 
-generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
-        SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant) :-
+generic_call_info(Globals, GenericCall, NumInputArgsR, NumInputArgsF,
+        CodeAddr, SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant) :-
     (
         GenericCall = higher_order(PredVar, _, _, _),
         Reg = reg(reg_r, 1),
@@ -355,9 +368,10 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
             max_specialized_do_call_closure, MaxSpec),
         (
             MaxSpec >= 0,
-            NumInputArgs =< MaxSpec
+            NumInputArgsR =< MaxSpec,
+            NumInputArgsF = 0
         ->
-            CodeAddr = do_call_closure(specialized_known(NumInputArgs)),
+            CodeAddr = do_call_closure(specialized_known(NumInputArgsR)),
             HoCallVariant = ho_call_known_num,
             FirstImmediateInputReg = 2
         ;
@@ -369,19 +383,25 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
         GenericCall = class_method(TCVar, _, _, _),
         Reg = reg(reg_r, 1),
         SpecifierArgInfos = [TCVar - arg_info(Reg, top_in)],
-        globals.lookup_int_option(Globals,
-            max_specialized_do_call_class_method, MaxSpec),
-        (
-            MaxSpec >= 0,
-            NumInputArgs =< MaxSpec
-        ->
-            CodeAddr = do_call_class_method(specialized_known(NumInputArgs)),
-            HoCallVariant = ho_call_known_num,
-            FirstImmediateInputReg = 3
+        % XXX we do not use float registers for method calls yet
+        ( NumInputArgsF = 0 ->
+            globals.lookup_int_option(Globals,
+                max_specialized_do_call_class_method, MaxSpec),
+            (
+                MaxSpec >= 0,
+                NumInputArgsR =< MaxSpec
+            ->
+                CodeAddr = do_call_class_method(
+                    specialized_known(NumInputArgsR)),
+                HoCallVariant = ho_call_known_num,
+                FirstImmediateInputReg = 3
+            ;
+                CodeAddr = do_call_class_method(generic),
+                HoCallVariant = ho_call_unknown,
+                FirstImmediateInputReg = 4
+            )
         ;
-            CodeAddr = do_call_class_method(generic),
-            HoCallVariant = ho_call_unknown,
-            FirstImmediateInputReg = 4
+            sorry($module, $pred, "float reg inputs")
         )
     ;
         % Events and casts are generated inline.
@@ -407,25 +427,33 @@ generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
     % constants.
     %
 :- pred generic_call_nonvar_setup(generic_call::in, known_call_variant::in,
-    list(prog_var)::in, list(prog_var)::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+    list(prog_var)::in, list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
+    llds_code::out, code_info::in, code_info::out) is det.
 
 generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
-        InVars, _OutVars, Code, !CI) :-
+        InVarsR, InVarsF, _OutVarsR, _OutVarsF, Code, !CI) :-
     (
         HoCallVariant = ho_call_known_num,
         Code = empty
     ;
         HoCallVariant = ho_call_unknown,
         clobber_regs([reg(reg_r, 2)], !CI),
-        list.length(InVars, NInVars),
+        list.length(InVarsR, NumInVarsR),
+        list.length(InVarsF, NumInVarsF),
+        NumInVars = encode_num_generic_call_vars(NumInVarsR, NumInVarsF),
         Code = singleton(
-            llds_instr(assign(reg(reg_r, 2), const(llconst_int(NInVars))),
+            llds_instr(assign(reg(reg_r, 2), const(llconst_int(NumInVars))),
                 "Assign number of immediate input arguments")
         )
     ).
 generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
-        InVars, _OutVars, Code, !CI) :-
+        InVarsR, InVarsF, _OutVarsR, _OutVarsF, Code, !CI) :-
+    (
+        InVarsF = []
+    ;
+        InVarsF = [_ | _],
+        sorry($module, $pred, "float input reg")
+    ),
     (
         HoCallVariant = ho_call_known_num,
         clobber_regs([reg(reg_r, 2)], !CI),
@@ -436,17 +464,20 @@ generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
     ;
         HoCallVariant = ho_call_unknown,
         clobber_regs([reg(reg_r, 2), reg(reg_r, 3)], !CI),
-        list.length(InVars, NInVars),
+        list.length(InVarsR, NumInVarsR),
+        % Currently we do not use float registers for method calls.
+        NumInVarsF = 0,
+        NumInVars = encode_num_generic_call_vars(NumInVarsR, NumInVarsF),
         Code = from_list([
             llds_instr(assign(reg(reg_r, 2), const(llconst_int(Method))),
                 "Index of class method in typeclass info"),
-            llds_instr(assign(reg(reg_r, 3), const(llconst_int(NInVars))),
-                "Assign number of immediate input arguments")
+            llds_instr(assign(reg(reg_r, 3), const(llconst_int(NumInVars))),
+                "Assign number of immediate regular input arguments")
         ])
     ).
-generic_call_nonvar_setup(event_call(_), _, _, _, _, !CI) :-
+generic_call_nonvar_setup(event_call(_), _, _, _, _, _, _, !CI) :-
     unexpected($module, $pred, "event_call").
-generic_call_nonvar_setup(cast(_), _, _, _, _, !CI) :-
+generic_call_nonvar_setup(cast(_), _, _, _, _, _, _, !CI) :-
     unexpected($module, $pred, "cast").
 
 %---------------------------------------------------------------------------%

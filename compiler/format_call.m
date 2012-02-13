@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -664,7 +664,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars)
         )
     ;
-        GoalExpr = generic_call(_, _, _, _)
+        GoalExpr = generic_call(_, _, _, _, _)
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
@@ -904,7 +904,7 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
             set_of_var.difference(!.ToDeleteVars, NonLocals, !:ToDeleteVars)
         )
     ;
-        ( GoalExpr0 = generic_call(_, _, _, _)
+        ( GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         Goal = Goal0,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2011 The University of Melbourne.
+% Copyright (C) 1995-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -566,7 +566,7 @@ goal_vars_2(Goal, !Set) :-
         ),
         rhs_goal_vars(RHS, !Set)
     ;
-        GoalExpr = generic_call(GenericCall, ArgVars, _, _),
+        GoalExpr = generic_call(GenericCall, ArgVars, _, _, _),
         generic_call_vars(GenericCall, GenericCallVars),
         set_of_var.insert_list(GenericCallVars, !Set),
         set_of_var.insert_list(ArgVars, !Set)
@@ -735,7 +735,7 @@ attach_features_to_goal_expr(Features, InFromGroundTerm,
         GoalExpr0, GoalExpr) :-
     (
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
@@ -870,7 +870,7 @@ proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
         )
     ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         IsLeaf = is_not_leaf
@@ -1000,7 +1000,7 @@ cases_size([case(_, _, Goal) | Cases], Size) :-
 goal_expr_size(GoalExpr, Size) :-
     (
         ( GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
@@ -1228,7 +1228,7 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
             true
         )
     ;
-        GoalExpr = generic_call(_, _, _, _)
+        GoalExpr = generic_call(_, _, _, _, _)
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
@@ -1734,7 +1734,7 @@ generate_cast_with_insts(CastType, InArg, OutArg, InInst, OutInst, Context,
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
         GoalInfo),
     GoalExpr = generic_call(cast(CastType), [InArg, OutArg],
-        [in_mode(InInst), out_mode(OutInst)], detism_det),
+        [in_mode(InInst), out_mode(OutInst)], arg_reg_types_unset, detism_det),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1772,7 +1772,7 @@ goal_is_atomic(Goal, GoalIsAtomic) :-
     (
         ( GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         GoalIsAtomic = goal_is_atomic
@@ -1805,7 +1805,7 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
     (
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         Goal = Goal0
@@ -1898,7 +1898,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
         (
             ( GoalExpr0 = unify(_, _, _, _, _) 
             ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-            ; GoalExpr0 = generic_call(_, _, _, _)
+            ; GoalExpr0 = generic_call(_, _, _, _, _)
             ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             % This search should never reach an atomic goal.
@@ -2068,7 +2068,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
         (
             ( GoalExpr0 = unify(_, _, _, _, _) 
             ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-            ; GoalExpr0 = generic_call(_, _, _, _)
+            ; GoalExpr0 = generic_call(_, _, _, _, _)
             ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             % This search should never reach an atomic goal.
@@ -2246,7 +2246,7 @@ transform_all_goals(TransformP, Goal0, Goal) :-
     (
         ( GoalExpr0 = unify(_, _, _, _, _) 
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         GoalExpr = GoalExpr0

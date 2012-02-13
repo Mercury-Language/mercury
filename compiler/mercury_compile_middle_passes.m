@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,6 +70,7 @@
 :- import_module transform_hlds.distance_granularity.
 :- import_module transform_hlds.equiv_type_hlds.
 :- import_module transform_hlds.exception_analysis.
+:- import_module transform_hlds.float_regs.
 :- import_module transform_hlds.granularity.
 :- import_module transform_hlds.higher_order.
 :- import_module transform_hlds.implicit_parallelism.
@@ -239,6 +240,9 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_lco(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 210, "lco", !DumpInfo, !IO),
+
+    maybe_float_reg_wrapper(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 213, "float_reg_wrapper", !DumpInfo, !IO),
 
     % If we are compiling in a deep profiling grade then now rerun simplify.
     % The reason for doing this now is that we want to take advantage of any
@@ -1325,6 +1329,28 @@ maybe_par_loop_control(Verbose, Stats, !HLDS, !IO) :-
         maybe_report_stats(Stats, !IO)
     ;
         LoopControl = no
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred maybe_float_reg_wrapper(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_float_reg_wrapper(Verbose, Stats, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
+    (
+        UseFloatRegs = yes,
+        maybe_write_string(Verbose,
+            "% Inserting float register wrappers...", !IO),
+        maybe_flush_output(Verbose, !IO),
+        float_regs.insert_reg_wrappers(!HLDS, Specs),
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+        module_info_incr_num_errors(NumErrors, !HLDS),
+        maybe_write_string(Verbose, " done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        UseFloatRegs = no
     ).
 
 %-----------------------------------------------------------------------------%

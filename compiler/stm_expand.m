@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2011 The University of Melbourne.
+% Copyright (C) 1995-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -373,7 +373,7 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        ( GoalExpr0 = generic_call(_, _, _, _)
+        ( GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
@@ -2278,7 +2278,7 @@ create_closure(PredProcID, Args, ArgTypes, ArgModes, ClosureVar,
 
     ClosureAssignInstmapDeltaList = assoc_list.from_corresponding_lists(
         [ClosureVar], [ground(shared, higher_order(pred_inst_info(
-        pf_predicate, ArgModes, detism_det)))]),
+        pf_predicate, ArgModes, arg_reg_types_unset, detism_det)))]),
     ClosureAssignInstmapDelta =
         instmap_delta_from_assoc_list(ClosureAssignInstmapDeltaList),
 

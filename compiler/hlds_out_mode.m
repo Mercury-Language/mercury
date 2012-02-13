@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -206,7 +206,7 @@ inst_to_term_with_context(Inst, Context) = Term :-
 
 ground_pred_inst_info_to_term(_Uniq, PredInstInfo, Context) = Term :-
     % XXX we ignore Uniq
-    PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+    PredInstInfo = pred_inst_info(PredOrFunc, Modes, _, Det),
     (
         PredOrFunc = pf_predicate,
         construct_qualified_term(unqualified("pred"),
@@ -230,7 +230,7 @@ ground_pred_inst_info_to_term(_Uniq, PredInstInfo, Context) = Term :-
 
 any_pred_inst_info_to_term(_Uniq, PredInstInfo, Context) = Term :-
     % XXX we ignore Uniq
-    PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+    PredInstInfo = pred_inst_info(PredOrFunc, Modes, _, Det),
     (
         PredOrFunc = pf_predicate,
         construct_qualified_term(unqualified("any_pred"),

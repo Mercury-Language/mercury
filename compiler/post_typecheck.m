@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2011 The University of Melbourne.
+% Copyright (C) 1997-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -467,7 +467,7 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
             CallPieces = describe_one_pred_name(ModuleInfo,
                 should_module_qualify, PredId)
         ;
-            GoalExpr = generic_call(GenericCall, _, _, _),
+            GoalExpr = generic_call(GenericCall, _, _, _, _),
             GenericCall = class_method(_, _, _, SimpleCallId),
             CallPieces = [simple_call(SimpleCallId)]
         ;
@@ -477,11 +477,11 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
         ),
         Pieces = [words("the call to") | CallPieces]
     ;
-        GoalExpr = generic_call(higher_order(_, _, _, _), _, _, _),
+        GoalExpr = generic_call(higher_order(_, _, _, _), _, _, _, _),
         Pieces = [words("a higher-order call here")]
     ;
-        ( GoalExpr = generic_call(event_call(_), _, _, _)
-        ; GoalExpr = generic_call(cast(_), _, _, _)
+        ( GoalExpr = generic_call(event_call(_), _, _, _, _)
+        ; GoalExpr = generic_call(cast(_), _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = conj(_, _)
         ; GoalExpr = disj(_)
@@ -700,7 +700,7 @@ in_interface_check(ModuleInfo, PredInfo, Goal, !Specs) :-
             true
         )
     ;
-        GoalExpr = generic_call(_, _, _, _)
+        GoalExpr = generic_call(_, _, _, _, _)
     ;
         GoalExpr = unify(Var, RHS, _, _, _),
         Context = goal_info_get_context(GoalInfo),
@@ -1054,7 +1054,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         adjust_func_arity(pf_function, Arity, FullArity),
         HOCall = generic_call(
             higher_order(FuncVar, Purity, pf_function, FullArity),
-            ArgVars, Modes, Det),
+            ArgVars, Modes, arg_reg_types_unset, Det),
         Goal = hlds_goal(HOCall, GoalInfo0),
         IsPlainUnify = is_not_plain_unify
     ;

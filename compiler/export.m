@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -382,13 +382,14 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_maybe_arg_info(ProcInfo, MaybeArgInfos),
+    pred_info_get_markers(PredInfo, Markers),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     (
         MaybeArgInfos = yes(ArgInfos0),
         ArgInfos = ArgInfos0
     ;
         MaybeArgInfos = no,
-        generate_proc_arg_info(Status, ArgTypes, ModuleInfo, ProcInfo,
+        generate_proc_arg_info(Markers, ArgTypes, ModuleInfo, ProcInfo,
             NewProcInfo),
         proc_info_arg_info(NewProcInfo, ArgInfos)
     ),

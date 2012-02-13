@@ -346,7 +346,7 @@ check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo, !IO) :-
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         % XXX This looks incomplete - juliensf.
     ;
-        GoalExpr = generic_call(_, _, _, _),
+        GoalExpr = generic_call(_, _, _, _, _),
         % XXX We should use any results from closure analysis here.
         Context = goal_info_get_context(GoalInfo),
         Error = termination_error_context(horder_call, Context),

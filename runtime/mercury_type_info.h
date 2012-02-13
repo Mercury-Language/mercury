@@ -1668,6 +1668,17 @@ extern  MR_bool MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1,
                     MR_PseudoTypeInfo pti2);
 
 /*
+** Unify a pseudo_type_info structure with the type_info for float.
+** Return MR_TRUE if pti represents the type float, and MR_FALSE
+** otherwise.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  MR_bool MR_unify_pseudo_type_info_float(MR_PseudoTypeInfo pti);
+
+/*
 ** Compare two pseudo_type_info structures, using an ordering based on the
 ** module names, type names and arities of the types inside the type_info.
 ** Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,

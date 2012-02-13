@@ -1637,7 +1637,7 @@ goal_to_constraint(Environment, Goal, !TCInfo) :-
         foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo,
             !TCInfo)
     ;
-        GoalExpr = generic_call(_, _, _, _),
+        GoalExpr = generic_call(_, _, _, _, _),
         generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo,
             !TCInfo)
     ;
@@ -1809,7 +1809,7 @@ foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     type_constraint_info::in, type_constraint_info::out) is det.
 
 generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
-    GoalExpr = generic_call(Details, Vars, _, _),
+    GoalExpr = generic_call(Details, Vars, _, _, _),
     Context = goal_info_get_context(GoalInfo),
     list.map_foldl(get_var_type, Vars, ArgTVars, !TCInfo),
     ArgTypes = list.map(tvar_to_type, ArgTVars),

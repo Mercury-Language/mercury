@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2011 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -624,6 +624,7 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
         Arity, ExistQVars0, ArgTypes0, ClassMethodClassContext0,
         ArgModes, TVarSet0, Status0, PredOrFunc),
+    UnsubstArgTypes = ArgTypes0,
 
     % Rename the instance variables apart from the class variables.
     tvarset_merge_renaming(TVarSet0, InstanceVarSet, TVarSet1, Renaming),
@@ -712,6 +713,8 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
         goal_type_none, Markers, ArgTypes, TVarSet, ExistQVars, ClassContext,
         Proofs, ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
     pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
+    pred_info_set_instance_method_arg_types(UnsubstArgTypes,
+        PredInfo1, PredInfo2),
 
     % Add procs with the expected modes and determinisms
     AddProc = (pred(ModeAndDet::in, NewProcId::out,
@@ -721,7 +724,7 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
             detism_decl_implicit, MaybeDet, Context, address_is_taken,
             OldPredInfo, NewPredInfo, NewProcId)
     ),
-    list.map_foldl(AddProc, ArgModes, InstanceProcIds, PredInfo1, PredInfo),
+    list.map_foldl(AddProc, ArgModes, InstanceProcIds, PredInfo2, PredInfo),
 
     module_info_get_predicate_table(ModuleInfo1, PredicateTable1),
     module_info_get_partial_qualifier_info(ModuleInfo1, PQInfo),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002-2011 The University of Melbourne.
+% Copyright (C) 1997-2000,2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -411,6 +411,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
@@ -800,6 +801,8 @@ generate_layout_for_var(_ModuleInfo, ProcInfo, _InstMap, Var, LiveValueType,
 %---------------------------------------------------------------------------%
 
 generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_arg_info(ProcInfo, ArgInfos),
@@ -809,7 +812,7 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
     set.init(TypeVars0),
     (
         build_closure_info(HeadVars, ArgTypes, ArgInfos, ArgLayouts, InstMap,
-            VarLocs0, VarLocs, TypeVars0, TypeVars)
+            UseFloatRegs, VarLocs0, VarLocs, TypeVars0, TypeVars)
     ->
         set.to_sorted_list(TypeVars, TypeVarsList),
         find_typeinfos_for_tvars(TypeVarsList, VarLocs, ProcInfo,
@@ -822,14 +825,27 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
 
 :- pred build_closure_info(list(prog_var)::in,
     list(mer_type)::in, list(arg_info)::in,  list(closure_arg_info)::out,
-    instmap::in, map(prog_var, set(lval))::in, map(prog_var, set(lval))::out,
+    instmap::in, bool::in,
+    map(prog_var, set(lval))::in, map(prog_var, set(lval))::out,
     set(tvar)::in, set(tvar)::out) is semidet.
 
-build_closure_info([], [], [], [], _, !VarLocs, !TypeVars).
-build_closure_info([Var | Vars], [Type | Types],
-        [ArgInfo | ArgInfos], [Layout | Layouts], InstMap,
+build_closure_info([], [], [], [], _, _, !VarLocs, !TypeVars).
+build_closure_info([Var | Vars], [Type0 | Types],
+        [ArgInfo | ArgInfos], [Layout | Layouts], InstMap, UseFloatRegs,
         !VarLocs, !TypeVars) :-
     ArgInfo = arg_info(ArgLoc, _ArgMode),
+    % If the float argument is passed via a regular register then replace the
+    % type_ctor_info in the closure layout so that we can distinguish those
+    % arguments from float arguments passed via float registers.
+    (
+        UseFloatRegs = yes,
+        Type0 = float_type,
+        ArgLoc = reg(reg_r, _)
+    ->
+        Type = float_box_type
+    ;
+        Type = Type0
+    ),
     instmap_lookup_var(InstMap, Var, Inst),
     Layout = closure_arg_info(Type, Inst),
     arg_loc_to_register(ArgLoc, Reg),
@@ -837,7 +853,7 @@ build_closure_info([Var | Vars], [Type | Types],
     map.det_insert(Var, Locations, !VarLocs),
     type_vars(Type, VarTypeVars),
     set.insert_list(VarTypeVars, !TypeVars),
-    build_closure_info(Vars, Types, ArgInfos, Layouts, InstMap,
+    build_closure_info(Vars, Types, ArgInfos, Layouts, InstMap, UseFloatRegs,
         !VarLocs, !TypeVars).
 
 %---------------------------------------------------------------------------%

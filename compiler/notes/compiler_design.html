@@ -1168,11 +1168,6 @@ specialized versions without them (unused_args.m); type_infos are often unused.
   even if the user doesn't, and automatically constructed unification and
   comparison predicates are often dead as well.
 
-<li> elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
-  specialization and the elimination of unused args can make procedures dead
-  even the user doesn't, and automatically constructed unification and
-  comparison predicates are often dead as well.
-
 <li> tupling.m looks for predicates that pass around several arguments,
   and modifies the code to pass around a single tuple of these arguments
   instead if this looks like reducing the cost of parameter passing.
@@ -1202,6 +1197,10 @@ specialized versions without them (unused_args.m); type_infos are often unused.
 	<li> push_goals_together.m performs a transformation that allows
 	     introduce_parallelism.m to do a better job.
 	</ul>
+
+<dt> float_regs.m wraps higher-order terms which use float registers
+  if passed in contexts where regular registers would be expected,
+  and vice versa.
 
 </ul>
 
@@ -1900,6 +1899,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2011-08-15 06:23:20 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2012-02-13 00:11:53 $ by $Author: wangp $@cs.mu.oz.au. <br>
 </body>
 </html>

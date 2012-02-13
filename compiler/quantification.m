@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -463,7 +463,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
             PossiblyNonLocalGoalVars0)
     ;
-        GoalExpr0 = generic_call(GenericCall, CallArgVars, _, _),
+        GoalExpr0 = generic_call(GenericCall, CallArgVars, _, _, _),
         GoalExpr = GoalExpr0,
         goal_util.generic_call_vars(GenericCall, ArgVars0),
         list.append(ArgVars0, CallArgVars, ArgVars),
@@ -1815,7 +1815,7 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
         GoalExpr = plain_call(_, _, ArgVars, _, _, _),
         set_of_var.insert_list(ArgVars, !Set)
     ;
-        GoalExpr = generic_call(GenericCall, ArgVars1, _, _),
+        GoalExpr = generic_call(GenericCall, ArgVars1, _, _, _),
         goal_util.generic_call_vars(GenericCall, ArgVars0),
         set_of_var.insert_list(ArgVars0, !Set),
         set_of_var.insert_list(ArgVars1, !Set)
@@ -1986,7 +1986,7 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
         GoalExpr = plain_call(_, _, ArgVars, _, _, _),
         set_of_var.insert_list(ArgVars, !Set)
     ;
-        GoalExpr = generic_call(GenericCall, ArgVars1, _, _),
+        GoalExpr = generic_call(GenericCall, ArgVars1, _, _, _),
         goal_util.generic_call_vars(GenericCall, ArgVars0),
         set_of_var.insert_list(ArgVars0, !Set),
         set_of_var.insert_list(ArgVars1, !Set)
@@ -2150,7 +2150,7 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
         GoalExpr = plain_call(_, _, ArgVars, _, _, _),
         set_of_var.insert_list(ArgVars, !Set)
     ;
-        GoalExpr = generic_call(GenericCall, ArgVars1, _, _),
+        GoalExpr = generic_call(GenericCall, ArgVars1, _, _, _),
         goal_util.generic_call_vars(GenericCall, ArgVars0),
         set_of_var.insert_list(ArgVars0, !Set),
         set_of_var.insert_list(ArgVars1, !Set)

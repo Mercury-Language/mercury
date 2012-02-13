@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -127,7 +127,7 @@ intra_analyse_goal_expr(conj(_ConjType, Goals), !RptaInfo) :-
     % analysis.
     %
 intra_analyse_goal_expr(plain_call(_, _, _, _, _, _), !RptaInfo).
-intra_analyse_goal_expr(generic_call(_, _, _, _), !RptaInfo).
+intra_analyse_goal_expr(generic_call(_, _, _, _, _), !RptaInfo).
 intra_analyse_goal_expr(call_foreign_proc(_, _, _, _, _, _, _), !RptaInfo).
 
 intra_analyse_goal_expr(switch(_, _, Cases), !RptaInfo) :-
@@ -421,7 +421,7 @@ inter_analyse_goal_expr(Goal, GoalInfo, ModuleInfo, InfoTable,
             CallerRptaInfo1, !:CallerRptaInfo)
     ).
 
-inter_analyse_goal_expr(generic_call(_, _, _, _), _, _, _, !FPTable,
+inter_analyse_goal_expr(generic_call(_, _, _, _, _), _, _, _, !FPTable,
         !RptaInfo) :-
     sorry($module, $pred, "generic_call not handled").
 

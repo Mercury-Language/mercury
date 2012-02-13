@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -162,7 +162,7 @@ execution_paths_covered_compound_goal(ProcInfo, CompoundGoal, !ExecPaths) :-
         ; Expr = conj(_, [])
         ; Expr = disj([])
         ; Expr = call_foreign_proc(_, _, _, _, _, _, _)
-        ; Expr = generic_call(_, _, _, _)
+        ; Expr = generic_call(_, _, _, _, _)
         ; Expr = shorthand(_)
         ),
         unexpected($module, $pred, "encountered atomic or unsupported goal")

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 1998-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -100,7 +100,7 @@ goal_expr_cost(GoalExpr, GoalInfo, Cost) :-
             goal_cost(Goal, Cost)
         )
     ;
-        GoalExpr = generic_call(_, Args, _, _),
+        GoalExpr = generic_call(_, Args, _, _, _),
         list.length(Args, Arity),
         Cost0 = cost_of_reg_assign * Arity // 2,
         Cost = Cost0 + cost_of_stack_flush + cost_of_higher_order_call

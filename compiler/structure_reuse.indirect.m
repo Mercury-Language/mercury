@@ -1,7 +1,7 @@
 %------------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -469,7 +469,8 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
         indirect_reuse_analyse_plain_call(BaseInfo,
             hlds_goal(GoalExpr0, GoalInfo0), !:Goal, !IrInfo)
     ;
-        GoalExpr0 = generic_call(GenDetails, CallArgs, Modes, _Detism),
+        GoalExpr0 = generic_call(GenDetails, CallArgs, Modes, _MaybeArgRegs,
+            _Detism),
         indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs,
             Modes, GoalInfo0, !IrInfo)
     ;

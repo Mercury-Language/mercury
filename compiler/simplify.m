@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1017,7 +1017,7 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, !Info) :-
         !.GoalExpr = plain_call(_, _, _, _, _, _),
         simplify_goal_plain_call(!GoalExpr, !GoalInfo, !Info)
     ;
-        !.GoalExpr = generic_call(_, _, _, _),
+        !.GoalExpr = generic_call(_, _, _, _, _),
         simplify_goal_generic_call(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
@@ -1295,7 +1295,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     simplify_info::in, simplify_info::out) is det.
 
 simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo, !Info) :-
-    GoalExpr0 = generic_call(GenericCall, Args, Modes, Det),
+    GoalExpr0 = generic_call(GenericCall, Args, Modes, _, Det),
     (
         GenericCall = higher_order(Closure, Purity, _, _),
         (
@@ -1767,7 +1767,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
         )
     ;
         ( CondExpr = plain_call(_, _, _, _, _, _)
-        ; CondExpr = generic_call(_, _, _, _)
+        ; CondExpr = generic_call(_, _, _, _, _)
         ; CondExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ; CondExpr = conj(_, _)
         ; CondExpr = switch(_, _, _)
@@ -3736,7 +3736,7 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
     (
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         GoalExpr = GoalExpr0,
@@ -4198,7 +4198,7 @@ will_flush(plain_call(_, _, _, BuiltinState, _, _), BeforeAfter) = WillFlush :-
             WillFlush = yes
         )
     ).
-will_flush(generic_call(GenericCall, _, _, _), BeforeAfter) = WillFlush :-
+will_flush(generic_call(GenericCall, _, _, _, _), BeforeAfter) = WillFlush :-
     (
         GenericCall = higher_order(_, _, _, _),
         WillFlush0 = yes

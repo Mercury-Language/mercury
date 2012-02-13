@@ -48,10 +48,17 @@
 ** contain values for all the arguments of the procedure, but the closure
 ** layout structure has information about all arguments. This is to make
 ** the creation of a closure from another closure by adding some more
-** hidden arguments as fast as possible. There is no problem in finding
-** out which pseudotypeinfo describes which hidden argument, because if
-** the closure contains n hidden arguments, these must be the first n arguments
-** of the procedure.
+** hidden arguments as fast as possible.
+**
+** Without float registers, there is no problem in finding out which
+** pseudotypeinfo describes which hidden argument, because if the closure
+** contains n hidden arguments, these must be the first n arguments of the
+** procedure. With float registers, the hidden arguments are reordered so that
+** float register arguments come after the regular register arguments. To tell
+** if an argument is passed via a float register, check if the pseudotypeinfo
+** is MR_FLOAT_CTOR_ADDR. If a float argument is passed via a regular register,
+** the pseudotypeinfo must be replaced by the type_ctor_info for
+** private_builtin.float_box.
 **
 ** The typeinfo and typeclassinfo arguments describing the actual types bound
 ** to type vars are always at the start of the argument list. A closure can
@@ -100,8 +107,14 @@ typedef struct MR_Closure_Dyn_Link_Layout_Struct {
 **
 **	one word pointing to the closure layout structure of the procedure
 **	one word pointing to the code of the procedure
-**	one word giving the number of arguments hidden in the closure (N)
-**	N words representing the N hidden arguments
+**	one word giving the number of hidden arguments: (R | F<<16)
+**	R words representing the R hidden regular register arguments
+**	F words representing the F hidden float register arguments (in boxed form)
+**
+** The num_hidden_args_rf field holds the number of arguments to place into
+** regular registers in the lower 16-bits, and the number of arguments to place
+** into float registers in the high bits. If float registers are not used
+** then F = 0 so num_hidden_args_rf = R.
 **
 ** The reason why the closure layout pointer is first is that most operations
 ** on closures do not need to access that word, and this way it does not
@@ -117,13 +130,25 @@ typedef struct MR_Closure_Dyn_Link_Layout_Struct {
 struct MR_Closure_Struct {
 	MR_Closure_Layout	    *MR_closure_layout;
 	MR_Code			        *MR_closure_code;
-	MR_Unsigned		        MR_closure_num_hidden_args;
+	MR_Unsigned		        MR_closure_num_hidden_args_rf;
 	MR_Word			        MR_closure_hidden_args_0[MR_VARIABLE_SIZED];
 };
 
 /* in mercury_types.h: typedef struct MR_Closure_Struct MR_Closure; */
 
-#define	MR_closure_hidden_args(i)	MR_closure_hidden_args_0[(i) - 1]
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_BOXED_FLOAT)
+    #define MR_MAY_REORDER_CLOSURE_HIDDEN_ARGS
+    #define MR_closure_num_hidden_r_args(c) \
+        ((c)->MR_closure_num_hidden_args_rf & 0xffff)
+    #define MR_closure_num_hidden_f_args(c) \
+        ((c)->MR_closure_num_hidden_args_rf >> 16)
+#else
+    #define MR_closure_num_hidden_r_args(c) \
+        ((c)->MR_closure_num_hidden_args_rf)
+    #define MR_closure_num_hidden_f_args(c) 0
+#endif
+
+#define MR_closure_hidden_args(i)   MR_closure_hidden_args_0[(i) - 1]
 
 #ifndef MR_HIGHLEVEL_CODE
   #ifdef MR_DO_CALL_STATS

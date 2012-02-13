@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2011 The University of Melbourne.
+% Copyright (C) 2003, 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -478,7 +478,7 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
         Polyhedron = polyhedron.from_constraints(Constraints),
         AbstractGoal = term_primitive(Polyhedron, [], [])
     ;
-        GoalExpr = generic_call(_, _, _, _),
+        GoalExpr = generic_call(_, _, _, _, _),
         % XXX At the moment all higher-order calls are eventually treated
         % as an error. We do not record them as a normal type of error
         % because this is going to change. To approximate their effect here

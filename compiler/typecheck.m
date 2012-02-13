@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1321,7 +1321,8 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         typecheck_call_pred(CurCall, Args, GoalId, PredId, !Info),
         GoalExpr = plain_call(PredId, ProcId, Args, BI, UC, Name)
     ;
-        GoalExpr0 = generic_call(GenericCall0, Args, Modes, Detism),
+        GoalExpr0 = generic_call(GenericCall0, Args, Modes, MaybeArgRegs,
+            Detism),
         hlds_goal.generic_call_id(GenericCall0, CallId),
         typecheck_info_set_called_predid(CallId, !Info),
         (
@@ -1347,7 +1348,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             % so nothing needs to be done here.
             GenericCall = GenericCall0
         ),
-        GoalExpr = generic_call(GenericCall, Args, Modes, Detism)
+        GoalExpr = generic_call(GenericCall, Args, Modes, MaybeArgRegs, Detism)
     ;
         GoalExpr0 = unify(LHS, RHS0, UnifyMode, Unification, UnifyContext),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (

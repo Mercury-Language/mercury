@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -646,6 +646,8 @@
 :- pred pred_info_get_var_name_remap(pred_info::in,
     map(prog_var, string)::out) is det.
 :- pred pred_info_get_assertions(pred_info::in, set(assert_id)::out) is det.
+:- pred pred_info_get_instance_method_arg_types(pred_info::in,
+    list(mer_type)::out) is det.
 :- pred pred_info_get_clauses_info(pred_info::in, clauses_info::out) is det.
 :- pred pred_info_get_procedures(pred_info::in, proc_table::out) is det.
 
@@ -694,6 +696,8 @@
 :- pred pred_info_set_var_name_remap(map(prog_var, string)::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_assertions(set(assert_id)::in,
+    pred_info::in, pred_info::out) is det.
+:- pred pred_info_set_instance_method_arg_types(list(mer_type)::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_clauses_info(clauses_info::in,
     pred_info::in, pred_info::out) is det.
@@ -1043,7 +1047,13 @@ calls_are_fully_qualified(Markers) =
                 var_name_remap      :: map(prog_var, string),
 
                 % List of assertions which mention this predicate.
-                assertions          :: set(assert_id)
+                assertions          :: set(assert_id),
+
+                % If this predicate is a class method implementation, this
+                % list records the argument types before substituting the type
+                % variables for the instance.
+                % XXX does that make sense?
+                instance_method_arg_types :: list(mer_type)
             ).
 
 :- type pred_info
@@ -1119,7 +1129,7 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin, Status,
     PredSubInfo = pred_sub_info(Context, GoalType, Attributes, Kinds,
         ExistQVarBindings, HeadTypeParams, ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, inst_graph_info_init, [],
-        VarNameRemap, Assertions),
+        VarNameRemap, Assertions, []),
     PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, Procs, PredSubInfo).
@@ -1160,7 +1170,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
     PredSubInfo = pred_sub_info(Context, goal_type_clause, Attributes, Kinds,
         ExistQVarBindings, HeadTypeParams, ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, inst_graph_info_init, [],
-        VarNameRemap, Assertions),
+        VarNameRemap, Assertions, []),
     PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, Procs, PredSubInfo).
@@ -1285,6 +1295,8 @@ pred_info_get_inst_graph_info(PI, PI ^ pred_sub_info ^ inst_graph_info).
 pred_info_get_arg_modes_maps(PI, PI ^ pred_sub_info ^ arg_modes_maps).
 pred_info_get_var_name_remap(PI, PI ^ pred_sub_info ^ var_name_remap).
 pred_info_get_assertions(PI, PI ^ pred_sub_info ^ assertions).
+pred_info_get_instance_method_arg_types(PI,
+    PI ^ pred_sub_info ^ instance_method_arg_types).
 pred_info_get_clauses_info(PI, PI ^ clauses_info).
 pred_info_get_procedures(PI, PI ^ procedures).
 
@@ -1328,6 +1340,8 @@ pred_info_set_var_name_remap(X, !PI) :-
     !PI ^ pred_sub_info ^ var_name_remap := X.
 pred_info_set_assertions(X, !PI) :-
     !PI ^ pred_sub_info ^ assertions := X.
+pred_info_set_instance_method_arg_types(X, !PI) :-
+    !PI ^ pred_sub_info ^ instance_method_arg_types := X.
 pred_info_set_clauses_info(X, !PI) :-
     !PI ^ clauses_info := X.
 pred_info_set_procedures(X, !PI) :-
@@ -1999,6 +2013,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_get_is_address_taken(proc_info::in,
     is_address_taken::out) is det.
 :- pred proc_info_get_stack_slots(proc_info::in, stack_slots::out) is det.
+:- pred proc_info_get_reg_r_headvars(proc_info::in, set_of_progvar::out)
+    is det.
 :- pred proc_info_maybe_arg_info(proc_info::in,
     maybe(list(arg_info))::out) is det.
 :- pred proc_info_get_liveness_info(proc_info::in, liveness_info::out) is det.
@@ -2059,6 +2075,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set_address_taken(is_address_taken::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_stack_slots(stack_slots::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_reg_r_headvars(set_of_progvar::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_arg_info(list(arg_info)::in,
     proc_info::in, proc_info::out) is det.
@@ -2337,6 +2355,11 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % Allocation of variables to stack slots.
                 stack_slots                 :: stack_slots,
 
+                % The head variables which must be forced to use regular
+                % registers by the calling convention, despite having type
+                % float. This is only meaningful with float registers.
+                reg_r_headvars              :: set_of_progvar,
+
                 % The calling convention of each argument: information computed
                 % by arg_info.m (based on the modes etc.) and used by code
                 % generation to determine how each argument should be passed.
@@ -2544,6 +2567,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     ModeErrors = [],
     InferredDet = detism_erroneous,
     map.init(StackSlots),
+    set_of_var.init(RegR_HeadVars),
     set_of_var.init(InitialLiveness),
     ArgInfo = no,
     goal_info_init(GoalInfo),
@@ -2554,8 +2578,9 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(DetismDecl, no, no, Term2Info, IsAddressTaken,
-        StackSlots, ArgInfo, InitialLiveness, no, no, no, no_tail_call_events,
-        no, no, no, no, no, no, VarNameRemap, [], SharingInfo, ReuseInfo),
+        StackSlots, RegR_HeadVars, ArgInfo, InitialLiveness, no, no,
+        no, no_tail_call_events, no, no, no, no, no, no, VarNameRemap, [],
+        SharingInfo, ReuseInfo),
     ProcInfo = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
         ClauseBody, CanProcess, ModeErrors, RttiVarMaps, eval_normal,
@@ -2579,6 +2604,7 @@ proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, HeadModes, DetismDecl, MaybeDeclaredDetism, Detism,
         Goal, RttiVarMaps, IsAddressTaken, VarNameRemap, ProcInfo) :-
     map.init(StackSlots),
+    set_of_var.init(RegR_HeadVars),
     set_of_var.init(Liveness),
     MaybeHeadLives = no,
     ModeErrors = [],
@@ -2586,8 +2612,9 @@ proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(DetismDecl, no, no, Term2Info, IsAddressTaken,
-        StackSlots, no, Liveness, no, no, no, no_tail_call_events,
-        no, no, no, no, no, no, VarNameRemap, [], SharingInfo, ReuseInfo),
+        StackSlots, RegR_HeadVars, no, Liveness, no, no, no,
+        no_tail_call_events, no, no, no, no, no, no, VarNameRemap, [],
+        SharingInfo, ReuseInfo),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, no, HeadModes, no, MaybeHeadLives,
         MaybeDeclaredDetism, Detism, Goal, yes, ModeErrors,
@@ -2620,6 +2647,7 @@ proc_info_get_maybe_termination_info(PI,
     PI ^ proc_sub_info ^ maybe_termination).
 proc_info_get_is_address_taken(PI, PI ^ proc_sub_info ^ is_address_taken).
 proc_info_get_stack_slots(PI, PI ^ proc_sub_info ^ stack_slots).
+proc_info_get_reg_r_headvars(PI, PI ^ proc_sub_info ^ reg_r_headvars).
 proc_info_maybe_arg_info(PI, PI ^ proc_sub_info ^ arg_pass_info).
 proc_info_get_liveness_info(PI, PI ^ proc_sub_info ^ initial_liveness).
 proc_info_get_need_maxfr_slot(PI, PI ^ proc_sub_info ^ need_maxfr_slot).
@@ -2674,6 +2702,8 @@ proc_info_set_address_taken(AT, !PI) :-
     !PI ^ proc_sub_info ^ is_address_taken := AT.
 proc_info_set_stack_slots(SS, !PI) :-
     !PI ^ proc_sub_info ^ stack_slots := SS.
+proc_info_set_reg_r_headvars(RHV, !PI) :-
+    !PI ^ proc_sub_info ^ reg_r_headvars := RHV.
 proc_info_set_arg_info(AP, !PI) :-
     !PI ^ proc_sub_info ^ arg_pass_info := yes(AP).
 proc_info_set_liveness_info(IL, !PI) :-

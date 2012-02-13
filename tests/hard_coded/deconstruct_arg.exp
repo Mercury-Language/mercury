@@ -208,6 +208,20 @@ deconstruct deconstruct: functor lambda_deconstruct_arg_m_121 arity 1
 deconstruct limited deconstruct 3 of '<<predicate>>'
 functor lambda_deconstruct_arg_m_121 arity 1 [[1, 2]]
 
+deconstruct functor: p/3
+deconstruct argument 0 of '<<predicate>>' is 1
+deconstruct argument 1 of '<<predicate>>' is 2.2
+deconstruct argument 2 of '<<predicate>>' is "three"
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor p arity 3
+[1, 2.2, "three"]
+deconstruct limited deconstruct 3 of '<<predicate>>'
+functor p arity 3 [1, 2.2, "three"]
+
 deconstruct functor: {}/2
 deconstruct argument 0 of {1, 'b'} is 1
 deconstruct argument 1 of {1, 'b'} is 'b'

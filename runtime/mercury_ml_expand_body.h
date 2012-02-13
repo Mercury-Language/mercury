@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2001-2007, 2011 The University of Melbourne.
+** Copyright (C) 2001-2007, 2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -890,12 +890,16 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_UserProcId       *user_proc_id;
                 MR_UCIProcId        *uci_proc_id;
                 MR_ConstString      name;
+                int                 num_r_args;
+                int                 num_f_args;
                 int                 num_args;
                 int                 i;
 
                 closure = (MR_Closure *) *data_word_ptr;
                 closure_layout = closure->MR_closure_layout;
-                num_args = closure->MR_closure_num_hidden_args;
+                num_r_args = MR_closure_num_hidden_r_args(closure);
+                num_f_args = MR_closure_num_hidden_f_args(closure);
+                num_args = num_r_args + num_f_args;
                 expand_info->arity = num_args;
 
 #ifdef  EXPAND_FUNCTOR_FIELD
@@ -922,14 +926,41 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     type_params =
                         MR_materialize_closure_type_params(closure);
                     expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
-                    expand_info->EXPAND_ARGS_FIELD.arg_values = &closure->
-                        MR_closure_hidden_args_0[0];
+                    expand_info->EXPAND_ARGS_FIELD.arg_values =
+                        &closure->MR_closure_hidden_args_0[0];
+  #ifdef MR_MAY_REORDER_CLOSURE_HIDDEN_ARGS
+                    /*
+                    ** If hidden arguments may have been reordered, create an
+                    ** new vector with arguments in the correct order.
+                    */
+                    if (num_r_args != 0 && num_f_args != 0) {
+                        int r_offset = 0;
+                        int f_offset = num_r_args;
+
+                        expand_info->EXPAND_ARGS_FIELD.arg_values =
+                            MR_GC_NEW_ARRAY(MR_Word, num_args);
+                        for (i = 0; i < num_args; i++) {
+                            MR_PseudoTypeInfo arg_pti;
+                            int offset;
+
+                            arg_pti = closure_layout->
+                                MR_closure_arg_pseudo_type_info[i];
+                            if (MR_unify_pseudo_type_info_float(arg_pti)) {
+                                offset = f_offset++;
+                            } else {
+                                offset = r_offset++;
+                            }
+                            expand_info->EXPAND_ARGS_FIELD.arg_values[i] =
+                                closure->MR_closure_hidden_args_0[offset];
+                        }
+                    }
+  #endif    /* MR_MAY_REORDER_CLOSURE_HIDDEN_ARGS */
                     expand_info->EXPAND_ARGS_FIELD.arg_locns = NULL;
                     expand_info->EXPAND_ARGS_FIELD.arg_type_infos =
                         MR_GC_NEW_ARRAY(MR_TypeInfo, num_args);
                     expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos =
                         MR_TRUE;
-                    for (i = 0; i < num_args ; i++) {
+                    for (i = 0; i < num_args; i++) {
                         expand_info->EXPAND_ARGS_FIELD.arg_type_infos[i] =
                             MR_create_type_info(type_params,
                                 closure_layout->
@@ -944,10 +975,28 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #ifdef  EXPAND_CHOSEN_ARG
                 if (0 <= chosen && chosen < num_args) {
                     MR_TypeInfo *type_params;
+                    MR_Unsigned offset;
+                    MR_Unsigned r_offset;
+                    MR_Unsigned f_offset;
 
                     expand_info->chosen_index_exists = MR_TRUE;
+  #ifdef MR_MAY_REORDER_CLOSURE_HIDDEN_ARGS
+                    r_offset = 0;
+                    f_offset = MR_closure_num_hidden_r_args(closure);
+                    for (i = 0; i <= chosen; i++) {
+                        MR_PseudoTypeInfo arg_pti =
+                            closure_layout->MR_closure_arg_pseudo_type_info[i];
+                        if (MR_unify_pseudo_type_info_float(arg_pti)) {
+                            offset = f_offset++;
+                        } else {
+                            offset = r_offset++;
+                        }
+                    }
+  #else
+                    offset = chosen;
+  #endif
                     expand_info->chosen_value_ptr = 
-                        &closure->MR_closure_hidden_args_0[chosen];
+                        &closure->MR_closure_hidden_args_0[offset];
                     expand_info->chosen_arg_locn = NULL;
                     /* the following code could be improved */
                     type_params = MR_materialize_closure_type_params(closure);

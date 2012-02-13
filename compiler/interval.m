@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -285,14 +285,19 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             build_interval_info_in_goal(SubGoal, !IntervalInfo, !Acc)
         )
     ;
-        GoalExpr = generic_call(GenericCall, ArgVars, ArgModes, _Detism),
+        GoalExpr = generic_call(GenericCall, ArgVars, ArgModes, MaybeArgRegs,
+            _Detism),
         goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
         IntParams = !.IntervalInfo ^ ii_interval_params,
-        VarTypes = IntParams ^ ip_var_types,
-        list.map(map.lookup(VarTypes), ArgVars, ArgTypes),
         ModuleInfo = IntParams ^ ip_module_info,
-        arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars,
-            ArgModes, ArgTypes, InputArgs, _OutputArgs),
+        VarTypes = IntParams ^ ip_var_types,
+        map.apply_to_list(ArgVars, VarTypes, ArgTypes),
+        arg_info.generic_call_arg_reg_types(ModuleInfo, VarTypes, GenericCall,
+            ArgVars, MaybeArgRegs, ArgRegTypes),
+        arg_info.compute_in_and_out_vars_sep_regs(ModuleInfo, ArgVars,
+            ArgModes, ArgTypes, ArgRegTypes, InputArgsR, InputArgsF,
+            _OutputArgsR, _OutputArgsF),
+        list.append(InputArgsR, InputArgsF, InputArgs),
 
         % Casts are generated inline.
         (
@@ -306,7 +311,8 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             ),
             module_info_get_globals(ModuleInfo, Globals),
             call_gen.generic_call_info(Globals, GenericCall,
-                length(InputArgs), _, GenericVarsArgInfos, _, _),
+                length(InputArgsR), length(InputArgsF), _,
+                GenericVarsArgInfos, _, _),
             assoc_list.keys(GenericVarsArgInfos, GenericVars),
             list.append(GenericVars, InputArgs, Inputs),
             build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
@@ -978,7 +984,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
     ;
-        GoalExpr0 = generic_call(GenericCall, _, _, _),
+        GoalExpr0 = generic_call(GenericCall, _, _, _, _),
         % Casts are generated inline.
         (
             GenericCall = cast(_),

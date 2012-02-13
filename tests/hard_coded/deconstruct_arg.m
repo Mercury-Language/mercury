@@ -119,6 +119,7 @@ main -->
 		% test predicates	
 	test_all(newline), newline,
 	test_all(test_all([1, 2])), newline,
+	test_all(p(1, 2.2, "three")), newline,
 		% test tuples
 	test_all({1, 'b'}), newline,
 	test_all({1, 'b', "third"}), newline,
@@ -129,6 +130,10 @@ main -->
 	test_all(array([10, 20, 30, 40])), newline,
 		% test packed fields
 	test_all(packed(100, one, two, three, "four")), newline.
+
+:- pred p(int::in, float::in, string::in, io::di, io::uo) is det.
+
+p(_, _, _, !IO).
 
 %-----------------------------------------------------------------------------%
 

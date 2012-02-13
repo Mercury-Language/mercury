@@ -208,6 +208,20 @@ deconstruct deconstruct: functor <<predicate>> arity 0
 deconstruct limited deconstruct 3 of '<<predicate>>'
 functor <<predicate>> arity 0 []
 
+deconstruct functor: <<predicate>>/0
+deconstruct argument 0 of '<<predicate>>' doesn't exist
+deconstruct argument 1 of '<<predicate>>' doesn't exist
+deconstruct argument 2 of '<<predicate>>' doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor <<predicate>> arity 0
+[]
+deconstruct limited deconstruct 3 of '<<predicate>>'
+functor <<predicate>> arity 0 []
+
 deconstruct functor: {}/2
 deconstruct argument 0 of {1, 'b'} is 1
 deconstruct argument 1 of {1, 'b'} is 'b'

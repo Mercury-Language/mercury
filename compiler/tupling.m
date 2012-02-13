@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -876,9 +876,9 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo, !:ProcInfo),
-        pred_info_get_import_status(PredInfo, Status),
+        pred_info_get_markers(PredInfo, Markers),
         pred_info_get_arg_types(PredInfo, ArgTypes),
-        generate_proc_arg_info(Status, ArgTypes, !.ModuleInfo, !ProcInfo),
+        generate_proc_arg_info(Markers, ArgTypes, !.ModuleInfo, !ProcInfo),
 
         detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo),
         initial_liveness(!.ProcInfo, PredId, !.ModuleInfo, Liveness0),
@@ -1062,14 +1062,20 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
                 CountInfo, !CountState)
         )
     ;
-        GoalExpr = generic_call(GenericCall, ArgVars, ArgModes, _Detism),
+        GoalExpr = generic_call(GenericCall, ArgVars, ArgModes, MaybeArgRegs,
+            _Detism),
         ProcInfo = CountInfo ^ ci_proc,
         ModuleInfo = CountInfo ^ ci_module,
         goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
         proc_info_get_vartypes(ProcInfo, VarTypes),
-        list.map(map.lookup(VarTypes), ArgVars, ArgTypes),
-        arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars,
-            ArgModes, ArgTypes, InputArgs, OutputArgs),
+        map.apply_to_list(ArgVars, VarTypes, ArgTypes),
+        arg_info.generic_call_arg_reg_types(ModuleInfo, VarTypes,
+            GenericCall, ArgVars, MaybeArgRegs, ArgRegTypes),
+        arg_info.compute_in_and_out_vars_sep_regs(ModuleInfo, ArgVars,
+            ArgModes, ArgTypes, ArgRegTypes, InputArgsR, InputArgsF,
+            OutputArgsR, OutputArgsF),
+        InputArgs = InputArgsR ++ InputArgsF,
+        OutputArgs = OutputArgsR ++ OutputArgsF,
 
         (
             ( GenericCall = higher_order(_, _, _, _)
@@ -1078,7 +1084,8 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
             ),
             module_info_get_globals(ModuleInfo, Globals),
             call_gen.generic_call_info(Globals, GenericCall,
-                length(InputArgs), _, GenericVarsArgInfos, _, _),
+                length(InputArgsR), length(InputArgsF), _,
+                GenericVarsArgInfos, _, _),
             assoc_list.keys(GenericVarsArgInfos, GenericVars),
             list.append(GenericVars, InputArgs, Inputs),
             Outputs = set.list_to_set(OutputArgs),
@@ -1725,7 +1732,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ),
         Goal = hlds_goal(GoalExpr0, GoalInfo0)

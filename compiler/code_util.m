@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,6 +87,12 @@
     %
 :- pred build_input_arg_list(proc_info::in, assoc_list(prog_var, lval)::out)
     is det.
+
+    % Encode the number of regular register and float register arguments
+    % into a single word. This representation is in both the MR_Closure
+    % num_hidden_args_rf field, and for the input to do_call_closure et al.
+    %
+:- func encode_num_generic_call_vars(int, int) = int.
 
 :- func size_of_cell_args(list(cell_arg)) = int.
 
@@ -251,7 +257,7 @@ goal_may_alloc_temp_frame(hlds_goal(GoalExpr, _GoalInfo), May) :-
 :- pred goal_may_alloc_temp_frame_2(hlds_goal_expr::in, bool::out)
     is det.
 
-goal_may_alloc_temp_frame_2(generic_call(_, _, _, _), no).
+goal_may_alloc_temp_frame_2(generic_call(_, _, _, _, _), no).
 goal_may_alloc_temp_frame_2(plain_call(_, _, _, _, _, _), no).
 goal_may_alloc_temp_frame_2(unify(_, _, _, _, _), no).
     % We cannot safely say that a foreign code fragment does not allocate
@@ -437,6 +443,10 @@ build_input_arg_list_2([V - Arg | Rest0], VarArgs) :-
         VarArgs = VarArgs0
     ),
     build_input_arg_list_2(Rest0, VarArgs0).
+
+%-----------------------------------------------------------------------------%
+
+encode_num_generic_call_vars(NumR, NumF) = (NumR \/ (NumF << 16)).
 
 %-----------------------------------------------------------------------------%
 

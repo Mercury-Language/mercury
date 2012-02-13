@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -656,7 +656,7 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
             unused_args_traverse_goal(Info, SubGoal, !VarDep)
         )
     ;
-        GoalExpr = generic_call(GenericCall, Args, _, _),
+        GoalExpr = generic_call(GenericCall, Args, _, _, _),
         goal_util.generic_call_vars(GenericCall, CallArgs),
         set_list_vars_used(CallArgs, !VarDep),
         set_list_vars_used(Args, !VarDep)
@@ -1504,7 +1504,7 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = generic_call(_, _, _, _),
+        GoalExpr0 = generic_call(_, _, _, _, _),
         Goal = hlds_goal(GoalExpr0, GoalInfo0),
         Changed = no
     ;

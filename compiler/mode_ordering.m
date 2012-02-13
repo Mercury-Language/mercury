@@ -225,7 +225,7 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
         goal_info_set_need_visible_vars(NeedVisibleVars, !GoalInfo),
         GoalExpr = GoalExpr0 ^ call_proc_id := ProcId
     ;
-        GoalExpr0 = generic_call(_GenericCall0, _Args, _Modes0, _Det),
+        GoalExpr0 = generic_call(_GenericCall0, _Args, _Modes0, _, _Det),
         unexpected($module, $pred, "generic_call NYI")
     ;
         GoalExpr0 = switch(_Var, _CanFail0, _Cases0),

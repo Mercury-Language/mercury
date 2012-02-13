@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -282,7 +282,7 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         warn_singletons_goal_vars(Args, GoalInfo, NonLocals, QuantVars, !Info)
     ;
-        GoalExpr = generic_call(GenericCall, Args0, _, _),
+        GoalExpr = generic_call(GenericCall, Args0, _, _, _),
         goal_util.generic_call_vars(GenericCall, Args1),
         Args = Args0 ++ Args1,
         NonLocals = goal_info_get_nonlocals(GoalInfo),

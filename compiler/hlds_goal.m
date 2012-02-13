@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -123,6 +123,11 @@
                 % this field is junk until after mode analysis.
                 gcall_modes         :: list(mer_mode),
 
+                % The register type to use for each of the arguments. This is
+                % only needed when float registers exist, and is only set after
+                % the float reg wrappers pass.
+                gcall_reg_types     :: arg_reg_type_info,
+
                 % The determinism of the call.
                 gcall_detism        :: determinism
             )
@@ -216,7 +221,7 @@
 :- inst goal_expr_plain_call
     --->    plain_call(ground, ground, ground, ground, ground, ground).
 :- inst goal_expr_generic_call
-    --->    generic_call(ground, ground, ground, ground).
+    --->    generic_call(ground, ground, ground, ground, ground).
 :- inst goal_expr_foreign_proc
     --->    call_foreign_proc(ground, ground, ground, ground, ground,
                 ground, ground).
@@ -2594,10 +2599,10 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
         rename_vars_in_goal(Must, Subn, Goal0, Goal),
         Expr = scope(Reason, Goal)
     ;
-        Expr0 = generic_call(GenericCall0, Args0, Modes, Det),
+        Expr0 = generic_call(GenericCall0, Args0, Modes, MaybeArgRegs, Det),
         rename_generic_call(Must, Subn, GenericCall0, GenericCall),
         rename_var_list(Must, Subn, Args0, Args),
-        Expr = generic_call(GenericCall, Args, Modes, Det)
+        Expr = generic_call(GenericCall, Args, Modes, MaybeArgRegs, Det)
     ;
         Expr0 = plain_call(PredId, ProcId, Args0, Builtin, Context, Sym),
         rename_var_list(Must, Subn, Args0, Args),
@@ -2832,10 +2837,10 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
         incremental_rename_vars_in_goal(Subn, SubnUpdates, Goal0, Goal),
         Expr = scope(Reason, Goal)
     ;
-        Expr0 = generic_call(GenericCall0, Args0, Modes, Det),
+        Expr0 = generic_call(GenericCall0, Args0, Modes, MaybeArgRegs, Det),
         rename_generic_call(need_not_rename, Subn, GenericCall0, GenericCall),
         rename_var_list(need_not_rename, Subn, Args0, Args),
-        Expr = generic_call(GenericCall, Args, Modes, Det)
+        Expr = generic_call(GenericCall, Args, Modes, MaybeArgRegs, Det)
     ;
         Expr0 = plain_call(PredId, ProcId, Args0, Builtin, Context, Sym),
         rename_var_list(need_not_rename, Subn, Args0, Args),
@@ -3263,7 +3268,7 @@ goal_has_foreign(Goal) = HasForeign :-
     Goal = hlds_goal(GoalExpr, _),
     (
         ( GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ),
         HasForeign = no
@@ -3347,7 +3352,7 @@ case_list_has_foreign([Case | Cases]) = HasForeign :-
 goal_expr_has_subgoals(GoalExpr) = HasSubGoals :-
     (
         ( GoalExpr = unify(_, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = plain_call(_, _, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _,  _)
         ),
@@ -3467,7 +3472,7 @@ set_goal_contexts(Context, Goal0, Goal) :-
         GoalExpr = negation(SubGoal)
     ;
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),

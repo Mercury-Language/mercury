@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -333,7 +333,7 @@ goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
@@ -770,7 +770,7 @@ dump_goal_goal_paths(Globals, Indent, Goal, !IO) :-
     SubGoalIndent = Indent + 1,
     (
         ( GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         )

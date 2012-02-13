@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2011 The University of Melbourne.
+% Copyright (C) 1995-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -793,7 +793,7 @@ generate_assign(ToVar, FromVar, UniMode, OldGoalInfo, GoalExpr, GoalInfo,
         % equivalence of the input and output.
         Modes = [(ToVarInst -> ToVarInst), (free -> ToVarInst)],
         GoalExpr = generic_call(cast(unsafe_type_cast), [FromVar, ToVar],
-            Modes, detism_det)
+            Modes, arg_reg_types_unset, detism_det)
     ),
 
     % `ToVar' may not appear in the original instmap_delta, so we can't just

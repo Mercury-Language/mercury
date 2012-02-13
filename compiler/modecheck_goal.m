@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -206,7 +206,8 @@ modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             MaybeCallUnifyContext, PredName, GoalInfo0, GoalExpr,
             !ModeInfo)
     ;
-        GoalExpr0 = generic_call(GenericCall, Args0, Modes0, _Detism),
+        GoalExpr0 = generic_call(GenericCall, Args0, Modes0, _MaybeArgRegs,
+            _Detism),
         modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0,
             GoalExpr, !ModeInfo)
     ;
@@ -499,7 +500,7 @@ goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
         LargeFlatConstructs = set_of_var.init
     ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         LargeFlatConstructs = set_of_var.init
@@ -559,7 +560,7 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
         Goal = Goal0
     ;
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         Goal = Goal0
@@ -1322,7 +1323,8 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
         GenericCall = higher_order(PredVar, _, PredOrFunc, _),
         modecheck_higher_order_call(PredOrFunc, PredVar,
             Args0, Args, Modes, Det, ExtraGoals, !ModeInfo),
-        GoalExpr1 = generic_call(GenericCall, Args, Modes, Det),
+        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
+            Det),
         AllArgs0 = [PredVar | Args0],
         AllArgs = [PredVar | Args],
         handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, AllArgs0, AllArgs,
@@ -1346,7 +1348,8 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             unexpected($module, $pred, "unknown event")
         ),
         modecheck_event_call(Modes, Args0, Args, !ModeInfo),
-        GoalExpr = generic_call(GenericCall, Args, Modes, detism_det)
+        GoalExpr = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
+            detism_det)
     ;
         GenericCall = cast(_CastType),
         (
@@ -1384,7 +1387,8 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             Modes = Modes0
         ),
         modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo),
-        GoalExpr1 = generic_call(GenericCall, Args, Modes, Det),
+        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
+            Det),
         handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, Args0, Args,
             InstMap0, GoalExpr, !ModeInfo)
     ),

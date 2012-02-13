@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -803,7 +803,7 @@ write_goal_expr(Info, GoalExpr, ModuleInfo, VarSet,
         write_goal_plain_call(Info, GoalExpr, ModuleInfo, VarSet,
             AppendVarNums, Indent, Follow, TypeQual, !IO)
     ;
-        GoalExpr = generic_call(_, _, _, _),
+        GoalExpr = generic_call(_, _, _, _, _),
         write_goal_generic_call(Info, GoalExpr, ModuleInfo, VarSet,
             AppendVarNums, Indent, Follow, TypeQual, !IO)
     ;
@@ -1340,7 +1340,7 @@ write_sym_name_and_args(PredName, ArgVars, VarSet, AppendVarNums, !IO) :-
 
 write_goal_generic_call(Info, GoalExpr, _ModuleInfo, VarSet,
         AppendVarNums, Indent, Follow, _TypeQual, !IO) :-
-    GoalExpr = generic_call(GenericCall, ArgVars, Modes, _),
+    GoalExpr = generic_call(GenericCall, ArgVars, Modes, MaybeArgRegs, _),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     % XXX we should print more info here
     (
@@ -1349,7 +1349,8 @@ write_goal_generic_call(Info, GoalExpr, _ModuleInfo, VarSet,
             PredOrFunc = pf_predicate,
             ( string.contains_char(DumpOptions, 'l') ->
                 write_indent(Indent, !IO),
-                io.write_string("% higher-order predicate call\n", !IO)
+                io.write_string("% higher-order predicate call\n", !IO),
+                write_ho_arg_regs(Indent, MaybeArgRegs, !IO)
             ;
                 true
             ),
@@ -1362,7 +1363,8 @@ write_goal_generic_call(Info, GoalExpr, _ModuleInfo, VarSet,
             ( string.contains_char(DumpOptions, 'l') ->
                 write_indent(Indent, !IO),
                 io.write_string("% higher-order function application\n",
-                    !IO)
+                    !IO),
+                write_ho_arg_regs(Indent, MaybeArgRegs, !IO)
             ;
                 true
             ),
@@ -1381,7 +1383,8 @@ write_goal_generic_call(Info, GoalExpr, _ModuleInfo, VarSet,
             _MethodId),
         ( string.contains_char(DumpOptions, 'l') ->
             write_indent(Indent, !IO),
-            io.write_string("% class method call\n", !IO)
+            io.write_string("% class method call\n", !IO),
+            write_ho_arg_regs(Indent, MaybeArgRegs, !IO)
         ;
             true
         ),
@@ -1399,7 +1402,8 @@ write_goal_generic_call(Info, GoalExpr, _ModuleInfo, VarSet,
         GenericCall = event_call(EventName),
         ( string.contains_char(DumpOptions, 'l') ->
             write_indent(Indent, !IO),
-            io.write_string("% event call\n", !IO)
+            io.write_string("% event call\n", !IO),
+            write_ho_arg_regs(Indent, MaybeArgRegs, !IO)
         ;
             true
         ),
@@ -1416,7 +1420,8 @@ write_goal_generic_call(Info, GoalExpr, _ModuleInfo, VarSet,
         CastTypeString = cast_type_to_string(CastType),
         ( string.contains_char(DumpOptions, 'l') ->
             write_indent(Indent, !IO),
-            io.write_strings(["% ", CastTypeString, "\n"], !IO)
+            io.write_strings(["% ", CastTypeString, "\n"], !IO),
+            write_ho_arg_regs(Indent, MaybeArgRegs, !IO)
         ;
             true
         ),
@@ -1436,6 +1441,31 @@ write_goal_generic_call(Info, GoalExpr, _ModuleInfo, VarSet,
         write_indent(Indent, !IO),
         mercury_output_term(VarSet, AppendVarNums, Term, !IO),
         io.write_string(Follow, !IO)
+    ).
+
+:- pred write_ho_arg_regs(int::in, arg_reg_type_info::in,
+    io::di, io::uo) is det.
+
+write_ho_arg_regs(Indent, MaybeArgRegs, !IO) :-
+    (
+        MaybeArgRegs = arg_reg_types(ArgRegs),
+        write_indent(Indent, !IO),
+        io.write_string("% arg regs: ", !IO),
+        io.write_list(ArgRegs, ", ", write_ho_arg_reg, !IO),
+        io.nl(!IO)
+    ;
+        MaybeArgRegs = arg_reg_types_unset
+    ).
+
+:- pred write_ho_arg_reg(ho_arg_reg::in, io::di, io::uo) is det.
+
+write_ho_arg_reg(ArgReg, !IO) :-
+    (
+        ArgReg = ho_arg_reg_r,
+        io.write_string("reg_r", !IO)
+    ;
+        ArgReg = ho_arg_reg_f,
+        io.write_string("reg_f", !IO)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -65,6 +65,10 @@
 :- pred type_is_higher_order_details(mer_type::in, purity::out,
     pred_or_func::out, lambda_eval_method::out, list(mer_type)::out)
     is semidet.
+
+:- pred type_is_higher_order_details_det(mer_type::in, purity::out,
+    pred_or_func::out, lambda_eval_method::out, list(mer_type)::out)
+    is det.
 
     % Succeed if the given type is a tuple type, returning
     % the argument types.
@@ -440,6 +444,17 @@ type_is_higher_order_details(Type, Purity, PredOrFunc, EvalMethod,
         PredArgTypes = ArgTypes
     ).
 
+type_is_higher_order_details_det(Type, !:Purity, !:PredOrFunc, !:EvalMethod,
+        !:PredArgTypes) :-
+    (
+        type_is_higher_order_details(Type, !:Purity, !:PredOrFunc,
+            !:EvalMethod, !:PredArgTypes)
+    ->
+        true
+    ;
+        unexpected($module, $pred, "type is not higher-order")
+    ).
+
 type_is_tuple(Type, ArgTypes) :-
     strip_kind_annotation(Type) = tuple_type(ArgTypes, _).
 
@@ -536,7 +551,7 @@ type_to_ctor_and_args_det(Type, TypeCtor, Args) :-
         TypeCtor = TypeCtorPrime,
         Args = ArgsPrime
     ;
-        unexpected($module, $pred, "type_to_ctor_and_args failed")
+        unexpected($module, $pred, "type_to_ctor_and_args failed: " ++ string(Type))
     ).
 
 type_to_ctor(Type, TypeCtor) :-

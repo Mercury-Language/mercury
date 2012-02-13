@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2000-2011 The University of Melbourne.
+% Copyright (C) 1995-1998, 2000-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -799,7 +799,7 @@ ho_inst_info_matches_initial(HOInstInfoA, none, _, _, !Info) :-
     \+ ho_inst_info_is_nonstandard_func_mode(!.Info ^ imi_module_info,
         HOInstInfoA).
 ho_inst_info_matches_initial(none, higher_order(PredInstB), _, Type, !Info) :-
-    PredInstB = pred_inst_info(pf_function, ArgModes, _Det),
+    PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
     Arity = list.length(ArgModes),
     PredInstA = pred_inst_info_standard_func_mode(Arity),
     pred_inst_matches_2(PredInstA, PredInstB, Type, !Info).
@@ -827,10 +827,13 @@ pred_inst_matches_1(PredInstA, PredInstB, MaybeType, ModuleInfo) :-
 :- pred pred_inst_matches_2(pred_inst_info::in, pred_inst_info::in,
     maybe(mer_type)::in, inst_match_info::in, inst_match_info::out) is semidet.
 
-pred_inst_matches_2(pred_inst_info(PredOrFunc, ModesA, Det),
-        pred_inst_info(PredOrFunc, ModesB, Det), MaybeType, !Info) :-
-    maybe_get_higher_order_arg_types(MaybeType, length(ModesA),
-        MaybeTypes),
+pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info) :-
+    % In the float_regs.m pass a variable may take on pred insts which differ
+    % only in the arg reg lists in different branches. They should be allowed
+    % to match here.
+    PredInstA = pred_inst_info(PredOrFunc, ModesA, _MaybeArgRegsA, Det),
+    PredInstB = pred_inst_info(PredOrFunc, ModesB, _MaybeArgRegsB, Det),
+    maybe_get_higher_order_arg_types(MaybeType, length(ModesA), MaybeTypes),
     pred_inst_argmodes_matches(ModesA, ModesB, MaybeTypes, !Info).
 
     % pred_inst_argmodes_matches(ModesA, ModesB, !Info):
@@ -1083,7 +1086,7 @@ ho_inst_info_matches_final(HOInstInfoA, none, _, !Info) :-
     \+ ho_inst_info_is_nonstandard_func_mode(!.Info ^ imi_module_info,
         HOInstInfoA).
 ho_inst_info_matches_final(none, higher_order(PredInstB), Type, !Info) :-
-    PredInstB = pred_inst_info(pf_function, ArgModes, _Det),
+    PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
     Arity = list.length(ArgModes),
     PredInstA = pred_inst_info_standard_func_mode(Arity),
     pred_inst_matches_2(PredInstA, PredInstB, Type, !Info).
@@ -1239,7 +1242,7 @@ inst_matches_binding_3(not_reached, _, _, !Info).
 ho_inst_info_matches_binding(_, none, _, _).
 ho_inst_info_matches_binding(none, higher_order(PredInstB), MaybeType,
         ModuleInfo) :-
-    PredInstB = pred_inst_info(pf_function, ArgModes, _Det),
+    PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
     Arity = list.length(ArgModes),
     PredInstA = pred_inst_info_standard_func_mode(Arity),
     pred_inst_matches_1(PredInstA, PredInstB, MaybeType, ModuleInfo).
@@ -1952,7 +1955,7 @@ inst_contains_inst_var(defined_inst(InstName), InstVar) :-
 inst_contains_inst_var(bound(_Uniq, ArgInsts), InstVar) :-
     bound_inst_list_contains_inst_var(ArgInsts, InstVar).
 inst_contains_inst_var(ground(_Uniq, HOInstInfo), InstVar) :-
-    HOInstInfo = higher_order(pred_inst_info(_PredOrFunc, Modes, _Det)),
+    HOInstInfo = higher_order(pred_inst_info(_PredOrFunc, Modes, _, _Det)),
     mode_list_contains_inst_var(Modes, InstVar).
 inst_contains_inst_var(abstract_inst(_Name, ArgInsts), InstVar) :-
     inst_list_contains_inst_var(ArgInsts, InstVar).

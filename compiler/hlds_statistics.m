@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2010-2011 The University of Melbourne.
+% Copyright (C) 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -163,7 +163,7 @@ accumulate_proc_stats_in_goal(Goal, !UsedVars, !Stats) :-
         set_tree234.insert_list(ExtraArgVars, !UsedVars),
         !Stats ^ ps_foreign_calls := !.Stats ^ ps_foreign_calls + 1
     ;
-        GoalExpr = generic_call(CallKind, ArgVars, _, _),
+        GoalExpr = generic_call(CallKind, ArgVars, _, _, _),
         set_tree234.insert_list(ArgVars, !UsedVars),
         (
             CallKind = higher_order(HOVar, _, _, _),

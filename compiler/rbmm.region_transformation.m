@@ -459,7 +459,7 @@ region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming, IteRenaming,
 
 region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
         !VarSet, !VarTypes) :-
-    !.GoalExpr = generic_call(_, _, _, _),
+    !.GoalExpr = generic_call(_, _, _, _, _),
     sorry($module, $pred, "generic call").
 
 region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
@@ -574,7 +574,7 @@ region_transform_compound_goal(ModuleInfo, Graph,
         ( !.GoalExpr = shorthand(_)
         ; !.GoalExpr = unify(_, _, _, _, _)
         ; !.GoalExpr = plain_call(_, _, _, _, _, _)
-        ; !.GoalExpr = generic_call(_, _, _, _)
+        ; !.GoalExpr = generic_call(_, _, _, _, _)
         ; !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ; !.GoalExpr = conj(_, [])
         ; !.GoalExpr = disj([])

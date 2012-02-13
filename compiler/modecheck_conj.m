@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -531,7 +531,8 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         % We assume that generic calls are deterministic. The modes field of
         % higher_order calls is junk until *after* mode analysis, hence we
         % can't handle them here.
-        GoalExpr = generic_call(Details, Args, ArgModes, _JunkDetism),
+        GoalExpr = generic_call(Details, Args, ArgModes, _JunkArgRegs,
+            _JunkDetism),
         Details \= higher_order(_, _, _, _),
         candidate_init_vars_call(ModeInfo, Args, ArgModes,
             !NonFree, !CandidateVars)

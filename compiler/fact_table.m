@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2011 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2977,17 +2977,7 @@ generate_argument_vars_code(PragmaVars, Types, ModuleInfo, DeclCode, InputCode,
         OutputCode, SaveRegsCode, GetRegsCode, NumInputArgs) :-
     list.map((pred(X::in, Y::out) is det :- X = pragma_var(_, _, Y, _)),
         PragmaVars, Modes),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, use_float_registers, FloatRegs),
-    (
-        FloatRegs = yes,
-        FloatRegType = reg_f
-    ;
-        FloatRegs = no,
-        FloatRegType = reg_r
-    ),
-    make_arg_infos(Types, Modes, model_non, ModuleInfo, FloatRegType,
-        ArgInfos),
+    make_standard_arg_infos(Types, Modes, model_non, ModuleInfo, ArgInfos),
     generate_argument_vars_code_2(PragmaVars, ArgInfos, Types, ModuleInfo,
         DeclCode, InputCode, OutputCode, SaveRegsCode, GetRegsCode, 1,
         NumInputArgs).

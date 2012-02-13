@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2001-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -205,7 +205,7 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
         FinalGoals = [hlds_goal(negation(NegGoal), GoalInfo) | ConstraintGoals]
     ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ),
@@ -843,7 +843,7 @@ strip_constraint_markers_expr(if_then_else(Vars, If, Then, Else)) =
 strip_constraint_markers_expr(Goal) = Goal :-
     Goal = call_foreign_proc(_, _, _, _, _, _, _).
 strip_constraint_markers_expr(Goal) = Goal :-
-    Goal = generic_call(_, _, _, _).
+    Goal = generic_call(_, _, _, _, _).
 strip_constraint_markers_expr(Goal) = Goal :-
     Goal = plain_call(_, _, _, _, _, _).
 strip_constraint_markers_expr(Goal) = Goal :-

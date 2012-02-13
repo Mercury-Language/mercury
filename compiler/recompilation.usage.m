@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2011 University of Melbourne.
+% Copyright (C) 2001-2012 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1329,7 +1329,7 @@ find_items_used_by_insts(Modes, !Info) :-
 
 find_items_used_by_inst(any(_, HOInstInfo), !Info) :-
     (
-        HOInstInfo = higher_order(pred_inst_info(_, Modes, _)),
+        HOInstInfo = higher_order(pred_inst_info(_, Modes, _, _)),
         find_items_used_by_modes(Modes, !Info)
     ;
         HOInstInfo = none
@@ -1340,7 +1340,7 @@ find_items_used_by_inst(bound(_, BoundInsts), !Info) :-
     list.foldl(find_items_used_by_bound_inst, BoundInsts, !Info).
 find_items_used_by_inst(ground(_, HOInstInfo), !Info) :-
     (
-        HOInstInfo = higher_order(pred_inst_info(_, Modes, _)),
+        HOInstInfo = higher_order(pred_inst_info(_, Modes, _, _)),
         find_items_used_by_modes(Modes, !Info)
     ;
         HOInstInfo = none

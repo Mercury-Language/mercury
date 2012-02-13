@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -398,7 +398,7 @@ hlds_goal_used_modules(Goal, !UsedModules) :-
         GoalExpr = plain_call(_, _, _, _, _, Name),
         add_sym_name_module(visibility_private, Name, !UsedModules)
     ;
-        GoalExpr = generic_call(Call, _, _, _),
+        GoalExpr = generic_call(Call, _, _, _, _),
         (
             Call = class_method(_, _, ClassId, CallId),
             ClassId = class_id(ClassName, _),
@@ -587,7 +587,7 @@ bound_inst_info_used_modules(Visibility, bound_functor(ConsId, Insts),
     ho_inst_info::in, used_modules::in, used_modules::out) is det.
 
 ho_inst_info_used_modules(Visibility,
-        higher_order(pred_inst_info(_, Modes, _)), !UsedModules) :-
+        higher_order(pred_inst_info(_, Modes, _, _)), !UsedModules) :-
     list.foldl(mer_mode_used_modules(Visibility), Modes, !UsedModules).
 ho_inst_info_used_modules(_, none, !UsedModules).
 

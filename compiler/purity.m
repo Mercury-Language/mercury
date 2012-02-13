@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2011 The University of Melbourne.
+% Copyright (C) 1997-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -190,6 +190,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -516,7 +517,8 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 ArgVars = [InputArg, OutputArg]
             ->
                 GoalExpr = generic_call(cast(unsafe_type_cast),
-                    [InputArg, OutputArg], [in_mode, out_mode], detism_det)
+                    [InputArg, OutputArg], [in_mode, out_mode],
+                    arg_reg_types_unset, detism_det)
             ;
                 GoalExpr = plain_call(PredId, ProcId, ArgVars, Status,
                     MaybeUnifyContext, SymName)
@@ -532,7 +534,8 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
         Purity = ActualPurity,
         ContainsTrace = contains_no_trace_goal
     ;
-        GoalExpr0 = generic_call(GenericCall0, _ArgVars, _Modes0, _Det),
+        GoalExpr0 = generic_call(GenericCall0, _ArgVars, _Modes0,
+            _MaybeArgRegs, _Det),
         GoalExpr = GoalExpr0,
         (
             GenericCall0 = higher_order(_, Purity, _, _)

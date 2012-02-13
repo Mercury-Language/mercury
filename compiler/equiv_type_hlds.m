@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2011 The University of Melbourne.
+% Copyright (C) 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -727,11 +727,12 @@ type_may_occur_in_insts([Inst | Insts]) =
 replace_in_inst_2(_, any(_, none) @ Inst, Inst, no, !TVarSet, !Cache).
 replace_in_inst_2(EqvMap, any(Uniq, higher_order(PredInstInfo0)) @ Inst0, Inst,
         Changed, !TVarSet, !Cache) :-
-    PredInstInfo0 = pred_inst_info(PorF, Modes0, Det),
+    PredInstInfo0 = pred_inst_info(PorF, Modes0, MaybeArgRegs, Det),
     replace_in_modes(EqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
     (
         Changed = yes,
-        Inst = any(Uniq, higher_order(pred_inst_info(PorF, Modes, Det)))
+        PredInstInfo = pred_inst_info(PorF, Modes, MaybeArgRegs, Det),
+        Inst = any(Uniq, higher_order(PredInstInfo))
     ;
         Changed = no,
         Inst = Inst0
@@ -753,11 +754,12 @@ replace_in_inst_2(EqvMap, bound(Uniq, BoundInsts0) @ Inst0, Inst,
 replace_in_inst_2(_, ground(_, none) @ Inst, Inst, no, !TVarSet, !Cache).
 replace_in_inst_2(EqvMap, ground(Uniq, higher_order(PredInstInfo0)) @ Inst0,
         Inst, Changed, !TVarSet, !Cache) :-
-    PredInstInfo0 = pred_inst_info(PorF, Modes0, Det),
+    PredInstInfo0 = pred_inst_info(PorF, Modes0, MaybeArgRegs, Det),
     replace_in_modes(EqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
     (
         Changed = yes,
-        Inst = ground(Uniq, higher_order(pred_inst_info(PorF, Modes, Det)))
+        PredInstInfo = pred_inst_info(PorF, Modes, MaybeArgRegs, Det),
+        Inst = ground(Uniq, higher_order(PredInstInfo))
     ;
         Changed = no,
         Inst = Inst0
@@ -1022,7 +1024,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             GoalExpr = GoalExpr0
         )
     ;
-        GoalExpr0 = generic_call(Details, Args, Modes0, Detism),
+        GoalExpr0 = generic_call(Details, Args, Modes0, MaybeArgRegs, Detism),
         TVarSet0 = !.Info ^ ethri_tvarset,
         Cache0 = !.Info ^ ethri_inst_cache,
         replace_in_modes(EqvMap, Modes0, Modes, Changed, TVarSet0, TVarSet,
@@ -1031,7 +1033,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             Changed = yes,
             !Info ^ ethri_tvarset := TVarSet,
             !Info ^ ethri_inst_cache := Cache,
-            GoalExpr = generic_call(Details, Args, Modes, Detism)
+            GoalExpr = generic_call(Details, Args, Modes, MaybeArgRegs, Detism)
         ;
             Changed = no,
             GoalExpr = GoalExpr0

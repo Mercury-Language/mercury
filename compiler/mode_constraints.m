@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2011 The University of Melbourne.
+% Copyright (C) 2001-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -482,7 +482,7 @@ number_robdd_variables_in_goal_2(InstGraph, GoalId, ParentNonLocals, _,
         ParentNonLocals, Args, Occurring, !RInfo).
 number_robdd_variables_in_goal_2(InstGraph, GoalId, ParentNonLocals, _,
         Occurring, GoalExpr, GoalExpr, !RInfo) :-
-    GoalExpr = generic_call(_, Args, _, _),
+    GoalExpr = generic_call(_, Args, _, _, _),
     number_robdd_variables_at_goal_path(InstGraph, GoalId,
         ParentNonLocals, Args, Occurring, !RInfo).
 number_robdd_variables_in_goal_2(InstGraph, GoalId, ParentNonLocals, _,
@@ -1015,7 +1015,7 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
             )), Functors, !Constraint, !MDI),
     (
         DoHO = yes,
-        Inst = ground(_, higher_order(pred_inst_info(_, ArgModes, _)))
+        Inst = ground(_, higher_order(pred_inst_info(_, ArgModes, _, _)))
     ->
         HoModes0 = !.MDI ^ ho_modes,
         MCI = !.MDI ^ mc_info,
@@ -1335,7 +1335,8 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
         ),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = generic_call(GenericCall, Args, _Modes, _Det),
+        GoalExpr0 = generic_call(GenericCall, Args, _Modes, _MaybeArgRegs,
+            _Det),
         % Note: `_Modes' is invalid for higher-order calls at this point.
         (
             GenericCall = higher_order(Var, _, _, _),

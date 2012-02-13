@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3675,8 +3675,8 @@ match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
     ;
         HOInstInfoA = higher_order(PredInstInfoA),
         HOInstInfoB = higher_order(PredInstInfoB),
-        PredInstInfoA = pred_inst_info(PredOrFunc, ModesA, Detism),
-        PredInstInfoB = pred_inst_info(PredOrFunc, ModesB, Detism),
+        PredInstInfoA = pred_inst_info(PredOrFunc, ModesA, _, Detism),
+        PredInstInfoB = pred_inst_info(PredOrFunc, ModesB, _, Detism),
         mode_list_matches_with_renaming(ModesA, ModesB, Renaming, ModuleInfo)
     ).
 

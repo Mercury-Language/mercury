@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -401,7 +401,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, !ModuleInfo, !CurSCCVariants,
             proc_info_get_vartypes(ProcInfo0, VarTypes0),
             proc_info_get_headvars(ProcInfo0, HeadVars),
             proc_info_get_argmodes(ProcInfo0, ArgModes),
-            list.map(map.lookup(VarTypes0), HeadVars, ArgTypes),
+            map.apply_to_list(HeadVars, VarTypes0, ArgTypes),
             arg_info.compute_in_and_out_vars(!.ModuleInfo, HeadVars,
                 ArgModes, ArgTypes, _InputHeadVars, OutputHeadVars),
             proc_info_get_inferred_determinism(ProcInfo0, CurProcDetism),
@@ -536,7 +536,7 @@ lco_in_goal(Goal0, Goal, !Info, ConstInfo) :-
         )
     ;
         ( GoalExpr0 = negation(_)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _,  _, _, _)
@@ -1301,7 +1301,7 @@ lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         GoalInfo = GoalInfo0,
         Changed = no
     ;
-        GoalExpr0 = generic_call(_, _, _, _),
+        GoalExpr0 = generic_call(_, _, _, _, _),
         lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
             GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo),
         GoalInfo = GoalInfo0

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -493,7 +493,7 @@ intermod_traverse_goal_expr(GoalExpr0, GoalExpr, DoWrite, !Info) :-
         add_proc(PredId, DoWrite, !Info),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = generic_call(CallType, _, _, _),
+        GoalExpr0 = generic_call(CallType, _, _, _, _),
         GoalExpr = GoalExpr0,
         (
             CallType = higher_order(_, _, _, _),

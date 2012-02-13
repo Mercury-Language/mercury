@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2011 The University of Melbourne.
+% Copyright (C) 1995-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -651,7 +651,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             AtomicMsgs),
         Msgs = InitMsgs ++ AtomicMsgs
     ;
-        GoalExpr = generic_call(GenericCall, _, _, _),
+        GoalExpr = generic_call(GenericCall, _, _, _, _),
         Context = goal_info_get_context(GoalInfo),
         hlds_goal.generic_call_id(GenericCall, CallId),
         StartingPieces = [words(call_id_to_string(CallId))],
@@ -1074,7 +1074,7 @@ reqscope_check_goal(Goal, InstMap0, !DetInfo) :-
         )
     ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         )
     ).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -295,17 +295,7 @@ use_double_word_floats(Globals, DoubleWordFloats) :-
             TargetWordBits = 32,
             SinglePrecFloat = no
         ->
-            globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-            (
-                HighLevelCode = yes,
-                DoubleWordFloats = yes
-            ;
-                HighLevelCode = no,
-                % Double word floats in structures works best in conjunction
-                % with float registers. Work on the latter is in progress.
-                globals.lookup_bool_option(Globals, use_float_registers,
-                    DoubleWordFloats)
-            )
+            DoubleWordFloats = yes
         ;
             DoubleWordFloats = no
         )

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2011 The University of Melbourne.
+% Copyright (C) 2004-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -391,7 +391,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
         check_goal_for_exceptions_plain_call(SCC, VarTypes,
             CallPredId, CallProcId, Args, !Result, !ModuleInfo)
     ;
-        GoalExpr = generic_call(Details, Args, _, _),
+        GoalExpr = generic_call(Details, Args, _, _, _),
         check_goal_for_exceptions_generic_call(VarTypes, Details, Args,
             GoalInfo, !Result, !ModuleInfo)
     ;

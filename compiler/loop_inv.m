@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -304,7 +304,7 @@ invariant_goal_candidates_in_goal(PPId, Goal, !IGCs) :-
             invariant_goal_candidates_handle_primitive_goal(Goal, !IGCs)
         )
     ;
-        ( GoalExpr = generic_call(_, _, _, _)
+        ( GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
@@ -671,7 +671,7 @@ cannot_succeed(hlds_goal(_GoalExpr, GoalInfo)) :-
 call_has_inst_any(ModuleInfo, Goal) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
-        GoalExpr = generic_call(_, _, Modes, _)
+        GoalExpr = generic_call(_, _, Modes, _, _)
     ;
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
         Modes = argmodes(ModuleInfo, PredId, ProcId)
@@ -869,7 +869,7 @@ gen_aux_proc_goal(Info, Goal) = AuxGoal :-
             AuxGoal = gen_aux_proc_handle_non_recursive_call(Info, Goal)
         )
     ;
-        ( GoalExpr = generic_call(_, _, _, _)
+        ( GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
@@ -983,7 +983,7 @@ gen_out_proc_goal(PPId, CallAux, Goal) = AuxGoal :-
             AuxGoal = Goal
         )
     ;
-        ( GoalExpr = generic_call(_, _, _, _)
+        ( GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
@@ -1092,7 +1092,7 @@ used_vars(ModuleInfo, Goal) = UsedVars :-
             uniquely_used_args(ModuleInfo),
             Args, argmodes(ModuleInfo, PredId, ProcId))
     ;
-        GoalExpr = generic_call(_, Args, Modes, _),
+        GoalExpr = generic_call(_, Args, Modes, _, _),
         UsedVars = list.filter_map_corresponding(
             uniquely_used_args(ModuleInfo),
             Args, Modes)
@@ -1179,7 +1179,7 @@ goal_inputs(ModuleInfo, Goal) = Inputs :-
         Inputs = list.filter_map_corresponding(input_arg(ModuleInfo),
             Args, argmodes(ModuleInfo, PredId, ProcId))
     ;
-        GoalExpr = generic_call(GenericCall, Args, ArgModes, _),
+        GoalExpr = generic_call(GenericCall, Args, ArgModes, _, _),
         generic_call_vars(GenericCall, GenericCallVars),
         Inputs0 = list.filter_map_corresponding(input_arg(ModuleInfo),
             Args, ArgModes),
@@ -1261,7 +1261,7 @@ goal_outputs(ModuleInfo, Goal) = Outputs :-
         Outputs = list.filter_map_corresponding(output_arg(ModuleInfo),
             Args, argmodes(ModuleInfo, PredId, ProcId))
     ;
-        GoalExpr = generic_call(_, Args, ArgModes, _),
+        GoalExpr = generic_call(_, Args, ArgModes, _, _),
         Outputs = list.filter_map_corresponding(output_arg(ModuleInfo),
             Args, ArgModes)
     ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2011 The University of Melbourne.
+% Copyright (C) 2004-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -324,7 +324,7 @@ add_mc_vars_for_goal(PredId, ProgVarset, Goal, !VarInfo) :-
         )
     ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         )
@@ -459,7 +459,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
                 !Constraints)
         )
     ;
-        GoalExpr = generic_call(Details, _, _, _),
+        GoalExpr = generic_call(Details, _, _, _, _),
         % XXX Need to do something here.
         (
             % XXX Need to do something here.

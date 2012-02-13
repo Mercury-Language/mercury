@@ -562,7 +562,7 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = generic_call(GenericCall, Args, _, _),
+        GoalExpr0 = generic_call(GenericCall, Args, _, _, _),
         % Check whether this call could be specialized.
         (
             (
@@ -3135,9 +3135,10 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         ;
             unexpected($module, $pred, "list.split_list failed.")
         ),
+
         proc_info_interface_determinism(CalledProcInfo, ProcDetism),
         GroundInstInfo = higher_order(pred_inst_info(PredOrFunc,
-            NonCurriedArgModes, ProcDetism))
+            NonCurriedArgModes, arg_reg_types_unset, ProcDetism))
     ;
         in_mode(InMode),
         GroundInstInfo = none,

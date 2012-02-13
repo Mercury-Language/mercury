@@ -1,7 +1,7 @@
 % -----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -244,7 +244,7 @@ record_actual_region_arguments_expr(ModuleInfo, GoalExpr, GoalInfo, CallerPPId,
                 RptaInfoTable, ConstantRTable, DeadRTable, BornRTable),
             Cases, !FormalRegionArgTable, !ActualRegionArgProc)
     ;
-        GoalExpr = generic_call(_, _, _, _),
+        GoalExpr = generic_call(_, _, _, _, _),
         sorry($module, $pred, "generic_call NYI")
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),

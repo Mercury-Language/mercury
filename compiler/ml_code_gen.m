@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2011 The University of Melbourne.
+% Copyright (C) 1999-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -618,7 +618,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
                 Decls, Statements, !Info)
         )
     ;
-        GoalExpr = generic_call(GenericCall, Vars, Modes, Detism),
+        GoalExpr = generic_call(GenericCall, Vars, Modes, _, Detism),
         determinism_to_code_model(Detism, CallCodeModel),
         expect(unify(CodeModel, CallCodeModel), $module, $pred,
             "code model mismatch"),
@@ -771,7 +771,8 @@ goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
             _Unify_context, _SymName),
         SubGoalNonLocals = set_of_var.list_to_set(ArgVars)
     ;
-        GoalExpr = generic_call(GenericCall, ArgVars, _Modes, _Detism),
+        GoalExpr = generic_call(GenericCall, ArgVars, _Modes, _MaybeArgRegs,
+            _Detism),
         (
             GenericCall = higher_order(HOVar, _Purity, _Kind, _Arity),
             SubGoalNonLocals = set_of_var.list_to_set([HOVar | ArgVars])

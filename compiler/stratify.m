@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -226,7 +226,7 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
             true
         )
     ;
-        GoalExpr = generic_call(_Var, _Args, _Modes, _Det)
+        GoalExpr = generic_call(_Var, _Args, _Modes, _MaybeArgRegs, _Det)
         % Do nothing.
     ;
         GoalExpr = unify(_LHS, _RHS, _Mode, _Unification, _UnifyContext)
@@ -386,7 +386,8 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
             true
         )
     ;
-        GoalExpr = generic_call(GenericCall, _Vars, _Modes, _Det),
+        GoalExpr = generic_call(GenericCall, _Vars, _Modes, _MaybeArgRegs,
+            _Det),
         (
             Negated = yes,
             HighOrderLoops = yes,
@@ -818,7 +819,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
         % XXX If the foreign proc may_call_mercury, then we may be missing
         % some calls.
     ;
-        GoalExpr = generic_call(_Var, _Vars, _Modes, _Det),
+        GoalExpr = generic_call(_Var, _Vars, _Modes, _MaybeArgRegs, _Det),
         % Record that the higher order call was made.
         !:CallsHO = calls_higher_order
     ;
@@ -943,7 +944,7 @@ get_called_procs(Goal, !Calls) :-
         GoalExpr = call_foreign_proc(_Attrib, _CPred, _CProc, _, _, _, _)
         % Do nothing.
     ;
-        GoalExpr = generic_call(_Var, _Vars, _Modes, _Det)
+        GoalExpr = generic_call(_Var, _Vars, _Modes, _MaybeArgRegs, _Det)
         % Do nothing.
     ;
         ( GoalExpr = conj(_ConjType, Goals)

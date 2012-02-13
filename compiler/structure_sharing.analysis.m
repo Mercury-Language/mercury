@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -607,7 +607,8 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
             RenamedSharing, !.SharingAs),
         !:Status = lub(CalleeStatus, !.Status)
     ;
-        GoalExpr = generic_call(GenDetails, CallArgs, Modes, _Detism),
+        GoalExpr = generic_call(GenDetails, CallArgs, Modes, _MaybeArgRegs,
+            _Detism),
         analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs,
             Modes, GoalInfo, !SharingAs)
     ;

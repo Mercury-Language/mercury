@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2007-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -259,7 +259,7 @@ collect_non_local_and_in_cond_regions_expr(_, _, _, _, _,
         plain_call(_, _, _, _, _, _),
         !NonLocalRegionsProc, !InCondRegionsProc).
 collect_non_local_and_in_cond_regions_expr(_, _, _, _, _,
-        generic_call(_, _, _, _),
+        generic_call(_, _, _, _, _),
         !NonLocalRegionsProc, !InCondRegionsProc).
 collect_non_local_and_in_cond_regions_expr(_, _, _, _, _,
         call_foreign_proc(_, _, _, _, _, _, _),
@@ -543,7 +543,7 @@ collect_non_local_regions_in_ite_compound_goal(Graph, LRBeforeProc,
         ; Expr = conj(_, [])
         ; Expr = disj([])
         ; Expr = call_foreign_proc(_, _, _, _, _, _, _)
-        ; Expr = generic_call(_, _, _, _)
+        ; Expr = generic_call(_, _, _, _, _)
         ; Expr = shorthand(_)
         ),
         unexpected($module, $pred, "atomic or unsupported goal")
@@ -720,7 +720,7 @@ collect_regions_created_in_condition_compound_goal(Graph,
         ; Expr = conj(_, [])
         ; Expr = disj([])
         ; Expr = call_foreign_proc(_, _, _, _, _, _, _)
-        ; Expr = generic_call(_, _, _, _)
+        ; Expr = generic_call(_, _, _, _, _)
         ; Expr = shorthand(_)
         ),
         unexpected($module, $pred, "atomic or unsupported goal")
@@ -822,7 +822,7 @@ collect_ite_renaming_goal(IteRenamedRegionProc, Graph, Goal,
     (
         ( GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         )
     ;
@@ -969,7 +969,7 @@ collect_ite_renaming_in_condition_compound_goal(IteRenamedRegionProc,
         ; Expr = conj(_, [])
         ; Expr = disj([])
         ; Expr = call_foreign_proc(_, _, _, _, _, _, _)
-        ; Expr = generic_call(_, _, _, _)
+        ; Expr = generic_call(_, _, _, _, _)
         ; Expr = shorthand(_)
         ),
         unexpected($module, $pred, "atomic or unsupported goal")

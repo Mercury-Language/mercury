@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2011 The University of Melbourne.
+% Copyright (C) 2001-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -236,7 +236,7 @@ goal_contains_builtin_unify_or_compare(Goal) = Contains :-
         GoalExpr = unify(_, _, _, _, _),
         Contains = no
     ;
-        ( GoalExpr = generic_call(_, _, _, _)
+        ( GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = plain_call(_, _, _, _, _, _)
         ),
         % Unfortunately, even if the procedure we are calling is neither
@@ -355,7 +355,7 @@ apply_deep_prof_tail_rec_to_goal(Goal0, Goal, TailRecInfo, !FoundTailCall,
         ),
         Continue = no
     ;
-        GoalExpr0 = generic_call(_, _, _, _),
+        GoalExpr0 = generic_call(_, _, _, _, _),
         Goal = Goal0,
         Continue = no
     ;
@@ -518,7 +518,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
             BuiltinState = inline_builtin
         )
     ;
-        GoalExpr = generic_call(_, _, _, _),
+        GoalExpr = generic_call(_, _, _, _, _),
         !:N = !.N + 1
     ;
         GoalExpr = unify(_, _, _, _, _)
@@ -1047,7 +1047,7 @@ deep_prof_transform_goal(Goal0, Goal, AddedImpurity, !DeepInfo) :-
             AddedImpurity = no
         )
     ;
-        GoalExpr0 = generic_call(GenericCall, _, _, _),
+        GoalExpr0 = generic_call(GenericCall, _, _, _, _),
         (
             ( GenericCall = higher_order(_, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
@@ -1631,7 +1631,7 @@ classify_call(ModuleInfo, Expr) = Class :-
             Class = call_class_normal(proc(PredId, ProcId))
         )
     ;
-        Expr = generic_call(Generic, _, _, _),
+        Expr = generic_call(Generic, _, _, _, _),
         Class = call_class_generic(Generic)
     ;
         ( Expr = call_foreign_proc(_, _, _, _, _, _, _)

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -416,7 +416,7 @@ sync_dep_par_conjs_in_goal(Goal0, Goal, InstMap0, InstMap, !SyncInfo) :-
     ;
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         Goal = Goal0
@@ -865,7 +865,7 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
         ;
             ( GoalExpr0 = unify(_, _, _, _, _)
             ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-            ; GoalExpr0 = generic_call(_, _, _, _)
+            ; GoalExpr0 = generic_call(_, _, _, _, _)
             ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             InvariantEstablished = no,
@@ -1203,7 +1203,7 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             ;
                 ( GoalExpr0 = unify(_, _, _, _, _)
                 ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-                ; GoalExpr0 = generic_call(_, _, _, _)
+                ; GoalExpr0 = generic_call(_, _, _, _, _)
                 ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
                 ),
                 insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
@@ -1810,7 +1810,7 @@ specialize_sequences_in_goal(Goal0, Goal, !SpecInfo) :-
     ;
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         Goal = Goal0
@@ -2494,7 +2494,7 @@ should_we_push_wait(Var, Goal, Wait) :-
             )
         )
     ;
-        ( GoalExpr = generic_call(_, _, _, _)
+        ( GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         ( set_of_var.member(NonLocals, Var) ->
@@ -2773,7 +2773,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
             % With generic calls, the only safe assumption is that they produce
             % Var just before return. With foreign code, the signal is done
             % after the return to Mercury execution.
-            ( GoalExpr = generic_call(_, _, _, _)
+            ( GoalExpr = generic_call(_, _, _, _, _)
             ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             ( set_of_var.member(NonLocals, Var) ->

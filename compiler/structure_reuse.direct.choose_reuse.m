@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -596,7 +596,7 @@ compute_match_table_with_continuation(Background, DeadCellTable,
         compute_match_table_goal_list(Background, DeadCellTable,
             Cont, !Table)
     ;
-        GoalExpr = generic_call( _, _, _, _),
+        GoalExpr = generic_call( _, _, _, _, _),
         compute_match_table_goal_list(Background, DeadCellTable,
             Cont, !Table)
     ;
@@ -840,7 +840,7 @@ find_match_in_goal_2(Background, Goal, !Match) :-
     ;
         GoalExpr = plain_call(_, _, _, _, _, _)
     ;
-        GoalExpr = generic_call( _, _, _, _)
+        GoalExpr = generic_call( _, _, _, _, _)
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
@@ -1178,7 +1178,7 @@ annotate_reuses_in_goal(Background, Match, !Goal) :-
         GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;
-        GoalExpr0 = generic_call( _, _, _, _),
+        GoalExpr0 = generic_call( _, _, _, _, _),
         GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;
@@ -1454,7 +1454,7 @@ check_for_cell_caching_2(DeadCellTable, !Goal) :-
         GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;
-        GoalExpr0 = generic_call( _, _, _, _),
+        GoalExpr0 = generic_call( _, _, _, _, _),
         GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;

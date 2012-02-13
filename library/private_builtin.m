@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007, 2011 The University of Melbourne.
+% Copyright (C) 1994-2007, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -850,6 +850,18 @@ __Compare____base_typeclass_info_1_0(
         % while in C they start at 0
     TypeClassInfo = element(Index + 1, TypeClassInfo0)
 ").
+
+%-----------------------------------------------------------------------------%
+
+    % In LLDS grades with float registers, we require a type_ctor_info in
+    % closure layouts to represent hidden float values which are passed via
+    % regular registers. The standard type_ctor_info represents hidden float
+    % arguments passed via float registers.
+
+:- interface.
+
+:- type float_box
+    --->    float_box(float).
 
 %-----------------------------------------------------------------------------%
 

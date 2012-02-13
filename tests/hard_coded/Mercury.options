@@ -41,6 +41,7 @@ MCFLAGS-from_ground_term_bug = 	--from-ground-term-threshold=4
 MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-ho_order2	=	--optimize-higher-order
+MCFLAGS-ho_float_reg    =       --no-warn-overlapping-scopes
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-one_member	=	-O5
 MCFLAGS-impure_foreign	=	--optimize-duplicate-calls

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2011 The University of Melbourne.
+% Copyright (C) 2007-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -675,7 +675,7 @@ erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
         erl_gen_disj(Goals, CodeModel, InstMap, Context, MaybeSuccessExpr,
             Statement, !Info)
     ;
-        GoalExpr = generic_call(GenericCall, Vars, Modes, CallDetism),
+        GoalExpr = generic_call(GenericCall, Vars, Modes, _, CallDetism),
         determinism_to_code_model(CallDetism, CallCodeModel),
         expect(unify(CodeModel, CallCodeModel), $module, $pred,
             "code model mismatch"),

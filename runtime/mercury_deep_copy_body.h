@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2005, 2007, 2011 The University of Melbourne.
+** Copyright (C) 1997-2005, 2007, 2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -504,7 +504,12 @@ try_again:
             ** and then the argument typeinfos themselves.
             */
             {
-                MR_Unsigned         args, i;
+                MR_Unsigned         num_r_args;
+                MR_Unsigned         num_f_args;
+                MR_Unsigned         num_args;
+                MR_Unsigned         r_offset;
+                MR_Unsigned         f_offset;
+                MR_Unsigned         i;
                 MR_Closure          *old_closure;
                 MR_Closure          *new_closure;
                 MR_Word             new_closure_word;
@@ -514,18 +519,21 @@ try_again:
 
                 old_closure = (MR_Closure *) data_value;
                 closure_layout = old_closure->MR_closure_layout;
-                args = old_closure->MR_closure_num_hidden_args;
+                num_r_args = MR_closure_num_hidden_r_args(old_closure);
+                num_f_args = MR_closure_num_hidden_f_args(old_closure);
+                num_args = num_r_args + num_f_args;
 
                 /* create new closure */
                 attrib = maybe_attrib(data_value);
-                MR_offset_incr_saved_hp(new_closure_word, 0, args + 3,
+                MR_offset_incr_saved_hp(new_closure_word, 0, num_args + 3,
                     attrib, NULL);
                 new_closure = (MR_Closure *) new_closure_word;
 
                 /* copy the fixed fields */
                 new_closure->MR_closure_layout = closure_layout;
-                new_closure->MR_closure_num_hidden_args = args;
                 new_closure->MR_closure_code = old_closure->MR_closure_code;
+                new_closure->MR_closure_num_hidden_args_rf =
+                    old_closure->MR_closure_num_hidden_args_rf;
 
                 /*
                 ** Fill in the pseudo_typeinfos in the closure layout
@@ -535,15 +543,28 @@ try_again:
                     old_closure);
 
                 /* copy the arguments */
-                for (i = 0; i < args; i++) {
-                    MR_PseudoTypeInfo arg_pseudo_type_info;
+                r_offset = 0;
+                f_offset = num_r_args;
 
-                    arg_pseudo_type_info =
+                for (i = 0; i < num_args; i++) {
+                    MR_PseudoTypeInfo   arg_pti;
+                    MR_Unsigned         offset;
+
+                    arg_pti =
                         closure_layout->MR_closure_arg_pseudo_type_info[i];
-                    new_closure->MR_closure_hidden_args_0[i] =
+#ifdef MR_MAY_REORDER_CLOSURE_HIDDEN_ARGS
+                    if (MR_unify_pseudo_type_info_float(arg_pti)) {
+                        offset = f_offset++;
+                    } else {
+                        offset = r_offset++;
+                    }
+#else
+                    offset = i;
+#endif
+                    new_closure->MR_closure_hidden_args_0[offset] =
                         copy_arg(NULL,
-                            old_closure->MR_closure_hidden_args_0[i], NULL,
-                            type_info_arg_vector, arg_pseudo_type_info,
+                            old_closure->MR_closure_hidden_args_0[offset],
+                            NULL, type_info_arg_vector, arg_pti,
                             lower_limit, upper_limit);
                 }
 

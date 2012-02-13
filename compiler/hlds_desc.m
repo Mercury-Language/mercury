@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2011 The University of Melbourne.
+% Copyright (C) 2008-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,7 +92,7 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
         GoalExpr = plain_call(_, _, Args, _, _, SymName),
         Desc = sym_name_to_string(SymName) ++ describe_args(VarSet, Args)
     ;
-        GoalExpr = generic_call(GCall, Args, _, _),
+        GoalExpr = generic_call(GCall, Args, _, _, _),
         (
             GCall = higher_order(Var, _, _, _),
             Desc = describe_var(VarSet, Var) ++ describe_args(VarSet, Args)

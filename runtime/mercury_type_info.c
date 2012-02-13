@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1995-2006, 2011 The University of Melbourne.
+** Copyright (C) 1995-2006, 2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -454,6 +454,21 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
     }
 
     return MR_TRUE;
+}
+
+MR_bool
+MR_unify_pseudo_type_info_float(MR_PseudoTypeInfo pti)
+{
+    MR_TypeCtorInfo tci1;
+    MR_TypeCtorInfo tci2;
+
+    if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti)) {
+        return MR_FALSE;
+    }
+
+    tci1 = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti);
+    tci2 = (MR_TypeCtorInfo) MR_FLOAT_CTOR_ADDR;
+    return MR_unify_type_ctor_info(tci1, tci2);
 }
 
 int

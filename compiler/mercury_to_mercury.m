@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1310,7 +1310,7 @@ mercury_format_structured_inst(not_reached, Indent, _, !U) :-
     pred_inst_info::in, inst_varset::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_ground_pred_inst_info(Uniq, PredInstInfo, VarSet, !U) :-
-    PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+    PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
     (
         Uniq = shared
     ;
@@ -1355,13 +1355,21 @@ mercury_format_ground_pred_inst_info(Uniq, PredInstInfo, VarSet, !U) :-
         add_string(" is ", !U),
         mercury_format_det(Det, !U),
         add_string(")", !U)
+    ),
+    (
+        MaybeArgRegs = arg_reg_types(ArgRegs),
+        add_string(" /* arg regs: [", !U),
+        mercury_format_arg_reg_list(ArgRegs, !U),
+        add_string("] */", !U)
+    ;
+        MaybeArgRegs = arg_reg_types_unset
     ).
 
 :- pred mercury_format_any_pred_inst_info(uniqueness::in, pred_inst_info::in,
     inst_varset::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_any_pred_inst_info(Uniq, PredInstInfo, VarSet, !U) :-
-    PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+    PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
     (
         Uniq = shared
     ;
@@ -1406,6 +1414,34 @@ mercury_format_any_pred_inst_info(Uniq, PredInstInfo, VarSet, !U) :-
         add_string(" is ", !U),
         mercury_format_det(Det, !U),
         add_string(")", !U)
+    ),
+    (
+        MaybeArgRegs = arg_reg_types(ArgRegs),
+        add_string(" /* arg regs: [", !U),
+        mercury_format_arg_reg_list(ArgRegs, !U),
+        add_string("] */", !U)
+    ;
+        MaybeArgRegs = arg_reg_types_unset
+    ).
+
+:- pred mercury_format_arg_reg_list(list(ho_arg_reg)::in, U::di, U::uo) is det
+    <= output(U).
+
+mercury_format_arg_reg_list([], !U).
+mercury_format_arg_reg_list([H | T], !U) :-
+    (
+        H = ho_arg_reg_r,
+        add_string("reg_r", !U)
+    ;
+        H = ho_arg_reg_f,
+        add_string("reg_f", !U)
+    ),
+    (
+        T = []
+    ;
+        T = [_ | _],
+        add_string(", ", !U),
+        mercury_format_arg_reg_list(T, !U)
     ).
 
 :- instance inst_info(simple_inst_info) where [
@@ -1879,7 +1915,7 @@ mercury_format_mode((InstA -> InstB), InstInfo, !U) :-
         % in a nice format
         %
         InstA = ground(_Uniq, higher_order(
-            pred_inst_info(_PredOrFunc, _Modes, _Det))),
+            pred_inst_info(_PredOrFunc, _Modes, _, _Det))),
         InstB = InstA
     ->
         mercury_format_inst(InstA, InstInfo, !U)

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2006-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,7 +102,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
             true
         )
     ;
-        !.Expr = generic_call(_, _, _, _)
+        !.Expr = generic_call(_, _, _, _, _)
     ;
         % XXX Can they be nondet? If so, LFU variables need to be added
         % to !LBU.

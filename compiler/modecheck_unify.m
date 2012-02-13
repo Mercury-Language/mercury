@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -492,7 +492,8 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     instmap_lookup_var(InstMap0, X, InstOfX),
     InstOfY = ground(unique, higher_order(LambdaPredInfo)),
-    LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes, LambdaDet),
+    LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes,
+        arg_reg_types_unset, LambdaDet),
     (
         abstractly_unify_inst(is_dead, InstOfX, InstOfY, real_unify,
             UnifyInst, _Det, ModuleInfo0, ModuleInfo1)

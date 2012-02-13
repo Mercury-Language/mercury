@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -490,7 +490,7 @@ is_pushable_goal(PushInfo, Goal, Pushable) :-
             )
         ;
             ( GoalExpr = plain_call(_, _, _, _, _, _)
-            ; GoalExpr = generic_call(_, _, _, _)
+            ; GoalExpr = generic_call(_, _, _, _, _)
             ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             Pushable = pushable
@@ -627,7 +627,7 @@ push_into_goal(LoHi, HeadPath, TailPaths, Goal0, Goal, Pushable) :-
         (
             ( GoalExpr0 = unify(_, _, _, _, _)
             ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-            ; GoalExpr0 = generic_call(_, _, _, _)
+            ; GoalExpr0 = generic_call(_, _, _, _, _)
             ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             Goal = Goal0,

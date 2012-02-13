@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -160,7 +160,7 @@ forward_use_in_composite_goal(VarTypes, !Goal, !InstantiatedVars,
     ;
         ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         unexpected($module, $pred, "atomic goal")
@@ -278,7 +278,7 @@ add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
         add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
         Expr = scope(Reason, Goal)
     ;
-        Expr0 = generic_call(_, _, _, _),
+        Expr0 = generic_call(_, _, _, _, _),
         Expr = Expr0
     ;
         Expr0 = plain_call(_, _, _, _, _, _),

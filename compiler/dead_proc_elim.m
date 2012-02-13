@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -497,7 +497,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
         dead_proc_examine_goal(Then, CurrProc, !Queue, !Needed),
         dead_proc_examine_goal(Else, CurrProc, !Queue, !Needed)
     ;
-        GoalExpr = generic_call(_, _, _, _)
+        GoalExpr = generic_call(_, _, _, _, _)
     ;
         GoalExpr = plain_call(PredId, ProcId, _,_,_,_),
         Entity = entity_proc(PredId, ProcId),
@@ -1104,7 +1104,7 @@ pre_modecheck_examine_goal_expr(GoalExpr, !DeadInfo) :-
         GoalExpr = plain_call(_, _, _, _, _, PredName),
         dead_pred_info_add_pred_name(PredName, !DeadInfo)
     ;
-        GoalExpr = generic_call(_, _, _, _)
+        GoalExpr = generic_call(_, _, _, _, _)
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;

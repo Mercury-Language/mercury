@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2011 The University of Melbourne.
+% Copyright (C) 1997-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1817,7 +1817,7 @@ var_inst_contains_any(ModuleInfo, Instmap, Var) :-
 %-----------------------------------------------------------------------------%
 
 pred_inst_info_is_nonstandard_func_mode(ModuleInfo, PredInstInfo) :-
-    PredInstInfo = pred_inst_info(pf_function, ArgModes, _),
+    PredInstInfo = pred_inst_info(pf_function, ArgModes, _, _),
     Arity = list.length(ArgModes),
     \+ pred_inst_matches(PredInstInfo,
         pred_inst_info_standard_func_mode(Arity), ModuleInfo).
@@ -1826,11 +1826,12 @@ ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfo) :-
     HOInstInfo = higher_order(PredInstInfo),
     pred_inst_info_is_nonstandard_func_mode(ModuleInfo, PredInstInfo).
 
-pred_inst_info_standard_func_mode(Arity) =
-        pred_inst_info(pf_function, ArgModes, detism_det) :-
+pred_inst_info_standard_func_mode(Arity) = PredInstInfo :-
     in_mode(InMode),
     out_mode(OutMode),
-    ArgModes = list.duplicate(Arity - 1, InMode) ++ [OutMode].
+    ArgModes = list.duplicate(Arity - 1, InMode) ++ [OutMode],
+    PredInstInfo = pred_inst_info(pf_function, ArgModes, arg_reg_types_unset,
+        detism_det).
 
 %-----------------------------------------------------------------------------%
 

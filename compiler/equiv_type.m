@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1414,7 +1414,7 @@ replace_in_pred_mode(Location, PredName, OrigArity, Context, DeclType,
         (
             WithInst = ground(_, GroundInstInfo),
             GroundInstInfo = higher_order(HOInst),
-            HOInst = pred_inst_info(PredOrFunc, ExtraModes0, DetPrime),
+            HOInst = pred_inst_info(PredOrFunc, ExtraModes0, _, DetPrime),
             ( MaybePredOrFunc0 = no
             ; MaybePredOrFunc0 = yes(PredOrFunc)
             )

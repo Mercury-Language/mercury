@@ -256,7 +256,7 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
                 SeenUsableRecursion0 = have_not_seen_recursive_call
             )
         ;
-            GoalExpr = generic_call(_, _, _, _),
+            GoalExpr = generic_call(_, _, _, _, _),
             % We cannot determine if a generic call is recursive or not,
             % however it most likely is not. In either case, we cannot perform
             % the loop control transformation.
@@ -920,7 +920,7 @@ goal_rewrite_recursive_call(Info, IsLastGoal, !Goal, UseParentStack,
         )
     ;
         ( GoalExpr0 = unify(_, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr0 = conj(_, _)
         ; GoalExpr0 = disj(_)
@@ -931,7 +931,7 @@ goal_rewrite_recursive_call(Info, IsLastGoal, !Goal, UseParentStack,
         ),
         (
             ( GoalExpr0 = unify(_, _, _, _, _)
-            ; GoalExpr0 = generic_call(_, _, _, _)
+            ; GoalExpr0 = generic_call(_, _, _, _, _)
             ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             GoalExpr = GoalExpr0,
@@ -1099,7 +1099,7 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
         !.Goal = hlds_goal(GoalExpr0, _),
         (
             ( GoalExpr0 = unify(_, _, _, _, _)
-            ; GoalExpr0 = generic_call(_, _, _, _)
+            ; GoalExpr0 = generic_call(_, _, _, _, _)
             ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             % These cannot be a recursive call and they cannot be a base case

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -274,9 +274,9 @@ generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
                 ForwardLiveVarsBeforeGoal, SubGoal, Code, !CI)
         )
     ;
-        GoalExpr = generic_call(GenericCall, Args, Modes, Det),
+        GoalExpr = generic_call(GenericCall, Args, Modes, MaybeRegTypes, Det),
         call_gen.generate_generic_call(CodeModel, GenericCall, Args,
-            Modes, Det, GoalInfo, Code, !CI)
+            Modes, MaybeRegTypes, Det, GoalInfo, Code, !CI)
     ;
         GoalExpr = plain_call(PredId, ProcId, Args, BuiltinState, _, _),
         (

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007, 2009, 2011 The University of Melbourne.
+** Copyright (C) 1998-2007, 2009, 2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -284,6 +284,8 @@ MR_lookup_closure_long_lval(MR_LongLval locn, MR_Closure *closure,
     MR_bool *succeeded)
 {
     int             locn_num;
+    int             num_r_args;
+    int             num_f_args;
     int             offset;
     MR_Word         value;
     MR_Word         baseaddr;
@@ -299,7 +301,8 @@ MR_lookup_closure_long_lval(MR_LongLval locn, MR_Closure *closure,
             if (MR_print_locn) {
                 printf("closure r%d\n", locn_num);
             }
-            if (locn_num <= closure->MR_closure_num_hidden_args) {
+            num_r_args = MR_closure_num_hidden_r_args(closure);
+            if (locn_num <= num_r_args) {
                 value = closure->MR_closure_hidden_args(locn_num);
                 *succeeded = MR_TRUE;
             }
@@ -308,6 +311,12 @@ MR_lookup_closure_long_lval(MR_LongLval locn, MR_Closure *closure,
         case MR_LONG_LVAL_TYPE_F:
             if (MR_print_locn) {
                 printf("closure f%d\n", locn_num);
+            }
+            num_r_args = MR_closure_num_hidden_r_args(closure);
+            num_f_args = MR_closure_num_hidden_f_args(closure);
+            if (locn_num <= num_f_args) {
+                value = closure->MR_closure_hidden_args(num_r_args + locn_num);
+                *succeeded = MR_TRUE;
             }
             break;
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2011 The University of Melbourne.
+% Copyright (C) 1999-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -512,8 +512,8 @@ equal_goal_exprs(GoalExprA, GoalExprB, !Subst) :-
         GoalExprB = plain_call(PredId, _, ArgVarsB, _, _, _),
         equal_vars(ArgVarsA, ArgVarsB, !Subst)
     ;
-        GoalExprA = generic_call(CallDetails, ArgVarsA, _, _),
-        GoalExprB = generic_call(CallDetails, ArgVarsB, _, _),
+        GoalExprA = generic_call(CallDetails, ArgVarsA, _, _, _),
+        GoalExprB = generic_call(CallDetails, ArgVarsB, _, _, _),
         equal_vars(ArgVarsA, ArgVarsB, !Subst)
     ;
         GoalExprA = switch(Var, CanFail, CasesA),
@@ -679,7 +679,7 @@ normalise_goal(Goal0, Goal) :-
 normalise_goal_expr(GoalExpr0, GoalExpr) :-
     (
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),

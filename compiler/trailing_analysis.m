@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -420,7 +420,7 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             )
         )
     ;
-        GoalExpr = generic_call(Details, _Args, _ArgModes, _),
+        GoalExpr = generic_call(Details, _Args, _ArgModes, _, _),
         (
             % XXX Use results of closure analysis to handle this.
             Details = higher_order(_Var, _, _, _),
@@ -935,7 +935,7 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
         Status = attributes_imply_trail_mod(Attributes)
     ;
         % XXX We should use any results from closure analysis here.
-        !.GoalExpr = generic_call(GenericCall, _, _, _),
+        !.GoalExpr = generic_call(GenericCall, _, _, _, _),
         (
             GenericCall = higher_order(_, _, _, _),
             Status = trail_may_modify

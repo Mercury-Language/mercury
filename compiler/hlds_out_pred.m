@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,6 +84,7 @@
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module int.
@@ -727,6 +728,7 @@ write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     proc_info_get_headvars(Proc, HeadVars),
     proc_info_get_argmodes(Proc, HeadModes),
     proc_info_get_maybe_arglives(Proc, MaybeArgLives),
+    proc_info_get_reg_r_headvars(Proc, RegR_HeadVars),
     proc_info_maybe_arg_info(Proc, MaybeArgInfos),
     proc_info_get_goal(Proc, Goal),
     proc_info_get_context(Proc, ModeContext),
@@ -954,6 +956,15 @@ write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         io.nl(!IO)
     ;
         MaybeArgLives = no
+    ),
+    ( set_of_var.is_non_empty(RegR_HeadVars) ->
+        write_indent(Indent, !IO),
+        io.write_string("% reg_r headvars: ", !IO),
+        io.write_list(set_of_var.to_sorted_list(RegR_HeadVars),
+            ", ", mercury_output_var(VarSet, AppendVarNums), !IO),
+        io.nl(!IO)
+    ;
+        true
     ),
     (
         string.contains_char(DumpOptions, 'A'),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -484,7 +484,8 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         list.duplicate(Arity, in_mode, Modes),
         goal_info_init(Context, GoalInfo),
         Details = event_call(EventName),
-        GoalExpr0 = generic_call(Details, HeadVars, Modes, detism_det),
+        GoalExpr0 = generic_call(Details, HeadVars, Modes, arg_reg_types_unset,
+            detism_det),
         Goal0 = hlds_goal(GoalExpr0, GoalInfo),
         CallId = generic_call_id(gcid_event_call(EventName)),
         insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
@@ -551,11 +552,13 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
             ->
                 % Initialize some fields to junk.
                 Modes = [],
+                MaybeArgRegs = arg_reg_types_unset,
                 Det = detism_erroneous,
 
                 GenericCall = higher_order(PredVar, Purity, pf_predicate,
                     Arity),
-                Call = generic_call(GenericCall, RealHeadVars, Modes, Det),
+                Call = generic_call(GenericCall, RealHeadVars, Modes,
+                    MaybeArgRegs, Det),
 
                 hlds_goal.generic_call_id(GenericCall, CallId)
             ;

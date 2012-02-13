@@ -1339,8 +1339,8 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % We only use the float registers if floats would not fit into the
     % regular registers.
-    option_implies(unboxed_float, use_float_registers, bool(no),
-        !Globals),
+    option_implies(highlevel_code, use_float_registers, bool(no), !Globals),
+    option_implies(unboxed_float, use_float_registers, bool(no), !Globals),
 
     % Changing this means that the code in make_hlds_passes.m that
     % handles the declarations for the global variables used by

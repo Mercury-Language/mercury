@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2011 The University of Melbourne.
+% Copyright (C) 2004-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -304,7 +304,8 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !VarSet, !VarTypes) :-
             )
 
         ;
-            !.GoalExpr = generic_call(Details, Args0, Modes, Determinism),
+            !.GoalExpr = generic_call(Details, Args0, Modes, MaybeArgRegs,
+                Determinism),
             Context = goal_info_get_context(!.GoalInfo),
             make_unifications(Context, Unifications, Args0, Args, !SeenSoFar,
                 !VarSet, !VarTypes),
@@ -316,7 +317,8 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !VarSet, !VarTypes) :-
                 % Need to put the call with its new args in a conjunction
                 % with the unifications.
                 Unifications = [_ | _],
-                CallGoalExpr = generic_call(Details, Args, Modes, Determinism),
+                CallGoalExpr = generic_call(Details, Args, Modes, MaybeArgRegs,
+                    Determinism),
                 replace_call_with_conjunction(CallGoalExpr, Unifications,
                     Args, !:GoalExpr, !GoalInfo)
             )

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2011 The University of Melbourne.
+% Copyright (C) 1995-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -208,7 +208,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
                 "trace runtime cond")
         ;
             ( SingleExpr = plain_call(_, _, _, _, _, _)
-            ; SingleExpr = generic_call(_, _, _, _)
+            ; SingleExpr = generic_call(_, _, _, _, _)
             ; SingleExpr = unify(_, _, _, _, _)
             ; SingleExpr = conj(_, _)
             ; SingleExpr = disj(_)

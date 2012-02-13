@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2011 The University of Melbourne.
+% Copyright (C) 2007-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -316,7 +316,7 @@ ssdebug_first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
             Builtin = out_of_line_builtin
         )
     ;
-        GoalExpr0 = generic_call(_, _, _, _),
+        GoalExpr0 = generic_call(_, _, _, _, _),
         insert_context_update_call(!.ModuleInfo, !Goal, !ProcInfo)
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)

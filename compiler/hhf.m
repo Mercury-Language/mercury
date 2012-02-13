@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2011 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -240,7 +240,7 @@ convert_goal_expr_to_hhf(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         GoalExpr0 = plain_call(_, _, _, _, _, _),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = generic_call(_, _, _, _),
+        GoalExpr0 = generic_call(_, _, _, _, _),
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),

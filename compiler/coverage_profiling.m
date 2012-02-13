@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2011 The University of Melbourne.
+% Copyright (C) 2001-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -240,7 +240,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
                 GathersCoverageAfter = no
             )
         ;
-            GoalExpr0 = generic_call(GenericCall, _, _, _),
+            GoalExpr0 = generic_call(GenericCall, _, _, _, _),
             (
                 ( GenericCall = higher_order(_, _, _, _)
                 ; GenericCall = class_method(_, _, _, _)
@@ -878,7 +878,7 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
         ),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = generic_call(GenericCall, _, _, _),
+        GoalExpr0 = generic_call(GenericCall, _, _, _, _),
         (
             ( GenericCall = higher_order(_, _, _, _)
             ; GenericCall = class_method(_, _, _, _)

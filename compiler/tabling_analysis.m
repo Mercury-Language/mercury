@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -336,7 +336,7 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
             MaybeAnalysisStatus, !ModuleInfo)
     ;
-        GoalExpr = generic_call(Details, _Args, _ArgModes, _),
+        GoalExpr = generic_call(Details, _Args, _ArgModes, _, _),
         (
             % XXX We should use any results from closure analysis here.
             Details = higher_order(_Var, _, _, _),
@@ -633,7 +633,7 @@ annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         !.GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
         Status = get_mm_tabling_status_from_attributes(Attributes)
     ;
-        !.GoalExpr = generic_call(GenericCall, _Args, _Modes, _Detism),
+        !.GoalExpr = generic_call(GenericCall, _Args, _Modes, _, _Detism),
         (
             % XXX We should use any results from closure analysis here.
             GenericCall = higher_order(_Var, _, _, _),

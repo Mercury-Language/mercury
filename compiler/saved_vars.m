@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -167,7 +167,7 @@ saved_vars_in_goal(Goal0, Goal, !SlotInfo) :-
         GoalExpr = scope(Reason, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        ( GoalExpr0 = generic_call(_, _, _, _)
+        ( GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
@@ -298,7 +298,7 @@ can_push(Var, Goal) = CanPush :-
             ( GoalExpr = conj(parallel_conj, _)
             ; GoalExpr = unify(_, _, _, _, _)
             ; GoalExpr = plain_call(_, _, _, _, _, _)
-            ; GoalExpr = generic_call(_, _, _, _)
+            ; GoalExpr = generic_call(_, _, _, _, _)
             ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             CanPush = no
@@ -392,7 +392,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
-            Goal0Expr = generic_call(_, _, _, _),
+            Goal0Expr = generic_call(_, _, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, Goal0, Goal1),

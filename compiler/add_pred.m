@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -295,7 +295,8 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         AssignGoal = hlds_goal(AssignExpr, GoalInfoWithZero),
 
         CastExpr = generic_call(cast(unsafe_type_inst_cast),
-            [ZeroVar] ++ HeadVarList, [in_mode, uo_mode], detism_det),
+            [ZeroVar] ++ HeadVarList, [in_mode, uo_mode], arg_reg_types_unset,
+            detism_det),
         goal_info_set_nonlocals(
             set_of_var.list_to_set([ZeroVar | HeadVarList]),
             GoalInfo0, GoalInfoWithZeroHeadVars),

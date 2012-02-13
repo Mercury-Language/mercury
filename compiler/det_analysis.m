@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -648,7 +648,8 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         GoalExpr = plain_call(PredId, ProcId, Args, Builtin, UnifyContext,
             Name)
     ;
-        GoalExpr0 = generic_call(GenericCall, _ArgVars, _Modes, CallDetism),
+        GoalExpr0 = generic_call(GenericCall, _ArgVars, _Modes, _MaybArgRegs,
+            CallDetism),
         det_infer_generic_call(GenericCall, CallDetism, GoalInfo, SolnContext,
             RightFailingContexts, Detism, GoalFailingContexts, !DetInfo),
         GoalExpr = GoalExpr0

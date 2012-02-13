@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2011 University of Melbourne.
+% Copyright (C) 1999-2012 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -361,7 +361,7 @@ deforest_goal_expr(GoalExpr0, GoalExpr, !GoalInfo, !PDInfo) :-
             !PDInfo)
     ;
         ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ),
         GoalExpr = GoalExpr0
@@ -448,7 +448,7 @@ deforest_get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
         pd_util.get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo)
     ;
         ( GoalExpr = unify(_, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr = conj(_, _)
         ; GoalExpr = negation(_)
@@ -1767,7 +1767,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     ;
         ( EarlierGoalExpr = unify(_, _, _, _, _)
         ; EarlierGoalExpr = plain_call(_, _, _, _, _, _)
-        ; EarlierGoalExpr = generic_call(_, _, _, _)
+        ; EarlierGoalExpr = generic_call(_, _, _, _, _)
         ; EarlierGoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ; EarlierGoalExpr = conj(_, _)
         ; EarlierGoalExpr = negation(_)

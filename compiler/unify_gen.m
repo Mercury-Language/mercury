@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -722,7 +722,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         Args = [CallPred | CallArgs],
         ProcHeadVars = [ProcPred | ProcArgs],
         ProcInfoGoal = hlds_goal(generic_call(higher_order(ProcPred, _, _, _),
-            ProcArgs, _, CallDeterminism), _GoalInfo),
+            ProcArgs, _, _, CallDeterminism), _GoalInfo),
         determinism_to_code_model(CallDeterminism, CallCodeModel),
         % Check that the code models are compatible. Note that det is not
         % compatible with semidet, and semidet is not compatible with nondet,
@@ -738,7 +738,12 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         % in deep profiling grades.
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, profile_deep, Deep),
-        Deep = no
+        Deep = no,
+        % XXX If float registers are used, float register arguments are placed
+        % after regular register arguments in the hidden arguments vector.
+        % The code below does not handle that layout.
+        globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
+        UseFloatRegs = no
     ->
         (
             CallArgs = [],
@@ -848,17 +853,20 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         % is never looked at.
         add_scalar_static_cell(ClosureLayoutRvalsTypes, ClosureDataAddr, !CI),
         ClosureLayoutRval = const(llconst_data_addr(ClosureDataAddr, no)),
-        list.length(Args, NumArgs),
         proc_info_arg_info(ProcInfo, ArgInfo),
         VarTypes = get_var_types(!.CI),
         MayUseAtomic0 = initial_may_use_atomic(ModuleInfo),
-        generate_pred_args(!.CI, VarTypes, Args, ArgInfo, PredArgs,
+        generate_pred_args(!.CI, VarTypes, Args, ArgInfo, ArgsR, ArgsF,
             MayUseAtomic0, MayUseAtomic),
+        list.length(ArgsR, NumArgsR),
+        list.length(ArgsF, NumArgsF),
+        NumArgsRF = encode_num_generic_call_vars(NumArgsR, NumArgsF),
+        list.append(ArgsR, ArgsF, ArgsRF),
         Vector = [
             cell_arg_full_word(ClosureLayoutRval, complete),
             cell_arg_full_word(CodeAddrRval, complete),
-            cell_arg_full_word(const(llconst_int(NumArgs)), complete)
-            | PredArgs
+            cell_arg_full_word(const(llconst_int(NumArgsRF)), complete)
+            | ArgsRF
         ],
         % XXX construct_dynamically is just a dummy value. We just want
         % something which is not construct_in_region(_).
@@ -902,15 +910,15 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
     Code = ProduceCode ++ AssignCode ++ IncrCode ++ VarsCode.
 
 :- pred generate_pred_args(code_info::in, vartypes::in, list(prog_var)::in,
-    list(arg_info)::in, list(cell_arg)::out,
+    list(arg_info)::in, list(cell_arg)::out, list(cell_arg)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
-generate_pred_args(_, _, [], _, [], !MayUseAtomic).
-generate_pred_args(_, _, [_ | _], [], _, !MayUseAtomic) :-
+generate_pred_args(_, _, [], _, [], [], !MayUseAtomic).
+generate_pred_args(_, _, [_ | _], [], _, _, !MayUseAtomic) :-
     unexpected($module, $pred, "insufficient args").
 generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
-        [CellArg | CellArgs], !MayUseAtomic) :-
-    ArgInfo = arg_info(_, ArgMode),
+        ArgsR, ArgsF, !MayUseAtomic) :-
+    ArgInfo = arg_info(reg(RegType, _), ArgMode),
     (
         ArgMode = top_in,
         IsDummy = variable_is_of_dummy_type(CI, Var),
@@ -931,8 +939,17 @@ generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
     map.lookup(VarTypes, Var, Type),
     get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
-    generate_pred_args(CI, VarTypes, Vars, ArgInfos, CellArgs,
-        !MayUseAtomic).
+    generate_pred_args(CI, VarTypes, Vars, ArgInfos, ArgsR0, ArgsF0,
+        !MayUseAtomic),
+    (
+        RegType = reg_r,
+        ArgsR = [CellArg | ArgsR0],
+        ArgsF = ArgsF0
+    ;
+        RegType = reg_f,
+        ArgsR = ArgsR0,
+        ArgsF = [CellArg | ArgsF0]
+    ).
 
 :- pred generate_cons_args(list(prog_var)::in, list(mer_type)::in,
     list(uni_mode)::in, list(arg_width)::in, list(int)::in,

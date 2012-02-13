@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 1994-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -250,7 +250,7 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
                 !:FollowVarsMap, !:NextNonReservedR, !:NextNonReservedF)
         )
     ;
-        GoalExpr0 = generic_call(GenericCall, Args, Modes, Det),
+        GoalExpr0 = generic_call(GenericCall, Args, Modes, MaybeArgRegs, Det),
         GoalExpr = GoalExpr0,
         (
             GenericCall = cast(_)
@@ -262,20 +262,27 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
             ),
             determinism_to_code_model(Det, CodeModel),
             map.apply_to_list(Args, VarTypes, Types),
-            % Generic calls use rN registers for all arguments.
-            make_arg_infos(Types, Modes, CodeModel, ModuleInfo, reg_r,
+            generic_call_arg_reg_types(ModuleInfo, VarTypes, GenericCall,
+                Args, MaybeArgRegs, ArgRegTypes),
+            make_arg_infos(Types, Modes, ArgRegTypes, CodeModel, ModuleInfo,
                 ArgInfos),
             assoc_list.from_corresponding_lists(Args, ArgInfos, ArgsInfos),
+            % XXX use arg_info.generic_call_arg_reg_types?
             arg_info.partition_args(ArgsInfos, InVarInfos, _),
-            assoc_list.keys(InVarInfos, InVars),
+            list.filter(is_reg_r_arg, InVarInfos, InVarInfosR, InVarInfosF),
+            assoc_list.keys(InVarInfosR, InVarsR),
+            assoc_list.keys(InVarInfosF, InVarsF),
             module_info_get_globals(ModuleInfo, Globals),
             call_gen.generic_call_info(Globals, GenericCall,
-                length(InVars), _, SpecifierArgInfos, FirstInput, _),
+                length(InVarsR), length(InVarsF), _, SpecifierArgInfos,
+                FirstInputR, _),
+            FirstInputF = 1,
             find_follow_vars_from_arginfo(SpecifierArgInfos,
                 map.init, !:FollowVarsMap, 1, _, 1, _),
-            find_follow_vars_from_generic_in_vars(InVars, !FollowVarsMap,
-                FirstInput, !:NextNonReservedR),
-            !:NextNonReservedF = 1
+            find_follow_vars_from_generic_in_vars(reg_r, InVarsR,
+                !FollowVarsMap, FirstInputR, !:NextNonReservedR),
+            find_follow_vars_from_generic_in_vars(reg_f, InVarsF,
+                !FollowVarsMap, FirstInputF, !:NextNonReservedF)
         )
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
@@ -285,6 +292,10 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
         % These should have been expanded out by now.
         unexpected($module, $pred, "shorthand")
     ).
+
+:- pred is_reg_r_arg(pair(prog_var, arg_info)::in) is semidet.
+
+is_reg_r_arg(_ - arg_info(reg(reg_r, _), _)).
 
 %-----------------------------------------------------------------------------%
 
@@ -338,16 +349,14 @@ find_follow_vars_from_arginfo([ArgVar - arg_info(ArgLoc, Mode) | ArgsInfos],
 
 %-----------------------------------------------------------------------------%
 
-    % Generic calls use regular registers (rN) only.
-    %
-:- pred find_follow_vars_from_generic_in_vars(list(prog_var)::in,
+:- pred find_follow_vars_from_generic_in_vars(reg_type::in, list(prog_var)::in,
     abs_follow_vars_map::in, abs_follow_vars_map::out, int::in, int::out)
     is det.
 
-find_follow_vars_from_generic_in_vars([], !FollowVarsMap, !NextRegR).
-find_follow_vars_from_generic_in_vars([InVar | InVars], !FollowVarsMap,
-        !NextRegR) :-
-    Locn = abs_reg(reg_r, !.NextRegR),
+find_follow_vars_from_generic_in_vars(_RegType, [], !FollowVarsMap, !NextReg).
+find_follow_vars_from_generic_in_vars(RegType, [InVar | InVars],
+        !FollowVarsMap, !NextReg) :-
+    Locn = abs_reg(RegType, !.NextReg),
     ( map.insert(InVar, Locn, !FollowVarsMap) ->
         true    % FollowVarsMap is updated
     ;
@@ -358,8 +367,9 @@ find_follow_vars_from_generic_in_vars([InVar | InVars], !FollowVarsMap,
         % variable.
         true    % FollowVarsMap is not updated
     ),
-    !:NextRegR = !.NextRegR + 1,
-    find_follow_vars_from_generic_in_vars(InVars, !FollowVarsMap, !NextRegR).
+    !:NextReg = !.NextReg + 1,
+    find_follow_vars_from_generic_in_vars(RegType, InVars, !FollowVarsMap,
+        !NextReg).
 
 %-----------------------------------------------------------------------------%
 

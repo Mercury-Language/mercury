@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -271,7 +271,7 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
             Result = can_throw
         )
     ;
-        GoalExpr = generic_call(_, _, _, _),
+        GoalExpr = generic_call(_, _, _, _, _),
         % XXX We should use results form closure analysis here.
         Result = can_throw
     ;
@@ -451,7 +451,7 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
             CanLoop = yes
         )
     ;
-        GoalExpr = generic_call(_, _, _, _),
+        GoalExpr = generic_call(_, _, _, _, _),
         % We have no idea whether the called goal can throw exceptions,
         % at least without closure analysis.
         CanLoop = yes
@@ -606,7 +606,7 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
             CanThrow = yes
         )
     ;
-        GoalExpr = generic_call(_, _, _, _),
+        GoalExpr = generic_call(_, _, _, _, _),
         % We have no idea whether the called goal can throw exceptions,
         % at least without closure analysis.
         CanThrow = yes
@@ -686,7 +686,7 @@ goal_is_flat(hlds_goal(GoalExpr, _GoalInfo)) = goal_is_flat_expr(GoalExpr).
 
 goal_is_flat_expr(GoalExpr) = IsFlat :-
     (
-        ( GoalExpr = generic_call(_, _, _, _)
+        ( GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = plain_call(_, _, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
@@ -773,7 +773,7 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
             May = yes
         )
     ;
-        GoalExpr = generic_call(_, _, _, _),
+        GoalExpr = generic_call(_, _, _, _, _),
         May = yes
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
@@ -925,7 +925,7 @@ cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
             GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
             BuiltinState \= inline_builtin
         ;
-            GoalExpr = generic_call(_, _, _, _)
+            GoalExpr = generic_call(_, _, _, _, _)
         )
     ->
         true
@@ -944,7 +944,7 @@ count_recursive_calls(Goal, PredId, ProcId, Min, Max) :-
     Goal = hlds_goal(GoalExpr, _),
     (
         ( GoalExpr = unify(_, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         Min = 0,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1169,9 +1169,10 @@ qualify_inst(abstract_inst(Name, Args0), abstract_inst(Name, Args), !Info,
 
 qualify_ho_inst_info(HOInstInfo0, HOInstInfo, !Info, !Specs) :-
     (
-        HOInstInfo0 = higher_order(pred_inst_info(A, Modes0, Det)),
+        HOInstInfo0 = higher_order(pred_inst_info(A, Modes0, MaybeArgRegs,
+            Det)),
         qualify_mode_list(Modes0, Modes, !Info, !Specs),
-        HOInstInfo = higher_order(pred_inst_info(A, Modes, Det))
+        HOInstInfo = higher_order(pred_inst_info(A, Modes, MaybeArgRegs, Det))
     ;
         HOInstInfo0 = none,
         HOInstInfo = none

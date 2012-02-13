@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2011 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -241,7 +241,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
             PredInstInfo = pred_inst_info_standard_func_mode(
                 list.length(ArgTypes))
         ),
-        PredInstInfo = pred_inst_info(PredOrFunc, ModesPrime, DetPrime),
+        PredInstInfo = pred_inst_info(PredOrFunc, ModesPrime, _, DetPrime),
         list.length(ModesPrime, Arity)
     ->
         (

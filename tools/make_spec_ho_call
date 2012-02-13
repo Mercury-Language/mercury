@@ -23,7 +23,12 @@ do
     echo "{"
     echo "    MR_Closure    *closure;"
     echo "    int           num_explicit_args;"
-    echo "    int           num_hidden_args;"
+    echo "    int           num_hidden_rf_args;"
+    echo "    int           num_hidden_r_args;"
+    echo "#ifdef MR_BOXED_FLOAT"
+    echo "    int           num_explicit_f_args = 0;"
+    echo "    int           num_hidden_f_args;"
+    echo "#endif"
     echo "    int           i;"
 
     i=1;
@@ -35,10 +40,20 @@ do
 
     echo
     echo "    closure = (MR_Closure *) MR_r1;"
-    echo "    num_hidden_args = closure->MR_closure_num_hidden_args;"
+    echo "    num_hidden_rf_args = closure->MR_closure_num_hidden_args_rf;"
+    echo "    num_hidden_r_args = MR_closure_num_hidden_r_args(closure);"
+    echo "#ifdef MR_BOXED_FLOAT"
+    echo "    num_hidden_f_args = MR_closure_num_hidden_f_args(closure);"
+    echo "#endif"
+
     if test $spec_explicit_arg -lt 0
     then
+        echo "#ifdef MR_BOXED_FLOAT"
+        echo "    num_explicit_args = (MR_r2 & 0xffff);"
+        echo "    num_explicit_f_args = (MR_r2 >> 16);"
+        echo "#else"
         echo "    num_explicit_args = MR_r2;"
+        echo "#endif"
         num_explicit_args="num_explicit_args"
     else
         i=1;
@@ -51,12 +66,12 @@ do
         num_explicit_args="$spec_explicit_arg"
     fi
     echo
-    echo "    MR_maybe_record_closure_histogram($num_explicit_args, num_hidden_args);"
+    echo "    MR_maybe_record_closure_histogram($num_explicit_args, num_hidden_r_args);"
     echo
 
     if test $max_spec_hidden_arg -ge 0 -a $spec_explicit_arg -ge 0
     then
-        echo "    switch (num_hidden_args) {"
+        echo "    switch (num_hidden_rf_args) {"
         spec_hidden_arg=0
         while test $spec_hidden_arg -le $max_spec_hidden_arg
         do
@@ -90,16 +105,16 @@ do
     echo "    MR_save_registers();"
     if test $spec_explicit_arg -lt 0
     then
-        echo "    if (num_hidden_args < MR_HO_CALL_INPUTS_COMPACT) {"
+        echo "    if (num_hidden_r_args < MR_HO_CALL_INPUTS_COMPACT) {"
         echo "        /* copy the explicit args to the left, from the left */"
         echo "        for (i = 1; i <= num_explicit_args; i++) {"
-        echo "            MR_virtual_reg_assign(i + num_hidden_args,"
+        echo "            MR_virtual_reg_assign(i + num_hidden_r_args,"
         echo "                MR_virtual_reg_value(i + MR_HO_CALL_INPUTS_COMPACT));"
         echo "        }"
-        echo "    } else if (num_hidden_args > MR_HO_CALL_INPUTS_COMPACT) {"
+        echo "    } else if (num_hidden_r_args > MR_HO_CALL_INPUTS_COMPACT) {"
         echo "        /* copy the explicit args to the right, from the right */"
         echo "        for (i = num_explicit_args; i > 0 ; i--) {"
-        echo "            MR_virtual_reg_assign(i + num_hidden_args,"
+        echo "            MR_virtual_reg_assign(i + num_hidden_r_args,"
         echo "                MR_virtual_reg_value(i + MR_HO_CALL_INPUTS_COMPACT));"
         echo "        }"
         echo "    } /* else the explicit args are in the right place */"
@@ -107,16 +122,32 @@ do
         i=1
         while test $i -le $spec_explicit_arg
         do
-            echo "    MR_virtual_reg_assign(num_hidden_args + $i, arg$i);"
+            echo "    MR_virtual_reg_assign(num_hidden_r_args + $i, arg$i);"
             i=`expr $i + 1`
         done
     fi
 
     echo
-    echo "    for (i = 1; i <= num_hidden_args; i++) {"
+    echo "    for (i = 1; i <= num_hidden_r_args; i++) {"
     echo "        MR_virtual_reg_assign(i, closure->MR_closure_hidden_args(i));"
     echo "    }"
     echo "    MR_restore_registers();"
+
+    echo
+    echo "#ifdef MR_BOXED_FLOAT"
+    echo "    if (num_hidden_f_args > 0) {"
+    echo "        /* copy the explicit args to the right, from the right */"
+    echo "        for (i = num_explicit_f_args; i > 0 ; i--) {"
+    echo "            MR_f(i + num_hidden_f_args) = MR_f(i);"
+    echo "        }"
+    echo "        for (i = 1; i <= num_hidden_f_args; i++) {"
+    echo "            MR_f(i) = MR_word_to_float("
+    echo "                closure->MR_closure_hidden_args("
+    echo "                    num_hidden_r_args + i));"
+    echo "        }"
+    echo "    }"
+    echo "#endif"
+
     echo
     echo "    MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);"
     echo "}"

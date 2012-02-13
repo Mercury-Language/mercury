@@ -691,7 +691,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
     ;
         ( GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr = conj(_, _)
         ; GoalExpr = negation(_)
@@ -1070,9 +1070,9 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
             % We don't need to check the modes here - if the goals match
             % and the insts of the argument variables match, the modes
             % of the call must be the same.
-            OldGoal = hlds_goal(generic_call(OldGenericCall, OldArgs1, _, Det),
+            OldGoal = hlds_goal(generic_call(OldGenericCall, OldArgs1, _, _, Det),
                 _),
-            NewGoal = hlds_goal(generic_call(NewGenericCall, NewArgs1, _, Det),
+            NewGoal = hlds_goal(generic_call(NewGenericCall, NewArgs1, _, _, Det),
                 _),
             match_generic_call(OldGenericCall, NewGenericCall),
             goal_util.generic_call_vars(OldGenericCall, OldArgs0),

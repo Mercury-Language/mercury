@@ -1367,7 +1367,7 @@ option_defaults_2(compilation_model_option, [
     gcc_non_local_gotos                 -   bool(yes),
     gcc_global_registers                -   bool(yes),
     asm_labels                          -   bool(yes),
-    use_float_registers                 -   bool(no),
+    use_float_registers                 -   bool(yes),
 
     % MLDS back-end compilation model options
     highlevel_code                      -   bool(no),

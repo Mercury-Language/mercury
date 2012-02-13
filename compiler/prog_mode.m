@@ -351,9 +351,11 @@ alt_list_apply_substitution(Subst, [Alt0 | Alts0], [Alt | Alts]) :-
 
 ho_inst_info_apply_substitution(_, none, none).
 ho_inst_info_apply_substitution(Subst, HOInstInfo0, HOInstInfo) :-
-    HOInstInfo0 = higher_order(pred_inst_info(PredOrFunc, Modes0, Det)),
+    HOInstInfo0 = higher_order(pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs,
+        Det)),
     mode_list_apply_substitution(Subst, Modes0, Modes),
-    HOInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, Det)).
+    HOInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, MaybeArgRegs,
+        Det)).
 
 mode_list_apply_substitution(Subst, Modes0, Modes) :-
     ( map.is_empty(Subst) ->
@@ -392,9 +394,11 @@ rename_apart_inst_vars_in_mode(Sub, user_defined_mode(Name, Insts0),
 rename_apart_inst_vars_in_inst(Sub, any(Uniq, HOInstInfo0),
         any(Uniq, HOInstInfo)) :-
     (
-        HOInstInfo0 = higher_order(pred_inst_info(PorF, Modes0, Det)),
+        HOInstInfo0 = higher_order(pred_inst_info(PorF, Modes0, MaybeArgRegs,
+            Det)),
         list.map(rename_apart_inst_vars_in_mode(Sub), Modes0, Modes),
-        HOInstInfo = higher_order(pred_inst_info(PorF, Modes, Det))
+        HOInstInfo = higher_order(pred_inst_info(PorF, Modes, MaybeArgRegs,
+            Det))
     ;
         HOInstInfo0 = none,
         HOInstInfo = none
@@ -409,9 +413,9 @@ rename_apart_inst_vars_in_inst(Sub, bound(U, BIs0), bound(U, BIs)) :-
 rename_apart_inst_vars_in_inst(Sub, ground(Uniq, HOInstInfo0),
         ground(Uniq, HOInstInfo)) :-
     (
-        HOInstInfo0 = higher_order(pred_inst_info(PorF, Modes0, Det)),
+        HOInstInfo0 = higher_order(pred_inst_info(PorF, Modes0, ArgRegs, Det)),
         list.map(rename_apart_inst_vars_in_mode(Sub), Modes0, Modes),
-        HOInstInfo = higher_order(pred_inst_info(PorF, Modes, Det))
+        HOInstInfo = higher_order(pred_inst_info(PorF, Modes, ArgRegs, Det))
     ;
         HOInstInfo0 = none,
         HOInstInfo = none
@@ -462,7 +466,7 @@ inst_contains_unconstrained_var(bound(_Uniqueness, BoundInsts)) :-
     inst_contains_unconstrained_var(ArgInst).
 inst_contains_unconstrained_var(ground(_Uniqueness, GroundInstInfo)) :-
     GroundInstInfo = higher_order(PredInstInfo),
-    PredInstInfo = pred_inst_info(_PredOrFunc, Modes, _Detism),
+    PredInstInfo = pred_inst_info(_PredOrFunc, Modes, _MaybeArgRegs, _Detism),
     list.member(Mode, Modes),
     (
         Mode = (Inst -> _)
@@ -683,9 +687,9 @@ strip_builtin_qualifiers_from_inst_name(typed_inst(Type, InstName0),
 strip_builtin_qualifiers_from_ho_inst_info(none, none).
 strip_builtin_qualifiers_from_ho_inst_info(higher_order(Pred0),
         higher_order(Pred)) :-
-    Pred0 = pred_inst_info(PorF, Modes0, Det),
-    Pred = pred_inst_info(PorF, Modes, Det),
-    strip_builtin_qualifiers_from_mode_list(Modes0, Modes).
+    Pred0 = pred_inst_info(PorF, Modes0, ArgRegs, Det),
+    strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
+    Pred = pred_inst_info(PorF, Modes, ArgRegs, Det).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_mode.

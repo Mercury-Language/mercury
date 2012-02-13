@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009, 2011 The University of Melbourne.
+% Copyright (C) 2009, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,6 +31,7 @@
 :- func void_type = mer_type.
 :- func c_pointer_type = mer_type.
 :- func heap_pointer_type = mer_type.
+:- func float_box_type = mer_type.
 :- func sample_type_info_type = mer_type.
 :- func sample_typeclass_info_type = mer_type.
 :- func type_info_type = mer_type.
@@ -131,6 +132,10 @@ c_pointer_type = defined_type(Name, [], kind_star) :-
 heap_pointer_type = defined_type(Name, [], kind_star) :-
     BuiltinModule = mercury_private_builtin_module,
     Name = qualified(BuiltinModule, "heap_pointer").
+
+float_box_type = defined_type(Name, [], kind_star) :-
+    BuiltinModule = mercury_private_builtin_module,
+    Name = qualified(BuiltinModule, "float_box").
 
 sample_type_info_type = defined_type(Name, [], kind_star) :-
     BuiltinModule = mercury_private_builtin_module,
