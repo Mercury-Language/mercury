@@ -2876,8 +2876,8 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
 
     get_mercury_std_libs(Globals, LinkTargetType, MercuryStdLibs),
 
-    Cmd = string.join_list(" ", [
-        CSharpCompiler,
+    Cmd = CSharpCompiler,
+    CmdArgs = string.join_list(" ", [
         HighLevelDataOpt,
         DebugOpt,
         TargetOption,
@@ -2887,8 +2887,8 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         MercuryStdLibs] ++
         CSCFlagsList ++
         SourceList),
-    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Cmd,
-        Succeeded0, !IO),
+    invoke_long_system_command(Globals, ErrorStream, cmd_verbose_commands,
+        Cmd, CmdArgs, Succeeded0, !IO),
 
     % Also create a shell script to launch it if necessary.
     globals.get_target_env_type(Globals, TargetEnvType),
