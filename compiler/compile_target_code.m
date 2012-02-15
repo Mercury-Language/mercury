@@ -2923,8 +2923,8 @@ csharp_file_name(env_type_cygwin, csharp_microsoft, Filename) =
 csharp_file_name(env_type_cygwin, csharp_mono, Filename) = Filename.
 csharp_file_name(env_type_cygwin, csharp_unknown, Filename) = Filename.
 
-    % MSYS converts the path for us to the windows format.
-csharp_file_name(env_type_msys, csharp_microsoft, Filename) = Filename. 
+csharp_file_name(env_type_msys, csharp_microsoft, Filename) = 
+    convert_to_windows_path_format(Filename).
 csharp_file_name(env_type_msys, csharp_mono, Filename) = Filename.
 csharp_file_name(env_type_msys, csharp_unknown, Filename) = Filename.
 
