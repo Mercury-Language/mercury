@@ -17,6 +17,11 @@ Changes to the Mercury standard library:
 NEWS for Mercury 11.07.1-beta
 -----------------------------
 
+This is a bug-fix release.  It fixes a problem that was preventing the standard
+library from building in the csharp grade on Cygwin and also adds support for
+using GCC in C99 (or GNU99) mode with Mercury.  In addition, there are a number
+of minor changes to the standard library.
+
 Changes to the Mercury standard library:
 
 * We have added the predicate map.keys_and_values/3.
