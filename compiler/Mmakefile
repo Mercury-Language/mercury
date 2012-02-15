@@ -252,7 +252,7 @@ endif
 # Tell the C# compiler where the stdlib and mdbcomp assemblies are.
 #
 ifneq ("$(filter csharp%,$(GRADE))","")
-CSCFLAGS=-lib:../library -r:mer_std -lib:../mdbcomp -r:mer_mdbcomp
+CSCFLAGS=-lib:../library -r:mer_std.dll -lib:../mdbcomp -r:mer_mdbcomp.dll
 endif
 
 #-----------------------------------------------------------------------------#
