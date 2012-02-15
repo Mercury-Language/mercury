@@ -70,11 +70,11 @@ ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 MLOBJS       := ../main.$O \
 		../trace/lib$(EVENTSPEC_LIB_NAME).$A \
 		$(MLOBJS)
+MLLIBS       += $(THREAD_LIBS)
 else
 MLOBJS =
 endif
 
-MLLIBS       += $(THREAD_LIBS)
 ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS      += --no-main --shared
 C2INITARGS   += $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
