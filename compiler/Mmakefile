@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003, 2005-2011 The University of Melbourne. 
+# Copyright (C) 1995-2003, 2005-2012 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -70,11 +70,11 @@ ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 MLOBJS       := ../main.$O \
 		../trace/lib$(EVENTSPEC_LIB_NAME).$A \
 		$(MLOBJS)
+MLLIBS       += $(THREAD_LIBS)
 else
 MLOBJS =
 endif
 
-MLLIBS       += $(THREAD_LIBS)
 ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS      += --no-main --shared
 C2INITARGS   += $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
@@ -252,7 +252,7 @@ endif
 # Tell the C# compiler where the stdlib and mdbcomp assemblies are.
 #
 ifneq ("$(filter csharp%,$(GRADE))","")
-CSCFLAGS=-lib:../library -r:mer_std -lib:../mdbcomp -r:mer_mdbcomp
+CSCFLAGS=-lib:../library -r:mer_std.dll -lib:../mdbcomp -r:mer_mdbcomp.dll
 endif
 
 #-----------------------------------------------------------------------------#
