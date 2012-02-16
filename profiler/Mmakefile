@@ -52,6 +52,12 @@ ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 MLOBJS =
 endif
 
+# Tell the C# compiler where the stdlib assembly is.
+#
+ifneq ("$(filter csharp%,$(GRADE))","")
+CSCFLAGS=-lib:../library -r:mer_std.dll
+endif
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: check
