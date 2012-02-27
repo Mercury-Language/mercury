@@ -992,6 +992,7 @@
 :- pred string.hash(string::in, int::out) is det.
 
     % Two other hash functions for strings.
+    %
 :- func string.hash2(string) = int.
 :- func string.hash3(string) = int.
 
@@ -1008,8 +1009,7 @@
     % equal to `BeginAt'.  Indices start at zero.
     %
 :- pred string.sub_string_search_start(string::in, string::in, int::in,
-    int::out)
-    is semidet.
+    int::out) is semidet.
 
     % A function similar to sprintf() in C.
     %
