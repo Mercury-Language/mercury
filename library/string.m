@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1002,6 +1002,7 @@
 :- pred string.hash(string::in, int::out) is det.
 
     % Two other hash functions for strings.
+    %
 :- func string.hash2(string) = int.
 :- func string.hash3(string) = int.
 
@@ -1018,8 +1019,7 @@
     % equal to `BeginAt'.  Indices start at zero.
     %
 :- pred string.sub_string_search_start(string::in, string::in, int::in,
-    int::out)
-    is semidet.
+    int::out) is semidet.
 
     % A function similar to sprintf() in C.
     %

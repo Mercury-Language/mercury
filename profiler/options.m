@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 2000-2001, 2004-2006, 2011 The University of Melbourne.
+% Copyright (C) 1995-1997, 2000-2001, 2004-2006, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -201,7 +201,7 @@ options_help -->
     io.write_string("\t\tShow summary of heap objects at the times\n"),
     io.write_string("\t\t`benchmarking.report_memory_attribution' was called.\n"),
     io.write_string("\t\tThis overrides other profiler modes.\n"),
-    io.write_string("\t--snapshot-file <file>\n"),
+    io.write_string("\t--snapshots-file <file>\n"),
     io.write_string("\t\tName of the snapshots file. Usually `Prof.Snapshots'.\n"),
     io.write_string("\t-T, --snapshots-by-type\n"),
     io.write_string("\t\tGroup results by type.\n"),
