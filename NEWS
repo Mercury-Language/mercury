@@ -13,6 +13,9 @@ Changes to the Mercury standard library:
   pqueue.insert/4, pqueue.remove/4, stack.push/3, stack.push_list/3,
   stack.pop/3 and stack.det_pop/3.
 
+* We have added versions of the operations in the math module that omit the
+  domain checks.
+
 
 NEWS for Mercury 11.07.1
 ------------------------

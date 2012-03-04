@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2007, 2011 The University of Melbourne.
+% Copyright (C) 1995-2007, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -13,29 +13,16 @@
 % Higher mathematical operations.  (The basics are in float.m.)
 %
 % By default, domain errors are currently handled by throwing an exception.
+% For better performance, each operation in this module that can throw a domain
+% exception also has an unchecked version that omits the domain check.
 %
-% For better performance, it is possible to disable the Mercury domain
-% checking by compiling with `--intermodule-optimization' and the C macro
-% symbol `ML_OMIT_MATH_DOMAIN_CHECKS' defined, e.g. by using
-% `MCFLAGS=--intermodule-optimization' and
-% `MGNUCFLAGS=-DML_OMIT_MATH_DOMAIN_CHECKS' in your Mmakefile,
-% or by compiling with the command
-% `mmc --intermodule-optimization --cflags -DML_OMIT_MATH_DOMAIN_CHECKS'.
-%
-% For maximum performance, all Mercury domain checking can be disabled by
-% recompiling this module using `MGNUCFLAGS=-DML_OMIT_MATH_DOMAIN_CHECKS'
-% or `mmc --cflags -DML_OMIT_MATH_DOMAIN_CHECKS' as above. You can
-% either recompile the entire library, or just copy `math.m' to your
-% application's source directory and link with it directly instead of as
-% part of the library.
-%
-% Note that the above performance improvements are semantically safe,
-% since the C math library and/or floating point hardware perform these
-% checks for you.  The benefit of having the Mercury library perform the
-% checks instead is that Mercury will tell you in which function or
-% predicate the error occurred, as well as giving you a stack trace if
-% that is enabled; with the checks disabled you only have the information
-% that the floating-point exception signal handler gives you.
+% The unchecked operations are semantically safe, since the target math
+% library and/or floating point hardware perform these checks for you.
+% The benefit of having the Mercury library perform the checks instead is
+% that Mercury will tell you in which function or predicate the error
+% occurred, as well as giving you a stack trace if that is enabled; with
+% the nuchecked operations  you only have the information that the
+% floating-point exception signal handler gives you.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -46,10 +33,6 @@
     % A domain error exception, indicates that the inputs to a function
     % were outside the domain of the function.  The string indicates
     % where the error occurred.
-    %
-    % It is possible to switch domain checking off, in which case,
-    % depending on the backend, a domain error may cause a program
-    % abort.
     %
 :- type domain_error ---> domain_error(string).
 
@@ -101,10 +84,6 @@
     % Domain restriction: X >= 0
     %
 :- func math.sqrt(float) = float.
-
-    % As above, but the behaviour is undefined if the argument is less
-    % than zero.
-    %
 :- func math.unchecked_sqrt(float) = float.
 
 :- type math.quadratic_roots
@@ -129,6 +108,7 @@
     % Domain restriction: X >= 0 and (X = 0 implies Y > 0)
     %
 :- func math.pow(float, float) = float.
+:- func math.unchecked_pow(float, float) = float.
 
     % math.exp(X) = Exp is true if Exp is e raised to the power of X.
     %
@@ -139,24 +119,28 @@
     % Domain restriction: X > 0
     %
 :- func math.ln(float) = float.
+:- func math.unchecked_ln(float) = float.
 
     % math.log10(X) = Log is true if Log is the logarithm to base 10 of X.
     %
     % Domain restriction: X > 0
     %
 :- func math.log10(float) = float.
+:- func math.unchecked_log10(float) = float.
 
     % math.log2(X) = Log is true if Log is the logarithm to base 2 of X.
     %
     % Domain restriction: X > 0
     %
 :- func math.log2(float) = float.
+:- func math.unchecked_log2(float) = float.
 
     % math.log(B, X) = Log is true if Log is the logarithm to base B of X.
     %
     % Domain restriction: X > 0 and B > 0 and B \= 1
     %
 :- func math.log(float, float) = float.
+:- func math.unchecked_log(float, float) = float.
 
 %---------------------------------------------------------------------------%
 %
@@ -181,6 +165,7 @@
     % Domain restriction: X must be in the range [-1,1]
     %
 :- func math.asin(float) = float.
+:- func math.unchecked_asin(float) = float.
 
     % math.acos(X) = ACos is true if ACos is the inverse cosine of X,
     % where ACos is in the range [0, pi].
@@ -188,6 +173,7 @@
     % Domain restriction: X must be in the range [-1,1]
     %
 :- func math.acos(float) = float.
+:- func math.unchecked_acos(float) = float.
 
     % math.atan(X) = ATan is true if ATan is the inverse tangent of X,
     % where ATan is in the range [-pi/2,pi/2].
@@ -541,13 +527,11 @@ math.pow(X, Y) = Res :-
             Res = 0.0
         )
     ;
-        Res = math.pow_2(X, Y)
+        Res = math.unchecked_pow(X, Y)
     ).
 
-:- func math.pow_2(float, float) = float.
-
 :- pragma foreign_proc("C",
-    math.pow_2(X::in, Y::in) = (Res::out),
+    math.unchecked_pow(X::in, Y::in) = (Res::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -555,21 +539,21 @@ math.pow(X, Y) = Res :-
 ").
 
 :- pragma foreign_proc("C#",
-    math.pow_2(X::in, Y::in) = (Res::out),
+    math.unchecked_pow(X::in, Y::in) = (Res::out),
     [thread_safe, promise_pure],
 "
     Res = System.Math.Pow(X, Y);
 ").
 
 :- pragma foreign_proc("Java",
-    math.pow_2(X::in, Y::in) = (Res::out),
+    math.unchecked_pow(X::in, Y::in) = (Res::out),
     [thread_safe, promise_pure],
 "
     Res = java.lang.Math.pow(X, Y);
 ").
 
 :- pragma foreign_proc("Erlang",
-    math.pow_2(X::in, Y::in) = (Res::out),
+    math.unchecked_pow(X::in, Y::in) = (Res::out),
     [thread_safe, promise_pure],
 "
     Res = math:pow(X, Y)
@@ -605,32 +589,30 @@ math.ln(X) = Log :-
     ( math_domain_checks, X =< 0.0 ->
         throw(domain_error("math.ln"))
     ;
-        Log = math.ln_2(X)
+        Log = math.unchecked_ln(X)
     ).
 
-:- func math.ln_2(float) = float.
-
 :- pragma foreign_proc("C",
-    math.ln_2(X::in) = (Log::out),
+    math.unchecked_ln(X::in) = (Log::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Log = log(X);
 ").
 :- pragma foreign_proc("C#",
-    math.ln_2(X::in) = (Log::out),
+    math.unchecked_ln(X::in) = (Log::out),
     [thread_safe, promise_pure],
 "
     Log = System.Math.Log(X);
 ").
 :- pragma foreign_proc("Java",
-    math.ln_2(X::in) = (Log::out),
+    math.unchecked_ln(X::in) = (Log::out),
     [thread_safe, promise_pure],
 "
     Log = java.lang.Math.log(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.ln_2(X::in) = (Log::out),
+    math.unchecked_ln(X::in) = (Log::out),
     [thread_safe, promise_pure],
 "
     Log = math:log(X)
@@ -640,62 +622,58 @@ math.log10(X) = Log :-
     ( math_domain_checks, X =< 0.0 ->
         throw(domain_error("math.log10"))
     ;
-        Log = math.log10_2(X)
+        Log = math.unchecked_log10(X)
     ).
 
-:- func math.log10_2(float) = float.
-
 :- pragma foreign_proc("C",
-    math.log10_2(X::in) = (Log10::out),
+    math.unchecked_log10(X::in) = (Log10::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Log10 = log10(X);
 ").
 :- pragma foreign_proc("C#",
-    math.log10_2(X::in) = (Log10::out),
+    math.unchecked_log10(X::in) = (Log10::out),
     [thread_safe, promise_pure],
 "
     Log10 = System.Math.Log10(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.log10_2(X::in) = (Log10::out),
+    math.unchecked_log10(X::in) = (Log10::out),
     [thread_safe, promise_pure],
 "
     Log10 = math:log10(X)
 ").
 % Java doesn't have a built-in log10, so default to mercury here.
-math.log10_2(X) = math.ln_2(X) / math.ln_2(10.0).
+math.unchecked_log10(X) = math.unchecked_ln(X) / math.unchecked_ln(10.0).
 
 math.log2(X) = Log :-
     ( math_domain_checks, X =< 0.0 ->
         throw(domain_error("math.log2"))
     ;
-        Log = math.log2_2(X)
+        Log = math.unchecked_log2(X)
     ).
 
-:- func math.log2_2(float) = float.
-
 :- pragma foreign_proc("C",
-    math.log2_2(X::in) = (Log2::out),
+    math.unchecked_log2(X::in) = (Log2::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Log2 = log(X) / ML_FLOAT_LN2;
 ").
 :- pragma foreign_proc("C#",
-    math.log2_2(X::in) = (Log2::out),
+    math.unchecked_log2(X::in) = (Log2::out),
     [thread_safe, promise_pure],
 "
     Log2 = System.Math.Log(X) / ML_FLOAT_LN2;
 ").
 :- pragma foreign_proc("Java",
-    math.log2_2(X::in) = (Log2::out),
+    math.unchecked_log2(X::in) = (Log2::out),
     [thread_safe, promise_pure],
 "
     Log2 = java.lang.Math.log(X) / ML_FLOAT_LN2;
 ").
-math.log2_2(X) = math.ln_2(X) / math.ln_2(2.0).
+math.unchecked_log2(X) = math.unchecked_ln(X) / math.unchecked_ln(2.0).
 
 math.log(B, X) = Log :-
     (
@@ -707,27 +685,25 @@ math.log(B, X) = Log :-
     ->
         throw(domain_error("math.log"))
     ;
-        Log = math.log_2(B, X)
+        Log = math.unchecked_log(B, X)
     ).
 
-:- func math.log_2(float, float) = float.
-
 :- pragma foreign_proc("C",
-    math.log_2(B::in, X::in) = (Log::out),
+    math.unchecked_log(B::in, X::in) = (Log::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Log = log(X) / log(B);
 ").
 :- pragma foreign_proc("C#",
-    math.log_2(B::in, X::in) = (Log::out),
+    math.unchecked_log(B::in, X::in) = (Log::out),
     [thread_safe, promise_pure],
 "
     Log = System.Math.Log(X, B);
 ").
 % Java implementation will default to mercury here.
 % Erlang implementation will default to mercury here.
-math.log_2(B, X) = math.ln_2(X) / math.ln_2(B).
+math.unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
 
 :- pragma foreign_proc("C",
     math.sin(X::in) = (Sin::out),
@@ -816,32 +792,30 @@ math.asin(X) = ASin :-
     ->
         throw(domain_error("math.asin"))
     ;
-        ASin = math.asin_2(X)
+        ASin = math.unchecked_asin(X)
     ).
 
-:- func math.asin_2(float) = float.
-
 :- pragma foreign_proc("C",
-    math.asin_2(X::in) = (ASin::out),
+    math.unchecked_asin(X::in) = (ASin::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     ASin = asin(X);
 ").
 :- pragma foreign_proc("C#",
-    math.asin_2(X::in) = (ASin::out),
+    math.unchecked_asin(X::in) = (ASin::out),
     [thread_safe, promise_pure],
 "
     ASin = System.Math.Asin(X);
 ").
 :- pragma foreign_proc("Java",
-    math.asin_2(X::in) = (ASin::out),
+    math.unchecked_asin(X::in) = (ASin::out),
     [thread_safe, promise_pure],
 "
     ASin = java.lang.Math.asin(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.asin_2(X::in) = (ASin::out),
+    math.unchecked_asin(X::in) = (ASin::out),
     [thread_safe, promise_pure],
 "
     ASin = math:asin(X)
@@ -856,37 +830,34 @@ math.acos(X) = ACos :-
     ->
         throw(domain_error("math.acos"))
     ;
-        ACos = math.acos_2(X)
+        ACos = math.unchecked_acos(X)
     ).
 
-:- func math.acos_2(float) = float.
-
 :- pragma foreign_proc("C",
-    math.acos_2(X::in) = (ACos::out),
+    math.unchecked_acos(X::in) = (ACos::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     ACos = acos(X);
 ").
 :- pragma foreign_proc("C#",
-    math.acos_2(X::in) = (ACos::out),
+    math.unchecked_acos(X::in) = (ACos::out),
     [thread_safe, promise_pure],
 "
     ACos = System.Math.Acos(X);
 ").
 :- pragma foreign_proc("Java",
-    math.acos_2(X::in) = (ACos::out),
+    math.unchecked_acos(X::in) = (ACos::out),
     [thread_safe, promise_pure],
 "
     ACos = java.lang.Math.acos(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.acos_2(X::in) = (ACos::out),
+    math.unchecked_acos(X::in) = (ACos::out),
     [thread_safe, promise_pure],
 "
     ACos = math:acos(X)
 ").
-
 
 :- pragma foreign_proc("C",
     math.atan(X::in) = (ATan::out),
