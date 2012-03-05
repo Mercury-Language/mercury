@@ -21,7 +21,7 @@
 % The benefit of having the Mercury library perform the checks instead is
 % that Mercury will tell you in which function or predicate the error
 % occurred, as well as giving you a stack trace if that is enabled; with
-% the nuchecked operations  you only have the information that the
+% the unchecked operations  you only have the information that the
 % floating-point exception signal handler gives you.
 %
 %---------------------------------------------------------------------------%
