@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,7 +27,7 @@
     % Note: It may be useful to add other annotations such as goal path or cost
     % information.
     %
-    % SeenDuplicateInstiation is used to assert that we're analysing single
+    % SeenDuplicateInstantiation is used to assert that we are analysing single
     % assignment code only.
     %
     % Vars is the set of variables used by this goal, both consumed and
@@ -78,8 +78,8 @@ goal_annotate_with_instmap(Goal, SeenDuplicateInstantiation, ConsumedVars,
             !InstMap, !InstMapArray)
     ;
         % XXX: Not all scope goals can produce variables, in fact some are used
-        % to isolate variables that aren't named apart.  But other scope goals
-        % can bind variables.  We don't know which we're looking at here.
+        % to isolate variables that aren't named apart. But other scope goals
+        % can bind variables. We don't know which we are looking at here.
         GoalExpr = scope_rep(Subgoal, _MaybeCut),
         goal_annotate_with_instmap(Subgoal, SeenDuplicateInstantiation,
             ConsumedVars, BoundVars, !InstMap, !InstMapArray)
@@ -151,7 +151,7 @@ disj_annotate_with_instmap([Disj | Disjs], SeenDuplicateInstantiation,
     % we can create fake values that satisfy merge_inst_map easily.
     % XXX: Consider inferring determinism as another simple analysis.
     % A disjunction may only bind a variable if all disjuncts bind that
-    % variable.  We respect that here and handle the special case of this being
+    % variable. We respect that here and handle the special case of this being
     % the last disjunct in a disjunction.
     (
         Disjs = [],
@@ -227,7 +227,7 @@ ite_annotate_with_instmap(Cond, Then, Else, SeenDuplicateInstantiation,
     ),
     set.union(ConsumedVarsCond, ConsumedVarsThen, ConsumedVarsCondThen),
     set.union(ConsumedVarsCondThen, ConsumedVarsElse, ConsumedVars),
-    % Cond is only allowed to bind variables for then.  THe variables bound by
+    % Cond is only allowed to bind variables for then. The variables bound by
     % the ITE are only those that both Then and Else bind.
     set.intersect(BoundVarsThen, BoundVarsElse, BoundVars),
     ThenDetism = Then ^ goal_detism_rep,

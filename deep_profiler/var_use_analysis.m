@@ -12,7 +12,7 @@
 % coverage information to the component goals of a procedure body.
 %
 % This module can be compiled with the following trace flag to enable
-% debugging: debug_first_var_use, See Mercury.options in this directory.
+% debugging: debug_first_var_use. See Mercury.options in this directory.
 %
 %-----------------------------------------------------------------------------%
 
@@ -80,7 +80,7 @@
     % call_site_dynamic_var_use_info(Deep, CSDPtr, ArgPos, RT, VarUseType,
     %   MaybeVarUseInfo):
     %
-    % Lookup when the call site CSDPtr will produce ArgPos.  RT is the type of
+    % Lookup when the call site CSDPtr will produce ArgPos. RT is the type of
     % recursion in the call site's parent clique and VarUseType is the type of
     % variable use that is expected, VarUseType is used to produce conservative
     % defaults if a callee cannot be analyzed.
@@ -98,7 +98,7 @@
     % call_site_dynamic_var_use_info(Deep, CliquePtr, CSDPtr, ArgPos, RT,
     %   MaybeCurDepth, Cost, CallStack, VarUseType, MaybeVarUseInfo).
     %
-    % As above.  This alternative should be used if searching starts at a
+    % As above. This alternative should be used if searching starts at a
     % different recursion level or from within a current variable use analysis.
     %
     % CliquePtr is the current clique, MaybeCurDepth is the current recursion
@@ -221,7 +221,7 @@ pessimistic_var_use_time(VarUseType, ProcCost, CostUntilUse) :-
 %-----------------------------------------------------------------------------%
 
     % XXX: If the CSD represents a closure then the argument position will be
-    % incorrect.  This is not currently important as we assume that the
+    % incorrect. This is not currently important as we assume that the
     % compiler will not push signals and waits into higher order calls.
     % Therefore this should never be called for a higher order call site.
     %
@@ -272,7 +272,7 @@ call_site_dynamic_var_use_info(ParentCliquePtr, CSDPtr, ArgNum,
                     ; RecursionType = rt_single(_, _, _, _, _)
                     ),
                     % Don't follow this recursive call as normal, doing so
-                    % would make this analysis take too long.  We can compute
+                    % would make this analysis take too long. We can compute
                     % the cost of variable use time by the following formula:
                     set.insert(CalleePDPtr, CallStack0, CallStack),
                     proc_dynamic_recursive_var_use_info(ParentCliquePtr,
@@ -403,7 +403,7 @@ proc_dynamic_var_use_info(CliquePtr, PDPtr, ArgNum, RecursionType,
     %   UseTime = BaseUseTime + (RecUseTime + 1.0) * Depth
     %
     % Where BaseUseTime is the use time in the base case execution and
-    % RecUseTime is the use time before the recursive call.  This works for any
+    % RecUseTime is the use time before the recursive call. This works for any
     % self-recursion pattern.
     %
 :- pred proc_dynamic_recursive_var_use_info(clique_ptr::in,
@@ -678,7 +678,7 @@ goal_var_first_use(RevGoalPath, Goal, StaticInfo, !CostSoFar, FoundFirstUse) :-
     CoverageArray = StaticInfo ^ fui_coverage_array,
     Coverage = get_goal_attribute_det(CoverageArray, Goal ^ goal_annotation),
     (
-        % Do not bother exploring this goal if it is never entered.  Or never
+        % Do not bother exploring this goal if it is never entered. Or never
         % finishes and we're looking for a production.
         (
             get_coverage_before(Coverage, 0)
@@ -906,8 +906,8 @@ call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Time) :-
         )
     ;
         HigherOrder = higher_order_call,
-        % The compiler cannot push signals or waits into higher order
-        % calls.  Therefore we assume a pessimistic default here.
+        % The compiler cannot push signals or waits into higher order calls.
+        % Therefore we assume a pessimistic default here.
         pessimistic_var_use_time(VarUseType, Cost, Time)
     ).
 
@@ -1259,8 +1259,8 @@ rec_goal_var_first_use(Goal, RecCalls, Info, FoundFirstUse,
     Coverage = get_goal_attribute_det(Info ^ fui_coverage_array, GoalId),
     get_coverage_before_and_after_det(Coverage, Before, After),
     (
-        % Do not bother exploring this goal if it is never entered.  Or never
-        % finishes and we're looking for a production.
+        % Do not bother exploring this goal if it is never entered.
+        % Or never finishes and we are looking for a production.
         (
             Before = 0
         ;
@@ -1358,7 +1358,7 @@ rec_conj_var_first_use([Conj | Conjs], ConjNum, RecCalls, StaticInfo,
     (
         % XXX: if a variable is bound more than once, because it's used
         % with partial instantiation then we want to use the last time it
-        % is bound.  Instmaps can be used to track this. This is relevant
+        % is bound. Instmaps can be used to track this. This is relevant
         % when searching for the producer of a variable.
         ConjFoundFirstUse = found_first_use(UseTime),
         FoundFirstUse = found_first_use(UseTime)
@@ -1368,8 +1368,8 @@ rec_conj_var_first_use([Conj | Conjs], ConjNum, RecCalls, StaticInfo,
         % Conjs (the success of Conj) But doing so means a weighted everage
         % between the success and failure paths, which only makes sense if
         % the consuption (because this is semidet) might be done in the
-        % failure case.  This also has to be done if the probability of
-        % recursion in one of the two cases is different.  For now we
+        % failure case. This also has to be done if the probability of
+        % recursion in one of the two cases is different. For now we
         % assume that Conjs will always be entred.
         FoundFirstUse = ConjsFoundFirstUse
     ).
@@ -1599,7 +1599,7 @@ adjust_weight_for_recursion(RecCase, RecProb, !Weight) :-
     % Give the probability that this goal leads to a recursion.
     %
     % Note that this does not compute whether this goal is on a recursive path
-    % so it's not sufficent on it's own.  See rec_goal_var_first_use.
+    % so it's not sufficent on it's own. See rec_goal_var_first_use.
     %
 :- pred goal_rec_prob(goal_rep(goal_id)::in, recursive_calls_list::in,
     var_first_use_static_info::in, probability::out,
@@ -1613,7 +1613,7 @@ goal_rec_prob(Goal, RecCalls, Info, Prob, !ProbArray) :-
     ( Before = 0 ->
         % Avoid a divide by zero and provide a short-cut.
         Prob = impossible
-        % There's no need to update the array. the default value is already
+        % There is no need to update the array. the default value is already
         % impossible.
     ;
         (

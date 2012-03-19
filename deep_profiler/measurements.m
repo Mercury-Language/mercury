@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2006, 2008-2011 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006, 2008-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -171,7 +171,7 @@
     %
     % Add goal costs that form a sequence with Earlier being the cost of goals
     % earlier in the sequence and Later being the cost of goals later in the
-    % sequence.  This operation is associative provided that the above
+    % sequence. This operation is associative provided that the above
     % condition is met.
     %
 :- func add_goal_costs_seq(goal_cost_csq, goal_cost_csq) = goal_cost_csq.
@@ -273,7 +273,7 @@
     % right-associative, parallel overlap due in dependant parallel
     % conjunctions is easier to model if we consider it to be left associative.
     % That is the conjunction ( A & B & C ) should be modeled as two conjuncts
-    % (A & B) (which is a conjunction itself and C.  This is because how C
+    % (A & B) (which is a conjunction itself and C. This is because how C
     % waits for variables in either A or B may depend on How B waits for
     % variables in A.
     %
@@ -284,7 +284,7 @@
     %   NumCalls, SparkCost, SparkDelay, BarrierCost, ContextWakeupDelay).
     %
     % Use this function to start with an empty set of metrics for an empty
-    % conjunction.  Then use init_parallel_exec_metrics_incomplete to continue
+    % conjunction. Then use init_parallel_exec_metrics_incomplete to continue
     % adding conjuncts on the right.
     %
 :- func init_empty_parallel_exec_metrics(float, float, int, float, float,
@@ -646,27 +646,27 @@ compute_is_active(Own) = IsActive :-
 
 :- type proc_cost_csq
     --->    proc_cost_csq(
+                % The number of non-recursive calls into this context.
+                % For example if this is a clique this is the number of
+                % calls made from the parent' clique to this one.
                 pcc_nr_calls        :: int,
-                    % The number of non-recursive calls into this context.  For
-                    % example if this is a clique this is the number of calls
-                    % made from the parent' clique to this one.
 
+                % The number of recursive calls into this context.
+                % This includes mutual recursion.
                 pcc_r_calls         :: int,
-                    % The number of recursive calls into this context.  This
-                    % includes mutual recursion.
 
+                % The number of callseq counts per call,
                 pcc_csq             :: cost
-                    % The number of callseq counts per call,
             ).
 
 :- type cs_cost_csq
     --->    cs_cost_csq(
+                % The number of calls (per parent invocation) through this
+                % call site.
                 cscc_calls          :: float,
-                    % The number of calls (per parent invocation) through this
-                    % call site.
 
+                % The cost of the call site per call.
                 cscc_csq_cost       :: cost
-                    % The cost of the call site per call.
             ).
 
 %----------------------------------------------------------------------------%
@@ -695,7 +695,7 @@ build_cs_cost_csq_percall(Calls, PercallCost) =
 
 zero_cs_cost =
     % Build this using the percall structure so that if a percall cost is ever
-    % retrived we don't have to divide by zero.  This is only a partial
+    % retrived we don't have to divide by zero. This is only a partial
     % solution.
     build_cs_cost_csq_percall(0.0, 0.0).
 
@@ -946,12 +946,12 @@ static_coverage_maybe_get_coverage_points(MaybeCoverage) = MaybeCoverage.
 
 %----------------------------------------------------------------------------%
 
-    % This type can be represented in multiple ways.  A single value expressing
+    % This type can be represented in multiple ways. A single value expressing
     % the probable value, or a probable value and a measure of
-    % deviation/variance.  Or as below three values that can express the
+    % deviation/variance. Or as below three values that can express the
     % skewedness of a distribution of values.
     %
-    % For now represent it as a single scalar.  Consider uncommenting the other
+    % For now represent it as a single scalar. Consider uncommenting the other
     % two fields in the future.
     %
 :- type parallelism_amount
@@ -1042,12 +1042,12 @@ exceeded_desired_parallelism(DesiredParallelism, Parallelism) :-
                 pemi_time_right_seq         :: float,
 
                 % The time of the right conjunct if it is running in parallel
-                % with the left conjunct.  Overheads are included in this value
+                % with the left conjunct. Overheads are included in this value
                 % so it will usually be larger than time_right_seq.
                 pemi_time_right_par         :: float,
 
                 % THe dead time of this conjunct, This is the time that the
-                % contaxt will be blocked on futures.  It does not include the
+                % contaxt will be blocked on futures. It does not include the
                 % spark delay because the contact may not exist for most of
                 % that time.
                 pemi_time_right_dead        :: float
@@ -1164,7 +1164,7 @@ parallel_exec_metrics_internal_get_seq_time(pem_additional(MetricsLeft, _,
     TimeLeft = parallel_exec_metrics_internal_get_seq_time(MetricsLeft),
     Time = TimeLeft + TimeRight.
 
-    % Get the parallel execution time of the first conjunct.  This is used for
+    % Get the parallel execution time of the first conjunct. This is used for
     % calculating the first conjunct's dead time (above).
     %
 :- func pem_get_first_conj_par_time(parallel_exec_metrics_internal) = float.
