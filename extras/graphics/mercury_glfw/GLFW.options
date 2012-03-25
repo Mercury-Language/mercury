@@ -1,0 +1,12 @@
+# This file contains system-specific information about where to install
+# the Mercury glfw binding and how to build it.
+
+# Where are we going to install the Mercury glfw binding?
+#
+INSTALL_PREFIX=.
+
+# What flags do we need to pass the Mercury compiler in order to compile
+# against glfw?
+# (The following are for the Cocoa port of GLFW on Mac OS X.)
+#
+GLFW_MCFLAGS=-lglfw --framework Cocoa --framework OpenGL

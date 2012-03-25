@@ -1,0 +1,43 @@
+This directory contains the package `mercury_glfw', which is a Mercury binding
+to the GLFW (See: <http://www.glfw.org>).
+
+Building the binding
+====================
+
+(1) Fill in the system-specific information for your GLFW installation
+    in the file GLFW.options.
+
+(2) Build and install using the following command:
+
+    $ mmc --make libmercury_glfw.install
+
+
+Overview of the binding
+=======================
+
+The Mercury GLFW binding provides access to  all of version 2.7 of GLFW API
+with the exception of:
+
+   * the GLFW thread routines                   (use Mercury threads instead)
+   * the image and texture loading routines     (deprecated)
+   * the routines for handling OpenGL extensions
+
+The mapping between GLFW functions and the corresponding Mercury predicates 
+in the binding is straightforward, for example:
+
+   C                                    Mercury
+   ---------                            -------
+   glfwInit()                           glfw.init/2
+   glfwOpenWindow()                     glfw.open_window/11
+   glfwSetWindowRefreshCallback()       glfw.set_window_refresh_callback/3
+   glfwPollEvents()                     glfw.poll_events/2
+
+Unless otherwise noted, you may assume the specified given in the GLFW
+reference manual.
+
+For each type of callback, we provide an "unset" predicate for removing a
+previously registered callback.
+
+The "examples" subdirectory contains a number of examples that demonstrate how
+to use the binding.  To build them you will also require the `mercury_opengl'
+package.

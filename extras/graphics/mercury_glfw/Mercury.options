@@ -1,0 +1,12 @@
+include GLFW.options
+
+# The glfw binding only works in C grades.
+#
+MCFLAGS = \
+	--libgrades-exclude java 					\
+	--libgrades-exclude erlang 					\
+	--libgrades-exclude csharp					\
+	--install-prefix $(INSTALL_PREFIX)				\
+	$(GLFW_MCFLAGS)
+
+MCFLAGS-mercury_glfw = --no-warn-nothing-exported --no-warn-interface-imports

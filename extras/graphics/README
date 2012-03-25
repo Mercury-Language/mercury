@@ -14,6 +14,8 @@ and we'll see about incorporating enhancements in the main distribution.
 	mercury_tcltk/		A Mercury binding to Tcl/Tk.
 
 	mercury_opengl/		A Mercury binding to OpenGL.
+ 
+	mercury_glfw/		A Mercury binding to GLFW.
 	
 	mercury_glut/		A Mercury binding to GLUT.
 
