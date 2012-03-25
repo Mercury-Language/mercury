@@ -5,7 +5,7 @@ to the Cairo 2D graphics library.  (See: <http://www.cairographics.org>.)
 Building the binding
 ====================
 
-(1) File in the system-specific information for your system in Cairo.options.
+(1) Fill in the system-specific information for your system in Cairo.options.
 
 (2) Build and install with the following command:
 
