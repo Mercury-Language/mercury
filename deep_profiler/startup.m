@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2011 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,6 +67,7 @@ read_and_startup_default_deep_options(Machine, ScriptName, DataFileName,
 
 read_and_startup(Machine, ScriptName, DataFileName, Canonical,
         MaybeOutputStream, DumpStages, DumpOptions, Result, !IO) :-
+    unlimit_stack(!IO),
     maybe_report_stats(MaybeOutputStream, !IO),
     maybe_report_msg(MaybeOutputStream,
         "% Reading graph data...\n", !IO),
@@ -1101,6 +1102,52 @@ maybe_report_msg(yes(OutputStream), Msg, !IO) :-
     io.write_string(OutputStream, Msg, !IO),
     flush_output(OutputStream, !IO).
 maybe_report_msg(no, _, !IO).
+
+%-----------------------------------------------------------------------------%
+
+    % When the deep profiler is compiled in hlc grades, on many systems
+    % large profiling data files cannot be processed using only the default
+    % size of the C stack. This predicate tells the OS to allow the stack
+    % to grow as large as it needs to.
+    %
+    % In llc grades, this predicate has no useful effect. The stack size
+    % limit can be lifted in such grades by using their .stseg versions.
+    %
+    % Any limits on stack size bite mostly during startup, which is why
+    % this predicate is in this module. The alternative design would be
+    % to move this predicate to a utility module and export it from there,
+    % and then invoke it separately in every program in this directory
+    % that calls startup. That would be error-prone, since adding the call
+    % would be easy to miss when adding a new program.
+    %
+:- pred unlimit_stack(io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    unlimit_stack(S0::di, S::uo),
+    [will_not_call_mercury, promise_pure],
+"{
+#ifdef  MR_DEEP_PROFILER_ENABLED
+    struct rlimit   limit_struct;
+    rlim_t          max_value;
+
+    if (getrlimit(RLIMIT_STACK, &limit_struct) != 0) {
+        MR_fatal_error(""could not get current stack limit"");
+    }
+
+    max_value = limit_struct.rlim_max;
+    limit_struct.rlim_cur = limit_struct.rlim_max;
+    /* If this fails, we have no recourse, so ignore any failure. */
+    (void) setrlimit(RLIMIT_STACK, &limit_struct);
+
+    S = S0;
+#else
+    MR_fatal_error(""deep profiling not enabled"");
+#endif
+}").
+
+unlimit_stack(!IO).
+    % The default definition, for non-C backends, which may not HAVE
+    % a stack that is subject to setrusage().
 
 %-----------------------------------------------------------------------------%
 :- end_module startup.
