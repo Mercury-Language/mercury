@@ -13,6 +13,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.state_var.
+:- import_module hlds.make_hlds.superhomogeneous.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -35,7 +36,7 @@
     % - expand references to state variables.
     %
 :- pred transform_goal_expr_context_to_goal(loc_kind::in, goal::in,
-    prog_var_renaming::in, hlds_goal::out, int::out,
+    prog_var_renaming::in, hlds_goal::out, num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -62,7 +63,6 @@
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.make_hlds_warn.
-:- import_module hlds.make_hlds.superhomogeneous.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.globals.
@@ -261,7 +261,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         MainDisjState =
             hlds_goal_svar_state(HLDSMainGoal0, AfterMainSVarState),
         transform_orelse_goals(LocKind, OrElseExprs, Renaming, OrElseDisjStates,
-            0, OrElseNumAdded, BeforeDisjSVarState, !SVarStore, !VarSet,
+            !NumAdded, BeforeDisjSVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         AllDisjStates = [MainDisjState | OrElseDisjStates],
         svar_finish_disjunction(Context, AllDisjStates, HLDSGoals, !VarSet,
@@ -295,7 +295,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         ;
             MaybeOuterScopeInfo = no
         ),
-        !:NumAdded = !.NumAdded + 1 + OrElseNumAdded,
+        !:NumAdded = !.NumAdded + 1,
         ShortHand = atomic_goal(unknown_atomic_goal_type, Outer, Inner,
             MaybeOutputVars, HLDSMainGoal, HLDSOrElseGoals, []),
         GoalExpr = shorthand(ShortHand),
@@ -489,7 +489,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         Goal0 = hlds_goal(GoalExpr0, GoalInfo),
         CallId = generic_call_id(gcid_event_call(EventName)),
         insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
-            Goal0, Goal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            Goal0, Goal, 0, !:NumAdded, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         svar_finish_atomic_goal(LocKind, !SVarState)
     ;
@@ -578,7 +578,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
 
             record_called_pred_or_func(pf_predicate, Name, Arity, !QualInfo),
             insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
-                Goal0, Goal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+                Goal0, Goal, 0, !:NumAdded, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
         ),
         svar_finish_atomic_goal(LocKind, !SVarState)
@@ -598,7 +598,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
             !:NumAdded = 0
         ;
             unravel_unification(A, B, Context, umc_explicit, [], Purity, Goal,
-                !:NumAdded, !SVarState, !SVarStore, !VarSet,
+                0, !:NumAdded, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
             svar_finish_atomic_goal(LocKind, !SVarState)
         )
@@ -758,7 +758,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
             expand_set_field_function_call(Context, umc_explicit, [],
                 FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
                 Functor, InnermostFunctor - InnermostSubContext, Goal0,
-                SetAdded, !SVarState, !SVarStore, !VarSet,
+                0, NumAdded1, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
 
             FieldArgNumber = 2,
@@ -784,16 +784,15 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 OutputTermArgNumber - OutputTermArgContext
             ],
             insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms,
-                ArgContexts, Context, Goal0, Goal, ArgAdded,
+                ArgContexts, Context, Goal0, Goal, NumAdded1, NumAdded,
                 !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
-            NumAdded = SetAdded + ArgAdded
+                !ModuleInfo, !QualInfo, !Specs)
         ;
             AccessType = get,
             expand_dcg_field_extraction_goal(Context, umc_explicit, [],
                 FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
                 Functor, InnermostFunctor - _InnerSubContext, Goal0,
-                ExtractAdded, !SVarState, !SVarStore, !VarSet,
+                0, NumAdded1, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
             InputTermArgNumber = 1,
             InputTermArgContext = ac_functor(Functor, umc_explicit, []),
@@ -818,10 +817,9 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 OutputTermArgNumber - OutputTermArgContext
             ],
             insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms,
-                ArgContexts, Context, Goal0, Goal, ArgAdded,
+                ArgContexts, Context, Goal0, Goal, NumAdded1, NumAdded,
                 !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
-            NumAdded = ExtractAdded + ArgAdded
+                !ModuleInfo, !QualInfo, !Specs)
         )
     ;
         unexpected($module, $pred, "arity != 3")

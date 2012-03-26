@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2011 The University of Melbourne.
+% Copyright (C) 2000-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -606,7 +606,7 @@ rename_lval(ml_field(Tag, Address, FieldName, FieldType, PtrType))
         rename_field_id(FieldName), FieldType, PtrType).
 rename_lval(ml_mem_ref(Rval, Type)) = ml_mem_ref(rename_rval(Rval), Type).
 rename_lval(ml_global_var_ref(Ref)) = ml_global_var_ref(Ref).
-rename_lval(ml_var(Var, Type)) = ml_var(rename_var(Var, Type), Type).
+rename_lval(ml_var(Var, Type)) = ml_var(rename_mlds_var(Var, Type), Type).
 
 :- func rename_field_id(mlds_field_id) = mlds_field_id.
 
@@ -638,9 +638,9 @@ rename_data_addr(data_addr(ModuleName, Name))
 
     % Again append a wrapper class qualifier to the var name.
     %
-:- func rename_var(mlds_var, mlds_type) = mlds_var.
+:- func rename_mlds_var(mlds_var, mlds_type) = mlds_var.
 
-rename_var(qual(ModuleName, _QualKind, Name), _Type)
+rename_mlds_var(qual(ModuleName, _QualKind, Name), _Type)
     = qual(mlds_append_wrapper_class(ModuleName), type_qual, Name).
 
 %-----------------------------------------------------------------------------%

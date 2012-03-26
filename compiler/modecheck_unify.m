@@ -248,12 +248,11 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
 
 modecheck_unification_functor(X0, ConsId0, IsExistConstruction, ArgVars0,
         Unification0, UnifyContext, GoalInfo0, Goal, !ModeInfo) :-
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
     map.lookup(VarTypes0, X0, TypeOfX),
 
     % We replace any unifications with higher-order pred constants
-    % by lambda expressions.  For example, we replace
+    % by lambda expressions. For example, we replace
     %
     %       X = list.append(Y)     % Y::in, X::out
     %
@@ -262,18 +261,19 @@ modecheck_unification_functor(X0, ConsId0, IsExistConstruction, ArgVars0,
     %       X = lambda [A1::in, A2::out] (list.append(Y, A1, A2))
     %
     % Normally this is done by polymorphism.process_unify_functor,
-    % but if we're re-modechecking goals after lambda.m has been run
+    % but if we are re-modechecking goals after lambda.m has been run
     % (e.g. for deforestation), then we may need to do it again here.
     % Note that any changes to this code here will probably need to be
     % duplicated there too.
 
     (
-        % Check if variable has a higher-order type.
+        % Check if the variable has a higher-order type.
         type_is_higher_order_details(TypeOfX, Purity, _, EvalMethod,
             PredArgTypes),
         ConsId0 = closure_cons(ShroudedPredProcId, _)
     ->
         % Convert the pred term to a lambda expression.
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
         mode_info_get_varset(!.ModeInfo, VarSet0),
         mode_info_get_context(!.ModeInfo, Context),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
@@ -287,7 +287,7 @@ modecheck_unification_functor(X0, ConsId0, IsExistConstruction, ArgVars0,
         modecheck_unification(X0, Functor0, Unification0, UnifyContext,
             GoalInfo0, Goal, !ModeInfo)
     ;
-        % It's not a higher-order pred unification, so just call
+        % It is not a higher-order pred unification, so just call
         % modecheck_unify_functor to do the ordinary thing.
         modecheck_unify_functor(X0, TypeOfX, ConsId0,
             IsExistConstruction, ArgVars0, Unification0,
@@ -650,8 +650,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
     (
         % The occur check: X = f(X) is considered a mode error unless X is
         % ground. (Actually it wouldn't be that hard to generate code for it
-        % - it always fails! - but it's most likely to be a programming error,
-        % so it's better to report it.)
+        % - it always fails! - but it is most likely to be a programming error,
+        % so it is better to report it.)
 
         list.member(X, ArgVars0),
         \+ inst_is_ground(ModuleInfo0, InstOfX)
@@ -724,23 +724,50 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             ArgVars0, ArgVars, ExtraGoals2, !ModeInfo),
         modecheck_set_var_inst(X, Inst, yes(InstOfY), !ModeInfo),
         UnifyArgInsts = list.map(func(I) = yes(I), InstOfXArgs),
-        mode_info_get_in_from_ground_term(!.ModeInfo, InFromGroundTerm),
-        (
-            InFromGroundTerm = in_from_ground_term_scope
-            % In the goals that result from the transformation of a unification
-            % of a variable with a ground term, the variables on the right hand
-            % sides of the construct unifications are all local to the scope
-            % of the from_ground_term scope, and their last appearance is in
-            % the construct. Therefore there is no need to update their inst.
-            %
-            % Avoiding the update can be a significant performance win, because
-            % for a ground list with N elements, the size of the inst of the
-            % average intermediate variable is proportional to N. Since there
-            % are N intermediate variables, the complexity of updating their
-            % insts would be quadratic.
+
+        % The call to bind_args below serves to update the insts of the
+        % argument variables on the right hand side of the unification,
+        % putting into them any information we can derive from the original
+        % inst of the variable on the left hand side.
+        %
+        % Unfortunately, the update can be very expensive. For example,
+        % for a ground list with N elements, there will be N variables
+        % bound to the cons cells of the list. Since the average size of the
+        % insts of these variables is on proportional to N/2, the task
+        % of recording all their insts is at least quadratic in N.
+        % In practice, it can  actually be worse, because of the way the code
+        % called by bind_args works. It keeps track of sets of insts seen
+        % so far, and checks new insts for membership of such sets.
+        % If the initial elements of a list are repeated, then the membership
+        % test can try to unify e.g. [a, a, a, a] with [], [a], [a, a]
+        % and [a, a, a]. This means that each step of the quadratic algorithm
+        % is itself quadratic, for an overall complexity of O(n^4).
+        %
+        % It is therefore crucial that we avoid calling bind_args if at all
+        % possible.
+        %
+        % There are two cases in which we definitely know we can avoid
+        % calling bind_args. First, if the variable on the left hand side, X,
+        % is originally free, then it cannot change the already recorded insts
+        % of the variables on the right hand side. Second, in from_ground_term
+        % scopes, the variables on the right hand sides of construct
+        % unifications are all local to the scope of the from_ground_term
+        % scope. We can avoid updating their insts because no part of the
+        % compiler will ever want to see their insts.
+        %
+        % We test for the first case first, because we expect it to be
+        % much more common.
+
+        ( inst_is_free(ModuleInfo0, InstOfX) ->
+            true
         ;
-            InFromGroundTerm = not_in_from_ground_term_scope,
-            bind_args(Inst, ArgVars, UnifyArgInsts, !ModeInfo)
+            mode_info_get_in_from_ground_term(!.ModeInfo, InFromGroundTerm),
+            (
+                InFromGroundTerm = in_from_ground_term_scope
+            ;
+                InFromGroundTerm = not_in_from_ground_term_scope,
+                bind_args(Inst, ArgVars, UnifyArgInsts, !ModeInfo)
+            )
         )
     ;
         set_of_var.list_to_set([X | ArgVars0], WaitingVars), % conservative

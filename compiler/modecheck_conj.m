@@ -152,115 +152,107 @@ modecheck_conj_list_flatten_and_schedule(ConjType, [Goal0 | Goals0], Goals,
         modecheck_conj_list_flatten_and_schedule(ConjType, Goals1, Goals,
             !ImpurityErrors, !ModeInfo)
     ;
-        modecheck_conj_list_schedule(ConjType, Goal0, Goals0, Goals,
-            !ImpurityErrors, !ModeInfo)
-    ).
+        % We attempt to schedule the first goal in the conjunction.
+        % If successful, we try to wake up pending goals (if any), and if not,
+        % we delay the goal. Then we continue attempting to schedule
+        % all the rest of the conjuncts.
 
-    % We attempt to schedule the first goal in the conjunction. If successful,
-    % we try to wake up pending goals (if any), and if not, we delay the goal.
-    % Then we continue attempting to schedule all the rest of the conjuncts.
-    %
-:- pred modecheck_conj_list_schedule(conj_type::in, hlds_goal::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    impurity_errors::in, impurity_errors::out,
-    mode_info::in, mode_info::out) is det.
-
-modecheck_conj_list_schedule(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
-        !ModeInfo) :-
-    Purity = goal_get_purity(Goal0),
-    (
-        Purity = purity_impure,
-        Impure = yes,
-        check_for_impurity_error(Goal0, ScheduledSolverGoals,
-            !ImpurityErrors, !ModeInfo)
-    ;
-        ( Purity = purity_pure
-        ; Purity = purity_semipure
-        ),
-        Impure = no,
-        ScheduledSolverGoals = []
-    ),
-
-    % Hang onto the original instmap, delay_info, and live_vars.
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
-
-    % Modecheck the goal, noting first that the non-locals
-    % which occur in the goal might not be live anymore.
-    NonLocalVars = goal_get_nonlocals(Goal0),
-    mode_info_remove_live_vars(NonLocalVars, !ModeInfo),
-    modecheck_goal(Goal0, Goal, !ModeInfo),
-
-    % Now see whether the goal was successfully scheduled. If we didn't manage
-    % to schedule the goal, then we restore the original instmap, delay_info
-    % and livevars here, and delay the goal.
-    mode_info_get_errors(!.ModeInfo, Errors),
-    (
-        Errors = [FirstErrorInfo | _],
-        mode_info_set_errors([], !ModeInfo),
-        mode_info_set_instmap(InstMap0, !ModeInfo),
-        mode_info_add_live_vars(NonLocalVars, !ModeInfo),
-        delay_info_delay_goal(FirstErrorInfo, Goal0, DelayInfo0, DelayInfo1),
-        % Delaying an impure goal is an impurity error.
+        Purity = goal_get_purity(Goal0),
         (
+            Purity = purity_impure,
             Impure = yes,
-            FirstErrorInfo = mode_error_info(Vars, _, _, _),
-            ImpureError = mode_error_conj(
-                [delayed_goal(Vars, FirstErrorInfo, Goal0)],
-                goal_itself_was_impure),
-            mode_info_get_context(!.ModeInfo, Context),
-            mode_info_get_mode_context(!.ModeInfo, ModeContext),
-            ImpureErrorInfo = mode_error_info(Vars, ImpureError,
-                Context, ModeContext),
-            !:ImpurityErrors = [ImpureErrorInfo | !.ImpurityErrors]
+            check_for_impurity_error(Goal0, ScheduledSolverGoals,
+                !ImpurityErrors, !ModeInfo)
         ;
-            Impure = no
-        )
-    ;
-        Errors = [],
-        mode_info_get_delay_info(!.ModeInfo, DelayInfo1)
-    ),
+            ( Purity = purity_pure
+            ; Purity = purity_semipure
+            ),
+            Impure = no,
+            ScheduledSolverGoals = []
+        ),
 
-    % Next, we attempt to wake up any pending goals, and then continue
-    % scheduling the rest of the goal.
-    delay_info_wakeup_goals(WokenGoals, DelayInfo1, DelayInfo),
-    Goals1 = WokenGoals ++ Goals0,
-    (
-        WokenGoals = []
-    ;
-        WokenGoals = [_],
-        mode_checkpoint(wakeup, "goal", !ModeInfo)
-    ;
-        WokenGoals = [_, _ | _],
-        mode_checkpoint(wakeup, "goals", !ModeInfo)
-    ),
-    mode_info_set_delay_info(DelayInfo, !ModeInfo),
-    mode_info_get_instmap(!.ModeInfo, InstMap),
-    ( instmap_is_unreachable(InstMap) ->
-        % We should not mode-analyse the remaining goals, since they are
-        % unreachable. Instead we optimize them away, so that later passes
-        % won't complain about them not having mode information.
-        mode_info_remove_goals_live_vars(Goals1, !ModeInfo),
-        Goals2  = []
-    ;
-        % The remaining goals may still need to be flattened.
-        modecheck_conj_list_flatten_and_schedule(ConjType, Goals1, Goals2,
-            !ImpurityErrors, !ModeInfo)
-    ),
-    (
-        Errors = [_ | _],
-        % We delayed this goal -- it will be stored in the delay_info.
-        Goals = ScheduledSolverGoals ++ Goals2
-    ;
-        Errors = [],
-        % We successfully scheduled this goal, so insert it
-        % in the list of successfully scheduled goals.
-        % We flatten out conjunctions if we can. They can arise
-        % when Goal0 was a scope(from_ground_term, _) goal.
-        ( Goal = hlds_goal(conj(ConjType, SubGoals), _) ->
-            Goals = ScheduledSolverGoals ++ SubGoals ++ Goals2
+        % Hang onto the original instmap, delay_info, and live_vars.
+        mode_info_get_instmap(!.ModeInfo, InstMap0),
+        mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
+
+        % Modecheck the goal, noting first that the non-locals
+        % which occur in the goal might not be live anymore.
+        NonLocalVars = goal_get_nonlocals(Goal0),
+        mode_info_remove_live_vars(NonLocalVars, !ModeInfo),
+        modecheck_goal(Goal0, Goal, !ModeInfo),
+
+        % Now see whether the goal was successfully scheduled. If we didn't
+        % manage to schedule the goal, then we restore the original instmap,
+        % delay_info and livevars here, and delay the goal.
+        mode_info_get_errors(!.ModeInfo, Errors),
+        (
+            Errors = [FirstErrorInfo | _],
+            mode_info_set_errors([], !ModeInfo),
+            mode_info_set_instmap(InstMap0, !ModeInfo),
+            mode_info_add_live_vars(NonLocalVars, !ModeInfo),
+            delay_info_delay_goal(FirstErrorInfo, Goal0,
+                DelayInfo0, DelayInfo1),
+            % Delaying an impure goal is an impurity error.
+            (
+                Impure = yes,
+                FirstErrorInfo = mode_error_info(Vars, _, _, _),
+                ImpureError = mode_error_conj(
+                    [delayed_goal(Vars, FirstErrorInfo, Goal0)],
+                    goal_itself_was_impure),
+                mode_info_get_context(!.ModeInfo, Context),
+                mode_info_get_mode_context(!.ModeInfo, ModeContext),
+                ImpureErrorInfo = mode_error_info(Vars, ImpureError,
+                    Context, ModeContext),
+                !:ImpurityErrors = [ImpureErrorInfo | !.ImpurityErrors]
+            ;
+                Impure = no
+            )
         ;
-            Goals = ScheduledSolverGoals ++ [Goal | Goals2]
+            Errors = [],
+            mode_info_get_delay_info(!.ModeInfo, DelayInfo1)
+        ),
+
+        % Next, we attempt to wake up any pending goals, and then continue
+        % scheduling the rest of the goal.
+        delay_info_wakeup_goals(WokenGoals, DelayInfo1, DelayInfo),
+        Goals1 = WokenGoals ++ Goals0,
+        (
+            WokenGoals = []
+        ;
+            WokenGoals = [_],
+            mode_checkpoint(wakeup, "goal", !ModeInfo)
+        ;
+            WokenGoals = [_, _ | _],
+            mode_checkpoint(wakeup, "goals", !ModeInfo)
+        ),
+        mode_info_set_delay_info(DelayInfo, !ModeInfo),
+        mode_info_get_instmap(!.ModeInfo, InstMap),
+        ( instmap_is_unreachable(InstMap) ->
+            % We should not mode-analyse the remaining goals, since they are
+            % unreachable. Instead we optimize them away, so that later passes
+            % won't complain about them not having mode information.
+            mode_info_remove_goals_live_vars(Goals1, !ModeInfo),
+            Goals2  = []
+        ;
+            % The remaining goals may still need to be flattened.
+            modecheck_conj_list_flatten_and_schedule(ConjType, Goals1, Goals2,
+                !ImpurityErrors, !ModeInfo)
+        ),
+        (
+            Errors = [_ | _],
+            % We delayed this goal -- it will be stored in the delay_info.
+            Goals = ScheduledSolverGoals ++ Goals2
+        ;
+            Errors = [],
+            % We successfully scheduled this goal, so insert it
+            % in the list of successfully scheduled goals.
+            % We flatten out conjunctions if we can. They can arise
+            % when Goal0 was a scope(from_ground_term, _) goal.
+            ( Goal = hlds_goal(conj(ConjType, SubGoals), _) ->
+                Goals = ScheduledSolverGoals ++ SubGoals ++ Goals2
+            ;
+                Goals = ScheduledSolverGoals ++ [Goal | Goals2]
+            )
         )
     ).
 

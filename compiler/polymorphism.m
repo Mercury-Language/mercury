@@ -531,7 +531,13 @@ polymorphism_introduce_exists_casts_pred(ModuleInfo, !PredInfo) :-
     module_info::in, module_info::out) is det.
 
 polymorphism_process_pred_msg(PredId, !ModuleInfo) :-
-    trace [io(!IO)] (
+    % Since polymorphism transforms not just the procedures defined
+    % in the module being compiled, but also all the procedures in
+    % all the imported modules, this message can be printed A LOT,
+    % even though it is almost never of interest.
+    % That is why we enable it only when requested.
+
+    trace [compiletime(flag("poly_msgs")), io(!IO)] (
         write_pred_progress_message("% Transforming polymorphism for ",
             PredId, !.ModuleInfo, !IO)
     ),

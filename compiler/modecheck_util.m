@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -606,8 +606,8 @@ modecheck_set_var_inst_call(Var0, InitialInst, FinalInst, Var, !ExtraGoals,
         !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     ( instmap_is_reachable(InstMap0) ->
-        % The new inst must be computed by unifying the
-        % old inst and the proc's final inst.
+        % The new inst must be computed by unifying the old inst
+        % and the proc's final inst.
         instmap_lookup_var(InstMap0, Var0, VarInst0),
         handle_implied_mode(Var0, VarInst0, InitialInst, Var, !ExtraGoals,
             !ModeInfo),
@@ -621,21 +621,29 @@ modecheck_set_var_inst_call(Var0, InitialInst, FinalInst, Var, !ExtraGoals,
         Var = Var0
     ).
 
+modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
     % Note that there are two versions of modecheck_set_var_inst,
     % one with arity 8 (suffixed with _call) and one with arity 5.
     % The former is used for predicate calls, where we may need
     % to introduce unifications to handle calls to implied modes.
     %
-modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
     mode_info_get_parallel_vars(!.ModeInfo, PVars0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     ( instmap_is_reachable(InstMap0) ->
-        % The new inst must be computed by unifying the
-        % old inst and the proc's final inst.
-        instmap_lookup_var(InstMap0, Var0, Inst0),
+        instmap_lookup_var(InstMap0, Var0, OldInst),
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+        % The final new inst must be computed by unifying the old inst
+        % and the tentative new inst. However, unifying a large inst with
+        % itself can be VERY expensive; it can be worse than quadratic.
+        % The OldInst = NewInst here may incrase execution time slightly
+        % in normal cases, but should reduce it greatly in worst cases.
         (
-            abstractly_unify_inst(is_dead, Inst0, FinalInst,
+            OldInst = NewInst
+        ->
+            ModuleInfo = ModuleInfo0,
+            Inst = OldInst
+        ;
+            abstractly_unify_inst(is_dead, OldInst, NewInst,
                 fake_unify, UnifyInst, _Det, ModuleInfo0, ModuleInfo1)
         ->
             ModuleInfo = ModuleInfo1,
@@ -657,7 +665,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
             % If we haven't added any information and
             % we haven't bound any part of the var, then
             % the only thing we can have done is lose uniqueness.
-            inst_matches_initial(Inst0, Inst, Type, ModuleInfo)
+            inst_matches_initial(OldInst, Inst, Type, ModuleInfo)
         ->
             instmap_set_var(Var0, Inst, InstMap0, InstMap),
             mode_info_set_instmap(InstMap, !ModeInfo)
@@ -666,7 +674,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
             % lost some uniqueness, or bound part of the var.
             % The call to inst_matches_binding will succeed
             % only if we haven't bound any part of the var.
-            \+ inst_matches_binding(Inst, Inst0, Type, ModuleInfo),
+            \+ inst_matches_binding(Inst, OldInst, Type, ModuleInfo),
 
             % We've bound part of the var.  If the var was locked,
             % then we need to report an error...
@@ -681,12 +689,12 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
                 MaybeUInst = yes(UInst),
                 inst_is_at_least_as_instantiated(Inst, UInst, Type,
                     ModuleInfo),
-                inst_matches_binding_allow_any_any(Inst, Inst0, Type,
+                inst_matches_binding_allow_any_any(Inst, OldInst, Type,
                     ModuleInfo)
             )
         ->
             WaitingVars = set_of_var.make_singleton(Var0),
-            ModeError = mode_error_bind_var(Reason0, Var0, Inst0, Inst),
+            ModeError = mode_error_bind_var(Reason0, Var0, OldInst, Inst),
             mode_info_error(WaitingVars, ModeError, !ModeInfo)
         ;
             instmap_set_var(Var0, Inst, InstMap0, InstMap),

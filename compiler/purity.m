@@ -653,7 +653,8 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             Purity = PromisedPurity,
             Reason = Reason0
         ;
-            % We haven't yet classified from_ground_term scopes into
+            Reason0 = from_ground_term(TermVar, Kind0),
+            % We have not yet classified from_ground_term scopes into
             % from_ground_term_construct and other kinds, which is a pity,
             % since from_ground_term_construct scopes do not need purity
             % checking.
@@ -661,7 +662,6 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             % conjunctions of unifications, and we could take advantage of
             % that, e.g. by avoiding repeatedly taking the varset and vartypes
             % out of !Info and just as repeatedly putting it back again.
-            Reason0 = from_ground_term(TermVar, Kind0),
             !Info ^ pi_converted_unify := have_not_converted_unify,
             compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace,
                 !Info),

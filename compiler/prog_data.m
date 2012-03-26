@@ -1422,7 +1422,37 @@ rename_vars_in_term(Must, Renaming, Term0, Term) :-
         Term = variable(Var, Context)
     ;
         Term0 = functor(ConsId, Args0, Context),
-        rename_vars_in_term_list(Must, Renaming, Args0, Args),
+        % The mutual non-tail recursion between rename_vars_in_term and
+        % rename_vars_in_term_list means that when given a large Term0,
+        % this predicate may need a LOT of stack frames, and may even run
+        % the program out of stack.
+        %
+        % To try to prevent this in as many cases as possible (though
+        % unfortunately not all), we handle the first three arguments
+        % directly. The most common kind of very large term is a very
+        % long list, and with this approach, we use only one stack frame
+        % per list element, not two.
+        (
+            Args0 = [],
+            Args = []
+        ;
+            Args0 = [Arg1Term0],
+            rename_vars_in_term(Must, Renaming, Arg1Term0, Arg1Term),
+            Args = [Arg1Term]
+        ;
+            Args0 = [Arg1Term0, Arg2Term0],
+            rename_vars_in_term(Must, Renaming, Arg1Term0, Arg1Term),
+            rename_vars_in_term(Must, Renaming, Arg2Term0, Arg2Term),
+            Args = [Arg1Term, Arg2Term]
+        ;
+            Args0 = [Arg1Term0, Arg2Term0, Arg3Term0 | OtherArgTerms0],
+            rename_vars_in_term(Must, Renaming, Arg1Term0, Arg1Term),
+            rename_vars_in_term(Must, Renaming, Arg2Term0, Arg2Term),
+            rename_vars_in_term(Must, Renaming, Arg3Term0, Arg3Term),
+            rename_vars_in_term_list(Must, Renaming,
+                OtherArgTerms0, OtherArgTerms),
+            Args = [Arg1Term, Arg2Term, Arg3Term | OtherArgTerms]
+        ),
         Term = functor(ConsId, Args, Context)
     ).
 

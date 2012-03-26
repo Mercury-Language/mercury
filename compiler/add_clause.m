@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -584,7 +584,7 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
             ArgContext = ac_head(PredOrFunc, Arity),
             HeadGoal0 = true_goal,
             insert_arg_unifications(HeadVarList, Args, Context, ArgContext,
-                HeadGoal0, HeadGoal1, _, !SVarState, !SVarStore, !VarSet,
+                HeadGoal0, HeadGoal1, 0, _, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
             % The only pass that pays attention to the from_head feature,
             % switch_detection, only does so on kinds of hlds_goal_exprs

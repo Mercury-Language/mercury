@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006, 2008-2011 The University of Melbourne.
+% Copyright (C) 1993-2006, 2008-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,7 +46,7 @@
     unify_main_context::in, unify_sub_contexts::in, field_list::in,
     prog_var::in, prog_var::in, prog_var::in, cons_id::out,
     pair(cons_id, unify_sub_contexts)::out, hlds_goal::out,
-    num_added_goals::out,
+    num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -68,7 +68,7 @@
     unify_main_context::in, unify_sub_contexts::in, field_list::in,
     prog_var::in, prog_var::in, prog_var::in, cons_id::out,
     pair(cons_id, unify_sub_contexts)::out, hlds_goal::out,
-    num_added_goals::out,
+    num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -88,7 +88,7 @@
     unify_main_context::in, unify_sub_contexts::in, field_list::in,
     prog_var::in, prog_var::in, purity::in, cons_id::out,
     pair(cons_id, unify_sub_contexts)::out,
-    hlds_goal::out, num_added_goals::out,
+    hlds_goal::out, num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -121,11 +121,11 @@
 
 expand_set_field_function_call(Context, MainContext, SubContext0, FieldNames,
         FieldValueVar, TermInputVar, TermOutputVar, Functor, FieldSubContext,
-        Goal, NumAdded, !SVarState, !SVarStore, !VarSet,
+        Goal, !NumAdded, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
     expand_set_field_function_call_2(Context, MainContext, SubContext0,
         FieldNames, FieldValueVar, TermInputVar, TermOutputVar, Functor,
-        FieldSubContext, Goals, NumAdded,
+        FieldSubContext, Goals, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(Goals, GoalInfo, Goal).
@@ -134,19 +134,20 @@ expand_set_field_function_call(Context, MainContext, SubContext0, FieldNames,
     unify_main_context::in, unify_sub_contexts::in, field_list::in,
     prog_var::in, prog_var::in, prog_var::in, cons_id::out,
     pair(cons_id, unify_sub_contexts)::out, list(hlds_goal)::out,
-    num_added_goals::out,
+    num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-expand_set_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _,
+expand_set_field_function_call_2(_, _, _, [], _, _, _, _, _, _, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     unexpected($module, $pred, "empty list of field names").
 expand_set_field_function_call_2(Context, MainContext, SubContext0,
         [FieldName - FieldArgs | FieldNames], FieldValueVar,
-        TermInputVar, TermOutputVar, Functor, FieldSubContext, Goals, NumAdded,
-        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+        TermInputVar, TermOutputVar, Functor, FieldSubContext, Goals,
+        !NumAdded, !SVarState, !SVarStore, !VarSet,
+        !ModuleInfo, !QualInfo, !Specs) :-
     make_fresh_arg_vars(FieldArgs, FieldArgVars, !VarSet, !SVarState, !Specs),
     (
         FieldNames = [_ | _],
@@ -156,14 +157,14 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
         construct_field_access_function_call(set, Context,
             MainContext, SubContext0, FieldName, TermOutputVar,
             SetArgs, purity_pure, Functor, UpdateGoal, !QualInfo),
-        UpdateAdded = 1,
+        !:NumAdded = !.NumAdded + 1,
 
         % Extract the field containing the field to update.
         construct_field_access_function_call(get, Context,
             MainContext, SubContext0, FieldName, SubTermInputVar,
             FieldArgVars ++ [TermInputVar], purity_pure, _, GetSubFieldGoal,
             !QualInfo),
-        GetSubFieldAdded = 1,
+        !:NumAdded = !.NumAdded + 1,
 
         % Recursively update the field.
         SubTermInputArgNumber = 2 + list.length(FieldArgs),
@@ -171,10 +172,9 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
         SubContext = [TermInputContext | SubContext0],
         expand_set_field_function_call_2(Context, MainContext,
             SubContext, FieldNames, FieldValueVar, SubTermInputVar,
-            SubTermOutputVar, _, FieldSubContext, Goals0, SetAdded,
+            SubTermOutputVar, _, FieldSubContext, Goals0, !NumAdded,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
-        FieldAdded = GetSubFieldAdded + SetAdded + UpdateAdded,
         Goals1 = [GetSubFieldGoal | Goals0] ++ [UpdateGoal]
     ;
         FieldNames = [],
@@ -182,7 +182,7 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
         construct_field_access_function_call(set, Context,
             MainContext, SubContext0, FieldName, TermOutputVar,
             SetArgs, purity_pure, Functor, Goal, !QualInfo),
-        FieldAdded = 1,
+        !:NumAdded = !.NumAdded + 1,
         FieldSubContext = Functor - SubContext0,
         Goals1 = [Goal]
     ),
@@ -190,37 +190,35 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(Goals1, GoalInfo, Conj0),
     insert_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
-        Conj0, Conj, ArgAdded, !SVarState, !SVarStore, !VarSet,
+        Conj0, Conj, !NumAdded, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
-    NumAdded = FieldAdded + ArgAdded,
     svar_goal_to_conj_list(Conj, Goals, !SVarStore).
 
 expand_dcg_field_extraction_goal(Context, MainContext, SubContext, FieldNames,
         FieldValueVar, TermInputVar, TermOutputVar, Functor, FieldSubContext,
-        Goal, NumAdded, !SVarState, !SVarStore, !VarSet,
+        Goal, !NumAdded, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
     % Unify the DCG input and output variables.
     make_atomic_unification(TermOutputVar, rhs_var(TermInputVar), Context,
         MainContext, SubContext, UnifyDCG, !QualInfo),
-    UnifyAdded = 1,
+    !:NumAdded = !.NumAdded + 1,
 
     % Process the access function as a get function on the output DCG variable.
     expand_get_field_function_call_2(Context, MainContext, SubContext,
         FieldNames, FieldValueVar, TermOutputVar, purity_pure,
-        Functor, FieldSubContext, Goals1, GetAdded,
+        Functor, FieldSubContext, Goals1, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-    NumAdded = UnifyAdded + GetAdded,
     Goals = [UnifyDCG | Goals1],
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(Goals, GoalInfo, Goal).
 
 expand_get_field_function_call(Context, MainContext, SubContext0, FieldNames,
         FieldValueVar, TermInputVar, Purity, Functor, FieldSubContext,
-        Goal, NumAdded, !SVarState, !SVarStore, !VarSet,
+        Goal, !NumAdded, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
     expand_get_field_function_call_2(Context, MainContext, SubContext0,
         FieldNames, FieldValueVar, TermInputVar, Purity, Functor,
-        FieldSubContext, Goals, NumAdded, !SVarState, !SVarStore, !VarSet,
+        FieldSubContext, Goals, !NumAdded, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(Goals, GoalInfo, Goal).
@@ -229,18 +227,18 @@ expand_get_field_function_call(Context, MainContext, SubContext0, FieldNames,
     unify_main_context::in, unify_sub_contexts::in, field_list::in,
     prog_var::in, prog_var::in, purity::in, cons_id::out,
     pair(cons_id, unify_sub_contexts)::out, list(hlds_goal)::out,
-    num_added_goals::out,
+    num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _,
+expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     unexpected($module, $pred, "empty list of field names").
 expand_get_field_function_call_2(Context, MainContext, SubContext0,
         [FieldName - FieldArgs | FieldNames], FieldValueVar, TermInputVar,
-        Purity, Functor, FieldSubContext, Goals, NumAdded,
+        Purity, Functor, FieldSubContext, Goals, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     make_fresh_arg_vars(FieldArgs, FieldArgVars, !VarSet, !SVarState, !Specs),
     GetArgVars = FieldArgVars ++ [TermInputVar],
@@ -250,7 +248,7 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
         construct_field_access_function_call(get, Context, MainContext,
             SubContext0, FieldName, SubTermInputVar, GetArgVars, Purity,
             Functor, Goal, !QualInfo),
-        CallAdded = 1,
+        !:NumAdded = !.NumAdded + 1,
 
         % Recursively extract until we run out of field names.
         TermInputArgNumber = 1 + list.length(FieldArgVars),
@@ -258,10 +256,9 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
         SubContext = [TermInputContext | SubContext0],
         expand_get_field_function_call_2(Context, MainContext,
             SubContext, FieldNames, FieldValueVar, SubTermInputVar, Purity,
-            _, FieldSubContext, Goals1, ExtractAdded, !SVarState, !SVarStore,
+            _, FieldSubContext, Goals1, !NumAdded, !SVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        Goals2 = [Goal | Goals1],
-        FieldAdded = CallAdded + ExtractAdded
+        Goals2 = [Goal | Goals1]
     ;
         FieldNames = [],
         FieldSubContext = Functor - SubContext0,
@@ -269,15 +266,14 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
             MainContext, SubContext0, FieldName, FieldValueVar,
             GetArgVars, Purity, Functor, Goal, !QualInfo),
         Goals2 = [Goal],
-        FieldAdded = 1
+        !:NumAdded = !.NumAdded + 1
     ),
     ArgContext = ac_functor(Functor, MainContext, SubContext0),
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(Goals2, GoalInfo, Conj0),
     insert_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
-        Conj0, Conj, ArgAdded, !SVarState, !SVarStore, !VarSet,
+        Conj0, Conj, !NumAdded, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
-    NumAdded = FieldAdded + ArgAdded,
     svar_goal_to_conj_list(Conj, Goals, !SVarStore).
 
 :- pred construct_field_access_function_call(field_access_type::in,

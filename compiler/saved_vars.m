@@ -377,7 +377,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
     ( set_of_var.member(Goal0NonLocals, Var) ->
         (
             Goal0Expr = unify(_, _, _, _, _),
-            rename_var(Var, _NewVar, Subst, !SlotInfo),
+            saved_vars_rename_var(Var, _NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
@@ -385,7 +385,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
             Goal0Expr = plain_call(_, _, _, _, _, _),
-            rename_var(Var, _NewVar, Subst, !SlotInfo),
+            saved_vars_rename_var(Var, _NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
@@ -393,7 +393,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
             Goal0Expr = generic_call(_, _, _, _, _),
-            rename_var(Var, _NewVar, Subst, !SlotInfo),
+            saved_vars_rename_var(Var, _NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
@@ -401,7 +401,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
             Goal0Expr = call_foreign_proc(_, _, _, _, _, _, _),
-            rename_var(Var, _NewVar, Subst, !SlotInfo),
+            saved_vars_rename_var(Var, _NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
@@ -425,7 +425,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             )
         ;
             Goal0Expr = scope(Reason, SomeGoal0),
-            rename_var(Var, NewVar, Subst, !SlotInfo),
+            saved_vars_rename_var(Var, NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, SomeGoal0, SomeGoal1),
             push_into_goal(SomeGoal1, SomeGoal, NewConstruct, NewVar,
@@ -436,7 +436,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             Goals = [Goal1 | Goals1]
         ;
             Goal0Expr = negation(NegGoal0),
-            rename_var(Var, NewVar, Subst, !SlotInfo),
+            saved_vars_rename_var(Var, NewVar, Subst, !SlotInfo),
             rename_some_vars_in_goal(Subst, Construct, NewConstruct),
             rename_some_vars_in_goal(Subst, NegGoal0, NegGoal1),
             push_into_goal(NegGoal1, NegGoal, NewConstruct, NewVar,
@@ -512,7 +512,7 @@ push_into_goal_rename(Goal0, Goal, Construct, Var, !SlotInfo) :-
     Goal0 = hlds_goal(_, GoalInfo0),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
     ( set_of_var.member(NonLocals, Var) ->
-        rename_var(Var, NewVar, Subst, !SlotInfo),
+        saved_vars_rename_var(Var, NewVar, Subst, !SlotInfo),
         rename_some_vars_in_goal(Subst, Construct, NewConstruct),
         rename_some_vars_in_goal(Subst, Goal0, Goal1),
         push_into_goal(Goal1, Goal, NewConstruct, NewVar, !SlotInfo)
@@ -593,10 +593,10 @@ init_slot_info(Varset, VarTypes, RttiVarMaps, TypeInfoLiveness, SlotInfo) :-
 final_slot_info(Varset, VarTypes, RttiVarMaps, SlotInfo) :-
     SlotInfo = slot_info(Varset, VarTypes, RttiVarMaps, _).
 
-:- pred rename_var(prog_var::in, prog_var::out, map(prog_var, prog_var)::out,
-    slot_info::in, slot_info::out) is det.
+:- pred saved_vars_rename_var(prog_var::in, prog_var::out,
+    map(prog_var, prog_var)::out, slot_info::in, slot_info::out) is det.
 
-rename_var(Var, NewVar, Substitution, !SlotInfo) :-
+saved_vars_rename_var(Var, NewVar, Substitution, !SlotInfo) :-
     !.SlotInfo = slot_info(Varset0, VarTypes0, RttiVarMaps0, TypeInfoLiveness),
     varset.new_var(NewVar, Varset0, Varset),
     map.from_assoc_list([Var - NewVar], Substitution),

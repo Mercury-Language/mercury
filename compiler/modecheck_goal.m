@@ -150,6 +150,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -860,19 +861,8 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
             mode_checkpoint(exit, "from_ground_term scope", !ModeInfo),
             (
                 MaybeKind1AndSubGoal1 = yes(Kind1 - SubGoal1),
-                (
-                    Kind1 = from_ground_term_initial,
-                    unexpected($module, $pred, "from_ground_term_initial")
-                ;
-                    Kind1 = from_ground_term_construct,
-                    Kind2 = from_ground_term_construct
-                ;
-                    Kind1 = from_ground_term_deconstruct,
-                    Kind2 = from_ground_term_deconstruct
-                ;
-                    Kind1 = from_ground_term_other,
-                    Kind2 = from_ground_term_other
-                ),
+                expect(negate(unify(Kind1, from_ground_term_initial)),
+                    $module, $pred, "from_ground_term_initial"),
                 mode_info_set_had_from_ground_term(had_from_ground_term_scope,
                     !ModeInfo),
 
@@ -880,20 +870,23 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
                     MakeGroundTermsUnique),
                 (
                     MakeGroundTermsUnique = do_not_make_ground_terms_unique,
-                    UpdatedReason2 = from_ground_term(TermVar, Kind2),
-                    GoalExpr = scope(UpdatedReason2, SubGoal1)
+                    UpdatedReason1 = from_ground_term(TermVar, Kind1),
+                    GoalExpr = scope(UpdatedReason1, SubGoal1)
                 ;
                     MakeGroundTermsUnique = make_ground_terms_unique,
                     (
-                        Kind2 = from_ground_term_construct,
+                        Kind1 = from_ground_term_initial,
+                        unexpected($module, $pred, "from_ground_term_initial")
+                    ;
+                        Kind1 = from_ground_term_construct,
                         modecheck_goal_make_ground_term_unique(TermVar,
                             SubGoal1, GoalInfo0, GoalExpr, !ModeInfo)
                     ;
-                        ( Kind2 = from_ground_term_deconstruct
-                        ; Kind2 = from_ground_term_other
+                        ( Kind1 = from_ground_term_deconstruct
+                        ; Kind1 = from_ground_term_other
                         ),
-                        UpdatedReason2 = from_ground_term(TermVar, Kind2),
-                        GoalExpr = scope(UpdatedReason2, SubGoal1)
+                        UpdatedReason1 = from_ground_term(TermVar, Kind1),
+                        GoalExpr = scope(UpdatedReason1, SubGoal1)
                     )
                 )
             ;
@@ -1144,7 +1137,7 @@ modecheck_specializable_ground_term(SubGoal, TermVar, TermVarInst,
             % UnifyTerm cannot succeed until *after* the argument
             % variables become ground.
             %
-            % Putting UnifyTerm after UnifyArgs here is much more efficient
+            % Putting UnifyTerm after UnifyArgs here is MUCH more efficient
             % than letting the usual more ordering algorithm delay it
             % repeatedly: it is linear instead of quadratic.
 
