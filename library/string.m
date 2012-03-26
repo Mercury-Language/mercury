@@ -1651,7 +1651,7 @@ string.to_char_list(Str::uo, CharList::in) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    int pos = strlen(Str);
+    MR_Integer pos = strlen(Str);
     int c;
 
     CharList = MR_list_empty_msg(MR_ALLOC_ID);
@@ -4533,7 +4533,11 @@ string.unsafe_index(Str, Index, Char) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    Ch = MR_utf8_get(Str, Index);
+    Ch = Str[Index];
+    if (!MR_is_ascii(Ch)) {
+        int width;
+        Ch = MR_utf8_get_mb(Str, Index, &width);
+    }
     SUCCESS_INDICATOR = (Ch > 0);
 ").
 :- pragma foreign_proc("C#",
@@ -4580,10 +4584,15 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    int pos = Index;
-    Ch = MR_utf8_get_next(Str, &pos);
-    NextIndex = pos;
-    SUCCESS_INDICATOR = (Ch > 0);
+    Ch = Str[Index];
+    if (MR_is_ascii(Ch)) {
+        NextIndex = Index + 1;
+        SUCCESS_INDICATOR = (Ch != 0);
+    } else {
+        NextIndex = Index;
+        Ch = MR_utf8_get_next_mb(Str, &NextIndex);
+        SUCCESS_INDICATOR = (Ch > 0);
+    }
 ").
 
 :- pragma foreign_proc("C#",
@@ -4659,10 +4668,18 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    int pos = Index;
-    Ch = MR_utf8_prev_get(Str, &pos);
-    PrevIndex = pos;
-    SUCCESS_INDICATOR = (Ch > 0);
+    if (Index > 0) {
+        PrevIndex = Index - 1;
+        Ch = Str[PrevIndex];
+        if (MR_is_ascii(Ch)) {
+            SUCCESS_INDICATOR = (Ch != 0);
+        } else {
+            Ch = MR_utf8_prev_get(Str, &PrevIndex);
+            SUCCESS_INDICATOR = (Ch > 0);
+        }
+    } else {
+        SUCCESS_INDICATOR = MR_FALSE;
+    }
 ").
 
 :- pragma foreign_proc("C#",
@@ -5756,7 +5773,7 @@ string.split_by_codepoint(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    int pos = 0;
+    MR_Integer pos = 0;
     int c = MR_utf8_get_next(Str, &pos);
     SUCCESS_INDICATOR = (
         c == First &&
@@ -5813,9 +5830,9 @@ string.split_by_codepoint(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    int pos = 0;
+    MR_Integer pos = 0;
     First = MR_utf8_get_next(Str, &pos);
-    SUCCESS_INDICATOR = (First != '\\0' && strcmp(Str + pos, Rest) == 0);
+    SUCCESS_INDICATOR = (First > 0 && strcmp(Str + pos, Rest) == 0);
 ").
 :- pragma foreign_proc("C#",
     string.first_char(Str::in, First::uo, Rest::in),
@@ -5875,7 +5892,7 @@ string.split_by_codepoint(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    int pos = 0;
+    MR_Integer pos = 0;
     int c = MR_utf8_get_next(Str, &pos);
     if (c != First || First == '\\0') {
         SUCCESS_INDICATOR = MR_FALSE;
@@ -5943,9 +5960,9 @@ string.split_by_codepoint(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    int pos = 0;
+    MR_Integer pos = 0;
     First = MR_utf8_get_next(Str, &pos);
-    if (First == '\\0') {
+    if (First < 1) {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
         Str += pos;
