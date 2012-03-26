@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2011 The University of Melbourne.
+% Copyright (C) 2001-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -95,9 +95,11 @@ main(!IO) :-
 process_command_line(!IO) :-
     io.progname_base(mdprof_cgi_progname, ProgName, !IO),
     io.command_line_arguments(Args0, !IO),
-    % io.write_string("Args0: ", !IO),
-    % io.write_list(Args0, " ", write_bracketed_string, !IO),
-    % io.nl(!IO),
+    trace [compiletime(flag("debug-args")), io(!DIO)] (
+        io.write_string("command line: ", !DIO),
+        io.write_list(Args0, " ", write_bracketed_string, !DIO),
+        io.nl(!DIO)
+    ),
     getopt.process_options(option_ops_multi(short, long, defaults),
         Args0, Args, MaybeOptions),
     (
@@ -254,20 +256,22 @@ process_args(ProgName, Args, Options, !IO) :-
         process_query(default_cmd(Options), DeepFileName, no, Options, !IO)
     ;
         io.set_exit_status(1, !IO),
-        write_help_message(ProgName, !IO)
-        % io.write_list(Args, " ", write_bracketed_string)
+        write_help_message(ProgName, !IO),
+        trace [compiletime(flag("debug-args")), io(!DIO)] (
+            io.write_string("processed args: ", !DIO),
+            io.write_list(Args, " ", write_bracketed_string, !DIO)
+        )
     ).
 
 % This predicate is for debugging the command line given to mdprof_cgi by the
 % web server, should that be necessary.
-%
-% :- pred write_bracketed_string(string::in, io::di, io::uo)
-%   is det.
-%
-% write_bracketed_string(S, !IO) :-
-%   io.write_string("<", !IO),
-%   io.write_string(S, !IO),
-%   io.write_string(">", !IO).
+
+:- pred write_bracketed_string(string::in, io::di, io::uo) is det.
+
+write_bracketed_string(S, !IO) :-
+    io.write_string("<", !IO),
+    io.write_string(S, !IO),
+    io.write_string(">", !IO).
 
 :- pred write_html_header(io::di, io::uo) is det.
 
