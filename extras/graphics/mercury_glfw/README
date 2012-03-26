@@ -32,7 +32,7 @@ in the binding is straightforward, for example:
    glfwSetWindowRefreshCallback()       glfw.set_window_refresh_callback/3
    glfwPollEvents()                     glfw.poll_events/2
 
-Unless otherwise noted, you may assume the specified given in the GLFW
+Unless otherwise noted, you may assume the specification given in the GLFW
 reference manual.
 
 For each type of callback, we provide an "unset" predicate for removing a

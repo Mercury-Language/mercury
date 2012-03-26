@@ -30,11 +30,15 @@ dynamic_linking
 fixed		An implementation of fixed-point arithmetic with
 		the COBOL semantics.
 
-graphics	Some packages for doing graphics programming
-		and GUIs in Mercury: a Mercury interface to Tcl/Tk,
-		a Mercury binding to OpenGL, a Mercury binding to
-		GLUT, a simplified binding to Xlib, a binding
-		to Allegro/AllegroGL and a Mercury binding to Cairo.
+graphics	Some packages for doing graphics programming 
+                and GUIs in Mercury: 
+			- a binding to Tcl/Tk
+			- a binding to OpenGL
+			- a binding to GLUT
+			- a binding to GLFW
+			- a simplified binding to Xlib
+			- a binding to Allegro/AllegroGL
+			- a binding to Cairo.
 
 lex		A lexer package for Mercury that works over the I/O state,
 		strings, and so forth.  It comes with a rich set of
