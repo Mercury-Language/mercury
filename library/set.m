@@ -61,7 +61,7 @@
 :- pred set.to_sorted_list(set(T)::in, list(T)::out) is det.
 :- func set.to_sorted_list(set(T)) = list(T).
 
-    % `set.singleton_set(Set, Elem)' is true iff `Set' is the set
+    % `set.singleton_set(Elem, Set)' is true iff `Set' is the set
     % containing just the single element `Elem'.
     %
 :- pred set.singleton_set(T, set(T)).

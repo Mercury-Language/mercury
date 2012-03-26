@@ -58,7 +58,7 @@
 :- pred set_ordlist.to_sorted_list(set_ordlist(T)::in, list(T)::out) is det.
 :- func set_ordlist.to_sorted_list(set_ordlist(T)) = list(T).
 
-    % `set_ordlist.singleton_set(Set, Elem)' is true iff `Set' is the set
+    % `set_ordlist.singleton_set(Elem, Set)' is true iff `Set' is the set
     % containing just the single element `Elem'.
     %
 :- pred set_ordlist.singleton_set(T, set_ordlist(T)).

@@ -59,7 +59,7 @@
     is det.
 :- func set_unordlist.to_sorted_list(set_unordlist(T)) = list(T).
 
-    % `set_unordlist.singleton_set(Set, Elem)' is true iff `Set' is the set
+    % `set_unordlist.singleton_set(Elem, Set)' is true iff `Set' is the set
     % containing just the single element `Elem'.
     %
 :- pred set_unordlist.singleton_set(T, set_unordlist(T)).
