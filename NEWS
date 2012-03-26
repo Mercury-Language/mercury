@@ -16,6 +16,10 @@ Changes to the Mercury standard library:
 * We have added versions of the operations in the math module that omit the
   domain checks.
 
+Changes to the extras distribution:
+
+* We have added a binding to the GLFW library.
+
 
 NEWS for Mercury 11.07.1
 ------------------------

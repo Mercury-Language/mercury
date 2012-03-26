@@ -301,12 +301,9 @@
 :- pred glfw.get_key(key::in, key_state::out, io::di, io::uo) is det.
 
 :- type mouse_button
-    --->    mouse_button_left
-    ;       mouse_button_right
-    ;       mouse_button_middle
-    ;       mouse_button_1
-    ;       mouse_button_2
-    ;       mouse_button_3
+    --->    mouse_button_left       % Button 1.
+    ;       mouse_button_right      % Button 2.
+    ;       mouse_button_middle     % Button 3.
     ;       mouse_button_4
     ;       mouse_button_5
     ;       mouse_button_6
@@ -1180,9 +1177,6 @@ do_char_callback(Pred, Key, KeyState, !IO) :-
     mouse_button_left   - "GLFW_MOUSE_BUTTON_LEFT",
     mouse_button_right  - "GLFW_MOUSE_BUTTON_RIGHT",
     mouse_button_middle - "GLFW_MOUSE_BUTTON_MIDDLE",
-    mouse_button_1      - "GLFW_MOUSE_BUTTON_1",
-    mouse_button_2      - "GLFW_MOUSE_BUTTON_2",
-    mouse_button_3      - "GLFW_MOUSE_BUTTON_3",
     mouse_button_4      - "GLFW_MOUSE_BUTTON_4",
     mouse_button_5      - "GLFW_MOUSE_BUTTON_5",
     mouse_button_6      - "GLFW_MOUSE_BUTTON_6",

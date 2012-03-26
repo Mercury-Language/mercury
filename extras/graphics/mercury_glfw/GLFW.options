@@ -7,6 +7,12 @@ INSTALL_PREFIX=.
 
 # What flags do we need to pass the Mercury compiler in order to compile
 # against glfw?
-# (The following are for the Cocoa port of GLFW on Mac OS X.)
+
+# For Linux -- if linking statically you may also need to include an
+# assortment of X libraries.
+#
+#GLFW_MCFLAGS = -lglfw -lGLU -lGL
+
+# For Mac OS X and the Cocoa port of GLFW.
 #
 GLFW_MCFLAGS=-lglfw --framework Cocoa --framework OpenGL
