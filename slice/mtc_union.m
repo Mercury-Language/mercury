@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,6 +26,7 @@
 :- implementation.
 
 :- import_module mdbcomp.
+:- import_module mdbcomp.shared_utilities.
 :- import_module mdbcomp.trace_counts.
 
 :- import_module bool.
@@ -39,6 +40,7 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
+    unlimit_stack(!IO),
     io.command_line_arguments(Args0, !IO),
     OptionOps = option_ops_multi(short_option, long_option, option_default),
     getopt.process_options(OptionOps, Args0, Args, GetoptResult),

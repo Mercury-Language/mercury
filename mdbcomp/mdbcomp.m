@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2006, 2010-2011 The University of Melbourne.
+% Copyright (C) 2003, 2005-2006, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,6 +29,7 @@
 :- include_module prim_data.
 :- include_module program_representation.
 :- include_module rtti_access.
+:- include_module shared_utilities.
 :- include_module slice_and_dice.
 :- include_module trace_counts.
 

@@ -57,6 +57,7 @@
 :- import_module make.options_file.
 :- import_module make.util.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.shared_utilities.
 :- import_module ml_backend.maybe_mlds_to_gcc.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.
@@ -109,6 +110,8 @@ real_main(!IO) :-
     io.stderr_stream(StdErr, !IO),
     io.set_output_stream(StdErr, _, !IO),
     io.command_line_arguments(CmdLineArgs, !IO),
+
+    unlimit_stack(!IO),
 
     % Replace all @file arguments with the contents of the file
     expand_at_file_arguments(CmdLineArgs, Res, !IO),

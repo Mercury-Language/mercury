@@ -54,6 +54,7 @@ MDBCOMP_MODULES = \
 	prim_data.m \
 	program_representation.m \
 	rtti_access.m \
+	shared_utilities.m \
 	slice_and_dice.m \
 	trace_counts.m
 
