@@ -1418,7 +1418,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         ;
             simplify_do_common_struct(!.Info)
         ->
-            common_optimise_unification(U0, LT0, RT0, M, C,
+            common_optimise_unification(U0, M,
                 GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info)
         ;
             ( simplify_do_opt_duplicate_calls(!.Info)
@@ -1429,7 +1429,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             % used for optimizing or warning about duplicate calls.
             % But we don't want to perform the optimization, so we disregard
             % the optimized goal and instead use the original one.
-            common_optimise_unification(U0, LT0, RT0, M, C,
+            common_optimise_unification(U0, M,
                 GoalExpr0, _GoalExpr1, GoalInfo0, _GoalInfo1, !Info),
             GoalExpr = GoalExpr0,
             GoalInfo = GoalInfo0

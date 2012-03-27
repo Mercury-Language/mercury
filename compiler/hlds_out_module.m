@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -110,9 +110,9 @@ write_hlds(Indent, ModuleInfo, !IO) :-
             true
         ),
         ( string.contains_char(DumpOptions, 'M') ->
-            write_insts(Indent, InstTable, !IO),
+            write_inst_table(Indent, InstTable, !IO),
             io.write_string("\n", !IO),
-            write_modes(Indent, ModeTable, !IO),
+            write_mode_table(Indent, ModeTable, !IO),
             io.write_string("\n", !IO)
         ;
             true
@@ -175,13 +175,13 @@ write_types(Info, Indent, TypeTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Types --------\n", !IO),
     get_all_type_ctor_defns(TypeTable, TypeAssocList),
-    write_types_2(Info, Indent, TypeAssocList, !IO).
+    write_type_table_entries(Info, Indent, TypeAssocList, !IO).
 
-:- pred write_types_2(hlds_out_info::in, int::in,
+:- pred write_type_table_entries(hlds_out_info::in, int::in,
     assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
 
-write_types_2(_, _, [], !IO).
-write_types_2(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
+write_type_table_entries(_, _, [], !IO).
+write_type_table_entries(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
     hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
@@ -223,7 +223,8 @@ write_types_2(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
     write_type_name(TypeCtor, !IO),
     write_type_params(TVarSet, TypeParams, !IO),
     write_type_body(Info, TypeCtor, TypeBody, Indent + 1, TVarSet, !IO),
-    write_types_2(Info, Indent, Types, !IO).
+
+    write_type_table_entries(Info, Indent, Types, !IO).
 
 :- pred write_type_params(tvarset::in, list(type_param)::in,
     io::di, io::uo) is det.
@@ -237,17 +238,17 @@ write_type_params(TVarSet, [P | Ps], !IO) :-
     Ps = [_ | _],
     io.write_string("(", !IO),
     mercury_output_var(TVarSet, no, P, !IO),
-    write_type_params_2(TVarSet, Ps, !IO).
+    write_type_params_loop(TVarSet, Ps, !IO),
+    io.write_string(")", !IO).
 
-:- pred write_type_params_2(tvarset::in, list(type_param)::in,
+:- pred write_type_params_loop(tvarset::in, list(type_param)::in,
     io::di, io::uo) is det.
 
-write_type_params_2(_TVarSet, [], !IO) :-
-    io.write_string(")", !IO).
-write_type_params_2(TVarSet, [P | Ps], !IO) :-
+write_type_params_loop(_TVarSet, [], !IO).
+write_type_params_loop(TVarSet, [P | Ps], !IO) :-
     io.write_string(", ", !IO),
     mercury_output_var(TVarSet, no, P, !IO),
-    write_type_params_2(TVarSet, Ps, !IO).
+    write_type_params_loop(TVarSet, Ps, !IO).
 
 :- pred write_type_body(hlds_out_info::in, type_ctor::in, hlds_type_body::in,
     int::in, tvarset::in, io::di, io::uo) is det.
@@ -370,13 +371,13 @@ write_constructors(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
     io.write_char('\t', !IO),
     write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO),
     io.write_string("\n", !IO),
-    write_constructors_2(TypeCtor, Indent, TVarSet, Ctors, TagValues, !IO).
+    write_constructors_loop(TypeCtor, Indent, TVarSet, Ctors, TagValues, !IO).
 
-:- pred write_constructors_2(type_ctor::in, int::in, tvarset::in,
+:- pred write_constructors_loop(type_ctor::in, int::in, tvarset::in,
     list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.
 
-write_constructors_2(_TypeCtor, _Indent, _TVarSet, [], _, !IO).
-write_constructors_2(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
+write_constructors_loop(_TypeCtor, _Indent, _TVarSet, [], _, !IO).
+write_constructors_loop(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
         !IO) :-
     write_indent(Indent, !IO),
     io.write_string(";\t", !IO),
@@ -386,7 +387,8 @@ write_constructors_2(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
     ;
         Ctors = [_ | _],
         io.write_string("\n", !IO),
-        write_constructors_2(TypeCtor, Indent, TVarSet, Ctors, TagValues, !IO)
+        write_constructors_loop(TypeCtor, Indent, TVarSet, Ctors, TagValues,
+            !IO)
     ).
 
 :- pred write_ctor(type_ctor::in, constructor::in, tvarset::in,
@@ -595,9 +597,9 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
 % Write out the inst table.
 %
 
-:- pred write_insts(int::in, inst_table::in, io::di, io::uo) is det.
+:- pred write_inst_table(int::in, inst_table::in, io::di, io::uo) is det.
 
-write_insts(Indent, InstTable, !IO) :-
+write_inst_table(Indent, InstTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Insts --------\n", !IO),
 
@@ -618,7 +620,7 @@ write_insts(Indent, InstTable, !IO) :-
 write_user_inst(Indent, InstId - InstDefn, !IO) :-
     InstId = inst_id(InstName, _InstArity),
     write_indent(Indent, !IO),
-    io.format(":- inst %s:", [s(sym_name_to_string(InstName))], !IO),
+    io.format("\n:- inst %s", [s(sym_name_to_string(InstName))], !IO),
     InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
         _Context, _Status),
     (
@@ -636,7 +638,8 @@ write_user_inst(Indent, InstId - InstDefn, !IO) :-
         InstBody = eqv_inst(EqvInst),
         io.write_string(":\n", !IO),
         write_indent(Indent, !IO),
-        mercury_output_inst(EqvInst, InstVarSet, !IO)
+        mercury_output_inst(EqvInst, InstVarSet, !IO),
+        io.write_string("\n", !IO)
     ).
 
 :- pred write_inst_params(inst_var::in, list(inst_var)::in, inst_varset::in,
@@ -658,9 +661,9 @@ write_inst_params(InstVar, InstVars, InstVarSet, !IO) :-
 % Write out the mode table.
 %
 
-:- pred write_modes(int::in, mode_table::in, io::di, io::uo) is det.
+:- pred write_mode_table(int::in, mode_table::in, io::di, io::uo) is det.
 
-write_modes(Indent, _ModeTable, !IO) :-
+write_mode_table(Indent, _ModeTable, !IO) :-
     % XXX fix this up.
     write_indent(Indent, !IO),
     io.write_string("%-------- Modes --------\n", !IO),

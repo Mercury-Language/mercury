@@ -870,10 +870,8 @@ write_goal_unify(Info, GoalExpr, ModuleInfo, VarSet, AppendVarNums,
     write_unify_rhs_2(Info, RHS, ModuleInfo, VarSet, InstVarSet,
         AppendVarNums, Indent, Follow, VarType, TypeQual, !IO),
     (
-        (
-            string.contains_char(DumpOptions, 'u')
-        ;
-            string.contains_char(DumpOptions, 'p')
+        ( string.contains_char(DumpOptions, 'u')
+        ; string.contains_char(DumpOptions, 'p')
         )
     ->
         (
@@ -1219,10 +1217,17 @@ write_functor_and_submodes(Info, ConsId, ArgVars, ArgModes, _ModuleInfo,
         io.write_string(")\n", !IO),
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( string.contains_char(DumpOptions, 'a') ->
-            write_indent(Indent, !IO),
-            io.write_string("% arg-modes ", !IO),
-            mercury_output_uni_mode_list(ArgModes, InstVarSet, !IO),
-            io.write_string("\n", !IO)
+            ( string.contains_char(DumpOptions, 'y') ->
+                write_indent(Indent, !IO),
+                io.write_string("% arg-modes\n", !IO),
+                mercury_output_structured_uni_mode_list(ArgModes, Indent,
+                    do_incl_addr, InstVarSet, !IO)
+            ;
+                write_indent(Indent, !IO),
+                io.write_string("% arg-modes ", !IO),
+                mercury_output_uni_mode_list(ArgModes, InstVarSet, !IO),
+                io.write_string("\n", !IO)
+            )
         ;
             true
         )

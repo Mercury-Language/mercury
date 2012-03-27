@@ -322,15 +322,15 @@ set_dump_opts_for_clauses(Info, ClausesInfo) :-
 write_clauses(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         HeadVars, PredOrFunc, Clauses0, TypeQual, !IO) :-
     HeadVarList = proc_arg_vector_to_list(HeadVars),
-    write_clauses_2(Info, Indent, ModuleInfo, PredId, VarSet,
+    write_clauses_loop(Info, Indent, ModuleInfo, PredId, VarSet,
         AppendVarNums, HeadVarList, PredOrFunc, Clauses0, TypeQual, 1, !IO).
 
-:- pred write_clauses_2(hlds_out_info::in, int::in,
+:- pred write_clauses_loop(hlds_out_info::in, int::in,
     module_info::in, pred_id::in, prog_varset::in, bool::in,
     list(prog_var)::in, pred_or_func::in, list(clause)::in, maybe_vartypes::in,
     int::in, io::di, io::uo) is det.
 
-write_clauses_2(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
+write_clauses_loop(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         HeadVars, PredOrFunc, Clauses0, TypeQual, ClauseNum, !IO) :-
     (
         Clauses0 = [Clause | Clauses],
@@ -342,7 +342,7 @@ write_clauses_2(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         write_clause(Info, Indent, ModuleInfo, PredId, VarSet,
             AppendVarNums, HeadTerms, PredOrFunc, Clause,
             UseDeclaredModes, TypeQual, !IO),
-        write_clauses_2(Info, Indent, ModuleInfo, PredId, VarSet,
+        write_clauses_loop(Info, Indent, ModuleInfo, PredId, VarSet,
             AppendVarNums, HeadVars, PredOrFunc, Clauses, TypeQual,
             ClauseNum + 1, !IO)
     ;
@@ -523,14 +523,14 @@ write_var_types(Indent, VarSet, AppendVarNums, VarTypes, TVarSet, !IO) :-
     io.write_string("% variable types map ", !IO),
     io.format("(%d entries):\n", [i(NumVarTypes)], !IO),
     map.keys(VarTypes, Vars),
-    write_var_types_2(Vars, Indent, VarSet, AppendVarNums, VarTypes, TVarSet,
-        !IO).
+    write_var_types_loop(Vars, Indent, VarSet, AppendVarNums, VarTypes,
+        TVarSet, !IO).
 
-:- pred write_var_types_2(list(prog_var)::in, int::in, prog_varset::in,
+:- pred write_var_types_loop(list(prog_var)::in, int::in, prog_varset::in,
     bool::in, vartypes::in, tvarset::in, io::di, io::uo) is det.
 
-write_var_types_2([], _, _, _, _, _, !IO).
-write_var_types_2([Var | Vars], Indent, VarSet, AppendVarNums, VarTypes,
+write_var_types_loop([], _, _, _, _, _, !IO).
+write_var_types_loop([Var | Vars], Indent, VarSet, AppendVarNums, VarTypes,
         TypeVarSet, !IO) :-
     map.lookup(VarTypes, Var, Type),
     write_indent(Indent, !IO),
@@ -543,7 +543,7 @@ write_var_types_2([Var | Vars], Indent, VarSet, AppendVarNums, VarTypes,
     io.write_string(": ", !IO),
     mercury_output_type(TypeVarSet, AppendVarNums, Type, !IO),
     io.write_string("\n", !IO),
-    write_var_types_2(Vars, Indent, VarSet, AppendVarNums, VarTypes,
+    write_var_types_loop(Vars, Indent, VarSet, AppendVarNums, VarTypes,
         TypeVarSet, !IO).
 
 :- pred write_rtti_varmaps(int::in, bool::in, rtti_varmaps::in,
@@ -658,13 +658,13 @@ write_untuple_info(untuple_proc_info(UntupleMap), VarSet, AppendVarNums,
         Indent, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% untuple:\n", !IO),
-    map.foldl(write_untuple_info_2(VarSet, AppendVarNums, Indent), UntupleMap,
-        !IO).
+    map.foldl(write_untuple_info_loop(VarSet, AppendVarNums, Indent),
+        UntupleMap, !IO).
 
-:- pred write_untuple_info_2(prog_varset::in, bool::in, int::in,
+:- pred write_untuple_info_loop(prog_varset::in, bool::in, int::in,
     prog_var::in, prog_vars::in, io::di, io::uo) is det.
 
-write_untuple_info_2(VarSet, AppendVarNums, Indent, OldVar, NewVars, !IO) :-
+write_untuple_info_loop(VarSet, AppendVarNums, Indent, OldVar, NewVars, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%\t", !IO),
     mercury_output_var(VarSet, AppendVarNums, OldVar, !IO),
@@ -701,20 +701,20 @@ write_procs(Info, Indent, AppendVarNums, ModuleInfo, PredId, ImportStatus,
         PredInfo, !IO) :-
     pred_info_get_procedures(PredInfo, ProcTable),
     ProcIds = pred_info_procids(PredInfo),
-    write_procs_2(Info, ProcIds, AppendVarNums, ModuleInfo, Indent, PredId,
+    write_procs_loop(Info, ProcIds, AppendVarNums, ModuleInfo, Indent, PredId,
         ImportStatus, ProcTable, !IO).
 
-:- pred write_procs_2(hlds_out_info::in, list(proc_id)::in, bool::in,
+:- pred write_procs_loop(hlds_out_info::in, list(proc_id)::in, bool::in,
     module_info::in, int::in, pred_id::in, import_status::in, proc_table::in,
     io::di, io::uo) is det.
 
-write_procs_2(_, [], _, _, _, _, _, _, !IO).
-write_procs_2(Info, [ProcId | ProcIds], AppendVarNums, ModuleInfo, Indent,
+write_procs_loop(_, [], _, _, _, _, _, _, !IO).
+write_procs_loop(Info, [ProcId | ProcIds], AppendVarNums, ModuleInfo, Indent,
         PredId, ImportStatus, ProcTable, !IO) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
     write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         ImportStatus, ProcInfo, !IO),
-    write_procs_2(Info, ProcIds, AppendVarNums, ModuleInfo, Indent,
+    write_procs_loop(Info, ProcIds, AppendVarNums, ModuleInfo, Indent,
         PredId, ImportStatus, ProcTable, !IO).
 
 write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
@@ -748,251 +748,257 @@ write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     proc_info_get_var_name_remap(Proc, VarNameRemap),
     Indent1 = Indent + 1,
 
-    write_indent(Indent1, !IO),
-    io.write_string("% pred id ", !IO),
-    pred_id_to_int(PredId, PredInt),
-    io.write_int(PredInt, !IO),
-    io.nl(!IO),
-    write_indent(Indent1, !IO),
-    io.write_string("% mode number ", !IO),
-    proc_id_to_int(ProcId, ProcInt),
-    io.write_int(ProcInt, !IO),
-    io.write_string(" of ", !IO),
-    write_pred_id(ModuleInfo, PredId, !IO),
-    io.write_string(" (", !IO),
-    io.write_string(determinism_to_string(InferredDeterminism), !IO),
-    io.write_string("):\n", !IO),
-
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( string.contains_char(DumpOptions, 't') ->
-        write_indent(Indent, !IO),
-        io.write_string("% Arg size properties: ", !IO),
-        write_maybe_arg_size_info(MaybeArgSize, yes, !IO),
+    ( string.contains_char(DumpOptions, 'x') ->
+        write_indent(Indent1, !IO),
+        io.write_string("% pred id ", !IO),
+        pred_id_to_int(PredId, PredInt),
+        io.write_int(PredInt, !IO),
         io.nl(!IO),
-        write_indent(Indent, !IO),
-        io.write_string("% Termination properties: ", !IO),
-        write_maybe_termination_info(MaybeTermination, yes, !IO),
-        io.nl(!IO)
-    ;
-        true
-    ),
+        write_indent(Indent1, !IO),
+        io.write_string("% mode number ", !IO),
+        proc_id_to_int(ProcId, ProcInt),
+        io.write_int(ProcInt, !IO),
+        io.write_string(" of ", !IO),
+        write_pred_id(ModuleInfo, PredId, !IO),
+        io.write_string(" (", !IO),
+        io.write_string(determinism_to_string(InferredDeterminism), !IO),
+        io.write_string("):\n", !IO),
 
-    % Dump structure sharing information.
-    ( string.contains_char(DumpOptions, 'S') ->
-        write_indent(Indent, !IO),
-        io.write_string("% Structure sharing: \n", !IO),
-        (
-            MaybeStructureSharing = yes(StructureSharing),
-            StructureSharing =
-                structure_sharing_domain_and_status(SharingAs, _Status),
-            dump_maybe_structure_sharing_domain(VarSet, TVarSet,
-                yes(SharingAs), !IO)
+        ( string.contains_char(DumpOptions, 't') ->
+            write_indent(Indent, !IO),
+            io.write_string("% Arg size properties: ", !IO),
+            write_maybe_arg_size_info(MaybeArgSize, yes, !IO),
+            io.nl(!IO),
+            write_indent(Indent, !IO),
+            io.write_string("% Termination properties: ", !IO),
+            write_maybe_termination_info(MaybeTermination, yes, !IO),
+            io.nl(!IO)
         ;
-            MaybeStructureSharing = no,
-            dump_maybe_structure_sharing_domain(VarSet, TVarSet, no, !IO)
-        )
-    ;
-        true
-    ),
+            true
+        ),
 
-    % Dump structure reuse information.
-    ( string.contains_char(DumpOptions, 'R') ->
+        % Dump structure sharing information.
+        ( string.contains_char(DumpOptions, 'S') ->
+            write_indent(Indent, !IO),
+            io.write_string("% Structure sharing: \n", !IO),
+            (
+                MaybeStructureSharing = yes(StructureSharing),
+                StructureSharing =
+                    structure_sharing_domain_and_status(SharingAs, _Status),
+                dump_maybe_structure_sharing_domain(VarSet, TVarSet,
+                    yes(SharingAs), !IO)
+            ;
+                MaybeStructureSharing = no,
+                dump_maybe_structure_sharing_domain(VarSet, TVarSet, no, !IO)
+            )
+        ;
+            true
+        ),
+
+        % Dump structure reuse information.
+        ( string.contains_char(DumpOptions, 'R') ->
+            write_indent(Indent, !IO),
+            io.write_string("% Structure reuse: \n", !IO),
+            (
+                MaybeStructureReuse = yes(StructureReuse),
+                StructureReuse =
+                    structure_reuse_domain_and_status(ReuseAs, _ReuseStatus),
+                dump_maybe_structure_reuse_domain(VarSet, TVarSet,
+                    yes(ReuseAs), !IO)
+            ;
+                MaybeStructureReuse = no,
+                dump_maybe_structure_reuse_domain(VarSet, TVarSet, no, !IO)
+            )
+        ;
+            true
+        ),
+
         write_indent(Indent, !IO),
-        io.write_string("% Structure reuse: \n", !IO),
+        write_var_types(Indent, VarSet, AppendVarNums, VarTypes, TVarSet, !IO),
+        write_rtti_varmaps(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet,
+            !IO),
+
         (
-            MaybeStructureReuse = yes(StructureReuse),
-            StructureReuse =
-                structure_reuse_domain_and_status(ReuseAs, _ReuseStatus),
-            dump_maybe_structure_reuse_domain(VarSet, TVarSet, yes(ReuseAs),
+            IsAddressTaken = address_is_taken,
+            io.write_string("% address is taken\n", !IO)
+        ;
+            IsAddressTaken = address_is_not_taken,
+            io.write_string("% address is not taken\n", !IO)
+        ),
+        (
+            HasParallelConj = yes,
+            io.write_string("% contains parallel conjunction\n", !IO)
+        ;
+            HasParallelConj = no,
+            io.write_string("% does not contain parallel conjunction\n", !IO)
+        ),
+        (
+            HasUserEvent = yes,
+            io.write_string("% contains user event\n", !IO)
+        ;
+            HasUserEvent = no,
+            io.write_string("% does not contain user event\n", !IO)
+        ),
+        (
+            EvalMethod = eval_normal
+        ;
+            ( EvalMethod = eval_loop_check
+            ; EvalMethod = eval_memo
+            ; EvalMethod = eval_minimal(_)
+            ; EvalMethod = eval_table_io(_, _)
+            ),
+            io.write_string("% eval method: ", !IO),
+            write_eval_method(EvalMethod, !IO),
+            io.write_string("\n", !IO)
+        ),
+        (
+            MaybeProcTableIOInfo = yes(ProcTableIOInfo),
+            write_proc_table_io_info(TVarSet, ProcTableIOInfo, !IO)
+        ;
+            MaybeProcTableIOInfo = no
+        ),
+        (
+            MaybeCallTableTip = yes(CallTableTip),
+            io.write_string("% call table tip: ", !IO),
+            mercury_output_var(VarSet, AppendVarNums, CallTableTip, !IO),
+            io.write_string("\n", !IO)
+        ;
+            MaybeCallTableTip = no
+        ),
+        (
+            MaybeDeepProfileInfo = yes(DeepProfileInfo),
+            DeepProfileInfo = deep_profile_proc_info(MaybeRecInfo,
+                MaybeDeepLayout, _),
+            (
+                MaybeRecInfo = yes(DeepRecInfo),
+                DeepRecInfo = deep_recursion_info(Role, _),
+                io.write_string("% deep recursion info: ", !IO),
+                (
+                    Role = deep_prof_inner_proc(DeepPredProcId),
+                    io.write_string("inner, outer is ", !IO)
+                ;
+                    Role = deep_prof_outer_proc(DeepPredProcId),
+                    io.write_string("outer, inner is ", !IO)
+                ),
+                DeepPredProcId = proc(DeepPredId, DeepProcId),
+                pred_id_to_int(DeepPredId, DeepPredInt),
+                proc_id_to_int(DeepProcId, DeepProcInt),
+                io.write_int(DeepPredInt, !IO),
+                io.write_string("/", !IO),
+                io.write_int(DeepProcInt, !IO),
+                io.write_string("\n", !IO)
+            ;
+                MaybeRecInfo = no
+            ),
+            (
+                MaybeDeepLayout = yes(DeepLayout),
+                DeepLayout = hlds_deep_layout(ProcStatic, ExcpVars),
+                write_hlds_proc_static(ProcStatic, !IO),
+                ExcpVars = hlds_deep_excp_vars(TopCSD, MiddleCSD,
+                    MaybeOldOutermost),
+                io.write_string("% deep layout info: ", !IO),
+                io.write_string("TopCSD is ", !IO),
+                mercury_output_var(VarSet, AppendVarNums, TopCSD, !IO),
+                io.write_string(", MiddleCSD is ", !IO),
+                mercury_output_var(VarSet, AppendVarNums, MiddleCSD, !IO),
+                (
+                    MaybeOldOutermost = yes(OldOutermost),
+                    io.write_string(", OldOutermost is ", !IO),
+                    mercury_output_var(VarSet, AppendVarNums, OldOutermost, !IO)
+                ;
+                    MaybeOldOutermost = no
+                ),
+                io.write_string("\n", !IO)
+            ;
+                MaybeDeepLayout = no
+            )
+        ;
+            MaybeDeepProfileInfo = no
+        ),
+        (
+            MaybeUntupleInfo = yes(UntupleInfo),
+            write_untuple_info(UntupleInfo, VarSet, AppendVarNums,
+                Indent, !IO)
+        ;
+            MaybeUntupleInfo = no
+        ),
+        map.to_assoc_list(VarNameRemap, VarNameRemapList),
+        (
+            VarNameRemapList = []
+        ;
+            VarNameRemapList = [VarNameRemapHead | VarNameRemapTail],
+            write_indent(Indent, !IO),
+            io.write_string("% var name remap: ", !IO),
+            write_var_name_remap(VarNameRemapHead, VarNameRemapTail, VarSet,
+                !IO),
+            io.nl(!IO)
+        ),
+
+        write_indent(Indent, !IO),
+        PredName = predicate_name(ModuleInfo, PredId),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        varset.init(ModeVarSet),
+        (
+            PredOrFunc = pf_predicate,
+            mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName),
+                HeadModes, DeclaredDeterminism, ModeContext, !IO)
+        ;
+            PredOrFunc = pf_function,
+            pred_args_to_func_args(HeadModes, FuncHeadModes, RetHeadMode),
+            mercury_output_func_mode_decl(ModeVarSet, unqualified(PredName),
+                FuncHeadModes, RetHeadMode, DeclaredDeterminism, ModeContext,
                 !IO)
+        ),
+
+        (
+            MaybeArgLives = yes(ArgLives),
+            write_indent(Indent, !IO),
+            io.write_string("% arg lives: ", !IO),
+            io.print(ArgLives, !IO),
+            io.nl(!IO)
         ;
-            MaybeStructureReuse = no,
-            dump_maybe_structure_reuse_domain(VarSet, TVarSet, no, !IO)
+            MaybeArgLives = no
+        ),
+        ( set_of_var.is_non_empty(RegR_HeadVars) ->
+            write_indent(Indent, !IO),
+            io.write_string("% reg_r headvars: ", !IO),
+            io.write_list(set_of_var.to_sorted_list(RegR_HeadVars),
+                ", ", mercury_output_var(VarSet, AppendVarNums), !IO),
+            io.nl(!IO)
+        ;
+            true
+        ),
+        (
+            string.contains_char(DumpOptions, 'A'),
+            MaybeArgInfos = yes(ArgInfos)
+        ->
+            write_indent(Indent, !IO),
+            io.write_string("% arg_infos: ", !IO),
+            io.print(ArgInfos, !IO),
+            io.nl(!IO)
+        ;
+            true
+        ),
+        (
+            ImportStatus = status_pseudo_imported,
+            hlds_pred.in_in_unification_proc_id(ProcId)
+        ->
+            true
+        ;
+            proc_info_get_stack_slots(Proc, StackSlots),
+            write_indent(Indent, !IO),
+            write_stack_slots(Indent, StackSlots, VarSet, AppendVarNums, !IO),
+            write_indent(Indent, !IO),
+            term.var_list_to_term_list(HeadVars, HeadTerms),
+            write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums,
+                HeadTerms, PredOrFunc, !IO),
+            io.write_string(" :-\n", !IO),
+            write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+                Indent1, ".\n", !IO)
         )
     ;
         true
-    ),
-
-    write_indent(Indent, !IO),
-    write_var_types(Indent, VarSet, AppendVarNums, VarTypes, TVarSet, !IO),
-    write_rtti_varmaps(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet,
-        !IO),
-
-    (
-        IsAddressTaken = address_is_taken,
-        io.write_string("% address is taken\n", !IO)
-    ;
-        IsAddressTaken = address_is_not_taken,
-        io.write_string("% address is not taken\n", !IO)
-    ),
-    (
-        HasParallelConj = yes,
-        io.write_string("% contains parallel conjunction\n", !IO)
-    ;
-        HasParallelConj = no,
-        io.write_string("% does not contain parallel conjunction\n", !IO)
-    ),
-    (
-        HasUserEvent = yes,
-        io.write_string("% contains user event\n", !IO)
-    ;
-        HasUserEvent = no,
-        io.write_string("% does not contain user event\n", !IO)
-    ),
-    (
-        EvalMethod = eval_normal
-    ;
-        ( EvalMethod = eval_loop_check
-        ; EvalMethod = eval_memo
-        ; EvalMethod = eval_minimal(_)
-        ; EvalMethod = eval_table_io(_, _)
-        ),
-        io.write_string("% eval method: ", !IO),
-        write_eval_method(EvalMethod, !IO),
-        io.write_string("\n", !IO)
-    ),
-    (
-        MaybeProcTableIOInfo = yes(ProcTableIOInfo),
-        write_proc_table_io_info(TVarSet, ProcTableIOInfo, !IO)
-    ;
-        MaybeProcTableIOInfo = no
-    ),
-    (
-        MaybeCallTableTip = yes(CallTableTip),
-        io.write_string("% call table tip: ", !IO),
-        mercury_output_var(VarSet, AppendVarNums, CallTableTip, !IO),
-        io.write_string("\n", !IO)
-    ;
-        MaybeCallTableTip = no
-    ),
-    (
-        MaybeDeepProfileInfo = yes(DeepProfileInfo),
-        DeepProfileInfo = deep_profile_proc_info(MaybeRecInfo,
-            MaybeDeepLayout, _),
-        (
-            MaybeRecInfo = yes(DeepRecInfo),
-            DeepRecInfo = deep_recursion_info(Role, _),
-            io.write_string("% deep recursion info: ", !IO),
-            (
-                Role = deep_prof_inner_proc(DeepPredProcId),
-                io.write_string("inner, outer is ", !IO)
-            ;
-                Role = deep_prof_outer_proc(DeepPredProcId),
-                io.write_string("outer, inner is ", !IO)
-            ),
-            DeepPredProcId = proc(DeepPredId, DeepProcId),
-            pred_id_to_int(DeepPredId, DeepPredInt),
-            proc_id_to_int(DeepProcId, DeepProcInt),
-            io.write_int(DeepPredInt, !IO),
-            io.write_string("/", !IO),
-            io.write_int(DeepProcInt, !IO),
-            io.write_string("\n", !IO)
-        ;
-            MaybeRecInfo = no
-        ),
-        (
-            MaybeDeepLayout = yes(DeepLayout),
-            DeepLayout = hlds_deep_layout(ProcStatic, ExcpVars),
-            write_hlds_proc_static(ProcStatic, !IO),
-            ExcpVars = hlds_deep_excp_vars(TopCSD, MiddleCSD,
-                MaybeOldOutermost),
-            io.write_string("% deep layout info: ", !IO),
-            io.write_string("TopCSD is ", !IO),
-            mercury_output_var(VarSet, AppendVarNums, TopCSD, !IO),
-            io.write_string(", MiddleCSD is ", !IO),
-            mercury_output_var(VarSet, AppendVarNums, MiddleCSD, !IO),
-            (
-                MaybeOldOutermost = yes(OldOutermost),
-                io.write_string(", OldOutermost is ", !IO),
-                mercury_output_var(VarSet, AppendVarNums, OldOutermost, !IO)
-            ;
-                MaybeOldOutermost = no
-            ),
-            io.write_string("\n", !IO)
-        ;
-            MaybeDeepLayout = no
-        )
-    ;
-        MaybeDeepProfileInfo = no
-    ),
-    (
-        MaybeUntupleInfo = yes(UntupleInfo),
-        write_untuple_info(UntupleInfo, VarSet, AppendVarNums,
-            Indent, !IO)
-    ;
-        MaybeUntupleInfo = no
-    ),
-    map.to_assoc_list(VarNameRemap, VarNameRemapList),
-    (
-        VarNameRemapList = []
-    ;
-        VarNameRemapList = [VarNameRemapHead | VarNameRemapTail],
-        write_indent(Indent, !IO),
-        io.write_string("% var name remap: ", !IO),
-        write_var_name_remap(VarNameRemapHead, VarNameRemapTail, VarSet, !IO),
-        io.nl(!IO)
-    ),
-
-    write_indent(Indent, !IO),
-    PredName = predicate_name(ModuleInfo, PredId),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    varset.init(ModeVarSet),
-    (
-        PredOrFunc = pf_predicate,
-        mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName),
-            HeadModes, DeclaredDeterminism, ModeContext, !IO)
-    ;
-        PredOrFunc = pf_function,
-        pred_args_to_func_args(HeadModes, FuncHeadModes, RetHeadMode),
-        mercury_output_func_mode_decl(ModeVarSet, unqualified(PredName),
-            FuncHeadModes, RetHeadMode, DeclaredDeterminism, ModeContext, !IO)
-    ),
-
-    (
-        MaybeArgLives = yes(ArgLives),
-        write_indent(Indent, !IO),
-        io.write_string("% arg lives: ", !IO),
-        io.print(ArgLives, !IO),
-        io.nl(!IO)
-    ;
-        MaybeArgLives = no
-    ),
-    ( set_of_var.is_non_empty(RegR_HeadVars) ->
-        write_indent(Indent, !IO),
-        io.write_string("% reg_r headvars: ", !IO),
-        io.write_list(set_of_var.to_sorted_list(RegR_HeadVars),
-            ", ", mercury_output_var(VarSet, AppendVarNums), !IO),
-        io.nl(!IO)
-    ;
-        true
-    ),
-    (
-        string.contains_char(DumpOptions, 'A'),
-        MaybeArgInfos = yes(ArgInfos)
-    ->
-        write_indent(Indent, !IO),
-        io.write_string("% arg_infos: ", !IO),
-        io.print(ArgInfos, !IO),
-        io.nl(!IO)
-    ;
-        true
-    ),
-    (
-        ImportStatus = status_pseudo_imported,
-        hlds_pred.in_in_unification_proc_id(ProcId)
-    ->
-        true
-    ;
-        proc_info_get_stack_slots(Proc, StackSlots),
-        write_indent(Indent, !IO),
-        write_stack_slots(Indent, StackSlots, VarSet, AppendVarNums, !IO),
-        write_indent(Indent, !IO),
-        term.var_list_to_term_list(HeadVars, HeadTerms),
-        write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums,
-            HeadTerms, PredOrFunc, !IO),
-        io.write_string(" :-\n", !IO),
-        write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
-            Indent1, ".\n", !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1195,13 +1201,13 @@ table_trie_step_desc(TVarSet, Step) = Str :-
 write_constraint_map(Indent, VarSet, ConstraintMap, AppendVarNums, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% Constraint Map:\n", !IO),
-    map.foldl(write_constraint_map_2(Indent, VarSet, AppendVarNums),
+    map.foldl(write_constraint_map_entry(Indent, VarSet, AppendVarNums),
         ConstraintMap, !IO).
 
-:- pred write_constraint_map_2(int::in, tvarset::in, bool::in,
+:- pred write_constraint_map_entry(int::in, tvarset::in, bool::in,
     constraint_id::in, prog_constraint::in, io::di, io::uo) is det.
 
-write_constraint_map_2(Indent, VarSet, AppendVarNums, ConstraintId,
+write_constraint_map_entry(Indent, VarSet, AppendVarNums, ConstraintId,
         ProgConstraint, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),

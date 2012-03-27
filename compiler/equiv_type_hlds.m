@@ -48,6 +48,7 @@
 :- import_module recompilation.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -221,16 +222,16 @@ replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
     inst_table_get_any_insts(!.InstTable, AnyInsts0),
     inst_table_get_shared_insts(!.InstTable, SharedInsts0),
     inst_table_get_mostly_uniq_insts(!.InstTable, MostlyUniqInsts0),
-    replace_in_inst_table(replace_in_maybe_inst_det(EqvMap),
+    replace_in_one_inst_table(replace_in_maybe_inst_det(EqvMap),
         EqvMap, UnifyInsts0, UnifyInsts, !Cache),
     replace_in_merge_inst_table(EqvMap, MergeInsts0, MergeInsts, !Cache),
-    replace_in_inst_table(replace_in_maybe_inst_det(EqvMap),
+    replace_in_one_inst_table(replace_in_maybe_inst_det(EqvMap),
         EqvMap, GroundInsts0, GroundInsts, !Cache),
-    replace_in_inst_table(replace_in_maybe_inst_det(EqvMap),
+    replace_in_one_inst_table(replace_in_maybe_inst_det(EqvMap),
         EqvMap, AnyInsts0, AnyInsts, !Cache),
-    replace_in_inst_table(replace_in_maybe_inst(EqvMap),
+    replace_in_one_inst_table(replace_in_maybe_inst(EqvMap),
         EqvMap, SharedInsts0, SharedInsts, !Cache),
-    replace_in_inst_table(replace_in_maybe_inst(EqvMap),
+    replace_in_one_inst_table(replace_in_maybe_inst(EqvMap),
         EqvMap, MostlyUniqInsts0, MostlyUniqInsts, !.Cache, _),
     inst_table_set_unify_insts(UnifyInsts, !InstTable),
     inst_table_set_merge_insts(MergeInsts, !InstTable),
@@ -239,12 +240,12 @@ replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
     inst_table_set_shared_insts(SharedInsts, !InstTable),
     inst_table_set_mostly_uniq_insts(MostlyUniqInsts, !InstTable).
 
-:- pred replace_in_inst_table(
+:- pred replace_in_one_inst_table(
     pred(T, T, inst_cache, inst_cache)::(pred(in, out, in, out) is det),
     eqv_map::in, map(inst_name, T)::in, map(inst_name, T)::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_inst_table(P, EqvMap, Map0, Map, !Cache) :-
+replace_in_one_inst_table(P, EqvMap, Map0, Map, !Cache) :-
     map.to_assoc_list(Map0, AL0),
     list.map_foldl(
         (pred((Name0 - T0)::in, (Name - T)::out,
@@ -618,19 +619,21 @@ replace_in_modes(EqvMap, List0 @ [Mode0 | Modes0], List, Changed,
 :- pred replace_in_mode(eqv_map::in, mer_mode::in, mer_mode::out, bool::out,
     tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
 
-replace_in_mode(EqvMap, Mode0 @ (InstA0 -> InstB0), Mode,
-        Changed, !TVarSet, !Cache) :-
-    replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
-    replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
-    Changed = ChangedA `or` ChangedB,
-    ( Changed = yes, Mode = (InstA -> InstB)
-    ; Changed = no, Mode = Mode0
-    ).
-replace_in_mode(EqvMap, Mode0 @ user_defined_mode(Name, Insts0), Mode,
-        Changed, !TVarSet, !Cache) :-
-    replace_in_insts(EqvMap, Insts0, Insts, Changed, !TVarSet, !Cache),
-    ( Changed = yes, Mode = user_defined_mode(Name, Insts)
-    ; Changed = no, Mode = Mode0
+replace_in_mode(EqvMap, Mode0, Mode, Changed, !TVarSet, !Cache) :-
+    (
+        Mode0 = (InstA0 -> InstB0),
+        replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
+        replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
+        Changed = ChangedA `or` ChangedB,
+        ( Changed = yes, Mode = (InstA -> InstB)
+        ; Changed = no, Mode = Mode0
+        )
+    ;
+        Mode0 = user_defined_mode(Name, Insts0),
+        replace_in_insts(EqvMap, Insts0, Insts, Changed, !TVarSet, !Cache),
+        ( Changed = yes, Mode = user_defined_mode(Name, Insts)
+        ; Changed = no, Mode = Mode0
+        )
     ).
 
 :- pred replace_in_inst(eqv_map::in, mer_inst::in, mer_inst::out,
@@ -663,33 +666,60 @@ replace_in_inst(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
         Changed = no
     ).
 
+%-----------------------------------------------------------------------------%
+
     % Return true if any type may occur inside the given inst.
     %
     % The logic here should be a conservative approximation of the code
     % of replace_in_inst_2.
     %
+    % The no_inline pragma is there to allow lookup_inst_may_occur
+    % and record_inst_may_occur to be inlined in type_may_occur_in_inst
+    % WITHOUT any possibility, however remote, of them being inlined
+    % in procedures outside this module. Since the table they deal with
+    % is local to this module, such cross-module inlining would not work.
+    %
 :- func type_may_occur_in_inst(mer_inst) = bool.
+:- pragma no_inline(type_may_occur_in_inst/1).
 
-type_may_occur_in_inst(any(_, none)) = no.
-type_may_occur_in_inst(any(_, higher_order(_PredInstInfo))) = no.
-    % This is a conservative approximation; the mode in _PredInstInfo
-    % may contain a reference to a type.
-type_may_occur_in_inst(free) = no.
-type_may_occur_in_inst(free(_)) = yes.
-type_may_occur_in_inst(bound(_, BoundInsts)) =
-    type_may_occur_in_bound_insts(BoundInsts).
-type_may_occur_in_inst(ground(_, none)) = no.
-type_may_occur_in_inst(ground(_, higher_order(_PredInstInfo))) = yes.
-    % This is a conservative approximation; the mode in _PredInstInfo
-    % may contain a reference to a type.
-type_may_occur_in_inst(not_reached) = no.
-type_may_occur_in_inst(inst_var(_)) = no.
-type_may_occur_in_inst(constrained_inst_vars(_, CInst)) =
-    type_may_occur_in_inst(CInst).
-type_may_occur_in_inst(defined_inst(_)) = yes.
-    % This is also a conservative approximation.
-type_may_occur_in_inst(abstract_inst(_, Insts)) =
-    type_may_occur_in_insts(Insts).
+type_may_occur_in_inst(Inst) = MayOccur :-
+    (
+        ( Inst = free
+        ; Inst = ground(_, none)
+        ; Inst = any(_, none)
+        ; Inst = not_reached
+        ; Inst = inst_var(_)
+        ),
+        MayOccur = no
+    ;
+        % The last three entries here are conservative approximations;
+        % e.g. the _PredInstInfo may contain a reference to a type.
+        ( Inst = free(_)
+        ; Inst = ground(_, higher_order(_PredInstInfo))
+        ; Inst = any(_, higher_order(_PredInstInfo))
+        ; Inst = defined_inst(_)
+        ),
+        MayOccur = yes
+    ;
+        Inst = bound(_, BoundInsts),
+        promise_pure (
+            semipure lookup_inst_may_occur(Inst, Found, OldMayOccur),
+            (
+                Found = yes,
+                MayOccur = OldMayOccur
+            ;
+                Found = no,
+                MayOccur = type_may_occur_in_bound_insts(BoundInsts),
+                impure record_inst_may_occur(Inst, MayOccur)
+            )
+        )
+    ;
+        Inst = abstract_inst(_, ArgInsts),
+        MayOccur = type_may_occur_in_insts(ArgInsts)
+    ;
+        Inst = constrained_inst_vars(_, CInst),
+        MayOccur = type_may_occur_in_inst(CInst)
+    ).
 
     % Return true if any type may occur inside any of the given bound insts.
     %
@@ -699,11 +729,12 @@ type_may_occur_in_inst(abstract_inst(_, Insts)) =
 :- func type_may_occur_in_bound_insts(list(bound_inst)) = bool.
 
 type_may_occur_in_bound_insts([]) = no.
-type_may_occur_in_bound_insts([bound_functor(_, Insts) | BoundInsts]) =
+type_may_occur_in_bound_insts([BoundInst | BoundInsts]) = MayOccur :-
+    BoundInst = bound_functor(_, Insts),
     ( type_may_occur_in_insts(Insts) = yes ->
-        yes
+        MayOccur = yes
     ;
-        type_may_occur_in_bound_insts(BoundInsts)
+        MayOccur = type_may_occur_in_bound_insts(BoundInsts)
     ).
 
     % Return true if any type may occur inside any of the given insts.
@@ -721,135 +752,234 @@ type_may_occur_in_insts([Inst | Insts]) =
         type_may_occur_in_insts(Insts)
     ).
 
+%-----------------------------------------------------------------------------%
+%
+% The expansion of terms by the superhomogeneous transformation generates code
+% that looks like this:
+%
+%   V1 = [],
+%   V2 = e1,
+%   V3 = [V2 | V1],
+%   V4 = e2,
+%   V5 = [V3 | V4]
+%
+% The insts on those unifications will contain insts from earlier unifications.
+% For example, the inst on the unification building V5 will give V5 an inst
+% that contains the insts of V3 and V4.
+%
+% If there are N elements in a list, testing the insts of the N variables
+% representing the N cons cells in the list would ordinarily take O(N^2) steps.
+% Since N could be very large, this is disastrous.
+%
+% We avoid quadratic performance by caching the results of recent calls
+% to type_may_occur_in_inst for insts that are susceptible to this problem.
+% This way, the test on the inst of e.g. V5 will find the results of the tests
+% on the insts of V3 and V4 already available. This reduces the overall
+% complexity of testing the insts of those N variables to O(n).
+%
+% The downsides of this cache include the costs of the lookups, and
+% the fact that it keeps the cached insts alive.
+
+:- pragma foreign_decl("C",
+"
+typedef struct {
+    MR_Word     tice_inst_addr;
+    MR_Word     tice_may_occur;
+} TypeInInstCacheEntry;
+
+#define TYPE_IN_INST_CACHE_SIZE 1307
+
+/*
+** Every entry should be implicitly initialized to zeros. Since zero is
+** not a valid address for an inst, uninitialized entries cannot be mistaken
+** for filled-in entries.
+*/
+
+static  TypeInInstCacheEntry  type_in_inst_cache[TYPE_IN_INST_CACHE_SIZE];
+").
+
+    % Look up Inst in the cache. If it is there, return Found = yes
+    % and set MayOccur. Otherwise, return Found = no.
+    %
+:- semipure pred lookup_inst_may_occur(mer_inst::in,
+    bool::out, bool::out) is det.
+
+:- pragma foreign_proc("C",
+    lookup_inst_may_occur(Inst::in, Found::out, MayOccur::out),
+    [will_not_call_mercury, promise_semipure],
+"
+    MR_Unsigned hash;
+
+    hash = (MR_Unsigned) Inst;
+    hash = hash >> MR_LOW_TAG_BITS;
+    hash = hash % TYPE_IN_INST_CACHE_SIZE;
+
+    if (type_in_inst_cache[hash].tice_inst_addr == Inst) {
+        Found = MR_BOOL_YES;
+        MayOccur = type_in_inst_cache[hash].tice_may_occur;
+    } else {
+        Found = MR_BOOL_NO;
+    }
+").
+
+    % Record the result for Inst in the cache.
+    %
+:- impure pred record_inst_may_occur(mer_inst::in, bool::in) is det.
+
+:- pragma foreign_proc("C",
+    record_inst_may_occur(Inst::in, MayOccur::in),
+    [will_not_call_mercury],
+"
+    MR_Unsigned hash;
+
+    hash = (MR_Unsigned) Inst;
+    hash = hash >> MR_LOW_TAG_BITS;
+    hash = hash % TYPE_IN_INST_CACHE_SIZE;
+    /* We overwrite any existing entry in the slot. */
+    type_in_inst_cache[hash].tice_inst_addr = Inst;
+    type_in_inst_cache[hash].tice_may_occur = MayOccur;
+").
+
+%-----------------------------------------------------------------------------%
+
 :- pred replace_in_inst_2(eqv_map::in, mer_inst::in, mer_inst::out, bool::out,
     tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
 
-replace_in_inst_2(_, any(_, none) @ Inst, Inst, no, !TVarSet, !Cache).
-replace_in_inst_2(EqvMap, any(Uniq, higher_order(PredInstInfo0)) @ Inst0, Inst,
-        Changed, !TVarSet, !Cache) :-
-    PredInstInfo0 = pred_inst_info(PorF, Modes0, MaybeArgRegs, Det),
-    replace_in_modes(EqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
+replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
     (
-        Changed = yes,
-        PredInstInfo = pred_inst_info(PorF, Modes, MaybeArgRegs, Det),
-        Inst = any(Uniq, higher_order(PredInstInfo))
+        ( Inst0 = free
+        ; Inst0 = ground(_, none)
+        ; Inst0 = any(_, none)
+        ; Inst0 = not_reached
+        ; Inst0 = inst_var(_)
+        ),
+        Inst = Inst0,
+        Changed = no
     ;
-        Changed = no,
-        Inst = Inst0
-    ).
-replace_in_inst_2(_, free @ Inst, Inst, no, !TVarSet, !Cache).
-replace_in_inst_2(EqvMap, free(Type0) @ Inst0, Inst, Changed,
-        !TVarSet, !Cache) :-
-    equiv_type.replace_in_type(EqvMap, Type0, Type, Changed, !TVarSet, no, _),
-    ( Changed = yes, Inst = free(Type)
-    ; Changed = no, Inst = Inst0
-    ).
-replace_in_inst_2(EqvMap, bound(Uniq, BoundInsts0) @ Inst0, Inst,
-        Changed, !TVarSet, !Cache) :-
-    replace_in_bound_insts(EqvMap, BoundInsts0, BoundInsts, Changed, !TVarSet,
-        !Cache),
-    ( Changed = yes, Inst = bound(Uniq, BoundInsts)
-    ; Changed = no, Inst = Inst0
-    ).
-replace_in_inst_2(_, ground(_, none) @ Inst, Inst, no, !TVarSet, !Cache).
-replace_in_inst_2(EqvMap, ground(Uniq, higher_order(PredInstInfo0)) @ Inst0,
-        Inst, Changed, !TVarSet, !Cache) :-
-    PredInstInfo0 = pred_inst_info(PorF, Modes0, MaybeArgRegs, Det),
-    replace_in_modes(EqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
-    (
-        Changed = yes,
-        PredInstInfo = pred_inst_info(PorF, Modes, MaybeArgRegs, Det),
-        Inst = ground(Uniq, higher_order(PredInstInfo))
+        Inst0 = any(Uniq, higher_order(PredInstInfo0)),
+        PredInstInfo0 = pred_inst_info(PorF, Modes0, MaybeArgRegs, Det),
+        replace_in_modes(EqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
+        (
+            Changed = yes,
+            PredInstInfo = pred_inst_info(PorF, Modes, MaybeArgRegs, Det),
+            Inst = any(Uniq, higher_order(PredInstInfo))
+        ;
+            Changed = no,
+            Inst = Inst0
+        )
     ;
-        Changed = no,
-        Inst = Inst0
-    ).
-replace_in_inst_2(_, not_reached @ Inst, Inst, no, !TVarSet, !Cache).
-replace_in_inst_2(_, inst_var(_) @ Inst, Inst, no, !TVarSet, !Cache).
-replace_in_inst_2(EqvMap, constrained_inst_vars(Vars, CInst0) @ Inst0, Inst,
-        Changed, !TVarSet, !Cache) :-
-    replace_in_inst(EqvMap, CInst0, CInst, Changed, !TVarSet, !Cache),
-    ( Changed = yes, Inst = constrained_inst_vars(Vars, CInst)
-    ; Changed = no, Inst = Inst0
-    ).
-replace_in_inst_2(EqvMap, Inst0 @ defined_inst(InstName0), Inst,
-         Changed, !TVarSet, !Cache) :-
-    replace_in_inst_name(EqvMap, InstName0, InstName, Changed,
-        !TVarSet, !Cache),
-    ( Changed = yes, Inst = defined_inst(InstName)
-    ; Changed = no, Inst = Inst0
-    ).
-replace_in_inst_2(EqvMap, Inst0 @ abstract_inst(Name, Insts0), Inst,
-        Changed, !TVarSet, !Cache) :-
-    replace_in_insts(EqvMap, Insts0, Insts, Changed, !TVarSet, !Cache),
-    ( Changed = yes, Inst = abstract_inst(Name, Insts)
-    ; Changed = no, Inst = Inst0
+        Inst0 = free(Type0),
+        equiv_type.replace_in_type(EqvMap, Type0, Type, Changed, !TVarSet,
+            no, _),
+        ( Changed = yes, Inst = free(Type)
+        ; Changed = no, Inst = Inst0
+        )
+    ;
+        Inst0 = bound(Uniq, BoundInsts0),
+        replace_in_bound_insts(EqvMap, BoundInsts0, BoundInsts, Changed,
+            !TVarSet, !Cache),
+        ( Changed = yes, Inst = bound(Uniq, BoundInsts)
+        ; Changed = no, Inst = Inst0
+        )
+    ;
+        Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
+        PredInstInfo0 = pred_inst_info(PorF, Modes0, MaybeArgRegs, Det),
+        replace_in_modes(EqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
+        (
+            Changed = yes,
+            PredInstInfo = pred_inst_info(PorF, Modes, MaybeArgRegs, Det),
+            Inst = ground(Uniq, higher_order(PredInstInfo))
+        ;
+            Changed = no,
+            Inst = Inst0
+        )
+    ;
+        Inst0 = constrained_inst_vars(Vars, CInst0),
+        replace_in_inst(EqvMap, CInst0, CInst, Changed, !TVarSet, !Cache),
+        ( Changed = yes, Inst = constrained_inst_vars(Vars, CInst)
+        ; Changed = no, Inst = Inst0
+        )
+    ;
+        Inst0 = defined_inst(InstName0),
+        replace_in_inst_name(EqvMap, InstName0, InstName, Changed,
+            !TVarSet, !Cache),
+        ( Changed = yes, Inst = defined_inst(InstName)
+        ; Changed = no, Inst = Inst0
+        )
+    ;
+        Inst0 = abstract_inst(Name, ArgInsts0),
+        replace_in_insts(EqvMap, ArgInsts0, ArgInsts, Changed,
+            !TVarSet, !Cache),
+        ( Changed = yes, Inst = abstract_inst(Name, ArgInsts)
+        ; Changed = no, Inst = Inst0
+        )
     ).
 
 :- pred replace_in_inst_name(eqv_map::in, inst_name::in, inst_name::out,
     bool::out, tvarset::in, tvarset::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_inst_name(EqvMap, InstName0 @ user_inst(Name, Insts0), InstName,
-        Changed, !TVarSet, !Cache) :-
-    replace_in_insts(EqvMap, Insts0, Insts, Changed, !TVarSet, !Cache),
-    ( Changed = yes, InstName = user_inst(Name, Insts)
-    ; Changed = no, InstName = InstName0
-    ).
-replace_in_inst_name(EqvMap, InstName0 @ merge_inst(InstA0, InstB0), InstName,
-        Changed, !TVarSet, !Cache) :-
-    replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
-    replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
-    Changed = ChangedA `or` ChangedB,
-    ( Changed = yes, InstName = merge_inst(InstA, InstB)
-    ; Changed = no, InstName = InstName0
-    ).
-replace_in_inst_name(EqvMap,
-        InstName0 @ unify_inst(Live, InstA0, InstB0, Real),
-        InstName, Changed, !TVarSet, !Cache) :-
-    replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
-    replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
-    Changed = ChangedA `or` ChangedB,
-    ( Changed = yes, InstName = unify_inst(Live, InstA, InstB, Real)
-    ; Changed = no, InstName = InstName0
-    ).
-replace_in_inst_name(EqvMap, InstName0 @ ground_inst(Name0, Live, Uniq, Real),
-        InstName, Changed, !TVarSet, !Cache) :-
-    replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
-    ( Changed = yes, InstName = ground_inst(Name, Live, Uniq, Real)
-    ; Changed = no, InstName = InstName0
-    ).
-replace_in_inst_name(EqvMap, InstName0 @ any_inst(Name0, Live, Uniq, Real),
-        InstName, Changed, !TVarSet, !Cache) :-
-    replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
-    ( Changed = yes, InstName = any_inst(Name, Live, Uniq, Real)
-    ; Changed = no, InstName = InstName0
-    ).
-replace_in_inst_name(EqvMap, InstName0 @ shared_inst(Name0), InstName,
-         Changed, !TVarSet, !Cache) :-
-    replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
-    ( Changed = yes, InstName = shared_inst(Name)
-    ; Changed = no, InstName = InstName0
-    ).
-replace_in_inst_name(EqvMap, InstName0 @ mostly_uniq_inst(Name0),
-        InstName, Changed, !TVarSet, !Cache) :-
-    replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
-    ( Changed = yes, InstName = mostly_uniq_inst(Name)
-    ; Changed = no, InstName = InstName0
-    ).
-replace_in_inst_name(EqvMap, InstName0 @ typed_ground(Uniq, Type0), InstName,
-        Changed, !TVarSet, !Cache) :-
-    replace_in_type(EqvMap, Type0, Type, Changed, !TVarSet, no, _),
-    ( Changed = yes, InstName = typed_ground(Uniq, Type)
-    ; Changed = no, InstName = InstName0
-    ).
-replace_in_inst_name(EqvMap, InstName0 @ typed_inst(Type0, Name0),
-        InstName, Changed, !TVarSet, !Cache) :-
-    replace_in_type(EqvMap, Type0, Type, TypeChanged, !TVarSet, no, _),
-    replace_in_inst_name(EqvMap, Name0, Name, Changed0, !TVarSet, !Cache),
-    Changed = TypeChanged `or` Changed0,
-    ( Changed = yes, InstName = typed_inst(Type, Name)
-    ; Changed = no, InstName = InstName0
+replace_in_inst_name(EqvMap, InstName0, InstName, Changed, !TVarSet, !Cache) :-
+    (
+        InstName0 = user_inst(Name, Insts0),
+        replace_in_insts(EqvMap, Insts0, Insts, Changed, !TVarSet, !Cache),
+        ( Changed = yes, InstName = user_inst(Name, Insts)
+        ; Changed = no, InstName = InstName0
+        )
+    ;
+        InstName0 = merge_inst(InstA0, InstB0),
+        replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
+        replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
+        Changed = ChangedA `or` ChangedB,
+        ( Changed = yes, InstName = merge_inst(InstA, InstB)
+        ; Changed = no, InstName = InstName0
+        )
+    ;
+        InstName0 = unify_inst(Live, InstA0, InstB0, Real),
+        replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
+        replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
+        Changed = ChangedA `or` ChangedB,
+        ( Changed = yes, InstName = unify_inst(Live, InstA, InstB, Real)
+        ; Changed = no, InstName = InstName0
+        )
+    ;
+        InstName0 = ground_inst(Name0, Live, Uniq, Real),
+        replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
+        ( Changed = yes, InstName = ground_inst(Name, Live, Uniq, Real)
+        ; Changed = no, InstName = InstName0
+        )
+    ;
+        InstName0 = any_inst(Name0, Live, Uniq, Real),
+        replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
+        ( Changed = yes, InstName = any_inst(Name, Live, Uniq, Real)
+        ; Changed = no, InstName = InstName0
+        )
+    ;
+        InstName0 = shared_inst(Name0),
+        replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
+        ( Changed = yes, InstName = shared_inst(Name)
+        ; Changed = no, InstName = InstName0
+        )
+    ;
+        InstName0 = mostly_uniq_inst(Name0),
+        replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
+        ( Changed = yes, InstName = mostly_uniq_inst(Name)
+        ; Changed = no, InstName = InstName0
+        )
+    ;
+        InstName0 = typed_ground(Uniq, Type0),
+        replace_in_type(EqvMap, Type0, Type, Changed, !TVarSet, no, _),
+        ( Changed = yes, InstName = typed_ground(Uniq, Type)
+        ; Changed = no, InstName = InstName0
+        )
+    ;
+        InstName0 = typed_inst(Type0, Name0),
+        replace_in_type(EqvMap, Type0, Type, TypeChanged, !TVarSet, no, _),
+        replace_in_inst_name(EqvMap, Name0, Name, Changed0, !TVarSet, !Cache),
+        Changed = TypeChanged `or` Changed0,
+        ( Changed = yes, InstName = typed_inst(Type, Name)
+        ; Changed = no, InstName = InstName0
+        )
     ).
 
 :- pred replace_in_bound_insts(eqv_map::in, list(bound_inst)::in,
@@ -884,6 +1014,7 @@ replace_in_insts(EqvMap, List0 @ [Inst0 | Insts0], List, Changed,
 
     % We hash-cons (actually map-cons) insts created by this pass
     % to avoid losing sharing.
+    %
 :- type inst_cache == map(mer_inst, mer_inst).
 
 :- pred hash_cons_inst(mer_inst::in, mer_inst::out,

@@ -56,6 +56,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
+:- import_module set.
 :- import_module term.
 :- import_module varset.
 
@@ -188,23 +189,6 @@
     io::di, io::uo) is det.
 :- func mercury_inst_list_to_string(list(mer_inst), inst_varset) = string.
 
-    % Output a list of insts in a format that makes them easy to read
-    % but may not be valid Mercury.
-    %
-:- pred mercury_output_structured_inst_list(list(mer_inst)::in, int::in,
-    inst_varset::in, io::di, io::uo) is det.
-:- func mercury_structured_inst_list_to_string(list(mer_inst), int,
-    inst_varset) = string.
-
-    % Output an inst in a format that makes it easy to read
-    % but may not be valid Mercury.
-    % The `int' argument specifies the indentation level.
-    % (These routines are used with `--debug-modes'.)
-    %
-:- pred mercury_output_structured_inst(mer_inst::in, int::in, inst_varset::in,
-    io::di, io::uo) is det.
-:- func mercury_structured_inst_to_string(mer_inst, int, inst_varset) = string.
-
     % Output an inst in a format that is valid Mercury.
     % (These routines are used to create `.int' files, etc.)
     %
@@ -214,15 +198,38 @@
 :- pred mercury_format_inst(mer_inst::in, InstInfo::in,
     U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
+:- pred mercury_format_is_live_comma(is_live::in, U::di, U::uo) is det
+    <= output(U).
+
+:- pred mercury_format_real_comma(unify_is_real::in, U::di, U::uo) is det
+    <= output(U).
+
+:- pred mercury_format_uniqueness(uniqueness::in, string::in,
+    U::di, U::uo) is det <= output(U).
+
+:- pred mercury_format_any_uniqueness(uniqueness::in,
+    U::di, U::uo) is det <= output(U).
+
+:- pred mercury_format_ground_pred_inst_info(uniqueness::in,
+    pred_inst_info::in, inst_varset::in, U::di, U::uo) is det <= output(U).
+
+:- pred mercury_format_any_pred_inst_info(uniqueness::in, pred_inst_info::in,
+    inst_varset::in, U::di, U::uo) is det <= output(U).
+
 :- pred mercury_format_inst_name(inst_name::in, InstInfo::in,
     U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
-    % Output a cons_id, parenthesizing it if necessary
+    % Output a cons_id, parenthesizing it if necessary.
     %
 :- pred mercury_output_cons_id(cons_id::in, needs_brackets::in,
     io::di, io::uo) is det.
-
 :- func mercury_cons_id_to_string(cons_id, needs_brackets) = string.
+:- pred mercury_format_cons_id(cons_id::in, needs_brackets::in, U::di, U::uo)
+    is det <= output(U).
+
+:- pred mercury_format_constrained_inst_vars(set(inst_var)::in, mer_inst::in,
+    InstInfo::in, U::di, U::uo) is det
+    <= (output(U), inst_info(InstInfo)).
 
     % Output a mode / list of modes / uni_mode,
     % in a format that is valid Mercury.
@@ -258,6 +265,8 @@
 :- pred mercury_output_var(varset(T)::in, bool::in, var(T)::in,
     io::di, io::uo) is det.
 :- func mercury_var_to_string(varset(T), bool, var(T)) = string.
+:- pred mercury_format_var(varset(T)::in, bool::in, var(T)::in, U::di, U::uo)
+    is det <= output(U).
 
     % Output a term, making sure that the variable number appears
     % in variable names if the boolean argument is set to `yes'.
@@ -290,13 +299,26 @@
 
 :- pred mercury_output_newline(int::in, io::di, io::uo) is det.
 
+:- pred mercury_format_tabs(int::in,
+    U::di, U::uo) is det <= output(U).
+
 :- pred mercury_output_bracketed_sym_name(sym_name::in,
     io::di, io::uo) is det.
 :- func mercury_bracketed_sym_name_to_string(sym_name) = string.
+:- pred mercury_format_bracketed_sym_name(sym_name::in,
+    U::di, U::uo) is det <= output(U).
 
-:- pred mercury_output_bracketed_sym_name(sym_name::in, needs_quotes::in,
+:- pred mercury_output_bracketed_sym_name_ngt(sym_name::in, needs_quotes::in,
     io::di, io::uo) is det.
-:- func mercury_bracketed_sym_name_to_string(sym_name, needs_quotes) = string.
+:- func mercury_bracketed_sym_name_to_string_ngt(sym_name, needs_quotes)
+    = string.
+:- pred mercury_format_bracketed_sym_name_ngt(sym_name::in, needs_quotes::in,
+    U::di, U::uo) is det <= output(U).
+
+:- pred mercury_format_sym_name(sym_name::in, U::di, U::uo)
+    is det <= output(U).
+:- pred mercury_format_sym_name_ngt(sym_name::in, needs_quotes::in,
+    U::di, U::uo) is det <= output(U).
 
 :- pred mercury_convert_var_name(string::in, string::out) is det.
 
@@ -430,7 +452,6 @@
 :- import_module pair.
 :- import_module ops.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
@@ -551,8 +572,8 @@ mercury_output_item(Info, Item, !IO) :-
         Item = item_nothing(_ItemNothing)
     ).
 
-:- pred mercury_output_item_type_defn(merc_out_info::in, item_type_defn_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_item_type_defn(merc_out_info::in,
+    item_type_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
     ItemTypeDefn = item_type_defn_info(VarSet, Name0, Args, TypeDefn, _Cond,
@@ -561,8 +582,8 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
     maybe_output_line_number(Info, Context, !IO),
     mercury_output_type_defn(Info, VarSet, Name, Args, TypeDefn, Context, !IO).
 
-:- pred mercury_output_item_inst_defn(merc_out_info::in, item_inst_defn_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_item_inst_defn(merc_out_info::in,
+    item_inst_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
     ItemInstDefn = item_inst_defn_info(VarSet, Name0, Args, InstDefn, _Cond,
@@ -814,7 +835,7 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
     ;
         Pragma = pragma_reserve_tag(TypeName, TypeArity),
         add_string(":- pragma reserve_tag(", !IO),
-        mercury_format_bracketed_sym_name(TypeName, next_to_graphic_token,
+        mercury_format_bracketed_sym_name_ngt(TypeName, next_to_graphic_token,
             !IO),
         add_string("/", !IO),
         add_int(TypeArity, !IO),
@@ -1095,7 +1116,8 @@ output_instance_method(Method, !IO) :-
             PredOrFunc = pf_predicate,
             io.write_string("pred(", !IO)
         ),
-        mercury_output_bracketed_sym_name(Name1, next_to_graphic_token, !IO),
+        mercury_output_bracketed_sym_name_ngt(Name1,
+            next_to_graphic_token, !IO),
         io.write_string("/", !IO),
         io.write_int(Arity, !IO),
         io.write_string(") is ", !IO),
@@ -1210,20 +1232,6 @@ mercury_output_inst_defn(VarSet, Name, Args, eqv_inst(Body), Context, !IO) :-
     mercury_output_inst(Body, VarSet, !IO),
     io.write_string(".\n", !IO).
 
-mercury_output_structured_inst_list(Insts, Indent, VarSet, !IO) :-
-    mercury_format_structured_inst_list(Insts, Indent, VarSet, !IO).
-
-mercury_structured_inst_list_to_string(Insts, Indent, VarSet) = String :-
-    mercury_format_structured_inst_list(Insts, Indent, VarSet, "", String).
-
-:- pred mercury_format_structured_inst_list(list(mer_inst)::in, int::in,
-    inst_varset::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_structured_inst_list([], _, _, !U).
-mercury_format_structured_inst_list([Inst | Insts], Indent0, VarSet, !U) :-
-    mercury_format_structured_inst(Inst, Indent0, VarSet, !U),
-    mercury_format_structured_inst_list(Insts, Indent0, VarSet, !U).
-
 mercury_output_inst_list(Insts, VarSet, !IO) :-
     mercury_format_inst_list(Insts, simple_inst_info(VarSet), !IO).
 
@@ -1243,71 +1251,6 @@ mercury_format_inst_list([Inst | Insts], VarSet, !U) :-
         add_string(", ", !U),
         mercury_format_inst_list(Insts, VarSet, !U)
     ).
-
-mercury_output_structured_inst(Inst, Indent, VarSet, !U) :-
-    mercury_format_structured_inst(Inst, Indent, VarSet, !U).
-
-mercury_structured_inst_to_string(Inst, Indent, VarSet) = String :-
-    mercury_format_structured_inst(Inst, Indent, VarSet, "", String).
-
-:- pred mercury_format_structured_inst(mer_inst::in, int::in, inst_varset::in,
-    U::di, U::uo) is det <= output(U).
-
-mercury_format_structured_inst(any(Uniq, HOInstInfo), Indent, VarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    (
-        HOInstInfo = higher_order(PredInstInfo),
-        mercury_format_any_pred_inst_info(Uniq, PredInstInfo, VarSet, !U)
-    ;
-        HOInstInfo = none,
-        mercury_format_any_uniqueness(Uniq, !U)
-    ),
-    add_string("\n", !U).
-mercury_format_structured_inst(free, Indent, _, !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("free\n", !U).
-mercury_format_structured_inst(free(_T), Indent, _, !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("free(with some type)\n", !U).
-mercury_format_structured_inst(bound(Uniq, BoundInsts), Indent, VarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    mercury_format_uniqueness(Uniq, "bound", !U),
-    add_string("(\n", !U),
-    mercury_format_structured_bound_insts(BoundInsts, Indent, VarSet, !U),
-    mercury_format_tabs(Indent, !U),
-    add_string(")\n", !U).
-mercury_format_structured_inst(ground(Uniq, HOInstInfo), Indent, VarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    (
-        HOInstInfo = higher_order(PredInstInfo),
-        mercury_format_ground_pred_inst_info(Uniq, PredInstInfo, VarSet, !U)
-    ;
-        HOInstInfo = none,
-        mercury_format_uniqueness(Uniq, "ground", !U)
-    ),
-    add_string("\n", !U).
-mercury_format_structured_inst(inst_var(Var), Indent, VarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    mercury_format_var(VarSet, no, Var, !U),
-    add_string("\n", !U).
-mercury_format_structured_inst(constrained_inst_vars(Vars, Inst), Indent,
-        VarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    mercury_format_constrained_inst_vars(Vars, Inst,
-        simple_inst_info(VarSet), !U),
-    add_string("\n", !U).
-mercury_format_structured_inst(abstract_inst(Name, Args), Indent, VarSet,
-        !U) :-
-    mercury_format_structured_inst_name(user_inst(Name, Args), Indent,
-        VarSet, !U).
-mercury_format_structured_inst(defined_inst(InstName), Indent, VarSet, !U) :-
-    mercury_format_structured_inst_name(InstName, Indent, VarSet, !U).
-mercury_format_structured_inst(not_reached, Indent, _, !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("not_reached\n", !U).
-
-:- pred mercury_format_ground_pred_inst_info(uniqueness::in,
-    pred_inst_info::in, inst_varset::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_ground_pred_inst_info(Uniq, PredInstInfo, VarSet, !U) :-
     PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
@@ -1364,9 +1307,6 @@ mercury_format_ground_pred_inst_info(Uniq, PredInstInfo, VarSet, !U) :-
     ;
         MaybeArgRegs = arg_reg_types_unset
     ).
-
-:- pred mercury_format_any_pred_inst_info(uniqueness::in, pred_inst_info::in,
-    inst_varset::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_any_pred_inst_info(Uniq, PredInstInfo, VarSet, !U) :-
     PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
@@ -1455,46 +1395,55 @@ mercury_output_inst(Inst, VarSet, !IO) :-
 mercury_inst_to_string(Inst, VarSet) = String :-
     mercury_format_inst(Inst, simple_inst_info(VarSet), "", String).
 
-mercury_format_inst(any(Uniq, HOInstInfo), InstInfo, !U) :-
+mercury_format_inst(Inst, InstInfo, !U) :-
     (
-        HOInstInfo = higher_order(PredInstInfo),
-        mercury_format_any_pred_inst_info(Uniq, PredInstInfo,
-            instvarset(InstInfo), !U)
+        Inst = any(Uniq, HOInstInfo),
+        (
+            HOInstInfo = higher_order(PredInstInfo),
+            mercury_format_any_pred_inst_info(Uniq, PredInstInfo,
+                instvarset(InstInfo), !U)
+        ;
+            HOInstInfo = none,
+            mercury_format_any_uniqueness(Uniq, !U)
+        )
     ;
-        HOInstInfo = none,
-        mercury_format_any_uniqueness(Uniq, !U)
-    ).
-mercury_format_inst(free, _, !U) :-
-    add_string("free", !U).
-mercury_format_inst(free(_T), _, !U) :-
-    add_string("free(with some type)", !U).
-mercury_format_inst(bound(Uniq, BoundInsts), InstInfo, !U) :-
-    mercury_format_uniqueness(Uniq, "bound", !U),
-    add_string("(", !U),
-    mercury_format_bound_insts(BoundInsts, InstInfo, !U),
-    add_string(")", !U).
-mercury_format_inst(ground(Uniq, HOInstInfo), InstInfo, !U) :-
-    (
-        HOInstInfo = higher_order(PredInstInfo),
-        mercury_format_ground_pred_inst_info(Uniq, PredInstInfo,
-            instvarset(InstInfo), !U)
+        Inst = free,
+        add_string("free", !U)
     ;
-        HOInstInfo = none,
-        mercury_format_uniqueness(Uniq, "ground", !U)
+        Inst = free(_T),
+        add_string("free(with some type)", !U)
+    ;
+        Inst = bound(Uniq, BoundInsts),
+        mercury_format_uniqueness(Uniq, "bound", !U),
+        add_string("(", !U),
+        mercury_format_bound_insts(BoundInsts, InstInfo, !U),
+        add_string(")", !U)
+    ;
+        Inst = ground(Uniq, HOInstInfo),
+        (
+            HOInstInfo = higher_order(PredInstInfo),
+            mercury_format_ground_pred_inst_info(Uniq, PredInstInfo,
+                instvarset(InstInfo), !U)
+        ;
+            HOInstInfo = none,
+            mercury_format_uniqueness(Uniq, "ground", !U)
+        )
+    ;
+        Inst = inst_var(Var),
+        mercury_format_var(InstInfo ^ instvarset, no, Var, !U)
+    ;
+        Inst = constrained_inst_vars(Vars, CInst),
+        mercury_format_constrained_inst_vars(Vars, CInst, InstInfo, !U)
+    ;
+        Inst = abstract_inst(Name, Args),
+        mercury_format_inst_name(user_inst(Name, Args), InstInfo, !U)
+    ;
+        Inst = defined_inst(InstName),
+        format_defined_inst(InstName, InstInfo, !U)
+    ;
+        Inst = not_reached,
+        add_string("not_reached", !U)
     ).
-mercury_format_inst(inst_var(Var), InstInfo, !U) :-
-    mercury_format_var(InstInfo ^ instvarset, no, Var, !U).
-mercury_format_inst(constrained_inst_vars(Vars, Inst), InstInfo, !U) :-
-    mercury_format_constrained_inst_vars(Vars, Inst, InstInfo, !U).
-mercury_format_inst(abstract_inst(Name, Args), InstInfo, !U) :-
-    mercury_format_inst_name(user_inst(Name, Args), InstInfo, !U).
-mercury_format_inst(defined_inst(InstName), InstInfo, !U) :-
-    format_defined_inst(InstName, InstInfo, !U).
-mercury_format_inst(not_reached, _, !U) :-
-    add_string("not_reached", !U).
-
-:- pred mercury_format_is_live_comma(is_live::in, U::di, U::uo) is det
-    <= output(U).
 
 mercury_format_is_live_comma(IsLive, !U) :-
     (
@@ -1504,9 +1453,6 @@ mercury_format_is_live_comma(IsLive, !U) :-
         IsLive = is_dead,
         add_string("dead, ", !U)
     ).
-
-:- pred mercury_format_real_comma(unify_is_real::in, U::di, U::uo) is det
-    <= output(U).
 
 mercury_format_real_comma(Real, !U) :-
     (
@@ -1529,163 +1475,76 @@ mercury_format_comma_real(Real, !U) :-
         add_string(", fake", !U)
     ).
 
-:- pred mercury_format_structured_inst_name(inst_name::in, int::in,
-    inst_varset::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_structured_inst_name(user_inst(Name, Args), Indent, VarSet,
-        !U) :-
+mercury_format_inst_name(InstName, InstInfo, !U) :-
     (
-        Args = [],
-        mercury_format_tabs(Indent, !U),
-        mercury_format_bracketed_sym_name(Name, !U)
+        InstName = user_inst(Name, Args),
+        (
+            Args = [],
+            mercury_format_bracketed_sym_name(Name, !U)
+        ;
+            Args = [_ | _],
+            mercury_format_sym_name(Name, !U),
+            add_string("(", !U),
+            mercury_format_inst_list(Args, InstInfo, !U),
+            add_string(")", !U)
+        )
     ;
-        Args = [_ | _],
-        mercury_format_tabs(Indent, !U),
-        mercury_format_sym_name(Name, !U),
-        add_string("(\n", !U),
-        mercury_format_structured_inst_list(Args, Indent + 1, VarSet, !U),
-        mercury_format_tabs(Indent, !U),
-        add_string(")\n", !U)
-    ).
-mercury_format_structured_inst_name(merge_inst(InstA, InstB), Indent, VarSet,
-        !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("$merge_inst(\n", !U),
-    mercury_format_structured_inst_list([InstA, InstB], Indent + 1, VarSet,
-        !U),
-    mercury_format_tabs(Indent, !U),
-    add_string(")\n", !U).
-mercury_format_structured_inst_name(shared_inst(InstName), Indent, VarSet,
-        !U) :-
-    add_string("$shared_inst(\n", !U),
-    mercury_format_structured_inst_name(InstName, Indent + 1, VarSet, !U),
-    mercury_format_tabs(Indent, !U),
-    add_string(")\n", !U).
-mercury_format_structured_inst_name(mostly_uniq_inst(InstName), Indent, VarSet,
-        !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("$mostly_uniq_inst(\n", !U),
-    mercury_format_structured_inst_name(InstName, Indent + 1, VarSet, !U),
-    mercury_format_tabs(Indent, !U),
-    add_string(")\n", !U).
-mercury_format_structured_inst_name(unify_inst(IsLive, InstA, InstB, Real),
-        Indent, VarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("$unify(", !U),
-    mercury_format_is_live_comma(IsLive, !U),
-    mercury_format_real_comma(Real, !U),
-    add_string("\n", !U),
-    mercury_format_structured_inst_list([InstA, InstB], Indent + 1, VarSet,
-        !U),
-    mercury_format_tabs(Indent, !U),
-    add_string(")\n", !U).
-mercury_format_structured_inst_name(ground_inst(InstName, IsLive, Uniq, Real),
-        Indent, VarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("$ground(", !U),
-    mercury_format_is_live_comma(IsLive, !U),
-    mercury_format_real_comma(Real, !U),
-    mercury_format_uniqueness(Uniq, "shared", !U),
-    add_string(",\n", !U),
-    mercury_format_structured_inst_name(InstName, Indent + 1, VarSet, !U),
-    mercury_format_tabs(Indent, !U),
-    add_string(")\n", !U).
-mercury_format_structured_inst_name(any_inst(InstName, IsLive, Uniq, Real),
-        Indent, VarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("$any(", !U),
-    mercury_format_is_live_comma(IsLive, !U),
-    mercury_format_real_comma(Real, !U),
-    mercury_format_uniqueness(Uniq, "shared", !U),
-    add_string(",\n", !U),
-    mercury_format_structured_inst_name(InstName, Indent + 1, VarSet, !U),
-    mercury_format_tabs(Indent, !U),
-    add_string(")\n", !U).
-mercury_format_structured_inst_name(typed_ground(Uniqueness, Type),
-        Indent, _VarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("$typed_ground(", !U),
-    mercury_format_uniqueness(Uniqueness, "shared", !U),
-    add_string(", ", !U),
-    varset.init(TypeVarSet),
-    mercury_format_type(TypeVarSet, no, Type, !U),
-    add_string(")\n", !U).
-mercury_format_structured_inst_name(typed_inst(Type, InstName),
-        Indent, VarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("$typed_inst(", !U),
-    varset.init(TypeVarSet),
-    mercury_format_type(TypeVarSet, no, Type, !U),
-    add_string(",\n", !U),
-    mercury_format_structured_inst_name(InstName, Indent + 1, VarSet, !U),
-    mercury_format_tabs(Indent, !U),
-    add_string(")\n", !U).
-
-mercury_format_inst_name(user_inst(Name, Args), InstInfo, !U) :-
-    (
-        Args = [],
-        mercury_format_bracketed_sym_name(Name, !U)
+        InstName = merge_inst(InstA, InstB),
+        add_string("$merge_inst(", !U),
+        mercury_format_inst_list([InstA, InstB], InstInfo, !U),
+        add_string(")", !U)
     ;
-        Args = [_ | _],
-        mercury_format_sym_name(Name, !U),
-        add_string("(", !U),
-        mercury_format_inst_list(Args, InstInfo, !U),
+        InstName = shared_inst(SubInstName),
+        add_string("$shared_inst(", !U),
+        mercury_format_inst_name(SubInstName, InstInfo, !U),
+        add_string(")", !U)
+    ;
+        InstName = mostly_uniq_inst(SubInstName),
+        add_string("$mostly_uniq_inst(", !U),
+        mercury_format_inst_name(SubInstName, InstInfo, !U),
+        add_string(")", !U)
+    ;
+        InstName = unify_inst(IsLive, InstA, InstB, Real),
+        add_string("$unify(", !U),
+        mercury_format_is_live_comma(IsLive, !U),
+        mercury_format_comma_real(Real, !U),
+        mercury_format_inst_list([InstA, InstB], InstInfo, !U),
+        add_string(")", !U)
+    ;
+        InstName = ground_inst(SubInstName, IsLive, Uniq, Real),
+        add_string("$ground(", !U),
+        mercury_format_inst_name(SubInstName, InstInfo, !U),
+        add_string(", ", !U),
+        mercury_format_is_live_comma(IsLive, !U),
+        mercury_format_uniqueness(Uniq, "shared", !U),
+        mercury_format_comma_real(Real, !U),
+        add_string(")", !U)
+    ;
+        InstName = any_inst(SubInstName, IsLive, Uniq, Real),
+        add_string("$any(", !U),
+        mercury_format_inst_name(SubInstName, InstInfo, !U),
+        add_string(", ", !U),
+        mercury_format_is_live_comma(IsLive, !U),
+        mercury_format_uniqueness(Uniq, "shared", !U),
+        mercury_format_comma_real(Real, !U),
+        add_string(")", !U)
+    ;
+        InstName = typed_ground(Uniqueness, Type),
+        add_string("$typed_ground(", !U),
+        mercury_format_uniqueness(Uniqueness, "shared", !U),
+        add_string(", ", !U),
+        varset.init(TypeVarSet),
+        mercury_format_type(TypeVarSet, no, Type, !U),
+        add_string(")", !U)
+    ;
+        InstName = typed_inst(Type, SubInstName),
+        add_string("$typed_inst(", !U),
+        varset.init(TypeVarSet),
+        mercury_format_type(TypeVarSet, no, Type, !U),
+        add_string(", ", !U),
+        mercury_format_inst_name(SubInstName, InstInfo, !U),
         add_string(")", !U)
     ).
-mercury_format_inst_name(merge_inst(InstA, InstB), InstInfo, !U) :-
-    add_string("$merge_inst(", !U),
-    mercury_format_inst_list([InstA, InstB], InstInfo, !U),
-    add_string(")", !U).
-mercury_format_inst_name(shared_inst(InstName), InstInfo, !U) :-
-    add_string("$shared_inst(", !U),
-    mercury_format_inst_name(InstName, InstInfo, !U),
-    add_string(")", !U).
-mercury_format_inst_name(mostly_uniq_inst(InstName), InstInfo, !U) :-
-    add_string("$mostly_uniq_inst(", !U),
-    mercury_format_inst_name(InstName, InstInfo, !U),
-    add_string(")", !U).
-mercury_format_inst_name(unify_inst(IsLive, InstA, InstB, Real), InstInfo,
-        !U) :-
-    add_string("$unify(", !U),
-    mercury_format_is_live_comma(IsLive, !U),
-    mercury_format_comma_real(Real, !U),
-    mercury_format_inst_list([InstA, InstB], InstInfo, !U),
-    add_string(")", !U).
-mercury_format_inst_name(ground_inst(InstName, IsLive, Uniq, Real), InstInfo,
-        !U) :-
-    add_string("$ground(", !U),
-    mercury_format_inst_name(InstName, InstInfo, !U),
-    add_string(", ", !U),
-    mercury_format_is_live_comma(IsLive, !U),
-    mercury_format_uniqueness(Uniq, "shared", !U),
-    mercury_format_comma_real(Real, !U),
-    add_string(")", !U).
-mercury_format_inst_name(any_inst(InstName, IsLive, Uniq, Real), InstInfo,
-        !U) :-
-    add_string("$any(", !U),
-    mercury_format_inst_name(InstName, InstInfo, !U),
-    add_string(", ", !U),
-    mercury_format_is_live_comma(IsLive, !U),
-    mercury_format_uniqueness(Uniq, "shared", !U),
-    mercury_format_comma_real(Real, !U),
-    add_string(")", !U).
-mercury_format_inst_name(typed_ground(Uniqueness, Type), _InstInfo, !U) :-
-    add_string("$typed_ground(", !U),
-    mercury_format_uniqueness(Uniqueness, "shared", !U),
-    add_string(", ", !U),
-    varset.init(TypeVarSet),
-    mercury_format_type(TypeVarSet, no, Type, !U),
-    add_string(")", !U).
-mercury_format_inst_name(typed_inst(Type, InstName), InstInfo, !U) :-
-    add_string("$typed_inst(", !U),
-    varset.init(TypeVarSet),
-    mercury_format_type(TypeVarSet, no, Type, !U),
-    add_string(", ", !U),
-    mercury_format_inst_name(InstName, InstInfo, !U),
-    add_string(")", !U).
-
-:- pred mercury_format_uniqueness(uniqueness::in, string::in,
-    U::di, U::uo) is det <= output(U).
 
 mercury_format_uniqueness(shared, SharedString, !U) :-
     add_string(SharedString, !U).
@@ -1698,9 +1557,6 @@ mercury_format_uniqueness(clobbered, _, !U) :-
 mercury_format_uniqueness(mostly_clobbered, _, !U) :-
     add_string("mostly_clobbered", !U).
 
-:- pred mercury_format_any_uniqueness(uniqueness::in,
-    U::di, U::uo) is det <= output(U).
-
 mercury_format_any_uniqueness(shared, !U) :-
     add_string("any", !U).
 mercury_format_any_uniqueness(unique, !U) :-
@@ -1711,39 +1567,6 @@ mercury_format_any_uniqueness(clobbered, !U) :-
     add_string("clobbered_any", !U).
 mercury_format_any_uniqueness(mostly_clobbered, !U) :-
     add_string("mostly_clobbered_any", !U).
-
-:- pred mercury_format_structured_bound_insts(list(bound_inst)::in, int::in,
-    inst_varset::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_structured_bound_insts([], _, _, !U).
-mercury_format_structured_bound_insts([BoundInst | BoundInsts],
-        Indent0, VarSet, !U) :-
-    BoundInst = bound_functor(ConsId, Args),
-    Indent1 = Indent0 + 1,
-    Indent2 = Indent1 + 1,
-    (
-        Args = [],
-        mercury_format_tabs(Indent1, !U),
-        mercury_format_cons_id(ConsId, needs_brackets, !U),
-        add_string("\n", !U)
-    ;
-        Args = [_ | _],
-        mercury_format_tabs(Indent1, !U),
-        mercury_format_cons_id(ConsId, does_not_need_brackets, !U),
-        add_string("(\n", !U),
-        mercury_format_structured_inst_list(Args, Indent2, VarSet, !U),
-        mercury_format_tabs(Indent1, !U),
-        add_string(")\n", !U)
-    ),
-    (
-        BoundInsts = []
-    ;
-        BoundInsts = [_ | _],
-        mercury_format_tabs(Indent0, !U),
-        add_string(";\n", !U),
-        mercury_format_structured_bound_insts(BoundInsts, Indent0,
-            VarSet, !U)
-    ).
 
 :- pred mercury_format_bound_insts(list(bound_inst)::in, InstInfo::in,
     U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
@@ -1774,9 +1597,6 @@ mercury_output_cons_id(ConsId, NeedsBrackets, !IO) :-
 
 mercury_cons_id_to_string(ConsId, NeedsBrackets) = String :-
     mercury_format_cons_id(ConsId, NeedsBrackets, "", String).
-
-:- pred mercury_format_cons_id(cons_id::in, needs_brackets::in, U::di, U::uo)
-    is det <= output(U).
 
 mercury_format_cons_id(ConsId, NeedsBrackets, !U) :-
     (
@@ -1854,10 +1674,6 @@ mercury_format_cons_id(ConsId, NeedsBrackets, !U) :-
         add_string("<deep_profiling_proc_layout>", !U)
     ).
 
-:- pred mercury_format_constrained_inst_vars(set(inst_var)::in, mer_inst::in,
-    InstInfo::in, U::di, U::uo) is det
-    <= (output(U), inst_info(InstInfo)).
-
 mercury_format_constrained_inst_vars(!.Vars, Inst, InstInfo, !U) :-
     ( set.remove_least(Var, !Vars) ->
         add_string("(", !U),
@@ -1908,34 +1724,35 @@ mercury_output_mode(Mode, VarSet, !IO) :-
 mercury_mode_to_string(Mode, VarSet) = String :-
     mercury_format_mode(Mode, simple_inst_info(VarSet), "", String).
 
-mercury_format_mode((InstA -> InstB), InstInfo, !U) :-
+mercury_format_mode(Mode, InstInfo, !U) :-
     (
-        %
-        % check for higher-order pred or func modes, and output them
-        % in a nice format
-        %
-        InstA = ground(_Uniq, higher_order(
-            pred_inst_info(_PredOrFunc, _Modes, _, _Det))),
-        InstB = InstA
-    ->
-        mercury_format_inst(InstA, InstInfo, !U)
+        Mode = (InstA -> InstB),
+        % Output higher-order pred and func modes in a nice format.
+        (
+            InstA = ground(_Uniq, higher_order(
+                pred_inst_info(_PredOrFunc, _Modes, _, _Det))),
+            InstB = InstA
+        ->
+            mercury_format_inst(InstA, InstInfo, !U)
+        ;
+            add_string("(", !U),
+            mercury_format_inst(InstA, InstInfo, !U),
+            add_string(" >> ", !U),
+            mercury_format_inst(InstB, InstInfo, !U),
+            add_string(")", !U)
+        )
     ;
-        add_string("(", !U),
-        mercury_format_inst(InstA, InstInfo, !U),
-        add_string(" >> ", !U),
-        mercury_format_inst(InstB, InstInfo, !U),
-        add_string(")", !U)
-    ).
-mercury_format_mode(user_defined_mode(Name, Args), InstInfo, !U) :-
-    (
-        Args = [],
-        mercury_format_bracketed_sym_name(Name, !U)
-    ;
-        Args = [_ | _],
-        mercury_format_sym_name(Name, !U),
-        add_string("(", !U),
-        mercury_format_inst_list(Args, InstInfo, !U),
-        add_string(")", !U)
+        Mode = user_defined_mode(Name, Args),
+        (
+            Args = [],
+            mercury_format_bracketed_sym_name(Name, !U)
+        ;
+            Args = [_ | _],
+            mercury_format_sym_name(Name, !U),
+            add_string("(", !U),
+            mercury_format_inst_list(Args, InstInfo, !U),
+            add_string(")", !U)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3431,7 +3248,7 @@ mercury_output_trace_mutable_var_and_comma(VarSet, AppendVarnums,
 mercury_output_call(Name, Term, VarSet, _Indent, !IO) :-
     (
         Name = qualified(ModuleName, PredName),
-        mercury_output_bracketed_sym_name(ModuleName,
+        mercury_output_bracketed_sym_name_ngt(ModuleName,
             next_to_graphic_token, !IO),
         io.write_string(".", !IO),
         term.context_init(Context0),
@@ -3576,8 +3393,8 @@ mercury_output_pragma_foreign_import_module(Lang, ModuleName, !IO) :-
     io.write_string(":- pragma foreign_import_module(", !IO),
     mercury_format_foreign_language_string(Lang, !IO),
     io.write_string(", ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, not_next_to_graphic_token,
-        !IO),
+    mercury_output_bracketed_sym_name_ngt(ModuleName,
+        not_next_to_graphic_token, !IO),
     io.write_string(").\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -3800,8 +3617,8 @@ mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO) :-
         )
     ;
         MaybeModes = no,
-        mercury_output_bracketed_sym_name(PredName, next_to_graphic_token,
-            !IO),
+        mercury_output_bracketed_sym_name_ngt(PredName,
+            next_to_graphic_token, !IO),
         io.write_string("/", !IO),
         io.write_int(Arity, !IO)
     ),
@@ -3809,8 +3626,8 @@ mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO) :-
     io.write_list(Subst, ", ",
         mercury_output_type_subst(VarSet, AppendVarnums), !IO),
     io.write_string("), ", !IO),
-    mercury_output_bracketed_sym_name(SpecName, not_next_to_graphic_token,
-        !IO),
+    mercury_output_bracketed_sym_name_ngt(SpecName,
+        not_next_to_graphic_token, !IO),
     io.write_string(").\n", !IO).
 
 :- pred mercury_output_type_subst(tvarset::in, bool::in,
@@ -3963,7 +3780,7 @@ mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, MaybeAfter,
     add_string(":- pragma ", !U),
     add_string(PragmaName, !U),
     add_string("(", !U),
-    mercury_format_bracketed_sym_name(PredName, next_to_graphic_token, !U),
+    mercury_format_bracketed_sym_name_ngt(PredName, next_to_graphic_token, !U),
     add_string("/", !U),
     add_int(DeclaredArity, !U),
     (
@@ -3986,7 +3803,7 @@ mercury_format_pragma_foreign_export_enum(Lang, TypeName, TypeArity,
     add_string(":- pragma foreign_export_enum(", !U),
     mercury_format_foreign_language_string(Lang, !U),
     add_string(", ", !U),
-    mercury_format_bracketed_sym_name(TypeName, next_to_graphic_token, !U),
+    mercury_format_bracketed_sym_name_ngt(TypeName, next_to_graphic_token, !U),
     add_string("/", !U),
     add_int(TypeArity, !U),
     add_string(", ", !U),
@@ -4028,7 +3845,7 @@ mercury_format_sym_name_string_assoc_list(AssocList, !U) :-
     pair(sym_name, string)::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_sym_name_string_pair(SymName - String, !U) :-
-    mercury_format_bracketed_sym_name(SymName, next_to_graphic_token, !U),
+    mercury_format_bracketed_sym_name_ngt(SymName, next_to_graphic_token, !U),
     add_string(" - ", !U),
     add_quoted_string(String, !U).
 
@@ -4043,7 +3860,7 @@ mercury_format_pragma_foreign_enum(Lang, TypeName, TypeArity,
     add_string(":- pragma foreign_enum(", !U),
     mercury_format_foreign_language_string(Lang, !U),
     add_string(", ", !U),
-    mercury_format_bracketed_sym_name(TypeName, next_to_graphic_token, !U),
+    mercury_format_bracketed_sym_name_ngt(TypeName, next_to_graphic_token, !U),
     add_string("/", !U),
     add_int(TypeArity, !U),
     add_string(", ", !U),
@@ -4088,7 +3905,7 @@ mercury_format_pragma_foreign_export(Lang, Name, PredOrFunc, ModeList,
 
 mercury_format_pragma_fact_table(Pred, Arity, FileName, !U) :-
     add_string(":- pragma fact_table(", !U),
-    mercury_format_bracketed_sym_name(Pred, next_to_graphic_token, !U),
+    mercury_format_bracketed_sym_name_ngt(Pred, next_to_graphic_token, !U),
     add_string("/", !U),
     add_int(Arity, !U),
     add_string(", ", !U),
@@ -4131,9 +3948,6 @@ mercury_format_required_feature(reqf_conservative_gc, !U) :-
 mercury_output_newline(Indent, !IO) :-
     io.write_char('\n', !IO),
     mercury_format_tabs(Indent, !IO).
-
-:- pred mercury_format_tabs(int::in,
-    U::di, U::uo) is det <= output(U).
 
 mercury_format_tabs(Indent, !U) :-
     ( Indent = 0 ->
@@ -4662,9 +4476,6 @@ mercury_output_var(VarSet, AppendVarnum, Var, !IO) :-
 mercury_var_to_string(VarSet, AppendVarnum, Var) = String :-
     mercury_format_var(VarSet, AppendVarnum, Var, "", String).
 
-:- pred mercury_format_var(varset(T)::in, bool::in, var(T)::in, U::di, U::uo)
-    is det <= output(U).
-
 mercury_format_var(VarSet, AppendVarnum, Var, !U) :-
     (
         varset.search_name(VarSet, Var, Name)
@@ -4734,40 +4545,35 @@ mercury_format_bracketed_atom(Name, NextToGraphicToken, !U) :-
 :- pred mercury_output_sym_name(sym_name::in, io::di, io::uo) is det.
 
 mercury_output_sym_name(SymName, !IO) :-
-    mercury_output_sym_name(SymName, not_next_to_graphic_token, !IO).
+    mercury_output_sym_name_ngt(SymName, not_next_to_graphic_token, !IO).
 
-:- pred mercury_output_sym_name(sym_name::in, needs_quotes::in,
+:- pred mercury_output_sym_name_ngt(sym_name::in, needs_quotes::in,
     io::di, io::uo) is det.
 
-mercury_output_sym_name(Name, NextToGraphicToken, !IO) :-
-    mercury_format_sym_name(Name, NextToGraphicToken, !IO).
+mercury_output_sym_name_ngt(Name, NextToGraphicToken, !IO) :-
+    mercury_format_sym_name_ngt(Name, NextToGraphicToken, !IO).
 
 mercury_output_bracketed_sym_name(SymName, !IO) :-
-    mercury_output_bracketed_sym_name(SymName, not_next_to_graphic_token, !IO).
+    mercury_output_bracketed_sym_name_ngt(SymName, not_next_to_graphic_token,
+        !IO).
 
 mercury_bracketed_sym_name_to_string(Name) =
-    mercury_bracketed_sym_name_to_string(Name, not_next_to_graphic_token).
+    mercury_bracketed_sym_name_to_string_ngt(Name, not_next_to_graphic_token).
 
-mercury_output_bracketed_sym_name(Name, NextToGraphicToken, !IO) :-
-    mercury_format_bracketed_sym_name(Name, NextToGraphicToken, !IO).
+mercury_output_bracketed_sym_name_ngt(Name, NextToGraphicToken, !IO) :-
+    mercury_format_bracketed_sym_name_ngt(Name, NextToGraphicToken, !IO).
 
-mercury_bracketed_sym_name_to_string(Name, NextToGraphicToken) = Str :-
-    mercury_format_bracketed_sym_name(Name, NextToGraphicToken, "", Str).
-
-:- pred mercury_format_bracketed_sym_name(sym_name::in,
-    U::di, U::uo) is det <= output(U).
+mercury_bracketed_sym_name_to_string_ngt(Name, NextToGraphicToken) = Str :-
+    mercury_format_bracketed_sym_name_ngt(Name, NextToGraphicToken, "", Str).
 
 mercury_format_bracketed_sym_name(Name, !U) :-
-    mercury_format_bracketed_sym_name(Name, not_next_to_graphic_token, !U).
+    mercury_format_bracketed_sym_name_ngt(Name, not_next_to_graphic_token, !U).
 
-:- pred mercury_format_bracketed_sym_name(sym_name::in, needs_quotes::in,
-    U::di, U::uo) is det <= output(U).
-
-mercury_format_bracketed_sym_name(Name, NextToGraphicToken, !U) :-
+mercury_format_bracketed_sym_name_ngt(Name, NextToGraphicToken, !U) :-
     (
         Name = qualified(ModuleName, Name2),
         add_string("(", !U),
-        mercury_format_bracketed_sym_name(ModuleName,
+        mercury_format_bracketed_sym_name_ngt(ModuleName,
             next_to_graphic_token, !U),
         add_string(".", !U),
         mercury_format_bracketed_atom(Name2, next_to_graphic_token, !U),
@@ -4777,19 +4583,13 @@ mercury_format_bracketed_sym_name(Name, NextToGraphicToken, !U) :-
         mercury_format_bracketed_atom(Name2, NextToGraphicToken, !U)
     ).
 
-:- pred mercury_format_sym_name(sym_name::in, U::di, U::uo)
-    is det <= output(U).
-
 mercury_format_sym_name(SymName, !U) :-
-    mercury_format_sym_name(SymName, not_next_to_graphic_token, !U).
+    mercury_format_sym_name_ngt(SymName, not_next_to_graphic_token, !U).
 
-:- pred mercury_format_sym_name(sym_name::in, needs_quotes::in, U::di, U::uo)
-    is det <= output(U).
-
-mercury_format_sym_name(Name, NextToGraphicToken, !U) :-
+mercury_format_sym_name_ngt(Name, NextToGraphicToken, !U) :-
     (
         Name = qualified(ModuleName, PredName),
-        mercury_format_bracketed_sym_name(ModuleName,
+        mercury_format_bracketed_sym_name_ngt(ModuleName,
             next_to_graphic_token, !U),
         add_string(".", !U),
         mercury_format_quoted_atom(PredName, next_to_graphic_token, !U)

@@ -49,8 +49,7 @@
     % have seen before, replace the construction with an assignment from the
     % variable unified with that cell.
     %
-:- pred common_optimise_unification(unification::in, prog_var::in,
-    unify_rhs::in, unify_mode::in, unify_context::in,
+:- pred common_optimise_unification(unification::in, unify_mode::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
@@ -236,7 +235,7 @@ common_info_clear_structs(!Info) :-
 
 %---------------------------------------------------------------------------%
 
-common_optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
+common_optimise_unification(Unification0, Mode,
         GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     (
         Unification0 = construct(Var, ConsId, ArgVars, _, _, _, SubInfo),
@@ -281,16 +280,11 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
     Mode = LVarMode - _,
     simplify_info_get_module_info(!.Info, ModuleInfo),
     mode_get_insts(ModuleInfo, LVarMode, _, Inst),
-    (
-        % Don't optimise partially instantiated construction unifications,
-        % because it would be tricky to work out how to mode the replacement
-        % assignment unifications. In the vast majority of cases, the variable
-        % is ground.
-        \+ inst_is_ground(ModuleInfo, Inst)
-    ->
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
-    ;
+    % Don't optimise partially instantiated construction unifications,
+    % because it would be tricky to work out how to mode the replacement
+    % assignment unifications. In the vast majority of cases, the variable
+    % is ground.
+    ( inst_is_ground(ModuleInfo, Inst) ->
         TypeCtor = lookup_var_type_ctor(!.Info, Var),
         simplify_info_get_common_info(!.Info, CommonInfo0),
         VarEqv0 = CommonInfo0 ^ var_eqv,
@@ -336,6 +330,9 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
             Struct = structure(Var, ArgVars),
             record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv1, !Info)
         )
+    ;
+        GoalExpr = GoalExpr0,
+        GoalInfo = GoalInfo0
     ).
 
 :- pred common_optimise_deconstruct(prog_var::in, cons_id::in,

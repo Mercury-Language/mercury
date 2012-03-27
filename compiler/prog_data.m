@@ -2047,9 +2047,8 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
                 % insts and for compiler-generated insts.
 
     ;           abstract_inst(sym_name, list(mer_inst)).
-                % An abstract inst is a defined inst which
-                % has been declared but not actually been
-                % defined (yet).
+                % An abstract inst is a defined inst which has been declared
+                % but not actually been defined (yet).
 
 :- type uniqueness
     --->        shared              % There might be other references.
@@ -2173,9 +2172,9 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     ;       typed_ground(uniqueness, mer_type)
     ;       typed_inst(mer_type, inst_name).
 
-    % NOTE: `is_live' records liveness in the sense used by
-    % mode analysis.  This is not the same thing as the notion of liveness
-    % used by code generation.  See compiler/notes/glossary.html.
+    % NOTE: `is_live' records liveness in the sense used by mode analysis.
+    % This is not the same thing as the notion of liveness used by code
+    % generation. See compiler/notes/glossary.html.
     %
 :- type is_live
     --->    is_live

@@ -383,11 +383,65 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         true
     ;
         DumpAliasOption = string(DumpAlias),
-        convert_dump_alias(DumpAlias, DumpOptions)
+        convert_dump_alias(DumpAlias, AliasDumpOptions)
     ->
-        map.set(dump_hlds_options, string(DumpOptions), !OptionTable)
+        map.set(dump_hlds_options, string(AliasDumpOptions), !OptionTable)
     ;
         add_error("Invalid argument to option `--hlds-dump-alias'.", !Errors)
+    ),
+
+    some [!DumpOptions] (
+        lookup_string_option(!.OptionTable, dump_hlds_options, !:DumpOptions),
+        % If we want structured insts in arg-modes, then we want arg-modes.
+        (
+            string.contains_char(!.DumpOptions, 'y'),
+            not string.contains_char(!.DumpOptions, 'a')
+        ->
+            !:DumpOptions = "a" ++ !.DumpOptions
+        ;
+            true
+        ),
+        % If we want arg-modes, then we want the unifications they apply to.
+        (
+            string.contains_char(!.DumpOptions, 'a'),
+            not string.contains_char(!.DumpOptions, 'u')
+        ->
+            !:DumpOptions = "u" ++ !.DumpOptions
+        ;
+            true
+        ),
+        % If we want any of the things that decorate predicates or the goals
+        % inside predicates, then we want the predicates themselves.
+        (
+            ( string.contains_char(!.DumpOptions, 'A')
+            ; string.contains_char(!.DumpOptions, 'B')
+            ; string.contains_char(!.DumpOptions, 'D')
+            ; string.contains_char(!.DumpOptions, 'G')
+            ; string.contains_char(!.DumpOptions, 'P')
+            ; string.contains_char(!.DumpOptions, 'R')
+            ; string.contains_char(!.DumpOptions, 'S')
+            ; string.contains_char(!.DumpOptions, 'b')
+            ; string.contains_char(!.DumpOptions, 'c')
+            ; string.contains_char(!.DumpOptions, 'd')
+            ; string.contains_char(!.DumpOptions, 'f')
+            ; string.contains_char(!.DumpOptions, 'g')
+            ; string.contains_char(!.DumpOptions, 'i')
+            ; string.contains_char(!.DumpOptions, 'l')
+            ; string.contains_char(!.DumpOptions, 'm')
+            ; string.contains_char(!.DumpOptions, 'n')
+            ; string.contains_char(!.DumpOptions, 'p')
+            ; string.contains_char(!.DumpOptions, 's')
+            ; string.contains_char(!.DumpOptions, 't')
+            ; string.contains_char(!.DumpOptions, 'u')
+            ; string.contains_char(!.DumpOptions, 'z')
+            ),
+            not string.contains_char(!.DumpOptions, 'x')
+        ->
+            !:DumpOptions = "x" ++ !.DumpOptions
+        ;
+            true
+        ),
+        map.set(dump_hlds_options, string(!.DumpOptions), !OptionTable)
     ),
 
     map.lookup(!.OptionTable, c_compiler_type, C_CompilerType0),
@@ -3043,7 +3097,7 @@ grade_start_values(profile_time - bool(no)).
 grade_start_values(profile_calls - bool(no)).
 grade_start_values(profile_memory - bool(no)).
 grade_start_values(use_trail - bool(no)).
-grade_start_values(trail_segments - bool(no)).    
+grade_start_values(trail_segments - bool(no)).
 grade_start_values(use_minimal_model_stack_copy - bool(no)).
 grade_start_values(use_minimal_model_own_stacks - bool(no)).
 grade_start_values(minimal_model_debug - bool(no)).

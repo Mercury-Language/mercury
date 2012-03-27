@@ -7198,6 +7198,8 @@ s - store maps of goals,
 t - results of termination analysis,
 u - unification categories and other implementation details of unifications,
 v - variable numbers in variable names,
+x - predicate type information.
+y - structured insts in the arg-modes of unification
 z - purity annotations on impure and semipure goals
 A - argument passing information,
 B - mode constraint information,

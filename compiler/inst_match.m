@@ -15,12 +15,12 @@
 % rafe: XXX The following comment needs revising in the light of
 % the new solver types design.
 %
-% The handling of `any' insts is not complete.  (See also inst_util.m) It
-% would be nice to allow `free' to match `any', but right now we only allow a
-% few special cases of that.  The reason is that although the mode analysis
-% would be pretty straight-forward, generating the correct code is quite a bit
-% trickier.  modes.m would have to be changed to handle the implicit
-% conversions from `free'/`bound'/`ground' to `any' at
+% The handling of `any' insts is not complete. (See also inst_util.m) It would
+% be nice to allow `free' to match `any', but right now we only allow a few
+% special cases of that. The reason is that although the mode analysis would be
+% pretty straight-forward, generating the correct code is quite a bit trickier.
+% modes.m would have to be changed to handle the implicit conversions from
+% `free'/`bound'/`ground' to `any' at
 %
 %   (1) procedure calls (this is just an extension of implied modes)
 %       currently we support only the easy cases of this
@@ -101,7 +101,7 @@
     % inst_matches_final(InstA, InstB, ModuleInfo):
     %
     % Succeed iff InstA is compatible with InstB, i.e. iff InstA will satisfy
-    % the final inst requirement InstB.  This is true if the information
+    % the final inst requirement InstB. This is true if the information
     % specified by InstA is at least as great as that specified by InstB,
     % and where the information is the same and both insts specify a binding,
     % the binding must be identical.
@@ -110,9 +110,9 @@
     is semidet.
 
     % This version of inst_matches_final allows you to pass in the type of the
-    % variables being compared.  This allows it to be more precise (i.e. less
+    % variables being compared. This allows it to be more precise (i.e. less
     % conservative) for cases such as inst_matches_final(ground(...),
-    % bound(...), ...).  This version is to be preferred when the type is
+    % bound(...), ...). This version is to be preferred when the type is
     % available.
     %
 :- pred inst_matches_final_typed(mer_inst::in, mer_inst::in, mer_type::in,
@@ -126,7 +126,7 @@
     % Note that this predicate is not symmetric, because of the existence of
     % `not_reached' insts: not_reached matches_final with anything, but not
     % everything matches_final with not_reached - in fact only not_reached
-    % matches_final with not_reached.  It is also asymmetric with respect to
+    % matches_final with not_reached. It is also asymmetric with respect to
     % unique insts.
     %
     % It might be a good idea to fold inst_matches_initial and
@@ -156,7 +156,7 @@
     %
     % Succeed iff the binding of InstA is definitely exactly the same as
     % that of InstB. This is the same as inst_matches_final except that it
-    % ignores uniqueness, and that `any' does not match itself.  It is used
+    % ignores uniqueness, and that `any' does not match itself. It is used
     % to check whether variables get bound in negated contexts.
     %
 :- pred inst_matches_binding(mer_inst::in, mer_inst::in, mer_type::in,
@@ -326,6 +326,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -414,7 +415,7 @@ inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst) :-
             % (used by inst_matches_initial).
 
     ;       reverse
-            % Calculate in the reverse direction.  Used by the call
+            % Calculate in the reverse direction. Used by the call
             % to inst_matches_final from pred_inst_argmodes_match
             % to ensure contravariance of the initial argument
             % insts of higher order pred insts.
@@ -842,7 +843,7 @@ pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info) :-
     % much information as, and the same binding as, the initial
     % insts of ModesA; and the final insts of ModesA specify at
     % least as much information as, and the same binding as, the
-    % final insts of ModesB.  Any inst pairs in Inst0 ^ expansions
+    % final insts of ModesB. Any inst pairs in Inst0 ^ expansions
     % are assumed to match_final each other.
     %
     % (In other words, as far as subtyping goes it is contravariant in
@@ -1354,11 +1355,131 @@ inst_is_bound_to_functors(ModuleInfo, defined_inst(InstName), Functors) :-
 
 %-----------------------------------------------------------------------------%
 
+inst_is_ground(ModuleInfo, Inst) :-
     % inst_is_ground succeeds iff the inst passed is `ground' or the
     % equivalent. Abstract insts are not considered ground.
     %
-inst_is_ground(ModuleInfo, Inst) :-
-    inst_is_ground(ModuleInfo, no, Inst).
+    promise_pure (
+        semipure lookup_inst_is_ground(Inst, Found, OldIsGround),
+        (
+            Found = yes,
+            trace [compiletime(flag("inst-is-ground-perf")), io(!IO)] (
+                io.write_string("inst_is_ground hit\n", !IO)
+            ),
+            % Succeed if OldIsGround = yes, fail if OldIsGround = no.
+            OldIsGround = yes
+        ;
+            Found = no,
+            trace [compiletime(flag("inst-is-ground-perf")), io(!IO)] (
+                io.write_string("inst_is_ground miss\n", !IO)
+            ),
+            ( inst_is_ground(ModuleInfo, no, Inst) ->
+                impure record_inst_is_ground(Inst, yes)
+                % Succeed.
+            ;
+                impure record_inst_is_ground(Inst, no),
+                fail
+            )
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% The expansion of terms by the superhomogeneous transformation generates code
+% that looks like this:
+%
+%   V1 = [],
+%   V2 = e1,
+%   V3 = [V2 | V1],
+%   V4 = e2,
+%   V5 = [V3 | V4]
+%
+% The insts on those unifications will contain insts from earlier unifications.
+% For example, the inst on the unification building V5 will give V5 an inst
+% that contains the insts of V3 and V4.
+%
+% If there are N elements in a list, testing the insts of the N variables
+% representing the N cons cells in the list would ordinarily take O(N^2) steps.
+% Since N could be very large, this is disastrous.
+%
+% We avoid quadratic performance by caching the results of recent calls
+% to inst_is_ground for insts that are susceptible to this problem.
+% This way, the test on the inst of e.g. V5 will find the results of the tests
+% on the insts of V3 and V4 already available. This reduces the overall
+% complexity of testing the insts of those N variables to O(n).
+%
+% The downsides of this cache include the costs of the lookups, and
+% the fact that it keeps the cached insts alive.
+%
+% Note that we do not need to record the ModuleInfo argument of inst_is_ground,
+% since it is needed only to interpret insts that need access to the mode
+% tables. If we get a result for an inst with one ModuleInfo, we should get
+% the exact same result with any later ModuleInfo. The conservative nature
+% of the Boehm collector means that an inst address recorded in the cache
+% will always point to the original inst; the address cannot be reused until
+% the cache entry is itself reused.
+
+:- pragma foreign_decl("C",
+"
+typedef struct {
+    MR_Word     iig_inst_addr;
+    MR_Word     iig_is_ground;
+} InstIsGroundCacheEntry;
+
+#define INST_IS_GROUND_CACHE_SIZE 1307
+
+/*
+** Every entry should be implicitly initialized to zeros. Since zero is
+** not a valid address for an inst, uninitialized entries cannot be mistaken
+** for filled-in entries.
+*/
+
+static  InstIsGroundCacheEntry  inst_is_ground_cache[INST_IS_GROUND_CACHE_SIZE];
+").
+
+    % Look up Inst in the cache. If it is there, return Found = yes
+    % and set MayOccur. Otherwise, return Found = no.
+    %
+:- semipure pred lookup_inst_is_ground(mer_inst::in,
+    bool::out, bool::out) is det.
+
+:- pragma foreign_proc("C",
+    lookup_inst_is_ground(Inst::in, Found::out, IsGround::out),
+    [will_not_call_mercury, promise_semipure],
+"
+    MR_Unsigned hash;
+
+    hash = (MR_Unsigned) Inst;
+    hash = hash >> MR_LOW_TAG_BITS;
+    hash = hash % INST_IS_GROUND_CACHE_SIZE;
+
+    if (inst_is_ground_cache[hash].iig_inst_addr == Inst) {
+        Found = MR_BOOL_YES;
+        IsGround = inst_is_ground_cache[hash].iig_is_ground;
+    } else {
+        Found = MR_BOOL_NO;
+    }
+").
+
+    % Record the result for Inst in the cache.
+    %
+:- impure pred record_inst_is_ground(mer_inst::in, bool::in) is det.
+
+:- pragma foreign_proc("C",
+    record_inst_is_ground(Inst::in, IsGround::in),
+    [will_not_call_mercury],
+"
+    MR_Unsigned hash;
+
+    hash = (MR_Unsigned) Inst;
+    hash = hash >> MR_LOW_TAG_BITS;
+    hash = hash % INST_IS_GROUND_CACHE_SIZE;
+    /* We overwrite any existing entry in the slot. */
+    inst_is_ground_cache[hash].iig_inst_addr = Inst;
+    inst_is_ground_cache[hash].iig_is_ground = IsGround;
+").
+
+%-----------------------------------------------------------------------------%
 
 :- pred inst_is_ground(module_info::in, maybe(mer_type)::in, mer_inst::in)
     is semidet.
@@ -1405,8 +1526,8 @@ inst_is_ground_2(ModuleInfo, MaybeType, any(Uniq, HOInstInfo), !Expansions) :-
     maybe_any_to_bound(MaybeType, ModuleInfo, Uniq, HOInstInfo, Inst),
     inst_is_ground_1(ModuleInfo, MaybeType, Inst, !Expansions).
 
-    % inst_is_ground_or_any succeeds iff the inst passed is `ground',
-    % `any', or the equivalent.  Fails for abstract insts.
+    % inst_is_ground_or_any succeeds iff the inst passed is `ground', `any',
+    % or the equivalent. Fails for abstract insts.
     %
 inst_is_ground_or_any(ModuleInfo, Inst) :-
     set.init(Expansions0),
@@ -1545,7 +1666,7 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
     ).
 
     % inst_is_not_fully_unique succeeds iff the inst passed is not unique,
-    % i.e. if it is mostly_unique, shared, or free.  It fails for abstract
+    % i.e. if it is mostly_unique, shared, or free. It fails for abstract
     % insts.
     %
 inst_is_not_fully_unique(ModuleInfo, Inst) :-

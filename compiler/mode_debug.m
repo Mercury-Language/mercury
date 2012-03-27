@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997, 2003-2009 The University of Melbourne.
+% Copyright (C) 1996-1997, 2003-2009, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,6 +37,8 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module hlds.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
 :- import_module parse_tree.mercury_to_mercury.
@@ -147,7 +149,8 @@ write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
         ;
             Minimal = no,
             io.write_string("\n", !IO),
-            mercury_output_structured_inst(Inst, 2, InstVarSet, !IO)
+            mercury_output_structured_inst(Inst, 2, do_not_incl_addr,
+                InstVarSet, !IO)
         )
     ),
     write_var_insts(VarInsts, OldInstMap, VarSet, InstVarSet,
