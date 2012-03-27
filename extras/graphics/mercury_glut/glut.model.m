@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,6 +79,13 @@
 :- pred model.wire_dodecahedron(io::di, io::uo) is det.
 :- pred model.solid_dodecahedron(io::di, io::uo) is det.
 
+
+% Freeglut extensions.
+% ====================
+
+:- pred model.wire_rhombic_dodecahedron(io::di, io::uo) is det.
+:- pred model.solid_rhombic_dodecahedron(io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -90,164 +97,185 @@
         #include <GLUT/glut.h>
     #else
         #include <GL/glut.h>
+    #endif
 
+    #if defined(FREEGLUT)
+        #include <GL/freeglut_ext.h>
     #endif
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    glut.model.wire_cube(Size::in, IO0::di, IO::uo),
+    glut.model.wire_cube(Size::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireCube((GLdouble) Size);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.solid_cube(Size::in, IO0::di, IO::uo),
+    glut.model.solid_cube(Size::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidCube((GLdouble) Size);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.wire_sphere(Radius::in, Slices::in, Stacks::in, IO0::di,
-        IO::uo),
+    glut.model.wire_sphere(Radius::in, Slices::in, Stacks::in, _IO0::di,
+        _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireSphere((GLdouble) Radius, (GLint) Slices, (GLint) Stacks);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.solid_sphere(Radius::in, Slices::in, Stacks::in, IO0::di,
-        IO::uo),
+    glut.model.solid_sphere(Radius::in, Slices::in, Stacks::in, _IO0::di,
+        _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidSphere((GLdouble) Radius, (GLint) Slices, (GLint) Stacks);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
     glut.model.wire_torus(InRad::in, OutRad::in, Sides::in, Rings::in,
-        IO0::di, IO::uo), 
+        _IO0::di, _IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireTorus((GLdouble) InRad, (GLdouble) OutRad, (GLint) Sides, 
         (GLint) Rings);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
     glut.model.solid_torus(InRad::in, OutRad::in, Sides::in, Rings::in,
-        IO0::di, IO::uo), 
+        _IO0::di, _IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidTorus((GLdouble) InRad, (GLdouble) OutRad, (GLint) Sides, 
         (GLint) Rings);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.wire_icosahedron(IO0::di, IO::uo), 
+    glut.model.wire_icosahedron(_IO0::di, _IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireIcosahedron();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.solid_icosahedron(IO0::di, IO::uo), 
+    glut.model.solid_icosahedron(_IO0::di, _IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidIcosahedron();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.wire_octahedron(IO0::di, IO::uo), 
+    glut.model.wire_octahedron(_IO0::di, _IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireOctahedron();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.solid_octahedron(IO0::di, IO::uo), 
+    glut.model.solid_octahedron(_IO0::di, _IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidOctahedron();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.wire_tetrahedron(IO0::di, IO::uo), 
+    glut.model.wire_tetrahedron(_IO0::di, _IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireTetrahedron();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.solid_tetrahedron(IO0::di, IO::uo), 
+    glut.model.solid_tetrahedron(_IO0::di, _IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidTetrahedron();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.wire_dodecahedron(IO0::di, IO::uo),
+    glut.model.wire_dodecahedron(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireDodecahedron();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.solid_dodecahedron(IO0::di, IO::uo),
+    glut.model.solid_dodecahedron(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidDodecahedron();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
     glut.model.wire_cone(Base::in, Height::in, Slices::in, Stacks::in,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireCone((GLdouble) Base, (GLdouble) Height, (GLint) Slices, 
         (GLint) Stacks);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
     glut.model.solid_cone(Base::in, Height::in, Slices::in, Stacks::in,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidCone((GLdouble) Base, (GLdouble) Height, (GLint) Slices, 
         (GLint) Stacks);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.wire_teapot(Size::in, IO0::di, IO::uo),
+    glut.model.wire_teapot(Size::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutWireTeapot((GLdouble) Size);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.model.solid_teapot(Size::in, IO0::di, IO::uo),
+    glut.model.solid_teapot(Size::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSolidTeapot((GLdouble) Size);
-    IO = IO0;
+").
+
+%-----------------------------------------------------------------------------%
+
+model.wire_rhombic_dodecahedron(!IO) :-
+    ( if have_freeglut then
+        wire_rhombic_dodecahedron_2(!IO)
+    else
+        error("glut.model.wire_rhombic_dodecahedron/2: freeglut required")
+    ).
+
+:- pred wire_rhombic_dodecahedron_2(io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    wire_rhombic_dodecahedron_2(_IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
+"
+#if defined(FREEGLUT)
+    glutWireRhombicDodecahedron();
+#endif
+").
+
+model.solid_rhombic_dodecahedron(!IO) :-
+    ( if have_freeglut then
+        solid_rhombic_dodecahedron_2(!IO)
+    else
+        error("glut.model.solid_rhombic_dodecahedron/2: freeglut required")
+    ).
+
+:- pred solid_rhombic_dodecahedron_2(io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    solid_rhombic_dodecahedron_2(_IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
+"
+#if defined(FREEGLUT)
+    glutSolidRhombicDodecahedron();
+#endif
 ").
 
 %-----------------------------------------------------------------------------%

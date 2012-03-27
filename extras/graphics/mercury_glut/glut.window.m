@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2007, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -180,9 +180,24 @@
     %
 :- pred window.has_overlay(bool::out, io::di, io::uo) is det.
 
+
+% Freeglut extensions.
+% ====================
+
+    % Restore the window to the same size and position as it was
+    % before entering fullscreen mode.
+    % XXX Commented out because older versions of freeglut don't provide it.
+    % If yours does, then uncomment it.
+    %
+% :- pred window.leave_full_screen(io::di, io::uo) is det.
+
+    % Toggle between fullscreen and normal mode.
+    %
+:- pred window.full_screen_toggle(io::di, io::uo) is det.
+
 %------------------------------------------------------------------------------%
 %
-% Window state
+% Window state.
 %
 
 :- type window.state
@@ -267,6 +282,10 @@
         #include <GLUT/glut.h>
     #else
         #include <GL/glut.h>
+    #endif
+
+    #if defined(FREEGLUT)
+        #include <GL/freeglut_ext.h>
     #endif
 ").
 
@@ -715,17 +734,16 @@ window.set_cursor(Cursor, !IO) :-
 ]).
  
 :- pragma foreign_proc("C",
-    window.get(State::in, Value::out, IO0::di, IO::uo),
+    window.get(State::in, Value::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Value = (MR_Integer) glutGet((GLenum) State);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    window.has_overlay(Result::out, IO0::di, IO::uo),
+    window.has_overlay(Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if (glutLayerGet(GLUT_HAS_OVERLAY)) {
@@ -733,7 +751,42 @@ window.set_cursor(Cursor, !IO) :-
     } else {
         Result = MR_NO;
     }
-    IO = IO0;
+").
+
+%-----------------------------------------------------------------------------%
+
+%window.leave_full_screen(!IO) :-
+%    ( if have_freeglut then
+%        leave_full_screen_2(!IO)
+%    else
+%        error("glut.window.leave_full_screen/2: freeglut required")
+%    ).
+
+%:- pred leave_full_screen_2(io::di, io::uo) is det.
+%:- pragma foreign_proc("C",
+%    leave_full_screen_2(_IO0::di, _IO::uo),
+%    [promise_pure, will_not_call_mercury],
+%"
+%#if defined(FREEGLUT)
+%    glutLeaveFullScreen();
+%#endif
+%").
+
+window.full_screen_toggle(!IO) :-
+    ( if have_freeglut then
+        full_screen_toggle_2(!IO)
+    else
+        error("glut.window.full_screen_toggle/2: freeglut required")
+    ).
+    
+:- pred full_screen_toggle_2(io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    full_screen_toggle_2(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
+"
+#if defined(FREEGLUT)
+    glutFullScreenToggle();
+#endif
 ").
 
 %-----------------------------------------------------------------------------%

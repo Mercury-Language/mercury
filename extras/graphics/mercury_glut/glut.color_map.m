@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2007, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,19 +63,17 @@
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    color_map.set_color(I::in, R::in, G::in, B::in, IO0::di, IO::uo),
+    color_map.set_color(I::in, R::in, G::in, B::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutSetColor((int) I, (GLfloat) R, (GLfloat) G, (GLfloat) B);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    get_color(I::in, C::in, V::out, IO0::di, IO::uo),
+    get_color(I::in, C::in, V::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     V = (MR_Float) glutGetColor((int) I, (int) C);
-    IO = IO0;
 "). 
 
 :- pragma foreign_enum("C", component/0,
@@ -88,11 +86,10 @@
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    color_map.copy(WinId::in, IO0::di, IO::uo),
+    color_map.copy(WinId::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutCopyColormap((int) WinId);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

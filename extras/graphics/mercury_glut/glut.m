@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2007, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,6 +10,13 @@
 % Author: juliensf.
 %
 % This is partial Mercury binding to the GL Utility Library (GLUT).
+%
+% If used with freeglut then some of the extensions available in freeglut will
+% also be available.  Calling the freeglut extensions when freeglut is *not*
+% available will result in a software_error1/ exception being thrown.
+%
+% You can use the predicate glut.have_freeglut/0 to test for the presence
+% of freeglut.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -37,8 +44,12 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Initialisation
+% Initialisation.
 %
+
+    % Succeeds if this binding was compiled against freeglut.
+    %
+:- pred have_freeglut is semidet.
 
 :- type display_mode
     --->    rgba
@@ -75,19 +86,36 @@
     %
 :- pred glut.init_window_size(int::in, int::in, io::di, io::uo) is det.
 
-    % Enter the GLUT event processing loop.  
-    % You need to use glut.quit/2 to get out of this. 
+%-----------------------------------------------------------------------------%
+%
+% Event processing.
+%
+
+    % Enter the GLUT event processing loop.
     %
 :- pred glut.main_loop(io::di, io::uo) is det.
 
-    % Notify GLUT that you want quit the event processing loop 
-    % and abort execution.
+    % Notify GLUT that you want quit the event processing loop.
+    % This predicate will cause the Mercury runtime to terminate and then cause
+    % the process to exit.
     %
 :- pred glut.quit(io::di, io::uo) is det.
 
+
+% Freeglut extensions.
+% ====================
+
+    % Perform a single iteration of the GLUT event processing loop.
+    % 
+:- pred glut.main_loop_event(io::di, io::uo) is det.
+
+    % Halt the GLUT event processing loop.
+    %
+:- pred glut.leave_main_loop(io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %
-% State retrieval
+% State retrieval.
 %
 
     % Return the number of milliseconds since GLUT was initialised (or
@@ -140,6 +168,15 @@
     %
 :- pred glut.has_device(device::in, bool::out, io::di, io::uo) is det.
 
+
+% Freeglut extensions.
+% ====================
+
+    % Returns `yes' if we are currently in fullscreen mode and `no'
+    % otherwise.
+    %
+:- pred glut.full_screen(bool::out, io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -154,18 +191,34 @@
         #include <GLUT/glut.h>
     #else
         #include <GL/glut.h>
+    #endif
 
+    #if defined(FREEGLUT)
+        #include <GL/freeglut_ext.h>
     #endif
 ").
 
 :- initialise glut.init/2.
 
 %-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    have_freeglut,
+    [will_not_call_mercury, promise_pure],
+"
+#if defined(FREEGLUT)
+   SUCCESS_INDICATOR = MR_TRUE;
+#else
+   SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+
+%-----------------------------------------------------------------------------%
     
 :- pred glut.init(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C", 
-    glut.init(IO0::di, IO::uo), 
+    glut.init(_IO0::di, _IO::uo), 
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     int argc;
@@ -173,7 +226,6 @@
     argc = mercury_argc + 1;
     
     glutInit(&argc, (char **) (mercury_argv - 1));
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -184,11 +236,10 @@ glut.init_display_mode(Flags0, !IO) :-
 
 :- pred glut.init_display_mode_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-    glut.init_display_mode_2(Flags::in, IO0::di, IO::uo),
+    glut.init_display_mode_2(Flags::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     glutInitDisplayMode((unsigned) Flags);
-    IO = IO0;
 ").
 
 :- func display_mode_to_int(display_mode) = int.
@@ -289,39 +340,35 @@ display_mode_to_int(luminance)   = glut_luminance.
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    glut.init_display_string(CtrlStr::in, IO0::di, IO::uo),
+    glut.init_display_string(CtrlStr::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutInitDisplayString((char *) CtrlStr);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    glut.init_window_position(X::in, Y::in, IO0::di, IO::uo),
+    glut.init_window_position(X::in, Y::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutInitWindowPosition(X, Y);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    glut.init_window_size(W::in, S::in, IO0::di, IO::uo),
+    glut.init_window_size(W::in, S::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutInitWindowSize(W, S);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    glut.main_loop(IO0::di, IO::uo),
+    glut.main_loop(_IO0::di, _IO::uo),
     [may_call_mercury, tabled_for_io, promise_pure],
 "
     glutMainLoop();
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -335,8 +382,43 @@ display_mode_to_int(luminance)   = glut_luminance.
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_enum("C", glut.state/0,
-[
+glut.main_loop_event(!IO) :-
+    ( if have_freeglut then
+        main_loop_event_2(!IO)
+    else
+        error("glut.main_loop_event/2: freeglut is required")
+    ).
+
+:- pred main_loop_event_2(io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    main_loop_event_2(_IO0::di, _IO::uo),
+    [promise_pure, may_call_mercury],
+"
+#if defined(FREEGLUT)
+    glutMainLoopEvent();
+#endif
+").
+
+glut.leave_main_loop(!IO) :-
+    ( if have_freeglut then
+        leave_main_loop_2(!IO)
+    else
+        error("glut.leave_main_loop/2: freeglut is required")
+    ).
+
+:- pred leave_main_loop_2(io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    leave_main_loop_2(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
+"
+#if defined(FREEGLUT)
+    glutLeaveMainLoop();
+#endif
+").
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_enum("C", glut.state/0, [
     screen_width      - "GLUT_SCREEN_WIDTH",
     screen_height     - "GLUT_SCREEN_HEIGHT",
     screen_width_mm   - "GLUT_SCREEN_WIDTH_MM",
@@ -346,17 +428,15 @@ display_mode_to_int(luminance)   = glut_luminance.
 ]).
 
 :- pragma foreign_proc("C",
-    glut.get(State::in, Value::out, IO0::di, IO::uo),
+    glut.get(State::in, Value::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Value = (MR_Integer) glutGet((GLenum) State);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
     
-:- pragma foreign_enum("C", glut.device/0, 
-[
+:- pragma foreign_enum("C", glut.device/0, [
     keyboard            - "GLUT_HAS_KEYBOARD",
     mouse               - "GLUT_HAS_MOUSE",
     spaceball           - "GLUT_HAS_SPACEBALL",
@@ -366,7 +446,7 @@ display_mode_to_int(luminance)   = glut_luminance.
 ]).
 
 :- pragma foreign_proc("C",
-    glut.has_device(Device::in, Res::out, IO0::di, IO::uo),
+    glut.has_device(Device::in, Res::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     if(glutDeviceGet((GLenum) Device)) {
@@ -374,21 +454,19 @@ display_mode_to_int(luminance)   = glut_luminance.
     } else {
         Res = MR_NO;
     }
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    glut.elapsed_time(Time::out, IO0::di, IO::uo),
+    glut.elapsed_time(Time::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Time = (MR_Integer) glutGet(GLUT_ELAPSED_TIME);
-    IO = IO0;   
 ").
 
 :- pragma foreign_proc("C",
-    glut.display_mode_possible(IsPossible::out, IO0::di, IO::uo),
+    glut.display_mode_possible(IsPossible::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if(glutGet(GLUT_DISPLAY_MODE_POSSIBLE)) {
@@ -396,7 +474,32 @@ display_mode_to_int(luminance)   = glut_luminance.
     } else {
         IsPossible = MR_NO;
     }
-    IO = IO0;
+").
+
+%-----------------------------------------------------------------------------%
+
+glut.full_screen(FullScreen, !IO) :-
+    ( if have_freeglut then
+        full_screen_2(FullScreen, !IO)
+    else
+        error("glut.full_screen/3: freeglut required")
+    ).
+
+:- pred full_screen_2(bool::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    full_screen_2(FullScreen::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, tabled_for_io, promise_pure],
+"
+#if defined(FREEGLUT)
+   if(glutGet(GLUT_FULL_SCREEN)) {
+        FullScreen = MR_YES;
+    } else {
+        FullScreen = MR_NO;
+    }
+#else
+    FullScreen = MR_NO;
+#endif
+        
 ").
 
 %-----------------------------------------------------------------------------%

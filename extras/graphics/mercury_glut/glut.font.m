@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne.
+% Copyright (C) 2004-2007, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -204,11 +204,10 @@ font.stroke_character(Font, Char, !IO) :-
 
 :- pred stroke_character_2(font_ptr::in, char::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    stroke_character_2(StrokeFntPtr::in, C::in, IO0::di, IO::uo),
+    stroke_character_2(StrokeFntPtr::in, C::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutStrokeCharacter(StrokeFntPtr, (int) C);
-    IO = IO0;
 ").
 
 font.stroke_width(Font, Char) = Width :-
