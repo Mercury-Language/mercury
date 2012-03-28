@@ -31,9 +31,10 @@
 :- implementation.
 
 :- pragma foreign_proc("C",
-    unlimit_stack(S0::di, S::uo),
+    unlimit_stack(_S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
-"{
+"
+#if defined(MR_HAVE_SETRLIMIT)
     struct rlimit   limit_struct;
     rlim_t          max_value;
 
@@ -45,8 +46,7 @@
     limit_struct.rlim_cur = limit_struct.rlim_max;
     /* If this fails, we have no recourse, so ignore any failure. */
     (void) setrlimit(RLIMIT_STACK, &limit_struct);
-
-    S = S0;
-}").
+#endif
+").
 
 %---------------------------------------------------------------------------%
