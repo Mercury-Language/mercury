@@ -488,7 +488,7 @@
     in, in, out, in, out, mdi, muo) is semidet.
 :- mode array.foldl3(pred(in, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, di, uo) is semidet.
-    
+
     % As above, but with four accumulators.
     %
 :- pred array.foldl4(pred(T1, T2, T2, T3, T3, T4, T4, T5, T5), array(T1),
@@ -505,7 +505,7 @@
     in, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode array.foldl4(pred(in, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, di, uo) is semidet.
-    
+
     % As above, but with five accumulators.
     %
 :- pred array.foldl5(pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6),
@@ -566,7 +566,7 @@
     in, out, mdi, muo) is semidet.
 :- mode array.foldr2(pred(in, in, out, di, uo) is semidet, in,
     in, out, di, uo) is semidet.
-    
+
     % As above, but with three accumulators.
     %
 :- pred array.foldr3(pred(T1, T2, T2, T3, T3, T4, T4), array(T1),
@@ -583,7 +583,7 @@
     in, out, in, out, mdi, muo) is semidet.
 :- mode array.foldr3(pred(in, in, out, in, out, di, uo) is semidet, in,
     in, out, in, out, di, uo) is semidet.
-    
+
     % As above, but with four accumulators.
     %
 :- pred array.foldr4(pred(T1, T2, T2, T3, T3, T4, T4, T5, T5), array(T1),
@@ -600,7 +600,7 @@
     in, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode array.foldr4(pred(in, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, di, uo) is semidet.
-    
+
     % As above, but with five accumulators.
     %
 :- pred array.foldr5(pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6),
@@ -680,7 +680,7 @@
     %
 :- func array.array_to_doc(array(T)) = pretty_printer.doc.
 :- mode array.array_to_doc(array_ui) = out is det.
-    
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -690,7 +690,7 @@
 % and will not appear in the Mercury Library Reference Manual.
 
 :- interface.
-    
+
     % dynamic_cast/2 won't work for arbitrary arrays since array/1 is
     % not a ground type (that is, dynamic_cast/2 will work when the
     % target type is e.g. array(int), but not when it is array(T)).
@@ -937,7 +937,7 @@ ML_unsafe_new_array(int Size, object Item, int IndexToSet)
     }
     arr.SetValue(Item, IndexToSet);
     return arr;
-} 
+}
 
 public static System.Array
 ML_array_resize(System.Array arr0, int Size, object Item)
@@ -1276,11 +1276,11 @@ array.generate(Size, GenFunc) = Array :-
     ** In debugging grades we fill the array with the first element
     ** in case the return value of a call to this predicate is examined
     ** in the debugger.
-    */ 
+    */
     #if defined(MR_EXEC_TRACE)
         ML_init_array(Array, Size, FirstElem);
     #else
-        Array->size = Size;    
+        Array->size = Size;
         Array->elements[IndexToSet] = FirstElem;
     #endif
 
@@ -1302,12 +1302,12 @@ array.generate(Size, GenFunc) = Array :-
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Array = erlang:make_tuple(Size, FirstElem)
-").    
+").
 
 :- func generate_2(int::in, int::in, (func(int) = T)::in, array(T)::array_di)
     = (array(T)::array_uo) is det.
 
-generate_2(Index, Size, GenFunc, !.Array) = !:Array :-  
+generate_2(Index, Size, GenFunc, !.Array) = !:Array :-
     ( if Index < Size then
         Elem = GenFunc(Index),
         array.unsafe_set(Index, Elem, !Array),
@@ -2118,7 +2118,7 @@ array.map(Closure, OldArray, NewArray) :-
     ( array.semidet_lookup(OldArray, 0, Elem0) ->
         array.size(OldArray, Size),
         Closure(Elem0, Elem),
-        NewArray0 = unsafe_init(Size, Elem, 0), 
+        NewArray0 = unsafe_init(Size, Elem, 0),
         array.map_2(1, Size, Closure, OldArray, NewArray0, NewArray)
     ;
         array.make_empty_array(NewArray)
@@ -2686,7 +2686,6 @@ array.map_corresponding_foldl_2(P, I, N, A, B, !C, !D) :-
     % monotonic sequences and merging them, thereby taking advantage of
     % any existing order in the input sequence.
     %
-
 :- func samsort_subarray(array(T)::array_di, int::in, int::in) =
     (array(T)::array_uo) is det.
 
@@ -2814,7 +2813,7 @@ copy_subarray(A, Lo, Hi, I, !B) :-
     ( Lo =< Hi ->
         !B ^ elem(I) := A ^ elem(Lo),
         copy_subarray(A, Lo + 1, Hi, I + 1, !B)
-    ;   
+    ;
         true
     ).
 
