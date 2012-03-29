@@ -1693,7 +1693,7 @@ nth_member_lookup(List, Elem, Position) :-
     ( list.nth_member_search(List, Elem, PositionPrime) ->
         Position = PositionPrime
     ;
-        error("list.nth_member_lookup/3: element not found in list")
+        unexpected($module, $pred, "element not in list")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1712,7 +1712,7 @@ list.det_index0(List, N, Elem) :-
     ( list.index0(List, N, Elem0) ->
         Elem = Elem0
     ;
-        error("list.det_index0: index out of range")
+        unexpected($module, $pred, "index out of range")
     ).
 
 list.index1(List, N, Elem) :-
@@ -1744,14 +1744,14 @@ list.det_index0_of_first_occurrence(List, Elem) = N :-
     ( list.index0_of_first_occurrence(List, Elem, N0) ->
         N = N0
     ;
-        error("list.det_index0_of_first_occurrence: item not found")
+        unexpected($module, $pred, "item not found")
     ).
 
 list.det_index1_of_first_occurrence(List, Elem) = N :-
     ( list.index1_of_first_occurrence(List, Elem, N0) ->
         N = N0
     ;
-        error("list.det_index1_of_first_occurrence: item not found")
+        unexpected($module, $pred, "item not found")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1854,14 +1854,14 @@ list.det_replace_nth(Xs, P, R, L) :-
         ( list.replace_nth_2(Xs, P, R, L0) ->
             L = L0
         ;
-            error("list.det_replace_nth: " ++
-                "Can't replace element whose index " ++
-                "position is past the end of the list")
+            unexpected($module, $pred,
+                "Cannot replace element whose index position " ++
+                "is past the end of the list")
         )
     ;
-        error("list.det_replace_nth: " ++
-            "Can't replace element whose index " ++
-            "position is less than 1.")
+        unexpected($module, $pred,
+            "Cannot replace element whose index position " ++
+            "is less than 1.")
     ).
 
 :- pred list.replace_nth_2(list(T)::in, int::in, T::in, list(T)::out)
@@ -2015,7 +2015,7 @@ list.merge_sort_and_remove_dups_2(Length, List, SortedList) :-
                 Back, SortedBack),
             list.merge_and_remove_dups(SortedFront, SortedBack, SortedList)
         ;
-            error("list.merge_sort_and_remove_dups_2")
+            unexpected($module, $pred, "split failed")
         )
     ;
         SortedList = List
@@ -2034,7 +2034,7 @@ list.merge_sort_2(Length, List, SortedList) :-
             list.merge_sort_2(Length - HalfLength, Back, SortedBack),
             list.merge(SortedFront, SortedBack, SortedList)
         ;
-            error("list.merge_sort_2")
+            unexpected($module, $pred, "split failed")
         )
     ;
         SortedList = List
@@ -2116,7 +2116,7 @@ list.det_split_list(N, List, Start, End) :-
         Start = Start0,
         End = End0
     ;
-        error("list.det_split_list: index out of range")
+        unexpected($module, $pred, "index out of range")
     ).
 
 list.split_upto(N, List, Start, End) :-
@@ -2165,7 +2165,7 @@ list.det_drop(N, As, Bs) :-
             list.det_drop(N - 1, TailAs, Bs)
         ;
             As = [],
-            error("list.det_drop: not enough elements")
+            unexpected($module, $pred, "not enough elements")
         )
     ;
         As = Bs
@@ -2260,7 +2260,7 @@ list.det_last(List) = Last :-
     list.det_last(List, Last).
 
 list.det_last([], _) :-
-    error("list.det_last: empty list").
+    unexpected($module, $pred, "empty list").
 list.det_last([H | T], Last) :-
     list.det_last_2(H, T, Last).
 
@@ -2287,7 +2287,7 @@ list.split_last([H | T], AllButLast, Last) :-
     ).
 
 list.det_split_last([], _, _) :-
-    error("list.det_split_last: empty list").
+    unexpected($module, $pred, "empty list").
 list.det_split_last([H | T], AllButLast, Last) :-
     (
         T = [],
@@ -2363,17 +2363,17 @@ list.map8(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
 
 list.map_corresponding(_, [], []) = [].
 list.map_corresponding(_, [], [_ | _]) =
-    func_error("list.map_corresponding/3: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding(_, [_ | _], []) =
-    func_error("list.map_corresponding/3: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding(F, [A | As], [B | Bs]) =
     [F(A, B) | list.map_corresponding(F, As, Bs)].
 
 list.map_corresponding(_, [], [], []).
 list.map_corresponding(_, [], [_ | _], _) :-
-    error("list.map_corresponding/4: mismatched list arguments.").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding(_, [_ | _], [], _) :-
-    error("list.map_corresponding/4: mismatched list arguments.").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding(P, [A | As], [B | Bs], [C | Cs]) :-
     P(A, B, C),
     list.map_corresponding(P, As, Bs, Cs).
@@ -2392,17 +2392,14 @@ list.map_corresponding3(F, As, Bs, Cs) =
     ->
         []
     ;
-        func_error("list.map_corresponding3: " ++
-            "mismatched list arguments")
+        unexpected($module, $pred, "mismatched list lengths")
     ).
 
 list.filter_map_corresponding(_, [], []) = [].
 list.filter_map_corresponding(_, [], [_ | _]) =
-    func_error("list.filter_map_corresponding/3: " ++
-        "mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.filter_map_corresponding(_, [_ | _], []) =
-    func_error("list.filter_map_corresponding/3: " ++
-        "mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.filter_map_corresponding(F, [A | As], [B | Bs]) =
     ( F(A, B) = C ->
         [C | list.filter_map_corresponding(F, As, Bs)]
@@ -2428,33 +2425,32 @@ list.filter_map_corresponding3(F, As, Bs, Cs) =
     ->
         []
     ;
-        func_error("list.filter_map_corresponding3: " ++
-            "mismatched list arguments")
+        unexpected($module, $pred, "mismatched list lengths")
     ).
 
 list.map_corresponding_foldl(_, [], [], [], !Acc).
 list.map_corresponding_foldl(_, [], [_ | _], _, _, _) :-
-    error("list.map_corresponding_foldl: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding_foldl(_, [_ | _], [], _, _, _) :-
-    error("list.map_corresponding_foldl: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding_foldl(P, [A | As], [B | Bs], [C | Cs], !Acc) :-
     P(A, B, C, !Acc),
     list.map_corresponding_foldl(P, As, Bs, Cs, !Acc).
 
 list.map_corresponding_foldl2(_, [], [], [], !Acc1, !Acc2).
 list.map_corresponding_foldl2(_, [], [_ | _], _, _, _, _, _) :-
-    error("list.map_corresponding_foldl2: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding_foldl2(_, [_ | _], [], _, _, _, _, _) :-
-    error("list.map_corresponding_foldl2: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding_foldl2(P, [A | As], [B | Bs], [C | Cs], !Acc1, !Acc2) :-
     P(A, B, C, !Acc1, !Acc2),
     list.map_corresponding_foldl2(P, As, Bs, Cs, !Acc1, !Acc2).
 
 list.map_corresponding_foldl3(_, [], [], [], !Acc1, !Acc2, !Acc3).
 list.map_corresponding_foldl3(_, [], [_ | _], _, _, _, _, _, _, _) :-
-    error("list.map_corresponding_foldl2: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding_foldl3(_, [_ | _], [], _, _, _, _, _, _, _) :-
-    error("list.map_corresponding_foldl2: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding_foldl3(P, [A | As], [B | Bs], [C | Cs], !Acc1,
         !Acc2, !Acc3) :-
     P(A, B, C, !Acc1, !Acc2, !Acc3),
@@ -2462,17 +2458,17 @@ list.map_corresponding_foldl3(P, [A | As], [B | Bs], [C | Cs], !Acc1,
 
 list.map_corresponding3_foldl(_, [], [], [], [], !Acc).
 list.map_corresponding3_foldl(_, [], [_ | _], [_ | _], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding3_foldl(_, [_ | _], [], [_ | _], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding3_foldl(_, [_ | _], [_ | _], [], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding3_foldl(_, [], [], [_ | _], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding3_foldl(_, [], [_ | _], [], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding3_foldl(_, [_ | _], [], [], _, _, _) :-
-    error("list.map_corresponding3_foldl: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding3_foldl(P, [A | As], [B | Bs], [C | Cs], [D | Ds],
         !Acc) :-
     P(A, B, C, D, !Acc),
@@ -2514,70 +2510,70 @@ list.foldl6(P, [H | T], !A, !B, !C, !D, !E, !F) :-
 
 list.foldl_corresponding(_, [], [], !Acc).
 list.foldl_corresponding(_, [], [_ | _], _, _) :-
-    error("list.foldl_corresponding/5: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl_corresponding(_, [_ | _], [], _, _) :-
-    error("list.foldl_corresponding/5: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl_corresponding(P, [A | As], [B | Bs], !Acc) :-
     P(A, B, !Acc),
     list.foldl_corresponding(P, As, Bs, !Acc).
 
 list.foldl_corresponding(_, [], [], Acc) = Acc.
 list.foldl_corresponding(_, [], [_ | _], _) = _ :-
-    error("list.foldl_corresponding/4: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl_corresponding(_, [_ | _], [], _) = _ :-
-    error("list.foldl_corresponding/4: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl_corresponding(F, [A | As], [B | Bs], !.Acc) = !:Acc :-
     !:Acc = F(A, B, !.Acc),
     !:Acc = list.foldl_corresponding(F, As, Bs, !.Acc).
 
 list.foldl2_corresponding(_, [], [], !Acc1, !Acc2).
 list.foldl2_corresponding(_, [], [_ | _], _, _, _, _) :-
-    error("list.foldl2_corresponding/7: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl2_corresponding(_, [_ | _], [], _, _, _, _) :-
-    error("list.foldl2_corresponding/7: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl2_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2) :-
     P(A, B, !Acc1, !Acc2),
     list.foldl2_corresponding(P, As, Bs, !Acc1, !Acc2).
 
 list.foldl3_corresponding(_, [], [], !Acc1, !Acc2, !Acc3).
 list.foldl3_corresponding(_, [], [_ | _], _, _, _, _, _, _) :-
-    error("list.foldl3_corresponding/9: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl3_corresponding(_, [_ | _], [], _, _, _, _, _, _) :-
-    error("list.foldl3_corresponding/9: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl3_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2, !Acc3) :-
     P(A, B, !Acc1, !Acc2, !Acc3),
     list.foldl3_corresponding(P, As, Bs, !Acc1, !Acc2, !Acc3).
 
 list.foldl_corresponding3(_, [], [], [], !Acc).
 list.foldl_corresponding3(_, [_ | _], [], [], _, _) :-
-    error("list.foldl_corresponding3/6: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl_corresponding3(_, [], [_ | _], [], _, _) :-
-    error("list.foldl_corresponding3/6: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl_corresponding3(_, [], [], [_ | _], _, _) :-
-    error("list.foldl_corresponding3/6: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl_corresponding3(_, [], [_ | _], [_ | _], _, _) :-
-    error("list.foldl_corresponding3/6: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl_corresponding3(_, [_ | _], [], [_ | _], _, _) :-
-    error("list.foldl_corresponding3/6: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl_corresponding3(_, [_ | _], [_ | _], [], _, _) :-
-    error("list.foldl_corresponding3/6: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs], !Acc) :-
     P(A, B, C, !Acc),
     list.foldl_corresponding3(P, As, Bs, Cs, !Acc).
 
 list.foldl2_corresponding3(_, [], [], [], !Acc1, !Acc2).
 list.foldl2_corresponding3(_, [_ | _], [], [], _, _, _, _) :-
-    error("list.foldl2_corresponding3/8: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl2_corresponding3(_, [], [_ | _], [], _, _, _, _) :-
-    error("list.foldl2_corresponding3/8: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl2_corresponding3(_, [], [], [_ | _], _, _, _, _) :-
-    error("list.foldl2_corresponding3/8: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl2_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _) :-
-    error("list.foldl2_corresponding3/8: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl2_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _) :-
-    error("list.foldl2_corresponding3/8: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl2_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _) :-
-    error("list.foldl2_corresponding3/8: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl2_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
         !Acc1, !Acc2) :-
     P(A, B, C, !Acc1, !Acc2),
@@ -2585,17 +2581,17 @@ list.foldl2_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
 
 list.foldl3_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3).
 list.foldl3_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _) :-
-    error("list.foldl3_corresponding3/10: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl3_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _) :-
-    error("list.foldl3_corresponding3/10: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl3_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _) :-
-    error("list.foldl3_corresponding3/10: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl3_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _) :-
-    error("list.foldl3_corresponding3/10: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl3_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _) :-
-    error("list.foldl3_corresponding3/10: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl3_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _) :-
-    error("list.foldl3_corresponding3/10: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl3_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
         !Acc1, !Acc2, !Acc3) :-
     P(A, B, C, !Acc1, !Acc2, !Acc3),
@@ -2603,17 +2599,17 @@ list.foldl3_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
 
 list.foldl4_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3, !Acc4).
 list.foldl4_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _, _, _) :-
-    error("list.foldl4_corresponding3/12: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl4_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _, _, _) :-
-    error("list.foldl4_corresponding3/12: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl4_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _, _, _) :-
-    error("list.foldl4_corresponding3/12: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl4_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _, _, _) :-
-    error("list.foldl4_corresponding3/12: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl4_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _, _, _) :-
-    error("list.foldl4_corresponding3/12: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl4_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _, _, _) :-
-    error("list.foldl4_corresponding3/12: mismatched list arguments").
+    unexpected($module, $pred, "mismatched list lengths").
 list.foldl4_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
         !Acc1, !Acc2, !Acc3, !Acc4) :-
     P(A, B, C, !Acc1, !Acc2, !Acc3, !Acc4),
@@ -2850,7 +2846,7 @@ list.sort(P, L0, L) :-
     ; list.hosort(P, N, L0, L1, []) ->
         L = L1
     ;
-        error("hosort failed")
+        unexpected($module, $pred, "hosort failed")
     ).
 
     % list.hosort is a Mercury implementation of the mergesort described
@@ -2989,13 +2985,13 @@ successive_integers(Lo, Hi, !Ints) :-
 list.head([X | _]) = X.
 
 list.det_head([]) = _ :-
-    error("list.det_head/1: empty list as argument").
+    unexpected($module, $pred, "empty list").
 list.det_head([X | _]) = X.
 
 list.tail([_ | Xs]) = Xs.
 
 list.det_tail([]) = _ :-
-    error("list.det_tail/1: empty list as argument").
+    unexpected($module, $pred, "empty list").
 list.det_tail([_ | Xs]) = Xs.
 
 %-----------------------------------------------------------------------------%
