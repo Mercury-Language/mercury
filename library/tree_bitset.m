@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006, 2009-2011 The University of Melbourne.
+% Copyright (C) 2006, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -420,7 +420,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
-:- import_module string.    % for ++ on strings in exceptions
 
 % These are needed only for integrity checking.
 :- import_module bool.
@@ -435,7 +434,7 @@
     %   bits_per_int bits.
     %
     % - Level k > 0 nodes are interior nodes. An interior node of level k + 1
-    %   has up to 2 ^ bits_per_level children of level k.
+    %   has up to 2 ^ bits_per_level children, all of level k.
     %
     % - If a node at level k is isomorphic to a bitmap of b bits, then a node
     %   at level k + 1 is isomorphic to the bitmap of b * 2 ^ bits_per_level
@@ -457,9 +456,9 @@
     % `Offset' .. `Offset + bits_per_int - 1' are in the set.
     %
     % Interior nodes contain bitmaps only indirectly; they contain a list
-    % of nodes one level down. (For level 1 interior nodes, this means
+    % of nodes one level down. For level 1 interior nodes, this means
     % a list of leaf nodes; for interior nodes of level k+1, this means
-    % a list of interior nodes of level k.)
+    % a list of interior nodes of level k.
     %
     % Invariants:
     %
@@ -555,13 +554,15 @@ index_to_enum(Index) = Elem :-
 
 %-----------------------------------------------------------------------------%
 
-% This function is the only place in the module that adds the tree_bitset/1
-% wrapper around node lists, and therefore the only place that constructs
-% terms that are semantically tree_bitsets. Invoking our integrity test from
-% here thus guarantees that we never return any malformed tree_bitsets.
+% This function should be the only place in the module that adds the
+% tree_bitset/1 wrapper around node lists, and therefore the only place
+% that constructs terms that are semantically tree_bitsets. Invoking our
+% integrity test from here should thus guarantee that we never return
+% any malformed tree_bitsets.
 %
 % If you want to use the integrity checking version of wrap_tree_bitset,
-% then you will need to compile this module with the following flag:
+% then you will need to compile this module with the flag
+%
 %           --trace-flag="tree-bitset-integrity"
 
 :- func wrap_tree_bitset(node_list) = tree_bitset(T).
@@ -1393,8 +1394,7 @@ list_to_set(List, Set) :-
 
 sorted_list_to_set(Elems) = Set :-
     items_to_index(Elems, Indexes),
-    % XXX
-    % Should we sort Indexes? The fact that Elems is sorted
+    % XXX We SHOULD sort Indexes. The fact that Elems is sorted
     % does not *necessarily* imply that Indexes is sorted.
     LeafNodes = sorted_list_to_leaf_nodes(Indexes),
     (
@@ -1428,6 +1428,28 @@ items_to_index([], []).
 items_to_index([ElemHead | ElemTail], [IndexHead | IndexTail]) :-
     IndexHead = enum_to_index(ElemHead),
     items_to_index(ElemTail, IndexTail).
+
+:- func sorted_list_to_leaf_nodes(list(int)) = list(leaf_node).
+
+sorted_list_to_leaf_nodes([]) = [].
+sorted_list_to_leaf_nodes([Head | Tail]) = LeafNodes :-
+    bits_for_index(Head, Offset, HeadBits),
+    gather_bits_for_leaf(Tail, Offset, HeadBits, Bits, Remaining),
+    sorted_list_to_leaf_nodes(Remaining) = LeafNodesTail,
+    LeafNodes = [make_leaf_node(Offset, Bits) | LeafNodesTail].
+
+:- pred gather_bits_for_leaf(list(int)::in, int::in, int::in, int::out,
+    list(int)::out) is det.
+
+gather_bits_for_leaf([], _Offset, !Bits, []).
+gather_bits_for_leaf(List @ [Head | Tail], Offset, !Bits, Remaining) :-
+    bits_for_index(Head, HeadOffset, HeadBits),
+    ( HeadOffset = Offset ->
+        !:Bits = !.Bits \/ HeadBits,
+        gather_bits_for_leaf(Tail, Offset, !Bits, Remaining)
+    ;
+        Remaining = List
+    ).
 
 :- pred group_leaf_nodes(leaf_node::in, list(leaf_node)::in,
     list(interior_node)::out) is det.
@@ -1534,28 +1556,6 @@ group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
         ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
             interior_list(Level, list.reverse(!.RevAcc))),
         Remaining = [Head | Tail]
-    ).
-
-:- func sorted_list_to_leaf_nodes(list(int)) = list(leaf_node).
-
-sorted_list_to_leaf_nodes([]) = [].
-sorted_list_to_leaf_nodes([Head | Tail]) = LeafNodes :-
-    bits_for_index(Head, Offset, HeadBits),
-    gather_bits_for_leaf(Tail, Offset, HeadBits, Bits, Remaining),
-    sorted_list_to_leaf_nodes(Remaining) = LeafNodesTail,
-    LeafNodes = [make_leaf_node(Offset, Bits) | LeafNodesTail].
-
-:- pred gather_bits_for_leaf(list(int)::in, int::in, int::in, int::out,
-    list(int)::out) is det.
-
-gather_bits_for_leaf([], _Offset, !Bits, []).
-gather_bits_for_leaf(List @ [Head | Tail], Offset, !Bits, Remaining) :-
-    bits_for_index(Head, HeadOffset, HeadBits),
-    ( HeadOffset = Offset ->
-        !:Bits = !.Bits \/ HeadBits,
-        gather_bits_for_leaf(Tail, Offset, !Bits, Remaining)
-    ;
-        Remaining = List
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2827,16 +2827,334 @@ interiornode_divide(Pred, [Head | Tail], InNodes, OutNodes) :-
 %-----------------------------------------------------------------------------%
 
 divide_by_set(DivideBySet, Set, InSet, OutSet) :-
-    Pred = (pred(Element::in) is semidet :-
-        contains(DivideBySet, Element)
-    ),
-    divide(Pred, Set, InSet, OutSet).
+    DivideBySet = tree_bitset(DivideByList),
+    Set = tree_bitset(List),
+    (
+        DivideByList = leaf_list(DBLeafNodes),
+        List = leaf_list(LeafNodes),
+        leaflist_divide_by_set(DBLeafNodes, LeafNodes,
+            InNodes, OutNodes),
+        InList = leaf_list(InNodes),
+        OutList = leaf_list(OutNodes),
+        InSet = wrap_tree_bitset(InList),
+        OutSet = wrap_tree_bitset(OutList)
+    ;
+        DivideByList = interior_list(DBLevel, DBNodes),
+        List = leaf_list(LeafNodes),
+        (
+            LeafNodes = [],
+            % The set we are dividing is empty, so both InSet and OutSet
+            % must be empty too.
+            InSet = Set,
+            OutSet = Set
+        ;
+            LeafNodes = [leaf_node(FirstOffset, _) | _],
+            range_of_parent_node(FirstOffset, 0, InitOffset, LimitOffset),
+            head_and_tail(DBNodes, DBNodesHead, _),
+            DBNodesHead = interior_node(DBFirstInitOffset, _, _),
+            range_of_parent_node(DBFirstInitOffset, DBLevel,
+                DBInitOffset, DBLimitOffset),
+            (
+                DBInitOffset =< InitOffset,
+                InitOffset < DBLimitOffset
+            ->
+                (
+                    DBInitOffset < LimitOffset,
+                    LimitOffset =< DBLimitOffset
+                ->
+                    true
+                ;
+                    unexpected($module, $pred, "strange offsets")
+                ),
+                divide_by_set_descend_divide_by(DBLevel, DBNodes,
+                    0, InitOffset, LimitOffset, List, InList0, OutList0),
+                prune_top_levels(InList0, InList),
+                prune_top_levels(OutList0, OutList),
+                InSet = wrap_tree_bitset(InList),
+                OutSet = wrap_tree_bitset(OutList)
+            ;
+                % The ranges of the two sets do not overlap.
+                InSet = wrap_tree_bitset(leaf_list([])),
+                OutSet = Set
+            )
+        )
+    ;
+        DivideByList = leaf_list(_),
+        List = interior_list(_, _),
+        % XXX Should have specialized code here that traverses Set
+        % just once. This will require something analogous to
+        % divide_by_set_descend_divide_by, but descending List
+        % instead of DivideByList.
+        intersect(DivideBySet, Set, InSet),
+        difference(Set, InSet, OutSet)
+    ;
+        DivideByList = interior_list(DBLevel, DBNodes),
+        List = interior_list(Level, Nodes),
+        ( DBLevel = Level ->
+            interiorlist_divide_by_set(Level, DBNodes, Nodes,
+                InNodes, OutNodes),
+            (
+                InNodes = [],
+                InList = leaf_list([])
+            ;
+                InNodes = [_ | _],
+                InList0 = interior_list(Level, InNodes),
+                prune_top_levels(InList0, InList)
+            ),
+            (
+                OutNodes = [],
+                OutList = leaf_list([])
+            ;
+                OutNodes = [_ | _],
+                OutList0 = interior_list(Level, OutNodes),
+                prune_top_levels(OutList0, OutList)
+            ),
+            InSet = wrap_tree_bitset(InList),
+            OutSet = wrap_tree_bitset(OutList)
+        ; DBLevel > Level ->
+            head_and_tail(Nodes, NodesHead, _),
+            NodesHead = interior_node(FirstInitOffset, _, _),
+            range_of_parent_node(FirstInitOffset, Level,
+                InitOffset, LimitOffset),
+            divide_by_set_descend_divide_by(DBLevel, DBNodes,
+                Level, InitOffset, LimitOffset, List, InList0, OutList0),
+            prune_top_levels(InList0, InList),
+            prune_top_levels(OutList0, OutList),
+            InSet = wrap_tree_bitset(InList),
+            OutSet = wrap_tree_bitset(OutList)
+        ;
+            % XXX Should have specialized code here that traverses Set
+            % just once. This will require something analogous to
+            % divide_by_set_descend_divide_by, but descending List
+            % instead of DivideByList.
+            intersect(DivideBySet, Set, InSet),
+            difference(Set, InSet, OutSet)
+        )
+    ).
 
-% This is the beginning of a more efficient version of divide_by_set.
+:- pred divide_by_set_descend_divide_by(int::in,
+    list(interior_node)::in, int::in, int::in, int::in, node_list::in,
+    node_list::out, node_list::out) is det.
 
-% divide_by_set(DivideBySet, Set, InSet, OutSet) :-
-%     DivideBySet = tree_bitset(DivideByList),
-%     Set = tree_bitset(List),
+divide_by_set_descend_divide_by(DBLevel, DBNodes,
+        Level, InitOffset, LimitOffset, List, InList, OutList) :-
+    expect((DBLevel > Level), $module, $pred, "not DBLevel > Level"),
+    (
+        DBNodes = [],
+        % Every node in the original DivideByList is before List.
+        InList = leaf_list([]),
+        OutList = List
+    ;
+        DBNodes = [DBNodesHead | DBNodesTail],
+        DBNodesHead = interior_node(DBHeadInitOffset, DBHeadLimitOffset,
+            DBHeadComponents),
+        ( DBHeadLimitOffset =< InitOffset ->
+            % DBNodesHead is before List.
+            divide_by_set_descend_divide_by(DBLevel, DBNodesTail,
+                Level, InitOffset, LimitOffset, List, InList, OutList)
+        ; LimitOffset =< DBHeadInitOffset ->
+            % DBNodesHead is after List, and every other
+            % node in the original DivideByList is before List.
+            InList = leaf_list([]),
+            OutList = List
+        ;
+            % The range of DBNodesHead contains the range of List.
+            % Dividing List by DBNodesHead is thus the same as
+            % dividing List by the original DivideBySet.
+            (
+                DBHeadComponents = leaf_list(DBHeadLeafNodes),
+                expect(unify(DBLevel, 1), $pred, $module, "DBLevel != 1"),
+                expect(unify(Level, 0), $pred, $module, "Level != 0"),
+                % The other nodes in the original DivideByList are all
+                % outside the range of List.
+                (
+                    List = leaf_list(Nodes),
+                    leaflist_divide_by_set(DBHeadLeafNodes, Nodes,
+                        InNodes, OutNodes),
+                    InList = leaf_list(InNodes),
+                    OutList = leaf_list(OutNodes)
+                ;
+                    List = interior_list(_, _),
+                    % divide_by_set_descend_divide_by should have stopped
+                    % recursing when it got to Level.
+                    unexpected($module, $pred, "List is not leaf_list")
+                )
+            ;
+                DBHeadComponents = interior_list(DBSubLevel, DBSubNodes),
+                expect(unify(DBLevel, DBSubLevel + 1), $pred, $module,
+                    "DBLevel != SubLevel + 1"),
+                ( DBSubLevel > Level ->
+                    divide_by_set_descend_divide_by(DBSubLevel, DBSubNodes,
+                        Level, InitOffset, LimitOffset, List, InList, OutList)
+                ; DBSubLevel = Level ->
+                    (
+                        List = leaf_list(_),
+                        % Since DBHeadComponents is an interior list,
+                        % and List is at the same level, it should be
+                        % an interior list too.
+                        unexpected($module, $pred, "List is leaf_list")
+                    ;
+                        List = interior_list(_, Nodes),
+                        interiorlist_divide_by_set(Level,
+                            DBSubNodes, Nodes, InNodes, OutNodes),
+                        (
+                            InNodes = [],
+                            InList = leaf_list([])
+                        ;
+                            InNodes = [_ | _],
+                            InList = interior_list(Level, InNodes)
+                        ),
+                        (
+                            OutNodes = [],
+                            OutList = leaf_list([])
+                        ;
+                            OutNodes = [_ | _],
+                            OutList = interior_list(Level, OutNodes)
+                        )
+                    )
+                ;
+                    unexpected($module, $pred, "DBSubLevel > Level")
+                )
+            )
+        )
+    ).
+
+:- pred interiorlist_divide_by_set(int::in,
+    list(interior_node)::in, list(interior_node)::in,
+    list(interior_node)::out, list(interior_node)::out) is det.
+
+interiorlist_divide_by_set(_Level, _DBSubNodes, [], [], []).
+interiorlist_divide_by_set(_Level, [], Nodes @ [_ | _], [], Nodes).
+interiorlist_divide_by_set(Level, DBNodes @ [DBNodesHead | DBNodesTail],
+        Nodes @ [NodesHead | NodesTail], InNodes, OutNodes) :-
+    DBNodesHead = interior_node(DBInitOffset, DBLimitOffset, DBComponents),
+    NodesHead = interior_node(InitOffset, LimitOffset, Components),
+    % Since DBNodesHead and NodesHead are at the same level,
+    % they cover the same region only if their initial and limit offsets
+    % both match.
+    ( DBInitOffset = InitOffset ->
+        expect(unify(DBLimitOffset, LimitOffset), $module, $pred,
+            "DBLimitOffset != LimitOffset"),
+        interiorlist_divide_by_set(Level, DBNodesTail, NodesTail,
+            InNodesTail, OutNodesTail),
+        (
+            DBComponents = leaf_list(DBLeafNodes),
+            Components = leaf_list(LeafNodes),
+            leaflist_divide_by_set(DBLeafNodes, LeafNodes,
+                InLeafNodes, OutLeafNodes),
+            (
+                InLeafNodes = [],
+                InNodes = InNodesTail
+            ;
+                InLeafNodes = [_ | _],
+                InNodesHead = interior_node(InitOffset, LimitOffset,
+                    leaf_list(InLeafNodes)),
+                InNodes = [InNodesHead | InNodesTail]
+            ),
+            (
+                OutLeafNodes = [],
+                OutNodes = OutNodesTail
+            ;
+                OutLeafNodes = [_ | _],
+                OutNodesHead = interior_node(InitOffset, LimitOffset,
+                    leaf_list(OutLeafNodes)),
+                OutNodes = [OutNodesHead | OutNodesTail]
+            )
+        ;
+            DBComponents = interior_list(_, _),
+            Components = leaf_list(_),
+            unexpected($module, $pred, "DB interior vs leaf") 
+        ;
+            DBComponents = leaf_list(_),
+            Components = interior_list(_, _),
+            unexpected($module, $pred, "DB leaf vs interior") 
+        ;
+            DBComponents = interior_list(DBSubLevel, DBSubNodes),
+            Components = interior_list(SubLevel, SubNodes),
+            expect(unify(DBSubLevel, SubLevel), $module, $pred,
+                "DBSubLevel != SubLevel"),
+            expect(unify(SubLevel, Level - 1), $module, $pred,
+                "DBSubLevel != SubLevel"),
+            interiorlist_divide_by_set(SubLevel, DBSubNodes, SubNodes,
+                SubInNodes, SubOutNodes),
+            (
+                SubInNodes = [],
+                InNodes = InNodesTail
+            ;
+                SubInNodes = [_ | _],
+                InNodesHead = interior_node(InitOffset, LimitOffset,
+                    interior_list(SubLevel, SubInNodes)),
+                InNodes = [InNodesHead | InNodesTail]
+            ),
+            (
+                SubOutNodes = [],
+                OutNodes = OutNodesTail
+            ;
+                SubOutNodes = [_ | _],
+                OutNodesHead = interior_node(InitOffset, LimitOffset,
+                    interior_list(SubLevel, SubOutNodes)),
+                OutNodes = [OutNodesHead | OutNodesTail]
+            )
+        )
+    ; DBInitOffset < InitOffset ->
+        % DBNodesHead covers a region that is entirely before the region
+        % covered by Nodes.
+        interiorlist_divide_by_set(Level, DBNodesTail, Nodes,
+            InNodes, OutNodes)
+    ;
+        % NodesHead covers a region that is entirely before the region
+        % covered by DBNodesHead. Therefore all the items in NodesHead
+        % are outside DivideBySet.
+        interiorlist_divide_by_set(Level, DBNodes, NodesTail,
+            InNodes, OutNodesTail),
+        OutNodes = [NodesHead | OutNodesTail]
+    ).
+
+:- pred leaflist_divide_by_set(list(leaf_node)::in, list(leaf_node)::in,
+    list(leaf_node)::out, list(leaf_node)::out) is det.
+
+leaflist_divide_by_set(_, [], [], []).
+leaflist_divide_by_set([], List @ [_ | _], [], List).
+leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
+        List @ [ListHead | ListTail], InList, OutList) :-
+    DivideByOffset = DivideByHead ^ leaf_offset,
+    ListOffset = ListHead ^ leaf_offset,
+    ( DivideByOffset = ListOffset ->
+        ListHeadBits = ListHead ^ leaf_bits,
+        DivideByHeadBits = DivideByHead ^ leaf_bits,
+        InBits = ListHeadBits /\ DivideByHeadBits,
+        OutBits = ListHeadBits /\ \ DivideByHeadBits,
+        ( InBits = 0 ->
+            ( OutBits = 0 ->
+                leaflist_divide_by_set(DivideByTail, ListTail, InList, OutList)
+            ;
+                NewOutNode = make_leaf_node(ListOffset, OutBits),
+                leaflist_divide_by_set(DivideByTail, ListTail,
+                    InList, OutTail),
+                OutList = [NewOutNode | OutTail]
+            )
+        ;
+            NewInNode = make_leaf_node(ListOffset, InBits),
+            ( OutBits = 0 ->
+                leaflist_divide_by_set(DivideByTail, ListTail,
+                    InTail, OutList),
+                InList = [NewInNode | InTail]
+            ;
+                NewOutNode = make_leaf_node(ListOffset, OutBits),
+                leaflist_divide_by_set(DivideByTail, ListTail,
+                    InTail, OutTail),
+                InList = [NewInNode | InTail],
+                OutList = [NewOutNode | OutTail]
+            )
+        )
+    ; DivideByOffset < ListOffset ->
+        leaflist_divide_by_set(DivideByTail, List, InList, OutList)
+    ;
+        leaflist_divide_by_set(DivideByList, ListTail, InList, OutTail),
+        OutList = [ListHead | OutTail]
+    ).
+
+
 %     % Our basic approach of raising both operands to the same level simplifies
 %     % the code (by allowing the reuse of the basic pattern and the helper
 %     % predicates of the union predicate), but searching the larger set for the

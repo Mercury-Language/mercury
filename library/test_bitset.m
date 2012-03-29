@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -170,7 +170,7 @@ count(SetA - SetB) = Count :-
     ( CountA = CountB ->
         Count = CountA
     ;
-        error("test_bitset: count failed")
+        unexpected($module, $pred, "failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -181,25 +181,25 @@ is_empty(A - B) :-
     ( EmptyA = EmptyB ->
         EmptyA = yes
     ;
-        error("test_bitset: is_empty failed")
+        unexpected($module, $pred, "failed")
     ).
 
 is_non_empty(A - B) :-
     ( tree_bitset.is_non_empty(A) -> NonEmptyA = yes; NonEmptyA = no),
-    ( set_ordlist.non_empty(B) -> NonEmptyB = yes; NonEmptyB = no),
+    ( set_ordlist.is_non_empty(B) -> NonEmptyB = yes; NonEmptyB = no),
     ( NonEmptyA = NonEmptyB ->
         NonEmptyA = yes
     ;
-        error("test_bitset: is_non_empty failed")
+        unexpected($module, $pred, "failed")
     ).
 
 is_singleton(A - B, E) :-
     ( tree_bitset.is_singleton(A, AE) -> NonEmptyA = yes(AE); NonEmptyA = no),
-    ( set_ordlist.singleton_set(B, BE) -> NonEmptyB = yes(BE); NonEmptyB = no),
+    ( set_ordlist.is_singleton(B, BE) -> NonEmptyB = yes(BE); NonEmptyB = no),
     ( NonEmptyA = NonEmptyB ->
         NonEmptyA = yes(E)
     ;
-        error("test_bitset: is_singleton failed")
+        unexpected($module, $pred, "failed")
     ).
 
 contains(SetA - SetB, E) :-
@@ -208,7 +208,7 @@ contains(SetA - SetB, E) :-
     ( InSetA = InSetB ->
         InSetA = yes
     ;
-        error("test_bitset: contains failed")
+        unexpected($module, $pred, "failed")
     ).
 
 :- pragma promise_equivalent_clauses(member/2).
@@ -219,7 +219,7 @@ member(E::in, (SetA - SetB)::in) :-
     ( InSetA = InSetB ->
         InSetA = yes
     ;
-        error("test_bitset: member failed")
+        unexpected($module, $pred, "failed (in, in)")
     ).
 
 member(E::out, (SetA - SetB)::in) :-
@@ -230,7 +230,7 @@ member(E::out, (SetA - SetB)::in) :-
     ( SolnsA = SolnsB ->
         tree_bitset.member(E, SetA)
     ;
-        error("test_bitset: member failed")
+        unexpected($module, $pred, "failed (out, in)")
     ).
 
 equal(SetA1 - SetB1, SetA2 - SetB2) :-
@@ -239,7 +239,7 @@ equal(SetA1 - SetB1, SetA2 - SetB2) :-
     ( EqualA = EqualB ->
         EqualA = yes
     ;
-        error("test_bitset: equal failed")
+        unexpected($module, $pred, "failed")
     ).
 
 subset(SetA1 - SetB1, SetA2 - SetB2) :-
@@ -247,10 +247,10 @@ subset(SetA1 - SetB1, SetA2 - SetB2) :-
         ( set_ordlist.subset(SetB1, SetB2) ->
             true
         ;
-            error("test_bitset: subset succeeded unexpectedly")
+            unexpected($module, $pred, "unexpected success")
         )
     ; set_ordlist.subset(SetB1, SetB2) ->
-        error("test_bitset: subset failed unexpectedly")
+        unexpected($module, $pred, "unexpected failure")
     ;
         fail
     ).
@@ -260,10 +260,10 @@ superset(SetA1 - SetB1, SetA2 - SetB2) :-
         ( set_ordlist.superset(SetB1, SetB2) ->
             true
         ;
-            error("test_bitset: superset succeeded unexpectedly")
+            unexpected($module, $pred, "unexpected success")
         )
     ; set_ordlist.superset(SetB1, SetB2) ->
-        error("test_bitset: superset failed unexpectedly")
+        unexpected($module, $pred, "unexpected failure")
     ;
         fail
     ).
@@ -287,7 +287,7 @@ to_sorted_list(A - B) = List :-
     ( ListA = ListB ->
         List = ListB
     ;
-        error("test_bitset: to_sorted_list failed")
+        unexpected($module, $pred, "failed")
     ).
 
 list_to_set(A, test_bitset.list_to_set(A)).
@@ -331,31 +331,31 @@ remove(E, SetA0 - SetB0, Result) :-
     ( tree_bitset.remove(E, SetA0, SetA1) ->
         ( set_ordlist.remove(E, SetB0, SetB1) ->
             SetA = SetA1,
-            SetB = SetB1
+            SetB = SetB1,
+            check1("remove", SetA0 - SetB0, SetA - SetB, Result)
         ;
-            error("test_bitset: remove succeeded unexpectedly")
+            unexpected($module, $pred, "unexpected success")
         )
     ; set_ordlist.remove(E, SetB0, _) ->
-        error("test_bitset: remove failed unexpectedly")
+        unexpected($module, $pred, "unexpected failure")
     ;
         fail
-    ),
-    check1("remove", SetA0 - SetB0, SetA - SetB, Result).
+    ).
 
 remove_list(Es, SetA0 - SetB0, Result) :-
     ( tree_bitset.remove_list(Es, SetA0, SetA1) ->
         ( set_ordlist.remove_list(Es, SetB0, SetB1) ->
             SetA = SetA1,
-            SetB = SetB1
+            SetB = SetB1,
+            check1("remove_list", SetA0 - SetB0, SetA - SetB, Result)
         ;
-            error("test_bitset: remove succeeded unexpectedly")
+            unexpected($module, $pred, "unexpected success")
         )
     ; set_ordlist.remove_list(Es, SetB0, _) ->
-        error("test_bitset: remove failed unexpectedly")
+        unexpected($module, $pred, "unexpected failure")
     ;
         fail
-    ),
-    check1("remove_list", SetA0 - SetB0, SetA - SetB, Result).
+    ).
 
 remove_least(Least, SetA0 - SetB0, Result) :-
     ( tree_bitset.remove_least(LeastA, SetA0, SetA1) ->
@@ -364,13 +364,13 @@ remove_least(Least, SetA0 - SetB0, Result) :-
                 Least = LeastA,
                 check1("remove_least", SetA0 - SetB0, SetA1 - SetB1, Result)
             ;
-                error("test_bitset: remove_least: wrong least element")
+                unexpected($module, $pred, "wrong least element")
             )
         ;
-            error("test_bitset: remove_least: should be no least value")
+            unexpected($module, $pred, "should be no least value")
         )
     ; set_ordlist.remove_least(_, SetB0, _) ->
-        error("test_bitset: remove_least: failed")
+        unexpected($module, $pred, "failed")
     ;
         fail
     ).
@@ -420,7 +420,7 @@ get_sets(Op, [SetA - SetB | SetsAB], [SetA | SetsA], [SetB | SetsB]) :-
     ( SetListA = SetListB ->
         get_sets(Op, SetsAB, SetsA, SetsB)
     ;
-        error("test_bitset: get_sets: unequal sets in " ++ Op ++ " arg list")
+        unexpected($module, $pred, "unequal sets in " ++ Op ++ " arg list")
     ).
 
 divide(Pred, SetA - SetB, ResultIn, ResultOut) :-
@@ -441,7 +441,7 @@ divide(Pred, SetA - SetB, ResultIn, ResultOut) :-
         ResultIn = InSetA - InSetB,
         ResultOut = OutSetA - OutSetB
     ;
-        error("test_bitset: divide: unequal sets")
+        unexpected($module, $pred, "failed")
     ).
 
 divide_by_set(DivideBySetA - DivideBySetB, SetA - SetB, ResultIn, ResultOut) :-
@@ -465,7 +465,7 @@ divide_by_set(DivideBySetA - DivideBySetB, SetA - SetB, ResultIn, ResultOut) :-
         ResultIn = InSetA - InSetB,
         ResultOut = OutSetA - OutSetB
     ;
-        error("test_bitset: divide_by_set: unequal sets")
+        unexpected($module, $pred, "failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -478,7 +478,7 @@ foldl(Pred, SetA - SetB, Acc0, Acc) :-
     ( SetListA = SetListB, AccA = AccB ->
         Acc = AccA
     ;
-        error("test_bitset: foldl failed")
+        unexpected($module, $pred, "failed")
     ).
 
 foldl(Pred, SetA - SetB, Acc0) = Acc :-
@@ -489,7 +489,7 @@ foldl(Pred, SetA - SetB, Acc0) = Acc :-
     ( SetListA = SetListB, AccA = AccB ->
         Acc = AccA
     ;
-        error("test_bitset: foldl failed")
+        unexpected($module, $pred, "failed")
     ).
 
 filter(Pred, SetA - SetB) = Result :-
@@ -502,7 +502,7 @@ filter(Pred, SetA - SetB) = Result :-
     ( SetListA = SetListB, InSetListA = InSetListB ->
         Result = InSetA - InSetB
     ;
-        error("test_bitset: filter/2 failed")
+        unexpected($module, $pred, "failed")
     ).
 
 filter(Pred, SetA - SetB, ResultIn, ResultOut) :-
@@ -514,11 +514,15 @@ filter(Pred, SetA - SetB, ResultIn, ResultOut) :-
     set_ordlist.to_sorted_list(InSetB, InSetListB),
     tree_bitset.to_sorted_list(OutSetA, OutSetListA),
     set_ordlist.to_sorted_list(OutSetB, OutSetListB),
-    ( SetListA = SetListB, InSetListA = InSetListB, OutSetListA = OutSetListB ->
+    (
+        SetListA = SetListB,
+        InSetListA = InSetListB,
+        OutSetListA = OutSetListB
+    ->
         ResultIn = InSetA - InSetB,
         ResultOut = OutSetA - OutSetB
     ;
-        error("test_bitset: filter/4 failed")
+        unexpected($module, $pred, "failed")
     ).
 
 %-----------------------------------------------------------------------------%

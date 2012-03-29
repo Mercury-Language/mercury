@@ -150,6 +150,7 @@
 :- import_module stm_builtin.
 :- import_module table_builtin.
 :- import_module term_size_prof_builtin.
+:- import_module test_bitset.
 
 :- pragma foreign_decl("Erlang", local, "
 -include(""erlang_conf.hrl"").
@@ -295,6 +296,7 @@ mercury_std_library_module("term").
 mercury_std_library_module("term_io").
 mercury_std_library_module("term_size_prof_builtin").
 mercury_std_library_module("term_to_xml").
+mercury_std_library_module("test_bitset").
 mercury_std_library_module("time").
 mercury_std_library_module("thread").
 mercury_std_library_module("thread.channel").

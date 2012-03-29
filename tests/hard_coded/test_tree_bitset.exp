@@ -1,5 +1,5 @@
-List1: 2, 7, 15, 19, 19, 22, 25, 28, 29, 31, 32, 34, 36, 38, 39, 40, 42, 44, 47, 58, 59, 59
 
+List1: 2, 7, 15, 19, 19, 22, 25, 28, 29, 31, 32, 34, 36, 38, 39, 40, 42, 44, 47, 58, 59, 59
 List2: 2, 4, 4, 9, 11, 12, 13, 14, 17, 18, 21, 23, 23, 30, 31, 37, 37, 38, 39, 40, 42, 43, 44, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 56, 57, 58, 61, 61, 63, 64
 
 testing count
@@ -13,78 +13,501 @@ testing intersection
 [2, 31, 38, 39, 40, 42, 44, 58]
 testing difference
 [7, 15, 19, 22, 25, 28, 29, 32, 34, 36, 47, 59]
-testing remove_least_element
+testing remove_least
 2
 [7, 15, 19, 22, 25, 28, 29, 31, 32, 34, 36, 38, 39, 40, 42, 44, 47, 58, 59]
 testing delete_list
 [7, 15, 19, 22, 25, 28, 29, 32, 34, 36, 47, 59]
+testing divide_by_set
+[2, 31, 38, 39, 40, 42, 44, 58]
+[4, 9, 11, 12, 13, 14, 17, 18, 21, 23, 30, 37, 43, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 61, 63, 64]
+
+List1: 532, 32431
+List2: 32794
+
+testing count
+count: 2 1
+testing foldl
+Sum of List1 = 32963
+Sum of List2 = 32794
+testing union
+[532, 32431, 32794]
+testing intersection
+[]
+testing difference
+[532, 32431]
+testing remove_least
+532
+[32431]
+testing delete_list
+[532, 32431]
+testing divide_by_set
+[]
+[32794]
+
+List1: 1064, 64862
+List2: 65588
+
+testing count
+count: 2 1
+testing foldl
+Sum of List1 = 65926
+Sum of List2 = 65588
+testing union
+[1064, 64862, 65588]
+testing intersection
+[]
+testing difference
+[1064, 64862]
+testing remove_least
+1064
+[64862]
+testing delete_list
+[1064, 64862]
+testing divide_by_set
+[]
+[65588]
+
+List1: 1, 29424
+List2: 1, 2, 3, 35701
+
+testing count
+count: 2 4
+testing foldl
+Sum of List1 = 29425
+Sum of List2 = 35707
+testing union
+[1, 2, 3, 29424, 35701]
+testing intersection
+[1]
+testing difference
+[29424]
+testing remove_least
+1
+[29424]
+testing delete_list
+[29424]
+testing divide_by_set
+[1]
+[2, 3, 35701]
+
+List1: 2, 58848
+List2: 2, 4, 6, 71402
+
+testing count
+count: 2 4
+testing foldl
+Sum of List1 = 58850
+Sum of List2 = 71414
+testing union
+[2, 4, 6, 58848, 71402]
+testing intersection
+[2]
+testing difference
+[58848]
+testing remove_least
+2
+[58848]
+testing delete_list
+[58848]
+testing divide_by_set
+[2]
+[4, 6, 71402]
+
+List1: 1
+List2: 2, 35701
+
+testing count
+count: 1 2
+testing foldl
+Sum of List1 = 1
+Sum of List2 = 35703
+testing union
+[1, 2, 35701]
+testing intersection
+[]
+testing difference
+[1]
+testing remove_least
+1
+[]
+testing delete_list
+[1]
+testing divide_by_set
+[]
+[2, 35701]
+
+List1: 2
+List2: 4, 71402
+
+testing count
+count: 1 2
+testing foldl
+Sum of List1 = 2
+Sum of List2 = 71406
+testing union
+[2, 4, 71402]
+testing intersection
+[]
+testing difference
+[2]
+testing remove_least
+2
+[]
+testing delete_list
+[2]
+testing divide_by_set
+[]
+[4, 71402]
+
+List1: 101, 102
+List2: 1, 2, 3, 35699, 35700, 35701
+
+testing count
+count: 2 6
+testing foldl
+Sum of List1 = 203
+Sum of List2 = 107106
+testing union
+[1, 2, 3, 101, 102, 35699, 35700, 35701]
+testing intersection
+[]
+testing difference
+[101, 102]
+testing remove_least
+101
+[102]
+testing delete_list
+[101, 102]
+testing divide_by_set
+[]
+[1, 2, 3, 35699, 35700, 35701]
+
+List1: 202, 204
+List2: 2, 4, 6, 71398, 71400, 71402
+
+testing count
+count: 2 6
+testing foldl
+Sum of List1 = 406
+Sum of List2 = 214212
+testing union
+[2, 4, 6, 202, 204, 71398, 71400, 71402]
+testing intersection
+[]
+testing difference
+[202, 204]
+testing remove_least
+202
+[204]
+testing delete_list
+[202, 204]
+testing divide_by_set
+[]
+[2, 4, 6, 71398, 71400, 71402]
+
+List1: 35702, 35703, 35705, 36696
+List2: 1, 2, 3, 33416, 334283
+
+testing count
+count: 4 5
+testing foldl
+Sum of List1 = 143806
+Sum of List2 = 367705
+testing union
+[1, 2, 3, 33416, 35702, 35703, 35705, 36696, 334283]
+testing intersection
+[]
+testing difference
+[35702, 35703, 35705, 36696]
+testing remove_least
+35702
+[35703, 35705, 36696]
+testing delete_list
+[35702, 35703, 35705, 36696]
+testing divide_by_set
+[]
+[1, 2, 3, 33416, 334283]
+
+List1: 71404, 71406, 71410, 73392
+List2: 2, 4, 6, 66832, 668566
+
+testing count
+count: 4 5
+testing foldl
+Sum of List1 = 287612
+Sum of List2 = 735410
+testing union
+[2, 4, 6, 66832, 71404, 71406, 71410, 73392, 668566]
+testing intersection
+[]
+testing difference
+[71404, 71406, 71410, 73392]
+testing remove_least
+71404
+[71406, 71410, 73392]
+testing delete_list
+[71404, 71406, 71410, 73392]
+testing divide_by_set
+[]
+[2, 4, 6, 66832, 668566]
+
+List1: 
+List2: 2
+
+testing count
+count: 0 1
+testing foldl
+Sum of List1 = 0
+Sum of List2 = 2
+testing union
+[2]
+testing intersection
+[]
+testing difference
+[]
+testing remove_least
+call failed
+testing delete_list
+[]
+testing divide_by_set
+[]
+[2]
+
+List1: 
+List2: 4
+
+testing count
+count: 0 1
+testing foldl
+Sum of List1 = 0
+Sum of List2 = 4
+testing union
+[4]
+testing intersection
+[]
+testing difference
+[]
+testing remove_least
+call failed
+testing delete_list
+[]
+testing divide_by_set
+[]
+[4]
+
+List1: 
+List2: 2, 35701
+
+testing count
+count: 0 2
+testing foldl
+Sum of List1 = 0
+Sum of List2 = 35703
+testing union
+[2, 35701]
+testing intersection
+[]
+testing difference
+[]
+testing remove_least
+call failed
+testing delete_list
+[]
+testing divide_by_set
+[]
+[2, 35701]
+
+List1: 
+List2: 4, 71402
+
+testing count
+count: 0 2
+testing foldl
+Sum of List1 = 0
+Sum of List2 = 71406
+testing union
+[4, 71402]
+testing intersection
+[]
+testing difference
+[]
+testing remove_least
+call failed
+testing delete_list
+[]
+testing divide_by_set
+[]
+[4, 71402]
+
+List1: 2
+List2: 
+
+testing count
+count: 1 0
+testing foldl
+Sum of List1 = 2
+Sum of List2 = 0
+testing union
+[2]
+testing intersection
+[]
+testing difference
+[2]
+testing remove_least
+2
+[]
+testing delete_list
+[2]
+testing divide_by_set
+[]
+[]
+
+List1: 4
+List2: 
+
+testing count
+count: 1 0
+testing foldl
+Sum of List1 = 4
+Sum of List2 = 0
+testing union
+[4]
+testing intersection
+[]
+testing difference
+[4]
+testing remove_least
+4
+[]
+testing delete_list
+[4]
+testing divide_by_set
+[]
+[]
+
+List1: 2, 35701
+List2: 
+
+testing count
+count: 2 0
+testing foldl
+Sum of List1 = 35703
+Sum of List2 = 0
+testing union
+[2, 35701]
+testing intersection
+[]
+testing difference
+[2, 35701]
+testing remove_least
+2
+[35701]
+testing delete_list
+[2, 35701]
+testing divide_by_set
+[]
+[]
+
+List1: 4, 71402
+List2: 
+
+testing count
+count: 2 0
+testing foldl
+Sum of List1 = 71406
+Sum of List2 = 0
+testing union
+[4, 71402]
+testing intersection
+[]
+testing difference
+[4, 71402]
+testing remove_least
+4
+[71402]
+testing delete_list
+[4, 71402]
+testing divide_by_set
+[]
+[]
 testing count
 testing foldl
 testing union
 testing intersection
 testing difference
-testing remove_least_element
+testing remove_least
 testing delete_list
+testing divide_by_set
 testing count
 testing foldl
 testing union
 testing intersection
 testing difference
-testing remove_least_element
+testing remove_least
 testing delete_list
+testing divide_by_set
 testing count
 testing foldl
 testing union
 testing intersection
 testing difference
-testing remove_least_element
+testing remove_least
 testing delete_list
+testing divide_by_set
 testing count
 testing foldl
 testing union
 testing intersection
 testing difference
-testing remove_least_element
+testing remove_least
 testing delete_list
+testing divide_by_set
 testing count
 testing foldl
 testing union
 testing intersection
 testing difference
-testing remove_least_element
+testing remove_least
 testing delete_list
+testing divide_by_set
 testing count
 testing foldl
 testing union
 testing intersection
 testing difference
-testing remove_least_element
+testing remove_least
 testing delete_list
+testing divide_by_set
 testing count
 testing foldl
 testing union
 testing intersection
 testing difference
-testing remove_least_element
+testing remove_least
 testing delete_list
+testing divide_by_set
 testing count
 testing foldl
 testing union
 testing intersection
 testing difference
-testing remove_least_element
+testing remove_least
 testing delete_list
+testing divide_by_set
 testing count
 testing foldl
 testing union
 testing intersection
 testing difference
-testing remove_least_element
+testing remove_least
 testing delete_list
+testing divide_by_set
 testing count
 testing foldl
 testing union
 testing intersection
 testing difference
-testing remove_least_element
+testing remove_least
 testing delete_list
+testing divide_by_set
