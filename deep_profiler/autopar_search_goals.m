@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,7 +9,7 @@
 % File: autopar_search_goals.m
 % Authors: pbone, zs.
 %
-% This module contains the code for searching goals for conjunctions worth
+% This module contains the code for searching a goal for conjunctions worth
 % parallelising.
 %
 %-----------------------------------------------------------------------------%
@@ -42,8 +42,8 @@
     reverse_goal_path::in, goal_rep(goal_id)::in,
     pard_goal_detail::out, cord(message)::in, cord(message)::out) is det.
 
-    % Check if it is appropriate to parallelise this call. That is it must be
-    % model_det and have a cost above the call site cost threshold.
+    % Check if it is appropriate to parallelise this call. The call must be
+    % model_det, and must have a cost above the call site cost threshold.
     % XXX probable bug: the cost criterion is implemented elsewhere.
     %
 :- pred can_parallelise_goal(goal_rep(T)::in) is semidet.
@@ -58,7 +58,6 @@
 :- import_module mdprof_fb.automatic_parallelism.autopar_costs.
 :- import_module mdprof_fb.automatic_parallelism.autopar_find_best_par.
 :- import_module mdprof_fb.automatic_parallelism.autopar_reports.
-:- import_module mdprof_fb.automatic_parallelism.autopar_search_callgraph.
 :- import_module measurements.
 :- import_module program_representation_utils.
 :- import_module report.
@@ -332,8 +331,8 @@ conj_get_conjunctions_worth_parallelising(Info, RevGoalPath,
         Costly = is_not_costly_goal,
         % This goal might be costly if it is pushed into the cotexted
         % of one of SinglesSoFar. This is common for recursive goals.
-        filter(single_context_makes_goal_costly(Info, Conj), SinglesSoFar0,
-            SinglesSoFarMakeConjCostly),
+        list.filter(single_context_makes_goal_costly(Info, Conj),
+            SinglesSoFar0, SinglesSoFarMakeConjCostly),
         (
             SinglesSoFarMakeConjCostly = []
         ;
@@ -533,139 +532,145 @@ merge_same_level_pushes(MainCandidate, [HeadCandidate | TailCandidates],
     pard_goal_detail::in, list(pard_goal_detail)::in,
     reverse_goal_path::out, list(pard_goal_detail)::out) is det.
 
-push_goals_create_candidate(Info, RevCurPath, fgp_nil,
+push_goals_create_candidate(Info, RevCurPath, ForwardGoalPath,
         GoalToPushInto, GoalsToPush0, RevCandidateGoalPath, CandidateConjs) :-
-    RevCandidateGoalPath = RevCurPath,
-    % The pushed goals will have different costs in this context, in particular
-    % the number of times they're called varies, This affects the per-call
-    % costs of recursive calls.
-    Calls = goal_cost_get_calls(GoalToPushInto ^ goal_annotation ^ pgd_cost),
-    map(fix_goal_counts(Info, Calls), GoalsToPush0, GoalsToPush),
-    CandidateConjs = [GoalToPushInto | GoalsToPush].
-push_goals_create_candidate(Info, RevCurPath,
-        fgp_cons(FirstRelStep, TailRelPath),
-        GoalToPushInto, GoalsToPush0, RevCandidateGoalPath, CandidateConjs) :-
-    GoalToPushInto = goal_rep(GoalExpr, _, _),
     (
-        FirstRelStep = step_conj(N),
-        ( GoalExpr = conj_rep(Goals) ->
-            (
-                TailRelPath = fgp_nil,
-                % Conjoin GoalsToPush not with just the expensive goal,
-                % but with the whole conjunction containing it.
-                RevCandidateGoalPath = RevCurPath,
-                % The pushed goals will have different costs in this context,
-                % in particular the number of times they're called varies, This
-                % affects the per-call costs of recursive calls.
-                Cost = GoalToPushInto ^ goal_annotation ^ pgd_cost,
-                Calls = goal_cost_get_calls(Cost),
-                map(fix_goal_counts(Info, Calls), GoalsToPush0, GoalsToPush),
-                CandidateConjs = Goals ++ GoalsToPush
-            ;
-                TailRelPath = fgp_cons(_, _),
-                list.det_drop(N - 1, Goals, Tail),
-                ( Tail = [SubGoal] ->
-                    push_goals_create_candidate(Info,
-                        rgp_cons(RevCurPath, FirstRelStep),
-                        TailRelPath, SubGoal, GoalsToPush0,
-                        RevCandidateGoalPath, CandidateConjs)
-                ;
-                    % We can't push goals into the non-last conjunct without
-                    % re-ordering, which is currently not supported.  By
-                    % building a conjunction here we may still be able to
-                    % create a worthwhile parallelisation.  However, there is a
-                    % trade-off to explore between this and not generating the
-                    % single expensive goal from within the conjunction and
-                    % therefore possibly finding other single expensive goals
-                    % later in this conjunction.
+        ForwardGoalPath = fgp_nil,
+        RevCandidateGoalPath = RevCurPath,
+        % The pushed goals will have different costs in this context,
+        % in particular the number of times they're called varies. This affects
+        % the per-call costs of recursive calls.
+        Calls = goal_cost_get_calls(GoalToPushInto ^ goal_annotation
+            ^ pgd_cost),
+        map(fix_goal_counts(Info, Calls), GoalsToPush0, GoalsToPush),
+            CandidateConjs = [GoalToPushInto | GoalsToPush]
+    ;
+        ForwardGoalPath = fgp_cons(FirstRelStep, TailRelPath),
+        GoalToPushInto = goal_rep(GoalExpr, _, _),
+        (
+            FirstRelStep = step_conj(N),
+            ( GoalExpr = conj_rep(Goals) ->
+                (
+                    TailRelPath = fgp_nil,
+                    % Conjoin GoalsToPush not with just the expensive goal,
+                    % but with the whole conjunction containing it.
                     RevCandidateGoalPath = RevCurPath,
+                    % The pushed goals will have different costs in this
+                    % context, in particular the number of times they're called
+                    % varies. This affects the per-call costs of recursive
+                    % calls.
                     Cost = GoalToPushInto ^ goal_annotation ^ pgd_cost,
                     Calls = goal_cost_get_calls(Cost),
-                    map(fix_goal_counts(Info, Calls), GoalsToPush0,
-                        GoalsToPush),
+                    list.map(fix_goal_counts(Info, Calls),
+                        GoalsToPush0, GoalsToPush),
                     CandidateConjs = Goals ++ GoalsToPush
+                ;
+                    TailRelPath = fgp_cons(_, _),
+                    list.det_drop(N - 1, Goals, Tail),
+                    ( Tail = [SubGoal] ->
+                        push_goals_create_candidate(Info,
+                            rgp_cons(RevCurPath, FirstRelStep),
+                            TailRelPath, SubGoal, GoalsToPush0,
+                            RevCandidateGoalPath, CandidateConjs)
+                    ;
+                        % We can't push goals into a non-last conjunct without
+                        % reordering, which is currently not supported.
+                        % By building a conjunction here, we may still be able
+                        % to create a worthwhile parallelisation. However,
+                        % there is a trade-off to explore between this
+                        % and not generating the single expensive goal
+                        % from within the conjunction, and therefore possibly
+                        % finding other single expensive goals later in this
+                        % conjunction.
+                        RevCandidateGoalPath = RevCurPath,
+                        Cost = GoalToPushInto ^ goal_annotation ^ pgd_cost,
+                        Calls = goal_cost_get_calls(Cost),
+                            list.map(fix_goal_counts(Info, Calls),
+                                GoalsToPush0, GoalsToPush),
+                        CandidateConjs = Goals ++ GoalsToPush
+                    )
                 )
+            ;
+                unexpected($module, $pred, "not conj")
             )
         ;
-            unexpected($module, $pred, "not conj")
-        )
-    ;
-        FirstRelStep = step_disj(N),
-        ( GoalExpr = disj_rep(Goals) ->
-            list.det_index1(Goals, N, SubGoal),
-            push_goals_create_candidate(Info,
-                rgp_cons(RevCurPath, FirstRelStep),
-                TailRelPath, SubGoal, GoalsToPush0,
-                RevCandidateGoalPath, CandidateConjs)
+            FirstRelStep = step_disj(N),
+            ( GoalExpr = disj_rep(Goals) ->
+                list.det_index1(Goals, N, SubGoal),
+                push_goals_create_candidate(Info,
+                    rgp_cons(RevCurPath, FirstRelStep),
+                    TailRelPath, SubGoal, GoalsToPush0,
+                    RevCandidateGoalPath, CandidateConjs)
+            ;
+                unexpected($module, $pred, "not disj")
+            )
         ;
-            unexpected($module, $pred, "not disj")
-        )
-    ;
-        FirstRelStep = step_switch(N, _),
-        ( GoalExpr = switch_rep(_, _, Cases) ->
-            list.det_index1(Cases, N, Case),
-            Case = case_rep(_, _, SubGoal),
-            push_goals_create_candidate(Info,
-                rgp_cons(RevCurPath, FirstRelStep),
-                TailRelPath, SubGoal, GoalsToPush0,
-                RevCandidateGoalPath, CandidateConjs)
+            FirstRelStep = step_switch(N, _),
+            ( GoalExpr = switch_rep(_, _, Cases) ->
+                list.det_index1(Cases, N, Case),
+                Case = case_rep(_, _, SubGoal),
+                push_goals_create_candidate(Info,
+                    rgp_cons(RevCurPath, FirstRelStep),
+                    TailRelPath, SubGoal, GoalsToPush0,
+                    RevCandidateGoalPath, CandidateConjs)
+            ;
+                unexpected($module, $pred, "not switch")
+            )
         ;
-            unexpected($module, $pred, "not switch")
-        )
-    ;
-        FirstRelStep = step_ite_then,
-        ( GoalExpr = ite_rep(_, Then, _) ->
-            push_goals_create_candidate(Info,
-                rgp_cons(RevCurPath, FirstRelStep),
-                TailRelPath, Then, GoalsToPush0,
-                RevCandidateGoalPath, CandidateConjs)
+            FirstRelStep = step_ite_then,
+            ( GoalExpr = ite_rep(_, Then, _) ->
+                push_goals_create_candidate(Info,
+                    rgp_cons(RevCurPath, FirstRelStep),
+                    TailRelPath, Then, GoalsToPush0,
+                    RevCandidateGoalPath, CandidateConjs)
+            ;
+                unexpected($module, $pred, "not ite_then")
+            )
         ;
-            unexpected($module, $pred, "not ite_then")
-        )
-    ;
-        FirstRelStep = step_ite_else,
-        ( GoalExpr = ite_rep(_, _, Else) ->
-            push_goals_create_candidate(Info,
-                rgp_cons(RevCurPath, FirstRelStep),
-                TailRelPath, Else, GoalsToPush0,
-                RevCandidateGoalPath, CandidateConjs)
+            FirstRelStep = step_ite_else,
+            ( GoalExpr = ite_rep(_, _, Else) ->
+                push_goals_create_candidate(Info,
+                    rgp_cons(RevCurPath, FirstRelStep),
+                    TailRelPath, Else, GoalsToPush0,
+                    RevCandidateGoalPath, CandidateConjs)
+            ;
+                unexpected($module, $pred, "not ite_else")
+            )
         ;
-            unexpected($module, $pred, "not ite_else")
-        )
-    ;
-        FirstRelStep = step_ite_cond,
-        % We cannot push into a condition.
-        unexpected($module, $pred, "ite_cond")
-    ;
-        FirstRelStep = step_neg,
-        % We cannot push into a negated goal.
-        unexpected($module, $pred, "neg")
-    ;
-        FirstRelStep = step_scope(_),
-        ( GoalExpr = scope_rep(SubGoal, _) ->
-            push_goals_create_candidate(Info,
-                rgp_cons(RevCurPath, FirstRelStep),
-                TailRelPath, SubGoal, GoalsToPush0,
-                RevCandidateGoalPath, CandidateConjs)
+            FirstRelStep = step_ite_cond,
+            % We cannot push into a condition.
+            unexpected($module, $pred, "ite_cond")
         ;
-            unexpected($module, $pred, "not scope")
+            FirstRelStep = step_neg,
+            % We cannot push into a negated goal.
+            unexpected($module, $pred, "neg")
+        ;
+            FirstRelStep = step_scope(_),
+            ( GoalExpr = scope_rep(SubGoal, _) ->
+                push_goals_create_candidate(Info,
+                    rgp_cons(RevCurPath, FirstRelStep),
+                    TailRelPath, SubGoal, GoalsToPush0,
+                    RevCandidateGoalPath, CandidateConjs)
+            ;
+                unexpected($module, $pred, "not scope")
+            )
+        ;
+            FirstRelStep = step_lambda,
+            % These should not exist in a profiled program.
+            unexpected($module, $pred, "lambda")
+        ;
+            FirstRelStep = step_try,
+            % These should not exist in a profiled program.
+            unexpected($module, $pred, "try")
+        ;
+            FirstRelStep = step_atomic_main,
+            % These should not exist in a profiled program.
+            unexpected($module, $pred, "atomic_main")
+        ;
+            FirstRelStep = step_atomic_orelse(_),
+            % These should not exist in a profiled program.
+            unexpected($module, $pred, "atomic_orelse")
         )
-    ;
-        FirstRelStep = step_lambda,
-        % These should not exist in a profiled program.
-        unexpected($module, $pred, "lambda")
-    ;
-        FirstRelStep = step_try,
-        % These should not exist in a profiled program.
-        unexpected($module, $pred, "try")
-    ;
-        FirstRelStep = step_atomic_main,
-        % These should not exist in a profiled program.
-        unexpected($module, $pred, "atomic_main")
-    ;
-        FirstRelStep = step_atomic_orelse(_),
-        % These should not exist in a profiled program.
-        unexpected($module, $pred, "atomic_orelse")
     ).
 
 :- pred fix_goal_counts(implicit_parallelism_info::in, int::in,
@@ -705,7 +710,7 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPath,
         FirstConjNum = 1,
         ParalleliseDepConjs = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs,
         SpeedupThreshold = Info ^ ipi_opts ^ cpcp_speedup_threshold,
-        BestParallelisation = bp_parallel_execution(GoalsBefore, ParConjs,
+        BestParallelisation = fp_parallel_execution(GoalsBefore, ParConjs,
             GoalsAfter, IsDependent, Metrics),
         Speedup = parallel_exec_metrics_get_speedup(Metrics),
         Calls = Metrics ^ pem_num_calls,
@@ -765,73 +770,76 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPath,
 
 %-----------------------------------------------------------------------------%
 
-goal_to_pard_goal(Info, RevGoalPath, !Goal, !Messages) :-
-    !.Goal = goal_rep(GoalExpr0, Detism, GoalId),
+goal_to_pard_goal(Info, RevGoalPath, Goal, DetailGoal, !Messages) :-
+    Goal = goal_rep(GoalExpr, Detism, GoalId),
     InstMapInfo = get_goal_attribute_det(Info ^ ipi_inst_map_array, GoalId),
     Coverage = get_goal_attribute_det(Info ^ ipi_coverage_array, GoalId),
     get_coverage_before_det(Coverage, Before),
     (
         (
-            GoalExpr0 = conj_rep(Conjs0),
+            GoalExpr = conj_rep(Conjs),
             list.map_foldl2(conj_to_pard_goals(Info, RevGoalPath),
-                Conjs0, Conjs, 1, _, !Messages),
-            conj_calc_cost(Conjs, Before, Cost),
-            GoalExpr = conj_rep(Conjs)
+                Conjs, DetailConjs, 1, _, !Messages),
+            conj_calc_cost(DetailConjs, Before, Cost),
+            DetailGoalExpr = conj_rep(DetailConjs)
         ;
-            GoalExpr0 = disj_rep(Disjs0),
+            GoalExpr = disj_rep(Disjs),
             list.map_foldl2(disj_to_pard_goals(Info, RevGoalPath),
-                Disjs0, Disjs, 1, _, !Messages),
-            disj_calc_cost(Disjs, Before, Cost),
-            GoalExpr = disj_rep(Disjs)
+                Disjs, DetailDisjs, 1, _, !Messages),
+            disj_calc_cost(DetailDisjs, Before, Cost),
+            DetailGoalExpr = disj_rep(DetailDisjs)
         ;
-            GoalExpr0 = switch_rep(Var, CanFail, Cases0),
+            GoalExpr = switch_rep(Var, CanFail, Cases),
             list.map_foldl2(case_to_pard_goal(Info, RevGoalPath),
-                Cases0, Cases, 1, _, !Messages),
-            switch_calc_cost(Cases, Before, Cost),
-            GoalExpr = switch_rep(Var, CanFail, Cases)
+                Cases, DetailCases, 1, _, !Messages),
+            switch_calc_cost(DetailCases, Before, Cost),
+            DetailGoalExpr = switch_rep(Var, CanFail, DetailCases)
         ;
-            GoalExpr0 = ite_rep(Cond0, Then0, Else0),
-            goal_to_pard_goal(Info, rgp_cons(RevGoalPath, step_ite_cond),
-                Cond0, Cond, !Messages),
-            goal_to_pard_goal(Info, rgp_cons(RevGoalPath, step_ite_then),
-                Then0, Then, !Messages),
-            goal_to_pard_goal(Info, rgp_cons(RevGoalPath, step_ite_else),
-                Else0, Else, !Messages),
-            ite_calc_cost(Cond, Then, Else, Cost),
-            GoalExpr = ite_rep(Cond, Then, Else)
+            GoalExpr = ite_rep(Cond, Then, Else),
+            CondRevGoalPath = rgp_cons(RevGoalPath, step_ite_cond),
+            ThenRevGoalPath = rgp_cons(RevGoalPath, step_ite_then),
+            ElseRevGoalPath = rgp_cons(RevGoalPath, step_ite_else),
+            goal_to_pard_goal(Info, CondRevGoalPath, Cond, DetailCond,
+                !Messages),
+            goal_to_pard_goal(Info, ThenRevGoalPath, Then, DetailThen,
+                !Messages),
+            goal_to_pard_goal(Info, ElseRevGoalPath, Else, DetailElse,
+                !Messages),
+            ite_calc_cost(DetailCond, DetailThen, DetailElse, Cost),
+            DetailGoalExpr = ite_rep(DetailCond, DetailThen, DetailElse)
         ;
-            GoalExpr0 = negation_rep(SubGoal0),
-            goal_to_pard_goal(Info, rgp_cons(RevGoalPath, step_neg),
-                SubGoal0, SubGoal, !Messages),
-            Cost = SubGoal ^ goal_annotation ^ pgd_cost,
-            GoalExpr = negation_rep(SubGoal)
+            GoalExpr = negation_rep(SubGoal),
+            SubRevGoalPath = rgp_cons(RevGoalPath, step_neg),
+            goal_to_pard_goal(Info, SubRevGoalPath, SubGoal, DetailSubGoal,
+                !Messages),
+            Cost = DetailSubGoal ^ goal_annotation ^ pgd_cost,
+            DetailGoalExpr = negation_rep(DetailSubGoal)
         ;
-            GoalExpr0 = scope_rep(SubGoal0, MaybeCut),
-            goal_to_pard_goal(Info,
-                rgp_cons(RevGoalPath, step_scope(MaybeCut)),
-                SubGoal0, SubGoal, !Messages),
-            Cost = SubGoal ^ goal_annotation ^ pgd_cost,
-            GoalExpr = scope_rep(SubGoal, MaybeCut)
+            GoalExpr = scope_rep(SubGoal, MaybeCut),
+            SubRevGoalPath = rgp_cons(RevGoalPath, step_scope(MaybeCut)),
+            goal_to_pard_goal(Info, SubRevGoalPath, SubGoal, DetailSubGoal,
+                !Messages),
+            Cost = DetailSubGoal ^ goal_annotation ^ pgd_cost,
+            DetailGoalExpr = scope_rep(DetailSubGoal, MaybeCut)
         ),
         PardGoalType = pgt_non_atomic_goal,
 
         BoundVars = to_sorted_list(InstMapInfo ^ im_bound_vars),
         list.foldl(
-            goal_build_use_map(!.Goal, RevGoalPath, Cost, Info,
+            goal_build_use_map(Goal, RevGoalPath, Cost, Info,
                 var_use_production),
             BoundVars, map.init, ProductionUseMap),
         ConsumedVars = to_sorted_list(InstMapInfo ^ im_consumed_vars),
         list.foldl(
-            goal_build_use_map(!.Goal, RevGoalPath, Cost, Info,
+            goal_build_use_map(Goal, RevGoalPath, Cost, Info,
                 var_use_consumption),
             ConsumedVars, map.init, ConsumptionUseMap)
     ;
-        GoalExpr0 = atomic_goal_rep(Context, Line, BoundVars, AtomicGoal),
         GoalExpr = atomic_goal_rep(Context, Line, BoundVars, AtomicGoal),
+        DetailGoalExpr = atomic_goal_rep(Context, Line, BoundVars, AtomicGoal),
         atomic_pard_goal_type(Info, RevGoalPath, AtomicGoal, InstMapInfo,
             PardGoalType, Messages),
-        atomic_pard_goal_cost(Info, RevGoalPath, Coverage, AtomicGoal,
-            Cost),
+        atomic_pard_goal_cost(Info, RevGoalPath, Coverage, AtomicGoal, Cost),
 
         list.foldl(
             atomic_goal_build_use_map(AtomicGoal, RevGoalPath, Info,
@@ -845,11 +853,10 @@ goal_to_pard_goal(Info, RevGoalPath, !Goal, !Messages) :-
 
         !:Messages = !.Messages ++ Messages
     ),
-    % XXX: The goal annotations cannot represent reasons why a goal
-    % can't be parallelised, for example it could be nondet, semidet or
-    % impure.
+    % XXX: The goal annotations cannot represent reasons why a goal cannot be
+    % parallelised, for example it could be nondet, semidet or impure.
     (
-        can_parallelise_goal(!.Goal),
+        can_parallelise_goal(Goal),
         goal_cost_above_par_threshold(Info, Cost)
     ->
         CostAboveThreshold = cost_above_par_threshold
@@ -859,7 +866,7 @@ goal_to_pard_goal(Info, RevGoalPath, !Goal, !Messages) :-
     PardGoalAnnotation = pard_goal_detail(PardGoalType, InstMapInfo,
         RevGoalPath, Coverage, Cost, CostAboveThreshold,
         ProductionUseMap, ConsumptionUseMap),
-    !:Goal = goal_rep(GoalExpr, Detism, PardGoalAnnotation).
+    DetailGoal = goal_rep(DetailGoalExpr, Detism, PardGoalAnnotation).
 
 :- pred goal_build_use_map(goal_rep(goal_id)::in,
     reverse_goal_path::in, goal_cost_csq::in, implicit_parallelism_info::in,
@@ -913,29 +920,27 @@ compute_goal_var_use_lazy(Goal, RevGoalPath, Cost, Info, VarUseType, Var)
     ).
 
 :- pred conj_to_pard_goals(implicit_parallelism_info::in,
-    reverse_goal_path::in, goal_rep(goal_id)::in,
-    pard_goal_detail::out, int::in, int::out,
-    cord(message)::in, cord(message)::out) is det.
+    reverse_goal_path::in, goal_rep(goal_id)::in, pard_goal_detail::out,
+    int::in, int::out, cord(message)::in, cord(message)::out) is det.
 
 conj_to_pard_goals(Info, RevGoalPath, !Goal, !ConjNum, !Messages) :-
-    goal_to_pard_goal(Info, rgp_cons(RevGoalPath, step_conj(!.ConjNum)),
-        !Goal, !Messages),
+    ConjRevGoalPath = rgp_cons(RevGoalPath, step_conj(!.ConjNum)),
+    goal_to_pard_goal(Info, ConjRevGoalPath, !Goal, !Messages),
     !:ConjNum = !.ConjNum + 1.
 
 :- pred disj_to_pard_goals(implicit_parallelism_info::in,
-    reverse_goal_path::in, goal_rep(goal_id)::in,
-    pard_goal_detail::out, int::in, int::out,
-    cord(message)::in, cord(message)::out) is det.
+    reverse_goal_path::in, goal_rep(goal_id)::in, pard_goal_detail::out,
+    int::in, int::out, cord(message)::in, cord(message)::out) is det.
 
 disj_to_pard_goals(Info, RevGoalPath, !Goal, !DisjNum, !Messages) :-
-    goal_to_pard_goal(Info, rgp_cons(RevGoalPath, step_disj(!.DisjNum)),
-        !Goal, !Messages),
+    DisjRevGoalPath = rgp_cons(RevGoalPath, step_disj(!.DisjNum)),
+    goal_to_pard_goal(Info, DisjRevGoalPath, !Goal, !Messages),
     !:DisjNum = !.DisjNum + 1.
 
 :- pred case_to_pard_goal(implicit_parallelism_info::in,
-    reverse_goal_path::in, case_rep(goal_id)::in,
-    case_rep(pard_goal_detail_annotation)::out, int::in, int::out,
-    cord(message)::in, cord(message)::out) is det.
+    reverse_goal_path::in,
+    case_rep(goal_id)::in, case_rep(pard_goal_detail_annotation)::out,
+    int::in, int::out, cord(message)::in, cord(message)::out) is det.
 
 case_to_pard_goal(Info, RevGoalPath, !Case, !CaseNum, !Messages) :-
     !.Case = case_rep(ConsId, OtherConsId, Goal0),

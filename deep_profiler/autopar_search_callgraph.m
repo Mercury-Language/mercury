@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,9 +9,9 @@
 % File: autopar_search_callgraph.m
 % Author: pbone.
 %
-% This module contains the code for analysing deep profiles of programs in
-% order to determine how best to automatically parallelise the program.  This
-% code is used by the mdprof_create_feedback tool.
+% This module contains the code for analysing deep profiles of programs
+% in order to determine how best to automatically parallelise the program.
+% This code is used by the mdprof_create_feedback tool.
 %
 %-----------------------------------------------------------------------------%
 
@@ -21,7 +21,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.feedback.automatic_parallelism.
-:- import_module mdprof_fb.automatic_parallelism.autopar_types.
 :- import_module message.
 :- import_module profile.
 
@@ -32,17 +31,9 @@
     % Build the candidate parallel conjunctions feedback information used for
     % implicit parallelism.
     %
-:- pred candidate_parallel_conjunctions(
-    candidate_par_conjunctions_params::in, deep::in, cord(message)::out,
-    feedback_info::in, feedback_info::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-% XXX temporary exports
-
-:- pred pard_goal_detail_to_pard_goal(
-    candidate_par_conjunction(pard_goal_detail)::in,
-    pard_goal_detail::in, pard_goal::out) is det.
+:- pred candidate_parallel_conjunctions(candidate_par_conjunctions_params::in,
+    deep::in, cord(message)::out, feedback_info::in, feedback_info::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -56,6 +47,7 @@
 :- import_module mdprof_fb.automatic_parallelism.autopar_annotate.
 :- import_module mdprof_fb.automatic_parallelism.autopar_costs.
 :- import_module mdprof_fb.automatic_parallelism.autopar_search_goals.
+:- import_module mdprof_fb.automatic_parallelism.autopar_types.
 :- import_module measurement_units.
 :- import_module measurements.
 :- import_module program_representation_utils.
@@ -97,7 +89,7 @@ candidate_parallel_conjunctions(Params, Deep, Messages, !Feedback) :-
     % Do not descend into cliques cheaper than the threshold.
     deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
     % The +1 here accounts for the cost of the pseudo call into the mercury
-    % runtime since it is modeled here as a call site that in reality
+    % runtime, since it is modeled here as a call site that in reality
     % does not exist.
     RootParallelism = no_parallelism,
     candidate_parallel_conjunctions_clique(Params, Deep,
@@ -111,54 +103,6 @@ candidate_parallel_conjunctions(Params, Deep, Messages, !Feedback) :-
         feedback_data_candidate_parallel_conjunctions(Params,
             ConjunctionsAssocList),
     put_feedback_data(CandidateParallelConjunctions, !Feedback).
-
-pard_goal_detail_to_pard_goal(CPC, !Goal) :-
-    IsDependent = CPC ^ cpc_is_dependent,
-    (
-        IsDependent = conjuncts_are_dependent(SharedVars)
-    ;
-        IsDependent = conjuncts_are_independent,
-        SharedVars = set.init
-    ),
-    transform_goal_rep(pard_goal_detail_annon_to_pard_goal_annon(SharedVars),
-        !Goal).
-
-:- pred pard_goal_detail_annon_to_pard_goal_annon(set(var_rep)::in,
-    pard_goal_detail_annotation::in, pard_goal_annotation::out) is det.
-
-pard_goal_detail_annon_to_pard_goal_annon(SharedVarsSet, PGD, PG) :-
-    CostPercall = goal_cost_get_percall(PGD ^ pgd_cost),
-    CostAboveThreshold = PGD ^ pgd_cost_above_threshold,
-    SharedVars = to_sorted_list(SharedVarsSet),
-
-    Coverage = PGD ^ pgd_coverage,
-    get_coverage_before_det(Coverage, Calls),
-    ( Calls > 0 ->
-        list.foldl(build_var_use_list(PGD ^ pgd_var_production_map),
-            SharedVars, [], Productions),
-        list.foldl(build_var_use_list(PGD ^ pgd_var_consumption_map),
-            SharedVars, [], Consumptions)
-    ;
-        Productions = [],
-        Consumptions = []
-    ),
-
-    PG = pard_goal_annotation(CostPercall, CostAboveThreshold, Productions,
-        Consumptions).
-
-:- pred build_var_use_list(map(var_rep, lazy(var_use_info))::in, var_rep::in,
-    assoc_list(var_rep, float)::in, assoc_list(var_rep, float)::out) is det.
-
-build_var_use_list(Map, Var, !List) :-
-    (
-        map.search(Map, Var, LazyUse),
-        read_if_val(LazyUse, Use)
-    ->
-        UseTime = Use ^ vui_cost_until_use,
-        !:List = [Var - UseTime | !.List]
-    ;
-        true
-    ).
 
 %----------------------------------------------------------------------------%
 %
@@ -191,7 +135,7 @@ candidate_parallel_conjunctions_clique(Opts, Deep, ParentParallelism,
         MaybeFirstPDPtr = no,
         deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
         ( CliquePtr = RootCliquePtr ->
-            % It's okay, this clique never has an entry procedure.
+            % It is okay, this clique never has an entry procedure.
             PDPtrs = OtherPDPtrs
         ;
             CliquePtr = clique_ptr(CliqueNum),
@@ -407,10 +351,10 @@ update_parallelism_available_conj(Conj, !ChildClique) :-
         ConjNum =< FirstConjunct + Length
     ->
         % The call into this clique gets parallelised by Conj.
-        % XXX: If we knew the parallelisation type used for Conj we can do this
-        % calculation more accurately.  For instance, if this is a loop, then
-        % we use as many cores as the loop has iterations.  (Except for dead
-        % time).
+        % XXX: If we knew the parallelisation type used for Conj, we could
+        % do this calculation more accurately. For instance, if this is a loop,
+        % then we use as many cores as the loop has iterations. (Except for
+        % dead time).
         Metrics = Conj ^ cpc_par_exec_metrics,
         CPUTime = parallel_exec_metrics_get_cpu_time(Metrics),
         DeadTime = Metrics ^ pem_first_conj_dead_time +
@@ -659,17 +603,13 @@ build_candidate_par_conjunction_maps(ProcLabel, VarTable, Candidate, !Map) :-
         CandidateProc0 = candidate_par_conjunctions_proc(VarTablePrime,
             PushGoals, CPCs0),
         CPCs = [Candidate | CPCs0],
-        ( VarTable = VarTablePrime ->
-            true
-        ;
-            unexpected($module, $pred, "var tables do not match")
-        )
+        expect(unify(VarTable, VarTablePrime), $module, $pred,
+            "var tables do not match")
     ;
         CPCs = [Candidate],
         PushGoals = []
     ),
-    CandidateProc = candidate_par_conjunctions_proc(VarTable, PushGoals,
-        CPCs),
+    CandidateProc = candidate_par_conjunctions_proc(VarTable, PushGoals, CPCs),
     map.set(ProcLabel, CandidateProc, !Map).
 
 %----------------------------------------------------------------------------%

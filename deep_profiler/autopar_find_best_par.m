@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,18 +27,18 @@
 :- import_module list.
 :- import_module maybe.
 
-:- type best_parallelisation
-    --->    bp_parallel_execution(
-                bp_goals_before         :: list(pard_goal_detail),
-                bp_par_conjs            :: list(seq_conj(pard_goal_detail)),
-                bp_goals_after          :: list(pard_goal_detail),
-                bp_is_dependent         :: conjuncts_are_dependent,
-                bp_par_exec_metrics     :: parallel_exec_metrics
+:- type full_parallelisation
+    --->    fp_parallel_execution(
+                fp_goals_before         :: list(pard_goal_detail),
+                fp_par_conjs            :: list(seq_conj(pard_goal_detail)),
+                fp_goals_after          :: list(pard_goal_detail),
+                fp_is_dependent         :: conjuncts_are_dependent,
+                fp_par_exec_metrics     :: parallel_exec_metrics
             ).
 
 :- pred find_best_parallelisation(implicit_parallelism_info::in,
     program_location::in, list(pard_goal_detail)::in,
-    maybe(best_parallelisation)::out,
+    maybe(full_parallelisation)::out,
     cord(message)::in, cord(message)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -208,7 +208,7 @@ preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,
     identify_costly_goals(Goals, 0, CostlyGoalsIndexes),
     (
         CostlyGoalsIndexes = [FirstCostlyGoalIndexPrime | OtherIndexes],
-        last(OtherIndexes, LastCostlyGoalIndexPrime)
+        list.last(OtherIndexes, LastCostlyGoalIndexPrime)
     ->
         FirstCostlyGoalIndex = FirstCostlyGoalIndexPrime,
         LastCostlyGoalIndex = LastCostlyGoalIndexPrime
@@ -224,7 +224,7 @@ preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,
         ; Detism = cc_multidet_rep
         ),
 
-        % Phase 3: Process the middle section into groups.
+        % Phase 4: Process the middle section into groups.
         foldl_sub_array(preprocess_conjunction_into_groups, GoalsArray,
             FirstCostlyGoalIndex, LastCostlyGoalIndex, [], RevGoalGroups),
         list.reverse(RevGoalGroups, GoalGroups),
@@ -269,10 +269,10 @@ build_dependency_graph([PG | PGs], ConjNum, !VarDepMap, !Graph) :-
     InstMapInfo = PG ^ goal_annotation ^ pgd_inst_map_info,
 
     % For each variable consumed by a goal we find out which goals instantiate
-    % that variable and add them as it's dependencies along with their
+    % that variable and add them as its dependencies along with their
     % dependencies.  NOTE: We only consider variables that are read
-    % and not those that are set.  This is safe because we only bother
-    % analysing single assignment code.
+    % and not those that are set. This is safe because we only analyse
+    % single assignment code.
     RefedVars = InstMapInfo ^ im_consumed_vars,
     digraph.add_vertex(ConjNum, ThisConjKey, !Graph),
     MaybeAddEdge = ( pred(RefedVar::in, GraphI0::in, GraphI::out) is det :-
@@ -286,9 +286,9 @@ build_dependency_graph([PG | PGs], ConjNum, !VarDepMap, !Graph) :-
     ),
     list.foldl(MaybeAddEdge, set.to_sorted_list(RefedVars), !Graph),
 
-    % For each variable instantiated by this goal add it to the VarDepMap with
-    % this goal as it's instantiator.  That is a maping from the variable to
-    % the conj num.
+    % For each variable instantiated by this goal, add it to the VarDepMap
+    % with this goal as its instantiator. That is a mapping from the variable
+    % to the conj num.
     InstVars = InstMapInfo ^ im_bound_vars,
     InsertForConjNum = ( pred(InstVar::in, MapI0::in, MapI::out) is det :-
         map.det_insert(InstVar, ConjNum, MapI0, MapI)
@@ -381,7 +381,7 @@ preprocess_conjunction_into_groups(Index, Goal, !RevGoalGroups) :-
     %
 :- pred find_best_parallelisation_complete_bnb(implicit_parallelism_info::in,
     program_location::in, best_par_algorithm_simple::in,
-    goals_for_parallelisation::in, maybe(best_parallelisation)::out) is det.
+    goals_for_parallelisation::in, maybe(full_parallelisation)::out) is det.
 
 find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
         PreprocessedGoals, MaybeBestParallelisation) :-
@@ -389,10 +389,11 @@ find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
         io.format("D: Find best parallelisation for:\n%s\n",
             [s(LocationString)], !IO),
         location_to_string(1, Location, LocationCord),
-        string.append_list(list(LocationCord), LocationString),
+        string.append_list(cord.list(LocationCord), LocationString),
         NumGoals = size(PreprocessedGoals ^ gfp_goals),
         NumGoalsBefore = PreprocessedGoals ^ gfp_first_costly_goal,
-        NumGoalsAfter = NumGoals - PreprocessedGoals ^ gfp_last_costly_goal - 1,
+        NumGoalsAfter = NumGoals -
+            PreprocessedGoals ^ gfp_last_costly_goal - 1,
         NumGoalsMiddle = NumGoals - NumGoalsBefore - NumGoalsAfter,
         io.format("D: Problem size (before, middle, after): %d,%d,%d\n",
             [i(NumGoalsBefore), i(NumGoalsMiddle), i(NumGoalsAfter)], !IO),
@@ -424,28 +425,25 @@ find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
             ParalleliseDepConjs = do_not_parallelise_dep_conjs,
             % Try again to get the best dependent parallelisation.
             % This is used for guided parallelisation.
-            TempInfo = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs :=
+            UpdatedInfo = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs :=
                 parallelise_dep_conjs(estimate_speedup_by_overlap),
-            find_best_parallelisation_complete_bnb(TempInfo, Location,
+            find_best_parallelisation_complete_bnb(UpdatedInfo, Location,
                 Algorithm, PreprocessedGoals, MaybeBestParallelisation)
         )
     ).
 
-    % The objective function for the branch and bound search.
-    % This is ParTime + ParOverheads * 2.  That is we are willing to pay
-    % 1 unit of parallel overheads to get a 2 unit improvement
-    % of parallel execution time.
+    % Profiling information for an execution of the solver.
     %
-:- func parallelisation_get_objective_value(best_parallelisation) = float.
+:- func parallelisation_get_objective_value(full_parallelisation) = float.
 
 parallelisation_get_objective_value(Parallelisation) = Value :-
-    Metrics = Parallelisation ^ bp_par_exec_metrics,
+    Metrics = Parallelisation ^ fp_par_exec_metrics,
     Value = Metrics ^ pem_par_time +
         parallel_exec_metrics_get_overheads(Metrics) * 2.0.
 
 :- impure pred generate_parallelisations(implicit_parallelism_info::in,
     best_par_algorithm_simple::in, goals_for_parallelisation::in,
-    bnb_state(best_parallelisation)::in, best_parallelisation::out) is nondet.
+    bnb_state(full_parallelisation)::in, full_parallelisation::out) is nondet.
 
 generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
         BNBState, BestParallelisation) :-
@@ -488,7 +486,7 @@ start_building_parallelisation(Info, PreprocessedGoals, Parallelisation) :-
     % Finalise the parallelisation.
     %
 :- pred finalise_parallelisation(incomplete_parallelisation::in,
-    best_parallelisation::out) is det.
+    full_parallelisation::out) is det.
 
 finalise_parallelisation(Incomplete, Best) :-
     GoalsBefore = ip_get_goals_before(Incomplete),
@@ -506,13 +504,13 @@ finalise_parallelisation(Incomplete, Best) :-
     Metrics = finalise_parallel_exec_metrics(Metrics0),
     par_conj_overlap_is_dependent(Overlap, IsDependent),
     ParConjs = ip_get_par_conjs(Incomplete),
-    Best = bp_parallel_execution(GoalsBefore, ParConjs,
+    Best = fp_parallel_execution(GoalsBefore, ParConjs,
         GoalsAfter, IsDependent, Metrics).
 
 %----------------------------------------------------------------------------%
 
 :- semipure pred add_goals_into_first_par_conj(
-    bnb_state(best_parallelisation)::in,
+    bnb_state(full_parallelisation)::in,
     incomplete_parallelisation::in, incomplete_parallelisation::out) is multi.
 
 add_goals_into_first_par_conj(BNBState, !Parallelisation) :-
@@ -533,7 +531,7 @@ add_goals_into_first_par_conj(BNBState, !Parallelisation) :-
     ).
 
 :- semipure pred add_goals_into_last_par_conj(
-    bnb_state(best_parallelisation)::in,
+    bnb_state(full_parallelisation)::in,
     incomplete_parallelisation::in, incomplete_parallelisation::out) is multi.
 
 add_goals_into_last_par_conj(BNBState, !Parallelisation) :-
@@ -578,7 +576,7 @@ start_first_par_conjunct(!GoalGroups, !Parallelisation) :-
     ).
 
 :- impure pred generate_parallelisations_body(implicit_parallelism_info::in,
-    bnb_state(best_parallelisation)::in, best_par_algorithm_simple::in,
+    bnb_state(full_parallelisation)::in, best_par_algorithm_simple::in,
     list(goal_group(goal_classification))::in,
     incomplete_parallelisation::in, incomplete_parallelisation::out) is nondet.
 
@@ -688,29 +686,30 @@ should_expand_search(BNBState, Algorithm) :-
     % Test the parallelisation against the best one known to the branch and
     % bound solver.
     %
-:- semipure pred test_parallelisation(bnb_state(best_parallelisation)::in,
+:- semipure pred test_parallelisation(bnb_state(full_parallelisation)::in,
     incomplete_parallelisation::in, incomplete_parallelisation::out)
     is semidet.
 
 test_parallelisation(BNBState, !Parallelisation) :-
-    calculate_parallel_cost(CostData, !Parallelisation),
     Info = !.Parallelisation ^ ip_info,
-    test_dependance(Info, CostData),
+    calculate_parallel_cost(Info, !Parallelisation, CostData),
+    test_dependence(Info, CostData),
     % XXX: We shouldn't need to finalize the parallelisation before testing it.
     % This is a limitation of the branch and bound module.
     finalise_parallelisation(!.Parallelisation, TestParallelisation),
     semipure test_incomplete_solution(BNBState, TestParallelisation).
 
-    % Score the parallelisation.
+    % Test the parallelisation against the best one known to the branch and
+    % bound solver.
     %
-:- pred score_parallelisation(bnb_state(best_parallelisation)::in,
+:- pred score_parallelisation(bnb_state(full_parallelisation)::in,
     maybe(float)::out,
     incomplete_parallelisation::in, incomplete_parallelisation::out) is det.
 
 score_parallelisation(BNBState, MaybeScore, !Parallelisation) :-
-    calculate_parallel_cost(CostData, !Parallelisation),
     Info = !.Parallelisation ^ ip_info,
-    ( test_dependance(Info, CostData) ->
+    calculate_parallel_cost(Info, !Parallelisation, CostData),
+    ( test_dependence(Info, CostData) ->
         finalise_parallelisation(!.Parallelisation, TestParallelisation),
         score_solution(BNBState, TestParallelisation, Score),
         MaybeScore = yes(Score)
@@ -718,13 +717,13 @@ score_parallelisation(BNBState, MaybeScore, !Parallelisation) :-
         MaybeScore = no
     ).
 
-    % Test that the parallelisation includes dependant parallelism
+    % Test that the parallelisation includes dependent parallelism
     % only if permitted by the user.
     %
-:- pred test_dependance(implicit_parallelism_info::in,
+:- pred test_dependence(implicit_parallelism_info::in,
     parallelisation_cost_data::in) is semidet.
 
-test_dependance(Info, CostData) :-
+test_dependence(Info, CostData) :-
     Overlap = CostData ^ pcd_par_exec_overlap,
     ParalleliseDepConjs = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs,
     par_conj_overlap_is_dependent(Overlap, IsDependent),
@@ -742,7 +741,7 @@ par_conj_overlap_is_dependent(peo_conjunction(Left, _, VarSet0), IsDependent) :-
     par_conj_overlap_is_dependent(Left, IsDependent0),
     (
         IsDependent0 = conjuncts_are_dependent(VarSetLeft),
-        VarSet = union(VarSet0, VarSetLeft),
+        VarSet = set.union(VarSet0, VarSetLeft),
         IsDependent = conjuncts_are_dependent(VarSet)
     ;
         IsDependent0 = conjuncts_are_independent,
@@ -757,6 +756,8 @@ par_conj_overlap_is_dependent(peo_conjunction(Left, _, VarSet0), IsDependent) :-
 
 :- pred add_one_goal_into_first_par_conj(incomplete_parallelisation::in,
     incomplete_parallelisation::out) is det.
+
+%----------------------------------------------------------------------------%
 
 :- pred add_one_goal_into_last_par_conj(incomplete_parallelisation::in,
     incomplete_parallelisation::out) is det.
@@ -781,11 +782,11 @@ add_one_goal_into_last_par_conj(!Parallelisation) :-
 :- mode foldl_sub_array(pred(in, in, in, out) is det,
     in, in, in, in, out) is det.
 
-foldl_sub_array(Pred, Array, Index, Last, !A) :-
+foldl_sub_array(Pred, Array, Index, Last, !Acc) :-
     ( Index =< Last ->
-        X = lookup(Array, Index),
-        Pred(Index, X, !A),
-        foldl_sub_array(Pred, Array, Index + 1, Last, !A)
+        array.lookup(Array, Index, X),
+        Pred(Index, X, !Acc),
+        foldl_sub_array(Pred, Array, Index + 1, Last, !Acc)
     ;
         true
     ).

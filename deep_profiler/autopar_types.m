@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,11 +57,11 @@
                 ipi_proc_label      :: string_proc_label
             ).
 
-    % A representation of a goal within a parallel conjunction.  We don't have
+    % A representation of a goal within a parallel conjunction. We do not have
     % to represent many types of goals or details about them, at least for now.
-    % This type provides more detail than feedback.pard_goal, this detail isn't
-    % required by the compiler and therefore not part of the feedback file
-    % format.
+    % This type provides more detail than feedback.pard_goal. This extra detail
+    % is not required by the compiler, and therefore it is not part of the
+    % feedback file format.
     %
 :- type pard_goal_detail == goal_rep(pard_goal_detail_annotation).
 
@@ -84,10 +84,16 @@
 
                 pgd_cost_above_threshold    :: cost_above_par_threshold,
 
-                % Variable production and consumption information.
-                pgd_var_production_map      :: map(var_rep, lazy(var_use_info)),
-                pgd_var_consumption_map     :: map(var_rep, lazy(var_use_info))
+                % Information about when the inputs of this goal are consumed,
+                % and when its outputs are produced, relative to the start of
+                % this goal. Since we expect that many inputs and outputs
+                % will not be shared variables, we do not compute this
+                % information unless and until we need it.
+                pgd_var_production_map      :: lazy_var_use_map,
+                pgd_var_consumption_map     :: lazy_var_use_map
             ).
+
+:- type lazy_var_use_map == map(var_rep, lazy(var_use_info)).
 
 :- type pard_goal_type
     --->    pgt_call(
@@ -100,22 +106,9 @@
     ;       pgt_other_atomic_goal
     ;       pgt_non_atomic_goal.
 
-:- func ip_get_goals_before(incomplete_parallelisation) =
-    list(pard_goal_detail).
-
-:- func ip_get_goals_after(incomplete_parallelisation) =
-    list(pard_goal_detail).
-
-:- func ip_get_par_conjs(incomplete_parallelisation) =
-    list(seq_conj(pard_goal_detail)).
-
-:- func ip_get_num_goals(incomplete_parallelisation) = int.
-
-:- func ip_get_num_parallel_conjuncts(incomplete_parallelisation) = int.
-
-:- func ip_get_num_goals_middle(incomplete_parallelisation) = int.
-
-:- func ip_calc_sharedvars_set(incomplete_parallelisation) = set(var_rep).
+:- pred pard_goal_detail_to_pard_goal(
+    candidate_par_conjunction(pard_goal_detail)::in,
+    pard_goal_detail::in, pard_goal::out) is det.
 
     % Build sets of produced and consumed vars for a conjunct in a conjunction.
     % Use with foldl to build these sets up for the whole conjunction.  At the
@@ -199,11 +192,11 @@
                 ip_last_scheduled_goal      :: int,
 
                 % The index of the last goal in each of the parallel conjuncts.
-                % the very last parallel conjunct is donated by
+                % The very last parallel conjunct is denoted by
                 % ip_last_par_goal.
                 ip_par_conjs_rev_last_goal  :: list(int),
 
-                % The number of calls into this conjunction.
+                % The number of calls in this conjunction.
                 ip_num_calls                :: int,
 
                 % Dependency relationships between goals.
@@ -225,7 +218,7 @@
                 pcd_productions_map     :: map(var_rep, float)
             ).
 
-    % This datastructure represents the execution of dependent conjuncts,
+    % This data structure represents the execution of dependent conjuncts,
     % it tracks which variables are produced and consumed.
     %
     % TODO: Implement a pretty printer for this data.
@@ -256,67 +249,82 @@
                 dce_consumptions        :: map(var_rep, float)
             ).
 
+:- func ip_get_goals_before(incomplete_parallelisation) =
+    list(pard_goal_detail).
+
+:- func ip_get_goals_after(incomplete_parallelisation) =
+    list(pard_goal_detail).
+
+:- func ip_get_par_conjs(incomplete_parallelisation) =
+    list(seq_conj(pard_goal_detail)).
+
+:- func ip_get_num_goals(incomplete_parallelisation) = int.
+
+:- func ip_get_num_parallel_conjuncts(incomplete_parallelisation) = int.
+
+:- func ip_get_num_goals_middle(incomplete_parallelisation) = int.
+
+:- func ip_calc_sharedvars_set(incomplete_parallelisation) = set(var_rep).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
+:- import_module pair.
 
-ip_get_goals_before(Parallelisation) = GoalsBefore :-
-    Goals = Parallelisation ^ ip_goals,
-    FirstParGoalIndex = Parallelisation ^ ip_first_par_goal,
-    fetch_items(Goals, 0, FirstParGoalIndex - 1, GoalsBefore).
+%-----------------------------------------------------------------------------%
 
-ip_get_goals_after(Parallelisation) = GoalsAfter :-
-    Goals = Parallelisation ^ ip_goals,
-    LastParGoalIndex = Parallelisation ^ ip_last_par_goal,
-    NumGoals = size(Goals),
-    fetch_items(Goals, LastParGoalIndex + 1, NumGoals - 1, GoalsAfter).
+pard_goal_detail_to_pard_goal(CPC, !Goal) :-
+    IsDependent = CPC ^ cpc_is_dependent,
+    (
+        IsDependent = conjuncts_are_dependent(SharedVars)
+    ;
+        IsDependent = conjuncts_are_independent,
+        SharedVars = set.init
+    ),
+    transform_goal_rep(pard_goal_detail_annon_to_pard_goal_annon(SharedVars),
+        !Goal).
 
-ip_get_par_conjs(Incomplete) = ParConjs :-
-    Goals = Incomplete ^ ip_goals,
-    Start = Incomplete ^ ip_first_par_goal,
-    Last = Incomplete ^ ip_last_scheduled_goal,
-    LastGoalsRev0 = Incomplete ^ ip_par_conjs_rev_last_goal,
-    LastGoalsRev = [Last | LastGoalsRev0],
-    list.reverse(LastGoalsRev, LastGoals),
-    ip_get_par_conjs_2(Goals, Start, LastGoals, ParConjs).
+:- pred pard_goal_detail_annon_to_pard_goal_annon(set(var_rep)::in,
+    pard_goal_detail_annotation::in, pard_goal_annotation::out) is det.
 
-:- pred ip_get_par_conjs_2(array(pard_goal_detail)::in, int::in,
-    list(int)::in, list(seq_conj(pard_goal_detail))::out) is det.
+pard_goal_detail_annon_to_pard_goal_annon(SharedVarsSet, PGD, PG) :-
+    CostPercall = goal_cost_get_percall(PGD ^ pgd_cost),
+    CostAboveThreshold = PGD ^ pgd_cost_above_threshold,
+    SharedVars = set.to_sorted_list(SharedVarsSet),
 
-ip_get_par_conjs_2(_, _, [], []).
-ip_get_par_conjs_2(Array, First, [Last | Lasts], [Conj | Conjs]) :-
-    ip_get_par_conjs_2(Array, Last + 1, Lasts, Conjs),
-    fetch_items(Array, First, Last, Goals),
-    Conj = seq_conj(Goals).
+    Coverage = PGD ^ pgd_coverage,
+    get_coverage_before_det(Coverage, Calls),
+    ( Calls > 0 ->
+        list.foldl(build_var_use_list(PGD ^ pgd_var_production_map),
+            SharedVars, [], Productions),
+        list.foldl(build_var_use_list(PGD ^ pgd_var_consumption_map),
+            SharedVars, [], Consumptions)
+    ;
+        Productions = [],
+        Consumptions = []
+    ),
+    PG = pard_goal_annotation(CostPercall, CostAboveThreshold,
+        Productions, Consumptions).
 
-ip_get_num_goals(Incomplete) = size(Incomplete ^ ip_goals).
+:- pred build_var_use_list(map(var_rep, lazy(var_use_info))::in, var_rep::in,
+    assoc_list(var_rep, float)::in, assoc_list(var_rep, float)::out) is det.
 
-ip_get_num_parallel_conjuncts(Incomplete) =
-    length(Incomplete ^ ip_par_conjs_rev_last_goal) + 1.
+build_var_use_list(Map, Var, !List) :-
+    (
+        map.search(Map, Var, LazyUse),
+        read_if_val(LazyUse, Use)
+    ->
+        UseTime = Use ^ vui_cost_until_use,
+        !:List = [Var - UseTime | !.List]
+    ;
+        true
+    ).
 
-ip_get_num_goals_middle(Incomplete) = LastParGoal - FirstParGoal + 1 :-
-    FirstParGoal = Incomplete ^ ip_first_par_goal,
-    LastParGoal = Incomplete ^ ip_last_par_goal.
+%-----------------------------------------------------------------------------%
 
-ip_calc_sharedvars_set(Incomplete) = SharedVars :-
-    ParConjs = ip_get_par_conjs(Incomplete),
-    list.foldl2(build_sharedvars_set, ParConjs,
-        set.init, _, set.init, SharedVars).
-
-:- pred build_sharedvars_set(seq_conj(pard_goal_detail)::in,
-    set(var_rep)::in, set(var_rep)::out,
-    set(var_rep)::in, set(var_rep)::out) is det.
-
-build_sharedvars_set(seq_conj(Conjs), !BoundVars, !SharedVars) :-
-    list.foldl2(conj_produced_and_consumed_vars, Conjs,
-        set.init, ProducedVars, set.init, ConsumedVars),
-    % The new shared vars are previously bound variables that are cosumed in
-    % this conjunct.  This must be calculated before !BoundVars is updated.
-    SharedVars = set.intersect(!.BoundVars, ConsumedVars),
-    !:SharedVars = set.union(!.SharedVars, SharedVars),
-    !:BoundVars = set.union(!.BoundVars, ProducedVars).
+%-----------------------------------------------------------------------------%
 
 conj_produced_and_consumed_vars(Conj, !Produced, !Consumed) :-
     InstMapInfo = Conj ^ goal_annotation ^ pgd_inst_map_info,
@@ -351,5 +359,63 @@ identify_costly_goals([Goal | Goals], Index, Indexes) :-
         Costly = is_not_costly_goal,
         Indexes = Indexes0
     ).
+
+%-----------------------------------------------------------------------------%
+
+ip_get_goals_before(Parallelisation) = GoalsBefore :-
+    Goals = Parallelisation ^ ip_goals,
+    FirstParGoalIndex = Parallelisation ^ ip_first_par_goal,
+    array.fetch_items(Goals, 0, FirstParGoalIndex - 1, GoalsBefore).
+
+ip_get_goals_after(Parallelisation) = GoalsAfter :-
+    Goals = Parallelisation ^ ip_goals,
+    LastParGoalIndex = Parallelisation ^ ip_last_par_goal,
+    NumGoals = array.size(Goals),
+    array.fetch_items(Goals, LastParGoalIndex + 1, NumGoals - 1, GoalsAfter).
+
+ip_get_par_conjs(Incomplete) = ParConjs :-
+    Goals = Incomplete ^ ip_goals,
+    Start = Incomplete ^ ip_first_par_goal,
+    Last = Incomplete ^ ip_last_scheduled_goal,
+    LastGoalsRev0 = Incomplete ^ ip_par_conjs_rev_last_goal,
+    LastGoalsRev = [Last | LastGoalsRev0],
+    list.reverse(LastGoalsRev, LastGoals),
+    ip_get_par_conjs_2(Goals, Start, LastGoals, ParConjs).
+
+:- pred ip_get_par_conjs_2(array(pard_goal_detail)::in, int::in,
+    list(int)::in, list(seq_conj(pard_goal_detail))::out) is det.
+
+ip_get_par_conjs_2(_, _, [], []).
+ip_get_par_conjs_2(Array, First, [Last | Lasts], [Conj | Conjs]) :-
+    ip_get_par_conjs_2(Array, Last + 1, Lasts, Conjs),
+    fetch_items(Array, First, Last, Goals),
+    Conj = seq_conj(Goals).
+
+ip_get_num_goals(Incomplete) = array.size(Incomplete ^ ip_goals).
+
+ip_get_num_parallel_conjuncts(Incomplete) =
+    list.length(Incomplete ^ ip_par_conjs_rev_last_goal) + 1.
+
+ip_get_num_goals_middle(Incomplete) = LastParGoal - FirstParGoal + 1 :-
+    FirstParGoal = Incomplete ^ ip_first_par_goal,
+    LastParGoal = Incomplete ^ ip_last_par_goal.
+
+ip_calc_sharedvars_set(Incomplete) = SharedVars :-
+    ParConjs = ip_get_par_conjs(Incomplete),
+    list.foldl2(build_sharedvars_set, ParConjs,
+        set.init, _, set.init, SharedVars).
+
+:- pred build_sharedvars_set(seq_conj(pard_goal_detail)::in,
+    set(var_rep)::in, set(var_rep)::out,
+    set(var_rep)::in, set(var_rep)::out) is det.
+
+build_sharedvars_set(seq_conj(Conjs), !BoundVars, !SharedVars) :-
+    list.foldl2(conj_produced_and_consumed_vars, Conjs,
+        set.init, ProducedVars, set.init, ConsumedVars),
+    % The new shared vars are previously bound variables that are consumed in
+    % this conjunct.  This must be calculated before !BoundVars is updated.
+    SharedVars = set.intersect(!.BoundVars, ConsumedVars),
+    !:SharedVars = set.union(!.SharedVars, SharedVars),
+    !:BoundVars = set.union(!.BoundVars, ProducedVars).
 
 %-----------------------------------------------------------------------------%

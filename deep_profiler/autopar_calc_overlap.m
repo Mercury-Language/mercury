@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,15 +19,16 @@
 
 :- import_module mdprof_fb.automatic_parallelism.autopar_types.
 
-    % calculate_parallel_cost(Info, !Parallelisation).
+    % calculate_parallel_cost(Info, !Parallelisation, CostData).
     %
     % Analyse the parallel conjuncts and determine their likely performance.
     %
     % This is the new parallel execution overlap algorithm, it is general and
     % therefore we also use it for independent conjunctions.
     %
-:- pred calculate_parallel_cost(parallelisation_cost_data::out,
-    incomplete_parallelisation::in, incomplete_parallelisation::out) is det.
+:- pred calculate_parallel_cost(implicit_parallelism_info::in,
+    incomplete_parallelisation::in, incomplete_parallelisation::out,
+    parallelisation_cost_data::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -57,7 +58,7 @@
 
 %----------------------------------------------------------------------------%
 
-calculate_parallel_cost(CostData, !Parallelisation) :-
+calculate_parallel_cost(Info, !Parallelisation, CostData) :-
     ParConj = ip_get_par_conjs(!.Parallelisation),
     NumCalls = !.Parallelisation ^ ip_num_calls,
 
@@ -70,7 +71,6 @@ calculate_parallel_cost(CostData, !Parallelisation) :-
         (func(P0, MaybeCost) = P0 ^ ip_maybe_goals_after_cost := MaybeCost),
         ip_get_goals_after, CostAfterPercall, NumCalls, !Parallelisation),
 
-    Info = !.Parallelisation ^ ip_info,
     Opts = Info ^ ipi_opts,
     SparkCost = Opts ^ cpcp_sparking_cost,
     SparkDelay = Opts ^ cpcp_sparking_delay,
@@ -610,8 +610,8 @@ var_first_use_time(FindProdOrCons, TimeBefore, Goal, Var, Time) :-
         UseTime = Use ^ vui_cost_until_use
     ;
         UseType = var_use_other,
-        % The analysis didn't recognise the instantiation here, so use a
-        % conservative default for the production time.
+        % The analysis didn't recognise the instantiation here,
+        % so use a conservative default for the production time.
         % XXX: How often does this occur?
         (
             FindProdOrCons = find_production,
