@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1232,9 +1232,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
     ->
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         map.lookup(VarTypes, Var, Type),
-        (
-            inst_matches_final_typed(VarInst, Inst, Type, ModuleInfo)
-        ->
+        ( inst_matches_final_typed(VarInst, Inst, Type, ModuleInfo) ->
             true
         ;
             !:Changed = yes,
@@ -1259,7 +1257,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
                     !ModeInfo)
             ;
                 (
-                    % If we're inferring the mode, then don't report an error,
+                    % If we are inferring the mode, then don't report an error,
                     % just set changed to yes to make sure that we will do
                     % another fixpoint pass.
                     InferModes = yes

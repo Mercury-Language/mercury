@@ -378,12 +378,6 @@ compute_goal_instmap_delta(InstMap0, GoalExpr, !GoalInfo, !ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Calculate the argument number offset that needs to be passed to
-    % modecheck_var_list_is_live, modecheck_var_has_inst_list, and
-    % modecheck_set_var_inst_list.  This offset number is calculated
-    % so that real arguments get positive argument numbers and
-    % type_info arguments get argument numbers less than or equal to 0.
-    %
 compute_arg_offset(PredInfo, ArgOffset) :-
     OrigArity = pred_info_orig_arity(PredInfo),
     pred_info_get_arg_types(PredInfo, ArgTypes),

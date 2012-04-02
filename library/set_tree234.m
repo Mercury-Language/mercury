@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2006, 2009-2011 The University of Melbourne.
+% Copyright (C) 2005-2006, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -121,6 +121,13 @@
 :- func set_tree234.insert(T, set_tree234(T)) = set_tree234(T).
 :- pred set_tree234.insert(T::in, set_tree234(T)::in, set_tree234(T)::out)
     is det.
+
+    % `set_tree234.insert_new(X, Set0, Set)' is true iff
+    % `Set0' does not contain `X', while `Set' is the union of `Set0'
+    % and the set containing only `X'.
+    %
+:- pred set_tree234.insert_new(T::in,
+    set_tree234(T)::in, set_tree234(T)::out) is semidet.
 
     % `set_tree234.insert_list(Xs, Set0, Set)' is true iff `Set' is the
     % union of `Set0' and the set containing only the members of `Xs'.
@@ -733,8 +740,8 @@ set_tree234.insert(E, Tin, Tout) :-
 
 :- pragma type_spec(set_tree234.insert2(in, in_two, out), T = var(_)).
 
-:- pred set_tree234.insert2(T::in, set_tree234(T)::in_two,
-    set_tree234(T)::out) is det.
+:- pred set_tree234.insert2(T::in,
+    set_tree234(T)::in_two, set_tree234(T)::out) is det.
 
 set_tree234.insert2(E, Tin, Tout) :-
     Tin = two(E0, T0, T1),
@@ -767,6 +774,8 @@ set_tree234.insert2(E, Tin, Tout) :-
                     Tout = three(MT0E, E0, NewT00, T01, T1)
                 ;
                     Result1 = (=),
+                    % The Tout we are returning does not have the same
+                    % shape as Tin, but it contains the same elements.
                     Tout = three(MT0E, E0, T00, T01, T1)
                 ;
                     Result1 = (>),
@@ -801,6 +810,8 @@ set_tree234.insert2(E, Tin, Tout) :-
                     Tout = three(E0, MT1E, T0, NewT10, T11)
                 ;
                     Result1 = (=),
+                    % The Tout we are returning does not have the same
+                    % shape as Tin, but it contains the same elements.
                     Tout = three(E0, MT1E, T0, T10, T11)
                 ;
                     Result1 = (>),
@@ -825,8 +836,8 @@ set_tree234.insert2(E, Tin, Tout) :-
 
 :- pragma type_spec(set_tree234.insert3(in, in_three, out), T = var(_)).
 
-:- pred set_tree234.insert3(T::in, set_tree234(T)::in_three,
-    set_tree234(T)::out) is det.
+:- pred set_tree234.insert3(T::in,
+    set_tree234(T)::in_three, set_tree234(T)::out) is det.
 
 set_tree234.insert3(E, Tin, Tout) :-
     Tin = three(E0, E1, T0, T1, T2),
@@ -870,6 +881,8 @@ set_tree234.insert3(E, Tin, Tout) :-
                     Tout = four(MT0E, E0, E1, NewT00, T01, T1, T2)
                 ;
                     ResultM = (=),
+                    % The Tout we are returning does not have the same
+                    % shape as Tin, but it contains the same elements.
                     Tout = four(MT0E, E0, E1, T00, T01, T1, T2)
                 ;
                     ResultM = (>),
@@ -907,6 +920,8 @@ set_tree234.insert3(E, Tin, Tout) :-
                         Tout = four(E0, MT1E, E1, T0, NewT10, T11, T2)
                     ;
                         ResultM = (=),
+                        % The Tout we are returning does not have the same
+                        % shape as Tin, but it contains the same elements.
                         Tout = four(E0, MT1E, E1, T0, T10, T11, T2)
                     ;
                         ResultM = (>),
@@ -941,6 +956,8 @@ set_tree234.insert3(E, Tin, Tout) :-
                         Tout = four(E0, E1, MT2E, T0, T1, NewT20, T21)
                     ;
                         ResultM = (=),
+                        % The Tout we are returning does not have the same
+                        % shape as Tin, but it contains the same elements.
                         Tout = four(E0, E1, MT2E, T0, T1, T20, T21)
                     ;
                         ResultM = (>),
@@ -963,6 +980,274 @@ set_tree234.insert3(E, Tin, Tout) :-
             )
         )
     ).
+
+%------------------------------------------------------------------------------%
+
+set_tree234.insert_new(E, Tin, Tout) :-
+    (
+        Tin = empty,
+        Tout = two(E, empty, empty)
+    ;
+        Tin = two(_, _, _),
+        set_tree234.insert_new2(E, Tin, Tout)
+    ;
+        Tin = three(_, _, _, _, _),
+        set_tree234.insert_new3(E, Tin, Tout)
+    ;
+        Tin = four(E0, E1, E2, T0, T1, T2, T3),
+        compare(Result1, E, E1),
+        (
+            Result1 = (<),
+            Sub0 = two(E0, T0, T1),
+            Sub1 = two(E2, T2, T3),
+            set_tree234.insert_new2(E, Sub0, NewSub0),
+            Tout = two(E1, NewSub0, Sub1)
+        ;
+            Result1 = (=),
+            fail
+        ;
+            Result1 = (>),
+            Sub0 = two(E0, T0, T1),
+            Sub1 = two(E2, T2, T3),
+            set_tree234.insert_new2(E, Sub1, NewSub1),
+            Tout = two(E1, Sub0, NewSub1)
+        )
+    ).
+
+:- pragma type_spec(set_tree234.insert_new2(in, in_two, out), T = var(_)).
+
+:- pred set_tree234.insert_new2(T::in,
+    set_tree234(T)::in_two, set_tree234(T)::out) is semidet.
+
+set_tree234.insert_new2(E, Tin, Tout) :-
+    Tin = two(E0, T0, T1),
+    (
+        T0 = empty
+        % T1 = empty implied by T0 = empty
+    ->
+        compare(Result, E, E0),
+        (
+            Result = (<),
+            Tout = three(E, E0, empty, empty, empty)
+        ;
+            Result = (=),
+            fail
+        ;
+            Result = (>),
+            Tout = three(E0, E, empty, empty, empty)
+        )
+    ;
+        compare(Result, E, E0),
+        (
+            Result = (<),
+            (
+                T0 = four(_, _, _, _, _, _, _),
+                set_tree234.split_four(T0, MT0E, T00, T01),
+                compare(Result1, E, MT0E),
+                (
+                    Result1 = (<),
+                    set_tree234.insert_new2(E, T00, NewT00),
+                    Tout = three(MT0E, E0, NewT00, T01, T1)
+                ;
+                    Result1 = (=),
+                    fail
+                ;
+                    Result1 = (>),
+                    set_tree234.insert_new2(E, T01, NewT01),
+                    Tout = three(MT0E, E0, T00, NewT01, T1)
+                )
+            ;
+                T0 = three(_, _, _, _, _),
+                set_tree234.insert_new3(E, T0, NewT0),
+                Tout = two(E0, NewT0, T1)
+            ;
+                T0 = two(_, _, _),
+                set_tree234.insert_new2(E, T0, NewT0),
+                Tout = two(E0, NewT0, T1)
+            ;
+                T0 = empty,
+                NewT0 = two(E, empty, empty),
+                Tout = two(E0, NewT0, T1)
+            )
+        ;
+            Result = (=),
+            fail
+        ;
+            Result = (>),
+            (
+                T1 = four(_, _, _, _, _, _, _),
+                set_tree234.split_four(T1, MT1E, T10, T11),
+                compare(Result1, E, MT1E),
+                (
+                    Result1 = (<),
+                    set_tree234.insert_new2(E, T10, NewT10),
+                    Tout = three(E0, MT1E, T0, NewT10, T11)
+                ;
+                    Result1 = (=),
+                    fail
+                ;
+                    Result1 = (>),
+                    set_tree234.insert_new2(E, T11, NewT11),
+                    Tout = three(E0, MT1E, T0, T10, NewT11)
+                )
+            ;
+                T1 = three(_, _, _, _, _),
+                set_tree234.insert_new3(E, T1, NewT1),
+                Tout = two(E0, T0, NewT1)
+            ;
+                T1 = two(_, _, _),
+                set_tree234.insert_new2(E, T1, NewT1),
+                Tout = two(E0, T0, NewT1)
+            ;
+                T1 = empty,
+                NewT1 = two(E, empty, empty),
+                Tout = two(E0, T0, NewT1)
+            )
+        )
+    ).
+
+:- pragma type_spec(set_tree234.insert_new3(in, in_three, out), T = var(_)).
+
+:- pred set_tree234.insert_new3(T::in,
+    set_tree234(T)::in_three, set_tree234(T)::out) is semidet.
+
+set_tree234.insert_new3(E, Tin, Tout) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    (
+        T0 = empty
+        % T1 = empty implied by T0 = empty
+        % T2 = empty implied by T0 = empty
+    ->
+        compare(Result0, E, E0),
+        (
+            Result0 = (<),
+            Tout = four(E, E0, E1, empty, empty, empty, empty)
+        ;
+            Result0 = (=),
+            fail
+        ;
+            Result0 = (>),
+            compare(Result1, E, E1),
+            (
+                Result1 = (<),
+                Tout = four(E0, E, E1, empty, empty, empty, empty)
+            ;
+                Result1 = (=),
+                fail
+            ;
+                Result1 = (>),
+                Tout = four(E0, E1, E, empty, empty, empty, empty)
+            )
+        )
+    ;
+        compare(Result0, E, E0),
+        (
+            Result0 = (<),
+            (
+                T0 = four(_, _, _, _, _, _, _),
+                set_tree234.split_four(T0, MT0E, T00, T01),
+                compare(ResultM, E, MT0E),
+                (
+                    ResultM = (<),
+                    set_tree234.insert_new2(E, T00, NewT00),
+                    Tout = four(MT0E, E0, E1, NewT00, T01, T1, T2)
+                ;
+                    ResultM = (=),
+                    fail
+                ;
+                    ResultM = (>),
+                    set_tree234.insert_new2(E, T01, NewT01),
+                    Tout = four(MT0E, E0, E1, T00, NewT01, T1, T2)
+                )
+            ;
+                T0 = three(_, _, _, _, _),
+                set_tree234.insert_new3(E, T0, NewT0),
+                Tout = three(E0, E1, NewT0, T1, T2)
+            ;
+                T0 = two(_, _, _),
+                set_tree234.insert_new2(E, T0, NewT0),
+                Tout = three(E0, E1, NewT0, T1, T2)
+            ;
+                T0 = empty,
+                NewT0 = two(E, empty, empty),
+                Tout = three(E0, E1, NewT0, T1, T2)
+            )
+        ;
+            Result0 = (=),
+            fail
+        ;
+            Result0 = (>),
+            compare(Result1, E, E1),
+            (
+                Result1 = (<),
+                (
+                    T1 = four(_, _, _, _, _, _, _),
+                    set_tree234.split_four(T1, MT1E, T10, T11),
+                    compare(ResultM, E, MT1E),
+                    (
+                        ResultM = (<),
+                        set_tree234.insert_new2(E, T10, NewT10),
+                        Tout = four(E0, MT1E, E1, T0, NewT10, T11, T2)
+                    ;
+                        ResultM = (=),
+                        fail
+                    ;
+                        ResultM = (>),
+                        set_tree234.insert_new2(E, T11, NewT11),
+                        Tout = four(E0, MT1E, E1, T0, T10, NewT11, T2)
+                    )
+                ;
+                    T1 = three(_, _, _, _, _),
+                    set_tree234.insert_new3(E, T1, NewT1),
+                    Tout = three(E0, E1, T0, NewT1, T2)
+                ;
+                    T1 = two(_, _, _),
+                    set_tree234.insert_new2(E, T1, NewT1),
+                    Tout = three(E0, E1, T0, NewT1, T2)
+                ;
+                    T1 = empty,
+                    NewT1 = two(E, empty, empty),
+                    Tout = three(E0, E1, T0, NewT1, T2)
+                )
+            ;
+                Result1 = (=),
+                fail
+            ;
+                Result1 = (>),
+                (
+                    T2 = four(_, _, _, _, _, _, _),
+                    set_tree234.split_four(T2, MT2E, T20, T21),
+                    compare(ResultM, E, MT2E),
+                    (
+                        ResultM = (<),
+                        set_tree234.insert_new2(E, T20, NewT20),
+                        Tout = four(E0, E1, MT2E, T0, T1, NewT20, T21)
+                    ;
+                        ResultM = (=),
+                        fail
+                    ;
+                        ResultM = (>),
+                        set_tree234.insert_new2(E, T21, NewT21),
+                        Tout = four(E0, E1, MT2E, T0, T1, T20, NewT21)
+                    )
+                ;
+                    T2 = three(_, _, _, _, _),
+                    set_tree234.insert_new3(E, T2, NewT2),
+                    Tout = three(E0, E1, T0, T1, NewT2)
+                ;
+                    T2 = two(_, _, _),
+                    set_tree234.insert_new2(E, T2, NewT2),
+                    Tout = three(E0, E1, T0, T1, NewT2)
+                ;
+                    T2 = empty,
+                    NewT2 = two(E, empty, empty),
+                    Tout = three(E0, E1, T0, T1, NewT2)
+                )
+            )
+        )
+    ).
+
+%------------------------------------------------------------------------------%
 
 set_tree234.insert_list(Es, Set0) = Set :-
     set_tree234.insert_list(Es, Set0, Set).

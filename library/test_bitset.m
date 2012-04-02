@@ -77,6 +77,8 @@
 
 :- pred insert(T::in, test_bitset(T)::in, test_bitset(T)::out)
     is det <= enum(T).
+:- pred insert_new(T::in, test_bitset(T)::in, test_bitset(T)::out)
+    is semidet <= enum(T).
 :- pred insert_list(list(T)::in, test_bitset(T)::in, test_bitset(T)::out)
     is det <= enum(T).
 :- pred delete(T::in, test_bitset(T)::in, test_bitset(T)::out)
@@ -311,6 +313,24 @@ insert(E, SetA0 - SetB0, Result) :-
     tree_bitset.insert(E, SetA0, SetA),
     set_ordlist.insert(E, SetB0, SetB),
     check1("insert", SetA0 - SetB0, SetA - SetB, Result).
+
+insert_new(E, SetA0 - SetB0, Result) :-
+    ( tree_bitset.insert_new(E, SetA0, SetA) ->
+        ( set_ordlist.insert_new(E, SetB0, SetB) ->
+            check1("insert", SetA0 - SetB0, SetA - SetB, Result)
+        ;
+            unexpected($module, $pred,
+                "success/fail in tree_bitset/set_ordlist")
+        )
+    ;
+        ( set_ordlist.insert_new(E, SetB0, _SetB) ->
+            unexpected($module, $pred,
+                "fail/success in tree_bitset/set_ordlist")
+        ;
+            % insert_new failed in both tree_bitset and set_ordlist.
+            fail
+        )
+    ).
 
 insert_list(Es, SetA0 - SetB0, Result) :-
     tree_bitset.insert_list(Es, SetA0, SetA),

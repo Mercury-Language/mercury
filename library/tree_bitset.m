@@ -129,6 +129,13 @@
 :- pred insert(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det <= enum(T).
 
+    % `insert_new(X, Set0, Set)' returns the union of `Set' and the set
+    % containing only `X' is `Set0' does not contain 'X'; if it does, it fails.
+    % Takes O(log(card(Set))) time and space.
+    %
+:- pred insert_new(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
+    is semidet <= enum(T).
+
     % `insert_list(Set, X)' returns the union of `Set' and the set containing
     % only the members of `X'. Same as `union(Set, list_to_set(X))', but may be
     % more efficient.
@@ -1089,6 +1096,132 @@ interiorlist_insert(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         Nodes = [Head | Tail0]
     ;
         interiorlist_insert(Index, Level, Tail0, Tail),
+        Nodes = [Head0 | Tail]
+    ).
+
+%-----------------------------------------------------------------------------%
+
+insert_new(Elem, Set0, Set) :-
+    Set0 = tree_bitset(List0),
+    Index = enum_to_index(Elem),
+    (
+        List0 = leaf_list(LeafList0),
+        (
+            LeafList0 = [],
+            bits_for_index(Index, Offset, Bits),
+            Set = wrap_tree_bitset(leaf_list([make_leaf_node(Offset, Bits)]))
+        ;
+            LeafList0 = [Leaf0 | _],
+            range_of_parent_node(Leaf0 ^ leaf_offset, 0,
+                ParentInitOffset, ParentLimitOffset),
+            (
+                ParentInitOffset =< Index,
+                Index < ParentLimitOffset
+            ->
+                leaflist_insert_new(Index, LeafList0, LeafList),
+                Set = wrap_tree_bitset(leaf_list(LeafList))
+            ;
+                expand_range(Index, List0, 1,
+                    ParentInitOffset, ParentLimitOffset,
+                    InteriorNode1, InteriorLevel1),
+                interiorlist_insert_new(Index, InteriorLevel1,
+                    [InteriorNode1], InteriorList),
+                Set = wrap_tree_bitset(
+                    interior_list(InteriorLevel1, InteriorList))
+            )
+        )
+    ;
+        List0 = interior_list(InteriorLevel, InteriorList0),
+        (
+            InteriorList0 = [],
+            % This is a violation of our invariants.
+            unexpected($module, $pred,
+                "insert_new into empty list of interior nodes")
+        ;
+            InteriorList0 = [InteriorNode0 | _],
+            range_of_parent_node(InteriorNode0 ^ init_offset, InteriorLevel,
+                ParentInitOffset, ParentLimitOffset),
+            (
+                ParentInitOffset =< Index,
+                Index < ParentLimitOffset
+            ->
+                interiorlist_insert_new(Index, InteriorLevel,
+                    InteriorList0, InteriorList),
+                Set = wrap_tree_bitset(
+                    interior_list(InteriorLevel, InteriorList))
+            ;
+                expand_range(Index, List0, InteriorLevel + 1,
+                    ParentInitOffset, ParentLimitOffset,
+                    InteriorNode1, InteriorLevel1),
+                interiorlist_insert_new(Index, InteriorLevel1,
+                    [InteriorNode1], InteriorList),
+                Set = wrap_tree_bitset(
+                    interior_list(InteriorLevel1, InteriorList))
+            )
+        )
+    ).
+
+:- pred leaflist_insert_new(int::in,
+    list(leaf_node)::in, list(leaf_node)::out) is semidet.
+
+leaflist_insert_new(Index, [], Leaves) :-
+    bits_for_index(Index, Offset, Bits),
+    Leaves = [make_leaf_node(Offset, Bits)].
+leaflist_insert_new(Index, Leaves0 @ [Head0 | Tail0], Leaves) :-
+    Offset0 = Head0 ^ leaf_offset,
+    ( Index < Offset0 ->
+        bits_for_index(Index, Offset, Bits),
+        Leaves = [make_leaf_node(Offset, Bits) | Leaves0]
+    ; BitToSet = Index - Offset0, BitToSet < bits_per_int ->
+        Bits0 = Head0 ^ leaf_bits,
+        ( get_bit(Bits0, BitToSet) \= 0 ->
+            fail
+        ;
+            Bits = set_bit(Bits0, BitToSet),
+            Leaves = [make_leaf_node(Offset0, Bits) | Tail0]
+        )
+    ;
+        leaflist_insert_new(Index, Tail0, Tail),
+        Leaves = [Head0 | Tail]
+    ).
+
+:- pred interiorlist_insert_new(int::in, int::in,
+    list(interior_node)::in, list(interior_node)::out) is semidet.
+
+interiorlist_insert_new(Index, Level, [], Nodes) :-
+    bits_for_index(Index, Offset, Bits),
+    raise_leaf_to_level(Level, make_leaf_node(Offset, Bits), Node),
+    Nodes = [Node].
+interiorlist_insert_new(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
+    Offset0 = Head0 ^ init_offset,
+    ( Index < Offset0 ->
+        bits_for_index(Index, Offset, Bits),
+        raise_leaf_to_level(Level, make_leaf_node(Offset, Bits), Node),
+        Nodes = [Node | Nodes0]
+    ; Head0 ^ init_offset =< Index, Index < Head0 ^ limit_offset ->
+        Components0 = Head0 ^ components,
+        (
+            Components0 = leaf_list(LeafList0),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(unify(Level, 1), $module, $pred,
+                    "bad component list (leaf)")
+            ),
+            leaflist_insert_new(Index, LeafList0, LeafList),
+            Components = leaf_list(LeafList)
+        ;
+            Components0 = interior_list(InteriorLevel, InteriorList0),
+            trace [compile_time(flag("tree-bitset-checks"))] (
+                expect(unify(InteriorLevel, Level - 1), $module, $pred,
+                    "bad component list (interior)")
+            ),
+            interiorlist_insert_new(Index, InteriorLevel,
+                InteriorList0, InteriorList),
+            Components = interior_list(InteriorLevel, InteriorList)
+        ),
+        Head = Head0 ^ components := Components,
+        Nodes = [Head | Tail0]
+    ;
+        interiorlist_insert_new(Index, Level, Tail0, Tail),
         Nodes = [Head0 | Tail]
     ).
 

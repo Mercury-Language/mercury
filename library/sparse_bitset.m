@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007, 2011 The University of Melbourne.
+% Copyright (C) 2000-2007, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -145,6 +145,13 @@
 :- func insert(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
 :- pred insert(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is det <= enum(T).
+
+    % `insert_new(X, Set0, Set)' returns the union of `Set' and the set
+    % containing only `X' if `Set0' does not already contain `X'; if it does,
+    % it fails. Takes O(rep_size(Set)) time and space.
+    %
+:- pred insert_new(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
+    is semidet <= enum(T).
 
     % `insert_list(Set, X)' returns the union of `Set' and the set containing
     % only the members of `X'. Same as `union(Set, list_to_set(X))', but may be
@@ -761,18 +768,20 @@ count_bits(BitOffset, Size, Bits, !SetOffsets) :-
 
 %-----------------------------------------------------------------------------%
 
+insert(Set0, Elem) = Set :-
+    insert(Elem, Set0, Set).
+
 insert(E, !Set) :-
-    !:Set = insert(!.Set, E).
+    !.Set = sparse_bitset(Set0),
+    insert_2(Set0, enum.to_int(E), Set),
+    !:Set = sparse_bitset(Set).
 
-insert(sparse_bitset(Set), Elem) =
-    sparse_bitset(insert_2(Set, enum.to_int(Elem))).
+:- pred insert_2(bitset_impl::in, int::in, bitset_impl::out) is det.
 
-:- func insert_2(bitset_impl, int) = bitset_impl.
-
-insert_2([], Index) = [make_bitset_elem(Offset, Bits)] :-
+insert_2([], Index, [make_bitset_elem(Offset, Bits)]) :-
     bits_for_index(Index, Offset, Bits).
-insert_2(Set0, Index) = Set :-
-    Set0 = [Data0 | Rest],
+insert_2(Set0, Index, Set) :-
+    Set0 = [Data0 | Rest0],
     Offset0 = Data0 ^ offset,
     ( Index < Offset0 ->
         bits_for_index(Index, Offset, Bits),
@@ -783,11 +792,45 @@ insert_2(Set0, Index) = Set :-
             Set = Set0
         ;
             Bits = set_bit(Bits0, BitToSet),
-            Set = [make_bitset_elem(Offset0, Bits) | Rest]
+            Set = [make_bitset_elem(Offset0, Bits) | Rest0]
         )
     ;
-        Set = [Data0 | insert_2(Rest, Index)]
+        insert_2(Rest0, Index, Set1),
+        Set = [Data0 | Set1]
     ).
+
+%-----------------------------------------------------------------------------%
+
+insert_new(E, !Set) :-
+    !.Set = sparse_bitset(Set0),
+    insert_new_2(enum.to_int(E), Set0, Set),
+    !:Set = sparse_bitset(Set).
+
+:- pred insert_new_2(int::in, bitset_impl::in, bitset_impl::out)
+    is semidet.
+
+insert_new_2(Index, [], [make_bitset_elem(Offset, Bits)]) :-
+    bits_for_index(Index, Offset, Bits).
+insert_new_2(Index, Set0, Set) :-
+    Set0 = [Data0 | Rest0],
+    Offset0 = Data0 ^ offset,
+    ( Index < Offset0 ->
+        bits_for_index(Index, Offset, Bits),
+        Set = [make_bitset_elem(Offset, Bits) | Set0]
+    ; BitToSet = Index - Offset0, BitToSet < bits_per_int ->
+        Bits0 = Data0 ^ bits,
+        ( get_bit(Bits0, BitToSet) \= 0 ->
+            fail
+        ;
+            Bits = set_bit(Bits0, BitToSet),
+            Set = [make_bitset_elem(Offset0, Bits) | Rest0]
+        )
+    ;
+        insert_new_2(Index, Rest0, Set1),
+        Set = [Data0 | Set1]
+    ).
+
+%-----------------------------------------------------------------------------%
 
 insert_list(List, !Set) :-
     !:Set = insert_list(!.Set, List).

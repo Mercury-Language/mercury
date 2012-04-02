@@ -8,6 +8,10 @@ Changes to the Mercury standard library:
   set_unordlist.singleton_set/2 so that it conforms with the order in the
   other set modules.
 
+* All the modules that operate on sets now have a new predicate insert_new.
+  If the item is not already in the set, it inserts the item, otherwise
+  it fails.
+
 * The argument order of the following predicates has been changed so as to
   make them more conducive to the use of state variable notation:
   pqueue.insert/4, pqueue.remove/4, stack.push/3, stack.push_list/3,

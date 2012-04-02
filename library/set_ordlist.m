@@ -112,8 +112,14 @@
     %
 :- pred set_ordlist.insert(T::in, set_ordlist(T)::in, set_ordlist(T)::out)
     is det.
-
 :- func set_ordlist.insert(set_ordlist(T), T) = set_ordlist(T).
+
+    % `set_ordlist.insert_new(X, Set0, Set)' is true iff
+    % `Set0' does not contain `X', while `Set' is the union of `Set0'
+    % and the set containing only `X'.
+    %
+:- pred set_ordlist.insert_new(T::in,
+    set_ordlist(T)::in, set_ordlist(T)::out) is semidet.
 
     % `set_ordlist.insert_list(Xs, Set0, Set)' is true iff `Set' is the
     % union of `Set0' and the set containing only the members of `Xs'.
@@ -460,25 +466,46 @@ set_ordlist.to_sorted_list(sol(List), List).
 set_ordlist.insert(!.S, T) = !:S :-
     set_ordlist.insert(T, !S).
 
-set_ordlist.insert(E, sol(List0), sol(List)) :-
-    set_ordlist.insert_2(List0, E, List).
+set_ordlist.insert(NewItem, sol(List0), sol(List)) :-
+    set_ordlist.insert_2(List0, NewItem, List).
 
 :- pred set_ordlist.insert_2(list(T)::in, T::in, list(T)::out)
     is det.
 
-set_ordlist.insert_2([], E, [E]).
-set_ordlist.insert_2([I | Is], E, Js) :-
-    compare(R, I, E),
+set_ordlist.insert_2([], NewItem, [NewItem]).
+set_ordlist.insert_2([Head | Tail], NewItem, UpdatedList) :-
+    compare(R, Head, NewItem),
     (
         R = (<),
-        set_ordlist.insert_2(Is, E, Ks),
-        Js = [I | Ks]
+        set_ordlist.insert_2(Tail, NewItem, UpdatedTail),
+        UpdatedList = [Head | UpdatedTail]
     ;
         R = (=),
-        Js = [I | Is]
+        UpdatedList = [Head | Tail]
     ;
         R = (>),
-        Js = [E, I | Is]
+        UpdatedList = [NewItem, Head | Tail]
+    ).
+
+set_ordlist.insert_new(NewItem, sol(List0), sol(List)) :-
+    set_ordlist.insert_new_2(List0, NewItem, List).
+
+:- pred set_ordlist.insert_new_2(list(T)::in, T::in, list(T)::out)
+    is semidet.
+
+set_ordlist.insert_new_2([], NewItem, [NewItem]).
+set_ordlist.insert_new_2([Head | Tail], NewItem, UpdatedList) :-
+    compare(R, Head, NewItem),
+    (
+        R = (<),
+        set_ordlist.insert_new_2(Tail, NewItem, UpdatedTail),
+        UpdatedList = [Head | UpdatedTail]
+    ;
+        R = (=),
+        fail
+    ;
+        R = (>),
+        UpdatedList = [NewItem, Head | Tail]
     ).
 
 set_ordlist.insert_list(!.S, Xs) = !:S :-

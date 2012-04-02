@@ -115,6 +115,11 @@
 :- func set.insert(set(T), T) = set(T).
 :- pred set.insert(T::in, set(T)::in, set(T)::out) is det.
 
+    % `set.insert_new(X, Set0, Set)' is true iff `Set0' does not contain
+    % `X', and `Set' is the union of `Set0' and the set containing only `X'.
+    %
+:- pred set.insert_new(T::in, set(T)::in, set(T)::out) is semidet.
+
     % `set.insert_list(Xs, Set0, Set)' is true iff `Set' is the union of
     % `Set0' and the set containing only the members of `Xs'.
     %
@@ -473,6 +478,9 @@ set.insert(S1, T) = S2 :-
 
 set.insert(X, !Set) :-
     set_ordlist.insert(X, !Set).
+
+set.insert_new(X, !Set) :-
+    set_ordlist.insert_new(X, !Set).
 
 set.equal(SetA, SetB) :-
     set_ordlist.equal(SetA, SetB).

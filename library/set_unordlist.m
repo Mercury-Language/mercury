@@ -123,6 +123,13 @@
 
 :- func set_unordlist.insert(set_unordlist(T), T) = set_unordlist(T).
 
+    % `set_unordlist.insert_new(X, Set0, Set)' is true iff `Set0' does
+    % not contain `X', and `Set' is the union of `Set0' and the set containing
+    % only `X'.
+    %
+:- pred set_unordlist.insert_new(T::in,
+    set_unordlist(T)::in, set_unordlist(T)::out) is semidet.
+
     % `set_unordlist.insert_list(Xs, Set0, Set)' is true iff `Set' is the
     % union of `Set0' and the set containing only the members of `Xs'.
     %
@@ -395,6 +402,13 @@ set_unordlist.insert_list(List, sul(!.Set), sul(!:Set)) :-
     list.append(List, !Set).
 
 set_unordlist.insert(E, sul(S0), sul([E | S0])).
+
+set_unordlist.insert_new(E, sul(S0), sul(S)) :-
+    ( list.member(E, S0) ->
+        fail
+    ;
+        S = [E | S0]
+    ).
 
 set_unordlist.init(sul([])).
 

@@ -103,6 +103,13 @@
 
 :- func set_bbbtree.insert(set_bbbtree(T), T) = set_bbbtree(T).
 
+    % `set_bbbtree.insert_new(X, Set0, Set)' is true iff `Set0' does not
+    % contain `X', and `Set' is the union of `Set0' and the set containing
+    % only `X'.
+    %
+:- pred set_bbbtree.insert_new(T::in,
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is semidet.
+
     % `set_bbbtree.insert_list(Xs, Set0, Set)' is true iff `Set' is
     % the union of `Set0' and the set containing only the members of `Xs'.
     %
@@ -553,23 +560,19 @@ set_bbbtree.equal(SetA, SetB) :-
 set_bbbtree.insert(!.S, T) = !:S :-
     set_bbbtree.insert(T, !S).
 
-% This is a hack to handle the bugs with unique and destructive input modes.
 set_bbbtree.insert(X, !Set) :-
+    % This is a hack to handle the bugs with unique and destructive
+    % input modes.
     set_bbbtree.def_ratio(Ratio),
     set_bbbtree.insert_r(!.Set, X, !:Set, Ratio),
+    % When destructive input and unique modes are fixed, remove this.
     unsafe_promise_unique(!Set).
-
-% Uncomment this once destructive input and unique modes are fixed and delete
-% the one above.
-% set_bbbtree.insert(Set0, X, Set) :-
-%   set_bbbtree.def_ratio(Ratio),
-%   set_bbbtree.insert_r(Set0, X, Set, Ratio).
 
 :- pred set_bbbtree.insert_r(set_bbbtree(T)::in, T::in, set_bbbtree(T)::out,
     int::in) is det.
 
-    % X was not in the set so make new node with X as the value
 set_bbbtree.insert_r(empty, X, tree(X, 1, empty, empty), _Ratio).
+    % X was not in the set so make new node with X as the value.
 set_bbbtree.insert_r(tree(V, N, L, R), X, Set, Ratio) :-
     compare(Result, X, V),
     (
@@ -586,6 +589,35 @@ set_bbbtree.insert_r(tree(V, N, L, R), X, Set, Ratio) :-
         % X already in tree.
         Result = (=),
         Set = tree(V, N, L, R)
+    ).
+
+set_bbbtree.insert_new(X, !Set) :-
+    % This is a hack to handle the bugs with unique and destructive
+    % input modes.
+    set_bbbtree.def_ratio(Ratio),
+    set_bbbtree.insert_new_r(!.Set, X, !:Set, Ratio).
+
+:- pred set_bbbtree.insert_new_r(
+    set_bbbtree(T)::in, T::in, set_bbbtree(T)::out, int::in) is semidet.
+
+set_bbbtree.insert_new_r(empty, X, tree(X, 1, empty, empty), _Ratio).
+    % X was not in the set so make new node with X as the value.
+set_bbbtree.insert_new_r(tree(V, _N, L, R), X, Set, Ratio) :-
+    compare(Result, X, V),
+    (
+        % Insert X into left subtree and re-balance it.
+        Result = (<),
+        set_bbbtree.insert_new_r(L, X, NewL, Ratio),
+        set_bbbtree.balance(V, NewL, R, Set, Ratio)
+    ;
+        % Insert X into right subtree and re-balance it.
+        Result = (>),
+        set_bbbtree.insert_new_r(R, X, NewR, Ratio),
+        set_bbbtree.balance(V, L, NewR, Set, Ratio)
+    ;
+        % X already in tree.
+        Result = (=),
+        fail
     ).
 
 %------------------------------------------------------------------------------%
