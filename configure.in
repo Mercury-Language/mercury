@@ -1359,7 +1359,7 @@ if test "$ac_cv_func_sigaction" = yes; then
     AC_MSG_RESULT($mercury_cv_sigaction_field)
     AC_DEFINE_UNQUOTED(MR_SIGACTION_FIELD,$mercury_cv_sigaction_field)
     if test "$mercury_cv_sigaction_field" = sa_sigaction; then
-        AC_DEFINE(MR_HAVE_SIGINFO)
+        AC_DEFINE([MR_HAVE_SIGINFO])
     fi
 fi
 
