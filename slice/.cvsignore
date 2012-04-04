@@ -32,4 +32,5 @@ program_representation.m
 rtti_access.m
 slice_and_dice.m
 trace_counts.m
+shared_utilities.m
 config.log
