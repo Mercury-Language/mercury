@@ -1761,58 +1761,92 @@ bound_inst_list_merge(Xs, Ys, MaybeType, Zs, !ModuleInfo) :-
 
 inst_contains_nonstandard_func_mode(ModuleInfo, Inst) :-
     set.init(Expansions0),
-    inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions0).
+    inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions0) = yes.
 
-:- pred inst_contains_nonstandard_func_mode_2(module_info::in, mer_inst::in,
-    set(mer_inst)::in) is semidet.
+:- func inst_contains_nonstandard_func_mode_2(module_info, mer_inst,
+    set(inst_name)) = bool.
 
-inst_contains_nonstandard_func_mode_2(ModuleInfo, ground(_, HOInstInfo),
-        _Expansions) :-
-    ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfo).
-inst_contains_nonstandard_func_mode_2(ModuleInfo, bound(_, BoundInsts),
-        Expansions) :-
-    list.member(bound_functor(_, Insts), BoundInsts),
-    list.member(Inst, Insts),
-    inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions).
-inst_contains_nonstandard_func_mode_2(_, inst_var(_), _) :-
-    unexpected($module, $pred, "uninstantiated inst parameter").
-inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions0) :-
-    Inst = defined_inst(InstName),
-    \+ set.member(Inst, Expansions0),
-    set.insert(Inst, Expansions0, Expansions1),
-    inst_lookup(ModuleInfo, InstName, Inst2),
-    inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst2, Expansions1).
+inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, !.Expansions)
+        = ContainsNonstd :-
+    (
+        Inst = ground(_, HOInstInfo),
+        ( ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfo) ->
+            ContainsNonstd = yes
+        ;
+            ContainsNonstd = no
+        )
+    ;
+        Inst = bound(_, BoundInsts),
+        ContainsNonstd = bound_inst_list_contains_nonstandard_func_mode(
+            ModuleInfo, BoundInsts, !.Expansions)
+    ;
+        Inst = inst_var(_),
+        unexpected($module, $pred, "uninstantiated inst parameter")
+    ;
+        Inst = defined_inst(InstName),
+        ( set.member(InstName, !.Expansions) ->
+            ContainsNonstd = no
+        ;
+            set.insert(InstName, !Expansions),
+            inst_lookup(ModuleInfo, InstName, SubInst),
+            ContainsNonstd = inst_contains_nonstandard_func_mode_2(ModuleInfo,
+                SubInst, !.Expansions)
+        )
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        % ZZZ We used to fail for this case (the equivalent of returning `no').
+        ContainsNonstd = inst_contains_nonstandard_func_mode_2(ModuleInfo,
+            SubInst, !.Expansions)
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ; Inst = not_reached
+        ; Inst = abstract_inst(_, _)
+        ),
+        ContainsNonstd = no
+    ;
+        Inst = any(_, _),
+        % XXX This code preserves the old behavior of this predicate,
+        % but it is arguably incorrect, since any/2 insts, like ground/2 insts,
+        % contain a ho_inst_info.
+        ContainsNonstd = no
+    ).
 
-%-----------------------------------------------------------------------------%
+:- func inst_list_contains_nonstandard_func_mode(module_info, list(mer_inst),
+    set(inst_name)) = bool.
 
-inst_contains_any(ModuleInfo, Inst) :-
-    set.init(Expansions),
-    inst_contains_any_2(ModuleInfo, Inst, Expansions).
+inst_list_contains_nonstandard_func_mode(_ModuleInfo, [], _Expansions) = no.
+inst_list_contains_nonstandard_func_mode(ModuleInfo, [Inst | Insts],
+        Expansions) = ContainsNonstd :-
+    HeadContainsNonstd = inst_contains_nonstandard_func_mode_2(ModuleInfo,
+        Inst, Expansions),
+    (
+        HeadContainsNonstd = yes,
+        ContainsNonstd = yes
+    ;
+        HeadContainsNonstd = no,
+        ContainsNonstd = inst_list_contains_nonstandard_func_mode(ModuleInfo,
+            Insts, Expansions)
+    ).
 
-:- pred inst_contains_any_2(module_info::in, (mer_inst)::in,
-    set(inst_name)::in) is semidet.
+:- func bound_inst_list_contains_nonstandard_func_mode(module_info,
+    list(bound_inst), set(inst_name)) = bool.
 
-inst_contains_any_2(_ModuleInfo, any(_, _), _Expansions).
-
-inst_contains_any_2(ModuleInfo, bound(_, BoundInsts), Expansions) :-
-    list.member(bound_functor(_, Insts), BoundInsts),
-    list.member(Inst, Insts),
-    inst_contains_any_2(ModuleInfo, Inst, Expansions).
-
-inst_contains_any_2(_ModuleInfo, inst_var(_), _Expansions) :-
-    unexpected($module, $pred, "uninstantiated inst parameter").
-
-inst_contains_any_2(ModuleInfo, defined_inst(InstName), Expansions0) :-
-    \+ set.member(InstName, Expansions0),
-    Expansions = set.insert(Expansions0, InstName),
-    inst_lookup(ModuleInfo, InstName, Inst),
-    inst_contains_any_2(ModuleInfo, Inst, Expansions).
-
-%-----------------------------------------------------------------------------%
-
-var_inst_contains_any(ModuleInfo, Instmap, Var) :-
-    instmap_lookup_var(Instmap, Var, Inst),
-    inst_contains_any(ModuleInfo, Inst).
+bound_inst_list_contains_nonstandard_func_mode(_ModuleInfo, [], _Expansions)
+        = no.
+bound_inst_list_contains_nonstandard_func_mode(ModuleInfo,
+        [BoundInst | BoundInsts], Expansions) = ContainsNonstd :-
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    HeadContainsNonstd = inst_list_contains_nonstandard_func_mode(ModuleInfo,
+        ArgInsts, Expansions),
+    (
+        HeadContainsNonstd = yes,
+        ContainsNonstd = yes
+    ;
+        HeadContainsNonstd = no,
+        ContainsNonstd = bound_inst_list_contains_nonstandard_func_mode(
+            ModuleInfo, BoundInsts, Expansions)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1832,6 +1866,87 @@ pred_inst_info_standard_func_mode(Arity) = PredInstInfo :-
     ArgModes = list.duplicate(Arity - 1, InMode) ++ [OutMode],
     PredInstInfo = pred_inst_info(pf_function, ArgModes, arg_reg_types_unset,
         detism_det).
+
+%-----------------------------------------------------------------------------%
+
+inst_contains_any(ModuleInfo, Inst) :-
+    set.init(Expansions),
+    inst_contains_any_2(ModuleInfo, Inst, Expansions) = yes.
+
+:- func inst_contains_any_2(module_info, mer_inst, set(inst_name)) = bool.
+
+inst_contains_any_2(ModuleInfo, Inst, !.Expansions) = ContainsAny :-
+    (
+        Inst = any(_, _),
+        ContainsAny = yes
+    ;
+        Inst = bound(_, BoundInsts),
+        ContainsAny = bound_inst_list_contains_any(ModuleInfo, BoundInsts,
+            !.Expansions)
+    ;
+        Inst = inst_var(_),
+        unexpected($module, $pred, "uninstantiated inst parameter")
+    ;
+        Inst = defined_inst(InstName),
+        ( set.member(InstName, !.Expansions) ->
+            ContainsAny = no
+        ;
+            set.insert(InstName, !Expansions),
+            inst_lookup(ModuleInfo, InstName, SubInst),
+            ContainsAny =
+                inst_contains_any_2(ModuleInfo, SubInst, !.Expansions)
+        )
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        % ZZZ We used to fail for this case (the equivalent of returning `no').
+        ContainsAny = inst_contains_any_2(ModuleInfo, SubInst, !.Expansions)
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ; Inst = not_reached
+        ; Inst = ground(_, _)
+        ; Inst = abstract_inst(_, _)
+        ),
+        ContainsAny = no
+    ).
+
+:- func inst_list_contains_any(module_info, list(mer_inst), set(inst_name))
+    = bool.
+
+inst_list_contains_any(_ModuleInfo, [], _Expansions) = no.
+inst_list_contains_any(ModuleInfo, [Inst | Insts], Expansions) = ContainsAny :-
+    HeadContainsAny = inst_contains_any_2(ModuleInfo, Inst, Expansions),
+    (
+        HeadContainsAny = yes,
+        ContainsAny = yes
+    ;
+        HeadContainsAny = no,
+        ContainsAny = inst_list_contains_any(ModuleInfo, Insts, Expansions)
+    ).
+
+:- func bound_inst_list_contains_any(module_info, list(bound_inst),
+    set(inst_name)) = bool.
+
+bound_inst_list_contains_any(_ModuleInfo, [], _Expansions) = no.
+bound_inst_list_contains_any(ModuleInfo, [BoundInst | BoundInsts],
+        Expansions) = ContainsAny :-
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    HeadContainsAny =
+        inst_list_contains_any(ModuleInfo, ArgInsts, Expansions),
+    (
+        HeadContainsAny = yes,
+        ContainsAny = yes
+    ;
+        HeadContainsAny = no,
+        ContainsAny = bound_inst_list_contains_any(ModuleInfo, BoundInsts,
+            Expansions)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+var_inst_contains_any(ModuleInfo, Instmap, Var) :-
+    instmap_lookup_var(Instmap, Var, Inst),
+    inst_contains_any(ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
 
