@@ -159,135 +159,134 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Dependent: on V_22, V_23, V_27, V_28
       NumCalls: 1
       SeqTime: 233,601.00
-      ParTime: 218,219.00
+      ParTime: 218,220.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 400.00
       WaitsCost: 800.00
       ParOverheads total: 1,700.00
       Speedup: 1.0705
-      Time saving: 15,382.00
-      First conj dead time: 198,533.00
-      Future dead time: 18,483.00
+      Time saving: 15,381.00
+      First conj dead time: 198,535.00
+      Future dead time: 18,481.00
       Total dead time: 217,016.00
 
       Goals before:
         % conjunction: c14;s1-na;
-        % Cost: 0.00
+        % Cost: 1.00
 
+        % c14;s1-na;c1;
+        % det
+        % cost: 1.00 (not above threshold)
+        scope (
+          % conjunction: c14;s1-na;c1;q;
+          % conjunction: det
+          % conjunction: cost: 1.00 (not above threshold)
+
+          % c14;s1-na;c1;q;c1;
+          % det
+          % cost: 0.00 (not above threshold)
+          builtin private_builtin.trace_get_io_state(V_14)
+          ,
+          % c14;s1-na;c1;q;c2;
+          % det
+          % cost: 0.00 (not above threshold)
+          V_15 <= "% Checking typeclass instances...
+"
+          ,
+          % c14;s1-na;c1;q;c3;
+          % det
+          % cost: 1.00 (not above threshold)
+          libs.file_util.maybe_write_string(Verbose, V_15, V_14, V_16)
+          ,
+          % c14;s1-na;c1;q;c4;
+          % det
+          % cost: 0.00 (not above threshold)
+          builtin private_builtin.trace_set_io_state(V_16)
+        )
 
       Parallel conjunction:
         (
-          % conjunction: c14;s1-na;c1;c1;
-          % Cost: 18,486.00
+          % conjunction: c14;s1-na;c2;c1;
+          % Cost: 18,484.00
 
-          % c14;s1-na;c1;c1;c1;
-          % det
-          % cost: 1.00 (not above threshold)
-          scope (
-            % conjunction: c14;s1-na;c1;c1;c1;q;
-            % conjunction: det
-            % conjunction: cost: 1.00 (not above threshold)
-
-            % c14;s1-na;c1;c1;c1;q;c1;
-            % det
-            % cost: 0.00 (not above threshold)
-            builtin private_builtin.trace_get_io_state(V_14)
-            ,
-            % c14;s1-na;c1;c1;c1;q;c2;
-            % det
-            % cost: 0.00 (not above threshold)
-            V_15 <= "% Checking typeclass instances...
-"
-            ,
-            % c14;s1-na;c1;c1;c1;q;c3;
-            % det
-            % cost: 1.00 (not above threshold)
-            libs.file_util.maybe_write_string(Verbose, V_15, V_14, V_16)
-            ,
-            % c14;s1-na;c1;c1;c1;q;c4;
-            % det
-            % cost: 0.00 (not above threshold)
-            builtin private_builtin.trace_set_io_state(V_16)
-          )
-          ,
-          % c14;s1-na;c1;c1;c2;
+          % c14;s1-na;c2;c1;c1;
           % det
           % cost: 12,120.00 (above threshold)
           check_hlds.check_typeclass.check_instance_decls(V_3, V_17, V_5, V_6, V_13, V_18)
           ,
-          % c14;s1-na;c1;c1;c3;
+          % c14;s1-na;c2;c1;c2;
           % det
           % cost: 1.00 (not above threshold)
           scope (
-            % conjunction: c14;s1-na;c1;c1;c3;q;
+            % conjunction: c14;s1-na;c2;c1;c2;q;
             % conjunction: det
             % conjunction: cost: 1.00 (not above threshold)
 
-            % c14;s1-na;c1;c1;c3;q;c1;
+            % c14;s1-na;c2;c1;c2;q;c1;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_get_io_state(V_19)
             ,
-            % c14;s1-na;c1;c1;c3;q;c2;
+            % c14;s1-na;c2;c1;c2;q;c2;
             % det
             % cost: 0.00 (not above threshold)
             V_20 <= "% Checking for cyclic classes...
 "
             ,
-            % c14;s1-na;c1;c1;c3;q;c3;
+            % c14;s1-na;c2;c1;c2;q;c3;
             % det
             % cost: 1.00 (not above threshold)
             libs.file_util.maybe_write_string(Verbose, V_20, V_19, V_21)
             ,
-            % c14;s1-na;c1;c1;c3;q;c4;
+            % c14;s1-na;c2;c1;c2;q;c4;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_set_io_state(V_21)
           )
           ,
-          % c14;s1-na;c1;c1;c4;
+          % c14;s1-na;c2;c1;c3;
           % det
           % cost: 6,363.00 (above threshold)
           % Productions:
           %     V_23: 6,361.00
           %     V_22: 6,362.00
           check_hlds.check_typeclass.check_for_cyclic_classes(V_17, V_22, V_18, V_23)
-          ,
-          % c14;s1-na;c1;c1;c5;
+        &
+          % conjunction: c14;s1-na;c2;c2;
+          % Cost: 297.00
+
+          % c14;s1-na;c2;c2;c1;
           % det
           % cost: 1.00 (not above threshold)
           scope (
-            % conjunction: c14;s1-na;c1;c1;c5;q;
+            % conjunction: c14;s1-na;c2;c2;c1;q;
             % conjunction: det
             % conjunction: cost: 1.00 (not above threshold)
 
-            % c14;s1-na;c1;c1;c5;q;c1;
+            % c14;s1-na;c2;c2;c1;q;c1;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_get_io_state(V_24)
             ,
-            % c14;s1-na;c1;c1;c5;q;c2;
+            % c14;s1-na;c2;c2;c1;q;c2;
             % det
             % cost: 0.00 (not above threshold)
             V_25 <= "% Checking for missing concrete instances...
 "
             ,
-            % c14;s1-na;c1;c1;c5;q;c3;
+            % c14;s1-na;c2;c2;c1;q;c3;
             % det
             % cost: 1.00 (not above threshold)
             libs.file_util.maybe_write_string(Verbose, V_25, V_24, V_26)
             ,
-            % c14;s1-na;c1;c1;c5;q;c4;
+            % c14;s1-na;c2;c2;c1;q;c4;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_set_io_state(V_26)
           )
-        &
-          % conjunction: c14;s1-na;c1;c2;
-          % Cost: 296.00
-
-          % c14;s1-na;c1;c2;c1;
+          ,
+          % c14;s1-na;c2;c2;c2;
           % det
           % cost: 295.00 (not above threshold)
           % Productions:
@@ -298,40 +297,40 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_22: 1.00
           check_hlds.check_typeclass.check_for_missing_concrete_instances(V_22, V_27, V_23, V_28)
           ,
-          % c14;s1-na;c1;c2;c2;
+          % c14;s1-na;c2;c2;c3;
           % det
           % cost: 1.00 (not above threshold)
           scope (
-            % conjunction: c14;s1-na;c1;c2;c2;q;
+            % conjunction: c14;s1-na;c2;c2;c3;q;
             % conjunction: det
             % conjunction: cost: 1.00 (not above threshold)
 
-            % c14;s1-na;c1;c2;c2;q;c1;
+            % c14;s1-na;c2;c2;c3;q;c1;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_get_io_state(V_29)
             ,
-            % c14;s1-na;c1;c2;c2;q;c2;
+            % c14;s1-na;c2;c2;c3;q;c2;
             % det
             % cost: 0.00 (not above threshold)
             V_30 <= "% Checking functional dependencies on instances...
 "
             ,
-            % c14;s1-na;c1;c2;c2;q;c3;
+            % c14;s1-na;c2;c2;c3;q;c3;
             % det
             % cost: 1.00 (not above threshold)
             libs.file_util.maybe_write_string(Verbose, V_30, V_29, V_31)
             ,
-            % c14;s1-na;c1;c2;c2;q;c4;
+            % c14;s1-na;c2;c2;c3;q;c4;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_set_io_state(V_31)
           )
         &
-          % conjunction: c14;s1-na;c1;c3;
+          % conjunction: c14;s1-na;c2;c3;
           % Cost: 214,819.00
 
-          % c14;s1-na;c1;c3;c1;
+          % c14;s1-na;c2;c3;c1;
           % det
           % cost: 2,601.00 (above threshold)
           % Consumptions:
@@ -339,37 +338,37 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_27: 1.00
           check_hlds.check_typeclass.check_functional_dependencies(V_27, V_32, V_28, V_33)
           ,
-          % c14;s1-na;c1;c3;c2;
+          % c14;s1-na;c2;c3;c2;
           % det
           % cost: 1.00 (not above threshold)
           scope (
-            % conjunction: c14;s1-na;c1;c3;c2;q;
+            % conjunction: c14;s1-na;c2;c3;c2;q;
             % conjunction: det
             % conjunction: cost: 1.00 (not above threshold)
 
-            % c14;s1-na;c1;c3;c2;q;c1;
+            % c14;s1-na;c2;c3;c2;q;c1;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_get_io_state(V_34)
             ,
-            % c14;s1-na;c1;c3;c2;q;c2;
+            % c14;s1-na;c2;c3;c2;q;c2;
             % det
             % cost: 0.00 (not above threshold)
             V_35 <= "% Checking typeclass constraints...
 "
             ,
-            % c14;s1-na;c1;c3;c2;q;c3;
+            % c14;s1-na;c2;c3;c2;q;c3;
             % det
             % cost: 1.00 (not above threshold)
             libs.file_util.maybe_write_string(Verbose, V_35, V_34, V_36)
             ,
-            % c14;s1-na;c1;c3;c2;q;c4;
+            % c14;s1-na;c2;c3;c2;q;c4;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_set_io_state(V_36)
           )
           ,
-          % c14;s1-na;c1;c3;c3;
+          % c14;s1-na;c2;c3;c3;
           % det
           % cost: 212,217.00 (above threshold)
           check_hlds.check_typeclass.check_typeclass_constraints(V_32, V_4, V_33, V_8)
@@ -382,65 +381,64 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Path: 
       Dependent: on Debug, DeclaredProcs, Globals, UndeclaredProcs, V_15, V_21, Verbose
       NumCalls: 1
-      SeqTime: 1,099,318.00
-      ParTime: 733,209.00
+      SeqTime: 1,099,321.00
+      ParTime: 733,312.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 700.00
       WaitsCost: 1,600.00
       ParOverheads total: 2,800.00
-      Speedup: 1.4993
-      Time saving: 366,109.00
-      First conj dead time: 236,150.00
-      Future dead time: 621,509.00
-      Total dead time: 857,659.00
+      Speedup: 1.4991
+      Time saving: 366,009.00
+      First conj dead time: 236,360.00
+      Future dead time: 621,400.00
+      Total dead time: 857,760.00
 
       Goals before:
         % conjunction: 
-        % Cost: 0.00
+        % Cost: 4.00
 
+        % c1;
+        % det
+        % cost: 2.00 (not above threshold)
+        hlds.hlds_module.module_info_get_valid_predids(PredIds, V_11, V_13)
+        ,
+        % c2;
+        % det
+        % cost: 2.00 (not above threshold)
+        hlds.hlds_module.module_info_get_preds(V_13, PredTable)
+        ,
+        % c3;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_36 <= []
 
       Parallel conjunction:
         (
-          % conjunction: c1;c1;
-          % Cost: 495,559.00
+          % conjunction: c4;c1;
+          % Cost: 495,545.00
 
-          % c1;c1;c1;
-          % det
-          % cost: 2.00 (not above threshold)
-          hlds.hlds_module.module_info_get_valid_predids(PredIds, V_11, V_13)
-          ,
-          % c1;c1;c2;
-          % det
-          % cost: 2.00 (not above threshold)
-          hlds.hlds_module.module_info_get_preds(V_13, PredTable)
-          ,
-          % c1;c1;c3;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_36 <= []
-          ,
-          % c1;c1;c4;
+          % c4;c1;c1;
           % det
           % cost: 123,776.00 (above threshold)
           check_hlds.det_analysis.get_all_pred_procs_2(PredTable, PredIds, V_36, PredProcs)
           ,
-          % c1;c1;c5;
+          % c4;c1;c2;
           % det
           % cost: 0.00 (not above threshold)
           V_37 <= []
           ,
-          % c1;c1;c6;
+          % c4;c1;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_38 <= []
           ,
-          % c1;c1;c7;
+          % c4;c1;c4;
           % det
           % cost: 0.00 (not above threshold)
           V_39 <= []
           ,
-          % c1;c1;c8;
+          % c4;c1;c5;
           % det
           % cost: 113,399.00 (above threshold)
           % Productions:
@@ -448,29 +446,29 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     DeclaredProcs: 3,283.00
           check_hlds.det_analysis.segregate_procs_2(V_13, PredProcs, V_37, DeclaredProcs, V_38, UndeclaredProcs, V_39, NoInferProcs)
           ,
-          % c1;c1;c9;
+          % c4;c1;c6;
           % det
           % cost: 0.00 (not above threshold)
           V_14 <= $closure_cons
           ,
-          % c1;c1;c10;
+          % c4;c1;c7;
           % det
           % cost: 0.00 (not above threshold)
           V_31 <= $type_ctor_info_const
           ,
-          % c1;c1;c11;
+          % c4;c1;c8;
           % det
           % cost: 0.00 (not above threshold)
           V_32 <= $type_ctor_info_const
           ,
-          % c1;c1;c12;
+          % c4;c1;c9;
           % det
           % cost: 258,369.00 (above threshold)
           % Productions:
           %     V_15: 258,368.00
           list.foldl(V_31, V_32, V_14, NoInferProcs, V_13, V_15)
           ,
-          % c1;c1;c13;
+          % c4;c1;c10;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
@@ -478,13 +476,16 @@ Feedback report for ../batch/profile.mercury_compile.01:
           % Consumptions:
           %     V_15: 0.00
           hlds.hlds_module.module_info_get_globals(V_15, Globals)
-          ,
-          % c1;c1;c14;
+        &
+          % conjunction: c4;c2;
+          % Cost: 20.00
+
+          % c4;c2;c1;
           % det
           % cost: 0.00 (not above threshold)
           V_16 <= verbose
           ,
-          % c1;c1;c15;
+          % c4;c2;c2;
           % det
           % cost: 10.00 (not above threshold)
           % Productions:
@@ -492,16 +493,13 @@ Feedback report for ../batch/profile.mercury_compile.01:
           % Consumptions:
           %     Globals: 0.00
           libs.globals.lookup_bool_option(Globals, V_16, Verbose)
-        &
-          % conjunction: c1;c2;
-          % Cost: 11.00
-
-          % c1;c2;c1;
+          ,
+          % c4;c2;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_17 <= debug_det
           ,
-          % c1;c2;c2;
+          % c4;c2;c4;
           % det
           % cost: 10.00 (not above threshold)
           % Productions:
@@ -510,7 +508,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     Globals: 0.00
           libs.globals.lookup_bool_option(Globals, V_17, Debug)
           ,
-          % c1;c2;c3;
+          % c4;c2;c5;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
@@ -523,16 +521,16 @@ Feedback report for ../batch/profile.mercury_compile.01:
           switch_can_not_fail_rep switch on UndeclaredProcs
           (
               % case []/0
-              % conjunction: c1;c2;c3;s1-na;
+              % conjunction: c4;c2;c5;s1-na;
               % conjunction: det
               % conjunction: cost: 0.00 (not above threshold)
 
-              % c1;c2;c3;s1-na;c1;
+              % c4;c2;c5;s1-na;c1;
               % det
               % cost: 0.00 (not above threshold)
               InferenceSpecs <= []
               ,
-              % c1;c2;c3;s1-na;c2;
+              % c4;c2;c5;s1-na;c2;
               % det
               % cost: 0.00 (not above threshold)
               % Productions:
@@ -542,109 +540,112 @@ Feedback report for ../batch/profile.mercury_compile.01:
               V_21 := V_15
             ;
               % case [|]/2
-              % conjunction: c1;c2;c3;s2-na;
+              % conjunction: c4;c2;c5;s2-na;
               % conjunction: det
               % conjunction: cost: 0.00 (not above threshold)
 
-              % c1;c2;c3;s2-na;c1;
+              % c4;c2;c5;s2-na;c1;
               % det
               % cost: 0.00 (not above threshold)
               scope (
-                % conjunction: c1;c2;c3;s2-na;c1;q;
+                % conjunction: c4;c2;c5;s2-na;c1;q;
                 % conjunction: det
                 % conjunction: cost: 0.00 (not above threshold)
 
-                % c1;c2;c3;s2-na;c1;q;c1;
+                % c4;c2;c5;s2-na;c1;q;c1;
                 % det
                 % cost: 0.00 (not above threshold)
                 builtin private_builtin.trace_get_io_state(V_18)
                 ,
-                % c1;c2;c3;s2-na;c1;q;c2;
+                % c4;c2;c5;s2-na;c1;q;c2;
                 % det
                 % cost: 0.00 (not above threshold)
                 V_19 <= "% Doing determinism inference...
 "
                 ,
-                % c1;c2;c3;s2-na;c1;q;c3;
+                % c4;c2;c5;s2-na;c1;q;c3;
                 % det
                 % cost: 0.00 (not above threshold)
                 libs.file_util.maybe_write_string(Verbose, V_19, V_18, V_20)
                 ,
-                % c1;c2;c3;s2-na;c1;q;c4;
+                % c4;c2;c5;s2-na;c1;q;c4;
                 % det
                 % cost: 0.00 (not above threshold)
                 builtin private_builtin.trace_set_io_state(V_20)
               )
               ,
-              % c1;c2;c3;s2-na;c2;
+              % c4;c2;c5;s2-na;c2;
               % det
               % cost: 0.00 (not above threshold)
               check_hlds.det_analysis.global_inference_pass(V_15, V_21, UndeclaredProcs, Debug, InferenceSpecs)
               ,
-              % c1;c2;c3;s2-na;c3;
+              % c4;c2;c5;s2-na;c3;
               % det
               % cost: 0.00 (not above threshold)
               scope (
-                % conjunction: c1;c2;c3;s2-na;c3;q;
+                % conjunction: c4;c2;c5;s2-na;c3;q;
                 % conjunction: det
                 % conjunction: cost: 0.00 (not above threshold)
 
-                % c1;c2;c3;s2-na;c3;q;c1;
+                % c4;c2;c5;s2-na;c3;q;c1;
                 % det
                 % cost: 0.00 (not above threshold)
                 builtin private_builtin.trace_get_io_state(V_22)
                 ,
-                % c1;c2;c3;s2-na;c3;q;c2;
+                % c4;c2;c5;s2-na;c3;q;c2;
                 % det
                 % cost: 0.00 (not above threshold)
                 V_23 <= "% done.
 "
                 ,
-                % c1;c2;c3;s2-na;c3;q;c3;
+                % c4;c2;c5;s2-na;c3;q;c3;
                 % det
                 % cost: 0.00 (not above threshold)
                 libs.file_util.maybe_write_string(Verbose, V_23, V_22, V_24)
                 ,
-                % c1;c2;c3;s2-na;c3;q;c4;
+                % c4;c2;c5;s2-na;c3;q;c4;
                 % det
                 % cost: 0.00 (not above threshold)
                 builtin private_builtin.trace_set_io_state(V_24)
               )
           )
-          ,
-          % c1;c2;c4;
+        &
+          % conjunction: c4;c3;
+          % Cost: 603,749.00
+
+          % c4;c3;c1;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
           %     Verbose: 0.00
           scope (
-            % conjunction: c1;c2;c4;q;
+            % conjunction: c4;c3;c1;q;
             % conjunction: det
             % conjunction: cost: 1.00 (not above threshold)
 
-            % c1;c2;c4;q;c1;
+            % c4;c3;c1;q;c1;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_get_io_state(V_25)
             ,
-            % c1;c2;c4;q;c2;
+            % c4;c3;c1;q;c2;
             % det
             % cost: 0.00 (not above threshold)
             V_26 <= "% Doing determinism checking...
 "
             ,
-            % c1;c2;c4;q;c3;
+            % c4;c3;c1;q;c3;
             % det
             % cost: 1.00 (not above threshold)
             libs.file_util.maybe_write_string(Verbose, V_26, V_25, V_27)
             ,
-            % c1;c2;c4;q;c4;
+            % c4;c3;c1;q;c4;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_set_io_state(V_27)
           )
-        &
-          % c1;c3;
+          ,
+          % c4;c3;c2;
           % det
           % cost: 603,748.00 (above threshold)
           % Consumptions:
@@ -656,6 +657,45 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_33 <= $type_ctor_info_const
+        ,
+        % c6;
+        % det
+        % cost: 2.00 (not above threshold)
+        list.++(V_33, InferenceSpecs, FinalSpecs, Specs)
+        ,
+        % c7;
+        % det
+        % cost: 1.00 (not above threshold)
+        scope (
+          % conjunction: c7;q;
+          % conjunction: det
+          % conjunction: cost: 1.00 (not above threshold)
+
+          % c7;q;c1;
+          % det
+          % cost: 0.00 (not above threshold)
+          builtin private_builtin.trace_get_io_state(V_28)
+          ,
+          % c7;q;c2;
+          % det
+          % cost: 0.00 (not above threshold)
+          V_29 <= "% done.
+"
+          ,
+          % c7;q;c3;
+          % det
+          % cost: 1.00 (not above threshold)
+          libs.file_util.maybe_write_string(Verbose, V_29, V_28, V_30)
+          ,
+          % c7;q;c4;
+          % det
+          % cost: 0.00 (not above threshold)
+          builtin private_builtin.trace_set_io_state(V_30)
+        )
 
     pred check_hlds.det_analysis.global_final_pass/6-0
 
@@ -679,23 +719,19 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % conjunction: 
         % Cost: 0.00
 
+        % c1;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_9 <= []
+        ,
+        % c2;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_11 <= unchanged
 
       Parallel conjunction:
         (
-          % conjunction: c1;c1;
-          % Cost: 594,286.00
-
-          % c1;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_9 <= []
-          ,
-          % c1;c1;c2;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_11 <= unchanged
-          ,
-          % c1;c1;c3;
+          % c3;c1;
           % det
           % cost: 594,286.00 (above threshold)
           % Productions:
@@ -703,20 +739,20 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_8: 165.00
           check_hlds.det_analysis.global_inference_single_pass(DeclaredProcs, Debug, V_5, V_8, V_9, V_10, V_11, V_4)
         &
-          % conjunction: c1;c2;
+          % conjunction: c3;c2;
           % Cost: 9,461.00
 
-          % c1;c2;c1;
+          % c3;c2;c1;
           % det
           % cost: 0.00 (not above threshold)
           V_13 <= $type_ctor_info_const
           ,
-          % c1;c2;c2;
+          % c3;c2;c2;
           % det
           % cost: 2.00 (not above threshold)
           list.++(V_13, UndeclaredProcs, DeclaredProcs, V_12)
           ,
-          % c1;c2;c3;
+          % c3;c2;c3;
           % det
           % cost: 9,459.00 (above threshold)
           % Consumptions:
@@ -914,43 +950,42 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % conjunction: c6;s2-na;
         % Cost: 0.00
 
+        % c6;s2-na;c1;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_21 <= include_detism_on_modes
 
       Parallel conjunction:
         (
-          % conjunction: c6;s2-na;c1;c1;
+          % conjunction: c6;s2-na;c2;c1;
           % Cost: 97,345.00
 
-          % c6;s2-na;c1;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_21 <= include_detism_on_modes
-          ,
-          % c6;s2-na;c1;c1;c2;
+          % c6;s2-na;c2;c1;c1;
           % det
           % cost: 97,343.00 (above threshold)
           check_hlds.mode_errors.report_mode_inference_messages(V_16, V_21, PredIds, InferenceSpecs)
           ,
-          % c6;s2-na;c1;c1;c3;
+          % c6;s2-na;c2;c1;c2;
           % det
           % cost: 0.00 (not above threshold)
           V_24 <= $type_ctor_info_const
           ,
-          % c6;s2-na;c1;c1;c4;
+          % c6;s2-na;c2;c1;c3;
           % det
           % cost: 2.00 (not above threshold)
           % Productions:
           %     V_22: 1.00
           list.++(V_24, InferenceSpecs, V_17, V_22)
         &
-          % conjunction: c6;s2-na;c1;c2;
+          % conjunction: c6;s2-na;c2;c2;
           % Cost: 273,052.00
 
-          % c6;s2-na;c1;c2;c1;
+          % c6;s2-na;c2;c2;c1;
           % det
           % cost: 2.00 (not above threshold)
           hlds.hlds_module.module_info_get_valid_predids(PredIds, V_16, V_12)
           ,
-          % c6;s2-na;c1;c2;c2;
+          % c6;s2-na;c2;c2;c2;
           % det
           % cost: 273,050.00 (above threshold)
           % Consumptions:
@@ -959,14 +994,18 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c6;s2-na;c3;
+        % det
+        % cost: 0.00 (not above threshold)
+        SafeToContinue := SafeToContinue0
 
     pred check_hlds.switch_detection.detect_switches_in_module/2-0
 
       Path: 
       Dependent: on PredIdsInfos, V_12, ValidPredIdSet
       NumCalls: 1
-      SeqTime: 672,313.00
-      ParTime: 665,312.00
+      SeqTime: 672,315.00
+      ParTime: 665,314.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 300.00
@@ -975,8 +1014,8 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Speedup: 1.0105
       Time saving: 7,001.00
       First conj dead time: 551,667.00
-      Future dead time: 663,301.75
-      Total dead time: 1,214,968.75
+      Future dead time: 663,401.75
+      Total dead time: 1,215,068.75
 
       Goals before:
         % conjunction: 
@@ -1047,14 +1086,18 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c5;
+        % det
+        % cost: 2.00 (not above threshold)
+        hlds.hlds_module.module_info_set_preds(PredMap, V_10, V_9)
 
     pred check_hlds.typecheck.typecheck_module/4-0
 
       Path: 
       Dependent: on FinalValidPredIdSet, OrigValidPredIdSet, PredMap, V_15, V_18
       NumCalls: 1
-      SeqTime: 1,370,156.00
-      ParTime: 864,669.00
+      SeqTime: 1,370,158.00
+      ParTime: 864,671.00
       SparkCost: 300.00
       BarrierCost: 400.00
       SignalsCost: 500.00
@@ -1063,8 +1106,8 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Speedup: 1.5846
       Time saving: 505,487.00
       First conj dead time: 344,749.00
-      Future dead time: 1,380,259.00
-      Total dead time: 1,725,008.00
+      Future dead time: 1,380,359.00
+      Total dead time: 1,725,108.00
 
       Goals before:
         % conjunction: 
@@ -1089,54 +1132,54 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % det
         % cost: 2.00 (not above threshold)
         hlds.hlds_module.module_info_get_valid_predids(OrigValidPredIds, V_14, V_17)
+        ,
+        % c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_21 <= $type_ctor_info_const
 
       Parallel conjunction:
         (
-          % conjunction: c5;c1;
+          % conjunction: c6;c1;
           % Cost: 518,706.00
 
-          % c5;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_21 <= $type_ctor_info_const
-          ,
-          % c5;c1;c2;
+          % c6;c1;c1;
           % det
           % cost: 112,478.00 (above threshold)
           % Productions:
           %     OrigValidPredIdSet: 112,477.00
           set_tree234.list_to_set(V_21, OrigValidPredIds, OrigValidPredIdSet)
           ,
-          % c5;c1;c3;
+          % c6;c1;c2;
           % det
           % cost: 2.00 (not above threshold)
           hlds.hlds_module.module_info_get_preds(V_17, PredMap0)
           ,
-          % c5;c1;c4;
+          % c6;c1;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_22 <= $type_ctor_info_const
           ,
-          % c5;c1;c5;
+          % c6;c1;c4;
           % det
           % cost: 5,369.00 (above threshold)
           map.to_assoc_list(V_21, V_22, PredMap0, PredIdsInfos0)
           ,
-          % c5;c1;c6;
+          % c6;c1;c5;
           % det
           % cost: 395,813.00 (above threshold)
           % Consumptions:
           %     OrigValidPredIdSet: 1.00
           check_hlds.typecheck.prepare_for_typecheck(V_17, OrigValidPredIdSet, PredIdsInfos0, PredIdsInfos)
           ,
-          % c5;c1;c7;
+          % c6;c1;c6;
           % det
           % cost: 5,044.00 (above threshold)
           % Productions:
           %     PredMap: 5,043.00
           map.from_sorted_assoc_list(V_21, V_22, PredIdsInfos, PredMap)
         &
-          % c5;c2;
+          % c6;c2;
           % det
           % cost: 2.00 (not above threshold)
           % Productions:
@@ -1145,15 +1188,15 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     PredMap: 0.00
           hlds.hlds_module.module_info_set_preds(PredMap, V_17, V_18)
         &
-          % conjunction: c5;c3;
+          % conjunction: c6;c3;
           % Cost: 754,131.00
 
-          % c5;c3;c1;
+          % c6;c3;c1;
           % det
           % cost: 0.00 (not above threshold)
           V_19 <= 1
           ,
-          % c5;c3;c2;
+          % c6;c3;c2;
           % det
           % cost: 754,131.00 (above threshold)
           % Productions:
@@ -1164,15 +1207,15 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     OrigValidPredIdSet: 4,153.00
           check_hlds.typecheck.typecheck_to_fixpoint(V_19, MaxIterations, V_18, V_15, OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet, CheckSpecs, ExceededIterationLimit)
         &
-          % conjunction: c5;c4;
+          % conjunction: c6;c4;
           % Cost: 97,303.00
 
-          % c5;c4;c1;
+          % c6;c4;c1;
           % det
           % cost: 0.00 (not above threshold)
           V_20 <= []
           ,
-          % c5;c4;c2;
+          % c6;c4;c2;
           % det
           % cost: 97,303.00 (above threshold)
           % Consumptions:
@@ -1182,6 +1225,15 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c7;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_23 <= $type_ctor_info_const
+        ,
+        % c8;
+        % det
+        % cost: 2.00 (not above threshold)
+        list.++(V_23, InferSpecs, CheckSpecs, Specs)
 
     pred check_hlds.typecheck.typecheck_module_one_iteration/10-0
 
@@ -1306,92 +1358,92 @@ Feedback report for ../batch/profile.mercury_compile.01:
     pred hlds.make_hlds.make_hlds_passes.do_parse_tree_to_hlds/11-0
 
       Path: 
-      Dependent: on InvalidTypes1, Pass2Specs, Statistics, V_26, V_27, V_28, V_29, V_30, V_31, V_39, V_40, V_41, V_49, V_52, V_53, V_63
+      Dependent: on InvalidTypes1, Pass2Specs, Statistics, V_26, V_27, V_28, V_29, V_30, V_31, V_39, V_40, V_41, V_48, V_49, V_53, V_63
       NumCalls: 1
-      SeqTime: 5,114,523.00
-      ParTime: 2,688,829.36
+      SeqTime: 5,114,530.00
+      ParTime: 2,688,837.36
       SparkCost: 600.00
       BarrierCost: 700.00
       SignalsCost: 1,600.00
       WaitsCost: 3,400.00
       ParOverheads total: 6,300.00
       Speedup: 1.9021
-      Time saving: 2,425,693.64
-      First conj dead time: 2,674,357.36
-      Future dead time: 8,036,791.27
-      Total dead time: 10,711,148.64
+      Time saving: 2,425,692.64
+      First conj dead time: 2,674,358.36
+      Future dead time: 8,036,789.27
+      Total dead time: 10,711,147.64
 
       Goals before:
         % conjunction: 
-        % Cost: 0.00
+        % Cost: 1.00
 
         % c1;
         % det
         % cost: 0.00 (not above threshold)
         V_1 => unit_module(Name, Items)
+        ,
+        % c2;
+        % det
+        % cost: 1.00 (not above threshold)
+        parse_tree.module_qual.mq_info_get_partial_qualifier_info(MQInfo0, PQInfo)
+        ,
+        % c3;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_24 <= no
 
       Parallel conjunction:
         (
-          % conjunction: c2;c1;
-          % Cost: 13,072.00
+          % conjunction: c4;c1;
+          % Cost: 13,071.00
 
-          % c2;c1;c1;
-          % det
-          % cost: 1.00 (not above threshold)
-          parse_tree.module_qual.mq_info_get_partial_qualifier_info(MQInfo0, PQInfo)
-          ,
-          % c2;c1;c2;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_24 <= no
-          ,
-          % c2;c1;c3;
+          % c4;c1;c1;
           % det
           % cost: 13,070.00 (above threshold)
           hlds.hlds_module.module_info_init(Name, DumpBaseFileName, Items, Globals, PQInfo, V_24, V_25)
           ,
-          % c2;c1;c4;
+          % c4;c1;c2;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
           %     V_26: 0.00
           hlds.hlds_module.module_info_set_used_modules(UsedModules, V_25, V_26)
           ,
-          % c2;c1;c5;
+          % c4;c1;c3;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
           %     V_27: 1.00
           V_27 <= []
           ,
-          % c2;c1;c6;
+          % c4;c1;c4;
           % det
           % cost: 0.00 (not above threshold)
           V_32 <= status_local
           ,
-          % c2;c1;c7;
+          % c4;c1;c5;
           % det
           % cost: 0.00 (not above threshold)
           V_33 <= may_be_unqualified
           ,
-          % c2;c1;c8;
+          % c4;c1;c6;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
           %     V_28: 1.00
           V_28 <= item_status(V_32, V_33)
           ,
-          % c2;c1;c9;
+          % c4;c1;c7;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
           %     V_30: 1.00
           V_30 <= no
         &
-          % conjunction: c2;c2;
+          % conjunction: c4;c2;
           % Cost: 2,322,980.00
 
-          % c2;c2;c1;
+          % c4;c2;c1;
           % det
           % cost: 2,322,969.00 (above threshold)
           % Productions:
@@ -1404,63 +1456,63 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_26: 17,073.29
           hlds.make_hlds.make_hlds_passes.add_item_list_decls_pass_1(Items, V_28, V_26, V_29, V_30, InvalidModes0, V_27, V_31)
           ,
-          % c2;c2;c2;
+          % c4;c2;c2;
           % det
           % cost: 0.00 (not above threshold)
           V_34 <= statistics
           ,
-          % c2;c2;c3;
+          % c4;c2;c3;
           % det
           % cost: 9.00 (not above threshold)
           % Productions:
           %     Statistics: 8.00
           libs.globals.lookup_bool_option(Globals, V_34, Statistics)
           ,
-          % c2;c2;c4;
+          % c4;c2;c4;
           % det
           % cost: 2.00 (not above threshold)
           % Consumptions:
           %     Statistics: 0.00
           scope (
-            % conjunction: c2;c2;c4;q;
+            % conjunction: c4;c2;c4;q;
             % conjunction: det
             % conjunction: cost: 2.00 (not above threshold)
 
-            % c2;c2;c4;q;c1;
+            % c4;c2;c4;q;c1;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_get_io_state(V_35)
             ,
-            % c2;c2;c4;q;c2;
+            % c4;c2;c4;q;c2;
             % det
             % cost: 0.00 (not above threshold)
             V_36 <= "% Processed all items in pass 1
 "
             ,
-            % c2;c2;c4;q;c3;
+            % c4;c2;c4;q;c3;
             % det
             % cost: 1.00 (not above threshold)
             libs.file_util.maybe_write_string(Statistics, V_36, V_35, V_37)
             ,
-            % c2;c2;c4;q;c4;
+            % c4;c2;c4;q;c4;
             % det
             % cost: 1.00 (not above threshold)
             libs.file_util.maybe_report_stats(Statistics, V_37, V_38)
             ,
-            % c2;c2;c4;q;c5;
+            % c4;c2;c4;q;c5;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_set_io_state(V_38)
           )
           ,
-          % c2;c2;c5;
+          % c4;c2;c5;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
           %     V_40: 1.00
           V_40 <= []
         &
-          % c2;c3;
+          % c4;c3;
           % det
           % cost: 378,098.00 (above threshold)
           % Productions:
@@ -1472,10 +1524,10 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_28: 475,221,616.26
           hlds.make_hlds.make_hlds_passes.add_item_list_decls_pass_2(Items, V_28, V_29, V_39, V_40, Pass2Specs)
         &
-          % conjunction: c2;c4;
+          % conjunction: c4;c4;
           % Cost: 2.00
 
-          % c2;c4;c1;
+          % c4;c4;c1;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
@@ -1485,7 +1537,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           switch_can_not_fail_rep switch on Pass2Specs
           (
               % case []/0
-              % c2;c4;c1;s1-na;
+              % c4;c4;c1;s1-na;
               % det
               % cost: 0.00 (not above threshold)
               % Productions:
@@ -1493,20 +1545,20 @@ Feedback report for ../batch/profile.mercury_compile.01:
               InvalidTypes1 <= no
             ;
               % case [|]/2
-              % c2;c4;c1;s2-na;
+              % c4;c4;c1;s2-na;
               % det
               % cost: 0.00 (not above threshold)
               InvalidTypes1 <= yes
           )
           ,
-          % c2;c4;c2;
+          % c4;c4;c2;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
           %     V_63: 1.00
           V_63 <= $type_ctor_info_const
           ,
-          % c2;c4;c3;
+          % c4;c4;c3;
           % det
           % cost: 2.00 (not above threshold)
           % Productions:
@@ -1517,14 +1569,12 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     Pass2Specs: 0.00
           list.++(V_63, Pass2Specs, V_31, V_41)
         &
-          % conjunction: c2;c5;
-          % Cost: 773,506.00
-
-          % c2;c5;c1;
+          % c4;c5;
           % det
           % cost: 773,504.00 (above threshold)
           % Productions:
           %     V_49: 773,503.00
+          %     V_48: 773,503.00
           % Consumptions:
           %     V_63: 245,135.00
           %     V_41: 245,135.00
@@ -1533,220 +1583,218 @@ Feedback report for ../batch/profile.mercury_compile.01:
           switch_can_not_fail_rep switch on InvalidTypes1
           (
               % case no/0
-              % conjunction: c2;c5;c1;s1-na;
+              % conjunction: c4;c5;s1-na;
               % conjunction: det
               % conjunction: cost: 773,504.00 (above threshold)
 
-              % c2;c5;c1;s1-na;c1;
+              % c4;c5;s1-na;c1;
               % det
               % cost: 1.00 (not above threshold)
               hlds.hlds_module.module_info_get_type_table(V_39, V_42)
               ,
-              % c2;c5;c1;s1-na;c2;
+              % c4;c5;s1-na;c2;
               % det
               % cost: 0.00 (not above threshold)
               % Consumptions:
               %     V_39: 0.00
               V_43 <= $closure_cons(V_39)
               ,
-              % c2;c5;c1;s1-na;c3;
+              % c4;c5;s1-na;c3;
               % det
               % cost: 0.00 (not above threshold)
               V_64 <= $type_ctor_info_const
               ,
-              % c2;c5;c1;s1-na;c4;
+              % c4;c5;s1-na;c4;
               % det
               % cost: 245,133.00 (above threshold)
               hlds.hlds_data.foldl_over_type_ctor_defns(V_64, V_43, V_42, V_42, V_44)
               ,
-              % c2;c5;c1;s1-na;c5;
+              % c4;c5;s1-na;c5;
               % det
               % cost: 1.00 (not above threshold)
               hlds.hlds_module.module_info_set_type_table(V_44, V_39, V_45)
               ,
-              % c2;c5;c1;s1-na;c6;
+              % c4;c5;s1-na;c6;
               % det
               % cost: 0.00 (not above threshold)
               V_46 <= $closure_cons
               ,
-              % c2;c5;c1;s1-na;c7;
+              % c4;c5;s1-na;c7;
               % det
               % cost: 0.00 (not above threshold)
               V_47 <= no
               ,
-              % c2;c5;c1;s1-na;c8;
+              % c4;c5;s1-na;c8;
               % det
               % cost: 0.00 (not above threshold)
               V_65 <= $type_ctor_info_const
               ,
-              % c2;c5;c1;s1-na;c9;
+              % c4;c5;s1-na;c9;
               % det
               % cost: 0.00 (not above threshold)
               V_66 <= $type_ctor_info_const
               ,
-              % c2;c5;c1;s1-na;c10;
+              % c4;c5;s1-na;c10;
               % det
               % cost: 0.00 (not above threshold)
               V_67 <= $type_ctor_info_const
               ,
-              % c2;c5;c1;s1-na;c11;
+              % c4;c5;s1-na;c11;
               % det
               % cost: 0.00 (not above threshold)
               % Consumptions:
               %     V_63: 0.00
               V_68 <= $type_info_cell_constructor(V_67, V_63)
               ,
-              % c2;c5;c1;s1-na;c12;
+              % c4;c5;s1-na;c12;
               % det
               % cost: 528,369.00 (above threshold)
               hlds.hlds_data.foldl3_over_type_ctor_defns(V_65, V_66, V_68, V_46, V_44, V_47, InvalidTypes2, V_45, V_48, V_41, V_49)
             ;
               % case yes/0
-              % conjunction: c2;c5;c1;s2-na;
+              % conjunction: c4;c5;s2-na;
               % conjunction: det
               % conjunction: cost: 0.00 (not above threshold)
 
-              % c2;c5;c1;s2-na;c1;
+              % c4;c5;s2-na;c1;
               % det
               % cost: 0.00 (not above threshold)
               InvalidTypes2 <= yes
               ,
-              % c2;c5;c1;s2-na;c2;
+              % c4;c5;s2-na;c2;
               % det
               % cost: 0.00 (not above threshold)
               V_48 := V_39
               ,
-              % c2;c5;c1;s2-na;c3;
+              % c4;c5;s2-na;c3;
               % det
               % cost: 0.00 (not above threshold)
               V_49 := V_41
           )
-          ,
-          % c2;c5;c2;
+        &
+          % conjunction: c4;c6;
+          % Cost: 24.00
+
+          % c4;c6;c1;
           % det
           % cost: 2.00 (not above threshold)
-          % Productions:
-          %     V_52: 0.00
+          % Consumptions:
+          %     V_48: 2.00
           (
-            % conjunction: c2;c5;c2;?;
+            % conjunction: c4;c6;c1;?;
             % conjunction: semidet
             % conjunction: cost: 2.00 (not above threshold)
 
-            % c2;c5;c2;?;c1;
+            % c4;c6;c1;?;c1;
             % det
             % cost: 1.00 (not above threshold)
             mdbcomp.prim_data.mercury_public_builtin_module(V_71)
             ,
-            % c2;c5;c2;?;c2;
+            % c4;c6;c1;?;c2;
             % semidet
             % cost: 1.00 (not above threshold)
             hlds.make_hlds.make_hlds_passes.__Unify__(Name, V_71)
             ,
-            % c2;c5;c2;?;c3;
+            % c4;c6;c1;?;c3;
             % semidet
             % cost: 0.00 (not above threshold)
             hlds.special_pred.compiler_generated_rtti_for_builtins(V_48)
           ->
-            % conjunction: c2;c5;c2;t;
+            % conjunction: c4;c6;c1;t;
             % conjunction: det
             % conjunction: cost: 0.00 (not above threshold)
 
-            % c2;c5;c2;t;c1;
+            % c4;c6;c1;t;c1;
             % det
             % cost: 0.00 (not above threshold)
             V_50 <= $closure_cons
             ,
-            % c2;c5;c2;t;c2;
+            % c4;c6;c1;t;c2;
             % det
             % cost: 0.00 (not above threshold)
             parse_tree.prog_type.builtin_type_ctors_with_no_hlds_type_defn(V_51)
             ,
-            % c2;c5;c2;t;c3;
+            % c4;c6;c1;t;c3;
             % det
             % cost: 0.00 (not above threshold)
             V_69 <= $type_ctor_info_const
             ,
-            % c2;c5;c2;t;c4;
+            % c4;c6;c1;t;c4;
             % det
             % cost: 0.00 (not above threshold)
             V_70 <= $type_ctor_info_const
             ,
-            % c2;c5;c2;t;c5;
+            % c4;c6;c1;t;c5;
             % det
             % cost: 0.00 (not above threshold)
             list.foldl(V_69, V_70, V_50, V_51, V_48, V_52)
           ;
-            % c2;c5;c2;e;
+            % c4;c6;c1;e;
             % det
             % cost: 0.00 (not above threshold)
-            % Productions:
-            %     V_52: 1.00
+            % Consumptions:
+            %     V_48: 0.00
             V_52 := V_48
           )
-        &
-          % conjunction: c2;c6;
-          % Cost: 22.00
-
-          % c2;c6;c1;
+          ,
+          % c4;c6;c2;
           % det
           % cost: 20.00 (not above threshold)
           % Productions:
           %     V_53: 19.00
-          % Consumptions:
-          %     V_52: 0.00
           hlds.hlds_module.module_info_optimize(V_52, V_53)
           ,
-          % c2;c6;c2;
+          % c4;c6;c3;
           % det
           % cost: 2.00 (not above threshold)
           % Consumptions:
           %     Statistics: 0.00
           scope (
-            % conjunction: c2;c6;c2;q;
+            % conjunction: c4;c6;c3;q;
             % conjunction: det
             % conjunction: cost: 2.00 (not above threshold)
 
-            % c2;c6;c2;q;c1;
+            % c4;c6;c3;q;c1;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_get_io_state(V_54)
             ,
-            % c2;c6;c2;q;c2;
+            % c4;c6;c3;q;c2;
             % det
             % cost: 0.00 (not above threshold)
             V_55 <= "% Processed all items in pass 2
 "
             ,
-            % c2;c6;c2;q;c3;
+            % c4;c6;c3;q;c3;
             % det
             % cost: 1.00 (not above threshold)
             libs.file_util.maybe_write_string(Statistics, V_55, V_54, V_56)
             ,
-            % c2;c6;c2;q;c4;
+            % c4;c6;c3;q;c4;
             % det
             % cost: 1.00 (not above threshold)
             libs.file_util.maybe_report_stats(Statistics, V_56, V_57)
             ,
-            % c2;c6;c2;q;c5;
+            % c4;c6;c3;q;c5;
             % det
             % cost: 0.00 (not above threshold)
             builtin private_builtin.trace_set_io_state(V_57)
           )
         &
-          % conjunction: c2;c7;
+          % conjunction: c4;c7;
           % Cost: 1,626,843.00
 
-          % c2;c7;c1;
+          % c4;c7;c1;
           % det
           % cost: 6.00 (not above threshold)
           hlds.make_hlds.qual_info.init_qual_info(MQInfo0, EqvMap, QualInfo0)
           ,
-          % c2;c7;c2;
+          % c4;c7;c2;
           % det
           % cost: 0.00 (not above threshold)
           V_58 <= status_local
           ,
-          % c2;c7;c3;
+          % c4;c7;c3;
           % det
           % cost: 1,626,837.00 (above threshold)
           % Consumptions:
@@ -1756,6 +1804,65 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c5;
+        % det
+        % cost: 1.00 (not above threshold)
+        scope (
+          % conjunction: c5;q;
+          % conjunction: det
+          % conjunction: cost: 1.00 (not above threshold)
+
+          % c5;q;c1;
+          % det
+          % cost: 0.00 (not above threshold)
+          builtin private_builtin.trace_get_io_state(V_59)
+          ,
+          % c5;q;c2;
+          % det
+          % cost: 0.00 (not above threshold)
+          V_60 <= "% Processed all items in pass 3
+"
+          ,
+          % c5;q;c3;
+          % det
+          % cost: 1.00 (not above threshold)
+          libs.file_util.maybe_write_string(Statistics, V_60, V_59, V_61)
+          ,
+          % c5;q;c4;
+          % det
+          % cost: 0.00 (not above threshold)
+          builtin private_builtin.trace_set_io_state(V_61)
+        )
+        ,
+        % c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.make_hlds.qual_info.qual_info_get_mq_info(QualInfo, MQInfo)
+        ,
+        % c7;
+        % det
+        % cost: 1.00 (not above threshold)
+        parse_tree.module_qual.mq_info_get_type_error_flag(MQInfo, InvalidTypes3)
+        ,
+        % c8;
+        % det
+        % cost: 1.00 (not above threshold)
+        bool.or(InvalidTypes1, InvalidTypes2, V_62)
+        ,
+        % c9;
+        % det
+        % cost: 1.00 (not above threshold)
+        bool.or(V_62, InvalidTypes3, InvalidTypes)
+        ,
+        % c10;
+        % det
+        % cost: 1.00 (not above threshold)
+        parse_tree.module_qual.mq_info_get_mode_error_flag(MQInfo, InvalidModes1)
+        ,
+        % c11;
+        % det
+        % cost: 1.00 (not above threshold)
+        bool.or(InvalidModes0, InvalidModes1, InvalidModes)
 
     pred hlds.passes_aux.par_process_nonimported_procs_in_preds/5-0
 
@@ -1896,22 +2003,22 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Path: 
       Dependent: on V_28, V_30, V_31
       NumCalls: 51
-      SeqTime: 19,147.41
-      ParTime: 16,612.08
+      SeqTime: 19,825.31
+      ParTime: 17,292.98
       SparkCost: 100.00
       BarrierCost: 200.00
       SignalsCost: 300.00
       WaitsCost: 600.00
       ParOverheads total: 1,200.00
-      Speedup: 1.1526
-      Time saving: 2,535.33
-      First conj dead time: 8,847.82
+      Speedup: 1.1464
+      Time saving: 2,532.33
+      First conj dead time: 8,850.82
       Future dead time: 0.00
-      Total dead time: 8,847.82
+      Total dead time: 8,850.82
 
       Goals before:
         % conjunction: 
-        % Cost: 1,328.92
+        % Cost: 1,331.92
 
         % c1;
         % det
@@ -1982,28 +2089,25 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % det
         % cost: 1,323.92 (not above threshold)
         ll_backend.frameopt.delay_frame_init(V_52, V_54, V_16, V_20, V_25, RevMap, V_26, SuccQueue, V_22, V_27)
+        ,
+        % c15;
+        % det
+        % cost: 1.00 (not above threshold)
+        set.init(V_47, V_29)
+        ,
+        % c16;
+        % det
+        % cost: 1.00 (not above threshold)
+        private_builtin.type_info_from_typeclass_info(V_46, PolyConst1, V_55)
+        ,
+        % c17;
+        % det
+        % cost: 1.00 (not above threshold)
+        private_builtin.type_info_from_typeclass_info(V_46, PolyConst1, V_56)
 
       Parallel conjunction:
         (
-          % conjunction: c15;c1;
-          % Cost: 5,135.33
-
-          % c15;c1;c1;
-          % det
-          % cost: 1.00 (not above threshold)
-          set.init(V_47, V_29)
-          ,
-          % c15;c1;c2;
-          % det
-          % cost: 1.00 (not above threshold)
-          private_builtin.type_info_from_typeclass_info(V_46, PolyConst1, V_55)
-          ,
-          % c15;c1;c3;
-          % det
-          % cost: 1.00 (not above threshold)
-          private_builtin.type_info_from_typeclass_info(V_46, PolyConst1, V_56)
-          ,
-          % c15;c1;c4;
+          % c18;c1;
           % det
           % cost: 5,132.33 (above threshold)
           % Productions:
@@ -2012,52 +2116,52 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_28: 39.97
           ll_backend.frameopt.propagate_frame_requirement_to_successors(V_55, V_56, SuccQueue, V_20, V_27, V_28, V_29, V_24, V_30, V_23, V_31)
         &
-          % conjunction: c15;c2;
+          % conjunction: c18;c2;
           % Cost: 12,683.16
 
-          % c15;c2;c1;
+          % c18;c2;c1;
           % det
           % cost: 35.76 (not above threshold)
           % Consumptions:
           %     V_28: 0.00
           map.to_assoc_list(V_47, V_48, V_28, OrdNeedsFrameList)
           ,
-          % c15;c2;c2;
+          % c18;c2;c2;
           % det
           % cost: 0.00 (not above threshold)
           V_32 <= $closure_cons
           ,
-          % c15;c2;c3;
+          % c18;c2;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_57 <= $type_ctor_info_const
           ,
-          % c15;c2;c4;
+          % c18;c2;c4;
           % det
           % cost: 0.00 (not above threshold)
           V_58 <= $type_info_cell_constructor(V_57, V_47, V_48)
           ,
-          % c15;c2;c5;
+          % c18;c2;c5;
           % det
           % cost: 39.86 (not above threshold)
           list.filter_map(V_58, V_47, V_32, OrdNeedsFrameList, Frontier)
           ,
-          % c15;c2;c6;
+          % c18;c2;c6;
           % det
           % cost: 1.00 (not above threshold)
           queue.list_to_queue(V_47, Frontier, PredQueue)
           ,
-          % c15;c2;c7;
+          % c18;c2;c7;
           % det
           % cost: 1.00 (not above threshold)
           private_builtin.type_info_from_typeclass_info(V_46, PolyConst1, V_59)
           ,
-          % c15;c2;c8;
+          % c18;c2;c8;
           % det
           % cost: 1.00 (not above threshold)
           private_builtin.type_info_from_typeclass_info(V_46, PolyConst1, V_60)
           ,
-          % c15;c2;c9;
+          % c18;c2;c9;
           % det
           % cost: 12,604.53 (above threshold)
           % Consumptions:
@@ -2068,6 +2172,146 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c19;
+        % det
+        % cost: 677.90 (not above threshold)
+        switch_can_not_fail_rep switch on CanTransform
+        (
+            % case can_transform/0
+            % conjunction: c19;s1-na;
+            % conjunction: det
+            % conjunction: cost: 1,728.65 (not above threshold)
+
+            % c19;s1-na;c1;
+            % det
+            % cost: 1.00 (not above threshold)
+            map.init(V_47, V_47, V_38)
+            ,
+            % c19;s1-na;c2;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_36 <= setup_par_map(V_38)
+            ,
+            % c19;s1-na;c3;
+            % det
+            % cost: 1.00 (not above threshold)
+            map.init(V_47, V_47, V_39)
+            ,
+            % c19;s1-na;c4;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_37 <= exit_par_map(V_39)
+            ,
+            % c19;s1-na;c5;
+            % det
+            % cost: 925.15 (not above threshold)
+            ll_backend.frameopt.process_frame_delay(V_46, V_16, V_33, ProcLabel, V_18, V_34, V_20, V_35, V_36, SetupParMap, V_37, ExitParMap)
+            ,
+            % c19;s1-na;c6;
+            % det
+            % cost: 801.50 (not above threshold)
+            ll_backend.frameopt.create_parallels(V_46, V_16, V_17, EntryInfo, ProcLabel, V_34, V_19, V_33, SetupParMap, ExitParMap, PredMap, V_35, V_21)
+          ;
+            % case cannot_transform/0
+            % conjunction: c19;s2-na;
+            % conjunction: det
+            % conjunction: cost: 0.00 (not above threshold)
+
+            % c19;s2-na;c1;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_17 := V_16
+            ,
+            % c19;s2-na;c2;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_19 := V_18
+            ,
+            % c19;s2-na;c3;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_21 := V_20
+        )
+        ,
+        % c20;
+        % det
+        % cost: 0.00 (not above threshold)
+        switch_can_not_fail_rep switch on AddComments
+        (
+            % case no/0
+            % conjunction: c20;s1-na;
+            % conjunction: det
+            % conjunction: cost: 0.00 (not above threshold)
+
+            % c20;s1-na;c1;
+            % det
+            % cost: 0.00 (not above threshold)
+            TransformComments <= []
+            ,
+            % c20;s1-na;c2;
+            % det
+            % cost: 0.00 (not above threshold)
+            DescComments <= []
+          ;
+            % case yes/0
+            % conjunction: c20;s2-na;
+            % conjunction: det
+            % conjunction: cost: 0.00 (not above threshold)
+
+            % c20;s2-na;c1;
+            % det
+            % cost: 0.00 (not above threshold)
+            scope (
+              % conjunction: c20;s2-na;c1;q;
+              % conjunction: det
+              % conjunction: cost: 0.00 (not above threshold)
+
+              % c20;s2-na;c1;q;c1;
+              % det
+              % cost: 0.00 (not above threshold)
+              V_41 <= []
+              ,
+              % c20;s2-na;c1;q;c2;
+              % det
+              % cost: 0.00 (not above threshold)
+              V_43 <= ""
+              ,
+              % c20;s2-na;c1;q;c3;
+              % det
+              % cost: 0.00 (not above threshold)
+              V_44 <= "delaying stack frame"
+              ,
+              % c20;s2-na;c1;q;c4;
+              % det
+              % cost: 0.00 (not above threshold)
+              V_42 <= comment(V_44)
+              ,
+              % c20;s2-na;c1;q;c5;
+              % det
+              % cost: 0.00 (not above threshold)
+              V_40 <= llds_instr(V_42, V_43)
+              ,
+              % c20;s2-na;c1;q;c6;
+              % det
+              % cost: 0.00 (not above threshold)
+              TransformComments <= [|](V_40, V_41)
+            )
+            ,
+            % c20;s2-na;c2;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_45 <= $closure_cons(V_46, V_21, V_33, PredMap, ProcLabel)
+            ,
+            % c20;s2-na;c3;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_61 <= $type_ctor_info_const
+            ,
+            % c20;s2-na;c4;
+            % det
+            % cost: 0.00 (not above threshold)
+            list.map(V_47, V_61, V_45, V_17, DescComments)
+        )
 
     pred ll_backend.labelopt.labelopt_main/5-0
 
@@ -2185,8 +2429,8 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Path: 
       Dependent: on V_22, V_24
       NumCalls: 80
-      SeqTime: 14,186.98
-      ParTime: 13,280.88
+      SeqTime: 14,187.98
+      ParTime: 13,281.88
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 200.00
@@ -2332,6 +2576,16 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c9;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_27 <= "MR_END_MODULE
+"
+        ,
+        % c10;
+        % det
+        % cost: 1.00 (not above threshold)
+        io.write_string(V_27, V_26, V_10)
 
     pred ll_backend.llds_out.llds_out_file.output_record_c_label_decls/7-0
 
@@ -2450,24 +2704,24 @@ Feedback report for ../batch/profile.mercury_compile.01:
     pred ll_backend.llds_out.llds_out_file.output_single_c_file/7-0
 
       Path: 
-      Dependent: on V_102, V_103, V_104, V_105, V_118, V_119
+      Dependent: on V_101, V_102, V_103, V_118, V_119, V_99
       NumCalls: 1
-      SeqTime: 1,443,031.00
-      ParTime: 1,147,541.00
+      SeqTime: 1,444,677.00
+      ParTime: 1,148,887.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 600.00
       WaitsCost: 1,200.00
       ParOverheads total: 2,300.00
       Speedup: 1.2575
-      Time saving: 295,490.00
-      First conj dead time: 838,310.00
-      Future dead time: 316,318.00
-      Total dead time: 1,154,628.00
+      Time saving: 295,790.00
+      First conj dead time: 838,012.00
+      Future dead time: 314,277.00
+      Total dead time: 1,152,289.00
 
       Goals before:
         % conjunction: 
-        % Cost: 127.00
+        % Cost: 996.00
 
         % c1;
         % det
@@ -2478,123 +2732,123 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % det
         % cost: 127.00 (not above threshold)
         ll_backend.llds_out.llds_out_util.init_llds_out_info(ModuleName, Globals, InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap, AllocSiteMap, Info)
+        ,
+        % c3;
+        % det
+        % cost: 1.00 (not above threshold)
+        library.version(Version)
+        ,
+        % c4;
+        % det
+        % cost: 1.00 (not above threshold)
+        io.set_output_stream(FileStream, OutputStream, V_54, V_56)
+        ,
+        % c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_57 <= ".m"
+        ,
+        % c6;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_58 <= do_not_create_dirs
+        ,
+        % c7;
+        % det
+        % cost: 13.00 (not above threshold)
+        parse_tree.file_names.module_name_to_file_name(Globals, ModuleName, V_57, V_58, SourceFileName, V_56, V_59)
+        ,
+        % c8;
+        % det
+        % cost: 69.00 (not above threshold)
+        backend_libs.c_util.output_c_file_intro_and_grade(Globals, SourceFileName, Version, V_59, V_60)
+        ,
+        % c9;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_116 <= $type_ctor_info_const
+        ,
+        % c10;
+        % det
+        % cost: 1.00 (not above threshold)
+        set.init(V_116, V_61)
+        ,
+        % c11;
+        % det
+        % cost: 401.00 (not above threshold)
+        ll_backend.llds_out.llds_out_file.module_gather_env_var_names(Modules, V_61, EnvVarNameSet)
+        ,
+        % c12;
+        % det
+        % cost: 1.00 (not above threshold)
+        set.to_sorted_list(V_116, EnvVarNameSet, EnvVarNames)
+        ,
+        % c13;
+        % det
+        % cost: 23.00 (not above threshold)
+        ll_backend.llds_out.llds_out_file.output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames, EnvVarNames, V_60, V_62)
+        ,
+        % c14;
+        % det
+        % cost: 5.00 (not above threshold)
+        ll_backend.llds_out.llds_out_file.output_c_file_mercury_headers(Info, V_62, V_63)
+        ,
+        % c15;
+        % det
+        % cost: 353.00 (not above threshold)
+        ll_backend.llds_out.llds_out_file.output_foreign_header_include_lines(Info, C_HeaderLines, V_63, V_64)
+        ,
+        % c16;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_65 <= "
+"
+        ,
+        % c17;
+        % det
+        % cost: 1.00 (not above threshold)
+        io.write_string(V_65, V_64, V_66)
 
       Parallel conjunction:
         (
-          % conjunction: c3;c1;
-          % Cost: 307,704.00
+          % conjunction: c18;c1;
+          % Cost: 306,833.00
 
-          % c3;c1;c1;
-          % det
-          % cost: 1.00 (not above threshold)
-          library.version(Version)
-          ,
-          % c3;c1;c2;
-          % det
-          % cost: 1.00 (not above threshold)
-          io.set_output_stream(FileStream, OutputStream, V_54, V_56)
-          ,
-          % c3;c1;c3;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_57 <= ".m"
-          ,
-          % c3;c1;c4;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_58 <= do_not_create_dirs
-          ,
-          % c3;c1;c5;
-          % det
-          % cost: 13.00 (not above threshold)
-          parse_tree.file_names.module_name_to_file_name(Globals, ModuleName, V_57, V_58, SourceFileName, V_56, V_59)
-          ,
-          % c3;c1;c6;
-          % det
-          % cost: 69.00 (not above threshold)
-          backend_libs.c_util.output_c_file_intro_and_grade(Globals, SourceFileName, Version, V_59, V_60)
-          ,
-          % c3;c1;c7;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_116 <= $type_ctor_info_const
-          ,
-          % c3;c1;c8;
-          % det
-          % cost: 1.00 (not above threshold)
-          set.init(V_116, V_61)
-          ,
-          % c3;c1;c9;
-          % det
-          % cost: 401.00 (not above threshold)
-          ll_backend.llds_out.llds_out_file.module_gather_env_var_names(Modules, V_61, EnvVarNameSet)
-          ,
-          % c3;c1;c10;
-          % det
-          % cost: 1.00 (not above threshold)
-          set.to_sorted_list(V_116, EnvVarNameSet, EnvVarNames)
-          ,
-          % c3;c1;c11;
-          % det
-          % cost: 23.00 (not above threshold)
-          ll_backend.llds_out.llds_out_file.output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames, EnvVarNames, V_60, V_62)
-          ,
-          % c3;c1;c12;
-          % det
-          % cost: 5.00 (not above threshold)
-          ll_backend.llds_out.llds_out_file.output_c_file_mercury_headers(Info, V_62, V_63)
-          ,
-          % c3;c1;c13;
-          % det
-          % cost: 353.00 (not above threshold)
-          ll_backend.llds_out.llds_out_file.output_foreign_header_include_lines(Info, C_HeaderLines, V_63, V_64)
-          ,
-          % c3;c1;c14;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_65 <= "
-"
-          ,
-          % c3;c1;c15;
-          % det
-          % cost: 1.00 (not above threshold)
-          io.write_string(V_65, V_64, V_66)
-          ,
-          % c3;c1;c16;
+          % c18;c1;c1;
           % det
           % cost: 8,539.00 (above threshold)
           ll_backend.llds_out.llds_out_file.gather_c_file_labels(Modules, EntryLabels, InternalLabels)
           ,
-          % c3;c1;c17;
+          % c18;c1;c2;
           % det
           % cost: 6.00 (not above threshold)
           ll_backend.llds_out.llds_out_file.output_static_linkage_define(V_66, V_67)
           ,
-          % c3;c1;c18;
+          % c18;c1;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_68 <= $closure_cons
           ,
-          % c3;c1;c19;
+          % c18;c1;c4;
           % det
           % cost: 0.00 (not above threshold)
           V_117 <= $type_ctor_info_const
           ,
-          % c3;c1;c20;
+          % c18;c1;c5;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
           %     V_118: 1.00
           V_118 <= $type_ctor_info_const
           ,
-          % c3;c1;c21;
+          % c18;c1;c6;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
           %     V_119: 1.00
           V_119 <= $type_ctor_info_const
           ,
-          % c3;c1;c22;
+          % c18;c1;c7;
           % det
           % cost: 843.00 (not above threshold)
           % Consumptions:
@@ -2602,17 +2856,17 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_118: 0.00
           list.foldl2(V_117, V_118, V_119, V_68, ScalarCommonDatas, V_52, V_69, V_67, V_70)
           ,
-          % c3;c1;c23;
+          % c18;c1;c8;
           % det
           % cost: 0.00 (not above threshold)
           V_71 <= $closure_cons
           ,
-          % c3;c1;c24;
+          % c18;c1;c9;
           % det
           % cost: 0.00 (not above threshold)
           V_120 <= $type_ctor_info_const
           ,
-          % c3;c1;c25;
+          % c18;c1;c10;
           % det
           % cost: 142.00 (not above threshold)
           % Consumptions:
@@ -2620,27 +2874,27 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_118: 0.00
           list.foldl2(V_120, V_118, V_119, V_71, VectorCommonDatas, V_69, V_72, V_70, V_73)
           ,
-          % c3;c1;c26;
+          % c18;c1;c11;
           % det
           % cost: 608.00 (not above threshold)
           ll_backend.rtti_out.output_rtti_data_decl_list(Info, RttiDatas, V_72, V_74, V_73, V_75)
           ,
-          % c3;c1;c27;
+          % c18;c1;c12;
           % det
           % cost: 233,493.00 (above threshold)
           ll_backend.llds_out.llds_out_file.output_record_c_label_decls(Info, EntryLabels, InternalLabels, V_74, V_76, V_75, V_77)
           ,
-          % c3;c1;c28;
+          % c18;c1;c13;
           % det
           % cost: 0.00 (not above threshold)
           V_78 <= $closure_cons(Info)
           ,
-          % c3;c1;c29;
+          % c18;c1;c14;
           % det
           % cost: 0.00 (not above threshold)
           V_121 <= $type_ctor_info_const
           ,
-          % c3;c1;c30;
+          % c18;c1;c15;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
@@ -2648,12 +2902,12 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_118: 0.00
           list.foldl2(V_121, V_118, V_119, V_78, TablingInfoStructs, V_76, V_79, V_77, V_80)
           ,
-          % c3;c1;c31;
+          % c18;c1;c16;
           % det
           % cost: 0.00 (not above threshold)
           V_81 <= $closure_cons(Info)
           ,
-          % c3;c1;c32;
+          % c18;c1;c17;
           % det
           % cost: 26,140.00 (above threshold)
           % Consumptions:
@@ -2661,12 +2915,12 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_118: 0.00
           list.foldl2(V_117, V_118, V_119, V_81, ScalarCommonDatas, V_79, V_82, V_80, V_83)
           ,
-          % c3;c1;c33;
+          % c18;c1;c18;
           % det
           % cost: 0.00 (not above threshold)
           V_84 <= $closure_cons(Info)
           ,
-          % c3;c1;c34;
+          % c18;c1;c19;
           % det
           % cost: 1,165.00 (not above threshold)
           % Consumptions:
@@ -2674,17 +2928,17 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_118: 0.00
           list.foldl2(V_120, V_118, V_119, V_84, VectorCommonDatas, V_82, V_85, V_83, V_86)
           ,
-          % c3;c1;c35;
+          % c18;c1;c20;
           % det
           % cost: 0.00 (not above threshold)
           V_87 <= $closure_cons(Info)
           ,
-          % c3;c1;c36;
+          % c18;c1;c21;
           % det
           % cost: 0.00 (not above threshold)
           V_122 <= $type_ctor_info_const
           ,
-          % c3;c1;c37;
+          % c18;c1;c22;
           % det
           % cost: 20,526.00 (above threshold)
           % Consumptions:
@@ -2692,27 +2946,27 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_118: 0.00
           list.foldl2(V_122, V_118, V_119, V_87, RttiDatas, V_85, V_88, V_86, V_89)
           ,
-          % c3;c1;c38;
+          % c18;c1;c23;
           % det
           % cost: 1.00 (not above threshold)
           io.nl(V_89, V_90)
           ,
-          % c3;c1;c39;
+          % c18;c1;c24;
           % det
           % cost: 1.00 (not above threshold)
           ll_backend.layout_out.output_layout_array_decls(Info, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns, UserEventVarNums, UserEvents, NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts, CallSiteStatics, CoveragePoints, ProcStatics, ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls, ProcEventLayouts, ExecTraces, AllocSites, V_90, V_91)
           ,
-          % c3;c1;c40;
+          % c18;c1;c25;
           % det
           % cost: 0.00 (not above threshold)
           V_92 <= $closure_cons(Info)
           ,
-          % c3;c1;c41;
+          % c18;c1;c26;
           % det
           % cost: 0.00 (not above threshold)
           V_123 <= $type_ctor_info_const
           ,
-          % c3;c1;c42;
+          % c18;c1;c27;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
@@ -2720,17 +2974,17 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_118: 0.00
           list.foldl2(V_123, V_118, V_119, V_92, ProcLayoutDatas, V_88, V_93, V_91, V_94)
           ,
-          % c3;c1;c43;
+          % c18;c1;c28;
           % det
           % cost: 0.00 (not above threshold)
           V_95 <= $closure_cons(Info)
           ,
-          % c3;c1;c44;
+          % c18;c1;c29;
           % det
           % cost: 0.00 (not above threshold)
           V_124 <= $type_ctor_info_const
           ,
-          % c3;c1;c45;
+          % c18;c1;c30;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
@@ -2738,73 +2992,120 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_118: 0.00
           list.foldl2(V_124, V_118, V_119, V_95, ModuleLayoutDatas, V_93, V_96, V_94, V_97)
           ,
-          % c3;c1;c46;
+          % c18;c1;c31;
           % det
           % cost: 0.00 (not above threshold)
           V_98 <= $closure_cons(Info)
           ,
-          % c3;c1;c47;
+          % c18;c1;c32;
           % det
           % cost: 0.00 (not above threshold)
           V_125 <= $type_ctor_info_const
           ,
-          % c3;c1;c48;
+          % c18;c1;c33;
           % det
           % cost: 15,365.00 (above threshold)
+          % Productions:
+          %     V_99: 15,364.00
           % Consumptions:
           %     V_119: 0.00
           %     V_118: 0.00
           list.foldl2(V_125, V_118, V_119, V_98, ClosureLayoutDatas, V_96, V_99, V_97, V_100)
           ,
-          % c3;c1;c49;
+          % c18;c1;c34;
           % det
           % cost: 1.00 (not above threshold)
+          % Productions:
+          %     V_101: 0.00
           io.nl(V_100, V_101)
-          ,
-          % c3;c1;c50;
+        &
+          % c18;c2;
           % det
           % cost: 2.00 (not above threshold)
           % Productions:
           %     V_103: 1.00
           %     V_102: 1.00
+          % Consumptions:
+          %     V_101: 0.00
+          %     V_99: 0.00
           ll_backend.llds_out.llds_out_data.output_record_rvals_decls(Info, PseudoTypeInfos, V_99, V_102, V_101, V_103)
         &
-          % c3;c2;
+          % conjunction: c18;c3;
+          % Cost: 1,135,200.00
+
+          % c18;c3;c1;
           % det
           % cost: 1.00 (not above threshold)
-          % Productions:
-          %     V_105: 0.00
-          %     V_104: 0.00
           % Consumptions:
           %     V_103: 0.00
           %     V_102: 0.00
           ll_backend.layout_out.output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns, UserEventVarNums, UserEvents, NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts, CallSiteStatics, CoveragePoints, ProcStatics, ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls, ProcEventLayouts, ExecTraces, TSStringTable, AllocSites, V_102, V_104, V_103, V_105)
-        &
-          % conjunction: c3;c3;
-          % Cost: 1,135,199.00
-
-          % c3;c3;c1;
+          ,
+          % c18;c3;c2;
           % det
           % cost: 0.00 (not above threshold)
           V_106 <= $closure_cons(Info)
           ,
-          % c3;c3;c2;
+          % c18;c3;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_126 <= $type_ctor_info_const
           ,
-          % c3;c3;c3;
+          % c18;c3;c4;
           % det
           % cost: 1,135,199.00 (above threshold)
           % Consumptions:
           %     V_119: 0.00
           %     V_118: 0.00
-          %     V_105: 0.00
-          %     V_104: 0.00
           list.foldl2(V_126, V_118, V_119, V_106, Modules, V_104, V_107, V_105, V_108)
         )
 
       Goals after:
+        % c19;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_109 <= $closure_cons(Info)
+        ,
+        % c20;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_127 <= $type_ctor_info_const
+        ,
+        % c21;
+        % det
+        % cost: 1.00 (not above threshold)
+        list.foldl(V_127, V_119, V_109, UserForeignCode, V_108, V_110)
+        ,
+        % c22;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_111 <= $closure_cons
+        ,
+        % c23;
+        % det
+        % cost: 1.00 (not above threshold)
+        list.foldl(V_116, V_119, V_111, Exports, V_110, V_112)
+        ,
+        % c24;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_113 <= "
+"
+        ,
+        % c25;
+        % det
+        % cost: 1.00 (not above threshold)
+        io.write_string(V_113, V_112, V_114)
+        ,
+        % c26;
+        % det
+        % cost: 1,642.00 (not above threshold)
+        ll_backend.llds_out.llds_out_file.output_c_module_init_list(Info, ModuleName, Modules, RttiDatas, ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable, AllocSites, UserInitPredCNames, UserFinalPredCNames, V_107, V_53, V_114, V_115)
+        ,
+        % c27;
+        % det
+        % cost: 1.00 (not above threshold)
+        io.set_output_stream(OutputStream, V_51, V_115, V_55)
 
     pred ll_backend.optimize.optimize_procs/4-0
 
@@ -2847,66 +3148,66 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % s2-na;c3;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_4 <= [|](Proc, Procs)
 
     pred parse_tree.equiv_type.expand_eqv_types/10-0
 
       Path: 
       Dependent: on EqvInstMap, EqvMap, RevItems
       NumCalls: 1
-      SeqTime: 1,397,101.00
-      ParTime: 1,369,153.00
+      SeqTime: 1,397,107.00
+      ParTime: 1,369,161.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 300.00
       WaitsCost: 600.00
       ParOverheads total: 1,400.00
       Speedup: 1.0204
-      Time saving: 27,948.00
-      First conj dead time: 1,344,963.00
-      Future dead time: 22,575.00
-      Total dead time: 1,367,538.00
+      Time saving: 27,946.00
+      First conj dead time: 1,344,965.00
+      Future dead time: 22,675.00
+      Total dead time: 1,367,640.00
 
       Goals before:
         % conjunction: 
-        % Cost: 0.00
+        % Cost: 2.00
 
+        % c1;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_24 <= $type_ctor_info_const
+        ,
+        % c2;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_25 <= $type_ctor_info_const
+        ,
+        % c3;
+        % det
+        % cost: 1.00 (not above threshold)
+        map.init(V_24, V_25, EqvMap0)
+        ,
+        % c4;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_26 <= $type_ctor_info_const
+        ,
+        % c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_27 <= $type_ctor_info_const
+        ,
+        % c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        map.init(V_26, V_27, EqvInstMap0)
 
       Parallel conjunction:
         (
-          % conjunction: c1;c1;
-          % Cost: 22,990.00
-
-          % c1;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_24 <= $type_ctor_info_const
-          ,
-          % c1;c1;c2;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_25 <= $type_ctor_info_const
-          ,
-          % c1;c1;c3;
-          % det
-          % cost: 1.00 (not above threshold)
-          map.init(V_24, V_25, EqvMap0)
-          ,
-          % c1;c1;c4;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_26 <= $type_ctor_info_const
-          ,
-          % c1;c1;c5;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_27 <= $type_ctor_info_const
-          ,
-          % c1;c1;c6;
-          % det
-          % cost: 1.00 (not above threshold)
-          map.init(V_26, V_27, EqvInstMap0)
-          ,
-          % c1;c1;c7;
+          % c7;c1;
           % det
           % cost: 22,988.00 (above threshold)
           % Productions:
@@ -2914,30 +3215,30 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     EqvMap: 7,459.02
           parse_tree.equiv_type.build_eqv_map(Items0, EqvMap0, EqvMap, EqvInstMap0, EqvInstMap)
         &
-          % conjunction: c1;c2;
+          % conjunction: c7;c2;
           % Cost: 1,366,653.00
 
-          % c1;c2;c1;
+          % c7;c2;c1;
           % det
           % cost: 3.00 (not above threshold)
           parse_tree.prog_data.used_modules_init(V_17)
           ,
-          % c1;c2;c2;
+          % c7;c2;c2;
           % det
           % cost: 0.00 (not above threshold)
           V_18 <= []
           ,
-          % c1;c2;c3;
+          % c7;c2;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_19 <= eqv_type_out_of_module
           ,
-          % c1;c2;c4;
+          % c7;c2;c4;
           % det
           % cost: 0.00 (not above threshold)
           V_20 <= []
           ,
-          % c1;c2;c5;
+          % c7;c2;c5;
           % det
           % cost: 1,366,650.00 (above threshold)
           % Productions:
@@ -2947,15 +3248,15 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     EqvMap: 98,882,130.42
           parse_tree.equiv_type.replace_in_item_list(ModuleName, V_19, Items0, EqvMap, EqvInstMap, V_20, RevItems, V_14, V_21, V_17, V_22, V_18, V_23)
         &
-          % conjunction: c1;c3;
+          % conjunction: c7;c3;
           % Cost: 7,458.00
 
-          % c1;c3;c1;
+          % c7;c3;c1;
           % det
           % cost: 0.00 (not above threshold)
           V_28 <= $type_ctor_info_const
           ,
-          % c1;c3;c2;
+          % c7;c3;c2;
           % det
           % cost: 7,458.00 (above threshold)
           % Consumptions:
@@ -2964,61 +3265,81 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c8;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_29 <= $type_ctor_info_const
+        ,
+        % c9;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_30 <= $type_ctor_info_const
+        ,
+        % c10;
+        % det
+        % cost: 2.00 (not above threshold)
+        map.to_assoc_list(V_29, V_30, EventSpecMap0, EventSpecList0)
+        ,
+        % c11;
+        % det
+        % cost: 1.00 (not above threshold)
+        parse_tree.equiv_type.replace_in_event_spec_list(EventSpecList0, EventSpecList, EqvMap, EqvInstMap, V_21, V_15, V_22, V_13, V_23, V_16)
+        ,
+        % c12;
+        % det
+        % cost: 3.00 (not above threshold)
+        map.from_sorted_assoc_list(V_29, V_30, EventSpecList, EventSpecMap)
 
     pred parse_tree.module_qual.module_qualify_items/13-0
 
       Path: 
       Dependent: on V_23, V_24
       NumCalls: 1
-      SeqTime: 116,918.00
-      ParTime: 105,963.41
+      SeqTime: 116,927.00
+      ParTime: 106,072.41
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 200.00
       WaitsCost: 400.00
       ParOverheads total: 1,100.00
-      Speedup: 1.1034
-      Time saving: 10,954.59
-      First conj dead time: 91,827.41
-      Future dead time: 77,229.14
-      Total dead time: 169,056.56
+      Speedup: 1.1023
+      Time saving: 10,854.59
+      First conj dead time: 91,927.41
+      Future dead time: 77,329.14
+      Total dead time: 169,256.56
 
       Goals before:
         % conjunction: 
         % Cost: 0.00
 
+        % c1;
+        % det
+        % cost: 0.00 (not above threshold)
+        switch_can_not_fail_rep switch on MaybeFileName
+        (
+            % case no/0
+            % c1;s1-na;
+            % det
+            % cost: 0.00 (not above threshold)
+            ReportErrors <= no
+          ;
+            % case yes/1
+            % c1;s2-na;
+            % det
+            % cost: 0.00 (not above threshold)
+            ReportErrors <= yes
+        )
 
       Parallel conjunction:
         (
-          % conjunction: c1;c1;
-          % Cost: 13,036.00
-
-          % c1;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          switch_can_not_fail_rep switch on MaybeFileName
-          (
-              % case no/0
-              % c1;c1;c1;s1-na;
-              % det
-              % cost: 0.00 (not above threshold)
-              ReportErrors <= no
-            ;
-              % case yes/1
-              % c1;c1;c1;s2-na;
-              % det
-              % cost: 0.00 (not above threshold)
-              ReportErrors <= yes
-          )
-          ,
-          % c1;c1;c2;
+          % c2;c1;
           % det
           % cost: 13,036.00 (above threshold)
           % Productions:
           %     V_23: 13,036.00
           parse_tree.module_qual.init_mq_info(Items0, Globals, ReportErrors, ModuleName, V_23)
         &
-          % c1;c2;
+          % c2;c2;
           % det
           % cost: 73,191.00 (above threshold)
           % Productions:
@@ -3027,7 +3348,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_23: 8,179.27
           parse_tree.module_qual.collect_mq_info(Items0, V_23, V_24)
         &
-          % c1;c3;
+          % c2;c3;
           % det
           % cost: 30,691.00 (above threshold)
           % Consumptions:
@@ -3036,6 +3357,114 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c3;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_28 <= $type_ctor_info_const
+        ,
+        % c4;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_29 <= $type_ctor_info_const
+        ,
+        % c5;
+        % det
+        % cost: 2.00 (not above threshold)
+        map.to_assoc_list(V_28, V_29, EventSpecMap0, EventSpecList0)
+        ,
+        % c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        parse_tree.module_qual.do_module_qualify_event_specs(EventSpecFileName, EventSpecList0, EventSpecList, V_25, V_20, V_26, V_27)
+        ,
+        % c7;
+        % det
+        % cost: 2.00 (not above threshold)
+        map.from_assoc_list(V_28, V_29, EventSpecList, EventSpecMap)
+        ,
+        % c8;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_20 => mq_info(V_32, V_33, V_34, V_35, V_36, V_37, V_38, V_39, V_40, V_41, V_42, V_43, V_44, UndefTypes, UndefModes, V_45, V_46, V_47, V_48, V_49)
+        ,
+        % c9;
+        % det
+        % cost: 4.00 (not above threshold)
+        switch_can_not_fail_rep switch on MaybeFileName
+        (
+            % case no/0
+            % c9;s1-na;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_22 := V_27
+          ;
+            % case yes/1
+            % conjunction: c9;s2-na;
+            % conjunction: det
+            % conjunction: cost: 4.00 (not above threshold)
+
+            % c9;s2-na;c1;
+            % det
+            % cost: 0.00 (not above threshold)
+            MaybeFileName => yes(FileName)
+            ,
+            % c9;s2-na;c2;
+            % det
+            % cost: 1.00 (not above threshold)
+            parse_tree.module_qual.mq_info_get_unused_interface_modules(V_20, UnusedImports0)
+            ,
+            % c9;s2-na;c3;
+            % det
+            % cost: 1.00 (not above threshold)
+            parse_tree.module_qual.mq_info_get_exported_instances_flag(V_20, ModuleExportsInstances)
+            ,
+            % c9;s2-na;c4;
+            % det
+            % cost: 0.00 (not above threshold)
+            switch_can_not_fail_rep switch on ModuleExportsInstances
+            (
+                % case no/0
+                % c9;s2-na;c4;s1-na;
+                % det
+                % cost: 0.00 (not above threshold)
+                UnusedImports1 := UnusedImports0
+              ;
+                % case yes/0
+                % conjunction: c9;s2-na;c4;s2-na;
+                % conjunction: det
+                % conjunction: cost: 0.00 (not above threshold)
+
+                % c9;s2-na;c4;s2-na;c1;
+                % det
+                % cost: 0.00 (not above threshold)
+                parse_tree.module_qual.mq_info_get_imported_instance_modules(V_20, InstanceImports)
+                ,
+                % c9;s2-na;c4;s2-na;c2;
+                % det
+                % cost: 0.00 (not above threshold)
+                V_30 <= $type_ctor_info_const
+                ,
+                % c9;s2-na;c4;s2-na;c3;
+                % det
+                % cost: 0.00 (not above threshold)
+                set.difference(V_30, UnusedImports0, InstanceImports, UnusedImports1)
+            )
+            ,
+            % c9;s2-na;c5;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_31 <= $type_ctor_info_const
+            ,
+            % c9;s2-na;c6;
+            % det
+            % cost: 1.00 (not above threshold)
+            set.to_sorted_list(V_31, UnusedImports1, UnusedImports)
+            ,
+            % c9;s2-na;c7;
+            % det
+            % cost: 1.00 (not above threshold)
+            parse_tree.module_qual.maybe_warn_unused_interface_imports(ModuleName, FileName, UnusedImports, V_27, V_22)
+        )
 
     pred parse_tree.modules.check_imports_accessibility/5-0
 
@@ -3059,60 +3488,56 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % conjunction: 
         % Cost: 0.00
 
+        % c1;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_12 <= yes
+        ,
+        % c2;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_13 <= []
 
       Parallel conjunction:
         (
-          % conjunction: c1;c1;
-          % Cost: 18,631.00
-
-          % c1;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_12 <= yes
-          ,
-          % c1;c1;c2;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_13 <= []
-          ,
-          % c1;c1;c3;
+          % c3;c1;
           % det
           % cost: 18,631.00 (above threshold)
           % Productions:
           %     AccessibleSubModules: 7,458.00
           parse_tree.modules.get_accessible_children_2(V_12, Items, V_13, AccessibleSubModules)
         &
-          % conjunction: c1;c2;
+          % conjunction: c3;c2;
           % Cost: 7,482.00
 
-          % c1;c2;c1;
+          % c3;c2;c1;
           % det
           % cost: 0.00 (not above threshold)
           % Consumptions:
           %     AccessibleSubModules: 0.00
           V_7 <= $closure_cons(ModuleName, AccessibleSubModules, Items)
           ,
-          % c1;c2;c2;
+          % c3;c2;c2;
           % det
           % cost: 0.00 (not above threshold)
           V_8 <= $type_ctor_info_const
           ,
-          % c1;c2;c3;
+          % c3;c2;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_10 <= $type_ctor_info_const
           ,
-          % c1;c2;c4;
+          % c3;c2;c4;
           % det
           % cost: 0.00 (not above threshold)
           V_9 <= $type_ctor_info_const
           ,
-          % c1;c2;c5;
+          % c3;c2;c5;
           % det
           % cost: 0.00 (not above threshold)
           V_11 <= $type_info_cell_constructor(V_10, V_9)
           ,
-          % c1;c2;c6;
+          % c3;c2;c6;
           % det
           % cost: 7,482.00 (above threshold)
           list.foldl(V_8, V_11, V_7, Imports, V_5, V_6)
@@ -3821,21 +4246,21 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Dependent: on ImplIndirectImports1, ImplIndirectUses1, IndirectImports1, IndirectUses1, LongIntError, MaybeTimestamp, Statistics, V_38, V_42, V_44, V_46, V_48, V_50
       NumCalls: 1
       SeqTime: 209,759.00
-      ParTime: 143,712.00
+      ParTime: 143,713.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 1,300.00
       WaitsCost: 2,600.00
       ParOverheads total: 4,400.00
       Speedup: 1.4596
-      Time saving: 66,047.00
-      First conj dead time: 72,031.00
-      Future dead time: 69,485.00
+      Time saving: 66,046.00
+      First conj dead time: 72,032.00
+      Future dead time: 69,484.00
       Total dead time: 141,516.00
 
       Goals before:
         % conjunction: s2-na;c3;e;
-        % Cost: 0.00
+        % Cost: 1.00
 
         % s2-na;c3;e;c1;
         % det
@@ -3851,38 +4276,38 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % det
         % cost: 0.00 (not above threshold)
         V_149 <= $type_ctor_info_const
+        ,
+        % s2-na;c3;e;c4;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_150 <= $type_ctor_info_const
+        ,
+        % s2-na;c3;e;c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_152 <= $type_info_cell_constructor(V_151, V_149, V_150)
+        ,
+        % s2-na;c3;e;c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        parse_tree.modules.maybe_return_timestamp(V_152, V_35, ReturnTimestamp)
+        ,
+        % s2-na;c3;e;c7;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_36 <= "Reading interface for module"
+        ,
+        % s2-na;c3;e;c8;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_37 <= do_search
 
       Parallel conjunction:
         (
-          % conjunction: s2-na;c3;e;c4;c1;
-          % Cost: 69,781.00
+          % conjunction: s2-na;c3;e;c9;c1;
+          % Cost: 69,780.00
 
-          % s2-na;c3;e;c4;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_150 <= $type_ctor_info_const
-          ,
-          % s2-na;c3;e;c4;c1;c2;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_152 <= $type_info_cell_constructor(V_151, V_149, V_150)
-          ,
-          % s2-na;c3;e;c4;c1;c3;
-          % det
-          % cost: 1.00 (not above threshold)
-          parse_tree.modules.maybe_return_timestamp(V_152, V_35, ReturnTimestamp)
-          ,
-          % s2-na;c3;e;c4;c1;c4;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_36 <= "Reading interface for module"
-          ,
-          % s2-na;c3;e;c4;c1;c5;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_37 <= do_search
-          ,
-          % s2-na;c3;e;c4;c1;c6;
+          % s2-na;c3;e;c9;c1;c1;
           % det
           % cost: 69,385.00 (above threshold)
           % Productions:
@@ -3891,7 +4316,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     LongIntError: 69,384.00
           parse_tree.read_modules.maybe_read_module(Globals, HaveReadModuleMap, Import, V_5, V_36, V_37, ReturnTimestamp, LongIntItems0, LongIntSpecs, LongIntError, _LongIntFileName, MaybeTimestamp, V_14, V_38)
           ,
-          % s2-na;c3;e;c4;c1;c7;
+          % s2-na;c3;e;c9;c1;c2;
           % det
           % cost: 135.00 (not above threshold)
           % Productions:
@@ -3901,32 +4326,32 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     IndirectImports1: 134.00
           parse_tree.module_imports.get_dependencies_int_imp(LongIntItems0, IndirectImports1, IndirectUses1, ImplIndirectImports1, ImplIndirectUses1)
           ,
-          % s2-na;c3;e;c4;c1;c8;
+          % s2-na;c3;e;c9;c1;c3;
           % det
           % cost: 242.00 (not above threshold)
           parse_tree.modules.replace_section_decls(IntStatusItem, ImpStatusItem, LongIntItems0, LongIntItems)
           ,
-          % s2-na;c3;e;c4;c1;c9;
+          % s2-na;c3;e;c9;c1;c4;
           % det
           % cost: 0.00 (not above threshold)
           V_153 <= $type_ctor_info_const
           ,
-          % s2-na;c3;e;c4;c1;c10;
+          % s2-na;c3;e;c9;c1;c5;
           % det
           % cost: 1.00 (not above threshold)
           cord.from_list(V_153, LongIntItems, V_39)
           ,
-          % s2-na;c3;e;c4;c1;c11;
+          % s2-na;c3;e;c9;c1;c6;
           % det
           % cost: 2.00 (not above threshold)
           parse_tree.module_imports.module_and_imports_add_items(V_39, V_12, V_40)
           ,
-          % s2-na;c3;e;c4;c1;c12;
+          % s2-na;c3;e;c9;c1;c7;
           % det
           % cost: 3.00 (not above threshold)
           parse_tree.module_imports.module_and_imports_add_specs(LongIntSpecs, V_40, V_41)
           ,
-          % s2-na;c3;e;c4;c1;c13;
+          % s2-na;c3;e;c9;c1;c8;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
@@ -3935,22 +4360,22 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     LongIntError: 0.00
           parse_tree.module_imports.module_and_imports_add_interface_error(LongIntError, V_41, V_42)
           ,
-          % s2-na;c3;e;c4;c1;c14;
+          % s2-na;c3;e;c9;c1;c9;
           % det
           % cost: 0.00 (not above threshold)
           V_43 <= detailed_statistics
           ,
-          % s2-na;c3;e;c4;c1;c15;
+          % s2-na;c3;e;c9;c1;c10;
           % det
           % cost: 11.00 (not above threshold)
           % Productions:
           %     Statistics: 10.00
           libs.globals.lookup_bool_option(Globals, V_43, Statistics)
         &
-          % conjunction: s2-na;c3;e;c4;c2;
+          % conjunction: s2-na;c3;e;c9;c2;
           % Cost: 66.00
 
-          % s2-na;c3;e;c4;c2;c1;
+          % s2-na;c3;e;c9;c2;c1;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
@@ -3960,7 +4385,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     Statistics: 0.00
           libs.file_util.maybe_report_stats(Statistics, V_38, V_44)
           ,
-          % s2-na;c3;e;c4;c2;c2;
+          % s2-na;c3;e;c9;c2;c2;
           % det
           % cost: 17.00 (not above threshold)
           % Consumptions:
@@ -3970,38 +4395,38 @@ Feedback report for ../batch/profile.mercury_compile.01:
           switch_can_not_fail_rep switch on LongIntError
           (
               % case fatal_module_errors/0
-              % conjunction: s2-na;c3;e;c4;c2;c2;s1-na;
+              % conjunction: s2-na;c3;e;c9;c2;c2;s1-na;
               % conjunction: det
               % conjunction: cost: 0.00 (not above threshold)
 
-              % s2-na;c3;e;c4;c2;c2;s1-na;c1;
+              % s2-na;c3;e;c9;c2;c2;s1-na;c1;
               % det
               % cost: 0.00 (not above threshold)
               ModImplementationImports := ModImplementationImports0
               ,
-              % s2-na;c3;e;c4;c2;c2;s1-na;c2;
+              % s2-na;c3;e;c9;c2;c2;s1-na;c2;
               % det
               % cost: 0.00 (not above threshold)
               V_45 := V_42
             ;
               % case no_module_errors/0
               % case some_module_errors/0
-              % conjunction: s2-na;c3;e;c4;c2;c2;s2-na;
+              % conjunction: s2-na;c3;e;c9;c2;c2;s2-na;
               % conjunction: det
               % conjunction: cost: 17.00 (not above threshold)
 
-              % s2-na;c3;e;c4;c2;c2;s2-na;c1;
+              % s2-na;c3;e;c9;c2;c2;s2-na;c1;
               % det
               % cost: 17.00 (not above threshold)
               parse_tree.modules.maybe_record_timestamp(Import, V_5, NeedQualifier, MaybeTimestamp, V_42, V_45)
               ,
-              % s2-na;c3;e;c4;c2;c2;s2-na;c2;
+              % s2-na;c3;e;c9;c2;c2;s2-na;c2;
               % det
               % cost: 0.00 (not above threshold)
               ModImplementationImports <= [|](Import, ModImplementationImports0)
           )
           ,
-          % s2-na;c3;e;c4;c2;c3;
+          % s2-na;c3;e;c9;c2;c3;
           % det
           % cost: 3.00 (not above threshold)
           % Consumptions:
@@ -4009,14 +4434,14 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     IndirectImports1: 0.00
           list.++(V_149, IndirectImports1, IndirectUses1, V_47)
           ,
-          % s2-na;c3;e;c4;c2;c4;
+          % s2-na;c3;e;c9;c2;c4;
           % det
           % cost: 39.00 (not above threshold)
           % Productions:
           %     V_46: 38.00
           list.++(V_149, V_8, V_47, V_46)
           ,
-          % s2-na;c3;e;c4;c2;c5;
+          % s2-na;c3;e;c9;c2;c5;
           % det
           % cost: 2.00 (not above threshold)
           % Consumptions:
@@ -4024,29 +4449,29 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     ImplIndirectImports1: 0.00
           list.++(V_149, ImplIndirectImports1, ImplIndirectUses1, V_49)
           ,
-          % s2-na;c3;e;c4;c2;c6;
+          % s2-na;c3;e;c9;c2;c6;
           % det
           % cost: 4.00 (not above threshold)
           % Productions:
           %     V_48: 3.00
           list.++(V_149, V_10, V_49, V_48)
           ,
-          % s2-na;c3;e;c4;c2;c7;
+          % s2-na;c3;e;c9;c2;c7;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
           %     V_50: 0.00
           scope (
-            % conjunction: s2-na;c3;e;c4;c2;c7;q;
+            % conjunction: s2-na;c3;e;c9;c2;c7;q;
             % conjunction: det
             % conjunction: cost: 0.00 (not above threshold)
 
-            % s2-na;c3;e;c4;c2;c7;q;c1;
+            % s2-na;c3;e;c9;c2;c7;q;c1;
             % det
             % cost: 0.00 (not above threshold)
             V_45 => module_and_imports(V_126, V_127, V_128, V_129, V_130, V_131, V_132, V_133, V_134, V_135, V_136, V_137, V_138, V_139, V_140, V_141, V_142, V_143, V_144, V_145)
             ,
-            % s2-na;c3;e;c4;c2;c7;q;c2;
+            % s2-na;c3;e;c9;c2;c7;q;c2;
             % det
             % cost: 0.00 (not above threshold)
             % Productions:
@@ -4054,7 +4479,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
             V_50 <= module_and_imports(V_126, V_127, V_128, V_129, V_130, ModImplementationImports, V_132, V_133, V_134, V_135, V_136, V_137, V_138, V_139, V_140, V_141, V_142, V_143, V_144, V_145)
           )
         &
-          % s2-na;c3;e;c4;c3;
+          % s2-na;c3;e;c9;c3;
           % det
           % cost: 139,912.00 (above threshold)
           % Consumptions:
@@ -4073,21 +4498,21 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Dependent: on PrivateIntError, PrivateIntItems, V_36, V_43, V_45, V_46, V_47, V_48
       NumCalls: 1
       SeqTime: 59,496.00
-      ParTime: 43,466.00
+      ParTime: 43,467.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 800.00
       WaitsCost: 1,600.00
       ParOverheads total: 2,900.00
       Speedup: 1.3688
-      Time saving: 16,030.00
-      First conj dead time: 22,325.00
-      Future dead time: 19,715.00
+      Time saving: 16,029.00
+      First conj dead time: 22,326.00
+      Future dead time: 19,714.00
       Total dead time: 42,040.00
 
       Goals before:
         % conjunction: s2-na;c3;e;e;
-        % Cost: 0.00
+        % Cost: 1.00
 
         % s2-na;c3;e;e;c1;
         % det
@@ -4103,43 +4528,43 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % det
         % cost: 0.00 (not above threshold)
         V_107 <= $type_ctor_info_const
+        ,
+        % s2-na;c3;e;e;c4;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_108 <= $type_ctor_info_const
+        ,
+        % s2-na;c3;e;e;c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_110 <= $type_info_cell_constructor(V_109, V_107, V_108)
+        ,
+        % s2-na;c3;e;e;c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        parse_tree.modules.maybe_return_timestamp(V_110, V_32, ReturnTimestamp)
+        ,
+        % s2-na;c3;e;e;c7;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_33 <= ".int0"
+        ,
+        % s2-na;c3;e;e;c8;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_34 <= "Reading private interface for module"
+        ,
+        % s2-na;c3;e;e;c9;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_35 <= do_search
 
       Parallel conjunction:
         (
-          % conjunction: s2-na;c3;e;e;c4;c1;
-          % Cost: 19,741.00
+          % conjunction: s2-na;c3;e;e;c10;c1;
+          % Cost: 19,740.00
 
-          % s2-na;c3;e;e;c4;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_108 <= $type_ctor_info_const
-          ,
-          % s2-na;c3;e;e;c4;c1;c2;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_110 <= $type_info_cell_constructor(V_109, V_107, V_108)
-          ,
-          % s2-na;c3;e;e;c4;c1;c3;
-          % det
-          % cost: 1.00 (not above threshold)
-          parse_tree.modules.maybe_return_timestamp(V_110, V_32, ReturnTimestamp)
-          ,
-          % s2-na;c3;e;e;c4;c1;c4;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_33 <= ".int0"
-          ,
-          % s2-na;c3;e;e;c4;c1;c5;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_34 <= "Reading private interface for module"
-          ,
-          % s2-na;c3;e;e;c4;c1;c6;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_35 <= do_search
-          ,
-          % s2-na;c3;e;e;c4;c1;c7;
+          % s2-na;c3;e;e;c10;c1;c1;
           % det
           % cost: 19,626.00 (above threshold)
           % Productions:
@@ -4147,51 +4572,51 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     PrivateIntError: 19,625.00
           parse_tree.read_modules.maybe_read_module(Globals, HaveReadModuleMap, Ancestor, V_33, V_34, V_35, ReturnTimestamp, PrivateIntItems0, PrivateIntSpecs, PrivateIntError, _AncestorFileName, MaybeTimestamp, V_12, V_36)
           ,
-          % s2-na;c3;e;e;c4;c1;c8;
+          % s2-na;c3;e;e;c10;c1;c2;
           % det
           % cost: 0.00 (not above threshold)
           V_37 <= ".int0"
           ,
-          % s2-na;c3;e;e;c4;c1;c9;
+          % s2-na;c3;e;e;c10;c1;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_38 <= may_be_unqualified
           ,
-          % s2-na;c3;e;e;c4;c1;c10;
+          % s2-na;c3;e;e;c10;c1;c4;
           % det
           % cost: 5.00 (not above threshold)
           parse_tree.modules.maybe_record_timestamp(Ancestor, V_37, V_38, MaybeTimestamp, V_10, V_39)
           ,
-          % s2-na;c3;e;e;c4;c1;c11;
+          % s2-na;c3;e;e;c10;c1;c5;
           % det
           % cost: 102.00 (not above threshold)
           % Productions:
           %     PrivateIntItems: 101.00
           parse_tree.modules.replace_section_decls(IntStatusItem, ImpStatusItem, PrivateIntItems0, PrivateIntItems)
           ,
-          % s2-na;c3;e;e;c4;c1;c12;
+          % s2-na;c3;e;e;c10;c1;c6;
           % det
           % cost: 0.00 (not above threshold)
           V_111 <= $type_ctor_info_const
           ,
-          % s2-na;c3;e;e;c4;c1;c13;
+          % s2-na;c3;e;e;c10;c1;c7;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
           %     PrivateIntItems: 0.00
           cord.from_list(V_111, PrivateIntItems, V_40)
           ,
-          % s2-na;c3;e;e;c4;c1;c14;
+          % s2-na;c3;e;e;c10;c1;c8;
           % det
           % cost: 2.00 (not above threshold)
           parse_tree.module_imports.module_and_imports_add_items(V_40, V_39, V_41)
           ,
-          % s2-na;c3;e;e;c4;c1;c15;
+          % s2-na;c3;e;e;c10;c1;c9;
           % det
           % cost: 3.00 (not above threshold)
           parse_tree.module_imports.module_and_imports_add_specs(PrivateIntSpecs, V_41, V_42)
           ,
-          % s2-na;c3;e;e;c4;c1;c16;
+          % s2-na;c3;e;e;c10;c1;c10;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
@@ -4200,20 +4625,20 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     PrivateIntError: 0.00
           parse_tree.module_imports.module_and_imports_add_interface_error(PrivateIntError, V_42, V_43)
         &
-          % conjunction: s2-na;c3;e;e;c4;c2;
+          % conjunction: s2-na;c3;e;e;c10;c2;
           % Cost: 89.00
 
-          % s2-na;c3;e;e;c4;c2;c1;
+          % s2-na;c3;e;e;c10;c2;c1;
           % det
           % cost: 0.00 (not above threshold)
           V_44 <= detailed_statistics
           ,
-          % s2-na;c3;e;e;c4;c2;c2;
+          % s2-na;c3;e;e;c10;c2;c2;
           % det
           % cost: 11.00 (not above threshold)
           libs.globals.lookup_bool_option(Globals, V_44, Statistics)
           ,
-          % s2-na;c3;e;e;c4;c2;c3;
+          % s2-na;c3;e;e;c10;c2;c3;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
@@ -4222,7 +4647,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_36: 0.00
           libs.file_util.maybe_report_stats(Statistics, V_36, V_45)
           ,
-          % s2-na;c3;e;e;c4;c2;c4;
+          % s2-na;c3;e;e;c10;c2;c4;
           % det
           % cost: 0.00 (not above threshold)
           % Consumptions:
@@ -4230,41 +4655,41 @@ Feedback report for ../batch/profile.mercury_compile.01:
           switch_can_not_fail_rep switch on PrivateIntError
           (
               % case fatal_module_errors/0
-              % s2-na;c3;e;e;c4;c2;c4;s1-na;
+              % s2-na;c3;e;e;c10;c2;c4;s1-na;
               % det
               % cost: 0.00 (not above threshold)
               ModAncestors := ModAncestors0
             ;
               % case no_module_errors/0
               % case some_module_errors/0
-              % s2-na;c3;e;e;c4;c2;c4;s2-na;
+              % s2-na;c3;e;e;c10;c2;c4;s2-na;
               % det
               % cost: 0.00 (not above threshold)
               ModAncestors <= [|](Ancestor, ModAncestors0)
           )
           ,
-          % s2-na;c3;e;e;c4;c2;c5;
+          % s2-na;c3;e;e;c10;c2;c5;
           % det
           % cost: 65.00 (not above threshold)
           % Consumptions:
           %     PrivateIntItems: 0.00
           parse_tree.module_imports.get_dependencies(PrivateIntItems, AncDirectImports, AncDirectUses)
           ,
-          % s2-na;c3;e;e;c4;c2;c6;
+          % s2-na;c3;e;e;c10;c2;c6;
           % det
           % cost: 9.00 (not above threshold)
           % Productions:
           %     V_46: 8.00
           list.++(V_107, V_6, AncDirectImports, V_46)
           ,
-          % s2-na;c3;e;e;c4;c2;c7;
+          % s2-na;c3;e;e;c10;c2;c7;
           % det
           % cost: 3.00 (not above threshold)
           % Productions:
           %     V_47: 2.00
           list.++(V_107, V_8, AncDirectUses, V_47)
           ,
-          % s2-na;c3;e;e;c4;c2;c8;
+          % s2-na;c3;e;e;c10;c2;c8;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
@@ -4272,18 +4697,18 @@ Feedback report for ../batch/profile.mercury_compile.01:
           % Consumptions:
           %     V_43: 0.00
           scope (
-            % conjunction: s2-na;c3;e;e;c4;c2;c8;q;
+            % conjunction: s2-na;c3;e;e;c10;c2;c8;q;
             % conjunction: det
             % conjunction: cost: 0.00 (not above threshold)
 
-            % s2-na;c3;e;e;c4;c2;c8;q;c1;
+            % s2-na;c3;e;e;c10;c2;c8;q;c1;
             % det
             % cost: 0.00 (not above threshold)
             % Consumptions:
             %     V_43: 0.00
             V_43 => module_and_imports(V_86, V_87, V_88, V_89, V_90, V_91, V_92, V_93, V_94, V_95, V_96, V_97, V_98, V_99, V_100, V_101, V_102, V_103, V_104, V_105)
             ,
-            % s2-na;c3;e;e;c4;c2;c8;q;c2;
+            % s2-na;c3;e;e;c10;c2;c8;q;c2;
             % det
             % cost: 0.00 (not above threshold)
             % Productions:
@@ -4291,7 +4716,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
             V_48 <= module_and_imports(V_86, V_87, V_88, ModAncestors, V_90, V_91, V_92, V_93, V_94, V_95, V_96, V_97, V_98, V_99, V_100, V_101, V_102, V_103, V_104, V_105)
           )
         &
-          % s2-na;c3;e;e;c4;c3;
+          % s2-na;c3;e;e;c10;c3;
           % det
           % cost: 39,666.00 (above threshold)
           % Consumptions:
@@ -4310,21 +4735,21 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Dependent: on Errors1, Errors2, HLDS1, HLDS20, MaybeTimestamps, QualInfo, UndefModes, UndefTypes, V_34, V_39, V_40, V_41, V_42, V_43
       NumCalls: 1
       SeqTime: 75,468,255.00
-      ParTime: 68,774,220.00
+      ParTime: 68,774,221.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 1,400.00
       WaitsCost: 3,000.00
       ParOverheads total: 4,900.00
       Speedup: 1.0973
-      Time saving: 6,694,035.00
-      First conj dead time: 62,073,765.00
-      Future dead time: 27,749,181.00
+      Time saving: 6,694,034.00
+      First conj dead time: 62,073,766.00
+      Future dead time: 27,749,180.00
       Total dead time: 89,822,946.00
 
       Goals before:
         % conjunction: 
-        % Cost: 21.00
+        % Cost: 22.00
 
         % c1;
         % det
@@ -4350,18 +4775,15 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % det
         % cost: 11.00 (not above threshold)
         libs.globals.lookup_bool_option(Globals, V_38, ErrorCheckOnly)
+        ,
+        % c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        bool.or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile)
 
       Parallel conjunction:
         (
-          % conjunction: c6;c1;
-          % Cost: 6,698,534.00
-
-          % c6;c1;c1;
-          % det
-          % cost: 1.00 (not above threshold)
-          bool.or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile)
-          ,
-          % c6;c1;c2;
+          % c7;c1;
           % det
           % cost: 6,698,533.00 (above threshold)
           % Productions:
@@ -4376,7 +4798,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     HLDS1: 6,698,533.00
           top_level.mercury_compile.pre_hlds_pass(Globals, ModuleAndImports, DontWriteDFile, HLDS1, QualInfo, MaybeTimestamps, UndefTypes, UndefModes, Errors1, V_31, V_39, V_33, V_40, V_35, V_41)
         &
-          % c6;c2;
+          % c7;c2;
           % det
           % cost: 21,050,648.00 (above threshold)
           % Productions:
@@ -4396,7 +4818,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     HLDS1: 0.00
           top_level.mercury_compile_front_end.frontend_pass(QualInfo, UndefTypes, UndefModes, Errors1, Errors2, HLDS1, HLDS20, V_39, V_42, V_40, V_34, V_41, V_43)
         &
-          % c6;c3;
+          % c7;c3;
           % det
           % cost: 47,719,052.00 (above threshold)
           % Consumptions:
@@ -4408,318 +4830,318 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     Errors1: 0.00
           %     MaybeTimestamps: 47,718,940.00
           (
-            % conjunction: c6;c3;?;
+            % conjunction: c7;c3;?;
             % conjunction: semidet
             % conjunction: cost: 0.00 (not above threshold)
 
-            % c6;c3;?;c1;
+            % c7;c3;?;c1;
             % semidet
             % cost: 0.00 (not above threshold)
             % Consumptions:
             %     Errors1: 0.00
             Errors1 => no
             ,
-            % c6;c3;?;c2;
+            % c7;c3;?;c2;
             % semidet
             % cost: 0.00 (not above threshold)
             % Consumptions:
             %     Errors2: 0.00
             Errors2 => no
           ->
-            % conjunction: c6;c3;t;
+            % conjunction: c7;c3;t;
             % conjunction: det
             % conjunction: cost: 47,719,052.00 (above threshold)
 
-            % c6;c3;t;c1;
+            % c7;c3;t;c1;
             % det
             % cost: 0.00 (not above threshold)
             V_44 <= verbose
             ,
-            % c6;c3;t;c2;
+            % c7;c3;t;c2;
             % det
             % cost: 10.00 (not above threshold)
             libs.globals.lookup_bool_option(Globals, V_44, Verbose)
             ,
-            % c6;c3;t;c3;
+            % c7;c3;t;c3;
             % det
             % cost: 0.00 (not above threshold)
             V_45 <= statistics
             ,
-            % c6;c3;t;c4;
+            % c7;c3;t;c4;
             % det
             % cost: 9.00 (not above threshold)
             libs.globals.lookup_bool_option(Globals, V_45, Stats)
             ,
-            % c6;c3;t;c5;
+            % c7;c3;t;c5;
             % det
             % cost: 13.00 (not above threshold)
             top_level.mercury_compile.maybe_write_dependency_graph(Verbose, Stats, HLDS20, HLDS21, V_43, V_46)
             ,
-            % c6;c3;t;c6;
+            % c7;c3;t;c6;
             % det
             % cost: 0.00 (not above threshold)
             V_47 <= make_optimization_interface
             ,
-            % c6;c3;t;c7;
+            % c7;c3;t;c7;
             % det
             % cost: 10.00 (not above threshold)
             libs.globals.lookup_bool_option(Globals, V_47, MakeOptInt)
             ,
-            % c6;c3;t;c8;
+            % c7;c3;t;c8;
             % det
             % cost: 0.00 (not above threshold)
             V_48 <= make_transitive_opt_interface
             ,
-            % c6;c3;t;c9;
+            % c7;c3;t;c9;
             % det
             % cost: 11.00 (not above threshold)
             libs.globals.lookup_bool_option(Globals, V_48, MakeTransOptInt)
             ,
-            % c6;c3;t;c10;
+            % c7;c3;t;c10;
             % det
             % cost: 0.00 (not above threshold)
             V_49 <= make_analysis_registry
             ,
-            % c6;c3;t;c11;
+            % c7;c3;t;c11;
             % det
             % cost: 9.00 (not above threshold)
             libs.globals.lookup_bool_option(Globals, V_49, MakeAnalysisRegistry)
             ,
-            % c6;c3;t;c12;
+            % c7;c3;t;c12;
             % det
             % cost: 0.00 (not above threshold)
             V_50 <= make_xml_documentation
             ,
-            % c6;c3;t;c13;
+            % c7;c3;t;c13;
             % det
             % cost: 11.00 (not above threshold)
             libs.globals.lookup_bool_option(Globals, V_50, MakeXmlDocumentation)
             ,
-            % c6;c3;t;c14;
+            % c7;c3;t;c14;
             % det
             % cost: 47,718,979.00 (above threshold)
             (
-              % c6;c3;t;c14;?;
+              % c7;c3;t;c14;?;
               % semidet
               % cost: 0.00 (not above threshold)
               TypeCheckOnly => yes
             ->
-              % conjunction: c6;c3;t;c14;t;
+              % conjunction: c7;c3;t;c14;t;
               % conjunction: det
               % conjunction: cost: 0.00 (not above threshold)
 
-              % c6;c3;t;c14;t;c1;
+              % c7;c3;t;c14;t;c1;
               % det
               % cost: 0.00 (not above threshold)
               ExtraObjFiles <= []
               ,
-              % c6;c3;t;c14;t;c2;
+              % c7;c3;t;c14;t;c2;
               % det
               % cost: 0.00 (not above threshold)
               V_36 := V_46
               ,
-              % c6;c3;t;c14;t;c3;
+              % c7;c3;t;c14;t;c3;
               % det
               % cost: 0.00 (not above threshold)
               V_32 := V_42
             ;
-              % c6;c3;t;c14;e;
+              % c7;c3;t;c14;e;
               % det
               % cost: 47,718,979.00 (above threshold)
               (
-                % c6;c3;t;c14;e;?;
+                % c7;c3;t;c14;e;?;
                 % semidet
                 % cost: 0.00 (not above threshold)
                 ErrorCheckOnly => yes
               ->
-                % conjunction: c6;c3;t;c14;e;t;
+                % conjunction: c7;c3;t;c14;e;t;
                 % conjunction: det
                 % conjunction: cost: 0.00 (not above threshold)
 
-                % c6;c3;t;c14;e;t;c1;
+                % c7;c3;t;c14;e;t;c1;
                 % det
                 % cost: 0.00 (not above threshold)
                 V_51 <= warn_unused_args
                 ,
-                % c6;c3;t;c14;e;t;c2;
+                % c7;c3;t;c14;e;t;c2;
                 % det
                 % cost: 0.00 (not above threshold)
                 libs.globals.lookup_bool_option(Globals, V_51, UnusedArgs)
                 ,
-                % c6;c3;t;c14;e;t;c3;
+                % c7;c3;t;c14;e;t;c3;
                 % det
                 % cost: 0.00 (not above threshold)
                 switch_can_not_fail_rep switch on UnusedArgs
                 (
                     % case no/0
-                    % c6;c3;t;c14;e;t;c3;s1-na;
+                    % c7;c3;t;c14;e;t;c3;s1-na;
                     % det
                     % cost: 0.00 (not above threshold)
                     V_36 := V_46
                   ;
                     % case yes/0
-                    % conjunction: c6;c3;t;c14;e;t;c3;s2-na;
+                    % conjunction: c7;c3;t;c14;e;t;c3;s2-na;
                     % conjunction: det
                     % conjunction: cost: 0.00 (not above threshold)
 
-                    % c6;c3;t;c14;e;t;c3;s2-na;c1;
+                    % c7;c3;t;c14;e;t;c3;s2-na;c1;
                     % det
                     % cost: 0.00 (not above threshold)
                     V_52 <= optimize_unused_args
                     ,
-                    % c6;c3;t;c14;e;t;c3;s2-na;c2;
+                    % c7;c3;t;c14;e;t;c3;s2-na;c2;
                     % det
                     % cost: 0.00 (not above threshold)
                     V_54 <= no
                     ,
-                    % c6;c3;t;c14;e;t;c3;s2-na;c3;
+                    % c7;c3;t;c14;e;t;c3;s2-na;c3;
                     % det
                     % cost: 0.00 (not above threshold)
                     V_53 <= bool(V_54)
                     ,
-                    % c6;c3;t;c14;e;t;c3;s2-na;c4;
+                    % c7;c3;t;c14;e;t;c3;s2-na;c4;
                     % det
                     % cost: 0.00 (not above threshold)
                     libs.globals.set_option(V_52, V_53, Globals, NoOptUnusedArgsGlobals)
                     ,
-                    % c6;c3;t;c14;e;t;c3;s2-na;c5;
+                    % c7;c3;t;c14;e;t;c3;s2-na;c5;
                     % det
                     % cost: 0.00 (not above threshold)
                     hlds.hlds_module.module_info_set_globals(NoOptUnusedArgsGlobals, HLDS21, HLDS21a)
                     ,
-                    % c6;c3;t;c14;e;t;c3;s2-na;c6;
+                    % c7;c3;t;c14;e;t;c3;s2-na;c6;
                     % det
                     % cost: 0.00 (not above threshold)
                     top_level.mercury_compile_middle_passes.maybe_unused_args(Verbose, Stats, HLDS21a, _HLDS22, V_46, V_36)
                 )
                 ,
-                % c6;c3;t;c14;e;t;c4;
+                % c7;c3;t;c14;e;t;c4;
                 % det
                 % cost: 0.00 (not above threshold)
                 ExtraObjFiles <= []
                 ,
-                % c6;c3;t;c14;e;t;c5;
+                % c7;c3;t;c14;e;t;c5;
                 % det
                 % cost: 0.00 (not above threshold)
                 V_32 := V_42
               ;
-                % c6;c3;t;c14;e;e;
+                % c7;c3;t;c14;e;e;
                 % det
                 % cost: 47,718,979.00 (above threshold)
                 (
-                  % c6;c3;t;c14;e;e;?;
+                  % c7;c3;t;c14;e;e;?;
                   % semidet
                   % cost: 0.00 (not above threshold)
                   MakeOptInt => yes
                 ->
-                  % conjunction: c6;c3;t;c14;e;e;t;
+                  % conjunction: c7;c3;t;c14;e;e;t;
                   % conjunction: det
                   % conjunction: cost: 0.00 (not above threshold)
 
-                  % c6;c3;t;c14;e;e;t;c1;
+                  % c7;c3;t;c14;e;e;t;c1;
                   % det
                   % cost: 0.00 (not above threshold)
                   ExtraObjFiles <= []
                   ,
-                  % c6;c3;t;c14;e;e;t;c2;
+                  % c7;c3;t;c14;e;e;t;c2;
                   % det
                   % cost: 0.00 (not above threshold)
                   V_36 := V_46
                   ,
-                  % c6;c3;t;c14;e;e;t;c3;
+                  % c7;c3;t;c14;e;e;t;c3;
                   % det
                   % cost: 0.00 (not above threshold)
                   V_32 := V_42
                 ;
-                  % c6;c3;t;c14;e;e;e;
+                  % c7;c3;t;c14;e;e;e;
                   % det
                   % cost: 47,718,979.00 (above threshold)
                   (
-                    % c6;c3;t;c14;e;e;e;?;
+                    % c7;c3;t;c14;e;e;e;?;
                     % semidet
                     % cost: 0.00 (not above threshold)
                     MakeTransOptInt => yes
                   ->
-                    % conjunction: c6;c3;t;c14;e;e;e;t;
+                    % conjunction: c7;c3;t;c14;e;e;e;t;
                     % conjunction: det
                     % conjunction: cost: 0.00 (not above threshold)
 
-                    % c6;c3;t;c14;e;e;e;t;c1;
+                    % c7;c3;t;c14;e;e;e;t;c1;
                     % det
                     % cost: 0.00 (not above threshold)
                     top_level.mercury_compile_middle_passes.output_trans_opt_file(HLDS21, V_42, V_32, V_46, V_36)
                     ,
-                    % c6;c3;t;c14;e;e;e;t;c2;
+                    % c7;c3;t;c14;e;e;e;t;c2;
                     % det
                     % cost: 0.00 (not above threshold)
                     ExtraObjFiles <= []
                   ;
-                    % c6;c3;t;c14;e;e;e;e;
+                    % c7;c3;t;c14;e;e;e;e;
                     % det
                     % cost: 47,718,979.00 (above threshold)
                     (
-                      % c6;c3;t;c14;e;e;e;e;?;
+                      % c7;c3;t;c14;e;e;e;e;?;
                       % semidet
                       % cost: 0.00 (not above threshold)
                       MakeAnalysisRegistry => yes
                     ->
-                      % conjunction: c6;c3;t;c14;e;e;e;e;t;
+                      % conjunction: c7;c3;t;c14;e;e;e;e;t;
                       % conjunction: det
                       % conjunction: cost: 0.00 (not above threshold)
 
-                      % c6;c3;t;c14;e;e;e;e;t;c1;
+                      % c7;c3;t;c14;e;e;e;e;t;c1;
                       % det
                       % cost: 0.00 (not above threshold)
                       top_level.mercury_compile.prepare_for_intermodule_analysis(Globals, Verbose, Stats, HLDS21, HLDS22, V_46, V_55)
                       ,
-                      % c6;c3;t;c14;e;e;e;e;t;c2;
+                      % c7;c3;t;c14;e;e;e;e;t;c2;
                       % det
                       % cost: 0.00 (not above threshold)
                       top_level.mercury_compile_middle_passes.output_analysis_file(HLDS22, V_42, V_32, V_55, V_36)
                       ,
-                      % c6;c3;t;c14;e;e;e;e;t;c3;
+                      % c7;c3;t;c14;e;e;e;e;t;c3;
                       % det
                       % cost: 0.00 (not above threshold)
                       ExtraObjFiles <= []
                     ;
-                      % c6;c3;t;c14;e;e;e;e;e;
+                      % c7;c3;t;c14;e;e;e;e;e;
                       % det
                       % cost: 47,718,979.00 (above threshold)
                       (
-                        % c6;c3;t;c14;e;e;e;e;e;?;
+                        % c7;c3;t;c14;e;e;e;e;e;?;
                         % semidet
                         % cost: 0.00 (not above threshold)
                         MakeXmlDocumentation => yes
                       ->
-                        % conjunction: c6;c3;t;c14;e;e;e;e;e;t;
+                        % conjunction: c7;c3;t;c14;e;e;e;e;e;t;
                         % conjunction: det
                         % conjunction: cost: 0.00 (not above threshold)
 
-                        % c6;c3;t;c14;e;e;e;e;e;t;c1;
+                        % c7;c3;t;c14;e;e;e;e;e;t;c1;
                         % det
                         % cost: 0.00 (not above threshold)
                         check_hlds.xml_documentation.xml_documentation(HLDS21, V_46, V_36)
                         ,
-                        % c6;c3;t;c14;e;e;e;e;e;t;c2;
+                        % c7;c3;t;c14;e;e;e;e;e;t;c2;
                         % det
                         % cost: 0.00 (not above threshold)
                         ExtraObjFiles <= []
                         ,
-                        % c6;c3;t;c14;e;e;e;e;e;t;c3;
+                        % c7;c3;t;c14;e;e;e;e;e;t;c3;
                         % det
                         % cost: 0.00 (not above threshold)
                         V_32 := V_42
                       ;
-                        % conjunction: c6;c3;t;c14;e;e;e;e;e;e;
+                        % conjunction: c7;c3;t;c14;e;e;e;e;e;e;
                         % conjunction: det
                         % conjunction: cost: 47,718,979.00 (above threshold)
 
-                        % c6;c3;t;c14;e;e;e;e;e;e;c1;
+                        % c7;c3;t;c14;e;e;e;e;e;e;c1;
                         % det
                         % cost: 12.00 (not above threshold)
                         top_level.mercury_compile.maybe_prepare_for_intermodule_analysis(Globals, Verbose, Stats, HLDS21, HLDS22, V_46, V_56)
                         ,
-                        % c6;c3;t;c14;e;e;e;e;e;e;c2;
+                        % c7;c3;t;c14;e;e;e;e;e;e;c2;
                         % det
                         % cost: 47,718,967.00 (above threshold)
                         top_level.mercury_compile.mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles, MaybeTimestamps, ModuleName, HLDS22, V_34, ExtraObjFiles, V_42, V_32, V_56, V_36)
@@ -4730,50 +5152,50 @@ Feedback report for ../batch/profile.mercury_compile.01:
               )
             )
           ;
-            % conjunction: c6;c3;e;
+            % conjunction: c7;c3;e;
             % conjunction: det
             % conjunction: cost: 0.00 (not above threshold)
 
-            % c6;c3;e;c1;
+            % c7;c3;e;c1;
             % det
             % cost: 0.00 (not above threshold)
             io.get_exit_status(ExitStatus, V_43, V_57)
             ,
-            % c6;c3;e;c2;
+            % c7;c3;e;c2;
             % det
             % cost: 0.00 (not above threshold)
             (
-              % c6;c3;e;c2;?;
+              % c7;c3;e;c2;?;
               % semidet
               % cost: 0.00 (not above threshold)
               ExitStatus => 0
             ->
-              % conjunction: c6;c3;e;c2;t;
+              % conjunction: c7;c3;e;c2;t;
               % conjunction: det
               % conjunction: cost: 0.00 (not above threshold)
 
-              % c6;c3;e;c2;t;c1;
+              % c7;c3;e;c2;t;c1;
               % det
               % cost: 0.00 (not above threshold)
               V_58 <= 1
               ,
-              % c6;c3;e;c2;t;c2;
+              % c7;c3;e;c2;t;c2;
               % det
               % cost: 0.00 (not above threshold)
               io.set_exit_status(V_58, V_57, V_36)
             ;
-              % c6;c3;e;c2;e;
+              % c7;c3;e;c2;e;
               % det
               % cost: 0.00 (not above threshold)
               V_36 := V_57
             )
             ,
-            % c6;c3;e;c3;
+            % c7;c3;e;c3;
             % det
             % cost: 0.00 (not above threshold)
             ExtraObjFiles <= []
             ,
-            % c6;c3;e;c4;
+            % c7;c3;e;c4;
             % det
             % cost: 0.00 (not above threshold)
             V_32 := V_42
@@ -4900,100 +5322,100 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Dependent: on PostTypeSpecs, QualInfo, TypeClassErrors, TypeClassSpecs, V_28, V_31, V_34, V_35, V_37, V_41, V_42, V_43, V_48
       NumCalls: 1
       SeqTime: 21,050,636.00
-      ParTime: 20,791,877.00
+      ParTime: 20,791,878.00
       SparkCost: 300.00
       BarrierCost: 400.00
       SignalsCost: 1,300.00
       WaitsCost: 2,600.00
       ParOverheads total: 4,600.00
       Speedup: 1.0124
-      Time saving: 258,759.00
-      First conj dead time: 20,526,332.00
-      Future dead time: 262,843.00
+      Time saving: 258,758.00
+      First conj dead time: 20,526,333.00
+      Future dead time: 262,842.00
       Total dead time: 20,789,175.00
 
       Goals before:
         % conjunction: c4;s1-na;
-        % Cost: 1.00
+        % Cost: 2.00
 
         % c4;s1-na;c1;
         % det
         % cost: 1.00 (not above threshold)
         hlds.hlds_error_util.maybe_write_out_errors(Verbose, Globals, V_13, V_22, V_17, V_23, V_19, V_24)
+        ,
+        % c4;s1-na;c2;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_25 <= "% Post-processing type definitions...
+"
+        ,
+        % c4;s1-na;c3;
+        % det
+        % cost: 1.00 (not above threshold)
+        libs.file_util.maybe_write_string(Verbose, V_25, V_24, V_26)
 
       Parallel conjunction:
         (
-          % conjunction: c4;s1-na;c2;c1;
-          % Cost: 263,844.00
+          % conjunction: c4;s1-na;c4;c1;
+          % Cost: 263,843.00
 
-          % c4;s1-na;c2;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_25 <= "% Post-processing type definitions...
-"
-          ,
-          % c4;s1-na;c2;c1;c2;
-          % det
-          % cost: 1.00 (not above threshold)
-          libs.file_util.maybe_write_string(Verbose, V_25, V_24, V_26)
-          ,
-          % c4;s1-na;c2;c1;c3;
+          % c4;s1-na;c4;c1;c1;
           % det
           % cost: 26,966.00 (above threshold)
           % Productions:
           %     PostTypeSpecs: 26,965.00
           hlds.make_tags.post_process_type_defns(V_22, V_27, PostTypeSpecs)
           ,
-          % c4;s1-na;c2;c1;c4;
+          % c4;s1-na;c4;c1;c2;
           % det
           % cost: 2.00 (not above threshold)
           % Consumptions:
           %     PostTypeSpecs: 0.00
           parse_tree.error_util.contains_errors(Globals, PostTypeSpecs, PostTypeErrors)
           ,
-          % c4;s1-na;c2;c1;c5;
+          % c4;s1-na;c4;c1;c3;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
           %     V_28: 0.00
           bool.or(PostTypeErrors, V_11, V_28)
           ,
-          % c4;s1-na;c2;c1;c6;
+          % c4;s1-na;c4;c1;c4;
           % det
           % cost: 0.00 (not above threshold)
           V_29 <= 3
           ,
-          % c4;s1-na;c2;c1;c7;
+          % c4;s1-na;c4;c1;c5;
           % det
           % cost: 0.00 (not above threshold)
           V_30 <= "typedefn"
           ,
-          % c4;s1-na;c2;c1;c8;
+          % c4;s1-na;c4;c1;c6;
           % det
           % cost: 105.00 (not above threshold)
           % Productions:
           %     V_31: 104.00
           hlds.passes_aux.maybe_dump_hlds(V_27, V_29, V_30, V_15, V_31, V_26, V_32)
           ,
-          % c4;s1-na;c2;c1;c9;
+          % c4;s1-na;c4;c1;c7;
           % det
           % cost: 0.00 (not above threshold)
           V_33 <= "% Checking typeclasses...
 "
           ,
-          % c4;s1-na;c2;c1;c10;
+          % c4;s1-na;c4;c1;c8;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
           %     V_34: 0.00
           libs.file_util.maybe_write_string(Verbose, V_33, V_32, V_34)
           ,
-          % c4;s1-na;c2;c1;c11;
+          % c4;s1-na;c4;c1;c9;
           % det
           % cost: 0.00 (not above threshold)
           V_36 <= []
           ,
-          % c4;s1-na;c2;c1;c12;
+          % c4;s1-na;c4;c1;c10;
           % det
           % cost: 236,768.00 (above threshold)
           % Productions:
@@ -5002,17 +5424,17 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     QualInfo: 236,767.00
           check_hlds.check_typeclass.check_typeclasses(V_27, V_35, QualInfo0, QualInfo, V_36, TypeClassSpecs)
         &
-          % c4;s1-na;c2;c2;
+          % c4;s1-na;c4;c2;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
           %     V_48: 1.00
           V_48 <= $type_ctor_info_const
         &
-          % conjunction: c4;s1-na;c2;c3;
+          % conjunction: c4;s1-na;c4;c3;
           % Cost: 115.00
 
-          % c4;s1-na;c2;c3;c1;
+          % c4;s1-na;c4;c3;c1;
           % det
           % cost: 2.00 (not above threshold)
           % Consumptions:
@@ -5020,7 +5442,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     TypeClassSpecs: 0.00
           list.++(V_48, TypeClassSpecs, V_23, V_38)
           ,
-          % c4;s1-na;c2;c3;c2;
+          % c4;s1-na;c4;c3;c2;
           % det
           % cost: 2.00 (not above threshold)
           % Productions:
@@ -5030,17 +5452,17 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     PostTypeSpecs: 0.00
           list.++(V_48, PostTypeSpecs, V_38, V_37)
           ,
-          % c4;s1-na;c2;c3;c3;
+          % c4;s1-na;c4;c3;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_39 <= 5
           ,
-          % c4;s1-na;c2;c3;c4;
+          % c4;s1-na;c4;c3;c4;
           % det
           % cost: 0.00 (not above threshold)
           V_40 <= "typeclass"
           ,
-          % c4;s1-na;c2;c3;c5;
+          % c4;s1-na;c4;c3;c5;
           % det
           % cost: 105.00 (not above threshold)
           % Productions:
@@ -5052,7 +5474,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_31: 0.00
           hlds.passes_aux.maybe_dump_hlds(V_35, V_39, V_40, V_31, V_41, V_34, V_42)
           ,
-          % c4;s1-na;c2;c3;c6;
+          % c4;s1-na;c4;c3;c6;
           % det
           % cost: 4.00 (not above threshold)
           % Productions:
@@ -5062,7 +5484,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     QualInfo: 0.00
           hlds.make_hlds.set_module_recomp_info(QualInfo, V_35, V_43)
           ,
-          % c4;s1-na;c2;c3;c7;
+          % c4;s1-na;c4;c3;c7;
           % det
           % cost: 2.00 (not above threshold)
           % Productions:
@@ -5071,7 +5493,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     TypeClassSpecs: 0.00
           parse_tree.error_util.contains_errors(Globals, TypeClassSpecs, TypeClassErrors)
         &
-          % c4;s1-na;c2;c4;
+          % c4;s1-na;c4;c4;
           % det
           % cost: 20,786,676.00 (above threshold)
           % Consumptions:
@@ -5084,37 +5506,37 @@ Feedback report for ../batch/profile.mercury_compile.01:
           switch_can_not_fail_rep switch on TypeClassErrors
           (
               % case no/0
-              % c4;s1-na;c2;c4;s1-na;
+              % c4;s1-na;c4;c4;s1-na;
               % det
               % cost: 20,786,676.00 (above threshold)
               top_level.mercury_compile_front_end.frontend_pass_after_typeclass_check(FoundUndefModeError, V_28, V_12, V_43, V_14, V_41, V_16, V_37, V_18, V_42, V_20)
             ;
               % case yes/0
-              % conjunction: c4;s1-na;c2;c4;s2-na;
+              % conjunction: c4;s1-na;c4;c4;s2-na;
               % conjunction: det
               % conjunction: cost: 0.00 (not above threshold)
 
-              % c4;s1-na;c2;c4;s2-na;c1;
+              % c4;s1-na;c4;c4;s2-na;c1;
               % det
               % cost: 0.00 (not above threshold)
               V_12 <= yes
               ,
-              % c4;s1-na;c2;c4;s2-na;c2;
+              % c4;s1-na;c4;c4;s2-na;c2;
               % det
               % cost: 0.00 (not above threshold)
               V_14 := V_43
               ,
-              % c4;s1-na;c2;c4;s2-na;c3;
+              % c4;s1-na;c4;c4;s2-na;c3;
               % det
               % cost: 0.00 (not above threshold)
               V_16 := V_41
               ,
-              % c4;s1-na;c2;c4;s2-na;c4;
+              % c4;s1-na;c4;c4;s2-na;c4;
               % det
               % cost: 0.00 (not above threshold)
               V_18 := V_37
               ,
-              % c4;s1-na;c2;c4;s2-na;c5;
+              % c4;s1-na;c4;c4;s2-na;c5;
               % det
               % cost: 0.00 (not above threshold)
               V_20 := V_42
@@ -5128,18 +5550,18 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Path: 
       Dependent: on FoundModeError, SafeToContinue, V_30, V_36, V_40, V_41, V_42, V_43, V_44
       NumCalls: 1
-      SeqTime: 13,373,914.00
-      ParTime: 11,318,438.00
+      SeqTime: 13,374,139.00
+      ParTime: 11,318,763.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 900.00
       WaitsCost: 1,800.00
       ParOverheads total: 3,200.00
       Speedup: 1.1816
-      Time saving: 2,055,476.00
-      First conj dead time: 9,257,343.00
-      Future dead time: 5,975,452.00
-      Total dead time: 15,232,795.00
+      Time saving: 2,055,376.00
+      First conj dead time: 9,257,563.00
+      Future dead time: 5,975,552.00
+      Total dead time: 15,233,115.00
 
       Goals before:
         % conjunction: 
@@ -5260,7 +5682,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           top_level.mercury_compile_front_end.modecheck(Verbose, Stats, V_36, V_42, FoundModeError, SafeToContinue, V_30, V_43, V_41, V_44)
         &
           % conjunction: c6;c3;
-          % Cost: 7,398,235.00
+          % Cost: 7,398,355.00
 
           % c6;c3;c1;
           % det
@@ -5283,7 +5705,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           ,
           % c6;c3;c4;
           % det
-          % cost: 7,398,130.00 (above threshold)
+          % cost: 7,398,250.00 (above threshold)
           % Consumptions:
           %     V_43: 3,811,253.00
           %     V_42: 3.00
@@ -5294,7 +5716,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
               % case modes_safe_to_continue/0
               % conjunction: c6;c3;c4;s1-na;
               % conjunction: det
-              % conjunction: cost: 7,398,130.00 (above threshold)
+              % conjunction: cost: 7,398,250.00 (above threshold)
 
               % c6;c3;c4;s1-na;c1;
               % det
@@ -5550,12 +5972,26 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c7;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_101 <= 99
+        ,
+        % c8;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_102 <= "front_end"
+        ,
+        % c9;
+        % det
+        % cost: 105.00 (not above threshold)
+        hlds.passes_aux.maybe_dump_hlds(V_13, V_101, V_102, V_96, V_15, V_100, V_19)
 
       Path: c22;s1-na;
       Dependent: on V_61, V_62, V_66, V_67, V_68, V_69, V_70
       NumCalls: 1
-      SeqTime: 10,321,106.00
-      ParTime: 7,398,130.00
+      SeqTime: 10,321,226.00
+      ParTime: 7,398,250.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 700.00
@@ -5564,8 +6000,8 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Speedup: 1.3951
       Time saving: 2,922,976.00
       First conj dead time: 3,585,364.00
-      Future dead time: 7,621,522.00
-      Total dead time: 11,206,886.00
+      Future dead time: 7,621,622.00
+      Total dead time: 11,206,986.00
 
       Goals before:
         % conjunction: c22;s1-na;
@@ -5740,6 +6176,89 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c22;s1-na;c2;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_94 <= 65
+        ,
+        % c22;s1-na;c3;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_95 <= "frontend_simplify"
+        ,
+        % c22;s1-na;c4;
+        % det
+        % cost: 105.00 (not above threshold)
+        hlds.passes_aux.maybe_dump_hlds(V_91, V_94, V_95, V_87, V_96, V_93, V_97)
+        ,
+        % c22;s1-na;c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_98 <= "AfterFrontEnd"
+        ,
+        % c22;s1-na;c6;
+        % det
+        % cost: 13.00 (not above threshold)
+        top_level.mercury_compile_front_end.maybe_proc_statistics(Verbose, Stats, V_98, V_91, V_13, V_92, V_17, V_97, V_99)
+        ,
+        % c22;s1-na;c7;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_module.module_info_get_num_errors(V_13, NumErrors)
+        ,
+        % c22;s1-na;c8;
+        % det
+        % cost: 1.00 (not above threshold)
+        io.get_exit_status(ExitStatus, V_99, V_100)
+        ,
+        % c22;s1-na;c9;
+        % det
+        % cost: 0.00 (not above threshold)
+        (
+          % conjunction: c22;s1-na;c9;?;
+          % conjunction: semidet
+          % conjunction: cost: 0.00 (not above threshold)
+
+          % c22;s1-na;c9;?;c1;
+          % semidet
+          % cost: 0.00 (not above threshold)
+          FoundModeError => no
+          ,
+          % c22;s1-na;c9;?;c2;
+          % semidet
+          % cost: 0.00 (not above threshold)
+          FoundUniqError => no
+          ,
+          % c22;s1-na;c9;?;c3;
+          % semidet
+          % cost: 0.00 (not above threshold)
+          FoundStratError => no
+          ,
+          % c22;s1-na;c9;?;c4;
+          % semidet
+          % cost: 0.00 (not above threshold)
+          FoundTryError => no
+          ,
+          % c22;s1-na;c9;?;c5;
+          % semidet
+          % cost: 0.00 (not above threshold)
+          NumErrors => 0
+          ,
+          % c22;s1-na;c9;?;c6;
+          % semidet
+          % cost: 0.00 (not above threshold)
+          ExitStatus => 0
+        ->
+          % c22;s1-na;c9;t;
+          % det
+          % cost: 0.00 (not above threshold)
+          FoundError <= no
+        ;
+          % c22;s1-na;c9;e;
+          % det
+          % cost: 0.00 (not above threshold)
+          FoundError <= yes
+        )
 
     pred top_level.mercury_compile_llds_back_end.llds_backend_pass_by_phases/9-0
 
@@ -6967,21 +7486,21 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Dependent: on Classes, Instances, Queue0, V_26, V_27, V_4, V_6
       NumCalls: 1
       SeqTime: 193,612.00
-      ParTime: 103,729.00
+      ParTime: 103,731.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 700.00
       WaitsCost: 1,400.00
       ParOverheads total: 2,600.00
       Speedup: 1.8665
-      Time saving: 89,883.00
-      First conj dead time: 9,372.00
-      Future dead time: 92,854.00
+      Time saving: 89,881.00
+      First conj dead time: 9,374.00
+      Future dead time: 92,852.00
       Total dead time: 102,226.00
 
       Goals before:
         % conjunction: 
-        % Cost: 1.00
+        % Cost: 3.00
 
         % c1;
         % det
@@ -6992,95 +7511,95 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % det
         % cost: 1.00 (not above threshold)
         set_tree234.init(V_7, Examined0)
+        ,
+        % c3;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_28 <= $type_ctor_info_const
+        ,
+        % c4;
+        % det
+        % cost: 1.00 (not above threshold)
+        queue.init(V_28, V_16)
+        ,
+        % c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_29 <= $type_ctor_info_const
+        ,
+        % c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        map.init(V_28, V_29, V_17)
 
       Parallel conjunction:
         (
-          % conjunction: c3;c1;
-          % Cost: 92,856.00
+          % conjunction: c7;c1;
+          % Cost: 92,854.00
 
-          % c3;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_28 <= $type_ctor_info_const
-          ,
-          % c3;c1;c2;
-          % det
-          % cost: 1.00 (not above threshold)
-          queue.init(V_28, V_16)
-          ,
-          % c3;c1;c3;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_29 <= $type_ctor_info_const
-          ,
-          % c3;c1;c4;
-          % det
-          % cost: 1.00 (not above threshold)
-          map.init(V_28, V_29, V_17)
-          ,
-          % c3;c1;c5;
+          % c7;c1;c1;
           % det
           % cost: 2,722.00 (above threshold)
           % Productions:
           %     V_4: 2,721.00
           hlds.hlds_module.module_info_get_valid_predids(PredIds, V_3, V_4)
           ,
-          % c3;c1;c6;
+          % c7;c1;c2;
           % det
           % cost: 2.00 (not above threshold)
           % Consumptions:
           %     V_4: 0.00
           hlds.hlds_module.module_info_get_preds(V_4, PredTable)
           ,
-          % c3;c1;c7;
+          % c7;c1;c3;
           % det
           % cost: 90,059.00 (above threshold)
           transform_hlds.dead_proc_elim.dead_proc_initialize_preds(PredIds, PredTable, V_16, V_18, V_17, V_19)
           ,
-          % c3;c1;c8;
+          % c7;c1;c4;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
           %     V_4: 0.00
           hlds.hlds_module.module_info_get_pragma_exported_procs(V_4, PragmaExports)
           ,
-          % c3;c1;c9;
+          % c7;c1;c5;
           % det
           % cost: 1.00 (not above threshold)
           transform_hlds.dead_proc_elim.dead_proc_initialize_pragma_exports(PragmaExports, V_18, V_20, V_19, V_21)
           ,
-          % c3;c1;c10;
+          % c7;c1;c6;
           % det
           % cost: 4.00 (not above threshold)
           % Consumptions:
           %     V_4: 0.00
           hlds.hlds_module.module_info_user_init_pred_procs(V_4, InitProcs)
           ,
-          % c3;c1;c11;
+          % c7;c1;c7;
           % det
           % cost: 1.00 (not above threshold)
           transform_hlds.dead_proc_elim.dead_proc_initialize_init_fn_procs(InitProcs, V_20, V_22, V_21, V_23)
           ,
-          % c3;c1;c12;
+          % c7;c1;c8;
           % det
           % cost: 4.00 (not above threshold)
           % Consumptions:
           %     V_4: 0.00
           hlds.hlds_module.module_info_user_final_pred_procs(V_4, FinalPreds)
           ,
-          % c3;c1;c13;
+          % c7;c1;c9;
           % det
           % cost: 1.00 (not above threshold)
           transform_hlds.dead_proc_elim.dead_proc_initialize_init_fn_procs(FinalPreds, V_22, V_24, V_23, V_25)
           ,
-          % c3;c1;c14;
+          % c7;c1;c10;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
           %     V_4: 0.00
           hlds.hlds_module.module_info_get_type_ctor_gen_infos(V_4, TypeCtorGenInfos)
           ,
-          % c3;c1;c15;
+          % c7;c1;c11;
           % det
           % cost: 56.00 (not above threshold)
           % Productions:
@@ -7088,7 +7607,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_26: 7.00
           transform_hlds.dead_proc_elim.dead_proc_initialize_type_ctor_infos(TypeCtorGenInfos, V_24, V_26, V_25, V_27)
           ,
-          % c3;c1;c16;
+          % c7;c1;c12;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
@@ -7097,7 +7616,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_4: 0.00
           hlds.hlds_module.module_info_get_class_table(V_4, Classes)
           ,
-          % c3;c1;c17;
+          % c7;c1;c13;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
@@ -7106,7 +7625,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_4: 0.00
           hlds.hlds_module.module_info_get_instance_table(V_4, Instances)
         &
-          % c3;c2;
+          % c7;c2;
           % det
           % cost: 627.00 (not above threshold)
           % Productions:
@@ -7119,7 +7638,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     Classes: 214.00
           transform_hlds.dead_proc_elim.dead_proc_initialize_class_methods(Classes, Instances, V_26, Queue0, V_27, V_6)
         &
-          % c3;c3;
+          % c7;c3;
           % det
           % cost: 100,128.00 (above threshold)
           % Consumptions:
@@ -7135,21 +7654,21 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Dependent: on Classes, Instances, Queue0, V_26, V_27, V_4, V_6
       NumCalls: 1
       SeqTime: 192,884.00
-      ParTime: 103,410.00
+      ParTime: 103,412.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 700.00
       WaitsCost: 1,400.00
       ParOverheads total: 2,600.00
       Speedup: 1.8652
-      Time saving: 89,474.00
-      First conj dead time: 9,462.00
-      Future dead time: 92,445.00
+      Time saving: 89,472.00
+      First conj dead time: 9,464.00
+      Future dead time: 92,443.00
       Total dead time: 101,907.00
 
       Goals before:
         % conjunction: 
-        % Cost: 1.00
+        % Cost: 3.00
 
         % c1;
         % det
@@ -7160,95 +7679,95 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % det
         % cost: 1.00 (not above threshold)
         set_tree234.init(V_7, Examined0)
+        ,
+        % c3;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_28 <= $type_ctor_info_const
+        ,
+        % c4;
+        % det
+        % cost: 1.00 (not above threshold)
+        queue.init(V_28, V_16)
+        ,
+        % c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_29 <= $type_ctor_info_const
+        ,
+        % c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        map.init(V_28, V_29, V_17)
 
       Parallel conjunction:
         (
-          % conjunction: c3;c1;
-          % Cost: 92,447.00
+          % conjunction: c7;c1;
+          % Cost: 92,445.00
 
-          % c3;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_28 <= $type_ctor_info_const
-          ,
-          % c3;c1;c2;
-          % det
-          % cost: 1.00 (not above threshold)
-          queue.init(V_28, V_16)
-          ,
-          % c3;c1;c3;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_29 <= $type_ctor_info_const
-          ,
-          % c3;c1;c4;
-          % det
-          % cost: 1.00 (not above threshold)
-          map.init(V_28, V_29, V_17)
-          ,
-          % c3;c1;c5;
+          % c7;c1;c1;
           % det
           % cost: 2,712.00 (above threshold)
           % Productions:
           %     V_4: 2,711.00
           hlds.hlds_module.module_info_get_valid_predids(PredIds, V_3, V_4)
           ,
-          % c3;c1;c6;
+          % c7;c1;c2;
           % det
           % cost: 2.00 (not above threshold)
           % Consumptions:
           %     V_4: 0.00
           hlds.hlds_module.module_info_get_preds(V_4, PredTable)
           ,
-          % c3;c1;c7;
+          % c7;c1;c3;
           % det
           % cost: 89,660.00 (above threshold)
           transform_hlds.dead_proc_elim.dead_proc_initialize_preds(PredIds, PredTable, V_16, V_18, V_17, V_19)
           ,
-          % c3;c1;c8;
+          % c7;c1;c4;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
           %     V_4: 0.00
           hlds.hlds_module.module_info_get_pragma_exported_procs(V_4, PragmaExports)
           ,
-          % c3;c1;c9;
+          % c7;c1;c5;
           % det
           % cost: 1.00 (not above threshold)
           transform_hlds.dead_proc_elim.dead_proc_initialize_pragma_exports(PragmaExports, V_18, V_20, V_19, V_21)
           ,
-          % c3;c1;c10;
+          % c7;c1;c6;
           % det
           % cost: 4.00 (not above threshold)
           % Consumptions:
           %     V_4: 0.00
           hlds.hlds_module.module_info_user_init_pred_procs(V_4, InitProcs)
           ,
-          % c3;c1;c11;
+          % c7;c1;c7;
           % det
           % cost: 1.00 (not above threshold)
           transform_hlds.dead_proc_elim.dead_proc_initialize_init_fn_procs(InitProcs, V_20, V_22, V_21, V_23)
           ,
-          % c3;c1;c12;
+          % c7;c1;c8;
           % det
           % cost: 4.00 (not above threshold)
           % Consumptions:
           %     V_4: 0.00
           hlds.hlds_module.module_info_user_final_pred_procs(V_4, FinalPreds)
           ,
-          % c3;c1;c13;
+          % c7;c1;c9;
           % det
           % cost: 1.00 (not above threshold)
           transform_hlds.dead_proc_elim.dead_proc_initialize_init_fn_procs(FinalPreds, V_22, V_24, V_23, V_25)
           ,
-          % c3;c1;c14;
+          % c7;c1;c10;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
           %     V_4: 0.00
           hlds.hlds_module.module_info_get_type_ctor_gen_infos(V_4, TypeCtorGenInfos)
           ,
-          % c3;c1;c15;
+          % c7;c1;c11;
           % det
           % cost: 56.00 (not above threshold)
           % Productions:
@@ -7256,7 +7775,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_26: 7.00
           transform_hlds.dead_proc_elim.dead_proc_initialize_type_ctor_infos(TypeCtorGenInfos, V_24, V_26, V_25, V_27)
           ,
-          % c3;c1;c16;
+          % c7;c1;c12;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
@@ -7265,7 +7784,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_4: 0.00
           hlds.hlds_module.module_info_get_class_table(V_4, Classes)
           ,
-          % c3;c1;c17;
+          % c7;c1;c13;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
@@ -7274,7 +7793,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_4: 0.00
           hlds.hlds_module.module_info_get_instance_table(V_4, Instances)
         &
-          % c3;c2;
+          % c7;c2;
           % det
           % cost: 627.00 (not above threshold)
           % Productions:
@@ -7287,7 +7806,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     Classes: 214.00
           transform_hlds.dead_proc_elim.dead_proc_initialize_class_methods(Classes, Instances, V_26, Queue0, V_27, V_6)
         &
-          % c3;c3;
+          % c7;c3;
           % det
           % cost: 99,809.00 (above threshold)
           % Consumptions:
@@ -7304,14 +7823,14 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Path: 
       Dependent: on Needed, PredIds, ProcElimInfo0, V_6
       NumCalls: 1
-      SeqTime: 299,092.00
-      ParTime: 193,813.00
+      SeqTime: 299,224.00
+      ParTime: 193,945.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 400.00
       WaitsCost: 800.00
       ParOverheads total: 1,700.00
-      Speedup: 1.5432
+      Speedup: 1.5428
       Time saving: 105,279.00
       First conj dead time: 0.00
       Future dead time: 111,409.37
@@ -7396,60 +7915,96 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c2;
+        % det
+        % cost: 0.00 (not above threshold)
+        ProcElimInfo => proc_elim_info(V_19, V_20, PredTable, Changed, Specs)
+        ,
+        % c3;
+        % det
+        % cost: 2.00 (not above threshold)
+        hlds.hlds_module.module_info_set_preds(PredTable, V_20, V_21)
+        ,
+        % c4;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_module.module_info_get_type_ctor_gen_infos(V_21, TypeCtorGenInfos0)
+        ,
+        % c5;
+        % det
+        % cost: 127.00 (not above threshold)
+        transform_hlds.dead_proc_elim.dead_proc_eliminate_type_ctor_infos(TypeCtorGenInfos0, V_19, TypeCtorGenInfos)
+        ,
+        % c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_module.module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, V_21, V_22)
+        ,
+        % c7;
+        % det
+        % cost: 1.00 (not above threshold)
+        switch_can_not_fail_rep switch on Changed
+        (
+            % case no/0
+            % c7;s1-na;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_5 := V_22
+          ;
+            % case yes/0
+            % c7;s2-na;
+            % det
+            % cost: 1.00 (not above threshold)
+            hlds.hlds_module.module_info_clobber_dependency_info(V_22, V_5)
+        )
 
     pred transform_hlds.dependency_graph.build_dependency_graph/4-0
 
       Path: 
       Dependent: on DepGraph, DepGraph1
       NumCalls: 1
-      SeqTime: 272,425.00
-      ParTime: 262,028.00
+      SeqTime: 272,685.00
+      ParTime: 262,283.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 200.00
       WaitsCost: 400.00
       ParOverheads total: 1,100.00
       Speedup: 1.0397
-      Time saving: 10,397.00
-      First conj dead time: 150,760.00
-      Future dead time: 260,122.00
-      Total dead time: 410,882.00
+      Time saving: 10,402.00
+      First conj dead time: 150,755.00
+      Future dead time: 260,217.00
+      Total dead time: 410,972.00
 
       Goals before:
         % conjunction: 
-        % Cost: 0.00
+        % Cost: 2.00
 
         % c1;
         % det
         % cost: 0.00 (not above threshold)
         PolyConst1 <= 1
+        ,
+        % c2;
+        % det
+        % cost: 1.00 (not above threshold)
+        private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_15)
+        ,
+        % c3;
+        % det
+        % cost: 1.00 (not above threshold)
+        digraph.init(V_15, DepGraph0)
 
       Parallel conjunction:
         (
-          % conjunction: c2;c1;
-          % Cost: 110,168.00
-
-          % c2;c1;c1;
-          % det
-          % cost: 1.00 (not above threshold)
-          private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_15)
-          ,
-          % c2;c1;c2;
-          % det
-          % cost: 1.00 (not above threshold)
-          digraph.init(V_15, DepGraph0)
-          ,
-          % c2;c1;c3;
+          % c4;c1;
           % det
           % cost: 110,166.00 (above threshold)
           % Productions:
           %     DepGraph1: 110,166.00
           method 1 of V_13((PredIds, ModuleInfo, Imported, DepGraph0, DepGraph1))
         &
-          % conjunction: c2;c2;
-          % Cost: 149,660.00
-
-          % c2;c2;c1;
+          % c4;c2;
           % det
           % cost: 149,655.00 (above threshold)
           % Productions:
@@ -7457,38 +8012,38 @@ Feedback report for ../batch/profile.mercury_compile.01:
           % Consumptions:
           %     DepGraph1: 0.00
           method 2 of V_13((PredIds, ModuleInfo, Imported, DepGraph1, DepGraph))
-          ,
-          % c2;c2;c2;
+        &
+          % conjunction: c4;c3;
+          % Cost: 12,602.00
+
+          % c4;c3;c1;
           % det
           % cost: 1.00 (not above threshold)
           private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_16)
           ,
-          % c2;c2;c3;
+          % c4;c3;c2;
           % det
           % cost: 2.00 (not above threshold)
           hlds.hlds_module.hlds_dependency_info_init(V_16, V_10)
           ,
-          % c2;c2;c4;
+          % c4;c3;c3;
           % det
           % cost: 1.00 (not above threshold)
           private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_17)
           ,
-          % c2;c2;c5;
+          % c4;c3;c4;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
           %     DepGraph: 0.00
           hlds.hlds_module.hlds_dependency_info_set_dependency_graph(V_17, DepGraph, V_10, V_11)
-        &
-          % conjunction: c2;c3;
-          % Cost: 12,597.00
-
-          % c2;c3;c1;
+          ,
+          % c4;c3;c5;
           % det
           % cost: 1.00 (not above threshold)
           private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_18)
           ,
-          % c2;c3;c2;
+          % c4;c3;c6;
           % det
           % cost: 12,596.00 (above threshold)
           % Consumptions:
@@ -7497,58 +8052,76 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_12 <= []
+        ,
+        % c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_19)
+        ,
+        % c7;
+        % det
+        % cost: 257.00 (not above threshold)
+        transform_hlds.dependency_graph.sets_to_lists(V_19, DepOrd0, V_12, DepOrd)
+        ,
+        % c8;
+        % det
+        % cost: 1.00 (not above threshold)
+        private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_20)
+        ,
+        % c9;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_module.hlds_dependency_info_set_dependency_ordering(V_20, DepOrd, V_11, V_9)
 
       Path: 
       Dependent: on DepGraph, DepGraph1
       NumCalls: 1
-      SeqTime: 264,943.00
-      ParTime: 253,734.00
+      SeqTime: 265,199.00
+      ParTime: 253,985.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 200.00
       WaitsCost: 400.00
       ParOverheads total: 1,100.00
       Speedup: 1.0442
-      Time saving: 11,209.00
-      First conj dead time: 142,722.00
-      Future dead time: 251,828.00
-      Total dead time: 394,550.00
+      Time saving: 11,214.00
+      First conj dead time: 142,717.00
+      Future dead time: 251,923.00
+      Total dead time: 394,640.00
 
       Goals before:
         % conjunction: 
-        % Cost: 0.00
+        % Cost: 2.00
 
         % c1;
         % det
         % cost: 0.00 (not above threshold)
         PolyConst1 <= 1
+        ,
+        % c2;
+        % det
+        % cost: 1.00 (not above threshold)
+        private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_15)
+        ,
+        % c3;
+        % det
+        % cost: 1.00 (not above threshold)
+        digraph.init(V_15, DepGraph0)
 
       Parallel conjunction:
         (
-          % conjunction: c2;c1;
-          % Cost: 109,912.00
-
-          % c2;c1;c1;
-          % det
-          % cost: 1.00 (not above threshold)
-          private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_15)
-          ,
-          % c2;c1;c2;
-          % det
-          % cost: 1.00 (not above threshold)
-          digraph.init(V_15, DepGraph0)
-          ,
-          % c2;c1;c3;
+          % c4;c1;
           % det
           % cost: 109,910.00 (above threshold)
           % Productions:
           %     DepGraph1: 109,910.00
           method 1 of V_13((PredIds, ModuleInfo, Imported, DepGraph0, DepGraph1))
         &
-          % conjunction: c2;c2;
-          % Cost: 141,622.00
-
-          % c2;c2;c1;
+          % c4;c2;
           % det
           % cost: 141,617.00 (above threshold)
           % Productions:
@@ -7556,38 +8129,38 @@ Feedback report for ../batch/profile.mercury_compile.01:
           % Consumptions:
           %     DepGraph1: 0.00
           method 2 of V_13((PredIds, ModuleInfo, Imported, DepGraph1, DepGraph))
-          ,
-          % c2;c2;c2;
+        &
+          % conjunction: c4;c3;
+          % Cost: 13,414.00
+
+          % c4;c3;c1;
           % det
           % cost: 1.00 (not above threshold)
           private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_16)
           ,
-          % c2;c2;c3;
+          % c4;c3;c2;
           % det
           % cost: 2.00 (not above threshold)
           hlds.hlds_module.hlds_dependency_info_init(V_16, V_10)
           ,
-          % c2;c2;c4;
+          % c4;c3;c3;
           % det
           % cost: 1.00 (not above threshold)
           private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_17)
           ,
-          % c2;c2;c5;
+          % c4;c3;c4;
           % det
           % cost: 1.00 (not above threshold)
           % Consumptions:
           %     DepGraph: 0.00
           hlds.hlds_module.hlds_dependency_info_set_dependency_graph(V_17, DepGraph, V_10, V_11)
-        &
-          % conjunction: c2;c3;
-          % Cost: 13,409.00
-
-          % c2;c3;c1;
+          ,
+          % c4;c3;c5;
           % det
           % cost: 1.00 (not above threshold)
           private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_18)
           ,
-          % c2;c3;c2;
+          % c4;c3;c6;
           % det
           % cost: 13,408.00 (above threshold)
           % Consumptions:
@@ -7596,6 +8169,30 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c5;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_12 <= []
+        ,
+        % c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_19)
+        ,
+        % c7;
+        % det
+        % cost: 253.00 (not above threshold)
+        transform_hlds.dependency_graph.sets_to_lists(V_19, DepOrd0, V_12, DepOrd)
+        ,
+        % c8;
+        % det
+        % cost: 1.00 (not above threshold)
+        private_builtin.type_info_from_typeclass_info(V_13, PolyConst1, V_20)
+        ,
+        % c9;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_module.hlds_dependency_info_set_dependency_ordering(V_20, DepOrd, V_11, V_9)
 
     pred transform_hlds.equiv_type_hlds.replace_in_hlds/2-0
 
@@ -7856,22 +8453,22 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Path: 
       Dependent: on V_20
       NumCalls: 1
-      SeqTime: 234,038.00
-      ParTime: 165,552.00
+      SeqTime: 234,068.00
+      ParTime: 165,582.00
       SparkCost: 100.00
       BarrierCost: 200.00
       SignalsCost: 100.00
       WaitsCost: 200.00
       ParOverheads total: 600.00
-      Speedup: 1.4137
+      Speedup: 1.4136
       Time saving: 68,486.00
       First conj dead time: 0.00
-      Future dead time: 36,371.00
-      Total dead time: 36,371.00
+      Future dead time: 36,467.00
+      Total dead time: 36,467.00
 
       Goals before:
         % conjunction: 
-        % Cost: 2.00
+        % Cost: 6.00
 
         % c1;
         % det
@@ -7882,50 +8479,47 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % det
         % cost: 1.00 (not above threshold)
         hlds.hlds_data.inst_table_get_merge_insts(V_15, MergeInsts0)
+        ,
+        % c3;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_data.inst_table_get_ground_insts(V_15, GroundInsts0)
+        ,
+        % c4;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_data.inst_table_get_any_insts(V_15, AnyInsts0)
+        ,
+        % c5;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_data.inst_table_get_shared_insts(V_15, SharedInsts0)
+        ,
+        % c6;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_data.inst_table_get_mostly_uniq_insts(V_15, MostlyUniqInsts0)
+        ,
+        % c7;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_19 <= $closure_cons(EqvMap)
+        ,
+        % c8;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_30 <= $type_ctor_info_const
 
       Parallel conjunction:
         (
-          % conjunction: c3;c1;
-          % Cost: 165,450.00
-
-          % c3;c1;c1;
-          % det
-          % cost: 1.00 (not above threshold)
-          hlds.hlds_data.inst_table_get_ground_insts(V_15, GroundInsts0)
-          ,
-          % c3;c1;c2;
-          % det
-          % cost: 1.00 (not above threshold)
-          hlds.hlds_data.inst_table_get_any_insts(V_15, AnyInsts0)
-          ,
-          % c3;c1;c3;
-          % det
-          % cost: 1.00 (not above threshold)
-          hlds.hlds_data.inst_table_get_shared_insts(V_15, SharedInsts0)
-          ,
-          % c3;c1;c4;
-          % det
-          % cost: 1.00 (not above threshold)
-          hlds.hlds_data.inst_table_get_mostly_uniq_insts(V_15, MostlyUniqInsts0)
-          ,
-          % c3;c1;c5;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_19 <= $closure_cons(EqvMap)
-          ,
-          % c3;c1;c6;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_30 <= $type_ctor_info_const
-          ,
-          % c3;c1;c7;
+          % c9;c1;
           % det
           % cost: 165,446.00 (above threshold)
           % Productions:
           %     V_20: 36,807.00
           transform_hlds.equiv_type_hlds.replace_in_inst_table(V_30, V_19, EqvMap, UnifyInsts0, UnifyInsts, V_17, V_20)
         &
-          % c3;c2;
+          % c9;c2;
           % det
           % cost: 68,586.00 (above threshold)
           % Consumptions:
@@ -7934,50 +8528,109 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c10;
+        % det
+        % cost: 6.00 (not above threshold)
+        transform_hlds.equiv_type_hlds.replace_in_inst_table(V_30, V_19, EqvMap, GroundInsts0, GroundInsts, V_21, V_22)
+        ,
+        % c11;
+        % det
+        % cost: 6.00 (not above threshold)
+        transform_hlds.equiv_type_hlds.replace_in_inst_table(V_30, V_19, EqvMap, AnyInsts0, AnyInsts, V_22, V_23)
+        ,
+        % c12;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_24 <= $closure_cons(EqvMap)
+        ,
+        % c13;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_31 <= $type_ctor_info_const
+        ,
+        % c14;
+        % det
+        % cost: 6.00 (not above threshold)
+        transform_hlds.equiv_type_hlds.replace_in_inst_table(V_31, V_24, EqvMap, SharedInsts0, SharedInsts, V_23, V_18)
+        ,
+        % c15;
+        % det
+        % cost: 6.00 (not above threshold)
+        transform_hlds.equiv_type_hlds.replace_in_inst_table(V_31, V_24, EqvMap, MostlyUniqInsts0, MostlyUniqInsts, V_18, V_14)
+        ,
+        % c16;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_data.inst_table_set_unify_insts(UnifyInsts, V_15, V_25)
+        ,
+        % c17;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_data.inst_table_set_merge_insts(MergeInsts, V_25, V_26)
+        ,
+        % c18;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_data.inst_table_set_ground_insts(GroundInsts, V_26, V_27)
+        ,
+        % c19;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_data.inst_table_set_any_insts(AnyInsts, V_27, V_28)
+        ,
+        % c20;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_data.inst_table_set_shared_insts(SharedInsts, V_28, V_29)
+        ,
+        % c21;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_data.inst_table_set_mostly_uniq_insts(MostlyUniqInsts, V_29, V_16)
 
     pred transform_hlds.higher_order.process_ho_spec_requests/4-0
 
       Path: c13;s2-na;
       Dependent: on NewPredList, PredProcs, V_16, V_18, V_19
       NumCalls: 1
-      SeqTime: 260,501.00
-      ParTime: 182,750.00
+      SeqTime: 260,502.00
+      ParTime: 182,852.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 500.00
       WaitsCost: 1,000.00
       ParOverheads total: 2,000.00
-      Speedup: 1.4255
-      Time saving: 77,751.00
-      First conj dead time: 100,301.00
-      Future dead time: 106,704.00
-      Total dead time: 207,005.00
+      Speedup: 1.4247
+      Time saving: 77,650.00
+      First conj dead time: 100,402.00
+      Future dead time: 106,803.00
+      Total dead time: 207,205.00
 
       Goals before:
         % conjunction: c13;s2-na;
-        % Cost: 0.00
+        % Cost: 1.00
 
         % c13;s2-na;c1;
         % det
         % cost: 0.00 (not above threshold)
         V_34 <= $type_ctor_info_const
+        ,
+        % c13;s2-na;c2;
+        % det
+        % cost: 1.00 (not above threshold)
+        set.init(V_34, V_13)
+        ,
+        % c13;s2-na;c3;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_14 <= []
 
       Parallel conjunction:
         (
-          % conjunction: c13;s2-na;c2;c1;
-          % Cost: 81,149.00
+          % conjunction: c13;s2-na;c4;c1;
+          % Cost: 81,148.00
 
-          % c13;s2-na;c2;c1;c1;
-          % det
-          % cost: 1.00 (not above threshold)
-          set.init(V_34, V_13)
-          ,
-          % c13;s2-na;c2;c1;c2;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_14 <= []
-          ,
-          % c13;s2-na;c2;c1;c3;
+          % c13;s2-na;c4;c1;c1;
           % det
           % cost: 81,147.00 (above threshold)
           % Productions:
@@ -7985,39 +8638,39 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     NewPredList: 81,146.00
           transform_hlds.higher_order.create_new_preds(Requests, V_14, NewPredList, V_13, V_15, V_11, V_16, V_12, V_10)
           ,
-          % c13;s2-na;c2;c1;c4;
+          % c13;s2-na;c4;c1;c2;
           % det
           % cost: 0.00 (not above threshold)
           % Consumptions:
           %     V_16: 0.00
           V_17 <= $closure_cons(V_16)
           ,
-          % c13;s2-na;c2;c1;c5;
+          % c13;s2-na;c4;c1;c3;
           % det
           % cost: 0.00 (not above threshold)
           V_35 <= $type_ctor_info_const
           ,
-          % c13;s2-na;c2;c1;c6;
+          % c13;s2-na;c4;c1;c4;
           % det
           % cost: 0.00 (not above threshold)
           V_36 <= $type_ctor_info_const
           ,
-          % c13;s2-na;c2;c1;c7;
+          % c13;s2-na;c4;c1;c5;
           % det
           % cost: 0.00 (not above threshold)
           V_37 <= $type_info_cell_constructor(V_36, V_34)
           ,
-          % c13;s2-na;c2;c1;c8;
+          % c13;s2-na;c4;c1;c6;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
           %     V_18: 0.00
           list.foldl(V_35, V_37, V_17, LoopRequests, V_15, V_18)
         &
-          % conjunction: c13;s2-na;c2;c2;
+          % conjunction: c13;s2-na;c4;c2;
           % Cost: 25,258.00
 
-          % c13;s2-na;c2;c2;c1;
+          % c13;s2-na;c4;c2;c1;
           % det
           % cost: 1.00 (not above threshold)
           % Productions:
@@ -8026,7 +8679,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_18: 0.00
           set.to_sorted_list(V_34, V_18, PredProcs)
           ,
-          % c13;s2-na;c2;c2;c2;
+          % c13;s2-na;c4;c2;c2;
           % det
           % cost: 25,257.00 (above threshold)
           % Productions:
@@ -8036,7 +8689,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     NewPredList: 1.00
           transform_hlds.higher_order.ho_fixup_specialized_versions(NewPredList, V_16, V_19)
         &
-          % c13;s2-na;c2;c3;
+          % c13;s2-na;c4;c3;
           % det
           % cost: 154,094.00 (above threshold)
           % Consumptions:
@@ -8046,6 +8699,51 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c13;s2-na;c5;
+        % det
+        % cost: 1.00 (not above threshold)
+        switch_can_not_fail_rep switch on NewPredList
+        (
+            % case []/0
+            % c13;s2-na;c5;s1-na;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_8 := V_20
+          ;
+            % case [|]/2
+            % conjunction: c13;s2-na;c5;s2-na;
+            % conjunction: det
+            % conjunction: cost: 1.00 (not above threshold)
+
+            % c13;s2-na;c5;s2-na;c1;
+            % det
+            % cost: 0.00 (not above threshold)
+            V_20 => higher_order_global_info(V_21, V_22, V_23, ModuleInfo0, V_24, V_25, V_26)
+            ,
+            % c13;s2-na;c5;s2-na;c2;
+            % det
+            % cost: 1.00 (not above threshold)
+            hlds.hlds_module.module_info_clobber_dependency_info(ModuleInfo0, ModuleInfo)
+            ,
+            % c13;s2-na;c5;s2-na;c3;
+            % det
+            % cost: 0.00 (not above threshold)
+            scope (
+              % conjunction: c13;s2-na;c5;s2-na;c3;q;
+              % conjunction: det
+              % conjunction: cost: 0.00 (not above threshold)
+
+              % c13;s2-na;c5;s2-na;c3;q;c1;
+              % det
+              % cost: 0.00 (not above threshold)
+              V_20 => higher_order_global_info(V_27, V_28, V_29, V_30, V_31, V_32, V_33)
+              ,
+              % c13;s2-na;c5;s2-na;c3;q;c2;
+              % det
+              % cost: 0.00 (not above threshold)
+              V_8 <= higher_order_global_info(V_27, V_28, V_29, ModuleInfo, V_31, V_32, V_33)
+            )
+        )
 
     pred transform_hlds.higher_order.specialize_higher_order/4-0
 
@@ -8062,12 +8760,12 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Speedup: 1.2846
       Time saving: 315,372.00
       First conj dead time: 1,000.00
-      Future dead time: 1,185,449.00
-      Total dead time: 1,186,449.00
+      Future dead time: 1,185,435.00
+      Total dead time: 1,186,435.00
 
       Goals before:
         % conjunction: 
-        % Cost: 52.00
+        % Cost: 59.00
 
         % c1;
         % det
@@ -8158,290 +8856,290 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % det
         % cost: 0.00 (not above threshold)
         V_74 <= $type_ctor_info_const
+        ,
+        % c19;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_75 <= $type_ctor_info_const
+        ,
+        % c20;
+        % det
+        % cost: 1.00 (not above threshold)
+        map.init(V_74, V_75, GoalSizes0)
+        ,
+        % c21;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_76 <= $type_ctor_info_const
+        ,
+        % c22;
+        % det
+        % cost: 1.00 (not above threshold)
+        set.init(V_76, Requests0)
+        ,
+        % c23;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_77 <= $type_ctor_info_const
+        ,
+        % c24;
+        % det
+        % cost: 1.00 (not above threshold)
+        map.init(V_70, V_77, VersionInfo0)
+        ,
+        % c25;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_33 <= 1
+        ,
+        % c26;
+        % det
+        % cost: 1.00 (not above threshold)
+        counter.init(V_33, V_32)
+        ,
+        % c27;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_31 <= higher_order_global_info(Requests0, NewPreds0, VersionInfo0, V_22, GoalSizes0, Params, V_32)
+        ,
+        % c28;
+        % det
+        % cost: 2.00 (not above threshold)
+        hlds.hlds_module.module_info_get_valid_predids(PredIds0, V_22, V_34)
+        ,
+        % c29;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_module.module_info_get_type_spec_info(V_34, TypeSpecInfo)
+        ,
+        % c30;
+        % det
+        % cost: 0.00 (not above threshold)
+        TypeSpecInfo => type_spec_info(V_14, UserSpecPreds, V_16, V_17)
 
       Parallel conjunction:
         (
-          % conjunction: c19;c1;
-          % Cost: 1,105,770.00
+          % conjunction: c31;c1;
+          % Cost: 1,105,763.00
 
-          % c19;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_75 <= $type_ctor_info_const
-          ,
-          % c19;c1;c2;
-          % det
-          % cost: 1.00 (not above threshold)
-          map.init(V_74, V_75, GoalSizes0)
-          ,
-          % c19;c1;c3;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_76 <= $type_ctor_info_const
-          ,
-          % c19;c1;c4;
-          % det
-          % cost: 1.00 (not above threshold)
-          set.init(V_76, Requests0)
-          ,
-          % c19;c1;c5;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_77 <= $type_ctor_info_const
-          ,
-          % c19;c1;c6;
-          % det
-          % cost: 1.00 (not above threshold)
-          map.init(V_70, V_77, VersionInfo0)
-          ,
-          % c19;c1;c7;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_33 <= 1
-          ,
-          % c19;c1;c8;
-          % det
-          % cost: 1.00 (not above threshold)
-          counter.init(V_33, V_32)
-          ,
-          % c19;c1;c9;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_31 <= higher_order_global_info(Requests0, NewPreds0, VersionInfo0, V_22, GoalSizes0, Params, V_32)
-          ,
-          % c19;c1;c10;
-          % det
-          % cost: 2.00 (not above threshold)
-          hlds.hlds_module.module_info_get_valid_predids(PredIds0, V_22, V_34)
-          ,
-          % c19;c1;c11;
-          % det
-          % cost: 1.00 (not above threshold)
-          hlds.hlds_module.module_info_get_type_spec_info(V_34, TypeSpecInfo)
-          ,
-          % c19;c1;c12;
-          % det
-          % cost: 0.00 (not above threshold)
-          TypeSpecInfo => type_spec_info(V_14, UserSpecPreds, V_16, V_17)
-          ,
-          % c19;c1;c13;
+          % c31;c1;c1;
           % det
           % cost: 315,749.00 (above threshold)
           % Productions:
           %     UserSpecPredList: 80,772.00
           (
-            % c19;c1;c13;?;
+            % c31;c1;c1;?;
             % semidet
             % cost: 1.00 (not above threshold)
             set.empty(V_74, UserSpecPreds)
           ->
-            % conjunction: c19;c1;c13;t;
+            % conjunction: c31;c1;c1;t;
             % conjunction: det
             % conjunction: cost: 0.00 (not above threshold)
 
-            % c19;c1;c13;t;c1;
+            % c31;c1;c1;t;c1;
             % det
             % cost: 0.00 (not above threshold)
             PredIds := PredIds0
             ,
-            % c19;c1;c13;t;c2;
+            % c31;c1;c1;t;c2;
             % det
             % cost: 0.00 (not above threshold)
             UserSpecPredList <= []
             ,
-            % c19;c1;c13;t;c3;
+            % c31;c1;c1;t;c3;
             % det
             % cost: 0.00 (not above threshold)
             V_41 := V_31
             ,
-            % c19;c1;c13;t;c4;
+            % c31;c1;c1;t;c4;
             % det
             % cost: 0.00 (not above threshold)
             V_42 := V_24
           ;
-            % conjunction: c19;c1;c13;e;
+            % conjunction: c31;c1;c1;e;
             % conjunction: det
             % conjunction: cost: 315,748.00 (above threshold)
 
-            % c19;c1;c13;e;c1;
+            % c31;c1;c1;e;c1;
             % det
             % cost: 72,705.00 (above threshold)
             set.list_to_set(V_74, PredIds0, PredIdSet0)
             ,
-            % c19;c1;c13;e;c2;
+            % c31;c1;c1;e;c2;
             % det
             % cost: 8,066.00 (above threshold)
             set.difference(V_74, PredIdSet0, UserSpecPreds, PredIdSet)
             ,
-            % c19;c1;c13;e;c3;
+            % c31;c1;c1;e;c3;
             % det
             % cost: 1.00 (not above threshold)
             set.to_sorted_list(V_74, PredIdSet, PredIds)
             ,
-            % c19;c1;c13;e;c4;
+            % c31;c1;c1;e;c4;
             % det
             % cost: 1.00 (not above threshold)
             % Productions:
             %     UserSpecPredList: 0.00
             set.to_sorted_list(V_74, UserSpecPreds, UserSpecPredList)
             ,
-            % c19;c1;c13;e;c5;
+            % c31;c1;c1;e;c5;
             % det
             % cost: 0.00 (not above threshold)
             V_36 <= yes
             ,
-            % c19;c1;c13;e;c6;
+            % c31;c1;c1;e;c6;
             % det
             % cost: 0.00 (not above threshold)
             V_31 => higher_order_global_info(V_53, V_54, V_55, V_56, V_57, V_37, V_58)
             ,
-            % c19;c1;c13;e;c7;
+            % c31;c1;c1;e;c7;
             % det
             % cost: 0.00 (not above threshold)
             scope (
-              % conjunction: c19;c1;c13;e;c7;q;
+              % conjunction: c31;c1;c1;e;c7;q;
               % conjunction: det
               % conjunction: cost: 0.00 (not above threshold)
 
-              % c19;c1;c13;e;c7;q;c1;
+              % c31;c1;c1;e;c7;q;c1;
               % det
               % cost: 0.00 (not above threshold)
               V_37 => ho_params(V_59, V_60, V_61, V_62, V_63)
               ,
-              % c19;c1;c13;e;c7;q;c2;
+              % c31;c1;c1;e;c7;q;c2;
               % det
               % cost: 0.00 (not above threshold)
               V_38 <= ho_params(V_59, V_60, V_36, V_62, V_63)
             )
             ,
-            % c19;c1;c13;e;c8;
+            % c31;c1;c1;e;c8;
             % det
             % cost: 0.00 (not above threshold)
             scope (
-              % c19;c1;c13;e;c8;q;
+              % c31;c1;c1;e;c8;q;
               % det
               % cost: 0.00 (not above threshold)
               V_35 <= higher_order_global_info(V_53, V_54, V_55, V_56, V_57, V_38, V_58)
             )
             ,
-            % c19;c1;c13;e;c9;
+            % c31;c1;c1;e;c9;
             % det
             % cost: 0.00 (not above threshold)
             V_39 <= $closure_cons
             ,
-            % c19;c1;c13;e;c10;
+            % c31;c1;c1;e;c10;
             % det
             % cost: 0.00 (not above threshold)
             V_78 <= $type_ctor_info_const
             ,
-            % c19;c1;c13;e;c11;
+            % c31;c1;c1;e;c11;
             % det
             % cost: 49,871.00 (above threshold)
             % Consumptions:
             %     UserSpecPredList: 0.00
             list.foldl(V_74, V_78, V_39, UserSpecPredList, V_35, V_40)
             ,
-            % c19;c1;c13;e;c12;
+            % c31;c1;c1;e;c12;
             % det
             % cost: 263,876.00 (above threshold)
             transform_hlds.higher_order.process_ho_spec_requests(V_40, V_41, V_24, V_42)
           )
           ,
-          % c19;c1;c14;
+          % c31;c1;c2;
           % det
           % cost: 790,014.00 (above threshold)
           % Productions:
           %     V_50: 790,014.00
           (
-            % conjunction: c19;c1;c14;?;
+            % conjunction: c31;c1;c2;?;
             % conjunction: semidet
             % conjunction: cost: 1.00 (not above threshold)
 
-            % c19;c1;c14;?;c1;
+            % c31;c1;c2;?;c1;
             % det
             % cost: 0.00 (not above threshold)
             V_47 <= []
             ,
-            % c19;c1;c14;?;c2;
+            % c31;c1;c2;?;c2;
             % det
             % cost: 0.00 (not above threshold)
             V_46 <= [|](UserTypeSpec, V_47)
             ,
-            % c19;c1;c14;?;c3;
+            % c31;c1;c2;?;c3;
             % det
             % cost: 0.00 (not above threshold)
             V_45 <= [|](TypeSpec, V_46)
             ,
-            % c19;c1;c14;?;c4;
+            % c31;c1;c2;?;c4;
             % det
             % cost: 0.00 (not above threshold)
             V_43 <= [|](HigherOrder, V_45)
             ,
-            % c19;c1;c14;?;c5;
+            % c31;c1;c2;?;c5;
             % det
             % cost: 0.00 (not above threshold)
             V_44 <= yes
             ,
-            % c19;c1;c14;?;c6;
+            % c31;c1;c2;?;c6;
             % det
             % cost: 1.00 (not above threshold)
             bool.or_list(V_43, V_81)
             ,
-            % c19;c1;c14;?;c7;
+            % c31;c1;c2;?;c7;
             % semidet
             % cost: 0.00 (not above threshold)
             V_81 == V_44
           ->
-            % conjunction: c19;c1;c14;t;
+            % conjunction: c31;c1;c2;t;
             % conjunction: det
             % conjunction: cost: 790,013.00 (above threshold)
 
-            % c19;c1;c14;t;c1;
+            % c31;c1;c2;t;c1;
             % det
             % cost: 0.00 (not above threshold)
             V_48 <= $closure_cons
             ,
-            % c19;c1;c14;t;c2;
+            % c31;c1;c2;t;c2;
             % det
             % cost: 0.00 (not above threshold)
             V_79 <= $type_ctor_info_const
             ,
-            % c19;c1;c14;t;c3;
+            % c31;c1;c2;t;c3;
             % det
             % cost: 790,011.00 (above threshold)
             list.foldl(V_74, V_79, V_48, PredIds, V_41, V_49)
             ,
-            % c19;c1;c14;t;c4;
+            % c31;c1;c2;t;c4;
             % det
             % cost: 2.00 (not above threshold)
             transform_hlds.higher_order.recursively_process_ho_spec_requests(V_49, V_50, V_42, V_25)
           ;
-            % conjunction: c19;c1;c14;e;
+            % conjunction: c31;c1;c2;e;
             % conjunction: det
             % conjunction: cost: 0.00 (not above threshold)
 
-            % c19;c1;c14;e;c1;
+            % c31;c1;c2;e;c1;
             % det
             % cost: 0.00 (not above threshold)
             V_50 := V_41
             ,
-            % c19;c1;c14;e;c2;
+            % c31;c1;c2;e;c2;
             % det
             % cost: 0.00 (not above threshold)
             V_25 := V_42
           )
         &
-          % conjunction: c19;c2;
+          % conjunction: c31;c2;
           % Cost: 0.00
 
-          % c19;c2;c1;
+          % c31;c2;c1;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
           %     V_51: 1.00
           V_51 <= $closure_cons
           ,
-          % c19;c2;c2;
+          % c31;c2;c2;
           % det
           % cost: 0.00 (not above threshold)
           % Productions:
@@ -8450,15 +9148,15 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     V_50: 0.00
           V_50 => higher_order_global_info(V_64, V_65, V_66, V_52, V_67, V_68, V_69)
         &
-          % conjunction: c19;c3;
+          % conjunction: c31;c3;
           % Cost: 317,572.00
 
-          % c19;c3;c1;
+          % c31;c3;c1;
           % det
           % cost: 0.00 (not above threshold)
           V_80 <= $type_ctor_info_const
           ,
-          % c19;c3;c2;
+          % c31;c3;c2;
           % det
           % cost: 317,572.00 (above threshold)
           % Consumptions:
@@ -8586,18 +9284,18 @@ Feedback report for ../batch/profile.mercury_compile.01:
       Path: 
       Dependent: on NeededMap, V_28, V_29
       NumCalls: 1
-      SeqTime: 1,419,790.00
-      ParTime: 1,230,304.00
+      SeqTime: 1,419,791.00
+      ParTime: 1,230,405.00
       SparkCost: 200.00
       BarrierCost: 300.00
       SignalsCost: 300.00
       WaitsCost: 600.00
       ParOverheads total: 1,400.00
-      Speedup: 1.1540
-      Time saving: 189,486.00
-      First conj dead time: 1,036,145.00
-      Future dead time: 458,388.00
-      Total dead time: 1,494,533.00
+      Speedup: 1.1539
+      Time saving: 189,386.00
+      First conj dead time: 1,036,245.00
+      Future dead time: 458,488.00
+      Total dead time: 1,494,733.00
 
       Goals before:
         % conjunction: 
@@ -8810,6 +9508,10 @@ Feedback report for ../batch/profile.mercury_compile.01:
         )
 
       Goals after:
+        % c21;
+        % det
+        % cost: 1.00 (not above threshold)
+        hlds.hlds_module.module_info_clobber_dependency_info(V_30, V_18)
 
     pred transform_hlds.unused_args.unused_args_pass/5-0
 
@@ -8833,18 +9535,14 @@ Feedback report for ../batch/profile.mercury_compile.01:
         % conjunction: 
         % Cost: 0.00
 
+        % c1;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_7 <= no
 
       Parallel conjunction:
         (
-          % conjunction: c1;c1;
-          % Cost: 38,538.80
-
-          % c1;c1;c1;
-          % det
-          % cost: 0.00 (not above threshold)
-          V_7 <= no
-          ,
-          % c1;c1;c2;
+          % c2;c1;
           % det
           % cost: 38,538.80 (above threshold)
           % Productions:
@@ -8852,7 +9550,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           %     Changed: 133.00
           transform_hlds.unused_args.unused_args_single_pass(LocalPredProcs, V_7, Changed, V_5, V_8)
         &
-          % c1;c2;
+          % c2;c2;
           % det
           % cost: 61,662.88 (above threshold)
           % Consumptions:
@@ -8861,7 +9559,7 @@ Feedback report for ../batch/profile.mercury_compile.01:
           switch_can_not_fail_rep switch on Changed
           (
               % case no/0
-              % c1;c2;s1-na;
+              % c2;c2;s1-na;
               % det
               % cost: 0.00 (not above threshold)
               % Consumptions:
@@ -8869,21 +9567,21 @@ Feedback report for ../batch/profile.mercury_compile.01:
               V_6 := V_8
             ;
               % case yes/0
-              % conjunction: c1;c2;s2-na;
+              % conjunction: c2;c2;s2-na;
               % conjunction: det
               % conjunction: cost: 77,078.60 (above threshold)
 
-              % c1;c2;s2-na;c1;
+              % c2;c2;s2-na;c1;
               % det
               % cost: 0.00 (not above threshold)
               V_10 <= 1
               ,
-              % c1;c2;s2-na;c2;
+              % c2;c2;s2-na;c2;
               % det
               % cost: 0.00 (not above threshold)
               builtin int.+(PassNum, V_10, V_9)
               ,
-              % c1;c2;s2-na;c3;
+              % c2;c2;s2-na;c3;
               % det
               % cost: 77,078.60 (above threshold)
               transform_hlds.unused_args.unused_args_pass(V_9, ModuleInfo, LocalPredProcs, V_8, V_6)

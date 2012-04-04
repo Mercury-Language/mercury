@@ -59,4 +59,8 @@ Feedback report for ./mandelbrot:
         )
 
       Goals after:
+        % s2-na;c3;
+        % det
+        % cost: 0.00 (not above threshold)
+        V_3 <= [|](Y, Ys)
 
