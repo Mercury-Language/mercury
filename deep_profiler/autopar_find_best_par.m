@@ -12,6 +12,9 @@
 % This module contains the code for finding the best way to parallelize
 % a given conjunction.
 %
+% The following compile-time flags may introduce trace goals:
+%   debug_branch_and_bound
+%
 %-----------------------------------------------------------------------------%
 
 :- module mdprof_fb.automatic_parallelism.autopar_find_best_par.
@@ -46,18 +49,18 @@
 
 :- implementation.
 
-:- import_module branch_and_bound.
 :- import_module mdbcomp.program_representation.
 :- import_module mdprof_fb.automatic_parallelism.autopar_calc_overlap.
-:- import_module mdprof_fb.automatic_parallelism.autopar_search_goals. % XXX
 :- import_module measurements.
 
 :- import_module array.
+:- import_module benchmarking.
 :- import_module digraph.
 :- import_module float.
 :- import_module io.
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -400,23 +403,29 @@ find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
         io.flush_output(!IO)
     ),
 
-    branch_and_bound(
-        generate_parallelisations(Info, Algorithm, PreprocessedGoals),
-        parallelisation_get_objective_value,
-        Solutions, Profile),
+    promise_equivalent_solutions [GenParTime, EqualBestSolns, Profile] (
+        benchmark_det(
+            generate_parallelisations(Info, Algorithm),
+            PreprocessedGoals, EqualBestSolns - Profile, 1, GenParTime)
+    ),
 
     trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
         io.format("D: Solutions: %d\n",
-            [i(set.count(Solutions))], !IO),
-        io.format("D: Branch and bound profile: %s\n\n",
+            [i(list.length(EqualBestSolns))], !IO),
+        io.format("D: Branch and bound profile: %s\n",
             [s(string(Profile))], !IO),
+        io.format("D: Time: %d ms\n\n",
+            [i(GenParTime)], !IO),
         io.flush_output(!IO)
     ),
 
-    ( set.remove_least(BestParallelisation, Solutions, _) ->
+    (
+        EqualBestSolns = [BestIncompleteParallelisation | _],
+        finalise_parallelisation(BestIncompleteParallelisation,
+            BestParallelisation),
         MaybeBestParallelisation = yes(BestParallelisation)
     ;
-        % Solutions is empty.
+        EqualBestSolns = [],
         ParalleliseDepConjs = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs,
         (
             ParalleliseDepConjs = parallelise_dep_conjs(_),
@@ -434,52 +443,211 @@ find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
 
     % Profiling information for an execution of the solver.
     %
-:- func parallelisation_get_objective_value(full_parallelisation) = float.
+:- type bnb_profile
+    --->    bnb_profile(
+                bnbp_incomplete_good_enough         :: int,
+                bnbp_incomplete_not_good_enough     :: int,
+                bnbp_complete_best_solution         :: int,
+                bnbp_complete_equal_solution        :: int,
+                bnbp_complete_worse_solution        :: int,
+                bnbp_complete_non_solution          :: int
+            ).
 
-parallelisation_get_objective_value(Parallelisation) = Value :-
-    Metrics = Parallelisation ^ fp_par_exec_metrics,
-    Value = Metrics ^ pem_par_time +
-        parallel_exec_metrics_get_overheads(Metrics) * 2.0.
+    % The equal best solutions found so far (if we have found some solutions),
+    % and the value of the objective function for these solutions.
+    % The objective function represents a cost, so we look for solutions
+    % with the smallest possible value of the objective function.
+    %
+:- type best_solutions(T)
+    --->    no_best_solutions
+    ;       best_solutions(
+                bs_solutions            :: list(T),
+                bs_objective_value      :: float
+            ).
 
-:- impure pred generate_parallelisations(implicit_parallelism_info::in,
+:- pred generate_parallelisations(implicit_parallelism_info::in,
     best_par_algorithm_simple::in, goals_for_parallelisation::in,
-    bnb_state(full_parallelisation)::in, full_parallelisation::out) is nondet.
+    pair(list(incomplete_parallelisation), bnb_profile)::out) is det.
 
 generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
-        BNBState, BestParallelisation) :-
-    some [!Parallelisation, !GoalGroups] (
-        start_building_parallelisation(Info, GoalsForParallelisation,
-            !:Parallelisation),
+        EqualBestSolns - FinalProfile) :-
+    some [!GoalGroups, !MaybeBestSolns, !Profile] (
+        start_building_parallelisation(GoalsForParallelisation,
+            IncompleteParallelisation0),
+
+        % Set the last scheduled goal to the goal at the end of the first
+        % group, popping the first group off the list. This initialises the
+        % parallelisation with the first goal group occurring first in the
+        % first parallel conjunction.
+        %
+        % We do this outside of the loop below because the first goal group
+        % will always be added to the first (initially empty) parallel
+        % conjunct; it does not make sense to have it start a new parallel
+        % conjunct.
 
         !:GoalGroups = GoalsForParallelisation ^ gfp_groups,
-        start_first_par_conjunct(!GoalGroups, !Parallelisation),
-        impure generate_parallelisations_body(Info, BNBState, Algorithm,
-            !.GoalGroups, !Parallelisation),
-
-        ( semipure should_expand_search(BNBState, Algorithm) ->
-            % Try to push goals into the first and last parallel conjuncts
-            % from outside the parallel conjunction.
-            semipure add_goals_into_first_par_conj(BNBState, !Parallelisation),
-            semipure add_goals_into_last_par_conj(BNBState, !Parallelisation)
+        (
+            !.GoalGroups = [],
+            unexpected($module, $pred, "no goal groups")
         ;
-            true
+            !.GoalGroups = [_],
+            unexpected($module, $pred, "only one goal group")
+        ;
+            !.GoalGroups = [Group, _ | _],
+            !.GoalGroups = [_ | !:GoalGroups],
+            gg_get_details(Group, Index, Num, _),
+            LastScheduledGoal = Index + Num - 1,
+            IncompleteParallelisation1 =
+                IncompleteParallelisation0 ^ ip_last_scheduled_goal
+                    := LastScheduledGoal
         ),
 
-        finalise_parallelisation(!.Parallelisation, BestParallelisation)
-    ),
-    semipure test_incomplete_solution(BNBState, BestParallelisation).
+        !:MaybeBestSolns = no_best_solutions,
+        !:Profile = bnb_profile(0, 0, 0, 0, 0, 0),
 
-:- pred start_building_parallelisation(implicit_parallelism_info::in,
-    goals_for_parallelisation::in,
+        generate_parallelisations_loop(Info, Algorithm, !.GoalGroups,
+            IncompleteParallelisation1, !MaybeBestSolns, !Profile),
+
+% XXX
+%       ( semipure should_expand_search(BNBState, Algorithm) ->
+%           % Try to push goals into the first and last parallel conjuncts
+%           % from outside the parallel conjunction.
+%           semipure add_goals_into_first_par_conj(BNBState, !Parallelisation),
+%           semipure add_goals_into_last_par_conj(BNBState, !Parallelisation)
+%       ;
+%           true
+%       ),
+
+        (
+            !.MaybeBestSolns = no_best_solutions,
+            EqualBestSolns = []
+        ;
+            !.MaybeBestSolns = best_solutions(EqualBestSolns, _)
+        ),
+        FinalProfile = !.Profile
+    ).
+
+:- pred generate_parallelisations_loop(implicit_parallelism_info::in,
+    best_par_algorithm_simple::in, list(goal_group(goal_classification))::in,
+    incomplete_parallelisation::in,
+    best_solutions(incomplete_parallelisation)::in,
+    best_solutions(incomplete_parallelisation)::out,
+    bnb_profile::in, bnb_profile::out) is det.
+
+generate_parallelisations_loop(_, _, [],
+        !.IncompleteParallelisation, !MaybeBestSolns, !Profile) :-
+    % Verify that we have generated at least two parallel conjuncts.
+    ( ip_get_num_parallel_conjuncts(!.IncompleteParallelisation) >= 2 ->
+        maybe_update_best_complete_parallelisation(!.IncompleteParallelisation,
+            !MaybeBestSolns, !Profile)
+    ;
+        % This is not a solution, so do not try to update !MaybeBestSolns.
+        !Profile ^ bnbp_complete_non_solution :=
+            !.Profile ^ bnbp_complete_non_solution + 1
+    ).
+generate_parallelisations_loop(Info, Algorithm, [GoalGroup | GoalGroups],
+        !.IncompleteParallelisation, !MaybeBestSolns, !Profile) :-
+    LastScheduledGoal0 = !.IncompleteParallelisation ^ ip_last_scheduled_goal,
+    gg_get_details(GoalGroup, _Index, Num, _Classification),
+
+    LastScheduledGoal = LastScheduledGoal0 + Num,
+    some [!AddToLastParallelisation, !AddToNewParallelisation] (
+        !:AddToLastParallelisation = !.IncompleteParallelisation,
+        !:AddToNewParallelisation = !.IncompleteParallelisation,
+
+        % Consider adding this goal to the last parallel conjunct.
+        !AddToLastParallelisation ^ ip_last_scheduled_goal
+            := LastScheduledGoal,
+        update_incomplete_parallelisation_cost(Info, !AddToLastParallelisation,
+            MaybeAddToLastCost),
+
+        % Consider putting this goal into a new parallel conjunct.
+        ParConjsRevLastGoal0 =
+            !.IncompleteParallelisation ^ ip_par_conjs_rev_last_goal,
+        ParConjsRevLastGoal = [LastScheduledGoal0 | ParConjsRevLastGoal0],
+        !AddToNewParallelisation ^ ip_par_conjs_rev_last_goal :=
+            ParConjsRevLastGoal,
+        !AddToNewParallelisation ^ ip_last_scheduled_goal := LastScheduledGoal,
+        update_incomplete_parallelisation_cost(Info, !AddToNewParallelisation,
+            MaybeAddToNewCost),
+
+        (
+            MaybeAddToLastCost = yes(AddToLastCost),
+            (
+                MaybeAddToNewCost = yes(AddToNewCost),
+                ( AddToNewCost > AddToLastCost ->
+                    % Adding to the last parallel conjunct is better.
+                    Best0 = !.AddToLastParallelisation,
+                    MaybeNextBest0 = yes(!.AddToNewParallelisation)
+                ;
+                    % Adding to a new parallel conjunct is better.
+                    Best0 = !.AddToNewParallelisation,
+                    MaybeNextBest0 = yes(!.AddToLastParallelisation)
+                )
+            ;
+                MaybeAddToNewCost = no,
+                % Adding to the last parallel conjunct is the only option.
+                Best0 = !.AddToLastParallelisation,
+                MaybeNextBest0 = no
+            )
+        ;
+            MaybeAddToLastCost = no,
+            % Adding to a new parallel conjunct is the only option.
+            Best0 = !.AddToNewParallelisation,
+            MaybeNextBest0 = no
+        )
+    ),
+
+    % XXX: This ite could be simpler, and the algorithm would be closer to the
+    % one in the paper.
+    (
+        % Can we create an alternative branch here?
+        MaybeNextBest0 = yes(NextBest0),
+        % Should we create an alternative branch here?
+        should_expand_search(Algorithm, !.Profile)
+    ->
+        % Create a branch.
+        incomplete_parallelisation_is_good_enough(Info, !.MaybeBestSolns,
+            Best0, Best, !Profile, BestGoodEnough),
+        (
+            BestGoodEnough = is_good_enough,
+            generate_parallelisations_loop(Info, Algorithm,
+                GoalGroups, Best, !MaybeBestSolns, !Profile)
+        ;
+            BestGoodEnough = is_not_good_enough
+        ),
+
+        incomplete_parallelisation_is_good_enough(Info, !.MaybeBestSolns,
+            NextBest0, NextBest, !Profile, NextBestGoodEnough),
+        (
+            NextBestGoodEnough = is_good_enough,
+            generate_parallelisations_loop(Info, Algorithm,
+                GoalGroups, NextBest, !MaybeBestSolns, !Profile)
+        ;
+            NextBestGoodEnough = is_not_good_enough
+        )
+    ;
+        incomplete_parallelisation_is_good_enough(Info, !.MaybeBestSolns,
+            Best0, Best, !Profile, BestGoodEnough),
+        (
+            BestGoodEnough = is_good_enough,
+            generate_parallelisations_loop(Info, Algorithm,
+                GoalGroups, Best, !MaybeBestSolns, !Profile)
+        ;
+            BestGoodEnough = is_not_good_enough
+        )
+    ).
+
+:- pred start_building_parallelisation(goals_for_parallelisation::in,
     incomplete_parallelisation::out) is det.
 
-start_building_parallelisation(Info, PreprocessedGoals, Parallelisation) :-
+start_building_parallelisation(PreprocessedGoals, Parallelisation) :-
     GoalsArray = PreprocessedGoals ^ gfp_goals,
     FirstParGoal = PreprocessedGoals ^ gfp_first_costly_goal,
     LastParGoal = PreprocessedGoals ^ gfp_last_costly_goal,
     NumCalls = PreprocessedGoals ^ gfp_num_calls,
     DependencyGraphs = PreprocessedGoals ^ gfp_dependency_graphs,
-    Parallelisation = incomplete_parallelisation(Info, GoalsArray,
+    Parallelisation = incomplete_parallelisation(GoalsArray,
         FirstParGoal, LastParGoal, FirstParGoal, [], NumCalls,
         DependencyGraphs, no, no, no).
 
@@ -504,217 +672,102 @@ finalise_parallelisation(Incomplete, Best) :-
     Metrics = finalise_parallel_exec_metrics(Metrics0),
     par_conj_overlap_is_dependent(Overlap, IsDependent),
     ParConjs = ip_get_par_conjs(Incomplete),
-    Best = fp_parallel_execution(GoalsBefore, ParConjs,
-        GoalsAfter, IsDependent, Metrics).
-
-%----------------------------------------------------------------------------%
-
-:- semipure pred add_goals_into_first_par_conj(
-    bnb_state(full_parallelisation)::in,
-    incomplete_parallelisation::in, incomplete_parallelisation::out) is multi.
-
-add_goals_into_first_par_conj(BNBState, !Parallelisation) :-
-    FirstGoal0 = !.Parallelisation ^ ip_first_par_goal,
-    (
-        FirstGoal0 > 0,
-        Goals = !.Parallelisation ^ ip_goals,
-        Goal = lookup(Goals, FirstGoal0 - 1),
-        can_parallelise_goal(Goal),
-
-        % There are goals before the parallel conjunction that can be included
-        % in the parallel conjunction.
-        add_one_goal_into_first_par_conj(!Parallelisation),
-        semipure test_parallelisation(BNBState, !Parallelisation),
-        semipure add_goals_into_first_par_conj(BNBState, !Parallelisation)
-    ;
-        true
-    ).
-
-:- semipure pred add_goals_into_last_par_conj(
-    bnb_state(full_parallelisation)::in,
-    incomplete_parallelisation::in, incomplete_parallelisation::out) is multi.
-
-add_goals_into_last_par_conj(BNBState, !Parallelisation) :-
-    NumGoals = ip_get_num_goals(!.Parallelisation),
-    LastParGoal = !.Parallelisation ^ ip_last_par_goal,
-    (
-        LastParGoal < NumGoals - 1,
-        Goals = !.Parallelisation ^ ip_goals,
-        Goal = lookup(Goals, LastParGoal + 1),
-        can_parallelise_goal(Goal),
-
-        % Try to move a goal from after the parallelisation into the
-        % parallelisation.
-        add_one_goal_into_last_par_conj(!Parallelisation),
-        semipure test_parallelisation(BNBState, !Parallelisation),
-        semipure add_goals_into_last_par_conj(BNBState, !Parallelisation)
-    ;
-        true
-    ).
-
-    % Set the last scheduled goal to the goal at the end of the first group,
-    % popping the first group off the list. This initialises the
-    % parallelisation with the first goal group occurring first in the first
-    % parallel conjunction.
-    %
-    % This is done outside of the loop below since the first goal group will
-    % always be added to the first (initially empty) parallel conjunction.
-    %
-:- pred start_first_par_conjunct(
-    list(goal_group(T))::in, list(goal_group(T))::out,
-    incomplete_parallelisation::in, incomplete_parallelisation::out) is det.
-
-start_first_par_conjunct(!GoalGroups, !Parallelisation) :-
-    (
-        !.GoalGroups = [],
-        unexpected($module, $pred, "no goal groups")
-    ;
-        !.GoalGroups = [Group | !:GoalGroups],
-        gg_get_details(Group, Index, Num, _),
-        LastScheduledGoal = Index + Num - 1,
-        !Parallelisation ^ ip_last_scheduled_goal := LastScheduledGoal
-    ).
-
-:- impure pred generate_parallelisations_body(implicit_parallelism_info::in,
-    bnb_state(full_parallelisation)::in, best_par_algorithm_simple::in,
-    list(goal_group(goal_classification))::in,
-    incomplete_parallelisation::in, incomplete_parallelisation::out) is nondet.
-
-generate_parallelisations_body(_, _, _, [], !Parallelisation) :-
-    % Verify that we've generated at least two parallel conjuncts.
-    ip_get_num_parallel_conjuncts(!.Parallelisation) >= 2.
-generate_parallelisations_body(Info, BNBState, Algorithm,
-        [GoalGroup | GoalGroups], !Parallelisation) :-
-    LastScheduledGoal0 = !.Parallelisation ^ ip_last_scheduled_goal,
-    gg_get_details(GoalGroup, _Index, Num, _Classification),
-
-    LastScheduledGoal = LastScheduledGoal0 + Num,
-    some [!AddToLastParallelisation, !AddToNewParallelisation] (
-        !:AddToLastParallelisation = !.Parallelisation,
-        !:AddToNewParallelisation = !.Parallelisation,
-
-        % Consider adding this goal to the last parallel conjunct.
-        !AddToLastParallelisation ^ ip_last_scheduled_goal
-            := LastScheduledGoal,
-        score_parallelisation(BNBState, MaybeAddToLastScore,
-            !AddToLastParallelisation),
-
-        % Consider putting this goal into a new parallel conjunct.
-        ParConjsRevLastGoal0 = !.Parallelisation ^ ip_par_conjs_rev_last_goal,
-        ParConjsRevLastGoal = [LastScheduledGoal0 | ParConjsRevLastGoal0],
-        !AddToNewParallelisation ^ ip_par_conjs_rev_last_goal :=
-            ParConjsRevLastGoal,
-        !AddToNewParallelisation ^ ip_last_scheduled_goal := LastScheduledGoal,
-        score_parallelisation(BNBState, MaybeAddToNewScore,
-            !AddToNewParallelisation),
-
-        (
-            MaybeAddToLastScore = yes(AddToLastScore),
-            (
-                MaybeAddToNewScore = yes(AddToNewScore),
-                (
-                    % Smaller scores are better.
-                    AddToNewScore > AddToLastScore
-                ->
-                    % Adding to the last parallel conjunct is better.
-                    BestOption = !.AddToLastParallelisation,
-                    MaybeSndBestOption = yes(!.AddToNewParallelisation)
-                ;
-                    % Adding to a new parallel conjunct is better.
-                    BestOption = !.AddToNewParallelisation,
-                    MaybeSndBestOption = yes(!.AddToLastParallelisation)
-                )
-            ;
-                MaybeAddToNewScore = no,
-                % Adding to the last parallel conjunct is the only option.
-                BestOption = !.AddToLastParallelisation,
-                MaybeSndBestOption = no
-            )
-        ;
-            MaybeAddToLastScore = no,
-            % Adding to a new parallel conjunct is the only option.
-            BestOption = !.AddToNewParallelisation,
-            MaybeSndBestOption = no
-        )
-    ),
-
-    (
-        MaybeSndBestOption = no,
-        !:Parallelisation = BestOption
-    ;
-        MaybeSndBestOption = yes(SndBestOption),
-        (
-            % Should an alternative branch be created here?
-            semipure should_expand_search(BNBState, Algorithm)
-        ->
-            % Create a branch.
-            impure add_alternative(BNBState),
-            % This tries the leftmost disjunct first, so try the best option
-            % there.
-            (
-                !:Parallelisation = BestOption
-            ;
-                impure close_alternative(BNBState),
-                !:Parallelisation = SndBestOption
-            )
-        ;
-            !:Parallelisation = BestOption
-        )
-    ),
-
-    semipure test_parallelisation(BNBState, !Parallelisation),
-
-    impure generate_parallelisations_body(Info, BNBState, Algorithm,
-        GoalGroups, !Parallelisation).
+    Best = fp_parallel_execution(GoalsBefore, ParConjs, GoalsAfter,
+        IsDependent, Metrics).
 
     % True if we should expand the search for parallelisation alternatives by
     % creating a choice point.
     %
-:- semipure pred should_expand_search(bnb_state(T)::in,
-    best_par_algorithm_simple::in) is semidet.
+:- pred should_expand_search(best_par_algorithm_simple::in, bnb_profile::in)
+    is semidet.
 
-should_expand_search(BNBState, Algorithm) :-
+should_expand_search(Algorithm, Profile) :-
     Algorithm = bpas_complete(MaybeLimit),
     (
         MaybeLimit = yes(Limit),
-        semipure num_alternatives(BNBState, Open, Closed),
-        Open + Closed < Limit
+        NumIncompleteTests =
+            Profile ^ bnbp_incomplete_not_good_enough +
+            Profile ^ bnbp_incomplete_good_enough,
+        NumIncompleteTests < Limit
     ;
         MaybeLimit = no
     ).
 
-    % Test the parallelisation against the best one known to the branch and
-    % bound solver.
-    %
-:- semipure pred test_parallelisation(bnb_state(full_parallelisation)::in,
-    incomplete_parallelisation::in, incomplete_parallelisation::out)
-    is semidet.
+:- pred maybe_update_best_complete_parallelisation(
+    incomplete_parallelisation::in,
+    best_solutions(incomplete_parallelisation)::in,
+    best_solutions(incomplete_parallelisation)::out,
+    bnb_profile::in, bnb_profile::out) is det.
 
-test_parallelisation(BNBState, !Parallelisation) :-
-    Info = !.Parallelisation ^ ip_info,
-    calculate_parallel_cost(Info, !Parallelisation, CostData),
-    test_dependence(Info, CostData),
-    % XXX: We shouldn't need to finalize the parallelisation before testing it.
-    % This is a limitation of the branch and bound module.
-    finalise_parallelisation(!.Parallelisation, TestParallelisation),
-    semipure test_incomplete_solution(BNBState, TestParallelisation).
-
-    % Test the parallelisation against the best one known to the branch and
-    % bound solver.
-    %
-:- pred score_parallelisation(bnb_state(full_parallelisation)::in,
-    maybe(float)::out,
-    incomplete_parallelisation::in, incomplete_parallelisation::out) is det.
-
-score_parallelisation(BNBState, MaybeScore, !Parallelisation) :-
-    Info = !.Parallelisation ^ ip_info,
-    calculate_parallel_cost(Info, !Parallelisation, CostData),
-    ( test_dependence(Info, CostData) ->
-        finalise_parallelisation(!.Parallelisation, TestParallelisation),
-        score_solution(BNBState, TestParallelisation, Score),
-        MaybeScore = yes(Score)
+maybe_update_best_complete_parallelisation(CurSoln,
+        MaybeBestSolns0, MaybeBestSolns, !Profile) :-
+    % We don't use state variable syntax for MaybeBestSolns so that mmc can
+    % check that we've explicitly provided a value for MaybeBestSolns.
+    CurSolnCost = incomplete_parallelisation_cost(CurSoln),
+    (
+        MaybeBestSolns0 = no_best_solutions,
+        MaybeBestSolns = best_solutions([CurSoln], CurSolnCost),
+        !Profile ^ bnbp_complete_best_solution :=
+            !.Profile ^ bnbp_complete_best_solution + 1
     ;
-        MaybeScore = no
+        MaybeBestSolns0 = best_solutions(BestSolns0, BestCost0),
+        ( CurSolnCost < BestCost0 ->
+            MaybeBestSolns = best_solutions([CurSoln], CurSolnCost),
+            !Profile ^ bnbp_complete_best_solution :=
+                !.Profile ^ bnbp_complete_best_solution + 1
+        ; CurSolnCost = BestCost0 ->
+            BestSolns = [CurSoln | BestSolns0],
+            MaybeBestSolns = best_solutions(BestSolns, BestCost0),
+            !Profile ^ bnbp_complete_equal_solution :=
+                !.Profile ^ bnbp_complete_equal_solution + 1
+        ;
+            % Do not update !MaybeBestSolns.
+            MaybeBestSolns = MaybeBestSolns0,
+            !Profile ^ bnbp_complete_worse_solution :=
+                !.Profile ^ bnbp_complete_worse_solution + 1
+        )
+    ).
+
+:- type is_good_enough
+    --->    is_not_good_enough
+    ;       is_good_enough.
+
+    % Test the parallelisation against the best one known to the branch and
+    % bound solver.
+    %
+:- pred incomplete_parallelisation_is_good_enough(
+    implicit_parallelism_info::in,
+    best_solutions(incomplete_parallelisation)::in,
+    incomplete_parallelisation::in, incomplete_parallelisation::out,
+    bnb_profile::in, bnb_profile::out, is_good_enough::out) is det.
+
+incomplete_parallelisation_is_good_enough(Info, MaybeBestSolns,
+        !IncompleteParallelisation, !Profile, GoodEnough) :-
+    calculate_parallel_cost(Info, !IncompleteParallelisation, CostData),
+    ( test_dependence(Info, CostData) ->
+        (
+            MaybeBestSolns = no_best_solutions,
+            !Profile ^ bnbp_incomplete_good_enough :=
+                !.Profile ^ bnbp_incomplete_good_enough + 1,
+            GoodEnough = is_good_enough
+        ;
+            MaybeBestSolns = best_solutions(_, BestSolnCost),
+            CurIncompleteCost =
+                incomplete_parallelisation_cost(!.IncompleteParallelisation),
+            ( CurIncompleteCost > BestSolnCost ->
+                !Profile ^ bnbp_incomplete_not_good_enough :=
+                    !.Profile ^ bnbp_incomplete_not_good_enough + 1,
+                GoodEnough = is_not_good_enough
+            ;
+                !Profile ^ bnbp_incomplete_good_enough :=
+                    !.Profile ^ bnbp_incomplete_good_enough + 1,
+                GoodEnough = is_good_enough
+            )
+        )
+    ;
+        !Profile ^ bnbp_incomplete_not_good_enough :=
+            !.Profile ^ bnbp_incomplete_not_good_enough + 1,
+        GoodEnough = is_not_good_enough
     ).
 
     % Test that the parallelisation includes dependent parallelism
@@ -752,14 +805,107 @@ par_conj_overlap_is_dependent(peo_conjunction(Left, _, VarSet0), IsDependent) :-
         )
     ).
 
+    % Compute the cost of the parallelisation.
+    %
+:- pred update_incomplete_parallelisation_cost(implicit_parallelism_info::in,
+    incomplete_parallelisation::in, incomplete_parallelisation::out,
+    maybe(float)::out) is det.
+
+update_incomplete_parallelisation_cost(Info, !IncompleteParallelisation,
+        MaybeCost) :-
+    calculate_parallel_cost(Info, !IncompleteParallelisation, CostData),
+    ( test_dependence(Info, CostData) ->
+        Cost = incomplete_parallelisation_cost(!.IncompleteParallelisation),
+        MaybeCost = yes(Cost)
+    ;
+        MaybeCost = no
+    ).
+
+:- func incomplete_parallelisation_cost(incomplete_parallelisation) = float.
+
+incomplete_parallelisation_cost(IncompleteParallelisation) = Cost :-
+    MaybeCostData = IncompleteParallelisation ^ ip_maybe_par_cost_data,
+    (
+        MaybeCostData = yes(CostData)
+    ;
+        MaybeCostData = no,
+        unexpected($module, $pred,
+            "incomplete parallelisation has no cost data")
+    ),
+    IncompleteMetrics = CostData ^ pcd_par_exec_metrics,
+    FullMetrics = finalise_parallel_exec_metrics(IncompleteMetrics),
+    Cost = full_parallelisation_metrics_cost(FullMetrics).
+
+    % The objective function for the branch and bound search.
+    % This is ParTime + ParOverheads * 2. That is we are willing to pay
+    % 1 unit of parallel overheads to get a 2 unit improvement
+    % of parallel execution time.
+    %
+    % XXX This looks wrong, for two reasons. First, it would be simpler
+    % and faster to just multiply the costs of all the overheads by 2.
+    % Second, the fudge factor should be configurable.
+    %
+:- func full_parallelisation_metrics_cost(parallel_exec_metrics) = float.
+
+full_parallelisation_metrics_cost(FullMetrics) = Cost :-
+    Cost = FullMetrics ^ pem_par_time +
+        parallel_exec_metrics_get_overheads(FullMetrics) * 2.0.
+
+:- func full_parallelisation_cost(full_parallelisation) = float.
+
+full_parallelisation_cost(FullParallelisation) = Cost :-
+    FullMetrics = FullParallelisation ^ fp_par_exec_metrics,
+    Cost = full_parallelisation_metrics_cost(FullMetrics).
+
+%----------------------------------------------------------------------------%
+
+% XXX
+% :- semipure pred add_goals_into_first_par_conj(
+%     bnb_state(full_parallelisation)::in,
+%     incomplete_parallelisation::in, incomplete_parallelisation::out) is multi.
+%
+% add_goals_into_first_par_conj(BNBState, !Parallelisation) :-
+%     FirstGoal0 = !.Parallelisation ^ ip_first_par_goal,
+%     (
+%         FirstGoal0 > 0,
+%         Goals = !.Parallelisation ^ ip_goals,
+%         Goal = lookup(Goals, FirstGoal0 - 1),
+%         can_parallelise_goal(Goal),
+%
+%         % There are goals before the parallel conjunction that can be included
+%         % in the parallel conjunction.
+%         add_one_goal_into_first_par_conj(!Parallelisation),
+%         semipure test_parallelisation(BNBState, !Parallelisation),
+%         semipure add_goals_into_first_par_conj(BNBState, !Parallelisation)
+%     ;
+%         true
+%     ).
+%
+% :- semipure pred add_goals_into_last_par_conj(
+%     bnb_state(full_parallelisation)::in,
+%     incomplete_parallelisation::in, incomplete_parallelisation::out) is multi.
+%
+% add_goals_into_last_par_conj(BNBState, !Parallelisation) :-
+%     NumGoals = ip_get_num_goals(!.Parallelisation),
+%     LastParGoal = !.Parallelisation ^ ip_last_par_goal,
+%     (
+%         LastParGoal < NumGoals - 1,
+%         Goals = !.Parallelisation ^ ip_goals,
+%         Goal = lookup(Goals, LastParGoal + 1),
+%         can_parallelise_goal(Goal),
+%
+%         % Try to move a goal from after the parallelisation into the
+%         % parallelisation.
+%         add_one_goal_into_last_par_conj(!Parallelisation),
+%         semipure test_parallelisation(BNBState, !Parallelisation),
+%         semipure add_goals_into_last_par_conj(BNBState, !Parallelisation)
+%     ;
+%         true
+%     ).
+
 %----------------------------------------------------------------------------%
 
 :- pred add_one_goal_into_first_par_conj(incomplete_parallelisation::in,
-    incomplete_parallelisation::out) is det.
-
-%----------------------------------------------------------------------------%
-
-:- pred add_one_goal_into_last_par_conj(incomplete_parallelisation::in,
     incomplete_parallelisation::out) is det.
 
 add_one_goal_into_first_par_conj(!Parallelisation) :-
@@ -768,6 +914,9 @@ add_one_goal_into_first_par_conj(!Parallelisation) :-
     !Parallelisation ^ ip_first_par_goal := FirstGoal,
     !Parallelisation ^ ip_maybe_goals_before_cost := no,
     !Parallelisation ^ ip_maybe_par_cost_data := no.
+
+:- pred add_one_goal_into_last_par_conj(incomplete_parallelisation::in,
+    incomplete_parallelisation::out) is det.
 
 add_one_goal_into_last_par_conj(!Parallelisation) :-
     LastGoal0 = !.Parallelisation ^ ip_last_par_goal,

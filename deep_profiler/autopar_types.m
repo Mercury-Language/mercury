@@ -174,8 +174,6 @@
 
 :- type incomplete_parallelisation
     --->    incomplete_parallelisation(
-                ip_info                     :: implicit_parallelism_info,
-
                 ip_goals                    :: array(pard_goal_detail),
 
                 % The index of the first goal in the parallelised goals,
