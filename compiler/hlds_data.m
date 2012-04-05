@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -591,7 +591,7 @@ cons_table_optimize(!ConsTable) :-
 
     ;       foreign_tag(foreign_language, string)
             % This means the constant is represented by the string which is
-            % embedded directly in the target language.  This is used for
+            % embedded directly in the target language. This is used for
             % foreign enumerations, i.e. those enumeration types that are the
             % subject of a foreign_enum pragma.
 
@@ -699,7 +699,7 @@ cons_table_optimize(!ConsTable) :-
 
     % The type `tag_bits' holds a primary tag value.
     %
-:- type tag_bits    ==  int.    % actually only 2 (or maybe 3) bits
+:- type tag_bits == int.        % actually only 2 (or maybe 3) bits
 
     % Return the primary tag, if any, for a cons_tag.
     % A return value of `no' means the primary tag is unknown.
@@ -1006,9 +1006,13 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
 :- type inst_table.
 
 :- type user_inst_table.
-:- type user_inst_defns ==  map(inst_id, hlds_inst_defn).
-
-:- type unify_inst_table == map(inst_name, maybe_inst_det).
+:- type user_inst_defns ==          map(inst_id, hlds_inst_defn).
+:- type unify_inst_table ==         map(inst_name, maybe_inst_det).
+:- type merge_inst_table ==         map(pair(mer_inst), maybe_inst).
+:- type ground_inst_table ==        map(inst_name, maybe_inst_det).
+:- type any_inst_table ==           map(inst_name, maybe_inst_det).
+:- type shared_inst_table ==        map(inst_name, maybe_inst).
+:- type mostly_uniq_inst_table ==   map(inst_name, maybe_inst).
 
 :- type unify_inst_pair
     --->    unify_inst_pair(
@@ -1017,16 +1021,6 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
                 mer_inst,
                 unify_is_real
             ).
-
-:- type merge_inst_table == map(pair(mer_inst), maybe_inst).
-
-:- type ground_inst_table ==    map(inst_name, maybe_inst_det).
-
-:- type any_inst_table ==   map(inst_name, maybe_inst_det).
-
-:- type shared_inst_table ==    map(inst_name, maybe_inst).
-
-:- type mostly_uniq_inst_table == map(inst_name, maybe_inst).
 
 :- type maybe_inst
     --->    inst_unknown
@@ -1166,8 +1160,8 @@ user_inst_table_get_inst_defns(UserInstDefns, UserInstDefns).
 user_inst_table_insert(InstId, InstDefn, !UserInstDefns) :-
     map.insert(InstId, InstDefn, !UserInstDefns).
 
-user_inst_table_optimize(UserInstDefns0, UserInstDefns) :-
-    map.optimize(UserInstDefns0, UserInstDefns).
+user_inst_table_optimize(!UserInstDefns) :-
+    map.optimize(!UserInstDefns).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1177,7 +1171,7 @@ user_inst_table_optimize(UserInstDefns0, UserInstDefns) :-
     % The symbol table for modes.
     %
 :- type mode_table.
-:- type mode_defns   == map(mode_id, hlds_mode_defn).
+:- type mode_defns == map(mode_id, hlds_mode_defn).
 
     % A hlds_mode_defn stores the information about a mode
     % definition such as
@@ -1309,7 +1303,7 @@ mode_table_optimize(!ModeDefns) :-
             ).
 
     % For each class, we keep track of a list of its instances, since there
-    % can be more than one instance of each class.  Each visible instance
+    % can be more than one instance of each class. Each visible instance
     % is assigned a unique identifier (integers beginning from one).
     % The position in the list of instances corresponds to the instance_id.
     %
@@ -1445,7 +1439,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
 
     % Constraints which are ancestors of assumed constraints, along with the
     % list of constraints (following the class hierarchy) which leads to
-    % the assumed constraint.  The assumed constraint is the last item in the
+    % the assumed constraint. The assumed constraint is the last item in the
     % list.
     %
     % Note that if there are two possible lists for the same constraint, we
@@ -1454,7 +1448,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
 :- type ancestor_constraints == map(prog_constraint, list(prog_constraint)).
 
     % During type checking we fill in a constraint_map which gives
-    % the constraint that corresponds to each identifier.  This is used
+    % the constraint that corresponds to each identifier. This is used
     % by the polymorphism translation to retrieve details of constraints.
     %
 :- type constraint_map == map(constraint_id, prog_constraint).
@@ -1806,7 +1800,7 @@ update_ancestor_constraints_3(ClassTable, TVarSet, Descendants, Constraint,
         is_shorter(OldDescendants, Descendants)
     ->
         % We don't want to update the ancestors because we already have a
-        % better path.  The same will apply for all superclasses, so we
+        % better path. The same will apply for all superclasses, so we
         % don't traverse any further.
         true
     ;

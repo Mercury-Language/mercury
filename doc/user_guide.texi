@@ -7231,6 +7231,11 @@ to the HLDS of the predicate or function with the specified name.
 May be given more than once.
 
 @sp 1
+@item --dump-hlds-inst-limit @var{N}
+@findex --dump-hlds-inst-limit
+Dump at most @var{N} insts in each inst table.
+
+@sp 1
 @item --dump-hlds-file-suffix
 @findex --dump-hlds-file-suffix
 Append the given suffix to the names of the files created by the

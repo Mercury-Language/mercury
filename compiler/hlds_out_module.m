@@ -43,6 +43,7 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.pred_table.
 :- import_module libs.globals.
@@ -83,6 +84,7 @@ write_hlds(Indent, ModuleInfo, !IO) :-
         DumpPredNames),
     write_header(Indent, ModuleInfo, !IO),
     Info = init_hlds_out_info(Globals),
+    DumpOptions = Info ^ hoi_dump_hlds_options,
     (
         % If the user specifically requested one or more predicates and/or
         % functions to be dumped, they won't be interested in the types,
@@ -93,7 +95,6 @@ write_hlds(Indent, ModuleInfo, !IO) :-
     ->
         true
     ;
-        DumpOptions = Info ^ hoi_dump_hlds_options,
         ( string.contains_char(DumpOptions, 'I') ->
             write_imports(Indent, Imports, !IO)
         ;
@@ -110,7 +111,9 @@ write_hlds(Indent, ModuleInfo, !IO) :-
             true
         ),
         ( string.contains_char(DumpOptions, 'M') ->
-            write_inst_table(Indent, InstTable, !IO),
+            globals.lookup_int_option(Globals, dump_hlds_inst_limit,
+                InstLimit),
+            write_inst_table(Indent, InstLimit, InstTable, !IO),
             io.write_string("\n", !IO),
             write_mode_table(Indent, ModeTable, !IO),
             io.write_string("\n", !IO)
@@ -124,7 +127,11 @@ write_hlds(Indent, ModuleInfo, !IO) :-
             true
         )
     ),
-    write_preds(Info, Indent, ModuleInfo, PredTable, !IO),
+    ( string.contains_char(DumpOptions, 'x') ->
+        write_preds(Info, Indent, ModuleInfo, PredTable, !IO)
+    ;
+        true
+    ),
     write_footer(Indent, ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -597,27 +604,60 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
 % Write out the inst table.
 %
 
-:- pred write_inst_table(int::in, inst_table::in, io::di, io::uo) is det.
+:- pred write_inst_table(int::in, int::in, inst_table::in, io::di, io::uo)
+    is det.
 
-write_inst_table(Indent, InstTable, !IO) :-
+write_inst_table(Indent, Limit, InstTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Insts --------\n", !IO),
 
     write_indent(Indent, !IO),
     io.write_string("%-------- User defined insts --------\n", !IO),
     inst_table_get_user_insts(InstTable, UserInstTable),
-    user_inst_table_get_inst_defns(UserInstTable, UserInstDefns),
-    map.to_assoc_list(UserInstDefns, UserInstPairs),
-    list.foldl(write_user_inst(Indent), UserInstPairs, !IO),
+    user_inst_table_get_inst_defns(UserInstTable, UserInstMap),
+    map.foldl(write_user_inst(Indent), UserInstMap, !IO),
 
-    io.write_string("%-------- Other insts --------\n", !IO),
-    % XXX fix this up.
-    io.write_string("%%% Not yet implemented, sorry.\n", !IO).
+    io.write_string("%-------- Unify insts --------\n", !IO),
+    inst_table_get_unify_insts(InstTable, UnifyInstMap),
+    map.foldl2(write_inst_name_maybe_inst_det(Limit), UnifyInstMap,
+        0, NumUnifyInsts, !IO),
+    io.format("Total number of unify insts: %d\n", [i(NumUnifyInsts)], !IO),
 
-:- pred write_user_inst(int::in, pair(inst_id, hlds_inst_defn)::in,
+    io.write_string("%-------- Merge insts --------\n", !IO),
+    inst_table_get_merge_insts(InstTable, MergeInstMap),
+    map.foldl2(write_inst_pair_maybe_inst(Limit), MergeInstMap,
+        0, NumMergeInsts, !IO),
+    io.format("Total number of merge insts: %d\n", [i(NumMergeInsts)], !IO),
+
+    io.write_string("%-------- Ground insts --------\n", !IO),
+    inst_table_get_unify_insts(InstTable, GroundInstMap),
+    map.foldl2(write_inst_name_maybe_inst_det(Limit), GroundInstMap,
+        0, NumGroundInsts, !IO),
+    io.format("Total number of ground insts: %d\n", [i(NumGroundInsts)], !IO),
+
+    io.write_string("%-------- Any insts --------\n", !IO),
+    inst_table_get_any_insts(InstTable, AnyInstMap),
+    map.foldl2(write_inst_name_maybe_inst_det(Limit), AnyInstMap,
+        0, NumAnyInsts, !IO),
+    io.format("Total number of any insts: %d\n", [i(NumAnyInsts)], !IO),
+
+    io.write_string("%-------- Shared insts --------\n", !IO),
+    inst_table_get_shared_insts(InstTable, SharedInstMap),
+    map.foldl2(write_inst_name_maybe_inst(Limit), SharedInstMap,
+        0, NumSharedInsts, !IO),
+    io.format("Total number of shared insts: %d\n", [i(NumSharedInsts)], !IO),
+
+    io.write_string("%-------- MostlyUniq insts --------\n", !IO),
+    inst_table_get_mostly_uniq_insts(InstTable, MostlyUniqInstMap),
+    map.foldl2(write_inst_name_maybe_inst(Limit), MostlyUniqInstMap,
+        0, NumMostlyUniqInsts, !IO),
+    io.format("Total number of mostly uniq insts: %d\n",
+        [i(NumMostlyUniqInsts)], !IO).
+
+:- pred write_user_inst(int::in, inst_id::in, hlds_inst_defn::in,
     io::di, io::uo) is det.
 
-write_user_inst(Indent, InstId - InstDefn, !IO) :-
+write_user_inst(Indent, InstId, InstDefn, !IO) :-
     InstId = inst_id(InstName, _InstArity),
     write_indent(Indent, !IO),
     io.format("\n:- inst %s", [s(sym_name_to_string(InstName))], !IO),
@@ -655,6 +695,95 @@ write_inst_params(InstVar, InstVars, InstVarSet, !IO) :-
         io.write_string(", ", !IO),
         write_inst_params(HeadInstVar, TailInstVars, InstVarSet, !IO)
     ).
+
+:- pred write_inst_name_maybe_inst(int::in,
+    inst_name::in, maybe_inst::in, int::in, int::out, io::di, io::uo) is det.
+
+write_inst_name_maybe_inst(Limit, InstName, MaybeInst, !N, !IO) :-
+    !:N = !.N + 1,
+    ( !.N =< Limit ->
+        io.nl(!IO),
+        io.format("Entry %d key\n", [i(!.N)], !IO),
+        write_inst_name(InstName, !IO),
+        io.nl(!IO),
+        (
+            MaybeInst = inst_unknown,
+            io.format("Entry %d value UNKNOWN\n", [i(!.N)], !IO)
+        ;
+            MaybeInst = inst_known(Inst),
+            io.format("Entry %d value:\n", [i(!.N)], !IO),
+            write_inst(Inst, !IO),
+            io.nl(!IO)
+        )
+    ;
+        true
+    ).
+
+:- pred write_inst_name_maybe_inst_det(int::in,
+    inst_name::in, maybe_inst_det::in, int::in, int::out,
+    io::di, io::uo) is det.
+
+write_inst_name_maybe_inst_det(Limit, InstName, MaybeInstDet, !N, !IO) :-
+    !:N = !.N + 1,
+    ( !.N =< Limit ->
+        io.nl(!IO),
+        io.format("Entry %d key\n", [i(!.N)], !IO),
+        write_inst_name(InstName, !IO),
+        io.nl(!IO),
+        (
+            MaybeInstDet = inst_det_unknown,
+            io.format("Entry %d value UNKNOWN\n", [i(!.N)], !IO)
+        ;
+            MaybeInstDet = inst_det_known(Inst, Detism),
+            DetismStr = determinism_to_string(Detism),
+            io.format("Entry %d value (%s):\n", [i(!.N), s(DetismStr)], !IO),
+            write_inst(Inst, !IO),
+            io.nl(!IO)
+        )
+    ;
+        true
+    ).
+
+:- pred write_inst_pair_maybe_inst(int::in,
+    pair(mer_inst)::in, maybe_inst::in, int::in, int::out,
+    io::di, io::uo) is det.
+
+write_inst_pair_maybe_inst(Limit, InstA - InstB, MaybeInst, !N, !IO) :-
+    !:N = !.N + 1,
+    ( !.N =< Limit ->
+        io.nl(!IO),
+        io.format("Entry %d left key\n", [i(!.N)], !IO),
+        write_inst(InstA, !IO),
+        io.nl(!IO),
+        io.format("Entry %d right key\n", [i(!.N)], !IO),
+        write_inst(InstB, !IO),
+        io.nl(!IO),
+        (
+            MaybeInst = inst_unknown,
+            io.format("Entry %d value UNKNOWN\n", [i(!.N)], !IO)
+        ;
+            MaybeInst = inst_known(Inst),
+            io.format("Entry %d value:\n", [i(!.N)], !IO),
+            write_inst(Inst, !IO),
+            io.nl(!IO)
+        )
+    ;
+        true
+    ).
+
+:- pred write_inst_name(inst_name::in, io::di, io::uo) is det.
+
+write_inst_name(InstName, !IO) :-
+    InstNameTerm = inst_name_to_term(InstName),
+    varset.init(VarSet),
+    mercury_output_term(VarSet, no, InstNameTerm, !IO).
+
+:- pred write_inst(mer_inst::in, io::di, io::uo) is det.
+
+write_inst(Inst, !IO) :-
+    InstTerm = inst_to_term(Inst),
+    varset.init(VarSet),
+    mercury_output_term(VarSet, no, InstTerm, !IO).
 
 %-----------------------------------------------------------------------------%
 %

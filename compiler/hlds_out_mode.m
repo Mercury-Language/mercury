@@ -40,6 +40,7 @@
 :- func mode_to_term(mer_mode) = prog_term.
 :- func mode_to_term_with_context(term.context, mer_mode) = prog_term.
 :- func inst_to_term(mer_inst) = prog_term.
+:- func inst_name_to_term(inst_name) = prog_term.
 
 %-----------------------------------------------------------------------------%
 
@@ -117,6 +118,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -228,10 +230,10 @@ inst_to_term_with_context(Inst, Context) = Term :-
             Vars, inst_to_term_with_context(SubInst, Context))
     ;
         Inst = abstract_inst(Name, Args),
-        Term = inst_name_to_term(user_inst(Name, Args), Context)
+        Term = inst_name_to_term_with_context(Context, user_inst(Name, Args))
     ;
         Inst = defined_inst(InstName),
-        Term = inst_name_to_term(InstName, Context)
+        Term = inst_name_to_term_with_context(Context, InstName)
     ;
         Inst = not_reached,
         Term = make_atom("not_reached", Context)
@@ -285,9 +287,12 @@ any_pred_inst_info_to_term(_Uniq, PredInstInfo, Context) = Term :-
     construct_qualified_term(unqualified("is"),
         [ModesTerm, det_to_term(Det, Context)], Context, Term).
 
-:- func inst_name_to_term(inst_name, prog_context) = prog_term.
+inst_name_to_term(InstName) =
+    inst_name_to_term_with_context(term.context_init, InstName).
 
-inst_name_to_term(InstName, Context) = Term :-
+:- func inst_name_to_term_with_context(prog_context, inst_name) = prog_term.
+
+inst_name_to_term_with_context(Context, InstName) = Term :-
     (
         InstName = user_inst(Name, Args),
         construct_qualified_term(Name,
@@ -301,12 +306,12 @@ inst_name_to_term(InstName, Context) = Term :-
     ;
         InstName = shared_inst(SubInstName),
         construct_qualified_term(unqualified("$shared_inst"),
-            [inst_name_to_term(SubInstName, Context)],
+            [inst_name_to_term_with_context(Context, SubInstName)],
             Context, Term)
     ;
         InstName = mostly_uniq_inst(SubInstName),
         construct_qualified_term(unqualified("$mostly_uniq_inst"),
-            [inst_name_to_term(SubInstName, Context)],
+            [inst_name_to_term_with_context(Context, SubInstName)],
             Context, Term)
     ;
         InstName = unify_inst(Liveness, InstA, InstB, Real),
@@ -318,7 +323,7 @@ inst_name_to_term(InstName, Context) = Term :-
     ;
         InstName = ground_inst(SubInstName, IsLive, Uniq, Real),
         construct_qualified_term(unqualified("$ground"),
-            [inst_name_to_term(SubInstName, Context),
+            [inst_name_to_term_with_context(Context, SubInstName),
             make_atom(is_live_to_str(IsLive), Context),
             make_atom(inst_uniqueness(Uniq, "shared"), Context),
             make_atom(unify_is_real_to_str(Real), Context)],
@@ -326,7 +331,7 @@ inst_name_to_term(InstName, Context) = Term :-
     ;
         InstName = any_inst(SubInstName, IsLive, Uniq, Real),
         construct_qualified_term(unqualified("$any"),
-            [inst_name_to_term(SubInstName, Context),
+            [inst_name_to_term_with_context(Context, SubInstName),
             make_atom(is_live_to_str(IsLive), Context),
             make_atom(inst_uniqueness(Uniq, "shared"), Context),
             make_atom(unify_is_real_to_str(Real), Context)],
@@ -343,7 +348,7 @@ inst_name_to_term(InstName, Context) = Term :-
         unparse_type(Type, Term0),
         construct_qualified_term(unqualified("$typed_inst"),
             [term.coerce(Term0),
-            inst_name_to_term(SubInstName, Context)],
+            inst_name_to_term_with_context(Context, SubInstName)],
             Context, Term)
     ).
 
@@ -380,18 +385,93 @@ bound_insts_to_term([], _) = _ :-
 bound_insts_to_term([BoundInst | BoundInsts], Context) = Term :-
     BoundInst = bound_functor(ConsId, Args),
     ArgTerms = list.map(map_inst_to_term(Context), Args),
-    ( cons_id_and_args_to_term(ConsId, ArgTerms, FirstTerm) ->
-        (
-            BoundInsts = [],
-            Term = FirstTerm
-        ;
-            BoundInsts = [_ | _],
-            construct_qualified_term(unqualified(";"),
-                [FirstTerm, bound_insts_to_term(BoundInsts, Context)],
-                Context, Term)
-        )
+    cons_id_and_args_to_term_full(ConsId, ArgTerms, FirstTerm),
+    (
+        BoundInsts = [],
+        Term = FirstTerm
     ;
-        unexpected($module, $pred, "cons_id_and_args_to_term failed")
+        BoundInsts = [_ | _],
+        construct_qualified_term(unqualified(";"),
+            [FirstTerm, bound_insts_to_term(BoundInsts, Context)],
+            Context, Term)
+    ).
+
+:- pred cons_id_and_args_to_term_full(cons_id::in, list(prog_term)::in,
+    prog_term::out) is det.
+
+cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
+    (
+        ConsId = cons(SymName, _Arity, _TypeCtor),
+        construct_qualified_term(SymName, ArgTerms, Term)
+    ;
+        ConsId = tuple_cons(_Arity),
+        SymName = unqualified("{}"),
+        construct_qualified_term(SymName, ArgTerms, Term)
+    ;
+        ConsId = closure_cons(_, _),
+        term.context_init(Context),
+        FunctorName = "closure_cons",
+        Term = term.functor(term.string(FunctorName), [], Context)
+    ;
+        ConsId = int_const(Int),
+        term.context_init(Context),
+        Term = term.functor(term.integer(Int), [], Context)
+    ;
+        ConsId = float_const(Float),
+        term.context_init(Context),
+        Term = term.functor(term.float(Float), [], Context)
+    ;
+        ConsId = string_const(String),
+        term.context_init(Context),
+        Term = term.functor(term.string(String), [], Context)
+    ;
+        ConsId = char_const(Char),
+        SymName = unqualified(term_io.escaped_char(Char)),
+        construct_qualified_term(SymName, [], Term)
+    ;
+        ConsId = impl_defined_const(String),
+        term.context_init(Context),
+        FunctorName = "ImplDefinedConst: " ++ String,
+        Term = term.functor(term.string(FunctorName), [], Context)
+    ;
+        ConsId = type_ctor_info_const(ModuleName, TypeCtorName, Arity),
+        term.context_init(Context),
+        string.format("TypeCtorInfo for %s.%s/%d",
+            [s(sym_name_to_string(ModuleName)), s(TypeCtorName), i(Arity)],
+            FunctorName),
+        Term = term.functor(term.string(FunctorName), [], Context)
+    ;
+        ConsId = base_typeclass_info_const(_, _, _, _),
+        term.context_init(Context),
+        FunctorName = "base_typeclass_info_const",
+        Term = term.functor(term.string(FunctorName), [], Context)
+    ;
+        ConsId = type_info_cell_constructor(TypeCtor),
+        TypeCtor = type_ctor(TypeCtorName, Arity),
+        term.context_init(Context),
+        string.format("type_info_cell_constructor for %s/%d",
+            [s(sym_name_to_string(TypeCtorName)), i(Arity)], FunctorName),
+        Term = term.functor(term.string(FunctorName), [], Context)
+    ;
+        ConsId = typeclass_info_cell_constructor,
+        term.context_init(Context),
+        FunctorName = "typeclass_info_cell_constructor",
+        Term = term.functor(term.string(FunctorName), [], Context)
+    ;
+        ConsId = tabling_info_const(_),
+        term.context_init(Context),
+        FunctorName = "tabling_info_const",
+        Term = term.functor(term.string(FunctorName), [], Context)
+    ;
+        ConsId = table_io_decl(_),
+        term.context_init(Context),
+        FunctorName = "table_io_decl",
+        Term = term.functor(term.string(FunctorName), [], Context)
+    ;
+        ConsId = deep_profiling_proc_layout(_),
+        term.context_init(Context),
+        FunctorName = "deep_profiling_proc_layout",
+        Term = term.functor(term.string(FunctorName), [], Context)
     ).
 
 :- func det_to_term(determinism, prog_context) = prog_term.
