@@ -229,22 +229,10 @@ abstractly_unify_inst(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
     unify_is_real::in, mer_inst::out, determinism::out,
     module_info::in, module_info::out) is semidet.
 
-abstractly_unify_inst_2(IsLive, InstA, InstB, Real, Inst, Detism,
+abstractly_unify_inst_2(Live, InstA, InstB, Real, Inst, Detism,
         !ModuleInfo) :-
-    ( InstB = not_reached ->
-        Inst = not_reached,
-        Detism = detism_det
-    ; InstA = constrained_inst_vars(InstVars, SubInstA) ->
-        abstractly_unify_constrained_inst_vars(IsLive, InstVars,
-            SubInstA, InstB, Real, Inst, Detism, !ModuleInfo)
-    ; InstB = constrained_inst_vars(InstVars, SubInstB) ->
-        % XXX Why the switch in Inst order?
-        abstractly_unify_constrained_inst_vars(IsLive, InstVars,
-            SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
-    ;
-        abstractly_unify_inst_3(IsLive, InstA, InstB, Real, Inst,
-            Detism, !ModuleInfo)
-    ).
+    abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst,
+        Detism, !ModuleInfo).
 
     % Abstractly unify two expanded insts.
     % The is_live parameter is `is_live' iff *both* insts are live.
@@ -258,6 +246,7 @@ abstractly_unify_inst_2(IsLive, InstA, InstB, Real, Inst, Detism,
     module_info::in, module_info::out) is semidet.
 
 abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
+    require_complete_switch [InstA]
     (
         InstA = not_reached,
         Inst = not_reached,
@@ -266,7 +255,12 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
         InstA = free,
         (
             Live = is_live,
+            require_complete_switch [InstB]
             (
+                InstB = not_reached,
+                Inst = not_reached,
+                Detism = detism_det
+            ;
                 InstB = free,
                 fail
             ;
@@ -295,7 +289,23 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 Inst = any(Uniq, HOInstInfo),
                 Detism = detism_det
             ;
+                InstB = constrained_inst_vars(InstVarsB, SubInstB),
+                abstractly_unify_constrained_inst_vars(Live, InstVarsB,
+                    SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
+            ;
                 InstB = abstract_inst(_, _),
+                fail
+            ;
+                ( InstB = defined_inst(_)
+                ; InstB = free(_)
+                ; InstB = inst_var(_)
+                ),
+                % XXX Failing here preserves the old behavior of this predicate
+                % for these cases, but I am not convinced it is the right thing
+                % to do.
+                % Why are we not handling defined_inst by looking it up?
+                % Why are we not handling free/1 similarly to free/0?
+                % And why are we not aborting for inst_var?
                 fail
             )
         ;
@@ -305,7 +315,12 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
         )
     ;
         InstA = bound(UniqA, BoundInstsA),
+        require_complete_switch [InstB]
         (
+            InstB = not_reached,
+            Inst = not_reached,
+            Detism = detism_det
+        ;
             InstB = free,
             (
                 Live = is_live,
@@ -316,7 +331,7 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                     !ModuleInfo)
             ;
                 Live = is_dead,
-                % Why the different argument order to the call above?
+                % Why the different argument order different to the call above?
                 unify_uniq(Live, Real, detism_det, UniqA, unique, Uniq),
                 BoundInsts = BoundInstsA
             ),
@@ -345,6 +360,10 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
             Inst = bound(Uniq, BoundInsts),
             det_par_conjunction_detism(Detism1, detism_semi, Detism)
         ;
+            InstB = constrained_inst_vars(InstVarsB, SubInstB),
+            abstractly_unify_constrained_inst_vars(Live, InstVarsB,
+                SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
+        ;
             InstB = abstract_inst(_N, _As),
             fail
             % Abstract insts are not supported.
@@ -367,6 +386,18 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
             %       fail
             %   )
             % )
+        ;
+            ( InstB = defined_inst(_)
+            ; InstB = free(_)
+            ; InstB = inst_var(_)
+            ),
+            % XXX Failing here preserves the old behavior of this predicate
+            % for these cases, but I am not convinced it is the right thing
+            % to do.
+            % Why are we not handling defined_inst by looking it up?
+            % Why are we not handling free/1 similarly to free/0?
+            % And why are we not aborting for inst_var?
+            fail
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
@@ -376,7 +407,12 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 !ModuleInfo)
         ;
             HOInstInfoA = higher_order(_PredInstA),
+            require_complete_switch [InstB]
             (
+                InstB = not_reached,
+                Inst = not_reached,
+                Detism = detism_det
+            ;
                 InstB = free,
                 (
                     Live = is_live,
@@ -421,6 +457,26 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 unify_uniq(Live, Real, detism_semi, UniqA, UniqB, Uniq),
                 Inst = ground(Uniq, HOInstInfoA),
                 Detism = detism_semi
+            ;
+                InstB = constrained_inst_vars(InstVarsB, SubInstB),
+                abstractly_unify_constrained_inst_vars(Live, InstVarsB,
+                    SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
+            ;
+                InstB = abstract_inst(_N, _As),
+                % Abstract insts are not supported.
+                fail
+            ;
+                ( InstB = defined_inst(_)
+                ; InstB = free(_)
+                ; InstB = inst_var(_)
+                ),
+                % XXX Failing here preserves the old behavior of this predicate
+                % for these cases, but I am not convinced it is the right thing
+                % to do.
+                % Why are we not handling defined_inst by looking it up?
+                % Why are we not handling free/1 similarly to free/0?
+                % And why are we not aborting for inst_var?
+                fail
             )
         )
     ;
@@ -431,7 +487,12 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 !ModuleInfo)
         ;
             HOInstInfoA = higher_order(_PredInstA),
+            require_complete_switch [InstB]
             (
+                InstB = not_reached,
+                Inst = not_reached,
+                Detism = detism_det
+            ;
                 InstB = free,
                 (
                     Live = is_live,
@@ -471,8 +532,32 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 unify_uniq(Live, Real, detism_semi, UniqA, UniqB, Uniq),
                 Inst = any(Uniq, HOInstInfoA),
                 Detism = detism_semi
+            ;
+                InstB = constrained_inst_vars(InstVarsB, SubInstB),
+                abstractly_unify_constrained_inst_vars(Live, InstVarsB,
+                    SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
+            ;
+                InstB = abstract_inst(_N, _As),
+                % Abstract insts are not supported.
+                fail
+            ;
+                ( InstB = defined_inst(_)
+                ; InstB = free(_)
+                ; InstB = inst_var(_)
+                ),
+                % XXX Failing here preserves the old behavior of this predicate
+                % for these cases, but I am not convinced it is the right thing
+                % to do.
+                % Why are we not handling defined_inst by looking it up?
+                % Why are we not handling free/1 similarly to free/0?
+                % And why are we not aborting for inst_var?
+                fail
             )
         )
+    ;
+        InstA = constrained_inst_vars(InstVarsA, SubInstA),
+        abstractly_unify_constrained_inst_vars(Live, InstVarsA,
+            SubInstA, InstB, Real, Inst, Detism, !ModuleInfo)
     ;
         InstA = abstract_inst(_N, _As),
         % Abstract insts are not supported.
@@ -516,7 +601,30 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
 %               Inst = abstract_inst(Name, Args)
 %           )
 %       )
+    ;
+        ( InstA = defined_inst(_)
+        ; InstA = free(_)
+        ; InstA = inst_var(_)
+        ),
+        % XXX Failing here preserves the old behavior of this predicate
+        % for these cases, but I am not convinced it is the right thing to do.
+        % Why are we not handling defined_inst by looking it up?
+        % Why are we not handling free/1 similarly to free/0?
+        % And why are we not aborting for inst_var?
+        fail
     ).
+
+% :- pred check_not_clobbered(uniqueness::in, unify_is_real::in) is det.
+% 
+% check_not_clobbered(Uniq, Real) :-
+%     % Sanity check.
+%     ( Real = real_unify, Uniq = clobbered ->
+%         unexpected($module, $pred, "clobbered inst")
+%     ; Real = real_unify, Uniq = mostly_clobbered ->
+%         unexpected($module, $pred, "mostly_clobbered inst")
+%     ;
+%         true
+%     ).
 
 %-----------------------------------------------------------------------------%
 
@@ -542,32 +650,9 @@ abstractly_unify_inst_list([InstA | InstsA], [InstB | InstsB], Live, Real,
     %
 abstractly_unify_inst_functor(Live, InstA0, ConsIdB, ArgInstsB, ArgLives,
         Real, Type, Inst, Detism, !ModuleInfo) :-
-    inst_expand(!.ModuleInfo, InstA0, InstA1),
-    ( InstA1 = constrained_inst_vars(InstVars, InstA) ->
-        abstractly_unify_inst_functor(Live, InstA, ConsIdB, ArgInstsB,
-            ArgLives, Real, Type, Inst0, Detism, !ModuleInfo),
-        ( inst_matches_final(Inst0, InstA, !.ModuleInfo) ->
-            % We can keep the constrained_inst_vars.
-            Inst = constrained_inst_vars(InstVars, Inst0)
-        ;
-            % The inst has become too instantiated so we must remove
-            % the constrained_inst_var.
-            % XXX This throws away the information that Inst is at least as
-            % ground as InstVars and is a subtype of InstVars. I don't think
-            % this is likely to be a problem in practice because:
-            % a) I don't think it's likely to occur very often in typical uses
-            %    of polymorphic modes (I suspect InstA will nearly always be
-            %    `ground' or `any' in which case the only way
-            %    inst_matches_final can fail is if Inst0 is clobbered
-            %    -- it can't be less instantiated than InstA); and
-            % b) Even if this information is retained, I can't see what sort
-            %    of situations it would actually be useful for.
-            Inst = Inst0
-        )
-    ;
-        abstractly_unify_inst_functor_2(Live, InstA1, ConsIdB, ArgInstsB,
-            ArgLives, Real, Type, Inst, Detism, !ModuleInfo)
-    ).
+    inst_expand(!.ModuleInfo, InstA0, InstA),
+    abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
+        Real, Type, Inst, Detism, !ModuleInfo).
 
 :- pred abstractly_unify_inst_functor_2(is_live::in, mer_inst::in,
     cons_id::in, list(mer_inst)::in, list(is_live)::in, unify_is_real::in,
@@ -576,6 +661,7 @@ abstractly_unify_inst_functor(Live, InstA0, ConsIdB, ArgInstsB, ArgLives,
 
 abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
         Real, Type, Inst, Detism, !ModuleInfo) :-
+    require_complete_switch [InstA]
     (
         InstA = not_reached,
         Inst = not_reached,
@@ -635,7 +721,40 @@ abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
         ),
         Inst = bound(UniqA, [bound_functor(ConsIdB, ArgInsts)])
     ;
+        InstA = constrained_inst_vars(InstVars, SubInstA),
+        abstractly_unify_inst_functor(Live, SubInstA, ConsIdB, ArgInstsB,
+            ArgLives, Real, Type, Inst0, Detism, !ModuleInfo),
+        ( inst_matches_final(Inst0, SubInstA, !.ModuleInfo) ->
+            % We can keep the constrained_inst_vars.
+            Inst = constrained_inst_vars(InstVars, Inst0)
+        ;
+            % The inst has become too instantiated so we must remove
+            % the constrained_inst_var.
+            % XXX This throws away the information that Inst is at least as
+            % ground as InstVars and is a subtype of InstVars. I don't think
+            % this is likely to be a problem in practice because:
+            % a) I don't think it's likely to occur very often in typical uses
+            %    of polymorphic modes (I suspect SubInstA will nearly always
+            %    be `ground' or `any' in which case the only way
+            %    inst_matches_final can fail is if Inst0 is clobbered
+            %    -- it can't be less instantiated than SubInstA); and
+            % b) Even if this information is retained, I can't see what sort
+            %    of situations it would actually be useful for.
+            Inst = Inst0
+        )
+    ;
         InstA = abstract_inst(_, _),
+        fail
+    ;
+        ( InstA = defined_inst(_)
+        ; InstA = free(_)
+        ; InstA = inst_var(_)
+        ),
+        % XXX Failing here preserves the old behavior of this predicate
+        % for these cases, but I am not convinced it is the right thing to do.
+        % Why are we not handling defined_inst by looking it up?
+        % Why are we not handling free/1 similarly to free/0?
+        % And why are we not aborting for inst_var?
         fail
     ).
 
@@ -772,20 +891,20 @@ abstractly_unify_inst_list_lives([InstA | InstsA], [InstB | InstsB],
     mer_inst::in, mer_inst::in, unify_is_real::in, mer_inst::out,
     determinism::out, module_info::in, module_info::out) is semidet.
 
-abstractly_unify_constrained_inst_vars(IsLive, InstVars, InstConstraint, InstB,
+abstractly_unify_constrained_inst_vars(Live, InstVarsA, SubInstA, InstB,
         Real, Inst, Detism, !ModuleInfo) :-
-    abstractly_unify_inst(IsLive, InstConstraint, InstB, Real,
-        Inst0, Detism, !ModuleInfo),
-    ( \+ inst_matches_final(Inst0, InstConstraint, !.ModuleInfo) ->
+    abstractly_unify_inst(Live, SubInstA, InstB, Real, Inst0, Detism,
+        !ModuleInfo),
+    ( \+ inst_matches_final(Inst0, SubInstA, !.ModuleInfo) ->
         % The inst has become too instantiated so the
-        % constrained_inst_vars must be removed.
+        % constrained_inst_vars wrapper must be removed.
         Inst = Inst0
-    ; Inst0 = constrained_inst_vars(InstVars0, Inst1) ->
-        % Avoid nested constrained_inst_vars.
-        Inst = constrained_inst_vars(set.union(InstVars0, InstVars), Inst1)
+    ; Inst0 = constrained_inst_vars(InstVars0, SubInst0) ->
+        % Avoid nested constrained_inst_vars wrappers.
+        Inst = constrained_inst_vars(set.union(InstVars0, InstVarsA), SubInst0)
     ;
-        % We can keep the constrained_inst_vars.
-        Inst = constrained_inst_vars(InstVars, Inst0)
+        % We can keep the constrained_inst_vars wrapper.
+        Inst = constrained_inst_vars(InstVarsA, Inst0)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -819,100 +938,95 @@ abstractly_unify_constrained_inst_vars(IsLive, InstVars, InstConstraint, InstB,
     uniqueness::in, uniqueness::in, uniqueness::out) is semidet.
 
 unify_uniq(Live, Real, Detism, UniqA, UniqB, Uniq) :-
+    require_complete_switch [UniqA]
     (
         UniqA = shared,
-        UniqB = shared,
-        Uniq = shared
-    ;
-        UniqA = shared,
-        UniqB = unique,
-        Uniq = shared
-    ;
-        UniqA = shared,
-        UniqB = mostly_unique,
-        Uniq = shared
-    ;
-        UniqA = shared,
-        UniqB = clobbered,
-        allow_unify_with_clobbered(Live, Real, Detism),
-        Uniq = clobbered
-    ;
-        UniqA = shared,
-        UniqB = mostly_clobbered,
-        allow_unify_with_clobbered(Live, Real, Detism),
-        Uniq = mostly_clobbered
+        require_complete_switch [UniqB]
+        (
+            ( UniqB = shared
+            ; UniqB = unique
+            ; UniqB = mostly_unique
+            ),
+            Uniq = shared
+        ;
+            UniqB = clobbered,
+            allow_unify_with_clobbered(Live, Real, Detism),
+            Uniq = clobbered
+        ;
+            UniqB = mostly_clobbered,
+            allow_unify_with_clobbered(Live, Real, Detism),
+            Uniq = mostly_clobbered
+        )
     ;
         UniqA = unique,
-        UniqB = shared,
-        Uniq = shared
-    ;
-        UniqA = unique,
-        UniqB = unique,
-        Live = is_live,
-        Uniq = shared
-    ;
-        UniqA = unique,
-        UniqB = mostly_unique,
-        Live = is_live,
-        Uniq = shared
-    ;
-        UniqA = unique,
-        UniqB = unique,
-        Live = is_dead,
-        Uniq = unique
-    ;
-        UniqA = unique,
-        UniqB = mostly_unique,
-        Live = is_dead,
-        % XXX This is a conservative approximation;
-        % sometimes we should return unique, not mostly_unique.
-        Uniq = mostly_unique
-    ;
-        UniqA = unique,
-        UniqB = clobbered,
-        allow_unify_with_clobbered(Live, Real, Detism),
-        Uniq = clobbered
-    ;
-        UniqA = unique,
-        UniqB = mostly_clobbered,
-        allow_unify_with_clobbered(Live, Real, Detism),
-        Uniq = mostly_clobbered
-    ;
-        UniqA = mostly_unique,
-        UniqB = shared,
-        Uniq = shared
+        require_complete_switch [UniqB]
+        (
+            UniqB = shared,
+            Uniq = shared
+        ;
+            UniqB = unique,
+            (
+                Live = is_live,
+                Uniq = shared
+            ;
+                Live = is_dead,
+                Uniq = unique
+            )
+        ;
+            UniqB = mostly_unique,
+            (
+                Live = is_live,
+                Uniq = shared
+            ;
+                Live = is_dead,
+                % XXX This is a conservative approximation;
+                % sometimes we should return unique, not mostly_unique.
+                Uniq = mostly_unique
+            )
+        ;
+            UniqB = clobbered,
+            allow_unify_with_clobbered(Live, Real, Detism),
+            Uniq = clobbered
+        ;
+            UniqB = mostly_clobbered,
+            allow_unify_with_clobbered(Live, Real, Detism),
+            Uniq = mostly_clobbered
+        )
     ;
         UniqA = mostly_unique,
-        UniqB = unique,
-        Live = is_live,
-        Uniq = shared
-    ;
-        UniqA = mostly_unique,
-        UniqB = mostly_unique,
-        Live = is_live,
-        Uniq = shared
-    ;
-        UniqA = mostly_unique,
-        UniqB = unique,
-        Live = is_dead,
-        % XXX This is a conservative approximation;
-        % sometimes we should return unique, not mostly_unique.
-        Uniq = mostly_unique
-    ;
-        UniqA = mostly_unique,
-        UniqB = mostly_unique,
-        Live = is_dead,
-        Uniq = mostly_unique
-    ;
-        UniqA = mostly_unique,
-        UniqB = clobbered,
-        allow_unify_with_clobbered(Live, Real, Detism),
-        Uniq = clobbered
-    ;
-        UniqA = mostly_unique,
-        UniqB = mostly_clobbered,
-        allow_unify_with_clobbered(Live, Real, Detism),
-        Uniq = mostly_clobbered
+        require_complete_switch [UniqB]
+        (
+            UniqB = shared,
+            Uniq = shared
+        ;
+            UniqB = unique,
+            (
+                Live = is_live,
+                Uniq = shared
+            ;
+                Live = is_dead,
+                % XXX This is a conservative approximation;
+                % sometimes we should return unique, not mostly_unique.
+                Uniq = mostly_unique
+            )
+        ;
+            UniqB = mostly_unique,
+            (
+                Live = is_live,
+                Uniq = shared
+            ;
+                Live = is_dead,
+                Uniq = mostly_unique
+            )
+        ;
+            UniqB = clobbered,
+            allow_unify_with_clobbered(Live, Real, Detism),
+            Uniq = clobbered
+        ;
+            UniqB = mostly_clobbered,
+            allow_unify_with_clobbered(Live, Real, Detism),
+            Uniq = mostly_clobbered
+        )
     ;
         UniqA = clobbered,
         allow_unify_with_clobbered(Live, Real, Detism),
@@ -934,20 +1048,6 @@ allow_unify_with_clobbered(is_live, _, _) :-
     unexpected($module, $pred, "clobbered value is is_live?").
 allow_unify_with_clobbered(is_dead, fake_unify, _).
 allow_unify_with_clobbered(is_dead, _, detism_det).
-
-%-----------------------------------------------------------------------------%
-
-:- pred check_not_clobbered(uniqueness::in, unify_is_real::in) is det.
-
-check_not_clobbered(Uniq, Real) :-
-    % Sanity check.
-    ( Real = real_unify, Uniq = clobbered ->
-        unexpected($module, $pred, "clobbered inst")
-    ; Real = real_unify, Uniq = mostly_clobbered ->
-        unexpected($module, $pred, "mostly_clobbered inst")
-    ;
-        true
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1088,13 +1188,13 @@ make_ground_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
     module_info::in, module_info::out) is semidet.
 
 make_ground_bound_inst_list([], _, _, _, [], detism_det, !ModuleInfo).
-make_ground_bound_inst_list([Bound0 | Bounds0], IsLive, Uniq, Real,
+make_ground_bound_inst_list([Bound0 | Bounds0], Live, Uniq, Real,
             [Bound | Bounds], Detism, !ModuleInfo) :-
     Bound0 = bound_functor(ConsId, ArgInsts0),
-    make_ground_inst_list(ArgInsts0, IsLive, Uniq, Real, ArgInsts, Detism1,
+    make_ground_inst_list(ArgInsts0, Live, Uniq, Real, ArgInsts, Detism1,
         !ModuleInfo),
     Bound = bound_functor(ConsId, ArgInsts),
-    make_ground_bound_inst_list(Bounds0, IsLive, Uniq, Real, Bounds, Detism2,
+    make_ground_bound_inst_list(Bounds0, Live, Uniq, Real, Bounds, Detism2,
         !ModuleInfo),
     det_par_conjunction_detism(Detism1, Detism2, Detism).
 
@@ -1211,13 +1311,13 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
     module_info::in, module_info::out) is semidet.
 
 make_any_bound_inst_list([], _, _, _, [], detism_det, !ModuleInfo).
-make_any_bound_inst_list([Bound0 | Bounds0], IsLive, Uniq, Real,
+make_any_bound_inst_list([Bound0 | Bounds0], Live, Uniq, Real,
         [Bound | Bounds], Detism, !ModuleInfo) :-
     Bound0 = bound_functor(ConsId, ArgInsts0),
-    make_any_inst_list(ArgInsts0, IsLive, Uniq, Real,
+    make_any_inst_list(ArgInsts0, Live, Uniq, Real,
         ArgInsts, Detism1, !ModuleInfo),
     Bound = bound_functor(ConsId, ArgInsts),
-    make_any_bound_inst_list(Bounds0, IsLive, Uniq, Real, Bounds, Detism2,
+    make_any_bound_inst_list(Bounds0, Live, Uniq, Real, Bounds, Detism2,
         !ModuleInfo),
     det_par_conjunction_detism(Detism1, Detism2, Detism).
 
@@ -1256,16 +1356,16 @@ make_any_inst_list_lives([Inst0 | Insts0], Live, [ArgLive | ArgLives],
     list(mer_inst)::out, module_info::in, module_info::out) is det.
 
 maybe_make_shared_inst_list([], [], [], !ModuleInfo).
-maybe_make_shared_inst_list([Inst0 | Insts0], [IsLive | IsLives],
+maybe_make_shared_inst_list([Inst0 | Insts0], [Live | Lives],
         [Inst | Insts], !ModuleInfo) :-
     (
-        IsLive = is_live,
+        Live = is_live,
         make_shared_inst(Inst0, Inst, !ModuleInfo)
     ;
-        IsLive = is_dead,
+        Live = is_dead,
         Inst = Inst0
     ),
-    maybe_make_shared_inst_list(Insts0, IsLives, Insts, !ModuleInfo).
+    maybe_make_shared_inst_list(Insts0, Lives, Insts, !ModuleInfo).
 maybe_make_shared_inst_list([], [_ | _], _, _, _) :-
     unexpected($module, $pred, "length mismatch").
 maybe_make_shared_inst_list([_ | _], [], _, _, _) :-
