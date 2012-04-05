@@ -1565,11 +1565,10 @@
 %-----------------------------------------------------------------------------%
 
     % list.series(X, OK, Succ) = [X0, X1, ..., Xn]
-    %   where X0 = X and successive elements Xj, Xk
-    %   are computed as Xk = Succ(Xj).  The series
-    %   terminates as soon as an element Xi is
-    %   generated such that OK(Xi) fails; Xi is not
-    %   included in the output.
+    %
+    % where X0 = X and successive elements Xj, Xk are computed as
+    % Xk = Succ(Xj). The series terminates as soon as an element Xi is
+    % generated such that OK(Xi) fails; Xi is not included in the output.
     %
 :- func list.series(T, pred(T), func(T) = T) = list(T).
 :- mode list.series(in, pred(in) is semidet, func(in) = out is det) = out
