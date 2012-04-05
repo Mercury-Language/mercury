@@ -1949,8 +1949,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % The information needed for generating the imports graph
     % is only available while generating the dependencies.
-    option_implies(imports_graph,
-        generate_dependencies, bool(yes), !Globals),
+    option_implies(imports_graph, generate_dependencies, bool(yes), !Globals),
 
     % We only generate the source file mapping if the module name
     % doesn't match the file name.
