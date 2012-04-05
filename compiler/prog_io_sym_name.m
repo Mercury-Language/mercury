@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2008-2009, 2011 The University of Melbourne.
+% Copyright (C) 2008-2009, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -60,6 +60,15 @@
     sym_name::out, list(term(T))::out) is semidet.
 :- pred try_parse_sym_name_and_no_args(term(T)::in, sym_name::out)
     is semidet.
+
+    % When given the first two argumeents Functor and FunctorArgs,
+    % try_parse_sym_name_and_args_from_f_args will do does exactly the same as
+    % what try_parse_sym_name_and_args would do when given the term
+    % term.functor(Functor, FunctorArgs, _), but it does so without
+    % requiring its caller to construct that term.
+    %
+:- pred try_parse_sym_name_and_args_from_f_args(const::in, list(term(T))::in,
+    sym_name::out, list(term(T))::out) is semidet.
 
     % parse_implicitly_qualified_sym_name_and_args(ModuleName, Term,
     %   VarSet, ContextPieces, Result):
@@ -177,31 +186,39 @@ parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs) :-
     ).
 
 try_parse_sym_name_and_args(Term, SymName, Args) :-
+    Term = term.functor(Functor, FunctorArgs, _TermContext),
+    try_parse_sym_name_and_args_from_f_args(Functor, FunctorArgs,
+        SymName, Args).
+
+:- pragma inline(try_parse_sym_name_and_args_from_f_args/4).
+
+try_parse_sym_name_and_args_from_f_args(Functor, FunctorArgs, SymName, Args) :-
+    Functor = term.atom(FunctorName),
     (
-        Term = term.functor(Functor, FunctorArgs, _TermContext),
-        Functor = term.atom("."),
+        FunctorName = ".",
         FunctorArgs = [ModuleTerm, NameArgsTerm]
     ->
         NameArgsTerm = term.functor(term.atom(Name), Args, _),
         try_parse_symbol_name(ModuleTerm, Module),
         SymName = qualified(Module, Name)
     ;
-        Term = term.functor(term.atom(Name), Args, _),
-        SymName = string_to_sym_name_sep(Name, "__")
+        SymName = string_to_sym_name_sep(FunctorName, "__"),
+        Args = FunctorArgs
     ).
 
 try_parse_sym_name_and_no_args(Term, SymName) :-
+    Term = term.functor(Functor, FunctorArgs, _TermContext),
+    Functor = term.atom(FunctorName),
     (
-        Term = term.functor(Functor, FunctorArgs, _TermContext),
-        Functor = term.atom("."),
+        FunctorName = ".",
         FunctorArgs = [ModuleTerm, NameArgsTerm]
     ->
         NameArgsTerm = term.functor(term.atom(Name), [], _),
         try_parse_symbol_name(ModuleTerm, Module),
         SymName = qualified(Module, Name)
     ;
-        Term = term.functor(term.atom(Name), [], _),
-        SymName = string_to_sym_name_sep(Name, "__")
+        FunctorArgs = [],
+        SymName = string_to_sym_name_sep(FunctorName, "__")
     ).
 
 %-----------------------------------------------------------------------------e

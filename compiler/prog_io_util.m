@@ -522,8 +522,10 @@ convert_mode_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
     convert_mode_list(AllowConstrainedInstVar, T0, T).
 
 convert_mode(AllowConstrainedInstVar, Term, Mode) :-
+    Term = term.functor(TermFunctor, TermArgs, _),
     (
-        Term = term.functor(term.atom(">>"), [InstTermA, InstTermB], _)
+        TermFunctor = term.atom(">>"),
+        TermArgs = [InstTermA, InstTermB]
     ->
         convert_inst(AllowConstrainedInstVar, InstTermA, InstA),
         convert_inst(AllowConstrainedInstVar, InstTermB, InstB),
@@ -537,7 +539,8 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         %   -> pred(<Mode1>, <Mode2>, ...) is <Det>
         %   )
 
-        Term = term.functor(term.atom("is"), [PredTerm, DetTerm], _),
+        TermFunctor = term.atom("is"),
+        TermArgs = [PredTerm, DetTerm],
         PredTerm = term.functor(term.atom("pred"), ArgModesTerms, _)
     ->
         DetTerm = term.functor(term.atom(DetString), [], _),
@@ -556,7 +559,8 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         %   -> func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
         %   )
 
-        Term = term.functor(term.atom("is"), [EqTerm, DetTerm], _),
+        TermFunctor = term.atom("is"),
+        TermArgs = [EqTerm, DetTerm],
         EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
         FuncTerm = term.functor(term.atom("func"), ArgModesTerms, _)
     ->
@@ -578,7 +582,8 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         %   -> any_pred(<Mode1>, <Mode2>, ...) is <Det>
         %   )
 
-        Term = term.functor(term.atom("is"), [PredTerm, DetTerm], _),
+        TermFunctor = term.atom("is"),
+        TermArgs = [PredTerm, DetTerm],
         PredTerm = term.functor(term.atom("any_pred"), ArgModesTerms, _)
     ->
         DetTerm = term.functor(term.atom(DetString), [], _),
@@ -597,7 +602,8 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         %   -> any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
         %   )
 
-        Term = term.functor(term.atom("is"), [EqTerm, DetTerm], _),
+        TermFunctor = term.atom("is"),
+        TermArgs = [EqTerm, DetTerm],
         EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
         FuncTerm = term.functor(term.atom("any_func"), ArgModesTerms, _)
     ->
@@ -613,7 +619,8 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
     ;
         % If the sym_name_and_args fails, we should report the error
         % (we would need to call parse_qualified_term instead).
-        try_parse_sym_name_and_args(Term, Name, Args),
+        try_parse_sym_name_and_args_from_f_args(TermFunctor, TermArgs,
+            Name, Args),
         convert_inst_list(AllowConstrainedInstVar, Args, ConvertedArgs),
         Mode = user_defined_mode(Name, ConvertedArgs)
     ).
@@ -626,7 +633,8 @@ convert_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 convert_inst(_, term.variable(V0, _), inst_var(V)) :-
     term.coerce_var(V0, V).
 convert_inst(AllowConstrainedInstVar, Term, Result) :-
-    Term = term.functor(term.atom(Name), Args0, _Context),
+    Term = term.functor(Functor, Args0, _Context),
+    Functor = term.atom(Name),
     (
         convert_simple_builtin_inst(Name, Args0, Result0)
     ->
@@ -639,7 +647,8 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         % where <Mode1>, <Mode2>, ... are a list of modes,
         % and <Detism> is a determinism.
 
-        Name = "is", Args0 = [PredTerm, DetTerm],
+        Name = "is",
+        Args0 = [PredTerm, DetTerm],
         PredTerm = term.functor(term.atom("pred"), ArgModesTerm, _)
     ->
         DetTerm = term.functor(term.atom(DetString), [], _),
@@ -656,7 +665,8 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         % where <Mode1>, <Mode2>, ... are a list of modes,
         % <RetMode> is a mode, and <Detism> is a determinism.
 
-        Name = "is", Args0 = [EqTerm, DetTerm],
+        Name = "is",
+        Args0 = [EqTerm, DetTerm],
         EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
         FuncTerm = term.functor(term.atom("func"), ArgModesTerm, _)
     ->
@@ -676,7 +686,8 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         % where <Mode1>, <Mode2>, ... are a list of modes,
         % and <Detism> is a determinism.
 
-        Name = "is", Args0 = [PredTerm, DetTerm],
+        Name = "is",
+        Args0 = [PredTerm, DetTerm],
         PredTerm = term.functor(term.atom("any_pred"), ArgModesTerm, _)
     ->
         DetTerm = term.functor(term.atom(DetString), [], _),
@@ -693,7 +704,8 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         % where <Mode1>, <Mode2>, ... are a list of modes,
         % <RetMode> is a mode, and <Detism> is a determinism.
 
-        Name = "is", Args0 = [EqTerm, DetTerm],
+        Name = "is",
+        Args0 = [EqTerm, DetTerm],
         EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
         FuncTerm = term.functor(term.atom("any_func"), ArgModesTerm, _)
     ->
@@ -706,18 +718,33 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
             arg_reg_types_unset, Detism),
         Result = any(shared, higher_order(FuncInst))
 
-    ; Name = "bound", Args0 = [Disj] ->
+    ;
+        Name = "bound",
+        Args0 = [Disj]
+    ->
         % `bound' insts
         parse_bound_inst_list(AllowConstrainedInstVar, Disj, shared, Result)
-    ; Name = "bound_unique", Args0 = [Disj] ->
+    ;
+        Name = "bound_unique",
+        Args0 = [Disj]
+    ->
         % `bound_unique' is for backwards compatibility - use `unique' instead.
         parse_bound_inst_list(AllowConstrainedInstVar, Disj, unique, Result)
-    ; Name = "unique", Args0 = [Disj] ->
+    ;
+        Name = "unique",
+        Args0 = [Disj]
+    ->
         parse_bound_inst_list(AllowConstrainedInstVar, Disj, unique, Result)
-    ; Name = "mostly_unique", Args0 = [Disj] ->
+    ;
+        Name = "mostly_unique",
+        Args0 = [Disj]
+    ->
         parse_bound_inst_list(AllowConstrainedInstVar, Disj, mostly_unique,
             Result)
-    ; Name = "=<", Args0 = [VarTerm, InstTerm] ->
+    ;
+        Name = "=<",
+        Args0 = [VarTerm, InstTerm]
+    ->
         AllowConstrainedInstVar = allow_constrained_inst_var,
         VarTerm = term.variable(Var, _),
         % Do not allow nested constrained_inst_vars.
@@ -726,7 +753,8 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
             term.coerce_var(Var)), Inst)
     ;
         % Anything else must be a user-defined inst.
-        try_parse_sym_name_and_args(Term, QualifiedName, Args1),
+        try_parse_sym_name_and_args_from_f_args(Functor, Args0,
+            QualifiedName, Args1),
         (
             BuiltinModule = mercury_public_builtin_module,
             sym_name_get_module_name_default(QualifiedName, unqualified(""),
@@ -823,7 +851,8 @@ convert_bound_inst(AllowConstrainedInstVar, InstTerm, BoundInst) :-
     InstTerm = term.functor(Functor, Args0, _),
     (
         Functor = term.atom(_),
-        try_parse_sym_name_and_args(InstTerm, SymName, Args1),
+        try_parse_sym_name_and_args_from_f_args(Functor, Args0,
+            SymName, Args1),
         list.length(Args1, Arity),
         ConsId = cons(SymName, Arity, cons_id_dummy_type_ctor)
     ;
