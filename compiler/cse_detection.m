@@ -853,7 +853,7 @@ maybe_update_existential_data_structures(Unify, FirstOldNew, LaterOldNew,
         ModuleInfo = !.CseInfo ^ csei_module_info,
         VarTypes = !.CseInfo ^ csei_vartypes,
         map.lookup(VarTypes, Var, Type),
-        type_util.is_existq_cons(ModuleInfo, Type, ConsId)
+        cons_id_is_existq_cons(ModuleInfo, Type, ConsId)
     ->
         update_existential_data_structures(FirstOldNew, LaterOldNew, !CseInfo)
     ;

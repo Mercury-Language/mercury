@@ -502,8 +502,8 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         NonLocals = goal_info_get_nonlocals(CondGoalInfo),
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         mode_info_get_var_types(ModeInfo, VarTypes),
-        NonSolverNonLocals =
-            set_of_var.filter(non_solver_var(ModuleInfo, VarTypes), NonLocals),
+        NonSolverNonLocals = set_of_var.filter(
+            does_not_contain_solver_type(ModuleInfo, VarTypes), NonLocals),
         set_of_var.union(NonSolverNonLocals, !NonFree),
 
         candidate_init_vars_3(ModeInfo, ThenGoal, !.NonFree, NonFreeThen,
@@ -552,13 +552,14 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
     ).
 
     % This filter pred succeeds if the given variable does not have
-    % a solver type.
+    % a solver type, or a type that may contain a solver type.
     %
-:- pred non_solver_var(module_info::in, vartypes::in, prog_var::in) is semidet.
+:- pred does_not_contain_solver_type(module_info::in, vartypes::in,
+    prog_var::in) is semidet.
 
-non_solver_var(ModuleInfo, VarTypes, Var) :-
-    VarType = VarTypes ^ det_elem(Var),
-    not type_is_solver_type(ModuleInfo, VarType).
+does_not_contain_solver_type(ModuleInfo, VarTypes, Var) :-
+    map.lookup(VarTypes, Var, VarType),
+    not type_is_or_may_contain_solver_type(ModuleInfo, VarType).
 
     % Update !NonFree and !CandidateVars given the args and modes for a call.
     %

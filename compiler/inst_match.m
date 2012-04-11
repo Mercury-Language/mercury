@@ -2454,7 +2454,7 @@ mode_contains_inst_var(Mode, InstVar) :-
     uniqueness::in, ho_inst_info::in, mer_inst::out) is semidet.
 
 maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, none, Inst) :-
-    \+ type_util.is_solver_type(ModuleInfo, Type),
+    \+ type_is_solver_type(ModuleInfo, Type),
     ( type_constructors(ModuleInfo, Type, Constructors) ->
         type_to_ctor_det(Type, TypeCtor),
         constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor,

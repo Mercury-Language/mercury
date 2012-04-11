@@ -1213,7 +1213,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
 
             map.lookup(VarTypes, Var, Type),
             simplify_info_get_module_info(!.Info, ModuleInfo1),
-            ( type_util.is_existq_cons(ModuleInfo1, Type, MainConsId) ->
+            ( cons_id_is_existq_cons(ModuleInfo1, Type, MainConsId) ->
                 GoalExpr = switch(Var, SwitchCanFail, Cases),
                 NonLocals = goal_info_get_nonlocals(GoalInfo0),
                 merge_instmap_deltas(InstMap0, NonLocals, VarTypes,

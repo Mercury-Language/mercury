@@ -164,7 +164,7 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
         mode_info_may_init_solver_vars(!.ModeInfo),
         InstOfX0   = free,
         InstOfY0   = free,
-        VarType    = VarTypes ^ elem(X),
+        map.search(VarTypes, X, VarType),
         type_is_solver_type_with_auto_init(ModuleInfo0, VarType)
     ->
         construct_initialisation_call(X, VarType, any_inst,
@@ -687,8 +687,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             list.member(InstArg, InstArgs),
             inst_is_free(ModuleInfo0, InstArg),
             list.member(ArgVar, ArgVars0),
-            map.search(VarTypes, ArgVar, ArgType),
-            type_is_solver_type(ModuleInfo0, ArgType)
+            map.lookup(VarTypes, ArgVar, ArgType),
+            type_is_or_may_contain_solver_type(ModuleInfo0, ArgType)
         ),
         abstractly_unify_inst_functor(LiveX, InstOfX, InstConsId,
             InstArgs, LiveArgs, real_unify, TypeOfX,
@@ -733,9 +733,9 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         % Unfortunately, the update can be very expensive. For example,
         % for a ground list with N elements, there will be N variables
         % bound to the cons cells of the list. Since the average size of the
-        % insts of these variables is on proportional to N/2, the task
+        % insts of these variables is proportional to N/2, the task
         % of recording all their insts is at least quadratic in N.
-        % In practice, it can  actually be worse, because of the way the code
+        % In practice, it can actually be worse, because of the way the code
         % called by bind_args works. It keeps track of sets of insts seen
         % so far, and checks new insts for membership of such sets.
         % If the initial elements of a list are repeated, then the membership
@@ -876,16 +876,17 @@ all_arg_vars_are_non_free_or_solver_vars([], [_ | _], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
 all_arg_vars_are_non_free_or_solver_vars([_ | _], [], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
-all_arg_vars_are_non_free_or_solver_vars([Arg | Args], [Inst | Insts],
-        VarTypes, ModuleInfo, ArgsToInit) :-
+all_arg_vars_are_non_free_or_solver_vars([ArgVar | ArgVars], [Inst | Insts],
+        VarTypes, ModuleInfo, ArgVarsToInit) :-
     ( inst_match.inst_is_free(ModuleInfo, Inst) ->
-        type_is_solver_type(ModuleInfo, VarTypes ^ elem(Arg)),
-        all_arg_vars_are_non_free_or_solver_vars(Args, Insts,
-            VarTypes, ModuleInfo, ArgsToInit1),
-        ArgsToInit = [Arg | ArgsToInit1]
+        map.lookup(VarTypes, ArgVar, ArgType),
+        type_is_or_may_contain_solver_type(ModuleInfo, ArgType),
+        all_arg_vars_are_non_free_or_solver_vars(ArgVars, Insts,
+            VarTypes, ModuleInfo, ArgVarsToInitTail),
+        ArgVarsToInit = [ArgVar | ArgVarsToInitTail]
     ;
-        all_arg_vars_are_non_free_or_solver_vars(Args, Insts,
-            VarTypes, ModuleInfo, ArgsToInit)
+        all_arg_vars_are_non_free_or_solver_vars(ArgVars, Insts,
+            VarTypes, ModuleInfo, ArgVarsToInit)
     ).
 
 %-----------------------------------------------------------------------------%

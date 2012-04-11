@@ -684,7 +684,7 @@ abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
         InstA = any(Uniq, _),
         % We only allow `any' to unify with a functor if we know that
         % the type is not a solver type.
-        \+ type_util.is_solver_type(!.ModuleInfo, Type),
+        \+ type_is_solver_type(!.ModuleInfo, Type),
         (
             Live = is_live,
             make_any_inst_list_lives(ArgInstsB, Live, ArgLives, Uniq, Real,

@@ -774,7 +774,8 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
         ),
         BodyNonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
         mode_info_get_var_types(!.ModeInfo, VarTypes0),
-        SolverNonLocals = list.filter(is_solver_var(VarTypes0, ModuleInfo),
+        SolverNonLocals = list.filter(
+            var_is_or_may_contain_solver_type(ModuleInfo, VarTypes0),
             set_of_var.to_sorted_list(BodyNonLocals)),
         SolverNonLocals = []
     ->

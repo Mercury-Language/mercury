@@ -895,8 +895,9 @@ combine_type_status(type_may_throw, _, type_may_throw).
 
 check_type(ModuleInfo, Type) = Status :-
     (
-        ( is_solver_type(ModuleInfo, Type)
-        ; is_existq_type(ModuleInfo, Type))
+        ( type_is_solver_type(ModuleInfo, Type)
+        ; type_is_existq_type(ModuleInfo, Type)
+        )
      ->
         % XXX At the moment we just assume that existential types and
         % solver types result in a type exception being thrown.

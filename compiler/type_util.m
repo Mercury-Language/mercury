@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,8 +53,12 @@
     %
 :- pred type_to_type_defn(module_info::in, mer_type::in, hlds_type_defn::out)
     is semidet.
+:- pred type_to_type_defn_from_type_table(type_table::in, mer_type::in,
+    hlds_type_defn::out) is semidet.
 
 :- pred type_to_type_defn_body(module_info::in, mer_type::in,
+    hlds_type_body::out) is semidet.
+:- pred type_to_type_defn_body_from_type_table(type_table::in, mer_type::in,
     hlds_type_body::out) is semidet.
 
     % Succeed iff there was either a `where equality is <predname>' or a
@@ -77,24 +81,26 @@
     % Succeed iff the type (not just the principal type constructor) is known
     % to not have user-defined equality or comparison predicates.
     %
-    % If the type is a type variable, or is abstract, etc.  make the
+    % If the type is a type variable, or is abstract, etc., make the
     % conservative approximation and fail.
     %
 :- pred type_definitely_has_no_user_defined_equality_pred(module_info::in,
     mer_type::in) is semidet.
 
-:- pred is_solver_var(vartypes::in, module_info::in, prog_var::in) is semidet.
+:- pred var_is_or_may_contain_solver_type(module_info::in, vartypes::in,
+    prog_var::in) is semidet.
 
     % Succeed iff the principal type constructor for the given type is
-    % declared a solver type, or if the type is a pred or func type.  Pred
-    % and func types are considered solver types because higher-order terms
-    % that contain non-local solver variables are not ground unless all of
-    % the non-locals are ground.
+    % declared a solver type, or if the type is a pred or func type.
+    % Pred and func types are considered solver types because higher-order
+    % terms that contain non-local solver variables are not ground unless
+    % all of the non-locals are ground.
     %
     % If the type is a type variable and thus has no principal type
     % constructor, fail.
     %
-:- pred type_is_solver_type(module_info::in, mer_type::in) is semidet.
+:- pred type_is_or_may_contain_solver_type(module_info::in, mer_type::in)
+    is semidet.
 
 :- pred type_has_solver_type_details(module_info::in, mer_type::in,
     solver_type_details::out) is semidet.
@@ -108,17 +114,21 @@
 :- pred type_is_solver_type_with_auto_init(module_info::in, mer_type::in)
     is semidet.
 
-:- pred is_solver_type(module_info::in, mer_type::in) is semidet.
+:- pred type_is_solver_type(module_info::in, mer_type::in) is semidet.
+:- pred type_is_solver_type_from_type_table(type_table::in, mer_type::in)
+    is semidet.
 
     % Succeed if the type body is for a solver type.
     %
 :- pred type_body_is_solver_type(module_info::in, hlds_type_body::in)
     is semidet.
+:- pred type_body_is_solver_type_from_type_table(type_table::in,
+    hlds_type_body::in) is semidet.
 
     % Succeeds iff one or more of the type constructors for a given
     % type is existentially quantified.
     %
-:- pred is_existq_type(module_info::in, mer_type::in) is semidet.
+:- pred type_is_existq_type(module_info::in, mer_type::in) is semidet.
 
 :- type is_dummy_type
     --->    is_dummy_type
@@ -243,7 +253,7 @@
 :- pred get_existq_cons_defn(module_info::in, mer_type::in, cons_id::in,
     ctor_defn::out) is semidet.
 
-:- pred is_existq_cons(module_info::in, mer_type::in, cons_id::in)
+:- pred cons_id_is_existq_cons(module_info::in, mer_type::in, cons_id::in)
     is semidet.
 
     % Check whether a type is a no_tag type (i.e. one with only one
@@ -413,8 +423,16 @@ type_to_type_defn(ModuleInfo, Type, TypeDefn) :-
     type_to_ctor(Type, TypeCtor),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
 
+type_to_type_defn_from_type_table(TypeTable, Type, TypeDefn) :-
+    type_to_ctor(Type, TypeCtor),
+    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
+
 type_to_type_defn_body(ModuleInfo, Type, TypeBody) :-
     type_to_type_defn(ModuleInfo, Type, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody).
+
+type_to_type_defn_body_from_type_table(TypeTable, Type, TypeBody) :-
+    type_to_type_defn_from_type_table(TypeTable, Type, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody).
 
 type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-
@@ -533,9 +551,9 @@ ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
     list.foldl(type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo),
         ArgTypes, !SeenTypes).
 
-is_solver_var(VarTypes, ModuleInfo, Var) :-
+var_is_or_may_contain_solver_type(ModuleInfo, VarTypes, Var) :-
     map.lookup(VarTypes, Var, VarType),
-    type_is_solver_type(ModuleInfo, VarType).
+    type_is_or_may_contain_solver_type(ModuleInfo, VarType).
 
 type_is_solver_type_with_auto_init(ModuleInfo, Type) :-
     type_to_type_defn_body(ModuleInfo, Type, TypeBody),
@@ -545,12 +563,12 @@ type_is_solver_type_with_auto_init(ModuleInfo, Type) :-
     ;
         % XXX the current implementation doesn't provide enough information
         % to determine whether abstract solver types support automatic
-        % initialisation or not.  In the absence of such information we
-        % assume that they do not.  Since we don't officially support
-        % automatic initialisation anyway this shouldn't be too much of a
-        % problem.  (In the event that we do re-add some form of support for
-        % automatic solver initialisation then we will need to make sure
-        % that this information ends up in interface files somehow.)
+        % initialisation or not. In the absence of such information we assume
+        % that they do not. Since we don't officially support automatic
+        % initialisation anyway this shouldn't be too much of a problem.
+        % (In the event that we do re-add some form of support for automatic
+        % solver initialisation then we will need to make sure that this
+        % information ends up in interface files somehow.)
         TypeBody = hlds_abstract_type(abstract_solver_type),
         fail
     ;
@@ -559,7 +577,7 @@ type_is_solver_type_with_auto_init(ModuleInfo, Type) :-
     type_has_solver_type_details(ModuleInfo, ActualType, SolverTypeDetails),
     SolverTypeDetails ^ std_init_pred = solver_init_automatic(_).
 
-type_is_solver_type(ModuleInfo, Type) :-
+type_is_or_may_contain_solver_type(ModuleInfo, Type) :-
     (
         type_is_higher_order(Type)
     ;
@@ -570,7 +588,7 @@ type_is_solver_type(ModuleInfo, Type) :-
             TypeBody = hlds_abstract_type(abstract_solver_type)
         ;
             TypeBody = hlds_eqv_type(EqvType),
-            type_is_solver_type(ModuleInfo, EqvType)
+            type_is_or_may_contain_solver_type(ModuleInfo, EqvType)
         )
     ).
 
@@ -587,12 +605,12 @@ type_body_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
         type_has_solver_type_details(ModuleInfo, EqvType, SolverTypeDetails)
     ).
 
-is_solver_type(ModuleInfo, Type) :-
+type_is_solver_type(ModuleInfo, Type) :-
     % XXX We can't assume that type variables refer to solver types
     % because otherwise the compiler will try to construct initialisation
     % forwarding predicates for exported abstract types defined to be
-    % equivalent to a type variable parameter.  This, of course, will
-    % lead to the compiler throwing an exception.  The correct solution
+    % equivalent to a type variable parameter. This, of course, will
+    % lead to the compiler throwing an exception. The correct solution
     % is to introduce a solver typeclass, but that's something for another day.
     %
     % Type_to_type_defn_body will fail for builtin types such as `int/0'.
@@ -601,6 +619,11 @@ is_solver_type(ModuleInfo, Type) :-
     type_to_type_defn_body(ModuleInfo, Type, TypeBody),
     type_body_is_solver_type(ModuleInfo, TypeBody).
 
+type_is_solver_type_from_type_table(TypeTable, Type) :-
+    % XXX The comment in type_is_solver_type applies here as well.
+    type_to_type_defn_body_from_type_table(TypeTable, Type, TypeBody),
+    type_body_is_solver_type_from_type_table(TypeTable, TypeBody).
+
 type_body_is_solver_type(ModuleInfo, TypeBody) :-
     (
         TypeBody = hlds_solver_type(_, _)
@@ -608,10 +631,20 @@ type_body_is_solver_type(ModuleInfo, TypeBody) :-
         TypeBody = hlds_abstract_type(abstract_solver_type)
     ;
         TypeBody = hlds_eqv_type(Type),
-        is_solver_type(ModuleInfo, Type)
+        type_is_solver_type(ModuleInfo, Type)
     ).
 
-is_existq_type(ModuleInfo, Type) :-
+type_body_is_solver_type_from_type_table(TypeTable, TypeBody) :-
+    (
+        TypeBody = hlds_solver_type(_, _)
+    ;
+        TypeBody = hlds_abstract_type(abstract_solver_type)
+    ;
+        TypeBody = hlds_eqv_type(Type),
+        type_is_solver_type_from_type_table(TypeTable, Type)
+    ).
+
+type_is_existq_type(ModuleInfo, Type) :-
     type_constructors(ModuleInfo, Type, Constructors),
     some [Constructor] (
         list.member(Constructor, Constructors),
@@ -1029,11 +1062,16 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
     apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes).
 
-:- pred is_existq_cons(module_info::in, mer_type::in, cons_id::in,
-    hlds_cons_defn::out) is semidet.
+cons_id_is_existq_cons(ModuleInfo, VarType, ConsId) :-
+    cons_id_is_existq_cons_return_defn(ModuleInfo, VarType, ConsId, _).
 
-is_existq_cons(ModuleInfo, VarType, ConsId) :-
-    is_existq_cons(ModuleInfo, VarType, ConsId, _).
+:- pred cons_id_is_existq_cons_return_defn(module_info::in, mer_type::in,
+    cons_id::in, hlds_cons_defn::out) is semidet.
+
+cons_id_is_existq_cons_return_defn(ModuleInfo, VarType, ConsId, ConsDefn) :-
+    type_to_ctor(VarType, TypeCtor),
+    get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+    ConsDefn ^ cons_exist_tvars = [_ | _].
 
 get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     % XXX We should look it up in a type_ctor-specific table, not a global one.
@@ -1050,7 +1088,7 @@ get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     ).
 
 get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
-    is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn),
+    cons_id_is_existq_cons_return_defn(ModuleInfo, VarType, ConsId, ConsDefn),
     ConsDefn = hlds_cons_defn(_TypeCtor, TypeVarSet, TypeParams, KindMap,
         ExistQVars, Constraints, Args, _Context),
     ArgTypes = list.map(func(C) = C ^ arg_type, Args),
@@ -1059,11 +1097,6 @@ get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
     construct_type(TypeCtor, TypeCtorArgs, RetType),
     CtorDefn = ctor_defn(TypeVarSet, ExistQVars, KindMap, Constraints,
         ArgTypes, RetType).
-
-is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
-    type_to_ctor(VarType, TypeCtor),
-    get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
-    ConsDefn ^ cons_exist_tvars = [_ | _].
 
 %-----------------------------------------------------------------------------%
 
