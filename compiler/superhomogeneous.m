@@ -100,16 +100,12 @@
     % Vars is a list of distinct variables corresponding to the terms in Args.
     % For each term in Args, if the term is a variable V which is distinct
     % from the variables already produced, then the corresponding variable
-    % in Vars is just V, otherwise a fresh variable is allocated from !VarSet.
+    % in Vars is just V, otherwise we allocate a fresh variable from !VarSet.
     % !:VarSet is the varset resulting after all the necessary variables
     % have been allocated. !SVarState and !Specs are required to handle
     % state variables.
     %
 :- pred make_fresh_arg_vars(list(prog_term)::in, list(prog_var)::out,
-    prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-:- pred make_fresh_arg_var(prog_term::in, prog_var::out, list(prog_var)::in,
     prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -149,21 +145,24 @@
 
 insert_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    do_insert_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal,
+    substitute_state_var_mappings(Args0, Args, !VarSet, !SVarState, !Specs),
+    do_insert_arg_unifications(HeadVars, Args, Context, ArgContext, !Goal,
         get_maybe_from_ground_term_threshold, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
-insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0,
-        ArgContexts, Context, !Goal, !NumAdded, !SVarState, !SVarStore,
+insert_arg_unifications_with_supplied_contexts(Vars, Args0, ArgContexts,
+        Context, !Goal, !NumAdded, !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    do_insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0,
+    substitute_state_var_mappings(Args0, Args, !VarSet, !SVarState, !Specs),
+    do_insert_arg_unifications_with_supplied_contexts(Vars, Args,
         ArgContexts, Context, !Goal,
         get_maybe_from_ground_term_threshold, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
 append_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    do_append_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal,
+    substitute_state_var_mappings(Args0, Args, !VarSet, !SVarState, !Specs),
+    do_append_arg_unifications(HeadVars, Args, Context, ArgContext, !Goal,
         get_maybe_from_ground_term_threshold, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
@@ -203,9 +202,9 @@ do_insert_arg_unifications(HeadVars, Args, Context, ArgContext,
         ;
             Args = [Arg1 | ArgsAfter1],
             do_arg_unification(HeadVar1, Arg1, Context, ArgContext,
-                1, ArgUnifyConj1, MaybeThreshold, !NumAdded,
-                !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
+                1, ArgUnifyConj1, MaybeThreshold,
+                !NumAdded, !SVarState, !SVarStore,
+                !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
             (
                 HeadVarsAfter1 = [],
@@ -447,8 +446,8 @@ do_append_arg_unifications(HeadVars, Args, Context, ArgContext, !Goal,
         )
     ).
 
-:- pred do_append_arg_unifications_loop(list(prog_var)::in, list(prog_term)::in,
-    prog_context::in, arg_context::in, int::in,
+:- pred do_append_arg_unifications_loop(list(prog_var)::in,
+    list(prog_term)::in, prog_context::in, arg_context::in, int::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     maybe(int)::in, num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
@@ -483,18 +482,19 @@ do_append_arg_unifications_loop([HeadVar | HeadVars], [Arg | Args],
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-do_arg_unification(Var, Arg0, Context, ArgContext, ArgNum, ArgUnifyConj,
+do_arg_unification(Var, Arg, Context, ArgContext, ArgNum, ArgUnifyConj,
         MaybeThreshold, !NumAdded, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
-    substitute_state_var_mapping(Arg0, Arg, !VarSet, !SVarState, !Specs),
+    % It is the caller's job to make sure that if needed, then both
+    % Var and Arg have already been through state var mapping expansion.
     ( Arg = term.variable(Var, _) ->
         % Skip unifications of the form `X = X'.
         ArgUnifyConj = []
     ;
-        arg_context_to_unify_context(ArgContext, ArgNum, UnifyMainContext,
-            UnifySubContext),
+        arg_context_to_unify_context(ArgContext, ArgNum,
+            MainContext, SubContext),
         do_unravel_unification(term.variable(Var, Context), Arg, Context,
-            UnifyMainContext, UnifySubContext, purity_pure, Goal,
+            MainContext, SubContext, purity_pure, Goal,
             MaybeThreshold, !NumAdded, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         goal_to_conj_list(Goal, ArgUnifyConj)
@@ -513,7 +513,6 @@ do_arg_unification(Var, Arg0, Context, ArgContext, ArgNum, ArgUnifyConj,
 do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
         Goal, MaybeThreshold, !NumAdded, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
-    % ZZZ
     substitute_state_var_mapping(LHS0, LHS, !VarSet, !SVarState, !Specs),
     substitute_state_var_mapping(RHS0, RHS, !VarSet, !SVarState, !Specs),
     classify_unravel_unification(LHS, RHS, Context, MainContext, SubContext,
@@ -598,8 +597,9 @@ classify_unravel_unification(TermX, TermY, Context, MainContext, SubContext,
         % If we find a unification of the form `f1(...) = f2(...)',
         % then we replace it with `Tmp = f1(...), Tmp = f2(...)',
         % and then process it according to the rules above.
-        % Note that we can't simplify it yet, because we might simplify
-        % away type errors.
+        % Note that we can't simplify it yet, e.g. by pairwise unifying
+        % the args of TermX and TermY, because we might simplify away
+        % type errors.
         TermX = term.functor(_, _, _),
         TermY = term.functor(_, _, _),
         varset.new_var(TmpVar, !VarSet),
@@ -640,10 +640,10 @@ classify_unravel_unification(TermX, TermY, Context, MainContext, SubContext,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-unravel_var_functor_unification(X, F, Args1, FunctorContext,
+unravel_var_functor_unification(X, F, Args0, FunctorContext,
         Context, MainContext, SubContext, Purity, Goal, NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    substitute_state_var_mappings(Args1, Args, !VarSet, !SVarState, !Specs),
+    substitute_state_var_mappings(Args0, Args, !VarSet, !SVarState, !Specs),
     (
         F = term.atom(Atom),
         maybe_unravel_special_var_functor_unification(X, Atom, Args,
@@ -696,9 +696,27 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         )
     ;
         % Handle the usual case.
-        % XXX Why do we use Args1 instead of Args here?
-        RHS = term.functor(F, Args1, FunctorContext),
-        ( try_parse_sym_name_and_args(RHS, FunctorName, FunctorArgsPrime) ->
+        (
+            % The condition of this if-then-else is based on the logic of
+            % try_parse_sym_name_and_args, but specialized to this location,
+            % so that we can do state var expansion only if we need to.
+            F = term.atom(FName),
+            (
+                FName = ".",
+                Args = [ModuleTerm, NameArgsTerm]
+            ->
+                NameArgsTerm = term.functor(term.atom(Name), NArgs, _),
+                try_parse_symbol_name(ModuleTerm, Module),
+                FunctorName = qualified(Module, Name),
+                % We have done state variable name expansion at the top
+                % level of Args, but not at the level of NArgs.
+                substitute_state_var_mappings(NArgs, FunctorArgsPrime,
+                    !VarSet, !SVarState, !Specs)
+            ;
+                FunctorName = string_to_sym_name_sep(FName, "__"),
+                FunctorArgsPrime = Args
+            )
+        ->
             FunctorArgs = FunctorArgsPrime,
             list.length(FunctorArgs, Arity),
             ConsId = cons(FunctorName, Arity, cons_id_dummy_type_ctor)
@@ -709,6 +727,8 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             ConsId = make_functor_cons_id(F, Arity),
             FunctorArgs = Args
         ),
+        % At this point, we have done state variable name expansion
+        % at the top level of FunctorArgs.
         (
             FunctorArgs = [],
             make_atomic_unification(X, rhs_functor(ConsId, no, []),
@@ -723,24 +743,21 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             Goal = hlds_goal(GoalExpr, GoalInfo)
         ;
             FunctorArgs = [_ | _],
-            make_fresh_arg_vars(FunctorArgs, HeadVars, !VarSet, !SVarState,
-                !Specs),
+            make_fresh_arg_vars_no_svar(FunctorArgs, HeadVars, !VarSet),
             make_atomic_unification(X, rhs_functor(ConsId, no, HeadVars),
                 Context, MainContext, SubContext, Purity, Goal0, !QualInfo),
             MainFunctorAdded = 1,
             ArgContext = ac_functor(ConsId, MainContext, SubContext),
             % Should this be insert_... rather than append_...?
-            % No, because that causes efficiency problems
-            % with type-checking :-(
+            % No, because that causes efficiency problems for type-checking :-(
             % But for impure unifications, we need to do this, because
             % mode reordering can't reorder around the functor unification.
             (
                 Purity = purity_pure,
                 do_append_arg_unifications(HeadVars, FunctorArgs,
                     FunctorContext, ArgContext, Goal0, Goal, no,
-                    MainFunctorAdded, NumAdded,
-                    !SVarState, !SVarStore, !VarSet,
-                    !ModuleInfo, !QualInfo, !Specs)
+                    MainFunctorAdded, NumAdded, !SVarState, !SVarStore,
+                    !VarSet, !ModuleInfo, !QualInfo, !Specs)
             ;
                 ( Purity = purity_semipure
                 ; Purity = purity_impure
@@ -750,9 +767,8 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
                 Goal1 = hlds_goal(GoalExpr0, GoalInfo1),
                 do_insert_arg_unifications(HeadVars, FunctorArgs,
                     FunctorContext, ArgContext, Goal1, Goal, no,
-                    MainFunctorAdded, NumAdded,
-                    !SVarState, !SVarStore, !VarSet,
-                    !ModuleInfo, !QualInfo, !Specs)
+                    MainFunctorAdded, NumAdded, !SVarState, !SVarStore,
+                    !VarSet, !ModuleInfo, !QualInfo, !Specs)
             )
         )
     ).
@@ -781,7 +797,7 @@ maybe_unravel_special_var_functor_unification(X, Atom, Args,
         ( Atom = "with_type"
         ; Atom = ":"
         ),
-        Args = [RVal, DeclType0],
+        Args = [RVal0, DeclType0],
 
         require_det (
             % DeclType0 is a prog_term, but it is really a type,
@@ -803,6 +819,8 @@ maybe_unravel_special_var_functor_unification(X, Atom, Args,
                 % a generic term.
                 !:Specs = DeclTypeSpecs ++ !.Specs
             ),
+            substitute_state_var_mapping(RVal0, RVal, !VarSet,
+                !SVarState, !Specs),
             do_unravel_unification(term.variable(X, Context), RVal,
                 Context, MainContext, SubContext, Purity, Goal, no,
                 0, NumAdded, !SVarState, !SVarStore, !VarSet,
@@ -811,9 +829,13 @@ maybe_unravel_special_var_functor_unification(X, Atom, Args,
     ;
         % Handle unification expressions.
         Atom = "@",
-        Args = [LVal, RVal],
+        Args = [LVal0, RVal0],
 
         require_det (
+            substitute_state_var_mapping(LVal0, LVal, !VarSet,
+                !SVarState, !Specs),
+            substitute_state_var_mapping(RVal0, RVal, !VarSet,
+                !SVarState, !Specs),
             do_unravel_unification(term.variable(X, Context), LVal, Context,
                 MainContext, SubContext, Purity, GoalL, no,
                 0, NumAdded1, !SVarState, !SVarStore, !VarSet,
@@ -832,14 +854,15 @@ maybe_unravel_special_var_functor_unification(X, Atom, Args,
         % Handle if-then-else expressions.
         (
             Atom = "else",
-            Args = [CondThenTerm, ElseTerm],
+            Args = [CondThenTerm, ElseTerm0],
             CondThenTerm = term.functor(term.atom("if"),
-                [term.functor(term.atom("then"), [CondTerm0, ThenTerm], _)], _)
+                [term.functor(term.atom("then"), [CondTerm0, ThenTerm0], _)],
+                    _)
         ;
             Atom = ";",
-            Args = [CondThenTerm, ElseTerm],
+            Args = [CondThenTerm, ElseTerm0],
             CondThenTerm = term.functor(term.atom("->"),
-                [CondTerm0, ThenTerm], _)
+                [CondTerm0, ThenTerm0], _)
         ),
 
         require_det (
@@ -859,18 +882,23 @@ maybe_unravel_special_var_functor_unification(X, Atom, Args,
                         BeforeInsideSVarState, AfterCondInsideSVarState,
                         !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
+                    substitute_state_var_mapping(ThenTerm0, ThenTerm, !VarSet,
+                        AfterCondInsideSVarState, AfterThenInsideSVarState0,
+                        !Specs),
                     do_unravel_unification(term.variable(X, Context), ThenTerm,
                         Context, MainContext, SubContext, Purity, ThenGoal0,
                         no, !NumAdded,
-                        AfterCondInsideSVarState, AfterThenInsideSVarState,
+                        AfterThenInsideSVarState0, AfterThenInsideSVarState,
                         !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
                     svar_finish_local_state_vars(StateVars, BeforeSVarState,
                         AfterThenInsideSVarState, AfterThenSVarState),
 
+                    substitute_state_var_mapping(ElseTerm0, ElseTerm, !VarSet,
+                        BeforeSVarState, AfterElseSVarState0, !Specs),
                     do_unravel_unification(term.variable(X, Context), ElseTerm,
                         Context, MainContext, SubContext, Purity, ElseGoal0,
-                        no, !NumAdded, BeforeSVarState, AfterElseSVarState,
+                        no, !NumAdded, AfterElseSVarState0, AfterElseSVarState,
                         !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
                     svar_finish_if_then_else(loc_inside_atomic_goal, Context,
@@ -896,12 +924,13 @@ maybe_unravel_special_var_functor_unification(X, Atom, Args,
     ;
         % Handle field extraction expressions.
         Atom = "^",
-        Args = [InputTerm, FieldNameTerm],
+        Args = [InputTerm0, FieldNameTerm],
         maybe_parse_field_list(FieldNameTerm, !.VarSet, FieldNames),
 
         require_det (
-            make_fresh_arg_var(InputTerm, InputTermVar, [],
-                !VarSet, !SVarState, !Specs),
+            substitute_state_var_mapping(InputTerm0, InputTerm, !VarSet,
+                !SVarState, !Specs),
+            make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [], !VarSet),
             expand_get_field_function_call(Context, MainContext, SubContext,
                 FieldNames, X, InputTermVar, Purity, Functor, _, Goal0,
                 0, NumAdded1, !SVarState, !SVarStore, !VarSet,
@@ -916,16 +945,19 @@ maybe_unravel_special_var_functor_unification(X, Atom, Args,
     ;
         % Handle field update expressions.
         Atom = ":=",
-        Args = [FieldDescrTerm, FieldValueTerm],
+        Args = [FieldDescrTerm, FieldValueTerm0],
         FieldDescrTerm = term.functor(term.atom("^"),
-            [InputTerm, FieldNameTerm], _),
+            [InputTerm0, FieldNameTerm], _),
         maybe_parse_field_list(FieldNameTerm, !.VarSet, FieldNames),
 
         require_det (
-            make_fresh_arg_var(InputTerm, InputTermVar, [],
+            substitute_state_var_mapping(InputTerm0, InputTerm,
                 !VarSet, !SVarState, !Specs),
-            make_fresh_arg_var(FieldValueTerm, FieldValueVar,
-                [InputTermVar], !VarSet, !SVarState, !Specs),
+            make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [], !VarSet),
+            substitute_state_var_mapping(FieldValueTerm0, FieldValueTerm,
+                !VarSet, !SVarState, !Specs),
+            make_fresh_arg_var_no_svar(FieldValueTerm, FieldValueVar,
+                [InputTermVar], !VarSet),
 
             expand_set_field_function_call(Context, MainContext, SubContext,
                 FieldNames, FieldValueVar, InputTermVar, X,
@@ -969,7 +1001,6 @@ maybe_unravel_special_var_functor_unification(X, Atom, Args,
                 Vars1 = Vars0 ++
                     [term.variable(DCG0, Context),
                     term.variable(DCGn, Context)],
-                % ZZZ
                 build_lambda_expression(X, Purity, DCGLambdaPurity,
                     Groundness, pf_predicate, EvalMethod, Vars1, Modes, Det,
                     ParsedGoal, Context, MainContext, SubContext,
@@ -1277,8 +1308,8 @@ arg_context_to_unify_context(ArgContext, ArgNum, MainContext, SubContexts) :-
 make_fresh_arg_vars(Args, Vars, !VarSet, !SVarState, !Specs) :-
     % For efficiency, we construct `Vars' backwards and then reverse it
     % to get the correct order.
-    make_fresh_arg_vars_loop(Args, [], Vars1, !VarSet, !SVarState, !Specs),
-    list.reverse(Vars1, Vars).
+    make_fresh_arg_vars_loop(Args, [], RevVars, !VarSet, !SVarState, !Specs),
+    list.reverse(RevVars, Vars).
 
 :- pred make_fresh_arg_vars_loop(list(prog_term)::in, list(prog_var)::in,
     list(prog_var)::out, prog_varset::in,prog_varset::out,
@@ -1292,8 +1323,51 @@ make_fresh_arg_vars_loop([Arg | Args], !RevVars, !VarSet, !SVarState,
     !:RevVars = [Var | !.RevVars],
     make_fresh_arg_vars_loop(Args, !RevVars, !VarSet, !SVarState, !Specs).
 
+:- pred make_fresh_arg_var(prog_term::in, prog_var::out, list(prog_var)::in,
+    prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 make_fresh_arg_var(Arg0, Var, Vars0, !VarSet, !SVarState, !Specs) :-
     substitute_state_var_mapping(Arg0, Arg, !VarSet, !SVarState, !Specs),
+    (
+        Arg = term.variable(ArgVar, _),
+        \+ list.member(ArgVar, Vars0)
+    ->
+        Var = ArgVar
+    ;
+        varset.new_var(Var, !VarSet)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % make_fresh_arg_vars_no_svar(Args, Vars, !VarSet):
+    %
+    % Does the same job as make_fresh_arg_vars, but assumes that any references
+    % to state variables at the top level of Args have already been expanded.
+    %
+:- pred make_fresh_arg_vars_no_svar(list(prog_term)::in, list(prog_var)::out,
+    prog_varset::in, prog_varset::out) is det.
+
+make_fresh_arg_vars_no_svar(Args, Vars, !VarSet) :-
+    % For efficiency, we construct `Vars' backwards and then reverse it
+    % to get the correct order.
+    make_fresh_arg_vars_no_svar_loop(Args, [], RevVars, !VarSet),
+    list.reverse(RevVars, Vars).
+
+:- pred make_fresh_arg_vars_no_svar_loop(list(prog_term)::in,
+    list(prog_var)::in, list(prog_var)::out,
+    prog_varset::in,prog_varset::out) is det.
+
+make_fresh_arg_vars_no_svar_loop([], !RevVars, !VarSet).
+make_fresh_arg_vars_no_svar_loop([Arg | Args], !RevVars, !VarSet) :-
+    make_fresh_arg_var_no_svar(Arg, Var, !.RevVars, !VarSet),
+    !:RevVars = [Var | !.RevVars],
+    make_fresh_arg_vars_no_svar_loop(Args, !RevVars, !VarSet).
+
+:- pred make_fresh_arg_var_no_svar(prog_term::in, prog_var::out,
+    list(prog_var)::in, prog_varset::in, prog_varset::out) is det.
+
+make_fresh_arg_var_no_svar(Arg, Var, Vars0, !VarSet) :-
     (
         Arg = term.variable(ArgVar, _),
         \+ list.member(ArgVar, Vars0)
