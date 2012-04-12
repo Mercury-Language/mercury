@@ -200,6 +200,25 @@
 
 %-----------------------------------------------------------------------------%
 
+    % The possible results of a purity check.
+:- type purity_check_result
+    --->    no_worries
+            % All is well.
+
+    ;       insufficient_decl
+            % Purity decl is less than required.
+
+    ;       inconsistent_promise
+            % Promise is given but decl is impure.
+
+    ;       unnecessary_promise_pure
+            % Purity promise is given but not required.
+
+    ;       unnecessary_decl.
+            % Purity decl is more than is required.
+
+%-----------------------------------------------------------------------------%
+
 puritycheck_module(!ModuleInfo, !Specs) :-
     module_info_get_valid_predids(PredIds, !ModuleInfo),
     check_preds_purity(PredIds, !ModuleInfo, !Specs).
@@ -287,8 +306,8 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
     perform_pred_purity_checks(!.PredInfo, Purity, DeclPurity,
         PromisedPurity, PurityCheckResult0),
     % This was to avoid a crash in the following computed goto, when compiled
-    % with gcc 4.1 on x86-64. The problem seems to be gone now, but there's not
-    % much to gain from removing the workaround.
+    % with gcc 4.1 on x86-64. The problem seems to be gone now, but there is
+    % not much to gain from removing the workaround.
     PurityCheckResult = workaround_gcc_bug(PurityCheckResult0),
     (
         PurityCheckResult = inconsistent_promise,
@@ -319,6 +338,85 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
 :- pragma no_inline(workaround_gcc_bug/1).
 
 workaround_gcc_bug(X) = X.
+
+    % Peform purity checking of the actual and declared purity,
+    % and check that promises are consistent.
+    %
+    % ActualPurity:     The inferred purity of the pred.
+    % DeclaredPurity:   The declared purity of the pred.
+    % Promised:         Did we promise this pred as pure?
+    %
+:- pred perform_pred_purity_checks(pred_info::in, purity::in, purity::in,
+    purity::in, purity_check_result::out) is det.
+
+perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
+        PromisedPurity, PurityCheckResult) :-
+    (
+        % The declared purity must match any promises.
+        % (A promise of impure means no promise was made).
+        PromisedPurity \= purity_impure,
+        DeclaredPurity \= PromisedPurity
+    ->
+        PurityCheckResult = inconsistent_promise
+    ;
+        % You shouldn't promise pure unnecessarily. It's OK in the case
+        % of foreign_procs though. There is also no point in warning about
+        % compiler-generated predicates.
+        PromisedPurity \= purity_impure,
+        ActualPurity = PromisedPurity,
+        not pred_info_pragma_goal_type(PredInfo),
+        pred_info_get_origin(PredInfo, Origin),
+        not (
+            Origin = origin_transformed(_, _, _)
+        ;
+            Origin = origin_created(_)
+        )
+    ->
+        PurityCheckResult = unnecessary_promise_pure
+    ;
+        % The purity should match the declaration.
+        ActualPurity = DeclaredPurity
+    ->
+        PurityCheckResult = no_worries
+    ;
+        less_pure(ActualPurity, DeclaredPurity)
+    ->
+        (
+            PromisedPurity = purity_impure,
+            PurityCheckResult = insufficient_decl
+        ;
+            ( PromisedPurity = purity_pure
+            ; PromisedPurity = purity_semipure
+            ),
+            PurityCheckResult = no_worries
+        )
+    ;
+        % We don't warn about exaggerated impurity decls in class methods
+        % or instance methods --- it just means that the predicate provided
+        % as an implementation was more pure than necessary.
+        %
+        % We don't warn about exaggerated impurity decls in foreign language
+        % code -- this is just because we assume they are pure (XXX we do not
+        % do so anymore), but you can declare them to be impure.
+        %
+        % We don't warn about exaggerated impurity declarations for "stub"
+        % procedures, i.e. procedures which originally had no clauses.
+
+        pred_info_get_markers(PredInfo, Markers),
+        pred_info_get_goal_type(PredInfo, GoalType),
+        ( GoalType = goal_type_foreign
+        ; GoalType = goal_type_clause_and_foreign
+        ; check_marker(Markers, marker_class_method)
+        ; check_marker(Markers, marker_class_instance_method)
+        ; check_marker(Markers, marker_stub)
+        )
+    ->
+        PurityCheckResult = no_worries
+    ;
+        PurityCheckResult = unnecessary_decl
+    ).
+
+%-----------------------------------------------------------------------------%
 
 repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     pred_info_get_procedures(!.PredInfo, Procs0),
@@ -392,6 +490,8 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     ;
         true
     ).
+
+%-----------------------------------------------------------------------------%
 
     % Infer the purity of a single (non-foreign_proc) predicate.
     %
@@ -479,6 +579,81 @@ applies_to_all_modes(Clause, AllProcIds) :-
         list.sort(ClauseProcIds, SortedClauseProcIds),
         SortedClauseProcIds = AllProcIds
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred compute_goal_purity(hlds_goal::in, hlds_goal::out, purity::out,
+    contains_trace_goal::out, purity_info::in, purity_info::out) is det.
+
+compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo0, Purity, ContainsTrace,
+        !Info),
+    goal_info_set_purity(Purity, GoalInfo0, GoalInfo1),
+    (
+        ContainsTrace = contains_trace_goal,
+        goal_info_add_feature(feature_contains_trace, GoalInfo1, GoalInfo)
+    ;
+        ContainsTrace = contains_no_trace_goal,
+        goal_info_remove_feature(feature_contains_trace, GoalInfo1, GoalInfo)
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+    % Compute the purity of a list of hlds_goals. Since the purity of a
+    % disjunction is computed the same way as the purity of a conjunction,
+    % we use the same code for both
+    %
+:- pred compute_goals_purity(list(hlds_goal)::in, list(hlds_goal)::out,
+    purity::in, purity::out, contains_trace_goal::in, contains_trace_goal::out,
+    purity_info::in, purity_info::out) is det.
+
+compute_goals_purity([], [], !Purity, !ContainsTrace, !Info).
+compute_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity, !ContainsTrace,
+        !Info) :-
+    compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
+    !:Purity = worst_purity(GoalPurity, !.Purity),
+    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
+    compute_goals_purity(Goals0, Goals, !Purity, !ContainsTrace, !Info).
+
+:- pred compute_cases_purity(list(case)::in, list(case)::out,
+    purity::in, purity::out, contains_trace_goal::in, contains_trace_goal::out,
+    purity_info::in, purity_info::out) is det.
+
+compute_cases_purity([], [], !Purity, !ContainsTrace, !Info).
+compute_cases_purity([Case0 | Cases0], [Case | Cases], !Purity, !ContainsTrace,
+        !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    !:Purity = worst_purity(GoalPurity, !.Purity),
+    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
+    compute_cases_purity(Cases0, Cases, !Purity, !ContainsTrace, !Info).
+
+:- pred compute_parallel_goals_purity(list(hlds_goal)::in,
+    list(hlds_goal)::out, purity::in, purity::out, contains_trace_goal::in,
+    contains_trace_goal::out, purity_info::in, purity_info::out) is det.
+
+compute_parallel_goals_purity([], [], !Purity, !ContainsTrace, !Info).
+compute_parallel_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity,
+        !ContainsTrace, !Info) :-
+    compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
+    (
+        ( GoalPurity = purity_pure
+        ; GoalPurity = purity_semipure
+        )
+    ;
+        GoalPurity = purity_impure,
+        Goal0 = hlds_goal(_, GoalInfo0),
+        Context = goal_info_get_context(GoalInfo0),
+        Spec = impure_parallel_conjunct_error(Context, GoalPurity),
+        purity_info_add_message(Spec, !Info)
+    ),
+    !:Purity = worst_purity(GoalPurity, !.Purity),
+    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
+    compute_parallel_goals_purity(Goals0, Goals, !Purity, !ContainsTrace,
+        !Info).
+
+%-----------------------------------------------------------------------------%
 
 :- pred compute_expr_purity(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, purity::out, contains_trace_goal::out,
@@ -794,60 +969,68 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
         )
     ).
 
-:- pred wrap_inner_outer_goals(atomic_interface_vars::in,
-    pair(hlds_goal, atomic_interface_vars)::in, hlds_goal::out,
-    purity_info::in, purity_info::out) is det.
+%-----------------------------------------------------------------------------%
+%
+% Auxiliary procedures for handling plain calls.
+%
 
-wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
-    Goal0 = hlds_goal(_, GoalInfo0),
-    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-    Context = goal_info_get_context(GoalInfo0),
-    Outer = atomic_interface_vars(OuterDI, OuterUO),
-    Inner = atomic_interface_vars(InnerDI, InnerUO),
+    % Perform purity checking of the actual and declared purity,
+    % and check that promises are consistent.
+    %
+    % ActualPurity: The inferred purity of the goal
+    % DeclaredPurity: The declared purity of the goal
+    %
+:- pred perform_goal_purity_checks(prog_context::in, pred_id::in, purity::in,
+    purity::out, purity_info::in, purity_info::out) is det.
 
-    % Generate the STM outer_to_inner and inner_to_outer goals.
-    OuterToInnerPred = "stm_from_outer_to_inner",
-    InnerToOuterPred = "stm_from_inner_to_outer",
+perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
+        !Info) :-
     ModuleInfo = !.Info ^ pi_module_info,
-    generate_simple_call(mercury_stm_builtin_module,
-        OuterToInnerPred, pf_predicate, only_mode,
-        detism_det, purity_pure, [OuterDI, InnerDI], [],
-        instmap_delta_from_assoc_list([OuterDI - ground(clobbered, none),
-            InnerDI - ground(unique, none)]),
-        ModuleInfo, Context, OuterToInnerGoal),
-    generate_simple_call(mercury_stm_builtin_module,
-        InnerToOuterPred, pf_predicate, only_mode,
-        detism_det, purity_pure, [InnerUO, OuterUO], [],
-        instmap_delta_from_assoc_list([InnerUO - ground(clobbered, none),
-            OuterUO - ground(unique, none)]),
-        ModuleInfo, Context, InnerToOuterGoal),
-
-    WrapExpr = conj(plain_conj, [OuterToInnerGoal, Goal0, InnerToOuterGoal]),
-    % After the addition of OuterToInnerGoal and InnerToOuterGoal,
-    % OuterDI and OuterUO will definitely be used by the code inside the new
-    % goal, and *should* be used by code outside the goal. However, even if
-    % they are not, the nonlocals set is allowed to overapproximate.
-    set_of_var.insert_list([OuterDI, OuterUO], NonLocals0, NonLocals),
-    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
-    goal_info_add_feature(feature_contains_stm_inner_outer, GoalInfo1,
-        GoalInfo),
-    Goal = hlds_goal(WrapExpr, GoalInfo).
-
-:- pred check_outer_var_type(prog_context::in, vartypes::in, prog_varset::in,
-    prog_var::in, mer_type::out, list(error_spec)::out) is det.
-
-check_outer_var_type(Context, VarTypes, VarSet, Var, VarType, Specs) :-
-    map.lookup(VarTypes, Var, VarType),
+    PredInfo = !.Info ^ pi_pred_info,
+    module_info_pred_info(ModuleInfo, PredId, CalleePredInfo),
+    pred_info_get_purity(CalleePredInfo, ActualPurity),
     (
-        ( VarType = io_state_type
-        ; VarType = stm_atomic_type
+        % The purity of the callee should match the
+        % purity declared at the call.
+        ActualPurity = DeclaredPurity
+    ->
+        true
+    ;
+        % Don't require purity annotations on calls in
+        % compiler-generated code.
+        is_unify_or_compare_pred(PredInfo)
+    ->
+        true
+    ;
+        less_pure(ActualPurity, DeclaredPurity)
+    ->
+        Spec = error_missing_body_impurity_decl(ModuleInfo, PredId,
+            Context),
+        purity_info_add_message(Spec, !Info)
+    ;
+        % We don't warn about exaggerated impurity decls in class methods
+        % or instance methods --- it just means that the predicate provided
+        % as an implementation was more pure than necessary.
+        % Don't warn about exaggerated impurity decls in compiler-generated
+        % mutable predicates either.
+
+        pred_info_get_markers(PredInfo, Markers),
+        ( check_marker(Markers, marker_class_method)
+        ; check_marker(Markers, marker_class_instance_method)
+        ; check_marker(Markers, marker_mutable_access_pred)
         )
     ->
-        Specs = []
+        true
     ;
-        Spec = bad_outer_var_type_error(Context, VarSet, Var),
-        Specs = [Spec]
+        Spec = warn_unnecessary_body_impurity_decl(ModuleInfo, PredId,
+            Context, DeclaredPurity),
+        purity_info_add_message(Spec, !Info)
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% Auxiliary procedures for handling higher order calls.
+%
 
 :- pred check_higher_order_purity(hlds_goal_info::in, cons_id::in,
     prog_var::in, list(prog_var)::in, purity::out,
@@ -912,234 +1095,11 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         DeclaredPurity = purity_pure
     ).
 
-    % The possible results of a purity check.
-:- type purity_check_result
-    --->    no_worries                  % All is well.
-    ;       insufficient_decl           % Purity decl is less than
-                                        % required.
-    ;       inconsistent_promise        % Promise is given
-                                        % but decl is impure.
-    ;       unnecessary_promise_pure    % Purity promise is given
-                                        % but not required.
-    ;       unnecessary_decl.           % Purity decl is more than is
-                                        % required.
-
-    % Peform purity checking of the actual and declared purity,
-    % and check that promises are consistent.
-    %
-    % ActualPurity:     The inferred purity of the pred.
-    % DeclaredPurity:   The declared purity of the pred.
-    % Promised:         Did we promise this pred as pure?
-    %
-:- pred perform_pred_purity_checks(pred_info::in, purity::in, purity::in,
-    purity::in, purity_check_result::out) is det.
-
-perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
-        PromisedPurity, PurityCheckResult) :-
-    (
-        % The declared purity must match any promises.
-        % (A promise of impure means no promise was made).
-        PromisedPurity \= purity_impure,
-        DeclaredPurity \= PromisedPurity
-    ->
-        PurityCheckResult = inconsistent_promise
-    ;
-        % You shouldn't promise pure unnecessarily. It's OK in the case
-        % of foreign_procs though. There is also no point in warning about
-        % compiler-generated predicates.
-        PromisedPurity \= purity_impure,
-        ActualPurity = PromisedPurity,
-        not pred_info_pragma_goal_type(PredInfo),
-        pred_info_get_origin(PredInfo, Origin),
-        not (
-            Origin = origin_transformed(_, _, _)
-        ;
-            Origin = origin_created(_)
-        )
-    ->
-        PurityCheckResult = unnecessary_promise_pure
-    ;
-        % The purity should match the declaration.
-        ActualPurity = DeclaredPurity
-    ->
-        PurityCheckResult = no_worries
-    ;
-        less_pure(ActualPurity, DeclaredPurity)
-    ->
-        (
-            PromisedPurity = purity_impure,
-            PurityCheckResult = insufficient_decl
-        ;
-            ( PromisedPurity = purity_pure
-            ; PromisedPurity = purity_semipure
-            ),
-            PurityCheckResult = no_worries
-        )
-    ;
-        % We don't warn about exaggerated impurity decls in class methods
-        % or instance methods --- it just means that the predicate provided
-        % as an implementation was more pure than necessary.
-        %
-        % We don't warn about exaggerated impurity decls in foreign language
-        % code -- this is just because we assume they are pure (XXX we do not
-        % do so anymore), but you can declare them to be impure.
-        %
-        % We don't warn about exaggerated impurity declarations for "stub"
-        % procedures, i.e. procedures which originally had no clauses.
-
-        pred_info_get_markers(PredInfo, Markers),
-        pred_info_get_goal_type(PredInfo, GoalType),
-        (
-            GoalType = goal_type_foreign
-        ;
-            GoalType = goal_type_clause_and_foreign
-        ;
-            check_marker(Markers, marker_class_method)
-        ;
-            check_marker(Markers, marker_class_instance_method)
-        ;
-            check_marker(Markers, marker_stub)
-        )
-    ->
-        PurityCheckResult = no_worries
-    ;
-        PurityCheckResult = unnecessary_decl
-    ).
-
-    % Peform purity checking of the actual and declared purity,
-    % and check that promises are consistent.
-    %
-    % ActualPurity: The inferred purity of the goal
-    % DeclaredPurity: The declared purity of the goal
-    %
-:- pred perform_goal_purity_checks(prog_context::in, pred_id::in, purity::in,
-    purity::out, purity_info::in, purity_info::out) is det.
-
-perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
-        !Info) :-
-    ModuleInfo = !.Info ^ pi_module_info,
-    PredInfo = !.Info ^ pi_pred_info,
-    module_info_pred_info(ModuleInfo, PredId, CalleePredInfo),
-    pred_info_get_purity(CalleePredInfo, ActualPurity),
-    (
-        % The purity of the callee should match the
-        % purity declared at the call.
-        ActualPurity = DeclaredPurity
-    ->
-        true
-    ;
-        % Don't require purity annotations on calls in
-        % compiler-generated code.
-        is_unify_or_compare_pred(PredInfo)
-    ->
-        true
-    ;
-        less_pure(ActualPurity, DeclaredPurity)
-    ->
-        Spec = error_missing_body_impurity_decl(ModuleInfo, PredId,
-            Context),
-        purity_info_add_message(Spec, !Info)
-    ;
-        % We don't warn about exaggerated impurity decls in class methods
-        % or instance methods --- it just means that the predicate provided
-        % as an implementation was more pure than necessary.
-        % Don't warn about exaggerated impurity decls in compiler-generated
-        % mutable predicates either.
-
-        pred_info_get_markers(PredInfo, Markers),
-        (
-            check_marker(Markers, marker_class_method)
-        ;
-            check_marker(Markers, marker_class_instance_method)
-        ;
-            check_marker(Markers, marker_mutable_access_pred)
-        )
-    ->
-        true
-    ;
-        Spec = warn_unnecessary_body_impurity_decl(ModuleInfo, PredId,
-            Context, DeclaredPurity),
-        purity_info_add_message(Spec, !Info)
-    ).
-
-:- pred compute_goal_purity(hlds_goal::in, hlds_goal::out, purity::out,
-    contains_trace_goal::out, purity_info::in, purity_info::out) is det.
-
-compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo0, Purity, ContainsTrace,
-        !Info),
-    goal_info_set_purity(Purity, GoalInfo0, GoalInfo1),
-    (
-        ContainsTrace = contains_trace_goal,
-        goal_info_add_feature(feature_contains_trace, GoalInfo1, GoalInfo)
-    ;
-        ContainsTrace = contains_no_trace_goal,
-        goal_info_remove_feature(feature_contains_trace, GoalInfo1, GoalInfo)
-    ),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-    % Compute the purity of a list of hlds_goals. Since the purity of a
-    % disjunction is computed the same way as the purity of a conjunction,
-    % we use the same code for both
-    %
-:- pred compute_goals_purity(list(hlds_goal)::in, list(hlds_goal)::out,
-    purity::in, purity::out, contains_trace_goal::in, contains_trace_goal::out,
-    purity_info::in, purity_info::out) is det.
-
-compute_goals_purity([], [], !Purity, !ContainsTrace, !Info).
-compute_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity, !ContainsTrace,
-        !Info) :-
-    compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
-    !:Purity = worst_purity(GoalPurity, !.Purity),
-    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
-    compute_goals_purity(Goals0, Goals, !Purity, !ContainsTrace, !Info).
-
-:- pred compute_cases_purity(list(case)::in, list(case)::out,
-    purity::in, purity::out, contains_trace_goal::in, contains_trace_goal::out,
-    purity_info::in, purity_info::out) is det.
-
-compute_cases_purity([], [], !Purity, !ContainsTrace, !Info).
-compute_cases_purity([Case0 | Cases0], [Case | Cases], !Purity, !ContainsTrace,
-        !Info) :-
-    Case0 = case(MainConsId, OtherConsIds, Goal0),
-    compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
-    Case = case(MainConsId, OtherConsIds, Goal),
-    !:Purity = worst_purity(GoalPurity, !.Purity),
-    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
-    compute_cases_purity(Cases0, Cases, !Purity, !ContainsTrace, !Info).
-
-:- pred compute_parallel_goals_purity(list(hlds_goal)::in,
-    list(hlds_goal)::out, purity::in, purity::out, contains_trace_goal::in,
-    contains_trace_goal::out, purity_info::in, purity_info::out) is det.
-
-compute_parallel_goals_purity([], [], !Purity, !ContainsTrace, !Info).
-compute_parallel_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity,
-        !ContainsTrace, !Info) :-
-    compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
-    (
-        ( GoalPurity = purity_pure
-        ; GoalPurity = purity_semipure
-        )
-    ;
-        GoalPurity = purity_impure,
-        Goal0 = hlds_goal(_, GoalInfo0),
-        Context = goal_info_get_context(GoalInfo0),
-        Spec = impure_parallel_conjunct_error(Context, GoalPurity),
-        purity_info_add_message(Spec, !Info)
-    ),
-    !:Purity = worst_purity(GoalPurity, !.Purity),
-    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
-    compute_parallel_goals_purity(Goals0, Goals, !Purity, !ContainsTrace,
-        !Info).
-
-%-----------------------------------------------------------------------------%
-
 :- pred check_closure_purity(hlds_goal_info::in, purity::in, purity::in,
     purity_info::in, purity_info::out) is det.
 
 check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity, !Info) :-
-    ( ActualPurity `less_pure` DeclaredPurity ->
+    ( less_pure(ActualPurity, DeclaredPurity) ->
         Context = goal_info_get_context(GoalInfo),
         Spec = report_error_closure_purity(Context,
             DeclaredPurity, ActualPurity),
@@ -1151,6 +1111,69 @@ check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity, !Info) :-
     ).
 
 %-----------------------------------------------------------------------------%
+%
+% Auxiliary procedures for handling atomic goals.
+%
+
+:- pred check_outer_var_type(prog_context::in, vartypes::in, prog_varset::in,
+    prog_var::in, mer_type::out, list(error_spec)::out) is det.
+
+check_outer_var_type(Context, VarTypes, VarSet, Var, VarType, Specs) :-
+    map.lookup(VarTypes, Var, VarType),
+    (
+        ( VarType = io_state_type
+        ; VarType = stm_atomic_type
+        )
+    ->
+        Specs = []
+    ;
+        Spec = bad_outer_var_type_error(Context, VarSet, Var),
+        Specs = [Spec]
+    ).
+
+:- pred wrap_inner_outer_goals(atomic_interface_vars::in,
+    pair(hlds_goal, atomic_interface_vars)::in, hlds_goal::out,
+    purity_info::in, purity_info::out) is det.
+
+wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
+    Goal0 = hlds_goal(_, GoalInfo0),
+    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
+    Context = goal_info_get_context(GoalInfo0),
+    Outer = atomic_interface_vars(OuterDI, OuterUO),
+    Inner = atomic_interface_vars(InnerDI, InnerUO),
+
+    % Generate the STM outer_to_inner and inner_to_outer goals.
+    OuterToInnerPred = "stm_from_outer_to_inner",
+    InnerToOuterPred = "stm_from_inner_to_outer",
+    ModuleInfo = !.Info ^ pi_module_info,
+    generate_simple_call(mercury_stm_builtin_module,
+        OuterToInnerPred, pf_predicate, only_mode,
+        detism_det, purity_pure, [OuterDI, InnerDI], [],
+        instmap_delta_from_assoc_list([OuterDI - ground(clobbered, none),
+            InnerDI - ground(unique, none)]),
+        ModuleInfo, Context, OuterToInnerGoal),
+    generate_simple_call(mercury_stm_builtin_module,
+        InnerToOuterPred, pf_predicate, only_mode,
+        detism_det, purity_pure, [InnerUO, OuterUO], [],
+        instmap_delta_from_assoc_list([InnerUO - ground(clobbered, none),
+            OuterUO - ground(unique, none)]),
+        ModuleInfo, Context, InnerToOuterGoal),
+
+    WrapExpr = conj(plain_conj, [OuterToInnerGoal, Goal0, InnerToOuterGoal]),
+    % After the addition of OuterToInnerGoal and InnerToOuterGoal,
+    % OuterDI and OuterUO will definitely be used by the code inside the new
+    % goal, and *should* be used by code outside the goal. However, even if
+    % they are not, the nonlocals set is allowed to overapproximate.
+    set_of_var.insert_list([OuterDI, OuterUO], NonLocals0, NonLocals),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
+    goal_info_add_feature(feature_contains_stm_inner_outer, GoalInfo1,
+        GoalInfo),
+    Goal = hlds_goal(WrapExpr, GoalInfo).
+
+%-----------------------------------------------------------------------------%
+%
+% This part of the module is for generating error messages.
+%
 
 :- func pred_context(module_info, pred_info, pred_id) = list(format_component).
 
