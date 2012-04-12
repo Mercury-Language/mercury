@@ -720,7 +720,7 @@
 :- type unify_rhs
     --->    rhs_var(prog_var)
     ;       rhs_functor(
-                rhs_functor         :: cons_id,
+                rhs_cons_id         :: cons_id,
                 % The `is_existential_construction' field is only used
                 % after polymorphism.m strips off the `new ' prefix from
                 % existentially typed constructions.
