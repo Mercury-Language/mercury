@@ -1380,7 +1380,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     ;
         ExistQVars = [_ | _],
         ( ConsId0 = cons(ConsName0, ConsArity, TypeCtor) ->
-            remove_new_prefix(ConsName, ConsName0),
+            add_new_prefix(ConsName0, ConsName),
             ConsId = cons(ConsName, ConsArity, TypeCtor)
         ;
             unexpected($module, $pred, "invalid cons_id")

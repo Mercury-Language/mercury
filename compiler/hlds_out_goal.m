@@ -921,7 +921,7 @@ write_unify_rhs_3(Info, RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
             IsExistConstruct = yes,
             ConsId0 = cons(SymName0, Arity, TypeCtor)
         ->
-            remove_new_prefix(SymName, SymName0),
+            add_new_prefix(SymName0, SymName),
             ConsId = cons(SymName, Arity, TypeCtor)
         ;
             ConsId = ConsId0
@@ -1036,7 +1036,7 @@ unify_rhs_to_string(RHS, ModuleInfo, VarSet, AppendVarNums) = Str :-
             IsExistConstruct = yes,
             ConsId0 = cons(SymName0, Arity, TypeCtor)
         ->
-            remove_new_prefix(SymName, SymName0),
+            add_new_prefix(SymName0, SymName),
             ConsId = cons(SymName, Arity, TypeCtor)
         ;
             ConsId = ConsId0

@@ -262,16 +262,18 @@
 :- func remove_typeinfo_vars_from_set_of_var(vartypes, set_of_progvar)
     = set_of_progvar.
 
-    % In the forwards mode, this predicate checks for a "new " prefix
-    % at the start of the functor name, and removes it if present;
-    % it fails if there is no such prefix.
-    % In the reverse mode, this predicate prepends such a prefix.
+    % Check for a "new " prefix at the start of the functor name,
+    % and remove it if present; if there is no such prefix, fail.
     % (These prefixes are used for construction unifications
     % with existentially typed functors.)
     %
-:- pred remove_new_prefix(sym_name, sym_name).
-:- mode remove_new_prefix(in, out) is semidet.
-:- mode remove_new_prefix(out, in) is det.
+:- pred remove_new_prefix(sym_name::in, sym_name::out) is semidet.
+
+    % Prepend a "new " prefix at the start of the given functor name.
+    % (These prefixes are used for construction unifications
+    % with existentially typed functors.)
+    %
+:- pred add_new_prefix(sym_name::in, sym_name::out) is det.
 
 :- type type_ctor_category
     --->    ctor_cat_builtin(type_ctor_cat_builtin)
@@ -881,6 +883,13 @@ remove_new_prefix(unqualified(Name0), unqualified(Name)) :-
     string.append("new ", Name, Name0).
 remove_new_prefix(qualified(Module, Name0), qualified(Module, Name)) :-
     string.append("new ", Name, Name0).
+
+add_new_prefix(unqualified(Name0), unqualified(Name)) :-
+    string.append("new ", Name0, Name).
+add_new_prefix(qualified(Module, Name0), qualified(Module, Name)) :-
+    string.append("new ", Name0, Name).
+
+%-----------------------------------------------------------------------------%
 
 %-----------------------------------------------------------------------------%
 
