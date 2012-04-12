@@ -1062,18 +1062,12 @@ get_improved_exists_head_constraints(ConstraintMap,  ExistConstraints,
 
 polymorphism_process_goal(Goal0, Goal, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info).
-
-:- pred polymorphism_process_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
-    hlds_goal::out, poly_info::in, poly_info::out) is det.
-
-polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
     (
         % We don't need to add type_infos for higher order calls, since the
         % type_infos are added when the closures are constructed, not when
         % they are called.
         GoalExpr0 = generic_call(_, _, _, _, _),
-        Goal = hlds_goal(GoalExpr0, GoalInfo0)
+        Goal = Goal0
     ;
         GoalExpr0 = plain_call(PredId, _, ArgVars0, _, _, _),
         polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
@@ -1092,7 +1086,7 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
         PredArity = pred_info_orig_arity(PredInfo),
 
         ( no_type_info_builtin(PredModule, PredName, PredArity) ->
-            Goal = hlds_goal(GoalExpr0, GoalInfo0)
+            Goal = Goal0
         ;
             polymorphism_process_foreign_proc(ModuleInfo, PredInfo, GoalExpr0,
                 GoalInfo0, Goal, !Info)
@@ -1155,8 +1149,8 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
                 Reason0 = from_ground_term(TermVar, Kind),
                 (
                     Kind = from_ground_term_initial,
-                    polymorphism_process_from_ground_term(TermVar, Reason,
-                        GoalInfo0, SubGoal0, SubGoal, !Info)
+                    polymorphism_process_from_ground_term_initial(TermVar,
+                        Reason, GoalInfo0, SubGoal0, SubGoal, !Info)
                 ;
                     ( Kind = from_ground_term_construct
                     ; Kind = from_ground_term_deconstruct
@@ -1268,11 +1262,11 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ).
 
-:- pred polymorphism_process_from_ground_term(prog_var::in, scope_reason::out,
-    hlds_goal_info::in, hlds_goal::in, hlds_goal::out,
+:- pred polymorphism_process_from_ground_term_initial(prog_var::in,
+    scope_reason::out, hlds_goal_info::in, hlds_goal::in, hlds_goal::out,
     poly_info::in, poly_info::out) is det.
 
-polymorphism_process_from_ground_term(TermVar, Reason, GoalInfo0,
+polymorphism_process_from_ground_term_initial(TermVar, Reason, GoalInfo0,
         SubGoal0, SubGoal, !Info) :-
     poly_info_get_varset(!.Info, VarSetBefore),
     MaxVarBefore = varset.max_var(VarSetBefore),
@@ -1283,43 +1277,34 @@ polymorphism_process_from_ground_term(TermVar, Reason, GoalInfo0,
     poly_info_get_num_reuses(!.Info, NumReusesAfter),
 
     (
+        % If the first two goals fail, then we may have modified (and probably
+        % did modify) the code in the scope by adding a reference to typeinfo
+        % variables representing TermVarTypeVars.
         MaxVarAfter = MaxVarBefore,
-        NumReusesAfter = NumReusesBefore
+        NumReusesAfter = NumReusesBefore,
+        require_det (
+            poly_info_get_var_types(!.Info, VarTypes),
+            map.lookup(VarTypes, TermVar, TermVarType),
+            type_vars(TermVarType, TermVarTypeVars)
+        ),
+        % If this fails, then we did introduce some variables into the scope,
+        % so we cannot guarantee that the scope still satisfies the invariants
+        % of from_ground_term_initial scopes.
+        TermVarTypeVars = []
     ->
-        poly_info_get_var_types(!.Info, VarTypes),
-        map.lookup(VarTypes, TermVar, TermVarType),
-        type_vars(TermVarType, TermVarTypeVars),
-        (
-            TermVarTypeVars = [_ | _],
-            % We may have modified (and probably did modify) the code in the
-            % scope by adding a reference to typeinfo variables representing
-            % TermVarTypeVars.
-            Reason = from_ground_term(TermVar, from_ground_term_other),
-            ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
-                attach_features_to_all_goals([feature_from_head],
-                    attach_in_from_ground_term, SubGoal1, SubGoal)
-            ;
-                SubGoal = SubGoal1
-            )
-        ;
-            TermVarTypeVars = [],
-            % TermVarTypeVars = [] says that there is no polymorphism imposed
-            % from the outside via TermVar, and MaxVarAfter = MaxVarBefore
-            % and NumReusesAfter = NumReusesBefore together say that there was
-            % no polymorphism added by the goals inside the scope (since those
-            % would have required the creation or reuse of typeinfo variables).
-            % XXX zs: I am only 90% sure of the statement in the parentheses.
-            % If it turns out to be wrong, we would have to add a flag to
-            % poly_infos that is set whenever this pass modifies a goal,
-            % at least in ways that would invalidate the
-            % from_ground_term_initial invariant.
-            Reason = from_ground_term(TermVar, from_ground_term_initial),
-            SubGoal = SubGoal1
-        )
+        % TermVarTypeVars = [] says that there is no polymorphism imposed
+        % from the outside via TermVar, and MaxVarAfter = MaxVarBefore
+        % and NumReusesAfter = NumReusesBefore together say that there was
+        % no polymorphism added by the goals inside the scope (since those
+        % would have required the creation or reuse of typeinfo variables).
+        % XXX zs: I am only 90% sure of the statement in the parentheses.
+        % If it turns out to be wrong, we would have to add a flag to
+        % poly_infos that is set whenever this pass modifies a goal,
+        % at least in ways that would invalidate the
+        % from_ground_term_initial invariant.
+        Reason = from_ground_term(TermVar, from_ground_term_initial),
+        SubGoal = SubGoal1
     ;
-        % We did introduce some variables into the scope, so we cannot
-        % guarantee that the scope still satisfies the invariants of
-        % from_ground_term_initial scopes.
         Reason = from_ground_term(TermVar, from_ground_term_other),
         ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
             attach_features_to_all_goals([feature_from_head],
@@ -1327,34 +1312,6 @@ polymorphism_process_from_ground_term(TermVar, Reason, GoalInfo0,
         ;
             SubGoal = SubGoal1
         )
-    ).
-
-    % type_info_vars prepends a comma separated list of variables
-    % onto a string of variables.
-    % It places an & at the start of the variable name if the variable
-    % is an output variable.
-    %
-:- func type_info_vars(module_info, list(foreign_arg), string) = string.
-
-type_info_vars(_ModuleInfo, [], InitString) = InitString.
-type_info_vars(ModuleInfo, [Arg | Args], InitString) = String :-
-    String0 = type_info_vars(ModuleInfo, Args, InitString),
-    MaybeNameMode = foreign_arg_maybe_name_mode(Arg),
-    (
-        MaybeNameMode = yes(ArgName0 - Mode),
-        ( mode_is_output(ModuleInfo, Mode) ->
-            ArgName = "&" ++ ArgName0
-        ;
-            ArgName = ArgName0
-        ),
-        ( String0 = "" ->
-            String = ArgName
-        ;
-            String = ArgName ++ ", " ++ String0
-        )
-    ;
-        MaybeNameMode = no,
-        String = String0
     ).
 
 :- pred polymorphism_process_unify(prog_var::in, unify_rhs::in,
@@ -1812,8 +1769,8 @@ polymorphism_process_foreign_proc(_ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal,
         !Info) :-
     % Insert the type_info vars into the argname map, so that the foreign_proc
     % can refer to the type_info variable for type T as `TypeInfo_for_T'.
-    Goal0 = call_foreign_proc(Attributes, PredId, ProcId, Args0, ProcExtraArgs,
-        MaybeTraceRuntimeCond, Impl),
+    Goal0 = call_foreign_proc(Attributes, PredId, ProcId,
+        Args0, ProcExtraArgs, MaybeTraceRuntimeCond, Impl),
     ArgVars0 = list.map(foreign_arg_var, Args0),
     polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         ExtraVars, ExtraGoals, !Info),
@@ -2031,7 +1988,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
     % variables to TypeVarSet0 yields TypeVarSet.
 
     ( varset.is_empty(PredTypeVarSet) ->
-        % optimize a common case
+        % Optimize a common case.
         map.init(PredToParentTypeRenaming),
         TypeVarSet = TypeVarSet0,
         ParentArgTypes = PredArgTypes,
