@@ -392,6 +392,15 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
 
     some [!DumpOptions] (
         lookup_string_option(!.OptionTable, dump_hlds_options, !:DumpOptions),
+
+        % If we have not specified what we want, dump bare procedures
+        % as default.
+        ( !.DumpOptions = "" ->
+            !:DumpOptions = "x"
+        ;
+            true
+        ),
+
         % If we want structured insts in arg-modes, then we want arg-modes.
         (
             string.contains_char(!.DumpOptions, 'y'),

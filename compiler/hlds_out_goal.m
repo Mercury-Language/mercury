@@ -1859,7 +1859,7 @@ write_some(_Vars, _VarSet, !IO).
     module_info::in, prog_varset::in, bool::in, int::in,
     string::in, maybe_vartypes::in, io::di, io::uo) is det.
 
-write_goal_scope(Info, GoalExpr, ModuleInfo, VarSet,
+write_goal_scope(!.Info, GoalExpr, ModuleInfo, VarSet,
         AppendVarNums, Indent, Follow, TypeQual, !IO) :-
     GoalExpr = scope(Reason, Goal),
     write_indent(Indent, !IO),
@@ -1969,7 +1969,13 @@ write_goal_scope(Info, GoalExpr, ModuleInfo, VarSet,
             Kind = from_ground_term_other,
             io.write_string("other", !IO)
         ),
-        io.write_string("]\n", !IO)
+        io.write_string("]\n", !IO),
+        % The goals inside from_ground_term scopes are created with
+        % all of the fields of goal infos already filled in.
+        % This means printing them is meaningful, and sometimes
+        % it is needed to diagnose problems.
+        DumpOptionsBackup = !.Info ^ hoi_dump_hlds_options_backup,
+        !:Info = !.Info ^ hoi_dump_hlds_options := DumpOptionsBackup
     ;
         Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO,
             MutableVars, QuantVars),
@@ -2022,7 +2028,7 @@ write_goal_scope(Info, GoalExpr, ModuleInfo, VarSet,
         mercury_output_vars(VarSet, AppendVarNums, [LCVar, LCSVar], !IO),
         io.write_string(") (\n", !IO)
     ),
-    do_write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+    do_write_goal(!.Info, Goal, ModuleInfo, VarSet, AppendVarNums,
         Indent + 1, "\n", TypeQual, !IO),
     write_indent(Indent, !IO),
     io.write_string(")", !IO),

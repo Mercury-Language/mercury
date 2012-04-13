@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -35,10 +35,11 @@
 
 :- type hlds_out_info
     --->    hlds_out_info(
-                hoi_dump_hlds_options       :: string,
-                hoi_dump_hlds_pred_ids      :: list(string),
-                hoi_dump_hlds_pred_names    :: list(string),
-                hoi_mercury_to_mercury      :: merc_out_info
+                hoi_dump_hlds_options           :: string,
+                hoi_dump_hlds_options_backup    :: string,
+                hoi_dump_hlds_pred_ids          :: list(string),
+                hoi_dump_hlds_pred_names        :: list(string),
+                hoi_mercury_to_mercury          :: merc_out_info
             ).
 
 :- func init_hlds_out_info(globals) = hlds_out_info.
@@ -222,7 +223,7 @@ init_hlds_out_info(Globals) = Info :-
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_id, Ids),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_name, Names),
     MercInfo = init_merc_out_info_for_hlds_dump(Globals),
-    Info = hlds_out_info(DumpOptions, Ids, Names, MercInfo).
+    Info = hlds_out_info(DumpOptions, DumpOptions, Ids, Names, MercInfo).
 
 %-----------------------------------------------------------------------------%
 %
