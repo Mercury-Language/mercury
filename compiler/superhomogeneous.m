@@ -66,7 +66,7 @@
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred insert_arg_unifications_with_supplied_contexts(list(prog_var)::in,
+:- pred insert_arg_unifications_with_contexts(list(prog_var)::in,
     list(prog_term)::in, assoc_list(int, arg_context)::in, prog_context::in,
     hlds_goal::in, hlds_goal::out,
     num_added_goals::in, num_added_goals::out,
@@ -150,13 +150,12 @@ insert_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal, !NumAdded,
         get_maybe_from_ground_term_threshold, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
-insert_arg_unifications_with_supplied_contexts(Vars, Args0, ArgContexts,
+insert_arg_unifications_with_contexts(Vars, Args0, ArgContexts,
         Context, !Goal, !NumAdded, !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     substitute_state_var_mappings(Args0, Args, !VarSet, !SVarState, !Specs),
-    do_insert_arg_unifications_with_supplied_contexts(Vars, Args,
-        ArgContexts, Context, !Goal,
-        get_maybe_from_ground_term_threshold, !NumAdded,
+    do_insert_arg_unifications_with_contexts(Vars, Args, ArgContexts, Context,
+        !Goal, get_maybe_from_ground_term_threshold, !NumAdded,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
 append_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal, !NumAdded,
@@ -301,7 +300,7 @@ do_insert_arg_unifications_loop([HeadVar | HeadVars], [Arg | Args],
         !:Goals = ArgUnifyConj ++ !.Goals
     ).
 
-:- pred do_insert_arg_unifications_with_supplied_contexts(list(prog_var)::in,
+:- pred do_insert_arg_unifications_with_contexts(list(prog_var)::in,
     list(prog_term)::in, assoc_list(int, arg_context)::in, prog_context::in,
     hlds_goal::in, hlds_goal::out, maybe(int)::in,
     num_added_goals::in, num_added_goals::out,
@@ -310,25 +309,24 @@ do_insert_arg_unifications_loop([HeadVar | HeadVars], [Arg | Args],
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-do_insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms,
-        ArgContexts, Context, !Goal, MaybeThreshold, !NumAdded,
-        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+do_insert_arg_unifications_with_contexts(ArgVars, ArgTerms, ArgContexts,
+        Context, !Goal, MaybeThreshold, !NumAdded, !SVarState, !SVarStore,
+        !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     (
         ArgVars = []
     ;
         ArgVars = [_ | _],
         !.Goal = hlds_goal(_, GoalInfo0),
         svar_goal_to_conj_list(!.Goal, Goals0, !SVarStore),
-        do_insert_arg_unifications_with_supplied_contexts_loop(ArgVars,
-            ArgTerms, ArgContexts, Context, Goals0, Goals,
-            MaybeThreshold, !NumAdded, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs),
+        do_insert_arg_unifications_with_contexts_loop(ArgVars, ArgTerms,
+            ArgContexts, Context, Goals0, Goals, MaybeThreshold, !NumAdded,
+            !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         goal_info_set_context(Context, GoalInfo0, GoalInfo),
         conj_list_to_goal(Goals, GoalInfo, !:Goal)
     ).
 
-:- pred do_insert_arg_unifications_with_supplied_contexts_loop(
-    list(prog_var)::in, list(prog_term)::in, assoc_list(int, arg_context)::in,
+:- pred do_insert_arg_unifications_with_contexts_loop(list(prog_var)::in,
+    list(prog_term)::in, assoc_list(int, arg_context)::in,
     prog_context::in, list(hlds_goal)::in, list(hlds_goal)::out,
     maybe(int)::in, num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
@@ -336,9 +334,9 @@ do_insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-do_insert_arg_unifications_with_supplied_contexts_loop(Vars, Terms,
-        ArgContexts, Context, !Goals, MaybeThreshold, !NumAdded,
-        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+do_insert_arg_unifications_with_contexts_loop(Vars, Terms, ArgContexts,
+        Context, !Goals, MaybeThreshold, !NumAdded, !SVarState, !SVarStore,
+        !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     (
         Vars = [],
         Terms = [],
@@ -353,10 +351,9 @@ do_insert_arg_unifications_with_supplied_contexts_loop(Vars, Terms,
         do_arg_unification(Var, Term, Context, ArgContext, ArgNumber,
             ArgUnifyConj, MaybeThreshold, !NumAdded, !SVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        do_insert_arg_unifications_with_supplied_contexts_loop(VarsTail,
-            TermsTail, ArgContextsTail, Context, !Goals, MaybeThreshold,
-            !NumAdded, !SVarState, !SVarStore,
-            !VarSet, !ModuleInfo, !QualInfo, !Specs),
+        do_insert_arg_unifications_with_contexts_loop(VarsTail, TermsTail,
+            ArgContextsTail, Context, !Goals, MaybeThreshold, !NumAdded,
+            !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         !:Goals = ArgUnifyConj ++ !.Goals
     ;
         unexpected($module, $pred, "length mismatch")
@@ -972,7 +969,7 @@ maybe_unravel_special_var_functor_unification(X, Atom, Args,
             FieldArgNumber = 2,
             ArgContexts = [TermArgNumber - TermArgContext,
                 FieldArgNumber - FieldArgContext],
-            do_insert_arg_unifications_with_supplied_contexts(
+            do_insert_arg_unifications_with_contexts(
                 [InputTermVar, FieldValueVar], [InputTerm, FieldValueTerm],
                 ArgContexts, Context, Goal0, Goal, no,
                 NumAdded1, NumAdded, !SVarState, !SVarStore, !VarSet,

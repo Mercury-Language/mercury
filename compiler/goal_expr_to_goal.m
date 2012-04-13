@@ -783,7 +783,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 InputTermArgNumber - InputTermArgContext,
                 OutputTermArgNumber - OutputTermArgContext
             ],
-            insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms,
+            insert_arg_unifications_with_contexts(ArgVars, ArgTerms,
                 ArgContexts, Context, Goal0, Goal, NumAdded1, NumAdded,
                 !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
@@ -816,7 +816,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 InputTermArgNumber - InputTermArgContext,
                 OutputTermArgNumber - OutputTermArgContext
             ],
-            insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms,
+            insert_arg_unifications_with_contexts(ArgVars, ArgTerms,
                 ArgContexts, Context, Goal0, Goal, NumAdded1, NumAdded,
                 !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
