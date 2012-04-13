@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2007-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,25 +38,25 @@
     list(mer_type)::in, code_model::in, prog_context::in, maybe(elds_expr)::in,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
+:- inst ground_higher_order
+    --->    higher_order(ground, ground, ground, ground).
+
     % Generate ELDS code for a higher order call.
     %
-:- pred erl_gen_higher_order_call(generic_call::in(higher_order),
+:- pred erl_gen_higher_order_call(generic_call::in(ground_higher_order),
     prog_vars::in, list(mer_mode)::in, determinism::in, prog_context::in,
     maybe(elds_expr)::in, elds_expr::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
-:- inst higher_order
-    --->    higher_order(ground, ground, ground, ground).
+:- inst ground_class_method
+    --->    class_method(ground, ground, ground, ground).
 
     % Generate ELDS code for a class method call.
     %
-:- pred erl_gen_class_method_call(generic_call::in(class_method),
+:- pred erl_gen_class_method_call(generic_call::in(ground_class_method),
     prog_vars::in, list(mer_mode)::in, determinism::in, prog_context::in,
     maybe(elds_expr)::in, elds_expr::out,
     erl_gen_info::in, erl_gen_info::out) is det.
-
-:- inst class_method
-    --->    class_method(ground, ground, ground, ground).
 
     % Generate ELDS code for a call to a builtin procedure.
     %
