@@ -3684,25 +3684,24 @@ match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
     inst_name::in, inst_name::in, inst_var_renaming::out) is semidet.
 
 match_inst_names_with_renaming(ModuleInfo, InstNameA, InstNameB, Renaming) :-
-    InstNameA = user_inst(Name, ArgsA),
-    InstNameB = user_inst(Name, ArgsB),
-    match_corresponding_inst_lists_with_renaming(ModuleInfo,
-        ArgsA, ArgsB, map.init, Renaming).
-%
-% XXX The rest of these are introduced by the compiler, it doesn't
-% look like they need any special treatment.
-%
-match_inst_names_with_renaming(_, Inst @ merge_inst(_, _), Inst, map.init).
-match_inst_names_with_renaming(_, Inst @ unify_inst(_, _, _, _), Inst,
-        map.init).
-match_inst_names_with_renaming(_, Inst @ ground_inst(_, _, _, _), Inst,
-        map.init).
-match_inst_names_with_renaming(_, Inst @ any_inst(_, _, _, _), Inst,
-        map.init).
-match_inst_names_with_renaming(_, Inst @ shared_inst(_), Inst, map.init).
-match_inst_names_with_renaming(_, Inst @ mostly_uniq_inst(_), Inst, map.init).
-match_inst_names_with_renaming(_, Inst @ typed_ground(_, _), Inst, map.init).
-match_inst_names_with_renaming(_, Inst @ typed_inst(_, _), Inst, map.init).
+    (
+        InstNameA = user_inst(Name, ArgsA),
+        InstNameB = user_inst(Name, ArgsB),
+        match_corresponding_inst_lists_with_renaming(ModuleInfo,
+            ArgsA, ArgsB, map.init, Renaming)
+    ;
+        % XXX The rest of these are introduced by the compiler, it doesn't
+        % look like they need any special treatment.
+        ( InstNameA = merge_inst(_, _)
+        ; InstNameA = unify_inst(_, _, _, _)
+        ; InstNameA = ground_inst(_, _, _, _)
+        ; InstNameA = any_inst(_, _, _, _)
+        ; InstNameA = shared_inst(_)
+        ; InstNameA = mostly_uniq_inst(_)
+        ),
+        InstNameB = InstNameA,
+        Renaming = map.init
+    ).
 
 :- pred merge_inst_var_renamings(inst_var_renaming::in,
     inst_var_renaming::in, inst_var_renaming::out) is semidet.

@@ -459,61 +459,85 @@ rename_apart_inst_vars_in_inst_name(_, typed_ground(U, T), typed_ground(U, T)).
 
 %-----------------------------------------------------------------------------%
 
-inst_contains_unconstrained_var(bound(_Uniqueness, BoundInsts)) :-
-    list.member(BoundInst, BoundInsts),
-    BoundInst = bound_functor(_ConsId, ArgInsts),
-    list.member(ArgInst, ArgInsts),
-    inst_contains_unconstrained_var(ArgInst).
-inst_contains_unconstrained_var(ground(_Uniqueness, GroundInstInfo)) :-
-    GroundInstInfo = higher_order(PredInstInfo),
-    PredInstInfo = pred_inst_info(_PredOrFunc, Modes, _MaybeArgRegs, _Detism),
-    list.member(Mode, Modes),
+inst_contains_unconstrained_var(Inst) :-
+    require_complete_switch [Inst]
     (
-        Mode = (Inst -> _)
+        Inst = bound(_Uniq, BoundInsts),
+        list.member(BoundInst, BoundInsts),
+        BoundInst = bound_functor(_ConsId, ArgInsts),
+        list.member(ArgInst, ArgInsts),
+        inst_contains_unconstrained_var(ArgInst)
     ;
-        Mode = (_ -> Inst)
+        ( Inst = ground(_Uniq, GroundInstInfo)
+        ; Inst = any(_Uniq, GroundInstInfo)
+        ),
+        GroundInstInfo = higher_order(PredInstInfo),
+        PredInstInfo = pred_inst_info(_PredOrFunc, Modes, _MaybeArgRegs,
+            _Detism),
+        list.member(Mode, Modes),
+        (
+            Mode = (SubInst -> _)
+        ;
+            Mode = (_ -> SubInst)
+        ;
+            Mode = user_defined_mode(_SymName, SubInsts),
+            list.member(SubInst, SubInsts)
+        ),
+        inst_contains_unconstrained_var(SubInst)
     ;
-        Mode = user_defined_mode(_SymName, Insts),
-        list.member(Inst, Insts)
-    ),
-    inst_contains_unconstrained_var(Inst).
-inst_contains_unconstrained_var(inst_var(_InstVar)).
-inst_contains_unconstrained_var(defined_inst(InstName)) :-
-    (
-        InstName = user_inst(_, Insts),
-        list.member(Inst, Insts),
-        inst_contains_unconstrained_var(Inst)
+        Inst = inst_var(_InstVar)
     ;
-        InstName = merge_inst(Inst, _),
-        inst_contains_unconstrained_var(Inst)
+        Inst = defined_inst(InstName),
+        (
+            InstName = user_inst(_, SubInsts),
+            list.member(SubInst, SubInsts),
+            inst_contains_unconstrained_var(SubInst)
+        ;
+            InstName = merge_inst(SubInst, _),
+            inst_contains_unconstrained_var(SubInst)
+        ;
+            InstName = merge_inst(_, SubInst),
+            inst_contains_unconstrained_var(SubInst)
+        ;
+            InstName = unify_inst(_, SubInstA, SubInstB, _),
+            (
+                inst_contains_unconstrained_var(SubInstA)
+            ;
+                inst_contains_unconstrained_var(SubInstB)
+            )
+        ;
+            InstName = ground_inst(SubInstName, _, _, _),
+            inst_contains_unconstrained_var(defined_inst(SubInstName))
+        ;
+            InstName = any_inst(SubInstName, _, _, _),
+            inst_contains_unconstrained_var(defined_inst(SubInstName))
+        ;
+            InstName = shared_inst(SubInstName),
+            inst_contains_unconstrained_var(defined_inst(SubInstName))
+        ;
+            InstName = mostly_uniq_inst(SubInstName),
+            inst_contains_unconstrained_var(defined_inst(SubInstName))
+        ;
+            InstName = typed_inst(_, SubInstName),
+            inst_contains_unconstrained_var(defined_inst(SubInstName))
+        )
     ;
-        InstName = merge_inst(_, Inst),
-        inst_contains_unconstrained_var(Inst)
+        Inst = abstract_inst(_SymName, SubInsts),
+        list.member(SubInst, SubInsts),
+        inst_contains_unconstrained_var(SubInst)
     ;
-        InstName = unify_inst(_, Inst, _, _),
-        inst_contains_unconstrained_var(Inst)
+        ( Inst = not_reached
+        ; Inst = free
+        ; Inst = free(_)
+        ),
+        fail
     ;
-        InstName = unify_inst(_, _, Inst, _),
-        inst_contains_unconstrained_var(Inst)
-    ;
-        InstName = ground_inst(InstName1, _, _, _),
-        inst_contains_unconstrained_var(defined_inst(InstName1))
-    ;
-        InstName = any_inst(InstName1, _, _, _),
-        inst_contains_unconstrained_var(defined_inst(InstName1))
-    ;
-        InstName = shared_inst(InstName1),
-        inst_contains_unconstrained_var(defined_inst(InstName1))
-    ;
-        InstName = mostly_uniq_inst(InstName1),
-        inst_contains_unconstrained_var(defined_inst(InstName1))
-    ;
-        InstName = typed_inst(_, InstName1),
-        inst_contains_unconstrained_var(defined_inst(InstName1))
+        Inst = constrained_inst_vars(_, _),
+        % XXX Is this the right thing to do here? Just because Inst constrains
+        % SOME of the instvars in it, it does not necessarily constrain all.
+        % What we do here preserves the old behavior of this predicate.
+        fail
     ).
-inst_contains_unconstrained_var(abstract_inst(_SymName, Insts)) :-
-    list.member(Inst, Insts),
-    inst_contains_unconstrained_var(Inst).
 
 %-----------------------------------------------------------------------------%
 
@@ -533,23 +557,30 @@ bound_insts_to_cons_ids(TypeCtor, [BoundInst | BoundInsts],
 
 %-----------------------------------------------------------------------------%
 
-get_arg_insts(not_reached, _ConsId, Arity, ArgInsts) :-
-    list.duplicate(Arity, not_reached, ArgInsts).
-get_arg_insts(ground(Uniq, _PredInst), _ConsId, Arity, ArgInsts) :-
-    list.duplicate(Arity, ground(Uniq, none), ArgInsts).
-get_arg_insts(bound(_Uniq, List), ConsId, Arity, ArgInsts) :-
-    ( get_arg_insts_2(List, ConsId, ArgInsts0) ->
-        ArgInsts = ArgInsts0
-    ;
-        % The code is unreachable.
+get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
+    (
+        Inst = not_reached,
         list.duplicate(Arity, not_reached, ArgInsts)
+    ;
+        Inst = ground(Uniq, _PredInst),
+        list.duplicate(Arity, ground(Uniq, none), ArgInsts)
+    ;
+        Inst = bound(_Uniq, List),
+        ( get_arg_insts_2(List, ConsId, ArgInsts0) ->
+            ArgInsts = ArgInsts0
+        ;
+            % The code is unreachable.
+            list.duplicate(Arity, not_reached, ArgInsts)
+        )
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ),
+        list.duplicate(Arity, free, ArgInsts)
+    ;
+        Inst = any(Uniq, _),
+        list.duplicate(Arity, any(Uniq, none), ArgInsts)
     ).
-get_arg_insts(free, _ConsId, Arity, ArgInsts) :-
-    list.duplicate(Arity, free, ArgInsts).
-get_arg_insts(free(_Type), _ConsId, Arity, ArgInsts) :-
-    list.duplicate(Arity, free, ArgInsts).
-get_arg_insts(any(Uniq, _), _ConsId, Arity, ArgInsts) :-
-    list.duplicate(Arity, any(Uniq, none), ArgInsts).
 
 :- pred get_arg_insts_2(list(bound_inst)::in, cons_id::in, list(mer_inst)::out)
     is semidet.
@@ -568,21 +599,28 @@ get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
 mode_id_to_int(mode_id(_, X), X).
 
 %-----------------------------------------------------------------------------%
+%
+% The active part of this code is strip_builtin_qualifier_from_sym_name;
+% the rest is basically just recursive traversals to get there.
+%
 
-    % The interesting part is strip_builtin_qualifier_from_sym_name;
-    % the rest is basically just recursive traversals.
 strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
     list.map(strip_builtin_qualifiers_from_mode, Modes0, Modes).
 
 :- pred strip_builtin_qualifiers_from_mode(mer_mode::in, mer_mode::out) is det.
 
-strip_builtin_qualifiers_from_mode((Initial0 -> Final0), (Initial -> Final)) :-
-    strip_builtin_qualifiers_from_inst(Initial0, Initial),
-    strip_builtin_qualifiers_from_inst(Final0, Final).
-strip_builtin_qualifiers_from_mode(user_defined_mode(SymName0, Insts0),
-        user_defined_mode(SymName, Insts)) :-
-    strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
-    strip_builtin_qualifier_from_sym_name(SymName0, SymName).
+strip_builtin_qualifiers_from_mode(Mode0, Mode) :-
+    (
+        Mode0 = (Initial0 -> Final0),
+        strip_builtin_qualifiers_from_inst(Initial0, Initial),
+        strip_builtin_qualifiers_from_inst(Final0, Final),
+        Mode = (Initial -> Final)
+    ;
+        Mode0 = user_defined_mode(SymName0, Insts0),
+        strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
+        strip_builtin_qualifier_from_sym_name(SymName0, SymName),
+        Mode = user_defined_mode(SymName, Insts)
+    ).
 
 strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
     ( ConsId0 = cons(Name0, Arity, TypeCtor) ->
@@ -608,28 +646,40 @@ strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
 strip_builtin_qualifiers_from_inst_list(Insts0, Insts) :-
     list.map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
 
-strip_builtin_qualifiers_from_inst(inst_var(V), inst_var(V)).
-strip_builtin_qualifiers_from_inst(constrained_inst_vars(Vars, Inst0),
-        constrained_inst_vars(Vars, Inst)) :-
-    strip_builtin_qualifiers_from_inst(Inst0, Inst).
-strip_builtin_qualifiers_from_inst(not_reached, not_reached).
-strip_builtin_qualifiers_from_inst(free, free).
-strip_builtin_qualifiers_from_inst(free(Type), free(Type)).
-strip_builtin_qualifiers_from_inst(any(Uniq, HOInstInfo0),
-        any(Uniq, HOInstInfo)) :-
-    strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo).
-strip_builtin_qualifiers_from_inst(ground(Uniq, HOInstInfo0),
-        ground(Uniq, HOInstInfo)) :-
-    strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo).
-strip_builtin_qualifiers_from_inst(bound(Uniq, BoundInsts0),
-        bound(Uniq, BoundInsts)) :-
-    strip_builtin_qualifiers_from_bound_inst_list(BoundInsts0, BoundInsts).
-strip_builtin_qualifiers_from_inst(defined_inst(Name0), defined_inst(Name)) :-
-    strip_builtin_qualifiers_from_inst_name(Name0, Name).
-strip_builtin_qualifiers_from_inst(abstract_inst(Name0, Args0),
-        abstract_inst(Name, Args)) :-
-    strip_builtin_qualifier_from_sym_name(Name0, Name),
-    strip_builtin_qualifiers_from_inst_list(Args0, Args).
+strip_builtin_qualifiers_from_inst(Inst0, Inst) :-
+    (
+        ( Inst0 = inst_var(_)
+        ; Inst0 = not_reached
+        ; Inst0 = free
+        ; Inst0 = free(_)
+        ),
+        Inst = Inst0
+    ;
+        Inst0 = constrained_inst_vars(Vars, SubInst0),
+        strip_builtin_qualifiers_from_inst(SubInst0, SubInst),
+        Inst = constrained_inst_vars(Vars, SubInst)
+    ;
+        Inst0 = any(Uniq, HOInstInfo0),
+        strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo),
+        Inst = any(Uniq, HOInstInfo)
+    ;
+        Inst0 = ground(Uniq, HOInstInfo0),
+        strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo),
+        Inst = ground(Uniq, HOInstInfo)
+    ;
+        Inst0 = bound(Uniq, BoundInsts0),
+        strip_builtin_qualifiers_from_bound_inst_list(BoundInsts0, BoundInsts),
+        Inst = bound(Uniq, BoundInsts)
+    ;
+        Inst0 = defined_inst(InstName0),
+        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
+        Inst = defined_inst(InstName)
+    ;
+        Inst0 = abstract_inst(Name0, Args0),
+        strip_builtin_qualifier_from_sym_name(Name0, Name),
+        strip_builtin_qualifiers_from_inst_list(Args0, Args),
+        Inst = abstract_inst(Name, Args)
+    ).
 
 :- pred strip_builtin_qualifiers_from_bound_inst_list(list(bound_inst)::in,
     list(bound_inst)::out) is det.
@@ -643,53 +693,67 @@ strip_builtin_qualifiers_from_bound_inst_list(Insts0, Insts) :-
 strip_builtin_qualifiers_from_bound_inst(BoundInst0, BoundInst) :-
     BoundInst0 = bound_functor(ConsId0, Insts0),
     strip_builtin_qualifier_from_cons_id(ConsId0, ConsId),
-    BoundInst = bound_functor(ConsId, Insts),
-    list.map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
+    list.map(strip_builtin_qualifiers_from_inst, Insts0, Insts),
+    BoundInst = bound_functor(ConsId, Insts).
 
 :- pred strip_builtin_qualifiers_from_inst_name(inst_name::in, inst_name::out)
     is det.
 
-strip_builtin_qualifiers_from_inst_name(user_inst(SymName0, Insts0),
-        user_inst(SymName, Insts)) :-
-    strip_builtin_qualifier_from_sym_name(SymName0, SymName),
-    strip_builtin_qualifiers_from_inst_list(Insts0, Insts).
-strip_builtin_qualifiers_from_inst_name(merge_inst(InstA0, InstB0),
-        merge_inst(InstA, InstB)) :-
-    strip_builtin_qualifiers_from_inst(InstA0, InstA),
-    strip_builtin_qualifiers_from_inst(InstB0, InstB).
-strip_builtin_qualifiers_from_inst_name(unify_inst(Live, InstA0, InstB0, Real),
-        unify_inst(Live, InstA, InstB, Real)) :-
-    strip_builtin_qualifiers_from_inst(InstA0, InstA),
-    strip_builtin_qualifiers_from_inst(InstB0, InstB).
-strip_builtin_qualifiers_from_inst_name(
-        ground_inst(InstName0, Live, Uniq, Real),
-        ground_inst(InstName, Live, Uniq, Real)) :-
-    strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
-strip_builtin_qualifiers_from_inst_name(
-        any_inst(InstName0, Live, Uniq, Real),
-        any_inst(InstName, Live, Uniq, Real)) :-
-    strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
-strip_builtin_qualifiers_from_inst_name(shared_inst(InstName0),
-        shared_inst(InstName)) :-
-    strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
-strip_builtin_qualifiers_from_inst_name(mostly_uniq_inst(InstName0),
-        mostly_uniq_inst(InstName)) :-
-    strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
-strip_builtin_qualifiers_from_inst_name(typed_ground(Uniq, Type),
-        typed_ground(Uniq, Type)).
-strip_builtin_qualifiers_from_inst_name(typed_inst(Type, InstName0),
-        typed_inst(Type, InstName)) :-
-    strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
+strip_builtin_qualifiers_from_inst_name(Inst0, Inst) :-
+    (
+        Inst0 = user_inst(SymName0, Insts0),
+        strip_builtin_qualifier_from_sym_name(SymName0, SymName),
+        strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
+        Inst = user_inst(SymName, Insts)
+    ;
+        Inst0 = merge_inst(InstA0, InstB0),
+        strip_builtin_qualifiers_from_inst(InstA0, InstA),
+        strip_builtin_qualifiers_from_inst(InstB0, InstB),
+        Inst = merge_inst(InstA, InstB)
+    ;
+        Inst0 = unify_inst(Live, InstA0, InstB0, Real),
+        strip_builtin_qualifiers_from_inst(InstA0, InstA),
+        strip_builtin_qualifiers_from_inst(InstB0, InstB),
+        Inst = unify_inst(Live, InstA, InstB, Real)
+    ;
+        Inst0 = ground_inst(InstName0, Live, Uniq, Real),
+        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
+        Inst = ground_inst(InstName, Live, Uniq, Real)
+    ;
+        Inst0 = any_inst(InstName0, Live, Uniq, Real),
+        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
+        Inst = any_inst(InstName, Live, Uniq, Real)
+    ;
+        Inst0 = shared_inst(InstName0),
+        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
+        Inst = shared_inst(InstName)
+    ;
+        Inst0 = mostly_uniq_inst(InstName0),
+        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
+        Inst = mostly_uniq_inst(InstName)
+    ;
+        Inst0 = typed_ground(_Uniq, _Type),
+        Inst = Inst0
+    ;
+        Inst0 = typed_inst(Type, InstName0),
+        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
+        Inst = typed_inst(Type, InstName)
+    ).
 
 :- pred strip_builtin_qualifiers_from_ho_inst_info(ho_inst_info::in,
     ho_inst_info::out) is det.
 
-strip_builtin_qualifiers_from_ho_inst_info(none, none).
-strip_builtin_qualifiers_from_ho_inst_info(higher_order(Pred0),
-        higher_order(Pred)) :-
-    Pred0 = pred_inst_info(PorF, Modes0, ArgRegs, Det),
-    strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
-    Pred = pred_inst_info(PorF, Modes, ArgRegs, Det).
+strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo) :-
+    (
+        HOInstInfo0 = none,
+        HOInstInfo = none
+    ;
+        HOInstInfo0 = higher_order(Pred0),
+        Pred0 = pred_inst_info(PorF, Modes0, ArgRegs, Det),
+        strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
+        Pred = pred_inst_info(PorF, Modes, ArgRegs, Det),
+        HOInstInfo = higher_order(Pred)
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_mode.

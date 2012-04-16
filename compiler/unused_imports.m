@@ -630,11 +630,14 @@ inst_name_used_modules(Visibility, typed_inst(Type, InstName), !UsedModules) :-
     %
 :- func item_visibility(import_status) = item_visibility.
 
-item_visibility(ImportStatus) =
-    ( status_is_exported_to_non_submodules(ImportStatus) = yes ->
-        visibility_public
+item_visibility(ImportStatus) = Visibility :-
+    Exported = status_is_exported_to_non_submodules(ImportStatus),
+    (
+        Exported = yes,
+        Visibility = visibility_public
     ;
-        visibility_private
+        Exported = no,
+        Visibility = visibility_private
     ).
 
 %-----------------------------------------------------------------------------%
