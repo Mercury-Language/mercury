@@ -392,6 +392,7 @@
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
@@ -669,7 +670,7 @@ polymorphism_process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
         % valid even for imported procedures.
 
         % XXX ARGVEC - when the proc_info uses the proc_arg_vector just
-        %     pass the headvar vector directly to the proc_info.
+        % pass the headvar vector directly to the proc_info.
         clauses_info_get_headvars(ClausesInfo, HeadVars),
         HeadVarList = proc_arg_vector_to_list(HeadVars),
         clauses_info_get_rtti_varmaps(ClausesInfo, RttiVarMaps),
@@ -1150,14 +1151,14 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 (
                     Kind = from_ground_term_initial,
                     polymorphism_process_from_ground_term_initial(TermVar,
-                        Reason, GoalInfo0, SubGoal0, SubGoal, !Info)
+                        GoalInfo0, SubGoal0, GoalExpr, !Info)
                 ;
                     ( Kind = from_ground_term_construct
                     ; Kind = from_ground_term_deconstruct
                     ; Kind = from_ground_term_other
                     ),
                     polymorphism_process_goal(SubGoal0, SubGoal, !Info),
-                    Reason = Reason0
+                    GoalExpr = scope(Reason0, SubGoal)
                 )
             ;
                 Reason0 = promise_solutions(_, _),
@@ -1171,7 +1172,7 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 get_maps_snapshot(!.Info, InitialSnapshot),
                 polymorphism_process_goal(SubGoal0, SubGoal, !Info),
                 set_maps_snapshot(InitialSnapshot, !Info),
-                Reason = Reason0
+                GoalExpr = scope(Reason0, SubGoal)
             ;
                 ( Reason0 = promise_purity(_)
                 ; Reason0 = require_detism(_)
@@ -1181,7 +1182,7 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 ; Reason0 = loop_control(_, _, _)
                 ),
                 polymorphism_process_goal(SubGoal0, SubGoal, !Info),
-                Reason = Reason0
+                GoalExpr = scope(Reason0, SubGoal)
             ;
                 Reason0 = exist_quant(_),
                 % If we allowed a type_info created inside SubGoal to be reused
@@ -1195,7 +1196,7 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 get_maps_snapshot(!.Info, InitialSnapshot),
                 polymorphism_process_goal(SubGoal0, SubGoal, !Info),
                 set_maps_snapshot(InitialSnapshot, !Info),
-                Reason = Reason0
+                GoalExpr = scope(Reason0, SubGoal)
             ;
                 Reason0 = trace_goal(_, _, _, _, _),
                 % Trace goal scopes will be deleted after semantic analysis
@@ -1211,9 +1212,8 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 get_maps_snapshot(!.Info, InitialSnapshot),
                 polymorphism_process_goal(SubGoal0, SubGoal, !Info),
                 set_maps_snapshot(InitialSnapshot, !Info),
-                Reason = Reason0
-            ),
-            GoalExpr = scope(Reason, SubGoal)
+                GoalExpr = scope(Reason0, SubGoal)
+            )
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -1262,57 +1262,92 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ).
 
+%-----------------------------------------------------------------------------%
+
 :- pred polymorphism_process_from_ground_term_initial(prog_var::in,
-    scope_reason::out, hlds_goal_info::in, hlds_goal::in, hlds_goal::out,
+    hlds_goal_info::in, hlds_goal::in, hlds_goal_expr::out,
     poly_info::in, poly_info::out) is det.
 
-polymorphism_process_from_ground_term_initial(TermVar, Reason, GoalInfo0,
-        SubGoal0, SubGoal, !Info) :-
-    poly_info_get_varset(!.Info, VarSetBefore),
-    MaxVarBefore = varset.max_var(VarSetBefore),
-    poly_info_get_num_reuses(!.Info, NumReusesBefore),
-    polymorphism_process_goal(SubGoal0, SubGoal1, !Info),
-    poly_info_get_varset(!.Info, VarSetAfter),
-    MaxVarAfter = varset.max_var(VarSetAfter),
-    poly_info_get_num_reuses(!.Info, NumReusesAfter),
-
-    (
-        % If the first two goals fail, then we may have modified (and probably
-        % did modify) the code in the scope by adding a reference to typeinfo
-        % variables representing TermVarTypeVars.
-        MaxVarAfter = MaxVarBefore,
-        NumReusesAfter = NumReusesBefore,
-        require_det (
-            poly_info_get_var_types(!.Info, VarTypes),
-            map.lookup(VarTypes, TermVar, TermVarType),
-            type_vars(TermVarType, TermVarTypeVars)
-        ),
-        % If this fails, then we did introduce some variables into the scope,
-        % so we cannot guarantee that the scope still satisfies the invariants
-        % of from_ground_term_initial scopes.
-        TermVarTypeVars = []
-    ->
-        % TermVarTypeVars = [] says that there is no polymorphism imposed
-        % from the outside via TermVar, and MaxVarAfter = MaxVarBefore
-        % and NumReusesAfter = NumReusesBefore together say that there was
-        % no polymorphism added by the goals inside the scope (since those
-        % would have required the creation or reuse of typeinfo variables).
-        % XXX zs: I am only 90% sure of the statement in the parentheses.
-        % If it turns out to be wrong, we would have to add a flag to
-        % poly_infos that is set whenever this pass modifies a goal,
-        % at least in ways that would invalidate the
-        % from_ground_term_initial invariant.
-        Reason = from_ground_term(TermVar, from_ground_term_initial),
-        SubGoal = SubGoal1
+polymorphism_process_from_ground_term_initial(TermVar, GoalInfo0, SubGoal0,
+        GoalExpr, !Info) :-
+    SubGoal0 = hlds_goal(SubGoalExpr0, SubGoalInfo0),
+    ( SubGoalExpr0 = conj(plain_conj, SubGoals0Prime) ->
+        SubGoals0 = SubGoals0Prime
     ;
-        Reason = from_ground_term(TermVar, from_ground_term_other),
-        ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
-            attach_features_to_all_goals([feature_from_head],
-                attach_in_from_ground_term, SubGoal1, SubGoal)
-        ;
-            SubGoal = SubGoal1
-        )
+        unexpected($module, $pred,
+            "from_ground_term_initial goal is not plain conj")
+    ),
+    polymorphism_process_fgti_goals(SubGoals0, [], RevMarkedSubGoals,
+        fgt_invariants_kept, InvariantsStatus, !Info),
+    (
+        InvariantsStatus = fgt_invariants_kept,
+        Reason = from_ground_term(TermVar, from_ground_term_initial),
+        GoalExpr = scope(Reason, SubGoal0)
+    ;
+        InvariantsStatus = fgt_invariants_broken,
+        introduce_partial_fgt_scopes(GoalInfo0, SubGoalInfo0,
+            RevMarkedSubGoals, deconstruct_top_down, SubGoal),
+        % Delete the scope wrapper around SubGoal0.
+        SubGoal = hlds_goal(GoalExpr, _)
     ).
+
+:- pred polymorphism_process_fgti_goals(list(hlds_goal)::in,
+    list(fgt_marked_goal)::in, list(fgt_marked_goal)::out,
+    fgt_invariants_status::in, fgt_invariants_status::out,
+    poly_info::in, poly_info::out) is det.
+
+polymorphism_process_fgti_goals([], !RevMarkedGoals, !InvariantsStatus, !Info).
+polymorphism_process_fgti_goals([Goal0 | Goals0], !RevMarkedGoals,
+        !InvariantsStatus, !Info) :-
+    % This is used only if polymorphism_fgt_sanity_tests is enabled.
+    OldInfo = !.Info,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    (
+        GoalExpr0 = unify(XVarPrime, Y, ModePrime, UnificationPrime,
+            UnifyContextPrime),
+        Y = rhs_functor(ConsIdPrime, _, YVarsPrime)
+    ->
+        XVar = XVarPrime,
+        Mode = ModePrime,
+        Unification = UnificationPrime,
+        UnifyContext = UnifyContextPrime,
+        ConsId = ConsIdPrime,
+        YVars = YVarsPrime
+    ;
+        unexpected($module, $pred,
+            "from_ground_term_initial conjunct is not functor unify")
+    ),
+    polymorphism_process_unify_functor(XVar, ConsId, YVars, Mode,
+        Unification, UnifyContext, GoalInfo0, Goal, Changed, !Info),
+    (
+        Changed = no,
+        trace [compiletime(flag("polymorphism_fgt_sanity_tests"))] (
+            poly_info_get_varset(OldInfo, VarSetBefore),
+            MaxVarBefore = varset.max_var(VarSetBefore),
+            poly_info_get_num_reuses(OldInfo, NumReusesBefore),
+
+            poly_info_get_varset(!.Info, VarSetAfter),
+            MaxVarAfter = varset.max_var(VarSetAfter),
+            poly_info_get_num_reuses(!.Info, NumReusesAfter),
+
+            expect(unify(MaxVarBefore, MaxVarAfter), $module, $pred,
+                "MaxVarBefore != MaxVarAfter"),
+            expect(unify(NumReusesBefore, NumReusesAfter), $module, $pred,
+                "NumReusesBefore != NumReusesAfter"),
+            expect(unify(Goal0, Goal), $module, $pred,
+                "Goal0 != Goal")
+        ),
+        MarkedGoal = fgt_kept_goal(Goal0, XVar, YVars)
+    ;
+        Changed = yes,
+        MarkedGoal = fgt_broken_goal(Goal, XVar, YVars),
+        !:InvariantsStatus = fgt_invariants_broken
+    ),
+    !:RevMarkedGoals = [MarkedGoal | !.RevMarkedGoals],
+    polymorphism_process_fgti_goals(Goals0, !RevMarkedGoals,
+        !InvariantsStatus, !Info).
+
+%-----------------------------------------------------------------------------%
 
 :- pred polymorphism_process_unify(prog_var::in, unify_rhs::in,
     unify_mode::in, unification::in, unify_context::in, hlds_goal_info::in,
@@ -1338,13 +1373,13 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         poly_info_get_var_types(!.Info, VarTypes),
         map.lookup(VarTypes, XVar, Type),
         unification_typeinfos(Type, Unification0, Unification,
-            GoalInfo0, GoalInfo, !Info),
+            GoalInfo0, GoalInfo, _Changed, !Info),
         Goal = hlds_goal(unify(XVar, Y, Mode, Unification, UnifyContext),
             GoalInfo)
     ;
         Y = rhs_functor(ConsId, _, Args),
         polymorphism_process_unify_functor(XVar, ConsId, Args, Mode,
-            Unification0, UnifyContext, GoalInfo0, Goal, !Info)
+            Unification0, UnifyContext, GoalInfo0, Goal, _Changed, !Info)
     ;
         Y = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             ArgVars0, LambdaVars, Modes, Det, LambdaGoal0),
@@ -1382,14 +1417,21 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
 
 :- pred unification_typeinfos(mer_type::in,
     unification::in, unification::out, hlds_goal_info::in, hlds_goal_info::out,
-    poly_info::in, poly_info::out) is det.
+    bool::out, poly_info::in, poly_info::out) is det.
 
-unification_typeinfos(Type, !Unification, !GoalInfo, !Info) :-
+unification_typeinfos(Type, !Unification, !GoalInfo, Changed, !Info) :-
     % Compute the type_info/type_class_info variables that would be used
     % if this unification ends up being a complicated_unify.
     type_vars(Type, TypeVars),
-    list.map_foldl(get_type_info_locn, TypeVars, TypeInfoLocns, !Info),
-    add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo).
+    (
+        TypeVars = [],
+        Changed = no
+    ;
+        TypeVars = [_ | _],
+        list.map_foldl(get_type_info_locn, TypeVars, TypeInfoLocns, !Info),
+        add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo),
+        Changed = yes
+    ).
 
 unification_typeinfos_rtti_varmaps(Type, RttiVarMaps, !Unification,
         !GoalInfo) :-
@@ -1437,10 +1479,11 @@ add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo) :-
 
 :- pred polymorphism_process_unify_functor(prog_var::in, cons_id::in,
     list(prog_var)::in, unify_mode::in, unification::in, unify_context::in,
-    hlds_goal_info::in, hlds_goal::out, poly_info::in, poly_info::out) is det.
+    hlds_goal_info::in, hlds_goal::out, bool::out,
+    poly_info::in, poly_info::out) is det.
 
 polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
-        UnifyContext, GoalInfo0, Goal, !Info) :-
+        UnifyContext, GoalInfo0, Goal, Changed, !Info) :-
     poly_info_get_module_info(!.Info, ModuleInfo0),
     poly_info_get_var_types(!.Info, VarTypes0),
     map.lookup(VarTypes0, X0, TypeOfX),
@@ -1503,7 +1546,8 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
         % Process the unification in its new form.
         polymorphism_process_unify(X0, Functor0, Mode0, Unification0,
-            UnifyContext, GoalInfo1, Goal, !Info)
+            UnifyContext, GoalInfo1, Goal, !Info),
+        Changed = yes
     ;
         % Is this a construction or deconstruction of an existentially
         % typed data type?
@@ -1539,21 +1583,23 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
 
         % Some of the argument unifications may be complicated unifications,
         % which may need type_infos.
-        unification_typeinfos(TypeOfX,
-            Unification0, Unification, GoalInfo1, GoalInfo, !Info),
+        unification_typeinfos(TypeOfX, Unification0, Unification,
+            GoalInfo1, GoalInfo, _Changed, !Info),
 
         UnifyExpr = unify(X0, rhs_functor(ConsId, IsConstruction, ArgVars),
             Mode0, Unification, UnifyContext),
         Unify = hlds_goal(UnifyExpr, GoalInfo),
         GoalList = ExtraGoals ++ [Unify],
-        conj_list_to_goal(GoalList, GoalInfo0, Goal)
+        conj_list_to_goal(GoalList, GoalInfo0, Goal),
+        Changed = yes
     ;
         % We leave construction/deconstruction unifications alone.
         % Some of the argument unifications may be complicated unifications,
         % which may need type_infos.
 
-        unification_typeinfos(TypeOfX,
-            Unification0, Unification, GoalInfo0, GoalInfo, !Info),
+        % XXX Return original Goal0 if Changed = no.
+        unification_typeinfos(TypeOfX, Unification0, Unification,
+            GoalInfo0, GoalInfo, Changed, !Info),
         GoalExpr = unify(X0, rhs_functor(ConsId0, no, ArgVars0), Mode0,
             Unification, UnifyContext),
         Goal = hlds_goal(GoalExpr, GoalInfo)
@@ -2404,8 +2450,8 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
         RenamedInstanceConstraints, ActualInstanceConstraints0),
     % XXX document diamond as guess
     % XXX does anyone know what the preceding line means?
-    ActualInstanceConstraints =
-        ActualInstanceConstraints0 `list.delete_elems` Seen,
+    list.delete_elems(ActualInstanceConstraints0, Seen,
+        ActualInstanceConstraints),
     apply_variable_renaming_to_constraint_proofs(Renaming,
         InstanceProofs, RenamedInstanceProofs),
     apply_rec_subst_to_constraint_proofs(InstanceSubst,

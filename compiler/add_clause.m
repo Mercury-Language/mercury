@@ -584,7 +584,7 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
             ArgContext = ac_head(PredOrFunc, Arity),
             HeadGoal0 = true_goal,
             insert_arg_unifications(HeadVarList, Args, Context, ArgContext,
-                HeadGoal0, HeadGoal1, 0, _, !SVarState, !SVarStore, !VarSet,
+                HeadGoal0, HeadGoal1, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
             % The only pass that pays attention to the from_head feature,
             % switch_detection, only does so on kinds of hlds_goal_exprs
@@ -602,7 +602,7 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
                 do_not_attach_in_from_ground_term, HeadGoal1, HeadGoal)
         ),
         transform_goal_expr_context_to_goal(loc_whole_goal, ParseBody,
-            Renaming, BodyGoal, _, !SVarState, !SVarStore, !VarSet,
+            Renaming, BodyGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
 
         trace [compiletime(flag("debug-statevar-lambda")), io(!IO)] (

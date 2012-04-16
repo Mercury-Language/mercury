@@ -117,7 +117,7 @@
 :- pred resolve_unify_functor(prog_var::in, cons_id::in,
     list(prog_var)::in, unify_mode::in, unification::in, unify_context::in,
     hlds_goal_info::in, module_info::in, pred_info::in, pred_info::out,
-    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     hlds_goal::out, is_plain_unify::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -1027,7 +1027,7 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
 %-----------------------------------------------------------------------------%
 
 resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
-        GoalInfo0, ModuleInfo, !PredInfo, !VarTypes, !VarSet,
+        GoalInfo0, ModuleInfo, !PredInfo, !VarSet, !VarTypes,
         Goal, IsPlainUnify) :-
     map.lookup(!.VarTypes, X0, TypeOfX),
     list.length(ArgVars0, Arity),

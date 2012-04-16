@@ -9,13 +9,18 @@
 % File: format_call.m.
 % Author: zs.
 %
-% This module has two related jobs. The first job is to generate warnings
-% about calls to string.format, io.format and stream.string_writer.format
-% in which the format string and the supplied lists of values do not agree.
-% The difficult part of this job is actually finding the values of the
-% variables representing the format string and the list of values to be printed.
-% The second job is to try to transform well formed calls into code that
-% interprets the format string at compile time, rather than runtime.
+% This module has two related jobs.
+%
+% - The first job is to generate warnings about calls to string.format,
+%   io.format and stream.string_writer.format in which the format string
+%   and the supplied lists of values do not agree.
+%
+%   The difficult part of this job is actually finding the values of the
+%   variables representing the format string and the list of values to be
+%   printed.
+%
+% - The second job is to try to transform well formed calls into code
+%   that interprets the format string at compile time, rather than runtime.
 % 
 % Our general approach to the first job is a backwards traversal of the
 % procedure body. During this traversal, we assign an id to every conjunction
@@ -652,12 +657,19 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
         map.det_insert(SubGoalId, CurId, !PredMap)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = from_ground_term(TermVar, from_ground_term_construct),
             % These scopes cannot build the format string (since that is
-            % a single constant, from which we don't build such scopes),
-            % or the list of things to print (since that term won't be a ground
-            % term except in degenerate cases). These scopes also cannot call
-            % anything.
+            % either a single constant, or the result of an operation on
+            % strings, neither of which are things for which we build fgt
+            % scopes. It can build the term to print, but that will happen
+            % only in degenerate cases. However, we do have some degenerate 
+            % cases in the test suite.
+            not set_of_var.member(!.RelevantVars, TermVar)
+        ->
+            % It is ok not to traverse the subgoal. The scope cannot contain
+            % any calls, and the unifications it does contain are apparently
+            % not of interest to any later formal call.
             true
         ;
             format_call_traverse_conj(ModuleInfo, [SubGoal], CurId,
@@ -992,14 +1004,18 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
-            % We did not traverse such scopes in format_call_traverse_conj,
-            % so there are no goals for us to transform in SubGoal0.
-            % There is not even any variable consumption for us to record,
-            % or any variable production for us to eliminate (since the things
-            % being printed out by format calls are all of atomic types,
-            % and these scopes can produce only values of non-atomic types).
-            Goal = Goal0
+        (
+            Reason = from_ground_term(TermVar, from_ground_term_construct),
+            not set_of_var.member(!.NeededVars, TermVar),
+            % If this succeeds, then the backward traversal cannot encounter
+            % any more producers of LHSVar.
+            set_of_var.remove(TermVar, !ToDeleteVars)
+        ->
+            % We cannot guarantee that the modified version of SubGoal0
+            % meets the invariants required of a goal in a
+            % from_ground_term_construct scope, so we remove the scope.
+            opt_format_call_sites_in_goal(SubGoal0, Goal,
+                !GoalIdMap, !NeededVars, !ToDeleteVars)
         ;
             opt_format_call_sites_in_goal(SubGoal0, SubGoal,
                 !GoalIdMap, !NeededVars, !ToDeleteVars),

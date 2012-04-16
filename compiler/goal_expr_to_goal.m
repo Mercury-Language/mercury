@@ -13,7 +13,6 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.state_var.
-:- import_module hlds.make_hlds.superhomogeneous.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -36,7 +35,7 @@
     % - expand references to state variables.
     %
 :- pred transform_goal_expr_context_to_goal(loc_kind::in, goal::in,
-    prog_var_renaming::in, hlds_goal::out, num_added_goals::out,
+    prog_var_renaming::in, hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -63,6 +62,7 @@
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.make_hlds_warn.
+:- import_module hlds.make_hlds.superhomogeneous.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.globals.
@@ -90,10 +90,9 @@
 %-----------------------------------------------------------------------------%
 
 transform_goal_expr_context_to_goal(LocKind, Goal0 - Context, Renaming, Goal,
-        NumAdded, !SVarState, !SVarStore, !VarSet,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     transform_goal_expr_to_goal(LocKind, Goal0, Context, Renaming, Goal1,
-        NumAdded, !SVarState, !SVarStore, !VarSet,
+        !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
     Goal1 = hlds_goal(GoalExpr, GoalInfo1),
     goal_info_set_context(Context, GoalInfo1, GoalInfo),
@@ -101,13 +100,12 @@ transform_goal_expr_context_to_goal(LocKind, Goal0 - Context, Renaming, Goal,
 
 :- pred transform_goal_expr_to_goal(loc_kind::in, goal_expr::in,
     prog_context::in, prog_var_renaming::in, hlds_goal::out,
-    num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
+transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     (
         (
@@ -117,7 +115,6 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
             Expr = true_expr,
             GoalExpr = conj(plain_conj, [])
         ),
-        !:NumAdded = 0,
         goal_info_init(GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
@@ -132,13 +129,13 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
                 not_expr(Goal0) - Context) - Context)
         ),
         transform_goal_expr_to_goal(LocKind, TransformedExpr, Context,
-            Renaming, Goal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            Renaming, Goal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Expr = some_expr(Vars0, SubExpr),
         rename_var_list(need_not_rename, Renaming, Vars0, Vars),
         transform_goal_expr_context_to_goal(LocKind, SubExpr, Renaming,
-            SubGoal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            SubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         Reason = exist_quant(Vars),
         GoalExpr = scope(Reason, SubGoal),
@@ -151,7 +148,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
             BeforeOutsideSVarState, BeforeInsideSVarState, !Specs),
         transform_goal_expr_context_to_goal(LocKind, SubExpr0, Renaming,
-            SubGoal, !:NumAdded, BeforeInsideSVarState, AfterInsideSVarState,
+            SubGoal, BeforeInsideSVarState, AfterInsideSVarState,
             !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         svar_finish_local_state_vars(StateVars, BeforeOutsideSVarState,
             AfterInsideSVarState, AfterOutsideSVarState),
@@ -163,7 +160,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
     ;
         Expr = promise_purity_expr(Purity, SubExpr0),
         transform_goal_expr_context_to_goal(LocKind, SubExpr0, Renaming,
-            SubGoal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            SubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         Reason = promise_purity(Purity),
         GoalExpr = scope(Reason, SubGoal),
@@ -174,7 +171,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
             DotSVars0, ColonSVars0, SubExpr0),
         transform_promise_eqv_goal(LocKind, Vars0, StateVars0,
             DotSVars0, ColonSVars0, Context, Renaming, Vars, SubExpr0,
-            SubGoal, GoalInfo, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            SubGoal, GoalInfo, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         Reason = promise_solutions(Vars, equivalent_solutions),
         GoalExpr = scope(Reason, SubGoal),
@@ -184,7 +181,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
             DotSVars0, ColonSVars0, SubExpr0),
         transform_promise_eqv_goal(LocKind, Vars0, StateVars0,
             DotSVars0, ColonSVars0, Context, Renaming, Vars, SubExpr0,
-            SubGoal, GoalInfo, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            SubGoal, GoalInfo, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         GoalExpr = scope(promise_solutions(Vars, equivalent_solution_sets),
             SubGoal),
@@ -194,7 +191,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
             DotSVars0, ColonSVars0, SubExpr0),
         transform_promise_eqv_goal(LocKind, Vars0, StateVars0,
             DotSVars0, ColonSVars0, Context, Renaming, Vars, SubExpr0,
-            SubGoal, GoalInfo, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            SubGoal, GoalInfo, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         GoalExpr = scope(promise_solutions(Vars,
             equivalent_solution_sets_arbitrary), SubGoal),
@@ -202,7 +199,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
     ;
         Expr = require_detism_expr(Detism, SubExpr),
         transform_goal_expr_context_to_goal(LocKind, SubExpr, Renaming,
-            SubGoal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            SubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         GoalExpr = scope(require_detism(Detism), SubGoal),
         goal_info_init(GoalInfo),
@@ -211,7 +208,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         Expr = require_complete_switch_expr(Var0, SubExpr),
         rename_var(need_not_rename, Renaming, Var0, Var),
         transform_goal_expr_context_to_goal(LocKind, SubExpr, Renaming,
-            SubGoal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            SubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         GoalExpr = scope(require_complete_switch(Var), SubGoal),
         goal_info_init(GoalInfo),
@@ -256,12 +253,12 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         ),
         BeforeDisjSVarState = !.SVarState,
         transform_goal_expr_context_to_goal(LocKind, MainExpr, Renaming,
-            HLDSMainGoal0, !:NumAdded, BeforeDisjSVarState, AfterMainSVarState,
+            HLDSMainGoal0, BeforeDisjSVarState, AfterMainSVarState,
             !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         MainDisjState =
             hlds_goal_svar_state(HLDSMainGoal0, AfterMainSVarState),
         transform_orelse_goals(LocKind, OrElseExprs, Renaming, OrElseDisjStates,
-            !NumAdded, BeforeDisjSVarState, !SVarStore, !VarSet,
+            BeforeDisjSVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         AllDisjStates = [MainDisjState | OrElseDisjStates],
         svar_finish_disjunction(Context, AllDisjStates, HLDSGoals, !VarSet,
@@ -295,7 +292,6 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         ;
             MaybeOuterScopeInfo = no
         ),
-        !:NumAdded = !.NumAdded + 1,
         ShortHand = atomic_goal(unknown_atomic_goal_type, Outer, Inner,
             MaybeOutputVars, HLDSMainGoal, HLDSOrElseGoals, []),
         GoalExpr = shorthand(ShortHand),
@@ -336,10 +332,8 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
             BeforeSVarState, BeforeInsideSVarState, !Specs),
         transform_goal_expr_context_to_goal(LocKind, SubExpr1, Renaming,
-            SubGoal, !:NumAdded, BeforeInsideSVarState, AfterInsideSVarState,
+            SubGoal, BeforeInsideSVarState, AfterInsideSVarState,
             !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        !:NumAdded =
-            list.length(GetExprs) + !.NumAdded + list.length(SetExprs),
         svar_finish_local_state_vars(StateVars, BeforeSVarState,
             AfterInsideSVarState, AfterSVarState),
         !:SVarState = AfterSVarState,
@@ -359,7 +353,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
                 rename_var(need_not_rename, Renaming, IOStateVar0, IOStateVar),
                 transform_try_expr_with_io(LocKind, IOStateVar0, IOStateVar,
                     SubExpr0, Then0, Catches0, MaybeCatchAny0, Context,
-                    Renaming, Goal, !:NumAdded, !SVarState, !SVarStore,
+                    Renaming, Goal, !SVarState, !SVarStore,
                     !VarSet, !ModuleInfo, !QualInfo, !Specs)
             ;
                 MaybeElse0 = yes(_),
@@ -369,13 +363,12 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
                 Spec = error_spec(severity_error,
                     phase_parse_tree_to_hlds, [Msg]),
                 !:Specs = [Spec | !.Specs],
-                Goal = true_goal,
-                !:NumAdded = 0
+                Goal = true_goal
             )
         ;
             MaybeIO0 = no,
             transform_try_expr_without_io(LocKind, SubExpr0, Then0, MaybeElse0,
-                Catches0, MaybeCatchAny0, Context, Renaming, Goal, !:NumAdded,
+                Catches0, MaybeCatchAny0, Context, Renaming, Goal,
                 !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
         )
@@ -387,17 +380,16 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
             BeforeSVarState, BeforeCondSVarState, !Specs),
         transform_goal_expr_context_to_goal(LocKind, Cond0, Renaming, Cond,
-            CondAdded, BeforeCondSVarState, AfterCondSVarState, !SVarStore,
+            BeforeCondSVarState, AfterCondSVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs),
         transform_goal_expr_context_to_goal(LocKind, Then0, Renaming, Then1,
-            ThenAdded, AfterCondSVarState, AfterThenSVarState0, !SVarStore,
+            AfterCondSVarState, AfterThenSVarState0, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs),
         svar_finish_local_state_vars(StateVars, BeforeSVarState,
             AfterThenSVarState0, AfterThenSVarState),
         transform_goal_expr_context_to_goal(LocKind, Else0, Renaming, Else1,
-            ElseAdded, BeforeSVarState, AfterElseSVarState, !SVarStore,
+            BeforeSVarState, AfterElseSVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        !:NumAdded = CondAdded + ThenAdded + ElseAdded,
         goal_info_init(Context, GoalInfo),
         svar_finish_if_then_else(LocKind, Context, StateVars,
             Then1, Then, Else1, Else,
@@ -409,7 +401,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         Expr = not_expr(SubExpr0),
         BeforeOutsideState = !.SVarState,
         transform_goal_expr_context_to_goal(LocKind, SubExpr0, Renaming,
-            SubGoal, !:NumAdded, !.SVarState, _, !SVarStore,
+            SubGoal, !.SVarState, _, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs),
         !:SVarState = BeforeOutsideState,
         GoalExpr = negation(SubGoal),
@@ -417,18 +409,18 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         Expr = conj_expr(A0, B0),
-        get_rev_conj(LocKind, A0, Renaming, [], R0, 0, !:NumAdded,
+        get_rev_conj(LocKind, A0, Renaming, [], R0,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        get_rev_conj(LocKind, B0, Renaming, R0, R,  !NumAdded,
+        get_rev_conj(LocKind, B0, Renaming, R0, R,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         L = list.reverse(R),
         goal_info_init(GoalInfo),
         conj_list_to_goal(L, GoalInfo, Goal)
     ;
         Expr = par_conj_expr(A0, B0),
-        get_rev_par_conj(LocKind, A0, Renaming, [], R0, 0, !:NumAdded,
+        get_rev_par_conj(LocKind, A0, Renaming, [], R0,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        get_rev_par_conj(LocKind, B0, Renaming, R0, R,  !NumAdded,
+        get_rev_par_conj(LocKind, B0, Renaming, R0, R,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         L = list.reverse(R),
         goal_info_init(GoalInfo),
@@ -437,11 +429,11 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         Expr = disj_expr(A0, B0),
         SVarStateBefore = !.SVarState,
         get_disj(LocKind, B0, Renaming, [], DisjunctsSVarStates1,
-            0, !:NumAdded, SVarStateBefore, !SVarStore, !VarSet,
+            SVarStateBefore, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         get_disj(LocKind, A0, Renaming,
             DisjunctsSVarStates1, DisjunctsSVarStates,
-            !NumAdded, SVarStateBefore, !SVarStore, !VarSet,
+            SVarStateBefore, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         svar_finish_disjunction(Context, DisjunctsSVarStates, Disjuncts,
             !VarSet, SVarStateBefore, SVarStateAfter, !SVarStore),
@@ -454,7 +446,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         TransformedExpr = not_expr(conj_expr(P, not_expr(Q) - Context)
             - Context),
         transform_goal_expr_to_goal(LocKind, TransformedExpr, Context,
-            Renaming, Goal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            Renaming, Goal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Expr = equivalent_expr(P0, Q0),
@@ -465,13 +457,12 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
 
         SVarStateBefore = !.SVarState,
         transform_goal_expr_context_to_goal(LocKind, P0, Renaming, P,
-            NumAddedP, !SVarState, !SVarStore, !VarSet,
+            !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         transform_goal_expr_context_to_goal(LocKind, Q0, Renaming, Q,
-            NumAddedQ, !.SVarState, _, !SVarStore, !VarSet,
+            !.SVarState, _, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         !:SVarState = SVarStateBefore,
-        !:NumAdded = NumAddedP + NumAddedQ,
         GoalExpr = shorthand(bi_implication(P, Q)),
         goal_info_init(GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
@@ -479,7 +470,8 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         Expr = event_expr(EventName, Args0),
         expand_bang_states(Args0, Args1),
         rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args),
-        make_fresh_arg_vars(Args, HeadVars, !VarSet, !SVarState, !Specs),
+        make_fresh_arg_vars_subst_svars(Args, HeadVars, !VarSet,
+            !SVarState, !Specs),
         list.length(HeadVars, Arity),
         list.duplicate(Arity, in_mode, Modes),
         goal_info_init(Context, GoalInfo),
@@ -489,7 +481,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         Goal0 = hlds_goal(GoalExpr0, GoalInfo),
         CallId = generic_call_id(gcid_event_call(EventName)),
         insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
-            Goal0, Goal, 0, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+            Goal0, Goal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         svar_finish_atomic_goal(LocKind, !SVarState)
     ;
@@ -502,7 +494,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
             % `LHS \= RHS' is defined as `not (LHS = RHS)'
             TransformedExpr = not_expr(unify_expr(LHS, RHS, Purity) - Context),
             transform_goal_expr_to_goal(LocKind, TransformedExpr, Context,
-                Renaming, Goal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+                Renaming, Goal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
         ;
             % check for a state var record assignment:
@@ -523,7 +515,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
             RHS = functor(atom(":="), [FieldList, RHS0], Context),
             TransformedExpr = unify_expr(LHS, RHS, Purity),
             transform_goal_expr_to_goal(LocKind, TransformedExpr, Context,
-                Renaming, Goal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+                Renaming, Goal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
         ;
             % check for a DCG field access goal:
@@ -536,11 +528,12 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         ->
             rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args2),
             transform_dcg_record_syntax(LocKind, Operator, Args2, Context,
-                Goal, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+                Goal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
         ;
             rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args),
-            make_fresh_arg_vars(Args, HeadVars, !VarSet, !SVarState, !Specs),
+            make_fresh_arg_vars_subst_svars(Args, HeadVars, !VarSet,
+                !SVarState, !Specs),
             list.length(Args, Arity),
             (
                 % Check for a higher-order call,
@@ -578,7 +571,7 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
 
             record_called_pred_or_func(pf_predicate, Name, Arity, !QualInfo),
             insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
-                Goal0, Goal, 0, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+                Goal0, Goal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
         ),
         svar_finish_atomic_goal(LocKind, !SVarState)
@@ -586,19 +579,22 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal, !:NumAdded,
         Expr = unify_expr(A0, B0, Purity),
         rename_vars_in_term(need_not_rename, Renaming, A0, A),
         rename_vars_in_term(need_not_rename, Renaming, B0, B),
-        % It is an error for the left or right hand side of a
-        % unification to be !X (it may be !.X or !:X, however).
+        % It is an error for the left or right hand side of a unification
+        % to be !X (it may be !.X or !:X, however).
         ( A = functor(atom("!"), [variable(StateVarA, _)], _) ->
             report_svar_unify_error(Context, !.VarSet, StateVarA, !Specs),
-            Goal = true_goal,
-            !:NumAdded = 0
+            ( B = functor(atom("!"), [variable(StateVarB, _)], _) ->
+                report_svar_unify_error(Context, !.VarSet, StateVarB, !Specs)
+            ;
+                true
+            ),
+            Goal = true_goal
         ; B = functor(atom("!"), [variable(StateVarB, _)], _) ->
             report_svar_unify_error(Context, !.VarSet, StateVarB, !Specs),
-            Goal = true_goal,
-            !:NumAdded = 0
+            Goal = true_goal
         ;
             unravel_unification(A, B, Context, umc_explicit, [], Purity, Goal,
-                0, !:NumAdded, !SVarState, !SVarStore, !VarSet,
+                !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
             svar_finish_atomic_goal(LocKind, !SVarState)
         )
@@ -640,14 +636,14 @@ extract_trace_io_var(Context, StateVar, GetGoal, SetGoal) :-
     list(prog_var)::in, list(prog_var)::in,
     list(prog_var)::in, list(prog_var)::in,
     prog_context::in, prog_var_renaming::in, list(prog_var)::out,
-    goal::in, hlds_goal::out, hlds_goal_info::out, int::out,
+    goal::in, hlds_goal::out, hlds_goal_info::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 transform_promise_eqv_goal(LocKind, Vars0, StateVars0, DotSVars0, ColonSVars0,
-        Context, Renaming, QuantVars, Goal0, Goal, GoalInfo, NumAdded,
+        Context, Renaming, QuantVars, Goal0, Goal, GoalInfo,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     rename_var_list(need_not_rename, Renaming, Vars0, Vars),
     rename_var_list(need_not_rename, Renaming, StateVars0, StateVars1),
@@ -658,8 +654,7 @@ transform_promise_eqv_goal(LocKind, Vars0, StateVars0, DotSVars0, ColonSVars0,
     list.map_foldl3(lookup_dot_state_var(Context), DotSVars1, DotSVars,
         !VarSet, !SVarState, !Specs),
     transform_goal_expr_context_to_goal(LocKind, Goal0, Renaming, Goal,
-        NumAdded, !SVarState, !SVarStore, !VarSet,
-        !ModuleInfo, !QualInfo, !Specs),
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     goal_info_init(GoalInfo),
     list.map_foldl3(lookup_dot_state_var(Context), StateVars1, NewStateVars,
         !VarSet, !SVarState, !Specs),
@@ -684,14 +679,14 @@ report_svar_unify_error(Context, VarSet, StateVar, !Specs) :-
 
 :- pred transform_dcg_record_syntax(loc_kind::in,
     string::in(dcg_record_syntax_op), list(prog_term)::in, prog_context::in,
-    hlds_goal::out, int::out,
+    hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 transform_dcg_record_syntax(LocKind, Operator, ArgTerms0, Context, Goal,
-        NumAdded, !SVarState, !SVarStore, !VarSet,
+        !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
     goal_info_init(Context, GoalInfo),
     (
@@ -716,7 +711,7 @@ transform_dcg_record_syntax(LocKind, Operator, ArgTerms0, Context, Goal,
             MaybeFieldNames = ok1(FieldNames),
             ArgTerms = [FieldValueTerm, TermInputTerm, TermOutputTerm],
             transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms,
-                Context, Goal, NumAdded, !SVarState, !SVarStore, !VarSet,
+                Context, Goal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
             svar_finish_atomic_goal(LocKind, !SVarState)
         ;
@@ -724,13 +719,11 @@ transform_dcg_record_syntax(LocKind, Operator, ArgTerms0, Context, Goal,
             !:Specs = FieldNamesSpecs ++ !.Specs,
             invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet,
                 !SVarState, !Specs),
-            NumAdded = 0,
             qual_info_set_found_syntax_error(yes, !QualInfo)
         )
     ;
         invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet, !SVarState,
             !Specs),
-        NumAdded = 0,
         qual_info_set_found_syntax_error(yes, !QualInfo),
         Pieces = [words("Error: expected `Field =^ field1 ^ ... ^ fieldN'"),
             words("or `^ field1 ^ ... ^ fieldN := Field'"),
@@ -742,23 +735,23 @@ transform_dcg_record_syntax(LocKind, Operator, ArgTerms0, Context, Goal,
 
 :- pred transform_dcg_record_syntax_2(field_access_type::in, field_list::in,
     list(prog_term)::in, prog_context::in, hlds_goal::out,
-    num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
-        NumAdded, !SVarState, !SVarStore, !VarSet,
+        !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
-    make_fresh_arg_vars(ArgTerms, ArgVars, !VarSet, !SVarState, !Specs),
+    make_fresh_arg_vars_subst_svars(ArgTerms, ArgVars, !VarSet,
+        !SVarState, !Specs),
     ( ArgVars = [FieldValueVar, TermInputVar, TermOutputVar] ->
         (
             AccessType = set,
             expand_set_field_function_call(Context, umc_explicit, [],
                 FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
                 Functor, InnermostFunctor - InnermostSubContext, Goal0,
-                0, NumAdded1, !SVarState, !SVarStore, !VarSet,
+                !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
 
             FieldArgNumber = 2,
@@ -784,15 +777,14 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 OutputTermArgNumber - OutputTermArgContext
             ],
             insert_arg_unifications_with_contexts(ArgVars, ArgTerms,
-                ArgContexts, Context, Goal0, Goal, NumAdded1, NumAdded,
-                !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs)
+                ArgContexts, Context, Goal0, Goal, !SVarState, !SVarStore,
+                !VarSet, !ModuleInfo, !QualInfo, !Specs)
         ;
             AccessType = get,
             expand_dcg_field_extraction_goal(Context, umc_explicit, [],
                 FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
                 Functor, InnermostFunctor - _InnerSubContext, Goal0,
-                0, NumAdded1, !SVarState, !SVarStore, !VarSet,
+                !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
             InputTermArgNumber = 1,
             InputTermArgContext = ac_functor(Functor, umc_explicit, []),
@@ -817,9 +809,8 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 OutputTermArgNumber - OutputTermArgContext
             ],
             insert_arg_unifications_with_contexts(ArgVars, ArgTerms,
-                ArgContexts, Context, Goal0, Goal, NumAdded1, NumAdded,
-                !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs)
+                ArgContexts, Context, Goal0, Goal, !SVarState, !SVarStore,
+                !VarSet, !ModuleInfo, !QualInfo, !Specs)
         )
     ;
         unexpected($module, $pred, "arity != 3")
@@ -832,24 +823,21 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
     %
 :- pred get_rev_conj(loc_kind::in, goal::in, prog_var_renaming::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
-    num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-get_rev_conj(LocKind, Goal, Renaming, RevConj0, RevConj, !NumAdded,
+get_rev_conj(LocKind, Goal, Renaming, RevConj0, RevConj,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     ( Goal = conj_expr(A, B) - _Context ->
-        get_rev_conj(LocKind, A, Renaming, RevConj0, RevConj1, !NumAdded,
+        get_rev_conj(LocKind, A, Renaming, RevConj0, RevConj1,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        get_rev_conj(LocKind, B, Renaming, RevConj1, RevConj, !NumAdded,
+        get_rev_conj(LocKind, B, Renaming, RevConj1, RevConj,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs)
     ;
         transform_goal_expr_context_to_goal(LocKind, Goal, Renaming, Goal1,
-            GoalAdded, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs),
-        !:NumAdded = !.NumAdded + GoalAdded,
+            !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         goal_to_conj_list(Goal1, ConjList),
         RevConj = list.reverse(ConjList) ++ RevConj0
     ).
@@ -861,26 +849,24 @@ get_rev_conj(LocKind, Goal, Renaming, RevConj0, RevConj, !NumAdded,
     %
 :- pred get_rev_par_conj(loc_kind::in, goal::in, prog_var_renaming::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
-    num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-get_rev_par_conj(LocKind, Goal, Renaming, RevParConj0, RevParConj, !NumAdded,
+get_rev_par_conj(LocKind, Goal, Renaming, RevParConj0, RevParConj,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     ( Goal = par_conj_expr(A, B) - _Context ->
         get_rev_par_conj(LocKind, A, Renaming, RevParConj0, RevParConj1,
-            !NumAdded, !SVarState, !SVarStore, !VarSet,
+            !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         get_rev_par_conj(LocKind, B, Renaming, RevParConj1, RevParConj,
-            !NumAdded, !SVarState, !SVarStore, !VarSet,
+            !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         transform_goal_expr_context_to_goal(LocKind, Goal, Renaming, Goal1,
-            GoalAdded, !SVarState, !SVarStore, !VarSet,
+            !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
-        !:NumAdded = !.NumAdded + GoalAdded,
         goal_to_par_conj_list(Goal1, ParConjList),
         RevParConj = list.reverse(ParConjList) ++ RevParConj0
     ).
@@ -892,55 +878,50 @@ get_rev_par_conj(LocKind, Goal, Renaming, RevParConj0, RevParConj, !NumAdded,
     %
 :- pred get_disj(loc_kind::in, goal::in, prog_var_renaming::in,
     list(hlds_goal_svar_state)::in, list(hlds_goal_svar_state)::out,
-    num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-get_disj(LocKind, Goal, Renaming, DisjStates0, DisjStates, !NumAdded,
-        SVarStateBefore, !SVarStore, !VarSet,
-        !ModuleInfo, !QualInfo, !Specs) :-
+get_disj(LocKind, Goal, Renaming, DisjStates0, DisjStates, SVarStateBefore,
+        !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     ( Goal = disj_expr(A, B) - _Context ->
         % We recurse on the *second* arm first, so that we will put the
         % disjuncts from *that* arm at the front of DisjStates0, before
         % putting the disjuncts from the first arm at the front of the
         % resulting DisjStates1. This way, the overall result, DisjStates,
         % will have the disjuncts and their svar_infos in the correct order.
-        get_disj(LocKind, B, Renaming, DisjStates0, DisjStates1, !NumAdded,
+        get_disj(LocKind, B, Renaming, DisjStates0, DisjStates1,
             SVarStateBefore, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
-        get_disj(LocKind, A, Renaming, DisjStates1, DisjStates,  !NumAdded,
+        get_disj(LocKind, A, Renaming, DisjStates1, DisjStates,
             SVarStateBefore, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         transform_goal_expr_context_to_goal(LocKind, Goal, Renaming,
-            HLDSGoal, GoalAdded, SVarStateBefore, SVarStateAfterDisjunct,
+            HLDSGoal, SVarStateBefore, SVarStateAfterDisjunct,
             !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        !:NumAdded = !.NumAdded + GoalAdded,
         DisjState = hlds_goal_svar_state(HLDSGoal, SVarStateAfterDisjunct),
         DisjStates = [DisjState | DisjStates0]
     ).
 
 :- pred transform_orelse_goals(loc_kind::in, list(goal)::in,
     prog_var_renaming::in, list(hlds_goal_svar_state)::out,
-    num_added_goals::in, num_added_goals::out,
     svar_state::in, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_orelse_goals(_, [], _, [], !NumAdded, _SVarStateBefore, !SVarState,
+transform_orelse_goals(_, [], _, [], _SVarStateBefore, !SVarState,
         !VarSet, !ModuleInfo, !QualInfo, !Specs).
 transform_orelse_goals(LocKind, [Goal | Goals], Renaming,
-        [DisjState | DisjStates], !NumAdded, SVarStateBefore, !SVarStore,
+        [DisjState | DisjStates], SVarStateBefore, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     transform_goal_expr_context_to_goal(LocKind, Goal, Renaming, HLDSGoal,
-        NumAddedGoal, SVarStateBefore, SVarStateAfterDisjunct, !SVarStore,
+        SVarStateBefore, SVarStateAfterDisjunct, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
     DisjState = hlds_goal_svar_state(HLDSGoal, SVarStateAfterDisjunct),
-    !:NumAdded = !.NumAdded + NumAddedGoal,
-    transform_orelse_goals(LocKind, Goals, Renaming, DisjStates, !NumAdded,
+    transform_orelse_goals(LocKind, Goals, Renaming, DisjStates,
         SVarStateBefore, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
 %----------------------------------------------------------------------------%
@@ -973,14 +954,13 @@ transform_orelse_goals(LocKind, [Goal | Goals], Renaming,
 :- pred transform_try_expr_with_io(loc_kind::in, svar::in, svar::in,
     goal::in, goal::in, list(catch_expr)::in, maybe(catch_any_expr)::in,
     prog_context::in, prog_var_renaming::in, hlds_goal::out,
-    num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
-        Then0, Catches0, MaybeCatchAny0, Context, Renaming, TryGoal, NumAdded,
+        Then0, Catches0, MaybeCatchAny0, Context, Renaming, TryGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var("TryResult", ResultVar, !VarSet),
     varset.new_var(ExcpVar, !VarSet),
@@ -995,7 +975,7 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
     CallMagic0 = call_expr(magic_exception_result_sym_name, [ResultVarTerm],
         purity_pure) - Context,
     transform_goal_expr_context_to_goal(LocKind, CallMagic0, Renaming,
-        CallMagic, NumAddedA, !SVarState, !SVarStore, !VarSet,
+        CallMagic, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Get the variable for !.IO before the (eventual) try_io call.
@@ -1012,7 +992,7 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
             purity_pure
         ) - Context,
     transform_goal_expr_context_to_goal(LocKind, ResultIsSucceededUnify0,
-        Renaming, ResultIsSucceededUnify, NumAddedB, !SVarState, !SVarStore,
+        Renaming, ResultIsSucceededUnify, !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
     % Build "some [] ( !:IO = !.IO, Goal )".
@@ -1027,7 +1007,7 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
     ) - Context,
     ScopedGoal0 = some_expr([], conj_expr(IOUnify, Goal0) - Context) - Context,
     transform_goal_expr_context_to_goal(LocKind, ScopedGoal0, Renaming,
-        ScopedGoal, NumAddedC, !SVarState, !SVarStore, !VarSet,
+        ScopedGoal, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Remember the variable for !.IO after the (eventual) try_io Goal.
@@ -1037,7 +1017,7 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
     % Build "some [] ( Then )".
     ScopedThen0 = some_expr([], Then0) - Context,
     transform_goal_expr_context_to_goal(LocKind, ScopedThen0, Renaming,
-        ScopedThen, NumAddedD, !SVarState, !SVarStore, !VarSet,
+        ScopedThen, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Build:
@@ -1056,7 +1036,7 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
     make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm, Catches0,
         MaybeCatchAny0, Context, ResultIsExceptionDisjunct0),
     transform_goal_expr_context_to_goal(LocKind, ResultIsExceptionDisjunct0,
-        Renaming, ResultIsExceptionDisjunct, NumAddedE, !SVarState, !SVarStore,
+        Renaming, ResultIsExceptionDisjunct, !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
     SVarStateAfterResultIsExceptionDisjunct = !.SVarState,
@@ -1079,9 +1059,7 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
     IOStateVars = try_io_state_vars(IOStateVarBefore, IOStateVarAfter),
     GoalExpr = shorthand(try_goal(yes(IOStateVars), ResultVar,
         CallMagicThenDisjunction)),
-    TryGoal = hlds_goal(GoalExpr, GoalInfo),
-
-    NumAdded = NumAddedA + NumAddedB + NumAddedC + NumAddedD + NumAddedE.
+    TryGoal = hlds_goal(GoalExpr, GoalInfo).
 
     % Transform a try_expr which does not need I/O.
     %
@@ -1115,14 +1093,13 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
 :- pred transform_try_expr_without_io(loc_kind::in, goal::in, goal::in,
     maybe(goal)::in, list(catch_expr)::in, maybe(catch_any_expr)::in,
     prog_context::in, prog_var_renaming::in, hlds_goal::out,
-    num_added_goals::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 transform_try_expr_without_io(LocKind, Goal0, Then0, MaybeElse0, Catches0,
-        MaybeCatchAny0, Context, Renaming, TryGoal, NumAdded,
+        MaybeCatchAny0, Context, Renaming, TryGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var("TryResult", ResultVar, !VarSet),
     varset.new_var(ExcpVar, !VarSet),
@@ -1173,7 +1150,7 @@ transform_try_expr_without_io(LocKind, Goal0, Then0, MaybeElse0, Catches0,
             ) - Context
         ) - Context,
     transform_goal_expr_context_to_goal(LocKind, CallMagicThenDisjunction0,
-        Renaming, CallMagicThenDisjunction, NumAdded, !SVarState, !SVarStore,
+        Renaming, CallMagicThenDisjunction, !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
     GoalExpr = shorthand(try_goal(no, ResultVar, CallMagicThenDisjunction)),
@@ -1273,7 +1250,8 @@ dcg_field_error_context_pieces(AccessType) = ContextPieces :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet, !SVarState, !Specs) :-
-    make_fresh_arg_vars(Args0, HeadVars, !VarSet, !SVarState, !Specs),
+    make_fresh_arg_vars_subst_svars(Args0, HeadVars, !VarSet,
+        !SVarState, !Specs),
     MaybeUnifyContext = no,
     GoalExpr = plain_call(invalid_pred_id, invalid_proc_id, HeadVars,
         not_builtin, MaybeUnifyContext, unqualified(UpdateStr)),

@@ -398,8 +398,8 @@
     % "unifications" may include things that look like function symbols
     % but are in fact function calls. When typecheck.m discovers that this
     % applies to a unification, it does not remove the scope or change its
-    % kind. The mode analysis pass will eventually change the kind to
-    % from_ground_term_other.
+    % kind. The post_typecheck phase, executed as part of the purity pass,
+    % will eventually change the kind to from_ground_term_other.
     %
     % Up to the first invocation of mode analysis, all from_ground_term scopes
     % will have kind from_ground_term_initial. After that, they will have

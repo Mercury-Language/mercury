@@ -167,6 +167,7 @@
 :- implementation.
 
 :- import_module check_hlds.post_typecheck.
+:- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
@@ -589,15 +590,21 @@ compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo0, Purity, ContainsTrace,
         !Info),
-    goal_info_set_purity(Purity, GoalInfo0, GoalInfo1),
+    update_purity_ct_in_goal_info(Purity, ContainsTrace, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+:- pred update_purity_ct_in_goal_info(purity::in, contains_trace_goal::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
+update_purity_ct_in_goal_info(Purity, ContainsTrace, !GoalInfo) :-
+    goal_info_set_purity(Purity, !GoalInfo),
     (
         ContainsTrace = contains_trace_goal,
-        goal_info_add_feature(feature_contains_trace, GoalInfo1, GoalInfo)
+        goal_info_add_feature(feature_contains_trace, !GoalInfo)
     ;
         ContainsTrace = contains_no_trace_goal,
-        goal_info_remove_feature(feature_contains_trace, GoalInfo1, GoalInfo)
-    ),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
+        goal_info_remove_feature(feature_contains_trace, !GoalInfo)
+    ).
 
     % Compute the purity of a list of hlds_goals. Since the purity of a
     % disjunction is computed the same way as the purity of a conjunction,
@@ -730,7 +737,7 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             contains_no_trace_goal, ContainsTrace, !Info),
         GoalExpr = switch(Var, Canfail, Cases)
     ;
-        GoalExpr0 = unify(LHS, RHS0, Mode, Unification, UnifyContext),
+        GoalExpr0 = unify(LHSVar, RHS0, Mode, Unification, UnifyContext),
         (
             RHS0 = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
                 EvalMethod, LambdaNonLocals, LambdaQuantVars,
@@ -743,8 +750,10 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 EvalMethod, LambdaNonLocals, LambdaQuantVars,
                 LambdaModes, LambdaDetism, LambdaGoal),
 
-            check_closure_purity(GoalInfo, LambdaPurity, GoalPurity, !Info),
-            GoalExpr = unify(LHS, RHS, Mode, Unification, UnifyContext),
+            check_closure_purity(GoalInfo, LambdaPurity, GoalPurity,
+                ClosureSpecs),
+            purity_info_add_messages(ClosureSpecs, !Info),
+            GoalExpr = unify(LHSVar, RHS, Mode, Unification, UnifyContext),
             % The unification itself is always pure,
             % even if the lambda expression body is impure.
             DeclaredPurity = goal_info_get_purity(GoalInfo),
@@ -769,9 +778,9 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 PredInfo0 = !.Info ^ pi_pred_info,
                 VarTypes0 = !.Info ^ pi_vartypes,
                 VarSet0 = !.Info ^ pi_varset,
-                post_typecheck.resolve_unify_functor(LHS, ConsId, Args, Mode,
-                    Unification, UnifyContext, GoalInfo, ModuleInfo,
-                    PredInfo0, PredInfo, VarTypes0, VarTypes, VarSet0, VarSet,
+                post_typecheck.resolve_unify_functor(LHSVar, ConsId, Args,
+                    Mode, Unification, UnifyContext, GoalInfo, ModuleInfo,
+                    PredInfo0, PredInfo, VarSet0, VarSet, VarTypes0, VarTypes,
                     Goal1, IsPlainUnify),
                 !Info ^ pi_vartypes := VarTypes,
                 !Info ^ pi_varset := VarSet,
@@ -787,8 +796,10 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 Goal1 = hlds_goal(GoalExpr0, GoalInfo)
             ),
             ( Goal1 = hlds_goal(unify(_, _, _, _, _), _) ->
-                check_higher_order_purity(GoalInfo, ConsId, LHS, Args,
-                    ActualPurity, !Info),
+                check_var_functor_unify_purity(!.Info, GoalInfo,
+                    LHSVar, ConsId, Args, UnifySpecs),
+                purity_info_add_messages(UnifySpecs, !Info),
+                ActualPurity = purity_pure,
                 ContainsTrace = contains_no_trace_goal,
                 Goal = Goal1
             ;
@@ -825,30 +836,85 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
         (
             Reason0 = promise_purity(PromisedPurity),
             compute_goal_purity(SubGoal0, SubGoal, _, ContainsTrace, !Info),
-            Purity = PromisedPurity,
-            Reason = Reason0
+            GoalExpr = scope(Reason0, SubGoal),
+            Purity = PromisedPurity
         ;
             Reason0 = from_ground_term(TermVar, Kind0),
-            % We have not yet classified from_ground_term scopes into
-            % from_ground_term_construct and other kinds, which is a pity,
-            % since from_ground_term_construct scopes do not need purity
-            % checking.
-            % XXX However, from_ground_term scopes *are* guaranteed to be
-            % conjunctions of unifications, and we could take advantage of
-            % that, e.g. by avoiding repeatedly taking the varset and vartypes
-            % out of !Info and just as repeatedly putting it back again.
-            !Info ^ pi_converted_unify := have_not_converted_unify,
-            compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace,
-                !Info),
-            HaveConvertedUnify = !.Info ^ pi_converted_unify,
             (
-                HaveConvertedUnify = have_not_converted_unify,
-                Kind = Kind0
+                ( Kind0 = from_ground_term_initial
+                ; Kind0 = from_ground_term_construct
+                ),
+                SubGoal0 = hlds_goal(SubGoalExpr0, SubGoalInfo0),
+                ( SubGoalExpr0 = conj(plain_conj, SubGoals0Prime) ->
+                    SubGoals0 = SubGoals0Prime
+                ;
+                    unexpected($module, $pred,
+                        "from_ground_term_initial goal is not plain conj")
+                ),
+                PostTypeCheck = !.Info ^ pi_run_post_typecheck,
+                (
+                    PostTypeCheck = run_post_typecheck,
+                    compute_goal_purity_in_fgt_ptc(SubGoals0,
+                        [], RevMarkedSubGoals, purity_pure, Purity,
+                        contains_no_trace_goal, ContainsTrace, !Info,
+                        fgt_invariants_kept, Invariants),
+                    (
+                        Invariants = fgt_invariants_kept,
+                        list.map(project_kept_goal,
+                            RevMarkedSubGoals, RevSubGoals),
+                        list.reverse(RevSubGoals, SubGoals),
+                        SubGoalExpr = conj(plain_conj, SubGoals),
+                        update_purity_ct_in_goal_info(Purity, ContainsTrace,
+                            SubGoalInfo0, SubGoalInfo),
+                        SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo),
+                        GoalExpr = scope(Reason0, SubGoal)
+                    ;
+                        Invariants = fgt_invariants_broken,
+                        (
+                            Kind0 = from_ground_term_initial,
+                            ConstructOrderMarkedSubGoals = RevMarkedSubGoals,
+                            Order = deconstruct_top_down
+                        ;
+                            Kind0 = from_ground_term_construct,
+                            list.reverse(RevMarkedSubGoals,
+                                ConstructOrderMarkedSubGoals),
+                            Order = construct_bottom_up
+                        ),
+                        introduce_partial_fgt_scopes(GoalInfo, SubGoalInfo0,
+                            ConstructOrderMarkedSubGoals, Order, SubGoal),
+                        % Delete the scope wrapper around SubGoal0.
+                        SubGoal = hlds_goal(GoalExpr, _)
+                    )
+                ;
+                    PostTypeCheck = do_not_run_post_typecheck,
+                    GoalExpr = GoalExpr0,
+                    compute_goal_purity_in_fgt_no_ptc(SubGoals0, !.Info,
+                        [], Specs),
+                    purity_info_add_messages(Specs, !Info),
+                    Purity = purity_pure,
+                    ContainsTrace = contains_no_trace_goal
+                )
             ;
-                HaveConvertedUnify = have_converted_unify,
-                Kind = from_ground_term_other
-            ),
-            Reason = from_ground_term(TermVar, Kind)
+                ( Kind0 = from_ground_term_deconstruct
+                ; Kind0 = from_ground_term_other
+                ),
+                !Info ^ pi_converted_unify := have_not_converted_unify,
+                compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace,
+                    !Info),
+                HaveConvertedUnify = !.Info ^ pi_converted_unify,
+                (
+                    HaveConvertedUnify = have_not_converted_unify,
+                    GoalExpr = scope(Reason0, SubGoal)
+                ;
+                    HaveConvertedUnify = have_converted_unify,
+                    % We could delete the scope. However, there may be
+                    % some compiler passes than could benefit from it,
+                    % and I expect we will get here rarely enough that
+                    % what we do here does not matter all that much.
+                    Reason = from_ground_term(TermVar, from_ground_term_other),
+                    GoalExpr = scope(Reason, SubGoal)
+                )
+            )
         ;
             ( Reason0 = promise_solutions(_, _)
             ; Reason0 = require_detism(_)
@@ -859,20 +925,19 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             ),
             compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace,
                 !Info),
-            Reason = Reason0
+            GoalExpr = scope(Reason0, SubGoal)
         ;
             Reason0 = trace_goal(_, _, _, _, _),
             compute_goal_purity(SubGoal0, SubGoal, _SubPurity, _, !Info),
+            GoalExpr = scope(Reason0, SubGoal),
             Purity = purity_pure,
-            ContainsTrace = contains_trace_goal,
-            Reason = Reason0
+            ContainsTrace = contains_trace_goal
         ;
             % Purity checking happens before the introduction of loop control
             % scopes.
             Reason0 = loop_control(_, _, _),
             unexpected($module, $pred, "loop_control")
-        ),
-        GoalExpr = scope(Reason, SubGoal)
+        )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         compute_goal_purity(Cond0, Cond, Purity1, ContainsTrace1, !Info),
@@ -971,6 +1036,123 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
 
 %-----------------------------------------------------------------------------%
 %
+% Auxiliary procedures for handling from_ground_term scopes.
+%
+
+:- pred compute_goal_purity_in_fgt_ptc(list(hlds_goal)::in,
+    list(fgt_marked_goal)::in, list(fgt_marked_goal)::out,
+    purity::in, purity::out, contains_trace_goal::in, contains_trace_goal::out,
+    purity_info::in, purity_info::out,
+    fgt_invariants_status::in, fgt_invariants_status::out) is det.
+
+compute_goal_purity_in_fgt_ptc([], !RevMarkedSubGoals,
+        !Purity, !ContainsTrace, !Info, !Invariants).
+compute_goal_purity_in_fgt_ptc([Goal0 | Goals0], !RevMarkedSubGoals,
+        !Purity, !ContainsTrace, !Info, !Invariants) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    (
+        GoalExpr0 = unify(XVarPrime, Y, ModePrime, UnificationPrime,
+            UnifyContextPrime),
+        Y = rhs_functor(ConsIdPrime, _, YVarsPrime)
+    ->
+        XVar = XVarPrime,
+        Mode = ModePrime,
+        Unification = UnificationPrime,
+        UnifyContext = UnifyContextPrime,
+        ConsId = ConsIdPrime,
+        YVars = YVarsPrime
+    ;
+        unexpected($module, $pred,
+            "from_ground_term_initial conjunct is not functor unify")
+    ),
+    ModuleInfo = !.Info ^ pi_module_info,
+    PredInfo0 = !.Info ^ pi_pred_info,
+    VarTypes0 = !.Info ^ pi_vartypes,
+    VarSet0 = !.Info ^ pi_varset,
+    post_typecheck.resolve_unify_functor(XVar, ConsId, YVars, Mode,
+        Unification, UnifyContext, GoalInfo0, ModuleInfo,
+        PredInfo0, PredInfo, VarSet0, VarSet, VarTypes0, VarTypes,
+        Goal1, IsPlainUnify),
+    Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
+    (
+        IsPlainUnify = is_plain_unify,
+        trace [compiletime(flag("purity_fgt_sanity_tests"))] (
+            ( GoalExpr1 = unify(_, _, _, _, _) ->
+                true
+            ;
+                unexpected($module, $pred, "is_plain_unify goal is not unify")
+            ),
+            expect(unify(PredInfo0, PredInfo),
+                $module, $pred, "PredInfo != PredInfo"),
+            expect(unify(VarSet0, VarSet),
+                $module, $pred, "VarSet != VarSet"),
+            expect(unify(VarTypes0, VarTypes),
+                $module, $pred, "VarTypes != VarTypes")
+        ),
+        check_var_functor_unify_purity(!.Info, GoalInfo0, XVar, ConsId, YVars,
+            UnifySpecs),
+        purity_info_add_messages(UnifySpecs, !Info),
+        % !Purity and !ContainsTrace are unchanged.
+        update_purity_ct_in_goal_info(purity_pure, contains_no_trace_goal,
+            GoalInfo1, GoalInfo),
+        Goal = hlds_goal(GoalExpr1, GoalInfo),
+        % Goal may be different from Goal0 (e.g. it may have the cons_id
+        % module qualified), but if resolve_unify_functor returned
+        % is_plain_unify, then the change does not invalidate
+        % the invariants of from_ground_term_{initial,construct} scopes.
+        MarkedSubGoal = fgt_kept_goal(Goal, XVar, YVars)
+        % !Invariants is unchanged.
+    ;
+        IsPlainUnify = is_not_plain_unify,
+        !Info ^ pi_vartypes := VarTypes,
+        !Info ^ pi_varset := VarSet,
+        !Info ^ pi_pred_info := PredInfo,
+        ( GoalExpr1 = unify(_, _, _, _, _) ->
+            check_var_functor_unify_purity(!.Info, GoalInfo0,
+                XVar, ConsId, YVars, UnifySpecs),
+            purity_info_add_messages(UnifySpecs, !Info),
+            update_purity_ct_in_goal_info(purity_pure, contains_no_trace_goal,
+                GoalInfo1, GoalInfo),
+            Goal = hlds_goal(GoalExpr1, GoalInfo)
+            % !Purity and !ContainsTrace are unchanged.
+        ;
+            compute_goal_purity(Goal1, Goal, GoalPurity, GoalContainsTrace,
+                !Info),
+            !:Purity = worst_purity(GoalPurity, !.Purity),
+            !:ContainsTrace = worst_contains_trace(GoalContainsTrace,
+                !.ContainsTrace)
+        ),
+        MarkedSubGoal = fgt_broken_goal(Goal, XVar, YVars),
+        !:Invariants = fgt_invariants_broken
+    ),
+    !:RevMarkedSubGoals = [MarkedSubGoal | !.RevMarkedSubGoals],
+    compute_goal_purity_in_fgt_ptc(Goals0, !RevMarkedSubGoals,
+        !Purity, !ContainsTrace, !Info, !Invariants).
+
+:- pred compute_goal_purity_in_fgt_no_ptc(list(hlds_goal)::in,
+    purity_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+compute_goal_purity_in_fgt_no_ptc([], _, !Specs).
+compute_goal_purity_in_fgt_no_ptc([Goal0 | Goals0], Info, !Specs) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    (
+        GoalExpr0 = unify(XVarPrime, Y, _, _, _),
+        Y = rhs_functor(ConsIdPrime, _, YVarsPrime)
+    ->
+        XVar = XVarPrime,
+        ConsId = ConsIdPrime,
+        YVars = YVarsPrime
+    ;
+        unexpected($module, $pred,
+            "from_ground_term_initial conjunct is not functor unify")
+    ),
+    check_var_functor_unify_purity(Info, GoalInfo0, XVar, ConsId, YVars,
+        UnifySpecs),
+    !:Specs = UnifySpecs ++ !.Specs,
+    compute_goal_purity_in_fgt_no_ptc(Goals0, Info, !Specs).
+
+%-----------------------------------------------------------------------------%
+%
 % Auxiliary procedures for handling plain calls.
 %
 
@@ -1029,19 +1211,19 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
 
 %-----------------------------------------------------------------------------%
 %
-% Auxiliary procedures for handling higher order calls.
+% Auxiliary procedures for handling unifications.
 %
 
-:- pred check_higher_order_purity(hlds_goal_info::in, cons_id::in,
-    prog_var::in, list(prog_var)::in, purity::out,
-    purity_info::in, purity_info::out) is det.
+:- pred check_var_functor_unify_purity(purity_info::in, hlds_goal_info::in,
+    prog_var::in, cons_id::in, list(prog_var)::in, list(error_spec)::out)
+    is det.
 
-check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
-    % Check that the purity of the ConsId matches the purity of the
-    % variable's type.
-    VarTypes = !.Info ^ pi_vartypes,
+check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
+    % If the unification involves a higher order RHS, check that
+    % the purity of the ConsId matches the purity of the variable's type.
+    VarTypes = Info ^ pi_vartypes,
     map.lookup(VarTypes, Var, TypeOfVar),
-    PredInfo = !.Info ^ pi_pred_info,
+    PredInfo = Info ^ pi_pred_info,
     pred_info_get_markers(PredInfo, CallerMarkers),
     Context = goal_info_get_context(GoalInfo),
     (
@@ -1054,7 +1236,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         pred_info_get_head_type_params(PredInfo, HeadTypeParams),
         map.apply_to_list(Args, VarTypes, ArgTypes0),
         list.append(ArgTypes0, VarArgTypes, PredArgTypes),
-        ModuleInfo = !.Info ^ pi_module_info,
+        ModuleInfo = Info ^ pi_module_info,
         (
             get_pred_id_by_types(calls_are_fully_qualified(CallerMarkers),
                 PName, PredOrFunc, TVarSet, ExistQTVars, PredArgTypes,
@@ -1062,21 +1244,21 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         ->
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_get_purity(CalleePredInfo, CalleePurity),
-            check_closure_purity(GoalInfo, TypePurity, CalleePurity, !Info)
+            check_closure_purity(GoalInfo, TypePurity, CalleePurity,
+                ClosureSpecs)
         ;
             % If we can't find the type of the function, it is because
             % typecheck couldn't give it one. Typechecking gives an error
             % in this case, we just keep silent.
-            true
+            ClosureSpecs = []
         )
     ;
-        true
+        % No closure; no specs.
+        ClosureSpecs = []
     ),
 
     % The unification itself is always pure,
     % even if it is a unification with an impure higher-order term.
-    ActualPurity = purity_pure,
-
     % Check for a bogus purity annotation on the unification.
     DeclaredPurity = goal_info_get_purity(GoalInfo),
     (
@@ -1086,28 +1268,29 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         % Don't warn about bogus purity annotations in compiler-generated
         % mutable predicates.
         ( check_marker(CallerMarkers, marker_mutable_access_pred) ->
-            true
+            Specs = ClosureSpecs
         ;
             Spec = impure_unification_expr_error(Context, DeclaredPurity),
-            purity_info_add_message(Spec, !Info)
+            Specs = [Spec | ClosureSpecs]
         )
     ;
-        DeclaredPurity = purity_pure
+        DeclaredPurity = purity_pure,
+        Specs = ClosureSpecs
     ).
 
 :- pred check_closure_purity(hlds_goal_info::in, purity::in, purity::in,
-    purity_info::in, purity_info::out) is det.
+    list(error_spec)::out) is det.
 
-check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity, !Info) :-
+check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity, Specs) :-
     ( less_pure(ActualPurity, DeclaredPurity) ->
         Context = goal_info_get_context(GoalInfo),
         Spec = report_error_closure_purity(Context,
             DeclaredPurity, ActualPurity),
-        purity_info_add_message(Spec, !Info)
+        Specs = [Spec]
     ;
         % We don't bother to warn if the DeclaredPurity is less pure than the
         % ActualPurity; that would lead to too many spurious warnings.
-        true
+        Specs = []
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1412,8 +1595,23 @@ mismatched_outer_var_types(Context) = Spec :-
 :- pred purity_info_add_message(error_spec::in,
     purity_info::in, purity_info::out) is det.
 
-purity_info_add_message(Spec, Info0, Info) :-
-    Info = Info0 ^ pi_messages := [Spec | Info0 ^ pi_messages].
+purity_info_add_message(Spec, !Info) :-
+    Msgs0 = !.Info ^ pi_messages,
+    Msgs = [Spec | Msgs0],
+    !Info ^ pi_messages := Msgs.
+
+:- pred purity_info_add_messages(list(error_spec)::in,
+    purity_info::in, purity_info::out) is det.
+
+purity_info_add_messages(Specs, !Info) :-
+    (
+        Specs = []
+    ;
+        Specs = [_ | _],
+        Msgs0 = !.Info ^ pi_messages,
+        Msgs = Specs ++ Msgs0,
+        !Info ^ pi_messages := Msgs
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.purity.
