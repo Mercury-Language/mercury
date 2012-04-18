@@ -93,7 +93,7 @@
     ;       deconstruct_top_down.
 
     % introduce_partial_fgt_scopes(GoalInfo0, SubGoalInfo0, RevMarkedSubGoals,
-    %   Kind, SubGoal):
+    %   Order, SubGoal):
     %
     % Thes input to this predicate are:
     %
