@@ -596,31 +596,32 @@ ho_inst_info_used_modules(_, none, !UsedModules).
 :- pred inst_name_used_modules(item_visibility::in, inst_name::in,
     used_modules::in, used_modules::out) is det.
 
-inst_name_used_modules(Visibility, user_inst(Name, Insts), !UsedModules) :-
-    add_sym_name_module(Visibility, Name, !UsedModules),
-    list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules).
-inst_name_used_modules(Visibility, merge_inst(Inst0, Inst), !UsedModules) :-
-    mer_inst_used_modules(Visibility, Inst0, !UsedModules),
-    mer_inst_used_modules(Visibility, Inst, !UsedModules).
-inst_name_used_modules(Visibility, unify_inst(_, Inst0, Inst, _),
-        !UsedModules) :-
-    mer_inst_used_modules(Visibility, Inst0, !UsedModules),
-    mer_inst_used_modules(Visibility, Inst, !UsedModules).
-inst_name_used_modules(Visibility, ground_inst(InstName, _, _, _),
-        !UsedModules) :-
-    inst_name_used_modules(Visibility, InstName, !UsedModules).
-inst_name_used_modules(Visibility, any_inst(InstName, _, _, _),
-        !UsedModules) :-
-    inst_name_used_modules(Visibility, InstName, !UsedModules).
-inst_name_used_modules(Visibility, shared_inst(InstName), !UsedModules) :-
-    inst_name_used_modules(Visibility, InstName, !UsedModules).
-inst_name_used_modules(Visibility, mostly_uniq_inst(InstName), !UsedModules) :-
-    inst_name_used_modules(Visibility, InstName, !UsedModules).
-inst_name_used_modules(Visibility, typed_ground(_, Type), !UsedModules) :-
-    mer_type_used_modules(Visibility, Type, !UsedModules).
-inst_name_used_modules(Visibility, typed_inst(Type, InstName), !UsedModules) :-
-    mer_type_used_modules(Visibility, Type, !UsedModules),
-    inst_name_used_modules(Visibility, InstName, !UsedModules).
+inst_name_used_modules(Visibility, InstName, !UsedModules) :-
+    (
+        InstName = user_inst(Name, Insts),
+        add_sym_name_module(Visibility, Name, !UsedModules),
+        list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules)
+    ;
+        ( InstName = merge_inst(InstA, InstB)
+        ; InstName = unify_inst(_, InstA, InstB, _)
+        ),
+        mer_inst_used_modules(Visibility, InstA, !UsedModules),
+        mer_inst_used_modules(Visibility, InstB, !UsedModules)
+    ;
+        ( InstName = ground_inst(SubInstName, _, _, _)
+        ; InstName = any_inst(SubInstName, _, _, _)
+        ; InstName = shared_inst(SubInstName)
+        ; InstName = mostly_uniq_inst(SubInstName)
+        ),
+        inst_name_used_modules(Visibility, SubInstName, !UsedModules)
+    ;
+        InstName = typed_ground(_, Type),
+        mer_type_used_modules(Visibility, Type, !UsedModules)
+    ;
+        InstName = typed_inst(Type, SubInstName),
+        mer_type_used_modules(Visibility, Type, !UsedModules),
+        inst_name_used_modules(Visibility, SubInstName, !UsedModules)
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
