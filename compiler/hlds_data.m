@@ -1402,23 +1402,23 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
     % together in order to not have to prove the same constraint twice.
     %
 :- type hlds_constraint
-    --->    constraint(
+    --->    hlds_constraint(
                 list(constraint_id),
                 class_name,
                 list(mer_type)
             ).
 
 :- type hlds_constraints
-    --->    constraints(
+    --->    hlds_constraints(
                 % Unproven constraints. These are the constraints that we must
                 % prove (that is, universal constraints from the goal being
                 % checked, or existential constraints on the head).
-                unproven    :: list(hlds_constraint),
+                hcs_unproven    :: list(hlds_constraint),
 
                 % Assumed constraints. These are constraints we can use in
                 % proofs (that is, existential constraints from the goal being
                 % checked, or universal constraints on the head).
-                assumed     :: list(hlds_constraint),
+                hcs_assumed     :: list(hlds_constraint),
 
                 % Constraints that are known to be redundant. This includes
                 % constraints that have already been proved as well as
@@ -1426,10 +1426,10 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
                 % or redundant constraints. Not all such constraints are
                 % included, only those which may be used for the purposes
                 % of improvement.
-                redundant   :: redundant_constraints,
+                hcs_redundant   :: redundant_constraints,
 
                 % Ancestors of assumed constraints.
-                ancestors   :: ancestor_constraints
+                hcs_ancestors   :: ancestor_constraints
             ).
 
     % Redundant constraints are partitioned by class, which helps us
@@ -1544,14 +1544,15 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
 :- implementation.
 
 empty_hlds_constraints(Constraints) :-
-    Constraints = constraints([], [], map.init, map.init).
+    Constraints = hlds_constraints([], [], map.init, map.init).
 
 init_hlds_constraint_list(ProgConstraints, Constraints) :-
     list.map(init_hlds_constraint, ProgConstraints, Constraints).
 
 :- pred init_hlds_constraint(prog_constraint::in, hlds_constraint::out) is det.
 
-init_hlds_constraint(constraint(Name, Types), constraint([], Name, Types)).
+init_hlds_constraint(constraint(Name, Types),
+    hlds_constraint([], Name, Types)).
 
 make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
         Constraints) :-
@@ -1581,7 +1582,7 @@ make_hlds_constraints(ClassTable, TVarSet, Unproven, Assumed, Constraints) :-
         Assumed, Redundant0, Redundant),
     list.foldl(update_ancestor_constraints(ClassTable, TVarSet),
         Assumed, map.init, Ancestors),
-    Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
+    Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
 
 make_hlds_constraint_list(ProgConstraints, ConstraintType, GoalId,
         Constraints) :-
@@ -1597,18 +1598,20 @@ make_hlds_constraint_list_2([ProgConstraint | ProgConstraints], ConstraintType,
         GoalId, N, [HLDSConstraint | HLDSConstraints]) :-
     ProgConstraint = constraint(Name, Types),
     Id = constraint_id(ConstraintType, GoalId, N),
-    HLDSConstraint = constraint([Id], Name, Types),
+    HLDSConstraint = hlds_constraint([Id], Name, Types),
     make_hlds_constraint_list_2(ProgConstraints, ConstraintType, GoalId,
         N + 1, HLDSConstraints).
 
 merge_hlds_constraints(ConstraintsA, ConstraintsB, Constraints) :-
-    ConstraintsA = constraints(UnprovenA, AssumedA, RedundantA, AncestorsA),
-    ConstraintsB = constraints(UnprovenB, AssumedB, RedundantB, AncestorsB),
+    ConstraintsA = hlds_constraints(UnprovenA, AssumedA,
+        RedundantA, AncestorsA),
+    ConstraintsB = hlds_constraints(UnprovenB, AssumedB,
+        RedundantB, AncestorsB),
     list.append(UnprovenA, UnprovenB, Unproven),
     list.append(AssumedA, AssumedB, Assumed),
     map.union(set.union, RedundantA, RedundantB, Redundant),
     map.union(shortest_list, AncestorsA, AncestorsB, Ancestors),
-    Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
+    Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
 
 :- pred shortest_list(list(T)::in, list(T)::in, list(T)::out) is det.
 
@@ -1626,7 +1629,7 @@ is_shorter([_ | As], [_ | Bs]) :-
     is_shorter(As, Bs).
 
 retrieve_prog_constraints(Constraints, ProgConstraints) :-
-    Constraints = constraints(Unproven, Assumed, _, _),
+    Constraints = hlds_constraints(Unproven, Assumed, _, _),
     retrieve_prog_constraint_list(Unproven, UnivProgConstraints),
     retrieve_prog_constraint_list(Assumed, ExistProgConstraints),
     ProgConstraints = constraints(UnivProgConstraints, ExistProgConstraints).
@@ -1635,12 +1638,16 @@ retrieve_prog_constraint_list(Constraints, ProgConstraints) :-
     list.map(retrieve_prog_constraint, Constraints, ProgConstraints).
 
 retrieve_prog_constraint(Constraint, ProgConstraint) :-
-    Constraint = constraint(_, Name, Types),
+    Constraint = hlds_constraint(_, Name, Types),
     ProgConstraint = constraint(Name, Types).
 
-matching_constraints(constraint(_, Name, Types), constraint(_, Name, Types)).
+matching_constraints(ConstraintA, ConstraintB) :-
+    ConstraintA = hlds_constraint(_, Name, Types),
+    ConstraintB = hlds_constraint(_, Name, Types).
 
-compare_hlds_constraints(constraint(_, NA, TA), constraint(_, NB, TB), R) :-
+compare_hlds_constraints(ConstraintA, ConstraintB, R) :-
+    ConstraintA = hlds_constraint(_, NA, TA),
+    ConstraintB = hlds_constraint(_, NB, TB),
     compare(R0, NA, NB),
     (
         R0 = (=),
@@ -1653,7 +1660,7 @@ compare_hlds_constraints(constraint(_, NA, TA), constraint(_, NB, TB), R) :-
     ).
 
 update_constraint_map(Constraint, !ConstraintMap) :-
-    Constraint = constraint(Ids, Name, Types),
+    Constraint = hlds_constraint(Ids, Name, Types),
     ProgConstraint = constraint(Name, Types),
     list.foldl(update_constraint_map_2(ProgConstraint), Ids, !ConstraintMap).
 
@@ -1672,7 +1679,7 @@ update_redundant_constraints(ClassTable, TVarSet, Constraints, !Redundant) :-
     redundant_constraints::out) is det.
 
 update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
-    Constraint = constraint(_, Name, Args),
+    Constraint = hlds_constraint(_, Name, Args),
     list.length(Args, Arity),
     ClassId = class_id(Name, Arity),
     map.lookup(ClassTable, ClassId, ClassDefn),
@@ -1705,7 +1712,7 @@ update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
     redundant_constraints::in, redundant_constraints::out) is det.
 
 add_redundant_constraint(Constraint, !Redundant) :-
-    Constraint = constraint(_, Name, Args),
+    Constraint = hlds_constraint(_, Name, Args),
     list.length(Args, Arity),
     ClassId = class_id(Name, Arity),
     ( map.search(!.Redundant, ClassId, Constraints0) ->

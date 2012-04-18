@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -454,7 +454,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         % eliminated during context reduction, so they need to be put in the
         % constraint map now.
 
-        HLDSTypeConstraints = constraints(HLDSUnivConstraints,
+        HLDSTypeConstraints = hlds_constraints(HLDSUnivConstraints,
             HLDSExistConstraints, _, _),
         list.foldl(update_constraint_map, HLDSUnivConstraints,
             ConstraintMap1, ConstraintMap2),
@@ -894,7 +894,8 @@ type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
 
 write_type_assign_hlds_constraints(Constraints, TypeBindings, TypeVarSet,
         !IO) :-
-    Constraints = constraints(ConstraintsToProve, AssumedConstraints, _, _),
+    Constraints =
+        hlds_constraints(ConstraintsToProve, AssumedConstraints, _, _),
     write_type_assign_constraints("&", AssumedConstraints,
         TypeBindings, TypeVarSet, no, !IO),
     write_type_assign_constraints("<=", ConstraintsToProve,
@@ -905,7 +906,8 @@ write_type_assign_hlds_constraints(Constraints, TypeBindings, TypeVarSet,
 
 type_assign_hlds_constraints_to_pieces(Constraints, TypeBindings, TypeVarSet)
         = Pieces1 ++ Pieces2 :-
-    Constraints = constraints(ConstraintsToProve, AssumedConstraints, _, _),
+    Constraints =
+        hlds_constraints(ConstraintsToProve, AssumedConstraints, _, _),
     PiecesList1 = type_assign_constraints_to_pieces_list("&",
         AssumedConstraints, TypeBindings, TypeVarSet, no),
     PiecesList2 = type_assign_constraints_to_pieces_list("<=",

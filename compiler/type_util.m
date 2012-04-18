@@ -1196,20 +1196,20 @@ maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_constraint(Renaming, !Constraint) :-
-    !.Constraint = constraint(Ids, ClassName, ClassArgTypes0),
+    !.Constraint = hlds_constraint(Ids, ClassName, ClassArgTypes0),
     apply_variable_renaming_to_type_list(Renaming, ClassArgTypes0,
         ClassArgTypes),
-    !:Constraint = constraint(Ids, ClassName, ClassArgTypes).
+    !:Constraint = hlds_constraint(Ids, ClassName, ClassArgTypes).
 
 apply_subst_to_constraint(Subst, !Constraint) :-
-    !.Constraint = constraint(Ids, ClassName, Types0),
+    !.Constraint = hlds_constraint(Ids, ClassName, Types0),
     apply_subst_to_type_list(Subst, Types0, Types),
-    !:Constraint = constraint(Ids, ClassName, Types).
+    !:Constraint = hlds_constraint(Ids, ClassName, Types).
 
 apply_rec_subst_to_constraint(Subst, !Constraint) :-
-    !.Constraint = constraint(Ids, Name, Types0),
+    !.Constraint = hlds_constraint(Ids, Name, Types0),
     apply_rec_subst_to_type_list(Subst, Types0, Types),
-    !:Constraint = constraint(Ids, Name, Types).
+    !:Constraint = hlds_constraint(Ids, Name, Types).
 
 %-----------------------------------------------------------------------------%
 
@@ -1225,7 +1225,8 @@ apply_rec_subst_to_constraint_list(Subst, !Constraints) :-
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
-    !.Constraints = constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
+    !.Constraints = hlds_constraints(Unproven0, Assumed0,
+        Redundant0, Ancestors0),
     apply_variable_renaming_to_constraint_list(Renaming, Unproven0, Unproven),
     apply_variable_renaming_to_constraint_list(Renaming, Assumed0, Assumed),
     Pred = (pred(C0::in, C::out) is det :-
@@ -1241,10 +1242,11 @@ apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
     list.map(apply_variable_renaming_to_prog_constraint_list(Renaming),
         AncestorsValues0, AncestorsValues),
     map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
-    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
 
 apply_subst_to_constraints(Subst, !Constraints) :-
-    !.Constraints = constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
+    !.Constraints = hlds_constraints(Unproven0, Assumed0,
+        Redundant0, Ancestors0),
     apply_subst_to_constraint_list(Subst, Unproven0, Unproven),
     apply_subst_to_constraint_list(Subst, Assumed0, Assumed),
     Pred = (pred(C0::in, C::out) is det :-
@@ -1259,10 +1261,11 @@ apply_subst_to_constraints(Subst, !Constraints) :-
     list.map(apply_subst_to_prog_constraint_list(Subst),
         AncestorsValues0, AncestorsValues),
     map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
-    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
 
 apply_rec_subst_to_constraints(Subst, !Constraints) :-
-    !.Constraints = constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
+    !.Constraints = hlds_constraints(Unproven0, Assumed0,
+        Redundant0, Ancestors0),
     apply_rec_subst_to_constraint_list(Subst, Unproven0, Unproven),
     apply_rec_subst_to_constraint_list(Subst, Assumed0, Assumed),
     Pred = (pred(C0::in, C::out) is det :-
@@ -1278,7 +1281,7 @@ apply_rec_subst_to_constraints(Subst, !Constraints) :-
     list.map(apply_rec_subst_to_prog_constraint_list(Subst),
         AncestorsValues0, AncestorsValues),
     map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
-    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
 
 %-----------------------------------------------------------------------------%
 

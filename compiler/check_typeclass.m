@@ -823,7 +823,7 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
     typeclasses.reduce_context_by_rule_application(ClassTable, InstanceTable,
         ClassVars, TypeSubst, _, InstanceVarSet1, InstanceVarSet2,
         Proofs0, Proofs1, ConstraintMap0, _, Constraints0, Constraints),
-    UnprovenConstraints = Constraints ^ unproven,
+    UnprovenConstraints = Constraints ^ hcs_unproven,
 
     (
         UnprovenConstraints = [],

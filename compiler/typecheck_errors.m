@@ -1394,7 +1394,7 @@ report_unsatisfiable_constraints(Info, TypeAssignSet) = Spec :-
 
 constraints_to_pieces(TypeAssign, Pieces, !NumUnsatisfied) :-
     type_assign_get_typeclass_constraints(TypeAssign, Constraints),
-    UnprovenConstraints = Constraints ^ unproven,
+    UnprovenConstraints = Constraints ^ hcs_unproven,
     retrieve_prog_constraint_list(UnprovenConstraints,
         UnprovenProgConstraints0),
 

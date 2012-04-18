@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009, 2011 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,7 +125,7 @@ perform_context_reduction(!Info) :-
             type_assign_get_typeclass_constraints(TA0, Constraints0),
             type_assign_get_typevarset(TA0, TVarSet),
             make_hlds_constraints(ClassTable, TVarSet, [],
-                Constraints0 ^ assumed, Constraints),
+                Constraints0 ^ hcs_assumed, Constraints),
             type_assign_set_typeclass_constraints(Constraints, TA0, TA)
         ),
         list.map(DeleteConstraints, TypeAssignSet0, TypeAssignSet)
@@ -158,7 +158,7 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
     type_assign_set_constraint_proofs(Proofs, !TypeAssign),
     type_assign_set_constraint_map(ConstraintMap, !TypeAssign),
 
-    ( check_satisfiability(Constraints ^ unproven, HeadTypeParams) ->
+    ( check_satisfiability(Constraints ^ hcs_unproven, HeadTypeParams) ->
         !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
     ;
         % Remember the unsatisfiable type_assign_set so we can produce more
@@ -170,7 +170,7 @@ reduce_context_by_rule_application(ClassTable, InstanceTable, HeadTypeParams,
         !Bindings, !TVarSet, !Proofs, !ConstraintMap, !Constraints) :-
     reduce_context_by_rule_application_2(ClassTable, InstanceTable,
         HeadTypeParams, !Bindings, !TVarSet, !Proofs, !ConstraintMap,
-        !Constraints, !.Constraints ^ unproven, _).
+        !Constraints, !.Constraints ^ hcs_unproven, _).
 
 :- pred reduce_context_by_rule_application_2(class_table::in,
     instance_table::in, head_type_params::in,
@@ -222,10 +222,10 @@ reduce_context_by_rule_application_2(ClassTable, InstanceTable, HeadTypeParams,
 
 sort_and_merge_dups(!Constraints) :-
     % Should we also sort and merge the other fields?
-    Unproven0 = !.Constraints ^ unproven,
+    Unproven0 = !.Constraints ^ hcs_unproven,
     list.sort(compare_hlds_constraints, Unproven0, Unproven1),
     merge_adjacent_constraints(Unproven1, Unproven),
-    !Constraints ^ unproven := Unproven.
+    !Constraints ^ hcs_unproven := Unproven.
 
 :- pred merge_adjacent_constraints(list(hlds_constraint)::in,
     list(hlds_constraint)::out) is det.
@@ -253,10 +253,12 @@ merge_adjacent_constraints_2(C0, [C1 | Cs], Constraints) :-
 :- pred merge_constraints(hlds_constraint::in, hlds_constraint::in,
     hlds_constraint::out) is semidet.
 
-merge_constraints(constraint(IdsA, Name, Types), constraint(IdsB, Name, Types),
-        constraint(Ids, Name, Types)) :-
+merge_constraints(ConstraintA, ConstraintB, Constraint) :-
+    ConstraintA = hlds_constraint(IdsA, Name, Types),
+    ConstraintB = hlds_constraint(IdsB, Name, Types),
     list.append(IdsA, IdsB, Ids0),
-    list.sort_and_remove_dups(Ids0, Ids).
+    list.sort_and_remove_dups(Ids0, Ids),
+    Constraint = hlds_constraint(Ids, Name, Types).
 
 :- pred apply_improvement_rules(class_table::in, instance_table::in,
     head_type_params::in, hlds_constraints::in, tvarset::in, tvarset::out,
@@ -278,7 +280,7 @@ apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams, Constraints,
 
 do_class_improvement(ClassTable, HeadTypeParams, Constraints, !Bindings,
         Changed) :-
-    Redundant = Constraints ^ redundant,
+    Redundant = Constraints ^ hcs_redundant,
     map.keys(Redundant, ClassIds),
     list.foldl2(
         do_class_improvement_2(ClassTable, HeadTypeParams, Redundant),
@@ -299,7 +301,7 @@ do_class_improvement_2(ClassTable, HeadTypeParams, RedundantConstraints,
 
 :- pred has_class_id(class_id::in, hlds_constraint::in) is semidet.
 
-has_class_id(class_id(Name, Arity), constraint(_, Name, Args)) :-
+has_class_id(class_id(Name, Arity), hlds_constraint(_, Name, Args)) :-
     list.length(Args, Arity).
 
     % Try to find an opportunity for improvement for each (unordered)
@@ -350,8 +352,8 @@ do_class_improvement_pair(ConstraintA, ConstraintB, [FunDep | FunDeps],
 
 do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep, HeadTypeParams,
         !Bindings, !Changed) :-
-    ConstraintA = constraint(_, _, TypesA),
-    ConstraintB = constraint(_, _, TypesB),
+    ConstraintA = hlds_constraint(_, _, TypesA),
+    ConstraintB = hlds_constraint(_, _, TypesB),
     FunDep = fundep(Domain, Range),
     (
         % We already know that the name/arity of the constraints match,
@@ -376,7 +378,7 @@ do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep, HeadTypeParams,
 
 do_instance_improvement(ClassTable, InstanceTable, HeadTypeParams, Constraints,
         !TVarSet, !Bindings, Changed) :-
-    RedundantConstraints = Constraints ^ redundant,
+    RedundantConstraints = Constraints ^ hcs_redundant,
     map.keys(RedundantConstraints, ClassIds),
     list.foldl3(
         do_instance_improvement_2(ClassTable, InstanceTable,
@@ -439,7 +441,7 @@ do_instance_improvement_4(FunDeps, InstanceTypes, HeadTypeParams, Constraint,
 
 do_instance_improvement_fundep(Constraint, InstanceTypes0, HeadTypeParams,
         FunDep, !Bindings, !Changed) :-
-    Constraint = constraint(_, _, ConstraintTypes),
+    Constraint = hlds_constraint(_, _, ConstraintTypes),
     FunDep = fundep(Domain, Range),
     (
         % We already know that the name/arity of the constraints match,
@@ -504,10 +506,10 @@ subsumes_on_elements(Elements, TypesA, TypesB, Subst) :-
     hlds_constraints::in, hlds_constraints::out, bool::out) is det.
 
 eliminate_assumed_constraints(!ConstraintMap, !Constraints, Changed) :-
-    !.Constraints = constraints(Unproven0, Assumed, Redundant, Ancestors),
+    !.Constraints = hlds_constraints(Unproven0, Assumed, Redundant, Ancestors),
     eliminate_assumed_constraints_2(Assumed, !ConstraintMap,
         Unproven0, Unproven, Changed),
-    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
 
 :- pred eliminate_assumed_constraints_2(list(hlds_constraint)::in,
     constraint_map::in, constraint_map::out,
@@ -542,11 +544,12 @@ eliminate_assumed_constraints_2(AssumedCs, !ConstraintMap, [C | Cs], NewCs,
 
 apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !ConstraintMap, !Seen, !Constraints, Changed) :-
-    !.Constraints = constraints(Unproven0, Assumed, Redundant0, Ancestors),
+    !.Constraints = hlds_constraints(Unproven0, Assumed,
+        Redundant0, Ancestors),
     apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !ConstraintMap, Redundant0, Redundant, !Seen,
         Unproven0, Unproven, Changed),
-    !:Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
 
 :- pred apply_instance_rules_2(class_table::in, instance_table::in,
     tvarset::in, tvarset::out,
@@ -560,7 +563,7 @@ apply_instance_rules_2(_, _, !TVarSet, !Proofs, !ConstraintMap, !Redundant,
         !Seen, [], [], no).
 apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !ConstraintMap, !Redundant, !Seen, [C | Cs], Constraints, Changed) :-
-    C = constraint(_, ClassName, Types),
+    C = hlds_constraint(_, ClassName, Types),
     list.length(Types, Arity),
     map.lookup(InstanceTable, class_id(ClassName, Arity), Instances),
     InitialTVarSet = !.TVarSet,
@@ -626,7 +629,7 @@ find_matching_instance_rule(Instances, Constraint, !TVarSet, !Proofs,
 
 find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
         !TVarSet, !Proofs, NewConstraints) :-
-    Constraint = constraint(_Ids, _Name, Types),
+    Constraint = hlds_constraint(_Ids, _Name, Types),
     ProgConstraints0 = Instance ^ instance_constraints,
     InstanceTypes0 = Instance ^ instance_types,
     InstanceTVarSet = Instance ^ instance_tvarset,
@@ -661,10 +664,10 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
     hlds_constraints::in, hlds_constraints::out, bool::out) is det.
 
 apply_class_rules(!Proofs, !ConstraintMap, !Constraints, Changed) :-
-    !.Constraints = constraints(Unproven0, _, _, Ancestors),
+    !.Constraints = hlds_constraints(Unproven0, _, _, Ancestors),
     apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
         Unproven0, Unproven, Changed),
-    !Constraints ^ unproven := Unproven.
+    !Constraints ^ hcs_unproven := Unproven.
 
 :- pred apply_class_rules_2(ancestor_constraints::in,
     constraint_proof_map::in, constraint_proof_map::out,
@@ -733,7 +736,7 @@ check_satisfiability(Constraints, HeadTypeParams) :-
         list.member(Constraint, Constraints)
     =>
         (
-            Constraint = constraint(_Ids, _ClassName, Types),
+            Constraint = hlds_constraint(_Ids, _ClassName, Types),
             type_list_contains_var(Types, TVar),
             not list.member(TVar, HeadTypeParams)
         )
