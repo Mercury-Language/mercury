@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -336,7 +336,7 @@
     --->    src(
                 input_length        ::  int,
                 input_string        ::  string,
-                skip_ws_func        ::  func(src, ps) = maybe(ps),
+                skip_ws_pred        ::  skip_whitespace_pred,
 
                 furthest_offset     ::  mutvar(int),
                 % This mutable records the progress of the parser
@@ -399,17 +399,7 @@ new_src_and_ps(InputString, SkipWS, Src, PS) :-
     promise_pure (
         impure new_mutvar(fail_message_info(0, no), ErrorInfoMutVar),
         impure new_mutvar(0, FurthestOffsetMutvar),
-        % Convert the skip whitespace predicate to a function to
-        % avoid having to use a inst other than ground for src.
-        SkipWSFunc =
-            ( func(S, PS0) = MaybePS :-
-                ( SkipWS(S, _, PS0, PS1) ->
-                    MaybePS = yes(PS1)
-                ;
-                    MaybePS = no
-                )
-            ),
-        Src = src(string.length(InputString), InputString, SkipWSFunc,
+        Src = src(string.length(InputString), InputString, SkipWS,
             FurthestOffsetMutvar, ErrorInfoMutVar),
         PS = 0
     ).
@@ -419,8 +409,40 @@ new_src_and_ps(InputString, SkipWS, Src, PS) :-
 :- pred skip_whitespace(src::in, ps::in, ps::out) is semidet.
 
 skip_whitespace(Src, PS0, PS) :-
-    SkipWS = Src ^ skip_ws_func,
-    yes(PS) = SkipWS(Src, PS0).
+    SkipWS0 = Src ^ skip_ws_pred,
+    unsafe_skip_ws_pred_cast(SkipWS0, SkipWS),
+    SkipWS(Src, _, PS0, PS).
+
+:- pred unsafe_skip_ws_pred_cast(skip_whitespace_pred::in,
+    skip_whitespace_pred::out(parser)) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_skip_ws_pred_cast(SkipWS0::in, SkipWS::out(parser)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SkipWS = SkipWS0;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_skip_ws_pred_cast(SkipWS0::in, SkipWS::out(parser)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SkipWS = SkipWS0;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_skip_ws_pred_cast(SkipWS0::in, SkipWS::out(parser)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SkipWS = SkipWS0;
+").
+
+:- pragma foreign_proc("Erlang",
+    unsafe_skip_ws_pred_cast(SkipWS0::in, SkipWS::out(parser)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SkipWS = SkipWS0
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -6300,6 +6300,20 @@ MR_Unsigned mercury_current_text_output_index;
 MR_Unsigned mercury_current_binary_input_index;
 MR_Unsigned mercury_current_binary_output_index;
 
+static void
+mercury_set_binary_mode(FILE *f)
+{
+#if defined(MR_MSVC) || defined(MR_MINGW)
+    /*
+    ** Calling fdopen with 'b' in the mode string does not necessarily put the
+    ** standard input or standard output file into binary translation mode on
+    ** Windows. This is the case with MinGW and MSVC. The cause is likely the
+    ** MSVC CRT. The solution is to change the mode on the file after opening.
+    */
+    _setmode(_fileno(f), _O_BINARY);
+#endif
+}
+
 void
 mercury_init_io(void)
 {
@@ -6318,7 +6332,9 @@ mercury_init_io(void)
 #if defined(MR_HAVE_FDOPEN) && (defined(MR_HAVE_FILENO) || defined(fileno)) && \
         defined(MR_HAVE_DUP)
     MR_file(mercury_stdin_binary) = fdopen(dup(fileno(stdin)), ""rb"");
-    if (MR_file(mercury_stdin_binary) == NULL) {
+    if (MR_file(mercury_stdin_binary) != NULL) {
+        mercury_set_binary_mode(MR_file(mercury_stdin_binary));
+    } else {
         /*
         ** The call to fdopen() may fail if stdin is not available.
         ** We don't abort since we still want Mercury programs to be runnable
@@ -6335,7 +6351,9 @@ mercury_init_io(void)
     }
 
     MR_file(mercury_stdout_binary) = fdopen(dup(fileno(stdout)), ""wb"");
-    if (MR_file(mercury_stdout_binary) == NULL) {
+    if (MR_file(mercury_stdout_binary) != NULL) {
+        mercury_set_binary_mode(MR_file(mercury_stdout_binary));
+    } else {
         MR_file(mercury_stdout_binary) = stdout;
     }
 #else

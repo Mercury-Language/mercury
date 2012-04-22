@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2005, 2007, 2011 The University of Melbourne.
+** Copyright (C) 1995-2005, 2007, 2011-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -341,33 +341,42 @@ MR_String MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...);
 ** If `*pos' is already at the end of the string then return MR_FALSE
 ** without modifying `*pos'.
 */
-extern MR_bool  MR_utf8_next(const MR_String s_, int *pos);
+extern MR_bool  MR_utf8_next(const MR_String s_, MR_Integer *pos);
 
 /*
 ** Rewind `*pos' to the beginning of the previous code point in `s'.
 ** If `*pos' is already at the beginning of the string then return MR_FALSE
 ** without modifying `*pos'.
 */
-extern MR_bool  MR_utf8_prev(const MR_String s_, int *pos);
+extern MR_bool  MR_utf8_prev(const MR_String s_, MR_Integer *pos);
 
 /*
 ** Decode and return the code point beginning at `pos' in `s'.
 ** Return 0 if at the end of the string (i.e. the NUL terminator).
 ** If an illegal code sequence exists at that offset, return -2.
+**
+** The _mb version requires s[pos] to be the lead byte of a multibyte code
+** point.
 */
-extern MR_int_least32_t MR_utf8_get(const MR_String s, int pos);
+extern MR_int_least32_t MR_utf8_get(const MR_String s, MR_Integer pos);
+extern MR_int_least32_t MR_utf8_get_mb(const MR_String s, MR_Integer pos,
+    int *width);
 
 /*
 ** Decode the code point beginning at `pos' in `s', and advance `*pos'.
+** The _mb version requires s[pos] to be the lead byte of a multibyte code
+** point.
 */
-extern MR_int_least32_t MR_utf8_get_next(const MR_String s, int *pos);
+extern MR_int_least32_t MR_utf8_get_next(const MR_String s, MR_Integer *pos);
+extern MR_int_least32_t MR_utf8_get_next_mb(const MR_String s,
+    MR_Integer *pos);
 
 /*
 ** Rewind `*pos' to the beginning of the previous code point in `s'
 ** and return that code code.
 ** Return -1 if `*pos' is already at the beginning of the string.
 */
-extern MR_int_least32_t MR_utf8_prev_get(const MR_String s, int *pos);
+extern MR_int_least32_t MR_utf8_prev_get(const MR_String s, MR_Integer *pos);
 
 /*
 ** Return the number of bytes required to encode the code point `c' in UTF-8.

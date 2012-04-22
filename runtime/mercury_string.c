@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2000-2002, 2006, 2011 The University of Melbourne.
+** Copyright (C) 2000-2002, 2006, 2011-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -126,20 +126,18 @@ MR_hash_string3(MR_ConstString s)
 }
 
 MR_bool
-MR_utf8_next(const MR_String s_, int *pos)
+MR_utf8_next(const MR_String s_, MR_Integer *pos)
 {
     const unsigned char *s = (const unsigned char *)s_;
     int c;
 
-    if (*pos == '\0') {
+    if (s[*pos] == '\0') {
+        /* End of string. */
         return MR_FALSE;
     }
 
     for (;;) {
         ++(*pos);
-        if (*pos == '\0') {
-            break;
-        }
         c = s[*pos];
         if (MR_utf8_is_single_byte(c) || MR_utf8_is_lead_byte(c)) {
             break;
@@ -150,41 +148,48 @@ MR_utf8_next(const MR_String s_, int *pos)
 }
 
 MR_bool
-MR_utf8_prev(const MR_String s_, int *pos)
+MR_utf8_prev(const MR_String s_, MR_Integer *pos)
 {
     const unsigned char *s = (const unsigned char *)s_;
     int c;
-
-    if (*pos <= 0) {
-        return MR_FALSE;
-    }
 
     while (*pos > 0) {
         (*pos)--;
         c = s[*pos];
         if (MR_utf8_is_single_byte(c) || MR_utf8_is_lead_byte(c)) {
-            break;
+            return MR_TRUE;
         }
     }
 
-    return MR_TRUE;
+    return MR_FALSE;
 }
 
 MR_int_least32_t
-MR_utf8_get(const MR_String s_, int pos)
+MR_utf8_get(const MR_String s_, MR_Integer pos)
 {
     const unsigned char *s = (const unsigned char *)s_;
     int c;
-    int remain;
+    int width;
+
+    c = s[pos];
+    if (MR_is_ascii(c)) {
+        return c;
+    } else {
+        return MR_utf8_get_mb(s_, pos, &width);
+    }
+}
+
+MR_int_least32_t
+MR_utf8_get_mb(const MR_String s_, MR_Integer pos, int *width)
+{
+    const unsigned char *s = (const unsigned char *)s_;
+    int c;
+    int d;
     int minc;
-    int i;
 
     c = s[pos];
 
-    if (c <= 0x7F) {
-        /* Plain ASCII (including NUL terminator). */
-        return c;
-    }
+    /* c <= 0x7f (ASCII) must be handled before calling this function. */
 
     if (c <= 0xC1) {
         /* Trailing byte of multi-byte sequence or an overlong encoding for
@@ -196,19 +201,19 @@ MR_utf8_get(const MR_String s_, int pos)
     if (c <= 0xDF) {
         /* 2-byte sequence. */
         c &= 0x1F;
-        remain = 1;
+        *width = 2;
         minc = 0x80;
     }
     else if (c <= 0xEF) {
         /* 3-byte sequence. */
         c &= 0x0F;
-        remain = 2;
+        *width = 3;
         minc = 0x800;
     }
     else if (c <= 0xF4) {
         /* 4-byte sequence. */
         c &= 0x07;
-        remain = 3;
+        *width = 4;
         minc = 0x10000;
     }
     else {
@@ -216,24 +221,32 @@ MR_utf8_get(const MR_String s_, int pos)
         return -2;
     }
 
-    for (i = 1; i <= remain; i++) {
-        if (s[pos + i] == '\0') {
-            return -2;
-        }
-    }
-
-    while (remain--) {
-        int d = s[++pos];
-
-        if (!MR_utf8_is_trail_byte(d)) {
-            return -2;
-        }
-
-        c = (c << 6) | (d & 0x3F);
+    switch (*width) {
+        case 4:
+            d = s[++pos];
+            if (!MR_utf8_is_trail_byte(d)) {
+                return -2;
+            }
+            c = (c << 6) | (d & 0x3F);
+            /* fall through */
+        case 3:
+            d = s[++pos];
+            if (!MR_utf8_is_trail_byte(d)) {
+                return -2;
+            }
+            c = (c << 6) | (d & 0x3F);
+            /* fall through */
+        case 2:
+            d = s[++pos];
+            if (!MR_utf8_is_trail_byte(d)) {
+                return -2;
+            }
+            c = (c << 6) | (d & 0x3F);
+            break;
     }
 
     /* Check for overlong forms, which could be used to bypass security
-     * validations.  We could also check code points aren't above U+10FFFF or in
+     * validations. We could also check code points aren't above U+10FFFF or in
      * the surrogate ranges, but we don't.
      */
 
@@ -245,12 +258,28 @@ MR_utf8_get(const MR_String s_, int pos)
 }
 
 MR_int_least32_t
-MR_utf8_get_next(const MR_String s, int *pos)
+MR_utf8_get_next(const MR_String s, MR_Integer *pos)
 {
-    int c = MR_utf8_get(s, *pos);
+    int c;
 
+    c = s[*pos];
+    if (MR_is_ascii(c)) {
+        (*pos)++;
+        return c;
+    }
+
+    return MR_utf8_get_next_mb(s, pos);
+}
+
+MR_int_least32_t
+MR_utf8_get_next_mb(const MR_String s, MR_Integer *pos)
+{
+    int c, width;
+
+    c = MR_utf8_get_mb(s, *pos, &width);
     if (c >= 0) {
-        (*pos) += MR_utf8_width(c);
+        /* Multibyte code point. */
+        (*pos) += width;
         return c;
     }
 
@@ -260,10 +289,17 @@ MR_utf8_get_next(const MR_String s, int *pos)
 }
 
 MR_int_least32_t
-MR_utf8_prev_get(const MR_String s, int *pos)
+MR_utf8_prev_get(const MR_String s, MR_Integer *pos)
 {
+    int c, width;
+
     if (MR_utf8_prev(s, pos)) {
-        return MR_utf8_get(s, *pos);
+        c = s[*pos];
+        if (MR_is_ascii(c)) {
+            return c;
+        } else {
+            return MR_utf8_get_mb(s, *pos, &width);
+        }
     }
 
     /* Past beginning. */
@@ -336,7 +372,7 @@ MR_utf8_encode(char s_[], MR_Char c)
 MR_bool
 MR_utf8_verify(const MR_String s)
 {
-    int pos = 0;
+    MR_Integer pos = 0;
 
     for (;;) {
         MR_int_least32_t c;
