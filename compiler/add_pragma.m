@@ -3608,60 +3608,73 @@ match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
     map(inst_var, inst_var)::out) is semidet.
 
 match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
-    InstA = any(Uniq, HOInstInfoA),
-    InstB = any(Uniq, HOInstInfoB),
-    match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
-        Renaming).
-match_insts_with_renaming(_, free, free, map.init).
-match_insts_with_renaming(_, free(Type), free(Type), map.init).
-match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
-    InstA = bound(Uniq, BoundInstsA),
-    InstB = bound(Uniq, BoundInstsB),
-    match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
-        BoundInstsA, BoundInstsB, map.init, Renaming).
-match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
-    InstA = ground(Uniq, HOInstInfoA),
-    InstB = ground(Uniq, HOInstInfoB),
-    match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
-        Renaming).
-match_insts_with_renaming(_, not_reached, not_reached, map.init).
-match_insts_with_renaming(_, inst_var(VarA), inst_var(VarB), Subst) :-
-    map.insert(VarA, VarB, map.init, Subst).
-match_insts_with_renaming(ModuleInfo, InstA, InstB, Subst) :-
-    InstA = constrained_inst_vars(InstVarSetA, SpecInstA),
-    InstB = constrained_inst_vars(InstVarSetB, SpecInstB),
-    %
-    % We'll deal with the specified inst first.
-    %
-    match_insts_with_renaming(ModuleInfo, SpecInstA, SpecInstB,
-        Subst0),
-    ListVarA = set.to_sorted_list(InstVarSetA),
-    ListVarB = set.to_sorted_list(InstVarSetB),
     (
-        ListVarA = [VarA0], ListVarB = [VarB0]
-    ->
-        VarA = VarA0,
-        VarB = VarB0
+        InstA = not_reached,
+        InstB = not_reached,
+        map.init(Renaming)
     ;
-        unexpected($module, $pred, "non-singleton sets")
-    ),
-    ( map.search(Subst0, VarA, SpecVarB) ->
-        % If VarA was already in the renaming then check that it's consistent
-        % with the renaming from the set of inst vars.
-        VarB = SpecVarB,
-        Subst = Subst0
+        InstA = free,
+        InstB = free,
+        map.init(Renaming)
     ;
-        map.insert(VarA, VarB, Subst0, Subst)
+        InstA = free(Type),
+        InstB = free(Type),
+        map.init(Renaming)
+    ;
+        InstA = any(Uniq, HOInstInfoA),
+        InstB = any(Uniq, HOInstInfoB),
+        match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
+            Renaming)
+    ;
+        InstA = ground(Uniq, HOInstInfoA),
+        InstB = ground(Uniq, HOInstInfoB),
+        match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
+            Renaming)
+    ;
+        InstA = bound(Uniq, _, BoundInstsA),
+        InstB = bound(Uniq, _, BoundInstsB),
+        match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
+            BoundInstsA, BoundInstsB, map.init, Renaming)
+    ;
+        InstA = inst_var(VarA),
+        InstB = inst_var(VarB),
+        Renaming = map.singleton(VarA, VarB)
+    ;
+        InstA = constrained_inst_vars(InstVarSetA, SpecInstA),
+        InstB = constrained_inst_vars(InstVarSetB, SpecInstB),
+
+        % We will deal with the specified inst first.
+        match_insts_with_renaming(ModuleInfo, SpecInstA, SpecInstB, Renaming0),
+        ListVarA = set.to_sorted_list(InstVarSetA),
+        ListVarB = set.to_sorted_list(InstVarSetB),
+        (
+            ListVarA = [VarA0],
+            ListVarB = [VarB0]
+        ->
+            VarA = VarA0,
+            VarB = VarB0
+        ;
+            unexpected($module, $pred, "non-singleton sets")
+        ),
+        ( map.search(Renaming0, VarA, SpecVarB) ->
+            % If VarA was already in the renaming then check that it is
+            % consistent with the renaming from the set of inst vars.
+            VarB = SpecVarB,
+            Renaming = Renaming0
+        ;
+            map.insert(VarA, VarB, Renaming0, Renaming)
+        )
+    ;
+        InstA = defined_inst(InstNameA),
+        InstB = defined_inst(InstNameB),
+        match_inst_names_with_renaming(ModuleInfo, InstNameA, InstNameB,
+            Renaming)
+    ;
+        InstA = abstract_inst(Name, ArgsA),
+        InstB = abstract_inst(Name, ArgsB),
+        match_corresponding_inst_lists_with_renaming(ModuleInfo, ArgsA, ArgsB,
+            map.init, Renaming)
     ).
-match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
-    InstA = defined_inst(InstNameA),
-    InstB = defined_inst(InstNameB),
-    match_inst_names_with_renaming(ModuleInfo, InstNameA, InstNameB, Renaming).
-match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
-    InstA = abstract_inst(Name, ArgsA),
-    InstB = abstract_inst(Name, ArgsB),
-    match_corresponding_inst_lists_with_renaming(ModuleInfo, ArgsA, ArgsB,
-        map.init, Renaming).
 
 :- pred match_ho_inst_infos_with_renaming(module_info::in, ho_inst_info::in,
     ho_inst_info::in, map(inst_var, inst_var)::out) is semidet.

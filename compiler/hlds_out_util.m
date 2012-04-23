@@ -56,6 +56,12 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type output_lang
+    --->    output_mercury
+    ;       output_debug.
+
+%-----------------------------------------------------------------------------%
+
 :- pred write_type_ctor(type_ctor::in, io::di, io::uo) is det.
 :- func type_ctor_to_string(type_ctor) = string.
 

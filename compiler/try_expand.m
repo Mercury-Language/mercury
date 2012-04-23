@@ -927,7 +927,7 @@ make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
         ArgInst \= ground(_, none)
     ->
         TupleArity = list.length(TupleArgInsts),
-        TupleInst = bound(shared, [
+        TupleInst = bound(shared, inst_test_no_results, [
             bound_functor(tuple_cons(TupleArity), TupleArgInsts)
         ]),
         generate_cast_with_insts(unsafe_type_inst_cast, TmpTupleVar, TupleVar,

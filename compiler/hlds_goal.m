@@ -3618,7 +3618,7 @@ make_char_const_construction(Var, Char, Goal) :-
 
 make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
     RHS = rhs_functor(ConsId, no, []),
-    Inst = bound(unique, [bound_functor(ConsId, [])]),
+    Inst = bound(unique, inst_test_results_fgtc, [bound_functor(ConsId, [])]),
     Mode = (free -> Inst) - (Inst -> Inst),
     Unification = construct(Var, ConsId, [], [],
         construct_dynamically, cell_is_unique, no_construct_sub_info),

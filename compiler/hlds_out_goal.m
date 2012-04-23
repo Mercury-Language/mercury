@@ -1221,7 +1221,7 @@ write_functor_and_submodes(Info, ConsId, ArgVars, ArgModes, _ModuleInfo,
                 write_indent(Indent, !IO),
                 io.write_string("% arg-modes\n", !IO),
                 mercury_output_structured_uni_mode_list(ArgModes, Indent,
-                    do_incl_addr, InstVarSet, !IO)
+                    output_debug, do_incl_addr, InstVarSet, !IO)
             ;
                 write_indent(Indent, !IO),
                 io.write_string("% arg-modes ", !IO),

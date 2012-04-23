@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -565,42 +565,65 @@ pred_mode_documentation(_C, _ProcId, ProcInfo, !Xml) :-
 
 :- func mer_mode(inst_varset, mer_mode) = xml.
 
-mer_mode(IVarset, A -> B) = Xml :-
-    XmlFrom = xml_list("from", mer_inst(IVarset), [A]),
-    XmlTo = xml_list("to", mer_inst(IVarset), [B]),
-    Xml = elem("inst_to_inst", [], [XmlFrom, XmlTo]).
-mer_mode(IVarset, user_defined_mode(Name, Args)) = Xml :-
-    Ref = attr("ref", sym_name_and_arity_to_id("mode", Name, length(Args))),
-    XmlArgs = xml_list("mode_args", mer_inst(IVarset), Args),
-    Xml = elem("user_defined_mode", [Ref], [name(Name), XmlArgs]).
+mer_mode(InstVarSet, Mode) = Xml :-
+    (
+        Mode = (A -> B),
+        XmlFrom = xml_list("from", mer_inst(InstVarSet), [A]),
+        XmlTo = xml_list("to", mer_inst(InstVarSet), [B]),
+        Xml = elem("inst_to_inst", [], [XmlFrom, XmlTo])
+    ;
+        Mode = user_defined_mode(Name, Args),
+        Ref = attr("ref", sym_name_and_arity_to_id("mode", Name, length(Args))),
+        XmlArgs = xml_list("mode_args", mer_inst(InstVarSet), Args),
+        Xml = elem("user_defined_mode", [Ref], [name(Name), XmlArgs])
+    ).
 
 :- func mer_inst(inst_varset, mer_inst) = xml.
 
-mer_inst(_, any(U, _)) = elem("any", [], [uniqueness(U)]).
-mer_inst(_, free) = elem("free", [], []).
-mer_inst(_, free(_)) = elem("free", [], []).
-mer_inst(IVarset, bound(U, BoundInsts)) = Xml :-
-    XmlUniq = uniqueness(U),
-    XmlInsts = xml_list("bound_insts", bound_inst(IVarset), BoundInsts),
-    Xml = elem("bound", [], [XmlUniq, XmlInsts]).
-mer_inst(_, ground(U, _)) = elem("ground", [], [uniqueness(U)]).
-mer_inst(_, not_reached) = elem("not_reached", [], []).
-mer_inst(IVarset, inst_var(IVar)) = Xml :-
-    IVarName = varset.lookup_name(IVarset, IVar),
-    Xml = tagged_string("inst_var", IVarName).
-mer_inst(IVarSet, constrained_inst_vars(_, Inst)) = mer_inst(IVarSet, Inst).
-mer_inst(IVarset, defined_inst(Name)) = Xml :-
-    XmlName = inst_name(IVarset, Name),
-    Xml = elem("defined_inst", [], [XmlName]).
-mer_inst(IVarset, abstract_inst(SymName, Insts)) =
-    mer_inst(IVarset, defined_inst(user_inst(SymName, Insts))).
+mer_inst(InstVarSet, Inst) = Xml :-
+    (
+        Inst = free,
+        Xml = elem("free", [], [])
+    ;
+        Inst = free(_),
+        Xml = elem("free", [], [])
+    ;
+        Inst = bound(U, _, BoundInsts),
+        XmlUniq = uniqueness(U),
+        XmlInsts = xml_list("bound_insts", bound_inst(InstVarSet), BoundInsts),
+        Xml = elem("bound", [], [XmlUniq, XmlInsts])
+    ;
+        Inst = ground(U, _),
+        Xml = elem("ground", [], [uniqueness(U)])
+    ;
+        Inst = any(U, _),
+        Xml = elem("any", [], [uniqueness(U)])
+    ;
+        Inst = not_reached,
+        Xml = elem("not_reached", [], [])
+    ;
+        Inst = inst_var(InstVar),
+        InstVarName = varset.lookup_name(InstVarSet, InstVar),
+        Xml = tagged_string("inst_var", InstVarName)
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        % XXX We do we ignore the constraint?
+        Xml = mer_inst(InstVarSet, SubInst)
+    ;
+        Inst = defined_inst(Name),
+        XmlName = inst_name(InstVarSet, Name),
+        Xml = elem("defined_inst", [], [XmlName])
+    ;
+        Inst = abstract_inst(SymName, ArgInsts),
+        Xml = mer_inst(InstVarSet, defined_inst(user_inst(SymName, ArgInsts)))
+    ).
 
 :- func inst_name(inst_varset, inst_name) = xml.
 
-inst_name(IVarset, user_inst(Name, Insts)) = Xml :-
+inst_name(InstVarSet, user_inst(Name, Insts)) = Xml :-
     Ref = attr("ref", sym_name_and_arity_to_id("inst", Name, length(Insts))),
     XmlName = name(Name),
-    XmlInsts = xml_list("inst_args", mer_inst(IVarset), Insts),
+    XmlInsts = xml_list("inst_args", mer_inst(InstVarSet), Insts),
     Xml = elem("user_inst", [Ref], [XmlName, XmlInsts]).
 inst_name(_, merge_inst(_, _)) = nyi("merge_inst").
 inst_name(_, unify_inst(_, _, _, _)) = nyi("unify_inst").
@@ -617,9 +640,9 @@ uniqueness(U) = tagged_string("uniqueness", string(U)).
 
 :- func bound_inst(inst_varset, bound_inst) = xml.
 
-bound_inst(IVarset, bound_functor(ConsId, Insts)) = Xml :-
+bound_inst(InstVarSet, bound_functor(ConsId, Insts)) = Xml :-
     XmlCons = cons_id(ConsId),
-    XmlInsts = xml_list("insts", mer_inst(IVarset), Insts),
+    XmlInsts = xml_list("insts", mer_inst(InstVarSet), Insts),
     Xml = elem("bound_functor", [], [XmlCons, XmlInsts]).
 
 :- func cons_id(cons_id) = xml.

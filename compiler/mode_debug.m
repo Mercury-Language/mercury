@@ -39,6 +39,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_mode.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
 :- import_module parse_tree.mercury_to_mercury.
@@ -149,8 +150,8 @@ write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
         ;
             Minimal = no,
             io.write_string("\n", !IO),
-            mercury_output_structured_inst(Inst, 2, do_not_incl_addr,
-                InstVarSet, !IO)
+            mercury_output_structured_inst(Inst, 2,
+                output_debug, do_not_incl_addr, InstVarSet, !IO)
         )
     ),
     write_var_insts(VarInsts, OldInstMap, VarSet, InstVarSet,

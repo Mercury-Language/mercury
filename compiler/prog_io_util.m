@@ -823,8 +823,7 @@ standard_det("failure",   detism_failure).
 :- pred parse_bound_inst_list(allow_constrained_inst_var::in, term::in,
     uniqueness::in, mer_inst::out) is semidet.
 
-parse_bound_inst_list(AllowConstrainedInstVar, Disj, Uniqueness,
-        bound(Uniqueness, Functors)) :-
+parse_bound_inst_list(AllowConstrainedInstVar, Disj, Uniqueness, Inst) :-
     disjunction_to_list(Disj, List),
     convert_bound_inst_list(AllowConstrainedInstVar, List, Functors0),
     list.sort(Functors0, Functors),
@@ -834,7 +833,8 @@ parse_bound_inst_list(AllowConstrainedInstVar, Disj, Uniqueness,
         SubList = [F1, F2 | _],
         F1 = bound_functor(ConsId, _),
         F2 = bound_functor(ConsId, _)
-    ).
+    ),
+    Inst = bound(Uniqueness, inst_test_no_results, Functors).
 
 :- pred convert_bound_inst_list(allow_constrained_inst_var::in, list(term)::in,
     list(bound_inst)::out) is semidet.

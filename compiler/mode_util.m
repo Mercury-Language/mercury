@@ -156,15 +156,13 @@
     % Convert a list of constructors to a list of bound_insts where the
     % arguments are `any'.
     %
-    % NOTE: the list(bound_inst) is not sorted and may contain
-    %       duplicates.
+    % NOTE: the list(bound_inst) is not sorted and may contain duplicates.
     %
 :- pred constructors_to_bound_any_insts(module_info::in, uniqueness::in,
     type_ctor::in, list(constructor)::in, list(bound_inst)::out) is det.
 
     % Given the mode of a predicate, work out which arguments are live
-    % (might be used again by the caller of that predicate) and which
-    % are dead.
+    % (might be used again by the caller of that predicate) and which are dead.
     %
 :- pred get_arg_lives(module_info::in, list(mer_mode)::in, list(is_live)::out)
     is det.
@@ -374,6 +372,7 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
     mer_inst::out) is det.
 
 get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
+    % XXX This is very similar to get_arg_insts in prog_mode.
     (
         Inst = defined_inst(InstName),
         inst_lookup(ModuleInfo, InstName, NamedInst),
@@ -385,7 +384,7 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         Inst = ground(Uniq, _PredInst),
         ArgInst = ground(Uniq, none)
     ;
-        Inst = bound(_Uniq, List),
+        Inst = bound(_Uniq, _InstResult, List),
         ( get_single_arg_inst_2(List, ConsId, ArgInst0) ->
             ArgInst = ArgInst0
         ;
@@ -628,52 +627,12 @@ propagate_type_into_inst_lazily(ModuleInfo, Subst, Type, Inst0, Inst) :-
 
 propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
     (
-        Inst0 = any(Uniq, none),
-        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
-            default_higher_order_func_inst(ModuleInfo, ArgTypes, PredInstInfo),
-            Inst = any(Uniq, higher_order(PredInstInfo))
-        ;
-            type_to_ctor_det(Type, TypeCtor),
-            constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor,
-                Constructors, BoundInsts0),
-            list.sort_and_remove_dups(BoundInsts0, BoundInsts),
-            Inst = bound(Uniq, BoundInsts)
-        )
-    ;
-        Inst0 = any(Uniq, higher_order(PredInstInfo0)),
-        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
-        (
-            type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
-            list.same_length(ArgTypes, Modes0)
-        ->
-            propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
-        ;
-            % The inst is not a valid inst for the type, so leave it alone.
-            % This can only happen if the user has made a mistake.  A mode
-            % error should hopefully be reported if anything tries to match
-            % with the inst.
-            Modes = Modes0
-        ),
-        PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
-        Inst = any(Uniq, higher_order(PredInstInfo))
-    ;
         Inst0 = free,
         % Inst = free(Type)
         Inst = free             % XXX temporary hack
     ;
         Inst0 = free(_),
         unexpected($module, $pred, "type info already present")
-    ;
-        Inst0 = bound(Uniq, BoundInsts0),
-        propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts),
-        (
-            BoundInsts = [],
-            Inst = not_reached
-        ;
-            BoundInsts = [_ | _],
-            % XXX do we need to sort the BoundInsts?
-            Inst = bound(Uniq, BoundInsts)
-        )
     ;
         Inst0 = ground(Uniq, none),
         ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
@@ -685,7 +644,34 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
             constructors_to_bound_insts(ModuleInfo, Uniq, TypeCtor,
                 Constructors, BoundInsts0),
             list.sort_and_remove_dups(BoundInsts0, BoundInsts),
-            Inst = bound(Uniq, BoundInsts)
+            InstResults = inst_test_results(
+                inst_result_is_ground,
+                inst_result_does_not_contain_any,
+                inst_result_contains_instnames_known(set.init),
+                inst_result_contains_types_known(set.init)
+            ),
+            Inst = bound(Uniq, InstResults, BoundInsts)
+        )
+    ;
+        Inst0 = any(Uniq, none),
+        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
+            default_higher_order_func_inst(ModuleInfo, ArgTypes, PredInstInfo),
+            Inst = any(Uniq, higher_order(PredInstInfo))
+        ;
+            type_to_ctor_det(Type, TypeCtor),
+            constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor,
+                Constructors, BoundInsts0),
+            list.sort_and_remove_dups(BoundInsts0, BoundInsts),
+            % Normally, Inst is not ground, and contains any.
+            % But if all the Ctors are constants, it is ground,
+            % and does not contain any.
+            InstResults = inst_test_results(
+                inst_result_groundness_unknown,
+                inst_result_contains_any_unknown,
+                inst_result_contains_instnames_known(set.init),
+                inst_result_contains_types_known(set.init)
+            ),
+            Inst = bound(Uniq, InstResults, BoundInsts)
         )
     ;
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
@@ -704,6 +690,37 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         ),
         PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
         Inst = ground(Uniq, higher_order(PredInstInfo))
+    ;
+        Inst0 = any(Uniq, higher_order(PredInstInfo0)),
+        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
+        (
+            type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
+            list.same_length(ArgTypes, Modes0)
+        ->
+            propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
+        ;
+            % The inst is not a valid inst for the type, so leave it alone.
+            % This can only happen if the user has made a mistake.  A mode
+            % error should hopefully be reported if anything tries to match
+            % with the inst.
+            Modes = Modes0
+        ),
+        PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
+        Inst = any(Uniq, higher_order(PredInstInfo))
+    ;
+        Inst0 = bound(Uniq, _InstResult, BoundInsts0),
+        propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts),
+        (
+            BoundInsts = [],
+            Inst = not_reached
+        ;
+            BoundInsts = [_ | _],
+            % XXX do we need to sort the BoundInsts?
+            % XXX I (zs) don't understand propagate_ctor_info_2 well enough
+            % to figure out under what circumstances we could keep (part of)
+            % _InstResult.
+            Inst = bound(Uniq, inst_test_no_results, BoundInsts)
+        )
     ;
         Inst0 = not_reached,
         Inst = Inst0
@@ -728,33 +745,6 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
 
 propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
     (
-        Inst0 = any(Uniq, none),
-        apply_type_subst(Type0, Subst, Type),
-        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
-            default_higher_order_func_inst(ModuleInfo, ArgTypes, PredInstInfo),
-            Inst = any(Uniq, higher_order(PredInstInfo))
-        ;
-            Inst = any(Uniq, none)
-        )
-    ;
-        Inst0 = any(Uniq, higher_order(PredInstInfo0)),
-        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
-        apply_type_subst(Type0, Subst, Type),
-        (
-            type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
-            list.same_length(ArgTypes, Modes0)
-        ->
-            propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
-        ;
-            % The inst is not a valid inst for the type, so leave it alone.
-            % This can only happen if the user has made a mistake. A mode error
-            % should hopefully be reported if anything tries to match with the
-            % inst.
-            Modes = Modes0
-        ),
-        PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
-        Inst = any(Uniq, higher_order(PredInstInfo))
-    ;
         Inst0 = free,
         % Inst = free(Type0)
         Inst = free             % XXX temporary hack
@@ -762,30 +752,26 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         Inst0 = free(_),
         unexpected($module, $pred, "typeinfo already present")
     ;
-        Inst0 = bound(Uniq, BoundInsts0),
-        apply_type_subst(Type0, Subst, Type),
-        propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts),
-        (
-            BoundInsts = [],
-            Inst = not_reached
-        ;
-            BoundInsts = [_ | _],
-            % XXX Do we need to sort the BoundInsts?
-            Inst = bound(Uniq, BoundInsts)
-        )
-    ;
         Inst0 = ground(Uniq, none),
         apply_type_subst(Type0, Subst, Type),
         ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
-            default_higher_order_func_inst(ModuleInfo, ArgTypes,
-                HigherOrderInstInfo),
-            Inst = ground(Uniq, higher_order(HigherOrderInstInfo))
+            default_higher_order_func_inst(ModuleInfo, ArgTypes, HOInstInfo),
+            Inst = ground(Uniq, higher_order(HOInstInfo))
         ;
-            % XXX The information added by this is not yet used, so it's
-            % disabled since it unnecessarily complicates the insts.
+            % XXX The information added by this is not yet used, so
+            % it is disabled since it unnecessarily complicates the insts.
             %
             % Inst = defined_inst(typed_ground(Uniq, Type))
             Inst = ground(Uniq, none)
+        )
+    ;
+        Inst0 = any(Uniq, none),
+        apply_type_subst(Type0, Subst, Type),
+        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
+            default_higher_order_func_inst(ModuleInfo, ArgTypes, HOInstInfo),
+            Inst = any(Uniq, higher_order(HOInstInfo))
+        ;
+            Inst = any(Uniq, none)
         )
     ;
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
@@ -805,6 +791,39 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         ),
         PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
         Inst = ground(Uniq, higher_order(PredInstInfo))
+    ;
+        Inst0 = any(Uniq, higher_order(PredInstInfo0)),
+        PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
+        apply_type_subst(Type0, Subst, Type),
+        (
+            type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
+            list.same_length(ArgTypes, Modes0)
+        ->
+            propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
+        ;
+            % The inst is not a valid inst for the type, so leave it alone.
+            % This can only happen if the user has made a mistake. A mode error
+            % should hopefully be reported if anything tries to match with the
+            % inst.
+            Modes = Modes0
+        ),
+        PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
+        Inst = any(Uniq, higher_order(PredInstInfo))
+    ;
+        Inst0 = bound(Uniq, _InstResult, BoundInsts0),
+        apply_type_subst(Type0, Subst, Type),
+        propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts),
+        (
+            BoundInsts = [],
+            Inst = not_reached
+        ;
+            BoundInsts = [_ | _],
+            % XXX Do we need to sort the BoundInsts?
+            % XXX I (zs) don't understand propagate_ctor_info_2 well enough
+            % to figure out under what circumstances we could keep (part of)
+            % _InstResult.
+            Inst = bound(Uniq, inst_test_no_results, BoundInsts)
+        )
     ;
         Inst0 = not_reached,
         Inst = Inst0
@@ -983,7 +1002,7 @@ propagate_ctor_info_3(ModuleInfo, Subst, TypeCtor, TypeModule, Constructors,
 :- pred apply_type_subst(mer_type::in, tsubst::in, mer_type::out) is det.
 
 apply_type_subst(Type0, Subst, Type) :-
-    % optimize common case
+    % Optimize common case.
     ( map.is_empty(Subst) ->
         Type = Type0
     ;
@@ -1608,7 +1627,8 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)
         ),
-        MaybeInst = yes(bound(shared, [bound_functor(ConsId, [])]))
+        MaybeInst = yes(bound(shared, inst_test_results_fgtc,
+            [bound_functor(ConsId, [])]))
     ;   
         ConsId = impl_defined_const(_),
         unexpected($module, $pred, "impl_defined_const")
@@ -1619,11 +1639,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         PorF = pred_info_is_pred_or_func(PredInfo),
         proc_info_interface_determinism(ProcInfo, Det),
         proc_info_get_argmodes(ProcInfo, ProcArgModes),
-        ( list.drop(NumArgs, ProcArgModes, ModesPrime) ->
-            Modes = ModesPrime
-        ;
-            unexpected($module, $pred, "list.drop failed")
-        ),
+        list.det_drop(NumArgs, ProcArgModes, Modes),
         Inst = ground(shared, higher_order(pred_inst_info(PorF, Modes,
             arg_reg_types_unset, Det))),
         MaybeInst = yes(Inst)
@@ -1667,34 +1683,31 @@ normalise_insts(ModuleInfo, [Type | Types],
     normalise_inst(ModuleInfo, Type, Inst0, Inst),
     normalise_insts(ModuleInfo, Types, Insts0, Insts).
 
+normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
     % This is a bit of a hack.
     % The aim is to avoid non-termination due to the creation
     % of ever-expanding insts.
     % XXX should also normalise partially instantiated insts.
-    %
-normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
+
     inst_expand(ModuleInfo, Inst0, Inst),
-    ( Inst = bound(_, _) ->
+    ( Inst = bound(_, _, _) ->
         (
-            inst_is_ground(ModuleInfo, Inst),
-            inst_is_unique(ModuleInfo, Inst),
-            % don't infer unique modes for introduced type_infos
-            % arguments, because that leads to an increase
-            % in the number of inferred modes without any benefit
+            % Don't infer unique modes for introduced type_info arguments,
+            % because that leads to an increase in the number of inferred modes
+            % without any benefit.
             \+ is_introduced_type_info_type(Type),
+
+            inst_is_ground(ModuleInfo, Inst),
+            ( inst_is_unique(ModuleInfo, Inst) ->
+                Uniq = unique
+            ; inst_is_mostly_unique(ModuleInfo, Inst) ->
+                Uniq = mostly_unique
+            ;
+                fail
+            ),
             \+ inst_contains_nonstandard_func_mode(ModuleInfo, Inst)
         ->
-            NormalisedInst = ground(unique, none)
-        ;
-            inst_is_ground(ModuleInfo, Inst),
-            inst_is_mostly_unique(ModuleInfo, Inst),
-            % don't infer unique modes for introduced type_infos
-            % arguments, because that leads to an increase
-            % in the number of inferred modes without any benefit
-            \+ is_introduced_type_info_type(Type),
-            \+ inst_contains_nonstandard_func_mode(ModuleInfo, Inst)
-        ->
-            NormalisedInst = ground(mostly_unique, none)
+            NormalisedInst = ground(Uniq, none)
         ;
             inst_is_ground(ModuleInfo, Inst),
             \+ inst_is_clobbered(ModuleInfo, Inst),
@@ -1702,9 +1715,8 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
         ->
             NormalisedInst = ground(shared, none)
         ;
-            % XXX need to limit the potential size of insts
-            % here in order to avoid infinite loops in
-            % mode inference
+            % XXX We need to limit the potential size of insts here
+            % in order to avoid infinite loops in mode inference.
             NormalisedInst = Inst
         )
     ;

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 1997-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -199,47 +199,47 @@ evaluate_det_call_int_2(ProcName, ModeNum, CrossCompiling, X, Y,
     (
         ProcName = "+",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = XVal
     ;
         ProcName = "-",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = -XVal
     ;
         ProcName = "\\",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = \ XVal
     ;
         ProcName = "floor_to_multiple_of_bits_per_int",
         ModeNum = 0,
         CrossCompiling = no,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = int.floor_to_multiple_of_bits_per_int(XVal)
     ;
         ProcName = "quot_bits_per_int",
         ModeNum = 0,
         CrossCompiling = no,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = int.quot_bits_per_int(XVal)
     ;
         ProcName = "times_bits_per_int",
         ModeNum = 0,
         CrossCompiling = no,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = int.times_bits_per_int(XVal)
     ;
         ProcName = "rem_bits_per_int",
         ModeNum = 0,
         CrossCompiling = no,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = int.rem_bits_per_int(XVal)
     ).
@@ -253,13 +253,13 @@ evaluate_det_call_float_2(ProcName, ModeNum, _CrossCompiling, X, Y,
     (
         ProcName = "+",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = XVal
     ;
         ProcName = "-",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = -XVal
     ).
@@ -273,160 +273,160 @@ evaluate_det_call_int_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
     (
         ProcName = "plus",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal + YVal
     ;
         ProcName = "+",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal + YVal
     ;
         ProcName = "+",
         ModeNum = 1,
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
-        Z ^ arg_inst = bound(_, [bound_functor(int_const(ZVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
         OutputArg = X,
         OutputArgVal = ZVal - YVal
     ;
         ProcName = "+",
         ModeNum = 2,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Z ^ arg_inst = bound(_, [bound_functor(int_const(ZVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
         OutputArg = Y,
         OutputArgVal = ZVal - XVal
     ;
         ProcName = "minus",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal - YVal
     ;
         ProcName = "-",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal - YVal
     ;
         ProcName = "-",
         ModeNum = 1,
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
-        Z ^ arg_inst = bound(_, [bound_functor(int_const(ZVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
         OutputArg = X,
         OutputArgVal = YVal + ZVal
     ;
         ProcName = "-",
         ModeNum = 2,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Z ^ arg_inst = bound(_, [bound_functor(int_const(ZVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
         OutputArg = Y,
         OutputArgVal = XVal - ZVal
     ;
         ProcName = "times",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal * YVal
     ;
         ProcName = "*",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal * YVal
     ;
         ProcName = "unchecked_quotient",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal \= 0,
         OutputArg = Z,
         OutputArgVal = unchecked_quotient(XVal, YVal)
     ;
         ProcName = "//",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal \= 0,
         OutputArg = Z,
         OutputArgVal = XVal // YVal
     ;
         ProcName = "mod",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal \= 0,
         OutputArg = Z,
         OutputArgVal = XVal mod YVal
     ;
         ProcName = "rem",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal \= 0,
         OutputArg = Z,
         OutputArgVal = XVal rem YVal
     ;
         ProcName = "unchecked_rem",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal \= 0,
         OutputArg = Z,
         OutputArgVal = unchecked_rem(XVal, YVal)
     ;
         ProcName = "unchecked_left_shift",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = unchecked_left_shift(XVal, YVal)
     ;
         ProcName = "<<",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal << YVal
     ;
         ProcName = "unchecked_right_shift",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = unchecked_right_shift(XVal, YVal)
     ;
         ProcName = ">>",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal >> YVal
     ;
         ProcName = "/\\",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal /\ YVal
     ;
         ProcName = "\\/",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal \/ YVal
     ;
         ProcName = "xor",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = xor(XVal, YVal)
     ).
@@ -440,37 +440,37 @@ evaluate_det_call_float_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
     (
         ProcName = "+",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(float_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal + YVal
     ;
         ProcName = "-",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(float_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal - YVal
     ;
         ProcName = "*",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(float_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal * YVal
     ;
         ProcName = "/",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(float_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
         OutputArg = Z,
         YVal \= 0.0,
         OutputArgVal = XVal / YVal
     ;
         ProcName = "unchecked_quotient",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(float_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(float_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
         OutputArg = Z,
         YVal \= 0.0,
         OutputArgVal = unchecked_quotient(XVal, YVal)
@@ -490,8 +490,8 @@ evaluate_det_call_string_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
         % the mode number and pick up both the predicate and function versions
         % of append).
         ModeNum = 0,
-        X ^ arg_inst = bound(_, [bound_functor(string_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, [bound_functor(string_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(string_const(XVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(string_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = XVal ++ YVal
     ).
@@ -517,8 +517,8 @@ evaluate_det_call_string_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
 
 evaluate_test("int", "<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
     ( XVal < YVal ->
         Result = yes
     ;
@@ -526,8 +526,8 @@ evaluate_test("int", "<", 0, Args, Result) :-
     ).
 evaluate_test("int", "=<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
     ( XVal =< YVal ->
         Result = yes
     ;
@@ -535,8 +535,8 @@ evaluate_test("int", "=<", 0, Args, Result) :-
     ).
 evaluate_test("int", ">", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
     ( XVal > YVal ->
         Result = yes
     ;
@@ -544,8 +544,8 @@ evaluate_test("int", ">", 0, Args, Result) :-
     ).
 evaluate_test("int", ">=", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
     ( XVal >= YVal ->
         Result = yes
     ;
@@ -556,8 +556,8 @@ evaluate_test("int", ">=", 0, Args, Result) :-
 
 evaluate_test("float", "<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
     ( XVal < YVal ->
         Result = yes
     ;
@@ -565,8 +565,8 @@ evaluate_test("float", "<", 0, Args, Result) :-
     ).
 evaluate_test("float", "=<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
     ( XVal =< YVal ->
         Result = yes
     ;
@@ -574,8 +574,8 @@ evaluate_test("float", "=<", 0, Args, Result) :-
     ).
 evaluate_test("float", ">", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
     ( XVal > YVal ->
         Result = yes
     ;
@@ -583,8 +583,8 @@ evaluate_test("float", ">", 0, Args, Result) :-
     ).
 evaluate_test("float", ">=", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
     ( XVal >= YVal ->
         Result = yes
     ;
@@ -665,8 +665,8 @@ eval_unify(X, Y, Result) :-
     ->
         Result = yes
     ;
-        X ^ arg_inst = bound(_, [bound_functor(XCtor, XArgVars)]),
-        Y ^ arg_inst = bound(_, [bound_functor(YCtor, YArgVars)])
+        X ^ arg_inst = bound(_, _, [bound_functor(XCtor, XArgVars)]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(YCtor, YArgVars)])
     ->
         ( XCtor = YCtor, XArgVars = YArgVars ->
             Result = yes
@@ -702,8 +702,8 @@ make_assignment_goal(OutputArg, InputArg, Goal, !GoalInfo) :-
 make_construction_goal(OutputArg, Cons, Goal, !GoalInfo) :-
     make_construction(OutputArg, Cons, Goal),
     Delta0 = goal_info_get_instmap_delta(!.GoalInfo),
-    instmap_delta_set_var(OutputArg ^ arg_var,
-        bound(unique, [bound_functor(Cons, [])]), Delta0, Delta),
+    Inst = bound(unique, inst_test_results_fgtc, [bound_functor(Cons, [])]),
+    instmap_delta_set_var(OutputArg ^ arg_var, Inst, Delta0, Delta),
     goal_info_set_instmap_delta(Delta, !GoalInfo),
     goal_info_set_determinism(detism_det, !GoalInfo).
 

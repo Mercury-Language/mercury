@@ -1789,7 +1789,7 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc,
         % are named the same as variables in the enclosing clause.
         AppendVarNums = yes,
         UseDeclaredModes = yes,
-        write_clause(OutInfo, 1, ModuleInfo, PredId, VarSet,
+        write_clause(OutInfo, output_mercury, 1, ModuleInfo, PredId, VarSet,
             AppendVarNums, ClauseHeadVars, PredOrFunc, Clause,
             UseDeclaredModes, MaybeVarTypes, !IO)
     ;

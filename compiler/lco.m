@@ -1087,7 +1087,7 @@ update_construct_args(Subst, HighLevelData, VarType, ConsId, ArgNum,
         ;
             HighLevelData = yes,
             BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
-            FinalInst = bound(shared, [BoundInst]),
+            FinalInst = bound(shared, inst_test_no_results, [BoundInst]),
             % We didn't do this when we initially created the variable.
             map.det_insert(AddrVar, VarType, !VarTypes)
         ),
@@ -1212,7 +1212,7 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
                 % argument left unfilled.
                 map.det_insert(AddrVar, AddrVarType, !VarTypes),
                 BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
-                InitialInst = bound(shared, [BoundInst]),
+                InitialInst = bound(shared, inst_test_no_results, [BoundInst]),
                 Mode = (InitialInst -> ground_inst)
             ),
             make_addr_vars(HeadVars0, Modes0, HeadVars, Modes,

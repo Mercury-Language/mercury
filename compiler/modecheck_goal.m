@@ -204,8 +204,7 @@ modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
         GoalExpr0 = plain_call(PredId, ProcId0, Args0, _Builtin,
             MaybeCallUnifyContext, PredName),
         modecheck_goal_plain_call(PredId, ProcId0, Args0,
-            MaybeCallUnifyContext, PredName, GoalInfo0, GoalExpr,
-            !ModeInfo)
+            MaybeCallUnifyContext, PredName, GoalInfo0, GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = generic_call(GenericCall, Args0, Modes0, _MaybeArgRegs,
             _Detism),
@@ -1131,13 +1130,13 @@ modecheck_specializable_ground_term(SubGoal, TermVar, TermVarInst,
         all_plain_construct_unifies([UnifyTermGoal | UnifyArgGoals])
     ->
         ( TermVarInst = free ->
-            % UnifyTerm unifies TermVar with the arguments created
-            % by UnifyArgs. Since TermVar is now free and the
+            % UnifyTerGoalm unifies TermVar with the arguments created
+            % by UnifyArgGoals. Since TermVar is now free and the
             % argument variables haven't been encountered yet,
-            % UnifyTerm cannot succeed until *after* the argument
+            % UnifyTermGoal cannot succeed until *after* the argument
             % variables become ground.
             %
-            % Putting UnifyTerm after UnifyArgs here is MUCH more efficient
+            % Putting UnifyTerGoalm after UnifyArgGoals here is MUCH faster
             % than letting the usual more ordering algorithm delay it
             % repeatedly: it is linear instead of quadratic.
 
@@ -1212,7 +1211,7 @@ modecheck_ground_term_construct_goal_loop(VarSet,
         modecheck_ground_term_construct_arg_loop(RHSVars, ArgInsts, UniModes,
             !LocalVarMap),
         BoundInst = bound_functor(ConsId, ArgInsts),
-        TermInst = bound(shared, [BoundInst]),
+        TermInst = bound(shared, inst_test_results_fgtc, [BoundInst]),
         LHSMode = (free -> TermInst),
         RHSMode = (TermInst -> TermInst),
         UnifyMode = LHSMode - RHSMode,
@@ -1361,7 +1360,7 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             Mode1 = in_mode,
             Mode2 = out_mode,
             instmap_lookup_var(InstMap, Arg1, Inst1),
-            Inst1 = bound(Unique, [bound_functor(ConsId, [])]),
+            Inst1 = bound(Unique, _, [bound_functor(ConsId, [])]),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             module_info_get_type_table(ModuleInfo, TypeTable),
             mode_info_get_var_types(!.ModeInfo, VarTypes),
@@ -1374,7 +1373,8 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             ConsTag = shared_local_tag(_, LocalTag)
         ->
             BoundInst = bound_functor(int_const(LocalTag), []),
-            NewMode2 = (free -> bound(Unique, [BoundInst])),
+            NewMode2 =
+                (free -> bound(Unique, inst_test_results_fgtc, [BoundInst])),
             Modes = [Mode1, NewMode2]
         ;
             Modes = Modes0

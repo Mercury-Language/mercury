@@ -552,26 +552,36 @@ mer_mode_used_modules(Visibility, user_defined_mode(Name, Insts),
 :- pred mer_inst_used_modules(item_visibility::in, mer_inst::in,
     used_modules::in, used_modules::out) is det.
 
-mer_inst_used_modules(Visibility, any(_, HOInstInfo), !UsedModules) :-
-    ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules).
-mer_inst_used_modules(_, free, !UsedModules).
-mer_inst_used_modules(Visibility, free(Type), !UsedModules) :-
-    mer_type_used_modules(Visibility, Type, !UsedModules).
-mer_inst_used_modules(Visibility, bound(_, BoundInsts), !UsedModules) :-
-    list.foldl(bound_inst_info_used_modules(Visibility), BoundInsts,
-        !UsedModules).
-mer_inst_used_modules(Visibility, ground(_, HOInstInfo), !UsedModules) :-
-    ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules).
-mer_inst_used_modules(_, not_reached, !UsedModules).
-mer_inst_used_modules(_, inst_var(_), !UsedModules).
-mer_inst_used_modules(Visibility, constrained_inst_vars(_InstVars, Inst),
-        !UsedModules) :-
-    mer_inst_used_modules(Visibility, Inst, !UsedModules).
-mer_inst_used_modules(Visibility, defined_inst(InstName), !UsedModules) :-
-    inst_name_used_modules(Visibility, InstName, !UsedModules).
-mer_inst_used_modules(Visibility, abstract_inst(Name, Insts), !UsedModules) :-
-    add_sym_name_module(Visibility, Name, !UsedModules),
-    list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules).
+mer_inst_used_modules(Visibility, Inst, !UsedModules) :-
+    (
+        ( Inst = not_reached
+        ; Inst = free
+        ; Inst = inst_var(_)
+        )
+    ;
+        ( Inst = ground(_, HOInstInfo)
+        ; Inst = any(_, HOInstInfo)
+        ),
+        ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules)
+    ;
+        Inst = free(Type),
+        mer_type_used_modules(Visibility, Type, !UsedModules)
+    ;
+        Inst = bound(_, _InstResults, BoundInsts),
+        % Anything appearing in InstResults should also appear in BoundInsts.
+        list.foldl(bound_inst_info_used_modules(Visibility), BoundInsts,
+            !UsedModules)
+    ;
+        Inst = constrained_inst_vars(_InstVars, SubInst),
+        mer_inst_used_modules(Visibility, SubInst, !UsedModules)
+    ;
+        Inst = defined_inst(InstName),
+        inst_name_used_modules(Visibility, InstName, !UsedModules)
+    ;
+        Inst = abstract_inst(Name, ArgInsts),
+        add_sym_name_module(Visibility, Name, !UsedModules),
+        list.foldl(mer_inst_used_modules(Visibility), ArgInsts, !UsedModules)
+    ).
 
 %-----------------------------------------------------------------------------%
 

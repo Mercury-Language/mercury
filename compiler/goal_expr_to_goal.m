@@ -1225,8 +1225,8 @@ magic_exception_result_sym_name =
 :- func exception_functor(string, prog_term, term.context) = prog_term.
 
 exception_functor(Atom, Arg, Context) = Term :-
-    construct_qualified_term(qualified(mercury_exception_module, Atom),
-        [Arg], Context, Term).
+    SymName = qualified(mercury_exception_module, Atom),
+    construct_qualified_term_with_context(SymName, [Arg], Context, Term).
 
 %----------------------------------------------------------------------------%
 

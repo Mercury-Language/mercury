@@ -973,7 +973,7 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
     update_mc_info_t((pred(C::out, S0::in, S::out) is det :-
         (
             ( Inst = any(_, _)
-            ; Inst = bound(_, _)
+            ; Inst = bound(_, _, _)
             ; Inst = ground(_, _)
             )
         ->
@@ -992,7 +992,7 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
     map.lookup(InstGraph, Var, node(Functors, _)),
     map.foldl2(
         (pred(ConsId::in, Vs::in, C0::in, C::out, S0::in, S::out) is det :-
-            ( Inst = bound(_, BIs) ->
+            ( Inst = bound(_, _, BIs) ->
                 ( cons_id_in_bound_insts(ConsId, BIs, Insts) ->
                     assoc_list.from_corresponding_lists(Vs, Insts, VarInsts),
                     list.foldl2((pred((V - I)::in, C1::in, C2::out,

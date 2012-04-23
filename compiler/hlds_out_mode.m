@@ -16,6 +16,7 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
 :- import_module parse_tree.prog_data.
 
@@ -23,7 +24,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
@@ -37,10 +37,11 @@
 
     % Convert a mode or inst to a term representation.
     %
-:- func mode_to_term(mer_mode) = prog_term.
-:- func mode_to_term_with_context(term.context, mer_mode) = prog_term.
-:- func inst_to_term(mer_inst) = prog_term.
-:- func inst_name_to_term(inst_name) = prog_term.
+:- func mode_to_term(output_lang, mer_mode) = prog_term.
+:- func mode_to_term_with_context(output_lang, prog_context, mer_mode)
+    = prog_term.
+:- func inst_to_term(output_lang, mer_inst) = prog_term.
+:- func inst_name_to_term(output_lang, inst_name) = prog_term.
 
 %-----------------------------------------------------------------------------%
 
@@ -52,9 +53,9 @@
     % but may not be valid Mercury.
     %
 :- pred mercury_output_structured_inst_list(list(mer_inst)::in, int::in,
-    incl_addr::in, inst_varset::in, io::di, io::uo) is det.
+    output_lang::in, incl_addr::in, inst_varset::in, io::di, io::uo) is det.
 :- func mercury_structured_inst_list_to_string(list(mer_inst), int,
-    incl_addr, inst_varset) = string.
+    output_lang, incl_addr, inst_varset) = string.
 
     % Output an inst in a format that makes it easy to read
     % but may not be valid Mercury.
@@ -62,21 +63,21 @@
     % (These routines are used with `--debug-modes'.)
     %
 :- pred mercury_output_structured_inst(mer_inst::in, int::in,
-    incl_addr::in, inst_varset::in, io::di, io::uo) is det.
+    output_lang::in, incl_addr::in, inst_varset::in, io::di, io::uo) is det.
 :- func mercury_structured_inst_to_string(mer_inst, int,
-    incl_addr, inst_varset) = string.
+    output_lang, incl_addr, inst_varset) = string.
 
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_output_structured_uni_mode(uni_mode::in, int::in,
-    incl_addr::in, inst_varset::in, io::di, io::uo) is det.
-:- func mercury_structured_uni_mode_to_string(uni_mode, int, incl_addr,
-    inst_varset) = string.
+    output_lang::in, incl_addr::in, inst_varset::in, io::di, io::uo) is det.
+:- func mercury_structured_uni_mode_to_string(uni_mode, int,
+    output_lang, incl_addr, inst_varset) = string.
 
 :- pred mercury_output_structured_uni_mode_list(list(uni_mode)::in, int::in,
-    incl_addr::in, inst_varset::in, io::di, io::uo) is det.
+    output_lang::in, incl_addr::in, inst_varset::in, io::di, io::uo) is det.
 :- func mercury_structured_uni_mode_list_to_string(list(uni_mode), int,
-    incl_addr, inst_varset) = string.
+    output_lang, incl_addr, inst_varset) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -123,6 +124,13 @@
 
 %-----------------------------------------------------------------------------%
 
+:- func make_atom(prog_context, string) = prog_term.
+
+make_atom(Context, Name) =
+    term.functor(term.atom(Name), [], Context).
+
+%-----------------------------------------------------------------------------%
+
 write_instmap(InstMap, VarSet, AppendVarNums, Indent, !IO) :-
     ( instmap_is_unreachable(InstMap) ->
         io.write_string("unreachable", !IO)
@@ -148,9 +156,10 @@ write_var_inst_list([Var - Inst | Rest], VarSet, AppendVarNums, Indent, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-mode_to_term(Mode) = mode_to_term_with_context(term.context_init, Mode).
+mode_to_term(Lang, Mode) =
+    mode_to_term_with_context(Lang, term.context_init, Mode).
 
-mode_to_term_with_context(Context, Mode) = Term :-
+mode_to_term_with_context(Lang, Context, Mode) = Term :-
     (
         Mode = (InstA -> InstB),
         (
@@ -159,64 +168,68 @@ mode_to_term_with_context(Context, Mode) = Term :-
             InstA = ground(_Uniq, higher_order(_)),
             InstB = InstA
         ->
-            Term = inst_to_term_with_context(InstA, Context)
+            Term = inst_to_term_with_context(Lang, Context, InstA)
         ;
-            construct_qualified_term(unqualified(">>"),
-                [inst_to_term_with_context(InstA, Context),
-                inst_to_term_with_context(InstB, Context)],
+            construct_qualified_term_with_context(unqualified(">>"),
+                [inst_to_term_with_context(Lang, Context, InstA),
+                inst_to_term_with_context(Lang, Context, InstB)],
                 Context, Term)
         )
     ;
         Mode = user_defined_mode(Name, Args),
-        construct_qualified_term(Name,
-            list.map(map_inst_to_term(Context), Args),
+        construct_qualified_term_with_context(Name,
+            list.map(inst_to_term_with_context(Lang, Context), Args),
             Context, Term)
     ).
 
-:- func make_atom(string, prog_context) = prog_term.
+inst_to_term(Lang, Inst) =
+    inst_to_term_with_context(Lang, term.context_init, Inst).
 
-make_atom(Name, Context) =
-    term.functor(term.atom(Name), [], Context).
+:- func inst_to_term_with_context(output_lang, prog_context, mer_inst)
+    = prog_term.
 
-:- func map_inst_to_term(prog_context, mer_inst) = prog_term.
-
-map_inst_to_term(Context, Inst) = inst_to_term_with_context(Inst, Context).
-
-inst_to_term(Inst) = inst_to_term_with_context(Inst, term.context_init).
-
-:- func inst_to_term_with_context(mer_inst, prog_context) = prog_term.
-
-inst_to_term_with_context(Inst, Context) = Term :-
+inst_to_term_with_context(Lang, Context, Inst) = Term :-
     (
         Inst = any(Uniq, HOInstInfo),
         (
             HOInstInfo = higher_order(PredInstInfo),
-            Term = any_pred_inst_info_to_term(Uniq, PredInstInfo, Context)
+            Term = any_pred_inst_info_to_term(Lang, Context, Uniq,
+                PredInstInfo)
         ;
             HOInstInfo = none,
-            Term = make_atom(any_inst_uniqueness(Uniq), Context)
+            Term = make_atom(Context, any_inst_uniqueness(Uniq))
         )
     ;
         Inst = free,
-        Term = make_atom("free", Context)
+        Term = make_atom(Context, "free")
     ;
         Inst = free(Type),
         unparse_type(Type, Term0),
         Term1 = term.coerce(Term0),
         Term = term.functor(term.atom("free"), [Term1], Context)
     ;
-        Inst = bound(Uniq, BoundInsts),
-        construct_qualified_term(
+        Inst = bound(Uniq, InstResults, BoundInsts),
+        (
+            Lang = output_mercury,
+            ArgTerms = [bound_insts_to_term(Lang, Context, BoundInsts)]
+        ;
+            Lang = output_debug,
+            ArgTerms =
+                [inst_test_results_to_term(Context, InstResults),
+                bound_insts_to_term(Lang, Context, BoundInsts)]
+        ),
+        construct_qualified_term_with_context(
             unqualified(inst_uniqueness(Uniq, "bound")),
-            [bound_insts_to_term(BoundInsts, Context)], Context, Term)
+            ArgTerms, Context, Term)
     ;
         Inst = ground(Uniq, HOInstInfo),
         (
             HOInstInfo = higher_order(PredInstInfo),
-            Term = ground_pred_inst_info_to_term(Uniq, PredInstInfo, Context)
+            Term = ground_pred_inst_info_to_term(Lang, Context, Uniq,
+                PredInstInfo)
         ;
             HOInstInfo = none,
-            Term = make_atom(inst_uniqueness(Uniq, "ground"), Context)
+            Term = make_atom(Context, inst_uniqueness(Uniq, "ground"))
         )
     ;
         Inst = inst_var(Var),
@@ -227,128 +240,223 @@ inst_to_term_with_context(Inst, Context) = Term :-
                 term.functor(term.atom("=<"),
                     [term.coerce(term.variable(Var, context_init)), VarTerm],
                     Context),
-            Vars, inst_to_term_with_context(SubInst, Context))
+            Vars, inst_to_term_with_context(Lang, Context, SubInst))
     ;
         Inst = abstract_inst(Name, Args),
-        Term = inst_name_to_term_with_context(Context, user_inst(Name, Args))
+        Term = inst_name_to_term_with_context(Lang, Context,
+            user_inst(Name, Args))
     ;
         Inst = defined_inst(InstName),
-        Term = inst_name_to_term_with_context(Context, InstName)
+        Term = inst_name_to_term_with_context(Lang, Context, InstName)
     ;
         Inst = not_reached,
-        Term = make_atom("not_reached", Context)
+        Term = make_atom(Context, "not_reached")
     ).
 
-:- func ground_pred_inst_info_to_term(uniqueness, pred_inst_info, prog_context)
+:- func inst_test_results_to_term(prog_context, inst_test_results) = prog_term.
+
+inst_test_results_to_term(Context, InstResults) = Term :-
+    (
+        InstResults = inst_test_results(GroundnessResult, AnyResult,
+            InstNameResult, TypeResult),
+        SubTerm1 = inst_result_groundness_to_term(Context, GroundnessResult),
+        SubTerm2 = inst_result_contains_any_to_term(Context, AnyResult),
+        SubTerm3 = inst_result_contains_instnames_to_term(Context,
+            InstNameResult),
+        SubTerm4 = inst_result_contains_types_to_term(Context, TypeResult),
+        Term = term.functor(term.atom("results"),
+            [SubTerm1, SubTerm2, SubTerm3, SubTerm4], Context)
+    ;
+        InstResults = inst_test_no_results,
+        Term = term.functor(term.atom("no_results"), [], Context)
+    ;
+        InstResults = inst_test_results_fgtc,
+        Term = term.functor(term.atom("fgtc"), [], Context)
+    ).
+
+:- func inst_result_groundness_to_term(prog_context, inst_result_groundness)
     = prog_term.
 
-ground_pred_inst_info_to_term(_Uniq, PredInstInfo, Context) = Term :-
+inst_result_groundness_to_term(Context, Groundness) = Term :-
+    (
+        Groundness = inst_result_is_not_ground,
+        Term = term.functor(term.atom("is_not_ground"), [], Context)
+    ;
+        Groundness = inst_result_is_ground,
+        Term = term.functor(term.atom("is_ground"), [], Context)
+    ;
+        Groundness = inst_result_groundness_unknown,
+        Term = term.functor(term.atom("groundness_unknown"), [], Context)
+    ).
+
+:- func inst_result_contains_any_to_term(prog_context,
+    inst_result_contains_any) = prog_term.
+
+inst_result_contains_any_to_term(Context, ContainsAny) = Term :-
+    (
+        ContainsAny = inst_result_does_not_contain_any,
+        Term = term.functor(term.atom("does_not_contain_any"), [], Context)
+    ;
+        ContainsAny = inst_result_does_contain_any,
+        Term = term.functor(term.atom("does_contain_any"), [], Context)
+    ;
+        ContainsAny = inst_result_contains_any_unknown,
+        Term = term.functor(term.atom("contains_any_unknown"), [], Context)
+    ).
+
+:- func inst_result_contains_instnames_to_term(prog_context,
+    inst_result_contains_instnames) = prog_term.
+
+inst_result_contains_instnames_to_term(Context, ContainsInstNames) = Term :-
+    (
+        ContainsInstNames = inst_result_contains_instnames_unknown,
+        Term = term.functor(term.atom("contains_instnames_unknown"),
+            [], Context)
+    ;
+        ContainsInstNames = inst_result_contains_instnames_known(InstNameSet),
+        set.count(InstNameSet, NumInstNames),
+        % Inst names can be pretty big, so we print only a count.
+        % If necessary, we can later modify this code to actually print them.
+        CountTerm = term.functor(term.integer(NumInstNames), [], Context),
+        Term = term.functor(term.atom("contains_types_known"),
+            [CountTerm], Context)
+    ).
+
+:- func inst_result_contains_types_to_term(prog_context,
+    inst_result_contains_types) = prog_term.
+
+inst_result_contains_types_to_term(Context, ContainsTypes) = Term :-
+    (
+        ContainsTypes = inst_result_contains_types_unknown,
+        Term = term.functor(term.atom("contains_types_unknown"), [], Context)
+    ;
+        ContainsTypes = inst_result_contains_types_known(TypeCtorSet),
+        set.to_sorted_list(TypeCtorSet, TypeCtors),
+        TypeCtorTerms = list.map(type_ctor_to_term(Context), TypeCtors),
+        Term = term.functor(term.atom("contains_types_known"),
+            TypeCtorTerms, Context)
+    ).
+
+:- func type_ctor_to_term(prog_context, type_ctor) = prog_term.
+
+type_ctor_to_term(Context, TypeCtor) = Term :-
+    TypeCtor = type_ctor(SymName, Arity),
+    string.format("%s/%d", [s(sym_name_to_string(SymName)), i(Arity)],
+        ConsName),
+    Term = term.functor(term.atom(ConsName), [], Context).
+
+:- func ground_pred_inst_info_to_term(output_lang, prog_context, uniqueness,
+    pred_inst_info) = prog_term.
+
+ground_pred_inst_info_to_term(Lang, Context, _Uniq, PredInstInfo) = Term :-
     % XXX we ignore Uniq
     PredInstInfo = pred_inst_info(PredOrFunc, Modes, _, Det),
     (
         PredOrFunc = pf_predicate,
-        construct_qualified_term(unqualified("pred"),
-            list.map(mode_to_term_with_context(Context), Modes),
+        construct_qualified_term_with_context(unqualified("pred"),
+            list.map(mode_to_term_with_context(Lang, Context), Modes),
             Context, ModesTerm)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(Modes, ArgModes, RetMode),
-        construct_qualified_term(unqualified("func"),
-            list.map(mode_to_term_with_context(Context), ArgModes),
+        construct_qualified_term_with_context(unqualified("func"),
+            list.map(mode_to_term_with_context(Lang, Context), ArgModes),
             Context, ArgModesTerm),
-        construct_qualified_term(unqualified("="),
-            [ArgModesTerm, mode_to_term_with_context(Context, RetMode)],
+        construct_qualified_term_with_context(unqualified("="),
+            [ArgModesTerm, mode_to_term_with_context(Lang, Context, RetMode)],
             Context, ModesTerm)
     ),
-    construct_qualified_term(unqualified("is"),
-        [ModesTerm, det_to_term(Det, Context)], Context, Term).
+    construct_qualified_term_with_context(unqualified("is"),
+        [ModesTerm, det_to_term(Context, Det)], Context, Term).
 
-:- func any_pred_inst_info_to_term(uniqueness, pred_inst_info, prog_context)
-    = prog_term.
+:- func any_pred_inst_info_to_term(output_lang, prog_context, uniqueness,
+    pred_inst_info) = prog_term.
 
-any_pred_inst_info_to_term(_Uniq, PredInstInfo, Context) = Term :-
+any_pred_inst_info_to_term(Lang, Context, _Uniq, PredInstInfo) = Term :-
     % XXX we ignore Uniq
     PredInstInfo = pred_inst_info(PredOrFunc, Modes, _, Det),
     (
         PredOrFunc = pf_predicate,
-        construct_qualified_term(unqualified("any_pred"),
-            list.map(mode_to_term_with_context(Context), Modes),
+        construct_qualified_term_with_context(unqualified("any_pred"),
+            list.map(mode_to_term_with_context(Lang, Context), Modes),
             Context, ModesTerm)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(Modes, ArgModes, RetMode),
-        construct_qualified_term(unqualified("any_func"),
-            list.map(mode_to_term_with_context(Context), ArgModes),
+        construct_qualified_term_with_context(unqualified("any_func"),
+            list.map(mode_to_term_with_context(Lang, Context), ArgModes),
             Context, ArgModesTerm),
-        construct_qualified_term(unqualified("="),
-            [ArgModesTerm, mode_to_term_with_context(Context, RetMode)],
+        construct_qualified_term_with_context(unqualified("="),
+            [ArgModesTerm, mode_to_term_with_context(Lang, Context, RetMode)],
             Context, ModesTerm)
     ),
-    construct_qualified_term(unqualified("is"),
-        [ModesTerm, det_to_term(Det, Context)], Context, Term).
+    construct_qualified_term_with_context(unqualified("is"),
+        [ModesTerm, det_to_term(Context, Det)], Context, Term).
 
-inst_name_to_term(InstName) =
-    inst_name_to_term_with_context(term.context_init, InstName).
+inst_name_to_term(Lang, InstName) =
+    inst_name_to_term_with_context(Lang, term.context_init, InstName).
 
-:- func inst_name_to_term_with_context(prog_context, inst_name) = prog_term.
+:- func inst_name_to_term_with_context(output_lang, prog_context, inst_name)
+    = prog_term.
 
-inst_name_to_term_with_context(Context, InstName) = Term :-
+inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
     (
         InstName = user_inst(Name, Args),
-        construct_qualified_term(Name,
-            list.map(map_inst_to_term(Context), Args),
+        construct_qualified_term_with_context(Name,
+            list.map(inst_to_term_with_context(Lang, Context), Args),
             Context, Term)
     ;
         InstName = merge_inst(InstA, InstB),
-        construct_qualified_term(unqualified("$merge_inst"),
-            list.map(map_inst_to_term(Context), [InstA, InstB]),
+        construct_qualified_term_with_context(unqualified("$merge_inst"),
+            list.map(inst_to_term_with_context(Lang, Context), [InstA, InstB]),
             Context, Term)
     ;
         InstName = shared_inst(SubInstName),
-        construct_qualified_term(unqualified("$shared_inst"),
-            [inst_name_to_term_with_context(Context, SubInstName)],
+        construct_qualified_term_with_context(unqualified("$shared_inst"),
+            [inst_name_to_term_with_context(Lang, Context, SubInstName)],
             Context, Term)
     ;
         InstName = mostly_uniq_inst(SubInstName),
-        construct_qualified_term(unqualified("$mostly_uniq_inst"),
-            [inst_name_to_term_with_context(Context, SubInstName)],
+        construct_qualified_term_with_context(unqualified("$mostly_uniq_inst"),
+            [inst_name_to_term_with_context(Lang, Context, SubInstName)],
             Context, Term)
     ;
         InstName = unify_inst(Liveness, InstA, InstB, Real),
-        construct_qualified_term(unqualified("$unify"),
-            [make_atom(is_live_to_str(Liveness), Context)] ++
-            list.map(map_inst_to_term(Context), [InstA, InstB]) ++
-            [make_atom(unify_is_real_to_str(Real), Context)],
+        construct_qualified_term_with_context(unqualified("$unify"),
+            [make_atom(Context, is_live_to_str(Liveness))] ++
+            list.map(inst_to_term_with_context(Lang, Context),
+                [InstA, InstB]) ++
+            [make_atom(Context, unify_is_real_to_str(Real))],
             Context, Term)
     ;
         InstName = ground_inst(SubInstName, IsLive, Uniq, Real),
-        construct_qualified_term(unqualified("$ground"),
-            [inst_name_to_term_with_context(Context, SubInstName),
-            make_atom(is_live_to_str(IsLive), Context),
-            make_atom(inst_uniqueness(Uniq, "shared"), Context),
-            make_atom(unify_is_real_to_str(Real), Context)],
+        construct_qualified_term_with_context(unqualified("$ground"),
+            [inst_name_to_term_with_context(Lang, Context, SubInstName),
+            make_atom(Context, is_live_to_str(IsLive)),
+            make_atom(Context, inst_uniqueness(Uniq, "shared")),
+            make_atom(Context, unify_is_real_to_str(Real))],
             Context, Term)
     ;
         InstName = any_inst(SubInstName, IsLive, Uniq, Real),
-        construct_qualified_term(unqualified("$any"),
-            [inst_name_to_term_with_context(Context, SubInstName),
-            make_atom(is_live_to_str(IsLive), Context),
-            make_atom(inst_uniqueness(Uniq, "shared"), Context),
-            make_atom(unify_is_real_to_str(Real), Context)],
+        construct_qualified_term_with_context(unqualified("$any"),
+            [inst_name_to_term_with_context(Lang, Context, SubInstName),
+            make_atom(Context, is_live_to_str(IsLive)),
+            make_atom(Context, inst_uniqueness(Uniq, "shared")),
+            make_atom(Context, unify_is_real_to_str(Real))],
             Context, Term)
     ;
         InstName = typed_ground(Uniq, Type),
         unparse_type(Type, Term0),
-        construct_qualified_term(unqualified("$typed_ground"),
-            [make_atom(inst_uniqueness(Uniq, "shared"), Context),
+        construct_qualified_term_with_context(unqualified("$typed_ground"),
+            [make_atom(Context, inst_uniqueness(Uniq, "shared")),
             term.coerce(Term0)],
             Context, Term)
     ;
         InstName = typed_inst(Type, SubInstName),
         unparse_type(Type, Term0),
-        construct_qualified_term(unqualified("$typed_inst"),
+        construct_qualified_term_with_context(unqualified("$typed_inst"),
             [term.coerce(Term0),
-            inst_name_to_term_with_context(Context, SubInstName)],
+            inst_name_to_term_with_context(Lang, Context, SubInstName)],
             Context, Term)
     ).
 
@@ -378,21 +486,22 @@ inst_uniqueness(mostly_unique, _) = "mostly_unique".
 inst_uniqueness(clobbered, _) = "clobbered".
 inst_uniqueness(mostly_clobbered, _) = "mostly_clobbered".
 
-:- func bound_insts_to_term(list(bound_inst), prog_context) = prog_term.
+:- func bound_insts_to_term(output_lang, prog_context, list(bound_inst))
+    = prog_term.
 
-bound_insts_to_term([], _) = _ :-
+bound_insts_to_term(_, _, []) = _ :-
     unexpected($module, $pred, "bound_insts_to_term([])").
-bound_insts_to_term([BoundInst | BoundInsts], Context) = Term :-
+bound_insts_to_term(Lang, Context, [BoundInst | BoundInsts]) = Term :-
     BoundInst = bound_functor(ConsId, Args),
-    ArgTerms = list.map(map_inst_to_term(Context), Args),
+    ArgTerms = list.map(inst_to_term_with_context(Lang, Context), Args),
     cons_id_and_args_to_term_full(ConsId, ArgTerms, FirstTerm),
     (
         BoundInsts = [],
         Term = FirstTerm
     ;
         BoundInsts = [_ | _],
-        construct_qualified_term(unqualified(";"),
-            [FirstTerm, bound_insts_to_term(BoundInsts, Context)],
+        construct_qualified_term_with_context(unqualified(";"),
+            [FirstTerm, bound_insts_to_term(Lang, Context, BoundInsts)],
             Context, Term)
     ).
 
@@ -474,9 +583,9 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         Term = term.functor(term.string(FunctorName), [], Context)
     ).
 
-:- func det_to_term(determinism, prog_context) = prog_term.
+:- func det_to_term(prog_context, determinism) = prog_term.
 
-det_to_term(Det, Context) = make_atom(det_to_string(Det), Context).
+det_to_term(Context, Det) = make_atom(Context, det_to_string(Det)).
 
 :- func det_to_string(determinism) = string.
 
@@ -491,48 +600,50 @@ det_to_string(detism_non) = "nondet".
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_structured_uni_mode_list(Insts, Indent, InclAddr, InstVarSet,
-        !IO) :-
-    mercury_format_structured_uni_mode_list(Insts, 1, Indent, InclAddr,
+mercury_output_structured_uni_mode_list(Insts, Indent, Lang, InclAddr,
+        InstVarSet, !IO) :-
+    mercury_format_structured_uni_mode_list(Insts, 1, Indent, Lang, InclAddr,
         InstVarSet, !IO).
 
-mercury_structured_uni_mode_list_to_string(Insts, Indent, InclAddr, InstVarSet)
-        = String :-
-    mercury_format_structured_uni_mode_list(Insts, 1, Indent, InclAddr,
+mercury_structured_uni_mode_list_to_string(Insts, Indent, Lang, InclAddr,
+        InstVarSet) = String :-
+    mercury_format_structured_uni_mode_list(Insts, 1, Indent, Lang, InclAddr,
         InstVarSet, "", String).
 
 :- pred mercury_format_structured_uni_mode_list(list(uni_mode)::in, int::in,
-    int::in, incl_addr::in, inst_varset::in, U::di, U::uo) is det <= output(U).
+    int::in, output_lang::in, incl_addr::in, inst_varset::in, U::di, U::uo)
+    is det <= output(U).
 
-mercury_format_structured_uni_mode_list([], _, _, _, _, !U).
+mercury_format_structured_uni_mode_list([], _, _, _, _, _, !U).
 mercury_format_structured_uni_mode_list([UniMode | UniModes], ArgNum, Indent,
-        InclAddr, InstVarSet, !U) :-
+        Lang, InclAddr, InstVarSet, !U) :-
     mercury_format_tabs(Indent, !U),
     add_string("argument ", !U),
     add_int(ArgNum, !U),
     add_string(":\n", !U),
     mercury_format_structured_uni_mode(UniMode, Indent,
-        InclAddr, InstVarSet, !U),
+        Lang, InclAddr, InstVarSet, !U),
     mercury_format_structured_uni_mode_list(UniModes, ArgNum +1, Indent,
-        InclAddr, InstVarSet, !U).
+        Lang, InclAddr, InstVarSet, !U).
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_structured_uni_mode(Inst, Indent, InclAddr, InstVarSet,
-        !IO) :-
-    mercury_format_structured_uni_mode(Inst, Indent, InclAddr, InstVarSet,
-        !IO).
+mercury_output_structured_uni_mode(Inst, Indent, Lang, InclAddr,
+        InstVarSet, !IO) :-
+    mercury_format_structured_uni_mode(Inst, Indent, Lang, InclAddr,
+        InstVarSet, !IO).
 
-mercury_structured_uni_mode_to_string(Inst, Indent, InclAddr, InstVarSet)
-        = String :-
-    mercury_format_structured_uni_mode(Inst, Indent, InclAddr, InstVarSet,
-        "", String).
+mercury_structured_uni_mode_to_string(Inst, Indent, Lang, InclAddr,
+        InstVarSet) = String :-
+    mercury_format_structured_uni_mode(Inst, Indent, Lang, InclAddr,
+        InstVarSet, "", String).
 
 :- pred mercury_format_structured_uni_mode(uni_mode::in, int::in,
-    incl_addr::in, inst_varset::in, U::di, U::uo) is det <= output(U).
+    output_lang::in, incl_addr::in, inst_varset::in, U::di, U::uo) is det
+    <= output(U).
 
-mercury_format_structured_uni_mode(UniMode, Indent, InclAddr, InstVarSet,
-        !U) :-
+mercury_format_structured_uni_mode(UniMode, Indent, Lang, InclAddr,
+        InstVarSet, !U) :-
     UniMode = (InstA1 - InstB1 -> InstA2 - InstB2),
     get_inst_addr(InstA1, InstA1Addr),
     get_inst_addr(InstA2, InstA2Addr),
@@ -541,7 +652,8 @@ mercury_format_structured_uni_mode(UniMode, Indent, InclAddr, InstVarSet,
 
     mercury_format_tabs(Indent, !U),
     add_string("old lhs inst:\n", !U),
-    mercury_format_structured_inst(InstA1, Indent, InclAddr, InstVarSet, !U),
+    mercury_format_structured_inst(InstA1, Indent, Lang, InclAddr,
+        InstVarSet, !U),
 
     mercury_format_tabs(Indent, !U),
     ( InstB1Addr = InstA1Addr ->
@@ -549,7 +661,7 @@ mercury_format_structured_uni_mode(UniMode, Indent, InclAddr, InstVarSet,
         add_string("old rhs inst: same as old lhs inst\n", !U)
     ;
         add_string("old rhs inst:\n", !U),
-        mercury_format_structured_inst(InstB1, Indent, InclAddr,
+        mercury_format_structured_inst(InstB1, Indent, Lang, InclAddr,
             InstVarSet, !U)
     ),
 
@@ -562,7 +674,7 @@ mercury_format_structured_uni_mode(UniMode, Indent, InclAddr, InstVarSet,
         add_string("new lhs inst: changed to old rhs inst\n", !U)
     ;
         add_string("new lhs inst:\n", !U),
-        mercury_format_structured_inst(InstA2, Indent, InclAddr,
+        mercury_format_structured_inst(InstA2, Indent, Lang, InclAddr,
             InstVarSet, !U)
     ),
 
@@ -575,45 +687,50 @@ mercury_format_structured_uni_mode(UniMode, Indent, InclAddr, InstVarSet,
         add_string("new rhs inst: changed to new lhs inst\n", !U)
     ;
         add_string("new rhs inst:\n", !U),
-        mercury_format_structured_inst(InstB2, Indent, InclAddr,
+        mercury_format_structured_inst(InstB2, Indent, Lang, InclAddr,
             InstVarSet, !U)
     ).
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_structured_inst_list(Insts, Indent, InclAddr, InstVarSet, !IO) :-
-    mercury_format_structured_inst_list(Insts, Indent, InclAddr, InstVarSet,
-        !IO).
+mercury_output_structured_inst_list(Insts, Indent, Lang, InclAddr,
+        InstVarSet, !IO) :-
+    mercury_format_structured_inst_list(Insts, Indent, Lang, InclAddr,
+        InstVarSet, !IO).
 
-mercury_structured_inst_list_to_string(Insts, Indent, InclAddr, InstVarSet)
-        = String :-
-    mercury_format_structured_inst_list(Insts, Indent, InclAddr, InstVarSet,
-        "", String).
+mercury_structured_inst_list_to_string(Insts, Indent, Lang, InclAddr,
+        InstVarSet) = String :-
+    mercury_format_structured_inst_list(Insts, Indent, Lang, InclAddr,
+        InstVarSet, "", String).
 
 :- pred mercury_format_structured_inst_list(list(mer_inst)::in, int::in,
-    incl_addr::in, inst_varset::in, U::di, U::uo) is det <= output(U).
+    output_lang::in, incl_addr::in, inst_varset::in, U::di, U::uo) is det
+    <= output(U).
 
-mercury_format_structured_inst_list([], _, _, _, !U).
-mercury_format_structured_inst_list([Inst | Insts], Indent, InclAddr,
+mercury_format_structured_inst_list([], _, _, _, _, !U).
+mercury_format_structured_inst_list([Inst | Insts], Indent, Lang, InclAddr,
         InstVarSet, !U) :-
-    mercury_format_structured_inst(Inst, Indent, InclAddr, InstVarSet, !U),
-    mercury_format_structured_inst_list(Insts, Indent, InclAddr,
+    mercury_format_structured_inst(Inst, Indent, Lang, InclAddr,
+        InstVarSet, !U),
+    mercury_format_structured_inst_list(Insts, Indent, Lang, InclAddr,
         InstVarSet, !U).
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_structured_inst(Inst, Indent, InclAddr, InstVarSet, !U) :-
-    mercury_format_structured_inst(Inst, Indent, InclAddr, InstVarSet, !U).
+mercury_output_structured_inst(Inst, Indent, Lang, InclAddr, InstVarSet, !U) :-
+    mercury_format_structured_inst(Inst, Indent, Lang, InclAddr, InstVarSet,
+        !U).
 
-mercury_structured_inst_to_string(Inst, Indent, InclAddr, InstVarSet)
+mercury_structured_inst_to_string(Inst, Indent, Lang, InclAddr, InstVarSet)
         = String :-
-    mercury_format_structured_inst(Inst, Indent, InclAddr, InstVarSet,
+    mercury_format_structured_inst(Inst, Indent, Lang, InclAddr, InstVarSet,
         "", String).
 
-:- pred mercury_format_structured_inst(mer_inst::in, int::in, incl_addr::in,
-    inst_varset::in, U::di, U::uo) is det <= output(U).
+:- pred mercury_format_structured_inst(mer_inst::in, int::in,
+    output_lang::in, incl_addr::in, inst_varset::in, U::di, U::uo) is det
+    <= output(U).
 
-mercury_format_structured_inst(Inst, Indent, InclAddr, InstVarSet, !U) :-
+mercury_format_structured_inst(Inst, Indent, Lang, InclAddr, InstVarSet, !U) :-
     mercury_format_tabs(Indent, !U),
     (
         InclAddr = do_not_incl_addr
@@ -642,11 +759,23 @@ mercury_format_structured_inst(Inst, Indent, InclAddr, InstVarSet, !U) :-
         Inst = free(_T),
         add_string("free(with some type)\n", !U)
     ;
-        Inst = bound(Uniq, BoundInsts),
+        Inst = bound(Uniq, InstResults, BoundInsts),
         mercury_format_uniqueness(Uniq, "bound", !U),
         add_string("(\n", !U),
-        mercury_format_structured_bound_insts(BoundInsts, Indent, InclAddr,
-            InstVarSet, !U),
+        (
+            Lang = output_mercury
+        ;
+            Lang = output_debug,
+            InstResultsTerm =
+                inst_test_results_to_term(term.context_init, InstResults),
+            InstResultsStr =
+                mercury_term_to_string(varset.init, no, InstResultsTerm),
+            mercury_format_tabs(Indent, !U),
+            add_string(InstResultsStr, !U),
+            add_string(",\n", !U)
+        ),
+        mercury_format_structured_bound_insts(BoundInsts, Indent,
+            Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent, !U),
         add_string(")\n", !U)
     ;
@@ -672,22 +801,23 @@ mercury_format_structured_inst(Inst, Indent, InclAddr, InstVarSet, !U) :-
     ;
         Inst = abstract_inst(Name, Args),
         mercury_format_structured_inst_name(user_inst(Name, Args), 0,
-            InclAddr, InstVarSet, !U)
+            Lang, InclAddr, InstVarSet, !U)
     ;
         Inst = defined_inst(InstName),
         mercury_format_structured_inst_name(InstName, 0,
-            InclAddr, InstVarSet, !U)
+            Lang, InclAddr, InstVarSet, !U)
     ;
         Inst = not_reached,
         add_string("not_reached\n", !U)
     ).
 
 :- pred mercury_format_structured_bound_insts(list(bound_inst)::in, int::in,
-    incl_addr::in, inst_varset::in, U::di, U::uo) is det <= output(U).
+    output_lang::in, incl_addr::in, inst_varset::in, U::di, U::uo) is det
+    <= output(U).
 
-mercury_format_structured_bound_insts([], _, _, _, !U).
+mercury_format_structured_bound_insts([], _, _, _, _, !U).
 mercury_format_structured_bound_insts([BoundInst | BoundInsts],
-        Indent0, InclAddr, InstVarSet, !U) :-
+        Indent0, Lang, InclAddr, InstVarSet, !U) :-
     BoundInst = bound_functor(ConsId, Args),
     Indent1 = Indent0 + 1,
     Indent2 = Indent1 + 1,
@@ -701,8 +831,8 @@ mercury_format_structured_bound_insts([BoundInst | BoundInsts],
         mercury_format_tabs(Indent1, !U),
         mercury_format_cons_id(ConsId, does_not_need_brackets, !U),
         add_string("(\n", !U),
-        mercury_format_structured_inst_list(Args, Indent2, InclAddr,
-            InstVarSet, !U),
+        mercury_format_structured_inst_list(Args, Indent2,
+            Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent1, !U),
         add_string(")\n", !U)
     ),
@@ -713,7 +843,7 @@ mercury_format_structured_bound_insts([BoundInst | BoundInsts],
         mercury_format_tabs(Indent0, !U),
         add_string(";\n", !U),
         mercury_format_structured_bound_insts(BoundInsts, Indent0,
-            InclAddr, InstVarSet, !U)
+            Lang, InclAddr, InstVarSet, !U)
     ).
 
 :- pred get_inst_addr(mer_inst::in, int::out) is det.
@@ -728,10 +858,11 @@ mercury_format_structured_bound_insts([BoundInst | BoundInsts],
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_format_structured_inst_name(inst_name::in, int::in,
-    incl_addr::in, inst_varset::in, U::di, U::uo) is det <= output(U).
+    output_lang::in, incl_addr::in, inst_varset::in, U::di, U::uo) is det
+    <= output(U).
 
-mercury_format_structured_inst_name(InstName, Indent, InclAddr, InstVarSet,
-        !U) :-
+mercury_format_structured_inst_name(InstName, Indent, Lang, InclAddr,
+        InstVarSet, !U) :-
     (
         InstName = user_inst(Name, Args),
         (
@@ -743,8 +874,8 @@ mercury_format_structured_inst_name(InstName, Indent, InclAddr, InstVarSet,
             mercury_format_tabs(Indent, !U),
             mercury_format_sym_name(Name, !U),
             add_string("(\n", !U),
-            mercury_format_structured_inst_list(Args, Indent + 1, InclAddr,
-                InstVarSet, !U),
+            mercury_format_structured_inst_list(Args, Indent + 1,
+                Lang, InclAddr, InstVarSet, !U),
             mercury_format_tabs(Indent, !U),
             add_string(")\n", !U)
         )
@@ -753,14 +884,14 @@ mercury_format_structured_inst_name(InstName, Indent, InclAddr, InstVarSet,
         mercury_format_tabs(Indent, !U),
         add_string("$merge_inst(\n", !U),
         mercury_format_structured_inst_list([InstA, InstB], Indent + 1,
-            InclAddr, InstVarSet, !U),
+            Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent, !U),
         add_string(")\n", !U)
     ;
         InstName = shared_inst(SubInstName),
         add_string("$shared_inst(\n", !U),
         mercury_format_structured_inst_name(SubInstName, Indent + 1,
-            InclAddr, InstVarSet, !U),
+            Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent, !U),
         add_string(")\n", !U)
     ;
@@ -768,7 +899,7 @@ mercury_format_structured_inst_name(InstName, Indent, InclAddr, InstVarSet,
         mercury_format_tabs(Indent, !U),
         add_string("$mostly_uniq_inst(\n", !U),
         mercury_format_structured_inst_name(SubInstName, Indent + 1,
-            InclAddr, InstVarSet, !U),
+            Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent, !U),
         add_string(")\n", !U)
     ;
@@ -779,7 +910,7 @@ mercury_format_structured_inst_name(InstName, Indent, InclAddr, InstVarSet,
         mercury_format_real_comma(Real, !U),
         add_string("\n", !U),
         mercury_format_structured_inst_list([InstA, InstB], Indent + 1,
-            InclAddr, InstVarSet, !U),
+            Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent, !U),
         add_string(")\n", !U)
     ;
@@ -791,7 +922,7 @@ mercury_format_structured_inst_name(InstName, Indent, InclAddr, InstVarSet,
         mercury_format_uniqueness(Uniq, "shared", !U),
         add_string(",\n", !U),
         mercury_format_structured_inst_name(SubInstName, Indent + 1,
-            InclAddr, InstVarSet, !U),
+            Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent, !U),
         add_string(")\n", !U)
     ;
@@ -803,7 +934,7 @@ mercury_format_structured_inst_name(InstName, Indent, InclAddr, InstVarSet,
         mercury_format_uniqueness(Uniq, "shared", !U),
         add_string(",\n", !U),
         mercury_format_structured_inst_name(SubInstName, Indent + 1,
-            InclAddr, InstVarSet, !U),
+            Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent, !U),
         add_string(")\n", !U)
     ;
@@ -823,7 +954,7 @@ mercury_format_structured_inst_name(InstName, Indent, InclAddr, InstVarSet,
         mercury_format_type(TypeVarSet, no, Type, !U),
         add_string(",\n", !U),
         mercury_format_structured_inst_name(SubInstName, Indent + 1,
-            InclAddr, InstVarSet, !U),
+            Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent, !U),
         add_string(")\n", !U)
     ).

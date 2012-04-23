@@ -846,23 +846,47 @@ inst_MSG_1(InstA, InstB, !.Expansions, ModuleInfo, Inst) :-
 :- pred inst_MSG_2(mer_inst::in, mer_inst::in, expansions::in, module_info::in,
     mer_inst::out) is semidet.
 
-inst_MSG_2(any(_, _), any(UniqB, InfoB), _, _, any(UniqB, InfoB)).
-inst_MSG_2(free, free, _M, _, free).
-
-inst_MSG_2(bound(_, ListA), bound(UniqB, ListB), Expansions,
-        ModuleInfo, Inst) :-
-    bound_inst_list_MSG(ListA, ListB, Expansions,
-        ModuleInfo, UniqB, ListB, Inst).
-inst_MSG_2(bound(_, _), ground(UniqB, InfoB), _, _, ground(UniqB, InfoB)).
-
-    % Fail here, since the increasing inst size could
-    % cause termination problems for deforestation.
-inst_MSG_2(ground(_, _), bound(_UniqB, _ListB), _, _, _) :- fail.
-inst_MSG_2(ground(_, _), ground(UniqB, InfoB), _, _, ground(UniqB, InfoB)).
-inst_MSG_2(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
-        Expansions, ModuleInfo, abstract_inst(Name, Args)) :-
-    inst_list_MSG(ArgsA, ArgsB, Expansions, ModuleInfo, Args).
-inst_MSG_2(not_reached, Inst, _, _, Inst).
+inst_MSG_2(InstA, InstB, Expansions, ModuleInfo, Inst) :-
+    (
+        InstA = not_reached,
+        Inst = InstB
+    ;
+        InstA = free,
+        InstB = free,
+        Inst = free
+    ;
+        InstA = ground(_, _),
+        InstB = ground(_, _),
+        % XXX Not checking uniqueness seems wrong, and so is not recursing
+        % on the contents of any higher order inst.
+        Inst = InstB
+    ;
+        InstA = ground(_, _),
+        InstB = bound(_, _, _),
+        % Fail here, since the increasing inst size could cause
+        % termination problems for deforestation.
+        fail
+    ;
+        InstA = bound(_, _, _),
+        InstB = ground(_, _),
+        % XXX Not checking uniqueness seems wrong.
+        Inst = InstB
+    ;
+        InstA = bound(_, _, BoundInstsA),
+        InstB = bound(UniqB, _, BoundInstsB),
+        % XXX Ignoring UniqA seems wrong.
+        bound_inst_list_MSG(BoundInstsA, BoundInstsB, Expansions,
+            ModuleInfo, UniqB, BoundInstsB, Inst)
+    ;
+        InstA = any(_, _),
+        InstB = any(_, _),
+        Inst = InstB
+    ;
+        InstA = abstract_inst(Name, ArgsA),
+        InstB = abstract_inst(Name, ArgsB),
+        inst_list_MSG(ArgsA, ArgsB, Expansions, ModuleInfo, Args),
+        Inst = abstract_inst(Name, Args)
+    ).
 
 :- pred inst_list_MSG(list(mer_inst)::in, list(mer_inst)::in, expansions::in,
     module_info::in, list(mer_inst)::out) is semidet.
@@ -887,12 +911,12 @@ inst_list_MSG([ArgA | ArgsA], [ArgB | ArgsB], Expansions,
     expansions::in, module_info::in, uniqueness::in,
     list(bound_inst)::in, mer_inst::out) is semidet.
 
-bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, List, Inst) :-
+bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, BoundInsts, Inst) :-
     (
         Xs = [],
         Ys = []
     ->
-        Inst = bound(Uniq, [])
+        Inst = bound(Uniq, inst_test_no_results, [])
     ;
         Xs = [X | Xs1],
         Ys = [Y | Ys1],
@@ -902,9 +926,9 @@ bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, List, Inst) :-
         inst_list_MSG(ArgsX, ArgsY, Expansions, ModuleInfo, Args),
         Z = bound_functor(ConsId, Args),
         bound_inst_list_MSG(Xs1, Ys1, Expansions,
-            ModuleInfo, Uniq, List, Inst1),
-        ( Inst1 = bound(Uniq, Zs) ->
-            Inst = bound(Uniq, [Z | Zs])
+            ModuleInfo, Uniq, BoundInsts, Inst1),
+        ( Inst1 = bound(Uniq, _, Zs) ->
+            Inst = bound(Uniq, inst_test_no_results, [Z | Zs])
         ;
             Inst = Inst1
         )
@@ -912,14 +936,16 @@ bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, List, Inst) :-
         % Check that it's OK to round off the uniqueness information.
         (
             Uniq = shared,
-            inst_is_ground(ModuleInfo, bound(shared, List)),
-            inst_is_not_partly_unique(ModuleInfo, bound(shared, List))
+            NewInst = bound(shared, inst_test_no_results, BoundInsts),
+            inst_is_ground(ModuleInfo, NewInst),
+            inst_is_not_partly_unique(ModuleInfo, NewInst)
         ;
             Uniq = unique,
-            inst_is_unique(ModuleInfo, bound(unique, List))
+            NewInst = bound(unique, inst_test_no_results, BoundInsts),
+            inst_is_unique(ModuleInfo, NewInst)
         ),
         \+ inst_contains_nonstandard_func_mode(ModuleInfo,
-            bound(shared, List)),
+            bound(shared, inst_test_no_results, BoundInsts)),
         Inst = ground(Uniq, none)
     ).
 
@@ -932,36 +958,43 @@ inst_size(ModuleInfo, Inst, Size) :-
 :- pred inst_size_2(module_info::in, mer_inst::in,
     set(inst_name)::in, int::out) is det.
 
-inst_size_2(_, not_reached, _, 0).
-inst_size_2(_, any(_, _), _, 0).
-inst_size_2(_, free, _, 0).
-inst_size_2(_, free(_), _, 0).
-inst_size_2(_, ground(_, _), _, 0).
-inst_size_2(_, inst_var(_), _, 0).
-inst_size_2(ModuleInfo, constrained_inst_vars(_, Inst), Expansions,
-        Size) :-
-    inst_size_2(ModuleInfo, Inst, Expansions, Size).
-inst_size_2(_, abstract_inst(_, _), _, 0).
-inst_size_2(ModuleInfo, defined_inst(InstName), !.Expansions, Size) :-
-    ( set.member(InstName, !.Expansions) ->
-        Size = 1
+inst_size_2(ModuleInfo, Inst, !.Expansions, Size) :-
+    (
+        ( Inst = not_reached
+        ; Inst = free
+        ; Inst = free(_)
+        ; Inst = ground(_, _)
+        ; Inst = any(_, _)
+        ; Inst = inst_var(_)
+        ; Inst = abstract_inst(_, _)
+        ),
+        Size = 0
     ;
-        set.insert(InstName, !Expansions),
-        inst_lookup(ModuleInfo, InstName, Inst),
-        inst_size_2(ModuleInfo, Inst, !.Expansions, Size)
+        Inst = constrained_inst_vars(_, SubInst),
+        inst_size_2(ModuleInfo, SubInst, !.Expansions, Size)
+    ;
+        Inst = defined_inst(InstName),
+        ( set.member(InstName, !.Expansions) ->
+            Size = 1
+        ;
+            set.insert(InstName, !Expansions),
+            inst_lookup(ModuleInfo, InstName, SubInst),
+            inst_size_2(ModuleInfo, SubInst, !.Expansions, Size)
+        )
+    ;
+        Inst = bound(_, _, BoundInsts),
+        bound_inst_size(ModuleInfo, BoundInsts, !.Expansions, 1, Size)
     ).
-inst_size_2(ModuleInfo, bound(_, Functors), Expansions, Size) :-
-    bound_inst_size(ModuleInfo, Functors, Expansions, 1, Size).
 
 :- pred bound_inst_size(module_info::in, list(bound_inst)::in,
     set(inst_name)::in, int::in, int::out) is det.
 
-bound_inst_size(_, [], _, Size, Size).
-bound_inst_size(ModuleInfo, [bound_functor(_, ArgInsts) | Insts],
-        Expansions, Size0, Size) :-
-    inst_list_size(ModuleInfo, ArgInsts, Expansions, Size0, Size1),
-    Size2 = Size1 + 1,
-    bound_inst_size(ModuleInfo, Insts, Expansions, Size2, Size).
+bound_inst_size(_, [], _, !Size).
+bound_inst_size(ModuleInfo, [BoundInst | BoundInsts], Expansions, !Size) :-
+    BoundInst = bound_functor(_, ArgInsts),
+    inst_list_size(ModuleInfo, ArgInsts, Expansions, !Size),
+    !:Size = !.Size + 1,
+    bound_inst_size(ModuleInfo, BoundInsts, Expansions, !Size).
 
 inst_list_size(ModuleInfo, Insts, Size) :-
     set.init(Expansions),
@@ -970,18 +1003,16 @@ inst_list_size(ModuleInfo, Insts, Size) :-
 :- pred inst_list_size(module_info::in, list(mer_inst)::in,
     set(inst_name)::in, int::in, int::out) is det.
 
-inst_list_size(_, [], _, Size, Size).
-inst_list_size(ModuleInfo, [Inst | Insts],
-        Expansions, Size0, Size) :-
-    inst_size_2(ModuleInfo, Inst, Expansions, Size1),
-    Size2 = Size0 + Size1,
-    inst_list_size(ModuleInfo, Insts, Expansions, Size2, Size).
+inst_list_size(_, [], _, !Size).
+inst_list_size(ModuleInfo, [Inst | Insts], Expansions, !Size) :-
+    inst_size_2(ModuleInfo, Inst, Expansions, InstSize),
+    !:Size = !.Size + InstSize,
+    inst_list_size(ModuleInfo, Insts, Expansions, !Size).
 
 %-----------------------------------------------------------------------------%
 
 goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
         NewGoal, NewVarTypes, OldNewRenaming, TypeSubn) :-
-
     goal_to_conj_list(OldGoal, OldGoalList),
     goal_to_conj_list(NewGoal, NewGoalList),
     map.init(OldNewRenaming0),
@@ -1032,10 +1063,12 @@ collect_matching_arg_types([Arg | Args], [Type | Types],
 
 goals_match_2([], [], !ONRenaming).
 goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
+    OldGoal = hlds_goal(OldGoalExpr, _),
+    NewGoal = hlds_goal(NewGoalExpr, _),
     (
         (
-            OldGoal = hlds_goal(unify(_, _, _, OldUnification, _), _),
-            NewGoal = hlds_goal(unify(_, _, _, NewUnification, _), _),
+            OldGoalExpr = unify(_, _, _, OldUnification, _),
+            NewGoalExpr = unify(_, _, _, NewUnification, _),
             (
                 OldUnification = simple_test(OldVar1, OldVar2),
                 NewUnification = simple_test(NewVar1, NewVar2),
@@ -1062,18 +1095,14 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
                 NewArgs = [NewVar | NewArgs1]
             )
         ;
-            OldGoal = hlds_goal(plain_call(PredId, ProcId, OldArgs, _, _, _),
-                _),
-            NewGoal = hlds_goal(plain_call(PredId, ProcId, NewArgs, _, _, _),
-                _)
+            OldGoalExpr = plain_call(PredId, ProcId, OldArgs, _, _, _),
+            NewGoalExpr = plain_call(PredId, ProcId, NewArgs, _, _, _)
         ;
             % We don't need to check the modes here - if the goals match
             % and the insts of the argument variables match, the modes
             % of the call must be the same.
-            OldGoal = hlds_goal(generic_call(OldGenericCall, OldArgs1, _, _, Det),
-                _),
-            NewGoal = hlds_goal(generic_call(NewGenericCall, NewArgs1, _, _, Det),
-                _),
+            OldGoalExpr = generic_call(OldGenericCall, OldArgs1, _, _, Det),
+            NewGoalExpr = generic_call(NewGenericCall, NewArgs1, _, _, Det),
             match_generic_call(OldGenericCall, NewGenericCall),
             goal_util.generic_call_vars(OldGenericCall, OldArgs0),
             goal_util.generic_call_vars(NewGenericCall, NewArgs0),
@@ -1095,11 +1124,11 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
         list.foldl(MapInsert, ONArgsList, !ONRenaming)
     ;
         (
-            OldGoal = hlds_goal(negation(OldSubGoal), _),
-            NewGoal = hlds_goal(negation(NewSubGoal), _)
+            OldGoalExpr = negation(OldSubGoal),
+            NewGoalExpr = negation(NewSubGoal)
         ;
-            OldGoal = hlds_goal(scope(_, OldSubGoal), _),
-            NewGoal = hlds_goal(scope(_, NewSubGoal), _)
+            OldGoalExpr = scope(_, OldSubGoal),
+            NewGoalExpr = scope(_, NewSubGoal)
         )
     ->
         goal_to_conj_list(OldSubGoal, OldSubGoalList),

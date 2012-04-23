@@ -27,17 +27,17 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_pred(hlds_out_info::in, int::in, module_info::in,
-    pred_id::in, pred_info::in, io::di, io::uo) is det.
+:- pred write_pred(hlds_out_info::in, output_lang::in, int::in,
+    module_info::in, pred_id::in, pred_info::in, io::di, io::uo) is det.
 
-    % write_clause(Info, Indent, ModuleInfo, PredId, VarSet,
+    % write_clause(Info, Lang, Indent, ModuleInfo, PredId, VarSet,
     %   AppendVarNums, HeadTerms, PredOrFunc, Clause, UseDeclaredModes,
     %   MaybeVarTypes, !IO).
     %
-:- pred write_clause(hlds_out_info::in, int::in, module_info::in,
-    pred_id::in, prog_varset::in, bool::in, list(prog_term)::in,
-    pred_or_func::in, clause::in, bool::in, maybe_vartypes::in,
-    io::di, io::uo) is det.
+:- pred write_clause(hlds_out_info::in, output_lang::in, int::in,
+    module_info::in, pred_id::in, prog_varset::in, bool::in,
+    list(prog_term)::in, pred_or_func::in, clause::in, bool::in,
+    maybe_vartypes::in, io::di, io::uo) is det.
 
     % write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     %    ImportStatus, Proc, !IO).
@@ -101,7 +101,7 @@
 % Write out predicates.
 %
 
-write_pred(Info, Indent, ModuleInfo, PredId, PredInfo, !IO) :-
+write_pred(Info, Lang, Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     Module = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -209,8 +209,8 @@ write_pred(Info, Indent, ModuleInfo, PredId, PredInfo, !IO) :-
         (
             Clauses = [_ | _],
             set_dump_opts_for_clauses(Info, InfoForClauses),
-            write_clauses(InfoForClauses, Indent, ModuleInfo, PredId, VarSet,
-                AppendVarNums, HeadVars, PredOrFunc, Clauses,
+            write_clauses(InfoForClauses, Lang, Indent, ModuleInfo,
+                PredId, VarSet, AppendVarNums, HeadVars, PredOrFunc, Clauses,
                 no_varset_vartypes, !IO)
         ;
             Clauses = []
@@ -314,24 +314,25 @@ set_dump_opts_for_clauses(Info, ClausesInfo) :-
     % write_clauses(Info, Indent, ModuleInfo, PredId, VarSet,
     %   AppendVarNums, HeadVars, PredOrFunc, Clauses, MaybeVarTypes, !IO).
     %
-:- pred write_clauses(hlds_out_info::in, int::in, module_info::in,
-    pred_id::in, prog_varset::in, bool::in, proc_arg_vector(prog_var)::in,
-    pred_or_func::in, list(clause)::in, maybe_vartypes::in,
-    io::di, io::uo) is det.
+:- pred write_clauses(hlds_out_info::in, output_lang::in, int::in,
+    module_info::in, pred_id::in, prog_varset::in, bool::in,
+    proc_arg_vector(prog_var)::in, pred_or_func::in, list(clause)::in,
+    maybe_vartypes::in, io::di, io::uo) is det.
 
-write_clauses(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
+write_clauses(Info, Lang, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         HeadVars, PredOrFunc, Clauses0, TypeQual, !IO) :-
     HeadVarList = proc_arg_vector_to_list(HeadVars),
-    write_clauses_loop(Info, Indent, ModuleInfo, PredId, VarSet,
+    write_clauses_loop(Info, Lang, Indent, ModuleInfo, PredId, VarSet,
         AppendVarNums, HeadVarList, PredOrFunc, Clauses0, TypeQual, 1, !IO).
 
-:- pred write_clauses_loop(hlds_out_info::in, int::in,
+:- pred write_clauses_loop(hlds_out_info::in, output_lang::in, int::in,
     module_info::in, pred_id::in, prog_varset::in, bool::in,
     list(prog_var)::in, pred_or_func::in, list(clause)::in, maybe_vartypes::in,
     int::in, io::di, io::uo) is det.
 
-write_clauses_loop(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
-        HeadVars, PredOrFunc, Clauses0, TypeQual, ClauseNum, !IO) :-
+write_clauses_loop(Info, Lang, Indent, ModuleInfo, PredId,
+        VarSet, AppendVarNums, HeadVars, PredOrFunc, Clauses0,
+        TypeQual, ClauseNum, !IO) :-
     (
         Clauses0 = [Clause | Clauses],
         term.var_list_to_term_list(HeadVars, HeadTerms),
@@ -339,19 +340,20 @@ write_clauses_loop(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         io.write_string("% clause ", !IO),
         io.write_int(ClauseNum, !IO),
         io.write_string("\n", !IO),
-        write_clause(Info, Indent, ModuleInfo, PredId, VarSet,
+        write_clause(Info, Lang, Indent, ModuleInfo, PredId, VarSet,
             AppendVarNums, HeadTerms, PredOrFunc, Clause,
             UseDeclaredModes, TypeQual, !IO),
-        write_clauses_loop(Info, Indent, ModuleInfo, PredId, VarSet,
+        write_clauses_loop(Info, Lang, Indent, ModuleInfo, PredId, VarSet,
             AppendVarNums, HeadVars, PredOrFunc, Clauses, TypeQual,
             ClauseNum + 1, !IO)
     ;
         Clauses0 = []
     ).
 
-write_clause(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
+write_clause(Info, Lang, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         HeadTerms, PredOrFunc, Clause, UseDeclaredModes, TypeQual, !IO) :-
-    Clause = clause(ApplicableModes, Goal, Lang, Context, _StateVarWarnings),
+    Clause = clause(ApplicableModes, Goal, ImplLang, Context,
+        _StateVarWarnings),
     Indent1 = Indent + 1,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     (
@@ -369,9 +371,9 @@ write_clause(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         )
     ),
     (
-        Lang = impl_lang_mercury
+        ImplLang = impl_lang_mercury
     ;
-        Lang = impl_lang_foreign(ForeignLang),
+        ImplLang = impl_lang_foreign(ForeignLang),
         io.write_string("% Language of implementation: ", !IO),
         io.write(ForeignLang, !IO),
         io.nl(!IO)
@@ -386,7 +388,7 @@ write_clause(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         % multiple clause heads. This won't be pretty and it won't be
         % syntactically valid, but it is more useful for debugging
         % than a compiler abort during the dumping process.
-        write_annotated_clause_heads(ModuleInfo, Context, PredId,
+        write_annotated_clause_heads(ModuleInfo, Lang, Context, PredId,
             SelectedProcIds, VarSet, AppendVarNums, HeadTerms, PredOrFunc,
             UseDeclaredModes, !IO)
     ;
@@ -401,25 +403,27 @@ write_clause(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
             Indent1, ".\n", TypeQual, !IO)
     ).
 
-:- pred write_annotated_clause_heads(module_info::in, term.context::in,
-    pred_id::in, list(proc_id)::in, prog_varset::in, bool::in,
-    list(prog_term)::in, pred_or_func::in, bool::in, io::di, io::uo) is det.
+:- pred write_annotated_clause_heads(module_info::in, output_lang::in,
+    term.context::in, pred_id::in, list(proc_id)::in, prog_varset::in,
+    bool::in, list(prog_term)::in, pred_or_func::in, bool::in,
+    io::di, io::uo) is det.
 
-write_annotated_clause_heads(_, _, _, [], _, _, _, _, _, !IO).
-write_annotated_clause_heads(ModuleInfo, Context, PredId, [ProcId | ProcIds],
-        VarSet, AppendVarNums, HeadTerms, PredOrFunc, UseDeclaredModes, !IO) :-
-    write_annotated_clause_head(ModuleInfo, Context, PredId,
+write_annotated_clause_heads(_, _, _, _, [], _, _, _, _, _, !IO).
+write_annotated_clause_heads(ModuleInfo, Lang, Context, PredId,
+        [ProcId | ProcIds], VarSet, AppendVarNums, HeadTerms, PredOrFunc,
+        UseDeclaredModes, !IO) :-
+    write_annotated_clause_head(ModuleInfo, Lang, Context, PredId,
         ProcId, VarSet, AppendVarNums, HeadTerms,
         PredOrFunc, UseDeclaredModes, !IO),
-    write_annotated_clause_heads(ModuleInfo, Context, PredId,
+    write_annotated_clause_heads(ModuleInfo, Lang, Context, PredId,
         ProcIds, VarSet, AppendVarNums, HeadTerms,
         PredOrFunc, UseDeclaredModes, !IO).
 
-:- pred write_annotated_clause_head(module_info::in, term.context::in,
-    pred_id::in, proc_id::in, prog_varset::in, bool::in, list(prog_term)::in,
-    pred_or_func::in, bool::in, io::di, io::uo) is det.
+:- pred write_annotated_clause_head(module_info::in, output_lang::in,
+    term.context::in, pred_id::in, proc_id::in, prog_varset::in, bool::in,
+    list(prog_term)::in, pred_or_func::in, bool::in, io::di, io::uo) is det.
 
-write_annotated_clause_head(ModuleInfo, Context, PredId, ProcId, VarSet,
+write_annotated_clause_head(ModuleInfo, Lang, Context, PredId, ProcId, VarSet,
         AppendVarNums, HeadTerms, PredOrFunc, UseDeclaredModes, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, Procedures),
@@ -444,7 +448,7 @@ write_annotated_clause_head(ModuleInfo, Context, PredId, ProcId, VarSet,
         ),
         assoc_list.from_corresponding_lists(HeadTerms, ArgModes,
             AnnotatedPairs),
-        AnnotatedHeadTerms = list.map(add_mode_qualifier(Context),
+        AnnotatedHeadTerms = list.map(add_mode_qualifier(Lang, Context),
             AnnotatedPairs),
         write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums,
             AnnotatedHeadTerms, PredOrFunc, !IO)
@@ -454,12 +458,12 @@ write_annotated_clause_head(ModuleInfo, Context, PredId, ProcId, VarSet,
         true
     ).
 
-:- func add_mode_qualifier(prog_context, pair(prog_term, mer_mode))
-    = prog_term.
+:- func add_mode_qualifier(output_lang, prog_context,
+    pair(prog_term, mer_mode)) = prog_term.
 
-add_mode_qualifier(Context, HeadTerm - Mode) = AnnotatedTerm :-
-    construct_qualified_term(unqualified("::"),
-        [HeadTerm, mode_to_term_with_context(Context, Mode)],
+add_mode_qualifier(Lang, Context, HeadTerm - Mode) = AnnotatedTerm :-
+    construct_qualified_term_with_context(unqualified("::"),
+        [HeadTerm, mode_to_term_with_context(Lang, Context, Mode)],
         Context, AnnotatedTerm).
 
 :- pred write_clause_head(module_info::in, pred_id::in,

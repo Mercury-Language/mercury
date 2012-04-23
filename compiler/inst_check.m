@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2009, 2011 The University of Melbourne.
+% Copyright (C) 2006-2009, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -148,7 +148,7 @@ check_inst(FunctorsToTypes, InstId - InstDef, !Specs) :-
     (
         InstBody = eqv_inst(Inst),
         (
-            Inst = bound(_, BoundInsts),
+            Inst = bound(_, _, BoundInsts),
             (
                 list.map(bound_inst_to_functor, BoundInsts, Functors)
             ->

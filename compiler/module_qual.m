@@ -1141,27 +1141,49 @@ qualify_inst_list([Inst0 | Insts0], [Inst | Insts], !Info, !Specs) :-
 :- pred qualify_inst(mer_inst::in, mer_inst::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_inst(any(Uniq, HOInstInfo0), any(Uniq, HOInstInfo), !Info, !Specs) :-
-    qualify_ho_inst_info(HOInstInfo0, HOInstInfo, !Info, !Specs).
-qualify_inst(free, free, !Info, !Specs).
-qualify_inst(not_reached, not_reached, !Info, !Specs).
-qualify_inst(free(_), _, !Info, !Specs) :-
-    unexpected($module, $pred, "compiler generated inst not expected").
-qualify_inst(bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts), !Info,
-        !Specs) :-
-    qualify_bound_inst_list(BoundInsts0, BoundInsts, !Info, !Specs).
-qualify_inst(ground(Uniq, HOInstInfo0), ground(Uniq, HOInstInfo),
-        !Info, !Specs) :-
-    qualify_ho_inst_info(HOInstInfo0, HOInstInfo, !Info, !Specs).
-qualify_inst(inst_var(Var), inst_var(Var), !Info, !Specs).
-qualify_inst(constrained_inst_vars(Vars, Inst0),
-        constrained_inst_vars(Vars, Inst), !Info, !Specs) :-
-    qualify_inst(Inst0, Inst, !Info, !Specs).
-qualify_inst(defined_inst(InstName0), defined_inst(InstName), !Info, !Specs) :-
-    qualify_inst_name(InstName0, InstName, !Info, !Specs).
-qualify_inst(abstract_inst(Name, Args0), abstract_inst(Name, Args), !Info,
-        !Specs) :-
-    qualify_inst_list(Args0, Args, !Info, !Specs).
+qualify_inst(Inst0, Inst, !Info, !Specs) :-
+    (
+        Inst0 = any(Uniq, HOInstInfo0),
+        qualify_ho_inst_info(HOInstInfo0, HOInstInfo, !Info, !Specs),
+        Inst = any(Uniq, HOInstInfo)
+    ;
+        ( Inst0 = free
+        ; Inst0 = not_reached
+        ; Inst0 = inst_var(_)
+        ),
+        Inst = Inst0
+    ;
+        Inst0 = free(_),
+        unexpected($module, $pred, "compiler generated inst not expected")
+    ;
+        Inst0 = bound(Uniq, InstResults0, BoundInsts0),
+        (
+            ( InstResults0 = inst_test_results_fgtc
+            ; InstResults0 = inst_test_no_results
+            )
+        ;
+            InstResults0 = inst_test_results(_, _, _, _),
+            unexpected($module, $pred, "compiler generated inst not expected")
+        ),
+        qualify_bound_inst_list(BoundInsts0, BoundInsts, !Info, !Specs),
+        Inst = bound(Uniq, InstResults0, BoundInsts)
+    ;
+        Inst0 = ground(Uniq, HOInstInfo0),
+        qualify_ho_inst_info(HOInstInfo0, HOInstInfo, !Info, !Specs),
+        Inst = ground(Uniq, HOInstInfo)
+    ;
+        Inst0 = constrained_inst_vars(Vars, SubInst0),
+        qualify_inst(SubInst0, SubInst, !Info, !Specs),
+        Inst = constrained_inst_vars(Vars, SubInst)
+    ;
+        Inst0 = defined_inst(InstName0),
+        qualify_inst_name(InstName0, InstName, !Info, !Specs),
+        Inst = defined_inst(InstName)
+    ;
+        Inst0 = abstract_inst(Name, Args0),
+        qualify_inst_list(Args0, Args, !Info, !Specs),
+        Inst = abstract_inst(Name, Args)
+    ).
 
 :- pred qualify_ho_inst_info(ho_inst_info::in, ho_inst_info::out,
     mq_info::in, mq_info::out, list(error_spec)::in, list(error_spec)::out)

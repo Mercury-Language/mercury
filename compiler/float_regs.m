@@ -353,10 +353,10 @@ add_arg_regs_in_inst(ModuleInfo, Seen0, Type, Inst0, Inst) :-
         ),
         Inst = any(Uniq, higher_order(PredInstInfo))
     ;
-        Inst0 = bound(Uniq, BoundInsts0),
+        Inst0 = bound(Uniq, InstResults, BoundInsts0),
         list.map(add_arg_regs_in_bound_inst(ModuleInfo, Seen0, Type),
             BoundInsts0, BoundInsts),
-        Inst = bound(Uniq, BoundInsts)
+        Inst = bound(Uniq, InstResults, BoundInsts)
     ;
         Inst0 = constrained_inst_vars(InstVarSet, SpecInst0),
         add_arg_regs_in_inst(ModuleInfo, Seen0, Type, SpecInst0, SpecInst),
@@ -915,10 +915,10 @@ update_construct_goal_instmap_delta(ModuleInfo, CellVar, ConsId, Args,
 
 rebuild_cell_inst(ModuleInfo, InstMap, ConsId, Args, Inst0, Inst) :-
     (
-        Inst0 = bound(Uniq, BoundInsts0),
+        Inst0 = bound(Uniq, InstResults, BoundInsts0),
         list.map(rebuild_cell_bound_inst(InstMap, ConsId, Args),
             BoundInsts0, BoundInsts),
-        Inst = bound(Uniq, BoundInsts)
+        Inst = bound(Uniq, InstResults, BoundInsts)
     ;
         (
             Inst0 = ground(Uniq, higher_order(PredInstInfo0))

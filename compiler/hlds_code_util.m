@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,17 +157,28 @@ is_valid_mutable_inst(ModuleInfo, Inst) :-
 :- pred is_valid_mutable_inst_2(module_info::in, mer_inst::in,
     set(inst_name)::in) is semidet.
 
-is_valid_mutable_inst_2(_, any(shared, _), _).
-is_valid_mutable_inst_2(ModuleInfo, bound(shared, BoundInsts), Expansions) :-
-    list.member(bound_functor(_, Insts), BoundInsts),
-    list.member(Inst, Insts),
-    is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions).
-is_valid_mutable_inst_2(_, ground(shared, _), _).
-is_valid_mutable_inst_2(ModuleInfo, defined_inst(InstName), Expansions0) :-
-    not set.member(InstName, Expansions0),
-    Expansions = set.insert(Expansions0, InstName),
-    inst_lookup(ModuleInfo, InstName, Inst),
-    is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions).
+is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions0) :-
+    (
+        ( Inst = any(Uniq, _)
+        ; Inst = ground(Uniq, _)
+        ),
+        Uniq = shared
+    ;
+        Inst = bound(shared, _, BoundInsts),
+        % XXX This looks wrong to me. It says that Inst is a valid mutable inst
+        % if SOME ArgInst inside Inst is a valid mutable inst, whereas I think
+        % ALL arguments of ALL functors should be required to be valid mutable
+        % insts.
+        list.member(bound_functor(_, ArgInsts), BoundInsts),
+        list.member(ArgInst, ArgInsts),
+        is_valid_mutable_inst_2(ModuleInfo, ArgInst, Expansions0)
+    ;
+        Inst = defined_inst(InstName),
+        not set.member(InstName, Expansions0),
+        set.insert(InstName, Expansions0, Expansions),
+        inst_lookup(ModuleInfo, InstName, SubInst),
+        is_valid_mutable_inst_2(ModuleInfo, SubInst, Expansions)
+    ).
 
 %----------------------------------------------------------------------------%
 :- end_module hlds_code_util.

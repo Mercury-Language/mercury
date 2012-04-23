@@ -701,16 +701,39 @@ type_may_occur_in_inst(Inst) = MayOccur :-
         ),
         MayOccur = yes
     ;
-        Inst = bound(_, BoundInsts),
-        promise_pure (
-            semipure lookup_inst_may_occur(Inst, Found, OldMayOccur),
+        Inst = bound(_, InstResults, BoundInsts),
+        (
+            InstResults = inst_test_results_fgtc,
+            MayOccur = no
+        ;
             (
-                Found = yes,
-                MayOccur = OldMayOccur
+                InstResults = inst_test_results(_, _, _, TypeResult)
             ;
-                Found = no,
-                MayOccur = type_may_occur_in_bound_insts(BoundInsts),
-                impure record_inst_may_occur(Inst, MayOccur)
+                InstResults = inst_test_no_results,
+                TypeResult = inst_result_contains_types_unknown
+            ),
+            (
+                TypeResult = inst_result_contains_types_known(TypeCtors),
+                ( set.is_empty(TypeCtors) ->
+                    MayOccur = no
+                ;
+                    MayOccur = yes
+                )
+            ;
+                TypeResult = inst_result_contains_types_unknown,
+                % XXX Do we still need this cache, or are things now
+                % fast enough without it?
+                promise_pure (
+                    semipure lookup_inst_may_occur(Inst, Found, OldMayOccur),
+                    (
+                        Found = yes,
+                        MayOccur = OldMayOccur
+                    ;
+                        Found = no,
+                        MayOccur = type_may_occur_in_bound_insts(BoundInsts),
+                        impure record_inst_may_occur(Inst, MayOccur)
+                    )
+                )
             )
         )
     ;
@@ -875,11 +898,46 @@ replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
         ; Changed = no, Inst = Inst0
         )
     ;
-        Inst0 = bound(Uniq, BoundInsts0),
-        replace_in_bound_insts(EqvMap, BoundInsts0, BoundInsts, Changed,
-            !TVarSet, !Cache),
-        ( Changed = yes, Inst = bound(Uniq, BoundInsts)
-        ; Changed = no, Inst = Inst0
+        Inst0 = bound(Uniq, InstResults0, BoundInsts0),
+        (
+            InstResults0 = inst_test_results(GroundnessResult, AnyResult,
+                InstNamesResult, TypeResult),
+            (
+                TypeResult = inst_result_contains_types_unknown,
+                NeedReplace = yes(InstResults0)
+            ;
+                TypeResult = inst_result_contains_types_known(TypeCtors),
+                % XXX We could test the intersection of TypeCtors with
+                % the key set of EqvMap. That test would be more expensive,
+                % but could possibly avoid a costly traversal of BoundInsts0.
+                ( set.is_empty(TypeCtors) ->
+                    NeedReplace = no
+                ;
+                    NeedReplace = yes(inst_test_results(GroundnessResult,
+                        AnyResult, InstNamesResult,
+                        inst_result_contains_types_unknown))
+                )
+            )
+        ;
+            InstResults0 = inst_test_results_fgtc,
+            NeedReplace = no
+        ;
+            InstResults0 = inst_test_no_results,
+            NeedReplace = yes(InstResults0)
+        ),
+        (
+            NeedReplace = no,
+            Changed = no,
+            Inst = Inst0
+        ;
+            NeedReplace = yes(InstResults),
+            replace_in_bound_insts(EqvMap, BoundInsts0, BoundInsts, Changed,
+                !TVarSet, !Cache),
+            % We could try to figure out the set of type_ctors in BoundInsts,
+            % but that info may never be needed again.
+            ( Changed = yes, Inst = bound(Uniq, InstResults, BoundInsts)
+            ; Changed = no, Inst = Inst0
+            )
         )
     ;
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),

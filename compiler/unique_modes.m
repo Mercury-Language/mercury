@@ -242,7 +242,7 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
         instmap_lookup_var(InstMap0, Var, Inst0),
         inst_expand(ModuleInfo0, Inst0, Inst1),
         ( Inst1 = ground(unique, _)
-        ; Inst1 = bound(unique, _)
+        ; Inst1 = bound(unique, _, _)
         ; Inst1 = any(unique, _)
         )
     ->

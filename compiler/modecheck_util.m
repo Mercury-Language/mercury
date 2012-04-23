@@ -337,7 +337,8 @@ modecheck_functor_test(Var, ConsId, !ModeInfo) :-
     BoundInst = cons_id_to_bound_inst(ModuleInfo, Type, ConsId),
 
     % Record the fact that Var was bound to ConsId.
-    modecheck_set_var_inst(Var, bound(unique, [BoundInst]), no, !ModeInfo).
+    Inst = bound(unique, inst_test_no_results, [BoundInst]),
+    modecheck_set_var_inst(Var, Inst, no, !ModeInfo).
 
 modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo) :-
     % Figure out the arity of this constructor, _including_ any type-infos
@@ -350,7 +351,8 @@ modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo) :-
 
     % Record the fact that Var was bound to MainConsId or one of the
     % OtherConsIds.
-    modecheck_set_var_inst(Var, bound(unique, BoundInsts), no, !ModeInfo).
+    Inst = bound(unique, inst_test_no_results, BoundInsts),
+    modecheck_set_var_inst(Var, Inst, no, !ModeInfo).
 
 :- func cons_id_to_bound_inst(module_info, mer_type, cons_id) = bound_inst.
 

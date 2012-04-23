@@ -646,7 +646,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
     mode_info_get_instmap(!.ModeInfo, InstMap1),
     instmap_lookup_vars(InstMap1, ArgVars0, InstArgs),
     mode_info_var_list_is_live(!.ModeInfo, ArgVars0, LiveArgs),
-    InstOfY = bound(unique, [bound_functor(InstConsId, InstArgs)]),
+    InstOfY = bound(unique, inst_test_no_results,
+        [bound_functor(InstConsId, InstArgs)]),
     (
         % The occur check: X = f(X) is considered a mode error unless X is
         % ground. (Actually it wouldn't be that hard to generate code for it
@@ -1434,8 +1435,8 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
             mode_get_insts(ModuleInfo, ModeOfX, InitialInst0, FinalInst0),
             inst_expand(ModuleInfo, InitialInst0, InitialInst),
             inst_expand(ModuleInfo, FinalInst0, FinalInst),
-            InitialInst = bound(_, [_]),
-            FinalInst = bound(_, [_])
+            InitialInst = bound(_, _, [_]),
+            FinalInst = bound(_, _, [_])
         ->
             CanFail = cannot_fail
         ;
@@ -1584,25 +1585,29 @@ bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) :-
 :- pred try_bind_args(mer_inst::in, list(prog_var)::in,
     list(maybe(mer_inst))::in, mode_info::in, mode_info::out) is semidet.
 
-try_bind_args(not_reached, _, _, !ModeInfo) :-
-    instmap.init_unreachable(InstMap),
-    mode_info_set_instmap(InstMap, !ModeInfo).
-try_bind_args(ground(Uniq, none), Args, UnifyArgInsts, !ModeInfo) :-
-    ground_args(Uniq, Args, UnifyArgInsts, !ModeInfo).
-try_bind_args(bound(_Uniq, List), Args, UnifyArgInsts, !ModeInfo) :-
+try_bind_args(Inst, ArgVars, UnifyArgInsts, !ModeInfo) :-
     (
-        List = [],
-        % The code is unreachable.
+        Inst = not_reached,
         instmap.init_unreachable(InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
-        List = [_ | _],
-        List = [bound_functor(_, InstList)],
-        try_bind_args_2(Args, InstList, UnifyArgInsts, !ModeInfo)
+        Inst = ground(Uniq, none),
+        ground_args(Uniq, ArgVars, UnifyArgInsts, !ModeInfo)
+    ;
+        Inst = bound(_Uniq, _InstResults, BoundInsts),
+        (
+            BoundInsts = [],
+            % The code is unreachable.
+            instmap.init_unreachable(InstMap),
+            mode_info_set_instmap(InstMap, !ModeInfo)
+        ;
+            BoundInsts = [bound_functor(_, ArgInsts)],
+            try_bind_args_2(ArgVars, ArgInsts, UnifyArgInsts, !ModeInfo)
+        )
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        try_bind_args(SubInst, ArgVars, UnifyArgInsts, !ModeInfo)
     ).
-try_bind_args(constrained_inst_vars(_, Inst), Args, UnifyArgInsts,
-        !ModeInfo) :-
-    try_bind_args(Inst, Args, UnifyArgInsts, !ModeInfo).
 
 :- pred try_bind_args_2(list(prog_var)::in, list(mer_inst)::in,
     list(maybe(mer_inst))::in, mode_info::in, mode_info::out) is semidet.
@@ -1632,24 +1637,30 @@ ground_args(Uniq, [Arg | Args], [UnifyArgInst | UnifyArgInsts], !ModeInfo) :-
 :- pred get_mode_of_args(mer_inst::in, list(mer_inst)::in, list(mer_mode)::out)
     is semidet.
 
-get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
-    mode_set_args(ArgInsts, not_reached, ArgModes).
-get_mode_of_args(any(Uniq, none), ArgInsts, ArgModes) :-
-    mode_set_args(ArgInsts, any(Uniq, none), ArgModes).
-get_mode_of_args(ground(Uniq, none), ArgInsts, ArgModes) :-
-    mode_set_args(ArgInsts, ground(Uniq, none), ArgModes).
-get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-
+get_mode_of_args(Inst, ArgInsts, ArgModes) :-
     (
-        List = [],
-        % The code is unreachable.
-        mode_set_args(ArgInstsA, not_reached, ArgModes)
+        Inst = not_reached,
+        mode_set_args(ArgInsts, not_reached, ArgModes)
     ;
-        List = [_ | _],
-        List = [bound_functor(_Name, ArgInstsB)],
-        get_mode_of_args_2(ArgInstsA, ArgInstsB, ArgModes)
+        Inst = any(Uniq, none),
+        mode_set_args(ArgInsts, any(Uniq, none), ArgModes)
+    ;
+        Inst = ground(Uniq, none),
+        mode_set_args(ArgInsts, ground(Uniq, none), ArgModes)
+    ;
+        Inst = bound(_Uniq, _InstResults, BoundInsts),
+        (
+            BoundInsts = [],
+            % The code is unreachable.
+            mode_set_args(ArgInsts, not_reached, ArgModes)
+        ;
+            BoundInsts = [bound_functor(_Name, FunctorArgInsts)],
+            get_mode_of_args_2(ArgInsts, FunctorArgInsts, ArgModes)
+        )
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        get_mode_of_args(SubInst, ArgInsts, ArgModes)
     ).
-get_mode_of_args(constrained_inst_vars(_, Inst), ArgInsts, ArgModes) :-
-    get_mode_of_args(Inst, ArgInsts, ArgModes).
 
 :- pred get_mode_of_args_2(list(mer_inst)::in, list(mer_inst)::in,
     list(mer_mode)::out) is semidet.

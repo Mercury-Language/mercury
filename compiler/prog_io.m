@@ -158,17 +158,22 @@
     maybe1(item)::out) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% XXX Why are these predicates in this module? Wouldn't e.g prog_mode.m
+% be more appropriate?
+%
 
-    % Replace all occurrences of inst_var(I) with
-    % constrained_inst_var(I, ground(shared, none)).
+    % Replace all occurrences of inst_var(InstVar) with
+    % constrained_inst_var(InstVar, ground(shared, none)).
     %
 :- pred constrain_inst_vars_in_mode(mer_mode::in, mer_mode::out) is det.
 
-    % Replace all occurrences of inst_var(I) with
-    % constrained_inst_var(I, Inst) where I -> Inst is in the inst_var_sub.
-    % If I is not in the inst_var_sub, default to ground(shared, none).
+    % Replace all occurrences of inst_var(InstVar) with
+    % constrained_inst_var(InstVar, Inst) where InstVar -> Inst
+    % is in the inst_var_sub.
+    % If InstVar is not in the inst_var_sub, default to ground(shared, none).
     %
-:- pred constrain_inst_vars_in_mode(inst_var_sub::in,
+:- pred constrain_inst_vars_in_mode_sub(inst_var_sub::in,
     mer_mode::in, mer_mode::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -1692,7 +1697,7 @@ parse_type_and_mode(InstConstraints, Term, MaybeTypeAndMode) :-
     ( Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _Context) ->
         maybe_parse_type(TypeTerm, Type),
         convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
-        constrain_inst_vars_in_mode(InstConstraints, Mode0, Mode),
+        constrain_inst_vars_in_mode_sub(InstConstraints, Mode0, Mode),
         MaybeTypeAndMode = type_and_mode(Type, Mode)
     ;
         maybe_parse_type(Term, Type),
@@ -1815,7 +1820,7 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
             Attributes0, Attributes, MaybeConstraints),
         (
             MaybeConstraints = ok3(_, _, InstConstraints),
-            list.map(constrain_inst_vars_in_mode(InstConstraints),
+            list.map(constrain_inst_vars_in_mode_sub(InstConstraints),
                 ArgModes0, ArgModes),
             varset.coerce(VarSet, ProgVarSet),
             ( inst_var_constraints_are_self_consistent_in_modes(ArgModes) ->
@@ -1871,12 +1876,12 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
             Attributes0, Attributes, MaybeConstraints),
         (
             MaybeConstraints = ok3(_, _, InstConstraints),
-            list.map(constrain_inst_vars_in_mode(InstConstraints),
+            list.map(constrain_inst_vars_in_mode_sub(InstConstraints),
                 ArgModes0, ArgModes),
             (
                 convert_mode(allow_constrained_inst_var, RetModeTerm, RetMode0)
             ->
-                constrain_inst_vars_in_mode(InstConstraints,
+                constrain_inst_vars_in_mode_sub(InstConstraints,
                     RetMode0, RetMode),
                 varset.coerce(VarSet, InstVarSet),
                 ArgReturnModes = ArgModes ++ [RetMode],
@@ -2223,9 +2228,9 @@ desugar_field_access(Term) = DesugaredTerm :-
 %-----------------------------------------------------------------------------%
 
 constrain_inst_vars_in_mode(Mode0, Mode) :-
-    constrain_inst_vars_in_mode(map.init, Mode0, Mode).
+    constrain_inst_vars_in_mode_sub(map.init, Mode0, Mode).
 
-constrain_inst_vars_in_mode(InstConstraints, Mode0, Mode) :-
+constrain_inst_vars_in_mode_sub(InstConstraints, Mode0, Mode) :-
     (
         Mode0 = (I0 -> F0),
         constrain_inst_vars_in_inst(InstConstraints, I0, I),
@@ -2242,36 +2247,43 @@ constrain_inst_vars_in_mode(InstConstraints, Mode0, Mode) :-
 
 constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
     (
-        Inst0 = any(U, none),
-        Inst = any(U, none)
+        ( Inst0 = not_reached
+        ; Inst0 = free
+        ; Inst0 = free(_)
+        ; Inst0 = ground(_Uniq, none)
+        ; Inst0 = any(_Uniq, none)
+        ),
+        Inst = Inst0
     ;
-        Inst0 = any(U, higher_order(PredInstInfo0)),
+        Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
         constrain_inst_vars_in_pred_inst_info(InstConstraints,
             PredInstInfo0, PredInstInfo),
-        Inst = any(U, higher_order(PredInstInfo))
+        Inst = ground(Uniq, higher_order(PredInstInfo))
     ;
-        Inst0 = free,
-        Inst = free
-    ;
-        Inst0 = free(Type),
-        Inst = free(Type)
-    ;
-        Inst0 = bound(U, BIs0),
-        list.map(
-            (pred(bound_functor(C, Is0)::in, bound_functor(C, Is)::out)
-                    is det :-
-                list.map(constrain_inst_vars_in_inst(InstConstraints),
-                    Is0, Is)),
-            BIs0, BIs),
-        Inst = bound(U, BIs)
-    ;
-        Inst0 = ground(U, none),
-        Inst = ground(U, none)
-    ;
-        Inst0 = ground(U, higher_order(PredInstInfo0)),
+        Inst0 = any(Uniq, higher_order(PredInstInfo0)),
         constrain_inst_vars_in_pred_inst_info(InstConstraints,
             PredInstInfo0, PredInstInfo),
-        Inst = ground(U, higher_order(PredInstInfo))
+        Inst = any(Uniq, higher_order(PredInstInfo))
+    ;
+        Inst0 = bound(Uniq, InstResults0, BoundInsts0),
+        (
+            InstResults0 = inst_test_results_fgtc,
+            % There are no inst_vars to substitute.
+            Inst = Inst0
+        ;
+            ( InstResults0 = inst_test_no_results
+            ; InstResults0 = inst_test_results(_, _, _, _)
+            ),
+            list.map(
+                (pred(bound_functor(C, Is0)::in, bound_functor(C, Is)::out)
+                        is det :-
+                    list.map(constrain_inst_vars_in_inst(InstConstraints),
+                        Is0, Is)),
+                BoundInsts0, BoundInsts),
+            % The substitutions inside BoundInsts can invalidate
+            % any of the existing results.
+            Inst = bound(Uniq, inst_test_no_results, BoundInsts)
+        )
     ;
         Inst0 = constrained_inst_vars(Vars0, SubInst0),
         constrain_inst_vars_in_inst(InstConstraints, SubInst0, SubInst1),
@@ -2283,9 +2295,6 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
             SubInst = SubInst1
         ),
         Inst = constrained_inst_vars(Vars, SubInst)
-    ;
-        Inst0 = not_reached,
-        Inst = not_reached
     ;
         Inst0 = inst_var(Var),
         ( map.search(InstConstraints, Var, SubInstPrime) ->
@@ -2310,7 +2319,7 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
 
 constrain_inst_vars_in_pred_inst_info(InstConstraints, PII0, PII) :-
     PII0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
-    list.map(constrain_inst_vars_in_mode(InstConstraints), Modes0, Modes),
+    list.map(constrain_inst_vars_in_mode_sub(InstConstraints), Modes0, Modes),
     PII = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det).
 
 :- pred constrain_inst_vars_in_inst_name(inst_var_sub::in,
@@ -2382,11 +2391,19 @@ inst_var_constraints_are_consistent_in_inst(Inst, !Sub) :-
         ; Inst = not_reached
         )
     ;
-        Inst = bound(_, BoundInsts),
-        list.foldl(
-            (pred(bound_functor(_, Insts)::in, in, out) is semidet -->
-                inst_var_constraints_are_consistent_in_insts(Insts)),
-            BoundInsts, !Sub)
+        Inst = bound(_, InstResults, BoundInsts),
+        (
+            InstResults = inst_test_results_fgtc
+        ;
+            ( InstResults = inst_test_no_results
+            ; InstResults = inst_test_results(_, _, _, _)
+            ),
+            list.foldl(
+                (pred(bound_functor(_, Insts)::in, in, out) is semidet -->
+                    inst_var_constraints_are_consistent_in_insts(Insts)
+                ),
+                BoundInsts, !Sub)
+        )
     ;
         ( Inst = ground(_, HOInstInfo)
         ; Inst = any(_, HOInstInfo)
@@ -2402,14 +2419,14 @@ inst_var_constraints_are_consistent_in_inst(Inst, !Sub) :-
         unexpected($module, $pred, "unconstrained inst_var")
     ;
         Inst = defined_inst(InstName),
-        ( InstName = user_inst(_, Insts) ->
-            inst_var_constraints_are_consistent_in_insts(Insts, !Sub)
+        ( InstName = user_inst(_, ArgInsts) ->
+            inst_var_constraints_are_consistent_in_insts(ArgInsts, !Sub)
         ;
             true
         )
     ;
-        Inst = abstract_inst(_, Insts),
-        inst_var_constraints_are_consistent_in_insts(Insts, !Sub)
+        Inst = abstract_inst(_, ArgInsts),
+        inst_var_constraints_are_consistent_in_insts(ArgInsts, !Sub)
     ;
         Inst = constrained_inst_vars(InstVars, SubInst),
         set.fold(inst_var_constraints_are_consistent_in_inst_var(SubInst),

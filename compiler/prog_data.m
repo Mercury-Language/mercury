@@ -2026,7 +2026,7 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
                 % The ho_inst_info holds extra information
                 % about higher-order values.
 
-    ;           bound(uniqueness, list(bound_inst))
+    ;           bound(uniqueness, inst_test_results, list(bound_inst))
                 % The list(bound_inst) must be sorted.
 
     ;           ground(uniqueness, ho_inst_info)
@@ -2049,6 +2049,83 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     ;           abstract_inst(sym_name, list(mer_inst)).
                 % An abstract inst is a defined inst which has been declared
                 % but not actually been defined (yet).
+
+    % Values of this type give the outcome of various tests on an inst,
+    % if that information is available when the inst is constructed.
+    % The purpose is to allow those tests to work in constant time,
+    % not time that is linear, quadratic or worse in the size of the inst.
+    %
+    % We attach this information to bound insts, since the only practical
+    % way to make an inst big is to use bound insts.
+    %
+    % We could extend the number of tests whose results we can record,
+    % but we should do so only when we have a demonstrated need, and I (zs)
+    % don't yet see the need for them. However, here is a list of the tests
+    % whose results we can consider adding, together with the names of the
+    % predicates that could use them.
+    %
+    % Does the inst contain any_instvars?
+    %   inst_apply_substitution
+    %   inst_contains_unconstrained_var
+    %   constrain_inst_vars_in_inst
+    %   inst_var_constraints_are_consistent_in_inst
+    %   inst_contains_inst_var
+    %
+    % Does the inst contain a nonstandard func mode?
+    %   inst_contains_nonstandard_func_mode
+    %
+    % Does the inst contain any part that is uniq or mostly_uniq?
+    %   make_shared_inst
+    %
+:- type inst_test_results
+    --->    inst_test_results(
+                inst_result_groundness,
+                inst_result_contains_any,
+                inst_result_contains_instnames,
+                inst_result_contains_types
+            )
+    ;       inst_test_no_results
+            % Implies
+            %   inst_result_groundness_unknown
+            %   inst_result_contains_any_unknown
+            %   inst_result_contains_instnames_unknown
+            %   inst_result_contains_types_unknown
+    ;       inst_test_results_fgtc.
+            % Implies
+            %   inst_result_is_ground
+            %   inst_result_does_not_contain_any
+            %   inst_result_contains_instnames_known(set.init)
+            %   inst_result_contains_types_known(set.init)
+            % It also implies that the inst does not contain any inst_vars,
+            % typed insts, constrained insts or higher order type insts,
+            % and that no part of it is unique or mostly_unique.
+
+    % Does the inst represent a ground term?
+:- type inst_result_groundness
+    --->    inst_result_is_not_ground
+    ;       inst_result_is_ground
+    ;       inst_result_groundness_unknown.
+
+    % Does "any" appear anywhere inside the inst?
+:- type inst_result_contains_any
+    --->    inst_result_does_not_contain_any
+    ;       inst_result_does_contain_any
+    ;       inst_result_contains_any_unknown.
+
+:- type inst_result_contains_instnames
+    --->    inst_result_contains_instnames_known(set(inst_name))
+            % All the inst_names inside the inst are given in the set.
+            % This is not guarantee that all the inst_names in the set
+            % appear in the inst, but it is a guarantee that an inst_name
+            % that appears in the inst will appear in the set.
+    ;       inst_result_contains_instnames_unknown.
+
+:- type inst_result_contains_types
+    --->    inst_result_contains_types_known(set(type_ctor))
+            % All the type_ctors inside typed_inst nodes of the the inst
+            % are given in the set. This gives a guarantee analogous to
+            % inst_result_contains_instnames_known.
+    ;       inst_result_contains_types_unknown.
 
 :- type uniqueness
     --->        shared              % There might be other references.

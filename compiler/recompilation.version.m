@@ -49,6 +49,7 @@
 
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_mode.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_sym_name.
@@ -1100,13 +1101,13 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
 
     % Treat modes as terms here to use term.list_subsumes, which does just
     % what we want here.
-    ModeTerms1 = list.map(mode_to_term, Modes1),
-    ModeTerms2 = list.map(mode_to_term, Modes2),
+    ModeTerms1 = list.map(mode_to_term(output_mercury), Modes1),
+    ModeTerms2 = list.map(mode_to_term(output_mercury), Modes2),
     (
         MaybeWithInst1 = yes(Inst1),
         MaybeWithInst2 = yes(Inst2),
-        WithInstTerm1 = mode_to_term(free -> Inst1),
-        WithInstTerm2 = mode_to_term(free -> Inst2),
+        WithInstTerm1 = mode_to_term(output_mercury, free -> Inst1),
+        WithInstTerm2 = mode_to_term(output_mercury, free -> Inst2),
         AllModeTerms1 = [WithInstTerm1 | ModeTerms1],
         AllModeTerms2 = [WithInstTerm2 | ModeTerms2]
     ;

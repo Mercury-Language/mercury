@@ -211,17 +211,17 @@
 
     % Maps each variable defined in terms of another variable to the variable
     % it is assigned from.
-:- type eqv_map             == map(prog_var, prog_var).
+:- type fc_eqv_map          == map(prog_var, prog_var).
 
     % The knowledge we have recorded from assign and construct unifications in
     % a given conjunction.
     %
 :- type conj_map
     --->    conj_map(
-                string_map          :: string_map,
-                list_skeleton_map   :: list_skeleton_map,
-                list_element_map    :: list_element_map,
-                eqv_map             :: eqv_map
+                cm_string_map           :: string_map,
+                cm_list_skeleton_map    :: list_skeleton_map,
+                cm_list_element_map     :: list_element_map,
+                cm_eqv_map              :: fc_eqv_map
             ).
 
 :- type conj_id

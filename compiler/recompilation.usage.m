@@ -1327,34 +1327,38 @@ find_items_used_by_insts(Modes, !Info) :-
 :- pred find_items_used_by_inst(mer_inst::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_inst(any(_, HOInstInfo), !Info) :-
+find_items_used_by_inst(Inst, !Info) :-
     (
-        HOInstInfo = higher_order(pred_inst_info(_, Modes, _, _)),
-        find_items_used_by_modes(Modes, !Info)
+        ( Inst = not_reached
+        ; Inst = free
+        ; Inst = free(_)
+        ; Inst = inst_var(_)
+        )
     ;
-        HOInstInfo = none
-    ).
-find_items_used_by_inst(free, !Info).
-find_items_used_by_inst(free(_), !Info).
-find_items_used_by_inst(bound(_, BoundInsts), !Info) :-
-    list.foldl(find_items_used_by_bound_inst, BoundInsts, !Info).
-find_items_used_by_inst(ground(_, HOInstInfo), !Info) :-
-    (
-        HOInstInfo = higher_order(pred_inst_info(_, Modes, _, _)),
-        find_items_used_by_modes(Modes, !Info)
+        ( Inst = any(_, HOInstInfo)
+        ; Inst = ground(_, HOInstInfo)
+        ),
+        (
+            HOInstInfo = higher_order(pred_inst_info(_, Modes, _, _)),
+            find_items_used_by_modes(Modes, !Info)
+        ;
+            HOInstInfo = none
+        )
     ;
-        HOInstInfo = none
+        Inst = bound(_, _, BoundInsts),
+        list.foldl(find_items_used_by_bound_inst, BoundInsts, !Info)
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        find_items_used_by_inst(SubInst, !Info)
+    ;
+        Inst = defined_inst(InstName),
+        find_items_used_by_inst_name(InstName, !Info)
+    ;
+        Inst = abstract_inst(Name, ArgInsts),
+        list.length(ArgInsts, Arity),
+        maybe_record_item_to_process(inst_item, item_name(Name, Arity), !Info),
+        find_items_used_by_insts(ArgInsts, !Info)
     ).
-find_items_used_by_inst(not_reached, !Info).
-find_items_used_by_inst(inst_var(_), !Info).
-find_items_used_by_inst(constrained_inst_vars(_, Inst), !Info) :-
-    find_items_used_by_inst(Inst, !Info).
-find_items_used_by_inst(defined_inst(InstName), !Info) :-
-    find_items_used_by_inst_name(InstName, !Info).
-find_items_used_by_inst(abstract_inst(Name, ArgInsts), !Info) :-
-    list.length(ArgInsts, Arity),
-    maybe_record_item_to_process(inst_item, item_name(Name, Arity), !Info),
-    find_items_used_by_insts(ArgInsts, !Info).
 
 :- pred find_items_used_by_bound_inst(bound_inst::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
@@ -1371,29 +1375,33 @@ find_items_used_by_bound_inst(BoundInst, !Info) :-
 :- pred find_items_used_by_inst_name(inst_name::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_inst_name(user_inst(Name, ArgInsts), !Info) :-
-    list.length(ArgInsts, Arity),
-    maybe_record_item_to_process(inst_item, item_name(Name, Arity), !Info),
-    find_items_used_by_insts(ArgInsts, !Info).
-find_items_used_by_inst_name(merge_inst(Inst1, Inst2), !Info) :-
-    find_items_used_by_inst(Inst1, !Info),
-    find_items_used_by_inst(Inst2, !Info).
-find_items_used_by_inst_name(unify_inst(_, Inst1, Inst2, _), !Info) :-
-    find_items_used_by_inst(Inst1, !Info),
-    find_items_used_by_inst(Inst2, !Info).
-find_items_used_by_inst_name(ground_inst(InstName, _, _, _), !Info) :-
-    find_items_used_by_inst_name(InstName, !Info).
-find_items_used_by_inst_name(any_inst(InstName, _, _, _), !Info) :-
-    find_items_used_by_inst_name(InstName, !Info).
-find_items_used_by_inst_name(shared_inst(InstName), !Info) :-
-    find_items_used_by_inst_name(InstName, !Info).
-find_items_used_by_inst_name(mostly_uniq_inst(InstName), !Info) :-
-    find_items_used_by_inst_name(InstName, !Info).
-find_items_used_by_inst_name(typed_ground(_, Type), !Info) :-
-    find_items_used_by_type(Type, !Info).
-find_items_used_by_inst_name(typed_inst(Type, InstName), !Info) :-
-    find_items_used_by_type(Type, !Info),
-    find_items_used_by_inst_name(InstName, !Info).
+find_items_used_by_inst_name(InstName, !Info) :-
+    (
+        InstName = user_inst(Name, ArgInsts),
+        list.length(ArgInsts, Arity),
+        maybe_record_item_to_process(inst_item, item_name(Name, Arity), !Info),
+        find_items_used_by_insts(ArgInsts, !Info)
+    ;
+        ( InstName = merge_inst(Inst1, Inst2)
+        ; InstName = unify_inst(_, Inst1, Inst2, _)
+        ),
+        find_items_used_by_inst(Inst1, !Info),
+        find_items_used_by_inst(Inst2, !Info)
+    ;
+        ( InstName = ground_inst(SubInstName, _, _, _)
+        ; InstName = any_inst(SubInstName, _, _, _)
+        ; InstName = shared_inst(SubInstName)
+        ; InstName = mostly_uniq_inst(SubInstName)
+        ),
+        find_items_used_by_inst_name(SubInstName, !Info)
+    ;
+        InstName = typed_ground(_, Type),
+        find_items_used_by_type(Type, !Info)
+    ;
+        InstName = typed_inst(Type, SubInstName),
+        find_items_used_by_type(Type, !Info),
+        find_items_used_by_inst_name(SubInstName, !Info)
+    ).
 
 :- pred find_items_used_by_class_context(prog_constraints::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.

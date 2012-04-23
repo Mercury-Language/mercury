@@ -2614,7 +2614,12 @@ construct_typeclass_info(Constraint, BaseVar, ArgVars, TypeClassInfoVar, Goal,
     % Note that we could perhaps be more accurate than `ground(shared)',
     % but it shouldn't make any difference.
     InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgVars),
-    TypeClassInfoInst = bound(unique, [bound_functor(InstConsId, ArgInsts)]),
+    InstResults = inst_test_results(inst_result_is_ground,
+        inst_result_does_not_contain_any,
+        inst_result_contains_instnames_known(set.init),
+        inst_result_contains_types_unknown),
+    TypeClassInfoInst = bound(unique, InstResults,
+        [bound_functor(InstConsId, ArgInsts)]),
     InstMapDelta =
         instmap_delta_from_assoc_list([TypeClassInfoVar - TypeClassInfoInst]),
     goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
@@ -3148,11 +3153,17 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
     % Create a goal_info for the unification.
     set_of_var.list_to_set([TypeInfoVar | ArgVars], NonLocals),
     list.duplicate(NumArgVars, ground(shared, none), ArgInsts),
-    % note that we could perhaps be more accurate than `ground(shared)',
+    % Note that we could perhaps be more accurate than `ground(shared)',
     % but it shouldn't make any difference.
     InstConsId = cell_inst_cons_id(Cell, NumArgVars),
+    InstResults = inst_test_results(inst_result_is_ground,
+        inst_result_does_not_contain_any,
+        inst_result_contains_instnames_known(set.init),
+        inst_result_contains_types_unknown),
+    TypeInfoVarInst = bound(unique, InstResults,
+        [bound_functor(InstConsId, ArgInsts)]),
     InstMapDelta = instmap_delta_from_assoc_list(
-        [TypeInfoVar - bound(unique, [bound_functor(InstConsId, ArgInsts)])]),
+        [TypeInfoVar - TypeInfoVarInst]),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     TypeInfoGoal = hlds_goal(Unify, GoalInfo).
 

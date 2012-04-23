@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2011 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -35,7 +35,7 @@
 :- pred construct_qualified_term(sym_name::in, list(term(T))::in,
     term(T)::out) is det.
 
-:- pred construct_qualified_term(sym_name::in, list(term(T))::in,
+:- pred construct_qualified_term_with_context(sym_name::in, list(term(T))::in,
     prog_context::in, term(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -205,17 +205,21 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-construct_qualified_term(qualified(Module, Name), Args, Context, Term) :-
-    construct_qualified_term(Module, [], Context, ModuleTerm),
-    UnqualifiedTerm = term.functor(term.atom(Name), Args, Context),
-    Term = term.functor(term.atom("."),
-        [ModuleTerm, UnqualifiedTerm], Context).
-construct_qualified_term(unqualified(Name), Args, Context, Term) :-
-    Term = term.functor(term.atom(Name), Args, Context).
-
 construct_qualified_term(SymName, Args, Term) :-
     term.context_init(Context),
-    construct_qualified_term(SymName, Args, Context, Term).
+    construct_qualified_term_with_context(SymName, Args, Context, Term).
+
+construct_qualified_term_with_context(SymName, Args, Context, Term) :-
+    (
+        SymName = qualified(Module, Name),
+        construct_qualified_term_with_context(Module, [], Context, ModuleTerm),
+        UnqualifiedTerm = term.functor(term.atom(Name), Args, Context),
+        Term = term.functor(term.atom("."),
+            [ModuleTerm, UnqualifiedTerm], Context)
+    ;
+        SymName = unqualified(Name),
+        Term = term.functor(term.atom(Name), Args, Context)
+    ).
 
 %-----------------------------------------------------------------------------%
 

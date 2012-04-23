@@ -84,6 +84,7 @@ write_hlds(Indent, ModuleInfo, !IO) :-
         DumpPredNames),
     write_header(Indent, ModuleInfo, !IO),
     Info = init_hlds_out_info(Globals),
+    Lang = output_debug,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     (
         % If the user specifically requested one or more predicates and/or
@@ -113,7 +114,7 @@ write_hlds(Indent, ModuleInfo, !IO) :-
         ( string.contains_char(DumpOptions, 'M') ->
             globals.lookup_int_option(Globals, dump_hlds_inst_limit,
                 InstLimit),
-            write_inst_table(Indent, InstLimit, InstTable, !IO),
+            write_inst_table(Lang, Indent, InstLimit, InstTable, !IO),
             io.write_string("\n", !IO),
             write_mode_table(Indent, ModeTable, !IO),
             io.write_string("\n", !IO)
@@ -128,7 +129,7 @@ write_hlds(Indent, ModuleInfo, !IO) :-
         )
     ),
     ( string.contains_char(DumpOptions, 'x') ->
-        write_preds(Info, Indent, ModuleInfo, PredTable, !IO)
+        write_preds(Info, Lang, Indent, ModuleInfo, PredTable, !IO)
     ;
         true
     ),
@@ -604,10 +605,10 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
 % Write out the inst table.
 %
 
-:- pred write_inst_table(int::in, int::in, inst_table::in, io::di, io::uo)
-    is det.
+:- pred write_inst_table(output_lang::in, int::in, int::in, inst_table::in,
+    io::di, io::uo) is det.
 
-write_inst_table(Indent, Limit, InstTable, !IO) :-
+write_inst_table(Lang, Indent, Limit, InstTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Insts --------\n", !IO),
 
@@ -619,37 +620,37 @@ write_inst_table(Indent, Limit, InstTable, !IO) :-
 
     io.write_string("%-------- Unify insts --------\n", !IO),
     inst_table_get_unify_insts(InstTable, UnifyInstMap),
-    map.foldl2(write_inst_name_maybe_inst_det(Limit), UnifyInstMap,
+    map.foldl2(write_inst_name_maybe_inst_det(Lang, Limit), UnifyInstMap,
         0, NumUnifyInsts, !IO),
     io.format("Total number of unify insts: %d\n", [i(NumUnifyInsts)], !IO),
 
     io.write_string("%-------- Merge insts --------\n", !IO),
     inst_table_get_merge_insts(InstTable, MergeInstMap),
-    map.foldl2(write_inst_pair_maybe_inst(Limit), MergeInstMap,
+    map.foldl2(write_inst_pair_maybe_inst(Lang, Limit), MergeInstMap,
         0, NumMergeInsts, !IO),
     io.format("Total number of merge insts: %d\n", [i(NumMergeInsts)], !IO),
 
     io.write_string("%-------- Ground insts --------\n", !IO),
     inst_table_get_unify_insts(InstTable, GroundInstMap),
-    map.foldl2(write_inst_name_maybe_inst_det(Limit), GroundInstMap,
+    map.foldl2(write_inst_name_maybe_inst_det(Lang, Limit), GroundInstMap,
         0, NumGroundInsts, !IO),
     io.format("Total number of ground insts: %d\n", [i(NumGroundInsts)], !IO),
 
     io.write_string("%-------- Any insts --------\n", !IO),
     inst_table_get_any_insts(InstTable, AnyInstMap),
-    map.foldl2(write_inst_name_maybe_inst_det(Limit), AnyInstMap,
+    map.foldl2(write_inst_name_maybe_inst_det(Lang, Limit), AnyInstMap,
         0, NumAnyInsts, !IO),
     io.format("Total number of any insts: %d\n", [i(NumAnyInsts)], !IO),
 
     io.write_string("%-------- Shared insts --------\n", !IO),
     inst_table_get_shared_insts(InstTable, SharedInstMap),
-    map.foldl2(write_inst_name_maybe_inst(Limit), SharedInstMap,
+    map.foldl2(write_inst_name_maybe_inst(Lang, Limit), SharedInstMap,
         0, NumSharedInsts, !IO),
     io.format("Total number of shared insts: %d\n", [i(NumSharedInsts)], !IO),
 
     io.write_string("%-------- MostlyUniq insts --------\n", !IO),
     inst_table_get_mostly_uniq_insts(InstTable, MostlyUniqInstMap),
-    map.foldl2(write_inst_name_maybe_inst(Limit), MostlyUniqInstMap,
+    map.foldl2(write_inst_name_maybe_inst(Lang, Limit), MostlyUniqInstMap,
         0, NumMostlyUniqInsts, !IO),
     io.format("Total number of mostly uniq insts: %d\n",
         [i(NumMostlyUniqInsts)], !IO).
@@ -696,15 +697,15 @@ write_inst_params(InstVar, InstVars, InstVarSet, !IO) :-
         write_inst_params(HeadInstVar, TailInstVars, InstVarSet, !IO)
     ).
 
-:- pred write_inst_name_maybe_inst(int::in,
+:- pred write_inst_name_maybe_inst(output_lang::in, int::in,
     inst_name::in, maybe_inst::in, int::in, int::out, io::di, io::uo) is det.
 
-write_inst_name_maybe_inst(Limit, InstName, MaybeInst, !N, !IO) :-
+write_inst_name_maybe_inst(Lang, Limit, InstName, MaybeInst, !N, !IO) :-
     !:N = !.N + 1,
     ( !.N =< Limit ->
         io.nl(!IO),
         io.format("Entry %d key\n", [i(!.N)], !IO),
-        write_inst_name(InstName, !IO),
+        write_inst_name(Lang, InstName, !IO),
         io.nl(!IO),
         (
             MaybeInst = inst_unknown,
@@ -712,23 +713,23 @@ write_inst_name_maybe_inst(Limit, InstName, MaybeInst, !N, !IO) :-
         ;
             MaybeInst = inst_known(Inst),
             io.format("Entry %d value:\n", [i(!.N)], !IO),
-            write_inst(Inst, !IO),
+            write_inst(Lang, Inst, !IO),
             io.nl(!IO)
         )
     ;
         true
     ).
 
-:- pred write_inst_name_maybe_inst_det(int::in,
+:- pred write_inst_name_maybe_inst_det(output_lang::in, int::in,
     inst_name::in, maybe_inst_det::in, int::in, int::out,
     io::di, io::uo) is det.
 
-write_inst_name_maybe_inst_det(Limit, InstName, MaybeInstDet, !N, !IO) :-
+write_inst_name_maybe_inst_det(Lang, Limit, InstName, MaybeInstDet, !N, !IO) :-
     !:N = !.N + 1,
     ( !.N =< Limit ->
         io.nl(!IO),
         io.format("Entry %d key\n", [i(!.N)], !IO),
-        write_inst_name(InstName, !IO),
+        write_inst_name(Lang, InstName, !IO),
         io.nl(!IO),
         (
             MaybeInstDet = inst_det_unknown,
@@ -737,26 +738,26 @@ write_inst_name_maybe_inst_det(Limit, InstName, MaybeInstDet, !N, !IO) :-
             MaybeInstDet = inst_det_known(Inst, Detism),
             DetismStr = determinism_to_string(Detism),
             io.format("Entry %d value (%s):\n", [i(!.N), s(DetismStr)], !IO),
-            write_inst(Inst, !IO),
+            write_inst(Lang, Inst, !IO),
             io.nl(!IO)
         )
     ;
         true
     ).
 
-:- pred write_inst_pair_maybe_inst(int::in,
+:- pred write_inst_pair_maybe_inst(output_lang::in, int::in,
     pair(mer_inst)::in, maybe_inst::in, int::in, int::out,
     io::di, io::uo) is det.
 
-write_inst_pair_maybe_inst(Limit, InstA - InstB, MaybeInst, !N, !IO) :-
+write_inst_pair_maybe_inst(Lang, Limit, InstA - InstB, MaybeInst, !N, !IO) :-
     !:N = !.N + 1,
     ( !.N =< Limit ->
         io.nl(!IO),
         io.format("Entry %d left key\n", [i(!.N)], !IO),
-        write_inst(InstA, !IO),
+        write_inst(Lang, InstA, !IO),
         io.nl(!IO),
         io.format("Entry %d right key\n", [i(!.N)], !IO),
-        write_inst(InstB, !IO),
+        write_inst(Lang, InstB, !IO),
         io.nl(!IO),
         (
             MaybeInst = inst_unknown,
@@ -764,24 +765,24 @@ write_inst_pair_maybe_inst(Limit, InstA - InstB, MaybeInst, !N, !IO) :-
         ;
             MaybeInst = inst_known(Inst),
             io.format("Entry %d value:\n", [i(!.N)], !IO),
-            write_inst(Inst, !IO),
+            write_inst(Lang, Inst, !IO),
             io.nl(!IO)
         )
     ;
         true
     ).
 
-:- pred write_inst_name(inst_name::in, io::di, io::uo) is det.
+:- pred write_inst_name(output_lang::in, inst_name::in, io::di, io::uo) is det.
 
-write_inst_name(InstName, !IO) :-
-    InstNameTerm = inst_name_to_term(InstName),
+write_inst_name(Lang, InstName, !IO) :-
+    InstNameTerm = inst_name_to_term(Lang, InstName),
     varset.init(VarSet),
     mercury_output_term(VarSet, no, InstNameTerm, !IO).
 
-:- pred write_inst(mer_inst::in, io::di, io::uo) is det.
+:- pred write_inst(output_lang::in, mer_inst::in, io::di, io::uo) is det.
 
-write_inst(Inst, !IO) :-
-    InstTerm = inst_to_term(Inst),
+write_inst(Lang, Inst, !IO) :-
+    InstTerm = inst_to_term(Lang, Inst),
     varset.init(VarSet),
     mercury_output_term(VarSet, no, InstTerm, !IO).
 
@@ -912,20 +913,20 @@ write_arg_tabling_methods(Prefix, [MaybeMethod | MaybeMethods], !IO) :-
 % Write out the predicate table.
 %
 
-:- pred write_preds(hlds_out_info::in, int::in, module_info::in,
-    pred_table::in, io::di, io::uo) is det.
+:- pred write_preds(hlds_out_info::in, output_lang::in, int::in,
+    module_info::in, pred_table::in, io::di, io::uo) is det.
 
-write_preds(Info, Indent, ModuleInfo, PredTable, !IO) :-
+write_preds(Info, Lang, Indent, ModuleInfo, PredTable, !IO) :-
     io.write_string("%-------- Predicates --------\n\n", !IO),
     write_indent(Indent, !IO),
     map.keys(PredTable, PredIds),
-    list.foldl(maybe_write_pred(Info, Indent, ModuleInfo, PredTable), PredIds,
-        !IO).
+    list.foldl(maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredTable),
+        PredIds, !IO).
 
-:- pred maybe_write_pred(hlds_out_info::in, int::in, module_info::in,
-    pred_table::in, pred_id::in, io::di, io::uo) is det.
+:- pred maybe_write_pred(hlds_out_info::in, output_lang::in, int::in,
+    module_info::in, pred_table::in, pred_id::in, io::di, io::uo) is det.
 
-maybe_write_pred(Info, Indent, ModuleInfo, PredTable, PredId, !IO) :-
+maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredTable, PredId, !IO) :-
     DumpOptions = Info ^ hoi_dump_hlds_options,
     DumpPredIdStrs = Info ^ hoi_dump_hlds_pred_ids,
     DumpPredNames = Info ^ hoi_dump_hlds_pred_names,
@@ -951,7 +952,7 @@ maybe_write_pred(Info, Indent, ModuleInfo, PredTable, PredId, !IO) :-
                 list.member(PredName, DumpPredNames)
             )
         ->
-            write_pred(Info, Indent, ModuleInfo, PredId, PredInfo, !IO)
+            write_pred(Info, Lang, Indent, ModuleInfo, PredId, PredInfo, !IO)
         ;
             true
         )
@@ -979,7 +980,7 @@ maybe_write_pred(Info, Indent, ModuleInfo, PredTable, PredId, !IO) :-
         ->
             true
         ;
-            write_pred(Info, Indent, ModuleInfo, PredId, PredInfo, !IO)
+            write_pred(Info, Lang, Indent, ModuleInfo, PredId, PredInfo, !IO)
         )
     ).
 
