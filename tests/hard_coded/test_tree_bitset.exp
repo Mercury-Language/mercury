@@ -16,6 +16,8 @@ testing difference
 testing remove_least
 2
 [7, 15, 19, 22, 25, 28, 29, 31, 32, 34, 36, 38, 39, 40, 42, 44, 47, 58, 59]
+testing delete
+[7, 15, 19, 22, 25, 28, 29, 32, 34, 36, 47, 59]
 testing delete_list
 [7, 15, 19, 22, 25, 28, 29, 32, 34, 36, 47, 59]
 testing divide_by_set
@@ -39,6 +41,8 @@ testing difference
 testing remove_least
 532
 [32431]
+testing delete
+[532, 32431]
 testing delete_list
 [532, 32431]
 testing divide_by_set
@@ -62,6 +66,8 @@ testing difference
 testing remove_least
 1064
 [64862]
+testing delete
+[1064, 64862]
 testing delete_list
 [1064, 64862]
 testing divide_by_set
@@ -84,6 +90,8 @@ testing difference
 [29424]
 testing remove_least
 1
+[29424]
+testing delete
 [29424]
 testing delete_list
 [29424]
@@ -108,6 +116,8 @@ testing difference
 testing remove_least
 2
 [58848]
+testing delete
+[58848]
 testing delete_list
 [58848]
 testing divide_by_set
@@ -131,6 +141,8 @@ testing difference
 testing remove_least
 1
 []
+testing delete
+[1]
 testing delete_list
 [1]
 testing divide_by_set
@@ -154,6 +166,8 @@ testing difference
 testing remove_least
 2
 []
+testing delete
+[2]
 testing delete_list
 [2]
 testing divide_by_set
@@ -177,6 +191,8 @@ testing difference
 testing remove_least
 101
 [102]
+testing delete
+[101, 102]
 testing delete_list
 [101, 102]
 testing divide_by_set
@@ -200,6 +216,8 @@ testing difference
 testing remove_least
 202
 [204]
+testing delete
+[202, 204]
 testing delete_list
 [202, 204]
 testing divide_by_set
@@ -223,6 +241,8 @@ testing difference
 testing remove_least
 35702
 [35703, 35705, 36696]
+testing delete
+[35702, 35703, 35705, 36696]
 testing delete_list
 [35702, 35703, 35705, 36696]
 testing divide_by_set
@@ -246,6 +266,8 @@ testing difference
 testing remove_least
 71404
 [71406, 71410, 73392]
+testing delete
+[71404, 71406, 71410, 73392]
 testing delete_list
 [71404, 71406, 71410, 73392]
 testing divide_by_set
@@ -268,6 +290,8 @@ testing difference
 []
 testing remove_least
 call failed
+testing delete
+[]
 testing delete_list
 []
 testing divide_by_set
@@ -290,6 +314,8 @@ testing difference
 []
 testing remove_least
 call failed
+testing delete
+[]
 testing delete_list
 []
 testing divide_by_set
@@ -312,6 +338,8 @@ testing difference
 []
 testing remove_least
 call failed
+testing delete
+[]
 testing delete_list
 []
 testing divide_by_set
@@ -334,6 +362,8 @@ testing difference
 []
 testing remove_least
 call failed
+testing delete
+[]
 testing delete_list
 []
 testing divide_by_set
@@ -357,6 +387,8 @@ testing difference
 testing remove_least
 2
 []
+testing delete
+[2]
 testing delete_list
 [2]
 testing divide_by_set
@@ -380,6 +412,8 @@ testing difference
 testing remove_least
 4
 []
+testing delete
+[4]
 testing delete_list
 [4]
 testing divide_by_set
@@ -403,6 +437,8 @@ testing difference
 testing remove_least
 2
 [35701]
+testing delete
+[2, 35701]
 testing delete_list
 [2, 35701]
 testing divide_by_set
@@ -426,6 +462,8 @@ testing difference
 testing remove_least
 4
 [71402]
+testing delete
+[4, 71402]
 testing delete_list
 [4, 71402]
 testing divide_by_set
@@ -437,6 +475,7 @@ testing union
 testing intersection
 testing difference
 testing remove_least
+testing delete
 testing delete_list
 testing divide_by_set
 testing count
@@ -445,6 +484,7 @@ testing union
 testing intersection
 testing difference
 testing remove_least
+testing delete
 testing delete_list
 testing divide_by_set
 testing count
@@ -453,6 +493,7 @@ testing union
 testing intersection
 testing difference
 testing remove_least
+testing delete
 testing delete_list
 testing divide_by_set
 testing count
@@ -461,6 +502,7 @@ testing union
 testing intersection
 testing difference
 testing remove_least
+testing delete
 testing delete_list
 testing divide_by_set
 testing count
@@ -469,6 +511,7 @@ testing union
 testing intersection
 testing difference
 testing remove_least
+testing delete
 testing delete_list
 testing divide_by_set
 testing count
@@ -477,6 +520,7 @@ testing union
 testing intersection
 testing difference
 testing remove_least
+testing delete
 testing delete_list
 testing divide_by_set
 testing count
@@ -485,6 +529,7 @@ testing union
 testing intersection
 testing difference
 testing remove_least
+testing delete
 testing delete_list
 testing divide_by_set
 testing count
@@ -493,6 +538,7 @@ testing union
 testing intersection
 testing difference
 testing remove_least
+testing delete
 testing delete_list
 testing divide_by_set
 testing count
@@ -501,6 +547,7 @@ testing union
 testing intersection
 testing difference
 testing remove_least
+testing delete
 testing delete_list
 testing divide_by_set
 testing count
@@ -509,5 +556,6 @@ testing union
 testing intersection
 testing difference
 testing remove_least
+testing delete
 testing delete_list
 testing divide_by_set

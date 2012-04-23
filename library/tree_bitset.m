@@ -1229,7 +1229,85 @@ interiorlist_insert_new(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
 
 insert_list(Set, List) = union(list_to_set(List), Set).
 
-delete(Set, Elem) = difference(Set, insert(init, Elem)).
+%-----------------------------------------------------------------------------%
+
+delete(Set0, Elem) = Set :-
+    Set0 = tree_bitset(List0),
+    Index = enum_to_index(Elem),
+    (
+        List0 = leaf_list(LeafNodes0),
+        leaflist_delete(LeafNodes0, Index, LeafNodes),
+        List = leaf_list(LeafNodes)
+    ;
+        List0 = interior_list(Level, InteriorNodes0),
+        interiorlist_delete(InteriorNodes0, Index, InteriorNodes),
+        List1 = interior_list(Level, InteriorNodes),
+        prune_top_levels(List1, List)
+    ),
+    Set = wrap_tree_bitset(List).
+
+:- pred interiorlist_delete(list(interior_node)::in, int::in,
+    list(interior_node)::out) is det.
+
+interiorlist_delete([], _, []).
+interiorlist_delete([Head0 | Tail0], Index, Result) :-
+    ( Head0 ^ limit_offset =< Index ->
+        interiorlist_delete(Tail0, Index, Tail),
+        Result = [Head0 | Tail]
+    ; Head0 ^ init_offset =< Index ->
+        Components0 = Head0 ^ components,
+        (
+            Components0 = leaf_list(LeafNodes0),
+            leaflist_delete(LeafNodes0, Index, LeafNodes),
+            (
+                LeafNodes = [],
+                Result = Tail0
+            ;
+                LeafNodes = [_ | _],
+                Components = leaf_list(LeafNodes),
+                Head = interior_node(
+                    Head0 ^ init_offset, Head0 ^ limit_offset, Components),
+                Result = [Head | Tail0]
+            )
+        ;
+            Components0 = interior_list(Level, InteriorNodes0),
+            interiorlist_delete(InteriorNodes0, Index, InteriorNodes),
+            (
+                InteriorNodes = [],
+                Result = Tail0
+            ;
+                InteriorNodes = [_ | _],
+                Components = interior_list(Level, InteriorNodes),
+                Head = interior_node(
+                    Head0 ^ init_offset, Head0 ^ limit_offset, Components),
+                Result = [Head | Tail0]
+            )
+        )
+    ;
+        Result = [Head0 | Tail0]
+    ).
+
+:- pred leaflist_delete(list(leaf_node)::in, int::in, list(leaf_node)::out)
+    is det.
+
+leaflist_delete([], _, []).
+leaflist_delete([Head0 | Tail0], Index, Result) :-
+    Offset = Head0 ^ leaf_offset,
+    ( Offset + bits_per_int =< Index ->
+        leaflist_delete(Tail0, Index, Tail),
+        Result = [Head0 | Tail]
+    ; Offset =< Index ->
+        Bits = clear_bit(Head0 ^ leaf_bits, Index - Offset),
+        ( Bits \= 0 ->
+            Result = [make_leaf_node(Offset, Bits) | Tail0]
+        ;
+            Result = Tail0
+        )
+    ;
+        Result = [Head0 | Tail0]
+    ).
+
+%-----------------------------------------------------------------------------%
 
 delete_list(Set, List) = difference(Set, list_to_set(List)).
 

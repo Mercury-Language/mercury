@@ -39,6 +39,7 @@
     ;       test_intersection
     ;       test_difference
     ;       test_remove_least
+    ;       test_delete
     ;       test_delete_list
     ;       test_divide_by_set
     ;       test_all.
@@ -294,17 +295,31 @@ do_run_test(Write, WhichTest, List1 - List2, !IO) :-
     ),
 
     (
+        ( WhichTest = test_delete
+        ; WhichTest = test_all
+        )
+    ->
+        io.write_string("testing delete\n", !IO),
+        list.foldl(test_bitset.delete, List2, Set1, Delete2From1),
+        maybe_write_bitset(Write, Delete2From1, !IO),
+
+        list.foldl(test_bitset.delete, List1, Set1, Delete1From1),
+        require(unify(Delete1From1, init), "Delete1From1 is not empty")
+    ;
+        true
+    ),
+
+    (
         ( WhichTest = test_delete_list
         ; WhichTest = test_all
         )
     ->
         io.write_string("testing delete_list\n", !IO),
-        test_bitset.delete_list(List2, Set1, Delete2From1),
-        maybe_write_bitset(Write, Delete2From1, !IO),
+        test_bitset.delete_list(List2, Set1, DeleteList2From1),
+        maybe_write_bitset(Write, DeleteList2From1, !IO),
 
-        test_bitset.delete_list(List1, Set1, Delete1From1),
-        test_bitset.init(Empty),
-        require(unify(Delete1From1, Empty), "Delete1From1 is not empty")
+        test_bitset.delete_list(List1, Set1, DeleteList1From1),
+        require(unify(DeleteList1From1, init), "DeleteList1From1 is not empty")
     ;
         true
     ),
