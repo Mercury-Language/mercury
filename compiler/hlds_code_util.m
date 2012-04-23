@@ -165,13 +165,7 @@ is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions0) :-
         Uniq = shared
     ;
         Inst = bound(shared, _, BoundInsts),
-        % XXX This looks wrong to me. It says that Inst is a valid mutable inst
-        % if SOME ArgInst inside Inst is a valid mutable inst, whereas I think
-        % ALL arguments of ALL functors should be required to be valid mutable
-        % insts.
-        list.member(bound_functor(_, ArgInsts), BoundInsts),
-        list.member(ArgInst, ArgInsts),
-        is_valid_mutable_inst_2(ModuleInfo, ArgInst, Expansions0)
+        are_valid_mutable_bound_insts(ModuleInfo, BoundInsts, Expansions0)
     ;
         Inst = defined_inst(InstName),
         not set.member(InstName, Expansions0),
@@ -179,6 +173,24 @@ is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions0) :-
         inst_lookup(ModuleInfo, InstName, SubInst),
         is_valid_mutable_inst_2(ModuleInfo, SubInst, Expansions)
     ).
+
+:- pred are_valid_mutable_bound_insts(module_info::in, list(bound_inst)::in,
+    set(inst_name)::in) is semidet.
+
+are_valid_mutable_bound_insts(_ModuleInfo, [], _Expansions0).
+are_valid_mutable_bound_insts(ModuleInfo, [BoundInst | BoundInsts],
+        Expansions0) :-
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    are_valid_mutable_insts(ModuleInfo, ArgInsts, Expansions0),
+    are_valid_mutable_bound_insts(ModuleInfo, BoundInsts, Expansions0).
+
+:- pred are_valid_mutable_insts(module_info::in, list(mer_inst)::in,
+    set(inst_name)::in) is semidet.
+
+are_valid_mutable_insts(_ModuleInfo, [], _Expansions0).
+are_valid_mutable_insts(ModuleInfo, [Inst | Insts], Expansions0) :-
+    is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions0),
+    are_valid_mutable_insts(ModuleInfo, Insts, Expansions0).
 
 %----------------------------------------------------------------------------%
 :- end_module hlds_code_util.

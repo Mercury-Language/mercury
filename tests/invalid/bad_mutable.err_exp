@@ -17,3 +17,5 @@ bad_mutable.m:024: Error: conflicting attributes in attribute list:
 bad_mutable.m:024:   [thread_local, trailed].
 bad_mutable.m:026: Error: conflicting attributes in attribute list:
 bad_mutable.m:026:   [thread_local, constant].
+bad_mutable.m:031: Error: the inst `bound(f1(ground, unique))' is not a valid
+bad_mutable.m:031:   inst for a mutable declaration.

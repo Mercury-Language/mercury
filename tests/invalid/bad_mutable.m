@@ -25,3 +25,7 @@
 
 :- mutable(conflicting_thr_local2, int, 0, ground, [thread_local, constant]).
 
+:- type t1 ---> f1(int, int).
+:- inst t1 ---> f1(ground, unique).
+
+:- mutable(non_ground, t1, f1(41, 43), t1, [untrailed]).
