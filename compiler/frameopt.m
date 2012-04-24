@@ -99,7 +99,7 @@
 :- import_module bool.
 :- import_module counter.
 :- import_module list.
-:- import_module set.
+:- import_module set_tree234.
 
 %-----------------------------------------------------------------------------%
 
@@ -145,7 +145,7 @@
     % structures, while MayAlterRtti should say whether we are allowed to
     % perform optimizations that may interfere with RTTI.
     %
-:- pred frameopt_keep_nondet_frame(proc_label::in, set(label)::in,
+:- pred frameopt_keep_nondet_frame(proc_label::in, set_tree234(label)::in,
     counter::in, counter::out, list(instruction)::in, list(instruction)::out,
     bool::out) is det.
 
@@ -328,7 +328,7 @@ find_succeed_labels([Instr | Instrs], !SuccMap) :-
     find_succeed_labels(Instrs, !SuccMap).
 
 :- pred keep_nondet_frame(list(instruction)::in, list(instruction)::out,
-    proc_label::in, label::in, instr::in, tailmap::in, set(label)::in,
+    proc_label::in, label::in, instr::in, tailmap::in, set_tree234(label)::in,
     bool::in, bool::out) is det.
 
 keep_nondet_frame([], [], _, _, _, _, _, !Changed).
@@ -344,7 +344,7 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
         map.search(SuccMap, RetLabel, BetweenIncl),
         BetweenIncl = [llds_instr(livevals(_), _), llds_instr(goto(_), _)],
         PrevInstr = livevals(Livevals),
-        not set.member(RetLabel, LayoutLabels)
+        not set_tree234.member(RetLabel, LayoutLabels)
     ->
         keep_nondet_frame(Instrs0, Instrs1, ProcLabel, KeepFrameLabel,
             Uinstr0, SuccMap, LayoutLabels, !.Changed, _),

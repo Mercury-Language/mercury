@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003-2007, 2010-2011 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003-2007, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,7 +20,7 @@
 
 :- import_module bool.
 :- import_module list.
-:- import_module set.
+:- import_module set_tree234.
 
 %-----------------------------------------------------------------------------%
 
@@ -29,15 +29,15 @@
     % the label branches away, we also remove the instruction block following
     % the label.
     %
-:- pred labelopt_main(bool::in, set(label)::in,
+:- pred labelopt_main(bool::in, set_tree234(label)::in,
     list(instruction)::in, list(instruction)::out, bool::out) is det.
 
     % Build up a set showing which labels are referred to.  The input set is
     % the list of labels referred to from outside the given list of
     % instructions.
     %
-:- pred build_useset(list(instruction)::in, set(label)::in, set(label)::out)
-    is det.
+:- pred build_useset(list(instruction)::in,
+    set_tree234(label)::in, set_tree234(label)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -68,7 +68,7 @@ build_useset([], !Useset).
 build_useset([Instr | Instructions], !Useset) :-
     Instr = llds_instr(Uinstr, _Comment),
     opt_util.instr_labels(Uinstr, Labels, _CodeAddresses),
-    set.insert_list(Labels, !Useset),
+    set_tree234.insert_list(Labels, !Useset),
     build_useset(Instructions, !Useset).
 
 %-----------------------------------------------------------------------------%
@@ -85,7 +85,7 @@ build_useset([Instr | Instructions], !Useset) :-
     % to handle very long instruction lists.
     %
 :- pred opt_labels_in_instr_list(list(instruction)::in, list(instruction)::out,
-    set(label)::in, bool::out) is det.
+    set_tree234(label)::in, bool::out) is det.
 
 opt_labels_in_instr_list(Instrs0, Instrs, Useset, Mod) :-
     Fallthrough = yes,
@@ -95,7 +95,7 @@ opt_labels_in_instr_list(Instrs0, Instrs, Useset, Mod) :-
 
 :- pred opt_labels_in_instr_list_2(list(instruction)::in,
     list(instruction)::in, list(instruction)::out,
-    bool::in, bool::out, bool::in, set(label)::in) is det.
+    bool::in, bool::out, bool::in, set_tree234(label)::in) is det.
 
 opt_labels_in_instr_list_2([], !RevInstrs, !Mod, _Fallthrough, _Useset).
 opt_labels_in_instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod,
@@ -109,7 +109,7 @@ opt_labels_in_instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod,
                 ; EntryType = entry_label_local
                 )
             ;
-                set.member(Label, Useset)
+                set_tree234.member(Label, Useset)
             )
         ->
             !:RevInstrs = [Instr0 | !.RevInstrs],

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,7 +63,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module set.
+:- import_module set_tree234.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -102,9 +102,9 @@ optimize_proc(Globals, GlobalData, CProc0, CProc) :-
             LayoutLabels = list.map(
                 make_internal_label_for_proc_label(ProcLabel),
                 LayoutLabelNums),
-            set.sorted_list_to_set(LayoutLabels, LayoutLabelSet)
+            set_tree234.sorted_list_to_set(LayoutLabels, LayoutLabelSet)
         ;
-            set.init(LayoutLabelSet)
+            LayoutLabelSet = set_tree234.init
         ),
         Statistics = Info ^ lopt_detailed_statistics,
         optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel,
@@ -300,9 +300,9 @@ maybe_opt_debug(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize_initial(llds_opt_info::in, set(label)::in, proc_label::in,
-    code_model::in, may_alter_rtti::in, counter::in, counter::out,
-    opt_debug_info::in, opt_debug_info::out,
+:- pred optimize_initial(llds_opt_info::in, set_tree234(label)::in,
+    proc_label::in, code_model::in, may_alter_rtti::in,
+    counter::in, counter::out, opt_debug_info::in, opt_debug_info::out,
     list(instruction)::in, list(instruction)::out) is det.
 
 optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
@@ -335,7 +335,7 @@ optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize_repeat(llds_opt_info::in, int::in, set(label)::in,
+:- pred optimize_repeat(llds_opt_info::in, int::in, set_tree234(label)::in,
     proc_label::in, may_alter_rtti::in, counter::in, counter::out,
     opt_debug_info::in, opt_debug_info::out,
     list(instruction)::in, list(instruction)::out) is det.
@@ -365,7 +365,7 @@ optimize_repeat(Info, CurIter, LayoutLabelSet, ProcLabel,
     % We short-circuit jump sequences before normal peepholing
     % to create more opportunities for use of the tailcall macro.
     %
-:- pred optimize_repeated(llds_opt_info::in, bool::in, set(label)::in,
+:- pred optimize_repeated(llds_opt_info::in, bool::in, set_tree234(label)::in,
     proc_label::in, may_alter_rtti::in, counter::in, counter::out,
     opt_debug_info::in, opt_debug_info::out,
     list(instruction)::in, list(instruction)::out, bool::out) is det.
@@ -471,7 +471,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         maybe_report_stats(Statistics, !IO)
     ).
 
-:- pred optimize_middle(llds_opt_info::in, bool::in, set(label)::in,
+:- pred optimize_middle(llds_opt_info::in, bool::in, set_tree234(label)::in,
     proc_label::in, code_model::in, may_alter_rtti::in,
     counter::in, counter::out, opt_debug_info::in, opt_debug_info::out,
     list(instruction)::in, list(instruction)::out) is det.
@@ -604,8 +604,8 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
         UseLocalVars = no
     ).
 
-:- pred optimize_last(llds_opt_info::in, set(label)::in, proc_label::in,
-    counter::in, counter::out, opt_debug_info::in,
+:- pred optimize_last(llds_opt_info::in, set_tree234(label)::in,
+    proc_label::in, counter::in, counter::out, opt_debug_info::in,
     list(instruction)::in, list(instruction)::out) is det.
 
 optimize_last(Info, LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs) :-

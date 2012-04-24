@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 1994-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,7 @@
 :- import_module bool.
 :- import_module counter.
 :- import_module list.
-:- import_module set.
+:- import_module set_tree234.
 
 %-----------------------------------------------------------------------------%
 
@@ -53,7 +53,7 @@
     % Mod will say whether the instruction sequence was modified
     % by the optimization.
     %
-:- pred optimize_jumps_in_proc(set(label)::in, may_alter_rtti::in,
+:- pred optimize_jumps_in_proc(set_tree234(label)::in, may_alter_rtti::in,
     proc_label::in, bool::in, bool::in, bool::in, bool::in,
     counter::in, counter::out, list(instruction)::in, list(instruction)::out,
     bool::out) is det.
@@ -251,7 +251,7 @@ jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], SdprocMap,
                 joi_sdproc_map      :: tailmap,
                 joi_fork_map        :: tailmap,
                 joi_succ_map        :: tailmap,
-                joi_layout_labels   :: set(label),
+                joi_layout_labels   :: set_tree234(label),
                 joi_full_jump_opt   :: bool,
                 joi_may_alter_rtti  :: may_alter_rtti
             ).
@@ -501,7 +501,7 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
                 JumpOptInfo ^ joi_may_alter_rtti = must_not_alter_rtti
             ;
                 LayoutLabels = JumpOptInfo ^ joi_layout_labels,
-                set.member(RetLabel, LayoutLabels)
+                set_tree234.member(RetLabel, LayoutLabels)
             )
         ->
             % We cannot optimize the call. Test for this once, here, instead
@@ -762,7 +762,7 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
             opt_util.skip_comments(Instrs0, Instrs1),
             Instrs1 = [Instr1 | Instrs2],
             ( Instr1 = llds_instr(label(ElimLabel), _) ->
-                not set.member(ElimLabel, LayoutLabels),
+                not set_tree234.member(ElimLabel, LayoutLabels),
                 opt_util.skip_comments(Instrs2, Instrs3),
                 Instrs3 = [GotoInstr | AfterGoto],
                 HaveLabel = yes
