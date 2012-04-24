@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2011 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -272,12 +272,13 @@
 :- pred instmap_delta_delete_vars(list(prog_var)::in,
     instmap_delta::in, instmap_delta::out) is det.
 
-    % `instmap_delta_no_output_vars(Instmap, InstmapDelta, Vars, ModuleInfo)'
-    % is true if none of the vars in the set Vars could have become more
-    % instantiated when InstmapDelta is applied to Instmap.
+    % instmap_delta_no_output_vars(ModuleInfo, VarTypes, InstMap,
+    %   InstMapDelta, Vars)
+    % is true if none of the vars in Vars can become more instantiated
+    % when InstMapDelta is applied to InstMap.
     %
-:- pred instmap_delta_no_output_vars(instmap::in, instmap_delta::in,
-    set_of_progvar::in, vartypes::in, module_info::in) is semidet.
+:- pred instmap_delta_no_output_vars(module_info::in, vartypes::in,
+    instmap::in, instmap_delta::in, set_of_progvar::in) is semidet.
 
     % merge_instmap_delta(InitialInstMap, NonLocals,
     %   InstMapDeltaA, InstMapDeltaB, !ModuleInfo):
@@ -312,10 +313,10 @@
 
 %-----------------------------------------------------------------------------%
 
-    % instmap_delta_apply_sub(Must, Renaming, InstmapDelta0, InstmapDelta):
+    % instmap_delta_apply_sub(Must, Renaming, InstMapDelta0, InstMapDelta):
     %
-    % Apply the variable renaming Renaming to InstmapDelta0 to get the new
-    % instmap_delta InstmapDelta.  If there is a variable in InstmapDelta0
+    % Apply the variable renaming Renaming to InstMapDelta0 to get the new
+    % instmap_delta InstMapDelta.  If there is a variable in InstMapDelta0
     % which does not appear in Renaming, it is ignored if Must is set to
     % need_not_rename, otherwise it is an error.
     %
@@ -1227,19 +1228,23 @@ compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-instmap_delta_no_output_vars(_, unreachable, _, _, _).
-instmap_delta_no_output_vars(InstMap0, reachable(InstMapDelta), Vars, VT, M) :-
-    set_of_var.to_sorted_list(Vars, VarList),
-    instmap_delta_no_output_vars_2(VarList, InstMap0, InstMapDelta, VT, M).
+instmap_delta_no_output_vars(ModuleInfo, VarTypes, InstMap0, InstMapDelta,
+        Vars) :-
+    (
+        InstMapDelta = unreachable
+    ;
+        InstMapDelta = reachable(InstMapDeltaMap),
+        Test = var_is_not_output(ModuleInfo, VarTypes, InstMap0,
+            InstMapDeltaMap),
+        set_of_var.all_true(Test, Vars)
+    ).
 
-:- pred instmap_delta_no_output_vars_2(list(prog_var)::in, instmap::in,
-    instmapping::in, vartypes::in, module_info::in) is semidet.
+:- pred var_is_not_output(module_info::in, vartypes::in,
+    instmap::in, instmapping::in, prog_var::in) is semidet.
 
-instmap_delta_no_output_vars_2([], _, _, _, _).
-instmap_delta_no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes,
-        ModuleInfo) :-
+var_is_not_output(ModuleInfo, VarTypes, InstMap0, InstMapDeltaMap, Var) :-
     instmap_lookup_var(InstMap0, Var, OldInst),
-    ( map.search(InstMapDelta, Var, NewInst) ->
+    ( map.search(InstMapDeltaMap, Var, NewInst) ->
         % We use `inst_matches_binding' to check that the new inst has only
         % added information or lost uniqueness, not bound anything.
         % If the instmap delta contains the variable, the variable may still
@@ -1261,9 +1266,7 @@ instmap_delta_no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes,
         % If the instmap delta doesn't contain the variable, it may still
         % have been (partially) output, if its inst is (or contains) `any'.
         not inst_contains_any(ModuleInfo, OldInst)
-    ),
-    instmap_delta_no_output_vars_2(Vars, InstMap0, InstMapDelta, VarTypes,
-        ModuleInfo).
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

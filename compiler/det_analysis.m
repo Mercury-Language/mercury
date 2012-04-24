@@ -183,12 +183,12 @@ determinism_check_proc(ProcId, PredId, !ModuleInfo, Specs) :-
 :- pred global_inference_pass(module_info::in, module_info::out,
     pred_proc_list::in, bool::in, list(error_spec)::out) is det.
 
+global_inference_pass(!ModuleInfo, ProcList, Debug, Specs) :-
     % Iterate until a fixpoint is reached. This can be expensive if a module
     % has many predicates with undeclared determinisms. If this ever becomes
     % a problem, we should switch to doing iterations only on strongly
     % connected components of the dependency graph.
-    %
-global_inference_pass(!ModuleInfo, ProcList, Debug, Specs) :-
+
     global_inference_single_pass(ProcList, Debug, !ModuleInfo, [], Specs1,
         unchanged, Changed),
     trace [io(!IO)] (
@@ -2055,90 +2055,57 @@ det_get_soln_context(DeclaredDetism, SolnContext) :-
 
 determinism_declarations(ModuleInfo, PredIds,
         DeclaredProcs, UndeclaredProcs, NoInferProcs) :-
-    get_all_pred_procs(ModuleInfo, PredIds, PredProcs),
-    segregate_procs(ModuleInfo, PredProcs,
-        DeclaredProcs, UndeclaredProcs, NoInferProcs).
-
-    % Get_all_pred_procs returns a list of all the procedure ids for that
-    % module (except class methods, which do not need to be checked since
-    % we generate the code ourselves).
-    %
-:- pred get_all_pred_procs(module_info::in, list(pred_id)::in,
-    pred_proc_list::out) is det.
-
-get_all_pred_procs(ModuleInfo, PredIds, PredProcs) :-
     module_info_get_preds(ModuleInfo, PredTable),
-    get_all_pred_procs_2(PredTable, PredIds, [], PredProcs).
+    determinism_declarations_preds(PredTable, PredIds,
+        [], DeclaredProcs, [], UndeclaredProcs, [], NoInferProcs).
 
-:- pred get_all_pred_procs_2(pred_table::in, list(pred_id)::in,
-    pred_proc_list::in, pred_proc_list::out) is det.
-
-get_all_pred_procs_2(_PredTable, [], !PredProcs).
-get_all_pred_procs_2(PredTable, [PredId | PredIds], !PredProcs) :-
-    map.lookup(PredTable, PredId, Pred),
-    ProcIds = pred_info_procids(Pred),
-    fold_pred_modes(PredId, ProcIds, !PredProcs),
-    get_all_pred_procs_2(PredTable, PredIds, !PredProcs).
-
-:- pred fold_pred_modes(pred_id::in, list(proc_id)::in, pred_proc_list::in,
-    pred_proc_list::out) is det.
-
-fold_pred_modes(_PredId, [], !PredProcs).
-fold_pred_modes(PredId, [ProcId | ProcIds], !PredProcs) :-
-    !:PredProcs = [proc(PredId, ProcId) | !.PredProcs],
-    fold_pred_modes(PredId, ProcIds, !PredProcs).
-
-    % segregate_procs(ModuleInfo, PredProcs,
-    %   DeclaredProcs, UndeclaredProcs, NoInferProcs):
-    %
-    % The predicate partitions the pred_proc_ids in PredProcs into three
-    % categories:
-    %
-    % - DeclaredProcs holds the procedures that have declarations that need
-    %   to be checked.
-    %
-    % - UndeclaredProcs holds the procedures that don't have declarations
-    %   whose determinism needs to be inferred.
-    %
-    % - NoInferProcs holds the procedures whose determinism is already
-    %   known, and which should not be processed further.
-    %
-:- pred segregate_procs(module_info::in, pred_proc_list::in,
-    pred_proc_list::out, pred_proc_list::out, pred_proc_list::out) is det.
-
-segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs,
-        NoInferProcs) :-
-    segregate_procs_2(ModuleInfo, PredProcs, [], DeclaredProcs,
-        [], UndeclaredProcs, [], NoInferProcs).
-
-:- pred segregate_procs_2(module_info::in, pred_proc_list::in,
+:- pred determinism_declarations_preds(pred_table::in, list(pred_id)::in,
     pred_proc_list::in, pred_proc_list::out,
     pred_proc_list::in, pred_proc_list::out,
     pred_proc_list::in, pred_proc_list::out) is det.
 
-segregate_procs_2(_ModuleInfo, [], !DeclaredProcs,
-        !UndeclaredProcs, !NoInferProcs).
-segregate_procs_2(ModuleInfo, [PredProcId | PredProcIds],
+determinism_declarations_preds(_PredTable, [],
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
+determinism_declarations_preds(PredTable, [PredId | PredIds],
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
+    map.lookup(PredTable, PredId, PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
+    determinism_declarations_procs(PredId, PredInfo, ProcIds,
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs),
+    determinism_declarations_preds(PredTable, PredIds,
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
+
+:- pred determinism_declarations_procs(pred_id::in, pred_info::in,
+    list(proc_id)::in,
+    pred_proc_list::in, pred_proc_list::out,
+    pred_proc_list::in, pred_proc_list::out,
+    pred_proc_list::in, pred_proc_list::out) is det.
+
+determinism_declarations_procs(_PredId, _PredInfo, [],
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
+determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
     PredProcId = proc(PredId, ProcId),
-    module_info_get_preds(ModuleInfo, Preds),
-    map.lookup(Preds, PredId, Pred),
     (
+        % Imported predicates need to be checked, but that will happen
+        % when their defining module is compiled.
+        % Since we generate the code of <in,in> unifications and class methods
+        % ourselves, they do not need to be checked.
         (
-            pred_info_is_imported(Pred)
+            pred_info_is_imported(PredInfo)
         ;
-            pred_info_is_pseudo_imported(Pred),
+            pred_info_is_pseudo_imported(PredInfo),
             hlds_pred.in_in_unification_proc_id(ProcId)
         ;
-            pred_info_get_markers(Pred, Markers),
+            pred_info_get_markers(PredInfo, Markers),
             check_marker(Markers, marker_class_method)
         )
     ->
         !:NoInferProcs = [PredProcId | !.NoInferProcs]
     ;
-        pred_info_get_procedures(Pred, Procs),
-        map.lookup(Procs, ProcId, Proc),
-        proc_info_get_declared_determinism(Proc, MaybeDetism),
+        pred_info_get_procedures(PredInfo, ProcTable),
+        map.lookup(ProcTable, ProcId, ProcInfo),
+        proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
         (
             MaybeDetism = no,
             !:UndeclaredProcs = [PredProcId | !.UndeclaredProcs]
@@ -2147,8 +2114,8 @@ segregate_procs_2(ModuleInfo, [PredProcId | PredProcIds],
             !:DeclaredProcs = [PredProcId | !.DeclaredProcs]
         )
     ),
-    segregate_procs_2(ModuleInfo, PredProcIds, !DeclaredProcs,
-        !UndeclaredProcs, !NoInferProcs).
+    determinism_declarations_procs(PredId, PredInfo,
+        ProcIds, !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
 
     % We can't infer a tighter determinism for imported procedures or for
     % class methods, so set the inferred determinism to be the same as the

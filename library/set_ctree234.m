@@ -345,6 +345,12 @@
     pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred set_ctree234.all_true(pred(T)::in(pred(in) is semidet),
+    set_ctree234(T)::in) is semidet.
+
     % Return the set of items for which the predicate succeeds.
     %
 :- pred set_ctree234.filter(pred(T)::in(pred(in) is semidet),
@@ -2922,6 +2928,40 @@ set_ctree234.map_func(Func, Tin, !List) :-
     N2 = Func(E2),
     !:List = [N2 | !.List],
     set_ctree234.map_func(Func, T3, !List).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234.all_true(Pred, ct(_, T)) :-
+    set_ctree234.all_true_tree(Pred, T).
+
+:- pred set_ctree234.all_true_tree(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in) is semidet.
+
+set_ctree234.all_true_tree(Pred, T) :-
+    (
+        T = empty
+    ;
+        T = two(E0, T0, T1),
+        set_ctree234.all_true_tree(Pred, T0),
+        Pred(E0),
+        set_ctree234.all_true_tree(Pred, T1)
+    ;
+        T = three(E0, E1, T0, T1, T2),
+        set_ctree234.all_true_tree(Pred, T0),
+        Pred(E0),
+        set_ctree234.all_true_tree(Pred, T1),
+        Pred(E1),
+        set_ctree234.all_true_tree(Pred, T2)
+    ;
+        T = four(E0, E1, E2, T0, T1, T2, T3),
+        set_ctree234.all_true_tree(Pred, T0),
+        Pred(E0),
+        set_ctree234.all_true_tree(Pred, T1),
+        Pred(E1),
+        set_ctree234.all_true_tree(Pred, T2),
+        Pred(E2),
+        set_ctree234.all_true_tree(Pred, T3)
+    ).
 
 %------------------------------------------------------------------------------%
 

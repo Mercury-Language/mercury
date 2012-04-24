@@ -315,6 +315,12 @@
 :- mode foldr2(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out)
     is cc_multi.
 
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet), tree_bitset(T)::in)
+    is semidet <= enum(T).
+
     % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
     % Pred succeeds.
     %
@@ -418,6 +424,9 @@
 
 :- pragma type_spec(foldr/4, T = int).
 :- pragma type_spec(foldr/4, T = var(_)).
+
+:- pragma type_spec(all_true/2, T = int).
+:- pragma type_spec(all_true/2, T = var(_)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -4040,3 +4049,71 @@ fold2_bits(Dir, P, Offset, Bits, Size, !AccA, !AccB) :-
             fold2_bits(Dir, P, Offset, LowBits, HalfSize, !AccA, !AccB)
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+all_true(P, Set) :-
+    Set = tree_bitset(List),
+    (
+        List = leaf_list(LeafNodes),
+        leaf_all_true(P, LeafNodes)
+    ;
+        List = interior_list(_, InteriorNodes),
+        interior_all_true(P, InteriorNodes)
+    ).
+
+:- pred interior_all_true(pred(T)::in(pred(in) is semidet),
+    list(interior_node)::in) is semidet <= enum(T).
+:- pragma type_spec(interior_all_true/2, T = int).
+:- pragma type_spec(interior_all_true/2, T = var(_)).
+
+interior_all_true(_P, []).
+interior_all_true(P, [H | T]) :-
+    Components = H ^ components,
+    (
+        Components = leaf_list(LeafNodes),
+        leaf_all_true(P, LeafNodes)
+    ;
+        Components = interior_list(_, InteriorNodes),
+        interior_all_true(P, InteriorNodes)
+    ),
+    interior_all_true(P, T).
+
+:- pred leaf_all_true(pred(T)::in(pred(in) is semidet), list(leaf_node)::in)
+    is semidet <= enum(T).
+:- pragma type_spec(leaf_all_true/2, T = int).
+:- pragma type_spec(leaf_all_true/2, T = var(_)).
+
+leaf_all_true(_P, []).
+leaf_all_true(P, [H | T]) :-
+    all_true_bits(P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int),
+    leaf_all_true(P, T).
+
+    % Do a binary search for the 1 bits in an int.
+    %
+:- pred all_true_bits(pred(T)::in(pred(in) is semidet),
+    int::in, int::in, int::in) is semidet <= enum(T).
+:- pragma type_spec(all_true_bits/4, T = int).
+:- pragma type_spec(all_true_bits/4, T = var(_)).
+
+all_true_bits(P, Offset, Bits, Size) :-
+    ( Bits = 0 ->
+        true
+    ; Size = 1 ->
+        Elem = index_to_enum(Offset),
+        P(Elem)
+    ;
+        HalfSize = unchecked_right_shift(Size, 1),
+        Mask = mask(HalfSize),
+
+        % Extract the low-order half of the bits.
+        LowBits = Mask /\ Bits,
+
+        % Extract the high-order half of the bits.
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+
+        all_true_bits(P, Offset, LowBits, HalfSize),
+        all_true_bits(P, Offset + HalfSize, HighBits, HalfSize)
+    ).
+
+%-----------------------------------------------------------------------------%

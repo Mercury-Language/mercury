@@ -383,6 +383,12 @@
     pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet), set_bbbtree(T)::in)
+    is semidet.
+
 :- func set_bbbtree.map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
 
 :- func set_bbbtree.filter_map(func(T1) = T2, set_bbbtree(T1))
@@ -1378,6 +1384,12 @@ set_bbbtree.fold5(P, S, !A, !B, !C, !D, !E) :-
 
 set_bbbtree.fold6(P, S, !A, !B, !C, !D, !E, !F) :-
     list.foldl6(P, set_bbbtree.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
+
+%--------------------------------------------------------------------------%
+
+set_bbbtree.all_true(P, S) :-
+    set_bbbtree.to_sorted_list(S, L),
+    list.all_true(P, L).
 
 %--------------------------------------------------------------------------%
 

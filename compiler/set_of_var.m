@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2011 The University of Melbourne.
+% Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -140,6 +140,12 @@
     %
 :- pred filter(pred(var(T))::in(pred(in) is semidet),
     set_of_var(T)::in, set_of_var(T)::out, set_of_var(T)::out) is det.
+
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred all_true(pred(var(T))::in(pred(in) is semidet), set_of_var(T)::in)
+    is semidet.
 
 %---------------
 % Graph colouring.
@@ -340,6 +346,9 @@ filter(P, Set, Trues) :-
 
 filter(P, Set, Trues, Falses) :-
      tree_bitset.filter(P, Set, Trues, Falses).                     % MODULE
+
+all_true(P, Set) :-
+     tree_bitset.all_true(P, Set).                                  % MODULE
 
 %---------------
 % Graph colouring.

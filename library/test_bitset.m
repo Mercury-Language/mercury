@@ -128,6 +128,12 @@
 :- func foldl(func(T, Acc) = Acc, test_bitset(T), Acc) = Acc <= enum(T).
 :- mode foldl(func(in, in) = out is det, in, in) = out is det.
 
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet), test_bitset(T)::in)
+    is semidet <= enum(T).
+
 :- func filter(pred(T)::in(pred(in) is semidet), test_bitset(T)::in)
     = (test_bitset(T)::out) is det <= enum(T).
 :- pred filter(pred(T)::in(pred(in) is semidet),
@@ -510,6 +516,21 @@ foldl(Pred, SetA - SetB, Acc0) = Acc :-
         Acc = AccA
     ;
         unexpected($module, $pred, "failed")
+    ).
+
+all_true(Pred, SetA - SetB) :-
+    ( tree_bitset.all_true(Pred, SetA) ->
+        ( set_ordlist.all_true(Pred, SetB) ->
+            true
+        ;
+            unexpected($module, $pred, "tree_bitset but not set_ordlist")
+        )
+    ;
+        ( set_ordlist.all_true(Pred, SetB) ->
+            unexpected($module, $pred, "set_ordlist but not tree_bitset")
+        ;
+            fail
+        )
     ).
 
 filter(Pred, SetA - SetB) = Result :-

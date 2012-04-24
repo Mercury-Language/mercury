@@ -373,6 +373,11 @@
     pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet), set(T)::in) is semidet.
+
     % set.divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
     % FalsePart consists of those elements of Set for which Pred fails.
@@ -624,6 +629,9 @@ set.fold5(F, S, !A, !B, !C, !D, !E) :-
 
 set.fold6(F, S, !A, !B, !C, !D, !E, !F) :-
     set_ordlist.fold6(F, S, !A, !B, !C, !D, !E, !F).
+
+set.all_true(P, S) :-
+    set_ordlist.all_true(P, S).
 
 set.divide(P, Set, TruePart, FalsePart) :-
     set_ordlist.divide(P, Set, TruePart, FalsePart).

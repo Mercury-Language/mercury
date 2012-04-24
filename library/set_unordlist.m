@@ -358,6 +358,12 @@
     pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred set_unordlist.all_true(pred(T)::in(pred(in) is semidet),
+    set_unordlist(T)::in) is semidet.
+
     % Return the set of items for which the predicate succeeds.
     %
 :- pred set_unordlist.filter(pred(T)::in(pred(in) is semidet),
@@ -572,6 +578,11 @@ set_unordlist.fold5(P, S, !A, !B, !C, !D, !E) :-
 
 set_unordlist.fold6(P, S, !A, !B, !C, !D, !E, !F) :-
     list.foldl6(P, set_unordlist.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
+
+%-----------------------------------------------------------------------------%
+
+set_unordlist.all_true(P, sul(L)) :-
+    list.all_true(P, L).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

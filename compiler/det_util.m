@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2011 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,8 +215,9 @@ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
 
 det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
-    instmap_delta_no_output_vars(InstMap, InstMapDelta, Vars,
-        DetInfo ^ di_vartypes, ModuleInfo).
+    VarTypes = DetInfo ^ di_vartypes,
+    instmap_delta_no_output_vars(ModuleInfo, VarTypes, InstMap, InstMapDelta,
+        Vars).
 
 det_info_add_error_spec(Spec, !DetInfo) :-
     det_info_get_error_specs(!.DetInfo, Specs0),

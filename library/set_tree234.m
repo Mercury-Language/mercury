@@ -350,6 +350,12 @@
     pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred set_tree234.all_true(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in) is semidet.
+
     % Return the set of items for which the predicate succeeds.
     %
 :- func set_tree234.filter(pred(T)::in(pred(in) is semidet),
@@ -2537,6 +2543,34 @@ set_tree234.fold6(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D,
     set_tree234.fold6(Pred, T2, !A, !B, !C, !D, !E, !F),
     Pred(E2, !A, !B, !C, !D, !E, !F),
     set_tree234.fold6(Pred, T3, !A, !B, !C, !D, !E, !F).
+
+%------------------------------------------------------------------------------%
+
+set_tree234.all_true(Pred, T) :-
+    (
+        T = empty
+    ;
+        T = two(E0, T0, T1),
+        set_tree234.all_true(Pred, T0),
+        Pred(E0),
+        set_tree234.all_true(Pred, T1)
+    ;
+        T = three(E0, E1, T0, T1, T2),
+        set_tree234.all_true(Pred, T0),
+        Pred(E0),
+        set_tree234.all_true(Pred, T1),
+        Pred(E1),
+        set_tree234.all_true(Pred, T2)
+    ;
+        T = four(E0, E1, E2, T0, T1, T2, T3),
+        set_tree234.all_true(Pred, T0),
+        Pred(E0),
+        set_tree234.all_true(Pred, T1),
+        Pred(E1),
+        set_tree234.all_true(Pred, T2),
+        Pred(E2),
+        set_tree234.all_true(Pred, T3)
+    ).
 
 %------------------------------------------------------------------------------%
 

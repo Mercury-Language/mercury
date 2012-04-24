@@ -328,6 +328,12 @@
 :- mode foldr2(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out)
     is cc_multi.
 
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet), sparse_bitset(T)::in)
+    is semidet <= enum(T).
+
     % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
     % Pred succeeds.
     %
@@ -702,6 +708,51 @@ fold2_bits(Dir, P, Offset, Bits, Size, !Acc1, !Acc2) :-
                 !Acc1, !Acc2),
             fold2_bits(Dir, P, Offset, LowBits, HalfSize, !Acc1, !Acc2)
         )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+all_true(P, sparse_bitset(Set)) :-
+    all_true_node(P, Set).
+
+:- pred all_true_node(pred(T)::in(pred(in) is semidet), bitset_impl::in)
+    is semidet <= enum(T).
+:- pragma type_spec(all_true_node/2, T = int).
+:- pragma type_spec(all_true_node/2, T = var(_)).
+
+all_true_node(_, []).
+all_true_node(P, [bitset_elem(Offset, Bits) | Rest]) :-
+    all_true_bits(P, Offset, Bits, bits_per_int),
+    all_true_node(P, Rest).
+
+:- pred all_true_bits(pred(T)::in(pred(in) is semidet),
+    int::in, int::in, int::in) is semidet <= enum(T).
+:- pragma type_spec(all_true_bits/4, T = int).
+:- pragma type_spec(all_true_bits/4, T = var(_)).
+
+all_true_bits(P, Offset, Bits, Size) :-
+    ( Bits = 0 ->
+        true
+    ; Size = 1 ->
+        ( Elem = from_int(Offset) ->
+            P(Elem)
+        ;
+            % We only apply `from_int/1' to integers returned
+            % by `to_int/1', so it should never fail.
+            unexpected($module, $pred, "`enum.from_int/1' failed")
+        )
+    ;
+        HalfSize = unchecked_right_shift(Size, 1),
+        Mask = mask(HalfSize),
+
+        % Extract the low-order half of the bits.
+        LowBits = Mask /\ Bits,
+
+        % Extract the high-order half of the bits.
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+
+        all_true_bits(P, Offset, LowBits, HalfSize),
+        all_true_bits(P, Offset + HalfSize, HighBits, HalfSize)
     ).
 
 %-----------------------------------------------------------------------------%
