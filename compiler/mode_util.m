@@ -1425,8 +1425,8 @@ recompute_instmap_delta_cases_2(RecomputeAtomic, Var,
 
 recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
         InstMapDelta, !RI) :-
-    ModuleInfo = !.RI ^ ri_module_info,
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+    ModuleInfo0 = !.RI ^ ri_module_info,
+    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, _, ProcInfo),
     proc_info_interface_determinism(ProcInfo, Detism),
     ( determinism_components(Detism, _, at_most_zero) ->
         instmap_delta_init_unreachable(InstMapDelta)
@@ -1436,23 +1436,29 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
         InstVarSet = !.RI ^ ri_inst_varset,
         rename_apart_inst_vars(InstVarSet, ProcInstVarSet,
             ArgModes0, ArgModes1),
-        mode_list_get_initial_insts(ModuleInfo, ArgModes1, InitialInsts),
+        mode_list_get_initial_insts(ModuleInfo0, ArgModes1, InitialInsts),
 
         % Compute the inst_var substitution from the initial insts
         % of the called procedure and the insts of the argument variables.
-        map.init(InstVarSub0),
-        update_module_info(compute_inst_var_sub(Args, VarTypes, InstMap,
-            InitialInsts, InstVarSub0), InstVarSub, !RI),
+        ( instmap_is_reachable(InstMap) ->
+            map.init(InstVarSub0),
+            compute_inst_var_sub(Args, VarTypes, InstMap, InitialInsts,
+                InstVarSub0, InstVarSub, ModuleInfo0, ModuleInfo1),
 
-        % Apply the inst_var substitution to the argument modes.
-        mode_list_apply_substitution(InstVarSub, ArgModes1, ArgModes2),
+            % Apply the inst_var substitution to the argument modes.
+            mode_list_apply_substitution(InstVarSub, ArgModes1, ArgModes2),
 
-        % Calculate the final insts of the argument variables from their
-        % initial insts and the final insts of the called procedure
-        % (with inst_var substitutions applied).
-        update_module_info(
-            recompute_instmap_delta_call_2(Args, InstMap, ArgModes2),
-            ArgModes, !RI),
+            % Calculate the final insts of the argument variables from their
+            % initial insts and the final insts of the called procedure
+            % (with inst_var substitutions applied).
+            recompute_instmap_delta_call_2(Args, InstMap, ArgModes2, ArgModes,
+                ModuleInfo1, ModuleInfo),
+            !RI ^ ri_module_info := ModuleInfo
+        ;
+            list.length(Args, NumArgs),
+            list.duplicate(NumArgs, (not_reached -> not_reached), ArgModes),
+            ModuleInfo = ModuleInfo0
+        ),
         instmap_delta_from_mode_list(Args, ArgModes, ModuleInfo, InstMapDelta)
     ).
 
@@ -1470,23 +1476,19 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
     % This is similar to modecheck_var_has_inst.
     SaveModuleInfo = !.ModuleInfo,
     SaveSub = !.Sub,
-    ( instmap_is_reachable(InstMap) ->
-        instmap_lookup_var(InstMap, Arg, ArgInst),
-        map.lookup(VarTypes, Arg, Type),
-        ( inst_matches_initial_sub(ArgInst, Inst, Type, !ModuleInfo, !Sub) ->
-            true
-        ;
-            % error("compute_inst_var_sub: " ++
-            %   ++ "inst_matches_initial failed")
-            % XXX  We shouldn't ever get here, but unfortunately
-            % the mode system currently has several problems (most
-            % noticeably lack of alias tracking for unique modes)
-            % which mean inst_matches_initial can sometimes fail here.
-            !:ModuleInfo = SaveModuleInfo,
-            !:Sub = SaveSub
-        )
-    ;
+    instmap_lookup_var(InstMap, Arg, ArgInst),
+    map.lookup(VarTypes, Arg, Type),
+    ( inst_matches_initial_sub(ArgInst, Inst, Type, !ModuleInfo, !Sub) ->
         true
+    ;
+        % error("compute_inst_var_sub: " ++
+        %   ++ "inst_matches_initial failed")
+        % XXX  We shouldn't ever get here, but unfortunately
+        % the mode system currently has several problems (most
+        % noticeably lack of alias tracking for unique modes)
+        % which mean inst_matches_initial can sometimes fail here.
+        !:ModuleInfo = SaveModuleInfo,
+        !:Sub = SaveSub
     ),
     compute_inst_var_sub(Args, VarTypes, InstMap, Insts, !Sub, !ModuleInfo).
 
@@ -1502,23 +1504,19 @@ recompute_instmap_delta_call_2([], _, [_ | _], _, !ModuleInfo) :-
 recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
         [Mode | Modes], !ModuleInfo) :-
     % This is similar to modecheck_set_var_inst.
-    ( instmap_is_reachable(InstMap) ->
-        instmap_lookup_var(InstMap, Arg, ArgInst0),
-        mode_get_insts(!.ModuleInfo, Mode0, _, FinalInst),
-        (
-            % The is_dead allows abstractly_unify_inst to succeed when
-            % some parts of ArgInst0 and the corresponding parts of FinalInst
-            % are free.
-            % XXX There should be a better way to communicate that information.
-            abstractly_unify_inst(is_dead, ArgInst0, FinalInst,
-                fake_unify, UnifyInst, _, !ModuleInfo)
-        ->
-            Mode = (ArgInst0 -> UnifyInst)
-        ;
-            unexpected($module, $pred, "unify_inst failed")
-        )
+    instmap_lookup_var(InstMap, Arg, ArgInst0),
+    mode_get_insts(!.ModuleInfo, Mode0, _, FinalInst),
+    (
+        % The is_dead allows abstractly_unify_inst to succeed when
+        % some parts of ArgInst0 and the corresponding parts of FinalInst
+        % are free.
+        % XXX There should be a better way to communicate that information.
+        abstractly_unify_inst(is_dead, ArgInst0, FinalInst,
+            fake_unify, UnifyInst, _, !ModuleInfo)
+    ->
+        Mode = (ArgInst0 -> UnifyInst)
     ;
-        Mode = (not_reached -> not_reached)
+        unexpected($module, $pred, "unify_inst failed")
     ),
     recompute_instmap_delta_call_2(Args, InstMap, Modes0, Modes,
         !ModuleInfo).
