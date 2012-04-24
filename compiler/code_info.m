@@ -359,6 +359,9 @@
                 % The proc_info for this procedure.
                 cis_proc_info           :: proc_info,
 
+                % The proc_label for this procedure.
+                cis_proc_label          :: proc_label,
+
                 % The variables in this procedure.
                 cis_varset              :: prog_varset,
 
@@ -503,6 +506,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         FollowVars, ModuleInfo, StaticCellInfo, ResumePoint, TraceSlotInfo,
         MaybeContainingGoalMap, TSRevStringTable, TSStringTableSize,
         CodeInfo) :-
+    ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
     proc_info_get_liveness_info(ProcInfo, Liveness),
     CodeModel = proc_info_interface_code_model(ProcInfo),
@@ -587,6 +591,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             ProcId,
             PredInfo,
             ProcInfo,
+            ProcLabel,
             VarSet,
             SlotMax,
             no,
@@ -1151,13 +1156,11 @@ make_proc_entry_label(CI, ModuleInfo, PredId, ProcId, Immed0) = CodeAddr :-
     CodeAddr = make_entry_label(ModuleInfo, PredId, ProcId, Immed).
 
 get_next_label(Label, !CI) :-
-    get_module_info(!.CI, ModuleInfo),
-    get_pred_id(!.CI, PredId),
-    get_proc_id(!.CI, ProcId),
+    get_cur_proc_label(!.CI, ProcLabel),
     get_label_counter(!.CI, C0),
     counter.allocate(N, C0, C),
     set_label_counter(C, !CI),
-    Label = make_internal_label(ModuleInfo, PredId, ProcId, N).
+    Label = internal_label(N, ProcLabel).
 
 succip_is_used(!CI) :-
     set_succip_used(yes, !CI).
@@ -1224,10 +1227,7 @@ get_active_temps_data(CI, Temps) :-
     map.to_assoc_list(TempsInUseContentMap, Temps).
 
 get_cur_proc_label(CI, ProcLabel) :-
-    get_module_info(CI, ModuleInfo),
-    get_pred_id(CI, PredId),
-    get_proc_id(CI, ProcId),
-    ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId).
+    ProcLabel = CI ^ code_info_static ^ cis_proc_label.
 
 get_next_closure_seq_no(SeqNo, !CI) :-
     get_closure_seq_counter(!.CI, C0),

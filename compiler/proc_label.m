@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2003-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -60,6 +60,28 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
         _ProcHeadVarsWithNames, _ArgModes, _CodeModel,
         PredIsImported, _PredIsPseudoImported, Origin,
         _ProcIsExported, _ProcIsImported),
+    ProcLabel = do_make_proc_label(PredOrFunc, ThisModule, PredModule,
+        PredName, PredArity, ProcId, PredIsImported, Origin).
+
+make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
+    module_info_get_name(ModuleInfo, ThisModule),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo,
+        _ProcInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    PredModule = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    PredArity = pred_info_orig_arity(PredInfo),
+    PredIsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
+    pred_info_get_origin(PredInfo, Origin),
+
+    ProcLabel = do_make_proc_label(PredOrFunc, ThisModule, PredModule,
+        PredName, PredArity, ProcId, PredIsImported, Origin).
+
+:- func do_make_proc_label(pred_or_func, module_name, module_name,
+    string, arity, proc_id, bool, pred_origin) = proc_label.
+
+do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredArity,
+        ProcId, PredIsImported, Origin) = ProcLabel :-
     ( Origin = origin_special_pred(SpecialPred - TypeCtor) ->
         (
             % All type_ctors other than tuples here should be module qualified,
@@ -93,10 +115,6 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
         ProcLabel = make_user_proc_label(ThisModule, PredIsImported,
             PredOrFunc, PredModule, PredName, PredArity, ProcId)
     ).
-
-make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
-    RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-    make_proc_label_from_rtti(RttiProcLabel) = ProcLabel.
 
     % make_user_proc_label(ModuleName, PredIsImported,
     %   PredOrFunc, ModuleName, PredName, Arity, ProcId) = Label:
