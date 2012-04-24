@@ -140,31 +140,82 @@ perform_context_reduction(!Info) :-
 
 reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
         !TypeAssignSet, !UnsatTypeAssignSet) :-
-    type_assign_get_head_type_params(!.TypeAssign, HeadTypeParams),
-    type_assign_get_type_bindings(!.TypeAssign, Bindings0),
     type_assign_get_typeclass_constraints(!.TypeAssign, Constraints0),
-    type_assign_get_typevarset(!.TypeAssign, TVarSet0),
-    type_assign_get_constraint_proofs(!.TypeAssign, Proofs0),
-    type_assign_get_constraint_map(!.TypeAssign, ConstraintMap0),
-
-    typeclasses.reduce_context_by_rule_application(ClassTable, InstanceTable,
-        HeadTypeParams, Bindings0, Bindings, TVarSet0, TVarSet,
-        Proofs0, Proofs, ConstraintMap0, ConstraintMap,
-        Constraints0, Constraints),
-
-    type_assign_set_type_bindings(Bindings, !TypeAssign),
-    type_assign_set_typeclass_constraints(Constraints, !TypeAssign),
-    type_assign_set_typevarset(TVarSet, !TypeAssign),
-    type_assign_set_constraint_proofs(Proofs, !TypeAssign),
-    type_assign_set_constraint_map(ConstraintMap, !TypeAssign),
-
-    ( check_satisfiability(Constraints ^ hcs_unproven, HeadTypeParams) ->
+    (
+        % Optimize the common case of no typeclass constraints at all.
+        Constraints0 =
+            hlds_constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
+        Unproven0 = [],
+        Assumed0 = [],
+        map.is_empty(Redundant0),
+        map.is_empty(Ancestors0)
+    ->
         !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
     ;
-        % Remember the unsatisfiable type_assign_set so we can produce more
-        % specific error messages.
-        list.cons(!.TypeAssign, !UnsatTypeAssignSet)
+        type_assign_get_head_type_params(!.TypeAssign, HeadTypeParams),
+        type_assign_get_type_bindings(!.TypeAssign, Bindings0),
+        type_assign_get_typevarset(!.TypeAssign, TVarSet0),
+        type_assign_get_constraint_proofs(!.TypeAssign, Proofs0),
+        type_assign_get_constraint_map(!.TypeAssign, ConstraintMap0),
+
+        reduce_context_by_rule_application(ClassTable, InstanceTable,
+            HeadTypeParams, Bindings0, Bindings, TVarSet0, TVarSet,
+            Proofs0, Proofs, ConstraintMap0, ConstraintMap,
+            Constraints0, Constraints),
+
+        type_assign_set_reduce_results(Bindings, TVarSet, Constraints,
+            Proofs, ConstraintMap, !TypeAssign),
+
+
+        Unproven = Constraints ^ hcs_unproven,
+        ( all_constraints_are_satisfiable(Unproven, HeadTypeParams) ->
+            !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
+        ;
+            % Remember the unsatisfiable type_assign_set so we can produce more
+            % specific error messages.
+            !:UnsatTypeAssignSet = [!.TypeAssign | !.UnsatTypeAssignSet]
+        )
     ).
+
+    % all_constraints_are_satisfiable(Constraints, HeadTypeParams):
+    %
+    % Check that all of the constraints are satisfiable. Fail if any are
+    % definitely not satisfiable.
+    %
+    % We disallow ground constraints for which there are no matching instance
+    % rules, even though the module system means that it would make sense
+    % to allow them: even if there is no instance declaration visible
+    % in the current module, there may be one visible in the caller. The reason
+    % we disallow them is that in practice allowing this causes type inference
+    % to let too many errors slip through, with the error diagnosis being
+    % too far removed from the real cause of the error. Note that ground
+    % constraints *are* allowed if you declare them, since we removed declared
+    % constraints before checking satisfiability.
+    %
+    % Similarly, for constraints on head type params (universally quantified
+    % type vars in this pred's type decl, or existentially quantified type vars
+    % in type decls for callees), we know that the head type params can
+    % never get bound. This means that if the constraint wasn't an assumed
+    % constraint and can't be eliminated by instance rule or class rule
+    % application, then we can report an error now, rather than later.
+    % (For non-head-type-param type variables, we need to wait, in case
+    % the type variable gets bound to a type for which there is a valid
+    % instance declaration.)
+    %
+    % So a constraint is considered satisfiable iff it contains at least one
+    % type variable that is not in the head type params.
+    %
+:- pred all_constraints_are_satisfiable(list(hlds_constraint)::in,
+    head_type_params::in) is semidet.
+
+all_constraints_are_satisfiable([], _).
+all_constraints_are_satisfiable([Constraint | Constraints], HeadTypeParams) :-
+    Constraint = hlds_constraint(_Ids, _ClassName, Types),
+    some [TVar] (
+        type_list_contains_var(Types, TVar),
+        not list.member(TVar, HeadTypeParams)
+    ),
+    all_constraints_are_satisfiable(Constraints, HeadTypeParams).
 
 reduce_context_by_rule_application(ClassTable, InstanceTable, HeadTypeParams,
         !Bindings, !TVarSet, !Proofs, !ConstraintMap, !Constraints) :-
@@ -699,48 +750,6 @@ add_superclass_proofs(_, [], !Proofs).
 add_superclass_proofs(Constraint, [Descendant | Descendants], !Proofs) :-
     map.set(Constraint, superclass(Descendant), !Proofs),
     add_superclass_proofs(Descendant, Descendants, !Proofs).
-
-    % check_satisfiability(Constraints, HeadTypeParams):
-    %
-    % Check that all of the constraints are satisfiable. Fail if any are
-    % definitely not satisfiable.
-    %
-    % We disallow ground constraints for which there are no matching instance
-    % rules, even though the module system means that it would make sense
-    % to allow them: even if there is no instance declaration visible
-    % in the current module, there may be one visible in the caller. The reason
-    % we disallow them is that in practice allowing this causes type inference
-    % to let too many errors slip through, with the error diagnosis being
-    % too far removed from the real cause of the error. Note that ground
-    % constraints *are* allowed if you declare them, since we removed declared
-    % constraints before checking satisfiability.
-    %
-    % Similarly, for constraints on head type params (universally quantified
-    % type vars in this pred's type decl, or existentially quantified type vars
-    % in type decls for callees), we know that the head type params can
-    % never get bound. This means that if the constraint wasn't an assumed
-    % constraint and can't be eliminated by instance rule or class rule
-    % application, then we can report an error now, rather than later.
-    % (For non-head-type-param type variables, we need to wait, in case
-    % the type variable gets bound to a type for which there is a valid
-    % instance declaration.)
-    %
-    % So a constraint is considered satisfiable iff it contains at least one
-    % type variable that is not in the head type params.
-    %
-:- pred check_satisfiability(list(hlds_constraint)::in, head_type_params::in)
-    is semidet.
-
-check_satisfiability(Constraints, HeadTypeParams) :-
-    all [Constraint] (
-        list.member(Constraint, Constraints)
-    =>
-        (
-            Constraint = hlds_constraint(_Ids, _ClassName, Types),
-            type_list_contains_var(Types, TVar),
-            not list.member(TVar, HeadTypeParams)
-        )
-    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.typeclasses.

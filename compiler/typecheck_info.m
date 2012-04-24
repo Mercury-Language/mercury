@@ -280,6 +280,10 @@
 :- pred type_assign_set_constraint_map(constraint_map::in,
     type_assign::in, type_assign::out) is det.
 
+:- pred type_assign_set_reduce_results(tsubst::in, tvarset::in,
+    hlds_constraints::in, constraint_proof_map::in, constraint_map::in,
+    type_assign::in, type_assign::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- type args_type_assign_set == list(args_type_assign).
@@ -678,13 +682,31 @@ type_assign_get_typeclass_constraints(TA, TA ^ class_constraints).
 type_assign_get_constraint_proofs(TA, TA ^ constraint_proofs).
 type_assign_get_constraint_map(TA, TA ^ constraint_map).
 
-type_assign_set_var_types(X, TA, TA ^ var_types := X).
-type_assign_set_typevarset(X, TA, TA ^ type_varset := X).
-type_assign_set_head_type_params(X, TA, TA ^ head_type_params := X).
-type_assign_set_type_bindings(X, TA, TA ^ type_bindings := X).
-type_assign_set_typeclass_constraints(X, TA, TA ^ class_constraints := X).
-type_assign_set_constraint_proofs(X, TA, TA ^ constraint_proofs := X).
-type_assign_set_constraint_map(X, TA, TA ^ constraint_map := X).
+type_assign_set_var_types(VarTypes, !TA) :-
+    !TA ^ var_types := VarTypes.
+type_assign_set_typevarset(TVarSet, !TA) :-
+    !TA ^ type_varset := TVarSet.
+type_assign_set_head_type_params(HeadTypeParams, !TA) :-
+    !TA ^ head_type_params := HeadTypeParams.
+type_assign_set_type_bindings(TypeBindings, !TA) :-
+    !TA ^ type_bindings := TypeBindings.
+type_assign_set_typeclass_constraints(Constraints, !TA) :-
+    !TA ^ class_constraints := Constraints.
+type_assign_set_constraint_proofs(Proofs, !TA) :-
+    !TA ^ constraint_proofs := Proofs.
+type_assign_set_constraint_map(ConstraintMap, !TA) :-
+    !TA ^ constraint_map := ConstraintMap.
+
+type_assign_set_reduce_results(Bindings, TVarSet, Constraints, Proofs,
+        ConstraintMap, !TA) :-
+    % This should allocate just one new type_assign, whereas separate calls
+    % to the predicates above to set each of these fields would allocate
+    % several.
+    !TA ^ type_bindings := Bindings,
+    !TA ^ type_varset := TVarSet,
+    !TA ^ class_constraints := Constraints,
+    !TA ^ constraint_proofs := Proofs,
+    !TA ^ constraint_map := ConstraintMap.
 
 %-----------------------------------------------------------------------------%
 
