@@ -168,10 +168,13 @@ is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions0) :-
         are_valid_mutable_bound_insts(ModuleInfo, BoundInsts, Expansions0)
     ;
         Inst = defined_inst(InstName),
-        not set.member(InstName, Expansions0),
-        set.insert(InstName, Expansions0, Expansions),
-        inst_lookup(ModuleInfo, InstName, SubInst),
-        is_valid_mutable_inst_2(ModuleInfo, SubInst, Expansions)
+        ( if not set.member(InstName, Expansions0) then
+            set.insert(InstName, Expansions0, Expansions),
+            inst_lookup(ModuleInfo, InstName, SubInst),
+            is_valid_mutable_inst_2(ModuleInfo, SubInst, Expansions)
+        else
+            true
+        )
     ).
 
 :- pred are_valid_mutable_bound_insts(module_info::in, list(bound_inst)::in,
