@@ -4,7 +4,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 2010 The University of Melbourne.
+** Copyright (C) 2010, 2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -27,7 +27,7 @@
 #define MAX_LINE_LENGTH 2000
 
 static int
-drop_line(const char *line, size_t len);
+drop_line(const char *line);
 
 int
 main(void)
@@ -49,7 +49,7 @@ main(void)
 
         if (len > 0) {
             buf[len] = '\0';
-            if (!drop_line(buf, len)) {
+            if (!drop_line(buf)) {
                 printf("%s", buf);
             }
         }
@@ -59,18 +59,21 @@ main(void)
 }
 
 static int
-drop_line(const char *line, size_t len)
+drop_line(const char *line)
 {
     /*
-    ** gcc 4.x produces the message (in English locales):
-    ** foo.c:42: warning: 'a' used but never defined
+    ** gcc 4.x produces the message (in English locales, with varying quotes):
+    ** foo.c:42: warning: 'mercury__foo__...' used but never defined
+    **
+    ** gcc 4.6 onwards also add " [enabled by default]"
     */
-    const char      msg[] = " used but never defined\n";
-    const size_t    msglen = sizeof(msg) - 1;
-    int             skip;
+    const char *p;
 
-    skip = len - msglen;
-    return (skip > 0) && memcmp(line + skip, msg, msglen) == 0;
+    p = strstr(line, "mercury__");
+    if (p == NULL) {
+        return 0;
+    }
+    return strstr(p, " used but never defined") != NULL;
 }
 
 /*---------------------------------------------------------------------------*/
