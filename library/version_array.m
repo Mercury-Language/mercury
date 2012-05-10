@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2011 The University of Melbourne.
+% Copyright (C) 2004-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -57,6 +57,15 @@
 %-----------------------------------------------------------------------------%
 
 :- type version_array(T).
+
+    % An `version_array.index_out_of_bounds' is the exception thrown
+    % on out-of-bounds array accesses. The string describes
+    % the predicate or function reporting the error.
+    %
+:- type version_array.index_out_of_bounds
+    --->    version_array.index_out_of_bounds(string).
+
+%-----------------------------------------------------------------------------%
 
     % empty_array returns the empty array.
     %
@@ -231,7 +240,8 @@
 :- implementation.
 
 :- import_module int.
-:- import_module require.
+:- import_module exception.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -254,20 +264,26 @@ from_list(Xs) = version_array(Xs).
 
 %-----------------------------------------------------------------------------%
 
-VA ^ elem(I) =
-    ( if   get_if_in_range(VA, I, X)
-      then X
-      else func_error("version_array.elem: index out of range")
+:- pragma inline(version_array.elem/2).
+
+VA ^ elem(I) = X :-
+    ( if get_if_in_range(VA, I, X0) then
+        X = X0
+      else
+        out_of_bounds_error(I, max(VA), "version_array.elem")
     ).
 
 lookup(VA, I) = VA ^ elem(I).
 
 %-----------------------------------------------------------------------------%
 
-(VA0 ^ elem(I) := X) =
-    ( if   set_if_in_range(VA0, I, X, VA)
-      then VA
-      else func_error("version_array.'elem :=': index out of range")
+:- pragma inline(version_array.'elem :='/3).
+
+(VA0 ^ elem(I) := X) = VA :-
+    ( if set_if_in_range(VA0, I, X, VA1) then
+        VA = VA1
+      else
+        out_of_bounds_error(I, max(VA0), "version_array.'elem :='")
     ).
 
 set(I, X, VA, VA ^ elem(I) := X).
@@ -1807,6 +1823,23 @@ public static class ML_uva implements ML_va, java.io.Serializable {
 }
 
 ").
+
+%-----------------------------------------------------------------------------%
+
+    % Throw an exception indicating an array bounds error.
+    %
+:- pred out_of_bounds_error(int, int, string).
+:- mode out_of_bounds_error(in, in, in) is erroneous.
+
+out_of_bounds_error(Index, Max, PredName) :-
+    % Note: we deliberately do not include the array element type name in the
+    % error message here, for performance reasons: using the type name could
+    % prevent the compiler from optimizing away the construction of the
+    % type_info in the caller, because it would prevent unused argument
+    % elimination.
+    string.format("%s: index %d not in range [0, %d]",
+        [s(PredName), i(Index), i(Max)], Msg),
+    throw(version_array.index_out_of_bounds(Msg)).
 
 %-----------------------------------------------------------------------------%
 
