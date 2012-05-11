@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -91,7 +91,7 @@
 :- pred parse(string::in, skip_whitespace_pred::in(parser),
     parser(T)::in(parser), parse_result(T)::out) is cc_multi.
 
-    % As above but using the default whitespace parser.
+    % As above but using the default whitespace parser, whitespace/4.
     %
 :- pred parse(string::in, parser(T)::in(parser), parse_result(T)::out)
     is cc_multi.
@@ -102,14 +102,22 @@
     % allows the user to specify a predicate for, say, skipping over comments
     % as well).
     %
-:- pred new_src_and_ps(string::in,
-    skip_whitespace_pred::in(parser),
+:- pred new_src_and_ps(string::in, skip_whitespace_pred::in(parser),
     src::out, ps::out) is det.
 
-    % Construct a new parser source and state from a string (the default
-    % whitespace parser is used).
+    % Construct a new parser source and state from a string.
+    % The default whitespace parser, whitespace/4, is used.
     %
 :- pred new_src_and_ps(string::in, src::out, ps::out) is det.
+
+    % Return the input string and its length from the parser source.
+    %
+:- pred input_string(src::in, string::out, int::out) is det.
+
+    % Return the parser to skip over whitespace from the parser source.
+    %
+:- pred get_skip_whitespace_pred(src::in, skip_whitespace_pred::out(parser))
+    is det.
 
     % Obtain the current offset from the start of the input string
     % (the first character in the input has offset 0).
@@ -140,6 +148,12 @@
     % Read the next char.
     %
 :- pred next_char(src::in, char::out, ps::in, ps::out) is semidet.
+
+    % Read the next char but do not record progress information.
+    % This is more efficient than next_char, but may produce less informative
+    % error messages in case of a parse error.
+    %
+:- pred next_char_no_progress(src::in, char::out, ps::in, ps::out) is semidet.
 
     % Match a char from the given string.
     %
@@ -406,11 +420,18 @@ new_src_and_ps(InputString, SkipWS, Src, PS) :-
 
 %-----------------------------------------------------------------------------%
 
+input_string(Src, Src ^ input_string, Src ^ input_length).
+
+%-----------------------------------------------------------------------------%
+
+get_skip_whitespace_pred(Src, SkipWS) :-
+    SkipWS0 = Src ^ skip_ws_pred,
+    unsafe_skip_ws_pred_cast(SkipWS0, SkipWS).
+
 :- pred skip_whitespace(src::in, ps::in, ps::out) is semidet.
 
 skip_whitespace(Src, PS0, PS) :-
-    SkipWS0 = Src ^ skip_ws_pred,
-    unsafe_skip_ws_pred_cast(SkipWS0, SkipWS),
+    get_skip_whitespace_pred(Src, SkipWS),
     SkipWS(Src, _, PS0, PS).
 
 :- pred unsafe_skip_ws_pred_cast(skip_whitespace_pred::in,
@@ -537,6 +558,12 @@ next_char(Src, Char, !PS) :-
         impure record_progress(Src, Offset),
         !:PS = NextOffset
     ).
+
+next_char_no_progress(Src, Char, !PS) :-
+    current_offset(Src, Offset, !.PS, _),
+    Offset < Src ^ input_length,
+    string.unsafe_index_next(Src ^ input_string, Offset, NextOffset, Char),
+    !:PS = NextOffset.
 
 %-----------------------------------------------------------------------------%
 

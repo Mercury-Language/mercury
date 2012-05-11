@@ -21,6 +21,9 @@ Changes to the Mercury standard library:
 * We have added versions of the operations in the math module that omit the
   domain checks.
 
+* We have added new predicates to the parsing_utils module:
+  input_string/3, get_skip_whitespace_pred/2 and next_char_no_progress/4.
+
 Changes to the extras distribution:
 
 * We have added a binding to the GLFW library.
