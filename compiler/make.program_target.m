@@ -552,7 +552,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
     ),
     (
         DepsResult = deps_error,
-        file_error(OutputFileName, !IO),
+        file_error(!.Info, OutputFileName, !IO),
         Succeeded = no
     ;
         DepsResult = deps_up_to_date,
@@ -668,7 +668,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                 map.delete(!.Info ^ file_timestamps, OutputFileName)
         ;
             Succeeded = no,
-            file_error(OutputFileName, !IO)
+            file_error(!.Info, OutputFileName, !IO)
         )
     ).
 

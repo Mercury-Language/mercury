@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -240,6 +240,11 @@
 % Debugging, verbose and error messages
 %
 
+    % A lock to prevent interleaved output to standard output from parallel
+    % processes.
+    %
+:- type stdout_lock.
+
     % Apply the given predicate if `--debug-make' is set.
     % XXX Do we need this, now that we have trace goals?
     %
@@ -295,11 +300,12 @@
 
     % Write a message "** Error making <filename>".
     %
-:- pred target_file_error(globals::in, target_file::in, io::di, io::uo) is det.
+:- pred target_file_error(make_info::in, globals::in, target_file::in,
+    io::di, io::uo) is det.
 
     % Write a message "** Error making <filename>".
     %
-:- pred file_error(file_name::in, io::di, io::uo) is det.
+:- pred file_error(make_info::in, file_name::in, io::di, io::uo) is det.
 
     % If the given target was specified on the command line, warn that it
     % was already up to date.
@@ -440,9 +446,9 @@ foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing, MakeTarget, Globals,
             Targets, Success, !Info, !IO)
     ).
 
-:- pred foldl2_maybe_stop_at_error_parallel_processes(bool::in,
-    int::in, foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
-    globals::in, list(T)::in, bool::out, Info::in, Info::out,
+:- pred foldl2_maybe_stop_at_error_parallel_processes(bool::in, int::in,
+    foldl2_pred_with_status(T, make_info, io)::in(foldl2_pred_with_status),
+    globals::in, list(T)::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
@@ -451,6 +457,7 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
     create_job_ctl(TotalTasks, MaybeJobCtl, !IO),
     (
         MaybeJobCtl = yes(JobCtl),
+        !Info ^ maybe_stdout_lock := yes(JobCtl),
         list.foldl2(
             start_worker_process(Globals, KeepGoing, MakeTarget, Targets,
                 JobCtl, !.Info),
@@ -460,6 +467,7 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
             worker_loop(Globals, KeepGoing, MakeTarget, Targets, JobCtl, yes),
             worker_loop_signal_cleanup(JobCtl, Pids), Success0, !Info, !IO),
         list.foldl2(reap_worker_process, Pids, Success0, Success, !IO),
+        !Info ^ maybe_stdout_lock := no,
         destroy_job_ctl(JobCtl, !IO)
     ;
         MaybeJobCtl = no,
@@ -896,6 +904,54 @@ make_yes_job_ctl(JobCtl) = yes(JobCtl).
 make_no_job_ctl = no.
 
 %-----------------------------------------------------------------------------%
+%
+% Prevent interleaved error output
+%
+
+    % We reuse the job_ctl type.
+    %
+:- type stdout_lock == job_ctl.
+
+:- pred lock_stdout(stdout_lock::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    lock_stdout(JobCtl::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+#ifdef MC_HAVE_JOBCTL_IPC
+    MC_lock_job_ctl(JobCtl);
+#endif
+").
+
+:- pred unlock_stdout(stdout_lock::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    unlock_stdout(JobCtl::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+#ifdef MC_HAVE_JOBCTL_IPC
+    MC_unlock_job_ctl(JobCtl);
+#endif
+").
+
+:- pred with_locked_stdout(make_info::in,
+    pred(io, io)::in(pred(di, uo) is det), io::di, io::uo) is det.
+
+with_locked_stdout(Info, Pred, !IO) :-
+    MaybeLock = Info ^ maybe_stdout_lock,
+    (
+        MaybeLock = yes(Lock),
+        lock_stdout(Lock, !IO),
+        Pred(!IO),
+        unlock_stdout(Lock, !IO)
+    ;
+        MaybeLock = no,
+        Pred(!IO)
+    ).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 build_with_module_options_and_output_redirect(Globals, ModuleName,
@@ -1014,12 +1070,8 @@ redirect_output(_ModuleName, MaybeErrorStream, !Info, !IO) :-
     ;
         ErrorFileRes = error(IOError),
         MaybeErrorStream = no,
-        io.write_string("** Error opening `", !IO),
-        io.write_string(ErrorFileName, !IO),
-        io.write_string("' for output: ", !IO),
-        io.error_message(IOError, Msg),
-        io.write_string(Msg, !IO),
-        io.nl(!IO)
+        with_locked_stdout(!.Info,
+            write_error_opening_output(ErrorFileName, IOError), !IO)
     ).
 
 unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
@@ -1041,43 +1093,43 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
             globals.lookup_int_option(Globals, output_compile_error_lines,
                 LinesToWrite),
             io.output_stream(CurrentOutputStream, !IO),
-            io.input_stream_foldl2_io(TmpErrorInputStream,
-                make_write_error_char(ErrorFileOutputStream,
-                    CurrentOutputStream),
-                LinesToWrite, TmpFileInputRes, !IO),
-            (
-                TmpFileInputRes = ok(_)
-            ;
-                TmpFileInputRes = error(_, TmpFileInputError),
-                io.write_string("Error reading `", !IO),
-                io.write_string(TmpErrorFileName, !IO),
-                io.write_string("': ", !IO),
-                io.write_string(io.error_message(TmpFileInputError), !IO),
-                io.nl(!IO)
-            ),
-
+            with_locked_stdout(!.Info,
+                make_write_error_streams(TmpErrorFileName, TmpErrorInputStream,
+                    ErrorFileOutputStream, CurrentOutputStream, LinesToWrite),
+                    !IO),
             io.close_output(ErrorFileOutputStream, !IO),
 
             !Info ^ error_file_modules :=
                 set.insert(!.Info ^ error_file_modules, ModuleName)
         ;
             ErrorFileRes = error(Error),
-            io.write_string("Error opening `", !IO),
-            io.write_string(TmpErrorFileName, !IO),
-            io.write_string("': ", !IO),
-            io.write_string(io.error_message(Error), !IO),
-            io.nl(!IO)
+            with_locked_stdout(!.Info,
+                write_error_opening_file(TmpErrorFileName, Error), !IO)
         ),
         io.close_input(TmpErrorInputStream, !IO)
     ;
         TmpErrorInputRes = error(Error),
-        io.write_string("Error opening `", !IO),
-        io.write_string(TmpErrorFileName, !IO),
-        io.write_string("': ", !IO),
-        io.write_string(io.error_message(Error), !IO),
-        io.nl(!IO)
+        with_locked_stdout(!.Info,
+            write_error_opening_file(TmpErrorFileName, Error), !IO)
     ),
     io.remove_file(TmpErrorFileName, _, !IO).
+
+:- pred make_write_error_streams(string::in, io.input_stream::in,
+    io.output_stream::in, io.output_stream::in, int::in, io::di, io::uo)
+    is det.
+
+make_write_error_streams(FileName, InputStream, FullOutputStream,
+        PartialOutputStream, LinesToWrite, !IO) :-
+    io.input_stream_foldl2_io(InputStream,
+        make_write_error_char(FullOutputStream, PartialOutputStream),
+        LinesToWrite, Res, !IO),
+    (
+        Res = ok(_)
+    ;
+        Res = error(_, Error),
+        io.format("Error reading `%s': %s\n",
+            [s(FileName), s(io.error_message(Error))], !IO)
+    ).
 
 :- pred make_write_error_char(io.output_stream::in, io.output_stream::in,
     char::in, int::in, int::out, io::di, io::uo) is det.
@@ -1103,6 +1155,20 @@ make_write_error_char(FullOutputStream, PartialOutputStream, Char,
     ;
         true
     ).
+
+:- pred write_error_opening_output(string::in, io.error::in,
+    io::di, io::uo) is det.
+
+write_error_opening_output(FileName, Error, !IO) :-
+    io.format("** Error opening `%s' for output: %s\n",
+        [s(FileName), s(io.error_message(Error))], !IO).
+
+:- pred write_error_opening_file(string::in, io.error::in, io::di, io::uo)
+    is det.
+
+write_error_opening_file(FileName, Error, !IO) :-
+    io.format("Error opening `%s': %s\n",
+        [s(FileName), s(io.error_message(Error))], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1761,14 +1827,14 @@ maybe_reanalyse_modules_message(Globals, !IO) :-
                 "Reanalysing invalid/suboptimal modules\n", !IO)
         ), !IO).
 
-target_file_error(Globals, TargetFile, !IO) :-
-    make_write_target_file_wrapped(Globals,
-        "** Error making `", TargetFile, "'.\n", !IO).
+target_file_error(Info, Globals, TargetFile, !IO) :-
+    with_locked_stdout(Info,
+        make_write_target_file_wrapped(Globals,
+            "** Error making `", TargetFile, "'.\n"), !IO).
 
-file_error(TargetFile, !IO) :-
-    % Try to write this with one call to avoid interleaved output when doing
-    % parallel builds.
-    io.write_string("** Error making `" ++ TargetFile ++ "'.\n", !IO).
+file_error(Info, TargetFile, !IO) :-
+    with_locked_stdout(Info,
+        io.write_string("** Error making `" ++ TargetFile ++ "'.\n"), !IO).
 
 maybe_warn_up_to_date_target(Globals, Target, !Info, !IO) :-
     globals.lookup_bool_option(Globals, warn_up_to_date, Warn),

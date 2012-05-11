@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -165,7 +165,11 @@
                 % `--analysis-repeat' and decrements to zero as analysis passes
                 % on `suboptimal' modules are performed. `invalid' modules
                 % are not affected as they will always be reanalysed.
-                reanalysis_passes       :: int
+                reanalysis_passes       :: int,
+
+                % An inter-process lock to prevent multiple processes
+                % interleaving their output to standard output.
+                maybe_stdout_lock       :: maybe(stdout_lock)
             ).
 
 :- type module_index_map
@@ -363,7 +367,7 @@ make_process_args(Globals, Variables, OptionArgs, Targets0, !IO) :-
             init_cached_foreign_imports,
             ShouldRebuildModuleDeps, KeepGoing,
             set.init, no, set.list_to_set(ClassifiedTargets),
-            AnalysisRepeat),
+            AnalysisRepeat, no),
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.

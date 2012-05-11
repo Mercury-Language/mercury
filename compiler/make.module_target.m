@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -758,7 +758,7 @@ record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
     ;
         Succeeded = no,
         TargetStatus = deps_status_error,
-        target_file_error(Globals, TargetFile, !IO)
+        target_file_error(!.Info, Globals, TargetFile, !IO)
     ),
 
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
