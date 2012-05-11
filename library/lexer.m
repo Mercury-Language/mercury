@@ -1932,9 +1932,10 @@ get_binary(Stream, Token, !IO) :-
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_binary(String, Len, Posn0, Token, Context, !Posn) :-
+    Posn1 = !.Posn,
     ( string_read_char(String, Len, Char, !Posn) ->
         ( char.is_binary_digit(Char) ->
-            string_get_binary_2(String, Len, Posn0, Token, Context, !Posn)
+            string_get_binary_2(String, Len, Posn1, Token, Context, !Posn)
         ;
             string_ungetchar(String, !Posn),
             Token = error("unterminated binary constant"),
@@ -1969,20 +1970,20 @@ get_binary_2(Stream, Chars, Token, !IO) :-
 :- pred string_get_binary_2(string::in, int::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_get_binary_2(String, Len, Posn0, Token, Context, !Posn) :-
+string_get_binary_2(String, Len, Posn1, Token, Context, !Posn) :-
     ( string_read_char(String, Len, Char, !Posn) ->
         ( char.is_binary_digit(Char) ->
-            string_get_binary_2(String, Len, Posn0, Token, Context, !Posn)
+            string_get_binary_2(String, Len, Posn1, Token, Context, !Posn)
         ;
             string_ungetchar(String, !Posn),
-            grab_string(String, Posn0, BinaryString, !Posn),
+            grab_string(String, Posn1, BinaryString, !Posn),
             conv_string_to_int(BinaryString, 2, Token),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn1, Context, !Posn)
         )
     ;
-        grab_string(String, Posn0, BinaryString, !Posn),
+        grab_string(String, Posn1, BinaryString, !Posn),
         conv_string_to_int(BinaryString, 2, Token),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn1, Context, !Posn)
     ).
 
 :- pred get_octal(io.input_stream::in, token::out, io::di, io::uo) is det.
@@ -2010,9 +2011,10 @@ get_octal(Stream, Token, !IO) :-
     posn::in, posn::out) is det.
 
 string_get_octal(String, Len, Posn0, Token, Context, !Posn) :-
+    Posn1 = !.Posn,
     ( string_read_char(String, Len, Char, !Posn) ->
         ( char.is_octal_digit(Char) ->
-            string_get_octal_2(String, Len, Posn0, Token, Context, !Posn)
+            string_get_octal_2(String, Len, Posn1, Token, Context, !Posn)
         ;
             string_ungetchar(String, !Posn),
             Token = error("unterminated octal constant"),
@@ -2047,20 +2049,20 @@ get_octal_2(Stream, Chars, Token, !IO) :-
 :- pred string_get_octal_2(string::in, int::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_get_octal_2(String, Len, Posn0, Token, Context, !Posn) :-
+string_get_octal_2(String, Len, Posn1, Token, Context, !Posn) :-
     ( string_read_char(String, Len, Char, !Posn) ->
         ( char.is_octal_digit(Char) ->
-            string_get_octal_2(String, Len, Posn0, Token, Context, !Posn)
+            string_get_octal_2(String, Len, Posn1, Token, Context, !Posn)
         ;
             string_ungetchar(String, !Posn),
-            grab_string(String, Posn0, BinaryString, !Posn),
+            grab_string(String, Posn1, BinaryString, !Posn),
             conv_string_to_int(BinaryString, 8, Token),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn1, Context, !Posn)
         )
     ;
-        grab_string(String, Posn0, BinaryString, !Posn),
+        grab_string(String, Posn1, BinaryString, !Posn),
         conv_string_to_int(BinaryString, 8, Token),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn1, Context, !Posn)
     ).
 
 :- pred get_hex(io.input_stream::in, token::out, io::di, io::uo) is det.
@@ -2088,9 +2090,10 @@ get_hex(Stream, Token, !IO) :-
     posn::in, posn::out) is det.
 
 string_get_hex(String, Len, Posn0, Token, Context, !Posn) :-
+    Posn1 = !.Posn,
     ( string_read_char(String, Len, Char, !Posn) ->
         ( char.is_hex_digit(Char) ->
-            string_get_hex_2(String, Len, Posn0, Token, Context, !Posn)
+            string_get_hex_2(String, Len, Posn1, Token, Context, !Posn)
         ;
             string_ungetchar(String, !Posn),
             Token = error("unterminated hex constant"),
@@ -2125,20 +2128,20 @@ get_hex_2(Stream, Chars, Token, !IO) :-
 :- pred string_get_hex_2(string::in, int::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_get_hex_2(String, Len, Posn0, Token, Context, !Posn) :-
+string_get_hex_2(String, Len, Posn1, Token, Context, !Posn) :-
     ( string_read_char(String, Len, Char, !Posn) ->
         ( char.is_hex_digit(Char) ->
-            string_get_hex_2(String, Len, Posn0, Token, Context, !Posn)
+            string_get_hex_2(String, Len, Posn1, Token, Context, !Posn)
         ;
             string_ungetchar(String, !Posn),
-            grab_string(String, Posn0, BinaryString, !Posn),
+            grab_string(String, Posn1, BinaryString, !Posn),
             conv_string_to_int(BinaryString, 16, Token),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn1, Context, !Posn)
         )
     ;
-        grab_string(String, Posn0, BinaryString, !Posn),
+        grab_string(String, Posn1, BinaryString, !Posn),
         conv_string_to_int(BinaryString, 16, Token),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn1, Context, !Posn)
     ).
 
 :- pred get_number(io.input_stream::in, list(char)::in, token::out,
