@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2008, 2011 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2008, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,6 +30,7 @@
     --->    name(string)
     ;       variable(string)
     ;       integer(int)
+    ;       big_integer(string) % does not fit in int
     ;       float(float)
     ;       string(string)      % "...."
     ;       implementation_defined(string) % $name
@@ -160,6 +161,8 @@ token_to_string(variable(Var), String) :-
 token_to_string(integer(Int), String) :-
     string.int_to_string(Int, IntString),
     string.append_list(["integer `", IntString, "'"], String).
+token_to_string(big_integer(BigInt), String) :-
+    string.append_list(["big integer `", BigInt, "'"], String).
 token_to_string(float(Float), String) :-
     string.float_to_string(Float, FloatString),
     string.append_list(["float `", FloatString, "'"], String).
@@ -230,6 +233,7 @@ get_token_list_2(Stream, Token0, Context0, Tokens, !IO) :-
         ; Token0 = string(_)
         ; Token0 = variable(_)
         ; Token0 = integer(_)
+        ; Token0 = big_integer(_)
         ; Token0 = implementation_defined(_)
         ; Token0 = junk(_)
         ; Token0 = name(_)
@@ -268,6 +272,7 @@ string_get_token_list_max(String, Len, Tokens, !Posn) :-
         ; Token = string(_)
         ; Token = variable(_)
         ; Token = integer(_)
+        ; Token = big_integer(_)
         ; Token = integer_dot(_)
         ; Token = implementation_defined(_)
         ; Token = junk(_)
@@ -2449,6 +2454,8 @@ rev_char_list_to_int(RevChars, Base, Token) :-
 conv_string_to_int(String, Base, Token) :-
     ( string.base_string_to_int(Base, String, Int) ->
         Token = integer(Int)
+    ; Base = 10 ->
+        Token = big_integer(String)
     ;
         Token = error("invalid integer token")
     ).

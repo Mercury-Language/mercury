@@ -169,6 +169,7 @@ ORDINARY_PROGS=	\
 	lco_mday_bug_2 \
 	lco_no_inline \
 	lco_pack_args \
+	lexer_bigint \
 	lexer_zero \
 	list_series_int \
 	lookup_disj \
@@ -236,6 +237,7 @@ ORDINARY_PROGS=	\
 	random_permutation \
 	random_simple \
 	rational_test \
+	read_min_int \
 	recursive_main \
 	redoip_clobber \
 	remove_file \

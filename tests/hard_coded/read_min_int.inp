@@ -1,0 +1,11 @@
+% 32-bit
+
+foo(-2147483648).           % min_int (ok)
+foo(2147483647).            % max_int (ok)
+foo(2147483648).            % max_int+1 (unsupported)
+
+% 64-bit
+
+foo(-9223372036854775808).  % min_int (ok)
+foo(9223372036854775807).   % max_int (ok)
+foo(9223372036854775808).   % max_int+1 (unsupported)

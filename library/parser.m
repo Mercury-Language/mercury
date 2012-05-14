@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001, 2003-2008, 2011 The University of Melbourne.
+% Copyright (C) 1995-2001, 2003-2008, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -252,6 +252,7 @@ check_for_errors(ok(Term), VarSet, Tokens, LeftOverTokens, Result) :-
 :- pred check_for_bad_token(token_list::in, string::out, int::out) is semidet.
 
 check_for_bad_token(token_cons(Token, LineNum0, Tokens), Message, LineNum) :-
+    require_complete_switch [Token]
     (
         Token = io_error(IO_Error),
         io.error_message(IO_Error, IO_ErrorMessage),
@@ -273,6 +274,7 @@ check_for_bad_token(token_cons(Token, LineNum0, Tokens), Message, LineNum) :-
         ( Token = name(_)
         ; Token = variable(_)
         ; Token = integer(_)
+        ; Token = big_integer(_)
         ; Token = float(_)
         ; Token = string(_)
         ; Token = implementation_defined(_)
@@ -366,10 +368,17 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
         (
             % Check for unary minus of integer.
             Token = name("-"),
-            parser_get_token_context(integer(X), _IntContext, !PS)
+            parser_get_token_context(IntToken, _IntContext, !PS),
+            (
+                IntToken = integer(X),
+                NegX = 0 - X
+            ;
+                IntToken = big_integer(BigString),
+                max_int_plus_1(int.bits_per_int, BigString),
+                NegX = int.min_int
+            )
         ->
             get_term_context(!.PS, Context, TermContext),
-            NegX = 0 - X,
             Term = ok(term.functor(term.integer(NegX), [], TermContext)),
             OpPriority = 0
         ;
@@ -651,6 +660,10 @@ parse_simple_term_2(variable(VarName), Context, _, Term, !PS) :-
 parse_simple_term_2(integer(Int), Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
     Term = ok(term.functor(term.integer(Int), [], TermContext)).
+
+parse_simple_term_2(big_integer(_), _Context, _, _Term, !PS) :-
+    % The term type does not yet support big integers.
+    fail.
 
 parse_simple_term_2(float(Float), Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
@@ -980,6 +993,7 @@ make_error(ParserState, Message) = error(Message, Tokens) :-
 could_start_term(name(_), yes).
 could_start_term(variable(_), yes).
 could_start_term(integer(_), yes).
+could_start_term(big_integer(_), yes).
 could_start_term(float(_), yes).
 could_start_term(string(_), yes).
 could_start_term(implementation_defined(_), yes).
@@ -998,6 +1012,13 @@ could_start_term(error(_), no).
 could_start_term(io_error(_), no).
 could_start_term(eof, no).
 could_start_term(integer_dot(_), no).
+
+%-----------------------------------------------------------------------------%
+
+:- pred max_int_plus_1(int::in, string::in) is semidet.
+
+max_int_plus_1(32, "2147483648").
+max_int_plus_1(64, "9223372036854775808").
 
 %-----------------------------------------------------------------------------%
 
