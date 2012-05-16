@@ -97,7 +97,7 @@
     --->    coverage_profiling_options(
                 % These fields correspond to coverage profiling options that
                 % may be specified on the command line.
-                
+
                 % Use per ProcDynamic coverage rather than per ProcStatic.
                 cpo_dynamic_coverage        :: coverage_data_type,
 
@@ -186,7 +186,7 @@ coverage_prof_transform_proc_body(ModuleInfo, PredProcId, ContainingGoalMap,
     coverage_before_known::in, coverage_before_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_goal(Goal0, Goal, 
+coverage_prof_second_pass_goal(Goal0, Goal,
         CoverageBeforeKnown, NextCoverageBeforeKnown, !Info, AddedImpurity) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Detism = goal_info_get_determinism(GoalInfo0),
@@ -669,12 +669,39 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
             CoverageKnownBeforeThen0 = coverage_before_known,
             InsertCPThen = no
         ),
-        % Always insert a coverage point for the else branch.
+        CoverageKnownBeforeThen = coverage_before_known,
+
         ElseId = goal_info_get_goal_id(Else0 ^ hlds_goal_info),
         ElsePath = goal_id_to_reverse_path(ContainingGoalMap, ElseId),
-        InsertCPElse = yes(coverage_point_info(ElsePath, cp_type_branch_arm)),
-        CoverageKnownBeforeThen = coverage_before_known,
-        CoverageKnownBeforeElse = coverage_before_known
+        CondDetism = goal_info_get_determinism(Cond ^ hlds_goal_info),
+        determinism_components(CondDetism, _, CondSolns),
+        (
+            CondSolns = at_most_many,
+
+            % Always insert a coverage point for the else branch.
+            InsertCPElse = yes(coverage_point_info(ElsePath,
+                cp_type_branch_arm)),
+            CoverageKnownBeforeElse = coverage_before_known
+        ;
+            ( CondSolns = at_most_zero
+            ; CondSolns = at_most_one
+            ; CondSolns = at_most_many_cc
+            ),
+
+            % Only insert a coverage point if we cannot infer the coverage
+            % from before the ITE and before the then branch.
+            (
+                CoverageBeforeITEKnown = coverage_before_known,
+                CoverageKnownBeforeThen = coverage_before_known
+            ->
+                InsertCPElse = no,
+                CoverageKnownBeforeElse = coverage_before_known
+            ;
+                InsertCPElse = yes(coverage_point_info(ElsePath,
+                    cp_type_branch_arm)),
+                CoverageKnownBeforeElse = coverage_before_known
+            )
+        )
     ;
         % Don't insert any coverage points.
         InsertCPThen = no,
@@ -1214,7 +1241,7 @@ proc_static_cons_id(CoverageInfo, ProcStaticConsId) :-
 
     % Returns a string containing the Low Level C code for a coverage point.
     %
-:- pred coverage_point_ll_code(coverage_data_type::in, 
+:- pred coverage_point_ll_code(coverage_data_type::in,
     pragma_foreign_proc_attributes::out, pragma_foreign_code_impl::out) is det.
 
 coverage_point_ll_code(CoverageDataType, ForeignProcAttrs, ForeignCodeImpl) :-
@@ -1239,7 +1266,7 @@ coverage_point_ll_code(CoverageDataType, ForeignProcAttrs, ForeignCodeImpl) :-
 
 :- func coverage_point_ll_code(coverage_data_type) = string.
 
-coverage_point_ll_code(static_coverage_data) = 
+coverage_point_ll_code(static_coverage_data) =
     % The code of this predicate is duplicated bodily in profiling_builtin.m
     % in the library directory, so any changes here should also be made there.
 "
@@ -1275,7 +1302,7 @@ coverage_point_ll_code(static_coverage_data) =
 #endif /* MR_DEEP_PROFILING_COVERAGE_STATIC */
 ".
 
-coverage_point_ll_code(dynamic_coverage_data) = 
+coverage_point_ll_code(dynamic_coverage_data) =
     % The code of this predicate is duplicated bodily in profiling_builtin.m
     % in the library directory, so any changes here should also be made there.
 "
@@ -1288,7 +1315,7 @@ coverage_point_ll_code(dynamic_coverage_data) =
   #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
     if (MR_calldebug && MR_lld_print_enabled) {
         MR_print_deep_prof_vars(stdout, ""increment_coverage_point_count"");
-        printf("", CallSiteDynamic: 0x%x, CPIndex: %d\\n"", 
+        printf("", CallSiteDynamic: 0x%x, CPIndex: %d\\n"",
             MR_current_call_site_dynamic, CPIndex);
     }
   #endif

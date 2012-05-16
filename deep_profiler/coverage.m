@@ -635,14 +635,46 @@ ite_annotate_coverage(Cond, Then, Else, Info, RevGoalPath, Before, After, !Array
         RevThenGoalPath = map.lookup(GoalPathMap, Then ^ goal_annotation),
         get_branch_start_coverage(Info, RevThenGoalPath, BeforeThen)
     ),
-    % XXX It should be possible, if the condition is not at_most_many and does
-    % not throw exceptions, to compute BeforeElse as the difference between the
-    % counts in the initial value of !.Before and AfterCond, if both are known.
-    % check_ite_coverage already knows the relationship.  Using exception
-    % counts on call goals and propagating them through the coverage annotation
-    % algorithms can solve this.
-    RevElseGoalPath = map.lookup(GoalPathMap, Else ^ goal_annotation),
-    get_branch_start_coverage(Info, RevElseGoalPath, BeforeElse),
+
+    CondSolns = detism_get_solutions(CondDetism),
+    (
+        CondSolns = at_most_many_rep,
+        RevElseGoalPath = map.lookup(GoalPathMap, Else ^ goal_annotation),
+        get_branch_start_coverage(Info, RevElseGoalPath, BeforeElse)
+    ;
+        ( CondSolns = at_most_one_rep
+        ; CondSolns = at_most_zero_rep
+        ),
+        % Assumeing that Cond never throws an exception and we know the
+        % coverage before the ite and at the beginning of Then, then the
+        % coverage at the beginning of Else can be inferred.
+        (
+            (
+                BeforeThen = before_known(BeforeThenCount)
+            ;
+                BeforeThen = before_zero,
+                BeforeThenCount = 0
+            ),
+            (
+                (
+                    Before = before_known(BeforeCount)
+                ;
+                    Before = before_zero,
+                    BeforeCount = 0
+                ),
+                BeforeElse = before_coverage(BeforeCount - BeforeThenCount)
+            ;
+                Before = before_unknown,
+                RevElseGoalPath = map.lookup(GoalPathMap,
+                    Else ^ goal_annotation),
+                get_branch_start_coverage(Info, RevElseGoalPath, BeforeElse)
+            )
+        ;
+            BeforeThen = before_unknown,
+            RevElseGoalPath = map.lookup(GoalPathMap, Else ^ goal_annotation),
+            get_branch_start_coverage(Info, RevElseGoalPath, BeforeElse)
+        )
+    ),
 
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
         io.format("ITE Coverage inferred before then and else branches:\n" ++
