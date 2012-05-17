@@ -340,7 +340,7 @@ case "$C_COMPILER" in
 esac
 
 BETA_FTPHOST=ftp.mercury.csse.unimelb.edu.au
-BETA_FTPDIR=/home/uranus/ftp/pub/mercury/beta-releases/$FTP_DIR_NAME
+BETA_FTPDIR=/local/ftp/pub/mercury/beta-releases/$FTP_DIR_NAME
 BETA_WEBDIR_TOP=/home/mercury/public/installed_w3/download/files
 BETA_WEBDIR=$BETA_WEBDIR_TOP/beta-releases/$FTP_DIR_NAME
 
