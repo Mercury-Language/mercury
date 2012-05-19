@@ -149,6 +149,7 @@
 **	MR_HAVE_SYS_SEM_H 	we have <sys/sem.h>
 **	MR_HAVE_SCHED_H		we have <sched.h>
 **	MR_HAVE_UTMPX_H		we have <utmpx.h>
+** 	MR_HAVE_SYS_RESOURCE_H  we have <sys/resource.h>
 */
 #undef	MR_HAVE_SYS_SIGINFO_H
 #undef	MR_HAVE_SYS_SIGNAL_H
@@ -180,6 +181,7 @@
 #undef	MR_HAVE_SYS_SEM_H
 #undef	MR_HAVE_SCHED_H
 #undef  MR_HAVE_UTMPX_H
+#undef  MR_HAVE_SYS_RESOURCE_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX

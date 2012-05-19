@@ -28,7 +28,22 @@
     %
 :- pred unlimit_stack(io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
+
+:- pragma foreign_decl("C", "
+
+/*
+** On some systems (e.g. Mac OS X 10.3) RLIMIT_STACK is defined in the
+** header sys/resource.h.
+*/
+#if defined(MR_HAVE_SYS_RESOURCE_H)
+    #include <sys/resource.h>
+#endif
+
+").
 
 :- pragma foreign_proc("C",
     unlimit_stack(_S0::di, _S::uo),

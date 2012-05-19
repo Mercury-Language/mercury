@@ -1290,7 +1290,7 @@ MERCURY_CHECK_FOR_HEADERS( \
         unistd.h sys/wait.h sys/siginfo.h sys/signal.h ucontext.h \
         asm/sigcontext.h sys/param.h sys/time.h sys/times.h \
         sys/types.h sys/stat.h fcntl.h termios.h sys/ioctl.h \
-        sys/stropts.h windows.h dirent.h getopt.h malloc.h \
+        sys/resource.h sys/stropts.h windows.h dirent.h getopt.h malloc.h \
         semaphore.h pthread.h time.h spawn.h fenv.h sys/mman.h sys/sem.h \
         sched.h utmpx.h)
 

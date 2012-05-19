@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2007, 2009-2010 The University of Melbourne.
+# Copyright (C) 2007, 2009-2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -250,12 +250,13 @@ install: install_library
 
 ifneq ("$(filter il% erlang%,$(GRADE))","")
 
-# there is no ssdb in the .NET or Erlang backends
+# There is no ssdb in the .NET or Erlang backends.
 
 .PHONY: install_library
 install_library:
 
-else ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+else
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 
 .PHONY: install_library
 install_library: lib$(SSDB_LIB_NAME).install
@@ -268,4 +269,5 @@ install_library:				\
 	lib$(SSDB_LIB_NAME).install_ints	\
 	lib$(SSDB_LIB_NAME).install_hdrs
 
+endif
 endif
