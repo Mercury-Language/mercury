@@ -3121,8 +3121,18 @@ if test "$mercury_cv_thread_local_storage" = yes; then
     case "$host" in
         *-solaris2.*)
             ;;
+        *apple*darwin*)
+            # XXX only attempt to use __thread with GCC on Mac OS X.
+            # clang does not support it, although the above test "passes"
+            # with some versions of clang.
+            case "$C_COMPILER_TYPE" in
+                gcc*)
+                    AC_DEFINE([MR_THREAD_LOCAL_STORAGE])
+                    ;;
+            esac
+            ;;
         *)
-            AC_DEFINE(MR_THREAD_LOCAL_STORAGE)
+            AC_DEFINE([MR_THREAD_LOCAL_STORAGE])
             ;;
     esac
 fi

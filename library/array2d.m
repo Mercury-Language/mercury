@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2007, 2011 The University of Melbourne.
+% Copyright (C) 2003, 2005-2007, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -193,7 +193,7 @@ T ^ elem(I, J) =
 
 %-----------------------------------------------------------------------------%
 
-array2d(_M, N, A) ^ unsafe_elem(I, J) = A ^ elem(I * N + J).
+array2d(_M, N, A) ^ unsafe_elem(I, J) = A ^ unsafe_elem(I * N + J).
 
 %-----------------------------------------------------------------------------%
 
@@ -208,7 +208,7 @@ set(I, J, X, A, A ^ elem(I, J) := X).
 %-----------------------------------------------------------------------------%
 
 ( array2d(M, N, A) ^ unsafe_elem(I, J) := X ) =
-    array2d(M, N, A ^ elem(I * N + J) := X).
+    array2d(M, N, A ^ unsafe_elem(I * N + J) := X).
 
 unsafe_set(I, J, X, A, A ^ unsafe_elem(I, J) := X).
 

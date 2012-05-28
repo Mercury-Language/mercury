@@ -1214,9 +1214,19 @@ MR_gc_zones(void)
             */
             cur_list = free_memory_zones;
 
+            /*
+            ** GCC 3.3 thinks that oldest_lru_token will used uninitialised.
+            ** But it won't, lru_free_memory_zones will always be NULL and
+            ** therefore the ** if branch will be followed to set this
+            ** variable before it is read in the condition of the else if
+            ** branch.
+            **
+            ** To avoid this problem we initialise oldest_lru_token.
+            */
+            oldest_lru_token = 0;
             while(cur_list != NULL) {
                 cur_lru_token = cur_list->MR_zonesfree_minor_tail->MR_zone_lru_token;
-                if (!lru_free_memory_zones) {
+                if (lru_free_memory_zones == NULL) {
                     oldest_lru_token = cur_lru_token;
                     lru_free_memory_zones = cur_list;
                 } else if (cur_lru_token < oldest_lru_token) {
