@@ -1,11 +1,11 @@
 instance_dup_var.m:012: In instance declaration for
 instance_dup_var.m:012:   `instance_dup_var.baz(instance_dup_var.foo(T, T),
 instance_dup_var.m:012:   instance_dup_var.bar)':
-instance_dup_var.m:012:   the first arg is not a type whose arguments are
-instance_dup_var.m:012:   distinct type variables
+instance_dup_var.m:012:   the first argument is not a type whose arguments are
+instance_dup_var.m:012:   distinct type variables.
 instance_dup_var.m:015: In instance declaration for
 instance_dup_var.m:015:   `instance_dup_var.baz(instance_dup_var.foo(A, B),
 instance_dup_var.m:015:   instance_dup_var.foo(C, A))':
-instance_dup_var.m:015:   the second arg contains a type variable which is used
-instance_dup_var.m:015:   in another arg
+instance_dup_var.m:015:   the second argument contains a type variable which is
+instance_dup_var.m:015:   used in another argument.
 For more information, recompile with `-E'.

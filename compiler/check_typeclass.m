@@ -12,19 +12,19 @@
 % This module checks conformance of instance declarations to the typeclass
 % declaration. It takes various steps to do this.
 %
-% (1) in check_instance_declaration_types/4, we check that each type
-% in the instance declaration must be either a type with no arguments,
+% (1) In check_instance_declaration_types/4, we check that each type
+% in the instance declaration is either a type with no arguments,
 % or a polymorphic type whose arguments are all distinct type variables.
 % We also check that all of the types in exported instance declarations are
-% in scope here.  XXX the latter part should really be done earlier, but with
+% in scope here. XXX the latter part should really be done earlier, but with
 % the current implementation this is the most convenient spot.
 %
-% (2) in check_instance_decls/6, for every method of every instance we
+% (2) In check_instance_decls/6, for every method of every instance we
 % generate a new pred whose types and modes are as expected by the typeclass
-% declaration and whose body just calls the implementation provided by the
+% declaration, and whose body just calls the implementation provided by the
 % instance declaration.
 %
-% eg. given the declarations:
+% For example, given the declarations:
 %
 % :- typeclass c(T) where [
 %   pred m(T::in, T::out) is semidet
@@ -34,8 +34,8 @@
 %   pred(m/2) is my_m
 % ].
 %
-% The correctness of my_m/2 as an implementation of m/2 is checked by
-% generating the new predicate:
+% we check the correctness of my_m/2 as an implementation of m/2
+% by generating the following new predicate:
 %
 % :- pred 'implementation of m/2'(int::in, int::out) is semidet.
 %
@@ -44,40 +44,40 @@
 %
 % By generating the new pred, we check the instance method for type, mode,
 % determinism and uniqueness correctness since the generated pred is checked
-% in each of those passes too.  At this point we add instance method pred/proc
-% ids to the instance table of the HLDS.  We also check that there are no
+% in each of those passes too. At this point, we add instance method pred/proc
+% ids to the instance table of the HLDS. We also check that there are no
 % missing, duplicate or bogus methods.
 %
 % In this pass we also call check_superclass_conformance/9, which checks that
-% all superclass constraints are satisfied by the instance declaration.  To do
-% this it attempts to perform context reduction on the typeclass constraints,
-% using the instance constraints as assumptions.  At this point we fill in
-% the super class proofs.
+% all superclass constraints are satisfied by the instance declaration. To do
+% this, that predicate attempts to perform context reduction on the typeclass
+% constraints, using the instance constraints as assumptions. At this point
+% we fill in the super class proofs.
 %
-% (3) in check_for_cyclic_classes/4, we check for cycles in the typeclass
-% hierarchy.  A cycle occurs if we can start from any given typeclass
+% (3) In check_for_cyclic_classes/4, we check for cycles in the typeclass
+% hierarchy. A cycle occurs if we can start from any given typeclass
 % declaration and follow the superclass constraints on classes to reach the
-% same class that we started from.  Only the class_id needs to be repeated;
-% it doesn't need to have the parameters.  Note that we follow the constraints
-% on class declarations only, not those on instance declarations.  While doing
+% same class that we started from. Only the class_id needs to be repeated;
+% it doesn't need to have the parameters. Note that we follow the constraints
+% on class declarations only, not those on instance declarations. While doing
 % this, we fill in the fundeps_ancestors field in the class table.
 %
-% (4) in check_for_missing_concrete_instances/4, we check that each
+% (4) In check_for_missing_concrete_instances/4, we check that each
 % abstract instance has a corresponding concrete instance.
 %
-% (5) in check_functional_dependencies/4, all visible instances are
+% (5) In check_functional_dependencies/4, all visible instances are
 % checked for coverage and mutual consistency with respect to any functional
-% dependencies.  This doesn't necessarily catch all cases of inconsistent
+% dependencies. This doesn't necessarily catch all cases of inconsistent
 % instances, however, since in general that cannot be done until link time.
 % We try to catch as many cases as possible here, though, since we can give
-% better error messages.  
+% better error messages.
 %
-% (6) in check_typeclass_constraints/4, we check typeclass constraints on
+% (6) In check_typeclass_constraints/4, we check typeclass constraints on
 % predicate and function declarations and on existentially typed data
 % constructors for ambiguity, taking into consideration the information
-% provided by functional dependencies.  We also call check_constraint_quant/5
+% provided by functional dependencies. We also call check_constraint_quant/5
 % to check that all type variables in constraints are universally quantified,
-% or that they are all existentially quantified.  We don't support constraints
+% or that they are all existentially quantified. We don't support constraints
 % where some of the type variables are universal and some are existential.
 %
 %---------------------------------------------------------------------------%
@@ -137,6 +137,7 @@
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -150,11 +151,11 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
 
     % If we encounter any errors while checking that the types in an
     % instance declaration are valid then don't attempt the remaining
-    % passes.  Pass 2 cannot be run since the name mangling scheme we
+    % passes. Pass 2 cannot be run since the name mangling scheme we
     % use to generate the names of the method wrapper predicates may
     % abort if the types in an instance are not valid, e.g. if an
     % instance head contains a type variable that is not wrapped inside
-    % a functor.  Most of the other passes also depend upon information
+    % a functor. Most of the other passes also depend upon information
     % that is calculated during pass 2.
     %
     % XXX it would be better to just remove the invalid instances at this
@@ -195,6 +196,258 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
         !.Specs = [_ | _]
     ).
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+    % In check_instance_declaration_types/4, we check that each type
+    % in the instance declaration must be either a type with no arguments,
+    % or a polymorphic type whose arguments are all distinct type variables.
+    %
+:- pred check_instance_declaration_types(module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_instance_declaration_types(!ModuleInfo, !Specs) :-
+    module_info_get_instance_table(!.ModuleInfo, InstanceTable),
+    map.foldl(check_instance_declaration_types_for_class(!.ModuleInfo),
+        InstanceTable, !Specs).
+
+:- pred check_instance_declaration_types_for_class(module_info::in,
+    class_id::in, list(hlds_instance_defn)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_instance_declaration_types_for_class(ModuleInfo, ClassId,
+        InstanceDefns, !Specs) :-
+    list.foldl(
+        check_instance_declaration_types_for_instance(ModuleInfo, ClassId),
+        InstanceDefns, !Specs).
+
+:- pred check_instance_declaration_types_for_instance(module_info::in,
+    class_id::in, hlds_instance_defn::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_instance_declaration_types_for_instance(ModuleInfo,
+        ClassId, InstanceDefn, !Specs) :-
+    Types = InstanceDefn ^ instance_types,
+    list.foldl3(is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn),
+        Types, 1, _, set.init, _, !Specs).
+
+    % Each of these types in the instance declaration must be either
+    % (a) a type with no arguments, or (b) a polymorphic type whose arguments
+    % are all distinct type variables.
+    %
+:- pred is_valid_instance_type(module_info::in,
+    class_id::in, hlds_instance_defn::in, mer_type::in,
+    int::in, int::out, set(mer_type)::in, set(mer_type)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
+        N, N+1, !SeenTypes, !Specs) :-
+    (
+        Type = builtin_type(_)
+    ;
+        (
+            Type = higher_order_type(_, _, _, _),
+            EndPieces = [words("is a higher order type.")]
+        ;
+            Type = apply_n_type(_, _, _),
+            EndPieces = [words("is an apply/N type.")]
+        ;
+            Type = type_variable(_, _),
+            EndPieces = [words("is a type variable.")]
+        ),
+        Spec = badly_formed_instance_type_msg_2(ClassId, InstanceDefn,
+            N, EndPieces),
+        !:Specs = [Spec | !.Specs]
+    ;
+        Type = tuple_type(Args, _),
+        each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
+        (
+            Result = no_error,
+            set.insert_list(Args, !SeenTypes)
+        ;
+            ( Result = local_non_distinct
+            ; Result = global_non_distinct
+            ; Result = arg_not_type_variable(_)
+            ),
+            Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
+                N, Result),
+            !:Specs = [Spec | !.Specs]
+        )
+    ;
+        Type = kinded_type(_, _),
+        unexpected("check_typeclass", "kinded_type")
+    ;
+        Type = defined_type(TypeName, Args, _),
+        each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
+        (
+            Result = no_error,
+            set.insert_list(Args, !SeenTypes),
+            ( type_to_type_defn(ModuleInfo, Type, TypeDefn) ->
+                list.length(Args, TypeArity),
+                is_visible_instance_type(TypeName, TypeArity, TypeDefn,
+                    ClassId, InstanceDefn, !Specs),
+                get_type_defn_body(TypeDefn, TypeBody),
+                (
+                    TypeBody = hlds_eqv_type(EqvType),
+                    is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn,
+                        EqvType, N, _, !SeenTypes, !Specs)
+                ;
+                    ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _)
+                    ; TypeBody = hlds_foreign_type(_)
+                    ; TypeBody = hlds_solver_type(_, _)
+                    ; TypeBody = hlds_abstract_type(_)
+                    )
+                )
+            ;
+                % The type is either a builtin type or a type variable.
+                true
+            )
+        ;
+            ( Result = local_non_distinct
+            ; Result = global_non_distinct
+            ; Result = arg_not_type_variable(_)
+            ),
+            Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
+                N, Result),
+            !:Specs = [Spec | !.Specs]
+        )
+    ).
+
+    % Check that types mentioned in an abstract instance declaration
+    % in a module interface are visible in the module interface,
+    % i.e. they are either exported by the module or imported in the
+    % module interface.
+    %
+:- pred is_visible_instance_type(sym_name::in, arity::in, hlds_type_defn::in,
+    class_id::in, hlds_instance_defn::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
+        InstanceDefn, !Specs) :-
+    InstanceBody = InstanceDefn ^ instance_body,
+    (
+        InstanceBody = instance_body_abstract,
+        InstanceImportStatus = InstanceDefn ^ instance_status,
+        InstanceIsExported =
+            status_is_exported_to_non_submodules(InstanceImportStatus),
+        (
+            InstanceIsExported = yes,
+            get_type_defn_status(TypeDefn, TypeDefnImportStatus),
+            (
+                status_is_imported(TypeDefnImportStatus) = no,
+                status_is_exported_to_non_submodules(TypeDefnImportStatus) = no
+            ->
+                ClassId = class_id(ClassName, ClassArity),
+                Pieces = [
+                    words("Error: abstract instance declaration for"),
+                    words("type class"),
+                    sym_name_and_arity(ClassName / ClassArity),
+                    words("contains the type"),
+                    sym_name_and_arity(TypeName / TypeArity),
+                    words("but that type is not visible in the"),
+                    words("module interface.")
+                ],
+                Context = InstanceDefn ^ instance_context,
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_type_check, [Msg]),
+                !:Specs = [Spec | !.Specs]
+            ;
+                true
+            )
+        ;
+            InstanceIsExported = no
+        )
+    ;
+        InstanceBody = instance_body_concrete(_)
+    ).
+
+:- type instance_arg_result
+    --->    no_error
+    ;       local_non_distinct
+    ;       global_non_distinct
+    ;       arg_not_type_variable(int).
+
+:- inst instance_arg_result_error
+    --->    local_non_distinct
+    ;       global_non_distinct
+    ;       arg_not_type_variable(ground).
+
+:- pred each_arg_is_a_distinct_type_variable(set(mer_type)::in,
+    list(mer_type)::in, int::in, instance_arg_result::out) is det.
+
+each_arg_is_a_distinct_type_variable(_, [], _, no_error).
+each_arg_is_a_distinct_type_variable(SeenTypes, [Type | Types], N, Result) :-
+    (
+        Type = type_variable(_, _),
+        ( list.member(Type, Types) ->
+            Result = local_non_distinct
+        ; set.member(Type, SeenTypes) ->
+            Result = global_non_distinct
+        ;
+            each_arg_is_a_distinct_type_variable(SeenTypes, Types, N+1, Result)
+        )
+    ;
+        ( Type = defined_type(_, _, _)
+        ; Type = builtin_type(_)
+        ; Type = higher_order_type(_, _, _, _)
+        ; Type = tuple_type(_, _)
+        ; Type = apply_n_type(_, _, _)
+        ; Type = kinded_type(_, _)
+        ),
+        Result = arg_not_type_variable(N)
+    ).
+
+:- func badly_formed_instance_type_msg(class_id::in, hlds_instance_defn::in,
+    int::in, instance_arg_result::in(instance_arg_result_error))
+    = (error_spec::out) is det.
+
+badly_formed_instance_type_msg(ClassId, InstanceDefn, N, Error) = Spec :-
+    (
+        Error = local_non_distinct,
+        EndPieces = [words("is not a type"),
+            words("whose arguments are distinct type variables.")]
+    ;
+        Error = global_non_distinct,
+        EndPieces = [words("contains a type variable"),
+            words("which is used in another argument.")]
+    ;
+        Error = arg_not_type_variable(ArgNum),
+        EndPieces = [words("is a type whose"), nth_fixed(ArgNum),
+            words("argument is not a variable.")]
+    ),
+    Spec = badly_formed_instance_type_msg_2(ClassId, InstanceDefn,
+        N, EndPieces).
+
+:- func badly_formed_instance_type_msg_2(class_id, hlds_instance_defn, int,
+    list(format_component)) = error_spec.
+
+badly_formed_instance_type_msg_2(ClassId, InstanceDefn, N, EndPieces) = Spec :-
+    ClassId = class_id(ClassName, _),
+    ClassNameString = sym_name_to_string(ClassName),
+
+    InstanceVarSet = InstanceDefn ^ instance_tvarset,
+    InstanceTypes = InstanceDefn ^ instance_types,
+    InstanceContext = InstanceDefn ^ instance_context,
+    InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
+        InstanceTypes),
+
+    HeaderPieces =
+        [words("In instance declaration for"),
+        words("`" ++ ClassNameString ++
+            "(" ++ InstanceTypesString ++ ")':")
+        ],
+    ArgNumPieces = [words("the"), nth_fixed(N), words("argument") | EndPieces]
+        ++ [nl],
+    VerbosePieces =
+        [words("(Types in instance declarations must be functors " ++
+            "with distinct variables as arguments.)"), nl],
+
+    HeadingMsg = simple_msg(InstanceContext,
+        [always(HeaderPieces), always(ArgNumPieces),
+        verbose_only(VerbosePieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [HeadingMsg]).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred check_instance_decls(module_info::in, module_info::out,
@@ -239,7 +492,7 @@ check_one_class(ClassTable, ClassId - InstanceDefns0, ClassId - InstanceDefns,
     ->
         ClassId = class_id(ClassName, ClassArity),
         Pieces = [words("Error: no definition for typeclass"),
-            sym_name_and_arity(ClassName / ClassArity), nl],
+            sym_name_and_arity(ClassName / ClassArity), suffix("."), nl],
         Msg = simple_msg(TermContext, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_type_check, [Msg]),
         !:Specs = [Spec | !.Specs],
@@ -640,9 +893,9 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     apply_subst_to_prog_constraints(TypeSubst, ClassMethodClassContext0,
         ClassMethodClassContext1),
 
-    % Calculate which type variables we need to keep.  This includes all
+    % Calculate which type variables we need to keep. This includes all
     % type variables appearing in the arguments, the class method context and
-    % the instance constraints.  (Type variables in the existq_tvars must
+    % the instance constraints. (Type variables in the existq_tvars must
     % occur either in the argument types or in the class method context;
     % type variables in the instance types must appear in the arguments.)
     type_vars_list(ArgTypes1, ArgTVars),
@@ -888,22 +1141,19 @@ check_for_missing_concrete_instances(!ModuleInfo, !Specs) :-
     map.foldl(check_for_corresponding_instances(ConcreteInstances),
         AbstractInstances, !Specs).
 
-    % Search the instance_table and create a table of abstract
-    % instances that occur in the module and a table of concrete
-    % instances that occur in the module.
-    % Imported instances are not included at all.
+    % Search the instance_table and create a table of abstract instances
+    % that occur in the module and a table of concrete instances that
+    % occur in the module. Imported instances are not included at all.
     %
 :- pred gather_abstract_and_concrete_instances(instance_table::in,
     instance_table::out, instance_table::out) is det.
 
-gather_abstract_and_concrete_instances(InstanceTable, Abstracts,
-        Concretes) :-
+gather_abstract_and_concrete_instances(InstanceTable, Abstracts, Concretes) :-
     map.foldl2(partition_instances_for_class, InstanceTable,
         multi_map.init, Abstracts, multi_map.init, Concretes).
 
-    % Partition all the non-imported instances for a particular
-    % class into two groups, those that are abstract and those that
-    % are concrete.
+    % Partition all the non-imported instances for a particular class
+    % into two groups, those that are abstract and those that are concrete.
     %
 :- pred partition_instances_for_class(class_id::in,
     list(hlds_instance_defn)::in, instance_table::in, instance_table::out,
@@ -917,8 +1167,8 @@ partition_instances_for_class(ClassId, Instances, !Abstracts, !Concretes) :-
     instance_table::in, instance_table::out,
     instance_table::in, instance_table::out) is det.
 
-partition_instances_for_class_2(ClassId, InstanceDefn, !Abstracts,
-        !Concretes) :-
+partition_instances_for_class_2(ClassId, InstanceDefn,
+        !Abstracts, !Concretes) :-
     ImportStatus = InstanceDefn ^ instance_status,
     IsImported = status_is_imported(ImportStatus),
     (
@@ -939,8 +1189,7 @@ partition_instances_for_class_2(ClassId, InstanceDefn, !Abstracts,
     class_id::in, list(hlds_instance_defn)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_corresponding_instances(Concretes, ClassId, InstanceDefns,
-        !Specs) :-
+check_for_corresponding_instances(Concretes, ClassId, InstanceDefns, !Specs) :-
     list.foldl(check_for_corresponding_instances_2(Concretes, ClassId),
         InstanceDefns, !Specs).
 
@@ -989,6 +1238,7 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
     ).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Check for cyclic classes in the class table by traversing the class
     % hierarchy for each class. While we are doing this, calculate the set
@@ -1001,8 +1251,8 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
 check_for_cyclic_classes(!ModuleInfo, !Specs) :-
     module_info_get_class_table(!.ModuleInfo, ClassTable0),
     ClassIds = map.keys(ClassTable0),
-    foldl3(find_cycles([]), ClassIds, ClassTable0, ClassTable, set.init, _,
-        [], Cycles),
+    list.foldl3(find_cycles([]), ClassIds, ClassTable0, ClassTable,
+        set.init, _, [], Cycles),
     !:Specs = list.map(report_cyclic_classes(ClassTable), Cycles) ++ !.Specs,
     module_info_set_class_table(ClassTable, !ModuleInfo).
 
@@ -1011,13 +1261,12 @@ check_for_cyclic_classes(!ModuleInfo, !Specs) :-
     % find_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles)
     %
     % Perform a depth first traversal of the class hierarchy, starting
-    % from ClassId.  Path contains a list of nodes joining the current
-    % node to the root.  When we reach a node that has already been visited,
+    % from ClassId. Path contains a list of nodes joining the current node
+    % to the root. When we reach a node that has already been visited,
     % check whether there is a cycle in the Path.
     %
 :- pred find_cycles(class_path::in, class_id::in,
-    class_table::in, class_table::out,
-    set(class_id)::in, set(class_id)::out,
+    class_table::in, class_table::out, set(class_id)::in, set(class_id)::out,
     list(class_path)::in, list(class_path)::out) is det.
 
 find_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles) :-
@@ -1057,7 +1306,7 @@ find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
             Ancestors0 = [constraint(ClassName, Args)]
         ),
         Superclasses = ClassDefn0 ^ class_supers,
-        foldl4(find_cycles_3([ClassId | Path]), Superclasses,
+        list.foldl4(find_cycles_3([ClassId | Path]), Superclasses,
             !ClassTable, !Visited, !Cycles, Ancestors0, Ancestors),
         ClassDefn = ClassDefn0 ^ class_fundep_ancestors := Ancestors,
         map.det_update(ClassId, ClassDefn, !ClassTable)
@@ -1088,7 +1337,7 @@ find_cycles_3(Path, Constraint, !ClassTable, !Visited, !Cycles, !Ancestors) :-
     %
     % Check if ClassId is present in PathRemaining, and if so then make
     % a cycle out of the front part of the path up to the point where
-    % the ClassId is found.  The part of the path checked so far is
+    % the ClassId is found. The part of the path checked so far is
     % accumulated in PathSoFar.
     %
 :- pred find_cycle(class_id::in, class_path::in, class_path::in,
@@ -1102,21 +1351,49 @@ find_cycle(ClassId, [Head | Tail], Path0, Cycle) :-
         find_cycle(ClassId, Tail, Path, Cycle)
     ).
 
+    % The error message for cyclic classes is intended to look like this:
+    %
+    %   module.m:NNN: Error: cyclic superclass relation detected:
+    %   module.m:NNN:   `foo/N' <= `bar/N' <= `baz/N' <= `foo/N'
+    %
+:- func report_cyclic_classes(class_table, class_path) = error_spec.
+
+report_cyclic_classes(ClassTable, ClassPath) = Spec :-
+    (
+        ClassPath = [],
+        unexpected($module, $pred, "empty cycle found.")
+    ;
+        ClassPath = [ClassId | Tail],
+        Context = map.lookup(ClassTable, ClassId) ^ class_context,
+        ClassId = class_id(Name, Arity),
+        RevPieces0 = [sym_name_and_arity(Name/Arity),
+            words("Error: cyclic superclass relation detected:")],
+        RevPieces = foldl(add_path_element, Tail, RevPieces0),
+        Pieces = list.reverse(RevPieces),
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg])
+    ).
+
+:- func add_path_element(class_id, list(format_component))
+    = list(format_component).
+
+add_path_element(class_id(Name, Arity), RevPieces0) =
+    [sym_name_and_arity(Name/Arity), words("<=") | RevPieces0].
+
 %---------------------------------------------------------------------------%
 
     % Check that all instances are range restricted with respect to the
-    % functional dependencies.  This means that, for each functional
-    % dependency, the set of tvars in the range arguments must be a
-    % subset of the set of tvars in the domain arguments.
-    % (Note that with the requirement of distinct variables as arguments,
-    % this implies that all range arguments must be ground.  However,
-    % this code should work even if that requirement is lifted in future.)
+    % functional dependencies. This means that, for each functional dependency,
+    % the set of tvars in the range arguments must be a subset of the set
+    % of tvars in the domain arguments. (Note that with the requirement of
+    % distinct variables as arguments, this implies that all range arguments
+    % must be ground. However, this code should work even if that requirement
+    % is lifted in the future.)
     %
-    % Also, check that all pairs of visible instances are mutually
-    % consistent with respect to the functional dependencies.  This is
-    % true iff the most general unifier of corresponding domain arguments
-    % (if it exists) is also a unifier of the corresponding range
-    % arguments.
+    % Also, check that all pairs of visible instances are mutually consistent
+    % with respect to the functional dependencies. This is true iff the most
+    % general unifier of corresponding domain arguments (if it exists) is
+    % also a unifier of the corresponding range arguments.
     %
 :- pred check_functional_dependencies(module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -1138,11 +1415,11 @@ check_fundeps_class(ClassId, !ModuleInfo, !Specs) :-
     check_coverage(ClassId, InstanceDefns, FunDeps, !ModuleInfo, !Specs),
     module_info_get_globals(!.ModuleInfo, Globals),
     % Abstract definitions will always overlap with concrete definitions,
-    % so we filter out the abstract definitions for this module.  If
+    % so we filter out the abstract definitions for this module. If
     % --intermodule-optimization is enabled then we strip out the imported
-    % abstract definitions for all modules since we will have the concrete
-    % definitions for imported instances from the .opt files.  If it is not
-    % enabled then we keep the abstract definitions for imported instances
+    % abstract definitions for all modules, since we will have the concrete
+    % definitions for imported instances from the .opt files. If it is not
+    % enabled, then we keep the abstract definitions for imported instances
     % since doing so may allow us to detect errors.
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     (
@@ -1277,260 +1554,72 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
         true
     ).
 
-%---------------------------------------------------------------------------%
-
-    % In check_instance_declaration_types/4, we check that each type
-    % in the instance declaration must be either a type with no arguments,
-    % or a polymorphic type whose arguments are all distinct type variables.
+    % The coverage error message is intended to look like this:
     %
-:- pred check_instance_declaration_types(module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_instance_declaration_types(!ModuleInfo, !Specs) :-
-    module_info_get_instance_table(!.ModuleInfo, InstanceTable),
-    map.foldl(check_instance_declaration_types(!.ModuleInfo),
-        InstanceTable, !Specs).
-
-:- pred check_instance_declaration_types(module_info::in,
-    class_id::in, list(hlds_instance_defn)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_instance_declaration_types(ModuleInfo, ClassId, InstanceDefns, !Specs) :-
-    list.foldl(check_one_instance_declaration_types(ModuleInfo, ClassId),
-        InstanceDefns, !Specs).
-
-:- pred check_one_instance_declaration_types(module_info::in,
-    class_id::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_one_instance_declaration_types(ModuleInfo, ClassId, InstanceDefn,
-        !Specs) :-
-    Types = InstanceDefn ^ instance_types,
-    list.foldl3(is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn),
-        Types, 1, _, set.init, _, !Specs).
-
-    % Each of these types in the instance declaration must be either a
-    % type with no arguments, or a polymorphic type whose arguments are
-    % all distinct type variables.
+    % long_module_name:001: In instance for typeclass `long_class/2':
+    % long_module_name:001:   functional dependency not satisfied: type
+    % long_module_name:001:   variables T1, T2 and T3 occur in the range of a
+    % long_module_name:001:   functional dependency, but are not determined
+    % long_module_name:001:   by the domain.
     %
-:- pred is_valid_instance_type(module_info::in,
-    class_id::in, hlds_instance_defn::in, mer_type::in,
-    int::in, int::out, set(mer_type)::in, set(mer_type)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
-        N, N+1, !SeenTypes, !Specs) :-
-    (
-        Type = builtin_type(_)
-    ;
-        (
-            Type = higher_order_type(_, _, _, _),
-            Pieces = [words("is a higher order type")]
-        ;
-            Type = apply_n_type(_, _, _),
-            Pieces = [words("is an apply/N type")]
-        ;
-            Type = type_variable(_, _),
-            Pieces = [words("is a type variable")]
-        ),
-        Spec = error_message_2(ClassId, InstanceDefn, N, Pieces),
-        !:Specs = [Spec | !.Specs]
-    ;
-        Type = tuple_type(Args, _),
-        each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
-        (
-            Result = no_error,
-            set.insert_list(Args, !SeenTypes)
-        ;
-            ( Result = local_non_distinct
-            ; Result = global_non_distinct
-            ; Result = arg_not_type_variable(_)
-            ),
-            Spec = error_message(ClassId, InstanceDefn, N, Result),
-            !:Specs = [Spec | !.Specs]
-        )
-    ;
-        Type = kinded_type(_, _),
-        unexpected("check_typeclass", "kinded_type")
-    ;
-        Type = defined_type(TypeName, Args, _),
-        each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
-        (
-            Result = no_error,
-            set.insert_list(Args, !SeenTypes),
-            ( type_to_type_defn(ModuleInfo, Type, TypeDefn) ->
-                list.length(Args, TypeArity),
-                is_visible_instance_type(TypeName, TypeArity, TypeDefn,
-                    ClassId, InstanceDefn, !Specs),
-                get_type_defn_body(TypeDefn, TypeBody),
-                (
-                    TypeBody = hlds_eqv_type(EqvType),
-                    is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn,
-                        EqvType, N, _, !SeenTypes, !Specs)
-                ;
-                    ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _)
-                    ; TypeBody = hlds_foreign_type(_)
-                    ; TypeBody = hlds_solver_type(_, _)
-                    ; TypeBody = hlds_abstract_type(_)
-                    )
-                )
-            ;
-                % The type is either a builtin type or a type variable.
-                true
-            )
-        ;
-            ( Result = local_non_distinct
-            ; Result = global_non_distinct
-            ; Result = arg_not_type_variable(_)
-            ),
-            Spec = error_message(ClassId, InstanceDefn, N, Result),
-            !:Specs = [Spec | !.Specs]
-        )
-    ).
-
-    % Check that types that are referred to in an abstract instance
-    % declaration in a module interface are visible in the module
-    % interface, i.e they are either exported by the module or imported
-    % in the module interface.
-    %
-:- pred is_visible_instance_type(sym_name::in, arity::in, hlds_type_defn::in,
-    class_id::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
-        InstanceDefn, !Specs) :-
-    InstanceBody = InstanceDefn ^ instance_body,
-    (
-        InstanceBody = instance_body_abstract,
-        InstanceImportStatus = InstanceDefn ^ instance_status,
-        InstanceIsExported =
-            status_is_exported_to_non_submodules(InstanceImportStatus),
-        (
-            InstanceIsExported = yes,
-            get_type_defn_status(TypeDefn, TypeDefnImportStatus),
-            (
-                status_is_imported(TypeDefnImportStatus) = no,
-                status_is_exported_to_non_submodules(TypeDefnImportStatus) = no
-            ->
-                ClassId = class_id(ClassName, ClassArity),
-                Pieces = [
-                    words("Error: abstract instance declaration for"),
-                    words("type class"),
-                    sym_name_and_arity(ClassName / ClassArity),
-                    words("contains the type"),
-                    sym_name_and_arity(TypeName / TypeArity),
-                    words("but that type is not visible in the"),
-                    words("module interface.")
-                ],
-                Context = InstanceDefn ^ instance_context,
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_type_check, [Msg]),
-                !:Specs = [Spec | !.Specs]
-            ;
-                true
-            )
-        ;
-            InstanceIsExported = no
-        )
-    ;
-        InstanceBody = instance_body_concrete(_)
-    ).
-
-:- type instance_arg_result
-    --->    no_error
-    ;       local_non_distinct
-    ;       global_non_distinct
-    ;       arg_not_type_variable(int)
-    .
-
-:- inst instance_arg_result_error
-    --->    local_non_distinct
-    ;       global_non_distinct
-    ;       arg_not_type_variable(ground)
-    .
-
-:- pred each_arg_is_a_distinct_type_variable(set(mer_type)::in,
-    list(mer_type)::in, int::in, instance_arg_result::out) is det.
-
-each_arg_is_a_distinct_type_variable(_, [], _, no_error).
-each_arg_is_a_distinct_type_variable(SeenTypes, [Type | Types], N, Result) :-
-    (
-        Type = type_variable(_, _),
-        ( Type `list.member` Types ->
-            Result = local_non_distinct
-        ; Type `set.member` SeenTypes ->
-            Result = global_non_distinct
-        ;
-            each_arg_is_a_distinct_type_variable(SeenTypes, Types, N+1, Result)
-        )
-    ;
-        ( Type = defined_type(_, _, _)
-        ; Type = builtin_type(_)
-        ; Type = higher_order_type(_, _, _, _)
-        ; Type = tuple_type(_, _)
-        ; Type = apply_n_type(_, _, _)
-        ; Type = kinded_type(_, _)
-        ),
-        Result = arg_not_type_variable(N)
-    ).
-
-:- func error_message(class_id::in, hlds_instance_defn::in, int::in,
-    instance_arg_result::in(instance_arg_result_error))
-    = (error_spec::out) is det.
-
-error_message(ClassId, InstanceDefn, N, Error) = Spec :-
-    (
-        Error = local_non_distinct,
-        Err = [words("is not a type"),
-            words("whose arguments are distinct type variables")]
-    ;
-        Error = global_non_distinct,
-        Err = [words("contains a type variable which is used in another arg")]
-    ;
-        Error = arg_not_type_variable(ArgNum),
-        Err = [words("is a type whose"), nth_fixed(ArgNum),
-            words("arg is not a variable")]
-    ),
-    Spec = error_message_2(ClassId, InstanceDefn, N, Err).
-
-:- func error_message_2(class_id, hlds_instance_defn, int, format_components)
+:- func report_coverage_error(class_id, hlds_instance_defn, list(tvar))
     = error_spec.
 
-error_message_2(ClassId, InstanceDefn, N, Pieces) = Spec :-
-    ClassId = class_id(ClassName, _),
-    ClassNameString = sym_name_to_string(ClassName),
+report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
+    ClassId = class_id(SymName, Arity),
+    TVarSet = InstanceDefn ^ instance_tvarset,
+    Context = InstanceDefn ^ instance_context,
 
-    InstanceVarSet = InstanceDefn ^ instance_tvarset,
-    InstanceTypes = InstanceDefn ^ instance_types,
-    InstanceContext = InstanceDefn ^ instance_context,
-    InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
-        InstanceTypes),
+    VarsStrs = list.map(mercury_var_to_string(TVarSet, no), Vars),
+    Pieces = [words("In instance for typeclass"),
+        sym_name_and_arity(SymName / Arity), suffix(":"), nl,
+        words("functional dependency not satisfied:"),
+        words(choose_number(Vars, "type variable", "type variables"))]
+        ++ list_to_pieces(VarsStrs) ++
+        [words(choose_number(Vars, "occurs", "occur")),
+        words("in the range of the functional dependency, but"),
+        words(choose_number(Vars, "is", "are")),
+        words("not determined by the domain."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
-    HeaderPieces =
-        [words("In instance declaration for"),
-        words("`" ++ ClassNameString ++
-            "(" ++ InstanceTypesString ++ ")':")
-        ],
+:- func report_consistency_error(class_id, hlds_class_defn,
+    hlds_instance_defn, hlds_instance_defn, hlds_class_fundep) = error_spec.
 
-    VerbosePieces =
-        [words("types in instance declarations must be functors " ++
-            "with distinct variables as arguments")],
+report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
+        = Spec :-
+    ClassId = class_id(SymName, Arity),
+    Params = ClassDefn ^ class_vars,
+    TVarSet = ClassDefn ^ class_tvarset,
+    ContextA = InstanceA ^ instance_context,
+    ContextB = InstanceB ^ instance_context,
 
-    ArgNumPieces = [words("the"), nth_fixed(N), words("arg") | Pieces],
+    FunDep = fundep(Domain, Range),
+    DomainParams = restrict_list_elements(Domain, Params),
+    RangeParams = restrict_list_elements(Range, Params),
+    DomainList = mercury_vars_to_string(TVarSet, no, DomainParams),
+    RangeList = mercury_vars_to_string(TVarSet, no, RangeParams),
+    FunDepStr = "`(" ++ DomainList ++ " -> " ++ RangeList ++ ")'",
 
-    HeadingMsg = simple_msg(InstanceContext,
-        [always(HeaderPieces), always(ArgNumPieces),
-        verbose_only(VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [HeadingMsg]).
+    PiecesA = [words("Inconsistent instance declaration for typeclass"),
+        sym_name_and_arity(SymName / Arity),
+        words("with functional dependency"), fixed(FunDepStr),
+        suffix("."), nl],
+    PiecesB = [words("Here is the conflicting instance.")],
 
+    MsgA = simple_msg(ContextA, [always(PiecesA)]),
+    MsgB = error_msg(yes(ContextB), treat_as_first, 0, [always(PiecesB)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [MsgA, MsgB]).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
     % Look for pred or func declarations for which the type variables in
-    % the constraints are not all determined by the type variables in the
-    % type and the functional dependencies.  Likewise look for
-    % constructors for which the existential type variables in the
-    % constraints are not all determined by the type variables in the
-    % constructor arguments and the functional dependencies.
+    % the constraints are not all determined by the type variables in the type
+    % and the functional dependencies. Likewise look for constructors for which
+    % the existential type variables in the constraints are not all determined
+    % by the type variables in the constructor arguments and the functional
+    % dependencies.
     %
 :- pred check_typeclass_constraints(module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -1638,6 +1727,115 @@ check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo, !Specs) :-
         !:Specs = [Spec | !.Specs]
     ).
 
+    % The error messages for ambiguous types are intended to look like this:
+    %
+    % long_module_name:001: In declaration for function `long_function/2':
+    % long_module_name:001:   error in type class constraints: type variables
+    % long_module_name:001:   T1, T2 and T3 occur in the constraints, but are
+    % long_module_name:001:   not determined by the function's argument or
+    % long_module_name:001:   result types.
+    %
+    % long_module_name:002: In declaration for predicate `long_predicate/3':
+    % long_module_name:002:   error in type class constraints: type variable
+    % long_module_name:002:   T occurs in the constraints, but is not
+    % long_module_name:002:   determined by the predicate's argument types.
+    %
+    % long_module_name:002: In declaration for type `long_type/3':
+    % long_module_name:002:   error in type class constraints: type variable
+    % long_module_name:002:   T occurs in the constraints, but is not
+    % long_module_name:002:   determined by the constructor's argument types.
+    %
+:- func report_unbound_tvars_in_pred_context(list(tvar), pred_info)
+    = error_spec.
+
+report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
+    pred_info_get_context(PredInfo, Context),
+    pred_info_get_arg_types(PredInfo, TVarSet, _, ArgTypes),
+    PredName = pred_info_name(PredInfo),
+    Module = pred_info_module(PredInfo),
+    SymName = qualified(Module, PredName),
+    Arity = length(ArgTypes),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+
+    VarsStrs = list.map(mercury_var_to_string(TVarSet, no), Vars),
+
+    Pieces0 = [words("In declaration for"),
+        simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
+        suffix(":"), nl,
+        words("error in type class constraints:"),
+        words(choose_number(Vars, "type variable", "type variables"))]
+        ++ list_to_pieces(VarsStrs) ++
+        [words(choose_number(Vars, "occurs", "occur")),
+        words("in the constraints, but"),
+        words(choose_number(Vars, "is", "are")),
+        words("not determined by the")],
+    (
+        PredOrFunc = pf_predicate,
+        Pieces = Pieces0 ++ [words("predicate's argument types."), nl]
+    ;
+        PredOrFunc = pf_function,
+        Pieces = Pieces0 ++ [words("function's argument or result types."), nl]
+    ),
+    Msg = simple_msg(Context,
+        [always(Pieces), verbose_only(report_unbound_tvars_explanation)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
+:- func report_unbound_tvars_in_ctor_context(list(tvar), type_ctor,
+    hlds_type_defn) = error_spec.
+
+report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn) = Spec :-
+    get_type_defn_context(TypeDefn, Context),
+    get_type_defn_tvarset(TypeDefn, TVarSet),
+    TypeCtor = type_ctor(SymName, Arity),
+
+    VarsStrs = list.map(mercury_var_to_string(TVarSet, no), Vars),
+
+    Pieces = [words("In declaration for type"),
+        sym_name_and_arity(SymName / Arity), suffix(":"), nl,
+        words("error in type class constraints:"),
+        words(choose_number(Vars, "type variable", "type variables"))]
+        ++ list_to_pieces(VarsStrs) ++
+        [words(choose_number(Vars, "occurs", "occur")),
+        words("in the constraints, but"),
+        words(choose_number(Vars, "is", "are")),
+        words("not determined by the constructor's argument types."), nl],
+    Msg = simple_msg(Context,
+        [always(Pieces),
+        verbose_only(report_unbound_tvars_explanation)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
+:- func report_unbound_tvars_explanation = list(format_component).
+
+report_unbound_tvars_explanation =
+    [words("All types occurring in typeclass constraints"),
+    words("must be fully determined."),
+    words("A type is fully determined if one of the"),
+    words("following holds:"),
+    nl,
+    words("1) All type variables occurring in the type"),
+    words("are determined."),
+    nl,
+    words("2) The type occurs in a constraint argument,"),
+    words("that argument is in the range of some"),
+    words("functional dependency for that class, and"),
+    words("the types in all of the domain arguments for"),
+    words("that functional dependency are fully"),
+    words("determined."),
+    nl,
+    words("A type variable is determined if one of the"),
+    words("following holds:"),
+    nl,
+    words("1) The type variable occurs in the argument"),
+    words("types of the predicate, function, or"),
+    words("constructor which is constrained."),
+    nl,
+    words("2) The type variable occurs in a type which"),
+    words("is fully determined."),
+    nl,
+    words("See the ""Functional dependencies"" section"),
+    words("of the reference manual for details."), nl].
+
+
 %---------------------------------------------------------------------------%
 
     % Check that all types appearing in universal (existential) constraints are
@@ -1677,7 +1875,45 @@ maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars,
         !:Specs = [Spec | !.Specs]
     ).
 
+:- type quant_error_type
+    --->    universal_constraint
+    ;       existential_constraint.
+
+:- func report_badly_quantified_vars(pred_info, quant_error_type, list(tvar))
+    = error_spec.
+
+report_badly_quantified_vars(PredInfo, QuantErrorType, TVars) = Spec :-
+    pred_info_get_typevarset(PredInfo, TVarSet),
+    pred_info_get_context(PredInfo, Context),
+
+    InDeclaration = [words("In declaration of")] ++
+        describe_one_pred_info_name(should_module_qualify, PredInfo) ++
+        [suffix(":")],
+    TypeVariables = [words("type variable"),
+        suffix(choose_number(TVars, "", "s"))],
+    TVarsStrs = list.map(mercury_var_to_string(TVarSet, no), TVars),
+    TVarsPart = list_to_pieces(TVarsStrs),
+    Are = words(choose_number(TVars, "is", "are")),
+    (
+        QuantErrorType = universal_constraint,
+        BlahConstrained = words("universally constrained"),
+        BlahQuantified = words("existentially quantified")
+    ;
+        QuantErrorType = existential_constraint,
+        BlahConstrained = words("existentially constrained"),
+        BlahQuantified = words("universally quantified")
+    ),
+    Pieces = InDeclaration ++ TypeVariables ++ TVarsPart ++
+        [Are, BlahConstrained, suffix(","), words("but"), Are,
+        BlahQuantified, suffix("."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Utility predicates.
+%
 
 :- pred get_unbound_tvars(tvarset::in, list(tvar)::in, list(tvar)::in,
     list(prog_constraint)::in, module_info::in, list(tvar)::out) is det.
@@ -1904,244 +2140,6 @@ format_method_name(Method) = MethodName :-
     Method = instance_method(PredOrFunc, Name, _Defn, Arity, _Context),
     adjust_func_arity(PredOrFunc, Arity, PredArity),
     MethodName = [p_or_f(PredOrFunc), sym_name_and_arity(Name / PredArity)].
-
-%---------------------------------------------------------------------------%
-
-    % The error message for cyclic classes is intended to look like this:
-    %
-    %   module.m:NNN: Error: cyclic superclass relation detected:
-    %   module.m:NNN:   `foo/N' <= `bar/N' <= `baz/N' <= `foo/N'
-    %
-:- func report_cyclic_classes(class_table, class_path) = error_spec.
-
-report_cyclic_classes(ClassTable, ClassPath) = Spec :-
-    (
-        ClassPath = [],
-        unexpected($module, $pred, "empty cycle found.")
-    ;
-        ClassPath = [ClassId | Tail],
-        Context = map.lookup(ClassTable, ClassId) ^ class_context,
-        ClassId = class_id(Name, Arity),
-        RevPieces0 = [sym_name_and_arity(Name/Arity),
-            words("Error: cyclic superclass relation detected:")],
-        RevPieces = foldl(add_path_element, Tail, RevPieces0),
-        Pieces = list.reverse(RevPieces),
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg])
-    ).
-
-:- func add_path_element(class_id, list(format_component))
-    = list(format_component).
-
-add_path_element(class_id(Name, Arity), RevPieces0) =
-    [sym_name_and_arity(Name/Arity), words("<=") | RevPieces0].
-
-%---------------------------------------------------------------------------%
-
-    % The coverage error message is intended to look like this:
-    %
-    % long_module_name:001: In instance for typeclass `long_class/2':
-    % long_module_name:001:   functional dependency not satisfied: type
-    % long_module_name:001:   variables T1, T2 and T3 occur in the range of a
-    % long_module_name:001:   functional dependency, but are not determined
-    % long_module_name:001:   by the domain.
-
-:- func report_coverage_error(class_id, hlds_instance_defn, list(tvar))
-    = error_spec.
-
-report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
-    ClassId = class_id(SymName, Arity),
-    TVarSet = InstanceDefn ^ instance_tvarset,
-    Context = InstanceDefn ^ instance_context,
-
-    VarsStrs = list.map(mercury_var_to_string(TVarSet, no), Vars),
-    Pieces = [words("In instance for typeclass"),
-        sym_name_and_arity(SymName / Arity), suffix(":"), nl,
-        words("functional dependency not satisfied:"),
-        words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_pieces(VarsStrs) ++
-        [words(choose_number(Vars, "occurs", "occur")),
-        words("in the range of the functional dependency, but"),
-        words(choose_number(Vars, "is", "are")),
-        words("not determined by the domain."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
-
-%---------------------------------------------------------------------------%
-
-:- func report_consistency_error(class_id, hlds_class_defn,
-    hlds_instance_defn, hlds_instance_defn, hlds_class_fundep) = error_spec.
-
-report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
-        = Spec :-
-    ClassId = class_id(SymName, Arity),
-    Params = ClassDefn ^ class_vars,
-    TVarSet = ClassDefn ^ class_tvarset,
-    ContextA = InstanceA ^ instance_context,
-    ContextB = InstanceB ^ instance_context,
-
-    FunDep = fundep(Domain, Range),
-    DomainParams = restrict_list_elements(Domain, Params),
-    RangeParams = restrict_list_elements(Range, Params),
-    DomainList = mercury_vars_to_string(TVarSet, no, DomainParams),
-    RangeList = mercury_vars_to_string(TVarSet, no, RangeParams),
-    FunDepStr = "`(" ++ DomainList ++ " -> " ++ RangeList ++ ")'",
-
-    PiecesA = [words("Inconsistent instance declaration for typeclass"),
-        sym_name_and_arity(SymName / Arity),
-        words("with functional dependency"), fixed(FunDepStr),
-        suffix("."), nl],
-    PiecesB = [words("Here is the conflicting instance.")],
-
-    MsgA = simple_msg(ContextA, [always(PiecesA)]),
-    MsgB = error_msg(yes(ContextB), treat_as_first, 0, [always(PiecesB)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [MsgA, MsgB]).
-
-%---------------------------------------------------------------------------%
-
-    % The error messages for ambiguous types are intended to look like this:
-    %
-    % long_module_name:001: In declaration for function `long_function/2':
-    % long_module_name:001:   error in type class constraints: type variables
-    % long_module_name:001:   T1, T2 and T3 occur in the constraints, but are
-    % long_module_name:001:   not determined by the function's argument or
-    % long_module_name:001:   result types.
-    %
-    % long_module_name:002: In declaration for predicate `long_predicate/3':
-    % long_module_name:002:   error in type class constraints: type variable
-    % long_module_name:002:   T occurs in the constraints, but is not
-    % long_module_name:002:   determined by the predicate's argument types.
-    %
-    % long_module_name:002: In declaration for type `long_type/3':
-    % long_module_name:002:   error in type class constraints: type variable
-    % long_module_name:002:   T occurs in the constraints, but is not
-    % long_module_name:002:   determined by the constructor's argument types.
-
-:- func report_unbound_tvars_in_pred_context(list(tvar), pred_info)
-    = error_spec.
-
-report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
-    pred_info_get_context(PredInfo, Context),
-    pred_info_get_arg_types(PredInfo, TVarSet, _, ArgTypes),
-    PredName = pred_info_name(PredInfo),
-    Module = pred_info_module(PredInfo),
-    SymName = qualified(Module, PredName),
-    Arity = length(ArgTypes),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-
-    VarsStrs = list.map(mercury_var_to_string(TVarSet, no), Vars),
-
-    Pieces0 = [words("In declaration for"),
-        simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-        suffix(":"), nl,
-        words("error in type class constraints:"),
-        words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_pieces(VarsStrs) ++
-        [words(choose_number(Vars, "occurs", "occur")),
-        words("in the constraints, but"),
-        words(choose_number(Vars, "is", "are")),
-        words("not determined by the")],
-    (
-        PredOrFunc = pf_predicate,
-        Pieces = Pieces0 ++ [words("predicate's argument types."), nl]
-    ;
-        PredOrFunc = pf_function,
-        Pieces = Pieces0 ++ [words("function's argument or result types."), nl]
-    ),
-    Msg = simple_msg(Context,
-        [always(Pieces), verbose_only(report_unbound_tvars_explanation)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
-
-:- func report_unbound_tvars_in_ctor_context(list(tvar), type_ctor,
-    hlds_type_defn) = error_spec.
-
-report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn) = Spec :-
-    get_type_defn_context(TypeDefn, Context),
-    get_type_defn_tvarset(TypeDefn, TVarSet),
-    TypeCtor = type_ctor(SymName, Arity),
-
-    VarsStrs = list.map(mercury_var_to_string(TVarSet, no), Vars),
-
-    Pieces = [words("In declaration for type"),
-        sym_name_and_arity(SymName / Arity), suffix(":"), nl,
-        words("error in type class constraints:"),
-        words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_pieces(VarsStrs) ++
-        [words(choose_number(Vars, "occurs", "occur")),
-        words("in the constraints, but"),
-        words(choose_number(Vars, "is", "are")),
-        words("not determined by the constructor's argument types."), nl],
-    Msg = simple_msg(Context,
-        [always(Pieces),
-        verbose_only(report_unbound_tvars_explanation)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
-
-:- func report_unbound_tvars_explanation = list(format_component).
-
-report_unbound_tvars_explanation =
-    [words("All types occurring in typeclass constraints"),
-    words("must be fully determined."),
-    words("A type is fully determined if one of the"),
-    words("following holds:"),
-    nl,
-    words("1) All type variables occurring in the type"),
-    words("are determined."),
-    nl,
-    words("2) The type occurs in a constraint argument,"),
-    words("that argument is in the range of some"),
-    words("functional dependency for that class, and"),
-    words("the types in all of the domain arguments for"),
-    words("that functional dependency are fully"),
-    words("determined."),
-    nl,
-    words("A type variable is determined if one of the"),
-    words("following holds:"),
-    nl,
-    words("1) The type variable occurs in the argument"),
-    words("types of the predicate, function, or"),
-    words("constructor which is constrained."),
-    nl,
-    words("2) The type variable occurs in a type which"),
-    words("is fully determined."),
-    nl,
-    words("See the ""Functional dependencies"" section"),
-    words("of the reference manual for details."), nl].
-
-%---------------------------------------------------------------------------%
-
-:- type quant_error_type
-    --->    universal_constraint
-    ;       existential_constraint.
-
-:- func report_badly_quantified_vars(pred_info, quant_error_type, list(tvar))
-    = error_spec.
-
-report_badly_quantified_vars(PredInfo, QuantErrorType, TVars) = Spec :-
-    pred_info_get_typevarset(PredInfo, TVarSet),
-    pred_info_get_context(PredInfo, Context),
-
-    InDeclaration = [words("In declaration of")] ++
-        describe_one_pred_info_name(should_module_qualify, PredInfo) ++
-        [suffix(":")],
-    TypeVariables = [words("type variable"),
-        suffix(choose_number(TVars, "", "s"))],
-    TVarsStrs = list.map(mercury_var_to_string(TVarSet, no), TVars),
-    TVarsPart = list_to_pieces(TVarsStrs),
-    Are = words(choose_number(TVars, "is", "are")),
-    (
-        QuantErrorType = universal_constraint,
-        BlahConstrained = words("universally constrained"),
-        BlahQuantified = words("existentially quantified")
-    ;
-        QuantErrorType = existential_constraint,
-        BlahConstrained = words("existentially constrained"),
-        BlahQuantified = words("universally quantified")
-    ),
-    Pieces = InDeclaration ++ TypeVariables ++ TVarsPart ++
-        [Are, BlahConstrained, suffix(","), words("but"), Are,
-        BlahQuantified, suffix("."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.check_typeclass.
