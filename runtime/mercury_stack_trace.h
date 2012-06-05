@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2001, 2003-2006, 2008, 2011 The University of Melbourne.
+** Copyright (C) 1998-2001,2003-2006,2008,2011-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -30,23 +30,22 @@ typedef MR_Unsigned MR_Level;
 ** MR_dump_stack
 **
 ** Given the succip, det stack pointer and current frame, generate a
-** stack dump showing the name of each active procedure on the
-** stack. If include_trace_data data is set, also print the
-** call event number, call sequence number and depth for every
-** traced procedure.
-** NOTE: MR_dump_stack will assume that the succip is for the
-** topmost stack frame.  If you call MR_dump_stack from some
-** pragma c_code, that may not be the case.
+** stack dump showing the name of each active procedure on the stack.
+** If include_trace_data data is set, also print the call event number,
+** call sequence number and depth for every traced procedure.
+** NOTE: MR_dump_stack will assume that the succip is for the topmost
+** stack frame. If you call MR_dump_stack from some foreign_proc,
+** that may not be the case.
 ** Due to some optimizations (or lack thereof) the MR_dump_stack call
 ** may end up inside code that has a stack frame allocated, but
 ** that has a succip for the previous stack frame.
-** Don't call MR_dump_stack from Mercury pragma c_code (calling
-** from other C code in the runtime is probably ok, provided the
+** Don't call MR_dump_stack from a Mercury procedure defined by a foreign_proc
+** (calling from other C code in the runtime is probably ok, provided the
 ** succip corresponds to the topmost stack frame).
 ** (See library/require.m for a technique for calling MR_dump_stack
 ** from Mercury).
-** If you need a more convenient way of calling from Mercury code,
-** it would probably be best to make an impure predicate defined
+** If you need a more convenient way of calling this from Mercury code,
+** it would probably be best to do it using an impure predicate defined
 ** using `:- external'.
 */
 
@@ -96,11 +95,11 @@ typedef struct {
     MR_Word                 *MR_sdi_base_sp;
     MR_Word                 *MR_sdi_base_curfr;
     const char              *MR_sdi_goal_path;
-} MR_StackDumpInfo;
+} MR_StackFrameDumpInfo;
 
 typedef void        (*MR_PrintStackRecord)(FILE *fp,
                         MR_bool include_trace_data,
-                        MR_StackDumpInfo dump_info);
+                        const MR_StackFrameDumpInfo *frame_dump_info);
 
 extern  const char  *MR_dump_stack_from_layout(FILE *fp,
                         const MR_LabelLayout *label_layout,
@@ -108,6 +107,18 @@ extern  const char  *MR_dump_stack_from_layout(FILE *fp,
                         MR_Word *current_frame,
                         MR_bool include_trace_data,
                         MR_bool include_contexts,
+                        MR_FrameLimit frame_limit,
+                        MR_SpecLineLimit line_limit,
+                        MR_PrintStackRecord print_stack_record);
+
+extern  const char  *MR_dump_stack_from_layout_clique(FILE *fp,
+                        const MR_LabelLayout *label_layout,
+                        MR_Word *det_stack_pointer,
+                        MR_Word *current_frame,
+                        MR_bool include_trace_data,
+                        MR_bool include_contexts,
+                        MR_bool detect_cliques,
+                        MR_SpecLineLimit clique_line_limit,
                         MR_FrameLimit frame_limit,
                         MR_SpecLineLimit line_limit,
                         MR_PrintStackRecord print_stack_record);
@@ -147,15 +158,47 @@ extern  void        MR_dump_nondet_stack_from_layout(FILE *fp,
 ** function for each frame.
 */
 
-typedef void        MR_Traverse_Nondet_Frame_Func(void *user_data,
+typedef void        MR_TraverseNondetFrameFunc(void *user_data,
                         const MR_LabelLayout *layout, MR_Word *base_sp,
                         MR_Word *base_curfr);
 
 extern  void        MR_traverse_nondet_stack_from_layout(
                         MR_Word *maxfr, const MR_LabelLayout *label_layout,
                         MR_Word *base_sp, MR_Word *base_curfr,
-                        MR_Traverse_Nondet_Frame_Func *traverse_frame_func,
+                        MR_TraverseNondetFrameFunc *traverse_frame_func,
                         void *traverse_frame_func_data);
+
+/*
+** MR_find_clique_entry
+**
+** Walk the stack from the current event to the stack frame of main.
+** The initial part of this walk visits the stack frames of procedures
+** that are mutually recursive with the current event's procedure; 
+** the rest of the walk visits the frames of other procedures.
+** This function find the boundary between these two parts.
+**
+** If we cannot walk all the way to main (e.g. because some stack frames
+** have no layout information, or because the stack does not have the required
+** depth), we return a pointer to an error message, and neither
+** *clique_entry_level nor *first_outside_ancestor_level will be meaningful.
+**
+** If we can walk all the way to main, then we will set *clique_entry_level
+** to be the level on the stack (in the sense of a number you can give to
+** MR_find_nth_ancestor) of the stack frame that is in the initial mutually
+** recursive group, but whose caller is not, and it will set
+** *first_outside_ancestor_level to the level of the caller, unless there
+** is no such caller, in which case we set *first_outside_ancestor_level
+** to a negative number.
+**
+** Either clique_entry_level or first_outside_ancestor_level may be NULL,
+** if the caller does not need one or other of these numbers.
+*/
+
+extern const char   *MR_find_clique_entry(
+                        const MR_LabelLayout *label_layout,
+                        MR_Word *det_stack_pointer, MR_Word *current_frame,
+                        int *clique_entry_level,
+                        int *first_outside_ancestor_level);
 
 /*
 ** MR_find_nth_ancestor
@@ -354,7 +397,7 @@ extern  void        MR_print_proc_id_trace_and_context(FILE *fp,
 
 extern  void        MR_dump_stack_record_print(FILE *fp,
                         MR_bool include_trace_data,
-                        const MR_StackDumpInfo dump_info);
+                        const MR_StackFrameDumpInfo *frame_dump_info);
 
 /*
 ** Find the first call event on the stack whose event number or sequence number

@@ -27,6 +27,19 @@ Changes to the Mercury standard library:
 * The lexer module returns base 10 integer literals in the string
   representation, if the integer is too large for an `int'.
 
+Changes to the Mercury debugger:
+
+* We have added new capabilities to the "level", "retry" and "finish" mdb
+  commands. If these commands are given the argument "clentry", they will
+  operate on the ancestor of the current call that represents entry to the
+  clique of mutually recursive procedures that the current call belongs to.
+  If they are given the argument "clparent", they will operate on the parent
+  of that call.
+
+* The mdb command "stack" can now find and mark cliques of mutually recursive
+  calls on the stack, and can (and by default, will) impose a limit on the
+  number of lines it prints for each clique.
+
 Changes to the extras distribution:
 
 * We have added a binding to the GLFW library.

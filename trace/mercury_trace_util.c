@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2000-2002, 2004-2007 The University of Melbourne.
+** Copyright (C) 2000-2002,2004-2007,2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,6 +15,7 @@
 */
 
 #include "mercury_imp.h"
+#include "mercury_trace_internal.h"
 #include "mercury_trace_util.h"
 #include "mercury_file.h"
 
@@ -241,11 +242,50 @@ MR_trace_proc_layout_is_builtin_catch(const MR_ProcLayout *layout)
     return MR_FALSE;
 }
 
+MR_bool
+MR_find_clique_entry_mdb(MR_EventInfo *event_info,
+    MR_SelectedStackFrame which_frame, MR_Level *selected_level_ptr)
+{
+    const MR_LabelLayout    *layout;
+    MR_Word                 *saved_regs;
+    int                     clique_entry_level;
+    int                     clique_parent_level;
+    const char              *problem;
+
+    layout = event_info->MR_event_sll;
+    saved_regs = event_info->MR_saved_regs;
+
+    problem = MR_find_clique_entry(layout,
+        MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
+        &clique_entry_level, &clique_parent_level);
+
+    if (problem != NULL) {
+        fflush(MR_mdb_out);
+        fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+        return MR_TRUE;
+    }
+
+    if (which_frame == MR_CLIQUE_ENTRY_PARENT_FRAME) {
+        if (clique_parent_level < 0) {
+            fflush(MR_mdb_out);
+            fprintf(MR_mdb_err, "mdb: All the frames on the stack"
+                "are recursive with the current procedure.\n");
+            return MR_TRUE;
+        }
+        
+        *selected_level_ptr = clique_parent_level;
+    } else {
+        *selected_level_ptr = clique_entry_level;
+    }
+
+    return MR_FALSE;
+}
+
 void
 MR_trace_call_system_display_error_on_failure(FILE *err_stream, char *command)
 {
     int     system_rv;
-    
+
     if (system(NULL)) {
         system_rv = system(command);
         if (system_rv != 0) {

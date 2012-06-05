@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2008 The University of Melbourne.
+** Copyright (C) 1998-2008,2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -194,6 +194,7 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_Unsigned             depth;
     MR_Unsigned             stop_depth;
     MR_Unsigned             n;
+    MR_Level                ancestor_level;
     MR_TracePort            port;
     MR_Word                 *base_sp;
     MR_Word                 *base_curfr;
@@ -208,11 +209,27 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
         ; /* the usage message has already been printed */
         return KEEP_INTERACTING;
+    } else if (word_count == 2 &&
+        ( MR_streq(words[1], "entry") || MR_streq(words[1], "clentry")))
+    {
+        if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_FRAME,
+            &ancestor_level))
+        {
+            /* the error message has already been printed */
+            return KEEP_INTERACTING;
+        }
+    } else if (word_count == 2 && MR_streq(words[1], "clparent"))
+    {
+        if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_PARENT_FRAME,
+            &ancestor_level))
+        {
+            /* the error message has already been printed */
+            return KEEP_INTERACTING;
+        }
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
-        stop_depth = depth - n;
+        ancestor_level = n;
     } else if (word_count == 1) {
-        n = 0;
-        stop_depth = depth;
+        ancestor_level = 0;
     } else {
         MR_trace_usage_cur_cmd();
         return KEEP_INTERACTING;
@@ -224,6 +241,7 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_trace_find_reused_frames(proc_layout, base_sp, reused_frames);
     port = event_info->MR_trace_port;
 
+    stop_depth = depth - ancestor_level;
     if (MR_port_is_final(port) && depth == stop_depth) {
         MR_trace_do_noop();
     } else if (MR_port_is_final(port) &&
@@ -232,7 +250,7 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_trace_do_noop_tail_rec();
     } else {
         ancestor_layout = MR_find_nth_ancestor(event_info->MR_event_sll,
-            n, &base_sp, &base_curfr, &actual_level, &problem);
+            ancestor_level, &base_sp, &base_curfr, &actual_level, &problem);
         if (ancestor_layout == NULL) {
             fflush(MR_mdb_out);
             if (problem != NULL) {
@@ -241,9 +259,10 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 fprintf(MR_mdb_err, "mdb: not that many ancestors.\n");
             }
             return KEEP_INTERACTING;
-        } else if (actual_level != n) {
+        } else if (actual_level != ancestor_level) {
             fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "%d %d\n", (int) n, (int) actual_level);
+            fprintf(MR_mdb_err, "%d %d\n",
+                (int) ancestor_level, (int) actual_level);
             fprintf(MR_mdb_err,
                 "mdb: that stack frame has been reused, "
                 "will stop at finish of reusing call.\n");

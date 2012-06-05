@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2008, 2011 The University of Melbourne.
+** Copyright (C) 1998-2008,2011-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -230,7 +230,8 @@ static int      MR_get_var_number(MR_Word debugger_request);
 static void     MR_print_proc_id_to_socket(const MR_ProcLayout *entry,
                     const char *extra, MR_Word *base_sp, MR_Word *base_curfr);
 static void     MR_dump_stack_record_print_to_socket(FILE *fp,
-                    MR_bool include_trace_data, MR_StackDumpInfo dump_info);
+                    MR_bool include_trace_data,
+                    const MR_StackFrameDumpInfo *frame_dump_info);
 static void     MR_get_list_modules_to_import(MR_Word debugger_request,
                     MR_Integer *modules_list_length_ptr,
                     MR_Word *modules_list_ptr);
@@ -1265,7 +1266,7 @@ MR_get_var_number(MR_Word debugger_request)
 
 static void
 MR_dump_stack_record_print_to_socket(FILE *fp, MR_bool include_trace_data,
-    MR_StackDumpInfo dump_info)
+    const MR_StackFrameDumpInfo *frame_dump_info)
 {
     /*
     ** XXX If the external debugger is ever needed again, it should be updated
@@ -1273,16 +1274,17 @@ MR_dump_stack_record_print_to_socket(FILE *fp, MR_bool include_trace_data,
     ** frame by tail recursion events.
     */
 
-    if (dump_info.MR_sdi_min_level != dump_info.MR_sdi_max_level) {
+    if (frame_dump_info->MR_sdi_min_level != frame_dump_info->MR_sdi_max_level)
+    {
         MR_fatal_error(
             "dumping stack frames of multiple calls to external debugger");
     }
 
     MR_send_message_to_socket_format(
         "level(%" MR_INTEGER_LENGTH_MODIFIER "u).\n",
-        dump_info.MR_sdi_min_level);
-    MR_print_proc_id_to_socket(dump_info.MR_sdi_proc_layout, NULL,
-        dump_info.MR_sdi_base_sp, dump_info.MR_sdi_base_curfr);
+        frame_dump_info->MR_sdi_min_level);
+    MR_print_proc_id_to_socket(frame_dump_info->MR_sdi_proc_layout, NULL,
+        frame_dump_info->MR_sdi_base_sp, frame_dump_info->MR_sdi_base_curfr);
 }
 
 static void

@@ -45,6 +45,8 @@ NONRETRY_PROGS = \
 	lval_desc_array			\
 	mdbrc_test			\
 	multi_parameter			\
+	mutrec				\
+	mutrec_higher_order		\
 	poly_io_retry			\
 	poly_io_retry2			\
 	polymorphic_ground_term		\
@@ -471,6 +473,17 @@ no_inline_builtins.out: no_inline_builtins no_inline_builtins.inp
 mmos_print.out: mmos_print mmos_print.inp
 	$(MDB) ./mmos_print < mmos_print.inp \
 		> mmos_print.out 2>&1
+
+mmos_print.out: mmos_print mmos_print.inp
+	$(MDB) ./mmos_print < mmos_print.inp \
+		> mmos_print.out 2>&1
+
+mutrec.out: 	mutrec mutrec.inp
+	$(MDB) ./mutrec < mutrec.inp > mutrec.out 2>&1
+
+mutrec_higher_order.out: mutrec_higher_order mutrec_higher_order.inp
+	$(MDB_STD) ./mutrec_higher_order < mutrec_higher_order.inp \
+		> mutrec_higher_order.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2011 University of Melbourne.
+% Copyright (C) 1997-2012 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1002,8 +1002,7 @@ construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
         MaybeVarNamesSlotName = no
     ),
 
-    encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes,
-        0, Flags),
+    encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes, Flags),
     ExecTrace = proc_layout_exec_trace(MaybeCallLabelSlotName,
         EventLayoutsSlotName, NumProcEventLayouts, MaybeTable,
         MaybeHeadVarsSlotName, NumHeadVars, MaybeVarNamesSlotName,
@@ -1143,14 +1142,25 @@ collect_event_data_addrs([Info | Infos], !RevInterfaces, !RevInternals) :-
 %---------------------------------------------------------------------------%
 
 :- pred encode_exec_trace_flags(module_info::in, list(prog_var)::in,
-    list(mer_mode)::in, vartypes::in, int::in, int::out) is det.
+    list(mer_mode)::in, vartypes::in, int::out) is det.
 
-encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes, !Flags) :-
+encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes, !:Flags) :-
+    % The values of the flags are defined in runtime/mercury_stack_layout.h;
+    % look for the reference to this function.
+    !:Flags = 0,
     (
         proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars,
             ArgModes, VarTypes, _, _)
     ->
         !:Flags = !.Flags + 1
+    ;
+        true
+    ),
+    (
+        proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypes,
+            HeadVars)
+    ->
+        !:Flags = !.Flags + 2
     ;
         true
     ).

@@ -1,0 +1,45 @@
+echo on
+register --quiet
+break p2
+continue
+stack
+delete *
+break p3
+continue
+stack
+stack -a
+delete *
+break q1
+continue
+stack
+delete *
+break q3
+continue
+stack
+delete *
+break q2
+continue
+stack
+delete *
+break r0c
+continue
+stack
+stack -c 3
+delete *
+break r2
+continue
+stack
+delete *
+break r3
+continue
+stack
+delete *
+break r2
+continue
+stack
+delete *
+break s
+continue
+stack
+delete *
+continue

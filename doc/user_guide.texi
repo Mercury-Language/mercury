@@ -2680,13 +2680,35 @@ the strictness of the command.
 @sp 1
 By default, this command is strict, and it uses the default print level.
 @sp 1
-@item finish [-NSans] [@var{num}]
+@item finish [-NSans]
+@item finish [-NSans] @var{num}
+@item finish [-NSans] (@samp{clentry}|@samp{clique})
+@item finish [-NSans] @samp{clparent}
 @kindex finish (mdb command)
-Continues execution until it reaches a final (EXIT, FAIL or EXCP) port
+If invoked without arguments,
+continues execution until it reaches a final (EXIT, FAIL or EXCP) port
+of the current call.
+If invoked with the number @var{num} as argument,
+continues execution until it reaches a final port
 of the @var{num}'th ancestor of the call to which the current event refers.
-The default value of @var{num} is zero,
-which means skipping to the end of the current call.
-Reports an error if execution is already at the desired port.
+If invoked with the argument @samp{clentry} or @samp{clique},
+continues execution until it reaches a final port of the call
+that first entered into the clique of recursive calls
+of which the current call is a part.
+(If the current call is not recursive or mutually recursive
+with any other currently active call,
+it will skip to the end of the current call.)
+If the command is given the argument @samp{clparent},
+it skips to the end of the first call outside the current call's clique.
+This will be the parent of the call that @samp{finish clentry} would finish.
+@sp 1
+If invoked as
+@samp{finish clentry}, @samp{finish clique} or @samp{finish clparent},
+this command will report an error
+unless we have stack trace information
+about all of the current call's ancestors.
+@sp 1
+Also reports an error if execution is already at the desired port.
 @sp 1
 The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
 @samp{-a} or @samp{--all} specify the print level to use
@@ -2827,18 +2849,38 @@ if the command is strict, it is @samp{none}, otherwise it is @samp{some}.
 
 @sp 1
 @table @code
-@item retry [-fio] [@var{num}]
+@item retry [-fio]
+@item retry [-fio] @var{num}
+@item retry [-fio] (@samp{clentry}|@samp{clique})
+@item retry [-fio] @samp{clparent}
 @c @item retry [-afio] [@var{num}]
 @kindex retry (mdb command)
-If the optional number is not given,
+If the command is given no arguments,
 restarts execution at the call port
 of the call corresponding to the current event.
-If the optional number is given,
+If the command is given the number @var{num} as argument,
 restarts execution at the call port of the call corresponding to
 the @var{num}'th ancestor of the call to which the current event belongs.
 For example, if @var{num} is 1, it restarts the parent of the current call.
+If the command is given the argument @samp{clentry} or @samp{clique},
+restarts execution at the call port of the call
+that first entered into the clique of recursive calls
+of which the current call is a part.
+(If the current call is not (mutually) recursive
+with any other currently active call,
+the restarted call will be the current call.)
+If the command is given the argument @samp{clparent},
+restarts execution at the call port
+of the first call outside the current call's clique.
+This will be the parent of the call that @samp{retry clentry} would restart.
 @sp 1
-The command will report an error unless
+If invoked as
+@samp{retry clentry}, @samp{retry clique} or @samp{retry clparent},
+this command will report an error
+unless we have stack trace information
+about all of the current call's ancestors.
+@sp 1
+The command will also report an error unless
 the values of all the input arguments of the selected call are available
 at the return site at which control would reenter the selected call.
 (The compiler will keep the values
@@ -3056,11 +3098,11 @@ the @samp{set} command.  See the documentation for @samp{set} for more details.
 @c for @samp{set} for more details.
 @sp 1
 
-@item stack [-d] [-f@var{numframes}] [@var{numlines}]
+@item stack [-a] [-d] [-c@var{cliquelines}] [-f@var{numframes}] [@var{numlines}]
 @kindex stack (mdb command)
 Prints the names of the ancestors of the call
 specified by the current event.
-If two or more ancestor calls are for the same procedure,
+If two or more consecutive ancestor calls are for the same procedure,
 the procedure identification will be printed once
 with the appropriate multiplicity annotation.
 @sp 1
@@ -3074,6 +3116,17 @@ only the topmost @var{numframes} stack frames should be printed.
 @sp 1
 The optional number @var{numlines}, if present,
 specifies that only the topmost @var{numlines} lines should be printed.
+The default value is 100;
+the special value 0 asks for all the lines to be printed.
+@sp 1
+By default, this command will look for cliques of mutually recursive ancestors.
+It will identify them as such in the output,
+and it will print at most 10 lines from any clique.
+The @samp{-c} option can be used to specify
+the maximum number of lines to print for a clique,
+with the special value 0 asking for all of them to be printed.
+The option @samp{-a} asks for all lines to be printed
+@emph{without} cliques being detected or marked.
 @sp 1
 This command will report an error if there is no stack trace
 information available about any ancestor.
@@ -3114,11 +3167,30 @@ specifies that for each ancestor call,
 the call's event number, sequence number and depth should also be printed
 if the call is to a procedure that is being execution traced.
 @sp 1
-@item level [-d] [@var{num}]
+@item level [-d]
+@item level [-d] @var{num}
+@item level [-d] (@samp{clentry}|@samp{clique})
+@item level [-d] @samp{clparent}
 @kindex level (mdb command)
-Sets the current environment to the stack frame of the @var{num}'th
-level ancestor of the call to which the current event belongs.
-The zero'th ancestor is the call of the event itself.
+If the command is given no arguments,
+it sets the current environment
+to the stack frame that belongs to the current event.
+If invoked with the number @var{num} as argument,
+it sets the current environment
+to the stack frame of the @var{num}'th level ancestor
+of the call to which the current event belongs.
+If invoked with the argument @samp{clentry} or @samp{clique},
+it sets the current environment to the stack frame of the call
+that first entered into the clique of recursive calls
+of which the current call is a part.
+(If the current call is not (mutually) recursive
+with any other currently active call,
+it sets the current environment to the stack frame of the current event.)
+If the command is given the argument @samp{clparent},
+it sets the current environment to the stack frame of the first call
+outside the current call's clique.
+This will be the parent of the stack frame
+that @samp{level clentry} would set the current environment to.
 @sp 1
 This command will report an error
 if the current environment doesn't have the required number of ancestors,

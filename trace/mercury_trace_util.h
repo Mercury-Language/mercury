@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998,2000-2002, 2004-2007 The University of Melbourne.
+** Copyright (C) 1998,2000-2002,2004-2007,2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -89,6 +89,31 @@ extern  void    MR_print_debug_vars(FILE *fp, MR_EventInfo *event_info);
 
 extern  MR_bool MR_trace_proc_layout_is_builtin_catch(
                     const MR_ProcLayout *layout);
+
+/*
+** Find the stack frame that represents the entry point to the clique
+** of the procedure that the current event is in.
+**
+** If we cannot walk the stack all the way to main, or if there is
+** some other error that prevents us from doing what are asked to do,
+** then return true. If there are no problems, return false, and fill
+** in *selected_level_ptr with a level number that can be given directly
+** to MR_find_nth_ancestor.
+**
+** If which_frame == MR_CLIQUE_ENTRY_FRAME, set *selected_level_ptr
+** to the level of the stack frame of the entry point of that clique.
+** If which_frame == MR_CLIQUE_ENTRY_PARENT_FRAME, set *selected_level_ptr
+** to the level of the parent of that stack frame, i.e. the level of
+** the first stack frame outside the clique (first when looking UP the stack).
+*/
+
+typedef enum {
+    MR_CLIQUE_ENTRY_FRAME, MR_CLIQUE_ENTRY_PARENT_FRAME
+} MR_SelectedStackFrame;
+
+extern  MR_bool MR_find_clique_entry_mdb(MR_EventInfo *event_info,
+                    MR_SelectedStackFrame which_frame,
+                    MR_Level *selected_level_ptr);
 
 /*
 ** MR_trace_call_system_display_error_on_failure executes the given command

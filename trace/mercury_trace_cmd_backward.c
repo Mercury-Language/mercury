@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2008 The University of Melbourne.
+** Copyright (C) 1998-2008,2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -67,6 +67,22 @@ MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
         &words, &word_count))
     {
         ; /* the usage message has already been printed */
+    } else if (word_count == 2 &&
+        ( MR_streq(words[1], "clique") || MR_streq(words[1], "clentry")))
+    {
+        if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_FRAME,
+            &ancestor_level))
+        {
+            /* the error message has already been printed */
+            return KEEP_INTERACTING;
+        }
+    } else if (word_count == 2 && MR_streq(words[1], "clparent")) {
+        if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_PARENT_FRAME,
+            &ancestor_level))
+        {
+            /* the error message has already been printed */
+            return KEEP_INTERACTING;
+        }
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         ancestor_level = n;
     } else if (word_count == 1) {
@@ -83,8 +99,7 @@ MR_trace_cmd_retry(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
     result = MR_trace_retry(event_info, ancestor_level,
         across_io, assume_all_io_is_tabled, MR_UNTABLED_IO_RETRY_MESSAGE,
-        &unsafe_retry, &problem, MR_mdb_in, MR_mdb_out,
-        jumpaddr);
+        &unsafe_retry, &problem, MR_mdb_in, MR_mdb_out, jumpaddr);
     switch (result) {
 
     case MR_RETRY_OK_DIRECT:

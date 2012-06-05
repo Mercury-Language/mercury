@@ -2250,6 +2250,9 @@ attribute_list_to_attributes(Attributes, Attributes).
     list(prog_var)::in, list(mer_mode)::in, vartypes::in,
     int::out, int::out) is semidet.
 
+:- pred proc_info_has_higher_order_arg_from_details(module_info::in,
+    vartypes::in, list(prog_var)::in) is semidet.
+
     % Given a procedure table and the id of a procedure in that table,
     % return a procedure id to be attached to a clone of that procedure.
     % (The task of creating the clone proc_info and inserting into the
@@ -3047,6 +3050,16 @@ proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
     ),
     proc_info_has_io_state_pair_2(VarModes, ModuleInfo, VarTypes,
         ArgNum + 1, !MaybeIn, !MaybeOut).
+
+proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypes,
+        [HeadVar | HeadVars]) :-
+    (
+        map.lookup(VarTypes, HeadVar, VarType),
+        type_is_higher_order(VarType)
+    ;
+        proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypes,
+            HeadVars)
+    ).
 
 clone_proc_id(ProcTable, _ProcId, CloneProcId) :-
     find_lowest_unused_proc_id(ProcTable, CloneProcId).

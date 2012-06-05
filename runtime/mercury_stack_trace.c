@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2009 The University of Melbourne.
+** Copyright (C) 1998-2009,2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -26,6 +26,9 @@
   #define snprintf	_snprintf
 #endif
 
+static int          MR_compare_proc_layout_ptrs(
+                        const void *pl1, const void *pl2);
+
 static  MR_StackWalkStepResult
                     MR_stack_walk_succip_layout(MR_Code *success,
                         const MR_LabelLayout **return_label_layout_ptr,
@@ -39,25 +42,32 @@ typedef enum {
     MR_INTERNAL_FRAME_ON_SIDE_BRANCH,
     MR_TOP_FRAME_ON_SIDE_BRANCH,
     MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH
-} MR_Nondet_Frame_Category;
+} MR_NondetFrameCategory;
 
 typedef struct {
-    MR_Traverse_Nondet_Frame_Func   *func;
+    MR_TraverseNondetFrameFunc      *func;
     void                            *func_data;
-} MR_Traverse_Nondet_Frame_Func_Info;
+} MR_TraverseNondetFrameFuncInfo;
 
-typedef void        MR_Dump_Or_Traverse_Nondet_Frame_Func(void *user_data,
-                        MR_Nondet_Frame_Category category, MR_Word *top_fr,
+typedef void        MR_DumpOrTraverseNondetFrameFunc(void *user_data,
+                        MR_NondetFrameCategory category, MR_Word *top_fr,
                         const MR_LabelLayout *layout, MR_Word *base_sp,
                         MR_Word *base_curfr, int level_number);
 
-static MR_Dump_Or_Traverse_Nondet_Frame_Func MR_dump_nondet_stack_frame;
-static MR_Dump_Or_Traverse_Nondet_Frame_Func MR_traverse_nondet_stack_frame;
+/* These are two possible functions of type MR_DumpOrTraverseNondetFrameFunc */
+static void         MR_dump_nondet_stack_frame(void *fp,
+                        MR_NondetFrameCategory category, MR_Word *top_fr,
+                        const MR_LabelLayout *top_layout, MR_Word *base_sp,
+                        MR_Word *base_curfr, int level_number);
+static void         MR_traverse_nondet_stack_frame(void *fp,
+                        MR_NondetFrameCategory category, MR_Word *top_fr,
+                        const MR_LabelLayout *top_layout, MR_Word *base_sp,
+                        MR_Word *base_curfr, int level_number);
 
 static  const char  *MR_step_over_nondet_frame(
-                        MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
+                        MR_DumpOrTraverseNondetFrameFunc *func,
                         void *func_data, int level_number, MR_Word *fr);
-static void         MR_init_nondet_branch_infos(MR_Word *base_maxfr,
+static  void        MR_init_nondet_branch_infos(MR_Word *base_maxfr,
                     	const MR_LabelLayout *top_layout, MR_Word *base_sp,
                         MR_Word *base_curfr);
 static  MR_bool     MR_find_matching_branch(MR_Word *fr, int *branch_ptr);
@@ -68,16 +78,65 @@ static  void        MR_erase_temp_redoip(MR_Word *fr);
 
 #endif  /* !MR_HIGHLEVEL_CODE */
 
-static  void        MR_dump_stack_record_init(MR_bool include_trace_data,
-                        MR_bool include_contexts);
+typedef struct {
+    const MR_ProcLayout     *pte_proc_layout;
+    int                     pte_first_level;
+    int                     pte_last_level;
+    int                     pte_num_frames;
+    MR_bool                 pte_some_nonseq_frames;
+    int                     pte_left;       /* negative -> no left subtree  */
+    int                     pte_right;      /* negative -> no right subtree */
+} MR_ProcTableEntry;
+
+static  int         MR_find_proc_in_proc_table(
+                        const MR_ProcTableEntry *proc_table,
+                        int proc_table_next,
+                        const MR_ProcLayout *proc_layout,
+                        int *parent_ptr, int *side_ptr);
+static  void        MR_add_parent_ptr(MR_ProcTableEntry *proc_table,
+                        int parent, int side, int slot);
+
+typedef struct MR_Clique_struct MR_Clique;
+
+struct MR_Clique_struct {
+    int                     cl_first_level;
+    int                     cl_last_level;
+    MR_Clique               *cl_prev_clique;
+    MR_Clique               *cl_next_clique;
+};
+
+typedef struct {
+    const MR_ProcLayout     *ste_proc_layout;
+    const MR_LabelLayout    *ste_label_layout;
+    MR_Word                 *ste_trace_sp;
+    MR_Word                 *ste_trace_curfr;
+    MR_Unsigned             ste_reused_frames;
+    // int                     ste_last_frame_in_proc;
+    int                     ste_proc_table_entry_slot;
+} MR_WalkedStackEntry;
+
+typedef struct {
+    MR_StackFrameDumpInfo   sdi_prev_frame_dump_info;
+    int                     sdi_current_level;
+} MR_StackDumpInfo;
+
+typedef struct {
+    MR_bool                 sdp_include_trace_data;
+    MR_bool                 sdp_include_contexts;
+} MR_StackDumpParams;
+
+static  void        MR_init_stack_dump_info(MR_StackDumpInfo *dump_info);
 static  int         MR_dump_stack_record_frame(FILE *fp,
+                        MR_StackDumpParams *params,
+                        MR_StackDumpInfo *dump_info,
                         const MR_LabelLayout *label_layout,
                         MR_Word *base_sp, MR_Word *base_curfr,
                         MR_Unsigned reused_frames,
                         MR_PrintStackRecord print_stack_record,
                         MR_bool at_line_limit);
 static  void        MR_dump_stack_record_flush(FILE *fp,
-                        MR_bool include_trace_data,
+                        MR_StackDumpParams *params,
+                        MR_StackDumpInfo *dump_info,
                         MR_PrintStackRecord print_stack_record);
 
 static  void        MR_print_proc_id_internal(FILE *fp,
@@ -155,6 +214,8 @@ MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
     MR_PrintStackRecord print_stack_record)
 {
     MR_StackWalkStepResult  result;
+    MR_StackDumpParams      params;
+    MR_StackDumpInfo        dump_info;
     const MR_ProcLayout     *proc_layout;
     const MR_LabelLayout    *cur_label_layout;
     const MR_LabelLayout    *prev_label_layout;
@@ -163,30 +224,41 @@ MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
     MR_Word                 *stack_trace_curfr;
     MR_Word                 *old_trace_sp;
     MR_Word                 *old_trace_curfr;
-    int                     frames_dumped_so_far;
-    int                     lines_dumped_so_far;
+    MR_FrameLimit           frames_dumped_so_far;
+    MR_SpecLineLimit        lines_dumped_so_far;
     MR_Unsigned             reused_frames;
 
     MR_do_init_modules();
-    MR_dump_stack_record_init(include_trace_data, include_contexts);
+
+    params.sdp_include_trace_data = include_trace_data;
+    params.sdp_include_contexts = include_contexts;
+    MR_init_stack_dump_info(&dump_info);
 
     stack_trace_sp = det_stack_pointer;
     stack_trace_curfr = current_frame;
 
     cur_label_layout = label_layout;
 
+    if (line_limit == 0) {
+        line_limit = MR_UINT_LEAST32_MAX;
+    }
+
+    if (frame_limit == 0) {
+        frame_limit = MR_UINT_LEAST32_MAX;
+    }
+
     frames_dumped_so_far = 0;
     lines_dumped_so_far = 0;
     do {
         if (frame_limit > 0 && frames_dumped_so_far >= frame_limit) {
-            MR_dump_stack_record_flush(fp, include_trace_data,
+            MR_dump_stack_record_flush(fp, &params, &dump_info,
                 print_stack_record);
             fprintf(fp, "<more stack frames snipped>\n");
             return NULL;
         }
 
-        if (line_limit > 0 && lines_dumped_so_far >= line_limit) {
-            MR_dump_stack_record_flush(fp, include_trace_data,
+        if (lines_dumped_so_far >= line_limit) {
+            MR_dump_stack_record_flush(fp, &params, &dump_info,
                 print_stack_record);
             fprintf(fp, "<more stack frames snipped>\n");
             return NULL;
@@ -201,28 +273,633 @@ MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
         result = MR_stack_walk_step(proc_layout, &cur_label_layout,
             &stack_trace_sp, &stack_trace_curfr, &reused_frames, &problem);
         if (result == MR_STEP_ERROR_BEFORE) {
-            MR_dump_stack_record_flush(fp, include_trace_data,
+            MR_dump_stack_record_flush(fp, &params, &dump_info,
                 print_stack_record);
             return problem;
         } else if (result == MR_STEP_ERROR_AFTER) {
-            (void) MR_dump_stack_record_frame(fp, prev_label_layout,
-                old_trace_sp, old_trace_curfr, reused_frames,
-                print_stack_record, MR_FALSE);
+            (void) MR_dump_stack_record_frame(fp, &params, &dump_info,
+                prev_label_layout, old_trace_sp, old_trace_curfr,
+                reused_frames, print_stack_record, MR_FALSE);
 
-            MR_dump_stack_record_flush(fp, include_trace_data,
+            MR_dump_stack_record_flush(fp, &params, &dump_info,
                 print_stack_record);
             return problem;
         } else {
             lines_dumped_so_far += MR_dump_stack_record_frame(fp,
-                prev_label_layout, old_trace_sp, old_trace_curfr,
+                &params, &dump_info, prev_label_layout,
+                old_trace_sp, old_trace_curfr,
                 reused_frames, print_stack_record,
-                lines_dumped_so_far == line_limit);
+                lines_dumped_so_far >= line_limit);
         }
 
         frames_dumped_so_far++;
     } while (cur_label_layout != NULL);
 
-    MR_dump_stack_record_flush(fp, include_trace_data, print_stack_record);
+    MR_dump_stack_record_flush(fp, &params, &dump_info, print_stack_record);
+    return NULL;
+}
+
+const char *
+MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
+    MR_Word *det_stack_pointer, MR_Word *current_frame,
+    MR_bool include_trace_data, MR_bool include_contexts,
+    MR_bool detect_cliques, MR_SpecLineLimit clique_line_limit,
+    MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit,
+    MR_PrintStackRecord print_stack_record)
+{
+    MR_StackWalkStepResult  result;
+    MR_StackDumpParams      params;
+    MR_StackDumpInfo        dump_info;
+    const MR_ProcLayout     *proc_layout;
+    const MR_LabelLayout    *cur_label_layout;
+    const MR_LabelLayout    *prev_label_layout;
+    const char              *problem;
+    MR_bool                 stopped;
+    MR_Word                 *stack_trace_sp;
+    MR_Word                 *stack_trace_curfr;
+    MR_Word                 *old_trace_sp;
+    MR_Word                 *old_trace_curfr;
+    MR_WalkedStackEntry     *walked_stack;
+    MR_FrameLimit           walked_stack_size;
+    MR_FrameLimit           walked_stack_next;
+    MR_ProcTableEntry       *proc_table;
+    int                     proc_table_next;
+    MR_Unsigned             reused_frames;
+    MR_FrameLimit           level;
+    MR_SpecLineLimit        lines_dumped_so_far;
+    MR_Clique               *cliques_first;
+    MR_Clique               *cliques_last;
+    MR_Clique               *cl;
+    MR_FrameLimit           rec_first_level;
+    MR_FrameLimit           rec_last_level;
+
+    if (clique_line_limit == 0) {
+        clique_line_limit = MR_UINT_LEAST32_MAX;
+    }
+
+    if (line_limit == 0) {
+        line_limit = MR_UINT_LEAST32_MAX;
+    }
+
+    if (frame_limit == 0) {
+        frame_limit = MR_UINT_LEAST32_MAX;
+    }
+
+    MR_do_init_modules();
+
+    stack_trace_sp = det_stack_pointer;
+    stack_trace_curfr = current_frame;
+
+    cur_label_layout = label_layout;
+
+    walked_stack_next = 0;
+    walked_stack_size = 100;
+    walked_stack = MR_malloc(walked_stack_size * sizeof(MR_WalkedStackEntry));
+
+    stopped = MR_FALSE;
+    problem = NULL;
+    do {
+        if (frame_limit > 0 && walked_stack_next >= frame_limit) {
+            stopped = MR_TRUE;
+            break;
+        }
+
+        proc_layout = cur_label_layout->MR_sll_entry;
+        prev_label_layout = cur_label_layout;
+
+        old_trace_sp    = stack_trace_sp;
+        old_trace_curfr = stack_trace_curfr;
+
+        result = MR_stack_walk_step(proc_layout, &cur_label_layout,
+            &stack_trace_sp, &stack_trace_curfr, &reused_frames, &problem);
+
+        if (result == MR_STEP_ERROR_BEFORE) {
+            break;
+        }
+
+        if (walked_stack_next >= walked_stack_size) {
+            walked_stack_size = 2 * walked_stack_size;
+            walked_stack = MR_realloc(walked_stack,
+                walked_stack_size * sizeof(MR_WalkedStackEntry));
+        }
+
+        walked_stack[walked_stack_next].ste_proc_layout = proc_layout;
+        walked_stack[walked_stack_next].ste_label_layout =
+            prev_label_layout;
+        walked_stack[walked_stack_next].ste_trace_sp = old_trace_sp;
+        walked_stack[walked_stack_next].ste_trace_curfr = old_trace_curfr;
+        walked_stack[walked_stack_next].ste_reused_frames = reused_frames;
+        walked_stack[walked_stack_next].ste_proc_table_entry_slot = -1;
+        walked_stack_next++;
+
+        if (result == MR_STEP_ERROR_AFTER) {
+            break;
+        }
+    } while (cur_label_layout != NULL);
+
+    params.sdp_include_trace_data = include_trace_data;
+    params.sdp_include_contexts = include_contexts;
+    MR_init_stack_dump_info(&dump_info);
+
+    if (!detect_cliques) {
+        for (level = 0; level < walked_stack_next; level++) {
+            if (lines_dumped_so_far >= line_limit) {
+                fprintf(fp, "<more stack frames snipped>\n");
+                problem = NULL;
+                goto done;
+            }
+
+            lines_dumped_so_far += MR_dump_stack_record_frame(fp,
+                &params, &dump_info, walked_stack[level].ste_label_layout,
+                walked_stack[level].ste_trace_sp,
+                walked_stack[level].ste_trace_curfr,
+                walked_stack[level].ste_reused_frames, print_stack_record,
+                lines_dumped_so_far >= line_limit);
+        }
+        MR_dump_stack_record_flush(fp, &params, &dump_info,
+            print_stack_record);
+
+        free(walked_stack);
+        return problem;
+    }
+
+    proc_table = MR_malloc(walked_stack_next * sizeof(MR_ProcTableEntry));
+    proc_table_next = 0;
+    cliques_first = NULL;
+    cliques_last = NULL;
+
+    level = 0;
+    rec_first_level = level;
+    proc_layout = walked_stack[rec_first_level].ste_proc_layout;
+    while (level+1 < walked_stack_next &&
+        walked_stack[level+1].ste_proc_layout == proc_layout)
+    {
+        level++;
+    }
+    rec_last_level = level;
+    level++;
+
+    proc_table[0].pte_proc_layout = proc_layout;
+    proc_table[0].pte_first_level = rec_first_level;
+    proc_table[0].pte_last_level = rec_last_level;
+    proc_table[0].pte_num_frames = rec_last_level + 1 - rec_first_level;
+    proc_table[0].pte_some_nonseq_frames = MR_FALSE;
+    proc_table[0].pte_left = -1;
+    proc_table[0].pte_right = -1;
+    proc_table_next = 1;
+
+    while (level < walked_stack_next) {
+        MR_bool             has_higher_order_arg;
+        int                 slot;
+        int                 parent;
+        int                 side;
+
+        rec_first_level = level;
+        proc_layout = walked_stack[rec_first_level].ste_proc_layout;
+        while (level+1 < walked_stack_next &&
+            walked_stack[level+1].ste_proc_layout == proc_layout)
+        {
+            level++;
+        }
+        rec_last_level = level;
+        level++;
+
+        /*
+        ** XXX for higher order predicates like list.map, we should
+        ** pretend that we have not seen them before.
+        */
+
+        slot = MR_find_proc_in_proc_table(proc_table, proc_table_next,
+            proc_layout, &parent, &side);
+
+        has_higher_order_arg = MR_proc_has_higher_order_arg(proc_layout);
+
+        if (slot < 0 || has_higher_order_arg) {
+            /*
+            ** Either we have not seen this procedure before, or we are
+            ** pretending that we have not seen it before.
+            **
+            ** The reason for such pretense is that we don't want calls
+            ** to e.g. list.map in different places in the program
+            ** to collapse every call between those places into a single
+            ** clique.
+            */
+            slot = proc_table_next;
+            proc_table[slot].pte_proc_layout =
+                walked_stack[rec_first_level].ste_proc_layout;
+            proc_table[slot].pte_first_level = rec_first_level;
+            proc_table[slot].pte_last_level = rec_last_level;
+            proc_table[slot].pte_num_frames =
+                rec_last_level + 1 - rec_first_level;
+            proc_table[slot].pte_some_nonseq_frames = MR_FALSE;
+            proc_table[slot].pte_left = -1;
+            proc_table[slot].pte_right = -1;
+            proc_table_next++;
+            MR_add_parent_ptr(proc_table, parent, side, slot);
+
+            walked_stack[rec_first_level].ste_proc_table_entry_slot = slot;
+        } else {
+            /* We have seen this procedure before. */
+            proc_table[slot].pte_last_level = rec_last_level;
+            proc_table[slot].pte_num_frames +=
+                rec_last_level + 1 - rec_first_level;
+            proc_table[slot].pte_some_nonseq_frames = MR_TRUE;
+
+            if (cliques_last == NULL) {
+                /* Add the first clique to the list. */
+
+                cl = MR_malloc(sizeof(MR_Clique));
+                cl->cl_first_level = proc_table[slot].pte_first_level;
+                cl->cl_last_level = rec_last_level;
+                cl->cl_prev_clique = NULL;
+                cl->cl_next_clique = NULL;
+                cliques_first = cl;
+                cliques_last = cl;
+            } else if (cliques_last->cl_last_level
+                < proc_table[slot].pte_first_level)
+            {
+                /*
+                ** The current clique does not overlap with the last clique,
+                ** so add a new clique to the list.
+                */
+
+                cl = MR_malloc(sizeof(MR_Clique));
+                cl->cl_first_level = proc_table[slot].pte_first_level;
+                cl->cl_last_level = rec_last_level;
+                cl->cl_prev_clique = cliques_last;
+                cl->cl_next_clique = NULL;
+                cliques_last->cl_next_clique = cl;
+                cliques_last = cl;
+            } else {
+                /*
+                ** The current clique does overlap with the last old clique,
+                ** and maybe others. Replace all the cliques in the list it
+                ** overlaps with with just one clique. Put this clique
+                ** in the storage of the clique node that was nearest
+                ** to cliques_first.
+                */
+
+                cl = cliques_last;
+                /* assert cl != NULL */
+                while (cl->cl_prev_clique != NULL &&
+                    cl->cl_prev_clique->cl_last_level >
+                        proc_table[slot].pte_first_level)
+                {
+                    MR_Clique   *old_cl;
+
+                    old_cl = cl;
+                    cl = cl->cl_prev_clique;
+                    MR_free(old_cl);
+                }
+                    
+                cl->cl_first_level = MR_min(cl->cl_first_level,
+                    proc_table[slot].pte_first_level);
+                cl->cl_last_level = rec_last_level;
+                cliques_last = cl;
+            }
+        }
+    }
+
+#ifdef  MR_DEBUG_STACK_DUMP_CLIQUE
+    for (cl = cliques_first; cl != NULL; cl = cl->cl_next_clique) {
+        fprintf(fp, "clique: %d to %d\n",
+            cl->cl_first_level, cl->cl_last_level);
+    }
+#endif
+
+    lines_dumped_so_far = 0;
+    level = 0;
+    for (cl = cliques_first; cl != NULL; cl = cl->cl_next_clique) {
+        MR_SpecLineLimit    lines_dumped_before_clique;
+
+        for (; level < cl->cl_first_level; level++) {
+            if (lines_dumped_so_far >= line_limit) {
+                MR_dump_stack_record_flush(fp, &params, &dump_info,
+                    print_stack_record);
+                fprintf(fp, "<more stack frames snipped>\n");
+                problem = NULL;
+                goto done;
+            }
+
+            lines_dumped_so_far += MR_dump_stack_record_frame(fp,
+                &params, &dump_info, walked_stack[level].ste_label_layout,
+                walked_stack[level].ste_trace_sp,
+                walked_stack[level].ste_trace_curfr,
+                walked_stack[level].ste_reused_frames, print_stack_record,
+                lines_dumped_so_far >= line_limit);
+        }
+        MR_dump_stack_record_flush(fp, &params, &dump_info,
+            print_stack_record);
+
+        fprintf(fp, "<mutually recursive set of stack frames start>\n");
+        lines_dumped_before_clique = lines_dumped_so_far;
+        for (; level <= cl->cl_last_level; level++) {
+            if (lines_dumped_so_far >= line_limit) {
+                MR_dump_stack_record_flush(fp, &params, &dump_info,
+                    print_stack_record);
+                fprintf(fp, "<more stack frames snipped>\n");
+                problem = NULL;
+                goto done;
+            }
+
+            if (lines_dumped_so_far - lines_dumped_before_clique
+                >= clique_line_limit)
+            {
+                MR_dump_stack_record_flush(fp, &params, &dump_info,
+                    print_stack_record);
+                fprintf(fp, "<more stack frames in clique snipped>\n");
+                level = cl->cl_last_level + 1;
+                dump_info.sdi_current_level = level;
+                break;
+            }
+
+            lines_dumped_so_far += MR_dump_stack_record_frame(fp,
+                &params, &dump_info, walked_stack[level].ste_label_layout,
+                walked_stack[level].ste_trace_sp,
+                walked_stack[level].ste_trace_curfr,
+                walked_stack[level].ste_reused_frames, print_stack_record,
+                lines_dumped_so_far >= line_limit);
+        }
+        MR_dump_stack_record_flush(fp, &params, &dump_info,
+            print_stack_record);
+        fprintf(fp, "<mutually recursive set of stack frames end>\n");
+    }
+
+    for (; level < walked_stack_next; level++) {
+        if (lines_dumped_so_far >= line_limit) {
+            MR_dump_stack_record_flush(fp, &params, &dump_info,
+                print_stack_record);
+            fprintf(fp, "<more stack frames snipped>\n");
+            problem = NULL;
+            goto done;
+        }
+
+        lines_dumped_so_far += MR_dump_stack_record_frame(fp,
+            &params, &dump_info, walked_stack[level].ste_label_layout,
+            walked_stack[level].ste_trace_sp,
+            walked_stack[level].ste_trace_curfr,
+            walked_stack[level].ste_reused_frames, print_stack_record,
+            lines_dumped_so_far >= line_limit);
+    }
+    MR_dump_stack_record_flush(fp, &params, &dump_info,
+        print_stack_record);
+
+    if (stopped) {
+        fprintf(fp, "<more stack frames snipped>\n");
+    }
+
+done:
+    free(walked_stack);
+    free(proc_table);
+    cl = cliques_last;
+    while (cl != NULL) {
+        MR_Clique   *old_cl;
+
+        old_cl = cl;
+        cl = cl->cl_prev_clique;
+        MR_free(old_cl);
+    }
+
+    return problem;
+}
+
+static int
+MR_find_proc_in_proc_table(const MR_ProcTableEntry *proc_table,
+    int proc_table_next, const MR_ProcLayout *proc_layout,
+    int *parent_ptr, int *side_ptr)
+{
+    int cur;
+    int parent;
+    int side;
+
+    /* XXX we don't need proc_table_next for anything else */
+    if (proc_table_next == 0) {
+        MR_fatal_error("MR_find_proc_in_proc_table: table is empty");
+    }
+
+    cur = 0;
+    do {
+        if (proc_layout == proc_table[cur].pte_proc_layout) {
+            return cur;
+        } else if (proc_layout < proc_table[cur].pte_proc_layout) {
+            parent = cur;
+            side = 0;
+            cur = proc_table[cur].pte_left;
+        } else {
+            parent = cur;
+            side = 1;
+            cur = proc_table[cur].pte_right;
+        }
+    } while (cur >= 0);
+
+    *parent_ptr = parent;
+    *side_ptr = side;
+    return -1;
+}
+
+static void
+MR_add_parent_ptr(MR_ProcTableEntry *proc_table, int parent, int side,
+    int slot)
+{
+    if (side == 0) {
+        proc_table[parent].pte_left = slot;
+    } else {
+        proc_table[parent].pte_right = slot;
+    }
+}
+
+static int
+MR_compare_proc_layout_ptrs(const void *v1, const void *v2)
+{
+    const MR_ProcLayout *pl1 = * (const MR_ProcLayout **) v1;
+    const MR_ProcLayout *pl2 = * (const MR_ProcLayout **) v2;
+
+    if ((MR_Unsigned) pl1 > (MR_Unsigned) pl2) {
+        return 1;
+    } else if ((MR_Unsigned) pl1 < (MR_Unsigned) pl2) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+const char *
+MR_find_clique_entry(const MR_LabelLayout *label_layout,
+    MR_Word *det_stack_pointer, MR_Word *current_frame,
+    int *clique_entry_level, int *first_outside_ancestor_level)
+{
+    MR_StackWalkStepResult  result;
+    const MR_LabelLayout    *cur_label_layout;
+    const MR_ProcLayout     *cur_proc_layout;
+    const char              *problem;
+    MR_Word                 *stack_trace_sp;
+    MR_Word                 *stack_trace_curfr;
+    MR_Word                 *old_trace_sp;
+    MR_Word                 *old_trace_curfr;
+    MR_Unsigned             reused_frames;
+
+    const MR_ProcLayout     **procs_table;
+    int                     procs_table_size;    /* allocated */
+    int                     procs_table_next;    /* next free slot */
+    int                     num_procs_in_clique; /* filled in */
+
+    int                     highest_level_in_clique;
+    int                     ancestor_level;
+    MR_bool                 in_clique;
+    int                     last_filled;
+    int                     i;
+
+    MR_do_init_modules();
+
+    stack_trace_sp = det_stack_pointer;
+    stack_trace_curfr = current_frame;
+
+    cur_label_layout = label_layout;
+    cur_proc_layout = cur_label_layout->MR_sll_entry;
+
+    /*
+    ** procs_table is an array containing proc_table_size slots.
+    ** Of these, the slots at index 0 .. num_procs_in_clique-1 contain
+    ** pointers to the proc layouts of the procedures currently known
+    ** to be in the same clique as the original top level label_layout.
+    ** The slots from num_procs_in_clique to procs_table_next contain
+    ** pointers to the proc_layouts of the other procedures we have
+    ** encountered so far during our walk of the stack.
+    **
+    ** The slots at 0 .. num_procs_in_clique-1 are sorted, and have no
+    ** duplicates. The slots at num_procs_in_clique .. procs_table_next
+    ** are not sorted, and may have duplicates.
+    */
+
+    procs_table_size = 256;
+    procs_table = MR_malloc(procs_table_size * sizeof(const MR_ProcLayout *));
+    procs_table[0] = cur_proc_layout;
+    num_procs_in_clique = 1;
+    procs_table_next = 1;
+
+#ifdef  MR_DEBUG_FIND_CLIQUE_ENTRY
+    printf("INIT %x\n", cur_proc_layout);
+#endif
+
+    ancestor_level = 0;
+    highest_level_in_clique = 0;
+    do {
+
+        old_trace_sp    = stack_trace_sp;
+        old_trace_curfr = stack_trace_curfr;
+
+        result = MR_stack_walk_step(cur_proc_layout, &cur_label_layout,
+            &stack_trace_sp, &stack_trace_curfr, &reused_frames, &problem);
+        if (result == MR_STEP_ERROR_BEFORE) {
+            free(procs_table);
+            return problem;
+        } else if (result == MR_STEP_ERROR_AFTER) {
+            free(procs_table);
+            return problem;
+        }
+
+        if (cur_label_layout == NULL) {
+            break;
+        }
+
+        cur_proc_layout = cur_label_layout->MR_sll_entry;
+
+        ancestor_level++;
+        /*
+        ** Since the part of the procs_table up to num_procs_in_clique
+        ** is guaranteed to be sorted, we have the option of using either
+        ** linear search or binary search. We use linear search because
+        ** we expect the number of procedures in cliques to be small, and
+        ** linear search is likely to be faster for searching small arrays.
+        */
+        in_clique = MR_FALSE;
+        for (i = 0; i < num_procs_in_clique; i++) {
+            if (cur_proc_layout == procs_table[i]) {
+                in_clique = MR_TRUE;
+                break;
+            }
+        }
+
+        if (!in_clique) {
+#ifdef  MR_DEBUG_FIND_CLIQUE_ENTRY
+            printf("NONREC %d %d %x\n",
+                num_procs_in_clique, procs_table_next, cur_proc_layout);
+#endif
+
+            if (procs_table_next >= procs_table_size) {
+                procs_table_size = 2 * procs_table_size;
+                procs_table = MR_realloc(procs_table,
+                    procs_table_size * sizeof(const MR_ProcLayout *));
+            }
+
+            procs_table[procs_table_next] = cur_proc_layout;
+            procs_table_next++;
+
+        } else {
+#ifdef  MR_DEBUG_FIND_CLIQUE_ENTRY
+            printf("REC %d %d %d %d %x\n",
+                ancestor_level, highest_level_in_clique,
+                num_procs_in_clique, procs_table_next, cur_proc_layout);
+#endif
+
+            if (ancestor_level > highest_level_in_clique+1) {
+                /*
+                ** There are some slots in the part of procs_table
+                ** that contains unsorted, possibly duplicate entries,
+                ** so first sort the whole table ...
+                */
+
+                qsort(procs_table, procs_table_next,
+                    sizeof(const MR_ProcLayout *),
+                    MR_compare_proc_layout_ptrs);
+
+#ifdef  MR_DEBUG_FIND_CLIQUE_ENTRY
+                printf("\n");
+                for (i = 0; i < procs_table_next; i++) {
+                    printf("SORTED %d %x\n", i, procs_table[i]);
+                }
+#endif
+                /*
+                ** ... and then eliminate any duplicates, which are now
+                ** guaranteed to be consecutive.
+                */
+                last_filled = 0;
+                for (i = 1; i < procs_table_next; i++) {
+                    if (procs_table[i] != procs_table[last_filled]) {
+                        last_filled++;
+                        procs_table[last_filled] = procs_table[i];
+                    }
+                }
+
+                procs_table_next = last_filled + 1;
+                num_procs_in_clique = procs_table_next;
+
+#ifdef  MR_DEBUG_FIND_CLIQUE_ENTRY
+                printf("\n");
+                for (i = 0; i < procs_table_next; i++) {
+                    printf("UNIQ %d %x\n", i, procs_table[i]);
+                }
+                printf("\n");
+#endif
+            }
+
+            highest_level_in_clique = ancestor_level;
+        }
+    } while (MR_TRUE);
+
+    if (clique_entry_level != NULL) {
+        *clique_entry_level = highest_level_in_clique;
+    }
+
+    if (first_outside_ancestor_level != NULL) {
+        if (ancestor_level > highest_level_in_clique) {
+            *first_outside_ancestor_level = highest_level_in_clique + 1;
+        } else {
+            *first_outside_ancestor_level = -1;
+        }
+    }
+
+    free(procs_table);
     return NULL;
 }
 
@@ -449,18 +1126,19 @@ typedef struct
     MR_Word                 *branch_curfr;
     const MR_LabelLayout    *branch_layout;
     MR_Word                 *branch_topfr;
-} MR_Nondet_Branch_Info;
+} MR_NondetBranchInfo;
 
-static MR_Nondet_Branch_Info    *MR_nondet_branch_infos = NULL;
-static int                      MR_nondet_branch_info_next = 0;
-static int                      MR_nondet_branch_info_max = 0;
+static MR_NondetBranchInfo  *MR_nondet_branch_infos = NULL;
+static int                  MR_nondet_branch_info_next = 0;
+static int                  MR_nondet_branch_info_max = 0;
 
 #define MR_INIT_NONDET_BRANCH_ARRAY_SIZE        10
 
 void
 MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
-    MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit, MR_Word *base_maxfr,
-    const MR_LabelLayout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
+    MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit,
+    MR_Word *base_maxfr, const MR_LabelLayout *top_layout,
+    MR_Word *base_sp, MR_Word *base_curfr)
 {
     int                     frame_size;
     int                     level_number;
@@ -611,7 +1289,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
 }
 
 static void
-MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
+MR_dump_nondet_stack_frame(void *fp, MR_NondetFrameCategory category,
     MR_Word *top_fr, const MR_LabelLayout *top_layout, MR_Word *base_sp,
     MR_Word *base_curfr, int level_number)
 {
@@ -639,7 +1317,7 @@ MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
             fprintf(dump_fp, "\n");
             break;
         default:
-            MR_fatal_error("invalid MR_Nondet_Frame_Category");
+            MR_fatal_error("invalid MR_NondetFrameCategory");
     }
 
     if (category != MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH) {
@@ -661,7 +1339,7 @@ MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
 void
 MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
     const MR_LabelLayout *top_layout, MR_Word *base_sp, MR_Word *base_curfr,
-    MR_Traverse_Nondet_Frame_Func *func, void *func_data)
+    MR_TraverseNondetFrameFunc *func, void *func_data)
 {
     int             frame_size;
     int             level_number;
@@ -693,7 +1371,7 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
         } else {
             level_number++;
             if (base_maxfr > MR_nondet_stack_trace_bottom) {
-                MR_Traverse_Nondet_Frame_Func_Info func_info;
+                MR_TraverseNondetFrameFuncInfo func_info;
                 func_info.func = func;
                 func_info.func_data = func_data;
                 problem = MR_step_over_nondet_frame(
@@ -711,13 +1389,13 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
 }
 
 static void
-MR_traverse_nondet_stack_frame(void *info, MR_Nondet_Frame_Category category,
+MR_traverse_nondet_stack_frame(void *info, MR_NondetFrameCategory category,
     MR_Word *top_fr, const MR_LabelLayout *top_layout, MR_Word *base_sp,
     MR_Word *base_curfr, int level_number)
 {
-    MR_Traverse_Nondet_Frame_Func_Info *func_info;
+    MR_TraverseNondetFrameFuncInfo *func_info;
 
-    func_info = (MR_Traverse_Nondet_Frame_Func_Info *) info;
+    func_info = (MR_TraverseNondetFrameFuncInfo *) info;
     if (category != MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH) {
         func_info->func(func_info->func_data, top_layout, base_sp, base_curfr);
     }
@@ -759,7 +1437,7 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
     assert(current_frame == base_curfr);
 
     if (label_layout != NULL) {
-        MR_ensure_room_for_next(MR_nondet_branch_info, MR_Nondet_Branch_Info,
+        MR_ensure_room_for_next(MR_nondet_branch_info, MR_NondetBranchInfo,
             MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
         MR_nondet_branch_infos[0].branch_sp = stack_pointer;
         MR_nondet_branch_infos[0].branch_curfr = current_frame;
@@ -770,7 +1448,7 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
 }
 
 static const char *
-MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
+MR_step_over_nondet_frame(MR_DumpOrTraverseNondetFrameFunc *func,
     void *func_data, int level_number, MR_Word *fr)
 {
     MR_StackWalkStepResult      result;
@@ -786,7 +1464,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
     MR_Code                     *redoip;
     MR_Code                     *success;
     const char                  *problem;
-    MR_Nondet_Frame_Category    category;
+    MR_NondetFrameCategory      category;
     MR_Unsigned                 reused_frames;
 
     if (MR_find_matching_branch(fr, &branch)) {
@@ -914,7 +1592,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
     }
 
     if (! MR_find_matching_branch(base_curfr, &branch)) {
-        MR_ensure_room_for_next(MR_nondet_branch_info, MR_Nondet_Branch_Info,
+        MR_ensure_room_for_next(MR_nondet_branch_info, MR_NondetBranchInfo,
             MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
         last = MR_nondet_branch_info_next;
         MR_nondet_branch_infos[last].branch_layout = label_layout;
@@ -1056,23 +1734,16 @@ MR_erase_temp_redoip(MR_Word *fr)
 
 /**************************************************************************/
 
-static  MR_StackDumpInfo        prev_dump_info;
-
-static  int                     current_level;
-static  MR_bool                 trace_data_enabled;
-static  MR_bool                 contexts_enabled;
-
 static void
-MR_dump_stack_record_init(MR_bool include_trace_data, MR_bool include_contexts)
+MR_init_stack_dump_info(MR_StackDumpInfo *dump_info)
 {
-    prev_dump_info.MR_sdi_proc_layout = NULL;
-    current_level = 0;
-    trace_data_enabled = include_trace_data;
-    contexts_enabled = include_contexts;
+    dump_info->sdi_prev_frame_dump_info.MR_sdi_proc_layout = NULL;
+    dump_info->sdi_current_level = 0;
 }
 
 static int
-MR_dump_stack_record_frame(FILE *fp, const MR_LabelLayout *label_layout,
+MR_dump_stack_record_frame(FILE *fp, MR_StackDumpParams *params,
+    MR_StackDumpInfo *dump_info, const MR_LabelLayout *label_layout,
     MR_Word *base_sp, MR_Word *base_curfr, MR_Unsigned reused_frames,
     MR_PrintStackRecord print_stack_record, MR_bool at_line_limit)
 {
@@ -1084,7 +1755,7 @@ MR_dump_stack_record_frame(FILE *fp, const MR_LabelLayout *label_layout,
 
     proc_layout = label_layout->MR_sll_entry;
     if (! MR_find_context(label_layout, &filename, &linenumber)
-        || ! contexts_enabled)
+        || ! params->sdp_include_contexts)
     {
         filename = "";
         linenumber = 0;
@@ -1099,62 +1770,72 @@ MR_dump_stack_record_frame(FILE *fp, const MR_LabelLayout *label_layout,
     ** Note that it is not possible for two calls to the same procedure
     ** to differ on whether the procedure has trace layout data or not.
     */
-    must_flush = (proc_layout != prev_dump_info.MR_sdi_proc_layout)
-        || trace_data_enabled;
+    must_flush =
+        (proc_layout != dump_info->sdi_prev_frame_dump_info.MR_sdi_proc_layout)
+        || params->sdp_include_trace_data;
 
     if (must_flush) {
         if (! at_line_limit) {
-            MR_dump_stack_record_flush(fp, trace_data_enabled,
+            MR_dump_stack_record_flush(fp, params, dump_info,
                 print_stack_record);
         }
 
-        prev_dump_info.MR_sdi_proc_layout = proc_layout;
-        prev_dump_info.MR_sdi_num_frames = 1;
-        prev_dump_info.MR_sdi_min_level = current_level;
-        prev_dump_info.MR_sdi_max_level = current_level + reused_frames;
-        prev_dump_info.MR_sdi_filename = filename;
-        prev_dump_info.MR_sdi_linenumber = linenumber;
-        prev_dump_info.MR_sdi_context_mismatch = MR_FALSE;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_proc_layout = proc_layout;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_num_frames = 1;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_min_level =
+            dump_info->sdi_current_level;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_max_level =
+            dump_info->sdi_current_level + reused_frames;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_filename = filename;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_linenumber = linenumber;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_context_mismatch = MR_FALSE;
 
-        prev_dump_info.MR_sdi_base_sp = base_sp;
-        prev_dump_info.MR_sdi_base_curfr = base_curfr;
-        prev_dump_info.MR_sdi_goal_path = MR_label_goal_path(label_layout);
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_base_sp = base_sp;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_base_curfr = base_curfr;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_goal_path =
+            MR_label_goal_path(label_layout);
 
         lines_printed = 1;
     } else {
-        prev_dump_info.MR_sdi_num_frames++;
-        prev_dump_info.MR_sdi_max_level = current_level + reused_frames;
-        if (prev_dump_info.MR_sdi_filename != filename
-            || prev_dump_info.MR_sdi_linenumber != linenumber)
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_num_frames++;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_max_level =
+            dump_info->sdi_current_level + reused_frames;
+        if (dump_info->sdi_prev_frame_dump_info.MR_sdi_filename != filename
+            || dump_info->sdi_prev_frame_dump_info.MR_sdi_linenumber
+                != linenumber)
         {
-            prev_dump_info.MR_sdi_context_mismatch = MR_TRUE;
+            dump_info->sdi_prev_frame_dump_info.MR_sdi_context_mismatch =
+                MR_TRUE;
         }
 
         lines_printed = 0;
     }
 
-    current_level += 1 + reused_frames;
+    dump_info->sdi_current_level += 1 + reused_frames;
     return lines_printed;
 }
 
 static void
-MR_dump_stack_record_flush(FILE *fp, MR_bool include_trace_data,
-    MR_PrintStackRecord print_stack_record)
+MR_dump_stack_record_flush(FILE *fp, MR_StackDumpParams *params,
+    MR_StackDumpInfo *dump_info, MR_PrintStackRecord print_stack_record)
 {
-    if (prev_dump_info.MR_sdi_proc_layout != NULL) {
-        print_stack_record(fp, include_trace_data, prev_dump_info);
+    if (dump_info->sdi_prev_frame_dump_info.MR_sdi_proc_layout != NULL) {
+        (*print_stack_record)(fp, params->sdp_include_trace_data,
+            &(dump_info->sdi_prev_frame_dump_info));
     }
+    dump_info->sdi_prev_frame_dump_info.MR_sdi_proc_layout = NULL;
 }
 
 void
 MR_dump_stack_record_print(FILE *fp, MR_bool include_trace_data,
-    const MR_StackDumpInfo dump_info)
+    const MR_StackFrameDumpInfo *frame_dump_info)
 {
     MR_Level    num_levels;
 
-    num_levels = dump_info.MR_sdi_max_level + 1 - dump_info.MR_sdi_min_level;
+    num_levels = frame_dump_info->MR_sdi_max_level + 1
+        - frame_dump_info->MR_sdi_min_level;
     fprintf(fp, "%4" MR_INTEGER_LENGTH_MODIFIER "d ",
-        dump_info.MR_sdi_min_level);
+        frame_dump_info->MR_sdi_min_level);
 
     /*
     ** If we are printing trace data, we need all the horizontal room
@@ -1163,7 +1844,7 @@ MR_dump_stack_record_print(FILE *fp, MR_bool include_trace_data,
     */
     if (! include_trace_data) {
         if (num_levels > 1) {
-            if (num_levels != dump_info.MR_sdi_num_frames) {
+            if (num_levels != frame_dump_info->MR_sdi_num_frames) {
                 fprintf(fp, " %3" MR_INTEGER_LENGTH_MODIFIER "ux ",
                     num_levels);
             } else {
@@ -1175,21 +1856,22 @@ MR_dump_stack_record_print(FILE *fp, MR_bool include_trace_data,
         }
     }
 
-    MR_maybe_print_call_trace_info(fp, trace_data_enabled,
-        dump_info.MR_sdi_proc_layout,
-        dump_info.MR_sdi_base_sp, dump_info.MR_sdi_base_curfr);
-    MR_print_proc_id(fp, dump_info.MR_sdi_proc_layout);
-    if (MR_strdiff(dump_info.MR_sdi_filename, "")
-        && dump_info.MR_sdi_linenumber > 0)
+    MR_maybe_print_call_trace_info(fp, include_trace_data,
+        frame_dump_info->MR_sdi_proc_layout,
+        frame_dump_info->MR_sdi_base_sp, frame_dump_info->MR_sdi_base_curfr);
+    MR_print_proc_id(fp, frame_dump_info->MR_sdi_proc_layout);
+    if (MR_strdiff(frame_dump_info->MR_sdi_filename, "")
+        && frame_dump_info->MR_sdi_linenumber > 0)
     {
         fprintf(fp, " (%s:%d%s)",
-            dump_info.MR_sdi_filename, dump_info.MR_sdi_linenumber,
-            dump_info.MR_sdi_context_mismatch ? " and others" : "");
+            frame_dump_info->MR_sdi_filename,
+            frame_dump_info->MR_sdi_linenumber,
+            frame_dump_info->MR_sdi_context_mismatch ? " and others" : "");
     }
 
-    if (trace_data_enabled) {
-        if (MR_strdiff(dump_info.MR_sdi_goal_path, "")) {
-            fprintf(fp, " %s", dump_info.MR_sdi_goal_path);
+    if (include_trace_data) {
+        if (MR_strdiff(frame_dump_info->MR_sdi_goal_path, "")) {
+            fprintf(fp, " %s", frame_dump_info->MR_sdi_goal_path);
         } else {
             fprintf(fp, " (empty)");
         }

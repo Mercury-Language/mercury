@@ -1,0 +1,271 @@
+      E1:     C1 CALL pred mutrec_higher_order.main/2-0 (det) mutrec_higher_order.m:26
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p2
+ 0: + stop  interface pred mutrec_higher_order.p2/3-0 (det)
+mdb> continue
+      E2:     C2 CALL pred mutrec_higher_order.p2/3-0 (det) mutrec_higher_order.m:115 (mutrec_higher_order.m:155)
+mdb> stack
+   0       pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:115)
+   1       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+   2    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+   4       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+   5       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> delete *
+ 0: E stop  interface pred mutrec_higher_order.p2/3-0 (det)
+mdb> break p3
+ 0: + stop  interface pred mutrec_higher_order.p3/3-0 (det)
+mdb> continue
+      E3:     C3 CALL pred mutrec_higher_order.p3/3-0 (det) mutrec_higher_order.m:144 (mutrec_higher_order.m:126)
+mdb> stack
+<mutually recursive set of stack frames start>
+   0       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:144)
+   1    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126 and others)
+   3       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+<mutually recursive set of stack frames end>
+   4    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+   6       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+   7       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> stack -a
+   0       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:144)
+   1    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126 and others)
+   3       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+   4    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+   6       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+   7       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> delete *
+ 0: E stop  interface pred mutrec_higher_order.p3/3-0 (det)
+mdb> break q1
+ 0: + stop  interface pred mutrec_higher_order.q1/3-0 (det)
+mdb> continue
+      E4:     C4 CALL pred mutrec_higher_order.q1/3-0 (det) mutrec_higher_order.m:175 (mutrec_higher_order.m:213)
+mdb> stack
+   0       pred mutrec_higher_order.q1/3-0 (det) (mutrec_higher_order.m:175)
+   1       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:213)
+   2       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+   3    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:133 and others)
+   5       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+   6    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126 and others)
+   8       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+<mutually recursive set of stack frames end>
+   9    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+  11       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+  12       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> delete *
+ 0: E stop  interface pred mutrec_higher_order.q1/3-0 (det)
+mdb> break q3
+ 0: + stop  interface pred mutrec_higher_order.q3/3-0 (det)
+mdb> continue
+      E5:     C5 CALL pred mutrec_higher_order.q3/3-0 (det) mutrec_higher_order.m:233 (mutrec_higher_order.m:186)
+mdb> stack
+   0       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:233)
+   1       pred mutrec_higher_order.q1/3-0 (det) (mutrec_higher_order.m:186)
+   2       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:213)
+   3       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+   4    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:133 and others)
+   6       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+   7    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126 and others)
+   9       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+<mutually recursive set of stack frames end>
+  10    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+  12       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+  13       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> delete *
+ 0: E stop  interface pred mutrec_higher_order.q3/3-0 (det)
+mdb> break q2
+ 0: + stop  interface pred mutrec_higher_order.q2/3-0 (det)
+mdb> continue
+      E6:     C6 CALL pred mutrec_higher_order.q2/3-0 (det) mutrec_higher_order.m:204 (mutrec_higher_order.m:244)
+mdb> stack
+<mutually recursive set of stack frames start>
+   0       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:204)
+   1       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+   2       pred mutrec_higher_order.q1/3-0 (det) (mutrec_higher_order.m:186)
+   3       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:213)
+<mutually recursive set of stack frames end>
+   4       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+   5    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:133 and others)
+   7       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+   8    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126 and others)
+  10       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+<mutually recursive set of stack frames end>
+  11    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+  13       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+  14       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> delete *
+ 0: E stop  interface pred mutrec_higher_order.q2/3-0 (det)
+mdb> break r1
+ 0: + stop  interface pred mutrec_higher_order.r1/3-0 (det)
+mdb> continue
+      E7:     C7 CALL pred mutrec_higher_order.r1/3-0 (det) mutrec_higher_order.m:282 (mutrec_higher_order.m:78)
+mdb> stack
+   0       pred mutrec_higher_order.r1/3-0 (det) (mutrec_higher_order.m:282)
+   1       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+   2    3* pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:220 and others)
+   5       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+   6       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:215)
+   7       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+   8       pred mutrec_higher_order.q1/3-0 (det) (mutrec_higher_order.m:186)
+   9       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:213)
+<mutually recursive set of stack frames end>
+  10       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+  11    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:133 and others)
+  13       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+  14    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126 and others)
+  16       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+<mutually recursive set of stack frames end>
+  17    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+  19       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+  20       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> stack -c 3
+   0       pred mutrec_higher_order.r1/3-0 (det) (mutrec_higher_order.m:282)
+   1       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+   2    3* pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:220 and others)
+   5       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+   6       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:215)
+<more stack frames in clique snipped>
+<mutually recursive set of stack frames end>
+  10       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+  11    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:133 and others)
+  13       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+  14       pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126)
+<more stack frames in clique snipped>
+<mutually recursive set of stack frames end>
+  17    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+  19       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+  20       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> delete *
+ 0: E stop  interface pred mutrec_higher_order.r1/3-0 (det)
+mdb> break r2
+ 0: + stop  interface pred mutrec_higher_order.r2/3-0 (det)
+mdb> continue
+      E8:     C8 CALL pred mutrec_higher_order.r2/3-0 (det) mutrec_higher_order.m:305 (mutrec_higher_order.m:291)
+mdb> stack
+   0       pred mutrec_higher_order.r2/3-0 (det) (mutrec_higher_order.m:305)
+   1    2* pred mutrec_higher_order.r1/3-0 (det) (mutrec_higher_order.m:291 and others)
+   3       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+   4    3* pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:220 and others)
+   7       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+   8       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:215)
+   9       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+  10       pred mutrec_higher_order.q1/3-0 (det) (mutrec_higher_order.m:186)
+  11       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:213)
+<mutually recursive set of stack frames end>
+  12       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+  13    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:133 and others)
+  15       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+  16    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126 and others)
+  18       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+<mutually recursive set of stack frames end>
+  19    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+  21       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+  22       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> delete *
+ 0: E stop  interface pred mutrec_higher_order.r2/3-0 (det)
+mdb> break r3
+ 0: + stop  interface pred mutrec_higher_order.r3/3-0 (det)
+mdb> continue
+      E9:     C9 CALL pred mutrec_higher_order.r3/3-0 (det) mutrec_higher_order.m:328 (mutrec_higher_order.m:316)
+mdb> stack
+   0       pred mutrec_higher_order.r3/3-0 (det) (mutrec_higher_order.m:328)
+   1       pred mutrec_higher_order.r2/3-0 (det) (mutrec_higher_order.m:316)
+   2    2* pred mutrec_higher_order.r1/3-0 (det) (mutrec_higher_order.m:291 and others)
+   4       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+   5    3* pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:220 and others)
+   8       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+   9       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:215)
+  10       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+  11       pred mutrec_higher_order.q1/3-0 (det) (mutrec_higher_order.m:186)
+  12       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:213)
+<mutually recursive set of stack frames end>
+  13       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+  14    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:133 and others)
+  16       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+  17    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126 and others)
+  19       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+<mutually recursive set of stack frames end>
+  20    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+  22       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+  23       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> delete *
+ 0: E stop  interface pred mutrec_higher_order.r3/3-0 (det)
+mdb> break r2
+ 0: + stop  interface pred mutrec_higher_order.r2/3-0 (det)
+mdb> continue
+     E10:    C10 CALL pred mutrec_higher_order.r2/3-0 (det) mutrec_higher_order.m:305 (mutrec_higher_order.m:339)
+mdb> stack
+<mutually recursive set of stack frames start>
+   0       pred mutrec_higher_order.r2/3-0 (det) (mutrec_higher_order.m:305)
+   1    2* pred mutrec_higher_order.r3/3-0 (det) (mutrec_higher_order.m:339 and others)
+   3       pred mutrec_higher_order.r2/3-0 (det) (mutrec_higher_order.m:316)
+<mutually recursive set of stack frames end>
+   4    2* pred mutrec_higher_order.r1/3-0 (det) (mutrec_higher_order.m:291 and others)
+   6       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+   7    3* pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:220 and others)
+  10       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+  11       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:215)
+  12       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+  13       pred mutrec_higher_order.q1/3-0 (det) (mutrec_higher_order.m:186)
+  14       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:213)
+<mutually recursive set of stack frames end>
+  15       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+  16    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:133 and others)
+  18       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+  19    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126 and others)
+  21       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+<mutually recursive set of stack frames end>
+  22    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+  24       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+  25       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> delete *
+ 0: E stop  interface pred mutrec_higher_order.r2/3-0 (det)
+mdb> break s
+ 0: + stop  interface pred mutrec_higher_order.s/3-0 (det)
+mdb> continue
+     E11:    C11 CALL pred mutrec_higher_order.s/3-0 (det) mutrec_higher_order.m:353 (mutrec_higher_order.m:323)
+mdb> stack
+   0       pred mutrec_higher_order.s/3-0 (det) (mutrec_higher_order.m:353)
+<mutually recursive set of stack frames start>
+   1    2* pred mutrec_higher_order.r2/3-0 (det) (mutrec_higher_order.m:323 and others)
+   3    2* pred mutrec_higher_order.r3/3-0 (det) (mutrec_higher_order.m:339 and others)
+   5       pred mutrec_higher_order.r2/3-0 (det) (mutrec_higher_order.m:316)
+<mutually recursive set of stack frames end>
+   6    2* pred mutrec_higher_order.r1/3-0 (det) (mutrec_higher_order.m:291 and others)
+   8       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+   9    3* pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:220 and others)
+  12       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+  13       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:215)
+  14       pred mutrec_higher_order.q3/3-0 (det) (mutrec_higher_order.m:244)
+  15       pred mutrec_higher_order.q1/3-0 (det) (mutrec_higher_order.m:186)
+  16       pred mutrec_higher_order.q2/3-0 (det) (mutrec_higher_order.m:213)
+<mutually recursive set of stack frames end>
+  17       pred mutrec_higher_order.repeat_steps/5-0 (det) (mutrec_higher_order.m:78)
+<mutually recursive set of stack frames start>
+  18    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:133 and others)
+  20       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+  21    2* pred mutrec_higher_order.p2/3-0 (det) (mutrec_higher_order.m:126 and others)
+  23       pred mutrec_higher_order.p3/3-0 (det) (mutrec_higher_order.m:155)
+<mutually recursive set of stack frames end>
+  24    2* pred mutrec_higher_order.p1/3-0 (det) (mutrec_higher_order.m:97 and others)
+  26       pred mutrec_higher_order.test/2-0 (det) (mutrec_higher_order.m:43)
+  27       pred mutrec_higher_order.main/2-0 (det) (mutrec_higher_order.m:34)
+mdb> delete *
+ 0: E stop  interface pred mutrec_higher_order.s/3-0 (det)
+mdb> continue
+[p1, p1, p3, p2, p2, p3, p2, q2, q1, q3, q2, q3, q2, q2, r1, r1, r2, r3, r3, r2, r2, s, s, q2, q1, q3, q2, q3, q2, q2, r1, r1, r2, r3, r3, r2, r2, s, s]
+[p1, p1, p3, p2, p2, p3, p2, q3, q1, q3, q2, q3, q2, q2, r3, r3, r3, r3, r3, r2, r2, s, s, r3, r3, r3, r3, r3, r2, r2, s, s, r3, r3, r3, r3, r3, r2, r2, s, s, q3, q1, q3, q2, q3, q2, q2, r3, r3, r3, r3, r3, r2, r2, s, s, r3, r3, r3, r3, r3, r2, r2, s, s, r3, r3, r3, r3, r3, r2, r2, s, s, q3, q1, q3, q2, q3, q2, q2, r3, r3, r3, r3, r3, r2, r2, s, s, r3, r3, r3, r3, r3, r2, r2, s, s, r3, r3, r3, r3, r3, r2, r2, s, s]

@@ -1,0 +1,256 @@
+       1:      1  1 CALL pred mutrec.main/2-0 (det) mutrec.m:25
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p2
+ 0: + stop  interface pred mutrec.p2/3-0 (det)
+mdb> continue
+      16:      6  6 CALL pred mutrec.p2/3-0 (det) mutrec.m:91 (mutrec.m:122)
+mdb> stack
+   0       pred mutrec.p2/3-0 (det) (mutrec.m:91)
+   1       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+   2    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+   4       pred mutrec.test/2-0 (det) (mutrec.m:42)
+   5       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> delete *
+ 0: E stop  interface pred mutrec.p2/3-0 (det)
+mdb> break p3
+ 0: + stop  interface pred mutrec.p3/3-0 (det)
+mdb> continue
+      24:      8  8 CALL pred mutrec.p3/3-0 (det) mutrec.m:111 (mutrec.m:102)
+mdb> stack
+<mutually recursive set of stack frames start>
+   0       pred mutrec.p3/3-0 (det) (mutrec.m:111)
+   1    2* pred mutrec.p2/3-0 (det) (mutrec.m:102 and others)
+   3       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+<mutually recursive set of stack frames end>
+   4    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+   6       pred mutrec.test/2-0 (det) (mutrec.m:42)
+   7       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> stack -a
+   0       pred mutrec.p3/3-0 (det) (mutrec.m:111)
+   1    2* pred mutrec.p2/3-0 (det) (mutrec.m:102 and others)
+   3       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+   4    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+   6       pred mutrec.test/2-0 (det) (mutrec.m:42)
+   7       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> delete *
+ 0: E stop  interface pred mutrec.p3/3-0 (det)
+mdb> break q1
+ 0: + stop  interface pred mutrec.q1/3-0 (det)
+mdb> continue
+      35:     11 11 CALL pred mutrec.q1/3-0 (det) mutrec.m:133 (mutrec.m:106)
+mdb> stack
+   0       pred mutrec.q1/3-0 (det) (mutrec.m:133)
+<mutually recursive set of stack frames start>
+   1    2* pred mutrec.p2/3-0 (det) (mutrec.m:106 and others)
+   3       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+   4    2* pred mutrec.p2/3-0 (det) (mutrec.m:102 and others)
+   6       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+<mutually recursive set of stack frames end>
+   7    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+   9       pred mutrec.test/2-0 (det) (mutrec.m:42)
+  10       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> delete *
+ 0: E stop  interface pred mutrec.q1/3-0 (det)
+mdb> break q3
+ 0: + stop  interface pred mutrec.q3/3-0 (det)
+mdb> continue
+      40:     12 12 CALL pred mutrec.q3/3-0 (det) mutrec.m:173 (mutrec.m:144)
+mdb> stack
+   0       pred mutrec.q3/3-0 (det) (mutrec.m:173)
+   1       pred mutrec.q1/3-0 (det) (mutrec.m:144)
+<mutually recursive set of stack frames start>
+   2    2* pred mutrec.p2/3-0 (det) (mutrec.m:106 and others)
+   4       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+   5    2* pred mutrec.p2/3-0 (det) (mutrec.m:102 and others)
+   7       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+<mutually recursive set of stack frames end>
+   8    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+  10       pred mutrec.test/2-0 (det) (mutrec.m:42)
+  11       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> delete *
+ 0: E stop  interface pred mutrec.q3/3-0 (det)
+mdb> break q2
+ 0: + stop  interface pred mutrec.q2/3-0 (det)
+mdb> continue
+      45:     13 13 CALL pred mutrec.q2/3-0 (det) mutrec.m:153 (mutrec.m:184)
+mdb> stack
+   0       pred mutrec.q2/3-0 (det) (mutrec.m:153)
+   1       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+   2       pred mutrec.q1/3-0 (det) (mutrec.m:144)
+<mutually recursive set of stack frames start>
+   3    2* pred mutrec.p2/3-0 (det) (mutrec.m:106 and others)
+   5       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+   6    2* pred mutrec.p2/3-0 (det) (mutrec.m:102 and others)
+   8       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+<mutually recursive set of stack frames end>
+   9    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+  11       pred mutrec.test/2-0 (det) (mutrec.m:42)
+  12       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> delete *
+ 0: E stop  interface pred mutrec.q2/3-0 (det)
+mdb> break r0c
+ 0: + stop  interface pred mutrec.r0c/3-0 (det)
+mdb> continue
+      69:     19 19 CALL pred mutrec.r0c/3-0 (det) mutrec.m:207 (mutrec.m:188)
+mdb> stack
+   0       pred mutrec.r0c/3-0 (det) (mutrec.m:207)
+<mutually recursive set of stack frames start>
+   1    3* pred mutrec.q3/3-0 (det) (mutrec.m:188 and others)
+   4       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+   5       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+   6       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+   7       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+<mutually recursive set of stack frames end>
+   8       pred mutrec.q1/3-0 (det) (mutrec.m:144)
+<mutually recursive set of stack frames start>
+   9    2* pred mutrec.p2/3-0 (det) (mutrec.m:106 and others)
+  11       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+  12    2* pred mutrec.p2/3-0 (det) (mutrec.m:102 and others)
+  14       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+<mutually recursive set of stack frames end>
+  15    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+  17       pred mutrec.test/2-0 (det) (mutrec.m:42)
+  18       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> stack -c 3
+   0       pred mutrec.r0c/3-0 (det) (mutrec.m:207)
+<mutually recursive set of stack frames start>
+   1    3* pred mutrec.q3/3-0 (det) (mutrec.m:188 and others)
+   4       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+   5       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+<more stack frames in clique snipped>
+<mutually recursive set of stack frames end>
+   8       pred mutrec.q1/3-0 (det) (mutrec.m:144)
+<mutually recursive set of stack frames start>
+   9    2* pred mutrec.p2/3-0 (det) (mutrec.m:106 and others)
+  11       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+  12       pred mutrec.p2/3-0 (det) (mutrec.m:102)
+<more stack frames in clique snipped>
+<mutually recursive set of stack frames end>
+  15    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+  17       pred mutrec.test/2-0 (det) (mutrec.m:42)
+  18       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> delete *
+ 0: E stop  interface pred mutrec.r0c/3-0 (det)
+mdb> break r2
+ 0: + stop  interface pred mutrec.r2/3-0 (det)
+mdb> continue
+      78:     22 22 CALL pred mutrec.r2/3-0 (det) mutrec.m:233 (mutrec.m:222)
+mdb> stack
+   0       pred mutrec.r2/3-0 (det) (mutrec.m:233)
+   1    2* pred mutrec.r1/3-0 (det) (mutrec.m:222 and others)
+   3       pred mutrec.r0c/3-0 (det) (mutrec.m:209)
+<mutually recursive set of stack frames start>
+   4    3* pred mutrec.q3/3-0 (det) (mutrec.m:188 and others)
+   7       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+   8       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+   9       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+  10       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+<mutually recursive set of stack frames end>
+  11       pred mutrec.q1/3-0 (det) (mutrec.m:144)
+<mutually recursive set of stack frames start>
+  12    2* pred mutrec.p2/3-0 (det) (mutrec.m:106 and others)
+  14       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+  15    2* pred mutrec.p2/3-0 (det) (mutrec.m:102 and others)
+  17       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+<mutually recursive set of stack frames end>
+  18    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+  20       pred mutrec.test/2-0 (det) (mutrec.m:42)
+  21       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> delete *
+ 0: E stop  interface pred mutrec.r2/3-0 (det)
+mdb> break r3
+ 0: + stop  interface pred mutrec.r3/3-0 (det)
+mdb> continue
+      83:     23 23 CALL pred mutrec.r3/3-0 (det) mutrec.m:253 (mutrec.m:244)
+mdb> stack
+   0       pred mutrec.r3/3-0 (det) (mutrec.m:253)
+   1       pred mutrec.r2/3-0 (det) (mutrec.m:244)
+   2    2* pred mutrec.r1/3-0 (det) (mutrec.m:222 and others)
+   4       pred mutrec.r0c/3-0 (det) (mutrec.m:209)
+<mutually recursive set of stack frames start>
+   5    3* pred mutrec.q3/3-0 (det) (mutrec.m:188 and others)
+   8       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+   9       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+  10       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+  11       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+<mutually recursive set of stack frames end>
+  12       pred mutrec.q1/3-0 (det) (mutrec.m:144)
+<mutually recursive set of stack frames start>
+  13    2* pred mutrec.p2/3-0 (det) (mutrec.m:106 and others)
+  15       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+  16    2* pred mutrec.p2/3-0 (det) (mutrec.m:102 and others)
+  18       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+<mutually recursive set of stack frames end>
+  19    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+  21       pred mutrec.test/2-0 (det) (mutrec.m:42)
+  22       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> delete *
+ 0: E stop  interface pred mutrec.r3/3-0 (det)
+mdb> break r2
+ 0: + stop  interface pred mutrec.r2/3-0 (det)
+mdb> continue
+      91:     25 25 CALL pred mutrec.r2/3-0 (det) mutrec.m:233 (mutrec.m:264)
+mdb> stack
+<mutually recursive set of stack frames start>
+   0       pred mutrec.r2/3-0 (det) (mutrec.m:233)
+   1    2* pred mutrec.r3/3-0 (det) (mutrec.m:264 and others)
+   3       pred mutrec.r2/3-0 (det) (mutrec.m:244)
+<mutually recursive set of stack frames end>
+   4    2* pred mutrec.r1/3-0 (det) (mutrec.m:222 and others)
+   6       pred mutrec.r0c/3-0 (det) (mutrec.m:209)
+<mutually recursive set of stack frames start>
+   7    3* pred mutrec.q3/3-0 (det) (mutrec.m:188 and others)
+  10       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+  11       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+  12       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+  13       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+<mutually recursive set of stack frames end>
+  14       pred mutrec.q1/3-0 (det) (mutrec.m:144)
+<mutually recursive set of stack frames start>
+  15    2* pred mutrec.p2/3-0 (det) (mutrec.m:106 and others)
+  17       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+  18    2* pred mutrec.p2/3-0 (det) (mutrec.m:102 and others)
+  20       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+<mutually recursive set of stack frames end>
+  21    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+  23       pred mutrec.test/2-0 (det) (mutrec.m:42)
+  24       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> delete *
+ 0: E stop  interface pred mutrec.r2/3-0 (det)
+mdb> break s
+ 0: + stop  interface pred mutrec.s/3-0 (det)
+mdb> continue
+      97:     27 27 CALL pred mutrec.s/3-0 (det) mutrec.m:275 (mutrec.m:248)
+mdb> stack
+   0       pred mutrec.s/3-0 (det) (mutrec.m:275)
+<mutually recursive set of stack frames start>
+   1    2* pred mutrec.r2/3-0 (det) (mutrec.m:248 and others)
+   3    2* pred mutrec.r3/3-0 (det) (mutrec.m:264 and others)
+   5       pred mutrec.r2/3-0 (det) (mutrec.m:244)
+<mutually recursive set of stack frames end>
+   6    2* pred mutrec.r1/3-0 (det) (mutrec.m:222 and others)
+   8       pred mutrec.r0c/3-0 (det) (mutrec.m:209)
+<mutually recursive set of stack frames start>
+   9    3* pred mutrec.q3/3-0 (det) (mutrec.m:188 and others)
+  12       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+  13       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+  14       pred mutrec.q2/3-0 (det) (mutrec.m:164)
+  15       pred mutrec.q3/3-0 (det) (mutrec.m:184)
+<mutually recursive set of stack frames end>
+  16       pred mutrec.q1/3-0 (det) (mutrec.m:144)
+<mutually recursive set of stack frames start>
+  17    2* pred mutrec.p2/3-0 (det) (mutrec.m:106 and others)
+  19       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+  20    2* pred mutrec.p2/3-0 (det) (mutrec.m:102 and others)
+  22       pred mutrec.p3/3-0 (det) (mutrec.m:122)
+<mutually recursive set of stack frames end>
+  23    2* pred mutrec.p1/3-0 (det) (mutrec.m:82 and others)
+  25       pred mutrec.test/2-0 (det) (mutrec.m:42)
+  26       pred mutrec.main/2-0 (det) (mutrec.m:33)
+mdb> delete *
+ 0: E stop  interface pred mutrec.s/3-0 (det)
+mdb> continue
+[p1, p1, p3, p2, p2, p3, p2, p2, q1, q3, q2, q3, q2, q3, q3, q3, r0c, r1, r1, r2, r3, r3, r2, r2, s, s]
+[p1, p1, p3, p2, p2, p3, p2, p2, q1, q3, q2, q3, q2, q3, q3, q3, r0c, r1, r1, r1, r1, r1, r3, r3, s, s, s, s]

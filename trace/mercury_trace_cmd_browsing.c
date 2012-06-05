@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2008, 2010 The University of Melbourne.
+** Copyright (C) 1998-2008,2010,2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -67,9 +67,11 @@ static  const char  *MR_trace_new_source_window(const char *window_cmd,
 
 static  MR_bool     MR_trace_options_detailed(MR_bool *detailed, char ***words,
                         int *word_count);
-static  MR_bool     MR_trace_options_stack_trace(MR_bool *detailed,
-                        MR_FrameLimit *frame_limit, char ***words,
-                        int *word_count);
+static  MR_bool     MR_trace_options_stack_trace(MR_bool *print_all,
+                        MR_bool *detailed, MR_SpecLineLimit *line_limit,
+                        MR_SpecLineLimit *clique_line_limit,
+                        MR_FrameLimit *frame_limit,
+                        char ***words, int *word_count);
 static  MR_bool     MR_trace_options_format(MR_BrowseFormat *format,
                         MR_bool *xml, char ***words, int *word_count);
 static  MR_bool     MR_trace_options_view(const char **window_cmd,
@@ -90,16 +92,36 @@ MR_trace_cmd_level(char **words, int word_count, MR_TraceCmdInfo *cmd,
 {
     MR_Unsigned n;
     MR_bool     detailed;
+    int         selected_level;
 
     detailed = MR_FALSE;
     if (! MR_trace_options_detailed(&detailed, &words, &word_count)) {
         ; /* the usage message has already been printed */
+    } else if (word_count == 2 &&
+        ( MR_streq(words[1], "clique") || MR_streq(words[1], "clentry") ))
+    {
+        if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_FRAME,
+            &selected_level))
+        {
+            /* the error message has already been printed */
+            return KEEP_INTERACTING;
+        }
+    } else if (word_count == 2 && MR_streq(words[1], "clparent")) {
+        if (MR_find_clique_entry_mdb(event_info, MR_CLIQUE_ENTRY_PARENT_FRAME,
+            &selected_level))
+        {
+            /* the error message has already been printed */
+            return KEEP_INTERACTING;
+        }
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
-        MR_trace_set_level_and_report(n, detailed, MR_print_optionals);
+        selected_level = n;
     } else {
         MR_trace_usage_cur_cmd();
+        return KEEP_INTERACTING;
     }
 
+    MR_trace_set_level_and_report(selected_level, detailed,
+        MR_print_optionals);
     return KEEP_INTERACTING;
 }
 
@@ -461,25 +483,65 @@ MR_Next
 MR_trace_cmd_stack(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_bool             detailed;
-    MR_FrameLimit       frame_limit = 0;
-    int                 line_limit = MR_stack_default_line_limit;
-    MR_SpecLineLimit    spec_line_limit;
+    MR_bool                 print_all;
+    MR_bool                 detailed;
+    MR_FrameLimit           frame_limit;
+    MR_SpecLineLimit        clique_line_limit;
+    MR_SpecLineLimit        line_limit;
+    MR_SpecLineLimit        spec_line_limit;
+    const MR_LabelLayout    *layout;
+    MR_Word                 *saved_regs;
+    const char              *msg;
 
     detailed = MR_FALSE;
-    if (! MR_trace_options_stack_trace(&detailed, &frame_limit,
-        &words, &word_count))
+    print_all = MR_FALSE;
+    frame_limit = 0;
+    clique_line_limit = 10;
+    line_limit = 100;
+    if (! MR_trace_options_stack_trace(&print_all, &detailed,
+        &line_limit, &clique_line_limit, &frame_limit, &words, &word_count))
     {
-        ; /* the usage message has already been printed */
+        /* the usage message has already been printed */
+        return KEEP_INTERACTING;
     } else if (word_count == 1) {
-        MR_trace_cmd_stack_2(event_info, detailed, frame_limit, line_limit);
+        line_limit = MR_stack_default_line_limit;
     } else if (word_count == 2 &&
         MR_trace_is_natural_number(words[1], &spec_line_limit))
     {
-        MR_trace_cmd_stack_2(event_info, detailed, frame_limit,
-            spec_line_limit);
+        line_limit = spec_line_limit;
     } else {
         MR_trace_usage_cur_cmd();
+        return KEEP_INTERACTING;
+    }
+
+    layout = event_info->MR_event_sll;
+    saved_regs = event_info->MR_saved_regs;
+
+#ifdef  MR_DEBUG_STACK_DUMP_CLIQUE
+    MR_trace_init_modules();
+    fprintf(MR_mdb_out, "OLD STACK DUMP:\n");
+    msg = MR_dump_stack_from_layout(MR_mdb_out, layout,
+        MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
+        detailed, MR_context_position != MR_CONTEXT_NOWHERE,
+        frame_limit, line_limit,
+        &MR_dump_stack_record_print);
+
+    if (msg != NULL) {
+        fflush(MR_mdb_out);
+        fprintf(MR_mdb_err, "%s.\n", msg);
+    }
+
+    fprintf(MR_mdb_out, "\nNEW STACK DUMP:\n");
+#endif
+    msg = MR_dump_stack_from_layout_clique(MR_mdb_out, layout,
+        MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
+        detailed, MR_context_position != MR_CONTEXT_NOWHERE,
+        !print_all, clique_line_limit, frame_limit, line_limit,
+        &MR_dump_stack_record_print);
+
+    if (msg != NULL) {
+        fflush(MR_mdb_out);
+        fprintf(MR_mdb_err, "%s.\n", msg);
     }
 
     return KEEP_INTERACTING;
@@ -939,29 +1001,6 @@ MR_trace_browse_goal_xml(MR_ConstString name, MR_Word arg_list,
     MR_trace_save_and_invoke_xml_browser(browser_term);
 }
 
-static void
-MR_trace_cmd_stack_2(MR_EventInfo *event_info, MR_bool detailed,
-    MR_FrameLimit frame_limit, int line_limit)
-{
-    const MR_LabelLayout    *layout;
-    MR_Word                 *saved_regs;
-    const char              *msg;
-
-    layout = event_info->MR_event_sll;
-    saved_regs = event_info->MR_saved_regs;
-
-    MR_trace_init_modules();
-    msg = MR_dump_stack_from_layout(MR_mdb_out, layout,
-        MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
-        detailed, MR_context_position != MR_CONTEXT_NOWHERE,
-        frame_limit, line_limit, &MR_dump_stack_record_print);
-
-    if (msg != NULL) {
-        fflush(MR_mdb_out);
-        fprintf(MR_mdb_err, "%s.\n", msg);
-    }
-}
-
 /*
 ** Implement the `view' command. First, check if there is a server attached.
 ** If so, either stop it or abort the command, depending on whether '-f'
@@ -1143,16 +1182,30 @@ MR_trace_options_detailed(MR_bool *detailed, char ***words, int *word_count)
 }
 
 static MR_bool
-MR_trace_options_stack_trace(MR_bool *detailed, MR_FrameLimit *frame_limit,
-    char ***words, int *word_count)
+MR_trace_options_stack_trace(MR_bool *print_all, MR_bool *detailed,
+    MR_SpecLineLimit *line_limit, MR_SpecLineLimit *clique_line_limit,
+    MR_FrameLimit *frame_limit, char ***words, int *word_count)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "df:",
+    while ((c = MR_getopt_long(*word_count, *words, "ac:df:",
         MR_trace_detailed_opts, NULL)) != EOF)
     {
         switch (c) {
+            case 'a':
+                *print_all = MR_TRUE;
+                *line_limit = 0;
+                break;
+
+            case 'c':
+                if (! MR_trace_is_natural_number(MR_optarg, clique_line_limit))
+                {
+                    MR_trace_usage_cur_cmd();
+                    return MR_FALSE;
+                }
+                *print_all = MR_FALSE;
+                break;
 
             case 'd':
                 *detailed = MR_TRUE;

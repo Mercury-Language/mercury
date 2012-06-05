@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2011 The University of Melbourne.
+** Copyright (C) 1998-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -388,7 +388,7 @@ struct MR_UserEventSpec_Struct {
 ** making that change was posted to the mercury-reviews mailing list on
 ** 30 Sep 2011, but it was not committed, since it lead to a 4% *increase*
 ** in the size of asm_fast.gc.debug executables. Even though different goal
-** paths that share a tail (the part of the path near the root) with the
+** paths share a tail (the part of the path near the root) with the
 ** static reverse_goal_path term representation but not with the string
 ** representation, the string representation is so much more compact
 ** (usually taking 4 to 6 bytes for most steps) than the Mercury term
@@ -964,7 +964,13 @@ typedef struct MR_ExecTrace_Struct {
         max_mr_num = MR_max(max_r_num, MR_FIRST_UNREAL_R_SLOT);             \
     } while (0)
 
-#define MR_PROC_LAYOUT_FLAG_HAS_IO_STATE_PAIR   0x1
+/*
+** The code in the compiler that creates the flag field is
+** encode_exec_trace_flags in stack_layout.m.
+*/
+
+#define MR_PROC_LAYOUT_FLAG_HAS_IO_STATE_PAIR       0x1
+#define MR_PROC_LAYOUT_FLAG_HAS_HIGHER_ORDER_ARG    0x2
 
 #define MR_trace_find_reused_frames(proc_layout, sp, reused_frames)         \
     do {                                                                    \
@@ -1142,6 +1148,10 @@ typedef struct MR_ProcLayout_Traversal_Struct {
 #define MR_proc_has_io_state_pair(proc_layout_ptr)                          \
     ((proc_layout_ptr)->MR_sle_exec_trace->MR_exec_flags                    \
         & MR_PROC_LAYOUT_FLAG_HAS_IO_STATE_PAIR)
+
+#define MR_proc_has_higher_order_arg(proc_layout_ptr)                       \
+    ((proc_layout_ptr)->MR_sle_exec_trace->MR_exec_flags                    \
+        & MR_PROC_LAYOUT_FLAG_HAS_HIGHER_ORDER_ARG)
 
     /* Adjust the arity of functions for printing. */
 #define MR_sle_user_adjusted_arity(entry)                                   \
