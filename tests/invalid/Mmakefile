@@ -71,6 +71,7 @@ SINGLEMODULE= \
 	conflicting_fs \
 	conflicting_tabling_pragmas \
 	constrained_poly_insts \
+	constraint_proof_bug_lib \
 	constructor_warning \
 	cyclic_typeclass \
 	cyclic_typeclass_2 \

@@ -1017,8 +1017,8 @@ add_pass_2_pred_decl(ItemPredDecl, _Status, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_2_instance(ItemInstance, Status, !ModuleInfo, !Specs) :-
-    ItemInstance = item_instance_info(Constraints, Name, Types, Body, VarSet,
-        InstanceModuleName, Context, _SeqNum),
+    ItemInstance = item_instance_info(Constraints, Name, Types, OriginalTypes,
+        Body, VarSet, InstanceModuleName, Context, _SeqNum),
     Status = item_status(ImportStatus, _),
     (
         Body = instance_body_abstract,
@@ -1027,8 +1027,9 @@ add_pass_2_instance(ItemInstance, Status, !ModuleInfo, !Specs) :-
         Body = instance_body_concrete(_),
         BodyStatus = ImportStatus
     ),
-    module_add_instance_defn(InstanceModuleName, Constraints, Name, Types,
-        Body, VarSet, BodyStatus, Context, !ModuleInfo, !Specs).
+    module_add_instance_defn(InstanceModuleName, Constraints, Name,
+        Types, OriginalTypes, Body, VarSet, BodyStatus, Context,
+        !ModuleInfo, !Specs).
 
 :- pred add_pass_2_initialise(item_initialise_info::in,
     item_status::in, module_info::in, module_info::out,

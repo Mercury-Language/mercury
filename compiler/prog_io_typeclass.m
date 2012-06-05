@@ -665,12 +665,14 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet, Context,
             MaybeItemInstance = MaybeItemInstance0
         ;
             MaybeItemInstance0 = ok1(ItemInstance0),
-            ItemInstance0 = item_instance_info(_ConstraintList0, Name, Types,
-                Body, InstanceVarSet, ModName, InstanceContext, ItemSeqNum),
+            ItemInstance0 = item_instance_info(_ConstraintList0, Name,
+                Types, OriginalTypes, Body, InstanceVarSet, ModName,
+                InstanceContext, ItemSeqNum),
             % XXX Should we keep InstanceContext, or should we replace it
             % with Context? Or will they always be the same?
-            ItemInstance = item_instance_info(ConstraintList, Name, Types,
-                Body, InstanceVarSet, ModName, InstanceContext, ItemSeqNum),
+            ItemInstance = item_instance_info(ConstraintList, Name,
+                Types, OriginalTypes, Body, InstanceVarSet, ModName,
+                InstanceContext, ItemSeqNum),
             MaybeItemInstance = ok1(ItemInstance)
         )
     ;
@@ -705,7 +707,7 @@ parse_underived_instance(ModuleName, NameTerm, TVarSet, Context, SeqNum,
         parse_types(TermTypes, VarSet, TypesContextPieces, MaybeTypes),
         (
             MaybeTypes = ok1(Types),
-            ItemInstance = item_instance_info([], ClassName, Types,
+            ItemInstance = item_instance_info([], ClassName, Types, Types,
                 instance_body_abstract, TVarSet, ModuleName, Context, SeqNum),
             MaybeItemInstance = ok1(ItemInstance)
         ;
@@ -736,10 +738,12 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Context,
             % XXX Should we keep InstanceContext, or should we replace it
             % with Context? Or will they always be the same?
             ItemInstance0 = item_instance_info(Constraints, NameString,
-                Types, _, _, ModName, InstanceContext, ItemSeqNum),
+                Types, OriginalTypes, _, _,
+                ModName, InstanceContext, ItemSeqNum),
             ItemInstance = item_instance_info(Constraints, NameString,
-                Types, instance_body_concrete(MethodList), TVarSet, ModName,
-                InstanceContext, ItemSeqNum),
+                Types, OriginalTypes,
+                instance_body_concrete(MethodList), TVarSet,
+                ModName, InstanceContext, ItemSeqNum),
             MaybeItemInstance1 = ok1(ItemInstance),
             check_tvars_in_instance_constraint(MaybeItemInstance1, Name,
                 MaybeItemInstance)
@@ -755,8 +759,8 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Context,
 check_tvars_in_instance_constraint(error1(Specs), _, error1(Specs)).
 check_tvars_in_instance_constraint(ok1(ItemInstance), InstanceTerm, Result) :-
     % XXX
-    ItemInstance = item_instance_info(Constraints, _Name, Types, _Methods,
-        TVarSet, _ModName, _Context, _SeqNum),
+    ItemInstance = item_instance_info(Constraints, _Name, Types,
+        _OriginalTypes, _Methods, TVarSet, _ModName, _Context, _SeqNum),
     % Check that all of the type variables in the constraints on the instance
     % declaration also occur in the type class argument types in the instance
     % declaration.

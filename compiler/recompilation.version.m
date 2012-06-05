@@ -328,7 +328,7 @@ gather_items_2(Item, !Section, !Info) :-
         Item = item_instance(ItemInstance)
     ->
         ItemInstance =
-            item_instance_info(_, ClassName, ClassArgs, _, _, _, _, _),
+            item_instance_info(_, ClassName, ClassArgs, _, _, _, _, _, _),
         Instances0 = !.Info ^ instances,
         ClassArity = list.length(ClassArgs),
         ClassItemName = item_name(ClassName, ClassArity),
@@ -941,12 +941,12 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
         )
     ;
         Item1 = item_instance(ItemInstance1),
-        ItemInstance1 = item_instance_info(Constraints, Name, Types, Body,
-            _, Module, _, _),
+        ItemInstance1 = item_instance_info(Constraints, Name,
+            Types, OriginalTypes, Body, _, Module, _, _),
         (
             Item2 = item_instance(ItemInstance2),
-            ItemInstance2 = item_instance_info(Constraints, Name, Types, Body,
-                _, Module, _, _)
+            ItemInstance2 = item_instance_info(Constraints, Name,
+                Types, OriginalTypes, Body, _, Module, _, _)
         ->
             Unchanged = yes
         ;

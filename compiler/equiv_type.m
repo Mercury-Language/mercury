@@ -544,8 +544,8 @@ replace_in_typeclass_info(ModuleName, Location, EqvMap, EqvInstMap,
 
 replace_in_instance_info(ModuleName, Location, EqvMap, _EqvInstMap,
         Info0, Info, !RecompInfo, !UsedModules, []) :-
-    Info0 = item_instance_info(Constraints0, ClassName, Ts0, InstanceBody,
-        VarSet0, ContainingModuleName, Context, SeqNum),
+    Info0 = item_instance_info(Constraints0, ClassName, Types0, OriginalTypes,
+        InstanceBody, VarSet0, ContainingModuleName, Context, SeqNum),
     (
         ( !.RecompInfo = no
         ; ContainingModuleName = ModuleName
@@ -558,13 +558,15 @@ replace_in_instance_info(ModuleName, Location, EqvMap, _EqvInstMap,
     replace_in_prog_constraint_list(Location, EqvMap,
         Constraints0, Constraints, VarSet0, VarSet1,
         UsedTypeCtors0, UsedTypeCtors1, !UsedModules),
-    replace_in_type_list_location_circ(Location, EqvMap, Ts0, Ts, _, _,
+    replace_in_type_list_location_circ(Location, EqvMap, Types0, Types, _, _,
         VarSet1, VarSet, UsedTypeCtors1, UsedTypeCtors, !UsedModules),
-    list.length(Ts0, Arity),
+    % We specifically do NOT expand equivalence types in OriginalTypes.
+    % If we did, that would defeat the purpose of the field.
+    list.length(Types0, Arity),
     ItemId = item_id(typeclass_item, item_name(ClassName, Arity)),
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
-    Info = item_instance_info(Constraints, ClassName, Ts, InstanceBody,
-        VarSet, ContainingModuleName, Context, SeqNum).
+    Info = item_instance_info(Constraints, ClassName, Types, OriginalTypes,
+        InstanceBody, VarSet, ContainingModuleName, Context, SeqNum).
 
 :- pred replace_in_pragma_info(module_name::in, eqv_type_location::in,
     eqv_map::in, eqv_inst_map::in,

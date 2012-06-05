@@ -27,8 +27,8 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred module_add_instance_defn(module_name::in, list(prog_constraint)::in,
-    sym_name::in, list(mer_type)::in, instance_body::in, tvarset::in,
-    import_status::in, prog_context::in,
+    sym_name::in, list(mer_type)::in, list(mer_type)::in, instance_body::in,
+    tvarset::in, import_status::in, prog_context::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -183,9 +183,8 @@ module_add_class_defn(ItemTypeClassInfo, Status, !ModuleInfo, !Specs) :-
 
         (
             IsNewDefn = yes,
-
-                % When we find the class declaration, make an
-                % entry for the instances.
+            % When we find the class declaration, make an entry
+            % for the instances.
             module_info_get_instance_table(!.ModuleInfo, Instances0),
             map.det_insert(ClassId, [], Instances0, Instances),
             module_info_set_instance_table(Instances, !ModuleInfo)
@@ -274,7 +273,7 @@ module_add_class_interface(Name, Vars, Methods, Status, PredProcIds,
 
 is_class_method_mode_item(Method) :-
     Method = method_pred_or_func_mode(_, _, _, _, _, _, _, _).
-        
+
 :- pred add_class_pred_or_func_mode_method(sym_name::in,
     list(tvar)::in, item_status::in, class_method::in,
     list(maybe(pair(pred_id, proc_id)))::in,
@@ -321,7 +320,7 @@ add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
                 missing_pred_or_func_method_error(PredName, PredArity,
                     PredOrFunc, Context, !Specs)
             )
-        ;   
+        ;
             % This shouldn't happen.
             Preds = [_, _ | _],
             unexpected($module, $pred, "multiple preds matching method mode")
@@ -448,7 +447,8 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
     check_method_modes(Methods, !PredProcIds, !ModuleInfo, !Specs).
 
 module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
-        Types, Body0, VarSet, Status, Context, !ModuleInfo, !Specs) :-
+        Types, OriginalTypes, Body0, VarSet, Status, Context,
+        !ModuleInfo, !Specs) :-
     module_info_get_class_table(!.ModuleInfo, Classes),
     module_info_get_instance_table(!.ModuleInfo, Instances0),
     list.length(Types, ClassArity),
@@ -457,7 +457,8 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
     ( map.search(Classes, ClassId, _) ->
         map.init(Empty),
         NewInstanceDefn = hlds_instance_defn(InstanceModuleName, Status,
-            Context, Constraints, Types, Body, no, VarSet, Empty),
+            Context, Constraints, Types, OriginalTypes, Body, no,
+            VarSet, Empty),
         map.lookup(Instances0, ClassId, InstanceDefns),
 
         check_for_overlapping_instances(NewInstanceDefn, InstanceDefns,
@@ -481,11 +482,11 @@ check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId,
         !Specs) :-
     IsOverlapping = (pred((Context - OtherContext)::out) is nondet :-
         NewInstanceDefn = hlds_instance_defn(_, _Status, Context,
-            _, Types, Body, _, VarSet, _),
+            _, Types, _, Body, _, VarSet, _),
         Body = instance_body_concrete(_), % XXX
         list.member(OtherInstanceDefn, InstanceDefns),
         OtherInstanceDefn = hlds_instance_defn(_, _OtherStatus,
-            OtherContext, _, OtherTypes, OtherBody, _, OtherVarSet, _),
+            OtherContext, _, OtherTypes, _, OtherBody, _, OtherVarSet, _),
         OtherBody = instance_body_concrete(_), % XXX
         tvarset_merge_renaming(VarSet, OtherVarSet, _NewVarSet, Renaming),
         apply_variable_renaming_to_type_list(Renaming, OtherTypes,
@@ -516,7 +517,7 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
     % If two instance declarations are about the same type, then
     % the declarations must be compatible.  This consists of checking
     % that the constraints are identical.
-    % In other words, the abstract declaration must match the 
+    % In other words, the abstract declaration must match the
     % concrete definition.
     %
 :- pred check_instance_compatibility(hlds_instance_defn::in,
@@ -549,8 +550,8 @@ check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
         true
     ;
         ClassId = class_id(Name, ClassArity),
-        ContextA = InstanceDefnA ^ instance_context, 
-        
+        ContextA = InstanceDefnA ^ instance_context,
+
         TxtA = [words("In instance declaration for class "),
             sym_name_and_arity(Name / ClassArity), nl,
             words("instance constraints are incompatible with")],
@@ -567,7 +568,7 @@ check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
 
     % Do two hlds_instance_defn refer to the same type?
     % eg "instance tc(f(T))" compares equal to "instance tc(f(U))"
-    % 
+    %
     % Note we don't check that the constraints of the declarations are the
     % same.
     %
@@ -602,7 +603,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         !QualInfo, !Specs) :-
     (
         % Handle the `pred(<MethodName>/<Arity>) is <ImplName>' syntax.
-        InstanceProcDefn = instance_proc_def_name(InstancePredName), 
+        InstanceProcDefn = instance_proc_def_name(InstancePredName),
         % Add the body of the introduced pred.
         % First the goal info, ...
         goal_info_init(GoalInfo0),
@@ -694,7 +695,7 @@ pred_method_with_no_modes_error(PredInfo, !Specs) :-
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    
+
     Pieces = [words("Error: no mode declaration"),
         words("for type class method predicate"),
         sym_name_and_arity(qualified(Module, Name) / Arity), suffix("."), nl],

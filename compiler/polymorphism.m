@@ -2425,7 +2425,7 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
     list.det_index1(InstanceList, InstanceNum, ProofInstanceDefn),
 
     ProofInstanceDefn = hlds_instance_defn(_, _, _, InstanceConstraints,
-        InstanceTypes, _, _, InstanceTVarset, InstanceProofs),
+        InstanceTypes, _, _, _, InstanceTVarset, InstanceProofs),
 
     % XXX kind inference:
     % we assume all tvars have kind `star'.

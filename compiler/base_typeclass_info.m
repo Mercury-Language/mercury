@@ -90,7 +90,7 @@ gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
     gen_infos_for_instance_list(ClassId - Is, ModuleName, ModuleInfo,
         !RttiDataList),
     InstanceDefn = hlds_instance_defn(InstanceModule, ImportStatus,
-        _TermContext, InstanceConstraints, InstanceTypes, Body,
+        _TermContext, InstanceConstraints, InstanceTypes, _OriginalTypes, Body,
         PredProcIds, _Varset, _SuperClassProofs),
     (
         Body = instance_body_concrete(_),

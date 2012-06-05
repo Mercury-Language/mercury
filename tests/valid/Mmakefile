@@ -20,7 +20,6 @@ TRAIL_PROGS= \
 TYPECLASS_PROGS= \
 	abstract_typeclass \
 	complex_constraint \
-	constraint_proof_bug \
 	exists_bug \
 	exists_fundeps \
 	exists_fundeps_2 \
@@ -325,6 +324,7 @@ CONSTRAINT_TYPECHECK_PROGS = \
 
 # XXX The type checker can't handle the following test cases yet,
 # unless constraint-based typechecking is used:
+#
 #	ambiguity_stress_test
 #
 # XXX The mode system can't handle the following test cases yet:
@@ -335,11 +335,14 @@ CONSTRAINT_TYPECHECK_PROGS = \
 #	unify_inst_bug
 #
 # XXX We also don't pass this one (see the comments in it for details):
+#
 #	mode_selection
 #
-# XXX The following test is not valid under the current Mercury
+# XXX The following tests are not valid under the current Mercury
 # language rules:
+#
 #	field_detism
+#	constraint_proof_bug
 #
 # The following test case checked for a problem with the varsets attached
 # to mutables.  It only ever worked in the presence of automatic solver

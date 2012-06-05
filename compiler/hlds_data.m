@@ -1327,8 +1327,10 @@ mode_table_optimize(!ModeDefns) :-
                 % Constraints on the instance declaration.
                 instance_constraints    :: list(prog_constraint),
 
-                % ClassTypes
+                % The class types. The original types field is used only
+                % for error checking.
                 instance_types          :: list(mer_type),
+                instance_orig_types     :: list(mer_type),
 
                 % Methods
                 instance_body           :: instance_body,

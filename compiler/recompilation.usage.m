@@ -1012,8 +1012,9 @@ find_items_used_by_instances(ClassId, InstanceDefns, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_instance(ClassId, Defn, !Info) :-
+    % XXX Should we process OriginalArgTypes as we do ArgTypes?
     Defn = hlds_instance_defn(InstanceModuleName, _, _, Constraints,
-        ArgTypes, _, _, _, _),
+        ArgTypes, _OriginalArgTypes, _, _, _, _),
     % XXX Handle interface (currently not needed because the interfaces
     % for imported instances are only needed with --intermodule-optimization,
     % which isn't handled here yet).

@@ -884,8 +884,8 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         Continue = yes
     ;
         Item0 = item_instance(ItemInstance0),
-        ItemInstance0 = item_instance_info(Constraints0, Name0, Types0,
-            Body0, VarSet, ModName, Context, SeqNum),
+        ItemInstance0 = item_instance_info(Constraints0, Name0,
+            Types0, OriginalTypes0, Body0, VarSet, ModName, Context, SeqNum),
         list.length(Types0, Arity),
         Id = mq_id(Name0, Arity),
         mq_info_set_error_context(mqec_instance(Id) - Context, !Info),
@@ -900,10 +900,18 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         % us to resolve overloading.
         qualify_prog_constraint_list(Constraints0, Constraints, !Info, !Specs),
         qualify_class_name(Id, mq_id(Name, _), !Info, !Specs),
+        % XXX We don't want to keep the errors from the expansion of both
+        % forms of the instance types, since printing two error messages about
+        % one instance definition that make apparently contradictory
+        % assumptions about whether the instance types are equiv-type-expanded
+        % or not wouldd be confusing. However, I (zs) cannot think of any
+        % compelling reason right now for preferring the error messages
+        % from one version of the types over the other.
         qualify_type_list(Types0, Types, !Info, !Specs),
+        qualify_type_list(OriginalTypes0, OriginalTypes, !Info, !.Specs, _),
         qualify_instance_body(Name, Body0, Body),
-        ItemInstance = item_instance_info(Constraints, Name, Types,
-            Body, VarSet, ModName, Context, SeqNum),
+        ItemInstance = item_instance_info(Constraints, Name,
+            Types, OriginalTypes, Body, VarSet, ModName, Context, SeqNum),
         Item = item_instance(ItemInstance),
         Continue = yes
     ;

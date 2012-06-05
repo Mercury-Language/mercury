@@ -540,7 +540,8 @@ write_instance_defns(Info, Indent, ClassId - InstanceDefns, !IO) :-
 
 write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     InstanceDefn = hlds_instance_defn(_InstanceModule, _Status,
-        Context, Constraints, Types, Body, MaybePredProcIds, VarSet, Proofs),
+        Context, Constraints, Types, OriginalTypes, Body,
+        MaybePredProcIds, VarSet, Proofs),
 
     term.context_file(Context, FileName),
     term.context_line(Context, LineNumber),
@@ -569,6 +570,10 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% Types: ", !IO),
     io.write_list(Types, ", ", PrintTerm, !IO),
+    io.nl(!IO),
+    write_indent(Indent, !IO),
+    io.write_string("% Original types: ", !IO),
+    io.write_list(OriginalTypes, ", ", PrintTerm, !IO),
     io.nl(!IO),
 
     write_indent(Indent, !IO),

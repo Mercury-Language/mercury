@@ -277,7 +277,7 @@ dead_proc_initialize_class_methods(Classes, Instances,
     is det.
 
 get_instance_pred_procs(Instance, !Queue, !Needed) :-
-    Instance = hlds_instance_defn(_, _, _, _, _, _, PredProcIds, _, _),
+    Instance = hlds_instance_defn(_, _, _, _, _, _, _, PredProcIds, _, _),
     % We need to keep the instance methods for all instances
     % for optimization of method lookups.
     (

@@ -16,8 +16,13 @@
 % in the instance declaration is either a type with no arguments,
 % or a polymorphic type whose arguments are all distinct type variables.
 % We also check that all of the types in exported instance declarations are
-% in scope here. XXX the latter part should really be done earlier, but with
+% in scope here. XXX The latter part should really be done earlier, but with
 % the current implementation this is the most convenient spot.
+%
+% This step also checks that types in instance declarations are not abstract
+% exported equivalence types defined in this module. Unfortunately, there is
+% no way to check at compile time that it is not an abstract exported
+% equivalence type defined in some *other* module.
 %
 % (2) In check_instance_decls/6, for every method of every instance we
 % generate a new pred whose types and modes are as expected by the typeclass
@@ -144,8 +149,8 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
 
     trace [io(!IO1)] (
-    maybe_write_string(Verbose,
-        "% Checking instance declaration types...\n", !IO1)
+        maybe_write_string(Verbose,
+            "% Checking instance declaration types...\n", !IO1)
     ),
     check_instance_declaration_types(!ModuleInfo, !Specs),
 
@@ -227,9 +232,62 @@ check_instance_declaration_types_for_class(ModuleInfo, ClassId,
 
 check_instance_declaration_types_for_instance(ModuleInfo,
         ClassId, InstanceDefn, !Specs) :-
+    OriginalTypes = InstanceDefn ^ instance_orig_types,
+    list.foldl2(is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn),
+        OriginalTypes, 1, _, !Specs),
     Types = InstanceDefn ^ instance_types,
     list.foldl3(is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn),
         Types, 1, _, set.init, _, !Specs).
+
+:- pred is_valid_instance_orig_type(module_info::in,
+    class_id::in, hlds_instance_defn::in, mer_type::in,
+    int::in, int::out, list(error_spec)::in, list(error_spec)::out) is det.
+
+is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn, Type,
+        N, N+1, !Specs) :-
+    (
+        Type = defined_type(_TypeName, _, _),
+        ( type_to_type_defn(ModuleInfo, Type, TypeDefn) ->
+            get_type_defn_body(TypeDefn, TypeBody),
+            (
+                TypeBody = hlds_eqv_type(_),
+                get_type_defn_status(TypeDefn, TypeDefnStatus),
+                (
+                    TypeDefnStatus = status_abstract_exported,
+                    % If the instance definition is itself abstract exported,
+                    % we want to generate only one error message, instead of
+                    % two error messages, one for the abstract and one for the
+                    % concrete instance definition.
+                    InstanceDefn ^ instance_body = instance_body_concrete(_)
+                ->
+                    Spec = abstract_eqv_instance_type_msg(ClassId,
+                        InstanceDefn, N),
+                    !:Specs = [Spec | !.Specs]
+                ;
+                    true
+                )
+            ;
+                ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _)
+                ; TypeBody = hlds_foreign_type(_)
+                ; TypeBody = hlds_solver_type(_, _)
+                ; TypeBody = hlds_abstract_type(_)
+                )
+            )
+        ;
+            % The type is either a builtin type or a type variable.
+            true
+        )
+    ;
+        ( Type = builtin_type(_)
+        ; Type = higher_order_type(_, _, _, _)
+        ; Type = apply_n_type(_, _, _)
+        ; Type = type_variable(_, _)
+        ; Type = tuple_type(_, _)
+        )
+    ;
+        Type = kinded_type(_, _),
+        unexpected("check_typeclass", "kinded_type")
+    ).
 
     % Each of these types in the instance declaration must be either
     % (a) a type with no arguments, or (b) a polymorphic type whose arguments
@@ -255,8 +313,8 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
             Type = type_variable(_, _),
             EndPieces = [words("is a type variable.")]
         ),
-        Spec = badly_formed_instance_type_msg_2(ClassId, InstanceDefn,
-            N, EndPieces),
+        Spec = bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces,
+            badly_formed),
         !:Specs = [Spec | !.Specs]
     ;
         Type = tuple_type(Args, _),
@@ -415,36 +473,62 @@ badly_formed_instance_type_msg(ClassId, InstanceDefn, N, Error) = Spec :-
         EndPieces = [words("is a type whose"), nth_fixed(ArgNum),
             words("argument is not a variable.")]
     ),
-    Spec = badly_formed_instance_type_msg_2(ClassId, InstanceDefn,
-        N, EndPieces).
+    Spec = bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces,
+        badly_formed).
 
-:- func badly_formed_instance_type_msg_2(class_id, hlds_instance_defn, int,
-    list(format_component)) = error_spec.
+:- func abstract_eqv_instance_type_msg(class_id, hlds_instance_defn, int) =
+    error_spec.
 
-badly_formed_instance_type_msg_2(ClassId, InstanceDefn, N, EndPieces) = Spec :-
+abstract_eqv_instance_type_msg(ClassId, InstanceDefn, N) = Spec :-
+    EndPieces = [words("is an abstract exported equivalence type.")],
+    Spec = bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces,
+        abstract_exported_eqv).
+
+:- type bad_instance_type_kind
+    --->    badly_formed
+    ;       abstract_exported_eqv.
+
+:- func bad_instance_type_msg(class_id, hlds_instance_defn, int,
+    list(format_component), bad_instance_type_kind) = error_spec.
+
+bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces, Kind) = Spec :-
     ClassId = class_id(ClassName, _),
     ClassNameString = sym_name_to_string(ClassName),
 
     InstanceVarSet = InstanceDefn ^ instance_tvarset,
-    InstanceTypes = InstanceDefn ^ instance_types,
     InstanceContext = InstanceDefn ^ instance_context,
+    (
+        Kind = badly_formed,
+        % We are generating the error message because the type is badly
+        % formed as expanted. The unexpanded version may be correctly
+        % formed.
+        InstanceTypes = InstanceDefn ^ instance_types
+    ;
+        Kind = abstract_exported_eqv,
+        % Messages about the expanded type being an equivalence type
+        % would not make sense.
+        InstanceTypes = InstanceDefn ^ instance_orig_types
+    ),
     InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
         InstanceTypes),
 
-    HeaderPieces =
-        [words("In instance declaration for"),
-        words("`" ++ ClassNameString ++
-            "(" ++ InstanceTypesString ++ ")':")
-        ],
+    HeaderPieces = [words("In instance declaration for"),
+        words("`" ++ ClassNameString ++ "(" ++ InstanceTypesString ++ ")':")],
     ArgNumPieces = [words("the"), nth_fixed(N), words("argument") | EndPieces]
         ++ [nl],
-    VerbosePieces =
-        [words("(Types in instance declarations must be functors " ++
-            "with distinct variables as arguments.)"), nl],
-
-    HeadingMsg = simple_msg(InstanceContext,
-        [always(HeaderPieces), always(ArgNumPieces),
-        verbose_only(VerbosePieces)]),
+    (
+        Kind = abstract_exported_eqv,
+        HeadingMsg = simple_msg(InstanceContext,
+            [always(HeaderPieces), always(ArgNumPieces)])
+    ;
+        Kind = badly_formed,
+        VerbosePieces =
+            [words("(Types in instance declarations must be functors " ++
+                "with distinct variables as arguments.)"), nl],
+        HeadingMsg = simple_msg(InstanceContext,
+            [always(HeaderPieces), always(ArgNumPieces),
+            verbose_only(VerbosePieces)])
+    ),
     Spec = error_spec(severity_error, phase_type_check, [HeadingMsg]).
 
 %---------------------------------------------------------------------------%
@@ -525,7 +609,7 @@ check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
         ClassInterface, ClassVarSet, PredIds, !InstanceDefn,
         !ModuleInfo, !QualInfo, !Specs):-
     % Check conformance of the instance body.
-    !.InstanceDefn = hlds_instance_defn(_, _, TermContext, _, _,
+    !.InstanceDefn = hlds_instance_defn(_, _, TermContext, _, _, _,
         InstanceBody, _, _, _),
     (
         InstanceBody = instance_body_abstract
@@ -731,7 +815,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
             ModesAndDetism = modes_and_detism(Modes, InstVarSet, MaybeDetism)
         ), ProcIds, ArgModes),
 
-    InstanceDefn0 = hlds_instance_defn(_, Status, _, _, InstanceTypes,
+    InstanceDefn0 = hlds_instance_defn(_, Status, _, _, InstanceTypes, _,
         _, _, _, _),
 
     % Work out the name of the predicate that we will generate
@@ -771,7 +855,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         InstanceDefn0, InstanceDefn, OrderedInstanceMethods0,
         OrderedInstanceMethods, !Info, !Specs) :-
     InstanceDefn0 = hlds_instance_defn(InstanceModuleName, _InstanceStatus,
-        _InstanceContext, InstanceConstraints, InstanceTypes,
+        _InstanceContext, InstanceConstraints, InstanceTypes, _OriginalTypes,
         InstanceBody, MaybeInstancePredProcs, InstanceVarSet, _InstanceProofs),
     !.Info = instance_method_info(_ModuleInfo, _QualInfo, _PredName, Arity,
         _ExistQVars, _ArgTypes, _ClassContext, _ArgModes, _ArgTypeVars,
@@ -1037,9 +1121,9 @@ introduced_pred_name_prefix = "ClassMethod_for_".
 
 check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
         ClassVarSet, ModuleInfo, InstanceDefn0, InstanceDefn, !Specs) :-
-
-    InstanceDefn0 = hlds_instance_defn(A, B, Context, InstanceProgConstraints,
-        InstanceTypes, F, G, InstanceVarSet0, Proofs0),
+    InstanceDefn0 = hlds_instance_defn(ModuleName, Status, Context,
+        InstanceProgConstraints, InstanceTypes, OriginalTypes,
+        Body, Interface, InstanceVarSet0, Proofs0),
     tvarset_merge_renaming(InstanceVarSet0, ClassVarSet, InstanceVarSet1,
         Renaming),
 
@@ -1080,9 +1164,9 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
 
     (
         UnprovenConstraints = [],
-        InstanceDefn = hlds_instance_defn(A, B, Context,
-            InstanceProgConstraints, InstanceTypes, F, G,
-            InstanceVarSet2, Proofs1)
+        InstanceDefn = hlds_instance_defn(ModuleName, Status, Context,
+            InstanceProgConstraints, InstanceTypes, OriginalTypes,
+            Body, Interface, InstanceVarSet2, Proofs1)
     ;
         UnprovenConstraints = [_ | UnprovenConstraintsTail],
         ClassId = class_id(ClassName, _ClassArity),
@@ -1834,7 +1918,6 @@ report_unbound_tvars_explanation =
     nl,
     words("See the ""Functional dependencies"" section"),
     words("of the reference manual for details."), nl].
-
 
 %---------------------------------------------------------------------------%
 

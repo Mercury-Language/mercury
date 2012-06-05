@@ -260,9 +260,13 @@
 
 :- type item_instance_info
     --->    item_instance_info(
+                % The original types field preserves the types in the instance
+                % declaration as written by the programmer. The types field
+                % is subject to the expansion of equivalent types.
                 ci_deriving_class               :: list(prog_constraint),
                 ci_class_name                   :: class_name,
                 ci_types                        :: list(mer_type),
+                ci_original_types               :: list(mer_type),
                 ci_method_instances             :: instance_body,
                 ci_varset                       :: tvarset,
                 ci_module_containing_instance   :: module_name,

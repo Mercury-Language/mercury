@@ -316,7 +316,7 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         Arity = pred_info_orig_arity(PredInfo),
 
         % Predicates with `class_method' markers contain class_method_call
-        % goals which can't be written to `.opt' files (they can't be read
+        % goals which cannot be written to `.opt' files (they cannot be read
         % back in). They will be recreated in the importing module.
         pred_info_get_markers(PredInfo, Markers),
         \+ check_marker(Markers, marker_class_method),
@@ -508,7 +508,7 @@ intermod_traverse_goal_expr(GoalExpr0, GoalExpr, DoWrite, !Info) :-
     ;
         GoalExpr0 = call_foreign_proc(Attrs, _, _, _, _, _, _),
         GoalExpr = GoalExpr0,
-        % Inlineable exported pragma_foreign_code goals can't use any
+        % Inlineable exported pragma_foreign_code goals cannot use any
         % non-exported types, so we just write out the clauses.
         MaybeMayDuplicate = get_may_duplicate(Attrs),
         (
@@ -561,8 +561,8 @@ intermod_traverse_goal_expr(GoalExpr0, GoalExpr, DoWrite, !Info) :-
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0, OrElseInners),
             intermod_traverse_goal(MainGoal0, MainGoal, DoWrite1, !Info),
-            intermod_traverse_list_of_goals(OrElseGoals0, OrElseGoals, DoWrite2,
-                !Info),
+            intermod_traverse_list_of_goals(OrElseGoals0, OrElseGoals,
+                DoWrite2, !Info),
             bool.and(DoWrite1, DoWrite2, DoWrite),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
@@ -626,7 +626,7 @@ intermod_traverse_cases([Case0 | Cases0], [Case | Cases], !:DoWrite, !Info) :-
 add_proc(PredId, DoWrite, !Info) :-
     ( PredId = invalid_pred_id ->
         % This will happen for type class instance methods defined using
-        % the clause syntax. Currently we can't handle intermodule
+        % the clause syntax. Currently we cannot handle intermodule
         % optimization of those.
         DoWrite = no
     ;
@@ -674,10 +674,12 @@ add_proc_2(PredId, DoWrite, !Info) :-
         % Goals which call impure predicates cannot be written due to
         % limitations in mode analysis. The problem is that only head
         % unifications are allowed to be reordered with impure goals.
+        % For example,
         %
-        % e.g
         %   p(A::in, B::in, C::out) :- impure foo(A, B, C).
+        %
         % becomes
+        %
         %   p(HeadVar1, HeadVar2, HeadVar3) :-
         %       A = HeadVar1, B = HeadVar2, C = HeadVar3,
         %       impure foo(A, B, C).
@@ -689,9 +691,9 @@ add_proc_2(PredId, DoWrite, !Info) :-
         % in mode analysis would be tricky.
         % See tests/valid/impure_intermod.m.
         %
-        % NOTE: the above restriction applies to user predicates.  For
-        % the compiler generated mutable access predicates we can ensure
-        % that reordering is not necessary by construction, so it's safe
+        % NOTE: the above restriction applies to user predicates.
+        % For compiler generated mutable access predicates, we can ensure
+        % that reordering is not necessary by construction, so it is safe
         % to include them in .opt files.
 
         pred_info_get_purity(PredInfo, purity_impure),
@@ -699,8 +701,8 @@ add_proc_2(PredId, DoWrite, !Info) :-
     ->
         DoWrite = no
     ;
-        % If a pred whose code we're going to put in the .opt file calls
-        % a predicate which is exported, then we don't need to do anything
+        % If a pred whose code we are going to put in the .opt file calls
+        % a predicate which is exported, then we do not need to do anything
         % special.
 
         (
@@ -721,7 +723,7 @@ add_proc_2(PredId, DoWrite, !Info) :-
     ->
         DoWrite = yes
     ;
-        % If a pred whose code we're going to put in the `.opt' file calls
+        % If a pred whose code we are going to put in the `.opt' file calls
         % a predicate which is local to that module, then we need to put
         % the declaration for the called predicate in the `.opt' file.
 
@@ -777,14 +779,14 @@ module_qualify_unify_rhs(RHS0, RHS, DoWrite, !Info) :-
             proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
             add_proc(PredId, DoWrite, !Info)
         ;
-            % It's an ordinary constructor, or a constant of a builtin type,
+            % It is an ordinary constructor, or a constant of a builtin type,
             % so just leave it alone.
             %
             % Constructors are module qualified by post_typecheck.m.
             %
             % Function calls and higher-order function applications
             % are transformed into ordinary calls and higher-order calls
-            % by post_typecheck.m, so they can't occur here.
+            % by post_typecheck.m, so they cannot occur here.
 
             DoWrite = yes
         )
@@ -810,8 +812,9 @@ gather_instances_2(ModuleInfo, ClassId, InstanceDefns, !Info) :-
     hlds_instance_defn::in, intermod_info::in, intermod_info::out) is det.
 
 gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
-    InstanceDefn = hlds_instance_defn(A, Status, C, D, E, Interface0,
-        MaybePredProcIds, H, I),
+    InstanceDefn = hlds_instance_defn(ModuleName, Status, Context,
+        InstanceConstraints, Types, OriginalTypes, Interface0,
+        MaybePredProcIds, TVarSet, Proofs),
     DefinedThisModule = status_defined_in_this_module(Status),
     (
         DefinedThisModule = yes,
@@ -854,8 +857,8 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
                 % cannot be written to the `.opt' file for any reason.
                 Interface = instance_body_abstract,
 
-                % Don't write declarations for any of the methods if one
-                % can't be written.
+                % Do not write declarations for any of the methods if one
+                % cannot be written.
                 !:Info = SaveInfo
             )
         ;
@@ -871,11 +874,12 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
                 status_is_exported(Status) = no
             )
         ->
-            InstanceDefnToWrite = hlds_instance_defn(A, Status, C, D, E,
-                Interface, MaybePredProcIds, H, I),
+            InstanceDefnToWrite = hlds_instance_defn(ModuleName, Status,
+                Context, InstanceConstraints, Types, OriginalTypes,
+                Interface, MaybePredProcIds, TVarSet, Proofs),
             intermod_info_get_instances(!.Info, Instances0),
-            intermod_info_set_instances(
-                [ClassId - InstanceDefnToWrite | Instances0], !Info)
+            Instances = [ClassId - InstanceDefnToWrite | Instances0],
+            intermod_info_set_instances(Instances, !Info)
         ;
             true
         )
@@ -1035,8 +1039,8 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         (
             TypeBody0 = hlds_du_type(Ctors, Tags, CheaperTagTest, Enum,
-                MaybeUserEqComp0, MaybeDirectArgCtors, ReservedTag, ReservedAddr,
-                MaybeForeign0),
+                MaybeUserEqComp0, MaybeDirectArgCtors, ReservedTag,
+                ReservedAddr, MaybeForeign0),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
 
@@ -1067,8 +1071,8 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
                 MaybeForeign = MaybeForeign0
             ),
             TypeBody = hlds_du_type(Ctors, Tags, CheaperTagTest, Enum,
-                MaybeUserEqComp, MaybeDirectArgCtors, ReservedTag, ReservedAddr,
-                MaybeForeign),
+                MaybeUserEqComp, MaybeDirectArgCtors, ReservedTag,
+                ReservedAddr, MaybeForeign),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;
             TypeBody0 = hlds_foreign_type(ForeignTypeBody0),
@@ -1480,7 +1484,8 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     ->
         map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [],
             ForeignEnumVals),
-        ForeignPragma = pragma_foreign_enum(Lang, Name, Arity, ForeignEnumVals),
+        ForeignPragma = pragma_foreign_enum(Lang, Name, Arity,
+            ForeignEnumVals),
         ForeignItemPragma = item_pragma_info(user, ForeignPragma, Context, -1),
         ForeignItem = item_pragma(ForeignItemPragma),
         mercury_output_item(MercInfo, ForeignItem, !IO)
@@ -1627,10 +1632,10 @@ intermod_write_instances(OutInfo, Instances, !IO) :-
 
 intermod_write_instance(OutInfo, ClassId - InstanceDefn, !IO) :-
     InstanceDefn = hlds_instance_defn(ModuleName, _, Context, Constraints,
-        Types, Body, _, TVarSet, _),
+        Types, OriginalTypes, Body, _, TVarSet, _),
     ClassId = class_id(ClassName, _),
-    ItemInstance = item_instance_info(Constraints, ClassName, Types, Body,
-        TVarSet, ModuleName, Context, -1),
+    ItemInstance = item_instance_info(Constraints, ClassName,
+        Types, OriginalTypes, Body, TVarSet, ModuleName, Context, -1),
     Item = item_instance(ItemInstance),
     MercInfo = OutInfo ^ hoi_mercury_to_mercury,
     mercury_output_item(MercInfo, Item, !IO).
@@ -1654,8 +1659,8 @@ intermod_write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
     pred_info_get_goal_type(PredInfo, GoalType),
     (
         GoalType = goal_type_foreign,
-        % For foreign code goals we can't append variable numbers to type
-        % variables in the predicate declaration because the foreign code
+        % For foreign code goals, we cannot append variable numbers to type
+        % variables in the predicate declaration, because the foreign code
         % may contain references to variables such as `TypeInfo_for_T'
         % which will break if `T' is written as `T_1' in the pred declaration.
         AppendVarNums = no
@@ -1778,8 +1783,8 @@ intermod_write_preds(OutInfo, ModuleInfo, [PredId | PredIds], !IO) :-
     prog_varset::in, list(prog_var)::in, pred_or_func::in, sym_name::in,
     maybe_vartypes::in, clause::in, io::di, io::uo) is det.
 
-intermod_write_clause(OutInfo, ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc,
-        SymName, MaybeVarTypes, Clause0, !IO) :-
+intermod_write_clause(OutInfo, ModuleInfo, PredId, VarSet, HeadVars,
+        PredOrFunc, SymName, MaybeVarTypes, Clause0, !IO) :-
     Clause0 = clause(ApplicableProcIds, Goal, ImplLang, _, _),
     (
         ImplLang = impl_lang_mercury,
@@ -2305,12 +2310,12 @@ adjust_instance_status_2(ClassId - InstanceList0, ClassId - InstanceList,
 
 adjust_instance_status_3(Instance0, Instance, !ModuleInfo) :-
     Instance0 = hlds_instance_defn(InstanceModule, Status0, Context,
-        Constraints, Types, Body, HLDSClassInterface,
-        TVarSet, ConstraintProofs),
+        Constraints, Types, OriginalTypes, Body,
+        HLDSClassInterface, TVarSet, ConstraintProofs),
     ( import_status_to_write(Status0) ->
         Instance = hlds_instance_defn(InstanceModule, status_exported,
-            Context, Constraints, Types, Body, HLDSClassInterface,
-            TVarSet, ConstraintProofs),
+            Context, Constraints, Types, OriginalTypes, Body,
+            HLDSClassInterface, TVarSet, ConstraintProofs),
         (
             HLDSClassInterface = yes(ClassInterface),
             class_procs_to_pred_ids(ClassInterface, PredIds),
@@ -2406,7 +2411,7 @@ grab_opt_files(Globals, !Module, FoundError, !IO) :-
     % Append the items to the current item list, using a `opt_imported'
     % pseudo-declaration to let make_hlds know the opt_imported stuff
     % is coming.
-    % 
+    %
     % XXX Using this mechanism to let make_hlds know this is a bad design.
     OptItems = cord.list(OptItemsCord),
     AddedItems = [make_pseudo_decl(md_opt_imported) | OptItems],
@@ -2500,7 +2505,7 @@ grab_opt_files(Globals, !Module, FoundError, !IO) :-
 :- pred read_optimization_interfaces(globals::in, bool::in, module_name::in,
     list(module_name)::in, set(module_name)::in,
     cord(item)::in, cord(item)::out,
-    list(error_spec)::in, list(error_spec)::out, 
+    list(error_spec)::in, list(error_spec)::out,
     bool::in, bool::out, io::di, io::uo) is det.
 
 read_optimization_interfaces(_, _, _, [], _, !Items, !Specs, !Error, !IO).

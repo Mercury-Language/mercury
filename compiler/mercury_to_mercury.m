@@ -971,8 +971,12 @@ mercury_output_item_typeclass(Info, ItemTypeClass, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_item_instance(_, ItemInstance, !IO) :-
-    ItemInstance = item_instance_info(Constraints, ClassName, Types, Body,
-        VarSet, _InstanceModuleName, _Context, _SeqNum),
+    % XXX When prettyprinting a Mercury module, we want to print the original
+    % types. When generating interface types, we want to print the
+    % equiv-type-expanded types. We do the latter.
+    ItemInstance = item_instance_info(Constraints, ClassName,
+        Types, _OriginalTypes, Body, VarSet, _InstanceModuleName,
+        _Context, _SeqNum),
     io.write_string(":- instance ", !IO),
     % We put an extra set of brackets around the class name in case
     % the name is an operator.

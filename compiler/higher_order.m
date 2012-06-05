@@ -979,7 +979,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args, Goal0,
             map.lookup(Instances, ClassId, InstanceList),
             list.det_index1(InstanceList, Instance, InstanceDefn),
             InstanceDefn = hlds_instance_defn(_, _, _,
-                InstanceConstraints, InstanceTypes0, _,
+                InstanceConstraints, InstanceTypes0, _, _,
                 yes(ClassInterface), _, _),
             type_vars_list(InstanceTypes0, InstanceTvars),
             get_unconstrained_tvars(InstanceTvars,
@@ -1089,7 +1089,7 @@ find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
 instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
         TVarSet0, TVarSet) :-
     Instance = hlds_instance_defn(_, _, _, Constraints0,
-        InstanceTypes0, _, _, InstanceTVarSet, _),
+        InstanceTypes0, _, _, _, InstanceTVarSet, _),
     tvarset_merge_renaming(TVarSet0, InstanceTVarSet, TVarSet, Renaming),
     apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
         InstanceTypes),
@@ -2027,7 +2027,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         map.lookup(Instances, ClassId, InstanceDefns),
         list.det_index1(InstanceDefns, InstanceNum, InstanceDefn),
         InstanceDefn = hlds_instance_defn(_, _, _, Constraints, InstanceTypes,
-            _, _, _, _),
+            _, _, _, _, _),
         (
             ( Manipulator = type_info_from_typeclass_info
             ; Manipulator = superclass_from_typeclass_info
