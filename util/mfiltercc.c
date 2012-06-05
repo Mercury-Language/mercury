@@ -26,8 +26,7 @@
 
 #define MAX_LINE_LENGTH 2000
 
-static int
-drop_line(const char *line);
+static int  drop_line(const char *line);
 
 int
 main(void)

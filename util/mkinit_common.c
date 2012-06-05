@@ -37,13 +37,12 @@
 
 /* --- global variables --- */
 
-const char *MR_progname = NULL;
-int         num_errors = 0;
-int         num_files;
-char      **files = NULL;
+const char          *MR_progname = NULL;
+int                 num_errors = 0;
+int                 num_files;
+char                **files = NULL;
 
-static int   size_of_files;
-
+static int          size_of_files;
 
     /* List of directories to search for init files */
 static String_List  *init_file_dirs = NULL;
@@ -58,8 +57,8 @@ static String_List  **init_file_dirs_tail = &init_file_dirs;
 
 /* --- function prototypes --- */
 
-static  char    *find_init_file(const char *base_name);
-static  MR_bool file_exists(const char *filename);
+static  char        *find_init_file(const char *base_name);
+static  MR_bool     file_exists(const char *filename);
 
 /*---------------------------------------------------------------------------*/
 
@@ -75,8 +74,8 @@ process_file_list_file(char *filename)
             MR_progname, filename, strerror(errno));
         num_errors++;
         return;
-    } 
-        /* intialize the files structure, if required */
+    }
+    /* intialize the files structure, if required */
     if (files == NULL) {
         num_files = 0;
         size_of_files = NUMFILES;
@@ -84,12 +83,12 @@ process_file_list_file(char *filename)
     }
 
     while ((line = read_line(filename, fp, MAXFILENAME)) != NULL) {
-            /* Ignore blank lines */
+        /* Ignore blank lines */
         if (line[0] != '\0') {
             if (num_files >= size_of_files) {
                 size_of_files *= FACTOR;
                 files = (char **)
-                    realloc(files, size_of_files * sizeof(char *));
+                    checked_realloc(files, size_of_files * sizeof(char *));
 
                 if (files == NULL) {
                     fprintf(stderr, "%s: unable to realloc\n", MR_progname);
@@ -119,8 +118,7 @@ set_output_file(const char *output_file_name)
         if (result == NULL) {
             fprintf(stderr,
                 "%s: error opening output file `%s': %s\n",
-                MR_progname, output_file_name,
-                strerror(errno));
+                MR_progname, output_file_name, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
@@ -282,7 +280,6 @@ read_line(const char *filename, FILE *fp, int max)
     }
 }
 
-
 int
 get_line(FILE *file, char *line, int line_max)
 {
@@ -318,14 +315,27 @@ get_line(FILE *file, char *line, int line_max)
 void *
 checked_malloc(size_t size)
 {
-    void    *mem;
+    void    *ptr;
 
-    mem = malloc(size);
-    if (mem == NULL) {
+    ptr = malloc(size);
+    if (ptr == NULL) {
         fprintf(stderr, "Out of memory\n");
         exit(EXIT_FAILURE);
     }
-    return mem;
+    return ptr;
+}
+
+void *
+checked_realloc(void *old_ptr, size_t size)
+{
+    void    *ptr;
+
+    ptr = realloc(old_ptr, size);
+    if (ptr == NULL) {
+        fprintf(stderr, "Out of memory\n");
+        exit(EXIT_FAILURE);
+    }
+    return ptr;
 }
 
 char *
@@ -333,12 +343,7 @@ checked_strdup(const char *str)
 {
     char    *mem;
 
-    mem = malloc(strlen(str) + 1);
-    if (mem == NULL) {
-        fprintf(stderr, "Out of memory\n");
-        exit(EXIT_FAILURE);
-    }
-
+    mem = checked_malloc(strlen(str) + 1);
     strcpy(mem, str);
     return mem;
 }
@@ -348,12 +353,7 @@ checked_strdupcat(const char *str, const char *suffix)
 {
     char    *mem;
 
-    mem = malloc(strlen(str) + strlen(suffix) + 1);
-    if (mem == NULL) {
-        fprintf(stderr, "Out of memory\n");
-        exit(EXIT_FAILURE);
-    }
-
+    mem = checked_malloc(strlen(str) + strlen(suffix) + 1);
     strcpy(mem, str);
     strcat(mem, suffix);
     return mem;

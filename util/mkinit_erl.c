@@ -25,7 +25,7 @@
 **
 **      - scripts/c2init.in
 **      - compiler/compile_target_code.m
-**          in particular the predicates make_init_obj/7 and 
+**          in particular the predicates make_init_obj/7 and
 **          make_standalone_interface/3.
 **      - util/mkinit.c
 **
@@ -163,17 +163,17 @@ main(int argc, char **argv)
             /* Output a .init file */
             exit_status = output_lib_init_file();
             break;
-        
+
         case TASK_OUTPUT_INIT_PROG:
             /* Output a _init.erl file. */
             exit_status = output_init_program();
             break;
-        
+
         default:
             fprintf(stderr, "%s: unknown task\n", MR_progname);
             exit(EXIT_FAILURE);
     }
-    
+
     return exit_status;
 }
 
@@ -349,10 +349,10 @@ parse_options(int argc, char *argv[])
     }
 
     if (seen_f_option) {
-        /* 
+        /*
         ** -f could be made compatible if we copied the filenames
         ** from argv into files.
-        ** 
+        **
         */
         if ((argc - optind) > 0) {
             fprintf(stderr,
