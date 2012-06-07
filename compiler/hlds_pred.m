@@ -875,35 +875,38 @@
     pred_attributes::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- type pred_id     ==  int.
+:- type pred_id
+    --->    pred_id(int).
+
 :- type proc_id     ==  int.
 
-shroud_pred_id(PredId) = shrouded_pred_id(PredId).
+shroud_pred_id(pred_id(PredId)) = shrouded_pred_id(PredId).
 shroud_proc_id(ProcId) = shrouded_proc_id(ProcId).
-shroud_pred_proc_id(proc(PredId, ProcId)) =
+shroud_pred_proc_id(proc(pred_id(PredId), ProcId)) =
     shrouded_pred_proc_id(PredId, ProcId).
 
-unshroud_pred_id(shrouded_pred_id(PredId)) = PredId.
+unshroud_pred_id(shrouded_pred_id(PredId)) = pred_id(PredId).
 unshroud_proc_id(shrouded_proc_id(ProcId)) = ProcId.
 unshroud_pred_proc_id(shrouded_pred_proc_id(PredId, ProcId)) =
-    proc(PredId, ProcId).
+    proc(pred_id(PredId), ProcId).
 
-pred_id_to_int(PredId, PredId).
-pred_id_to_int(PredId) = PredId.
+pred_id_to_int(pred_id(PredId), PredId).
+pred_id_to_int(pred_id(PredId)) = PredId.
 
 proc_id_to_int(ProcId, ProcId).
 proc_id_to_int(ProcId) = ProcId.
 
-initial_pred_id = 0.
+initial_pred_id = pred_id(0).
 initial_proc_id = 0.
 
-invalid_pred_id = -1.
+invalid_pred_id = pred_id(-1).
 invalid_proc_id = -1.
 
-next_pred_id(PredId, NextPredId) :-
+next_pred_id(pred_id(PredId), pred_id(NextPredId)) :-
     NextPredId = PredId + 1.
 
 in_in_unification_proc_id(0).
