@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: hlds_code_util.m.
-% 
+%
 % Various utilities routines for use during HLDS generation.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -35,6 +35,15 @@
     %
 :- pred make_instance_string(list(mer_type)::in, string::out) is det.
 
+    % Given a type_ctor, return the cons_id that represents its type_ctor_info.
+    %
+:- func type_ctor_info_cons_id(type_ctor) = cons_id.
+
+    % Given a type_ctor, return the cons_id that represents its type_ctor_info.
+    %
+:- func base_typeclass_info_cons_id(instance_table,
+    prog_constraint, int, list(mer_type)) = cons_id.
+
     % Succeeds iff this inst is one that can be used in a valid
     % mutable declaration.
     %
@@ -46,6 +55,7 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
@@ -91,6 +101,12 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         ; ConsId = typeclass_info_cell_constructor
         ),
         Tag = unshared_tag(0)
+    ;
+        ConsId = type_info_const(TIConstNum),
+        Tag = type_info_const_tag(TIConstNum)
+    ;
+        ConsId = typeclass_info_const(TCIConstNum),
+        Tag = typeclass_info_const_tag(TCIConstNum)
     ;
         ConsId = tabling_info_const(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
@@ -139,14 +155,28 @@ make_instance_string(InstanceTypes, InstanceString) :-
 :- pred type_to_string(mer_type::in, string::out) is det.
 
 type_to_string(Type, String) :-
-    ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        TypeCtor = type_ctor(TypeName, TypeArity),
-        TypeNameString = sym_name_to_string_sep(TypeName, "__"),
-        string.int_to_string(TypeArity, TypeArityString),
-        String = TypeNameString ++ "__arity" ++ TypeArityString ++ "__"
-    ;
-        unexpected($module, $pred, "invalid type")
-    ).
+    type_to_ctor_det(Type, TypeCtor),
+    TypeCtor = type_ctor(TypeName, TypeArity),
+    TypeNameString = sym_name_to_string_sep(TypeName, "__"),
+    string.int_to_string(TypeArity, TypeArityString),
+    String = TypeNameString ++ "__arity" ++ TypeArityString ++ "__".
+
+%-----------------------------------------------------------------------------%
+
+type_ctor_info_cons_id(TypeCtor) = ConsId :-
+    type_ctor_module_name_arity(TypeCtor, ModuleName, Name, Arity),
+    ConsId = type_ctor_info_const(ModuleName, Name, Arity).
+
+base_typeclass_info_cons_id(InstanceTable, Constraint, InstanceNum,
+        InstanceTypes) = ConsId :-
+    Constraint = constraint(ClassName, ConstraintArgTypes),
+    ClassId = class_id(ClassName, list.length(ConstraintArgTypes)),
+    map.lookup(InstanceTable, ClassId, InstanceList),
+    list.det_index1(InstanceList, InstanceNum, InstanceDefn),
+    InstanceModuleName = InstanceDefn ^ instance_module,
+    make_instance_string(InstanceTypes, InstanceString),
+    ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
+        InstanceNum, InstanceString).
 
 %----------------------------------------------------------------------------%
 

@@ -1833,7 +1833,7 @@ mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
             ClassType = Type
         ;
             Type = mercury_type(MercuryType, ctor_cat_user(_), _),
-            type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes),
+            type_to_ctor(MercuryType, TypeCtor),
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
             ClassType = mlds_class_type(ClassName, ClassArity, mlds_class)
         )

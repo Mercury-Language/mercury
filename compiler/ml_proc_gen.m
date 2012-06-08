@@ -46,6 +46,7 @@
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen.
+:- import_module ml_backend.ml_unify_gen.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
@@ -192,11 +193,42 @@ foreign_type_required_imports(Target, _TypeCtor - TypeDefn) = Imports :-
 :- pred ml_gen_defns(module_info::in, module_info::out,
     list(mlds_defn)::out, ml_global_data::out) is det.
 
-ml_gen_defns(!ModuleInfo, Defns, GlobalData) :-
+ml_gen_defns(!ModuleInfo, Defns, !:GlobalData) :-
     ml_gen_types(!.ModuleInfo, TypeDefns),
     ml_gen_table_structs(!.ModuleInfo, TableStructDefns),
-    ml_gen_preds(!ModuleInfo, PredDefns, GlobalData),
+    ml_gen_init_common_data(!.ModuleInfo, !:GlobalData),
+    ml_gen_const_structs(!.ModuleInfo, ConstStructMap, !GlobalData),
+    ml_gen_preds(!ModuleInfo, ConstStructMap, PredDefns, !GlobalData),
     Defns = TypeDefns ++ TableStructDefns ++ PredDefns.
+
+:- pred ml_gen_init_common_data(module_info::in, ml_global_data::out) is det.
+
+ml_gen_init_common_data(ModuleInfo, GlobalData) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        ( Target = target_c
+        ; Target = target_csharp
+        ; Target = target_java
+        ),
+        UseCommonCells = use_common_cells
+    ;
+        ( Target = target_asm
+        ; Target = target_il
+        ; Target = target_erlang
+        ; Target = target_x86_64
+        ),
+        UseCommonCells = do_not_use_common_cells
+    ),
+    globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloats),
+    (
+        UnboxedFloats = yes,
+        HaveUnboxedFloats = have_unboxed_floats
+    ;
+        UnboxedFloats = no,
+        HaveUnboxedFloats = do_not_have_unboxed_floats
+    ),
+    GlobalData = ml_global_data_init(UseCommonCells, HaveUnboxedFloats).
 
 %-----------------------------------------------------------------------------%
 %
@@ -261,44 +293,22 @@ has_ptr_type(mlds_argument(_, mlds_ptr_type(_), _)).
     % (and functions) in the HLDS.
     %
 :- pred ml_gen_preds(module_info::in, module_info::out,
-    list(mlds_defn)::out, ml_global_data::out) is det.
+    ml_const_struct_map::in, list(mlds_defn)::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_preds(!ModuleInfo, PredDefns, GlobalData) :-
+ml_gen_preds(!ModuleInfo, ConstStructMap, PredDefns, !GlobalData) :-
     module_info_get_preds(!.ModuleInfo, PredTable),
     map.keys(PredTable, PredIds),
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    (
-        ( Target = target_c
-        ; Target = target_csharp
-        ; Target = target_java
-        ),
-        UseCommonCells = use_common_cells
-    ;
-        ( Target = target_asm
-        ; Target = target_il
-        ; Target = target_erlang
-        ; Target = target_x86_64
-        ),
-        UseCommonCells = do_not_use_common_cells
-    ),
-    globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloats),
-    (
-        UnboxedFloats = yes,
-        HaveUnboxedFloats = have_unboxed_floats
-    ;
-        UnboxedFloats = no,
-        HaveUnboxedFloats = do_not_have_unboxed_floats
-    ),
-    GlobalData0 = ml_global_data_init(UseCommonCells, HaveUnboxedFloats),
-    ml_gen_preds_2(!ModuleInfo, PredIds, [], PredDefns,
-         GlobalData0, GlobalData).
+    ml_gen_preds_acc(!ModuleInfo, ConstStructMap, PredIds, [], PredDefns,
+        !GlobalData).
 
-:- pred ml_gen_preds_2(module_info::in, module_info::out, list(pred_id)::in,
+:- pred ml_gen_preds_acc(module_info::in, module_info::out,
+    ml_const_struct_map::in, list(pred_id)::in,
     list(mlds_defn)::in, list(mlds_defn)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_preds_2(!ModuleInfo, PredIds0, !Defns, !GlobalDefns) :-
+ml_gen_preds_acc(!ModuleInfo, ConstStructMap, PredIds0,
+        !Defns, !GlobalDefns) :-
     (
         PredIds0 = [PredId | PredIds],
         module_info_get_preds(!.ModuleInfo, PredTable),
@@ -316,10 +326,11 @@ ml_gen_preds_2(!ModuleInfo, PredIds0, !Defns, !GlobalDefns) :-
         ->
             true
         ;
-            ml_gen_pred(!ModuleInfo, PredId, PredInfo, ImportStatus, !Defns,
-                !GlobalDefns)
+            ml_gen_pred(!ModuleInfo, ConstStructMap, PredId, PredInfo,
+                ImportStatus, !Defns, !GlobalDefns)
         ),
-        ml_gen_preds_2(!ModuleInfo, PredIds, !Defns, !GlobalDefns)
+        ml_gen_preds_acc(!ModuleInfo, ConstStructMap, PredIds,
+            !Defns, !GlobalDefns)
     ;
         PredIds0 = []
     ).
@@ -327,13 +338,13 @@ ml_gen_preds_2(!ModuleInfo, PredIds0, !Defns, !GlobalDefns) :-
     % Generate MLDS definitions for all the non-imported procedures
     % of a given predicate (or function).
     %
-:- pred ml_gen_pred(module_info::in, module_info::out, pred_id::in,
-    pred_info::in, import_status::in,
+:- pred ml_gen_pred(module_info::in, module_info::out, ml_const_struct_map::in,
+    pred_id::in, pred_info::in, import_status::in,
     list(mlds_defn)::in, list(mlds_defn)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_pred(!ModuleInfo, PredId, PredInfo, ImportStatus, !Defns,
-        !GlobalData) :-
+ml_gen_pred(!ModuleInfo, ConstStructMap, PredId, PredInfo, ImportStatus,
+        !Defns, !GlobalData) :-
     ( ImportStatus = status_external(_) ->
         ProcIds = pred_info_procids(PredInfo)
     ;
@@ -347,29 +358,34 @@ ml_gen_pred(!ModuleInfo, PredId, PredInfo, ImportStatus, !Defns,
             write_pred_progress_message("% Generating MLDS code for ",
                 PredId, !.ModuleInfo, !IO)
         ),
-        ml_gen_procs(!ModuleInfo, PredId, ProcIds, !Defns, !GlobalData)
+        ml_gen_procs(!ModuleInfo, ConstStructMap, PredId, ProcIds,
+            !Defns, !GlobalData)
     ).
 
 :- pred ml_gen_procs(module_info::in, module_info::out,
-    pred_id::in, list(proc_id)::in,
+    ml_const_struct_map::in, pred_id::in, list(proc_id)::in,
     list(mlds_defn)::in, list(mlds_defn)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_procs(!ModuleInfo, _, [], !Defns, !GlobalData).
-ml_gen_procs(!ModuleInfo, PredId, [ProcId | ProcIds], !Defns, !GlobalData) :-
-    ml_gen_proc(!ModuleInfo, PredId, ProcId, !Defns, !GlobalData),
-    ml_gen_procs(!ModuleInfo, PredId, ProcIds, !Defns, !GlobalData).
+ml_gen_procs(!ModuleInfo, _, _, [], !Defns, !GlobalData).
+ml_gen_procs(!ModuleInfo, ConstStructMap, PredId, [ProcId | ProcIds],
+        !Defns, !GlobalData) :-
+    ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
+        !Defns, !GlobalData),
+    ml_gen_procs(!ModuleInfo, ConstStructMap, PredId, ProcIds,
+        !Defns, !GlobalData).
 
 %-----------------------------------------------------------------------------%
 %
 % Code for handling individual procedures.
 %
 
-:- pred ml_gen_proc(module_info::in, module_info::out,
+:- pred ml_gen_proc(module_info::in, module_info::out, ml_const_struct_map::in,
     pred_id::in, proc_id::in, list(mlds_defn)::in, list(mlds_defn)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_proc(!ModuleInfo, PredId, ProcId, !Defns, !GlobalData) :-
+ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
+        !Defns, !GlobalData) :-
     % The specification of the HLDS allows goal_infos to overestimate
     % the set of non-locals. Such overestimates are bad for us for two reasons:
     %
@@ -400,8 +416,8 @@ ml_gen_proc(!ModuleInfo, PredId, ProcId, !Defns, !GlobalData) :-
     Context = goal_info_get_context(GoalInfo),
 
     some [!Info] (
-        !:Info = ml_gen_info_init(!.ModuleInfo, PredId, ProcId, ProcInfo,
-            !.GlobalData),
+        !:Info = ml_gen_info_init(!.ModuleInfo, ConstStructMap,
+            PredId, ProcId, ProcInfo, !.GlobalData),
 
         ( ImportStatus = status_external(_) ->
             % For Mercury procedures declared `:- external', we generate an

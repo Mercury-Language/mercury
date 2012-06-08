@@ -1668,6 +1668,14 @@ mercury_format_cons_id(ConsId, NeedsBrackets, !U) :-
         ConsId = typeclass_info_cell_constructor,
         add_string("<typeclass_info_cell_constructor>", !U)
     ;
+        ConsId = type_info_const(TIConstNum),
+        add_string("<type_info_cell_constructor " ++
+            int_to_string(TIConstNum) ++ ">", !U)
+    ;
+        ConsId = typeclass_info_const(TCIConstNum),
+        add_string("<typeclass_info_cell_constructor " ++
+            int_to_string(TCIConstNum) ++ ">", !U)
+    ;
         ConsId = tabling_info_const(_),
         add_string("<tabling info>", !U)
     ;

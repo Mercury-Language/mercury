@@ -132,6 +132,15 @@
                 tis_stats                   :: table_attr_statistics
             ).
 
+:- type typed_rval
+    --->    typed_rval(rval, llds_type).
+
+:- func typed_rvals_project_rvals(list(typed_rval)) = list(rval).
+:- func typed_rvals_project_types(list(typed_rval)) = list(llds_type).
+
+:- pred build_typed_rvals(list(rval)::in, list(llds_type)::in,
+    list(typed_rval)::out) is det.
+
 :- type common_cell_type 
     --->    plain_type(list(llds_type))
             % The type is a structure with one field for each one
@@ -142,7 +151,7 @@
             % at least two elements of the same llds_type.
 
 :- type common_cell_value
-    --->    plain_value(assoc_list(rval, llds_type))
+    --->    plain_value(list(typed_rval))
     ;       grouped_args_value(list(common_cell_arg_group)).
 
 :- type common_cell_arg_group
@@ -194,6 +203,12 @@
                 % The array elements, starting at offset 0.
                 vcda_values     :: list(common_cell_value)
             ).
+
+    % This maps the integer that identifies a constant structure
+    % (the key of a const_struct in const_struct_db ^ csdb_structs)
+    % to the rval representing the const_struct.
+    %
+:- type const_struct_map == map(int, typed_rval).
 
 :- type comp_gen_c_module
     --->    comp_gen_c_module(
@@ -1500,6 +1515,25 @@
 
 :- import_module int.
 :- import_module require.
+
+%-----------------------------------------------------------------------------%
+
+typed_rvals_project_rvals([]) = [].
+typed_rvals_project_rvals([typed_rval(Rval, _Type) | TypedRvals]) =
+    [Rval | typed_rvals_project_rvals(TypedRvals)].
+
+typed_rvals_project_types([]) = [].
+typed_rvals_project_types([typed_rval(_Rval, Type) | TypedRvals]) =
+    [Type | typed_rvals_project_types(TypedRvals)].
+
+build_typed_rvals([], [], []).
+build_typed_rvals([_|_], [], _) :-
+    unexpected($module, $pred, "length mismatch").
+build_typed_rvals([], [_|_], _) :-
+    unexpected($module, $pred, "length mismatch").
+build_typed_rvals([Rval | Rvals], [Type | Types], [TypedRval | TypedRvals]) :-
+    TypedRval = typed_rval(Rval, Type),
+    build_typed_rvals(Rvals, Types, TypedRvals).
 
 %-----------------------------------------------------------------------------%
 

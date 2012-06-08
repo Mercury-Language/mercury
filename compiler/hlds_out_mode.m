@@ -489,9 +489,17 @@ inst_uniqueness(mostly_clobbered, _) = "mostly_clobbered".
 :- func bound_insts_to_term(output_lang, prog_context, list(bound_inst))
     = prog_term.
 
-bound_insts_to_term(_, _, []) = _ :-
-    unexpected($module, $pred, "bound_insts_to_term([])").
-bound_insts_to_term(Lang, Context, [BoundInst | BoundInsts]) = Term :-
+bound_insts_to_term(_, Context, []) =
+    % This shouldn't happen, but when it does, the problem is a LOT easier
+    % to debug if there is a HLDS dump you can read.
+    term.functor(term.atom("EMPTY_BOUND_INSTS"), [], Context).
+bound_insts_to_term(Lang, Context, [BoundInst | BoundInsts]) =
+    bound_insts_to_term_2(Lang, Context, BoundInst, BoundInsts).
+
+:- func bound_insts_to_term_2(output_lang, prog_context,
+    bound_inst, list(bound_inst)) = prog_term.
+
+bound_insts_to_term_2(Lang, Context, BoundInst, BoundInsts) = Term :-
     BoundInst = bound_functor(ConsId, Args),
     ArgTerms = list.map(inst_to_term_with_context(Lang, Context), Args),
     cons_id_and_args_to_term_full(ConsId, ArgTerms, FirstTerm),
@@ -499,10 +507,11 @@ bound_insts_to_term(Lang, Context, [BoundInst | BoundInsts]) = Term :-
         BoundInsts = [],
         Term = FirstTerm
     ;
-        BoundInsts = [_ | _],
+        BoundInsts = [HeadBoundInst | TailBoundInsts],
+        SecondTerm = bound_insts_to_term_2(Lang, Context,
+            HeadBoundInst, TailBoundInsts),
         construct_qualified_term_with_context(unqualified(";"),
-            [FirstTerm, bound_insts_to_term(Lang, Context, BoundInsts)],
-            Context, Term)
+            [FirstTerm, SecondTerm], Context, Term)
     ).
 
 :- pred cons_id_and_args_to_term_full(cons_id::in, list(prog_term)::in,
@@ -566,6 +575,18 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         term.context_init(Context),
         FunctorName = "typeclass_info_cell_constructor",
         Term = term.functor(term.string(FunctorName), [], Context)
+    ;
+        ConsId = type_info_const(TIConstNum),
+        term.context_init(Context),
+        FunctorName = "type_info_const",
+        Arg = term.functor(term.integer(TIConstNum), [], Context),
+        Term = term.functor(term.string(FunctorName), [Arg], Context)
+    ;
+        ConsId = typeclass_info_const(TCIConstNum),
+        term.context_init(Context),
+        FunctorName = "typeclass_info_const",
+        Arg = term.functor(term.integer(TCIConstNum), [], Context),
+        Term = term.functor(term.string(FunctorName), [Arg], Context)
     ;
         ConsId = tabling_info_const(_),
         term.context_init(Context),

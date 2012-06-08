@@ -696,6 +696,12 @@ functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
             term.atom("typeclass_info_cell_constructor"),
             ArgVars, VarSet, AppendVarNums, next_to_graphic_token)
     ;
+        ConsId = type_info_const(TIConstNum),
+        Str = "type_info_const(" ++ int_to_string(TIConstNum) ++ ")"
+    ;
+        ConsId = typeclass_info_const(TCIConstNum),
+        Str = "typeclass_info_const(" ++ int_to_string(TCIConstNum) ++ ")"
+    ;
         ConsId = tabling_info_const(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         proc_id_to_int(ProcId, ProcIdInt),
@@ -780,6 +786,12 @@ cons_id_and_arity_to_string(ConsId) = String :-
     ;
         ConsId = typeclass_info_cell_constructor,
         String = "<typeclass_info_cell_constructor>"
+    ;
+        ConsId = type_info_const(_),
+        String = "<type_info_const>"
+    ;
+        ConsId = typeclass_info_const(_),
+        String = "<typeclass_info_const>"
     ;
         ConsId = tabling_info_const(PredProcId),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),
@@ -898,6 +910,12 @@ cons_id_and_vars_or_arity_to_string(Qual, VarSet, ConsId, MaybeArgVars)
     ;
         ConsId = typeclass_info_cell_constructor,
         String = "<typeclass_info_cell_constructor>"
+    ;
+        ConsId = type_info_const(_),
+        String = "<type_info_const>"
+    ;
+        ConsId = typeclass_info_const(_),
+        String = "<typeclass_info_const>"
     ;
         ConsId = tabling_info_const(PredProcId),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),

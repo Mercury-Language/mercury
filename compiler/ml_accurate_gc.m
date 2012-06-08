@@ -111,34 +111,41 @@ ml_gen_gc_statement(VarName, Type, Context, GCStatement, !Info) :-
 
 ml_gen_gc_statement_poly(VarName, DeclType, ActualType, Context,
         GCStatement, !Info) :-
-    HowToGetTypeInfo = construct_from_type(ActualType),
-    ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo, Context,
-        GCStatement, !Info).
+    ml_gen_info_get_gc(!.Info, GC),
+    ( GC = gc_accurate ->
+        HowToGetTypeInfo = construct_from_type(ActualType),
+        ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
+            GCStatement, !Info)
+    ;
+        GCStatement = gc_no_stmt
+    ).
 
 ml_gen_gc_statement_with_typeinfo(VarName, DeclType, TypeInfoRval, Context,
         GCStatement, !Info) :-
-    HowToGetTypeInfo = already_provided(TypeInfoRval),
-    ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo, Context,
-        GCStatement, !Info).
+    ml_gen_info_get_gc(!.Info, GC),
+    ( GC = gc_accurate ->
+        HowToGetTypeInfo = already_provided(TypeInfoRval),
+        ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
+            GCStatement, !Info)
+    ;
+        GCStatement = gc_no_stmt
+    ).
 
 :- type how_to_get_type_info
     --->    construct_from_type(mer_type)
     ;       already_provided(mlds_rval).
 
-:- pred ml_gen_gc_statement_2(mlds_var_name::in, mer_type::in,
+:- pred ml_do_gen_gc_statement(mlds_var_name::in, mer_type::in,
     how_to_get_type_info::in, prog_context::in,
     mlds_gc_statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_gc_statement_2(VarName, DeclType, HowToGetTypeInfo, Context,
+ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
         GCStatement, !Info) :-
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_gc_method(Globals, GC),
     (
-        GC = gc_accurate,
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
         MLDS_DeclType = mercury_type_to_mlds_type(ModuleInfo, DeclType),
         ml_type_might_contain_pointers_for_gc(MLDS_DeclType) = yes,
-        % don't generate GC tracing code in no_type_info_builtins
+        % Don't generate GC tracing code in no_type_info_builtins.
         ml_gen_info_get_pred_id(!.Info, PredId),
         predicate_id(ModuleInfo, PredId, PredModule, PredName, PredArity),
         \+ no_type_info_builtin(PredModule, PredName, PredArity)

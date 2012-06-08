@@ -26,6 +26,7 @@
 
 :- import_module analysis.
 :- import_module check_hlds.unify_proc.
+:- import_module hlds.const_struct.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
@@ -525,6 +526,12 @@
 :- pred module_info_set_event_set(event_set::in,
     module_info::in, module_info::out) is det.
 
+:- pred module_info_get_const_struct_db(module_info::in,
+    const_struct_db::out) is det.
+
+:- pred module_info_set_const_struct_db(const_struct_db::in,
+    module_info::in, module_info::out) is det.
+
 :- pred module_info_get_ts_rev_string_table(module_info::in, int::out,
     list(string)::out) is det.
 
@@ -688,21 +695,21 @@
 
 :- type module_info
     --->    module_info(
-                mi_sub_info                    :: module_sub_info,
-                mi_predicate_table             :: predicate_table,
-                mi_proc_requests               :: proc_requests,
-                mi_special_pred_map            :: special_pred_map,
-                mi_partial_qualifier_info      :: partial_qualifier_info,
-                mi_type_table                  :: type_table,
-                mi_inst_table                  :: inst_table,
-                mi_mode_table                  :: mode_table,
-                mi_cons_table                  :: cons_table,
-                mi_class_table                 :: class_table,
-                mi_instance_table              :: instance_table,
-                mi_assertion_table             :: assertion_table,
-                mi_exclusive_table             :: exclusive_table,
-                mi_ctor_field_table            :: ctor_field_table,
-                mi_maybe_recompilation_info    :: maybe(recompilation_info)
+/* 01 */        mi_sub_info                    :: module_sub_info,
+/* 02 */        mi_predicate_table             :: predicate_table,
+/* 03 */        mi_proc_requests               :: proc_requests,
+/* 04 */        mi_special_pred_map            :: special_pred_map,
+/* 05 */        mi_partial_qualifier_info      :: partial_qualifier_info,
+/* 06 */        mi_type_table                  :: type_table,
+/* 07 */        mi_inst_table                  :: inst_table,
+/* 08 */        mi_mode_table                  :: mode_table,
+/* 09 */        mi_cons_table                  :: cons_table,
+/* 10 */        mi_class_table                 :: class_table,
+/* 11 */        mi_instance_table              :: instance_table,
+/* 12 */        mi_assertion_table             :: assertion_table,
+/* 13 */        mi_exclusive_table             :: exclusive_table,
+/* 14 */        mi_ctor_field_table            :: ctor_field_table,
+/* 15 */        mi_maybe_recompilation_info    :: maybe(recompilation_info)
             ).
 
 :- type module_sub_info
@@ -835,6 +842,11 @@
 
                 msi_event_set                   :: event_set,
 
+                % The database of constant structures the code generator
+                % will generate independently, outside all the procedures
+                % of the program.
+                msi_const_struct_db             :: const_struct_db,
+
                 % A table of strings used by some threadscope events.
                 % Currently threadscope events are introduced for each future
                 % in dep_par_conj.m which is why we need to record the table
@@ -896,6 +908,7 @@ module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
     set.init(InterfaceModuleSpecs),
     ExportedEnums = [],
     EventSet = event_set("", map.init),
+    const_struct_db_init(Globals, ConstStructDb),
     TSStringTableSize = 0,
     TSRevStringTable = [],
 
@@ -911,7 +924,8 @@ module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
         MaybeComplexityMap, ComplexityProcInfos,
         AnalysisInfo, UserInitPredCNames, UserFinalPredCNames,
         StructureReusePredIds, UsedModules, InterfaceModuleSpecs,
-        ExportedEnums, EventSet, TSStringTableSize, TSRevStringTable),
+        ExportedEnums, EventSet, ConstStructDb,
+        TSStringTableSize, TSRevStringTable),
 
     predicate_table_init(PredicateTable),
     unify_proc.init_requests(Requests),
@@ -1044,6 +1058,7 @@ module_info_get_interface_module_specifiers(MI,
     MI ^ mi_sub_info ^ msi_interface_module_specifiers).
 module_info_get_exported_enums(MI, MI ^ mi_sub_info ^ msi_exported_enums).
 module_info_get_event_set(MI, MI ^ mi_sub_info ^ msi_event_set).
+module_info_get_const_struct_db(MI, MI ^ mi_sub_info ^ msi_const_struct_db).
 module_info_get_ts_rev_string_table(MI,
     MI ^ mi_sub_info ^ msi_ts_string_table_size,
     MI ^ mi_sub_info ^ msi_ts_rev_string_table).
@@ -1204,6 +1219,8 @@ module_info_set_used_modules(UsedModules, !MI) :-
     !MI ^ mi_sub_info ^ msi_used_modules := UsedModules.
 module_info_set_event_set(EventSet, !MI) :-
     !MI ^ mi_sub_info ^ msi_event_set := EventSet.
+module_info_set_const_struct_db(ConstStructDb, !MI) :-
+    !MI ^ mi_sub_info ^ msi_const_struct_db := ConstStructDb.
 module_info_set_ts_rev_string_table(Size, RevTable, !MI) :-
     !MI ^ mi_sub_info ^ msi_ts_string_table_size := Size,
     !MI ^ mi_sub_info ^ msi_ts_rev_string_table := RevTable.

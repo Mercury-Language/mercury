@@ -113,9 +113,9 @@
     %
 :- pred code_info_init(bool::in, globals::in, pred_id::in, proc_id::in,
     pred_info::in, proc_info::in, abs_follow_vars::in, module_info::in,
-    static_cell_info::in, resume_point_info::out, trace_slot_info::out,
-    maybe(containing_goal_map)::in, list(string)::in, int::in, code_info::out)
-    is det.
+    static_cell_info::in, const_struct_map::in, resume_point_info::out,
+    trace_slot_info::out, maybe(containing_goal_map)::in,
+    list(string)::in, int::in, code_info::out) is det.
 
     % Get the globals table.
     %
@@ -247,6 +247,8 @@
 
 :- pred get_containing_goal_map_det(code_info::in, containing_goal_map::out)
     is det.
+
+:- pred get_const_struct_map(code_info::in, const_struct_map::out) is det.
 
 :- pred add_out_of_line_code(llds_code::in, code_info::in, code_info::out)
     is det.
@@ -395,7 +397,11 @@
                 % The setting of --optimize-constructor-last-call-null.
                 cis_lcmc_null           :: bool,
 
-                cis_containing_goal_map :: maybe(containing_goal_map)
+                cis_containing_goal_map :: maybe(containing_goal_map),
+
+                % Maps the number of an entry in the module's const_struct_db
+                % to its rval.
+                cis_const_struct_map    :: const_struct_map
             ).
 
 :- type code_info_loc_dep
@@ -503,9 +509,9 @@
 %---------------------------------------------------------------------------%
 
 code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
-        FollowVars, ModuleInfo, StaticCellInfo, ResumePoint, TraceSlotInfo,
-        MaybeContainingGoalMap, TSRevStringTable, TSStringTableSize,
-        CodeInfo) :-
+        FollowVars, ModuleInfo, StaticCellInfo, ConstStructMap, ResumePoint,
+        TraceSlotInfo, MaybeContainingGoalMap,
+        TSRevStringTable, TSStringTableSize, CodeInfo) :-
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
     proc_info_get_liveness_info(ProcInfo, Liveness),
@@ -602,7 +608,8 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             OptRegionOps,
             AutoComments,
             LCMCNull,
-            MaybeContainingGoalMap
+            MaybeContainingGoalMap,
+            ConstStructMap
         ),
         code_info_loc_dep(
             Liveness,
@@ -748,6 +755,7 @@ get_opt_region_ops(CI, CI ^ code_info_static ^ cis_opt_region_ops).
 get_auto_comments(CI, CI ^ code_info_static ^ cis_auto_comments).
 get_lcmc_null(CI, CI ^ code_info_static ^ cis_lcmc_null).
 get_containing_goal_map(CI, CI ^ code_info_static ^ cis_containing_goal_map).
+get_const_struct_map(CI, CI ^ code_info_static ^ cis_const_struct_map).
 get_forward_live_vars(CI, CI ^ code_info_loc_dep ^ cild_forward_live_vars).
 get_instmap(CI, CI ^ code_info_loc_dep ^ cild_instmap).
 get_zombies(CI, CI ^ code_info_loc_dep ^ cild_zombies).
@@ -969,7 +977,7 @@ get_out_of_line_code(CI, CI ^ code_info_persistent ^ cip_out_of_line_code).
 :- pred get_threadscope_rev_string_table(code_info::in,
     list(string)::out, int::out) is det.
 
-:- pred add_scalar_static_cell(assoc_list(rval, llds_type)::in,
+:- pred add_scalar_static_cell(list(typed_rval)::in,
     data_id::out, code_info::in, code_info::out) is det.
 
 :- pred add_scalar_static_cell_natural_types(list(rval)::in,
@@ -1077,7 +1085,7 @@ variable_is_of_dummy_type(CI, Var) = IsDummy :-
 
 search_type_defn(CI, Type, TypeDefn) :-
     get_module_info(CI, ModuleInfo),
-    type_to_ctor_and_args_det(Type, TypeCtor, _),
+    type_to_ctor_det(Type, TypeCtor),
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
 

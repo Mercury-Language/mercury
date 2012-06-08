@@ -425,7 +425,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
         ->
             FreeOfCost = no
         ;
-            type_to_ctor_and_args(Type, TypeCtor, _),
+            type_to_ctor(Type, TypeCtor),
             ModuleInfo = IntParams ^ ip_module_info,
             module_info_get_type_table(ModuleInfo, TypeTable),
             lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),

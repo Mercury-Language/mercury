@@ -34,9 +34,11 @@
 
     % Given a type_ctor, look up its module/name/arity.
     %
-:- func type_ctor_module(module_info, type_ctor) = module_name.
-:- func type_ctor_name(module_info, type_ctor) = string.
-:- func type_ctor_arity(module_info, type_ctor) = arity.
+:- func type_ctor_module(type_ctor) = module_name.
+:- func type_ctor_name(type_ctor) = string.
+:- func type_ctor_arity(type_ctor) = arity.
+:- pred type_ctor_module_name_arity(type_ctor::in,
+    module_name::out, string::out, arity::out) is det.
 
     % Succeed iff type is an "atomic" type - one which can be unified
     % using a simple_test rather than a complicated_unify.
@@ -380,13 +382,20 @@
 
 %-----------------------------------------------------------------------------%
 
-type_ctor_module(_ModuleInfo, type_ctor(TypeSymName, _Arity)) = ModuleName :-
+type_ctor_module(type_ctor(TypeSymName, _Arity)) = ModuleName :-
     sym_name_get_module_name_default(TypeSymName, unqualified(""), ModuleName).
 
-type_ctor_name(_ModuleInfo, type_ctor(TypeSymName, _Arity)) =
+type_ctor_name(type_ctor(TypeSymName, _Arity)) =
     unqualify_name(TypeSymName).
 
-type_ctor_arity(_ModuleInfo, type_ctor(_Name, Arity)) = Arity.
+type_ctor_arity(type_ctor(_TypeSymName, Arity)) = Arity.
+
+type_ctor_module_name_arity(type_ctor(TypeSymName, Arity), ModuleName, Name,
+        Arity) :-
+    sym_name_get_module_name_default_name(TypeSymName, unqualified(""),
+        ModuleName, Name).
+
+%-----------------------------------------------------------------------------%
 
 type_is_atomic(ModuleInfo, Type) :-
     type_to_ctor(Type, TypeCtor),

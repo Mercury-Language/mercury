@@ -24,7 +24,6 @@
 :- import_module mdbcomp.prim_data.     % for module_name
 :- import_module parse_tree.prog_data.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 :- import_module map.
@@ -84,7 +83,7 @@
 :- func init_static_cell_info(module_name, have_unboxed_floats, bool)
     = static_cell_info.
 
-:- pred add_scalar_static_cell(assoc_list(rval, llds_type)::in, data_id::out,
+:- pred add_scalar_static_cell(list(typed_rval)::in, data_id::out,
     static_cell_info::in, static_cell_info::out) is det.
 
 :- pred add_scalar_static_cell_natural_types(list(rval)::in, data_id::out,
@@ -156,6 +155,7 @@
 
 :- import_module ll_backend.layout.
 
+:- import_module assoc_list.
 :- import_module bimap.
 :- import_module counter.
 :- import_module int.
@@ -372,7 +372,7 @@ add_scalar_static_cell(ArgsTypes0, DataId, !Info) :-
     % so that the generated C structure isn't empty.
     (
         ArgsTypes0 = [],
-        ArgsTypes = [const(llconst_int(-1)) - lt_integer]
+        ArgsTypes = [typed_rval(const(llconst_int(-1)), lt_integer)]
     ;
         ArgsTypes0 = [_ | _],
         ArgsTypes = ArgsTypes0
@@ -381,12 +381,12 @@ add_scalar_static_cell(ArgsTypes0, DataId, !Info) :-
     do_add_scalar_static_cell(ArgsTypes, CellType, CellTypeAndValue, DataId,
         !Info).
 
-:- pred do_add_scalar_static_cell(assoc_list(rval, llds_type)::in,
+:- pred do_add_scalar_static_cell(list(typed_rval)::in,
     common_cell_type::in, common_cell_value::in, data_id::out,
     static_cell_info::in, static_cell_info::out) is det.
 
-do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataId, !Info) :-
-    assoc_list.keys(ArgsTypes, Args),
+do_add_scalar_static_cell(TypedArgs, CellType, CellValue, DataId, !Info) :-
+    Args = typed_rvals_project_rvals(TypedArgs),
     some [!CellGroup] (
         TypeNumMap0 = !.Info ^ sci_cell_type_num_map,
         CellGroupMap0 = !.Info ^ sci_scalar_cell_group_map,
@@ -555,8 +555,8 @@ init_vector_cell_group = vector_cell_group(counter.init(0), map.init).
 
 :- func pair_vector_element(list(llds_type), list(rval)) = common_cell_value.
 
-pair_vector_element(Types, Args) = plain_value(ArgsTypes) :-
-    assoc_list.from_corresponding_lists(Args, Types, ArgsTypes).
+pair_vector_element(Types, Args) = plain_value(TypedArgs) :-
+    build_typed_rvals(Args, Types, TypedArgs).
 
 %-----------------------------------------------------------------------------%
 
@@ -605,27 +605,27 @@ add_one_vector_static_cell(TypeNum, CellType, CellNum,
 
 %-----------------------------------------------------------------------------%
 
-:- pred compute_cell_type(assoc_list(rval, llds_type)::in,
+:- pred compute_cell_type(list(typed_rval)::in,
     common_cell_type::out, common_cell_value::out) is det.
 
-compute_cell_type(ArgsTypes, CellType, CellValue) :-
+compute_cell_type(TypedArgs, CellType, CellValue) :-
     (
-        ArgsTypes = [FirstArg - FirstArgType | LaterArgsTypes],
-        threshold_group_types(FirstArgType, [FirstArg], LaterArgsTypes,
+        TypedArgs = [typed_rval(FirstArg, FirstArgType) | LaterTypedArgs],
+        threshold_group_types(FirstArgType, [FirstArg], LaterTypedArgs,
             TypeGroups, TypeAndArgGroups),
-        OldLength = list.length(ArgsTypes),
+        OldLength = list.length(TypedArgs),
         NewLength = list.length(TypeAndArgGroups),
         OldLength >= NewLength * 2
     ->
         CellType = grouped_args_type(TypeGroups),
         CellValue = grouped_args_value(TypeAndArgGroups)
     ;
-        CellType = plain_type(assoc_list.values(ArgsTypes)),
-        CellValue = plain_value(ArgsTypes)
+        CellType = plain_type(typed_rvals_project_types(TypedArgs)),
+        CellValue = plain_value(TypedArgs)
     ).
 
 :- pred threshold_group_types(llds_type::in, list(rval)::in,
-    assoc_list(rval, llds_type)::in, assoc_list(llds_type, int)::out,
+    list(typed_rval)::in, assoc_list(llds_type, int)::out,
     list(common_cell_arg_group)::out) is semidet.
 
 threshold_group_types(CurType, RevArgsSoFar, LaterArgsTypes, TypeGroups,
@@ -636,7 +636,7 @@ threshold_group_types(CurType, RevArgsSoFar, LaterArgsTypes, TypeGroups,
         TypeGroups = [TypeGroup],
         TypeAndArgGroups = [TypeAndArgGroup]
     ;
-        LaterArgsTypes = [NextArg - NextType | MoreArgsTypes],
+        LaterArgsTypes = [typed_rval(NextArg, NextType) | MoreArgsTypes],
         ( CurType = NextType ->
             threshold_group_types(CurType, [NextArg | RevArgsSoFar],
                 MoreArgsTypes, TypeGroups, TypeAndArgGroups)
@@ -684,9 +684,9 @@ natural_type(UnboxFloat, ArgWidth, Rval, Type) :-
     ).
 
 :- pred associate_natural_type(have_unboxed_floats::in, arg_width::in,
-    rval::in, pair(rval, llds_type)::out) is det.
+    rval::in, typed_rval::out) is det.
 
-associate_natural_type(UnboxFloat, ArgWidth, Rval, Rval - Type) :-
+associate_natural_type(UnboxFloat, ArgWidth, Rval, typed_rval(Rval, Type)) :-
     natural_type(UnboxFloat, ArgWidth, Rval, Type).
 
 %-----------------------------------------------------------------------------%
@@ -971,9 +971,9 @@ remap_common_cell_value(Remap, !CommonCellValue) :-
     ).
 
 :- pred remap_plain_value(static_cell_remap_info::in,
-    pair(rval, llds_type)::in, pair(rval, llds_type)::out) is det.
+    typed_rval::in, typed_rval::out) is det.
 
-remap_plain_value(Remap, Rval0 - Type, Rval - Type) :-
+remap_plain_value(Remap, typed_rval(Rval0, Type), typed_rval(Rval, Type)) :-
     remap_rval(Remap, Rval0, Rval).
 
 :- pred remap_arg_group_value(static_cell_remap_info::in,

@@ -705,7 +705,7 @@ build_abstract_switch_acc(SwitchProgVar, [Case | Cases], !AbstractGoals,
         SizeVarMap  = !.Info ^ tti_size_var_map,
         map.lookup(TypeMap, SwitchProgVar, SwitchVarType),
         SwitchSizeVar = prog_var_to_size_var(SizeVarMap, SwitchProgVar),
-        type_to_ctor_and_args_det(SwitchVarType, TypeCtor, _),
+        type_to_ctor_det(SwitchVarType, TypeCtor),
         ModuleInfo = !.Info ^ tti_module_info,
         Norm = !.Info ^ tti_norm,
         Zeros = !.Info ^ tti_zeros,
@@ -866,9 +866,9 @@ build_abstract_unification(Unification, AbstractGoal, !Info) :-
         unexpected($module, $pred, "complicated_unify")
     ).
 
-    % Used for deconstruction and construction unifications.  e.g. for a
-    % unification of the form: X = f(U, V, W), if the norm counts the
-    % first and second arguments then the constraint returned is |X| -
+    % Used for deconstruction and construction unifications, i.e. for
+    % unifications of the form: X = f(U, V, W). If the norm counts the
+    % first and second arguments, then the constraint returned is |X| -
     % |U| - |V| = |f|.  (|X| is the size_var corresponding to X).
     %
 :- pred build_abstract_decon_or_con_unify(prog_var::in, cons_id::in,
@@ -879,9 +879,14 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         !Info) :-
     VarTypes = !.Info ^ tti_vartypes,
     map.lookup(VarTypes, Var, Type),
-    ( type_is_higher_order(Type) ->
+    (
         % The only valid higher-order unifications are assignments.
         % For the purposes of the IR analysis, we can ignore them.
+        % We can also ignore unifications that build constant terms.
+        ( type_is_higher_order(Type)
+        ; cons_id_is_const_struct(ConsId, _)
+        )
+    ->
         Constraints = []
     ;
         % We need to strip out any typeinfo related variables before

@@ -70,7 +70,7 @@
     closure_layout_info::in, proc_label::in, module_name::in,
     string::in, int::in, pred_origin::in, string::in,
     static_cell_info::in, static_cell_info::out,
-    assoc_list(rval, llds_type)::out, closure_proc_id_data::out) is det.
+    list(typed_rval)::out, closure_proc_id_data::out) is det.
 
 :- pred convert_table_arg_info(table_arg_infos::in, int::out,
     rval::out, rval::out, static_cell_info::in, static_cell_info::out) is det.
@@ -314,8 +314,7 @@ build_event_arg_type_info_map(EventSpec, !EventArgTypeInfoMap,
     Rval = const(llconst_data_addr(TypesDataAddr, no)),
     map.det_insert(EventNumber, Rval, !EventArgTypeInfoMap).
 
-:- pred build_event_arg_type_info(event_attribute::in,
-    pair(rval, llds_type)::out,
+:- pred build_event_arg_type_info(event_attribute::in, typed_rval::out,
     static_cell_info::in, static_cell_info::out) is det.
 
 build_event_arg_type_info(Attr, TypeRvalAndType, !StaticCellInfo) :-
@@ -324,7 +323,7 @@ build_event_arg_type_info(Attr, TypeRvalAndType, !StaticCellInfo) :-
     NumUnivQTvars = -1,
     ll_pseudo_type_info.construct_typed_llds_pseudo_type_info(Type,
         NumUnivQTvars, ExistQTvars, !StaticCellInfo, TypeRval, TypeRvalType),
-    TypeRvalAndType = TypeRval - TypeRvalType.
+    TypeRvalAndType = typed_rval(TypeRval, TypeRvalType).
 
 %---------------------------------------------------------------------------%
 
@@ -1081,11 +1080,10 @@ convert_slot_to_locn_map(SlotLocn, LvalLocns) :-
     ),
     LvalLocns = set.make_singleton_set(LvalLocn).
 
-:- pred construct_table_arg_pti_rval(
-    table_arg_info::in, pair(rval, llds_type)::out,
+:- pred construct_table_arg_pti_rval(table_arg_info::in, typed_rval::out,
     static_cell_info::in, static_cell_info::out) is det.
 
-construct_table_arg_pti_rval(ClosureArg, ArgRval - ArgRvalType,
+construct_table_arg_pti_rval(ClosureArg, typed_rval(ArgRval, ArgRvalType),
         !StaticCellInfo) :-
     ClosureArg = table_arg_info(_, _, _, Type),
     ExistQTvars = [],
@@ -1609,28 +1607,28 @@ add_long_vars_internal_layout_data(Label, Layout, Slot, !LLI) :-
 
 :- pred construct_user_data_array(stack_layout_params::in, var_num_map::in,
     list(maybe(user_attribute))::in,
-    assoc_list(rval, llds_type)::out, list(maybe(int))::out,
+    list(typed_rval)::out, list(maybe(int))::out,
     static_cell_info::in, static_cell_info::out) is det.
 
 construct_user_data_array(_, _, [], [], [], !Info).
 construct_user_data_array(Params, VarNumMap, [MaybeAttr | MaybeAttrs],
-        [LocnRvalAndType | LocnRvalAndTypes], [MaybeVarNum | MaybeVarNums],
+        [LocnTypedRval | LocnTypedRvals], [MaybeVarNum | MaybeVarNums],
         !StaticCellInfo) :-
     (
         MaybeAttr = yes(Attr),
         Attr = user_attribute(Locn, Var),
         represent_locn_or_const_as_int_rval(Params, Locn, LocnRval,
             LocnRvalType, !StaticCellInfo),
-        LocnRvalAndType = LocnRval - LocnRvalType,
+        LocnTypedRval = typed_rval(LocnRval, LocnRvalType),
         convert_var_to_int(VarNumMap, Var, VarNum),
         MaybeVarNum = yes(VarNum)
     ;
         MaybeAttr = no,
-        LocnRvalAndType = const(llconst_int(0)) - lt_unsigned,
+        LocnTypedRval = typed_rval(const(llconst_int(0)), lt_unsigned),
         MaybeVarNum = no
     ),
     construct_user_data_array(Params, VarNumMap, MaybeAttrs,
-        LocnRvalAndTypes, MaybeVarNums, !StaticCellInfo).
+        LocnTypedRvals, MaybeVarNums, !StaticCellInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -1717,7 +1715,7 @@ get_name_from_live_value_type(LiveType, Name) :-
     %
 :- pred construct_type_param_locn_vector(
     assoc_list(tvar, set(layout_locn))::in,
-    int::in, assoc_list(rval, llds_type)::out) is det.
+    int::in, list(typed_rval)::out) is det.
 
 construct_type_param_locn_vector([], _, []).
 construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
@@ -1732,12 +1730,12 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
         ),
         represent_locn_as_int_rval(Locn, Rval),
         construct_type_param_locn_vector(TVarLocns, NextSlot, VectorTail),
-        Vector = [Rval - lt_unsigned | VectorTail]
+        Vector = [typed_rval(Rval, lt_unsigned) | VectorTail]
     ; TVarNum > CurSlot ->
         construct_type_param_locn_vector([TVar - Locns | TVarLocns], NextSlot,
             VectorTail),
         % This slot will never be referred to.
-        Vector = [const(llconst_int(0)) - lt_unsigned | VectorTail]
+        Vector = [typed_rval(const(llconst_int(0)), lt_unsigned) | VectorTail]
     ;
         unexpected($module, $pred, "unsorted tvars")
     ).
@@ -1981,14 +1979,14 @@ construct_tvar_vector(TVarLocnMap, TypeParamRval, !StaticCellInfo) :-
     ).
 
 :- pred construct_tvar_rvals(map(tvar, set(layout_locn))::in,
-    assoc_list(rval, llds_type)::out) is det.
+    list(typed_rval)::out) is det.
 
 construct_tvar_rvals(TVarLocnMap, Vector) :-
     map.to_assoc_list(TVarLocnMap, TVarLocns),
     construct_type_param_locn_vector(TVarLocns, 1, TypeParamLocs),
     list.length(TypeParamLocs, TypeParamsLength),
     LengthRval = const(llconst_int(TypeParamsLength)),
-    Vector = [LengthRval - lt_unsigned | TypeParamLocs].
+    Vector = [typed_rval(LengthRval, lt_unsigned) | TypeParamLocs].
 
 %---------------------------------------------------------------------------%
 %
@@ -1998,7 +1996,7 @@ construct_tvar_rvals(TVarLocnMap, Vector) :-
 construct_closure_layout(CallerProcLabel, SeqNo,
         ClosureLayoutInfo, ClosureProcLabel, ModuleName,
         FileName, LineNumber, Origin, GoalPath, !StaticCellInfo,
-        RvalsTypes, Data) :-
+        TypedRvals, Data) :-
     % The representation we build here should be kept in sync
     % with runtime/mercury_ho_call.h, which contains macros to access
     % the data structures we build here.
@@ -2007,31 +2005,30 @@ construct_closure_layout(CallerProcLabel, SeqNo,
     DataId = layout_id(ClosureId),
     Data = closure_proc_id_data(CallerProcLabel, SeqNo, ClosureProcLabel,
         ModuleName, FileName, LineNumber, Origin, GoalPath),
-    ProcIdRvalType = const(llconst_data_addr(DataId, no)) - lt_data_ptr,
+    ProcIdRval = const(llconst_data_addr(DataId, no)),
+    ProcIdTypedRval = typed_rval(ProcIdRval, lt_data_ptr),
     ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
     construct_closure_arg_rvals(ClosureArgs,
-        ClosureArgRvalsTypes, !StaticCellInfo),
+        ClosureArgTypedRvals, !StaticCellInfo),
     construct_tvar_vector(TVarLocnMap, TVarVectorRval, !StaticCellInfo),
-    RvalsTypes = [ProcIdRvalType, TVarVectorRval - lt_data_ptr |
-        ClosureArgRvalsTypes].
+    TVarVectorTypedRval = typed_rval(TVarVectorRval, lt_data_ptr),
+    TypedRvals = [ProcIdTypedRval, TVarVectorTypedRval | ClosureArgTypedRvals].
 
 :- pred construct_closure_arg_rvals(list(closure_arg_info)::in,
-    assoc_list(rval, llds_type)::out,
-    static_cell_info::in, static_cell_info::out) is det.
+    list(typed_rval)::out, static_cell_info::in, static_cell_info::out) is det.
 
-construct_closure_arg_rvals(ClosureArgs, ClosureArgRvalsTypes,
+construct_closure_arg_rvals(ClosureArgs, ClosureArgTypedRvals,
         !StaticCellInfo) :-
-    list.map_foldl(construct_closure_arg_rval, ClosureArgs, ArgRvalsTypes,
+    list.map_foldl(construct_closure_arg_rval, ClosureArgs, ArgTypedRvals,
         !StaticCellInfo),
-    list.length(ArgRvalsTypes, Length),
-    ClosureArgRvalsTypes =
-        [const(llconst_int(Length)) - lt_integer | ArgRvalsTypes].
+    list.length(ArgTypedRvals, Length),
+    LengthTypedRval = typed_rval(const(llconst_int(Length)), lt_integer),
+    ClosureArgTypedRvals = [LengthTypedRval| ArgTypedRvals].
 
 :- pred construct_closure_arg_rval(closure_arg_info::in,
-    pair(rval, llds_type)::out,
-    static_cell_info::in, static_cell_info::out) is det.
+    typed_rval::out, static_cell_info::in, static_cell_info::out) is det.
 
-construct_closure_arg_rval(ClosureArg, ArgRval - ArgRvalType,
+construct_closure_arg_rval(ClosureArg, typed_rval(ArgRval, ArgRvalType),
         !StaticCellInfo) :-
     ClosureArg = closure_arg_info(Type, _Inst),
     % For a stack layout, we can treat all type variables as universally
@@ -2153,7 +2150,7 @@ represent_locn_or_const_as_int_rval(Params, LvalOrConst, Rval, Type,
         UnboxedFloats = Params ^ slp_unboxed_floats,
         ArgWidth = full_word,
         LLDSType = rval_type_as_arg(UnboxedFloats, ArgWidth, LvalOrConst),
-        add_scalar_static_cell([LvalOrConst - LLDSType], DataId,
+        add_scalar_static_cell([typed_rval(LvalOrConst, LLDSType)], DataId,
             !StaticCellInfo),
         Rval = const(llconst_data_addr(DataId, no)),
         Type = lt_data_ptr

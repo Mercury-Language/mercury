@@ -1068,7 +1068,7 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = top_ctor_of_type(Type),
-        ( type_to_ctor_and_args(Type, TypeCtor, _) ->
+        ( type_to_ctor(Type, TypeCtor) ->
             TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
             SymName = TypeCtorName / TypeCtorArity,
             Word = sym_name_and_arity_to_word(SymName),
@@ -1189,7 +1189,7 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         Component = top_ctor_of_type(Type),
-        ( type_to_ctor_and_args(Type, TypeCtor, _) ->
+        ( type_to_ctor(Type, TypeCtor) ->
             TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
             SymName = TypeCtorName / TypeCtorArity,
             NewWord = plain_word(sym_name_and_arity_to_word(SymName)),

@@ -614,14 +614,9 @@ size_prof_process_switch(First0, First, Later0, Later, !Info,
 size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
         Args, ArgModes, How, Unique, GoalInfo, GoalExpr, !Info) :-
     map.lookup(!.Info ^ spi_vartypes, Var, VarType),
-    ( type_to_ctor_and_args(VarType, VarTypeCtorPrime, _VarTypeArgs) ->
-        VarTypeCtor = VarTypeCtorPrime
-    ;
-        unexpected($module, $pred, "constructing term of variable type")
-    ),
-    ModuleInfo = !.Info ^ spi_module_info,
-    VarTypeCtorModule = type_ctor_module(ModuleInfo, VarTypeCtor),
-    VarTypeCtorName = type_ctor_name(ModuleInfo, VarTypeCtor),
+    type_to_ctor_det(VarType, VarTypeCtor),
+    type_ctor_module_name_arity(VarTypeCtor,
+        VarTypeCtorModule, VarTypeCtorName, _),
     (
         ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName)
     ->
@@ -679,14 +674,9 @@ size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
 size_prof_process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr,
         !Info) :-
     map.lookup(!.Info ^ spi_vartypes, Var, VarType),
-    ( type_to_ctor_and_args(VarType, VarTypeCtorPrime, _VarTypeArgs) ->
-        VarTypeCtor = VarTypeCtorPrime
-    ;
-        unexpected($module, $pred, "deconstructing term of variable type")
-    ),
-    ModuleInfo = !.Info ^ spi_module_info,
-    VarTypeCtorModule = type_ctor_module(ModuleInfo, VarTypeCtor),
-    VarTypeCtorName = type_ctor_name(ModuleInfo, VarTypeCtor),
+    type_to_ctor_det(VarType, VarTypeCtor),
+    type_ctor_module_name_arity(VarTypeCtor, VarTypeCtorModule,
+        VarTypeCtorName, _),
     (
         ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName)
     ->
@@ -994,8 +984,7 @@ make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
         VarTypes0 = !.Info ^ spi_vartypes,
         RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
         polymorphism.init_const_type_ctor_info_var(Type, TypeCtor,
-            TypeCtorVar, TypeCtorGoal, !.Info ^ spi_module_info,
-            VarSet0, VarSet, VarTypes0, VarTypes,
+            TypeCtorVar, _, TypeCtorGoal, VarSet0, VarSet, VarTypes0, VarTypes,
             RttiVarMaps0, RttiVarMaps),
         TypeCtorGoals = [TypeCtorGoal],
         !Info ^ spi_varset := VarSet,

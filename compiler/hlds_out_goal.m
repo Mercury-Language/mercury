@@ -968,7 +968,7 @@ write_unify_rhs_3(Info, RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
             do_write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
                 Indent1, "\n", TypeQual, !IO),
             write_indent(Indent, !IO),
-            io.write_string(")", !IO)
+            io.write_string(")\n", !IO)
         ;
             PredOrFunc = pf_function,
             (
@@ -1000,7 +1000,7 @@ write_unify_rhs_3(Info, RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
             do_write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
                 Indent1, "\n", TypeQual, !IO),
             write_indent(Indent, !IO),
-            io.write_string(")", !IO)
+            io.write_string(")\n", !IO)
         ),
         (
             MaybeType = yes(Type),

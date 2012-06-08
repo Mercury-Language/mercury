@@ -204,6 +204,14 @@
 :- pred sym_name_get_module_name_default(sym_name::in, module_name::in,
     module_name::out) is det.
 
+    % sym_name_get_module_name_default_name(SymName,
+    %   DefaultModName, ModName, Name):
+    % Return the ModName sym_name_get_module_name_default would,
+    % and the Name unqualify_name would.
+    %
+:- pred sym_name_get_module_name_default_name(sym_name::in, module_name::in,
+    module_name::out, string::out) is det.
+
     % match_sym_name(PartialSymName, CompleteSymName):
     %
     % Succeeds iff there is some sequence of module qualifiers
@@ -444,6 +452,15 @@ sym_name_get_module_name_default(SymName, DefaultModuleName, ModuleName) :-
         ModuleName = DefaultModuleName
     ;
         SymName = qualified(ModuleName, _)
+    ).
+
+sym_name_get_module_name_default_name(SymName, DefaultModuleName, ModuleName,
+        Name) :-
+    (
+        SymName = unqualified(Name),
+        ModuleName = DefaultModuleName
+    ;
+        SymName = qualified(ModuleName, Name)
     ).
 
     % match_sym_name(PartialSymName, CompleteSymName):

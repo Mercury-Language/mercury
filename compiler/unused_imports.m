@@ -492,6 +492,8 @@ cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
         ; ConsId = string_const(_)
         ; ConsId = impl_defined_const(_)
         ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = type_info_const(_)
+        ; ConsId = typeclass_info_const(_)
         ; ConsId = tabling_info_const(_)
         ; ConsId = table_io_decl(_)
         ; ConsId = deep_profiling_proc_layout(_)

@@ -24,7 +24,9 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 
@@ -51,6 +53,9 @@
 :- pred generate_ground_term(prog_var::in, hlds_goal::in,
     code_info::in, code_info::out) is det.
 
+:- pred generate_const_structs(module_info::in, const_struct_map::out,
+    global_data::in, global_data::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -63,9 +68,9 @@
 :- import_module backend_libs.type_class_info.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.const_struct.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -205,7 +210,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
     ).
 
 :- pred get_cons_arg_widths(module_info::in, cons_id::in,
-    list(prog_var)::in, list(arg_width)::out) is det.
+    list(T)::in, list(arg_width)::out) is det.
 
 get_cons_arg_widths(ModuleInfo, ConsId, Args, AllArgWidths) :-
     (
@@ -421,6 +426,13 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ConsTag = base_typeclass_info_tag(_, _, _),
         unexpected($module, $pred, "Attempted base_typeclass_info unification")
     ;
+        ConsTag = type_info_const_tag(_),
+        unexpected($module, $pred, "Attempted type_info_const_tag unification")
+    ;
+        ConsTag = typeclass_info_const_tag(_),
+        unexpected($module, $pred,
+            "Attempted typeclass_info_const_tag unification")
+    ;
         ConsTag = tabling_info_tag(_, _),
         unexpected($module, $pred, "Attempted tabling_info unification")
     ;
@@ -605,7 +617,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
     ;
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
         expect(unify(Args, []), $module, $pred,
-            "generate_construction_2: type_ctor_info constant has args"),
+            "type_ctor_info constant has args"),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
         DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
             type_ctor_type_ctor_info)),
@@ -614,16 +626,23 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
     ;
         ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
         expect(unify(Args, []), $module, $pred,
-            "generate_construction_2: base_typeclass_info constant has args"),
+            "base_typeclass_info constant has args"),
         TCName = generate_class_name(ClassId),
         DataId = rtti_data_id(tc_rtti_id(TCName,
             type_class_base_typeclass_info(ModuleName, Instance))),
         assign_const_to_var(Var, const(llconst_data_addr(DataId, no)), !CI),
         Code = empty
     ;
+        ( ConsTag = type_info_const_tag(ConstNum)
+        ; ConsTag = typeclass_info_const_tag(ConstNum)
+        ),
+        get_const_struct_map(!.CI, ConstStructMap),
+        map.lookup(ConstStructMap, ConstNum, typed_rval(Rval, _Type)),
+        assign_expr_to_var(Var, Rval, Code, !CI)
+    ;
         ConsTag = tabling_info_tag(PredId, ProcId),
         expect(unify(Args, []), $module, $pred,
-            "generate_construction_2: tabling_info constant has args"),
+            "tabling_info constant has args"),
         get_module_info(!.CI, ModuleInfo),
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
         DataId = proc_tabling_data_id(ProcLabel, tabling_info),
@@ -632,7 +651,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
     ;
         ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
         expect(unify(Args, []), $module, $pred,
-            "generate_construction_2: deep_profiling_proc_static has args"),
+            "deep_profiling_proc_static has args"),
         get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         Origin = RttiProcLabel ^ rpl_pred_info_origin,
@@ -648,7 +667,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
     ;
         ConsTag = table_io_decl_tag(PredId, ProcId),
         expect(unify(Args, []), $module, $pred,
-            "generate_construction_2: table_io_decl has args"),
+            "table_io_decl has args"),
         PredProcId = proc(PredId, ProcId),
         DataId = layout_slot_id(table_io_decl_id, PredProcId),
         assign_const_to_var(Var, const(llconst_data_addr(DataId, no)), !CI),
@@ -656,7 +675,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
     ;
         ConsTag = reserved_address_tag(RA),
         expect(unify(Args, []), $module, $pred,
-            "generate_construction_2: reserved_address constant has args"),
+            "reserved_address constant has args"),
         assign_const_to_var(Var, generate_reserved_address(RA), !CI),
         Code = empty
     ;
@@ -669,9 +688,9 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
     ;
         ConsTag = closure_tag(PredId, ProcId, EvalMethod),
         expect(unify(TakeAddr, []), $module, $pred,
-            "generate_construction_2: closure_tag has take_addr"),
+            "closure_tag has take_addr"),
         expect(unify(MaybeSize, no), $module, $pred,
-            "generate_construction_2: closure_tag has size"),
+            "closure_tag has size"),
         generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo,
             Code, !CI)
     ).
@@ -846,12 +865,12 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         stack_layout.construct_closure_layout(CallerProcLabel,
             SeqNo, ClosureInfo, ProcLabel, ModuleName, FileName, LineNumber,
             PredOrigin, GoalIdStr, StaticCellInfo0, StaticCellInfo,
-            ClosureLayoutRvalsTypes, Data),
+            ClosureLayoutTypedRvals, Data),
         set_static_cell_info(StaticCellInfo, !CI),
         add_closure_layout(Data, !CI),
         % For now, closures always have zero size, and the size slot
         % is never looked at.
-        add_scalar_static_cell(ClosureLayoutRvalsTypes, ClosureDataAddr, !CI),
+        add_scalar_static_cell(ClosureLayoutTypedRvals, ClosureDataAddr, !CI),
         ClosureLayoutRval = const(llconst_data_addr(ClosureDataAddr, no)),
         proc_info_arg_info(ProcInfo, ArgInfo),
         VarTypes = get_var_types(!.CI),
@@ -1260,6 +1279,12 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
         ),
         Code = empty
     ;
+        Tag = type_info_const_tag(_),
+        unexpected($module, $pred, "type_info_const_tag")
+    ;
+        Tag = typeclass_info_const_tag(_),
+        unexpected($module, $pred, "typeclass_info_const_tag")
+    ;
         Tag = table_io_decl_tag(_, _),
         unexpected($module, $pred, "table_io_decl_tag")
     ;
@@ -1304,7 +1329,8 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
     ;
         Tag = unshared_tag(Ptag),
         Rval = var(Var),
-        make_fields_and_argvars(Args, ArgWidths, Rval, -1, Ptag, Fields, ArgVars),
+        make_fields_and_argvars(Args, ArgWidths, Rval, -1, Ptag,
+            Fields, ArgVars),
         var_types(!.CI, Args, ArgTypes),
         generate_unify_args(Fields, ArgVars, Modes, ArgTypes, Code, !CI)
     ;
@@ -1323,7 +1349,8 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
     ;
         Tag = shared_remote_tag(Ptag, _Sectag1),
         Rval = var(Var),
-        make_fields_and_argvars(Args, ArgWidths, Rval, 0, Ptag, Fields, ArgVars),
+        make_fields_and_argvars(Args, ArgWidths, Rval, 0, Ptag,
+            Fields, ArgVars),
         var_types(!.CI, Args, ArgTypes),
         generate_unify_args(Fields, ArgVars, Modes, ArgTypes, Code, !CI)
     ;
@@ -1623,8 +1650,231 @@ generate_direct_arg_deconstruct(Var, Arg, Ptag, Mode, Type, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-:- type active_ground_term == pair(rval, llds_type).
-:- type active_ground_term_map == map(prog_var, active_ground_term).
+generate_const_structs(ModuleInfo, ConstStructMap, !GlobalData) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, unboxed_float, UB),
+    (
+        UB = yes,
+        UnboxedFloats = have_unboxed_floats
+    ;
+        UB = no,
+        UnboxedFloats = do_not_have_unboxed_floats
+    ),
+    module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+    const_struct_db_get_structs(ConstStructDb, ConstStructs),
+    global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
+    list.foldl2(generate_const_struct(ModuleInfo, UnboxedFloats), ConstStructs,
+        map.init, ConstStructMap, StaticCellInfo0, StaticCellInfo),
+    global_data_set_static_cell_info(StaticCellInfo, !GlobalData).
+
+:- pred generate_const_struct(module_info::in, have_unboxed_floats::in,
+    pair(int, const_struct)::in,
+    const_struct_map::in, const_struct_map::out,
+    static_cell_info::in, static_cell_info::out) is det.
+
+generate_const_struct(ModuleInfo, UnboxedFloats, ConstNum - ConstStruct,
+        !ConstStructMap, !StaticCellInfo) :-
+    ConstStruct = const_struct(ConsId, ConstArgs, _, _),
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+    get_cons_arg_widths(ModuleInfo, ConsId, ConstArgs, ConsArgWidths),
+    generate_const_struct_rval(ModuleInfo, UnboxedFloats, !.ConstStructMap,
+        ConsId, ConsTag, ConstArgs, ConsArgWidths, Rval, !StaticCellInfo),
+    map.det_insert(ConstNum, Rval, !ConstStructMap).
+
+:- pred generate_const_struct_rval(module_info::in, have_unboxed_floats::in,
+    const_struct_map::in, cons_id::in, cons_tag::in,
+    list(const_struct_arg)::in, list(arg_width)::in, typed_rval::out,
+    static_cell_info::in, static_cell_info::out) is det.
+
+generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
+        ConsId, ConsTag, ConstArgs, ConsArgWidths, TypedRval,
+        !StaticCellInfo) :-
+    (
+        ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
+        generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
+            ConsId, ActualConsTag, ConstArgs, ConsArgWidths,
+            TypedRval, !StaticCellInfo)
+    ;
+        ConsTag = no_tag,
+        generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
+            ConstArgs, ArgTypedRvals),
+        (
+            ArgTypedRvals = [ArgTypedRval],
+            TypedRval = ArgTypedRval
+        ;
+            ( ArgTypedRvals = []
+            ; ArgTypedRvals = [_, _ | _]
+            ),
+            unexpected($module, $pred, "no_tag arity != 1")
+        )
+    ;
+        ConsTag = direct_arg_tag(Ptag),
+        generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
+            ConstArgs, ArgTypedRvals),
+        (
+            ArgTypedRvals = [ArgTypedRval],
+            ArgTypedRval = typed_rval(ArgRval, _RvalType),
+            Rval = mkword(Ptag, ArgRval),
+            TypedRval = typed_rval(Rval, lt_data_ptr)
+        ;
+            ( ArgTypedRvals = []
+            ; ArgTypedRvals = [_, _ | _]
+            ),
+            unexpected($module, $pred, "direct_arg_tag: arity != 1")
+        )
+    ;
+        (
+            ConsTag = single_functor_tag,
+            Ptag = 0
+        ;
+            ConsTag = unshared_tag(Ptag)
+        ),
+        generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
+            ConstArgs, ArgTypedRvals),
+        pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
+        add_scalar_static_cell(PackArgTypedRvals, DataAddr, !StaticCellInfo),
+        MaybeOffset = no,
+        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
+        Rval = mkword(Ptag, CellPtrConst),
+        TypedRval = typed_rval(Rval, lt_data_ptr)
+    ;
+        ConsTag = shared_remote_tag(Ptag, Stag),
+        generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
+            ConstArgs, ArgTypedRvals),
+        pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
+        StagTypedRval = typed_rval(const(llconst_int(Stag)), lt_integer),
+        AllTypedRvals = [StagTypedRval | PackArgTypedRvals],
+        add_scalar_static_cell(AllTypedRvals, DataAddr, !StaticCellInfo),
+        MaybeOffset = no,
+        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
+        Rval = mkword(Ptag, CellPtrConst),
+        TypedRval = typed_rval(Rval, lt_data_ptr)
+    ;
+        ( ConsTag = string_tag(_)
+        ; ConsTag = int_tag(_)
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = float_tag(_)
+        ; ConsTag = shared_local_tag(_, _)
+        ; ConsTag = reserved_address_tag(_)
+        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = table_io_decl_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ),
+        unexpected($module, $pred, "unexpected tag")
+    ).
+
+:- pred generate_const_struct_args(module_info::in, have_unboxed_floats::in,
+    const_struct_map::in, list(const_struct_arg)::in, list(typed_rval)::out)
+    is det.
+
+generate_const_struct_args(_, _, _, [], []).
+generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
+        [ConstArg | ConstArgs], [TypedRval | TypedRvals]) :-
+    generate_const_struct_arg(ModuleInfo, UnboxedFloats, ConstStructMap,
+        ConstArg, TypedRval),
+    generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
+        ConstArgs, TypedRvals).
+
+:- pred generate_const_struct_arg(module_info::in, have_unboxed_floats::in,
+    const_struct_map::in, const_struct_arg::in, typed_rval::out) is det.
+
+generate_const_struct_arg(ModuleInfo, UnboxedFloats, ConstStructMap,
+        ConstArg, TypedRval) :-
+    (
+        ConstArg = csa_const_struct(ConstNum),
+        map.lookup(ConstStructMap, ConstNum, TypedRval)
+    ;
+        ConstArg = csa_constant(ConsId, _),
+        ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+        generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats,
+            ConstStructMap, ConsTag, TypedRval)
+    ).
+
+:- pred generate_const_struct_arg_tag(module_info::in, have_unboxed_floats::in,
+    const_struct_map::in, cons_tag::in, typed_rval::out) is det.
+
+generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
+        ConsTag, TypedRval) :-
+    (
+        (
+            ConsTag = string_tag(String),
+            Const = llconst_string(String),
+            Type = lt_string
+        ;
+            ConsTag = int_tag(Int),
+            Const = llconst_int(Int),
+            Type = lt_integer
+        ;
+            ConsTag = foreign_tag(Lang, Val),
+            expect(unify(Lang, lang_c), $module, $pred,
+                "foreign_tag for language other than C"),
+            Const = llconst_foreign(Val, lt_integer),
+            Type = lt_integer
+        ;
+            ConsTag = float_tag(Float),
+            Const = llconst_float(Float),
+            (
+                UnboxedFloats = have_unboxed_floats,
+                Type = lt_float
+            ;
+                UnboxedFloats = do_not_have_unboxed_floats,
+                Type = lt_data_ptr
+            )
+        ),
+        TypedRval = typed_rval(const(Const), Type)
+    ;
+        ConsTag = shared_local_tag(Ptag, Stag),
+        Rval = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
+        TypedRval = typed_rval(Rval, lt_data_ptr)
+    ;
+        ConsTag = reserved_address_tag(RA),
+        Rval = generate_reserved_address(RA),
+        rval_type(Rval, Type),
+        TypedRval = typed_rval(Rval, Type)
+    ;
+        ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
+        generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats,
+            ConstStructMap, ActualConsTag, TypedRval)
+    ;
+        ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
+        RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
+        DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
+            type_ctor_type_ctor_info)),
+        Rval = const(llconst_data_addr(DataId, no)),
+        Type = lt_data_ptr,
+        TypedRval = typed_rval(Rval, Type)
+    ;
+        ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
+        TCName = generate_class_name(ClassId),
+        DataId = rtti_data_id(tc_rtti_id(TCName,
+            type_class_base_typeclass_info(ModuleName, Instance))),
+        Rval = const(llconst_data_addr(DataId, no)),
+        Type = lt_data_ptr,
+        TypedRval = typed_rval(Rval, Type)
+    ;
+        ( ConsTag = no_tag
+        ; ConsTag = direct_arg_tag(_)
+        ; ConsTag = single_functor_tag
+        ; ConsTag = unshared_tag(_)
+        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = table_io_decl_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ),
+        unexpected($module, $pred, "unexpected tag")
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type active_ground_term_map == map(prog_var, typed_rval).
 
 generate_ground_term(TermVar, Goal, !CI) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -1650,7 +1900,7 @@ generate_ground_term(TermVar, Goal, !CI) :-
                 ( ActivePairs = [TermVar - GroundTerm] ->
                     add_forward_live_vars(NonLocals, !CI),
                     set_static_cell_info(StaticCellInfo, !CI),
-                    GroundTerm = Rval - _,
+                    GroundTerm = typed_rval(Rval, _),
                     assign_const_to_var(TermVar, Rval, !CI)
                 ;
                     unexpected($module, $pred, "no active pairs")
@@ -1734,18 +1984,18 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
                 Type = lt_data_ptr
             )
         ),
-        ActiveGroundTerm = const(Const) - Type,
+        ActiveGroundTerm = typed_rval(const(Const), Type),
         map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = shared_local_tag(Ptag, Stag),
         Rval = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
-        ActiveGroundTerm = Rval - lt_data_ptr,
+        ActiveGroundTerm = typed_rval(Rval, lt_data_ptr),
         map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = reserved_address_tag(RA),
         Rval = generate_reserved_address(RA),
         rval_type(Rval, RvalType),
-        ActiveGroundTerm = Rval - RvalType,
+        ActiveGroundTerm = typed_rval(Rval, RvalType),
         map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
@@ -1771,22 +2021,22 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         ;
             ConsTag = unshared_tag(Ptag)
         ),
-        generate_ground_term_args(Args, ConsArgWidths, ArgRvalsTypes,
+        generate_ground_term_args(Args, ConsArgWidths, ArgTypedRvals,
             !ActiveMap),
-        pack_ground_term_args(ConsArgWidths, ArgRvalsTypes, PackArgRvalsTypes),
-        add_scalar_static_cell(PackArgRvalsTypes, DataAddr, !StaticCellInfo),
+        pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
+        add_scalar_static_cell(PackArgTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         Rval = mkword(Ptag, CellPtrConst),
-        ActiveGroundTerm = Rval - lt_data_ptr,
+        ActiveGroundTerm = typed_rval(Rval, lt_data_ptr),
         map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = direct_arg_tag(Ptag),
         (
             Args = [Arg],
-            map.det_remove(Arg, ArgRval - _RvalType, !ActiveMap),
+            map.det_remove(Arg, typed_rval(ArgRval, _RvalType), !ActiveMap),
             Rval = mkword(Ptag, ArgRval),
-            ActiveGroundTerm = Rval - lt_data_ptr,
+            ActiveGroundTerm = typed_rval(Rval, lt_data_ptr),
             map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
         ;
             ( Args = []
@@ -1796,21 +2046,23 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         )
     ;
         ConsTag = shared_remote_tag(Ptag, Stag),
-        generate_ground_term_args(Args, ConsArgWidths, ArgRvalsTypes,
+        generate_ground_term_args(Args, ConsArgWidths, ArgTypedRvals,
             !ActiveMap),
-        pack_ground_term_args(ConsArgWidths, ArgRvalsTypes, PackArgRvalsTypes),
-        StagRvalType = const(llconst_int(Stag)) - lt_integer,
-        AllRvalsTypes = [StagRvalType | PackArgRvalsTypes],
-        add_scalar_static_cell(AllRvalsTypes, DataAddr, !StaticCellInfo),
+        pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
+        StagTypedRval = typed_rval(const(llconst_int(Stag)), lt_integer),
+        AllTypedRvals = [StagTypedRval | PackArgTypedRvals],
+        add_scalar_static_cell(AllTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         Rval = mkword(Ptag, CellPtrConst),
-        ActiveGroundTerm = Rval - lt_data_ptr,
+        ActiveGroundTerm = typed_rval(Rval, lt_data_ptr),
         map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ( ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_decl_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
@@ -1819,35 +2071,35 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
     ).
 
 :- pred generate_ground_term_args(list(prog_var)::in, list(arg_width)::in,
-    assoc_list(rval, llds_type)::out,
+    list(typed_rval)::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_args(Vars, ConsArgWidths, RvalsTypes, !ActiveMap) :-
+generate_ground_term_args(Vars, ConsArgWidths, TypedRvals, !ActiveMap) :-
     list.map_corresponding_foldl(generate_ground_term_arg, Vars, ConsArgWidths,
-        RvalsTypes, !ActiveMap).
+        TypedRvals, !ActiveMap).
 
 :- pred generate_ground_term_arg(prog_var::in, arg_width::in,
-    pair(rval, llds_type)::out,
+    typed_rval::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_arg(Var, ConsArgWidth, RvalType, !ActiveMap) :-
-    map.det_remove(Var, RvalType0, !ActiveMap),
+generate_ground_term_arg(Var, ConsArgWidth, TypedRval, !ActiveMap) :-
+    map.det_remove(Var, TypedRval0, !ActiveMap),
     % Though a standalone float might have needed to boxed, it may be stored in
     % unboxed form as a constructor argument.
     (
         ConsArgWidth = double_word,
-        RvalType0 = Rval - lt_data_ptr
+        TypedRval0 = typed_rval(Rval, lt_data_ptr)
     ->
-        RvalType = Rval - lt_float
+        TypedRval = typed_rval(Rval, lt_float)
     ;
-        RvalType = RvalType0
+        TypedRval = TypedRval0
     ).
 
 :- pred pack_ground_term_args(list(arg_width)::in,
-    assoc_list(rval, llds_type)::in, assoc_list(rval, llds_type)::out) is det.
+    list(typed_rval)::in, list(typed_rval)::out) is det.
 
-pack_ground_term_args(Widths, !RvalsTypes) :-
-    pack_args(shift_combine_rval_type, Widths, !RvalsTypes, unit, _, unit, _).
+pack_ground_term_args(Widths, !TypedRvals) :-
+    pack_args(shift_combine_rval_type, Widths, !TypedRvals, unit, _, unit, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -1913,15 +2165,15 @@ shift_combine_arg(CellArgA, Shift, MaybeCellArgB, FinalCellArg, !Code, !CI) :-
         )
     ).
 
-:- pred shift_combine_rval_type(pair(rval, llds_type)::in, int::in,
-    maybe(pair(rval, llds_type))::in, pair(rval, llds_type)::out,
+:- pred shift_combine_rval_type(typed_rval::in, int::in,
+    maybe(typed_rval)::in, typed_rval::out,
     unit::in, unit::out, unit::in, unit::out) is det.
 
 shift_combine_rval_type(ArgA, Shift, MaybeArgB, FinalArg, !Acc1, !Acc2) :-
-    ArgA = RvalA - TypeA,
+    ArgA = typed_rval(RvalA, TypeA),
     ShiftRvalA = maybe_left_shift_rval(RvalA, Shift),
     (
-        MaybeArgB = yes(RvalB - TypeB),
+        MaybeArgB = yes(typed_rval(RvalB, TypeB)),
         ( TypeA = TypeB ->
             FinalRval = binop(bitwise_or, ShiftRvalA, RvalB)
         ;
@@ -1931,7 +2183,7 @@ shift_combine_rval_type(ArgA, Shift, MaybeArgB, FinalArg, !Acc1, !Acc2) :-
         MaybeArgB = no,
         FinalRval = ShiftRvalA
     ),
-    FinalArg = FinalRval - TypeA.
+    FinalArg = typed_rval(FinalRval, TypeA).
 
 :- func maybe_left_shift_rval(rval, int) = rval.
 
@@ -2001,15 +2253,11 @@ combine_completeness(incomplete, incomplete) = incomplete.
 :- pred var_type_msg(mer_type::in, string::out) is det.
 
 var_type_msg(Type, Msg) :-
-    ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        TypeCtor = type_ctor(TypeSym, TypeArity),
-        TypeSymStr = sym_name_to_string(TypeSym),
-        string.int_to_string(TypeArity, TypeArityStr),
-        string.append_list([TypeSymStr, "/", TypeArityStr], Msg)
-    ;
-        unexpected($module, $pred,
-            "type is still a type variable in var_type_msg")
-    ).
+    type_to_ctor_det(Type, TypeCtor),
+    TypeCtor = type_ctor(TypeSym, TypeArity),
+    TypeSymStr = sym_name_to_string(TypeSym),
+    string.int_to_string(TypeArity, TypeArityStr),
+    string.append_list([TypeSymStr, "/", TypeArityStr], Msg).
 
 %---------------------------------------------------------------------------%
 :- end_module unify_gen.

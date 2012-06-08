@@ -103,7 +103,7 @@
     % modecheck_set_var_inst(Var, Inst, MaybeUInst, !ModeInfo):
     %
     % Assign the given Inst to the given Var, after checking that it is
-    % okay to do so.  If the inst to be assigned is the result of an
+    % okay to do so. If the inst to be assigned is the result of an
     % abstract unification then the MaybeUInst argument should be the
     % initial inst of the _other_ side of the unification. This allows
     % more precise (i.e. less conservative) checking in the case that
@@ -490,8 +490,8 @@ modecheck_var_has_inst_list_exact_match_2([Var | Vars], [Inst | Insts],
     list(mer_inst)::in, int::in, inst_var_sub::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_var_has_inst_list_no_exact_match_2([_ | _], [], _, !Subst,
-        !ModeInfo) :-
+modecheck_var_has_inst_list_no_exact_match_2([_ | _], [], _,
+        !Subst, !ModeInfo) :-
     unexpected($module, $pred, "length mismatch").
 modecheck_var_has_inst_list_no_exact_match_2([], [_ | _], _,
         !Subst, !ModeInfo) :-
@@ -874,7 +874,7 @@ construct_initialisation_calls([Var | Vars], [Goal | Goals], !ModeInfo) :-
 construct_initialisation_call(Var, VarType, Inst, Context,
         MaybeCallUnifyContext, InitVarGoal, !ModeInfo) :-
     (
-        type_to_ctor_and_args(VarType, TypeCtor, _TypeArgs),
+        type_to_ctor(VarType, TypeCtor),
         PredName = special_pred_name(spec_pred_init, TypeCtor),
         (
             TypeCtor = type_ctor(qualified(ModuleName, _TypeName), _Arity)

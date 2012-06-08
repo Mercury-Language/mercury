@@ -891,7 +891,7 @@ erl_gen_case(Type, CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
 
 cons_id_size(ModuleInfo, Type, ConsId) = Size :-
     (
-        type_to_ctor_and_args(Type, TypeCtor, _),
+        type_to_ctor(Type, TypeCtor),
         get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
     ->
 

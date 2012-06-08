@@ -78,6 +78,7 @@
 
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.try_expand.
+:- import_module hlds.const_struct.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
@@ -89,10 +90,12 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module io.
 :- import_module maybe.
+:- import_module pair.
 :- import_module queue.
 :- import_module require.
 :- import_module set_tree234.
@@ -165,7 +168,11 @@ dead_proc_initialize(!ModuleInfo, !:Queue, !:Needed) :-
 
     module_info_get_class_table(!.ModuleInfo, Classes),
     module_info_get_instance_table(!.ModuleInfo, Instances),
-    dead_proc_initialize_class_methods(Classes, Instances, !Queue, !Needed).
+    dead_proc_initialize_class_methods(Classes, Instances, !Queue, !Needed),
+
+    module_info_get_const_struct_db(!.ModuleInfo, ConstStructDb),
+    const_struct_db_get_structs(ConstStructDb, ConstStructs),
+    dead_proc_initialize_const_structs(ConstStructs, !Queue, !Needed).
 
     % Add all normally exported procedures within the listed predicates
     % to the queue and map.
@@ -305,6 +312,46 @@ get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
     Entity = entity_proc(PredId, ProcId),
     queue.put(Entity, !Queue),
     map.set(Entity, not_eliminable, !Needed).
+
+:- pred dead_proc_initialize_const_structs(assoc_list(int, const_struct)::in,
+    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+    is det.
+
+dead_proc_initialize_const_structs([], !Queue, !Needed).
+dead_proc_initialize_const_structs([_ - ConstStruct | ConstStructs],
+        !Queue, !Needed) :-
+    ConstStruct = const_struct(ConsId, Args, _, _),
+    ( ConsId = type_ctor_info_const(Module, TypeName, Arity) ->
+        Entity = entity_type_ctor(Module, TypeName, Arity),
+        queue.put(Entity, !Queue),
+        map.set(Entity, not_eliminable, !Needed)
+    ;
+        true
+    ),
+    dead_proc_initialize_const_struct_args(Args, !Queue, !Needed),
+    dead_proc_initialize_const_structs(ConstStructs, !Queue, !Needed).
+
+:- pred dead_proc_initialize_const_struct_args(list(const_struct_arg)::in,
+    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+    is det.
+
+dead_proc_initialize_const_struct_args([], !Queue, !Needed).
+dead_proc_initialize_const_struct_args([Arg | Args], !Queue, !Needed) :-
+    (
+        Arg = csa_const_struct(_)
+        % Do nothing. Any processing takes place when
+        % dead_proc_initialize_const_structs looks at the referenced structure.
+    ;
+        Arg = csa_constant(ConsId, _),
+        ( ConsId = type_ctor_info_const(Module, TypeName, Arity) ->
+            Entity = entity_type_ctor(Module, TypeName, Arity),
+            queue.put(Entity, !Queue),
+            map.set(Entity, not_eliminable, !Needed)
+        ;
+            true
+        )
+    ),
+    dead_proc_initialize_const_struct_args(Args, !Queue, !Needed).
 
 %-----------------------------------------------------------------------------%
 
@@ -606,6 +653,8 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 ; ConsId = base_typeclass_info_const(_, _, _, _)
                 ; ConsId = type_info_cell_constructor(_)
                 ; ConsId = typeclass_info_cell_constructor
+                ; ConsId = type_info_const(_)
+                ; ConsId = typeclass_info_const(_)
                 ; ConsId = deep_profiling_proc_layout(_)
                 ; ConsId = table_io_decl(_)
                 )

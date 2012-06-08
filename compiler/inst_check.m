@@ -320,6 +320,8 @@ get_functor_if_must_check_for_type(ConsId, MaybeFunctor) :-
         ; ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = type_info_cell_constructor(_)
         ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = type_info_const(_)
+        ; ConsId = typeclass_info_const(_)
         ; ConsId = tabling_info_const(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_decl(_)

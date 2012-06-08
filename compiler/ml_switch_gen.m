@@ -571,6 +571,8 @@ ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = type_info_const_tag(_)
+        ; Tag = typeclass_info_const_tag(_)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)

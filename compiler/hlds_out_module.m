@@ -41,6 +41,7 @@
 
 :- implementation.
 
+:- import_module hlds.const_struct.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_mode.
@@ -69,14 +70,6 @@
 %
 
 write_hlds(Indent, ModuleInfo, !IO) :-
-    module_info_get_imported_module_specifiers(ModuleInfo, Imports),
-    module_info_get_preds(ModuleInfo, PredTable),
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    module_info_get_inst_table(ModuleInfo, InstTable),
-    module_info_get_mode_table(ModuleInfo, ModeTable),
-    module_info_get_class_table(ModuleInfo, ClassTable),
-    module_info_get_instance_table(ModuleInfo, InstanceTable),
-    module_info_get_table_struct_map(ModuleInfo, TableStructMap),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_id,
         DumpPredIdStrs),
@@ -97,38 +90,46 @@ write_hlds(Indent, ModuleInfo, !IO) :-
         true
     ;
         ( string.contains_char(DumpOptions, 'I') ->
+            module_info_get_imported_module_specifiers(ModuleInfo, Imports),
             write_imports(Indent, Imports, !IO)
         ;
             true
         ),
         ( string.contains_char(DumpOptions, 'T') ->
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            module_info_get_instance_table(ModuleInfo, InstanceTable),
+            module_info_get_class_table(ModuleInfo, ClassTable),
             write_types(Info, Indent, TypeTable, !IO),
-            io.write_string("\n", !IO),
             write_classes(Info, Indent, ClassTable, !IO),
-            io.write_string("\n", !IO),
-            write_instances(Info, Indent, InstanceTable, !IO),
-            io.write_string("\n", !IO)
+            write_instances(Info, Indent, InstanceTable, !IO)
         ;
             true
         ),
         ( string.contains_char(DumpOptions, 'M') ->
+            module_info_get_inst_table(ModuleInfo, InstTable),
+            module_info_get_mode_table(ModuleInfo, ModeTable),
             globals.lookup_int_option(Globals, dump_hlds_inst_limit,
                 InstLimit),
             write_inst_table(Lang, Indent, InstLimit, InstTable, !IO),
-            io.write_string("\n", !IO),
-            write_mode_table(Indent, ModeTable, !IO),
-            io.write_string("\n", !IO)
+            write_mode_table(Indent, ModeTable, !IO)
         ;
             true
         ),
         ( string.contains_char(DumpOptions, 'Z') ->
-            write_table_structs(ModuleInfo, TableStructMap, !IO),
-            io.write_string("\n", !IO)
+            module_info_get_table_struct_map(ModuleInfo, TableStructMap),
+            write_table_structs(ModuleInfo, TableStructMap, !IO)
         ;
             true
         )
     ),
+    ( string.contains_char(DumpOptions, 'X') ->
+        module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+        write_const_struct_db(ConstStructDb, !IO)
+    ;
+        true
+    ),
     ( string.contains_char(DumpOptions, 'x') ->
+        module_info_get_preds(ModuleInfo, PredTable),
         write_preds(Info, Lang, Indent, ModuleInfo, PredTable, !IO)
     ;
         true
@@ -183,7 +184,8 @@ write_types(Info, Indent, TypeTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Types --------\n", !IO),
     get_all_type_ctor_defns(TypeTable, TypeAssocList),
-    write_type_table_entries(Info, Indent, TypeAssocList, !IO).
+    write_type_table_entries(Info, Indent, TypeAssocList, !IO),
+    io.nl(!IO).
 
 :- pred write_type_table_entries(hlds_out_info::in, int::in,
     assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
@@ -658,7 +660,9 @@ write_inst_table(Lang, Indent, Limit, InstTable, !IO) :-
     map.foldl2(write_inst_name_maybe_inst(Lang, Limit), MostlyUniqInstMap,
         0, NumMostlyUniqInsts, !IO),
     io.format("Total number of mostly uniq insts: %d\n",
-        [i(NumMostlyUniqInsts)], !IO).
+        [i(NumMostlyUniqInsts)], !IO),
+
+    io.nl(!IO).
 
 :- pred write_user_inst(int::in, inst_id::in, hlds_inst_defn::in,
     io::di, io::uo) is det.
@@ -803,10 +807,68 @@ write_mode_table(Indent, _ModeTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Modes --------\n", !IO),
     write_indent(Indent, !IO),
-    io.write_string("%%% Not yet implemented, sorry.\n", !IO).
+    io.write_string("%%% Not yet implemented, sorry.\n", !IO),
     % io.write_string("% ", !IO),
     % io.print(ModeTable, !IO),
-    % io.nl(!IO).
+    io.nl(!IO).
+
+%-----------------------------------------------------------------------------%
+%
+% Write out constant structs defined in the module.
+%
+
+:- pred write_const_struct_db(const_struct_db::in, io::di, io::uo) is det.
+
+write_const_struct_db(ConstStructDb, !IO) :-
+    const_struct_db_get_structs(ConstStructDb, ConstStructs),
+    io.write_string("%-------- Const structs --------\n\n", !IO),
+    list.foldl(write_const_struct, ConstStructs, !IO),
+    io.nl(!IO).
+
+:- pred write_const_struct(pair(int, const_struct)::in, io::di, io::uo) is det.
+
+write_const_struct(N - ConstStruct, !IO) :-
+    io.format("\nconst_struct %d:\n", [i(N)], !IO),
+    ConstStruct = const_struct(ConsId, ConstArgs, Type, Inst),
+    mercury_output_cons_id(ConsId, does_not_need_brackets, !IO),
+    (
+        ConstArgs = [],
+        io.nl(!IO)
+    ;
+        ConstArgs = [HeadConstArg | TailConstArgs],
+        io.write_string("(\n", !IO),
+        write_const_struct_args(HeadConstArg, TailConstArgs, !IO),
+        io.write_string(")\n", !IO)
+    ),
+    io.write_string("type: ", !IO),
+    mercury_output_type(varset.init, no, Type, !IO),
+    io.nl(!IO),
+    io.write_string("inst: ", !IO),
+    mercury_output_structured_inst(Inst, 0, output_debug, do_not_incl_addr,
+        varset.init, !IO).
+
+:- pred write_const_struct_args(const_struct_arg::in,
+    list(const_struct_arg)::in, io::di, io::uo) is det.
+
+write_const_struct_args(HeadConstArg, TailConstArgs, !IO) :-
+    io.write_string("    ", !IO),
+    (
+        HeadConstArg = csa_const_struct(N),
+        io.format("cs(%d)", [i(N)], !IO)
+    ;
+        HeadConstArg = csa_constant(ConsId, Type),
+        mercury_output_cons_id(ConsId, does_not_need_brackets, !IO),
+        io.write_string("\n        with type ", !IO),
+        mercury_output_type(varset.init, no, Type, !IO)
+    ),
+    (
+        TailConstArgs = [],
+        io.write_string("\n", !IO)
+    ;
+        TailConstArgs = [HeadTailConstArg | TailTailConstArgs],
+        io.write_string(",\n", !IO),
+        write_const_struct_args(HeadTailConstArg, TailTailConstArgs, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 %

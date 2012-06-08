@@ -51,8 +51,8 @@
     % Translate a HLDS procedure to LLDS, threading through the data structure
     % that records information about layout structures.
     %
-:- pred generate_proc_code(pred_info::in, proc_info::in,
-    pred_id::in, proc_id::in, module_info::in,
+:- pred generate_proc_code(module_info::in, const_struct_map::in,
+    pred_id::in, pred_info::in, proc_id::in, proc_info::in,
     global_data::in, global_data::out, c_procedure::out) is det.
 
     % Return the message that identifies the procedure to pass to
@@ -95,6 +95,7 @@
 :- import_module ll_backend.middle_rec.
 :- import_module ll_backend.stack_layout.
 :- import_module ll_backend.trace_gen.
+:- import_module ll_backend.unify_gen.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
@@ -125,34 +126,50 @@ generate_module_code(!ModuleInfo, !GlobalData, Procedures, !IO) :-
     globals.lookup_bool_option(Globals, parallel_code_gen, ParallelCodeGen),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
+
+    (
+        VeryVerbose = yes,
+        io.write_string("% Generating constant structures\n", !IO),
+        generate_const_structs(!.ModuleInfo, ConstStructMap, !GlobalData),
+        maybe_report_stats(Statistics, !IO)
+    ;
+        VeryVerbose = no,
+        generate_const_structs(!.ModuleInfo, ConstStructMap, !GlobalData)
+    ),
+
     (
         ParallelCodeGen = yes,
         % Can't do parallel code generation if I/O is required.
         VeryVerbose = no,
         Statistics = no
     ->
-        generate_code_parallel(!.ModuleInfo, PredIds, !GlobalData,
-            Procedures)
+        generate_code_parallel(!.ModuleInfo, ConstStructMap, PredIds,
+            !GlobalData, Procedures)
     ;
-        generate_code_sequential(!.ModuleInfo, PredIds, !GlobalData,
-            Procedures, !IO)
+        generate_code_sequential(!.ModuleInfo, VeryVerbose, Statistics,
+            ConstStructMap, PredIds, !GlobalData, Procedures, !IO)
     ).
 
-:- pred generate_code_sequential(module_info::in, list(pred_id)::in,
-    global_data::in, global_data::out, list(c_procedure)::out, io::di, io::uo)
-    is det.
+:- pred generate_code_sequential(module_info::in, bool::in, bool::in,
+    const_struct_map::in, list(pred_id)::in, global_data::in, global_data::out,
+    list(c_procedure)::out, io::di, io::uo) is det.
 
-generate_code_sequential(ModuleInfo0, PredIds, !GlobalData, Procedures, !IO) :-
-    list.map_foldl2(generate_maybe_pred_code(ModuleInfo0),
+generate_code_sequential(ModuleInfo, VeryVerbose, Statistics, ConstStructMap,
+        PredIds, !GlobalData, Procedures, !IO) :-
+    list.map_foldl2(
+        generate_maybe_pred_code(ModuleInfo, VeryVerbose, Statistics,
+            ConstStructMap),
         PredIds, PredProcedures, !GlobalData, !IO),
     list.condense(PredProcedures, Procedures).
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_code_parallel(module_info::in, list(pred_id)::in,
-    global_data::in, global_data::out, list(c_procedure)::out) is det.
+:- pred generate_code_parallel(module_info::in, const_struct_map::in,
+    list(pred_id)::in, global_data::in, global_data::out,
+    list(c_procedure)::out) is det.
 
-generate_code_parallel(ModuleInfo0, PredIds, !GlobalData, Procedures) :-
+generate_code_parallel(ModuleInfo, ConstStructMap, PredIds, !GlobalData,
+        Procedures) :-
     % Split up the list of predicates into pieces for processing in parallel.
     % Splitting the list in the middle does not work well as the load will be
     % unbalanced.  Splitting the list in any other way (as we do) does mean
@@ -169,14 +186,14 @@ generate_code_parallel(ModuleInfo0, PredIds, !GlobalData, Procedures) :-
     GlobalData0 = !.GlobalData,
     (
         list.condense(ListsOfPredIdsA, PredIdsA),
-        list.map_foldl(generate_pred_code_par(ModuleInfo0),
+        list.map_foldl(generate_pred_code_par(ModuleInfo, ConstStructMap),
             PredIdsA, PredProceduresA, GlobalData0, GlobalDataA),
         list.condense(PredProceduresA, ProceduresA)
     % XXX the following should be a parallel conjunction
     ,
         list.condense(ListsOfPredIdsB, PredIdsB),
         bump_type_num_counter(type_num_skip, GlobalData0, GlobalData1),
-        list.map_foldl(generate_pred_code_par(ModuleInfo0),
+        list.map_foldl(generate_pred_code_par(ModuleInfo, ConstStructMap),
             PredIdsB, PredProceduresB0, GlobalData1, GlobalDataB),
         list.condense(PredProceduresB0, ProceduresB0)
     ),
@@ -208,15 +225,16 @@ interleave_2([H|T], As0, As, Bs0, Bs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_maybe_pred_code(module_info::in,
-    pred_id::in, list(c_procedure)::out,
+:- pred generate_maybe_pred_code(module_info::in, bool::in, bool::in,
+    const_struct_map::in, pred_id::in, list(c_procedure)::out,
     global_data::in, global_data::out, io::di, io::uo) is det.
 
+generate_maybe_pred_code(ModuleInfo, VeryVerbose, Statistics, ConstStructMap,
+        PredId, Predicates, !GlobalData, !IO) :-
     % Note that some of the logic of generate_maybe_pred_code is duplicated
     % by mercury_compile.backend_pass_by_preds, so modifications here may
     % also need to be repeated there.
-    %
-generate_maybe_pred_code(ModuleInfo, PredId, Predicates, !GlobalData, !IO) :-
+
     module_info_get_preds(ModuleInfo, PredInfos),
     map.lookup(PredInfos, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
@@ -225,60 +243,61 @@ generate_maybe_pred_code(ModuleInfo, PredId, Predicates, !GlobalData, !IO) :-
         Predicates = []
     ;
         ProcIds = [_ | _],
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         (
             VeryVerbose = yes,
             io.write_string("% Generating code for ", !IO),
             write_pred_id(ModuleInfo, PredId, !IO),
             io.write_string("\n", !IO),
-            globals.lookup_bool_option(Globals, detailed_statistics,
-                Statistics),
+            generate_pred_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
+                ProcIds, Predicates, !GlobalData),
             maybe_report_stats(Statistics, !IO)
         ;
-            VeryVerbose = no
-        ),
-        generate_pred_code(ModuleInfo, PredId, PredInfo, ProcIds, Predicates,
-            !GlobalData)
+            VeryVerbose = no,
+            generate_pred_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
+                ProcIds, Predicates, !GlobalData)
+        )
     ).
 
-:- pred generate_pred_code_par(module_info::in, pred_id::in,
-    list(c_procedure)::out, global_data::in, global_data::out) is det.
+:- pred generate_pred_code_par(module_info::in, const_struct_map::in,
+    pred_id::in, list(c_procedure)::out,
+    global_data::in, global_data::out) is det.
 
-generate_pred_code_par(ModuleInfo, PredId, Predicates, !GlobalData) :-
+generate_pred_code_par(ModuleInfo, ConstStructMap, PredId, CProcs,
+        !GlobalData) :-
     module_info_get_preds(ModuleInfo, PredInfos),
     map.lookup(PredInfos, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
-    generate_pred_code(ModuleInfo, PredId, PredInfo, ProcIds, Predicates,
-        !GlobalData).
+    generate_pred_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
+        ProcIds, CProcs, !GlobalData).
 
     % Translate a HLDS predicate to LLDS.
     %
-:- pred generate_pred_code(module_info::in,
+:- pred generate_pred_code(module_info::in, const_struct_map::in,
     pred_id::in, pred_info::in, list(proc_id)::in, list(c_procedure)::out,
     global_data::in, global_data::out) is det.
 
-generate_pred_code(ModuleInfo, PredId, PredInfo, ProcIds, Code, !GlobalData) :-
-    generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo,
-        !GlobalData, [], Code).
+generate_pred_code(ModuleInfo, ConstStructMap, PredId, PredInfo, ProcIds,
+        Code, !GlobalData) :-
+    generate_proc_list_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
+        ProcIds, !GlobalData, [], Code).
 
     % Translate all the procedures of a HLDS predicate to LLDS.
     %
-:- pred generate_proc_list_code(list(proc_id)::in, pred_id::in, pred_info::in,
-    module_info::in, global_data::in, global_data::out,
+:- pred generate_proc_list_code(module_info::in, const_struct_map::in,
+    pred_id::in, pred_info::in, list(proc_id)::in,
+    global_data::in, global_data::out,
     list(c_procedure)::in, list(c_procedure)::out) is det.
 
-generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo,
-        !GlobalData, !Procs).
-generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
-        !GlobalData, !Procs) :-
+generate_proc_list_code(_, _, _, _, [], !GlobalData, !Procs).
+generate_proc_list_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
+        [ProcId | ProcIds], !GlobalData, !Procs) :-
     pred_info_get_procedures(PredInfo, ProcInfos),
     map.lookup(ProcInfos, ProcId, ProcInfo),
-    generate_proc_code(PredInfo, ProcInfo, PredId, ProcId, ModuleInfo0,
-        !GlobalData, Proc),
+    generate_proc_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
+        ProcId, ProcInfo, !GlobalData, Proc),
     !:Procs = [Proc | !.Procs],
-    generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-        !GlobalData, !Procs).
+    generate_proc_list_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
+        ProcIds, !GlobalData, !Procs).
 
 %---------------------------------------------------------------------------%
 
@@ -299,8 +318,8 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 
 %---------------------------------------------------------------------------%
 
-generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
-        !GlobalData, CProc) :-
+generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
+        ProcId, ProcInfo0, !GlobalData, CProc) :-
     % The modified module_info and proc_info are both discarded
     % on return from generate_proc_code.
     maybe_set_trace_level(PredInfo, ModuleInfo0, ModuleInfo),
@@ -354,7 +373,7 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
         TSRevStringTable0, TSStringTableSize0),
 
     code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo,
-        ProcInfo, FollowVars, ModuleInfo, StaticCellInfo0,
+        ProcInfo, FollowVars, ModuleInfo, StaticCellInfo0, ConstStructMap,
         OutsideResumePoint, TraceSlotInfo, MaybeContainingGoalMap,
         TSRevStringTable0, TSStringTableSize0, CodeInfo0),
 

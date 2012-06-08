@@ -647,6 +647,7 @@
     ;       inline_vars_threshold
     ;       intermod_inline_simple_threshold
     ;       from_ground_term_threshold
+    ;       enable_const_struct
     ;       common_struct
     ;       common_struct_preds
     ;       common_goal
@@ -1550,6 +1551,7 @@ option_defaults_2(optimization_option, [
                                         % Has no effect until
                                         % --intermodule-optimization.
     from_ground_term_threshold          -   int(5),
+    enable_const_struct                 -   bool(yes),
     common_struct                       -   bool(no),
     common_struct_preds                 -   string(""),
     common_goal                         -   bool(yes),
@@ -2409,6 +2411,7 @@ long_option("intermod-inline-simple-threshold",
 long_option("from-ground-term-threshold",
                                     from_ground_term_threshold).
 long_option("inline-vars-threshold",        inline_vars_threshold).
+long_option("const-struct",         enable_const_struct).
 long_option("common-struct",        common_struct).
 long_option("common-struct-preds",  common_struct_preds).
 long_option("common-goal",          common_goal).
@@ -4994,6 +4997,8 @@ options_help_hlds_hlds_optimization -->
 %       "\tWrap a from_ground_term scope around the expanded,",
 %       "\tsuperhomogeneous form of a ground term that involves at least.",
 %       "\tthe given number of function symbols.",
+        "--no-const-struct",
+        "\tDisable the gathering of constant structures in a separate table.",
         "--no-common-struct",
         "\tDisable optimization of common term structures.",
 %       "--common-struct-preds <predids>",

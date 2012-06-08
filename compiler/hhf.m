@@ -400,7 +400,7 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
     (
         map.search(VarTypes0, Var, Type),
         type_constructors(ModuleInfo, Type, Constructors),
-        type_to_ctor_and_args(Type, TypeCtor, _)
+        type_to_ctor(Type, TypeCtor)
     ->
         TypeCtor = type_ctor(TypeCtorSymName, _),
         (

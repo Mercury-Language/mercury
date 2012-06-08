@@ -869,9 +869,9 @@ var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
     % and they are all constants.
     (
         StaticGroundCells = have_static_ground_cells,
-        cell_is_constant(VarStateMap, ExprnOpts, CellArgs, RvalsTypes)
+        cell_is_constant(VarStateMap, ExprnOpts, CellArgs, TypedRvals)
     ->
-        add_scalar_static_cell(RvalsTypes, DataAddr, !StaticCellInfo),
+        add_scalar_static_cell(TypedRvals, DataAddr, !StaticCellInfo),
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         CellPtrRval = mkword(Ptag, CellPtrConst),
         var_locn_assign_const_to_var(ExprnOpts, Var, CellPtrRval, !VLI),
@@ -2249,11 +2249,11 @@ var_locn_max_reg_in_use(VLI, MaxR, MaxF) :-
 %----------------------------------------------------------------------------%
 
 :- pred cell_is_constant(var_state_map::in, exprn_opts::in,
-    list(cell_arg)::in, assoc_list(rval, llds_type)::out) is semidet.
+    list(cell_arg)::in, list(typed_rval)::out) is semidet.
 
 cell_is_constant(_VarStateMap, _ExprnOpts, [], []).
 cell_is_constant(VarStateMap, ExprnOpts, [CellArg | CellArgs],
-        [Rval - LldsType | RvalsTypes]) :-
+        [typed_rval(Rval, LldsType) | TypedRvals]) :-
     require_complete_switch [CellArg]
     (
         CellArg = cell_arg_full_word(Rval0, complete),
@@ -2270,7 +2270,7 @@ cell_is_constant(VarStateMap, ExprnOpts, [CellArg | CellArgs],
     ),
     expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval),
     LldsType = rval_type_as_arg(get_unboxed_floats(ExprnOpts), ArgWidth, Rval),
-    cell_is_constant(VarStateMap, ExprnOpts, CellArgs, RvalsTypes).
+    cell_is_constant(VarStateMap, ExprnOpts, CellArgs, TypedRvals).
 
     % expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval):
     % Check if Rval0 is a constant rval, after substituting the values of the

@@ -33,7 +33,6 @@
 
 :- func get_type_info(T::unused) = (type_info::out) is det.
 
-    %
     % Check if two values are equal.
     % Note this is not structural equality because a type
     % can have user-defined equality.

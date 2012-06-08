@@ -9,7 +9,7 @@
 % File: prog_type.m.
 % Main author: fjh.
 %
-% Utility predicates dealing with type in the parse tree. The predicates for
+% Utility predicates dealing with types in the parse tree. The predicates for
 % doing type substitutions are in prog_type_subst.m, while utility predicates
 % for dealing with types in the HLDS are in type_util.m.
 %
@@ -35,7 +35,7 @@
 % Simple tests for certain properties of types. These tests work modulo any
 % kind annotations, so in the early stages of the compiler (i.e., before type
 % checking) these should be used rather than direct tests. Once we reach
-% type checking all kind annotations should have been removed, so it would
+% type checking, all kind annotations should have been removed, so it would
 % be preferable to switch on the top functor rather than use these predicates
 % in an if-then-else expression, since switches will give better error
 % detection.
@@ -49,8 +49,7 @@
     %
 :- pred type_is_nonvar(mer_type::in) is semidet.
 
-    % Succeeds iff the given type is a higher-order predicate or function
-    % type.
+    % Succeeds iff the given type is a higher-order predicate or function type.
     %
 :- pred type_is_higher_order(mer_type::in) is semidet.
 
@@ -553,7 +552,8 @@ type_to_ctor_and_args_det(Type, TypeCtor, Args) :-
         TypeCtor = TypeCtorPrime,
         Args = ArgsPrime
     ;
-        unexpected($module, $pred, "type_to_ctor_and_args failed: " ++ string(Type))
+        unexpected($module, $pred,
+            "type_to_ctor_and_args failed: " ++ string(Type))
     ).
 
 type_to_ctor(Type, TypeCtor) :-
@@ -813,7 +813,7 @@ type_ctor_is_bitmap(
         type_ctor(qualified(unqualified("bitmap"), "bitmap"), 0)).
 
 is_introduced_type_info_type(Type) :-
-    type_to_ctor_and_args(Type, TypeCtor, _),
+    type_to_ctor(Type, TypeCtor),
     is_introduced_type_info_type_ctor(TypeCtor).
 
 is_introduced_type_info_type_ctor(TypeCtor) :-
@@ -891,8 +891,6 @@ add_new_prefix(qualified(Module, Name0), qualified(Module, Name)) :-
 
 %-----------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
-
     % Given a constant and an arity, return a type_ctor.
     % This really ought to take a name and an arity -
     % use of integers/floats/strings as type names should
@@ -952,6 +950,8 @@ qualify_cons_id(Args, ConsId0, ConsId, InstConsId) :-
         ; ConsId0 = impl_defined_const(_)
         ; ConsId0 = type_ctor_info_const(_, _, _)
         ; ConsId0 = base_typeclass_info_const(_, _, _, _)
+        ; ConsId0 = type_info_const(_)
+        ; ConsId0 = typeclass_info_const(_)
         ; ConsId0 = table_io_decl(_)
         ; ConsId0 = tabling_info_const(_)
         ; ConsId0 = deep_profiling_proc_layout(_)
@@ -1272,7 +1272,7 @@ type_unify_list([X | Xs], [Y | Ys], HeadTypeParams, !Bindings) :-
 
 type_occurs(TypeX, Y, Bindings) :-
     (
-        TypeX = type_variable(X, _), 
+        TypeX = type_variable(X, _),
         ( X = Y ->
             true
         ;

@@ -552,13 +552,12 @@ gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
     get_var_type(ByteInfo, Var1, Var1Type),
     get_var_type(ByteInfo, Var2, Var2Type),
     (
-        type_to_ctor_and_args(Var1Type, TypeCtor1, _),
-        type_to_ctor_and_args(Var2Type, TypeCtor2, _)
+        type_to_ctor(Var1Type, TypeCtor1),
+        type_to_ctor(Var2Type, TypeCtor2)
     ->
         ( TypeCtor2 = TypeCtor1 ->
             TypeCtor = TypeCtor1
-        ;   unexpected($module, $pred,
-                "simple_test between different types")
+        ;   unexpected($module, $pred, "simple_test between different types")
         )
     ;
         unexpected($module, $pred, "failed lookup of type id")
@@ -776,6 +775,12 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ConsId = typeclass_info_cell_constructor,
         ByteConsId = byte_typeclass_info_cell_constructor
     ;
+        ConsId = type_info_const(_),
+        sorry($module, $pred, "bytecode doesn't implement type_info_const")
+    ;
+        ConsId = typeclass_info_const(_),
+        sorry($module, $pred, "bytecode doesn't implement typeclass_info_const")
+    ;
         ConsId = tabling_info_const(_),
         sorry($module, $pred, "bytecode cannot implement tabling")
     ;
@@ -817,6 +822,12 @@ map_cons_tag(type_ctor_info_tag(_, _, _), _) :-
 map_cons_tag(base_typeclass_info_tag(_, _, _), _) :-
     unexpected($module, $pred, "base_typeclass_info_tag cons tag " ++
         "for non-base_typeclass_info_constant cons id").
+map_cons_tag(type_info_const_tag(_), _) :-
+    unexpected($module, $pred, "type_info_const cons tag " ++
+        "for non-type_info_const cons id").
+map_cons_tag(typeclass_info_const_tag(_), _) :-
+    unexpected($module, $pred, "typeclass_info_const cons tag " ++
+        "for non-typeclass_info_const cons id").
 map_cons_tag(tabling_info_tag(_, _), _) :-
     unexpected($module, $pred, "tabling_info_tag cons tag " ++
         "for non-tabling_info_constant cons id").

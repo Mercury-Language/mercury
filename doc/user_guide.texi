@@ -7286,6 +7286,7 @@ R - live forward use, live backward use and reuse possibilities,
 S - information about structure sharing,
 T - type and typeclass information,
 U - unify and compare predicates,
+X - constant structures,
 Z - information about globals structs representing call and answer tables.
 
 @sp 1

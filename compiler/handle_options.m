@@ -3180,6 +3180,7 @@ convert_dump_alias("ctgc", "cdinpGDRS").
 convert_dump_alias("vars", "npBis").    % Var instantiations, liveness etc.
 convert_dump_alias("statevar", "gvCP").
 convert_dump_alias("lco", "agiuvzD").
+convert_dump_alias("poly", "vxX").
 
 %-----------------------------------------------------------------------------%
 :- end_module handle_options.

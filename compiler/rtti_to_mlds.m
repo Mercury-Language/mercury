@@ -1641,12 +1641,16 @@ gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
         % the function label allocated for the wrapper func does not overlap
         % with any function labels used when generating code for the wrapped
         % procedure.
+        %
+        % The empty const struct map is a lie, but a white lie; the RTTI
+        % data cannot contain any type_info_const or typeclass_info_const
+        % cons_ids.
 
         PredId = RttiProcId ^ rpl_pred_id,
         ProcId = RttiProcId ^ rpl_proc_id,
         module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-        !:Info = ml_gen_info_init(ModuleInfo, PredId, ProcId, ProcInfo,
-            !.GlobalData),
+        !:Info = ml_gen_info_init(ModuleInfo, map.init, PredId, ProcId,
+            ProcInfo, !.GlobalData),
         ml_gen_info_bump_counters(!Info),
 
         % Now we can safely go ahead and generate the wrapper function.

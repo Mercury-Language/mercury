@@ -183,10 +183,11 @@ abstractly_unify_inst(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
             Detism = UnifyDetism
         ;
             Inst0 = defined_inst(ThisInstPair),
-            % It's ok to assume that the unification is deterministic here,
+            % It is ok to assume that the unification is deterministic here,
             % because the only time that this will happen is when we get to the
             % recursive case for a recursively defined inst. If the unification
-            % as a whole is semidet then it must be semidet somewhere else too.
+            % as a whole is semidet, then this must be because it is semidet
+            % somewhere else too.
             Detism = detism_det
         ),
         Inst1 = Inst0
@@ -202,7 +203,7 @@ abstractly_unify_inst(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
         abstractly_unify_inst_2(Live, ExpandedInstA, ExpandedInstB, Real,
             Inst0, Detism, !ModuleInfo),
 
-        % If this unification cannot possible succeed, the correct inst
+        % If this unification cannot possibly succeed, the correct inst
         % is not_reached.
         ( determinism_components(Detism, _, at_most_zero) ->
             Inst1 = not_reached

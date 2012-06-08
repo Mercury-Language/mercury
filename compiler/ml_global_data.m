@@ -778,6 +778,12 @@ cons_id_to_alloc_site_string(ConsId) = TypeStr :-
         ConsId = typeclass_info_cell_constructor,
         TypeStr = "typeclass_info"
     ;
+        ConsId = type_info_const(_),
+        TypeStr = "type_info_const"
+    ;
+        ConsId = typeclass_info_const(_),
+        TypeStr = "typeclass_info_const"
+    ;
         ( ConsId = int_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)

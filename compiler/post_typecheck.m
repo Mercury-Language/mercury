@@ -1230,7 +1230,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
     cons_id::in, mer_type::in, list(mer_type)::in) is semidet.
 
 find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
-    type_to_ctor_and_args(Type, TypeCtor, _),
+    type_to_ctor(Type, TypeCtor),
     module_info_get_cons_table(ModuleInfo, ConsTable),
     search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn),
 

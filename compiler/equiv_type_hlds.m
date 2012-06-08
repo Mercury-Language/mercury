@@ -1339,8 +1339,14 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
             replace_in_goal(EqvMap, SubGoal0, SubGoal, Changed, !Info),
-            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
-            GoalExpr = shorthand(ShortHand)
+            (
+                Changed = yes,
+                ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
+                GoalExpr = shorthand(ShortHand)
+            ;
+                Changed = no,
+                GoalExpr = GoalExpr0
+            )
         ;
             ShortHand0 = bi_implication(_, _),
             unexpected($module, $pred, "bi_implication")

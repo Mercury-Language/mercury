@@ -32,6 +32,8 @@
 
 %---------------------------------------------------------------------------%
 
+    % Generate all the base_typeclass_infos defined by the module.
+    %
 :- pred generate_base_typeclass_info_rtti(module_info::in,
     list(rtti_data)::out) is det.
 
@@ -63,35 +65,36 @@
 
 %---------------------------------------------------------------------------%
 
-generate_base_typeclass_info_rtti(ModuleInfo, RttiDataList) :-
-    module_info_get_name(ModuleInfo, ModuleName),
+generate_base_typeclass_info_rtti(ModuleInfo, RttiDatas) :-
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.to_assoc_list(InstanceTable, AllInstances),
-    gen_infos_for_classes(AllInstances, ModuleName, ModuleInfo,
-        [], RttiDataList).
+    gen_infos_for_classes(ModuleInfo, AllInstances, [], RttiDatas).
 
-:- pred gen_infos_for_classes(
-    assoc_list(class_id, list(hlds_instance_defn))::in, module_name::in,
-    module_info::in, list(rtti_data)::in, list(rtti_data)::out) is det.
+:- pred gen_infos_for_classes(module_info::in,
+    assoc_list(class_id, list(hlds_instance_defn))::in,
+    list(rtti_data)::in, list(rtti_data)::out) is det.
 
-gen_infos_for_classes([], _ModuleName, _ModuleInfo, !RttiDataList).
-gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo, !RttiDataList) :-
-    gen_infos_for_instance_list(C, ModuleName, ModuleInfo, !RttiDataList),
-    gen_infos_for_classes(Cs, ModuleName, ModuleInfo, !RttiDataList).
+gen_infos_for_classes(_ModuleInfo, [], !RttiDatas).
+gen_infos_for_classes(ModuleInfo, [Class | Classes], !RttiDatas) :-
+    Class = ClassId - InstanceDefns,
+    gen_infos_for_instances(ModuleInfo, ClassId, InstanceDefns, !RttiDatas),
+    gen_infos_for_classes(ModuleInfo, Classes, !RttiDatas).
 
-    % XXX make it use an accumulator
-:- pred gen_infos_for_instance_list(
-    pair(class_id, list(hlds_instance_defn))::in, module_name::in,
-    module_info::in, list(rtti_data)::in, list(rtti_data)::out) is det.
+:- pred gen_infos_for_instances(module_info::in, class_id::in,
+    list(hlds_instance_defn)::in,
+    list(rtti_data)::in, list(rtti_data)::out) is det.
 
-gen_infos_for_instance_list(_ - [], _, _, !RttiDataList).
-gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
-        ModuleInfo, !RttiDataList) :-
-    gen_infos_for_instance_list(ClassId - Is, ModuleName, ModuleInfo,
-        !RttiDataList),
+gen_infos_for_instances(_, _, [], !RttiDatas).
+gen_infos_for_instances(ModuleInfo, ClassId,
+        [InstanceDefn | InstanceDefns], !RttiDatas) :-
+    % We could make this procedure tail recursive just by doing this call
+    % at the end of the clause, but keeping the declarations in instance
+    % order seems worthwhile on aesthetic grounds.
+    gen_infos_for_instances(ModuleInfo, ClassId, InstanceDefns, !RttiDatas),
+
     InstanceDefn = hlds_instance_defn(InstanceModule, ImportStatus,
-        _TermContext, InstanceConstraints, InstanceTypes, _OriginalTypes, Body,
-        PredProcIds, _Varset, _SuperClassProofs),
+        _TermContext, _InstanceConstraints, InstanceTypes, _OriginalTypes,
+        Body, _MaybePredProcIds, _Varset, _SuperClassProofs),
     (
         Body = instance_body_concrete(_),
         % Only make the base_typeclass_info if the instance declaration
@@ -99,12 +102,11 @@ gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
         status_defined_in_this_module(ImportStatus) = yes
     ->
         make_instance_string(InstanceTypes, InstanceString),
-        gen_body(PredProcIds, InstanceTypes, InstanceConstraints,
-            ModuleInfo, ClassId, BaseTypeClassInfo),
+        gen_body(ModuleInfo, ClassId, InstanceDefn, BaseTypeClassInfo),
         TCName = generate_class_name(ClassId),
         RttiData = rtti_data_base_typeclass_info(TCName, InstanceModule,
             InstanceString, BaseTypeClassInfo),
-        !:RttiDataList = [RttiData | !.RttiDataList]
+        !:RttiDatas = [RttiData | !.RttiDatas]
     ;
         % The instance decl is from another module, or is abstract,
         % so we don't bother including it.
@@ -113,40 +115,43 @@ gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
 
 %----------------------------------------------------------------------------%
 
-:- pred gen_body(maybe(list(hlds_class_proc))::in, list(mer_type)::in,
-    list(prog_constraint)::in, module_info::in, class_id::in,
+:- pred gen_body(module_info::in, class_id::in, hlds_instance_defn::in,
     base_typeclass_info::out) is det.
 
-gen_body(no, _, _, _, _, _) :-
-    unexpected($module, $pred,
-        "pred_proc_ids should have been filled in by check_typeclass.m").
-gen_body(yes(PredProcIds0), Types, Constraints, ModuleInfo, ClassId,
-        BaseTypeClassInfo) :-
-    type_vars_list(Types, TypeVars),
-    get_unconstrained_tvars(TypeVars, Constraints, Unconstrained),
+gen_body(ModuleInfo, ClassId, InstanceDefn, BaseTypeClassInfo) :-
+    num_extra_instance_args(InstanceDefn, NumExtra),
+
+    Constraints = InstanceDefn ^ instance_constraints,
     list.length(Constraints, NumConstraints),
-    list.length(Unconstrained, NumUnconstrained),
-    NumExtra = NumConstraints + NumUnconstrained,
+
+    MaybeInstancePredProcIds = InstanceDefn ^ instance_hlds_interface,
+    (
+        MaybeInstancePredProcIds = no,
+        unexpected($module, $pred,
+            "pred_proc_ids not filled in by check_typeclass.m")
+    ;
+        MaybeInstancePredProcIds = yes(InstancePredProcIds)
+    ),
     ExtractPredProcId = (pred(HldsPredProc::in, PredProc::out) is det :-
         (
             HldsPredProc = hlds_class_proc(PredId, ProcId),
             PredProc = proc(PredId, ProcId)
         )),
-    list.map(ExtractPredProcId, PredProcIds0, PredProcIds),
-    construct_proc_labels(PredProcIds, ModuleInfo, ProcLabels),
+    list.map(ExtractPredProcId, InstancePredProcIds, PredProcIds),
+    construct_proc_labels(ModuleInfo, PredProcIds, ProcLabels),
     gen_superclass_count(ClassId, ModuleInfo, SuperClassCount, ClassArity),
     list.length(ProcLabels, NumMethods),
     BaseTypeClassInfo = base_typeclass_info(NumExtra, NumConstraints,
         SuperClassCount, ClassArity, NumMethods, ProcLabels).
 
-:- pred construct_proc_labels(list(pred_proc_id)::in,
-    module_info::in, list(rtti_proc_label)::out) is det.
+:- pred construct_proc_labels(module_info::in, list(pred_proc_id)::in,
+    list(rtti_proc_label)::out) is det.
 
-construct_proc_labels([], _, []).
-construct_proc_labels([proc(PredId, ProcId) | Procs], ModuleInfo,
+construct_proc_labels(_, [], []).
+construct_proc_labels(ModuleInfo, [proc(PredId, ProcId) | PredProcIds],
         [ProcLabel | ProcLabels]) :-
     ProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-    construct_proc_labels(Procs, ModuleInfo, ProcLabels).
+    construct_proc_labels(ModuleInfo, PredProcIds, ProcLabels).
 
 %----------------------------------------------------------------------------%
 

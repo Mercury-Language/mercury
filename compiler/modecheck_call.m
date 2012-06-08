@@ -168,7 +168,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
             ArgOffset, InstVarSub, ArgVars, ExtraGoals, !ModeInfo)
     ;
         % Set the current error list to empty (and save the old one in
-        % `OldErrors').  This is so the test for `Errors = []' in
+        % `OldErrors'). This is so the test for `Errors = []' in
         % find_matching_modes will work.
         mode_info_get_errors(!.ModeInfo, OldErrors),
         mode_info_set_errors([], !ModeInfo),
@@ -177,7 +177,8 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         modecheck_find_matching_modes(ProcIds, PredId, Procs, ArgVars0,
             [], RevMatchingProcIds, WaitingVars0, WaitingVars1, !ModeInfo),
 
-        (   RevMatchingProcIds = [],
+        (
+            RevMatchingProcIds = [],
             no_matching_modes(PredId, ArgVars0, DeterminismKnown,
                 WaitingVars1, TheProcId, !ModeInfo),
             ArgVars = ArgVars0,

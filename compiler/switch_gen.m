@@ -456,23 +456,25 @@ is_reserved_addr_tag(TaggedConsId) = IsReservedAddr :-
         ConsTag = reserved_address_tag(_),
         IsReservedAddr = yes
     ;
-        ( ConsTag = no_tag
-        ; ConsTag = base_typeclass_info_tag(_, _, _)
-        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ( ConsTag = int_tag(_)
         ; ConsTag = float_tag(_)
-        ; ConsTag = foreign_tag(_, _)
-        ; ConsTag = int_tag(_)
-        ; ConsTag = closure_tag(_, _, _)
-        ; ConsTag = shared_local_tag(_, _)
-        ; ConsTag = shared_remote_tag(_, _)
-        ; ConsTag = shared_with_reserved_addresses_tag(_, _)
-        ; ConsTag = single_functor_tag
         ; ConsTag = string_tag(_)
-        ; ConsTag = table_io_decl_tag(_, _)
-        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_decl_tag(_, _)
+        ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
+        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = shared_local_tag(_, _)
+        ; ConsTag = no_tag
+        ; ConsTag = shared_with_reserved_addresses_tag(_, _)
         ),
         IsReservedAddr = no
     ).

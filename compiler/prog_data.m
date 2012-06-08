@@ -1584,6 +1584,9 @@ rename_var(Must, Renaming, Var0, Var) :-
     ;       type_info_cell_constructor(type_ctor)
     ;       typeclass_info_cell_constructor
 
+    ;       type_info_const(int)
+    ;       typeclass_info_const(int)
+
     ;       tabling_info_const(shrouded_pred_proc_id)
             % The address of the static structure that holds information
             % about the table that implements memoization, loop checking
@@ -1610,6 +1613,8 @@ rename_var(Must, Renaming, Var0, Var) :-
     % Are the two cons_ids equivalent, modulo any module qualifications?
     %
 :- pred equivalent_cons_ids(cons_id::in, cons_id::in) is semidet.
+
+:- pred cons_id_is_const_struct(cons_id::in, int::out) is semidet.
 
 :- implementation.
 
@@ -1648,6 +1653,32 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
         SymNameB = unqualified("{}")
     ;
         ConsIdA = ConsIdB
+    ).
+
+cons_id_is_const_struct(ConsId, ConstNum) :-
+    require_complete_switch [ConsId]
+    (
+        ConsId = type_info_const(ConstNum)
+    ;
+        ConsId = typeclass_info_const(ConstNum)
+    ;
+        ( ConsId = cons(_, _, _)
+        ; ConsId = tuple_cons(_)
+        ; ConsId = closure_cons(_, _)
+        ; ConsId = int_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = impl_defined_const(_)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = table_io_decl(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ),
+        fail
     ).
 
 %-----------------------------------------------------------------------------%

@@ -499,8 +499,8 @@ output_vector_common_data_defn(Info, VectorCommonDataArray, !DeclSet, !IO) :-
 
 common_cell_get_rvals(Value) = Rvals :-
     (
-        Value = plain_value(RvalsTypes),
-        assoc_list.keys(RvalsTypes, Rvals)
+        Value = plain_value(TypedRvals),
+        Rvals = typed_rvals_project_rvals(TypedRvals)
     ;
         Value = grouped_args_value(Groups),
         RvalLists = list.map(common_group_get_rvals, Groups),
@@ -557,8 +557,8 @@ output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
 output_common_cell_value(Info, CellValue, !IO) :-
     io.write_string("{\n", !IO),
     (
-        CellValue = plain_value(ArgsTypes),
-        output_cons_args(Info, ArgsTypes, !IO)
+        CellValue = plain_value(TypedArgs),
+        output_cons_args(Info, TypedArgs, !IO)
     ;
         CellValue = grouped_args_value(ArgGroups),
         output_cons_arg_groups(Info, ArgGroups, !IO)
@@ -568,11 +568,12 @@ output_common_cell_value(Info, CellValue, !IO) :-
     % Output the arguments, each on its own line, and with a cast appropriate
     % to its type if that is necessary.
     %
-:- pred output_cons_args(llds_out_info::in, assoc_list(rval, llds_type)::in,
+:- pred output_cons_args(llds_out_info::in, list(typed_rval)::in,
     io::di, io::uo) is det.
 
 output_cons_args(_, [], !IO).
-output_cons_args(Info, [Rval - Type | RvalsTypes], !IO) :-
+output_cons_args(Info, [TypedRval | TypedRvals], !IO) :-
+    TypedRval = typed_rval(Rval, Type),
     (
         direct_field_int_constant(Type) = yes,
         Rval = const(llconst_int(N))
@@ -582,11 +583,11 @@ output_cons_args(Info, [Rval - Type | RvalsTypes], !IO) :-
         output_rval_as_type(Info, Rval, Type, !IO)
     ),
     (
-        RvalsTypes = [_ | _],
+        TypedRvals = [_ | _],
         io.write_string(",\n", !IO),
-        output_cons_args(Info, RvalsTypes, !IO)
+        output_cons_args(Info, TypedRvals, !IO)
     ;
-        RvalsTypes = [],
+        TypedRvals = [],
         io.write_string("\n", !IO)
     ).
 

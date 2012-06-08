@@ -42,6 +42,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.ml_gen_info.
+:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
@@ -114,6 +115,9 @@
 :- pred ml_gen_ground_term(prog_var::in, hlds_goal::in,
     list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
+:- pred ml_gen_const_structs(module_info::in, ml_const_struct_map::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -125,6 +129,7 @@
 :- import_module backend_libs.type_class_info.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.const_struct.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -135,7 +140,6 @@
 :- import_module ml_backend.ml_closure_gen.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
-:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_util.
@@ -342,7 +346,8 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
                     Tag = direct_arg_tag(Ptag),
                     ml_variable_type(!.Info, Var, VarType),
                     ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
-                        ArgLval, ArgType, VarLval, VarType, Context, Statements)
+                        ArgLval, ArgType, VarLval, VarType, Context,
+                        Statements)
                 )
             )
         ;
@@ -374,6 +379,20 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         Tag = closure_tag(PredId, ProcId, _EvalMethod),
         ml_gen_closure(PredId, ProcId, Var, Args, ArgModes, HowToConstruct,
             Context, Statements, !Info)
+    ;
+        ( Tag = type_info_const_tag(ConstNum)
+        ; Tag = typeclass_info_const_tag(ConstNum)
+        ),
+        ml_gen_info_get_const_struct_map(!.Info, ConstStructMap),
+        map.lookup(ConstStructMap, ConstNum, GroundTerm0),
+        GroundTerm0 = ml_ground_term(Rval, _Type, _MLDS_Type),
+        ml_gen_var(!.Info, Var, VarLval),
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+        GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
+        ml_gen_info_set_const_var(Var, GroundTerm, !Info),
+        Statement = ml_gen_assign(VarLval, Rval, Context),
+        Statements = [Statement]
     ;
         % Constants.
         ( Tag = int_tag(_)
@@ -461,7 +480,8 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
         DataAddr = data_addr(PredModule,
-            mlds_tabling_ref(mlds_proc_label(PredLabel, ProcId), tabling_info)),
+            mlds_tabling_ref(mlds_proc_label(PredLabel, ProcId),
+                tabling_info)),
         Rval = ml_unop(cast(MLDS_VarType),
             ml_const(mlconst_data_addr(DataAddr)))
     ;
@@ -483,25 +503,16 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
     ;
         % These tags, which are not (necessarily) constants, are handled
         % in ml_gen_construct, so we don't need to handle them here.
-        (
-            Tag = no_tag,
-            unexpected($module, $pred, "no_tag")
-        ;
-            Tag = single_functor_tag,
-            unexpected($module, $pred, "single_functor")
-        ;
-            Tag = unshared_tag(_),
-            unexpected($module, $pred, "unshared_tag")
-        ;
-            Tag = direct_arg_tag(_),
-            unexpected($module, $pred, "direct_arg_tag")
-        ;
-            Tag = shared_remote_tag(_, _),
-            unexpected($module, $pred, "shared_remote_tag")
-        ;
-            Tag = closure_tag(_, _, _),
-            unexpected($module, $pred, "closure_tag")
-        )
+        ( Tag = no_tag
+        ; Tag = single_functor_tag
+        ; Tag = unshared_tag(_)
+        ; Tag = direct_arg_tag(_)
+        ; Tag = shared_remote_tag(_, _)
+        ; Tag = closure_tag(_, _, _)
+        ; Tag = type_info_const_tag(_)
+        ; Tag = typeclass_info_const_tag(_)
+        ),
+        unexpected($module, $pred, "unexpected tag")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -662,19 +673,20 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
     list(int)::in, prog_context::in, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag, ExplicitSecTag,
-        _Var, VarLval, VarType, MLDS_Type, ExtraRvals, ExtraTypes,
-        ArgVars0, ArgTypes0, ArgModes0, TakeAddr, Context, Statements, !Info) :-
-
+ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
+        ExplicitSecTag, _Var, VarLval, VarType, MLDS_Type,
+        ExtraRvals, ExtraTypes, ArgVars0, ArgTypes0, ArgModes0, TakeAddr,
+        Context, Statements, !Info) :-
     % Fixup type_info_cell_constructor argument lists for the Java backend.
-    % (See below for an explanation.)
-    maybe_fixup_type_info_cell_constructor_args(!.Info, MaybeConsId,
+    % (See the documention of the callee for an explanation.)
+    ml_gen_info_get_target(!.Info, Target),
+    maybe_fixup_type_info_cell_constructor_args(Target, MaybeConsId,
         ArgVars0, ArgVars),
-    maybe_fixup_type_info_cell_constructor_args(!.Info, MaybeConsId,
+    maybe_fixup_type_info_cell_constructor_args(Target, MaybeConsId,
         ArgTypes0, ArgTypes),
-    maybe_fixup_type_info_cell_constructor_args(!.Info, MaybeConsId,
+    maybe_fixup_type_info_cell_constructor_args(Target, MaybeConsId,
         ArgModes0, ArgModes),
-    
+
     % Find out the types of the constructor arguments and generate rvals
     % for them (boxing/unboxing if needed).
     ml_gen_var_list(!.Info, ArgVars, ArgLvals),
@@ -758,12 +770,13 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     % Find out the types of the constructor arguments.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
-    
+    ml_gen_info_get_target(!.Info, Target),
+
     % Fixup type_info_cell_constructor argument lists for the Java backend.
-    % (See below for an explanation.)
-    maybe_fixup_type_info_cell_constructor_args(!.Info, MaybeConsId,
+    % (See the documention of the callee for an explanation.)
+    maybe_fixup_type_info_cell_constructor_args(Target, MaybeConsId,
         ArgVars0, ArgVars),
-    maybe_fixup_type_info_cell_constructor_args(!.Info, MaybeConsId,
+    maybe_fixup_type_info_cell_constructor_args(Target, MaybeConsId,
         ArgTypes0, ArgTypes),
 
     get_maybe_cons_id_arg_types(ModuleInfo, MaybeConsId, ArgTypes, VarType,
@@ -795,7 +808,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
             ml_gen_box_or_unbox_const_rval_list_hld(ModuleInfo, ArgTypes,
                 FieldTypes, ArgRvals0, Context, ArgRvals1, !GlobalData),
             % For --high-level-data, the ExtraRvals should already have
-            % the right type, so we don't need to worry about boxing
+            % the right type, so we do not need to worry about boxing
             % or unboxing them.
             ExtraArgRvals = ExtraRvals
         ),
@@ -808,7 +821,6 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
             MaybeCtorName = no,
             UsesBaseClass = tag_uses_base_class
         ),
-        ml_gen_info_get_target(!.Info, Target),
         ConstType = get_const_type_for_cons_id(Target, HighLevelData,
             MLDS_Type, UsesBaseClass, MaybeConsId),
         % XXX If the secondary tag is in a base class, then ideally its
@@ -858,12 +870,12 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     % to what the Java version of the runtime expects.
     %
     % For the Java backend we need to treat type_info_cell_constructors with a
-    % variable arity type_ctor specially.  polymorphism.m generates these so
+    % variable arity type_ctor specially. polymorphism.m generates these so
     % that the second argument is an integer giving the arity of the type_ctor,
     % but there is no corresponding constructor with an integer argument in
     % the TypeInfo_Struct class in the Java version of the runtime.
     % Having such a constructor would cause problems with restrictions on
-    % overloading in Java.  (In any case, it is unnecessary since the arity
+    % overloading in Java. (In any case, it is unnecessary since the arity
     % can be obtained from the length of the array holding the remaining
     % arguments.)
     %
@@ -879,13 +891,12 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     % XXX it might be better to modify polymoprhism.m so that it never
     % inserts the arity argument in the first place.
     %
-:- pred maybe_fixup_type_info_cell_constructor_args(ml_gen_info::in,
+:- pred maybe_fixup_type_info_cell_constructor_args(compilation_target::in,
     maybe(cons_id)::in, list(T)::in, list(T)::out) is det.
 
-maybe_fixup_type_info_cell_constructor_args(Info, MaybeConsId, !Args) :-
-    ml_gen_info_get_target(Info, Target),
+maybe_fixup_type_info_cell_constructor_args(Target, MaybeConsId, !Args) :-
     ( Target = target_java ->
-        ( 
+        (
             MaybeConsId = no
         ;
             MaybeConsId = yes(ConsId),
@@ -908,7 +919,7 @@ maybe_fixup_type_info_cell_constructor_args(Info, MaybeConsId, !Args) :-
     ;
         true
     ).
-    
+
 :- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in, maybe(ctor_name)::in,
     mlds_tag::in, maybe(mlds_tag)::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
@@ -973,7 +984,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
     HeapTestStatement = statement(HeapTestStmt, MLDS_Context),
 
     % For each field in the construction unification we need to generate
-    % an rval.  ExtraRvals need to be inserted at the start of the object.
+    % an rval. ExtraRvals need to be inserted at the start of the object.
     ml_gen_extra_arg_assign(ExtraRvals, ExtraTypes, VarType, VarLval,
         0, ConsIdTag, Context, ExtraRvalStatements, !Info),
     % XXX we do more work than we need to here, as some of the cells
@@ -1016,13 +1027,12 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
         HighLevelData = no,
-        % XXX
-        % I am not sure that the types specified here are always the right ones,
-        % particularly in cases where the field whose address we are taking has
-        % a non-du type such as int or float. However, I can't think of a test case
-        % in which a predicate fills in a field of such a type after a *recursive*
-        % call, since recursive calls tend to generate values of recursive (i.e.
-        % discriminated union) types. -zs
+        % XXX I am not sure that the types specified here are always the right
+        % ones, particularly in cases where the field whose address we are
+        % taking has a non-du type such as int or float. However, I can't think
+        % of a test case in which a predicate fills in a field of such a type
+        % after a *recursive* call, since recursive calls tend to generate
+        % values of recursive (i.e. discriminated union) types. -zs
         Offset = offset(OffsetInt),
         SourceRval = ml_mem_addr(ml_field(MaybeTag, ml_lval(CellLval),
             ml_field_offset(ml_const(mlconst_int(OffsetInt))),
@@ -1068,7 +1078,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
         ->
             ConstType = mlds_array_type(mlds_generic_type)
         ;
-            % Check if we're constructing a value for a discriminated union
+            % Check if we are constructing a value for a discriminated union
             % where the specified cons_id which is represented as a derived
             % class that is derived from the base class for this discriminated
             % union type.
@@ -1079,7 +1089,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
                 MLDS_Type = mlds_class_type(QualTypeName, TypeArity, _)
             ;
                 MLDS_Type = mercury_type(MercuryType, ctor_cat_user(_), _),
-                type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes),
+                type_to_ctor(MercuryType, TypeCtor),
                 ml_gen_type_name(TypeCtor, QualTypeName, TypeArity)
             )
         ->
@@ -1102,7 +1112,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % declarating static constants we want just the class type,
             % not the pointer type.
             MLDS_Type = mercury_type(MercuryType, ctor_cat_user(_), _),
-            type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes)
+            type_to_ctor(MercuryType, TypeCtor)
         ->
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
             ConstType = mlds_class_type(ClassName, ClassArity, mlds_class)
@@ -1172,7 +1182,7 @@ get_maybe_cons_id_arg_types(ModuleInfo, MaybeConsId, ArgTypes, Type,
             ConsArgTypes, ConsArgWidths)
     ;
         MaybeConsId = no,
-        % It's a closure. In this case, the arguments are all boxed.
+        % It is a closure. In this case, the arguments are all boxed.
         Length = list.length(ArgTypes),
         ConsArgTypes = ml_make_boxed_types(Length),
         ConsArgWidths = list.duplicate(Length, full_word)
@@ -1209,15 +1219,15 @@ constructor_arg_types(ModuleInfo, ConsId, ArgTypes, Type,
             ConsArgTypes = ExtraArgTypes ++ ConsArgTypes0,
             ConsArgWidths = ExtraArgWidths ++ ConsArgWidths0
         ;
-            % If we didn't find a constructor definition, maybe that is because
-            % this type was a built-in tuple type.
+            % If we did not find a constructor definition, maybe that is
+            % because this type was a built-in tuple type.
             type_is_tuple(Type, _)
         ->
             % In this case, the argument types are all fresh variables.
-            % Note that we don't need to worry about using the right varset
+            % Note that we do not need to worry about using the right varset
             % here, since all we really care about at this point is whether
-            % something is a type variable or not, not which type variable it
-            % is.
+            % something is a type variable or not, not which type variable
+            % it is.
             Length = list.length(ArgTypes),
             ConsArgTypes = ml_make_boxed_types(Length),
             ConsArgWidths = list.duplicate(Length, full_word)
@@ -1314,20 +1324,12 @@ ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, ArgType, FieldType, ArgRval,
     ml_global_data::in, ml_global_data::out) is det.
 
 ml_gen_box_const_rval_list_lld(_, _, [], [], !GlobalData).
-ml_gen_box_const_rval_list_lld(ModuleInfo, Context, [GroundTerm - ArgWidth | GroundTerms],
-        [BoxedRval | BoxedRvals], !GlobalData) :-
-    GroundTerm = ml_ground_term(Rval, _MercuryType, Type),
-    (
-        ArgWidth = double_word,
-        DoubleWidth = yes
-    ;
-        ( ArgWidth = full_word
-        ; ArgWidth = partial_word_first(_)
-        ; ArgWidth = partial_word_shifted(_, _)
-        ),
-        DoubleWidth = no
-    ),
-    ml_gen_box_const_rval(ModuleInfo, Context, Type, DoubleWidth, Rval,
+ml_gen_box_const_rval_list_lld(ModuleInfo, Context,
+        [GroundTerm - ArgWidth | GroundTerms], [BoxedRval | BoxedRvals],
+        !GlobalData) :-
+    GroundTerm = ml_ground_term(Rval, _MercuryType, MLDS_Type),
+    arg_width_is_double(ArgWidth, DoubleWidth),
+    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
         BoxedRval, !GlobalData),
     ml_gen_box_const_rval_list_lld(ModuleInfo, Context, GroundTerms,
         BoxedRvals, !GlobalData).
@@ -1337,14 +1339,15 @@ ml_gen_box_const_rval_list_lld(ModuleInfo, Context, [GroundTerm - ArgWidth | Gro
     ml_global_data::in, ml_global_data::out) is det.
 
 ml_gen_box_extra_const_rval_list_lld(_, _, [], [], [], !GlobalData).
-ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context, [Type | Types],
-        [Rval | Rvals], [BoxedRval | BoxedRvals], !GlobalData) :-
+ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
+        [MLDS_Type | MLDS_Types], [Rval | Rvals], [BoxedRval | BoxedRvals],
+        !GlobalData) :-
     % Extras are always a single word.
     DoubleWidth = no,
-    ml_gen_box_const_rval(ModuleInfo, Context, Type, DoubleWidth, Rval,
-        BoxedRval, !GlobalData),
-    ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context, Types, Rvals,
-        BoxedRvals, !GlobalData).
+    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth,
+        Rval, BoxedRval, !GlobalData),
+    ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context, MLDS_Types,
+        Rvals, BoxedRvals, !GlobalData).
 ml_gen_box_extra_const_rval_list_lld(_, _, [], [_ | _], _, !GlobalData) :-
     unexpected($module, $pred, "length mismatch").
 ml_gen_box_extra_const_rval_list_lld(_, _, [_ | _], [], _, !GlobalData) :-
@@ -1544,16 +1547,21 @@ ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
         ; Tag = int_tag(_Int)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
-        ; Tag = closure_tag(_, _, _)
-        ; Tag = type_ctor_info_tag(_, _, _)
-        ; Tag = base_typeclass_info_tag(_, _, _)
-        ; Tag = tabling_info_tag(_, _)
-        ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_decl_tag(_, _)
         ; Tag = shared_local_tag(_Bits1, _Num1)
         ; Tag = reserved_address_tag(_)
         ),
         Statements = []
+    ;
+        ( Tag = closure_tag(_, _, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = type_info_const_tag(_)
+        ; Tag = typeclass_info_const_tag(_)
+        ; Tag = tabling_info_tag(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ),
+        unexpected($module, $pred, "unexpected tag")
     ;
         Tag = no_tag,
         (
@@ -1643,6 +1651,8 @@ ml_tag_offset_and_argnum(Tag, TagBits, Offset, ArgNum) :-
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = type_info_const_tag(_)
+        ; Tag = typeclass_info_const_tag(_)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
@@ -1934,7 +1944,7 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
     ->
         true
     ;
-        % Both input: it's a test unification.
+        % Both input: it is a test unification.
         LeftMode = top_in,
         RightMode = top_in
     ->
@@ -1943,7 +1953,7 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
         % unification.
         unexpected($module, $pred, "test in arg of [de]construction")
     ;
-        % Input - output: it's an assignment to the RHS.
+        % Input - output: it is an assignment to the RHS.
         LeftMode = top_in,
         RightMode = top_out
     ->
@@ -1979,7 +1989,7 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
         ),
         !:Statements = [Statement | !.Statements]
     ;
-        % Output - input: it's an assignment to the LHS.
+        % Output - input: it is an assignment to the LHS.
         LeftMode = top_out,
         RightMode = top_in
     ->
@@ -2065,7 +2075,7 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
     ->
         unexpected($module, $pred, "dummy unify")
     ;
-        % Both input: it's a test unification.
+        % Both input: it is a test unification.
         LeftMode = top_in,
         RightMode = top_in
     ->
@@ -2074,13 +2084,13 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
         % unification.
         unexpected($module, $pred, "test in arg of [de]construction")
     ;
-        % Input - output: it's an assignment to the RHS.
+        % Input - output: it is an assignment to the RHS.
         LeftMode = top_in,
         RightMode = top_out
     ->
         unexpected($module, $pred, "left-to-right data flow in construction")
     ;
-        % Output - input: it's an assignment to the LHS.
+        % Output - input: it is an assignment to the LHS.
         LeftMode = top_out,
         RightMode = top_in
     ->
@@ -2117,7 +2127,7 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
     ->
         unexpected($module, $pred, "dummy unify")
     ;
-        % Both input: it's a test unification.
+        % Both input: it is a test unification.
         LeftMode = top_in,
         RightMode = top_in
     ->
@@ -2126,7 +2136,7 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
         % unification.
         unexpected($module, $pred, "test in arg of [de]construction")
     ;
-        % Input - output: it's an assignment to the RHS.
+        % Input - output: it is an assignment to the RHS.
         LeftMode = top_in,
         RightMode = top_out
     ->
@@ -2138,7 +2148,7 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
         Statement = ml_gen_assign(ArgLval, CastRval, Context),
         Statements = [Statement]
     ;
-        % Output - input: it's an assignment to the LHS.
+        % Output - input: it is an assignment to the LHS.
         LeftMode = top_out,
         RightMode = top_in
     ->
@@ -2255,6 +2265,8 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         ( Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = type_info_const_tag(_)
+        ; Tag = typeclass_info_const_tag(_)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
@@ -2353,7 +2365,7 @@ ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTagVal, VarType, Rval) =
 ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
     FieldName = "data_tag",
     % Figure out the type name and arity.
-    type_to_ctor_and_args_det(Type, TypeCtor, _),
+    type_to_ctor_det(Type, TypeCtor),
     ml_gen_type_name(TypeCtor, QualifiedTypeName, TypeArity),
     QualifiedTypeName = qual(MLDS_Module, TypeQualKind, TypeName),
 
@@ -2414,7 +2426,7 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
     mlds_class_name, arity, mlds_field_name) = mlds_field_id.
 
 ml_gen_field_id(Target, Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
-    type_to_ctor_and_args_det(Type, TypeCtor, _),
+    type_to_ctor_det(Type, TypeCtor),
     ml_gen_type_name(TypeCtor, QualTypeName, TypeArity),
     QualTypeName = qual(MLDS_Module, QualKind, TypeName),
     TypeQualifier = mlds_append_class_qualifier(Target, MLDS_Module, QualKind,
@@ -2423,7 +2435,7 @@ ml_gen_field_id(Target, Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
     UsesBaseClass = ml_tag_uses_base_class(Tag),
     (
         UsesBaseClass = tag_uses_base_class,
-        % In this case, there's only one functor for the type (other than
+        % In this case, there is only one functor for the type (other than
         % reserved_address constants), and so the class name is determined
         % by the type name.
         ClassPtrType = mlds_ptr_type(mlds_class_type(QualTypeName,
@@ -2568,6 +2580,8 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
     ;
         ( ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_decl_tag(_, _)
@@ -2677,17 +2691,17 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
             % then polymorphism should have changed its scope_reason
             % away from from_ground_term_construct.
             expect(unify(NumExtraArgs, 0), $module, $pred,
-                "xxx: extra args in from_ground_term_construct scope")
+                "extra args in from_ground_term_construct scope")
         ;
             % If we didn't find a constructor definition, maybe that is because
             % this type was a built-in tuple type.
             type_is_tuple(VarType, _)
         ->
             % In this case, the argument types are all fresh variables.
-            % Note that we don't need to worry about using the right varset
+            % Note that we do not need to worry about using the right varset
             % here, since all we really care about at this point is whether
-            % something is a type variable or not, not which type variable it
-            % is.
+            % something is a type variable or not, not which type variable
+            % it is.
             Length = list.length(Args),
             ConsArgTypes = ml_make_boxed_types(Length),
             ConsArgWidths = list.duplicate(Length, full_word)
@@ -2832,6 +2846,348 @@ construct_ground_term_initializer_lld(ModuleInfo, Context,
 
 %-----------------------------------------------------------------------------%
 
+ml_gen_const_structs(ModuleInfo, ConstStructMap, !GlobalData) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    Info = ml_const_struct_info(ModuleInfo, Target, HighLevelData),
+
+    module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+    const_struct_db_get_structs(ConstStructDb, ConstStructs),
+    list.foldl2(ml_gen_const_struct(Info), ConstStructs,
+        map.init, ConstStructMap, !GlobalData).
+
+:- type ml_const_struct_info
+    --->    ml_const_struct_info(
+                mcsi_module_info            :: module_info,
+                mcsi_target                 :: compilation_target,
+                mcsi_high_level_data        :: bool
+            ).
+
+:- pred ml_gen_const_struct(ml_const_struct_info::in,
+    pair(int, const_struct)::in,
+    ml_const_struct_map::in, ml_const_struct_map::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
+ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
+        !GlobalData) :-
+    ConstStruct = const_struct(ConsId, Args, Type, _Inst),
+    ModuleInfo = Info ^ mcsi_module_info,
+    MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+    ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
+        Args, !ConstStructMap, !GlobalData).
+
+:- pred ml_gen_const_struct_tag(ml_const_struct_info::in, int::in,
+    mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
+    list(const_struct_arg)::in,
+    ml_const_struct_map::in, ml_const_struct_map::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
+ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
+        Args, !ConstStructMap, !GlobalData) :-
+    (
+        ConsTag = shared_with_reserved_addresses_tag(_, ThisTag),
+        % Whether or not some other constructors in the type are represented
+        % by reserved addresses makes a difference only when deconstructing
+        % the term, not when constructing it.
+        ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId,
+            ThisTag, Args, !ConstStructMap, !GlobalData)
+    ;
+        ( ConsTag = no_tag
+        ; ConsTag = direct_arg_tag(_)
+        ),
+        (
+            Args = [_Arg],
+            unexpected($module, $pred, "NYI")
+        ;
+            ( Args = []
+            ; Args = [_, _ | _]
+            ),
+            unexpected($module, $pred, "no_tag arity != 1")
+        )
+    ;
+        % Ordinary compound terms.
+        % This code (loosely) follows the code of ml_gen_compound.
+        (
+            ConsTag = single_functor_tag,
+            Ptag = 0,
+            ExtraInitializers = []
+        ;
+            ConsTag = unshared_tag(Ptag),
+            ExtraInitializers = []
+        ;
+            ConsTag = shared_remote_tag(Ptag, Stag),
+            Target = Info ^ mcsi_target,
+            UsesConstructors = ml_target_uses_constructors(Target),
+            (
+                UsesConstructors = no,
+                StagRval0 = ml_const(mlconst_int(Stag)),
+                HighLevelData = Info ^ mcsi_high_level_data,
+                (
+                    HighLevelData = no,
+                    % XXX why is this cast here?
+                    StagRval = ml_unop(box(mlds_native_char_type), StagRval0)
+                ;
+                    HighLevelData = yes,
+                    StagRval = StagRval0
+                ),
+                ExtraInitializers = [init_obj(StagRval)]
+            ;
+                UsesConstructors = yes,
+                ExtraInitializers = []
+            )
+        ),
+        ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type,
+            ConsId, ConsTag, Ptag, ExtraInitializers, Args,
+            !ConstStructMap, !GlobalData)
+    ;
+        % These tags don't build heap cells.
+        ( ConsTag = int_tag(_)
+        ; ConsTag = float_tag(_)
+        ; ConsTag = string_tag(_)
+        ; ConsTag = reserved_address_tag(_)
+        ; ConsTag = shared_local_tag(_, _)
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        % These tags should never occur in constant data.
+        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        % These tags should never occur in constant data in this position.
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        % These tags should never occur in MLDS grades.
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_decl_tag(_, _)
+        ),
+        unexpected($module, $pred, "unexpected tag")
+    ).
+
+:- pred ml_gen_const_static_compound(ml_const_struct_info::in,
+    int::in, mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
+    int::in, list(mlds_initializer)::in, list(const_struct_arg)::in,
+    ml_const_struct_map::in, ml_const_struct_map::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
+ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
+        Ptag, ExtraInitializers, Args, !ConstStructMap, !GlobalData) :-
+    % This code (loosely) follows the code of
+    % ml_gen_ground_term_conjunct_compound.
+
+    Target = Info ^ mcsi_target,
+    ModuleInfo = Info ^ mcsi_module_info,
+    (
+        ConsId = cons(_, _, _),
+        \+ is_introduced_type_info_type(Type)
+    ->
+        % Determine the type_ctor, and then look up the data constructor.
+        type_to_ctor_det(Type, TypeCtor),
+        (
+            type_util.get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
+        ->
+            ConsArgDefns = ConsDefn ^ cons_args,
+            % XXX the compiler crashes if you try to write this with list.map2
+            % ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgDefns),
+            ConsArgWidths = list.map(func(C) = C ^ arg_width, ConsArgDefns),
+            NumExtraArgs = list.length(Args) - list.length(ConsArgDefns),
+            % If the scope contains existentially typed constructions,
+            % then polymorphism should have changed its scope_reason
+            % away from from_ground_term_construct.
+            expect(unify(NumExtraArgs, 0), $module, $pred,
+                "extra args in static const struct")
+        ;
+            % If we didn't find a constructor definition, maybe that is because
+            % this type was a built-in tuple type.
+            type_is_tuple(Type, _)
+        ->
+            % In this case, the argument types are all fresh variables.
+            % Note that we do not need to worry about using the right varset
+            % here, since all we really care about at this point is whether
+            % something is a type variable or not, not which type variable
+            % it is.
+            Length = list.length(Args),
+            % ConsArgTypes = ml_make_boxed_types(Length),
+            ConsArgWidths = list.duplicate(Length, full_word)
+        ;
+            % Type_util.get_cons_defn shouldn't have failed.
+            unexpected($module, $pred, "get_cons_defn failed")
+        )
+    ;
+        Length = list.length(Args),
+        % ConsArgTypes = ArgTypes,
+        ConsArgWidths = list.duplicate(Length, full_word)
+    ),
+    HighLevelData = Info ^ mcsi_high_level_data,
+    (
+        HighLevelData = yes,
+        unexpected($module, $pred, "HighLevelData NYI")
+    ;
+        HighLevelData = no,
+        assoc_list.from_corresponding_lists(Args, ConsArgWidths,
+            ArgConsArgWidths),
+        ml_gen_const_struct_args(Info, !.ConstStructMap,
+            ArgConsArgWidths, ArgRvals1, !GlobalData)
+    ),
+    pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals1, ArgRvals,
+        unit, _, unit, _),
+    ArgInitializers = list.map(func(Init) = init_obj(Init), ArgRvals),
+
+    % By construction, boxing the rvals in ExtraInitializers would be a no-op.
+    SubInitializers = ExtraInitializers ++ ArgInitializers,
+
+    % Generate a local static constant for this term.
+    ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
+        ml_tag_uses_base_class(ConsTag), yes(ConsId)),
+    % XXX If the secondary tag is in a base class, then ideally its
+    % initializer should be wrapped in `init_struct([init_obj(X)])'
+    % rather than just `init_obj(X)' -- the fact that we don't leads to
+    % some warnings from GNU C about missing braces in initializers.
+    ( ConstType = mlds_array_type(_) ->
+        Initializer = init_array(SubInitializers)
+    ;
+        Initializer = init_struct(ConstType, SubInitializers)
+    ),
+    module_info_get_name(ModuleInfo, ModuleName),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    ml_gen_static_scalar_const_addr(MLDS_ModuleName, "const_var", ConstType,
+        Initializer, term.context_init, ConstDataAddrRval, !GlobalData),
+
+    % Assign the (possibly tagged) address of the local static constant
+    % to the variable.
+    ( Ptag = 0 ->
+        TaggedRval = ConstDataAddrRval
+    ;
+        TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
+    ),
+    Rval = ml_unop(cast(MLDS_Type), TaggedRval),
+    GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
+    map.det_insert(ConstNum, GroundTerm, !ConstStructMap).
+
+:- pred ml_gen_const_struct_args(ml_const_struct_info::in,
+    ml_const_struct_map::in, assoc_list(const_struct_arg, arg_width)::in,
+    list(mlds_rval)::out, ml_global_data::in, ml_global_data::out) is det.
+
+ml_gen_const_struct_args(_, _, [], [], !GlobalData).
+ml_gen_const_struct_args(Info, ConstStructMap,
+        [Arg - ConsArgWidth | ArgConsArgWidths], [ArgRval | ArgRvals],
+        !GlobalData) :-
+    ml_gen_const_struct_arg(Info, ConstStructMap,
+        Arg, ConsArgWidth, ArgRval, !GlobalData),
+    ml_gen_const_struct_args(Info, ConstStructMap,
+        ArgConsArgWidths, ArgRvals, !GlobalData).
+
+:- pred ml_gen_const_struct_arg(ml_const_struct_info::in,
+    ml_const_struct_map::in, const_struct_arg::in, arg_width::in,
+    mlds_rval::out, ml_global_data::in, ml_global_data::out) is det.
+
+ml_gen_const_struct_arg(Info, ConstStructMap,
+        ConstArg, ConsArgWidth, Rval, !GlobalData) :-
+    ModuleInfo = Info ^ mcsi_module_info,
+    (
+        ConstArg = csa_const_struct(StructNum),
+        map.lookup(ConstStructMap, StructNum, GroundTerm),
+        GroundTerm = ml_ground_term(Rval0, _Type, MLDS_Type)
+    ;
+        ConstArg = csa_constant(ConsId, Type),
+        ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+        ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag,
+            Type, MLDS_Type, Rval0)
+    ),
+    arg_width_is_double(ConsArgWidth, DoubleWidth),
+    ml_gen_box_const_rval(ModuleInfo, term.context_init, MLDS_Type,
+        DoubleWidth, Rval0, Rval, !GlobalData).
+
+:- pred ml_gen_const_struct_arg_tag(module_info::in, cons_id::in, cons_tag::in,
+    mer_type::in, mlds_type::in, mlds_rval::out) is det.
+
+ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag, Type, MLDS_Type,
+        Rval) :-
+    (
+        ConsTag = int_tag(Int),
+        ( Type = int_type ->
+            Rval = ml_const(mlconst_int(Int))
+        ; Type = char_type ->
+            Rval = ml_const(mlconst_char(Int))
+        ;
+            Rval = ml_const(mlconst_enum(Int, MLDS_Type))
+        )
+    ;
+        ConsTag = float_tag(Float),
+        Rval = ml_const(mlconst_float(Float))
+    ;
+        ConsTag = string_tag(String),
+        Rval = ml_const(mlconst_string(String))
+    ;
+        ConsTag = reserved_address_tag(ResAddr),
+        Rval = ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type)
+    ;
+        ConsTag = shared_local_tag(Ptag, Stag),
+        Rval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag,
+            ml_unop(std_unop(mkbody), ml_const(mlconst_int(Stag)))))
+    ;
+        ConsTag = foreign_tag(ForeignLang, ForeignTag),
+        Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_Type))
+    ;
+        ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
+        ModuleName = fixup_builtin_module(ModuleName0),
+        MLDS_Module = mercury_module_name_to_mlds(ModuleName),
+        RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
+        DataAddr = data_addr(MLDS_Module,
+            mlds_rtti(ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info))),
+        Rval = ml_unop(cast(MLDS_Type), ml_const(mlconst_data_addr(DataAddr)))
+    ;
+        ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
+        MLDS_Module = mercury_module_name_to_mlds(ModuleName),
+        TCName = generate_class_name(ClassId),
+        DataAddr = data_addr(MLDS_Module, mlds_rtti(tc_rtti_id(TCName,
+            type_class_base_typeclass_info(ModuleName, Instance)))),
+        Rval = ml_unop(cast(MLDS_Type), ml_const(mlconst_data_addr(DataAddr)))
+    ;
+        ConsTag = shared_with_reserved_addresses_tag(_, ThisTag),
+        % Whether or not some other constructors in the type are represented
+        % by reserved addresses makes a difference only when deconstructing
+        % the term, not when constructing it.
+        ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ThisTag,
+            Type, MLDS_Type, Rval)
+    ;
+        % Instead of these tags in csa_constants, polymorphism.m builds
+        % csa_const_structs.
+        ( ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        % These tags build heap cells, not constants.
+        ; ConsTag = no_tag
+        ; ConsTag = direct_arg_tag(_)
+        ; ConsTag = single_functor_tag
+        ; ConsTag = unshared_tag(_)
+        ; ConsTag = shared_remote_tag(_, _)
+        % These tag should never occur in constant data.
+        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        % These tags should never occur in MLDS grades.
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_decl_tag(_, _)
+        ),
+        unexpected($module, $pred, "unexpected tag")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred arg_width_is_double(arg_width::in, bool::out) is det.
+
+arg_width_is_double(ArgWidth, DoubleWidth) :-
+    (
+        ArgWidth = double_word,
+        DoubleWidth = yes
+    ;
+        ( ArgWidth = full_word
+        ; ArgWidth = partial_word_first(_)
+        ; ArgWidth = partial_word_shifted(_, _)
+        ),
+        DoubleWidth = no
+    ).
+
 :- pred ml_expand_double_word_rvals(list(arg_width)::in, list(arg_width)::out,
     assoc_list(mlds_rval, mlds_type)::in,
     assoc_list(mlds_rval, mlds_type)::out) is det.
@@ -2899,8 +3255,8 @@ ml_shift_combine_rval_type(ArgA, Shift, MaybeArgB, ArgC, !Acc1, !Acc2) :-
 :- func ml_lshift(mlds_rval, int) = mlds_rval.
 
 ml_lshift(Rval0, Shift) = Rval :-
-    % We may get nulls from unfilled fields. Replace them with zeroes so we
-    % don't get type errors from the C compiler.
+    % We may get nulls from unfilled fields. Replace them with zeroes
+    % so we don't get type errors from the C compiler.
     ( Rval0 = ml_const(mlconst_null(_)) ->
         Rval = ml_const(mlconst_int(0))
     ; Shift = 0 ->

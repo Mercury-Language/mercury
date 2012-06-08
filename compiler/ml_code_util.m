@@ -1189,7 +1189,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             MLDS_PredLabel = mlds_special_pred_label(PredName,
                 MaybeDeclaringModule, TypeName, TypeArity)
         ;
-            unexpected($module, $pred, 
+            unexpected($module, $pred,
                 "cannot make label for special pred `" ++ PredName ++ "'")
         )
     ;
@@ -1435,11 +1435,11 @@ ml_must_box_field_type_category(CtorCat, UnboxedFloat, Width) = MustBox :-
         )
     ).
 
-ml_gen_box_const_rval(ModuleInfo, Context, Type, DoubleWidth, Rval, BoxedRval,
-        !GlobalData) :-
+ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
+        BoxedRval, !GlobalData) :-
     (
-        ( Type = mercury_type(type_variable(_, _), _, _)
-        ; Type = mlds_generic_type
+        ( MLDS_Type = mercury_type(type_variable(_, _), _, _)
+        ; MLDS_Type = mlds_generic_type
         )
     ->
         BoxedRval = Rval
@@ -1448,8 +1448,8 @@ ml_gen_box_const_rval(ModuleInfo, Context, Type, DoubleWidth, Rval, BoxedRval,
         % floats specially. Boxed floats normally get heap allocated, whereas
         % for other types boxing is just a cast (casts are OK in static
         % initializers, but calls to malloc() are not).
-        ( Type = mercury_type(builtin_type(builtin_type_float), _, _)
-        ; Type = mlds_native_float_type
+        ( MLDS_Type = mercury_type(builtin_type(builtin_type_float), _, _)
+        ; MLDS_Type = mlds_native_float_type
         ),
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),
@@ -1467,8 +1467,8 @@ ml_gen_box_const_rval(ModuleInfo, Context, Type, DoubleWidth, Rval, BoxedRval,
             module_info_get_name(ModuleInfo, ModuleName),
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
             Initializer = init_obj(Rval),
-            ml_gen_static_scalar_const_addr(MLDS_ModuleName, "float", Type,
-                Initializer, Context, ConstAddrRval, !GlobalData),
+            ml_gen_static_scalar_const_addr(MLDS_ModuleName, "float",
+                MLDS_Type, Initializer, Context, ConstAddrRval, !GlobalData),
 
             % Return as the boxed rval the address of that constant,
             % cast to mlds_generic_type.
@@ -1476,10 +1476,10 @@ ml_gen_box_const_rval(ModuleInfo, Context, Type, DoubleWidth, Rval, BoxedRval,
         ;
             % This is not a real box, but a cast. The "box" is required as it
             % may be further cast to pointer types.
-            BoxedRval = ml_unop(box(Type), Rval)
+            BoxedRval = ml_unop(box(MLDS_Type), Rval)
         )
     ;
-        BoxedRval = ml_unop(box(Type), Rval)
+        BoxedRval = ml_unop(box(MLDS_Type), Rval)
     ).
 
 ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
@@ -1564,7 +1564,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         ConvInputStatements, ConvOutputStatements, !Info) :-
     % First see if we can just convert the lval as an rval;
     % if no boxing/unboxing is required, then ml_box_or_unbox_rval
-    % will return its argument unchanged, and so we're done.
+    % will return its argument unchanged, and so we are done.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_box_or_unbox_rval(ModuleInfo, CalleeType, CallerType, BoxPolicy,
         ml_lval(VarLval), BoxedRval),
@@ -1581,15 +1581,14 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
 
         % Generate a declaration for the fresh variable.
         %
-        % Note that generating accurate GC tracing code for this
-        % variable requires some care, because CalleeType might be a
-        % type variable from the callee, not from the caller,
-        % and we can't generate type_infos for type variables
-        % from the callee.  Hence we need to call the version of
-        % ml_gen_gc_statement which takes two types:
-        % the CalleeType is used to determine the type for the
-        % temporary variable declaration, but the CallerType is
-        % used to construct the type_info.
+        % Note that generating accurate GC tracing code for this variable
+        % requires some care, because CalleeType might be a type variable
+        % from the callee, not from the caller, and we can't generate
+        % type_infos for type variables from the callee. Hence we need to call
+        % the version of ml_gen_gc_statement which takes two types:
+        % the CalleeType is used to determine the type for the temporary
+        % variable declaration, but the CallerType is used to construct
+        % the type_info.
 
         ml_gen_info_new_conv_var(ConvVarSeq, !Info),
         VarName = mlds_var_name(VarNameStr, MaybeNum),
@@ -1600,9 +1599,9 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         ml_gen_type(!.Info, CalleeType, MLDS_CalleeType),
         (
             ForClosureWrapper = yes,
-            % For closure wrappers, the argument type_infos are
-            % stored in the `type_params' local, so we need to
-            % handle the GC tracing code specially
+            % For closure wrappers, the argument type_infos are stored in
+            % the `type_params' local, so we need to handle the GC tracing
+            % code specially.
             ( CallerType = type_variable(_, _) ->
                 ml_gen_local_for_output_arg(ArgVarName, CalleeType, ArgNum,
                     Context, ArgVarDecl, !Info)
@@ -1653,8 +1652,8 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
 ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
         !Info) :-
     % Generate a declaration for a corresponding local variable.
-    % However, don't use the normal GC tracing code; instead,
-    % we need to get the typeinfo from `type_params', using the following code:
+    % However, don't use the normal GC tracing code; instead, we need to get
+    % the typeinfo from `type_params', using the following code:
     %
     %   MR_TypeInfo     type_info;
     %   MR_MemoryList   allocated_memory_cells = NULL;
@@ -1676,7 +1675,7 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
         ClosureLayoutPtrLval),
 
     TypeParamsName = mlds_var_name("type_params", no),
-    % This type is really MR_TypeInfoParams, but there's no easy way to
+    % This type is really MR_TypeInfoParams, but there is no easy way to
     % represent that in the MLDS; using MR_Box instead works fine.
     TypeParamsType = mlds_generic_type,
     ml_gen_var_lval(!.Info, TypeParamsName, TypeParamsType, TypeParamsLval),

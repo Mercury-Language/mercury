@@ -923,6 +923,8 @@ foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
         ; TagVal = closure_tag(_, _, _)
         ; TagVal = type_ctor_info_tag(_, _, _)
         ; TagVal = base_typeclass_info_tag(_, _, _)
+        ; TagVal = type_info_const_tag(_)
+        ; TagVal = typeclass_info_const_tag(_)
         ; TagVal = tabling_info_tag(_, _)
         ; TagVal = deep_profiling_proc_layout_tag(_, _)
         ; TagVal = table_io_decl_tag(_, _)

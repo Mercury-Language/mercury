@@ -846,7 +846,7 @@ lval_contains_var(Lval, DataName) = ContainsVar :-
 %-----------------------------------------------------------------------------%
 
 type_needs_lowlevel_rep(Target, Type) :-
-    type_to_ctor_and_args(Type, TypeCtor, _Args),
+    type_to_ctor(Type, TypeCtor),
     type_ctor_needs_lowlevel_rep(Target, TypeCtor).
 
     % XXX Do we need to do the same for the Java back-end?

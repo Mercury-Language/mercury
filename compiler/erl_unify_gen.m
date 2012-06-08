@@ -230,8 +230,7 @@ erl_gen_semidet_deconstruct(Var, ConsId, Args, _Modes, _Context,
     ( cons_id_to_term(ConsId, Args, elds_anon_var, Pattern0, !Info) ->
         Pattern = Pattern0
     ;
-        unexpected($module, $pred,
-            "erl_gen_semidet_deconstruct: undeconstructable object")
+        unexpected($module, $pred, "undeconstructable object")
     ),
     %
     % case Var of
@@ -293,7 +292,7 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         Expr = elds_term(Term)
     ;
         ConsId = impl_defined_const(_),
-        unexpected($module, $pred, "cons_id_to_expr: impl_defined_const")
+        unexpected($module, $pred, "impl_defined_const")
     ;
         ConsId = closure_cons(ShroudedPredProcId, lambda_normal),
         pred_const_to_closure(ShroudedPredProcId, Args, Expr, !Info)
@@ -308,7 +307,7 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         ( sym_name_get_module_name(ClassName, ClassModuleName0) ->
             ClassModuleName = ClassModuleName0
         ;
-            unexpected($module, $pred, "cons_id_to_expr: class has no module name")
+            unexpected($module, $pred, "class has no module name")
         ),
         ClassNameStr = unqualify_name(ClassName),
         TCName = tc_name(ClassModuleName, ClassNameStr, Arity),
@@ -322,6 +321,12 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         % This represents type_infos and typeclass_infos as undistinguished
         % tuples, so the layout will be the same as corresponding arrays in C.
         Expr = elds_term(elds_tuple(exprs_from_vars(Args)))
+    ;
+        ConsId = type_info_const(_),
+        unexpected($module, $pred, "type_info_const")
+    ;
+        ConsId = typeclass_info_const(_),
+        unexpected($module, $pred, "typeclass_info_const")
     ;
         ( ConsId = tabling_info_const(_)
         ; ConsId = deep_profiling_proc_layout(_)

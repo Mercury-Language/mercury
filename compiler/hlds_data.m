@@ -34,6 +34,7 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module int.
@@ -615,6 +616,9 @@ cons_table_optimize(!ConsTable) :-
             % uniquely identifies the instance declaration (it is made from
             % the type of the arguments to the instance decl).
 
+    ;       type_info_const_tag(int)
+    ;       typeclass_info_const_tag(int)
+
     ;       tabling_info_tag(pred_id, proc_id)
             % This is how we refer to the global structures containing
             % tabling pointer variables and related data. The word just
@@ -646,7 +650,7 @@ cons_table_optimize(!ConsTable) :-
     ;       direct_arg_tag(tag_bits)
             % This is for functors which can be distinguished with just a
             % primary tag. The primary tag says which of the type's functors
-            % (which must all be arity-1) this word represents. However, the
+            % (which must have arity 1) this word represents. However, the
             % body of the word is not a pointer to a cell holding the argument;
             % it IS the value of that argument, which must be an untagged
             % pointer to a cell.
@@ -760,6 +764,8 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         ; Tag = reserved_address_tag(_)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = type_info_const_tag(_)
+        ; Tag = typeclass_info_const_tag(_)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
@@ -789,6 +795,8 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = type_info_const_tag(_)
+        ; Tag = typeclass_info_const_tag(_)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
@@ -1296,6 +1304,8 @@ mode_table_optimize(!ModeDefns) :-
 :- func restrict_list_elements(set(hlds_class_argpos), list(T)) = list(T).
 
 :- type hlds_class_interface    ==  list(hlds_class_proc).
+
+    % XXX Why is this type separate from the usual pred_proc_id?
 :- type hlds_class_proc
     --->    hlds_class_proc(
                 pred_id,
@@ -1348,23 +1358,43 @@ mode_table_optimize(!ModeDefns) :-
                 instance_proofs         :: constraint_proof_map
             ).
 
+    % Return the value of the MR_typeclass_info_num_extra_instance_args field
+    % in the base_typeclass_info of the given instance.
+    %
+:- pred num_extra_instance_args(hlds_instance_defn::in, int::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-restrict_list_elements(Elements, List) =
-    restrict_list_elements_2(Elements, 1, List).
+restrict_list_elements(Elements, List) = RestrictedList :-
+    set.to_sorted_list(Elements, SortedElements),
+    restrict_list_elements_2(SortedElements, 1, List, RestrictedList).
 
-:- func restrict_list_elements_2(set(hlds_class_argpos), hlds_class_argpos,
-    list(T)) = list(T).
+:- pred restrict_list_elements_2(list(hlds_class_argpos)::in,
+    hlds_class_argpos::in, list(T)::in, list(T)::out) is det.
 
-restrict_list_elements_2(_, _, []) = [].
-restrict_list_elements_2(Elements, Index, [X | Xs]) =
-    ( set.member(Index, Elements) ->
-        [X | restrict_list_elements_2(Elements, Index + 1, Xs)]
+restrict_list_elements_2(_, _, [], []).
+restrict_list_elements_2([], _, [_ | _], []).
+restrict_list_elements_2([Posn | Posns], Index, [X | Xs], RestrictedXs) :-
+    ( Index = Posn ->
+        restrict_list_elements_2(Posns, Index + 1, Xs, TailRestrictedXs),
+        RestrictedXs = [X | TailRestrictedXs]
+    ; Index < Posn ->
+        restrict_list_elements_2([Posn | Posns], Index + 1, Xs, RestrictedXs)
     ;
-        restrict_list_elements_2(Elements, Index + 1, Xs)
+        restrict_list_elements_2(Posns, Index + 1, [X | Xs], RestrictedXs)
     ).
+
+num_extra_instance_args(InstanceDefn, NumExtra) :-
+    InstanceDefn = hlds_instance_defn(_InstanceModule, _ImportStatus,
+        _TermContext, InstanceConstraints, InstanceTypes, _OrigInstanceTypes,
+        _Body, _PredProcIds, _Varset, _SuperClassProofs),
+    type_vars_list(InstanceTypes, TypeVars),
+    get_unconstrained_tvars(TypeVars, InstanceConstraints, Unconstrained),
+    list.length(InstanceConstraints, NumConstraints),
+    list.length(Unconstrained, NumUnconstrained),
+    NumExtra = NumConstraints + NumUnconstrained.
 
 %-----------------------------------------------------------------------------%
 

@@ -75,6 +75,7 @@
 :- import_module ll_backend.stack_opt.
 :- import_module ll_backend.store_alloc.
 :- import_module ll_backend.transform_llds.
+:- import_module ll_backend.unify_gen.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
@@ -200,21 +201,22 @@ llds_backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
         list.condense(PredSCCs, OrderedPredIds),
         MaybeDupProcMap = yes(map.init)
     ),
-    llds_backend_pass_by_preds_loop_over_preds(OrderedPredIds,
-        !HLDS, !GlobalData, MaybeDupProcMap, [], RevCodes, !IO),
+    generate_const_structs(!.HLDS, ConstStructMap, !GlobalData),
+    llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
+        OrderedPredIds, MaybeDupProcMap, [], RevCodes, !GlobalData, !IO),
     list.reverse(RevCodes, Codes),
     list.condense(Codes, LLDS).
 
-:- pred llds_backend_pass_by_preds_loop_over_preds(list(pred_id)::in,
-    module_info::in, module_info::out, global_data::in, global_data::out,
+:- pred llds_backend_pass_by_preds_loop_over_preds(
+    module_info::in, module_info::out, const_struct_map::in, list(pred_id)::in,
     maybe(map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label))::in,
-    list(list(c_procedure))::in, list(list(c_procedure))::out, io::di, io::uo)
-    is det.
+    list(list(c_procedure))::in, list(list(c_procedure))::out,
+    global_data::in, global_data::out, io::di, io::uo) is det.
 
-llds_backend_pass_by_preds_loop_over_preds([],
-        !HLDS, !GlobalData, _, !RevCodes, !IO).
-llds_backend_pass_by_preds_loop_over_preds([PredId | PredIds],
-        !HLDS, !GlobalData, !.MaybeDupProcMap, !RevCodes, !IO) :-
+llds_backend_pass_by_preds_loop_over_preds(!HLDS, _,
+        [], _, !RevCodes, !GlobalData, !IO).
+llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
+        [PredId | PredIds], !.MaybeDupProcMap, !RevCodes, !GlobalData, !IO) :-
     module_info_get_preds(!.HLDS, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
@@ -247,14 +249,14 @@ llds_backend_pass_by_preds_loop_over_preds([PredId | PredIds],
             globals.get_trace_level(Globals0, TraceLevel),
             globals.set_trace_level_none(Globals0, Globals1),
             module_info_set_globals(Globals1, !HLDS),
-            llds_backend_pass_for_pred(ProcIds, PredId, PredInfo, !HLDS,
-                !GlobalData, IdProcList, !IO),
+            llds_backend_pass_for_pred(!HLDS, ConstStructMap, PredId, PredInfo,
+                ProcIds, IdProcList, !GlobalData, !IO),
             module_info_get_globals(!.HLDS, Globals2),
             globals.set_trace_level(TraceLevel, Globals2, Globals),
             module_info_set_globals(Globals, !HLDS)
         ;
-            llds_backend_pass_for_pred(ProcIds, PredId, PredInfo, !HLDS,
-                !GlobalData, IdProcList, !IO)
+            llds_backend_pass_for_pred(!HLDS, ConstStructMap,
+                PredId, PredInfo, ProcIds, IdProcList, !GlobalData, !IO)
         ),
         (
             !.MaybeDupProcMap = no,
@@ -270,33 +272,33 @@ llds_backend_pass_by_preds_loop_over_preds([PredId | PredIds],
         maybe_report_stats(Stats, !IO)
     ),
     !:RevCodes = [ProcList | !.RevCodes],
-    llds_backend_pass_by_preds_loop_over_preds(PredIds, !HLDS, !GlobalData,
-        !.MaybeDupProcMap, !RevCodes, !IO).
+    llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap, PredIds,
+        !.MaybeDupProcMap, !RevCodes, !GlobalData, !IO).
 
-:- pred llds_backend_pass_for_pred(list(proc_id)::in, pred_id::in,
-    pred_info::in, module_info::in, module_info::out,
-    global_data::in, global_data::out,
+:- pred llds_backend_pass_for_pred( module_info::in, module_info::out,
+    const_struct_map::in, pred_id::in, pred_info::in, list(proc_id)::in,
     assoc_list(mdbcomp.prim_data.proc_label, c_procedure)::out,
-    io::di, io::uo) is det.
+    global_data::in, global_data::out, io::di, io::uo) is det.
 
-llds_backend_pass_for_pred([], _, _, !HLDS, !GlobalData, [], !IO).
-llds_backend_pass_for_pred([ProcId | ProcIds], PredId, PredInfo, !HLDS,
-        !GlobalData, [ProcLabel - ProcCode | ProcCodes], !IO) :-
+llds_backend_pass_for_pred(!HLDS, _, _, _, [], [], !GlobalData, !IO).
+llds_backend_pass_for_pred(!HLDS, ConstStructMap, PredId, PredInfo,
+        [ProcId | ProcIds], [ProcLabel - ProcCode | ProcCodes],
+        !GlobalData, !IO) :-
     ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
-    llds_backend_pass_for_proc(PredInfo, ProcInfo, ProcId, PredId, !HLDS,
-        !GlobalData, ProcCode, !IO),
-    llds_backend_pass_for_pred(ProcIds, PredId, PredInfo, !HLDS, !GlobalData,
-        ProcCodes, !IO).
+    llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
+        ProcId, ProcInfo, ProcCode, !GlobalData, !IO),
+    llds_backend_pass_for_pred(!HLDS, ConstStructMap, PredId, PredInfo,
+        ProcIds, ProcCodes, !GlobalData, !IO).
 
-:- pred llds_backend_pass_for_proc(pred_info::in, proc_info::in,
-    proc_id::in, pred_id::in, module_info::in, module_info::out,
-    global_data::in, global_data::out, c_procedure::out, io::di, io::uo)
-    is det.
+:- pred llds_backend_pass_for_proc( module_info::in, module_info::out,
+    const_struct_map::in, pred_id::in, pred_info::in,
+    proc_id::in, proc_info::in, c_procedure::out,
+    global_data::in, global_data::out, io::di, io::uo) is det.
 
-llds_backend_pass_for_proc(PredInfo, !.ProcInfo, ProcId, PredId, !HLDS,
-        !GlobalData, ProcCode, !IO) :-
+llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
+        ProcId, !.ProcInfo, ProcCode, !GlobalData, !IO) :-
     PredProcId = proc(PredId, ProcId),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, optimize_saved_vars_const,
@@ -374,8 +376,8 @@ llds_backend_pass_for_proc(PredInfo, !.ProcInfo, ProcId, PredId, !HLDS,
     allocate_store_maps(final_allocation, !.HLDS, PredProcId, !ProcInfo),
     write_proc_progress_message("% Generating low-level (LLDS) code for ",
         PredId, ProcId, !.HLDS, !IO),
-    generate_proc_code(PredInfo, !.ProcInfo, PredId, ProcId, !.HLDS,
-        !GlobalData, ProcCode0),
+    generate_proc_code(!.HLDS, ConstStructMap, PredId, PredInfo,
+         ProcId, !.ProcInfo, !GlobalData, ProcCode0),
     globals.lookup_bool_option(Globals, optimize, Optimize),
     (
         Optimize = yes,

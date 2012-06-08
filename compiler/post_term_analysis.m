@@ -243,7 +243,6 @@ emit_non_term_user_special_warning(Globals, Context, SpecialPred, TypeCtor,
         fixed(SpecialPredStr ++ " predicate"),
         words("for the type "), fixed(TypeCtorString),
         words("cannot be proven to terminate.")],
-    % ZZZ
     report_warning(Globals, Context, 0, Pieces, !IO).    
 
 %----------------------------------------------------------------------------%

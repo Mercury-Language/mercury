@@ -89,9 +89,9 @@ check_stratification(!ModuleInfo, !Specs) :-
         !Specs).
 
     % The following code was used for the second pass of this module but
-    % as that pass is disabled so is this code. The higher order code
+    % as that pass is disabled, so is this code. The higher order code
     % is disabled because it is currently unable to detect cases where a
-    % higher order proc is hidden in some complex data structure
+    % higher order proc is hidden in some complex data structure.
     %
     % gen_conservative_graph(!ModuleInfo, DepGraph0, DepGraph, HOInfo),
     % digraph.atsort(DepGraph, HOSCCs1),
@@ -128,7 +128,7 @@ first_order_check_sccs([SCCl - SCCs | Rest], StratifiedPreds, Warn0,
         ModuleInfo, !Specs) :-
     (
         set.intersect(SCCs, StratifiedPreds, Intersection),
-        set.empty(Intersection)
+        set.is_empty(Intersection)
     ->
         Warn = Warn0
     ;
@@ -306,7 +306,7 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
         Warn = yes,
         map.search(HOInfo, PredProcId, HigherOrderInfo)
     ->
-        HigherOrderInfo = ho_info(HOCalls, _),
+        HigherOrderInfo = strat_ho_info(HOCalls, _),
         set.intersect(HOCalls, WholeScc, HOLoops),
         ( set.empty(HOLoops) ->
             HighOrderLoops = no
@@ -468,16 +468,18 @@ higher_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
 
     % This structure is used to hold the higher order characteristics of a
     % procedure.
-:- type higher_order_info
-    --->    ho_info(
-                set(pred_proc_id),  % Possible higher order addresses that
-                                    % can reach the procedure.
-                ho_in_out           % Possible paths the address can take
-                                    % in and out of the procedure.
+:- type strat_ho_info
+    --->    strat_ho_info(
+                % Possible higher order addresses that can reach the procedure.
+                set(pred_proc_id),
+
+                % Possible paths the address can take in and out
+                % of the procedure.
+                ho_in_out
             ).
 
     % A map from all non imported procedures to there higher order info.
-:- type ho_map   == map(pred_proc_id, higher_order_info).
+:- type ho_map   == map(pred_proc_id, strat_ho_info).
 
     % A map from all non imported procs to all the procedures they can call.
 :- type call_map == map(pred_proc_id, set(pred_proc_id)).
@@ -554,8 +556,8 @@ merge_calls([], _, _, _, !HOInfo, !Changed).
 merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
     ( map.search(!.HOInfo, C, CInfo) ->
         map.lookup(!.HOInfo, P, PInfo),
-        CInfo = ho_info(CHaveAT0, CHOInOut),
-        PInfo = ho_info(PHaveAT0, PHOInOut),
+        CInfo = strat_ho_info(CHaveAT0, CHOInOut),
+        PInfo = strat_ho_info(PHaveAT0, PHOInOut),
         % First merge the first order info, if we need to.
         ( CHOInOut = ho_none ->
             true
@@ -594,8 +596,8 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
                 % XXX What is a good message for this?
                 unexpected($module, $pred, "ho_none")
             ),
-            NewCInfo = ho_info(CHaveAT, CHOInOut),
-            NewPInfo = ho_info(PHaveAT, PHOInOut),
+            NewCInfo = strat_ho_info(CHaveAT, CHOInOut),
+            NewPInfo = strat_ho_info(PHaveAT, PHOInOut),
             map.det_update(C, NewCInfo, !HOInfo),
             map.det_update(P, NewPInfo, !HOInfo)
         ),
@@ -605,7 +607,7 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
             set.member(P, CallsHO)
         ->
             map.lookup(!.HOInfo, P, PHOInfo),
-            PHOInfo = ho_info(PossibleCalls, _),
+            PHOInfo = strat_ho_info(PossibleCalls, _),
             set.to_sorted_list(PossibleCalls, PossibleCallsL),
             merge_calls(PossibleCallsL, P, CallsHO, no, !HOInfo, !Changed)
         ;
@@ -620,14 +622,14 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
     % list of procedures and higher order call info, this predicate rebuilds
     % the given call graph with new arcs for every possible higher order call.
     %
-:- pred add_new_arcs(assoc_list(pred_proc_id, higher_order_info)::in,
+:- pred add_new_arcs(assoc_list(pred_proc_id, strat_ho_info)::in,
     set(pred_proc_id)::in, dependency_graph::in, dependency_graph::out) is det.
 
 add_new_arcs([], _, !DepGraph).
 add_new_arcs([Caller - CallerInfo | Cs], CallsHO, !DepGraph) :-
     % Only add arcs for callers who call higher order procs.
     ( set.member(Caller, CallsHO) ->
-        CallerInfo = ho_info(PossibleCallees0, _),
+        CallerInfo = strat_ho_info(PossibleCallees0, _),
         set.to_sorted_list(PossibleCallees0, PossibleCallees),
         digraph.lookup_key(!.DepGraph, Caller, CallerKey),
         add_new_arcs2(PossibleCallees, CallerKey, !DepGraph)
@@ -693,7 +695,7 @@ stratify_process_proc(ProcId, ModuleInfo, PredId, ArgTypes, ProcTable,
     stratify_analyze_proc_body(Goal, Calls, HaveAT, CallsHigherOrder),
     map.det_insert(PredProcId, Calls, !ProcCalls),
     higherorder_in_out(ArgTypes, ArgModes, ModuleInfo, HOInOut),
-    map.det_insert(PredProcId, ho_info(HaveAT, HOInOut), !HOInfo),
+    map.det_insert(PredProcId, strat_ho_info(HaveAT, HOInOut), !HOInfo),
     (
         CallsHigherOrder = calls_higher_order,
         set.insert(PredProcId, !CallsHO)

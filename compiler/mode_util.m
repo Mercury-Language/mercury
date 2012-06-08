@@ -299,7 +299,7 @@ mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
         % Is this a no_tag type?
         type_is_no_tag_type(ModuleInfo, Type, FunctorName, ArgType),
         % Avoid infinite recursion.
-        type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
+        type_to_ctor(Type, TypeCtor),
         \+ list.member(TypeCtor, ContainingTypes)
     ->
         % The arg_mode will be determined by the mode and type of the
@@ -1646,6 +1646,8 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         ; ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = type_info_cell_constructor(_)
         ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = type_info_const(_)
+        ; ConsId = typeclass_info_const(_)
         ; ConsId = tabling_info_const(_)
         ; ConsId = table_io_decl(_)
         ; ConsId = deep_profiling_proc_layout(_)
@@ -1667,6 +1669,21 @@ get_arg_lives(ModuleInfo, [Mode | Modes], [IsLive | IsLives]) :-
         IsLive = is_live
     ),
     get_arg_lives(ModuleInfo, Modes, IsLives).
+
+%-----------------------------------------------------------------------------%
+
+fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
+    InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
+    instmap_lookup_var(InstMap0, Var, Inst0),
+    instmap_lookup_var(InstMap, Var, Inst),
+    ( Inst = Inst0 ->
+        GoalInfo = GoalInfo0
+    ;
+        instmap_delta_set_var(Var, Inst, InstMapDelta0, InstMapDelta),
+        goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo)
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1720,21 +1737,6 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
     ;
         NormalisedInst = Inst
     ).
-
-%-----------------------------------------------------------------------------%
-
-fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
-    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-    InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-    instmap_lookup_var(InstMap0, Var, Inst0),
-    instmap_lookup_var(InstMap, Var, Inst),
-    ( Inst = Inst0 ->
-        GoalInfo = GoalInfo0
-    ;
-        instmap_delta_set_var(Var, Inst, InstMapDelta0, InstMapDelta),
-        goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo)
-    ),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

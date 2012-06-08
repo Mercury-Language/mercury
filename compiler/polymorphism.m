@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: polymorphism.m.
-% Main author: fjh.
+% Main authors: fjh and zs.
 %
 % This module is a pass over the HLDS.
 % It does a syntactic transformation to implement polymorphism, including
@@ -296,18 +296,6 @@
     %
 :- pred build_type_info_type(mer_type::in, mer_type::out) is det.
 
-    % Succeed if the predicate is one of the predicates defined in
-    % library/private_builtin.m to extract type_infos or typeclass_infos
-    % from typeclass_infos.
-    %
-:- pred is_typeclass_info_manipulator(module_info::in, pred_id::in,
-    typeclass_info_manipulator::out) is semidet.
-
-:- type typeclass_info_manipulator
-    --->    type_info_from_typeclass_info
-    ;       superclass_from_typeclass_info
-    ;       instance_constraint_from_typeclass_info.
-
     % Look up the pred_id and proc_id for a type specific
     % unification/comparison/index/initialise predicate.
     %
@@ -356,11 +344,13 @@
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % init_const_type_ctor_info_var(Type, TypeCtor,
-    %   TypeCtorInfoVar, TypeCtorInfoGoal, ModuleInfo, !VarSet, !VarTypes):
+    %   TypeCtorInfoVar, TypeCtorConsId, TypeCtorInfoGoal,
+    %   !VarSet, !VarTypes, !RttiVarMaps):
     %
     % Create the unification (returned as TypeCtorInfoGoal) that binds a
     % new variable (returned as TypeCtorInfoVar) to the type_ctor_info
-    % representing TypeCtor.
+    % representing TypeCtor. This will be the constant represented by
+    % TypeCtorConsId.
     %
     % This unification WILL NOT lead to the creation of a cell on the
     % heap at runtime; it will cause TypeCtorInfoVar to refer to the
@@ -372,7 +362,7 @@
     % TypeCtorInfoVar.
     %
 :- pred init_const_type_ctor_info_var(mer_type::in, type_ctor::in,
-    prog_var::out, hlds_goal::out, module_info::in,
+    prog_var::out, cons_id::out, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
@@ -393,6 +383,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.from_ground_term_util.
+:- import_module hlds.const_struct.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
@@ -417,8 +408,8 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module cord.
 :- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
@@ -548,10 +539,24 @@ polymorphism_process_generated_pred(PredId, !ModuleInfo) :-
     polymorphism_process_pred(PredId, !ModuleInfo),
     fixup_pred_polymorphism(PredId, !ModuleInfo).
 
+:- mutable(selected_pred, bool, no, ground, [untrailed]).
+:- mutable(level, int, 0, ground, [untrailed]).
+
 :- pred polymorphism_process_pred(pred_id::in,
     module_info::in, module_info::out) is det.
 
 polymorphism_process_pred(PredId, !ModuleInfo) :-
+    trace [compiletime(flag("debug_poly_caches"))] (
+        promise_pure (
+            % Replace 99999 with the id of the predicate you want to debug.
+            ( pred_id_to_int(PredId) = 15 ->
+                impure set_selected_pred(yes)
+            ;
+                true
+            )
+        )
+    ),
+
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
 
     % Run the polymorphism pass over the clauses_info, updating the headvars,
@@ -559,9 +564,12 @@ polymorphism_process_pred(PredId, !ModuleInfo) :-
     % poly_info.
 
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
-    polymorphism_process_clause_info(PredInfo0, !.ModuleInfo,
+    polymorphism_process_clause_info(!.ModuleInfo, PredInfo0,
         ClausesInfo0, ClausesInfo, Info, ExtraArgModes),
     poly_info_get_module_info(Info, !:ModuleInfo),
+    poly_info_get_const_struct_db(Info, ConstStructDb),
+    module_info_set_const_struct_db(ConstStructDb, !ModuleInfo),
+
     poly_info_get_typevarset(Info, TypeVarSet),
     pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo1),
     pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo2),
@@ -576,13 +584,19 @@ polymorphism_process_pred(PredId, !ModuleInfo) :-
         ExtraArgModes), ProcIds, Procs0, Procs),
     pred_info_set_procedures(Procs, PredInfo2, PredInfo),
 
+    trace [compiletime(flag("debug_poly_caches"))] (
+        promise_pure (
+            impure set_selected_pred(no)
+        )
+    ),
+
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-:- pred polymorphism_process_clause_info(pred_info::in, module_info::in,
+:- pred polymorphism_process_clause_info(module_info::in, pred_info::in,
     clauses_info::in, clauses_info::out, poly_info::out,
     poly_arg_vector(mer_mode)::out) is det.
 
-polymorphism_process_clause_info(PredInfo0, ModuleInfo0, !ClausesInfo, !:Info,
+polymorphism_process_clause_info(ModuleInfo0, PredInfo0, !ClausesInfo, !:Info,
         ExtraArgModes) :-
     init_poly_info(ModuleInfo0, PredInfo0, !.ClausesInfo, !:Info),
     !.ClausesInfo = clauses_info(_VarSet, ExplicitVarTypes, _TVarNameMap,
@@ -624,7 +638,7 @@ polymorphism_process_clause(PredInfo0, OldHeadVars, NewHeadVars,
         Goal0 = !.Clause ^ clause_body,
 
         % Process any polymorphic calls inside the goal.
-        empty_maps(!Info),
+        empty_cache_maps(!Info),
         poly_info_set_num_reuses(0, !Info),
         polymorphism_process_goal(Goal0, Goal1, !Info),
 
@@ -806,7 +820,7 @@ setup_headvars_2(PredInfo, ClassContext,
     pred_info_get_arg_types(PredInfo, ArgTypeVarSet, ExistQVars, ArgTypes),
 
     % Insert extra head variables to hold the address of the type_infos
-    % and typeclass_infos.  We insert one variable for each unconstrained
+    % and typeclass_infos. We insert one variable for each unconstrained
     % type variable (for the type_info) and one variable for each
     % constraint (for the typeclass_info).
     %
@@ -815,10 +829,10 @@ setup_headvars_2(PredInfo, ClassContext,
 
     % Make a fresh variable for each class constraint, returning a list of
     % variables that appear in the constraints, along with the location of
-    % the type infos for them.  For the existential constraints, we want
+    % the type infos for them. For the existential constraints, we want
     % the rtti_varmaps to contain the internal view of the types (that is,
     % with type variables bound) so we may need to look up the actual
-    % constraints in the constraint map.  For the universal constraints there
+    % constraints in the constraint map. For the universal constraints there
     % is no distinction between the internal views and the external view, so
     % we just use the constraints from the class context.
     ClassContext = constraints(UnivConstraints, ExistConstraints),
@@ -834,7 +848,7 @@ setup_headvars_2(PredInfo, ClassContext,
         check_marker(PredMarkers, marker_class_method)
     ->
         % For class methods we record the type_info_locns even for the
-        % existential constraints.  It's easier to do it here than when we
+        % existential constraints. It is easier to do it here than when we
         % are expanding class method bodies, and we know there won't be any
         % references to the type_info after the instance method call so
         % recording them now won't be a problem.
@@ -971,9 +985,9 @@ produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     ExistQVarsForCall = [],
     Goal0 = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
-    make_typeclass_info_vars(ActualExistConstraints,
-        ExistQVarsForCall, Context, ExistTypeClassVars,
-        ExtraTypeClassGoals, !Info),
+    make_typeclass_info_vars(ActualExistConstraints, ExistQVarsForCall,
+        Context, ExistTypeClassVarsMCAs, ExtraTypeClassGoals, !Info),
+    assoc_list.keys(ExistTypeClassVarsMCAs, ExistTypeClassVars),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     list.foldl(rtti_reuse_typeclass_info_var, ExistTypeClassVars,
         RttiVarMaps0, RttiVarMaps),
@@ -1005,11 +1019,11 @@ produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
 
     apply_subst_to_tvar_list(KindMap, PredToActualTypeSubst,
         UnconstrainedTVars, ActualTypes),
-    polymorphism_make_type_info_vars(ActualTypes, Context,
-        TypeInfoVars, ExtraTypeInfoGoals, !Info),
-    assign_var_list(TypeInfoHeadVars, TypeInfoVars,
-        ExtraTypeInfoUnifyGoals),
-    list.condense([[Goal0], ExtraTypeClassGoals, ExtraTypeClassUnifyGoals,
+    polymorphism_do_make_type_info_vars(ActualTypes, Context,
+        TypeInfoVarsMCAs, ExtraTypeInfoGoals, !Info),
+    assoc_list.keys(TypeInfoVarsMCAs, TypeInfoVars),
+    assign_var_list(TypeInfoHeadVars, TypeInfoVars, ExtraTypeInfoUnifyGoals),
+    list.condense([[Goal0 | ExtraTypeClassGoals], ExtraTypeClassUnifyGoals,
         ExtraTypeInfoGoals, ExtraTypeInfoUnifyGoals], GoalList),
     conj_list_to_goal(GoalList, GoalInfo, Goal).
 
@@ -1050,7 +1064,7 @@ get_improved_exists_head_constraints(ConstraintMap,  ExistConstraints,
     ;
         % Some predicates, for example typeclass methods and predicates for
         % which we inferred the type, don't have constraint map entries for
-        % the head constraints.  In these cases we can just use the external
+        % the head constraints. In these cases we can just use the external
         % constraints, since there can't be any difference between them and
         % the internal ones.
         ActualExistConstraints = ExistConstraints
@@ -1089,8 +1103,8 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
         ( no_type_info_builtin(PredModule, PredName, PredArity) ->
             Goal = Goal0
         ;
-            polymorphism_process_foreign_proc(ModuleInfo, PredInfo, GoalExpr0,
-                GoalInfo0, Goal, !Info)
+            polymorphism_process_foreign_proc(PredInfo, GoalExpr0, GoalInfo0,
+                Goal, !Info)
         )
     ;
         GoalExpr0 = unify(XVar, Y, Mode, Unification, UnifyContext),
@@ -1105,7 +1119,7 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 polymorphism_process_plain_conj(Goals0, Goals, !Info)
             ;
                 ConjType = parallel_conj,
-                get_maps_snapshot(!.Info, InitialSnapshot),
+                get_cache_maps_snapshot("parconj", InitialSnapshot, !Info),
                 polymorphism_process_par_conj(Goals0, Goals, InitialSnapshot,
                     !Info)
                 % Unlike with disjunctions, we do not have to reset to
@@ -1114,35 +1128,35 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
             GoalExpr = conj(ConjType, Goals)
         ;
             GoalExpr0 = disj(Goals0),
-            get_maps_snapshot(!.Info, InitialSnapshot),
+            get_cache_maps_snapshot("disj", InitialSnapshot, !Info),
             polymorphism_process_disj(Goals0, Goals, InitialSnapshot, !Info),
-            set_maps_snapshot(InitialSnapshot, !Info),
+            set_cache_maps_snapshot("after disj", InitialSnapshot, !Info),
             GoalExpr = disj(Goals)
         ;
             GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-            get_maps_snapshot(!.Info, InitialSnapshot),
+            get_cache_maps_snapshot("ite", InitialSnapshot, !Info),
             polymorphism_process_goal(Cond0, Cond, !Info),
             % If we allowed a type_info created inside Cond to be reused
             % in Then, then we are adding an output variable to Cond.
             % If Cond scope had no outputs to begin with, this would change
             % its determinism.
-            set_maps_snapshot(InitialSnapshot, !Info),
+            set_cache_maps_snapshot("before then", InitialSnapshot, !Info),
             polymorphism_process_goal(Then0, Then, !Info),
-            set_maps_snapshot(InitialSnapshot, !Info),
+            set_cache_maps_snapshot("before else", InitialSnapshot, !Info),
             polymorphism_process_goal(Else0, Else, !Info),
-            set_maps_snapshot(InitialSnapshot, !Info),
+            set_cache_maps_snapshot("after ite", InitialSnapshot, !Info),
             GoalExpr = if_then_else(Vars, Cond, Then, Else)
         ;
             GoalExpr0 = negation(SubGoal0),
-            get_maps_snapshot(!.Info, InitialSnapshot),
+            get_cache_maps_snapshot("neg", InitialSnapshot, !Info),
             polymorphism_process_goal(SubGoal0, SubGoal, !Info),
-            set_maps_snapshot(InitialSnapshot, !Info),
+            set_cache_maps_snapshot("after neg", InitialSnapshot, !Info),
             GoalExpr = negation(SubGoal)
         ;
             GoalExpr0 = switch(Var, CanFail, Cases0),
-            get_maps_snapshot(!.Info, InitialSnapshot),
+            get_cache_maps_snapshot("switch", InitialSnapshot, !Info),
             polymorphism_process_cases(Cases0, Cases, InitialSnapshot, !Info),
-            set_maps_snapshot(InitialSnapshot, !Info),
+            set_cache_maps_snapshot("after switch", InitialSnapshot, !Info),
             GoalExpr = switch(Var, CanFail, Cases)
         ;
             GoalExpr0 = scope(Reason0, SubGoal0),
@@ -1169,9 +1183,11 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 % promise would have to cover. We cannot expect and do not want
                 % user level programmers making promises about variables added
                 % by the compiler.
-                get_maps_snapshot(!.Info, InitialSnapshot),
+                get_cache_maps_snapshot("promise_solns", InitialSnapshot,
+                    !Info),
                 polymorphism_process_goal(SubGoal0, SubGoal, !Info),
-                set_maps_snapshot(InitialSnapshot, !Info),
+                set_cache_maps_snapshot("after promise_solns", InitialSnapshot,
+                    !Info),
                 GoalExpr = scope(Reason0, SubGoal)
             ;
                 ( Reason0 = promise_purity(_)
@@ -1193,9 +1209,10 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 % However, using a type_info from before the scope in SubGoal
                 % is perfectly ok.
 
-                get_maps_snapshot(!.Info, InitialSnapshot),
+                get_cache_maps_snapshot("exists", InitialSnapshot, !Info),
                 polymorphism_process_goal(SubGoal0, SubGoal, !Info),
-                set_maps_snapshot(InitialSnapshot, !Info),
+                set_cache_maps_snapshot("after exists", InitialSnapshot,
+                    !Info),
                 GoalExpr = scope(Reason0, SubGoal)
             ;
                 Reason0 = trace_goal(_, _, _, _, _),
@@ -1209,9 +1226,9 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 % whether the deletion will happen or not, but doing so would
                 % require breaching the separation between compiler passes.
 
-                get_maps_snapshot(!.Info, InitialSnapshot),
+                get_cache_maps_snapshot("trace", InitialSnapshot, !Info),
                 polymorphism_process_goal(SubGoal0, SubGoal, !Info),
-                set_maps_snapshot(InitialSnapshot, !Info),
+                set_cache_maps_snapshot("after trace", InitialSnapshot, !Info),
                 GoalExpr = scope(Reason0, SubGoal)
             )
         ),
@@ -1221,11 +1238,11 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, Vars,
                 MainGoal0, OrElseGoals0, OrElseInners),
-            get_maps_snapshot(!.Info, InitialSnapshot),
+            get_cache_maps_snapshot("atomic", InitialSnapshot, !Info),
             polymorphism_process_goal(MainGoal0, MainGoal, !Info),
             polymorphism_process_disj(OrElseGoals0, OrElseGoals,
                 InitialSnapshot, !Info),
-            set_maps_snapshot(InitialSnapshot, !Info),
+            set_cache_maps_snapshot("after atomic", InitialSnapshot, !Info),
             ShortHand = atomic_goal(GoalType, Outer, Inner, Vars,
                 MainGoal, OrElseGoals, OrElseInners)
         ;
@@ -1235,15 +1252,15 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
             % expressions; because those pieces of code will end up
             % in different procedures. However, for try goals, this is true
             % even for the first and second conjuncts.
-            get_maps_snapshot(!.Info, InitialSnapshot),
+            get_cache_maps_snapshot("try", InitialSnapshot, !Info),
             (
                 SubGoal0 = hlds_goal(SubGoalExpr0, SubGoalInfo),
                 SubGoalExpr0 = conj(plain_conj, Conjuncts0),
                 Conjuncts0 = [ConjunctA0, ConjunctB0]
             ->
-                empty_maps(!Info),
+                empty_cache_maps(!Info),
                 polymorphism_process_goal(ConjunctA0, ConjunctA, !Info),
-                empty_maps(!Info),
+                empty_cache_maps(!Info),
                 polymorphism_process_goal(ConjunctB0, ConjunctB, !Info),
 
                 Conjuncts = [ConjunctA, ConjunctB],
@@ -1252,7 +1269,7 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
             ;
                 unexpected($module, $pred, "malformed try goal")
             ),
-            set_maps_snapshot(InitialSnapshot, !Info),
+            set_cache_maps_snapshot("after try", InitialSnapshot, !Info),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
             ShortHand0 = bi_implication(_, _),
@@ -1391,10 +1408,10 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         % This is because, after lambda expansion, the code inside and outside
         % the lambda goal will end up in different procedures.
 
-        get_maps_snapshot(!.Info, InitialSnapshot),
-        empty_maps(!Info),
+        get_cache_maps_snapshot("lambda", InitialSnapshot, !Info),
+        empty_cache_maps(!Info),
         polymorphism_process_goal(LambdaGoal0, LambdaGoal1, !Info),
-        set_maps_snapshot(InitialSnapshot, !Info),
+        set_cache_maps_snapshot("after lambda", InitialSnapshot, !Info),
 
         % Currently we don't allow lambda goals to be existentially typed.
         ExistQVars = [],
@@ -1768,14 +1785,15 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsConstruction,
     Context = goal_info_get_context(GoalInfo),
     (
         IsConstruction = yes,
-        % Assume it's a construction.
+        % Assume it is a construction.
         lookup_hlds_constraint_list(ConstraintMap, unproven, GoalId,
             NumExistentialConstraints, ActualExistentialConstraints),
         make_typeclass_info_vars(ActualExistentialConstraints, [], Context,
-            ExtraTypeClassVars, ExtraTypeClassGoals, !Info)
+            ExtraTypeClassVarsMCAs, ExtraTypeClassGoals, !Info),
+        assoc_list.keys(ExtraTypeClassVarsMCAs, ExtraTypeClassVars)
     ;
         IsConstruction = no,
-        % Assume it's a deconstruction.
+        % Assume it is a deconstruction.
         lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumExistentialConstraints, ActualExistentialConstraints),
         make_existq_typeclass_info_vars(ActualExistentialConstraints,
@@ -1794,8 +1812,9 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsConstruction,
 
     % Create type_info variables for the _unconstrained_ existentially
     % quantified type variables.
-    polymorphism_make_type_info_vars(ActualExistentialTypes, Context,
-        ExtraTypeInfoVars, ExtraTypeInfoGoals, !Info),
+    polymorphism_do_make_type_info_vars(ActualExistentialTypes, Context,
+        ExtraTypeInfoVarsMCAs, ExtraTypeInfoGoals, !Info),
+    assoc_list.keys(ExtraTypeInfoVarsMCAs, ExtraTypeInfoVars),
 
     % The type_class_info variables go AFTER the type_info variables
     % (for consistency with the order for argument passing,
@@ -1806,16 +1825,16 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsConstruction,
 
 %-----------------------------------------------------------------------------%
 
-:- pred polymorphism_process_foreign_proc(module_info::in, pred_info::in,
+:- pred polymorphism_process_foreign_proc(pred_info::in,
     hlds_goal_expr::in(bound(call_foreign_proc(ground,ground,ground,ground,
     ground,ground,ground))), hlds_goal_info::in, hlds_goal::out,
     poly_info::in, poly_info::out) is det.
 
-polymorphism_process_foreign_proc(_ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal,
-        !Info) :-
+polymorphism_process_foreign_proc(PredInfo, GoalExpr0, GoalInfo0,
+        Goal, !Info) :-
     % Insert the type_info vars into the argname map, so that the foreign_proc
     % can refer to the type_info variable for type T as `TypeInfo_for_T'.
-    Goal0 = call_foreign_proc(Attributes, PredId, ProcId,
+    GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
         Args0, ProcExtraArgs, MaybeTraceRuntimeCond, Impl),
     ArgVars0 = list.map(foreign_arg_var, Args0),
     polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
@@ -1956,7 +1975,7 @@ polymorphism_process_plain_conj([Goal0 | Goals0], [Goal | Goals], !Info) :-
     polymorphism_process_plain_conj(Goals0, Goals, !Info).
 
 :- pred polymorphism_process_par_conj(list(hlds_goal)::in,
-    list(hlds_goal)::out, maps_snapshot::in, poly_info::in, poly_info::out)
+    list(hlds_goal)::out, cache_maps::in, poly_info::in, poly_info::out)
     is det.
 
 polymorphism_process_par_conj([], [], _, !Info).
@@ -1968,28 +1987,28 @@ polymorphism_process_par_conj([Goal0 | Goals0], [Goal | Goals],
     % and (b) may drastically reduce the available parallelism, if the earlier
     % conjunct produces the variable late but the later conjunct requires it
     % early.
-    set_maps_snapshot(InitialSnapshot, !Info),
+    set_cache_maps_snapshot("par conjunct", InitialSnapshot, !Info),
     polymorphism_process_goal(Goal0, Goal, !Info),
     polymorphism_process_par_conj(Goals0, Goals, InitialSnapshot, !Info).
 
 :- pred polymorphism_process_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    maps_snapshot::in, poly_info::in, poly_info::out) is det.
+    cache_maps::in, poly_info::in, poly_info::out) is det.
 
 polymorphism_process_disj([], [], _, !Info).
 polymorphism_process_disj([Goal0 | Goals0], [Goal | Goals], InitialSnapshot,
         !Info) :-
-    set_maps_snapshot(InitialSnapshot, !Info),
+    set_cache_maps_snapshot("disjunct", InitialSnapshot, !Info),
     polymorphism_process_goal(Goal0, Goal, !Info),
     polymorphism_process_disj(Goals0, Goals, InitialSnapshot, !Info).
 
 :- pred polymorphism_process_cases(list(case)::in, list(case)::out,
-    maps_snapshot::in, poly_info::in, poly_info::out) is det.
+    cache_maps::in, poly_info::in, poly_info::out) is det.
 
 polymorphism_process_cases([], [], _, !Info).
 polymorphism_process_cases([Case0 | Cases0], [Case | Cases], InitialSnapshot,
         !Info) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    set_maps_snapshot(InitialSnapshot, !Info),
+    set_cache_maps_snapshot("case", InitialSnapshot, !Info),
     polymorphism_process_goal(Goal0, Goal, !Info),
     Case = case(MainConsId, OtherConsIds, Goal),
     polymorphism_process_cases(Cases0, Cases, InitialSnapshot, !Info).
@@ -2120,30 +2139,37 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         ),
         Context = goal_info_get_context(GoalInfo0),
         make_typeclass_info_vars(ActualUnivConstraints, ActualExistQVars,
-            Context, ExtraUnivClassVars, ExtraUnivClassGoals, !Info),
+            Context, ExtraUnivClassVarsMCAs, ExtraUnivClassGoals,
+            !Info),
+        assoc_list.keys(ExtraUnivClassVarsMCAs, ExtraUnivClassVars),
 
         % Make variables to hold any existentially quantified typeclass_infos
         % in the call, insert them into the typeclass_info map.
         list.length(ParentExistConstraints, NumExistConstraints),
         lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumExistConstraints, ActualExistConstraints),
-        make_existq_typeclass_info_vars(
-            ActualExistConstraints, ExtraExistClassVars,
-            ExtraExistClassGoals, !Info),
+        make_existq_typeclass_info_vars(ActualExistConstraints,
+            ExtraExistClassVars, ExtraExistClassGoals, !Info),
 
         % Make variables to hold typeinfos for unconstrained universal type
         % vars.
         apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualTypeSubst,
             ParentUnconstrainedUnivTVars, ActualUnconstrainedUnivTypes),
-        polymorphism_make_type_info_vars(ActualUnconstrainedUnivTypes,
-            Context, ExtraUnivTypeInfoVars, ExtraUnivTypeInfoGoals, !Info),
+        polymorphism_do_make_type_info_vars(ActualUnconstrainedUnivTypes,
+            Context, ExtraUnivTypeInfoVarsMCAs,
+            ExtraUnivTypeInfoGoals, !Info),
+        assoc_list.keys(ExtraUnivTypeInfoVarsMCAs,
+            ExtraUnivTypeInfoVars),
 
         % Make variables to hold typeinfos for unconstrained existential type
         % vars.
         apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualTypeSubst,
             ParentUnconstrainedExistTVars, ActualUnconstrainedExistTypes),
-        polymorphism_make_type_info_vars(ActualUnconstrainedExistTypes,
-            Context, ExtraExistTypeInfoVars, ExtraExistTypeInfoGoals, !Info),
+        polymorphism_do_make_type_info_vars(ActualUnconstrainedExistTypes,
+            Context, ExtraExistTypeInfoVarsMCAs,
+            ExtraExistTypeInfoGoals, !Info),
+        assoc_list.keys(ExtraExistTypeInfoVarsMCAs,
+            ExtraExistTypeInfoVars),
 
         % Add up the extra vars and goals.
         ExtraGoals = ExtraUnivClassGoals ++ ExtraExistClassGoals
@@ -2220,8 +2246,9 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
 
     % Construct goals to make the required type_infos.
     Ctxt = term.context_init,
-    polymorphism_make_type_info_vars(ActualTypeInfoTypes, Ctxt,
-        ExtraArgs, ExtraGoals, !Info),
+    polymorphism_do_make_type_info_vars(ActualTypeInfoTypes, Ctxt,
+        ExtraArgsConstArgs, ExtraGoals, !Info),
+    assoc_list.keys(ExtraArgsConstArgs, ExtraArgs),
     CallArgs = ExtraArgs ++ CallArgs0,
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
     NonLocals1 = set_of_var.list_to_set(ExtraArgs),
@@ -2325,39 +2352,40 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
     %
 :- pred make_typeclass_info_vars(list(prog_constraint)::in,
     existq_tvars::in, prog_context::in,
-    list(prog_var)::out, list(hlds_goal)::out,
+    assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
-make_typeclass_info_vars(Constraints, ExistQVars, Context, TypeClassInfoVars,
-        ExtraGoals, !Info) :-
+make_typeclass_info_vars(Constraints, ExistQVars, Context,
+        TypeClassInfoVarsMCAs, ExtraGoals, !Info) :-
     SeenInstances = [],
     make_typeclass_info_vars_2(Constraints, SeenInstances, ExistQVars, Context,
-        TypeClassInfoVars, cord.empty, ExtraGoalsCord, !Info),
-    ExtraGoals = cord.list(ExtraGoalsCord).
+        TypeClassInfoVarsMCAs, ExtraGoals, !Info).
 
     % Accumulator version of the above.
     %
 :- pred make_typeclass_info_vars_2(list(prog_constraint)::in,
     list(prog_constraint)::in, existq_tvars::in, prog_context::in,
-    list(prog_var)::out, cord(hlds_goal)::in, cord(hlds_goal)::out,
+    assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_vars_2([], _Seen, _ExistQVars, _Context,
-        [], !ExtraGoals, !Info).
+        [], [], !Info).
 make_typeclass_info_vars_2([Constraint | Constraints], Seen, ExistQVars,
-        Context, [TypeClassInfoVar | TypeClassInfoVars], !ExtraGoals, !Info) :-
+        Context, [TypeClassInfoVarMCA | TypeClassInfoVarsMCAs],
+        ExtraGoals, !Info) :-
     make_typeclass_info_var(Constraint, [Constraint | Seen],
-        ExistQVars, Context, TypeClassInfoVar, !ExtraGoals, !Info),
+        ExistQVars, Context, TypeClassInfoVarMCA, HeadExtraGoals, !Info),
     make_typeclass_info_vars_2(Constraints, Seen, ExistQVars,
-        Context, TypeClassInfoVars, !ExtraGoals, !Info).
+        Context, TypeClassInfoVarsMCAs, TailExtraGoals, !Info),
+    ExtraGoals = HeadExtraGoals ++ TailExtraGoals.
 
 :- pred make_typeclass_info_var(prog_constraint::in,
     list(prog_constraint)::in, existq_tvars::in, prog_context::in,
-    prog_var::out, cord(hlds_goal)::in, cord(hlds_goal)::out,
+    pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_var(Constraint, Seen, ExistQVars, Context,
-        TypeClassInfoVar, !ExtraGoals, !Info) :-
+        TypeClassInfoVarMCA, Goals, !Info) :-
     (
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         rtti_search_typeclass_info_var(RttiVarMaps0, Constraint,
@@ -2366,61 +2394,365 @@ make_typeclass_info_var(Constraint, Seen, ExistQVars, Context,
         % We already have a typeclass_info for this constraint, either from
         % a parameter to the pred or from an existentially quantified goal
         % that we have already processed.
-        TypeClassInfoVar = OldTypeClassInfoVar
+        TypeClassInfoVar = OldTypeClassInfoVar,
+        TypeClassInfoVarMCA = TypeClassInfoVar - no,
+        Goals = []
     ;
-        % We don't have the typeclass_info, we must either have a proof that
-        % tells us how to make it, or it will be produced by an existentially
-        % typed goal that we will process later on.
+        % We don't have the typeclass_info, so we must either have a proof
+        % that tells us how to make it, or ...
         map.search(!.Info ^ poly_proof_map, Constraint, Proof)
     ->
         make_typeclass_info_from_proof(Constraint, Seen, Proof, ExistQVars,
-            Context, TypeClassInfoVar, !ExtraGoals, !Info)
+            Context, TypeClassInfoVarMCA, Goals, !Info)
     ;
+        % ... it will be produced by an existentially typed goal that
+        % we will process later on.
         make_typeclass_info_head_var(do_record_type_info_locns, Constraint,
             TypeClassInfoVar, !Info),
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         rtti_reuse_typeclass_info_var(TypeClassInfoVar,
             RttiVarMaps0, RttiVarMaps),
-        poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
+        poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
+        TypeClassInfoVarMCA = TypeClassInfoVar - no,
+        Goals = []
     ).
 
 :- pred make_typeclass_info_from_proof(prog_constraint::in,
     list(prog_constraint)::in, constraint_proof::in, existq_tvars::in,
-    prog_context::in, prog_var::out, cord(hlds_goal)::in, cord(hlds_goal)::out,
-    poly_info::in, poly_info::out) is det.
+    prog_context::in, pair(prog_var, maybe(const_struct_arg))::out,
+    list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_from_proof(Constraint, Seen, Proof,
-        ExistQVars, Context, TypeClassInfoVar, !ExtraGoals, !Info) :-
+        ExistQVars, Context, TypeClassInfoVarMCA, Goals, !Info) :-
     (
-        % We have to construct the typeclass_info using an instance
-        % declaration.
-        Proof = apply_instance(InstanceNum),
-        make_typeclass_info_from_instance(Constraint, Seen, InstanceNum,
-            ExistQVars, Context, TypeClassInfoVar, !ExtraGoals, !Info)
-    ;
         % XXX MR_Dictionary should have MR_Dictionaries for superclass
         % We have to extract the typeclass_info from another one.
         Proof = superclass(SubClassConstraint),
         make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
-            ExistQVars, Context, TypeClassInfoVar, !ExtraGoals, !Info)
+            ExistQVars, Context, TypeClassInfoVarMCA, Goals, !Info)
+    ;
+        % We have to construct the typeclass_info using an instance
+        % declaration.
+        Proof = apply_instance(InstanceNum),
+        make_typeclass_info_from_instance(Constraint, Seen, InstanceNum,
+            ExistQVars, Context, TypeClassInfoVarMCA, Goals, !Info)
+    ).
+
+:- pred make_typeclass_info_from_subclass(prog_constraint::in,
+    list(prog_constraint)::in, prog_constraint::in, existq_tvars::in,
+    prog_context::in, pair(prog_var, maybe(const_struct_arg))::out,
+    list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
+
+make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
+        ExistQVars, Context, TypeClassInfoVar - MaybeTCIConstArg, Goals,
+        !Info) :-
+    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        some [SelectedPred, Level, IndentStr] (
+            promise_pure (
+                semipure get_selected_pred(SelectedPred),
+                semipure get_level(Level),
+                (
+                    SelectedPred = no
+                ;
+                    SelectedPred = yes,
+                    IndentStr = string.duplicate_char(' ', Level * 4),
+                    impure set_level(Level + 1),
+
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("make_typeclass_info_from_subclass", !IO),
+                    io.nl(!IO),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("Constraint: ", !IO),
+                    io.write(Constraint, !IO),
+                    io.nl(!IO),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("Seen: ", !IO),
+                    ( Seen = [Constraint] ->
+                        io.write_string("[Constraint]\n", !IO)
+                    ;
+                        io.write(Seen, !IO),
+                        io.nl(!IO)
+                    ),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("SubClassConstraint: ", !IO),
+                    io.write(SubClassConstraint, !IO),
+                    io.nl(!IO),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("ExistQVars: ", !IO),
+                    io.write(ExistQVars, !IO),
+                    io.nl(!IO),
+                    io.nl(!IO)
+                )
+            )
+        )
+    ),
+
+    % Work out where to extract the typeclass info from.
+    SubClassConstraint = constraint(SubClassName, SubClassTypes),
+    list.length(SubClassTypes, SubClassArity),
+    SubClassId = class_id(SubClassName, SubClassArity),
+
+    % Make the typeclass_info for the subclass.
+    make_typeclass_info_var(SubClassConstraint, Seen, ExistQVars, Context,
+        SubClassVarMCA, SubClassVarGoals, !Info),
+    SubClassVarMCA = SubClassVar - SubClassMCA,
+
+    % Look up the definition of the subclass.
+    poly_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_class_table(ModuleInfo, ClassTable),
+    map.lookup(ClassTable, SubClassId, SubClassDefn),
+
+    % Work out which superclass typeclass_info to take.
+    map.from_corresponding_lists(SubClassDefn ^ class_vars, SubClassTypes,
+        SubTypeSubst),
+    apply_subst_to_prog_constraint_list(SubTypeSubst,
+        SubClassDefn ^ class_supers, SuperClasses),
+    ( list.nth_member_search(SuperClasses, Constraint, SuperClassIndex0) ->
+        SuperClassIndex0 = SuperClassIndex
+    ;
+        % We shouldn't have got this far if the constraints were not satisfied.
+        unexpected($module, $pred, "constraint not in constraint list")
+    ),
+
+    (
+        SubClassMCA = yes(SubClassConstArg),
+        (
+            SubClassConstArg = csa_constant(_, _),
+            unexpected($module, $pred, "typeclass infos need a cell")
+        ;
+            SubClassConstArg = csa_const_struct(SubClassConstNum),
+            poly_info_get_const_struct_db(!.Info, ConstStructDb),
+            lookup_const_struct_num(ConstStructDb, SubClassConstNum,
+                SubClassConstStruct),
+            SubClassConstStruct = const_struct(SubClassConsId, SubClassArgs,
+                _, _),
+            (
+                SubClassConsId = typeclass_info_cell_constructor,
+                SubClassArgs = [BTCIArg | OtherArgs],
+                BTCIArg = csa_constant(BTCIConsId, _),
+                BTCIConsId = base_typeclass_info_const(_, SubClassId,
+                    SubInstanceNum, _),
+                module_info_get_instance_table(ModuleInfo, InstanceTable),
+                map.lookup(InstanceTable, SubClassId, SubInstanceDefns),
+                list.index1(SubInstanceDefns, SubInstanceNum, SubInstanceDefn),
+                num_extra_instance_args(SubInstanceDefn, NumExtra),
+                Index = NumExtra + SuperClassIndex,
+                list.det_index1(OtherArgs, Index, SelectedArg),
+                SelectedArg = csa_const_struct(SelectedConstNum)
+            ->
+                materialize_typeclass_info_var(Constraint, SelectedConstNum,
+                    TypeClassInfoVar, Goals, !Info),
+                MaybeTCIConstArg = yes(SelectedArg)
+            ;
+                unexpected($module, $pred,
+                    "unexpected typeclass info structure")
+            )
+        ),
+
+        trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+            some [SelectedPred, Level, IndentStr, ResultStr] (
+                promise_pure (
+                    semipure get_selected_pred(SelectedPred),
+                    semipure get_level(Level),
+                    impure set_level(Level - 1),
+                    (
+                        SelectedPred = no
+                    ;
+                        SelectedPred = yes,
+                        IndentStr = string.duplicate_char(' ', (Level-1) * 4),
+                        io.write_string(IndentStr, !IO),
+                        io.write_string("subclass constant result ", !IO),
+                        io.write(TypeClassInfoVar - MaybeTCIConstArg, !IO),
+                        io.nl(!IO),
+                        io.nl(!IO)
+                    )
+                )
+            )
+        )
+    ;
+        SubClassMCA = no,
+        new_typeclass_info_var(Constraint, typeclass_info_kind,
+            TypeClassInfoVar, _TypeClassInfoVarType, !Info),
+        get_poly_const(SuperClassIndex, IndexVar, IndexGoals, !Info),
+
+        % We extract the superclass typeclass_info by inserting a call
+        % to superclass_from_typeclass_info in private_builtin.
+        goal_util.generate_simple_call(mercury_private_builtin_module,
+            "superclass_from_typeclass_info",
+            pf_predicate, only_mode, detism_det, purity_pure,
+            [SubClassVar, IndexVar, TypeClassInfoVar], [],
+            instmap_delta_bind_no_var, ModuleInfo, term.context_init,
+            SuperClassGoal),
+        Goals = SubClassVarGoals ++ IndexGoals ++ [SuperClassGoal],
+        MaybeTCIConstArg = no,
+
+        trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+            some [SelectedPred, Level, IndentStr, ResultStr] (
+                promise_pure (
+                    semipure get_selected_pred(SelectedPred),
+                    semipure get_level(Level),
+                    impure set_level(Level - 1),
+                    (
+                        SelectedPred = no
+                    ;
+                        SelectedPred = yes,
+                        IndentStr = string.duplicate_char(' ', (Level-1) * 4),
+                        io.write_string(IndentStr, !IO),
+                        io.write_string("subclass computed result ", !IO),
+                        io.write(TypeClassInfoVar - MaybeTCIConstArg, !IO),
+                        io.nl(!IO),
+                        io.nl(!IO)
+                    )
+                )
+            )
+        )
     ).
 
 :- pred make_typeclass_info_from_instance(prog_constraint::in,
     list(prog_constraint)::in, int::in, existq_tvars::in, prog_context::in,
-    prog_var::out, cord(hlds_goal)::in, cord(hlds_goal)::out,
+    pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
-        Context, TypeClassInfoVar, !ExtraGoals, !Info) :-
+        Context, TypeClassInfoVarMCA, Goals, !Info) :-
+    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        some [SelectedPred, Level, IndentStr] (
+            promise_pure (
+                semipure get_selected_pred(SelectedPred),
+                semipure get_level(Level),
+                (
+                    SelectedPred = no
+                ;
+                    SelectedPred = yes,
+                    IndentStr = string.duplicate_char(' ', Level * 4),
+                    impure set_level(Level + 1),
+
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("make_typeclass_info_from_instance", !IO),
+                    io.nl(!IO),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("Constraint: ", !IO),
+                    io.write(Constraint, !IO),
+                    io.nl(!IO),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("Seen: ", !IO),
+                    ( Seen = [Constraint] ->
+                        io.write_string("[Constraint]\n", !IO)
+                    ;
+                        io.write(Seen, !IO),
+                        io.nl(!IO)
+                    ),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("InstanceNum: ", !IO),
+                    io.write(InstanceNum, !IO),
+                    io.nl(!IO),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("ExistQVars: ", !IO),
+                    io.write(ExistQVars, !IO),
+                    io.nl(!IO),
+                    io.nl(!IO)
+                )
+            )
+        )
+    ),
+
+    poly_info_get_const_struct_db(!.Info, ConstStructDb0),
+    InstanceId = ciid(InstanceNum, Constraint, Seen),
+    (
+        ExistQVars = [],
+        search_for_constant_instance(ConstStructDb0, InstanceId,
+            InstanceIdConstNum)
+    ->
+        materialize_typeclass_info_var(Constraint, InstanceIdConstNum,
+            TypeClassInfoVar, Goals, !Info),
+        TypeClassInfoVarMCA =
+            TypeClassInfoVar - yes(csa_const_struct(InstanceIdConstNum)),
+
+        trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+            some [SelectedPred, Level, IndentStr, ResultStr] (
+                promise_pure (
+                    semipure get_selected_pred(SelectedPred),
+                    semipure get_level(Level),
+                    impure set_level(Level - 1),
+                    (
+                        SelectedPred = no
+                    ;
+                        SelectedPred = yes,
+                        IndentStr = string.duplicate_char(' ', (Level-1) * 4),
+                        (
+                            Goals = [],
+                            ResultStr = "instance doubly cached result "
+                        ;
+                            Goals = [_ | _],
+                            ResultStr = "instance cached result "
+                        ),
+
+                        io.write_string(IndentStr, !IO),
+                        io.write_string(ResultStr, !IO),
+                        io.write(TypeClassInfoVarMCA, !IO),
+                        io.nl(!IO),
+                        io.nl(!IO)
+                    )
+                )
+            )
+        )
+    ;
+        do_make_typeclass_info_from_instance(InstanceId, ExistQVars,
+            Context, TypeClassInfoVarMCA, Goals, !Info),
+        trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+            some [SelectedPred, Level, IndentStr] (
+                promise_pure (
+                    semipure get_selected_pred(SelectedPred),
+                    semipure get_level(Level),
+                    impure set_level(Level - 1),
+                    (
+                        SelectedPred = no
+                    ;
+                        SelectedPred = yes,
+                        IndentStr = string.duplicate_char(' ', (Level-1) * 4),
+                        io.write_string(IndentStr, !IO),
+                        io.write_string("instance computed result: ", !IO),
+                        io.write(TypeClassInfoVarMCA, !IO),
+                        io.nl(!IO),
+
+                        io.write_string(IndentStr, !IO),
+                        io.write_string("type_info_var_map ", !IO),
+                        io.write(!.Info ^ poly_type_info_var_map, !IO),
+                        io.nl(!IO),
+                        io.write_string(IndentStr, !IO),
+                        io.write_string("typeclass_info_map ", !IO),
+                        io.write(!.Info ^ poly_typeclass_info_map, !IO),
+                        io.nl(!IO),
+                        io.write_string(IndentStr, !IO),
+                        io.write_string("struct_var_map ", !IO),
+                        io.write(!.Info ^ poly_const_struct_var_map, !IO),
+                        io.nl(!IO),
+                        io.nl(!IO)
+                    )
+                )
+            )
+        )
+    ).
+
+:- pred do_make_typeclass_info_from_instance(const_instance_id::in,
+    existq_tvars::in, prog_context::in,
+    pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
+
+do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
+        TypeClassInfoVarMCA, Goals, !Info) :-
+    poly_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
+    module_info_get_class_table(ModuleInfo, ClassTable),
+    poly_info_get_typevarset(!.Info, TypeVarSet),
+    poly_info_get_proofs(!.Info, Proofs0),
+
+    InstanceId = ciid(InstanceNum, Constraint, Seen),
     Constraint = constraint(ClassName, ConstrainedTypes),
-    TypeVarSet = !.Info ^ poly_typevarset,
-    Proofs0 = !.Info ^ poly_proof_map,
-    ModuleInfo = !.Info ^ poly_module_info,
 
     list.length(ConstrainedTypes, ClassArity),
     ClassId = class_id(ClassName, ClassArity),
 
-    module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.lookup(InstanceTable, ClassId, InstanceList),
     list.det_index1(InstanceList, InstanceNum, ProofInstanceDefn),
 
@@ -2435,10 +2767,11 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
     get_unconstrained_tvars(InstanceTvars, InstanceConstraints,
         UnconstrainedTvars),
 
-    % We can ignore the new typevarset because all the type variables in the
-    % instance constraints and superclass proofs must appear in the arguments
-    % of the instance, and all such variables are bound when we call
-    % type_list_subsumes then apply the resulting bindings.
+    % We can ignore the new typevarset because all the type variables
+    % in the instance constraints and superclass proofs must appear
+    % in the arguments of the instance, and all such variables
+    % are bound when we call type_list_subsumes then apply
+    % the resulting bindings.
     tvarset_merge_renaming(TypeVarSet, InstanceTVarset, _NewTVarset, Renaming),
     apply_variable_renaming_to_type_list(Renaming, InstanceTypes,
         RenamedInstanceTypes),
@@ -2466,251 +2799,240 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
 
     map.overlay(Proofs0, ActualInstanceProofs, Proofs),
 
+    get_var_maps_snapshot("make_typeclass_info_from_instance",
+        InitialVarMapsSnapshot, !Info),
+
     % Make the type_infos for the types that are constrained by this.
     % These are packaged in the typeclass_info.
-    polymorphism_make_type_info_vars(ConstrainedTypes, Context,
-        InstanceExtraTypeInfoVars, TypeInfoGoals, !Info),
+    polymorphism_do_make_type_info_vars(ConstrainedTypes, Context,
+        ArgTypeInfoVarsMCAs, TypeInfoGoals, !Info),
 
     % Make the typeclass_infos for the constraints from the context of the
     % instance decl.
     make_typeclass_info_vars_2(ActualInstanceConstraints, Seen, ExistQVars,
-        Context, InstanceExtraTypeClassInfoVars, !ExtraGoals, !Info),
+        Context, ArgTypeClassInfoVarsMCAs, InstanceConstraintGoals, !Info),
 
-    % Make the type_infos for the unconstrained type variables from the head
-    % of the instance declaration.
-    polymorphism_make_type_info_vars(ActualUnconstrainedTypes, Context,
-        InstanceExtraTypeInfoUnconstrainedVars, UnconstrainedTypeInfoGoals,
-        !Info),
+    % Make the type_infos for the unconstrained type variables
+    % from the head of the instance declaration.
+    polymorphism_do_make_type_info_vars(ActualUnconstrainedTypes, Context,
+        ArgUnconstrainedTypeInfoVarsMCAs, UnconstrainedTypeInfoGoals, !Info),
 
-    make_typeclass_info(InstanceExtraTypeInfoUnconstrainedVars,
-        InstanceExtraTypeInfoVars, InstanceExtraTypeClassInfoVars,
-        ClassId, Constraint, InstanceNum, ConstrainedTypes,
-        Proofs, ExistQVars, TypeClassInfoVar, MakeTypeClassInfoGoals, !Info),
+    % --------------------- %
 
-    !:ExtraGoals = cord.from_list(TypeInfoGoals) ++ !.ExtraGoals ++
-        MakeTypeClassInfoGoals ++ cord.from_list(UnconstrainedTypeInfoGoals).
-
-:- pred make_typeclass_info_from_subclass(prog_constraint::in,
-    list(prog_constraint)::in, prog_constraint::in,
-    existq_tvars::in, prog_context::in, prog_var::out,
-    cord(hlds_goal)::in, cord(hlds_goal)::out,
-    poly_info::in, poly_info::out) is det.
-
-make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
-        ExistQVars, Context, TypeClassInfoVar, !ExtraGoals, !Info) :-
-    % First create a variable to hold the new typeclass_info.
-    new_typeclass_info_var(Constraint, typeclass_info_kind, TypeClassInfoVar,
-        !Info),
-
-    % Then work out where to extract it from.
-    SubClassConstraint = constraint(SubClassName, SubClassTypes),
-    list.length(SubClassTypes, SubClassArity),
-    SubClassId = class_id(SubClassName, SubClassArity),
-
-    % Make the typeclass_info for the subclass.
-    make_typeclass_info_var(SubClassConstraint, Seen, ExistQVars, Context,
-        SubClassVar, !ExtraGoals, !Info),
-
-    % Look up the definition of the subclass.
-    poly_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_class_table(ModuleInfo, ClassTable),
-    map.lookup(ClassTable, SubClassId, SubClassDefn),
-
-    % Work out which superclass typeclass_info to take.
-    map.from_corresponding_lists(SubClassDefn ^ class_vars, SubClassTypes,
-        SubTypeSubst),
-    apply_subst_to_prog_constraint_list(SubTypeSubst,
-        SubClassDefn ^ class_supers, SuperClasses),
-    ( list.nth_member_search(SuperClasses, Constraint, SuperClassIndex0) ->
-        SuperClassIndex0 = SuperClassIndex
-    ;
-        % We shouldn't have got this far if the constraints were not satisfied.
-        unexpected($module, $pred, "constraint not in constraint list")
-    ),
-
-    get_poly_const(SuperClassIndex, IndexVar, IndexGoals, !Info),
-
-    % We extract the superclass typeclass_info by inserting a call
-    % to superclass_from_typeclass_info in private_builtin.
-    goal_util.generate_simple_call(mercury_private_builtin_module,
-        "superclass_from_typeclass_info", pf_predicate, only_mode, detism_det,
-        purity_pure, [SubClassVar, IndexVar, TypeClassInfoVar], [],
-        instmap_delta_bind_no_var, ModuleInfo, term.context_init,
-        SuperClassGoal),
-    !:ExtraGoals = !.ExtraGoals ++
-        cord.from_list(IndexGoals ++ [SuperClassGoal]).
-
-:- pred construct_base_typeclass_info(prog_constraint::in,
-    int::in, list(mer_type)::in, prog_var::out, hlds_goal::out,
-    poly_info::in, poly_info::out) is det.
-
-construct_base_typeclass_info(Constraint, InstanceNum, InstanceTypes,
-        BaseVar, BaseGoal, !Info) :-
-    new_typeclass_info_var(Constraint, base_typeclass_info_kind, BaseVar,
-        !Info),
-
-    poly_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_instance_table(ModuleInfo, InstanceTable),
-    Constraint = constraint(ClassName, ConstraintArgTypes),
-    ClassId = class_id(ClassName, list.length(ConstraintArgTypes)),
-    map.lookup(InstanceTable, ClassId, InstanceList),
-    list.det_index1(InstanceList, InstanceNum, InstanceDefn),
-    InstanceModuleName = InstanceDefn ^ instance_module,
-    make_instance_string(InstanceTypes, InstanceString),
-    ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
-        InstanceNum, InstanceString),
-    BaseTypeClassInfoTerm = rhs_functor(ConsId, no, []),
-
-    % Create the construction unification to initialize the variable.
-    BaseUnification = construct(BaseVar, ConsId, [], [],
-        construct_dynamically, cell_is_shared, no_construct_sub_info),
-    BaseUnifyMode = (free -> ground(shared, none)) -
-        (ground(shared, none) -> ground(shared, none)),
-    BaseUnifyContext = unify_context(umc_explicit, []),
-    % XXX The UnifyContext is wrong.
-    BaseUnify = unify(BaseVar, BaseTypeClassInfoTerm, BaseUnifyMode,
-        BaseUnification, BaseUnifyContext),
-
-    % Create the unification goal.
-    NonLocals = set_of_var.make_singleton(BaseVar),
-    InstmapDelta = instmap_delta_bind_var(BaseVar),
-    goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
-        BaseGoalInfo),
-    BaseGoal = hlds_goal(BaseUnify, BaseGoalInfo).
-
-:- pred construct_typeclass_info(prog_constraint::in,
-    prog_var::in, list(prog_var)::in, prog_var::out, hlds_goal::out,
-    poly_info::in, poly_info::out) is det.
-
-construct_typeclass_info(Constraint, BaseVar, ArgVars, TypeClassInfoVar, Goal,
-        !Info) :-
-    % Build a unification to add the argvars to the base_typeclass_info.
-    ConsId = typeclass_info_cell_constructor,
-    AllArgVars = [BaseVar | ArgVars],
-    TypeClassInfoTerm = rhs_functor(ConsId, no, AllArgVars),
-
-    new_typeclass_info_var(Constraint, typeclass_info_kind, TypeClassInfoVar,
-        !Info),
-
-    % Create the construction unification to initialize the variable.
-    UniMode = (free - ground(shared, none) ->
-        ground(shared, none) - ground(shared, none)),
-    list.length(AllArgVars, NumArgVars),
-    list.duplicate(NumArgVars, UniMode, UniModes),
-    Unification = construct(TypeClassInfoVar, ConsId, AllArgVars, UniModes,
-        construct_dynamically, cell_is_unique, no_construct_sub_info),
-    UnifyMode = (free -> ground(shared, none)) -
-        (ground(shared, none) -> ground(shared, none)),
-    UnifyContext = unify_context(umc_explicit, []),
-    % XXX The UnifyContext is wrong.
-    GoalExpr = unify(TypeClassInfoVar, TypeClassInfoTerm, UnifyMode,
-        Unification, UnifyContext),
-
-    % Create a goal_info for the unification.
-    goal_info_init(GoalInfo0),
-    set_of_var.list_to_set([TypeClassInfoVar | AllArgVars], NonLocals),
-    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
-    list.duplicate(NumArgVars, ground(shared, none), ArgInsts),
-    % Note that we could perhaps be more accurate than `ground(shared)',
-    % but it shouldn't make any difference.
-    InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgVars),
-    InstResults = inst_test_results(inst_result_is_ground,
-        inst_result_does_not_contain_any,
-        inst_result_contains_instnames_known(set.init),
-        inst_result_contains_types_unknown),
-    TypeClassInfoInst = bound(unique, InstResults,
-        [bound_functor(InstConsId, ArgInsts)]),
-    InstMapDelta =
-        instmap_delta_from_assoc_list([TypeClassInfoVar - TypeClassInfoInst]),
-    goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
-    goal_info_set_determinism(detism_det, GoalInfo2, GoalInfo),
-
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-:- pred make_typeclass_info(list(prog_var)::in, list(prog_var)::in,
-    list(prog_var)::in, class_id::in, prog_constraint::in, int::in,
-    list(mer_type)::in, constraint_proof_map::in, existq_tvars::in,
-    prog_var::out, cord(hlds_goal)::out, poly_info::in, poly_info::out) is det.
-
-make_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
-        ArgTypeClassInfoVars, ClassId, Constraint, InstanceNum, InstanceTypes,
-        SuperClassProofs, ExistQVars, TypeClassInfoVar, Goals, !Info) :-
-    poly_info_get_module_info(!.Info, ModuleInfo),
-
-    module_info_get_class_table(ModuleInfo, ClassTable),
     map.lookup(ClassTable, ClassId, ClassDefn),
 
-    get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofs,
-        ExistQVars, ArgSuperClassVars, SuperClassGoals, !Info),
+    get_arg_superclass_vars(ClassDefn, ConstrainedTypes, Proofs,
+        ExistQVars, ArgSuperClassVarsMCAs, SuperClassGoals, !Info),
 
+    PrevGoals = UnconstrainedTypeInfoGoals ++ TypeInfoGoals ++
+        InstanceConstraintGoals ++ SuperClassGoals,
     % Lay out the argument variables as expected in the typeclass_info.
-    ArgVars = ArgUnconstrainedTypeInfoVars ++ ArgTypeClassInfoVars ++
-        ArgSuperClassVars ++ ArgTypeInfoVars,
+    ArgVarsMCAs = ArgUnconstrainedTypeInfoVarsMCAs ++
+        ArgTypeClassInfoVarsMCAs ++
+        ArgSuperClassVarsMCAs ++ ArgTypeInfoVarsMCAs,
+    list.map(make_const_or_var_arg, ArgVarsMCAs, ArgCOVAs),
 
     Constraint = constraint(ConstraintClassName, ConstraintArgTypes),
     poly_info_get_typeclass_info_map(!.Info, TypeClassInfoMap0),
-    ( map.search(TypeClassInfoMap0, ConstraintClassName, ClassNameMap0) ->
-        ( map.search(ClassNameMap0, ConstraintArgTypes, OldEntry) ->
-            OldEntry = typeclass_info_map_entry(BaseVar, ArgsMap0),
-            ( map.search(ArgsMap0, ArgVars, OldTypeClassInfoVar) ->
-                TypeClassInfoVar = OldTypeClassInfoVar,
-                Goals = SuperClassGoals,
-                poly_info_get_num_reuses(!.Info, NumReuses),
-                poly_info_set_num_reuses(NumReuses + 2, !Info)
-            ;
-                construct_typeclass_info(Constraint, BaseVar, ArgVars,
-                    TypeClassInfoVar, TypeClassInfoGoal, !Info),
-                Goals = SuperClassGoals ++
-                    cord.singleton(TypeClassInfoGoal),
-                poly_info_get_num_reuses(!.Info, NumReuses),
-                poly_info_set_num_reuses(NumReuses + 1, !Info),
-                map.det_insert(ArgVars, TypeClassInfoVar, ArgsMap0, ArgsMap),
-                Entry = typeclass_info_map_entry(BaseVar, ArgsMap),
+    (
+        map.search(TypeClassInfoMap0, ConstraintClassName, ClassNameMap0),
+        map.search(ClassNameMap0, ConstraintArgTypes, OldEntry0),
+        OldEntry0 = typeclass_info_map_entry(_BaseConsId, ArgsMap0),
+        map.search(ArgsMap0, ArgCOVAs, OldTypeClassInfoVarMCA0)
+    ->
+        TypeClassInfoVarMCA = OldTypeClassInfoVarMCA0,
+        % ZZZ
+        Goals = [],
+        set_var_maps_snapshot("make_typeclass_info",
+            InitialVarMapsSnapshot, !Info),
+        poly_info_get_num_reuses(!.Info, NumReuses),
+        poly_info_set_num_reuses(NumReuses + 2, !Info)
+    ;
+        BaseConsId = base_typeclass_info_cons_id(InstanceTable,
+            Constraint, InstanceNum, InstanceTypes),
+        materialize_base_typeclass_info_var(Constraint, BaseConsId, BaseVar,
+            BaseGoals, !Info),
+        construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
+            InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCA,
+            BaseGoals ++ PrevGoals, Goals, !Info),
+        TypeClassInfoVarMCA = TypeClassInfoVar - TypeClassInfoMCA,
+
+        % We must start the search from scratch, since construct_typeclass_info
+        % may have reset all the cache maps.
+        poly_info_get_typeclass_info_map(!.Info, TypeClassInfoMap1),
+        ( map.search(TypeClassInfoMap1, ConstraintClassName, ClassNameMap1) ->
+            ( map.search(ClassNameMap1, ConstraintArgTypes, OldEntry1) ->
+                OldEntry1 = typeclass_info_map_entry(BaseConsId1, ArgsMap1),
+                expect(unify(BaseConsId1, BaseConsId), $module, $pred,
+                    "BaseConsId1 != BaseConsId"),
+                map.det_insert(ArgCOVAs, TypeClassInfoVarMCA,
+                    ArgsMap1, ArgsMap),
+                Entry = typeclass_info_map_entry(BaseConsId, ArgsMap),
                 map.det_update(ConstraintArgTypes, Entry,
-                    ClassNameMap0, ClassNameMap),
+                    ClassNameMap1, ClassNameMap),
                 map.det_update(ConstraintClassName, ClassNameMap,
-                    TypeClassInfoMap0, TypeClassInfoMap),
-                poly_info_set_typeclass_info_map(TypeClassInfoMap, !Info)
+                    TypeClassInfoMap1, TypeClassInfoMap)
+            ;
+                ArgsMap = map.singleton(ArgCOVAs, TypeClassInfoVarMCA),
+                Entry = typeclass_info_map_entry(BaseConsId, ArgsMap),
+                map.det_insert(ConstraintArgTypes, Entry,
+                    ClassNameMap1, ClassNameMap),
+                map.det_update(ConstraintClassName, ClassNameMap,
+                    TypeClassInfoMap1, TypeClassInfoMap)
             )
         ;
-            construct_base_typeclass_info(Constraint,
-                InstanceNum, InstanceTypes, BaseVar, BaseGoal, !Info),
-            construct_typeclass_info(Constraint, BaseVar, ArgVars,
-                TypeClassInfoVar, TypeClassInfoGoal, !Info),
-            Goals = SuperClassGoals ++
-                cord.from_list([BaseGoal, TypeClassInfoGoal]),
-            ArgsMap = map.singleton(ArgVars, TypeClassInfoVar),
-            Entry = typeclass_info_map_entry(BaseVar, ArgsMap),
-            map.det_insert(ConstraintArgTypes, Entry,
-                ClassNameMap0, ClassNameMap),
-            map.det_update(ConstraintClassName, ClassNameMap,
-                TypeClassInfoMap0, TypeClassInfoMap),
-            poly_info_set_typeclass_info_map(TypeClassInfoMap, !Info)
-        )
-    ;
-        construct_base_typeclass_info(Constraint,
-            InstanceNum, InstanceTypes, BaseVar, BaseGoal, !Info),
-        construct_typeclass_info(Constraint, BaseVar, ArgVars,
-            TypeClassInfoVar, TypeClassInfoGoal, !Info),
-        Goals = SuperClassGoals ++
-            cord.from_list([BaseGoal, TypeClassInfoGoal]),
-        ArgsMap = map.singleton(ArgVars, TypeClassInfoVar),
-        Entry = typeclass_info_map_entry(BaseVar, ArgsMap),
-        ClassNameMap = map.singleton(ConstraintArgTypes, Entry),
-        map.det_insert(ConstraintClassName, ClassNameMap,
-            TypeClassInfoMap0, TypeClassInfoMap),
+            ArgsMap = map.singleton(ArgCOVAs, TypeClassInfoVarMCA),
+            Entry = typeclass_info_map_entry(BaseConsId, ArgsMap),
+            ClassNameMap = map.singleton(ConstraintArgTypes, Entry),
+            map.det_insert(ConstraintClassName, ClassNameMap,
+                TypeClassInfoMap1, TypeClassInfoMap)
+        ),
         poly_info_set_typeclass_info_map(TypeClassInfoMap, !Info)
+    ),
+
+    (
+        TypeClassInfoVarMCA = _ - yes(TypeClassInfoConstArg),
+        TypeClassInfoConstArg = csa_const_struct(TypeClassInfoConstArgNum)
+    ->
+        poly_info_get_const_struct_db(!.Info, ConstStructDb1),
+        insert_constant_instance(InstanceId, TypeClassInfoConstArgNum,
+            ConstStructDb1, ConstStructDb),
+        poly_info_set_const_struct_db(ConstStructDb, !Info)
+    ;
+        true
+    ).
+
+:- pred construct_typeclass_info(prog_constraint::in,
+    prog_var::in, cons_id::in,
+    assoc_list(prog_var, maybe(const_struct_arg))::in, var_maps::in,
+    prog_var::out, maybe(const_struct_arg)::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
+
+construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
+        InitialVarMapsSnapshot, TypeClassInfoVar, TypeClassInfoMCA,
+        PrevGoals, AllGoals, !Info) :-
+    % Build a unification to add the argvars to the base_typeclass_info.
+    ConsId = typeclass_info_cell_constructor,
+
+    poly_info_get_const_struct_db(!.Info, ConstStructDb0),
+    const_struct_db_get_enabled(ConstStructDb0, ConstStructEnabled),
+    (
+        ConstStructEnabled = yes,
+        all_are_const_struct_args(ArgVarsMCAs, VarConstArgs)
+    ->
+        poly_info_get_num_reuses(!.Info, NumReuses),
+        poly_info_set_num_reuses(NumReuses + 1, !Info),
+
+        set_var_maps_snapshot("construct_typeclass_info",
+            InitialVarMapsSnapshot, !Info),
+        new_typeclass_info_var(Constraint, typeclass_info_kind,
+            TypeClassInfoVar, TypeClassInfoVarType, !Info),
+
+        build_typeclass_info_type(Constraint, BaseConstArgType),
+        BaseConstArg = csa_constant(BaseConsId, BaseConstArgType),
+        StructArgs = [BaseConstArg | VarConstArgs],
+        list.map(get_inst_of_const_struct_arg(ConstStructDb0),
+            VarConstArgs, VarInsts),
+        list.length(ArgVarsMCAs, NumArgs),
+        InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgs),
+        StructInst = bound(shared, inst_test_results_fgtc,
+            [bound_functor(InstConsId, VarInsts)]),
+        ConstStruct = const_struct(ConsId, StructArgs,
+            TypeClassInfoVarType, StructInst),
+        lookup_insert_const_struct(ConstStruct, ConstNum,
+            ConstStructDb0, ConstStructDb),
+        poly_info_set_const_struct_db(ConstStructDb, !Info),
+        TypeClassInfoConstArg = csa_const_struct(ConstNum),
+        TypeClassInfoMCA = yes(TypeClassInfoConstArg),
+
+        % Create the construction unification to initialize the variable.
+        ConstConsId = typeclass_info_const(ConstNum),
+        Unification = construct(TypeClassInfoVar, ConstConsId, [], [],
+            construct_statically, cell_is_shared, no_construct_sub_info),
+        UnifyMode = (free -> ground(shared, none)) -
+            (ground(shared, none) -> ground(shared, none)),
+        % XXX The UnifyContext is wrong.
+        UnifyContext = unify_context(umc_explicit, []),
+        TypeClassInfoRHS = rhs_functor(ConstConsId, no, []),
+        GoalExpr = unify(TypeClassInfoVar, TypeClassInfoRHS, UnifyMode,
+            Unification, UnifyContext),
+
+        % Create a goal_info for the unification.
+        goal_info_init(GoalInfo0),
+        NonLocals = set_of_var.make_singleton(TypeClassInfoVar),
+        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
+        % Note that we could perhaps be more accurate than `ground(shared)',
+        % but it shouldn't make any difference.
+        InstResults = inst_test_results(inst_result_is_ground,
+            inst_result_does_not_contain_any,
+            inst_result_contains_instnames_known(set.init),
+            inst_result_contains_types_known(set.init)),
+        TypeClassInfoInst = bound(shared, InstResults,
+            [bound_functor(ConsId, [])]),
+        TypeClassInfoVarInst = TypeClassInfoVar - TypeClassInfoInst,
+        InstMapDelta = instmap_delta_from_assoc_list([TypeClassInfoVarInst]),
+        goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
+        goal_info_set_determinism(detism_det, GoalInfo2, GoalInfo),
+
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        % XXX reset varset and vartypes
+        AllGoals = [Goal]
+    ;
+        TypeClassInfoMCA = no,
+        new_typeclass_info_var(Constraint, typeclass_info_kind,
+            TypeClassInfoVar, _TypeClassInfoVarType, !Info),
+        assoc_list.keys(ArgVarsMCAs, ArgVars),
+        AllArgVars = [BaseVar | ArgVars],
+
+        % Create the construction unification to initialize the variable.
+        TypeClassInfoRHS = rhs_functor(ConsId, no, AllArgVars),
+        UniMode = (free - ground(shared, none) ->
+            ground(shared, none) - ground(shared, none)),
+        list.length(AllArgVars, NumArgs),
+        list.duplicate(NumArgs, UniMode, UniModes),
+        Unification = construct(TypeClassInfoVar, ConsId, AllArgVars, UniModes,
+            construct_dynamically, cell_is_unique, no_construct_sub_info),
+        UnifyMode = (free -> ground(shared, none)) -
+            (ground(shared, none) -> ground(shared, none)),
+        UnifyContext = unify_context(umc_explicit, []),
+        % XXX The UnifyContext is wrong.
+        GoalExpr = unify(TypeClassInfoVar, TypeClassInfoRHS, UnifyMode,
+            Unification, UnifyContext),
+
+        % Create a goal_info for the unification.
+        goal_info_init(GoalInfo0),
+        set_of_var.list_to_set([TypeClassInfoVar | AllArgVars], NonLocals),
+        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
+        list.duplicate(NumArgs, ground(shared, none), ArgInsts),
+        % Note that we could perhaps be more accurate than `ground(shared)',
+        % but it shouldn't make any difference.
+        InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgs),
+        InstResults = inst_test_results(inst_result_is_ground,
+            inst_result_does_not_contain_any,
+            inst_result_contains_instnames_known(set.init),
+            inst_result_contains_types_unknown),
+        % XXX that should be inst_result_contains_types_known(set.init),
+        TypeClassInfoInst = bound(unique, InstResults,
+            [bound_functor(InstConsId, ArgInsts)]),
+        TypeClassInfoVarInst = TypeClassInfoVar - TypeClassInfoInst,
+        InstMapDelta = instmap_delta_from_assoc_list([TypeClassInfoVarInst]),
+        goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
+        goal_info_set_determinism(detism_det, GoalInfo2, GoalInfo),
+
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        AllGoals = PrevGoals ++ [Goal]
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred get_arg_superclass_vars(hlds_class_defn::in, list(mer_type)::in,
     constraint_proof_map::in, existq_tvars::in,
-    list(prog_var)::out, cord(hlds_goal)::out,
+    assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
 get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofs, ExistQVars,
-        SuperClassTypeClassInfoVars, SuperClassGoals, !Info) :-
+        SuperClassTypeClassInfoVarsMCAs, SuperClassGoals, !Info) :-
     poly_info_get_proofs(!.Info, Proofs),
 
     poly_info_get_typevarset(!.Info, TVarSet0),
@@ -2725,27 +3047,27 @@ get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofs, ExistQVars,
 
     apply_variable_renaming_to_prog_constraint_list(Renaming,
         SuperClasses0, SuperClasses1),
-    apply_rec_subst_to_prog_constraint_list(TypeSubst, SuperClasses1,
-        SuperClasses),
+    apply_rec_subst_to_prog_constraint_list(TypeSubst,
+        SuperClasses1, SuperClasses),
 
     poly_info_set_proofs(SuperClassProofs, !Info),
     make_superclasses_from_proofs(SuperClasses, ExistQVars,
-        SuperClassTypeClassInfoVars, cord.empty, SuperClassGoals, !Info),
+        SuperClassTypeClassInfoVarsMCAs, SuperClassGoals, !Info),
     poly_info_set_proofs(Proofs, !Info).
 
 :- pred make_superclasses_from_proofs(list(prog_constraint)::in,
-    existq_tvars::in, list(prog_var)::out,
-    cord(hlds_goal)::in, cord(hlds_goal)::out,
-    poly_info::in, poly_info::out) is det.
+    existq_tvars::in, assoc_list(prog_var, maybe(const_struct_arg))::out,
+    list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-make_superclasses_from_proofs([], _, [], !Goals, !Info).
+make_superclasses_from_proofs([], _, [], [], !Info).
 make_superclasses_from_proofs([Constraint | Constraints], ExistQVars,
-        [TypeClassInfoVar | TypeClassInfoVars], !Goals, !Info) :-
+        [TypeClassInfoVarMCA | TypeClassInfoVarsMCAs], Goals, !Info) :-
     term.context_init(Context),
     make_typeclass_info_var(Constraint, [], ExistQVars, Context,
-        TypeClassInfoVar, !Goals, !Info),
+        TypeClassInfoVarMCA, HeadGoals, !Info),
     make_superclasses_from_proofs(Constraints, ExistQVars,
-        TypeClassInfoVars, !Goals, !Info).
+        TypeClassInfoVarsMCAs, TailGoals, !Info),
+    Goals = HeadGoals ++ TailGoals.
 
 %-----------------------------------------------------------------------------%
 
@@ -2801,16 +3123,37 @@ polymorphism_maybe_extract_type_info(OldRttiVarMaps, TVar, !ExtraGoals,
 
 %---------------------------------------------------------------------------%
 
-polymorphism_make_type_info_vars([], _, [], [], !Info).
-polymorphism_make_type_info_vars([Type | Types], Context,
-        ExtraVars, ExtraGoals, !Info) :-
-    polymorphism_make_type_info_var(Type, Context, Var, ExtraGoals1, !Info),
-    polymorphism_make_type_info_vars(Types, Context, ExtraVars2, ExtraGoals2,
-        !Info),
-    ExtraVars = [Var | ExtraVars2],
-    ExtraGoals = ExtraGoals1 ++ ExtraGoals2.
+polymorphism_make_type_info_vars(Types, Context, ExtraVars,
+        ExtraGoals, !Info) :-
+    polymorphism_do_make_type_info_vars(Types, Context, ExtraVarsMCAs,
+        ExtraGoals, !Info),
+    assoc_list.keys(ExtraVarsMCAs, ExtraVars).
 
-polymorphism_make_type_info_var(Type, Context, Var, ExtraGoals, !Info) :-
+polymorphism_make_type_info_var(Type, Context, ExtraVar, ExtraGoals, !Info) :-
+    polymorphism_do_make_type_info_var(Type, Context, ExtraVarMCA,
+        ExtraGoals, !Info),
+    ExtraVarMCA = ExtraVar - _.
+
+:- pred polymorphism_do_make_type_info_vars(list(mer_type)::in,
+    term.context::in,
+    assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
+
+polymorphism_do_make_type_info_vars([], _, [], [], !Info).
+polymorphism_do_make_type_info_vars([Type | Types], Context,
+        VarsMCAs, Goals, !Info) :-
+    polymorphism_do_make_type_info_var(Type, Context, HeadVarMCA,
+        HeadGoals, !Info),
+    polymorphism_do_make_type_info_vars(Types, Context, TailVarsMCAs,
+        TailGoals, !Info),
+    VarsMCAs = [HeadVarMCA | TailVarsMCAs],
+    Goals = HeadGoals ++ TailGoals.
+
+:- pred polymorphism_do_make_type_info_var(mer_type::in, term.context::in,
+    pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
+
+polymorphism_do_make_type_info_var(Type, Context, VarMCA, ExtraGoals, !Info) :-
     % First handle statically known types (i.e. types which are not
     % type variables).
     ( type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) ->
@@ -2826,7 +3169,7 @@ polymorphism_make_type_info_var(Type, Context, Var, ExtraGoals, !Info) :-
         % we should not ignore the purity of higher order procs;
         % it should get included in the RTTI.
         polymorphism_make_type_info(Type, TypeCtor, TypeArgs, yes,
-            Context, Var, ExtraGoals, !Info)
+            Context, VarMCA, ExtraGoals, !Info)
     ;
         (
             ( Type = defined_type(_, _, _)
@@ -2842,76 +3185,49 @@ polymorphism_make_type_info_var(Type, Context, Var, ExtraGoals, !Info) :-
             % transformation we perform is shown in the comment at the top
             % of the module.
             polymorphism_make_type_info(Type, TypeCtor, TypeArgs, no,
-                Context, Var, ExtraGoals, !Info)
+                Context, VarMCA, ExtraGoals, !Info)
         ;
-            % Now handle the cases of types which are not known statically
-            % (i.e. type variables)
+            % Now handle the cases of types which are not known statically,
+            % i.e. type variables.
             Type = type_variable(TypeVar, _),
             get_type_info_locn(TypeVar, TypeInfoLocn, !Info),
-            get_type_info(TypeInfoLocn, TypeVar, ExtraGoals, Var, !Info)
+            get_type_info_from_locn(TypeVar, TypeInfoLocn, Var, ExtraGoals,
+                !Info),
+            VarMCA = Var - no
         )
     ).
 
-:- pred get_type_info_locn(tvar::in, type_info_locn::out, poly_info::in,
-    poly_info::out) is det.
-
-get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
-    % If we have already allocated a location for this type_info, then all
-    % we need to do is to extract the type_info variable from its location.
-    (
-        rtti_search_type_info_locn(!.Info ^ poly_rtti_varmaps, TypeVar,
-            TypeInfoLocnPrime)
-    ->
-        TypeInfoLocn = TypeInfoLocnPrime
-    ;
-        % Otherwise, we need to create a new type_info variable, and set the
-        % location for this type variable to be that type_info variable.
-        %
-        % This is wrong if the type variable is one of the existentially
-        % quantified variables of a called predicate and the variable occurs
-        % in an existential typeclass constraint. In that case the type_info
-        % will be stored in the typeclass_info variable produced by the
-        % predicate, not in a type_info variable. maybe_extract_type_info
-        % will fix this up when the typeclass_info is created.
-
-        get_tvar_kind(!.Info ^ poly_tvar_kinds, TypeVar, Kind),
-        Type = type_variable(TypeVar, Kind),
-        new_type_info_var(Type, type_info, Var, !Info),
-        TypeInfoLocn = type_info(Var),
-        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-        rtti_det_insert_type_info_locn(TypeVar, TypeInfoLocn,
-            RttiVarMaps0, RttiVarMaps),
-        poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
-    ).
-
 :- pred polymorphism_make_type_info(mer_type::in, type_ctor::in,
-    list(mer_type)::in, bool::in, prog_context::in, prog_var::out,
+    list(mer_type)::in, bool::in, prog_context::in,
+    pair(prog_var, maybe(const_struct_arg))::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 polymorphism_make_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
-        Context, TypeInfoVar, ExtraGoals, !Info) :-
+        Context, TypeInfoVarMCA, ExtraGoals, !Info) :-
     poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap0),
     (
         map.search(TypeInfoVarMap0, TypeCtor, TypeCtorVarMap0),
-        map.search(TypeCtorVarMap0, TypeArgs, OldTypeInfoVar)
+        map.search(TypeCtorVarMap0, TypeArgs, OldTypeInfoVarMCA)
     ->
         poly_info_get_num_reuses(!.Info, NumReuses),
         poly_info_set_num_reuses(NumReuses + 1, !Info),
-        TypeInfoVar = OldTypeInfoVar,
+        TypeInfoVarMCA = OldTypeInfoVarMCA,
         ExtraGoals = []
     ;
         polymorphism_construct_type_info(Type, TypeCtor, TypeArgs,
-            TypeCtorIsVarArity, Context, TypeInfoVar, ExtraGoals, !Info),
+            TypeCtorIsVarArity, Context, TypeInfoVar, TypeInfoConstArg,
+            ExtraGoals, !Info),
+        TypeInfoVarMCA = TypeInfoVar - TypeInfoConstArg,
         % We have to get the type_info_var_map again since the call just above
         % could have added relevant new entries to it.
         poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap1),
         ( map.search(TypeInfoVarMap1, TypeCtor, TypeCtorVarMap1) ->
-            map.det_insert(TypeArgs, TypeInfoVar,
+            map.det_insert(TypeArgs, TypeInfoVarMCA,
                 TypeCtorVarMap1, TypeCtorVarMap),
             map.det_update(TypeCtor, TypeCtorVarMap,
                 TypeInfoVarMap1, TypeInfoVarMap)
         ;
-            TypeCtorVarMap = map.singleton(TypeArgs, TypeInfoVar),
+            TypeCtorVarMap = map.singleton(TypeArgs, TypeInfoVarMCA),
             map.det_insert(TypeCtor, TypeCtorVarMap,
                 TypeInfoVarMap1, TypeInfoVarMap)
         ),
@@ -2919,52 +3235,50 @@ polymorphism_make_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
     ).
 
 :- pred polymorphism_construct_type_info(mer_type::in, type_ctor::in,
-    list(mer_type)::in, bool::in, prog_context::in, prog_var::out,
+    list(mer_type)::in, bool::in, prog_context::in,
+    prog_var::out, maybe(const_struct_arg)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
-        Context, Var, ExtraGoals, !Info) :-
+        Context, Var, MCA, ExtraGoals, !Info) :-
+    get_var_maps_snapshot("polymorphism_construct_type_info",
+        InitialVarMapsSnapshot, !Info),
+
     % Create the typeinfo vars for the arguments.
-    polymorphism_make_type_info_vars(TypeArgs, Context,
-        ArgTypeInfoVars, ArgTypeInfoGoals, !Info),
+    polymorphism_do_make_type_info_vars(TypeArgs, Context,
+        ArgTypeInfoVarsMCAs, ArgTypeInfoGoals, !Info),
 
     poly_info_get_varset(!.Info, VarSet0),
     poly_info_get_var_types(!.Info, VarTypes0),
-    poly_info_get_module_info(!.Info, ModuleInfo),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 
-    poly_info_get_type_ctor_info_var_map(!.Info, TypeCtorInfoVarMap0),
-    ( map.search(TypeCtorInfoVarMap0, TypeCtor, OldTypeCtorVar) ->
+    TypeCtorConsId = type_ctor_info_cons_id(TypeCtor),
+    TypeCtorConsIdConstArg = csa_constant(TypeCtorConsId, type_info_type),
+    poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap0),
+    ( map.search(ConstStructVarMap0, TypeCtorConsIdConstArg, OldTypeCtorVar) ->
         poly_info_get_num_reuses(!.Info, NumReuses),
         poly_info_set_num_reuses(NumReuses + 1, !Info),
         TypeCtorVar = OldTypeCtorVar,
         TypeCtorGoals = [],
-        VarSet = VarSet0,
-        VarTypes = VarTypes0,
-        RttiVarMaps = RttiVarMaps0
+        VarSet1 = VarSet0,
+        VarTypes1 = VarTypes0,
+        RttiVarMaps1 = RttiVarMaps0
     ;
-        init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorVar,
-            TypeCtorGoal, ModuleInfo, VarSet0, VarSet, VarTypes0, VarTypes,
-            RttiVarMaps0, RttiVarMaps),
+        init_const_type_ctor_info_var_from_cons_id(Type, TypeCtorConsId,
+            TypeCtorVar, TypeCtorGoal, VarSet0, VarSet1, VarTypes0, VarTypes1,
+            RttiVarMaps0, RttiVarMaps1),
         TypeCtorGoals = [TypeCtorGoal],
-        map.det_insert(TypeCtor, TypeCtorVar,
-            TypeCtorInfoVarMap0, TypeCtorInfoVarMap),
-        poly_info_set_type_ctor_info_var_map(TypeCtorInfoVarMap, !Info)
+        map.det_insert(TypeCtorConsIdConstArg, TypeCtorVar,
+            ConstStructVarMap0, ConstStructVarMap1),
+        poly_info_set_const_struct_var_map(ConstStructVarMap1, !Info)
     ),
 
-    poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-    poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
+    poly_info_set_varset_and_types(VarSet1, VarTypes1, !Info),
+    poly_info_set_rtti_varmaps(RttiVarMaps1, !Info),
 
-    maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity,
-        ArgTypeInfoVars, Context, Var,
-        ArgTypeInfoGoals, TypeCtorGoals, ExtraGoals, !Info).
-
-    % maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity,
-    %   ArgTypeInfoVars, Context, Var,
-    %   ArgTypeInfoGoals, ExtraGoals0, ExtraGoals, !Info):
-    %
-    % Create a unification the constructs the second cell of a type_info
-    % for Type if necessary. This cell will usually be of the form:
+    % The rest of this predicate create code that constructs the second cell
+    % of a type_info for Type if we need a second cell for Type. This cell
+    % will usually be of the form:
     %
     %   TypeInfoVar = type_info(TypeCtorVar, ArgTypeInfoVars...)
     %
@@ -2981,71 +3295,132 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
     %
     % The returned Var will be bound to the type_info cell of Type if such
     % a cell had to be allocated, and to the type_ctor_info of Type's only
-    % type constructor if it didn't. The returned ExtraGoals is a
-    % concatenation of ArgTypeInfoGoals, ExtraGoals0, and any goals needed
-    % to construct Var.
-    %
-:- pred maybe_init_second_cell(mer_type::in, prog_var::in,
-    bool::in, list(prog_var)::in, prog_context::in, prog_var::out,
-    list(hlds_goal)::in, list(hlds_goal)::in, list(hlds_goal)::out,
-    poly_info::in, poly_info::out) is det.
+    % type constructor if it didn't.
 
-maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity, ArgTypeInfoVars,
-        _Context, Var, ArgTypeInfoGoals, ExtraGoals0, ExtraGoals, !Info) :-
     (
-        TypeCtorIsVarArity = yes,
         % Unfortunately, if the type's type constructor has variable arity,
         % we cannot use a one-cell representation for that type.
-        list.length(ArgTypeInfoVars, ActualArity),
-        get_poly_const(ActualArity, ArityVar, ArityGoals, !Info),
-        poly_info_get_varset(!.Info, VarSet0),
-        poly_info_get_var_types(!.Info, VarTypes0),
-        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-        init_type_info_var(Type, [TypeCtorVar, ArityVar | ArgTypeInfoVars],
-            no, Var, TypeInfoGoal, VarSet0, VarSet, VarTypes0, VarTypes,
-            RttiVarMaps0, RttiVarMaps),
-        poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-        poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
-        ExtraGoals = ExtraGoals0 ++ ArityGoals ++ ArgTypeInfoGoals
-            ++ [TypeInfoGoal]
-    ;
         TypeCtorIsVarArity = no,
-        (
-            ArgTypeInfoVars = [_ | _],
-            poly_info_get_varset(!.Info, VarSet0),
-            poly_info_get_var_types(!.Info, VarTypes0),
-            poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-            init_type_info_var(Type, [TypeCtorVar | ArgTypeInfoVars], no, Var,
-                TypeInfoGoal, VarSet0, VarSet, VarTypes0, VarTypes,
-                RttiVarMaps0, RttiVarMaps),
-            ExtraGoals = ExtraGoals0 ++ ArgTypeInfoGoals ++ [TypeInfoGoal],
-            poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-            poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
-        ;
-            ArgTypeInfoVars = [],
-            % Since this type_ctor_info is pretending to be a type_info,
-            % we need to adjust its type. Since type_ctor_info_const cons_ids
-            % are handled specially, this should not cause problems.
-            poly_info_get_varset(!.Info, VarSet0),
-            poly_info_get_var_types(!.Info, VarTypes0),
-            TypeInfoType = type_info_type,
-            Var = TypeCtorVar,
-            ExtraGoals = ArgTypeInfoGoals ++ ExtraGoals0,
-            map.det_update(TypeCtorVar, TypeInfoType, VarTypes0, VarTypes),
-            poly_info_set_varset_and_types(VarSet0, VarTypes, !Info)
+        ArgTypeInfoVarsMCAs = []
+    ->
+        % We do not need a second cell for a separate typeinfo; we will use
+        % the type_ctor_info as the type_info.
 
-            % The type_info to represent Type is just a type_ctor_info. We used
-            % to simply change the type of TypeCtorVar from type_ctor_info to
-            % type_info, but that would confuse size_prof.m. We cannot leave
-            % its type as it is without extending type_util.type_unify to
-            % consider type_ctor_info and type_info interchangeable.
-            % We therefore create a new variable of type type_info,
-            % and cast TypeCtorVar to it.
-            %
-            % new_type_info_var_raw(Type, type_info, Var, !VarSet, !VarTypes),
-            % generate_unsafe_cast(TypeCtorVar, Var, Context, CastGoal),
-            % list.append(ArgTypeInfoGoals, [CastGoal], ExtraGoals1),
-            % list.append(ExtraGoals0, ExtraGoals1, ExtraGoals)
+        % Since this type_ctor_info is pretending to be a type_info,
+        % we need to adjust its type. We handle type_ctor_info_const cons_ids
+        % specially to make sure that this causes no problems.
+        TypeInfoType = type_info_type,
+        Var = TypeCtorVar,
+        TypeCtorConstArg = csa_constant(TypeCtorConsId, type_info_type),
+        MCA = yes(TypeCtorConstArg),
+        ExtraGoals = ArgTypeInfoGoals ++ TypeCtorGoals,
+        map.det_update(TypeCtorVar, TypeInfoType, VarTypes1, VarTypes),
+        poly_info_set_varset_and_types(VarSet1, VarTypes, !Info)
+    ;
+        % We do need a second cell for a separate typeinfo.
+        Cell = type_info_cell(TypeCtor),
+        ConsId = cell_cons_id(Cell),
+
+        poly_info_get_const_struct_db(!.Info, ConstStructDb0),
+        const_struct_db_get_enabled(ConstStructDb0, Enabled),
+        (
+            Enabled = yes,
+            all_are_const_struct_args(ArgTypeInfoVarsMCAs,
+                ArgTypeInfoConstArgs)
+        ->
+            TypeCtorConstArg = csa_constant(TypeCtorConsId, type_info_type),
+            TypeCtorInst = bound(shared, inst_test_results_fgtc,
+                [bound_functor(TypeCtorConsId, [])]),
+            list.map(get_inst_of_const_struct_arg(ConstStructDb0),
+                ArgTypeInfoConstArgs, ArgTypeInfoInsts),
+            (
+                TypeCtorIsVarArity = yes,
+                list.length(ArgTypeInfoVarsMCAs, ActualArity),
+                ArityConstArg = csa_constant(int_const(ActualArity), int_type),
+                ArityInst = bound(shared, inst_test_results_fgtc,
+                    [bound_functor(int_const(ActualArity), [])]),
+                StructConstArgs =
+                    [TypeCtorConstArg, ArityConstArg | ArgTypeInfoConstArgs],
+                StructArgInsts = [TypeCtorInst, ArityInst | ArgTypeInfoInsts]
+            ;
+                TypeCtorIsVarArity = no,
+                StructConstArgs = [TypeCtorConstArg | ArgTypeInfoConstArgs],
+                StructArgInsts = [TypeCtorInst | ArgTypeInfoInsts]
+            ),
+            StructType = type_info_type,
+            list.length(ArgTypeInfoConstArgs, NumArgs),
+            InstConsId = cell_inst_cons_id(Cell, NumArgs),
+            StructInst = bound(shared, inst_test_results_fgtc,
+                [bound_functor(InstConsId, StructArgInsts)]),
+
+            ConstStruct = const_struct(ConsId, StructConstArgs,
+                StructType, StructInst),
+            lookup_insert_const_struct(ConstStruct, ConstNum,
+                ConstStructDb0, ConstStructDb),
+            MCA = yes(csa_const_struct(ConstNum)),
+            poly_info_set_const_struct_db(ConstStructDb, !Info),
+
+            set_var_maps_snapshot("maybe_init_second_cell",
+                InitialVarMapsSnapshot, !Info),
+
+            new_type_info_var(Type, type_info, Var, !Info),
+            Unification = construct(Var, type_info_const(ConstNum),
+                [], [], construct_statically, cell_is_shared,
+                no_construct_sub_info),
+            UnifyMode = (free -> ground(shared, none)) -
+                (ground(shared, none) -> ground(shared, none)),
+            UnifyContext = unify_context(umc_explicit, []),
+            % XXX The UnifyContext is wrong.
+            TypeInfoRHS = rhs_functor(type_info_const(ConstNum), no, []),
+            Unify = unify(Var, TypeInfoRHS, UnifyMode, Unification,
+                UnifyContext),
+
+            % Create a goal_info for the unification.
+            NonLocals = set_of_var.make_singleton(Var),
+            % Note that we could be more accurate than `ground(shared)',
+            % but it shouldn't make any difference.
+            InstResults = inst_test_results(inst_result_is_ground,
+                inst_result_does_not_contain_any,
+                inst_result_contains_instnames_known(set.init),
+                inst_result_contains_types_known(set.init)),
+            VarInst = bound(shared, InstResults,
+                [bound_functor(InstConsId, [])]),
+            InstMapDelta = instmap_delta_from_assoc_list([Var - VarInst]),
+            goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+                GoalInfo),
+            TypeInfoGoal = hlds_goal(Unify, GoalInfo),
+            ExtraGoals = [TypeInfoGoal]
+        ;
+            assoc_list.keys(ArgTypeInfoVarsMCAs, ArgTypeInfoVars),
+            (
+                TypeCtorIsVarArity = yes,
+                list.length(ArgTypeInfoVars, ActualArity),
+                get_poly_const(ActualArity, ArityVar, ArityGoals, !Info),
+                % The call get_poly_const may (and probably will) allocate
+                % a variable, so VarSet1, VarTypes1 and RttiVarMaps1 are
+                % all out of date.
+                poly_info_get_varset(!.Info, VarSet2),
+                poly_info_get_var_types(!.Info, VarTypes2),
+                poly_info_get_rtti_varmaps(!.Info, RttiVarMaps2),
+                init_type_info_var(Type,
+                    [TypeCtorVar, ArityVar | ArgTypeInfoVars],
+                    no, Var, TypeInfoGoal,
+                    VarSet2, VarSet, VarTypes2, VarTypes,
+                    RttiVarMaps2, RttiVarMaps),
+                ExtraGoals = TypeCtorGoals ++ ArityGoals ++ ArgTypeInfoGoals
+                    ++ [TypeInfoGoal]
+            ;
+                TypeCtorIsVarArity = no,
+                init_type_info_var(Type, [TypeCtorVar | ArgTypeInfoVars],
+                    no, Var, TypeInfoGoal,
+                    VarSet1, VarSet, VarTypes1, VarTypes,
+                    RttiVarMaps1, RttiVarMaps),
+                ExtraGoals = TypeCtorGoals ++ ArgTypeInfoGoals ++
+                    [TypeInfoGoal]
+            ),
+            poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+            poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
+            MCA = no
         )
     ).
 
@@ -3126,7 +3501,17 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
     type_to_ctor_det(Type, TypeCtor),
     Cell = type_info_cell(TypeCtor),
     ConsId = cell_cons_id(Cell),
-    TypeInfoTerm = rhs_functor(ConsId, no, ArgVars),
+    do_init_type_info_var(Type, Cell, ConsId, ArgVars, MaybePreferredVar,
+        TypeInfoVar, TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps).
+
+:- pred do_init_type_info_var(mer_type::in, polymorphism_cell::in, cons_id::in,
+    list(prog_var)::in, maybe(prog_var)::in, prog_var::out, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
+
+do_init_type_info_var(Type, Cell, ConsId, ArgVars, MaybePreferredVar,
+        TypeInfoVar, TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
+    TypeInfoRHS = rhs_functor(ConsId, no, ArgVars),
     % Introduce a new variable.
     (
         MaybePreferredVar = yes(TypeInfoVar)
@@ -3147,7 +3532,7 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
         (ground(shared, none) -> ground(shared, none)),
     UnifyContext = unify_context(umc_explicit, []),
     % XXX The UnifyContext is wrong.
-    Unify = unify(TypeInfoVar, TypeInfoTerm, UnifyMode, Unification,
+    Unify = unify(TypeInfoVar, TypeInfoRHS, UnifyMode, Unification,
         UnifyContext),
 
     % Create a goal_info for the unification.
@@ -3168,25 +3553,30 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
     TypeInfoGoal = hlds_goal(Unify, GoalInfo).
 
 init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
-        TypeCtorInfoGoal, ModuleInfo, !VarSet, !VarTypes, !RttiVarMaps) :-
-    ModuleName = type_util.type_ctor_module(ModuleInfo, TypeCtor),
-    TypeName = type_util.type_ctor_name(ModuleInfo, TypeCtor),
-    TypeCtor = type_ctor(_, Arity),
-    ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
-    TypeInfoTerm = rhs_functor(ConsId, no, []),
+        ConsId, TypeCtorInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
+    ConsId = type_ctor_info_cons_id(TypeCtor),
+    init_const_type_ctor_info_var_from_cons_id(Type, ConsId,
+        TypeCtorInfoVar, TypeCtorInfoGoal, !VarSet, !VarTypes, !RttiVarMaps).
 
+:- pred init_const_type_ctor_info_var_from_cons_id(mer_type::in, cons_id::in,
+    prog_var::out, hlds_goal::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
+
+init_const_type_ctor_info_var_from_cons_id(Type, ConsId,
+        TypeCtorInfoVar, TypeCtorInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
     % Introduce a new variable.
     new_type_info_var_raw(Type, type_ctor_info, TypeCtorInfoVar,
         !VarSet, !VarTypes, !RttiVarMaps),
 
     % Create the construction unification to initialize the variable.
+    TypeInfoRHS = rhs_functor(ConsId, no, []),
     Unification = construct(TypeCtorInfoVar, ConsId, [], [],
         construct_dynamically, cell_is_shared, no_construct_sub_info),
     UnifyMode = (free -> ground(shared, none)) -
         (ground(shared, none) -> ground(shared, none)),
     UnifyContext = unify_context(umc_explicit, []),
     % XXX The UnifyContext is wrong.
-    Unify = unify(TypeCtorInfoVar, TypeInfoTerm, UnifyMode,
+    Unify = unify(TypeCtorInfoVar, TypeInfoRHS, UnifyMode,
         Unification, UnifyContext),
 
     % Create a goal_info for the unification.
@@ -3250,12 +3640,44 @@ new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred get_type_info_locn(tvar::in, type_info_locn::out, poly_info::in,
+    poly_info::out) is det.
+
+get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
+    % If we have already allocated a location for this type_info, then all
+    % we need to do is to extract the type_info variable from its location.
+    (
+        rtti_search_type_info_locn(!.Info ^ poly_rtti_varmaps, TypeVar,
+            TypeInfoLocnPrime)
+    ->
+        TypeInfoLocn = TypeInfoLocnPrime
+    ;
+        % Otherwise, we need to create a new type_info variable, and set the
+        % location for this type variable to be that type_info variable.
+        %
+        % This is wrong if the type variable is one of the existentially
+        % quantified variables of a called predicate and the variable occurs
+        % in an existential typeclass constraint. In that case the type_info
+        % will be stored in the typeclass_info variable produced by the
+        % predicate, not in a type_info variable. maybe_extract_type_info
+        % will fix this up when the typeclass_info is created.
+
+        get_tvar_kind(!.Info ^ poly_tvar_kinds, TypeVar, Kind),
+        Type = type_variable(TypeVar, Kind),
+        new_type_info_var(Type, type_info, Var, !Info),
+        TypeInfoLocn = type_info(Var),
+        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+        rtti_det_insert_type_info_locn(TypeVar, TypeInfoLocn,
+            RttiVarMaps0, RttiVarMaps),
+        poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
+    ).
+
     % Generate code to get the value of a type variable.
     %
-:- pred get_type_info(type_info_locn::in, tvar::in, list(hlds_goal)::out,
-    prog_var::out, poly_info::in, poly_info::out) is det.
+:- pred get_type_info_from_locn(tvar::in, type_info_locn::in,
+    prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-get_type_info(TypeInfoLocn, TypeVar, ExtraGoals, Var, !Info) :-
+get_type_info_from_locn(TypeVar, TypeInfoLocn, Var, ExtraGoals, !Info) :-
     (
         % If the typeinfo is available in a variable, just use it.
         TypeInfoLocn = type_info(TypeInfoVar),
@@ -3338,10 +3760,10 @@ get_poly_const(IntConst, IntVar, Goals, !Info) :-
 
     % Usually when we call make_typeclass_info_head_var, we want to record
     % the type_info_locn for each constrained type var so that later goals
-    % will know where to get the type_info from.  However, when setting up
+    % will know where to get the type_info from. However, when setting up
     % head vars for existential constraints on the predicate/function we
     % are processing, we assume that the type_infos will be produced
-    % somewhere else in the goal.  In this case, we don't want to record
+    % somewhere else in the goal. In this case, we don't want to record
     % the type_info_locns (if we did, then the code to actually produce the
     % type_info will just try to get it from here, which would be a mode
     % error).
@@ -3376,7 +3798,7 @@ make_typeclass_info_head_var(RecordLocns, Constraint, TypeClassInfoVar,
         % Make a new variable to contain the dictionary for this typeclass
         % constraint.
         new_typeclass_info_var(Constraint, typeclass_info_kind,
-            TypeClassInfoVar, !Info),
+            TypeClassInfoVar, _TypeClassInfoVarType, !Info),
         (
             RecordLocns = do_record_type_info_locns,
             record_constraint_type_info_locns(Constraint, TypeClassInfoVar,
@@ -3429,9 +3851,9 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
     ),
     solutions(NewTVarAndIndex, NewClassTypeVars),
 
-    % Make an entry in the TypeInfo locations map for each new type
-    % variable. The type variable can be found at the previously calculated
-    % offset with the new typeclass_info.
+    % Make an entry in the TypeInfo locations map for each new type variable.
+    % The type variable can be found at the previously calculated offset
+    % with the new typeclass_info.
     MakeEntry =
         (pred(IndexedTypeVar::in, R0::in, R::out) is det :-
             IndexedTypeVar = TheTypeVar - Index,
@@ -3446,9 +3868,9 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
     ;       typeclass_info_kind.
 
 :- pred new_typeclass_info_var(prog_constraint::in, tci_var_kind::in,
-    prog_var::out, poly_info::in, poly_info::out) is det.
+    prog_var::out, mer_type::out, poly_info::in, poly_info::out) is det.
 
-new_typeclass_info_var(Constraint, VarKind, Var, !Info) :-
+new_typeclass_info_var(Constraint, VarKind, Var, VarType, !Info) :-
     poly_info_get_varset(!.Info, VarSet0),
     poly_info_get_var_types(!.Info, VarTypes0),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
@@ -3466,8 +3888,8 @@ new_typeclass_info_var(Constraint, VarKind, Var, !Info) :-
         Name = "TypeClassInfo_for_" ++ ClassNameString
     ),
     varset.name_var(Var, Name, VarSet1, VarSet),
-    build_typeclass_info_type(Constraint, DictionaryType),
-    map.set(Var, DictionaryType, VarTypes0, VarTypes),
+    build_typeclass_info_type(Constraint, VarType),
+    map.set(Var, VarType, VarTypes0, VarTypes),
     rtti_det_insert_typeclass_info_var(Constraint, Var,
         RttiVarMaps0, RttiVarMaps),
 
@@ -3499,49 +3921,20 @@ build_type_info_type(Type, TypeInfoType) :-
     ( type_has_variable_arity_ctor(Type, _, _) ->
         % We cannot use a plain type_ctor_info because we need to
         % record the arity.
-        Kind = type_info
+        TypeInfoType = type_info_type
     ; type_to_ctor_and_args(Type, _Ctor, Args) ->
         (
             Args = [],
-            Kind = type_ctor_info
+            TypeInfoType = type_ctor_info_type
         ;
             Args = [_ | _],
-            Kind = type_info
+            TypeInfoType = type_info_type
         )
     ;
         % The type is variable, which means we have a type_info for it.
         % That type_info may actually be a type_ctor_info, but the code
         % of the current predicate won't treat it as such.
-        Kind = type_info
-    ),
-    build_type_info_type_2(Kind, TypeInfoType).
-
-:- pred build_type_info_type_2(type_info_kind::in, mer_type::out) is det.
-
-build_type_info_type_2(Kind, TypeInfoType) :-
-    (
-        Kind = type_info,
         TypeInfoType = type_info_type
-    ;
-        Kind = type_ctor_info,
-        TypeInfoType = type_ctor_info_type
-    ).
-
-%---------------------------------------------------------------------------%
-
-is_typeclass_info_manipulator(ModuleInfo, PredId, TypeClassManipulator) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    mercury_private_builtin_module = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    (
-        PredName = "type_info_from_typeclass_info",
-        TypeClassManipulator = type_info_from_typeclass_info
-    ;
-        PredName = "superclass_from_typeclass_info",
-        TypeClassManipulator = superclass_from_typeclass_info
-    ;
-        PredName = "instance_constraint_from_typeclass_info",
-        TypeClassManipulator = instance_constraint_from_typeclass_info
     ).
 
 %---------------------------------------------------------------------------%
@@ -3693,30 +4086,152 @@ get_constrained_vars(Constraint) = CVars :-
     type_vars_list(CTypes, CVars).
 
 %---------------------------------------------------------------------------%
+
+:- pred all_are_const_struct_args(
+    assoc_list(prog_var, maybe(const_struct_arg))::in,
+    list(const_struct_arg)::out) is semidet.
+
+all_are_const_struct_args([], []).
+all_are_const_struct_args([VarMCA | VarsMCAs], [ConstArg | ConstArgs]) :-
+    VarMCA = _Var - MCA,
+    MCA = yes(ConstArg),
+    all_are_const_struct_args(VarsMCAs, ConstArgs).
+
+:- pred get_inst_of_const_struct_arg(const_struct_db::in, const_struct_arg::in,
+    mer_inst::out)
+    is det.
+
+get_inst_of_const_struct_arg(ConstStructDb, ConstArg, Inst) :-
+    (
+        ConstArg = csa_constant(ConsId, _),
+        Inst = bound(shared, inst_test_results_fgtc,
+            [bound_functor(ConsId, [])])
+    ;
+        ConstArg = csa_const_struct(StructNum),
+        lookup_const_struct_num(ConstStructDb, StructNum, Struct),
+        Struct = const_struct(_, _, _, Inst)
+    ).
+
 %---------------------------------------------------------------------------%
 
-:- type type_ctor_info_var_map ==
-    map(type_ctor, prog_var).
+:- pred materialize_base_typeclass_info_var(prog_constraint::in, cons_id::in,
+    prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
+
+materialize_base_typeclass_info_var(Constraint, ConsId, Var, Goals, !Info) :-
+    poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap0),
+    build_typeclass_info_type(Constraint, ConstArgType),
+    ConstArg = csa_constant(ConsId, ConstArgType),
+    ( map.search(ConstStructVarMap0, ConstArg, OldVar) ->
+        poly_info_get_num_reuses(!.Info, NumReuses),
+        poly_info_set_num_reuses(NumReuses + 1, !Info),
+        Var = OldVar,
+        Goals = []
+    ;
+        new_typeclass_info_var(Constraint, base_typeclass_info_kind, Var,
+            _VarType, !Info),
+
+        % Create the construction unification to initialize the variable.
+        RHS = rhs_functor(ConsId, no, []),
+        Unification = construct(Var, ConsId, [], [],
+            construct_dynamically, cell_is_shared, no_construct_sub_info),
+        UnifyMode = (free -> ground(shared, none)) -
+            (ground(shared, none) -> ground(shared, none)),
+        UnifyContext = unify_context(umc_explicit, []),
+        % XXX The UnifyContext is wrong.
+        Unify = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
+
+        % Create the unification goal.
+        NonLocals = set_of_var.make_singleton(Var),
+        InstmapDelta = instmap_delta_bind_var(Var),
+        goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
+            GoalInfo),
+        Goal = hlds_goal(Unify, GoalInfo),
+        Goals = [Goal]
+    ).
+
+:- pred materialize_typeclass_info_var(prog_constraint::in, int::in,
+    prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
+
+materialize_typeclass_info_var(Constraint, InstanceIdConstNum, Var, Goals,
+        !Info) :-
+    poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap0),
+    InstanceIdConstArg = csa_const_struct(InstanceIdConstNum),
+    ( map.search(ConstStructVarMap0, InstanceIdConstArg, OldVar) ->
+        poly_info_get_num_reuses(!.Info, NumReuses),
+        poly_info_set_num_reuses(NumReuses + 1, !Info),
+        Var = OldVar,
+        Goals = []
+    ;
+        new_typeclass_info_var(Constraint, typeclass_info_kind, Var, _VarType,
+            !Info),
+        map.det_insert(InstanceIdConstArg, Var,
+            ConstStructVarMap0, ConstStructVarMap),
+        poly_info_set_const_struct_var_map(ConstStructVarMap, !Info),
+
+        % Create the construction unification to initialize the variable.
+        ConsId = typeclass_info_const(InstanceIdConstNum),
+        RHS = rhs_functor(ConsId, no, []),
+        Unification = construct(Var, ConsId, [], [],
+            construct_dynamically, cell_is_shared, no_construct_sub_info),
+        UnifyMode = (free -> ground(shared, none)) -
+            (ground(shared, none) -> ground(shared, none)),
+        UnifyContext = unify_context(umc_explicit, []),
+        % XXX The UnifyContext is wrong.
+        GoalExpr = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
+
+        % Create a goal_info for the unification.
+        NonLocals = set_of_var.make_singleton(Var),
+        InstmapDelta = instmap_delta_bind_var(Var),
+        goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
+            GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        Goals = [Goal]
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type const_or_var_arg
+    --->    cova_const(const_struct_arg)
+    ;       cova_var(prog_var).
+
+:- pred make_const_or_var_arg(pair(prog_var, maybe(const_struct_arg))::in,
+    const_or_var_arg::out) is det.
+
+make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
+    (
+        MCA = no,
+        ConstOrVarArg = cova_var(Var)
+    ;
+        MCA = yes(ConstArg),
+        ConstOrVarArg = cova_const(ConstArg)
+    ).
 
 :- type type_info_var_map ==
-    map(type_ctor, map(list(mer_type), prog_var)).
+    map(type_ctor,
+        map(list(mer_type), pair(prog_var, maybe(const_struct_arg)))).
 
 :- type typeclass_info_map_entry
     --->    typeclass_info_map_entry(
-                % The variable that holds the base_typeclass_info for the
-                % constraint.
-                prog_var,
+                % The cons_id representing the base_typeclass_info.
+                cons_id,
 
                 % Maps the arguments of the typeclass_info_cell_constructor
                 % after the base_typeclass_info to the variable that holds the
                 % typeclass_info for that cell.
-                map(list(prog_var), prog_var)
+                map(list(const_or_var_arg),
+                    pair(prog_var, maybe(const_struct_arg)))
             ).
 
 :- type typeclass_info_map ==
     map(class_name, map(list(mer_type), typeclass_info_map_entry)).
 
 :- type int_const_map == map(int, prog_var).
+
+    % If the value that can be a constant structure argument is currently
+    % available in a variable, give the id of that variable.
+    %
+:- type const_struct_var_map == map(const_struct_arg, prog_var).
 
 :- type poly_info
     --->    poly_info(
@@ -3745,17 +4260,29 @@ get_constrained_vars(Constraint) = CVars :-
                 poly_constraint_map         :: constraint_map,
 
                 % The next four maps hold information about what
-                % type_ctor_infos, type_infos, base_typeclass_infos and
-                % typeclass_infos are guaranteed to be available (i.e. created
-                % by previous code on all execution paths) at the current point
-                % in the code, so they can be reused. The fifth field counts
-                % the number of times that one of these variables has in fact
-                % been reused.
-                poly_type_ctor_info_var_map :: type_ctor_info_var_map,
+                % type_ctor_infos, type_infos, base_typeclass_infos,
+                % typeclass_infos and ints are guaranteed to be available
+                % (i.e. created by previous code on all execution paths)
+                % at the current point in the code, so they can be reused.
+                % The fifth field counts the number of times that one of these
+                % variables has in fact been reused.
+                %
+                % The type_infos and typeclass_infos are in the first two maps.
+                % The type_ctor_infos and base_typeclass_infos are in the
+                % fourth map. The integers are in the third map.
+                % The fourth map also caches typeclass_infos for instance ids.
                 poly_type_info_var_map      :: type_info_var_map,
                 poly_typeclass_info_map     :: typeclass_info_map,
                 poly_int_const_map          :: int_const_map,
+                poly_const_struct_var_map   :: const_struct_var_map,
                 poly_num_reuses             :: int,
+
+                poly_snapshot_num           :: int,
+
+                % The database of constant structures of the module.
+                % If a type_info or typeclass_info we construct is a constant
+                % term, we allocate it in this database.
+                poly_const_struct_db        :: const_struct_db,
 
                 poly_pred_info              :: pred_info,
                 poly_module_info            :: module_info
@@ -3777,14 +4304,17 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     pred_info_get_constraint_proofs(PredInfo, Proofs),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     rtti_varmaps_init(RttiVarMaps),
-    map.init(TypeCtorInfoVarMap),
     map.init(TypeInfoVarMap),
     map.init(TypeClassInfoMap),
     map.init(IntConstMap),
+    map.init(ConstStructVarMap),
     NumReuses = 0,
+    SnapshotNum = 0,
+    module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
     PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
-        RttiVarMaps, Proofs, ConstraintMap, TypeCtorInfoVarMap, TypeInfoVarMap,
-        TypeClassInfoMap, IntConstMap, NumReuses, PredInfo, ModuleInfo).
+        RttiVarMaps, Proofs, ConstraintMap,
+        TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
+        NumReuses, SnapshotNum, ConstStructDb, PredInfo, ModuleInfo).
 
     % Create_poly_info creates a poly_info for an existing procedure.
     % (See also init_poly_info.)
@@ -3797,20 +4327,25 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    map.init(TypeCtorInfoVarMap),
     map.init(TypeInfoVarMap),
     map.init(TypeClassInfoMap),
     map.init(IntConstMap),
+    map.init(ConstStructVarMap),
     NumReuses = 0,
+    SnapshotNum = 0,
+    module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
     PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
-        RttiVarMaps, Proofs, ConstraintMap, TypeCtorInfoVarMap, TypeInfoVarMap,
-        TypeClassInfoMap, IntConstMap, NumReuses, PredInfo, ModuleInfo).
+        RttiVarMaps, Proofs, ConstraintMap, TypeInfoVarMap,
+        TypeClassInfoMap, IntConstMap, ConstStructVarMap,
+        NumReuses, SnapshotNum, ConstStructDb, PredInfo, ModuleInfo).
 
-poly_info_extract(Info, !PredInfo, !ProcInfo, ModuleInfo) :-
+poly_info_extract(Info, !PredInfo, !ProcInfo, !:ModuleInfo) :-
     Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
         RttiVarMaps, _Proofs, _ConstraintMap,
-        _TypeCtorInfoVarMap, _TypeInfoVarMap, _TypeClassInfoMap, _IntConstMap,
-        _NumReuses, _OldPredInfo, ModuleInfo),
+        _TypeInfoVarMap, _TypeClassInfoMap, _IntConstMap, _ConstStructVarMap,
+        _NumReuses, _SnapshotNum, ConstStructDb, _OldPredInfo, !:ModuleInfo),
+
+    module_info_set_const_struct_db(ConstStructDb, !ModuleInfo),
 
     % Set the new values of the fields in proc_info and pred_info.
     proc_info_set_varset(VarSet, !ProcInfo),
@@ -3829,14 +4364,16 @@ poly_info_extract(Info, !PredInfo, !ProcInfo, ModuleInfo) :-
 :- pred poly_info_get_proofs(poly_info::in, constraint_proof_map::out) is det.
 :- pred poly_info_get_constraint_map(poly_info::in, constraint_map::out)
     is det.
-:- pred poly_info_get_type_ctor_info_var_map(poly_info::in,
-    type_ctor_info_var_map::out) is det.
 :- pred poly_info_get_type_info_var_map(poly_info::in,
     type_info_var_map::out) is det.
 :- pred poly_info_get_typeclass_info_map(poly_info::in,
     typeclass_info_map::out) is det.
 :- pred poly_info_get_int_const_map(poly_info::in, int_const_map::out) is det.
 :- pred poly_info_get_num_reuses(poly_info::in, int::out) is det.
+:- pred poly_info_get_const_struct_db(poly_info::in, const_struct_db::out)
+    is det.
+:- pred poly_info_get_const_struct_var_map(poly_info::in,
+    const_struct_var_map::out) is det.
 :- pred poly_info_get_pred_info(poly_info::in, pred_info::out) is det.
 :- pred poly_info_get_module_info(poly_info::in, module_info::out) is det.
 
@@ -3847,12 +4384,13 @@ poly_info_get_tvar_kinds(PolyInfo, PolyInfo ^ poly_tvar_kinds).
 poly_info_get_rtti_varmaps(PolyInfo, PolyInfo ^ poly_rtti_varmaps).
 poly_info_get_proofs(PolyInfo, PolyInfo ^ poly_proof_map).
 poly_info_get_constraint_map(PolyInfo, PolyInfo ^ poly_constraint_map).
-poly_info_get_type_ctor_info_var_map(PolyInfo,
-    PolyInfo ^ poly_type_ctor_info_var_map).
 poly_info_get_type_info_var_map(PolyInfo, PolyInfo ^ poly_type_info_var_map).
 poly_info_get_typeclass_info_map(PolyInfo, PolyInfo ^ poly_typeclass_info_map).
 poly_info_get_int_const_map(PolyInfo, PolyInfo ^ poly_int_const_map).
 poly_info_get_num_reuses(PolyInfo, PolyInfo ^ poly_num_reuses).
+poly_info_get_const_struct_db(PolyInfo, PolyInfo ^ poly_const_struct_db).
+poly_info_get_const_struct_var_map(PolyInfo,
+    PolyInfo ^ poly_const_struct_var_map).
 poly_info_get_pred_info(PolyInfo, PolyInfo ^ poly_pred_info).
 poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
 
@@ -3868,8 +4406,6 @@ poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_proofs(constraint_proof_map::in,
     poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_type_ctor_info_var_map(type_ctor_info_var_map::in,
-    poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_type_info_var_map(type_info_var_map::in,
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_typeclass_info_map(typeclass_info_map::in,
@@ -3877,6 +4413,10 @@ poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
 :- pred poly_info_set_int_const_map(int_const_map::in,
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_num_reuses(int::in,
+    poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_const_struct_db(const_struct_db::in,
+    poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_const_struct_var_map(const_struct_var_map::in,
     poly_info::in, poly_info::out) is det.
 
 poly_info_set_varset(VarSet, !PI) :-
@@ -3892,8 +4432,6 @@ poly_info_set_rtti_varmaps(RttiVarMaps, !PI) :-
     !PI ^ poly_rtti_varmaps := RttiVarMaps.
 poly_info_set_proofs(Proofs, !PI) :-
     !PI ^ poly_proof_map := Proofs.
-poly_info_set_type_ctor_info_var_map(TypeCtorInfoVarMap, !PI) :-
-    !PI ^ poly_type_ctor_info_var_map := TypeCtorInfoVarMap.
 poly_info_set_type_info_var_map(TypeInfoVarMap, !PI) :-
     !PI ^ poly_type_info_var_map := TypeInfoVarMap.
 poly_info_set_typeclass_info_map(TypeClassInfoMap, !PI) :-
@@ -3902,35 +4440,198 @@ poly_info_set_int_const_map(IntConstMap, !PI) :-
     !PI ^ poly_int_const_map := IntConstMap.
 poly_info_set_num_reuses(NumReuses, !PI) :-
     !PI ^ poly_num_reuses := NumReuses.
+poly_info_set_const_struct_db(ConstStructDb, !PI) :-
+    !PI ^ poly_const_struct_db := ConstStructDb.
+poly_info_set_const_struct_var_map(ConstStructVarMap, !PI) :-
+    !PI ^ poly_const_struct_var_map := ConstStructVarMap.
 
-:- type maps_snapshot
-    --->    maps_snapshot(poly_info).
-            % We could remember only the fields of the poly_info that we
-            % actually need in the snapshot, but that would require more memory
-            % allocation.
+%---------------------------------------------------------------------------%
 
-:- pred get_maps_snapshot(poly_info::in, maps_snapshot::out) is det.
-:- pred set_maps_snapshot(maps_snapshot::in, poly_info::in, poly_info::out)
-    is det.
-:- pred empty_maps(poly_info::in, poly_info::out) is det.
+:- type cache_maps
+    --->    cache_maps(
+                cm_snapshot_num             :: int,
+                cm_type_info_var_map        :: type_info_var_map,
+                cm_typeclass_info_map       :: typeclass_info_map,
+                cm_int_const_map            :: int_const_map,
+                cm_const_struct_var_map     :: const_struct_var_map
+            ).
 
-get_maps_snapshot(Info, maps_snapshot(Info)).
+:- pred get_cache_maps_snapshot(string::in, cache_maps::out,
+    poly_info::in, poly_info::out) is det.
+:- pred set_cache_maps_snapshot(string::in, cache_maps::in,
+    poly_info::in, poly_info::out) is det.
+:- pred empty_cache_maps(poly_info::in, poly_info::out) is det.
 
-set_maps_snapshot(maps_snapshot(SnapshotInfo), !Info) :-
-    TypeCtorInfoVarMap = SnapshotInfo ^ poly_type_ctor_info_var_map,
-    TypeInfoVarMap = SnapshotInfo ^ poly_type_info_var_map,
-    TypeClassInfoMap = SnapshotInfo ^ poly_typeclass_info_map,
-    IntConstMap = SnapshotInfo ^ poly_int_const_map,
-    !Info ^ poly_type_ctor_info_var_map := TypeCtorInfoVarMap,
+get_cache_maps_snapshot(Name, CacheMaps, !Info) :-
+    SnapshotNum = !.Info ^ poly_snapshot_num,
+    TypeInfoVarMap = !.Info ^ poly_type_info_var_map,
+    TypeClassInfoMap = !.Info ^ poly_typeclass_info_map,
+    IntConstMap = !.Info ^ poly_int_const_map,
+    ConstStructVarMap = !.Info ^ poly_const_struct_var_map,
+    CacheMaps = cache_maps(SnapshotNum, TypeInfoVarMap, TypeClassInfoMap,
+        IntConstMap, ConstStructVarMap),
+    !Info ^ poly_snapshot_num := SnapshotNum + 1,
+
+    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        some [SelectedPred, Level, IndentStr] (
+            promise_pure (
+                semipure get_selected_pred(SelectedPred),
+                semipure get_level(Level),
+                (
+                    SelectedPred = yes,
+                    Name \= ""
+                ->
+                    IndentStr = string.duplicate_char(' ', Level * 4),
+                    io.write_string(IndentStr, !IO),
+                    io.format("get_cache_maps_snapshot %d %s\n",
+                        [i(SnapshotNum), s(Name)], !IO),
+                    io.write_string(IndentStr, !IO),
+                    NumVars = varset.num_allocated(!.Info ^ poly_varset),
+                    io.format("num_allocated vars: %d\n\n", [i(NumVars)], !IO)
+                ;
+                    true
+                )
+            )
+        )
+    ).
+
+set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
+    CacheMaps = cache_maps(SnapshotNum, TypeInfoVarMap, TypeClassInfoMap,
+        IntConstMap, ConstStructVarMap),
     !Info ^ poly_type_info_var_map := TypeInfoVarMap,
     !Info ^ poly_typeclass_info_map := TypeClassInfoMap,
-    !Info ^ poly_int_const_map := IntConstMap.
+    !Info ^ poly_int_const_map := IntConstMap,
+    !Info ^ poly_const_struct_var_map := ConstStructVarMap,
 
-empty_maps(!Info) :-
-    !Info ^ poly_type_ctor_info_var_map := map.init,
+    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        some [SelectedPred, Level, IndentStr] (
+            promise_pure (
+                semipure get_selected_pred(SelectedPred),
+                semipure get_level(Level),
+                (
+                    SelectedPred = yes,
+                    Name \= ""
+                ->
+                    IndentStr = string.duplicate_char(' ', Level * 4),
+                    io.write_string(IndentStr, !IO),
+                    io.format("set_cache_maps_snapshot %d %s\n",
+                        [i(SnapshotNum), s(Name)], !IO),
+                    io.write_string(IndentStr, !IO),
+                    NumVars = varset.num_allocated(!.Info ^ poly_varset),
+                    io.format("num_allocated vars: %d\n\n", [i(NumVars)], !IO),
+
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("type_info_var_map ", !IO),
+                    io.write(CacheMaps ^ cm_type_info_var_map, !IO),
+                    io.nl(!IO),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("typeclass_info_map ", !IO),
+                    io.write(CacheMaps ^ cm_typeclass_info_map, !IO),
+                    io.nl(!IO),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("struct_var_map ", !IO),
+                    io.write(CacheMaps ^ cm_const_struct_var_map, !IO),
+                    io.nl(!IO),
+                    io.nl(!IO)
+                ;
+                    true
+                )
+            )
+        )
+    ).
+
+empty_cache_maps(!Info) :-
     !Info ^ poly_type_info_var_map := map.init,
     !Info ^ poly_typeclass_info_map := map.init,
-    !Info ^ poly_int_const_map := map.init.
+    !Info ^ poly_int_const_map := map.init,
+    !Info ^ poly_const_struct_var_map := map.init.
+
+%---------------------------------------------------------------------------%
+
+:- type var_maps
+    --->    var_maps(
+                vm_snapshot_num             :: int,
+                vm_varset                   :: prog_varset,
+                vm_vartypes                 :: vartypes,
+                vm_rtti_varmaps             :: rtti_varmaps,
+                vm_cache_maps               :: cache_maps
+            ).
+
+:- pred get_var_maps_snapshot(string::in, var_maps::out,
+    poly_info::in, poly_info::out) is det.
+
+get_var_maps_snapshot(Name, VarMaps, !Info) :-
+    SnapshotNum = !.Info ^ poly_snapshot_num,
+    VarSet = !.Info ^ poly_varset,
+    VarTypes = !.Info ^ poly_vartypes,
+    RttiVarMaps = !.Info ^ poly_rtti_varmaps,
+
+    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        some [SelectedPred, Level, IndentStr] (
+            promise_pure (
+                semipure get_selected_pred(SelectedPred),
+                semipure get_level(Level),
+                (
+                    SelectedPred = no
+                ;
+                    SelectedPred = yes,
+                    IndentStr = string.duplicate_char(' ', Level * 4),
+                    io.write_string(IndentStr, !IO),
+                    io.format("get_var_maps_snapshot %d %s\n",
+                        [i(SnapshotNum), s(Name)], !IO),
+                    io.write_string(IndentStr, !IO),
+                    NumVars = varset.num_allocated(VarSet),
+                    io.format("num_allocated vars: %d\n\n", [i(NumVars)], !IO)
+                )
+            )
+        )
+    ),
+
+    get_cache_maps_snapshot("", CacheMaps, !Info),
+    VarMaps = var_maps(SnapshotNum, VarSet, VarTypes, RttiVarMaps, CacheMaps).
+
+:- pred set_var_maps_snapshot(string::in, var_maps::in,
+    poly_info::in, poly_info::out) is det.
+
+set_var_maps_snapshot(Name, VarMaps, !Info) :-
+    VarMaps = var_maps(SnapshotNum, VarSet, VarTypes, RttiVarMaps, CacheMaps),
+
+    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        some [SelectedPred, Level, IndentStr] (
+            promise_pure (
+                semipure get_selected_pred(SelectedPred),
+                semipure get_level(Level),
+                (
+                    SelectedPred = no
+                ;
+                    SelectedPred = yes,
+                    IndentStr = string.duplicate_char(' ', Level * 4),
+                    io.write_string(IndentStr, !IO),
+                    io.format("set_var_maps_snapshot %d %s\n",
+                        [i(SnapshotNum), s(Name)], !IO),
+
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("type_info_var_map ", !IO),
+                    io.write(CacheMaps ^ cm_type_info_var_map, !IO),
+                    io.nl(!IO),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("typeclass_info_map ", !IO),
+                    io.write(CacheMaps ^ cm_typeclass_info_map, !IO),
+                    io.nl(!IO),
+                    io.write_string(IndentStr, !IO),
+                    io.write_string("struct_var_map ", !IO),
+                    io.write(CacheMaps ^ cm_const_struct_var_map, !IO),
+                    io.nl(!IO),
+                    io.nl(!IO)
+                )
+            )
+        )
+    ),
+
+    !Info ^ poly_varset := VarSet,
+    !Info ^ poly_vartypes := VarTypes,
+    !Info ^ poly_rtti_varmaps := RttiVarMaps,
+    set_cache_maps_snapshot("", CacheMaps, !Info).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism.

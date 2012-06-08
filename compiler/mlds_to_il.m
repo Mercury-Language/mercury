@@ -3263,7 +3263,7 @@ mlds_class_to_ilds_simple_type(Kind, ClassName) = SimpleType :-
 :- func mercury_type_to_highlevel_class_type(mer_type) = il_type.
 
 mercury_type_to_highlevel_class_type(MercuryType) = ILType :-
-    type_to_ctor_and_args_det(MercuryType, TypeCtor, _Args),
+    type_to_ctor_det(MercuryType, TypeCtor),
     ml_gen_type_name(TypeCtor, ClassName, Arity),
     ILType = il_type([], class(
         mlds_class_name_to_ilds_class_name(ClassName, Arity))).

@@ -1119,7 +1119,7 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
 :- pred make_new_pred_info(module_info::in, list(int)::in, import_status::in,
     pred_proc_id::in, pred_info::in, pred_info::out) is det.
 
-make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
+make_new_pred_info(_ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
         !PredInfo) :-
     PredModule = pred_info_module(!.PredInfo),
     Name0 = pred_info_name(!.PredInfo),
@@ -1135,9 +1135,8 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
             % Fix up special pred names.
             OrigOrigin = origin_special_pred(_SpecialId - TypeCtor)
         ->
-            TypeModule = type_ctor_module(ModuleInfo, TypeCtor),
-            TypeName = type_ctor_name(ModuleInfo, TypeCtor),
-            TypeArity = type_ctor_arity(ModuleInfo, TypeCtor),
+            type_ctor_module_name_arity(TypeCtor, TypeModule, TypeName,
+                TypeArity),
             string.int_to_string(TypeArity, TypeArityStr),
             TypeModuleString = sym_name_to_string_sep(TypeModule, "__"),
             string.append_list([Name0, "_", TypeModuleString, "__", TypeName,

@@ -674,6 +674,8 @@ cons_id_rep(base_typeclass_info_const(_, _, _, _)) =
 cons_id_rep(type_info_cell_constructor(_)) = "$type_info_cell_constructor".
 cons_id_rep(typeclass_info_cell_constructor) =
     "$typeclass_info_cell_constructor".
+cons_id_rep(type_info_const(_)) = "$type_info_const".
+cons_id_rep(typeclass_info_const(_)) = "$typeclass_info_const".
 cons_id_rep(tabling_info_const(_)) = "$tabling_info_const".
 cons_id_rep(table_io_decl(_)) = "$table_io_decl".
 cons_id_rep(deep_profiling_proc_layout(_)) = "$deep_profiling_proc_layout".
