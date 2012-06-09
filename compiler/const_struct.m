@@ -26,11 +26,25 @@
 :- import_module map.
 
 :- type const_struct
-    --->    const_struct(cons_id, list(const_struct_arg), mer_type, mer_inst).
+    --->    const_struct(
+                % The constant structured term: the data constructor,
+                % and its arguments.
+                cs_cons_id      :: cons_id,
+                cs_args         :: list(const_struct_arg),
+
+                % The type and inst of the term.
+                cs_term_type    :: mer_type,
+                cs_term_int     :: mer_inst
+            ).
 
 :- type const_struct_arg
     --->    csa_const_struct(int)
+            % The argument is a reference to another constant structure.
+            % The argument gives the id of that structure.
+
     ;       csa_constant(cons_id, mer_type).
+            % The argument is an arity-zero cons_id. The second argument
+            % gives its type.
 
 :- type const_struct_db.
 
@@ -83,6 +97,11 @@
 :- pred insert_constant_instance(const_instance_id::in, int::in,
     const_struct_db::in, const_struct_db::out) is det.
 
+    % Mark the constant structure with the given number as logically deleted.
+    %
+:- pred delete_const_struct(int::in,
+    const_struct_db::in, const_struct_db::out) is det.
+
     % Get the list of constant structures to generate.
     % If the assoc list contains N elements, the keys are guaranteed to be
     % the integers 0 .. N-1 in ascending order.
@@ -132,7 +151,7 @@ const_struct_db_init(Globals, Db) :-
         ),
         Enabled = no
     ),
-    Db = const_struct_db(Enabled, 0, map.init, map.init, [], map.init).
+    Db = const_struct_db(Enabled, 0, map.init, map.init, map.init).
 
 lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
     const_struct_db_get_struct_map(!.Db, StructMap0),
@@ -157,21 +176,13 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
 
             const_struct_db_get_num_map(!.Db, NumMap0),
             map.det_insert(ConstNum, ConstStruct, NumMap0, NumMap),
-            const_struct_db_set_num_map(NumMap, !Db),
-
-            const_struct_db_get_rev_structs(!.Db, RevStructs0),
-            RevStructs = [ConstNum - ConstStruct | RevStructs0],
-            const_struct_db_set_rev_structs(RevStructs, !Db)
+            const_struct_db_set_num_map(NumMap, !Db)
         )
     ).
 
 lookup_const_struct_num(Db, ConstNum, ConstStruct) :-
     const_struct_db_get_num_map(Db, NumMap),
     map.lookup(NumMap, ConstNum, ConstStruct).
-
-const_struct_db_get_structs(Db, Structs) :-
-    const_struct_db_get_rev_structs(Db, RevStructs),
-    list.reverse(RevStructs, Structs).
 
 search_for_constant_instance(Db, InstanceId, ConstNum) :-
     const_struct_db_get_instance_map(Db, InstanceMap),
@@ -182,6 +193,19 @@ insert_constant_instance(InstanceId, ConstNum, !Db) :-
     map.det_insert(InstanceId, ConstNum, InstanceMap0, InstanceMap),
     const_struct_db_set_instance_map(InstanceMap, !Db).
 
+delete_const_struct(ConstNum, !Db) :-
+    const_struct_db_get_num_map(!.Db, NumMap0),
+    map.det_remove(ConstNum, ConstStruct, NumMap0, NumMap),
+    const_struct_db_set_num_map(NumMap, !Db),
+
+    const_struct_db_get_struct_map(!.Db, StructMap0),
+    map.det_remove(ConstStruct, _ConstNum, StructMap0, StructMap),
+    const_struct_db_set_struct_map(StructMap, !Db).
+
+const_struct_db_get_structs(Db, Structs) :-
+    const_struct_db_get_num_map(Db, NumMap),
+    map.to_assoc_list(NumMap, Structs).
+
 %-----------------------------------------------------------------------------%
 
 :- type const_struct_db
@@ -190,7 +214,6 @@ insert_constant_instance(InstanceId, ConstNum, !Db) :-
                 csdb_next_num       :: int,
                 csdb_struct_map     :: map(const_struct, int),
                 csdb_num_map        :: map(int, const_struct),
-                csdb_rev_structs    :: assoc_list(int, const_struct),
                 csdb_instance_map   :: const_instance_map
             ).
 
@@ -199,8 +222,6 @@ insert_constant_instance(InstanceId, ConstNum, !Db) :-
     map(const_struct, int)::out) is det.
 :- pred const_struct_db_get_num_map(const_struct_db::in,
     map(int, const_struct)::out) is det.
-:- pred const_struct_db_get_rev_structs(const_struct_db::in,
-    assoc_list(int, const_struct)::out) is det.
 :- pred const_struct_db_get_instance_map(const_struct_db::in,
     const_instance_map::out) is det.
 
@@ -208,7 +229,6 @@ const_struct_db_get_enabled(Db, Db ^ csdb_enabled).
 const_struct_db_get_next_num(Db, Db ^ csdb_next_num).
 const_struct_db_get_struct_map(Db, Db ^ csdb_struct_map).
 const_struct_db_get_num_map(Db, Db ^ csdb_num_map).
-const_struct_db_get_rev_structs(Db, Db ^ csdb_rev_structs).
 const_struct_db_get_instance_map(Db, Db ^ csdb_instance_map).
 
 :- pred const_struct_db_set_next_num(int::in,
@@ -216,8 +236,6 @@ const_struct_db_get_instance_map(Db, Db ^ csdb_instance_map).
 :- pred const_struct_db_set_struct_map(map(const_struct, int)::in,
     const_struct_db::in, const_struct_db::out) is det.
 :- pred const_struct_db_set_num_map(map(int, const_struct)::in,
-    const_struct_db::in, const_struct_db::out) is det.
-:- pred const_struct_db_set_rev_structs(assoc_list(int, const_struct)::in,
     const_struct_db::in, const_struct_db::out) is det.
 :- pred const_struct_db_set_instance_map(const_instance_map::in,
     const_struct_db::in, const_struct_db::out) is det.
@@ -228,8 +246,6 @@ const_struct_db_set_struct_map(StructMap, !Db) :-
     !Db ^ csdb_struct_map := StructMap.
 const_struct_db_set_num_map(NumMap, !Db) :-
     !Db ^ csdb_num_map := NumMap.
-const_struct_db_set_rev_structs(RevStructs, !Db) :-
-    !Db ^ csdb_rev_structs := RevStructs.
 const_struct_db_set_instance_map(InstanceMap, !Db) :-
     !Db ^ csdb_instance_map := InstanceMap.
 

@@ -36,8 +36,9 @@
     --->    elim_opt_imported
     ;       do_not_elim_opt_imported.
 
-    % Eliminate dead procedures. If the first argument is `elim_opt_imported',
-    % also eliminate any opt_imported procedures.
+    % Eliminate dead procedures and/or constant structures.
+    % If the first argument is `elim_opt_imported', also eliminate
+    % any opt_imported procedures.
     %
     % The last argument will be a list of warnings about any user-defined
     % procedures that are dead, but the caller is free to ignore this list.
@@ -50,7 +51,8 @@
 :- type entity
     --->    entity_proc(pred_id, proc_id)
     ;       entity_table_struct(pred_id, proc_id)
-    ;       entity_type_ctor(module_name, string, int).
+    ;       entity_type_ctor(module_name, string, int)
+    ;       entity_const_struct(int).
 
 :- type maybe_needed
     --->    not_eliminable
@@ -104,7 +106,8 @@
 
 %-----------------------------------------------------------------------------%
 
-% We deal with two kinds of entities, procedures and type_ctor_info structures.
+% We deal with three kinds of entities, procedures, type_ctor_info structures
+% and constant structures.
 %
 % The algorithm has three main data structures:
 %
@@ -123,8 +126,9 @@
 % definition to find all mention of other entities. Their ids are then
 % put into both the needed map and the queue.
 %
-% The final pass of the algorithm deletes from the HLDS any procedure
-% or type_ctor_info structure whose id is not in the needed map.
+% The final pass of the algorithm deletes from the HLDS any procedure,
+% type_ctor_info structure or constant structure whose id is not in the
+% needed map.
 
 :- type entity_queue    ==  queue(entity).
 :- type examined_set    ==  set_tree234(entity).
@@ -168,11 +172,7 @@ dead_proc_initialize(!ModuleInfo, !:Queue, !:Needed) :-
 
     module_info_get_class_table(!.ModuleInfo, Classes),
     module_info_get_instance_table(!.ModuleInfo, Instances),
-    dead_proc_initialize_class_methods(Classes, Instances, !Queue, !Needed),
-
-    module_info_get_const_struct_db(!.ModuleInfo, ConstStructDb),
-    const_struct_db_get_structs(ConstStructDb, ConstStructs),
-    dead_proc_initialize_const_structs(ConstStructs, !Queue, !Needed).
+    dead_proc_initialize_class_methods(Classes, Instances, !Queue, !Needed).
 
     % Add all normally exported procedures within the listed predicates
     % to the queue and map.
@@ -313,46 +313,6 @@ get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
     queue.put(Entity, !Queue),
     map.set(Entity, not_eliminable, !Needed).
 
-:- pred dead_proc_initialize_const_structs(assoc_list(int, const_struct)::in,
-    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
-    is det.
-
-dead_proc_initialize_const_structs([], !Queue, !Needed).
-dead_proc_initialize_const_structs([_ - ConstStruct | ConstStructs],
-        !Queue, !Needed) :-
-    ConstStruct = const_struct(ConsId, Args, _, _),
-    ( ConsId = type_ctor_info_const(Module, TypeName, Arity) ->
-        Entity = entity_type_ctor(Module, TypeName, Arity),
-        queue.put(Entity, !Queue),
-        map.set(Entity, not_eliminable, !Needed)
-    ;
-        true
-    ),
-    dead_proc_initialize_const_struct_args(Args, !Queue, !Needed),
-    dead_proc_initialize_const_structs(ConstStructs, !Queue, !Needed).
-
-:- pred dead_proc_initialize_const_struct_args(list(const_struct_arg)::in,
-    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
-    is det.
-
-dead_proc_initialize_const_struct_args([], !Queue, !Needed).
-dead_proc_initialize_const_struct_args([Arg | Args], !Queue, !Needed) :-
-    (
-        Arg = csa_const_struct(_)
-        % Do nothing. Any processing takes place when
-        % dead_proc_initialize_const_structs looks at the referenced structure.
-    ;
-        Arg = csa_constant(ConsId, _),
-        ( ConsId = type_ctor_info_const(Module, TypeName, Arity) ->
-            Entity = entity_type_ctor(Module, TypeName, Arity),
-            queue.put(Entity, !Queue),
-            map.set(Entity, not_eliminable, !Needed)
-        ;
-            true
-        )
-    ),
-    dead_proc_initialize_const_struct_args(Args, !Queue, !Needed).
-
 %-----------------------------------------------------------------------------%
 
 :- pred dead_proc_examine(entity_queue::in, examined_set::in,
@@ -377,6 +337,10 @@ dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
                 Entity = entity_type_ctor(Module, Type, Arity),
                 dead_proc_examine_type_ctor_info(Module, Type, Arity,
                     ModuleInfo, !Queue, !Needed)
+            ;
+                Entity = entity_const_struct(ConstNum),
+                dead_proc_examine_const_struct(ModuleInfo, ConstNum,
+                    !Queue, !Needed)
             ),
             dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed)
         )
@@ -418,12 +382,6 @@ find_type_ctor_info(ModuleName, TypeName, TypeArity,
             Refs)
     ).
 
-:- pred maybe_add_ref(maybe(pred_proc_id)::in,
-    list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
-
-maybe_add_ref(no, Refs, Refs).
-maybe_add_ref(yes(Ref), Refs, [Ref | Refs]).
-
 :- pred dead_proc_examine_refs(list(pred_proc_id)::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
@@ -438,12 +396,53 @@ dead_proc_examine_refs([Ref | Refs], !Queue, !Needed) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred dead_proc_examine_const_struct(module_info::in, int::in,
+    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+    is det.
+
+dead_proc_examine_const_struct(ModuleInfo, ConstNum, !Queue, !Needed) :-
+    module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+    lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
+    ConstStruct = const_struct(ConsId, Args, _, _),
+    ( ConsId = type_ctor_info_const(Module, TypeName, Arity) ->
+        Entity = entity_type_ctor(Module, TypeName, Arity),
+        queue.put(Entity, !Queue),
+        map.set(Entity, not_eliminable, !Needed)
+    ;
+        true
+    ),
+    dead_proc_examine_const_struct_args(Args, !Queue, !Needed).
+
+:- pred dead_proc_examine_const_struct_args(list(const_struct_arg)::in,
+    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+    is det.
+
+dead_proc_examine_const_struct_args([], !Queue, !Needed).
+dead_proc_examine_const_struct_args([Arg | Args], !Queue, !Needed) :-
+    (
+        Arg = csa_const_struct(ConstNum),
+        Entity = entity_const_struct(ConstNum),
+        queue.put(Entity, !Queue),
+        map.set(Entity, not_eliminable, !Needed)
+    ;
+        Arg = csa_constant(ConsId, _),
+        ( ConsId = type_ctor_info_const(Module, TypeName, Arity) ->
+            Entity = entity_type_ctor(Module, TypeName, Arity),
+            queue.put(Entity, !Queue),
+            map.set(Entity, not_eliminable, !Needed)
+        ;
+            true
+        )
+    ),
+    dead_proc_examine_const_struct_args(Args, !Queue, !Needed).
+
+%-----------------------------------------------------------------------------%
+
 :- pred dead_proc_examine_proc(pred_proc_id::in, module_info::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
-dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo,
-        !Queue, !Needed) :-
+dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo, !Queue, !Needed) :-
     (
         module_info_get_preds(ModuleInfo, PredTable),
         map.lookup(PredTable, PredId, PredInfo),
@@ -557,7 +556,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 io.write_int(proc_id_to_int(ProcId), !IO),
                 io.nl(!IO)
             ),
-            % If it's reachable and recursive, then we can't eliminate it
+            % If it is reachable and recursive, then we cannot eliminate it
             % or inline it.
             NewNotation = not_eliminable,
             map.set(Entity, NewNotation, !Needed)
@@ -593,7 +592,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 io.nl(!IO)
             ),
             NewNotation = maybe_eliminable(1),
-            map.set(Entity, NewNotation, !Needed)
+            map.det_insert(Entity, NewNotation, !Needed)
         )
     ;
         GoalExpr = call_foreign_proc(_, PredId, ProcId, _, _, _, _),
@@ -643,6 +642,13 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 queue.put(Entity, !Queue),
                 map.set(Entity, not_eliminable, !Needed)
             ;
+                ( ConsId = type_info_const(ConstNum)
+                ; ConsId = typeclass_info_const(ConstNum)
+                ),
+                Entity = entity_const_struct(ConstNum),
+                queue.put(Entity, !Queue),
+                map.set(Entity, not_eliminable, !Needed)
+            ;
                 ( ConsId = cons(_, _, _)
                 ; ConsId = tuple_cons(_)
                 ; ConsId = int_const(_)
@@ -653,8 +659,6 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 ; ConsId = base_typeclass_info_const(_, _, _, _)
                 ; ConsId = type_info_cell_constructor(_)
                 ; ConsId = typeclass_info_cell_constructor
-                ; ConsId = type_info_const(_)
-                ; ConsId = typeclass_info_const(_)
                 ; ConsId = deep_profiling_proc_layout(_)
                 ; ConsId = table_io_decl(_)
                 )
@@ -665,7 +669,8 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
             ; Unification = assign(_, _)
             ; Unification = simple_test(_, _)
             )
-            % Do nothing.
+            % Do nothing. These kinds of unifications cannot include
+            % the kinds of cons_ids that we are looking for.
         ;
             Unification = complicated_unify(_, _, _),
             % These should have been replaced with calls by now.
@@ -692,7 +697,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 % in this table may be eliminated.
                 proc_elim_pred_table    :: pred_table,
 
-                % Has anything changed.
+                % Has anything changed that could affect dependency_info.
                 proc_elim_changed       :: bool,
 
                 % A list of warning messages.
@@ -708,7 +713,6 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
 dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo, Specs) :-
     module_info_get_valid_predids(PredIds, !ModuleInfo),
     module_info_get_preds(!.ModuleInfo, PredTable0),
-
     Changed0 = no,
     ProcElimInfo0 = proc_elim_info(!.Needed, !.ModuleInfo, PredTable0,
         Changed0, []),
@@ -716,8 +720,8 @@ dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo, Specs) :-
         ProcElimInfo0, ProcElimInfo),
     ProcElimInfo = proc_elim_info(!:Needed, !:ModuleInfo, PredTable,
         Changed, Specs),
-
     module_info_set_preds(PredTable, !ModuleInfo),
+
     module_info_get_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos0),
     dead_proc_eliminate_type_ctor_infos(TypeCtorGenInfos0, !.Needed,
         TypeCtorGenInfos),
@@ -727,6 +731,12 @@ dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo, Specs) :-
     % yet, because some references to such structs are currently visible
     % only in C code embedded in compiler-generated foreign_procs, and
     % therefore we might accidentally create dangling references.
+
+    module_info_get_const_struct_db(!.ModuleInfo, ConstStructDb0),
+    const_struct_db_get_structs(ConstStructDb0, ConstNumStructs0),
+    dead_proc_eliminate_const_structs(ConstNumStructs0, !.Needed,
+        ConstStructDb0, ConstStructDb),
+    module_info_set_const_struct_db(ConstStructDb, !ModuleInfo),
 
     (
         Changed = yes,
@@ -919,6 +929,21 @@ dead_proc_eliminate_type_ctor_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
         TypeCtorGenInfos = TypeCtorGenInfos1
     ).
 
+:- pred dead_proc_eliminate_const_structs(assoc_list(int, const_struct)::in,
+    needed_map::in, const_struct_db::in, const_struct_db::out) is det.
+
+dead_proc_eliminate_const_structs([], _Needed, !ConstStructDb).
+dead_proc_eliminate_const_structs([ConstNum - _ | ConstNumStructs], Needed,
+        !ConstStructDb) :-
+    Entity = entity_const_struct(ConstNum),
+    ( map.search(Needed, Entity, _) ->
+        true
+    ;
+        delete_const_struct(ConstNum, !ConstStructDb)
+    ),
+    dead_proc_eliminate_const_structs(ConstNumStructs, Needed,
+        !ConstStructDb).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1004,11 +1029,12 @@ dead_pred_elim(!ModuleInfo) :-
     queue(pred_id)::out, set_tree234(pred_id)::in, set_tree234(pred_id)::out)
     is det.
 
-dead_pred_elim_add_entity(entity_type_ctor(_, _, _), !Queue, !Preds).
-dead_pred_elim_add_entity(entity_table_struct(_, _), !Queue, !Preds).
 dead_pred_elim_add_entity(entity_proc(PredId, _), !Queue, !Preds) :-
     queue.put(PredId, !Queue),
     set_tree234.insert(PredId, !Preds).
+dead_pred_elim_add_entity(entity_table_struct(_, _), !Queue, !Preds).
+dead_pred_elim_add_entity(entity_type_ctor(_, _, _), !Queue, !Preds).
+dead_pred_elim_add_entity(entity_const_struct(_), !Queue, !Preds).
 
 :- pred dead_pred_elim_initialize(pred_id::in,
     pred_elim_info::in, pred_elim_info::out) is det.
