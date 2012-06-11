@@ -1630,9 +1630,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
         )
     ;
         AtomicGoal = partial_construct_rep(_, _, MaybeFieldVars),
-        (
-            list.member(Var0, BoundVars)
-        ->
+        ( list.member(Var0, BoundVars) ->
             (
                 TermPath0 = [],
                 Origin = origin_primitive_op(File, Line, primop_unification)

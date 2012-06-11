@@ -194,7 +194,7 @@
 %---------------------------------------------------------------------------%
 %
 % We export these predicates to C for use by the tracer:
-% they are used in trace/mercury_trace_browser.c.
+% they are used in trace/mercury_trace_browse.c.
 %
 
 :- pragma foreign_export("C",
