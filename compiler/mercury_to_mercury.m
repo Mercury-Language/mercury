@@ -1676,6 +1676,12 @@ mercury_format_cons_id(ConsId, NeedsBrackets, !U) :-
         add_string("<typeclass_info_cell_constructor " ++
             int_to_string(TCIConstNum) ++ ">", !U)
     ;
+        ConsId = ground_term_const(ConstNum, SubConsId),
+        add_string("<ground_term_cell_constructor " ++
+            int_to_string(ConstNum) ++ ", ", !U),
+        mercury_format_cons_id(SubConsId, does_not_need_brackets, !U),
+        add_string(">", !U)
+    ;
         ConsId = tabling_info_const(_),
         add_string("<tabling info>", !U)
     ;

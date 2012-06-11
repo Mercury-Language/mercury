@@ -108,6 +108,10 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         ConsId = typeclass_info_const(TCIConstNum),
         Tag = typeclass_info_const_tag(TCIConstNum)
     ;
+        ConsId = ground_term_const(ConstNum, SubConsId),
+        SubConsTag = cons_id_to_tag(ModuleInfo, SubConsId),
+        Tag = ground_term_const_tag(ConstNum, SubConsTag)
+    ;
         ConsId = tabling_info_const(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         Tag = tabling_info_tag(PredId, ProcId)
@@ -120,11 +124,15 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         Tag = table_io_decl_tag(PredId, ProcId)
     ;
-        ConsId = tuple_cons(_Arity),
+        ConsId = tuple_cons(Arity),
         % Tuples do not need a tag. Note that unary tuples are not treated
         % as no_tag types. There is no reason why they couldn't be, it is
         % just not worth the effort.
-        Tag = single_functor_tag
+        ( Arity = 0 ->
+            Tag = int_tag(0)
+        ;
+            Tag = single_functor_tag
+        )
     ;
         ConsId = cons(_Name, _Arity, TypeCtor),
         module_info_get_type_table(ModuleInfo, TypeTable),

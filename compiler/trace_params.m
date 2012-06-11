@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2008, 2011 The University of Melbourne.
+% Copyright (C) 2000-2008,2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -78,6 +78,10 @@
     % where possible.
     %
 :- func trace_level_needs_meaningful_var_names(trace_level) = bool.
+
+    % This function checks for a property of the global trace level.
+    %
+:- func trace_needs_proc_body_reps(trace_level, trace_suppress_items) = bool.
 
     % These functions check for various properties of the given procedure's
     % effective trace level.
@@ -337,7 +341,6 @@ eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo, TraceLevel, SuppressItems,
 :- func trace_level_needs_fixed_slots(trace_level) = bool.
 :- func trace_level_needs_from_full_slot(trace_level) = bool.
 :- func trace_needs_all_var_names(trace_level, trace_suppress_items) = bool.
-:- func trace_needs_proc_body_reps(trace_level, trace_suppress_items) = bool.
 :- func trace_needs_port(trace_level, trace_suppress_items, trace_port) = bool.
 
 trace_level_is_none(none) = yes.

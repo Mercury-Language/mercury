@@ -351,11 +351,13 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
                 )
             )
         ;
-            Tag = no_tag,
-            unexpected($module, $pred, "no_tag: arity != 1")
-        ;
-            Tag = direct_arg_tag(_),
-            unexpected($module, $pred, "direct_arg_tag: arity != 1")
+            (
+                Tag = no_tag,
+                unexpected($module, $pred, "no_tag: arity != 1")
+            ;
+                Tag = direct_arg_tag(_),
+                unexpected($module, $pred, "direct_arg_tag: arity != 1")
+            )
         )
     ;
         % Ordinary compound terms.
@@ -382,6 +384,7 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
     ;
         ( Tag = type_info_const_tag(ConstNum)
         ; Tag = typeclass_info_const_tag(ConstNum)
+        ; Tag = ground_term_const_tag(ConstNum, _)
         ),
         ml_gen_info_get_const_struct_map(!.Info, ConstStructMap),
         map.lookup(ConstStructMap, ConstNum, GroundTerm0),
@@ -511,6 +514,7 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_info_const_tag(_)
         ; Tag = typeclass_info_const_tag(_)
+        ; Tag = ground_term_const_tag(_, _)
         ),
         unexpected($module, $pred, "unexpected tag")
     ).
@@ -1557,6 +1561,7 @@ ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = type_info_const_tag(_)
         ; Tag = typeclass_info_const_tag(_)
+        ; Tag = ground_term_const_tag(_, _)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
@@ -1640,9 +1645,11 @@ ml_tag_offset_and_argnum(Tag, TagBits, Offset, ArgNum) :-
         Offset = offset(1),
         ArgNum = 1
     ;
-        Tag = shared_with_reserved_addresses_tag(_, ThisTag),
-        % Just recurse on ThisTag.
-        ml_tag_offset_and_argnum(ThisTag, TagBits, Offset, ArgNum)
+        Tag = shared_with_reserved_addresses_tag(_, SubTag),
+        ml_tag_offset_and_argnum(SubTag, TagBits, Offset, ArgNum)
+    ;
+        Tag = ground_term_const_tag(_, SubTag),
+        ml_tag_offset_and_argnum(SubTag, TagBits, Offset, ArgNum)
     ;
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_Int)
@@ -2267,6 +2274,7 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = type_info_const_tag(_)
         ; Tag = typeclass_info_const_tag(_)
+        ; Tag = ground_term_const_tag(_, _)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
@@ -2582,6 +2590,7 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_decl_tag(_, _)
@@ -2898,8 +2907,13 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         ; ConsTag = direct_arg_tag(_)
         ),
         (
-            Args = [_Arg],
-            unexpected($module, $pred, "NYI")
+            Args = [Arg],
+            DoubleWidth = no,
+            ml_gen_const_struct_arg(Info, !.ConstStructMap,
+                Arg, DoubleWidth, ArgRval, !GlobalData),
+            Rval = ml_cast_cons_tag(MLDS_Type, ConsTag, ArgRval),
+            GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
+            map.det_insert(ConstNum, GroundTerm, !ConstStructMap)
         ;
             ( Args = []
             ; Args = [_, _ | _]
@@ -2957,6 +2971,7 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         % These tags should never occur in constant data in this position.
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
         % These tags should never occur in MLDS grades.
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = table_io_decl_tag(_, _)
@@ -3072,17 +3087,18 @@ ml_gen_const_struct_args(_, _, [], [], !GlobalData).
 ml_gen_const_struct_args(Info, ConstStructMap,
         [Arg - ConsArgWidth | ArgConsArgWidths], [ArgRval | ArgRvals],
         !GlobalData) :-
+    arg_width_is_double(ConsArgWidth, DoubleWidth),
     ml_gen_const_struct_arg(Info, ConstStructMap,
-        Arg, ConsArgWidth, ArgRval, !GlobalData),
+        Arg, DoubleWidth, ArgRval, !GlobalData),
     ml_gen_const_struct_args(Info, ConstStructMap,
         ArgConsArgWidths, ArgRvals, !GlobalData).
 
 :- pred ml_gen_const_struct_arg(ml_const_struct_info::in,
-    ml_const_struct_map::in, const_struct_arg::in, arg_width::in,
+    ml_const_struct_map::in, const_struct_arg::in, bool::in,
     mlds_rval::out, ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_const_struct_arg(Info, ConstStructMap,
-        ConstArg, ConsArgWidth, Rval, !GlobalData) :-
+ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, DoubleWidth,
+        Rval, !GlobalData) :-
     ModuleInfo = Info ^ mcsi_module_info,
     (
         ConstArg = csa_const_struct(StructNum),
@@ -3095,7 +3111,6 @@ ml_gen_const_struct_arg(Info, ConstStructMap,
         ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag,
             Type, MLDS_Type, Rval0)
     ),
-    arg_width_is_double(ConsArgWidth, DoubleWidth),
     ml_gen_box_const_rval(ModuleInfo, term.context_init, MLDS_Type,
         DoubleWidth, Rval0, Rval, !GlobalData).
 
@@ -3156,6 +3171,7 @@ ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag, Type, MLDS_Type,
         % csa_const_structs.
         ( ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
         % These tags build heap cells, not constants.
         ; ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)

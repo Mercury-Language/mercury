@@ -246,6 +246,7 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
         ; MainConsId = typeclass_info_cell_constructor
         ; MainConsId = type_info_const(_)
         ; MainConsId = typeclass_info_const(_)
+        ; MainConsId = ground_term_const(_, _)
         ; MainConsId = tabling_info_const(_)
         ; MainConsId = table_io_decl(_)
         ; MainConsId = deep_profiling_proc_layout(_)

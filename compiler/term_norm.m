@@ -71,6 +71,7 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module hlds.const_struct.
 :- import_module hlds.hlds_data.
 :- import_module parse_tree.prog_type.
 
@@ -92,22 +93,22 @@
 % XXX Actually we currently only use three of them.  `use_map/1' is unused.
 
 :- type functor_info
-    --->    simple  % All non-constant functors have weight 1,
-                    % while constants have weight 0.
-                    % Use the size of all subterms (I = {1, ..., n}.
+    --->    simple
+            % All non-constant functors have weight 1, while constants
+            % have weight 0. Use the size of all subterms (I = {1, ..., n}.
 
-    ;       total   % All functors have weight = arity of the functor.
-                    % Use the size of all subterms (I = {1, ..., n}.
+    ;       total
+            % All functors have weight = arity of the functor.
+            % Use the size of all subterms (I = {1, ..., n}.
 
     ;       use_map(weight_table)
-                    % The weight of each functor is given by the table.
-                    % Use the size of all subterms (I = {1, ..., n}.
+            % The weight of each functor is given by the table.
+            % Use the size of all subterms (I = {1, ..., n}.
 
     ;       use_map_and_args(weight_table).
-                    % The weight of each functor is given by the table,
-                    % and so is the set of arguments of the functor whose
-                    % size should be counted (I is given by the table
-                    % entry of the functor).
+            % The weight of each functor is given by the table, and so is
+            % the set of arguments of the functor whose size should be counted
+            % (I is given by the table entry of the functor).
 
 %-----------------------------------------------------------------------------%
 
@@ -251,44 +252,63 @@ set_functor_info(ModuleInfo, norm_size_data_elems) = FunctorInfo :-
 
 %-----------------------------------------------------------------------------%
 
-functor_norm(_ModuleInfo, FunctorInfo, TypeCtor, ConsId, Int, !Args, !Modes) :-
-    % Although the module info is not used in any of these norms, it could
-    % be needed for other norms, so it should not be removed.
+functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
+        !Args, !Modes) :-
     (
         FunctorInfo = simple,
         (
             ConsId = cons(_, Arity, _),
             Arity \= 0
         ->
-            Int = 1
+            Gamma = 1
         ;
-            Int = 0
+            ConsId = ground_term_const(ConstNum, _)
+        ->
+            module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+            const_struct_count_cells(ConstStructDb, ConstNum, 0, Gamma)
+        ;
+            Gamma = 0
         )
     ;
         FunctorInfo = total,
         ( ConsId = cons(_, Arity, _) ->
-            Int = Arity
+            Gamma = Arity
+        ; ConsId = ground_term_const(ConstNum, _) ->
+            module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+            const_struct_count_cell_arities(ConstStructDb, ConstNum, 0, Gamma)
         ;
-            Int = 0
+            Gamma = 0
         )
     ;
         FunctorInfo = use_map(WeightMap),
         ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
-            WeightInfo = weight(Int, _)
+            WeightInfo = weight(Gamma, _)
+        ; ConsId = ground_term_const(ConstNum, _) ->
+            module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+            const_struct_count_cell_weights(ConstStructDb, WeightMap,
+                ConstNum, 0, Gamma)
         ;
-            Int = 0
+            Gamma = 0
         )
     ;
         FunctorInfo = use_map_and_args(WeightMap),
         ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
-            WeightInfo = weight(Int, UseArgList),
+            WeightInfo = weight(Gamma, UseArgList),
             ( functor_norm_filter_args(UseArgList, !Args, !Modes) ->
                 true
             ;
                 unexpected($module, $pred, "unmatched lists")
             )
+        ; ConsId = ground_term_const(ConstNum, _) ->
+            % XXX Since ground_term_consts have no argument variables,
+            % we cannot filter those argument variables. I (zs) *think* that
+            % returning the !.Args and !.Modes (which should both be empty
+            % to begin with) does the right thing, but I am not sure.
+            module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+            const_struct_count_cell_filtered_weights(ConstStructDb, WeightMap,
+                ConstNum, 0, Gamma)
         ;
-            Int = 0
+            Gamma = 0
         )
     ).
 
@@ -306,6 +326,144 @@ functor_norm_filter_args([yes | Bools], [Arg0 | Args0], [Arg0 | Args],
 functor_norm_filter_args([no | Bools], [_Arg0 | Args0], Args,
         [_Mode0 | Modes0], Modes) :-
     functor_norm_filter_args(Bools, Args0, Args, Modes0, Modes).
+
+%-----------------------------------------------------------------------------%
+
+:- pred const_struct_count_cells(const_struct_db::in, int::in,
+    int::in, int::out) is det.
+
+const_struct_count_cells(ConstStructDb, ConstNum, !Gamma) :-
+    lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
+    ConstStruct = const_struct(_ConsId, Args, _, _),
+    !:Gamma = !.Gamma + 1,
+    const_struct_count_cells_args(ConstStructDb, Args, !Gamma).
+
+:- pred const_struct_count_cells_args(const_struct_db::in,
+    list(const_struct_arg)::in, int::in, int::out) is det.
+
+const_struct_count_cells_args(_ConstStructDb, [], !Gamma).
+const_struct_count_cells_args(ConstStructDb, [Arg | Args], !Gamma) :-
+    (
+        Arg = csa_constant(_, _)
+    ;
+        Arg = csa_const_struct(ArgConstNum),
+        const_struct_count_cells(ConstStructDb, ArgConstNum, !Gamma)
+    ),
+    const_struct_count_cells_args(ConstStructDb, Args, !Gamma).
+
+:- pred const_struct_count_cell_arities(const_struct_db::in, int::in,
+    int::in, int::out) is det.
+
+const_struct_count_cell_arities(ConstStructDb, ConstNum, !Gamma) :-
+    lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
+    ConstStruct = const_struct(_ConsId, Args, _, _),
+    !:Gamma = !.Gamma + list.length(Args),
+    const_struct_count_cell_arities_args(ConstStructDb, Args, !Gamma).
+
+:- pred const_struct_count_cell_arities_args(const_struct_db::in,
+    list(const_struct_arg)::in, int::in, int::out) is det.
+
+const_struct_count_cell_arities_args(_ConstStructDb, [], !Gamma).
+const_struct_count_cell_arities_args(ConstStructDb, [Arg | Args], !Gamma) :-
+    (
+        Arg = csa_constant(_, _)
+    ;
+        Arg = csa_const_struct(ArgConstNum),
+        const_struct_count_cell_arities(ConstStructDb, ArgConstNum, !Gamma)
+    ),
+    const_struct_count_cell_arities_args(ConstStructDb, Args, !Gamma).
+
+:- pred const_struct_count_cell_weights(const_struct_db::in,
+    weight_table::in, int::in, int::in, int::out) is det.
+
+const_struct_count_cell_weights(ConstStructDb, WeightMap, ConstNum, !Gamma) :-
+    lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
+    ConstStruct = const_struct(ConsId, Args, Type, _),
+    type_to_ctor_det(Type, TypeCtor),
+    ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+        WeightInfo = weight(ConsIdGamma, _),
+        !:Gamma = !.Gamma + ConsIdGamma,
+        const_struct_count_cell_weights_args(ConstStructDb, WeightMap,
+            Args, !Gamma)
+    ;
+        true
+    ).
+
+:- pred const_struct_count_cell_weights_args(const_struct_db::in,
+    weight_table::in, list(const_struct_arg)::in, int::in, int::out) is det.
+
+const_struct_count_cell_weights_args(_ConstStructDb, _WeightMap, [], !Gamma).
+const_struct_count_cell_weights_args(ConstStructDb, WeightMap,
+        [Arg | Args], !Gamma) :-
+    (
+        Arg = csa_constant(ConsId, Type),
+        type_to_ctor_det(Type, TypeCtor),
+        ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+            WeightInfo = weight(ConsIdGamma, _),
+            !:Gamma = !.Gamma + ConsIdGamma
+        ;
+            true
+        )
+    ;
+        Arg = csa_const_struct(ArgConstNum),
+        const_struct_count_cell_weights(ConstStructDb, WeightMap,
+            ArgConstNum, !Gamma)
+    ),
+    const_struct_count_cell_weights_args(ConstStructDb, WeightMap,
+        Args, !Gamma).
+
+:- pred const_struct_count_cell_filtered_weights(const_struct_db::in,
+    weight_table::in, int::in, int::in, int::out) is det.
+
+const_struct_count_cell_filtered_weights(ConstStructDb, WeightMap,
+        ConstNum, !Gamma) :-
+    lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
+    ConstStruct = const_struct(ConsId, Args, Type, _),
+    type_to_ctor_det(Type, TypeCtor),
+    ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+        WeightInfo = weight(ConsIdGamma, UseArgs),
+        !:Gamma = !.Gamma + ConsIdGamma,
+        const_struct_count_cell_filtered_weights_args(ConstStructDb, WeightMap,
+            Args, UseArgs, !Gamma)
+    ;
+        true
+    ).
+
+:- pred const_struct_count_cell_filtered_weights_args(const_struct_db::in,
+    weight_table::in, list(const_struct_arg)::in, list(bool)::in,
+    int::in, int::out) is det.
+
+const_struct_count_cell_filtered_weights_args(_ConstStructDb, _WeightMap,
+        [], [], !Gamma).
+const_struct_count_cell_filtered_weights_args(_ConstStructDb, _WeightMap,
+        [], [_ | _], !Gamma) :-
+    unexpected($module, $pred, "mismatched lists").
+const_struct_count_cell_filtered_weights_args(_ConstStructDb, _WeightMap,
+        [_ | _], [], !Gamma) :-
+    unexpected($module, $pred, "mismatched lists").
+const_struct_count_cell_filtered_weights_args(ConstStructDb, WeightMap,
+        [Arg | Args], [UseArg | UseArgs], !Gamma) :-
+    (
+        UseArg = no
+    ;
+        UseArg = yes,
+        (
+            Arg = csa_constant(ConsId, Type),
+            type_to_ctor_det(Type, TypeCtor),
+            ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+                WeightInfo = weight(ConsIdGamma, _),
+                !:Gamma = !.Gamma + ConsIdGamma
+            ;
+                true
+            )
+        ;
+            Arg = csa_const_struct(ArgConstNum),
+            const_struct_count_cell_filtered_weights(ConstStructDb, WeightMap,
+                ArgConstNum, !Gamma)
+        )
+    ),
+    const_struct_count_cell_filtered_weights_args(ConstStructDb, WeightMap,
+        Args, UseArgs, !Gamma).
 
 %-----------------------------------------------------------------------------%
 

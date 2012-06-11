@@ -129,6 +129,7 @@ ORDINARY_PROGS=	\
 	func_test \
 	getopt_test \
 	ground_dd \
+	ground_terms \
 	hash_bug \
 	hash_init_bug \
 	hash_table_delete \

@@ -82,8 +82,9 @@
     % Given a list of variables from a unification, this predicate divides the
     % list into a bag of input variables, and a bag of output variables.
     %
-:- pred split_unification_vars(list(prog_var)::in, list(uni_mode)::in,
-    module_info::in, bag(prog_var)::out, bag(prog_var)::out) is det.
+:- pred split_unification_vars(module_info::in,
+    list(prog_var)::in, list(uni_mode)::in,
+    bag(prog_var)::out, bag(prog_var)::out) is det.
 
     % Used to create lists of boolean values, which are used for used_args.
     % make_bool_list(HeadVars, BoolIn, BoolOut) creates a bool list which is
@@ -225,40 +226,32 @@ partition_call_args_2(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
     % current implementation does not correctly handle partially instantiated
     % data structures.
     %
-split_unification_vars([], Modes, _, Vars, Vars) :-
-    bag.init(Vars),
-    (
-        Modes = []
-    ;
-        Modes = [_ | _],
-        unexpected($module, $pred, "unmatched variables")
-    ).
-split_unification_vars([Arg | Args], Modes, ModuleInfo,
+split_unification_vars(_, [], [], Vars, Vars) :-
+    bag.init(Vars).
+split_unification_vars(_, [], [_ | _], _, _) :-
+    unexpected($module, $pred, "unmatched variables").
+split_unification_vars(_, [_ | _], [], _, _) :-
+    unexpected($module, $pred, "unmatched variables").
+split_unification_vars(ModuleInfo, [Arg | Args], [UniMode | UniModes],
         InVars, OutVars):-
+    split_unification_vars(ModuleInfo, Args, UniModes, InVars0, OutVars0),
+    UniMode = ((_VarInit - ArgInit) -> (_VarFinal - ArgFinal)),
     (
-        Modes = [UniMode | UniModes],
-        split_unification_vars(Args, UniModes, ModuleInfo, InVars0, OutVars0),
-        UniMode = ((_VarInit - ArgInit) -> (_VarFinal - ArgFinal)),
-        (
-            inst_is_bound(ModuleInfo, ArgInit)
-        ->
-            % Variable is an input variable
-            bag.insert(Arg, InVars0, InVars),
-            OutVars = OutVars0
-        ;
-            inst_is_free(ModuleInfo, ArgInit),
-            inst_is_bound(ModuleInfo, ArgFinal)
-        ->
-            % Variable is an output variable
-            InVars = InVars0,
-            bag.insert(Arg, OutVars0, OutVars)
-        ;
-            InVars = InVars0,
-            OutVars = OutVars0
-        )
+        inst_is_bound(ModuleInfo, ArgInit)
+    ->
+        % Variable is an input variable
+        bag.insert(Arg, InVars0, InVars),
+        OutVars = OutVars0
     ;
-        Modes = [],
-        unexpected($module, $pred, "unmatched variables")
+        inst_is_free(ModuleInfo, ArgInit),
+        inst_is_bound(ModuleInfo, ArgFinal)
+    ->
+        % Variable is an output variable
+        InVars = InVars0,
+        bag.insert(Arg, OutVars0, OutVars)
+    ;
+        InVars = InVars0,
+        OutVars = OutVars0
     ).
 
 %-----------------------------------------------------------------------------%
@@ -370,7 +363,7 @@ add_context_to_termination_info(yes(can_loop(_)), Context,
 add_context_to_arg_size_info(no, _, no).
 add_context_to_arg_size_info(yes(finite(A, B)), _, yes(finite(A, B))).
 add_context_to_arg_size_info(yes(infinite(_)), Context,
-        yes(infinite([termination_error_context(imported_pred, Context)]))).
+    yes(infinite([termination_error_context(imported_pred, Context)]))).
 
 %-----------------------------------------------------------------------------%
 

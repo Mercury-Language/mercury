@@ -619,6 +619,8 @@ cons_table_optimize(!ConsTable) :-
     ;       type_info_const_tag(int)
     ;       typeclass_info_const_tag(int)
 
+    ;       ground_term_const_tag(int, cons_tag)
+
     ;       tabling_info_tag(pred_id, proc_id)
             % This is how we refer to the global structures containing
             % tabling pointer variables and related data. The word just
@@ -772,6 +774,9 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         ),
         MaybePrimaryTag = no
     ;
+        Tag = ground_term_const_tag(_, SubTag),
+        MaybePrimaryTag = get_primary_tag(SubTag)
+    ;
         Tag = single_functor_tag,
         MaybePrimaryTag = yes(0)
     ;
@@ -807,6 +812,9 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
         ; Tag = single_functor_tag
         ),
         MaybeSecondaryTag = no
+    ;
+        Tag = ground_term_const_tag(_, SubTag),
+        MaybeSecondaryTag = get_secondary_tag(SubTag)
     ;
         ( Tag = shared_remote_tag(_PrimaryTag, SecondaryTag)
         ; Tag = shared_local_tag(_PrimaryTag, SecondaryTag)

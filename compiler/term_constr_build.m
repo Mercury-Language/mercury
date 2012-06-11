@@ -112,8 +112,8 @@ term_build_options_init(Norm, Failure, ArgSizeOnly) =
 %-----------------------------------------------------------------------------%
 
 % This information is accumulated while building the abstract
-% representation of a SCC.  After we have finished we write it to the
-% module_info.  We cannot do this while we are building each individual
+% representation of a SCC. After we have finished we write it to the
+% module_info. We cannot do this while we are building each individual
 % procedure because we will not have all the information we need until
 % we have finished processing the entire SCC.
 
@@ -143,7 +143,7 @@ term_constr_build_abstract_scc(DepOrder, SCC, Options, Errors,
         Info = term_scc_info(proc(PredId, ProcId), AR0, VarMap, Status,
             ProcErrors, HeadSizeVars),
 
-        % Record the proper size_varset.  Each procedure has a copy.
+        % Record the proper size_varset. Each procedure has a copy.
         % XXX It would be nicer to store one copy per SCC.
         %
         % NOTE: although each procedure in the a SCC shares the same
@@ -214,8 +214,7 @@ term_constr_build_abstract_proc(EntryProcs, Options, SCC, ModuleInfo, PPId,
         Context, VarTypes, Zeros, SizeVarMap, SCC,
         Options ^ tbo_failure_constrs, Options ^ tbo_arg_size_only),
 
-    % Traverse the HLDS and construct the abstract version of
-    % this procedure.
+    % Traverse the HLDS and construct the abstract version of this procedure.
     build_abstract_goal(Goal, AbstractBody0, Info0, Info),
     IntermodStatus = Info ^ tti_intermod_status,
     HeadSizeVars   = prog_vars_to_size_vars(SizeVarMap, HeadProgVars),
@@ -411,7 +410,7 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
         build_abstract_conj([Cond, Then], AbstractSuccessGoal, !Info),
 
         % Work out a failure constraint for the Cond and then abstract the else
-        % branch.  We won't bother do any other simplifications here as the AR
+        % branch. We won't bother do any other simplifications here as the AR
         % simplification pass will sort all of this out.
         CondFail = find_failure_constraint_for_goal(!.Info, Cond),
 
@@ -620,10 +619,10 @@ build_non_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
 
 % NOTE: for switches and disjunctions we add the variables that
 % are local to the entire switch/disjunction to the list of variables
-% that are local to each case/disjunct.  The reason for this is that
+% that are local to each case/disjunct. The reason for this is that
 % the projection operation distributes over the convex hull operation
 % and it is more efficient to eliminate the variables from each branch
-% *before* taking the convex hull.  This is because the transformation
+% *before* taking the convex hull. This is because the transformation
 % matrix used by the convex hull operation (see polyhedron.m) will
 % usually be much larger for the entire disjunction than the matrix used
 % for each case/disjunct.
@@ -702,7 +701,7 @@ build_abstract_switch_acc(SwitchProgVar, [Case | Cases], !AbstractGoals,
         AbstractGoal = AbstractGoal0
     ;
         TypeMap = !.Info ^ tti_vartypes,
-        SizeVarMap  = !.Info ^ tti_size_var_map,
+        SizeVarMap = !.Info ^ tti_size_var_map,
         map.lookup(TypeMap, SwitchProgVar, SwitchVarType),
         SwitchSizeVar = prog_var_to_size_var(SizeVarMap, SwitchProgVar),
         type_to_ctor_det(SwitchVarType, TypeCtor),
@@ -734,7 +733,7 @@ build_abstract_switch_acc(SwitchProgVar, [Case | Cases], !AbstractGoals,
 
 :- pred detect_switch_var(hlds_goal::in, prog_var::in, cons_id::in) is semidet.
 
-detect_switch_var(hlds_goal(unify(_, _, _, Kind, _), _), SwitchVar, ConsId)  :-
+detect_switch_var(hlds_goal(unify(_, _, _, Kind, _), _), SwitchVar, ConsId) :-
     (
         Kind = deconstruct(SwitchVar, ConsId, _, _, _, _)
     ;
@@ -764,13 +763,13 @@ build_abstract_from_ground_term_goal(TermVar, SubGoal, AbstractGoal, !Info) :-
     SubGoal = hlds_goal(SubGoalExpr, _SubGoalInfo),
     ( SubGoalExpr = conj(plain_conj, Conjuncts) ->
         SizeVarMap = !.Info ^ tti_size_var_map,
-        Zeros  = !.Info ^ tti_zeros,
+        Zeros = !.Info ^ tti_zeros,
         TermSizeVar = prog_var_to_size_var(SizeVarMap, TermVar),
         ( set.member(TermSizeVar, Zeros) ->
             Constraints = []
         ;
             ModuleInfo = !.Info ^ tti_module_info,
-            Norm   = !.Info ^ tti_norm,
+            Norm = !.Info ^ tti_norm,
             VarTypes = !.Info ^ tti_vartypes,
             abstract_from_ground_term_conjuncts(ModuleInfo, Norm, VarTypes,
                 Conjuncts, map.init, SizeMap),
@@ -869,7 +868,7 @@ build_abstract_unification(Unification, AbstractGoal, !Info) :-
     % Used for deconstruction and construction unifications, i.e. for
     % unifications of the form: X = f(U, V, W). If the norm counts the
     % first and second arguments, then the constraint returned is |X| -
-    % |U| - |V| = |f|.  (|X| is the size_var corresponding to X).
+    % |U| - |V| = |f|. (|X| is the size_var corresponding to X).
     %
 :- pred build_abstract_decon_or_con_unify(prog_var::in, cons_id::in,
     prog_vars::in, list(uni_mode)::in, constraints::out,
@@ -883,6 +882,8 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         % The only valid higher-order unifications are assignments.
         % For the purposes of the IR analysis, we can ignore them.
         % We can also ignore unifications that build constant terms.
+        % XXX Should we process constant terms that are NOT typeinfos
+        % or typeclass infos? We have no test cases (yet) that need that.
         ( type_is_higher_order(Type)
         ; cons_id_is_const_struct(ConsId, _)
         )
@@ -897,7 +898,7 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         strip_typeinfos_from_args_and_modes(VarTypes, ArgVars, FixedArgVars,
             Modes, FixedModes),
         ModuleInfo = !.Info ^ tti_module_info,
-        Norm   = !.Info ^ tti_norm,
+        Norm = !.Info ^ tti_norm,
         type_to_ctor_det(Type, TypeCtor),
         functor_norm(ModuleInfo, Norm, TypeCtor, ConsId, Constant,
             FixedArgVars, CountedVars, FixedModes, _),
@@ -910,7 +911,7 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         % `Constant' will depend upon the norm being used.
 
         SizeVarMap = !.Info ^ tti_size_var_map,
-        Zeros  = !.Info ^ tti_zeros,
+        Zeros = !.Info ^ tti_zeros,
 
         SizeVar = prog_var_to_size_var(SizeVarMap, Var),
         ( set.member(SizeVar, Zeros) ->
@@ -929,7 +930,7 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
             SizeVars  = list.filter(isnt(is_zero_size_var(Zeros)), SizeVars1)
         ),
         NonNegConstraints = list.map(make_nonneg_constr, SizeVars),
-        Constraints  = [Constraint | NonNegConstraints]
+        Constraints = [Constraint | NonNegConstraints]
     ).
 
 :- pred accumulate_nonzero_arg_coeffs(size_var_map::in, set(size_var)::in,
@@ -1020,7 +1021,7 @@ build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
 
     % Because quantification returns a conservative estimate of nonlocal
     % vars, this returns a list of local vars that may omit some of the
-    % real local vars.  This shouldn't be a problem as everything but
+    % real local vars. This shouldn't be a problem as everything but
     % the head_vars will be projected out at the end of each iteration anyway.
     %
 :- func local_vars(hlds_goal) = prog_vars.
@@ -1048,8 +1049,8 @@ partition_vars(hlds_goal(GoalExpr, GoalInfo), Locals, NonLocals) :-
 % Procedures for manipulating sets of size_vars.
 %
 
-    % Create the size_vars corresponding to the given prog_vars.  Also
-    % create map from the prog_vars to the size_vars.
+    % Create the size_vars corresponding to the given prog_vars.
+    % Also create map from the prog_vars to the size_vars.
     %
     % As termination analysis is (currently) carried out before unused
     % argument analysis it is possible that some variables in the head
@@ -1098,13 +1099,13 @@ possibly_fix_sizevar_map([ProgVar | ProgVars], !SizeVarset, !SizeVarMap) :-
 %
 % For unifications, both deconstructions and simple tests can fail but
 % since the latter involves only zero size types it does not tell us
-% anything useful.  For a deconstruction unification that can fail we
+% anything useful. For a deconstruction unification that can fail we
 % know that the variable must be bound to one of the other type
 % constructors so we can use this to try and place a lower bound on the
 % size of the variable.
 %
 % For calls we can associate a failure constraint with each procedure in
-% the program.  In contexts where the call fails we can just look up the
+% the program. In contexts where the call fails we can just look up the
 % failure constraint.
 %
 % In the worst case we just assume that the size of the (non-zero)
@@ -1135,10 +1136,10 @@ find_failure_constraint_for_goal(Info, Goal) = AbstractGoal :-
 :- pred find_failure_constraint_for_goal_2(tti_traversal_info::in,
     hlds_goal::in, abstract_goal::out) is semidet.
 
+find_failure_constraint_for_goal_2(Info, Goal, AbstractGoal) :-
     % XXX We could factor out a lot of the code used for
     % substitutions below as the same code is used elsewhere.
-    %
-find_failure_constraint_for_goal_2(Info, Goal, AbstractGoal) :-
+
     Goal = hlds_goal(GoalExpr, _),
     (
         GoalExpr = plain_call(PredId, ProcId, CallArgs, _, _, _),
@@ -1160,7 +1161,7 @@ find_failure_constraint_for_goal_2(Info, Goal, AbstractGoal) :-
                 polyhedron.non_false_constraints(CalleeFailurePolyhedron),
             (
                 CalleeFailureConstraints = [],
-                FailureConstraints  = []
+                FailureConstraints = []
             ;
                 CalleeFailureConstraints = [_ | _],
                 CalleeHeadVars = TermInfo ^ head_vars,
@@ -1257,7 +1258,7 @@ lower_bound(Norm, ModuleInfo, TypeCtor, Constructor) = LowerBound :-
 
     % Given a variable, its type and a set of constructors to which it
     % could be bound, return a constraint that specifies an upper bound
-    % on the size of the variable.  An empty list means that there is no
+    % on the size of the variable. An empty list means that there is no
     % upper bound.
     %
 :- pred upper_bound_constraints(functor_info::in, module_info::in,
@@ -1266,7 +1267,7 @@ lower_bound(Norm, ModuleInfo, TypeCtor, Constructor) = LowerBound :-
 
 upper_bound_constraints(Norm, ModuleInfo, Var, TypeCtor, Ctors, Constraints) :-
     % If all the arguments of a functor are zero sized then we can give
-    % an upper bound on its size.  If we have a set of such functors
+    % an upper bound on its size. If we have a set of such functors
     % then the upper bound is the maximum of the individual upper bounds.
     %
     % XXX We could extend this to include functors can only have a

@@ -781,6 +781,9 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ConsId = typeclass_info_const(_),
         sorry($module, $pred, "bytecode doesn't implement typeclass_info_const")
     ;
+        ConsId = ground_term_const(_, _),
+        sorry($module, $pred, "bytecode doesn't implement ground_term_const")
+    ;
         ConsId = tabling_info_const(_),
         sorry($module, $pred, "bytecode cannot implement tabling")
     ;
@@ -828,6 +831,9 @@ map_cons_tag(type_info_const_tag(_), _) :-
 map_cons_tag(typeclass_info_const_tag(_), _) :-
     unexpected($module, $pred, "typeclass_info_const cons tag " ++
         "for non-typeclass_info_const cons id").
+map_cons_tag(ground_term_const_tag(_, _), _) :-
+    unexpected($module, $pred, "ground_term_const cons tag " ++
+        "for non-ground_term_const cons id").
 map_cons_tag(tabling_info_tag(_, _), _) :-
     unexpected($module, $pred, "tabling_info_tag cons tag " ++
         "for non-tabling_info_constant cons id").

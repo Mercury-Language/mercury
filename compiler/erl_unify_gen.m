@@ -328,6 +328,9 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         ConsId = typeclass_info_const(_),
         unexpected($module, $pred, "typeclass_info_const")
     ;
+        ConsId = ground_term_const(_, _),
+        unexpected($module, $pred, "ground_term_const")
+    ;
         ( ConsId = tabling_info_const(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_decl(_)

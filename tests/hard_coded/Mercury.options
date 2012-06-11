@@ -25,6 +25,7 @@ MCFLAGS-direct_arg_cyclic3 =	--intermodule-optimization
 MCFLAGS-direct_arg_intermod1 =  --intermodule-optimization
 MCFLAGS-direct_arg_intermod2 =  --intermodule-optimization
 MCFLAGS-direct_arg_intermod3 =  --intermodule-optimization
+MCFLAGS-ground_terms = 		--from-ground-term-threshold=2
 
 # --intermodule-optimization causes impl_def_literal to abort during
 # the STM transformation (bug #136).  Its use here is disabled until

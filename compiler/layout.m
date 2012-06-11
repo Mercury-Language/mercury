@@ -277,20 +277,20 @@
 :- type module_layout_data
     --->    module_layout_common_data(
                 % defines MR_ModuleCommonLayout
-                module_common_name      :: module_name,
-                string_table_size       :: int,
-                string_table            :: string_with_0s
+                mlcd_module_common_name     :: module_name,
+                mlcd_string_table_size      :: int,
+                mlcd_string_table           :: string_with_0s
             )
     ;       module_layout_data(
                 % defines MR_ModuleLayout
-                module_name             :: module_name,
-                module_common           :: layout_name,
-                proc_layout_names       :: list(layout_name),
-                file_layouts            :: list(file_layout_data),
-                trace_level             :: trace_level,
-                suppressed_events       :: int,
-                num_label_exec_count    :: int,
-                maybe_event_specs       :: maybe(event_set_layout_data)
+                mld_module_name             :: module_name,
+                mld_module_common           :: layout_name,
+                mld_proc_layout_names       :: list(layout_name),
+                mld_file_layouts            :: list(file_layout_data),
+                mld_trace_level             :: trace_level,
+                mld_suppressed_events       :: int,
+                mld_num_label_exec_count    :: int,
+                mld_maybe_event_specs       :: maybe(event_set_layout_data)
             ).
 
 %-----------------------------------------------------------------------------%

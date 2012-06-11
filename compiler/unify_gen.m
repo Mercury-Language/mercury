@@ -170,7 +170,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
             generate_det_deconstruction(Var, ConsId, Args, Modes,
                 ConsArgWidths, Code0, !CI)
         ;
-            CodeModel = model_semi, 
+            CodeModel = model_semi,
             generate_semi_deconstruction(Var, ConsId, Args, Modes,
                 ConsArgWidths, Code0, !CI)
         ),
@@ -433,6 +433,10 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         unexpected($module, $pred,
             "Attempted typeclass_info_const_tag unification")
     ;
+        ConsTag = ground_term_const_tag(_, _),
+        unexpected($module, $pred,
+            "Attempted ground_term_const_tag unification")
+    ;
         ConsTag = tabling_info_tag(_, _),
         unexpected($module, $pred, "Attempted tabling_info unification")
     ;
@@ -635,6 +639,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
     ;
         ( ConsTag = type_info_const_tag(ConstNum)
         ; ConsTag = typeclass_info_const_tag(ConstNum)
+        ; ConsTag = ground_term_const_tag(ConstNum, _)
         ),
         get_const_struct_map(!.CI, ConstStructMap),
         map.lookup(ConstStructMap, ConstNum, typed_rval(Rval, _Type)),
@@ -1285,6 +1290,9 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
         Tag = typeclass_info_const_tag(_),
         unexpected($module, $pred, "typeclass_info_const_tag")
     ;
+        Tag = ground_term_const_tag(_, _),
+        unexpected($module, $pred, "ground_term_const_tag")
+    ;
         Tag = table_io_decl_tag(_, _),
         unexpected($module, $pred, "table_io_decl_tag")
     ;
@@ -1696,29 +1704,29 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
             TypedRval, !StaticCellInfo)
     ;
         ConsTag = no_tag,
-        generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
-            ConstArgs, ArgTypedRvals),
         (
-            ArgTypedRvals = [ArgTypedRval],
+            ConstArgs = [ConstArg],
+            generate_const_struct_arg(ModuleInfo, UnboxedFloats,
+                ConstStructMap, ConstArg, ArgTypedRval),
             TypedRval = ArgTypedRval
         ;
-            ( ArgTypedRvals = []
-            ; ArgTypedRvals = [_, _ | _]
+            ( ConstArgs = []
+            ; ConstArgs = [_, _ | _]
             ),
             unexpected($module, $pred, "no_tag arity != 1")
         )
     ;
         ConsTag = direct_arg_tag(Ptag),
-        generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
-            ConstArgs, ArgTypedRvals),
         (
-            ArgTypedRvals = [ArgTypedRval],
+            ConstArgs = [ConstArg],
+            generate_const_struct_arg(ModuleInfo, UnboxedFloats,
+                ConstStructMap, ConstArg, ArgTypedRval),
             ArgTypedRval = typed_rval(ArgRval, _RvalType),
             Rval = mkword(Ptag, ArgRval),
             TypedRval = typed_rval(Rval, lt_data_ptr)
         ;
-            ( ArgTypedRvals = []
-            ; ArgTypedRvals = [_, _ | _]
+            ( ConstArgs = []
+            ; ConstArgs = [_, _ | _]
             ),
             unexpected($module, $pred, "direct_arg_tag: arity != 1")
         )
@@ -1761,6 +1769,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_decl_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
@@ -1864,6 +1873,7 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
         ; ConsTag = shared_remote_tag(_, _)
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_decl_tag(_, _)
@@ -2063,6 +2073,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_decl_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)

@@ -133,6 +133,7 @@
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
+:- import_module hlds.const_struct.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
@@ -1915,45 +1916,104 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
 simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     GoalExpr0 = scope(Reason0, SubGoal0),
     ( Reason0 = from_ground_term(TermVar, from_ground_term_construct) ->
-        simplify_info_get_module_info(!.Info, ModuleInfo),
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, common_struct, CommonStruct),
+        simplify_info_get_module_info(!.Info, ModuleInfo0),
+        module_info_get_const_struct_db(ModuleInfo0, ConstStructDb0),
+        const_struct_db_get_ground_term_enabled(ConstStructDb0,
+            ConstStructEnabled),
         (
-            CommonStruct = yes,
-            % Traversing the construction unifications inside the scope would
-            % allow common.m to
-            %
-            % - replace some of those constructions with references to other
-            %   variables that were constructed the same way, and
-            % - remember those constructions, so that other constructions
-            %   outside the scope could be replaced with references to
-            %   variables built inside the scope.
-            %
-            % Since unifying a variable with a statically constructed ground
-            % term yields code that is at least as fast as unifying that
-            % variable with another variable that is already bound to that
-            % term, and probably faster because it does not require saving the
-            % other variable across calls, neither of these actions would be
-            % an advantage. On the other hand, both would complicate the
-            % required treatment of from_ground_term_construct scopes in
-            % liveness.m, slowing down the liveness pass, as well as this pass.
-            % Since the code inside the scope is already as simple as
-            % it can be, we leave it alone.
-            GoalExpr = GoalExpr0,
-            GoalInfo = GoalInfo0
+            ConstStructEnabled = no,
+            module_info_get_globals(ModuleInfo0, Globals),
+            globals.lookup_bool_option(Globals, common_struct, CommonStruct),
+            (
+                CommonStruct = yes,
+                % Traversing the construction unifications inside the scope
+                % would allow common.m to
+                %
+                % - replace some of those constructions with references to other
+                %   variables that were constructed the same way, and
+                % - remember those constructions, so that other constructions
+                %   outside the scope could be replaced with references to
+                %   variables built inside the scope.
+                %
+                % Since unifying a variable with a statically constructed
+                % ground term yields code that is at least as fast as unifying
+                % that variable with another variable that is already bound to
+                % that term, and probably faster because it does not require
+                % saving the other variable across calls, neither of these
+                % actions would be an advantage. On the other hand, both would
+                % complicate the required treatment of
+                % from_ground_term_construct scopes in liveness.m, slowing down
+                % the liveness pass, as well as this pass. Since the code
+                % inside the scope is already as simple as it can be, we
+                % leave it alone.
+                GoalExpr = GoalExpr0,
+                GoalInfo = GoalInfo0
+            ;
+                CommonStruct = no,
+                % Looking inside the scope may allow us to reduce the number of
+                % memory cells we may need to allocate dynamically. This
+                % improvement in the generated code trumps the cost in compile
+                % time. However, we need to update the reason, since leaving it
+                % as from_ground_term_construct would tell liveness.m that the
+                % code inside the scope hasn't had either of the actions
+                % mentioned in the comment above applied to it, and in this
+                % case, we cannot guarantee that.
+                simplify_goal(SubGoal0, SubGoal, !Info),
+                NewReason = from_ground_term(TermVar, from_ground_term_other),
+                GoalExpr = scope(NewReason, SubGoal),
+                GoalInfo = GoalInfo0
+            )
         ;
-            CommonStruct = no,
-            % Looking inside the scope may allow us to reduce the number of
-            % memory cells we may need to allocate dynamically. This
-            % improvement in the generated code trumps the cost in compile
-            % time. However, we need to update the reason, since leaving it
-            % as from_ground_term_construct would tell liveness.m that the
-            % code inside the scope hasn't had either of the actions mentioned
-            % in the comment above applied to it, and in this case, we cannot
-            % guarantee that.
-            simplify_goal(SubGoal0, SubGoal, !Info),
-            NewReason = from_ground_term(TermVar, from_ground_term_other),
-            GoalExpr = scope(NewReason, SubGoal),
+            ConstStructEnabled = yes,
+            (
+                SubGoal0 = hlds_goal(SubGoalExpr, _),
+                SubGoalExpr = conj(plain_conj, Conjuncts),
+                Conjuncts = [HeadConjunctPrime | TailConjunctsPrime]
+            ->
+                HeadConjunct = HeadConjunctPrime,
+                TailConjuncts = TailConjunctsPrime
+            ;
+                unexpected($module, $pred,
+                    "from_ground_term_construct scope is not conjunction")
+            ),
+            simplify_info_get_var_types(!.Info, VarTypes),
+            % XXX We could record _ElimVars in !Info as being eliminated.
+            % When we have finished simplifying the code of a procedure,
+            % we could delete all the eliminated vars from the varset
+            % and the vartypes. This would speed up all future lookups.
+            % However, it is not (yet) clear whether the savings on those
+            % lookups would pay for cost of the deletions themselves,
+            % as well as the cost of having an extra field in !Info.
+            simplify_construct_ground_terms(TermVar, VarTypes,
+                HeadConjunct, TailConjuncts, [], _ElimVars,
+                map.init, VarArgMap, ConstStructDb0, ConstStructDb),
+            module_info_set_const_struct_db(ConstStructDb,
+                ModuleInfo0, ModuleInfo),
+            simplify_info_set_module_info(ModuleInfo, !Info),
+
+            map.to_assoc_list(VarArgMap, VarArgs),
+            (
+                VarArgs = [TermVar - TermArg],
+                TermArg = csa_const_struct(TermConstNumPrime)
+            ->
+                TermConstNum = TermConstNumPrime
+            ;
+                unexpected($module, $pred, "unexpected VarArgMap")
+            ),
+
+            lookup_const_struct_num(ConstStructDb, TermConstNum,
+                TermConstStruct),
+            TermConsId = TermConstStruct ^ cs_cons_id,
+            ConsId = ground_term_const(TermConstNum, TermConsId),
+            RHS = rhs_functor(ConsId, no, []),
+            Unification = construct(TermVar, ConsId, [], [],
+                construct_statically, cell_is_shared, no_construct_sub_info),
+            InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
+            instmap_delta_lookup_var(InstMapDelta, TermVar, TermInst),
+            UnifyMode = (free -> TermInst) - (TermInst -> TermInst),
+            UnifyContext = unify_context(umc_explicit, []),
+            GoalExpr = unify(TermVar, RHS, UnifyMode, Unification,
+                UnifyContext),
             GoalInfo = GoalInfo0
         )
     ;
@@ -2010,6 +2070,53 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             Goal = Goal1
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo)
+    ).
+
+:- type var_to_arg_map == map(prog_var, const_struct_arg).
+
+:- pred simplify_construct_ground_terms(prog_var::in, vartypes::in,
+    hlds_goal::in, list(hlds_goal)::in,
+    list(prog_var)::in, list(prog_var)::out,
+    var_to_arg_map::in, var_to_arg_map::out,
+    const_struct_db::in, const_struct_db::out) is det.
+
+simplify_construct_ground_terms(TermVar, VarTypes, Conjunct, Conjuncts,
+        !ElimVars, !VarArgMap, !ConstStructDb) :-
+    Conjunct = hlds_goal(GoalExpr, GoalInfo),
+    (
+        GoalExpr = unify(_, _, _, Unify, _),
+        Unify = construct(LHSVarPrime, ConsIdPrime, RHSVarsPrime, _, _, _, _)
+    ->
+        LHSVar = LHSVarPrime,
+        ConsId = ConsIdPrime,
+        RHSVars = RHSVarsPrime
+    ;
+        unexpected($module, $pred, "not construction unification")
+    ),
+    map.lookup(VarTypes, LHSVar, TermType),
+    (
+        RHSVars = [],
+        Arg = csa_constant(ConsId, TermType)
+    ;
+        RHSVars = [_ | _],
+        list.map_foldl(map.det_remove, RHSVars, RHSArgs, !VarArgMap),
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
+        instmap_delta_lookup_var(InstMapDelta, LHSVar, TermInst),
+        ConstStruct = const_struct(ConsId, RHSArgs, TermType, TermInst),
+        lookup_insert_const_struct(ConstStruct, ConstNum, !ConstStructDb),
+        Arg = csa_const_struct(ConstNum)
+    ),
+    map.det_insert(LHSVar, Arg, !VarArgMap),
+    (
+        Conjuncts = [],
+        expect(unify(TermVar, LHSVar), $module, $pred,
+            "last var is not TermVar")
+    ;
+        Conjuncts = [HeadConjunct | TailConjuncts],
+        !:ElimVars = [LHSVar | !.ElimVars],
+        simplify_construct_ground_terms(TermVar, VarTypes,
+            HeadConjunct, TailConjuncts,
+            !ElimVars, !VarArgMap, !ConstStructDb)
     ).
 
 :- pred simplify_goal_trace_goal(maybe(trace_expr(trace_compiletime))::in,

@@ -1587,6 +1587,8 @@ rename_var(Must, Renaming, Var0, Var) :-
     ;       type_info_const(int)
     ;       typeclass_info_const(int)
 
+    ;       ground_term_const(int, cons_id)
+
     ;       tabling_info_const(shrouded_pred_proc_id)
             % The address of the static structure that holds information
             % about the table that implements memoization, loop checking
@@ -1661,6 +1663,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
         ConsId = type_info_const(ConstNum)
     ;
         ConsId = typeclass_info_const(ConstNum)
+    ;
+        ConsId = ground_term_const(ConstNum, _)
     ;
         ( ConsId = cons(_, _, _)
         ; ConsId = tuple_cons(_)

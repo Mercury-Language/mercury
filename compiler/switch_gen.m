@@ -439,7 +439,8 @@ separate_reserved_address_cases([TaggedCase | TaggedCases],
 
 list_contains_reserved_addr_tag([]) = no.
 list_contains_reserved_addr_tag([TaggedConsId | TaggedConsIds]) = Contains :-
-    HeadContains = is_reserved_addr_tag(TaggedConsId),
+    TaggedConsId = tagged_cons_id(_, ConsTag),
+    HeadContains = is_reserved_addr_tag(ConsTag),
     (
         HeadContains = yes,
         Contains = yes
@@ -448,13 +449,15 @@ list_contains_reserved_addr_tag([TaggedConsId | TaggedConsIds]) = Contains :-
         Contains = list_contains_reserved_addr_tag(TaggedConsIds)
     ).
 
-:- func is_reserved_addr_tag(tagged_cons_id) = bool.
+:- func is_reserved_addr_tag(cons_tag) = bool.
 
-is_reserved_addr_tag(TaggedConsId) = IsReservedAddr :-
-    TaggedConsId = tagged_cons_id(_, ConsTag),
+is_reserved_addr_tag(ConsTag) = IsReservedAddr :-
     (
         ConsTag = reserved_address_tag(_),
         IsReservedAddr = yes
+    ;
+        ConsTag = ground_term_const_tag(_, SubConsTag),
+        IsReservedAddr = is_reserved_addr_tag(SubConsTag)
     ;
         ( ConsTag = int_tag(_)
         ; ConsTag = float_tag(_)

@@ -2916,7 +2916,7 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
     ConsId = typeclass_info_cell_constructor,
 
     poly_info_get_const_struct_db(!.Info, ConstStructDb0),
-    const_struct_db_get_enabled(ConstStructDb0, ConstStructEnabled),
+    const_struct_db_get_poly_enabled(ConstStructDb0, ConstStructEnabled),
     (
         ConstStructEnabled = yes,
         all_are_const_struct_args(ArgVarsMCAs, VarConstArgs)
@@ -3322,7 +3322,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         ConsId = cell_cons_id(Cell),
 
         poly_info_get_const_struct_db(!.Info, ConstStructDb0),
-        const_struct_db_get_enabled(ConstStructDb0, Enabled),
+        const_struct_db_get_poly_enabled(ConstStructDb0, Enabled),
         (
             Enabled = yes,
             all_are_const_struct_args(ArgTypeInfoVarsMCAs,
@@ -4172,7 +4172,7 @@ materialize_typeclass_info_var(Constraint, InstanceIdConstNum, Var, Goals,
         ConsId = typeclass_info_const(InstanceIdConstNum),
         RHS = rhs_functor(ConsId, no, []),
         Unification = construct(Var, ConsId, [], [],
-            construct_dynamically, cell_is_shared, no_construct_sub_info),
+            construct_statically, cell_is_shared, no_construct_sub_info),
         UnifyMode = (free -> ground(shared, none)) -
             (ground(shared, none) -> ground(shared, none)),
         UnifyContext = unify_context(umc_explicit, []),

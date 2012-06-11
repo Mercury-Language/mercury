@@ -914,6 +914,7 @@ is_interesting_cons_id(Params, ConsId) = IsInteresting :-
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)
         ; ConsId = impl_defined_const(_)
+        ; ConsId = ground_term_const(_, _)
         ; ConsId = tabling_info_const(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_decl(_)

@@ -50,7 +50,7 @@
 
 :- type const_instance_id
     --->    ciid(
-                % The instance number. This is first because tests on it
+                % The instance number. This field is first because tests on it
                 % are cheap.
                 int,
 
@@ -67,14 +67,18 @@
     %
 :- pred const_struct_db_init(globals::in, const_struct_db::out) is det.
 
-    % Return whether the generation of separate constant structures is enabled.
-    % If it is not, the lookup_insert_const_struct and
-    % const_struct_db_get_structs predicates should never be called.
+    % Return whether the generation of separate constant structures is enabled
+    % for (a) structures created by polymorphism, and (b) for structures
+    % created in from_ground_term_construct scopes. If it is not, then
+    % lookup_insert_const_struct should not be called from polymorphism.m
+    % and simplify.m respectively.
     %
-:- pred const_struct_db_get_enabled(const_struct_db::in, bool::out) is det.
+:- pred const_struct_db_get_poly_enabled(const_struct_db::in,
+    bool::out) is det.
+:- pred const_struct_db_get_ground_term_enabled(const_struct_db::in,
+    bool::out) is det.
 
-    % Look up a constant structure in the database. If it is not there,
-    % add it.
+    % Look up a constant structure in the database. If it is not there, add it.
     %
 :- pred lookup_insert_const_struct(const_struct::in, int::out,
     const_struct_db::in, const_struct_db::out) is det.
@@ -114,6 +118,7 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module libs.trace_params.
 
 :- import_module int.
 :- import_module pair.
@@ -130,16 +135,40 @@ const_struct_db_init(Globals, Db) :-
             (
                 Tags = tags_low,
                 globals.lookup_bool_option(Globals, enable_const_struct,
-                    Enabled)
+                    OptionEnabled),
+                PolyEnabled = OptionEnabled,
+
+                globals.get_trace_level(Globals, TraceLevel),
+                globals.get_trace_suppress(Globals, TraceSuppress),
+                Bodies = trace_needs_proc_body_reps(TraceLevel, TraceSuppress),
+                (
+                    Bodies = no,
+                    GroundTermEnabled = OptionEnabled
+                ;
+                    Bodies = yes,
+                    % We generate representations of procedure bodies for the
+                    % declarative debugger and for the profiler. When
+                    % traverse_primitives in browser/declarative_tree.m
+                    % looks for the Nth argument of variable X and X is built
+                    % with a unification such as X = ground_term_const(...),
+                    % it crashes. It should be taught not to do that,
+                    % but in the meantime, we prevent the situation from
+                    % arising in the first place. (We never look for the
+                    % original sources of type infos and typeclass infos,
+                    % so we can use constant structures for them.)
+                    GroundTermEnabled = no
+                )
             ;
                 ( Tags = tags_high
                 ; Tags = tags_none
                 ),
-                Enabled = no
+                PolyEnabled = no,
+                GroundTermEnabled = no
             )
         ;
             HighLevelData = yes,
-            Enabled = no
+            PolyEnabled = no,
+            GroundTermEnabled = no
         )
     ;
         ( Target = target_il
@@ -149,9 +178,11 @@ const_struct_db_init(Globals, Db) :-
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
-        Enabled = no
+        PolyEnabled = no,
+        GroundTermEnabled = no
     ),
-    Db = const_struct_db(Enabled, 0, map.init, map.init, map.init).
+    Db = const_struct_db(PolyEnabled, GroundTermEnabled, 0,
+        map.init, map.init, map.init).
 
 lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
     const_struct_db_get_struct_map(!.Db, StructMap0),
@@ -162,7 +193,7 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
         % we don't test the enabled flag on every search. We just test
         % it on insertions. Without successful insertions, searches
         % cannot succeed, so this is enough.
-        const_struct_db_get_enabled(!.Db, Enabled),
+        const_struct_db_get_poly_enabled(!.Db, Enabled),
         (
             Enabled = no,
             unexpected($module, $pred, "not enabled")
@@ -210,11 +241,12 @@ const_struct_db_get_structs(Db, Structs) :-
 
 :- type const_struct_db
     --->    const_struct_db(
-                csdb_enabled        :: bool,
-                csdb_next_num       :: int,
-                csdb_struct_map     :: map(const_struct, int),
-                csdb_num_map        :: map(int, const_struct),
-                csdb_instance_map   :: const_instance_map
+                csdb_poly_enabled           :: bool,
+                csdb_ground_term_enabled    :: bool,
+                csdb_next_num               :: int,
+                csdb_struct_map             :: map(const_struct, int),
+                csdb_num_map                :: map(int, const_struct),
+                csdb_instance_map           :: const_instance_map
             ).
 
 :- pred const_struct_db_get_next_num(const_struct_db::in, int::out) is det.
@@ -225,7 +257,8 @@ const_struct_db_get_structs(Db, Structs) :-
 :- pred const_struct_db_get_instance_map(const_struct_db::in,
     const_instance_map::out) is det.
 
-const_struct_db_get_enabled(Db, Db ^ csdb_enabled).
+const_struct_db_get_poly_enabled(Db, Db ^ csdb_poly_enabled).
+const_struct_db_get_ground_term_enabled(Db, Db ^ csdb_ground_term_enabled).
 const_struct_db_get_next_num(Db, Db ^ csdb_next_num).
 const_struct_db_get_struct_map(Db, Db ^ csdb_struct_map).
 const_struct_db_get_num_map(Db, Db ^ csdb_num_map).

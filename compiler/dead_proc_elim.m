@@ -644,6 +644,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
             ;
                 ( ConsId = type_info_const(ConstNum)
                 ; ConsId = typeclass_info_const(ConstNum)
+                ; ConsId = ground_term_const(ConstNum, _)
                 ),
                 Entity = entity_const_struct(ConstNum),
                 queue.put(Entity, !Queue),

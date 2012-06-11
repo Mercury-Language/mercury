@@ -526,25 +526,41 @@ unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
     params_get_var_types(Params, VarTypes),
     map.lookup(VarTypes, OutVar, Type),
     \+ type_is_higher_order(Type),
-    \+ cons_id_is_const_struct(ConsId, _),
-    type_to_ctor_det(Type, TypeCtor),
-    filter_args_and_modes(VarTypes, Args0, Args1, Modes0, Modes1),
-    functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
-        Args1, Args, Modes1, Modes),
-    split_unification_vars(Args, Modes, ModuleInfo, InVars, OutVars).
+    \+ (
+        ConsId = type_info_const(_)
+    ;
+        ConsId = typeclass_info_const(_)
+    ),
+    require_det (
+        type_to_ctor_det(Type, TypeCtor),
+        filter_typeinfos_from_args_and_modes(VarTypes, Args0, Args1,
+            Modes0, Modes1),
+        functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
+            Args1, Args, Modes1, Modes),
+        split_unification_vars(ModuleInfo, Args, Modes, InVars, OutVars)
+    ).
 
-:- pred filter_args_and_modes(vartypes::in,
+:- pred filter_typeinfos_from_args_and_modes(vartypes::in,
     list(prog_var)::in, list(prog_var)::out,
     list(uni_mode)::in, list(uni_mode)::out) is det.
 
-filter_args_and_modes(VarTypes, Args0, Args, Modes0, Modes) :-
-    assoc_list.from_corresponding_lists(Args0, Modes0, ArgsAndModes0),
-    IsNotTypeInfo = (pred(ArgMode::in) is semidet :-
-        map.lookup(VarTypes, fst(ArgMode), Type),
-        not is_introduced_type_info_type(Type)
-    ),
-    list.filter(IsNotTypeInfo, ArgsAndModes0, ArgsAndModes),
-    assoc_list.keys_and_values(ArgsAndModes, Args, Modes).
+filter_typeinfos_from_args_and_modes(_, [], [], [], []).
+filter_typeinfos_from_args_and_modes(_, [], _, [_ | _], _) :-
+    unexpected($module, $pred, "list length mismatch").
+filter_typeinfos_from_args_and_modes(_, [_ | _], _, [], _) :-
+    unexpected($module, $pred, "list length mismatch").
+filter_typeinfos_from_args_and_modes(VarTypes, [Arg0 | Args0], Args,
+        [Mode0 | Modes0], Modes) :-
+    filter_typeinfos_from_args_and_modes(VarTypes, Args0, TailArgs,
+        Modes0, TailModes),
+    map.lookup(VarTypes, Arg0, Type),
+    ( is_introduced_type_info_type(Type) ->
+        Args = TailArgs,
+        Modes = TailModes
+    ;
+        Args = [Arg0 | TailArgs],
+        Modes = [Mode0 | TailModes]
+    ).
 
 %-----------------------------------------------------------------------------%
 

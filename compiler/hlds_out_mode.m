@@ -577,16 +577,30 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = type_info_const(TIConstNum),
+        expect(unify(ArgTerms, []), $module, $pred,
+            "type_info_const arity != 0"),
         term.context_init(Context),
         FunctorName = "type_info_const",
         Arg = term.functor(term.integer(TIConstNum), [], Context),
         Term = term.functor(term.string(FunctorName), [Arg], Context)
     ;
         ConsId = typeclass_info_const(TCIConstNum),
+        expect(unify(ArgTerms, []), $module, $pred,
+            "typeclass_info_const arity != 0"),
         term.context_init(Context),
         FunctorName = "typeclass_info_const",
         Arg = term.functor(term.integer(TCIConstNum), [], Context),
         Term = term.functor(term.string(FunctorName), [Arg], Context)
+    ;
+        ConsId = ground_term_const(TCIConstNum, SubConsId),
+        expect(unify(ArgTerms, []), $module, $pred,
+            "ground_term_const arity != 0"),
+        cons_id_and_args_to_term_full(SubConsId, [], SubArg),
+        term.context_init(Context),
+        FunctorName = "ground_term_const",
+        NumArg = term.functor(term.integer(TCIConstNum), [], Context),
+        Term = term.functor(term.string(FunctorName), [NumArg, SubArg],
+            Context)
     ;
         ConsId = tabling_info_const(_),
         term.context_init(Context),

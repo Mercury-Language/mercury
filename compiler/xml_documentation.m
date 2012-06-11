@@ -665,6 +665,7 @@ cons_id(typeclass_info_cell_constructor) =
     nyi("typeclass_info_cell_constructor").
 cons_id(type_info_const(_)) = nyi("type_info_const").
 cons_id(typeclass_info_const(_)) = nyi("typeclass_info_const").
+cons_id(ground_term_const(_, _)) = nyi("ground_term_const").
 cons_id(tabling_info_const(_)) = nyi("tabling_info_const").
 cons_id(table_io_decl(_)) = nyi("table_io_decl").
 cons_id(deep_profiling_proc_layout(_)) = nyi("deep_profiling_proc_layout").

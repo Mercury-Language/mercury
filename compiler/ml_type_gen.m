@@ -322,6 +322,7 @@ ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
         ; TagVal = base_typeclass_info_tag(_, _, _)
         ; TagVal = type_info_const_tag(_)
         ; TagVal = typeclass_info_const_tag(_)
+        ; TagVal = ground_term_const_tag(_, _)
         ; TagVal = tabling_info_tag(_, _)
         ; TagVal = deep_profiling_proc_layout_tag(_, _)
         ; TagVal = table_io_decl_tag(_, _)
@@ -860,6 +861,9 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         Tag = shared_with_reserved_addresses_tag(_RAs, SubTag),
         UsesBaseClass = ml_tag_uses_base_class(SubTag)
     ;
+        Tag = ground_term_const_tag(_ConstNum, SubTag),
+        UsesBaseClass = ml_tag_uses_base_class(SubTag)
+    ;
         ( Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
@@ -1251,6 +1255,7 @@ generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
         ; TagVal = base_typeclass_info_tag(_, _, _)
         ; TagVal = type_info_const_tag(_)
         ; TagVal = typeclass_info_const_tag(_)
+        ; TagVal = ground_term_const_tag(_, _)
         ; TagVal = tabling_info_tag(_, _)
         ; TagVal = deep_profiling_proc_layout_tag(_, _)
         ; TagVal = table_io_decl_tag(_, _)

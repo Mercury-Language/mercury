@@ -612,6 +612,9 @@ cons_id_arity(ConsId) = Arity :-
     ;
         ConsId = tuple_cons(Arity)
     ;
+        ConsId = ground_term_const(_, SubConsId),
+        Arity = cons_id_arity(SubConsId)
+    ;
         ( ConsId = int_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
@@ -648,6 +651,8 @@ cons_id_maybe_arity(type_info_cell_constructor(_)) = no.
 cons_id_maybe_arity(typeclass_info_cell_constructor) = no.
 cons_id_maybe_arity(type_info_const(_)) = no.
 cons_id_maybe_arity(typeclass_info_const(_)) = no.
+cons_id_maybe_arity(ground_term_const(_, ConsId)) =
+    cons_id_maybe_arity(ConsId).
 cons_id_maybe_arity(tabling_info_const(_)) = no.
 cons_id_maybe_arity(deep_profiling_proc_layout(_)) = no.
 cons_id_maybe_arity(table_io_decl(_)) = no.

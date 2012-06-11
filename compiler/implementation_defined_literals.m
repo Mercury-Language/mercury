@@ -111,6 +111,7 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
                 ; ConsId = typeclass_info_cell_constructor
                 ; ConsId = type_info_const(_)
                 ; ConsId = typeclass_info_const(_)
+                ; ConsId = ground_term_const(_, _)
                 ; ConsId = tabling_info_const(_)
                 ; ConsId = deep_profiling_proc_layout(_)
                 ; ConsId = table_io_decl(_)

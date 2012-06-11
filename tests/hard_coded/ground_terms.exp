@@ -1,0 +1,16 @@
+[yes(yes), yes(no), no, yes(no), yes(yes), yes(yes)]
+notag([yes(yes), yes(no), no, yes(no), yes(yes), yes(yes)])
+[notag(yes(yes)), notag(yes(no)), notag(no), notag(yes(no)), notag(yes(yes)), notag(yes(yes))]
+[yes(notag(yes)), yes(notag(no)), no, yes(notag(no)), yes(notag(yes)), yes(notag(yes))]
+da1({1, 2, 3, 4})
+da2(no)
+da2(yes({no, yes, no}))
+da6(["a", "bb", "ccc", "dddd"])
+da8(yes({yes, yes, no}))
+da6(["A", "BB", "CCC", "DDDD"])
+da1(56.78)
+da2(no)
+da2(yes({no, yes, no}))
+da6(["a", "bb", "ccc", "dddd"])
+da8(yes({yes, yes, no}))
+da6(["A", "BB", "CCC", "DDDD"])

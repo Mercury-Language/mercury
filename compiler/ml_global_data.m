@@ -784,6 +784,9 @@ cons_id_to_alloc_site_string(ConsId) = TypeStr :-
         ConsId = typeclass_info_const(_),
         TypeStr = "typeclass_info_const"
     ;
+        ConsId = ground_term_const(_, _),
+        TypeStr = "ground_term_const"
+    ;
         ( ConsId = int_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
