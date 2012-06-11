@@ -214,7 +214,9 @@ MR_destroy_engine(MercuryEngine *eng)
 */
 
 void
-MR_dump_prev_locations(void) {}
+MR_dump_prev_locations(void)
+{
+}
 
 #else /* !MR_HIGHLEVEL_CODE */
 

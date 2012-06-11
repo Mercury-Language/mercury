@@ -2417,8 +2417,10 @@ MR_setup_call_intervals(char **more_str_ptr,
 
     more_str = *more_str_ptr;
 
-    /* Relying on the return value from sscanf() with %n is
-       non-portable, so we need to call sscanf() twice here. */
+    /*
+    ** Relying on the return value from sscanf() with %n is non-portable,
+    ** so we need to call sscanf() twice here.
+    */
     if (sscanf(more_str, "%lu-%lu", &min, &max) == 2) {
         sscanf(more_str, "%lu-%lu%n", &min, &max, &n);
         more_str += n;
