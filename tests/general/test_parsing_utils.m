@@ -245,7 +245,15 @@ test_case("float_literal_as_string", stringify(float_literal_as_string),
 test_case("float_literal_as_string", stringify(float_literal_as_string),
     "-123.0e1   abc", yes("\"-123.0e1\"")).
 test_case("float_literal_as_string", stringify(float_literal_as_string),
+    "-123.0e-1   abc", yes("\"-123.0e-1\"")).
+test_case("float_literal_as_string", stringify(float_literal_as_string),
+    "-123.0e+1   abc", yes("\"-123.0e+1\"")).
+test_case("float_literal_as_string", stringify(float_literal_as_string),
+    "-123.0E1   abc", yes("\"-123.0E1\"")).
+test_case("float_literal_as_string", stringify(float_literal_as_string),
     "-123.0E-1   abc", yes("\"-123.0E-1\"")).
+test_case("float_literal_as_string", stringify(float_literal_as_string),
+    "-123.0E+1   abc", yes("\"-123.0E+1\"")).
 
 test_case("float_literal", stringify(float_literal),
     "", no).
@@ -261,6 +269,8 @@ test_case("float_literal", stringify(float_literal),
     "-123.0   abc", yes("-123.0")).
 test_case("float_literal", stringify(float_literal),
     "-123.0e1   abc", yes("-1230.0")).
+test_case("float_literal", stringify(float_literal),
+    "-123.0e+1   abc", yes("-1230.0")).
 test_case("float_literal", stringify(float_literal),
     "-123.0E-1   abc", yes("-12.3")).
 
