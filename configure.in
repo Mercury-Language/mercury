@@ -5521,9 +5521,11 @@ done
 MERCURY_MSG("")
 num_installed_grades=0
 MERCURY_MSG("the set of library grades to install will be")
+> .configured_library_grades
 for grade in $LIBGRADES
 do
     MERCURY_MSG("   $grade")
+    echo "$grade" >> .configured_library_grades
     num_installed_grades=`expr $num_installed_grades + 1`
 done
 MERCURY_MSG("")
