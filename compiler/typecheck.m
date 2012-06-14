@@ -1839,9 +1839,12 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
     type_assign_get_var_types(TypeAssign0, VarTypes0),
     (
         ArgTypes0 = [Type | ArgTypes],
-        ( map.search(VarTypes0, Var, VarType) ->
+        map.search_insert(Var, Type, MaybeOldVarType, VarTypes0, VarTypes),
+        (
+            MaybeOldVarType = yes(OldVarType),
             (
-                type_assign_unify_type(TypeAssign0, VarType, Type, TypeAssign1)
+                type_assign_unify_type(TypeAssign0, OldVarType, Type,
+                    TypeAssign1)
             ->
                 NewTypeAssign = args(TypeAssign1, ArgTypes, ClassContext),
                 !:ArgTypeAssignSet = [NewTypeAssign | !.ArgTypeAssignSet]
@@ -1849,7 +1852,7 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
                 true
             )
         ;
-            map.det_insert(Var, Type, VarTypes0, VarTypes),
+            MaybeOldVarType = no,
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             NewTypeAssign = args(TypeAssign, ArgTypes, ClassContext),
             !:ArgTypeAssignSet = [NewTypeAssign | !.ArgTypeAssignSet]
@@ -1924,24 +1927,26 @@ typecheck_var_has_type(Var, Type, !Info) :-
     mer_type::in, type_assign_set::in, type_assign_set::out) is det.
 
 typecheck_var_has_type_2([], _, _, !TypeAssignSet).
-typecheck_var_has_type_2([TypeAssign0 | TypeAssignSet0], Var, Type,
+typecheck_var_has_type_2([TypeAssign0 | TypeAssigns0], Var, Type,
         !TypeAssignSet) :-
     type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet),
-    typecheck_var_has_type_2(TypeAssignSet0, Var, Type, !TypeAssignSet).
+    typecheck_var_has_type_2(TypeAssigns0, Var, Type, !TypeAssignSet).
 
 :- pred type_assign_var_has_type(type_assign::in, prog_var::in, mer_type::in,
     type_assign_set::in, type_assign_set::out) is det.
 
 type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
     type_assign_get_var_types(TypeAssign0, VarTypes0),
-    ( map.search(VarTypes0, Var, VarType) ->
-        ( type_assign_unify_type(TypeAssign0, VarType, Type, TypeAssign1) ->
+    map.search_insert(Var, Type, MaybeOldVarType, VarTypes0, VarTypes),
+    (
+        MaybeOldVarType = yes(OldVarType),
+        ( type_assign_unify_type(TypeAssign0, OldVarType, Type, TypeAssign1) ->
             !:TypeAssignSet = [TypeAssign1 | !.TypeAssignSet]
         ;
             !:TypeAssignSet = !.TypeAssignSet
         )
     ;
-        map.det_insert(Var, Type, VarTypes0, VarTypes),
+        MaybeOldVarType = no,
         type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
         !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
     ).
@@ -2274,7 +2279,9 @@ typecheck_unify_var_var_2([TypeAssign0 | TypeAssigns0], X, Y,
 type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
     type_assign_get_var_types(TypeAssign0, VarTypes0),
     ( map.search(VarTypes0, X, TypeX) ->
-        ( map.search(VarTypes0, Y, TypeY) ->
+        map.search_insert(Y, TypeX, MaybeTypeY, VarTypes0, VarTypes),
+        (
+            MaybeTypeY = yes(TypeY),
             % Both X and Y already have types - just unify their types.
             ( type_assign_unify_type(TypeAssign0, TypeX, TypeY, TypeAssign3) ->
                 !:TypeAssignSet = [TypeAssign3 | !.TypeAssignSet]
@@ -2282,8 +2289,7 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
                 !:TypeAssignSet = !.TypeAssignSet
             )
         ;
-            % Y is a fresh variable which hasn't been assigned a type yet.
-            map.det_insert(Y, TypeX, VarTypes0, VarTypes),
+            MaybeTypeY = no,
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
         )
@@ -2321,7 +2327,9 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign0,
         !ArgsTypeAssignSet) :-
     % Unify the type of Var with the type of the constructor.
     type_assign_get_var_types(TypeAssign0, VarTypes0),
-    ( map.search(VarTypes0, Y, TypeY) ->
+    map.search_insert(Y, ConsType, MaybeTypeY, VarTypes0, VarTypes),
+    (
+        MaybeTypeY = yes(TypeY),
         ( type_assign_unify_type(TypeAssign0, ConsType, TypeY, TypeAssign) ->
             % The constraints are empty here because none are added by
             % unification with a functor.
@@ -2332,9 +2340,9 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign0,
             true
         )
     ;
+        MaybeTypeY = no,
         % The constraints are empty here because none are added by
         % unification with a functor.
-        map.det_insert(Y, ConsType, VarTypes0, VarTypes),
         type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
         empty_hlds_constraints(EmptyConstraints),
         ArgsTypeAssign = args(TypeAssign, ArgTypes, EmptyConstraints),
@@ -2349,7 +2357,9 @@ type_assign_check_functor_type_builtin(ConsType, Y, TypeAssign0,
         !TypeAssignSet) :-
     % Unify the type of Var with the type of the constructor.
     type_assign_get_var_types(TypeAssign0, VarTypes0),
-    ( map.search(VarTypes0, Y, TypeY) ->
+    map.search_insert(Y, ConsType, MaybeTypeY, VarTypes0, VarTypes),
+    (
+        MaybeTypeY = yes(TypeY),
         ( type_assign_unify_type(TypeAssign0, ConsType, TypeY, TypeAssign) ->
             % The constraints are empty here because none are added by
             % unification with a functor.
@@ -2358,9 +2368,9 @@ type_assign_check_functor_type_builtin(ConsType, Y, TypeAssign0,
             true
         )
     ;
+        MaybeTypeY = no,
         % The constraints are empty here because none are added by
         % unification with a functor.
-        map.det_insert(Y, ConsType, VarTypes0, VarTypes),
         type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
         !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
     ).

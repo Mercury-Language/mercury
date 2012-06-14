@@ -230,19 +230,21 @@
     --->    type_assign(
                 var_types           :: vartypes,
                 type_varset         :: tvarset,
+
+                % Universally quantified type variables.
                 head_type_params    :: head_type_params,
-                                    % Universally quantified type variables.
+
+                % Type bindings.
                 type_bindings       :: tsubst,
-                                    % Type bindings.
+
+                % The set of class constraints collected so far.
                 class_constraints   :: hlds_constraints,
-                                    % The set of class constraints
-                                    % collected so far.
+
+                % For each constraint found to be redundant, why is it so?
                 constraint_proofs   :: constraint_proof_map,
-                                    % For each constraint found to be
-                                    % redundant, why is it so?
+
+                % Maps constraint identifiers to the actual constraints.
                 constraint_map      :: constraint_map
-                                    % Maps constraint identifiers to the
-                                    % actual constraints.
             ).
 
 %-----------------------------------------------------------------------------%
