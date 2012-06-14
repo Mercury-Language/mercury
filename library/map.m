@@ -27,6 +27,7 @@
 
 :- import_module assoc_list.
 :- import_module list.
+:- import_module maybe.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -151,6 +152,15 @@
 :- func map.det_update(map(K, V), K, V) = map(K, V).
 :- pred map.det_update(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
 
+    % map.search_insert(K, V, MaybeOldV, !Map):
+    %
+    % Search for the key K in the map. If the key is already in the map,
+    % with corresponding value OldV, set MaybeOldV to yes(OldV). If it
+    % is not in the map, then insert it into the map with value V.
+    %
+:- pred map.search_insert(K::in, V::in, maybe(V)::out,
+    map(K, V)::in, map(K, V)::out) is det.
+
     % Update the value at the given key by applying the supplied
     % transformation to it.  Fails if the key is not found.  This is faster
     % than first searching for the value and then updating it.
@@ -227,6 +237,13 @@
     %
 :- func map.delete_list(map(K, V), list(K)) = map(K, V).
 :- pred map.delete_list(list(K)::in, map(K, V)::in, map(K, V)::out) is det.
+
+    % Apply map.delete/3 to a sorted list of keys. The fact that the list
+    % is sorted may make this more efficient.
+    %
+:- func map.delete_sorted_list(map(K, V), list(K)) = map(K, V).
+:- pred map.delete_sorted_list(list(K)::in, map(K, V)::in, map(K, V)::out)
+    is det.
 
     % Delete a key-value pair from a map and return the value.
     % Fail if the key is not present.
@@ -733,6 +750,9 @@
 :- pragma type_spec(map.det_update/4, K = var(_)).
 :- pragma type_spec(map.det_update/4, K = int).
 
+:- pragma type_spec(map.search_insert/5, K = var(_)).
+:- pragma type_spec(map.search_insert/5, K = int).
+
 :- pragma type_spec(map.overlay/2, K = var(_)).
 :- pragma type_spec(map.overlay/3, K = var(_)).
 
@@ -756,6 +776,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module pair.
 :- import_module require.
 
@@ -880,14 +901,14 @@ map.set_from_assoc_list([K - V | KVs], !Map) :-
     map.set(K, V, !Map),
     map.set_from_assoc_list(KVs, !Map).
 
-map.update(M1, K, V) = M2 :-
-    map.update(K, V, M1, M2).
+map.update(M0, K, V) = M :-
+    map.update(K, V, M0, M).
 
 map.update(K, V, !Map) :-
     tree234.update(K, V, !Map).
 
-map.det_update(M1, K, V) = M2 :-
-    map.det_update(K, V, M1, M2).
+map.det_update(M0, K, V) = M :-
+    map.det_update(K, V, M0, M).
 
 map.det_update(K, V, !Map) :-
     ( tree234.update(K, V, !.Map, NewMap) ->
@@ -895,6 +916,9 @@ map.det_update(K, V, !Map) :-
     ;
         report_lookup_error("map.det_update: key not found", K, V)
     ).
+
+map.search_insert(K, V, MaybeOldV, !Map) :-
+    tree234.search_insert(K, V, MaybeOldV, !Map).
 
 map.transform_value(P, K, !Map) :-
     tree234.transform_value(P, K, !Map).
@@ -969,19 +993,69 @@ map.from_rev_sorted_assoc_list(AL) = M :-
 map.from_rev_sorted_assoc_list(L, M) :-
     tree234.from_rev_sorted_assoc_list(L, M).
 
-map.delete(M1, K) = M2 :-
-    map.delete(K, M1, M2).
+map.delete(M0, K) = M :-
+    map.delete(K, M0, M).
 
 map.delete(Key, !Map) :-
     tree234.delete(Key, !Map).
 
-map.delete_list(M1, Ks) = M2 :-
-    map.delete_list(Ks, M1, M2).
+map.delete_list(M0, Ks) = M :-
+    map.delete_list(Ks, M0, M).
 
 map.delete_list([], !Map).
-map.delete_list([Key | Keys], !Map) :-
-    map.delete(Key, !Map),
-    map.delete_list(Keys, !Map).
+map.delete_list([DeleteKey | DeleteKeys], !Map) :-
+    map.delete(DeleteKey, !Map),
+    map.delete_list(DeleteKeys, !Map).
+
+map.delete_sorted_list(M0, Ks) = M :-
+    map.delete_sorted_list(Ks, M0, M).
+
+map.delete_sorted_list(DeleteKeys, !Map) :-
+    list.length(DeleteKeys, NumDeleteKeys),
+    find_min_size_based_on_depth(!.Map, MinSize),
+    ( NumDeleteKeys * 5 < MinSize ->
+        % Use this technique when we delete fewer than 20% of the keys.
+        map.delete_list(DeleteKeys, !Map)
+    ;
+        % Use this technique when we delete at least 20% of the keys.
+        map.to_assoc_list(!.Map, Pairs0),
+        map.delete_sorted_list_loop(DeleteKeys, Pairs0, [], RevPairs,
+            LeftOverPairs),
+        reverse_list_acc(RevPairs, LeftOverPairs, Pairs),
+        % Pairs = list.reverse(RevPairs) ++ LeftOverPairs,
+        map.from_assoc_list(Pairs, !:Map)
+    ).
+
+:- pred map.delete_sorted_list_loop(list(K)::in,
+    assoc_list(K, V)::in, assoc_list(K, V)::in, assoc_list(K, V)::out,
+    assoc_list(K, V)::out) is det.
+
+map.delete_sorted_list_loop([], Pairs, !RevPairs, Pairs).
+map.delete_sorted_list_loop([_ | _], [], !RevPairs, []).
+map.delete_sorted_list_loop([DeleteKey | DeleteKeys], [Pair0 | Pairs0],
+        !RevPairs, LeftOverPairs) :-
+    Pair0 = Key0 - _,
+    compare(Result, DeleteKey, Key0),
+    (
+        Result = (<),
+        map.delete_sorted_list_loop(DeleteKeys, [Pair0 | Pairs0],
+            !RevPairs, LeftOverPairs)
+    ;
+        Result = (=),
+        map.delete_sorted_list_loop(DeleteKeys, Pairs0,
+            !RevPairs, LeftOverPairs)
+    ;
+        Result = (>),
+        !:RevPairs = [Pair0 | !.RevPairs],
+        map.delete_sorted_list_loop([DeleteKey | DeleteKeys], Pairs0,
+            !RevPairs, LeftOverPairs)
+    ).
+
+:- pred reverse_list_acc(list(T)::in, list(T)::in, list(T)::out) is det.
+
+reverse_list_acc([], L, L).
+reverse_list_acc([X | Xs], L0, L) :-
+    reverse_list_acc(Xs, [X | L0], L).
 
 map.remove(Key, Value, !Map) :-
     tree234.remove(Key, Value, !Map).

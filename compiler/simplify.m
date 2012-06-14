@@ -32,7 +32,6 @@
 :- interface.
 
 :- import_module check_hlds.common.
-:- import_module check_hlds.det_util.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
@@ -42,6 +41,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.
@@ -127,6 +127,7 @@
 :- implementation.
 
 :- import_module check_hlds.det_analysis.
+:- import_module check_hlds.det_util.
 :- import_module check_hlds.format_call.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
@@ -150,7 +151,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -161,6 +161,7 @@
 :- import_module transform_hlds.pd_cost.
 
 :- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -431,30 +432,34 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         FormatSpecs = []
     ),
 
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId,
-        pess_extra_vars_report, [], DetInfo0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
-    simplify_info_init(DetInfo0, Simplifications, InstMap0, !.ProcInfo, Info0),
+    simplify_info_init(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
+        InstMap0, Simplifications, Info0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     simplify_process_clause_body_goal(Goal0, Goal, Info0, Info),
     proc_info_set_goal(Goal, !ProcInfo),
 
-    simplify_info_get_var_types(Info, VarTypes),
-    simplify_info_get_rtti_varmaps(Info, RttiVarMaps),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
-    proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
-
     simplify_info_get_varset(Info, VarSet0),
+    simplify_info_get_var_types(Info, VarTypes1),
+    simplify_info_get_rtti_varmaps(Info, RttiVarMaps),
+    simplify_info_get_elim_vars(Info, ElimVarsLists0),
+    % We sort the lists basically on the number of the first variable.
+    list.sort(ElimVarsLists0, ElimVarsLists),
+    list.condense(ElimVarsLists, ElimVars),
+    varset.delete_sorted_vars(ElimVars, VarSet0, VarSet1),
+    map.delete_sorted_list(ElimVars, VarTypes1, VarTypes),
+    % We only eliminate vars that cannot occur in RttiVarMaps.
     ( simplify_do_after_front_end(Info) ->
         proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
-        map.foldl(varset.name_var, VarNameRemap, VarSet0, VarSet),
+        map.foldl(varset.name_var, VarNameRemap, VarSet1, VarSet),
         proc_info_set_var_name_remap(map.init, !ProcInfo)
     ;
         VarSet = VarSet0
     ),
     proc_info_set_varset(VarSet, !ProcInfo),
+    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
     simplify_info_get_has_parallel_conj(Info, HasParallelConj),
     proc_info_set_has_parallel_conj(HasParallelConj, !ProcInfo),
@@ -718,7 +723,7 @@ do_process_clause_body_goal(!Goal, !Info) :-
             % in the instmap_delta for a goal.
             % In the alias branch this is necessary anyway.
             simplify_info_get_module_info(!.Info, !:ModuleInfo),
-            InstVarSet = !.Info ^ simp_inst_varset,
+            simplify_info_get_inst_varset(!.Info, InstVarSet),
             recompute_instmap_delta(recompute_atomic_instmap_deltas, !Goal,
                 !.VarTypes, InstVarSet, InstMap0, !ModuleInfo),
             simplify_info_set_module_info(!.ModuleInfo, !Info)
@@ -727,8 +732,7 @@ do_process_clause_body_goal(!Goal, !Info) :-
         true
     ),
     ( simplify_info_rerun_det(!.Info) ->
-        some [!VarSet, !VarTypes, !RttiVarMaps, !ModuleInfo, !ProcInfo,
-            !DetInfo]
+        some [!VarSet, !VarTypes, !RttiVarMaps, !ModuleInfo, !ProcInfo]
         (
             det_get_soln_context(Detism, SolnContext),
 
@@ -739,9 +743,7 @@ do_process_clause_body_goal(!Goal, !Info) :-
             simplify_info_get_varset(!.Info, !:VarSet),
             simplify_info_get_var_types(!.Info, !:VarTypes),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
-            simplify_info_get_det_info(!.Info, !:DetInfo),
-            det_info_get_pred_id(!.DetInfo, PredId),
-            det_info_get_proc_id(!.DetInfo, ProcId),
+            simplify_info_get_pred_proc_id(!.Info, PredId, ProcId),
             module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
                 PredInfo, !:ProcInfo),
             proc_info_set_vartypes(!.VarTypes, !ProcInfo),
@@ -751,10 +753,14 @@ do_process_clause_body_goal(!Goal, !Info) :-
                 PredInfo, !.ProcInfo, !ModuleInfo),
             simplify_info_set_module_info(!.ModuleInfo, !Info),
 
-            simplify_info_get_det_info(!.Info, !:DetInfo),
+            det_info_init(!.ModuleInfo, !.VarTypes, PredId, ProcId,
+                pess_extra_vars_report, [], DetInfo0),
             det_infer_goal(!Goal, InstMap0, SolnContext, [], no,
-                _, _, !DetInfo),
-            simplify_info_set_det_info(!.DetInfo, !Info)
+                _, _, DetInfo0, DetInfo),
+            det_info_get_module_info(DetInfo, !:ModuleInfo),
+            det_info_get_vartypes(DetInfo, !:VarTypes),
+            simplify_info_set_module_info(!.ModuleInfo, !Info),
+            simplify_info_set_var_types(!.VarTypes, !Info)
         )
     ;
         true
@@ -781,7 +787,6 @@ simplify_goal(Goal0, Goal, !Info) :-
         Goal0ContainsTrace = contains_no_trace_goal
     ),
     Detism = goal_info_get_determinism(GoalInfo0),
-    simplify_info_get_det_info(!.Info, DetInfo),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     goal_can_loop_or_throw(Goal0, Goal0CanLoopOrThrow,
         ModuleInfo0, ModuleInfo),
@@ -796,7 +801,7 @@ simplify_goal(Goal0, Goal, !Info) :-
         ; Purity = purity_semipure
         ),
         Goal0ContainsTrace = contains_no_trace_goal,
-        ( det_info_get_fully_strict(DetInfo, no)
+        ( simplify_info_get_fully_strict(!.Info, no)
         ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
     ->
@@ -826,7 +831,7 @@ simplify_goal(Goal0, Goal, !Info) :-
                 severity_warning, no),
             Spec = error_spec(Severity,
                 phase_simplify(report_only_if_in_all_modes), [Msg]),
-            simplify_info_add_error_spec(Spec, !Info)
+            simplify_info_add_simple_code_spec(Spec, !Info)
         ;
             true
         ),
@@ -852,13 +857,16 @@ simplify_goal(Goal0, Goal, !Info) :-
         MaxSoln \= at_most_zero,
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
         NonLocalVars = goal_info_get_nonlocals(GoalInfo0),
+        simplify_info_get_module_info(!.Info, ModuleInfo),
+        simplify_info_get_var_types(!.Info, VarTypes),
         simplify_info_get_instmap(!.Info, InstMap0),
-        det_no_output_vars(NonLocalVars, InstMap0, InstMapDelta, DetInfo),
+        instmap_delta_no_output_vars(ModuleInfo, VarTypes,
+            InstMap0, InstMapDelta, NonLocalVars),
         ( Purity = purity_pure
         ; Purity = purity_semipure
         ),
         Goal0ContainsTrace = contains_no_trace_goal,
-        ( det_info_get_fully_strict(DetInfo, no)
+        ( simplify_info_get_fully_strict(!.Info, no)
         ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
     ->
@@ -893,7 +901,7 @@ simplify_goal(Goal0, Goal, !Info) :-
 %       ->
 %           Msg = det_goal_has_no_outputs,
 %           ContextMsg = context_det_msg(Context, Msg),
-%           simplify_info_add_error_spec(ContextMsg, !Info)
+%           simplify_info_add_simple_code_spec(ContextMsg, !Info)
 %       ;
 %           true
 %       ),
@@ -1501,7 +1509,7 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 severity_warning, no),
             Spec = error_spec(Severity,
                 phase_simplify(report_only_if_in_all_modes), [Msg]),
-            simplify_info_add_error_spec(Spec, !Info)
+            simplify_info_add_simple_code_spec(Spec, !Info)
         ),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
@@ -1565,7 +1573,7 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                     severity_warning, no),
                 Spec = error_spec(Severity,
                     phase_simplify(report_only_if_in_all_modes), [Msg]),
-                simplify_info_add_error_spec(Spec, !Info)
+                simplify_info_add_simple_code_spec(Spec, !Info)
             ),
             simplify_info_set_requantify(!Info),
             simplify_info_set_rerun_det(!Info)
@@ -1652,7 +1660,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
             (
                 CanSwitch = cond_can_switch_on(SwitchVar),
                 Context = goal_info_get_context(CondInfo),
-                VarSet = !.Info ^ simp_varset,
+                simplify_info_get_varset(!.Info, VarSet),
                 Pieces0 = [words("Warning: this if-then-else"),
                     words("could be replaced by a switch")],
                 ( varset.search_name(VarSet, SwitchVar, SwitchVarName) ->
@@ -1668,7 +1676,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
                     yes, severity_informational, no),
                 Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
                     [Msg]),
-                simplify_info_add_error_spec(Spec, !Info)
+                simplify_info_add_simple_code_spec(Spec, !Info)
             ;
                 CanSwitch = cond_can_switch_uncommitted
             ;
@@ -1868,7 +1876,7 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             severity_warning, no),
         Spec = error_spec(Severity,
             phase_simplify(report_only_if_in_all_modes), [Msg]),
-        simplify_info_add_error_spec(Spec, !Info)
+        simplify_info_add_simple_code_spec(Spec, !Info)
     ; MaxSoln = at_most_zero ->
         Pieces = [words("Warning: the negated goal cannot succeed.")],
         Msg = simple_msg(Context,
@@ -1877,7 +1885,7 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             severity_warning, no),
         Spec = error_spec(Severity,
             phase_simplify(report_only_if_in_all_modes), [Msg]),
-        simplify_info_add_error_spec(Spec, !Info)
+        simplify_info_add_simple_code_spec(Spec, !Info)
     ;
         true
     ),
@@ -1929,8 +1937,8 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 % Traversing the construction unifications inside the scope
                 % would allow common.m to
                 %
-                % - replace some of those constructions with references to other
-                %   variables that were constructed the same way, and
+                % - replace some of those constructions with references to
+                %   other variables that were constructed the same way, and
                 % - remember those constructions, so that other constructions
                 %   outside the scope could be replaced with references to
                 %   variables built inside the scope.
@@ -1977,18 +1985,12 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                     "from_ground_term_construct scope is not conjunction")
             ),
             simplify_info_get_var_types(!.Info, VarTypes),
-            % XXX We could record _ElimVars in !Info as being eliminated.
-            % When we have finished simplifying the code of a procedure,
-            % we could delete all the eliminated vars from the varset
-            % and the vartypes. This would speed up all future lookups.
-            % However, it is not (yet) clear whether the savings on those
-            % lookups would pay for cost of the deletions themselves,
-            % as well as the cost of having an extra field in !Info.
             simplify_construct_ground_terms(TermVar, VarTypes,
-                HeadConjunct, TailConjuncts, [], _ElimVars,
+                HeadConjunct, TailConjuncts, [], ElimVars,
                 map.init, VarArgMap, ConstStructDb0, ConstStructDb),
             module_info_set_const_struct_db(ConstStructDb,
                 ModuleInfo0, ModuleInfo),
+            simplify_info_add_elim_vars(ElimVars, !Info),
             simplify_info_set_module_info(ModuleInfo, !Info),
 
             map.to_assoc_list(VarArgMap, VarArgs),
@@ -2426,9 +2428,9 @@ simplify_or_else_goals([Goal0 | Goals0], [Goal | Goals], !Info) :-
 inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
         !Info) :-
     % Construct the variable to hold the comparison result.
-    VarSet0 = !.Info ^ simp_varset,
+    simplify_info_get_varset(!.Info, VarSet0),
     varset.new_var(R, VarSet0, VarSet),
-    !Info ^ simp_varset := VarSet,
+    simplify_info_set_varset(VarSet, !Info),
 
     % We have to add the type of R to the var_types.
     simplify_info_get_var_types(!.Info, VarTypes0),
@@ -2508,12 +2510,10 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
         pred_info_get_markers(PredInfo, Markers),
         check_marker(Markers, marker_obsolete),
 
-        simplify_info_get_det_info(!.Info, DetInfo0),
-        det_info_get_pred_id(DetInfo0, ThisPredId),
-
         % Don't warn about directly recursive calls. (That would cause
         % spurious warnings, particularly with builtin predicates,
         % or preds defined using foreign_procs.)
+        simplify_info_get_pred_proc_id(!.Info, ThisPredId, _),
         PredId \= ThisPredId,
 
         % Don't warn about calls from predicates that also have a
@@ -2535,7 +2535,7 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
             severity_warning, no),
         ObsoleteSpec = error_spec(ObsoleteSeverity,
             phase_simplify(report_in_any_mode), [ObsoleteMsg]),
-        simplify_info_add_error_spec(ObsoleteSpec, !Info)
+        simplify_info_add_simple_code_spec(ObsoleteSpec, !Info)
     ;
         true
     ),
@@ -2547,9 +2547,7 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
 
         % Is this a (directly) recursive call, i.e. is the procedure being
         % called the same as the procedure we're analyzing?
-        simplify_info_get_det_info(!.Info, DetInfo),
-        det_info_get_pred_id(DetInfo, PredId),
-        det_info_get_proc_id(DetInfo, ProcId),
+        simplify_info_get_pred_proc_id(!.Info, PredId, ProcId),
 
         % Don't count inline builtins. (The compiler generates code for
         % builtins that looks recursive, so that you can take their address,
@@ -2621,7 +2619,7 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
             severity_warning, no),
         InfiniteRecSpec = error_spec(InfiniteRecSeverity,
             phase_simplify(report_in_any_mode), [InfiniteRecMsg]),
-        simplify_info_add_error_spec(InfiniteRecSpec, !Info)
+        simplify_info_add_simple_code_spec(InfiniteRecSpec, !Info)
     ;
         true
     ),
@@ -3109,13 +3107,11 @@ call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo, Call) :-
 
 make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     % Extract the information from simplify_info.
-    simplify_info_get_det_info(!.Info, DetInfo0),
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    det_info_get_module_info(DetInfo0, ModuleInfo0),
-    det_info_get_pred_id(DetInfo0, PredId),
-    det_info_get_proc_id(DetInfo0, ProcId),
+    simplify_info_get_module_info(!.Info, ModuleInfo0),
+    simplify_info_get_pred_proc_id(!.Info, PredId, ProcId),
 
     some [!PredInfo, !ProcInfo, !PolyInfo] (
         % The varset, vartypes and rtti_varmaps get updated by the call to
@@ -3695,7 +3691,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
                 severity_warning, no),
             Spec = error_spec(Severity,
                 phase_simplify(report_only_if_in_all_modes), [Msg]),
-            simplify_info_add_error_spec(Spec, !Info)
+            simplify_info_add_simple_code_spec(Spec, !Info)
         ;
             true
         ),
@@ -3707,8 +3703,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
             ;
                 % Only remove disjuncts that might loop
                 % or call error/1 if --no-fully-strict.
-                simplify_info_get_det_info(!.Info, DetInfo),
-                det_info_get_fully_strict(DetInfo, no)
+                simplify_info_get_fully_strict(!.Info, no)
             )
         ->
             RevGoals1 = RevGoals0
@@ -3961,274 +3956,12 @@ case_list_contains_trace([Case0 | Cases0], [Case | Cases], !ContainsTrace) :-
     case_list_contains_trace(Cases0, Cases, !ContainsTrace).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-:- type simplify_info
-    --->    simplify_info(
-                simp_det_info                :: det_info,
-                simp_error_specs             :: list(error_spec),
-                simp_simplifications         :: simplifications,
-
-                % Info about common subexpressions.
-                simp_common_info             :: common_info,
-
-                simp_instmap                 :: instmap,
-                simp_varset                  :: prog_varset,
-                simp_inst_varset             :: inst_varset,
-
-                % Does the goal need requantification?
-                simp_requantify              :: bool,
-
-                % Do we need to recompute instmap_deltas for atomic goals?
-                simp_recompute_atomic        :: bool,
-
-                % Does determinism analysis need to be rerun?
-                simp_rerun_det               :: bool,
-
-                % Measure of the improvement in the goal from simplification.
-                simp_cost_delta              :: int,
-
-                % Count of the number of lambdas which enclose
-                % the current goal.
-                simp_lambdas                 :: int,
-
-                % Information about type_infos and typeclass_infos.
-                simp_rtti_varmaps            :: rtti_varmaps,
-
-                % Are we currently inside a goal that was duplicated
-                % for a switch?
-                simp_inside_dupl_for_switch  :: bool,
-
-                % Have we seen a parallel conjunction?
-                simp_has_parallel_conj       :: bool,
-
-                % Have we seen a goal with a feature that says it contains
-                % a trace goal?
-                simp_found_contains_trace    :: bool,
-
-                % Have we seen an event call?
-                simp_has_user_event          :: bool
-            ).
-
-simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_inst_varset(ProcInfo, InstVarSet),
-    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    Info = simplify_info(DetInfo, [], Simplifications,
-        common_info_init, InstMap, VarSet, InstVarSet,
-        no, no, no, 0, 0, RttiVarMaps, no, no, no, no).
-
-    % Reinitialise the simplify_info before reprocessing a goal.
-    %
-:- pred simplify_info_reinit(simplifications::in, instmap::in,
-    simplify_info::in, simplify_info::out) is det.
-
-simplify_info_reinit(Simplifications, InstMap0, !Info) :-
-    !Info ^ simp_simplifications := Simplifications,
-    !Info ^ simp_common_info := common_info_init,
-    !Info ^ simp_instmap := InstMap0,
-    !Info ^ simp_requantify := no,
-    !Info ^ simp_recompute_atomic := no,
-    !Info ^ simp_rerun_det := no,
-    !Info ^ simp_lambdas := 0,
-    !Info ^ simp_has_parallel_conj := no,
-    !Info ^ simp_has_user_event := no.
-
-    % exported for common.m
 :- interface.
-
-:- import_module parse_tree.prog_data.
-
-:- pred simplify_info_init(det_info::in, simplifications::in,
-    instmap::in, proc_info::in, simplify_info::out) is det.
-
-:- pred simplify_info_get_det_info(simplify_info::in, det_info::out) is det.
-:- pred simplify_info_get_error_specs(simplify_info::in, list(error_spec)::out)
-    is det.
-:- pred simplify_info_get_simplifications(simplify_info::in,
-    simplifications::out) is det.
-:- pred simplify_info_get_common_info(simplify_info::in, common_info::out)
-    is det.
-:- pred simplify_info_get_instmap(simplify_info::in, instmap::out) is det.
-:- pred simplify_info_get_varset(simplify_info::in, prog_varset::out) is det.
-:- pred simplify_info_get_var_types(simplify_info::in, vartypes::out) is det.
-:- pred simplify_info_requantify(simplify_info::in) is semidet.
-:- pred simplify_info_recompute_atomic(simplify_info::in) is semidet.
-:- pred simplify_info_rerun_det(simplify_info::in) is semidet.
-:- pred simplify_info_get_cost_delta(simplify_info::in, int::out) is det.
-:- pred simplify_info_get_rtti_varmaps(simplify_info::in, rtti_varmaps::out)
-    is det.
-
-:- pred simplify_info_get_module_info(simplify_info::in, module_info::out)
-    is det.
-:- pred simplify_info_get_pred_proc_info(simplify_info::in, pred_info::out,
-    proc_info::out) is det.
-
-:- pred simplify_info_set_common_info(common_info::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_requantify(
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_rerun_det(
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_rtti_varmaps(rtti_varmaps::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_do_add_error_spec(error_spec::in,
-    simplify_info::in, simplify_info::out) is det.
-
-:- pred simplify_info_incr_cost_delta(int::in,
-    simplify_info::in, simplify_info::out) is det.
-
 :- pred simplify_info_apply_substitutions_and_duplicate(prog_var::in,
     prog_var::in, tsubst::in, simplify_info::in, simplify_info::out) is det.
-
 :- implementation.
-
-:- pred simplify_info_get_inside_duplicated_for_switch(simplify_info::in,
-    bool::out) is det.
-:- pred simplify_info_get_has_parallel_conj(simplify_info::in, bool::out)
-    is det.
-:- pred simplify_info_get_found_contains_trace(simplify_info::in, bool::out)
-    is det.
-:- pred simplify_info_get_has_user_event(simplify_info::in, bool::out) is det.
-
-simplify_info_get_det_info(Info, Info ^ simp_det_info).
-simplify_info_get_error_specs(Info, Info ^ simp_error_specs).
-simplify_info_get_simplifications(Info, Info ^ simp_simplifications).
-simplify_info_get_common_info(Info, Info ^ simp_common_info).
-simplify_info_get_instmap(Info, Info ^ simp_instmap).
-simplify_info_get_varset(Info, Info ^ simp_varset).
-simplify_info_get_var_types(Info, VarTypes) :-
-    det_info_get_vartypes(Info ^ simp_det_info, VarTypes).
-simplify_info_requantify(Info) :-
-    Info ^ simp_requantify = yes.
-simplify_info_recompute_atomic(Info) :-
-    Info ^ simp_recompute_atomic = yes.
-simplify_info_rerun_det(Info) :-
-    Info ^ simp_rerun_det = yes.
-simplify_info_get_cost_delta(Info, Info ^ simp_cost_delta).
-simplify_info_get_rtti_varmaps(Info, Info ^ simp_rtti_varmaps).
-simplify_info_get_inside_duplicated_for_switch(Info,
-    Info ^ simp_inside_dupl_for_switch).
-simplify_info_get_has_parallel_conj(Info, Info ^ simp_has_parallel_conj).
-simplify_info_get_found_contains_trace(Info, Info ^ simp_found_contains_trace).
-simplify_info_get_has_user_event(Info, Info ^ simp_has_user_event).
-
-simplify_info_get_module_info(Info, ModuleInfo) :-
-    simplify_info_get_det_info(Info, DetInfo),
-    det_info_get_module_info(DetInfo, ModuleInfo).
-
-simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
-    simplify_info_get_det_info(Info, DetInfo),
-    det_info_get_module_info(DetInfo, ModuleInfo),
-    det_info_get_pred_id(DetInfo, PredId),
-    det_info_get_proc_id(DetInfo, ProcId),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo).
-
-:- pred simplify_info_set_det_info(det_info::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_error_specs(list(error_spec)::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_simplifications(simplifications::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_instmap(instmap::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_varset(prog_varset::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_var_types(vartypes::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_recompute_atomic(
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_inside_duplicated_for_switch(bool::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_has_parallel_conj(bool::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_found_contains_trace(bool::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_has_user_event(bool::in,
-    simplify_info::in, simplify_info::out) is det.
-
-:- pred simplify_info_add_error_spec(error_spec::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_cost_delta(int::in,
-    simplify_info::in, simplify_info::out) is det.
-
-:- pred simplify_info_enter_lambda(simplify_info::in, simplify_info::out)
-    is det.
-:- pred simplify_info_leave_lambda(simplify_info::in, simplify_info::out)
-    is det.
-:- pred simplify_info_inside_lambda(simplify_info::in) is semidet.
-
-:- pred simplify_info_set_module_info(module_info::in,
-    simplify_info::in, simplify_info::out) is det.
-
-simplify_info_set_det_info(Det, !Info) :-
-    !Info ^ simp_det_info := Det.
-simplify_info_set_error_specs(Specs, !Info) :-
-    !Info ^ simp_error_specs := Specs.
-simplify_info_set_simplifications(Simp, !Info) :-
-    !Info ^ simp_simplifications := Simp.
-simplify_info_set_instmap(InstMap, !Info) :-
-    !Info ^ simp_instmap := InstMap.
-simplify_info_set_common_info(Common, !Info) :-
-    !Info ^ simp_common_info := Common.
-simplify_info_set_varset(VarSet, !Info) :-
-    !Info ^ simp_varset := VarSet.
-simplify_info_set_var_types(VarTypes, !Info) :-
-    DetInfo0 = !.Info ^ simp_det_info,
-    det_info_set_vartypes(VarTypes, DetInfo0, DetInfo),
-    !Info ^ simp_det_info := DetInfo.
-simplify_info_set_requantify(!Info) :-
-    !Info ^ simp_requantify := yes.
-simplify_info_set_recompute_atomic(!Info) :-
-    !Info ^ simp_recompute_atomic := yes.
-simplify_info_set_rerun_det(!Info) :-
-    !Info ^ simp_rerun_det := yes.
-simplify_info_set_cost_delta(Delta, !Info) :-
-    !Info ^ simp_cost_delta := Delta.
-simplify_info_set_rtti_varmaps(Rtti, !Info) :-
-    !Info ^ simp_rtti_varmaps := Rtti.
-simplify_info_set_inside_duplicated_for_switch(IDFS, !Info) :-
-    !Info ^ simp_inside_dupl_for_switch := IDFS.
-simplify_info_set_has_parallel_conj(MHPC, !Info) :-
-    !Info ^ simp_has_parallel_conj := MHPC.
-simplify_info_set_found_contains_trace(FCT, !Info) :-
-    !Info ^ simp_found_contains_trace := FCT.
-simplify_info_set_has_user_event(HUE, !Info) :-
-    !Info ^ simp_has_user_event := HUE.
-
-simplify_info_incr_cost_delta(Incr, !Info) :-
-    !Info ^ simp_cost_delta := !.Info ^ simp_cost_delta + Incr.
-
-simplify_info_add_error_spec(Spec, !Info) :-
-    ( simplify_do_warn_simple_code(!.Info) ->
-        simplify_info_do_add_error_spec(Spec, !Info)
-    ;
-        true
-    ).
-
-simplify_info_do_add_error_spec(Spec, !Info) :-
-    simplify_info_get_error_specs(!.Info, Specs0),
-    Specs = [Spec | Specs0],
-    simplify_info_set_error_specs(Specs, !Info).
-
-simplify_info_enter_lambda(!Info) :-
-    !Info ^ simp_lambdas := !.Info ^ simp_lambdas + 1.
-
-simplify_info_leave_lambda(!Info) :-
-    LambdaCount = !.Info ^ simp_lambdas - 1,
-    ( LambdaCount >= 0 ->
-        !Info ^ simp_lambdas := LambdaCount
-    ;
-        unexpected($module, $pred, "left too many lambdas")
-    ).
-
-simplify_info_inside_lambda(Info) :-
-    Info ^ simp_lambdas > 0.
-
-simplify_info_set_module_info(ModuleInfo, !Info) :-
-    simplify_info_get_det_info(!.Info, DetInfo0),
-    det_info_set_module_info(ModuleInfo, DetInfo0, DetInfo),
-    simplify_info_set_det_info(DetInfo, !Info).
 
 simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
         !Info) :-
@@ -4242,11 +3975,42 @@ simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
     simplify_info_set_var_types(VarTypes, !Info),
     simplify_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
+%-----------------------------------------------------------------------------%
+
 :- pred simplify_info_update_instmap(hlds_goal::in,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_info_update_instmap(Goal, Info, Info ^ simp_instmap := InstMap) :-
-    update_instmap(Goal, Info ^ simp_instmap, InstMap).
+simplify_info_update_instmap(Goal, !Info) :-
+    simplify_info_get_instmap(!.Info, InstMap0),
+    update_instmap(Goal, InstMap0, InstMap),
+    simplify_info_set_instmap(InstMap, !Info).
+
+%-----------------------------------------------------------------------------%
+
+    % Reset the instmap and seen calls for the next branch.
+    %
+:- pred simplify_info_post_branch_update(simplify_info::in, simplify_info::in,
+    simplify_info::out) is det.
+
+simplify_info_post_branch_update(PreBranchInfo, PostBranchInfo0, Info) :-
+    simplify_info_get_instmap(PreBranchInfo, InstMap),
+    simplify_info_set_instmap(InstMap, PostBranchInfo0, PostBranchInfo1),
+    simplify_info_get_common_info(PreBranchInfo, Common),
+    simplify_info_set_common_info(Common, PostBranchInfo1, Info).
+
+    % Undo updates to the simplify_info before redoing simplification
+    % on a goal.
+    %
+:- pred simplify_info_undo_goal_updates(simplify_info::in, simplify_info::in,
+    simplify_info::out) is det.
+
+simplify_info_undo_goal_updates(Info0, !Info) :-
+    simplify_info_get_common_info(Info0, CommonInfo0),
+    simplify_info_set_common_info(CommonInfo0, !Info),
+    simplify_info_get_instmap(Info0, InstMap),
+    simplify_info_set_instmap(InstMap, !Info).
+
+%-----------------------------------------------------------------------------%
 
 :- type before_after
     --->    before
@@ -4375,28 +4139,364 @@ will_flush(shorthand(ShortHand), _) = WillFlush :-
         unexpected($module, $pred, "bi_implication")
     ).
 
-    % Reset the instmap and seen calls for the next branch.
+%-----------------------------------------------------------------------------%
+
+:- pred simplify_info_get_pred_proc_id(simplify_info::in,
+    pred_id::out, proc_id::out) is det.
+
+:- pred simplify_info_get_pred_proc_info(simplify_info::in, pred_info::out,
+    proc_info::out) is det.
+
+simplify_info_get_pred_proc_id(Info, PredId, ProcId) :-
+    SubInfo = Info ^ simp_sub_info,
+    PredId = SubInfo ^ ssimp_pred_id,
+    ProcId = SubInfo ^ ssimp_proc_id.
+
+simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo) :-
+    simplify_info_get_module_info(Info, ModuleInfo),
+    simplify_info_get_pred_proc_id(Info, PredId, ProcId),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred simplify_info_add_elim_vars(list(prog_var)::in,
+    simplify_info::in, simplify_info::out) is det.
+
+simplify_info_add_elim_vars(ElimVars, !Info) :-
+    simplify_info_get_elim_vars(!.Info, ElimVarsLists0),
+    ElimVarsLists = [ElimVars | ElimVarsLists0],
+    simplify_info_set_elim_vars(ElimVarsLists, !Info).
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
+:- pred simplify_info_add_error_spec(error_spec::in,
+    simplify_info::in, simplify_info::out) is det.
+:- implementation.
+
+simplify_info_add_error_spec(Spec, !Info) :-
+    simplify_info_get_error_specs(!.Info, Specs0),
+    Specs = [Spec | Specs0],
+    simplify_info_set_error_specs(Specs, !Info).
+
+:- pred simplify_info_add_simple_code_spec(error_spec::in,
+    simplify_info::in, simplify_info::out) is det.
+
+simplify_info_add_simple_code_spec(Spec, !Info) :-
+    ( simplify_do_warn_simple_code(!.Info) ->
+        simplify_info_add_error_spec(Spec, !Info)
+    ;
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
+:- pred simplify_info_requantify(simplify_info::in) is semidet.
+:- pred simplify_info_rerun_det(simplify_info::in) is semidet.
+:- implementation.
+
+simplify_info_requantify(Info) :-
+    Info ^ simp_sub_info ^ ssimp_requantify = yes.
+simplify_info_rerun_det(Info) :-
+    Info ^ simp_sub_info ^ ssimp_rerun_det = yes.
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
+:- pred simplify_info_incr_cost_delta(int::in,
+    simplify_info::in, simplify_info::out) is det.
+:- implementation.
+
+simplify_info_incr_cost_delta(Incr, !Info) :-
+    simplify_info_get_cost_delta(!.Info, CostDelta0),
+    CostDelta = CostDelta0 + Incr,
+    simplify_info_set_cost_delta(CostDelta, !Info).
+
+%-----------------------------------------------------------------------------%
+
+:- pred simplify_info_enter_lambda(simplify_info::in, simplify_info::out)
+    is det.
+:- pred simplify_info_leave_lambda(simplify_info::in, simplify_info::out)
+    is det.
+:- pred simplify_info_inside_lambda(simplify_info::in) is semidet.
+
+simplify_info_enter_lambda(!Info) :-
+    simplify_info_get_lambdas(!.Info, Lambdas0),
+    Lambdas = Lambdas0 + 1,
+    simplify_info_set_lambdas(Lambdas, !Info).
+
+simplify_info_leave_lambda(!Info) :-
+    simplify_info_get_lambdas(!.Info, Lambdas0),
+    Lambdas = Lambdas0 - 1,
+    ( Lambdas >= 0 ->
+        simplify_info_set_lambdas(Lambdas, !Info)
+    ;
+        unexpected($module, $pred, "left too many lambdas")
+    ).
+
+simplify_info_inside_lambda(Info) :-
+    simplify_info_get_lambdas(Info, Lambdas),
+    Lambdas > 0.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- type simplify_info
+    --->    simplify_info(
+                % The eight most frequently used fields.
+
+                % The tasks we do in this invocation of simplification.
+/* 1 */         simp_simplifications        :: simplifications,
+
+                % The whole module. Those parts of it that are also contained
+                % in other fields of simplify_info and simplify_sub_info
+                % may be out of date in the module_info.
+/* 2 */         simp_module_info            :: module_info,
+
+                % The types of the variables in the procedure being simplified.
+/* 3 */         simp_vartypes               :: vartypes,
+
+                % The instmap at the current point in the procedure.
+/* 4 */         simp_instmap                :: instmap,
+
+                % Are we currently inside a goal that was duplicated
+                % for a switch?
+/* 5 */         simp_inside_dupl_for_switch :: bool,
+
+                % The value of the --fully-strict option.
+/* 6 */         simp_fully_strict           :: bool,
+
+                % Info about common subexpressions.
+/* 7 */         simp_common_info            :: common_info,
+
+/* 8 */         simp_sub_info               :: simplify_sub_info
+            ).
+
+:- type simplify_sub_info
+    --->    simplify_sub_info(
+                % The id of the procedure we are simplifying, and some of the
+                % fields of its proc_infos.
+                ssimp_pred_id               :: pred_id,
+                ssimp_proc_id               :: proc_id,
+                ssimp_varset                :: prog_varset,
+                ssimp_inst_varset           :: inst_varset,
+                ssimp_rtti_varmaps          :: rtti_varmaps,
+
+                % The variables we have eliminated. Each list of vars consists
+                % of a list of consecutive variable numbers in ascending order.
+                % The relative order of the lists is unknown.
+                ssimp_elim_vars             :: list(list(prog_var)),
+
+                ssimp_error_specs           :: list(error_spec),
+
+                % Does the goal need requantification?
+                ssimp_requantify            :: bool,
+
+                % Does determinism analysis need to be rerun?
+                ssimp_rerun_det             :: bool,
+
+                % Measure of the improvement in the goal from simplification.
+                ssimp_cost_delta            :: int,
+
+                % Count of the number of lambdas which enclose
+                % the current goal.
+                ssimp_lambdas               :: int,
+
+                % Have we seen a parallel conjunction?
+                ssimp_has_parallel_conj     :: bool,
+
+                % Have we seen a goal with a feature that says it contains
+                % a trace goal?
+                ssimp_found_contains_trace  :: bool,
+
+                % Have we seen an event call?
+                ssimp_has_user_event        :: bool
+            ).
+
+:- interface.
+:- pred simplify_info_init(module_info::in, pred_id::in, proc_id::in,
+    proc_info::in, instmap::in, simplifications::in, simplify_info::out)
+    is det.
+:- implementation.
+
+simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, InstMap,
+        Simplifications, Info) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+    SubInfo = simplify_sub_info(PredId, ProcId, VarSet, InstVarSet,
+        RttiVarMaps, [], [], no, no, 0, 0, no, no, no),
+    Info = simplify_info(Simplifications, ModuleInfo, VarTypes, InstMap, no,
+        FullyStrict, common_info_init, SubInfo).
+
+    % Reinitialise the simplify_info before reprocessing a goal.
     %
-:- pred simplify_info_post_branch_update(simplify_info::in, simplify_info::in,
-    simplify_info::out) is det.
+:- pred simplify_info_reinit(simplifications::in, instmap::in,
+    simplify_info::in, simplify_info::out) is det.
 
-simplify_info_post_branch_update(PreBranchInfo, PostBranchInfo0, Info) :-
-    simplify_info_get_instmap(PreBranchInfo, InstMap),
-    simplify_info_set_instmap(InstMap, PostBranchInfo0, PostBranchInfo1),
-    simplify_info_get_common_info(PreBranchInfo, Common),
-    simplify_info_set_common_info(Common, PostBranchInfo1, Info).
+simplify_info_reinit(Simplifications, InstMap0, !Info) :-
+    !Info ^ simp_simplifications := Simplifications,
+    !Info ^ simp_common_info := common_info_init,
+    !Info ^ simp_instmap := InstMap0,
+    !Info ^ simp_sub_info ^ ssimp_requantify := no,
+    !Info ^ simp_sub_info ^ ssimp_rerun_det := no,
+    !Info ^ simp_sub_info ^ ssimp_lambdas := 0,
+    !Info ^ simp_sub_info ^ ssimp_has_parallel_conj := no,
+    !Info ^ simp_sub_info ^ ssimp_has_user_event := no.
 
-    % Undo updates to the simplify_info before redoing simplification
-    % on a goal.
-    %
-:- pred simplify_info_undo_goal_updates(simplify_info::in, simplify_info::in,
-    simplify_info::out) is det.
+%-----------------------------------------------------------------------------%
 
-simplify_info_undo_goal_updates(Info0, !Info) :-
-    simplify_info_get_common_info(Info0, CommonInfo0),
-    simplify_info_set_common_info(CommonInfo0, !Info),
-    simplify_info_get_instmap(Info0, InstMap),
-    simplify_info_set_instmap(InstMap, !Info).
+% Simple getters of fields in the simplify_info.
+:- pred simplify_info_get_simplifications(simplify_info::in,
+    simplifications::out) is det.
+:- interface.
+:- pred simplify_info_get_module_info(simplify_info::in, module_info::out)
+    is det.
+:- pred simplify_info_get_var_types(simplify_info::in, vartypes::out) is det.
+:- implementation.
+:- pred simplify_info_get_instmap(simplify_info::in, instmap::out) is det.
+:- pred simplify_info_get_inside_duplicated_for_switch(simplify_info::in,
+    bool::out) is det.
+:- pred simplify_info_get_fully_strict(simplify_info::in, bool::out) is det.
+:- interface.
+:- pred simplify_info_get_common_info(simplify_info::in, common_info::out)
+    is det.
+:- implementation.
+
+% Simple getters of fields in the sub_simplify_info.
+:- interface.
+:- pred simplify_info_get_varset(simplify_info::in, prog_varset::out) is det.
+:- implementation.
+:- pred simplify_info_get_inst_varset(simplify_info::in,
+    inst_varset::out) is det.
+:- interface.
+:- pred simplify_info_get_rtti_varmaps(simplify_info::in, rtti_varmaps::out)
+    is det.
+:- implementation.
+:- pred simplify_info_get_elim_vars(simplify_info::in,
+    list(list(prog_var))::out) is det.
+:- pred simplify_info_get_error_specs(simplify_info::in, list(error_spec)::out)
+    is det.
+:- interface.
+:- pred simplify_info_get_cost_delta(simplify_info::in, int::out) is det.
+:- implementation.
+:- pred simplify_info_get_lambdas(simplify_info::in, int::out) is det.
+:- pred simplify_info_get_has_parallel_conj(simplify_info::in, bool::out)
+    is det.
+:- pred simplify_info_get_found_contains_trace(simplify_info::in, bool::out)
+    is det.
+:- pred simplify_info_get_has_user_event(simplify_info::in, bool::out) is det.
+
+% Simple setters of fields in the simplify_info.
+:- pred simplify_info_set_simplifications(simplifications::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_module_info(module_info::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_var_types(vartypes::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_instmap(instmap::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_inside_duplicated_for_switch(bool::in,
+    simplify_info::in, simplify_info::out) is det.
+:- interface.
+:- pred simplify_info_set_common_info(common_info::in,
+    simplify_info::in, simplify_info::out) is det.
+:- implementation.
+
+% Simple setters of fields in the sub_simplify_info.
+
+:- pred simplify_info_set_varset(prog_varset::in,
+    simplify_info::in, simplify_info::out) is det.
+:- interface.
+:- pred simplify_info_set_rtti_varmaps(rtti_varmaps::in,
+    simplify_info::in, simplify_info::out) is det.
+:- implementation.
+:- pred simplify_info_set_elim_vars(list(list(prog_var))::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_error_specs(list(error_spec)::in,
+    simplify_info::in, simplify_info::out) is det.
+:- interface.
+:- pred simplify_info_set_requantify(
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_rerun_det(
+    simplify_info::in, simplify_info::out) is det.
+:- implementation.
+:- pred simplify_info_set_cost_delta(int::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_lambdas(int::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_has_parallel_conj(bool::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_found_contains_trace(bool::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_has_user_event(bool::in,
+    simplify_info::in, simplify_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+simplify_info_get_simplifications(Info, Info ^ simp_simplifications).
+simplify_info_get_module_info(Info, Info ^ simp_module_info).
+simplify_info_get_var_types(Info, Info ^ simp_vartypes).
+simplify_info_get_instmap(Info, Info ^ simp_instmap).
+simplify_info_get_inside_duplicated_for_switch(Info,
+    Info ^ simp_inside_dupl_for_switch).
+simplify_info_get_fully_strict(Info, Info ^ simp_fully_strict).
+simplify_info_get_common_info(Info, Info ^ simp_common_info).
+
+simplify_info_get_varset(Info, Info ^ simp_sub_info ^ ssimp_varset).
+simplify_info_get_inst_varset(Info, Info ^ simp_sub_info ^ ssimp_inst_varset).
+simplify_info_get_rtti_varmaps(Info,
+    Info ^ simp_sub_info ^ ssimp_rtti_varmaps).
+simplify_info_get_elim_vars(Info, Info ^ simp_sub_info ^ ssimp_elim_vars).
+simplify_info_get_error_specs(Info, Info ^ simp_sub_info ^ ssimp_error_specs).
+simplify_info_get_cost_delta(Info, Info ^ simp_sub_info ^ ssimp_cost_delta).
+simplify_info_get_lambdas(Info, Info ^ simp_sub_info ^ ssimp_lambdas).
+simplify_info_get_has_parallel_conj(Info,
+    Info ^ simp_sub_info ^ ssimp_has_parallel_conj).
+simplify_info_get_found_contains_trace(Info,
+    Info ^ simp_sub_info ^ ssimp_found_contains_trace).
+simplify_info_get_has_user_event(Info,
+    Info ^ simp_sub_info ^ ssimp_has_user_event).
+
+simplify_info_set_simplifications(Simp, !Info) :-
+    !Info ^ simp_simplifications := Simp.
+simplify_info_set_module_info(ModuleInfo, !Info) :-
+    !Info ^ simp_module_info := ModuleInfo.
+simplify_info_set_var_types(VarTypes, !Info) :-
+    !Info ^ simp_vartypes := VarTypes.
+simplify_info_set_instmap(InstMap, !Info) :-
+    !Info ^ simp_instmap := InstMap.
+simplify_info_set_inside_duplicated_for_switch(IDFS, !Info) :-
+    !Info ^ simp_inside_dupl_for_switch := IDFS.
+simplify_info_set_common_info(Common, !Info) :-
+    !Info ^ simp_common_info := Common.
+
+simplify_info_set_varset(VarSet, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_varset := VarSet.
+simplify_info_set_rtti_varmaps(Rtti, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_rtti_varmaps := Rtti.
+simplify_info_set_elim_vars(EV, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_elim_vars := EV.
+simplify_info_set_error_specs(Specs, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_error_specs := Specs.
+simplify_info_set_requantify(!Info) :-
+    !Info ^ simp_sub_info ^ ssimp_requantify := yes.
+simplify_info_set_rerun_det(!Info) :-
+    !Info ^ simp_sub_info ^ ssimp_rerun_det := yes.
+simplify_info_set_cost_delta(Delta, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_cost_delta := Delta.
+simplify_info_set_lambdas(Lambdas, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_lambdas := Lambdas.
+simplify_info_set_has_parallel_conj(MHPC, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_has_parallel_conj := MHPC.
+simplify_info_set_found_contains_trace(FCT, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_found_contains_trace := FCT.
+simplify_info_set_has_user_event(HUE, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_has_user_event := HUE.
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.

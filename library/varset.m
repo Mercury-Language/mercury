@@ -89,6 +89,12 @@
 :- pred varset.delete_vars(list(var(T))::in, varset(T)::in, varset(T)::out)
     is det.
 
+    % Delete the names and values for a sorted list of variables.
+    %
+:- func varset.delete_sorted_vars(varset(T), list(var(T))) = varset(T).
+:- pred varset.delete_sorted_vars(list(var(T))::in,
+    varset(T)::in, varset(T)::out) is det.
+
     % Return a list of all the variables in a varset.
     %
 :- func varset.vars(varset(T)) = list(var(T)).
@@ -350,17 +356,25 @@ varset.new_vars_2(NumVars, !RevNewVars, !VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-varset.delete_var(Var, varset(MaxId, !.Names, !.Values),
-        varset(MaxId, !:Names, !:Values)) :-
-    map.delete(Var, !Names),
-    map.delete(Var, !Values).
+varset.delete_var(DeleteVar, !VarSet) :-
+    !.VarSet = varset(MaxId, Names0, Values0),
+    map.delete(DeleteVar, Names0, Names),
+    map.delete(DeleteVar, Values0, Values),
+    !:VarSet = varset(MaxId, Names, Values).
 
 %-----------------------------------------------------------------------------%
 
-varset.delete_vars([], !VarSet).
-varset.delete_vars([Var | Vars], !VarSet) :-
-    varset.delete_var(Var, !VarSet),
-    varset.delete_vars(Vars, !VarSet).
+varset.delete_vars(DeleteVars, !VarSet) :-
+    !.VarSet = varset(MaxId, Names0, Values0),
+    map.delete_list(DeleteVars, Names0, Names),
+    map.delete_list(DeleteVars, Values0, Values),
+    !:VarSet = varset(MaxId, Names, Values).
+
+varset.delete_sorted_vars(DeleteVars, !VarSet) :-
+    !.VarSet = varset(MaxId, Names0, Values0),
+    map.delete_sorted_list(DeleteVars, Names0, Names),
+    map.delete_sorted_list(DeleteVars, Values0, Values),
+    !:VarSet = varset(MaxId, Names, Values).
 
 %-----------------------------------------------------------------------------%
 
@@ -710,6 +724,9 @@ varset.delete_var(!.VS, V) = !:VS :-
 
 varset.delete_vars(!.VS, Vs) = !:VS :-
     varset.delete_vars(Vs, !VS).
+
+varset.delete_sorted_vars(!.VS, Vs) = !:VS :-
+    varset.delete_sorted_vars(Vs, !VS).
 
 varset.vars(VS) = Vs :-
     varset.vars(VS, Vs).

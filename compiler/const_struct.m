@@ -34,7 +34,7 @@
 
                 % The type and inst of the term.
                 cs_term_type    :: mer_type,
-                cs_term_int     :: mer_inst
+                cs_term_inst    :: mer_inst
             ).
 
 :- type const_struct_arg
@@ -119,8 +119,11 @@
 
 :- import_module libs.options.
 :- import_module libs.trace_params.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 
 :- import_module int.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 
@@ -182,32 +185,55 @@ const_struct_db_init(Globals, Db) :-
         GroundTermEnabled = no
     ),
     Db = const_struct_db(PolyEnabled, GroundTermEnabled, 0,
-        map.init, map.init, map.init).
+        map.init, map.init, map.init, map.init).
 
 lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
-    const_struct_db_get_struct_map(!.Db, StructMap0),
-    ( map.search(StructMap0, ConstStruct, ConstNumPrime) ->
-        ConstNum = ConstNumPrime
+    const_struct_db_get_poly_enabled(!.Db, Enabled),
+    (
+        Enabled = no,
+        unexpected($module, $pred, "not enabled")
     ;
-        % Since we expect many searches to be successful if enabled,
-        % we don't test the enabled flag on every search. We just test
-        % it on insertions. Without successful insertions, searches
-        % cannot succeed, so this is enough.
-        const_struct_db_get_poly_enabled(!.Db, Enabled),
-        (
-            Enabled = no,
-            unexpected($module, $pred, "not enabled")
+        Enabled = yes,
+        ConstStruct = const_struct(ConsId, Args, Type, Inst),
+        ( ConsId = cons(SymName, _, _) ->
+            Name = unqualify_name(SymName),
+            ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId,
+                Type, Inst),
+            const_struct_db_get_next_num(!.Db, NextConstNum),
+            const_struct_db_get_cons_proxy_map(!.Db, ConsMap0),
+            map.search_insert(ConsProxyStruct, NextConstNum, MaybeOldConstNum,
+                ConsMap0, ConsMap),
+            (
+                MaybeOldConstNum = yes(ConstNum)
+                % ConsMap should be the same as ConsMap0.
+            ;
+                MaybeOldConstNum = no,
+                ConstNum = NextConstNum,
+                const_struct_db_get_num_map(!.Db, NumMap0),
+                map.det_insert(ConstNum, ConstStruct, NumMap0, NumMap),
+
+                const_struct_db_set_next_num(NextConstNum + 1, !Db),
+                const_struct_db_set_cons_proxy_map(ConsMap, !Db),
+                const_struct_db_set_num_map(NumMap, !Db)
+            )
         ;
-            Enabled = yes,
-            const_struct_db_get_next_num(!.Db, ConstNum),
-            const_struct_db_set_next_num(ConstNum + 1, !Db),
+            const_struct_db_get_next_num(!.Db, NextConstNum),
+            const_struct_db_get_other_struct_map(!.Db, OtherMap0),
+            map.search_insert(ConstStruct, NextConstNum, MaybeOldConstNum,
+                OtherMap0, OtherMap),
+            (
+                MaybeOldConstNum = yes(ConstNum)
+                % OtherMap should be the same as OtherMap0.
+            ;
+                MaybeOldConstNum = no,
+                ConstNum = NextConstNum,
+                const_struct_db_get_num_map(!.Db, NumMap0),
+                map.det_insert(ConstNum, ConstStruct, NumMap0, NumMap),
 
-            map.det_insert(ConstStruct, ConstNum, StructMap0, StructMap),
-            const_struct_db_set_struct_map(StructMap, !Db),
-
-            const_struct_db_get_num_map(!.Db, NumMap0),
-            map.det_insert(ConstNum, ConstStruct, NumMap0, NumMap),
-            const_struct_db_set_num_map(NumMap, !Db)
+                const_struct_db_set_next_num(NextConstNum + 1, !Db),
+                const_struct_db_set_other_struct_map(OtherMap, !Db),
+                const_struct_db_set_num_map(NumMap, !Db)
+            )
         )
     ).
 
@@ -229,9 +255,18 @@ delete_const_struct(ConstNum, !Db) :-
     map.det_remove(ConstNum, ConstStruct, NumMap0, NumMap),
     const_struct_db_set_num_map(NumMap, !Db),
 
-    const_struct_db_get_struct_map(!.Db, StructMap0),
-    map.det_remove(ConstStruct, _ConstNum, StructMap0, StructMap),
-    const_struct_db_set_struct_map(StructMap, !Db).
+    ConstStruct = const_struct(ConsId, Args, Type, Inst),
+    ( ConsId = cons(SymName, _, _) ->
+        Name = unqualify_name(SymName),
+        ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId, Type, Inst),
+        const_struct_db_get_cons_proxy_map(!.Db, ConsMap0),
+        map.det_remove(ConsProxyStruct, _ConstNum, ConsMap0, ConsMap),
+        const_struct_db_set_cons_proxy_map(ConsMap, !Db)
+    ;
+        const_struct_db_get_other_struct_map(!.Db, OtherMap0),
+        map.det_remove(ConstStruct, _ConstNum, OtherMap0, OtherMap),
+        const_struct_db_set_other_struct_map(OtherMap, !Db)
+    ).
 
 const_struct_db_get_structs(Db, Structs) :-
     const_struct_db_get_num_map(Db, NumMap),
@@ -239,18 +274,37 @@ const_struct_db_get_structs(Db, Structs) :-
 
 %-----------------------------------------------------------------------------%
 
+    % Values of this type contain the same information as values of type
+    % const_struct, but in a form that should allow significantly faster
+    % comparisons, because it copies to the front the data item most useful
+    % for comparisons, the name of the function symbol. If two proxy structs
+    % match on the first two fields, they are almost certain to match
+    % on the other three as well.
+    %
+:- type cons_proxy_struct
+    --->    cons_proxy_struct(
+                cps_name        :: string,
+                cps_args        :: list(const_struct_arg),
+                cps_cons_id     :: cons_id,
+                cps_term_type   :: mer_type,
+                cps_term_inst   :: mer_inst
+            ).
+
 :- type const_struct_db
     --->    const_struct_db(
                 csdb_poly_enabled           :: bool,
                 csdb_ground_term_enabled    :: bool,
                 csdb_next_num               :: int,
-                csdb_struct_map             :: map(const_struct, int),
+                csdb_cons_proxy_map         :: map(cons_proxy_struct, int),
+                csdb_other_struct_map       :: map(const_struct, int),
                 csdb_num_map                :: map(int, const_struct),
                 csdb_instance_map           :: const_instance_map
             ).
 
 :- pred const_struct_db_get_next_num(const_struct_db::in, int::out) is det.
-:- pred const_struct_db_get_struct_map(const_struct_db::in,
+:- pred const_struct_db_get_cons_proxy_map(const_struct_db::in,
+    map(cons_proxy_struct, int)::out) is det.
+:- pred const_struct_db_get_other_struct_map(const_struct_db::in,
     map(const_struct, int)::out) is det.
 :- pred const_struct_db_get_num_map(const_struct_db::in,
     map(int, const_struct)::out) is det.
@@ -260,13 +314,16 @@ const_struct_db_get_structs(Db, Structs) :-
 const_struct_db_get_poly_enabled(Db, Db ^ csdb_poly_enabled).
 const_struct_db_get_ground_term_enabled(Db, Db ^ csdb_ground_term_enabled).
 const_struct_db_get_next_num(Db, Db ^ csdb_next_num).
-const_struct_db_get_struct_map(Db, Db ^ csdb_struct_map).
+const_struct_db_get_cons_proxy_map(Db, Db ^ csdb_cons_proxy_map).
+const_struct_db_get_other_struct_map(Db, Db ^ csdb_other_struct_map).
 const_struct_db_get_num_map(Db, Db ^ csdb_num_map).
 const_struct_db_get_instance_map(Db, Db ^ csdb_instance_map).
 
 :- pred const_struct_db_set_next_num(int::in,
     const_struct_db::in, const_struct_db::out) is det.
-:- pred const_struct_db_set_struct_map(map(const_struct, int)::in,
+:- pred const_struct_db_set_cons_proxy_map(map(cons_proxy_struct, int)::in,
+    const_struct_db::in, const_struct_db::out) is det.
+:- pred const_struct_db_set_other_struct_map(map(const_struct, int)::in,
     const_struct_db::in, const_struct_db::out) is det.
 :- pred const_struct_db_set_num_map(map(int, const_struct)::in,
     const_struct_db::in, const_struct_db::out) is det.
@@ -275,8 +332,10 @@ const_struct_db_get_instance_map(Db, Db ^ csdb_instance_map).
 
 const_struct_db_set_next_num(Num, !Db) :-
     !Db ^ csdb_next_num := Num.
-const_struct_db_set_struct_map(StructMap, !Db) :-
-    !Db ^ csdb_struct_map := StructMap.
+const_struct_db_set_cons_proxy_map(ConsMap, !Db) :-
+    !Db ^ csdb_cons_proxy_map := ConsMap.
+const_struct_db_set_other_struct_map(OtherMap, !Db) :-
+    !Db ^ csdb_other_struct_map := OtherMap.
 const_struct_db_set_num_map(NumMap, !Db) :-
     !Db ^ csdb_num_map := NumMap.
 const_struct_db_set_instance_map(InstanceMap, !Db) :-

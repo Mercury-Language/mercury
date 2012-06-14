@@ -13,6 +13,14 @@ Changes to the Mercury standard library:
   the item, otherwise it fails. The other is all_true: it succeeds if
   and only if all elements in the set pass a test.
 
+* The map and varset modules each have a new predicate that deletes
+  a sorted list of items from a map or varset, and can do so faster than
+  usual exploiting the order.
+  
+* The map and tree234 modules each have a new predicate that does a search,
+  and if the search is unsuccessful, does an insertion during the *same*
+  traversal.
+
 * The argument order of the following predicates has been changed so as to
   make them more conducive to the use of state variable notation:
   pqueue.insert/4, pqueue.remove/4, stack.push/3, stack.push_list/3,

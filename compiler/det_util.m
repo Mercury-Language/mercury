@@ -98,8 +98,8 @@
 :- pred det_lookup_var_type(module_info::in, proc_info::in, prog_var::in,
     hlds_type_defn::out) is semidet.
 
-:- pred det_no_output_vars(set_of_progvar::in, instmap::in, instmap_delta::in,
-    det_info::in) is semidet.
+:- pred det_no_output_vars(det_info::in, instmap::in, instmap_delta::in,
+    set_of_progvar::in) is semidet.
 
 :- pred det_info_add_error_spec(error_spec::in, det_info::in, det_info::out)
     is det.
@@ -213,7 +213,7 @@ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
 
-det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
+det_no_output_vars(DetInfo, InstMap, InstMapDelta, Vars) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     VarTypes = DetInfo ^ di_vartypes,
     instmap_delta_no_output_vars(ModuleInfo, VarTypes, InstMap, InstMapDelta,

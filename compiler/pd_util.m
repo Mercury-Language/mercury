@@ -245,13 +245,10 @@ pd_simplify_goal(Simplifications, Goal0, Goal, !PDInfo) :-
     % Construct a simplify_info.
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_pred_proc_id(!.PDInfo, proc(PredId, ProcId)),
-    proc_info_get_vartypes(ProcInfo0, VarTypes0),
-    det_info_init(ModuleInfo0, VarTypes0, PredId, ProcId,
-        pess_extra_vars_ignore, [], DetInfo0),
-    pd_info_get_instmap(!.PDInfo, InstMap0),
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
-    simplify_info_init(DetInfo0, Simplifications, InstMap0, ProcInfo0,
-        SimplifyInfo0),
+    pd_info_get_instmap(!.PDInfo, InstMap0),
+    simplify_info_init(ModuleInfo0, PredId, ProcId, ProcInfo0,
+        InstMap0, Simplifications, SimplifyInfo0),
 
     simplify_process_clause_body_goal(Goal0, Goal,
         SimplifyInfo0, SimplifyInfo),

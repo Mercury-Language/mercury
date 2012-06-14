@@ -28,12 +28,16 @@
 
 :- type tree234(K, V).
 
+%----------------------%
+
 :- func tree234.init = tree234(K, V).
 :- pred tree234.init(tree234(K, V)::uo) is det.
 
 :- func tree234.singleton(K, V) = tree234(K, V).
 
 :- pred tree234.is_empty(tree234(K, V)::in) is semidet.
+
+%----------------------%
 
 :- pred tree234.member(tree234(K, V)::in, K::out, V::out) is nondet.
 
@@ -42,28 +46,28 @@
 :- func tree234.lookup(tree234(K, V), K) = V.
 :- pred tree234.lookup(tree234(K, V)::in, K::in, V::out) is det.
 
-    % Search for a key-value pair using the key.  If there is no entry
+    % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next lower key instead.
     % Fails if there is no key with the given or lower value.
     %
 :- pred tree234.lower_bound_search(tree234(K, V)::in, K::in, K::out, V::out)
     is semidet.
 
-    % Search for a key-value pair using the key.  If there is no entry
+    % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next lower key instead.
     % Aborts if there is no key with the given or lower value.
     %
 :- pred tree234.lower_bound_lookup(tree234(K, V)::in, K::in, K::out, V::out)
     is det.
 
-    % Search for a key-value pair using the key.  If there is no entry
+    % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next higher key instead.
     % Fails if there is no key with the given or higher value.
     %
 :- pred tree234.upper_bound_search(tree234(K, V)::in, K::in, K::out, V::out)
     is semidet.
 
-    % Search for a key-value pair using the key.  If there is no entry
+    % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next higher key instead.
     % Aborts if there is no key with the given or higher value.
     %
@@ -74,60 +78,122 @@
 
 :- func tree234.min_key(tree234(K, V)) = K is semidet.
 
+%----------------------%
+
+    % Insert the given key/value pair into the tree. If the key is already
+    % in the tree, fail.
+    %
 :- pred tree234.insert(K::in, V::in, tree234(K, V)::in, tree234(K, V)::out)
     is semidet.
 
+    % tree234.search_insert(K, V, MaybeOldV, !Tree):
+    %
+    % Search for the key K in the tree. If the key is already in the tree,
+    % with corresponding value OldV, set MaybeOldV to yes(OldV). If it is
+    % not in the tree, then insert it into the tree with value V.
+    %
+:- pred tree234.search_insert(K::in, V::in, maybe(V)::out,
+    tree234(K, V)::in, tree234(K, V)::out) is det.
+
+    % Update the value corresponding to the given key in the tree.
+    % If the key is not already in the tree, fail.
+    %
+:- pred tree234.update(K::in, V::in, tree234(K, V)::in, tree234(K, V)::out)
+    is semidet.
+
+    % tree234.set(K, V, !Tree):
+    %
+    % Set the value corresponding to K to V, regardless of whether K is
+    % already in the tree or not.
+    %
 :- func tree234.set(tree234(K, V), K, V) = tree234(K, V).
 :- pred tree234.set(K::in, V::in, tree234(K, V)::in, tree234(K, V)::out)
     is det.
 
-:- func tree234.delete(tree234(K, V), K) = tree234(K, V).
-:- pred tree234.delete(K::in, tree234(K, V)::in, tree234(K, V)::out) is det.
-
-:- pred tree234.remove(K, V, tree234(K, V), tree234(K, V)).
-:- mode tree234.remove(in, out, in, out) is semidet.
-
-:- pred tree234.remove_smallest(K, V, tree234(K, V), tree234(K, V)).
-:- mode tree234.remove_smallest(out, out, in, out) is semidet.
-
-    % Given a tree234, return a list of all the keys in the tree.
-    % The list that is returned is in sorted order.
-    %
-:- func tree234.keys(tree234(K, V)) = list(K).
-:- pred tree234.keys(tree234(K, V)::in, list(K)::out) is det.
-
-:- func tree234.values(tree234(K, V)) = list(V).
-:- pred tree234.values(tree234(K, V)::in, list(V)::out) is det.
-
-:- pred tree234.keys_and_values(tree234(K, V)::in, list(K)::out, list(V)::out)
-    is det.
-
-:- pred tree234.update(K::in, V::in, tree234(K, V)::in, tree234(K, V)::out)
-    is semidet.
+%----------------------%
 
     % Update the value at the given key by applying the supplied
-    % transformation to it.  This is faster than first searching for
+    % transformation to it. This is faster than first searching for
     % the value and then updating it.
     %
 :- pred tree234.transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
     tree234(K, V)::in, tree234(K, V)::out) is semidet.
+
+%----------------------%
+
+    % Delete the given key from the tree if it is there.
+    %
+:- func tree234.delete(tree234(K, V), K) = tree234(K, V).
+:- pred tree234.delete(K::in, tree234(K, V)::in, tree234(K, V)::out) is det.
+
+    % If the given key exists in the tree, return it and then delete the pair.
+    % Otherwise, fail.
+    %
+:- pred tree234.remove(K, V, tree234(K, V), tree234(K, V)).
+:- mode tree234.remove(in, out, in, out) is semidet.
+
+    % Remove the smallest key from the tree, and return both it and the value
+    % corresponding to it. If the tree is empty, fail.
+    %
+:- pred tree234.remove_smallest(K, V, tree234(K, V), tree234(K, V)).
+:- mode tree234.remove_smallest(out, out, in, out) is semidet.
+
+%----------------------%
+
+    % Given a tree234, return a list of all the keys in the tree.
+    % The list that is returned is in sorted order (ascending on keys).
+    %
+:- func tree234.keys(tree234(K, V)) = list(K).
+:- pred tree234.keys(tree234(K, V)::in, list(K)::out) is det.
+
+    % Given a tree234, return a list of all the values in the tree.
+    % The list that is returned is in sorted order (ascending on the original
+    % keys, but not sorted on the values).
+    %
+:- func tree234.values(tree234(K, V)) = list(V).
+:- pred tree234.values(tree234(K, V)::in, list(V)::out) is det.
+
+    % Given a tree234, return lists of all the keys and values in the tree.
+    % The key list is in sorted order (ascending on keys).
+    % The values list is in sorted order (ascending on their keys,
+    % but not on the values themselves).
+    %
+:- pred tree234.keys_and_values(tree234(K, V)::in, list(K)::out, list(V)::out)
+    is det.
+
+%----------------------%
 
     % Count the number of elements in a tree.
     %
 :- func tree234.count(tree234(K, V)) = int.
 :- pred tree234.count(tree234(K, V)::in, int::out) is det.
 
-:- func tree234.assoc_list_to_tree234(assoc_list(K, V)) = tree234(K, V).
-:- pred tree234.assoc_list_to_tree234(assoc_list(K, V)::in,
-    tree234(K, V)::out) is det.
-
-    % Given a tree234, return an association list of all the
-    % keys and values in the tree.  The association list that
-    % is returned is sorted on the keys.
+    % Given a tree234, return an association list of all the keys and values
+    % in the tree. The association list that is returned is sorted on the keys.
     %
 :- func tree234.tree234_to_assoc_list(tree234(K, V)) = assoc_list(K, V).
 :- pred tree234.tree234_to_assoc_list(tree234(K, V)::in,
     assoc_list(K, V)::out) is det.
+
+:- func tree234.assoc_list_to_tree234(assoc_list(K, V)) = tree234(K, V).
+:- pred tree234.assoc_list_to_tree234(assoc_list(K, V)::in,
+    tree234(K, V)::out) is det.
+
+    % Given an assoc list of keys and values that are sorted on the keys
+    % in ascending order (with no duplicate keys), convert it directly
+    % to a tree.
+    %
+:- pred tree234.from_sorted_assoc_list(assoc_list(K, V)::in,
+    tree234(K, V)::out) is det.
+
+    % Given an assoc list of keys and values that are sorted on the keys
+    % in descending order (with no duplicate keys), convert it directly
+    % to a tree.
+    %
+:- pred tree234.from_rev_sorted_assoc_list(assoc_list(K, V)::in,
+    tree234(K, V)::out) is det.
+
+%----------------------%
 
 :- func tree234.foldl(func(K, V, A) = A, tree234(K, V), A) = A.
 
@@ -305,6 +371,8 @@
 	is semidet,
 	in, in, out, in, out, in, out, di, uo) is semidet.
 
+%----------------------%
+
 :- func tree234.map_values(func(K, V) = W, tree234(K, V)) = tree234(K, W).
 
 :- pred tree234.map_values(pred(K, V, W), tree234(K, V), tree234(K, W)).
@@ -316,6 +384,8 @@
 :- pred tree234.map_values_only(pred(V, W), tree234(K, V), tree234(K, W)).
 :- mode tree234.map_values_only(pred(in, out) is det, in, out) is det.
 :- mode tree234.map_values_only(pred(in, out) is semidet, in, out) is semidet.
+
+%----------------------%
 
 :- pred tree234.map_foldl(pred(K, V, W, A, A), tree234(K, V), tree234(K, W),
     A, A).
@@ -409,36 +479,24 @@
     pred(in, out, in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out, in, out) is semidet.
 
-    % Convert a tree234 into a pretty_printer.doc.  A tree mapping
+%----------------------%
+
+    % Convert a tree234 into a pretty_printer.doc. A tree mapping
     % K1 to V1, K2 to V2, ... is formatted as
-    % "map([K1 -> V1, K2 -> V2, ...])".  The functor "map" is used
+    % "map([K1 -> V1, K2 -> V2, ...])". The functor "map" is used
     % because tree234 values are almost exclusively maps.
     %
 :- func tree234_to_doc(tree234(K, V)) = pretty_printer.doc.
-
-    % Given an assoc list of keys and values that are sorted on the keys
-    % in ascending order (with no duplicate keys), convert it directly
-    % to a tree.
-    %
-:- pred tree234.from_sorted_assoc_list(assoc_list(K, V)::in,
-    tree234(K, V)::out) is det.
-
-    % Given an assoc list of keys and values that are sorted on the keys
-    % in descending order (with no duplicate keys), convert it directly
-    % to a tree.
-    %
-:- pred tree234.from_rev_sorted_assoc_list(assoc_list(K, V)::in,
-    tree234(K, V)::out) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 :- implementation.
-
 % Everything below here is not intended to be part of the public interface,
 % and will not be included in the Mercury library reference manual.
-
 :- interface.
+
+:- import_module maybe.
 
 :- pragma type_spec(tree234.search/3, K = var(_)).
 :- pragma type_spec(tree234.search/3, K = int).
@@ -451,20 +509,7 @@
 :- pragma type_spec(tree234.update(in, in, in, out), K = int).
 
 %-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module bool.
-:- import_module int.
-:- import_module io.
-:- import_module pair.
-:- import_module require.
-:- import_module set.
-:- import_module string.
-
-:- interface.
-
-:- import_module maybe.
+%-----------------------------------------------------------------------------%
 
     % This should be abstract, but needs to be exported for insts.
     %
@@ -500,6 +545,12 @@
 :- mode uo_tree234(K, V) == free >> uniq_tree234(K, V).
 :- mode uo_tree234       == free >> uniq_tree234(ground, ground).
 
+    % Return the minimum number of key/value pairs in the tree, given its
+    % depth. This is obviously not as accurate as tree234.count, but it
+    % is computed *much* faster, in time O(log Count), not O(Count).
+    %
+:- pred find_min_size_based_on_depth(tree234(K, V)::in, int::out) is det.
+
     % Check whether the given tree is well formed, i.e. all the empty nodes
     % are at the same depth. If yes, return that depth. Otherwise, return `no'.
     %
@@ -507,17 +558,56 @@
     %
 :- pred well_formed(tree234(K, V)::in, maybe(int)::out) is det.
 
-:- implementation.
-
+%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
+:- implementation.
+
+:- import_module bool.
+:- import_module int.
+:- import_module io.
+:- import_module pair.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+
+:- inst two(K, V, T)   ---> two(K, V, T, T).
+:- inst three(K, V, T) ---> three(K, V, K, V, T, T, T).
+:- inst four(K, V, T)  ---> four(K, V, K, V, K, V, T, T, T, T).
+
+:- inst uniq_two(K, V, T)   == unique(two(K, V, T, T)).
+:- inst uniq_three(K, V, T) == unique(three(K, V, K, V, T, T, T)).
+:- inst uniq_four(K, V, T)  == unique(four(K, V, K, V, K, V, T, T, T, T)).
+
+:- mode uo_two  == out(uniq_two(unique, unique, unique)).
+:- mode suo_two == out(uniq_two(ground, ground, uniq_tree234_gg)).
+:- mode out_two == out(two(ground, ground, ground)).
+
+:- mode di_two  == di(uniq_two(unique, unique, unique)).
+:- mode sdi_two == di(uniq_two(ground, ground, uniq_tree234_gg)).
+:- mode in_two  == in(two(ground, ground, ground)).
+
+:- mode di_three  == di(uniq_three(unique, unique, unique)).
+:- mode sdi_three == di(uniq_three(ground, ground, uniq_tree234_gg)).
+:- mode in_three  == in(three(ground, ground, ground)).
+
+:- mode di_four  == di(uniq_four(unique, unique, unique)).
+:- mode sdi_four == di(uniq_four(ground, ground, uniq_tree234_gg)).
+:- mode in_four  == in(four(ground, ground, ground)).
+
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+
+tree234.init = empty.
+
 tree234.init(empty).
+
+tree234.singleton(K, V) = two(K, V, empty, empty).
 
 tree234.is_empty(Tree) :-
     Tree = empty.
 
-tree234.singleton(K, V) = two(K, V, empty, empty).
-
+%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 tree234.member(empty, _K, _V) :- fail.
@@ -564,6 +654,7 @@ tree234.member(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V) :-
         tree234.member(T3, K, V)
     ).
 
+%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 tree234.search(T, K, V) :-
@@ -640,6 +731,10 @@ tree234.search(T, K, V) :-
             )
         )
     ).
+
+
+tree234.lookup(T, K) = V :-
+    tree234.lookup(T, K, V).
 
 tree234.lookup(T, K, V) :-
     ( tree234.search(T, K, V0) ->
@@ -932,233 +1027,15 @@ tree234.min_key(T0) = MinKey :-
     ).
 
 %------------------------------------------------------------------------------%
-
-tree234.update(K, V, Tin, Tout) :-
-    (
-        Tin = empty,
-        fail
-    ;
-        Tin = two(K0, V0, T0, T1),
-        compare(Result, K, K0),
-        (
-            Result = (<),
-            tree234.update(K, V, T0, NewT0),
-            Tout = two(K0, V0, NewT0, T1)
-        ;
-            Result = (=),
-            Tout = two(K0, V, T0, T1)
-        ;
-            Result = (>),
-            tree234.update(K, V, T1, NewT1),
-            Tout = two(K0, V0, T0, NewT1)
-        )
-    ;
-        Tin = three(K0, V0, K1, V1, T0, T1, T2),
-        compare(Result0, K, K0),
-        (
-            Result0 = (<),
-            tree234.update(K, V, T0, NewT0),
-            Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
-        ;
-            Result0 = (=),
-            Tout = three(K0, V, K1, V1, T0, T1, T2)
-        ;
-            Result0 = (>),
-            compare(Result1, K, K1),
-            (
-                Result1 = (<),
-                tree234.update(K, V, T1, NewT1),
-                Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
-            ;
-                Result1 = (=),
-                Tout = three(K0, V0, K1, V, T0, T1, T2)
-            ;
-                Result1 = (>),
-                tree234.update(K, V, T2, NewT2),
-                Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
-            )
-        )
-    ;
-        Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
-        compare(Result1, K, K1),
-        (
-            Result1 = (<),
-            compare(Result0, K, K0),
-            (
-                Result0 = (<),
-                tree234.update(K, V, T0, NewT0),
-                Tout = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
-            ;
-                Result0 = (=),
-                Tout = four(K0, V, K1, V1, K2, V2, T0, T1, T2, T3)
-            ;
-                Result0 = (>),
-                tree234.update(K, V, T1, NewT1),
-                Tout = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3)
-            )
-        ;
-            Result1 = (=),
-            Tout = four(K0, V0, K1, V, K2, V2, T0, T1, T2, T3)
-        ;
-            Result1 = (>),
-            compare(Result2, K, K2),
-            (
-                Result2 = (<),
-                tree234.update(K, V, T2, NewT2),
-                Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, NewT2, T3)
-            ;
-                Result2 = (=),
-                Tout = four(K0, V0, K1, V1, K2, V, T0, T1, T2, T3)
-            ;
-                Result2 = (>),
-                tree234.update(K, V, T3, NewT3),
-                Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, NewT3)
-            )
-        )
-    ).
-
-%------------------------------------------------------------------------------%
-
-tree234.transform_value(P, K, Tin, Tout) :-
-    (
-        Tin = empty,
-        fail
-    ;
-        Tin = two(K0, V0, T0, T1),
-        compare(Result, K, K0),
-        (
-            Result = (<),
-            tree234.transform_value(P, K, T0, NewT0),
-            Tout = two(K0, V0, NewT0, T1)
-        ;
-            Result = (=),
-            P(V0, VNew),
-            Tout = two(K0, VNew, T0, T1)
-        ;
-            Result = (>),
-            tree234.transform_value(P, K, T1, NewT1),
-            Tout = two(K0, V0, T0, NewT1)
-        )
-    ;
-        Tin = three(K0, V0, K1, V1, T0, T1, T2),
-        compare(Result0, K, K0),
-        (
-            Result0 = (<),
-            tree234.transform_value(P, K, T0, NewT0),
-            Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
-        ;
-            Result0 = (=),
-            P(V0, VNew),
-            Tout = three(K0, VNew, K1, V1, T0, T1, T2)
-        ;
-            Result0 = (>),
-            compare(Result1, K, K1),
-            (
-                Result1 = (<),
-                tree234.transform_value(P, K, T1, NewT1),
-                Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
-            ;
-                Result1 = (=),
-                P(V1, VNew),
-                Tout = three(K0, V0, K1, VNew, T0, T1, T2)
-            ;
-                Result1 = (>),
-                tree234.transform_value(P, K, T2, NewT2),
-                Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
-            )
-        )
-    ;
-        Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
-        compare(Result1, K, K1),
-        (
-            Result1 = (<),
-            compare(Result0, K, K0),
-            (
-                Result0 = (<),
-                tree234.transform_value(P, K, T0, NewT0),
-                Tout = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
-            ;
-                Result0 = (=),
-                P(V0, VNew),
-                Tout = four(K0, VNew, K1, V1, K2, V2, T0, T1, T2, T3)
-            ;
-                Result0 = (>),
-                tree234.transform_value(P, K, T1, NewT1),
-                Tout = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3)
-            )
-        ;
-            Result1 = (=),
-            P(V1, VNew),
-            Tout = four(K0, V0, K1, VNew, K2, V2, T0, T1, T2, T3)
-        ;
-            Result1 = (>),
-            compare(Result2, K, K2),
-            (
-                Result2 = (<),
-                tree234.transform_value(P, K, T2, NewT2),
-                Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, NewT2, T3)
-            ;
-                Result2 = (=),
-                P(V2, VNew),
-                Tout = four(K0, V0, K1, V1, K2, VNew, T0, T1, T2, T3)
-            ;
-                Result2 = (>),
-                tree234.transform_value(P, K, T3, NewT3),
-                Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, NewT3)
-            )
-        )
-    ).
-
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
-
-:- inst two(K, V, T)   ---> two(K, V, T, T).
-:- inst three(K, V, T) ---> three(K, V, K, V, T, T, T).
-:- inst four(K, V, T)  ---> four(K, V, K, V, K, V, T, T, T, T).
-
-:- inst uniq_two(K, V, T)   == unique(two(K, V, T, T)).
-:- inst uniq_three(K, V, T) == unique(three(K, V, K, V, T, T, T)).
-:- inst uniq_four(K, V, T)  == unique(four(K, V, K, V, K, V, T, T, T, T)).
-
-:- mode uo_two  == out(uniq_two(unique, unique, unique)).
-:- mode suo_two == out(uniq_two(ground, ground, uniq_tree234_gg)).
-:- mode out_two == out(two(ground, ground, ground)).
-
-:- mode di_two  == di(uniq_two(unique, unique, unique)).
-:- mode sdi_two == di(uniq_two(ground, ground, uniq_tree234_gg)).
-:- mode in_two  == in(two(ground, ground, ground)).
-
-:- mode di_three  == di(uniq_three(unique, unique, unique)).
-:- mode sdi_three == di(uniq_three(ground, ground, uniq_tree234_gg)).
-:- mode in_three  == in(three(ground, ground, ground)).
-
-:- mode di_four  == di(uniq_four(unique, unique, unique)).
-:- mode sdi_four == di(uniq_four(ground, ground, uniq_tree234_gg)).
-:- mode in_four  == in(four(ground, ground, ground)).
-
-%------------------------------------------------------------------------------%
-
-:- pred tree234.split_four(tree234(K, V), K, V, tree234(K, V), tree234(K, V)).
-:- mode tree234.split_four(di_four, uo, uo, uo_two, uo_two) is det.
-% :- mode tree234.split_four(sdi_four, out, out, suo_two, suo_two) is det.
-:- mode tree234.split_four(in_four, out, out, out_two, out_two) is det.
-
-tree234.split_four(Tin, MidK, MidV, Sub0, Sub1) :-
-    Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
-    Sub0 = two(K0, V0, T0, T1),
-    MidK = K1,
-    MidV = V1,
-    Sub1 = two(K2, V2, T2, T3).
-
 %------------------------------------------------------------------------------%
 
 % tree234.insert is implemented using the simple top-down approach described
 % in Sedgwick that splits 4-nodes into two 2-nodes on the downward traversal
 % of the tree as we search for the right place to insert the new key-value
-% pair.  We know we have the right place if the subtrees of the node are
+% pair. We know we have the right place if the subtrees of the node are
 % empty (in which case we expand the node - which will always work because
 % we have already split 4-nodes into 2-nodes), or if the tree itself is
-% empty.  This algorithm is O(lgN).
+% empty. This algorithm is O(lgN).
 
 tree234.insert(K, V, Tin, Tout) :-
     (
@@ -1428,10 +1305,493 @@ tree234.insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 
 %------------------------------------------------------------------------------%
 
-% tree234.set uses the same algorithm as used for tree234.insert,
-% except that instead of failing for equal keys, we replace the value.
+tree234.search_insert(K, V, MaybeOldV, Tin, Tout) :-
+    (
+        Tin = empty,
+        MaybeOldV = no,
+        Tout = two(K, V, empty, empty)
+    ;
+        Tin = two(_, _, _, _),
+        tree234.search_insert2(Tin, K, V, MaybeOldV, Tout)
+    ;
+        Tin = three(_, _, _, _, _, _, _),
+        tree234.search_insert3(Tin, K, V, MaybeOldV, Tout)
+    ;
+        Tin = four(_, _, _, _, _, _, _, _, _, _),
+        tree234.split_four(Tin, MidK, MidV, Sub0, Sub1),
+        compare(Result1, K, MidK),
+        (
+            Result1 = (<),
+            tree234.search_insert2(Sub0, K, V, MaybeOldV, NewSub0),
+            (
+                MaybeOldV = no,
+                Tout = two(MidK, MidV, NewSub0, Sub1)
+            ;
+                MaybeOldV = yes(_),
+                Tout = Tin
+            )
+        ;
+            Result1 = (=),
+            MaybeOldV = yes(MidV),
+            Tout = Tin
+        ;
+            Result1 = (>),
+            tree234.search_insert2(Sub1, K, V, MaybeOldV, NewSub1),
+            (
+                MaybeOldV = no,
+                Tout = two(MidK, MidV, Sub0, NewSub1)
+            ;
+                MaybeOldV = yes(_),
+                Tout = Tin
+            )
+        )
+    ).
+
+:- pred tree234.search_insert2(tree234(K, V), K, V, maybe(V), tree234(K, V)).
+:- mode tree234.search_insert2(in_two, in, in, out, out) is det.
+
+tree234.search_insert2(Tin, K, V, MaybeOldV, Tout) :-
+    Tin = two(K0, V0, T0, T1),
+    (
+        T0 = empty
+        % T1 = empty implied by T0 = empty.
+    ->
+        compare(Result, K, K0),
+        (
+            Result = (<),
+            MaybeOldV = no,
+            Tout = three(K, V, K0, V0, empty, empty, empty)
+        ;
+            Result = (=),
+            MaybeOldV = yes(V0),
+            Tout = Tin
+        ;
+            Result = (>),
+            MaybeOldV = no,
+            Tout = three(K0, V0, K, V, empty, empty, empty)
+        )
+    ;
+        compare(Result, K, K0),
+        (
+            Result = (<),
+            (
+                T0 = four(_, _, _, _, _, _, _, _, _, _),
+                tree234.split_four(T0, MT0K, MT0V, T00, T01),
+                compare(Result1, K, MT0K),
+                (
+                    Result1 = (<),
+                    tree234.search_insert2(T00, K, V, MaybeOldV, NewT00),
+                    (
+                        MaybeOldV = no,
+                        Tout = three(MT0K, MT0V, K0, V0, NewT00, T01, T1)
+                    ;
+                        MaybeOldV = yes(_),
+                        Tout = Tin
+                    )
+                ;
+                    Result1 = (=),
+                    MaybeOldV = yes(MT0V),
+                    Tout = Tin
+                ;
+                    Result1 = (>),
+                    tree234.search_insert2(T01, K, V, MaybeOldV, NewT01),
+                    (
+                        MaybeOldV = no,
+                        Tout = three(MT0K, MT0V, K0, V0, T00, NewT01, T1)
+                    ;
+                        MaybeOldV = yes(_),
+                        Tout = Tin
+                    )
+                )
+            ;
+                (
+                    T0 = three(_, _, _, _, _, _, _),
+                    tree234.search_insert3(T0, K, V, MaybeOldV, NewT0)
+                ;
+                    T0 = two(_, _, _, _),
+                    tree234.search_insert2(T0, K, V, MaybeOldV, NewT0)
+                ),
+                (
+                    MaybeOldV = no,
+                    Tout = two(K0, V0, NewT0, T1)
+                ;
+                    MaybeOldV = yes(_),
+                    Tout = Tin
+                )
+            ;
+                T0 = empty,
+                MaybeOldV = no,
+                NewT0 = two(K, V, empty, empty),
+                Tout = two(K0, V0, NewT0, T1)
+            )
+        ;
+            Result = (=),
+            MaybeOldV = yes(V0),
+            Tout = Tin
+        ;
+            Result = (>),
+            (
+                T1 = four(_, _, _, _, _, _, _, _, _, _),
+                tree234.split_four(T1, MT1K, MT1V, T10, T11),
+                compare(Result1, K, MT1K),
+                (
+                    Result1 = (<),
+                    tree234.search_insert2(T10, K, V, MaybeOldV, NewT10),
+                    (
+                        MaybeOldV = no,
+                        Tout = three(K0, V0, MT1K, MT1V, T0, NewT10, T11)
+                    ;
+                        MaybeOldV = yes(_),
+                        Tout = Tin
+                    )
+                ;
+                    Result1 = (=),
+                    MaybeOldV = yes(MT1V),
+                    Tout = Tin
+                ;
+                    Result1 = (>),
+                    tree234.search_insert2(T11, K, V, MaybeOldV, NewT11),
+                    (
+                        MaybeOldV = no,
+                        Tout = three(K0, V0, MT1K, MT1V, T0, T10, NewT11)
+                    ;
+                        MaybeOldV = yes(_),
+                        Tout = Tin
+                    )
+                )
+            ;
+                (
+                    T1 = three(_, _, _, _, _, _, _),
+                    tree234.search_insert3(T1, K, V, MaybeOldV, NewT1)
+                ;
+                    T1 = two(_, _, _, _),
+                    tree234.search_insert2(T1, K, V, MaybeOldV, NewT1)
+                ),
+                (
+                    MaybeOldV = no,
+                    Tout = two(K0, V0, T0, NewT1)
+                ;
+                    MaybeOldV = yes(_),
+                    Tout = Tin
+                )
+            ;
+                T1 = empty,
+                MaybeOldV = no,
+                NewT1 = two(K, V, empty, empty),
+                Tout = two(K0, V0, T0, NewT1)
+            )
+        )
+    ).
+
+:- pred tree234.search_insert3(tree234(K, V), K, V, maybe(V), tree234(K, V)).
+:- mode tree234.search_insert3(in_three, in, in, out, out) is det.
+
+tree234.search_insert3(Tin, K, V, MaybeOldV, Tout) :-
+    Tin = three(K0, V0, K1, V1, T0, T1, T2),
+    (
+        T0 = empty
+        % T1 = empty implied by T0 = empty.
+        % T2 = empty implied by T0 = empty.
+    ->
+        compare(Result0, K, K0),
+        (
+            Result0 = (<),
+            MaybeOldV = no,
+            Tout = four(K, V, K0, V0, K1, V1, empty, empty, empty, empty)
+        ;
+            Result0 = (=),
+            MaybeOldV = yes(V0),
+            Tout = Tin
+        ;
+            Result0 = (>),
+            compare(Result1, K, K1),
+            (
+                Result1 = (<),
+                MaybeOldV = no,
+                Tout = four(K0, V0, K, V, K1, V1, empty, empty, empty, empty)
+            ;
+                Result1 = (=),
+                MaybeOldV = yes(V1),
+                Tout = Tin
+            ;
+                Result1 = (>),
+                MaybeOldV = no,
+                Tout = four(K0, V0, K1, V1, K, V, empty, empty, empty, empty)
+            )
+        )
+    ;
+        compare(Result0, K, K0),
+        (
+            Result0 = (<),
+            (
+                T0 = four(_, _, _, _, _, _, _, _, _, _),
+                tree234.split_four(T0, MT0K, MT0V, T00, T01),
+                compare(ResultM, K, MT0K),
+                (
+                    ResultM = (<),
+                    tree234.search_insert2(T00, K, V, MaybeOldV, NewT00),
+                    (
+                        MaybeOldV = no,
+                        Tout = four(MT0K, MT0V, K0, V0, K1, V1,
+                            NewT00, T01, T1, T2)
+                    ;
+                        MaybeOldV = yes(_),
+                        Tout = Tin
+                    )
+                ;
+                    ResultM = (=),
+                    MaybeOldV = yes(MT0V),
+                    Tout = Tin
+                ;
+                    ResultM = (>),
+                    tree234.search_insert2(T01, K, V, MaybeOldV, NewT01),
+                    (
+                        MaybeOldV = no,
+                        Tout = four(MT0K, MT0V, K0, V0, K1, V1,
+                            T00, NewT01, T1, T2)
+                    ;
+                        MaybeOldV = yes(_),
+                        Tout = Tin
+                    )
+                )
+            ;
+                (
+                    T0 = three(_, _, _, _, _, _, _),
+                    tree234.search_insert3(T0, K, V, MaybeOldV, NewT0)
+                ;
+                    T0 = two(_, _, _, _),
+                    tree234.search_insert2(T0, K, V, MaybeOldV, NewT0)
+                ),
+                (
+                    MaybeOldV = no,
+                    Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
+                ;
+                    MaybeOldV = yes(_),
+                    Tout = Tin
+                )
+            ;
+                T0 = empty,
+                MaybeOldV = no,
+                NewT0 = two(K, V, empty, empty),
+                Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
+            )
+        ;
+            Result0 = (=),
+            MaybeOldV = yes(V0),
+            Tout = Tin
+        ;
+            Result0 = (>),
+            compare(Result1, K, K1),
+            (
+                Result1 = (<),
+                (
+                    T1 = four(_, _, _, _, _, _, _, _, _, _),
+                    tree234.split_four(T1, MT1K, MT1V, T10, T11),
+                    compare(ResultM, K, MT1K),
+                    (
+                        ResultM = (<),
+                        tree234.search_insert2(T10, K, V, MaybeOldV, NewT10),
+                        (
+                            MaybeOldV = no,
+                            Tout = four(K0, V0, MT1K, MT1V, K1, V1,
+                                T0, NewT10, T11, T2)
+                        ;
+                            MaybeOldV = yes(_),
+                            Tout = Tin
+                        )
+                    ;
+                        ResultM = (=),
+                        MaybeOldV = yes(MT1V),
+                        Tout = Tin
+                    ;
+                        ResultM = (>),
+                        tree234.search_insert2(T11, K, V, MaybeOldV, NewT11),
+                        (
+                            MaybeOldV = no,
+                            Tout = four(K0, V0, MT1K, MT1V, K1, V1,
+                                T0, T10, NewT11, T2)
+                        ;
+                            MaybeOldV = yes(_),
+                            Tout = Tin
+                        )
+                    )
+                ;
+                    (
+                        T1 = three(_, _, _, _, _, _, _),
+                        tree234.search_insert3(T1, K, V, MaybeOldV, NewT1)
+                    ;
+                        T1 = two(_, _, _, _),
+                        tree234.search_insert2(T1, K, V, MaybeOldV, NewT1)
+                    ),
+                    (
+                        MaybeOldV = no,
+                        Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
+                    ;
+                        MaybeOldV = yes(_),
+                        Tout = Tin
+                    )
+                ;
+                    T1 = empty,
+                    MaybeOldV = no,
+                    NewT1 = two(K, V, empty, empty),
+                    Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
+                )
+            ;
+                Result1 = (=),
+                MaybeOldV = yes(V1),
+                Tout = Tin
+            ;
+                Result1 = (>),
+                (
+                    T2 = four(_, _, _, _, _, _, _, _, _, _),
+                    tree234.split_four(T2, MT2K, MT2V, T20, T21),
+                    compare(ResultM, K, MT2K),
+                    (
+                        ResultM = (<),
+                        tree234.search_insert2(T20, K, V, MaybeOldV, NewT20),
+                        (
+                            MaybeOldV = no,
+                            Tout = four(K0, V0, K1, V1, MT2K, MT2V,
+                                T0, T1, NewT20, T21)
+                        ;
+                            MaybeOldV = yes(_),
+                            Tout = Tin
+                        )
+                    ;
+                        ResultM = (=),
+                        MaybeOldV = yes(MT2V),
+                        Tout = Tin
+                    ;
+                        ResultM = (>),
+                        tree234.search_insert2(T21, K, V, MaybeOldV, NewT21),
+                        (
+                            MaybeOldV = no,
+                            Tout = four(K0, V0, K1, V1, MT2K, MT2V,
+                                T0, T1, T20, NewT21)
+                        ;
+                            MaybeOldV = yes(_),
+                            Tout = Tin
+                        )
+                    )
+                ;
+                    (
+                        T2 = three(_, _, _, _, _, _, _),
+                        tree234.search_insert3(T2, K, V, MaybeOldV, NewT2)
+                    ;
+                        T2 = two(_, _, _, _),
+                        tree234.search_insert2(T2, K, V, MaybeOldV, NewT2)
+                    ),
+                    (
+                        MaybeOldV = no,
+                        Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
+                    ;
+                        MaybeOldV = yes(_),
+                        Tout = Tin
+                    )
+                ;
+                    T2 = empty,
+                    MaybeOldV = no,
+                    NewT2 = two(K, V, empty, empty),
+                    Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
+                )
+            )
+        )
+    ).
+
+%------------------------------------------------------------------------------%
+
+tree234.update(K, V, Tin, Tout) :-
+    (
+        Tin = empty,
+        fail
+    ;
+        Tin = two(K0, V0, T0, T1),
+        compare(Result, K, K0),
+        (
+            Result = (<),
+            tree234.update(K, V, T0, NewT0),
+            Tout = two(K0, V0, NewT0, T1)
+        ;
+            Result = (=),
+            Tout = two(K0, V, T0, T1)
+        ;
+            Result = (>),
+            tree234.update(K, V, T1, NewT1),
+            Tout = two(K0, V0, T0, NewT1)
+        )
+    ;
+        Tin = three(K0, V0, K1, V1, T0, T1, T2),
+        compare(Result0, K, K0),
+        (
+            Result0 = (<),
+            tree234.update(K, V, T0, NewT0),
+            Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
+        ;
+            Result0 = (=),
+            Tout = three(K0, V, K1, V1, T0, T1, T2)
+        ;
+            Result0 = (>),
+            compare(Result1, K, K1),
+            (
+                Result1 = (<),
+                tree234.update(K, V, T1, NewT1),
+                Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
+            ;
+                Result1 = (=),
+                Tout = three(K0, V0, K1, V, T0, T1, T2)
+            ;
+                Result1 = (>),
+                tree234.update(K, V, T2, NewT2),
+                Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
+            )
+        )
+    ;
+        Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+        compare(Result1, K, K1),
+        (
+            Result1 = (<),
+            compare(Result0, K, K0),
+            (
+                Result0 = (<),
+                tree234.update(K, V, T0, NewT0),
+                Tout = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
+            ;
+                Result0 = (=),
+                Tout = four(K0, V, K1, V1, K2, V2, T0, T1, T2, T3)
+            ;
+                Result0 = (>),
+                tree234.update(K, V, T1, NewT1),
+                Tout = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3)
+            )
+        ;
+            Result1 = (=),
+            Tout = four(K0, V0, K1, V, K2, V2, T0, T1, T2, T3)
+        ;
+            Result1 = (>),
+            compare(Result2, K, K2),
+            (
+                Result2 = (<),
+                tree234.update(K, V, T2, NewT2),
+                Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, NewT2, T3)
+            ;
+                Result2 = (=),
+                Tout = four(K0, V0, K1, V1, K2, V, T0, T1, T2, T3)
+            ;
+                Result2 = (>),
+                tree234.update(K, V, T3, NewT3),
+                Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, NewT3)
+            )
+        )
+    ).
+
+%------------------------------------------------------------------------------%
+
+tree234.set(!.T, K, V) = !:T :-
+    tree234.set(K, V, !T).
 
 tree234.set(K, V, Tin, Tout) :-
+    % tree234.set uses the same algorithm as used for tree234.insert,
+    % except that instead of failing for equal keys, we replace the value.
     (
         Tin = empty,
         Tout = two(K, V, empty, empty)
@@ -1704,12 +2064,125 @@ tree234.set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
+tree234.transform_value(P, K, Tin, Tout) :-
+    (
+        Tin = empty,
+        fail
+    ;
+        Tin = two(K0, V0, T0, T1),
+        compare(Result, K, K0),
+        (
+            Result = (<),
+            tree234.transform_value(P, K, T0, NewT0),
+            Tout = two(K0, V0, NewT0, T1)
+        ;
+            Result = (=),
+            P(V0, VNew),
+            Tout = two(K0, VNew, T0, T1)
+        ;
+            Result = (>),
+            tree234.transform_value(P, K, T1, NewT1),
+            Tout = two(K0, V0, T0, NewT1)
+        )
+    ;
+        Tin = three(K0, V0, K1, V1, T0, T1, T2),
+        compare(Result0, K, K0),
+        (
+            Result0 = (<),
+            tree234.transform_value(P, K, T0, NewT0),
+            Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
+        ;
+            Result0 = (=),
+            P(V0, VNew),
+            Tout = three(K0, VNew, K1, V1, T0, T1, T2)
+        ;
+            Result0 = (>),
+            compare(Result1, K, K1),
+            (
+                Result1 = (<),
+                tree234.transform_value(P, K, T1, NewT1),
+                Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
+            ;
+                Result1 = (=),
+                P(V1, VNew),
+                Tout = three(K0, V0, K1, VNew, T0, T1, T2)
+            ;
+                Result1 = (>),
+                tree234.transform_value(P, K, T2, NewT2),
+                Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
+            )
+        )
+    ;
+        Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+        compare(Result1, K, K1),
+        (
+            Result1 = (<),
+            compare(Result0, K, K0),
+            (
+                Result0 = (<),
+                tree234.transform_value(P, K, T0, NewT0),
+                Tout = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
+            ;
+                Result0 = (=),
+                P(V0, VNew),
+                Tout = four(K0, VNew, K1, V1, K2, V2, T0, T1, T2, T3)
+            ;
+                Result0 = (>),
+                tree234.transform_value(P, K, T1, NewT1),
+                Tout = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3)
+            )
+        ;
+            Result1 = (=),
+            P(V1, VNew),
+            Tout = four(K0, V0, K1, VNew, K2, V2, T0, T1, T2, T3)
+        ;
+            Result1 = (>),
+            compare(Result2, K, K2),
+            (
+                Result2 = (<),
+                tree234.transform_value(P, K, T2, NewT2),
+                Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, NewT2, T3)
+            ;
+                Result2 = (=),
+                P(V2, VNew),
+                Tout = four(K0, V0, K1, V1, K2, VNew, T0, T1, T2, T3)
+            ;
+                Result2 = (>),
+                tree234.transform_value(P, K, T3, NewT3),
+                Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, NewT3)
+            )
+        )
+    ).
+
+%------------------------------------------------------------------------------%
+%
+% Utilities used by the insertion predicates.
+%
+
+:- pred tree234.split_four(tree234(K, V), K, V, tree234(K, V), tree234(K, V)).
+:- mode tree234.split_four(di_four, uo, uo, uo_two, uo_two) is det.
+% :- mode tree234.split_four(sdi_four, out, out, suo_two, suo_two) is det.
+:- mode tree234.split_four(in_four, out, out, out_two, out_two) is det.
+
+tree234.split_four(Tin, MidK, MidV, Sub0, Sub1) :-
+    Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+    Sub0 = two(K0, V0, T0, T1),
+    MidK = K1,
+    MidV = V1,
+    Sub1 = two(K2, V2, T2, T3).
+
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+
+tree234.delete(!.T, K) = !:T :-
+    tree234.delete(K, !T).
+
 tree234.delete(K, Tin, Tout) :-
     tree234.delete_2(Tin, K, Tout, _).
 
     % When deleting an item from a tree, the height of the tree may be
     % reduced by one. The last argument says whether this has occurred.
-
+    %
 :- pred tree234.delete_2(tree234(K, V), K, tree234(K, V), bool).
 %:- mode tree234.delete_2(di, in, uo, out) is det.
 :- mode tree234.delete_2(in, in, out, out) is det.
@@ -1954,9 +2427,8 @@ tree234.delete_2(Tin, K, Tout, RH) :-
 
 %------------------------------------------------------------------------------%
 
-    % We use the same algorithm as tree234.delete.
-
 tree234.remove(K, V, Tin, Tout) :-
+    % We use the same algorithm as tree234.delete.
     tree234.remove_2(Tin, K, V, Tout, _).
 
 :- pred tree234.remove_2(tree234(K, V), K, V, tree234(K, V), bool).
@@ -2278,15 +2750,18 @@ tree234.remove_smallest_2(Tin, K, V, Tout, RH) :-
     ).
 
 %------------------------------------------------------------------------------%
+%
+% Utilities used by the deletion predicates.
+%
+% The input to the following group of predicates are the components of a two-,
+% three- or four-node in which the height of the indicated subtree is one less
+% than it should be. If it is possible to increase the height of that subtree
+% by moving into it elements from its neighboring subtrees, do so, and return
+% the resulting tree with RH set to no. Otherwise, return a balanced tree
+% whose height is reduced by one, with RH set to yes to indicate the
+% reduced height.
+%
 
-    % The input to the following group of predicates are the components
-    % of a two-, three- or four-node in which the height of the indicated
-    % subtree is one less than it should be. If it is possible to increase
-    % the height of that subtree by moving into it elements from its
-    % neighboring subtrees, do so, and return the resulting tree with RH
-    % set to no. Otherwise, return a balanced tree whose height is reduced
-    % by one, with RH set to yes to indicate the reduced height.
-    %
 :- pred fix_2node_t0(K, V, tree234(K, V), tree234(K, V), tree234(K, V), bool).
 :- mode fix_2node_t0(di, di, di, di, uo, out) is det.
 :- mode fix_2node_t0(in, in, in, in, out, out) is det.
@@ -2314,7 +2789,7 @@ fix_2node_t0(K0, V0, T0, T1, Tout, RH) :-
         RH = yes
     ;
         T1 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = two(K0, V0, T0, T1),
         % RH = yes
     ).
@@ -2346,7 +2821,7 @@ fix_2node_t1(K0, V0, T0, T1, Tout, RH) :-
         RH = yes
     ;
         T0 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = two(K0, V0, T0, T1),
         % RH = yes
     ).
@@ -2379,7 +2854,7 @@ fix_3node_t0(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
         RH = no
     ;
         T1 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = three(K0, V0, K1, V1, T0, T1, T2),
         % The heights of T1 and T2 are unchanged
         % RH = no
@@ -2413,7 +2888,7 @@ fix_3node_t1(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
         RH = no
     ;
         T0 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = three(K0, V0, K1, V1, T0, T1, T2),
         % The heights of T0 and T2 are unchanged
         % RH = no
@@ -2447,7 +2922,7 @@ fix_3node_t2(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
         RH = no
     ;
         T1 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = three(K0, V0, K1, V1, T0, T1, T2),
         % The heights of T0 and T1 are unchanged
         % RH = no
@@ -2482,7 +2957,7 @@ fix_4node_t0(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T1 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
         % The heights of T1, T2 and T3 are unchanged
         % RH = no
@@ -2517,7 +2992,7 @@ fix_4node_t1(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T2 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
         % The heights of T0, T2 and T3 are unchanged
         % RH = no
@@ -2552,7 +3027,7 @@ fix_4node_t2(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T3 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
         % The heights of T0, T1 and T3 are unchanged
         % RH = no
@@ -2587,128 +3062,479 @@ fix_4node_t3(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T2 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
         % The heights of T0, T1 and T2 are unchanged
         % RH = no
     ).
 
 %------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+
+tree234.keys(T) = Ks :-
+    tree234.keys(T, Ks).
 
 tree234.keys(Tree, Keys) :-
-    tree234.keys_2(Tree, [], Keys).
+    tree234.keys_acc(Tree, [], Keys).
 
-:- pred tree234.keys_2(tree234(K, V), list(K), list(K)).
-:- mode tree234.keys_2(in, in, out) is det.
+:- pred tree234.keys_acc(tree234(K, V), list(K), list(K)).
+:- mode tree234.keys_acc(in, in, out) is det.
 
-tree234.keys_2(empty, List, List).
-tree234.keys_2(two(K0, _V0, T0, T1), L0, L) :-
-    tree234.keys_2(T1, L0, L1),
-    tree234.keys_2(T0, [K0 | L1], L).
-tree234.keys_2(three(K0, _V0, K1, _V1, T0, T1, T2), L0, L) :-
-    tree234.keys_2(T2, L0, L1),
-    tree234.keys_2(T1, [K1 | L1], L2),
-    tree234.keys_2(T0, [K0 | L2], L).
-tree234.keys_2(four(K0, _V0, K1, _V1, K2, _V2, T0, T1, T2, T3), L0, L) :-
-    tree234.keys_2(T3, L0, L1),
-    tree234.keys_2(T2, [K2 | L1], L2),
-    tree234.keys_2(T1, [K1 | L2], L3),
-    tree234.keys_2(T0, [K0 | L3], L).
+tree234.keys_acc(empty, List, List).
+tree234.keys_acc(two(K0, _V0, T0, T1), L0, L) :-
+    tree234.keys_acc(T1, L0, L1),
+    tree234.keys_acc(T0, [K0 | L1], L).
+tree234.keys_acc(three(K0, _V0, K1, _V1, T0, T1, T2), L0, L) :-
+    tree234.keys_acc(T2, L0, L1),
+    tree234.keys_acc(T1, [K1 | L1], L2),
+    tree234.keys_acc(T0, [K0 | L2], L).
+tree234.keys_acc(four(K0, _V0, K1, _V1, K2, _V2, T0, T1, T2, T3), L0, L) :-
+    tree234.keys_acc(T3, L0, L1),
+    tree234.keys_acc(T2, [K2 | L1], L2),
+    tree234.keys_acc(T1, [K1 | L2], L3),
+    tree234.keys_acc(T0, [K0 | L3], L).
 
 %------------------------------------------------------------------------------%
 
+tree234.values(T) = Vs :-
+    tree234.values(T, Vs).
+
 tree234.values(Tree, Values) :-
-    tree234.values_2(Tree, [], Values).
+    tree234.values_acc(Tree, [], Values).
 
-:- pred tree234.values_2(tree234(K, V), list(V), list(V)).
-:- mode tree234.values_2(in, in, out) is det.
+:- pred tree234.values_acc(tree234(K, V), list(V), list(V)).
+:- mode tree234.values_acc(in, in, out) is det.
 
-tree234.values_2(empty, List, List).
-tree234.values_2(two(_K0, V0, T0, T1), L0, L) :-
-    tree234.values_2(T1, L0, L1),
-    tree234.values_2(T0, [V0 | L1], L).
-tree234.values_2(three(_K0, V0, _K1, V1, T0, T1, T2), L0, L) :-
-    tree234.values_2(T2, L0, L1),
-    tree234.values_2(T1, [V1 | L1], L2),
-    tree234.values_2(T0, [V0 | L2], L).
-tree234.values_2(four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3), L0, L) :-
-    tree234.values_2(T3, L0, L1),
-    tree234.values_2(T2, [V2 | L1], L2),
-    tree234.values_2(T1, [V1 | L2], L3),
-    tree234.values_2(T0, [V0 | L3], L).
+tree234.values_acc(empty, List, List).
+tree234.values_acc(two(_K0, V0, T0, T1), L0, L) :-
+    tree234.values_acc(T1, L0, L1),
+    tree234.values_acc(T0, [V0 | L1], L).
+tree234.values_acc(three(_K0, V0, _K1, V1, T0, T1, T2), L0, L) :-
+    tree234.values_acc(T2, L0, L1),
+    tree234.values_acc(T1, [V1 | L1], L2),
+    tree234.values_acc(T0, [V0 | L2], L).
+tree234.values_acc(four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3), L0, L) :-
+    tree234.values_acc(T3, L0, L1),
+    tree234.values_acc(T2, [V2 | L1], L2),
+    tree234.values_acc(T1, [V1 | L2], L3),
+    tree234.values_acc(T0, [V0 | L3], L).
 
 %------------------------------------------------------------------------------%
 
 tree234.keys_and_values(Tree, Keys, Values) :-
-    tree234.keys_and_values_2(Tree, [], Keys, [], Values).
+    tree234.keys_and_values_acc(Tree, [], Keys, [], Values).
 
-:- pred tree234.keys_and_values_2(tree234(K, V)::in, list(K)::in, list(K)::out,
-    list(V)::in, list(V)::out) is det.
+:- pred tree234.keys_and_values_acc(tree234(K, V)::in,
+    list(K)::in, list(K)::out, list(V)::in, list(V)::out) is det.
 
-tree234.keys_and_values_2(empty, !Keys, !Values).
-tree234.keys_and_values_2(two(K0, V0, T0, T1), !Keys, !Values) :-
-    tree234.keys_and_values_2(T1, !Keys, !Values),
+tree234.keys_and_values_acc(empty, !Keys, !Values).
+tree234.keys_and_values_acc(two(K0, V0, T0, T1), !Keys, !Values) :-
+    tree234.keys_and_values_acc(T1, !Keys, !Values),
     !:Keys = [K0 | !.Keys],
     !:Values = [V0 | !.Values],
-    tree234.keys_and_values_2(T0, !Keys, !Values).
-tree234.keys_and_values_2(three(K0, V0, K1, V1, T0, T1, T2), !Keys, !Values) :-
-    tree234.keys_and_values_2(T2, !Keys, !Values),
+    tree234.keys_and_values_acc(T0, !Keys, !Values).
+tree234.keys_and_values_acc(three(K0, V0, K1, V1, T0, T1, T2),
+        !Keys, !Values) :-
+    tree234.keys_and_values_acc(T2, !Keys, !Values),
     !:Keys = [K1 | !.Keys],
     !:Values = [V1 | !.Values],
-    tree234.keys_and_values_2(T1, !Keys, !Values),
+    tree234.keys_and_values_acc(T1, !Keys, !Values),
     !:Keys = [K0 | !.Keys],
     !:Values = [V0 | !.Values],
-    tree234.keys_and_values_2(T0, !Keys, !Values).
-tree234.keys_and_values_2(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+    tree234.keys_and_values_acc(T0, !Keys, !Values).
+tree234.keys_and_values_acc(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
         !Keys, !Values) :- 
-    tree234.keys_and_values_2(T3, !Keys, !Values),
+    tree234.keys_and_values_acc(T3, !Keys, !Values),
     !:Keys = [K2 | !.Keys],
     !:Values = [V2 | !.Values],
-    tree234.keys_and_values_2(T2, !Keys, !Values),
+    tree234.keys_and_values_acc(T2, !Keys, !Values),
     !:Keys = [K1 | !.Keys],
     !:Values = [V1 | !.Values],
-    tree234.keys_and_values_2(T1, !Keys, !Values),
+    tree234.keys_and_values_acc(T1, !Keys, !Values),
     !:Keys = [K0 | !.Keys],
     !:Values = [V0 | !.Values],
-    tree234.keys_and_values_2(T0, !Keys, !Values).
+    tree234.keys_and_values_acc(T0, !Keys, !Values).
 
 %------------------------------------------------------------------------------%
-
-tree234.assoc_list_to_tree234(AssocList, Tree) :-
-    tree234.assoc_list_to_tree234_2(AssocList, empty, Tree).
-
-:- pred tree234.assoc_list_to_tree234_2(assoc_list(K, V)::in,
-    tree234(K, V)::in, tree234(K, V)::out) is det.
-
-tree234.assoc_list_to_tree234_2([], Tree, Tree).
-tree234.assoc_list_to_tree234_2([K - V | Rest], !Tree) :-
-    tree234.set(K, V, !Tree),
-    tree234.assoc_list_to_tree234_2(Rest, !Tree).
-
 %------------------------------------------------------------------------------%
+
+tree234.count(T) = N :-
+    tree234.count(T, N).
+
+tree234.count(empty, 0).
+tree234.count(two(_, _, T0, T1), N) :-
+    tree234.count(T0, N0),
+    tree234.count(T1, N1),
+    N = 1 + N0 + N1.
+tree234.count(three(_, _, _, _, T0, T1, T2), N) :-
+    tree234.count(T0, N0),
+    tree234.count(T1, N1),
+    tree234.count(T2, N2),
+    N = 2 + N0 + N1 + N2.
+tree234.count(four(_, _, _, _, _, _, T0, T1, T2, T3), N) :-
+    tree234.count(T0, N0),
+    tree234.count(T1, N1),
+    tree234.count(T2, N2),
+    tree234.count(T3, N3),
+    N = 3 + N0 + N1 + N2 + N3.
+
+%-----------------------------------------------------------------------------%
+
+tree234.tree234_to_assoc_list(T) = AL :-
+    tree234.tree234_to_assoc_list(T, AL).
 
 tree234.tree234_to_assoc_list(Tree, AssocList) :-
-    tree234.tree234_to_assoc_list_2(Tree, [], AssocList).
+    tree234.tree234_to_assoc_list_acc(Tree, [], AssocList).
 
-:- pred tree234.tree234_to_assoc_list_2(tree234(K, V)::in,
+:- pred tree234.tree234_to_assoc_list_acc(tree234(K, V)::in,
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
 
-tree234.tree234_to_assoc_list_2(empty, List, List).
-tree234.tree234_to_assoc_list_2(two(K0, V0, T0, T1), L0, L) :-
-    tree234.tree234_to_assoc_list_2(T1, L0, L1),
-    tree234.tree234_to_assoc_list_2(T0, [K0 - V0 | L1], L).
-tree234.tree234_to_assoc_list_2(three(K0, V0, K1, V1, T0, T1, T2), L0, L) :-
-    tree234.tree234_to_assoc_list_2(T2, L0, L1),
-    tree234.tree234_to_assoc_list_2(T1, [K1 - V1 | L1], L2),
-    tree234.tree234_to_assoc_list_2(T0, [K0 - V0 | L2], L).
-tree234.tree234_to_assoc_list_2(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+tree234.tree234_to_assoc_list_acc(empty, L, L).
+tree234.tree234_to_assoc_list_acc(two(K0, V0, T0, T1), L0, L) :-
+    tree234.tree234_to_assoc_list_acc(T1, L0, L1),
+    tree234.tree234_to_assoc_list_acc(T0, [K0 - V0 | L1], L).
+tree234.tree234_to_assoc_list_acc(three(K0, V0, K1, V1, T0, T1, T2), L0, L) :-
+    tree234.tree234_to_assoc_list_acc(T2, L0, L1),
+    tree234.tree234_to_assoc_list_acc(T1, [K1 - V1 | L1], L2),
+    tree234.tree234_to_assoc_list_acc(T0, [K0 - V0 | L2], L).
+tree234.tree234_to_assoc_list_acc(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
         L0, L) :-
-    tree234.tree234_to_assoc_list_2(T3, L0, L1),
-    tree234.tree234_to_assoc_list_2(T2, [K2 - V2 | L1], L2),
-    tree234.tree234_to_assoc_list_2(T1, [K1 - V1 | L2], L3),
-    tree234.tree234_to_assoc_list_2(T0, [K0 - V0 | L3], L).
+    tree234.tree234_to_assoc_list_acc(T3, L0, L1),
+    tree234.tree234_to_assoc_list_acc(T2, [K2 - V2 | L1], L2),
+    tree234.tree234_to_assoc_list_acc(T1, [K1 - V1 | L2], L3),
+    tree234.tree234_to_assoc_list_acc(T0, [K0 - V0 | L3], L).
 
 %------------------------------------------------------------------------------%
+
+tree234.assoc_list_to_tree234(AL) = T :-
+    tree234.assoc_list_to_tree234(AL, T).
+
+tree234.assoc_list_to_tree234(AssocList, Tree) :-
+    tree234.assoc_list_to_tree234_acc(AssocList, empty, Tree).
+
+:- pred tree234.assoc_list_to_tree234_acc(assoc_list(K, V)::in,
+    tree234(K, V)::in, tree234(K, V)::out) is det.
+
+tree234.assoc_list_to_tree234_acc([], Tree, Tree).
+tree234.assoc_list_to_tree234_acc([K - V | Rest], !Tree) :-
+    tree234.set(K, V, !Tree),
+    tree234.assoc_list_to_tree234_acc(Rest, !Tree).
+
+%------------------------------------------------------------------------------%
+
+from_sorted_assoc_list(List, Tree) :-
+    list.length(List, Len),
+    ( Len = 0 ->
+        % We can handle the Len = 0 case here just once, or we can handle it
+        % lots of times in do_from_sorted_assoc_list. The former is more
+        % efficient.
+        Tree = empty
+    ;
+        find_level(Len, 0, Level, 0, AllThrees),
+        do_from_sorted_assoc_list(Len, List, LeftOver, Level, AllThrees, Tree),
+        trace [compiletime(flag("tree234_sanity_checks"))] (
+            expect(unify(LeftOver, []), $module, $pred, "leftovers")
+        )
+    ).
+
+:- pred do_from_sorted_assoc_list(int::in,
+    assoc_list(K, V)::in, assoc_list(K, V)::out,
+    int::in, int::in, tree234(K, V)::out) is det.
+
+do_from_sorted_assoc_list(Len, !List, Level0, AllThrees0, Tree) :-
+    ( Level0 = 1 ->
+        ( Len = 1 ->
+            (
+                !.List = [K1 - V1 | !:List],
+                Tree = two(K1, V1, empty, empty)
+            ;
+                !.List = [],
+                unexpected($module, $pred, "len 1 nil")
+            )
+        ; Len = 2 ->
+            trace [compiletime(flag("tree234_sanity_checks"))] (
+                expect(unify(Level0, 1), $module, $pred,
+                    "Len = 2 but Level != 1")
+            ),
+            (
+                !.List = [K1 - V1, K2 - V2 | !:List],
+                Tree = three(K1, V1, K2, V2, empty, empty, empty)
+            ;
+                !.List = [_],
+                unexpected($module, $pred, "len 2 one")
+            ;
+                !.List = [],
+                unexpected($module, $pred, "len 2 nil")
+            )
+        ;
+            unexpected($module, $pred, "level 1, but len not 1 or 2")
+        )
+    ;
+        Level = Level0 - 1,
+        AllThrees = (AllThrees0 - 2) / 3,
+        ( Len > 2 * AllThrees ->
+            BaseSubLen = (Len / 3),
+            Diff = Len - (BaseSubLen * 3),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 3:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1,
+                SubLen3 = BaseSubLen - 1
+            ; Diff = 1 ->
+                % Len = BaseSubLen * 3 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen - 1
+            ;
+                trace [compiletime(flag("tree234_sanity_checks"))] (
+                    expect(unify(Diff, 2), $module, $pred, "Diff != 2")
+                ),
+                % Len = BaseSubLen * 3 + 2:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
+                io.format("splitting %d into three: %d, %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
+            ),
+
+            do_from_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            (
+                !.List = [K1 - V1 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "tree K1 V1 nil")
+            ),
+            do_from_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            (
+                !.List = [K2 - V2 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "tree K2 V2 nil")
+            ),
+            do_from_sorted_assoc_list(SubLen3, !List, Level, AllThrees,
+                SubTree3),
+            Tree = three(K1, V1, K2, V2, SubTree1, SubTree2, SubTree3),
+            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        ;
+            BaseSubLen = (Len) / 2,
+            Diff = Len - (BaseSubLen * 2),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 2:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1
+            ;
+                trace [compiletime(flag("tree234_sanity_checks"))] (
+                    expect(unify(Diff, 1), $module, $pred, "Diff != 1")
+                ),
+                % Len = BaseSubLen * 2 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
+                io.format("splitting %d into two: %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
+            ),
+
+            do_from_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            (
+                !.List = [K1 - V1 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "two K1 V1 nil")
+            ),
+            do_from_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            Tree = two(K1, V1, SubTree1, SubTree2),
+            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        )
+    ).
+
+from_rev_sorted_assoc_list(List, Tree) :-
+    list.length(List, Len),
+    ( Len = 0 ->
+        % We can handle the Len = 0 case here just once, or we can handle it
+        % lots of times in do_from_rev_sorted_assoc_list. The former is more
+        % efficient.
+        Tree = empty
+    ;
+        find_level(Len, 0, Level, 0, AllThrees),
+        do_from_rev_sorted_assoc_list(Len, List, LeftOver, Level, AllThrees,
+            Tree),
+        trace [compiletime(flag("tree234_sanity_checks"))] (
+            expect(unify(LeftOver, []), $module, $pred, "leftovers")
+        )
+    ).
+
+:- pred do_from_rev_sorted_assoc_list(int::in,
+    assoc_list(K, V)::in, assoc_list(K, V)::out,
+    int::in, int::in, tree234(K, V)::out) is det.
+
+do_from_rev_sorted_assoc_list(Len, !List, Level0, AllThrees0, Tree) :-
+    ( Level0 = 1 ->
+        ( Len = 1 ->
+            (
+                !.List = [K1 - V1 | !:List],
+                Tree = two(K1, V1, empty, empty)
+            ;
+                !.List = [],
+                unexpected($module, $pred, "len 1 nil")
+            )
+        ; Len = 2 ->
+            trace [compiletime(flag("tree234_sanity_checks"))] (
+                expect(unify(Level0, 1), $module, $pred,
+                    "Len = 2 but Level != 1")
+            ),
+            (
+                !.List = [K2 - V2, K1 - V1 | !:List],
+                Tree = three(K1, V1, K2, V2, empty, empty, empty)
+            ;
+                !.List = [_],
+                unexpected($module, $pred, "len 2 one")
+            ;
+                !.List = [],
+                unexpected($module, $pred, "len 2 nil")
+            )
+        ;
+            unexpected($module, $pred, "level 1, but len not 1 or 2")
+        )
+    ;
+        Level = Level0 - 1,
+        AllThrees = (AllThrees0 - 2) / 3,
+        ( Len > 2 * AllThrees ->
+            BaseSubLen = (Len / 3),
+            Diff = Len - (BaseSubLen * 3),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 3:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1,
+                SubLen3 = BaseSubLen - 1
+            ; Diff = 1 ->
+                % Len = BaseSubLen * 3 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen - 1
+            ;
+                trace [compiletime(flag("tree234_sanity_checks"))] (
+                    expect(unify(Diff, 2), $module, $pred, "Diff != 2")
+                ),
+                % Len = BaseSubLen * 3 + 2:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
+                io.format("splitting %d into three: %d, %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
+            ),
+
+            do_from_rev_sorted_assoc_list(SubLen3, !List, Level, AllThrees,
+                SubTree3),
+            (
+                !.List = [K2 - V2 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "tree K2 V2 nil")
+            ),
+            do_from_rev_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            (
+                !.List = [K1 - V1 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "tree K1 V1 nil")
+            ),
+            do_from_rev_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            Tree = three(K1, V1, K2, V2, SubTree1, SubTree2, SubTree3),
+            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        ;
+            BaseSubLen = (Len) / 2,
+            Diff = Len - (BaseSubLen * 2),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 2:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1
+            ;
+                trace [compiletime(flag("tree234_sanity_checks"))] (
+                    expect(unify(Diff, 1), $module, $pred, "Diff != 1")
+                ),
+                % Len = BaseSubLen * 2 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
+                io.format("splitting %d into two: %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
+            ),
+
+            do_from_rev_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            (
+                !.List = [K1 - V1 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "two K1 V1 nil")
+            ),
+            do_from_rev_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            Tree = two(K1, V1, SubTree1, SubTree2),
+            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        )
+    ).
+
+:- pred find_level(int::in, int::in, int::out,
+    int::in, int::out) is det.
+
+find_level(Len, !Level, !AllThrees) :-
+    ( Len =< !.AllThrees ->
+        true
+    ;
+        !:Level = !.Level + 1,
+        !:AllThrees = !.AllThrees * 3 + 2,
+        find_level(Len, !Level, !AllThrees)
+    ).
+
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+
+tree234.foldl(F, T, A) = B :-
+    P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
+    tree234.foldl(P, T, A, B).
 
 tree234.foldl(_Pred, empty, !A).
 tree234.foldl(Pred, two(K, V, T0, T1), !A) :-
@@ -2815,6 +3641,10 @@ tree234.foldl_values(Pred, four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3),
 
 %------------------------------------------------------------------------------%
 
+tree234.foldr(F, T, A) = B :-
+    P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
+    tree234.foldr(P, T, A, B).
+
 tree234.foldr(_Pred, empty, !A).
 tree234.foldr(Pred, two(K, V, T0, T1), !A) :-
     tree234.foldr(Pred, T1, !A),
@@ -2898,6 +3728,11 @@ tree234.foldr4(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 	tree234.foldr4(Pred, T0, !A, !B, !C, !D).
 
 %------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+
+tree234.map_values(F, T1) = T2 :-
+    P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+    tree234.map_values(P, T1, T2).
 
 tree234.map_values(_Pred, empty, empty).
 tree234.map_values(Pred, Tree0, Tree) :-
@@ -2925,6 +3760,10 @@ tree234.map_values(Pred, Tree0, Tree) :-
     tree234.map_values(Pred, Right0, Right),
     Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
+tree234.map_values_only(F, T1) = T2 :-
+    P = (pred(Y::in, Z::out) is det :- Z = F(Y) ),
+    tree234.map_values_only(P, T1, T2).
+
 tree234.map_values_only(_Pred, empty, empty).
 tree234.map_values_only(Pred, Tree0, Tree) :-
     Tree0 = two(K0, V0, Left0, Right0),
@@ -2951,6 +3790,7 @@ tree234.map_values_only(Pred, Tree0, Tree) :-
     tree234.map_values_only(Pred, Right0, Right),
     Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
+%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 tree234.map_foldl(_Pred, empty, empty, !A).
@@ -3110,73 +3950,7 @@ tree234.map_values_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
     Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
 %------------------------------------------------------------------------------%
-
-tree234.count(empty, 0).
-tree234.count(two(_, _, T0, T1), N) :-
-    tree234.count(T0, N0),
-    tree234.count(T1, N1),
-    N = 1 + N0 + N1.
-tree234.count(three(_, _, _, _, T0, T1, T2), N) :-
-    tree234.count(T0, N0),
-    tree234.count(T1, N1),
-    tree234.count(T2, N2),
-    N = 2 + N0 + N1 + N2.
-tree234.count(four(_, _, _, _, _, _, T0, T1, T2, T3), N) :-
-    tree234.count(T0, N0),
-    tree234.count(T1, N1),
-    tree234.count(T2, N2),
-    tree234.count(T3, N3),
-    N = 3 + N0 + N1 + N2 + N3.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
-%       Function forms added.
-
-tree234.init = T :-
-    tree234.init(T).
-
-tree234.lookup(T, K) = V :-
-    tree234.lookup(T, K, V).
-
-tree234.set(!.T, K, V) = !:T :-
-    tree234.set(K, V, !T).
-
-tree234.delete(!.T, K) = !:T :-
-    tree234.delete(K, !T).
-
-tree234.keys(T) = Ks :-
-    tree234.keys(T, Ks).
-
-tree234.values(T) = Vs :-
-    tree234.values(T, Vs).
-
-tree234.count(T) = N :-
-    tree234.count(T, N).
-
-tree234.assoc_list_to_tree234(AL) = T :-
-    tree234.assoc_list_to_tree234(AL, T).
-
-tree234.tree234_to_assoc_list(T) = AL :-
-    tree234.tree234_to_assoc_list(T, AL).
-
-tree234.foldl(F, T, A) = B :-
-    P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
-    tree234.foldl(P, T, A, B).
-
-tree234.foldr(F, T, A) = B :-
-    P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
-    tree234.foldr(P, T, A, B).
-
-tree234.map_values(F, T1) = T2 :-
-    P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    tree234.map_values(P, T1, T2).
-
-tree234.map_values_only(F, T1) = T2 :-
-    P = (pred(Y::in, Z::out) is det :- Z = F(Y) ),
-    tree234.map_values_only(P, T1, T2).
-
-%-----------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
 
     % The default pretty_printer formatting for key_value_pair will do what
     % we want.
@@ -3232,298 +4006,29 @@ tree234_to_lazy_list(four(K1, V1, K2, V2, K3, V3, T1, T2, T3, T4), LL) =
 
 %-----------------------------------------------------------------------------%
 
-from_sorted_assoc_list(List, Tree) :-
-    list.length(List, Len),
-    ( Len = 0 ->
-        % We can handle the Len = 0 case here just once, or we can handle it
-        % lots of times in do_from_sorted_assoc_list. The former is more
-        % efficient.
-        Tree = empty
+find_min_size_based_on_depth(T, MinSize) :-
+    find_depth(T, Depth),
+    min_size_based_on_depth(Depth, MinSize).
+
+:- pred min_size_based_on_depth(int::in, int::out) is det.
+
+min_size_based_on_depth(Depth, MinSize) :-
+    ( Depth = 0 ->
+        MinSize = 0
     ;
-        find_level(Len, 0, Level, 0, AllThrees),
-        do_from_sorted_assoc_list(Len, List, LeftOver, Level, AllThrees, Tree),
-        require(unify(LeftOver, []), "from_sorted_assoc_list: leftovers")
+        min_size_based_on_depth(Depth - 1, MinSizeBelow),
+        MinSize = MinSizeBelow * 2 + 1
     ).
 
-:- pred do_from_sorted_assoc_list(int::in,
-    assoc_list(K, V)::in, assoc_list(K, V)::out,
-    int::in, int::in, tree234(K, V)::out) is det.
+:- pred find_depth(tree234(K, V)::in, int::out) is det.
 
-do_from_sorted_assoc_list(Len, !List, Level0, AllThrees0, Tree) :-
-    ( Level0 = 1 ->
-        ( Len = 1 ->
-            (
-                !.List = [K1 - V1 | !:List],
-                Tree = two(K1, V1, empty, empty)
-            ;
-                !.List = [],
-                error("do_from_sorted_assoc_list: len 1 nil")
-            )
-        ; Len = 2 ->
-            require(unify(Level0, 1), "Len = 2 but Level != 1"),
-            (
-                !.List = [K1 - V1, K2 - V2 | !:List],
-                Tree = three(K1, V1, K2, V2, empty, empty, empty)
-            ;
-                !.List = [_],
-                error("do_from_sorted_assoc_list: len 2 one")
-            ;
-                !.List = [],
-                error("do_from_sorted_assoc_list: len 2 nil")
-            )
-        ;
-            error("do_from_sorted_assoc_list: level 1, but len not 1 or 2")
-        )
-    ;
-        Level = Level0 - 1,
-        AllThrees = (AllThrees0 - 2) / 3,
-        ( Len > 2 * AllThrees ->
-            BaseSubLen = (Len / 3),
-            Diff = Len - (BaseSubLen * 3),
-            ( Diff = 0 ->
-                % Len = BaseSubLen * 3:
-                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen - 1,
-                SubLen3 = BaseSubLen - 1
-            ; Diff = 1 ->
-                % Len = BaseSubLen * 3 + 1:
-                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen,
-                SubLen3 = BaseSubLen - 1
-            ;
-                require(unify(Diff, 2),
-                    "do_from_sorted_assoc_list: Diff != 2"),
-                % Len = BaseSubLen * 3 + 2:
-                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen,
-                SubLen3 = BaseSubLen
-            ),
-
-            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
-                io.format("splitting %d into three: %d, %d, %d\n",
-                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
-            ),
-
-            do_from_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
-                SubTree1),
-            (
-                !.List = [K1 - V1 | !:List]
-            ;
-                !.List = [],
-                error("do_from_sorted_assoc_list: tree K1 V1 nil")
-            ),
-            do_from_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
-                SubTree2),
-            (
-                !.List = [K2 - V2 | !:List]
-            ;
-                !.List = [],
-                error("do_from_sorted_assoc_list: tree K2 V2 nil")
-            ),
-            do_from_sorted_assoc_list(SubLen3, !List, Level, AllThrees,
-                SubTree3),
-            Tree = three(K1, V1, K2, V2, SubTree1, SubTree2, SubTree3),
-            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
-                io.format("tree for %d\n", [i(Len)], !IO),
-                io.write(Tree, !IO),
-                io.nl(!IO)
-            )
-        ;
-            BaseSubLen = (Len) / 2,
-            Diff = Len - (BaseSubLen * 2),
-            ( Diff = 0 ->
-                % Len = BaseSubLen * 2:
-                % (BaseSubLen) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen - 1
-            ;
-                require(unify(Diff, 1),
-                    "do_from_sorted_assoc_list: Diff != 1"),
-                % Len = BaseSubLen * 2 + 1:
-                % (BaseSubLen) + 1 + (BaseSubLen)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen
-            ),
-
-            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
-                io.format("splitting %d into two: %d, %d\n",
-                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
-            ),
-
-            do_from_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
-                SubTree1),
-            (
-                !.List = [K1 - V1 | !:List]
-            ;
-                !.List = [],
-                error("do_from_sorted_assoc_list: two K1 V1 nil")
-            ),
-            do_from_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
-                SubTree2),
-            Tree = two(K1, V1, SubTree1, SubTree2),
-            trace [io(!IO), compile_time(flag("from_sorted_assoc_list"))] (
-                io.format("tree for %d\n", [i(Len)], !IO),
-                io.write(Tree, !IO),
-                io.nl(!IO)
-            )
-        )
-    ).
-
-from_rev_sorted_assoc_list(List, Tree) :-
-    list.length(List, Len),
-    ( Len = 0 ->
-        % We can handle the Len = 0 case here just once, or we can handle it
-        % lots of times in do_from_rev_sorted_assoc_list. The former is more
-        % efficient.
-        Tree = empty
-    ;
-        find_level(Len, 0, Level, 0, AllThrees),
-        do_from_rev_sorted_assoc_list(Len, List, LeftOver, Level, AllThrees,
-            Tree),
-        require(unify(LeftOver, []), "from_rev_sorted_assoc_list: leftovers")
-    ).
-
-:- pred do_from_rev_sorted_assoc_list(int::in,
-    assoc_list(K, V)::in, assoc_list(K, V)::out,
-    int::in, int::in, tree234(K, V)::out) is det.
-
-do_from_rev_sorted_assoc_list(Len, !List, Level0, AllThrees0, Tree) :-
-    ( Level0 = 1 ->
-        ( Len = 1 ->
-            (
-                !.List = [K1 - V1 | !:List],
-                Tree = two(K1, V1, empty, empty)
-            ;
-                !.List = [],
-                error("do_from_rev_sorted_assoc_list: len 1 nil")
-            )
-        ; Len = 2 ->
-            require(unify(Level0, 1), "Len = 2 but Level != 1"),
-            (
-                !.List = [K2 - V2, K1 - V1 | !:List],
-                Tree = three(K1, V1, K2, V2, empty, empty, empty)
-            ;
-                !.List = [_],
-                error("do_from_rev_sorted_assoc_list: len 2 one")
-            ;
-                !.List = [],
-                error("do_from_rev_sorted_assoc_list: len 2 nil")
-            )
-        ;
-            error("do_from_rev_sorted_assoc_list: level 1, but len not 1 or 2")
-        )
-    ;
-        Level = Level0 - 1,
-        AllThrees = (AllThrees0 - 2) / 3,
-        ( Len > 2 * AllThrees ->
-            BaseSubLen = (Len / 3),
-            Diff = Len - (BaseSubLen * 3),
-            ( Diff = 0 ->
-                % Len = BaseSubLen * 3:
-                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen - 1,
-                SubLen3 = BaseSubLen - 1
-            ; Diff = 1 ->
-                % Len = BaseSubLen * 3 + 1:
-                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen,
-                SubLen3 = BaseSubLen - 1
-            ;
-                require(unify(Diff, 2),
-                    "do_from_rev_sorted_assoc_list: Diff != 2"),
-                % Len = BaseSubLen * 3 + 2:
-                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen,
-                SubLen3 = BaseSubLen
-            ),
-
-            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
-                io.format("splitting %d into three: %d, %d, %d\n",
-                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
-            ),
-
-            do_from_rev_sorted_assoc_list(SubLen3, !List, Level, AllThrees,
-                SubTree3),
-            (
-                !.List = [K2 - V2 | !:List]
-            ;
-                !.List = [],
-                error("do_from_rev_sorted_assoc_list: tree K2 V2 nil")
-            ),
-            do_from_rev_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
-                SubTree2),
-            (
-                !.List = [K1 - V1 | !:List]
-            ;
-                !.List = [],
-                error("do_from_rev_sorted_assoc_list: tree K1 V1 nil")
-            ),
-            do_from_rev_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
-                SubTree1),
-            Tree = three(K1, V1, K2, V2, SubTree1, SubTree2, SubTree3),
-            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
-                io.format("tree for %d\n", [i(Len)], !IO),
-                io.write(Tree, !IO),
-                io.nl(!IO)
-            )
-        ;
-            BaseSubLen = (Len) / 2,
-            Diff = Len - (BaseSubLen * 2),
-            ( Diff = 0 ->
-                % Len = BaseSubLen * 2:
-                % (BaseSubLen) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen - 1
-            ;
-                require(unify(Diff, 1),
-                    "from_rev_sorted_assoc_list: Diff != 1"),
-                % Len = BaseSubLen * 2 + 1:
-                % (BaseSubLen) + 1 + (BaseSubLen)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen
-            ),
-
-            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
-                io.format("splitting %d into two: %d, %d\n",
-                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
-            ),
-
-            do_from_rev_sorted_assoc_list(SubLen2, !List, Level, AllThrees,
-                SubTree2),
-            (
-                !.List = [K1 - V1 | !:List]
-            ;
-                !.List = [],
-                error("do_from_rev_sorted_assoc_list: two K1 V1 nil")
-            ),
-            do_from_rev_sorted_assoc_list(SubLen1, !List, Level, AllThrees,
-                SubTree1),
-            Tree = two(K1, V1, SubTree1, SubTree2),
-            trace [io(!IO), compile_time(flag("from_rev_sorted_assoc_list"))] (
-                io.format("tree for %d\n", [i(Len)], !IO),
-                io.write(Tree, !IO),
-                io.nl(!IO)
-            )
-        )
-    ).
-
-:- pred find_level(int::in, int::in, int::out,
-    int::in, int::out) is det.
-
-find_level(Len, !Level, !AllThrees) :-
-    ( Len =< !.AllThrees ->
-        true
-    ;
-        !:Level = !.Level + 1,
-        !:AllThrees = !.AllThrees * 3 + 2,
-        find_level(Len, !Level, !AllThrees)
-    ).
+find_depth(empty, 0).
+find_depth(two(_, _, T1, _), Depth + 1) :-
+    find_depth(T1, Depth).
+find_depth(three(_, _, _, _, T1, _, _), Depth + 1) :-
+    find_depth(T1, Depth).
+find_depth(four(_, _, _, _, _, _, T1, _, _, _), Depth + 1) :-
+    find_depth(T1, Depth).
 
 %-----------------------------------------------------------------------------%
 

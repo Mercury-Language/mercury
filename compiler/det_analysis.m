@@ -430,7 +430,7 @@ det_infer_goal(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
     % If a pure or semipure goal has no output variables, then the goal
     % is in a single-solution context.
     (
-        det_no_output_vars(NonLocalVars, InstMap0, InstmapDelta, !.DetInfo),
+        det_no_output_vars(!.DetInfo, InstMap0, InstmapDelta, NonLocalVars),
         Purity = goal_info_get_purity(GoalInfo0),
         (
             Purity = purity_impure
@@ -444,19 +444,18 @@ det_infer_goal(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
     ;
         AddPruning = no
     ),
+    det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
+        RightFailingContexts, MaybePromiseEqvSolutionSets, AddPruning,
+        Detism, GoalFailingContexts, !DetInfo).
 
-    det_infer_goal_1(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
-        MaybePromiseEqvSolutionSets, AddPruning, Detism, GoalFailingContexts,
-        !DetInfo).
+:- pred det_infer_goal_known_pruning(hlds_goal::in, hlds_goal::out,
+    instmap::in, soln_context::in, list(failing_context)::in,
+    maybe(pess_info)::in, bool::in, determinism::out,
+    list(failing_context)::out, det_info::in, det_info::out) is det.
 
-:- pred det_infer_goal_1(hlds_goal::in, hlds_goal::out, instmap::in,
-    soln_context::in, list(failing_context)::in, maybe(pess_info)::in,
-    bool::in, determinism::out, list(failing_context)::out,
-    det_info::in, det_info::out) is det.
-
-det_infer_goal_1(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
-        MaybePromiseEqvSolutionSets, AddPruning, Detism, GoalFailingContexts,
-        !DetInfo) :-
+det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
+        RightFailingContexts, MaybePromiseEqvSolutionSets, AddPruning,
+        Detism, GoalFailingContexts, !DetInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo0),
 
@@ -485,8 +484,8 @@ det_infer_goal_1(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
         Prune = AddPruning
     ),
 
-    det_infer_goal_2(GoalExpr0, GoalExpr1, GoalInfo0, InstMap0, !.SolnContext,
-        RightFailingContexts, MaybePromiseEqvSolutionSets,
+    det_infer_goal_expr(GoalExpr0, GoalExpr1, GoalInfo0, InstMap0,
+        !.SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets,
         InternalDetism0, GoalFailingContexts, !DetInfo),
 
     determinism_components(InternalDetism0, InternalCanFail, InternalSolns0),
@@ -593,13 +592,13 @@ promise_eqv_solutions_kind_prunes(equivalent_solution_sets_arbitrary) = yes.
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_infer_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
+:- pred det_infer_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, instmap::in, soln_context::in,
     list(failing_context)::in, maybe(pess_info)::in,
     determinism::out, list(failing_context)::out,
     det_info::in, det_info::out) is det.
 
-det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
+det_infer_goal_expr(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         RightFailingContexts, MaybePromiseEqvSolutionSets, Detism,
         GoalFailingContexts, !DetInfo) :-
     (
@@ -698,12 +697,12 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
                 OrElseGoals, OrElseInners)
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, TryGoal0),
-            % Don't allow det_infer_goal_1 to insert a commit scope around the
-            % code that's standing in place for the code we'll actually create
-            % for a try goal.
-            det_infer_goal_1(TryGoal0, TryGoal, InstMap0, SolnContext,
-                RightFailingContexts, MaybePromiseEqvSolutionSets, no, Detism,
-                GoalFailingContexts, !DetInfo),
+            % Don't allow det_infer_goal_known_pruning to insert a commit scope
+            % around the code that is standing in place for the code we will
+            % actually create for a try goal.
+            det_infer_goal_known_pruning(TryGoal0, TryGoal, InstMap0,
+                SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets,
+                no, Detism, GoalFailingContexts, !DetInfo),
             ShortHand = try_goal(MaybeIO, ResultVar, TryGoal)
         ;
             ShortHand0 = bi_implication(_, _),
@@ -1840,12 +1839,13 @@ det_find_matching_non_cc_mode(DetInfo, PredId, !ProcId) :-
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcList),
-    det_find_matching_non_cc_mode_2(ProcList, ModuleInfo, PredInfo, !ProcId).
+    det_find_matching_non_cc_mode_procs(ProcList, ModuleInfo, PredInfo,
+        !ProcId).
 
-:- pred det_find_matching_non_cc_mode_2(assoc_list(proc_id, proc_info)::in,
+:- pred det_find_matching_non_cc_mode_procs(assoc_list(proc_id, proc_info)::in,
     module_info::in, pred_info::in, proc_id::in, proc_id::out) is semidet.
 
-det_find_matching_non_cc_mode_2([TestProcId - ProcInfo | Rest],
+det_find_matching_non_cc_mode_procs([TestProcId - ProcInfo | Rest],
         ModuleInfo, PredInfo, !ProcId) :-
     (
         TestProcId \= !.ProcId,
@@ -1856,7 +1856,8 @@ det_find_matching_non_cc_mode_2([TestProcId - ProcInfo | Rest],
     ->
         !:ProcId = TestProcId
     ;
-        det_find_matching_non_cc_mode_2(Rest, ModuleInfo, PredInfo, !ProcId)
+        det_find_matching_non_cc_mode_procs(Rest, ModuleInfo, PredInfo,
+            !ProcId)
     ).
 
 %-----------------------------------------------------------------------------%
