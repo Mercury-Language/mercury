@@ -63,6 +63,7 @@
 **       Word64         -- time (nanosecs)
 **       [Word16]       -- length of the rest (for variable-sized events only)
 **       ... extra event-specific info ...
+**
 ** EventTypeExt :
 **       Word16         -- unique identifier for this extension type.
 **       Word16         -- size of the payload in bytes.
@@ -164,8 +165,25 @@
 #define MR_TS_EVENT_SPARK_FIZZLE        40 /* () */
 #define MR_TS_EVENT_SPARK_GC            41 /* () */
 #define MR_TS_EVENT_INTERN_STRING       42 /* (string, id) */
+#define MR_TS_EVENT_WALL_CLOCK_TIME     43 /* (capset, unix_epoch_seconds, nanoseconds) */
+#define MR_TS_EVENT_THREAD_LABEL        44 /* (thread, name_string)  */
+#define MR_TS_EVENT_CAP_CREATE          45 /* (cap)                  */
+#define MR_TS_EVENT_CAP_DELETE          46 /* (cap)                  */
+#define MR_TS_EVENT_CAP_DISABLE         47 /* (cap)                  */
+#define MR_TS_EVENT_CAP_ENABLE          48 /* (cap)                  */
+#define MR_TS_EVENT_HEAP_ALLOCATED      49 /* (heap_capset, alloc_bytes) */
+#define MR_TS_EVENT_HEAP_SIZE           50 /* (heap_capset, size_bytes) */
+#define MR_TS_EVENT_HEAP_LIVE           51 /* (heap_capset, live_bytes) */
+#define MR_TS_EVENT_HEAP_INFO_GHC       52 /* (heap_capset, n_generations,
+                                         max_heap_size, alloc_area_size,
+                                         mblock_size, block_size) */
+#define MR_TS_EVENT_GC_STATS_GHC        53 /* (heap_capset, generation,
+                                         copied_bytes, slop_bytes, frag_bytes,
+                                         par_n_threads,
+                                         par_max_copied, par_tot_copied) */
+#define MR_TS_EVENT_GC_GLOBAL_SYNC      54 /* ()                     */
 
-#define MR_TS_NUM_EVENT_TAGS            43
+#define MR_TS_NUM_EVENT_TAGS            55
 
 #define MR_TS_MER_EVENT_START           100
 
@@ -510,6 +528,20 @@ static EventTypeDesc event_type_descs[] = {
     {
         MR_TS_EVENT_SPARK_CREATE,
         "A spark is being created",
+        0,
+        0xFFFF
+    },
+    /*
+     * We don't use events 43--53.
+     */
+    {
+        MR_TS_EVENT_GC_GLOBAL_SYNC,
+        /*
+        ** If using parallel marking this also means that marker threads are
+        ** ready.  This doesn't apply to Mercury as Boehm uses seperate
+        ** threads
+        */
+        "The world has stopped and GC may begin",
         0,
         0xFFFF
     },
@@ -2037,6 +2069,21 @@ start_gc_callback(void)
 
         put_event_header(buffer, MR_TS_EVENT_GC_START,
             get_current_time_nanosecs());
+
+        if (!enough_room_for_event(buffer, MR_TS_EVENT_GC_GLOBAL_SYNC)) {
+            flush_event_buffer(buffer);
+            open_block(buffer, MR_thread_engine_base->MR_eng_id);
+        } else if (!block_is_open(buffer)) {
+            open_block(buffer, MR_thread_engine_base->MR_eng_id);
+        }
+
+        /*
+        ** Idealy this event should be posted after the world has stopped.
+        ** Doing so means adding more instrumentation into Boehm.
+        */
+        put_event_header(buffer, MR_TS_EVENT_GC_GLOBAL_SYNC,
+            get_current_time_nanosecs());
+
         MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
     }
 }
