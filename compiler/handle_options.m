@@ -950,7 +950,17 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(lexically_order_constructors, bool(yes),
             !Globals),
         globals.set_option(libgrade_install_check, bool(no), !Globals),
-        globals.set_option(cross_compiling, bool(yes), !Globals)
+        globals.set_option(cross_compiling, bool(yes), !Globals),
+
+        % The following options do not directly affect the Erlang backend,
+        % however we need to ensure they are set to values that are consistent
+        % with what the predicate grade_component_table/2 (below) expects.
+        %
+        globals.set_option(gcc_non_local_gotos, bool(no), !Globals),
+        globals.set_option(gcc_global_registers, bool(no), !Globals),
+        globals.set_option(asm_labels, bool(no), !Globals),
+        globals.set_option(highlevel_code, bool(no), !Globals),
+        globals.set_option(highlevel_data, bool(no), !Globals)
     ;
         ( Target = target_c
         ; Target = target_il
@@ -2766,7 +2776,7 @@ compute_grade(Globals, Grade) :-
         Components = [],
         Grade = "none"
     ;
-        Components = [_|_],
+        Components = [_ | _],
         construct_string(Components, Grade)
     ).
 
@@ -2774,9 +2784,9 @@ compute_grade(Globals, Grade) :-
     is det.
 
 construct_string([], "").
-construct_string([_ - Bit|Bits], Grade) :-
+construct_string([_ - Bit | Bits], Grade) :-
     (
-        Bits = [_|_],
+        Bits = [_ | _],
         construct_string(Bits, Grade0),
         string.append_list([Bit, ".", Grade0], Grade)
     ;
@@ -2954,8 +2964,8 @@ grade_component_table("erlang", comp_gcc_ext, [
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
         gcc_nested_functions    - bool(no),
-        highlevel_code          - bool(yes),
-        highlevel_data          - bool(yes)],
+        highlevel_code          - bool(no),
+        highlevel_data          - bool(no)],
         yes([string("erlang")]), yes).
 
     % Parallelism/multithreading components.
