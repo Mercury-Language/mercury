@@ -239,7 +239,8 @@
 :- pred map.delete_list(list(K)::in, map(K, V)::in, map(K, V)::out) is det.
 
     % Apply map.delete/3 to a sorted list of keys. The fact that the list
-    % is sorted may make this more efficient.
+    % is sorted may make this more efficient. (If the list is not sorted,
+    % the result will be either an abort or incorrect output.)
     %
 :- func map.delete_sorted_list(map(K, V), list(K)) = map(K, V).
 :- pred map.delete_sorted_list(list(K)::in, map(K, V)::in, map(K, V)::out)
