@@ -188,7 +188,7 @@
     %
 :- pred eof(src::in, unit::out, ps::in, ps::out) is semidet.
 
-    % Parse a float literal matching [-][0-9]+[.][0-9]+([Ee][-][0-9]+)?
+    % Parse a float literal matching [-][0-9]+[.][0-9]+([Ee][-+][0-9]+)?
     % followed by any whitespace.  The float_literal_as_string version simply
     % returns the matched string.  The float_literal version uses
     % string.to_float to convert the output of float_literal_as_string; this
@@ -801,7 +801,7 @@ float_literal_as_string(Src, FloatStr, !PS) :-
     next_char(Src, ('.'), !PS),
     digits(10, Src, _, !PS),
     ( if char_in_class("eE", Src, _, !PS) then
-        ( if next_char(Src, ('-'), !PS) then true else true ),
+        optional_sign(Src, !PS),
         digits(10, Src, _, !PS)
       else
         true
@@ -809,6 +809,20 @@ float_literal_as_string(Src, FloatStr, !PS) :-
     current_offset(Src, EndPlusOne, !PS),
     skip_whitespace(Src, !PS),
     input_substring(Src, Start, EndPlusOne, FloatStr).
+
+:- pred optional_sign(src::in, ps::in, ps::out) is det.
+
+optional_sign(Src, !PS) :-
+    ( if
+        next_char(Src, Char, !PS),
+        ( Char = ('-')
+        ; Char = ('+')
+        )
+      then
+        true
+      else
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 
