@@ -1072,8 +1072,8 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         Goals = [_, _ | _],
 
         % Conjunctions that cannot produce solutions may nevertheless contain
-        % nondet and multi goals. If this happens, the conjunction is put
-        % inside a scope to appease the code generator.
+        % nondet and multi goals. If this happens, we put the conjunction
+        % inside a commit scope to appease the code generator.
 
         Detism = goal_info_get_determinism(GoalInfo0),
         (
@@ -1485,10 +1485,10 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     determinism_components(CondDetism0, CondCanFail0, CondSolns0),
     (
         CondCanFail0 = cannot_fail,
-        goal_to_conj_list(Cond0, CondList),
-        goal_to_conj_list(Then0, ThenList),
-        list.append(CondList, ThenList, List),
-        simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
+        goal_to_conj_list(Cond0, CondGoals),
+        goal_to_conj_list(Then0, ThenGoals),
+        Goals = CondGoals ++ ThenGoals,
+        simplify_goal(hlds_goal(conj(plain_conj, Goals), GoalInfo0),
             hlds_goal(GoalExpr, GoalInfo), !Info),
         simplify_info_get_inside_duplicated_for_switch(!.Info,
             InsideDuplForSwitch),
@@ -1582,8 +1582,19 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             ; CondSolns0 = at_most_many
             ; CondSolns0 = at_most_many_cc
             ),
-            simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
-                GoalInfo0, GoalInfo, !Info)
+            ( Else0 = hlds_goal(disj([]), _) ->
+                % (Cond -> Then ; fail) is equivalent to (Cond, Then)
+                goal_to_conj_list(Cond0, CondGoals),
+                goal_to_conj_list(Then0, ThenGoals),
+                Goals = CondGoals ++ ThenGoals,
+                simplify_goal(hlds_goal(conj(plain_conj, Goals), GoalInfo0),
+                    hlds_goal(GoalExpr, GoalInfo), !Info),
+                simplify_info_set_requantify(!Info),
+                simplify_info_set_rerun_det(!Info)
+            ;
+                simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
+                    GoalInfo0, GoalInfo, !Info)
+            )
         )
     ).
 
@@ -1594,115 +1605,102 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
 
 simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
         GoalInfo0, GoalInfo, !Info) :-
-    ( Else0 = hlds_goal(disj([]), _) ->
-        % (A -> C ; fail) is equivalent to (A, C)
-        goal_to_conj_list(Cond0, CondList),
-        goal_to_conj_list(Then0, ThenList),
-        list.append(CondList, ThenList, List),
-        simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
-            hlds_goal(GoalExpr, GoalInfo), !Info),
-        simplify_info_set_requantify(!Info),
-        simplify_info_set_rerun_det(!Info)
-    ;
-        % Recursively simplify the sub-goals, and rebuild the resulting
-        % if-then-else.
+    % Recursively simplify the sub-goals, and rebuild the resulting
+    % if-then-else.
 
-        Info0 = !.Info,
-        simplify_info_get_instmap(!.Info, InstMap0),
-        simplify_goal(Cond0, Cond, !Info),
-        simplify_info_update_instmap(Cond, !Info),
-        simplify_goal(Then0, Then, !Info),
-        simplify_info_post_branch_update(Info0, !Info),
-        simplify_goal(Else0, Else, !Info),
-        simplify_info_post_branch_update(Info0, !Info),
-        Cond = hlds_goal(_, CondInfo),
-        CondDelta = goal_info_get_instmap_delta(CondInfo),
-        Then = hlds_goal(_, ThenInfo),
-        ThenDelta = goal_info_get_instmap_delta(ThenInfo),
-        instmap_delta_apply_instmap_delta(CondDelta, ThenDelta,
-            test_size, CondThenDelta),
-        Else = hlds_goal(_, ElseInfo),
-        ElseDelta = goal_info_get_instmap_delta(ElseInfo),
-        NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        some [!ModuleInfo] (
-            simplify_info_get_module_info(!.Info, !:ModuleInfo),
-            simplify_info_get_var_types(!.Info, VarTypes),
-            merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
-                [CondThenDelta, ElseDelta], NewDelta, !ModuleInfo),
-            simplify_info_set_module_info(!.ModuleInfo, !Info)
-        ),
-        goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo1),
-        IfThenElse = if_then_else(Vars, Cond, Then, Else),
+    Info0 = !.Info,
+    simplify_info_get_instmap(!.Info, InstMap0),
+    simplify_goal(Cond0, Cond, !Info),
+    simplify_info_update_instmap(Cond, !Info),
+    simplify_goal(Then0, Then, !Info),
+    simplify_info_post_branch_update(Info0, !Info),
+    simplify_goal(Else0, Else, !Info),
+    simplify_info_post_branch_update(Info0, !Info),
+    Cond = hlds_goal(_, CondInfo),
+    CondDelta = goal_info_get_instmap_delta(CondInfo),
+    Then = hlds_goal(_, ThenInfo),
+    ThenDelta = goal_info_get_instmap_delta(ThenInfo),
+    instmap_delta_apply_instmap_delta(CondDelta, ThenDelta, test_size,
+        CondThenDelta),
+    Else = hlds_goal(_, ElseInfo),
+    ElseDelta = goal_info_get_instmap_delta(ElseInfo),
+    NonLocals = goal_info_get_nonlocals(GoalInfo0),
+    some [!ModuleInfo] (
+        simplify_info_get_module_info(!.Info, !:ModuleInfo),
+        simplify_info_get_var_types(!.Info, VarTypes),
+        merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
+            [CondThenDelta, ElseDelta], NewDelta, !ModuleInfo),
+        simplify_info_set_module_info(!.ModuleInfo, !Info)
+    ),
+    goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo1),
+    IfThenElse = if_then_else(Vars, Cond, Then, Else),
 
-        IfThenElseDetism0 = goal_info_get_determinism(GoalInfo0),
-        determinism_components(IfThenElseDetism0, IfThenElseCanFail,
-            IfThenElseNumSolns),
+    IfThenElseDetism0 = goal_info_get_determinism(GoalInfo0),
+    determinism_components(IfThenElseDetism0, IfThenElseCanFail,
+        IfThenElseNumSolns),
 
-        CondDetism = goal_info_get_determinism(CondInfo),
-        determinism_components(CondDetism, CondCanFail, CondSolns),
-        (
-            % Check again if we can apply one of the above simplifications
-            % after having simplified the sub-goals (we need to do this
-            % to ensure that the goal is fully simplified, to maintain the
-            % invariants that the MLDS back-end depends on).
-            ( CondCanFail = cannot_fail
-            ; CondSolns = at_most_zero
-            ; Else = hlds_goal(disj([]), _)
-            )
-        ->
-            simplify_info_undo_goal_updates(Info0, !Info),
-            simplify_goal_expr(IfThenElse, GoalExpr, GoalInfo1, GoalInfo,
-                !Info)
-        ;
-            simplify_info_get_module_info(!.Info, ModuleInfo),
-            warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond,
-                cond_can_switch_uncommitted, CanSwitch),
-            (
-                CanSwitch = cond_can_switch_on(SwitchVar),
-                Context = goal_info_get_context(CondInfo),
-                simplify_info_get_varset(!.Info, VarSet),
-                Pieces0 = [words("Warning: this if-then-else"),
-                    words("could be replaced by a switch")],
-                ( varset.search_name(VarSet, SwitchVar, SwitchVarName) ->
-                    OnPieces = [words("on"), quote(SwitchVarName)]
-                ;
-                    OnPieces = []
-                ),
-                Pieces = Pieces0 ++ OnPieces ++ [suffix("."), nl],
-                Msg = simple_msg(Context,
-                    [option_is_set(inform_ite_instead_of_switch, yes,
-                        [always(Pieces)])]),
-                Severity = severity_conditional(inform_ite_instead_of_switch,
-                    yes, severity_informational, no),
-                Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
-                    [Msg]),
-                simplify_info_add_simple_code_spec(Spec, !Info)
-            ;
-                CanSwitch = cond_can_switch_uncommitted
-            ;
-                CanSwitch = cond_cannot_switch
-            ),
-            (
-                % If-then-elses that are det or semidet may nevertheless
-                % contain nondet or multi conditions. If this happens,
-                % the if-then-else must be put inside a `scope' to appease
-                % the code generator. (Both the MLDS and LLDS back-ends
-                % rely on this.)
-
-                simplify_do_once(!.Info),
-                CondSolns = at_most_many,
-                IfThenElseNumSolns \= at_most_many
-            ->
-                determinism_components(InnerDetism,
-                    IfThenElseCanFail, at_most_many),
-                goal_info_set_determinism(InnerDetism, GoalInfo1, InnerInfo),
-                GoalExpr = scope(commit(dont_force_pruning),
-                    hlds_goal(IfThenElse, InnerInfo))
-            ;
-                GoalExpr = IfThenElse
-            ),
-            GoalInfo = GoalInfo1
+    CondDetism = goal_info_get_determinism(CondInfo),
+    determinism_components(CondDetism, CondCanFail, CondSolns),
+    (
+        % Check again if we can apply one of the above simplifications
+        % after having simplified the sub-goals (we need to do this
+        % to ensure that the goal is fully simplified, to maintain the
+        % invariants that the MLDS back-end depends on).
+        ( CondCanFail = cannot_fail
+        ; CondSolns = at_most_zero
+        ; Else = hlds_goal(disj([]), _)
         )
+    ->
+        simplify_info_undo_goal_updates(Info0, !Info),
+        simplify_goal_expr(IfThenElse, GoalExpr, GoalInfo1, GoalInfo, !Info)
+    ;
+        simplify_info_get_module_info(!.Info, ModuleInfo),
+        warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond,
+            cond_can_switch_uncommitted, CanSwitch),
+        (
+            CanSwitch = cond_can_switch_on(SwitchVar),
+            Context = goal_info_get_context(CondInfo),
+            simplify_info_get_varset(!.Info, VarSet),
+            Pieces0 = [words("Warning: this if-then-else"),
+                words("could be replaced by a switch")],
+            ( varset.search_name(VarSet, SwitchVar, SwitchVarName) ->
+                OnPieces = [words("on"), quote(SwitchVarName)]
+            ;
+                OnPieces = []
+            ),
+            Pieces = Pieces0 ++ OnPieces ++ [suffix("."), nl],
+            Msg = simple_msg(Context,
+                [option_is_set(inform_ite_instead_of_switch, yes,
+                    [always(Pieces)])]),
+            Severity = severity_conditional(inform_ite_instead_of_switch,
+                yes, severity_informational, no),
+            Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
+                [Msg]),
+            simplify_info_add_simple_code_spec(Spec, !Info)
+        ;
+            CanSwitch = cond_can_switch_uncommitted
+        ;
+            CanSwitch = cond_cannot_switch
+        ),
+        (
+            % If-then-elses that are det or semidet may nevertheless contain
+            % nondet or multi conditions. If this happens, the if-then-else
+            % must be put inside a `scope' to appease the code generator.
+            % (Both the MLDS and LLDS back-ends rely on this.)
+
+            simplify_do_once(!.Info),
+            CondSolns = at_most_many,
+            IfThenElseNumSolns \= at_most_many
+        ->
+            determinism_components(InnerDetism, IfThenElseCanFail,
+                at_most_many),
+            goal_info_set_determinism(InnerDetism, GoalInfo1, InnerInfo),
+            GoalExpr = scope(commit(dont_force_pruning),
+                hlds_goal(IfThenElse, InnerInfo))
+        ;
+            GoalExpr = IfThenElse
+        ),
+        GoalInfo = GoalInfo1
     ).
 
 :- type cond_can_switch
@@ -3051,8 +3049,8 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
             Call = hlds_goal(Call1, CallGoalInfo1)
         )
     ),
-    list.append(ExtraGoals, [Call], ConjList),
-    conj_list_to_goal(ConjList, GoalInfo0, Goal).
+    Conjuncts = ExtraGoals ++ [Call],
+    conj_list_to_goal(Conjuncts, GoalInfo0, Goal).
 
 :- pred call_generic_unify(prog_var::in, prog_var::in,  prog_var::in,
     module_info::in, simplify_info::in, unify_context::in,
@@ -3074,7 +3072,7 @@ call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, _, _, GoalInfo,
 call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
         Context, GoalInfo0, CallExpr, CallGoalInfo) :-
     % Create the new call goal.
-    list.append(TypeInfoVars, [XVar, YVar], ArgVars),
+    ArgVars = TypeInfoVars ++ [XVar, YVar],
     module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
     map.lookup(SpecialPredMap, spec_pred_unify - TypeCtor, PredId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -3320,7 +3318,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info) :-
     Info0 = !.Info,
     % Flatten conjunctions.
     ( Goal0 = hlds_goal(conj(plain_conj, SubGoals), _) ->
-        list.append(SubGoals, Goals0, Goals1),
+        Goals1 = SubGoals ++ Goals0,
         simplify_conj(Goals1, !.RevGoals, Goals, ConjInfo, !Info)
     ;
         simplify_goal(Goal0, Goal1, !Info),
@@ -3329,7 +3327,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info) :-
             Goal1 = hlds_goal(conj(plain_conj, SubGoals1), _)
         ->
             simplify_info_undo_goal_updates(Info0, !Info),
-            list.append(SubGoals1, Goals0, Goals1),
+            Goals1 = SubGoals1 ++ Goals0,
             simplify_conj(Goals1, !.RevGoals, Goals, ConjInfo, !Info)
         ;
             % Delete unreachable goals.
@@ -3377,7 +3375,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info) :-
 conjoin_goal_and_rev_goal_list(Goal, RevGoals0, RevGoals) :-
     ( Goal = hlds_goal(conj(plain_conj, Goals), _) ->
         list.reverse(Goals, Goals1),
-        list.append(Goals1, RevGoals0, RevGoals)
+        RevGoals = Goals1 ++ RevGoals0
     ;
         RevGoals = [Goal | RevGoals0]
     ).
