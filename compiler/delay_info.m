@@ -78,8 +78,15 @@
     %
 :- pred delay_info_bind_all_vars(delay_info::in, delay_info::out) is det.
 
+    % delay_info_wakeup_goals(Goals, !DelayInfo):
+    %
     % Check if there are any "pending" goals, and if so,
     % remove them from the delay_info and return them.
+    %
+    % Goals is the list of pending goal in the order that they should be
+    % woken up, and !:DelayInfo is the new delay_info, updated to reflect
+    % the fact that the Goals have been woken up and is hence are longer
+    % pending.
     %
 :- pred delay_info_wakeup_goals(list(hlds_goal)::out,
     delay_info::in, delay_info::out) is det.
@@ -421,13 +428,6 @@ delete_waiting_vars([Var | Vars], GoalNum, !WaitingGoalsTable) :-
 
 %-----------------------------------------------------------------------------%
 
-    % delay_info_wakeup_goals(Goals, !DelayInfo):
-    %
-    % Goals is the list of pending goal in the order that they should be
-    % woken up, and DelayInfo is the new delay_info, updated to reflect
-    % the fact that the Goals have been woken up and is hence are longer
-    % pending.
-    %
 delay_info_wakeup_goals(Goals, !DelayInfo) :-
     ( delay_info_wakeup_goal(Goal, !DelayInfo) ->
         Goals = [Goal | Goals1],
@@ -440,15 +440,15 @@ delay_info_wakeup_goals(Goals, !DelayInfo) :-
     % remove it from the delay_info, and return it. If there are no pending
     % goals, this predicate will fail.
     %
+    % delay_info_wakeup_goal(Goal, !DelayInfo) is true iff
+    % !.DelayInfo specifies that there is at least one goal which is pending,
+    % Goal is the pending goal which should be reawakened first, and
+    % !:DelayInfo is the new delay_info, updated to reflect the fact that
+    % Goal has been woken up and is hence no longer pending.
+    %
 :- pred delay_info_wakeup_goal(hlds_goal::out,
     delay_info::in, delay_info::out) is semidet.
 
-    % delay_info_wakeup_goal(DelayInfo0, Goal, DelayInfo) is true iff
-    % DelayInfo0 specifies that there is at least one goal which is pending,
-    % Goal is the pending goal which should be reawakened first, and DelayInfo
-    % is the new delay_info, updated to reflect the fact that Goal has been
-    % woken up and is hence no longer pending.
-    %
 delay_info_wakeup_goal(Goal, !DelayInfo) :-
     delay_info_check_invariant(!.DelayInfo),
     !.DelayInfo = delay_info(CurrentDepth, DelayedGoalStack0, WaitingGoals,
