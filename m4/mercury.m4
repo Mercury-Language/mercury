@@ -228,11 +228,11 @@ AC_SUBST(READLINE_LIBRARIES)
 #
 AC_DEFUN([MERCURY_CHECK_DOTNET],
 [
-AC_PATH_PROG(ILASM, ilasm)
-AC_PATH_PROG(GACUTIL, gacutil)
+AC_PATH_PROG([ILASM], [ilasm])
+AC_PATH_PROG([GACUTIL], [gacutil])
 
-AC_MSG_CHECKING(for Microsoft.NET Framework SDK)
-AC_CACHE_VAL(mercury_cv_microsoft_dotnet, [
+AC_MSG_CHECKING([for Microsoft.NET Framework SDK])
+AC_CACHE_VAL([mercury_cv_microsoft_dotnet], [
 if test "$ILASM" != ""; then
 	changequote(<<,>>) 
 	MS_DOTNET_SDK_DIR=`expr "$ILASM" : '\(.*\)[/\\]*[bB]in[/\\]*ilasm'`
@@ -243,37 +243,60 @@ else
 	mercury_cv_microsoft_dotnet="no"
 fi
 ])
-AC_MSG_RESULT($mercury_cv_microsoft_dotnet)
+AC_MSG_RESULT([$mercury_cv_microsoft_dotnet])
 ILASM=`basename "$ILASM"`
 GACUTIL=`basename "$GACUTIL"`
 
 # Check for the C# (C sharp) compiler.
 # gmcs is the Mono C# compiler targeting the 2.0 runtime (with generics).
 # cscc is the DotGNU C# compiler.
-AC_PATH_PROGS(CSC, csc gmcs cscc)
-CSC=`basename "$CSC"`
+AC_PATH_PROGS([CANDIDATE_CSC], [csc gmcs cscc])
+CANDIDATE_CSC=`basename "$CANDIDATE_CSC"`
 
-case "$CSC" in
-	csc*)
-		CSHARP_COMPILER_TYPE=microsoft
-	;;
+# The Microsoft C# compiler and the Chicken Scheme compiler share the same
+# executable name so if we find an executable named csc above check that it is
+# actually the Microsoft C# compiler and if it is not then try to use one of
+# the other instead.
+#
+case "$CANDIDATE_CSC" in
+    
+     csc*)
+        $CANDIDATE_CSC 2>&1 | grep -q "^Microsoft"
+        if test $? -ne 0
+        then
+            AC_MSG_WARN([$CANDIDATE_CSC is not the Microsoft C sharp compiler])
+            AC_PATH_PROGS([CSC], [gmcs cscc])
+            CSC=`basename "$CSC"`
+        else
+            CSC="$CANDIDATE_CSC"
+        fi
+    ;;
 
-	gmcs*)
-		CSHARP_COMPILER_TYPE=mono
-	;;
-
-	*)
-		CSHARP_COMPILER_TYPE=unknown
-	;;
+    *)
+       CSC="$CANDIDATE_CSC"
+    ;;
 esac
 
+case "$CSC" in
+    csc*)
+        CSHARP_COMPILER_TYPE=microsoft
+    ;;
+
+    gmcs*)
+        CSHARP_COMPILER_TYPE=mono
+    ;;
+
+    *)
+        CSHARP_COMPILER_TYPE=unknown
+    ;;
+esac
 
 # We default to the Beta 2 version of the library
 mercury_cv_microsoft_dotnet_library_version=1.0.2411.0
 if	test $mercury_cv_microsoft_dotnet = "yes" &&
 	test "$CSC" != "";
 then
-	AC_MSG_CHECKING(version of .NET libraries)
+	AC_MSG_CHECKING([version of .NET libraries])
 	cat > conftest.cs << EOF
 	using System;
 	using System.Reflection;
@@ -294,15 +317,15 @@ EOF
 			./conftest > conftest.out 2>&1
 	then
 		mercury_cv_microsoft_dotnet_library_version=`cat conftest.out`
-		AC_MSG_RESULT($mercury_cv_microsoft_dotnet_library_version)
+		AC_MSG_RESULT([$mercury_cv_microsoft_dotnet_library_version])
 		rm -f conftest*
 	else
 		rm -f conftest*
 		if test "$enable_dotnet_grades" = "yes"; then
-			AC_MSG_ERROR(unable to determine version)
+			AC_MSG_ERROR([unable to determine version])
 			exit 1
 		else
-			AC_MSG_WARN(unable to determine version)
+			AC_MSG_WARN([unable to determine version])
 		fi
 	fi
 fi
@@ -310,22 +333,22 @@ MS_DOTNET_LIBRARY_VERSION=$mercury_cv_microsoft_dotnet_library_version
 
 # Check for the assembly linker.
 # ilalink is the DotGNU assembly linker.
-AC_PATH_PROGS(MS_AL, al ilalink)
+AC_PATH_PROGS([MS_AL], [al ilalink])
 MS_AL=`basename "$MS_AL"`
 
 # Check for an implementation of the Common Language Infrastructure.
-AC_PATH_PROGS(CLI_INTERPRETER, mono)
+AC_PATH_PROGS([CLI_INTERPRETER], [mono])
 MONO=`basename "$CLI_INTERPRETER"`
 
-AC_SUBST(ILASM)
-AC_SUBST(GACUTIL)
-AC_SUBST(CSC)
-AC_SUBST(CSHARP_COMPILER_TYPE)
-AC_SUBST(MS_AL)
-AC_SUBST(MS_DOTNET_SDK_DIR)
-AC_SUBST(MS_DOTNET_LIBRARY_VERSION)
-AC_SUBST(MS_VISUALCPP_DIR)
-AC_SUBST(CLI_INTERPRETER)
+AC_SUBST([ILASM])
+AC_SUBST([GACUTIL])
+AC_SUBST([CSC])
+AC_SUBST([CSHARP_COMPILER_TYPE])
+AC_SUBST([MS_AL])
+AC_SUBST([MS_DOTNET_SDK_DIR])
+AC_SUBST([MS_DOTNET_LIBRARY_VERSION])
+AC_SUBST([MS_VISUALCPP_DIR])
+AC_SUBST([CLI_INTERPRETER])
 ])
 
 #-----------------------------------------------------------------------------#
