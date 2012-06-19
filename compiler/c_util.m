@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 1999-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,8 +79,11 @@
 
     % As above, but for the specified language.
     %
-:- pred output_quoted_string_lang(literal_language::in, string::in,
-    io::di, io::uo) is det.
+:- pred output_quoted_string_lang(literal_language, string, io, io).
+:- mode output_quoted_string_lang(in(bound(literal_c)), in, di, uo) is det.
+:- mode output_quoted_string_lang(in(bound(literal_java)), in, di, uo) is det.
+:- mode output_quoted_string_lang(in(bound(literal_csharp)), in, di, uo) is det.
+:- mode output_quoted_string_lang(in, in, di, uo) is det.
 
     % output_quoted_multi_string is like list.foldl(output_quoted_string)
     % except that a null character will be written between each string
@@ -318,6 +321,8 @@ can_print_directly(_, no, !IO).
 output_quoted_string(S, !IO) :-
     output_quoted_string_lang(literal_c, S, !IO).
 
+:- pragma inline(output_quoted_string_lang/4).
+
 output_quoted_string_lang(Lang, S, !IO) :-
     (
         Lang = literal_c,
@@ -363,8 +368,11 @@ do_output_quoted_string(Lang, S, Cur, !IO) :-
 output_quoted_char(Char, !IO) :-
     output_quoted_char_lang(literal_c, Char, !IO).
 
-:- pred output_quoted_char_lang(literal_language::in, char::in, io::di, io::uo)
-    is det.
+:- pred output_quoted_char_lang(literal_language, char, io, io).
+:- mode output_quoted_char_lang(in(bound(literal_c)), in, di, uo) is det.
+:- mode output_quoted_char_lang(in(bound(literal_java)), in, di, uo) is det.
+:- mode output_quoted_char_lang(in(bound(literal_csharp)), in, di, uo) is det.
+:- mode output_quoted_char_lang(in, in, di, uo) is det.
 
 output_quoted_char_lang(Lang, Char, !IO) :-
     EscapedCharStr = quote_char_lang(Lang, Char),
@@ -373,20 +381,27 @@ output_quoted_char_lang(Lang, Char, !IO) :-
 quote_char(Char) = quote_char_lang(literal_c, Char).
 
 :- func quote_char_lang(literal_language, char) = string.
+:- mode quote_char_lang(in(bound(literal_c)), in) = out is det.
+:- mode quote_char_lang(in(bound(literal_java)), in) = out is det.
+:- mode quote_char_lang(in(bound(literal_csharp)), in) = out is det.
+:- mode quote_char_lang(in, in) = out is det.
 
 quote_char_lang(Lang, Char) = QuotedCharStr :-
     quote_one_char(Lang, Char, [], RevQuotedCharStr),
     string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
 
 quote_string(String) = QuotedString :-
-    Lang = literal_c,
-    string.foldl(quote_one_char(Lang), String, [], RevQuotedChars),
+    string.foldl(quote_one_char_c, String, [], RevQuotedChars),
     string.from_rev_char_list(RevQuotedChars, QuotedString).
 
-:- pred quote_one_char(literal_language::in, char::in,
-    list(char)::in, list(char)::out) is det.
+:- pred quote_one_char(literal_language, char, list(char), list(char)).
+:- mode quote_one_char(in(bound(literal_c)), in, in, out) is det.
+:- mode quote_one_char(in(bound(literal_java)), in, in, out) is det.
+:- mode quote_one_char(in(bound(literal_csharp)), in, in, out) is det.
+:- mode quote_one_char(in, in, in, out) is det.
 
 quote_one_char(Lang, Char, RevChars0, RevChars) :-
+    % quote_one_char_c is a specialized version of this code.
     (
         Lang = literal_java,
         java_escape_special_char(Char, RevEscapeChars)
@@ -441,6 +456,43 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
             Lang = literal_csharp,
             unicode_escape_any_char(Char, EscapeChars)
         ),
+        reverse_append(EscapeChars, RevChars0, RevChars)
+    ).
+
+:- pred quote_one_char_c(char::in, list(char)::in, list(char)::out) is det.
+
+quote_one_char_c(Char, RevChars0, RevChars) :-
+    % This is a specialized version of quote_one_char.
+    (
+        escape_special_char(Char, EscapeChar)
+    ->
+        RevChars = [EscapeChar, '\\' | RevChars0]
+    ;
+        Char = '?'
+    ->
+        % Avoid trigraphs by escaping the question marks.
+        RevChars = ['?', '\\' | RevChars0]
+    ;
+        is_c_source_char(Char)
+    ->
+        RevChars = [Char | RevChars0]
+    ;
+        char.to_int(Char, 0)
+    ->
+        RevChars = ['0', '\\' | RevChars0]
+    ;
+        Int = char.to_int(Char),
+        Int >= 0x80
+    ->
+        ( char.to_utf8(Char, CodeUnits) ->
+            list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
+            list.condense(EscapeCharss, EscapeChars),
+            reverse_append(EscapeChars, RevChars0, RevChars)
+        ;
+            unexpected($module, $pred, "invalid Unicode code point")
+        )
+    ;
+        octal_escape_any_char(Char, EscapeChars),
         reverse_append(EscapeChars, RevChars0, RevChars)
     ).
 

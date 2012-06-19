@@ -1972,19 +1972,10 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- implementation.
 
 tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
-    varset.merge_subst(TVarSetA, TVarSetB, TVarSet, Subst),
-    map.map_values_only(convert_subst_term_to_tvar, Subst, Renaming).
+    varset.merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming).
 
 tvarset_merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming) :-
-    varset.merge_subst_without_names(TVarSetA, TVarSetB, TVarSet, Subst),
-    map.map_values_only(convert_subst_term_to_tvar, Subst, Renaming).
-
-:- pred convert_subst_term_to_tvar(term(tvar_type)::in, tvar::out)
-    is det.
-
-convert_subst_term_to_tvar(variable(TVar, _), TVar).
-convert_subst_term_to_tvar(functor(_, _, _), _) :-
-    unexpected($module, $pred, "non-variable found in renaming").
+    varset.merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming).
 
 %-----------------------------------------------------------------------------%
 %

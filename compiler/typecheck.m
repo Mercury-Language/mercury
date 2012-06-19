@@ -1745,7 +1745,8 @@ rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars,
     type_assign_set_head_type_params(HeadTypeParams, TypeAssign1, TypeAssign),
 
     % Save the results and recurse.
-    NewArgTypeAssign = args(TypeAssign, ParentArgTypes, ParentConstraints),
+    NewArgTypeAssign =
+        args_type_assign(TypeAssign, ParentArgTypes, ParentConstraints),
     !:ArgTypeAssigns = [NewArgTypeAssign | !.ArgTypeAssigns],
     rename_apart(TypeAssigns0, PredTypeVarSet, PredExistQVars,
         PredArgTypes, PredConstraints, !ArgTypeAssigns).
@@ -1807,7 +1808,7 @@ typecheck_var_has_arg_type(Var, ArgTypeAssignSet0, ArgTypeAssignSet, !Info) :-
 skip_arg([], []).
 skip_arg([ArgTypeAssign0 | ArgTypeAssigns0],
         [ArgTypeAssign | ArgTypeAssigns]) :-
-    ArgTypeAssign0 = args(TypeAssign, Args0, Constraints),
+    ArgTypeAssign0 = args_type_assign(TypeAssign, Args0, Constraints),
     (
         Args0 = [_ | Args]
     ;
@@ -1815,7 +1816,7 @@ skip_arg([ArgTypeAssign0 | ArgTypeAssigns0],
         % this should never happen
         unexpected($module, $pred, "skip_arg")
     ),
-    ArgTypeAssign = args(TypeAssign, Args, Constraints),
+    ArgTypeAssign = args_type_assign(TypeAssign, Args, Constraints),
     skip_arg(ArgTypeAssigns0, ArgTypeAssigns).
 
 :- pred typecheck_var_has_arg_type_2(args_type_assign_set::in, prog_var::in,
@@ -1824,7 +1825,7 @@ skip_arg([ArgTypeAssign0 | ArgTypeAssigns0],
 typecheck_var_has_arg_type_2([], _, !ArgTypeAssignSet).
 typecheck_var_has_arg_type_2([ArgsTypeAssign | ArgsTypeAssignSets], Var,
         !ArgsTypeAssignSet) :-
-    ArgsTypeAssign = args(TypeAssign0, ArgTypes0, ClassContext),
+    ArgsTypeAssign = args_type_assign(TypeAssign0, ArgTypes0, ClassContext),
     arg_type_assign_var_has_type(TypeAssign0, ArgTypes0,
         Var, ClassContext, !ArgsTypeAssignSet),
     typecheck_var_has_arg_type_2(ArgsTypeAssignSets, Var,
@@ -1846,7 +1847,8 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
                 type_assign_unify_type(TypeAssign0, OldVarType, Type,
                     TypeAssign1)
             ->
-                NewTypeAssign = args(TypeAssign1, ArgTypes, ClassContext),
+                NewTypeAssign =
+                    args_type_assign(TypeAssign1, ArgTypes, ClassContext),
                 !:ArgTypeAssignSet = [NewTypeAssign | !.ArgTypeAssignSet]
             ;
                 true
@@ -1854,7 +1856,8 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
         ;
             MaybeOldVarType = no,
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
-            NewTypeAssign = args(TypeAssign, ArgTypes, ClassContext),
+            NewTypeAssign =
+                args_type_assign(TypeAssign, ArgTypes, ClassContext),
             !:ArgTypeAssignSet = [NewTypeAssign | !.ArgTypeAssignSet]
         )
     ;
@@ -2246,7 +2249,7 @@ typecheck_functor_type([TypeAssign - ConsType | ConsTypeAssigns], Var,
 typecheck_functor_arg_types([], _, _, !TypeAssignSet).
 typecheck_functor_arg_types([ConsTypeAssign | ConsTypeAssigns], Args, Info,
         !TypeAssignSet) :-
-    ConsTypeAssign = args(TypeAssign, ArgTypes, _),
+    ConsTypeAssign = args_type_assign(TypeAssign, ArgTypes, _),
     type_assign_var_has_type_list(Args, ArgTypes, TypeAssign, Info,
         !TypeAssignSet),
     typecheck_functor_arg_types(ConsTypeAssigns, Args, Info, !TypeAssignSet).
@@ -2334,7 +2337,8 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign0,
             % The constraints are empty here because none are added by
             % unification with a functor.
             empty_hlds_constraints(EmptyConstraints),
-            ArgsTypeAssign = args(TypeAssign, ArgTypes, EmptyConstraints),
+            ArgsTypeAssign =
+                args_type_assign(TypeAssign, ArgTypes, EmptyConstraints),
             !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
         ;
             true
@@ -2345,7 +2349,8 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign0,
         % unification with a functor.
         type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
         empty_hlds_constraints(EmptyConstraints),
-        ArgsTypeAssign = args(TypeAssign, ArgTypes, EmptyConstraints),
+        ArgsTypeAssign =
+            args_type_assign(TypeAssign, ArgTypes, EmptyConstraints),
         !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
     ).
 
@@ -2390,7 +2395,7 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
 
     % Rename apart the type vars in the type of the constructor
     % and the types of its arguments.
-    % (Optimize the common case of a non-polymorphic type)
+    % (Optimize the common case of a non-polymorphic type.)
     (
         varset.is_empty(ConsTypeVarSet)
     ->

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 1995-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -126,10 +126,12 @@ dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
     BlockInfo = block_info(_, _, Instrs, NumInstrs, _, _, MaybeFallThrough),
     ( NumInstrs < std_block_size_limit ->
         standardize_instr_block(Instrs, MaybeFallThrough, StdInstrs),
-        ( map.search(!.StdMap, StdInstrs, Cluster) ->
-            map.det_update(StdInstrs, [Label | Cluster], !StdMap)
+        map.search_insert(StdInstrs, [Label], MaybeOldCluster, !StdMap),
+        (
+            MaybeOldCluster = no
         ;
-            map.det_insert(StdInstrs, [Label], !StdMap)
+            MaybeOldCluster = yes(OldCluster),
+            map.det_update(StdInstrs, [Label | OldCluster], !StdMap)
         )
     ;
         true

@@ -441,26 +441,30 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer, Common,
                 InitArraySize, counter.init(0), bimap.init, cord.empty)
         ),
 
+        RowCounter0 = !.CellGroup ^ mscg_counter,
+        counter.allocate(RowNum, RowCounter0, RowCounter),
         MembersMap0 = !.CellGroup ^ mscg_members,
-        ( bimap.search(MembersMap0, Initializer, OldCommon) ->
+        NewCommon =
+            ml_scalar_common(MLDS_ModuleName, ConstType, TypeNum, RowNum),
+        bimap.search_insert(Initializer, NewCommon, MaybeOldCommon,
+            MembersMap0, MembersMap),
+        (
+            MaybeOldCommon = yes(OldCommon),
+            % We cannot get here if !.CellGroup wasn't found in CellGroupMap0.
             Common = OldCommon
         ;
-            RowCounter0 = !.CellGroup ^ mscg_counter,
-            counter.allocate(RowNum, RowCounter0, RowCounter),
+            MaybeOldCommon = no,
+            Common = NewCommon,
             !CellGroup ^ mscg_counter := RowCounter,
-
-            Common = ml_scalar_common(MLDS_ModuleName, ConstType, TypeNum,
-                RowNum),
+            !CellGroup ^ mscg_members := MembersMap,
 
             Rows0 = !.CellGroup ^ mscg_rows,
             Rows = cord.snoc(Rows0, Initializer),
             !CellGroup ^ mscg_rows := Rows,
 
-            bimap.det_insert(Initializer, Common, MembersMap0, MembersMap),
-            !CellGroup ^ mscg_members := MembersMap
-        ),
-        map.set(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
-        !GlobalData ^ mgd_scalar_cell_group_map := CellGroupMap
+            map.set(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
+            !GlobalData ^ mgd_scalar_cell_group_map := CellGroupMap
+        )
     ).
 
 :- pred ml_gen_plain_static_defn(string::in, mlds_type::in,

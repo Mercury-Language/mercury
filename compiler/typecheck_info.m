@@ -228,23 +228,23 @@
 
 :- type type_assign
     --->    type_assign(
-                var_types           :: vartypes,
-                type_varset         :: tvarset,
+                ta_var_types            :: vartypes,
+                ta_type_varset          :: tvarset,
 
                 % Universally quantified type variables.
-                head_type_params    :: head_type_params,
+                ta_head_type_params     :: head_type_params,
 
                 % Type bindings.
-                type_bindings       :: tsubst,
+                ta_type_bindings        :: tsubst,
 
                 % The set of class constraints collected so far.
-                class_constraints   :: hlds_constraints,
+                ta_class_constraints    :: hlds_constraints,
 
                 % For each constraint found to be redundant, why is it so?
-                constraint_proofs   :: constraint_proof_map,
+                ta_constraint_proofs    :: constraint_proof_map,
 
                 % Maps constraint identifiers to the actual constraints.
-                constraint_map      :: constraint_map
+                ta_constraint_map       :: constraint_map
             ).
 
 %-----------------------------------------------------------------------------%
@@ -291,13 +291,15 @@
 :- type args_type_assign_set == list(args_type_assign).
 
 :- type args_type_assign
-    --->    args(
-                caller_arg_assign   :: type_assign,
-                                    % Type assignment.
-                callee_arg_types    :: list(mer_type),
-                                    % Types of callee args, renamed apart.
-                callee_constraints  :: hlds_constraints
-                                    % Constraints from callee, renamed apart.
+    --->    args_type_assign(
+                % Type assignment.
+                ata_caller_arg_assign   :: type_assign,
+
+                % Types of callee args, renamed apart.
+                ata_callee_arg_types    :: list(mer_type),
+
+                % Constraints from callee, renamed apart.
+                ata_callee_constraints  :: hlds_constraints
             ).
 
 :- func get_caller_arg_assign(args_type_assign) = type_assign.
@@ -318,23 +320,22 @@
 
 :- type cons_type_info
     --->    cons_type_info(
+                % Type variables.
                 cti_varset          :: tvarset,
-                                    % Type variables.
 
+                % Existentially quantified type vars.
                 cti_exit_tvars      :: existq_tvars,
-                                    % Existentially quantified type vars.
 
+                % Constructor type.
                 cti_result_type     :: mer_type,
-                                    % Constructor type.
 
+                % Types of the arguments.
                 cti_arg_types       :: list(mer_type),
-                                    % Types of the arguments.
 
+                % Constraints introduced by this constructor (e.g. if it is
+                % actually a function, or if it is an existentially quantified
+                % data constructor).
                 cti_constraints     :: hlds_constraints,
-                                    % Constraints introduced by this
-                                    % constructor (e.g. if it is actually
-                                    % a function, or if it is an existentially
-                                    % quantified data constructor).
 
                 cti_source          :: cons_type_info_source
             ).
@@ -676,39 +677,39 @@ typecheck_info_add_pred_marker(Marker, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-type_assign_get_var_types(TA, TA ^ var_types).
-type_assign_get_typevarset(TA, TA ^ type_varset).
-type_assign_get_head_type_params(TA, TA ^ head_type_params).
-type_assign_get_type_bindings(TA, TA ^ type_bindings).
-type_assign_get_typeclass_constraints(TA, TA ^ class_constraints).
-type_assign_get_constraint_proofs(TA, TA ^ constraint_proofs).
-type_assign_get_constraint_map(TA, TA ^ constraint_map).
+type_assign_get_var_types(TA, TA ^ ta_var_types).
+type_assign_get_typevarset(TA, TA ^ ta_type_varset).
+type_assign_get_head_type_params(TA, TA ^ ta_head_type_params).
+type_assign_get_type_bindings(TA, TA ^ ta_type_bindings).
+type_assign_get_typeclass_constraints(TA, TA ^ ta_class_constraints).
+type_assign_get_constraint_proofs(TA, TA ^ ta_constraint_proofs).
+type_assign_get_constraint_map(TA, TA ^ ta_constraint_map).
 
 type_assign_set_var_types(VarTypes, !TA) :-
-    !TA ^ var_types := VarTypes.
+    !TA ^ ta_var_types := VarTypes.
 type_assign_set_typevarset(TVarSet, !TA) :-
-    !TA ^ type_varset := TVarSet.
+    !TA ^ ta_type_varset := TVarSet.
 type_assign_set_head_type_params(HeadTypeParams, !TA) :-
-    !TA ^ head_type_params := HeadTypeParams.
+    !TA ^ ta_head_type_params := HeadTypeParams.
 type_assign_set_type_bindings(TypeBindings, !TA) :-
-    !TA ^ type_bindings := TypeBindings.
+    !TA ^ ta_type_bindings := TypeBindings.
 type_assign_set_typeclass_constraints(Constraints, !TA) :-
-    !TA ^ class_constraints := Constraints.
+    !TA ^ ta_class_constraints := Constraints.
 type_assign_set_constraint_proofs(Proofs, !TA) :-
-    !TA ^ constraint_proofs := Proofs.
+    !TA ^ ta_constraint_proofs := Proofs.
 type_assign_set_constraint_map(ConstraintMap, !TA) :-
-    !TA ^ constraint_map := ConstraintMap.
+    !TA ^ ta_constraint_map := ConstraintMap.
 
 type_assign_set_reduce_results(Bindings, TVarSet, Constraints, Proofs,
         ConstraintMap, !TA) :-
     % This should allocate just one new type_assign, whereas separate calls
     % to the predicates above to set each of these fields would allocate
     % several.
-    !TA ^ type_bindings := Bindings,
-    !TA ^ type_varset := TVarSet,
-    !TA ^ class_constraints := Constraints,
-    !TA ^ constraint_proofs := Proofs,
-    !TA ^ constraint_map := ConstraintMap.
+    !TA ^ ta_type_bindings := Bindings,
+    !TA ^ ta_type_varset := TVarSet,
+    !TA ^ ta_class_constraints := Constraints,
+    !TA ^ ta_constraint_proofs := Proofs,
+    !TA ^ ta_constraint_map := ConstraintMap.
 
 %-----------------------------------------------------------------------------%
 
@@ -720,7 +721,7 @@ convert_args_type_assign_set([ArgsTypeAssign | ArgsTypeAssigns]) =
 convert_args_type_assign_set_check_empty_args([]) = [].
 convert_args_type_assign_set_check_empty_args([ArgTypeAssign | ArgTypeAssigns])
         = Result :-
-    ArgTypeAssign = args(_, Args, _),
+    ArgTypeAssign = args_type_assign(_, Args, _),
     (
         Args = [],
         Result =
@@ -735,7 +736,8 @@ convert_args_type_assign_set_check_empty_args([ArgTypeAssign | ArgTypeAssigns])
 
 :- func convert_args_type_assign(args_type_assign) = type_assign.
 
-convert_args_type_assign(args(TypeAssign0, _, Constraints0)) = TypeAssign :-
+convert_args_type_assign(args_type_assign(TypeAssign0, _, Constraints0))
+        = TypeAssign :-
     type_assign_get_typeclass_constraints(TypeAssign0, OldConstraints),
     type_assign_get_type_bindings(TypeAssign0, Bindings),
     apply_rec_subst_to_constraints(Bindings, Constraints0, Constraints),
@@ -743,9 +745,12 @@ convert_args_type_assign(args(TypeAssign0, _, Constraints0)) = TypeAssign :-
     type_assign_set_typeclass_constraints(NewConstraints,
         TypeAssign0, TypeAssign).
 
-get_caller_arg_assign(ArgsTypeAssign) = ArgsTypeAssign ^ caller_arg_assign.
-get_callee_arg_types(ArgsTypeAssign) = ArgsTypeAssign ^ callee_arg_types.
-get_callee_constraints(ArgsTypeAssign) = ArgsTypeAssign ^ callee_constraints.
+get_caller_arg_assign(ArgsTypeAssign) =
+    ArgsTypeAssign ^ ata_caller_arg_assign.
+get_callee_arg_types(ArgsTypeAssign) =
+    ArgsTypeAssign ^ ata_callee_arg_types.
+get_callee_constraints(ArgsTypeAssign) =
+    ArgsTypeAssign ^ ata_callee_constraints.
 
 project_cons_type_info_source(CTI) = CTI ^ cti_source.
 
@@ -776,7 +781,7 @@ write_args_type_assign_set([], _, !IO).
 write_args_type_assign_set([ArgTypeAssign | ArgTypeAssigns], VarSet, !IO) :-
     % XXX Why does this simply pick the TypeAssign part of the ArgTypeAssign,
     % instead of invoking convert_args_type_assign?
-    ArgTypeAssign = args(TypeAssign, _ArgTypes, _Cnstrs),
+    ArgTypeAssign = args_type_assign(TypeAssign, _ArgTypes, _Cnstrs),
     io.write_string("\t", !IO),
     write_type_assign(TypeAssign, VarSet, !IO),
     io.write_string("\n", !IO),
@@ -787,7 +792,7 @@ args_type_assign_set_to_pieces([ArgTypeAssign | ArgTypeAssigns], MaybeSeq,
         VarSet) = Pieces :-
     % XXX Why does this simply pick the TypeAssign part of the ArgTypeAssign,
     % instead of invoking convert_args_type_assign?
-    ArgTypeAssign = args(TypeAssign, _ArgTypes, _Cnstrs),
+    ArgTypeAssign = args_type_assign(TypeAssign, _ArgTypes, _Cnstrs),
     Pieces = type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) ++
         args_type_assign_set_to_pieces(ArgTypeAssigns, inc_maybe_seq(MaybeSeq),
             VarSet).

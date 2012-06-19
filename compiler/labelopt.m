@@ -67,7 +67,7 @@ labelopt_main(Final, LayoutLabelSet, Instrs0, Instrs, Mod) :-
 build_useset([], !Useset).
 build_useset([Instr | Instructions], !Useset) :-
     Instr = llds_instr(Uinstr, _Comment),
-    opt_util.instr_labels(Uinstr, Labels, _CodeAddresses),
+    opt_util.instr_labels_only(Uinstr, Labels),
     set_tree234.insert_list(Labels, !Useset),
     build_useset(Instructions, !Useset).
 

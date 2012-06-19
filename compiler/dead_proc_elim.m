@@ -133,16 +133,26 @@
 :- type entity_queue    ==  queue(entity).
 :- type examined_set    ==  set_tree234(entity).
 
+dead_proc_analyze(!ModuleInfo, !:Needed) :-
+    do_dead_proc_analyze(!ModuleInfo, analyze_procs, !:Needed).
+
 dead_proc_elim(ElimOptImported, !ModuleInfo, Specs) :-
-    dead_proc_analyze(!ModuleInfo, Needed),
+    do_dead_proc_analyze(!ModuleInfo, analyze_all, Needed),
     dead_proc_eliminate(ElimOptImported, Needed, !ModuleInfo, Specs).
 
 %-----------------------------------------------------------------------------%
 
-dead_proc_analyze(!ModuleInfo, !:Needed) :-
+:- type analyze_what
+    --->    analyze_procs
+    ;       analyze_all.
+
+:- pred do_dead_proc_analyze(module_info::in, module_info::out,
+    analyze_what::in, needed_map::out) is det.
+
+do_dead_proc_analyze(!ModuleInfo, AnalyeWhat, !:Needed) :-
     Examined0 = set_tree234.init,
     dead_proc_initialize(!ModuleInfo, Queue0, !:Needed),
-    dead_proc_examine(Queue0, Examined0, !.ModuleInfo, !Needed).
+    dead_proc_examine(Queue0, Examined0, AnalyeWhat, !.ModuleInfo, !Needed).
 
     % Add all exported entities to the queue and map.
     % NOTE: changes here are likely to require changes to dead_pred_elim
@@ -316,16 +326,13 @@ get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
 %-----------------------------------------------------------------------------%
 
 :- pred dead_proc_examine(entity_queue::in, examined_set::in,
-    module_info::in, needed_map::in, needed_map::out) is det.
+    analyze_what::in, module_info::in, needed_map::in, needed_map::out) is det.
 
-dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
+dead_proc_examine(!.Queue, !.Examined, AnalyzeWhat, ModuleInfo, !Needed) :-
     % See if the queue is empty.
     ( queue.get(Entity, !Queue) ->
         % See if the next element has been examined before.
-        ( set_tree234.contains(!.Examined, Entity) ->
-            dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed)
-        ;
-            set_tree234.insert(Entity, !Examined),
+        ( set_tree234.insert_new(Entity, !Examined) ->
             (
                 Entity = entity_proc(PredId, ProcId),
                 PredProcId = proc(PredId, ProcId),
@@ -335,15 +342,28 @@ dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
                 % Nothing further to examine.
             ;
                 Entity = entity_type_ctor(Module, Type, Arity),
-                dead_proc_examine_type_ctor_info(Module, Type, Arity,
-                    ModuleInfo, !Queue, !Needed)
+                (
+                    AnalyzeWhat = analyze_procs
+                ;
+                    AnalyzeWhat = analyze_all,
+                    dead_proc_examine_type_ctor_info(Module, Type, Arity,
+                        ModuleInfo, !Queue, !Needed)
+                )
             ;
                 Entity = entity_const_struct(ConstNum),
-                dead_proc_examine_const_struct(ModuleInfo, ConstNum,
-                    !Queue, !Needed)
-            ),
-            dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed)
-        )
+                (
+                    AnalyzeWhat = analyze_procs
+                ;
+                    AnalyzeWhat = analyze_all,
+                    dead_proc_examine_const_struct(ModuleInfo, ConstNum,
+                        !Queue, !Needed)
+                )
+            )
+        ;
+            true
+        ),
+        dead_proc_examine(!.Queue, !.Examined, AnalyzeWhat,
+            ModuleInfo, !Needed)
     ;
         true
     ).

@@ -390,6 +390,8 @@ do_add_scalar_static_cell(TypedArgs, CellType, CellValue, DataId, !Info) :-
     some [!CellGroup] (
         TypeNumMap0 = !.Info ^ sci_cell_type_num_map,
         CellGroupMap0 = !.Info ^ sci_scalar_cell_group_map,
+        % We do not want to use bimap.search_insert here, since this search
+        % usually succeeds.
         ( bimap.search(TypeNumMap0, CellType, OldTypeNum) ->
             TypeNum = OldTypeNum,
             ( map.search(CellGroupMap0, TypeNum, !:CellGroup) ->
@@ -408,30 +410,52 @@ do_add_scalar_static_cell(TypedArgs, CellType, CellValue, DataId, !Info) :-
 
             !:CellGroup = init_scalar_cell_group
         ),
-        MembersMap0 = !.CellGroup ^ scalar_cell_group_members,
-        ( bimap.search(MembersMap0, Args, DataIdPrime) ->
-            DataId = DataIdPrime
-        ;
+
+        InsertCommonData = !.Info ^ sci_sub_info ^ scsi_common_data,
+        (
+            InsertCommonData = yes,
+            MembersMap0 = !.CellGroup ^ scalar_cell_group_members,
             CellNumCounter0 = !.CellGroup ^ scalar_cell_counter,
             counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
-            !CellGroup ^ scalar_cell_counter := CellNumCounter,
-            DataId = scalar_common_data_id(TypeNum, CellNum),
-            RevArray0 = !.CellGroup ^ scalar_cell_rev_array,
-            RevArray = [CellValue | RevArray0],
-            !CellGroup ^ scalar_cell_rev_array := RevArray,
-            InsertCommonData = !.Info ^ sci_sub_info ^ scsi_common_data,
+            NewDataId = scalar_common_data_id(TypeNum, CellNum),
+
+            bimap.search_insert(Args, NewDataId, MaybeOldDataId,
+                MembersMap0, MembersMap),
             (
-                InsertCommonData = yes,
-                bimap.det_insert(Args, DataId, MembersMap0, MembersMap),
-                !CellGroup ^ scalar_cell_group_members := MembersMap
+                MaybeOldDataId = yes(OldDataId),
+                % We cannot get here if !.CellGroup wasn't found in
+                % CellGroupMap0.
+                DataId = OldDataId
             ;
-                InsertCommonData = no
+                MaybeOldDataId = no,
+                DataId = NewDataId,
+                !CellGroup ^ scalar_cell_counter := CellNumCounter,
+                !CellGroup ^ scalar_cell_group_members := MembersMap,
+                RevArray0 = !.CellGroup ^ scalar_cell_rev_array,
+                RevArray = [CellValue | RevArray0],
+                !CellGroup ^ scalar_cell_rev_array := RevArray,
+                map.set(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
+                !Info ^ sci_scalar_cell_group_map := CellGroupMap
+            )
+        ;
+            InsertCommonData = no,
+            MembersMap0 = !.CellGroup ^ scalar_cell_group_members,
+            ( bimap.search(MembersMap0, Args, DataIdPrime) ->
+                DataId = DataIdPrime
+            ;
+                CellNumCounter0 = !.CellGroup ^ scalar_cell_counter,
+                counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
+                !CellGroup ^ scalar_cell_counter := CellNumCounter,
+                DataId = scalar_common_data_id(TypeNum, CellNum),
+                RevArray0 = !.CellGroup ^ scalar_cell_rev_array,
+                RevArray = [CellValue | RevArray0],
+                !CellGroup ^ scalar_cell_rev_array := RevArray,
                 % With --no-common-data, we never insert any cell into
                 % CellGroupMap, ensuring that it stays empty. This can
                 % be useful when comparing the LLDS and MLDS backends.
-            ),
-            map.set(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
-            !Info ^ sci_scalar_cell_group_map := CellGroupMap
+                map.set(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
+                !Info ^ sci_scalar_cell_group_map := CellGroupMap
+            )
         )
     ).
 

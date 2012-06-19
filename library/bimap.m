@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999, 2004-2006, 2008, 2011 The University of Melbourne.
+% Copyright (C) 1994-1995,1997,1999,2004-2006,2008,2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 % This file provides a bijective map ADT.
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key, Data) pairs which allows you to look up any Data item given the
-% Key.  A bimap also allows you to efficiently look up the Key given the Data.
+% Key. A bimap also allows you to efficiently look up the Key given the Data.
 % This time efficiency comes at the expense of using twice as much space.
 % 
 %-----------------------------------------------------------------------------%
@@ -25,6 +25,7 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -105,6 +106,17 @@
 :- func bimap.det_insert(bimap(K, V), K, V) = bimap(K, V).
 :- pred bimap.det_insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
     is det.
+
+    % bimap.search_insert(K, V, MaybeOldV, !Bimap):
+    %
+    % Search for the key K in the bimap. If the key is already in the bimap,
+    % with corresponding value OldV, set MaybeOldV to yes(OldV). If it
+    % is not in the bimap, then insert it with value V. The value of V
+    % should be guaranteed to be different to all the values already
+    % in !.Bimap. If it isn't, this predicate will abort.
+    %
+:- pred bimap.search_insert(K::in, V::in, maybe(V)::out,
+    bimap(K, V)::in, bimap(K, V)::out) is det.
 
     % Update the key and value if already present, otherwise insert the
     % new key and value.
@@ -398,9 +410,26 @@ bimap.insert(K, V, bimap(!.Forward, !.Reverse), bimap(!:Forward, !:Reverse)) :-
 bimap.det_insert(!.BM, K, V) = !:BM :-
     bimap.det_insert(K, V, !BM).
 
-bimap.det_insert(K, V, bimap(!.Forward, !.Reverse), bimap(!:Forward, !:Reverse)) :-
-    map.det_insert(K, V, !Forward),
-    map.det_insert(V, K, !Reverse).
+bimap.det_insert(K, V, !Bimap) :-
+    !.Bimap = bimap(Forward0, Reverse0),
+    map.det_insert(K, V, Forward0, Forward),
+    map.det_insert(V, K, Reverse0, Reverse),
+    !:Bimap = bimap(Forward, Reverse).
+
+bimap.search_insert(K, V, MaybeOldV, !Bimap) :-
+    !.Bimap = bimap(Forward0, Reverse0),
+    map.search_insert(K, V, MaybeOldV, Forward0, Forward),
+    (
+        MaybeOldV = yes(_)
+        % No insertion or any other modification takes place in this case;
+        % leave !Bimap alone.
+    ;
+        MaybeOldV = no,
+        % We just inserted K->V into Forward, so now we insert V->K into
+        % Reverse.
+        map.det_insert(V, K, Reverse0, Reverse),
+        !:Bimap = bimap(Forward, Reverse)
+    ).
 
 bimap.set(!.BM, K, V) = !:BM :-
     bimap.set(K, V, !BM).

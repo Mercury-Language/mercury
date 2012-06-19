@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -207,12 +207,7 @@
     % in both output arguments.
     %
 :- pred instr_labels(instr::in, list(label)::out, list(code_addr)::out) is det.
-
-    % Determine all the labels and code addresses which are referenced
-    % by a list of instructions.
-    %
-:- pred instr_list_labels(list(instruction)::in,
-    list(label)::out, list(code_addr)::out) is det.
+:- pred instr_labels_only(instr::in, list(label)::out) is det.
 
     % Given an instruction, find the set of labels and other code addresses
     % to which it can cause control to transfer. In the case of calls, this
@@ -1272,6 +1267,9 @@ instr_labels(Instr, Labels, CodeAddrs) :-
     CodeAddrs = CodeAddrs1 ++ CodeAddrs2 ++ CodeAddrs3,
     find_label_code_addrs(CodeAddrs, Labels0, Labels).
 
+instr_labels_only(Instr, Labels) :-
+    instr_labels(Instr, Labels, _CodeAddrs).
+
     % Determine all the labels and code_addresses that are directly referenced
     % by an instruction (not counting ones referenced indirectly via rvals or
     % lvals).
@@ -1505,6 +1503,12 @@ foreign_proc_labels(MaybeFixedLabel, MaybeLayoutLabel,
     ;
         MaybeDefLabel = no
     ).
+
+    % Determine all the labels and code addresses which are referenced
+    % by a list of instructions.
+    %
+:- pred instr_list_labels(list(instruction)::in,
+    list(label)::out, list(code_addr)::out) is det.
 
 instr_list_labels([], [], []).
 instr_list_labels([llds_instr(Uinstr, _) | Instrs], Labels, CodeAddrs) :-

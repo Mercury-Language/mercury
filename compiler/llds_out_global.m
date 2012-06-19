@@ -575,8 +575,8 @@ output_cons_args(_, [], !IO).
 output_cons_args(Info, [TypedRval | TypedRvals], !IO) :-
     TypedRval = typed_rval(Rval, Type),
     (
-        direct_field_int_constant(Type) = yes,
-        Rval = const(llconst_int(N))
+        Rval = const(llconst_int(N)),
+        direct_field_int_constant(Type) = yes
     ->
         output_int_const(N, Type, !IO)
     ;
@@ -600,8 +600,8 @@ output_cons_arg_groups(Info, [Group | Groups], !IO) :-
         Group = common_cell_grouped_args(Type, _, Rvals),
         io.write_string("{\n", !IO),
         (
-            direct_field_int_constant(Type) = yes,
-            list.map(project_int_constant, Rvals, Ints)
+            list.map(project_int_constant, Rvals, Ints),
+            direct_field_int_constant(Type) = yes
         ->
             Check = check_int_const_sizes,
             (
@@ -618,8 +618,8 @@ output_cons_arg_groups(Info, [Group | Groups], !IO) :-
     ;
         Group = common_cell_ungrouped_arg(Type, Rval),
         (
-            direct_field_int_constant(Type) = yes,
-            project_int_constant(Rval, Int)
+            project_int_constant(Rval, Int),
+            direct_field_int_constant(Type) = yes
         ->
             output_int_const(Int, Type, !IO)
         ;

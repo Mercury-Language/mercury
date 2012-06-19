@@ -17,9 +17,9 @@ Changes to the Mercury standard library:
   a sorted list of items from a map or varset, and can do so faster than
   usual by exploiting the order.
   
-* The map and tree234 modules each have a new predicate that does a search,
-  and if the search is unsuccessful, does an insertion during the *same*
-  traversal.
+* The map, bimap and tree234 modules each have a new predicate that does
+  a search, and if the search is unsuccessful, does an insertion during
+  the *same* traversal.
 
 * The argument order of the following predicates has been changed so as to
   make them more conducive to the use of state variable notation:

@@ -1065,6 +1065,12 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % specified name and arity (and module, if module-qualified)
         ConsId0 = cons(PredName, _, _),
 
+        pred_info_get_markers(!.PredInfo, Markers),
+        module_info_get_predicate_table(ModuleInfo, PredTable),
+        % This search will usually fail, so do it first.
+        predicate_table_search_func_sym_arity(PredTable,
+            calls_are_fully_qualified(Markers), PredName, Arity, PredIds),
+
         % We don't do this for compiler-generated predicates; they are assumed
         % to have been generated with all functions already expanded. If we did
         % this check for compiler-generated predicates, it would cause the
@@ -1078,11 +1084,6 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % field access function -- that needs to be expanded into
         % unifications below.
         \+ pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
-
-        pred_info_get_markers(!.PredInfo, Markers),
-        module_info_get_predicate_table(ModuleInfo, PredTable),
-        predicate_table_search_func_sym_arity(PredTable,
-            calls_are_fully_qualified(Markers), PredName, Arity, PredIds),
 
         % Check if any of the candidate functions have argument/return types
         % which subsume the actual argument/return types of this function call,

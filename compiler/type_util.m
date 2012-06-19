@@ -1236,22 +1236,45 @@ apply_rec_subst_to_constraint_list(Subst, !Constraints) :-
 apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
     !.Constraints = hlds_constraints(Unproven0, Assumed0,
         Redundant0, Ancestors0),
-    apply_variable_renaming_to_constraint_list(Renaming, Unproven0, Unproven),
-    apply_variable_renaming_to_constraint_list(Renaming, Assumed0, Assumed),
-    Pred = (pred(C0::in, C::out) is det :-
-        set.to_sorted_list(C0, L0),
-        apply_variable_renaming_to_constraint_list(Renaming, L0, L),
-        set.list_to_set(L, C)
-    ),
-    map.map_values_only(Pred, Redundant0, Redundant),
-    map.keys(Ancestors0, AncestorsKeys0),
-    map.values(Ancestors0, AncestorsValues0),
-    apply_variable_renaming_to_prog_constraint_list(Renaming, AncestorsKeys0,
-        AncestorsKeys),
-    list.map(apply_variable_renaming_to_prog_constraint_list(Renaming),
-        AncestorsValues0, AncestorsValues),
-    map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
-    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+    % Most of the time, !.Constraints contains nothing. Even when some
+    % of its fields are not empty, some others may be.
+    (
+        Unproven0 = [],
+        Assumed0 = [],
+        map.is_empty(Redundant0),
+        map.is_empty(Ancestors0)
+    ->
+        true
+    ;
+        apply_variable_renaming_to_constraint_list(Renaming,
+            Unproven0, Unproven),
+        apply_variable_renaming_to_constraint_list(Renaming,
+            Assumed0, Assumed),
+        ( map.is_empty(Redundant0) ->
+            Redundant = Redundant0
+        ;
+            Pred = (pred(C0::in, C::out) is det :-
+                set.to_sorted_list(C0, L0),
+                apply_variable_renaming_to_constraint_list(Renaming, L0, L),
+                set.list_to_set(L, C)
+            ),
+            map.map_values_only(Pred, Redundant0, Redundant)
+        ),
+        ( map.is_empty(Ancestors0) ->
+            Ancestors = Ancestors0
+        ;
+            map.keys(Ancestors0, AncestorsKeys0),
+            map.values(Ancestors0, AncestorsValues0),
+            apply_variable_renaming_to_prog_constraint_list(Renaming,
+                AncestorsKeys0, AncestorsKeys),
+            list.map(apply_variable_renaming_to_prog_constraint_list(Renaming),
+                AncestorsValues0, AncestorsValues),
+            map.from_corresponding_lists(AncestorsKeys, AncestorsValues,
+                Ancestors)
+        ),
+        !:Constraints =
+            hlds_constraints(Unproven, Assumed, Redundant, Ancestors)
+    ).
 
 apply_subst_to_constraints(Subst, !Constraints) :-
     !.Constraints = hlds_constraints(Unproven0, Assumed0,

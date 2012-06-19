@@ -205,9 +205,18 @@
 
     % Succeed if the inst is `mostly_unique' or `unique'.
     %
+    % XXX The documentation on the code used to say: " inst_is_mostly_unique
+    % succeeds iff the inst passed is unique, mostly_unique, or free.
+    % Abstract insts are not considered unique.". The part about free is
+    % dubious.
+    %
 :- pred inst_is_mostly_unique(module_info::in, mer_inst::in) is semidet.
 
     % Succeed if the inst is `unique'.
+    %
+    % XXX The documentation on the code used to say: "inst_is_unique succeeds
+    % iff the inst passed is unique or free. Abstract insts are not considered
+    % unique.". The part about free is dubious.
     %
 :- pred inst_is_unique(module_info::in, mer_inst::in) is semidet.
 
@@ -350,18 +359,14 @@
 
 expansion_init = set_tree234.init.
 
-:- pred expansion_member(inst_match_inputs::in, expansions::in) is semidet.
-:- pragma inline(expansion_member/2).
+:- pred expansion_insert_new(inst_match_inputs::in,
+    expansions::in, expansions::out) is semidet.
+:- pragma inline(expansion_insert_new/3).
 
-expansion_member(E, S) :-
-    set_tree234.is_member(S, E) = yes.
+expansion_insert_new(E, S0, S) :-
+    set_tree234.insert_new(E, S0, S).
 
-:- pred expansion_insert(inst_match_inputs::in,
-    expansions::in, expansions::out) is det.
-:- pragma inline(expansion_insert/3).
-
-expansion_insert(E, S0, S) :-
-    set_tree234.insert(E, S0, S).
+%-----------------------------------------------------------------------------%
 
 inst_expand(ModuleInfo, !Inst) :-
     ( !.Inst = defined_inst(InstName) ->
@@ -595,15 +600,14 @@ inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo, !MaybeSub) :-
 inst_matches_initial_mt(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
     Expansions0 = !.Info ^ imi_expansions,
-    ( expansion_member(ThisExpansion, Expansions0) ->
-        true
-    ;
+    ( expansion_insert_new(ThisExpansion, Expansions0, Expansions) ->
+        !Info ^ imi_expansions := Expansions,
         inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
         inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
-        expansion_insert(ThisExpansion, Expansions0, Expansions),
-        !Info ^ imi_expansions := Expansions,
         handle_inst_var_subs(inst_matches_initial_mt, inst_matches_initial_4,
             ExpandedInstA, ExpandedInstB, MaybeType, !Info)
+    ;
+        true
     ).
 
 :- pred inst_matches_initial_4(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
@@ -1045,17 +1049,19 @@ inst_matches_final_typed(InstA, InstB, Type, ModuleInfo) :-
 inst_matches_final_mt(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
     Expansions0 = !.Info ^ imi_expansions,
-    ( expansion_member(ThisExpansion, Expansions0) ->
-        true
-    ; InstA = InstB ->
+    ( InstA = InstB ->
         true
     ;
-        inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
-        inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
-        expansion_insert(ThisExpansion, Expansions0, Expansions),
-        !Info ^ imi_expansions := Expansions,
-        handle_inst_var_subs(inst_matches_final_mt, inst_matches_final_3,
-            ExpandedInstA, ExpandedInstB, MaybeType, !Info)
+        Expansions0 = !.Info ^ imi_expansions,
+        ( expansion_insert_new(ThisExpansion, Expansions0, Expansions) ->
+            !Info ^ imi_expansions := Expansions,
+            inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
+            inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
+            handle_inst_var_subs(inst_matches_final_mt, inst_matches_final_3,
+                ExpandedInstA, ExpandedInstB, MaybeType, !Info)
+        ;
+            true
+        )
     ).
 
 :- pred inst_matches_final_3(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
@@ -1248,16 +1254,15 @@ inst_matches_binding_allow_any_any(InstA, InstB, Type, ModuleInfo) :-
 inst_matches_binding_mt(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
     Expansions0 = !.Info ^ imi_expansions,
-    ( expansion_member(ThisExpansion, Expansions0) ->
-        true
-    ;
+    ( expansion_insert_new(ThisExpansion, Expansions0, Expansions) ->
+        !Info ^ imi_expansions := Expansions,
         inst_expand_and_remove_constrained_inst_vars(!.Info ^ imi_module_info,
             InstA, ExpandedInstA),
         inst_expand_and_remove_constrained_inst_vars(!.Info ^ imi_module_info,
             InstB, ExpandedInstB),
-        expansion_insert(ThisExpansion, Expansions0, Expansions),
-        !Info ^ imi_expansions := Expansions,
         inst_matches_binding_3(ExpandedInstA, ExpandedInstB, MaybeType, !Info)
+    ;
+        true
     ).
 
 :- pred inst_matches_binding_3(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
@@ -1787,18 +1792,14 @@ inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
         inst_is_ground_or_any_2(ModuleInfo, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
-        ( set.member(Inst, !.Expansions) ->
-            true
-        ;
-            set.insert(Inst, !Expansions),
+        ( set.insert_new(Inst, !Expansions) ->
             inst_lookup(ModuleInfo, InstName, NextInst),
             inst_is_ground_or_any_2(ModuleInfo, NextInst, !Expansions)
+        ;
+            true
         )
     ).
 
-    % inst_is_unique succeeds iff the inst passed is unique or free.
-    % Abstract insts are not considered unique.
-    %
 inst_is_unique(ModuleInfo, Inst) :-
     set.init(Expansions0),
     inst_is_unique_2(ModuleInfo, Inst, Expansions0, _Expansions).
@@ -1841,18 +1842,14 @@ inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
         inst_is_unique_2(ModuleInfo, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
-        ( set.member(Inst, !.Expansions) ->
-            true
-        ;
-            set.insert(Inst, !Expansions),
+        ( set.insert_new(Inst, !Expansions) ->
             inst_lookup(ModuleInfo, InstName, NextInst),
             inst_is_unique_2(ModuleInfo, NextInst, !Expansions)
+        ;
+            true
         )
     ).
 
-    % inst_is_mostly_unique succeeds iff the inst passed is unique,
-    % mostly_unique, or free. Abstract insts are not considered unique.
-    %
 inst_is_mostly_unique(ModuleInfo, Inst) :-
     set.init(Expansions0),
     inst_is_mostly_unique_2(ModuleInfo, Inst, Expansions0, _Expansions).
@@ -1894,12 +1891,11 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
         inst_is_mostly_unique_2(ModuleInfo, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
-        ( set.member(Inst, !.Expansions) ->
-            true
-        ;
-            set.insert(Inst, !Expansions),
+        ( set.insert_new(Inst, !Expansions) ->
             inst_lookup(ModuleInfo, InstName, NextInst),
             inst_is_mostly_unique_2(ModuleInfo, NextInst, !Expansions)
+        ;
+            true
         )
     ;
         Inst = abstract_inst(_, _),
@@ -1950,12 +1946,11 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
         inst_is_not_partly_unique_2(ModuleInfo, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
-        ( set.member(Inst, !.Expansions) ->
-            true
-        ;
-            set.insert(Inst, !Expansions),
+        ( set.insert_new(Inst, !Expansions) ->
             inst_lookup(ModuleInfo, InstName, NextInst),
             inst_is_not_partly_unique_2(ModuleInfo, NextInst, !Expansions)
+        ;
+            true
         )
     ;
         Inst = abstract_inst(_, _),
@@ -2012,12 +2007,11 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
         inst_is_not_fully_unique_2(ModuleInfo, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
-        ( set.member(Inst, !.Expansions) ->
-            true
-        ;
-            set.insert(Inst, !Expansions),
+        ( set.insert_new(Inst, !Expansions) ->
             inst_lookup(ModuleInfo, InstName, NextInst),
             inst_is_not_fully_unique_2(ModuleInfo, NextInst, !Expansions)
+        ;
+            true
         )
     ;
         Inst = abstract_inst(_, _),

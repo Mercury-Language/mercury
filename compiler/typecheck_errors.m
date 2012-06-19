@@ -1897,7 +1897,7 @@ typestuff_to_typestr(TypeStuff) = TypeStr :-
 
 get_arg_type_stuff([], _Var, []).
 get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
-    ArgTypeAssign = args(TypeAssign, ArgTypes, _),
+    ArgTypeAssign = args_type_assign(TypeAssign, ArgTypes, _),
     get_arg_type_stuff(ArgTypeAssigns, Var, TailArgTypeStuffs),
     type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
