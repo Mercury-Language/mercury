@@ -364,21 +364,21 @@ init_static_cell_info(BaseName, UnboxFloat, CommonData) = Info0 :-
 add_scalar_static_cell_natural_types(Args, DataId, !Info) :-
     UnboxFloat = !.Info ^ sci_sub_info ^ scsi_unbox_float,
     ArgWidth = full_word,
-    list.map(associate_natural_type(UnboxFloat, ArgWidth), Args, ArgsTypes),
-    add_scalar_static_cell(ArgsTypes, DataId, !Info).
+    list.map(associate_natural_type(UnboxFloat, ArgWidth), Args, TypedArgs),
+    add_scalar_static_cell(TypedArgs, DataId, !Info).
 
-add_scalar_static_cell(ArgsTypes0, DataId, !Info) :-
+add_scalar_static_cell(TypedArgs0, DataId, !Info) :-
     % If we have an empty cell, place a dummy field in it,
     % so that the generated C structure isn't empty.
     (
-        ArgsTypes0 = [],
-        ArgsTypes = [typed_rval(const(llconst_int(-1)), lt_integer)]
+        TypedArgs0 = [],
+        TypedArgs = [typed_rval(const(llconst_int(-1)), lt_integer)]
     ;
-        ArgsTypes0 = [_ | _],
-        ArgsTypes = ArgsTypes0
+        TypedArgs0 = [_ | _],
+        TypedArgs = TypedArgs0
     ),
-    compute_cell_type(ArgsTypes, CellType, CellTypeAndValue),
-    do_add_scalar_static_cell(ArgsTypes, CellType, CellTypeAndValue, DataId,
+    compute_cell_type(TypedArgs, CellType, CellTypeAndValue),
+    do_add_scalar_static_cell(TypedArgs, CellType, CellTypeAndValue, DataId,
         !Info).
 
 :- pred do_add_scalar_static_cell(list(typed_rval)::in,
