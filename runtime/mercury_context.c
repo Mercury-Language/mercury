@@ -1057,11 +1057,18 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     }
     MR_UNLOCK(&free_context_list_lock, "create_context i");
 
-#ifdef MR_DEBUG_STACK_SEGMENTS
-    MR_debug_log_message("Re-used an old context: %p", c);
-#endif
+    if (c != NULL) {
+#ifdef MR_THREADSCOPE
+        MR_Unsigned old_id = c->MR_ctxt_num_id;
 
-    if (c == NULL) {
+        c->MR_ctxt_num_id = allocate_context_id();
+        MR_threadscope_post_reuse_context(c, old_id);
+#endif
+#ifdef MR_DEBUG_STACK_SEGMENTS
+        MR_debug_log_message("Re-used an old context: %p", c);
+#endif
+    }
+    else {
         c = MR_GC_NEW_ATTRIB(MR_Context, MR_ALLOC_SITE_RUNTIME);
 #ifdef MR_DEBUG_STACK_SEGMENTS
         if (c) {
@@ -1078,6 +1085,7 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 #endif
 #ifdef MR_THREADSCOPE
         c->MR_ctxt_num_id = allocate_context_id();
+        MR_threadscope_post_create_context(c);
 #endif
     }
 
@@ -2064,6 +2072,15 @@ prepare_engine_for_spark(volatile MR_Spark *spark, MR_Code *join_label)
 #ifdef MR_DEBUG_STACK_SEGMENTS
         MR_debug_log_message("created new context for spark: %p",
             MR_ENGINE(MR_eng_this_context));
+#endif
+    } else {
+#ifdef MR_THREADSCOPE
+        MR_Unsigned old_id;
+
+        old_id = MR_ENGINE(MR_eng_this_context)->MR_ctxt_num_id;
+        MR_ENGINE(MR_eng_this_context)->MR_ctxt_num_id = allocate_context_id();
+        MR_threadscope_post_reuse_context(MR_ENGINE(MR_eng_this_context),
+            old_id);
 #endif
     }
 #ifdef MR_THREADSCOPE

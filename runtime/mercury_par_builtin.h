@@ -307,7 +307,7 @@ struct MR_LoopControl_Struct
 
     /* This lock protects only the next field */
     MR_THREADSAFE_VOLATILE MR_Us_Lock       MR_lc_master_context_lock;
-    MR_THREADSAFE_VOLATILE MR_Context       *MR_lc_master_context;
+    MR_Context* MR_THREADSAFE_VOLATILE      MR_lc_master_context;
 
     /* Unused atm */
     MR_THREADSAFE_VOLATILE MR_bool          MR_lc_finished;

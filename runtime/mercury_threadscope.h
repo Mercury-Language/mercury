@@ -98,8 +98,9 @@ extern void MR_threadscope_post_create_context(
                 struct MR_Context_Struct *context);
 
 /*
-** The given context was created in order to execute a spark.  It's an
-** alternative to the above event.
+** The given context was created in order to execute a spark.  This
+** event should be posted in addition to (and after) create_thread
+** above.
 */
 extern void MR_threadscope_post_create_context_for_spark(
                 struct MR_Context_Struct *ctxt);
@@ -111,6 +112,13 @@ extern void MR_threadscope_post_create_context_for_spark(
 */
 extern void MR_threadscope_post_release_context(
                 struct MR_Context_Struct *context);
+
+/*
+** This context is being reused (after being released). This event is an
+** alternative to create_context above.
+*/
+extern void MR_threadscope_post_reuse_context(
+                struct MR_Context_Struct *context, MR_Unsigned old_id);
 
 /*
 ** This message says the context is now ready to run.  Such as it's being

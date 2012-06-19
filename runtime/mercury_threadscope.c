@@ -212,7 +212,8 @@
 #define MR_TS_MER_EVENT_CALLING_MAIN        113 /* () */
 #define MR_TS_MER_EVENT_SPARK_RUN           114 /* (spark id) */
 #define MR_TS_MER_EVENT_SPARK_STEAL         115 /* (victim cap, spark id) */
-#define MR_TS_NUM_MER_EVENTS                 16
+#define MR_TS_MER_EVENT_REUSE_THREAD        116 /* (context id, old context id) */
+#define MR_TS_NUM_MER_EVENTS                 17
 
 #if 0  /* DEPRECATED EVENTS: */
 #define EVENT_CREATE_SPARK        13 /* (cap, thread) */
@@ -636,6 +637,16 @@ static EventTypeDesc event_type_descs[] = {
         "About to call main/2",
         0,
         0xFFFF
+    },
+    {
+        /*
+        ** The runtime system is re-useing a previous context and
+        ** re-assigning its ID.
+        */
+        MR_TS_MER_EVENT_REUSE_THREAD,
+        "Reusing a previously allocated thread",
+        SZ_CONTEXT_ID + SZ_CONTEXT_ID,
+        MR_TS_EVENT_CREATE_THREAD
     },
     {
         /* Mark the end of this array. */
@@ -1254,6 +1265,28 @@ MR_threadscope_post_create_context(MR_Context *context)
     put_event_header(buffer, MR_TS_EVENT_CREATE_THREAD,
         get_current_time_nanosecs());
     put_context_id(buffer, context->MR_ctxt_num_id);
+
+    MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
+}
+
+void
+MR_threadscope_post_reuse_context(MR_Context *context, MR_Unsigned old_id)
+{
+    struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
+
+    MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
+
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_REUSE_THREAD)) {
+        flush_event_buffer(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    } else if (!block_is_open(buffer)) {
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    }
+
+    put_event_header(buffer, MR_TS_MER_EVENT_REUSE_THREAD,
+        get_current_time_nanosecs());
+    put_context_id(buffer, context->MR_ctxt_num_id);
+    put_context_id(buffer, old_id);
 
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }
