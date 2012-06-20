@@ -43,7 +43,7 @@ MR_OUTLINE_DEFN(
 )
 
 MR_OUTLINE_DEFN(
-    MR_Integer 
+    MR_Integer
     MR_atomic_add_and_fetch_int(volatile MR_Integer *addr, MR_Integer addend)
 ,
     {
@@ -52,7 +52,7 @@ MR_OUTLINE_DEFN(
 )
 
 MR_OUTLINE_DEFN(
-    MR_Unsigned 
+    MR_Unsigned
     MR_atomic_add_and_fetch_uint(volatile MR_Unsigned *addr, MR_Unsigned addend)
 ,
     {
@@ -88,7 +88,7 @@ MR_OUTLINE_DEFN(
 )
 
 MR_OUTLINE_DEFN(
-    void 
+    void
     MR_atomic_inc_int(volatile MR_Integer *addr)
 ,
     {
@@ -97,7 +97,7 @@ MR_OUTLINE_DEFN(
 )
 
 MR_OUTLINE_DEFN(
-    void 
+    void
     MR_atomic_inc_uint(volatile MR_Unsigned *addr)
 ,
     {
@@ -106,7 +106,7 @@ MR_OUTLINE_DEFN(
 )
 
 MR_OUTLINE_DEFN(
-    void 
+    void
     MR_atomic_dec_int(volatile MR_Integer *addr)
 ,
     {
@@ -155,7 +155,7 @@ MR_uint_least64_t MR_cpu_cycles_per_sec = 0;
 #if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
 
 /* Set this to 1 to enable some printfs below */
-#define MR_DEBUG_CPU_FEATURE_DETECTION 0 
+#define MR_DEBUG_CPU_FEATURE_DETECTION 0
 
 /*
 ** cpuid, rdtscp and rdtsc are i386/x86_64 instructions.
@@ -189,7 +189,7 @@ MR_do_cpu_feature_detection(void)
     MR_Unsigned     extended_family, basic_family, family;
     MR_Unsigned     extended_model, model;
 
-    /* 
+    /*
     ** Check for the CPUID instruction.  CPUID is supported if we can flip bit
     ** 21 in the CPU's EFLAGS register.  The assembly below is written in a
     ** subset of i386 and x86_64 assembly.  To read and write EFLAGS we have
@@ -227,7 +227,7 @@ MR_do_cpu_feature_detection(void)
 
     /* CPUID 1 gives type, family, model and stepping information in EAX. */
     MR_cpuid(1, 0, &a, &b, &c, &d);
-    
+
     /* Bit 4 in EDX is high if RDTSC is available */
     if (d & (1 << 4)) {
         MR_rdtsc_is_available = MR_TRUE;
@@ -268,7 +268,7 @@ MR_do_cpu_feature_detection(void)
     } else {
         family = basic_family;
     }
-    /* 
+    /*
     ** I'm not using the model value but I'll leave the code here incase we
     ** have a reason to use it in the future.
     */
@@ -281,7 +281,7 @@ MR_do_cpu_feature_detection(void)
     }
 #if MR_DEBUG_CPU_FEATURE_DETECTION
     fprintf(stderr, "This is family %d and model %d\n", family, model);
-#endif 
+#endif
 
     /* Now check for P3 or higher since they have the extended pages */
     if (family < 6) {
@@ -297,12 +297,12 @@ MR_do_cpu_feature_detection(void)
 
     /*
     ** Extended CPUID 0x80000000.
-    ** 
+    **
     ** EAX contains the maximum extended CPUID node.
     */
     MR_cpuid(0x80000000, 0, &a, &b, &c, &d);
     if ((a & 0x80000000) == 0) {
-        /* 
+        /*
         ** Extended CPUID is not supported.
         ** Note that this check is still not as reliable as I'd like.  If it
         ** succeeds I'm not confident that the processor definitely implements
@@ -343,7 +343,7 @@ MR_do_cpu_feature_detection(void)
         ** for the cost of a single byte I feel safer using our own.
         */
 #define CPUID_BRAND_STRING_SIZE (3*4*4 + 1)
-        char buff[CPUID_BRAND_STRING_SIZE]; 
+        char buff[CPUID_BRAND_STRING_SIZE];
         unsigned int page;
         unsigned int byte;
         unsigned int shift;
@@ -396,10 +396,10 @@ parse_freq_from_x86_brand_string(char *string)
     unsigned int brand_string_len;
     unsigned int i;
     double       multiplier;
-    int          freq_index = -1; 
+    int          freq_index = -1;
 
     brand_string_len = strlen(string);
-    
+
     /*
     ** There will be at least five characters if we can parse this, three
     ** for the '?Hz' suffix, at least one for the units, plus a space at
@@ -421,7 +421,7 @@ parse_freq_from_x86_brand_string(char *string)
             multiplier = 1000000000.0;
             break;
         case 'T':
-            /* 
+            /*
             ** Yes, this is defined in the specification, Intel have some
             ** strong ambitions regarding Moore's law. :-)  We include it here to
             ** conform with the standard.
@@ -443,7 +443,7 @@ parse_freq_from_x86_brand_string(char *string)
         /* We didn't find the beginning of the frequency */
         return 0;
     }
-   
+
     /*
     ** If strtod fails it returns zero, so if we fail to parse a number here,
     ** we'll return zero which our caller understands as a parsing failure.
@@ -516,6 +516,20 @@ MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats)
 #endif /* not MR_GNUC && (__i386__ || __x86_64__) */
 }
 
+/*
+** The TSC works and MR_cpu_cycles_per_sec is nonzero.
+*/
+extern MR_bool
+MR_tsc_is_sensible(void)
+{
+#if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
+    return ((MR_rdtscp_is_available || MR_rdtsc_is_available) &&
+            (MR_cpu_cycles_per_sec != 0));
+#else
+    return MR_FALSE;
+#endif
+}
+
 MR_uint_least64_t
 MR_read_cpu_tsc(void)
 {
@@ -538,7 +552,7 @@ MR_read_cpu_tsc(void)
 */
 #if defined(MR_GNUC) && (defined(__i386__) || defined(__x86_64__))
 
-static __inline__ void 
+static __inline__ void
 MR_cpuid(MR_Unsigned code, MR_Unsigned sub_code,
         MR_Unsigned *a, MR_Unsigned *b, MR_Unsigned *c, MR_Unsigned *d)
 {

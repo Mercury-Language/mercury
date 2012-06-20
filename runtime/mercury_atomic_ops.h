@@ -763,6 +763,12 @@ extern void
 MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats);
 
 /*
+** The TSC works and MR_cpu_cycles_per_sec is nonzero.
+*/
+extern MR_bool
+MR_tsc_is_sensible(void);
+
+/*
 ** Read the CPU's TSC.  This is currently only implemented for i386 and x86-64
 ** systems.  It returns 0 when support is not available.
 */

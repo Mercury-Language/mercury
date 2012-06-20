@@ -50,6 +50,14 @@ typedef struct MR_Threadscope_String {
 } MR_Threadscope_String;
 
 /*
+** Set this to true to use the CPU's time stamp counter.
+**
+** This is initially set in mercury_wrapper.c and may be reset by
+** MR_setup_threadscope if the TSC can't be used.
+*/
+extern MR_bool MR_threadscope_use_tsc;
+
+/*
 ** This must be called by the primordial thread before starting any other
 ** threads but after the primordial thread has been pinned.
 */

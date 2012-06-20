@@ -681,6 +681,12 @@ static Timedelta        MR_global_offset;
 static struct MR_threadscope_event_buffer global_buffer;
 
 /*
+** Alternativly we use gettimeofday for measuring time.
+*/
+MR_bool                 MR_threadscope_use_tsc = MR_FALSE;
+static Timedelta        MR_gettimeofday_offset;
+
+/*
 ** An ID that may be allocated to the next string to be registered.
 */
 static MR_TS_StringId   MR_next_string_id = 0;
@@ -968,7 +974,8 @@ static void resume_thread_gc_callback(void);
 
 /***************************************************************************/
 
-static MR_uint_least64_t get_current_time_nanosecs(void);
+static Time get_current_time_nanosecs(void);
+static Time gettimeofday_nsecs(void);
 
 /***************************************************************************/
 
@@ -978,19 +985,29 @@ MR_setup_threadscope(void)
     MR_DO_THREADSCOPE_DEBUG(
         fprintf(stderr, "In setup threadscope thread: 0x%lx\n", pthread_self())
     );
-    /* This value is used later when setting up the primordial engine. */
-    MR_primordial_first_tsc = MR_read_cpu_tsc();
 
-    /*
-    ** These variables are used for TSC synchronization which is not used.
-    ** See below.
-    **
-    pthread_mutex_init(&MR_tsc_sync_slave_lock, MR_MUTEX_ATTR);
-    MR_US_COND_CLEAR(&MR_tsc_sync_slave_entry_cond);
-    MR_US_COND_CLEAR(&MR_tsc_sync_master_entry_cond);
-    MR_US_COND_CLEAR(&MR_tsc_sync_t0);
-    MR_US_COND_CLEAR(&MR_tsc_sync_t1);
-    */
+    if (!MR_tsc_is_sensible()) {
+        MR_threadscope_use_tsc = MR_FALSE;
+    }
+
+    if (MR_threadscope_use_tsc) {
+        /* This value is used later when setting up the primordial engine. */
+        MR_primordial_first_tsc = MR_read_cpu_tsc();
+
+        /*
+        ** These variables are used for TSC synchronization which is not used.
+        ** See below.
+        **
+        pthread_mutex_init(&MR_tsc_sync_slave_lock, MR_MUTEX_ATTR);
+        MR_US_COND_CLEAR(&MR_tsc_sync_slave_entry_cond);
+        MR_US_COND_CLEAR(&MR_tsc_sync_master_entry_cond);
+        MR_US_COND_CLEAR(&MR_tsc_sync_t0);
+        MR_US_COND_CLEAR(&MR_tsc_sync_t1);
+        */
+
+    } else {
+        MR_gettimeofday_offset = -1 * gettimeofday_nsecs();
+    }
 
     /* Configure Boehm */
 #ifdef MR_BOEHM_GC
@@ -1047,10 +1064,12 @@ MR_threadscope_setup_engine(MercuryEngine *eng)
     );
     eng->MR_eng_next_spark_id = 0;
 
-    if (eng->MR_eng_id == 0) {
-        MR_global_offset = -MR_primordial_first_tsc;
+    if (MR_threadscope_use_tsc) {
+        if (eng->MR_eng_id == 0) {
+            MR_global_offset = -MR_primordial_first_tsc;
+        }
+        eng->MR_eng_cpu_clock_ticks_offset = MR_global_offset;
     }
-    eng->MR_eng_cpu_clock_ticks_offset = MR_global_offset;
 
     eng->MR_eng_ts_buffer = MR_create_event_buffer();
 
@@ -2211,21 +2230,38 @@ resume_thread_gc_callback(void)
 
 /***************************************************************************/
 
-static MR_uint_least64_t
+static Time
 get_current_time_nanosecs(void)
 {
-    MR_uint_least64_t   current_tsc;
-    MercuryEngine       *eng = MR_thread_engine_base;
+    if (MR_threadscope_use_tsc) {
+        MR_uint_least64_t   current_tsc;
+        MercuryEngine       *eng = MR_thread_engine_base;
 
-    current_tsc = MR_read_cpu_tsc();
+        current_tsc = MR_read_cpu_tsc();
 
-    if (MR_cpu_cycles_per_sec == 0) {
-        return current_tsc + eng->MR_eng_cpu_clock_ticks_offset;
-    } else {
         /* The large constant (10^9) here converts seconds into nanoseconds. */
         return (current_tsc + eng->MR_eng_cpu_clock_ticks_offset) /
             (MR_cpu_cycles_per_sec / 1000000000);
+    } else {
+        return gettimeofday_nsecs() + MR_gettimeofday_offset;
     }
+}
+
+static Time
+gettimeofday_nsecs(void)
+{
+    struct timeval      tv;
+
+    if (0 != gettimeofday(&tv, NULL)) {
+        perror("gettimeofday()");
+        /*
+        ** Return a stupid value generating an obviously bad logfile
+        ** rather than crashing a program that may otherwise work.
+        */
+        return 0;
+    }
+    return (Time)tv.tv_sec * 1000000000 +
+            (Time)tv.tv_usec * 1000;
 }
 
 /***************************************************************************/

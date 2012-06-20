@@ -1313,6 +1313,7 @@ enum MR_long_option {
     MR_WORKSTEAL_SLEEP_MSECS,
     MR_THREAD_PINNING,
     MR_PROFILE_PARALLEL_EXECUTION,
+    MR_THREADSCOPE_USE_TSC,
     MR_MDB_TTY,
     MR_MDB_IN,
     MR_MDB_OUT,
@@ -1414,6 +1415,7 @@ struct MR_option MR_long_opts[] = {
         MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR },
     { "thread-pinning",                 0, 0, MR_THREAD_PINNING },
     { "profile-parallel-execution",     0, 0, MR_PROFILE_PARALLEL_EXECUTION },
+    { "threadscope-use-tsc",            0, 0, MR_THREADSCOPE_USE_TSC },
     { "mdb-tty",                        1, 0, MR_MDB_TTY },
     { "mdb-in",                         1, 0, MR_MDB_IN },
     { "mdb-out",                        1, 0, MR_MDB_OUT },
@@ -1863,6 +1865,12 @@ MR_process_options(int argc, char **argv)
             case MR_PROFILE_PARALLEL_EXECUTION:
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
                 MR_profile_parallel_execution = MR_TRUE;
+#endif
+                break;
+
+            case MR_THREADSCOPE_USE_TSC:
+#ifdef MR_THREAD_SAFE
+                MR_threadscope_use_tsc = MR_TRUE;
 #endif
                 break;
 

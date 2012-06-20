@@ -10257,6 +10257,14 @@ grade.
 @c information to a file named @file{parallel_execution_profile.txt}.
 @c This only has an effect if the executable was built in a low level c,
 @c parallel, threadscope grade.
+@c
+@c @sp 1
+@c @item --threadscope-use-tsc
+@c @findex --threadscope-use-tsc
+@c Requests that the runtime's threadscope support use the CPU's time stamp
+@c counter (TSC) to measure time rather than gettimeofday().  The TSC may
+@c not always be available so the runtime may still use gettomeofday() even
+@c with this option.
 
 @sp 1
 @item --thread-pinning
