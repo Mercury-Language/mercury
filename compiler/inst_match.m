@@ -1662,6 +1662,9 @@ static  InstIsGroundCacheEntry
     }
 ").
 
+lookup_inst_is_ground(_, no, no) :-
+    semipure semipure_true.
+
     % Record the result for Inst in the cache.
     %
 :- impure pred record_inst_is_ground(mer_inst::in, bool::in) is det.
@@ -1679,6 +1682,9 @@ static  InstIsGroundCacheEntry
     inst_is_ground_cache[hash].iig_inst_addr = Inst;
     inst_is_ground_cache[hash].iig_is_ground = IsGround;
 ").
+
+record_inst_is_ground(_, _) :-
+    impure impure_true.
 
 %-----------------------------------------------------------------------------%
 
@@ -2688,6 +2694,9 @@ type_may_contain_solver_type_2(CtorCat) = MayContainSolverType :-
 "
     SUCCESS_INDICATOR = ((void *) InstA == (void *) InstB);
 ").
+
+same_addr_insts(_, _) :-
+    semidet_fail.
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.inst_match.

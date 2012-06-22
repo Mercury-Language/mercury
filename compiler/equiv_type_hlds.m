@@ -845,6 +845,9 @@ static  TypeInInstCacheEntry  type_in_inst_cache[TYPE_IN_INST_CACHE_SIZE];
     }
 ").
 
+lookup_inst_may_occur(_, no, no) :-
+    semipure semipure_true.
+
     % Record the result for Inst in the cache.
     %
 :- impure pred record_inst_may_occur(mer_inst::in, bool::in) is det.
@@ -862,6 +865,9 @@ static  TypeInInstCacheEntry  type_in_inst_cache[TYPE_IN_INST_CACHE_SIZE];
     type_in_inst_cache[hash].tice_inst_addr = Inst;
     type_in_inst_cache[hash].tice_may_occur = MayOccur;
 ").
+
+record_inst_may_occur(_, _) :-
+    impure impure_true.
 
 %-----------------------------------------------------------------------------%
 

@@ -924,6 +924,8 @@ make_no_job_ctl = no.
 #endif
 ").
 
+lock_stdout(_, !IO).
+
 :- pred unlock_stdout(stdout_lock::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -935,6 +937,8 @@ make_no_job_ctl = no.
     MC_unlock_job_ctl(JobCtl);
 #endif
 ").
+
+unlock_stdout(_, !IO).
 
 :- pred with_locked_stdout(make_info::in,
     pred(io, io)::in(pred(di, uo) is det), io::di, io::uo) is det.

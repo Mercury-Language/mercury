@@ -890,6 +890,8 @@ mercury_format_structured_bound_insts([BoundInst | BoundInsts],
     InstAddr = Inst;
 ").
 
+get_inst_addr(_, -1).
+
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_format_structured_inst_name(inst_name::in, int::in,
