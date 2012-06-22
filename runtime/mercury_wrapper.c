@@ -1869,7 +1869,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_THREADSCOPE_USE_TSC:
-#ifdef MR_THREAD_SAFE
+#ifdef MR_THREADSCOPE
                 MR_threadscope_use_tsc = MR_TRUE;
 #endif
                 break;
