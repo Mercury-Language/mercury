@@ -57,6 +57,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_pred.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
 
@@ -128,9 +129,26 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         % Tuples do not need a tag. Note that unary tuples are not treated
         % as no_tag types. There is no reason why they couldn't be, it is
         % just not worth the effort.
-        ( Arity = 0 ->
-            Tag = int_tag(0)
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_target(Globals, TargetLang),
+        (
+            ( TargetLang = target_c
+            ; TargetLang = target_asm
+            ; TargetLang = target_x86_64
+            ; TargetLang = target_erlang
+            ), 
+            ( Arity = 0 ->
+                Tag = int_tag(0)
+            ;
+                Tag = single_functor_tag
+            )
         ;
+            % For these target languages, converting arity-zero tuples into
+            % dummy integer tags results in invalid code being generated.
+            ( TargetLang = target_il
+            ; TargetLang = target_csharp
+            ; TargetLang = target_java
+            ),
             Tag = single_functor_tag
         )
     ;
