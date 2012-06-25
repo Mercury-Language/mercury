@@ -413,9 +413,9 @@ expand_lambdas_in_unify_goal(LHS, RHS0, Mode, Unification0, Context, GoalExpr,
         GoalExpr = unify(LHS, RHS0, Mode, Unification0, Context)
     ).
 
-expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc, Vars, Modes,
-        Detism, OrigNonLocals0, LambdaGoal, Unification0, Functor, Unification,
-        LambdaInfo0, LambdaInfo) :-
+expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
+        Vars, Modes, Detism, OrigNonLocals0, LambdaGoal, Unification0,
+        Functor, Unification, LambdaInfo0, LambdaInfo) :-
     LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet,
         InstVarSet, RttiVarMaps, HasParallelConj, OrigPredInfo,
         ModuleInfo0, MustRecomputeNonLocals0, _HaveExpandedLambdas),
@@ -442,7 +442,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc, Vars,
 
     (
         Unification0 = construct(Var, _, OrigNonLocals1, UniModes0, _, _, _),
-        % We use to use OrigVars = OrigNonLocals0 (from rhs_lambda_goal) but
+        % We used to use OrigVars = OrigNonLocals0 (from rhs_lambda_goal) but
         % the order of the variables does not necessarily match UniModes0.
         OrigVars = OrigNonLocals1,
         trace [compiletime(flag("lambda_var_order"))] (
@@ -630,7 +630,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc, Vars,
         proc_info_set_has_parallel_conj(HasParallelConj, ProcInfo1, ProcInfo2),
 
         % If we previously already needed to recompute the nonlocals,
-        % then we'd better to that recomputation for the procedure
+        % then we had better apply that recomputation for the procedure
         % that we just created.
         (
             MustRecomputeNonLocals0 = yes,
