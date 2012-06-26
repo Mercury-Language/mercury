@@ -2841,7 +2841,6 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
         map.search(ArgsMap0, ArgCOVAs, OldTypeClassInfoVarMCA0)
     ->
         TypeClassInfoVarMCA = OldTypeClassInfoVarMCA0,
-        % ZZZ
         Goals = [],
         set_var_maps_snapshot("make_typeclass_info",
             InitialVarMapsSnapshot, !Info),
