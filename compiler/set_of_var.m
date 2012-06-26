@@ -309,16 +309,18 @@ divide_by_set(DivideBySet, Set, InPart, OutPart) :-
     tree_bitset.divide_by_set(DivideBySet, Set, InPart, OutPart).   % MODULE
 
 cartesian_product(A, B, Product) :-
-    fold(cartesian_product2(A), B, [], Product).
+    tree_bitset.foldl(cartesian_product2(A), B, [], Product).       % MODULE
 
 :- pred cartesian_product2(set_of_var(T)::in, var(T)::in,
     list(set_of_var(T))::in, list(set_of_var(T))::out) is det.
 
 cartesian_product2(SetA, VarB, !Sets) :-
-    set_of_var.fold((pred(VarA::in, SetsI0::in, SetsI::out) is det :-
+    Pred =
+        (pred(VarA::in, SetsI0::in, SetsI::out) is det :-
             Set = set_of_var.list_to_set([VarA, VarB]),
             SetsI = [Set | SetsI0]
-        ), SetA, !Sets).
+        ),
+    set_of_var.fold(Pred, SetA, !Sets).
 
 cartesian_product_list([], []).
 cartesian_product_list([FirstSet | OtherSets], Product) :-

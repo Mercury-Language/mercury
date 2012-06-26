@@ -256,6 +256,18 @@
 :- mode set_tree234.fold(pred(in, di, uo) is semidet, in, di, uo)
     is semidet.
 
+:- func set_tree234.foldl(func(T1, T2) = T2, set_tree234(T1), T2) = T2.
+:- pred set_tree234.foldl(pred(T1, T2, T2), set_tree234(T1), T2, T2).
+:- mode set_tree234.foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode set_tree234.foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode set_tree234.foldl(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode set_tree234.foldl(pred(in, in, out) is semidet, in, in, out)
+    is semidet.
+:- mode set_tree234.foldl(pred(in, mdi, muo) is semidet, in, mdi, muo)
+    is semidet.
+:- mode set_tree234.foldl(pred(in, di, uo) is semidet, in, di, uo)
+    is semidet.
+
 :- pred set_tree234.fold2(pred(T1, T2, T2, T3, T3), set_tree234(T1),
     T2, T2, T3, T3).
 :- mode set_tree234.fold2(pred(in, in, out, in, out) is det, in,
@@ -269,6 +281,21 @@
 :- mode set_tree234.fold2(pred(in, in, out, mdi, muo) is semidet, in,
     in, out, mdi, muo) is semidet.
 :- mode set_tree234.fold2(pred(in, in, out, di, uo) is semidet, in,
+    in, out, di, uo) is semidet.
+
+:- pred set_tree234.foldl2(pred(T1, T2, T2, T3, T3), set_tree234(T1),
+    T2, T2, T3, T3).
+:- mode set_tree234.foldl2(pred(in, in, out, in, out) is det, in,
+    in, out, in, out) is det.
+:- mode set_tree234.foldl2(pred(in, in, out, mdi, muo) is det, in,
+    in, out, mdi, muo) is det.
+:- mode set_tree234.foldl2(pred(in, in, out, di, uo) is det, in,
+    in, out, di, uo) is det.
+:- mode set_tree234.foldl2(pred(in, in, out, in, out) is semidet, in,
+    in, out, in, out) is semidet.
+:- mode set_tree234.foldl2(pred(in, in, out, mdi, muo) is semidet, in,
+    in, out, mdi, muo) is semidet.
+:- mode set_tree234.foldl2(pred(in, in, out, di, uo) is semidet, in,
     in, out, di, uo) is semidet.
 
 :- pred set_tree234.fold3(
@@ -287,6 +314,22 @@
 :- mode set_tree234.fold3(pred(in, in, out, in, out, di, uo) is semidet, in,
     in, out, in, out, di, uo) is semidet.
 
+:- pred set_tree234.foldl3(
+    pred(T1, T2, T2, T3, T3, T4, T4), set_tree234(T1),
+    T2, T2, T3, T3, T4, T4).
+:- mode set_tree234.foldl3(pred(in, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out) is det.
+:- mode set_tree234.foldl3(pred(in, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, mdi, muo) is det.
+:- mode set_tree234.foldl3(pred(in, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, di, uo) is det.
+:- mode set_tree234.foldl3(pred(in, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out) is semidet.
+:- mode set_tree234.foldl3(pred(in, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, mdi, muo) is semidet.
+:- mode set_tree234.foldl3(pred(in, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, di, uo) is semidet.
+
 :- pred set_tree234.fold4(
     pred(T1, T2, T2, T3, T3, T4, T4, T5, T5), set_tree234(T1),
     T2, T2, T3, T3, T4, T4, T5, T5).
@@ -303,6 +346,25 @@
     pred(in, in, out, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode set_tree234.fold4(
+    pred(in, in, out, in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, di, uo) is semidet.
+
+:- pred set_tree234.foldl4(
+    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5), set_tree234(T1),
+    T2, T2, T3, T3, T4, T4, T5, T5).
+:- mode set_tree234.foldl4(pred(in, in, out, in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out) is det.
+:- mode set_tree234.foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, mdi, muo) is det.
+:- mode set_tree234.foldl4(pred(in, in, out, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, in, out, di, uo) is det.
+:- mode set_tree234.foldl4(
+    pred(in, in, out, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out) is semidet.
+:- mode set_tree234.foldl4(
+    pred(in, in, out, in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set_tree234.foldl4(
     pred(in, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, di, uo) is semidet.
 
@@ -328,6 +390,28 @@
     pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+:- pred set_tree234.foldl5(
+    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6),
+    set_tree234(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6).
+:- mode set_tree234.foldl5(
+    pred(in, in, out, in, out, in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode set_tree234.foldl5(
+    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode set_tree234.foldl5(
+    pred(in, in, out, in, out, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode set_tree234.foldl5(
+    pred(in, in, out, in, out, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode set_tree234.foldl5(
+    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set_tree234.foldl5(
+    pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
 :- pred set_tree234.fold6(
     pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7),
     set_tree234(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7).
@@ -347,6 +431,28 @@
     pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode set_tree234.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
+:- pred set_tree234.foldl6(
+    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7),
+    set_tree234(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7).
+:- mode set_tree234.foldl6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode set_tree234.foldl6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode set_tree234.foldl6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode set_tree234.foldl6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode set_tree234.foldl6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set_tree234.foldl6(
     pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
@@ -2402,147 +2508,168 @@ set_tree234.height(Tree, Height) :-
 
 %------------------------------------------------------------------------------%
 
-set_tree234.fold(_Pred, empty, !A).
-set_tree234.fold(Pred, two(E, T0, T1), !A) :-
-    set_tree234.fold(Pred, T0, !A),
+set_tree234.fold(Pred, Tree, !A) :-
+    set_tree234.foldl(Pred, Tree, !A).
+
+set_tree234.foldl(_Pred, empty, !A).
+set_tree234.foldl(Pred, two(E, T0, T1), !A) :-
+    set_tree234.foldl(Pred, T0, !A),
     Pred(E, !A),
-    set_tree234.fold(Pred, T1, !A).
-set_tree234.fold(Pred, three(E0, E1, T0, T1, T2), !A) :-
-    set_tree234.fold(Pred, T0, !A),
+    set_tree234.foldl(Pred, T1, !A).
+set_tree234.foldl(Pred, three(E0, E1, T0, T1, T2), !A) :-
+    set_tree234.foldl(Pred, T0, !A),
     Pred(E0, !A),
-    set_tree234.fold(Pred, T1, !A),
+    set_tree234.foldl(Pred, T1, !A),
     Pred(E1, !A),
-    set_tree234.fold(Pred, T2, !A).
-set_tree234.fold(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A) :-
-    set_tree234.fold(Pred, T0, !A),
+    set_tree234.foldl(Pred, T2, !A).
+set_tree234.foldl(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A) :-
+    set_tree234.foldl(Pred, T0, !A),
     Pred(E0, !A),
-    set_tree234.fold(Pred, T1, !A),
+    set_tree234.foldl(Pred, T1, !A),
     Pred(E1, !A),
-    set_tree234.fold(Pred, T2, !A),
+    set_tree234.foldl(Pred, T2, !A),
     Pred(E2, !A),
-    set_tree234.fold(Pred, T3, !A).
+    set_tree234.foldl(Pred, T3, !A).
 
-set_tree234.fold(_Func, empty, A) = A.
-set_tree234.fold(Func, two(E, T0, T1), !.A) = !:A :-
-    set_tree234.fold(Func, T0, !.A) = !:A,
+set_tree234.fold(Func, Tree, A0) =
+    set_tree234.foldl(Func, Tree, A0).
+
+set_tree234.foldl(_Func, empty, A) = A.
+set_tree234.foldl(Func, two(E, T0, T1), !.A) = !:A :-
+    set_tree234.foldl(Func, T0, !.A) = !:A,
     !:A = Func(E, !.A),
-    set_tree234.fold(Func, T1, !.A) = !:A.
-set_tree234.fold(Func, three(E0, E1, T0, T1, T2), !.A) = !:A :-
-    set_tree234.fold(Func, T0, !.A) = !:A,
+    set_tree234.foldl(Func, T1, !.A) = !:A.
+set_tree234.foldl(Func, three(E0, E1, T0, T1, T2), !.A) = !:A :-
+    set_tree234.foldl(Func, T0, !.A) = !:A,
     !:A = Func(E0, !.A),
-    set_tree234.fold(Func, T1, !.A) = !:A,
+    set_tree234.foldl(Func, T1, !.A) = !:A,
     !:A = Func(E1, !.A),
-    set_tree234.fold(Func, T2, !.A) = !:A.
-set_tree234.fold(Func, four(E0, E1, E2, T0, T1, T2, T3), !.A) = !:A :-
-    set_tree234.fold(Func, T0, !.A) = !:A,
+    set_tree234.foldl(Func, T2, !.A) = !:A.
+set_tree234.foldl(Func, four(E0, E1, E2, T0, T1, T2, T3), !.A) = !:A :-
+    set_tree234.foldl(Func, T0, !.A) = !:A,
     !:A = Func(E0, !.A),
-    set_tree234.fold(Func, T1, !.A) = !:A,
+    set_tree234.foldl(Func, T1, !.A) = !:A,
     !:A = Func(E1, !.A),
-    set_tree234.fold(Func, T2, !.A) = !:A,
+    set_tree234.foldl(Func, T2, !.A) = !:A,
     !:A = Func(E2, !.A),
-    set_tree234.fold(Func, T3, !.A) = !:A.
+    set_tree234.foldl(Func, T3, !.A) = !:A.
 
-set_tree234.fold2(_Pred, empty, !A, !B).
-set_tree234.fold2(Pred, two(E, T0, T1), !A, !B) :-
-    set_tree234.fold2(Pred, T0, !A, !B),
+set_tree234.fold2(Pred, Tree, !A, !B) :-
+    set_tree234.foldl2(Pred, Tree, !A, !B).
+
+set_tree234.foldl2(_Pred, empty, !A, !B).
+set_tree234.foldl2(Pred, two(E, T0, T1), !A, !B) :-
+    set_tree234.foldl2(Pred, T0, !A, !B),
     Pred(E, !A, !B),
-    set_tree234.fold2(Pred, T1, !A, !B).
-set_tree234.fold2(Pred, three(E0, E1, T0, T1, T2), !A, !B) :-
-    set_tree234.fold2(Pred, T0, !A, !B),
+    set_tree234.foldl2(Pred, T1, !A, !B).
+set_tree234.foldl2(Pred, three(E0, E1, T0, T1, T2), !A, !B) :-
+    set_tree234.foldl2(Pred, T0, !A, !B),
     Pred(E0, !A, !B),
-    set_tree234.fold2(Pred, T1, !A, !B),
+    set_tree234.foldl2(Pred, T1, !A, !B),
     Pred(E1, !A, !B),
-    set_tree234.fold2(Pred, T2, !A, !B).
-set_tree234.fold2(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B) :-
-    set_tree234.fold2(Pred, T0, !A, !B),
+    set_tree234.foldl2(Pred, T2, !A, !B).
+set_tree234.foldl2(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B) :-
+    set_tree234.foldl2(Pred, T0, !A, !B),
     Pred(E0, !A, !B),
-    set_tree234.fold2(Pred, T1, !A, !B),
+    set_tree234.foldl2(Pred, T1, !A, !B),
     Pred(E1, !A, !B),
-    set_tree234.fold2(Pred, T2, !A, !B),
+    set_tree234.foldl2(Pred, T2, !A, !B),
     Pred(E2, !A, !B),
-    set_tree234.fold2(Pred, T3, !A, !B).
+    set_tree234.foldl2(Pred, T3, !A, !B).
 
-set_tree234.fold3(_Pred, empty, !A, !B, !C).
-set_tree234.fold3(Pred, two(E, T0, T1), !A, !B, !C) :-
-    set_tree234.fold3(Pred, T0, !A, !B, !C),
+set_tree234.fold3(Pred, Tree, !A, !B, !C) :-
+    set_tree234.foldl3(Pred, Tree, !A, !B, !C).
+
+set_tree234.foldl3(_Pred, empty, !A, !B, !C).
+set_tree234.foldl3(Pred, two(E, T0, T1), !A, !B, !C) :-
+    set_tree234.foldl3(Pred, T0, !A, !B, !C),
     Pred(E, !A, !B, !C),
-    set_tree234.fold3(Pred, T1, !A, !B, !C).
-set_tree234.fold3(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C) :-
-    set_tree234.fold3(Pred, T0, !A, !B, !C),
+    set_tree234.foldl3(Pred, T1, !A, !B, !C).
+set_tree234.foldl3(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C) :-
+    set_tree234.foldl3(Pred, T0, !A, !B, !C),
     Pred(E0, !A, !B, !C),
-    set_tree234.fold3(Pred, T1, !A, !B, !C),
+    set_tree234.foldl3(Pred, T1, !A, !B, !C),
     Pred(E1, !A, !B, !C),
-    set_tree234.fold3(Pred, T2, !A, !B, !C).
-set_tree234.fold3(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C) :-
-    set_tree234.fold3(Pred, T0, !A, !B, !C),
+    set_tree234.foldl3(Pred, T2, !A, !B, !C).
+set_tree234.foldl3(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C) :-
+    set_tree234.foldl3(Pred, T0, !A, !B, !C),
     Pred(E0, !A, !B, !C),
-    set_tree234.fold3(Pred, T1, !A, !B, !C),
+    set_tree234.foldl3(Pred, T1, !A, !B, !C),
     Pred(E1, !A, !B, !C),
-    set_tree234.fold3(Pred, T2, !A, !B, !C),
+    set_tree234.foldl3(Pred, T2, !A, !B, !C),
     Pred(E2, !A, !B, !C),
-    set_tree234.fold3(Pred, T3, !A, !B, !C).
+    set_tree234.foldl3(Pred, T3, !A, !B, !C).
 
-set_tree234.fold4(_Pred, empty, !A, !B, !C, !D).
-set_tree234.fold4(Pred, two(E, T0, T1), !A, !B, !C, !D) :-
-    set_tree234.fold4(Pred, T0, !A, !B, !C, !D),
+set_tree234.fold4(Pred, Tree, !A, !B, !C, !D) :-
+    set_tree234.foldl4(Pred, Tree, !A, !B, !C, !D).
+
+set_tree234.foldl4(_Pred, empty, !A, !B, !C, !D).
+set_tree234.foldl4(Pred, two(E, T0, T1), !A, !B, !C, !D) :-
+    set_tree234.foldl4(Pred, T0, !A, !B, !C, !D),
     Pred(E, !A, !B, !C, !D),
-    set_tree234.fold4(Pred, T1, !A, !B, !C, !D).
-set_tree234.fold4(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D) :-
-    set_tree234.fold4(Pred, T0, !A, !B, !C, !D),
+    set_tree234.foldl4(Pred, T1, !A, !B, !C, !D).
+set_tree234.foldl4(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D) :-
+    set_tree234.foldl4(Pred, T0, !A, !B, !C, !D),
     Pred(E0, !A, !B, !C, !D),
-    set_tree234.fold4(Pred, T1, !A, !B, !C, !D),
+    set_tree234.foldl4(Pred, T1, !A, !B, !C, !D),
     Pred(E1, !A, !B, !C, !D),
-    set_tree234.fold4(Pred, T2, !A, !B, !C, !D).
-set_tree234.fold4(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D) :-
-    set_tree234.fold4(Pred, T0, !A, !B, !C, !D),
+    set_tree234.foldl4(Pred, T2, !A, !B, !C, !D).
+set_tree234.foldl4(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D) :-
+    set_tree234.foldl4(Pred, T0, !A, !B, !C, !D),
     Pred(E0, !A, !B, !C, !D),
-    set_tree234.fold4(Pred, T1, !A, !B, !C, !D),
+    set_tree234.foldl4(Pred, T1, !A, !B, !C, !D),
     Pred(E1, !A, !B, !C, !D),
-    set_tree234.fold4(Pred, T2, !A, !B, !C, !D),
+    set_tree234.foldl4(Pred, T2, !A, !B, !C, !D),
     Pred(E2, !A, !B, !C, !D),
-    set_tree234.fold4(Pred, T3, !A, !B, !C, !D).
+    set_tree234.foldl4(Pred, T3, !A, !B, !C, !D).
 
-set_tree234.fold5(_Pred, empty, !A, !B, !C, !D, !E).
-set_tree234.fold5(Pred, two(E, T0, T1), !A, !B, !C, !D, !E) :-
-    set_tree234.fold5(Pred, T0, !A, !B, !C, !D, !E),
+set_tree234.fold5(Pred, Tree, !A, !B, !C, !D, !E) :-
+    set_tree234.foldl5(Pred, Tree, !A, !B, !C, !D, !E).
+
+set_tree234.foldl5(_Pred, empty, !A, !B, !C, !D, !E).
+set_tree234.foldl5(Pred, two(E, T0, T1), !A, !B, !C, !D, !E) :-
+    set_tree234.foldl5(Pred, T0, !A, !B, !C, !D, !E),
     Pred(E, !A, !B, !C, !D, !E),
-    set_tree234.fold5(Pred, T1, !A, !B, !C, !D, !E).
-set_tree234.fold5(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D, !E) :-
-    set_tree234.fold5(Pred, T0, !A, !B, !C, !D, !E),
+    set_tree234.foldl5(Pred, T1, !A, !B, !C, !D, !E).
+set_tree234.foldl5(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D, !E) :-
+    set_tree234.foldl5(Pred, T0, !A, !B, !C, !D, !E),
     Pred(E0, !A, !B, !C, !D, !E),
-    set_tree234.fold5(Pred, T1, !A, !B, !C, !D, !E),
+    set_tree234.foldl5(Pred, T1, !A, !B, !C, !D, !E),
     Pred(E1, !A, !B, !C, !D, !E),
-    set_tree234.fold5(Pred, T2, !A, !B, !C, !D, !E).
-set_tree234.fold5(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D,
+    set_tree234.foldl5(Pred, T2, !A, !B, !C, !D, !E).
+set_tree234.foldl5(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D,
         !E) :-
-    set_tree234.fold5(Pred, T0, !A, !B, !C, !D, !E),
+    set_tree234.foldl5(Pred, T0, !A, !B, !C, !D, !E),
     Pred(E0, !A, !B, !C, !D, !E),
-    set_tree234.fold5(Pred, T1, !A, !B, !C, !D, !E),
+    set_tree234.foldl5(Pred, T1, !A, !B, !C, !D, !E),
     Pred(E1, !A, !B, !C, !D, !E),
-    set_tree234.fold5(Pred, T2, !A, !B, !C, !D, !E),
+    set_tree234.foldl5(Pred, T2, !A, !B, !C, !D, !E),
     Pred(E2, !A, !B, !C, !D, !E),
-    set_tree234.fold5(Pred, T3, !A, !B, !C, !D, !E).
+    set_tree234.foldl5(Pred, T3, !A, !B, !C, !D, !E).
 
-set_tree234.fold6(_Pred, empty, !A, !B, !C, !D, !E, !F).
-set_tree234.fold6(Pred, two(E, T0, T1), !A, !B, !C, !D, !E, !F) :-
-    set_tree234.fold6(Pred, T0, !A, !B, !C, !D, !E, !F),
+set_tree234.fold6(Pred, Tree, !A, !B, !C, !D, !E, !F) :-
+    set_tree234.foldl6(Pred, Tree, !A, !B, !C, !D, !E, !F).
+
+set_tree234.foldl6(_Pred, empty, !A, !B, !C, !D, !E, !F).
+set_tree234.foldl6(Pred, two(E, T0, T1), !A, !B, !C, !D, !E, !F) :-
+    set_tree234.foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
     Pred(E, !A, !B, !C, !D, !E, !F),
-    set_tree234.fold6(Pred, T1, !A, !B, !C, !D, !E, !F).
-set_tree234.fold6(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D, !E, !F) :-
-    set_tree234.fold6(Pred, T0, !A, !B, !C, !D, !E, !F),
+    set_tree234.foldl6(Pred, T1, !A, !B, !C, !D, !E, !F).
+set_tree234.foldl6(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D, !E, !F) :-
+    set_tree234.foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
     Pred(E0, !A, !B, !C, !D, !E, !F),
-    set_tree234.fold6(Pred, T1, !A, !B, !C, !D, !E, !F),
+    set_tree234.foldl6(Pred, T1, !A, !B, !C, !D, !E, !F),
     Pred(E1, !A, !B, !C, !D, !E, !F),
-    set_tree234.fold6(Pred, T2, !A, !B, !C, !D, !E, !F).
-set_tree234.fold6(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D,
+    set_tree234.foldl6(Pred, T2, !A, !B, !C, !D, !E, !F).
+set_tree234.foldl6(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D,
         !E, !F) :-
-    set_tree234.fold6(Pred, T0, !A, !B, !C, !D, !E, !F),
+    set_tree234.foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
     Pred(E0, !A, !B, !C, !D, !E, !F),
-    set_tree234.fold6(Pred, T1, !A, !B, !C, !D, !E, !F),
+    set_tree234.foldl6(Pred, T1, !A, !B, !C, !D, !E, !F),
     Pred(E1, !A, !B, !C, !D, !E, !F),
-    set_tree234.fold6(Pred, T2, !A, !B, !C, !D, !E, !F),
+    set_tree234.foldl6(Pred, T2, !A, !B, !C, !D, !E, !F),
     Pred(E2, !A, !B, !C, !D, !E, !F),
-    set_tree234.fold6(Pred, T3, !A, !B, !C, !D, !E, !F).
+    set_tree234.foldl6(Pred, T3, !A, !B, !C, !D, !E, !F).
 
 %------------------------------------------------------------------------------%
 
