@@ -35,6 +35,9 @@ Changes to the Mercury standard library:
 * The lexer module returns base 10 integer literals in the string
   representation, if the integer is too large for an `int'.
 
+* We have add the following new predicates to the list module:
+  list.all_true_corresponding/3 and list.all_false_corresponding/3.
+
 Changes to the Mercury debugger:
 
 * We have added new capabilities to the "level", "retry" and "finish" mdb

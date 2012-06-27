@@ -1434,12 +1434,32 @@
 :- pred list.all_true(pred(X)::in(pred(in) is semidet), list(X)::in)
     is semidet.
 
+    % list.all_true_corresponding(Pred, ListA, ListB):
+    % Succeeds if Pred succeeds for every corresponding pair of elements from
+    % ListA and ListB.  Fails if Pred fails for any pair of corresponding
+    % elements.
+    %
+    % An exception is raised if the list arguments differ in length.
+    %
+:- pred list.all_true_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
+    list(X)::in, list(Y)::in) is semidet.
+
     % list.all_false(Pred, List) takes a closure with one input argument.
     % If Pred fails for every member of List, all_false succeeds.
     % If Pred succeeds for any member of List, all_false fails.
     %
 :- pred list.all_false(pred(X)::in(pred(in) is semidet), list(X)::in)
     is semidet.
+
+    % list.all_false_corresponding(Pred, ListA, ListB):
+    % Succeeds if Pred fails for every corresponding pair of elements from
+    % ListA and ListB.  Fails if Pred succeeds for any pair of corresponding
+    % elements.
+    %
+    % An exception is raised if the list arguments differ in length.
+    %
+:- pred list.all_false_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
+    list(X)::in, list(Y)::in) is semidet.
 
     % list.find_first_match(Pred, List, FirstMatch) takes a closure with one
     % input argument. It returns the element X of the list (if any) for which
@@ -2728,10 +2748,28 @@ list.all_true(P, [X | Xs]) :-
     P(X),
     list.all_true(P, Xs).
 
+list.all_true_corresponding(_P, [], []).
+list.all_true_corresponding(_P, [], [_ | _]) :-
+    unexpected($module, $pred, "mismatched list lengths").
+list.all_true_corresponding(_P, [_ | _], []) :-
+    unexpected($module, $pred, "mismatched list lengths").
+list.all_true_corresponding(P, [X | Xs], [Y | Ys]) :-
+    P(X, Y),
+    list.all_true_corresponding(P, Xs, Ys).
+
 list.all_false(_P, []).
 list.all_false(P, [X | Xs]) :-
     not P(X),
     list.all_false(P, Xs).
+
+list.all_false_corresponding(_P, [], []).
+list.all_false_corresponding(_P, [], [_ | _]) :-
+    unexpected($module, $pred, "mismatched list lengths").
+list.all_false_corresponding(_P, [_ | _], []) :-
+    unexpected($module, $pred, "mismatched list lengths").
+list.all_false_corresponding(P, [X | Xs], [Y | Ys]) :-
+    not P(X, Y),
+    list.all_false_corresponding(P, Xs, Ys).
 
 list.find_first_match(P, [H | T], FirstMatch) :-
     ( P(H) ->
