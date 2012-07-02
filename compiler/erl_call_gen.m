@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: erl_call_gen.m.
 % Main author: wangp.
-% 
-% This module is part of the ELDS code generator.  It handles code generation
+%
+% This module is part of the ELDS code generator. It handles code generation
 % of procedures calls, calls to builtins, and other closely related stuff.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module erl_backend.erl_call_gen.
@@ -153,10 +153,10 @@ erl_make_call_replace_dummies(Info, CodeModel, CallTarget,
 :- func var_to_expr_or_false(module_info, vartypes, prog_var) = elds_expr.
 
 var_to_expr_or_false(ModuleInfo, VarTypes, Var) = Expr :-
-    (if
+    ( if
         % The variable may not be in VarTypes if it did not exist in the
-        % HLDS, i.e. we invented the variable.  Those should be kept.
-        map.search(VarTypes, Var, Type),
+        % HLDS, i.e. we invented the variable. Those should be kept.
+        search_var_type(VarTypes, Var, Type),
         check_dummy_type(ModuleInfo, Type) = is_dummy_type
     then
         Expr = elds_term(elds_false)
@@ -194,7 +194,7 @@ make_det_call(CallTarget, InputExprs, OutputVars, MaybeSuccessExpr,
     CallExpr = elds_call(CallTarget, InputExprs),
     (
         OutputVars = [],
-        (if 
+        ( if
             ( MaybeSuccessExpr = yes(elds_term(elds_empty_tuple))
             ; MaybeSuccessExpr = no
             )
@@ -207,7 +207,7 @@ make_det_call(CallTarget, InputExprs, OutputVars, MaybeSuccessExpr,
     ;
         OutputVars = [_ | _],
         UnpackTerm = tuple_or_single_expr(exprs_from_vars(OutputVars)),
-        (if
+        ( if
             MaybeSuccessExpr = yes(UnpackTerm)
         then
             % Preserve tail calls.
@@ -224,7 +224,7 @@ make_det_call(CallTarget, InputExprs, OutputVars, MaybeSuccessExpr,
 make_semidet_call(CallTarget, InputExprs, OutputVars, SuccessExpr, Statement) :-
     CallExpr = elds_call(CallTarget, InputExprs),
     UnpackTerm = elds_tuple(exprs_from_vars(OutputVars)),
-    (if
+    ( if
         SuccessExpr = elds_term(UnpackTerm)
     then
         % Avoid unnecessary unpacking.
@@ -234,7 +234,6 @@ make_semidet_call(CallTarget, InputExprs, OutputVars, SuccessExpr, Statement) :-
         %   {OutputVars, ...} -> SuccessExpr ;
         %   _ -> fail
         % end
-        %
         Statement0 = elds_case_expr(CallExpr, [TrueCase, FalseCase]),
         TrueCase  = elds_case(UnpackTerm, SuccessExpr),
         FalseCase = elds_case(elds_anon_var, elds_term(elds_fail)),
@@ -246,13 +245,11 @@ make_semidet_call(CallTarget, InputExprs, OutputVars, SuccessExpr, Statement) :-
 
 make_nondet_call(CallTarget, InputExprs, OutputVars, SuccessCont0,
         Statement) :-
-    %
     % Proc(InputExprs, ...,
     %   fun(OutputVars, ...) ->
     %       SuccessCont0
     %   end)
-    %
-    (if
+    ( if
         SuccessCont0 = elds_call(elds_call_ho(SuccessCont1),
             exprs_from_vars(OutputVars))
     then
@@ -275,7 +272,7 @@ erl_gen_higher_order_call(GenericCall, ArgVars, Modes, Detism,
 
     % Separate input and output arguments for the call.
     % We do not optimise away dummy and unused arguments when calling higher
-    % order procedures.  The underlying first-order procedure may have the
+    % order procedures. The underlying first-order procedure may have the
     % arguments optimised away, but the closure created around it retains dummy
     % arguments.
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -302,7 +299,7 @@ erl_gen_class_method_call(GenericCall, ArgVars, Modes, Detism,
     %       MethodWrapper(TypeClassInfo, Inputs, ..., [SuccessCont]).
     %
     % MethodWrapper is NOT the used-defined method implementation itself, but a
-    % wrapper around it.  We have to be careful as the wrappers accept and
+    % wrapper around it. We have to be careful as the wrappers accept and
     % return dummy values, but the actual method implementations optimise those
     % away, as well as unneeded typeinfo and typeclass info arguments, etc.
 
@@ -391,7 +388,7 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
             (
                 % We need to avoid generating assignments to dummy variables
                 % introduced for types such as io.state.
-                map.lookup(VarTypes, Lval, LvalType),
+                lookup_var_type(VarTypes, Lval, LvalType),
                 check_dummy_type(ModuleInfo, LvalType) = is_dummy_type
             ->
                 Statement = expr_or_void(MaybeSuccessExpr)
@@ -530,10 +527,10 @@ std_binop_to_elds(compound_lt, elds.(<)).
 % Code for foreign code calls
 %
 
-% Currently dummy arguments do not exist at all.  The writer of the foreign
+% Currently dummy arguments do not exist at all. The writer of the foreign
 % proc must not reference dummy input variables and should not bind dummy
 % output variables (it causes unused variable warnings from the Erlang
-% compiler).  To avoid warnings from the Mercury compiler about arguments not
+% compiler). To avoid warnings from the Mercury compiler about arguments not
 % appearing in the foreign proc, they must be named with an underscore.
 %
 % Materialising dummy input variables would not be a good idea unless
@@ -569,8 +566,8 @@ erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
     %
     % In the following, F<n> are input variables to the foreign code (with
     % fixed names), and G<n> are output variables from the foreign code
-    % (also with fixed names).  The variables V<n> are input variables and
-    % have arbitrary names.  We introduce variables with fixed names using
+    % (also with fixed names). The variables V<n> are input variables and
+    % have arbitrary names. We introduce variables with fixed names using
     % a lambda function rather than direct assignments in case a single
     % procedure makes calls to two pieces of foreign code which use the
     % same fixed names (this can happen due to inlining).
@@ -729,7 +726,7 @@ erl_gen_trace_runtime_cond(TraceRuntimeCond, Statement, !Info) :-
 
     % Instead of generating code which evaluates whether the trace runtime
     % condition is true, we generate a data representation of the condition and
-    % send it to the "Erlang global server" for interpretation.  The process
+    % send it to the "Erlang global server" for interpretation. The process
     % dictionary of the server is initialised at startup with whether each
     % environment variable was set or not, so it makes sense to evaluate the
     % trace condition in the server.

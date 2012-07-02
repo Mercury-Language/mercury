@@ -82,7 +82,7 @@ evaluate_call(ModuleName, PredName, ProcIdInt, Args, VarTypes, InstMap,
     globals.lookup_bool_option(Globals, cross_compiling, CrossCompiling),
     LookupArgs = (func(Var) = arg_hlds_info(Var, Type, Inst) :-
         instmap_lookup_var(InstMap, Var, Inst),
-        Type = VarTypes ^ det_elem(Var)
+        lookup_var_type(VarTypes, Var, Type)
     ),
     ArgHldsInfos = list.map(LookupArgs, Args),
     evaluate_call_2(ModuleName, PredName, ProcIdInt, ArgHldsInfos,

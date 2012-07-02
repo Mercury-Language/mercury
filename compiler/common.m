@@ -400,7 +400,7 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
 
 lookup_var_type_ctor(Info, Var) = TypeCtor :-
     simplify_info_get_var_types(Info, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     % If we unify a variable with a function symbol, we *must* know
     % what the principal type constructor of its type is.
     type_to_ctor_det(Type, TypeCtor).
@@ -565,8 +565,8 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 % Don't warn for cases such as:
                 % set.init(Set1 : set(int)),
                 % set.init(Set2 : set(float)).
-                map.apply_to_list(OutputArgs, VarTypes, OutputArgTypes1),
-                map.apply_to_list(OutputArgs2, VarTypes, OutputArgTypes2),
+                lookup_var_types(VarTypes, OutputArgs, OutputArgTypes1),
+                lookup_var_types(VarTypes, OutputArgs2, OutputArgTypes2),
                 types_match_exactly_list(OutputArgTypes1, OutputArgTypes2)
             ->
                 Context = goal_info_get_context(GoalInfo),
@@ -644,7 +644,7 @@ partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
     partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,
         InputArgs1, OutputArgs1, OutputModes1),
     mode_get_insts(ModuleInfo, ArgMode, InitialInst, FinalInst),
-    map.lookup(VarTypes, Arg, Type),
+    lookup_var_type(VarTypes, Arg, Type),
     ( inst_matches_binding(InitialInst, FinalInst, Type, ModuleInfo) ->
         InputArgs = [Arg | InputArgs1],
         OutputArgs = OutputArgs1,
@@ -771,8 +771,8 @@ generate_assign(ToVar, FromVar, UniMode, OldGoalInfo, GoalExpr, GoalInfo,
         !Info) :-
     apply_induced_substitutions(ToVar, FromVar, !Info),
     simplify_info_get_var_types(!.Info, VarTypes),
-    map.lookup(VarTypes, ToVar, ToVarType),
-    map.lookup(VarTypes, FromVar, FromVarType),
+    lookup_var_type(VarTypes, ToVar, ToVarType),
+    lookup_var_type(VarTypes, FromVar, FromVarType),
 
     set_of_var.list_to_set([ToVar, FromVar], NonLocals),
     UniMode = ((_ - ToVarInst0) -> (_ - ToVarInst)),

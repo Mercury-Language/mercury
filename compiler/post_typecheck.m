@@ -269,7 +269,7 @@ check_pred_type_bindings(ModuleInfo, PredId, !PredInfo, NumBadErrors,
     pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
     clauses_info_get_varset(ClausesInfo0, VarSet),
     clauses_info_get_vartypes(ClausesInfo0, VarTypesMap0),
-    map.to_assoc_list(VarTypesMap0, VarTypesList),
+    vartypes_to_assoc_list(VarTypesMap0, VarTypesList),
     set.init(Set0),
     check_var_type_bindings(VarTypesList, HeadTypeParams,
         [], UnresolvedVarsTypes, Set0, Set),
@@ -561,7 +561,7 @@ finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, Context,
         pred_info_get_markers(CallerPredInfo, Markers),
         pred_info_get_clauses_info(CallerPredInfo, ClausesInfo),
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
-        map.apply_to_list(Args0, VarTypes, ArgTypes),
+        lookup_var_types(VarTypes, Args0, ArgTypes),
         resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
             ArgTypes, HeadTypeParams, Context, !PredName, !:PredId)
     ;
@@ -592,7 +592,7 @@ post_typecheck_finish_imported_pred_no_io(ModuleInfo, ErrorProcIds,
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
         clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
         pred_info_get_arg_types(!.PredInfo, ArgTypes),
-        map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
+        vartypes_from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
         clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo)
     ),
@@ -773,7 +773,7 @@ in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
         RHS = rhs_functor(ConsId, _, _),
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         type_to_ctor_det(Type, TypeCtor),
         module_info_get_type_table(ModuleInfo, TypeTable),
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
@@ -1029,7 +1029,7 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
 resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         GoalInfo0, ModuleInfo, !PredInfo, !VarSet, !VarTypes,
         Goal, IsPlainUnify) :-
-    map.lookup(!.VarTypes, X0, TypeOfX),
+    lookup_var_type(!.VarTypes, X0, TypeOfX),
     list.length(ArgVars0, Arity),
     (
         % Is the function symbol apply/N or ''/N, representing a higher-order
@@ -1091,7 +1091,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         pred_info_get_typevarset(!.PredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(!.PredInfo, ExistQTVars),
         pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
-        map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
+        lookup_var_types(!.VarTypes, ArgVars0, ArgTypes0),
         ArgTypes = ArgTypes0 ++ [TypeOfX],
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
         GoalId = goal_info_get_goal_id(GoalInfo0),
@@ -1125,7 +1125,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         \+ pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
 
         % Find the pred_id of the constant.
-        map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
+        lookup_var_types(!.VarTypes, ArgVars0, ArgTypes0),
         AllArgTypes = ArgTypes0 ++ HOArgTypes,
         pred_info_get_typevarset(!.PredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(!.PredInfo, ExistQVars),
@@ -1175,7 +1175,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % otherwise there would have been an error reported for unresolved
         % overloading.
         pred_info_get_typevarset(!.PredInfo, TVarSet),
-        map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
+        lookup_var_types(!.VarTypes, ArgVars0, ArgTypes0),
         \+ find_matching_constructor(ModuleInfo, TVarSet, ConsId0,
             TypeOfX, ArgTypes0)
     ->
@@ -1288,7 +1288,7 @@ finish_field_access_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
 
 translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
         UnifyContext, FieldVar, TermInputVar, OldGoalInfo, GoalExpr) :-
-    map.lookup(!.VarTypes, TermInputVar, TermType),
+    lookup_var_type(!.VarTypes, TermInputVar, TermType),
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId, FieldNumber),
 
@@ -1306,7 +1306,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     % by typecheck.m because the result can't be well-typed).
     (
         ExistQVars = [_ | _],
-        map.lookup(!.VarTypes, FieldVar, FieldType),
+        lookup_var_type(!.VarTypes, FieldVar, FieldType),
         list.det_index1(ArgTypes0, FieldNumber, FieldArgType),
         ( type_list_subsumes([FieldArgType], [FieldType], FieldSubst) ->
             apply_rec_subst_to_type_list(FieldSubst, ArgTypes0, ArgTypes)
@@ -1341,7 +1341,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
 translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
         UnifyContext, FieldVar, TermInputVar, TermOutputVar, OldGoalInfo,
         Goal) :-
-    map.lookup(!.VarTypes, TermInputVar, TermType),
+    lookup_var_type(!.VarTypes, TermInputVar, TermType),
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId0, FieldNumber),
 
@@ -1595,14 +1595,14 @@ create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
 make_new_vars(Types, Vars, !VarTypes, !VarSet) :-
     list.length(Types, NumVars),
     varset.new_vars(NumVars, Vars, !VarSet),
-    map.det_insert_from_corresponding_lists(Vars, Types, !VarTypes).
+    vartypes_add_corresponding_lists(Vars, Types, !VarTypes).
 
 :- pred make_new_var(mer_type::in, prog_var::out, vartypes::in, vartypes::out,
     prog_varset::in, prog_varset::out) is det.
 
 make_new_var(Type, Var, !VarTypes, !VarSet) :-
     varset.new_var(Var, !VarSet),
-    map.det_insert(Var, Type, !VarTypes).
+    add_var_type(Var, Type, !VarTypes).
 
 %-----------------------------------------------------------------------------%
 

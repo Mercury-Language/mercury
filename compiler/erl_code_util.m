@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2007-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -115,9 +115,9 @@
 
     % erl_fix_success_expr(InstMap, Goal, MaybeExpr0, MaybeExpr, !Info)
     %
-    % Success expressions may contain assignments.  Assignments to local
+    % Success expressions may contain assignments. Assignments to local
     % variables may be incorrect or raise warnings from the Erlang compiler if
-    % a success expression is duplicated.  Hence we rename away local variables
+    % a success expression is duplicated. Hence we rename away local variables
     % when duplicating a success expression.
     %
     % This predicate renames any local variables appearing in the success
@@ -137,10 +137,10 @@
     % erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap, !Statement)
     %
     % For any variables in VarsToBind which are not bound in Goal, add
-    % assignment expressions to !Statement.  This is necessary to ensure that
+    % assignment expressions to !Statement. This is necessary to ensure that
     % all branches of ELDS code bind the same variables, to avoid warnings from
     % the Erlang compiler when one branch doesn't bind all the variables
-    % because it has determinism `erroneous'.  The values given to the
+    % because it has determinism `erroneous'. The values given to the
     % variables do not matter since this is only done to appease the
     % Erlang compiler.
     %
@@ -167,7 +167,7 @@
     % erl_rename_vars_in_expr(Subn, Expr0, Expr):
     %
     % Substitute every occurrence of any variable for a substitute that appears
-    % in the mapping Subn.  Variables which do not appear in Subn are left
+    % in the mapping Subn. Variables which do not appear in Subn are left
     % unsubstituted.
     %
 :- pred erl_rename_vars_in_expr(prog_var_renaming::in,
@@ -188,7 +188,7 @@
 :- pred erl_expr_vars(elds_expr::in, set_of_progvar::out) is det.
 
     % Return a rough indication of the "size" of an expression, where each
-    % simple constant has a value of 1.  This is used to decide if an
+    % simple constant has a value of 1. This is used to decide if an
     % expression is too big to duplicate.
     %
 :- func erl_expr_size(elds_expr) = int.
@@ -196,7 +196,7 @@
     % maybe_simplify_nested_cases(Expr0, Expr)
     %
     % Simplify Expr0 if it is a case expression of a specific form, otherwise
-    % return it unchanged.  (See a later comment for the form.)
+    % return it unchanged. (See a later comment for the form.)
     %
 :- pred maybe_simplify_nested_cases(elds_expr::in, elds_expr::out) is det.
 
@@ -308,7 +308,7 @@ erl_variable_types(Info, Vars, Types) :-
 
 erl_variable_type(Info, Var, Type) :-
     erl_gen_info_get_var_types(Info, VarTypes),
-    map.lookup(VarTypes, Var, Type).
+    lookup_var_type(VarTypes, Var, Type).
 
 erl_gen_info_add_env_var_name(Name, !Info) :-
     EnvVarNames0 = !.Info ^ egi_env_var_names,
@@ -408,7 +408,7 @@ erl_bound_nonlocals_in_goal(Info, InstMap, Goal, BoundNonLocals) :-
 
 is_bound_and_not_dummy(ModuleInfo, VarTypes, InstMap, InstmapDelta, Var) :-
     var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstmapDelta, Var),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
 
 erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap,
@@ -524,7 +524,7 @@ non_variable_term(Term) :-
 
 erl_var_or_dummy_replacement(ModuleInfo, VarTypes, DummyVarReplacement, Var) =
     (if
-        map.search(VarTypes, Var, Type),
+        search_var_type(VarTypes, Var, Type),
         check_dummy_type(ModuleInfo, Type) = is_dummy_type
     then
         elds_term(DummyVarReplacement)

@@ -198,7 +198,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes,
         MaybeRegTypes, Det, GoalInfo, Code, !CI) :-
     get_module_info(!.CI, ModuleInfo),
     VarTypes = get_var_types(!.CI),
-    map.apply_to_list(Args, VarTypes, Types),
+    lookup_var_types(VarTypes, Args, Types),
     arg_info.generic_call_arg_reg_types(ModuleInfo, VarTypes, GenericCall,
         Args, MaybeRegTypes, ArgRegTypes),
     arg_info.compute_in_and_out_vars_sep_regs(ModuleInfo, Args, Modes, Types,

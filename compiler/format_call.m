@@ -1319,7 +1319,7 @@ make_result_var_if_needed(MaybeResultVar, ResultVar, !VarSet, !VarTypes) :-
     ;
         MaybeResultVar = no,
         varset.new_var(ResultVar, !VarSet),
-        map.det_insert(ResultVar, string_type, !VarTypes)
+        add_var_type(ResultVar, string_type, !VarTypes)
     ).
 
 :- pred represent_component(module_info::in, string_component::in,

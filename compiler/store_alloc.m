@@ -495,7 +495,7 @@ reg_type_for_var(StoreAllocInfo, Var, RegType) :-
         RegType = reg_r
     ;
         FloatRegType = reg_f,
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         ( VarType = float_type ->
             RegType = reg_f
         ;

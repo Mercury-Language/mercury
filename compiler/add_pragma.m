@@ -1488,7 +1488,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             % sync with the predicate's tvarset after the first pass of
             % type checking.
             % map.from_corresponding_lists(Args, Types, VarTypes0)
-            map.init(VarTypes0),
+            init_vartypes(VarTypes0),
             goal_info_init(GoalInfo0),
             set_of_var.list_to_set(Args, NonLocals),
             goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
@@ -3268,7 +3268,7 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
             GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
                 ForeignArgs, ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl),
             HldsGoal0 = hlds_goal(GoalExpr, GoalInfo),
-            map.init(EmptyVarTypes),
+            init_vartypes(EmptyVarTypes),
             rtti_varmaps_init(EmptyRttiVarmaps),
             implicitly_quantify_clause_body_general(
                 ordinary_nonlocals_maybe_lambda, HeadVarList, _Warnings,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2011 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -155,7 +155,7 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Disjuncts, DisjGoalInfo,
 
     figure_out_output_vars(!.CI, DisjGoalInfo, OutVars),
     VarTypes = get_var_types(!.CI),
-    list.map(map.lookup(VarTypes), OutVars, OutTypes),
+    lookup_var_types(VarTypes, OutVars, OutTypes),
 
     produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
         FlushCode, !CI),

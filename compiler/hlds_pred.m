@@ -1225,7 +1225,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     goal_util.goal_vars(Goal0, GoalVars0),
     set_of_var.insert_list(ArgVars, GoalVars0, GoalVars),
     GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
-    map.select(VarTypes0, GoalVarsSet, VarTypes),
+    vartypes_select(GoalVarsSet, VarTypes0, VarTypes),
     varset.select(GoalVarsSet, VarSet0, VarSet),
 
     % Approximate the termination information for the new procedure.
@@ -1261,7 +1261,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 compute_arg_types_modes([], _, _, _, [], []).
 compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
         [Type | Types], [Mode | Modes]) :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     instmap_lookup_var(InstMap0, Var, Inst0),
     instmap_lookup_var(InstMap, Var, Inst),
     Mode = (Inst0 -> Inst),
@@ -2569,7 +2569,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
 
     make_n_fresh_vars("HeadVar__", Arity, HeadVars, varset.init, BodyVarSet),
     varset.init(InstVarSet),
-    map.from_corresponding_lists(HeadVars, Types, BodyTypes),
+    vartypes_from_corresponding_lists(HeadVars, Types, BodyTypes),
     ModeErrors = [],
     InferredDet = detism_erroneous,
     map.init(StackSlots),
@@ -2877,7 +2877,7 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
 
 proc_info_ensure_unique_names(!ProcInfo) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
-    map.keys(VarTypes, AllVars),
+    vartypes_vars(VarTypes, AllVars),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     varset.ensure_unique_names(AllVars, "p", VarSet0, VarSet),
     proc_info_set_varset(VarSet, !ProcInfo).
@@ -2886,7 +2886,7 @@ proc_info_create_var_from_type(Type, MaybeName, NewVar, !ProcInfo) :-
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     varset.new_maybe_named_var(MaybeName, NewVar, VarSet0, VarSet),
-    map.det_insert(NewVar, Type, VarTypes0, VarTypes),
+    add_var_type(NewVar, Type, VarTypes0, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo).
 
@@ -2895,8 +2895,7 @@ proc_info_create_vars_from_types(Types, NewVars, !ProcInfo) :-
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     varset.new_vars(NumVars, NewVars, VarSet0, VarSet),
-    map.det_insert_from_corresponding_lists(NewVars, Types,
-        VarTypes0, VarTypes),
+    vartypes_add_corresponding_lists(NewVars, Types, VarTypes0, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo).
 
@@ -2907,7 +2906,7 @@ proc_info_instantiated_head_vars(ModuleInfo, ProcInfo, ChangedInstHeadVars) :-
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
     IsInstChanged = (pred(VarMode::in, Var::out) is semidet :-
         VarMode = Var - Mode,
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
         \+ inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
     ),
@@ -2921,7 +2920,7 @@ proc_info_uninstantiated_head_vars(ModuleInfo, ProcInfo,
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
     IsInstUnchanged = (pred(VarMode::in, Var::out) is semidet :-
         VarMode = Var - Mode,
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
         inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
     ),
@@ -3019,7 +3018,7 @@ proc_info_has_io_state_pair_2([], _, _, _, !MaybeIn, !MaybeOut).
 proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
         ArgNum, !MaybeIn, !MaybeOut) :-
     (
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         type_is_io_state(VarType)
     ->
         ( mode_is_fully_input(ModuleInfo, Mode) ->
@@ -3057,7 +3056,7 @@ proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
 proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypes,
         [HeadVar | HeadVars]) :-
     (
-        map.lookup(VarTypes, HeadVar, VarType),
+        lookup_var_type(VarTypes, HeadVar, VarType),
         type_is_higher_order(VarType)
     ;
         proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypes,
@@ -3102,11 +3101,11 @@ ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
     ensure_all_headvars_are_named_2(Vars, SeqNum + 1, !VarSet).
 
 var_is_of_dummy_type(ModuleInfo, VarTypes, Var) :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     check_dummy_type(ModuleInfo, Type) = is_dummy_type.
 
 var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var) :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
 
 %-----------------------------------------------------------------------------%

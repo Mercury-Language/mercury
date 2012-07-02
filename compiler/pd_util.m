@@ -725,7 +725,7 @@ examine_branch_list(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
 examine_case_list(_, _, _, [], _, _, !Vars, !ModuleInfo).
 examine_case_list(ProcArgInfo, BranchNo, Var, [Case | Cases],
         VarTypes, InstMap0, !Vars, !ModuleInfo) :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     Case = case(MainConsId, OtherConsIds, Goal),
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         InstMap0, InstMap1, !ModuleInfo),
@@ -1030,7 +1030,7 @@ goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
     % Check that argument types of NewGoal are subsumed by those of OldGoal.
     collect_matching_arg_types(OldArgs, OldArgTypes,
         OldNewRenaming, [], MatchingArgTypes),
-    map.apply_to_list(NewArgs, NewVarTypes, NewArgTypes),
+    lookup_var_types(NewVarTypes, NewArgs, NewArgTypes),
     type_list_subsumes(MatchingArgTypes, NewArgTypes, TypeSubn).
 
 :- pred collect_matching_arg_types(prog_vars::in, list(mer_type)::in,

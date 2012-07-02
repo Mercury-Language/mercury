@@ -419,7 +419,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
         ConsId = cons(_Name, _Arity, _TypeCtor),
         IntParams = !.IntervalInfo ^ ii_interval_params,
         VarTypes = IntParams ^ ip_var_types,
-        map.lookup(VarTypes, CellVar, Type),
+        lookup_var_type(VarTypes, CellVar, Type),
         (
             type_is_tuple(Type, _)
         ->

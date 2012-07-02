@@ -1194,8 +1194,8 @@ create_new_var(OldVar, Prefix, NewVar, !VarSet, !VarTypes) :-
     varset.lookup_name(!.VarSet, OldVar, OldName),
     string.append(Prefix, OldName, NewName),
     varset.new_named_var(NewName, NewVar, !VarSet),
-    map.lookup(!.VarTypes, OldVar, Type),
-    map.det_insert(NewVar, Type, !VarTypes).
+    lookup_var_type(!.VarTypes, OldVar, Type),
+    add_var_type(NewVar, Type, !VarTypes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1519,7 +1519,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
     list.duplicate(list.length(Accs), list.det_head(Mode), AccModes),
     HeadModes = AccModes ++ HeadModes0,
 
-    list.map(map.lookup(VarTypes), Accs, AccTypes),
+    lookup_var_types(VarTypes, Accs, AccTypes),
 
     proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
         HeadModes, detism_decl_none, Detism, Goal, RttiVarMaps,
@@ -1932,5 +1932,5 @@ chain_subst_2([A|As], AtoB, BtoC, AtoC) :-
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module accumulator.
+:- end_module transform_hlds.accumulator.
 %-----------------------------------------------------------------------------%

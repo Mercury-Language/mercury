@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2011 The University of Melbourne.
+% Copyright (C) 2005-2007, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -119,7 +119,7 @@ prst_equal_2([PPId | PPIds], PRST1, PRST2) :-
 find_input_output_args(ModuleInfo, CalleeProcInfo, Inputs, Outputs) :-
     proc_info_get_headvars(CalleeProcInfo, ArgVars),
     proc_info_get_vartypes(CalleeProcInfo, VarTypes),
-    list.map(map.lookup(VarTypes), ArgVars, ArgTypes),
+    lookup_var_types(VarTypes, ArgVars, ArgTypes),
     proc_info_get_argmodes(CalleeProcInfo, ArgModes),
     arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars, ArgModes, ArgTypes,
         Inputs, Outputs).

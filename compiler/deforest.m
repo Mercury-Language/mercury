@@ -1242,7 +1242,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 
             pd_info_get_proc_info(!.PDInfo, ProcInfo1),
             proc_info_get_vartypes(ProcInfo1, VarTypes),
-            map.apply_to_list(NonLocalsList, VarTypes, ArgTypes),
+            lookup_var_types(VarTypes, NonLocalsList, ArgTypes),
             VersionInfo = version_info(FoldGoal, CalledPreds, NonLocalsList,
                 ArgTypes, InstMap0, 0, 0, Parents0, MaybeGeneralised),
             pd_info_get_global_term_info(!.PDInfo, TermInfo0),
@@ -1355,7 +1355,7 @@ create_deforest_call_args([OldArg | OldArgs], [ArgType | ArgTypes],
         % The variable is local to the call. Create a fresh variable.
         varset.new_var(Arg, !VarSet),
         apply_subst_to_type(TypeSubn, ArgType, SubnArgType),
-        map.det_insert(Arg, SubnArgType, !VarTypes)
+        add_var_type(Arg, SubnArgType, !VarTypes)
     ),
     create_deforest_call_args(OldArgs, ArgTypes, Renaming,
         TypeSubn, Args, !VarSet, !VarTypes).

@@ -642,7 +642,7 @@ indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs, Modes,
         ; GenDetails = class_method(_, _, _, _)
         ),
         proc_info_get_vartypes(ProcInfo, CallerVarTypes),
-        map.apply_to_list(CallArgs, CallerVarTypes, ActualTypes),
+        lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
         (
             bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
                 ActualTypes)
@@ -908,7 +908,7 @@ verify_indirect_reuse_for_call(BaseInfo, IrInfo, GoalInfo, CalleePPId,
     proc_info_get_vartypes(ProcInfo, ActualVarTypes),
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
     pred_info_get_univ_quant_tvars(PredInfo, CallerHeadTypeParams),
-    map.apply_to_list(CalleeArgs, ActualVarTypes, CalleeTypes),
+    lookup_var_types(ActualVarTypes, CalleeArgs, CalleeTypes),
     reuse_as_rename_using_module_info(ModuleInfo, CalleePPId,
         CalleeArgs, CalleeTypes, CallerTypeVarSet, CallerHeadTypeParams,
         FormalReuseAs, ActualReuseAs),

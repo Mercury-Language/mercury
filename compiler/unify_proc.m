@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2074,19 +2074,23 @@ compare_functor(Name) = rhs_functor(compare_cons_id(Name), no, []).
 
 info_init(ModuleInfo, UPI) :-
     varset.init(VarSet),
-    map.init(Types),
+    init_vartypes(VarTypes),
     rtti_varmaps_init(RttiVarMaps),
-    UPI = unify_proc_info(VarSet, Types, RttiVarMaps, ModuleInfo).
+    UPI = unify_proc_info(VarSet, VarTypes, RttiVarMaps, ModuleInfo).
 
 info_new_var(Type, Var, !UPI) :-
-    varset.new_var(Var, !.UPI ^ upi_varset, VarSet),
-    map.det_insert(Var, Type, !.UPI ^ upi_vartypes, VarTypes),
+    VarSet0 = !.UPI ^ upi_varset,
+    VarTypes0 = !.UPI ^ upi_vartypes,
+    varset.new_var(Var, VarSet0, VarSet),
+    add_var_type(Var, Type, VarTypes0, VarTypes),
     !UPI ^ upi_varset := VarSet,
     !UPI ^ upi_vartypes := VarTypes.
 
 info_new_named_var(Type, Name, Var, !UPI) :-
-    varset.new_named_var(Name, Var, !.UPI ^ upi_varset, VarSet),
-    map.det_insert(Var, Type, !.UPI ^ upi_vartypes, VarTypes),
+    VarSet0 = !.UPI ^ upi_varset,
+    VarTypes0 = !.UPI ^ upi_vartypes,
+    varset.new_named_var(Name, Var, VarSet0, VarSet),
+    add_var_type(Var, Type, VarTypes0, VarTypes),
     !UPI ^ upi_varset := VarSet,
     !UPI ^ upi_vartypes := VarTypes.
 

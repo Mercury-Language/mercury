@@ -859,7 +859,7 @@ write_goal_unify(Info, GoalExpr, ModuleInfo, VarSet, AppendVarNums,
     io.write_string(" = ", !IO),
     (
         TypeQual = varset_vartypes(_, VarTypes),
-        map.lookup(VarTypes, LHS, UniType),
+        lookup_var_type(VarTypes, LHS, UniType),
         VarType = yes(UniType)
     ;
         TypeQual = no_varset_vartypes,
@@ -1297,7 +1297,7 @@ write_goal_plain_call(Info, GoalExpr, ModuleInfo, VarSet,
             MaybeUnifyContext = yes(CallUnifyContext),
             (
                 TypeQual = varset_vartypes(_, VarTypes),
-                map.lookup(VarTypes, Var, UniType),
+                lookup_var_type(VarTypes, Var, UniType),
                 VarType = yes(UniType)
             ;
                 TypeQual = no_varset_vartypes,

@@ -600,8 +600,8 @@ saved_vars_rename_var(Var, NewVar, Substitution, !SlotInfo) :-
     !.SlotInfo = slot_info(Varset0, VarTypes0, RttiVarMaps0, TypeInfoLiveness),
     varset.new_var(NewVar, Varset0, Varset),
     map.from_assoc_list([Var - NewVar], Substitution),
-    map.lookup(VarTypes0, Var, Type),
-    map.det_insert(NewVar, Type, VarTypes0, VarTypes),
+    lookup_var_type(VarTypes0, Var, Type),
+    add_var_type(NewVar, Type, VarTypes0, VarTypes),
     rtti_var_info_duplicate(Var, NewVar, RttiVarMaps0, RttiVarMaps),
     !:SlotInfo = slot_info(Varset, VarTypes, RttiVarMaps,
         TypeInfoLiveness).
@@ -621,7 +621,7 @@ saved_vars_rename_var(Var, NewVar, Substitution, !SlotInfo) :-
 slot_info_do_not_duplicate_var(SlotInfo, Var) :-
     SlotInfo = slot_info(_, VarTypes, _, TypeInfoLiveness),
     TypeInfoLiveness = yes,
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     polymorphism.type_is_type_info_or_ctor_type(Type).
 
 %-----------------------------------------------------------------------------%

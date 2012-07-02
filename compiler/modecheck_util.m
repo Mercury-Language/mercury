@@ -333,7 +333,7 @@ modecheck_functor_test(Var, ConsId, !ModeInfo) :-
     % or typeclass-infos inserted for existential data types.
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     BoundInst = cons_id_to_bound_inst(ModuleInfo, Type, ConsId),
 
     % Record the fact that Var was bound to ConsId.
@@ -345,7 +345,7 @@ modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo) :-
     % or typeclass-infos inserted for existential data types.
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     BoundInsts = list.map(cons_id_to_bound_inst(ModuleInfo, Type),
         [MainConsId | OtherConsIds]),
 
@@ -514,7 +514,7 @@ modecheck_var_has_inst_exact_match(Var, Inst, !Subst, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap),
     instmap_lookup_var(InstMap, Var, VarInst),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     (
         inst_matches_initial_no_implied_modes_sub(VarInst, Inst, Type,
@@ -535,7 +535,7 @@ modecheck_var_has_inst_no_exact_match(Var, Inst, !Subst, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap),
     instmap_lookup_var(InstMap, Var, VarInst),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     (
         inst_matches_initial_sub(VarInst, Inst, Type, ModuleInfo0, ModuleInfo,
@@ -649,7 +649,7 @@ modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
         ),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
-        map.lookup(VarTypes, Var0, Type),
+        lookup_var_type(VarTypes, Var0, Type),
         (
             % If the top-level inst of the variable is not_reached,
             % then the instmap as a whole must be unreachable.
@@ -729,7 +729,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
     inst_expand(ModuleInfo0, VarInst0, VarInst1),
 
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
-    map.lookup(VarTypes0, Var0, VarType),
+    lookup_var_type(VarTypes0, Var0, VarType),
     (
         % If the initial inst of the variable matches_final the initial inst
         % specified in the pred's mode declaration, then it's not a call
@@ -799,7 +799,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
         % Introduce a new variable.
         mode_info_get_varset(!.ModeInfo, VarSet0),
         varset.new_var(Var, VarSet0, VarSet),
-        map.set(Var, VarType, VarTypes0, VarTypes),
+        add_var_type(Var, VarType, VarTypes0, VarTypes),
         mode_info_set_varset(VarSet, !ModeInfo),
         mode_info_set_var_types(VarTypes, !ModeInfo),
 
@@ -863,7 +863,7 @@ insert_extra_initialisation_call(Var, VarType, Inst, Context, CallUnifyContext,
 construct_initialisation_calls([], [], !ModeInfo).
 construct_initialisation_calls([Var | Vars], [Goal | Goals], !ModeInfo) :-
     mode_info_get_var_types(!.ModeInfo, VarTypes),
-    map.lookup(VarTypes, Var, VarType),
+    lookup_var_type(VarTypes, Var, VarType),
     InitialInst           = free,
     Context               = term.context_init,
     MaybeCallUnifyContext = no,

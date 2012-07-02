@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007, 2010-2011 The University of Melbourne.
+% Copyright (C) 1997-2007, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -334,7 +334,7 @@ lookup_proc_arg_size_info(ModuleInfo, PPId, MaybeArgSize) :-
 
 horder_vars([Arg | Args], VarType) :-
     (
-        map.lookup(VarType, Arg, Type),
+        lookup_var_type(VarType, Arg, Type),
         type_is_higher_order(Type)
     ;
         horder_vars(Args, VarType)

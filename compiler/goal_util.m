@@ -482,8 +482,8 @@ create_renaming_2([], _, !VarSet, !VarTypes, !RevUnifies, !RevNewVars,
 create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
         !RevUnifies, !RevNewVars, !Renaming) :-
     varset.new_var(NewVar, !VarSet),
-    map.lookup(!.VarTypes, OrigVar, Type),
-    map.det_insert(NewVar, Type, !VarTypes),
+    lookup_var_type(!.VarTypes, OrigVar, Type),
+    add_var_type(NewVar, Type, !VarTypes),
     ( instmap_delta_search_var(InstMapDelta, OrigVar, DeltaInst) ->
         NewInst = DeltaInst
     ;
@@ -518,10 +518,11 @@ clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes, !Renaming,
             true
         ),
         map.det_insert(Var, CloneVar, !Renaming),
-        ( map.search(OldVarTypes, Var, VarType) ->
-            map.set(CloneVar, VarType, !VarTypes)
+        ( search_var_type(OldVarTypes, Var, VarType) ->
+            add_var_type(CloneVar, VarType, !VarTypes)
         ;
-            % XXX This should never happen after typechecking.
+            % This should never happen after typechecking, but may happen
+            % before it.
             true
         )
     ).
@@ -814,7 +815,7 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
     % quantified or type vars that appear in the type of a non-local prog_var.
 
     set_of_var.to_sorted_list(NonLocals, NonLocalsList),
-    map.apply_to_list(NonLocalsList, VarTypes, NonLocalsTypes),
+    lookup_var_types(VarTypes, NonLocalsList, NonLocalsTypes),
     type_vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
     NonLocalTypeVarsList = ExistQVars ++ NonLocalTypeVarsList0,
     set_of_var.list_to_set(NonLocalTypeVarsList, NonLocalTypeVars),
@@ -1378,9 +1379,9 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
         !ModuleInfo) :-
     ConsArity = cons_id_arity(ConsId),
     varset.new_vars(ConsArity, ArgVars, !VarSet),
-    map.lookup(!.VarTypes, Var, VarType),
+    lookup_var_type(!.VarTypes, Var, VarType),
     type_util.get_cons_id_arg_types(!.ModuleInfo, VarType, ConsId, ArgTypes),
-    map.det_insert_from_corresponding_lists(ArgVars, ArgTypes, !VarTypes),
+    vartypes_add_corresponding_lists(ArgVars, ArgTypes, !VarTypes),
     instmap_lookup_var(InstMap, Var, Inst0),
     (
         inst_expand(!.ModuleInfo, Inst0, Inst1),

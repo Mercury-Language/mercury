@@ -1287,7 +1287,7 @@ ml_variable_types(Info, [Var | Vars], [Type | Types]) :-
 
 ml_variable_type(Info, Var, Type) :-
     ml_gen_info_get_var_types(Info, VarTypes),
-    map.lookup(VarTypes, Var, Type).
+    lookup_var_type(VarTypes, Var, Type).
 
 ml_gen_var_names(VarSet, Vars) = list.map(ml_gen_var_name(VarSet), Vars).
 

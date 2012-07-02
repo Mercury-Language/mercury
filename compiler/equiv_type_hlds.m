@@ -411,7 +411,7 @@ replace_in_proc(EqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
         ),
 
         proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-        map.map_values_foldl(hlds_replace_in_type(EqvMap),
+        transform_foldl_var_types(hlds_replace_in_type(EqvMap),
             VarTypes0, VarTypes, !TVarSet),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
 
@@ -1238,7 +1238,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         module_info_get_type_table(!.Info ^ ethri_module_info, TypeTable),
         proc_info_get_vartypes(!.Info ^ ethri_proc_info, VarTypes),
         proc_info_get_rtti_varmaps(!.Info ^ ethri_proc_info, RttiVarMaps),
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         TypeCtorCat = classify_type(!.Info ^ ethri_module_info, VarType),
         (
             % If this goal constructs a type_info for an equivalence type,

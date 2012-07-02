@@ -718,8 +718,8 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
     VarSet0 = !.CseInfo ^ csei_varset,
     VarTypes0 = !.CseInfo ^ csei_vartypes,
     varset.new_var(NFV, VarSet0, VarSet),
-    map.lookup(VarTypes0, OFV, Type),
-    map.det_insert(NFV, Type, VarTypes0, VarTypes),
+    lookup_var_type(VarTypes0, OFV, Type),
+    add_var_type(NFV, Type, VarTypes0, VarTypes),
     !:OldNewVar = [OFV - NFV | !.OldNewVar],
     UnifyContext = unify_context(MainCtxt, SubCtxt),
     % It is ok to create complicated unifications here, because we rerun
@@ -852,7 +852,7 @@ maybe_update_existential_data_structures(Unify, FirstOldNew, LaterOldNew,
         UnifyInfo = deconstruct(Var, ConsId, _, _, _, _),
         ModuleInfo = !.CseInfo ^ csei_module_info,
         VarTypes = !.CseInfo ^ csei_vartypes,
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         cons_id_is_existq_cons(ModuleInfo, Type, ConsId)
     ->
         update_existential_data_structures(FirstOldNew, LaterOldNew, !CseInfo)
@@ -893,7 +893,7 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     map.from_assoc_list(OldNew, OldNewMap),
     apply_substitutions_to_rtti_varmaps(Renaming, map.init, OldNewMap,
         RttiVarMaps0, RttiVarMaps),
-    map.map_values_only(apply_variable_renaming_to_type(Renaming),
+    transform_var_types(apply_variable_renaming_to_type(Renaming),
         VarTypes0, VarTypes),
 
     !CseInfo ^ csei_rtti_varmaps := RttiVarMaps,

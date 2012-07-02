@@ -477,7 +477,7 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
     proc_arg_vector_partition_poly_args(HeadVars, ExtraHeadVarList,
         OldHeadVarList),
 
-    map.apply_to_list(ExtraHeadVarList, VarTypes0, ExtraArgTypes),
+    lookup_var_types(VarTypes0, ExtraHeadVarList, ExtraArgTypes),
     ArgTypes = ExtraArgTypes ++ ArgTypes0,
     pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
         PredInfo0, PredInfo1),
@@ -491,7 +491,7 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
     (
         ExistQVars = [_ | _],
         % This can fail for unification procedures of equivalence types.
-        map.apply_to_list(OldHeadVarList, VarTypes0, OldHeadVarTypes),
+        lookup_var_types(VarTypes0, OldHeadVarList, OldHeadVarTypes),
         type_list_subsumes(ArgTypes0, OldHeadVarTypes, Subn),
         \+ map.is_empty(Subn)
     ->
@@ -998,12 +998,12 @@ produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     % Figure out the bindings for any unconstrained existentially quantified
     % type variables in the head.
 
-    ( map.is_empty(VarTypes0) ->
+    ( vartypes_is_empty(VarTypes0) ->
         % This can happen for compiler generated procedures.
         map.init(PredToActualTypeSubst)
     ;
         HeadVarList = proc_arg_vector_to_list(HeadVars),
-        map.apply_to_list(HeadVarList, VarTypes0, ActualArgTypes),
+        lookup_var_types(VarTypes0, HeadVarList, ActualArgTypes),
         type_list_subsumes(ArgTypes, ActualArgTypes, ArgTypeSubst)
     ->
         PredToActualTypeSubst = ArgTypeSubst
@@ -1388,7 +1388,7 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         % requantifying things.
 
         poly_info_get_var_types(!.Info, VarTypes),
-        map.lookup(VarTypes, XVar, Type),
+        lookup_var_type(VarTypes, XVar, Type),
         unification_typeinfos(Type, Unification0, Unification,
             GoalInfo0, GoalInfo, _Changed, !Info),
         Goal = hlds_goal(unify(XVar, Y, Mode, Unification, UnifyContext),
@@ -1503,7 +1503,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         UnifyContext, GoalInfo0, Goal, Changed, !Info) :-
     poly_info_get_module_info(!.Info, ModuleInfo0),
     poly_info_get_var_types(!.Info, VarTypes0),
-    map.lookup(VarTypes0, X0, TypeOfX),
+    lookup_var_type(VarTypes0, X0, TypeOfX),
     list.length(ArgVars0, Arity),
 
     % We replace any unifications with higher order pred constants
@@ -1589,7 +1589,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         % Add extra arguments to the unification for the
         % type_info and/or type_class_info variables.
 
-        map.apply_to_list(ArgVars0, VarTypes0, ActualArgTypes),
+        lookup_var_types(VarTypes0, ArgVars0, ActualArgTypes),
         polymorphism_process_existq_unify_functor(ConsDefn,
             IsConstruction, ActualArgTypes, TypeOfX, GoalInfo0,
             ExtraVars, ExtraGoals, !Info),
@@ -1739,7 +1739,7 @@ lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet) :-
 create_fresh_vars([], [], !VarSet, !VarTypes).
 create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
     varset.new_var(Var, !VarSet),
-    map.det_insert(Var, Type, !VarTypes),
+    add_var_type(Var, Type, !VarTypes),
     create_fresh_vars(Types, Vars, !VarSet, !VarTypes).
 
 %-----------------------------------------------------------------------------%
@@ -2117,7 +2117,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
             ParentUnconstrainedUnivTVars, ParentUnconstrainedExistTVars),
 
         % Calculate the "parent to actual" binding.
-        map.apply_to_list(ArgVars0, VarTypes, ActualArgTypes),
+        lookup_var_types(VarTypes, ArgVars0, ActualArgTypes),
         type_list_subsumes_det(ParentArgTypes, ActualArgTypes,
             ParentToActualTypeSubst),
 
@@ -2192,7 +2192,7 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
     %
     poly_info_get_typevarset(!.Info, TVarSet0),
     poly_info_get_var_types(!.Info, VarTypes0),
-    ActualArgTypes0 = map.apply_to_list(CallArgs0, VarTypes0),
+    lookup_var_types(VarTypes0, CallArgs0, ActualArgTypes0),
     pred_info_get_arg_types(CalleePredInfo, PredTVarSet, _PredExistQVars,
         PredArgTypes),
     proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
@@ -3313,7 +3313,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         TypeCtorConstArg = csa_constant(TypeCtorConsId, type_info_type),
         MCA = yes(TypeCtorConstArg),
         ExtraGoals = ArgTypeInfoGoals ++ TypeCtorGoals,
-        map.det_update(TypeCtorVar, TypeInfoType, VarTypes1, VarTypes),
+        update_var_type(TypeCtorVar, TypeInfoType, VarTypes1, VarTypes),
         poly_info_set_varset_and_types(VarSet1, VarTypes, !Info)
     ;
         % We do need a second cell for a separate typeinfo.
@@ -3635,7 +3635,7 @@ new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
     ),
     Name = Prefix ++ VarNumStr,
     varset.name_var(Var, Name, !VarSet),
-    map.det_insert(Var, type_info_type, !VarTypes).
+    add_var_type(Var, type_info_type, !VarTypes).
 
 %---------------------------------------------------------------------------%
 
@@ -3888,7 +3888,7 @@ new_typeclass_info_var(Constraint, VarKind, Var, VarType, !Info) :-
     ),
     varset.name_var(Var, Name, VarSet1, VarSet),
     build_typeclass_info_type(Constraint, VarType),
-    map.set(Var, VarType, VarTypes0, VarTypes),
+    add_var_type(Var, VarType, VarTypes0, VarTypes),
     rtti_det_insert_typeclass_info_var(Constraint, Var,
         RttiVarMaps0, RttiVarMaps),
 

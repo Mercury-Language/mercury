@@ -865,7 +865,7 @@ create_varmap([Var | VarList], VarSet, VarTypes, N0, !VarMap, VarInfos) :-
     map.det_insert(Var, N0, !VarMap),
     N1 = N0 + 1,
     varset.lookup_name(VarSet, Var, VarName),
-    map.lookup(VarTypes, Var, VarType),
+    lookup_var_type(VarTypes, Var, VarType),
     create_varmap(VarList, VarSet, VarTypes, N1, !VarMap, VarInfosTail),
     VarInfos = [var_info(VarName, VarType) | VarInfosTail].
 
@@ -915,7 +915,7 @@ map_var(ByteInfo, Var, ByteVar) :-
     mer_type::out) is det.
 
 get_var_type(ByteInfo, Var, Type) :-
-    map.lookup(ByteInfo ^ byteinfo_vartypes, Var, Type).
+    lookup_var_type(ByteInfo ^ byteinfo_vartypes, Var, Type).
 
 :- pred get_next_label(int::out, byte_info::in, byte_info::out)
     is det.

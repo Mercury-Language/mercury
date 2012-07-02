@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2011 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -765,7 +765,7 @@ mode_info_get_liveness(ModeInfo, LiveVars) :-
 
 mode_info_get_types_of_vars(ModeInfo, Vars, TypesOfVars) :-
     mode_info_get_var_types(ModeInfo, VarTypes),
-    map.apply_to_list(Vars, VarTypes, TypesOfVars).
+    lookup_var_types(VarTypes, Vars, TypesOfVars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

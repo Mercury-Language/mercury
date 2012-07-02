@@ -524,7 +524,7 @@ unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
         InVars, OutVars) :-
     params_get_functor_info(Params, FunctorInfo),
     params_get_var_types(Params, VarTypes),
-    map.lookup(VarTypes, OutVar, Type),
+    lookup_var_type(VarTypes, OutVar, Type),
     \+ type_is_higher_order(Type),
     \+ (
         ConsId = type_info_const(_)
@@ -553,7 +553,7 @@ filter_typeinfos_from_args_and_modes(VarTypes, [Arg0 | Args0], Args,
         [Mode0 | Modes0], Modes) :-
     filter_typeinfos_from_args_and_modes(VarTypes, Args0, TailArgs,
         Modes0, TailModes),
-    map.lookup(VarTypes, Arg0, Type),
+    lookup_var_type(VarTypes, Arg0, Type),
     ( is_introduced_type_info_type(Type) ->
         Args = TailArgs,
         Modes = TailModes

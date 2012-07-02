@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -313,7 +313,7 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Statements, !Info) :-
     ml_gen_info_get_target(!.Info, Target),
 
     ml_gen_info_get_var_types(!.Info, VarTypes),
-    list.map(map.lookup(VarTypes), OutVars, FieldTypes),
+    lookup_var_types(VarTypes, OutVars, FieldTypes),
     MLDS_FieldTypes =
         list.map(mercury_type_to_mlds_type(ModuleInfo), FieldTypes),
 

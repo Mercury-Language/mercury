@@ -233,7 +233,7 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     (
         clauses_info_get_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
-        map.is_empty(ExplicitVarTypes),
+        vartypes_is_empty(ExplicitVarTypes),
         should_be_processed(ProcessLocalPreds, PredId, PredInfo0,
             TypeSpecForcePreds, InlineThreshold, HigherOrderSizeLimit,
             Deforestation, ModuleInfo0)
@@ -419,7 +419,7 @@ check_for_ho_input_args(ModuleInfo, VarTypes,
         [HeadVar | HeadVars], [ArgMode | ArgModes]) :-
     (
         mode_is_input(ModuleInfo, ArgMode),
-        map.lookup(VarTypes, HeadVar, Type),
+        lookup_var_type(VarTypes, HeadVar, Type),
         classify_type(ModuleInfo, Type) = ctor_cat_higher_order
     ;
         check_for_ho_input_args(ModuleInfo, VarTypes, HeadVars, ArgModes)
@@ -2109,7 +2109,7 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
     set.init(Modules),
     set.init(Procs),
     set.init(ProcDecls),
-    map.init(VarTypes),
+    init_vartypes(VarTypes),
     varset.init(TVarSet),
     Instances = [],
     Types = [],

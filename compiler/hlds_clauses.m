@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -375,7 +375,7 @@ add_clause_item_number_regions(ItemNum, Context, !Regions) :-
 %-----------------------------------------------------------------------------%
 
 clauses_info_init(PredOrFunc, Arity, ItemNumbers, ClausesInfo) :-
-    map.init(VarTypes),
+    init_vartypes(VarTypes),
     map.init(TVarNameMap),
     varset.init(VarSet0),
     make_n_fresh_vars("HeadVar__", Arity, HeadVars, VarSet0, VarSet),
@@ -388,7 +388,7 @@ clauses_info_init(PredOrFunc, Arity, ItemNumbers, ClausesInfo) :-
 
 clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     varset.init(VarSet),
-    map.init(VarTypes),
+    init_vartypes(VarTypes),
     map.init(TVarNameMap),
     % Procedures introduced for assertions are always predicates, never
     % functions.

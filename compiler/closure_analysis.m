@@ -124,7 +124,7 @@ closure_info_init(ModuleInfo, VarTypes, HeadVars, ArgModes) = ClosureInfo :-
 :- pred var_has_ho_type(vartypes::in, prog_var::in) is semidet.
 
 var_has_ho_type(VarTypes, Var) :-
-    Type = map.lookup(VarTypes, Var),
+    lookup_var_type(VarTypes, Var, Type),
     type_is_higher_order(Type).
 
     % Insert the given prog_var into the closure_info and set the

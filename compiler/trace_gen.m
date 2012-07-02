@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2011 The University of Melbourne.
+% Copyright (C) 1997-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1198,7 +1198,7 @@ maybe_setup_redo_event(TraceInfo, Code) :-
 trace_produce_vars([], _, _, _, _, !TVars, !VarInfos, empty, !CI).
 trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
         !TVars, !VarInfos, VarCode ++ VarsCode, !CI) :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     get_module_info(!.CI, ModuleInfo),
     IsDummy = check_dummy_type(ModuleInfo, Type),
     (
@@ -1251,7 +1251,7 @@ build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos], ModuleInfo,
     (
         ArgMode = top_in,
         \+ inst_is_clobbered(ModuleInfo, Inst),
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         check_dummy_type(ModuleInfo, Type) = is_not_dummy_type
     ->
         FailVars = [Var | FailVars0]

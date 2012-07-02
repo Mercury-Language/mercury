@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006, 2009-2011 The University of Melbourne.
+% Copyright (C) 2005-2006, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -320,14 +320,14 @@ apply_rec_subst_to_type_list(Subst, Types0, Types) :-
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_vartypes(Renaming, !Map) :-
-    map.map_values_only(apply_variable_renaming_to_type(Renaming), !Map).
+apply_variable_renaming_to_vartypes(Renaming, !VarTypes) :-
+    transform_var_types(apply_variable_renaming_to_type(Renaming), !VarTypes).
 
 apply_subst_to_vartypes(Subst, !VarTypes) :-
-    map.map_values_only(apply_subst_to_type(Subst), !VarTypes).
+    transform_var_types(apply_subst_to_type(Subst), !VarTypes).
 
 apply_rec_subst_to_vartypes(Subst, !VarTypes) :-
-    map.map_values_only(apply_rec_subst_to_type(Subst), !VarTypes).
+    transform_var_types(apply_rec_subst_to_type(Subst), !VarTypes).
 
 %-----------------------------------------------------------------------------%
 

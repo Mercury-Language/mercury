@@ -1076,7 +1076,7 @@ get_var_types(CI) = VarTypes :-
     proc_info_get_vartypes(ProcInfo, VarTypes).
 
 variable_type(CI, Var) = Type :-
-    map.lookup(get_var_types(CI), Var, Type).
+    lookup_var_type(get_var_types(CI), Var, Type).
 
 variable_is_of_dummy_type(CI, Var) = IsDummy :-
     VarType = variable_type(CI, Var),
@@ -4176,7 +4176,7 @@ key_var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var - _ArgInfo) :-
     pair(prog_var, lval)::in) is semidet.
 
 valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     check_dummy_type(ModuleInfo, Type) = is_not_dummy_type,
     (
         ( Lval = stackvar(N)

@@ -814,7 +814,7 @@ find_match_in_goal_2(Background, Goal, !Match) :-
         (
             Unification = construct(Var, Cons, Args, _, _, _, _),
             (
-                map.lookup(Background ^ back_vartypes, Var, VarType),
+                lookup_var_type(Background ^ back_vartypes, Var, VarType),
                 top_cell_may_be_reusable(Background ^ back_module_info,
                     VarType),
 
@@ -1090,7 +1090,7 @@ needs_update_and(does_not_need_update, does_not_need_update) =
 
 has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
     (
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         type_to_type_defn_body(ModuleInfo, Type, TypeBody),
         TypeBody = hlds_du_type(_, ConsTagValues, _, _, _, _, _, _, _),
         map.search(ConsTagValues, ConsId, ConsTag),

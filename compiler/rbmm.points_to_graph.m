@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -148,8 +148,9 @@
     %
 :- pred rptg_equal(rpt_graph::in, rpt_graph::in) is semidet.
 
-    % This predicate returns a set of nodes (regions) reachable from a
-    % variable X.
+    % This predicate finds all regions that are reachable from X.
+    % The regions must be reached by edges with labels (type selectors)
+    % which are valid with the type of X.
     %
 :- pred rptg_reach_from_a_variable(rpt_graph::in, module_info::in,
     proc_info::in, prog_var::in, set(rptg_node)::in, set(rptg_node)::out)
@@ -933,16 +934,12 @@ complex_map_equal_2([K | Ks], Map1, Map2) :-
     simple_map_equal(V1, V2),
     complex_map_equal_2(Ks, Map1, Map2).
 
-    % This predicate finds all regions that are reachable from X.
-    % The regions must be reached by edges with labels (type selectors)
-    % which are valid with the type of X.
-    %
 rptg_reach_from_a_variable(Graph, HLDS, ProcInfo, X, !Reach_X) :-
     rptg_get_node_by_variable(Graph, X, N_X),
     Node_Selector = pair(N_X, []),
 
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.lookup(VarTypes, X, TypeX),
+    lookup_var_type(VarTypes, X, TypeX),
 
     % Find regions reached from X.
     reach_from_a_variable_2([Node_Selector], Graph, HLDS,

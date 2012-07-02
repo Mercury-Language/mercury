@@ -237,7 +237,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
             % a function type, then assume the default function mode.
             HOInstInfo = none,
             mode_info_get_var_types(!.ModeInfo, VarTypes),
-            map.lookup(VarTypes, PredVar, Type),
+            lookup_var_type(VarTypes, PredVar, Type),
             type_is_higher_order_details(Type, _, pf_function, _, ArgTypes),
             PredInstInfo = pred_inst_info_standard_func_mode(
                 list.length(ArgTypes))
@@ -335,7 +335,7 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
     % If we are inferring modes for this called predicate, then
     % just insert a new mode declaration which will match.
     % Otherwise, report an error.
-    %
+
     mode_info_get_preds(!.ModeInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
@@ -435,7 +435,7 @@ modecheck_end_of_call(ProcInfo, Purity, ProcArgModes, ArgVars0, ArgOffset,
 
     % Since we can't reschedule impure goals, we must allow the initialisation
     % of free solver type args if necessary in impure calls.
-    ( 
+    (
         Purity = purity_impure,
         mode_info_solver_init_is_supported(!.ModeInfo)
     ->
@@ -486,7 +486,6 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, !ModeInfo) :-
     % Call unify_proc.request_proc, which will create the new procedure,
     % set its "can-process" flag to `no', and insert it into the queue
     % of requested procedures.
-    %
     unify_proc.request_proc(PredId, Modes, InstVarSet, yes(ArgLives),
         MaybeDet, Context, ProcId, ModuleInfo0, ModuleInfo),
 
@@ -507,7 +506,7 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
     mode_info_get_instmap(ModeInfo, InstMap),
     mode_info_get_var_types(ModeInfo, VarTypes),
     instmap_lookup_var(InstMap, Var, Inst0),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     normalise_inst(ModuleInfo, Type, Inst0, Inst),
 
     mode_info_var_is_live(ModeInfo, Var, IsLive0),
@@ -535,24 +534,21 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
 
 %-----------------------------------------------------------------------------%
 
-    % Given two modes of a predicate, figure out whether
-    % they are indistinguishable; that is, whether any valid call to
-    % one mode would also be a valid call to the other.
-    % (If so, it is a mode error.)
+    % Given two modes of a predicate, figure out whether they are
+    % indistinguishable; that is, whether any valid call to one mode
+    % would also be a valid call to the other. (If so, it is a mode error.)
     % Note that mode declarations which only have different final insts
     % do not count as distinguishable.
     %
-    % The code for this is similar to the code for
-    % modes_are_identical/4 and compare_proc/5 below.
+    % The code for this is similar to the code for modes_are_identical/4
+    % and compare_proc/5 below.
     %
 modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
     pred_info_get_procedures(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     map.lookup(Procs, OtherProcId, OtherProcInfo),
 
-    %
-    % Compare the initial insts of the arguments
-    %
+    % Compare the initial insts of the arguments.
     proc_info_get_argmodes(ProcInfo, ProcArgModes),
     proc_info_get_argmodes(OtherProcInfo, OtherProcArgModes),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
@@ -563,19 +559,14 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
         ArgTypes, CompareInsts),
     CompareInsts = same,
 
-    %
-    % Compare the expected livenesses of the arguments
-    %
+    % Compare the expected livenesses of the arguments.
     get_arg_lives(ModuleInfo, ProcArgModes, ProcArgLives),
     get_arg_lives(ModuleInfo, OtherProcArgModes, OtherProcArgLives),
     compare_liveness_list(ProcArgLives, OtherProcArgLives, CompareLives),
     CompareLives = same,
 
-    %
-    % Compare the determinisms --
-    %   If both are cc_, or if both are not cc_,
-    %   then they are indistinguishable.
-    %
+    % Compare the determinisms; if both are cc_, or if both are not cc_,
+    % then they are indistinguishable.
     proc_info_interface_determinism(ProcInfo, Detism),
     proc_info_interface_determinism(OtherProcInfo, OtherDetism),
     determinism_components(Detism, _CanFail, Solns),
@@ -586,9 +577,8 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Given two modes of a predicate, figure out whether
-    % they are identical, except that one is cc_nondet/cc_multi
-    % and the other is nondet/multi.
+    % Given two modes of a predicate, figure out whether they are identical,
+    % except that one is cc_nondet/cc_multi and the other is nondet/multi.
     %
     % The code for this is similar to the code for compare_proc/5 below
     % and modes_are_indistinguishable/4 above.
@@ -598,9 +588,7 @@ modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
     map.lookup(Procs, ProcId, ProcInfo),
     map.lookup(Procs, OtherProcId, OtherProcInfo),
 
-    %
     % Compare the initial insts of the arguments
-    %
     proc_info_get_argmodes(ProcInfo, ProcArgModes),
     proc_info_get_argmodes(OtherProcInfo, OtherProcArgModes),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
@@ -611,9 +599,7 @@ modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
         ArgTypes, CompareInitialInsts),
     CompareInitialInsts = same,
 
-    %
     % Compare the final insts of the arguments
-    %
     mode_list_get_final_insts(ModuleInfo, ProcArgModes, FinalInsts),
     mode_list_get_final_insts(ModuleInfo, OtherProcArgModes,
         OtherFinalInsts),
@@ -621,17 +607,13 @@ modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
         ArgTypes, CompareFinalInsts),
     CompareFinalInsts = same,
 
-    %
     % Compare the expected livenesses of the arguments
-    %
     get_arg_lives(ModuleInfo, ProcArgModes, ProcArgLives),
     get_arg_lives(ModuleInfo, OtherProcArgModes, OtherProcArgLives),
     compare_liveness_list(ProcArgLives, OtherProcArgLives, CompareLives),
     CompareLives = same,
 
-    %
     % Compare the determinisms, ignoring the cc part.
-    %
     proc_info_interface_determinism(ProcInfo, Detism),
     proc_info_interface_determinism(OtherProcInfo, OtherDetism),
     determinism_components(Detism, CanFail, Solns),
@@ -689,9 +671,7 @@ choose_best_match(_, [], _, _, _, _, _, _) :-
 choose_best_match(ModeInfo,
         [proc_mode(ProcId, InstVarSub, ArgModes) | ProcIds], PredId,
         Procs, ArgVars, TheProcId, TheInstVarSub, TheArgModes) :-
-    %
     % This ProcId is best iff there is no other proc_id which is better.
-    %
     (
         \+ (
             list.member(proc_mode(OtherProcId, _, _), ProcIds),
@@ -719,29 +699,26 @@ choose_best_match(ModeInfo,
 compare_proc(ModeInfo, ProcId, OtherProcId, ArgVars, Procs, Compare) :-
     map.lookup(Procs, ProcId, ProcInfo),
     map.lookup(Procs, OtherProcId, OtherProcInfo),
-    %
-    % Compare the initial insts of the arguments
-    %
+
+    % Compare the initial insts of the arguments.
     proc_info_get_argmodes(ProcInfo, ProcArgModes),
     proc_info_get_argmodes(OtherProcInfo, OtherProcArgModes),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_var_types(ModeInfo, VarTypes),
-    list.map(map.lookup(VarTypes), ArgVars, ArgTypes),
+    lookup_var_types(VarTypes, ArgVars, ArgTypes),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
     mode_list_get_initial_insts(ModuleInfo, OtherProcArgModes,
         OtherInitialInsts),
     get_var_insts_and_lives(ArgVars, ModeInfo, ArgInitialInsts, _ArgLives),
     compare_inst_list(ModuleInfo, InitialInsts, OtherInitialInsts,
         yes(ArgInitialInsts), ArgTypes, CompareInsts),
-    %
-    % Compare the expected livenesses of the arguments
-    %
+
+    % Compare the expected livenesses of the arguments.
     get_arg_lives(ModuleInfo, ProcArgModes, ProcArgLives),
     get_arg_lives(ModuleInfo, OtherProcArgModes, OtherProcArgLives),
     compare_liveness_list(ProcArgLives, OtherProcArgLives, CompareLives),
-    %
-    % Compare the determinisms
-    %
+
+    % Compare the determinisms.
     proc_info_interface_determinism(ProcInfo, Detism),
     proc_info_interface_determinism(OtherProcInfo, OtherDetism),
     compare_determinisms(Detism, OtherDetism, CompareDet0),
@@ -749,10 +726,9 @@ compare_proc(ModeInfo, ProcId, OtherProcId, ArgVars, Procs, Compare) :-
     ; CompareDet0 = looser, CompareDet = worse
     ; CompareDet0 = sameas, CompareDet = same
     ),
-    %
+
     % Combine the results, with the insts & lives comparisons
     % taking priority over the determinism comparison.
-    %
     combine_results(CompareInsts, CompareLives, Compare0),
     prioritized_combine_results(Compare0, CompareDet, Compare).
 

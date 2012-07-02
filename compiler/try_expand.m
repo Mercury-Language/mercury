@@ -534,7 +534,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         % Get the type of the output tuple.
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
         GoalOutputVars = set_of_var.to_sorted_list(GoalOutputVarsSet),
-        map.apply_to_list(GoalOutputVars, !.VarTypes, GoalOutputVarTypes),
+        lookup_var_types(!.VarTypes, GoalOutputVars, GoalOutputVarTypes),
         OutputTupleType = tuple_type(GoalOutputVarTypes, kind_star),
 
         % Fix the type of the result of the try call, now that we know what it
@@ -542,7 +542,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         RealResultVarType = defined_type(
             qualified(mercury_exception_module, "exception_result"),
             [OutputTupleType], kind_star),
-        map.det_update(ResultVar, RealResultVarType, !VarTypes),
+        update_var_type(ResultVar, RealResultVarType, !VarTypes),
         proc_info_set_vartypes(!.VarTypes, !ProcInfo)
     ),
 

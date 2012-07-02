@@ -934,7 +934,7 @@ ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
 ml_gen_local_var_decls(_VarSet, _VarTypes, _Context, [], [], !Info).
 ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
         !Info) :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     IsDummy = check_dummy_type(ModuleInfo, Type),
     (

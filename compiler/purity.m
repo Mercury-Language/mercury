@@ -1222,7 +1222,7 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
     % If the unification involves a higher order RHS, check that
     % the purity of the ConsId matches the purity of the variable's type.
     VarTypes = Info ^ pi_vartypes,
-    map.lookup(VarTypes, Var, TypeOfVar),
+    lookup_var_type(VarTypes, Var, TypeOfVar),
     PredInfo = Info ^ pi_pred_info,
     pred_info_get_markers(PredInfo, CallerMarkers),
     Context = goal_info_get_context(GoalInfo),
@@ -1234,7 +1234,7 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
         pred_info_get_typevarset(PredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(PredInfo, ExistQTVars),
         pred_info_get_head_type_params(PredInfo, HeadTypeParams),
-        map.apply_to_list(Args, VarTypes, ArgTypes0),
+        lookup_var_types(VarTypes, Args, ArgTypes0),
         list.append(ArgTypes0, VarArgTypes, PredArgTypes),
         ModuleInfo = Info ^ pi_module_info,
         (
@@ -1302,7 +1302,7 @@ check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity, Specs) :-
     prog_var::in, mer_type::out, list(error_spec)::out) is det.
 
 check_outer_var_type(Context, VarTypes, VarSet, Var, VarType, Specs) :-
-    map.lookup(VarTypes, Var, VarType),
+    lookup_var_type(VarTypes, Var, VarType),
     (
         ( VarType = io_state_type
         ; VarType = stm_atomic_type

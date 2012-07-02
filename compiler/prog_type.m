@@ -309,6 +309,10 @@
     % Given a constant and an arity, return a type_ctor.
     % Fails if the constant is not an atom.
     %
+    % This really ought to take a name and an arity -
+    % use of integers/floats/strings as type names should
+    % be rejected by the parser in prog_io.m, not in module_qual.m.
+    %
 :- pred make_type_ctor(const::in, int::in, type_ctor::out) is semidet.
 
 :- type polymorphism_cell
@@ -876,7 +880,7 @@ split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, TypeInfoVarsList,
     is semidet.
 
 var_is_introduced_type_info_type(VarTypes, Var) :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     is_introduced_type_info_type(Type).
 
 remove_new_prefix(unqualified(Name0), unqualified(Name)) :-
@@ -890,11 +894,6 @@ add_new_prefix(qualified(Module, Name0), qualified(Module, Name)) :-
     string.append("new ", Name0, Name).
 
 %-----------------------------------------------------------------------------%
-
-    % Given a constant and an arity, return a type_ctor.
-    % This really ought to take a name and an arity -
-    % use of integers/floats/strings as type names should
-    % be rejected by the parser in prog_io.m, not in module_qual.m.
 
 make_type_ctor(term.atom(Name), Arity, type_ctor(unqualified(Name), Arity)).
 

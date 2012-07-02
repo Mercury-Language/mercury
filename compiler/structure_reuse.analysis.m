@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -831,8 +831,8 @@ write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
             proc_info_get_varset(ProcInfo, VarSet),
             proc_info_get_headvars(ProcInfo, HeadVars),
             proc_info_get_vartypes(ProcInfo, VarTypes),
-            list.map(map.lookup(VarTypes), HeadVars, HeadVarTypes),
-                MaybeReuse = yes(Reuse),
+            lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+            MaybeReuse = yes(Reuse),
             write_pragma_structure_reuse_info(PredOrFunc, SymName, Modes,
                 Context, HeadVars, yes(VarSet), HeadVarTypes, yes(TypeVarSet),
                 MaybeReuse, !IO)
@@ -943,7 +943,7 @@ analysis_name = "structure_reuse".
             FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
             proc_info_get_headvars(ProcInfo, HeadVars),
             proc_info_get_vartypes(ProcInfo, VarTypes),
-            map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
+            lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
             structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer1,
                 Reuse1),
             structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer2,
@@ -964,7 +964,7 @@ analysis_name = "structure_reuse".
             FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
             proc_info_get_headvars(ProcInfo, HeadVars),
             proc_info_get_vartypes(ProcInfo, VarTypes),
-            map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
+            lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
             structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer1,
                 Reuse1),
             structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer2,
@@ -1082,7 +1082,7 @@ reuse_as_to_structure_reuse_answer(ModuleInfo, PPId, ReuseAs, Answer) :-
         module_info_proc_info(ModuleInfo, PPId, ProcInfo),
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_vartypes(ProcInfo, VarTypes),
-        map.apply_to_list(HeadVars, VarTypes, HeadVarTypes),
+        lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
         Answer = structure_reuse_answer_conditional(HeadVars, HeadVarTypes,
             Conditions)
     ).

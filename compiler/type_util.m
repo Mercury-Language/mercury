@@ -561,7 +561,7 @@ ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
         ArgTypes, !SeenTypes).
 
 var_is_or_may_contain_solver_type(ModuleInfo, VarTypes, Var) :-
-    map.lookup(VarTypes, Var, VarType),
+    lookup_var_type(VarTypes, Var, VarType),
     type_is_or_may_contain_solver_type(ModuleInfo, VarType).
 
 type_is_solver_type_with_auto_init(ModuleInfo, Type) :-

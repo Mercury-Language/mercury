@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -626,7 +626,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
             Context, []),
 
         map.init(TVarNameMap),
-        map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
+        vartypes_from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
         HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
         set_clause_list([IntroducedClause], ClausesRep),
         rtti_varmaps_init(RttiVarMaps),

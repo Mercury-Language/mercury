@@ -638,7 +638,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             Msgs1 = []
         ),
         det_info_get_vartypes(!.DetInfo, VarTypes),
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         det_diagnose_switch_arms(Var, VarType, Cases, InstMap0,
             Desired, SwitchContexts, !DetInfo, Msgs2),
         Msgs = Msgs1 ++ Msgs2
@@ -1028,7 +1028,7 @@ reqscope_check_goal(Goal, InstMap0, !DetInfo) :-
     ;
         GoalExpr = switch(Var, _, Cases),
         det_info_get_vartypes(!.DetInfo, VarTypes),
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         reqscope_check_switch(Var, VarType, Cases, InstMap0, !DetInfo)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
@@ -1235,7 +1235,7 @@ find_missing_cons_ids(DetInfo, InstMap0, Var, Cases, VarStr,
             inst_is_bound_to_functors(ModuleInfo, VarInst, BoundInsts)
         ->
             det_info_get_vartypes(DetInfo, VarTypes),
-            map.lookup(VarTypes, Var, VarType),
+            lookup_var_type(VarTypes, Var, VarType),
             type_to_ctor_det(VarType, VarTypeCtor),
             list.map(bound_inst_to_cons_id(VarTypeCtor),
                 BoundInsts, ConsIds)

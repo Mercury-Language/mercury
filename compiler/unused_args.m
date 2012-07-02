@@ -475,7 +475,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
             true
         ;
             proc_info_get_vartypes(ProcInfo, VarTypes),
-            map.keys(VarTypes, Vars),
+            vartypes_vars(VarTypes, Vars),
             initialise_vardep(Vars, !VarDep),
             setup_output_args(!.ModuleInfo, ProcInfo, !VarDep),
 
@@ -532,7 +532,7 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, RttiVarMaps,
     pred_proc_id::in, rtti_varmaps::in, var_dep::in, var_dep::out) is det.
 
 setup_typeinfo_dep(Var, VarTypeMap, PredProcId, RttiVarMaps, !VarDep) :-
-    map.lookup(VarTypeMap, Var, Type),
+    lookup_var_type(VarTypeMap, Var, Type),
     type_vars(Type, TVars),
     list.map(tvar_to_type_info_var(RttiVarMaps), TVars, TypeInfoVars),
     list.foldl(add_rev_arg_dep(Var, PredProcId), TypeInfoVars, !VarDep).
@@ -790,7 +790,7 @@ partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
         partition_deconstruct_args(Info, Vars, Modes, InputVars1, OutputVars1),
         Mode = ((InitialInst1 - InitialInst2) -> (FinalInst1 - FinalInst2)),
 
-        map.lookup(Info ^ unarg_vartypes, Var, Type),
+        lookup_var_type(Info ^ unarg_vartypes, Var, Type),
 
         % If the inst of the argument of the LHS is changed,
         % the argument is input.
@@ -1202,8 +1202,8 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
 
     proc_info_get_vartypes(!.OldProc, VarTypes0),
     set.list_to_set(HeadVars, NonLocals),
-    map.apply_to_list(HeadVars, VarTypes0, VarTypeList),
-    map.from_corresponding_lists(HeadVars, VarTypeList, VarTypes1),
+    lookup_var_types(VarTypes0, HeadVars, VarTypeList),
+    vartypes_from_corresponding_lists(HeadVars, VarTypeList, VarTypes1),
     % The varset should probably be fixed up, but it shouldn't make
     % too much difference.
     proc_info_get_varset(!.OldProc, VarSet0),
@@ -1545,8 +1545,8 @@ rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
         ;
             varset.new_var(NewVar, VarSet0, VarSet)
         ),
-        map.lookup(VarTypes0, OldVar, Type),
-        map.det_insert(NewVar, Type, VarTypes0, VarTypes),
+        lookup_var_type(VarTypes0, OldVar, Type),
+        add_var_type(NewVar, Type, VarTypes0, VarTypes),
         !Info ^ fixup_varset := VarSet,
         !Info ^ fixup_vartypes := VarTypes,
 

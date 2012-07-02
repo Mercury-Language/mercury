@@ -90,8 +90,10 @@
     % Given a list of variables and their corresponding modes,
     % return a list containing only those variables which have an output mode.
     %
-:- func select_output_vars(module_info, list(Var), list(mer_mode),
-    map(Var, mer_type)) = list(Var).
+:- func select_output_vars(module_info, list(prog_var), list(mer_mode),
+    vartypes) = list(prog_var).
+:- func select_output_things(module_info, list(Thing), list(mer_mode),
+    map(Thing, mer_type)) = list(Thing).
 
 :- func mode_get_initial_inst(module_info, mer_mode) = mer_inst.
 
@@ -338,7 +340,7 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
     ;
         HeadVars = [Var | Vars],
         HeadModes = [Mode | Modes],
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         mode_to_arg_mode(ModuleInfo, Mode, VarType, Top),
         (
             Top = top_out,
@@ -357,6 +359,39 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
         unexpected($module, $pred, "length mismatch")
     ;
         HeadVars = [_ | _],
+        HeadModes = [],
+        unexpected($module, $pred, "length mismatch")
+    ).
+
+select_output_things(ModuleInfo, HeadThings, HeadModes, ThingTypes) =
+        OutputThings :-
+    (
+        HeadThings = [],
+        HeadModes = [],
+        OutputThings = []
+    ;
+        HeadThings = [Thing | Things],
+        HeadModes = [Mode | Modes],
+        map.lookup(ThingTypes, Thing, ThingType),
+        mode_to_arg_mode(ModuleInfo, Mode, ThingType, Top),
+        (
+            Top = top_out,
+            OutputThings1 = select_output_things(ModuleInfo, Things, Modes,
+                ThingTypes),
+            OutputThings = [Thing | OutputThings1]
+        ;
+            ( Top = top_in
+            ; Top = top_unused
+            ),
+            OutputThings = select_output_things(ModuleInfo, Things, Modes,
+                ThingTypes)
+        )
+    ;
+        HeadThings = [],
+        HeadModes = [_ | _],
+        unexpected($module, $pred, "length mismatch")
+    ;
+        HeadThings = [_ | _],
         HeadModes = [],
         unexpected($module, $pred, "length mismatch")
     ).
@@ -1406,7 +1441,7 @@ recompute_instmap_delta_cases_2(RecomputeAtomic, Var,
         [Case0 | Cases0], [Case | Cases], VarTypes, InstMap0, NonLocals,
         [InstMapDelta | InstMapDeltas], !RI) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     update_module_info(bind_var_to_functors(Var, Type,
         MainConsId, OtherConsIds, InstMap0), InstMap1, !RI),
     recompute_instmap_delta_1(RecomputeAtomic, Goal0, Goal, VarTypes, InstMap1,
@@ -1477,7 +1512,7 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
     SaveModuleInfo = !.ModuleInfo,
     SaveSub = !.Sub,
     instmap_lookup_var(InstMap, Arg, ArgInst),
-    map.lookup(VarTypes, Arg, Type),
+    lookup_var_type(VarTypes, Arg, Type),
     ( inst_matches_initial_sub(ArgInst, Inst, Type, !ModuleInfo, !Sub) ->
         true
     ;

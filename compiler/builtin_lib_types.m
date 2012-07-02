@@ -243,7 +243,7 @@ stm_dummy_output_type_ctor = type_ctor(Name, 0) :-
 %-----------------------------------------------------------------------------%
 
 is_region_var(VarTypes, Var)  :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     Type = region_type.
 
 %-----------------------------------------------------------------------------%

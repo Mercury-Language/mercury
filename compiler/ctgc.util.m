@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2006-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -175,7 +175,7 @@ reverse_renaming(RevSubst, K0, V0, !Acc) :-
 
 var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     type_needs_sharing_analysis(ModuleInfo, Type).
 
 type_needs_sharing_analysis(ModuleInfo, Type) :-

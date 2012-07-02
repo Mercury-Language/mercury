@@ -947,8 +947,8 @@ modecheck_goal_make_ground_term_unique(TermVar, SubGoal0, GoalInfo0, GoalExpr,
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
     mode_info_get_varset(!.ModeInfo, VarSet0),
     varset.new_var(CloneVar, VarSet0, VarSet),
-    map.lookup(VarTypes0, TermVar, TermVarType),
-    map.det_insert(CloneVar, TermVarType, VarTypes0, VarTypes),
+    lookup_var_type(VarTypes0, TermVar, TermVarType),
+    add_var_type(CloneVar, TermVarType, VarTypes0, VarTypes),
     mode_info_set_varset(VarSet, !ModeInfo),
     mode_info_set_var_types(VarTypes, !ModeInfo),
     Rename = map.singleton(TermVar, CloneVar),
@@ -1364,7 +1364,7 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             module_info_get_type_table(ModuleInfo, TypeTable),
             mode_info_get_var_types(!.ModeInfo, VarTypes),
-            map.lookup(VarTypes, Arg1, ArgType1),
+            lookup_var_type(VarTypes, Arg1, ArgType1),
             type_to_ctor(ArgType1, ArgTypeCtor1),
             lookup_type_ctor_defn(TypeTable, ArgTypeCtor1, CtorDefn),
             get_type_defn_body(CtorDefn, Body),
@@ -1497,8 +1497,8 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % check here (also: types of variables must be known at this point).
 
         Outer = atomic_interface_vars(OuterDI, OuterUO),
-        map.lookup(VarTypes, OuterDI, OuterDIType),
-        map.lookup(VarTypes, OuterUO, OuterUOType),
+        lookup_var_type(VarTypes, OuterDI, OuterDIType),
+        lookup_var_type(VarTypes, OuterUO, OuterUOType),
         (
             ( OuterDIType = io_state_type
             ; OuterDIType = io_io_type
@@ -1517,8 +1517,8 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         expect(unify(OuterDIType, OuterUOType), $module, $pred,
             "atomic_goal: mismatched outer var type"),
         Inner = atomic_interface_vars(InnerDI, InnerUO),
-        map.lookup(VarTypes, InnerDI, InnerDIType),
-        map.lookup(VarTypes, InnerUO, InnerUOType),
+        lookup_var_type(VarTypes, InnerDI, InnerDIType),
+        lookup_var_type(VarTypes, InnerUO, InnerUOType),
         expect(unify(InnerDIType, stm_atomic_type), $module, $pred,
             "atomic_goal: invalid inner var type"),
         expect(unify(InnerUOType, stm_atomic_type), $module, $pred,
@@ -1597,7 +1597,7 @@ solver_vars_that_must_be_initialised(Vars, VarTypes, ModuleInfo, InstMaps) =
     list(instmap)::in, prog_var::in) is semidet.
 
 solver_var_must_be_initialised(VarTypes, ModuleInfo, InstMaps, Var) :-
-    map.lookup(VarTypes, Var, VarType),
+    lookup_var_type(VarTypes, Var, VarType),
     type_is_solver_type_with_auto_init(ModuleInfo, VarType),
     list.member(InstMap, InstMaps),
     instmap_lookup_var(InstMap, Var, Inst),

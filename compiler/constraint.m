@@ -322,8 +322,8 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
         (pred(Var::in) is semidet :-
             instmap_lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
-            \+ inst_matches_initial(InstAfter, InstBefore,
-                map.lookup(VarTypes, Var), ModuleInfo)
+            lookup_var_type(VarTypes, Var, Type),
+            \+ inst_matches_initial(InstAfter, InstBefore, Type, ModuleInfo)
         ),
     IncompatibleInstVars = set_of_var.list_to_set(
         list.filter(InCompatible, InstMapVars)),
@@ -336,8 +336,8 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
         (pred(Var::in) is semidet :-
             instmap_lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
-            \+ inst_matches_binding(InstAfter, InstBefore,
-                map.lookup(VarTypes, Var), ModuleInfo)
+            lookup_var_type(VarTypes, Var, Type),
+            \+ inst_matches_binding(InstAfter, InstBefore, Type, ModuleInfo)
         ),
     BoundVars = set_of_var.list_to_set(list.filter(Bound, InstMapVars)),
 
@@ -565,8 +565,8 @@ add_constant_construction(ConstructVar, Construct0,
         VarSet0 = !.Info ^ constr_varset,
         VarTypes0 = !.Info ^ constr_vartypes,
         varset.new_var(NewVar, VarSet0, VarSet),
-        map.lookup(VarTypes0, ConstructVar, VarType),
-        map.det_insert(NewVar, VarType, VarTypes0, VarTypes),
+        lookup_var_type(VarTypes0, ConstructVar, VarType),
+        add_var_type(NewVar, VarType, VarTypes0, VarTypes),
         !Info ^ constr_varset := VarSet,
         !Info ^ constr_vartypes := VarTypes,
         map.from_assoc_list([ConstructVar - NewVar], Subn),
@@ -783,7 +783,7 @@ constraint_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !Info) :-
     InstMap0 = !.Info ^ constr_instmap,
     ModuleInfo0 = !.Info ^ constr_module_info,
     VarTypes = !.Info ^ constr_vartypes,
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         InstMap0, InstMap, ModuleInfo0, ModuleInfo),
     !Info ^ constr_instmap := InstMap,

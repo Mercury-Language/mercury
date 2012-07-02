@@ -440,11 +440,11 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
             VarTypes1 = VarTypes0,
             ConstraintProofs = ConstraintProofs0,
             ConstraintMap1 = ConstraintMap0,
-            map.values(VarTypes1, Types1),
+            vartypes_types(VarTypes1, Types1),
             type_vars_list(Types1, TypeVars1)
         ;
-            map.map_foldl(expand_types(TypeBindings), VarTypes0, VarTypes1,
-                set.init, TypeVarsSet1),
+            transform_foldl_var_types(expand_types(TypeBindings),
+                VarTypes0, VarTypes1, set.init, TypeVarsSet1),
             set.to_sorted_list(TypeVarsSet1, TypeVars1),
             apply_rec_subst_to_constraint_proofs(TypeBindings,
                 ConstraintProofs0, ConstraintProofs),
@@ -495,7 +495,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         % (XXX should we do the same for TypeConstraints and ConstraintProofs
         % too?)
 
-        map.values(OldExplicitVarTypes, ExplicitTypes),
+        vartypes_types(OldExplicitVarTypes, ExplicitTypes),
         type_vars_list(ExplicitTypes, ExplicitTypeVars0),
         map.keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
         list.delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
@@ -517,7 +517,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
             NewConstraintProofs = ConstraintProofs,
             NewConstraintMap = ConstraintMap
         ;
-            map.map_values_only(apply_variable_renaming_to_type(TSubst),
+            transform_var_types(apply_variable_renaming_to_type(TSubst),
                 VarTypes1, NewVarTypes),
             map.apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
             apply_variable_renaming_to_prog_constraints(TSubst,
@@ -536,10 +536,10 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
     % We also accumulate the set of type variables we have seen so far,
     % since doing so saves having to do a separate traversal for that.
     %
-:- pred expand_types(tsubst::in, prog_var::in, mer_type::in, mer_type::out,
+:- pred expand_types(tsubst::in, mer_type::in, mer_type::out,
     set(tvar)::in, set(tvar)::out) is det.
 
-expand_types(TypeSubst, _Var, Type0, Type, !TypeVarsSet) :-
+expand_types(TypeSubst, Type0, Type, !TypeVarsSet) :-
     apply_rec_subst_to_type(TypeSubst, Type0, Type),
     type_vars(Type, TypeVars),
     set.insert_list(TypeVars, !TypeVarsSet).
@@ -806,7 +806,7 @@ write_type_assign(TypeAssign, VarSet, !IO) :-
     type_assign_get_typeclass_constraints(TypeAssign, Constraints),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TypeVarSet),
-    map.keys(VarTypes, Vars),
+    vartypes_vars(VarTypes, Vars),
     (
         HeadTypeParams = []
     ;
@@ -842,7 +842,7 @@ type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) = Pieces :-
     type_assign_get_typeclass_constraints(TypeAssign, Constraints),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TypeVarSet),
-    map.keys(VarTypes, Vars),
+    vartypes_vars(VarTypes, Vars),
     (
         HeadTypeParams = [],
         HeadPieces = []
@@ -869,7 +869,7 @@ write_type_assign_types([], _, _, _, _, FoundOne, !IO) :-
     ).
 write_type_assign_types([Var | Vars], VarSet, VarTypes, TypeBindings,
         TypeVarSet, FoundOne, !IO) :-
-    ( map.search(VarTypes, Var, Type) ->
+    ( search_var_type(VarTypes, Var, Type) ->
         (
             FoundOne = yes,
             io.write_string("\n\t", !IO)
@@ -899,7 +899,7 @@ type_assign_types_to_pieces([], _, _, _, _, FoundOne) = Pieces :-
     ).
 type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
         TypeVarSet, FoundOne) = Pieces :-
-    ( map.search(VarTypes, Var, Type) ->
+    ( search_var_type(VarTypes, Var, Type) ->
         (
             FoundOne = yes,
             PrefixPieces = [nl]
@@ -1032,7 +1032,7 @@ do_type_checkpoint(Msg, Info, !IO) :-
         TypeAssignSet = [TypeAssign | _]
     ->
         type_assign_get_var_types(TypeAssign, VarTypes),
-        checkpoint_tree_stats("\t`var -> type' map", VarTypes, !IO),
+        checkpoint_vartypes_stats("\t`var -> type' map", VarTypes, !IO),
         type_assign_get_type_bindings(TypeAssign, TypeBindings),
         checkpoint_tree_stats("\t`type var -> type' map", TypeBindings, !IO)
     ;
@@ -1046,6 +1046,16 @@ do_type_checkpoint(Msg, Info, !IO) :-
 
 checkpoint_tree_stats(Description, Tree, !IO) :-
     map.count(Tree, Count),
+    io.write_string(Description, !IO),
+    io.write_string(": count = ", !IO),
+    io.write_int(Count, !IO),
+    io.write_string("\n", !IO).
+
+:- pred checkpoint_vartypes_stats(string::in, vartypes::in, io::di, io::uo)
+    is det.
+
+checkpoint_vartypes_stats(Description, Tree, !IO) :-
+    vartypes_count(Tree, Count),
     io.write_string(Description, !IO),
     io.write_string(": count = ", !IO),
     io.write_int(Count, !IO),

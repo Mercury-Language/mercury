@@ -322,7 +322,7 @@ expand_one_arg_in_proc(HeadVar0, ArgMode0, HeadVars, ArgModes,
 expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
         !Goal, !VarSet, !VarTypes, ContainerTypes0, ContainerTypes,
         TypeTable) :-
-    map.lookup(!.VarTypes, HeadVar0, Type),
+    lookup_var_type(!.VarTypes, HeadVar0, Type),
     expand_argument(ArgMode0, Type, ContainerTypes0, TypeTable, Expansion),
     (
         Expansion = expansion(ConsId, NewTypes),
@@ -356,7 +356,7 @@ create_untuple_vars(ParentName, Num, [Type | Types], [NewVar | NewVars],
         !VarSet, !VarTypes) :-
     string.format("Untupled_%s_%d", [s(ParentName), i(Num)], Name),
     varset.new_named_var(Name, NewVar, !VarSet),
-    map.det_insert(NewVar, Type, !VarTypes),
+    add_var_type(NewVar, Type, !VarTypes),
     create_untuple_vars(ParentName, Num+1, Types, NewVars, !VarSet, !VarTypes).
 
 :- pred conjoin_goals_keep_detism(hlds_goal::in, hlds_goal::in,
@@ -657,14 +657,13 @@ expand_call_args_2([], [], [], [], [], !VarSet, !VarTypes, _, _).
 expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
         EnterUnifs, ExitUnifs, !VarSet, !VarTypes,
         ContainerTypes0, TypeTable) :-
-    map.lookup(!.VarTypes, Arg0, Arg0Type),
+    lookup_var_type(!.VarTypes, Arg0, Arg0Type),
     expand_argument(ArgMode, Arg0Type, ContainerTypes0, TypeTable, Expansion),
     (
         Expansion = expansion(ConsId, Types),
         NumVars = list.length(Types),
         varset.new_vars(NumVars, ReplacementArgs, !VarSet),
-        map.det_insert_from_corresponding_lists(
-            ReplacementArgs, Types, !VarTypes),
+        vartypes_add_corresponding_lists(ReplacementArgs, Types, !VarTypes),
         list.duplicate(NumVars, ArgMode, ReplacementModes),
         ContainerTypes = [Arg0Type | ContainerTypes0],
         ( ArgMode = in_mode ->

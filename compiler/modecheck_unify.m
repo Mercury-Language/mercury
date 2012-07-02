@@ -167,7 +167,7 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
         mode_info_may_init_solver_vars(!.ModeInfo),
         InstOfX0   = free,
         InstOfY0   = free,
-        map.search(VarTypes, X, VarType),
+        search_var_type(VarTypes, X, VarType),
         type_is_solver_type_with_auto_init(ModuleInfo0, VarType)
     ->
         construct_initialisation_call(X, VarType, any_inst,
@@ -254,7 +254,7 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
 modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
         Unification0, UnifyContext, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
-    map.lookup(VarTypes0, X, TypeOfX),
+    lookup_var_type(VarTypes0, X, TypeOfX),
 
     (
         % We replace any unifications with higher-order pred constants
@@ -401,7 +401,7 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
         Groundness = ho_any,
         mode_info_get_var_types(!.ModeInfo, NonLocalTypes),
         NonLocals = set_of_var.filter((pred(NonLocal::in) is semidet :-
-                map.lookup(NonLocalTypes, NonLocal, NonLocalType),
+                lookup_var_type(NonLocalTypes, NonLocal, NonLocalType),
                 instmap_lookup_var(InstMap1, NonLocal, NonLocalInst),
                 \+ inst_matches_initial(NonLocalInst, any(shared, none),
                     NonLocalType, ModuleInfo0)
@@ -758,7 +758,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             list.member(InstArg, InstArgs),
             inst_is_free(ModuleInfo0, InstArg),
             list.member(ArgVar, ArgVars0),
-            map.lookup(VarTypes, ArgVar, ArgType),
+            lookup_var_type(VarTypes, ArgVar, ArgType),
             type_is_or_may_contain_solver_type(ModuleInfo0, ArgType)
         ),
         abstractly_unify_inst_functor(LiveX, InstOfX, InstConsId,
@@ -950,7 +950,7 @@ all_arg_vars_are_non_free_or_solver_vars([_ | _], [], _, _, _) :-
 all_arg_vars_are_non_free_or_solver_vars([ArgVar | ArgVars], [Inst | Insts],
         VarTypes, ModuleInfo, ArgVarsToInit) :-
     ( inst_match.inst_is_free(ModuleInfo, Inst) ->
-        map.lookup(VarTypes, ArgVar, ArgType),
+        lookup_var_type(VarTypes, ArgVar, ArgType),
         type_is_or_may_contain_solver_type(ModuleInfo, ArgType),
         all_arg_vars_are_non_free_or_solver_vars(ArgVars, Insts,
             VarTypes, ModuleInfo, ArgVarsToInitTail),
@@ -1005,7 +1005,7 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
     ModeX = (InitialInstX -> FinalInstX),
     ModeY = (InitialInstY -> FinalInstY),
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
-    map.lookup(VarTypes0, Var0, VarType),
+    lookup_var_type(VarTypes0, Var0, VarType),
     (
         mode_to_arg_mode(ModuleInfo, ModeX, VarType, top_in),
         mode_to_arg_mode(ModuleInfo, ModeY, VarType, top_in)
@@ -1031,8 +1031,8 @@ make_complicated_sub_unify(Var0, Var, ExtraGoals0, !ModeInfo) :-
     mode_info_get_varset(!.ModeInfo, VarSet0),
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
     varset.new_var(Var, VarSet0, VarSet),
-    map.lookup(VarTypes0, Var0, VarType),
-    map.set(Var, VarType, VarTypes0, VarTypes),
+    lookup_var_type(VarTypes0, Var0, VarType),
+    add_var_type(Var, VarType, VarTypes0, VarTypes),
     mode_info_set_varset(VarSet, !ModeInfo),
     mode_info_set_var_types(VarTypes, !ModeInfo),
 
@@ -1137,7 +1137,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 
         Unification = simple_test(X, Y)
     ;
-        map.lookup(VarTypes, X, Type),
+        lookup_var_type(VarTypes, X, Type),
         (
             type_is_atomic(ModuleInfo0, Type),
             not type_has_user_defined_equality_pred(ModuleInfo0, Type, _)
@@ -1400,7 +1400,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
                 PredModule = pred_info_module(PredInfo),
                 PredName = pred_info_name(PredInfo),
                 mode_info_get_var_types(!.ModeInfo, VarTypes),
-                map.lookup(VarTypes, X, Type),
+                lookup_var_type(VarTypes, X, Type),
                 ( Type = higher_order_type(_, MaybeReturnType, _, _) ->
                     (
                         MaybeReturnType = no,
@@ -1429,7 +1429,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
         % since not_reached is considered bound.
         set_of_var.init(WaitingVars),
         mode_info_get_var_types(!.ModeInfo, VarTypes0),
-        map.lookup(VarTypes0, X, Type),
+        lookup_var_type(VarTypes0, X, Type),
         ModeError = mode_error_unify_pred(X,
             error_at_lambda(ArgVars, ArgModes0), Type, PredOrFunc),
         mode_info_error(WaitingVars, ModeError, !ModeInfo),
@@ -1456,7 +1456,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
         X, NewConsId, ArgVars, VarTypes, UnifyContext,
         Unification0, Unification, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    map.lookup(VarTypes, X, TypeOfX),
+    lookup_var_type(VarTypes, X, TypeOfX),
     % If we are re-doing mode analysis, preserve the existing cons_id.
     (
         Unification0 = construct(_, ConsIdPrime, _, _, _, _, SubInfo0),
@@ -1546,7 +1546,7 @@ check_type_info_args_are_ground([], _VarTypes, _UnifyContext, !ModeInfo).
 check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
         !ModeInfo) :-
     (
-        map.lookup(VarTypes, ArgVar, ArgType),
+        lookup_var_type(VarTypes, ArgVar, ArgType),
         is_introduced_type_info_type(ArgType)
     ->
         mode_info_set_call_arg_context(1, !ModeInfo),
@@ -1626,7 +1626,7 @@ match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
     Initial = mode_get_initial_inst(ModuleInfo, ArgMode),
     ( Initial = ground(_, higher_order(_)) ->
         instmap_lookup_var(InstMap, Arg, ArgInst),
-        map.lookup(VarTypes, Arg, ArgType),
+        lookup_var_type(VarTypes, Arg, ArgType),
         ( inst_matches_initial(ArgInst, Initial, ArgType, ModuleInfo) ->
             match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
                 Args, ArgModes, Result)

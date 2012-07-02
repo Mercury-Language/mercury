@@ -99,7 +99,7 @@
 %-----------------------------------------------------------------------------%
 
 build_dummy_type_array(ModuleInfo, VarTypes, DummyTypeArray, DummyVars) :-
-    map.to_assoc_list(VarTypes, VarsTypes),
+    vartypes_to_assoc_list(VarTypes, VarsTypes),
     list.foldl(max_var_num, VarsTypes, 0, MaxVarNum),
     % We want to index the array with variable numbers, which will be from
     % 1 to MaxVarNum.
@@ -468,7 +468,7 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ),
             ProcInfo = AllocData ^ ad_proc_info,
             proc_info_get_vartypes(ProcInfo, VarTypes),
-            map.apply_to_list(ArgVars, VarTypes, Types),
+            lookup_var_types(VarTypes, ArgVars, Types),
             ModuleInfo = AllocData ^ ad_module_info,
             arg_info.partition_generic_call_args(ModuleInfo, ArgVars,
                 Types, Modes, _InVars, OutVars, _UnusedVars),

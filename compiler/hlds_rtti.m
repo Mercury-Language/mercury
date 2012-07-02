@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -871,7 +871,7 @@ get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
 
 get_typeinfo_vars_2([], _, _, []).
 get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     type_vars(Type, TypeVars),
     (
         TypeVars = [],

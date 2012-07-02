@@ -448,7 +448,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     list.sort(ElimVarsLists0, ElimVarsLists),
     list.condense(ElimVarsLists, ElimVars),
     varset.delete_sorted_vars(ElimVars, VarSet0, VarSet1),
-    map.delete_sorted_list(ElimVars, VarTypes1, VarTypes),
+    delete_sorted_var_types(ElimVars, VarTypes1, VarTypes),
     % We only eliminate vars that cannot occur in RttiVarMaps.
     ( simplify_do_after_front_end(Info) ->
         proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
@@ -492,7 +492,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
 simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
         !Simplifications) :-
     proc_info_get_vartypes(ProcInfo, VarTypes0),
-    NumVars = map.count(VarTypes0),
+    vartypes_count(VarTypes0, NumVars),
     ( NumVars > turn_off_common_struct_threshold ->
         % If we have too many variables, common_struct takes so long that
         % either the compiler runs out of memory or the user runs out of
@@ -1183,7 +1183,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     instmap_lookup_var(InstMap0, Var, VarInst),
     simplify_info_get_var_types(!.Info, VarTypes),
     ( inst_is_bound_to_functors(ModuleInfo0, VarInst, BoundInsts) ->
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         type_to_ctor_det(VarType, VarTypeCtor),
         list.map(bound_inst_to_cons_id(VarTypeCtor), BoundInsts, ConsIds0),
         list.sort(ConsIds0, ConsIds),
@@ -1220,7 +1220,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             % existential type variables in the types of the constructor
             % arguments or their typeinfos.
 
-            map.lookup(VarTypes, Var, Type),
+            lookup_var_type(VarTypes, Var, Type),
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             ( cons_id_is_existq_cons(ModuleInfo1, Type, MainConsId) ->
                 GoalExpr = switch(Var, SwitchCanFail, Cases),
@@ -1724,7 +1724,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
         ;
             Unification = deconstruct(LHSVar, _ConsId, _Args, _ArgModes,
                 _CanFail, _CanCGC),
-            map.lookup(VarTypes, LHSVar, LHSVarType),
+            lookup_var_type(VarTypes, LHSVar, LHSVarType),
             ( type_to_type_defn_body(ModuleInfo, LHSVarType, TypeBody) ->
                 CanSwitchOnType = can_switch_on_type(TypeBody),
                 (
@@ -2093,7 +2093,7 @@ simplify_construct_ground_terms(TermVar, VarTypes, Conjunct, Conjuncts,
     ;
         unexpected($module, $pred, "not construction unification")
     ),
-    map.lookup(VarTypes, LHSVar, TermType),
+    lookup_var_type(VarTypes, LHSVar, TermType),
     (
         RHSVars = [],
         Arg = csa_constant(ConsId, TermType)
@@ -2432,7 +2432,7 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
 
     % We have to add the type of R to the var_types.
     simplify_info_get_var_types(!.Info, VarTypes0),
-    map.det_insert(R, comparison_result_type, VarTypes0, VarTypes),
+    add_var_type(R, comparison_result_type, VarTypes0, VarTypes),
     simplify_info_set_var_types(VarTypes, !Info),
 
     % Construct the call to compare/3.
@@ -2714,7 +2714,7 @@ simplify_library_call(ModuleName, PredName, _ModeNum, CrossCompiling,
         list.reverse(Args, [Y, X, Res | _]),
         simplify_info_get_module_info(!.Info, ModuleInfo),
         simplify_info_get_var_types(!.Info, VarTypes),
-        map.lookup(VarTypes, Y, Type),
+        lookup_var_type(VarTypes, Y, Type),
         type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
 
         require_det (
@@ -2802,7 +2802,7 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     varset.new_var(ConstVar, VarSet0, VarSet),
-    map.det_insert(ConstVar, int_type, VarTypes0, VarTypes),
+    add_var_type(ConstVar, int_type, VarTypes0, VarTypes),
     simplify_info_set_varset(VarSet, !Info),
     simplify_info_set_var_types(VarTypes, !Info),
 
@@ -2971,7 +2971,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         GoalInfo0, Goal, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     simplify_info_get_var_types(!.Info, VarTypes),
-    map.lookup(VarTypes, XVar, Type),
+    lookup_var_type(VarTypes, XVar, Type),
     ( Type = type_variable(TypeVar, Kind) ->
         % Convert polymorphic unifications into calls to `unify/2',
         % the general unification predicate, passing the appropriate type_info:
@@ -3553,7 +3553,7 @@ simplify_switch(Var, [Case0 | Cases0], !RevCases, !InstMaps,
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     simplify_info_get_var_types(!.Info, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo1),
     simplify_info_set_module_info(ModuleInfo1, !Info),
@@ -3608,11 +3608,10 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal, !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     varset.new_vars(ConsArity, ArgVars, VarSet0, VarSet),
-    map.lookup(VarTypes0, Var, VarType),
+    lookup_var_type(VarTypes0, Var, VarType),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     type_util.get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes),
-    map.det_insert_from_corresponding_lists(ArgVars, ArgTypes,
-        VarTypes0, VarTypes),
+    vartypes_add_corresponding_lists(ArgVars, ArgTypes, VarTypes0, VarTypes),
     simplify_info_set_varset(VarSet, !Info),
     simplify_info_set_var_types(VarTypes, !Info),
     simplify_info_get_instmap(!.Info, InstMap),
@@ -3965,7 +3964,7 @@ simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
         !Info) :-
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    map.map_values_only(apply_rec_subst_to_type(TSubst), VarTypes0, VarTypes),
+    transform_var_types(apply_rec_subst_to_type(TSubst), VarTypes0, VarTypes),
     Renaming = map.singleton(ToVar, FromVar),
     apply_substitutions_to_rtti_varmaps(map.init, TSubst, Renaming,
         RttiVarMaps0, RttiVarMaps1),

@@ -208,7 +208,7 @@ det_get_proc_info(DetInfo, ProcInfo) :-
 
 det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     type_to_ctor_det(Type, TypeCtor),
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).

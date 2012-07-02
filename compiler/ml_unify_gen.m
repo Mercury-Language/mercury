@@ -2532,7 +2532,7 @@ ml_gen_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         Unify = construct(Var, ConsId, Args, _, _HowToConstruct, _, SubInfo),
         SubInfo = no_construct_sub_info
     ->
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         Context = goal_info_get_context(GoalInfo),
@@ -2681,7 +2681,7 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
 
     % This part does a simplied version of the job of
     % get_maybe_cons_id_arg_types.
-    list.map(map.lookup(VarTypes), Args, ArgTypes),
+    lookup_var_types(VarTypes, Args, ArgTypes),
     (
         ConsId = cons(_, _, _),
         \+ is_introduced_type_info_type(VarType)

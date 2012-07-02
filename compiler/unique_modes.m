@@ -208,7 +208,7 @@ select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
     mode_info_get_instmap(ModeInfo, InstMap0),
     instmap_lookup_var(InstMap0, Var, Inst0),
     mode_info_get_var_types(ModeInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     (
         instmap_delta_is_reachable(DeltaInstMap),
         instmap_delta_search_var(DeltaInstMap, Var, Inst),

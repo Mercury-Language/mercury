@@ -140,7 +140,7 @@ init_qual_info(MQInfo0, EqvMap, QualInfo) :-
     varset.init(TVarSet),
     map.init(Renaming),
     map.init(Index),
-    map.init(VarTypes),
+    init_vartypes(VarTypes),
     FoundSyntaxError = no,
     QualInfo = qual_info(EqvMap, TVarSet, Renaming, Index, VarTypes,
         MQInfo, status_local, FoundSyntaxError).
@@ -221,7 +221,7 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 update_var_types(Var, Type, Context, !VarTypes, !Specs) :-
-    ( map.search(!.VarTypes, Var, Type0) ->
+    ( search_var_type(!.VarTypes, Var, Type0) ->
         ( Type = Type0 ->
             true
         ;
@@ -232,7 +232,7 @@ update_var_types(Var, Type, Context, !VarTypes, !Specs) :-
             !:Specs = [Spec | !.Specs]
         )
     ;
-        map.det_insert(Var, Type, !VarTypes)
+        add_var_type(Var, Type, !VarTypes)
     ).
 
 %-----------------------------------------------------------------------------%

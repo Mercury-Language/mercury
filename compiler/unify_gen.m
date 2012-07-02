@@ -960,7 +960,7 @@ generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
         ),
         CellArg = cell_arg_skip
     ),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
     generate_pred_args(CI, VarTypes, Vars, ArgInfos, ArgsR0, ArgsF0,
@@ -1205,7 +1205,7 @@ generate_field_take_address_assigns([FieldAddr | FieldAddrs],
 var_types(CI, Vars, Types) :-
     get_proc_info(CI, ProcInfo),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.apply_to_list(Vars, VarTypes, Types).
+    lookup_var_types(VarTypes, Vars, Types).
 
 %---------------------------------------------------------------------------%
 

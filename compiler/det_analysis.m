@@ -986,7 +986,7 @@ det_infer_switch_cases([Case0 | Cases0], [Case | Cases], Var, InstMap0,
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     det_info_get_module_info(!.DetInfo, ModuleInfo0),
     det_info_get_vartypes(!.DetInfo, VarTypes),
-    map.lookup(VarTypes, Var, VarType),
+    lookup_var_type(VarTypes, Var, VarType),
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     det_info_set_module_info(ModuleInfo, !DetInfo),
@@ -1878,7 +1878,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
         ExaminesRepresentation = yes,
         det_get_proc_info(!.DetInfo, ProcInfo),
         proc_info_get_vartypes(ProcInfo, VarTypes),
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         det_type_has_user_defined_equality_pred(!.DetInfo, Type)
     ->
         (

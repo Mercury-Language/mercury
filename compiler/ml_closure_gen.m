@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2011 The University of Melbourne.
+% Copyright (C) 1999-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -804,7 +804,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
             NondetCopyOut = yes,
             map.from_corresponding_lists(WrapperHeadVarLvals,
                 WrapperBoxedArgTypes, WrapperBoxedVarTypes),
-            WrapperOutputLvals = select_output_vars(ModuleInfo,
+            WrapperOutputLvals = select_output_things(ModuleInfo,
                 WrapperHeadVarLvals, WrapperArgModes,
                 WrapperBoxedVarTypes),
             WrapperOutputTypes = map.apply_to_list(WrapperOutputLvals,

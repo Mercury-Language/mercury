@@ -465,7 +465,7 @@ check_goal_for_exceptions_plain_call(SCC, VarTypes, CallPredId, CallProcId,
         % Handle (mutually-)recursive calls.
         list.member(CallPPId, SCC)
     ->
-        Types = list.map((func(Var) = VarTypes ^ det_elem(Var)), CallArgs),
+        lookup_var_types(VarTypes, CallArgs, Types),
         TypeStatus = check_types(!.ModuleInfo, Types),
         combine_type_status(TypeStatus, !.Result ^ rec_calls, NewTypeStatus),
         !Result ^ rec_calls := NewTypeStatus
@@ -773,7 +773,7 @@ check_nonrecursive_call(VarTypes, PPId, Args, PredInfo, !Result, !ModuleInfo) :-
     maybe(analysis_status)::in, proc_result::in, proc_result::out) is det.
 
 check_vars(ModuleInfo, VarTypes, Vars, MaybeAnalysisStatus, !Result) :-
-    Types = list.map((func(Var) = VarTypes ^ det_elem(Var)), Vars),
+    lookup_var_types(VarTypes, Vars, Types),
     TypeStatus = check_types(ModuleInfo, Types),
     (
         TypeStatus = type_will_not_throw

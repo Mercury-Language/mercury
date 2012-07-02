@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2011 The University of Melbourne.
+% Copyright (C) 1997-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2323,7 +2323,7 @@ generate_table_lookup_goals([VarModePos | NumberedVars], MaybeStatsRef,
     VarModePos = var_mode_pos_method(Var, _, VarSeqNum, ArgMethod),
     varset.lookup_name(!.VarSet, Var, VarName),
     ModuleInfo = !.TableInfo ^ table_module_info,
-    map.lookup(!.VarTypes, Var, VarType),
+    lookup_var_type(!.VarTypes, Var, VarType),
     CtorCat = classify_type(ModuleInfo, VarType),
     (
         ArgMethod = arg_promise_implied,
@@ -2585,7 +2585,7 @@ gen_general_lookup_call(IsAddr, MaybeAddrString, Type, ForeignArg, ArgName,
     table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes,
         !TableInfo, TypeInfoVar, PrefixGoals),
     TypeInfoArgName = "input_typeinfo" ++ int_to_string(VarSeqNum),
-    map.lookup(!.VarTypes, TypeInfoVar, TypeInfoType),
+    lookup_var_type(!.VarTypes, TypeInfoVar, TypeInfoType),
     ForeignTypeInfoArg = foreign_arg(TypeInfoVar,
         yes(TypeInfoArgName - in_mode), TypeInfoType,
         native_if_possible),
@@ -2846,7 +2846,7 @@ generate_save_goals([NumberedVar | NumberedRest], DebugArgStr, Context,
         PrefixGoals ++ RestPrefixGoals, CodeStr ++ RestCodeStr) :-
     NumberedVar = var_mode_pos_method(Var, _Mode, Offset, _),
     ModuleInfo = !.TableInfo ^ table_module_info,
-    map.lookup(!.VarTypes, Var, VarType),
+    lookup_var_type(!.VarTypes, Var, VarType),
     CtorCat = classify_type(ModuleInfo, VarType),
     gen_save_call_for_type(CtorCat, VarType, Var, Offset, DebugArgStr, Context,
         !VarSet, !VarTypes, !TableInfo, Args, PrefixGoals, CodeStr),
@@ -2879,7 +2879,7 @@ gen_save_call_for_type(CtorCat, Type, Var, Offset, DebugArgStr, Context,
         table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes,
             !TableInfo, TypeInfoVar, PrefixGoals),
         TypeInfoName = "save_arg_typeinfo" ++ int_to_string(Offset),
-        map.lookup(!.VarTypes, TypeInfoVar, TypeInfoType),
+        lookup_var_type(!.VarTypes, TypeInfoVar, TypeInfoType),
         TypeInfoForeignArg = foreign_arg(TypeInfoVar,
             yes(TypeInfoName - in_mode), TypeInfoType, native_if_possible),
         SaveMacroName = "MR_tbl_save_any_answer",
@@ -3070,7 +3070,7 @@ generate_restore_goals([NumberedVar | NumberedRest], OrigInstmapDelta,
         DebugArgStr, ModuleInfo, !VarSet, !VarTypes, [VarInst | VarInsts],
         [Arg | Args], CodeStr ++ RestCodeStr) :-
     NumberedVar = var_mode_pos_method(Var, _Mode, Offset, _),
-    map.lookup(!.VarTypes, Var, VarType),
+    lookup_var_type(!.VarTypes, Var, VarType),
     CtorCat = classify_type(ModuleInfo, VarType),
     gen_restore_call_for_type(DebugArgStr, CtorCat, VarType, OrigInstmapDelta,
         Var, Offset, VarInst, Arg, CodeStr),
@@ -3152,7 +3152,7 @@ generate_error_goal(TableInfo, Context, Msg, !VarSet, !VarTypes, Goal) :-
 
 generate_new_table_var(Name, Type, !VarSet, !VarTypes, Var) :-
     varset.new_named_var(Name, Var, !VarSet),
-    map.set(Var, Type, !VarTypes).
+    add_var_type(Var, Type, !VarTypes).
 
 :- pred table_generate_call(string::in, determinism::in, list(prog_var)::in,
     purity::in, instmap_delta::in, module_info::in, term.context::in,
@@ -3707,7 +3707,7 @@ var_mode_is_io_state(VarTypes, Var - _) :-
 :- pred var_is_io_state(vartypes::in, prog_var::in) is semidet.
 
 var_is_io_state(VarTypes, Var) :-
-    map.lookup(VarTypes, Var, VarType),
+    lookup_var_type(VarTypes, Var, VarType),
     type_is_io_state(VarType).
 
 %-----------------------------------------------------------------------------%

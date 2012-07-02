@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007, 2010-2011 The University of Melbourne.
+% Copyright (C) 2002-2007, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -312,7 +312,7 @@ allocate_stack_slots_3(Vars, MainStack, StackSlotWidth, MaybeReservedVarInfo,
 :- pred var_is_float(vartypes::in, prog_var::in) is semidet.
 
 var_is_float(VarTypes, Var) :-
-    map.lookup(VarTypes, Var, float_type).
+    lookup_var_type(VarTypes, Var, float_type).
 
 :- pred allocate_same_stack_slot(list(prog_var)::in, stack_slot::in,
     stack_slots::in, stack_slots::out) is det.

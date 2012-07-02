@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2005-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -534,7 +534,7 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
 
 is_introduced_typeinfo_arg(ProcInfo, Var) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     is_introduced_type_info_type(Type).
 
 :- pred number_args(prog_vars::in, list(pair(int, prog_var))::out) is det.
@@ -632,7 +632,7 @@ add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId,
 
     ActualVars = list.map(foreign_arg_var, Args),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.apply_to_list(ActualVars, VarTypes, ActualTypes),
+    lookup_var_types(VarTypes, ActualVars, ActualTypes),
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
     pred_info_get_head_type_params(PredInfo, CallerHeadTypeParams),
 
@@ -848,7 +848,7 @@ lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
         _Status, _IsPredicted),
 
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.apply_to_list(ActualVars, VarTypes, ActualTypes),
+    lookup_var_types(VarTypes, ActualVars, ActualTypes),
 
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
     pred_info_get_univ_quant_tvars(PredInfo, CallerHeadTypeParams),
@@ -972,7 +972,7 @@ bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo, ProcInfo) :-
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_argmodes(ProcInfo, Modes),
         proc_info_get_vartypes(ProcInfo, VarTypes),
-        map.apply_to_list(HeadVars, VarTypes, Types),
+        lookup_var_types(VarTypes, HeadVars, Types),
         bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes, Types)
     ).
 
@@ -1246,7 +1246,7 @@ sharing_set_altclos_2(ModuleInfo, ProcInfo, NewSharingSet, OldSharingSet)
     %
     list.foldl(
         (pred(Var::in, !.SS::in, !:SS::out) is det :-
-            map.lookup(VarTypes, Var, Type),
+            lookup_var_type(VarTypes, Var, Type),
             map.lookup(NewMap1, Var, NewSelSet),
             map.lookup(OldMap1, Var, OldSelSet),
             SharingPairs = selector_sharing_set_altclos(ModuleInfo, ProcInfo,
@@ -1349,9 +1349,8 @@ sharing_set_extend_datastruct(ModuleInfo, ProcInfo, Datastruct, SharingSet)
     ( map.search(SharingMap, Var, SelectorSet) ->
         % The type of the variable is needed to be able to compare
         % datastructures.
-        %
         proc_info_get_vartypes(ProcInfo, VarTypes),
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         Datastructures = selector_sharing_set_extend_datastruct(ModuleInfo,
             ProcInfo, VarType, Selector, SelectorSet)
     ;
@@ -1506,8 +1505,8 @@ sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo, SharingSet,
     ),
 
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.lookup(VarTypes, Var1, Type1),
-    map.lookup(VarTypes, Var2, Type2),
+    lookup_var_type(VarTypes, Var1, Type1),
+    lookup_var_type(VarTypes, Var2, Type2),
 
     map.search(SharingMap, Var1, SelSharingSet),
     SelSharingSet = selector_sharing_set(_, SelSharingMap),
@@ -1567,8 +1566,8 @@ sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair,
     ),
 
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.lookup(VarTypes, Var1, Type1),
-    map.lookup(VarTypes, Var2, Type2),
+    lookup_var_type(VarTypes, Var1, Type1),
+    lookup_var_type(VarTypes, Var2, Type2),
 
     ( map.search(SharingMap, Var1, SelSharingSet) ->
         SelSharingSet = selector_sharing_set(_, SelSharingMap),

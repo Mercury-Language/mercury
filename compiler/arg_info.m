@@ -475,14 +475,14 @@ partition_proc_args(ProcInfo, ModuleInfo, Inputs, Outputs, Unuseds) :-
     proc_info_get_headvars(ProcInfo, Vars),
     proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.apply_to_list(Vars, VarTypes, Types),
+    lookup_var_types(VarTypes, Vars, Types),
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 
 partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo, Vars,
         Inputs, Outputs, Unuseds) :-
     proc_info_get_argmodes(ProcInfo, Modes),
-    map.apply_to_list(Vars, VarTypes, Types),
+    lookup_var_types(VarTypes, Vars, Types),
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 

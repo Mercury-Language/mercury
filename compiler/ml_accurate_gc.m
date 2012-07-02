@@ -339,7 +339,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     GenLocalVarDecl =
         (func(Var) = VarDefn :-
             LocalVarName = ml_gen_var_name(VarSet, Var),
-            map.lookup(VarTypes, Var, LocalVarType),
+            lookup_var_type(VarTypes, Var, LocalVarType),
             VarDefn = ml_gen_mlds_var_decl(mlds_data_var(LocalVarName),
                 mercury_type_to_mlds_type(ModuleInfo, LocalVarType),
                 gc_no_stmt, MLDS_Context)

@@ -219,7 +219,7 @@ determine_dead_deconstructions_generic_call(ModuleInfo, ProcInfo,
         ; GenDetails = class_method(_, _, _, _)
         ),
         proc_info_get_vartypes(ProcInfo, CallerVarTypes),
-        map.apply_to_list(CallArgs, CallerVarTypes, ActualTypes),
+        lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
         (
             bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
                 ActualTypes)
@@ -269,7 +269,7 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
 
             % No-tag values don't have a cell to reuse.
             proc_info_get_vartypes(ProcInfo, VarTypes),
-            map.lookup(VarTypes, Var, Type),
+            lookup_var_type(VarTypes, Var, Type),
             \+ type_is_no_tag_type(ModuleInfo, Type),
 
             % Check if the top cell datastructure of Var is not live.

@@ -340,7 +340,7 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             % Handle (mutually-)recursive calls.
             list.member(CallPPId, SCC)
         ->
-            Types = list.map((func(Var) = VarTypes ^ det_elem(Var)), CallArgs),
+            lookup_var_types(VarTypes, CallArgs, Types),
             TrailingStatus = check_types(!.ModuleInfo, Types),
             Result = TrailingStatus,
             MaybeAnalysisStatus = yes(optimal)
@@ -710,7 +710,7 @@ check_call_2(ModuleInfo, VarTypes, PPId, Args, MaybeResult) :-
 :- func check_vars(module_info, vartypes, prog_vars) = trailing_status.
 
 check_vars(ModuleInfo, VarTypes, Vars) = Result :-
-    Types = list.map((func(Var) = VarTypes ^ det_elem(Var)), Vars),
+    lookup_var_types(VarTypes, Vars, Types),
     Result = check_types(ModuleInfo, Types).
 
 %----------------------------------------------------------------------------%

@@ -786,8 +786,8 @@ do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
     % for type variables which have been substituted away,
     % because those entries simply won't be used.
 
-    map.apply_to_list(HeadVars, CalleeVarTypes1, HeadTypes),
-    map.apply_to_list(ArgVars, VarTypes0, ArgTypes),
+    lookup_var_types(CalleeVarTypes1, HeadVars, HeadTypes),
+    lookup_var_types(VarTypes0, ArgVars, ArgTypes),
 
     pred_info_get_exist_quant_tvars(PredInfo, CalleeExistQVars),
     get_type_substitution(HeadTypes, ArgTypes, HeadTypeParams,

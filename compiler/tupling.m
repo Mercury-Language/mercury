@@ -460,7 +460,7 @@ candidate_headvars_of_proc_2(PredProcId, VarSet, VarTypes, ModuleInfo,
     % We only tuple input arguments.
     mode_is_input(ModuleInfo, ArgMode),
     % Don't touch introduced typeinfo arguments.
-    map.lookup(VarTypes, HeadVar, Type),
+    lookup_var_type(VarTypes, HeadVar, Type),
     not is_introduced_type_info_type(Type),
     varset.search_name(VarSet, HeadVar, Name),
     Origins = map.singleton(PredProcId, HeadVar).
@@ -642,7 +642,7 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
         % Create the cell variable.
         list.length(FieldVars, TupleArity),
         proc_info_get_vartypes(!.ProcInfo, VarTypes),
-        list.map(map.lookup(VarTypes), FieldVars, TupleArgTypes),
+        lookup_var_types(VarTypes, FieldVars, TupleArgTypes),
         construct_type(type_ctor(unqualified("{}"), TupleArity), TupleArgTypes,
             TupleConsType),
         proc_info_create_var_from_type(TupleConsType,
@@ -1068,7 +1068,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
         ModuleInfo = CountInfo ^ ci_module,
         goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
         proc_info_get_vartypes(ProcInfo, VarTypes),
-        map.apply_to_list(ArgVars, VarTypes, ArgTypes),
+        lookup_var_types(VarTypes, ArgVars, ArgTypes),
         arg_info.generic_call_arg_reg_types(ModuleInfo, VarTypes,
             GenericCall, ArgVars, MaybeArgRegs, ArgRegTypes),
         arg_info.compute_in_and_out_vars_sep_regs(ModuleInfo, ArgVars,
@@ -1747,7 +1747,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
                 hlds_goal(CallAux0, CallAuxInfo))
         ->
             varset.new_named_var("TuplingCellVarForCall", CellVar, !VarSet),
-            map.det_insert(CellVar, TupleConsType, !VarTypes),
+            add_var_type(CellVar, TupleConsType, !VarTypes),
             extract_tupled_args_from_list(Args0, ArgsToTuple,
                 TupledArgs, UntupledArgs),
             construct_tuple(CellVar, TupledArgs, ConstructGoal),

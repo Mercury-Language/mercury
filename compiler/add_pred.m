@@ -352,8 +352,8 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
 
     % Put the clause we just built (if any) into the pred_info,
     % annotated with the appropriate types.
-    map.from_corresponding_lists(ExtraVars ++ HeadVarList, ExtraTypes ++ Types,
-        VarTypes),
+    vartypes_from_corresponding_lists(ExtraVars ++ HeadVarList,
+        ExtraTypes ++ Types, VarTypes),
     map.init(TVarNameMap),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,

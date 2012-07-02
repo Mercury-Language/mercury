@@ -424,7 +424,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
     % Note currently we only allow lambda expressions to have universally
     % quantified constraints.
     rtti_varmaps_reusable_constraints(RttiVarMaps, AllConstraints),
-    map.apply_to_list(Vars, VarTypes, LambdaVarTypeList),
+    lookup_var_types(VarTypes, Vars, LambdaVarTypeList),
     list.map(type_vars, LambdaVarTypeList, LambdaTypeVarsList),
     list.condense(LambdaTypeVarsList, LambdaTypeVars),
     list.filter(constraint_contains_vars(LambdaTypeVars),
@@ -604,7 +604,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         modes_to_uni_modes(ModuleInfo1, ArgModes1, ArgModes1, UniModes),
 
         list.append(ArgModes1, Modes, AllArgModes),
-        map.apply_to_list(AllArgVars, VarTypes, ArgTypes),
+        lookup_var_types(VarTypes, AllArgVars, ArgTypes),
         list.foldl_corresponding(check_lambda_arg_type_and_mode(ModuleInfo1),
             ArgTypes, AllArgModes, 0, _),
 
@@ -748,10 +748,10 @@ restrict_var_maps(HeadVars, Goal, !VarSet, !VarTypes, !RttiVarMaps) :-
     mark_vars_as_used(HeadVars, VarUses0, VarUses1),
     find_used_vars_in_goal(Goal, VarUses1, VarUses),
 
-    map.to_assoc_list(!.VarTypes, VarTypesList0),
+    vartypes_to_assoc_list(!.VarTypes, VarTypesList0),
     filter_vartypes(VarTypesList0, [], RevVarTypesList, VarUses),
     list.reverse(RevVarTypesList, VarTypesList),
-    map.from_sorted_assoc_list(VarTypesList, !:VarTypes),
+    vartypes_from_sorted_assoc_list(VarTypesList, !:VarTypes),
 
     restrict_rtti_varmaps(VarUses, !RttiVarMaps).
 

@@ -508,7 +508,8 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
             ( check_marker(Markers0, marker_class_method) ->
                 % For the moment, we just insert the types of the head vars
                 % into the clauses_info.
-                map.from_corresponding_lists(HeadVars, ArgTypes0, VarTypes),
+                vartypes_from_corresponding_lists(HeadVars, ArgTypes0,
+                    VarTypes),
                 clauses_info_set_vartypes(VarTypes, !ClausesInfo),
                 pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
                 % We also need to set the head_type_params field to indicate
@@ -596,7 +597,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
             InferredTypeConstraints0, ConstraintProofs, ConstraintMap,
             TVarRenaming, ExistTypeRenaming),
         typecheck_info_get_pred_markers(!.Info, PredMarkers),
-        map.optimize(InferredVarTypes0, InferredVarTypes),
+        vartypes_optimize(InferredVarTypes0, InferredVarTypes),
         clauses_info_set_vartypes(InferredVarTypes, !ClausesInfo),
 
         % Apply substitutions to the explicit vartypes.
@@ -623,7 +624,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
         % Split the inferred type class constraints into those that apply
         % only to the head variables, and those that apply to type variables
         % which occur only in the body.
-        map.apply_to_list(HeadVars, InferredVarTypes, ArgTypes),
+        lookup_var_types(InferredVarTypes, HeadVars, ArgTypes),
         type_vars_list(ArgTypes, ArgTypeVars),
         restrict_to_head_vars(InferredTypeConstraints0, ArgTypeVars,
             InferredTypeConstraints, UnprovenBodyConstraints),
@@ -1159,8 +1160,8 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info) :-
                 type_assign_get_var_types(TypeAssign2, VarTypes2),
                 type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
                 type_assign_get_type_bindings(TypeAssign2, TypeBindings2),
-                map.apply_to_list(HeadVars, VarTypes1, HeadTypes1),
-                map.apply_to_list(HeadVars, VarTypes2, HeadTypes2),
+                lookup_var_types(VarTypes1, HeadVars, HeadTypes1),
+                lookup_var_types(VarTypes2, HeadVars, HeadTypes2),
                 apply_rec_subst_to_type_list(TypeBindings1, HeadTypes1,
                     FinalHeadTypes1),
                 apply_rec_subst_to_type_list(TypeBindings2, HeadTypes2,
@@ -1840,7 +1841,8 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
     type_assign_get_var_types(TypeAssign0, VarTypes0),
     (
         ArgTypes0 = [Type | ArgTypes],
-        map.search_insert(Var, Type, MaybeOldVarType, VarTypes0, VarTypes),
+        search_insert_var_type(Var, Type, MaybeOldVarType,
+            VarTypes0, VarTypes),
         (
             MaybeOldVarType = yes(OldVarType),
             (
@@ -1872,7 +1874,7 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
 type_assign_var_has_one_of_these_types(TypeAssign0, Var, TypeA, TypeB,
         !TypeAssignSet) :-
     type_assign_get_var_types(TypeAssign0, VarTypes0),
-    ( map.search(VarTypes0, Var, VarType) ->
+    ( search_var_type(VarTypes0, Var, VarType) ->
         ( type_assign_unify_type(TypeAssign0, VarType, TypeA, TypeAssignA) ->
             !:TypeAssignSet = [TypeAssignA | !.TypeAssignSet]
         ;
@@ -1884,10 +1886,9 @@ type_assign_var_has_one_of_these_types(TypeAssign0, Var, TypeA, TypeB,
             !:TypeAssignSet = !.TypeAssignSet
         )
     ;
-        % YYY
-        map.det_insert(Var, TypeA, VarTypes0, VarTypesA),
+        add_var_type(Var, TypeA, VarTypes0, VarTypesA),
         type_assign_set_var_types(VarTypesA, TypeAssign0, TypeAssignA),
-        map.det_insert(Var, TypeB, VarTypes0, VarTypesB),
+        add_var_type(Var, TypeB, VarTypes0, VarTypesB),
         type_assign_set_var_types(VarTypesB, TypeAssign0, TypeAssignB),
         !:TypeAssignSet = [TypeAssignA, TypeAssignB | !.TypeAssignSet]
     ).
@@ -1940,7 +1941,7 @@ typecheck_var_has_type_2([TypeAssign0 | TypeAssigns0], Var, Type,
 
 type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
     type_assign_get_var_types(TypeAssign0, VarTypes0),
-    map.search_insert(Var, Type, MaybeOldVarType, VarTypes0, VarTypes),
+    search_insert_var_type(Var, Type, MaybeOldVarType, VarTypes0, VarTypes),
     (
         MaybeOldVarType = yes(OldVarType),
         ( type_assign_unify_type(TypeAssign0, OldVarType, Type, TypeAssign1) ->
@@ -2281,8 +2282,8 @@ typecheck_unify_var_var_2([TypeAssign0 | TypeAssigns0], X, Y,
 
 type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
     type_assign_get_var_types(TypeAssign0, VarTypes0),
-    ( map.search(VarTypes0, X, TypeX) ->
-        map.search_insert(Y, TypeX, MaybeTypeY, VarTypes0, VarTypes),
+    ( search_var_type(VarTypes0, X, TypeX) ->
+        search_insert_var_type(Y, TypeX, MaybeTypeY, VarTypes0, VarTypes),
         (
             MaybeTypeY = yes(TypeY),
             % Both X and Y already have types - just unify their types.
@@ -2297,9 +2298,9 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
             !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
         )
     ;
-        ( map.search(VarTypes0, Y, TypeY) ->
+        ( search_var_type(VarTypes0, Y, TypeY) ->
             % X is a fresh variable which hasn't been assigned a type yet.
-            map.det_insert(X, TypeY, VarTypes0, VarTypes),
+            add_var_type(X, TypeY, VarTypes0, VarTypes),
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
         ;
@@ -2309,9 +2310,9 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
             varset.new_var(TypeVar, TypeVarSet0, TypeVarSet),
             type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign1),
             Type = type_variable(TypeVar, kind_star),
-            map.det_insert(X, Type, VarTypes0, VarTypes1),
+            add_var_type(X, Type, VarTypes0, VarTypes1),
             ( X \= Y ->
-                map.det_insert(Y, Type, VarTypes1, VarTypes)
+                add_var_type(Y, Type, VarTypes1, VarTypes)
             ;
                 VarTypes = VarTypes1
             ),
@@ -2330,7 +2331,7 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign0,
         !ArgsTypeAssignSet) :-
     % Unify the type of Var with the type of the constructor.
     type_assign_get_var_types(TypeAssign0, VarTypes0),
-    map.search_insert(Y, ConsType, MaybeTypeY, VarTypes0, VarTypes),
+    search_insert_var_type(Y, ConsType, MaybeTypeY, VarTypes0, VarTypes),
     (
         MaybeTypeY = yes(TypeY),
         ( type_assign_unify_type(TypeAssign0, ConsType, TypeY, TypeAssign) ->
@@ -2362,7 +2363,7 @@ type_assign_check_functor_type_builtin(ConsType, Y, TypeAssign0,
         !TypeAssignSet) :-
     % Unify the type of Var with the type of the constructor.
     type_assign_get_var_types(TypeAssign0, VarTypes0),
-    map.search_insert(Y, ConsType, MaybeTypeY, VarTypes0, VarTypes),
+    search_insert_var_type(Y, ConsType, MaybeTypeY, VarTypes0, VarTypes),
     (
         MaybeTypeY = yes(TypeY),
         ( type_assign_unify_type(TypeAssign0, ConsType, TypeY, TypeAssign) ->
@@ -2509,7 +2510,7 @@ type_assign_get_types_of_vars([], [], !TypeAssign).
 type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
     % Check whether the variable already has a type.
     type_assign_get_var_types(!.TypeAssign, VarTypes0),
-    ( map.search(VarTypes0, Var, VarType) ->
+    ( search_var_type(VarTypes0, Var, VarType) ->
         % If so, use that type.
         Type = VarType
     ;
@@ -2519,7 +2520,7 @@ type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
         varset.new_var(TypeVar, TypeVarSet0, TypeVarSet),
         type_assign_set_typevarset(TypeVarSet, !TypeAssign),
         Type = type_variable(TypeVar, kind_star),
-        map.det_insert(Var, Type, VarTypes0, VarTypes1),
+        add_var_type(Var, Type, VarTypes0, VarTypes1),
         type_assign_set_var_types(VarTypes1, !TypeAssign)
     ),
     % Recursively process the rest of the variables.

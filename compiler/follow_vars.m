@@ -261,7 +261,7 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
             ; GenericCall = event_call(_)
             ),
             determinism_to_code_model(Det, CodeModel),
-            map.apply_to_list(Args, VarTypes, Types),
+            lookup_var_types(VarTypes, Args, Types),
             generic_call_arg_reg_types(ModuleInfo, VarTypes, GenericCall,
                 Args, MaybeArgRegs, ArgRegTypes),
             make_arg_infos(Types, Modes, ArgRegTypes, CodeModel, ModuleInfo,

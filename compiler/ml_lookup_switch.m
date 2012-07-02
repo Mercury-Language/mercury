@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -133,7 +133,7 @@ ml_is_lookup_switch(GetTag, SwitchVar, TaggedCases, NonLocals, CodeModel,
     ),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_var_types(!.Info, VarTypes),
-    list.map(map.lookup(VarTypes), OutVars, OutTypes),
+    lookup_var_types(VarTypes, OutVars, OutTypes),
     FieldTypes =
         list.map(mercury_type_to_mlds_type(ModuleInfo), OutTypes),
     LookupSwitchInfo = ml_lookup_switch_info(CaseConsts, OutVars, FieldTypes).

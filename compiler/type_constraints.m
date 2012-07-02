@@ -481,8 +481,7 @@ create_vartypes_map(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
     list.map2(find_variable_type(Context, ProgVarSet, TVarSet, VarMap,
         DomainMap, ReplacementMap), ProgVars, Types, MaybeErrors),
     list.filter_map(remove_maybe, MaybeErrors, Errors),
-    map.det_insert_from_corresponding_lists(ProgVars, Types,
-        map.init, Vartypes).
+    vartypes_from_corresponding_lists(ProgVars, Types, Vartypes).
 
     % If a variable has a domain consisting of one type, gives it that type.
     % Otherwise, assign it to a type consisting of the type variable assigned
@@ -1397,11 +1396,11 @@ to_singleton_type_domain(Type) = tdomain_singleton(Type).
     vartypes::in, vartypes::out) is det.
 
 add_unused_prog_var(TCInfo, Var, !Vartypes) :-
-    ( map.contains(!.Vartypes, Var) ->
+    ( is_in_vartypes(!.Vartypes, Var) ->
         true
     ;
         bimap.lookup(TCInfo ^ tconstr_var_map, Var, TVar),
-        map.det_insert(Var, tvar_to_type(TVar), !Vartypes)
+        add_var_type(Var, tvar_to_type(TVar), !Vartypes)
     ).
 
 :- pred get_constraints_from_conj(conj_type_constraint::in,

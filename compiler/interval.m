@@ -291,7 +291,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         IntParams = !.IntervalInfo ^ ii_interval_params,
         ModuleInfo = IntParams ^ ip_module_info,
         VarTypes = IntParams ^ ip_var_types,
-        map.apply_to_list(ArgVars, VarTypes, ArgTypes),
+        lookup_var_types(VarTypes, ArgVars, ArgTypes),
         arg_info.generic_call_arg_reg_types(ModuleInfo, VarTypes, GenericCall,
             ArgVars, MaybeArgRegs, ArgRegTypes),
         arg_info.compute_in_and_out_vars_sep_regs(ModuleInfo, ArgVars,
@@ -1118,8 +1118,8 @@ create_shadow_var(Arg, VarsToExtract, !VarSet, !VarTypes,
         !VarRename, !VoidRename) :-
     varset.lookup_name(!.VarSet, Arg, Name),
     varset.new_named_var(Name, Shadow, !VarSet),
-    map.lookup(!.VarTypes, Arg, Type),
-    map.det_insert(Shadow, Type, !VarTypes),
+    lookup_var_type(!.VarTypes, Arg, Type),
+    add_var_type(Shadow, Type, !VarTypes),
     ( set_of_var.member(VarsToExtract, Arg) ->
         map.det_insert(Arg, Shadow, !VarRename)
     ;

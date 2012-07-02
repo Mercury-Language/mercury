@@ -353,7 +353,7 @@ new_var(Name, Type, Var, !Info) :-
     VarSet0 = !.Info ^ heap_varset,
     VarTypes0 = !.Info ^ heap_var_types,
     varset.new_named_var(Name, Var, VarSet0, VarSet),
-    map.det_insert(Var, Type, VarTypes0, VarTypes),
+    add_var_type(Var, Type, VarTypes0, VarTypes),
     !Info ^ heap_varset := VarSet,
     !Info ^ heap_var_types := VarTypes.
 

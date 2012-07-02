@@ -223,7 +223,7 @@ term_constr_build_abstract_proc(EntryProcs, Options, SCC, ModuleInfo, PPId,
     % Work out which arguments can be used in termination proofs.
     % An argument may be used if (a) it is input and (b) it has non-zero size.
     ChooseArg = (func(Var, Mode) = UseArg :-
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         (
             not zero_size_type(ModuleInfo, Type),
             mode_util.mode_is_input(ModuleInfo, Mode)
@@ -702,7 +702,7 @@ build_abstract_switch_acc(SwitchProgVar, [Case | Cases], !AbstractGoals,
     ;
         TypeMap = !.Info ^ tti_vartypes,
         SizeVarMap = !.Info ^ tti_size_var_map,
-        map.lookup(TypeMap, SwitchProgVar, SwitchVarType),
+        lookup_var_type(TypeMap, SwitchProgVar, SwitchVarType),
         SwitchSizeVar = prog_var_to_size_var(SizeVarMap, SwitchProgVar),
         type_to_ctor_det(SwitchVarType, TypeCtor),
         ModuleInfo = !.Info ^ tti_module_info,
@@ -810,7 +810,7 @@ abstract_from_ground_term_conjunct(ModuleInfo, Norm, VarTypes, Goal,
     ->
         strip_typeinfos_from_args_and_modes(VarTypes, ArgVars, FixedArgVars,
             Modes, FixedModes),
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         type_to_ctor_det(Type, TypeCtor),
         functor_norm(ModuleInfo, Norm, TypeCtor, ConsId, ConsIdSize,
             FixedArgVars, CountedVars, FixedModes, _),
@@ -877,7 +877,7 @@ build_abstract_unification(Unification, AbstractGoal, !Info) :-
 build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         !Info) :-
     VarTypes = !.Info ^ tti_vartypes,
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     (
         % The only valid higher-order unifications are assignments.
         % For the purposes of the IR analysis, we can ignore them.
@@ -963,7 +963,7 @@ strip_typeinfos_from_args_and_modes_2(_, [], [], [], []).
 strip_typeinfos_from_args_and_modes_2(VarTypes, [Arg | !.Args], !:Args,
         [Mode | !.Modes], !:Modes) :-
     strip_typeinfos_from_args_and_modes_2(VarTypes, !Args, !Modes),
-    map.lookup(VarTypes, Arg, Type),
+    lookup_var_type(VarTypes, Arg, Type),
     ( is_introduced_type_info_type(Type) ->
         true
     ;
@@ -1179,7 +1179,7 @@ find_failure_constraint_for_goal_2(Info, Goal, AbstractGoal) :-
 
         GoalExpr = unify(_, _, _, Unification, _),
         Unification = deconstruct(Var, ConsId, _, _, can_fail, _),
-        map.lookup(Info ^ tti_vartypes, Var, Type),
+        lookup_var_type(Info ^ tti_vartypes, Var, Type),
         type_to_ctor_det(Type, TypeCtor),
         ModuleInfo = Info ^ tti_module_info,
         type_util.type_constructors(ModuleInfo, Type, Constructors0),

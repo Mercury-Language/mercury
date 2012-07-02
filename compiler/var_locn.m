@@ -1149,7 +1149,7 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
         Rval0 = var(Var),
         materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI),
         var_locn_get_vartypes(!.VLI, VarTypes),
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         IsDummy = check_dummy_type(ModuleInfo, Type),
         (
             IsDummy = is_dummy_type,
@@ -1238,7 +1238,7 @@ var_locn_save_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
             !VLI)
     ),
     var_locn_get_vartypes(!.VLI, VarTypes),
-    map.lookup(VarTypes, DepVar, DepVarType),
+    lookup_var_type(VarTypes, DepVar, DepVarType),
     IsDummy = check_dummy_type(ModuleInfo, DepVarType),
     (
         IsDummy = is_dummy_type,
@@ -1441,7 +1441,7 @@ reg_type_for_var(VLI, Var, RegType) :-
     ;
         FloatRegType = reg_f,
         var_locn_get_vartypes(VLI, VarTypes),
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         ( VarType = float_type ->
             RegType = reg_f
         ;
@@ -1546,7 +1546,7 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
                     " (depth ", LengthStr, ")"], Msg)
             ),
             var_locn_get_vartypes(!.VLI, VarTypes),
-            map.lookup(VarTypes, Var, Type),
+            lookup_var_type(VarTypes, Var, Type),
             IsDummy = check_dummy_type(ModuleInfo, Type),
             (
                 IsDummy = is_dummy_type,

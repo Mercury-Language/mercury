@@ -1846,7 +1846,7 @@ generate_var(Name, Type, Var, !VarInfo) :-
 
 generate_var_2(Name, Type, Var, !VarSet, !VarTypes) :-
     varset.new_named_var(Name, Var, !VarSet),
-    map.det_insert(Var, Type, !VarTypes).
+    add_var_type(Var, Type, !VarTypes).
 
 :- pred maybe_generate_activation_ptr(bool::in, prog_var::in, prog_var::in,
     maybe(prog_var)::out, hlds_deep_excp_vars::out,

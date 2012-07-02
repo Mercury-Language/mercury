@@ -141,7 +141,8 @@ convert_pred_to_hhf(Simple, PredId, !ModuleInfo, !IO) :-
 convert_clauses_info_to_hhf(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     clauses_info_get_varset(!.ClausesInfo, VarSet0),
     clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
-    inst_graph.init(VarTypes0 ^ keys, InstGraph0),
+    vartypes_vars(VarTypes0, Vars0),
+    inst_graph.init(Vars0, InstGraph0),
     Info0 = hhf_info(InstGraph0, VarSet0, VarTypes0),
 
     clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
@@ -169,7 +170,8 @@ convert_clauses_info_to_hhf(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     Info = hhf_info(InstGraph1, VarSet, VarTypes),
     (
         Simple = yes,
-        inst_graph.init(VarTypes ^ keys, InstGraph)
+        vartypes_vars(VarTypes, Vars),
+        inst_graph.init(Vars, InstGraph)
     ;
         Simple = no,
         InstGraph = InstGraph1
@@ -368,8 +370,8 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
         VarSet0 = !.HI ^ hhfi_varset,
         VarTypes0 = !.HI ^ hhfi_vartypes,
         varset.new_var(V, VarSet0, VarSet),
-        map.lookup(VarTypes0, A, Type),
-        map.det_insert(V, Type, VarTypes0, VarTypes),
+        lookup_var_type(VarTypes0, A, Type),
+        add_var_type(V, Type, VarTypes0, VarTypes),
         map.init(Empty),
         map.det_insert(V, node(Empty, top_level), InstGraph0, InstGraph),
         !HI ^ hhfi_varset := VarSet,
@@ -398,7 +400,7 @@ complete_inst_graph(ModuleInfo, !HI) :-
 complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
     VarTypes0 = !.HI ^ hhfi_vartypes,
     (
-        map.search(VarTypes0, Var, Type),
+        search_var_type(VarTypes0, Var, Type),
         type_constructors(ModuleInfo, Type, Constructors),
         type_to_ctor(Type, TypeCtor)
     ->
@@ -452,7 +454,7 @@ add_cons_id(Var, ModuleInfo, BaseVars, Arg, NewVar, !HI) :-
         NewVar = NewVar0
     ;
         varset.new_var(NewVar, VarSet0, VarSet),
-        map.det_insert(NewVar, ArgType, VarTypes0, VarTypes),
+        add_var_type(NewVar, ArgType, VarTypes0, VarTypes),
         map.init(Empty),
         map.det_insert(NewVar, node(Empty, parent(Var)),
             InstGraph0, InstGraph),
@@ -465,7 +467,7 @@ add_cons_id(Var, ModuleInfo, BaseVars, Arg, NewVar, !HI) :-
 
 find_var_with_type(Var0, Type, InstGraph, VarTypes, BaseVars, Var) :-
     (
-        map.search(VarTypes, Var0, Type0),
+        search_var_type(VarTypes, Var0, Type0),
         same_type(Type0, Type)
     ->
         Var = Var0

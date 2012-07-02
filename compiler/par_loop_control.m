@@ -618,7 +618,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         proc_info_get_goal(OldProcInfo, !:Body),
 
         varset.new_named_var("LC", LCVar, !VarSet),
-        map.det_insert(LCVar, loop_control_var_type, !VarTypes),
+        add_var_type(LCVar, loop_control_var_type, !VarTypes),
         should_preserve_tail_recursion(!.ModuleInfo, PreserveTailRecursion),
         get_lc_wait_free_slot_proc(!.ModuleInfo, WaitFreeSlotProc),
         get_lc_join_and_terminate_proc(!.ModuleInfo, JoinAndTerminateProc),
@@ -1234,7 +1234,7 @@ case_update_non_loop_control_paths(Info, RecParConjIds, !Case,
 create_get_free_slot_goal(Info, LCSVar, Goal, !VarSet,
         !VarTypes) :-
     varset.new_named_var("LCS", LCSVar, !VarSet),
-    map.det_insert(LCSVar, loop_control_slot_var_type, !VarTypes),
+    add_var_type(LCSVar, loop_control_slot_var_type, !VarTypes),
     LCVar = Info ^ lci_lc_var,
     proc(PredId, ProcId) = Info ^ lci_wait_free_slot_proc,
     SymName = Info ^ lci_wait_free_slot_proc_name,
@@ -1255,7 +1255,7 @@ create_get_free_slot_goal(Info, LCSVar, Goal, !VarSet,
 create_create_loop_control_goal(ModuleInfo, NumContextsVar, LCVar, Goal,
         !VarSet, !VarTypes) :-
     varset.new_named_var("LC", LCVar, !VarSet),
-    map.det_insert(LCVar, loop_control_var_type, !VarTypes),
+    add_var_type(LCVar, loop_control_var_type, !VarTypes),
     get_lc_create_proc(ModuleInfo, LCCreatePredId, LCCreateProcId),
     GoalExpr = plain_call(LCCreatePredId, LCCreateProcId,
         [NumContextsVar, LCVar], not_builtin, no, lc_create_name),
@@ -1337,7 +1337,7 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
     some [!VarSet, !VarTypes] (
         % Re-build the variables in the procedure with smaller sets.
         varset.init(!:VarSet),
-        map.init(!:VarTypes),
+        init_vartypes(!:VarTypes),
         proc_info_get_varset(!.ProcInfo, OldVarSet),
         foldl3_corresponding(add_old_var_to_sets(OldVarSet), HeadVars0,
             HeadVarTypes, !VarSet, !VarTypes, map.init, Remap),
@@ -1355,7 +1355,7 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
         % (for auto-parallelisation), but for now we just set it using
         % a runtime call so that it can be tuned.
         varset.new_named_var("NumContexts", NumContextsVar, !VarSet),
-        map.det_insert(NumContextsVar, builtin_type(builtin_type_int),
+        add_var_type(NumContextsVar, builtin_type(builtin_type_int),
             !VarTypes),
         get_lc_default_num_contexts_proc(ModuleInfo,
             LCDefaultNumContextsPredId, LCDefaultNumContextsProcId),
@@ -1423,7 +1423,7 @@ add_old_var_to_sets(OldVarSet, OldVar, VarType, !VarSet, !VarTypes,
     ;
         varset.new_var(Var, !VarSet)
     ),
-    map.det_insert(Var, VarType, !VarTypes),
+    add_var_type(Var, VarType, !VarTypes),
     map.det_insert(OldVar, Var, !Remap).
 
 :- pred remap_instmap(map(prog_var, prog_var)::in,

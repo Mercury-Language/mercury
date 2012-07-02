@@ -178,7 +178,7 @@ fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNum, !ContainingGoalMap,
         GoalExpr0 = switch(Var, CanFail, Cases0),
         VarTypes = SlotInfo ^ slot_info_vartypes,
         ModuleInfo = SlotInfo ^ slot_info_module_info,
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
             MaybeNumFunctors = known_num_functors_in_type(NumFunctors)
         ;
@@ -324,7 +324,7 @@ fill_goal_path_slots(RevPath0, SlotInfo, Goal0, Goal) :-
         GoalExpr0 = switch(Var, CanFail, Cases0),
         VarTypes = SlotInfo ^ slot_info_vartypes,
         ModuleInfo = SlotInfo ^ slot_info_module_info,
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
             MaybeNumFunctors = known_num_functors_in_type(NumFunctors)
         ;

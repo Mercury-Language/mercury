@@ -1302,7 +1302,7 @@ report_ambiguity_error(Info, TypeAssign1, TypeAssign2) = Spec :-
         [words("error: ambiguous overloading causes type ambiguity."), nl],
     typecheck_info_get_varset(Info, VarSet),
     type_assign_get_var_types(TypeAssign1, VarTypes1),
-    map.keys(VarTypes1, Vars1),
+    vartypes_vars(VarTypes1, Vars1),
     AmbiguityPieces = ambiguity_error_possibilities_to_pieces(Vars1, VarSet,
         TypeAssign1, TypeAssign2),
     (
@@ -1350,8 +1350,8 @@ ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet,
     type_assign_get_head_type_params(TypeAssign1, HeadTypeParams1),
     type_assign_get_head_type_params(TypeAssign2, HeadTypeParams2),
     (
-        map.search(VarTypes1, Var, Type1),
-        map.search(VarTypes2, Var, Type2),
+        search_var_type(VarTypes1, Var, Type1),
+        search_var_type(VarTypes2, Var, Type2),
         apply_rec_subst_to_type(TypeBindings1, Type1, T1),
         apply_rec_subst_to_type(TypeBindings2, Type2, T2),
         \+ identical_types(T1, T2)
@@ -1855,7 +1855,7 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_var_types(TypeAssign, VarTypes),
-    ( map.search(VarTypes, Var, Type0) ->
+    ( search_var_type(VarTypes, Var, Type0) ->
         Type = Type0
     ;
         % This shouldn't happen - how can a variable which has not yet been
@@ -1903,7 +1903,7 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_var_types(TypeAssign, VarTypes),
-    ( map.search(VarTypes, Var, VarType0) ->
+    ( search_var_type(VarTypes, Var, VarType0) ->
         VarType = VarType0
     ;
         % This shouldn't happen - how can a variable which has

@@ -5221,7 +5221,7 @@ write_vars_and_types(HeadVars, VarSet, HeadVarTypes, TypeVarSet, !IO) :-
     io::di, io::uo) is det.
 
 write_type_of_var(VarTypes, TypeVarSet, Var, !IO):-
-    map.lookup(VarTypes, Var, VarType),
+    lookup_var_type(VarTypes, Var, VarType),
     mercury_output_type(TypeVarSet, no, VarType, !IO).
 
 %---------------------------------------------------------------------------%

@@ -1170,7 +1170,7 @@ modecheck_final_insts(HeadVars, InferModes, FinalInsts0, FinalInsts,
     ),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
     instmap_lookup_vars(InstMap, HeadVars, VarFinalInsts1),
-    map.apply_to_list(HeadVars, VarTypes, ArgTypes),
+    lookup_var_types(VarTypes, HeadVars, ArgTypes),
     (
         InferModes = yes,
         normalise_insts(ModuleInfo, ArgTypes, VarFinalInsts1, VarFinalInsts2),
@@ -1232,7 +1232,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
         VarInsts = [VarInst | VarInstsTail]
     ->
         mode_info_get_var_types(!.ModeInfo, VarTypes),
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         ( inst_matches_final_typed(VarInst, Inst, Type, ModuleInfo) ->
             true
         ;

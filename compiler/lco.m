@@ -340,7 +340,7 @@ lco_process_proc_variant(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
 
     proc_info_get_headvars(VariantProcInfo, HeadVars),
     proc_info_get_vartypes(VariantProcInfo, VarTypes),
-    map.apply_to_list(HeadVars, VarTypes, ArgTypes),
+    lookup_var_types(VarTypes, HeadVars, ArgTypes),
 
     some [!VariantPredInfo, !PredTable] (
         module_info_get_preds(!.ModuleInfo, !:PredTable),
@@ -401,7 +401,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, !ModuleInfo, !CurSCCVariants,
             proc_info_get_vartypes(ProcInfo0, VarTypes0),
             proc_info_get_headvars(ProcInfo0, HeadVars),
             proc_info_get_argmodes(ProcInfo0, ArgModes),
-            map.apply_to_list(HeadVars, VarTypes0, ArgTypes),
+            lookup_var_types(VarTypes0, HeadVars, ArgTypes),
             arg_info.compute_in_and_out_vars(!.ModuleInfo, HeadVars,
                 ArgModes, ArgTypes, _InputHeadVars, OutputHeadVars),
             proc_info_get_inferred_determinism(ProcInfo0, CurProcDetism),
@@ -748,7 +748,7 @@ update_call_args(_ModuleInfo, _VarTypes, [_ | _], [], _, _) :-
     unexpected($module, $pred, "mismatched lists").
 update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
         [Arg | Args], !.UpdatedCallOutArgs, !:UpdatedArgs) :-
-    map.lookup(VarTypes, Arg, CalleeType),
+    lookup_var_type(VarTypes, Arg, CalleeType),
     mode_to_arg_mode(ModuleInfo, CalleeMode, CalleeType, ArgMode),
     (
         ArgMode = top_in,
@@ -786,7 +786,7 @@ classify_proc_call_args(ModuleInfo, VarTypes, [Arg | Args],
         [CalleeMode | CalleeModes], !:InArgs, !:OutArgs, !:UnusedArgs) :-
     classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeModes,
         !:InArgs, !:OutArgs, !:UnusedArgs),
-    map.lookup(VarTypes, Arg, CalleeType),
+    lookup_var_type(VarTypes, Arg, CalleeType),
     mode_to_arg_mode(ModuleInfo, CalleeMode, CalleeType, ArgMode),
     (
         ArgMode = top_in,
@@ -815,7 +815,7 @@ find_args_to_pass_by_addr(ConstInfo, UnifyInputVars,
         ArgNum + 1, MismatchesTail, UpdatedCallArgs, !Subst, !Info),
     (
         !.Info ^ lco_allow_float_addr = do_not_allow_float_addr,
-        map.lookup(!.Info ^ lco_var_types, CallArg, CallArgType),
+        lookup_var_type(!.Info ^ lco_var_types, CallArg, CallArgType),
         type_to_ctor(CallArgType, CallArgTypeCtor),
         CallArgTypeCtor = type_ctor(unqualified("float"), 0)
     ->
@@ -872,9 +872,9 @@ make_address_var(ConstInfo, Var, AddrVar, !Info) :-
     HighLevelData = ConstInfo ^ lci_highlevel_data,
     (
         HighLevelData = no,
-        map.lookup(VarTypes0, Var, FieldType),
+        lookup_var_type(VarTypes0, Var, FieldType),
         AddrVarType = make_ref_type(FieldType),
-        map.det_insert(AddrVar, AddrVarType, VarTypes0, VarTypes)
+        add_var_type(AddrVar, AddrVarType, VarTypes0, VarTypes)
     ;
         HighLevelData = yes,
         % We set the type later when it is more convenient.
@@ -1024,7 +1024,7 @@ update_construct(ConstInfo, Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
         % likely to be recomputed incorrectly.
         HighLevelData = ConstInfo ^ lci_highlevel_data,
         VarTypes0 = !.Info ^ lco_var_types,
-        map.lookup(VarTypes0, Var, VarType),
+        lookup_var_type(VarTypes0, Var, VarType),
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
         update_construct_args(Subst, HighLevelData, VarType, ConsId, 1,
             ArgVars, UpdatedArgVars, AddrFields, InstMapDelta0, InstMapDelta,
@@ -1089,7 +1089,7 @@ update_construct_args(Subst, HighLevelData, VarType, ConsId, ArgNum,
             BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
             FinalInst = bound(shared, inst_test_no_results, [BoundInst]),
             % We didn't do this when we initially created the variable.
-            map.det_insert(AddrVar, VarType, !VarTypes)
+            add_var_type(AddrVar, VarType, !VarTypes)
         ),
         instmap_delta_set_var(AddrVar, FinalInst, !InstMapDelta),
         map.det_insert(OrigVar, field_id(VarType, ConsId, ArgNum),
@@ -1180,7 +1180,7 @@ make_addr_vars([_ | _], [], _, _, _, _, _, _, !VarSet, !VarTypes) :-
 make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
         [HeadVar | HeadVars], [Mode | Modes], !.AddrOutArgs,
         NextOutArgNum, ModuleInfo, VarToAddr, !VarSet, !VarTypes) :-
-    map.lookup(!.VarTypes, HeadVar0, HeadVarType),
+    lookup_var_type(!.VarTypes, HeadVar0, HeadVarType),
     mode_to_arg_mode(ModuleInfo, Mode0, HeadVarType, ArgMode),
     (
         ArgMode = top_in,
@@ -1198,19 +1198,19 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
             AddrName = "AddrOf" ++ Name,
             varset.new_named_var(AddrName, AddrVar, !VarSet),
             HeadVar = AddrVar,
-            map.lookup(!.VarTypes, HeadVar0, OldType),
+            lookup_var_type(!.VarTypes, HeadVar0, OldType),
             (
                 MaybeFieldId = no,
                 % For low-level data we replace the output argument with a
                 % store_at_ref_type(T) input argument.
-                map.det_insert(AddrVar, make_ref_type(OldType), !VarTypes),
+                add_var_type(AddrVar, make_ref_type(OldType), !VarTypes),
                 Mode = in_mode
             ;
                 MaybeFieldId = yes(field_id(AddrVarType, ConsId, ArgNum)),
                 % For high-level data we replace the output argument with a
                 % partially instantiated structure. The structure has one
                 % argument left unfilled.
-                map.det_insert(AddrVar, AddrVarType, !VarTypes),
+                add_var_type(AddrVar, AddrVarType, !VarTypes),
                 BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
                 InitialInst = bound(shared, inst_test_no_results, [BoundInst]),
                 Mode = (InitialInst -> ground_inst)

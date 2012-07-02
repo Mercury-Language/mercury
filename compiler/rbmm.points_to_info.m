@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -88,17 +88,17 @@ rpta_info_table_set_rpta_info(PredProcId, RptaInfo, !Table) :-
 
 rpta_info_init(ProcInfo) = RptaInfo :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.keys(VarTypes, Vars),
+    vartypes_vars(VarTypes, Vars),
     list.foldl2(add_node_from_var(VarTypes), Vars, 1, _Reg,
         rpt_graph_init, Graph),
     map.init(AlphaMapping),
     RptaInfo = rpta_info(Graph, AlphaMapping).
 
-:- pred add_node_from_var(map(prog_var, mer_type)::in, prog_var::in, int::in,
+:- pred add_node_from_var(vartypes::in, prog_var::in, int::in,
     int::out, rpt_graph::in, rpt_graph::out) is det.
 
 add_node_from_var(VarTypes, Var, Reg0, Reg, !Graph) :-
-    map.lookup(VarTypes, Var, NodeType),
+    lookup_var_type(VarTypes, Var, NodeType),
     set.init(Varset0),
     set.insert(Var, Varset0, Varset),
     Reg = Reg0 + 1,

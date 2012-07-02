@@ -316,7 +316,8 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         (
             varset.num_allocated(VarSet) =< DelayDeathMaxVars
         ;
-            map.count(VarTypes) =< DelayDeathMaxVars
+            vartypes_count(VarTypes, NumVars),
+            NumVars =< DelayDeathMaxVars
         ),
         pred_info_get_origin(PredInfo, Origin),
         Origin \= origin_special_pred(_)
@@ -1735,7 +1736,7 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
     proc_info_get_headvars(ProcInfo, Vars),
     proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.apply_to_list(Vars, VarTypes, Types),
+    lookup_var_types(VarTypes, Vars, Types),
     !:Liveness = set_of_var.init,
     ( initial_liveness_2(Vars, Modes, Types, ModuleInfo, !Liveness) ->
         true
@@ -1832,7 +1833,7 @@ find_value_giving_occurrences([], _, _, !ValueVars).
 find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
         !ValueVars) :-
     VarTypes = LiveInfo ^ li_vartypes,
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     (
         instmap_delta_search_var(InstMapDelta, Var, Inst),
         ModuleInfo = LiveInfo ^ li_module_info,

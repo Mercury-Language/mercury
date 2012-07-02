@@ -354,7 +354,7 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
                 set_of_var.member(CandidateInitVars, Var)
             =>
                 (
-                    map.lookup(VarTypes, Var, VarType),
+                    lookup_var_type(VarTypes, Var, VarType),
                     type_is_solver_type_with_auto_init(ModuleInfo, VarType)
                 )
             ),
@@ -558,7 +558,7 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
     prog_var::in) is semidet.
 
 does_not_contain_solver_type(ModuleInfo, VarTypes, Var) :-
-    map.lookup(VarTypes, Var, VarType),
+    lookup_var_type(VarTypes, Var, VarType),
     not type_is_or_may_contain_solver_type(ModuleInfo, VarType).
 
     % Update !NonFree and !CandidateVars given the args and modes for a call.

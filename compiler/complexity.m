@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 2004-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -451,13 +451,13 @@ generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
         SlotVarName, PredId, !ProcInfo, !ModuleInfo, Goals,
         ForeignArgs, CodeStr) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes1),
-    map.lookup(VarTypes1, ArgVar, VarType),
+    lookup_var_type(VarTypes1, ArgVar, VarType),
     MacroName = "MR_complexity_fill_size_slot",
     make_type_info_var(VarType, Context, PredId, !ProcInfo, !ModuleInfo,
         TypeInfoVar, Goals),
     % Since we just created TypeInfoVar, it isn't in VarTypes1.
     proc_info_get_vartypes(!.ProcInfo, VarTypes2),
-    map.lookup(VarTypes2, TypeInfoVar, TypeInfoType),
+    lookup_var_type(VarTypes2, TypeInfoVar, TypeInfoType),
     ArgName = "arg" ++ int_to_string(VarSeqNum),
     TypeInfoArgName = "input_typeinfo" ++ int_to_string(VarSeqNum),
     ForeignArg = foreign_arg(ArgVar,
@@ -482,7 +482,7 @@ generate_new_var(Name, Type, !ProcInfo, Var) :-
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     varset.new_named_var(Name, Var, VarSet0, VarSet),
-    map.set(Var, Type, VarTypes0, VarTypes),
+    add_var_type(Var, Type, VarTypes0, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo).
 
@@ -522,7 +522,7 @@ classify_args([Var | Vars], [Mode | Modes], ModuleInfo, VarSet, VarTypes,
         MaybeName = no
     ),
     ( mode_is_fully_input(ModuleInfo, Mode) ->
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         ( zero_size_type(ModuleInfo, VarType) ->
             Kind = complexity_input_fixed_size
         ;

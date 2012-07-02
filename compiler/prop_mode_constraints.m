@@ -436,10 +436,10 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !VarSet,
     ( set_of_var.contains(!.SeenSoFar, Var0) ->
         % Make new variable.
         OldVarName = varset.lookup_name(!.VarSet, Var0),
-        OldVarType = map.lookup(!.VarTypes, Var0),
+        lookup_var_type(!.VarTypes, Var0, OldVarType),
         NewVarName = "Arg_" ++ OldVarName,
         varset.new_uniquely_named_var(NewVarName, Var, !VarSet),
-        map.set(Var, OldVarType, !VarTypes),
+        add_var_type(Var, OldVarType, !VarTypes),
 
         % Make new unification.
         create_atomic_complicated_unification(Var0, rhs_var(Var), Context,

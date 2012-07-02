@@ -774,7 +774,7 @@ region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes) :-
         RegVar = RegVar0
     ;
         varset.new_named_var(Name, RegVar, !VarSet),
-        map.det_insert(RegVar, region_type, !VarTypes),
+        add_var_type(RegVar, region_type, !VarTypes),
         map.det_insert(Name, RegVar, !NameToVar)
     ).
 

@@ -20,19 +20,17 @@
 
 %-----------------------------------------------------------------------------%
 
-    % In the hlds, we initially record the clauses for a predicate
-    % in the clauses_info data structure which is part of the
-    % pred_info data structure.  But once the clauses have been
-    % type-checked, we want to have a separate copy of each clause
-    % for each different mode of the predicate, since we may
-    % end up reordering the clauses differently in different modes.
-    % Here we copy the clauses from the clause_info data structure
-    % into the proc_info data structure.  Each clause is marked
-    % with a list of the modes for which it applies, so that
-    % there can be different code to implement different modes
-    % of a predicate (e.g. sort).  For each mode of the predicate,
-    % we select the clauses for that mode, disjoin them together,
-    % and save this in the proc_info.
+    % In the hlds, we initially record the clauses for a predicate in the
+    % clauses_info data structure which is part of the pred_info data
+    % structure. But once the clauses have been type-checked, we want to have
+    % a separate copy of each clause for each different mode of the predicate,
+    % since we may end up reordering the clauses differently in different
+    % modes. Here we copy the clauses from the clause_info data structure
+    % into the proc_info data structure. Each clause is marked with a list
+    % of the modes for which it applies, so that there can be different code
+    % to implement different modes of a predicate (e.g. sort). For each mode
+    % of the predicate, we select the clauses for that mode, disjoin them
+    % together, and save this in the proc_info.
     %
 :- pred copy_module_clauses_to_procs(list(pred_id)::in,
     module_info::in, module_info::out) is det.
@@ -111,7 +109,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         %
         %   :- mode foo(in, in, ..., in) = out is det.
         %
-        % for this function.  (N.B. functions which can fail must be
+        % for this function. (N.B. functions which can fail must be
         % explicitly declared as semidet.)
 
         PredArity = pred_info_orig_arity(PredInfo0),
@@ -390,8 +388,8 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     ),
 
     % Add exists_casts for any head vars which are existentially typed,
-    % and for which the type is statically bound inside the procedure.  Subn
-    % represents which existential types are bound.
+    % and for which the type is statically bound inside the procedure.
+    % Subn represents which existential types are bound.
     introduce_exists_casts_for_head(ModuleInfo, Subn, OrigArgTypes,
         OrigArgModes, OrigHeadVars1, OrigHeadVars, VarSet0, VarSet1,
         VarTypes0, VarTypes1, [], ExistsCastHeadGoals),
@@ -460,9 +458,9 @@ introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
         InternalType \= ExternalType
     ->
         term.context_init(Context),
-        map.det_update(HeadVar0, InternalType, !VarTypes),
+        update_var_type(HeadVar0, InternalType, !VarTypes),
         make_new_exist_cast_var(HeadVar0, HeadVar, !VarSet),
-        map.det_insert(HeadVar, ExternalType, !VarTypes),
+        add_var_type(HeadVar, ExternalType, !VarTypes),
         mode_get_insts(ModuleInfo, ArgMode, _, Inst),
         generate_cast_with_insts(exists_cast, HeadVar0, HeadVar, Inst, Inst,
             Context, ExtraGoal),
@@ -490,20 +488,18 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
         [ModeAndVar | ModesAndVars], [Var | Vars], !VarSet, !VarTypes,
         !RttiVarMaps, !ExtraGoals) :-
     ModeAndVar = ArgMode - Var0,
-    (
-        mode_is_output(ModuleInfo, ArgMode)
-    ->
+    ( mode_is_output(ModuleInfo, ArgMode) ->
         % Create the exists_cast goal.
 
         term.context_init(Context),
         make_new_exist_cast_var(Var0, Var, !VarSet),
-        map.lookup(!.VarTypes, Var0, VarType),
-        map.det_insert(Var, VarType, !VarTypes),
+        lookup_var_type(!.VarTypes, Var0, VarType),
+        add_var_type(Var, VarType, !VarTypes),
         generate_cast(exists_cast, Var0, Var, Context, ExtraGoal),
         !:ExtraGoals = [ExtraGoal | !.ExtraGoals],
 
-        % Update the rtti_varmaps.  The old variable needs to have the
-        % substitution applied to its type/constraint.  The new variable
+        % Update the rtti_varmaps. The old variable needs to have the
+        % substitution applied to its type/constraint. The new variable
         % needs to be associated with the unsubstituted type/constraint.
 
         rtti_varmaps_var_info(!.RttiVarMaps, Var0, VarInfo),
@@ -520,7 +516,7 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
             VarInfo = typeclass_info_var(_),
             % For typeclass_infos, the constraint associated with the old
             % variable was derived from the constraint map, so all binding
-            % and improvement has been applied.  The new variable needs to
+            % and improvement has been applied. The new variable needs to
             % be associated with the corresponding existential head constraint,
             % so we pop one off the front of the list.
             (

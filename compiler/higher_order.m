@@ -961,7 +961,7 @@ maybe_specialize_higher_order_call(PredVar, Args, Goal0, Goal, !Info) :-
         % Non-specializable call/N.
         Goal = Goal0
     ).
-    
+
     % Process a class_method_call to see if it could possibly be specialized.
     %
 :- pred maybe_specialize_method_call(prog_var::in, int::in,
@@ -1302,7 +1302,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
         proc(PredId, ProcId) = PredProcId,
         map.contains(NewPredMap, PredProcId),
         proc_info_get_vartypes(ProcInfo0, VarTypes0),
-        map.lookup(VarTypes0, LVar, LVarType),
+        lookup_var_type(VarTypes0, LVar, LVarType),
         type_is_higher_order_details(LVarType, _, _, _, ArgTypes)
     ->
         % Create variables to represent
@@ -1356,7 +1356,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
             % The dummy arguments can't be used anywhere.
             ProcInfo2 = !.Info ^ hoi_proc_info,
             proc_info_get_vartypes(ProcInfo2, VarTypes2),
-            map.delete_list(UncurriedArgs, VarTypes2, VarTypes),
+            delete_var_types(UncurriedArgs, VarTypes2, VarTypes),
             proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo),
             !Info ^ hoi_proc_info := ProcInfo,
 
@@ -1416,7 +1416,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
     pred_info_get_import_status(CalleePredInfo, CalleeStatus),
     proc_info_get_vartypes(CalleeProcInfo, CalleeVarTypes),
     proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
-    map.apply_to_list(CalleeHeadVars, CalleeVarTypes, CalleeArgTypes),
+    lookup_var_types(CalleeVarTypes, CalleeHeadVars, CalleeArgTypes),
 
     CallerProcInfo0 = !.Info ^ hoi_proc_info,
     proc_info_get_vartypes(CallerProcInfo0, VarTypes),
@@ -1439,7 +1439,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         ;
             !.Info ^ hoi_global_info ^ hogi_params ^ param_do_user_type_spec
                 = yes,
-            map.apply_to_list(Args0, VarTypes, ArgTypes),
+            lookup_var_types(VarTypes, Args0, ArgTypes),
 
             % Check whether any typeclass constraints now match an instance.
             pred_info_get_class_context(CalleePredInfo, CalleeClassContext),
@@ -1538,7 +1538,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
     ->
         % Find any known higher-order arguments in the list of curried
         % arguments.
-        map.apply_to_list(CurriedArgs, VarTypes, CurriedArgTypes),
+        lookup_var_types(VarTypes, CurriedArgs, CurriedArgTypes),
         list.map(rtti_varmaps_var_info(RttiVarMaps), CurriedArgs,
             CurriedArgRttiInfo),
         ( ConsId = closure_cons(ShroudedPredProcId, _) ->
@@ -1667,7 +1667,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
     compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars),
 
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.apply_to_list(Args0, VarTypes, CallArgTypes),
+    lookup_var_types(VarTypes, Args0, CallArgTypes),
     pred_info_get_typevarset(PredInfo, TVarSet),
 
     Request = ho_request(Caller, proc(CalledPred, CalledProc), Args0,
@@ -1739,7 +1739,7 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
     % which will vary between calls).
     ProcInfo = Info ^ hoi_proc_info,
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.apply_to_list(Args, VarTypes, ArgTypes),
+    lookup_var_types(VarTypes, Args, ArgTypes),
     type_vars_list(ArgTypes, AllTVars),
     (
         AllTVars = [],
@@ -2086,8 +2086,8 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
 
             % Sanity check.
             proc_info_get_vartypes(ProcInfo, VarTypes),
-            map.lookup(VarTypes, OutputVar, OutputVarType),
-            map.lookup(VarTypes, SelectedArg, SelectedArgType),
+            lookup_var_type(VarTypes, OutputVar, OutputVarType),
+            lookup_var_type(VarTypes, SelectedArg, SelectedArgType),
             ( OutputVarType = SelectedArgType ->
                 true
             ;
@@ -2207,7 +2207,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     PredArity = pred_info_orig_arity(CalledPredInfo),
     special_pred_name_arity(SpecialId, PredName, _, PredArity),
     special_pred_get_type(SpecialId, Args, Var),
-    map.lookup(VarTypes, Var, SpecialPredType),
+    lookup_var_type(VarTypes, Var, SpecialPredType),
     SpecialPredType \= type_variable(_, _),
 
     % Don't specialize tuple types -- the code to unify them only exists
@@ -2789,7 +2789,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     pred_info_get_class_context(PredInfo0, ClassContext),
     pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
     varset.init(EmptyVarSet),
-    map.init(EmptyVarTypes),
+    init_vartypes(EmptyVarTypes),
     map.init(EmptyTVarNameMap),
     map.init(EmptyProofs),
     map.init(EmptyConstraintMap),
@@ -3132,7 +3132,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     proc_info_reset_imported_structure_reuse(!NewProcInfo),
 
     proc_info_get_vartypes(!.NewProcInfo, VarTypes7),
-    map.apply_to_list(ExtraHeadVars, VarTypes7, ExtraHeadVarTypes0),
+    lookup_var_types(VarTypes7, ExtraHeadVars, ExtraHeadVarTypes0),
     remove_const_higher_order_args(1, OriginalArgTypes,
         HOArgs, ModifiedOriginalArgTypes),
     list.condense([ExtraTypeInfoTypes, ExtraHeadVarTypes0,
@@ -3156,7 +3156,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
         ExistQVars = []
     ;
         ExistQVars = [_ | _],
-        map.apply_to_list(HeadVars0, VarTypes7, OriginalHeadTypes),
+        lookup_var_types(VarTypes7, HeadVars0, OriginalHeadTypes),
         (
             type_list_subsumes(OriginalArgTypes,
                 OriginalHeadTypes, ExistentialSubn)
@@ -3190,7 +3190,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
 
 update_var_types(VarAndType, !VarTypes) :-
     VarAndType = Var - Type,
-    map.det_update(Var, Type, !VarTypes).
+    update_var_type(Var, Type, !VarTypes).
 
     % Take an original list of headvars and arg_modes and return these
     % with curried arguments added.  The old higher-order arguments are

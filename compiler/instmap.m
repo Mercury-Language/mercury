@@ -520,7 +520,7 @@ instmap_changed_vars_2([VarB | VarBs], InstMapA, InstMapB, VarTypes,
 
     instmap_lookup_var(InstMapA, VarB, InitialInst),
     instmap_lookup_var(InstMapB, VarB, FinalInst),
-    map.lookup(VarTypes, VarB, Type),
+    lookup_var_type(VarTypes, VarB, Type),
 
     ( inst_matches_final_typed(InitialInst, FinalInst, Type, ModuleInfo) ->
         ChangedVars = ChangedVars0
@@ -926,7 +926,7 @@ merge_insts_of_vars([Var | Vars], InstMapList, VarTypes, !InstMapping,
         !ModuleInfo, !:ErrorList) :-
     merge_insts_of_vars(Vars, InstMapList, VarTypes, !InstMapping,
         !ModuleInfo, !:ErrorList),
-    map.lookup(VarTypes, Var, VarType),
+    lookup_var_type(VarTypes, Var, VarType),
     list.map(lookup_var_in_instmap(Var), InstMapList, InstList),
     merge_var_insts(InstList, VarType, !ModuleInfo, MaybeInst),
     (
@@ -1260,7 +1260,7 @@ var_is_not_output(ModuleInfo, VarTypes, InstMap0, InstMapDeltaMap, Var) :-
         % The right fix for this would be to generalize inst_matches_binding,
         % to allow the caller to specify what kinds of deviations from an exact
         % syntactic match are ok.
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         inst_matches_binding(NewInst, OldInst, Type, ModuleInfo)
     ;
         % If the instmap delta doesn't contain the variable, it may still
@@ -1314,8 +1314,8 @@ merge_instmapping_delta_2([Var | Vars], InstMap, VarTypes,
         instmap_lookup_var(InstMap, Var, InstB)
     ),
     (
-        inst_merge(InstA, InstB, yes(VarTypes ^ det_elem(Var)), Inst1,
-            !ModuleInfo)
+        lookup_var_type(VarTypes, Var, VarType),
+        inst_merge(InstA, InstB, yes(VarType), Inst1, !ModuleInfo)
     ->
         % XXX Given instmap_lookup_var(InstMap, Var, OldInst),
         % we should probably set Inst not directly from Inst1, but

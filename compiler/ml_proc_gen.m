@@ -465,10 +465,9 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
                 proc_info_get_vartypes(ProcInfo, VarTypes),
                 % Note that for headvars we must use the types from
                 % the procedure interface, not from the procedure body.
-                HeadVarTypes = map.from_corresponding_lists(HeadVars,
-                    ArgTypes),
-                ml_gen_local_var_decls(VarSet,
-                    map.overlay(VarTypes, HeadVarTypes),
+                vartypes_overlay_corresponding_lists(HeadVars, ArgTypes,
+                    VarTypes, UpdatedVarTypes),
+                ml_gen_local_var_decls(VarSet, UpdatedVarTypes,
                     Context, CopiedOutputVars, OutputVarLocals, !Info)
             ),
             MLDS_Context = mlds_make_context(Context),

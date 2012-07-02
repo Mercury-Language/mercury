@@ -835,7 +835,7 @@ insert_reg_wrappers_construct(CellVar, ConsId, OrigVars, Vars,
         !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
     lambda_info_get_vartypes(!.Info, VarTypes),
-    map.lookup(VarTypes, CellVar, CellType),
+    lookup_var_type(VarTypes, CellVar, CellType),
     (
         % Replace all type parameters by phony type variables.
         % See EXAMPLE 3 at the top of the file.
@@ -1053,7 +1053,7 @@ insert_reg_wrappers_disjunct(InstMap0, Goal0, Goal, InstMap, !Info, !Specs) :-
 insert_reg_wrappers_switch(Var, Cases0, Cases, NonLocals, InstMap0, InstMap,
         !Info, !Specs) :-
     lambda_info_get_vartypes(!.Info, VarTypes),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     list.map2_foldl2(insert_reg_wrappers_case(Var, Type, InstMap0),
         Cases0, Cases1, InstMaps1, !Info, !Specs),
     common_instmap_delta(InstMap0, NonLocals, InstMaps1, CommonDelta, !Info),
@@ -1153,7 +1153,7 @@ insert_reg_wrappers_higher_order_call(CallVar, Vars0, Vars, ArgModes, ArgRegs,
         WrapGoals, InstMap0, Context, !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
     lambda_info_get_vartypes(!.Info, VarTypes),
-    map.lookup(VarTypes, CallVar, CallVarType),
+    lookup_var_type(VarTypes, CallVar, CallVarType),
     instmap_lookup_var(InstMap0, CallVar, CallVarInst),
     type_is_higher_order_details_det(CallVarType, _, PredOrFunc, _, ArgTypes),
     list.length(ArgTypes, Arity),
@@ -1298,7 +1298,7 @@ match_arg(InstMapBefore, Context, ArgType, ExpectInst, OrigVar, Var,
             ArgPredArgTypes),
         ArgPredArgTypes = [_ | _]
     ->
-        map.lookup(VarTypes, OrigVar, OrigVarType),
+        lookup_var_type(VarTypes, OrigVar, OrigVarType),
         type_is_higher_order_details_det(OrigVarType, _, _, _,
             OrigPredArgTypes),
         list.length(OrigPredArgTypes, Arity),
@@ -1530,7 +1530,7 @@ match_var_inst(Var, ExpectInst, InstMap0, Context, !Renaming, !WrapGoals,
     ( inst_is_free(ModuleInfo, ExpectInst) ->
         true
     ;
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         match_arg(InstMap0, Context, VarType, ExpectInst, Var, SubstVar,
             [], WrapGoals, !Info, !Specs),
         ( Var = SubstVar ->
@@ -1554,7 +1554,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     lambda_info_get_vartypes(!.Info, VarTypes0),
     lambda_info_get_module_info(!.Info, ModuleInfo0),
 
-    map.lookup(VarTypes0, OrigVar, OrigVarType),
+    lookup_var_type(VarTypes0, OrigVar, OrigVarType),
     type_is_higher_order_details_det(OrigVarType, Purity, PredOrFunc,
         EvalMethod, PredArgTypes),
 
@@ -1579,7 +1579,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
 
     % Create the replacement variable Var.
     varset.new_var(Var, VarSet1, VarSet),
-    map.det_insert(Var, OrigVarType, VarTypes1, VarTypes),
+    add_var_type(Var, OrigVarType, VarTypes1, VarTypes),
     lambda_info_set_varset(VarSet, !Info),
     lambda_info_set_vartypes(VarTypes, !Info),
 
@@ -1624,7 +1624,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
 create_fresh_vars([], [], !VarSet, !VarTypes).
 create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
     varset.new_var(Var, !VarSet),
-    map.det_insert(Var, Type, !VarTypes),
+    add_var_type(Var, Type, !VarTypes),
     create_fresh_vars(Types, Vars, !VarSet, !VarTypes).
 
 :- pred make_reg_r_headvars(vartypes::in, prog_var::in, ho_arg_reg::in,
@@ -1633,7 +1633,7 @@ create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
 make_reg_r_headvars(VarTypes, Var, RegType, !RegR_HeadVars) :-
     (
         RegType = ho_arg_reg_r,
-        map.lookup(VarTypes, Var, VarType),
+        lookup_var_type(VarTypes, Var, VarType),
         ( VarType = float_type ->
             set_of_var.insert(Var, !RegR_HeadVars)
         ;

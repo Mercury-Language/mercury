@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 1997-2003, 2005-2011 The University of Melbourne.
+% Copyright (C) 1997-2003, 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -268,7 +268,7 @@ find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes) = Zeros :-
     prog_var::in) is semidet.
 
 is_zero_size_prog_var(ModuleInfo, VarTypes, Var) :-
-    Type = VarTypes ^ det_elem(Var),
+    lookup_var_type(VarTypes, Var, Type),
     (
         term_norm.zero_size_type(ModuleInfo, Type)
     ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -192,7 +192,7 @@ is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap, !MaybeEnd,
     map.to_assoc_list(CaseSolnMap, CaseSolns),
     reset_to_position(CurPos, !CI),
     VarTypes = get_var_types(!.CI),
-    list.map(map.lookup(VarTypes), OutVars, OutTypes),
+    lookup_var_types(VarTypes, OutVars, OutTypes),
     ( project_all_to_one_solution(CaseSolns, CaseValuePairs) ->
         CaseConsts = all_one_soln(CaseValuePairs),
         assoc_list.values(CaseValuePairs, CaseValues)

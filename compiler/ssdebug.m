@@ -981,7 +981,7 @@ make_retry_var(VarName, RetryVar, !VarSet, !VarTypes) :-
     TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_retry"), 0),
     construct_type(TypeCtor, [], RetryType),
     varset.new_named_var(VarName, RetryVar, !VarSet),
-    map.det_insert(RetryVar, RetryType, !VarTypes).
+    add_var_type(RetryVar, RetryType, !VarTypes).
 
     % Create the goal for recursive call in the case of a retry.
     %
@@ -1150,7 +1150,7 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar,
     varset.new_named_var("ProcId", ProcIdVar, !VarSet),
     ConsId = cons(qualified(SSDBModule, "ssdb_proc_id"), 2, TypeCtor),
     construct_type(TypeCtor, [], ProcIdType),
-    map.det_insert(ProcIdVar, ProcIdType, !VarTypes),
+    add_var_type(ProcIdVar, ProcIdType, !VarTypes),
     construct_functor(ProcIdVar, ConsId, [ModuleNameVar, PredNameVar],
         ConstructProcIdGoal),
 
@@ -1204,7 +1204,7 @@ check_arguments_modes(ModuleInfo, HeadModes) :-
 make_arg_list(_Pos, _InstMap, [], _Renaming, OutVar, [Goal], !ModuleInfo,
         !ProcInfo, !PredInfo, !VarSet, !VarTypes, !BoundVarDescs) :-
     varset.new_named_var("EmptyVarList", OutVar, !VarSet),
-    map.det_insert(OutVar, list_var_value_type, !VarTypes),
+    add_var_type(OutVar, list_var_value_type, !VarTypes),
     ListTypeSymName = qualified(mercury_list_module, "list"),
     ListTypeCtor = type_ctor(ListTypeSymName, 1),
     ConsId = cons(qualified(mercury_list_module, "[]" ), 0, ListTypeCtor),
@@ -1217,7 +1217,7 @@ make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar,
     make_arg_list(Pos, InstMap, ProgVars, Renaming, OutVar0, Goals0,
         !ModuleInfo, !ProcInfo, !PredInfo, !VarSet, !VarTypes, !BoundVarDescs),
 
-    map.lookup(!.VarTypes, ProgVar, ProgVarType),
+    lookup_var_type(!.VarTypes, ProgVar, ProgVarType),
     (
         ( ProgVarType = io_state_type
         ; ProgVarType = io_io_type
@@ -1241,7 +1241,7 @@ make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar,
         ),
 
         varset.new_named_var("FullListVar", OutVar, !VarSet),
-        map.det_insert(OutVar, list_var_value_type, !VarTypes),
+        add_var_type(OutVar, list_var_value_type, !VarTypes),
         ListTypeSymName = qualified(mercury_list_module, "list"),
         ListTypeCtor = type_ctor(ListTypeSymName, 1),
         ConsId = cons(qualified(unqualified("list"), "[|]" ), 2, ListTypeCtor),
@@ -1304,7 +1304,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
 
         create_poly_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, PolyInfo0),
         term.context_init(Context),
-        map.lookup(!.VarTypes, VarToInspect, MerType),
+        lookup_var_type(!.VarTypes, VarToInspect, MerType),
         polymorphism_make_type_info_var(MerType, Context, TypeInfoVar,
             TypeInfoGoals0, PolyInfo0, PolyInfo),
         poly_info_extract(PolyInfo, !PredInfo, !ProcInfo, !:ModuleInfo),
@@ -1315,7 +1315,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         % Constructor of the variable's description.
         ConsId = cons(qualified(SSDBModule, "bound_head_var"), 3,
             VarValueTypeCtor),
-        map.det_insert(VarDesc, VarValueType, !VarTypes),
+        add_var_type(VarDesc, VarValueType, !VarTypes),
 
         % Renaming contains the names of all instantiated arguments
         % during the execution of the procedure's body.
@@ -1341,7 +1341,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
     ;
         ConsId = cons(qualified(SSDBModule, "unbound_head_var"), 2,
             VarValueTypeCtor),
-        map.det_insert(VarDesc, VarValueType, !VarTypes),
+        add_var_type(VarDesc, VarValueType, !VarTypes),
         construct_functor(VarDesc, ConsId, [VarNameVar, VarPosVar],
             ConstructVarGoal),
 

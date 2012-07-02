@@ -190,7 +190,7 @@
 
 :- type type_info_map       == map(mer_type, prog_var).
 :- type type_ctor_map       == map(type_ctor, prog_var).
-:- type rev_type_info_map   == vartypes.
+:- type rev_type_info_map   == map(prog_var, mer_type).
 :- type rev_type_ctor_map   == map(prog_var, type_ctor).
 :- type known_size_map      == map(prog_var, int).
 
@@ -613,7 +613,7 @@ size_prof_process_switch(First0, First, Later0, Later, !Info,
 
 size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
         Args, ArgModes, How, Unique, GoalInfo, GoalExpr, !Info) :-
-    map.lookup(!.Info ^ spi_vartypes, Var, VarType),
+    lookup_var_type(!.Info ^ spi_vartypes, Var, VarType),
     type_to_ctor_det(VarType, VarTypeCtor),
     type_ctor_module_name_arity(VarTypeCtor,
         VarTypeCtorModule, VarTypeCtorName, _),
@@ -673,7 +673,7 @@ size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
 
 size_prof_process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr,
         !Info) :-
-    map.lookup(!.Info ^ spi_vartypes, Var, VarType),
+    lookup_var_type(!.Info ^ spi_vartypes, Var, VarType),
     type_to_ctor_det(VarType, VarTypeCtor),
     type_ctor_module_name_arity(VarTypeCtor, VarTypeCtorModule,
         VarTypeCtorName, _),
@@ -792,7 +792,7 @@ size_prof_process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr,
 size_prof_process_args([], !KnownSize, !MaybeSizeVar, _, [], !Info).
 size_prof_process_args([Arg | Args], !KnownSize, !MaybeSizeVar, Context, Goals,
         !Info) :-
-    map.lookup(!.Info ^ spi_vartypes, Arg, Type),
+    lookup_var_type(!.Info ^ spi_vartypes, Arg, Type),
     ( map.search(!.Info ^ spi_known_size_map, Arg, ArgSize) ->
         !:KnownSize = !.KnownSize + ArgSize,
         ArgGoals = []
@@ -1042,7 +1042,7 @@ get_new_var(Type, Prefix, Var, !Info) :-
     string.int_to_string(VarNum, VarNumStr),
     string.append(Prefix, VarNumStr, Name),
     varset.name_var(Var, Name, VarSet1,  VarSet),
-    map.set(Var, Type, VarTypes0, VarTypes),
+    add_var_type(Var, Type, VarTypes0, VarTypes),
     !Info ^ spi_varset := VarSet,
     !Info ^ spi_vartypes := VarTypes.
 

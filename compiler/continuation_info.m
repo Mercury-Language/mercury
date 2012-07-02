@@ -706,7 +706,7 @@ generate_resume_layout_for_vars([], _, _, _, _, !VarInfos, !TVars).
 generate_resume_layout_for_vars([Var - LvalSet | VarLvals], InstMap,
         VarTypes, ProcInfo, ModuleInfo, !VarInfos, !TVars) :-
     (
-        map.lookup(VarTypes, Var, Type),
+        lookup_var_type(VarTypes, Var, Type),
         check_dummy_type(ModuleInfo, Type) = is_dummy_type
     ->
         true
@@ -771,7 +771,7 @@ generate_layout_for_var(_ModuleInfo, ProcInfo, _InstMap, Var, LiveValueType,
     ;
         Name = ""
     ),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
 
 %   In some programs, specifically zm_enum.m, the Mercury program generated
 %   for the enum.zinc g12 test case, this call to inst_is_ground can be
@@ -908,7 +908,7 @@ build_table_arg_info(VarSet, VarTypes, [Var - SlotNum | NumberedVars],
         [ArgLayout | ArgLayouts], !TypeVars) :-
     term.var_to_int(Var, VarNum),
     varset.lookup_name(VarSet, Var, VarName),
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     ArgLayout = table_arg_info(VarNum, VarName, SlotNum, Type),
     type_vars(Type, VarTypeVars),
     set.insert_list(VarTypeVars, !TypeVars),

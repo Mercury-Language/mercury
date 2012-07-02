@@ -522,11 +522,11 @@ import_status_to_string(status_exported_to_submodules) =
     vartypes::in, tvarset::in, io::di, io::uo) is det.
 
 write_var_types(Indent, VarSet, AppendVarNums, VarTypes, TVarSet, !IO) :-
-    map.count(VarTypes, NumVarTypes),
+    vartypes_count(VarTypes, NumVarTypes),
     write_indent(Indent, !IO),
     io.write_string("% variable types map ", !IO),
     io.format("(%d entries):\n", [i(NumVarTypes)], !IO),
-    map.keys(VarTypes, Vars),
+    vartypes_vars(VarTypes, Vars),
     write_var_types_loop(Vars, Indent, VarSet, AppendVarNums, VarTypes,
         TVarSet, !IO).
 
@@ -536,7 +536,7 @@ write_var_types(Indent, VarSet, AppendVarNums, VarTypes, TVarSet, !IO) :-
 write_var_types_loop([], _, _, _, _, _, !IO).
 write_var_types_loop([Var | Vars], Indent, VarSet, AppendVarNums, VarTypes,
         TypeVarSet, !IO) :-
-    map.lookup(VarTypes, Var, Type),
+    lookup_var_type(VarTypes, Var, Type),
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
     mercury_output_var(VarSet, AppendVarNums, Var, !IO),
