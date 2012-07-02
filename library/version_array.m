@@ -13,7 +13,7 @@
 %
 % Version types are efficient pure implementations of typically imperative
 % structures, subject to the following caveat: efficient access is only
-% guaranteed for the "latest" version of a given structure.  An older version
+% guaranteed for the "latest" version of a given structure. An older version
 % incurs an access cost proportional to the number of its descendants.
 %
 % For example, if A0 is a version array, and A1 is created by updating A0,
@@ -30,8 +30,8 @@
 % structures and do not depend upon uniqueness, while in many circumstances
 % offering similar levels of performance.
 %
-% This module implements version arrays.  A version array provides O(1)
-% access and update for the "latest" version of the array.  "Older"
+% This module implements version arrays. A version array provides O(1)
+% access and update for the "latest" version of the array. "Older"
 % versions of the array incur an O(k) penalty on accesses where k is
 % the number of updates that have been made since.
 %
@@ -42,7 +42,7 @@
 % Version arrays are zero based.
 %
 % XXX This implementation is not yet guaranteed to work with the agc (accurate
-% garbage collection) grades.  Specifically, MR_deep_copy and MR_agc_deep_copy
+% garbage collection) grades. Specifically, MR_deep_copy and MR_agc_deep_copy
 % currently do not recognise version arrays.
 %
 %-----------------------------------------------------------------------------%
@@ -71,7 +71,7 @@
     %
 :- func empty = version_array(T).
 
-    % init(N, X returns an array of size N with each item initialised to X.
+    % init(N, X) returns an array of size N with each item initialised to X.
     %
 :- func init(int, T) = version_array(T).
 
@@ -118,9 +118,9 @@
     %
 :- func lookup(version_array(T), int) = T.
 
-    % (A ^ elem(I) := X) is a copy of array A with item I updated to be
-    % X.  An exception is thrown if I is out of bounds.  set/4 is an
-    % equivalent predicate.
+    % (A ^ elem(I) := X) is a copy of array A with item I updated to be X.
+    % An exception is thrown if I is out of bounds. set/4 is an equivalent
+    % predicate.
     %
 :- func (version_array(T) ^ elem(int) := T) = version_array(T).
 
@@ -138,8 +138,8 @@
 
     % resize(A, N, X) returns a new array whose items from
     % 0..min(size(A), N - 1) are taken from A and whose items
-    % from min(size(A), N - 1)..(N - 1) (if any) are initialised
-    % to X.  A predicate version is also provided.
+    % from min(size(A), N - 1)..(N - 1) (if any) are initialised to X.
+    % A predicate version is also provided.
     %
 :- func resize(version_array(T), int, T) = version_array(T).
 :- pred resize(int::in, T::in, version_array(T)::in, version_array(T)::out)
@@ -167,7 +167,7 @@
 :- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
 :- mode foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-   
+
     % foldl2(P, A, !Acc1, !Acc2) is equivalent to
     % list.foldl2(P, list(A), !Acc1, !Acc2) but more efficient.
     %
@@ -188,7 +188,7 @@
     % foldr(F, A, X) is equivalent to list.foldr(F, list(A), Xs).
     %
 :- func foldr(func(T1, T2) = T2, version_array(T1), T2) = T2.
-    
+
 :- pred foldr(pred(T1, T2, T2), version_array(T1), T2, T2).
 :- mode foldr(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
@@ -211,19 +211,19 @@
 :- mode foldr2(pred(in, in, out, di, uo) is semidet, in,
     in, out, di, uo) is semidet.
 
-    % copy(A) is a copy of array A.  Access to the copy is O(1).
+    % copy(A) is a copy of array A. Access to the copy is O(1).
     %
 :- func copy(version_array(T)) = version_array(T).
 
-    % unsafe_rewind(A) produces a version of A for which all accesses are
-    % O(1).  Invoking this predicate renders A and all later versions undefined
-    % that were derived by performing individual updates.  Only use this when
-    % you are absolutely certain there are no live references to A or later
-    % versions of A.  (A predicate version is also provided.)
+    % unsafe_rewind(A) produces a version of A for which all accesses are O(1).
+    % Invoking this predicate renders A and all later versions undefined that
+    % were derived by performing individual updates. Only use this when you are
+    % absolutely certain there are no live references to A or later versions
+    % of A. (A predicate version is also provided.)
     %
 :- func unsafe_rewind(version_array(T)) = version_array(T).
 :- pred unsafe_rewind(version_array(T)::in, version_array(T)::out) is det.
-    
+
     % Convert a version_array to a pretty_printer.doc for formatting.
     %
 :- func version_array_to_doc(version_array(T)) = pretty_printer.doc.
@@ -250,15 +250,17 @@ new(N, X) = version_array.init(N, X).
 %-----------------------------------------------------------------------------%
 
 version_array([]) = version_array.empty.
+version_array([X | Xs]) = VA :-
+    VA0 = version_array.init(1 + list.length(Xs), X),
+    version_array_2(1, Xs, VA0, VA).
 
-version_array([X | Xs]) =
-    version_array_2(1, Xs, version_array.init(1 + length(Xs), X)).
+:- pred version_array_2(int::in, list(T)::in,
+    version_array(T)::in, version_array(T)::out) is det.
 
-:- func version_array_2(int, list(T), version_array(T)) = version_array(T).
-
-version_array_2(_, [],       VA) = VA.
-version_array_2(I, [X | Xs], VA) =
-    version_array_2(I + 1, Xs, VA ^ elem(I) := X).
+version_array_2(_, [], !VA).
+version_array_2(I, [X | Xs], !VA) :-
+    set(I, X, !VA),
+    version_array_2(I + 1, Xs, !VA).
 
 from_list(Xs) = version_array(Xs).
 
@@ -266,27 +268,29 @@ from_list(Xs) = version_array(Xs).
 
 :- pragma inline(version_array.elem/2).
 
-VA ^ elem(I) = X :-
+lookup(VA, I) = X :-
     ( if get_if_in_range(VA, I, X0) then
         X = X0
       else
-        out_of_bounds_error(I, max(VA), "version_array.elem")
+        out_of_bounds_error(I, max(VA), "version_array.lookup")
     ).
 
-lookup(VA, I) = VA ^ elem(I).
+VA ^ elem(I) =
+    lookup(VA, I).
 
 %-----------------------------------------------------------------------------%
 
 :- pragma inline(version_array.'elem :='/3).
 
-(VA0 ^ elem(I) := X) = VA :-
-    ( if set_if_in_range(VA0, I, X, VA1) then
-        VA = VA1
-      else
-        out_of_bounds_error(I, max(VA0), "version_array.'elem :='")
+set(I, X, !VA) :-
+    ( if set_if_in_range(I, X, !VA) then
+        true
+    else
+        out_of_bounds_error(I, max(!.VA), "version_array.set")
     ).
 
-set(I, X, VA, VA ^ elem(I) := X).
+(VA0 ^ elem(I) := X) = VA :-
+    set(I, X, VA0, VA).
 
 %-----------------------------------------------------------------------------%
 
@@ -295,8 +299,10 @@ max(VA) = size(VA) - 1.
 %-----------------------------------------------------------------------------%
 
 copy(VA) =
-    ( if size(VA) = 0 then VA
-                      else resize(VA, size(VA), VA ^ elem(0))
+    ( if size(VA) = 0 then
+        VA
+    else
+        resize(VA, size(VA), lookup(VA, 0))
     ).
 
 %-----------------------------------------------------------------------------%
@@ -312,8 +318,10 @@ foldl(F, VA, Acc) = do_foldl_func(F, VA, Acc, 0, size(VA)).
 :- func do_foldl_func(func(T1, T2) = T2, version_array(T1), T2, int, int) = T2.
 
 do_foldl_func(F, VA, Acc, Lo, Hi) =
-    ( if Lo < Hi then do_foldl_func(F, VA, F(VA ^ elem(Lo), Acc), Lo + 1, Hi)
-                 else Acc
+    ( if Lo < Hi then
+        do_foldl_func(F, VA, F(lookup(VA, Lo), Acc), Lo + 1, Hi)
+    else
+        Acc
     ).
 
 %-----------------------------------------------------------------------------%
@@ -334,9 +342,9 @@ foldl(P, VA, !Acc) :-
 
 do_foldl_pred(P, VA, Lo, Hi, !Acc) :-
     ( if Lo < Hi then
-        P(VA ^ elem(Lo), !Acc),
+        P(lookup(VA, Lo), !Acc),
         do_foldl_pred(P, VA, Lo + 1, Hi, !Acc)
-      else
+    else
         true
     ).
 
@@ -362,9 +370,9 @@ foldl2(P, VA, !Acc1, !Acc2) :-
 
 do_foldl2(P, VA, Lo, Hi, !Acc1, !Acc2) :-
     ( if Lo < Hi then
-        P(VA ^ elem(Lo), !Acc1, !Acc2),
+        P(lookup(VA, Lo), !Acc1, !Acc2),
         do_foldl2(P, VA, Lo + 1, Hi, !Acc1, !Acc2)
-      else
+    else
         true
     ).
 
@@ -375,8 +383,10 @@ foldr(F, VA, Acc) = do_foldr_func(F, VA, Acc, version_array.max(VA)).
 :- func do_foldr_func(func(T1, T2) = T2, version_array(T1), T2, int) = T2.
 
 do_foldr_func(F, VA, Acc, Hi) =
-    ( if 0 =< Hi then do_foldr_func(F, VA, F(VA ^ elem(Hi), Acc), Hi - 1)
-                 else Acc
+    ( if 0 =< Hi then
+        do_foldr_func(F, VA, F(lookup(VA, Hi), Acc), Hi - 1)
+    else
+        Acc
     ).
 
 %-----------------------------------------------------------------------------%
@@ -397,9 +407,9 @@ foldr(P, VA, !Acc) :-
 
 do_foldr_pred(P, VA, I, !Acc) :-
     ( if I >= 0 then
-        P(VA ^ elem(I), !Acc),
+        P(lookup(VA, I), !Acc),
         do_foldr_pred(P, VA, I - 1, !Acc)
-      else
+    else
         true
     ).
 
@@ -425,9 +435,9 @@ foldr2(P, VA, !Acc1, !Acc2) :-
 
 do_foldr2(P, VA, I, !Acc1, !Acc2) :-
     ( if I >= 0 then
-        P(VA ^ elem(I), !Acc1, !Acc2),
+        P(lookup(VA, I), !Acc1, !Acc2),
         do_foldr2(P, VA, I - 1, !Acc1, !Acc2)
-      else
+    else
         true
     ).
 
@@ -458,7 +468,7 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
         comparison is cmp_version_array.
 
 :- pragma foreign_type("Java", version_array(T),
-    "jmercury.version_array.ML_va")
+        "jmercury.version_array.ML_va")
     where
         equality   is eq_version_array,
         comparison is cmp_version_array.
@@ -482,9 +492,9 @@ eq_version_array(VAa, VAb) :-
 
 eq_version_array_2(I, VAa, VAb) :-
     ( if I >= 0 then
-        VAa ^ elem(I) = VAb ^ elem(I),
+        lookup(VAa, I) = lookup(VAb, I),
         eq_version_array_2(I - 1, VAa, VAb)
-      else
+    else
         true
     ).
 
@@ -513,7 +523,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     ( if I >= Size then
         R = (=)
       else
-        compare(R0, VAa ^ elem(I), VAb ^ elem(I)),
+        compare(R0, lookup(VAa, I), lookup(VAb, I)),
         (
             R0 = (=),
             cmp_version_array_2(I + 1, Size, VAa, VAb, R)
@@ -777,11 +787,11 @@ resize(N, X, VA, resize(VA, N, X)).
     }
 ").
 
-:- pred set_if_in_range(version_array(T)::in, int::in, T::in,
-    version_array(T)::out) is semidet.
+:- pred set_if_in_range(int::in, T::in,
+    version_array(T)::in, version_array(T)::out) is semidet.
 
 :- pragma foreign_proc("C",
-    set_if_in_range(VA0::in, I::in, X::in, VA::out),
+    set_if_in_range(I::in, X::in, VA0::in, VA::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -789,7 +799,7 @@ resize(N, X, VA, resize(VA, N, X)).
 ").
 
 :- pragma foreign_proc("C#",
-    set_if_in_range(VA0::in, I::in, X::in, VA::out),
+    set_if_in_range(I::in, X::in, VA0::in, VA::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -803,7 +813,7 @@ resize(N, X, VA, resize(VA, N, X)).
 ").
 
 :- pragma foreign_proc("Java",
-    set_if_in_range(VA0::in, I::in, X::in, VA::out),
+    set_if_in_range(I::in, X::in, VA0::in, VA::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -877,7 +887,7 @@ ML_va_size_dolock(ML_va_ptr);
 
 /*
 ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
-** in VA (counting from zero) and returns MR_TRUE.  Otherwise it
+** in VA (counting from zero) and returns MR_TRUE. Otherwise it
 ** returns MR_FALSE.
 */
 extern MR_bool
@@ -886,7 +896,7 @@ ML_va_get_dolock(ML_va_ptr, MR_Integer, MR_Word *);
 /*
 ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
 ** updated with the Ith item as X (counting from zero) and
-** returns MR_TRUE.  Otherwise it returns MR_FALSE.
+** returns MR_TRUE. Otherwise it returns MR_FALSE.
 */
 extern MR_bool
 ML_va_set_dolock(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *,
@@ -917,7 +927,7 @@ ML_va_size(ML_va_ptr);
 
 /*
 ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
-** in VA (counting from zero) and returns MR_TRUE.  Otherwise it
+** in VA (counting from zero) and returns MR_TRUE. Otherwise it
 ** returns MR_FALSE.
 */
 static MR_bool
@@ -926,18 +936,18 @@ ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr);
 /*
 ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
 ** updated with the Ith item as X (counting from zero) and
-** returns MR_TRUE.  Otherwise it returns MR_FALSE.
+** returns MR_TRUE. Otherwise it returns MR_FALSE.
 */
 static MR_bool
 ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *,
     MR_AllocSiteInfoPtr alloc_id);
-    
+
 /*
 ** Create a copy of VA0 as a new array.
 */
 static ML_va_ptr
 ML_va_flat_copy(const ML_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id);
-    
+
 /*
 ** Update the array VA using the override values in VA0
 ** i.e. recreate the state of the version array as captured in VA0.
@@ -1848,14 +1858,18 @@ version_array_to_doc(A) =
 
 :- func version_array_to_doc_2(int, version_array(T)) = doc.
 
-version_array_to_doc_2(I, A) =
-    ( if I > version_array.max(A) then
+version_array_to_doc_2(I, VA) =
+    ( if I > version_array.max(VA) then
         str("")
-      else
+    else
         docs([
-          format_arg(format(A ^ elem(I))),
-          ( if I = version_array.max(A) then str("") else group([str(", "), nl]) ),
-          format_susp((func) = version_array_to_doc_2(I + 1, A))
+            format_arg(format(lookup(VA, I))),
+            ( if I = version_array.max(VA) then
+                str("")
+            else
+                group([str(", "), nl])
+            ),
+            format_susp((func) = version_array_to_doc_2(I + 1, VA))
         ])
     ).
 
