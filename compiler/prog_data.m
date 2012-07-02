@@ -2196,24 +2196,21 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     %
 :- type pred_inst_info
     --->    pred_inst_info(
-                pred_or_func,       % Is this a higher-order func mode or a
-                                    % higher-order pred mode?
+                % Is this a higher-order func mode or a higher-order pred mode?
+                pred_or_func,
 
-                list(mer_mode),     % The modes of the additional (i.e.
-                                    % not-yet-supplied) arguments of the pred;
-                                    % for a function, this includes the mode
-                                    % of the return value as the last element
-                                    % of the list.
+                % The modes of the additional (i.e. not-yet-supplied) arguments
+                % of the pred; for a function, this includes the mode of the
+                % return value as the last element of the list.
+                list(mer_mode),
 
+                % The register type to use for each of the additional arguments
+                % of the pred. This field is only needed when float registers
+                % exist, and is only set after the float reg wrappers pass.
                 arg_reg_type_info,
-                                    % The register type to use for each of the
-                                    % additional arguments of the pred. This
-                                    % field is only needed when float registers
-                                    % exist, and is only set after the float
-                                    % reg wrappers pass.
 
-                determinism         % The determinism of the predicate or
-                                    % function.
+                % The determinism of the predicate or function.
+                determinism
             ).
 
 :- type arg_reg_type_info
@@ -2415,11 +2412,13 @@ add_all_modules(Visibility, ModuleName @ qualified(Parent, _), !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 add_module(visibility_public, Module, !UsedModules) :-
-    !UsedModules ^ int_used_modules :=
-        set.insert(!.UsedModules ^ int_used_modules, Module).
+    IntUsedModules0 = !.UsedModules ^ int_used_modules,
+    set.insert(Module, IntUsedModules0, IntUsedModules),
+    !UsedModules ^ int_used_modules := IntUsedModules.
 add_module(visibility_private, Module, !UsedModules) :-
-    !UsedModules ^ impl_used_modules :=
-        set.insert(!.UsedModules ^ impl_used_modules, Module).
+    ImplUsedModules0 = !.UsedModules ^ impl_used_modules,
+    set.insert(Module, ImplUsedModules0, ImplUsedModules),
+    !UsedModules ^ impl_used_modules := ImplUsedModules.
 
 %-----------------------------------------------------------------------------%
 %
