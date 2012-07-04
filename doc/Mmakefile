@@ -270,11 +270,15 @@ library-menu.texi_pp: $(LIBRARY_DIR)/*.m
 				;;					\
 			$(LIBRARY_DIR)/region_builtin.m)		\
 				;;					\
+			$(LIBRARY_DIR)/relation.m)			\
+				;;					\
 			$(LIBRARY_DIR)/robdd.m)				\
 				;;					\
 			$(LIBRARY_DIR)/rtti_implementation.m)		\
 				;;					\
 			$(LIBRARY_DIR)/stm_builtin.m)			\
+				;;					\
+			$(LIBRARY_DIR)/svrelation.m)			\
 				;;					\
 			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
@@ -318,11 +322,15 @@ library-chapters.texi_pp: $(LIBRARY_DIR)/[a-z]*.m
 				;;					\
 			$(LIBRARY_DIR)/region_builtin.m)		\
 				;;					\
+			$(LIBRARY_DIR)/relation.m)			\
+				;;					\
 			$(LIBRARY_DIR)/robdd.m)				\
 				;;					\
 			$(LIBRARY_DIR)/rtti_implementation.m)		\
 				;;					\
 			$(LIBRARY_DIR)/stm_builtin.m)			\
+				;;					\
+			$(LIBRARY_DIR)/svrelation.m)			\
 				;;					\
 			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
