@@ -254,6 +254,10 @@ library-menu.texi_pp: $(LIBRARY_DIR)/*.m
 				;;					\
 			$(LIBRARY_DIR)/erlang_rtti_implementation.m)	\
 				;;					\
+			$(LIBRARY_DIR)/graph.m)				\
+				;;					\
+			$(LIBRARY_DIR)/group.m)				\
+				;;					\
 			$(LIBRARY_DIR)/mer_std.m)			\
 				;;					\
 			$(LIBRARY_DIR)/mutvar.m)			\
@@ -297,6 +301,10 @@ library-chapters.texi_pp: $(LIBRARY_DIR)/[a-z]*.m
 			$(LIBRARY_DIR)/erlang_conf.m)                   \
 				;;					\
 			$(LIBRARY_DIR)/erlang_rtti_implementation.m)	\
+				;;					\
+			$(LIBRARY_DIR)/graph.m)				\
+				;;					\
+			$(LIBRARY_DIR)/group.m)				\
 				;;					\
 			$(LIBRARY_DIR)/mer_std.m)			\
 				;;					\
