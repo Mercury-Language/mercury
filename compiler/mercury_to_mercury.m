@@ -2766,11 +2766,11 @@ mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
         Indent1 = Indent + 1,
         io.write_string("(", !IO),
         mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(G1, VarSet, Indent1, !IO),
+        mercury_output_connected_goal(G1, VarSet, Indent1, !IO),
         mercury_output_newline(Indent, !IO),
         io.write_string("=>", !IO),
         mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(G2, VarSet, Indent1, !IO),
+        mercury_output_connected_goal(G2, VarSet, Indent1, !IO),
         mercury_output_newline(Indent, !IO),
         io.write_string(")", !IO)
     ;
@@ -2778,11 +2778,11 @@ mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
         Indent1 = Indent + 1,
         io.write_string("(", !IO),
         mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(G1, VarSet, Indent1, !IO),
+        mercury_output_connected_goal(G1, VarSet, Indent1, !IO),
         mercury_output_newline(Indent, !IO),
         io.write_string("<=>", !IO),
         mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(G2, VarSet, Indent1, !IO),
+        mercury_output_connected_goal(G2, VarSet, Indent1, !IO),
         mercury_output_newline(Indent, !IO),
         io.write_string(")", !IO)
     ;
@@ -3107,6 +3107,49 @@ mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
         mercury_output_term(VarSet, no, A, !IO),
         io.write_string(" = ", !IO),
         mercury_output_term_nq(VarSet, no, next_to_graphic_token, B, !IO)
+    ).
+
+:- pred mercury_output_connected_goal(goal::in, prog_varset::in,
+    int::in, io::di, io::uo) is det.
+
+mercury_output_connected_goal(Goal, VarSet, Indent, !IO) :-
+    Goal = Expr - _Context,
+    (
+        ( Expr = fail_expr
+        ; Expr = true_expr
+        ; Expr = implies_expr(_, _)
+        ; Expr = equivalent_expr(_, _)
+        ; Expr = try_expr(_, _, _, _, _, _)
+        ; Expr = if_then_else_expr(_, _, _, _, _)
+        ; Expr = not_expr(_)
+        ; Expr = par_conj_expr(_, _)
+        ; Expr = disj_expr(_, _)
+        ; Expr = event_expr(_, _)
+        ; Expr = call_expr(_, _, _)
+        ; Expr = unify_expr(_, _, _)
+        ),
+        mercury_output_goal(Goal, VarSet, Indent, !IO)
+    ;
+        ( Expr = some_expr(_, _)
+        ; Expr = some_state_vars_expr(_, _)
+        ; Expr = all_expr(_, _)
+        ; Expr = all_state_vars_expr(_, _)
+        ; Expr = promise_equivalent_solutions_expr(_, _, _, _, _)
+        ; Expr = promise_equivalent_solution_sets_expr(_, _, _, _, _)
+        ; Expr = promise_equivalent_solution_arbitrary_expr(_, _, _, _, _)
+        ; Expr = promise_purity_expr(_, _)
+        ; Expr = require_detism_expr(_, _)
+        ; Expr = require_complete_switch_expr(_, _)
+        ; Expr = conj_expr(_, _)
+        ; Expr = atomic_expr(_, _, _, _, _)
+        ; Expr = trace_expr(_, _, _, _, _)
+        ),
+        io.write_string("(", !IO),
+        Indent1 = Indent + 1,
+        mercury_output_newline(Indent1, !IO),
+        mercury_output_goal(Goal, VarSet, Indent1, !IO),
+        mercury_output_newline(Indent, !IO),
+        io.write_string(")", !IO)
     ).
 
 :- pred mercury_output_promise_eqv_solutions_goal(list(prog_var)::in,
@@ -4387,11 +4430,7 @@ mercury_format_term_nq(VarSet, AppendVarnums, NextToGraphicToken,
         Functor = term.atom(FunctorName),
         mercury_infix_op(FunctorName)
     ->
-        (
-            ( FunctorName = ":"
-            ; FunctorName = "."
-            )
-        ->
+        ( FunctorName = "." ->
             mercury_format_term_nq(VarSet, AppendVarnums,
                 next_to_graphic_token, Arg1, !U),
             add_string(".", !U),
