@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 1997-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -162,7 +162,7 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
         )
     ; check_marker(Markers, marker_class_instance_method) ->
         Pieces = [words("type class method implementation")]
-    ; pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)) ->
+    ; pred_info_is_promise(PredInfo, PromiseType) ->
         Pieces = [words("`" ++ promise_to_string(PromiseType) ++ "'"),
             words("declaration")]
     ;

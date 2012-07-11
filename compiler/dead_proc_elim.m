@@ -1109,7 +1109,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 PredArity = 1
             ;
                 % Don't eliminate the clauses for promises.
-                pred_info_get_goal_type(PredInfo, goal_type_promise(_))
+                pred_info_is_promise(PredInfo, _)
             )
         ->
             set_tree234.insert(qualified(PredModule, PredName), !NeededNames),

@@ -256,16 +256,19 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                     !PredInfo),
 
                 % Check if there are still no modes for the predicate, and
-                % if so, set the `infer_modes' flag for that predicate.
+                % if so, set the `infer_modes' marker for that predicate.
+                % Predicates representing promises do not need mode inference.
 
                 ProcIds = pred_info_all_procids(!.PredInfo),
                 (
                     ProcIds = [],
+                    GoalType \= goal_type_promise(_)
+                ->
                     pred_info_get_markers(!.PredInfo, EndMarkers0),
                     add_marker(marker_infer_modes, EndMarkers0, EndMarkers),
                     pred_info_set_markers(EndMarkers, !PredInfo)
                 ;
-                    ProcIds = [_ | _]
+                    true
                 ),
                 map.det_update(PredId, !.PredInfo, Preds0, Preds),
                 predicate_table_set_preds(Preds, !PredicateTable),

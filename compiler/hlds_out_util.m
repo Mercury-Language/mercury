@@ -218,6 +218,7 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
+:- import_module require.
 :- import_module string.
 :- import_module term_io.
 :- import_module varset.
@@ -288,20 +289,22 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
                 " for `", ClassStr, "(", TypeStrs, ")'"
             ])
         ;
+            Origin = origin_assertion(FileName, LineNumber),
+            ( pred_info_is_promise(PredInfo, PromiseType) ->
+                Str = string.format("`%s' declaration (%s:%d)",
+                    [s(prog_out.promise_to_string(PromiseType)),
+                    s(FileName), i(LineNumber)])
+            ;
+                unexpected($module, $pred, "origin_assertion")
+            )
+        ;
             ( Origin = origin_transformed(_, _, _)
-            ; Origin = origin_assertion(_, _)
             ; Origin = origin_created(_)
             ; Origin = origin_lambda(_, _, _)
             ; Origin = origin_user(_)
             ),
-            pred_info_get_goal_type(PredInfo, GoalType),
-            ( GoalType = goal_type_promise(PromiseType) ->
-                Str = "`" ++ prog_out.promise_to_string(PromiseType)
-                    ++ "' declaration"
-            ;
-                Str = simple_call_id_to_string(PredOrFunc,
-                    qualified(Module, Name), Arity)
-            )
+            Str = simple_call_id_to_string(PredOrFunc,
+                qualified(Module, Name), Arity)
         )
     ;
         % The predicate has been deleted, so we print what we can.

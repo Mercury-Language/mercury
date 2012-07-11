@@ -3213,7 +3213,14 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
     %
 :- func builtin_state(module_info, pred_id, pred_id, proc_id) = builtin_state.
 
+    % Succeeds iff PredInfo represents a promise of the given type.
+    %
+:- pred pred_info_is_promise(pred_info::in, promise_type::out) is semidet.
+
 :- implementation.
+
+is_unify_or_compare_pred(PredInfo) :-
+    pred_info_get_origin(PredInfo, origin_special_pred(_)). % XXX bug
 
 pred_info_is_builtin(PredInfo) :-
     ModuleName = pred_info_module(PredInfo),
@@ -3260,8 +3267,8 @@ is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
 
 prog_varset_init(VarSet) :- varset.init(VarSet).
 
-is_unify_or_compare_pred(PredInfo) :-
-    pred_info_get_origin(PredInfo, origin_special_pred(_)). % XXX bug
+pred_info_is_promise(PredInfo, PromiseType) :-
+    pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

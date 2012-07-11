@@ -3697,14 +3697,14 @@ And there are a variety of other applications.
 @c it is the responsibility of the programmer to ensure overall correctness.
 @c The behaviour of programs with incorrect laws is undefined.
 @c 
-@c A new law is introduced with the @samp{:- assertion} declaration.
+@c A new law is introduced with the @samp{:- promise} declaration.
 @c 
-@c Here are some examples of @samp{:- assertion} declarations.
+@c Here are some examples of @samp{:- promise} declarations.
 @c The following example declares the function @samp{+} to be commutative.
 @c 
 @c @example
-@c :- assertion
-@c     all [A,B,R] (
+@c :- promise all [A, B, R]
+@c     (
 @c         R = A + B
 @c     <=>
 @c         R = B + A
@@ -3720,11 +3720,11 @@ And there are a variety of other applications.
 @c associative.
 @c 
 @c @example
-@c :- assertion
-@c     all [A,B,C,ABC] (
-@c         (some [AB] (append(A, B, AB), append(AB, C, ABC)))
+@c :- promise all [A, B, C, ABC]
+@c     (
+@c         ( some [AB] (append(A, B, AB), append(AB, C, ABC)) )
 @c     <=>
-@c         (some [BC] (append(B, C, BC), append(A, BC, ABC)))
+@c         ( some [BC] (append(B, C, BC), append(A, BC, ABC)) )
 @c     ).
 @c @end example
 

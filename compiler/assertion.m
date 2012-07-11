@@ -202,20 +202,10 @@ is_associativity_assertion(Module, AssertId, CallVars,
 
     UniversiallyQuantifiedVars = goal_info_get_nonlocals(GoalInfo),
 
-    % There may or may not be a some [] depending on whether
-    % the user explicity qualified the call or not.
-    (
-        P = hlds_goal(scope(_, hlds_goal(conj(plain_conj, PCalls0), _)), _),
-        Q = hlds_goal(scope(_, hlds_goal(conj(plain_conj, QCalls0), _)), _)
-    ->
-        PCalls = PCalls0,
-        QCalls = QCalls0
-    ;
-        P = hlds_goal(conj(plain_conj, PCalls), _PGoalInfo),
-        Q = hlds_goal(conj(plain_conj, QCalls), _QGoalInfo)
-    ),
+    get_conj_goals(P, PCalls),
+    get_conj_goals(Q, QCalls),
     promise_equivalent_solutions [AssociativeVars, OutputVar] (
-         associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
+        associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
             AssociativeVars - OutputVar)
     ).
 
@@ -251,11 +241,11 @@ associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
         (AB - ABC) - (BC - ABC)]),
 
     assoc_list.from_corresponding_lists(Vs, CallVars, AssocList),
-    list.filter((pred(X-_Y::in) is semidet :- X = AB),
+    list.filter((pred(X - _Y::in) is semidet :- X = AB),
         AssocList, [_AB - OutputVar]),
-    list.filter((pred(X-_Y::in) is semidet :- X = A),
+    list.filter((pred(X - _Y::in) is semidet :- X = A),
         AssocList, [_A - CallVarA]),
-    list.filter((pred(X-_Y::in) is semidet :- X = B),
+    list.filter((pred(X - _Y::in) is semidet :- X = B),
         AssocList, [_B - CallVarB]).
 
     % reorder(Ps, Qs, Ls, Rs):
@@ -292,8 +282,8 @@ process_one_side(Goals, UniversiallyQuantifiedVars, PredId,
         LinkingVar, Vars0, VarsA),
 
     % Filter out all the invariant arguments, and then make sure that
-    % their is only 3 arguments left.
-    list.filter((pred(X-Y::in) is semidet :- not X = Y), Vars0, Vars),
+    % there are only 3 arguments left.
+    list.filter((pred(X - Y::in) is semidet :- X \= Y), Vars0, Vars),
     list.length(Vars, number_of_associative_vars).
 
 :- func number_of_associative_vars = int.
@@ -308,21 +298,11 @@ is_update_assertion(Module, AssertId, _PredId, CallVars, StateA - StateB) :-
     goal_is_equivalence(hlds_goal(GoalExpr, GoalInfo), P, Q),
     UniversiallyQuantifiedVars = goal_info_get_nonlocals(GoalInfo),
 
-    % There may or may not be an explicit some [Vars] there,
-    % as quantification now works correctly.
-    (
-        P = hlds_goal(scope(_, hlds_goal(conj(plain_conj, PCalls0), _)), _),
-        Q = hlds_goal(scope(_, hlds_goal(conj(plain_conj, QCalls0), _)), _)
-    ->
-        PCalls = PCalls0,
-        QCalls = QCalls0
-    ;
-        P = hlds_goal(conj(plain_conj, PCalls), _PGoalInfo),
-        Q = hlds_goal(conj(plain_conj, QCalls), _QGoalInfo)
-    ),
-
-    solutions.solutions(update(PCalls, QCalls,
-        UniversiallyQuantifiedVars, CallVars), [StateA - StateB | _]).
+    get_conj_goals(P, PCalls),
+    get_conj_goals(Q, QCalls),
+    solutions.solutions(
+        update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars),
+        [StateA - StateB | _]).
 
     %   compose(S0, A, SA),     compose(SB, A, S),
     %   compose(SA, B, S)   <=> compose(S0, B, SB)
@@ -339,7 +319,7 @@ update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
         SB, PairsR, _),
 
     assoc_list.from_corresponding_lists(PairsL, PairsR, Pairs0),
-    list.filter((pred(X-Y::in) is semidet :- X \= Y), Pairs0, Pairs),
+    list.filter((pred(X - Y::in) is semidet :- X \= Y), Pairs0, Pairs),
     list.length(Pairs) = 2,
 
     % If you read the predicate documentation, you will note that
@@ -350,9 +330,9 @@ update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
     list.perm(Pairs, [(S0 - SA) - (SB - S0), (SA - S) - (S - SB)]),
 
     assoc_list.from_corresponding_lists(Vs, CallVars, AssocList),
-    list.filter((pred(X-_Y::in) is semidet :- X = S0),
+    list.filter((pred(X - _Y::in) is semidet :- X = S0),
         AssocList, [_S0 - StateA]),
-    list.filter((pred(X-_Y::in) is semidet :- X = SA),
+    list.filter((pred(X - _Y::in) is semidet :- X = SA),
         AssocList, [_SA - StateB]).
 
 %-----------------------------------------------------------------------------%
@@ -372,11 +352,13 @@ update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
 
 process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
         LinkingVar, Vars, VarsA) :-
-    Goals = [hlds_goal(plain_call(PredId, _, VarsA, _, _, _), _),
-        hlds_goal(plain_call(PredId, _, VarsB, _, _, _), _)],
+    Goals = [
+        hlds_goal(plain_call(PredId, _, VarsA, _, _, _), _),
+        hlds_goal(plain_call(PredId, _, VarsB, _, _, _), _)
+    ],
 
     % Determine the linking variable, L. By definition it must be
-    % existentially quantified and member of both variable lists.
+    % existentially quantified and a member of both variable lists.
     CommonVars = list_to_set(VarsA) `intersect` list_to_set(VarsB),
     set_of_var.is_singleton(
         set_of_var.difference(CommonVars, UniversiallyQuantifiedVars),
@@ -437,6 +419,28 @@ predicate_call(Goal, PredId) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- pred get_conj_goals(hlds_goal::in, list(hlds_goal)::out) is semidet.
+
+get_conj_goals(Goal0, ConjList) :-
+    % The user may have explicitly quantified the goals.
+    ignore_exist_quant_scope(Goal0, Goal),
+    Goal = hlds_goal(conj(plain_conj, ConjList), _).
+
+:- pred ignore_exist_quant_scope(hlds_goal::in, hlds_goal::out) is det.
+
+ignore_exist_quant_scope(Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, _Context),
+    (
+        GoalExpr0 = scope(Reason, Goal1),
+        Reason = exist_quant(_)
+    ->
+        Goal = Goal1
+    ;
+        Goal = Goal0
+    ).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 assert_id_goal(Module, AssertId, Goal) :-
@@ -446,10 +450,14 @@ assert_id_goal(Module, AssertId, Goal) :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     get_clause_list(ClausesRep, Clauses),
-    ( Clauses = [Clause] ->
+    (
+        Clauses = [Clause],
         Goal0 = Clause ^ clause_body,
         normalise_goal(Goal0, Goal)
     ;
+        ( Clauses = []
+        ; Clauses = [_, _ | _]
+        ),
         unexpected($module, $pred, "goal is not an assertion")
     ).
 
@@ -643,10 +651,13 @@ equal_goals_cases([CaseA | CaseAs], [CaseB | CaseBs], !Subst) :-
 %-----------------------------------------------------------------------------%
 
 record_preds_used_in(Goal, AssertId, !Module) :-
-    % Explicit lambda expression needed since goal_calls_pred_id
-    % has multiple modes.
-    P = (pred(PredId::out) is nondet :- goal_calls_pred_id(Goal, PredId)),
-    solutions.solutions(P, PredIds),
+    predids_from_goal(Goal, PredIds),
+    % Sanity check.
+    ( list.member(invalid_pred_id, PredIds) ->
+        unexpected($module, $pred, "invalid pred_id")
+    ;
+        true
+    ),
     list.foldl(update_pred_info(AssertId), PredIds, !Module).
 
 %-----------------------------------------------------------------------------%

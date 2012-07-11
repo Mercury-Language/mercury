@@ -280,7 +280,7 @@ construct_type_inference_messages(ModuleInfo, ValidPredIdSet,
     (
         check_marker(Markers, marker_infer_type),
         set_tree234.contains(ValidPredIdSet, PredId),
-        \+ pred_info_get_goal_type(PredInfo, goal_type_promise(_))
+        not pred_info_is_promise(PredInfo, _)
     ->
         Spec = construct_type_inference_message(PredInfo),
         !:Specs = [Spec | !.Specs]

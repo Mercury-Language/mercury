@@ -367,9 +367,8 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
             clause_list_is_deforestable(PredId, Clauses)
         )
     ;
-        % Promises that are in the interface should always get included
-        % in the .opt file.
-        pred_info_get_goal_type(PredInfo, goal_type_promise(_))
+        % Allow promises to be written.
+        pred_info_is_promise(PredInfo, _)
     ).
 
     % If the clauses contains foreign code which requires an external
@@ -645,9 +644,12 @@ add_proc_2(PredId, DoWrite, !Info) :-
     (
         % Calling compiler-generated procedures is fine; we don't need
         % to output declarations for them to the `.opt' file, since they
-        % will be recreated every time anyway.
+        % will be recreated every time anyway. We don't want declarations
+        % for predicates representing promises either.
 
-        is_unify_or_compare_pred(PredInfo)
+        ( is_unify_or_compare_pred(PredInfo)
+        ; pred_info_is_promise(PredInfo, _)
+        )
     ->
         DoWrite = yes
     ;
@@ -1761,15 +1763,27 @@ intermod_write_preds(OutInfo, ModuleInfo, [PredId | PredIds], !IO) :-
     clauses_info_get_vartypes(ClausesInfo, VarTypes),
     get_clause_list(ClausesRep, Clauses),
 
-    ( pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)) ->
-        ( Clauses = [Clause] ->
+    pred_info_get_goal_type(PredInfo, GoalType),
+    (
+        GoalType = goal_type_promise(PromiseType),
+        (
+            Clauses = [Clause],
+            AppendVarNums = no,
             write_promise(OutInfo, PromiseType, 0, ModuleInfo,
-                PredId, VarSet, no, HeadVars, PredOrFunc, Clause,
+                PredId, VarSet, AppendVarNums, HeadVars, PredOrFunc, Clause,
                 no_varset_vartypes, !IO)
         ;
+            ( Clauses = []
+            ; Clauses = [_, _ | _]
+            ),
             unexpected($module, $pred, "assertion not a single clause.")
         )
     ;
+        ( GoalType = goal_type_clause
+        ; GoalType = goal_type_foreign
+        ; GoalType = goal_type_clause_and_foreign
+        ; GoalType = goal_type_none
+        ),
         pred_info_get_typevarset(PredInfo, TypeVarset),
         MaybeVarTypes = varset_vartypes(TypeVarset, VarTypes),
         list.foldl(
