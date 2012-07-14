@@ -248,9 +248,11 @@ ILASM=`basename "$ILASM"`
 GACUTIL=`basename "$GACUTIL"`
 
 # Check for the C# (C sharp) compiler.
+# mcs is the Mono C# compiler targetting all runtimes
+# dmcs is the Mono C# compiler targeting the 4.0 runtime
 # gmcs is the Mono C# compiler targeting the 2.0 runtime (with generics).
 # cscc is the DotGNU C# compiler.
-AC_PATH_PROGS([CANDIDATE_CSC], [csc gmcs cscc])
+AC_PATH_PROGS([CANDIDATE_CSC], [csc mcs dmcs gmcs cscc])
 CANDIDATE_CSC=`basename "$CANDIDATE_CSC"`
 
 # The Microsoft C# compiler and the Chicken Scheme compiler share the same
