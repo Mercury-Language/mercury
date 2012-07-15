@@ -199,8 +199,14 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = atomic_ops
 AM_CFLAGS = @PICFLAG@
-include_HEADERS = atomic_ops.h atomic_ops_stack.h atomic_ops_malloc.h
-lib_LIBRARIES = libatomic_ops.a libatomic_ops_gpl.a
+
+# Disable the build of libatomic_ops_gpl.a as it doesn't build under Solaris 10
+# and it's not needed to build the Mecury version of the boehmgc collector.
+#include_HEADERS = atomic_ops.h atomic_ops_stack.h atomic_ops_malloc.h
+#lib_LIBRARIES = libatomic_ops.a libatomic_ops_gpl.a
+include_HEADERS = atomic_ops.h
+lib_LIBRARIES = libatomic_ops.a
+
 @NEED_ASM_FALSE@libatomic_ops_a_SOURCES = atomic_ops.c
 @NEED_ASM_TRUE@libatomic_ops_a_SOURCES = atomic_ops.c atomic_ops_sysdeps.S
 libatomic_ops_gpl_a_SOURCES = atomic_ops_stack.c atomic_ops_malloc.c
