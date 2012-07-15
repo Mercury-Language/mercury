@@ -2814,6 +2814,19 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     SourceList = list.map(csharp_file_name(EnvType, CSharpCompilerType),
         SourceList0),
 
+    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
+    (
+        % If we output line numbers the mono C# compiler outputs lots of
+        % spurious warnings about unused variables and unreachable code,
+        % so disable these warnings.  It also confuses #pragma warning
+        % which is why we make the options global
+        LineNumbers = yes,
+        NoWarnLineNumberOpt = "-nowarn:162,219 "
+    ;
+        LineNumbers = no,
+        NoWarnLineNumberOpt = ""
+    ),
+
     % NOTE: we use the -option style options in preference to the /option
     % style in order to avoid problems with POSIX style shells.
     globals.lookup_string_option(Globals, csharp_compiler, CSharpCompiler),
@@ -2878,6 +2891,7 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
 
     Cmd = CSharpCompiler,
     CmdArgs = string.join_list(" ", [
+        NoWarnLineNumberOpt,
         HighLevelDataOpt,
         DebugOpt,
         TargetOption,

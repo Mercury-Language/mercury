@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2010-2011 The University of Melbourne.
+% Copyright (C) 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1786,18 +1786,19 @@ output_pred_proc_id(Info, proc(PredId, ProcId), !IO) :-
     output_aux::in, mlds_context::in,
     mlds_func_params::in, mlds_function_body::in, io::di, io::uo) is det.
 
-output_func(Info, Indent, Name, OutputAux, _Context, Signature, MaybeBody,
+output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
         !IO) :-
     (
         MaybeBody = body_defined_here(Body),
         output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO),
         io.write_string("\n", !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("{\n", !IO),
         FuncInfo = func_info(Signature),
         output_statement(Info, Indent + 1, FuncInfo, Body, _ExitMethods, !IO),
-        indent_line(Indent, !IO),
-        io.write_string("}\n", !IO)    % end the function
+        indent_line(Info, Context, Indent, !IO),
+        io.write_string("}\n", !IO),    % end the function
+        output_default_context(Info, !IO)
     ;
         MaybeBody = body_external
     ).
@@ -2687,7 +2688,7 @@ output_statement(Info, Indent, FuncInfo,
 output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
     (
         Statement = ml_stmt_block(Defns, Statements),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("{\n", !IO),
         (
             Defns = [_ | _],
@@ -2698,12 +2699,12 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         ),
         output_statements(Info, Indent + 1, FuncInfo, Statements,
             ExitMethods, !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = ml_stmt_while(Kind, Cond, BodyStatement),
         Kind = may_loop_zero_times,
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("while (", !IO),
         output_rval(Info, Cond, !IO),
         io.write_string(")\n", !IO),
@@ -2711,7 +2712,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         % reachable and the condition expression is not a constant expression
         % whose value is false.
         ( Cond = ml_const(mlconst_false) ->
-            indent_line(Indent, !IO),
+            indent_line(Info, Context, Indent, !IO),
             io.write_string("{  /* Unreachable code */  }\n", !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
         ;
@@ -2722,11 +2723,11 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
     ;
         Statement = ml_stmt_while(Kind, Cond, BodyStatement),
         Kind = loop_at_least_once,
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("do\n", !IO),
         output_statement(Info, Indent + 1, FuncInfo, BodyStatement,
             StmtExitMethods, !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("while (", !IO),
         output_rval(Info, Cond, !IO),
         io.write_string(");\n", !IO),
@@ -2755,7 +2756,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             Then = Then0
         ),
 
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("if (", !IO),
         output_rval(Info, Cond, !IO),
         io.write_string(")\n", !IO),
@@ -2763,7 +2764,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             ThenExitMethods, !IO),
         (
             MaybeElse = yes(Else),
-            indent_line(Indent, !IO),
+            indent_line(Info, Context, Indent, !IO),
             io.write_string("else\n", !IO),
             output_statement(Info, Indent + 1, FuncInfo, Else,
                 ElseExitMethods, !IO),
@@ -2779,13 +2780,13 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         )
     ;
         Statement = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("switch (", !IO),
         output_rval(Info, Val, !IO),
         io.write_string(") {\n", !IO),
         output_switch_cases(Info, Indent + 1, FuncInfo, Context, Cases,
             Default, ExitMethods, !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = ml_stmt_label(_),
@@ -2797,12 +2798,12 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         unexpected($module, $pred, "gotos not supported in Java.")
     ;
         Statement = ml_stmt_goto(goto_break),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = set.make_singleton_set(can_break)
     ;
         Statement = ml_stmt_goto(goto_continue),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("continue;\n", !IO),
         ExitMethods = set.make_singleton_set(can_continue)
     ;
@@ -2813,9 +2814,9 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         Statement = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
             Results, IsTailCall),
         Signature = mlds_func_signature(ArgTypes, RetTypes),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Indent + 1, !IO),
+        indent_line(Info, Context, Indent + 1, !IO),
         (
             Results = [],
             OutArgs = []
@@ -2855,18 +2856,18 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             IsTailCall = tail_call
         ;
             IsTailCall = no_return_call,
-            indent_line(Indent  + 1, !IO),
+            indent_line(Info, Context, Indent  + 1, !IO),
             io.write_string("throw new runtime.UnreachableDefault();\n", !IO)
         ),
 
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
         Statement = ml_stmt_return(Results),
         (
             Results = [],
-            indent_line(Indent, !IO),
+            indent_line(Info, Context, Indent, !IO),
             io.write_string("return;\n", !IO)
         ;
             Results = [Rval | Rvals],
@@ -2874,7 +2875,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             % Subsequent return values are assigned to out parameters.
             list.foldl2(output_assign_out_params(Info, Indent),
                 Rvals, 2, _, !IO),
-            indent_line(Indent, !IO),
+            indent_line(Info, Context, Indent, !IO),
             io.write_string("return ", !IO),
             output_rval(Info, Rval, !IO),
             io.write_string(";\n", !IO)
@@ -2882,33 +2883,33 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         ExitMethods = set.make_singleton_set(can_return)
     ;
         Statement = ml_stmt_do_commit(Ref),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         output_rval(Info, Ref, !IO),
         io.write_string(" = new runtime.Commit();\n", !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("throw ", !IO),
         output_rval(Info, Ref, !IO),
         io.write_string(";\n", !IO),
         ExitMethods = set.make_singleton_set(can_throw)
     ;
         Statement = ml_stmt_try_commit(_Ref, Stmt, Handler),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("try\n", !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("{\n", !IO),
         output_statement(Info, Indent + 1, FuncInfo, Stmt,
             TryExitMethods0, !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("catch (runtime.Commit commit_variable)\n",
             !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Indent + 1, !IO),
+        indent_line(Info, Context, Indent + 1, !IO),
         output_statement(Info, Indent + 1, FuncInfo, Handler,
             CatchExitMethods, !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO),
         ExitMethods = (TryExitMethods0 `set.delete` can_throw)
             `set.union`  CatchExitMethods
@@ -2997,7 +2998,7 @@ output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
     output_statement(Info, Indent + 1, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( set.member(can_fall_through, StmtExitMethods) ->
-        indent_line(Indent + 1, !IO),
+        indent_line(Info, Context, Indent + 1, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = (StmtExitMethods `set.insert` can_break)
             `set.delete` can_fall_through
@@ -3009,10 +3010,10 @@ output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
 :- pred output_case_cond(csharp_out_info::in, indent::in, mlds_context::in,
     mlds_case_match_cond::in, io::di, io::uo) is det.
 
-output_case_cond(Info, Indent, _Context, Match, !IO) :-
+output_case_cond(Info, Indent, Context, Match, !IO) :-
     (
         Match = match_value(Val),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("case ", !IO),
         output_rval(Info, Val, !IO),
         io.write_string(":\n", !IO)
@@ -3025,24 +3026,24 @@ output_case_cond(Info, Indent, _Context, Match, !IO) :-
     mlds_context::in, mlds_switch_default::in, exit_methods::out,
     io::di, io::uo) is det.
 
-output_switch_default(Info, Indent, FuncInfo, _Context, Default,
+output_switch_default(Info, Indent, FuncInfo, Context, Default,
         ExitMethods, !IO) :-
     (
         Default = default_do_nothing,
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
         Default = default_case(Statement),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("default:\n", !IO),
         output_statement(Info, Indent + 1, FuncInfo, Statement, ExitMethods,
             !IO),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("break;\n", !IO)
     ;
         Default = default_is_unreachable,
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("default: /*NOTREACHED*/\n", !IO),
-        indent_line(Indent + 1, !IO),
+        indent_line(Info, Context, Indent + 1, !IO),
         io.write_string("throw new runtime.UnreachableDefault();\n",
             !IO),
         ExitMethods = set.make_singleton_set(can_throw)
@@ -3056,7 +3057,7 @@ output_switch_default(Info, Indent, FuncInfo, _Context, Default,
 :- pred output_atomic_stmt(csharp_out_info::in, indent::in,
     mlds_atomic_statement::in, mlds_context::in, io::di, io::uo) is det.
 
-output_atomic_stmt(Info, Indent, AtomicStmt, _Context, !IO) :-
+output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
     (
         AtomicStmt = comment(Comment),
         % XXX We should escape any "*/"'s in the Comment. We should also split
@@ -3067,7 +3068,7 @@ output_atomic_stmt(Info, Indent, AtomicStmt, _Context, !IO) :-
         io.write_string(" */\n", !IO)
     ;
         AtomicStmt = assign(Lval, Rval),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         output_lval(Info, Lval, !IO),
         io.write_string(" = ", !IO),
         output_rval(Info, Rval, !IO),
@@ -3089,9 +3090,9 @@ output_atomic_stmt(Info, Indent, AtomicStmt, _Context, !IO) :-
             ExplicitSecTag = no
         ),
 
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Indent + 1, !IO),
+        indent_line(Info, Context, Indent + 1, !IO),
         output_lval(Info, Target, !IO),
         io.write_string(" = new ", !IO),
         % Generate class constructor name.
@@ -3125,7 +3126,7 @@ output_atomic_stmt(Info, Indent, AtomicStmt, _Context, !IO) :-
             output_init_args(Info, Args, ArgTypes, !IO),
             io.write_string(");\n", !IO)
         ),
-        indent_line(Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         AtomicStmt = gc_check,
