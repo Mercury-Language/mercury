@@ -1,10 +1,6 @@
 #include <stdio.h>
 #include <gc.h>
 
-#ifndef GC_ALPHA_VERSION
-# define GC_ALPHA_VERSION GC_TMP_ALPHA_VERSION
-#endif
-
 int main()
 {
     if (GC_ALPHA_VERSION == GC_NOT_ALPHA) {

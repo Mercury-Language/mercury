@@ -20,8 +20,10 @@
  * SOFTWARE.
  */
 
-/* Definitions for architectures on which loads and stores of unsigned  */
-/* int are atomic for all legal alignments.                             */
+/*
+ * Definitions for architectures on which loads and stores of unsigned int are
+ * atomic for all legal alignments.
+ */
 
 AO_INLINE unsigned int
 AO_int_load(const volatile unsigned int *addr)
@@ -31,6 +33,7 @@ AO_int_load(const volatile unsigned int *addr)
   /* volatile adds barrier semantics.                           */
   return (*(unsigned int *)addr);
 }
+
 #define AO_HAVE_int_load
 
 AO_INLINE void
@@ -39,4 +42,5 @@ AO_int_store(volatile unsigned int *addr, unsigned int new_val)
   assert(((size_t)addr & (sizeof(unsigned int) - 1)) == 0);
   (*(unsigned int *)addr) = new_val;
 }
+
 #define AO_HAVE_int_store

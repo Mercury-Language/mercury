@@ -160,7 +160,7 @@
 # define AO_compiler_barrier() __asm__ __volatile__("" : : : "memory")
 #elif defined(_MSC_VER) || defined(__DMC__) || defined(__BORLANDC__) \
         || defined(__WATCOMC__)
-# if defined(_AMD64_) || defined(_M_X64) || _MSC_VER >= 1400
+# if defined(_AMD64_) || _MSC_VER >= 1400
 #   if defined(_WIN32_WCE)
 /* #     include <cmnintrin.h> */
 #   elif defined(_MSC_VER)
@@ -197,25 +197,12 @@
 # include "atomic_ops/sysdeps/generic_pthread.h"
 #endif /* AO_USE_PTHREAD_DEFS */
 
-#if (defined(__CC_ARM) || defined(__ARMCC__)) && !defined(__GNUC__) \
-    && !defined(AO_USE_PTHREAD_DEFS)
-# include "atomic_ops/sysdeps/armcc/arm_v6.h"
-# define AO_GENERALIZE_TWICE
-#endif
-
 #if defined(__GNUC__) && !defined(AO_USE_PTHREAD_DEFS) \
     && !defined(__INTEL_COMPILER)
 # if defined(__i386__)
-    /* We don't define AO_USE_SYNC_CAS_BUILTIN for x86 here because     */
-    /* it might require specifying additional options (like -march)     */
-    /* or additional link libraries (if -march is not specified).       */
 #   include "atomic_ops/sysdeps/gcc/x86.h"
 # endif /* __i386__ */
 # if defined(__x86_64__)
-#   if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 2)
-      /* It is safe to use __sync CAS built-in on this architecture.    */
-#     define AO_USE_SYNC_CAS_BUILTIN
-#   endif
 #   include "atomic_ops/sysdeps/gcc/x86_64.h"
 # endif /* __x86_64__ */
 # if defined(__ia64__)
@@ -250,7 +237,6 @@
 # endif /* __arm__ */
 # if defined(__cris__) || defined(CRIS)
 #   include "atomic_ops/sysdeps/gcc/cris.h"
-#   define AO_GENERALIZE_TWICE
 # endif
 # if defined(__mips__)
 #   include "atomic_ops/sysdeps/gcc/mips.h"
@@ -259,40 +245,12 @@
 #   include "atomic_ops/sysdeps/gcc/sh.h"
 #   define AO_CAN_EMUL_CAS
 # endif /* __sh__ */
-# if defined(__avr32__)
-#   include "atomic_ops/sysdeps/gcc/avr32.h"
-# endif
-# if defined(__hexagon__)
-#   include "atomic_ops/sysdeps/gcc/hexagon.h"
-# endif
 #endif /* __GNUC__ && !AO_USE_PTHREAD_DEFS */
-
-#if (defined(__IBMC__) || defined(__IBMCPP__)) && !defined(__GNUC__) \
-    && !defined(AO_USE_PTHREAD_DEFS)
-# if defined(__powerpc__) || defined(__powerpc) || defined(__ppc__) \
-     || defined(__PPC__) || defined(_M_PPC) || defined(_ARCH_PPC) \
-     || defined(_ARCH_PWR)
-#   include "atomic_ops/sysdeps/ibmc/powerpc.h"
-#   define AO_GENERALIZE_TWICE
-# endif
-#endif
 
 #if defined(__INTEL_COMPILER) && !defined(AO_USE_PTHREAD_DEFS)
 # if defined(__ia64__)
 #   include "atomic_ops/sysdeps/icc/ia64.h"
 #   define AO_GENERALIZE_TWICE
-# endif
-# if defined(__GNUC__)
-    /* Intel Compiler in GCC compatible mode */
-#   if defined(__i386__)
-#     include "atomic_ops/sysdeps/gcc/x86.h"
-#   endif /* __i386__ */
-#   if defined(__x86_64__)
-#     if __INTEL_COMPILER > 1110
-#       define AO_USE_SYNC_CAS_BUILTIN
-#     endif
-#     include "atomic_ops/sysdeps/gcc/x86_64.h"
-#   endif /* __x86_64__ */
 # endif
 #endif
 
@@ -303,18 +261,6 @@
 # else
 #   include "atomic_ops/sysdeps/hpc/hppa.h"
 #   define AO_CAN_EMUL_CAS
-# endif
-#endif
-
-#if defined(_MSC_VER) || defined(__DMC__) || defined(__BORLANDC__) \
-        || (defined(__WATCOMC__) && defined(__NT__))
-# if defined(_AMD64_) || defined(_M_X64)
-#   include "atomic_ops/sysdeps/msftc/x86_64.h"
-# elif defined(_M_IX86) || defined(x86)
-#   include "atomic_ops/sysdeps/msftc/x86.h"
-# elif defined(_M_ARM) || defined(ARM) || defined(_ARM_)
-#   include "atomic_ops/sysdeps/msftc/arm.h"
-#   define AO_GENERALIZE_TWICE
 # endif
 #endif
 
@@ -330,8 +276,19 @@
 
 #if !defined(__GNUC__) && (defined(sparc) || defined(__sparc)) \
     && !defined(AO_USE_PTHREAD_DEFS)
-# include "atomic_ops/sysdeps/sunc/sparc.h"
-# define AO_CAN_EMUL_CAS
+#   include "atomic_ops/sysdeps/sunc/sparc.h"
+#   define AO_CAN_EMUL_CAS
+#endif
+
+#if defined(_MSC_VER) || defined(__DMC__) || defined(__BORLANDC__) \
+        || (defined(__WATCOMC__) && defined(__NT__))
+# if defined(_AMD64_)
+#   include "atomic_ops/sysdeps/msftc/x86_64.h"
+# elif defined(_M_IX86) || defined(x86)
+#   include "atomic_ops/sysdeps/msftc/x86.h"
+# elif defined(_M_ARM) || defined(ARM) || defined(_ARM_)
+#   include "atomic_ops/sysdeps/msftc/arm.h"
+# endif
 #endif
 
 #if defined(AO_REQUIRE_CAS) && !defined(AO_HAVE_compare_and_swap) \
@@ -342,7 +299,7 @@
 # else
 #  error Cannot implement AO_compare_and_swap_full on this architecture.
 # endif
-#endif /* AO_REQUIRE_CAS && !AO_HAVE_compare_and_swap ... */
+#endif  /* AO_REQUIRE_CAS && !AO_HAVE_compare_and_swap ... */
 
 /* The most common way to clear a test-and-set location         */
 /* at the end of a critical section.                            */
@@ -353,15 +310,12 @@
 # define AO_CLEAR(addr) AO_char_store_release((AO_TS_t *)(addr), AO_TS_CLEAR)
 #endif
 
-/* The generalization section.  */
-#if !defined(AO_GENERALIZE_TWICE) && defined(AO_CAN_EMUL_CAS) \
-    && !defined(AO_HAVE_compare_and_swap_full)
-# define AO_GENERALIZE_TWICE
-#endif
-
-/* Theoretically we should repeatedly include atomic_ops_generalize.h.  */
-/* In fact, we observe that this converges after a small fixed number   */
-/* of iterations, usually one.                                          */
+/*
+ * The generalization section.
+ * Theoretically this should repeatedly include atomic_ops_generalize.h.
+ * In fact, we observe that this converges after a small fixed number
+ * of iterations, usually one.
+ */
 #include "atomic_ops/generalize.h"
 #ifdef AO_GENERALIZE_TWICE
 # include "atomic_ops/generalize.h"

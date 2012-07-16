@@ -20,8 +20,10 @@
  * SOFTWARE.
  */
 
-/* Definitions for architectures on which loads and stores of unsigned  */
-/* char are atomic for all legal alignments.                            */
+/*
+ * Definitions for architectures on which loads and stores of unsigned char are
+ * atomic for all legal alignments.
+ */
 
 AO_INLINE unsigned char
 AO_char_load(const volatile unsigned char *addr)
@@ -30,6 +32,7 @@ AO_char_load(const volatile unsigned char *addr)
   /* volatile adds barrier semantics.                           */
   return (*(const unsigned char *)addr);
 }
+
 #define AO_HAVE_char_load
 
 AO_INLINE void
@@ -37,4 +40,5 @@ AO_char_store(volatile unsigned char *addr, unsigned char new_val)
 {
   (*(unsigned char *)addr) = new_val;
 }
+
 #define AO_HAVE_char_store

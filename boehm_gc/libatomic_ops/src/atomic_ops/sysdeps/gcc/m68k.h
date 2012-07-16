@@ -43,9 +43,9 @@ AO_test_and_set_full(volatile AO_TS_t *addr) {
                 : "=d" (oldval), "=m" (*addr)
                 : "m" (*addr)
                 : "memory");
-  /* This cast works due to the above.  */
-  return (AO_TS_VAL_t)oldval;
+   return oldval;
 }
+
 #define AO_HAVE_test_and_set_full
 
 /* Returns nonzero if the comparison succeeded. */
@@ -62,6 +62,8 @@ AO_compare_and_swap_full(volatile AO_t *addr,
                 : "memory");
   return -result;
 }
+
 #define AO_HAVE_compare_and_swap_full
+
 
 #include "../ao_t_is_int.h"

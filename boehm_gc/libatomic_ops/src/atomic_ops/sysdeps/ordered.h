@@ -20,8 +20,10 @@
  * SOFTWARE.
  */
 
-/* These are common definitions for architectures that provide  */
-/* processor ordered memory operations.                         */
+/*
+ * These are common definitions for architectures that provide processor
+ * ordered memory operations.
+ */
 
 #include "ordered_except_wr.h"
 
@@ -30,4 +32,5 @@ AO_nop_full(void)
 {
   AO_compiler_barrier();
 }
+
 #define AO_HAVE_nop_full

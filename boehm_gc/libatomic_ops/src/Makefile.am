@@ -1,7 +1,6 @@
 SUBDIRS=atomic_ops
 
 AM_CFLAGS=@PICFLAG@
-AM_CPPFLAGS = -I$(top_builddir)/src -I$(top_srcdir)/src
 
 include_HEADERS=atomic_ops.h atomic_ops_stack.h atomic_ops_malloc.h
 lib_LIBRARIES = libatomic_ops.a libatomic_ops_gpl.a
