@@ -18,9 +18,9 @@
 #ifndef GC_PTHREAD_SUPPORT_H
 #define GC_PTHREAD_SUPPORT_H
 
-# include "private/gc_priv.h"
+#include "private/gc_priv.h"
 
-# if defined(GC_PTHREADS) && !defined(GC_WIN32_THREADS)
+#if defined(GC_PTHREADS) && !defined(GC_WIN32_THREADS)
 
 #if defined(GC_DARWIN_THREADS)
 # include "private/darwin_stop_world.h"
@@ -30,7 +30,7 @@
 
 #ifdef THREAD_LOCAL_ALLOC
 # include "thread_local_alloc.h"
-#endif /* THREAD_LOCAL_ALLOC */
+#endif
 
 /* We use the allocation lock to protect thread-related data structures. */
 
@@ -46,34 +46,57 @@ typedef struct GC_Thread_Rep {
                                   /* guaranteed to be dead, but we may  */
                                   /* not yet have registered the join.) */
     pthread_t id;
+#   ifdef PLATFORM_ANDROID
+      pid_t kernel_id;
+#   endif
     /* Extra bookkeeping information the stopping code uses */
     struct thread_stop_info stop_info;
 
-    short flags;
-#       define FINISHED 1       /* Thread has exited.   */
+    unsigned char flags;
+#       define FINISHED 1       /* Thread has exited.                   */
 #       define DETACHED 2       /* Thread is treated as detached.       */
                                 /* Thread may really be detached, or    */
-                                /* it may have have been explicitly     */
+                                /* it may have been explicitly          */
                                 /* registered, in which case we can     */
                                 /* deallocate its GC_Thread_Rep once    */
                                 /* it unregisters itself, since it      */
                                 /* may not return a GC pointer.         */
 #       define MAIN_THREAD 4    /* True for the original thread only.   */
-    short thread_blocked;       /* Protected by GC lock.                */
+#       define SUSPENDED_EXT 8  /* Thread was suspended externally      */
+                                /* (this is not used by the unmodified  */
+                                /* GC itself at present).               */
+#       define DISABLED_GC 0x10 /* Collections are disabled while the   */
+                                /* thread is exiting.                   */
+
+    unsigned char thread_blocked;
+                                /* Protected by GC lock.                */
                                 /* Treated as a boolean value.  If set, */
                                 /* thread will acquire GC lock before   */
                                 /* doing any pointer manipulations, and */
-                                /* has set its sp value.  Thus it does  */
+                                /* has set its SP value.  Thus it does  */
                                 /* not need to be sent a signal to stop */
                                 /* it.                                  */
+
+    unsigned short finalizer_skipped;
+    unsigned char finalizer_nested;
+                                /* Used by GC_check_finalizer_nested()  */
+                                /* to minimize the level of recursion   */
+                                /* when a client finalizer allocates    */
+                                /* memory (initially both are 0).       */
+
     ptr_t stack_end;            /* Cold end of the stack (except for    */
                                 /* main thread).                        */
+#   if defined(GC_DARWIN_THREADS) && !defined(DARWIN_DONT_PARSE_STACK)
+      ptr_t topOfStack;         /* Result of GC_FindTopOfStack(0);      */
+                                /* valid only if the thread is blocked; */
+                                /* non-NULL value means already set.    */
+#   endif
 #   ifdef IA64
         ptr_t backing_store_end;
         ptr_t backing_store_ptr;
 #   endif
 
-    struct GC_activation_frame_s *activation_frame;
+    struct GC_traced_stack_sect_s *traced_stack_sect;
                         /* Points to the "frame" data held in stack by  */
                         /* the innermost GC_call_with_gc_active() of    */
                         /* this thread.  May be NULL.                   */
@@ -85,12 +108,6 @@ typedef struct GC_Thread_Rep {
                                 /* This is unfortunately also the       */
                                 /* reason we need to intercept join     */
                                 /* and detach.                          */
-
-    unsigned finalizer_nested;
-    unsigned finalizer_skipped; /* Used by GC_check_finalizer_nested()  */
-                                /* to minimize the level of recursion   */
-                                /* when a client finalizer allocates    */
-                                /* memory (initially both are 0).       */
 
 #   ifdef THREAD_LOCAL_ALLOC
         struct thread_local_freelists tlfs;
@@ -104,12 +121,26 @@ GC_EXTERN GC_bool GC_thr_initialized;
 
 GC_INNER GC_thread GC_lookup_thread(pthread_t id);
 
-GC_INNER void GC_stop_init(void);
-
 GC_EXTERN GC_bool GC_in_thread_creation;
         /* We may currently be in thread creation or destruction.       */
         /* Only set to TRUE while allocation lock is held.              */
         /* When set, it is OK to run GC from unknown thread.            */
 
-#endif /* GC_PTHREADS && !GC_SOLARIS_THREADS.... etc */
+#ifdef NACL
+  GC_EXTERN __thread GC_thread GC_nacl_gc_thread_self;
+  GC_INNER void GC_nacl_initialize_gc_thread(void);
+  GC_INNER void GC_nacl_shutdown_gc_thread(void);
+#endif
+
+#ifdef GC_EXPLICIT_SIGNALS_UNBLOCK
+  GC_INNER void GC_unblock_gc_signals(void);
+#endif
+
+GC_INNER GC_thread GC_start_rtn_prepare_thread(void *(**pstart)(void *),
+                                        void **pstart_arg,
+                                        struct GC_stack_base *sb, void *arg);
+GC_INNER void GC_thread_exit_proc(void *);
+
+#endif /* GC_PTHREADS && !GC_WIN32_THREADS */
+
 #endif /* GC_PTHREAD_SUPPORT_H */

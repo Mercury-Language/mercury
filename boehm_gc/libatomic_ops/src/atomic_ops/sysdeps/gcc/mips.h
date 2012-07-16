@@ -38,7 +38,6 @@ AO_nop_full(void)
       "       .set pop              "
       : : : "memory");
 }
-
 #define AO_HAVE_nop_full
 
 AO_INLINE int
@@ -65,7 +64,6 @@ AO_compare_and_swap(volatile AO_t *addr, AO_t old, AO_t new_val)
       : "memory");
   return was_equal;
 }
-
 #define AO_HAVE_compare_and_swap
 
 /* FIXME: I think the implementations below should be automatically     */
@@ -77,7 +75,6 @@ AO_compare_and_swap_acquire(volatile AO_t *addr, AO_t old, AO_t new_val) {
   AO_nop_full();
   return result;
 }
-
 #define AO_HAVE_compare_and_swap_acquire
 
 AO_INLINE int
@@ -85,18 +82,16 @@ AO_compare_and_swap_release(volatile AO_t *addr, AO_t old, AO_t new_val) {
   AO_nop_full();
   return AO_compare_and_swap(addr, old, new_val);
 }
-
 #define AO_HAVE_compare_and_swap_release
 
 AO_INLINE int
 AO_compare_and_swap_full(volatile AO_t *addr, AO_t old, AO_t new_val) {
-  AO_t result;
+  int result;
   AO_nop_full();
   result = AO_compare_and_swap(addr, old, new_val);
   AO_nop_full();
   return result;
 }
-
 #define AO_HAVE_compare_and_swap_full
 
 /*

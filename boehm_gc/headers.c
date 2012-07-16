@@ -145,7 +145,7 @@ GC_INNER ptr_t GC_scratch_alloc(size_t bytes)
         GC_add_to_our_memory(result, bytes_to_get);
         if (result == 0) {
             if (GC_print_stats)
-                GC_printf("Out of memory - trying to allocate less\n");
+                GC_log_printf("Out of memory - trying to allocate less\n");
             scratch_free_ptr -= bytes;
             bytes_to_get = bytes;
 #           ifdef USE_MMAP
@@ -261,10 +261,12 @@ GC_INNER struct hblkhdr * GC_install_header(struct hblk *h)
 
     if (!get_index((word) h)) return(0);
     result = alloc_hdr();
-    SET_HDR(h, result);
-#   ifdef USE_MUNMAP
+    if (result) {
+      SET_HDR(h, result);
+#     ifdef USE_MUNMAP
         result -> hb_last_reclaimed = (unsigned short)GC_gc_no;
-#   endif
+#     endif
+    }
     return(result);
 }
 

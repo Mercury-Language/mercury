@@ -41,7 +41,6 @@ AO_nop_full(void)
 {
   __asm__ __volatile__("sync" : : : "memory");
 }
-
 #define AO_HAVE_nop_full
 
 /* lwsync apparently works for everything but a StoreLoad barrier.      */
@@ -68,12 +67,11 @@ AO_lwsync(void)
 /* cheaper.  And the documentation is fairly explicit that this also    */
 /* has acquire semantics.                                               */
 /* ppc64 uses ld not lwz */
-#if defined(__powerpc64__) || defined(__ppc64__) || defined(__64BIT__)
 AO_INLINE AO_t
 AO_load_acquire(const volatile AO_t *addr)
 {
   AO_t result;
-
+#if defined(__powerpc64__) || defined(__ppc64__) || defined(__64BIT__)
    __asm__ __volatile__ (
     "ld%U1%X1 %0,%1\n"
     "cmpw %0,%0\n"
@@ -81,14 +79,7 @@ AO_load_acquire(const volatile AO_t *addr)
     "1: isync\n"
     : "=r" (result)
     : "m"(*addr) : "memory", "cr0");
-  return result;
-}
 #else
-AO_INLINE AO_t
-AO_load_acquire(const volatile AO_t *addr)
-{
-  AO_t result;
-
   /* FIXME: We should get gcc to allocate one of the condition  */
   /* registers.  I always got "impossible constraint" when I    */
   /* tried the "y" constraint.                                  */
@@ -99,9 +90,9 @@ AO_load_acquire(const volatile AO_t *addr)
     "1: isync\n"
     : "=r" (result)
     : "m"(*addr) : "memory", "cc");
+#endif
   return result;
 }
-#endif
 #define AO_HAVE_load_acquire
 
 /* We explicitly specify store_release, since it relies         */
@@ -112,16 +103,15 @@ AO_store_release(volatile AO_t *addr, AO_t value)
   AO_lwsync();
   *addr = value;
 }
-
-#define AO_HAVE_load_acquire
+#define AO_HAVE_store_release
 
 /* This is similar to the code in the garbage collector.  Deleting      */
 /* this and having it synthesized from compare_and_swap would probably  */
 /* only cost us a load immediate instruction.                           */
-#if defined(__powerpc64__) || defined(__ppc64__) || defined(__64BIT__)
-/* Completely untested.  And we should be using smaller objects anyway. */
 AO_INLINE AO_TS_VAL_t
 AO_test_and_set(volatile AO_TS_t *addr) {
+#if defined(__powerpc64__) || defined(__ppc64__) || defined(__64BIT__)
+/* Completely untested.  And we should be using smaller objects anyway. */
   unsigned long oldval;
   unsigned long temp = 1; /* locked value */
 
@@ -135,14 +125,7 @@ AO_test_and_set(volatile AO_TS_t *addr) {
               : "=&r"(oldval)
               : "r"(addr), "r"(temp)
               : "memory", "cr0");
-
-  return (AO_TS_VAL_t)oldval;
-}
-
 #else
-
-AO_INLINE AO_TS_VAL_t
-AO_test_and_set(volatile AO_TS_t *addr) {
   int oldval;
   int temp = 1; /* locked value */
 
@@ -156,12 +139,9 @@ AO_test_and_set(volatile AO_TS_t *addr) {
               : "=&r"(oldval)
               : "r"(addr), "r"(temp)
               : "memory", "cr0");
-
+#endif
   return (AO_TS_VAL_t)oldval;
 }
-
-#endif
-
 #define AO_HAVE_test_and_set
 
 AO_INLINE AO_TS_VAL_t
@@ -170,7 +150,6 @@ AO_test_and_set_acquire(volatile AO_TS_t *addr) {
   AO_lwsync();
   return result;
 }
-
 #define AO_HAVE_test_and_set_acquire
 
 AO_INLINE AO_TS_VAL_t
@@ -178,7 +157,6 @@ AO_test_and_set_release(volatile AO_TS_t *addr) {
   AO_lwsync();
   return AO_test_and_set(addr);
 }
-
 #define AO_HAVE_test_and_set_release
 
 AO_INLINE AO_TS_VAL_t
@@ -189,16 +167,14 @@ AO_test_and_set_full(volatile AO_TS_t *addr) {
   AO_lwsync();
   return result;
 }
-
 #define AO_HAVE_test_and_set_full
 
-#if defined(__powerpc64__) || defined(__ppc64__) || defined(__64BIT__)
-/* FIXME: Completely untested.  */
 AO_INLINE int
 AO_compare_and_swap(volatile AO_t *addr, AO_t old, AO_t new_val) {
   AO_t oldval;
   int result = 0;
-
+#if defined(__powerpc64__) || defined(__ppc64__) || defined(__64BIT__)
+/* FIXME: Completely untested.  */
   __asm__ __volatile__(
                "1:ldarx %0,0,%2\n"   /* load and reserve              */
                "cmpd %0, %4\n"      /* if load is not equal to  */
@@ -210,17 +186,7 @@ AO_compare_and_swap(volatile AO_t *addr, AO_t old, AO_t new_val) {
               : "=&r"(oldval), "=&r"(result)
               : "r"(addr), "r"(new_val), "r"(old), "1"(result)
               : "memory", "cr0");
-
-  return result;
-}
-
 #else
-
-AO_INLINE int
-AO_compare_and_swap(volatile AO_t *addr, AO_t old, AO_t new_val) {
-  AO_t oldval;
-  int result = 0;
-
   __asm__ __volatile__(
                "1:lwarx %0,0,%2\n"   /* load and reserve              */
                "cmpw %0, %4\n"      /* if load is not equal to  */
@@ -232,11 +198,9 @@ AO_compare_and_swap(volatile AO_t *addr, AO_t old, AO_t new_val) {
               : "=&r"(oldval), "=&r"(result)
               : "r"(addr), "r"(new_val), "r"(old), "1"(result)
               : "memory", "cr0");
-
+#endif
   return result;
 }
-#endif
-
 #define AO_HAVE_compare_and_swap
 
 AO_INLINE int
@@ -245,7 +209,6 @@ AO_compare_and_swap_acquire(volatile AO_t *addr, AO_t old, AO_t new_val) {
   AO_lwsync();
   return result;
 }
-
 #define AO_HAVE_compare_and_swap_acquire
 
 AO_INLINE int
@@ -253,28 +216,24 @@ AO_compare_and_swap_release(volatile AO_t *addr, AO_t old, AO_t new_val) {
   AO_lwsync();
   return AO_compare_and_swap(addr, old, new_val);
 }
-
 #define AO_HAVE_compare_and_swap_release
 
 AO_INLINE int
 AO_compare_and_swap_full(volatile AO_t *addr, AO_t old, AO_t new_val) {
-  AO_t result;
+  int result;
   AO_lwsync();
   result = AO_compare_and_swap(addr, old, new_val);
   AO_lwsync();
   return result;
 }
-
 #define AO_HAVE_compare_and_swap_full
-
-#if defined(__powerpc64__) || defined(__ppc64__) || defined(__64BIT__)
-/* FIXME: Completely untested.                                          */
 
 AO_INLINE AO_t
 AO_fetch_and_add(volatile AO_t *addr, AO_t incr) {
   AO_t oldval;
   AO_t newval;
-
+#if defined(__powerpc64__) || defined(__ppc64__) || defined(__64BIT__)
+/* FIXME: Completely untested.                                          */
   __asm__ __volatile__(
                "1:ldarx %0,0,%2\n"   /* load and reserve                */
                "add %1,%0,%3\n"      /* increment                       */
@@ -283,19 +242,7 @@ AO_fetch_and_add(volatile AO_t *addr, AO_t incr) {
               : "=&r"(oldval), "=&r"(newval)
                : "r"(addr), "r"(incr)
               : "memory", "cr0");
-
-  return oldval;
-}
-
-#define AO_HAVE_fetch_and_add
-
 #else
-
-AO_INLINE AO_t
-AO_fetch_and_add(volatile AO_t *addr, AO_t incr) {
-  AO_t oldval;
-  AO_t newval;
-
   __asm__ __volatile__(
                "1:lwarx %0,0,%2\n"   /* load and reserve                */
                "add %1,%0,%3\n"      /* increment                       */
@@ -304,13 +251,10 @@ AO_fetch_and_add(volatile AO_t *addr, AO_t incr) {
               : "=&r"(oldval), "=&r"(newval)
                : "r"(addr), "r"(incr)
               : "memory", "cr0");
-
+#endif
   return oldval;
 }
-
 #define AO_HAVE_fetch_and_add
-
-#endif
 
 AO_INLINE AO_t
 AO_fetch_and_add_acquire(volatile AO_t *addr, AO_t incr) {
@@ -318,7 +262,6 @@ AO_fetch_and_add_acquire(volatile AO_t *addr, AO_t incr) {
   AO_lwsync();
   return result;
 }
-
 #define AO_HAVE_fetch_and_add_acquire
 
 AO_INLINE AO_t
@@ -326,7 +269,6 @@ AO_fetch_and_add_release(volatile AO_t *addr, AO_t incr) {
   AO_lwsync();
   return AO_fetch_and_add(addr, incr);
 }
-
 #define AO_HAVE_fetch_and_add_release
 
 AO_INLINE AO_t
@@ -337,7 +279,6 @@ AO_fetch_and_add_full(volatile AO_t *addr, AO_t incr) {
   AO_lwsync();
   return result;
 }
-
 #define AO_HAVE_fetch_and_add_full
 
 #if defined(__powerpc64__) || defined(__ppc64__) || defined(__64BIT__)

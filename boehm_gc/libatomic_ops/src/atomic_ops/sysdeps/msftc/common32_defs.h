@@ -83,7 +83,6 @@ AO_fetch_and_add_full(volatile AO_t *p, AO_t incr)
   return _InterlockedExchangeAdd((LONG AO_INTERLOCKED_VOLATILE *)p,
                                  (LONG)incr);
 }
-
 #define AO_HAVE_fetch_and_add_full
 
 AO_INLINE AO_t
@@ -91,7 +90,6 @@ AO_fetch_and_add1_full(volatile AO_t *p)
 {
   return _InterlockedIncrement((LONG AO_INTERLOCKED_VOLATILE *)p) - 1;
 }
-
 #define AO_HAVE_fetch_and_add1_full
 
 AO_INLINE AO_t
@@ -99,7 +97,6 @@ AO_fetch_and_sub1_full(volatile AO_t *p)
 {
   return _InterlockedDecrement((LONG AO_INTERLOCKED_VOLATILE *)p) + 1;
 }
-
 #define AO_HAVE_fetch_and_sub1_full
 
 #ifdef AO_ASSUME_WINDOWS98
@@ -117,6 +114,5 @@ AO_compare_and_swap_full(volatile AO_t *addr, AO_t old, AO_t new_val)
            == (LONG)old;
 # endif
 }
-
 # define AO_HAVE_compare_and_swap_full
 #endif /* AO_ASSUME_WINDOWS98 */

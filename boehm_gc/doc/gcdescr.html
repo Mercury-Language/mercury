@@ -558,7 +558,7 @@ accomplished with <TT># define</tt>'s in <TT>gc.h</tt>
 (really <TT>gc_pthread_redirects.h</tt>), or optionally
 by using ld's function call wrapping mechanism under Linux.
 <P>
-Recent versions of the collector support several facilites to enhance
+Recent versions of the collector support several facilities to enhance
 the processor-scalability and thread performance of the collector.
 These are discussed in more detail <A HREF="scale.html">here</a>.
 We briefly outline the data approach to thread-local allocation in the
@@ -572,7 +572,7 @@ The free list arrays associated
 with each thread are only used to satisfy requests for objects that
 are  both very small, and belong to one of a small number of well-known
 kinds.  These currently include "normal" and pointer-free objects.
-Depending onthe configuration, "gcj" objects may also be included.
+Depending on the configuration, "gcj" objects may also be included.
 <P>
 Thread-local free list entries contain either a pointer to the first
 element of a free list, or they contain a counter of the number of
@@ -612,9 +612,6 @@ transferred back to the global free list.
 Note that if the collector is configured for thread-local allocation,
 GC versions before 7 do not invoke the thread-local allocator by default.
 <TT>GC_malloc</tt> only uses thread-local allocation in version 7 and later.
-In earlier versions, <TT>GC_MALLOC</tt> (all caps) may be directed
-to use thread-local allocation by defining <TT>GC_REDIRECT_TO_LOCAL</tt>
-and then include <TT>gc_local_alloc.h</tt>.
 <P>
 For some more details see <A HREF="scale.html">here</a>, and the
 technical report entitled
@@ -625,7 +622,8 @@ technical report entitled
 <HR>
 <P>
 Comments are appreciated.  Please send mail to
-<A HREF="mailto:boehm@acm.org"><TT>boehm@acm.org</tt></a> or
+<A HREF="mailto:gc@linux.hpl.hp.com"><tt>gc@linux.hpl.hp.com</tt></a>
+(GC mailing list) or
 <A HREF="mailto:Hans.Boehm@hp.com"><TT>Hans.Boehm@hp.com</tt></a>
 <P>
 This is a modified copy of a page written while the author was at SGI.

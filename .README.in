@@ -15,24 +15,28 @@ Mercury compiler, version @VERSION@.
 	contact us!  We are willing to offer alternative arrangements,
 	if the need should arise.
 	
-The subdirectory `boehm_gc' contains a slightly modified copy of
-version 7.2 alpha 4 of the conservative garbage collector
-distributed by Hans Boehm:
+The subdirectory `boehm_gc' contains a slightly modified copy of version 7.2 of
+the conservative garbage collector distributed by Hans Boehm:
 
 	Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
 	Copyright (c) 1991-1995 by Xerox Corporation.  All rights reserved.
 	Copyright (c) 1996-1999 by Silicon Graphics.  All rights reserved.
-	Copyright (c) 1999-2005 Hewlett-Packard Development Company, L.P.
+	Copyright (c) 1999-2001 by Hewlett-Packard. All rights reserved.
 
-	THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
-	EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
+	THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY EXPRESSED
+	OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
 
-	Permission is hereby granted to use or copy this program for any
-	purpose, provided the above notices are retained on all copies.
-	Permission to modify the code and to distribute modified code is
-	granted, provided the above notices are retained, and a notice
-	that the code was modified is included with the above copyright
-	notice.
+	Permission is hereby granted to use or copy this program
+	for any purpose,  provided the above notices are retained on all copies.
+	Permission to modify the code and to distribute modified code is granted,
+	provided the above notices are retained, and a notice that the code was
+	modified is included with the above copyright notice.
+
+	A few files have other copyright holders. A few of the files needed
+	to use the GNU-style build procedure come with a modified GPL license
+	that appears not to significantly restrict use of the collector, though
+	use of those files for a purpose other than building the collector may
+	require the resulting code to be covered by the GPL.
 
 A few files (config.guess, config.sub) are derived from code that is
 copyright by the Free Software Foundation, Inc, and are distributed

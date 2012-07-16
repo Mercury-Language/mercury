@@ -40,8 +40,8 @@
 /* It appears that certain BCR instructions have that effect.   */
 /* Presumably they're cheaper than CS?                          */
 
-AO_INLINE AO_t AO_compare_and_swap_full(volatile AO_t *addr,
-                                               AO_t old, AO_t new_val)
+AO_INLINE int AO_compare_and_swap_full(volatile AO_t *addr,
+                                       AO_t old, AO_t new_val)
 {
   int retval;
   __asm__ __volatile__ (
@@ -57,7 +57,6 @@ AO_INLINE AO_t AO_compare_and_swap_full(volatile AO_t *addr,
   : "cc", "memory");
   return retval == 0;
 }
-
 #define AO_HAVE_compare_and_swap_full
 
 /* FIXME: Add double-wide compare-and-swap for 32-bit executables.      */

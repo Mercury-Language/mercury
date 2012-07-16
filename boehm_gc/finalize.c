@@ -374,7 +374,7 @@ STATIC void GC_register_finalizer_inner(void * obj,
         curr_fo = fo_next(curr_fo);
       }
       if (EXPECT(new_fo != 0, FALSE)) {
-        /* new_fo is returned GC_oom_fn(), so fn != 0 and hhdr != 0.    */
+        /* new_fo is returned by GC_oom_fn(), so fn != 0 and hhdr != 0. */
         break;
       }
       if (fn == 0) {
@@ -485,30 +485,28 @@ GC_API void GC_CALL GC_register_finalizer_unreachable(void * obj,
       }
     }
   }
-#endif
+#endif /* !NO_DEBUGGING */
 
 #ifndef SMALL_CONFIG
   STATIC word GC_old_dl_entries = 0; /* for stats printing */
 #endif
 
-#ifdef THREADS
-  /* Defined in pthread_support.c or win32_threads.c.  Called with the  */
-  /* allocation lock held.                                              */
-  GC_INNER void GC_reset_finalizer_nested(void);
-  GC_INNER unsigned *GC_check_finalizer_nested(void);
-#else
+#ifndef THREADS
   /* Global variables to minimize the level of recursion when a client  */
   /* finalizer allocates memory.                                        */
-  STATIC unsigned GC_finalizer_nested = 0;
+  STATIC int GC_finalizer_nested = 0;
+                        /* Only the lowest byte is used, the rest is    */
+                        /* padding for proper global data alignment     */
+                        /* required for some compilers (like Watcom).   */
   STATIC unsigned GC_finalizer_skipped = 0;
 
   /* Checks and updates the level of finalizers recursion.              */
   /* Returns NULL if GC_invoke_finalizers() should not be called by the */
   /* collector (to minimize the risk of a deep finalizers recursion),   */
   /* otherwise returns a pointer to GC_finalizer_nested.                */
-  STATIC unsigned *GC_check_finalizer_nested(void)
+  STATIC unsigned char *GC_check_finalizer_nested(void)
   {
-    unsigned nesting_level = GC_finalizer_nested;
+    unsigned nesting_level = *(unsigned char *)&GC_finalizer_nested;
     if (nesting_level) {
       /* We are inside another GC_invoke_finalizers().          */
       /* Skip some implicitly-called GC_invoke_finalizers()     */
@@ -516,8 +514,8 @@ GC_API void GC_CALL GC_register_finalizer_unreachable(void * obj,
       if (++GC_finalizer_skipped < (1U << nesting_level)) return NULL;
       GC_finalizer_skipped = 0;
     }
-    GC_finalizer_nested = nesting_level + 1;
-    return &GC_finalizer_nested;
+    *(char *)&GC_finalizer_nested = (char)(nesting_level + 1);
+    return (unsigned char *)&GC_finalizer_nested;
   }
 #endif /* THREADS */
 
@@ -844,7 +842,11 @@ GC_INNER void GC_notify_or_invoke_finalizers(void)
     GC_finalizer_notifier_proc notifier_fn = 0;
 #   if defined(KEEP_BACK_PTRS) || defined(MAKE_BACK_GRAPH)
       static word last_back_trace_gc_no = 1;    /* Skip first one. */
-#   elif defined(THREADS)
+#   endif
+    DCL_LOCK_STATE;
+
+#   if defined(THREADS) && !defined(KEEP_BACK_PTRS) \
+       && !defined(MAKE_BACK_GRAPH)
       /* Quick check (while unlocked) for an empty finalization queue.  */
       if (GC_finalize_now == 0) return;
 #   endif
@@ -884,7 +886,7 @@ GC_INNER void GC_notify_or_invoke_finalizers(void)
     }
 
     if (!GC_finalize_on_demand) {
-      unsigned *pnested = GC_check_finalizer_nested();
+      unsigned char *pnested = GC_check_finalizer_nested();
       UNLOCK();
       /* Skip GC_invoke_finalizers() if nested */
       if (pnested != NULL) {
@@ -942,4 +944,4 @@ GC_API void * GC_CALL GC_call_with_alloc_lock(GC_fn_type fn,
                   "%ld links cleared\n",
                   ready, (long)GC_old_dl_entries - (long)GC_dl_entries);
   }
-#endif /* SMALL_CONFIG */
+#endif /* !SMALL_CONFIG */

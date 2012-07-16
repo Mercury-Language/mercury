@@ -168,6 +168,7 @@ void test_atomicXX(void)
     TA_assert(x == 42);
 # else
     MISSING(AO_compare_and_swap);
+    if (x == 13) x = 42;
 # endif
 # if defined(AO_HAVE_orXX)
     AO_orXX(&x, 66);

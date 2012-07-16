@@ -33,11 +33,9 @@
 SUBDIRS =
 
 ACLOCAL_AMFLAGS = -I m4
-AM_CPPFLAGS = -I$(top_builddir)/include -I$(top_srcdir)/include
-if USE_INTERNAL_LIBATOMIC_OPS
-AM_CPPFLAGS += -I$(top_builddir)/libatomic_ops/src \
-	       -I$(top_srcdir)/libatomic_ops/src
-endif
+AM_CPPFLAGS = \
+	-I$(top_builddir)/include -I$(top_srcdir)/include \
+	$(ATOMIC_OPS_CFLAGS)
 
 # Initialize variables so that we can declare files locally.
 EXTRA_DIST =
@@ -46,6 +44,7 @@ include_HEADERS =
 pkginclude_HEADERS =
 dist_noinst_HEADERS =
 check_PROGRAMS =
+check_LTLIBRARIES =
 TESTS =
 
 pkgconfigdir = $(libdir)/pkgconfig
@@ -67,7 +66,7 @@ libgc_la_SOURCES = \
 # ---------------------------------
 
 if PTHREADS
-libgc_la_SOURCES += pthread_support.c pthread_stop_world.c
+libgc_la_SOURCES += pthread_start.c pthread_support.c pthread_stop_world.c
 endif
 
 if DARWIN_THREADS
@@ -103,7 +102,8 @@ EXTRA_libgc_la_SOURCES = alpha_mach_dep.S \
 
 if CPLUSPLUS
 lib_LTLIBRARIES += libgccpp.la
-pkginclude_HEADERS += include/gc_cpp.h include/gc_allocator.h
+pkginclude_HEADERS += include/gc_cpp.h
+include_HEADERS += include/extra/gc_cpp.h
 libgccpp_la_SOURCES = gc_cpp.cc
 libgccpp_la_LIBADD = ./libgc.la
 libgccpp_la_LDFLAGS = -version-info 1:3:0 -no-undefined
@@ -170,24 +170,20 @@ EXTRA_DIST += README.QUICK
 # :GOTCHA: deliberately we do not include 'Makefile'
 EXTRA_DIST += BCC_MAKEFILE NT_MAKEFILE \
     OS2_MAKEFILE PCR-Makefile digimars.mak EMX_MAKEFILE	\
-    Makefile.direct Makefile.dj	Makefile.DLLs SMakefile.amiga \
-    WCC_MAKEFILE build_atomic_ops.sh build_atomic_ops.sh.cygwin \
+    Makefile.direct Makefile.dj Makefile.DLLs SMakefile.amiga \
+    WCC_MAKEFILE autogen.sh build_atomic_ops.sh build_atomic_ops.sh.cygwin \
     NT_STATIC_THREADS_MAKEFILE NT_X64_STATIC_THREADS_MAKEFILE \
-    NT_X64_THREADS_MAKEFILE
+    NT_X64_THREADS_MAKEFILE CMakeLists.txt tests/CMakeLists.txt
 
 # files used by makefiles other than Makefile.am
 #
 EXTRA_DIST += extra/add_gc_prefix.c extra/gc.c extra/gcname.c \
-    extra/if_mach.c extra/if_not_there.c hpux_test_and_clear.s gc.mak \
+    extra/if_mach.c extra/if_not_there.c gc.mak \
     extra/MacOS.c MacProjects.sit.hqx mach_dep.c extra/setjmp_t.c \
     extra/threadlibs.c extra/AmigaOS.c \
     Mac_files/datastart.c Mac_files/dataend.c \
     Mac_files/MacOS_config.h Mac_files/MacOS_Test_config.h \
     include/private/msvc_dbg.h extra/msvc_dbg.c
-
-# The libatomic_ops library.  This is not ideal, since we pick up junk from
-# there.
-EXTRA_DIST += libatomic_ops
 
 # this is an auxiliary shell file used by Makefile and Makefile.direct
 #

@@ -83,6 +83,7 @@ AO_test_and_set_full(volatile AO_TS_t * addr)
   volatile unsigned int *a = __ldcw_align (addr);
   return (AO_TS_VAL_t) __ldcw (a);
 }
+#define AO_HAVE_test_and_set_full
 
 AO_INLINE void
 AO_pa_clear(volatile AO_TS_t * addr)
@@ -92,5 +93,3 @@ AO_pa_clear(volatile AO_TS_t * addr)
   *a = 1;
 }
 #define AO_CLEAR(addr) AO_pa_clear(addr)
-
-#define AO_HAVE_test_and_set_full

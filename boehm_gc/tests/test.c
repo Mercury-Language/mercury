@@ -50,20 +50,31 @@
 
 # include "gc_typed.h"
 # include "private/gc_priv.h"   /* For output, locking, MIN_WORDS,      */
-                                /* and some statistics, and gcconfig.h. */
+                                /* some statistics and gcconfig.h.      */
 
 # if defined(MSWIN32) || defined(MSWINCE)
 #   include <windows.h>
 # endif
 
-# ifdef GC_DLL
-#   ifdef GC_PRINT_VERBOSE_STATS
-#     define GC_print_stats VERBOSE
-#   else
-#     define GC_print_stats 0   /* Not exported from DLL */
-                                /* Redefine to 1 to generate output. */
-#   endif
+#ifdef GC_PRINT_VERBOSE_STATS
+# define print_stats VERBOSE
+# define INIT_PRINT_STATS /* empty */
+#else
+  /* Use own variable as GC_print_stats might not be exported.  */
+  static int print_stats = 0;
+# ifdef GC_READ_ENV_FILE
+    /* GETENV uses GC internal function in this case.   */
+#   define INIT_PRINT_STATS /* empty */
+# else
+#   define INIT_PRINT_STATS \
+        { \
+          if (0 != GETENV("GC_PRINT_VERBOSE_STATS")) \
+            print_stats = VERBOSE; \
+          else if (0 != GETENV("GC_PRINT_STATS")) \
+            print_stats = 1; \
+        }
 # endif
+#endif /* !GC_PRINT_VERBOSE_STATS */
 
 # ifdef PCR
 #   include "th/PCR_ThCrSec.h"
@@ -75,21 +86,56 @@
 #   include <pthread.h>
 # endif
 
+# if (!defined(THREADS) || !defined(HANDLE_FORK) \
+      || (defined(DARWIN) && defined(MPROTECT_VDB) \
+          && !defined(NO_INCREMENTAL) && !defined(MAKE_BACK_GRAPH))) \
+     && !defined(NO_TEST_HANDLE_FORK)
+#   define NO_TEST_HANDLE_FORK
+# endif
+
+# ifndef NO_TEST_HANDLE_FORK
+#   include <unistd.h>
+#   define INIT_FORK_SUPPORT GC_set_handle_fork(1)
+# else
+#   define INIT_FORK_SUPPORT /* empty */
+# endif
+
 # if defined(GC_WIN32_THREADS) && !defined(GC_PTHREADS)
     static CRITICAL_SECTION incr_cs;
 # endif
 
 # include <stdarg.h>
 
+#ifndef GC_ALPHA_VERSION
+# define GC_ALPHA_VERSION GC_TMP_ALPHA_VERSION
+#endif
+
+#define CHECH_GCLIB_VERSION \
+            if (GC_get_version() != ((GC_VERSION_MAJOR<<16) \
+                                    | (GC_VERSION_MINOR<<8) \
+                                    | GC_ALPHA_VERSION)) { \
+              GC_printf("libgc version mismatch\n"); \
+              exit(1); \
+            }
+
 /* Call GC_INIT only on platforms on which we think we really need it,  */
 /* so that we can test automatic initialization on the rest.            */
 #if defined(CYGWIN32) || defined (AIX) || defined(DARWIN) \
         || defined(THREAD_LOCAL_ALLOC) \
         || (defined(MSWINCE) && !defined(GC_WINMAIN_REDIRECT))
-#  define GC_COND_INIT() GC_INIT()
+#  define GC_OPT_INIT GC_INIT()
 #else
-#  define GC_COND_INIT()
+#  define GC_OPT_INIT /* empty */
 #endif
+
+#define GC_COND_INIT() \
+    INIT_FORK_SUPPORT; GC_OPT_INIT; CHECH_GCLIB_VERSION; INIT_PRINT_STATS
+
+#define CHECK_OUT_OF_MEMORY(p) \
+            if ((p) == NULL) { \
+              GC_printf("Out of memory\n"); \
+              exit(1); \
+            }
 
 /* Allocation Statistics.  Incremented without synchronization. */
 /* FIXME: We should be using synchronization.                   */
@@ -113,7 +159,7 @@ int realloc_count = 0;
                 }
       if(ret==NULL){
         GC_printf("Out of memory, (typed allocations are not directly "
-                  "supported with the GC_AMIGA_FASTALLOC option.)\n");
+                      "supported with the GC_AMIGA_FASTALLOC option.)\n");
         FAIL;
       }
     }
@@ -128,7 +174,7 @@ int realloc_count = 0;
                 }
       if(ret==NULL){
         GC_printf("Out of memory, (typed allocations are not directly "
-                  "supported with the GC_AMIGA_FASTALLOC option.)\n");
+                      "supported with the GC_AMIGA_FASTALLOC option.)\n");
         FAIL;
       }
     }
@@ -139,7 +185,7 @@ int realloc_count = 0;
 
 #else /* !AMIGA_FASTALLOC */
 
-# ifdef PCR
+# if defined(PCR) || defined(LINT2)
 #   define FAIL (void)abort()
 # else
 #   define FAIL ABORT("Test failed")
@@ -186,14 +232,11 @@ sexpr cons (sexpr x, sexpr y)
 
     stubborn_count++;
     r = (sexpr) GC_MALLOC_STUBBORN(sizeof(struct SEXPR) + my_extra);
-    if (r == 0) {
-        (void)GC_printf("Out of memory\n");
-        exit(1);
-    }
+    CHECK_OUT_OF_MEMORY(r);
     for (p = (int *)r;
          ((char *)p) < ((char *)r) + my_extra + sizeof(struct SEXPR); p++) {
         if (*p) {
-            (void)GC_printf("Found nonzero at %p - allocator is broken\n", p);
+            GC_printf("Found nonzero at %p - allocator is broken\n", p);
             FAIL;
         }
         *p = (int)((13 << 12) + ((p - (int *)r) & 0xfff));
@@ -262,10 +305,7 @@ sexpr small_cons (sexpr x, sexpr y)
 
     collectable_count++;
     r = (sexpr) GC_MALLOC(sizeof(struct SEXPR));
-    if (r == 0) {
-        (void)GC_printf("Out of memory\n");
-        exit(1);
-    }
+    CHECK_OUT_OF_MEMORY(r);
     r -> sexpr_car = x;
     r -> sexpr_cdr = y;
     return(r);
@@ -277,10 +317,7 @@ sexpr small_cons_uncollectable (sexpr x, sexpr y)
 
     uncollectable_count++;
     r = (sexpr) GC_MALLOC_UNCOLLECTABLE(sizeof(struct SEXPR));
-    if (r == 0) {
-        (void)GC_printf("Out of memory\n");
-        exit(1);
-    }
+    CHECK_OUT_OF_MEMORY(r);
     r -> sexpr_car = x;
     r -> sexpr_cdr = (sexpr)(~(GC_word)y);
     return(r);
@@ -297,10 +334,7 @@ sexpr gcj_cons(sexpr x, sexpr y)
     r = (GC_word *) GC_GCJ_MALLOC(sizeof(struct SEXPR)
                                   + sizeof(struct fake_vtable*),
                                    &gcj_class_struct2);
-    if (r == 0) {
-        (void)GC_printf("Out of memory\n");
-        exit(1);
-    }
+    CHECK_OUT_OF_MEMORY(r);
     result = (sexpr)(r + 1);
     result -> sexpr_car = x;
     result -> sexpr_cdr = y;
@@ -376,13 +410,13 @@ sexpr uncollectable_ints(int low, int up)
 void check_ints(sexpr list, int low, int up)
 {
     if (SEXPR_TO_INT(car(car(list))) != low) {
-        (void)GC_printf(
+        GC_printf(
            "List reversal produced incorrect list - collector is broken\n");
         FAIL;
     }
     if (low == up) {
         if (cdr(list) != nil) {
-           (void)GC_printf("List too long - collector is broken\n");
+           GC_printf("List too long - collector is broken\n");
            FAIL;
         }
     } else {
@@ -395,15 +429,14 @@ void check_ints(sexpr list, int low, int up)
 void check_uncollectable_ints(sexpr list, int low, int up)
 {
     if (SEXPR_TO_INT(car(car(list))) != low) {
-        (void)GC_printf(
-           "Uncollectable list corrupted - collector is broken\n");
+        GC_printf("Uncollectable list corrupted - collector is broken\n");
         FAIL;
     }
     if (low == up) {
-        if (UNCOLLECTABLE_CDR(list) != nil) {
-           (void)GC_printf("Uncollectable list too long - collector is broken\n");
-           FAIL;
-        }
+      if (UNCOLLECTABLE_CDR(list) != nil) {
+        GC_printf("Uncollectable list too long - collector is broken\n");
+        FAIL;
+      }
     } else {
         check_uncollectable_ints(UNCOLLECTABLE_CDR(list), low+1, up);
     }
@@ -413,14 +446,14 @@ void check_uncollectable_ints(sexpr list, int low, int up)
 void print_int_list(sexpr x)
 {
     if (is_nil(x)) {
-        (void)GC_printf("NIL\n");
+        GC_printf("NIL\n");
     } else {
-        (void)GC_printf("(%d)", SEXPR_TO_INT(car(car(x))));
+        GC_printf("(%d)", SEXPR_TO_INT(car(car(x))));
         if (!is_nil(cdr(x))) {
-            (void)GC_printf(", ");
-            (void)print_int_list(cdr(x));
+            GC_printf(", ");
+            print_int_list(cdr(x));
         } else {
-            (void)GC_printf("\n");
+            GC_printf("\n");
         }
     }
 }
@@ -433,15 +466,16 @@ void check_marks_int_list(sexpr x)
     else
         GC_printf("[mkd:%p]", x);
     if (is_nil(x)) {
-        (void)GC_printf("NIL\n");
+        GC_printf("NIL\n");
     } else {
-        if (!GC_is_marked((ptr_t)car(x))) GC_printf("[unm car:%p]", car(x));
-        (void)GC_printf("(%d)", SEXPR_TO_INT(car(car(x))));
+        if (!GC_is_marked((ptr_t)car(x)))
+          GC_printf("[unm car:%p]", car(x));
+        GC_printf("(%d)", SEXPR_TO_INT(car(car(x))));
         if (!is_nil(cdr(x))) {
-            (void)GC_printf(", ");
-            (void)check_marks_int_list(cdr(x));
+            GC_printf(", ");
+            check_marks_int_list(cdr(x));
         } else {
-            (void)GC_printf("\n");
+            GC_printf("\n");
         }
     }
 }
@@ -477,11 +511,11 @@ void check_marks_int_list(sexpr x)
       pthread_t t;
       int code;
       if ((code = pthread_create(&t, 0, tiny_reverse_test, 0)) != 0) {
-        (void)GC_printf("Small thread creation failed %d\n", code);
+        GC_printf("Small thread creation failed %d\n", code);
         FAIL;
       }
       if ((code = pthread_join(t, 0)) != 0) {
-        (void)GC_printf("Small thread join failed %d\n", code);
+        GC_printf("Small thread join failed %d\n", code);
         FAIL;
       }
     }
@@ -493,13 +527,13 @@ void check_marks_int_list(sexpr x)
         HANDLE h;
         h = GC_CreateThread(NULL, 0, tiny_reverse_test, 0, 0, &thread_id);
         if (h == (HANDLE)NULL) {
-            (void)GC_printf("Small thread creation failed %d\n",
-                            (int)GetLastError());
+            GC_printf("Small thread creation failed %d\n",
+                          (int)GetLastError());
             FAIL;
         }
         if (WaitForSingleObject(h, INFINITE) != WAIT_OBJECT_0) {
-            (void)GC_printf("Small thread wait failed %d\n",
-                            (int)GetLastError());
+            GC_printf("Small thread wait failed %d\n",
+                          (int)GetLastError());
             FAIL;
         }
     }
@@ -519,7 +553,7 @@ struct {
  * Repeatedly reverse lists built out of very different sized cons cells.
  * Check that we didn't lose anything.
  */
-void reverse_test(void)
+void *GC_CALLBACK reverse_test_inner(void *data)
 {
     int i;
     sexpr b;
@@ -527,26 +561,28 @@ void reverse_test(void)
     sexpr d;
     sexpr e;
     sexpr *f, *g, *h;
-#   if defined(MSWIN32) || defined(MACOS)
+
+    if (data == 0) {
+      /* This stack frame is not guaranteed to be scanned. */
+      return GC_call_with_gc_active(reverse_test_inner, (void*)(word)1);
+    }
+
+#   if /*defined(MSWIN32) ||*/ defined(MACOS)
       /* Win32S only allows 128K stacks */
 #     define BIG 1000
+#   elif defined(PCR)
+      /* PCR default stack is 100K.  Stack frames are up to 120 bytes. */
+#     define BIG 700
+#   elif defined(MSWINCE) || defined(RTEMS)
+      /* WinCE only allows 64K stacks */
+#     define BIG 500
+#   elif defined(OSF1)
+      /* OSF has limited stack space by default, and large frames. */
+#     define BIG 200
+#   elif defined(__MACH__) && defined(__ppc64__)
+#     define BIG 2500
 #   else
-#     if defined(PCR)
-        /* PCR default stack is 100K.  Stack frames are up to 120 bytes. */
-#       define BIG 700
-#     else
-#       if defined(MSWINCE)
-          /* WinCE only allows 64K stacks */
-#         define BIG 500
-#       else
-#         if defined(OSF1)
-            /* OSF has limited stack space by default, and large frames. */
-#           define BIG 200
-#         else
-#           define BIG 4500
-#         endif
-#       endif
-#     endif
+#     define BIG 4500
 #   endif
 
     A.dummy = 17;
@@ -560,16 +596,19 @@ void reverse_test(void)
     f = (sexpr *)GC_MALLOC(4 * sizeof(sexpr));
     realloc_count++;
     f = (sexpr *)GC_REALLOC((void *)f, 6 * sizeof(sexpr));
+    CHECK_OUT_OF_MEMORY(f);
     f[5] = ints(1,17);
     collectable_count++;
     g = (sexpr *)GC_MALLOC(513 * sizeof(sexpr));
     realloc_count++;
     g = (sexpr *)GC_REALLOC((void *)g, 800 * sizeof(sexpr));
+    CHECK_OUT_OF_MEMORY(g);
     g[799] = ints(1,18);
     collectable_count++;
     h = (sexpr *)GC_MALLOC(1025 * sizeof(sexpr));
     realloc_count++;
     h = (sexpr *)GC_REALLOC((void *)h, 2000 * sizeof(sexpr));
+    CHECK_OUT_OF_MEMORY(h);
 #   ifdef GC_GCJ_SUPPORT
       h[1999] = gcj_ints(1,200);
       for (i = 0; i < 51; ++i)
@@ -579,12 +618,12 @@ void reverse_test(void)
       h[1999] = ints(1,200);
 #   endif
     /* Try to force some collections and reuse of small list elements */
-      for (i = 0; i < 10; i++) {
-        (void)ints(1, BIG);
-      }
+    for (i = 0; i < 10; i++) {
+      (void)ints(1, BIG);
+    }
     /* Superficially test interior pointer recognition on stack */
-      c = (sexpr)((char *)c + sizeof(char *));
-      d = (sexpr)((char *)d + sizeof(char *));
+    c = (sexpr)((char *)c + sizeof(char *));
+    d = (sexpr)((char *)d + sizeof(char *));
 
     GC_FREE((void *)e);
 
@@ -615,8 +654,11 @@ void reverse_test(void)
     }
     check_ints(a,1,49);
     check_ints(b,1,50);
+
+    /* Restore c and d values. */
     c = (sexpr)((char *)c - sizeof(char *));
     d = (sexpr)((char *)d - sizeof(char *));
+
     check_ints(c,1,BIG);
     check_uncollectable_ints(d, 1, 100);
     check_ints(f[5], 1,17);
@@ -628,8 +670,15 @@ void reverse_test(void)
 #   ifndef THREADS
         a = 0;
 #   endif
-    *(volatile void **)&b = 0;
-    *(volatile void **)&c = 0;
+    *(sexpr volatile *)&b = 0;
+    *(sexpr volatile *)&c = 0;
+    return 0;
+}
+
+void reverse_test(void)
+{
+    /* Test GC_do_blocking/GC_call_with_gc_active. */
+    (void)GC_do_blocking(reverse_test_inner, 0);
 }
 
 #undef a
@@ -662,7 +711,7 @@ void GC_CALLBACK finalizer(void * obj, void * client_data)
     EnterCriticalSection(&incr_cs);
 # endif
   if ((int)(GC_word)client_data != t -> level) {
-     (void)GC_printf("Wrong finalization data - collector is broken\n");
+     GC_printf("Wrong finalization data - collector is broken\n");
      FAIL;
   }
   finalized_count++;
@@ -697,25 +746,23 @@ tn * mktree(int n)
     collectable_count++;
 #   if defined(MACOS)
         /* get around static data limitations. */
-        if (!live_indicators)
-                live_indicators =
-                    (GC_word*)NewPtrClear(MAX_FINALIZED * sizeof(GC_word));
         if (!live_indicators) {
-          (void)GC_printf("Out of memory\n");
-          exit(1);
+          live_indicators =
+                    (GC_word*)NewPtrClear(MAX_FINALIZED * sizeof(GC_word));
+          CHECK_OUT_OF_MEMORY(live_indicators);
         }
 #   endif
     if (n == 0) return(0);
-    if (result == 0) {
-        (void)GC_printf("Out of memory\n");
-        exit(1);
-    }
+    CHECK_OUT_OF_MEMORY(result);
     result -> level = n;
     result -> lchild = mktree(n-1);
     result -> rchild = mktree(n-1);
     if (counter++ % 17 == 0 && n >= 2) {
-        tn * tmp = result -> lchild -> rchild;
+        tn * tmp;
 
+        CHECK_OUT_OF_MEMORY(result->lchild);
+        tmp = result -> lchild -> rchild;
+        CHECK_OUT_OF_MEMORY(result->rchild);
         result -> lchild -> rchild = result -> rchild -> lchild;
         result -> rchild -> lchild = tmp;
     }
@@ -778,12 +825,12 @@ tn * mktree(int n)
 void chktree(tn *t, int n)
 {
     if (n == 0 && t != 0) {
-        (void)GC_printf("Clobbered a leaf - collector is broken\n");
+        GC_printf("Clobbered a leaf - collector is broken\n");
         FAIL;
     }
     if (n == 0) return;
     if (t -> level != n) {
-        (void)GC_printf("Lost a node at level %d - collector is broken\n", n);
+        GC_printf("Lost a node at level %d - collector is broken\n", n);
         FAIL;
     }
     if (counter++ % 373 == 0) {
@@ -815,18 +862,16 @@ void * alloc8bytes(void)
     if (my_free_list_ptr == 0) {
         uncollectable_count++;
         my_free_list_ptr = GC_NEW_UNCOLLECTABLE(void *);
+        CHECK_OUT_OF_MEMORY(my_free_list_ptr);
         if (pthread_setspecific(fl_key, my_free_list_ptr) != 0) {
-            (void)GC_printf("pthread_setspecific failed\n");
+            GC_printf("pthread_setspecific failed\n");
             FAIL;
         }
     }
     my_free_list = *my_free_list_ptr;
     if (my_free_list == 0) {
         my_free_list = GC_malloc_many(8);
-        if (my_free_list == 0) {
-            (void)GC_printf("alloc8bytes out of memory\n");
-            FAIL;
-        }
+        CHECK_OUT_OF_MEMORY(my_free_list);
     }
     *my_free_list_ptr = GC_NEXT(my_free_list);
     GC_NEXT(my_free_list) = 0;
@@ -846,7 +891,7 @@ void alloc_small(int n)
     for (i = 0; i < n; i += 8) {
         atomic_count++;
         if (alloc8bytes() == 0) {
-            (void)GC_printf("Out of memory\n");
+            GC_printf("Out of memory\n");
             FAIL;
         }
     }
@@ -876,7 +921,7 @@ void tree_test(void)
 #   endif
     chktree(root, TREE_HEIGHT);
     if (finalized_count && ! dropped_something) {
-        (void)GC_printf("Premature finalization - collector is broken\n");
+        GC_printf("Premature finalization - collector is broken\n");
         FAIL;
     }
     dropped_something = 1;
@@ -930,6 +975,7 @@ void typed_test(void)
     for (i = 0; i < 4000; i++) {
         collectable_count++;
         new = (GC_word *) GC_malloc_explicitly_typed(4 * sizeof(GC_word), d1);
+        CHECK_OUT_OF_MEMORY(new);
         if (0 != new[0] || 0 != new[1]) {
             GC_printf("Bad initialization by GC_malloc_explicitly_typed\n");
             FAIL;
@@ -939,17 +985,20 @@ void typed_test(void)
         old = new;
         collectable_count++;
         new = (GC_word *) GC_malloc_explicitly_typed(4 * sizeof(GC_word), d2);
+        CHECK_OUT_OF_MEMORY(new);
         new[0] = 17;
         new[1] = (GC_word)old;
         old = new;
         collectable_count++;
         new = (GC_word *) GC_malloc_explicitly_typed(33 * sizeof(GC_word), d3);
+        CHECK_OUT_OF_MEMORY(new);
         new[0] = 17;
         new[1] = (GC_word)old;
         old = new;
         collectable_count++;
         new = (GC_word *) GC_calloc_explicitly_typed(4, 2 * sizeof(GC_word),
                                                      d1);
+        CHECK_OUT_OF_MEMORY(new);
         new[0] = 17;
         new[1] = (GC_word)old;
         old = new;
@@ -961,19 +1010,19 @@ void typed_test(void)
           new = (GC_word *) GC_calloc_explicitly_typed(1001,
                                                        3 * sizeof(GC_word),
                                                        d2);
-          if (0 != new[0] || 0 != new[1]) {
+          if (new && (0 != new[0] || 0 != new[1])) {
             GC_printf("Bad initialization by GC_malloc_explicitly_typed\n");
             FAIL;
           }
         }
+        CHECK_OUT_OF_MEMORY(new);
         new[0] = 17;
         new[1] = (GC_word)old;
         old = new;
     }
     for (i = 0; i < 20000; i++) {
         if (new[0] != 17) {
-            (void)GC_printf("typed alloc failed at %lu\n",
-                            (unsigned long)i);
+            GC_printf("typed alloc failed at %lu\n", (unsigned long)i);
             FAIL;
         }
         new[0] = 0;
@@ -1042,22 +1091,22 @@ void run_one_test(void)
 
 #   ifdef FIND_LEAK
         GC_printf(
-                "This test program is not designed for leak detection mode\n");
-        GC_printf("Expect lots of problems.\n");
+              "This test program is not designed for leak detection mode\n");
+        GC_printf("Expect lots of problems\n");
 #   endif
     GC_FREE(0);
 #   ifndef DBG_HDRS_ALL
       collectable_count += 3;
       if ((GC_size(GC_malloc(7)) != 8 &&
            GC_size(GC_malloc(7)) != MIN_WORDS * sizeof(GC_word))
-        || GC_size(GC_malloc(15)) != 16) {
-            GC_printf("GC_size produced unexpected results\n");
-            FAIL;
+           || GC_size(GC_malloc(15)) != 16) {
+        GC_printf("GC_size produced unexpected results\n");
+        FAIL;
       }
       collectable_count += 1;
       if (GC_size(GC_malloc(0)) != MIN_WORDS * sizeof(GC_word)) {
         GC_printf("GC_malloc(0) failed: GC_size returns %ld\n",
-                        (unsigned long)GC_size(GC_malloc(0)));
+                      (unsigned long)GC_size(GC_malloc(0)));
         FAIL;
       }
       collectable_count += 1;
@@ -1113,8 +1162,7 @@ void run_one_test(void)
       if (GC_is_valid_displacement(y) != y
         || GC_is_valid_displacement(x) != x
         || GC_is_valid_displacement(x + 3) != x + 3) {
-        GC_printf(
-                "GC_is_valid_displacement produced incorrect result\n");
+        GC_printf("GC_is_valid_displacement produced incorrect result\n");
         FAIL;
       }
         {
@@ -1130,19 +1178,25 @@ void run_one_test(void)
 #      if defined(RS6000) || defined(POWERPC)
         if (!TEST_FAIL_COUNT(1))
 #      else
-        if ((GC_all_interior_pointers && !TEST_FAIL_COUNT(1))
-            || (!GC_all_interior_pointers && !TEST_FAIL_COUNT(2)))
+        if (!TEST_FAIL_COUNT(GC_get_all_interior_pointers() ? 1 : 2))
 #      endif
         {
-          GC_printf("GC_is_valid_displacement produced wrong failure indication\n");
+          GC_printf(
+              "GC_is_valid_displacement produced wrong failure indication\n");
           FAIL;
         }
 #     endif
 #   endif /* DBG_HDRS_ALL */
     /* Test floating point alignment */
         collectable_count += 2;
-        *(double *)GC_MALLOC(sizeof(double)) = 1.0;
-        *(double *)GC_MALLOC(sizeof(double)) = 1.0;
+        {
+          double *dp = GC_MALLOC(sizeof(double));
+          CHECK_OUT_OF_MEMORY(dp);
+          *dp = 1.0;
+          dp = GC_MALLOC(sizeof(double));
+          CHECK_OUT_OF_MEMORY(dp);
+          *dp = 1.0;
+        }
     /* Test size 0 allocation a bit more */
         {
            size_t i;
@@ -1178,7 +1232,7 @@ void run_one_test(void)
     /* Repeated list reversal test. */
         GET_TIME(start_time);
         reverse_test();
-        if (GC_print_stats) {
+        if (print_stats) {
           GET_TIME(reverse_time);
           time_diff = MS_TIME_DIFF(reverse_time, start_time);
           GC_log_printf("-------------Finished reverse_test at time %u (%p)\n",
@@ -1186,7 +1240,7 @@ void run_one_test(void)
         }
 #   ifndef DBG_HDRS_ALL
       typed_test();
-      if (GC_print_stats) {
+      if (print_stats) {
         GET_TIME(typed_time);
         time_diff = MS_TIME_DIFF(typed_time, start_time);
         GC_log_printf("-------------Finished typed_test at time %u (%p)\n",
@@ -1194,36 +1248,39 @@ void run_one_test(void)
       }
 #   endif /* DBG_HDRS_ALL */
     tree_test();
-    if (GC_print_stats) {
+    if (print_stats) {
       GET_TIME(tree_time);
       time_diff = MS_TIME_DIFF(tree_time, start_time);
       GC_log_printf("-------------Finished tree_test at time %u (%p)\n",
-                      (unsigned) time_diff, &start_time);
+                    (unsigned) time_diff, &start_time);
     }
     /* Run reverse_test a second time, so we hopefully notice corruption. */
       reverse_test();
-      if (GC_print_stats) {
-          GET_TIME(reverse_time);
-          time_diff = MS_TIME_DIFF(reverse_time, start_time);
-          GC_log_printf("-------------Finished second reverse_test at time %u (%p)\n",
-                        (unsigned) time_diff, &start_time);
+      if (print_stats) {
+        GET_TIME(reverse_time);
+        time_diff = MS_TIME_DIFF(reverse_time, start_time);
+        GC_log_printf(
+                "-------------Finished second reverse_test at time %u (%p)\n",
+                (unsigned)time_diff, &start_time);
       }
     /* GC_allocate_ml and GC_need_to_lock are no longer exported, and   */
     /* AO_fetch_and_add1() may be unavailable to update a counter.      */
     (void)GC_call_with_alloc_lock(inc_int_counter, &n_tests);
-#   if defined(THREADS) && defined(HANDLE_FORK)
+#   ifndef NO_TEST_HANDLE_FORK
       if (fork() == 0) {
         GC_gcollect();
         tiny_reverse_test(0);
         GC_gcollect();
-        if (GC_print_stats)
+        if (print_stats)
           GC_log_printf("Finished a child process\n");
         exit(0);
       }
 #   endif
-    if (GC_print_stats)
+    if (print_stats)
       GC_log_printf("Finished %p\n", &start_time);
 }
+
+#define NUMBER_ROUND_UP(v, bound) ((((v) + (bound) - 1) / (bound)) * (bound))
 
 void check_heap_stats(void)
 {
@@ -1247,9 +1304,9 @@ void check_heap_stats(void)
 #     endif
 #   else
 #     if CPP_WORDSZ == 64
-        max_heap_sz = 19000000;
+        max_heap_sz = 23000000;
 #     else
-        max_heap_sz = 12000000;
+        max_heap_sz = 16000000;
 #     endif
 #   endif
 #   ifdef GC_DEBUG
@@ -1261,6 +1318,10 @@ void check_heap_stats(void)
 #           endif
 #       endif
 #   endif
+    max_heap_sz *= n_tests;
+#   if defined(USE_MMAP) || defined(MSWIN32)
+      max_heap_sz = NUMBER_ROUND_UP(max_heap_sz, 4 * 1024 * 1024);
+#   endif
     /* Garbage collect repeatedly so that all inaccessible objects      */
     /* can be finalized.                                                */
       while (GC_collect_a_little()) { }
@@ -1271,26 +1332,30 @@ void check_heap_stats(void)
 #   endif
                 GC_invoke_finalizers();
       }
-    (void)GC_printf("Completed %u tests\n", n_tests);
-    (void)GC_printf("Allocated %d collectable objects\n", collectable_count);
-    (void)GC_printf("Allocated %d uncollectable objects\n",
-                    uncollectable_count);
-    (void)GC_printf("Allocated %d atomic objects\n", atomic_count);
-    (void)GC_printf("Allocated %d stubborn objects\n", stubborn_count);
-    (void)GC_printf("Finalized %d/%d objects - ",
-                    finalized_count, finalizable_count);
+      if (print_stats) {
+          GC_log_printf("Primordial thread stack bottom: %p\n",
+                        GC_stackbottom);
+      }
+    GC_printf("Completed %u tests\n", n_tests);
+    GC_printf("Allocated %d collectable objects\n", collectable_count);
+    GC_printf("Allocated %d uncollectable objects\n",
+                  uncollectable_count);
+    GC_printf("Allocated %d atomic objects\n", atomic_count);
+    GC_printf("Allocated %d stubborn objects\n", stubborn_count);
+    GC_printf("Finalized %d/%d objects - ",
+                  finalized_count, finalizable_count);
 #   ifdef FINALIZE_ON_DEMAND
         if (finalized_count != late_finalize_count) {
-            (void)GC_printf("Demand finalization error\n");
+            GC_printf("Demand finalization error\n");
             FAIL;
         }
 #   endif
     if (finalized_count > finalizable_count
         || finalized_count < finalizable_count/2) {
-        (void)GC_printf("finalization is probably broken\n");
+        GC_printf("finalization is probably broken\n");
         FAIL;
     } else {
-        (void)GC_printf("finalization is probably ok\n");
+        GC_printf("finalization is probably ok\n");
     }
     still_live = 0;
     for (i = 0; i < MAX_FINALIZED; i++) {
@@ -1301,33 +1366,38 @@ void check_heap_stats(void)
     i = finalizable_count - finalized_count - still_live;
     if (0 != i) {
         GC_printf("%d disappearing links remain and %d more objects "
-                  "were not finalized\n", still_live, i);
+                      "were not finalized\n", still_live, i);
         if (i > 10) {
             GC_printf("\tVery suspicious!\n");
         } else {
-            GC_printf("\tSlightly suspicious, but probably OK.\n");
+            GC_printf("\tSlightly suspicious, but probably OK\n");
         }
     }
-    (void)GC_printf("Total number of bytes allocated is %lu\n",
-                (unsigned long)
-                   (GC_bytes_allocd + GC_bytes_allocd_before_gc));
-    (void)GC_printf("Final heap size is %lu bytes\n",
-                    (unsigned long)GC_get_heap_size());
-    if (GC_bytes_allocd + GC_bytes_allocd_before_gc < n_tests *
+    GC_printf("Total number of bytes allocated is %lu\n",
+                  (unsigned long)GC_get_total_bytes());
+    GC_printf("Final heap size is %lu bytes\n",
+                  (unsigned long)GC_get_heap_size());
+    if (GC_get_total_bytes() < n_tests *
 #   ifdef VERY_SMALL_CONFIG
         2700000
 #   else
         33500000
 #   endif
         ) {
-        (void)GC_printf("Incorrect execution - missed some allocations\n");
+      GC_printf("Incorrect execution - missed some allocations\n");
+      FAIL;
+    }
+    if (GC_get_heap_size() + GC_get_unmapped_bytes() > max_heap_sz) {
+        GC_printf("Unexpected heap growth - collector may be broken"
+                  " (heapsize: %lu, expected: %lu)\n",
+            (unsigned long)(GC_get_heap_size() + GC_get_unmapped_bytes()),
+            (unsigned long)max_heap_sz);
         FAIL;
     }
-    if (GC_get_heap_size() + GC_get_unmapped_bytes() > max_heap_sz*n_tests) {
-        (void)GC_printf("Unexpected heap growth - collector may be broken\n");
-        FAIL;
-    }
-    (void)GC_printf("Collector appears to work\n");
+#   ifdef THREADS
+      GC_unregister_my_thread(); /* just to check it works (for main) */
+#   endif
+    GC_printf("Collector appears to work\n");
 }
 
 #if defined(MACOS)
@@ -1360,12 +1430,21 @@ void GC_CALLBACK warn_proc(char *msg, GC_word p)
 # define WINMAIN_LPTSTR LPSTR
 #endif
 
-#if !defined(PCR) \
-    && !defined(GC_WIN32_THREADS) && !defined(GC_PTHREADS) \
+#if !defined(PCR) && !defined(GC_WIN32_THREADS) && !defined(GC_PTHREADS) \
     || defined(LINT)
 #if defined(MSWIN32) && !defined(__MINGW32__) || defined(MSWINCE)
   int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev,
                        WINMAIN_LPTSTR cmd, int n)
+#elif defined(RTEMS)
+# include <bsp.h>
+# define CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER
+# define CONFIGURE_APPLICATION_NEEDS_CONSOLE_DRIVER
+# define CONFIGURE_RTEMS_INIT_TASKS_TABLE
+# define CONFIGURE_MAXIMUM_TASKS 1
+# define CONFIGURE_INIT
+# define CONFIGURE_INIT_TASK_STACK_SIZE (64*1024)
+# include <rtems/confdefs.h>
+  rtems_task Init(rtems_task_argument ignord)
 #else
   int main(void)
 #endif
@@ -1375,7 +1454,7 @@ void GC_CALLBACK warn_proc(char *msg, GC_word p)
         /* Make sure we have lots and lots of stack space.      */
         SetMinimumStack(cMinStackSpace);
         /* Cheat and let stdio initialize toolbox for us.       */
-        printf("Testing GC Macintosh port.\n");
+        printf("Testing GC Macintosh port\n");
 #   endif
     GC_COND_INIT();
     GC_set_warn_proc(warn_proc);
@@ -1388,6 +1467,8 @@ void GC_CALLBACK warn_proc(char *msg, GC_word p)
 #     else
 #       ifdef PROC_VDB
           GC_printf("Reading dirty bits from /proc\n");
+#       elif defined(GWW_VDB)
+          GC_printf("Using GetWriteWatch-based implementation\n");
 #       else
           GC_printf("Using DEFAULT_VDB dirty bit implementation\n");
 #       endif
@@ -1416,7 +1497,11 @@ void GC_CALLBACK warn_proc(char *msg, GC_word p)
 #   ifdef MSWIN32
       GC_win32_free_heap();
 #   endif
-    return(0);
+#   ifdef RTEMS
+      exit(0);
+#   else
+      return(0);
+#   endif
 }
 # endif
 
@@ -1513,13 +1598,15 @@ int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev,
     HANDLE win_thr_h;
 # endif
   DWORD thread_id;
-# if defined(GC_DLL) && !defined(GC_NO_DLLMAIN) && !defined(MSWINCE) \
-        && !defined(THREAD_LOCAL_ALLOC) && !defined(PARALLEL_MARK)
-    GC_use_DllMain();  /* Test with implicit thread registration if possible. */
+# if defined(GC_DLL) && !defined(GC_NO_THREADS_DISCOVERY) \
+        && !defined(MSWINCE) && !defined(THREAD_LOCAL_ALLOC) \
+        && !defined(PARALLEL_MARK)
+    GC_use_threads_discovery();
+                /* Test with implicit thread registration if possible. */
     GC_printf("Using DllMain to track threads\n");
 # endif
   GC_COND_INIT();
-# ifndef NO_INCREMENTAL
+# if !defined(MAKE_BACK_GRAPH) && !defined(NO_INCREMENTAL)
     GC_enable_incremental();
 # endif
   InitializeCriticalSection(&incr_cs);
@@ -1527,12 +1614,12 @@ int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev,
 # ifdef MSWINCE
     win_created_h = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (win_created_h == (HANDLE)NULL) {
-      (void)GC_printf("Event creation failed %d\n", (int)GetLastError());
+      GC_printf("Event creation failed %d\n", (int)GetLastError());
       FAIL;
     }
     win_thr_h = GC_CreateThread(NULL, 0, thr_window, 0, 0, &thread_id);
     if (win_thr_h == (HANDLE)NULL) {
-      (void)GC_printf("Thread creation failed %d\n", (int)GetLastError());
+      GC_printf("Thread creation failed %d\n", (int)GetLastError());
       FAIL;
     }
     if (WaitForSingleObject(win_created_h, INFINITE) != WAIT_OBJECT_0)
@@ -1543,7 +1630,7 @@ int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev,
    for (i = 0; i < NTHREADS; i++) {
     h[i] = GC_CreateThread(NULL, 0, thr_run_one_test, 0, 0, &thread_id);
     if (h[i] == (HANDLE)NULL) {
-      (void)GC_printf("Thread creation failed %d\n", (int)GetLastError());
+      GC_printf("Thread creation failed %d\n", (int)GetLastError());
       FAIL;
     }
    }
@@ -1552,7 +1639,7 @@ int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev,
 # if NTHREADS > 0
    for (i = 0; i < NTHREADS; i++) {
     if (WaitForSingleObject(h[i], INFINITE) != WAIT_OBJECT_0) {
-      (void)GC_printf("Thread wait failed %d\n", (int)GetLastError());
+      GC_printf("Thread wait failed %d\n", (int)GetLastError());
       FAIL;
     }
    }
@@ -1584,11 +1671,11 @@ int test(void)
     run_one_test();
     if (PCR_Th_T_Join(th1, &code, NIL, PCR_allSigsBlocked, PCR_waitForever)
         != PCR_ERes_okay || code != 0) {
-        (void)GC_printf("Thread 1 failed\n");
+        GC_printf("Thread 1 failed\n");
     }
     if (PCR_Th_T_Join(th2, &code, NIL, PCR_allSigsBlocked, PCR_waitForever)
         != PCR_ERes_okay || code != 0) {
-        (void)GC_printf("Thread 2 failed\n");
+        GC_printf("Thread 2 failed\n");
     }
     check_heap_stats();
     return(0);
@@ -1621,12 +1708,18 @@ int main(void)
         /* Default stack size is too small, especially with the 64 bit ABI */
         /* Increase it.                                                    */
         if (pthread_default_stacksize_np(1024*1024, 0) != 0) {
-          (void)GC_printf("pthread_default_stacksize_np failed.\n");
+          GC_printf("pthread_default_stacksize_np failed\n");
         }
 #   endif       /* GC_HPUX_THREADS */
 #   ifdef PTW32_STATIC_LIB
         pthread_win32_process_attach_np ();
         pthread_win32_thread_attach_np ();
+#   endif
+#   if defined(GC_DARWIN_THREADS) && !defined(GC_NO_THREADS_DISCOVERY) \
+        && !defined(DARWIN_DONT_PARSE_STACK) && !defined(THREAD_LOCAL_ALLOC)
+      /* Test with the Darwin implicit thread registration. */
+      GC_use_threads_discovery();
+      GC_printf("Using Darwin task-threads-based world stop and push\n");
 #   endif
     GC_COND_INIT();
 
@@ -1637,44 +1730,43 @@ int main(void)
         pthread_attr_setstacksize(&attr, 1000000);
 #   endif
     n_tests = 0;
-#   if (defined(MPROTECT_VDB)) \
-            && !defined(PARALLEL_MARK) &&!defined(REDIRECT_MALLOC) \
+#   if (defined(MPROTECT_VDB)) && !defined(REDIRECT_MALLOC) \
             && !defined(MAKE_BACK_GRAPH) && !defined(USE_PROC_FOR_LIBRARIES) \
             && !defined(NO_INCREMENTAL)
         GC_enable_incremental();
-        (void) GC_printf("Switched to incremental mode\n");
+        GC_printf("Switched to incremental mode\n");
 #     if defined(MPROTECT_VDB)
-        (void)GC_printf("Emulating dirty bits with mprotect/signals\n");
+        GC_printf("Emulating dirty bits with mprotect/signals\n");
 #     else
 #       ifdef PROC_VDB
-            (void)GC_printf("Reading dirty bits from /proc\n");
+          GC_printf("Reading dirty bits from /proc\n");
 #       else
-            (void)GC_printf("Using DEFAULT_VDB dirty bit implementation\n");
+          GC_printf("Using DEFAULT_VDB dirty bit implementation\n");
 #       endif
 #     endif
 #   endif
     GC_set_warn_proc(warn_proc);
     if ((code = pthread_key_create(&fl_key, 0)) != 0) {
-        (void)GC_printf("Key creation failed %d\n", code);
+        GC_printf("Key creation failed %d\n", code);
         FAIL;
     }
     for (i = 0; i < NTHREADS; ++i) {
       if ((code = pthread_create(th+i, &attr, thr_run_one_test, 0)) != 0) {
-        (void)GC_printf("Thread %d creation failed %d\n", i, code);
+        GC_printf("Thread %d creation failed %d\n", i, code);
         FAIL;
       }
     }
     run_one_test();
     for (i = 0; i < NTHREADS; ++i) {
       if ((code = pthread_join(th[i], 0)) != 0) {
-        (void)GC_printf("Thread %d failed %d\n", i, code);
+        GC_printf("Thread %d failed %d\n", i, code);
         FAIL;
       }
     }
     check_heap_stats();
     (void)fflush(stdout);
     pthread_attr_destroy(&attr);
-    GC_printf("Completed %u collections\n", (unsigned)GC_gc_no);
+    GC_printf("Completed %u collections\n", (unsigned)GC_get_gc_no());
 #   ifdef PTW32_STATIC_LIB
         pthread_win32_thread_detach_np ();
         pthread_win32_process_detach_np ();

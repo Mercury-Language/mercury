@@ -39,7 +39,12 @@
 #include "gc_gcj.h"
 #include "private/dbg_mlc.h"
 
-GC_INNER GC_bool GC_gcj_malloc_initialized = FALSE;
+#ifdef GC_ASSERTIONS
+  GC_INNER /* variable is also used in thread_local_alloc.c */
+#else
+  STATIC
+#endif
+GC_bool GC_gcj_malloc_initialized = FALSE;
 
 int GC_gcj_kind = 0;    /* Object kind for objects with descriptors     */
                         /* in "vtable".                                 */
@@ -138,6 +143,7 @@ GC_API void GC_CALL GC_init_gcj_malloc(int mp_index,
 static void maybe_finalize(void)
 {
    static word last_finalized_no = 0;
+   DCL_LOCK_STATE;
 
    if (GC_gc_no == last_finalized_no) return;
    if (!GC_is_initialized) return;
@@ -168,7 +174,7 @@ static void maybe_finalize(void)
         opp = &(GC_gcjobjfreelist[lg]);
         LOCK();
         op = *opp;
-        if(EXPECT(op == 0, 0)) {
+        if(EXPECT(op == 0, FALSE)) {
             maybe_finalize();
             op = (ptr_t)GENERAL_MALLOC_INNER((word)lb, GC_gcj_kind);
             if (0 == op) {
@@ -198,16 +204,15 @@ static void maybe_finalize(void)
     return((void *) op);
 }
 
-GC_INNER void GC_start_debugging(void);
-
 /* Similar to GC_gcj_malloc, but add debug info.  This is allocated     */
 /* with GC_gcj_debug_kind.                                              */
 GC_API void * GC_CALL GC_debug_gcj_malloc(size_t lb,
                 void * ptr_to_struct_containing_descr, GC_EXTRA_PARAMS)
 {
     void * result;
+    DCL_LOCK_STATE;
 
-    /* We're careful to avoid extra calls, which could           */
+    /* We're careful to avoid extra calls, which could          */
     /* confuse the backtrace.                                   */
     LOCK();
     maybe_finalize();
@@ -215,7 +220,7 @@ GC_API void * GC_CALL GC_debug_gcj_malloc(size_t lb,
     if (result == 0) {
         GC_oom_func oom_fn = GC_oom_fn;
         UNLOCK();
-        GC_err_printf("GC_debug_gcj_malloc(%ld, %p) returning NIL (",
+        GC_err_printf("GC_debug_gcj_malloc(%ld, %p) returning NULL (",
                       (unsigned long)lb, ptr_to_struct_containing_descr);
         GC_err_puts(s);
         GC_err_printf(":%d)\n", i);
@@ -227,7 +232,7 @@ GC_API void * GC_CALL GC_debug_gcj_malloc(size_t lb,
         GC_start_debugging();
     }
     ADD_CALL_CHAIN(result, ra);
-    return (GC_store_debug_info(result, (word)lb, s, (word)i));
+    return (GC_store_debug_info(result, (word)lb, s, i));
 }
 
 /* There is no THREAD_LOCAL_ALLOC for GC_gcj_malloc_ignore_off_page().  */

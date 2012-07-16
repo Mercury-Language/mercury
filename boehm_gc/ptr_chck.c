@@ -205,11 +205,11 @@ GC_API void * GC_CALL GC_is_visible(void *p)
         if (hhdr == 0) {
             if (GC_is_static_root(p)) return(p);
             /* Else do it again correctly:      */
-#           if (defined(DYNAMIC_LOADING) || defined(MSWIN32) || \
-                defined(MSWINCE) || defined(PCR))
-                GC_register_dynamic_libraries();
-                if (GC_is_static_root(p))
-                    return(p);
+#           if defined(DYNAMIC_LOADING) || defined(MSWIN32) \
+                || defined(MSWINCE) || defined(CYGWIN32) || defined(PCR)
+              GC_register_dynamic_libraries();
+              if (GC_is_static_root(p))
+                return(p);
 #           endif
             goto fail;
         } else {
@@ -226,7 +226,7 @@ GC_API void * GC_CALL GC_is_visible(void *p)
                     if ((word)((ptr_t)p - (ptr_t)base) > (word)descr) goto fail;
                     break;
                 case GC_DS_BITMAP:
-                    if ((ptr_t)p - (ptr_t)base
+                    if ((word)((ptr_t)p - (ptr_t)base)
                          >= WORDS_TO_BYTES(BITMAP_BITS)
                          || ((word)p & (sizeof(word) - 1))) goto fail;
                     if (!(((word)1 << (WORDSZ - ((ptr_t)p - (ptr_t)base) - 1))
@@ -242,7 +242,7 @@ GC_API void * GC_CALL GC_is_visible(void *p)
                     } else {
                       ptr_t type_descr = *(ptr_t *)base;
                       descr = *(word *)(type_descr
-                              - (descr - (GC_DS_PER_OBJECT
+                              - (descr - (word)(GC_DS_PER_OBJECT
                                           - GC_INDIR_PER_OBJ_BIAS)));
                     }
                     goto retry;
