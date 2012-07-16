@@ -5,9 +5,7 @@ atomic_ops_malloc.h
 atomic_ops_stack.c
 atomic_ops_stack.h
 atomic_ops_sysdeps.S
-config.h
 config.h.in
 Makefile.am
 Makefile.in
 Makefile.msft
-stamp-h1

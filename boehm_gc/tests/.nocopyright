@@ -1,2 +1,15 @@
+CMakeLists.txt
+huge_test.c
+initsecondarythread.c
+leak_test.c
+middle.c
+realloc_test.c
+smash_test.c
+staticrootslib.c
+staticrootstest.c
 test.c
 test_cpp.cc
+tests.am
+threadkey_test.c
+thread_leak_test.c
+trace_test.c
