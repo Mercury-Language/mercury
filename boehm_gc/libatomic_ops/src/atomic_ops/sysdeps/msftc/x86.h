@@ -57,7 +57,6 @@ AO_nop_full(void)
 {
   __asm { mfence }
 }
-
 #define AO_HAVE_nop_full
 
 #else
@@ -79,7 +78,6 @@ AO_test_and_set_full(volatile AO_TS_t *addr)
     }
     /* Ignore possible "missing return value" warning here. */
 }
-
 #define AO_HAVE_test_and_set_full
 
 #ifdef _WIN64
@@ -87,6 +85,7 @@ AO_test_and_set_full(volatile AO_TS_t *addr)
 #endif
 
 #ifdef AO_ASSUME_VISTA
+
 /* NEC LE-IT: whenever we run on a pentium class machine we have that
  * certain function */
 
@@ -115,6 +114,7 @@ AO_double_compare_and_swap_full(volatile AO_double_t *addr,
 }
 #define AO_HAVE_double_compare_and_swap_full
 #endif /* __cplusplus */
+
 #endif /* AO_ASSUME_VISTA */
 
 #include "../ao_t_is_int.h"

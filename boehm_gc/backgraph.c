@@ -98,7 +98,7 @@ static back_edges * new_back_edges(void)
     return result;
   }
   if (GC_n_back_edge_structs >= MAX_BACK_EDGE_STRUCTS - 1) {
-    ABORT("needed too much space for back edges: adjust "
+    ABORT("Needed too much space for back edges: adjust "
           "MAX_BACK_EDGE_STRUCTS");
   }
   return back_edge_space + (GC_n_back_edge_structs++);
@@ -176,7 +176,7 @@ GC_INLINE void pop_in_progress(ptr_t p)
     ptr_t q = GET_OH_BG_PTR(p); \
     if (!((word)q & FLAG_MANY)) { \
       if (q && !((word)q & 1)) s \
-              /* !((word)q & 1) checks for a misnterpreted freelist link */ \
+              /* !((word)q & 1) checks for a misinterpreted freelist link */ \
     } else { \
       back_edges *orig_be_ = (back_edges *)((word)q & ~FLAG_MANY); \
       back_edges *be_ = orig_be_; \
@@ -254,14 +254,12 @@ static void add_edge(ptr_t p, ptr_t q)
     }
     be_cont -> edges[i] = p;
     be -> n_edges++;
-    if (be -> n_edges == 100) {
-#       if 0
-          if (GC_print_stats) {
-            GC_err_printf("The following object has in-degree >= 100:\n");
-            GC_print_heap_obj(q);
-          }
-#       endif
-    }
+#   ifdef DEBUG_PRINT_BIG_N_EDGES
+      if (GC_print_stats == VERBOSE && be -> n_edges == 100) {
+        GC_err_printf("The following object has big in-degree:\n");
+        GC_print_heap_obj(q);
+      }
+#   endif
 }
 
 typedef void (*per_object_func)(ptr_t p, size_t n_bytes, word gc_descr);
@@ -277,7 +275,7 @@ static void per_object_helper(struct hblk *h, word fn)
   do {
     f((ptr_t)(h -> hb_body + i), sz, descr);
     i += (int)sz;
-  } while (i + (int)sz <= BYTES_TO_WORDS(HBLKSIZE));
+  } while ((word)i + sz <= BYTES_TO_WORDS(HBLKSIZE));
 }
 
 GC_INLINE void GC_apply_to_each_object(per_object_func f)

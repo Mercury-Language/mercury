@@ -63,7 +63,6 @@ AO_fetch_and_add1_release (volatile AO_t *p)
   return _Asm_fetchadd(AO_T_FASIZE, _SEM_REL, p, 1,
                        _LDHINT_NONE, _UP_MEM_FENCE);
 }
-
 #define AO_HAVE_fetch_and_add1_release
 
 AO_INLINE AO_t
@@ -72,7 +71,6 @@ AO_fetch_and_sub1_acquire (volatile AO_t *p)
   return _Asm_fetchadd(AO_T_FASIZE, _SEM_ACQ, p, -1,
                        _LDHINT_NONE, _DOWN_MEM_FENCE);
 }
-
 #define AO_HAVE_fetch_and_sub1_acquire
 
 AO_INLINE AO_t
@@ -81,7 +79,6 @@ AO_fetch_and_sub1_release (volatile AO_t *p)
   return _Asm_fetchadd(AO_T_FASIZE, _SEM_REL, p, -1,
                        _LDHINT_NONE, _UP_MEM_FENCE);
 }
-
 #define AO_HAVE_fetch_and_sub1_release
 
 AO_INLINE int
@@ -95,7 +92,6 @@ AO_compare_and_swap_acquire(volatile AO_t *addr,
                         new_val, _LDHINT_NONE, _DOWN_MEM_FENCE);
   return (oldval == old);
 }
-
 #define AO_HAVE_compare_and_swap_acquire
 
 AO_INLINE int
@@ -109,7 +105,6 @@ AO_compare_and_swap_release(volatile AO_t *addr,
   /* Hopefully the compiler knows not to reorder the above two? */
   return (oldval == old);
 }
-
 #define AO_HAVE_compare_and_swap_release
 
 AO_INLINE int
@@ -123,7 +118,6 @@ AO_char_compare_and_swap_acquire(volatile unsigned char *addr,
                         new_val, _LDHINT_NONE, _DOWN_MEM_FENCE);
   return (oldval == old);
 }
-
 #define AO_HAVE_char_compare_and_swap_acquire
 
 AO_INLINE int
@@ -137,7 +131,6 @@ AO_char_compare_and_swap_release(volatile unsigned char *addr,
   /* Hopefully the compiler knows not to reorder the above two? */
   return (oldval == old);
 }
-
 #define AO_HAVE_char_compare_and_swap_release
 
 AO_INLINE int
@@ -151,7 +144,6 @@ AO_short_compare_and_swap_acquire(volatile unsigned short *addr,
                         new_val, _LDHINT_NONE, _DOWN_MEM_FENCE);
   return (oldval == old);
 }
-
 #define AO_HAVE_short_compare_and_swap_acquire
 
 AO_INLINE int
@@ -165,9 +157,10 @@ AO_short_compare_and_swap_release(volatile unsigned short *addr,
   /* Hopefully the compiler knows not to reorder the above two? */
   return (oldval == old);
 }
-
 #define AO_HAVE_short_compare_and_swap_release
 
 #ifndef __LP64__
+  /* Generalize first to define more AO_int_... primitives.     */
+# include "../../generalize.h"
 # include "../ao_t_is_int.h"
 #endif

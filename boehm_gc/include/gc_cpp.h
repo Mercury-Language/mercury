@@ -153,6 +153,7 @@ by UseGC.  GC is an alias for UseGC, unless GC_NAME_CONFLICT is defined.
     && (defined(__BORLANDC__) && (__BORLANDC__ < 0x450) \
         || (defined(__GNUC__) && \
             (__GNUC__ < 2 || __GNUC__ == 2 && __GNUC_MINOR__ < 6)) \
+        || (defined(_MSC_VER) && _MSC_VER <= 1020) \
         || (defined(__WATCOMC__) && __WATCOMC__ < 1050))
 #   define GC_NO_OPERATOR_NEW_ARRAY
 #endif
@@ -161,7 +162,7 @@ by UseGC.  GC is an alias for UseGC, unless GC_NAME_CONFLICT is defined.
 #   define GC_OPERATOR_NEW_ARRAY
 #endif
 
-#if    ! defined ( __BORLANDC__ )  /* Confuses the Borland compiler. */ \
+#if (!defined(__BORLANDC__) || __BORLANDC__ > 0x0620) \
     && ! defined ( __sgi ) && ! defined( __WATCOMC__ ) \
     && (!defined(_MSC_VER) || _MSC_VER > 1020)
 #  define GC_PLACEMENT_DELETE
@@ -243,9 +244,9 @@ inline void* operator new(
     classes derived from "gc_cleanup" or containing members derived
     from "gc_cleanup". */
 
-#   ifdef GC_PLACEMENT_DELETE
-      inline void operator delete( void*, GCPlacement, GCCleanUpFunc, void * );
-#   endif
+#ifdef GC_PLACEMENT_DELETE
+  inline void operator delete( void*, GCPlacement, GCCleanUpFunc, void * );
+#endif
 
 #ifdef _MSC_VER
  /** This ensures that the system default operator new[] doesn't get
@@ -254,27 +255,26 @@ inline void* operator new(
   *  There seems to be no way to redirect new in this environment without
   *  including this everywhere.
   */
-#if _MSC_VER > 1020
- void *operator new[]( size_t size );
+# if _MSC_VER > 1020
+    void *operator new[]( size_t size );
 
- void operator delete[](void* obj);
-#endif
+    void operator delete[](void* obj);
+# endif
 
- void* operator new( size_t size);
+  void* operator new(size_t size);
 
- void operator delete(void* obj);
+  void operator delete(void* obj);
 
- // This new operator is used by VC++ in case of Debug builds !
- void* operator new(  size_t size,
+  // This new operator is used by VC++ in case of Debug builds !
+  void* operator new(  size_t size,
                       int ,//nBlockUse,
                       const char * szFileName,
                       int nLine );
 #endif /* _MSC_VER */
 
-
 #ifdef GC_OPERATOR_NEW_ARRAY
 
-inline void* operator new[](
+  inline void* operator new[](
     size_t size,
     GCPlacement gcp,
     GCCleanUpFunc cleanup = 0,
@@ -316,29 +316,25 @@ inline void gc::operator delete( void* obj ) {
 #endif
 
 #ifdef GC_OPERATOR_NEW_ARRAY
-
-inline void* gc::operator new[]( size_t size ) {
+  inline void* gc::operator new[]( size_t size ) {
     return gc::operator new( size );}
 
-inline void* gc::operator new[]( size_t size, GCPlacement gcp ) {
+  inline void* gc::operator new[]( size_t size, GCPlacement gcp ) {
     return gc::operator new( size, gcp );}
 
-inline void* gc::operator new[]( size_t size, void *p ) {
+  inline void* gc::operator new[]( size_t size, void *p ) {
     return p;}
 
-inline void gc::operator delete[]( void* obj ) {
+  inline void gc::operator delete[]( void* obj ) {
     gc::operator delete( obj );}
 
-#ifdef GC_PLACEMENT_DELETE
-  inline void gc::operator delete[]( void*, void* ) {}
+# ifdef GC_PLACEMENT_DELETE
+    inline void gc::operator delete[]( void*, void* ) {}
 
-  inline void gc::operator delete[]( void* p, GCPlacement gcp ) {
-    gc::operator delete(p); }
-
-#endif
-
+    inline void gc::operator delete[]( void* p, GCPlacement gcp ) {
+      gc::operator delete(p); }
+# endif
 #endif /* GC_OPERATOR_NEW_ARRAY */
-
 
 inline gc_cleanup::~gc_cleanup() {
     GC_register_finalizer_ignore_self( GC_base(this), 0, 0, 0, 0 );}
@@ -353,7 +349,7 @@ inline gc_cleanup::gc_cleanup() {
     if (0 != base)  {
       // Don't call the debug version, since this is a real base address.
       GC_register_finalizer_ignore_self(
-        base, (GC_finalization_proc)cleanup, (void*) ((char*) this - (char*) base),
+        base, (GC_finalization_proc)cleanup, (void*)((char*)this - (char*)base),
         &oldProc, &oldData );
       if (0 != oldProc) {
         GC_register_finalizer_ignore_self( base, oldProc, oldData, 0, 0 );}}}
@@ -377,27 +373,34 @@ inline void* operator new(
         obj = GC_MALLOC_UNCOLLECTABLE( size );};
     return obj;}
 
-# ifdef GC_PLACEMENT_DELETE
-inline void operator delete (
+#ifdef GC_PLACEMENT_DELETE
+  inline void operator delete (
     void *p,
     GCPlacement gcp,
     GCCleanUpFunc cleanup,
     void* clientData )
-{
+  {
     GC_FREE(p);
-}
-# endif
+  }
+#endif /* GC_PLACEMENT_DELETE */
 
 #ifdef GC_OPERATOR_NEW_ARRAY
-
-inline void* operator new[](
+  inline void* operator new[](
     size_t size,
     GCPlacement gcp,
     GCCleanUpFunc cleanup,
     void* clientData )
-{
-    return ::operator new( size, gcp, cleanup, clientData );}
-
+  {
+    return ::operator new( size, gcp, cleanup, clientData );
+  }
 #endif /* GC_OPERATOR_NEW_ARRAY */
+
+#if defined(__CYGWIN__)
+# include <new> // for delete throw()
+  inline void operator delete(void *p)
+  {
+    GC_FREE(p);
+  }
+#endif
 
 #endif /* GC_CPP_H */

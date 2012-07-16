@@ -33,37 +33,54 @@ GC_INNER signed_word GC_bytes_found = 0;
 /* We defer printing of leaked objects until we're done with the GC     */
 /* cycle, since the routine for printing objects needs to run outside   */
 /* the collector, e.g. without the allocation lock.                     */
-#define MAX_LEAKED 40
+#ifndef MAX_LEAKED
+# define MAX_LEAKED 40
+#endif
 STATIC ptr_t GC_leaked[MAX_LEAKED] = { NULL };
 STATIC unsigned GC_n_leaked = 0;
 
 GC_INNER GC_bool GC_have_errors = FALSE;
 
-STATIC void GC_add_leaked(ptr_t leaked)
+GC_INLINE void GC_add_leaked(ptr_t leaked)
 {
+#  ifndef SHORT_DBG_HDRS
+     if (GC_findleak_delay_free && !GC_check_leaked(leaked))
+       return;
+#  endif
+
+    GC_have_errors = TRUE;
+    /* FIXME: Prevent adding an object while printing leaked ones.      */
     if (GC_n_leaked < MAX_LEAKED) {
-      GC_have_errors = TRUE;
       GC_leaked[GC_n_leaked++] = leaked;
       /* Make sure it's not reclaimed this cycle */
-        GC_set_mark_bit(leaked);
+      GC_set_mark_bit(leaked);
     }
 }
 
 /* Print all objects on the list after printing any smashed objects.    */
-/* Clear both lists.                                                    */
+/* Clear both lists.  Called without the allocation lock held.          */
 GC_INNER void GC_print_all_errors(void)
 {
     static GC_bool printing_errors = FALSE;
+    GC_bool have_errors;
     unsigned i;
+    DCL_LOCK_STATE;
 
     LOCK();
     if (printing_errors) {
         UNLOCK();
         return;
     }
+    have_errors = GC_have_errors;
     printing_errors = TRUE;
     UNLOCK();
-    if (GC_debugging_started) GC_print_all_smashed();
+
+    if (GC_debugging_started) {
+      GC_print_all_smashed();
+    } else {
+      have_errors = FALSE;
+    }
+
     for (i = 0; i < GC_n_leaked; ++i) {
         ptr_t p = GC_leaked[i];
         if (HDR(p) -> hb_obj_kind == PTRFREE) {
@@ -75,8 +92,18 @@ GC_INNER void GC_print_all_errors(void)
         GC_err_printf("\n");
         GC_free(p);
         GC_leaked[i] = 0;
+        have_errors = TRUE;
     }
     GC_n_leaked = 0;
+
+    if (have_errors
+#       ifndef GC_ABORT_ON_LEAK
+          && GETENV("GC_ABORT_ON_LEAK") != NULL
+#       endif
+        ) {
+      ABORT("Leaked or smashed objects encountered");
+    }
+
     printing_errors = FALSE;
 }
 
@@ -182,23 +209,19 @@ STATIC ptr_t GC_reclaim_uninit(struct hblk *hbp, hdr *hhdr, size_t sz,
 /* Don't really reclaim objects, just check for unmarked ones: */
 STATIC void GC_reclaim_check(struct hblk *hbp, hdr *hhdr, word sz)
 {
-    word bit_no = 0;
+    word bit_no;
     ptr_t p, plim;
-
     GC_ASSERT(sz == hhdr -> hb_sz);
-    p = hbp->hb_body;
-    plim = p + HBLKSIZE - sz;
 
     /* go through all words in block */
-        while (p <= plim) {
-            if( !mark_bit_from_hdr(hhdr, bit_no) ) {
-                GC_add_leaked(p);
-            }
-            p += sz;
-            bit_no += MARK_BIT_OFFSET(sz);
-        }
+    p = hbp->hb_body;
+    plim = p + HBLKSIZE - sz;
+    for (bit_no = 0; p <= plim; p += sz, bit_no += MARK_BIT_OFFSET(sz)) {
+      if (!mark_bit_from_hdr(hhdr, bit_no)) {
+        GC_add_leaked(p);
+      }
+    }
 }
-
 
 /*
  * Generic procedure to rebuild a free list in hbp.
@@ -212,7 +235,9 @@ GC_INNER ptr_t GC_reclaim_generic(struct hblk * hbp, hdr *hhdr, size_t sz,
     ptr_t result;
 
     GC_ASSERT(GC_find_header((ptr_t)hbp) == hhdr);
-    GC_remove_protection(hbp, 1, (hhdr)->hb_descr == 0 /* Pointer-free? */);
+#   ifndef GC_DISABLE_INCREMENTAL
+      GC_remove_protection(hbp, 1, (hhdr)->hb_descr == 0 /* Pointer-free? */);
+#   endif
     if (init || GC_debugging_started) {
       result = GC_reclaim_clear(hbp, hhdr, sz, list, count);
     } else {
@@ -230,12 +255,11 @@ GC_INNER ptr_t GC_reclaim_generic(struct hblk * hbp, hdr *hhdr, size_t sz,
  * caller should perform that check.
  */
 STATIC void GC_reclaim_small_nonempty_block(struct hblk *hbp,
-                                            int report_if_found)
+                                            GC_bool report_if_found)
 {
     hdr *hhdr = HDR(hbp);
     size_t sz = hhdr -> hb_sz;
-    int kind = hhdr -> hb_obj_kind;
-    struct obj_kind * ok = &GC_obj_kinds[kind];
+    struct obj_kind * ok = &GC_obj_kinds[hhdr -> hb_obj_kind];
     void **flh = &(ok -> ok_freelist[BYTES_TO_GRANULES(sz)]);
 
     hhdr -> hb_last_reclaimed = (unsigned short) GC_gc_no;
@@ -243,8 +267,7 @@ STATIC void GC_reclaim_small_nonempty_block(struct hblk *hbp,
     if (report_if_found) {
         GC_reclaim_check(hbp, hhdr, sz);
     } else {
-        *flh = GC_reclaim_generic(hbp, hhdr, sz,
-                                  ok -> ok_init,
+        *flh = GC_reclaim_generic(hbp, hhdr, sz, ok -> ok_init,
                                   *flh, &GC_bytes_found);
     }
 }
@@ -302,7 +325,7 @@ STATIC void GC_reclaim_block(struct hblk *hbp, word report_if_found)
           GC_atomic_in_use += sz * hhdr -> hb_n_marks;
         }
         if (report_if_found) {
-          GC_reclaim_small_nonempty_block(hbp, (int)report_if_found);
+          GC_reclaim_small_nonempty_block(hbp, TRUE /* report_if_found */);
         } else if (empty) {
           GC_bytes_found += HBLKSIZE;
           GC_freehblk(hbp);
@@ -332,8 +355,9 @@ struct Print_stats
 
 #ifdef USE_MARK_BYTES
 
-/* Return the number of set mark bits in the given header       */
-STATIC int GC_n_set_marks(hdr *hhdr)
+/* Return the number of set mark bits in the given header.      */
+/* Remains externally visible as used by GNU GCJ currently.     */
+int GC_n_set_marks(hdr *hhdr)
 {
     int result = 0;
     int i;
@@ -363,8 +387,7 @@ static int set_bits(word n)
     return(result);
 }
 
-/* Return the number of set mark bits in the given header       */
-STATIC int GC_n_set_marks(hdr *hhdr)
+int GC_n_set_marks(hdr *hhdr)
 {
     int result = 0;
     int i;
@@ -401,10 +424,10 @@ STATIC void GC_print_block_descr(struct hblk *h,
 
     if (hhdr -> hb_n_marks != n_marks) {
       GC_printf("(%u:%u,%u!=%u)", hhdr -> hb_obj_kind, (unsigned)bytes,
-                                  (unsigned)hhdr -> hb_n_marks, n_marks);
+                (unsigned)hhdr -> hb_n_marks, n_marks);
     } else {
       GC_printf("(%u:%u,%u)", hhdr -> hb_obj_kind,
-                              (unsigned)bytes, n_marks);
+                (unsigned)bytes, n_marks);
     }
     bytes += HBLKSIZE-1;
     bytes &= ~(HBLKSIZE-1);
@@ -433,15 +456,15 @@ void GC_print_free_list(int kind, size_t sz_in_granules)
     struct obj_kind * ok = &GC_obj_kinds[kind];
     ptr_t flh = ok -> ok_freelist[sz_in_granules];
     struct hblk *lastBlock = 0;
-    int n = 0;
+    int n;
 
-    while (flh) {
+    for (n = 1; flh; n++) {
         struct hblk *block = HBLKPTR(flh);
         if (block != lastBlock) {
-            GC_printf("\nIn heap block at %p:\n\t", block);
-            lastBlock = block;
+          GC_printf("\nIn heap block at %p:\n\t", block);
+          lastBlock = block;
         }
-        GC_printf("%d: %p;", ++n, flh);
+        GC_printf("%d: %p;", n, flh);
         flh = obj_link(flh);
     }
 }
@@ -484,8 +507,6 @@ GC_INNER void GC_start_reclaim(GC_bool report_if_found)
       for (kind = 0; kind < GC_n_kinds; kind++) {
         void **fop;
         void **lim;
-        struct hblk ** rlp;
-        struct hblk ** rlim;
         struct hblk ** rlist = GC_obj_kinds[kind].ok_reclaim_list;
         GC_bool should_clobber = (GC_obj_kinds[kind].ok_descriptor != 0);
 
@@ -503,10 +524,7 @@ GC_INNER void GC_start_reclaim(GC_bool report_if_found)
             }
         } /* otherwise free list objects are marked,    */
           /* and its safe to leave them                 */
-        rlim = rlist + MAXOBJGRANULES+1;
-        for( rlp = rlist; rlp < rlim; rlp++ ) {
-            *rlp = 0;
-        }
+        BZERO(rlist, (MAXOBJGRANULES + 1) * sizeof(void *));
       }
 
 
@@ -599,7 +617,7 @@ GC_INNER GC_bool GC_reclaim_all(GC_stop_func stop_func, GC_bool ignore_old)
       if (GC_print_stats == VERBOSE) {
         GET_TIME(done_time);
         GC_log_printf("Disposing of reclaim lists took %lu msecs\n",
-                  MS_TIME_DIFF(done_time,start_time));
+                      MS_TIME_DIFF(done_time,start_time));
       }
 #   endif
     return(TRUE);

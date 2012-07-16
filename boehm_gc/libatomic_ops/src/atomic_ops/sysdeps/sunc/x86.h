@@ -37,9 +37,8 @@
 AO_INLINE void
 AO_nop_full(void)
 {
-  __asm__ __volatile__("mfence" : : : "memory");
+  __asm__ __volatile__ ("mfence" : : : "memory");
 }
-
 #define AO_HAVE_nop_full
 
 #else
@@ -64,7 +63,6 @@ AO_fetch_and_add_full (volatile AO_t *p, AO_t incr)
                         : "memory");
   return result;
 }
-
 #define AO_HAVE_fetch_and_add_full
 
 AO_INLINE unsigned char
@@ -77,7 +75,6 @@ AO_char_fetch_and_add_full (volatile unsigned char *p, unsigned char incr)
                         : "memory");
   return result;
 }
-
 #define AO_HAVE_char_fetch_and_add_full
 
 AO_INLINE unsigned short
@@ -90,7 +87,6 @@ AO_short_fetch_and_add_full (volatile unsigned short *p, unsigned short incr)
                         : "memory");
   return result;
 }
-
 #define AO_HAVE_short_fetch_and_add_full
 
 /* Really only works for 486 and later */
@@ -101,38 +97,36 @@ AO_or_full (volatile AO_t *p, AO_t incr)
                         "=m" (*p) : "r" (incr) /* , "m" (*p) */
                         : "memory");
 }
-
 #define AO_HAVE_or_full
 
 AO_INLINE AO_TS_VAL_t
-AO_test_and_set_full(volatile AO_TS_t *addr)
+AO_test_and_set_full (volatile AO_TS_t *addr)
 {
   AO_TS_t oldval;
   /* Note: the "xchg" instruction does not need a "lock" prefix */
-  /* Note 2: "xchgb" is not recognized by Sun CC assembler yet. */
-  __asm__ __volatile__("xchgl %0, %1"
-                : "=q"(oldval), "=m"(*addr)
-                : "0"(0xff) /* , "m"(*addr) */
-                : "memory");
+  __asm__ __volatile__ ("xchg %b0, %1"
+                        : "=q"(oldval), "=m"(*addr)
+                        : "0"(0xff) /* , "m"(*addr) */
+                        : "memory");
   return (AO_TS_VAL_t)oldval;
 }
-
 #define AO_HAVE_test_and_set_full
 
 /* Returns nonzero if the comparison succeeded. */
 AO_INLINE int
-AO_compare_and_swap_full(volatile AO_t *addr,
-                             AO_t old, AO_t new_val)
+AO_compare_and_swap_full (volatile AO_t *addr, AO_t old, AO_t new_val)
 {
   char result;
-  __asm__ __volatile__("lock; cmpxchgl %2, %0; setz %1"
-                       : "=m"(*addr), "=q"(result)
-                       : "r" (new_val), "a"(old) : "memory");
+  __asm__ __volatile__ ("lock; cmpxchgl %2, %0; setz %1"
+                        : "=m"(*addr), "=a"(result)
+                        : "r" (new_val), "a"(old) : "memory");
   return (int) result;
 }
-
 #define AO_HAVE_compare_and_swap_full
 
+#if 0
+/* FIXME: not tested (and probably wrong). Besides,     */
+/* it tickles a bug in Sun C 5.10 (when optimizing).    */
 /* Returns nonzero if the comparison succeeded. */
 /* Really requires at least a Pentium.          */
 AO_INLINE int
@@ -141,16 +135,15 @@ AO_compare_double_and_swap_double_full(volatile AO_double_t *addr,
                                        AO_t new_val1, AO_t new_val2)
 {
   char result;
-  /* FIXME: not tested */
 #if __PIC__
   /* If PIC is turned on, we can't use %ebx as it is reserved for the
      GOT pointer.  We can save and restore %ebx because GCC won't be
      using it for anything else (such as any of the m operands) */
   __asm__ __volatile__("pushl %%ebx;"   /* save ebx used for PIC GOT ptr */
-                       "movl %6,%%ebx;" /* move new_val2 to %ebx */
+                       "movl %6,%%ebx;" /* move new_val1 to %ebx */
                        "lock; cmpxchg8b %0; setz %1;"
                        "pop %%ebx;"     /* restore %ebx */
-                       : "=m"(*addr), "=q"(result)
+                       : "=m"(*addr), "=a"(result)
                        : "m"(*addr), "d" (old_val2), "a" (old_val1),
                          "c" (new_val2), "m" (new_val1) : "memory");
 #else
@@ -159,13 +152,13 @@ AO_compare_double_and_swap_double_full(volatile AO_double_t *addr,
    * in a clobber, but there's no point doing the push/pop if we don't
    * have to. */
   __asm__ __volatile__("lock; cmpxchg8b %0; setz %1;"
-                       : "=m"(*addr), "=q"(result)
+                       : "=m"(*addr), "=a"(result)
                        : /* "m"(*addr), */ "d" (old_val2), "a" (old_val1),
                          "c" (new_val2), "b" (new_val1) : "memory");
 #endif
   return (int) result;
 }
-
 #define AO_HAVE_compare_double_and_swap_double_full
+#endif
 
 #include "../ao_t_is_int.h"

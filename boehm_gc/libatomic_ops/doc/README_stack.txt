@@ -12,7 +12,7 @@ seems to rarely be useful, especially since larger N involve some slowdown.)
 This makes it safe to access these data structures from non-reentrant
 signal handlers, provided at most one non-signal-handler thread is
 accessing the data structure at once.  This latter condition can be
-ensured by acquiring an ordinary lock around the non-hndler accesses
+ensured by acquiring an ordinary lock around the non-handler accesses
 to the data structure.
 
 For details see:

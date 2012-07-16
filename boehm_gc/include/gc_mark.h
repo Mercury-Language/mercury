@@ -207,9 +207,22 @@ GC_API void GC_CALL GC_register_describe_type_fn(int /* kind */,
                                 /* to be used when printing objects     */
                                 /* of a particular kind.                */
 
-/* See gc.h for the description of these "inner" functions.             */
-GC_API size_t GC_CALL GC_get_heap_size_inner(void);
-GC_API size_t GC_CALL GC_get_free_bytes_inner(void);
+/* Clear some of the inaccessible part of the stack.  Returns its       */
+/* argument, so it can be used in a tail call position, hence clearing  */
+/* another frame.  Argument may be NULL.                                */
+GC_API void * GC_CALL GC_clear_stack(void *);
+
+/* Set and get the client notifier on collections.  The client function */
+/* is called at the start of every full GC (called with the allocation  */
+/* lock held).  May be 0.  This is a really tricky interface to use     */
+/* correctly.  Unless you really understand the collector internals,    */
+/* the callback should not, directly or indirectly, make any GC_ or     */
+/* potentially blocking calls.  In particular, it is not safe to        */
+/* allocate memory using the garbage collector from within the callback */
+/* function.  Both the setter and getter acquire the GC lock.           */
+typedef void (GC_CALLBACK * GC_start_callback_proc)(void);
+GC_API void GC_CALL GC_set_start_callback(GC_start_callback_proc);
+GC_API GC_start_callback_proc GC_CALL GC_get_start_callback(void);
 
 #ifdef __cplusplus
   } /* end of extern "C" */

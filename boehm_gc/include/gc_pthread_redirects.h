@@ -2,7 +2,7 @@
  * Copyright (c) 1994 by Xerox Corporation.  All rights reserved.
  * Copyright (c) 1996 by Silicon Graphics.  All rights reserved.
  * Copyright (c) 1998 by Fergus Henderson.  All rights reserved.
- * Copyright (c) 2000-2009 by Hewlett-Packard Development Company.
+ * Copyright (c) 2000-2010 by Hewlett-Packard Development Company.
  * All rights reserved.
  *
  * THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY EXPRESSED
@@ -19,6 +19,7 @@
 /* calls.  We arrange to do that here, if appropriate.                  */
 
 /* Included from gc.h only.  Included only if GC_PTHREADS.              */
+#if defined(GC_H) && defined(GC_PTHREADS)
 
 /* We need to intercept calls to many of the threads primitives, so     */
 /* that we can locate thread stacks and stop the world.                 */
@@ -31,41 +32,63 @@
 
 #include <pthread.h>
 
-#ifndef GC_DARWIN_THREADS
-# include <signal.h>
+#ifndef GC_NO_DLOPEN
 # include <dlfcn.h>
-
-# ifndef GC_OPENBSD_THREADS
-    GC_API int GC_pthread_sigmask(int /* how */, const sigset_t *,
-                                  sigset_t * /* oset */);
-# endif
   GC_API void *GC_dlopen(const char * /* path */, int /* mode */);
+#endif /* !GC_NO_DLOPEN */
+
+#ifndef GC_NO_PTHREAD_SIGMASK
+# include <signal.h>
+  GC_API int GC_pthread_sigmask(int /* how */, const sigset_t *,
+                                sigset_t * /* oset */);
+#endif /* !GC_NO_PTHREAD_SIGMASK */
+
+#ifndef GC_PTHREAD_CREATE_CONST
+  /* This is used for pthread_create() only.    */
+# define GC_PTHREAD_CREATE_CONST const
 #endif
 
-GC_API int GC_pthread_create(pthread_t *, const pthread_attr_t *,
+GC_API int GC_pthread_create(pthread_t *,
+                             GC_PTHREAD_CREATE_CONST pthread_attr_t *,
                              void *(*)(void *), void * /* arg */);
 GC_API int GC_pthread_join(pthread_t, void ** /* retval */);
 GC_API int GC_pthread_detach(pthread_t);
 
+#ifndef GC_NO_PTHREAD_CANCEL
+  GC_API int GC_pthread_cancel(pthread_t);
+#endif
+
+#ifdef GC_PTHREAD_EXIT_ATTRIBUTE
+  GC_API void GC_pthread_exit(void *) GC_PTHREAD_EXIT_ATTRIBUTE;
+#endif
+
 #if !defined(GC_NO_THREAD_REDIRECTS) && !defined(GC_USE_LD_WRAP)
-  /* Unless the compiler supports #pragma extern_prefix, the Tru64    */
-  /* UNIX <pthread.h> redefines some POSIX thread functions to use    */
-  /* mangled names.  Anyway, it's safe to undef them before           */
-  /* redefining.                                                      */
+  /* Unless the compiler supports #pragma extern_prefix, the Tru64      */
+  /* UNIX <pthread.h> redefines some POSIX thread functions to use      */
+  /* mangled names.  Anyway, it's safe to undef them before redefining. */
 # undef pthread_create
 # undef pthread_join
 # undef pthread_detach
-
 # define pthread_create GC_pthread_create
 # define pthread_join GC_pthread_join
 # define pthread_detach GC_pthread_detach
 
-# ifndef GC_DARWIN_THREADS
-#   ifndef GC_OPENBSD_THREADS
-#     undef pthread_sigmask
-#     define pthread_sigmask GC_pthread_sigmask
-#   endif
+# ifndef GC_NO_PTHREAD_SIGMASK
+#   undef pthread_sigmask
+#   define pthread_sigmask GC_pthread_sigmask
+# endif
+# ifndef GC_NO_DLOPEN
 #   undef dlopen
 #   define dlopen GC_dlopen
 # endif
+# ifndef GC_NO_PTHREAD_CANCEL
+#   undef pthread_cancel
+#   define pthread_cancel GC_pthread_cancel
+# endif
+# ifdef GC_PTHREAD_EXIT_ATTRIBUTE
+#   undef pthread_exit
+#   define pthread_exit GC_pthread_exit
+# endif
 #endif /* !GC_NO_THREAD_REDIRECTS */
+
+#endif /* GC_PTHREADS */

@@ -78,14 +78,13 @@ GC_INNER void GC_register_displacement_inner(size_t offset)
 
 GC_INNER void GC_initialize_offsets(void)
 {
-    static GC_bool offsets_initialized = FALSE;
-
-    if (!offsets_initialized) {
-      int i;
-      if (GC_all_interior_pointers) {
-        for (i = 0; i < VALID_OFFSET_SZ; ++i)
-          GC_valid_offsets[i] = TRUE;
-      }
-      offsets_initialized = TRUE;
-    }
+  unsigned i;
+  if (GC_all_interior_pointers) {
+    for (i = 0; i < VALID_OFFSET_SZ; ++i)
+      GC_valid_offsets[i] = TRUE;
+  } else {
+    BZERO(GC_valid_offsets, sizeof(GC_valid_offsets));
+    for (i = 0; i < sizeof(word); ++i)
+      GC_modws_valid_offsets[i] = FALSE;
+  }
 }

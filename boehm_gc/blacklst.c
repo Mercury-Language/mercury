@@ -83,23 +83,28 @@ STATIC void GC_print_source_ptr(ptr_t p)
 }
 #endif
 
+GC_INNER void GC_bl_init_no_interiors(void)
+{
+  if (GC_incomplete_normal_bl == 0) {
+    GC_old_normal_bl = (word *)GC_scratch_alloc(sizeof(page_hash_table));
+    GC_incomplete_normal_bl = (word *)GC_scratch_alloc(
+                                                  sizeof(page_hash_table));
+    if (GC_old_normal_bl == 0 || GC_incomplete_normal_bl == 0) {
+      GC_err_printf("Insufficient memory for black list\n");
+      EXIT();
+    }
+    GC_clear_bl(GC_old_normal_bl);
+    GC_clear_bl(GC_incomplete_normal_bl);
+  }
+}
+
 GC_INNER void GC_bl_init(void)
 {
     if (!GC_all_interior_pointers) {
-      GC_old_normal_bl = (word *)
-                         GC_scratch_alloc((word)(sizeof (page_hash_table)));
-      GC_incomplete_normal_bl = (word *)GC_scratch_alloc
-                                        ((word)(sizeof(page_hash_table)));
-      if (GC_old_normal_bl == 0 || GC_incomplete_normal_bl == 0) {
-        GC_err_printf("Insufficient memory for black list\n");
-        EXIT();
-      }
-      GC_clear_bl(GC_old_normal_bl);
-      GC_clear_bl(GC_incomplete_normal_bl);
+      GC_bl_init_no_interiors();
     }
-    GC_old_stack_bl = (word *)GC_scratch_alloc((word)(sizeof(page_hash_table)));
-    GC_incomplete_stack_bl = (word *)GC_scratch_alloc
-                                        ((word)(sizeof(page_hash_table)));
+    GC_old_stack_bl = (word *)GC_scratch_alloc(sizeof(page_hash_table));
+    GC_incomplete_stack_bl = (word *)GC_scratch_alloc(sizeof(page_hash_table));
     if (GC_old_stack_bl == 0 || GC_incomplete_stack_bl == 0) {
         GC_err_printf("Insufficient memory for black list\n");
         EXIT();
@@ -172,24 +177,22 @@ GC_INNER void GC_unpromote_black_lists(void)
   GC_INNER void GC_add_to_black_list_normal(word p)
 #endif
 {
-    if (!(GC_modws_valid_offsets[p & (sizeof(word)-1)])) return;
-    {
-        word index = PHT_HASH((word)p);
+  if (GC_modws_valid_offsets[p & (sizeof(word)-1)]) {
+    word index = PHT_HASH((word)p);
 
-        if (HDR(p) == 0 || get_pht_entry_from_index(GC_old_normal_bl, index)) {
-#           ifdef PRINT_BLACK_LIST
-                if (!get_pht_entry_from_index(GC_incomplete_normal_bl, index)) {
-                  GC_err_printf(
-                        "Black listing (normal) %p referenced from %p ",
-                        (ptr_t) p, source);
-                  GC_print_source_ptr(source);
-                  GC_err_puts("\n");
-                }
-#           endif
-            set_pht_entry_from_index(GC_incomplete_normal_bl, index);
-        } /* else this is probably just an interior pointer to an allocated */
-          /* object, and isn't worth black listing.                         */
-    }
+    if (HDR(p) == 0 || get_pht_entry_from_index(GC_old_normal_bl, index)) {
+#     ifdef PRINT_BLACK_LIST
+        if (!get_pht_entry_from_index(GC_incomplete_normal_bl, index)) {
+          GC_err_printf("Black listing (normal) %p referenced from %p ",
+                        (ptr_t)p, source);
+          GC_print_source_ptr(source);
+          GC_err_puts("\n");
+        }
+#     endif
+      set_pht_entry_from_index(GC_incomplete_normal_bl, index);
+    } /* else this is probably just an interior pointer to an allocated */
+      /* object, and isn't worth black listing.                         */
+  }
 }
 
 /* And the same for false pointers from the stack. */
@@ -199,20 +202,19 @@ GC_INNER void GC_unpromote_black_lists(void)
   GC_INNER void GC_add_to_black_list_stack(word p)
 #endif
 {
-    word index = PHT_HASH((word)p);
+  word index = PHT_HASH((word)p);
 
-    if (HDR(p) == 0 || get_pht_entry_from_index(GC_old_stack_bl, index)) {
-#       ifdef PRINT_BLACK_LIST
-            if (!get_pht_entry_from_index(GC_incomplete_stack_bl, index)) {
-                  GC_err_printf(
-                        "Black listing (stack) %p referenced from %p ",
-                        (ptr_t)p, source);
-                  GC_print_source_ptr(source);
-                  GC_err_puts("\n");
-            }
-#       endif
-        set_pht_entry_from_index(GC_incomplete_stack_bl, index);
-    }
+  if (HDR(p) == 0 || get_pht_entry_from_index(GC_old_stack_bl, index)) {
+#   ifdef PRINT_BLACK_LIST
+      if (!get_pht_entry_from_index(GC_incomplete_stack_bl, index)) {
+        GC_err_printf("Black listing (stack) %p referenced from %p ",
+                      (ptr_t)p, source);
+        GC_print_source_ptr(source);
+        GC_err_puts("\n");
+      }
+#   endif
+    set_pht_entry_from_index(GC_incomplete_stack_bl, index);
+  }
 }
 
 /*
@@ -223,24 +225,24 @@ GC_INNER void GC_unpromote_black_lists(void)
  * If (h,len) is not black listed, return 0.
  * Knows about the structure of the black list hash tables.
  */
-GC_INNER struct hblk * GC_is_black_listed(struct hblk *h, word len)
+struct hblk * GC_is_black_listed(struct hblk *h, word len)
 {
     word index = PHT_HASH((word)h);
     word i;
-    word nblocks = divHBLKSZ(len);
+    word nblocks;
 
-    if (!GC_all_interior_pointers) {
-      if (get_pht_entry_from_index(GC_old_normal_bl, index)
-          || get_pht_entry_from_index(GC_incomplete_normal_bl, index)) {
-        return(h+1);
-      }
+    if (!GC_all_interior_pointers
+        && (get_pht_entry_from_index(GC_old_normal_bl, index)
+            || get_pht_entry_from_index(GC_incomplete_normal_bl, index))) {
+      return (h+1);
     }
 
+    nblocks = divHBLKSZ(len);
     for (i = 0;;) {
         if (GC_old_stack_bl[divWORDSZ(index)] == 0
             && GC_incomplete_stack_bl[divWORDSZ(index)] == 0) {
             /* An easy case */
-            i += WORDSZ - modWORDSZ(index);
+          i += WORDSZ - modWORDSZ(index);
         } else {
           if (get_pht_entry_from_index(GC_old_stack_bl, index)
               || get_pht_entry_from_index(GC_incomplete_stack_bl, index)) {
@@ -279,8 +281,7 @@ static word total_stack_black_listed(void)
 
     for (i = 0; i < GC_n_heap_sects; i++) {
         struct hblk * start = (struct hblk *) GC_heap_sects[i].hs_start;
-        size_t len = (word) GC_heap_sects[i].hs_bytes;
-        struct hblk * endp1 = start + len/HBLKSIZE;
+        struct hblk * endp1 = start + GC_heap_sects[i].hs_bytes/HBLKSIZE;
 
         total += GC_number_stack_black_listed(start, endp1);
     }

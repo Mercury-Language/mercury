@@ -36,65 +36,56 @@ AO_nop_write(void)
   /* sfence according to Intel docs.  Pentium 3 and up. */
   /* Unnecessary for cached accesses?                   */
 }
-
-#define AO_HAVE_NOP_WRITE
+#define AO_HAVE_nop_write
 
 #if defined(AO_HAVE_store)
-
-AO_INLINE void
-AO_store_write(volatile AO_t *addr, AO_t val)
-{
-  AO_compiler_barrier();
-  AO_store(addr, val);
-}
+  AO_INLINE void
+  AO_store_write(volatile AO_t *addr, AO_t val)
+  {
+    AO_compiler_barrier();
+    AO_store(addr, val);
+  }
 # define AO_HAVE_store_write
 
 # define AO_store_release(addr, val) AO_store_write(addr, val)
 # define AO_HAVE_store_release
-
 #endif /* AO_HAVE_store */
 
 #if defined(AO_HAVE_char_store)
-
-AO_INLINE void
-AO_char_store_write(volatile unsigned char *addr, unsigned char val)
-{
-  AO_compiler_barrier();
-  AO_char_store(addr, val);
-}
+  AO_INLINE void
+  AO_char_store_write(volatile unsigned char *addr, unsigned char val)
+  {
+    AO_compiler_barrier();
+    AO_char_store(addr, val);
+  }
 # define AO_HAVE_char_store_write
 
 # define AO_char_store_release(addr, val) AO_char_store_write(addr, val)
 # define AO_HAVE_char_store_release
-
 #endif /* AO_HAVE_char_store */
 
 #if defined(AO_HAVE_short_store)
-
-AO_INLINE void
-AO_short_store_write(volatile unsigned short *addr, unsigned short val)
-{
-  AO_compiler_barrier();
-  AO_short_store(addr, val);
-}
+  AO_INLINE void
+  AO_short_store_write(volatile unsigned short *addr, unsigned short val)
+  {
+    AO_compiler_barrier();
+    AO_short_store(addr, val);
+  }
 # define AO_HAVE_short_store_write
 
 # define AO_short_store_release(addr, val) AO_short_store_write(addr, val)
 # define AO_HAVE_short_store_release
-
 #endif /* AO_HAVE_short_store */
 
 #if defined(AO_HAVE_int_store)
-
-AO_INLINE void
-AO_int_store_write(volatile unsigned int *addr, unsigned int val)
-{
-  AO_compiler_barrier();
-  AO_int_store(addr, val);
-}
+  AO_INLINE void
+  AO_int_store_write(volatile unsigned int *addr, unsigned int val)
+  {
+    AO_compiler_barrier();
+    AO_int_store(addr, val);
+  }
 # define AO_HAVE_int_store_write
 
 # define AO_int_store_release(addr, val) AO_int_store_write(addr, val)
 # define AO_HAVE_int_store_release
-
 #endif /* AO_HAVE_int_store */

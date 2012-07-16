@@ -36,6 +36,9 @@
 /* Define to enable support for DB/UX threads on i386. */
 #undef GC_DGUX386_THREADS
 
+/* Define to build dynamic libraries with only API symbols exposed. */
+#undef GC_DLL
+
 /* Define to support FreeBSD pthreads. */
 #undef GC_FREEBSD_THREADS
 
@@ -66,10 +69,13 @@
 /* Define to support Tru64 pthreads. */
 #undef GC_OSF1_THREADS
 
+/* Define to support rtems-pthreads. */
+#undef GC_RTEMS_PTHREADS
+
 /* Define to support Solaris pthreads. */
 #undef GC_SOLARIS_THREADS
 
-/* Define to support threads. */
+/* Define to support platform-specific threads. */
 #undef GC_THREADS
 
 /* See doc/README.macros. */
@@ -81,32 +87,14 @@
 /* The minor version number of this GC release. */
 #undef GC_VERSION_MINOR
 
-/* Define to support win32 threads. */
+/* Define to support win32-pthreads. */
+#undef GC_WIN32_PTHREADS
+
+/* Define to support Win32 threads. */
 #undef GC_WIN32_THREADS
 
-/* ppc_thread_state64_t has field r0 */
-#undef HAS_PPC_THREAD_STATE64_R0
-
-/* ppc_thread_state64_t has field __r0 */
-#undef HAS_PPC_THREAD_STATE64___R0
-
-/* ppc_thread_state_t has field r0 */
-#undef HAS_PPC_THREAD_STATE_R0
-
-/* ppc_thread_state_t has field __r0 */
-#undef HAS_PPC_THREAD_STATE___R0
-
-/* x86_thread_state32_t has field eax */
-#undef HAS_X86_THREAD_STATE32_EAX
-
-/* x86_thread_state32_t has field __eax */
-#undef HAS_X86_THREAD_STATE32___EAX
-
-/* x86_thread_state64_t has field rax */
-#undef HAS_X86_THREAD_STATE64_RAX
-
-/* x86_thread_state64_t has field __rax */
-#undef HAS_X86_THREAD_STATE64___RAX
+/* Define to install pthread_atfork() handlers by default. */
+#undef HANDLE_FORK
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
@@ -163,9 +151,11 @@
 /* Disable debugging, like GC_dump and its callees. */
 #undef NO_DEBUGGING
 
-/* Define to allow the collector to disable execute permission of heap
-   objects. */
+/* Define to make the collector not allocate executable memory by default. */
 #undef NO_EXECUTE_PERMISSION
+
+/* Prohibit installation of pthread_atfork() handlers. */
+#undef NO_HANDLE_FORK
 
 /* Define to 1 if your C compiler doesn't accept -c and -o together. */
 #undef NO_MINUS_C_MINUS_O
@@ -242,3 +232,9 @@
 
 /* Required define if using POSIX threads. */
 #undef _REENTRANT
+
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
+#undef inline
+#endif

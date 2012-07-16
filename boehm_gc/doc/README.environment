@@ -1,15 +1,17 @@
-The garbage collector looks at a number of environment variables which are
-then used to affect its operation.  These are examined only on Un*x-like
-platforms and win32.
+The garbage collector looks at a number of environment variables which are,
+then, used to affect its operation.
 
 GC_INITIAL_HEAP_SIZE=<bytes> -  Initial heap size in bytes.  May speed up
-                                process start-up.
+                                process start-up.  Optionally, may be
+                                specified with a multiplier ('k', 'M' or 'G')
+                                suffix.
 
-GC_MAXIMUM_HEAP_SIZE=<bytes> - Maximum collected heap size.
+GC_MAXIMUM_HEAP_SIZE=<bytes> - Maximum collected heap size.  Allows
+                               a multiplier suffix.
 
 GC_LOOP_ON_ABORT - Causes the collector abort routine to enter a tight loop.
                    This may make it easier to debug, such a process, especially
-                   for multithreaded platforms that don't produce usable core
+                   for multi-threaded platforms that don't produce usable core
                    files, or if a core file would be too large.  On some
                    platforms, this also causes SIGSEGV to be caught and
                    result in an infinite loop in a handler, allowing
@@ -17,16 +19,22 @@ GC_LOOP_ON_ABORT - Causes the collector abort routine to enter a tight loop.
 
 GC_PRINT_STATS - Turn on GC logging.  Not functional with SMALL_CONFIG.
 
-GC_LOG_FILE - The name of the log file.  Stderr by default.
+GC_LOG_FILE - The name of the log file.  Stderr by default.  Not functional
+              with SMALL_CONFIG.
 
-GC_PRINT_VERBOSE_STATS - Turn on even more logging.
+GC_ONLY_LOG_TO_FILE - Turns off redirection of GC stdout and stderr to the log
+                      file specified by GC_LOG_FILE.  Has no effect unless
+                      GC_LOG_FILE is set.  Not functional with SMALL_CONFIG.
+
+GC_PRINT_VERBOSE_STATS - Turn on even more logging.  Not functional with
+                         SMALL_CONFIG.
 
 GC_DUMP_REGULARLY - Generate a GC debugging dump GC_dump() on startup
                     and during every collection.  Very verbose.  Useful
                     if you have a bug to report, but please include only the
                     last complete dump.
 
-GC_BACKTRACES=<n> - Generate n random backtraces (for heap profiling) after
+GC_BACKTRACES=<n> - Generate n random back-traces (for heap profiling) after
                     each GC.  Collector must have been built with
                     KEEP_BACK_PTRS.  This won't generate useful output unless
                     most objects in the heap were allocated through debug
@@ -68,7 +76,7 @@ GC_IGNORE_GCJ_INFO - Ignore the type descriptors implicitly supplied by
                      descriptor generation problems, and possibly for
                      temporarily working around such problems.  It forces a
                      fully conservative scan of all heap objects except
-                     those known to be pointerfree, and may thus have other
+                     those known to be pointer-free, and may thus have other
                      adverse effects.
 
 GC_PRINT_BACK_HEIGHT - Print max length of chain through unreachable objects
@@ -112,10 +120,10 @@ other means, but this may help with debugging and testing:
 GC_ENABLE_INCREMENTAL - Turn on incremental collection at startup.  Note that,
                      depending on platform and collector configuration, this
                      may involve write protecting pieces of the heap to
-                     track modifications.  These pieces may include pointerfree
-                     objects or not.  Although this is intended to be
-                     transparent, it may cause unintended system call failures.
-                     Use with caution.
+                     track modifications.  These pieces may include
+                     pointer-free objects or not.  Although this is intended
+                     to be transparent, it may cause unintended system call
+                     failures.  Use with caution.
 
 GC_PAUSE_TIME_TARGET - Set the desired garbage collector pause time in msecs.
                      This only has an effect if incremental collection is
@@ -130,7 +138,8 @@ GC_PAUSE_TIME_TARGET - Set the desired garbage collector pause time in msecs.
                      only be used with unlimited pause time.
 
 GC_FULL_FREQUENCY - Set the desired number of partial collections between full
-                  collections.  Matters only if GC_incremental is set.
+                    collections.  Matters only if GC_incremental is set.
+                    Not functional with SMALL_CONFIG.
 
 GC_FREE_SPACE_DIVISOR - Set GC_free_space_divisor to the indicated value.
                       Setting it to larger values decreases space consumption
@@ -151,10 +160,20 @@ GC_FIND_LEAK - Turns on GC_find_leak and thus leak detection.  Forces a
                collection at program termination to detect leaks that would
                otherwise occur after the last GC.
 
+GC_FINDLEAK_DELAY_FREE - Turns on deferred freeing of objects in the
+                       leak-finding mode (see the corresponding macro
+                       description for more information).
+
+GC_ABORT_ON_LEAK - Causes the application to be terminated once leaked or
+                   smashed objects are found.
+
 GC_ALL_INTERIOR_POINTERS - Turns on GC_all_interior_pointers and thus interior
                            pointer recognition.
 
 GC_DONT_GC - Turns off garbage collection.  Use cautiously.
+
+GC_USE_ENTIRE_HEAP - Set desired GC_use_entire_heap value at start-up.  See
+                     the similar macro description in README.macros.
 
 GC_TRACE=addr - Intended for collector debugging.  Requires that the collector
                 have been built with ENABLE_TRACE defined.  Causes the debugger

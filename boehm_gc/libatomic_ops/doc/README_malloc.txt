@@ -23,7 +23,7 @@ quite poor in practice.  In particular, no attempt is made to
 coalesce free small memory blocks.  Something like Doug Lea's malloc is
 likely to use significantly less memory for complex applications.
 
-Perfomance on platforms without an efficient compare-and-swap implementation
+Performance on platforms without an efficient compare-and-swap implementation
 will be poor.
 
 This package was not designed for processor-scalability in the face of
@@ -31,7 +31,7 @@ high allocation rates.  If all threads happen to allocate different-sized
 objects, you might get lucky.  Otherwise expect contention and false-sharing
 problems.  If this is an issue, something like Maged Michael's algorithm
 (PLDI 2004) would be technically a far better choice.  If you are concerned
-only with scalablity, and not signal-safety, you might also consider
+only with scalability, and not signal-safety, you might also consider
 using Hoard instead.  We have seen a factor of 3 to 4 slowdown from the
 standard glibc malloc implementation with contention, even when the
 performance without contention was faster.  (To make the implementation

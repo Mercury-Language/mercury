@@ -20,10 +20,8 @@
  * SOFTWARE.
  */
 
-/*
- * Definitions for architectures on which loads and stores of AO_t are
- * atomic for all legal alignments.
- */
+/* Definitions for architectures on which loads and stores of AO_t are  */
+/* atomic for all legal alignments.                                     */
 
 AO_INLINE AO_t
 AO_load(const volatile AO_t *addr)
@@ -32,7 +30,6 @@ AO_load(const volatile AO_t *addr)
   /* volatile adds barrier semantics.                           */
   return (*(const AO_t *)addr);
 }
-
 #define AO_HAVE_load
 
 AO_INLINE void
@@ -40,5 +37,4 @@ AO_store(volatile AO_t *addr, AO_t new_val)
 {
   (*(AO_t *)addr) = new_val;
 }
-
 #define AO_HAVE_store

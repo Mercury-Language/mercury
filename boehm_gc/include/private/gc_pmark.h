@@ -35,9 +35,6 @@
 #endif
 
 #ifndef GC_MARK_H
-# ifndef GC_H
-#   define GC_I_HIDE_POINTERS /* to get GC_HIDE_POINTER() and friends */
-# endif
 # include "../gc_mark.h"
 #endif
 
@@ -136,7 +133,6 @@ GC_INNER mse * GC_signal_mark_stack_overflow(mse *msp);
 #define PUSH_OBJ(obj, hhdr, mark_stack_top, mark_stack_limit) \
 { \
     register word _descr = (hhdr) -> hb_descr; \
-        \
     GC_ASSERT(!HBLK_IS_FREE(hhdr)); \
     if (_descr != 0) { \
         mark_stack_top++; \
@@ -156,17 +152,26 @@ GC_INNER mse * GC_signal_mark_stack_overflow(mse *msp);
                       source, exit_label) \
 { \
     hdr * my_hhdr; \
- \
     HC_GET_HDR(current, my_hhdr, source, exit_label); \
     PUSH_CONTENTS_HDR(current, mark_stack_top, mark_stack_limit, \
-                  source, exit_label, my_hhdr, TRUE);   \
+                  source, exit_label, my_hhdr, TRUE); \
 exit_label: ; \
 }
 
 /* Set mark bit, exit if it was already set.    */
-
-#ifdef USE_MARK_BITS
+#ifdef USE_MARK_BYTES
+  /* There is a race here, and we may set                               */
+  /* the bit twice in the concurrent case.  This can result in the      */
+  /* object being pushed twice.  But that's only a performance issue.   */
+# define SET_MARK_BIT_EXIT_IF_SET(hhdr,bit_no,exit_label) \
+    { \
+        char * mark_byte_addr = (char *)hhdr -> hb_marks + (bit_no); \
+        if (*mark_byte_addr) goto exit_label; \
+        *mark_byte_addr = 1; \
+    }
+#else
 # ifdef PARALLEL_MARK
+    /* This is used only if we explicitly set USE_MARK_BITS.            */
     /* The following may fail to exit even if the bit was already set.  */
     /* For our uses, that's benign:                                     */
 #   define OR_WORD_EXIT_IF_SET(addr, bits, exit_label) \
@@ -189,44 +194,16 @@ exit_label: ; \
 # define SET_MARK_BIT_EXIT_IF_SET(hhdr,bit_no,exit_label) \
     { \
         word * mark_word_addr = hhdr -> hb_marks + divWORDSZ(bit_no); \
-      \
         OR_WORD_EXIT_IF_SET(mark_word_addr, (word)1 << modWORDSZ(bit_no), \
                             exit_label); \
     }
-#endif
-
-#if defined(I386) && defined(__GNUC__)
-# define LONG_MULT(hprod, lprod, x, y) { \
-        asm("mull %2" : "=a"(lprod), "=d"(hprod) : "g"(y), "0"(x)); \
-  }
-#else /* No in-line X86 assembly code */
-# define LONG_MULT(hprod, lprod, x, y) { \
-        unsigned long long prod = (unsigned long long)x \
-                                  * (unsigned long long)y; \
-        hprod = prod >> 32;  \
-        lprod = (unsigned32)prod;  \
-  }
-#endif
-
-#ifdef USE_MARK_BYTES
-  /* There is a race here, and we may set                               */
-  /* the bit twice in the concurrent case.  This can result in the      */
-  /* object being pushed twice.  But that's only a performance issue.   */
-# define SET_MARK_BIT_EXIT_IF_SET(hhdr,bit_no,exit_label) \
-    { \
-        char * mark_byte_addr = (char *)hhdr -> hb_marks + (bit_no); \
-        char mark_byte = *mark_byte_addr; \
-          \
-        if (mark_byte) goto exit_label; \
-        *mark_byte_addr = 1;  \
-    }
-#endif /* USE_MARK_BYTES */
+#endif /* !USE_MARK_BYTES */
 
 #ifdef PARALLEL_MARK
 # define INCR_MARKS(hhdr) \
-        AO_store(&(hhdr -> hb_n_marks), AO_load(&(hhdr -> hb_n_marks))+1);
+                AO_store(&hhdr->hb_n_marks, AO_load(&hhdr->hb_n_marks) + 1)
 #else
-# define INCR_MARKS(hhdr) ++(hhdr -> hb_n_marks)
+# define INCR_MARKS(hhdr) (void)(++hhdr->hb_n_marks)
 #endif
 
 #ifdef ENABLE_TRACE
@@ -238,6 +215,20 @@ exit_label: ; \
 # define TRACE(source, cmd)
 # define TRACE_TARGET(source, cmd)
 #endif
+
+#if defined(I386) && defined(__GNUC__)
+# define LONG_MULT(hprod, lprod, x, y) { \
+        __asm__ __volatile__("mull %2" : "=a"(lprod), "=d"(hprod) \
+                             : "g"(y), "0"(x)); \
+  }
+#else
+# define LONG_MULT(hprod, lprod, x, y) { \
+        unsigned long long prod = (unsigned long long)(x) \
+                                  * (unsigned long long)(y); \
+        hprod = prod >> 32; \
+        lprod = (unsigned32)prod; \
+  }
+#endif /* !I386 */
 
 /* If the mark bit corresponding to current is not set, set it, and     */
 /* push the contents of the object on the mark stack.  Current points   */
@@ -257,16 +248,16 @@ exit_label: ; \
     /* first block, then we are in the all_interior_pointers case, and  */ \
     /* it is safe to use any displacement value.                        */ \
     size_t gran_displ = BYTES_TO_GRANULES(displ); \
-    size_t gran_offset = hhdr -> hb_map[gran_displ];    \
+    size_t gran_offset = hhdr -> hb_map[gran_displ]; \
     size_t byte_offset = displ & (GRANULE_BYTES - 1); \
-    ptr_t base = current;  \
+    ptr_t base = current; \
     /* The following always fails for large block references. */ \
     if (EXPECT((gran_offset | byte_offset) != 0, FALSE))  { \
         if (hhdr -> hb_large_block) { \
           /* gran_offset is bogus.      */ \
           size_t obj_displ; \
           base = (ptr_t)(hhdr -> hb_block); \
-          obj_displ = (ptr_t)(current) - base;  \
+          obj_displ = (ptr_t)(current) - base; \
           if (obj_displ != displ) { \
             GC_ASSERT(obj_displ < hhdr -> hb_sz); \
             /* Must be in all_interior_pointer case, not first block */ \
@@ -315,7 +306,7 @@ exit_label: ; \
     size_t displ = HBLKDISPL(current); /* Displacement in block; in bytes. */\
     unsigned32 low_prod, high_prod; \
     unsigned32 inv_sz = hhdr -> hb_inv_sz; \
-    ptr_t base = current;  \
+    ptr_t base = current; \
     LONG_MULT(high_prod, low_prod, displ, inv_sz); \
     /* product is > and within sz_in_bytes of displ * sz_in_bytes * 2**32 */ \
     if (EXPECT(low_prod >> 16 != 0, FALSE))  { \
@@ -323,7 +314,7 @@ exit_label: ; \
         if (inv_sz == LARGE_INV_SZ) { \
           size_t obj_displ; \
           base = (ptr_t)(hhdr -> hb_block); \
-          obj_displ = (ptr_t)(current) - base;  \
+          obj_displ = (ptr_t)(current) - base; \
           if (obj_displ != displ) { \
             GC_ASSERT(obj_displ < hhdr -> hb_sz); \
             /* Must be in all_interior_pointer case, not first block */ \
@@ -358,8 +349,7 @@ exit_label: ; \
                                 (unsigned)GC_gc_no)); \
     TRACE_TARGET(base, \
         GC_log_printf("GC:%u: marking %p from %p instead\n", \
-                      (unsigned)GC_gc_no, \
-                      base, source)); \
+                      (unsigned)GC_gc_no, base, source)); \
     INCR_MARKS(hhdr); \
     GC_STORE_BACK_PTR((ptr_t)source, base); \
     PUSH_OBJ(base, hhdr, mark_stack_top, mark_stack_limit); \
@@ -385,20 +375,20 @@ exit_label: ; \
 #if NEED_FIXUP_POINTER
     /* Try both the raw version and the fixed up one.   */
 # define GC_PUSH_ONE_STACK(p, source) \
-      if ((ptr_t)(p) >= (ptr_t)GC_least_plausible_heap_addr     \
-         && (ptr_t)(p) < (ptr_t)GC_greatest_plausible_heap_addr) {      \
-         PUSH_ONE_CHECKED_STACK(p, source);     \
+      if ((ptr_t)(p) >= (ptr_t)GC_least_plausible_heap_addr \
+          && (ptr_t)(p) < (ptr_t)GC_greatest_plausible_heap_addr) { \
+         PUSH_ONE_CHECKED_STACK(p, source); \
       } \
       FIXUP_POINTER(p); \
-      if ((ptr_t)(p) >= (ptr_t)GC_least_plausible_heap_addr     \
-         && (ptr_t)(p) < (ptr_t)GC_greatest_plausible_heap_addr) {      \
-         PUSH_ONE_CHECKED_STACK(p, source);     \
+      if ((ptr_t)(p) >= (ptr_t)GC_least_plausible_heap_addr \
+          && (ptr_t)(p) < (ptr_t)GC_greatest_plausible_heap_addr) { \
+         PUSH_ONE_CHECKED_STACK(p, source); \
       }
 #else /* !NEED_FIXUP_POINTER */
 # define GC_PUSH_ONE_STACK(p, source) \
-      if ((ptr_t)(p) >= (ptr_t)GC_least_plausible_heap_addr     \
-         && (ptr_t)(p) < (ptr_t)GC_greatest_plausible_heap_addr) {      \
-         PUSH_ONE_CHECKED_STACK(p, source);     \
+      if ((ptr_t)(p) >= (ptr_t)GC_least_plausible_heap_addr \
+          && (ptr_t)(p) < (ptr_t)GC_greatest_plausible_heap_addr) { \
+         PUSH_ONE_CHECKED_STACK(p, source); \
       }
 #endif
 
@@ -409,9 +399,9 @@ exit_label: ; \
  */
 #define GC_PUSH_ONE_HEAP(p,source) \
     FIXUP_POINTER(p); \
-    if ((ptr_t)(p) >= (ptr_t)GC_least_plausible_heap_addr       \
-         && (ptr_t)(p) < (ptr_t)GC_greatest_plausible_heap_addr) {      \
-            GC_mark_stack_top = GC_mark_and_push( \
+    if ((ptr_t)(p) >= (ptr_t)GC_least_plausible_heap_addr \
+         && (ptr_t)(p) < (ptr_t)GC_greatest_plausible_heap_addr) { \
+      GC_mark_stack_top = GC_mark_and_push( \
                             (void *)(p), GC_mark_stack_top, \
                             GC_mark_stack_limit, (void * *)(source)); \
     }
