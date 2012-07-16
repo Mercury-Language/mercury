@@ -15,7 +15,7 @@ atomic memory operations.  These might allow you to write code:
 For details and licensing restrictions see the files in the doc
 subdirectory.
 
-This is version 7.2alpha4 of libatomic_ops.
+This is version 7.2 of libatomic_ops.
 
 You might find a more recent version of this at
 

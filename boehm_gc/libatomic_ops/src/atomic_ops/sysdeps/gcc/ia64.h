@@ -45,13 +45,13 @@
 # define AO_IN_ADDR "1"(addr)
 # define AO_OUT_ADDR , "=r"(addr)
 # define AO_SWIZZLE "addp4 %1=0,%1;;\n"
-# define AO_MASK(ptr) __asm__("zxt4 %1=%1": "=r"(ptr) : "0"(ptr));
+# define AO_MASK(ptr) __asm__ __volatile__("zxt4 %1=%1": "=r"(ptr) : "0"(ptr))
 #else
 # define AO_LEN "8"
 # define AO_IN_ADDR "r"(addr)
 # define AO_OUT_ADDR
 # define AO_SWIZZLE
-# define AO_MASK(ptr)
+# define AO_MASK(ptr) /* empty */
 #endif
 
 AO_INLINE void
@@ -83,7 +83,6 @@ AO_fetch_and_add1_release (volatile AO_t *addr)
                         "=r" (result) AO_OUT_ADDR: AO_IN_ADDR :"memory");
   return result;
 }
-
 #define AO_HAVE_fetch_and_add1_release
 
 AO_INLINE AO_t
@@ -96,7 +95,6 @@ AO_fetch_and_sub1_acquire (volatile AO_t *addr)
                         "=r" (result) AO_OUT_ADDR: AO_IN_ADDR :"memory");
   return result;
 }
-
 #define AO_HAVE_fetch_and_sub1_acquire
 
 AO_INLINE AO_t
@@ -109,7 +107,6 @@ AO_fetch_and_sub1_release (volatile AO_t *addr)
                         "=r" (result) AO_OUT_ADDR: AO_IN_ADDR :"memory");
   return result;
 }
-
 #define AO_HAVE_fetch_and_sub1_release
 
 #ifndef _ILP32
@@ -134,7 +131,6 @@ AO_int_fetch_and_add1_release (volatile unsigned int *addr)
                         "=r" (result): AO_IN_ADDR :"memory");
   return result;
 }
-
 #define AO_HAVE_int_fetch_and_add1_release
 
 AO_INLINE unsigned int
@@ -146,7 +142,6 @@ AO_int_fetch_and_sub1_acquire (volatile unsigned int *addr)
                         "=r" (result): AO_IN_ADDR :"memory");
   return result;
 }
-
 #define AO_HAVE_int_fetch_and_sub1_acquire
 
 AO_INLINE unsigned int
@@ -158,7 +153,6 @@ AO_int_fetch_and_sub1_release (volatile unsigned int *addr)
                         "=r" (result): AO_IN_ADDR :"memory");
   return result;
 }
-
 #define AO_HAVE_int_fetch_and_sub1_release
 
 #endif /* !_ILP32 */
@@ -177,7 +171,6 @@ AO_compare_and_swap_acquire(volatile AO_t *addr,
                        : "memory");
   return (oldval == old);
 }
-
 #define AO_HAVE_compare_and_swap_acquire
 
 AO_INLINE int
@@ -194,7 +187,6 @@ AO_compare_and_swap_release(volatile AO_t *addr,
                        : "memory");
   return (oldval == old);
 }
-
 #define AO_HAVE_compare_and_swap_release
 
 AO_INLINE int
@@ -209,7 +201,6 @@ AO_char_compare_and_swap_acquire(volatile unsigned char *addr,
                : "memory");
   return (oldval == old);
 }
-
 #define AO_HAVE_char_compare_and_swap_acquire
 
 AO_INLINE int
@@ -224,7 +215,6 @@ AO_char_compare_and_swap_release(volatile unsigned char *addr,
                 : "memory");
   return (oldval == old);
 }
-
 #define AO_HAVE_char_compare_and_swap_release
 
 AO_INLINE int
@@ -239,7 +229,6 @@ AO_short_compare_and_swap_acquire(volatile unsigned short *addr,
                 : "memory");
   return (oldval == old);
 }
-
 #define AO_HAVE_short_compare_and_swap_acquire
 
 AO_INLINE int
@@ -254,7 +243,6 @@ AO_short_compare_and_swap_release(volatile unsigned short *addr,
                 : "memory");
   return (oldval == old);
 }
-
 #define AO_HAVE_short_compare_and_swap_release
 
 #ifndef _ILP32
@@ -269,7 +257,6 @@ AO_int_compare_and_swap_acquire(volatile unsigned int *addr,
                        : AO_IN_ADDR, "r"(new_val), "r"((AO_t)old) : "memory");
   return (oldval == old);
 }
-
 #define AO_HAVE_int_compare_and_swap_acquire
 
 AO_INLINE int
@@ -282,7 +269,6 @@ AO_int_compare_and_swap_release(volatile unsigned int *addr,
                        : AO_IN_ADDR, "r"(new_val), "r"((AO_t)old) : "memory");
   return (oldval == old);
 }
-
 #define AO_HAVE_int_compare_and_swap_release
 
 #endif /* !_ILP32 */
@@ -293,5 +279,7 @@ AO_int_compare_and_swap_release(volatile unsigned int *addr,
 /* FIXME: Add compare_double_and_swap_double for the _ILP32 case.       */
 
 #ifdef _ILP32
+  /* Generalize first to define more AO_int_... primitives.     */
+# include "../../generalize.h"
 # include "../ao_t_is_int.h"
 #endif

@@ -98,8 +98,8 @@ int compare_and_swap(volatile AO_t * addr, AO_t old_val, AO_t new_val)
         succeeded and *addr was updated.
 AO_TS_VAL_t test_and_set(volatile AO_TS_t * addr)
         Atomically read the binary value at *addr, and set it.  AO_TS_VAL_t
-        is an enumeration type which includes the two values AO_TS_SET and
-        and AO_TS_CLEAR.  An AO_TS_t location is capable of holding an
+        is an enumeration type which includes two values AO_TS_SET and
+        AO_TS_CLEAR.  An AO_TS_t location is capable of holding an
         AO_TS_VAL_t, but may be much larger, as dictated by hardware
         constraints.  Test_and_set logically sets the value to AO_TS_SET.
         It may be reset to AO_TS_CLEAR with the AO_CLEAR(AO_TS_t *) macro.
@@ -137,7 +137,7 @@ ORDERING CONSTRAINTS:
 
 Each operation name also includes a suffix that specifies the associated
 ordering semantics.  The ordering constraint limits reordering of this
-operation with repsect to other atomic operations and ordinary memory
+operation with respect to other atomic operations and ordinary memory
 references.  The current implementation assumes that all memory references
 are to ordinary cacheable memory; the ordering guarantee is with respect
 to other threads or processes, not I/O devices.  (Whether or not this
@@ -153,7 +153,7 @@ _read: Subsequent reads must become visible after reads included in
        the atomic operation or preceding it.  Rarely useful for clients?
 _write: Earlier writes become visible before writes during or after
         the atomic operation.  Rarely useful for clients?
-_full: Ordered with respect to both earlier and later memops.
+_full: Ordered with respect to both earlier and later memory ops.
        AO_store_full or AO_nop_full are the normal ways to force a store
        to be ordered with respect to a later load.
 _release_write: Ordered with respect to earlier writes.  This is

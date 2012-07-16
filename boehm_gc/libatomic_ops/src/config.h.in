@@ -24,6 +24,9 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
+/* Define to 1 if you have the <sys/param.h> header file. */
+#undef HAVE_SYS_PARAM_H
+
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
 
@@ -62,3 +65,9 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* Indicates the use of pthreads (NetBSD). */
+#undef _PTHREADS
+
+/* Required define if using POSIX threads. */
+#undef _REENTRANT

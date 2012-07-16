@@ -35,9 +35,8 @@ AO_INLINE void
 AO_nop_full(void)
 {
   /* Note: "mfence" (SSE2) is supported on all x86_64/amd64 chips.      */
-  __asm__ __volatile__("mfence" : : : "memory");
+  __asm__ __volatile__ ("mfence" : : : "memory");
 }
-
 #define AO_HAVE_nop_full
 
 /* As far as we can tell, the lfence and sfence instructions are not    */
@@ -53,7 +52,6 @@ AO_fetch_and_add_full (volatile AO_t *p, AO_t incr)
                         : "memory");
   return result;
 }
-
 #define AO_HAVE_fetch_and_add_full
 
 AO_INLINE unsigned char
@@ -66,7 +64,6 @@ AO_char_fetch_and_add_full (volatile unsigned char *p, unsigned char incr)
                         : "memory");
   return result;
 }
-
 #define AO_HAVE_char_fetch_and_add_full
 
 AO_INLINE unsigned short
@@ -79,7 +76,6 @@ AO_short_fetch_and_add_full (volatile unsigned short *p, unsigned short incr)
                         : "memory");
   return result;
 }
-
 #define AO_HAVE_short_fetch_and_add_full
 
 AO_INLINE unsigned int
@@ -92,7 +88,6 @@ AO_int_fetch_and_add_full (volatile unsigned int *p, unsigned int incr)
                         : "memory");
   return result;
 }
-
 #define AO_HAVE_int_fetch_and_add_full
 
 AO_INLINE void
@@ -102,36 +97,31 @@ AO_or_full (volatile AO_t *p, AO_t incr)
                         "=m" (*p) : "r" (incr) /* , "m" (*p) */
                         : "memory");
 }
-
 #define AO_HAVE_or_full
 
 AO_INLINE AO_TS_VAL_t
-AO_test_and_set_full(volatile AO_TS_t *addr)
+AO_test_and_set_full (volatile AO_TS_t *addr)
 {
-  unsigned int oldval;
+  AO_TS_t oldval;
   /* Note: the "xchg" instruction does not need a "lock" prefix */
-  /* Note 2: "xchgb" is not recognized by Sun CC assembler yet. */
-  __asm__ __volatile__("xchgl %0, %1"
-                : "=q"(oldval), "=m"(*addr)
-                : "0"(0xff) /* , "m"(*addr) */
-                : "memory");
+  __asm__ __volatile__ ("xchg %b0, %1"
+                        : "=q"(oldval), "=m"(*addr)
+                        : "0"(0xff) /* , "m"(*addr) */
+                        : "memory");
   return (AO_TS_VAL_t)oldval;
 }
-
 #define AO_HAVE_test_and_set_full
 
 /* Returns nonzero if the comparison succeeded. */
 AO_INLINE int
-AO_compare_and_swap_full(volatile AO_t *addr,
-                         AO_t old, AO_t new_val)
+AO_compare_and_swap_full (volatile AO_t *addr, AO_t old, AO_t new_val)
 {
   char result;
-  __asm__ __volatile__("lock; cmpxchgq %2, %0; setz %1"
-                       : "=m"(*addr), "=q"(result)
-                       : "r" (new_val), "a"(old) : "memory");
+  __asm__ __volatile__ ("lock; cmpxchgq %2, %0; setz %1"
+                        : "=m"(*addr), "=a"(result)
+                        : "r" (new_val), "a"(old) : "memory");
   return (int) result;
 }
-
 #define AO_HAVE_compare_and_swap_full
 
 #ifdef AO_CMPXCHG16B_AVAILABLE
@@ -145,18 +135,15 @@ AO_compare_and_swap_full(volatile AO_t *addr,
  * Hoewever both are clearly useful in certain cases.
  */
 AO_INLINE int
-AO_compare_double_and_swap_double_full(volatile AO_double_t *addr,
-                                       AO_t old_val1, AO_t old_val2,
-                                       AO_t new_val1, AO_t new_val2)
+AO_compare_double_and_swap_double_full (volatile AO_double_t *addr,
+                                        AO_t old_val1, AO_t old_val2,
+                                        AO_t new_val1, AO_t new_val2)
 {
   char result;
-  __asm__ __volatile__("lock; cmpxchg16b %0; setz %1"
-                                : "=m"(*addr), "=q"(result)
-                                        : "m"(*addr),
-                                          "d" (old_val2),
-                                          "a" (old_val1),
-                                          "c" (new_val2),
-                                          "b" (new_val1)  : "memory");
+  __asm__ __volatile__ ("lock; cmpxchg16b %0; setz %1"
+                        : "=m"(*addr), "=a"(result)
+                        : "m"(*addr), "d" (old_val2), "a" (old_val1),
+                          "c" (new_val2), "b" (new_val1) : "memory");
   return (int) result;
 }
 #define AO_HAVE_compare_double_and_swap_double_full

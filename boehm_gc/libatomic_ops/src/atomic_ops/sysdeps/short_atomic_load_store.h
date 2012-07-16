@@ -32,7 +32,6 @@ AO_short_load(const volatile unsigned short *addr)
   /* volatile adds barrier semantics.                           */
   return (*(const unsigned short *)addr);
 }
-
 #define AO_HAVE_short_load
 
 AO_INLINE void
@@ -40,5 +39,4 @@ AO_short_store(volatile unsigned short *addr, unsigned short new_val)
 {
   (*(unsigned short *)addr) = new_val;
 }
-
 #define AO_HAVE_short_store

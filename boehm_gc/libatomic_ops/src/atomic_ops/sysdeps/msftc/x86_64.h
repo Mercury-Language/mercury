@@ -59,7 +59,6 @@ AO_fetch_and_add_full (volatile AO_t *p, AO_t incr)
 {
   return _InterlockedExchangeAdd64((LONGLONG volatile *)p, (LONGLONG)incr);
 }
-
 #define AO_HAVE_fetch_and_add_full
 
 AO_INLINE AO_t
@@ -67,7 +66,6 @@ AO_fetch_and_add1_full (volatile AO_t *p)
 {
   return _InterlockedIncrement64((LONGLONG volatile *)p) - 1;
 }
-
 #define AO_HAVE_fetch_and_add1_full
 
 AO_INLINE AO_t
@@ -75,7 +73,6 @@ AO_fetch_and_sub1_full (volatile AO_t *p)
 {
   return _InterlockedDecrement64((LONGLONG volatile *)p) + 1;
 }
-
 #define AO_HAVE_fetch_and_sub1_full
 
 AO_INLINE int
@@ -86,35 +83,20 @@ AO_compare_and_swap_full(volatile AO_t *addr,
                                          (LONGLONG)new_val, (LONGLONG)old)
            == (LONGLONG)old;
 }
-
 #define AO_HAVE_compare_and_swap_full
 
 /* As far as we can tell, the lfence and sfence instructions are not    */
 /* currently needed or useful for cached memory accesses.               */
 
-/* Unfortunately mfence doesn't exist everywhere.               */
-/* IsProcessorFeaturePresent(PF_COMPARE_EXCHANGE128) is         */
-/* probably a conservative test for it?                         */
-
-#if defined(AO_USE_PENTIUM4_INSTRS)
+#ifdef AO_ASM_X64_AVAILABLE
 
 AO_INLINE void
 AO_nop_full(void)
 {
+  /* Note: "mfence" (SSE2) is supported on all x86_64/amd64 chips.      */
   __asm { mfence }
 }
-
 #define AO_HAVE_nop_full
-
-#else
-
-/* We could use the cpuid instruction.  But that seems to be slower     */
-/* than the default implementation based on test_and_set_full.  Thus    */
-/* we omit that bit of misinformation here.                             */
-
-#endif
-
-#ifdef AO_ASM_X64_AVAILABLE
 
 AO_INLINE AO_TS_VAL_t
 AO_test_and_set_full(volatile AO_TS_t *addr)
@@ -126,13 +108,11 @@ AO_test_and_set_full(volatile AO_TS_t *addr)
         xchg    byte ptr [rbx],al       ;
     }
 }
-
 #define AO_HAVE_test_and_set_full
 
 #endif /* AO_ASM_X64_AVAILABLE */
 
 #ifdef AO_CMPXCHG16B_AVAILABLE
-
 /* AO_compare_double_and_swap_double_full needs implementation for Win64.
  * Also see ../gcc/x86_64.h for partial old Opteron workaround.
  */
@@ -152,15 +132,11 @@ AO_compare_double_and_swap_double_full(volatile AO_double_t *addr,
    return _InterlockedCompareExchange128((volatile __int64 *)addr,
                 new_val2 /* high */, new_val1 /* low */, comparandResult);
 }
-
 #   define AO_HAVE_compare_double_and_swap_double_full
 
 # elif defined(AO_ASM_X64_AVAILABLE)
-
- /* If there is no intrinsic _InterlockedCompareExchange128 then we
-  * need basically what's given below.
-  */
-
+    /* If there is no intrinsic _InterlockedCompareExchange128 then we  */
+    /* need basically what's given below.                               */
 AO_INLINE int
 AO_compare_double_and_swap_double_full(volatile AO_double_t *addr,
                                        AO_t old_val1, AO_t old_val2,
@@ -176,9 +152,7 @@ AO_compare_double_and_swap_double_full(volatile AO_double_t *addr,
                 setz    rax                             ;
         }
 }
-
 #   define AO_HAVE_compare_double_and_swap_double_full
-
 # endif /* _MSC_VER >= 1500 || AO_ASM_X64_AVAILABLE */
 
 #endif /* AO_CMPXCHG16B_AVAILABLE */

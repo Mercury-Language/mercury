@@ -92,7 +92,6 @@ void
 AO_stack_push_explicit_aux_release(volatile AO_t *list, AO_t *x,
                                    AO_stack_aux *a)
 {
-  int i;
   AO_t x_bits = (AO_t)x;
   AO_t next;
 
@@ -106,7 +105,7 @@ AO_stack_push_explicit_aux_release(volatile AO_t *list, AO_t *x,
     AO_t entry2 = AO_load(a -> AO_stack_bl + 1);
     if (entry1 == x_bits || entry2 == x_bits)
       {
-        /* Entry is currently being removed.  Change it a little.     */
+        /* Entry is currently being removed.  Change it a little.       */
           ++x_bits;
           if ((x_bits & AO_BIT_MASK) == 0)
             /* Version count overflowed;         */
@@ -116,11 +115,13 @@ AO_stack_push_explicit_aux_release(volatile AO_t *list, AO_t *x,
       }
   }
 # else
+  {
+    int i;
     for (i = 0; i < AO_BL_SIZE; ++i)
       {
         if (AO_load(a -> AO_stack_bl + i) == x_bits)
           {
-            /* Entry is currently being removed.  Change it a little.     */
+            /* Entry is currently being removed.  Change it a little.   */
               ++x_bits;
               if ((x_bits & AO_BIT_MASK) == 0)
                 /* Version count overflowed;         */
@@ -129,6 +130,7 @@ AO_stack_push_explicit_aux_release(volatile AO_t *list, AO_t *x,
             goto retry;
           }
       }
+  }
 # endif
   /* x_bits is not currently being deleted */
   do
@@ -240,7 +242,13 @@ void AO_stack_push_release(AO_stack_t *list, AO_t *element)
 
 AO_t *AO_stack_pop_acquire(AO_stack_t *list)
 {
-    AO_t *cptr;
+#   ifdef __clang__
+      AO_t *volatile cptr;
+                        /* Use volatile to workaround a bug in          */
+                        /* clang-1.1/x86 causing test_stack failure.    */
+#   else
+      AO_t *cptr;
+#   endif
     AO_t next;
     AO_t cversion;
 
