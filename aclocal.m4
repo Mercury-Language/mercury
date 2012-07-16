@@ -267,7 +267,7 @@ case "$CANDIDATE_CSC" in
         if test $? -ne 0
         then
             AC_MSG_WARN([$CANDIDATE_CSC is not the Microsoft C sharp compiler])
-            AC_PATH_PROGS([CSC], [gmcs cscc])
+            AC_PATH_PROGS([CSC], [mcs dmcs gmcs cscc])
             CSC=`basename "$CSC"`
         else
             CSC="$CANDIDATE_CSC"
@@ -282,6 +282,14 @@ esac
 case "$CSC" in
     csc*)
         CSHARP_COMPILER_TYPE=microsoft
+    ;;
+
+    mcs*)
+        CSHARP_COMPILER_TYPE=mono
+    ;;
+
+    dmcs*)
+        CSHARP_COMPILER_TYPE=mono
     ;;
 
     gmcs*)
