@@ -1,3 +1,48 @@
+NEWS for Mercury 11.07.2
+------------------------
+
+This is a bug-fix release.
+
+It fixes the following problems
+
+* The name of the C# compiler in newer versions of Mono is now recognised.
+
+* The configure script now distinguishes between the MS C# compiler and the
+  Chicken Scheme compiler.
+
+* Fixed a problem with thread local storage and clang on Mac OS X.
+
+* Fix Solaris 10 build issues.
+
+* Fix handling of --erlang option.
+
+* The compiler now outputs #line directives in C# generated code.
+
+* Fix opening of binary mode files with MSVC CRT.
+
+* Make unsafe array2d call use the unsafe array access methods
+
+* Fix version_hash_table throwing "Not yet implemented" exceptions in
+  the C# and Java grades.
+
+* Fix tokenisation of binary, octal and hexadecimal integer literals in
+  strings in the lexer module.
+
+* Optimise some UTF-8 routines in the C grades and fix some bugs in these
+  routines.
+
+Changes to the Mercury standard library:
+
+* Add additional modes to map.foldr/4, map.foldr/6 and
+  list.foldl<N>_corresponding3 predicates.
+
+* The predicate parsing_utils.float_literal/3 and
+  parsing_utils.float_literal_as_string/4 now accept an optional plus sign in
+  the exponent.
+
+* Remove obsolete methods string.remove_suffix_det/2 and
+  string.index_det/2.
+
 NEWS for Mercury 11.07.1
 ------------------------
 
