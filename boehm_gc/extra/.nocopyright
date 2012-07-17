@@ -8,3 +8,4 @@ MacOS.c
 msvc_dbg.c
 setjmp_t.c
 threadlibs.c
+.cvsignore

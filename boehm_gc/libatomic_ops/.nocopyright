@@ -16,3 +16,4 @@ missing
 mkinstalldirs
 NEWS
 README
+.cvsignore

@@ -13,3 +13,4 @@ tests.am
 threadkey_test.c
 thread_leak_test.c
 trace_test.c
+.cvsignore

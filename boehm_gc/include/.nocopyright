@@ -18,3 +18,4 @@ javaxfc.h
 leak_detector.h
 new_gc_alloc.h
 weakpointer.h
+.cvsignore
