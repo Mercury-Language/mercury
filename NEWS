@@ -31,6 +31,9 @@ It fixes the following problems
 * Optimise some UTF-8 routines in the C grades and fix some bugs in these
   routines.
 
+* Fix problem with incorrect exit status being set when using
+  --warn-non-tail-recursion.
+
 Changes to the Mercury standard library:
 
 * Add additional modes to map.foldr/4, map.foldr/6 and

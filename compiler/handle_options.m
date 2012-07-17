@@ -36,7 +36,9 @@
     % handle_given_options(Args, OptionArgs, NonOptionArgs, Link,
     %   Errors, Globals, !IO).
     %
-:- pred handle_given_options(list(string)::in, 
+    % This predicate does NOT modify the exit status.
+    %
+:- pred handle_given_options(list(string)::in,
     list(string)::out, list(string)::out, bool::out, list(string)::out,
     globals::out, io::di, io::uo) is det.
 
@@ -117,8 +119,9 @@ handle_given_options(Args0, OptionArgs, Args, Link, Errors, !:Globals, !IO) :-
     convert_option_table_result_to_globals(Result, Errors, !:Globals, !IO),
     (
         Errors = [_ | _],
-        Link = no,
-        io.set_exit_status(1, !IO)
+        Link = no
+        % Do NOT set the exit status.  This predicate may be called before all
+        % the options are known, so the errors may not be valid.
     ;
         Errors = [],
         globals.lookup_bool_option(!.Globals, generate_dependencies,
