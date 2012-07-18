@@ -34,6 +34,8 @@ It fixes the following problems
 * Fix problem with incorrect exit status being set when using
   --warn-non-tail-recursion.
 
+* Implement time.times/4 in the csharp grade.
+
 Changes to the Mercury standard library:
 
 * Add additional modes to map.foldr/4, map.foldr/6 and
