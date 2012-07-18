@@ -4,7 +4,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2007,2009-2011 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2007,2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -410,6 +410,26 @@ time.times(Tms, Result, !IO) :-
         Ut = -1;
         St = -1;
     }
+
+    CUt = 0;
+    CSt = 0;
+").
+
+:- pragma foreign_proc("C#",
+    c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
+"
+    Ret = (int) System.DateTime.UtcNow.Ticks;
+
+    /* Should We keep only the lower 31 bits of the timestamp, like in java? */
+    // Ret = Ret & 0x7fffffff;
+
+    long user = System.Diagnostics.Process.GetCurrentProcess().UserProcessorTime.Ticks;
+    long total = System.Diagnostics.Process.GetCurrentProcess().TotalProcessorTime.Ticks;
+
+    Ut = (int) user;
+    St = (int) (total - user);
 
     CUt = 0;
     CSt = 0;
