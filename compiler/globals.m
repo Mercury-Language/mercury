@@ -189,6 +189,19 @@
             % XXX there are probably more variants of Windows, but it isn't
             % clear what they are yet.
 
+    % The tracing levels to use for a module when doing the source to source
+    % debugging tranformation.
+:- type ssdb_trace_level
+    --->    none
+            % No tracing of this module
+            
+    ;       shallow
+            % Shallow trace all procedures in this module
+
+    ;       deep
+            % Deep trace all procedures in this module
+    .
+
     % Map from module name to file name.
     %
 :- type source_file_map == map(module_name, string).
@@ -207,6 +220,7 @@
 :- pred convert_reuse_strategy(string::in, int::in, reuse_strategy::out)
     is semidet.
 :- pred convert_env_type(string::in, env_type::out) is semidet.
+:- pred convert_ssdb_trace_level(string::in, bool::in, ssdb_trace_level::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -223,7 +237,7 @@
 
 :- pred globals_init(option_table::in, compilation_target::in, gc_method::in,
     tags_method::in, termination_norm::in, termination_norm::in,
-    trace_level::in, trace_suppress_items::in,
+    trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in,
     maybe(il_version_number)::in, maybe(feedback_info)::in, env_type::in,
@@ -239,6 +253,7 @@
 :- pred get_termination2_norm(globals::in, termination_norm::out) is det.
 :- pred get_trace_level(globals::in, trace_level::out) is det.
 :- pred get_trace_suppress(globals::in, trace_suppress_items::out) is det.
+:- pred get_ssdb_trace_level(globals::in, ssdb_trace_level::out) is det.
 :- pred get_maybe_thread_safe(globals::in, may_be_thread_safe::out) is det.
 :- pred get_c_compiler_type(globals::in, c_compiler_type::out) is det.
 :- pred get_csharp_compiler_type(globals::in, csharp_compiler_type::out) is det.
@@ -256,6 +271,7 @@
 :- pred set_tags_method(tags_method::in, globals::in, globals::out) is det.
 :- pred set_trace_level(trace_level::in, globals::in, globals::out) is det.
 :- pred set_trace_level_none(globals::in, globals::out) is det.
+:- pred set_ssdb_trace_level(ssdb_trace_level::in, globals::in, globals::out) is det.
 :- pred set_maybe_feedback_info(maybe(feedback_info)::in, 
     globals::in, globals::out) is det.
 
@@ -525,6 +541,12 @@ convert_env_type("cygwin",  env_type_cygwin).
 convert_env_type("msys",    env_type_msys).
 convert_env_type("windows", env_type_win_cmd).
 
+convert_ssdb_trace_level("default", yes, deep).
+convert_ssdb_trace_level("default", no, none).
+convert_ssdb_trace_level("none", _, none).
+convert_ssdb_trace_level("shallow", _, shallow).
+convert_ssdb_trace_level("deep", _, deep).
+
 convert_reuse_strategy("same_cons_id", _, same_cons_id).
 convert_reuse_strategy("within_n_cells_difference", NCells,
     within_n_cells_difference(NCells)).
@@ -569,6 +591,7 @@ gc_is_conservative(gc_automatic) = no.
                 g_termination2_norm         :: termination_norm,
                 g_trace_level               :: trace_level,
                 g_trace_suppress_items      :: trace_suppress_items,
+                g_ssdb_trace_level            :: ssdb_trace_level,
                 g_may_be_thread_safe        :: bool,
                 g_c_compiler_type           :: c_compiler_type,
                 g_csharp_compiler_type      :: csharp_compiler_type,
@@ -581,12 +604,12 @@ gc_is_conservative(gc_automatic) = no.
 
 globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+        SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
         MaybeFeedback, HostEnvType, TargetEnvType, Globals) :-
     Globals = globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+        SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
         MaybeFeedback, HostEnvType, TargetEnvType).
 
@@ -598,6 +621,7 @@ get_termination_norm(Globals, Globals ^ g_termination_norm).
 get_termination2_norm(Globals, Globals ^ g_termination2_norm).
 get_trace_level(Globals, Globals ^ g_trace_level).
 get_trace_suppress(Globals, Globals ^ g_trace_suppress_items).
+get_ssdb_trace_level(Globals, Globals ^ g_ssdb_trace_level).
 get_maybe_thread_safe(Globals, Globals ^ g_may_be_thread_safe).
 get_c_compiler_type(Globals, Globals ^ g_c_compiler_type).
 get_csharp_compiler_type(Globals, Globals ^ g_csharp_compiler_type).
@@ -634,6 +658,9 @@ set_trace_level(TraceLevel, !Globals) :-
     !Globals ^ g_trace_level := TraceLevel.
 set_trace_level_none(!Globals) :-
     !Globals ^ g_trace_level := trace_level_none.
+
+set_ssdb_trace_level(SSTraceLevel, !Globals) :-
+    !Globals ^ g_ssdb_trace_level := SSTraceLevel.
 
 set_maybe_feedback_info(MaybeFeedback, !Globals) :-
     !Globals ^ g_maybe_feedback := MaybeFeedback.
@@ -853,6 +880,7 @@ io_get_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
 io_set_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
     set_maybe_source_file_map(MaybeSourceFileMap, !IO).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 :- end_module libs.globals.
 %-----------------------------------------------------------------------------%

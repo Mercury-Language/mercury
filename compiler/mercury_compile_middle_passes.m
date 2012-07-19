@@ -859,15 +859,13 @@ maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, source_to_source_debug, SSDB),
     globals.lookup_bool_option(Globals, force_disable_ssdebug,
         ForceDisableSSDB),
     (
-        SSDB = yes,
         ForceDisableSSDB = no
     ->
         maybe_write_string(Verbose,
-            "% Apply debugging source to source transformation ...\n", !IO),
+            "% Maybe apply source to source debugging transformation ...\n", !IO),
         ssdebug_transform_module(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)

@@ -400,6 +400,8 @@
     ;       use_regions_debug
     ;       use_regions_profiling
     ;       source_to_source_debug
+    ;       ssdb_trace_level
+    ;       link_ssdb_libs
 
     % Data representation compilation model options
     ;       tags
@@ -1338,6 +1340,8 @@ option_defaults_2(compilation_model_option, [
     single_prec_float                   -   bool(no),
     type_layout                         -   bool(yes),
     source_to_source_debug              -   bool(no),
+    ssdb_trace_level                    -   string("default"),
+    link_ssdb_libs                      -   bool(no),
 
     % Data representation compilation model options
     pic_reg                             -   bool(no),
@@ -2102,6 +2106,9 @@ long_option("assume-gmake",             assume_gmake).
 long_option("generate-mmc-make-module-dependencies",
                                         generate_mmc_make_module_dependencies).
 long_option("generate-mmc-deps",        generate_mmc_make_module_dependencies).
+long_option("ssdb-trace",               ssdb_trace_level).
+long_option("link-ssdb-libs",           link_ssdb_libs).
+long_option("link-ssdebug-libs",        link_ssdb_libs).
 long_option("trace",                    trace_level).
 long_option("trace-optimised",          trace_optimized).
 long_option("trace-optimized",          trace_optimized).
@@ -3858,6 +3865,16 @@ options_help_aux_output -->
         "\tGenerate dependencies for use by `mmc --make' even",
         "\twhen using Mmake. This is recommended when building a",
         "\tlibrary for installation.",
+
+% XXX The source-to-source debugging transform is not ready for public
+% consumption.
+        %"--link-ssdebug-libs",
+        %"--link-ssdb-libs",
+        %"\tLink the source to source debugging libraries into the",
+        %"\tthe executable.",
+        %"--ss-trace {none, shallow, deep}",
+        %"\tThe trace level to use for source to source debugging of",
+        %"\tthe given module.",
 
 % "--trace decl" is not documented, because it is for backwards
 % compatibility only.  It is now equivalent to `--trace rep'.

@@ -826,7 +826,7 @@ get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
         MaybeStdlibDir = yes(StdLibDir),
         grade_directory_component(Globals, GradeDir),
         % Source-to-source debugging libraries.
-        globals.lookup_bool_option(Globals, source_to_source_debug,
+        globals.lookup_bool_option(Globals, link_ssdb_libs,
             SourceDebug),
         (
             SourceDebug = yes,

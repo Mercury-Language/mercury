@@ -561,10 +561,12 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
     ;
         UseRegions = no
     ),
-    globals.lookup_bool_option(Globals, source_to_source_debug, SSDB),
+    globals.get_ssdb_trace_level(Globals, SSDBTraceLevel),
     globals.lookup_bool_option(Globals, force_disable_ssdebug, DisableSSDB),
     (
-        SSDB = yes,
+        ( SSDBTraceLevel = shallow
+        ; SSDBTraceLevel = deep
+        ),
         DisableSSDB = no
     ->
         !:UseDeps = [mercury_ssdb_builtin_module | !.UseDeps]

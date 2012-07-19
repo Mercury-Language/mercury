@@ -43,7 +43,8 @@
 %   p(...) :-
 %       promise_<original_purity> (
 %           CallVarDescs = [ ... ],
-%           impure handle_event_call(ProcId, CallVarDescs),
+%           Level = ...,
+%           impure handle_event_call(ProcId, CallVarDescs, Level),
 %           promise_equivalent_solutions [ ... ] (
 %               <original body>     % renaming outputs
 %           ),
@@ -66,7 +67,8 @@
 %   p(...) :-
 %       promise_<original_purity> (
 %           CallVarDescs = [ ... ],
-%           impure handle_event_call(ProcId, CallVarDescs),
+%           Level = ...,
+%           impure handle_event_call(ProcId, CallVarDescs, Level),
 %           (
 %               promise_equivalent_solutions [...] (
 %                   <original body>     % renaming outputs
@@ -99,7 +101,8 @@
 %       promise_<original_purity> (
 %           (
 %               CallVarDescs = [ ... ],
-%               impure handle_event_call_nondet(ProcId, CallVarDescs),
+%               Level = ...,
+%               impure handle_event_call_nondet(ProcId, CallVarDescs, Level),
 %               <original body>,
 %               ExitVarDescs = [ ... | CallVarDescs ],
 %               (
@@ -129,7 +132,8 @@
 %   p(...) :-
 %       promise_<original_purity> (
 %           CallVarDescs = [ ... ],
-%           impure handle_event_call(ProcId, CallVarDescs),
+%           Level = ...,
+%           impure handle_event_call(ProcId, CallVarDescs, Level),
 %           (
 %               <original body>
 %           ;
@@ -150,11 +154,13 @@
 %   p(...) :-
 %       promise_<original_purity> (
 %           CallVarDescs = [ ... ],
-%           impure handle_event_call(ProcId, CallVarDescs),
+%           Level = ...,
+%           impure handle_event_call(ProcId, CallVarDescs, Level),
 %           <original body>
 %       ).
 %
-% where CallVarDescs, ExitVarDescs are lists of var_value
+% where CallVarDescs, ExitVarDescs are lists of var_value and Level
+% is a ssdb.ssdb_tracel_level.
 %
 %    :- type var_value
 %        --->    unbound_head_var(var_name, pos)           :: out      variable
@@ -164,6 +170,8 @@
 %    :- type var_name == string.
 %
 %    :- type pos == int.
+%
+%    :- type ssdb_tracel_level ---> shallow ; deep.
 %
 % Output head variables may appear twice in a variable description list --
 % initially unbound, then overridden by a bound_head_var functor.  Then the
@@ -201,6 +209,9 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
+:- import_module libs.
+:- import_module libs.globals.
+:- import_module libs.trace_params.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.
@@ -220,9 +231,31 @@
 %-----------------------------------------------------------------------------%
 
 ssdebug_transform_module(!ModuleInfo, !IO) :-
-    ssdebug_first_pass(!ModuleInfo),
-    process_all_nonimported_procs(update_module(ssdebug_process_proc),
-        !ModuleInfo).
+    module_info_ssdb_trace_level(!.ModuleInfo, SSTraceLevel),
+    (
+        SSTraceLevel = none,
+        true
+    ;
+        SSTraceLevel = shallow,
+        % In the shallow trace level the parent of the library
+        % procedure also be of trace level shallow, thus we
+        % don't need to proxy the library methods.
+        process_all_nonimported_procs(
+            update_module(ssdebug_process_proc(SSTraceLevel)),
+            !ModuleInfo)
+    ;
+        SSTraceLevel = deep,
+        ssdebug_first_pass(!ModuleInfo),
+        process_all_nonimported_procs(
+            update_module(ssdebug_process_proc(SSTraceLevel)),
+            !ModuleInfo)
+    ).
+
+:- pred module_info_ssdb_trace_level(module_info::in, ssdb_trace_level::out) is det.
+
+module_info_ssdb_trace_level(ModuleInfo, SSTraceLevel) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_ssdb_trace_level(Globals, SSTraceLevel).
 
 %-----------------------------------------------------------------------------%
 %
@@ -478,10 +511,31 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
 % The main transformation.
 %
 
-:- pred ssdebug_process_proc(pred_proc_id::in, proc_info::in, proc_info::out,
+:- pred ssdebug_process_proc(ssdb_trace_level::in,
+    pred_proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
-ssdebug_process_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc(none, proc(_PredId, _ProcId), !ProcInfo, !ModuleInfo).
+ssdebug_process_proc(shallow, proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
+        % Only transform the procedures in the interface
+        % XXX We still need to fix the ssdb so that events generated
+        % below the shallow call event aren't seen.
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    ( pred_info_is_exported(PredInfo) ->
+        ssdebug_process_proc_2(proc(PredId, ProcId), !ProcInfo, !ModuleInfo)
+    ;
+        true
+    ).
+ssdebug_process_proc(deep, proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
+        % Transfrom all procedures
+    ssdebug_process_proc_2(proc(PredId, ProcId), !ProcInfo, !ModuleInfo).
+    
+    
+:- pred ssdebug_process_proc_2(
+    pred_proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
+
+ssdebug_process_proc_2(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
     ( check_arguments_modes(!.ModuleInfo, ArgModes) ->
         % We have different transformations for procedures of different
@@ -546,9 +600,14 @@ ssdebug_process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
             !VarTypes, map.init, BoundVarDescsAtCall),
 
+        % Set the ssdb_tracing_level.
+        make_level_construction(!.ModuleInfo,
+            ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
+
         % Generate the call to handle_event_call(ProcId, VarList).
-        make_handle_event("handle_event_call", [ProcIdVar, CallArgListVar],
-            HandleEventCallGoal, !ModuleInfo, !VarSet, !VarTypes),
+        make_handle_event("handle_event_call",
+            [ProcIdVar, CallArgListVar, LevelVar], HandleEventCallGoal,
+            !ModuleInfo, !VarSet, !VarTypes),
 
         % In the case of a retry, the output variables will be bound by the
         % retried call.
@@ -597,6 +656,7 @@ ssdebug_process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         BodyGoals = list.condense([
             ProcIdGoals,
             CallArgListGoals,
+            [ConstructLevelGoal],
             [HandleEventCallGoal],
             [ScopedRenamedBodyGoal],
             ExitArgListGoals,
@@ -632,8 +692,13 @@ ssdebug_process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
             !VarTypes, map.init, BoundVarDescsAtCall),
 
+        % Set the ssdb_tracing_level.
+        make_level_construction(!.ModuleInfo,
+            ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
+
         % Generate the call to handle_event_call.
-        make_handle_event("handle_event_call", [ProcIdVar, CallArgListVar],
+        make_handle_event("handle_event_call",
+            [ProcIdVar, CallArgListVar, LevelVar],
             HandleEventCallGoal, !ModuleInfo, !VarSet, !VarTypes),
 
         % In the case of a retry, the output variables will be bound by the
@@ -722,6 +787,7 @@ ssdebug_process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         BodyGoals = list.condense([
             ProcIdGoals,
             CallArgListGoals,
+            [ConstructLevelGoal],
             [HandleEventCallGoal],
             [IteGoal]
         ]),
@@ -754,9 +820,13 @@ ssdebug_process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
             !VarTypes, map.init, BoundVarDescsAtCall),
 
+        % Set the ssdb_tracing_level.
+        make_level_construction(!.ModuleInfo,
+            ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
+
         % Generate the call to handle_event_call.
         make_handle_event("handle_event_call_nondet",
-            [ProcIdVar, CallArgListVar],
+            [ProcIdVar, CallArgListVar, LevelVar],
             HandleEventCallGoal, !ModuleInfo, !VarSet, !VarTypes),
 
         % Make the variable list at the exit port. It's currently a
@@ -786,6 +856,7 @@ ssdebug_process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             impure_goal_info(detism_non)),
         CallExitRedoDisjunctGoals = list.condense([
             CallArgListGoals,
+            [ConstructLevelGoal],
             [HandleEventCallGoal],
             [OrigBodyGoal],
             ExitArgListGoals,
@@ -848,8 +919,13 @@ ssdebug_process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
             !VarTypes, map.init, _BoundVarDescsAtCall),
 
+        % Set the ssdb_tracing_level.
+        make_level_construction(!.ModuleInfo,
+            ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
+
         % Generate the call to handle_event_call.
-        make_handle_event("handle_event_call", [ProcIdVar, CallArgListVar],
+        make_handle_event("handle_event_call",
+            [ProcIdVar, CallArgListVar, LevelVar],
             HandleEventCallGoal, !ModuleInfo, !VarSet, !VarTypes),
 
         % Generate the call to handle_event_fail.
@@ -876,6 +952,7 @@ ssdebug_process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         BodyGoals = list.condense([
             ProcIdGoals,
             CallArgListGoals,
+            [ConstructLevelGoal],
             [HandleEventCallGoal],
             [DisjGoal]
         ]),
@@ -909,14 +986,20 @@ ssdebug_process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
             !VarTypes, map.init, _BoundVarDescsAtCall),
 
+        % Set the ssdb_tracing_level.
+        make_level_construction(!.ModuleInfo,
+            ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
+
         % Generate the call to handle_event_call(ProcId, VarList).
-        make_handle_event("handle_event_call", [ProcIdVar, CallArgListVar],
+        make_handle_event("handle_event_call",
+            [ProcIdVar, CallArgListVar, LevelVar],
             HandleEventCallGoal, !ModuleInfo, !VarSet, !VarTypes),
 
         % Put it all together.
         BodyGoals = list.condense([
             ProcIdGoals,
             CallArgListGoals,
+            [ConstructLevelGoal],
             [HandleEventCallGoal],
             [OrigBodyGoal]
         ]),
@@ -1156,6 +1239,28 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar,
 
     Goals = [ConstructModuleName, ConstructPredName, ConstructProcIdGoal].
 
+    % Construct the goal which sets the ssdb_tracing_level for
+    % the current goal. ie Level = shallow
+    %
+:- pred make_level_construction(module_info::in,
+    hlds_goal::out, prog_var::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out) is det.
+
+make_level_construction(ModuleInfo, Goal, LevelVar, !VarSet, !VarTypes) :-
+    module_info_ssdb_trace_level(ModuleInfo, SSTraceLevel),
+    (
+        SSTraceLevel = none,
+        unexpected($module, $pred, "unexpected ss trace level")
+    ;
+        SSTraceLevel = shallow,
+        ConsId = shallow_cons_id
+    ;
+        SSTraceLevel = deep,
+        ConsId = deep_cons_id
+    ),
+    make_const_construction_alloc(ConsId, ssdb_tracing_level_type,
+        yes("Level"), Goal, LevelVar, !VarSet, !VarTypes).
+
     % Detect if all argument's mode are fully input or output.
     % XXX Other mode than fully input or output are not handled for the
     % moment. So the code of these procedures will not be generated.
@@ -1347,6 +1452,35 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
 
         Goals = [ConstructVarName, ConstructVarPos, ConstructVarGoal]
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func shallow_cons_id = cons_id.
+
+shallow_cons_id = ssdb_tracing_level_cons_id("shallow").
+
+:- func deep_cons_id = cons_id.
+
+deep_cons_id = ssdb_tracing_level_cons_id("deep").
+
+:- func ssdb_tracing_level_cons_id(string) = cons_id.
+
+ssdb_tracing_level_cons_id(Level) = Cons :-
+    DataCtor = qualified(mercury_ssdb_builtin_module, Level),
+    Cons = cons(DataCtor, 0, ssdb_tracing_level_type_ctor).
+
+:- func ssdb_tracing_level_type_ctor = type_ctor.
+
+ssdb_tracing_level_type_ctor = type_ctor(ssdb_tracing_level_name, 0).
+
+:- func ssdb_tracing_level_type = mer_type.
+
+ssdb_tracing_level_type = defined_type(ssdb_tracing_level_name, [], kind_star).
+
+:- func ssdb_tracing_level_name = sym_name.
+
+ssdb_tracing_level_name =
+    qualified(mercury_ssdb_builtin_module, "ssdb_tracing_level").
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ssdebug.

@@ -216,14 +216,14 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
         Globals, !IO) :-
     check_option_values(OptionTable0, OptionTable, Target, GC_Method,
         TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
-        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+        SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
         MaybeFeedbackInfo, HostEnvType, TargetEnvType, [], CheckErrors, !IO),
     (
         CheckErrors = [],
         convert_options_to_globals(OptionTable, Target, GC_Method,
             TagsMethod, TermNorm, Term2Norm, TraceLevel,
-            TraceSuppress, MaybeThreadSafe, C_CompilerType,
+            TraceSuppress, SSTraceLevel, MaybeThreadSafe, C_CompilerType,
             CSharp_CompilerType, ReuseStrategy,
             MaybeILVersion, MaybeFeedbackInfo, HostEnvType, TargetEnvType,
             [], Errors, Globals, !IO)
@@ -236,15 +236,15 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
 :- pred check_option_values(option_table::in, option_table::out,
     compilation_target::out, gc_method::out, tags_method::out,
     termination_norm::out, termination_norm::out, trace_level::out,
-    trace_suppress_items::out, may_be_thread_safe::out,
+    trace_suppress_items::out, ssdb_trace_level::out, may_be_thread_safe::out,
     c_compiler_type::out, csharp_compiler_type::out,
     reuse_strategy::out, maybe(il_version_number)::out,
     maybe(feedback_info)::out, env_type::out, env_type::out,
     list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
-        TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, CSharp_CompilerType,
+        TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
+        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         HostEnvType, TargetEnvType, !Errors, !IO) :-
     map.lookup(!.OptionTable, target, Target0),
@@ -365,6 +365,24 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     ;
         TraceSuppress = default_trace_suppress, % dummy
         add_error("Invalid argument to option `--suppress-trace'.", !Errors)
+    ),
+
+    map.lookup(!.OptionTable, force_disable_ssdebug, ForceDisableSSDB),
+    ( ForceDisableSSDB = bool(yes) ->
+        SSTraceLevel = none
+    ;
+        map.lookup(!.OptionTable, ssdb_trace_level, SSTrace),
+        map.lookup(!.OptionTable, source_to_source_debug, SSDB),
+        ( 
+            SSTrace = string(SSTraceStr),
+            SSDB = bool(IsInSSDebugGrade),
+            convert_ssdb_trace_level(SSTraceStr, IsInSSDebugGrade, SSTL)
+        ->
+            SSTraceLevel = SSTL
+        ;
+            SSTraceLevel = none,
+            add_error("Invalid argument to option `--ssdb-trace'.", !Errors)
+        )
     ),
 
     map.lookup(!.OptionTable, maybe_thread_safe_opt, MaybeThreadSafeOption),
@@ -592,20 +610,20 @@ add_error(Error, Errors0, Errors) :-
 :- pred convert_options_to_globals(option_table::in,
     compilation_target::in, gc_method::in, tags_method::in,
     termination_norm::in, termination_norm::in, trace_level::in,
-    trace_suppress_items::in, may_be_thread_safe::in, c_compiler_type::in,
-    csharp_compiler_type::in,
+    trace_suppress_items::in, ssdb_trace_level::in, may_be_thread_safe::in,
+    c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in, maybe(il_version_number)::in, maybe(feedback_info)::in,
     env_type::in, env_type::in, list(string)::in, list(string)::out,
     globals::out, io::di, io::uo) is det.
 
 convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
-        TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, CSharp_CompilerType,
+        TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
+        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         HostEnvType, TargetEnvType, !Errors, !:Globals, !IO) :-
     globals_init(OptionTable0, Target, GC_Method, TagsMethod0,
-        TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, CSharp_CompilerType,
+        TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
+        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         HostEnvType, TargetEnvType, !:Globals),
 
@@ -1499,6 +1517,10 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % --decl-debug is an extension of --debug
     option_implies(decl_debug, exec_trace, bool(yes), !Globals),
+
+    % --ssdb implies --link-ssdb-libs
+    option_implies(source_to_source_debug,
+        link_ssdb_libs, bool(yes), !Globals),
 
     % We need to be able to simulate exits for calls between where an
     % exception is thrown to where it is caught both in the debugger and

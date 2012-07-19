@@ -1615,7 +1615,7 @@ make_init_target_file(Globals, ErrorStream, MkInit, ModuleName, ModuleNames,
         InitFileNamesList3 = InitFileNamesList2
     ),
 
-    globals.lookup_bool_option(Globals, source_to_source_debug, SourceDebug),
+    globals.lookup_bool_option(Globals, link_ssdb_libs, SourceDebug),
     (
         SourceDebug = yes,
         InitFileNamesList = InitFileNamesList3 ++ SourceDebugInitFileNames
@@ -2256,8 +2256,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         ),
 
         % Source-to-source debugging libraries.
-        globals.lookup_bool_option(Globals, source_to_source_debug,
-            SourceDebug),
+        globals.lookup_bool_option(Globals, link_ssdb_libs, SourceDebug),
         (
             SourceDebug = yes,
             link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
@@ -3363,7 +3362,7 @@ make_standalone_int_body(Globals, Basename, !IO) :-
         TraceOpt = "",
         InitFiles3 = InitFiles2
     ),
-    globals.lookup_bool_option(Globals, source_to_source_debug, SourceDebug),
+    globals.lookup_bool_option(Globals, link_ssdb_libs, SourceDebug),
     (
         SourceDebug = yes,
         InitFiles = InitFiles3 ++ SourceDebugInitFiles

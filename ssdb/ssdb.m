@@ -42,6 +42,11 @@
     ;       ssdb_fail_nondet
     ;       ssdb_excp.
 
+:- type ssdb_tracing_level
+    --->    deep
+    ;       shallow
+    .
+
     % Type to determine if it is necessary to do a retry.
     %
 :- type ssdb_retry
@@ -75,12 +80,13 @@
 
     % This routine is called at each call event that occurs.
     %
-:- impure pred handle_event_call(ssdb_proc_id::in, list_var_value::in) is det.
+:- impure pred handle_event_call(ssdb_proc_id::in,
+    list_var_value::in, ssdb_tracing_level::in) is det.
 
     % This routine is called at each call event in a nondet procedure.
     %
 :- impure pred handle_event_call_nondet(ssdb_proc_id::in,
-    list_var_value::in) is det.
+    list_var_value::in, ssdb_tracing_level::in) is det.
 
     % This routine is called at each exit event that occurs.
     %
@@ -196,7 +202,10 @@
                 sf_call_site_line   :: int,
 
                 % The list of the procedure's arguments.
-                sf_list_var_value   :: list(var_value)
+                sf_list_var_value   :: list(var_value),
+
+                % The tracing level of the current call
+                sf_tracing_level    :: ssdb_tracing_level
             ).
 
 :- type list_params
@@ -472,10 +481,18 @@ static void MR_ssdb_sigint_handler(void)
     install_sigint_handler(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
-    System.Console.TreatControlCAsInput = false;
-    System.Console.CancelKeyPress += new System.ConsoleCancelEventHandler(
-        ssdb.sigint_handler
-    );
+    // Don't abort if we can't install the sigint handler.
+    try {
+        System.Console.TreatControlCAsInput = false;
+    }
+    catch (System.Exception e) {}
+
+    try {
+        System.Console.CancelKeyPress += new System.ConsoleCancelEventHandler(
+            ssdb.sigint_handler
+        );
+    }
+    catch (System.Exception e) {}
 ").
 
 :- pragma foreign_code("C#",
@@ -552,26 +569,27 @@ set_context(FileName, Line) :-
 
 %----------------------------------------------------------------------------%
 
-handle_event_call(ProcId, ListVarValue) :-
+handle_event_call(ProcId, ListVarValue, Level) :-
     some [!IO] (
         impure invent_io(!:IO),
         get_debugger_state_safer(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
-            handle_event_call_2(ssdb_call, ProcId, ListVarValue, !IO)
+            handle_event_call_2(ssdb_call, ProcId, ListVarValue, Level, !IO)
         ;
             DebuggerState = debugger_off
         ),
         impure consume_io(!.IO)
     ).
 
-handle_event_call_nondet(ProcId, ListVarValue) :-
+handle_event_call_nondet(ProcId, ListVarValue, Level) :-
     some [!IO] (
         impure invent_io(!:IO),
         get_debugger_state_safer(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
-            handle_event_call_2(ssdb_call_nondet, ProcId, ListVarValue, !IO)
+            handle_event_call_2(ssdb_call_nondet,
+                ProcId, ListVarValue, Level, !IO)
         ;
             DebuggerState = debugger_off
         ),
@@ -579,11 +597,11 @@ handle_event_call_nondet(ProcId, ListVarValue) :-
     ).
 
 :- pred handle_event_call_2(ssdb_event_type::in(either_call), ssdb_proc_id::in,
-    list(var_value)::in, io::di, io::uo) is det.
+    list(var_value)::in, ssdb_tracing_level::in, io::di, io::uo) is det.
 
-:- pragma inline(handle_event_call_2/5).
+:- pragma inline(handle_event_call_2/6).
 
-handle_event_call_2(Event, ProcId, ListVarValue, !IO) :-
+handle_event_call_2(Event, ProcId, ListVarValue, Level, !IO) :-
     get_ssdb_event_number_inc(EventNum, !IO),
     get_ssdb_csn_inc(CSN, !IO),
     stack_depth(OldDepth, !IO),
@@ -593,7 +611,7 @@ handle_event_call_2(Event, ProcId, ListVarValue, !IO) :-
     get_cur_filename(SiteFile, !IO),
     get_cur_line_number(SiteLine, !IO),
     StackFrame = stack_frame(EventNum, CSN, Depth, ProcId, SiteFile, SiteLine,
-        ListVarValue),
+        ListVarValue, Level),
     stack_push(StackFrame, !IO),
     (
         Event = ssdb_call
@@ -887,7 +905,8 @@ handle_event_excp(ModuleName, ProcName, Univ) :-
             DebuggerState = debugger_on,
             ProcId = ssdb_proc_id(ModuleName, ProcName),
             VarDescs = ['new bound_head_var'("Univ", 1, Univ)],
-            handle_event_excp_2(ProcId, VarDescs, !IO)
+            % XXX maybe we need to have a exception level
+            handle_event_excp_2(ProcId, VarDescs, deep, !IO)
         ;
             DebuggerState = debugger_off
         ),
@@ -895,9 +914,10 @@ handle_event_excp(ModuleName, ProcName, Univ) :-
     ).
 
 :- pred handle_event_excp_2(ssdb_proc_id::in, list(var_value)::in,
+    ssdb_tracing_level::in,
     io::di, io::uo) is det.
 
-handle_event_excp_2(ProcId, ListVarValue, !IO) :-
+handle_event_excp_2(ProcId, ListVarValue, Level, !IO) :-
     get_ssdb_event_number_inc(EventNum, !IO),
     get_ssdb_csn_inc(CSN, !IO),
     stack_depth(OldDepth, !IO),
@@ -907,7 +927,7 @@ handle_event_excp_2(ProcId, ListVarValue, !IO) :-
     get_cur_filename(SiteFile, !IO),
     get_cur_line_number(SiteLine, !IO),
     StackFrame = stack_frame(EventNum, CSN, Depth, ProcId, SiteFile, SiteLine,
-        ListVarValue),
+        ListVarValue, Level),
     stack_push(StackFrame, !IO),
 
     Event = ssdb_excp,
@@ -999,6 +1019,18 @@ stack_pop(!IO) :-
         Stack = [_ | StackTail],
         set_shadow_stack(StackTail, !IO),
         set_shadow_stack_depth(Depth - 1, !IO)
+    ).
+
+:- pred top_of_stack_tracing_level(ssdb_tracing_level::out, io::di, io::uo) is det.
+
+top_of_stack_tracing_level(Level, !IO) :-
+    get_shadow_stack(Stack, !IO),
+    (
+        Stack = [],
+        Level = deep
+    ;
+        Stack = [Top | _],
+        Level = Top ^ sf_tracing_level
     ).
 
     % Update the sf_list_var_value field of the top shadow stack element.
@@ -1100,15 +1132,15 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
     get_cur_ssdb_next_stop(NextStop, !IO),
     (
         NextStop = ns_step,
-        ShouldStopAtEvent = yes,
+        ShouldStopAtEvent0 = yes,
         AutoRetry = do_not_retry
     ;
         NextStop = ns_next(StopCSN),
-        is_same_int(StopCSN, CSN, ShouldStopAtEvent),
+        is_same_int(StopCSN, CSN, ShouldStopAtEvent0),
         AutoRetry = do_not_retry
     ;
         NextStop = ns_continue,
-        check_breakpoint(ProcId, ShouldStopAtEvent, !IO),
+        check_breakpoint(ProcId, ShouldStopAtEvent0, !IO),
         AutoRetry = do_not_retry
     ;
         NextStop = ns_final_port(StopCSN, AutoRetry0),
@@ -1119,7 +1151,7 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             ; Event = ssdb_fail_nondet
             ),
             ( StopCSN = CSN ->
-                ShouldStopAtEvent = yes,
+                ShouldStopAtEvent0 = yes,
                 AutoRetry = AutoRetry0,
                 (
                     AutoRetry = do_retry,
@@ -1135,7 +1167,7 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
                     AutoRetry = do_not_retry
                 )
             ;
-                ShouldStopAtEvent = no,
+                ShouldStopAtEvent0 = no,
                 AutoRetry = do_not_retry
             )
         ;
@@ -1144,9 +1176,9 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             % catch the exception before we reach the final port of StopCSN.
             get_shadow_stack(Stack, !IO),
             ( exception_handler_exists(StopCSN, Stack) ->
-                ShouldStopAtEvent = no
+                ShouldStopAtEvent0 = no
             ;
-                ShouldStopAtEvent = yes
+                ShouldStopAtEvent0 = yes
             ),
             AutoRetry = do_not_retry
         ;
@@ -1154,7 +1186,7 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             ; Event = ssdb_call_nondet
             ; Event = ssdb_redo_nondet
             ),
-            ShouldStopAtEvent = no,
+            ShouldStopAtEvent0 = no,
             AutoRetry = do_not_retry
         )
     ;
@@ -1162,7 +1194,7 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
         (
             Event = ssdb_fail_nondet,
             ( StopCSN = CSN ->
-                ShouldStopAtEvent = yes,
+                ShouldStopAtEvent0 = yes,
                 AutoRetry = AutoRetry0,
                 (
                     AutoRetry = do_retry,
@@ -1177,16 +1209,16 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
                     AutoRetry = do_not_retry
                 )
             ;
-                ShouldStopAtEvent = no,
+                ShouldStopAtEvent0 = no,
                 AutoRetry = do_not_retry
             )
         ;
             Event = ssdb_excp,
             get_shadow_stack(Stack, !IO),
             ( exception_handler_exists(StopCSN, Stack) ->
-                ShouldStopAtEvent = no
+                ShouldStopAtEvent0 = no
             ;
-                ShouldStopAtEvent = yes
+                ShouldStopAtEvent0 = yes
             ),
             AutoRetry = do_not_retry
         ;
@@ -1197,7 +1229,7 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             ; Event = ssdb_exit_nondet
             ; Event = ssdb_redo_nondet
             ),
-            ShouldStopAtEvent = no,
+            ShouldStopAtEvent0 = no,
             AutoRetry = do_not_retry
         )
     ;
@@ -1210,23 +1242,23 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             ; Event = ssdb_fail_nondet
             ; Event = ssdb_excp
             ),
-            ShouldStopAtEvent = yes
+            ShouldStopAtEvent0 = yes
         ;
             ( Event = ssdb_exit
             ; Event = ssdb_exit_nondet
             ),
-            ShouldStopAtEvent = no
+            ShouldStopAtEvent0 = no
         ),
         AutoRetry = do_not_retry
     ;
         NextStop = ns_goto(EventNumToGo),
-        is_same_int(EventNumToGo, EventNum, ShouldStopAtEvent),
+        is_same_int(EventNumToGo, EventNum, ShouldStopAtEvent0),
         AutoRetry = do_not_retry
     ;
         NextStop = ns_exception,
         (
             Event = ssdb_excp,
-            ShouldStopAtEvent = yes
+            ShouldStopAtEvent0 = yes
         ;
             ( Event = ssdb_call
             ; Event = ssdb_exit
@@ -1236,11 +1268,42 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             ; Event = ssdb_redo_nondet
             ; Event = ssdb_fail_nondet
             ),
-            ShouldStopAtEvent = no
+            ShouldStopAtEvent0 = no
         ),
         AutoRetry = do_not_retry
+    ),
+
+    current_and_parent_frame_tracing_levels(CurrentLevel, ParentLevel, !IO),
+    (
+        ShouldStopAtEvent0 = yes,
+        CurrentLevel = shallow,
+        ParentLevel = shallow
+    ->
+        ShouldStopAtEvent = no
+    ;
+        ShouldStopAtEvent = ShouldStopAtEvent0
     ).
 
+:- pred current_and_parent_frame_tracing_levels(
+    ssdb_tracing_level::out, ssdb_tracing_level::out, io::di, io::uo) is det.
+
+current_and_parent_frame_tracing_levels(CurrentLevel, ParentLevel, !IO) :-
+    get_shadow_stack(Stack, !IO),
+    (
+        Stack = [],
+        error("ssdb: current_frame_shallow_traced")
+    ;
+        Stack = [Current | RestStack],
+        CurrentLevel = Current ^ sf_tracing_level,
+        (
+            RestStack = [],
+            ParentLevel = deep
+        ;
+            RestStack = [Parent | _],
+            ParentLevel = Parent ^ sf_tracing_level
+        )
+    ).
+                
 :- pred is_same_int(int::in, int::in, bool::out) is det.
 
 is_same_int(IntA, IntB, IsSame) :-
@@ -1452,6 +1515,12 @@ init_command_queue =
     io::di, io::uo) is det.
 
 read_and_execute_cmd(Event, Depth, WhatNext, !IO) :-
+    read_and_execute_cmd_2(0, Event, Depth, WhatNext, !IO).
+
+:- pred read_and_execute_cmd_2(int::in, ssdb_event_type::in, int::in,
+    what_next::out, io::di, io::uo) is det.
+
+read_and_execute_cmd_2(N, Event, Depth, WhatNext, !IO) :-
     get_command_queue(Queue0, !IO),
     (
         Queue0 = [],
@@ -1478,7 +1547,14 @@ read_and_execute_cmd(Event, Depth, WhatNext, !IO) :-
         Result = error(Error),
         io.error_message(Error, Msg),
         io.format("could not read command: %s\n", [s(Msg)], !IO),
-        execute_cmd(ssdb_quit, ["-y"], no, Event, Depth, WhatNext, !IO)
+
+        % Some errors are transient, ie unknown key press, but if we get more
+        % than 10 errors in a row it's probably not a transient error so quit
+        ( N > 10 ->
+            execute_cmd(ssdb_quit, ["-y"], no, Event, Depth, WhatNext, !IO)
+        ;
+            read_and_execute_cmd_2(N + 1, Event, Depth, WhatNext, !IO)
+        )
     ).
 
 :- pred expand_alias_and_execute(list(string)::in, bool::in,

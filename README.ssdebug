@@ -15,7 +15,7 @@ ssdebug is still an experimental feature.
 
 INSTALLATION
 
-To use the source-to-source debugger you must install grades containing the
+To use the source-to-source debugger you can install the grades containing the
 ".ssdebug" grade component.  One way to do this is to invoke configure
 with the option `--enable-ssdebug-grades'.  This will add the grades
 hlc.gc.ssdebug, csharp.ssdebug and java.ssdebug to the set of library grades
@@ -23,10 +23,35 @@ to install.
 
 -----------------------------------------------------------------------------
 
-THE .ssdebug GRADE COMPONENT
+COMPILATION
 
-Compile your program in a grade with the ".ssdebug" grade component,
-e.g. java.ssdebug or hlc.gc.ssdebug.
+Compile your program in a grade with the ".ssdebug" grade component, e.g.
+java.ssdebug or hlc.gc.ssdebug.  Your entire program will be then compiled
+with --ssdb-trace level of deep.
+
+An alternative way is to use `mmc --make --link-ssdb-libs' to compile your
+program in any grade.  You then just need to set --ssdb-trace shallow or deep
+on the modules you wish to debug.
+
+-----------------------------------------------------------------------------
+
+TRACING LEVELS
+
+--ssdb-trace none
+	None of the procedures in the module will generate trace events.
+
+--ssdb-trace shallow
+	All the procedures in the interface of the module will generate events
+	of trace level shallow.  Events of trace level shallow are only
+	displayed if the parent procedure in the call stack is compiled in
+	trace level deep.
+
+--ssdb-trace deep
+	All procedures in the module will generate events of trace level deep..
+
+-----------------------------------------------------------------------------
+
+USING THE SOURCE TO SOURCE DEBUGGER
 
 You may run the program as usual.  To bring up the debugger prompt, set
 the environment variable SSDB beforehand.
@@ -34,6 +59,9 @@ the environment variable SSDB beforehand.
         % SSDB=1 ./calculator
                 1:      1  1    CALL calculator.main
         ssdb>
+
+If you set SSDB=0 then you will need to explicitly enable the debugger later in
+your code by calling ssdb.enable_debugging/2.
 
 As in mdb, the three numbers are the event number, call sequence number (CSN)
 and the stack depth.  Type "help" to show a list of commands.  All commands act
