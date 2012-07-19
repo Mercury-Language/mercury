@@ -1418,7 +1418,7 @@ push_goal_into_conj(VarTypes, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
             Goals = [ PivotGoal | Goals1 ]
         ;
             MaybeGoals1 = no,
-            Goals = [ Goal | Goals0 ]
+            Goals = [ Goal, PivotGoal | Goals0 ]
         ),
         MaybeGoals = yes(Goals)
     ;
