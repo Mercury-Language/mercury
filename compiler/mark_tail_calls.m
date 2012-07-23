@@ -33,11 +33,21 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
+
+:- type mark_tail_calls_info
+    --->    mark_tail_calls_info(
+                mtc_feature     :: goal_feature,
+                mtc_module      :: module_info,
+                mtc_pred_id     :: pred_id,
+                mtc_proc_id     :: proc_id,
+                mtc_vartypes    :: vartypes
+            ).
 
 :- type found_tail_calls
     --->    found_tail_calls
@@ -63,9 +73,12 @@ mark_tail_calls(Feature, ModuleInfo, proc(PredId, ProcId), PredInfo,
         ),
         proc_info_get_argmodes(!.ProcInfo, Modes),
         proc_info_get_headvars(!.ProcInfo, HeadVars),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes),
         find_maybe_output_args(ModuleInfo, Types, Modes, HeadVars, Outputs),
-        mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs, _,
-            Goal0, Goal, not_found_tail_calls, FoundTailCalls),
+        Info = mark_tail_calls_info(Feature, ModuleInfo, PredId, ProcId,
+            VarTypes),
+        mark_tail_calls_in_goal(Info, Outputs, _, Goal0, Goal,
+            not_found_tail_calls, FoundTailCalls),
         proc_info_set_goal(Goal, !ProcInfo),
         (
             FoundTailCalls = found_tail_calls,
@@ -103,20 +116,27 @@ find_maybe_output_args_2(ModuleInfo, [Type | Types], [Mode | Modes],
         OutputVar = no
     ;
         ArgMode = top_out,
-        OutputVar = yes(Var)
+        IsDummy = check_dummy_type(ModuleInfo, Type),
+        (
+            IsDummy = is_not_dummy_type,
+            OutputVar = yes(Var)
+        ;
+            IsDummy = is_dummy_type,
+            OutputVar = no
+        )
     ),
     find_maybe_output_args_2(ModuleInfo, Types, Modes, Vars, OutputVars).
 
 %-----------------------------------------------------------------------------%
 
-    % mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, MaybeOutputs,
-    %   Goal0, Goal, !FoundTailCalls):
+    % mark_tail_calls_in_goal(Info, Outputs0, MaybeOutputs, Goal0, Goal,
+    %   !FoundTailCalls):
     %
     % This predicate transforms Goal0 into Goal by marking all tail calls
-    % in it with Feature. Tailcalls are calls to the given PredId and ProcId
-    % in which the variables of the argument list match the corresponding
-    % variables in the elements of the Outputs list that actually contain
-    % a variable.
+    % in it with the feature in Info. Tailcalls are calls to the pred_id
+    % and proc_id in Info, in which the variables of the argument list match
+    % the corresponding variables in the elements of the Outputs list that
+    % actually contain a variable.
     %
     % If Goal0 neither is a tailcall nor contains a tailcall, but could
     % actually follow a tailcall (which is possible if it is either an
@@ -125,13 +145,13 @@ find_maybe_output_args_2(ModuleInfo, [Type | Types], [Mode | Modes],
     % as copy of Outputs0 updated to account for the renaming. Otherwise,
     % return 'no' for MaybeOutputs.
     %
-:- pred mark_tail_calls_in_goal(goal_feature::in, pred_id::in, proc_id::in,
+:- pred mark_tail_calls_in_goal(mark_tail_calls_info::in,
     list(maybe(prog_var))::in, maybe(list(maybe(prog_var)))::out,
     hlds_goal::in, hlds_goal::out, found_tail_calls::in, found_tail_calls::out)
     is det.
 
-mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, MaybeOutputs,
-        Goal0, Goal, !FoundTailCalls) :-
+mark_tail_calls_in_goal(Info, Outputs0, MaybeOutputs, Goal0, Goal,
+        !FoundTailCalls) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
@@ -142,33 +162,44 @@ mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, MaybeOutputs,
         MaybeOutputs = no,
         Goal = Goal0
     ;
-        GoalExpr0 = unify(_, _, _, Unify0, _),
+        GoalExpr0 = unify(LHS, _, _, Unify0, _),
         Goal = Goal0,
-        (
-            ( Unify0 = construct(_, _, _, _, _, _, _)
-            ; Unify0 = deconstruct(_, _, _, _, _, _)
-            ; Unify0 = simple_test(_, _)
-            ; Unify0 = complicated_unify(_, _, _)
-            ),
-            MaybeOutputs = no
+        ModuleInfo = Info ^ mtc_module,
+        VarTypes = Info ^ mtc_vartypes,
+        ( var_is_of_dummy_type(ModuleInfo, VarTypes, LHS) ->
+            % Unifications involving dummy type variables are no-ops,
+            % and do not inhibit a preceding tail call.
+            MaybeOutputs = yes(Outputs0)
         ;
-            Unify0 = assign(ToVar, FromVar),
-            ( is_output_arg_rename(ToVar, FromVar, Outputs0, Outputs) ->
-                MaybeOutputs = yes(Outputs)
-            ;
+            (
+                ( Unify0 = construct(_, _, _, _, _, _, _)
+                ; Unify0 = deconstruct(_, _, _, _, _, _)
+                ; Unify0 = simple_test(_, _)
+                ; Unify0 = complicated_unify(_, _, _)
+                ),
                 MaybeOutputs = no
+            ;
+                Unify0 = assign(ToVar, FromVar),
+                ( is_output_arg_rename(ToVar, FromVar, Outputs0, Outputs) ->
+                    MaybeOutputs = yes(Outputs)
+                ;
+                    MaybeOutputs = no
+                )
             )
         )
     ;
         GoalExpr0 = plain_call(CallPredId, CallProcId, Args, Builtin,
             _UnifyContext, _SymName),
         MaybeOutputs = no,
+        PredId = Info ^ mtc_pred_id,
+        ProcId = Info ^ mtc_proc_id,
         (
             CallPredId = PredId,
             CallProcId = ProcId,
             match_output_args(Outputs0, Args),
             Builtin = not_builtin
         ->
+            Feature = Info ^ mtc_feature,
             goal_info_add_feature(Feature, GoalInfo0, GoalInfo),
             Goal = hlds_goal(GoalExpr0, GoalInfo),
             !:FoundTailCalls = found_tail_calls
@@ -180,8 +211,8 @@ mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, MaybeOutputs,
         (
             ConjType = plain_conj,
             list.reverse(Goals0, RevGoals0),
-            mark_tail_calls_in_conj(Feature, PredId, ProcId,
-                Outputs0, MaybeOutputs, RevGoals0, RevGoals, !FoundTailCalls),
+            mark_tail_calls_in_conj(Info, Outputs0, MaybeOutputs,
+                RevGoals0, RevGoals, !FoundTailCalls),
             list.reverse(RevGoals, Goals),
             GoalExpr = conj(ConjType, Goals),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -192,24 +223,24 @@ mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, MaybeOutputs,
         )
     ;
         GoalExpr0 = disj(Goals0),
-        mark_tail_calls_in_goals(Feature, PredId, ProcId, Outputs0,
-            Goals0, Goals, !FoundTailCalls),
+        mark_tail_calls_in_goals(Info, Outputs0, Goals0, Goals,
+            !FoundTailCalls),
         MaybeOutputs = no,
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        mark_tail_calls_in_cases(Feature, PredId, ProcId, Outputs0,
-            Cases0, Cases, !FoundTailCalls),
+        mark_tail_calls_in_cases(Info, Outputs0, Cases0, Cases,
+            !FoundTailCalls),
         MaybeOutputs = no,
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
-        mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, _,
-            Then0, Then, !FoundTailCalls),
-        mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, _,
-            Else0, Else, !FoundTailCalls),
+        mark_tail_calls_in_goal(Info, Outputs0, _, Then0, Then,
+            !FoundTailCalls),
+        mark_tail_calls_in_goal(Info, Outputs0, _, Else0, Else,
+            !FoundTailCalls),
         MaybeOutputs = no,
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -229,53 +260,47 @@ is_output_arg_rename(ToVar, FromVar,
         MaybeVars = MaybeVars0
     ;
         MaybeVar0 = no,
-        MaybeVar = MaybeVar0,
+        MaybeVar = no,
         is_output_arg_rename(ToVar, FromVar, MaybeVars0, MaybeVars)
     ).
 
-:- pred mark_tail_calls_in_goals(goal_feature::in, pred_id::in, proc_id::in,
+:- pred mark_tail_calls_in_goals(mark_tail_calls_info::in,
     list(maybe(prog_var))::in, list(hlds_goal)::in, list(hlds_goal)::out,
     found_tail_calls::in, found_tail_calls::out) is det.
 
-mark_tail_calls_in_goals(_Feature, _PredId, _ProcId, _Outputs0,
-        [], [], !FoundTailCalls).
-mark_tail_calls_in_goals(Feature, PredId, ProcId, Outputs0,
-        [Goal0 | Goals0], [Goal | Goals], !FoundTailCalls) :-
-    mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, _, Goal0, Goal,
-        !FoundTailCalls),
-    mark_tail_calls_in_goals(Feature, PredId, ProcId, Outputs0, Goals0, Goals,
-        !FoundTailCalls).
+mark_tail_calls_in_goals(_Info, _Outputs0, [], [], !FoundTailCalls).
+mark_tail_calls_in_goals(Info, Outputs0, [Goal0 | Goals0], [Goal | Goals],
+        !FoundTailCalls) :-
+    mark_tail_calls_in_goal(Info, Outputs0, _, Goal0, Goal, !FoundTailCalls),
+    mark_tail_calls_in_goals(Info, Outputs0, Goals0, Goals, !FoundTailCalls).
 
-:- pred mark_tail_calls_in_cases(goal_feature::in, pred_id::in, proc_id::in,
+:- pred mark_tail_calls_in_cases(mark_tail_calls_info::in,
     list(maybe(prog_var))::in, list(case)::in, list(case)::out,
     found_tail_calls::in, found_tail_calls::out) is det.
 
-mark_tail_calls_in_cases(_Feature, _PredId, _ProcId, _Outputs0,
-        [], [], !FoundTailCalls).
-mark_tail_calls_in_cases(Feature, PredId, ProcId, Outputs0,
-        [Case0 | Cases0], [Case | Cases], !FoundTailCalls) :-
+mark_tail_calls_in_cases(_Info, _Outputs0, [], [], !FoundTailCalls).
+mark_tail_calls_in_cases(Info, Outputs0, [Case0 | Cases0], [Case | Cases],
+        !FoundTailCalls) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, _, Goal0, Goal,
-        !FoundTailCalls),
+    mark_tail_calls_in_goal(Info, Outputs0, _, Goal0, Goal, !FoundTailCalls),
     Case = case(MainConsId, OtherConsIds, Goal),
-    mark_tail_calls_in_cases(Feature, PredId, ProcId, Outputs0, Cases0, Cases,
-        !FoundTailCalls).
+    mark_tail_calls_in_cases(Info, Outputs0, Cases0, Cases, !FoundTailCalls).
 
-:- pred mark_tail_calls_in_conj(goal_feature::in, pred_id::in, proc_id::in,
+:- pred mark_tail_calls_in_conj(mark_tail_calls_info::in,
     list(maybe(prog_var))::in, maybe(list(maybe(prog_var)))::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     found_tail_calls::in, found_tail_calls::out) is det.
 
-mark_tail_calls_in_conj(_Feature, _PredId, _ProcId, Outputs0, yes(Outputs0),
+mark_tail_calls_in_conj(_Info, Outputs0, yes(Outputs0),
         [], [], !FoundTailCalls).
-mark_tail_calls_in_conj(Feature, PredId, ProcId, Outputs0, MaybeOutputs,
+mark_tail_calls_in_conj(Info, Outputs0, MaybeOutputs,
         [RevGoal0 | RevGoals0], [RevGoal | RevGoals], !FoundTailCalls) :-
-    mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, MaybeOutputs1,
-        RevGoal0, RevGoal, !FoundTailCalls),
+    mark_tail_calls_in_goal(Info, Outputs0, MaybeOutputs1, RevGoal0, RevGoal,
+        !FoundTailCalls),
     (
         MaybeOutputs1 = yes(Outputs1),
-        mark_tail_calls_in_conj(Feature, PredId, ProcId,
-            Outputs1, MaybeOutputs, RevGoals0, RevGoals, !FoundTailCalls)
+        mark_tail_calls_in_conj(Info, Outputs1, MaybeOutputs,
+            RevGoals0, RevGoals, !FoundTailCalls)
     ;
         MaybeOutputs1 = no,
         MaybeOutputs = no,
