@@ -2239,15 +2239,20 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     option_implies(use_opt_files, warn_missing_opt_files, bool(no),
         !Globals),
 
-    % --warn-non-tail-recursion requires both --high-level-code
-    % and --optimize-tailcalls.  It also doesn't work if you use
-    % --errorcheck-only.
-    option_requires(warn_non_tail_recursion, highlevel_code, bool(yes),
-        "--warn-non-tail-recursion requires --high-level-code",
-        !.Globals, !Errors),
-    option_requires(warn_non_tail_recursion, optimize_tailcalls, bool(yes),
-        "--warn-non-tail-recursion requires --optimize-tailcalls",
-        !.Globals, !Errors),
+    % --warn-non-tail-recursion requires tail call optimization to be enabled.
+    % It also doesn't work if you use --errorcheck-only.
+    (
+        HighLevelCode = no,
+        option_requires(warn_non_tail_recursion, pessimize_tailcalls, bool(no),
+            "--warn-non-tail-recursion is incompatible with " ++
+            "--pessimize-tailcalls",
+            !.Globals, !Errors)
+    ;
+        HighLevelCode = yes,
+        option_requires(warn_non_tail_recursion, optimize_tailcalls, bool(yes),
+            "--warn-non-tail-recursion requires --optimize-tailcalls",
+            !.Globals, !Errors)
+    ),
     option_requires(warn_non_tail_recursion, errorcheck_only, bool(no),
         "--warn-non-tail-recursion is incompatible with " ++
         "--errorcheck-only",

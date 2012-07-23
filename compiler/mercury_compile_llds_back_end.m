@@ -166,6 +166,8 @@ llds_backend_pass_by_phases(!HLDS, !GlobalData, !:LLDS, !DumpInfo, !IO) :-
     maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 332, "mark_debug_tailrec_calls", !DumpInfo, !IO),
 
+    maybe_warn_non_tail_recursion(Verbose, Stats, !.HLDS, !IO),
+
     compute_stack_vars(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 335, "stackvars", !DumpInfo, !IO),
 
@@ -357,15 +359,25 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
         !.HLDS, !IO),
     detect_liveness_proc(!.HLDS, PredProcId, !ProcInfo),
     globals.lookup_bool_option(Globals, exec_trace_tail_rec, ExecTraceTailRec),
+    globals.lookup_bool_option(Globals, warn_non_tail_recursion,
+        WarnTailCalls),
+    MarkTailCalls = bool.or(ExecTraceTailRec, WarnTailCalls),
     (
-        ExecTraceTailRec = yes,
+        MarkTailCalls = yes,
         write_proc_progress_message(
             "% Marking directly tail recursive calls in ", PredId, ProcId,
             !.HLDS, !IO),
         mark_tail_calls(feature_debug_tail_rec_call, !.HLDS, PredProcId,
             PredInfo, !ProcInfo)
     ;
-        ExecTraceTailRec = no
+        MarkTailCalls = no
+    ),
+    (
+        WarnTailCalls = yes,
+        warn_non_tail_calls_in_proc(Globals, PredId, ProcId, PredInfo,
+            !.ProcInfo, !IO)
+    ;
+        WarnTailCalls = no
     ),
     write_proc_progress_message("% Allocating stack slots in ", PredId,
         ProcId, !.HLDS, !IO),
@@ -487,8 +499,11 @@ compute_liveness(Verbose, Stats, !HLDS, !IO) :-
 maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, exec_trace_tail_rec, ExecTraceTailRec),
+    globals.lookup_bool_option(Globals, warn_non_tail_recursion,
+        WarnTailCalls),
+    MarkTailCalls = bool.or(ExecTraceTailRec, WarnTailCalls),
     (
-        ExecTraceTailRec = yes,
+        MarkTailCalls = yes,
         maybe_write_string(Verbose,
             "% Marking directly tail recursive calls...", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -498,7 +513,25 @@ maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        ExecTraceTailRec = no
+        MarkTailCalls = no
+    ).
+
+:- pred maybe_warn_non_tail_recursion(bool::in, bool::in,
+    module_info::in, io::di, io::uo) is det.
+
+maybe_warn_non_tail_recursion(Verbose, Stats, HLDS, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, warn_non_tail_recursion,
+        WarnTailCalls),
+    (
+        WarnTailCalls = yes,
+        maybe_write_string(Verbose,
+            "% Warning about non-tail recursive calls...\n", !IO),
+        warn_non_tail_calls(HLDS, !IO),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        WarnTailCalls = no
     ).
 
 :- pred compute_stack_vars(bool::in, bool::in,

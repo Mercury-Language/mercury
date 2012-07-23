@@ -9,12 +9,15 @@
 % File: mark_tail_calls.m.
 % Main author: zs.
 %
-% This module adds feature_tailcall to all self-recursive calls that can be
+% This module adds a feature to all self-recursive calls that can be
 % implemented as tail calls.
 %
 % Since an assignment unification that simply renames an output of a recursive
 % call may prevent that call from being recognized as a tail call, you probably
 % want to run excess assign elimination just before invoking this module.
+%
+% This module also contains a pass that detects predicates which are directly
+% recursive, but not tail-recursive, and warns about them.
 %
 %-----------------------------------------------------------------------------%
 
@@ -24,21 +27,37 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.globals.
+
+:- import_module io.
 
 :- pred mark_tail_calls(goal_feature::in, module_info::in, pred_proc_id::in,
     pred_info::in, proc_info::in, proc_info::out) is det.
 
+:- pred warn_non_tail_calls(module_info::in, io::di, io::uo) is det.
+
+:- pred warn_non_tail_calls_in_proc(globals::in, pred_id::in, proc_id::in,
+    pred_info::in, proc_info::in, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_util.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
+:- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
+:- import_module solutions.
+
+%-----------------------------------------------------------------------------%
 
 :- type mark_tail_calls_info
     --->    mark_tail_calls_info(
@@ -322,6 +341,86 @@ match_output_args([MaybeOutputVar | MaybeOutputVars], [ArgVar | ArgVars]) :-
         MaybeOutputVar = yes(ArgVar)
     ),
     match_output_args(MaybeOutputVars, ArgVars).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+warn_non_tail_calls(ModuleInfo, !IO) :-
+    solutions.solutions(nontailcall_in_hlds(ModuleInfo), Warnings),
+    module_info_get_globals(ModuleInfo, Globals),
+    list.foldl(report_nontailcall_warning(Globals), Warnings, !IO).
+
+warn_non_tail_calls_in_proc(Globals, PredId, ProcId, PredInfo, ProcInfo,
+        !IO) :-
+    solutions.solutions(
+        nontailcall_in_proc(PredId, ProcId, PredInfo, ProcInfo), Warnings),
+    list.foldl(report_nontailcall_warning(Globals), Warnings, !IO).
+
+:- type tailcall_warning
+    --->    tailcall_warning(
+                pred_or_func,
+                sym_name,
+                arity,
+                proc_id,
+                prog_context
+            ).
+
+:- pred nontailcall_in_hlds(module_info::in, tailcall_warning::out) is nondet.
+
+nontailcall_in_hlds(!.ModuleInfo, Warning) :-
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    list.member(PredId, PredIds),
+    nontailcall_in_pred(!.ModuleInfo, PredId, Warning).
+
+:- pred nontailcall_in_pred(module_info::in, pred_id::in,
+    tailcall_warning::out) is nondet.
+
+nontailcall_in_pred(ModuleInfo, PredId, Warning) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcIds = pred_info_non_imported_procids(PredInfo),
+    list.member(ProcId, ProcIds),
+    pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+    nontailcall_in_proc(PredId, ProcId, PredInfo, ProcInfo, Warning).
+
+:- pred nontailcall_in_proc(pred_id::in, proc_id::in, pred_info::in,
+    proc_info::in, tailcall_warning::out) is nondet.
+
+nontailcall_in_proc(PredId, ProcId, PredInfo, ProcInfo, Warning) :-
+    proc_info_get_goal(ProcInfo, Goal),
+    goal_contains_goal(Goal, SubGoal),
+    SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo),
+    SubGoalExpr = plain_call(CallPredId, CallProcId, CallArgs, Builtin,
+        _UnifyContext, SymName),
+    % Check if this call is a directly recursive call.
+    CallPredId = PredId,
+    CallProcId = ProcId,
+    Builtin = not_builtin,
+    not goal_has_feature(SubGoal, feature_debug_tail_rec_call),
+    % Don't warn about special predicates.
+    not is_unify_or_compare_pred(PredInfo),
+
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    list.length(CallArgs, Arity),
+    Context = goal_info_get_context(SubGoalInfo),
+    Warning = tailcall_warning(PredOrFunc, SymName, Arity, CallProcId,
+        Context).
+
+:- pred report_nontailcall_warning(globals::in, tailcall_warning::in,
+    io::di, io::uo) is det.
+
+report_nontailcall_warning(Globals, Warning, !IO) :-
+    Warning = tailcall_warning(PredOrFunc, SymName, Arity, ProcId, Context),
+    Name = unqualify_name(SymName),
+    SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),
+    proc_id_to_int(ProcId, ProcNumber0),
+    ProcNumber = ProcNumber0 + 1,
+    Pieces =
+        [words("In mode number"), int_fixed(ProcNumber),
+        words("of"), simple_call(SimpleCallId), suffix(":"), nl,
+        words("warning: recursive call is not tail recursive."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_warning, phase_code_gen, [Msg]),
+    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.mark_tail_calls.

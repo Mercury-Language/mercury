@@ -3558,7 +3558,6 @@ options_help_warning -->
         "\toptions files with `--make'.",
         "--warn-non-tail-recursion",
         "\tWarn about any directly recursive calls that are not tail calls.",
-        "\tThis requires --high-level-code.",
         "--no-warn-up-to-date",
         "\tDon't warn if targets specified on the command line",
         "\twith `--make' are already up to date.",

@@ -38,6 +38,11 @@ Changes to the Mercury standard library:
 * We have add the following new predicates to the list module:
   list.all_true_corresponding/3 and list.all_false_corresponding/3.
 
+Changes to the Mercury compiler:
+
+* The option `--warn-non-tail-recursion' no longer requires
+  `--high-level-code'.
+
 Changes to the Mercury debugger:
 
 * We have added new capabilities to the "level", "retry" and "finish" mdb
