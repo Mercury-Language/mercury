@@ -235,7 +235,7 @@ decide_du_type_layout(ModuleInfo, TypeCtor, TypeDefn, !TypeTable) :-
         Body0 = hlds_du_type(Ctors0, ConsTagValues, MaybeCheaperTagTest,
             DuKind, MaybeUserEqComp, DirectArgFunctors, ReservedTag,
             ReservedAddr, MaybeForeign),
-        list.map(layout_du_ctor_args(ModuleInfo), Ctors0, Ctors),
+        list.map(layout_du_ctor_args(ModuleInfo, DuKind), Ctors0, Ctors),
         Body = hlds_du_type(Ctors, ConsTagValues, MaybeCheaperTagTest,
             DuKind, MaybeUserEqComp, DirectArgFunctors, ReservedTag,
             ReservedAddr, MaybeForeign),
@@ -250,19 +250,28 @@ decide_du_type_layout(ModuleInfo, TypeCtor, TypeDefn, !TypeTable) :-
         % Leave these types alone.
     ).
     
-:- pred layout_du_ctor_args(module_info::in,
+:- pred layout_du_ctor_args(module_info::in, du_type_kind::in,
     constructor::in, constructor::out) is det.
 
-layout_du_ctor_args(ModuleInfo, Ctor0, Ctor) :-
+layout_du_ctor_args(ModuleInfo, DuKind, Ctor0, Ctor) :-
     Ctor0 = ctor(ExistTVars, Constraints, Name, Args0, Context),
     module_info_get_globals(ModuleInfo, Globals),
-    use_double_word_floats(Globals, DoubleWordFloats),
     (
-        DoubleWordFloats = yes,
-        set_double_word_floats(ModuleInfo, Args0, Args1)
-    ;
-        DoubleWordFloats = no,
+        ( DuKind = du_type_kind_mercury_enum
+        ; DuKind = du_type_kind_foreign_enum(_)
+        ; DuKind = du_type_kind_direct_dummy
+        ; DuKind = du_type_kind_notag(_, _, _)
+        ),
         Args1 = Args0
+    ;
+        DuKind = du_type_kind_general,
+        % A functor with a single float argument can have a double-width word
+        % if it is not a no-tag functor. An example is `poly_type.f(float)'.
+        ( use_double_word_floats(Globals, yes) ->
+            set_double_word_floats(ModuleInfo, Args0, Args1)
+        ;
+            Args1 = Args0
+        )
     ),
     globals.lookup_bool_option(Globals, allow_argument_packing, ArgPacking),
     (

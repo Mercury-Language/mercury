@@ -1706,8 +1706,9 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
         ConsTag = no_tag,
         (
             ConstArgs = [ConstArg],
+            det_single_arg_width(ConsArgWidths, ConsArgWidth),
             generate_const_struct_arg(ModuleInfo, UnboxedFloats,
-                ConstStructMap, ConstArg, ArgTypedRval),
+                ConstStructMap, ConstArg, ConsArgWidth, ArgTypedRval),
             TypedRval = ArgTypedRval
         ;
             ( ConstArgs = []
@@ -1719,8 +1720,9 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
         ConsTag = direct_arg_tag(Ptag),
         (
             ConstArgs = [ConstArg],
+            det_single_arg_width(ConsArgWidths, ConsArgWidth),
             generate_const_struct_arg(ModuleInfo, UnboxedFloats,
-                ConstStructMap, ConstArg, ArgTypedRval),
+                ConstStructMap, ConstArg, ConsArgWidth, ArgTypedRval),
             ArgTypedRval = typed_rval(ArgRval, _RvalType),
             Rval = mkword(Ptag, ArgRval),
             TypedRval = typed_rval(Rval, lt_data_ptr)
@@ -1738,7 +1740,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
             ConsTag = unshared_tag(Ptag)
         ),
         generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
-            ConstArgs, ArgTypedRvals),
+            ConstArgs, ConsArgWidths, ArgTypedRvals),
         pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
         add_scalar_static_cell(PackArgTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
@@ -1748,7 +1750,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
     ;
         ConsTag = shared_remote_tag(Ptag, Stag),
         generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
-            ConstArgs, ArgTypedRvals),
+            ConstArgs, ConsArgWidths, ArgTypedRvals),
         pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
         StagTypedRval = typed_rval(const(llconst_int(Stag)), lt_integer),
         AllTypedRvals = [StagTypedRval | PackArgTypedRvals],
@@ -1778,22 +1780,21 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
     ).
 
 :- pred generate_const_struct_args(module_info::in, have_unboxed_floats::in,
-    const_struct_map::in, list(const_struct_arg)::in, list(typed_rval)::out)
-    is det.
+    const_struct_map::in, list(const_struct_arg)::in, list(arg_width)::in,
+    list(typed_rval)::out) is det.
 
-generate_const_struct_args(_, _, _, [], []).
 generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
-        [ConstArg | ConstArgs], [TypedRval | TypedRvals]) :-
-    generate_const_struct_arg(ModuleInfo, UnboxedFloats, ConstStructMap,
-        ConstArg, TypedRval),
-    generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
-        ConstArgs, TypedRvals).
+        ConstArgs, ArgWidths, TypedRvals) :-
+    list.map_corresponding(
+        generate_const_struct_arg(ModuleInfo, UnboxedFloats, ConstStructMap),
+        ConstArgs, ArgWidths, TypedRvals).
 
 :- pred generate_const_struct_arg(module_info::in, have_unboxed_floats::in,
-    const_struct_map::in, const_struct_arg::in, typed_rval::out) is det.
+    const_struct_map::in, const_struct_arg::in, arg_width::in, typed_rval::out)
+    is det.
 
 generate_const_struct_arg(ModuleInfo, UnboxedFloats, ConstStructMap,
-        ConstArg, TypedRval) :-
+        ConstArg, ArgWidth, TypedRval) :-
     (
         ConstArg = csa_const_struct(ConstNum),
         map.lookup(ConstStructMap, ConstNum, TypedRval)
@@ -1801,14 +1802,14 @@ generate_const_struct_arg(ModuleInfo, UnboxedFloats, ConstStructMap,
         ConstArg = csa_constant(ConsId, _),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats,
-            ConstStructMap, ConsTag, TypedRval)
+            ConstStructMap, ConsTag, ArgWidth, TypedRval)
     ).
 
 :- pred generate_const_struct_arg_tag(module_info::in, have_unboxed_floats::in,
-    const_struct_map::in, cons_tag::in, typed_rval::out) is det.
+    const_struct_map::in, cons_tag::in, arg_width::in, typed_rval::out) is det.
 
 generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
-        ConsTag, TypedRval) :-
+        ConsTag, ArgWidth, TypedRval) :-
     (
         (
             ConsTag = string_tag(String),
@@ -1832,7 +1833,13 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
                 Type = lt_float
             ;
                 UnboxedFloats = do_not_have_unboxed_floats,
-                Type = lt_data_ptr
+                % Though a standalone float might have needed to boxed, it may
+                % be stored in unboxed form as a constructor argument.
+                ( ArgWidth = double_word ->
+                    Type = lt_float
+                ;
+                    Type = lt_data_ptr
+                )
             )
         ),
         TypedRval = typed_rval(const(Const), Type)
@@ -1848,7 +1855,7 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
     ;
         ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
         generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats,
-            ConstStructMap, ActualConsTag, TypedRval)
+            ConstStructMap, ActualConsTag, ArgWidth, TypedRval)
     ;
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
@@ -1880,6 +1887,18 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
         unexpected($module, $pred, "unexpected tag")
+    ).
+
+:- pred det_single_arg_width(list(arg_width)::in, arg_width::out) is det.
+
+det_single_arg_width(ArgWidths, ArgWidth) :-
+    (
+        ArgWidths = [ArgWidth]
+    ;
+        ( ArgWidths = []
+        ; ArgWidths = [_, _ | _]
+        ),
+        unexpected($module, $pred, "unexpected arg_width list")
     ).
 
 %---------------------------------------------------------------------------%
