@@ -131,7 +131,9 @@ get_random_numbers(Num, List0, List, Supply0, Supply) :-
         Supply = Supply0
     ;
         % 1048576 = 2^20
-        random.random(0, 1048576, RN, Supply0, Supply1),
+        random.random(0, 1048576, RN0, Supply0, Supply1),
+        % random.random is broken and can produce numbers out of range.
+        RN = abs(RN0),
         get_random_numbers(Num - 1, [RN | List0], List, Supply1, Supply)
     ).
 
