@@ -1747,6 +1747,13 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas, DoWarn,
             module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
             TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
             \+ set.member(PredId, TypeSpecForcePreds),
+
+            % Don't warn for a loop-invariant hoisting-generated procedure.
+            pred_info_get_origin(PredInfo, Origin),
+            \+ (
+                Origin = origin_transformed(transform_loop_invariant(_), _, _)
+            ),
+
             % XXX We don't currently generate pragmas for the automatically
             % generated class instance methods because the compiler aborts
             % when trying to read them back in from the `.opt' files.

@@ -216,6 +216,11 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
     ->
         % The set of computed invariant vars is the difference between
         % the whole invariant var set and the set of invariant args.
+        %
+        % Some of these variables may only appear in the invariant goals,
+        % and would be unused in the auxiliary procedure.  Head variables may
+        % become unused as well.  We rely on the unused argument elimination
+        % pass to remove both.
         ComputedInvVars = InvVars `delete_elems` InvArgs,
 
         % We need to calculate the initial instmap for the aux proc by applying
