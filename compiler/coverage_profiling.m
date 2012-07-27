@@ -1289,7 +1289,7 @@ coverage_point_ll_code(static_coverage_data) =
     ps = pl->MR_sle_proc_static;
     MR_deep_assert(NULL, pl, NULL, ps != NULL);
 
-    MR_deep_assert(NULL, pl, ps, CPIndex >= ps->MR_ps_num_coverage_points);
+    MR_deep_assert(NULL, pl, ps, CPIndex < ps->MR_ps_num_coverage_points);
     MR_deep_assert(NULL, pl, ps, ps->MR_ps_coverage_points != NULL);
 
     ps->MR_ps_coverage_points[CPIndex]++;
@@ -1339,7 +1339,7 @@ coverage_point_ll_code(dynamic_coverage_data) =
         MR_deep_assert(csd, NULL, NULL, pl != NULL);
         ps = pl->MR_sle_proc_static;
         MR_deep_assert(csd, pl, NULL, ps != NULL);
-        MR_deep_assert(csd, pl, ps, CPIndex >= ps->MR_ps_num_coverage_points);
+        MR_deep_assert(csd, pl, ps, CPIndex < ps->MR_ps_num_coverage_points);
     }
 #endif
 
