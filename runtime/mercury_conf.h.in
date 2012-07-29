@@ -287,7 +287,7 @@
 **	MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED we have the
 **				pthread_mutexattr_setpshared() function.
 **	MR_HAVE_MKSTEMP		we have the mkstemp() function.
-**	MR_HAVE_SETRLIMIT	we have the setrlimit() funciton.
+**	MR_HAVE_SETRLIMIT	we have the setrlimit() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
