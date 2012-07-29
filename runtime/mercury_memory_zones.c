@@ -810,6 +810,9 @@ MR_setup_redzones(MR_MemoryZone *zone)
         REDZONE_PROT);
     if (res < 0) {
         char buf[2560];
+        if (zone->MR_zone_name == NULL) {
+            zone->MR_zone_name = "unknown";
+        }
         sprintf(buf, "unable to set %s#%" MR_INTEGER_LENGTH_MODIFIER
                 "d redzone\nbase=%p, redzone=%p",
             zone->MR_zone_name, zone->MR_zone_id,
@@ -822,11 +825,16 @@ MR_setup_redzones(MR_MemoryZone *zone)
     ** setup the hardzone
     */
 #if defined(MR_PROTECTPAGE)
-    zone->MR_zone_hardmax = (MR_Word *)((MR_Unsigned)zone->MR_zone_top - MR_page_size);
+    /* The % MR_page_size is to ensure page alignment */
+    zone->MR_zone_hardmax = (MR_Word *)((MR_Unsigned)zone->MR_zone_top -
+            MR_page_size - ((MR_Unsigned) zone->MR_zone_top % MR_page_size));
     res = MR_protect_pages((char *) zone->MR_zone_hardmax, MR_page_size,
         REDZONE_PROT);
     if (res < 0) {
         char buf[2560];
+        if (zone->MR_zone_name == NULL) {
+            zone->MR_zone_name = "unknown";
+        }
         sprintf(buf, "unable to set %s#%" MR_INTEGER_LENGTH_MODIFIER
                 "d hardmax\nbase=%p, hardmax=%p top=%p",
             zone->MR_zone_name, zone->MR_zone_id,
