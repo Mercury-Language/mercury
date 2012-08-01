@@ -5,3 +5,13 @@ with the version of Boehm GC shipped with that version of Mercury.
 
 Also, note that `--linkage static' is not supported on Solaris.  Executables
 produced using this option will cause a segmentation fault.
+
+------------------------------------------------------------------------------
+
+With Solaris 10 on SPARC based systems the Mercury compiler needs to be built
+with C compiler optimizations disabled.  To do this put the line:
+
+    EXTRA_CFLAGS = -O0
+
+in a file named 'Mmake.params' in the top-level of the source tree.
+(i.e. in the same directory as this README file.)
