@@ -68,7 +68,7 @@ with several different back-ends.
 
 mercury_compile.m itself supervises the parsing  (step 1),
 but it subcontracts the supervision of the later steps to other modules.
-Semantics analysis (step 2) is looked after by mercury_compile_front_end.m;
+Semantic analysis (step 2) is looked after by mercury_compile_front_end.m;
 high level transformations (step 3) by mercury_compile_middle_passes.m;
 and code generation, optimization and output (steps 4, 5 and 6)
 by mercury_compile_llds_backend.m, mercury_compile_mlds_backend.m
@@ -188,7 +188,7 @@ defined in options.m as arguments, to parse them.  It then invokes
 handle_options.m to postprocess the option set. The results are
 represented using the type globals, defined in globals.m.
 The globals structure is available in the HLDS representation,
-buy it is passed around as a separate argument both before the HLDS is built
+but it is passed around as a separate argument both before the HLDS is built
 and after it is no longer needed.
 
 <h3> Build system </h3>
@@ -296,17 +296,17 @@ such as pretty-printing.
 	for printing the parse tree.
 	prog_util.m contains some utility predicates
 	for manipulating the parse tree,
-	prog_mode contains utility predicates
+	prog_mode.m contains utility predicates
 	for manipulating insts and modes,
-	prog_type contains utility predicates
+	prog_type.m contains utility predicates
 	for manipulating types,
-	prog_type_subst contains predicates
+	prog_type_subst.m contains predicates
 	for performing substitutions on types,
-	prog_foreign contains utility predicates
+	prog_foreign.m contains utility predicates
 	for manipulating foreign code,
-	prog_mutable contains utility predicates
+	prog_mutable.m contains utility predicates
 	for manipulating mutable variables,
-	prog_event contains utility predicates for working with events,
+	prog_event.m contains utility predicates for working with events,
 	while error_util.m contains predicates
 	for printing nicely formatting error messages.
 
@@ -1273,8 +1273,8 @@ or perform LLDS-specific transformations on the HLDS:
 		<dt> migration of builtins following branched structures
 		     (follow_code.m)
 			<dd>
-			This transformation the results of follow_vars.m
-			(see below)
+			This transformation improves the results of
+			follow_vars.m (see below)
 		<dt> simplification again (simplify.m, in the check_hlds.m
 		     package)
 			<dd>
@@ -1531,11 +1531,18 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
      acceptable to various C compilers.  Currently computed gotos can have
      their maximum size limited to avoid a fixed limit in lcc.
 
-<li> Final generation of C code is done in llds_out.m, which subcontracts the
-     output of RTTI structures to rtti_out.m and of other static
-     compiler-generated data structures (such as those used by the debugger,
-     the deep profiler, and in the future by the garbage collector)
-     to layout_out.m.
+<li> Final generation of C code is done by the llds_out package. The package
+   subcontracts the output of RTTI structures to rtti_out.m and of other static
+   compiler-generated data structures (such as those used by the debugger,
+   the deep profiler, and in the future by the garbage collector)
+   to layout_out.m.
+   The llds_out.m package itself consists of several modules:
+   llds_out_file.m for printing out LLDS modules;
+   llds_out_instr.m for printing out LLDS instructions;
+   llds_out_global.m for printing out C global variables;
+   llds_out_data.m for printing lvals and rvals;
+   llds_out_code_addr.m for printing labels and other code addresses.
+   llds_out_util.m defines some utility types and predicates.
 </ul>
 
 
@@ -1905,6 +1912,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2012-06-08 15:37:04 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2012-08-02 05:46:32 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
