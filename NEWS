@@ -36,7 +36,8 @@ Changes to the Mercury standard library:
   representation, if the integer is too large for an `int'.
 
 * We have add the following new predicates to the list module:
-  list.all_true_corresponding/3 and list.all_false_corresponding/3.
+  list.all_true_corresponding/3, list.all_false_corresponding/3 and
+  list.same_length3/3.
 
 Changes to the Mercury compiler:
 

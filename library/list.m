@@ -203,6 +203,11 @@
 % :- mode list.same_length(input_list_skel, output_list_skel) is det.
 % :- mode list.same_length(output_list_skel, input_list_skel) is det.
 
+    % As above, but for three lists.
+    %
+:- pred list.same_length3(list(T1)::in, list(T2)::in, list(T3)::in)
+    is semidet.
+
     % list.split_list(Len, List, Start, End):
     %
     % splits `List' into a prefix `Start' of length `Len', and a remainder
@@ -1820,6 +1825,10 @@ list.condense_2([L | Ls], !Ys) :-
 list.same_length([], []).
 list.same_length([_ | L1], [_ | L2]) :-
     list.same_length(L1, L2).
+
+list.same_length3([], [], []).
+list.same_length3([_ | L1], [_ | L2], [_ | L3]) :-
+    list.same_length3(L1, L2, L3).
 
 %-----------------------------------------------------------------------------%
 
