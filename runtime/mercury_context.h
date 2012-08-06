@@ -446,7 +446,7 @@ extern  MR_Context  *MR_create_context(const char *id,
                         MR_ContextSize ctxt_size, MR_Generator *gen);
 
 /*
-** MR_destroy_context(context) returns the pointed-to context structure
+** MR_release_context(context) returns the pointed-to context structure
 ** to the free list, and releases resources as necessary.
 **
 ** VERY IMPORTANT:  Call MR_save_context() before you call
@@ -456,7 +456,7 @@ extern  MR_Context  *MR_create_context(const char *id,
 ** re-used elsewhere) stack segment may still be referenced by the context.  If
 ** that context is re-used later then it will clober another context's stack!
 */
-extern  void        MR_destroy_context(MR_Context *context);
+extern  void        MR_release_context(MR_Context *context);
 
 /*
 ** MR_init_context_stuff() initializes the lock structures for the runqueue,

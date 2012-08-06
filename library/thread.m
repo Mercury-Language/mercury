@@ -271,7 +271,8 @@ INIT mercury_sys_init_thread_modules
         }
         MR_UNLOCK(&MR_thread_barrier_lock, ""thread__spawn_end_thread"");
 
-        MR_destroy_context(MR_ENGINE(MR_eng_this_context));
+        MR_save_context(MR_ENGINE(MR_eng_this_context));
+        MR_release_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context) = NULL;
         MR_idle();
     }

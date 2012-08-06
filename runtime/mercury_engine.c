@@ -168,8 +168,12 @@ void MR_finalize_engine(MercuryEngine *eng)
     ** might need to be finalized.
     */
     if (eng->MR_eng_this_context) {
+        /*
+        ** Saving the context is very important before releasing it.
+        ** See the documentation for MR_release_context
+        */
         MR_save_context(eng->MR_eng_this_context);
-        MR_destroy_context(eng->MR_eng_this_context);
+        MR_release_context(eng->MR_eng_this_context);
     }
 
 #if MR_THREADSCOPE

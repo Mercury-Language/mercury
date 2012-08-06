@@ -432,7 +432,7 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
                 (lc)->MR_lc_slots[i].MR_lcs_context->MR_ctxt_sp =           \
                     (lc)->MR_lc_slots[i].MR_lcs_context->                   \
                     MR_ctxt_detstack_zone->MR_zone_min;                     \
-                MR_destroy_context((lc)->MR_lc_slots[i].MR_lcs_context);    \
+                MR_release_context((lc)->MR_lc_slots[i].MR_lcs_context);    \
             }                                                               \
         }                                                                   \
     } while (0);
