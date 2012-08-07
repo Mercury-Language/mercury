@@ -187,6 +187,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
@@ -479,8 +480,7 @@ lco_in_goal(Goal0, Goal, !Info, ConstInfo) :-
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            lco_in_conj(list.reverse(Goals0), [], bag.init, MaybeGoals,
-                !Info, ConstInfo),
+            lco_in_conj(Goals0, MaybeGoals, !Info, ConstInfo),
             (
                 MaybeGoals = yes(Goals),
                 GoalExpr = conj(plain_conj, Goals)
@@ -572,56 +572,214 @@ lco_in_cases([Case0 | Cases0], [Case | Cases], !Info, ConstInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % lco_in_conj(RevGoals, Unifies, ModuleInfo, Goals)
+    % lco_in_conj(Goals0, MaybeGoals, !Info, ConstInfo)
     %
     % Given a conjunction whose structure is:
     %
     %   zero or more arbitrary goals
     %   recursive call that could be a last call modulo constructors
-    %   one or more construction unifications
+    %   one or more moveable goals
     %
-    % move the construction unifications before the call.
+    % move the moveable goals before the call.
+    % If successful, MaybeGoals is yes(Goals) with the goals in the new order.
+    % Otherwise MaybeGoals is no.
     %
-    % We traverse the conjunction backwards (the caller has reversed the list).
-    % RevGoals is the list of remaining goals in the reversed conjunction list.
-    % RevUnifies is the list of assignments and constructions delayed by any
-    % previous recursive invocations of lco_in_conj.
-    %
-    % invariant: append(reverse(RevGoals), Unifies) = original conjunction
-    %
-:- pred lco_in_conj(list(hlds_goal)::in, list(hlds_goal)::in,
-    bag(prog_var)::in, maybe(list(hlds_goal))::out,
+:- pred lco_in_conj(list(hlds_goal)::in, maybe(list(hlds_goal))::out,
     lco_info::in, lco_info::out, lco_const_info::in) is det.
 
-lco_in_conj([], _Unifies, _UnifyInputVars, no, !Info, _ConstInfo).
-lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
-        !Info, ConstInfo) :-
-    RevGoal = hlds_goal(RevGoalExpr, RevGoalInfo),
-    ModuleInfo = !.Info ^ lco_module_info,
+lco_in_conj(Goals0, MaybeGoals, !Info, ConstInfo) :-
+    list.reverse(Goals0, RevGoals0),
+    (
+        divide_rev_conj(!.Info, ConstInfo, RevGoals0, [], AfterGoals,
+            RecGoal, RecOutArgs, RevBeforeGoals),
+        AfterGoals = [_ | _],
+        set_of_var.list_to_set(RecOutArgs, DelayForVars0),
+        list.foldl3(partition_dependent_goal(!.Info, ConstInfo), AfterGoals,
+            [], RevAfterDependentGoals,
+            [], RevAfterNonDependentGoals,
+            DelayForVars0, _DelayForVars),
+        list.foldl2(acceptable_construct_unification,
+            RevAfterDependentGoals, bag.init, UnifyInputVars, !Info)
+    ->
+        list.reverse(RevAfterDependentGoals, UnifyGoals),
+        transform_call_and_unifies(RecGoal, RecOutArgs,
+            UnifyGoals, UnifyInputVars, MaybeGoals1, !Info, ConstInfo),
+        (
+            MaybeGoals1 = yes(UpdatedRecAndUnifies),
+            Goals = list.reverse(RevBeforeGoals)
+                ++ list.reverse(RevAfterNonDependentGoals)
+                ++ UpdatedRecAndUnifies,
+            MaybeGoals = yes(Goals)
+        ;
+            MaybeGoals1 = no,
+            MaybeGoals = no
+        )
+    ;
+        MaybeGoals = no
+    ).
+
+    % Divide a conjunction into
+    % - a list of goals before the rightmost recursive call
+    % - the recursive call itself
+    % - the goals following the recursive call which could potentially be
+    %   moved before the recursive call, using the LCMC transform if necessary.
+    %
+    % invariant:
+    %   reverse(RevGoals0) ++ AfterGoals0
+    % = reverse(RevBeforeGoals) ++ [RecGoal] ++ AfterGoals
+    %
+:- pred divide_rev_conj(lco_info::in, lco_const_info::in, list(hlds_goal)::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    hlds_goal::out, list(prog_var)::out, list(hlds_goal)::out) is semidet.
+
+divide_rev_conj(Info, ConstInfo, RevGoals0, !AfterGoals, RecGoal, RecOutArgs,
+        RevBeforeGoals) :-
+    (
+        RevGoals0 = [],
+        % No recursive call found.
+        fail
+    ;
+        RevGoals0 = [RevGoal | RevGoalsTail],
+        (
+            potentially_transformable_recursive_call(Info, ConstInfo, RevGoal,
+                OutArgs)
+        ->
+            RecGoal = RevGoal,
+            RecOutArgs = OutArgs,
+            RevBeforeGoals = RevGoalsTail
+        ;
+            potentially_moveable_goal(RevGoal)
+        ->
+            cons(RevGoal, !AfterGoals),
+            divide_rev_conj(Info, ConstInfo, RevGoalsTail, !AfterGoals,
+                RecGoal, RecOutArgs, RevBeforeGoals)
+        ;
+            fail
+        )
+    ).
+
+:- pred potentially_transformable_recursive_call(lco_info::in,
+    lco_const_info::in, hlds_goal::in, list(prog_var)::out) is semidet.
+
+potentially_transformable_recursive_call(Info, ConstInfo, Goal, OutArgs) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    GoalExpr = plain_call(PredId, ProcId, Args, _Builtin, _UnifyContext,
+        _SymName),
+    set.member(proc(PredId, ProcId), ConstInfo ^ lci_cur_scc),
+    goal_info_get_determinism(GoalInfo) = ConstInfo ^ lci_cur_proc_detism,
+
+    ModuleInfo = Info ^ lco_module_info,
     ProcInfo = ConstInfo ^ lci_cur_proc_proc,
     proc_info_get_vartypes(ProcInfo, VarTypes),
+
+    module_info_proc_info(ModuleInfo, PredId, ProcId, CalleeProcInfo),
+    proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
+    classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeArgModes,
+        _InArgs, OutArgs, UnusedArgs),
+    UnusedArgs = [],
+
+    trace [compiletime(flag("lco")), io(!IO)] (
+        io.write_string("call output args: ", !IO),
+        io.write(OutArgs, !IO),
+        io.nl(!IO)
+    ),
+    list.length(OutArgs, NumOutArgs),
+    CurrProcOutArgs = ConstInfo ^ lci_cur_proc_outputs,
+    list.length(CurrProcOutArgs, NumCurrProcOutArgs),
+    NumOutArgs = NumCurrProcOutArgs.
+
+    % A goal is potentially moveable before a recursive call if it is det, and
+    % guaranteed neither to throw an exception nor loop forever (subject to
+    % --no-reorder-conj).  It is actually moveable if it does not depend on the
+    % output of the recursive call.
+    %
+    % For now we only move unification goals and goals which construct ground
+    % terms.
+    %
+:- pred potentially_moveable_goal(hlds_goal::in) is semidet.
+
+potentially_moveable_goal(Goal) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    goal_info_get_determinism(GoalInfo) = detism_det,
+    require_complete_switch [GoalExpr]
     (
-        RevGoalExpr = unify(_, _, _, Unification, _),
-        Unification = construct(ConstructedVar, ConsId, ConstructArgs,
-            ArgUniModes, _, _, SubInfo),
-        (
-            SubInfo = no_construct_sub_info
+        GoalExpr = unify(_, _, _, _, _)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( Reason = from_ground_term(_, _) ->
+            true
         ;
-            SubInfo = construct_sub_info(no, _)
-        ),
-        all_true(acceptable_construct_mode(ModuleInfo), ArgUniModes),
-        ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-        % The code generator can't handle some kinds of tags. For example,
-        % it does not make sense to take the address of the field of a function
-        % symbol of a `notag' type. These are the kinds it CAN handle.
-        (
-            ConsTag = single_functor_tag
-        ;
-            ConsTag = unshared_tag(_)
-        ;
-            ConsTag = shared_remote_tag(_, _)
+            potentially_moveable_goal(SubGoal)
         )
-    ->
+    ;
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr = conj(_, _)
+        ; GoalExpr = disj(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = if_then_else(_, _, _, _)
+        ),
+        fail
+    ;
+        GoalExpr = shorthand(_),
+        unexpected($module, $pred, "shorthand")
+    ).
+
+    % Partition a goal which follows a recursive call goal into those goals
+    % which depend directly or indirectly on an output of the recursive call,
+    % and those goals which don't.
+    %
+:- pred partition_dependent_goal(lco_info::in, lco_const_info::in,
+    hlds_goal::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
+
+partition_dependent_goal(_Info, _ConstInfo, Goal,
+        !RevDependentGoals, !RevNonDependentGoals, !DelayForVars) :-
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
+    goal_vars(Goal, GoalVars),
+    set_of_var.intersect(!.DelayForVars, GoalVars, Intersection),
+    ( set_of_var.is_empty(Intersection) ->
+        cons(Goal, !RevNonDependentGoals)
+    ;
+        cons(Goal, !RevDependentGoals),
+        % Expand the set of variables for which we must delay goals.
+        InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
+        instmap_delta_changed_vars(InstmapDelta, ChangedVars),
+        set_of_var.union(ChangedVars, !DelayForVars)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred acceptable_construct_unification(hlds_goal::in, bag(prog_var)::in,
+    bag(prog_var)::out, lco_info::in, lco_info::out) is semidet.
+
+acceptable_construct_unification(Goal, !UnifyInputVars, !Info) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
+    GoalExpr = unify(_, _, _, Unification, _),
+    Unification = construct(ConstructedVar, ConsId, ConstructArgs,
+        ArgUniModes, _, _, SubInfo),
+    (
+        SubInfo = no_construct_sub_info
+    ;
+        SubInfo = construct_sub_info(no, _)
+    ),
+    ModuleInfo = !.Info ^ lco_module_info,
+    all_true(acceptable_construct_mode(ModuleInfo), ArgUniModes),
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+    % The code generator can't handle some kinds of tags. For example, it does
+    % not make sense to take the address of the field of a function symbol of a
+    % `notag' type. These are the kinds it CAN handle.
+    (
+        ConsTag = single_functor_tag
+    ;
+        ConsTag = unshared_tag(_)
+    ;
+        ConsTag = shared_remote_tag(_, _)
+    ),
+    require_det (
         trace [compiletime(flag("lco")), io(!IO)] (
             io.write_string("processing unification ", !IO),
             io.write(ConstructedVar, !IO),
@@ -642,36 +800,26 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
             io.write_string("updated UnifyInputVars: ", !IO),
             io.write(!.UnifyInputVars, !IO),
             io.nl(!IO)
-        ),
-        !:Unifies = [RevGoal | !.Unifies],
-        lco_in_conj(RevGoals, !.Unifies, !.UnifyInputVars, MaybeGoals,
-            !Info, ConstInfo)
-    ;
-        RevGoalExpr = plain_call(PredId, ProcId, Args, Builtin, UnifyContext,
+        )
+    ).
+
+:- pred transform_call_and_unifies(hlds_goal::in, list(prog_var)::in,
+    list(hlds_goal)::in, bag(prog_var)::in, maybe(list(hlds_goal))::out,
+    lco_info::in, lco_info::out, lco_const_info::in) is det.
+
+transform_call_and_unifies(CallGoal, CallOutArgs, UnifyGoals, UnifyInputVars,
+        MaybeGoals, !Info, ConstInfo) :-
+    CallGoal = hlds_goal(CallGoalExpr, CallGoalInfo),
+    ModuleInfo = !.Info ^ lco_module_info,
+    ProcInfo = ConstInfo ^ lci_cur_proc_proc,
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    (
+        CallGoalExpr = plain_call(PredId, ProcId, Args, Builtin, UnifyContext,
             SymName),
-        set.member(proc(PredId, ProcId), ConstInfo ^ lci_cur_scc),
-        goal_info_get_determinism(RevGoalInfo) =
-            ConstInfo ^ lci_cur_proc_detism,
-
-        module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-            _CalleePredInfo, CalleeProcInfo),
-        proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
-        classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeArgModes,
-            _InArgs, OutArgs, UnusedArgs),
-        UnusedArgs = [],
-        trace [compiletime(flag("lco")), io(!IO)] (
-            io.write_string("call output args: ", !IO),
-            io.write(OutArgs, !IO),
-            io.nl(!IO)
-        ),
-        list.length(OutArgs, NumOutArgs),
         CurrProcOutArgs = ConstInfo ^ lci_cur_proc_outputs,
-        list.length(CurrProcOutArgs, NumCurrProcOutArgs),
-        NumOutArgs = NumCurrProcOutArgs,
-
-        assoc_list.from_corresponding_lists(OutArgs, CurrProcOutArgs,
+        assoc_list.from_corresponding_lists(CallOutArgs, CurrProcOutArgs,
             CallHeadPairs),
-        find_args_to_pass_by_addr(ConstInfo, !.UnifyInputVars, CallHeadPairs,
+        find_args_to_pass_by_addr(ConstInfo, UnifyInputVars, CallHeadPairs,
             1, Mismatches, UpdatedCallOutArgs, map.init, Subst, !Info),
         trace [compiletime(flag("lco")), io(!IO)] (
             io.write_string("find_args_to_pass_by_addr:\n", !IO),
@@ -695,18 +843,18 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         assoc_list.values(Mismatches, MismatchedCallArgs),
         % The variants we create return each output in only one place in
         % memory.
-        all_true(occurs_once(!.UnifyInputVars), MismatchedCallArgs),
+        all_true(occurs_once(UnifyInputVars), MismatchedCallArgs),
 
         list.map_foldl2(update_construct(ConstInfo, Subst),
-            !.Unifies, UpdatedUnifies, map.init, AddrFieldIds, !Info),
+            UnifyGoals, UpdatedUnifyGoals, map.init, AddrFieldIds, !Info),
         trace [compiletime(flag("lco")), io(!IO)] (
             VarSet = !.Info ^ lco_var_set,
             io.write_string("original unifies:\n", !IO),
-            io.write_list(!.Unifies, "\n",
+            io.write_list(UnifyGoals, "\n",
                 dump_goal(ModuleInfo, VarSet), !IO),
             io.nl(!IO),
             io.write_string("updated unifies:\n", !IO),
-            io.write_list(UpdatedUnifies, "\n",
+            io.write_list(UpdatedUnifyGoals, "\n",
                 dump_goal(ModuleInfo, VarSet), !IO),
             io.nl(!IO),
             io.write_string("addr field ids:\n", !IO),
@@ -719,15 +867,16 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         ensure_variant_exists(PredId, ProcId, VariantArgs,
             VariantPredProcId, SymName, VariantSymName, !Info)
     ->
+        module_info_proc_info(ModuleInfo, PredId, ProcId, CalleeProcInfo),
         proc_info_get_argmodes(CalleeProcInfo, CalleeModes),
         update_call_args(ModuleInfo, VarTypes, CalleeModes, Args,
             UpdatedCallOutArgs, UpdatedArgs),
         VariantPredProcId = proc(VariantPredId, VariantProcId),
-        UpdatedGoalExpr = plain_call(VariantPredId, VariantProcId, UpdatedArgs,
-            Builtin, UnifyContext, VariantSymName),
-        UpdatedGoalInfo = RevGoalInfo,
+        UpdatedGoalExpr = plain_call(VariantPredId, VariantProcId,
+            UpdatedArgs, Builtin, UnifyContext, VariantSymName),
+        UpdatedGoalInfo = CallGoalInfo,
         UpdatedGoal = hlds_goal(UpdatedGoalExpr, UpdatedGoalInfo),
-        Goals = list.reverse(RevGoals) ++ UpdatedUnifies ++ [UpdatedGoal],
+        Goals = UpdatedUnifyGoals ++ [UpdatedGoal],
         MaybeGoals = yes(Goals),
         !Info ^ lco_changed := proc_changed
     ;

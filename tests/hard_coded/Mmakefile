@@ -466,6 +466,7 @@ ifeq "$(findstring debug,$(GRADE))$(findstring deep,$(GRADE))" ""
 	BIG_DATA_PROGS = \
 		big_array_from_list \
 		hash_table_test \
+		lco_reorder \
 		version_hash_table_test2
 else
 	BIG_DATA_PROGS =
