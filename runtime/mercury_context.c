@@ -1295,8 +1295,11 @@ MR_attempt_steal_spark(MR_Spark *spark)
         victim = MR_spark_deques[(i + offset) % MR_num_threads];
         if (victim != NULL) {
             steal_result = MR_wsdeque_steal_top(victim, spark);
+            /*
+            ** This loop ensures that we don't run the context until it has
+            ** been saved.
+            */
             while (steal_result == -1) {
-                /* This is a while loop so that we can pause here */
                 MR_ATOMIC_PAUSE;
                 steal_result = MR_wsdeque_steal_top(victim, spark);
             }
