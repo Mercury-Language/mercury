@@ -1296,8 +1296,9 @@ MR_attempt_steal_spark(MR_Spark *spark)
         if (victim != NULL) {
             steal_result = MR_wsdeque_steal_top(victim, spark);
             /*
-            ** This loop ensures that we don't run the context until it has
-            ** been saved.
+            ** If we lost a race to steal the spark, we continue to attempt
+            ** to steal the spark until we succeed (steal_result == 1) or
+            ** until the deque is empty (steal_result == 0)
             */
             while (steal_result == -1) {
                 MR_ATOMIC_PAUSE;
