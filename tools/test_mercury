@@ -185,23 +185,23 @@ case $BRANCH in
         RELEASE_VERSION_PATTERN=rotd-*
         ;;
 
-    11.07)
-        # This is for the 11.07 betas.
-        #CHECKOUT_OPTS=-rversion-11_07-branch
-        #BASE_TAG_NAME=version-11_07-branch
-        #FTP_DIR_NAME=11.07.3-beta
-        #RELEASE_VERSION=11.07.3-beta-$DATE
-        #RELEASE_VERSION_PATTERN=11.07.3-beta-*
-        #;;
-        
-        # This is for the 11.07.2 release.
-        #
-        CHECKOUT_OPTS=-rversion-11_07_2
-        BASE_TAG_NAME=version-11_07_2
-        FTP_DIR_NAME=11.07.2
-        RELEASE_VERSION=11.07.2
-        RELEASE_VERSION_PATTERN=11.07.2*
+    12.08)
+        # This is for the 12.08 betas.
+        CHECKOUT_OPTS=-rversion-12_08-branch
+        BASE_TAG_NAME=version-12_08-branch
+        FTP_DIR_NAME=12.08-beta
+        RELEASE_VERSION=12.08-beta-$DATE
+        RELEASE_VERSION_PATTERN=12.08-beta-*
         ;;
+        
+        # This is for the 12.08 release.
+        #
+        #CHECKOUT_OPTS=-rversion-12_08
+        #BASE_TAG_NAME=version-12_08
+        #FTP_DIR_NAME=12.08
+        #RELEASE_VERSION=12.08
+        #RELEASE_VERSION_PATTERN=12.08*
+        #;;
 esac
 
 case "$C_COMPILER" in
@@ -740,15 +740,7 @@ esac
 # do that at the moment - it's probably not worth doing anyway.
 #
 
-# XXX the 11.07 version of the compiler doesn't need to run aclocal
-# (and doesn't have an m4 directory).  We can remove this once the
-# 11.07 branch is no longer the release branch.
-#
-case $BRANCH in
-    latest)
-        aclocal -I m4 || { false; exit 1; }
-    ;;
-esac
+aclocal -I m4 || { false; exit 1; }
 autoconf || { false; exit 1; }
 rm -f config.cache
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
