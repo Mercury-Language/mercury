@@ -873,7 +873,7 @@
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- pred string.split(string::in, int::in, string::uo, string::uo) is det.
+:- pred string.split(string::in, int::in, string::out, string::out) is det.
 
     % string.split_by_codepoint(String, Count, LeftSubstring, RightSubstring):
     % `LeftSubstring' is the left-most `Count' characters (code points) of
@@ -881,7 +881,7 @@
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- pred string.split_by_codepoint(string::in, int::in, string::uo, string::uo)
+:- pred string.split_by_codepoint(string::in, int::in, string::out, string::out)
     is det.
 
     % string.left(String, Count, LeftSubstring):
@@ -889,8 +889,8 @@
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- func string.left(string::in, int::in) = (string::uo) is det.
-:- pred string.left(string::in, int::in, string::uo) is det.
+:- func string.left(string::in, int::in) = (string::out) is det.
+:- pred string.left(string::in, int::in, string::out) is det.
 
     % string.left_by_codepoint(String, Count, LeftSubstring):
     % `LeftSubstring' is the left-most `Count' characters (code points) of
@@ -898,16 +898,16 @@
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- func string.left_by_codepoint(string::in, int::in) = (string::uo) is det.
-:- pred string.left_by_codepoint(string::in, int::in, string::uo) is det.
+:- func string.left_by_codepoint(string::in, int::in) = (string::out) is det.
+:- pred string.left_by_codepoint(string::in, int::in, string::out) is det.
 
     % string.right(String, Count, RightSubstring):
     % `RightSubstring' is the right-most `Count' code _units_ of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- func string.right(string::in, int::in) = (string::uo) is det.
-:- pred string.right(string::in, int::in, string::uo) is det.
+:- func string.right(string::in, int::in) = (string::out) is det.
+:- pred string.right(string::in, int::in, string::out) is det.
 
     % string.right_by_codepoint(String, Count, RightSubstring):
     % `RightSubstring' is the right-most `Count' characters (code points) of
@@ -915,8 +915,8 @@
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- func string.right_by_codepoint(string::in, int::in) = (string::uo) is det.
-:- pred string.right_by_codepoint(string::in, int::in, string::uo) is det.
+:- func string.right_by_codepoint(string::in, int::in) = (string::out) is det.
+:- pred string.right_by_codepoint(string::in, int::in, string::out) is det.
 
     % string.between(String, Start, End, Substring):
     % `Substring' consists of the segment of `String' within the half-open
@@ -5650,10 +5650,13 @@ string.unsafe_substring(Str, Start, Count, SubString) :-
 
 %-----------------------------------------------------------------------------%
 
+    % The Right substring may not have mode `uo' because it may return Str,
+    % which has mode `in'.
+    %
 :- pragma foreign_proc("C",
-    string.split(Str::in, Count::in, Left::uo, Right::uo),
+    string.split(Str::in, Count::in, Left::out, Right::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate, no_sharing],
+        does_not_affect_liveness, may_not_duplicate],
 "{
     MR_Integer  len;
     MR_Word     tmp;
@@ -5680,7 +5683,7 @@ string.unsafe_substring(Str, Start, Count, SubString) :-
 }").
 
 :- pragma foreign_proc("C#",
-    string.split(Str::in, Count::in, Left::uo, Right::uo),
+    string.split(Str::in, Count::in, Left::out, Right::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     int len;
@@ -5699,7 +5702,7 @@ string.unsafe_substring(Str, Start, Count, SubString) :-
 }").
 
 :- pragma foreign_proc("Java",
-    string.split(Str::in, Count::in, Left::uo, Right::uo),
+    string.split(Str::in, Count::in, Left::out, Right::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Count <= 0) {
@@ -5716,7 +5719,7 @@ string.unsafe_substring(Str, Start, Count, SubString) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    string.split(Str::in, Count::in, Left::uo, Right::uo),
+    string.split(Str::in, Count::in, Left::out, Right::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if
@@ -5734,7 +5737,7 @@ string.unsafe_substring(Str, Start, Count, SubString) :-
 string.split(Str, Count, Left, Right) :-
     ( Count =< 0 ->
         Left = "",
-        copy(Str, Right)
+        Right = Str
     ;
         string.to_code_unit_list(Str, List),
         Len = string.length(Str),
@@ -5760,9 +5763,9 @@ string.split_by_codepoint(Str, Count, Left, Right) :-
         string.split(Str, Offset, Left, Right)
     ; Count =< 0 ->
         Left = "",
-        copy(Str, Right)
+        Right = Str
     ;
-        copy(Str, Left),
+        Left = Str,
         Right = ""
     ).
 
