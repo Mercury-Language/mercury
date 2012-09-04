@@ -1505,6 +1505,38 @@ MR_schedule_context(MR_Context *ctxt)
     if (ctxt->MR_ctxt_resume_engine_required == MR_TRUE) {
         /*
         ** Only engine_id may execute this context, attempt to wake it.
+        **
+        ** Note that there is a race condition here.  If the engine that can
+        ** run this context is working, then try_wake_engine() will fail, if
+        ** it then becomes idle and checks the run queue before we acquire
+        ** the run queue lock below then it can go to sleep and won't be
+        ** notified that there is a context to execute.  The context will be
+        ** placed on the run queue awaiting the engine.  If the context can
+        ** only be executed by a single engine, then that engine will only
+        ** check the run queue if it first executes a spark, causing it to
+        ** call MR_do_idle after completing the spark.
+        **
+        ** This is only a problem for contexts that can only be executed on
+        ** a single engine.  In other causes this engine is guaranteed to
+        ** eventually call MR_do_idle and execute the context.  Potentially
+        ** causing a loss of parallelism but not a deadlock.
+        **
+        ** We can fix this race by adding an extra message, which we
+        ** tentatively call MR_ENGINE_ACTION_CONTEXT_ADVICE, which does not
+        ** contain a context but tells an engine that one is available.
+        ** After placing a context on the run queue we can deliver this
+        ** message to an idle engine that should check the run queue if it
+        ** hasn't already.  We must also guarantee that an engine checks if
+        ** it has any notifications before going into the sleeping state.
+        **
+        ** I have a workspace in which I fix these problems, however it is
+        ** buggy in other ways so I cannot commit it yet.  For now I'm
+        ** documenting it in this comment.
+        **
+        ** See runtime/design/par_engine_state.{txt,dot} for details of the
+        ** proposed changes to the engine notification code.  Although the
+        ** proposed changes in these files are much more complex than is
+        ** strictly needed, we believe that they avoid other problems.
         */
 #ifdef MR_DEBUG_THREADS
         if (MR_debug_threads) {
@@ -1512,6 +1544,15 @@ MR_schedule_context(MR_Context *ctxt)
                 MR_SELF_THREAD_ID);
         }
 #endif
+        /*
+        ** There is a bug on this line, we should never give a context
+        ** notification to an idle engine as the notification can be lost if
+        ** the engine writes-over its own state and then a later
+        ** notification is passed to the engine.
+        **
+        ** However I don't want to fix it as fixing it may make the window
+        ** for the race condition documented above wider.
+        */
         if (try_wake_engine(engine_id, MR_ENGINE_ACTION_CONTEXT,
             &wake_action_data, ENGINE_STATE_IDLE | ENGINE_STATE_SLEEPING))
         {
