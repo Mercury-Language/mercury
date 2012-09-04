@@ -1,0 +1,122 @@
+
+Copyright (C) The University of Melbourne 2012
+
+There is one definite problem with the current implementation and several
+potential ones.  I'm in the process of testing the following proposal.
+
+
+Engine states and notifications
+-------------------------------
+
+An engine may be in one of the following states, see the es_state field
+engine_sleep_sync_i
+
+working      The engine has work to do and is working on it.
+             The engine will not check for notifications, all
+             notifications will be ignored.
+
+idle         The engine finished its work and is looking for
+             more work.  It is looking for a context to resume or a local
+             spark.  If found, the engine will move to the working state,
+             if not, it will check for notifications and if there are
+             none it moves to the stealing state.  Only notify an idle
+             engine with notifications that may be ignored.
+
+stealing     The engine is now attempting to work steal.  It has now
+             incremented the idle engine count to make it easier to
+             receive notifications.  If it finds a spark it will decrement
+             the count and execute the spark.  Otherwise it checks for
+             notifications and moves to the sleeping state.  This state
+             is similar to idle but separate as it allows another engine
+             to understand if this engine has modified the idle engine
+             count (which we don't want to do in the idle state as that
+             will often find a local spark to execute).
+
+sleeping     The engine has committed to going to sleep, to wake it up
+             one must post to its sleep semaphore ensuring that it does
+             not sleep.  Any notification can be sent at this stage as
+             all will be acted upon, including the context notification
+             which cannot be dropped.
+
+notified
+             The engine has received a notification, it cannot receive
+             another notification now.  This state is initiated by the
+             notifier, and therefore is done with either a compare and
+             swap or a lock depending on the state of the engine.  See
+             try_wake_engine and try_notify_engine.  Upon receiving the
+             notification the engine will set its new status
+             appropriately.
+
+An engine can move itself through the following transitions of states
+without locking or other protection.
+
+working -> idle
+idle -> working
+stealing -> working
+                     As the engine starts and finishes work it moves
+                     between these states with a minimum of overhead.
+                     These transitions may be made without a CAS or
+                     locking.  We simply use write ordering to guarantee
+                     that the new state (such as idle) is visible before
+                     the engine acquires the runqueue lock.
+
+notified -> working An engine wakes up, and finds work.
+
+notified -> idle
+notified -> stealing
+                     An engine wakes up but doesn't find work, it goes
+                     idle and checks for global work.
+
+An engine can move itself through the following transitions provided that
+it uses a CAS to do so.  This is so that it is guaranteed to observe the
+notified state if another engine has set that state.
+
+idle -> stealing
+                     About to attempt work stealing.
+
+stealing -> sleeping
+                     The engine is about to call sem_wait, and MUST call
+                     sem_wait after advertising the sleeping state.
+
+A notifier may notify another engine with the following transitions.
+
+sleeping -> notified
+                     Wake an engine while holding the wake_lock, the
+                     engine must also post to the sleep semaphore and
+                     decrement the idle engines count.  See
+                     try_wake_engine.
+
+idle -> notified
+stealing -> notified
+                     Notify an engine of an event.  This must use a
+                     CAS, so that it coordinates with the engine's own
+                     CAS transitions.
+
+See also par_engine_state.dot for a graph of these states and transitions.
+
+The RTS can run in a polling mode where sem_timedwait is used instead of
+sem_wait,  Define MR_WORKSTEAL_POLLING to enable this, it must also be
+defined when compiling the application as the mercury_context.h will
+define different macros.  When running in this mode an engine may move
+from the sleeping to working states itself by using the lock in its sleep
+structure.
+
+This has been setup specifically to ensure that engines can be notified
+individually and that work is never lost.  Any future changes must
+continue to prevent the following races.
+
+There are two engines, A becomes idle and checks for contexts to
+execute, then B schedules a new context.  He cannot give it directly to A
+because A is not sleeping.  So A never sees the context.  Worse
+still, if this context can only be executed by A then B never continues
+this work and the whole system deadlocks.  Therefore after placing the
+context on the runqueue, a context advice message is given to any
+engine that is in the idle, stealing or sleeping states (currently only
+for cases where the context may only be executed by a single engine).
+
+Similarly, if engine A is creating a spark, and engine B is in the
+stealing state may have already checked A's deque.  So it's a good idea
+to notify an engine of a spark if it is in the stealing or sleeping
+states.
+
+

@@ -1,0 +1,106 @@
+
+// Copyright (C) The University of Melbourne 2012
+
+digraph G {
+//    rankdir=LR;
+
+    { rank=source; startup };
+    { rank=same; context; context_advice; worksteal_advice };
+    //{ rank=same; stealing; sleeping; };
+    { rank=sink; do_shutdown };
+    { rank=same; working; idle; stealing; };
+
+    // { rank=same; working; idle; sleeping; };
+
+/*
+    //subgraph cluster_working {
+
+        //working;
+        //idle;
+        context_advice [label="context or worksteal advice" shape=rectangle];
+        context_advice2 [label="context_advice" shape=rectangle];
+        context [shape=rectangle];
+        //worksteal [shape=rectangle];
+    //    label = "counted as working";
+    //}
+*/
+
+/*
+    subgraph cluster_idle {
+
+        stealing;
+        sleeping;
+        soft_was_stealing [label="context or worksteal advice" shape=rectangle];
+        label = "counted as idle";
+    };
+*/
+
+    // Styles for 'idle' states.
+    sleeping [style=filled fillcolor=lightgrey];
+    stealing [style=filled fillcolor=lightgrey];
+
+    // Shapes for notifications
+    shutdown [shape=rectangle];
+    context [shape=rectangle];
+    context_advice [shape=rectangle];
+    worksteal_advice [shape=rectangle];
+
+    // Illistrative only.
+    worksteal_once [style=dashed];
+
+    /*
+     * Normal operation.
+     */
+    
+    // Primordial engine.
+    startup -> working;
+    
+    // Worker engines.
+    startup -> idle;
+
+    // Finished work.
+    working -> idle [style=bold];
+
+    // Looking for work.
+    idle -> working [style=bold];
+    stealing -> working [style=bold];
+    // Other transitions use CAS below.
+
+    // Respond to notifications.
+    shutdown -> do_shutdown;
+
+    // We do the same action as idle does anyway.
+    context_advice -> idle;
+
+    worksteal_advice -> worksteal_once;
+
+    worksteal_once -> working;
+    worksteal_once -> stealing;
+
+    context -> working;
+
+    /* CAS Transitions */
+    edge [color=blue];
+    idle -> stealing [style=bold];
+    stealing -> sleeping;
+
+    /* Locked transitions from other engines */
+    edge [color=red];
+    sleeping -> context;
+    sleeping -> context_advice;
+    sleeping -> worksteal_advice;
+    sleeping -> shutdown;
+
+    /* CAS transitions from other engines */
+    edge [color=green];
+    idle -> context_advice;
+    idle -> worksteal_advice;
+    stealing -> context_advice;
+    stealing -> worksteal_advice;
+
+    // safe because there will be no other work
+    idle -> shutdown;
+    stealing -> shutdown;
+
+}
+
