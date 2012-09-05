@@ -1196,22 +1196,19 @@ find_items_used_by_proc_arg_modes(_ProcId, ProcInfo, !Info) :-
     proc_info_get_argmodes(ProcInfo, ArgModes),
     find_items_used_by_modes(ArgModes, !Info).
 
-:- pred find_items_used_by_type_spec(pragma_type::in,
+:- pred find_items_used_by_type_spec(pragma_info_type_spec::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_type_spec(Pragma, !Info) :-
-    ( Pragma = pragma_type_spec(_, _, _, _, MaybeModes, Subst, _, _) ->
-        (
-            MaybeModes = yes(Modes),
-            find_items_used_by_modes(Modes, !Info)
-        ;
-            MaybeModes = no
-        ),
-        assoc_list.values(Subst, SubstTypes),
-        find_items_used_by_types(SubstTypes, !Info)
+find_items_used_by_type_spec(TypeSpecInfo, !Info) :-
+    TypeSpecInfo = pragma_info_type_spec(_, _, _, _, MaybeModes, Subst, _, _),
+    (
+        MaybeModes = yes(Modes),
+        find_items_used_by_modes(Modes, !Info)
     ;
-        unexpected($module, $pred, "unexpected pragma type")
-    ).
+        MaybeModes = no
+    ),
+    assoc_list.values(Subst, SubstTypes),
+    find_items_used_by_types(SubstTypes, !Info).
 
 :- pred find_items_used_by_functors(functor_set::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.

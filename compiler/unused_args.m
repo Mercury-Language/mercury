@@ -103,6 +103,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -1792,8 +1793,12 @@ write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         io.set_output_stream(OptStream, OldOutput, !IO),
         proc_id_to_int(ProcId, ModeNum),
-        mercury_output_pragma_unused_args(PredOrFunc, qualified(Module, Name),
-            Arity, ModeNum, UnusedArgs, !IO),
+        PredSymName = qualified(Module, Name),
+        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, Arity,
+            PredOrFunc, ModeNum),
+        UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn,
+            UnusedArgs),
+        mercury_output_pragma_unused_args(UnusedArgsInfo, !IO),
         io.set_output_stream(OldOutput, _, !IO)
     ;
         true

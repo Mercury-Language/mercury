@@ -136,6 +136,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.mmc_analysis.
@@ -1260,7 +1261,7 @@ write_pragma_exceptions(ModuleInfo, ExceptionInfo, PredId, !IO) :-
 :- pred write_pragma_exceptions_2(module_info::in, exception_info::in,
     pred_id::in, pred_info::in, proc_id::in, io::di, io::uo) is det.
 
-write_pragma_exceptions_2(ModuleInfo, ExceptionInfo, PredId, PredInfo, ProcId,
+write_pragma_exceptions_2(ModuleInfo, ExceptionMap, PredId, PredInfo, ProcId,
         !IO) :-
     should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
         for_pragma, ShouldWrite),
@@ -1271,10 +1272,13 @@ write_pragma_exceptions_2(ModuleInfo, ExceptionInfo, PredId, PredInfo, ProcId,
         Arity      = pred_info_orig_arity(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         proc_id_to_int(ProcId, ModeNum),
-        ( map.search(ExceptionInfo, proc(PredId, ProcId), ProcExceptionInfo) ->
+        ( map.search(ExceptionMap, proc(PredId, ProcId), ProcExceptionInfo) ->
             ProcExceptionInfo = proc_exception_info(Status, _),
-            mercury_output_pragma_exceptions(PredOrFunc,
-                qualified(ModuleName, Name), Arity, ModeNum, Status, !IO)
+            PredSymName = qualified(ModuleName, Name),
+            PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, Arity,
+                PredOrFunc, ModeNum),
+            ExceptionInfo = pragma_info_exceptions(PredNameArityPFMn, Status),
+            mercury_output_pragma_exceptions(ExceptionInfo, !IO)
         ;
             true
         )

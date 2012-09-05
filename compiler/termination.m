@@ -20,11 +20,11 @@
 % Chris Speirs, Zoltan Somogyi, and Harald Sondergaard. Termination
 % analysis for Mercury. In P. Van Hentenryck, editor, Static Analysis:
 % Proceedings of the 4th International Symposium, Lecture Notes in Computer
-% Science. Springer, 1997.  A more detailed version is available for
+% Science. Springer, 1997. A more detailed version is available for
 % download from <http://www.cs.mu.oz.au/publications/tr_db/mu_97_09.ps.gz>
 %
 % The termination analysis may use a number of different norms to calculate
-% the size of a term.  These are set by using the --termination-norm string
+% the size of a term. These are set by using the --termination-norm string
 % option.
 %
 %-----------------------------------------------------------------------------%
@@ -133,7 +133,7 @@ analyse_termination_in_module(!ModuleInfo, Specs, !IO) :-
 %
 
 % Set the termination status for any procedures implemented using the foreign
-% language interface.  If the terminates/does_not_terminate attribute has been
+% language interface. If the terminates/does_not_terminate attribute has been
 % set then we set the termination status of the procedure accordingly.
 % Otherwise the procedure is considered to be terminating if it does not call
 % Mercury and non-terminating if it does.
@@ -252,11 +252,11 @@ check_foreign_code_attributes_2([_, _ | _], !ModuleInfo, !IO).
 %     procs. in the SCC has a does_not_terminate pragma.
 % (2) One or more procs. in the SCC has a termination pragma (of either sort),
 %     *and* the termination status of one or more procs. in the SCC is
-%     unknown.  (We check this after checking for the first case, so the
+%     unknown. (We check this after checking for the first case, so the
 %     termination info. for the known procs. will be consistent.)
 %
 % In the first case set the termination for all procs. in the SCC to can_loop
-% and emit a warning.  In the second, set the termination of any procedures
+% and emit a warning. In the second, set the termination of any procedures
 % whose termination status is unknown to be the same as those whose
 % termination status is known.
 
@@ -582,7 +582,7 @@ is_solver_init_wrapper_pred(ModuleInfo, proc(PredId, _)) :-
 %----------------------------------------------------------------------------%
 
     % This predicate processes each predicate and sets the termination
-    % property if possible.  This is done as follows:  Set the termination
+    % property if possible. This is done as follows:  Set the termination
     % to yes if:
     % - there is a terminates pragma defined for the predicate
     % - there is a `check_termination' pragma defined for the predicate,
@@ -740,7 +740,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
     ;
         SpecialPredId = spec_pred_init
         % We don't need to do anything special for solver type initialisation
-        % predicates.  Leaving it up to the analyser may result in better
+        % predicates. Leaving it up to the analyser may result in better
         % argument size information anyway.
     ),
     set_generated_terminates(ProcIds, SpecialPredId, !ProcTable).
@@ -951,8 +951,8 @@ write_proc_termination_info(PredId, [ProcId | ProcIds], ProcTable,
     proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize),
     proc_info_get_maybe_termination_info(ProcInfo, Termination),
     proc_info_declared_argmodes(ProcInfo, ModeList),
-    write_pragma_termination_info(PredOrFunc, SymName, ModeList, Context,
-        ArgSize, Termination, !IO),
+    write_pragma_termination_info_components(PredOrFunc, SymName, ModeList,
+        ArgSize, Termination, Context, !IO),
     write_proc_termination_info(PredId, ProcIds, ProcTable, PredOrFunc,
         SymName, Context, !IO).
 

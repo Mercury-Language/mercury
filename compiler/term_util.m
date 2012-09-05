@@ -35,7 +35,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% The `arg_size_info' and `termination_info' structures
+% The `arg_size_info' and `termination_info' structures.
 %
 
 % The types `arg_size_info' and `termination_info' hold information about

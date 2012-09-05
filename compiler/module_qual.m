@@ -1387,52 +1387,61 @@ qualify_type_ctor(!TypeCtor, !Info, !Specs) :-
 qualify_pragma(Pragma0, Pragma, !Info, !Specs) :-
     (
         ( Pragma0 = pragma_source_file(_)
-        ; Pragma0 = pragma_foreign_decl(_, _, _)
-        ; Pragma0 = pragma_foreign_code(_, _)
-        ; Pragma0 = pragma_foreign_import_module(_, _)
-        ; Pragma0 = pragma_inline(_, _)
-        ; Pragma0 = pragma_no_inline(_, _)
-        ; Pragma0 = pragma_obsolete(_, _)
-        ; Pragma0 = pragma_no_detism_warning(_, _)
-        ; Pragma0 = pragma_unused_args(_, _, _, _, _)
-        ; Pragma0 = pragma_exceptions(_, _, _, _, _)
-        ; Pragma0 = pragma_trailing_info(_, _, _, _, _)
-        ; Pragma0 = pragma_mm_tabling_info(_, _, _, _, _)
-        ; Pragma0 = pragma_fact_table(_, _, _)
-        ; Pragma0 = pragma_reserve_tag(_, _)
-        ; Pragma0 = pragma_promise_pure(_, _)
-        ; Pragma0 = pragma_promise_semipure(_, _)
-        ; Pragma0 = pragma_promise_equivalent_clauses(_, _)
-        ; Pragma0 = pragma_terminates(_, _)
-        ; Pragma0 = pragma_does_not_terminate(_, _)
-        ; Pragma0 = pragma_check_termination(_, _)
-        ; Pragma0 = pragma_mode_check_clauses(_, _)
+        ; Pragma0 = pragma_foreign_decl(_)
+        ; Pragma0 = pragma_foreign_code(_)
+        ; Pragma0 = pragma_foreign_import_module(_)
+        ; Pragma0 = pragma_inline(_)
+        ; Pragma0 = pragma_no_inline(_)
+        ; Pragma0 = pragma_obsolete(_)
+        ; Pragma0 = pragma_no_detism_warning(_)
+        ; Pragma0 = pragma_unused_args(_)
+        ; Pragma0 = pragma_exceptions(_)
+        ; Pragma0 = pragma_trailing_info(_)
+        ; Pragma0 = pragma_mm_tabling_info(_)
+        ; Pragma0 = pragma_fact_table(_)
+        ; Pragma0 = pragma_reserve_tag(_)
+        ; Pragma0 = pragma_promise_pure(_)
+        ; Pragma0 = pragma_promise_semipure(_)
+        ; Pragma0 = pragma_promise_eqv_clauses(_)
+        ; Pragma0 = pragma_terminates(_)
+        ; Pragma0 = pragma_does_not_terminate(_)
+        ; Pragma0 = pragma_check_termination(_)
+        ; Pragma0 = pragma_mode_check_clauses(_)
         ; Pragma0 = pragma_require_feature_set(_)
         ),
         Pragma = Pragma0
     ;
-        Pragma0 = pragma_foreign_export_enum(Lang, TypeName0, TypeArity0,
+        Pragma0 = pragma_foreign_export_enum(FEEInfo0),
+        FEEInfo0 = pragma_info_foreign_export_enum(Lang, TypeName0, TypeArity0,
             Attributes, Overrides),
         qualify_type_ctor(type_ctor(TypeName0, TypeArity0),
             type_ctor(TypeName, TypeArity), !Info, !Specs),
-        Pragma = pragma_foreign_export_enum(Lang, TypeName, TypeArity,
-            Attributes, Overrides)
+        FEEInfo = pragma_info_foreign_export_enum(Lang, TypeName, TypeArity,
+            Attributes, Overrides),
+        Pragma = pragma_foreign_export_enum(FEEInfo)
     ;
-        Pragma0 = pragma_foreign_enum(Lang, TypeName0, TypeArity0, Values),
+        Pragma0 = pragma_foreign_enum(FEInfo0),
+        FEInfo0 = pragma_info_foreign_enum(Lang, TypeName0, TypeArity0,
+            Values),
         qualify_type_ctor(type_ctor(TypeName0, TypeArity0),
             type_ctor(TypeName, TypeArity), !Info, !Specs),
-        Pragma = pragma_foreign_enum(Lang, TypeName, TypeArity, Values)
+        FEInfo = pragma_info_foreign_enum(Lang, TypeName, TypeArity,
+            Values),
+        Pragma = pragma_foreign_enum(FEInfo)
     ;
-        Pragma0 = pragma_foreign_proc(Attrs0, Name, PredOrFunc, Vars0, Varset,
-            InstVarset, Impl),
+        Pragma0 = pragma_foreign_proc(FPInfo0),
+        FPInfo0 = pragma_info_foreign_proc(Attrs0, Name, PredOrFunc,
+            Vars0, Varset, InstVarset, Impl),
         qualify_pragma_vars(Vars0, Vars, !Info, !Specs),
         UserSharing0 = get_user_annotated_sharing(Attrs0),
         qualify_user_sharing(UserSharing0, UserSharing, !Info, !Specs),
         set_user_annotated_sharing(UserSharing, Attrs0, Attrs),
-        Pragma = pragma_foreign_proc(Attrs, Name, PredOrFunc, Vars, Varset,
-            InstVarset, Impl)
+        FPInfo = pragma_info_foreign_proc(Attrs, Name, PredOrFunc,
+            Vars, Varset, InstVarset, Impl),
+        Pragma = pragma_foreign_proc(FPInfo)
     ;
-        Pragma0 = pragma_tabled(EvalMethod, Name, Arity, PredOrFunc,
+        Pragma0 = pragma_tabled(TabledInfo0),
+        TabledInfo0 = pragma_info_tabled(EvalMethod, PredNameArityPF,
             MModes0, Attrs),
         (
             MModes0 = yes(Modes0),
@@ -1442,14 +1451,21 @@ qualify_pragma(Pragma0, Pragma, !Info, !Specs) :-
             MModes0 = no,
             MModes = no
         ),
-        Pragma = pragma_tabled(EvalMethod, Name, Arity, PredOrFunc,
-            MModes, Attrs)
+        TabledInfo = pragma_info_tabled(EvalMethod, PredNameArityPF,
+            MModes, Attrs),
+        Pragma = pragma_tabled(TabledInfo)
     ;
-        Pragma0 = pragma_foreign_export(Lang, Name, PredOrFunc, Modes0, CFunc),
+        Pragma0 = pragma_foreign_export(FEInfo0),
+        FEInfo0 = pragma_info_foreign_export(Lang, PredNameModesPF0, CFunc),
+        PredNameModesPF0 = pred_name_modes_pf(Name, Modes0, PredOrFunc),
         qualify_mode_list(Modes0, Modes, !Info, !Specs),
-        Pragma = pragma_foreign_export(Lang, Name, PredOrFunc, Modes, CFunc)
+        PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
+        FEInfo = pragma_info_foreign_export(Lang, PredNameModesPF, CFunc),
+        Pragma = pragma_foreign_export(FEInfo)
     ;
-        Pragma0 = pragma_type_spec(A, B, C, D, MaybeModes0, Subst0, G, H),
+        Pragma0 = pragma_type_spec(TypeSpecInfo0),
+        TypeSpecInfo0 = pragma_info_type_spec(A, B, C, D, MaybeModes0,
+            Subst0, G, H),
         (
             MaybeModes0 = yes(Modes0),
             qualify_mode_list(Modes0, Modes, !Info, !Specs),
@@ -1459,31 +1475,47 @@ qualify_pragma(Pragma0, Pragma, !Info, !Specs) :-
             MaybeModes = no
         ),
         qualify_type_spec_subst(Subst0, Subst, !Info, !Specs),
-        Pragma = pragma_type_spec(A, B, C, D, MaybeModes, Subst, G, H)
+        TypeSpecInfo = pragma_info_type_spec(A, B, C, D, MaybeModes,
+            Subst, G, H),
+        Pragma = pragma_type_spec(TypeSpecInfo)
     ;
-        Pragma0 = pragma_termination_info(PredOrFunc, SymName, ModeList0,
-            Args, Term),
+        Pragma0 = pragma_termination_info(TermInfo0),
+        TermInfo0 = pragma_info_termination_info(PredNameModesPF0, Args, Term),
+        PredNameModesPF0 = pred_name_modes_pf(SymName, ModeList0, PredOrFunc),
         qualify_mode_list(ModeList0, ModeList, !Info, !Specs),
-        Pragma = pragma_termination_info(PredOrFunc, SymName, ModeList,
-            Args, Term)
+        PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
+        TermInfo = pragma_info_termination_info(PredNameModesPF, Args, Term),
+        Pragma = pragma_termination_info(TermInfo)
     ;
-        Pragma0 = pragma_structure_sharing(PredOrFunc, SymName, ModeList0,
+        Pragma0 = pragma_structure_sharing(SharingInfo0),
+        SharingInfo0 = pragma_info_structure_sharing(PredNameModesPF0,
             Vars, Types, Sharing),
+        PredNameModesPF0 = pred_name_modes_pf(SymName, ModeList0, PredOrFunc),
         qualify_mode_list(ModeList0, ModeList, !Info, !Specs),
-        Pragma = pragma_structure_sharing(PredOrFunc, SymName, ModeList,
-            Vars, Types, Sharing)
+        PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
+        SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
+            Vars, Types, Sharing),
+        Pragma = pragma_structure_sharing(SharingInfo)
     ;
-        Pragma0 = pragma_structure_reuse(PredOrFunc, SymName, ModeList0,
+        Pragma0 = pragma_structure_reuse(ReuseInfo0),
+        ReuseInfo0 = pragma_info_structure_reuse(PredNameModesPF0,
             Vars, Types, ReuseTuples),
+        PredNameModesPF0 = pred_name_modes_pf(SymName, ModeList0, PredOrFunc),
         qualify_mode_list(ModeList0, ModeList, !Info, !Specs),
-        Pragma = pragma_structure_reuse(PredOrFunc, SymName, ModeList,
-            Vars, Types, ReuseTuples)
+        PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
+        ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
+            Vars, Types, ReuseTuples),
+        Pragma = pragma_structure_reuse(ReuseInfo)
     ;
-        Pragma0 = pragma_termination2_info(PredOrFunc, SymName, ModeList0,
+        Pragma0 = pragma_termination2_info(Term2Info0),
+        Term2Info0 = pragma_info_termination2_info(PredNameModesPF0,
             SuccessArgs, FailureArgs, Term),
+        PredNameModesPF0 = pred_name_modes_pf(SymName, ModeList0, PredOrFunc),
         qualify_mode_list(ModeList0, ModeList, !Info, !Specs),
-        Pragma = pragma_termination2_info(PredOrFunc, SymName, ModeList,
-            SuccessArgs, FailureArgs, Term)
+        PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
+        Term2Info = pragma_info_termination2_info(PredNameModesPF,
+            SuccessArgs, FailureArgs, Term),
+        Pragma = pragma_termination2_info(Term2Info)
     ).
 
 :- pred qualify_pragma_vars(list(pragma_var)::in, list(pragma_var)::out,
@@ -1491,9 +1523,11 @@ qualify_pragma(Pragma0, Pragma, !Info, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_pragma_vars([], [], !Info, !Specs).
-qualify_pragma_vars([pragma_var(Var, Name, Mode0, Box) | PragmaVars0],
-        [pragma_var(Var, Name, Mode, Box) | PragmaVars], !Info, !Specs) :-
+qualify_pragma_vars([PragmaVar0  | PragmaVars0], [PragmaVar | PragmaVars],
+        !Info, !Specs) :-
+    PragmaVar0 = pragma_var(Var, Name, Mode0, Box),
     qualify_mode(Mode0, Mode, !Info, !Specs),
+    PragmaVar = pragma_var(Var, Name, Mode, Box),
     qualify_pragma_vars(PragmaVars0, PragmaVars, !Info, !Specs).
 
 :- pred qualify_type_spec_subst(assoc_list(tvar, mer_type)::in,
@@ -1529,7 +1563,7 @@ qualify_prog_constraint_list([C0 | C0s], [C | Cs], !Info, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_prog_constraint(constraint(ClassName0, Types0),
-    constraint(ClassName, Types), !Info, !Specs) :-
+        constraint(ClassName, Types), !Info, !Specs) :-
     list.length(Types0, Arity),
     qualify_class_name(mq_id(ClassName0, Arity), mq_id(ClassName, _),
         !Info, !Specs),
@@ -1555,9 +1589,9 @@ qualify_class_interface([M0 | M0s], [M | Ms], !Info, !Specs) :-
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+qualify_class_method(Method0, Method, !Info, !Specs) :-
     % There is no need to qualify the method name, since that is
     % done when the item is parsed.
-qualify_class_method(Method0, Method, !Info, !Specs) :-
     (
         Method0 = method_pred_or_func(TypeVarset, InstVarset, ExistQVars,
             PredOrFunc, Name, TypesAndModes0, WithType0, WithInst0, MaybeDet,
@@ -1578,8 +1612,8 @@ qualify_class_method(Method0, Method, !Info, !Specs) :-
             WithInst, MaybeDet, Cond, Context)
     ).
 
-:- pred qualify_instance_body(sym_name::in, instance_body::in,
-    instance_body::out) is det.
+:- pred qualify_instance_body(sym_name::in,
+    instance_body::in, instance_body::out) is det.
 
 qualify_instance_body(ClassName, InstanceBody0, InstanceBody) :-
     (

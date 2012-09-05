@@ -179,56 +179,82 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
         (
             PragmaName = "inline",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_inline(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_inline(PredNameArity)
+            )
         ;
             PragmaName = "no_inline",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_no_inline(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_no_inline(PredNameArity)
+            )
         ;
             PragmaName = "obsolete",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_obsolete(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_obsolete(PredNameArity)
+            )
         ;
             PragmaName = "no_determinism_warning",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_no_detism_warning(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_no_detism_warning(PredNameArity)
+            )
         ;
             PragmaName = "promise_equivalent_clauses",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_promise_equivalent_clauses(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_promise_eqv_clauses(PredNameArity)
+            )
         ;
             PragmaName = "promise_pure",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_promise_pure(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_promise_pure(PredNameArity)
+            )
         ;
             PragmaName = "promise_semipure",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_promise_semipure(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_promise_semipure(PredNameArity)
+            )
         ;
             PragmaName = "terminates",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_terminates(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_terminates(PredNameArity)
+            )
         ;
             PragmaName = "does_not_terminate",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_does_not_terminate(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_does_not_terminate(PredNameArity)
+            )
         ;
             PragmaName = "check_termination",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_check_termination(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_check_termination(PredNameArity)
+            )
         ;
             PragmaName = "mode_check_clauses",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                Pragma = pragma_mode_check_clauses(Name, Arity))
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_mode_check_clauses(PredNameArity)
+            )
         ),
-        parse_simple_pragma(ModuleName, PragmaName, MakePragma,
-            PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem)
+        parse_name_arity_pragma(ModuleName, PragmaName,
+            "predicate or function", MakePragma, PragmaTerms, ErrorTerm,
+            VarSet, Context, SeqNum, MaybeItem)
     ;
         PragmaName = "reserve_tag",
         MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-            Pragma = pragma_reserve_tag(Name, Arity)),
-        parse_simple_type_pragma(ModuleName, PragmaName, MakePragma,
-            PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem)
+            TypeCtor = type_ctor(Name, Arity),
+            Pragma = pragma_reserve_tag(TypeCtor)
+        ),
+        parse_name_arity_pragma(ModuleName, PragmaName,
+            "type", MakePragma, PragmaTerms, ErrorTerm,
+            VarSet, Context, SeqNum, MaybeItem)
     ;
         (
             PragmaName = "memo",
@@ -305,7 +331,8 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
 parse_pragma_source_file(PragmaTerms, ErrorTerm, Context, SeqNum, MaybeItem) :-
     ( PragmaTerms = [SourceFileTerm] ->
         ( SourceFileTerm = term.functor(term.string(SourceFile), [], _) ->
-            Pragma = pragma_source_file(SourceFile),
+            PSFInfo = pragma_info_source_file(SourceFile),
+            Pragma = pragma_source_file(PSFInfo),
             ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeItem = ok1(Item)
@@ -443,11 +470,12 @@ parse_pragma_foreign_export_enum(PragmaTerms, ErrorTerm, VarSet, Context,
                         MaybeOverridesTerm, MaybeOverrides),
                     (
                         MaybeOverrides = ok1(Overrides),
-                        PragmaExportEnum = pragma_foreign_export_enum(
+                        FEEInfo = pragma_info_foreign_export_enum(
                             ForeignLanguage, Name, Arity, Attributes,
                             Overrides
                         ),
-                        ItemPragma = item_pragma_info(user, PragmaExportEnum,
+                        Pragma = pragma_foreign_export_enum(FEEInfo),
+                        ItemPragma = item_pragma_info(user, Pragma,
                             Context, SeqNum),
                         Item = item_pragma(ItemPragma),
                         MaybeItem = ok1(Item)
@@ -655,10 +683,11 @@ parse_pragma_foreign_enum(PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
                     UnrecognizedPieces, MaybeValues),
                 (
                     MaybeValues = ok1(Values),
-                    PragmaForeignImportEnum = pragma_foreign_enum(
-                        ForeignLanguage, TypeName, TypeArity, Values),
-                    ItemPragma = item_pragma_info(user,
-                        PragmaForeignImportEnum, Context, SeqNum),
+                    FEInfo = pragma_info_foreign_enum(ForeignLanguage,
+                        TypeName, TypeArity, Values),
+                    Pragma = pragma_foreign_enum(FEInfo),
+                    ItemPragma = item_pragma_info(user, Pragma, Context,
+                        SeqNum),
                     Item = item_pragma(ItemPragma),
                     MaybeItem = ok1(Item)
                 ;
@@ -705,8 +734,11 @@ parse_pragma_foreign_export(PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
             (
                 MaybePredAndModes = ok2(PredName - PredOrFunc, Modes),
                 ( parse_foreign_language(LangTerm, ForeignLanguage) ->
-                    Pragma = pragma_foreign_export(ForeignLanguage, PredName,
-                        PredOrFunc, Modes, Function),
+                    PredNameModesPF = pred_name_modes_pf(PredName, Modes,
+                        PredOrFunc),
+                    FEInfo = pragma_info_foreign_export(ForeignLanguage,
+                        PredNameModesPF, Function),
+                    Pragma = pragma_foreign_export(FEInfo),
                     ItemPragma = item_pragma_info(user, Pragma, Context,
                         SeqNum),
                     Item = item_pragma(ItemPragma),
@@ -755,7 +787,8 @@ parse_pragma_foreign_import_module(PragmaTerms, ErrorTerm, Context, SeqNum,
         try_parse_sym_name_and_no_args(ImportTerm, Import)
     ->
         ( parse_foreign_language(LangTerm, Language) ->
-            Pragma = pragma_foreign_import_module(Language, Import),
+            FIMInfo = pragma_info_foreign_import_module(Language, Import),
+            Pragma = pragma_foreign_import_module(FIMInfo),
             ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeItem = ok1(Item)
@@ -795,8 +828,11 @@ parse_pragma_unused_args(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
         convert_int_list(VarSet, UnusedArgsTerm, MaybeUnusedArgs),
         MaybeUnusedArgs = ok1(UnusedArgs)
     ->
-        Pragma = pragma_unused_args(PredOrFunc, PredName, Arity, ModeNum,
+        PredNameArityPFMn = pred_name_arity_pf_mn(PredName, Arity, PredOrFunc,
+            ModeNum),
+        UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn,
             UnusedArgs),
+        Pragma = pragma_unused_args(UnusedArgsInfo),
         ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeItem = ok1(Item)
@@ -854,8 +890,10 @@ parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
                         UnqualName, newpred_type_subst(TVarSet, TypeSubn),
                         SpecializedName)
                 ),
-                Pragma = pragma_type_spec(PredName, SpecializedName, Arity,
-                    MaybePredOrFunc, MaybeModes, TypeSubn, TVarSet, set.init),
+                TypeSpecInfo = pragma_info_type_spec(PredName, SpecializedName,
+                    Arity, MaybePredOrFunc, MaybeModes, TypeSubn, TVarSet,
+                    set.init),
+                Pragma = pragma_type_spec(TypeSpecInfo),
                 ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
                 MaybeItem = ok1(Item)
@@ -890,7 +928,10 @@ parse_pragma_fact_table(ModuleName, PragmaTerms, ErrorTerm,
         (
             MaybeNameAndArity = ok2(PredName, Arity),
             ( FileNameTerm = term.functor(term.string(FileName), [], _) ->
-                Pragma = pragma_fact_table(PredName, Arity, FileName),
+                PredNameArity = pred_name_arity(PredName, Arity),
+                FactTableInfo = pragma_info_fact_table(PredNameArity,
+                    FileName),
+                Pragma = pragma_fact_table(FactTableInfo),
                 ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
                 MaybeItem = ok1(Item)
@@ -955,8 +996,10 @@ parse_pragma_termination_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             MaybeTerminationInfo = yes(cannot_loop(unit))
         )
     ->
-        Pragma = pragma_termination_info(PredOrFunc, PredName, ModeList,
+        PredNameModesPF = pred_name_modes_pf(PredName, ModeList, PredOrFunc),
+        TermInfo = pragma_info_termination_info(PredNameModesPF,
             MaybeArgSizeInfo, MaybeTerminationInfo),
+        Pragma = pragma_termination_info(TermInfo),
         ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeItem = ok1(Item)
@@ -997,8 +1040,10 @@ parse_pragma_termination2_info(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             MaybeTerminationInfo = yes(cannot_loop(unit))
         )
     ->
-        Pragma = pragma_termination2_info(PredOrFunc, PredName, ModeList,
+        PredNameModesPF = pred_name_modes_pf(PredName, ModeList, PredOrFunc),
+        Term2Info = pragma_info_termination2_info(PredNameModesPF,
             SuccessArgSizeInfo, FailureArgSizeInfo, MaybeTerminationInfo),
+        Pragma = pragma_termination2_info(Term2Info),
         ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeItem = ok1(Item)
@@ -1047,8 +1092,10 @@ parse_pragma_structure_sharing(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             MaybeSharingAs = yes(parse_structure_sharing_domain(SharingAsTerm))
         )
     ->
-        Pragma = pragma_structure_sharing(PredOrFunc, PredName, ModeList,
+        PredNameModesPF = pred_name_modes_pf(PredName, ModeList, PredOrFunc),
+        SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
             HeadVars, Types, MaybeSharingAs),
+        Pragma = pragma_structure_sharing(SharingInfo),
         ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeItem = ok1(Item)
@@ -1097,8 +1144,10 @@ parse_pragma_structure_reuse(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             MaybeStructureReuse = yes(StructureReuse)
         )
     ->
-        Pragma = pragma_structure_reuse(PredOrFunc, PredName, ModeList,
+        PredNameModesPF = pred_name_modes_pf(PredName, ModeList, PredOrFunc),
+        ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
             HeadVars, Types, MaybeStructureReuse),
+        Pragma = pragma_structure_reuse(ReuseInfo),
         ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeItem = ok1(Item)
@@ -1148,8 +1197,11 @@ parse_pragma_exceptions(ModuleName, PragmaTerms, ErrorTerm, Context,
             ThrowStatus = throw_conditional
         )
     ->
-        Pragma = pragma_exceptions(PredOrFunc, PredName, Arity, ModeNum,
+        PredNameArityPFMn = pred_name_arity_pf_mn(PredName, Arity, PredOrFunc,
+            ModeNum),
+        ExceptionsInfo = pragma_info_exceptions(PredNameArityPFMn,
             ThrowStatus),
+        Pragma = pragma_exceptions(ExceptionsInfo),
         ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeItem = ok1(Item)
@@ -1187,8 +1239,11 @@ parse_pragma_trailing_info(ModuleName, PragmaTerms, ErrorTerm, Context,
             TrailingStatus = trail_conditional
         )
     ->
-        Pragma = pragma_trailing_info(PredOrFunc, PredName, Arity, ModeNum,
+        PredNameArityPFMn = pred_name_arity_pf_mn(PredName, Arity, PredOrFunc,
+            ModeNum),
+        TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn,
             TrailingStatus),
+        Pragma = pragma_trailing_info(TrailingInfo),
         ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeItem = ok1(Item)
@@ -1226,8 +1281,11 @@ parse_pragma_mm_tabling_info(ModuleName, PragmaTerms, ErrorTerm,
             MM_TablingStatus = mm_tabled_conditional
         )
     ->
-        Pragma = pragma_mm_tabling_info(PredOrFunc, PredName, Arity, ModeNum,
+        PredNameArityPFMn = pred_name_arity_pf_mn(PredName, Arity, PredOrFunc,
+            ModeNum),
+        TablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
             MM_TablingStatus),
+        Pragma = pragma_mm_tabling_info(TablingInfo),
         ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeItem = ok1(Item)
@@ -1274,7 +1332,8 @@ parse_pragma_require_feature_set(PragmaTerms, VarSet, ErrorTerm, Context,
                 ;
                     FeatureList = [_ | _],
                     FeatureSet = set.from_list(FeatureList),
-                    Pragma = pragma_require_feature_set(FeatureSet),
+                    RFSInfo = pragma_info_require_feature_set(FeatureSet),
+                    Pragma = pragma_require_feature_set(RFSInfo),
                     ItemPragma = item_pragma_info(user, Pragma, Context,
                         SeqNum),
                     Item = item_pragma(ItemPragma)
@@ -1520,8 +1579,9 @@ parse_pragma_foreign_decl_pragma(_ModuleName, PragmaName, PragmaTerms,
     ->
         ( parse_foreign_language(LangTerm, ForeignLanguage) ->
             ( HeaderTerm = term.functor(term.string(HeaderCode), [], _) ->
-                Pragma = pragma_foreign_decl(ForeignLanguage, IsLocal,
+                FDInfo = pragma_info_foreign_decl(ForeignLanguage, IsLocal,
                     HeaderCode),
+                Pragma = pragma_foreign_decl(FDInfo),
                 ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
                 MaybeItem = ok1(Item)
@@ -1591,7 +1651,8 @@ parse_pragma_foreign_code_pragma(_ModuleName, PragmaName, PragmaTerms,
         Specs = LangSpecs ++ CodeSpecs,
         (
             Specs = [],
-            Pragma = pragma_foreign_code(ForeignLanguage, Code),
+            FCInfo = pragma_info_foreign_code(ForeignLanguage, Code),
+            Pragma = pragma_foreign_code(FCInfo),
             ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeItem = ok1(Item)
@@ -1732,39 +1793,14 @@ parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet, SecondTerm,
         MaybeItem = error1(Specs)
     ).
 
-    % This parses a pragma that refers to a predicate or function.
-    %
-:- pred parse_simple_pragma(module_name::in, string::in,
-    pred(sym_name, int, pragma_type)::(pred(in, in, out) is det),
-    list(term)::in, term::in, varset::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
-
-parse_simple_pragma(ModuleName, PragmaName, MakePragma, PragmaTerms, ErrorTerm,
-        VarSet, Context, SeqNum, MaybeItem) :-
-    parse_simple_pragma_base(ModuleName, PragmaName, "predicate or function",
-        MakePragma, PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
-        MaybeItem).
-
-    % This parses a pragma that refers to type.
-    %
-:- pred parse_simple_type_pragma(module_name::in, string::in,
-    pred(sym_name, int, pragma_type)::(pred(in, in, out) is det),
-    list(term)::in, term::in, varset::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
-
-parse_simple_type_pragma(ModuleName, PragmaName, MakePragma,
-        PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem) :-
-    parse_simple_pragma_base(ModuleName, PragmaName, "type", MakePragma,
-        PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem).
-
     % This parses a pragma that refers to symbol name / arity.
     %
-:- pred parse_simple_pragma_base(module_name::in, string::in, string::in,
+:- pred parse_name_arity_pragma(module_name::in, string::in, string::in,
     pred(sym_name, int, pragma_type)::(pred(in, in, out) is det),
     list(term)::in, term::in, varset::in, prog_context::in, int::in,
     maybe1(item)::out) is det.
 
-parse_simple_pragma_base(ModuleName, PragmaName, NameKind, MakePragma,
+parse_name_arity_pragma(ModuleName, PragmaName, NameKind, MakePragma,
         PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem) :-
     ( PragmaTerms = [PredAndArityTerm] ->
         parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
@@ -2254,8 +2290,9 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
             MaybePragmaVars = ok1(PragmaVars),
             varset.coerce(VarSet, ProgVarSet),
             varset.coerce(VarSet, InstVarSet),
-            Pragma = pragma_foreign_proc(Flags, PredName, PredOrFunc,
+            FPInfo = pragma_info_foreign_proc(Flags, PredName, PredOrFunc,
                 PragmaVars, ProgVarSet, InstVarSet, PragmaImpl),
+            Pragma = pragma_foreign_proc(FPInfo),
             ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeItem = ok1(Item)
@@ -2326,7 +2363,7 @@ parse_pragma_foreign_proc_varlist(VarSet, [HeadTerm | TailTerm],
     list(term)::in, term::in, varset::in, prog_context::in, int::in,
     maybe1(item)::out) is det.
 
-parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
+parse_tabling_pragma(ModuleName, PragmaName, EvalMethod, PragmaTerms,
         ErrorTerm, VarSet, Context, SeqNum, MaybeItem) :-
     (
         (
@@ -2347,8 +2384,11 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                 MaybeModes),
             (
                 MaybeAttrs = no,
-                Pragma = pragma_tabled(TablingType, PredName, Arity,
-                    MaybePredOrFunc, MaybeModes, no),
+                PredNameArityMPF = pred_name_arity_mpf(PredName,
+                    Arity, MaybePredOrFunc),
+                TabledInfo = pragma_info_tabled(EvalMethod,
+                    PredNameArityMPF, MaybeModes, no),
+                Pragma = pragma_tabled(TabledInfo),
                 ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
                 MaybeItem = ok1(Item)
@@ -2358,7 +2398,7 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                     [words("Error: expected tabling attribute."), nl],
                 convert_maybe_list("tabling attributes", yes(VarSet),
                     AttrsListTerm,
-                    parse_tabling_attribute(VarSet, TablingType),
+                    parse_tabling_attribute(VarSet, EvalMethod),
                     UnrecognizedPieces, MaybeAttributeList),
                 (
                     MaybeAttributeList = ok1(AttributeList),
@@ -2366,9 +2406,11 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                         default_memo_table_attributes, MaybeAttributes),
                     (
                         MaybeAttributes = ok1(Attributes),
-                        Pragma = pragma_tabled(TablingType, PredName,
-                            Arity, MaybePredOrFunc, MaybeModes,
-                            yes(Attributes)),
+                        PredNameArityMPF = pred_name_arity_mpf(PredName,
+                            Arity, MaybePredOrFunc),
+                        TabledInfo = pragma_info_tabled(EvalMethod,
+                            PredNameArityMPF, MaybeModes, yes(Attributes)),
+                        Pragma = pragma_tabled(TabledInfo),
                         ItemPragma = item_pragma_info(user, Pragma, Context,
                             SeqNum),
                         Item = item_pragma(ItemPragma),

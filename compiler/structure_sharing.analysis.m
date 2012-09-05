@@ -80,6 +80,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.ctgc.selector.
@@ -985,9 +986,11 @@ write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
         (
             MaybeSharingStatus = yes(
                 structure_sharing_domain_and_status(Sharing, _Status)),
-            write_pragma_structure_sharing_info(PredOrFunc, SymName, Modes,
-                Context, HeadVars, yes(VarSet), HeadVarTypes, yes(TypeVarSet),
-                yes(Sharing), !IO)
+            PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
+            SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
+                HeadVars, HeadVarTypes, yes(Sharing)),
+            write_pragma_structure_sharing_info(SharingInfo,
+                yes(VarSet), yes(TypeVarSet), Context, !IO)
         ;
             MaybeSharingStatus = no
         )

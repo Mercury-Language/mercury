@@ -378,6 +378,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.write_deps_file.
+:- import_module recompilation.
 :- import_module recompilation.version.
 
 :- import_module char.
@@ -1479,7 +1480,8 @@ foreign_enum_is_local(TypeDefnMap, Item) :-
     (
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, _, _),
-        Pragma = pragma_foreign_enum(_Lang, TypeName, TypeArity, _Values)
+        Pragma = pragma_foreign_enum(FEInfo),
+        FEInfo = pragma_info_foreign_enum(_Lang, TypeName, TypeArity, _Values)
     ->
         % We only add a pragma foreign_enum pragma to the interface file
         % if it corresponds to a type _definition_ in the interface of the
@@ -1662,23 +1664,23 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
     % only, and should go in the implementation.
 
     (
-        ( Pragma = pragma_foreign_code(_, _)
-        ; Pragma = pragma_foreign_decl(_, _, _)
-        ; Pragma = pragma_foreign_export(_, _, _, _, _)
-        ; Pragma = pragma_foreign_export_enum(_, _, _, _, _)
-        ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
-        ; Pragma = pragma_inline(_, _)
-        ; Pragma = pragma_no_detism_warning(_, _)
-        ; Pragma = pragma_no_inline(_, _)
-        ; Pragma = pragma_fact_table(_, _, _)
-        ; Pragma = pragma_tabled(_, _, _, _, _, _)
-        ; Pragma = pragma_promise_pure(_, _)
-        ; Pragma = pragma_promise_semipure(_, _)
-        ; Pragma = pragma_promise_equivalent_clauses(_, _)
-        ; Pragma = pragma_unused_args(_, _, _, _, _)
-        ; Pragma = pragma_exceptions(_, _, _, _, _)
-        ; Pragma = pragma_trailing_info(_, _, _, _, _)
-        ; Pragma = pragma_mm_tabling_info(_, _, _, _, _)
+        ( Pragma = pragma_foreign_code(_)
+        ; Pragma = pragma_foreign_decl(_)
+        ; Pragma = pragma_foreign_export(_)
+        ; Pragma = pragma_foreign_export_enum(_)
+        ; Pragma = pragma_foreign_proc(_)
+        ; Pragma = pragma_inline(_)
+        ; Pragma = pragma_no_detism_warning(_)
+        ; Pragma = pragma_no_inline(_)
+        ; Pragma = pragma_fact_table(_)
+        ; Pragma = pragma_tabled(_)
+        ; Pragma = pragma_promise_pure(_)
+        ; Pragma = pragma_promise_semipure(_)
+        ; Pragma = pragma_promise_eqv_clauses(_)
+        ; Pragma = pragma_unused_args(_)
+        ; Pragma = pragma_exceptions(_)
+        ; Pragma = pragma_trailing_info(_)
+        ; Pragma = pragma_mm_tabling_info(_)
         ; Pragma = pragma_require_feature_set(_)
         ),
         Allowed = no
@@ -1687,20 +1689,20 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         % and that `reserve_tag' and `direct_arg' must be in the interface iff
         % the corresponding type definition is in the interface. This is
         % checked in make_hlds.
-        ( Pragma = pragma_foreign_enum(_, _, _, _)
-        ; Pragma = pragma_foreign_import_module(_, _)
-        ; Pragma = pragma_obsolete(_, _)
+        ( Pragma = pragma_foreign_enum(_)
+        ; Pragma = pragma_foreign_import_module(_)
+        ; Pragma = pragma_obsolete(_)
         ; Pragma = pragma_source_file(_)
-        ; Pragma = pragma_reserve_tag(_, _)
-        ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _)
-        ; Pragma = pragma_termination_info(_, _, _, _, _)
-        ; Pragma = pragma_termination2_info(_,_, _, _, _, _)
-        ; Pragma = pragma_terminates(_, _)
-        ; Pragma = pragma_does_not_terminate(_, _)
-        ; Pragma = pragma_check_termination(_, _)
-        ; Pragma = pragma_structure_sharing(_, _, _, _, _, _)
-        ; Pragma = pragma_structure_reuse(_, _, _, _, _, _)
-        ; Pragma = pragma_mode_check_clauses(_, _)
+        ; Pragma = pragma_reserve_tag(_)
+        ; Pragma = pragma_type_spec(_)
+        ; Pragma = pragma_termination_info(_)
+        ; Pragma = pragma_termination2_info(_)
+        ; Pragma = pragma_terminates(_)
+        ; Pragma = pragma_does_not_terminate(_)
+        ; Pragma = pragma_check_termination(_)
+        ; Pragma = pragma_structure_sharing(_)
+        ; Pragma = pragma_structure_reuse(_)
+        ; Pragma = pragma_mode_check_clauses(_)
         ),
         Allowed = yes
     ).
@@ -3628,7 +3630,8 @@ maybe_add_foreign_import_module(ModuleName, Items0, Items) :-
 
 make_foreign_import(ModuleName, Lang) = Item :-
     Origin = compiler(foreign_imports),
-    Pragma = pragma_foreign_import_module(Lang, ModuleName),
+    Info = pragma_info_foreign_import_module(Lang, ModuleName),
+    Pragma = pragma_foreign_import_module(Info),
     ItemPragma = item_pragma_info(Origin, Pragma, term.context_init, -1),
     Item = item_pragma(ItemPragma).
 
@@ -3780,7 +3783,7 @@ include_in_short_interface(Item) = Include :-
         % XXX This if-then-else should be a switch, or (even better)
         % we should take pragma_foreign_import_modules out of the pragma items
         % and given them their own item type.
-        ( Pragma = pragma_foreign_import_module(_, _) ->
+        ( Pragma = pragma_foreign_import_module(_) ->
             Include = yes
         ;
             Include = no
@@ -3856,42 +3859,51 @@ item_needs_foreign_imports(Item) = Langs :-
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, _, _),
         (
-            ( Pragma = pragma_foreign_decl(Lang, _, _)
-            ; Pragma = pragma_foreign_code(Lang, _)
-            ; Pragma = pragma_foreign_enum(Lang, _, _, _)
-            ; Pragma = pragma_foreign_export(Lang, _, _, _, _)
+            (
+                Pragma = pragma_foreign_decl(FDInfo),
+                FDInfo = pragma_info_foreign_decl(Lang, _, _)
+            ;
+                Pragma = pragma_foreign_code(FCInfo),
+                FCInfo = pragma_info_foreign_code(Lang, _)
+            ;
+                Pragma = pragma_foreign_enum(FEInfo),
+                FEInfo = pragma_info_foreign_enum(Lang, _, _, _)
+            ;
+                Pragma = pragma_foreign_export(FEInfo),
+                FEInfo = pragma_info_foreign_export(Lang, _, _)
             ),
             Langs = [Lang]
         ;
-            Pragma = pragma_foreign_proc(Attrs, _, _, _, _, _, _),
+            Pragma = pragma_foreign_proc(FPInfo),
+            FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
             Langs = [get_foreign_language(Attrs)]
         ;
-            ( Pragma = pragma_foreign_import_module(_, _)
-            ; Pragma = pragma_foreign_export_enum(_, _, _, _, _)
-            ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _)
-            ; Pragma = pragma_inline(_, _)
-            ; Pragma = pragma_no_inline(_, _)
-            ; Pragma = pragma_unused_args(_, _, _, _, _)
-            ; Pragma = pragma_exceptions(_, _, _, _, _)
-            ; Pragma = pragma_trailing_info(_, _, _, _, _)
-            ; Pragma = pragma_mm_tabling_info(_, _, _, _, _)
-            ; Pragma = pragma_obsolete(_, _)
-            ; Pragma = pragma_no_detism_warning(_, _)
+            ( Pragma = pragma_foreign_import_module(_)
+            ; Pragma = pragma_foreign_export_enum(_)
+            ; Pragma = pragma_type_spec(_)
+            ; Pragma = pragma_inline(_)
+            ; Pragma = pragma_no_inline(_)
+            ; Pragma = pragma_unused_args(_)
+            ; Pragma = pragma_exceptions(_)
+            ; Pragma = pragma_trailing_info(_)
+            ; Pragma = pragma_mm_tabling_info(_)
+            ; Pragma = pragma_obsolete(_)
+            ; Pragma = pragma_no_detism_warning(_)
             ; Pragma = pragma_source_file(_)
-            ; Pragma = pragma_tabled(_, _, _, _, _, _)
-            ; Pragma = pragma_fact_table(_, _, _)
-            ; Pragma = pragma_reserve_tag(_, _)
-            ; Pragma = pragma_promise_equivalent_clauses(_, _)
-            ; Pragma = pragma_promise_pure(_, _)
-            ; Pragma = pragma_promise_semipure(_, _)
-            ; Pragma = pragma_termination_info(_, _, _, _, _)
-            ; Pragma = pragma_termination2_info(_, _, _, _, _, _)
-            ; Pragma = pragma_terminates(_, _)
-            ; Pragma = pragma_does_not_terminate(_, _)
-            ; Pragma = pragma_check_termination(_, _)
-            ; Pragma = pragma_mode_check_clauses(_, _)
-            ; Pragma = pragma_structure_sharing(_, _, _, _, _, _)
-            ; Pragma = pragma_structure_reuse(_, _, _, _, _, _)
+            ; Pragma = pragma_tabled(_)
+            ; Pragma = pragma_fact_table(_)
+            ; Pragma = pragma_reserve_tag(_)
+            ; Pragma = pragma_promise_eqv_clauses(_)
+            ; Pragma = pragma_promise_pure(_)
+            ; Pragma = pragma_promise_semipure(_)
+            ; Pragma = pragma_termination_info(_)
+            ; Pragma = pragma_termination2_info(_)
+            ; Pragma = pragma_terminates(_)
+            ; Pragma = pragma_does_not_terminate(_)
+            ; Pragma = pragma_check_termination(_)
+            ; Pragma = pragma_mode_check_clauses(_)
+            ; Pragma = pragma_structure_sharing(_)
+            ; Pragma = pragma_structure_reuse(_)
             ; Pragma = pragma_require_feature_set(_)
             ),
             Langs = []
@@ -3954,42 +3966,42 @@ include_in_int_file_implementation(Item) = Include :-
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, _, _),
         (
-            ( Pragma = pragma_foreign_import_module(_, _)
-            ; Pragma = pragma_foreign_enum(_, _, _, _)
+            ( Pragma = pragma_foreign_import_module(_)
+            ; Pragma = pragma_foreign_enum(_)
             ),
             Include = yes
         ;
             % XXX I am not sure about the proper value of Include
             % for some of these. -zs
-            ( Pragma = pragma_foreign_decl(_, _, _)
-            ; Pragma = pragma_foreign_code(_, _)
-            ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
-            ; Pragma = pragma_foreign_export(_, _, _, _, _)
-            ; Pragma = pragma_foreign_export_enum(_, _, _, _, _)
-            ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _)
-            ; Pragma = pragma_inline(_, _)
-            ; Pragma = pragma_no_inline(_, _)
-            ; Pragma = pragma_unused_args(_, _, _, _, _)
-            ; Pragma = pragma_exceptions(_, _, _, _, _)
-            ; Pragma = pragma_trailing_info(_, _, _, _, _)
-            ; Pragma = pragma_mm_tabling_info(_, _, _, _, _)
-            ; Pragma = pragma_obsolete(_, _)
-            ; Pragma = pragma_no_detism_warning(_, _)
+            ( Pragma = pragma_foreign_decl(_)
+            ; Pragma = pragma_foreign_code(_)
+            ; Pragma = pragma_foreign_proc(_)
+            ; Pragma = pragma_foreign_export(_)
+            ; Pragma = pragma_foreign_export_enum(_)
+            ; Pragma = pragma_type_spec(_)
+            ; Pragma = pragma_inline(_)
+            ; Pragma = pragma_no_inline(_)
+            ; Pragma = pragma_unused_args(_)
+            ; Pragma = pragma_exceptions(_)
+            ; Pragma = pragma_trailing_info(_)
+            ; Pragma = pragma_mm_tabling_info(_)
+            ; Pragma = pragma_obsolete(_)
+            ; Pragma = pragma_no_detism_warning(_)
             ; Pragma = pragma_source_file(_)
-            ; Pragma = pragma_tabled(_, _, _, _, _, _)
-            ; Pragma = pragma_fact_table(_, _, _)
-            ; Pragma = pragma_reserve_tag(_, _)
-            ; Pragma = pragma_promise_equivalent_clauses(_, _)
-            ; Pragma = pragma_promise_pure(_, _)
-            ; Pragma = pragma_promise_semipure(_, _)
-            ; Pragma = pragma_termination_info(_, _, _, _, _)
-            ; Pragma = pragma_termination2_info(_, _, _, _, _, _)
-            ; Pragma = pragma_terminates(_, _)
-            ; Pragma = pragma_does_not_terminate(_, _)
-            ; Pragma = pragma_check_termination(_, _)
-            ; Pragma = pragma_mode_check_clauses(_, _)
-            ; Pragma = pragma_structure_sharing(_, _, _, _, _, _)
-            ; Pragma = pragma_structure_reuse(_, _, _, _, _, _)
+            ; Pragma = pragma_tabled(_)
+            ; Pragma = pragma_fact_table(_)
+            ; Pragma = pragma_reserve_tag(_)
+            ; Pragma = pragma_promise_eqv_clauses(_)
+            ; Pragma = pragma_promise_pure(_)
+            ; Pragma = pragma_promise_semipure(_)
+            ; Pragma = pragma_termination_info(_)
+            ; Pragma = pragma_termination2_info(_)
+            ; Pragma = pragma_terminates(_)
+            ; Pragma = pragma_does_not_terminate(_)
+            ; Pragma = pragma_check_termination(_)
+            ; Pragma = pragma_mode_check_clauses(_)
+            ; Pragma = pragma_structure_sharing(_)
+            ; Pragma = pragma_structure_reuse(_)
             ; Pragma = pragma_require_feature_set(_)
             ),
             Include = no
@@ -4154,7 +4166,7 @@ maybe_strip_import_decls(!Items) :-
                 \+ (
                     ThisItem = item_pragma(ThisItemPragma),
                     ThisItemPragma = item_pragma_info(_, Pragma, _, _),
-                    Pragma = pragma_foreign_import_module(_, _)
+                    Pragma = pragma_foreign_import_module(_)
                 )
             ),
         list.filter(NotPragmaForeignImport, !Items)
@@ -4386,41 +4398,41 @@ reorderable_module_defn(ModuleDefn) = Reorderable :-
 
 reorderable_pragma_type(Pragma) = Reorderable :-
     (
-        ( Pragma = pragma_check_termination(_, _)
-        ; Pragma = pragma_does_not_terminate(_, _)
-        ; Pragma = pragma_exceptions(_, _, _, _, _)
-        ; Pragma = pragma_trailing_info(_, _, _, _, _)
-        ; Pragma = pragma_mm_tabling_info(_, _, _, _, _)
-        ; Pragma = pragma_foreign_export(_, _, _, _, _)
-        ; Pragma = pragma_foreign_export_enum(_, _, _, _, _)
-        ; Pragma = pragma_foreign_enum(_, _, _, _)
-        ; Pragma = pragma_inline(_, _)
-        ; Pragma = pragma_mode_check_clauses(_, _)
-        ; Pragma = pragma_no_inline(_, _)
-        ; Pragma = pragma_obsolete(_, _)
-        ; Pragma = pragma_no_detism_warning(_, _)
-        ; Pragma = pragma_promise_pure(_, _)
-        ; Pragma = pragma_promise_semipure(_, _)
-        ; Pragma = pragma_promise_equivalent_clauses(_, _)
-        ; Pragma = pragma_reserve_tag(_, _)
-        ; Pragma = pragma_tabled(_, _, _, _, _, _)
-        ; Pragma = pragma_terminates(_, _)
-        ; Pragma = pragma_termination_info(_, _, _, _, _)
-        ; Pragma = pragma_structure_sharing(_, _, _, _, _, _)
-        ; Pragma = pragma_structure_reuse(_, _, _, _, _, _)
-        ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _)
-        ; Pragma = pragma_unused_args(_, _, _, _, _)
+        ( Pragma = pragma_check_termination( _)
+        ; Pragma = pragma_does_not_terminate( _)
+        ; Pragma = pragma_exceptions(_)
+        ; Pragma = pragma_trailing_info(_)
+        ; Pragma = pragma_mm_tabling_info(_)
+        ; Pragma = pragma_foreign_export(_)
+        ; Pragma = pragma_foreign_export_enum(_)
+        ; Pragma = pragma_foreign_enum(_)
+        ; Pragma = pragma_inline(_)
+        ; Pragma = pragma_mode_check_clauses(_)
+        ; Pragma = pragma_no_inline(_)
+        ; Pragma = pragma_obsolete(_)
+        ; Pragma = pragma_no_detism_warning(_)
+        ; Pragma = pragma_promise_pure(_)
+        ; Pragma = pragma_promise_semipure(_)
+        ; Pragma = pragma_promise_eqv_clauses(_)
+        ; Pragma = pragma_reserve_tag(_)
+        ; Pragma = pragma_tabled(_)
+        ; Pragma = pragma_terminates(_)
+        ; Pragma = pragma_termination_info(_)
+        ; Pragma = pragma_structure_sharing(_)
+        ; Pragma = pragma_structure_reuse(_)
+        ; Pragma = pragma_type_spec(_)
+        ; Pragma = pragma_unused_args(_)
         ; Pragma = pragma_require_feature_set(_)
         ),
         Reorderable = yes
     ;
-        ( Pragma = pragma_foreign_code(_, _)
-        ; Pragma = pragma_foreign_decl(_, _, _)
-        ; Pragma = pragma_foreign_import_module(_, _)
-        ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
+        ( Pragma = pragma_foreign_code(_)
+        ; Pragma = pragma_foreign_decl(_)
+        ; Pragma = pragma_foreign_import_module(_)
+        ; Pragma = pragma_foreign_proc(_)
         ; Pragma = pragma_source_file(_)
-        ; Pragma = pragma_termination2_info(_, _, _, _, _, _)
-        ; Pragma = pragma_fact_table(_, _, _)
+        ; Pragma = pragma_termination2_info(_)
+        ; Pragma = pragma_fact_table(_)
         ),
         Reorderable = no
     ).
@@ -4501,41 +4513,41 @@ chunkable_module_defn(ModuleDefn) = Reorderable :-
 
 chunkable_pragma_type(Pragma) = Reorderable :-
     (
-        ( Pragma = pragma_check_termination(_, _)
-        ; Pragma = pragma_does_not_terminate(_, _)
-        ; Pragma = pragma_foreign_export(_, _, _, _, _)
-        ; Pragma = pragma_foreign_export_enum(_, _, _, _, _)
-        ; Pragma = pragma_foreign_enum(_, _, _, _)
-        ; Pragma = pragma_inline(_, _)
-        ; Pragma = pragma_mode_check_clauses(_, _)
-        ; Pragma = pragma_no_inline(_, _)
-        ; Pragma = pragma_obsolete(_, _)
-        ; Pragma = pragma_no_detism_warning(_, _)
-        ; Pragma = pragma_promise_pure(_, _)
-        ; Pragma = pragma_promise_semipure(_, _)
-        ; Pragma = pragma_promise_equivalent_clauses(_, _)
-        ; Pragma = pragma_reserve_tag(_, _)
-        ; Pragma = pragma_tabled(_, _, _, _, _, _)
-        ; Pragma = pragma_terminates(_, _)
-        ; Pragma = pragma_termination_info(_, _, _, _, _)
-        ; Pragma = pragma_structure_sharing(_, _, _, _, _, _)
-        ; Pragma = pragma_structure_reuse(_, _, _, _, _, _)
-        ; Pragma = pragma_trailing_info(_, _, _, _, _)
-        ; Pragma = pragma_mm_tabling_info(_, _, _, _, _)
-        ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _)
-        ; Pragma = pragma_unused_args(_, _, _, _, _)
+        ( Pragma = pragma_check_termination(_)
+        ; Pragma = pragma_does_not_terminate(_)
+        ; Pragma = pragma_foreign_export(_)
+        ; Pragma = pragma_foreign_export_enum(_)
+        ; Pragma = pragma_foreign_enum(_)
+        ; Pragma = pragma_inline(_)
+        ; Pragma = pragma_mode_check_clauses(_)
+        ; Pragma = pragma_no_inline(_)
+        ; Pragma = pragma_obsolete(_)
+        ; Pragma = pragma_no_detism_warning(_)
+        ; Pragma = pragma_promise_pure(_)
+        ; Pragma = pragma_promise_semipure(_)
+        ; Pragma = pragma_promise_eqv_clauses(_)
+        ; Pragma = pragma_reserve_tag(_)
+        ; Pragma = pragma_tabled(_)
+        ; Pragma = pragma_terminates(_)
+        ; Pragma = pragma_termination_info(_)
+        ; Pragma = pragma_structure_sharing(_)
+        ; Pragma = pragma_structure_reuse(_)
+        ; Pragma = pragma_trailing_info(_)
+        ; Pragma = pragma_mm_tabling_info(_)
+        ; Pragma = pragma_type_spec(_)
+        ; Pragma = pragma_unused_args(_)
         ; Pragma = pragma_require_feature_set(_)
         ),
         Reorderable = yes
     ;
-        ( Pragma = pragma_exceptions(_, _, _, _, _)
-        ; Pragma = pragma_fact_table(_, _, _)
-        ; Pragma = pragma_foreign_code(_, _)
-        ; Pragma = pragma_foreign_decl(_, _, _)
-        ; Pragma = pragma_foreign_import_module(_, _)
-        ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
+        ( Pragma = pragma_exceptions(_)
+        ; Pragma = pragma_fact_table(_)
+        ; Pragma = pragma_foreign_code(_)
+        ; Pragma = pragma_foreign_decl(_)
+        ; Pragma = pragma_foreign_import_module(_)
+        ; Pragma = pragma_foreign_proc(_)
         ; Pragma = pragma_source_file(_)
-        ; Pragma = pragma_termination2_info( _, _, _, _, _, _)
+        ; Pragma = pragma_termination2_info(_)
         ),
         Reorderable = no
     ).

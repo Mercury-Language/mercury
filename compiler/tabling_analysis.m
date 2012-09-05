@@ -97,6 +97,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.mmc_analysis.
 
@@ -855,8 +856,12 @@ write_pragma_mm_tabling_info_2(ModuleInfo, TablingInfo, PredId, PredInfo,
             map.search(TablingInfo, proc(PredId, ProcId), ProcTablingInfo),
             ProcTablingInfo = proc_mm_tabling_info(Status, _)
         ->
-            mercury_output_pragma_mm_tabling_info(PredOrFunc,
-                qualified(ModuleName, Name), Arity, ModeNum, Status, !IO)
+            PredSymName = qualified(ModuleName, Name),
+            PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, Arity,
+                PredOrFunc, ModeNum),
+            MMTablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
+                Status),
+            mercury_output_pragma_mm_tabling_info(MMTablingInfo, !IO)
         ;
             true
         )

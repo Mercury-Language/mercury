@@ -111,6 +111,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.selector.
@@ -833,9 +834,11 @@ write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
             proc_info_get_vartypes(ProcInfo, VarTypes),
             lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
             MaybeReuse = yes(Reuse),
-            write_pragma_structure_reuse_info(PredOrFunc, SymName, Modes,
-                Context, HeadVars, yes(VarSet), HeadVarTypes, yes(TypeVarSet),
-                MaybeReuse, !IO)
+            PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
+            ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
+                HeadVars, HeadVarTypes, MaybeReuse),
+            write_pragma_structure_reuse_info(ReuseInfo,
+                yes(VarSet), yes(TypeVarSet), Context, !IO)
         ;
             MaybeStructureReuseDomain = no
         )

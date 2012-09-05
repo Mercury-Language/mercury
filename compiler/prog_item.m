@@ -13,9 +13,9 @@
 % representing Mercury programs.
 %
 % This data structure specifies basically the same information as is
-% contained in the source code, but in a parse tree rather than a flat
-% file.  This module defines the parts of the parse tree that are *not*
-% needed by the various compiler backends; parts of the parse tree that
+% contained in the source code, but in a parse tree rather than a flat file.
+% This module defines the parts of the parse tree that are *not* needed
+% by the various compiler backends; parts of the parse tree that
 % are needed by the backends are contained in prog_data.m.
 %
 %-----------------------------------------------------------------------------%
@@ -58,7 +58,7 @@
             ).
 
     % Did an item originate in user code or was it added by the compiler as
-    % part of a source-to-source transformation, e.g.  the initialise
+    % part of a source-to-source transformation, e.g. the initialise
     % declarations.
     %
 :- type item_origin
@@ -342,7 +342,7 @@
     --->    method_pred_or_func(
                 % pred_or_func(...) here represents a `pred ...' or `func ...'
                 % declaration in a type class body, which declares
-                % a predicate or function method.  Such declarations
+                % a predicate or function method. Such declarations
                 % specify the type of the predicate or function,
                 % and may optionally also specify the mode and determinism.
 
@@ -365,7 +365,7 @@
 
     ;       method_pred_or_func_mode(
                 % pred_or_func_mode(...) here represents a `mode ...'
-                % declaration in a type class body.  Such a declaration
+                % declaration in a type class body. Such a declaration
                 % declares a mode for one of the type class methods.
 
                 inst_varset,        % inst variables
@@ -451,20 +451,61 @@
 
 :- type pragma_type
     % Foreign language interfacing pragmas.
+    --->    pragma_foreign_decl(pragma_info_foreign_decl)
+    ;       pragma_foreign_code(pragma_info_foreign_code)
+    ;       pragma_foreign_proc(pragma_info_foreign_proc)
+    ;       pragma_foreign_import_module(pragma_info_foreign_import_module)
+    ;       pragma_foreign_export(pragma_info_foreign_export)
+    ;       pragma_foreign_export_enum(pragma_info_foreign_export_enum)
+    ;       pragma_foreign_enum(pragma_info_foreign_enum)
+    ;       pragma_type_spec(pragma_info_type_spec)
+    ;       pragma_inline(pred_name_arity)
+    ;       pragma_no_inline(pred_name_arity)
+    ;       pragma_unused_args(pragma_info_unused_args)
+    ;       pragma_exceptions(pragma_info_exceptions)
+    ;       pragma_trailing_info(pragma_info_trailing_info)
+    ;       pragma_mm_tabling_info(pragma_info_mm_tabling_info)
+    ;       pragma_obsolete(pred_name_arity)
+    ;       pragma_no_detism_warning(pred_name_arity)
+    ;       pragma_source_file(pragma_info_source_file)
+    ;       pragma_tabled(pragma_info_tabled)
+    ;       pragma_fact_table(pragma_info_fact_table)
+    ;       pragma_reserve_tag(type_ctor)
+    ;       pragma_promise_eqv_clauses(pred_name_arity)
+    ;       pragma_promise_pure(pred_name_arity)
+    ;       pragma_promise_semipure(pred_name_arity)
+    ;       pragma_termination_info(pragma_info_termination_info)
+    ;       pragma_termination2_info(pragma_info_termination2_info)
+    ;       pragma_terminates(pred_name_arity)
+    ;       pragma_does_not_terminate(pred_name_arity)
+    ;       pragma_check_termination(pred_name_arity)
+    ;       pragma_mode_check_clauses(pred_name_arity)
+    ;       pragma_structure_sharing(pragma_info_structure_sharing)
+    ;       pragma_structure_reuse(pragma_info_structure_reuse)
+    ;       pragma_require_feature_set(pragma_info_require_feature_set).
 
-            % A foreign language declaration, such as C header code.
-    --->    pragma_foreign_decl(
+:- type pragma_info_foreign_decl
+    --->    pragma_info_foreign_decl(
+                % A foreign language declaration, such as C header code.
                 decl_lang               :: foreign_language,
                 decl_is_local           :: foreign_decl_is_local,
                 decl_decl               :: string
-            )
+            ).
 
-    ;       pragma_foreign_code(
+:- type pragma_info_foreign_code
+    --->    pragma_info_foreign_code(
                 code_lang               :: foreign_language,
                 code_code               :: string
-            )
+            ).
 
-    ;       pragma_foreign_proc(
+:- type pragma_info_foreign_proc
+    --->    pragma_info_foreign_proc(
+                % Set of foreign proc attributes, such as:
+                %   what language this code is in
+                %   whether or not the code may call Mercury,
+                %   whether or not the code is thread-safe
+                % PredName, Predicate or Function, Vars/Mode,
+                % VarNames, Foreign Code Implementation Info
                 proc_attrs              :: pragma_foreign_proc_attributes,
                 proc_name               :: sym_name,
                 proc_p_or_f             :: pred_or_func,
@@ -472,51 +513,51 @@
                 proc_varset             :: prog_varset,
                 proc_instvarset         :: inst_varset,
                 proc_impl               :: pragma_foreign_code_impl
-                % Set of foreign proc attributes, eg.:
-                %   what language this code is in
-                %   whether or not the code may call Mercury,
-                %   whether or not the code is thread-safe
-                % PredName, Predicate or Function, Vars/Mode,
-                % VarNames, Foreign Code Implementation Info
-            )
+            ).
 
-    ;       pragma_foreign_import_module(
-                imp_lang                :: foreign_language,
-                imp_module              :: module_name
+:- type pragma_info_foreign_import_module
+    --->    pragma_info_foreign_import_module(
                 % Equivalent to
                 % `:- pragma foreign_decl(Lang, "#include <module>.h").'
                 % except that the name of the header file is not
                 % hard-coded, and mmake can use the dependency information.
-            )
+                imp_lang                :: foreign_language,
+                imp_module              :: module_name
+            ).
 
-    ;       pragma_foreign_export(
-                exp_language            :: foreign_language,
-                exp_predname            :: sym_name,
-                exp_p_or_f              :: pred_or_func,
-                exp_modes               :: list(mer_mode),
-                exp_foreign_name        :: string
+:- type pragma_info_foreign_export
+    --->    pragma_info_foreign_export(
                 % Predname, Predicate/function, Modes, foreign function name.
-            )
-    
-    ;
-            pragma_foreign_export_enum(
+                exp_language            :: foreign_language,
+                exp_pred_id             :: pred_name_modes_pf,
+                exp_foreign_name        :: string
+            ).
+
+:- type pragma_info_foreign_export_enum
+    --->    pragma_info_foreign_export_enum(
                 export_enum_language   :: foreign_language,
                 export_enum_type_name  :: sym_name,
                 export_enum_type_arity :: arity,
                 export_enum_attributes :: export_enum_attributes,
                 export_enum_overrides  :: assoc_list(sym_name, string)
-            )
-    ;
-            pragma_foreign_enum(
+            ).
+
+:- type pragma_info_foreign_enum
+    --->    pragma_info_foreign_enum(
                 foreign_enum_language   :: foreign_language,
                 foreign_enum_type_name  :: sym_name,
                 foreign_enum_type_arity :: arity,
                 foreign_enum_values     :: assoc_list(sym_name, string)
-            )
+            ).
 
     % Optimization pragmas.
 
-    ;       pragma_type_spec(
+:- type pragma_info_type_spec
+    --->    pragma_info_type_spec(
+                % PredName, SpecializedPredName, Arity, PredOrFunc,
+                % Modes if a specific procedure was specified, type
+                % substitution (using the variable names from the pred
+                % declaration), TVarSet, Equivalence types used
                 tspec_pred_name         :: sym_name,
                 tspec_new_name          :: sym_name,
                 tspec_arity             :: arity,
@@ -525,221 +566,168 @@
                 tspec_tsubst            :: type_subst,
                 tspec_tvarset           :: tvarset,
                 tspec_items             :: set(item_id)
-                % PredName, SpecializedPredName, Arity, PredOrFunc,
-                % Modes if a specific procedure was specified, type
-                % substitution (using the variable names from the pred
-                % declaration), TVarSet, Equivalence types used
-            )
+            ).
 
-    ;       pragma_inline(
-                inline_name             :: sym_name,
-                inline_arity            :: arity
-                % Predname, Arity
-            )
-
-    ;       pragma_no_inline(
-                noinline_name           :: sym_name,
-                noinline_arity          :: arity
-                % Predname, Arity
-            )
-
-    ;       pragma_unused_args(
-                unused_p_or_f           :: pred_or_func,
-                unused_name             :: sym_name,
-                unused_arity            :: arity,
-                unused_mode             :: mode_num,
-                unused_args             :: list(int)
+:- type pragma_info_unused_args
+    --->    pragma_info_unused_args(
                 % PredName, Arity, Mode number, Removed arguments.
-                % Used for intermodule unused argument removal, should only
+                % Used for intermodule unused argument removal. Should only
                 % appear in .opt files.
-            )
+                unused_proc_id          :: pred_name_arity_pf_mn,
+                unused_args             :: list(int)
+            ).
 
-    ;       pragma_exceptions(
-                exceptions_p_or_f       :: pred_or_func,
-                exceptions_name         :: sym_name,
-                exceptions_arity        :: arity,
-                exceptions_mode         :: mode_num,
-                exceptions_status       :: exception_status
+:- type pragma_info_exceptions
+    --->    pragma_info_exceptions(
                 % PredName, Arity, Mode number, Exception status.
                 % Should only appear in `.opt' or `.trans_opt' files.
-            )
+                exceptions_proc_id      :: pred_name_arity_pf_mn,
+                exceptions_status       :: exception_status
+            ).
 
-    ;       pragma_trailing_info(
+:- type pragma_info_trailing_info
+    --->    pragma_info_trailing_info(
                 % PredName, Arity, Mode number, Trailing status.
                 % Should on appear in `.opt' or `.trans_opt' files.
-                trailing_info_p_or_f    :: pred_or_func,
-                trailing_info_name      :: sym_name,
-                trailing_info_arity     :: arity,
-                trailing_info_mode      :: mode_num,
+                trailing_info_proc_id   :: pred_name_arity_pf_mn,
                 trailing_info_status    :: trailing_status
-            )
+            ).
 
-    ;       pragma_mm_tabling_info(
+:- type pragma_info_mm_tabling_info
+    --->    pragma_info_mm_tabling_info(
                 % PredName, Arity, Mode number, MM Tabling status.
                 % Should on appear in `.opt' or `.trans_opt' files.
-                mm_tabling_info_p_or_f  :: pred_or_func,
-                mm_tabling_info_name    :: sym_name,
-                mm_tabling_info_arity   :: arity,
-                mm_tabling_info_mode    :: mode_num,
+                mm_tabling_info_proc_id :: pred_name_arity_pf_mn,
                 mm_tabling_info_status  :: mm_tabling_status
-            )
+            ).
 
     % Diagnostics pragmas (pragmas related to compiler warnings/errors).
 
-    ;       pragma_obsolete(
-                obsolete_name           :: sym_name,
-                obsolete_arity          :: arity
-                % Predname, Arity
-            )
-
-    ;       pragma_no_detism_warning(
-                ndw_name                :: sym_name,
-                ndw_arity               :: arity
-            )
-
-    ;       pragma_source_file(
+:- type pragma_info_source_file
+    --->    pragma_info_source_file(
                 % Source file name.
                 pragma_source_file      :: string
-            )
+            ).
 
     % Evaluation method pragmas.
 
-    ;       pragma_tabled(
+:- type pragma_info_tabled
+    --->    pragma_info_tabled(
+                % Tabling type, Predname, Arity, PredOrFunc?, Mode?
                 tabled_method           :: eval_method,
-                tabled_name             :: sym_name,
-                tabled_arity            :: int,
-                tabled_p_or_f           :: maybe(pred_or_func),
+                tabled_name             :: pred_name_arity_mpf,
                 tabled_mode             :: maybe(list(mer_mode)),
                 tabled_attributes       :: maybe(table_attributes)
-                % Tabling type, Predname, Arity, PredOrFunc?, Mode?
-            )
+            ).
 
-    ;       pragma_fact_table(
-                fact_table_name         :: sym_name,
-                fact_table_arity        :: arity,
-                fact_table_file         :: string
-                % Predname, Arity, Fact file name.
-            )
-
-    ;       pragma_reserve_tag(
-                restag_type             :: sym_name,
-                restag_arity            :: arity
-                % Typename, Arity
-            )
+:- type pragma_info_fact_table
+    --->    pragma_info_fact_table(
+                % Predname and Arity, Fact file name.
+                fact_table_pred         :: pred_name_arity,
+                fact_table_filename     :: string
+            ).
 
     % Purity pragmas.
 
-    ;       pragma_promise_equivalent_clauses(
-                eqv_clauses_name        :: sym_name,
-                eqv_clauses_arity       :: arity
-                % Predname, Arity
-            )
-
-    ;       pragma_promise_pure(
-                pure_name               :: sym_name,
-                pure_arity              :: arity
-                % Predname, Arity
-            )
-
-    ;       pragma_promise_semipure(
-                semipure_name           :: sym_name,
-                semipure_arity          :: arity
-                % Predname, Arity
-            )
-
     % Termination analysis pragmas.
 
-    ;       pragma_termination_info(
-                terminfo_p_or_f         :: pred_or_func,
-                terminfo_name           :: sym_name,
-                terminfo_mode           :: list(mer_mode),
-                terminfo_args           :: maybe(pragma_arg_size_info),
-                terminfo_term           :: maybe(pragma_termination_info)
+:- type pragma_info_termination_info
+    --->    pragma_info_termination_info(
                 % The list(mer_mode) is the declared argmodes of the
                 % procedure, unless there are no declared argmodes, in which
-                % case the inferred argmodes are used.  This pragma is used to
+                % case the inferred argmodes are used. This pragma is used to
                 % define information about a predicates termination
-                % properties.  It is most useful where the compiler has
+                % properties. It is most useful where the compiler has
                 % insufficient information to be able to analyse the
-                % predicate.  This includes c_code, and imported predicates.
+                % predicate. This includes c_code, and imported predicates.
                 % termination_info pragmas are used in opt and trans_opt
                 % files.
-            )
+                terminfo_pred_id        :: pred_name_modes_pf,
+                terminfo_args           :: maybe(pragma_arg_size_info),
+                terminfo_term           :: maybe(pragma_termination_info)
+            ).
 
-    ;       pragma_termination2_info(
-                terminfo2_p_or_f        :: pred_or_func,
-                terminfo2_name          :: sym_name,
-                terminfo2_mode          :: list(mer_mode),
+:- type pragma_info_termination2_info
+    --->    pragma_info_termination2_info(
+                terminfo2_pred_id       :: pred_name_modes_pf,
                 terminfo2_args          :: maybe(pragma_constr_arg_size_info),
                 terminfo2_args2         :: maybe(pragma_constr_arg_size_info),
                 terminfo2_term          :: maybe(pragma_termination_info)
-            )
-
-    ;       pragma_terminates(
-                term_name               :: sym_name,
-                term_arity              :: arity
-                % Predname, Arity
-            )
-
-    ;       pragma_does_not_terminate(
-                noterm_name             :: sym_name,
-                noterm_arity            :: arity
-                % Predname, Arity
-            )
-
-    ;       pragma_check_termination(
-                checkterm_name          :: sym_name,
-                checkterm_arity         :: arity
-                % Predname, Arity
-            )
-
-    ;       pragma_mode_check_clauses(
-                mode_check_clause_name  :: sym_name,
-                mode_check_clause_arity :: arity
-            )
+            ).
 
     % CTGC pragmas: structure sharing / structure reuse analysis.
 
-    ;       pragma_structure_sharing(
-                sharing_p_or_f          :: pred_or_func,
-                sharing_name            :: sym_name,
-                sharing_mode            :: list(mer_mode),
+:- type pragma_info_structure_sharing
+    --->    pragma_info_structure_sharing(
+                % After structure sharing analysis, the compiler generates
+                % structure sharing pragmas to be stored in and read from
+                % optimization interface files.
+                %
+                % The list of modes consists of the declared argmodes
+                % (or inferred argmodes if there are no declared ones).
+                sharing_pred_id         :: pred_name_modes_pf,
                 sharing_headvars        :: list(prog_var),
                 sharing_headvartypes    :: list(mer_type),
                 sharing_description     :: maybe(structure_sharing_domain)
-            )
-            % After structure sharing analysis, the compiler generates
-            % structure sharing pragmas to be stored in and read from
-            % optimization interface files.
-            %
-            % The list of modes consists of the declared argmodes (or inferred
-            % argmodes if there are no declared ones).
+            ).
 
-    ;       pragma_structure_reuse(
-                reuse_p_or_f          :: pred_or_func,
-                reuse_name            :: sym_name,
-                reuse_mode            :: list(mer_mode),
-                reuse_headvars        :: list(prog_var),
-                reuse_headvartypes    :: list(mer_type),
-                reuse_description     :: maybe(structure_reuse_domain)
-            )
-            % After reuse analysis, the compiler generates structure reuse
-            % pragmas to be stored in and read from optimization interface
-            % files.
-            %
-            % The list of modes consists of the declared argmodes (or inferred
-            % argmodes if there are no declared ones).
-            % The last sym_name (reuse_optimised_name) stores the name of the
-            % optimised version of the exported predicate.
+:- type pragma_info_structure_reuse
+    --->    pragma_info_structure_reuse(
+                % After reuse analysis, the compiler generates structure reuse
+                % pragmas to be stored in and read from optimization interface
+                % files.
+                %
+                % The list of modes consists of the declared argmodes
+                % (or inferred argmodes if there are no declared ones).
+                % The last sym_name (reuse_optimised_name) stores the name
+                % of the optimised version of the exported predicate.
+                reuse_pred_id           :: pred_name_modes_pf,
+                reuse_headvars          :: list(prog_var),
+                reuse_headvartypes      :: list(mer_type),
+                reuse_description       :: maybe(structure_reuse_domain)
+            ).
 
     % Misc pragmas.
 
-    ;       pragma_require_feature_set(
-                rfs_feature_set :: set(required_feature)
+:- type pragma_info_require_feature_set
+    --->    pragma_info_require_feature_set(
+                rfs_feature_set         :: set(required_feature)
             ).
 
-:- inst pragma_type_spec == bound(pragma_type_spec(ground, ground, ground,
-    ground, ground, ground, ground, ground)).
+:- type pred_name_arity
+    --->    pred_name_arity(
+                pna_pred_name           :: sym_name,
+                pna_arity               :: arity
+            ).
+
+:- type pred_name_arity_pf
+    --->    pred_name_arity_pf(
+                pnap_pred_name          :: sym_name,
+                pnap_arity              :: arity,
+                pnap_pf                 :: pred_or_func
+            ).
+
+:- type pred_name_arity_pf_mn
+    --->    pred_name_arity_pf_mn(
+                pnapm_pred_name         :: sym_name,
+                pnapm_arity             :: arity,
+                pnapm_pf                :: pred_or_func,
+                pnapm_mode_num          :: mode_num
+            ).
+
+:- type pred_name_modes_pf
+    --->    pred_name_modes_pf(
+                pnmp_pred_name          :: sym_name,
+                pnmp_arity              :: list(mer_mode),
+                pnmp_pf                 :: pred_or_func
+            ).
+
+:- type pred_name_arity_mpf
+    --->    pred_name_arity_mpf(
+                pnam_pred_name          :: sym_name,
+                pnam_arity              :: arity,
+                pnam_maybe_pf           :: maybe(pred_or_func)
+            ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -818,20 +806,20 @@
             )
     ;       atomic_expr(
                 % Subgoals of the atomic goal are parsed into the following
-                % datatype.  During the creation of the parse tree, all
+                % datatype. During the creation of the parse tree, all
                 % subterms of the "orelse" operator are flattened and placed
-                % into a list.  If this is the case, the first "orelse"
+                % into a list. If this is the case, the first "orelse"
                 % alternative is stored in "main_goal" whilst the other
                 % alternatives are stored in "orelse_alternatives". If there
                 % are no "or_else" operators within the atomic subgoal,
                 % the subgoal is stored in "main_goal" whilst the
                 % "orelse_alternatives" list remains empty.
 
-                aexpr_outer         :: atomic_component_state,
-                aexpr_inner         :: atomic_component_state,
-                aexpr_output_vars   :: maybe(list(prog_var)),
-                aexpr_main_goal     :: goal,    
-                aexpr_orelse_goals  :: list(goal)
+                aexpr_outer             :: atomic_component_state,
+                aexpr_inner             :: atomic_component_state,
+                aexpr_output_vars       :: maybe(list(prog_var)),
+                aexpr_main_goal         :: goal,
+                aexpr_orelse_goals      :: list(goal)
             )
     ;       try_expr(
                 tryexpr_maybe_io        :: maybe(prog_var),
@@ -1112,42 +1100,44 @@ get_item_foreign_code(Globals, Item, !Info) :-
     prog_context::in, module_foreign_info::in, module_foreign_info::out)
     is det.
 
-do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
+do_get_item_foreign_code(Globals, Pragma, Context, !Info) :-
     globals.get_backend_foreign_languages(Globals, BackendLangs),
     globals.get_target(Globals, Target),
 
     % The code here should match the way that mlds_to_gcc.m decides whether
-    % or not to call mlds_to_c.m.  XXX Note that we do NOT count foreign_decls
-    % here. We only link in a foreign object file if mlds_to_gcc called
-    % mlds_to_c.m to generate it, which it will only do if there is some
-    % foreign_code, not just foreign_decls. Counting foreign_decls here
-    % causes problems with intermodule optimization.
+    % or not to call mlds_to_c.m.
     (
-        Pragma = pragma_foreign_code(Lang, _),
-        list.member(Lang, BackendLangs)
-    ->
-        Info = Info0 ^ used_foreign_languages :=
-            set.insert(Info0 ^ used_foreign_languages, Lang)
+        Pragma = pragma_foreign_code(FCInfo),
+        FCInfo = pragma_info_foreign_code(Lang, _),
+        ( list.member(Lang, BackendLangs) ->
+            !Info ^ used_foreign_languages :=
+                set.insert(!.Info ^ used_foreign_languages, Lang)
+        ;
+            true
+        )
     ;
-        Pragma = pragma_foreign_proc(Attrs, Name, _, _, _, _, _)
-    ->
+        Pragma = pragma_foreign_proc(FPInfo),
+        FPInfo = pragma_info_foreign_proc(Attrs, Name, _, _, _, _, _),
         NewLang = get_foreign_language(Attrs),
-        ( OldLang = Info0 ^ foreign_proc_languages ^ elem(Name) ->
+        FPLangs0 = !.Info ^ foreign_proc_languages,
+        ( map.search(FPLangs0, Name, OldLang) ->
             % is it better than an existing one?
+            PreferNew = prefer_foreign_language(Globals, Target,
+                OldLang, NewLang),
             (
-                yes = prefer_foreign_language(Globals, Target,
-                    OldLang, NewLang)
-            ->
-                Info = Info0 ^ foreign_proc_languages ^ elem(Name) := NewLang
+                PreferNew = yes,
+                map.det_update(Name, NewLang, FPLangs0, FPLangs),
+                !Info ^ foreign_proc_languages := FPLangs
             ;
-                Info = Info0
+                PreferNew = no
             )
         ;
             % is it one of the languages we support?
             ( list.member(NewLang, BackendLangs) ->
-                Info = Info0 ^ foreign_proc_languages ^ elem(Name) := NewLang
+                map.det_insert(Name, NewLang, FPLangs0, FPLangs),
+                !Info ^ foreign_proc_languages := FPLangs
             ;
-                Info = Info0
+                true
             )
         )
     ;
@@ -1156,32 +1146,79 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
         % punts it on to mlds_to_c.m, thus generating C code for it,
         % rather than assembler code. So we need to treat `pragma export'
         % like the other pragmas for foreign code.
-        Pragma = pragma_foreign_export(Lang, _, _, _, _),
-        list.member(Lang, BackendLangs)
-    ->
-        Info1 = Info0 ^ used_foreign_languages :=
-            set.insert(Info0 ^ used_foreign_languages, Lang),
-        Info = Info1 ^ module_has_foreign_export :=
-            contains_foreign_export
+        Pragma = pragma_foreign_export(FEInfo),
+        FEInfo = pragma_info_foreign_export(Lang, _, _),
+        ( list.member(Lang, BackendLangs) ->
+            !Info ^ used_foreign_languages :=
+                set.insert(!.Info ^ used_foreign_languages, Lang),
+            !Info ^ module_has_foreign_export :=
+                contains_foreign_export
+        ;
+            true
+        )
     ;
-        Pragma = pragma_foreign_import_module(Lang, Import),
-        list.member(Lang, BackendLangs)
-    ->
-        Info = Info0 ^ all_foreign_import_modules :=
-            [foreign_import_module_info(Lang, Import, Context) |
-                Info0 ^ all_foreign_import_modules]
+        Pragma = pragma_foreign_import_module(FIMInfo),
+        FIMInfo = pragma_info_foreign_import_module(Lang, Import),
+        ( list.member(Lang, BackendLangs) ->
+            !Info ^ all_foreign_import_modules :=
+                [foreign_import_module_info(Lang, Import, Context) |
+                    !.Info ^ all_foreign_import_modules]
+        ;
+            true
+        )
     ;
-        % We generate some C code for fact tables, so we need to treat modules
-        % containing fact tables as if they contain foreign code.
-        ( Target = target_asm
-        ; Target = target_c
-        ),
-        Pragma = pragma_fact_table(_, _, _)
-    ->
-        Info = Info0 ^ used_foreign_languages :=
-            set.insert(Info0 ^ used_foreign_languages, lang_c)
+        Pragma = pragma_fact_table(_),
+        (
+            % We generate some C code for fact tables, so we need to treat
+            % modules containing fact tables as if they contain foreign code.
+            ( Target = target_asm
+            ; Target = target_c
+            )
+        ->
+            !Info ^ used_foreign_languages :=
+                set.insert(!.Info ^ used_foreign_languages, lang_c)
+        ;
+            true
+        )
     ;
-        Info = Info0
+        % We do NOT count foreign_decls here. We only link in a foreign object
+        % file if mlds_to_gcc called mlds_to_c.m to generate it, which it
+        % will only do if there is some foreign_code, not just foreign_decls.
+        % Counting foreign_decls here causes problems with intermodule
+        % optimization.
+        Pragma = pragma_foreign_decl(_)
+    ;
+        ( Pragma = pragma_foreign_enum(_)
+        ; Pragma = pragma_foreign_export_enum(_)
+        )
+        % XXX Should we count these?
+    ;
+        ( Pragma = pragma_check_termination(_)
+        ; Pragma = pragma_does_not_terminate(_)
+        ; Pragma = pragma_exceptions(_)
+        ; Pragma = pragma_inline(_)
+        ; Pragma = pragma_mm_tabling_info(_)
+        ; Pragma = pragma_mode_check_clauses(_)
+        ; Pragma = pragma_no_detism_warning(_)
+        ; Pragma = pragma_no_inline(_)
+        ; Pragma = pragma_obsolete(_)
+        ; Pragma = pragma_promise_eqv_clauses(_)
+        ; Pragma = pragma_promise_pure(_)
+        ; Pragma = pragma_promise_semipure(_)
+        ; Pragma = pragma_require_feature_set(_)
+        ; Pragma = pragma_reserve_tag(_)
+        ; Pragma = pragma_source_file(_)
+        ; Pragma = pragma_structure_reuse(_)
+        ; Pragma = pragma_structure_sharing(_)
+        ; Pragma = pragma_tabled(_)
+        ; Pragma = pragma_terminates(_)
+        ; Pragma = pragma_termination2_info(_)
+        ; Pragma = pragma_termination_info(_)
+        ; Pragma = pragma_trailing_info(_)
+        ; Pragma = pragma_type_spec(_)
+        ; Pragma = pragma_unused_args(_)
+        )
+        % Do nothing.
     ).
 
 %-----------------------------------------------------------------------------%

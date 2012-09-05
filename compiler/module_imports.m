@@ -585,7 +585,8 @@ items_need_imports([Item | Items], !ItemsNeedTabling,
     (
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, _, _),
-        Pragma = pragma_tabled(_, _, _, _, _, MaybeAttributes)
+        Pragma = pragma_tabled(TableInfo),
+        TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes)
     ->
         !:ItemsNeedTabling = yes,
         (
@@ -783,7 +784,8 @@ get_fact_table_dependencies_2([Item | Items], !Deps) :-
     (
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, _, _),
-        Pragma = pragma_fact_table(_SymName, _Arity, FileName)
+        Pragma = pragma_fact_table(FTInfo),
+        FTInfo = pragma_info_fact_table(_PredNameArity, FileName)
     ->
         !:Deps = [FileName | !.Deps]
     ;

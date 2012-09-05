@@ -1331,8 +1331,8 @@ write_intermod_info_body(IntermodInfo, !IO) :-
         list.foldl(
             (pred(ForeignImport::in, IO0::di, IO::uo) is det :-
                 ForeignImport = foreign_import_module_info(Lang, Import, _),
-                mercury_output_pragma_foreign_import_module(Lang, Import,
-                    IO0, IO)
+                FIMInfo = pragma_info_foreign_import_module(Lang, Import),
+                mercury_output_pragma_foreign_import_module(FIMInfo, IO0, IO)
             ), ForeignImports, !IO)
     ;
         WriteHeader = no
@@ -1474,7 +1474,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     ->
         % The pragma_origin doesn't matter here.
         ReserveItemPragma = item_pragma_info(user,
-            pragma_reserve_tag(Name, Arity), Context, -1),
+            pragma_reserve_tag(TypeCtor), Context, -1),
         ReserveItem = item_pragma(ReserveItemPragma),
         mercury_output_item(MercInfo, ReserveItem, !IO)
     ;
@@ -1486,8 +1486,8 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     ->
         map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [],
             ForeignEnumVals),
-        ForeignPragma = pragma_foreign_enum(Lang, Name, Arity,
-            ForeignEnumVals),
+        FEInfo = pragma_info_foreign_enum(Lang, Name, Arity, ForeignEnumVals),
+        ForeignPragma = pragma_foreign_enum(FEInfo),
         ForeignItemPragma = item_pragma_info(user, ForeignPragma, Context, -1),
         ForeignItem = item_pragma(ForeignItemPragma),
         mercury_output_item(MercInfo, ForeignItem, !IO)
@@ -1862,8 +1862,9 @@ intermod_write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
         get_pragma_foreign_code_vars(Args, ArgModes,
             ProgVarset0, ProgVarset, PragmaVars),
         proc_info_get_inst_varset(ProcInfo, InstVarset),
-        mercury_output_pragma_foreign_code(Attributes, SymName,
-            PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl, !IO)
+        FPInfo = pragma_info_foreign_proc(Attributes, SymName,
+            PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl),
+        mercury_output_pragma_foreign_proc(FPInfo, !IO)
     ;
         MaybeArgModes = no,
         unexpected($module, $pred, "no mode declaration")
@@ -1996,20 +1997,11 @@ intermod_write_type_spec_pragmas(ModuleInfo, PredId, !IO) :-
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
     PragmaMap = TypeSpecInfo ^ pragma_map,
     ( multi_map.search(PragmaMap, PredId, TypeSpecPragmas) ->
-        list.foldl(intermod_write_type_spec_pragma, TypeSpecPragmas, !IO)
+        AppendVarnums = yes,
+        list.foldl(mercury_output_pragma_type_spec(AppendVarnums),
+            TypeSpecPragmas, !IO)
     ;
         true
-    ).
-
-:- pred intermod_write_type_spec_pragma(pragma_type::in, io::di, io::uo)
-    is det.
-
-intermod_write_type_spec_pragma(Pragma, !IO) :-
-    ( Pragma = pragma_type_spec(_, _, _, _, _, _, _, _) ->
-        AppendVarnums = yes,
-        mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO)
-    ;
-        unexpected($module, $pred, "no pragma_type_spec")
     ).
 
     % Is a pragma declaration required in the `.opt' file for
@@ -2459,10 +2451,10 @@ grab_opt_files(Globals, !Module, FoundError, !IO) :-
             ItemPragma = item_pragma_info(_, Pragma, _, _),
             (
                 UnusedArgs = yes,
-                Pragma = pragma_unused_args(_, _, _, _, _)
+                Pragma = pragma_unused_args(_)
             ;
                 StructureReuse = yes,
-                Pragma = pragma_structure_reuse(_, _, _, _, _, _)
+                Pragma = pragma_structure_reuse(_)
             )
         ),
         cord.filter(KeepPragma, LocalItemsCord, PragmaItemsCord),

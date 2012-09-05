@@ -578,7 +578,8 @@ replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
         Info0, Info, !RecompInfo, !UsedModules, []) :-
     Info0 = item_pragma_info(Origin, Pragma0, Context, SeqNum),
     (
-        Pragma0 = pragma_type_spec(PredName, NewName, Arity,
+        Pragma0 = pragma_type_spec(TypeSpecInfo0),
+        TypeSpecInfo0 = pragma_info_type_spec(PredName, NewName, Arity,
             PorF, Modes, Subst0, VarSet0, ItemIds0),
         (
             ( !.RecompInfo = no
@@ -597,10 +598,12 @@ replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
         ;
             ExpandedItems = yes(_ - ItemIds)
         ),
-        Pragma = pragma_type_spec(PredName, NewName, Arity,
-            PorF, Modes, Subst, VarSet, ItemIds)
+        TypeSpecInfo = pragma_info_type_spec(PredName, NewName, Arity,
+            PorF, Modes, Subst, VarSet, ItemIds),
+        Pragma = pragma_type_spec(TypeSpecInfo)
     ;
-        Pragma0 = pragma_foreign_proc(Attrs0, PName, PredOrFunc,
+        Pragma0 = pragma_foreign_proc(FPInfo0),
+        FPInfo0 = pragma_info_foreign_proc(Attrs0, PName, PredOrFunc,
             ProcVars, ProcVarset, ProcInstVarset, ProcImpl),
         some [!EquivTypeInfo] (
             maybe_start_recording_expanded_items(ModuleName, PName,
@@ -627,39 +630,40 @@ replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
             finish_recording_expanded_items(ItemId, !.EquivTypeInfo,
                 !RecompInfo)
         ),
-        Pragma = pragma_foreign_proc(Attrs, PName, PredOrFunc,
-            ProcVars, ProcVarset, ProcInstVarset, ProcImpl)
+        FPInfo = pragma_info_foreign_proc(Attrs, PName, PredOrFunc,
+            ProcVars, ProcVarset, ProcInstVarset, ProcImpl),
+        Pragma = pragma_foreign_proc(FPInfo)
     ;
-        ( Pragma0 = pragma_check_termination(_, _)
-        ; Pragma0 = pragma_does_not_terminate(_, _)
-        ; Pragma0 = pragma_exceptions(_, _, _, _, _)
-        ; Pragma0 = pragma_fact_table(_, _, _)
-        ; Pragma0 = pragma_foreign_code(_, _)
-        ; Pragma0 = pragma_foreign_decl(_, _, _)
-        ; Pragma0 = pragma_foreign_enum(_, _, _, _)
-        ; Pragma0 = pragma_foreign_export(_, _, _, _, _)
-        ; Pragma0 = pragma_foreign_export_enum(_, _, _, _, _)
-        ; Pragma0 = pragma_foreign_import_module(_, _)
-        ; Pragma0 = pragma_inline(_, _)
-        ; Pragma0 = pragma_mm_tabling_info(_, _, _, _, _)
-        ; Pragma0 = pragma_mode_check_clauses(_, _)
-        ; Pragma0 = pragma_no_inline(_, _)
-        ; Pragma0 = pragma_obsolete(_, _)
-        ; Pragma0 = pragma_no_detism_warning(_, _)
-        ; Pragma0 = pragma_promise_equivalent_clauses(_, _)
-        ; Pragma0 = pragma_promise_pure(_, _)
-        ; Pragma0 = pragma_promise_semipure(_, _)
+        ( Pragma0 = pragma_check_termination(_)
+        ; Pragma0 = pragma_does_not_terminate(_)
+        ; Pragma0 = pragma_exceptions(_)
+        ; Pragma0 = pragma_fact_table(_)
+        ; Pragma0 = pragma_foreign_code(_)
+        ; Pragma0 = pragma_foreign_decl(_)
+        ; Pragma0 = pragma_foreign_enum(_)
+        ; Pragma0 = pragma_foreign_export(_)
+        ; Pragma0 = pragma_foreign_export_enum(_)
+        ; Pragma0 = pragma_foreign_import_module(_)
+        ; Pragma0 = pragma_inline(_)
+        ; Pragma0 = pragma_mm_tabling_info(_)
+        ; Pragma0 = pragma_mode_check_clauses(_)
+        ; Pragma0 = pragma_no_inline(_)
+        ; Pragma0 = pragma_obsolete(_)
+        ; Pragma0 = pragma_no_detism_warning(_)
+        ; Pragma0 = pragma_promise_eqv_clauses(_)
+        ; Pragma0 = pragma_promise_pure(_)
+        ; Pragma0 = pragma_promise_semipure(_)
         ; Pragma0 = pragma_require_feature_set(_)
-        ; Pragma0 = pragma_reserve_tag(_, _)
+        ; Pragma0 = pragma_reserve_tag(_)
         ; Pragma0 = pragma_source_file(_)
-        ; Pragma0 = pragma_structure_reuse(_, _, _, _, _, _)
-        ; Pragma0 = pragma_structure_sharing(_, _, _, _, _, _)
-        ; Pragma0 = pragma_tabled(_, _, _, _, _, _)
-        ; Pragma0 = pragma_terminates(_, _)
-        ; Pragma0 = pragma_termination2_info(_, _, _, _, _, _)
-        ; Pragma0 = pragma_termination_info(_, _, _, _, _)
-        ; Pragma0 = pragma_trailing_info(_, _, _, _, _)
-        ; Pragma0 = prog_item.pragma_unused_args(_, _, _, _, _)
+        ; Pragma0 = pragma_structure_reuse(_)
+        ; Pragma0 = pragma_structure_sharing(_)
+        ; Pragma0 = pragma_tabled(_)
+        ; Pragma0 = pragma_terminates(_)
+        ; Pragma0 = pragma_termination2_info(_)
+        ; Pragma0 = pragma_termination_info(_)
+        ; Pragma0 = pragma_trailing_info(_)
+        ; Pragma0 = prog_item.pragma_unused_args(_)
         ),
         Pragma = Pragma0
     ),

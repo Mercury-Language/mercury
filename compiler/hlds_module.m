@@ -138,9 +138,8 @@
             ).
 
     % List of procedures for which there are user-requested type
-    % specializations, and a list of predicates which should be
-    % processed by higher_order.m to ensure the production of those
-    % versions.
+    % specializations, and a list of predicates which should be processed
+    % by higher_order.m to ensure the production of those versions.
 :- type type_spec_info
     --->    type_spec_info(
                 % Procedures for which there are user-requested type
@@ -160,12 +159,12 @@
 
                 % Type spec pragmas to be placed in the `.opt' file if a
                 % predicate becomes exported.
-                pragma_map          :: multi_map(pred_id, pragma_type)
+                pragma_map          :: multi_map(pred_id,
+                                        pragma_info_type_spec)
             ).
 
-    % Maps the full names of procedures (in the sense of
-    % complexity_proc_name in complexity.m) to the number of their slot
-    % in MR_complexity_proc_table.
+    % Maps the full names of procedures (in the sense of complexity_proc_name
+    % in complexity.m) to the number of their slot in MR_complexity_proc_table.
 :- type complexity_proc_map == map(string, int).
 
 :- type complexity_proc_info
@@ -195,7 +194,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Types for foreign exported enumerations
+% Types for foreign exported enumerations.
 %
 
 :- type exported_enum_info
@@ -208,7 +207,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Various predicates for manipulating the module_info data structure
+% Various predicates for manipulating the module_info data structure.
 %
 
     % Create an empty module_info for a given module name (and the

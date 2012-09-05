@@ -658,8 +658,9 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         MaybeFirstItem = read_item_ok(FirstItem),
         FirstItem = item_pragma(FirstItemPragma),
         FirstItemPragma = item_pragma_info(_, Pragma, _, _),
-        Pragma = pragma_source_file(!:SourceFileName)
+        Pragma = pragma_source_file(SFNInfo)
     ->
+        SFNInfo = pragma_info_source_file(!:SourceFileName),
         read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
             ModuleDeclItem, MaybeSecondTerm, Specs, Error, !SeqNumCounter, !IO)
     ;
@@ -828,8 +829,8 @@ read_items_loop_ok(Globals, Item, !ModuleName, !SourceFileName, !Items,
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, _, _),
-        ( Pragma = pragma_source_file(NewSourceFileName) ->
-            !:SourceFileName = NewSourceFileName
+        ( Pragma = pragma_source_file(SFNInfo) ->
+            SFNInfo = pragma_info_source_file(!:SourceFileName)
         ;
             !:Items = [Item | !.Items]
         )
