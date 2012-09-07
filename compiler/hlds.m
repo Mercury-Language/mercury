@@ -18,7 +18,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% The HLDS data structure itself
+% The HLDS data structure itself.
 :- include_module assertion.
 :- include_module const_struct.
 :- include_module hlds_args.
@@ -34,7 +34,7 @@
 :- include_module pred_table.
 :- include_module special_pred.
 
-% Modules for creating the HLDS
+% Modules for creating the HLDS.
 :- include_module hhf.
 :- include_module make_hlds.
 :- include_module make_tags.

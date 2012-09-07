@@ -45,6 +45,7 @@
 :- import_module check_hlds.mode_errors.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
+:- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
@@ -52,7 +53,6 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.make_hlds.add_pragma.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.goal_expr_to_goal.
