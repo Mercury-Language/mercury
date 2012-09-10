@@ -59,7 +59,7 @@
     %
 :- pred preds_add_implicit_report_error(module_name::in, pred_or_func::in,
     sym_name::in, arity::in, import_status::in, bool::in, prog_context::in,
-    pred_origin::in, string::in, pred_id::out,
+    pred_origin::in, list(format_component)::in, pred_id::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -419,7 +419,7 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     ;
         preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
             Arity, Status, IsClassMethod, MContext, origin_user(PredName),
-            "mode declaration", PredId, !ModuleInfo, !Specs)
+            [words("mode declaration")], PredId, !ModuleInfo, !Specs)
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
     predicate_table_get_preds(PredicateTable1, Preds0),
@@ -476,11 +476,11 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
         !PredInfo, ProcId).
 
 preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
-        Status, IsClassMethod, Context, Origin, Description, PredId,
+        Status, IsClassMethod, Context, Origin, DescPieces, PredId,
         !ModuleInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     maybe_undefined_pred_error(Globals, PredName, Arity, PredOrFunc,
-        Status, IsClassMethod, Context, Description, !Specs),
+        Status, IsClassMethod, Context, DescPieces, !Specs),
     (
         PredOrFunc = pf_function,
         adjust_func_arity(pf_function, FuncArity, Arity),

@@ -1481,12 +1481,11 @@ foreign_enum_is_local(TypeDefnMap, Item) :-
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, _, _),
         Pragma = pragma_foreign_enum(FEInfo),
-        FEInfo = pragma_info_foreign_enum(_Lang, TypeName, TypeArity, _Values)
+        FEInfo = pragma_info_foreign_enum(_Lang, TypeCtor, _Values)
     ->
         % We only add a pragma foreign_enum pragma to the interface file
         % if it corresponds to a type _definition_ in the interface of the
         % module.
-        TypeCtor = type_ctor(TypeName, TypeArity),
         map.search(TypeDefnMap, TypeCtor, Defns),
         Defns \= [parse_tree_abstract_type(_) - _]
     ;
@@ -1666,13 +1665,14 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
     (
         ( Pragma = pragma_foreign_code(_)
         ; Pragma = pragma_foreign_decl(_)
-        ; Pragma = pragma_foreign_export(_)
+        ; Pragma = pragma_foreign_proc_export(_)
         ; Pragma = pragma_foreign_export_enum(_)
         ; Pragma = pragma_foreign_proc(_)
         ; Pragma = pragma_inline(_)
         ; Pragma = pragma_no_detism_warning(_)
         ; Pragma = pragma_no_inline(_)
         ; Pragma = pragma_fact_table(_)
+        ; Pragma = pragma_oisu(_)
         ; Pragma = pragma_tabled(_)
         ; Pragma = pragma_promise_pure(_)
         ; Pragma = pragma_promise_semipure(_)
@@ -3867,10 +3867,10 @@ item_needs_foreign_imports(Item) = Langs :-
                 FCInfo = pragma_info_foreign_code(Lang, _)
             ;
                 Pragma = pragma_foreign_enum(FEInfo),
-                FEInfo = pragma_info_foreign_enum(Lang, _, _, _)
+                FEInfo = pragma_info_foreign_enum(Lang, _, _)
             ;
-                Pragma = pragma_foreign_export(FEInfo),
-                FEInfo = pragma_info_foreign_export(Lang, _, _)
+                Pragma = pragma_foreign_proc_export(FPEInfo),
+                FPEInfo = pragma_info_foreign_proc_export(Lang, _, _)
             ),
             Langs = [Lang]
         ;
@@ -3890,6 +3890,7 @@ item_needs_foreign_imports(Item) = Langs :-
             ; Pragma = pragma_obsolete(_)
             ; Pragma = pragma_no_detism_warning(_)
             ; Pragma = pragma_source_file(_)
+            ; Pragma = pragma_oisu(_)
             ; Pragma = pragma_tabled(_)
             ; Pragma = pragma_fact_table(_)
             ; Pragma = pragma_reserve_tag(_)
@@ -3976,7 +3977,7 @@ include_in_int_file_implementation(Item) = Include :-
             ( Pragma = pragma_foreign_decl(_)
             ; Pragma = pragma_foreign_code(_)
             ; Pragma = pragma_foreign_proc(_)
-            ; Pragma = pragma_foreign_export(_)
+            ; Pragma = pragma_foreign_proc_export(_)
             ; Pragma = pragma_foreign_export_enum(_)
             ; Pragma = pragma_type_spec(_)
             ; Pragma = pragma_inline(_)
@@ -3988,6 +3989,7 @@ include_in_int_file_implementation(Item) = Include :-
             ; Pragma = pragma_obsolete(_)
             ; Pragma = pragma_no_detism_warning(_)
             ; Pragma = pragma_source_file(_)
+            ; Pragma = pragma_oisu(_)
             ; Pragma = pragma_tabled(_)
             ; Pragma = pragma_fact_table(_)
             ; Pragma = pragma_reserve_tag(_)
@@ -4403,7 +4405,7 @@ reorderable_pragma_type(Pragma) = Reorderable :-
         ; Pragma = pragma_exceptions(_)
         ; Pragma = pragma_trailing_info(_)
         ; Pragma = pragma_mm_tabling_info(_)
-        ; Pragma = pragma_foreign_export(_)
+        ; Pragma = pragma_foreign_proc_export(_)
         ; Pragma = pragma_foreign_export_enum(_)
         ; Pragma = pragma_foreign_enum(_)
         ; Pragma = pragma_inline(_)
@@ -4415,6 +4417,7 @@ reorderable_pragma_type(Pragma) = Reorderable :-
         ; Pragma = pragma_promise_semipure(_)
         ; Pragma = pragma_promise_eqv_clauses(_)
         ; Pragma = pragma_reserve_tag(_)
+        ; Pragma = pragma_oisu(_)
         ; Pragma = pragma_tabled(_)
         ; Pragma = pragma_terminates(_)
         ; Pragma = pragma_termination_info(_)
@@ -4511,11 +4514,11 @@ chunkable_module_defn(ModuleDefn) = Reorderable :-
 
 :- func chunkable_pragma_type(pragma_type) = bool.
 
-chunkable_pragma_type(Pragma) = Reorderable :-
+chunkable_pragma_type(Pragma) = Chunkable :-
     (
         ( Pragma = pragma_check_termination(_)
         ; Pragma = pragma_does_not_terminate(_)
-        ; Pragma = pragma_foreign_export(_)
+        ; Pragma = pragma_foreign_proc_export(_)
         ; Pragma = pragma_foreign_export_enum(_)
         ; Pragma = pragma_foreign_enum(_)
         ; Pragma = pragma_inline(_)
@@ -4527,6 +4530,7 @@ chunkable_pragma_type(Pragma) = Reorderable :-
         ; Pragma = pragma_promise_semipure(_)
         ; Pragma = pragma_promise_eqv_clauses(_)
         ; Pragma = pragma_reserve_tag(_)
+        ; Pragma = pragma_oisu(_)
         ; Pragma = pragma_tabled(_)
         ; Pragma = pragma_terminates(_)
         ; Pragma = pragma_termination_info(_)
@@ -4538,7 +4542,7 @@ chunkable_pragma_type(Pragma) = Reorderable :-
         ; Pragma = pragma_unused_args(_)
         ; Pragma = pragma_require_feature_set(_)
         ),
-        Reorderable = yes
+        Chunkable = yes
     ;
         ( Pragma = pragma_exceptions(_)
         ; Pragma = pragma_fact_table(_)
@@ -4549,7 +4553,7 @@ chunkable_pragma_type(Pragma) = Reorderable :-
         ; Pragma = pragma_source_file(_)
         ; Pragma = pragma_termination2_info(_)
         ),
-        Reorderable = no
+        Chunkable = no
     ).
 
     % Given a list of items for which symname_ordered succeeds, we need to keep

@@ -257,6 +257,10 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
             "type", MakePragma, PragmaTerms, ErrorTerm,
             VarSet, Context, SeqNum, MaybeItem)
     ;
+        PragmaName = "ousi",
+        parse_oisu_pragma(ModuleName, PragmaTerms, ErrorTerm,
+            VarSet, Context, SeqNum, MaybeItem)
+    ;
         (
             PragmaName = "memo",
             EvalMethod = eval_memo
@@ -459,10 +463,10 @@ parse_pragma_foreign_export_enum(PragmaTerms, ErrorTerm, VarSet, Context,
             MaybeOverridesTerm = yes(OverridesTerm)
         )
     ->
-        ( parse_foreign_language(LangTerm, ForeignLanguage) ->
-            parse_export_enum_type(MercuryTypeTerm, MaybeType),
+        ( parse_foreign_language(LangTerm, ForeignLang) ->
+            parse_export_enum_type_ctor(MercuryTypeTerm, MaybeTypeCtor),
             (
-                MaybeType = ok2(Name, Arity),
+                MaybeTypeCtor = ok1(TypeCtor),
                 maybe_parse_export_enum_attributes(VarSet, MaybeAttributesTerm,
                     MaybeAttributes),
                 (
@@ -471,10 +475,8 @@ parse_pragma_foreign_export_enum(PragmaTerms, ErrorTerm, VarSet, Context,
                         MaybeOverridesTerm, MaybeOverrides),
                     (
                         MaybeOverrides = ok1(Overrides),
-                        FEEInfo = pragma_info_foreign_export_enum(
-                            ForeignLanguage, Name, Arity, Attributes,
-                            Overrides
-                        ),
+                        FEEInfo = pragma_info_foreign_export_enum(ForeignLang,
+                            TypeCtor, Attributes, Overrides),
                         Pragma = pragma_foreign_export_enum(FEEInfo),
                         ItemPragma = item_pragma_info(user, Pragma,
                             Context, SeqNum),
@@ -489,7 +491,7 @@ parse_pragma_foreign_export_enum(PragmaTerms, ErrorTerm, VarSet, Context,
                     MaybeItem = error1(Specs)
                 )
             ;
-                MaybeType = error2(Specs),
+                MaybeTypeCtor = error1(Specs),
                 MaybeItem = error1(Specs)
             )
         ;
@@ -509,17 +511,17 @@ parse_pragma_foreign_export_enum(PragmaTerms, ErrorTerm, VarSet, Context,
         MaybeItem = error1([Spec])
     ).
 
-:- pred parse_export_enum_type(term::in, maybe2(sym_name, arity)::out) is det.
+:- pred parse_export_enum_type_ctor(term::in, maybe1(type_ctor)::out) is det.
 
-parse_export_enum_type(TypeTerm, MaybeNameAndArity) :-
-    ( parse_name_and_arity(TypeTerm, Name, Arity) ->
-        MaybeNameAndArity = ok2(Name, Arity)
+parse_export_enum_type_ctor(TypeTerm, MaybeTypeCtor) :-
+    ( parse_name_and_arity_unqualified(TypeTerm, Name, Arity) ->
+        MaybeTypeCtor = ok1(type_ctor(Name, Arity))
     ;
         Pieces = [words("Error: expected name/arity for type in"),
             quote(":- pragma foreign_export_enum"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
-        MaybeNameAndArity = error2([Spec])
+        MaybeTypeCtor = error1([Spec])
     ).
 
 :- pred maybe_parse_export_enum_overrides(varset::in, maybe(term)::in,
@@ -672,10 +674,10 @@ parse_export_enum_attr(VarSet, Term, MaybeAttribute) :-
 parse_pragma_foreign_enum(PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
         MaybeItem) :-
     ( PragmaTerms = [LangTerm, MercuryTypeTerm, ValuesTerm] ->
-        ( parse_foreign_language(LangTerm, ForeignLanguage) ->
-            parse_export_enum_type(MercuryTypeTerm, MaybeType),
+        ( parse_foreign_language(LangTerm, ForeignLang) ->
+            parse_export_enum_type_ctor(MercuryTypeTerm, MaybeTypeCtor),
             (
-                MaybeType = ok2(TypeName, TypeArity),
+                MaybeTypeCtor = ok1(TypeCtor),
                 UnrecognizedPieces =
                     [words("Error: expected a valid mapping element."), nl],
                 PairPieces = [words("In foreign_enum constructor name:")],
@@ -684,8 +686,8 @@ parse_pragma_foreign_enum(PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
                     UnrecognizedPieces, MaybeValues),
                 (
                     MaybeValues = ok1(Values),
-                    FEInfo = pragma_info_foreign_enum(ForeignLanguage,
-                        TypeName, TypeArity, Values),
+                    FEInfo = pragma_info_foreign_enum(ForeignLang, TypeCtor,
+                        Values),
                     Pragma = pragma_foreign_enum(FEInfo),
                     ItemPragma = item_pragma_info(user, Pragma, Context,
                         SeqNum),
@@ -696,7 +698,7 @@ parse_pragma_foreign_enum(PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
                     MaybeItem = error1(Specs)
                 )
             ;
-                MaybeType = error2(Specs),
+                MaybeTypeCtor = error1(Specs),
                 MaybeItem = error1(Specs)
             )
         ;
@@ -737,9 +739,9 @@ parse_pragma_foreign_export(PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
                 ( parse_foreign_language(LangTerm, ForeignLanguage) ->
                     PredNameModesPF = pred_name_modes_pf(PredName, Modes,
                         PredOrFunc),
-                    FEInfo = pragma_info_foreign_export(ForeignLanguage,
+                    FPEInfo = pragma_info_foreign_proc_export(ForeignLanguage,
                         PredNameModesPF, Function),
-                    Pragma = pragma_foreign_export(FEInfo),
+                    Pragma = pragma_foreign_proc_export(FPEInfo),
                     ItemPragma = item_pragma_info(user, Pragma, Context,
                         SeqNum),
                     Item = item_pragma(ItemPragma),
@@ -1794,7 +1796,8 @@ parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet, SecondTerm,
         MaybeItem = error1(Specs)
     ).
 
-    % This parses a pragma that refers to symbol name / arity.
+    % Parse the sole argument of a pragma that should contain
+    % a symbol name / arity pair.
     %
 :- pred parse_name_arity_pragma(module_name::in, string::in, string::in,
     pred(sym_name, int, pragma_type)::(pred(in, in, out) is det),
@@ -1803,12 +1806,12 @@ parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet, SecondTerm,
 
 parse_name_arity_pragma(ModuleName, PragmaName, NameKind, MakePragma,
         PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem) :-
-    ( PragmaTerms = [PredAndArityTerm] ->
+    ( PragmaTerms = [NameAndArityTerm] ->
         parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
-            PredAndArityTerm, PredAndArityTerm, VarSet, MaybeNameAndArity),
+            NameAndArityTerm, NameAndArityTerm, VarSet, MaybeNameAndArity),
         (
-            MaybeNameAndArity = ok2(PredName, Arity),
-            MakePragma(PredName, Arity, Pragma),
+            MaybeNameAndArity = ok2(Name, Arity),
+            MakePragma(Name, Arity, Pragma),
             ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeItem = ok1(Item)
@@ -2360,6 +2363,153 @@ parse_pragma_foreign_proc_varlist(VarSet, [HeadTerm | TailTerm],
         MaybePragmaVars = error1([Spec])
     ).
 
+:- pred parse_oisu_pragma(module_name::in, list(term)::in, term::in,
+    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
+
+parse_oisu_pragma(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
+        MaybeItem) :-
+    (
+        PragmaTerms = [TypeCtorTerm, CreatorsTerm, MutatorsTerm | OtherTerms],
+        (
+            OtherTerms = [],
+            MaybeDestructorsTerm = no
+        ;
+            OtherTerms = [DestructorsTerm],
+            MaybeDestructorsTerm = yes(DestructorsTerm)
+        )
+    ->
+        ( parse_name_and_arity(ModuleName, TypeCtorTerm, Name, Arity) ->
+            MaybeTypeCtor = ok1(type_ctor(Name, Arity))
+        ;
+            TypeCtorTermStr = describe_error_term(VarSet, TypeCtorTerm),
+            Pieces = [words("Error: expected"),
+                words("predicate name/arity for first argument of"),
+                quote(":- pragma oisu"), words("declaration, not"),
+                quote(TypeCtorTermStr), suffix("."), nl],
+            TypeCtorSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+            MaybeTypeCtor = error1([TypeCtorSpec])
+        ),
+        parse_oisu_preds_term(ModuleName, VarSet, "second", "creators",
+            CreatorsTerm, MaybeCreatorsNamesArities),
+        parse_oisu_preds_term(ModuleName, VarSet, "third", "mutators",
+            MutatorsTerm, MaybeMutatorsNamesArities),
+        (
+            MaybeDestructorsTerm = yes(DestructorsTerm2),
+            parse_oisu_preds_term(ModuleName, VarSet, "third", "mutators",
+                DestructorsTerm2, MaybeDestructorsNamesArities)
+        ;
+            MaybeDestructorsTerm = no,
+            MaybeDestructorsNamesArities = ok1([])
+        ),
+        (
+            MaybeTypeCtor = ok1(TypeCtor),
+            MaybeCreatorsNamesArities = ok1(CreatorsNamesArities),
+            MaybeMutatorsNamesArities = ok1(MutatorsNamesArities),
+            MaybeDestructorsNamesArities = ok1(DestructorsNamesArities)
+        ->
+            OISUInfo = pragma_info_oisu(TypeCtor, CreatorsNamesArities,
+                MutatorsNamesArities, DestructorsNamesArities),
+            Pragma = pragma_oisu(OISUInfo),
+            ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
+            Item = item_pragma(ItemPragma),
+            MaybeItem = ok1(Item)
+        ;
+            Specs = get_any_errors1(MaybeTypeCtor) ++
+                get_any_errors1(MaybeCreatorsNamesArities) ++
+                get_any_errors1(MaybeMutatorsNamesArities) ++
+                get_any_errors1(MaybeDestructorsNamesArities),
+            MaybeItem = error1(Specs)
+        )
+    ;
+        Pieces = [words("Error: wrong number of arguments in"),
+            quote(":- pragma oisu"), words("declaration."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        MaybeItem = error1([Spec])
+   ).
+
+:- pred parse_oisu_preds_term(module_name::in, varset::in, string::in,
+    string::in, term::in, maybe1(list(pred_name_arity))::out) is det.
+
+parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
+        MaybeNamesArities) :-
+    (
+        Term = term.functor(term.atom(Functor), Args, _),
+        Functor = ExpectedFunctor,
+        Args = [Arg]
+    ->
+        parse_name_and_arity_list(ModuleName, VarSet, ExpectedFunctor,
+            Arg, MaybeNamesArities)
+    ;
+        Pieces = [words("Error:"), words(ArgNum), words("argument of"),
+            quote(":- pragma oisu"), words("declaration"),
+            words("should have the form"),
+            quote(ExpectedFunctor ++ "([pred1/arity1, ..., predn/arityn])"),
+            suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        MaybeNamesArities = error1([Spec])
+    ).
+
+:- pred parse_name_and_arity_list(module_name::in, varset::in, string::in,
+    term::in, maybe1(list(pred_name_arity))::out) is det.
+
+parse_name_and_arity_list(ModuleName, VarSet, Wrapper, Term,
+        MaybeNamesArities) :-
+    (
+        Term = term.functor(Functor, Args, _),
+        (
+            Functor = term.atom("[]"),
+            Args = []
+        ->
+            MaybeNamesArities = ok1([])
+        ;
+            Functor = term.atom("[|]"),
+            Args = [Arg1, Arg2]
+        ->
+            ( parse_name_and_arity(ModuleName, Arg1, Arg1Name, Arg1Arity) ->
+                MaybeHeadNameArity = ok1(pred_name_arity(Arg1Name, Arg1Arity))
+            ;
+                Arg1Str = describe_error_term(VarSet, Arg1),
+                Pieces = [words("Error: expected predname/arity,"),
+                    words("not"), quote(Arg1Str), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Arg1), [always(Pieces)])]),
+                MaybeHeadNameArity = error1([Spec])
+            ),
+            parse_name_and_arity_list(ModuleName, VarSet, Wrapper, Arg2,
+                MaybeTailNamesArities),
+            (
+                MaybeHeadNameArity = ok1(HeadNameArity),
+                MaybeTailNamesArities = ok1(TailNamesArities)
+            ->
+                MaybeNamesArities = ok1([HeadNameArity | TailNamesArities])
+            ;
+                HeadSpecs = get_any_errors1(MaybeHeadNameArity),
+                TailSpecs = get_any_errors1(MaybeTailNamesArities),
+                MaybeNamesArities = error1(HeadSpecs ++ TailSpecs)
+            )
+        ;
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = [words("Error: expected a list as the argument of"),
+                words(Wrapper), suffix(","),
+                words("not"), quote(TermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            MaybeNamesArities = error1([Spec])
+        )
+    ;
+        Term = term.variable(_, _),
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected a list as the argument of"),
+            words(Wrapper), suffix(","),
+            words("not"), quote(TermStr), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        MaybeNamesArities = error1([Spec])
+    ).
+
 :- pred parse_tabling_pragma(module_name::in, string::in, eval_method::in,
     list(term)::in, term::in, varset::in, prog_context::in, int::in,
     maybe1(item)::out) is det.
@@ -2385,10 +2535,10 @@ parse_tabling_pragma(ModuleName, PragmaName, EvalMethod, PragmaTerms,
                 MaybeModes),
             (
                 MaybeAttrs = no,
-                PredNameArityMPF = pred_name_arity_mpf(PredName,
-                    Arity, MaybePredOrFunc),
-                TabledInfo = pragma_info_tabled(EvalMethod,
-                    PredNameArityMPF, MaybeModes, no),
+                PredNameArityMPF = pred_name_arity_mpf(PredName, Arity,
+                    MaybePredOrFunc),
+                TabledInfo = pragma_info_tabled(EvalMethod, PredNameArityMPF,
+                    MaybeModes, no),
                 Pragma = pragma_tabled(TabledInfo),
                 ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
@@ -2398,8 +2548,7 @@ parse_tabling_pragma(ModuleName, PragmaName, EvalMethod, PragmaTerms,
                 UnrecognizedPieces =
                     [words("Error: expected tabling attribute."), nl],
                 convert_maybe_list("tabling attributes", yes(VarSet),
-                    AttrsListTerm,
-                    parse_tabling_attribute(VarSet, EvalMethod),
+                    AttrsListTerm, parse_tabling_attribute(VarSet, EvalMethod),
                     UnrecognizedPieces, MaybeAttributeList),
                 (
                     MaybeAttributeList = ok1(AttributeList),
@@ -2482,8 +2631,7 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
         (
             !.Attributes ^ table_attr_statistics = table_dont_gather_statistics
         ->
-            !Attributes ^ table_attr_statistics
-                := table_gather_statistics,
+            !Attributes ^ table_attr_statistics := table_gather_statistics,
             update_tabling_attributes(TermSingleAttrs, !.Attributes,
                 MaybeAttributes)
         ;
@@ -2496,8 +2644,7 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
     ;
         SingleAttr = attr_allow_reset,
         ( !.Attributes ^ table_attr_allow_reset = table_dont_allow_reset ->
-            !Attributes ^ table_attr_allow_reset
-                := table_allow_reset,
+            !Attributes ^ table_attr_allow_reset := table_allow_reset,
             update_tabling_attributes(TermSingleAttrs, !.Attributes,
                 MaybeAttributes)
         ;

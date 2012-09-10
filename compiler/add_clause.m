@@ -128,8 +128,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             ;
                 preds_add_implicit_report_error(ModuleName, PredOrFunc,
                     PredName, Arity, Status, no, Context,
-                    origin_user(PredName), "clause", PredId, !ModuleInfo,
-                    !Specs)
+                    origin_user(PredName), [words("clause")], PredId,
+                    !ModuleInfo, !Specs)
             )
         ),
         % Lookup the pred_info for this pred, add the clause to the

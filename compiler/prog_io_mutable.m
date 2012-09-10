@@ -33,6 +33,9 @@
 :- pred parse_mutable_decl(module_name::in, varset::in, list(term)::in,
     prog_context::in, int::in, maybe1(item)::out) is semidet.
 
+:- pred parse_mutable_decl_info(module_name::in, varset::in, list(term)::in,
+    prog_context::in, int::in, maybe1(item_mutable_info)::out) is semidet.
+
 %-----------------------------------------------------------------------------e
 
 :- implementation.
@@ -121,7 +124,19 @@ parse_finalise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
         )
     ).
 
-parse_mutable_decl(_ModuleName, VarSet, Terms, Context, SeqNum, MaybeItem) :-
+parse_mutable_decl(ModuleName, VarSet, Terms, Context, SeqNum, MaybeItem) :-
+    parse_mutable_decl_info(ModuleName, VarSet, Terms, Context, SeqNum,
+        MaybeMutableInfo),
+    (
+        MaybeMutableInfo = ok1(MutableInfo),
+        MaybeItem = ok1(item_mutable(MutableInfo))
+    ;
+        MaybeMutableInfo = error1(Specs),
+        MaybeItem = error1(Specs)
+    ).
+
+parse_mutable_decl_info(_ModuleName, VarSet, Terms, Context, SeqNum,
+        MaybeMutableInfo) :-
     Terms = [NameTerm, TypeTerm, ValueTerm, InstTerm | OptMutAttrsTerm],
     parse_mutable_name(NameTerm, MaybeName),
     parse_mutable_type(VarSet, TypeTerm, MaybeType),
@@ -146,17 +161,16 @@ parse_mutable_decl(_ModuleName, VarSet, Terms, Context, SeqNum, MaybeItem) :-
         % We *must* attach the varset to the mutable item because if the
         % initial value is non-ground, then the initial value will be a
         % variable and the mutable initialisation predicate will contain
-        % references to it.  Ignoring the varset may lead to later compiler
+        % references to it. Ignoring the varset may lead to later compiler
         % passes attempting to reuse this variable when fresh variables are
         % allocated.
-        ItemMutable = item_mutable_info(Name, Type, Value, Inst, MutAttrs,
+        MutableInfo = item_mutable_info(Name, Type, Value, Inst, MutAttrs,
             ProgVarSet, Context, SeqNum),
-        Item = item_mutable(ItemMutable),
-        MaybeItem = ok1(Item)
+        MaybeMutableInfo = ok1(MutableInfo)
     ;
         Specs = get_any_errors1(MaybeName) ++ get_any_errors1(MaybeType) ++
             get_any_errors1(MaybeInst) ++ get_any_errors1(MaybeMutAttrs),
-        MaybeItem = error1(Specs)
+        MaybeMutableInfo = error1(Specs)
     ).
 
 :- pred parse_mutable_name(term::in, maybe1(string)::out) is det.

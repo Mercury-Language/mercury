@@ -455,7 +455,7 @@
     ;       pragma_foreign_code(pragma_info_foreign_code)
     ;       pragma_foreign_proc(pragma_info_foreign_proc)
     ;       pragma_foreign_import_module(pragma_info_foreign_import_module)
-    ;       pragma_foreign_export(pragma_info_foreign_export)
+    ;       pragma_foreign_proc_export(pragma_info_foreign_proc_export)
     ;       pragma_foreign_export_enum(pragma_info_foreign_export_enum)
     ;       pragma_foreign_enum(pragma_info_foreign_enum)
     ;       pragma_type_spec(pragma_info_type_spec)
@@ -471,6 +471,7 @@
     ;       pragma_tabled(pragma_info_tabled)
     ;       pragma_fact_table(pragma_info_fact_table)
     ;       pragma_reserve_tag(type_ctor)
+    ;       pragma_oisu(pragma_info_oisu)
     ;       pragma_promise_eqv_clauses(pred_name_arity)
     ;       pragma_promise_pure(pred_name_arity)
     ;       pragma_promise_semipure(pred_name_arity)
@@ -525,8 +526,8 @@
                 imp_module              :: module_name
             ).
 
-:- type pragma_info_foreign_export
-    --->    pragma_info_foreign_export(
+:- type pragma_info_foreign_proc_export
+    --->    pragma_info_foreign_proc_export(
                 % Predname, Predicate/function, Modes, foreign function name.
                 exp_language            :: foreign_language,
                 exp_pred_id             :: pred_name_modes_pf,
@@ -536,8 +537,7 @@
 :- type pragma_info_foreign_export_enum
     --->    pragma_info_foreign_export_enum(
                 export_enum_language   :: foreign_language,
-                export_enum_type_name  :: sym_name,
-                export_enum_type_arity :: arity,
+                export_enum_type_ctor  :: type_ctor,
                 export_enum_attributes :: export_enum_attributes,
                 export_enum_overrides  :: assoc_list(sym_name, string)
             ).
@@ -545,8 +545,7 @@
 :- type pragma_info_foreign_enum
     --->    pragma_info_foreign_enum(
                 foreign_enum_language   :: foreign_language,
-                foreign_enum_type_name  :: sym_name,
-                foreign_enum_type_arity :: arity,
+                foreign_enum_type_ctor  :: type_ctor,
                 foreign_enum_values     :: assoc_list(sym_name, string)
             ).
 
@@ -627,7 +626,13 @@
                 fact_table_filename     :: string
             ).
 
-    % Purity pragmas.
+:- type pragma_info_oisu
+    --->    pragma_info_oisu(
+                oisu_type_ctor          :: type_ctor,
+                oisu_creator_preds      :: list(pred_name_arity),
+                oisu_transformer_preds  :: list(pred_name_arity),
+                oisu_destroyer_preds    :: list(pred_name_arity)
+            ).
 
     % Termination analysis pragmas.
 
@@ -1146,8 +1151,8 @@ do_get_item_foreign_code(Globals, Pragma, Context, !Info) :-
         % punts it on to mlds_to_c.m, thus generating C code for it,
         % rather than assembler code. So we need to treat `pragma export'
         % like the other pragmas for foreign code.
-        Pragma = pragma_foreign_export(FEInfo),
-        FEInfo = pragma_info_foreign_export(Lang, _, _),
+        Pragma = pragma_foreign_proc_export(FPEInfo),
+        FPEInfo = pragma_info_foreign_proc_export(Lang, _, _),
         ( list.member(Lang, BackendLangs) ->
             !Info ^ used_foreign_languages :=
                 set.insert(!.Info ^ used_foreign_languages, Lang),
@@ -1210,6 +1215,7 @@ do_get_item_foreign_code(Globals, Pragma, Context, !Info) :-
         ; Pragma = pragma_source_file(_)
         ; Pragma = pragma_structure_reuse(_)
         ; Pragma = pragma_structure_sharing(_)
+        ; Pragma = pragma_oisu(_)
         ; Pragma = pragma_tabled(_)
         ; Pragma = pragma_terminates(_)
         ; Pragma = pragma_termination2_info(_)

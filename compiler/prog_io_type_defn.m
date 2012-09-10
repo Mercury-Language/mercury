@@ -987,7 +987,8 @@ parse_where_type_is(_ModuleName, VarSet, Term) = MaybeType :-
     ContextPieces = [],
     parse_type(Term, VarSet, ContextPieces, MaybeType).
 
-:- func parse_where_mutable_is(module_name, term) = maybe1(list(item)).
+:- func parse_where_mutable_is(module_name, term) =
+    maybe1(list(item_mutable_info)).
 
 parse_where_mutable_is(ModuleName, Term) = MaybeItems :-
     ( Term = term.functor(term.atom("mutable"), _, _) ->
@@ -1009,22 +1010,22 @@ parse_where_mutable_is(ModuleName, Term) = MaybeItems :-
         MaybeItems = error1([Spec])
     ).
 
-:- pred parse_mutable_decl_term(module_name::in, term::in, maybe1(item)::out)
-    is det.
+:- pred parse_mutable_decl_term(module_name::in, term::in,
+    maybe1(item_mutable_info)::out) is det.
 
-parse_mutable_decl_term(ModuleName, Term, MaybeItem) :-
+parse_mutable_decl_term(ModuleName, Term, MaybeMutableInfo) :-
     (
         Term = term.functor(term.atom("mutable"), Args, Context),
         varset.init(VarSet),
-        parse_mutable_decl(ModuleName, VarSet, Args, Context, -1,
-            MaybeItemPrime)
+        parse_mutable_decl_info(ModuleName, VarSet, Args, Context, -1,
+            MaybeMutableInfoPrime)
     ->
-        MaybeItem = MaybeItemPrime
+        MaybeMutableInfo = MaybeMutableInfoPrime
     ;
         Pieces = [words("Error: expected a mutable declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        MaybeItem = error1([Spec])
+        MaybeMutableInfo = error1([Spec])
     ).
 
 :- func parse_where_direct_arg_is(module_name, varset, term) =
@@ -1071,7 +1072,7 @@ parse_where_end(yes(Term), error1([Spec])) :-
 :- func make_maybe_where_details(is_solver_type, maybe1(maybe(unit)),
     maybe1(maybe(mer_type)), maybe1(maybe(init_pred)),
     maybe1(maybe(mer_inst)), maybe1(maybe(mer_inst)),
-    maybe1(maybe(list(item))),
+    maybe1(maybe(list(item_mutable_info))),
     maybe1(maybe(equality_pred)), maybe1(maybe(comparison_pred)),
     maybe1(maybe(list(sym_name_and_arity))),
     maybe1(maybe(unit)), term)
@@ -1116,7 +1117,8 @@ make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
 
 :- func make_maybe_where_details_2(is_solver_type, maybe(unit),
     maybe(mer_type), maybe(init_pred), maybe(mer_inst), maybe(mer_inst),
-    maybe(list(item)), maybe(equality_pred), maybe(comparison_pred),
+    maybe(list(item_mutable_info)),
+    maybe(equality_pred), maybe(comparison_pred),
     maybe(list(sym_name_and_arity)), maybe(unit), term)
     = maybe3(maybe(solver_type_details), maybe(unify_compare),
         maybe(list(sym_name_and_arity))).
@@ -1170,7 +1172,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                 AnyIs            = MaybeAnyInst,
                 EqualityIs       = MaybeEqPred,
                 ComparisonIs     = MaybeCmpPred,
-                CStoreIs         = MaybeMutableItems
+                CStoreIs         = MaybeMutableInfos
             ->
                 (
                     MaybeGroundInst = yes(GroundInst)
@@ -1185,10 +1187,10 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                     AnyInst = ground_inst
                 ),
                 (
-                    MaybeMutableItems = yes(MutableItems)
+                    MaybeMutableInfos = yes(MutableInfos)
                 ;
-                    MaybeMutableItems = no,
-                    MutableItems = []
+                    MaybeMutableInfos = no,
+                    MutableInfos = []
                 ),
                 (
                     MaybeInitialisation = yes(InitPred),
@@ -1198,7 +1200,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                     HowToInit = solver_init_explicit
                 ),
                 SolverTypeDetails = solver_type_details(
-                    RepnType, HowToInit, GroundInst, AnyInst, MutableItems),
+                    RepnType, HowToInit, GroundInst, AnyInst, MutableInfos),
                 MaybeSolverTypeDetails = yes(SolverTypeDetails),
                 (
                     MaybeEqPred = no,

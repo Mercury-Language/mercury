@@ -616,6 +616,7 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         ; PragmaType = pragma_foreign_enum(_)
         ; PragmaType = pragma_source_file(_)
         ; PragmaType = pragma_reserve_tag(_)
+        ; PragmaType = pragma_oisu(_)               % XXX
         ; PragmaType = pragma_require_feature_set(_)
         ),
         MaybePredOrFuncId = no
@@ -672,8 +673,8 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
     ;
         (
-            PragmaType = pragma_foreign_export(FEInfo),
-            FEInfo = pragma_info_foreign_export(_, PredNameModesPF, _)
+            PragmaType = pragma_foreign_proc_export(FPEInfo),
+            FPEInfo = pragma_info_foreign_proc_export(_, PredNameModesPF, _)
         ;
             PragmaType = pragma_termination_info(TermInfo),
             TermInfo = pragma_info_termination_info(PredNameModesPF, _, _)

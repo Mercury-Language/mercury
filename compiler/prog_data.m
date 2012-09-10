@@ -43,6 +43,7 @@
 
 :- implementation.
 
+:- import_module libs.options.
 :- import_module require.
 :- import_module string.
 
@@ -1827,7 +1828,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 std_init_pred           :: solver_type_init,
                 std_ground_inst         :: mer_inst,
                 std_any_inst            :: mer_inst,
-                std_mutable_items       :: list(item)
+                std_mutable_items       :: list(item_mutable_info)
             ).
 
     % An init_pred specifies the name of an impure user-defined predicate
@@ -2534,6 +2535,8 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 :- pred add_all_modules(item_visibility::in, sym_name::in,
     used_modules::in, used_modules::out) is det.
 
+:- func lookup_current_backend(globals) = backend.
+
 :- implementation.
 
 used_modules_init = used_modules(set.init, set.init).
@@ -2559,6 +2562,16 @@ add_module(visibility_private, Module, !UsedModules) :-
     ImplUsedModules0 = !.UsedModules ^ impl_used_modules,
     set.insert(Module, ImplUsedModules0, ImplUsedModules),
     !UsedModules ^ impl_used_modules := ImplUsedModules.
+
+lookup_current_backend(Globals) = CurrentBackend :-
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevel),
+    (
+        HighLevel = yes,
+        CurrentBackend = high_level_backend
+    ;
+        HighLevel= no,
+        CurrentBackend = low_level_backend
+    ).
 
 %-----------------------------------------------------------------------------%
 %

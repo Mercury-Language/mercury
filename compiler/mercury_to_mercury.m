@@ -704,8 +704,8 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
         Pragma = pragma_foreign_proc(FPInfo),
         mercury_output_pragma_foreign_proc(FPInfo, !IO)
     ;
-        Pragma = pragma_foreign_export(FEInfo),
-        mercury_format_pragma_foreign_export(FEInfo, !IO)
+        Pragma = pragma_foreign_proc_export(FPEInfo),
+        mercury_format_pragma_foreign_proc_export(FPEInfo, !IO)
     ;
         Pragma = pragma_foreign_export_enum(FEEInfo),
         mercury_format_pragma_foreign_export_enum(FEEInfo, !IO)
@@ -722,6 +722,9 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
         PredNameArity = pred_name_arity(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "no_determinism_warning", no, !IO)
+    ;
+        Pragma = pragma_oisu(OISUInfo),
+        mercury_output_pragma_oisu(OISUInfo, !IO)
     ;
         Pragma = pragma_tabled(TabledInfo),
         mercury_output_pragma_tabled(TabledInfo, !IO)
@@ -1929,7 +1932,7 @@ mercury_output_where_attributes(Info, TVarSet,
 
 mercury_output_solver_type_details(Info, TVarSet, Details, !IO) :-
     Details = solver_type_details(RepresentationType, HowToInit, GroundInst,
-        AnyInst, MutableItems),
+        AnyInst, MutableInfos),
     io.write_string("representation is ", !IO),
     mercury_output_type(TVarSet, no, RepresentationType, !IO),
     (
@@ -1945,12 +1948,12 @@ mercury_output_solver_type_details(Info, TVarSet, Details, !IO) :-
     io.write_string(",\n\t\tany is ", !IO),
     mercury_output_inst(AnyInst, EmptyInstVarSet, !IO),
     (
-        MutableItems = []
+        MutableInfos = []
     ;
-        MutableItems = [_ | _],
+        MutableInfos = [_ | _],
         io.write_string(",\n\t\tconstraint_store is [\n\t\t\t", !IO),
-        io.write_list(MutableItems, ",\n\t\t\t", mercury_output_item(Info),
-            !IO),
+        io.write_list(MutableInfos, ",\n\t\t\t",
+            mercury_output_item_mutable(Info), !IO),
         io.write_string("\n\t\t]", !IO)
     ).
 
@@ -3781,11 +3784,12 @@ mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, MaybeAfter,
     pragma_info_foreign_export_enum::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_foreign_export_enum(FEEInfo, !U) :-
-    FEEInfo = pragma_info_foreign_export_enum(Lang, TypeName, TypeArity,
+    FEEInfo = pragma_info_foreign_export_enum(Lang, TypeCtor,
         Attributes, Overrides),
     add_string(":- pragma foreign_export_enum(", !U),
     mercury_format_foreign_language_string(Lang, !U),
     add_string(", ", !U),
+    TypeCtor = type_ctor(TypeName, TypeArity),
     mercury_format_bracketed_sym_name_ngt(TypeName, next_to_graphic_token, !U),
     add_string("/", !U),
     add_int(TypeArity, !U),
@@ -3838,10 +3842,11 @@ mercury_format_sym_name_string_pair(SymName - String, !U) :-
     U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_foreign_enum(FEInfo, !U) :-
-    FEInfo = pragma_info_foreign_enum(Lang, TypeName, TypeArity, Values),
+    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, Values),
     add_string(":- pragma foreign_enum(", !U),
     mercury_format_foreign_language_string(Lang, !U),
     add_string(", ", !U),
+    TypeCtor = type_ctor(TypeName, TypeArity),
     mercury_format_bracketed_sym_name_ngt(TypeName, next_to_graphic_token, !U),
     add_string("/", !U),
     add_int(TypeArity, !U),
@@ -3851,11 +3856,12 @@ mercury_format_pragma_foreign_enum(FEInfo, !U) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_format_pragma_foreign_export(pragma_info_foreign_export::in,
-    U::di, U::uo) is det <= output(U).
+:- pred mercury_format_pragma_foreign_proc_export(
+    pragma_info_foreign_proc_export::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_pragma_foreign_export(FEInfo, !U) :-
-    FEInfo = pragma_info_foreign_export(Lang, PredNameModesPF, ExportName),
+mercury_format_pragma_foreign_proc_export(FPEInfo, !U) :-
+    FPEInfo = pragma_info_foreign_proc_export(Lang, PredNameModesPF,
+        ExportName),
     PredNameModesPF = pred_name_modes_pf(Name, ModeList, PredOrFunc), 
     varset.init(Varset), % The varset isn't really used.
     InstInfo = simple_inst_info(Varset),
@@ -3879,6 +3885,71 @@ mercury_format_pragma_foreign_export(FEInfo, !U) :-
     add_string(", ", !U),
     add_string(ExportName, !U),
     add_string(").\n", !U).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_pragma_oisu(pragma_info_oisu::in,
+    io::di, io::uo) is det.
+
+mercury_output_pragma_oisu(OISUInfo, !IO) :-
+    mercury_format_pragma_oisu(OISUInfo, !IO).
+
+:- pred mercury_format_pragma_oisu(pragma_info_oisu::in,
+    U::di, U::uo) is det <= output(U).
+
+mercury_format_pragma_oisu(OISUInfo, !U) :-
+    OISUInfo = pragma_info_oisu(TypeCtor, CreatorPreds, MutatorPreds,
+        DestructorPreds),
+    add_string(":- pragma oisu(", !U),
+    TypeCtor = type_ctor(TypeName, TypeArity),
+    add_string(":- pragma reserve_tag(", !U),
+    mercury_format_bracketed_sym_name_ngt(TypeName, next_to_graphic_token, !U),
+    add_string("/", !U),
+    add_int(TypeArity, !U),
+    add_string(",\n", !U),
+    add_string("\tcreators([\n", !U),
+    mercury_format_pred_name_arity_list(CreatorPreds, !U),
+    add_string("\t]),\n", !U),
+    add_string("\tmutators([\n", !U),
+    mercury_format_pred_name_arity_list(MutatorPreds, !U),
+    add_string("\t]),\n", !U),
+    add_string("\tdestructors([\n", !U),
+    mercury_format_pred_name_arity_list(DestructorPreds, !U),
+    add_string("\t]).\n", !U),
+    add_string(").\n", !U).
+
+:- pred mercury_format_pred_name_arity_list(list(pred_name_arity)::in,
+    U::di, U::uo) is det <= output(U).
+
+mercury_format_pred_name_arity_list([], !U).
+mercury_format_pred_name_arity_list([PredNameArity | PredNameArities], !U) :-
+    mercury_format_pred_name_arity_list_lag(PredNameArity, PredNameArities,
+        !U).
+
+:- pred mercury_format_pred_name_arity_list_lag(pred_name_arity::in,
+    list(pred_name_arity)::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_pred_name_arity_list_lag(PredNameArity, PredNameArities, !U) :-
+    add_string("\t\t", !U),
+    mercury_format_pred_name_arity(PredNameArity, !U),
+    (
+        PredNameArities = [],
+        add_string("\n", !U)
+    ;
+        PredNameArities = [HeadPredNameArity | TailPredNameArities],
+        add_string(",\n", !U),
+        mercury_format_pred_name_arity_list_lag(HeadPredNameArity,
+            TailPredNameArities, !U)
+    ).
+
+:- pred mercury_format_pred_name_arity(pred_name_arity::in, U::di, U::uo)
+    is det <= output(U).
+
+mercury_format_pred_name_arity(PredNameArity, !U) :-
+    PredNameArity = pred_name_arity(PredName, Arity),
+    mercury_format_bracketed_sym_name_ngt(PredName, next_to_graphic_token, !U),
+    add_string("/", !U),
+    add_int(Arity, !U).
 
 %-----------------------------------------------------------------------------%
 

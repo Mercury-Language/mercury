@@ -1368,7 +1368,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_tparams(TypeDefn, Args),
     hlds_data.get_type_defn_body(TypeDefn, Body),
     hlds_data.get_type_defn_context(TypeDefn, Context),
-    TypeCtor = type_ctor(Name, Arity),
+    TypeCtor = type_ctor(Name, _Arity),
     (
         Body = hlds_du_type(Ctors, _, _, _, MaybeUserEqComp,
             MaybeDirectArgCtors,
@@ -1486,7 +1486,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     ->
         map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [],
             ForeignEnumVals),
-        FEInfo = pragma_info_foreign_enum(Lang, Name, Arity, ForeignEnumVals),
+        FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, ForeignEnumVals),
         ForeignPragma = pragma_foreign_enum(FEInfo),
         ForeignItemPragma = item_pragma_info(user, ForeignPragma, Context, -1),
         ForeignItem = item_pragma(ForeignItemPragma),

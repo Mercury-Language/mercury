@@ -12,7 +12,7 @@
 % building the HLDS. Error messages specific to a given submodule of
 % make_hlds.m are in that specific submodule; this submodule is for error
 % messages that are needed by more than one submodule.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.make_hlds_error.
@@ -34,20 +34,23 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred undefined_pred_or_func_error(sym_name::in, int::in, prog_context::in,
-    string::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Similar to undeclared_mode_error, but gives less information.
     % XXX perhaps we should get rid of this, and change the callers to
     % instead call undeclared_mode_error.
     %
 :- pred undefined_mode_error(sym_name::in, int::in, prog_context::in,
-    string::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred maybe_undefined_pred_error(globals::in, sym_name::in, int::in,
     pred_or_func::in, import_status::in, bool::in, prog_context::in,
-    string::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Emit an error if something is exported.  (Used to check for
+    % Emit an error if something is exported. (Used to check for
     % when things shouldn't be exported.)
     %
 :- pred error_if_exported(import_status::in, prog_context::in, string::in,
@@ -102,18 +105,18 @@ multiple_def_error(Status, Name, Arity, DefType, Context, OrigContext,
         !:Specs = [Spec | !.Specs]
     ).
 
-undefined_pred_or_func_error(Name, Arity, Context, Description, !Specs) :-
+undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs) :-
     % This used to say `preceding' instead of `corresponding.'
     % Which is more correct?
-    Pieces = [words("Error:"), words(Description), words("for"),
+    Pieces = [words("Error:") | DescPieces] ++ [words("for"),
         sym_name_and_arity(Name / Arity),
         words("without corresponding `pred' or `func' declaration.")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-undefined_mode_error(Name, Arity, Context, Description, !Specs) :-
-    Pieces = [words("Error:"), words(Description), words("for"),
+undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
+    Pieces = [words("Error:") | DescPieces] ++ [words("for"),
         sym_name_and_arity(Name / Arity),
         words("specifies non-existent mode.")],
     Msg = simple_msg(Context, [always(Pieces)]),
@@ -167,15 +170,15 @@ mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
     [words(":- mode"), words(mode_decl_to_string(ProcId, PredInfo)),
     suffix(".")].
 
+maybe_undefined_pred_error(Globals, Name, Arity, PredOrFunc, Status,
+        IsClassMethod, Context, DescPieces, !Specs) :-
     % This is not considered an unconditional error anymore:
     % if there is no `:- pred' or `:- func' declaration,
     % and the declaration is local, and not a type class method,
     % and the `--infer-types' option was specified,
     % then we just add an implicit declaration for that predicate or
     % function, marking it as one whose type will be inferred.
-    %
-maybe_undefined_pred_error(Globals, Name, Arity, PredOrFunc, Status,
-        IsClassMethod, Context, Description, !Specs) :-
+
     DefinedInThisModule = status_defined_in_this_module(Status),
     IsExported = status_is_exported(Status),
     globals.lookup_bool_option(Globals, infer_types, InferTypes),
@@ -187,7 +190,7 @@ maybe_undefined_pred_error(Globals, Name, Arity, PredOrFunc, Status,
     ->
         true
     ;
-        Pieces = [words("Error:"), words(Description), words("for"),
+        Pieces = [words("Error:") | DescPieces] ++ [words("for"),
             simple_call(simple_call_id(PredOrFunc, Name, Arity)), nl,
             words("without preceding"), quote(pred_or_func_to_str(PredOrFunc)),
             words("declaration."), nl],

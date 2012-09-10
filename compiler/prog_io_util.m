@@ -108,8 +108,8 @@
 :- pred parse_name_and_arity(module_name::in, term(T)::in,
     sym_name::out, arity::out) is semidet.
 
-:- pred parse_name_and_arity(term(T)::in, sym_name::out, arity::out)
-    is semidet.
+:- pred parse_name_and_arity_unqualified(term(T)::in,
+    sym_name::out, arity::out) is semidet.
 
 :- pred parse_pred_or_func_name_and_arity(term(T)::in,
     pred_or_func::out, sym_name::out, arity::out) is semidet.
@@ -263,7 +263,7 @@ parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
         PredNameTerm, SymName),
     ArityTerm = term.functor(term.integer(Arity), [], _).
 
-parse_name_and_arity(PredAndArityTerm, SymName, Arity) :-
+parse_name_and_arity_unqualified(PredAndArityTerm, SymName, Arity) :-
     parse_name_and_arity(unqualified(""),
         PredAndArityTerm, SymName, Arity).
 

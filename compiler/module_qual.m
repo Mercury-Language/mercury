@@ -9,14 +9,14 @@
 % File: module_qual.m.
 % Main authors: stayl, fjh.
 %
-% Module qualifies types, insts and modes within declaration items.  The
-% head of all declarations should be module qualified in prog_io.m.
-% This module qualifies the bodies of the declarations.  Checks for
-% undefined types, insts and modes.  Uses two passes over the item list,
+% Module qualifies types, insts and modes within declaration items.
+% The head of all declarations should be module qualified in prog_io.m.
+% This module qualifies the bodies of the declarations. Checks for
+% undefined types, insts and modes. Uses two passes over the item list,
 % one to collect all type, mode and inst ids and a second to do the
-% qualification and report errors.  If the --warn-interface-imports
+% qualification and report errors. If the --warn-interface-imports
 % option is set, warns about modules imported in the interface that do
-% not need to be in the interface.  The modes of lambda expressions are
+% not need to be in the interface. The modes of lambda expressions are
 % qualified in modes.m.
 %
 %-----------------------------------------------------------------------------%
@@ -97,7 +97,7 @@
 :- type partial_qualifier_info.
 
     % Suppose we are processing a definition which defines the symbol
-    % foo.bar.baz.quux/1.  Then we insert the following symbols
+    % foo.bar.baz.quux/1. Then we insert the following symbols
     % into the symbol table:
     %   - if the current value of the NeedQual flag at this point
     %       is `may_be_unqualified',
@@ -113,7 +113,7 @@
     %
     % The predicate `get_partial_qualifiers' returns all of the
     % partial qualifiers for which we need to insert definitions,
-    % i.e. all the ones which are visible.  For example,
+    % i.e. all the ones which are visible. For example,
     % given as input `foo.bar.baz', it returns a list containing
     %   (1) `baz', iff `foo.bar' is imported, and
     %   (2) `bar.baz', iff `foo' is imported.
@@ -166,7 +166,7 @@ module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap, Globals,
     (
         % Warn about any unused module imports in the interface.
         % There is a special case involving type class instances that
-        % we need to handle here.  Consider:
+        % we need to handle here. Consider:
         %
         %   :- module foo.
         %   :- interface.
@@ -175,11 +175,11 @@ module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap, Globals,
         %   :- typeclass tc1(T) <= tc2(T).
         %   :- instance tc1(unit).
         %
-        % where module bar exports the instance tc2(unit).  We must import
+        % where module bar exports the instance tc2(unit). We must import
         % the module bar in the interface of the module foo in order for
         % the superclass constraint on the instance tc1(unit) to be satisfied.
         % However, at this stage of compilation we do not know that the
-        % instance tc2(unit) needs to be visible.  (Knowing this would require
+        % instance tc2(unit) needs to be visible. (Knowing this would require
         % a more extensive analysis of type classes and instances to be done
         % in this module.)
         %
@@ -933,7 +933,7 @@ do_module_qualify_mutable(ItemMutable0, ItemMutable, !Info, !Specs) :-
     qualify_inst(Inst0, Inst, !Info, !Specs),
     ItemMutable = item_mutable_info(Name, Type, InitTerm, Inst,
         Attrs, Varset, Context, SeqNum).
-    
+
 :- pred do_module_qualify_event_specs(string::in,
     assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
     mq_info::in, mq_info::out,
@@ -1039,21 +1039,16 @@ qualify_type_defn(parse_tree_solver_type(SolverTypeDetails0, MaybeUserEqComp),
     SolverTypeDetails  = solver_type_details(RepnType, InitPred,
         GroundInst, AnyInst, MutableItems).
 
-:- pred qualify_constraint_stores(list(item)::in, list(item)::out,
+:- pred qualify_constraint_stores(
+    list(item_mutable_info)::in, list(item_mutable_info)::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_constraint_stores([], [], !Info, !Specs).
-qualify_constraint_stores([CStore0 | CStores0], [CStore | CStores],
+qualify_constraint_stores([Mutable0 | Mutables0], [Mutable | Mutables],
         !Info, !Specs) :-
-    ( if CStore0 = item_mutable(ItemMutableInfo0) then
-        do_module_qualify_mutable(ItemMutableInfo0, ItemMutableInfo,
-            !Info, !Specs), 
-        CStore = item_mutable(ItemMutableInfo)
-      else
-        unexpected($module, $pred, "item is not a mutable")
-    ),
-    qualify_constraint_stores(CStores0, CStores, !Info, !Specs).
+    do_module_qualify_mutable(Mutable0, Mutable, !Info, !Specs),
+    qualify_constraint_stores(Mutables0, Mutables, !Info, !Specs).
 
 :- pred qualify_constructors(list(constructor)::in, list(constructor)::out,
     mq_info::in, mq_info::out,
@@ -1399,7 +1394,6 @@ qualify_pragma(Pragma0, Pragma, !Info, !Specs) :-
         ; Pragma0 = pragma_trailing_info(_)
         ; Pragma0 = pragma_mm_tabling_info(_)
         ; Pragma0 = pragma_fact_table(_)
-        ; Pragma0 = pragma_reserve_tag(_)
         ; Pragma0 = pragma_promise_pure(_)
         ; Pragma0 = pragma_promise_semipure(_)
         ; Pragma0 = pragma_promise_eqv_clauses(_)
@@ -1411,22 +1405,25 @@ qualify_pragma(Pragma0, Pragma, !Info, !Specs) :-
         ),
         Pragma = Pragma0
     ;
+        Pragma0 = pragma_reserve_tag(_TypeCtor0),
+        % XXX We should be module qualifying TypeCtor0 here,
+        % not in add_pragma.m. However, the code in add_pragma.m
+        % does generate better error messages than qualify_type_ctor does;
+        % this implies we should fix qualify_type_ctor.
+        Pragma = Pragma0
+    ;
         Pragma0 = pragma_foreign_export_enum(FEEInfo0),
-        FEEInfo0 = pragma_info_foreign_export_enum(Lang, TypeName0, TypeArity0,
+        FEEInfo0 = pragma_info_foreign_export_enum(Lang, TypeCtor0,
             Attributes, Overrides),
-        qualify_type_ctor(type_ctor(TypeName0, TypeArity0),
-            type_ctor(TypeName, TypeArity), !Info, !Specs),
-        FEEInfo = pragma_info_foreign_export_enum(Lang, TypeName, TypeArity,
+        qualify_type_ctor(TypeCtor0, TypeCtor, !Info, !Specs),
+        FEEInfo = pragma_info_foreign_export_enum(Lang, TypeCtor,
             Attributes, Overrides),
         Pragma = pragma_foreign_export_enum(FEEInfo)
     ;
         Pragma0 = pragma_foreign_enum(FEInfo0),
-        FEInfo0 = pragma_info_foreign_enum(Lang, TypeName0, TypeArity0,
-            Values),
-        qualify_type_ctor(type_ctor(TypeName0, TypeArity0),
-            type_ctor(TypeName, TypeArity), !Info, !Specs),
-        FEInfo = pragma_info_foreign_enum(Lang, TypeName, TypeArity,
-            Values),
+        FEInfo0 = pragma_info_foreign_enum(Lang, TypeCtor0, Values),
+        qualify_type_ctor(TypeCtor0, TypeCtor, !Info, !Specs),
+        FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, Values),
         Pragma = pragma_foreign_enum(FEInfo)
     ;
         Pragma0 = pragma_foreign_proc(FPInfo0),
@@ -1439,6 +1436,15 @@ qualify_pragma(Pragma0, Pragma, !Info, !Specs) :-
         FPInfo = pragma_info_foreign_proc(Attrs, Name, PredOrFunc,
             Vars, Varset, InstVarset, Impl),
         Pragma = pragma_foreign_proc(FPInfo)
+    ;
+        Pragma0 = pragma_oisu(OISUInfo0),
+        OISUInfo0 = pragma_info_oisu(TypeCtor0, CreatorPreds,
+            MutatorPreds, DestructorPreds),
+        % XXX Preds
+        qualify_type_ctor(TypeCtor0, TypeCtor, !Info, !Specs),
+        OISUInfo = pragma_info_oisu(TypeCtor, CreatorPreds,
+            MutatorPreds, DestructorPreds),
+        Pragma = pragma_oisu(OISUInfo)
     ;
         Pragma0 = pragma_tabled(TabledInfo0),
         TabledInfo0 = pragma_info_tabled(EvalMethod, PredNameArityPF,
@@ -1455,13 +1461,15 @@ qualify_pragma(Pragma0, Pragma, !Info, !Specs) :-
             MModes, Attrs),
         Pragma = pragma_tabled(TabledInfo)
     ;
-        Pragma0 = pragma_foreign_export(FEInfo0),
-        FEInfo0 = pragma_info_foreign_export(Lang, PredNameModesPF0, CFunc),
+        Pragma0 = pragma_foreign_proc_export(FPEInfo0),
+        FPEInfo0 = pragma_info_foreign_proc_export(Lang, PredNameModesPF0,
+            CFunc),
         PredNameModesPF0 = pred_name_modes_pf(Name, Modes0, PredOrFunc),
         qualify_mode_list(Modes0, Modes, !Info, !Specs),
         PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
-        FEInfo = pragma_info_foreign_export(Lang, PredNameModesPF, CFunc),
-        Pragma = pragma_foreign_export(FEInfo)
+        FPEInfo = pragma_info_foreign_proc_export(Lang, PredNameModesPF,
+            CFunc),
+        Pragma = pragma_foreign_proc_export(FPEInfo)
     ;
         Pragma0 = pragma_type_spec(TypeSpecInfo0),
         TypeSpecInfo0 = pragma_info_type_spec(A, B, C, D, MaybeModes0,
@@ -1640,26 +1648,27 @@ qualify_instance_body(ClassName, InstanceBody0, InstanceBody) :-
 
 :- pred add_module_qualifier(sym_name::in, sym_name::in, sym_name::out) is det.
 
-add_module_qualifier(Module, unqualified(SymName), qualified(Module, SymName)).
-add_module_qualifier(DefaultModule, qualified(SymModule, SymName),
-        qualified(Module, SymName)) :-
-    ( match_sym_name(SymModule, DefaultModule) ->
-        Module = DefaultModule
+add_module_qualifier(DefaultModule, SymName0, SymName) :-
+    (
+        SymName0 = unqualified(Name),
+        SymName = qualified(DefaultModule, Name)
     ;
-        % This case is an error.  The user must have written something
-        % like
-        %   :- instance foo.bar(some_type) where [
-        %       pred(baz.p/1) is q
-        %   ].
-        % where the module qualifier on the pred or func in the
-        % instance (`baz.') does not match the qualifier for the
-        % class name (`foo.').
-        %
-        % We don't report the error here, we just leave the original
-        % module qualifier intact so that the error can be reported
-        % later on.
-
-        Module = SymModule
+        SymName0 = qualified(SymModule, SubSymName),
+        ( match_sym_name(SymModule, DefaultModule) ->
+            SymName = qualified(DefaultModule, SubSymName)
+        ;
+            % This case is an error. The user must have written something like
+            %   :- instance foo.bar(some_type) where [
+            %       pred(baz.p/1) is q
+            %   ].
+            % where the module qualifier on the pred or func in the instance
+            % (baz) does not match the qualifier for the class name (foo).
+            %
+            % We don't report the error here, we just leave the original
+            % module qualifier intact so that the error can be reported
+            % later on.
+            SymName = SymName0
+        )
     ).
 
     % Find the unique match in the current name space for a given mq_id
@@ -1809,10 +1818,9 @@ report_undefined(MatchingModules, Info, Id, IdType, !Specs) :-
         sym_name_and_arity(id_to_sym_name_and_arity(Id)),
         suffix("."), nl],
     (
-        %
-        % If it is a qualified symbol, then check whether the module
-        % specified has been imported.
-        %
+        % If it is a qualified symbol, then check whether the specified module
+        % has been imported.
+
         Id = mq_id(qualified(ModuleName, _), _Arity),
         mq_info_get_imported_modules(Info, ImportedModules),
         \+ set.member(ModuleName, ImportedModules),

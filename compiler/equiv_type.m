@@ -641,7 +641,7 @@ replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
         ; Pragma0 = pragma_foreign_code(_)
         ; Pragma0 = pragma_foreign_decl(_)
         ; Pragma0 = pragma_foreign_enum(_)
-        ; Pragma0 = pragma_foreign_export(_)
+        ; Pragma0 = pragma_foreign_proc_export(_)
         ; Pragma0 = pragma_foreign_export_enum(_)
         ; Pragma0 = pragma_foreign_import_module(_)
         ; Pragma0 = pragma_inline(_)
@@ -658,6 +658,7 @@ replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
         ; Pragma0 = pragma_source_file(_)
         ; Pragma0 = pragma_structure_reuse(_)
         ; Pragma0 = pragma_structure_sharing(_)
+        ; Pragma0 = pragma_oisu(_)
         ; Pragma0 = pragma_tabled(_)
         ; Pragma0 = pragma_terminates(_)
         ; Pragma0 = pragma_termination2_info(_)
@@ -793,14 +794,14 @@ replace_in_type_defn(Location, EqvMap, EqvInstMap, TypeCtor, TypeDefn0, TypeDefn
     ;
         TypeDefn0 = parse_tree_solver_type(SolverDetails0, MaybeUserEqComp),
         SolverDetails0 = solver_type_details(RepresentationType0, InitPred,
-            GroundInst, AnyInst, MutableItems0),
+            GroundInst, AnyInst, MutableInfos0),
         replace_in_type_location_2(Location, EqvMap, [TypeCtor],
             RepresentationType0, RepresentationType,
             _, ContainsCirc, !VarSet, !EquivTypeInfo, !UsedModules),
         replace_in_constraint_store(Location, EqvMap, EqvInstMap,
-            MutableItems0, MutableItems, !EquivTypeInfo, !UsedModules),
+            MutableInfos0, MutableInfos, !EquivTypeInfo, !UsedModules),
         SolverDetails = solver_type_details(RepresentationType, InitPred,
-            GroundInst, AnyInst, MutableItems),
+            GroundInst, AnyInst, MutableInfos),
         TypeDefn = parse_tree_solver_type(SolverDetails, MaybeUserEqComp)
     ;
         ( TypeDefn0 = parse_tree_abstract_type(_)
@@ -811,22 +812,19 @@ replace_in_type_defn(Location, EqvMap, EqvInstMap, TypeCtor, TypeDefn0, TypeDefn
     ).
 
 :- pred replace_in_constraint_store(eqv_type_location::in,
-    eqv_map::in, eqv_inst_map::in, list(item)::in, list(item)::out,
+    eqv_map::in, eqv_inst_map::in,
+    list(item_mutable_info)::in, list(item_mutable_info)::out,
     equiv_type_info::in, equiv_type_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_constraint_store(_, _, _, [], [], !EquivTypeInfo, !UsedModules).
 replace_in_constraint_store(Location, EqvMap, EqvInstMap,
-        [CStore0 | CStores0], [CStore | CStores], !EquivTypeInfo, !UsedModules) :-
-    ( if CStore0 = item_mutable(ItemMutableInfo0) then
-        replace_in_mutable_defn(Location, EqvMap, EqvInstMap,
-            ItemMutableInfo0, ItemMutableInfo, !EquivTypeInfo, !UsedModules),
-        CStore = item_mutable(ItemMutableInfo)
-      else
-        unexpected($module, $pred, "item is not a mutable")
-    ),
+        [MutableInfo0 | MutableInfos0], [MutableInfo | MutableInfos],
+        !EquivTypeInfo, !UsedModules) :-
+    replace_in_mutable_defn(Location, EqvMap, EqvInstMap,
+        MutableInfo0, MutableInfo, !EquivTypeInfo, !UsedModules),
     replace_in_constraint_store(Location, EqvMap, EqvInstMap,
-        CStores0, CStores, !EquivTypeInfo, !UsedModules).
+        MutableInfos0, MutableInfos, !EquivTypeInfo, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 
