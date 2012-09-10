@@ -3739,7 +3739,7 @@ then
     LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.stseg"
     if test "$enable_trail_grades" = "yes"
     then
-        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.tr.stseg"
+        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.trseg.stseg"
     fi
 
     if test "$enable_debug_grades" = "yes"
