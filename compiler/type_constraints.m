@@ -1709,16 +1709,17 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             ),
             % If it is a closure constructor, create a disjunction
             % constraint for each predicate it could refer to.
+            predicate_table_lookup_sym(PredEnv, may_be_partially_qualified,
+                Name, PredIds),
             (
-                predicate_table_search_sym(PredEnv,
-                    may_be_partially_qualified, Name, PredIds)
-            ->
+                PredIds = [_ | _],
                 predicate_table_get_preds(PredEnv, Preds),
                 list.filter_map_foldl(
                     ho_pred_unif_constraint(Preds, GoalInfo, LTVar,
                         ArgTypeVars),
                     PredIds, PredConstraints, !TCInfo)
             ;
+                PredIds = [],
                 PredConstraints = []
             ),
             Constraints = TypeConstraints ++ PredConstraints,
@@ -1764,16 +1765,10 @@ plain_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     GoalExpr = plain_call(_, _, Args, _, _, Name),
     % Transform a call to variable assignments of the variables
     % used in the call.
-    (
-        predicate_table_search_pred_sym(PredEnv, may_be_partially_qualified,
-            Name, PredIds0)
-    ->
-        PredIds1 = PredIds0
-    ;
-        PredIds1 = []
-    ),
+    predicate_table_lookup_pred_sym(PredEnv, may_be_partially_qualified,
+        Name, PredIds0),
     predicate_table_get_preds(PredEnv, Preds),
-    list.filter(pred_has_arity(Preds, list.length(Args)), PredIds1, PredIds),
+    list.filter(pred_has_arity(Preds, list.length(Args)), PredIds0, PredIds),
     list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
     list.map2_foldl(pred_call_constraint(Preds, GoalInfo, ArgTVars),
         PredIds, Constraints, PredTVars, !TCInfo),

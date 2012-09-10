@@ -114,56 +114,62 @@
     % Search the table for (a) predicates or functions (b) predicates only
     % or (c) functions only matching this (possibly module-qualified) sym_name.
     %
-:- pred predicate_table_search_sym(predicate_table::in, is_fully_qualified::in,
-    sym_name::in, list(pred_id)::out) is semidet.
+:- pred predicate_table_lookup_sym(predicate_table::in, is_fully_qualified::in,
+    sym_name::in, list(pred_id)::out) is det.
 
-:- pred predicate_table_search_pred_sym(predicate_table::in,
-    is_fully_qualified::in, sym_name::in, list(pred_id)::out) is semidet.
+:- pred predicate_table_lookup_pred_sym(predicate_table::in,
+    is_fully_qualified::in, sym_name::in, list(pred_id)::out) is det.
 
-:- pred predicate_table_search_func_sym(predicate_table::in,
-    is_fully_qualified::in, sym_name::in, list(pred_id)::out) is semidet.
+:- pred predicate_table_lookup_func_sym(predicate_table::in,
+    is_fully_qualified::in, sym_name::in, list(pred_id)::out) is det.
 
     % Search the table for (a) predicates or functions (b) predicates only
     % or (c) functions only matching this (possibly module-qualified)
     % sym_name & arity.
     %
-:- pred predicate_table_search_sym_arity(predicate_table::in,
+:- pred predicate_table_lookup_sym_arity(predicate_table::in,
     is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
-    is semidet.
+    is det.
 
-:- pred predicate_table_search_pred_sym_arity(predicate_table::in,
+:- pred predicate_table_lookup_pred_sym_arity(predicate_table::in,
     is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
-    is semidet.
+    is det.
 
-:- pred predicate_table_search_func_sym_arity(predicate_table::in,
+:- pred predicate_table_lookup_func_sym_arity(predicate_table::in,
     is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
-    is semidet.
+    is det.
 
     % Search the table for (a) predicates or functions
     % (b) predicates only or (c) functions only matching this name.
     %
-:- pred predicate_table_search_name(predicate_table::in, string::in,
-    list(pred_id)::out) is semidet.
+:- pred predicate_table_lookup_name(predicate_table::in, string::in,
+    list(pred_id)::out) is det.
 
-:- pred predicate_table_search_pred_name(predicate_table::in, string::in,
-    list(pred_id)::out) is semidet.
+:- pred predicate_table_lookup_pred_name(predicate_table::in, string::in,
+    list(pred_id)::out) is det.
 
-:- pred predicate_table_search_func_name(predicate_table::in, string::in,
-    list(pred_id)::out) is semidet.
+:- pred predicate_table_lookup_func_name(predicate_table::in, string::in,
+    list(pred_id)::out) is det.
 
     % Search the table for (a) predicates or functions (b) predicates only
     % or (c) functions only matching this name & arity. When searching for
     % functions, the arity used is the arity of the function, not the arity
     % N+1 predicate that it gets converted to.
     %
-:- pred predicate_table_search_name_arity(predicate_table::in, string::in,
-    arity::in, list(pred_id)::out) is semidet.
+:- pred predicate_table_lookup_name_arity(predicate_table::in, string::in,
+    arity::in, list(pred_id)::out) is det.
 
-:- pred predicate_table_search_pred_name_arity(predicate_table::in, string::in,
-    arity::in, list(pred_id)::out) is semidet.
+:- pred predicate_table_lookup_pred_name_arity(predicate_table::in, string::in,
+    arity::in, list(pred_id)::out) is det.
 
-:- pred predicate_table_search_func_name_arity(predicate_table::in, string::in,
-    arity::in, list(pred_id)::out) is semidet.
+:- pred predicate_table_lookup_func_name_arity(predicate_table::in, string::in,
+    arity::in, list(pred_id)::out) is det.
+
+    % Is the item known to be fully qualified? If so, a search for
+    % `pred foo.bar/2' will not match `pred baz.foo.bar/2'.
+:- type is_fully_qualified
+    --->    is_fully_qualified
+    ;       may_be_partially_qualified.
 
     % Search the table for (a) predicates or functions (b) predicates only
     % or (c) functions only matching this module, name & arity. When searching
@@ -179,24 +185,18 @@
     % break anything too badly...
     %
     % (`m_n_a' here is short for "module, name, arity".)
-
-    % Is the item known to be fully qualified? If so, a search for
-    % `pred foo.bar/2' will not match `pred baz.foo.bar/2'.
-:- type is_fully_qualified
-    --->    is_fully_qualified
-    ;       may_be_partially_qualified.
-
-:- pred predicate_table_search_m_n_a(predicate_table::in,
+    %
+:- pred predicate_table_lookup_m_n_a(predicate_table::in,
     is_fully_qualified::in, module_name::in, string::in, arity::in,
-    list(pred_id)::out) is semidet.
+    list(pred_id)::out) is det.
 
-:- pred predicate_table_search_pred_m_n_a(predicate_table::in,
+:- pred predicate_table_lookup_pred_m_n_a(predicate_table::in,
     is_fully_qualified::in, module_name::in, string::in, arity::in,
-    list(pred_id)::out) is semidet.
+    list(pred_id)::out) is det.
 
-:- pred predicate_table_search_func_m_n_a(predicate_table::in,
+:- pred predicate_table_lookup_func_m_n_a(predicate_table::in,
     is_fully_qualified::in, module_name::in, string::in, arity::in,
-    list(pred_id)::out) is semidet.
+    list(pred_id)::out) is det.
 
     % Search the table for predicates or functions matching this pred_or_func
     % category, module, name, and arity. When searching for functions, the
@@ -205,9 +205,9 @@
     % NB. This is opposite to what happens with the search predicates
     % declared above!!
     %
-:- pred predicate_table_search_pf_m_n_a(predicate_table::in,
+:- pred predicate_table_lookup_pf_m_n_a(predicate_table::in,
     is_fully_qualified::in, pred_or_func::in, module_name::in, string::in,
-    arity::in, list(pred_id)::out) is semidet.
+    arity::in, list(pred_id)::out) is det.
 
     % Search the table for predicates or functions matching this pred_or_func
     % category, name, and arity. When searching for functions, the arity used
@@ -216,9 +216,8 @@
     % NB. This is opposite to what happens with the search predicates
     % declared above!!
     %
-:- pred predicate_table_search_pf_name_arity(predicate_table::in,
-    pred_or_func::in, string::in, arity::in, list(pred_id)::out)
-    is semidet.
+:- pred predicate_table_lookup_pf_name_arity(predicate_table::in,
+    pred_or_func::in, string::in, arity::in, list(pred_id)::out) is det.
 
     % Search the table for predicates or functions matching this pred_or_func
     % category, sym_name, and arity. When searching for functions, the arity
@@ -227,16 +226,16 @@
     % NB. This is opposite to what happens with the search predicates
     % declared above!!
     %
-:- pred predicate_table_search_pf_sym_arity(predicate_table::in,
+:- pred predicate_table_lookup_pf_sym_arity(predicate_table::in,
     is_fully_qualified::in, pred_or_func::in, sym_name::in, arity::in,
-    list(pred_id)::out) is semidet.
+    list(pred_id)::out) is det.
 
     % Search the table for predicates or functions matching
     % this pred_or_func category and sym_name.
     %
-:- pred predicate_table_search_pf_sym(predicate_table::in,
+:- pred predicate_table_lookup_pf_sym(predicate_table::in,
     is_fully_qualified::in, pred_or_func::in, sym_name::in,
-    list(pred_id)::out) is semidet.
+    list(pred_id)::out) is det.
 
     % predicate_table_insert(PredTable0, PredInfo,
     %   NeedQual, PartialQualInfo, PredId, PredTable):
@@ -266,9 +265,9 @@
     prog_context::in, sym_name::in, sym_name::out, pred_id::out) is det.
 
     % Find a predicate or function from the list of pred_ids which matches the
-    % given name and argument types.  If the constraint_search argument is
+    % given name and argument types. If the constraint_search argument is
     % provided then also check that the class context is consistent with what
-    % is expected.  Fail if there is no matching pred.  Abort if there are
+    % is expected. Fail if there is no matching pred. Abort if there are
     % multiple matching preds.
     %
 :- pred find_matching_pred_id(module_info::in, list(pred_id)::in,
@@ -517,208 +516,242 @@ do_remove_from_m_n_a_index(Module, Name, Arity, PredId, MNA0, MNA) :-
 
 %-----------------------------------------------------------------------------%
 
-predicate_table_search_sym(PredicateTable, may_be_partially_qualified,
-        unqualified(Name), PredIdList) :-
-    predicate_table_search_name(PredicateTable, Name, PredIdList).
-predicate_table_search_sym(PredicateTable, IsFullyQualified,
-        qualified(Module, Name), PredIdList) :-
-    predicate_table_search_module_name(PredicateTable, IsFullyQualified,
-        Module, Name, PredIdList),
-    PredIdList = [_ | _].
-
-predicate_table_search_pred_sym(PredicateTable, may_be_partially_qualified,
-        unqualified(Name), PredIdList) :-
-    predicate_table_search_pred_name(PredicateTable, Name, PredIdList).
-predicate_table_search_pred_sym(PredicateTable, IsFullyQualified,
-        qualified(Module, Name), PredIdList) :-
-    predicate_table_search_pred_module_name(PredicateTable,
-        IsFullyQualified, Module, Name, PredIdList),
-    PredIdList = [_ | _].
-
-predicate_table_search_func_sym(PredicateTable, may_be_partially_qualified,
-        unqualified(Name), PredIdList) :-
-    predicate_table_search_func_name(PredicateTable, Name, PredIdList).
-predicate_table_search_func_sym(PredicateTable, IsFullyQualified,
-        qualified(Module, Name), PredIdList) :-
-    predicate_table_search_func_module_name(PredicateTable,
-        IsFullyQualified, Module, Name, PredIdList),
-    PredIdList = [_ | _].
-
-%-----------------------------------------------------------------------------%
-
-predicate_table_search_sym_arity(PredicateTable, IsFullyQualified,
-        qualified(Module, Name), Arity, PredIdList) :-
-    predicate_table_search_m_n_a(PredicateTable,
-        IsFullyQualified, Module, Name, Arity, PredIdList).
-predicate_table_search_sym_arity(PredicateTable, may_be_partially_qualified,
-        unqualified(Name), Arity, PredIdList) :-
-    predicate_table_search_name_arity(PredicateTable, Name, Arity, PredIdList).
-
-predicate_table_search_pred_sym_arity(PredicateTable, IsFullyQualified,
-        qualified(Module, Name), Arity, PredIdList) :-
-    predicate_table_search_pred_m_n_a(PredicateTable,
-        IsFullyQualified, Module, Name, Arity, PredIdList).
-predicate_table_search_pred_sym_arity(PredicateTable,
-        may_be_partially_qualified, unqualified(Name),
-        Arity, PredIdList) :-
-    predicate_table_search_pred_name_arity(PredicateTable, Name, Arity,
-        PredIdList).
-
-predicate_table_search_func_sym_arity(PredicateTable, IsFullyQualified,
-        qualified(Module, Name), Arity, PredIdList) :-
-    predicate_table_search_func_m_n_a(PredicateTable,
-        IsFullyQualified, Module, Name, Arity, PredIdList).
-predicate_table_search_func_sym_arity(PredicateTable,
-        may_be_partially_qualified, unqualified(Name),
-        Arity, PredIdList) :-
-    predicate_table_search_func_name_arity(PredicateTable, Name, Arity,
-        PredIdList).
-
-%-----------------------------------------------------------------------------%
-
-predicate_table_search_name(PredicateTable, Name, PredIds) :-
-    ( predicate_table_search_pred_name(PredicateTable, Name, PredPredIds0) ->
-        PredPredIds = PredPredIds0
+predicate_table_lookup_sym(PredicateTable, IsFullyQualified, SymName,
+        PredIds) :-
+    (
+        SymName = unqualified(Name),
+        (
+            IsFullyQualified = may_be_partially_qualified,
+            predicate_table_lookup_name(PredicateTable, Name, PredIds)
+        ;
+            IsFullyQualified = is_fully_qualified,
+            PredIds = []
+        )
     ;
-        PredPredIds = []
-    ),
-    ( predicate_table_search_func_name(PredicateTable, Name, FuncPredIds0) ->
-        FuncPredIds = FuncPredIds0
+        SymName = qualified(Module, Name),
+        predicate_table_lookup_module_name(PredicateTable, IsFullyQualified,
+            Module, Name, PredIds)
+    ).
+
+predicate_table_lookup_pred_sym(PredicateTable, IsFullyQualified, SymName,
+        PredIds) :-
+    (
+        SymName = unqualified(Name),
+        (
+            IsFullyQualified = may_be_partially_qualified,
+            predicate_table_lookup_pred_name(PredicateTable, Name, PredIds)
+        ;
+            IsFullyQualified = is_fully_qualified,
+            PredIds = []
+        )
     ;
-        FuncPredIds = []
-    ),
-    list.append(FuncPredIds, PredPredIds, PredIds),
-    PredIds = [_ | _].
+        SymName = qualified(Module, Name),
+        predicate_table_lookup_pred_module_name(PredicateTable,
+            IsFullyQualified, Module, Name, PredIds)
+    ).
 
-predicate_table_search_pred_name(PredicateTable, PredName, PredIds) :-
-    map.search(PredicateTable ^ pred_name_index, PredName, PredIds).
-
-predicate_table_search_func_name(PredicateTable, FuncName, PredIds) :-
-    map.search(PredicateTable ^ func_name_index, FuncName, PredIds).
+predicate_table_lookup_func_sym(PredicateTable, IsFullyQualified, SymName,
+        PredIds) :-
+    (
+        SymName = unqualified(Name),
+        (
+            IsFullyQualified = may_be_partially_qualified,
+            predicate_table_lookup_func_name(PredicateTable, Name, PredIds)
+        ;
+            IsFullyQualified = is_fully_qualified,
+            PredIds = []
+        )
+    ;
+        SymName = qualified(Module, Name),
+        predicate_table_lookup_func_module_name(PredicateTable,
+            IsFullyQualified, Module, Name, PredIds)
+    ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred predicate_table_search_module_name(predicate_table::in,
+predicate_table_lookup_sym_arity(PredicateTable, IsFullyQualified,
+        SymName, Arity, PredIds) :-
+    (
+        SymName = unqualified(Name),
+        (
+            IsFullyQualified = may_be_partially_qualified,
+            predicate_table_lookup_name_arity(PredicateTable, Name, Arity,
+                PredIds)
+        ;
+            IsFullyQualified = is_fully_qualified,
+            PredIds = []
+        )
+    ;
+        SymName = qualified(Module, Name),
+        predicate_table_lookup_m_n_a(PredicateTable,
+            IsFullyQualified, Module, Name, Arity, PredIds)
+    ).
+
+predicate_table_lookup_pred_sym_arity(PredicateTable, IsFullyQualified,
+        SymName, Arity, PredIds) :-
+    (
+        SymName = unqualified(Name),
+        (
+            IsFullyQualified = may_be_partially_qualified,
+            predicate_table_lookup_pred_name_arity(PredicateTable, Name, Arity,
+                PredIds)
+        ;
+            IsFullyQualified = is_fully_qualified,
+            PredIds = []
+        )
+    ;
+        SymName = qualified(Module, Name),
+        predicate_table_lookup_pred_m_n_a(PredicateTable,
+            IsFullyQualified, Module, Name, Arity, PredIds)
+    ).
+
+predicate_table_lookup_func_sym_arity(PredicateTable, IsFullyQualified,
+        SymName, Arity, PredIds) :-
+    (
+        SymName = unqualified(Name),
+        (
+            IsFullyQualified = may_be_partially_qualified,
+            predicate_table_lookup_func_name_arity(PredicateTable, Name, Arity,
+                PredIds)
+        ;
+            IsFullyQualified = is_fully_qualified,
+            PredIds = []
+        )
+    ;
+        SymName = qualified(Module, Name),
+        predicate_table_lookup_func_m_n_a(PredicateTable,
+            IsFullyQualified, Module, Name, Arity, PredIds)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+predicate_table_lookup_name(PredicateTable, Name, PredIds) :-
+    predicate_table_lookup_pred_name(PredicateTable, Name, PredPredIds),
+    predicate_table_lookup_func_name(PredicateTable, Name, FuncPredIds),
+    PredIds = FuncPredIds ++ PredPredIds.
+
+predicate_table_lookup_pred_name(PredicateTable, PredName, PredIds) :-
+    ( map.search(PredicateTable ^ pred_name_index, PredName, PredIdsPrime) ->
+        PredIds = PredIdsPrime
+    ;
+        PredIds = []
+    ).
+
+predicate_table_lookup_func_name(PredicateTable, FuncName, PredIds) :-
+    ( map.search(PredicateTable ^ func_name_index, FuncName, PredIdsPrime) ->
+        PredIds = PredIdsPrime
+    ;
+        PredIds = []
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred predicate_table_lookup_module_name(predicate_table::in,
     is_fully_qualified::in, module_name::in, string::in,
-    list(pred_id)::out) is semidet.
+    list(pred_id)::out) is det.
 
-predicate_table_search_module_name(PredicateTable, IsFullyQualified,
+predicate_table_lookup_module_name(PredicateTable, IsFullyQualified,
         Module, Name, PredIds) :-
-    (
-        predicate_table_search_pred_module_name(PredicateTable,
-            IsFullyQualified, Module, Name, PredPredIds0)
-    ->
-        PredPredIds = PredPredIds0
-    ;
-        PredPredIds = []
-    ),
-    (
-        predicate_table_search_func_module_name(PredicateTable,
-            IsFullyQualified, Module, Name, FuncPredIds0)
-    ->
-        FuncPredIds = FuncPredIds0
-    ;
-        FuncPredIds = []
-    ),
-    list.append(FuncPredIds, PredPredIds, PredIds),
-    PredIds = [_ | _].
+    predicate_table_lookup_pred_module_name(PredicateTable,
+        IsFullyQualified, Module, Name, PredPredIds),
+    predicate_table_lookup_func_module_name(PredicateTable,
+        IsFullyQualified, Module, Name, FuncPredIds),
+    PredIds = FuncPredIds ++ PredPredIds.
 
-:- pred predicate_table_search_pred_module_name(predicate_table::in,
+:- pred predicate_table_lookup_pred_module_name(predicate_table::in,
     is_fully_qualified::in, module_name::in, string::in,
-    list(pred_id)::out) is semidet.
+    list(pred_id)::out) is det.
 
-predicate_table_search_pred_module_name(PredicateTable, IsFullyQualified,
+predicate_table_lookup_pred_module_name(PredicateTable, IsFullyQualified,
         Module, PredName, PredIds) :-
     Pred_MNA_Index = PredicateTable ^ pred_module_name_arity_index,
-    map.search(Pred_MNA_Index, Module - PredName, Arities),
-    map.values(Arities, PredIdLists),
-    list.condense(PredIdLists, PredIds0),
-    maybe_filter_pred_ids_matching_module(IsFullyQualified,
-        Module, PredicateTable, PredIds0, PredIds).
+    ( map.search(Pred_MNA_Index, Module - PredName, Arities) ->
+        map.values(Arities, PredIdLists),
+        list.condense(PredIdLists, PredIds0),
+        maybe_filter_pred_ids_matching_module(IsFullyQualified,
+            Module, PredicateTable, PredIds0, PredIds)
+    ;
+        PredIds = []
+    ).
 
-:- pred predicate_table_search_func_module_name(predicate_table::in,
+:- pred predicate_table_lookup_func_module_name(predicate_table::in,
     is_fully_qualified::in, module_name::in, string::in,
-    list(pred_id)::out) is semidet.
+    list(pred_id)::out) is det.
 
-predicate_table_search_func_module_name(PredicateTable, IsFullyQualified,
+predicate_table_lookup_func_module_name(PredicateTable, IsFullyQualified,
         Module, FuncName, PredIds) :-
     Func_MNA_Index = PredicateTable ^ func_module_name_arity_index,
-    map.search(Func_MNA_Index, Module - FuncName, Arities),
-    map.values(Arities, PredIdLists),
-    list.condense(PredIdLists, PredIds0),
-    maybe_filter_pred_ids_matching_module(IsFullyQualified,
-        Module, PredicateTable, PredIds0, PredIds).
+    ( map.search(Func_MNA_Index, Module - FuncName, Arities) ->
+        map.values(Arities, PredIdLists),
+        list.condense(PredIdLists, PredIds0),
+        maybe_filter_pred_ids_matching_module(IsFullyQualified,
+            Module, PredicateTable, PredIds0, PredIds)
+    ;
+        PredIds = []
+    ).
 
 %-----------------------------------------------------------------------------%
 
-predicate_table_search_name_arity(PredicateTable, Name, Arity, PredIds) :-
-    (
-        predicate_table_search_pred_name_arity(PredicateTable,
-            Name, Arity, PredPredIds0)
-    ->
-        PredPredIds = PredPredIds0
-    ;
-        PredPredIds = []
-    ),
-    (
-        predicate_table_search_func_name_arity(PredicateTable,
-            Name, Arity, FuncPredIds0)
-    ->
-        FuncPredIds = FuncPredIds0
-    ;
-        FuncPredIds = []
-    ),
-    list.append(FuncPredIds, PredPredIds, PredIds),
-    PredIds = [_ | _].
+predicate_table_lookup_name_arity(PredicateTable, Name, Arity, PredIds) :-
+    predicate_table_lookup_pred_name_arity(PredicateTable,
+        Name, Arity, PredPredIds),
+    predicate_table_lookup_func_name_arity(PredicateTable,
+        Name, Arity, FuncPredIds),
+    PredIds = FuncPredIds ++ PredPredIds.
 
-predicate_table_search_pred_name_arity(PredicateTable, PredName, Arity,
+predicate_table_lookup_pred_name_arity(PredicateTable, PredName, Arity,
         PredIds) :-
     PredNameArityIndex = PredicateTable ^ pred_name_arity_index,
-    map.search(PredNameArityIndex, PredName / Arity, PredIds).
+    ( map.search(PredNameArityIndex, PredName / Arity, PredIdsPrime) ->
+        PredIds = PredIdsPrime
+    ;
+        PredIds = []
+    ).
 
-predicate_table_search_func_name_arity(PredicateTable, FuncName, Arity,
+predicate_table_lookup_func_name_arity(PredicateTable, FuncName, Arity,
         PredIds) :-
     FuncNameArityIndex = PredicateTable ^ func_name_arity_index,
-    map.search(FuncNameArityIndex, FuncName / Arity, PredIds).
+    ( map.search(FuncNameArityIndex, FuncName / Arity, PredIdsPrime) ->
+        PredIds = PredIdsPrime
+    ;
+        PredIds = []
+    ).
 
 %-----------------------------------------------------------------------------%
 
-predicate_table_search_m_n_a(PredicateTable, IsFullyQualified,
+predicate_table_lookup_m_n_a(PredicateTable, IsFullyQualified,
         Module, Name, Arity, PredIds) :-
-    (
-        predicate_table_search_pred_m_n_a(PredicateTable,
-            IsFullyQualified, Module, Name, Arity, PredPredIds0)
-    ->
-        PredPredIds = PredPredIds0
-    ;
-        PredPredIds = []
-    ),
-    (
-        predicate_table_search_func_m_n_a(PredicateTable,
-            IsFullyQualified, Module, Name, Arity, FuncPredIds0)
-    ->
-        FuncPredIds = FuncPredIds0
-    ;
-        FuncPredIds = []
-    ),
-    list.append(FuncPredIds, PredPredIds, PredIds),
-    PredIds = [_ | _].
+    predicate_table_lookup_pred_m_n_a(PredicateTable,
+        IsFullyQualified, Module, Name, Arity, PredPredIds),
+    predicate_table_lookup_func_m_n_a(PredicateTable,
+        IsFullyQualified, Module, Name, Arity, FuncPredIds),
+    PredIds = FuncPredIds ++ PredPredIds.
 
-predicate_table_search_pred_m_n_a(PredicateTable, IsFullyQualified,
+predicate_table_lookup_pred_m_n_a(PredicateTable, IsFullyQualified,
         Module, PredName, Arity, !:PredIds) :-
     P_MNA_Index = PredicateTable ^ pred_module_name_arity_index,
-    map.search(P_MNA_Index, Module - PredName, ArityIndex),
-    map.search(ArityIndex, Arity, !:PredIds),
-    maybe_filter_pred_ids_matching_module(IsFullyQualified, Module,
-        PredicateTable, !PredIds).
+    (
+        map.search(P_MNA_Index, Module - PredName, ArityIndex),
+        map.search(ArityIndex, Arity, !:PredIds)
+    ->
+        maybe_filter_pred_ids_matching_module(IsFullyQualified, Module,
+            PredicateTable, !PredIds)
+    ;
+        !:PredIds = []
+    ).
 
-predicate_table_search_func_m_n_a(PredicateTable, IsFullyQualified,
+predicate_table_lookup_func_m_n_a(PredicateTable, IsFullyQualified,
         Module, FuncName, Arity, !:PredIds) :-
     F_MNA_Index = PredicateTable ^ func_module_name_arity_index,
-    map.search(F_MNA_Index, Module - FuncName, ArityIndex),
-    map.search(ArityIndex, Arity, !:PredIds),
-    maybe_filter_pred_ids_matching_module(IsFullyQualified, Module,
-        PredicateTable, !PredIds).
+    (
+        map.search(F_MNA_Index, Module - FuncName, ArityIndex),
+        map.search(ArityIndex, Arity, !:PredIds)
+    ->
+        maybe_filter_pred_ids_matching_module(IsFullyQualified, Module,
+            PredicateTable, !PredIds)
+    ;
+        !:PredIds = []
+    ).
 
 :- pred maybe_filter_pred_ids_matching_module(is_fully_qualified::in,
     module_name::in, predicate_table::in,
@@ -740,43 +773,61 @@ pred_id_matches_module(Preds, ModuleName, PredId) :-
 
 %-----------------------------------------------------------------------------%
 
-predicate_table_search_pf_m_n_a(PredicateTable, IsFullyQualified,
-        pf_predicate, Module, Name, Arity, PredIds) :-
-    predicate_table_search_pred_m_n_a(PredicateTable, IsFullyQualified,
-        Module, Name, Arity, PredIds).
-predicate_table_search_pf_m_n_a(PredicateTable, IsFullyQualified,
-        pf_function, Module, Name, Arity, PredIds) :-
-    FuncArity = Arity - 1,
-    predicate_table_search_func_m_n_a(PredicateTable, IsFullyQualified,
-        Module, Name, FuncArity, PredIds).
+predicate_table_lookup_pf_m_n_a(PredicateTable, IsFullyQualified,
+        PredOrFunc, Module, Name, Arity, PredIds) :-
+    (
+        PredOrFunc = pf_predicate,
+        predicate_table_lookup_pred_m_n_a(PredicateTable, IsFullyQualified,
+            Module, Name, Arity, PredIds)
+    ;
+        PredOrFunc = pf_function,
+        FuncArity = Arity - 1,
+        predicate_table_lookup_func_m_n_a(PredicateTable, IsFullyQualified,
+            Module, Name, FuncArity, PredIds)
+    ).
 
-predicate_table_search_pf_name_arity(PredicateTable, pf_predicate, Name, Arity,
+predicate_table_lookup_pf_name_arity(PredicateTable, PredOrFunc, Name, Arity,
         PredIds) :-
-    predicate_table_search_pred_name_arity(PredicateTable, Name, Arity,
-        PredIds).
-predicate_table_search_pf_name_arity(PredicateTable, pf_function, Name, Arity,
-        PredIds) :-
-    FuncArity = Arity - 1,
-    predicate_table_search_func_name_arity(PredicateTable, Name, FuncArity,
-        PredIds).
+    (
+        PredOrFunc = pf_predicate,
+        predicate_table_lookup_pred_name_arity(PredicateTable, Name, Arity,
+            PredIds)
+    ;
+        PredOrFunc = pf_function,
+        FuncArity = Arity - 1,
+        predicate_table_lookup_func_name_arity(PredicateTable, Name, FuncArity,
+            PredIds)
+    ).
 
-predicate_table_search_pf_sym_arity(PredicateTable, IsFullyQualified,
-        PredOrFunc, qualified(Module, Name), Arity, PredIdList) :-
-    predicate_table_search_pf_m_n_a(PredicateTable,
-        IsFullyQualified, PredOrFunc, Module, Name, Arity, PredIdList).
-predicate_table_search_pf_sym_arity(PredicateTable, may_be_partially_qualified,
-        PredOrFunc, unqualified(Name), Arity, PredIdList) :-
-    predicate_table_search_pf_name_arity(PredicateTable, PredOrFunc,
-        Name, Arity, PredIdList).
+predicate_table_lookup_pf_sym_arity(PredicateTable, IsFullyQualified,
+        PredOrFunc, SymName, Arity, PredIds) :-
+    (
+        SymName = qualified(Module, Name), 
+        predicate_table_lookup_pf_m_n_a(PredicateTable,
+            IsFullyQualified, PredOrFunc, Module, Name, Arity, PredIds)
+    ;
+        SymName = unqualified(Name),
+        (
+            IsFullyQualified = may_be_partially_qualified,
+            predicate_table_lookup_pf_name_arity(PredicateTable, PredOrFunc,
+                Name, Arity, PredIds)
+        ;
+            IsFullyQualified = is_fully_qualified,
+            PredIds = []
+        )
+    ).
 
-predicate_table_search_pf_sym(PredicateTable, IsFullyQualified, pf_predicate,
-        SymName, PredIdList) :-
-    predicate_table_search_pred_sym(PredicateTable, IsFullyQualified,
-        SymName, PredIdList).
-predicate_table_search_pf_sym(PredicateTable, IsFullyQualified, pf_function,
-        SymName, PredIdList) :-
-    predicate_table_search_func_sym(PredicateTable, IsFullyQualified,
-        SymName, PredIdList).
+predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified, PredOrFunc,
+        SymName, PredIds) :-
+    (
+        PredOrFunc = pf_predicate,
+        predicate_table_lookup_pred_sym(PredicateTable, IsFullyQualified,
+            SymName, PredIds)
+    ;
+        PredOrFunc = pf_function,
+        predicate_table_lookup_func_sym(PredicateTable, IsFullyQualified,
+            SymName, PredIds)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -966,14 +1017,9 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
     % when resolving overloading.
 
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    (
-        predicate_table_search_pred_sym(PredTable,
-            calls_are_fully_qualified(CallerMarkers), PredName0, PredIds0)
-    ->
-        PredIds = PredIds0
-    ;
-        PredIds = []
-    ),
+    IsFullyQualified = calls_are_fully_qualified(CallerMarkers),
+    predicate_table_lookup_pred_sym(PredTable, IsFullyQualified,
+        PredName0, PredIds),
 
     % Check if there any of the candidate pred_ids have argument/return types
     % which subsume the actual argument/return types of this function call.
@@ -1055,8 +1101,8 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
     % constraints on the callee.
     %
     % XXX we should rename apart the callee constraints and check that the
-    % proven constraints are instances of them.  This would give us better
-    % overloading resolution.  For the moment, we just check that the names
+    % proven constraints are instances of them. This would give us better
+    % overloading resolution. For the moment, we just check that the names
     % and arities match, which is sufficient to prevent any compiler aborts
     % in later stages.
     %
@@ -1076,9 +1122,9 @@ get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
         ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo, Context, PredId) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     list.length(ArgTypes, Arity),
+    predicate_table_lookup_pf_sym_arity(PredicateTable, IsFullyQualified,
+        PredOrFunc, SymName, Arity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(PredicateTable, IsFullyQualified,
-            PredOrFunc, SymName, Arity, PredIds),
         % Resolve overloading using the argument types.
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
             ArgTypes, HeadTypeParams, no, Context, PredId0, _PredName)
@@ -1147,15 +1193,16 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
     (
         (
             PredOrFunc = pf_predicate,
-            predicate_table_search_pred_m_n_a(PredTable, is_fully_qualified,
-                ModuleName, ProcName, Arity, [PredId0])
+            predicate_table_lookup_pred_m_n_a(PredTable, is_fully_qualified,
+                ModuleName, ProcName, Arity, PredIds)
         ;
             PredOrFunc = pf_function,
-            predicate_table_search_func_m_n_a(PredTable, is_fully_qualified,
-                ModuleName, ProcName, Arity, [PredId0])
-        )
+            predicate_table_lookup_func_m_n_a(PredTable, is_fully_qualified,
+                ModuleName, ProcName, Arity, PredIds)
+        ),
+        PredIds = [PredIdPrime]
     ->
-        PredId = PredId0
+        PredId = PredIdPrime
     ;
         % Some of the table builtins are polymorphic, and for them we need
         % to subtract one from the arity to take into account the type_info
@@ -1165,19 +1212,20 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
         % inefficient.
         (
             PredOrFunc = pf_predicate,
-            predicate_table_search_pred_m_n_a(PredTable, is_fully_qualified,
-                ModuleName, ProcName, Arity - 1, [PredId0])
+            predicate_table_lookup_pred_m_n_a(PredTable, is_fully_qualified,
+                ModuleName, ProcName, Arity - 1, PredIds)
         ;
             PredOrFunc = pf_function,
-            predicate_table_search_func_m_n_a(PredTable, is_fully_qualified,
-                ModuleName, ProcName, Arity - 1, [PredId0])
-        )
+            predicate_table_lookup_func_m_n_a(PredTable, is_fully_qualified,
+                ModuleName, ProcName, Arity - 1, PredIds)
+        ),
+        PredIds = [PredIdPrime]
     ->
-        PredId = PredId0
+        PredId = PredIdPrime
     ;
-        string.int_to_string(Arity, ArityS),
+        string.int_to_string(Arity, ArityStr),
         unexpected($module, $pred, 
-            "can't locate " ++ ProcName ++ "/" ++ ArityS)
+            "can't locate " ++ ProcName ++ "/" ++ ArityStr)
     ),
     module_info_pred_info(Module, PredId, PredInfo),
     ProcIds = pred_info_procids(PredInfo),

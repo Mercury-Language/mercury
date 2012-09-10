@@ -1068,8 +1068,9 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         pred_info_get_markers(!.PredInfo, Markers),
         module_info_get_predicate_table(ModuleInfo, PredTable),
         % This search will usually fail, so do it first.
-        predicate_table_search_func_sym_arity(PredTable,
+        predicate_table_lookup_func_sym_arity(PredTable,
             calls_are_fully_qualified(Markers), PredName, Arity, PredIds),
+        PredIds = [_ | _],
 
         % We don't do this for compiler-generated predicates; they are assumed
         % to have been generated with all functions already expanded. If we did

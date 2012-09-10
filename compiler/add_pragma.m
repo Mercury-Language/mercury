@@ -393,35 +393,32 @@ add_pragma_foreign_proc_export(Origin, FPEInfo, Context, !ModuleInfo,
     PrednameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     list.length(Modes, Arity),
+    predicate_table_lookup_pf_sym_arity(PredTable, may_be_partially_qualified,
+        PredOrFunc, Name, Arity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(PredTable,
-            may_be_partially_qualified, PredOrFunc, Name, Arity, PredIds),
-        PredIds = [_ | _]
-    ->
-        (
-            PredIds = [PredId],
-            add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name,
-                PredId, Modes, ExportedName, Context, !ModuleInfo, !Specs)
-        ;
-            PredIds = [_, _ | _],
-            StartPieces = [words("error: ambiguous"), p_or_f(PredOrFunc),
-                words("name in"), quote("pragma foreign_export"),
-                words("declaration."), nl,
-                words("The possible matches are:"), nl_indent_delta(1)],
-            PredIdPiecesList = list.map(
-                describe_one_pred_name(!.ModuleInfo, should_module_qualify),
-                PredIds),
-            PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
-                [suffix(".")]),
-            MainPieces = StartPieces ++ PredIdPieces,
-            VerbosePieces = [words("An explicit module qualifier"),
-                words("may be necessary.")],
-            Msg = simple_msg(Context,
-                [always(MainPieces), verbose_only(VerbosePieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs]
-        )
+        PredIds = [PredId],
+        add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name,
+            PredId, Modes, ExportedName, Context, !ModuleInfo, !Specs)
     ;
+        PredIds = [_, _ | _],
+        StartPieces = [words("error: ambiguous"), p_or_f(PredOrFunc),
+            words("name in"), quote("pragma foreign_export"),
+            words("declaration."), nl,
+            words("The possible matches are:"), nl_indent_delta(1)],
+        PredIdPiecesList = list.map(
+            describe_one_pred_name(!.ModuleInfo, should_module_qualify),
+            PredIds),
+        PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
+            [suffix(".")]),
+        MainPieces = StartPieces ++ PredIdPieces,
+        VerbosePieces = [words("An explicit module qualifier"),
+            words("may be necessary.")],
+        Msg = simple_msg(Context,
+            [always(MainPieces), verbose_only(VerbosePieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ;
+        PredIds = [],
         (
             Origin = user,
             undefined_pred_or_func_error(Name, Arity, Context,
@@ -1281,10 +1278,10 @@ add_pragma_unused_args(UnusedArgsInfo, Context, !ModuleInfo, !Specs) :-
     PredNameArityPFMn = pred_name_arity_pf_mn(SymName, Arity, PredOrFunc,
         ModeNum),
     module_info_get_predicate_table(!.ModuleInfo, Preds),
+    predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
+        PredOrFunc, SymName, Arity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
-            PredOrFunc, SymName, Arity, [PredId])
-    ->
+        PredIds = [PredId],
         module_info_get_unused_arg_info(!.ModuleInfo, UnusedArgInfo0),
         % Convert the mode number to a proc_id.
         proc_id_to_int(ProcId, ModeNum),
@@ -1292,8 +1289,18 @@ add_pragma_unused_args(UnusedArgsInfo, Context, !ModuleInfo, !Specs) :-
             UnusedArgInfo0, UnusedArgInfo),
         module_info_set_unused_arg_info(UnusedArgInfo, !ModuleInfo)
     ;
+        PredIds = [],
         Pieces = [words("Internal compiler error: "),
-            words("unknown predicate in `pragma unused_args'.")],
+            words("unknown predicate in"), quote("pragma unused_args"),
+            suffix("."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ;
+        PredIds = [_, _ | _],
+        Pieces = [words("Internal compiler error: "),
+            words("ambiguous predicate in "), quote("pragma unused_args"),
+            suffix("."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
@@ -1310,10 +1317,10 @@ add_pragma_exceptions(ExceptionsInfo, _Context, !ModuleInfo, !Specs) :-
     PredNameArityPFMn = pred_name_arity_pf_mn(SymName, Arity, PredOrFunc,
         ModeNum),
     module_info_get_predicate_table(!.ModuleInfo, Preds),
+    predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
+        PredOrFunc, SymName, Arity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
-            PredOrFunc, SymName, Arity, [PredId])
-    ->
+        PredIds = [PredId],
         module_info_get_exception_info(!.ModuleInfo, ExceptionInfo0),
         % convert the mode number to a proc_id
         proc_id_to_int(ProcId, ModeNum),
@@ -1322,11 +1329,12 @@ add_pragma_exceptions(ExceptionsInfo, _Context, !ModuleInfo, !Specs) :-
             ExceptionInfo0, ExceptionInfo),
         module_info_set_exception_info(ExceptionInfo, !ModuleInfo)
     ;
+        ( PredIds = []
+        ; PredIds = [_, _ | _]
+        )
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
-        % io.write_string("Internal compiler error: " ++
-        %   "unknown predicate in `pragma exceptions'.\n")
-        true
+        % XXX What kinds of errors?
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1341,21 +1349,22 @@ add_pragma_trailing_info(TrailingInfo, _Context, !ModuleInfo, !Specs) :-
     PredNameArityPFMn = pred_name_arity_pf_mn(SymName, Arity, PredOrFunc,
         ModeNum),
     module_info_get_predicate_table(!.ModuleInfo, Preds),
+    predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
+        PredOrFunc, SymName, Arity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
-            PredOrFunc, SymName, Arity, [PredId])
-    ->
+        PredIds = [PredId],
         module_info_get_trailing_info(!.ModuleInfo, TrailingMap0),
         proc_id_to_int(ProcId, ModeNum),
         map.set(proc(PredId, ProcId), proc_trailing_info(TrailingStatus, no),
             TrailingMap0, TrailingMap),
         module_info_set_trailing_info(TrailingMap, !ModuleInfo)
     ;
+        ( PredIds = []
+        ; PredIds = [_, _ | _]
+        )
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
-        % io.write_string("Internal compiler error: " ++
-        %   "unknown predicate in `pragma trailing_info'.\n"),
-        true
+        % XXX What kinds of errors?
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1370,21 +1379,22 @@ add_pragma_mm_tabling_info(MMTablingInfo, _Context, !ModuleInfo, !Specs) :-
     PredNameArityPFMn = pred_name_arity_pf_mn(SymName, Arity, PredOrFunc,
         ModeNum),
     module_info_get_predicate_table(!.ModuleInfo, Preds),
+    predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
+        PredOrFunc, SymName, Arity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
-            PredOrFunc, SymName, Arity, [PredId])
-    ->
+        PredIds = [PredId],
         module_info_get_mm_tabling_info(!.ModuleInfo, TablingInfo0),
         proc_id_to_int(ProcId, ModeNum),
         map.set(proc(PredId, ProcId), proc_mm_tabling_info(TablingStatus, no),
             TablingInfo0, TablingInfo),
         module_info_set_mm_tabling_info(TablingInfo, !ModuleInfo)
     ;
+        ( PredIds = []
+        ; PredIds = [_, _ | _]
+        )
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
-        % io.write_string("Internal compiler error: " ++
-        %   "unknown predicate in `pragma trailing_info'.\n"),
-        true
+        % XXX What kinds of errors?
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1398,21 +1408,21 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
         _, _, _, _),
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     (
-        (
-            MaybePredOrFunc = yes(PredOrFunc),
-            adjust_func_arity(PredOrFunc, Arity, PredArity),
-            predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
-                PredOrFunc, SymName, PredArity, PredIds)
-        ;
-            MaybePredOrFunc = no,
-            predicate_table_search_sym_arity(Preds, is_fully_qualified,
-                SymName, Arity, PredIds)
-        ),
-        PredIds = [_ | _]
-    ->
+        MaybePredOrFunc = yes(PredOrFunc),
+        adjust_func_arity(PredOrFunc, Arity, PredArity),
+        predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
+            PredOrFunc, SymName, PredArity, PredIds)
+    ;
+        MaybePredOrFunc = no,
+        predicate_table_lookup_sym_arity(Preds, is_fully_qualified,
+            SymName, Arity, PredIds)
+    ),
+    (
+        PredIds = [_ | _],
         list.foldl3(add_pragma_type_spec_2(TSInfo, Context), PredIds,
             !ModuleInfo, !QualInfo, !Specs)
     ;
+        PredIds = [],
         undefined_pred_or_func_error(SymName, Arity, Context,
             [quote(":- pragma type_spec"), words("declaration")], !Specs)
     ).
@@ -1844,66 +1854,60 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
     PredModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     list.length(ModeList, Arity),
+    predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
+        PredOrFunc, SymName, Arity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(Preds,
-        is_fully_qualified, PredOrFunc, SymName, Arity, PredIds),
-        PredIds = [_ | _]
-    ->
-        ( PredIds = [PredId] ->
-            module_info_get_preds(!.ModuleInfo, PredTable0),
-            map.lookup(PredTable0, PredId, PredInfo0),
-            pred_info_get_procedures(PredInfo0, ProcTable0),
-            map.to_assoc_list(ProcTable0, ProcList),
-            (
-                get_procedure_matching_declmodes_with_renaming(ProcList,
-                    ModeList, !.ModuleInfo, ProcId)
-            ->
-                map.lookup(ProcTable0, ProcId, ProcInfo0),
-                add_context_to_constr_termination_info(
-                    MaybePragmaTerminationInfo, Context, MaybeTerminationInfo),
-
-                some [!TermInfo] (
-                    proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
-
-                    !TermInfo ^ import_success :=
-                        MaybePragmaSuccessArgSizeInfo,
-                    !TermInfo ^ import_failure :=
-                        MaybePragmaFailureArgSizeInfo,
-                    !TermInfo ^ term_status := MaybeTerminationInfo,
-
-                    proc_info_set_termination2_info(!.TermInfo,
-                        ProcInfo0, ProcInfo)
-                ),
-                map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-                map.det_update(PredId, PredInfo, PredTable0, PredTable),
-                module_info_set_preds(PredTable, !ModuleInfo)
-            ;
-                Pieces = [words("Error: `:- pragma termination2_info'"),
-                    words("declaration for undeclared mode of"),
-                    simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                    suffix("."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
-                !:Specs = [Spec | !.Specs]
-            )
-        ;
-            Pieces = [words("Error: ambiguous predicate name"),
-                simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                words("in"), fixed("`pragma termination2_info'."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
-            !:Specs = [Spec | !.Specs]
-        )
-    ;
+        PredIds = []
         % XXX This happens in `.trans_opt' files sometimes --
         % so just ignore it.
-        true
         %   undefined_pred_or_func_error(
         %        SymName, Arity, Context,
         %        "`:- pragma termination2_info' declaration", !Specs)
+    ;
+        PredIds = [PredId],
+        module_info_get_preds(!.ModuleInfo, PredTable0),
+        map.lookup(PredTable0, PredId, PredInfo0),
+        pred_info_get_procedures(PredInfo0, ProcTable0),
+        map.to_assoc_list(ProcTable0, ProcList),
+        (
+            get_procedure_matching_declmodes_with_renaming(ProcList,
+                ModeList, !.ModuleInfo, ProcId)
+        ->
+            map.lookup(ProcTable0, ProcId, ProcInfo0),
+            add_context_to_constr_termination_info(
+                MaybePragmaTerminationInfo, Context, MaybeTerminationInfo),
+
+            some [!TermInfo] (
+                proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
+
+                !TermInfo ^ import_success := MaybePragmaSuccessArgSizeInfo,
+                !TermInfo ^ import_failure := MaybePragmaFailureArgSizeInfo,
+                !TermInfo ^ term_status := MaybeTerminationInfo,
+
+                proc_info_set_termination2_info(!.TermInfo,
+                    ProcInfo0, ProcInfo)
+            ),
+            map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+            pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+            map.det_update(PredId, PredInfo, PredTable0, PredTable),
+            module_info_set_preds(PredTable, !ModuleInfo)
+        ;
+            Pieces = [words("Error: `:- pragma termination2_info'"),
+                words("declaration for undeclared mode of"),
+                simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
+                suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        )
+    ;
+        PredIds = [_, _ | _],
+        Pieces = [words("Error: ambiguous predicate name"),
+            simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
+            words("in"), fixed("`pragma termination2_info'."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1922,41 +1926,36 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
         PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
         module_info_get_predicate_table(!.ModuleInfo, Preds),
         list.length(ModeList, Arity),
+        predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
+            PredOrFunc, SymName, Arity, PredIds),
         (
-            predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
-                PredOrFunc, SymName, Arity, PredIds),
-            PredIds = [_ | _]
-        ->
-            ( PredIds = [PredId] ->
-                module_info_get_preds(!.ModuleInfo, PredTable0),
-                map.lookup(PredTable0, PredId, PredInfo0),
-                pred_info_get_procedures(PredInfo0, ProcTable0),
-                map.to_assoc_list(ProcTable0, ProcList),
-                (
-                    get_procedure_matching_declmodes_with_renaming(ProcList,
-                        ModeList, !.ModuleInfo, ProcId)
-                ->
-                    map.lookup(ProcTable0, ProcId, ProcInfo0),
-                    proc_info_set_imported_structure_sharing(HeadVars, Types,
-                        SharingDomain, ProcInfo0, ProcInfo),
-                    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-                    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-                    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-                    module_info_set_preds(PredTable, !ModuleInfo)
-                ;
-                    Pieces = [words("Error: `:- pragma structure_sharing'"),
-                        words("declaration for undeclared mode of"),
-                        simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                        suffix("."), nl],
-                    Msg = simple_msg(Context, [always(Pieces)]),
-                    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                        [Msg]),
-                    !:Specs = [Spec | !.Specs]
-                )
+            PredIds = []
+            % XXX This happens in `.trans_opt' files sometimes --
+            % so just ignore it.
+            %   undefined_pred_or_func_error(SymName, Arity, Context,
+            %       "`:- pragma structure_sharing' declaration",
+            %       !Specs)
+        ;
+            PredIds = [PredId],
+            module_info_get_preds(!.ModuleInfo, PredTable0),
+            map.lookup(PredTable0, PredId, PredInfo0),
+            pred_info_get_procedures(PredInfo0, ProcTable0),
+            map.to_assoc_list(ProcTable0, ProcList),
+            (
+                get_procedure_matching_declmodes_with_renaming(ProcList,
+                    ModeList, !.ModuleInfo, ProcId)
+            ->
+                map.lookup(ProcTable0, ProcId, ProcInfo0),
+                proc_info_set_imported_structure_sharing(HeadVars, Types,
+                    SharingDomain, ProcInfo0, ProcInfo),
+                map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+                map.det_update(PredId, PredInfo, PredTable0, PredTable),
+                module_info_set_preds(PredTable, !ModuleInfo)
             ;
-                Pieces = [words("Error: ambiguous predicate name"),
+                Pieces = [words("Error: `:- pragma structure_sharing'"),
+                    words("declaration for undeclared mode of"),
                     simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                    words("in"), quote("pragma structure_sharing."),
                     suffix("."), nl],
                 Msg = simple_msg(Context, [always(Pieces)]),
                 Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
@@ -1964,12 +1963,15 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
                 !:Specs = [Spec | !.Specs]
             )
         ;
-            % XXX This happens in `.trans_opt' files sometimes --
-            % so just ignore it.
-            true
-            %   undefined_pred_or_func_error(SymName, Arity, Context,
-            %       "`:- pragma structure_sharing' declaration",
-            %       !Specs)
+            PredIds = [_ , _ | _],
+            Pieces = [words("Error: ambiguous predicate name"),
+                simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
+                words("in"), quote("pragma structure_sharing."),
+                suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ).
 
@@ -1989,55 +1991,50 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
         PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
         module_info_get_predicate_table(!.ModuleInfo, Preds),
         list.length(ModeList, Arity),
+        predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
+            PredOrFunc, SymName, Arity, PredIds),
         (
-            predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
-                PredOrFunc, SymName, Arity, PredIds),
-            PredIds = [_ | _]
-        ->
-            ( PredIds = [PredId] ->
-                module_info_get_preds(!.ModuleInfo, PredTable0),
-                map.lookup(PredTable0, PredId, PredInfo0),
-                pred_info_get_procedures(PredInfo0, ProcTable0),
-                map.to_assoc_list(ProcTable0, ProcList),
-                (
-                    get_procedure_matching_declmodes_with_renaming(ProcList,
-                        ModeList, !.ModuleInfo, ProcId)
-                ->
-                    map.lookup(ProcTable0, ProcId, ProcInfo0),
-                    proc_info_set_imported_structure_reuse(HeadVars, Types,
-                        ReuseDomain, ProcInfo0, ProcInfo),
-                    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-                    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-                    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-                    module_info_set_preds(PredTable, !ModuleInfo)
-                ;
-                    Pieces = [words("Error: `:- pragma structure_reuse'"),
-                        words("declaration for undeclared mode of"),
-                        simple_call(
-                            simple_call_id(PredOrFunc, SymName, Arity)),
-                        suffix("."), nl],
-                    Msg = simple_msg(Context, [always(Pieces)]),
-                    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                        [Msg]),
-                    !:Specs = [Spec | !.Specs]
-                )
+            PredIds = []
+            % XXX This happens in `.trans_opt' files sometimes --
+            % so just ignore it
+            %   undefined_pred_or_func_error(SymName, Arity, Context,
+            %       "`:- pragma structure_sharing' declaration",
+            %       !Specs)
+        ;
+            PredIds = [PredId],
+            module_info_get_preds(!.ModuleInfo, PredTable0),
+            map.lookup(PredTable0, PredId, PredInfo0),
+            pred_info_get_procedures(PredInfo0, ProcTable0),
+            map.to_assoc_list(ProcTable0, ProcList),
+            (
+                get_procedure_matching_declmodes_with_renaming(ProcList,
+                    ModeList, !.ModuleInfo, ProcId)
+            ->
+                map.lookup(ProcTable0, ProcId, ProcInfo0),
+                proc_info_set_imported_structure_reuse(HeadVars, Types,
+                    ReuseDomain, ProcInfo0, ProcInfo),
+                map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+                map.det_update(PredId, PredInfo, PredTable0, PredTable),
+                module_info_set_preds(PredTable, !ModuleInfo)
             ;
-                Pieces = [words("Error: ambiguous predicate name"),
+                Pieces = [words("Error: `:- pragma structure_reuse'"),
+                    words("declaration for undeclared mode of"),
                     simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                    words("in"), quote("pragma structure_reuse"), suffix("."),
-                    nl],
+                    suffix("."), nl],
                 Msg = simple_msg(Context, [always(Pieces)]),
                 Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                     [Msg]),
                 !:Specs = [Spec | !.Specs]
             )
         ;
-            % XXX This happens in `.trans_opt' files sometimes --
-            % so just ignore it
-            true
-            %   undefined_pred_or_func_error(SymName, Arity, Context,
-            %       "`:- pragma structure_sharing' declaration",
-            %       !Specs)
+            PredIds = [_, _ | _],
+            Pieces = [words("Error: ambiguous predicate name"),
+                simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
+                words("in"), quote("pragma structure_reuse"), suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ).
 
@@ -2053,59 +2050,57 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
     PredModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     list.length(ModeList, Arity),
+    predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
+        PredOrFunc, SymName, Arity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
-            PredOrFunc, SymName, Arity, PredIds),
-        PredIds = [_ | _]
-    ->
-        ( PredIds = [PredId] ->
-            module_info_get_preds(!.ModuleInfo, PredTable0),
-            map.lookup(PredTable0, PredId, PredInfo0),
-            pred_info_get_procedures(PredInfo0, ProcTable0),
-            map.to_assoc_list(ProcTable0, ProcList),
-            (
-                get_procedure_matching_declmodes_with_renaming(ProcList,
-                    ModeList, !.ModuleInfo, ProcId)
-            ->
-                add_context_to_arg_size_info(MaybePragmaArgSizeInfo,
-                    Context, MaybeArgSizeInfo),
-                add_context_to_termination_info(MaybePragmaTerminationInfo,
-                    Context, MaybeTerminationInfo),
-                map.lookup(ProcTable0, ProcId, ProcInfo0),
-                proc_info_set_maybe_arg_size_info(MaybeArgSizeInfo,
-                    ProcInfo0, ProcInfo1),
-                proc_info_set_maybe_termination_info(MaybeTerminationInfo,
-                    ProcInfo1, ProcInfo),
-                map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-                map.det_update(PredId, PredInfo, PredTable0, PredTable),
-                module_info_set_preds(PredTable, !ModuleInfo)
-            ;
-                module_info_incr_errors(!ModuleInfo),
-                Pieces = [words("Error: `:- pragma termination_info'"),
-                    words("declaration for undeclared mode of"),
-                    simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                    suffix("."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
-                !:Specs = [Spec | !.Specs]
-            )
-        ;
-            Pieces = [words("Error: ambiguous predicate name"),
-                simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                words("in"), fixed("`pragma termination_info'."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs]
-        )
-    ;
+        PredIds = []
         % XXX This happens in `.trans_opt' files sometimes --
         % so just ignore it.
-        true
         %   undefined_pred_or_func_error(SymName, Arity, Context,
         %       "`:- pragma termination_info' declaration",
         %       !Specs
+    ;
+        PredIds = [PredId],
+        module_info_get_preds(!.ModuleInfo, PredTable0),
+        map.lookup(PredTable0, PredId, PredInfo0),
+        pred_info_get_procedures(PredInfo0, ProcTable0),
+        map.to_assoc_list(ProcTable0, ProcList),
+        (
+            get_procedure_matching_declmodes_with_renaming(ProcList,
+                ModeList, !.ModuleInfo, ProcId)
+        ->
+            add_context_to_arg_size_info(MaybePragmaArgSizeInfo,
+                Context, MaybeArgSizeInfo),
+            add_context_to_termination_info(MaybePragmaTerminationInfo,
+                Context, MaybeTerminationInfo),
+            map.lookup(ProcTable0, ProcId, ProcInfo0),
+            proc_info_set_maybe_arg_size_info(MaybeArgSizeInfo,
+                ProcInfo0, ProcInfo1),
+            proc_info_set_maybe_termination_info(MaybeTerminationInfo,
+                ProcInfo1, ProcInfo),
+            map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+            pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+            map.det_update(PredId, PredInfo, PredTable0, PredTable),
+            module_info_set_preds(PredTable, !ModuleInfo)
+        ;
+            module_info_incr_errors(!ModuleInfo),
+            Pieces = [words("Error: `:- pragma termination_info'"),
+                words("declaration for undeclared mode of"),
+                simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
+                suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [Msg]),
+            !:Specs = [Spec | !.Specs]
+        )
+    ;
+        PredIds = [_, _ | _],
+        Pieces = [words("Error: ambiguous predicate name"),
+            simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
+            words("in"), fixed("`pragma termination_info'."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2163,16 +2158,29 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
     % If it is not there, print an error message and insert
     % a dummy declaration for the predicate.
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+    predicate_table_lookup_pf_sym_arity(PredTable0, is_fully_qualified,
+        PredOrFunc, PredName, Arity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(PredTable0, is_fully_qualified,
-            PredOrFunc, PredName, Arity, [PredId0])
-    ->
-        PredId = PredId0
-    ;
+        PredIds = [],
         preds_add_implicit_report_error(ModuleName, PredOrFunc,
             PredName, Arity, Status, no, Context, origin_user(PredName),
             [quote(":- pragma foreign_proc"), words("declaration")], PredId,
             !ModuleInfo, !Specs)
+    ;
+        PredIds = [PredId]
+    ;
+        PredIds = [PredId, _ | _],
+        % Any attempt to define more than one pred with the same PredOrFunc,
+        % PredName and Arity should have been caught earlier, and an error
+        % message generated. We continue so that we can try to find more
+        % errors.
+        AmbiPieces = [words("Error: ambiguous predicate name"),
+            simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
+            words("in"), quote("pragma foreign_proc"), suffix("."), nl],
+        AmbiMsg = simple_msg(Context, [always(AmbiPieces)]),
+        AmbiSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [AmbiMsg]),
+        !:Specs = [AmbiSpec | !.Specs]
     ),
 
     % Lookup the pred_info for this pred, add the pragma to the proc_info
@@ -2212,7 +2220,7 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
         ;
             pred_info_is_imported(!.PredInfo)
         ->
-            Pieces = [words("Error: `:- pragma foreign_proc'"),
+            Pieces = [words("Error:"), quote(":- pragma foreign_proc"),
                 words("declaration for imported"),
                 simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
                 suffix("."), nl],
@@ -2265,7 +2273,8 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
                     PragmaImpl, PragmaForeignLanguage, ArgInfo, Context,
                     SimpleCallId, PredId, ProcId, !Specs)
             ;
-                Pieces = [words("Error: `:- pragma foreign_proc' declaration"),
+                Pieces = [words("Error:"),
+                    quote(":- pragma foreign_proc"), words("declaration"),
                     words("for undeclared mode of"),
                     simple_call(SimpleCallId), suffix("."), nl],
                 Msg = simple_msg(Context, [always(Pieces)]),
@@ -2297,12 +2306,13 @@ module_add_pragma_tabled(TabledInfo, Context, !Status, !ModuleInfo,
         % Lookup the pred declaration in the predicate table.
         % If it is not there, print an error message and insert
         % a dummy declaration for the predicate.
+        predicate_table_lookup_pf_sym_arity(PredicateTable0,
+            is_fully_qualified, PredOrFunc, PredName, Arity, PredIds0),
         (
-            predicate_table_search_pf_sym_arity(PredicateTable0,
-                is_fully_qualified, PredOrFunc, PredName, Arity, PredIds0)
-        ->
+            PredIds0 = [_ | _],
             PredIds = PredIds0
         ;
+            PredIds0 = [],
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [quote(":- pragma " ++ EvalMethodStr),
                 words("declaration")],
@@ -2313,12 +2323,13 @@ module_add_pragma_tabled(TabledInfo, Context, !Status, !ModuleInfo,
         )
     ;
         MaybePredOrFunc = no,
+        predicate_table_lookup_sym_arity(PredicateTable0,
+            is_fully_qualified, PredName, Arity, PredIds0),
         (
-            predicate_table_search_sym_arity(PredicateTable0,
-                is_fully_qualified, PredName, Arity, PredIds0)
-        ->
+            PredIds0 = [_ | _],
             PredIds = PredIds0
         ;
+            PredIds0 = [],
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [quote(":- pragma " ++ EvalMethodStr),
                 words("declaration")],
@@ -2333,9 +2344,7 @@ module_add_pragma_tabled(TabledInfo, Context, !Status, !ModuleInfo,
         Statistics = Attributes ^ table_attr_statistics,
         AllowReset = Attributes ^ table_attr_allow_reset,
         (
-            ( PredIds = []
-            ; PredIds = [_]
-            )
+            PredIds = [_]
         ;
             PredIds = [_, _ | _],
             (
@@ -2436,14 +2445,13 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         check_marker(Markers, marker_user_marked_inline),
         WarnInline = yes
     ->
-        TablePragmaStr = string.format("`:- pragma %s'", [s(EvalMethodStr)]),
         InlineWarningPieces = [words("Warning: "), simple_call(SimpleCallId),
-            words("has a"), fixed(TablePragmaStr),
+            words("has a"), quote(":- pragma " ++ EvalMethodStr),
             words("declaration but also has a"),
             quote(":- pragma inline"), words("declaration."), nl,
             words("This inline pragma will be ignored"),
             words("since tabled predicates cannot be inlined."), nl,
-            words("You can use the"), fixed("`--no-warn-table-with-inline'"),
+            words("You can use the"), quote("--no-warn-table-with-inline"),
             words("option to suppress this warning."), nl],
         InlineWarningMsg = simple_msg(Context, [always(InlineWarningPieces)]),
         InlineWarningSpec = error_spec(severity_warning,
@@ -2487,7 +2495,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             ;
                 Pieces = [words("Error:"),
-                    fixed("`:- pragma " ++ EvalMethodStr ++ "'"),
+                    quote(":- pragma " ++ EvalMethodStr),
                     words("declaration for undeclared mode of"),
                     simple_call(SimpleCallId), suffix(".")],
                 Msg = simple_msg(Context, [always(Pieces)]),
@@ -2617,7 +2625,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 MaybeError = yes(ArgMsg - ErrorMsg),
                 EvalMethodStr = eval_method_to_string(EvalMethod),
                 Pieces = [words("Error in"),
-                    fixed("`pragma " ++ EvalMethodStr ++ "'"),
+                    quote("pragma " ++ EvalMethodStr),
                     words("declaration for"), simple_call(SimpleCallId),
                     suffix(":"), nl, fixed(ArgMsg), words(ErrorMsg), nl],
                 Msg = simple_msg(Context, [always(Pieces)]),
@@ -3016,13 +3024,17 @@ add_pragma_fact_table(FTInfo, Status, Context, !ModuleInfo, !Specs) :-
     FTInfo = pragma_info_fact_table(PredArity, FileName),
     PredArity = pred_name_arity(Pred, Arity),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
+    predicate_table_lookup_sym_arity(PredicateTable, is_fully_qualified,
+        Pred, Arity, PredIds),
     (
-        predicate_table_search_sym_arity(PredicateTable, is_fully_qualified,
-            Pred, Arity, PredIds0),
-        PredIds0 = [PredId | PredIds1]
-    ->
+        PredIds = [],
+        undefined_pred_or_func_error(Pred, Arity, Context,
+            [quote(":- pragma fact_table"), words("declaration")], !Specs)
+    ;
+        PredIds = [HeadPredId | TailPredIds],
         (
-            PredIds1 = [],      % only one predicate found
+            TailPredIds = [],      % only one predicate found
+            PredId = HeadPredId,
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
 
             % Compile the fact table into a separate .o file.
@@ -3057,7 +3069,7 @@ add_pragma_fact_table(FTInfo, Status, Context, !ModuleInfo, !Specs) :-
                 ProcTable, Pred, PredOrFunc, NumArgs, ArgTypes, Status,
                 Context, !ModuleInfo, !Specs)
         ;
-            PredIds1 = [_ | _],     % >1 predicate found
+            TailPredIds = [_ | _],     % >1 predicate found
             Pieces = [words("In"), quote("pragma fact_table"), words("for"),
                 sym_name_and_arity(Pred/Arity), suffix(":"), nl,
                 words("error: ambiguous predicate/function name."), nl],
@@ -3065,9 +3077,6 @@ add_pragma_fact_table(FTInfo, Status, Context, !ModuleInfo, !Specs) :-
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         )
-    ;
-        undefined_pred_or_func_error(Pred, Arity, Context,
-            [quote(":- pragma fact_table"), words("declaration")], !Specs)
     ).
 
     % Add a `pragma c_code' for each mode of the fact table lookup to the

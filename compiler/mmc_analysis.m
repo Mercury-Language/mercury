@@ -140,13 +140,16 @@ module_name_func_id_from_pred_info(PredInfo, ProcId, PredModule, FuncId) :-
 func_id_to_ppid(ModuleInfo, ModuleName, FuncId, PPId) :-
     FuncId = func_id(PredOrFunc, FuncName, Arity, ProcId),
     module_info_get_predicate_table(ModuleInfo, PredTable),
+    predicate_table_lookup_pf_m_n_a(PredTable, is_fully_qualified,
+        PredOrFunc, ModuleName, FuncName, Arity, PredIds),
     (
-        predicate_table_search_pf_m_n_a(PredTable, is_fully_qualified,
-            PredOrFunc, ModuleName, FuncName, Arity, PredIds),
-        PredIds = [PredId]
-    ->
+        PredIds = [],
+        unexpected($module, $pred, "no predicate")
+    ;
+        PredIds = [PredId],
         PPId = proc(PredId, ProcId)
     ;
+        PredIds = [_, _ | _],
         unexpected($module, $pred, "more than one predicate")
     ).
 

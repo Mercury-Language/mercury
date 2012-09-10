@@ -101,11 +101,10 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
     Arity = Arity0 + ArityAdjustment,
     some [!PredInfo, !PredicateTable] (
         module_info_get_predicate_table(!.ModuleInfo, !:PredicateTable),
-        (
-            predicate_table_search_pf_sym_arity(!.PredicateTable,
-                is_fully_qualified, PredOrFunc, PredName, Arity, [PredId0])
-        ->
-            PredId = PredId0,
+        predicate_table_lookup_pf_sym_arity(!.PredicateTable,
+            is_fully_qualified, PredOrFunc, PredName, Arity, PredIds),
+        ( PredIds = [PredIdPrime] ->
+            PredId = PredIdPrime,
             ( GoalType = goal_type_promise(_) ->
                 NameString = sym_name_to_string(PredName),
                 string.format("%s %s %s (%s).\n",

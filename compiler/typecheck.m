@@ -1590,22 +1590,29 @@ typecheck_call_pred(CallId, Args, GoalId, PredId, !Info) :-
     % Look up the called predicate's arg types.
     ModuleInfo = !.Info ^ tc_info_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
+    CallId = simple_call_id(PorF, SymName, Arity),
+    typecheck_info_get_pred_markers(!.Info, PredMarkers),
+    IsFullyQualified = calls_are_fully_qualified(PredMarkers),
+    predicate_table_lookup_pf_sym_arity(PredicateTable, IsFullyQualified,
+        PorF, SymName, Arity, PredIds),
     (
-        CallId = simple_call_id(PorF, SymName, Arity),
-        typecheck_info_get_pred_markers(!.Info, PredMarkers),
-        predicate_table_search_pf_sym_arity(PredicateTable,
-            calls_are_fully_qualified(PredMarkers),
-            PorF, SymName, Arity, PredIdList)
-    ->
-        % Handle the case of a non-overloaded predicate specially
-        % (so that we can optimize the case of a non-overloaded,
-        % non-polymorphic predicate).
-        ( PredIdList = [PredId0] ->
-            PredId = PredId0,
+        PredIds = [],
+        PredId = invalid_pred_id,
+        Spec = report_pred_call_error(!.Info, CallId),
+        typecheck_info_add_error(Spec, !Info)
+    ;
+        PredIds = [HeadPredId | TailPredIds],
+        (
+            TailPredIds = [],
+            % Handle the case of a non-overloaded predicate specially
+            % (so that we can optimize the case of a non-overloaded,
+            % non-polymorphic predicate).
+            PredId = HeadPredId,
             typecheck_call_pred_id(PredId, Args, GoalId, !Info)
         ;
-            typecheck_call_overloaded_pred(CallId, PredIdList, Args,
-                GoalId, !Info),
+            TailPredIds = [_ | _],
+            typecheck_call_overloaded_pred(CallId, PredIds, Args, GoalId,
+                !Info),
 
             % In general, we can't figure out which predicate it is until
             % after we have resolved any overloading, which may require
@@ -1621,10 +1628,6 @@ typecheck_call_pred(CallId, Args, GoalId, PredId, !Info) :-
         % S. Peyton-Jones, M. Jones 1997, for a discussion of some of the
         % issues.
         perform_context_reduction(!Info)
-    ;
-        PredId = invalid_pred_id,
-        Spec = report_pred_call_error(!.Info, CallId),
-        typecheck_info_add_error(Spec, !Info)
     ).
 
     % Typecheck a call to a specific predicate.
@@ -2594,20 +2597,22 @@ builtin_atomic_type(impl_defined_const(Name), Type) :-
 :- pred builtin_pred_type(typecheck_info::in, cons_id::in, int::in,
     goal_id::in, list(cons_type_info)::out) is semidet.
 
-builtin_pred_type(Info, ConsId, Arity, GoalId, PredConsInfoList) :-
+builtin_pred_type(Info, ConsId, Arity, GoalId, ConsTypeInfos) :-
     ConsId = cons(SymName, _, _),
     ModuleInfo = Info ^ tc_info_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
+    typecheck_info_get_pred_markers(Info, PredMarkers),
+    IsFullyQualified = calls_are_fully_qualified(PredMarkers),
+    predicate_table_lookup_sym(PredicateTable, IsFullyQualified, SymName,
+        PredIds),
     (
-        typecheck_info_get_pred_markers(Info, PredMarkers),
-        predicate_table_search_sym(PredicateTable,
-            calls_are_fully_qualified(PredMarkers), SymName, PredIdList)
-    ->
+        PredIds = [_ | _],
         predicate_table_get_preds(PredicateTable, Preds),
-        make_pred_cons_info_list(Info, PredIdList, Preds, Arity,
-            GoalId, [], PredConsInfoList)
+        make_pred_cons_info_list(Info, PredIds, Preds, Arity, GoalId,
+            [], ConsTypeInfos)
     ;
-        PredConsInfoList = []
+        PredIds = [],
+        ConsTypeInfos = []
     ).
 
 :- pred make_pred_cons_info_list(typecheck_info::in, list(pred_id)::in,
@@ -2626,8 +2631,7 @@ make_pred_cons_info_list(Info, [PredId | PredIds], PredTable, Arity,
     int::in, goal_id::in,
     list(cons_type_info)::in, list(cons_type_info)::out) is det.
 
-make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalId,
-        !ConsInfos) :-
+make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalId, !ConsInfos) :-
     ModuleInfo = Info ^ tc_info_module_info,
     module_info_get_class_table(ModuleInfo, ClassTable),
     map.lookup(PredTable, PredId, PredInfo),
@@ -2804,8 +2808,9 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
     typecheck_info_get_is_field_access_function(Info, IsFieldAccessFunc),
     (
         IsFieldAccessFunc = no,
-        \+ predicate_table_search_func_m_n_a(PredTable, is_fully_qualified,
-            TypeModule, UnqualFuncName, Arity, _)
+        predicate_table_lookup_func_m_n_a(PredTable, is_fully_qualified,
+            TypeModule, UnqualFuncName, Arity, PredIds),
+        PredIds = []
     ;
         IsFieldAccessFunc = yes
     ),

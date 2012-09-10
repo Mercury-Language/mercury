@@ -2826,7 +2826,7 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
     OpSymName = qualified(IntModuleSymName, Op),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    predicate_table_search_func_sym_arity(PredTable, is_fully_qualified,
+    predicate_table_lookup_func_sym_arity(PredTable, is_fully_qualified,
         OpSymName, 2, OpPredIds),
     OpPredIds = [OpPredId],
     OpProcIdInt = 0,

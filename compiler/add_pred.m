@@ -189,10 +189,10 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
             origin_user(PredName), Status, goal_type_none, Markers, Types,
             TVarSet, ExistQVars, ClassContext, Proofs, ConstraintMap,
             ClausesInfo, VarNameRemap, PredInfo0),
+        predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
+            PredOrFunc, MNameOfPred, PName, Arity, PredIds),
         (
-            predicate_table_search_pf_m_n_a(PredTable0, is_fully_qualified,
-                PredOrFunc, MNameOfPred, PName, Arity, [OrigPred | _])
-        ->
+            PredIds = [OrigPred | _],
             module_info_pred_info(!.ModuleInfo, OrigPred, OrigPredInfo),
             pred_info_get_context(OrigPredInfo, OrigContext),
             DeclString = pred_or_func_to_str(PredOrFunc),
@@ -200,6 +200,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
             multiple_def_error(ItemStatus, PredName, OrigArity, DeclString,
                 Context, OrigContext, [], !Specs)
         ;
+            PredIds = [],
             module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
             predicate_table_insert_qual(PredInfo0, NeedQual, PQInfo, PredId,
                 PredTable0, PredTable1),
@@ -411,11 +412,10 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     sym_name_get_module_name_default(PredName, ModuleName0, ModuleName),
     list.length(Modes, Arity),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    (
-        predicate_table_search_pf_sym_arity(PredicateTable0,
-            is_fully_qualified, PredOrFunc, PredName, Arity, [PredId0])
-    ->
-        PredId = PredId0
+    predicate_table_lookup_pf_sym_arity(PredicateTable0,
+        is_fully_qualified, PredOrFunc, PredName, Arity, PredIds),
+    ( PredIds = [PredIdPrime] ->
+        PredId = PredIdPrime
     ;
         preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
             Arity, Status, IsClassMethod, MContext, origin_user(PredName),
@@ -541,15 +541,16 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
         PredInfo0),
     add_marker(marker_infer_type, Markers0, Markers),
     pred_info_set_markers(Markers, PredInfo0, PredInfo),
+    predicate_table_lookup_pf_sym_arity(!.PredicateTable,
+        is_fully_qualified, PredOrFunc, PredName, Arity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(!.PredicateTable,
-            is_fully_qualified, PredOrFunc, PredName, Arity, _)
-    ->
-        unexpected($module, $pred, "search succeeded")
-    ;
+        PredIds = [],
         module_info_get_partial_qualifier_info(ModuleInfo, MQInfo),
         predicate_table_insert_qual(PredInfo, may_be_unqualified, MQInfo,
             PredId, !PredicateTable)
+    ;
+        PredIds = [_ | _],
+        unexpected($module, $pred, "search succeeded")
     ).
 
 %-----------------------------------------------------------------------------%

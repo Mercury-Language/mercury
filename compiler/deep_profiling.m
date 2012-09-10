@@ -1890,34 +1890,28 @@ generate_outermost_proc_dyns(UseActivationCounts, TopCSD, MiddleCSD,
 get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
     ModuleName = mercury_profiling_builtin_module,
     module_info_get_predicate_table(ModuleInfo, PredTable),
+    predicate_table_lookup_pred_m_n_a(PredTable,
+        is_fully_qualified, ModuleName, Name, Arity, PredIds),
     (
-        predicate_table_search_pred_m_n_a(PredTable,
-            is_fully_qualified, ModuleName, Name, Arity, PredIds)
-    ->
+        PredIds = [],
+        unexpected($module, $pred, "no pred_id")
+    ;
+        PredIds = [PredId],
+        predicate_table_get_preds(PredTable, Preds),
+        map.lookup(Preds, PredId, PredInfo),
+        ProcIds = pred_info_procids(PredInfo),
         (
-            PredIds = [],
-            unexpected($module, $pred, "no pred_id")
+            ProcIds = [],
+            unexpected($module, $pred, "no proc_id")
         ;
-            PredIds = [PredId],
-            predicate_table_get_preds(PredTable, Preds),
-            lookup(Preds, PredId, PredInfo),
-            ProcIds = pred_info_procids(PredInfo),
-            (
-                ProcIds = [],
-                unexpected($module, $pred, "no proc_id")
-            ;
-                ProcIds = [ProcId]
-            ;
-                ProcIds = [_, _ | _],
-                unexpected($module, $pred, "proc_id not unique")
-            )
+            ProcIds = [ProcId]
         ;
-            PredIds = [_, _ | _],
-            unexpected($module, $pred, "pred_id not unique")
+            ProcIds = [_, _ | _],
+            unexpected($module, $pred, "proc_id not unique")
         )
     ;
-        format("couldn't find pred_id for `%s'/%d", [s(Name), i(Arity)], Msg),
-        unexpected($module, $pred, Msg)
+        PredIds = [_, _ | _],
+        unexpected($module, $pred, "pred_id not unique")
     ).
 
 %-----------------------------------------------------------------------------%

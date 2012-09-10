@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: elds_to_erlang.m.
 % Main authors: wangp.
-% 
+%
 % Convert ELDS to Erlang code.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module erl_backend.elds_to_erlang.
@@ -26,13 +26,13 @@
     % output_elds(ELDS, !IO):
     %
     % Output Erlang code to the appropriate .erl file
-    % and exported foreign_decls to the corresponding .hrl file. 
+    % and exported foreign_decls to the corresponding .hrl file.
     % The file names are determined by the module name.
     %
 :- pred output_elds(module_info::in, elds::in, io::di, io::uo) is det.
 
     % Output a Erlang function definition to the current output stream.
-    % This is exported for debugging purposes. 
+    % This is exported for debugging purposes.
     %
 :- pred output_defn(module_info::in, elds_defn::in, io::di, io::uo)
     is det.
@@ -116,7 +116,7 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     io.write_string("% -compile(export_all).\n", !IO),
 
     module_info_get_globals(ModuleInfo, Globals),
-    set.fold(output_include_header_ann(Globals), Imports, !IO), 
+    set.fold(output_include_header_ann(Globals), Imports, !IO),
 
     % Output foreign declarations.
     list.foldl(output_foreign_decl_code, ForeignDecls, !IO),
@@ -267,8 +267,8 @@ output_wrapper_init_fn_export_ann(AddMainWrapper, InitPreds, FinalPreds, !IO) :-
 
 should_add_main_wrapper(ModuleInfo) = AddMainWrapper :-
     module_info_get_predicate_table(ModuleInfo, PredTable),
+    predicate_table_lookup_pred_name_arity(PredTable, "main", 2, PredIds),
     (
-        predicate_table_search_pred_name_arity(PredTable, "main", 2, PredIds),
         list.member(PredId, PredIds),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_get_import_status(PredInfo, ImportStatus),
@@ -664,7 +664,7 @@ output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
         Expr = elds_rtti_ref(RttiId),
         (
             RttiId = elds_rtti_type_ctor_id(_),
-            % 
+            %
             % We don't immediately call the function to get the type_ctor_info,
             % but only reference the function to be called if the
             % type_ctor_info is actually needed.  This is a significant saving
@@ -848,7 +848,7 @@ output_tuple(ModuleInfo, VarSet, Indent, Args, !IO) :-
         io.write_string("} ", !IO)
     ).
 
-:- func elds_tuple = elds_expr. 
+:- func elds_tuple = elds_expr.
 elds_tuple = elds_term(elds_atom(unqualified("{}"))).
 
 :- pred output_var(prog_varset::in, prog_var::in, io::di, io::uo) is det.
@@ -915,7 +915,7 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
             % TypeInfos are always local to the current module.
         InstanceModule = CurModuleName,
         Atom0 = "ti_" ++ type_info_to_string(TypeInfo),
-            
+
             % Erlang atoms have a maximum length, so shorten names
         Atom1 = string.replace_all(Atom0, "type_ctor_info", "tci")
     ;
@@ -925,7 +925,7 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
         ;
             Prefix = "pti_"
         ),
-            
+
             % PseudoTypeInfos are always local to the current module.
         InstanceModule = CurModuleName,
         Atom0 = Prefix ++ pseudo_type_info_to_string(PseudoTypeInfo),
@@ -984,7 +984,7 @@ shorten_long_atom_name(Name0) = Name :-
     maybe(string)::out, string::out) is det.
 
 erlang_proc_name(ModuleInfo, PredProcId, MaybeExtModule, ProcNameStr) :-
-    PredProcId = proc(PredId, ProcId), 
+    PredProcId = proc(PredId, ProcId),
     RttiProcName = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     RttiProcName = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
         PredName, PredArity, _ArgTypes, _PredId, _ProcId,
@@ -1110,7 +1110,7 @@ erlang_module_name_to_str(ModuleName) = String :-
 :- pred output_atom(string::in, io::di, io::uo) is det.
 
 output_atom(String, !IO) :-
-    ( if 
+    ( if
         string.index(String, 0, FirstChar),
         char.is_lower(FirstChar),
         string.is_all_alnum_or_underscore(String),

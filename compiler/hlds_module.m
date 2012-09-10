@@ -1122,10 +1122,9 @@ module_info_user_final_pred_procs(MI, PredProcIds) :-
 
 module_info_user_init_fn_pred_procs_2(MI, SymName / Arity, PredProcId) :-
     module_info_get_predicate_table(MI, PredTable),
-    (
-        predicate_table_search_pred_sym_arity(PredTable,
-            may_be_partially_qualified, SymName, Arity, [PredId])
-    ->
+    predicate_table_lookup_pred_sym_arity(PredTable,
+        may_be_partially_qualified, SymName, Arity, PredIds),
+    ( PredIds = [PredId] ->
         pred_table.get_proc_id(MI, PredId, ProcId),
         PredProcId = proc(PredId, ProcId)
     ;

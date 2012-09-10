@@ -998,10 +998,10 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
     TypeCtors = TypeCtors0 ++ TypeCtors1,
 
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
+    predicate_table_lookup_func_sym_arity(PredicateTable,
+        may_be_partially_qualified, InstanceMethodName0, MethodArity, PredIds),
     (
-        predicate_table_search_func_sym_arity(PredicateTable,
-            may_be_partially_qualified, InstanceMethodName0,
-            MethodArity, PredIds),
+        PredIds = [_ | _],
         find_matching_pred_id(ModuleInfo, PredIds, MethodCallTVarSet,
             MethodCallExistQTVars, MethodCallArgTypes,
             MethodCallHeadTypeParams, no, MethodContext,

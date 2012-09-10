@@ -1253,14 +1253,9 @@ dead_pred_info_add_pred_name(Name, !DeadInfo) :-
         ;
             module_info_get_predicate_table(ModuleInfo, PredicateTable),
             set_tree234.insert(Name, !NeededNames),
-            (
-                predicate_table_search_sym(PredicateTable,
-                    may_be_partially_qualified, Name, PredIds)
-            ->
-                queue.put_list(PredIds, !Queue)
-            ;
-                true
-            ),
+            predicate_table_lookup_sym(PredicateTable,
+                may_be_partially_qualified, Name, PredIds),
+            queue.put_list(PredIds, !Queue),
             !:DeadInfo = pred_elim_info(ModuleInfo, !.Queue, Examined,
                 Needed, !.NeededNames)
         )

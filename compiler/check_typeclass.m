@@ -700,7 +700,7 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
         % if the method definition p/f, name, and arity matches at least one
         % of the methods from the class interface.
         adjust_func_arity(MethodPredOrFunc, MethodArity, MethodPredArity),
-        predicate_table_search_pf_sym_arity(PredTable, is_fully_qualified,
+        predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
             MethodPredOrFunc, MethodName, MethodPredArity, MatchingPredIds),
         some [PredId] (
             list.member(PredId, MatchingPredIds),

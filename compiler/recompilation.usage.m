@@ -670,13 +670,12 @@ record_used_pred_or_func(PredOrFunc, Id, !Info) :-
 do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
         SymName, Arity, Recorded, !MatchingNames, !Info) :-
     ModuleInfo = !.Info ^ module_info,
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    adjust_func_arity(PredOrFunc, OrigArity, Arity),
+    predicate_table_lookup_pf_sym_arity(PredTable, may_be_partially_qualified,
+        PredOrFunc, SymName, OrigArity, MatchingPredIds),
     (
-        module_info_get_predicate_table(ModuleInfo, PredTable),
-        adjust_func_arity(PredOrFunc, OrigArity, Arity),
-        predicate_table_search_pf_sym_arity(PredTable,
-            may_be_partially_qualified, PredOrFunc, SymName,
-            OrigArity, MatchingPredIds)
-    ->
+        MatchingPredIds = [_ | _],
         Recorded = yes,
         PredModules = set.list_to_set(list.map(
             (func(PredId) = PredId - PredModule :-
@@ -689,6 +688,7 @@ do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
         set.fold(find_items_used_by_pred(PredOrFunc, Name - Arity),
             PredModules, !Info)
     ;
+        MatchingPredIds = [],
         Recorded = no
     ).
 
@@ -757,16 +757,11 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
 
     % Is it a higher-order term or function call.
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    (
-        predicate_table_search_sym(PredicateTable,
-            may_be_partially_qualified, SymName, PredIds)
-    ->
-        MatchingPreds = list.filter_map(
-            get_pred_or_func_ctors(ModuleInfo, SymName, Arity),
-            PredIds)
-    ;
-        MatchingPreds = []
-    ),
+    predicate_table_lookup_sym(PredicateTable,
+        may_be_partially_qualified, SymName, PredIds),
+    MatchingPreds = list.filter_map(
+        get_pred_or_func_ctors(ModuleInfo, SymName, Arity),
+        PredIds),
 
     % Is it a field access function.
     (

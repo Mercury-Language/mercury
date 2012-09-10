@@ -1009,15 +1009,16 @@ add_pass_2_pred_decl(ItemPredDecl, _Status, !ModuleInfo, !Specs) :-
         list.length(TypesAndModes, Arity),
         adjust_func_arity(pf_function, FuncArity, Arity),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+        predicate_table_lookup_func_sym_arity(PredTable0,
+            is_fully_qualified, SymName, FuncArity, PredIds),
         (
-            predicate_table_search_func_sym_arity(PredTable0,
-                is_fully_qualified, SymName, FuncArity, PredIds)
-        ->
+            PredIds = [_ | _],
             predicate_table_get_preds(PredTable0, Preds0),
             maybe_add_default_func_modes(PredIds, Preds0, Preds),
             predicate_table_set_preds(Preds, PredTable0, PredTable),
             module_info_set_predicate_table(PredTable, !ModuleInfo)
         ;
+            PredIds = [],
             unexpected($module, $pred, "can't find func declaration")
         )
     ).
@@ -1485,11 +1486,21 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
     % ModuleInfo. This is implied by the handling for the C backends.
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
+    predicate_table_lookup_pred_sym_arity(PredTable,
+        may_be_partially_qualified, SymName, Arity, PredIds),
     (
-        predicate_table_search_pred_sym_arity(PredTable,
-            may_be_partially_qualified, SymName, Arity, PredIds)
-    ->
-        ( PredIds = [PredId] ->
+        PredIds = [],
+        Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
+            words("used in initialise declaration"),
+            words("does not have a corresponding pred declaration."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ;
+        PredIds = [HeadPredId | TailPredIds],
+        (
+            TailPredIds = [],
+            PredId = HeadPredId,
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             pred_info_get_arg_types(PredInfo, ArgTypes),
             pred_info_get_procedures(PredInfo, ProcTable),
@@ -1560,6 +1571,7 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
                 !:Specs = [Spec | !.Specs]
             )
         ;
+            TailPredIds = [_ | _],
             Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
                 words("used in initialise declaration"),
                 words("multiple pred declarations."), nl],
@@ -1567,13 +1579,6 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         )
-    ;
-        Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
-            words("used in initialise declaration"),
-            words("does not have a corresponding pred declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
     ).
 add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
         !Specs) :-
@@ -1661,12 +1666,21 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
         Origin = user
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
+    predicate_table_lookup_pred_sym_arity(PredTable,
+        may_be_partially_qualified, SymName, Arity, PredIds),
     (
-        predicate_table_search_pred_sym_arity(PredTable,
-            may_be_partially_qualified, SymName, Arity, PredIds)
-    ->
+        PredIds = [],
+        Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
+            words("used in finalise declaration"),
+            words("does not have a corresponding pred declaration."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ;
+        PredIds = [HeadPredId | TailPredIds],
         (
-            PredIds = [PredId],
+            TailPredIds = [],
+            PredId = HeadPredId,
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             pred_info_get_arg_types(PredInfo, ArgTypes),
             pred_info_get_procedures(PredInfo, ProcTable),
@@ -1736,15 +1750,7 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
                 !:Specs = [Spec | !.Specs]
             )
         ;
-            PredIds = [],
-            Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
-                words("used in finalise declaration"),
-                words("has no pred declarations."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs]
-        ;
-            PredIds = [_, _ | _],
+            TailPredIds = [_ | _],
             Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
                 words("used in finalise declaration"),
                 words("has multiple pred declarations."), nl],
@@ -1752,13 +1758,6 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         )
-    ;
-        Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
-            words("used in finalise declaration"),
-            words("does not have a corresponding pred declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
     ).
 
 :- func target_lang_to_foreign_export_lang(compilation_target)
@@ -3122,14 +3121,15 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
 
 add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+    predicate_table_lookup_sym_arity(PredTable0, is_fully_qualified,
+        Name, Arity, PredIds),
     (
-        predicate_table_search_sym_arity(PredTable0, is_fully_qualified,
-            Name, Arity, PredIds)
-    ->
+        PredIds = [_ | _],
         module_info_get_stratified_preds(!.ModuleInfo, StratPredIds0),
         set.insert_list(PredIds, StratPredIds0, StratPredIds),
         module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
     ;
+        PredIds = [],
         DescPieces = [quote(":- pragma " ++ PragmaName), words("declaration")],
         undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs)
     ).
@@ -3156,8 +3156,9 @@ add_pred_marker(PragmaName, Name, Arity, Status, Context, Marker,
 
 do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
         UpdatePredInfo, !ModuleInfo, PredIds, !Specs) :-
-    ( get_matching_pred_ids(!.ModuleInfo, Name, Arity, PredIds0) ->
-        PredIds = PredIds0,
+    get_matching_pred_ids(!.ModuleInfo, Name, Arity, PredIds),
+    (
+        PredIds = [_ | _],
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
         predicate_table_get_preds(PredTable0, Preds0),
 
@@ -3179,7 +3180,7 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
     ).
 
 :- pred get_matching_pred_ids(module_info::in, sym_name::in, arity::in,
-    list(pred_id)::out) is semidet.
+    list(pred_id)::out) is det.
 
 get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
     module_info_get_predicate_table(Module0, PredTable0),
@@ -3189,7 +3190,7 @@ get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
         unexpected($module, $pred, "unqualified name")
     ;
         Name = qualified(_, _),
-        predicate_table_search_sym_arity(PredTable0, is_fully_qualified,
+        predicate_table_lookup_sym_arity(PredTable0, is_fully_qualified,
             Name, Arity, PredIds)
     ).
 
@@ -3197,12 +3198,13 @@ module_mark_as_external(PredName, Arity, Context, !ModuleInfo, !Specs) :-
     % `external' declarations can only apply to things defined in this module,
     % since everything else is already external.
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
+    predicate_table_lookup_sym_arity(PredicateTable0, is_fully_qualified,
+        PredName, Arity, PredIds),
     (
-        predicate_table_search_sym_arity(PredicateTable0, is_fully_qualified,
-            PredName, Arity, PredIdList)
-    ->
-        module_mark_preds_as_external(PredIdList, !ModuleInfo)
+        PredIds = [_ | _],
+        module_mark_preds_as_external(PredIds, !ModuleInfo)
     ;
+        PredIds = [],
         undefined_pred_or_func_error(PredName, Arity, Context,
             [quote(":- external"), words("declaration")], !Specs)
     ).

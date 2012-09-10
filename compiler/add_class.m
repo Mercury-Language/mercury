@@ -293,20 +293,24 @@ add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     PredArity = list.length(Modes) : int,
     (
+        MaybePredOrFunc = no,
         % The only way this could have happened now is if a `with_inst`
         % annotation was not expanded.
-        MaybePredOrFunc = no,
         unexpected($module, $pred, "unexpanded `with_inst` annotation")
     ;
         MaybePredOrFunc = yes(PredOrFunc)
     ),
+    predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
+        PredOrFunc, PredName, PredArity, PredIds),
     (
-        predicate_table_search_pf_sym_arity(PredTable, is_fully_qualified,
-            PredOrFunc, PredName, PredArity, Preds),
-        Preds = [_ | _]
-    ->
+        PredIds = [],
+        missing_pred_or_func_method_error(PredName, PredArity, PredOrFunc,
+            Context, !Specs)
+    ;
+        PredIds = [HeadPredId | TailPredIds],
         (
-            Preds = [PredId],
+            TailPredIds = [],
+            PredId = HeadPredId,
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             pred_info_get_markers(PredInfo, PredMarkers),
             ( check_marker(PredMarkers, marker_class_method) ->
@@ -321,13 +325,10 @@ add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
                     PredOrFunc, Context, !Specs)
             )
         ;
+            TailPredIds = [_ | _],
             % This shouldn't happen.
-            Preds = [_, _ | _],
             unexpected($module, $pred, "multiple preds matching method mode")
         )
-    ;
-        missing_pred_or_func_method_error(PredName, PredArity, PredOrFunc,
-            Context, !Specs)
     ).
 
 :- pred add_class_pred_or_func_methods(sym_name::in, list(tvar)::in,
@@ -413,10 +414,9 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
         ),
         list.length(TypesAndModes, PredArity),
         module_info_get_predicate_table(!.ModuleInfo, PredTable),
-        (
-            predicate_table_search_pf_m_n_a(PredTable, is_fully_qualified,
-                PorF, ModuleName, Name, PredArity, [PredId])
-        ->
+        predicate_table_lookup_pf_m_n_a(PredTable, is_fully_qualified,
+            PorF, ModuleName, Name, PredArity, PredIds),
+        ( PredIds = [PredId] ->
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
             (
                 PorF = pf_function,
@@ -439,7 +439,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
                 )
             )
         ;
-            unexpected($module, $pred, "handle_methods_with_no_modes")
+            unexpected($module, $pred, "number of preds != 1")
         )
     ;
         Method = method_pred_or_func_mode(_, _, _, _, _, _, _, _)

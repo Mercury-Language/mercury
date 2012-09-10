@@ -130,33 +130,33 @@
 %-----------------------------------------------------------------------------%
 
 report_pred_call_error(Info, PredCallId) = Spec :-
-    PredCallId = simple_call_id(PredOrFunc0, SymName, _Arity),
+    PredCallId = simple_call_id(PredOrFunc, SymName, _Arity),
     ModuleInfo = Info ^ tc_info_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     typecheck_info_get_pred_markers(Info, PredMarkers),
+    IsFullyQualified = calls_are_fully_qualified(PredMarkers),
+    predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified,
+        PredOrFunc, SymName, OtherIds),
     (
-        predicate_table_search_pf_sym(PredicateTable,
-            calls_are_fully_qualified(PredMarkers),
-            PredOrFunc0, SymName, OtherIds),
+        OtherIds = [_ | _],
         predicate_table_get_preds(PredicateTable, Preds),
-        OtherIds = [_ | _]
-    ->
         typecheck_find_arities(Preds, OtherIds, Arities),
         Spec = report_error_pred_num_args(Info, PredCallId, Arities)
     ;
+        OtherIds = [],
         UndefMsg = report_error_undef_pred(Info, PredCallId),
+        ( PredOrFunc = pf_predicate, SwitchedPredOrFunc = pf_function
+        ; PredOrFunc = pf_function,  SwitchedPredOrFunc = pf_predicate
+        ),
+        predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified,
+            SwitchedPredOrFunc, SymName, SwitchedOtherIds),
         (
-            ( PredOrFunc0 = pf_predicate, PredOrFunc = pf_function
-            ; PredOrFunc0 = pf_function, PredOrFunc = pf_predicate
-            ),
-            predicate_table_search_pf_sym(PredicateTable,
-                calls_are_fully_qualified(PredMarkers),
-                PredOrFunc, SymName, OtherIds),
-            OtherIds = [_ | _]
-        ->
-            KindMsg = report_error_func_instead_of_pred(Info, PredOrFunc),
+            SwitchedOtherIds = [_ | _],
+            KindMsg = report_error_func_instead_of_pred(Info,
+                SwitchedPredOrFunc),
             Msgs = [UndefMsg, KindMsg]
         ;
+            SwitchedOtherIds = [],
             Msgs = [UndefMsg]
         ),
         Spec = error_spec(severity_error, phase_type_check, Msgs)
