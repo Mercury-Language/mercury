@@ -126,6 +126,11 @@ MR_wsdeque_push_bottom(MR_SparkDeque *dq, const MR_Spark *spark)
     }
 
     MR_sa_element(arr, bot) = *spark;
+    /*
+    ** Make sure the spark data is stored before we store the value of
+    ** bottom.  We wouldn't want a thief to steal some stale data.
+    */
+    MR_CPU_SFENCE;
     dq->MR_sd_bottom = bot + 1;
 }
 
@@ -143,6 +148,32 @@ MR_wsdeque_pop_bottom(MR_SparkDeque *dq)
     arr = dq->MR_sd_active_array;
     bot--;
     dq->MR_sd_bottom = bot;
+
+    /*
+    ** bot must be written before we read top.  If it is written after,
+    ** which may happen without the fence, then there is a race as follows.
+    **
+    ** There are two items in the deque. (bot = 3, top = 1) This deque's
+    ** owner's CPU does not immediately write bottom into memory (above).
+    ** The owner thinks that bot=2 but memory says that bot = 3).  Meanwhile
+    ** two other CPUs steal work, they see two items on the deque and each
+    ** increments top with its CAS (top = 3, the deque is empty).  The
+    ** original engine continues, because it saw a deque with two items it
+    ** does not do a CAS on top and therefore takes an item from the deque.
+    ** The deque had 2 items but 3 have been taken!
+    **
+    ** Thieves create a critical section between their initial read of top
+    ** (and bottom) and the CAS.  Successful thieves are mutually excluded
+    ** from this section.  Therefore thief 2 will not read the values for
+    ** top and bottom until after thief 1's CAS is a success (if it did read
+    ** these,  its own CAS would fail).  Thief 2 is guaranteed to see the
+    ** update to bot or the owner is guaranteed to see thief 1's update to
+    ** top (possibly both).  This means that either thief 2 will fail or the
+    ** owner will use a CAS and a race between it and the owner will decide
+    ** the victor.  Either way, only thief 1 and one of the other two
+    ** engines can take an item from the deque.
+    */
+    MR_CPU_MFENCE;
 
     top = dq->MR_sd_top;
     size = bot - top;
