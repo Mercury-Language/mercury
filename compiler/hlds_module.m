@@ -207,6 +207,20 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Types for order-independent state update.
+%
+
+:- type oisu_map == map(type_ctor, oisu_preds).
+
+:- type oisu_preds
+    --->    oisu_preds(
+                op_creators     :: list(pred_id),
+                op_mutators     :: list(pred_id),
+                op_destructors  :: list(pred_id)
+            ).
+
+%-----------------------------------------------------------------------------%
+%
 % Various predicates for manipulating the module_info data structure.
 %
 
@@ -525,6 +539,17 @@
 :- pred module_info_set_event_set(event_set::in,
     module_info::in, module_info::out) is det.
 
+:- pred module_info_get_oisu_map(module_info::in, oisu_map::out) is det.
+
+:- pred module_info_set_oisu_map(oisu_map::in,
+    module_info::in, module_info::out) is det.
+
+:- pred module_info_get_oisu_procs(module_info::in, set(pred_proc_id)::out)
+    is det.
+
+:- pred module_info_set_oisu_procs(set(pred_proc_id)::in,
+    module_info::in, module_info::out) is det.
+
 :- pred module_info_get_const_struct_db(module_info::in,
     const_struct_db::out) is det.
 
@@ -841,6 +866,14 @@
 
                 msi_event_set                   :: event_set,
 
+                % The set of visible declarations about order-independent
+                % state update.
+                msi_oisu_map                    :: oisu_map,
+
+                % The set of procedures defined in this module that
+                % have OISU arguments.
+                msi_oisu_procs                  :: set(pred_proc_id),
+
                 % The database of constant structures the code generator
                 % will generate independently, outside all the procedures
                 % of the program.
@@ -907,6 +940,8 @@ module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
     set.init(InterfaceModuleSpecs),
     ExportedEnums = [],
     EventSet = event_set("", map.init),
+    map.init(OISUMap),
+    set.init(OISUProcs),
     const_struct_db_init(Globals, ConstStructDb),
     TSStringTableSize = 0,
     TSRevStringTable = [],
@@ -923,7 +958,7 @@ module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
         MaybeComplexityMap, ComplexityProcInfos,
         AnalysisInfo, UserInitPredCNames, UserFinalPredCNames,
         StructureReusePredIds, UsedModules, InterfaceModuleSpecs,
-        ExportedEnums, EventSet, ConstStructDb,
+        ExportedEnums, EventSet, OISUMap, OISUProcs, ConstStructDb,
         TSStringTableSize, TSRevStringTable),
 
     predicate_table_init(PredicateTable),
@@ -1057,6 +1092,8 @@ module_info_get_interface_module_specifiers(MI,
     MI ^ mi_sub_info ^ msi_interface_module_specifiers).
 module_info_get_exported_enums(MI, MI ^ mi_sub_info ^ msi_exported_enums).
 module_info_get_event_set(MI, MI ^ mi_sub_info ^ msi_event_set).
+module_info_get_oisu_map(MI, MI ^ mi_sub_info ^ msi_oisu_map).
+module_info_get_oisu_procs(MI, MI ^ mi_sub_info ^ msi_oisu_procs).
 module_info_get_const_struct_db(MI, MI ^ mi_sub_info ^ msi_const_struct_db).
 module_info_get_ts_rev_string_table(MI,
     MI ^ mi_sub_info ^ msi_ts_string_table_size,
@@ -1217,6 +1254,10 @@ module_info_set_used_modules(UsedModules, !MI) :-
     !MI ^ mi_sub_info ^ msi_used_modules := UsedModules.
 module_info_set_event_set(EventSet, !MI) :-
     !MI ^ mi_sub_info ^ msi_event_set := EventSet.
+module_info_set_oisu_map(OISUMap, !MI) :-
+    !MI ^ mi_sub_info ^ msi_oisu_map := OISUMap.
+module_info_set_oisu_procs(OISUProcs, !MI) :-
+    !MI ^ mi_sub_info ^ msi_oisu_procs := OISUProcs.
 module_info_set_const_struct_db(ConstStructDb, !MI) :-
     !MI ^ mi_sub_info ^ msi_const_struct_db := ConstStructDb.
 module_info_set_ts_rev_string_table(Size, RevTable, !MI) :-

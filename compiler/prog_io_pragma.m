@@ -257,7 +257,7 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
             "type", MakePragma, PragmaTerms, ErrorTerm,
             VarSet, Context, SeqNum, MaybeItem)
     ;
-        PragmaName = "ousi",
+        PragmaName = "oisu",
         parse_oisu_pragma(ModuleName, PragmaTerms, ErrorTerm,
             VarSet, Context, SeqNum, MaybeItem)
     ;
@@ -2396,7 +2396,7 @@ parse_oisu_pragma(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
             MutatorsTerm, MaybeMutatorsNamesArities),
         (
             MaybeDestructorsTerm = yes(DestructorsTerm2),
-            parse_oisu_preds_term(ModuleName, VarSet, "third", "mutators",
+            parse_oisu_preds_term(ModuleName, VarSet, "fourth", "destructors",
                 DestructorsTerm2, MaybeDestructorsNamesArities)
         ;
             MaybeDestructorsTerm = no,

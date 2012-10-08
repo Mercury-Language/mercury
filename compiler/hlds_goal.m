@@ -1683,7 +1683,8 @@
     %
 :- pred negate_goal(hlds_goal::in, hlds_goal_info::in, hlds_goal::out) is det.
 
-    % Return yes if goal(s) contain any foreign code
+    % Returns yes if the goal, or subgoal contained within, contains
+    % any foreign code.
     %
 :- func goal_has_foreign(hlds_goal) = bool.
 
@@ -3261,9 +3262,6 @@ all_negated([hlds_goal(conj(plain_conj, NegatedConj), _) | NegatedGoals],
 
 %-----------------------------------------------------------------------------%
 
-    % Returns yes if a goal (or subgoal contained within) contains
-    % any foreign code.
-    %
 goal_has_foreign(Goal) = HasForeign :-
     Goal = hlds_goal(GoalExpr, _),
     (

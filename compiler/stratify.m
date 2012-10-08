@@ -38,13 +38,13 @@
 
 :- import_module list.
 
-    % Perform stratification analysis, for the given module. If the
+    % Perform stratification analysis for the given module. If the
     % "warn-non-stratification" option is set, this predicate will check
     % the entire module for stratification, otherwise it will only check
     % the predicates in the stratified_preds set of the module_info structure.
     %
-:- pred check_stratification(module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred check_module_for_stratification(module_info::in, module_info::out,
+    list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -75,7 +75,7 @@
 :- import_module set.
 :- import_module string.
 
-check_stratification(!ModuleInfo, !Specs) :-
+check_module_for_stratification(!ModuleInfo, Specs) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
 
@@ -86,7 +86,7 @@ check_stratification(!ModuleInfo, !Specs) :-
     globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
     module_info_get_stratified_preds(!.ModuleInfo, StratifiedPreds),
     first_order_check_sccs(FOSCCs, StratifiedPreds, Warn, !.ModuleInfo,
-        !Specs).
+        [], Specs).
 
     % The following code was used for the second pass of this module but
     % as that pass is disabled, so is this code. The higher order code
@@ -126,10 +126,8 @@ get_proc_id(proc(PredId, _), PredId).
 first_order_check_sccs([], _, _, _, !Specs).
 first_order_check_sccs([SCCl - SCCs | Rest], StratifiedPreds, Warn0,
         ModuleInfo, !Specs) :-
-    (
-        set.intersect(SCCs, StratifiedPreds, Intersection),
-        set.is_empty(Intersection)
-    ->
+    set.intersect(SCCs, StratifiedPreds, Intersection),
+    ( set.is_empty(Intersection) ->
         Warn = Warn0
     ;
         Warn = yes

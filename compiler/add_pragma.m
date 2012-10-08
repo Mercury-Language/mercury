@@ -2097,7 +2097,7 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
         PredIds = [_, _ | _],
         Pieces = [words("Error: ambiguous predicate name"),
             simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-            words("in"), fixed("`pragma termination_info'."), nl],
+            words("in"), quote("pragma termination_info"), suffix("."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
@@ -2497,7 +2497,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
                 Pieces = [words("Error:"),
                     quote(":- pragma " ++ EvalMethodStr),
                     words("declaration for undeclared mode of"),
-                    simple_call(SimpleCallId), suffix(".")],
+                    simple_call(SimpleCallId), suffix("."), nl],
                 Msg = simple_msg(Context, [always(Pieces)]),
                 Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                     [Msg]),
@@ -3001,9 +3001,177 @@ pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
     prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_oisu(_OISUInfo, _Status, _Context, !ModuleInfo, !Specs).
-    % XXX incomplete
-    % OISUInfo = pragma_info_oisu(TypeCtor, Creators, Mutators, Destructors).
+add_pragma_oisu(OISUInfo, Status, Context, !ModuleInfo, !Specs) :-
+    OISUInfo = pragma_info_oisu(TypeCtor, Creators, Mutators, Destructors),
+    some [!OISUSpecs] (
+        !:OISUSpecs = [],
+        ThisModule = status_defined_in_this_module(Status),
+        (
+            ThisModule = no
+        ;
+            ThisModule = yes,
+            Exported = status_is_exported_to_non_submodules(Status),
+            (
+                Exported = yes
+            ;
+                Exported = no,
+                StatusPieces = [quote("pragma oisu"),
+                    words("declarations must always be exported."), nl],
+                StatusMsg = simple_msg(Context, [always(StatusPieces)]),
+                StatusSpec = error_spec(severity_error,
+                    phase_parse_tree_to_hlds, [StatusMsg]),
+                !:OISUSpecs = [StatusSpec | !.OISUSpecs]
+            ),
+
+            module_info_get_type_table(!.ModuleInfo, TypeTable),
+            ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) ->
+                hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+                ( TypeStatus = status_abstract_exported ->
+                    true
+                ;
+                    TypePieces = [words("The type in a"), quote("pragma oisu"),
+                        words("declaration must always be abstract exported."),
+                        nl],
+                    TypeMsg = simple_msg(Context, [always(TypePieces)]),
+                    TypeSpec = error_spec(severity_error,
+                        phase_parse_tree_to_hlds, [TypeMsg]),
+                    !:OISUSpecs = [TypeSpec | !.OISUSpecs]
+                )
+            ;
+%               TypePieces = [words("The type in this"), quote("pragma oisu"),
+%                   words("declaration is undefined."), nl],
+%               TypeMsg = simple_msg(Context, [always(TypePieces)]),
+%               TypeSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
+%                   [TypeMsg]),
+%               !:OISUSpecs = [TypeSpec | !.OISUSpecs]
+
+                % Module qualification will already have reported the error.
+                % Any message we could generate here would be a duplicate.
+                true
+            )
+        ),
+
+        list.map_foldl2(
+            find_unique_pred_for_oisu(!.ModuleInfo, Context, TypeCtor,
+                "creator"),
+            Creators, CreatorPredIds, 1, _, !OISUSpecs),
+        list.map_foldl2(
+            find_unique_pred_for_oisu(!.ModuleInfo, Context, TypeCtor,
+                "mutator"),
+            Mutators, MutatorPredIds, 1, _, !OISUSpecs),
+        list.map_foldl2(
+            find_unique_pred_for_oisu(!.ModuleInfo, Context, TypeCtor,
+                "destructor"),
+            Destructors, DestructorPredIds, 1, _, !OISUSpecs),
+
+        (
+            !.OISUSpecs = [],
+            OISUPreds = oisu_preds(CreatorPredIds, MutatorPredIds,
+                DestructorPredIds),
+            module_info_get_oisu_map(!.ModuleInfo, OISUMap0),
+            ( map.insert(TypeCtor, OISUPreds, OISUMap0, OISUMap) ->
+                module_info_set_oisu_map(OISUMap, !ModuleInfo)
+            ;
+                TypeCtor = type_ctor(TypeName, TypeArity),
+                DupPieces = [words("Duplicate"), quote("pragma oisu"),
+                    words("declaration for"),
+                    sym_name_and_arity(TypeName/TypeArity), suffix("."), nl],
+                DupMsg = simple_msg(Context, [always(DupPieces)]),
+                DupSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [DupMsg]),
+                !:Specs = [DupSpec | !.Specs]
+            )
+        ;
+            !.OISUSpecs = [_ | _],
+            !:Specs = !.OISUSpecs ++ !.Specs
+        )
+    ).
+
+:- pred find_unique_pred_for_oisu(module_info::in, prog_context::in,
+    type_ctor::in, string::in, pred_name_arity::in, pred_id::out,
+    int::in, int::out, list(error_spec)::in, list(error_spec)::out) is det.
+
+find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
+        PredNameArity, PredId, !SeqNum, !Specs) :-
+    module_info_get_predicate_table(ModuleInfo, PredicateTable),
+    PredNameArity = pred_name_arity(PredName, PredArity),
+    predicate_table_lookup_sym_arity(PredicateTable, is_fully_qualified,
+        PredName, PredArity, PredIds),
+    (
+        PredIds = [],
+        predicate_table_lookup_sym(PredicateTable, is_fully_qualified,
+            PredName, LooseArityPredIds),
+        (
+            LooseArityPredIds = [],
+            TypeCtor = type_ctor(TypeName, TypeArity),
+            Pieces = [words("In the"), nth_fixed(!.SeqNum),
+                fixed(Kind), words("predicate specification"),
+                words("within the"), quote("pragma oisu"),
+                words("declaration for"),
+                sym_name_and_arity(TypeName/TypeArity), suffix(":"), nl,
+                words("error: predicate"),
+                sym_name_and_arity(PredName/PredArity),
+                words("is undefined."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg])
+        ;
+            LooseArityPredIds = [_ | _],
+            list.map(lookup_pred_orig_arity(ModuleInfo),
+                LooseArityPredIds, ArityPieces),
+            list.sort_and_remove_dups(ArityPieces, SortedArityPieces),
+            (
+                SortedArityPieces = [],
+                unexpected($module, $pred, "no arity pieces")
+            ;
+                SortedArityPieces = [_],
+                ExpArities = SortedArityPieces
+            ;
+                SortedArityPieces = [_, _ | _],
+                ExpArities = [words("one of") |
+                    component_list_to_pieces(SortedArityPieces)]
+            ),
+            TypeCtor = type_ctor(TypeName, TypeArity),
+            Pieces = [words("In the"), nth_fixed(!.SeqNum),
+                fixed(Kind), words("predicate specification"),
+                words("within the"), quote("pragma oisu"),
+                words("declaration for"),
+                sym_name_and_arity(TypeName/TypeArity), suffix(":"), nl,
+                words("error: predicate"),
+                sym_name_and_arity(PredName/PredArity),
+                words("has the wrong arity."),
+                words("Actual arity is"), int_fixed(PredArity), suffix(","),
+                words("expected arity is")] ++ ExpArities ++ [suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg])
+        ),
+        !:Specs = [Spec | !.Specs],
+        PredId = invalid_pred_id
+    ;
+        PredIds = [PredId]
+    ;
+        PredIds = [_, _ | _],
+        TypeCtor = type_ctor(TypeName, TypeArity),
+        Pieces = [words("In the"), nth_fixed(!.SeqNum),
+            fixed(Kind), words("predicate specification"),
+            words("within the"), quote("pragma oisu"),
+            words("declaration for"),
+            sym_name_and_arity(TypeName/TypeArity), suffix(":"), nl,
+            words("error: ambiguous predicate name"),
+            sym_name_and_arity(PredName/PredArity), suffix("."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs],
+        PredId = invalid_pred_id
+    ),
+    !:SeqNum = !.SeqNum + 1.
+
+:- pred lookup_pred_orig_arity(module_info::in, pred_id::in,
+    format_component::out) is det.
+
+lookup_pred_orig_arity(ModuleInfo, PredId, Piece) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    OrigArity = pred_info_orig_arity(PredInfo),
+    Piece = int_fixed(OrigArity).
 
 %---------------------------------------------------------------------------%
 
@@ -3199,7 +3367,7 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0,
         (
             AllowDefnOfBuiltin = no,
             Msg = simple_msg(Context,
-                [always([words("Error: foreign_proc for builtin.")])]),
+                [always([words("Error: foreign_proc for builtin."), nl])]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
@@ -3278,12 +3446,12 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
             MultipleArgs = [MultipleArg],
             Pieces2 = [words("error: variable"),
                 quote(mercury_var_to_string(PVarSet, no, MultipleArg)),
-                words("occurs multiple times in the argument list.")]
+                words("occurs multiple times in the argument list."), nl]
         ;
             MultipleArgs = [_, _ | _],
             Pieces2 = [words("error: variables"),
                 quote(mercury_vars_to_string(PVarSet, no, MultipleArgs)),
-                words("occur multiple times in the argument list.")]
+                words("occur multiple times in the argument list."), nl]
         ),
         Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -3514,17 +3682,14 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                     % out foreign_procs in such languages way before we get
                     % here.
                     ( OldLang = NewLang ->
-                        PiecesA = [
-                            words("Error: multiple clauses for"),
+                        PiecesA = [words("Error: multiple clauses for"),
                             p_or_f(PredOrFunc),
                             sym_name_and_arity(PredName / Arity),
                             words("in language"),
                             words(foreign_language_string(OldLang)),
-                            suffix("."), nl
-                        ],
-                        PiecesB = [
-                            words("The first occurrence was here.")
-                        ],
+                            suffix("."), nl],
+                        PiecesB = [words("The first occurrence was here."),
+                            nl],
                         MsgA = simple_msg(NewContext, [always(PiecesA)]),
                         MsgB = error_msg(yes(ClauseContext), treat_as_first, 0,
                             [always(PiecesB)]),
@@ -3578,7 +3743,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         (
             IsConcurrencySupported = no,
             Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that supports concurrent execution.")],
+                words("that supports concurrent execution."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -3592,10 +3757,10 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         (
             SinglePrecFloat = no,
             Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that uses single precision floats.")],
+                words("that uses single precision floats."), nl],
             VerbosePieces = [words("Grades that use single precision floats"),
                 words("contain the grade modifier"),
-                quote("spf"), suffix(".")],
+                quote("spf"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(VerbosePieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -3610,10 +3775,10 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         (
             SinglePrecFloat = yes,
             Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that uses double precision floats.")],
+                words("that uses double precision floats."), nl],
             VerbosePieces = [words("Grades that use double precision floats"),
                 words("do not contain the grade modifier"),
-                quote("spf"), suffix(".")],
+                quote("spf"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(VerbosePieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -3627,7 +3792,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         (
             IsTablingSupported = no,
             Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that supports memoisation.")],
+                words("that supports memoisation."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -3640,7 +3805,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         (
             IsParConjSupported = no,
             Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that supports executing conjuntions in parallel.")],
+                words("that supports executing conjuntions in parallel."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -3656,7 +3821,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 words("that supports trailing.")],
             VerbosePieces = [words("Grades that support trailing contain"),
                 words("the grade modifiers"), quote("tr"),
-                words("or"), quote("trseg"), suffix(".")],
+                words("or"), quote("trseg"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(VerbosePieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -3677,7 +3842,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             true
         ;
             Pieces = [words("Error: this module must be compiled using"),
-                words("the strict sequential semantics.")],
+                words("the strict sequential semantics."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -3702,7 +3867,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             ; GC_Method = gc_none
             ),
             Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that uses conservative garbage collection.")],
+                words("that uses conservative garbage collection."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]

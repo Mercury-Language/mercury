@@ -1672,7 +1672,6 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ; Pragma = pragma_no_detism_warning(_)
         ; Pragma = pragma_no_inline(_)
         ; Pragma = pragma_fact_table(_)
-        ; Pragma = pragma_oisu(_)
         ; Pragma = pragma_tabled(_)
         ; Pragma = pragma_promise_pure(_)
         ; Pragma = pragma_promise_semipure(_)
@@ -1703,6 +1702,7 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ; Pragma = pragma_structure_sharing(_)
         ; Pragma = pragma_structure_reuse(_)
         ; Pragma = pragma_mode_check_clauses(_)
+        ; Pragma = pragma_oisu(_)
         ),
         Allowed = yes
     ).

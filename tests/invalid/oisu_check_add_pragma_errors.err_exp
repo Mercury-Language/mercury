@@ -1,0 +1,19 @@
+oisu_check_add_pragma_errors.m:014: Duplicate `pragma oisu' declaration for
+oisu_check_add_pragma_errors.m:014:   `oisu_check_add_pragma_errors.foo'/0.
+oisu_check_add_pragma_errors.m:020: In pragma oisu:
+oisu_check_add_pragma_errors.m:020:   error: undefined type
+oisu_check_add_pragma_errors.m:020:   `oisu_check_add_pragma_errors.quux'/0.
+oisu_check_add_pragma_errors.m:028: `pragma oisu' declarations must always be
+oisu_check_add_pragma_errors.m:028:   exported.
+oisu_check_add_pragma_errors.m:028: In the first destructor predicate
+oisu_check_add_pragma_errors.m:028:   specification within the `pragma oisu'
+oisu_check_add_pragma_errors.m:028:   declaration for
+oisu_check_add_pragma_errors.m:028:   `oisu_check_add_pragma_errors.bar'/0:
+oisu_check_add_pragma_errors.m:028:   error: predicate
+oisu_check_add_pragma_errors.m:028:   `oisu_check_add_pragma_errors.destroy_bar'/3
+oisu_check_add_pragma_errors.m:028:   has the wrong arity. Actual arity is 3,
+oisu_check_add_pragma_errors.m:028:   expected arity is 2.
+oisu_check_add_pragma_errors.m:028: The type in a `pragma oisu' declaration
+oisu_check_add_pragma_errors.m:028:   must always be abstract exported.
+oisu_check_add_pragma_errors.m:034: `pragma oisu' declarations must always be
+oisu_check_add_pragma_errors.m:034:   exported.

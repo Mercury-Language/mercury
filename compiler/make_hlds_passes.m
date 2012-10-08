@@ -180,8 +180,8 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
 
             % Add constructors and special preds to the HLDS. This must be done
             % after adding all type and `:- pragma foreign_type' declarations.
-            % If there were errors in foreign type type declarations, doing this
-            % may cause a compiler abort.
+            % If there were errors in foreign type type declarations, doing
+            % this may cause a compiler abort.
             foldl3_over_type_ctor_defns(process_type_defn, !.TypeTable,
                 no, InvalidTypes2, !ModuleInfo, !Specs)
         )
@@ -249,7 +249,7 @@ decide_du_type_layout(ModuleInfo, TypeCtor, TypeDefn, !TypeTable) :-
         )
         % Leave these types alone.
     ).
-    
+
 :- pred layout_du_ctor_args(module_info::in, du_type_kind::in,
     constructor::in, constructor::out) is det.
 
@@ -1525,7 +1525,7 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
             ->
                 module_info_new_user_init_pred(SymName, Arity, CName,
                     !ModuleInfo),
-                PredNameModesPF = pred_name_modes_pf(SymName, 
+                PredNameModesPF = pred_name_modes_pf(SymName,
                     [di_mode, uo_mode], pf_predicate),
                 FPEInfo = pragma_info_foreign_proc_export(ExportLang,
                     PredNameModesPF, CName),
@@ -1550,8 +1550,8 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
             ->
                 module_info_new_user_init_pred(SymName, Arity, CName,
                     !ModuleInfo),
-                PredNameModesPF = pred_name_modes_pf(SymName, 
-                    [], pf_predicate),
+                PredNameModesPF = pred_name_modes_pf(SymName, [],
+                    pf_predicate),
                 FPEInfo = pragma_info_foreign_proc_export(ExportLang,
                     PredNameModesPF, CName),
                 ExportPragma = pragma_foreign_proc_export(FPEInfo),

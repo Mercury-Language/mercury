@@ -206,6 +206,7 @@ ORDINARY_PROGS=	\
 	nondet_ctrl_vn \
 	nondet_lambda \
 	nullary_ho_func \
+	oisu_check_main \
 	one_member \
 	opt_dup_bug \
 	opt_format \

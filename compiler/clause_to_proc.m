@@ -191,7 +191,13 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
     select_matching_clauses(Clauses, ProcId, MatchingClauses),
     get_clause_disjuncts_and_warnings(MatchingClauses, ClausesDisjuncts,
         StateVarWarnings),
-    proc_info_set_statevar_warnings(StateVarWarnings, !Proc),
+    (
+        StateVarWarnings = []
+        % Do not allocate a new proc_info if we do not need to.
+    ;
+        StateVarWarnings = [_ | _],
+        proc_info_set_statevar_warnings(StateVarWarnings, !Proc)
+    ),
     (
         ClausesDisjuncts = [SingleGoal],
         SingleGoal = hlds_goal(SingleExpr, _),
@@ -240,14 +246,12 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
 
         % The non-local vars are just the head variables.
-
         NonLocalVars =
             set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
         goal_info_set_nonlocals(NonLocalVars, GoalInfo1, GoalInfo2),
 
         % The disjunction is impure/semipure if any of the disjuncts
         % is impure/semipure.
-
         ( contains_nonpure_goal(ClausesDisjuncts) ->
             PurityList = list.map(goal_get_purity, ClausesDisjuncts),
             Purity = list.foldl(worst_purity, PurityList, purity_pure),

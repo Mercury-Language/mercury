@@ -857,7 +857,7 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
     ;
         Item0 = item_pragma(ItemPragma0),
         ItemPragma0 = item_pragma_info(Origin, Pragma0, Context, SeqNum),
-        mq_info_set_error_context(mqec_pragma - Context, !Info),
+        mq_info_set_error_context(mqec_pragma(Pragma0) - Context, !Info),
         qualify_pragma(Pragma0, Pragma, !Info, !Specs),
         ItemPragma = item_pragma_info(Origin, Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
@@ -1792,7 +1792,7 @@ qualify_user_sharing(!UserSharing, !Info, !Specs) :-
     ;       mqec_mode(mq_id)
     ;       mqec_pred_or_func(pred_or_func, mq_id)
     ;       mqec_pred_or_func_mode(maybe(pred_or_func), mq_id)
-    ;       mqec_pragma
+    ;       mqec_pragma(pragma_type)
     ;       mqec_lambda_expr
     ;       mqec_clause_mode_annotation
     ;       mqec_type_qual
@@ -1909,8 +1909,108 @@ mq_error_context_to_pieces(mqec_lambda_expr) =
     [words("mode declaration for lambda expression")].
 mq_error_context_to_pieces(mqec_clause_mode_annotation) =
     [words("clause mode annotation")].
-mq_error_context_to_pieces(mqec_pragma) =
-    [words("pragma")].
+mq_error_context_to_pieces(mqec_pragma(Pragma)) =
+        [words("pragma"), words(PragmaName)] :-
+    (
+        Pragma = pragma_foreign_decl(_),
+        PragmaName = "foreign_decl"
+    ;
+        Pragma = pragma_foreign_code(_),
+        PragmaName = "foreign_code"
+    ;
+        Pragma = pragma_foreign_proc(_),
+        PragmaName = "foreign_proc"
+    ;
+        Pragma = pragma_foreign_import_module(_),
+        PragmaName = "foreign_import_module"
+    ;
+        Pragma = pragma_foreign_proc_export(_),
+        PragmaName = "foreign_proc_export"
+    ;
+        Pragma = pragma_foreign_export_enum(_),
+        PragmaName = "foreign_export_enum"
+    ;
+        Pragma = pragma_foreign_enum(_),
+        PragmaName = "foreign_enum"
+    ;
+        Pragma = pragma_type_spec(_),
+        PragmaName = "type_spec"
+    ;
+        Pragma = pragma_inline(_),
+        PragmaName = "inline"
+    ;
+        Pragma = pragma_no_inline(_),
+        PragmaName = "no_inline"
+    ;
+        Pragma = pragma_unused_args(_),
+        PragmaName = "unused_args"
+    ;
+        Pragma = pragma_exceptions(_),
+        PragmaName = "exceptions"
+    ;
+        Pragma = pragma_trailing_info(_),
+        PragmaName = "trailing_info"
+    ;
+        Pragma = pragma_mm_tabling_info(_),
+        PragmaName = "mm_tabling_info"
+    ;
+        Pragma = pragma_obsolete(_),
+        PragmaName = "obsolete"
+    ;
+        Pragma = pragma_no_detism_warning(_),
+        PragmaName = "no_detism_warning"
+    ;
+        Pragma = pragma_source_file(_),
+        PragmaName = "source_file"
+    ;
+        Pragma = pragma_tabled(_),
+        PragmaName = "tabled"
+    ;
+        Pragma = pragma_fact_table(_),
+        PragmaName = "fact_table"
+    ;
+        Pragma = pragma_reserve_tag(_),
+        PragmaName = "reserve_tag"
+    ;
+        Pragma = pragma_oisu(_),
+        PragmaName = "oisu"
+    ;
+        Pragma = pragma_promise_eqv_clauses(_),
+        PragmaName = "promise_equivalent_clauses"
+    ;
+        Pragma = pragma_promise_pure(_),
+        PragmaName = "promise_pure"
+    ;
+        Pragma = pragma_promise_semipure(_),
+        PragmaName = "promise_semipure"
+    ;
+        Pragma = pragma_termination_info(_),
+        PragmaName = "termination_info"
+    ;
+        Pragma = pragma_termination2_info(_),
+        PragmaName = "termination2_info"
+    ;
+        Pragma = pragma_terminates(_),
+        PragmaName = "terminates"
+    ;
+        Pragma = pragma_does_not_terminate(_),
+        PragmaName = "does_not_terminate"
+    ;
+        Pragma = pragma_check_termination(_),
+        PragmaName = "check_termination"
+    ;
+        Pragma = pragma_mode_check_clauses(_),
+        PragmaName = "mode_check_clauses"
+    ;
+        Pragma = pragma_structure_sharing(_),
+        PragmaName = "structure_sharing"
+    ;
+        Pragma = pragma_structure_reuse(_),
+        PragmaName = "structure_reuse"
+    ;
+        Pragma = pragma_require_feature_set(_),
+        PragmaName = "require_feature_set"
+    ).
 mq_error_context_to_pieces(mqec_type_qual) =
     [words("explicit type qualification")].
 mq_error_context_to_pieces(mqec_class(Id)) =
@@ -1918,12 +2018,7 @@ mq_error_context_to_pieces(mqec_class(Id)) =
 mq_error_context_to_pieces(mqec_instance(Id)) =
     [words("declaration of instance of typeclass"), wrap_id(Id)].
 mq_error_context_to_pieces(mqec_mutable(Name)) =
-    [
-        words("declaration for mutable "),
-        prefix("`"),
-        words(Name),
-        suffix("'")
-    ].
+    [words("declaration for mutable "), prefix("`"), words(Name), suffix("'")].
 mq_error_context_to_pieces(mqec_event_spec_attr(EventName, AttrName)) =
     [words("attribute"), quote(AttrName), words("for"), quote(EventName)].
 

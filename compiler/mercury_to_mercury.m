@@ -3902,7 +3902,6 @@ mercury_format_pragma_oisu(OISUInfo, !U) :-
         DestructorPreds),
     add_string(":- pragma oisu(", !U),
     TypeCtor = type_ctor(TypeName, TypeArity),
-    add_string(":- pragma reserve_tag(", !U),
     mercury_format_bracketed_sym_name_ngt(TypeName, next_to_graphic_token, !U),
     add_string("/", !U),
     add_int(TypeArity, !U),
@@ -3915,7 +3914,7 @@ mercury_format_pragma_oisu(OISUInfo, !U) :-
     add_string("\t]),\n", !U),
     add_string("\tdestructors([\n", !U),
     mercury_format_pred_name_arity_list(DestructorPreds, !U),
-    add_string("\t]).\n", !U),
+    add_string("\t])\n", !U),
     add_string(").\n", !U).
 
 :- pred mercury_format_pred_name_arity_list(list(pred_name_arity)::in,

@@ -165,6 +165,8 @@ SINGLEMODULE= \
 	null_char \
 	nullary_ho_func_error \
 	occurs \
+	oisu_check_add_pragma_errors \
+	oisu_check_semantic_errors \
 	one_member \
 	overloading \
 	polymorphic_unification \

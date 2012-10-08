@@ -76,6 +76,9 @@
 % Stratification.
 :- include_module stratify.
 
+% Order independent state update pragmas.
+:- include_module oisu_check.
+
 % Expand try goals
 :- include_module try_expand.
 

@@ -516,30 +516,36 @@
 
 :- type pred_origin
     --->    origin_special_pred(special_pred)
-                % If the predicate is a unify, compare, index or initialisation
-                % predicate, specify which one, and for which type constructor.
+            % If the predicate is a unify, compare, index or initialisation
+            % predicate, specify which one, and for which type constructor.
+
     ;       origin_instance_method(sym_name, instance_method_constraints)
-                % The predicate is a class method implementation. Record
-                % the method name and extra information about the class
-                % context to allow polymorphism.m to correctly set up the
-                % extra type_info and typeclass_info arguments.
+            % The predicate is a class method implementation. Record
+            % the method name and extra information about the class
+            % context to allow polymorphism.m to correctly set up the
+            % extra type_info and typeclass_info arguments.
+
     ;       origin_transformed(pred_transformation, pred_origin, pred_id)
-                % The predicate is a transformed version of another predicate,
-                % whose origin and identity are given by the second and third
-                % arguments.
+            % The predicate is a transformed version of another predicate,
+            % whose origin and identity are given by the second and third
+            % arguments.
+
     ;       origin_created(pred_creation)
-                % The predicate was created by the compiler, and there is no
-                % information available on where it came from.
+            % The predicate was created by the compiler, and there is no
+            % information available on where it came from.
+
     ;       origin_assertion(string, int)
-                % The predicate represents an assertion.
+            % The predicate represents an assertion.
+
     ;       origin_lambda(string, int, int)
-                % The predicate is a higher-order manifest constant.
-                % The arguments specify its location in the source, as a
-                % filename/line number pair, and a sequence number used to
-                % distinguish multiple lambdas on the same line.
+            % The predicate is a higher-order manifest constant.
+            % The arguments specify its location in the source, as a
+            % filename/line number pair, and a sequence number used to
+            % distinguish multiple lambdas on the same line.
+
     ;       origin_user(sym_name).
-                % The predicate is a normal user-written predicate;
-                % the string is its name.
+            % The predicate is a normal user-written predicate;
+            % the string is its name.
 
 :- type need_to_requantify
     --->    need_to_requantify
@@ -1988,6 +1994,11 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    tail_call_events
     ;       no_tail_call_events.
 
+:- type oisu_pred_kind_for
+    --->    oisu_creator_for(type_ctor)
+    ;       oisu_mutator_for(type_ctor)
+    ;       oisu_destructor_for(type_ctor).
+
     % Predicates to get fields of proc_infos.
 
 :- pred proc_info_get_context(proc_info::in, prog_context::out) is det.
@@ -2042,6 +2053,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     map(prog_var, string)::out) is det.
 :- pred proc_info_get_statevar_warnings(proc_info::in, list(error_spec)::out)
     is det.
+:- pred proc_info_get_oisu_kind_fors(proc_info::in,
+    list(oisu_pred_kind_for)::out) is det.
 
     % Predicates to set fields of proc_infos.
 
@@ -2109,6 +2122,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set_var_name_remap(map(prog_var, string)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_statevar_warnings(list(error_spec)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_oisu_kind_fors(list(oisu_pred_kind_for)::in,
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_get_termination2_info(proc_info::in,
@@ -2455,7 +2470,12 @@ attribute_list_to_attributes(Attributes, Attributes).
 
                 % Structure reuse conditions obtained by the structure reuse
                 % analysis (CTGC).
-                structure_reuse             :: structure_reuse_info
+                structure_reuse             :: structure_reuse_info,
+
+                % Is the procedure mentioned in any order-independent-state-
+                % update pragmas? If yes, list the role of this procedure
+                % for the each of the types in those pragmas.
+                psi_oisu_kind_fors          :: list(oisu_pred_kind_for)
         ).
 
 :- type structure_sharing_info
@@ -2586,7 +2606,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     ProcSubInfo = proc_sub_info(DetismDecl, no, no, Term2Info, IsAddressTaken,
         StackSlots, RegR_HeadVars, ArgInfo, InitialLiveness, no, no,
         no, no_tail_call_events, no, no, no, no, no, no, VarNameRemap, [],
-        SharingInfo, ReuseInfo),
+        SharingInfo, ReuseInfo, []),
     ProcInfo = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
         ClauseBody, CanProcess, ModeErrors, RttiVarMaps, eval_normal,
@@ -2620,7 +2640,7 @@ proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
     ProcSubInfo = proc_sub_info(DetismDecl, no, no, Term2Info, IsAddressTaken,
         StackSlots, RegR_HeadVars, no, Liveness, no, no, no,
         no_tail_call_events, no, no, no, no, no, no, VarNameRemap, [],
-        SharingInfo, ReuseInfo),
+        SharingInfo, ReuseInfo, []),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, no, HeadModes, no, MaybeHeadLives,
         MaybeDeclaredDetism, Detism, Goal, yes, ModeErrors,
@@ -2673,6 +2693,7 @@ proc_info_get_maybe_deep_profile_info(PI,
 proc_info_get_maybe_untuple_info(PI, PI ^ proc_sub_info ^ maybe_untuple_info).
 proc_info_get_var_name_remap(PI, PI ^ proc_sub_info ^ proc_var_name_remap).
 proc_info_get_statevar_warnings(PI, PI ^ proc_sub_info ^ statevar_warnings).
+proc_info_get_oisu_kind_fors(PI, PI ^ proc_sub_info ^ psi_oisu_kind_fors).
 
 proc_info_set_varset(VS, !PI) :-
     !PI ^ prog_varset := VS.
@@ -2738,6 +2759,8 @@ proc_info_set_var_name_remap(VNR, !PI) :-
     !PI ^ proc_sub_info ^ proc_var_name_remap := VNR.
 proc_info_set_statevar_warnings(SVW, !PI) :-
     !PI ^ proc_sub_info ^ statevar_warnings := SVW.
+proc_info_set_oisu_kind_fors(KFs, !PI) :-
+    !PI ^ proc_sub_info ^ psi_oisu_kind_fors := KFs.
 
 proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
     MaybeHeadModesConstraint = ProcInfo ^ maybe_head_modes_constraint,

@@ -35,7 +35,7 @@
     io::di, io::uo) is det.
 
     % This type indicates what stage of compilation we are running
-    % the simplification pass at.  The exact simplifications we run
+    % the simplification pass at. The exact simplifications we run
     % will depend upon this.
     %
 :- type simplify_pass
@@ -52,7 +52,7 @@
 
     ;       simplify_pass_pre_implicit_parallelism
             % If implicit parallelism is anbled then perform simplification
-            % before it is applied.  This helps ensure that the HLDS matches
+            % before it is applied. This helps ensure that the HLDS matches
             % the feedback data.
 
     ;       simplify_pass_ml_backend
@@ -79,6 +79,7 @@
 :- import_module check_hlds.inst_check.
 :- import_module check_hlds.mode_constraints.
 :- import_module check_hlds.modes.
+:- import_module check_hlds.oisu_check.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.post_typecheck.
 :- import_module check_hlds.purity.
@@ -96,6 +97,9 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module top_level.mercury_compile_middle_passes.
@@ -105,6 +109,7 @@
 :- import_module benchmarking.
 :- import_module bool.
 :- import_module int.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
@@ -380,7 +385,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         write_opt_file(!HLDS, !IO),
 
         % The following passes are only run with `--intermodule-optimisation'
-        % to append their results to the `.opt.tmp' file.  For
+        % to append their results to the `.opt.tmp' file. For
         % `--intermodule-analysis', analyses results should be recorded
         % using the intermodule analysis framework instead.
         %
@@ -494,6 +499,10 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
             !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 60, "stratification", !DumpInfo, !IO),
 
+        check_oisu_pragmas(Verbose, Stats, !HLDS, FoundOISUError,
+            !Specs, !IO),
+        maybe_dump_hlds(!.HLDS, 60, "stratification", !DumpInfo, !IO),
+
         process_try_goals(Verbose, Stats, !HLDS, FoundTryError, !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 62, "try", !DumpInfo, !IO),
 
@@ -511,6 +520,7 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
             FoundModeError = no,
             FoundUniqError = no,
             FoundStratError = no,
+            FoundOISUError = no,
             FoundTryError = no,
             NumErrors = 0,
             % Strictly speaking, we shouldn't need to check the exit status.
@@ -808,7 +818,7 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose,
             "% Checking stratification...\n", !IO),
-        check_stratification(!HLDS, [], StratifySpecs),
+        check_module_for_stratification(!HLDS, StratifySpecs),
         !:Specs = StratifySpecs ++ !.Specs,
         FoundError = contains_errors(Globals, StratifySpecs),
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
@@ -824,6 +834,50 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     ;
         FoundError = no
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred check_oisu_pragmas(bool::in, bool::in,
+    module_info::in, module_info::out, bool::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+check_oisu_pragmas(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
+    module_info_get_oisu_map(!.HLDS, OISUMap),
+    map.to_assoc_list(OISUMap, OISUPairs),
+    module_info_get_name(!.HLDS, ModuleName),
+    list.filter(type_ctor_is_defined_in_this_module(ModuleName),
+        OISUPairs, ModuleOISUPairs),
+    (
+        ModuleOISUPairs = [_ | _],
+        module_info_get_globals(!.HLDS, Globals),
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_string(Verbose,
+            "% Checking oisu pragmas...\n", !IO),
+        check_oisu_pragmas_for_module(ModuleOISUPairs, !HLDS, OISUSpecs),
+        !:Specs = OISUSpecs ++ !.Specs,
+        FoundError = contains_errors(Globals, OISUSpecs),
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        (
+            FoundError = yes,
+            maybe_write_string(Verbose,
+                "% Program contains oisu pragma error(s).\n", !IO)
+        ;
+            FoundError = no,
+            maybe_write_string(Verbose, "% done.\n", !IO)
+        ),
+        maybe_report_stats(Stats, !IO)
+    ;
+        ModuleOISUPairs = [],
+        FoundError = no
+    ).
+
+:- pred type_ctor_is_defined_in_this_module(module_name::in,
+    pair(type_ctor, oisu_preds)::in) is semidet.
+
+type_ctor_is_defined_in_this_module(ModuleName, TypeCtor - _) :-
+    TypeCtor = type_ctor(TypeSymName, _TypeArity),
+    TypeSymName = qualified(TypeModuleName, _TypeName),
+    ModuleName = TypeModuleName.
 
 %-----------------------------------------------------------------------------%
 
