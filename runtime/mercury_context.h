@@ -258,9 +258,20 @@ struct MR_Spark_Struct {
 #endif
 };
 
+#define CACHE_LINE_SIZE 64
+#define PAD_CACHE_LINE(s) \
+    ((CACHE_LINE_SIZE) > (s) ? (CACHE_LINE_SIZE) - (s) : 0)
+
 struct MR_SparkDeque_Struct {
-    volatile MR_Integer     MR_sd_bottom;
+    /*
+    ** The top index is modified by theifs, the other fields are modified by
+    ** the owner.  Therefore we pad out the structure to reduce false
+    ** sharing.
+    */
     volatile MR_Integer     MR_sd_top;
+    char padding[PAD_CACHE_LINE(sizeof(MR_Integer))];
+
+    volatile MR_Integer     MR_sd_bottom;
     volatile MR_SparkArray  *MR_sd_active_array;
 };
 #endif  /* !MR_LL_PARALLEL_CONJ */
@@ -528,20 +539,6 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
     do {                                                \
         MR_GOTO(MR_ENTRY(MR_do_idle));                  \
     } while (0)
-/*
-** MR_do_idle_clean_context should be used by an engine that is becoming idle
-** with a context that may be re-used.
-*/
-  MR_declare_entry(MR_do_idle_clean_context);
-/*
-** The same is true for MR_do_idle_dirty_context except that the context is
-** blocked on the end of a parallel conjunction, It may nnly be used to execute
-** sparks that contribute to that parallel conjunction.
-**
-** This takes one argument in MR_r1, the join label at the end of the parallel
-** conjunction.
-*/
-  MR_declare_entry(MR_do_idle_dirty_context);
 #endif
 
 #ifndef MR_CONSERVATIVE_GC
@@ -626,6 +623,12 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   #define MR_IF_THREADSCOPE(x) x
 #else
   #define MR_IF_THREADSCOPE(x)
+#endif
+
+#ifdef MR_WORKSTEAL_POLLING
+  #define MR_IF_NOT_WORKSTEAL_POLLING(x)
+#else
+  #define MR_IF_NOT_WORKSTEAL_POLLING(x) x
 #endif
 
 #define MR_load_context(cptr)                                                 \
@@ -823,7 +826,9 @@ do {                                                                         \
     MR_IF_THREADSCOPE(                                                       \
         MR_uint_least32_t   id;                                              \
     )                                                                        \
-    union MR_engine_wake_action_data action_data;                            \
+    MR_IF_NOT_WORKSTEAL_POLLING(                                             \
+        union MR_engine_wake_action_data action_data;                        \
+    )                                                                        \
                                                                              \
     fnc_spark.MR_spark_sync_term = (MR_SyncTerm*) &(sync_term);              \
     fnc_spark.MR_spark_resume = (child);                                     \
@@ -837,12 +842,14 @@ do {                                                                         \
     MR_IF_THREADSCOPE(                                                       \
         MR_threadscope_post_sparking(&(sync_term), fnc_spark.MR_spark_id);   \
     )                                                                        \
-    action_data.MR_ewa_worksteal_engine = MR_ENGINE(MR_eng_id);              \
-    if (MR_num_idle_engines > 0) {                                           \
-        MR_try_wake_an_engine(MR_ENGINE(MR_eng_id),                          \
-            MR_ENGINE_ACTION_WORKSTEAL,                                      \
-            &action_data, NULL);                                             \
-    }                                                                        \
+    MR_IF_NOT_WORKSTEAL_POLLING(                                             \
+        action_data.MR_ewa_worksteal_engine = MR_ENGINE(MR_eng_id);          \
+        if (MR_num_idle_engines > 0) {                                       \
+            MR_try_wake_an_engine(MR_ENGINE(MR_eng_id),                      \
+                MR_ENGINE_ACTION_WORKSTEAL_ADVICE,                           \
+                &action_data, NULL);                                         \
+        }                                                                    \
+    )                                                                        \
 } while (0)
 
   /*
@@ -885,10 +892,18 @@ MR_do_join_and_continue(MR_SyncTerm *sync_term, MR_Code *join_label);
 ** exported here for use by the MR_fork_new_child macro above.
 */
 
-#define MR_ENGINE_ACTION_NONE 0
-#define MR_ENGINE_ACTION_CONTEXT 1
-#define MR_ENGINE_ACTION_WORKSTEAL 2
-#define MR_ENGINE_ACTION_SHUTDOWN 3
+#define MR_ENGINE_ACTION_NONE               0x0000
+/*
+** ACTION_CONTEXT applies when an engine is being given a context directly
+*/
+#define MR_ENGINE_ACTION_CONTEXT            0x0001
+#define MR_ENGINE_ACTION_SHUTDOWN           0x0002
+#define MR_ENGINE_ACTION_WORKSTEAL_ADVICE   0x0004
+/*
+** ACTION_CONTEXT_ADVICE applies when a context is on the run queue that
+** this engine should check.
+*/
+#define MR_ENGINE_ACTION_CONTEXT_ADVICE     0x0008
 
 union MR_engine_wake_action_data {
     /*
