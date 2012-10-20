@@ -375,10 +375,21 @@
 
 :- type proc_report
     --->    proc_report(
-                % The proc description is inside the proc_summary field.
+                % The integer is a count of the number of cliques this
+                % procedure appears in.
+                proc_callers_summary        :: perf_row_data(callers_counts),
 
+                % The proc description is inside the proc_summary field.
                 proc_summary                :: perf_row_data(proc_desc),
                 proc_call_site_summaries    :: list(call_site_perf)
+            ).
+
+    % A count of the number of callers.
+    %
+:- type callers_counts
+    --->    callers_counts(
+                cc_static                   :: int,
+                cc_dynamic                  :: int
             ).
 
 :- type call_site_perf

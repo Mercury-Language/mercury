@@ -102,6 +102,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module unit.
 
@@ -837,7 +838,16 @@ create_proc_report(Deep, PSPtr, MaybeProcReport) :-
         ProcCallSiteSummaryRowDatas = list.map(create_call_site_summary(Deep),
             CallSites),
 
-        ProcReport = proc_report(ProcSummaryRowData,
+        deep_lookup_proc_callers(Deep, PSPtr, CallerCSDPtrs0),
+        summarize_callers(Deep, CallerCSDPtrs0, PSPtr, set.init, SeenProcs,
+            0, NumDynamic, zero_own_prof_info, CallersOwn,
+            zero_inherit_prof_info, CallersInherit),
+        NumStatic = set.count(SeenProcs),
+        own_and_inherit_to_perf_row_data(Deep,
+            callers_counts(NumStatic, NumDynamic), CallersOwn,
+            CallersInherit, CallersSummaryRowData),
+
+        ProcReport = proc_report(CallersSummaryRowData, ProcSummaryRowData,
             ProcCallSiteSummaryRowDatas),
         MaybeProcReport = ok(ProcReport)
     ;
@@ -921,6 +931,38 @@ generate_call_site_callee_perf(Deep, CallerPSPtr, PSPtr - CSDPtrs)
     list.foldl2(accumulate_csd_prof_info(Deep, CallerPSPtr), CSDPtrs,
         zero_own_prof_info, Own, zero_inherit_prof_info, Desc),
     CalleeProf = call_site_callee_perf(PSPtr, Own, Desc).
+
+:- pred summarize_callers(deep::in, list(call_site_dynamic_ptr)::in,
+    proc_static_ptr::in, set(proc_static_ptr)::in, set(proc_static_ptr)::out,
+    int::in, int::out, own_prof_info::in, own_prof_info::out,
+    inherit_prof_info::in, inherit_prof_info::out) is det.
+
+summarize_callers(Deep, CallerCSDPtrs0, CalleePSPtr, !PSSeen, !NumDynamic,
+        !Own, !Desc) :-
+    (
+        CallerCSDPtrs0 = []
+    ;
+        CallerCSDPtrs0 = [CSDPtr | CallerCSDPtrs],
+
+        deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
+        CallerPDPtr = CSD ^ csd_caller,
+        deep_lookup_proc_dynamics(Deep, CallerPDPtr, CallerPD),
+        CallerPSPtr = CallerPD ^ pd_proc_static,
+        ( CallerPSPtr = CalleePSPtr ->
+            % exclude recursive calls.
+            true
+        ;
+            !:NumDynamic = !.NumDynamic + 1,
+            set.insert(CallerPSPtr, !PSSeen),
+            CSDOwn = CSD ^ csd_own_prof,
+            !:Own = add_own_to_own(!.Own, CSDOwn),
+            deep_lookup_csd_desc(Deep, CSDPtr, CSDInherit),
+            !:Desc = add_inherit_to_inherit(!.Desc, CSDInherit)
+        ),
+
+        summarize_callers(Deep, CallerCSDPtrs, CalleePSPtr, !PSSeen,
+            !NumDynamic, !Own, !Desc)
+    ).
 
 :- pred accumulate_csd_prof_info(deep::in, proc_static_ptr::in,
     call_site_dynamic_ptr::in,
@@ -1132,7 +1174,7 @@ create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeReport) :-
 
         % Gather call site information.
         proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
-        foldl(build_dynamic_call_site_cost_and_callee_map(Deep), Slots, 
+        foldl(build_dynamic_call_site_cost_and_callee_map(Deep), Slots,
             map.init, CallSitesMap),
 
         % Gather information about the procedure.

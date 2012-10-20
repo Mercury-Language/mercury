@@ -1405,7 +1405,8 @@ scope_to_description(overall) = "overall".
     display::out) is det.
 
 display_report_proc(Deep, Prefs, ProcReport, Display) :-
-    ProcReport = proc_report(ProcSummaryRowData, CallSitePerfs0),
+    ProcReport = proc_report(CallersSummaryRowData, ProcSummaryRowData,
+        CallSitePerfs0),
     ProcDesc = ProcSummaryRowData ^ perf_row_subject,
     RefinedName = ProcDesc ^ pdesc_q_refined_name,
     Title = "Summary of procedure " ++ RefinedName,
@@ -1432,6 +1433,16 @@ display_report_proc(Deep, Prefs, ProcReport, Display) :-
         [SourceHeaderGroup, ProcHeaderGroup] ++ PerfHeaderGroups,
     header_groups_to_header(AllHeaderGroups, NumColumns, Header),
 
+    Fields = Prefs ^ pref_fields,
+    CallersCounts = CallersSummaryRowData ^ perf_row_subject,
+    CallersSummaryText = format("%d static & %d dynamic call sites",
+        [i(CallersCounts ^ cc_static), i(CallersCounts ^ cc_dynamic)]),
+    CallersSummaryCell = table_multi_cell(td_s(CallersSummaryText), 2),
+    perf_table_row(total_columns_meaningful, Fields, CallersSummaryRowData,
+        CallersPerfCells),
+    CallersCells = [CallersSummaryCell] ++ CallersPerfCells,
+    CallersRow = table_row(CallersCells),
+
     % We could make SummaryProcCell a link, but the only link that would make
     % sense (and the link that pre-display versions of the deep profiler
     % generated) point back to this page itself, which is not useful and
@@ -1440,7 +1451,6 @@ display_report_proc(Deep, Prefs, ProcReport, Display) :-
     % SummaryProcCell spans two columns: the ones that contain (1) the context
     % and (2) the callee of each call site in the rows below.
     SummaryProcCell = table_multi_cell(td_s(RefinedName), 2),
-    Fields = Prefs ^ pref_fields,
     perf_table_row(total_columns_meaningful, Fields, ProcSummaryRowData,
         SummaryPerfCells),
     SummaryCells = [SummaryProcCell] ++ SummaryPerfCells,
@@ -1454,7 +1464,12 @@ display_report_proc(Deep, Prefs, ProcReport, Display) :-
         report_proc_call_site(MaybeCurModuleName, ModuleQual, Prefs),
         CallSitePerfs),
     list.condense(CallSiteRowLists, CallSiteRows),
-    AllRows = [SummaryRow, table_separator_row] ++ CallSiteRows,
+    DeveloperRows = map(func(X) = table_developer_row(X),
+        [table_section_header(td_s(
+            "Callers excluding directly-recursive calls")),
+        CallersRow, table_separator_row]),
+    CommonRows = [SummaryRow, table_separator_row] ++ CallSiteRows,
+    AllRows = DeveloperRows ++ CommonRows,
     Table = table(table_class_box_if_pref, NumColumns, yes(Header), AllRows),
     DisplayTable = display_table(Table),
 

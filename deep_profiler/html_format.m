@@ -463,6 +463,17 @@ table_row_to_html(FormatInfo, MaybeColClassMap, NumColumns, !StyleControlMap,
         map_join_html_count(table_cell_to_html(FormatInfo, MaybeColClassMap),
             !StyleControlMap, 0, Cells, InnerHTML),
         HTML = wrap_tags("<tr>\n", "</tr>\n", InnerHTML)
+    ;
+        TableRow = table_developer_row(RealTableRow),
+        Developer = FormatInfo ^ fi_pref_developer,
+        (
+            Developer = developer_options_visible,
+            table_row_to_html(FormatInfo, MaybeColClassMap, NumColumns,
+                !StyleControlMap, RealTableRow, HTML)
+        ;
+            Developer = developer_options_invisible,
+            HTML = cord.empty
+        )
     ).
 
 %-----------------------------------------------------------------------------%

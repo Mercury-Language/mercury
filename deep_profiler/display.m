@@ -139,6 +139,9 @@
     ;       table_separator_row
     ;       table_section_header(
                 tsh_text        :: table_data
+            )
+    ;       table_developer_row(
+                tdr_row         :: table_row
             ).
 
 :- type table_cell
