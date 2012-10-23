@@ -4,8 +4,9 @@ THIS_DIR = feedback
 
 #-----------------------------------------------------------------------------#
 
-AUTOPAR_REPORTS=mandelbrot \
-		        mmc
+AUTOPAR_REPORTS = \
+	mandelbrot \
+	mmc
 
 REPORTS=$(patsubst %,autopar_%,$(AUTOPAR_REPORTS))
 
@@ -14,8 +15,8 @@ TESTS_DIR = ..
 SUBDIRS=
 include $(TESTS_DIR)/Mmake.common
 
-# Try to use the feedback tools in this workspace if available, Otherwise use
-# the feedback tools in PATH
+# Try to use the feedback tools in this workspace if available;
+# otherwise, use the tools in $PATH.
 FB_CREATE_WS = ../../deep_profiler/mdprof_create_feedback
 FB_REPORT_WS = ../../deep_profiler/mdprof_report_feedback
 
@@ -47,4 +48,3 @@ autopar_%.feedback: %/Deep.data %/Deep.procrep
 		$(@:.realclean=.res) \
 		$(@:.realclean=.res1) \
 		$(@:.realclean=.log)
-
