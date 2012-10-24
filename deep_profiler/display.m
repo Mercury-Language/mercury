@@ -64,12 +64,12 @@
                 table
             )
     ;       display_verbatim(
-                % A string to be displayed verbatim.  It should be displayed
+                % A string to be displayed verbatim. It should be displayed
                 % with a fixed width font and line breaks should be honoured.
                 string
             )
     ;       display_developer(
-                % A display item intended for developers only.  These are
+                % A display item intended for developers only. These are
                 % displayed only when in developer mode.
                 display_item
             ).

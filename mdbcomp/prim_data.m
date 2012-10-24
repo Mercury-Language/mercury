@@ -596,7 +596,8 @@ mercury_table_statistics_module = unqualified("table_statistics").
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_par_builtin_module = unqualified("par_builtin").
-mercury_rtti_implementation_builtin_module = unqualified("rtti_implementation").
+mercury_rtti_implementation_builtin_module =
+    unqualified("rtti_implementation").
 mercury_ssdb_builtin_module = unqualified("ssdb").
 mercury_list_module = unqualified("list").
 mercury_string_module = unqualified("string").

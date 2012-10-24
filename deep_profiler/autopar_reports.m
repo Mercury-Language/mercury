@@ -27,7 +27,7 @@
 :- pred print_feedback_report(string::in, feedback_info::in, io::di, io::uo)
     is det.
 
-:- pred create_candidate_parallel_conj_report(var_table::in,
+:- pred create_candidate_parallel_conj_report(var_name_table::in,
     candidate_par_conjunction(pard_goal)::in, cord(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -146,7 +146,7 @@ create_feedback_autopar_report(Parameters, ProcConjs, Report) :-
     pair(T, candidate_par_conjunctions_proc)::in, int::in, int::out) is det.
 
 count_conjunctions_in_procs(_ - Cands, !NumConjs) :-
-    Cands = candidate_par_conjunctions_proc(_VarTable, _Pushes, Conjs),
+    Cands = candidate_par_conjunctions_proc(_VarNameTable, _Pushes, Conjs),
     !:NumConjs = !.NumConjs + length(Conjs).
 
 :- pred best_par_algorithm_string(best_par_algorithm::in, string::out) is det.
@@ -168,11 +168,11 @@ best_par_algorithm_string(Alg, Str) :-
 
 create_candidate_parallel_conj_proc_report(Proc - CandidateParConjunctionProc,
         Report) :-
-    CandidateParConjunctionProc = candidate_par_conjunctions_proc(VarTable,
+    CandidateParConjunctionProc = candidate_par_conjunctions_proc(VarNameTable,
         PushGoals, CandidateParConjunctions),
     print_proc_label_to_string(Proc, ProcString),
     list.map(create_push_goal_report, PushGoals, PushGoalReports),
-    list.map(create_candidate_parallel_conj_report(VarTable),
+    list.map(create_candidate_parallel_conj_report(VarNameTable),
         CandidateParConjunctions, CandidateParConjunctionReports),
     Header = string.format("    %s\n", [s(ProcString)]),
     Report = cord.singleton(Header) ++
@@ -197,7 +197,7 @@ create_push_goal_report(PushGoal, Report) :-
     pair(string_proc_label, candidate_par_conjunctions_proc)::in,
     cord(string)::out) is det.
 
-create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
+create_candidate_parallel_conj_report(VarNameTable, CandidateParConjunction,
         Report) :-
     CandidateParConjunction = candidate_par_conjunction(GoalPathString,
         MaybePushGoal, FirstConjNum, IsDependent, GoalsBefore, GoalsBeforeCost,
@@ -211,7 +211,7 @@ create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
         DependanceString = "no"
     ;
         IsDependent = conjuncts_are_dependent(Vars),
-        map(lookup_var_name(VarTable), Vars, VarNames),
+        map(lookup_var_name(VarNameTable), Vars, VarNames),
         VarsString = join_list(", ", to_sorted_list(VarNames)),
         DependanceString = format("on %s", [s(VarsString)])
     ),
@@ -277,19 +277,19 @@ create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
     ),
     some [!ConjNum] (
         !:ConjNum = FirstConjNum,
-        format_sequential_conjunction(VarTable, 4, RevGoalPath,
+        format_sequential_conjunction(VarNameTable, 4, RevGoalPath,
             GoalsBefore, GoalsBeforeCost, !.ConjNum, ReportGoalsBefore0),
         ReportGoalsBefore = indent(3) ++ singleton("Goals before:\n") ++
             ReportGoalsBefore0,
 
         !:ConjNum = !.ConjNum + length(GoalsBefore),
-        format_parallel_conjunction(VarTable, 4, RevGoalPath,
+        format_parallel_conjunction(VarNameTable, 4, RevGoalPath,
             !.ConjNum, Conjs, ReportParConj0),
         ReportParConj = indent(3) ++ singleton("Parallel conjunction:\n") ++
             ReportParConj0,
 
         !:ConjNum = !.ConjNum + 1,
-        format_sequential_conjunction(VarTable, 4, RevGoalPath,
+        format_sequential_conjunction(VarNameTable, 4, RevGoalPath,
             GoalsAfter, GoalsAfterCost, !.ConjNum, ReportGoalsAfter0),
         ReportGoalsAfter = indent(3) ++ singleton("Goals after:\n") ++
             ReportGoalsAfter0
@@ -297,26 +297,26 @@ create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
     Report = Header1 ++ Header2 ++ Header3 ++ ReportGoalsBefore ++ nl
         ++ ReportParConj ++ nl ++ ReportGoalsAfter ++ nl.
 
-:- pred format_parallel_conjunction(var_table::in, int::in,
+:- pred format_parallel_conjunction(var_name_table::in, int::in,
     reverse_goal_path::in, int::in,
     list(seq_conj(pard_goal))::in, cord(string)::out) is det.
 
-format_parallel_conjunction(VarTable, Indent, RevGoalPath, ConjNum, Conjs,
+format_parallel_conjunction(VarNameTable, Indent, RevGoalPath, ConjNum, Conjs,
         !:Report) :-
     IndentStr = indent(Indent),
     !:Report = IndentStr ++ singleton("(\n"),
-    format_parallel_conjuncts(VarTable, Indent,
+    format_parallel_conjuncts(VarNameTable, Indent,
         rgp_cons(RevGoalPath, step_conj(ConjNum)), 1, Conjs, !Report).
 
-:- pred format_parallel_conjuncts(var_table::in, int::in,
+:- pred format_parallel_conjuncts(var_name_table::in, int::in,
     reverse_goal_path::in, int::in, list(seq_conj(pard_goal))::in,
     cord(string)::in, cord(string)::out) is det.
 
-format_parallel_conjuncts(_VarTable, Indent, _RevGoalPath, _ConjNum0,
+format_parallel_conjuncts(_VarNameTable, Indent, _RevGoalPath, _ConjNum0,
         [], !Report) :-
     IndentStr = indent(Indent),
     !:Report = snoc(!.Report ++ IndentStr, ")\n").
-format_parallel_conjuncts(VarTable, Indent, RevGoalPath, ConjNum0,
+format_parallel_conjuncts(VarNameTable, Indent, RevGoalPath, ConjNum0,
         [Conj | Conjs], !Report) :-
     Conj = seq_conj(Goals),
     (
@@ -328,16 +328,16 @@ format_parallel_conjuncts(VarTable, Indent, RevGoalPath, ConjNum0,
         (
             GoalsTail = [],
             % A singleton conjunction gets printed as a single goal.
-            print_goal_to_strings(print_goal_info(id, VarTable), Indent + 1,
-                RevInnerGoalPath, Goal, ConjReport)
+            print_goal_to_strings(print_goal_info(id, VarNameTable),
+                Indent + 1, RevInnerGoalPath, Goal, ConjReport)
         ;
             GoalsTail = [_ | _],
             Cost = foldl(
                 (func(GoalI, Acc) =
                     Acc + GoalI ^ goal_annotation ^ pga_cost_percall),
                 Goals, 0.0),
-            format_sequential_conjunction(VarTable, Indent + 1,
-                RevInnerGoalPath, Goals, Cost, 1, ConjReport)
+            format_sequential_conjunction(VarNameTable,
+                Indent + 1, RevInnerGoalPath, Goals, Cost, 1, ConjReport)
         )
     ),
     !:Report = !.Report ++ ConjReport,
@@ -348,14 +348,14 @@ format_parallel_conjuncts(VarTable, Indent, RevGoalPath, ConjNum0,
         !:Report = snoc(!.Report ++ indent(Indent), "&\n")
     ),
     ConjNum = ConjNum0 + 1,
-    format_parallel_conjuncts(VarTable, Indent, RevGoalPath, ConjNum,
+    format_parallel_conjuncts(VarNameTable, Indent, RevGoalPath, ConjNum,
         Conjs, !Report).
 
-:- pred format_sequential_conjunction(var_table::in, int::in,
+:- pred format_sequential_conjunction(var_name_table::in, int::in,
     reverse_goal_path::in, list(pard_goal)::in, float::in, int::in,
     cord(string)::out) is det.
 
-format_sequential_conjunction(VarTable, Indent, RevGoalPath, Goals, Cost,
+format_sequential_conjunction(VarNameTable, Indent, RevGoalPath, Goals, Cost,
         FirstConjNum, !:Report) :-
     !:Report = empty,
     ( FirstConjNum = 1 ->
@@ -370,17 +370,17 @@ format_sequential_conjunction(VarTable, Indent, RevGoalPath, Goals, Cost,
     ;
         true
     ),
-    format_sequential_conjuncts(VarTable, Indent, RevGoalPath, Goals,
+    format_sequential_conjuncts(VarNameTable, Indent, RevGoalPath, Goals,
         FirstConjNum, _, !Report).
 
-:- pred format_sequential_conjuncts(var_table::in, int::in,
+:- pred format_sequential_conjuncts(var_name_table::in, int::in,
     reverse_goal_path::in, list(pard_goal)::in, int::in, int::out,
     cord(string)::in, cord(string)::out) is det.
 
 format_sequential_conjuncts(_, _, _, [], !ConjNum, !Report).
-format_sequential_conjuncts(VarTable, Indent, RevGoalPath, [Conj | Conjs],
+format_sequential_conjuncts(VarNameTable, Indent, RevGoalPath, [Conj | Conjs],
         !ConjNum, !Report) :-
-    print_goal_to_strings(print_goal_info(id, VarTable), Indent,
+    print_goal_to_strings(print_goal_info(id, VarNameTable), Indent,
         rgp_cons(RevGoalPath, step_conj(!.ConjNum)), Conj, ConjReport),
     !:Report = !.Report ++ ConjReport,
     !:ConjNum = !.ConjNum + 1,
@@ -389,7 +389,7 @@ format_sequential_conjuncts(VarTable, Indent, RevGoalPath, [Conj | Conjs],
     ;
         Conjs = [_ | _],
         !:Report = !.Report ++ indent(Indent) ++ singleton(",\n"),
-        format_sequential_conjuncts(VarTable, Indent, RevGoalPath, Conjs,
+        format_sequential_conjuncts(VarNameTable, Indent, RevGoalPath, Conjs,
             !ConjNum, !Report)
     ).
 
@@ -397,10 +397,10 @@ format_sequential_conjuncts(VarTable, Indent, RevGoalPath, [Conj | Conjs],
     pred(print_goal_annotation_to_strings/3) is format_pard_goal_annotation
 ].
 
-:- pred format_pard_goal_annotation(var_table::in, pard_goal_annotation::in,
-    cord(cord(string))::out) is det.
+:- pred format_pard_goal_annotation(var_name_table::in,
+    pard_goal_annotation::in, cord(cord(string))::out) is det.
 
-format_pard_goal_annotation(VarTable, GoalAnnotation, Report) :-
+format_pard_goal_annotation(VarNameTable, GoalAnnotation, Report) :-
     GoalAnnotation = pard_goal_annotation(CostPercall, CostAboveThreshold,
         Productions, Consumptions),
     (
@@ -412,9 +412,9 @@ format_pard_goal_annotation(VarTable, GoalAnnotation, Report) :-
     ),
     CostLine = singleton(format("cost: %s (%s)",
         [s(two_decimal_fraction(CostPercall)), s(CostAboveThresholdStr)])),
-    format_var_use_report(VarTable, productions, Productions,
+    format_var_use_report(VarNameTable, productions, Productions,
         ProductionsReport),
-    format_var_use_report(VarTable, consumptions, Consumptions,
+    format_var_use_report(VarNameTable, consumptions, Consumptions,
         ConsumptionsReport),
     Report = singleton(CostLine) ++ ProductionsReport ++ ConsumptionsReport.
 
@@ -426,24 +426,24 @@ productions = "Productions".
 
 consumptions = "Consumptions".
 
-:- pred format_var_use_report(var_table::in, string::in,
+:- pred format_var_use_report(var_name_table::in, string::in,
     assoc_list(var_rep, float)::in, cord(cord(string))::out) is det.
 
-format_var_use_report(VarTable, Label, List, Report) :-
+format_var_use_report(VarNameTable, Label, List, Report) :-
     (
         List = [_ | _],
-        list.map(format_var_use_line(VarTable), List, Lines),
+        list.map(format_var_use_line(VarNameTable), List, Lines),
         Report = singleton(singleton(Label ++ ":")) ++ cord.from_list(Lines)
     ;
         List = [],
         Report = empty
     ).
 
-:- pred format_var_use_line(var_table::in, pair(var_rep, float)::in,
+:- pred format_var_use_line(var_name_table::in, pair(var_rep, float)::in,
     cord(string)::out) is det.
 
-format_var_use_line(VarTable, Var - Use, singleton(String)) :-
+format_var_use_line(VarNameTable, Var - Use, singleton(String)) :-
     format("    %s: %s", [s(VarName), s(two_decimal_fraction(Use))], String),
-    lookup_var_name(VarTable, Var, VarName).
+    lookup_var_name(VarNameTable, Var, VarName).
 
 %-----------------------------------------------------------------------------%

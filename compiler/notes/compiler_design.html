@@ -1522,7 +1522,9 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
   collected in continuation_info.m.
 
   Stack_layout.m uses prog_rep.m to generate bytecode representations
-  of procedure bodies for use by the declarative debugger.
+  of procedure bodies for use by the declarative debugger and the deep
+  profiler, and prog_rep_tables.m to generate the string tables and type tables
+  that these representations use.
 
 <li> Type_ctor_info structures and stack_layout structures both contain
   pseudo_type_infos, which are type_infos with holes for type variables;
@@ -1920,6 +1922,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2012-10-08 04:14:48 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2012-10-24 04:59:53 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

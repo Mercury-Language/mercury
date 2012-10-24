@@ -126,7 +126,8 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, ParentCalls,
         proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
         foldl(build_dynamic_call_site_cost_and_callee_map(Deep),
             Slots, map.init, CallSitesMap),
-        Info = recursion_analysis_info(ThisClique, CallSitesMap, CoverageArray),
+        Info = recursion_analysis_info(ThisClique, CallSitesMap,
+            CoverageArray),
         goal_recursion_data(Info, rgp_nil, Goal, RecursionData),
         recursion_data_to_recursion_type(ParentCalls, TotalCalls,
             RecursionData, RecursionType),
@@ -988,7 +989,8 @@ finalize_histogram_rec_type(Deep, NumCliques, _RecursionType,
         own_and_inherit_to_perf_row_data(Deep, unit, Own, Inherit, Summary),
         MaybeSummary = yes(Summary)
     ),
-    map_values(finalize_histogram_proc_rec_type(Deep, NumCliques), !EntryProcs).
+    map_values(finalize_histogram_proc_rec_type(Deep, NumCliques),
+        !EntryProcs).
 
 :- pred finalize_histogram_proc_rec_type(deep::in, float::in,
     proc_static_ptr::in,

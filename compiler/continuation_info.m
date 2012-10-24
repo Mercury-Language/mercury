@@ -153,6 +153,7 @@
                 pli_need_all_names      :: bool,
                 % True iff we need the names of all the variables.
 
+                pli_oisu_kind_fors      :: list(oisu_pred_kind_for),
                 pli_deep_prof           :: maybe(proc_deep_prof_info)
             ).
 

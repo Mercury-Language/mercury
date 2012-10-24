@@ -790,7 +790,8 @@ test_dependence(Info, CostData) :-
     conjuncts_are_dependent::out) is det.
 
 par_conj_overlap_is_dependent(peo_empty_conjunct, conjuncts_are_independent).
-par_conj_overlap_is_dependent(peo_conjunction(Left, _, VarSet0), IsDependent) :-
+par_conj_overlap_is_dependent(peo_conjunction(Left, _, VarSet0),
+        IsDependent) :-
     par_conj_overlap_is_dependent(Left, IsDependent0),
     (
         IsDependent0 = conjuncts_are_dependent(VarSetLeft),
@@ -862,7 +863,8 @@ full_parallelisation_cost(FullParallelisation) = Cost :-
 % XXX
 % :- semipure pred add_goals_into_first_par_conj(
 %     bnb_state(full_parallelisation)::in,
-%     incomplete_parallelisation::in, incomplete_parallelisation::out) is multi.
+%     incomplete_parallelisation::in, incomplete_parallelisation::out)
+%     is multi.
 %
 % add_goals_into_first_par_conj(BNBState, !Parallelisation) :-
 %     FirstGoal0 = !.Parallelisation ^ ip_first_par_goal,
@@ -872,8 +874,8 @@ full_parallelisation_cost(FullParallelisation) = Cost :-
 %         Goal = lookup(Goals, FirstGoal0 - 1),
 %         can_parallelise_goal(Goal),
 %
-%         % There are goals before the parallel conjunction that can be included
-%         % in the parallel conjunction.
+%         % There are goals before the parallel conjunction that can be
+%         % included in the parallel conjunction.
 %         add_one_goal_into_first_par_conj(!Parallelisation),
 %         semipure test_parallelisation(BNBState, !Parallelisation),
 %         semipure add_goals_into_first_par_conj(BNBState, !Parallelisation)
@@ -883,7 +885,8 @@ full_parallelisation_cost(FullParallelisation) = Cost :-
 %
 % :- semipure pred add_goals_into_last_par_conj(
 %     bnb_state(full_parallelisation)::in,
-%     incomplete_parallelisation::in, incomplete_parallelisation::out) is multi.
+%     incomplete_parallelisation::in, incomplete_parallelisation::out)
+%     is multi.
 %
 % add_goals_into_last_par_conj(BNBState, !Parallelisation) :-
 %     NumGoals = ip_get_num_goals(!.Parallelisation),

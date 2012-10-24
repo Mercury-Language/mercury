@@ -189,8 +189,8 @@ coverage_point_arrays_to_list_2(Num, Max, StaticArray, DynamicArray,
         array.lookup(DynamicArray, Num, Count),
         CP = coverage_point(Count, GoalPath, CPType),
         !:CoveragePoints = [CP | !.CoveragePoints],
-        coverage_point_arrays_to_list_2(Num + 1, Max, StaticArray, DynamicArray,
-            !CoveragePoints)
+        coverage_point_arrays_to_list_2(Num + 1, Max,
+            StaticArray, DynamicArray, !CoveragePoints)
     ;
         true
     ).
@@ -230,8 +230,9 @@ coverage_point_arrays_to_list_2(Num, Max, StaticArray, DynamicArray,
     %       algorithm to proceed past the problem and allow the programmer to
     %       view erroneous output.
     %
-procrep_annotate_with_coverage(ProcRep, OwnProf, CallSites, SolnsCoveragePoints,
-        BranchCoveragePoints, ContainingGoalMap, LastGoalId, CoverageArray) :-
+procrep_annotate_with_coverage(ProcRep, OwnProf, CallSites,
+        SolnsCoveragePoints, BranchCoveragePoints, ContainingGoalMap,
+        LastGoalId, CoverageArray) :-
     GoalRep = ProcRep ^ pr_defn ^ pdr_goal,
     ProcLabel = ProcRep ^ pr_id,
     goal_annotate_with_coverage(ProcLabel, GoalRep, OwnProf,
@@ -587,7 +588,8 @@ switch_annotate_coverage_2([Case | Cases], Info, CanFail, SwitchBefore,
             SumBeforeExecCount = 0
         )
     ->
-        BeforeCase = before_coverage(SwitchBeforeExecCount - SumBeforeExecCount)
+        BeforeCase =
+            before_coverage(SwitchBeforeExecCount - SumBeforeExecCount)
     ;
         % Search for a coverage point for this case.
         RevCaseGoalPath = map.lookup(Info ^ cri_goal_path_map,
@@ -614,7 +616,8 @@ switch_annotate_coverage_2([Case | Cases], Info, CanFail, SwitchBefore,
     goal_attr_array(coverage_info)::gaa_di,
     goal_attr_array(coverage_info)::gaa_uo) is det.
 
-ite_annotate_coverage(Cond, Then, Else, Info, RevGoalPath, Before, After, !Array) :-
+ite_annotate_coverage(Cond, Then, Else, Info, RevGoalPath, Before, After,
+        !Array) :-
     CondDetism = Cond ^ goal_detism_rep,
     GoalPathMap = Info ^ cri_goal_path_map,
 

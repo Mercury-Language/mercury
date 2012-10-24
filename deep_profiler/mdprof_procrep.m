@@ -31,7 +31,9 @@
 :- import_module mdbcomp.program_representation.
 :- import_module program_representation_utils.
 
+:- import_module char.
 :- import_module cord.
+:- import_module getopt.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -40,24 +42,63 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    io.command_line_arguments(Args, !IO),
+    io.progname_base("mdprof_procrep", ProgName, !IO),
+    io.command_line_arguments(Args0, !IO),
+    getopt.process_options(option_ops_multi(short, long, defaults),
+        Args0, Args, MaybeOptions),
+    io.stderr_stream(StdErr, !IO),
     (
-        Args = [],
-        MaybeModules = no
+        MaybeOptions = error(Msg),
+        io.format(StdErr, "%s: error parsing options: %s\n",
+            [s(ProgName), s(Msg)], !IO),
+        io.write_string(help_message(ProgName), !IO),
+        io.set_exit_status(1, !IO)
     ;
-        Args = [_ | _],
-        MaybeModules = yes(Args)
-    ),
-    read_prog_rep_file("Deep.procrep", ProgRepRes, !IO),
-    (
-        ProgRepRes = ok(ProgRep),
-        ProgRep = prog_rep(ModuleReps),
-        print_selected_modules(ModuleReps, MaybeModules, !IO)
-    ;
-        ProgRepRes = error(Error),
-        io.error_message(Error, Msg),
-        io.format("mdprof_procrep: %s\n", [s(Msg)], !IO)
+        MaybeOptions = ok(Options),
+        lookup_string_option(Options, filename, FileName),
+        read_prog_rep_file(FileName, ProgRepRes, !IO),
+        (
+            ProgRepRes = error(Error),
+            io.error_message(Error, Msg),
+            io.format("%s: %s\n", [s(ProgName), s(Msg)], !IO)
+        ;
+            ProgRepRes = ok(ProgRep),
+            ProgRep = prog_rep(ModuleReps),
+            (
+                Args = [],
+                MaybeModules = no
+            ;
+                Args = [_ | _],
+                MaybeModules = yes(Args)
+            ),
+            print_selected_modules(ModuleReps, MaybeModules, !IO)
+        )
     ).
+
+:- func help_message(string) = string.
+
+help_message(ProgName) =
+    string.format(
+        "Usage: %s [-f procrepfilename] [module1, module2, ...]\n",
+        [s(ProgName)]).
+
+:- type option
+    --->    filename
+    ;       dummy.      % This is needed to shut up a warning about defaults
+                        % being det instead of multi.
+
+:- pred short(char::in, option::out) is semidet.
+
+short('f', filename).
+
+:- pred long(string::in, option::out) is semidet.
+
+long("file", filename).
+
+:- pred defaults(option::out, option_data::out) is multi.
+
+defaults(filename, string("Deep.procrep")).
+defaults(dummy, string("dummy")).
 
 %-----------------------------------------------------------------------------%
 
@@ -67,24 +108,27 @@ main(!IO) :-
 print_selected_modules(ModuleReps, MaybeModules, !IO) :-
     (
         MaybeModules = no,
-        map.foldl((pred(_::in, ModuleRep::in, IO0::di, IO::uo) is det :-
+        map.foldl(
+            (pred(_::in, ModuleRep::in, IO0::di, IO::uo) is det :-
                 print_module(ModuleRep, IO0, IO)
             ), ModuleReps, !IO)
     ;
         MaybeModules = yes(Modules),
-        list.foldl((pred(ModuleName::in, IO0::di, IO::uo) is det :-
-            ( map.search(ModuleReps, ModuleName, ModuleRep) ->
-                print_module(ModuleRep, IO0, IO)
-            ;
-                IO = IO0
-            )), Modules, !IO)
-    ).
+        list.foldl(
+            (pred(ModuleName::in, IO0::di, IO::uo) is det :-
+                ( map.search(ModuleReps, ModuleName, ModuleRep) ->
+                    print_module(ModuleRep, IO0, IO)
+                ;
+                    IO = IO0
+                )
+            ), Modules, !IO)
+        ).
 
 :- pred print_module(module_rep::in, io::di, io::uo) is det.
 
 print_module(ModuleRep, !IO) :-
     print_module_to_strings(ModuleRep, Strings),
-    io.write_string(string.append_list(list(Strings)), !IO).
+    io.write_string(string.append_list(cord.list(Strings)), !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdprof_procrep.

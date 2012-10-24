@@ -56,7 +56,7 @@
 :- type print_goal_info(Key, GoalAnn)
     --->    print_goal_info(
                 pgi_lookup_annotation       :: (func(Key) = GoalAnn),
-                pgi_var_table               :: var_table
+                pgi_var_name_table          :: var_name_table
             ).
 
     % print_goal_to_strings(Lookup, VarTable, Indent, RevGoalPath, Goal,
@@ -74,7 +74,7 @@
     % Print the goal annotation for inclusion by print_proc_to_strings
     % above.
     %
-    pred print_goal_annotation_to_strings(var_table::in, T::in,
+    pred print_goal_annotation_to_strings(var_name_table::in, T::in,
         cord(cord(string))::out) is det
 ].
 
@@ -215,11 +215,163 @@
 %----------------------------------------------------------------------------%
 
 print_module_to_strings(ModuleRep, Strings) :-
-    ModuleRep = module_rep(ModuleName, _StringTable, ProcReps),
+    ModuleRep = module_rep(ModuleName, _StringTable, OISUTypesProcs,
+        TypeTableMap, ProcReps),
+    HeaderString = string.format("Module %s\n", [s(ModuleName)]),
+    list.foldl(accumulate_print_oisu_type_procs_to_strings, OISUTypesProcs,
+        cord.empty, OISUStrs),
+    map.foldl(accumulate_print_type_table_entries_to_strings, TypeTableMap,
+        cord.empty, TypeTableStrs0),
+    ( cord.is_empty(TypeTableStrs0) ->
+        TypeTableStrs = TypeTableStrs0
+    ;
+        TypeTableStrs = cord.singleton("\nType table:\n") ++
+            TypeTableStrs0 ++ nl
+    ),
     map.foldl(accumulate_print_proc_to_strings, ProcReps,
-        cord.empty, ProcStrings),
-    Strings = cord.cons(string.format("Module %s\n", [s(ModuleName)]),
-        ProcStrings).
+        cord.empty, ProcRepStrs),
+    Strings = cord.singleton(HeaderString) ++ OISUStrs ++ TypeTableStrs
+        ++ ProcRepStrs.
+
+%----------------------------------------------------------------------------%
+
+:- pred accumulate_print_oisu_type_procs_to_strings(oisu_type_procs::in,
+    cord(string)::in, cord(string)::out) is det.
+
+accumulate_print_oisu_type_procs_to_strings(OISUTypeProcs, !Strings) :-
+    print_oisu_type_procs_to_strings(OISUTypeProcs, OISUStr),
+    !:Strings = !.Strings ++ OISUStr.
+
+:- pred print_oisu_type_procs_to_strings(oisu_type_procs::in,
+    cord(string)::out) is det.
+
+print_oisu_type_procs_to_strings(OISUTypeProcs, Str) :-
+    OISUTypeProcs = oisu_type_procs(TypeCtor,
+        CreatorProcLabels, MutatorProcLabels, DestructorProcLabels),
+    list.map(print_proc_label_to_string, CreatorProcLabels, CreatorStrs),
+    list.map(print_proc_label_to_string, MutatorProcLabels, MutatorStrs),
+    list.map(print_proc_label_to_string, DestructorProcLabels, DestructorStrs),
+    CreatorNlCords = list.map(add_nl, CreatorStrs),
+    MutatorNlCords = list.map(add_nl, MutatorStrs),
+    DestructorNlCords = list.map(add_nl, DestructorStrs),
+    Str = cord.from_list(["\nOISU type constructor ", TypeCtor])
+        ++ cord.cons("\nCreator procs:\n",
+            cord.cord_list_to_cord(CreatorNlCords))
+        ++ cord.cons("\nMutator procs:\n",
+            cord.cord_list_to_cord(MutatorNlCords))
+        ++ cord.cons("\nDestructor procs:\n",
+            cord.cord_list_to_cord(DestructorNlCords)).
+
+%----------------------------------------------------------------------------%
+
+:- pred accumulate_print_type_table_entries_to_strings(int::in,
+    type_rep::in, cord(string)::in, cord(string)::out) is det.
+
+accumulate_print_type_table_entries_to_strings(TypeNum, TypeRep, !Strings) :-
+    string.int_to_string(TypeNum, TypeNumStr),
+    type_rep_to_strings(TypeRep, TypeRepStrCord),
+    Str = cord.singleton(TypeNumStr)
+        ++ cord.singleton(" -> ")
+        ++ TypeRepStrCord
+        ++ cord.singleton("\n"),
+    !:Strings = !.Strings ++ Str.
+
+:- pred type_rep_to_strings(type_rep::in, cord(string)::out) is det.
+
+type_rep_to_strings(TypeRep, Cord) :-
+    (
+        TypeRep = defined_type_rep(TypeCtorSymName, ArgTypes),
+        TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
+        TypeCtorSymNameCord = cord.singleton(TypeCtorSymNameStr),
+        (
+            ArgTypes = [],
+            Cord = TypeCtorSymNameCord
+        ;
+            ArgTypes = [HeadTypeRep | TailTypeReps],
+            arg_type_reps_to_strings(HeadTypeRep, TailTypeReps, ArgTypesCord),
+            Cord = TypeCtorSymNameCord
+                ++ cord.singleton("(")
+                ++ ArgTypesCord
+                ++ cord.singleton(")")
+        )
+    ;
+        TypeRep = builtin_type_rep(BuiltinTypeRep),
+        (
+            BuiltinTypeRep = builtin_type_int_rep,
+            TypeNameStr = "int"
+        ;
+            BuiltinTypeRep = builtin_type_float_rep,
+            TypeNameStr = "float"
+        ;
+            BuiltinTypeRep = builtin_type_string_rep,
+            TypeNameStr = "string"
+        ;
+            BuiltinTypeRep = builtin_type_char_rep,
+            TypeNameStr = "char"
+        ),
+        Cord = cord.singleton(TypeNameStr)
+    ;
+        TypeRep = tuple_type_rep(ArgTypes),
+        (
+            ArgTypes = [],
+            Cord = cord.singleton("{}")
+        ;
+            ArgTypes = [HeadTypeRep | TailTypeReps],
+            arg_type_reps_to_strings(HeadTypeRep, TailTypeReps, ArgTypesCord),
+            Cord =
+                cord.singleton("{")
+                ++ ArgTypesCord
+                ++ cord.singleton("}")
+        )
+    ;
+        TypeRep = higher_order_type_rep(ArgTypes, MaybeResultType),
+        (
+            MaybeResultType = no,
+            (
+                ArgTypes = [],
+                Cord = cord.singleton("pred ()")
+            ;
+                ArgTypes = [HeadTypeRep | TailTypeReps],
+                arg_type_reps_to_strings(HeadTypeRep, TailTypeReps,
+                    ArgTypesCord),
+                Cord = cord.singleton("pred(")
+                    ++ ArgTypesCord
+                    ++ cord.singleton(")")
+            )
+        ;
+            MaybeResultType = yes(ResultType),
+            type_rep_to_strings(ResultType, ResultTypeCord),
+            (
+                ArgTypes = [],
+                Cord = cord.singleton("func = ") ++ ResultTypeCord
+            ;
+                ArgTypes = [HeadTypeRep | TailTypeReps],
+                arg_type_reps_to_strings(HeadTypeRep, TailTypeReps,
+                    ArgTypesCord),
+                Cord = cord.singleton("func(")
+                    ++ ArgTypesCord
+                    ++ cord.singleton(") = ")
+                    ++ ResultTypeCord
+            )
+        )
+    ;
+        TypeRep = type_var_rep(N),
+        string.int_to_string(N, NStr),
+        Cord = cord.singleton("T" ++ NStr)
+    ).
+
+:- pred arg_type_reps_to_strings(type_rep::in, list(type_rep)::in,
+    cord(string)::out) is det.
+
+arg_type_reps_to_strings(HeadTypeRep, [], Cord) :-
+    type_rep_to_strings(HeadTypeRep, Cord).
+arg_type_reps_to_strings(HeadTypeRep, [HeadTailTypeRep | TailTailTypeReps],
+        Cord) :-
+    type_rep_to_strings(HeadTypeRep, HeadCord),
+    arg_type_reps_to_strings(HeadTailTypeRep, TailTailTypeReps, TailCord),
+    Cord = HeadCord ++ cord.singleton(", ") ++ TailCord.
+
+%----------------------------------------------------------------------------%
 
     % Print a procedure to a string representation.
     %
@@ -243,16 +395,45 @@ print_proc_to_strings(ProcRep, Strings) :-
 
 print_proc_to_strings_2(Lookup, ProcRep, Strings) :-
     ProcRep = proc_rep(ProcLabel, ProcDefnRep),
-    ProcDefnRep = proc_defn_rep(ArgVarReps, GoalRep, VarTable, Detism),
+    ProcDefnRep = proc_defn_rep(ArgVarReps, GoalRep, VarNameTable,
+        MaybeVarTypeTable, Detism),
     print_proc_label_to_string(ProcLabel, ProcLabelString0),
     detism_to_string(Detism, DetismString),
     ProcLabelString = DetismString ++ cord.singleton(" ") ++
         cord.singleton(ProcLabelString0),
-    print_args_to_strings(print_head_var, VarTable, ArgVarReps, ArgsString),
-    print_goal_to_strings(print_goal_info(Lookup, VarTable), 1, rgp_nil,
+    print_args_to_strings(print_head_var, VarNameTable, ArgVarReps,
+        ArgsString),
+    print_goal_to_strings(print_goal_info(Lookup, VarNameTable), 1, rgp_nil,
         GoalRep, GoalString),
-    Strings = ProcLabelString ++ ArgsString ++ cord.singleton(" :-\n") ++
-        GoalString ++ nl.
+    MainStrings = ProcLabelString ++ ArgsString ++ cord.singleton(" :-\n") ++
+        GoalString ++ nl,
+    (
+        MaybeVarTypeTable = no,
+        Strings = MainStrings
+    ;
+        MaybeVarTypeTable = yes(VarTypeTable),
+        map.foldl(accumulate_var_type_table_entry_strings(VarNameTable),
+            VarTypeTable, cord.init, TypeTableStrings),
+        Strings = TypeTableStrings ++ MainStrings
+    ).
+
+:- pred accumulate_var_type_table_entry_strings(var_name_table::in,
+    var_rep::in, type_rep::in, cord(string)::in, cord(string)::out) is det.
+
+accumulate_var_type_table_entry_strings(VarNameTable, VarNum, TypeRep,
+        !Strings) :-
+    string.int_to_string(VarNum, VarNumStr),
+    (
+        search_var_name(VarNameTable, VarNum, VarName),
+        not VarName = ""
+    ->
+        VarIdStrs = cord.from_list([VarName, " ", VarNumStr, " -> "])
+    ;
+        VarIdStrs = cord.from_list(["unnamed_var ", VarNumStr, " -> "])
+    ),
+    type_rep_to_strings(TypeRep, TypeRepStrs),
+    EntryStrs = VarIdStrs ++ TypeRepStrs ++ nl,
+    !:Strings = !.Strings ++ EntryStrs.
 
 print_proc_label_to_string(ProcLabel, String) :-
     (
@@ -278,7 +459,7 @@ print_proc_label_to_string(ProcLabel, String) :-
 
 print_goal_to_strings(Info, Indent, RevGoalPath, GoalRep, Strings) :-
     GoalRep = goal_rep(GoalExprRep, DetismRep, AnnotationKey),
-    VarTable = Info ^ pgi_var_table,
+    VarTable = Info ^ pgi_var_name_table,
     (
         GoalExprRep = conj_rep(ConjGoalReps),
         print_conj_to_strings(Info, Indent, RevGoalPath,
@@ -482,7 +663,7 @@ print_cons_id_and_arity_to_strings(Indent, ConsIdArityRep, Strings) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred print_atomic_goal_to_strings(var_table::in, atomic_goal_rep::in,
+:- pred print_atomic_goal_to_strings(var_name_table::in, atomic_goal_rep::in,
     cord(string)::out) is det.
 
 print_atomic_goal_to_strings(VarTable, AtomicGoalRep, Strings) :-
@@ -573,7 +754,7 @@ print_atomic_goal_to_strings(VarTable, AtomicGoalRep, Strings) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred print_args_to_strings(pred(var_table, T, string), var_table,
+:- pred print_args_to_strings(pred(var_name_table, T, string), var_name_table,
     list(T), cord(string)).
 :- mode print_args_to_strings(pred(in, in, out) is det, in, in, out) is det.
 
@@ -587,8 +768,8 @@ print_args_to_strings(PrintArg, VarTable, Args, Strings) :-
         Strings = cord.cons("(", cord.snoc(ArgsStr, ")"))
     ).
 
-:- pred print_args_2_to_strings(pred(var_table, T, string), var_table,
-    list(T), cord(string), cord(string)).
+:- pred print_args_2_to_strings(pred(var_name_table, T, string),
+    var_name_table, list(T), cord(string), cord(string)).
 :- mode print_args_2_to_strings(pred(in, in, out) is det, in, in, in, out)
     is det.
 
@@ -599,13 +780,15 @@ print_args_2_to_strings(PrintArg, VarTable, [Arg | Args], Prefix, Strings) :-
         ArgsString),
     Strings = Prefix ++ cord.cons(ArgName, ArgsString).
 
-:- pred print_maybe_var(var_table::in, maybe(var_rep)::in, string::out) is det.
+:- pred print_maybe_var(var_name_table::in, maybe(var_rep)::in, string::out)
+    is det.
 
 print_maybe_var(_, no, "_").
 print_maybe_var(VarTable, yes(VarRep), VarName) :-
     lookup_var_name(VarTable, VarRep, VarName).
 
-:- pred print_head_var(var_table::in, head_var_rep::in, string::out) is det.
+:- pred print_head_var(var_name_table::in, head_var_rep::in, string::out)
+    is det.
 
 print_head_var(VarTable, head_var_rep(VarRep, VarMode), String) :-
     lookup_var_name(VarTable, VarRep, VarName),
@@ -670,14 +853,18 @@ detism_to_string(Detism, DetismStrCord) :-
 
 nl = cord.singleton("\n").
 
+:- func add_nl(string) = cord(string).
+
+add_nl(Str) = cord.from_list([Str, "\n"]).
+
 %----------------------------------------------------------------------------%
 
 :- instance goal_annotation(unit) where [
     pred(print_goal_annotation_to_strings/3) is print_unit_to_strings
 ].
 
-:- pred print_unit_to_strings(var_table::in, unit::in, cord(cord(string))::out)
-    is det.
+:- pred print_unit_to_strings(var_name_table::in, unit::in,
+    cord(cord(string))::out) is det.
 
 print_unit_to_strings(_, _, cord.empty).
 
@@ -878,7 +1065,8 @@ inst_map_ground_vars(Vars, DepVars, !InstMap, SeenDuplicateInstantiation) :-
     inst_map::in, inst_map::out, seen_duplicate_instantiation::in,
     seen_duplicate_instantiation::out) is det.
 
-inst_map_ground_var(DepVars0, Var, InstMap0, InstMap, !SeenDuplicateInstantiation) :-
+inst_map_ground_var(DepVars0, Var, InstMap0, InstMap,
+        !SeenDuplicateInstantiation) :-
     InstMap0 = inst_map(VarToInst0, VarToDepVars0),
     ( map.search(VarToInst0, Var, InstPrime) ->
         Inst = InstPrime

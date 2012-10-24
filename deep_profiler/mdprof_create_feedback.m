@@ -120,42 +120,50 @@ generate_requested_feedback(ProgName, Options, InputFileName, OutputFileName,
         read_deep_file(InputFileName, DebugReadProfile, MaybeDeep, !IO),
         (
             MaybeDeep = ok(Deep),
-            ProfileProgName = Deep ^ profile_stats ^ prs_program_name,
-            feedback.read_or_create(OutputFileName, ProfileProgName,
-                FeedbackReadResult, !IO),
+            deep_get_maybe_progrep(Deep, MaybeProgRep),
             (
-                FeedbackReadResult = ok(Feedback0),
-                process_deep_to_feedback(RequestedFeedbackInfo,
-                    Deep, Messages, Feedback0, Feedback),
+                MaybeProgRep = ok(_),
+                ProfileProgName = Deep ^ profile_stats ^ prs_program_name,
+                feedback.read_or_create(OutputFileName, ProfileProgName,
+                    FeedbackReadResult, !IO),
                 (
-                    Report = yes,
-                    print_feedback_report(ProfileProgName, Feedback, !IO)
-                ;
-                    Report = no
-                ),
-                write_feedback_file(OutputFileName, ProfileProgName,
-                    Feedback, WriteResult, !IO),
-                (
-                    WriteResult = ok
-                ;
-                    ( WriteResult = open_error(Error)
-                    ; WriteResult = write_error(Error)
+                    FeedbackReadResult = ok(Feedback0),
+                    process_deep_to_feedback(RequestedFeedbackInfo,
+                        Deep, Messages, Feedback0, Feedback),
+                    (
+                        Report = yes,
+                        print_feedback_report(ProfileProgName, Feedback, !IO)
+                    ;
+                        Report = no
                     ),
-                    io.error_message(Error, ErrorMessage),
-                    io.format(Stderr, "%s: %s: %s\n",
-                        [s(ProgName), s(OutputFileName), s(ErrorMessage)],
-                        !IO),
+                    write_feedback_file(OutputFileName, ProfileProgName,
+                        Feedback, WriteResult, !IO),
+                    (
+                        WriteResult = ok
+                    ;
+                        ( WriteResult = open_error(Error)
+                        ; WriteResult = write_error(Error)
+                        ),
+                        io.error_message(Error, ErrorMessage),
+                        io.format(Stderr, "%s: %s: %s\n",
+                            [s(ProgName), s(OutputFileName), s(ErrorMessage)],
+                            !IO),
+                        io.set_exit_status(1, !IO)
+                    ),
+                    lookup_int_option(Options, verbosity, VerbosityLevel),
+                    set_verbosity_level(VerbosityLevel, !IO),
+                    write_out_messages(Stderr, Messages, !IO)
+                ;
+                    FeedbackReadResult = error(FeedbackReadError),
+                    feedback.read_error_message_string(OutputFileName,
+                        FeedbackReadError, Message),
+                    io.write_string(Stderr, Message, !IO),
                     io.set_exit_status(1, !IO)
-                ),
-                lookup_int_option(Options, verbosity, VerbosityLevel),
-                set_verbosity_level(VerbosityLevel, !IO),
-                write_out_messages(Stderr, Messages, !IO)
+                )
             ;
-                FeedbackReadResult = error(FeedbackReadError),
-                feedback.read_error_message_string(OutputFileName,
-                    FeedbackReadError, Message),
-                io.write_string(Stderr, Message, !IO),
-                io.set_exit_status(1, !IO)
+                MaybeProgRep = error(Error),
+                io.set_exit_status(1, !IO),
+                io.format(Stderr, "%s: %s\n", [s(ProgName), s(Error)], !IO)
             )
         ;
             MaybeDeep = error(Error),
@@ -185,8 +193,8 @@ help_message(ProgName) = HelpMessage :-
     -h --help       Generate this help message.
     -V --version    Report the program's version number.
     -v --verbosity  <0-4>
-                    Generate messages.  The higher the argument, the more
-                    verbose the program becomes.  2 is recommended and the
+                    Generate messages. The higher the argument, the more
+                    verbose the program becomes. 2 is recommended and the
                     default.
     --debug-read-profile
                     Generate debugging messages when reading the deep profile
@@ -225,7 +233,7 @@ help_message(ProgName) = HelpMessage :-
                 variable, measured in the profiler's call sequence counts.
     --ipar-context-wakeup-delay <value>
                 The time taken for a context to resume execution after being
-                placed on the run queue.  This is used to estimate the impact
+                placed on the run queue. This is used to estimate the impact
                 of blocking of a context's execution, it is measured in the
                 profiler's call sequence counts.
     --ipar-clique-cost-threshold <value>
@@ -238,7 +246,7 @@ help_message(ProgName) = HelpMessage :-
                 Disable parallelisation of dependent conjunctions.
     --ipar-speedup-alg <alg>
                 Choose the algorithm that is used to estimate the speedup for
-                dependent calculations.  The available algorithms are:
+                dependent calculations. The available algorithms are:
                     overlap: Compute the overlap between dependent
                       conjunctions.
                     num_vars: Use the number of shared variables as a proxy for
@@ -253,17 +261,17 @@ help_message(ProgName) = HelpMessage :-
                 parallelizations that promise less than a 2%% local speedup.
     --ipar-best-par-alg <alg>
                 Select which algorithm to use to find the best way to
-                parallelise a conjunction.  The available algorithms are:
+                parallelise a conjunction. The available algorithms are:
                     greedy: A greedy algorithm with a linear time complexity.
                     complete: A complete algorithm with a branch and bound
                       search. This can be slow for problems larger than 50
                       conjuncts, since it has an exponential complexity.
                     complete-size(N): As above exept that it takes a single
-                      parameter, N.  If a conjunction has more than N
+                      parameter, N. If a conjunction has more than N
                       conjuncts, then the greedy algorithm will be used.
                     complete-branches(N): The same as the complete algorithm,
                       except that it allows at most N branches to be created
-                      during the search.  Once N branches have been created,
+                      during the search. Once N branches have been created,
                       a greedy search is used on each open branch.
                 The default is complete-branches(1000).
 
@@ -272,7 +280,7 @@ help_message(ProgName) = HelpMessage :-
 
     --candidate-parallel-conjunctions
                 Produce a list of candidate parallel conjunctions for implicit
-                parallelism.  This option uses the implicit parallelism
+                parallelism. This option uses the implicit parallelism
                 settings above.
 
 ",
@@ -353,9 +361,9 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
 
 :- pred short(char::in, option::out) is semidet.
 
-short('h',  help).
-short('v',  verbosity).
-short('V',  version).
+short('h', help).
+short('v', verbosity).
+short('V', version).
 
 :- pred long(string::in, option::out) is semidet.
 
@@ -458,8 +466,8 @@ defaults(ipar_best_par_alg,                 string("complete-branches(1000)")).
 
 :- pred construct_measure(string::in, stat_measure::out) is semidet.
 
-construct_measure("mean",       stat_mean).
-construct_measure("median",     stat_median).
+construct_measure("mean",   stat_mean).
+construct_measure("median", stat_median).
 
 :- pred post_process_options(string::in,
     option_table(option)::in, option_table(option)::out,

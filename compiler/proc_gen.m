@@ -495,12 +495,13 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
                 MaybeTableInfo = yes(proc_table_io_decl(TableIOInfo))
             )
         ),
+        proc_info_get_oisu_kind_fors(ProcInfo, OISUKindFors),
         ProcLayout = proc_layout_info(RttiProcLabel, EntryLabel,
             Detism, TotalSlots, MaybeSuccipSlot, EvalMethod,
             EffTraceLevel, MaybeTraceCallLabel, MaxTraceRegR, MaxTraceRegF,
             HeadVars, ArgModes, Goal, NeedGoalRep, InstMap0,
             TraceSlotInfo, ForceProcId, VarSet, VarTypes,
-            InternalMap, MaybeTableInfo, NeedsAllNames,
+            InternalMap, MaybeTableInfo, NeedsAllNames, OISUKindFors,
             MaybeDeepProfInfo),
         global_data_add_new_proc_layout(proc(PredId, ProcId), ProcLayout,
             !GlobalData)

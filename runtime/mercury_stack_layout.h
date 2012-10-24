@@ -440,7 +440,7 @@ struct MR_UserEventSpec_Struct {
 ** The MR_sll_types field points to an array of #Long + #Short
 ** MR_PseudoTypeInfos each giving the type of a live data item, with
 ** a small integer instead of a pointer representing a special kind of
-** live data item (e.g. a saved succip or hp). This field will be null if 
+** live data item (e.g. a saved succip or hp). This field will be null if
 ** #Long + #Short is zero.
 **
 ** The MR_sll_long_locns field points to an array of #Long MR_LongLvals,
@@ -1067,7 +1067,7 @@ struct MR_ProcLayout_Struct {
     MR_STATIC_CODE_CONST MR_ExecTrace   *MR_sle_exec_trace;
     MR_ProcStatic                       *MR_sle_proc_static;
     const MR_uint_least8_t              *MR_sle_body_bytes;
-    const MR_ModuleCommonLayout         *MR_sle_module_common_layout;
+    const MR_ModuleLayout               *MR_sle_module_layout;
 };
 
 typedef struct MR_ProcLayoutUser_Struct {
@@ -1076,7 +1076,7 @@ typedef struct MR_ProcLayoutUser_Struct {
     MR_STATIC_CODE_CONST MR_ExecTrace   *MR_sle_exec_trace;
     MR_ProcStatic                       *MR_sle_proc_static;
     const MR_uint_least8_t              *MR_sle_body_bytes;
-    const MR_ModuleCommonLayout         *MR_sle_module_common_layout;
+    const MR_ModuleLayout               *MR_sle_module_layout;
 } MR_ProcLayoutUser;
 
 typedef struct MR_ProcLayoutUCI_Struct {
@@ -1085,7 +1085,7 @@ typedef struct MR_ProcLayoutUCI_Struct {
     MR_STATIC_CODE_CONST MR_ExecTrace   *MR_sle_exec_trace;
     MR_ProcStatic                       *MR_sle_proc_static;
     const MR_uint_least8_t              *MR_sle_body_bytes;
-    const MR_ModuleCommonLayout         *MR_sle_module_common_layout;
+    const MR_ModuleLayout               *MR_sle_module_layout;
 } MR_ProcLayoutUCI;
 
 typedef struct MR_ProcLayout_Traversal_Struct {
@@ -1446,21 +1446,27 @@ typedef struct MR_ModuleFileLayout_Struct {
 ** compiler/layout_out.m.
 */
 
-#define MR_LAYOUT_VERSION                   MR_LAYOUT_VERSION__COMMON
+#define MR_LAYOUT_VERSION                   MR_LAYOUT_VERSION__OISU
 #define MR_LAYOUT_VERSION__USER_DEFINED     1
 #define MR_LAYOUT_VERSION__EVENTSETNAME     2
 #define MR_LAYOUT_VERSION__SYNTH_ATTR       3
 #define MR_LAYOUT_VERSION__COMMON           4
-
-struct MR_ModuleCommonLayout_Struct {
-    MR_uint_least8_t                MR_mlc_version_number;
-    MR_ConstString                  MR_mlc_name;
-    MR_Integer                      MR_mlc_string_table_size;
-    const char                      *MR_mlc_string_table;
-};
+#define MR_LAYOUT_VERSION__OISU             5
 
 struct MR_ModuleLayout_Struct {
-    const MR_ModuleCommonLayout     *MR_ml_common;
+    /* The fields that are of interest to both deep profiling and debugging. */
+    MR_uint_least8_t                MR_ml_version_number;
+    MR_ConstString                  MR_ml_name;
+    MR_Integer                      MR_ml_string_table_size;
+    const char                      *MR_ml_string_table;
+
+    /* The fields that are of interest only to deep profiling. */
+    MR_Integer                      MR_ml_num_oisu_types;
+    const MR_uint_least8_t          *MR_ml_oisu_bytes;
+    MR_Integer                      MR_ml_num_table_types;
+    const MR_uint_least8_t          *MR_ml_type_table_bytes;
+
+    /* The fields that are of interest only to debugging. */
     MR_Integer                      MR_ml_proc_count;
     const MR_ProcLayout             **MR_ml_procs;
     MR_Integer                      MR_ml_filename_count;
@@ -1475,11 +1481,6 @@ struct MR_ModuleLayout_Struct {
     MR_int_least16_t                MR_ml_num_user_event_specs;
     MR_UserEventSpec                *MR_ml_user_event_specs;
 };
-
-#define MR_ml_version_number        MR_ml_common->MR_mlc_version_number
-#define MR_ml_name                  MR_ml_common->MR_mlc_name
-#define MR_ml_string_table_size     MR_ml_common->MR_mlc_string_table_size
-#define MR_ml_string_table          MR_ml_common->MR_mlc_string_table
 
 /*-------------------------------------------------------------------------*/
 /*

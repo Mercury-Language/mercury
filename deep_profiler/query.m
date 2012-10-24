@@ -41,7 +41,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Declarations for reading and writing querys.
+% Declarations for reading and writing queries.
 %
 
     % A deep profiler query.
@@ -113,6 +113,12 @@
     ;       deep_cmd_module(
                 cmd_module_module_name          :: string
             )
+    ;       deep_cmd_module_getter_setters(
+                cmd_mgs_module_name             :: string
+            )
+    ;       deep_cmd_module_rep(
+                cmd_mr_module_name              :: string
+            )
     ;       deep_cmd_top_procs(
                 cmd_tp_display_limit            :: display_limit,
                 cmd_tp_sort_cost_kind           :: cost_kind,
@@ -124,9 +130,6 @@
             )
     ;       deep_cmd_dynamic_procrep_coverage(
                 cmd_dynamic_coverage_pd         :: proc_dynamic_ptr
-            )
-    ;       deep_cmd_module_getter_setters(
-                cmd_mgs_module_name             :: string
             )
 
     % The following commands are for debugging.
@@ -601,6 +604,10 @@ cmd_to_string(Cmd) = CmdStr :-
             [s(cmd_str_module_getter_setters), c(cmd_separator_char),
             s(ModuleName)])
     ;
+        Cmd = deep_cmd_module_rep(ModuleName),
+        CmdStr = string.format("%s%c%s",
+            [s(cmd_str_module_rep), c(cmd_separator_char), s(ModuleName)])
+    ;
         Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
         LimitStr = limit_to_string(Limit),
         CostKindStr = cost_kind_to_string(CostKind),
@@ -641,7 +648,8 @@ cmd_to_string(Cmd) = CmdStr :-
         Cmd = deep_cmd_dump_call_site_dynamic(CSDPtr),
         CSDPtr = call_site_dynamic_ptr(CSDI),
         CmdStr = string.format("%s%c%d",
-            [s(cmd_str_dump_call_site_dynamic), c(cmd_separator_char), i(CSDI)])
+            [s(cmd_str_dump_call_site_dynamic), c(cmd_separator_char),
+                i(CSDI)])
     ;
         Cmd = deep_cmd_dump_clique(CliquePtr),
         CliquePtr = clique_ptr(CliqueNum),
@@ -652,7 +660,7 @@ cmd_to_string(Cmd) = CmdStr :-
         CSDPtr = call_site_dynamic_ptr(CSDI),
         CmdStr = string.format("%s%c%d",
             [s(cmd_str_call_site_dynamic_var_use), c(cmd_separator_char),
-             i(CSDI)])
+                i(CSDI)])
     ).
 
 :- func preferences_to_string(preferences) = string.
@@ -762,6 +770,11 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         Pieces = [cmd_str_module_getter_setters, ModuleName]
     ->
         Cmd = deep_cmd_module_getter_setters(ModuleName),
+        MaybeCmd = yes(Cmd)
+    ;
+        Pieces = [cmd_str_module_rep, ModuleName]
+    ->
+        Cmd = deep_cmd_module_rep(ModuleName),
         MaybeCmd = yes(Cmd)
     ;
         Pieces = [cmd_str_top_procs, LimitStr, CostKindStr, InclDescStr,
@@ -1321,6 +1334,9 @@ cmd_str_module = "module".
 
 :- func cmd_str_module_getter_setters = string.
 cmd_str_module_getter_setters = "module_getter_setters".
+
+:- func cmd_str_module_rep = string.
+cmd_str_module_rep = "module_rep".
 
 :- func cmd_str_top_procs = string.
 cmd_str_top_procs = "top_procs".

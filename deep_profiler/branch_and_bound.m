@@ -53,7 +53,8 @@
     % Use a branch and bound search to return the set of BestSolutions
     % according to the ObjectiveFn that GenerateSolutions can generate.
     %
-    % Note that more optimal solutions return _smaller_ values from ObjectiveFn.
+    % Note that more optimal solutions return _smaller_ values
+    % from ObjectiveFn.
     %
     % The set of best solutions is returned, it is up to the caller to break
     % ties if necessary.

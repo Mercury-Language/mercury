@@ -222,9 +222,9 @@ find_top_sort_predicate(cost_words,  self_and_desc, overall,  yes,
 find_top_sort_predicate(cost_words,  self_and_desc, per_call, yes,
     compare_ps_words_both_percall,  filter_ps_words_both).
 
-:- pred find_threshold_percent_predicate(cost_kind::in, include_descendants::in,
-    bool::out, pred(deep, float, int)::out(pred(in, in, in) is semidet))
-    is det.
+:- pred find_threshold_percent_predicate(cost_kind::in,
+    include_descendants::in, bool::out,
+    pred(deep, float, int)::out(pred(in, in, in) is semidet)) is det.
 
 find_threshold_percent_predicate(cost_calls,  self,          no,
     threshold_percent_ps_time_self).

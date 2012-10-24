@@ -21,14 +21,14 @@ MR_ConstString
 MR_hlds_var_name(const MR_ProcLayout *entry, int hlds_var_num,
     int *should_copy)
 {
-    const MR_ModuleCommonLayout *module_common;
-    const char                  *string_table;
-    MR_Integer                  string_table_size;
-    int                         name_code;
+    const MR_ModuleLayout   *module_layout;
+    const char              *string_table;
+    MR_Integer              string_table_size;
+    int                     name_code;
 
-    module_common = entry->MR_sle_module_common_layout;
-    string_table = module_common->MR_mlc_string_table;
-    string_table_size = module_common->MR_mlc_string_table_size;
+    module_layout = entry->MR_sle_module_layout;
+    string_table = module_layout->MR_ml_string_table;
+    string_table_size = module_layout->MR_ml_string_table_size;
 
     if (hlds_var_num == 0) {
         /* this value is not a variable */

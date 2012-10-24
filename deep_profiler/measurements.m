@@ -240,10 +240,10 @@
     % has some amount of parallelism and there is a probability of
     % ChildRunnableProb that the child will be executed.
     %
-    % In the three argument version we assume that the child has no parallelism.
-    % In this version it's useful to think of the ChildRunnableProb as the
-    % chance a forked off child (of a pair of two) will be 'runnable' during
-    % the execution of it's sibling.
+    % In the three argument version we assume that the child has no
+    % parallelism. In this version it is useful to think of ChildRunnableProb
+    % as the chance a forked off child (of a pair of two) will be 'runnable'
+    % during the execution of it's sibling.
     %
 :- pred sub_computation_parallelism(parallelism_amount::in, probability::in,
     parallelism_amount::in, parallelism_amount::out) is det.
@@ -1143,15 +1143,19 @@ parallel_exec_metrics_internal_get_num_conjs(
 :- func parallel_exec_metrics_internal_get_par_time(
     parallel_exec_metrics_internal, float, int) = float.
 
-parallel_exec_metrics_internal_get_par_time(pem_left_most(_, ParTime, _), _, _) =
-        ParTime.
-parallel_exec_metrics_internal_get_par_time(pem_additional(MetricsLeft,
-        _, _, _, TimeRightPar, TimeRightDead), SparkDelay, Depth) = Time :-
-    TimeRight = TimeRightPar + TimeRightDead + SparkDelay * float(Depth - 1),
-    TimeLeft =
-        parallel_exec_metrics_internal_get_par_time(MetricsLeft, SparkDelay,
-            Depth - 1),
-    Time = max(TimeLeft, TimeRight).
+parallel_exec_metrics_internal_get_par_time(PEM, SparkDelay, Depth) = Time :-
+    (
+        PEM = pem_left_most(_, ParTime, _),
+        Time = ParTime
+    ;
+        PEM = pem_additional(MetricsLeft, _, _, _,
+            TimeRightPar, TimeRightDead),
+        TimeRight = TimeRightPar + TimeRightDead +
+            SparkDelay * float(Depth - 1),
+        TimeLeft = parallel_exec_metrics_internal_get_par_time(MetricsLeft,
+            SparkDelay, Depth - 1),
+        Time = max(TimeLeft, TimeRight)
+    ).
 
     % The expected sequential execution time.
     %

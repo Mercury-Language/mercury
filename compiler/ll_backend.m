@@ -67,6 +67,7 @@
    :- include_module layout.
    :- include_module stack_layout.
    :- include_module prog_rep.
+   :- include_module prog_rep_tables.
    :- include_module global_data.
 %:- end_module llds_data.
 

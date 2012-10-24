@@ -415,12 +415,13 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep, RecursionType,
     candidate_par_conjunctions_proc(T)::out) is det.
 
 merge_candidate_par_conjs_proc(A, B, Result) :-
-    A = candidate_par_conjunctions_proc(VarTableA, PushGoalsA, CPCsA),
-    B = candidate_par_conjunctions_proc(VarTableB, PushGoalsB, CPCsB),
+    A = candidate_par_conjunctions_proc(VarNameTableA, PushGoalsA, CPCsA),
+    B = candidate_par_conjunctions_proc(VarNameTableB, PushGoalsB, CPCsB),
     CPCs = CPCsA ++ CPCsB,
     merge_pushes_for_proc(PushGoalsA ++ PushGoalsB, PushGoals),
-    ( VarTableA = VarTableB ->
-        Result = candidate_par_conjunctions_proc(VarTableA, PushGoals, CPCs)
+    ( VarNameTableA = VarNameTableB ->
+        Result = candidate_par_conjunctions_proc(VarNameTableA, PushGoals,
+            CPCs)
     ;
         unexpected($module, $pred, "var tables do not match")
     ).
@@ -512,7 +513,7 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
             MaybeProcRep = ok(ProcRep),
             ProcDefnRep = ProcRep ^ pr_defn,
             Goal0 = ProcDefnRep ^ pdr_goal,
-            VarTable = ProcDefnRep ^ pdr_var_table,
+            VarNameTable = ProcDefnRep ^ pdr_var_name_table,
 
             % Label the goals with IDs.
             label_goals(LastGoalId, ContainingGoalMap, Goal0, Goal),
@@ -551,7 +552,7 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
                 Info = implicit_parallelism_info(Deep, ProgRep, Opts,
                     CliquePtr, CallSitesMap, RecursiveCallSiteCostMap,
                     ContainingGoalMap, CoverageArray, InstMapArray,
-                    RecursionType, VarTable, ProcLabel),
+                    RecursionType, VarNameTable, ProcLabel),
                 goal_to_pard_goal(Info, rgp_nil, Goal, PardGoal, !Messages),
                 goal_get_conjunctions_worth_parallelising(Info,
                     rgp_nil, PardGoal, _, CandidatesCord0, PushesCord,
@@ -569,7 +570,7 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
                         Candidates0 = [_ | _],
                         merge_pushes_for_proc(Pushes, MergedPushes),
                         CandidateProc = candidate_par_conjunctions_proc(
-                            VarTable, MergedPushes, Candidates0),
+                            VarNameTable, MergedPushes, Candidates0),
                         Candidates = map.singleton(ProcLabel, CandidateProc)
                     )
                 ;
@@ -594,22 +595,24 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
     ).
 
 :- pred build_candidate_par_conjunction_maps(string_proc_label::in,
-    var_table::in, candidate_par_conjunction(pard_goal_detail)::in,
+    var_name_table::in, candidate_par_conjunction(pard_goal_detail)::in,
     candidate_par_conjunctions::in, candidate_par_conjunctions::out) is det.
 
-build_candidate_par_conjunction_maps(ProcLabel, VarTable, Candidate, !Map) :-
+build_candidate_par_conjunction_maps(ProcLabel, VarNameTable, Candidate,
+        !Map) :-
     % XXX: This predicate will also need to add pushes to CandidateProc.
     ( map.search(!.Map, ProcLabel, CandidateProc0) ->
-        CandidateProc0 = candidate_par_conjunctions_proc(VarTablePrime,
+        CandidateProc0 = candidate_par_conjunctions_proc(VarNameTablePrime,
             PushGoals, CPCs0),
         CPCs = [Candidate | CPCs0],
-        expect(unify(VarTable, VarTablePrime), $module, $pred,
+        expect(unify(VarNameTable, VarNameTablePrime), $module, $pred,
             "var tables do not match")
     ;
         CPCs = [Candidate],
         PushGoals = []
     ),
-    CandidateProc = candidate_par_conjunctions_proc(VarTable, PushGoals, CPCs),
+    CandidateProc = candidate_par_conjunctions_proc(VarNameTable, PushGoals,
+        CPCs),
     map.set(ProcLabel, CandidateProc, !Map).
 
 %----------------------------------------------------------------------------%

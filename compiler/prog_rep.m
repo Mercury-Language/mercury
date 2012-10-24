@@ -4,7 +4,7 @@
 % Copyright (C) 2000-2012 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % File: prog_rep.m.
 % Authors: zs, maclarty.
@@ -15,7 +15,7 @@
 % only the information required by the declarative debugger. The structure
 % of this representation is defined by mdbcomp/program_representation.m.
 %
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module ll_backend.prog_rep.
 :- interface.
@@ -23,15 +23,17 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
-:- import_module ll_backend.stack_layout.
+:- import_module ll_backend.prog_rep_tables.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
+:- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % A var_num_map maps each variable that occurs in any of a procedure's
     % layout structures to a number that uniquely identifies that variable,
@@ -45,22 +47,21 @@
     %
 :- type var_num_map == map(prog_var, pair(int, string)).
 
-    % Describe whether a variable name table should be included in the
-    % bytecode.  The variable name table actually adds the strings into the
-    % module's string table.
+    % Encode the information in a module's oisu pragmas into bytecode,
+    % for use by the automatic parallelization feedback tool.
     %
-:- type include_variable_table
-    --->    include_variable_table
-    ;       do_not_include_variable_table.
+:- pred encode_oisu_type_procs(module_info::in,
+    assoc_list(type_ctor, oisu_preds)::in, int::out, cord(int)::out) is det.
 
     % Create the bytecodes for the given procedure.
     %
 :- pred represent_proc_as_bytecodes(list(prog_var)::in, hlds_goal::in,
     instmap::in, vartypes::in, var_num_map::in, module_info::in,
-    include_variable_table::in, determinism::in, 
-    string_table::in, string_table::out, list(int)::out) is det.
+    maybe_include_var_name_table::in, maybe_include_var_types::in,
+    determinism::in, string_table_info::in, string_table_info::out,
+    type_table_info::in, type_table_info::out, list(int)::out) is det.
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type prog_rep_info
     --->    prog_rep_info(
@@ -76,23 +77,25 @@
     --->    flatten_par_conjs
     ;       expect_no_par_conjs.
 
-:- pred goal_to_goal_rep(prog_rep_info::in, instmap::in, hlds_goal::in, 
+:- pred goal_to_goal_rep(prog_rep_info::in, instmap::in, hlds_goal::in,
     goal_rep::out) is det.
 
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module backend_libs.bytecode_data.
+:- import_module backend_libs.proc_label.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.special_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.rtti_access.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
@@ -105,45 +108,167 @@
 :- import_module term.
 :- import_module unit.
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+encode_oisu_type_procs(_ModuleInfo, [], 0, cord.init).
+encode_oisu_type_procs(ModuleInfo, [Pair | Pairs], NumOISUTypes, Bytes) :-
+    encode_oisu_type_procs(ModuleInfo, Pairs, TailNumOISUTypes, TailBytes),
+    module_info_get_name(ModuleInfo, ModuleName),
+    Pair = TypeCtor - Preds,
+    TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
+    (
+        TypeCtorSymName = qualified(TypeCtorModuleName, TypeCtorName)
+    ;
+        TypeCtorSymName = unqualified(_),
+        unexpected($module, $pred, "unqualified type_ctor name")
+    ),
+    ( TypeCtorModuleName = ModuleName ->
+        encode_len_string(TypeCtorName, TypeCtorNameBytes),
+        Preds = oisu_preds(CreatorPreds, MutatorPreds, DestructorPreds),
+
+        list.length(CreatorPreds, NumCreatorPreds),
+        list.length(MutatorPreds, NumMutatorPreds),
+        list.length(DestructorPreds, NumDestructorPreds),
+        encode_num_det(NumCreatorPreds, NumCreatorPredsBytes),
+        encode_num_det(NumMutatorPreds, NumMutatorPredsBytes),
+        encode_num_det(NumDestructorPreds, NumDestructorPredsBytes),
+        list.map(encode_oisu_proc(ModuleInfo), CreatorPreds,
+            CreatorPredBytes),
+        list.map(encode_oisu_proc(ModuleInfo), MutatorPreds,
+            MutatorPredBytes),
+        list.map(encode_oisu_proc(ModuleInfo), DestructorPreds,
+            DestructorPredBytes),
+
+        HeadBytes = cord.from_list(TypeCtorNameBytes)
+            ++ cord.from_list(NumCreatorPredsBytes)
+            ++ cord.cord_list_to_cord(CreatorPredBytes)
+            ++ cord.from_list(NumMutatorPredsBytes)
+            ++ cord.cord_list_to_cord(MutatorPredBytes)
+            ++ cord.from_list(NumDestructorPredsBytes)
+            ++ cord.cord_list_to_cord(DestructorPredBytes),
+
+        NumOISUTypes = 1 + TailNumOISUTypes,
+        Bytes = HeadBytes ++ TailBytes
+    ;
+        NumOISUTypes = TailNumOISUTypes,
+        Bytes = TailBytes
+    ).
+
+:- pred encode_oisu_proc(module_info::in, pred_id::in, cord(int)::out) is det.
+
+encode_oisu_proc(ModuleInfo, PredId, BytesCord) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_procedures(PredInfo, ProcTable),
+    map.to_assoc_list(ProcTable, Procs),
+    ( Procs = [ProcId - _ProcInfo] ->
+        ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
+        encode_string_proc_label(ProcLabel, BytesCord)
+    ;
+        unexpected($module, $pred, "OISU pred should have exactly one proc")
+    ).
+
+:- pred encode_string_proc_label(proc_label::in, cord(int)::out) is det.
+
+encode_string_proc_label(ProcLabel, BytesCord) :-
+    (
+        ProcLabel = ordinary_proc_label(DefModuleName, PredOrFunc,
+            DeclModuleName, PredName, Arity, ModeNum),
+        (
+            PredOrFunc = pf_predicate,
+            KindByte = string_proclabel_kind_user_predicate
+        ;
+            PredOrFunc = pf_function,
+            KindByte = string_proclabel_kind_user_function
+        ),
+        encode_len_string(sym_name_to_string(DeclModuleName),
+            DeclModuleNameBytes),
+        encode_len_string(sym_name_to_string(DefModuleName),
+            DefModuleNameBytes),
+        encode_len_string(PredName, PredNameBytes),
+        encode_num_det(Arity, ArityBytes),
+        encode_num_det(ModeNum, ModeNumBytes),
+        BytesCord = cord.from_list([KindByte | DeclModuleNameBytes])
+            ++ cord.from_list(DefModuleNameBytes)
+            ++ cord.from_list(PredNameBytes)
+            ++ cord.from_list(ArityBytes)
+            ++ cord.from_list(ModeNumBytes)
+    ;
+        ProcLabel = special_proc_label(DefModuleName, SpecialPredId,
+            TypeModuleName, TypeName, TypeArity, ModeNum),
+        TypeCtor = type_ctor(qualified(TypeModuleName, TypeName), TypeArity),
+        PredName = special_pred_name(SpecialPredId, TypeCtor),
+
+        KindByte = string_proclabel_kind_special,
+        encode_len_string(TypeName, TypeNameBytes),
+        encode_len_string(sym_name_to_string(TypeModuleName),
+            TypeModuleNameBytes),
+        encode_len_string(sym_name_to_string(DefModuleName),
+            DefModuleNameBytes),
+        encode_len_string(PredName, PredNameBytes),
+        encode_num_det(TypeArity, TypeArityBytes),
+        encode_num_det(ModeNum, ModeNumBytes),
+        BytesCord = cord.from_list([KindByte | TypeNameBytes])
+            ++ cord.from_list(TypeModuleNameBytes)
+            ++ cord.from_list(DefModuleNameBytes)
+            ++ cord.from_list(PredNameBytes)
+            ++ cord.from_list(TypeArityBytes)
+            ++ cord.from_list(ModeNumBytes)
+    ).
+
+    % The definitions of these functions should be kept in sync with
+    % the definition of the MR_ProcLabelToken type in mercury_deep_profiling.h.
+    %
+:- func string_proclabel_kind_user_predicate = int.
+:- func string_proclabel_kind_user_function = int.
+:- func string_proclabel_kind_special = int.
+
+string_proclabel_kind_user_predicate = 0.
+string_proclabel_kind_user_function = 1.
+string_proclabel_kind_special = 2.
+
+%-----------------------------------------------------------------------------%
 
 represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
-        ModuleInfo, IncludeVarTable, ProcDetism, !StringTable, ProcRepBytes) :-
+        ModuleInfo, IncludeVarNameTable, IncludeVarTypes, ProcDetism,
+        !StringTable, !TypeTable, ProcRepBytes) :-
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     term.context_file(Context, FileName),
-    represent_var_table_as_bytecode(IncludeVarTable, VarNumMap, VarNumRep,
-        VarTableBytes, !StringTable),
+    represent_var_table_as_bytecode(IncludeVarNameTable, IncludeVarTypes,
+        VarTypes, VarNumMap, VarNumRep, VarNameTableBytes,
+        !StringTable, !TypeTable),
     Info = prog_rep_info(FileName, VarTypes, VarNumMap, VarNumRep, ModuleInfo,
         expect_no_par_conjs),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
 
-    string_to_byte_list(FileName, FileNameBytes, !StringTable),
+    encode_string_as_table_offset(FileName, FileNameBytes, !StringTable),
     goal_to_byte_list(Goal, InstMap0, Info, GoalBytes, !StringTable),
     DetismByte = represent_determinism(ProcDetism),
-    ProcRepBytes0 = FileNameBytes ++ VarTableBytes ++
-        head_vars_to_byte_list(Info, InstMap0, InstmapDelta, HeadVars) ++
+    ProcRepBytes0 = FileNameBytes ++ VarNameTableBytes ++
+        encode_head_vars_func(Info, InstMap0, InstmapDelta, HeadVars) ++
         GoalBytes ++ [DetismByte],
-    int32_to_byte_list(list.length(ProcRepBytes0) + 4, LimitBytes),
+    encode_int32_det(list.length(ProcRepBytes0) + 4, LimitBytes),
     ProcRepBytes = LimitBytes ++ ProcRepBytes0.
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-    % Create bytecodes for the variable table.
+    % Create bytecodes for the variable name table.
     %
-    % If a variable table is not requested, an empty table is created.
-    % The variable table also includes information about the representation
-    % of variable numbers within the bytecode.
+    % If a variable name table is not requested, an empty table is created.
+    % The variable name table also includes information about the
+    % representation of variable numbers within the bytecode.
     %
-    % The representation of variables and the variable table restricts the
-    % number of possible variables in a procedure to 2^31.
+    % The representation of variables and the variable name table
+    % restricts the number of possible variables in a procedure to 2^31.
     %
-:- pred represent_var_table_as_bytecode(include_variable_table::in,
-    var_num_map::in, var_num_rep::out, list(int)::out, 
-    string_table::in, string_table::out) is det.
+:- pred represent_var_table_as_bytecode(maybe_include_var_name_table::in,
+    maybe_include_var_types::in, vartypes::in,
+    var_num_map::in, var_num_rep::out, list(int)::out,
+    string_table_info::in, string_table_info::out,
+    type_table_info::in, type_table_info::out) is det.
 
-represent_var_table_as_bytecode(IncludeVarTable, VarNumMap, VarNumRep,
-        ByteList, !StringTable) :-
+represent_var_table_as_bytecode(IncludeVarNameTable, IncludeVarTypes,
+        VarTypes, VarNumMap, VarNumRep, Bytes, !StringTable, !TypeTable) :-
     map.foldl(max_var_num, VarNumMap, 0) = MaxVarNum,
     ( MaxVarNum =< 127 ->
         VarNumRep = var_num_1_byte
@@ -152,53 +277,128 @@ represent_var_table_as_bytecode(IncludeVarTable, VarNumMap, VarNumRep,
     ;
         VarNumRep = var_num_4_bytes
     ),
-    var_num_rep_byte(VarNumRep, VarNumRepByte),
+    var_flag_byte(VarNumRep, IncludeVarNameTable, IncludeVarTypes, FlagByte),
     (
-        IncludeVarTable = include_variable_table,
-        map.foldl3(var_table_entry_bytelist(VarNumRep), VarNumMap, 0, NumVars, 
-            [], VarTableEntriesBytes, !StringTable)
+        IncludeVarNameTable = include_var_name_table,
+        (
+            IncludeVarTypes = do_not_include_var_types,
+            % It is more efficient to make the switch over the representation
+            % size just once here, than to make it when representing each
+            % variable.
+            (
+                VarNumRep = var_num_1_byte,
+                map.foldl3(encode_var_name_table_entry_1_byte, VarNumMap,
+                    0, NumVars, [], VarNameTableEntriesBytes, !StringTable)
+            ;
+                VarNumRep = var_num_2_bytes,
+                map.foldl3(encode_var_name_table_entry_2_byte, VarNumMap,
+                    0, NumVars, [], VarNameTableEntriesBytes, !StringTable)
+            ;
+                VarNumRep = var_num_4_bytes,
+                map.foldl3(encode_var_name_table_entry_4_byte, VarNumMap,
+                    0, NumVars, [], VarNameTableEntriesBytes, !StringTable)
+            )
+        ;
+            IncludeVarTypes = include_var_types,
+            map.foldl4(encode_var_name_type_table_entry(VarNumRep, VarTypes),
+                VarNumMap, 0, NumVars,
+                [], VarNameTableEntriesBytes, !StringTable, !TypeTable)
+        ),
+        encode_num_det(NumVars, NumVarsBytes),
+        Bytes = [FlagByte] ++ NumVarsBytes ++ VarNameTableEntriesBytes
     ;
-        IncludeVarTable = do_not_include_variable_table,
-        NumVars = 0,
-        VarTableEntriesBytes = []
-    ),
-    int32_to_byte_list(NumVars, NumVarsBytes),
-    ByteList = [VarNumRepByte] ++ NumVarsBytes ++ VarTableEntriesBytes.
+        IncludeVarNameTable = do_not_include_var_name_table,
+        expect(unify(IncludeVarTypes, do_not_include_var_types),
+            $module, $pred, "IncludeVarTypes but not IncludeVarNameTable"),
+        Bytes = [FlagByte]
+    ).
 
 :- func max_var_num(prog_var, pair(int, string), int) = int.
 
 max_var_num(_, VarNum1 - _, VarNum2) = Max :-
     Max = max(VarNum1, VarNum2).
 
-:- pred var_table_entry_bytelist(var_num_rep::in, 
-    prog_var::in, pair(int, string)::in, int::in, int::out, 
-    list(int)::in, list(int)::out,
-    string_table::in, string_table::out) is det.
+%-----------------------------------------------------------------------------%
+%
+% To avoid repeated tests of the size of variable representations, we have
+% a specialized version for each different variable number encoding size.
+%
+% Some variables that the compiler creates are named automatically,
+% these and unnamed variables should not be included in the variable
+% name table.
+%
 
-var_table_entry_bytelist(VarNumRep, _ProgVar, VarNum - VarName, 
-        !NumVars, !VarTableBytes, !StringTable) :-
-    (
-        % Some variables that the compiler creates are named automatically,
-        % these and unnamed variables should not be included in the variable
-        % table.
-        compiler_introduced_varname(VarName)
-    ->
+:- pred encode_var_name_table_entry_1_byte(prog_var::in, pair(int, string)::in,
+    int::in, int::out, list(int)::in, list(int)::out,
+    string_table_info::in, string_table_info::out) is det.
+
+encode_var_name_table_entry_1_byte(_ProgVar, VarNum - VarName,
+        !NumVars, !VarNameTableBytes, !StringTable) :-
+    ( compiler_introduced_varname(VarName) ->
         true
     ;
         !:NumVars = !.NumVars + 1,
-        (
-            VarNumRep = var_num_1_byte,
-            VarBytes = [VarNum]
-        ;
-            VarNumRep = var_num_2_bytes,
-            short_to_byte_list(VarNum, VarBytes)
-        ;
-            VarNumRep = var_num_4_bytes,
-            int32_to_byte_list(VarNum, VarBytes)
-        ),
-        string_to_byte_list(VarName, VarNameBytes, !StringTable),
-        !:VarTableBytes = VarBytes ++ VarNameBytes ++ !.VarTableBytes
+        VarBytes = [VarNum],
+        encode_string_as_table_offset(VarName, VarNameBytes, !StringTable),
+        !:VarNameTableBytes = VarBytes ++ VarNameBytes ++ !.VarNameTableBytes
     ).
+
+:- pred encode_var_name_table_entry_2_byte(prog_var::in, pair(int, string)::in,
+    int::in, int::out, list(int)::in, list(int)::out,
+    string_table_info::in, string_table_info::out) is det.
+
+encode_var_name_table_entry_2_byte(_ProgVar, VarNum - VarName,
+        !NumVars, !VarNameTableBytes, !StringTable) :-
+    ( compiler_introduced_varname(VarName) ->
+        true
+    ;
+        !:NumVars = !.NumVars + 1,
+        encode_short_det(VarNum, VarBytes),
+        encode_string_as_table_offset(VarName, VarNameBytes, !StringTable),
+        !:VarNameTableBytes = VarBytes ++ VarNameBytes ++ !.VarNameTableBytes
+    ).
+
+:- pred encode_var_name_table_entry_4_byte(prog_var::in, pair(int, string)::in,
+    int::in, int::out, list(int)::in, list(int)::out,
+    string_table_info::in, string_table_info::out) is det.
+
+encode_var_name_table_entry_4_byte(_ProgVar, VarNum - VarName,
+        !NumVars, !VarNameTableBytes, !StringTable) :-
+    ( compiler_introduced_varname(VarName) ->
+        true
+    ;
+        !:NumVars = !.NumVars + 1,
+        encode_int32_det(VarNum, VarBytes),
+        encode_string_as_table_offset(VarName, VarNameBytes, !StringTable),
+        !:VarNameTableBytes = VarBytes ++ VarNameBytes ++ !.VarNameTableBytes
+    ).
+
+:- pred encode_var_name_type_table_entry(var_num_rep::in, vartypes::in,
+    prog_var::in, pair(int, string)::in, int::in, int::out,
+    list(int)::in, list(int)::out,
+    string_table_info::in, string_table_info::out,
+    type_table_info::in, type_table_info::out) is det.
+
+encode_var_name_type_table_entry(VarNumRep, VarTypes, Var, VarNum - VarName,
+        !NumVars, !VarNameTableBytes, !StringTable, !TypeTable) :-
+    !:NumVars = !.NumVars + 1,
+    lookup_var_type(VarTypes, Var, Type),
+    (
+        VarNumRep = var_num_1_byte,
+        VarBytes = [VarNum]
+    ;
+        VarNumRep = var_num_2_bytes,
+        encode_short_det(VarNum, VarBytes)
+    ;
+        VarNumRep = var_num_4_bytes,
+        encode_int32_det(VarNum, VarBytes)
+    ),
+    encode_string_as_table_offset(VarName, VarNameBytes, !StringTable),
+    encode_type_as_table_ref(Type, TypeBytes, !StringTable, !TypeTable),
+    !:VarNameTableBytes = VarBytes ++ VarNameBytes ++ TypeBytes
+        ++ !.VarNameTableBytes.
+
+%-----------------------------------------------------------------------------%
 
 :- pred compiler_introduced_varname(string::in) is semidet.
 
@@ -220,14 +420,14 @@ compiler_introduced_varname(VarName) :-
     ),
     prefix(VarName, Prefix).
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred goal_to_byte_list(hlds_goal::in, instmap::in, prog_rep_info::in,
-    list(int)::out, string_table::in, string_table::out) is det.
+    list(int)::out, string_table_info::in, string_table_info::out) is det.
 
 goal_to_byte_list(Goal, InstMap0, Info, Bytes, !StringTable) :-
     goal_to_goal_rep(Info, InstMap0, Goal, GoalRep),
-    goal_rep_to_byte_list(Info, GoalRep, Bytes, !StringTable).
+    encode_goal_rep(Info, GoalRep, Bytes, !StringTable).
 
 goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
     Detism = goal_info_get_determinism(GoalInfo),
@@ -282,11 +482,11 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
     ;
         GoalExpr = scope(_, SubGoal),
         SubGoal = hlds_goal(_, SubGoalInfo),
-        goal_to_goal_rep(Info, Instmap0, SubGoal, SubGoalRep), 
+        goal_to_goal_rep(Info, Instmap0, SubGoal, SubGoalRep),
         OuterDetism = goal_info_get_determinism(GoalInfo),
         InnerDetism = goal_info_get_determinism(SubGoalInfo),
         ( InnerDetism = OuterDetism ->
-            MaybeCut = scope_is_no_cut 
+            MaybeCut = scope_is_no_cut
         ;
             MaybeCut = scope_is_cut
         ),
@@ -302,7 +502,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
             (
                 Uni = assign(Target, Source),
                 AtomicGoalRep = unify_assign_rep(
-                    var_to_var_rep(Info, Target), 
+                    var_to_var_rep(Info, Target),
                     var_to_var_rep(Info, Source))
             ;
                 ( Uni = construct(Var, ConsId, Args, ArgModes, _, _, _)
@@ -316,11 +516,11 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 (
                     Uni = construct(_, _, _, _, _, _, _),
                     ( list.all_true(lhs_final_is_ground(Info), ArgModes) ->
-                        AtomicGoalRep = unify_construct_rep(VarRep, ConsIdRep, 
+                        AtomicGoalRep = unify_construct_rep(VarRep, ConsIdRep,
                             ArgsRep)
                     ;
-                        AtomicGoalRep = partial_construct_rep(VarRep, ConsIdRep,
-                            MaybeArgsRep)
+                        AtomicGoalRep = partial_construct_rep(VarRep,
+                            ConsIdRep, MaybeArgsRep)
                     )
                 ;
                     Uni = deconstruct(_, _, _, _, _, _),
@@ -328,14 +528,14 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                         AtomicGoalRep = partial_deconstruct_rep(VarRep,
                             ConsIdRep, MaybeArgsRep)
                     ;
-                        AtomicGoalRep = unify_deconstruct_rep(VarRep, ConsIdRep,
-                            ArgsRep)
+                        AtomicGoalRep = unify_deconstruct_rep(VarRep,
+                            ConsIdRep, ArgsRep)
                     )
                 )
             ;
                 Uni = simple_test(Var1, Var2),
                 AtomicGoalRep = unify_simple_test_rep(
-                    var_to_var_rep(Info, Var1), 
+                    var_to_var_rep(Info, Var1),
                     var_to_var_rep(Info, Var2))
             ;
                 Uni = complicated_unify(_, _, _),
@@ -358,7 +558,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
             ;
                 GenericCall = cast(_),
                 ( ArgsRep = [InputArgRep, OutputArgRep] ->
-                    AtomicGoalRep = cast_rep(OutputArgRep, InputArgRep) 
+                    AtomicGoalRep = cast_rep(OutputArgRep, InputArgRep)
                 ;
                     unexpected($module, $pred, "cast arity != 2")
                 )
@@ -386,10 +586,10 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 compose(var_to_var_rep(Info), foreign_arg_var), Args),
             AtomicGoalRep = pragma_foreign_code_rep(ArgVarsRep)
         ),
-        goal_info_to_atomic_goal_rep_fields(GoalInfo, Instmap0, Info, 
+        goal_info_to_atomic_goal_rep_fields(GoalInfo, Instmap0, Info,
             FileName, LineNo, BoundVars),
         BoundVarsRep = map(var_to_var_rep(Info), BoundVars),
-        GoalExprRep = atomic_goal_rep(FileName, LineNo, BoundVarsRep, 
+        GoalExprRep = atomic_goal_rep(FileName, LineNo, BoundVarsRep,
             AtomicGoalRep)
     ;
         GoalExpr = shorthand(_),
@@ -408,10 +608,10 @@ conj_to_conj_rep(Info, Instmap0, [Conj | Conjs], [ConjRep | ConjReps]) :-
     instmap.apply_instmap_delta(Instmap0, InstmapDelta, Instmap1),
     conj_to_conj_rep(Info, Instmap1, Conjs, ConjReps).
 
-:- pred case_to_case_rep(prog_rep_info::in, instmap::in, 
+:- pred case_to_case_rep(prog_rep_info::in, instmap::in,
     case::in, case_rep::out) is det.
 
-case_to_case_rep(Info, Instmap, case(FirstConsId, OtherConsIds, Goal), 
+case_to_case_rep(Info, Instmap, case(FirstConsId, OtherConsIds, Goal),
         case_rep(FirstConsIdRep, OtherConsIdsRep, GoalRep)) :-
     goal_to_goal_rep(Info, Instmap, Goal, GoalRep),
     cons_id_to_cons_id_rep(FirstConsId, FirstConsIdRep),
@@ -440,43 +640,43 @@ detism_to_detism_rep(detism_cc_non, cc_nondet_rep).
 detism_to_detism_rep(detism_erroneous, erroneous_rep).
 detism_to_detism_rep(detism_failure, failure_rep).
 
-:- pred goal_rep_to_byte_list(prog_rep_info::in, goal_rep::in, 
-    list(int)::out, string_table::in, string_table::out) is det.
+:- pred encode_goal_rep(prog_rep_info::in, goal_rep::in, list(int)::out,
+    string_table_info::in, string_table_info::out) is det.
 
-goal_rep_to_byte_list(Info, goal_rep(GoalExpr, Detism, _), Bytes, !StringTable) :-
+encode_goal_rep(Info, goal_rep(GoalExpr, Detism, _), Bytes, !StringTable) :-
     (
         GoalExpr = conj_rep(GoalReps),
-        map_foldl(goal_rep_to_byte_list(Info), GoalReps, ConjBytesList,
+        map_foldl(encode_goal_rep(Info), GoalReps, ConjBytesList,
             !StringTable),
         ExprBytes = [goal_type_to_byte(goal_conj)] ++
-            length_to_byte_list(GoalReps) ++ condense(ConjBytesList)
+            encode_length_func(GoalReps) ++ condense(ConjBytesList)
     ;
         GoalExpr = disj_rep(GoalReps),
-        map_foldl(goal_rep_to_byte_list(Info), GoalReps, DisjBytesList,
+        map_foldl(encode_goal_rep(Info), GoalReps, DisjBytesList,
             !StringTable),
         ExprBytes = [goal_type_to_byte(goal_disj)] ++
-            length_to_byte_list(GoalReps) ++ condense(DisjBytesList)
+            encode_length_func(GoalReps) ++ condense(DisjBytesList)
     ;
         GoalExpr = negation_rep(SubGoal),
-        goal_rep_to_byte_list(Info, SubGoal, SubGoalBytes, !StringTable),
+        encode_goal_rep(Info, SubGoal, SubGoalBytes, !StringTable),
         ExprBytes = [goal_type_to_byte(goal_neg)] ++ SubGoalBytes
     ;
-        GoalExpr = ite_rep(Cond, Then, Else), 
-        goal_rep_to_byte_list(Info, Cond, CondBytes, !StringTable),
-        goal_rep_to_byte_list(Info, Then, ThenBytes, !StringTable),
-        goal_rep_to_byte_list(Info, Else, ElseBytes, !StringTable),
+        GoalExpr = ite_rep(Cond, Then, Else),
+        encode_goal_rep(Info, Cond, CondBytes, !StringTable),
+        encode_goal_rep(Info, Then, ThenBytes, !StringTable),
+        encode_goal_rep(Info, Else, ElseBytes, !StringTable),
         ExprBytes = [goal_type_to_byte(goal_ite)] ++
             CondBytes ++ ThenBytes ++ ElseBytes
     ;
         GoalExpr = atomic_goal_rep(FileName, Line, BoundVars, AtomicGoalRep),
-        string_to_byte_list(FileName, FileNameBytes, !StringTable),
-        AtomicBytes = FileNameBytes ++ lineno_to_byte_list(Line) ++
-            var_reps_to_byte_list(Info, BoundVars), 
+        encode_string_as_table_offset(FileName, FileNameBytes, !StringTable),
+        AtomicBytes = FileNameBytes ++ encode_lineno_func(Line) ++
+            encode_var_reps_func(Info, BoundVars),
         (
             AtomicGoalRep = unify_assign_rep(Target, Source),
             ExprBytes = [goal_type_to_byte(goal_assign)] ++
-                var_rep_to_byte_list(Info, Target) ++
-                var_rep_to_byte_list(Info, Source) ++
+                encode_var_rep_func(Info, Target) ++
+                encode_var_rep_func(Info, Source) ++
                 AtomicBytes
         ;
             ( AtomicGoalRep = unify_construct_rep(_, _, _)
@@ -487,112 +687,114 @@ goal_rep_to_byte_list(Info, goal_rep(GoalExpr, Detism, _), Bytes, !StringTable) 
             (
                 (
                     AtomicGoalRep = unify_construct_rep(Var, ConsId, Args),
-                    AtomicTypeByte = goal_type_to_byte(goal_construct) 
-                ; 
+                    AtomicTypeByte = goal_type_to_byte(goal_construct)
+                ;
                     AtomicGoalRep = unify_deconstruct_rep(Var, ConsId, Args),
                     AtomicTypeByte = goal_type_to_byte(goal_deconstruct)
                 ),
-                ArgsBytes = var_reps_to_byte_list(Info, Args)
+                ArgsBytes = encode_var_reps_func(Info, Args)
             ;
                 (
                     AtomicGoalRep = partial_deconstruct_rep(Var, ConsId,
                         MaybeArgs),
-                    AtomicTypeByte = 
+                    AtomicTypeByte =
                         goal_type_to_byte(goal_partial_deconstruct)
                 ;
                     AtomicGoalRep = partial_construct_rep(Var, ConsId,
                         MaybeArgs),
                     AtomicTypeByte = goal_type_to_byte(goal_partial_construct)
                 ),
-                ArgsBytes = maybe_var_reps_to_byte_list(Info, MaybeArgs)
+                ArgsBytes = encode_maybe_var_reps_func(Info, MaybeArgs)
             ),
-            string_to_byte_list(ConsId, ConsIdBytes, !StringTable),
-            VarBytes = var_rep_to_byte_list(Info, Var),
+            encode_string_as_table_offset(ConsId, ConsIdBytes, !StringTable),
+            VarBytes = encode_var_rep_func(Info, Var),
             ExprBytes = [AtomicTypeByte] ++ VarBytes ++ ConsIdBytes ++
                 ArgsBytes ++ AtomicBytes
         ;
             AtomicGoalRep = unify_simple_test_rep(Var1, Var2),
             ExprBytes = [goal_type_to_byte(goal_simple_test)] ++
-                var_rep_to_byte_list(Info, Var1) ++
-                var_rep_to_byte_list(Info, Var2) ++
+                encode_var_rep_func(Info, Var1) ++
+                encode_var_rep_func(Info, Var2) ++
                 AtomicBytes
         ;
             AtomicGoalRep = higher_order_call_rep(PredVar, Args),
             ExprBytes = [goal_type_to_byte(goal_ho_call)] ++
-                var_rep_to_byte_list(Info, PredVar) ++
-                var_reps_to_byte_list(Info, Args) ++
+                encode_var_rep_func(Info, PredVar) ++
+                encode_var_reps_func(Info, Args) ++
                 AtomicBytes
         ;
             AtomicGoalRep = method_call_rep(Var, MethodNum, Args),
             ExprBytes = [goal_type_to_byte(goal_method_call)] ++
-                var_rep_to_byte_list(Info, Var) ++
-                method_num_to_byte_list(MethodNum) ++
-                var_reps_to_byte_list(Info, Args) ++
+                encode_var_rep_func(Info, Var) ++
+                encode_method_num_func(MethodNum) ++
+                encode_var_reps_func(Info, Args) ++
                 AtomicBytes
         ;
             AtomicGoalRep = event_call_rep(EventName, Args),
-            string_to_byte_list(EventName, EventNameBytes, !StringTable),
+            encode_string_as_table_offset(EventName, EventNameBytes,
+                !StringTable),
             ExprBytes = [goal_type_to_byte(goal_event_call)] ++
                 EventNameBytes ++
-                var_reps_to_byte_list(Info, Args) ++
+                encode_var_reps_func(Info, Args) ++
                 AtomicBytes
         ;
             AtomicGoalRep = cast_rep(Target, Source),
             ExprBytes = [goal_type_to_byte(goal_cast)] ++
-                var_rep_to_byte_list(Info, Target) ++
-                var_rep_to_byte_list(Info, Source) ++
+                encode_var_rep_func(Info, Target) ++
+                encode_var_rep_func(Info, Source) ++
                 AtomicBytes
         ;
             (
                 AtomicGoalRep = plain_call_rep(ModuleName, PredName, Args),
                 CallType = goal_plain_call
-            ;   
+            ;
                 AtomicGoalRep = builtin_call_rep(ModuleName, PredName, Args),
                 CallType = goal_builtin_call
             ),
-            string_to_byte_list(ModuleName, ModuleNameBytes, !StringTable),
-            string_to_byte_list(PredName, PredNameBytes, !StringTable),
+            encode_string_as_table_offset(ModuleName, ModuleNameBytes,
+                !StringTable),
+            encode_string_as_table_offset(PredName, PredNameBytes,
+                !StringTable),
             ExprBytes = [goal_type_to_byte(CallType)] ++
                 ModuleNameBytes ++
                 PredNameBytes ++
-                var_reps_to_byte_list(Info, Args) ++
+                encode_var_reps_func(Info, Args) ++
                 AtomicBytes
         ;
             AtomicGoalRep = pragma_foreign_code_rep(Args),
             ExprBytes = [goal_type_to_byte(goal_foreign)] ++
-                var_reps_to_byte_list(Info, Args) ++ AtomicBytes
+                encode_var_reps_func(Info, Args) ++ AtomicBytes
         )
     ;
         GoalExpr = switch_rep(SwitchVar, CanFail, Cases),
-        map_foldl(case_rep_to_byte_list(Info), Cases, CasesBytesList,
+        list.map_foldl(encode_case_rep(Info), Cases, CasesBytesList,
             !StringTable),
         can_fail_byte(CanFail, CanFailByte),
         ExprBytes = [goal_type_to_byte(goal_switch)] ++
             [CanFailByte] ++
-            var_rep_to_byte_list(Info, SwitchVar) ++
-            length_to_byte_list(Cases) ++ condense(CasesBytesList) 
+            encode_var_rep_func(Info, SwitchVar) ++
+            encode_length_func(Cases) ++ list.condense(CasesBytesList)
     ;
         GoalExpr = scope_rep(SubGoal, MaybeCut),
         cut_byte(MaybeCut, MaybeCutByte),
-        goal_rep_to_byte_list(Info, SubGoal, SubGoalBytes, !StringTable),  
-        ExprBytes = [goal_type_to_byte(goal_scope)] ++ [MaybeCutByte] ++ 
+        encode_goal_rep(Info, SubGoal, SubGoalBytes, !StringTable),
+        ExprBytes = [goal_type_to_byte(goal_scope)] ++ [MaybeCutByte] ++
             SubGoalBytes
     ),
     determinism_representation(Detism, DetismByte),
     Bytes = ExprBytes ++ [DetismByte].
 
-:- pred case_rep_to_byte_list(prog_rep_info::in, case_rep::in, list(int)::out,
-    string_table::in, string_table::out) is det.
+:- pred encode_case_rep(prog_rep_info::in, case_rep::in, list(int)::out,
+    string_table_info::in, string_table_info::out) is det.
 
-case_rep_to_byte_list(Info, Case, Bytes, !StringTable) :-
+encode_case_rep(Info, Case, Bytes, !StringTable) :-
     Case = case_rep(MainConsId, OtherConsIds, Goal),
-    goal_rep_to_byte_list(Info, Goal, GoalBytes, !StringTable),
-    cons_id_and_arity_rep_to_byte_list(MainConsId, MainConsIdBytes,
-        !StringTable),
-    map_foldl(cons_id_and_arity_rep_to_byte_list, 
+    encode_goal_rep(Info, Goal, GoalBytes, !StringTable),
+    encode_cons_id_and_arity_rep(MainConsId, MainConsIdBytes, !StringTable),
+    map_foldl(encode_cons_id_and_arity_rep,
         OtherConsIds, OtherConsIdsByteLists, !StringTable),
-    Bytes = MainConsIdBytes ++ length_to_byte_list(OtherConsIds) ++
-        condense(OtherConsIdsByteLists) ++ GoalBytes.
+    Bytes = MainConsIdBytes ++ encode_length_func(OtherConsIds) ++
+        list.condense(OtherConsIdsByteLists) ++ GoalBytes.
 
 :- pred lhs_final_is_ground(prog_rep_info::in, uni_mode::in) is semidet.
 
@@ -621,7 +823,7 @@ filter_input_args(_, [], [_ | _], _) :-
 filter_input_args(_, [_ | _], [], _) :-
     unexpected($module, $pred, "mismatched lists").
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred goal_info_to_atomic_goal_rep_fields(hlds_goal_info::in, instmap::in,
     prog_rep_info::in, string::out, int::out, list(prog_var)::out) is det.
@@ -642,20 +844,20 @@ goal_info_to_atomic_goal_rep_fields(GoalInfo, Instmap0, Info, FileName, LineNo,
         Info ^ pri_module_info, ChangedVars),
     set_of_var.to_sorted_list(ChangedVars, BoundVars).
 
-:- pred cons_id_and_arity_rep_to_byte_list(cons_id_arity_rep::in, 
-    list(int)::out, string_table::in, string_table::out) is det.
+:- pred encode_cons_id_and_arity_rep(cons_id_arity_rep::in, list(int)::out,
+    string_table_info::in, string_table_info::out) is det.
 
-cons_id_and_arity_rep_to_byte_list(ConsIdArity, ConsIdBytes, !StringTable) :-
+encode_cons_id_and_arity_rep(ConsIdArity, ConsIdBytes, !StringTable) :-
     ConsIdArity = cons_id_arity_rep(ConsId, Arity),
-    string_to_byte_list(ConsId, FunctorBytes, !StringTable),
-    short_to_byte_list(Arity, ArityBytes),
+    encode_string_as_table_offset(ConsId, FunctorBytes, !StringTable),
+    encode_short_det(Arity, ArityBytes),
     ConsIdBytes = FunctorBytes ++ ArityBytes.
 
-:- pred cons_id_to_byte_list(cons_id::in, list(int)::out,
-    string_table::in, string_table::out) is det.
+:- pred encode_cons_id(cons_id::in, list(int)::out,
+    string_table_info::in, string_table_info::out) is det.
 
-cons_id_to_byte_list(SymName, Bytes, !StringTable) :-
-    string_to_byte_list(cons_id_rep(SymName), Bytes, !StringTable).
+encode_cons_id(SymName, Bytes, !StringTable) :-
+    encode_string_as_table_offset(cons_id_rep(SymName), Bytes, !StringTable).
 
 :- func cons_id_rep(cons_id) = string.
 
@@ -686,7 +888,7 @@ cons_id_rep(deep_profiling_proc_layout(_)) = "$deep_profiling_proc_layout".
 sym_base_name_to_string(unqualified(String)) = String.
 sym_base_name_to_string(qualified(_, String)) = String.
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 % The operations to convert primitive constructs to bytecode.
 %
@@ -699,79 +901,87 @@ sym_base_name_to_string(qualified(_, String)) = String.
 % but we here use them to represent unsigned quantities. This effectively
 % halves their range.
 
-:- pred string_to_byte_list(string::in, list(int)::out,
-    string_table::in, string_table::out) is det.
+:- pred encode_string_as_table_offset(string::in, list(int)::out,
+    string_table_info::in, string_table_info::out) is det.
 
-string_to_byte_list(String, Bytes, !StringTable) :-
-    stack_layout.lookup_string_in_table(String, Index, !StringTable),
-    int32_to_byte_list(Index, Bytes).
+encode_string_as_table_offset(String, Bytes, !StringTable) :-
+    lookup_string_in_table(String, Index, !StringTable),
+    encode_int32_det(Index, Bytes).
 
-:- func var_reps_to_byte_list(prog_rep_info, list(var_rep)) = list(int).
+:- pred encode_type_as_table_ref(mer_type::in, list(int)::out,
+    string_table_info::in, string_table_info::out,
+    type_table_info::in, type_table_info::out) is det.
 
-var_reps_to_byte_list(Info, Vars) =
-    length_to_byte_list(Vars) ++
-    list.condense(list.map(var_rep_to_byte_list(Info), Vars)).
+encode_type_as_table_ref(Type, Bytes, !StringTable, !TypeTable) :-
+    lookup_type_in_table(Type, Index, !StringTable, !TypeTable),
+    encode_num_det(Index, Bytes).
+
+:- func encode_var_reps_func(prog_rep_info, list(var_rep)) = list(int).
+
+encode_var_reps_func(Info, Vars) =
+    encode_length_func(Vars) ++
+    list.condense(list.map(encode_var_rep_func(Info), Vars)).
 
 :- func var_to_var_rep(prog_rep_info, prog_var) = int.
 
 var_to_var_rep(Info, Var) = Num :-
     map.lookup(Info ^ pri_var_num_map, Var, Num - _).
 
-:- func var_rep_to_byte_list(prog_rep_info, var_rep) = list(int).
+:- func encode_var_rep_func(prog_rep_info, var_rep) = list(int).
 
-var_rep_to_byte_list(Info, Var) = Bytes :-
+encode_var_rep_func(Info, Var) = Bytes :-
+    VarNumRep = Info ^ pri_var_num_rep,
     (
-        Info ^ pri_var_num_rep = var_num_1_byte,
+        VarNumRep = var_num_1_byte,
         Bytes = [Var]
-    ; 
-        Info ^ pri_var_num_rep = var_num_2_bytes,
-        short_to_byte_list(Var, Bytes)
-    ; 
-        Info ^ pri_var_num_rep = var_num_4_bytes,
-        int32_to_byte_list(Var, Bytes)
+    ;
+        VarNumRep = var_num_2_bytes,
+        encode_short_det(Var, Bytes)
+    ;
+        VarNumRep = var_num_4_bytes,
+        encode_int32_det(Var, Bytes)
     ).
 
-:- func maybe_var_reps_to_byte_list(prog_rep_info, list(maybe(var_rep))) =
+:- func encode_maybe_var_reps_func(prog_rep_info, list(maybe(var_rep))) =
     list(int).
 
-maybe_var_reps_to_byte_list(Info, Vars) =
-    length_to_byte_list(Vars) ++
-    list.condense(list.map(maybe_var_rep_to_byte_list(Info), Vars)).
+encode_maybe_var_reps_func(Info, Vars) =
+    encode_length_func(Vars) ++
+    list.condense(list.map(encode_maybe_var_rep_func(Info), Vars)).
 
-:- func maybe_var_rep_to_byte_list(prog_rep_info, maybe(var_rep)) = list(int).
+:- func encode_maybe_var_rep_func(prog_rep_info, maybe(var_rep)) = list(int).
 
-maybe_var_rep_to_byte_list(Info, MaybeVar) = Bytes :-
+encode_maybe_var_rep_func(Info, MaybeVar) = Bytes :-
     % This is not the most efficient representation, however maybe(var_rep)s
-    % are only used for partial unifications which are rare.
+    % are only used for partial unifications, which are rare.
     (
         MaybeVar = yes(Var),
-        Bytes = [1 | var_rep_to_byte_list(Info, Var)]
+        Bytes = [1 | encode_var_rep_func(Info, Var)]
     ;
         MaybeVar = no,
         Bytes = [0]
     ).
 
-:- func head_vars_to_byte_list(prog_rep_info, instmap, instmap_delta,
+:- func encode_head_vars_func(prog_rep_info, instmap, instmap_delta,
     list(prog_var)) = list(int).
 
-head_vars_to_byte_list(Info, InitialInstmap, InstmapDelta, Vars) =
-    length_to_byte_list(Vars) ++
+encode_head_vars_func(Info, InitialInstmap, InstmapDelta, Vars) =
+    encode_length_func(Vars) ++
     list.condense(list.map(
-        head_var_to_byte_list(Info, InitialInstmap, InstmapDelta), Vars)).
+        encode_head_var_func(Info, InitialInstmap, InstmapDelta), Vars)).
 
-:- func head_var_to_byte_list(prog_rep_info, instmap, instmap_delta,
+:- func encode_head_var_func(prog_rep_info, instmap, instmap_delta,
     prog_var) = list(int).
 
-head_var_to_byte_list(Info, InitialInstmap, InstmapDelta, Var) = Bytes :-
-    var_rep_to_byte_list(Info, var_to_var_rep(Info, Var)) = VarBytes,
+encode_head_var_func(Info, InitialInstmap, InstmapDelta, Var) = Bytes :-
+    encode_var_rep_func(Info, var_to_var_rep(Info, Var)) = VarBytes,
     ModuleInfo = Info ^ pri_module_info,
     instmap_lookup_var(InitialInstmap, Var, InitialInst),
     ( instmap_delta_search_var(InstmapDelta, Var, FinalInstPrime) ->
         FinalInst = FinalInstPrime
     ;
-        % if the variable is not in the instmap delta, then its instantiation
-        % cannot possibly change.  It has the same instantiation that it begun
-        % with.
+        % If the variable is not in the instmap delta, then its instantiation
+        % cannot possibly change.
         FinalInst = InitialInst
     ),
     Bytes = VarBytes ++ [inst_to_byte(ModuleInfo, InitialInst),
@@ -795,21 +1005,21 @@ inst_to_byte(ModuleInfo, MerInst) = Byte :-
     ),
     inst_representation(InstRep, Byte).
 
-:- func length_to_byte_list(list(T)) = list(int).
+:- func encode_length_func(list(T)) = list(int).
 
-length_to_byte_list(List) = Bytes :-
-    int32_to_byte_list(list.length(List), Bytes).
+encode_length_func(List) = Bytes :-
+    encode_int32_det(list.length(List), Bytes).
 
-:- func lineno_to_byte_list(int) = list(int).
+:- func encode_lineno_func(int) = list(int).
 
-lineno_to_byte_list(VarNum) = Bytes :-
-    int32_to_byte_list(VarNum, Bytes).
+encode_lineno_func(VarNum) = Bytes :-
+    encode_int32_det(VarNum, Bytes).
 
-:- func method_num_to_byte_list(int) = list(int).
+:- func encode_method_num_func(int) = list(int).
 
-method_num_to_byte_list(VarNum) = Bytes :-
-    short_to_byte_list(VarNum, Bytes).
+encode_method_num_func(VarNum) = Bytes :-
+    encode_short_det(VarNum, Bytes).
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 :- end_module ll_backend.prog_rep.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

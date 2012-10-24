@@ -389,14 +389,13 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
     io.write_string(
         "write_out_proc_statics(FILE *deep_fp, FILE *procrep_fp)\n", !IO),
     io.write_string("{\n", !IO),
-    ModuleCommonLayoutName = module_common_layout(ModuleName),
     io.write_string("\tMR_write_out_module_proc_reps_start(procrep_fp, &",
         !IO),
-    output_layout_name(ModuleCommonLayoutName, !IO),
+    ModuleLayoutName = module_layout(ModuleName),
+    output_layout_name(ModuleLayoutName, !IO),
     io.write_string(");\n", !IO),
     output_write_proc_static_list(ProcLayoutDatas, !IO),
-    io.write_string("\tMR_write_out_module_proc_reps_end(procrep_fp);\n",
-        !IO),
+    io.write_string("\tMR_write_out_module_proc_reps_end(procrep_fp);\n", !IO),
     io.write_string("}\n", !IO),
     io.write_string("\n#endif\n\n", !IO),
 
@@ -597,15 +596,12 @@ output_type_tables_init_list([Data | Datas], !IO) :-
 
 output_debugger_init_list([], !IO).
 output_debugger_init_list([Data | Datas], !IO) :-
-    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _) ->
-        io.write_string("\tif (MR_register_module_layout != NULL) {\n", !IO),
-        io.write_string("\t\t(*MR_register_module_layout)(", !IO),
-        io.write_string("\n\t\t\t&", !IO),
-        output_layout_name(module_layout(ModuleName), !IO),
-        io.write_string(");\n\t}\n", !IO)
-    ;
-        true
-    ),
+    Data = module_layout_data(ModuleName, _, _, _, _),
+    io.write_string("\tif (MR_register_module_layout != NULL) {\n", !IO),
+    io.write_string("\t\t(*MR_register_module_layout)(", !IO),
+    io.write_string("\n\t\t\t&", !IO),
+    output_layout_name(module_layout(ModuleName), !IO),
+    io.write_string(");\n\t}\n", !IO),
     output_debugger_init_list(Datas, !IO).
 
 :- pred output_write_proc_static_list(list(proc_layout_data)::in,

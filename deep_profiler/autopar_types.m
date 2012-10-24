@@ -53,7 +53,7 @@
                 ipi_coverage_array  :: goal_attr_array(coverage_info),
                 ipi_inst_map_array  :: goal_attr_array(inst_map_info),
                 ipi_recursion_type  :: recursion_type,
-                ipi_var_table       :: var_table,
+                ipi_var_name_table  :: var_name_table,
                 ipi_proc_label      :: string_proc_label
             ).
 

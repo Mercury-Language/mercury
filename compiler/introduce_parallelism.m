@@ -274,7 +274,7 @@ maybe_parallelise_proc(ParallelismInfo, PredInfo, _PredId, ProcId,
 
 parallelise_proc(CPCProc, PredInfo, !ProcInfo,
         IntroducedParallelism, !ModuleInfo, !Specs) :-
-    CPCProc = candidate_par_conjunctions_proc(VarTable, PushGoals,
+    CPCProc = candidate_par_conjunctions_proc(VarNameTable, PushGoals,
         CPCs0),
     (
         PushGoals = []
@@ -304,7 +304,7 @@ parallelise_proc(CPCProc, PredInfo, !ProcInfo,
     % ones before earlier ones.
     list.sort_and_remove_dups(compare_candidate_par_conjunctions, CPCs0, CPCs),
     list.foldl3(
-        maybe_parallelise_goal(PredInfo, ProgRepInfo, VarTable, Instmap),
+        maybe_parallelise_goal(PredInfo, ProgRepInfo, VarNameTable, Instmap),
         CPCs, Goal0, Goal,
         have_not_introduced_parallelism, IntroducedParallelism, !Specs),
     (
@@ -319,7 +319,7 @@ parallelise_proc(CPCProc, PredInfo, !ProcInfo,
 
 %-----------------------------------------------------------------------------%
 
-    % maybe_parallelise_goal(ProgRepInfo, VarTable, CPC, !Goal,
+    % maybe_parallelise_goal(ProgRepInfo, VarNameTable, CPC, !Goal,
     %   !IntroducedParallelism).
     %
     % Attempt to parallelise some part of !.Goal returning !:Goal.
@@ -327,13 +327,13 @@ parallelise_proc(CPCProc, PredInfo, !ProcInfo,
     % will be unmodified.
     %
 :- pred maybe_parallelise_goal(pred_info::in, prog_rep_info::in,
-    var_table::in, instmap::in, candidate_par_conjunction::in,
+    var_name_table::in, instmap::in, candidate_par_conjunction::in,
     hlds_goal::in, hlds_goal::out,
     introduced_parallelism::in, introduced_parallelism::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_parallelise_goal(PredInfo, ProgRepInfo, VarTable, Instmap0, CPC, Goal0,
-        Goal, !IntroducedParallelism, !Specs) :-
+maybe_parallelise_goal(PredInfo, ProgRepInfo, VarNameTable, Instmap0, CPC,
+        Goal0, Goal, !IntroducedParallelism, !Specs) :-
     TargetGoalPathString = CPC ^ cpc_goal_path,
     ( goal_path_from_string(TargetGoalPathString, TargetGoalPathPrime) ->
         TargetGoalPath = TargetGoalPathPrime
@@ -342,7 +342,7 @@ maybe_parallelise_goal(PredInfo, ProgRepInfo, VarTable, Instmap0, CPC, Goal0,
             "Invalid goal path in CPC Feedback Information")
     ),
     maybe_transform_goal_at_goal_path_with_instmap(
-        maybe_parallelise_conj(ProgRepInfo, VarTable, CPC),
+        maybe_parallelise_conj(ProgRepInfo, VarNameTable, CPC),
         TargetGoalPath, Instmap0, Goal0, MaybeGoal),
     (
         MaybeGoal = ok(Goal),
@@ -363,11 +363,11 @@ maybe_parallelise_goal(PredInfo, ProgRepInfo, VarTable, Instmap0, CPC, Goal0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_parallelise_conj(prog_rep_info::in, var_table::in,
+:- pred maybe_parallelise_conj(prog_rep_info::in, var_name_table::in,
     candidate_par_conjunction::in, instmap::in, hlds_goal::in,
     maybe_error(hlds_goal)::out) is det.
 
-maybe_parallelise_conj(ProgRepInfo, VarTable, CPC, Instmap0,
+maybe_parallelise_conj(ProgRepInfo, VarNameTable, CPC, Instmap0,
         Goal0, MaybeGoal) :-
     Goal0 = hlds_goal(GoalExpr0, _GoalInfo0),
     % We have reached the point indicated by the goal path.
@@ -376,15 +376,15 @@ maybe_parallelise_conj(ProgRepInfo, VarTable, CPC, Instmap0,
     (
         GoalExpr0 = conj(plain_conj, Conjs0),
         flatten_conj(Conjs0, Conjs1),
-        find_first_goal(FirstGoalRep, Conjs1, ProgRepInfo, VarTable, Instmap0,
-            found_first_goal(GoalsBefore, FirstGoal, OtherGoals))
+        find_first_goal(FirstGoalRep, Conjs1, ProgRepInfo, VarNameTable,
+            Instmap0, found_first_goal(GoalsBefore, FirstGoal, OtherGoals))
     ->
         GoalsBeforeInstDeltas = list.map(
             (func(G) = goal_info_get_instmap_delta(G ^ hlds_goal_info)),
             GoalsBefore),
         list.foldl(apply_instmap_delta_sv, GoalsBeforeInstDeltas,
             Instmap0, Instmap),
-        build_par_conjunction(ProgRepInfo, VarTable, Instmap,
+        build_par_conjunction(ProgRepInfo, VarNameTable, Instmap,
             [FirstGoal | OtherGoals], CPC, MaybeParConjunction),
         (
             MaybeParConjunction = ok(
@@ -432,21 +432,21 @@ cpc_get_first_goal(CPC, FirstGoal) :-
             ).
 
 :- pred find_first_goal(pard_goal::in, list(hlds_goal)::in,
-    prog_rep_info::in, var_table::in, instmap::in,
+    prog_rep_info::in, var_name_table::in, instmap::in,
     find_first_goal_result::out) is det.
 
 find_first_goal(_, [], _, _, _, did_not_find_first_goal).
-find_first_goal(GoalRep, [Goal | Goals], ProcRepInfo, VarTable, !.Instmap,
+find_first_goal(GoalRep, [Goal | Goals], ProcRepInfo, VarNameTable, !.Instmap,
         Result) :-
     (
-        pard_goal_match_hlds_goal(ProcRepInfo, VarTable, !.Instmap, GoalRep,
-            Goal)
+        pard_goal_match_hlds_goal(ProcRepInfo, VarNameTable, !.Instmap,
+            GoalRep, Goal)
     ->
         Result = found_first_goal([], Goal, Goals)
     ;
         InstmapDelta = goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
         apply_instmap_delta_sv(InstmapDelta, !Instmap),
-        find_first_goal(GoalRep, Goals, ProcRepInfo, VarTable, !.Instmap,
+        find_first_goal(GoalRep, Goals, ProcRepInfo, VarNameTable, !.Instmap,
             Result0),
         (
             Result0 = did_not_find_first_goal,
@@ -465,22 +465,22 @@ find_first_goal(GoalRep, [Goal | Goals], ProcRepInfo, VarTable, !.Instmap,
                 pcrg_remaining_goals            :: hlds_goals
             ).
 
-:- pred build_par_conjunction(prog_rep_info::in, var_table::in, instmap::in,
-    hlds_goals::in, candidate_par_conjunction::in,
+:- pred build_par_conjunction(prog_rep_info::in, var_name_table::in,
+    instmap::in, hlds_goals::in, candidate_par_conjunction::in,
     maybe_error(par_conjunction_and_remaining_goals)::out) is det.
 
-build_par_conjunction(ProcRepInfo, VarTable, Instmap0, !.Goals, CPC,
+build_par_conjunction(ProcRepInfo, VarNameTable, Instmap0, !.Goals, CPC,
         MaybeParConjunction) :-
     GoalRepsBefore = CPC ^ cpc_goals_before,
     GoalRepsAfter = CPC ^ cpc_goals_after,
     ParConjReps = CPC ^ cpc_conjs,
     some [!Instmap] (
         !:Instmap = Instmap0,
-        build_seq_conjuncts(ProcRepInfo, VarTable, GoalRepsBefore,
+        build_seq_conjuncts(ProcRepInfo, VarNameTable, GoalRepsBefore,
             MaybeGoalsBefore, !Goals, !Instmap),
-        build_par_conjuncts(ProcRepInfo, VarTable, ParConjReps,
+        build_par_conjuncts(ProcRepInfo, VarNameTable, ParConjReps,
             MaybeParConjuncts, !Goals, !Instmap),
-        build_seq_conjuncts(ProcRepInfo, VarTable, GoalRepsAfter,
+        build_seq_conjuncts(ProcRepInfo, VarNameTable, GoalRepsAfter,
             MaybeGoalsAfter, !Goals, !Instmap),
         _ = !.Instmap
     ),
@@ -512,21 +512,21 @@ build_par_conjunction(ProcRepInfo, VarTable, Instmap0, !.Goals, CPC,
             ++ "conjunction do not match those in the feedback file")
     ).
 
-:- pred build_par_conjuncts(prog_rep_info::in, var_table::in,
+:- pred build_par_conjuncts(prog_rep_info::in, var_name_table::in,
     list(seq_conj)::in, maybe(hlds_goals)::out,
     hlds_goals::in, hlds_goals::out, instmap::in, instmap::out) is det.
 
 build_par_conjuncts(_, _, [], yes([]), !Goals, !Instmap).
-build_par_conjuncts(ProcRepInfo, VarTable, [GoalRep | GoalReps], MaybeConjs,
-        !Goals, !Instmap) :-
+build_par_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],
+        MaybeConjs, !Goals, !Instmap) :-
     GoalRep = seq_conj(SeqConjs),
-    build_seq_conjuncts(ProcRepInfo, VarTable, SeqConjs, MaybeConj, !Goals,
-        !Instmap),
+    build_seq_conjuncts(ProcRepInfo, VarNameTable, SeqConjs, MaybeConj,
+        !Goals, !Instmap),
     (
         MaybeConj = yes(Conj0),
         create_conj_from_list(Conj0, plain_conj, Conj),
-        build_par_conjuncts(ProcRepInfo, VarTable, GoalReps, MaybeConjs0,
-            !Goals, !Instmap),
+        build_par_conjuncts(ProcRepInfo, VarNameTable, GoalReps,
+            MaybeConjs0, !Goals, !Instmap),
         (
             MaybeConjs0 = yes(Conjs0),
             MaybeConjs = yes([Conj | Conjs0])
@@ -539,21 +539,23 @@ build_par_conjuncts(ProcRepInfo, VarTable, [GoalRep | GoalReps], MaybeConjs,
         MaybeConjs = no
     ).
 
-:- pred build_seq_conjuncts(prog_rep_info::in, var_table::in,
+:- pred build_seq_conjuncts(prog_rep_info::in, var_name_table::in,
     list(pard_goal)::in, maybe(hlds_goals)::out,
     hlds_goals::in, hlds_goals::out, instmap::in, instmap::out) is det.
 
 build_seq_conjuncts(_, _, [], yes([]), !Goals, !Instmap).
-build_seq_conjuncts(ProcRepInfo, VarTable, [GoalRep | GoalReps], MaybeConjs,
-        !Goals, !Instmap) :-
+build_seq_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],
+        MaybeConjs, !Goals, !Instmap) :-
     (
         !.Goals = [Goal | !:Goals],
-        ( pard_goal_match_hlds_goal(ProcRepInfo, VarTable, !.Instmap, GoalRep,
-                Goal) ->
+        (
+            pard_goal_match_hlds_goal(ProcRepInfo, VarNameTable, !.Instmap,
+                GoalRep, Goal)
+        ->
             InstmapDelta = goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
             apply_instmap_delta_sv(InstmapDelta, !Instmap),
-            build_seq_conjuncts(ProcRepInfo, VarTable, GoalReps, MaybeConjs0,
-                !Goals, !Instmap),
+            build_seq_conjuncts(ProcRepInfo, VarNameTable, GoalReps,
+                MaybeConjs0, !Goals, !Instmap),
             (
                 MaybeConjs0 = yes(Conjs0),
                 MaybeConjs = yes([Goal | Conjs0])
@@ -661,50 +663,51 @@ compare_goal_paths(PathA, PathB, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred pard_goal_match_hlds_goal(prog_rep_info::in, var_table::in,
+:- pred pard_goal_match_hlds_goal(prog_rep_info::in, var_name_table::in,
     instmap::in, pard_goal::in, hlds_goal::in) is semidet.
 
-pard_goal_match_hlds_goal(ProgRepInfo, VarTable, Instmap, GoalRepA, GoalB) :-
+pard_goal_match_hlds_goal(ProgRepInfo, VarNameTable, Instmap,
+        GoalRepA, GoalB) :-
     goal_to_goal_rep(ProgRepInfo, Instmap, GoalB, GoalRepB),
-    goal_reps_match(VarTable, GoalRepA, GoalRepB).
+    goal_reps_match(VarNameTable, GoalRepA, GoalRepB).
 
-:- pred goal_reps_match(var_table::in, goal_rep(A)::in, goal_rep(B)::in)
+:- pred goal_reps_match(var_name_table::in, goal_rep(A)::in, goal_rep(B)::in)
     is semidet.
 
-goal_reps_match(VarTable, GoalA, GoalB) :-
+goal_reps_match(VarNameTable, GoalA, GoalB) :-
     GoalA = goal_rep(GoalRepA, Detism, _),
     GoalB = goal_rep(GoalRepB, Detism, _),
     (
         GoalRepA = conj_rep(ConjsA),
         GoalRepB = conj_rep(ConjsB),
-        zip_all_true(goal_reps_match(VarTable), ConjsA, ConjsB)
+        zip_all_true(goal_reps_match(VarNameTable), ConjsA, ConjsB)
     ;
         GoalRepA = disj_rep(DisjsA),
         GoalRepB = disj_rep(DisjsB),
-        zip_all_true(goal_reps_match(VarTable), DisjsA, DisjsB)
+        zip_all_true(goal_reps_match(VarNameTable), DisjsA, DisjsB)
     ;
         GoalRepA = switch_rep(VarRepA, CanFail, CasesA),
         GoalRepB = switch_rep(VarRepB, CanFail, CasesB),
-        var_reps_match(VarTable, VarRepA, VarRepB),
+        var_reps_match(VarNameTable, VarRepA, VarRepB),
         % Note that GoalRepA and GoalRepB could be equivalent
         % even they contained the same cases but a different order.
         list.sort(CasesA, SortedCasesA),
         list.sort(CasesB, SortedCasesB),
-        zip_all_true(case_reps_match(VarTable), SortedCasesA, SortedCasesB)
+        zip_all_true(case_reps_match(VarNameTable), SortedCasesA, SortedCasesB)
     ;
         GoalRepA = ite_rep(CondA, ThenA, ElseA),
         GoalRepB = ite_rep(CondB, ThenB, ElseB),
-        goal_reps_match(VarTable, CondA, CondB),
-        goal_reps_match(VarTable, ThenA, ThenB),
-        goal_reps_match(VarTable, ElseA, ElseB)
+        goal_reps_match(VarNameTable, CondA, CondB),
+        goal_reps_match(VarNameTable, ThenA, ThenB),
+        goal_reps_match(VarNameTable, ElseA, ElseB)
     ;
         GoalRepA = negation_rep(SubGoalA),
         GoalRepB = negation_rep(SubGoalB),
-        goal_reps_match(VarTable, SubGoalA, SubGoalB)
+        goal_reps_match(VarNameTable, SubGoalA, SubGoalB)
     ;
         GoalRepA = scope_rep(SubGoalA, MaybeCut),
         GoalRepB = scope_rep(SubGoalB, MaybeCut),
-        goal_reps_match(VarTable, SubGoalA, SubGoalB)
+        goal_reps_match(VarNameTable, SubGoalA, SubGoalB)
     ;
         GoalRepA = atomic_goal_rep(_, _, _, AtomicGoalA),
         GoalRepB = atomic_goal_rep(_, _, _, AtomicGoalB),
@@ -714,13 +717,13 @@ goal_reps_match(VarTable, GoalA, GoalB) :-
         %
         % Vars are not matched here either, we only consider the vars
         % within the atomic_goal_rep structures.
-        atomic_goal_reps_match(VarTable, AtomicGoalA, AtomicGoalB)
+        atomic_goal_reps_match(VarNameTable, AtomicGoalA, AtomicGoalB)
     ).
 
-:- pred atomic_goal_reps_match(var_table::in,
+:- pred atomic_goal_reps_match(var_name_table::in,
     atomic_goal_rep::in, atomic_goal_rep::in) is semidet.
 
-atomic_goal_reps_match(VarTable, AtomicRepA, AtomicRepB) :-
+atomic_goal_reps_match(VarNameTable, AtomicRepA, AtomicRepB) :-
     (
         (
             AtomicRepA = unify_construct_rep(VarA, ConsId, ArgsA),
@@ -735,8 +738,8 @@ atomic_goal_reps_match(VarTable, AtomicRepA, AtomicRepB) :-
             AtomicRepA = method_call_rep(VarA, MethodNum, ArgsA),
             AtomicRepB = method_call_rep(VarB, MethodNum, ArgsB)
         ),
-        var_reps_match(VarTable, VarA, VarB),
-        zip_all_true(var_reps_match(VarTable), ArgsA, ArgsB)
+        var_reps_match(VarNameTable, VarA, VarB),
+        zip_all_true(var_reps_match(VarNameTable), ArgsA, ArgsB)
     ;
         (
             AtomicRepA = partial_deconstruct_rep(VarA, ConsId, MaybeArgsA),
@@ -745,8 +748,9 @@ atomic_goal_reps_match(VarTable, AtomicRepA, AtomicRepB) :-
             AtomicRepA = partial_construct_rep(VarA, ConsId, MaybeArgsA),
             AtomicRepB = partial_construct_rep(VarB, ConsId, MaybeArgsB)
         ),
-        var_reps_match(VarTable, VarA, VarB),
-        zip_all_true(maybe_var_reps_match(VarTable), MaybeArgsA, MaybeArgsB)
+        var_reps_match(VarNameTable, VarA, VarB),
+        zip_all_true(maybe_var_reps_match(VarNameTable),
+            MaybeArgsA, MaybeArgsB)
     ;
         (
             AtomicRepA = unify_assign_rep(VarA1, VarA2),
@@ -758,8 +762,8 @@ atomic_goal_reps_match(VarTable, AtomicRepA, AtomicRepB) :-
             AtomicRepA = unify_simple_test_rep(VarA1, VarA2),
             AtomicRepB = unify_simple_test_rep(VarB1, VarB2)
         ),
-        var_reps_match(VarTable, VarA1, VarB1),
-        var_reps_match(VarTable, VarA2, VarB2)
+        var_reps_match(VarNameTable, VarA1, VarB1),
+        var_reps_match(VarNameTable, VarA2, VarB2)
     ;
         (
             AtomicRepA = pragma_foreign_code_rep(ArgsA),
@@ -774,21 +778,22 @@ atomic_goal_reps_match(VarTable, AtomicRepA, AtomicRepB) :-
             AtomicRepA = event_call_rep(EventName, ArgsA),
             AtomicRepB = event_call_rep(EventName, ArgsB)
         ),
-        zip_all_true(var_reps_match(VarTable), ArgsA, ArgsB)
+        zip_all_true(var_reps_match(VarNameTable), ArgsA, ArgsB)
     ).
 
-:- pred case_reps_match(var_table::in, case_rep(A)::in, case_rep(B)::in)
+:- pred case_reps_match(var_name_table::in, case_rep(A)::in, case_rep(B)::in)
     is semidet.
 
-case_reps_match(VarTable, CaseRepA, CaseRepB) :-
+case_reps_match(VarNameTable, CaseRepA, CaseRepB) :-
     CaseRepA = case_rep(ConsId, OtherConsIds, GoalRepA),
     CaseRepB = case_rep(ConsId, OtherConsIds, GoalRepB),
-    goal_reps_match(VarTable, GoalRepA, GoalRepB).
+    goal_reps_match(VarNameTable, GoalRepA, GoalRepB).
 
-:- pred var_reps_match(var_table::in, var_rep::in, var_rep::in) is semidet.
+:- pred var_reps_match(var_name_table::in, var_rep::in, var_rep::in)
+    is semidet.
 
-var_reps_match(VarTable, VarA, VarB) :-
-    ( search_var_name(VarTable, VarA, _) ->
+var_reps_match(VarNameTable, VarA, VarB) :-
+    ( search_var_name(VarNameTable, VarA, _) ->
         % Variables named by the programmer _must_ match, we expect to find
         % them in the var table, and that they would be identical.  (Since one
         % of the variables will be built using its name and the var table
@@ -797,16 +802,17 @@ var_reps_match(VarTable, VarA, VarB) :-
     ;
         % Unnamed variables match implicitly. They will usually be identical,
         % but we do not REQUIRE them to be identical, to allow the program
-        % to change a little after being profiled but before being parallelised.
+        % to change a little after being profiled but before being
+        % parallelised.
         true
     ).
 
-:- pred maybe_var_reps_match(var_table::in,
+:- pred maybe_var_reps_match(var_name_table::in,
     maybe(var_rep)::in, maybe(var_rep)::in) is semidet.
 
 maybe_var_reps_match(_, no, no).
-maybe_var_reps_match(VarTable, yes(VarA), yes(VarB)) :-
-    var_reps_match(VarTable, VarA, VarB).
+maybe_var_reps_match(VarNameTable, yes(VarA), yes(VarB)) :-
+    var_reps_match(VarNameTable, VarA, VarB).
 
 %-----------------------------------------------------------------------------%
 

@@ -758,10 +758,10 @@ static void
 MR_write_out_procrep_id_string(FILE *fp)
 {
     /*
-    ** Must be the same as procrep_id_string in
-    ** mdbcomp/program_representation.m
+    ** Must be the same as procrep_id_string (or new_procrep_id_string) in
+    ** mdbcomp/program_representation.m.
     */
-    const char  *id_string = "Mercury deep profiler procrep version 5\n";
+    const char  *id_string = "Mercury deep profiler procrep version 6\n";
 
     fputs(id_string, fp);
 }
@@ -796,15 +796,56 @@ MR_deep_log_proc_statics(FILE *fp)
 
 void
 MR_write_out_module_proc_reps_start(FILE *procrep_fp,
-    const MR_ModuleCommonLayout *module_common)
+    const MR_ModuleLayout *module_layout)
 {
-    int         i;
+    const MR_uint_least8_t  *oisu_bytecode;
+    const MR_uint_least8_t  *type_bytecode;
+    int                     size;
+    int                     bytenum;
 
     putc(MR_next_module, procrep_fp);
-    MR_write_string(procrep_fp, module_common->MR_mlc_name);
-    MR_write_num(procrep_fp, module_common->MR_mlc_string_table_size);
-    for (i = 0; i < module_common->MR_mlc_string_table_size; i++) {
-        putc(module_common->MR_mlc_string_table[i], procrep_fp);
+    MR_write_string(procrep_fp, module_layout->MR_ml_name);
+
+    MR_write_num(procrep_fp, module_layout->MR_ml_string_table_size);
+    size = module_layout->MR_ml_string_table_size;
+    for (bytenum = 0; bytenum < size; bytenum++) {
+        putc(module_layout->MR_ml_string_table[bytenum], procrep_fp);
+    }
+
+    MR_write_num(procrep_fp, module_layout->MR_ml_num_oisu_types);
+    oisu_bytecode = module_layout->MR_ml_oisu_bytes;
+    if (module_layout->MR_ml_num_oisu_types == 0) {
+        if (oisu_bytecode != NULL) {
+            MR_fatal_error("num_oisu_types == 0 but bytecode != NULL");
+        }
+    } else {
+        if (oisu_bytecode == NULL) {
+            MR_fatal_error("num_oisu_types != 0 but bytecode == NULL");
+        }
+
+        size = (oisu_bytecode[0] << 24) + (oisu_bytecode[1] << 16) +
+            (oisu_bytecode[2] << 8) + oisu_bytecode[3];
+        for (bytenum = 0; bytenum < size; bytenum++) {
+            putc(oisu_bytecode[bytenum], procrep_fp);
+        }
+    }
+
+    MR_write_num(procrep_fp, module_layout->MR_ml_num_table_types);
+    type_bytecode = module_layout->MR_ml_type_table_bytes;
+    if (module_layout->MR_ml_num_table_types == 0) {
+        if (type_bytecode != NULL) {
+            MR_fatal_error("num_types == 0 but bytecode != NULL");
+        }
+    } else {
+        if (type_bytecode == NULL) {
+            MR_fatal_error("num_types != 0 but bytecode == NULL");
+        }
+
+        size = (type_bytecode[0] << 24) + (type_bytecode[1] << 16) +
+            (type_bytecode[2] << 8) + type_bytecode[3];
+        for (bytenum = 0; bytenum < size; bytenum++) {
+            putc(type_bytecode[bytenum], procrep_fp);
+        }
     }
 }
 

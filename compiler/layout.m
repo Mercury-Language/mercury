@@ -235,8 +235,8 @@
                 % The procedure body represented as a list of bytecodes.
                 proc_body_bytes         :: maybe(layout_slot_name),
 
-                % The name of the module_common_layout structure.
-                proc_module_common      :: layout_name
+                % The name of the module_layout structure.
+                proc_module_layout      :: layout_name
             ).
 
 :- type proc_layout_data
@@ -275,16 +275,31 @@
             ).
 
 :- type module_layout_data
-    --->    module_layout_common_data(
-                % defines MR_ModuleCommonLayout
-                mlcd_module_common_name     :: module_name,
-                mlcd_string_table_size      :: int,
-                mlcd_string_table           :: string_with_0s
-            )
-    ;       module_layout_data(
-                % defines MR_ModuleLayout
+    --->    module_layout_data(
+                % The part of MR_ModuleLayout that is needed for both
+                % deep profiling and debugging.
                 mld_module_name             :: module_name,
-                mld_module_common           :: layout_name,
+                mld_string_table_size       :: int,
+                mld_string_table            :: string_with_0s,
+
+                % The parts that are specific to deep profiling and to
+                % debugging.
+                mld_maybe_deep_prof         :: maybe(module_layout_deep_prof),
+                mld_maybe_debug             :: maybe(module_layout_debug)
+            ).
+
+:- type module_layout_deep_prof
+    --->    module_layout_deep_prof(
+                % Defines part of MR_ModuleLayout.
+                mldp_num_oisu_types         :: int,
+                mldp_oisu_bytes             :: list(int),
+                mldp_num_table_types        :: int,
+                mldp_type_table_bytes       :: list(int)
+            ).
+
+:- type module_layout_debug
+    --->    module_layout_debug(
+                % Defines part of MR_ModuleLayout.
                 mld_proc_layout_names       :: list(layout_name),
                 mld_file_layouts            :: list(file_layout_data),
                 mld_trace_level             :: trace_level,
@@ -295,7 +310,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Allocation site information
+% Allocation site information.
 %
 
 :- type alloc_site_info
@@ -397,7 +412,8 @@
     ;       module_layout_event_synth_attr_order(module_name, int, int)
     ;       module_layout_event_synth_order(module_name, int)
     ;       module_layout_event_specs(module_name)
-    ;       module_common_layout(module_name)
+    ;       module_layout_oisu_bytes(module_name)
+    ;       module_layout_type_table_bytes(module_name)
     ;       module_layout(module_name).
 
 %-----------------------------------------------------------------------------%

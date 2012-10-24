@@ -752,7 +752,7 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPath,
 
                 convert_candidate_par_conjunction(
                     pard_goal_detail_to_pard_goal, Candidate, FBCandidate),
-                VarTable = Info ^ ipi_var_table,
+                VarTable = Info ^ ipi_var_name_table,
                 create_candidate_parallel_conj_report(VarTable,
                     FBCandidate, Report),
                 print_proc_label_to_string(ProcLabel, ProcLabelString),

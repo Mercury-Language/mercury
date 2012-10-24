@@ -1,0 +1,102 @@
+       1:      1  1 CALL pred dependency.main/2-0 (cc_multi) dependency.m:11
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> goto 3
+       3:      2  2 EXIT pred dependency.turn_on_origin_debug/0-0 (det) dependency.m:69 (dependency.m:12)
+mdb> dd -d 3 -n 7
+turn_on_origin_debug
+Valid? browse 1
+Invalid argument number
+dd> quit
+Diagnosis aborted.
+       3:      2  2 EXIT pred dependency.turn_on_origin_debug/0-0 (det) dependency.m:69 (dependency.m:12)
+mdb> step
+       4:      3  2 CALL pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
+mdb> finish
+      18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
+mdb> format_param depth 20
+mdb> format_param size 201
+mdb> format raw_pretty
+mdb> p proc_body
+	
+proc_defn_rep(
+  [|](head_var_rep(1, var_mode_rep(ir_free_rep, ir_ground_rep)), []), 
+  goal_rep(
+    conj_rep(
+      [|](
+        goal_rep(atomic_goal_rep/4, det_rep, unit), 
+        [|](goal_rep/3, [|](goal_rep/3, [|]/2)))), 
+    cc_multidet_rep, 
+    unit), 
+  empty, 
+  no, 
+  cc_multidet_rep)
+mdb> dd -d 3 -n 7
+test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
+Valid? browse 1
+browser> ^1
+browser> mark
+Origin: origin_primitive_op("dependency.m", 22, primop_unification)
+p(1)
+Valid? quit
+Diagnosis aborted.
+      18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
+mdb> dd -d 3 -n 7
+test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
+Valid? browse 1
+browser> ^2^1
+browser> mark
+Origin: output(r, any_head_var_from_back(1), [1])
+r(1, [|](3, [|](4, [])), -(3, 4))
+Valid? browse 2
+browser> print
+[|](3, [|](4, []))
+browser> mark
+Origin: origin_primitive_op("dependency.m", 29, primop_unification)
+p(1)
+Valid? quit
+Diagnosis aborted.
+      18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
+mdb> dd -d 3 -n 7
+test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
+Valid? browse 1
+browser> ^2^2^1
+browser> mark
+Origin: origin_primitive_op("dependency.m", 41, primop_unification)
+p(1)
+Valid? quit
+Diagnosis aborted.
+      18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
+mdb> dd -d 3 -n 7
+test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
+Valid? browse 1
+browser> ^2^2^2^1
+browser> mark
+Origin: origin_primitive_op("dependency.m", 22, primop_unification)
+p(1)
+Valid? quit
+Diagnosis aborted.
+      18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
+mdb> dd -d 3 -n 7
+test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
+Valid? browse 1
+browser> ^2^2^2^2^1
+browser> mark
+Origin: output(r, any_head_var_from_back(1), [1])
+r(1, [|](3, [|](4, [])), -(3, 4))
+Valid? quit
+Diagnosis aborted.
+      18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
+mdb> dd -d 3 -n 7
+test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
+Valid? browse 1
+browser> ^2^2^2^2^2
+browser> mark
+Origin: origin_primitive_op("dependency.m", 43, primop_unification)
+p(1)
+Valid? quit
+Diagnosis aborted.
+      18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
+mdb> continue
+[1, 3, 6, 1, 3].

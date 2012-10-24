@@ -96,6 +96,7 @@
 
 :- import_module array.
 :- import_module char.
+:- import_module cord.
 :- import_module float.
 :- import_module int.
 :- import_module list.
@@ -160,6 +161,10 @@ create_report(Cmd, Deep, Report) :-
         create_module_getter_setter_report(Deep, ModuleName,
             MaybeModuleGetterSettersReport),
         Report = report_module_getter_setters(MaybeModuleGetterSettersReport)
+    ;
+        Cmd = deep_cmd_module_rep(ModuleName),
+        create_module_rep_report(Deep, ModuleName, MaybeModuleRepReport),
+        Report = report_module_rep(MaybeModuleRepReport)
     ;
         Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
         create_top_procs_report(Deep, Limit, CostKind, InclDesc, Scope,
@@ -784,6 +789,45 @@ is_getter_or_setter_2(NameChars, GetterSetter, DataStructNameChars,
         DataStructNameChars = [FirstNameChar | LaterDataStructNameChars]
     ).
 
+
+%-----------------------------------------------------------------------------%
+%
+% Code to build a module_rep report.
+%
+
+    % Create a module_rep report, from the given data with the specified
+    % parameters.
+    %
+:- pred create_module_rep_report(deep::in, string::in,
+    maybe_error(module_rep_report)::out) is det.
+
+create_module_rep_report(Deep, ModuleName, MaybeModuleRepReport) :-
+    MaybeProgRep = Deep ^ procrep_file,
+    (
+        MaybeProgRep = yes(MaybeErrorProgRep),
+        (
+            MaybeErrorProgRep = ok(ProgRep),
+            ProgRep = prog_rep(ModuleRepMap),
+            ( map.search(ModuleRepMap, ModuleName, ModuleRep) ->
+                print_module_to_strings(ModuleRep, CordStrs),
+                Str = string.append_list(cord.list(CordStrs)),
+                ModuleRepReport = module_rep_report(ModuleName, Str),
+                MaybeModuleRepReport = ok(ModuleRepReport)
+            ;
+                Msg = string.format("There is no module named %s.\n",
+                    [s(ModuleName)]),
+                MaybeModuleRepReport = error(Msg)
+            )
+        ;
+            MaybeErrorProgRep = error(Msg),
+            MaybeModuleRepReport = error(Msg)
+        )
+    ;
+        MaybeProgRep = no,
+        Msg = "Information about module representations is not available.\n",
+        MaybeModuleRepReport = error(Msg)
+    ).
+
 %-----------------------------------------------------------------------------%
 %
 % Code to build a top_procs report.
@@ -1340,7 +1384,7 @@ create_call_site_dynamic_var_use_report(Deep, CSDPtr, MaybeVarUseInfo) :-
         (
             MaybeProcrep = ok(Procrep),
             HeadVars = Procrep ^ pr_defn ^ pdr_head_vars,
-            VarTable = Procrep ^ pr_defn ^ pdr_var_table,
+            VarNameTable = Procrep ^ pr_defn ^ pdr_var_name_table,
             deep_lookup_clique_index(Deep, CallerPDPtr, ParentCliquePtr),
             deep_lookup_clique_index(Deep, CalleePDPtr, CalleeCliquePtr),
             create_clique_recursion_costs_report(Deep, ParentCliquePtr,
@@ -1360,7 +1404,7 @@ create_call_site_dynamic_var_use_report(Deep, CSDPtr, MaybeVarUseInfo) :-
                 (
                     MaybeCost = ok(Cost),
                     map_foldl(call_site_dynamic_var_use_arg(Deep, CSDPtr,
-                            RecursionType, Cost, VarTable),
+                            RecursionType, Cost, VarNameTable),
                         HeadVars, Uses0, 0, _),
                     list_maybe_error_to_maybe_error_list(Uses0, MaybeUses),
                     (
@@ -1391,10 +1435,10 @@ create_call_site_dynamic_var_use_report(Deep, CSDPtr, MaybeVarUseInfo) :-
     ).
 
 :- pred call_site_dynamic_var_use_arg(deep::in, call_site_dynamic_ptr::in,
-    recursion_type::in, float::in, var_table::in, head_var_rep::in,
+    recursion_type::in, float::in, var_name_table::in, head_var_rep::in,
     maybe_error(var_use_and_name)::out, int::in, int::out) is det.
 
-call_site_dynamic_var_use_arg(Deep, CSDPtr, RecursionType, Cost, VarTable,
+call_site_dynamic_var_use_arg(Deep, CSDPtr, RecursionType, Cost, VarNameTable,
         HeadVar, MaybeUseAndName, !ArgNum) :-
     HeadVar = head_var_rep(Var, Mode),
     var_mode_to_var_use_type(Mode, UseType),
@@ -1404,7 +1448,7 @@ call_site_dynamic_var_use_arg(Deep, CSDPtr, RecursionType, Cost, VarTable,
         Cost, UseOptions, MaybeUse),
     (
         MaybeUse = ok(Use),
-        lookup_var_name(VarTable, Var, Name),
+        lookup_var_name(VarNameTable, Var, Name),
         MaybeUseAndName = ok(var_use_and_name(Name, Use))
     ;
         MaybeUse = error(Error),

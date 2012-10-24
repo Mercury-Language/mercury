@@ -135,6 +135,15 @@ report_to_display(Deep, Prefs, Report) = Display :-
             Display = display(no, [display_heading(Msg)])
         )
     ;
+        Report = report_module_rep(MaybeModuleRepReport),
+        (
+            MaybeModuleRepReport = ok(ModuleRepReport),
+            display_report_module_rep(Prefs, ModuleRepReport, Display)
+        ;
+            MaybeModuleRepReport = error(Msg),
+            Display = display(no, [display_heading(Msg)])
+        )
+    ;
         Report = report_top_procs(MaybeTopProcsReport),
         (
             MaybeTopProcsReport = ok(TopProcsReport),
@@ -1165,6 +1174,9 @@ display_report_module(Prefs, ModuleReport, Display) :-
     GetterSetterCmd = deep_cmd_module_getter_setters(ModuleName),
     GetterSetterControl = display_link(deep_link(GetterSetterCmd, yes(Prefs),
         attr_str([], "Show field getters and setters"), link_class_link)),
+    RepCmd = deep_cmd_module_rep(ModuleName),
+    RepControl = display_link(deep_link(RepCmd, yes(Prefs),
+        attr_str([], "Show module representation"), link_class_link)),
 
     InactiveControls = inactive_proc_controls(Prefs, Cmd),
     FieldControls = field_controls(Prefs, Cmd),
@@ -1174,6 +1186,7 @@ display_report_module(Prefs, ModuleReport, Display) :-
     Display = display(yes(Title),
         [DisplayTable,
         display_paragraph_break, GetterSetterControl,
+        display_paragraph_break, RepControl,
         display_paragraph_break, InactiveControls,
         display_paragraph_break, FieldControls,
         display_paragraph_break, FormatControls,
@@ -1190,7 +1203,7 @@ active_proc(ProcRowData) :-
 % Code to display a module_getter_setters report.
 %
 
-    % Create a display_report structure for a top_procedures report.
+    % Create a display_report structure for a module_getter_setters report.
     %
 :- pred display_report_module_getter_setters(preferences::in,
     module_getter_setters_report::in, display::out) is det.
@@ -1308,6 +1321,34 @@ display_field_getter_setters(Prefs, ModuleName, FieldName - FieldInfo, Rows,
         Rows = [table_separator_row, SumRow, GetterRow, SetterRow]
     ),
     !:Rank = !.Rank + 1.
+
+%-----------------------------------------------------------------------------%
+%
+% Code to display a module_rep report.
+%
+
+    % Create a display_report structure for a module_rep report.
+    %
+:- pred display_report_module_rep(preferences::in, module_rep_report::in,
+    display::out) is det.
+
+display_report_module_rep(Prefs, Report, Display) :-
+    Report = module_rep_report(ModuleName, ModuleRepStr),
+    Title = string.format("The representation of module %s:",
+        [s(ModuleName)]),
+
+    BodyItem = display_verbatim(ModuleRepStr),
+
+    ModuleCmd = deep_cmd_module(ModuleName),
+    ModuleControl = display_link(deep_link(ModuleCmd, yes(Prefs),
+        attr_str([], "Show all the procedures of the module"),
+        link_class_link)),
+    MenuResetQuitControls = cmds_menu_restart_quit(yes(Prefs)),
+    Controls =
+        [display_paragraph_break, ModuleControl,
+        display_paragraph_break, MenuResetQuitControls],
+
+    Display = display(yes(Title), [BodyItem | Controls]).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2053,7 +2094,7 @@ display_report_procrep_coverage_info(Prefs, ProcrepCoverageReport, Display) :-
     % Print the coverage information for a goal, this is used by
     % print_proc_to_strings.
     %
-:- pred coverage_to_cord_string(var_table::in, coverage_info::in,
+:- pred coverage_to_cord_string(var_name_table::in, coverage_info::in,
     cord(cord(string))::out) is det.
 
 coverage_to_cord_string(_, Coverage, singleton(singleton(String))) :-
@@ -3083,12 +3124,12 @@ perf_table_row_memory(TotalsMeaningful, Fields, RowData, MemoryCells) :-
                 MaybeTotal = no,
                 unexpected($module, $pred, "no total")
             ),
-            TotalMem =              Total ^ perf_row_mem,
-            TotalMemPerCall =       Total ^ perf_row_mem_percall,
-            TotalMemPercent =       Total ^ perf_row_mem_percent,
-            TotalMemCell =          table_cell(td_m(TotalMem, Units, 0)),
-            TotalMemPerCallCell =   table_cell(td_m(TotalMemPerCall, Units, 2)),
-            TotalMemPercentCell =   table_cell(td_p(TotalMemPercent)),
+            TotalMem =            Total ^ perf_row_mem,
+            TotalMemPerCall =     Total ^ perf_row_mem_percall,
+            TotalMemPercent =     Total ^ perf_row_mem_percent,
+            TotalMemCell =        table_cell(td_m(TotalMem, Units, 0)),
+            TotalMemPerCallCell = table_cell(td_m(TotalMemPerCall, Units, 2)),
+            TotalMemPercentCell = table_cell(td_p(TotalMemPercent)),
             (
                 MemoryFields = memory(_),
                 MemoryCells =

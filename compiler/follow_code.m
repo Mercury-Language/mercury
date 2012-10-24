@@ -213,6 +213,13 @@ move_follow_code_in_conj_2([Goal0 | Goals0], ConjPurity, RttiVarMaps,
     (
         Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         goal_util.goal_is_branched(GoalExpr0),
+        % A goal that has the mode_check_clauses marker on it will not
+        % have its set of output variables updated by recompute_instmap_delta.
+        % If we move new code into it, this lack of recomputation will
+        % be a bug if that code binds any variables, which it almost certainly
+        % will.
+        not goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal),
+
         move_follow_code_select(Goals0, RttiVarMaps, FollowGoals,
             RestGoalsPrime, ConjPurity, WorstPurity),
         FollowGoals = [_ | _],
@@ -268,7 +275,7 @@ move_follow_code_select([Goal | Goals], RttiVarMaps, FollowGoals, RestGoals,
         move_follow_code_is_builtin(GoalExpr),
 
         % Don't attempt to move existentially typed deconstructions
-        % into branched structures.  Doing so would confuse the
+        % into branched structures. Doing so would confuse the
         % rtti_varmaps structure, which expects type(class)_infos
         % for a given type variable (constraint) to be retrieved from
         % a single location.

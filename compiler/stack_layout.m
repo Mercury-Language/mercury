@@ -84,10 +84,6 @@
     %
 :- pred represent_determinism_rval(determinism::in, rval::out) is det.
 
-:- type string_table.
-:- pred lookup_string_in_table(string::in, int::out,
-    string_table::in, string_table::out) is det.
-
 %---------------------------------------------------------------------------%
 
 :- pred compute_var_number_map(list(prog_var)::in, prog_varset::in,
@@ -99,6 +95,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.bytecode_data.
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.type_util.
@@ -113,8 +110,10 @@
 :- import_module ll_backend.layout.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.ll_pseudo_type_info.
+:- import_module ll_backend.prog_rep_tables.
 :- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.goal_path.
+:- import_module mdbcomp.rtti_access.
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.set_of_var.
 
@@ -145,16 +144,18 @@ generate_llds_layout_data(ModuleInfo, !GlobalData,
 
     Params = init_stack_layout_params(ModuleInfo),
     map.init(LabelTables0),
-    StringTable0 = init_string_table,
+    StringTable0 = init_string_table_info,
+    TypeTable0 = init_type_table_info,
     global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
     LabelLayoutInfo0 = init_label_layouts_info,
     ProcLayoutInfo0 = init_proc_layouts_info,
 
     global_data_get_all_proc_layouts(!.GlobalData, ProcLayoutList),
-    list.foldl5(construct_proc_and_label_layouts_for_proc(Params),
+    list.foldl6(construct_proc_and_label_layouts_for_proc(Params),
         ProcLayoutList,
         LabelTables0, LabelTables,
         StringTable0, StringTable,
+        TypeTable0, TypeTable,
         StaticCellInfo0, StaticCellInfo1,
         LabelLayoutInfo0, LabelLayoutInfo,
         ProcLayoutInfo0, ProcLayoutInfo),
@@ -221,14 +222,43 @@ generate_llds_layout_data(ModuleInfo, !GlobalData,
     InternalLabelToLayoutMap = LabelLayoutInfo ^ lli_i_label_to_layout_map,
     ProcLabelToLayoutMap = ProcLayoutInfo ^ pli_p_label_to_layout_map,
 
-    StringTable = string_table(_, RevStringList, StringOffset),
-    list.reverse(RevStringList, StringList),
-    ConcatStrings = string_with_0s(StringList),
+    DeepProfiling = Params ^ slp_deep_profiling,
+    (
+        DeepProfiling = yes,
+        module_info_get_oisu_map(ModuleInfo, OISUMap),
+        map.to_assoc_list(OISUMap, OISUPairs),
+        encode_oisu_type_procs(ModuleInfo, OISUPairs,
+            NumOISUTypes, OISUBytesCord),
+        OISUBytes0 = cord.list(OISUBytesCord),
+        (
+            OISUBytes0 = [],
+            OISUBytes = []
+        ;
+            OISUBytes0 = [_ | _],
+            encode_int32_det(list.length(OISUBytes0) + 4, OISULimitBytes),
+            OISUBytes = OISULimitBytes ++ OISUBytes0
+        ),
+
+        get_type_table_contents(TypeTable, NumTypes, TypeBytes0),
+        (
+            TypeBytes0 = [],
+            TypeBytes = []
+        ;
+            TypeBytes0 = [_ | _],
+            encode_int32_det(list.length(TypeBytes0) + 4, TypeTableSizeBytes),
+            TypeBytes = TypeTableSizeBytes ++ TypeBytes0
+        ),
+        DeepProfInfo = module_layout_deep_prof(NumOISUTypes, OISUBytes,
+            NumTypes, TypeBytes),
+        MaybeDeepProfInfo = yes(DeepProfInfo)
+    ;
+        DeepProfiling = no,
+        MaybeDeepProfInfo = no
+    ),
 
     TraceLayout = Params ^ slp_trace_stack_layout,
     (
         TraceLayout = yes,
-        module_info_get_name(ModuleInfo, ModuleName),
         RttiLineNumbers = Params ^ slp_rtti_line_numbers,
         (
             RttiLineNumbers = yes,
@@ -263,28 +293,29 @@ generate_llds_layout_data(ModuleInfo, !GlobalData,
                 EventArgTypeInfoMap),
             MaybeEventSet = yes(EventSetLayoutData)
         ),
-        ModuleCommonLayout = module_layout_common_data(ModuleName,
-            StringOffset, ConcatStrings),
-        ModuleCommonLayoutName = module_common_layout(ModuleName),
+
         TraceLevel = Params ^ slp_trace_level,
-        ModuleLayout = module_layout_data(ModuleName,
-            ModuleCommonLayoutName, ProcLayoutNames, SourceFileLayouts,
+        DebugInfo = module_layout_debug(ProcLayoutNames, SourceFileLayouts,
             TraceLevel, SuppressedEvents, NumLabels, MaybeEventSet),
-        ModuleLayouts = [ModuleCommonLayout, ModuleLayout]
+        MaybeDebugInfo = yes(DebugInfo)
     ;
         TraceLayout = no,
-        DeepProfiling = Params ^ slp_deep_profiling,
-        (
-            DeepProfiling = yes,
-            module_info_get_name(ModuleInfo, ModuleName),
-            ModuleCommonLayout = module_layout_common_data(ModuleName,
-                StringOffset, ConcatStrings),
-            ModuleLayouts = [ModuleCommonLayout]
-        ;
-            DeepProfiling = no,
-            ModuleLayouts = []
-        ),
-        StaticCellInfo = StaticCellInfo1
+        StaticCellInfo = StaticCellInfo1,
+        MaybeDebugInfo = no
+    ),
+    (
+        MaybeDeepProfInfo = no,
+        MaybeDebugInfo = no
+    ->
+        ModuleLayouts = []
+    ;
+        module_info_get_name(ModuleInfo, ModuleName),
+        get_string_table_contents(StringTable, StringList, StringTableSize),
+        StringTableContents = string_with_0s(StringList),
+        ModuleLayout = module_layout_data(ModuleName,
+            StringTableSize, StringTableContents,
+            MaybeDeepProfInfo, MaybeDebugInfo),
+        ModuleLayouts = [ModuleLayout]
     ),
     global_data_set_static_cell_info(StaticCellInfo, !GlobalData).
 
@@ -391,19 +422,22 @@ add_line_no(LineNo, LineInfo, RevList0, RevList) :-
 :- pred construct_proc_and_label_layouts_for_proc(stack_layout_params::in,
     proc_layout_info::in,
     label_tables::in, label_tables::out,
-    string_table::in, string_table::out,
+    string_table_info::in, string_table_info::out,
+    type_table_info::in, type_table_info::out,
     static_cell_info::in, static_cell_info::out,
     label_layouts_info::in, label_layouts_info::out,
     proc_layouts_info::in, proc_layouts_info::out) is det.
 
 construct_proc_and_label_layouts_for_proc(Params, PLI, !LabelTables,
-        !StringTable, !StaticCellInfo, !LabelLayoutInfo, !ProcLayoutInfo) :-
+        !StringTable, !TypeTable, !StaticCellInfo,
+        !LabelLayoutInfo, !ProcLayoutInfo) :-
     PLI = proc_layout_info(RttiProcLabel, EntryLabel,
         _Detism, _StackSlots, _SuccipLoc, _EvalMethod, _EffTraceLevel,
         _MaybeCallLabel, _MaxTraceRegR, _MaxTraceRegF, HeadVars, _ArgModes,
         Goal, _NeedGoalRep, _InstMap,
         _TraceSlotInfo, ForceProcIdLayout, VarSet, _VarTypes,
-        InternalMap, MaybeTableIoDecl, _NeedsAllNames, _MaybeDeepProfInfo),
+        InternalMap, MaybeTableIoDecl, _NeedsAllNames, _OISUKindFors,
+        _MaybeDeepProfInfo),
     map.to_assoc_list(InternalMap, Internals),
     compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap),
 
@@ -437,7 +471,7 @@ construct_proc_and_label_layouts_for_proc(Params, PLI, !LabelTables,
     list.foldl(update_label_table, InternalLabelInfos, !LabelTables),
     construct_proc_layout(Params, PLI, ProcLayoutName, Kind,
         InternalLabelInfos, VarNumMap, !.LabelLayoutInfo,
-        !StringTable, !StaticCellInfo, !ProcLayoutInfo).
+        !StringTable, !TypeTable, !StaticCellInfo, !ProcLayoutInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -545,20 +579,22 @@ context_is_valid(Context) :-
     %
 :- pred construct_proc_layout(stack_layout_params::in, proc_layout_info::in,
     layout_name::in, proc_layout_kind::in, list(internal_label_info)::in,
-    var_num_map::in,
-    label_layouts_info::in, string_table::in, string_table::out,
+    var_num_map::in, label_layouts_info::in,
+    string_table_info::in, string_table_info::out,
+    type_table_info::in, type_table_info::out,
     static_cell_info::in, static_cell_info::out,
     proc_layouts_info::in, proc_layouts_info::out) is det.
 
-construct_proc_layout(Params, PLI, ProcLayoutName, Kind,
-        InternalLabelInfos, VarNumMap, LabelLayoutInfo,
-        !StringTable, !StaticCellInfo, !ProcLayoutInfo) :-
+construct_proc_layout(Params, PLI, ProcLayoutName, Kind, InternalLabelInfos,
+        VarNumMap, LabelLayoutInfo, !StringTable, !TypeTable,
+        !StaticCellInfo, !ProcLayoutInfo) :-
     PLI = proc_layout_info(RttiProcLabel, EntryLabel,
         Detism, StackSlots, SuccipLoc, EvalMethod, EffTraceLevel,
         MaybeCallLabel, MaxTraceRegR, MaxTraceRegF, HeadVars, ArgModes,
         Goal, NeedGoalRep, InstMap,
         TraceSlotInfo, _ForceProcIdLayout, VarSet, VarTypes,
-        InternalMap, MaybeTableInfo, NeedsAllNames, MaybeDeepProfInfo),
+        InternalMap, MaybeTableInfo, NeedsAllNames, OISUKindFors,
+        MaybeDeepProfInfo),
     construct_proc_traversal(Params, EntryLabel, Detism, StackSlots,
         SuccipLoc, Traversal),
     PredId = RttiProcLabel ^ rpl_pred_id,
@@ -600,6 +636,7 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind,
             MaybeExecTraceSlotName = no
         ),
         ModuleInfo = Params ^ slp_module_info,
+        module_info_get_name(ModuleInfo, ModuleName),
         DeepProfiling = Params ^ slp_deep_profiling,
         (
             ( NeedGoalRep = trace_needs_body_rep
@@ -608,14 +645,22 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind,
         ->
             (
                 DeepProfiling = yes,
-                IncludeVarTable = include_variable_table
+                IncludeVarNameTable = include_var_name_table,
+                (
+                    OISUKindFors = [],
+                    IncludeVarTypes = do_not_include_var_types
+                ;
+                    OISUKindFors = [_ | _],
+                    IncludeVarTypes = include_var_types
+                )
             ;
                 DeepProfiling = no,
-                IncludeVarTable = do_not_include_variable_table
+                IncludeVarNameTable = do_not_include_var_name_table,
+                IncludeVarTypes = do_not_include_var_types
             ),
 
             % When the program is compiled with deep profiling, use
-            % the version of the procedure saved before the deep profiling
+            % the version of the procedure saved *before* the deep profiling
             % transformation as the program representation.
             (
                 MaybeDeepProfInfo = yes(DeepProfInfo),
@@ -643,8 +688,8 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind,
             ),
             represent_proc_as_bytecodes(BytecodeHeadVars, BytecodeBody,
                 BytecodeInstMap, BytecodeVarTypes, BytecodeVarNumMap,
-                ModuleInfo, IncludeVarTable, BytecodeDetism, !StringTable,
-                ProcBytes),
+                ModuleInfo, IncludeVarNameTable, IncludeVarTypes,
+                BytecodeDetism, !StringTable, !TypeTable, ProcBytes),
 
             % Calling find_sequence on ProcBytes is very unlikely to find
             % any matching sequences, though there is no reason why we
@@ -678,11 +723,9 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind,
             ),
             MaybeProcBytesSlotName = no
         ),
-        module_info_get_name(ModuleInfo, ModuleName),
-        ModuleCommonLayoutName = module_common_layout(ModuleName),
+        ModuleLayoutName = module_layout(ModuleName),
         More = proc_id_and_more(MaybeProcStaticSlotName,
-            MaybeExecTraceSlotName, MaybeProcBytesSlotName,
-            ModuleCommonLayoutName)
+            MaybeExecTraceSlotName, MaybeProcBytesSlotName, ModuleLayoutName)
     ),
 
     ProcLayout = proc_layout_data(RttiProcLabel, Traversal, More),
@@ -872,7 +915,7 @@ init_proc_statics_info = Info :-
     maybe(proc_layout_table_info)::in, bool::in, var_num_map::in,
     list(internal_label_info)::in, layout_slot_name::out,
     label_layouts_info::in,
-    string_table::in, string_table::out,
+    string_table_info::in, string_table_info::out,
     exec_traces_info::in, exec_traces_info::out) is det.
 
 construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
@@ -1167,7 +1210,7 @@ encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes, !:Flags) :-
 
 :- pred construct_var_name_vector(var_num_map::in,
     bool::in, int::out, list(int)::out,
-    string_table::in, string_table::out) is det.
+    string_table_info::in, string_table_info::out) is det.
 
 construct_var_name_vector(VarNumMap, NeedsAllNames, MaxVarNum, Offsets,
         !StringTable) :-
@@ -1198,7 +1241,7 @@ var_has_name(_VarNum - VarName) :-
 
 :- pred construct_var_name_rvals(assoc_list(int, string)::in,
     int::in, int::in, int::out, list(int)::out,
-    string_table::in, string_table::out) is det.
+    string_table_info::in, string_table_info::out) is det.
 
 construct_var_name_rvals([], _CurNum, MaxNum, MaxNum, [], !StringTable).
 construct_var_name_rvals(VarNamesHeadTail @ [Var - Name | VarNamesTail],
@@ -1353,7 +1396,7 @@ init_exec_traces_info = Info :-
 :- pred construct_internal_layout(stack_layout_params::in,
     proc_label::in, layout_name::in, var_num_map::in,
     pair(int, internal_layout_info)::in, internal_label_info::out,
-    string_table::in, string_table::out,
+    string_table_info::in, string_table_info::out,
     static_cell_info::in, static_cell_info::out,
     label_layouts_info::in, label_layouts_info::out) is det.
 
@@ -1367,7 +1410,7 @@ construct_internal_layout(Params, ProcLabel, ProcLayoutName, VarNumMap,
         map.init(TraceTypeVarMap),
         MaybeUserInfo = no
     ;
-        Trace = yes(trace_port_layout_info(_,_,_,_, MaybeUserInfo,
+        Trace = yes(trace_port_layout_info(_, _, _, _, MaybeUserInfo,
             TraceLayout)),
         TraceLayout = layout_label_info(TraceLiveVarSet, TraceTypeVarMap)
     ),
@@ -2573,194 +2616,6 @@ init_stack_layout_params(ModuleInfo) = Params :-
     Params = stack_layout_params(ModuleInfo, TraceLevel, TraceSuppress,
         DeepProfiling, AgcLayout, TraceLayout, ProcIdLayout, CompressArrays,
         StaticCodeAddr, UnboxedFloat, RttiLineNumbers).
-
-%---------------------------------------------------------------------------%
-%
-% The string_table data structure.
-%
-
-:- type string_table
-    --->    string_table(
-                % Maps strings to their offsets.
-                map(string, int),
-
-                % The list of strings so far, in reverse order.
-                list(string),
-
-                % The next available offset.
-                int
-            ).
-
-:- func init_string_table = string_table.
-
-init_string_table = !:StringTable :-
-    map.init(StringMap0),
-    !:StringTable = string_table(StringMap0, [], 0),
-    lookup_string_in_table("", _, !StringTable),
-    lookup_string_in_table("<too many variables>", _, !StringTable).
-
-lookup_string_in_table(String, StringCode, !StringTable) :-
-    % The encoding used here is decoded by MR_name_in_string_table
-    % in runtime/mercury_stack_layout.c. The code here and there
-    % must be kept in sync.
-    (
-        is_var_name_in_special_form(String, KindCode, MaybeBaseName, N),
-        N < int.unchecked_left_shift(1, 10),
-        (
-            MaybeBaseName = yes(BaseName),
-            lookup_raw_string_in_table(BaseName, MaybeOffset, !StringTable),
-            MaybeOffset = yes(Offset),
-            Offset < int.unchecked_left_shift(1, 16)
-        ;
-            MaybeBaseName = no,
-            Offset = 0
-        )
-    ->
-        % | ... offset ... | ... N ... | Kind | 1 |
-        % special form indication: 1 bit:   bit 0
-        % kind indication:         5 bits:  bits 1-5
-        % N:                       10 bits: bits 6-15
-        % Offset:                  16 bits: bits 16-31
-        StringCode = 1 \/
-            int.unchecked_left_shift(KindCode, 1) \/
-            int.unchecked_left_shift(N, 6) \/
-            int.unchecked_left_shift(Offset, 16)
-    ;
-        lookup_raw_string_in_table(String, MaybeOffset, !StringTable),
-        (
-            MaybeOffset = yes(Offset)
-        ;
-            MaybeOffset = no,
-            % Says that the name of the variable is "TOO_MANY_VARIABLES".
-            Offset = 1
-        ),
-        StringCode = int.unchecked_left_shift(Offset, 1)
-    ).
-
-:- pred is_var_name_in_special_form(string::in,
-    int::out, maybe(string)::out, int::out) is semidet.
-
-is_var_name_in_special_form(String, KindCode, MaybeBaseName, N) :-
-    % state_var.m constructs variable names that always contain
-    % the state var name, and usually but not always a numeric suffix.
-    % The numeric suffic may be zero or positive. We could represent
-    % the lack of a suffix using a negative number, but mixing unsigned
-    % and signed fields in a single word is tricky, especially since
-    % the size of the variable name descriptor word we generate (32 bits)
-    % may or may not be the same as the word size of the compiler.
-    % Instead, we simply add one to any actual suffix values, and use
-    % zero to represent the absence of a numeric suffix.
-
-    % polymorphism.m adds a numeric suffix but no type name
-    % to type_ctor_infos and type_infos.
-
-    % polymorphism.m adds a class id but no numeric suffix to
-    % base_typeclass_infos and typeclass_infos. Since the usual string table
-    % already does a good enough job for these, the code for handling them
-    % specially is commented out.
-
-    ( string.remove_prefix("STATE_VARIABLE_", String, NoPrefix) ->
-        KindCode = 0,
-        string.to_char_list(NoPrefix, NoPrefixChars),
-        ( find_number_suffix(NoPrefixChars, BaseNameChars, Num) ->
-            string.from_char_list(BaseNameChars, BaseName),
-            MaybeBaseName = yes(BaseName),
-            N = Num + 1
-        ;
-            MaybeBaseName = yes(NoPrefix),
-            N = 0
-        )
-    ; string.remove_prefix("TypeCtorInfo_", String, NoPrefix) ->
-        ( string.to_int(NoPrefix, Num) ->
-            KindCode = 1,
-            MaybeBaseName = no,
-            N = Num
-        ;
-            fail
-        )
-    ; string.remove_prefix("TypeInfo_", String, NoPrefix) ->
-        ( string.to_int(NoPrefix, Num) ->
-            KindCode = 2,
-            MaybeBaseName = no,
-            N = Num
-        ;
-            fail
-        )
-%   ; string.remove_prefix("BaseTypeClassInfo_for_", String, NoPrefix) ->
-%       KindCode = 3,
-%       MaybeBaseName = yes(NoPrefix),
-%       N = 0
-%   ; string.remove_prefix("TypeClassInfo_for_", String, NoPrefix) ->
-%       KindCode = 4,
-%       MaybeBaseName = yes(NoPrefix),
-%       N = 0
-    ; string.remove_prefix("PolyConst", String, NoPrefix) ->
-        ( string.to_int(NoPrefix, Num) ->
-            KindCode = 5,
-            MaybeBaseName = no,
-            N = Num
-        ;
-            fail
-        )
-    ;
-        fail
-    ).
-
-    % Given e.g. "Info_15" as input, we return "Info" as BeforeNum
-    % and 15 as Num.
-    %
-:- pred find_number_suffix(list(char)::in, list(char)::out, int::out)
-    is semidet.
-
-find_number_suffix(String, BeforeNum, Num) :-
-    list.reverse(String, RevString),
-    rev_find_number_suffix(RevString, 0, Num, 1, Scale, RevRest),
-    Scale > 1,
-    list.reverse(RevRest, BeforeNum).
-
-:- pred rev_find_number_suffix(list(char)::in, int::in, int::out,
-    int::in, int::out, list(char)::out) is semidet.
-
-rev_find_number_suffix([RevHead | RevTail], !Num, !Scale, RevRest) :-
-    ( char.digit_to_int(RevHead, Digit) ->
-        !:Num = !.Num + (!.Scale * Digit),
-        !:Scale = !.Scale * 10,
-        rev_find_number_suffix(RevTail, !Num, !Scale, RevRest)
-    ; RevHead = '_' ->
-        RevRest = RevTail
-    ;
-        fail
-    ).
-
-:- pred lookup_raw_string_in_table(string::in, maybe(int)::out,
-    string_table::in, string_table::out) is det.
-
-lookup_raw_string_in_table(String, MaybeOffset, !StringTable) :-
-    !.StringTable = string_table(TableMap0, TableList0, TableOffset0),
-    ( map.search(TableMap0, String, OldOffset) ->
-        MaybeOffset = yes(OldOffset)
-    ;
-        Length = string.count_utf8_code_units(String),
-        TableOffset = TableOffset0 + Length + 1,
-        % We use a 32 bit unsigned integer to represent the offset.
-        % Computing that limit exactly without getting an overflow
-        % or using unportable code isn't trivial. The code below
-        % is overly conservative, requiring the offset to be
-        % representable in only 30 bits. The over-conservatism
-        % should not be an issue; the machine will run out of
-        % virtual memory before the test below fails, for the
-        % next several years anyway. (Compiling a module that has
-        % a 1 Gb string table will require several tens of Gb
-        % of other compiler structures.)
-        TableOffset < (1 << ((4 * byte_bits) - 2))
-    ->
-        MaybeOffset = yes(TableOffset0),
-        map.det_insert(String, TableOffset0, TableMap0, TableMap),
-        TableList = [String | TableList0],
-        !:StringTable = string_table(TableMap, TableList, TableOffset)
-    ;
-        MaybeOffset = no
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.stack_layout.

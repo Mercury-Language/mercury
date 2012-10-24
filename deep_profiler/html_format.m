@@ -192,8 +192,8 @@ item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
         ->
             HTML = empty
         ;
-            list_to_html(FormatInfo, !StyleControlMap, Class, MaybeTitle, Items,
-                TableHTML),
+            list_to_html(FormatInfo, !StyleControlMap, Class, MaybeTitle,
+                Items, TableHTML),
             HTML = wrap_tags(StartTag, EndTag, TableHTML)
         )
     ;
@@ -1018,7 +1018,8 @@ replace_special_chars(SpecialCharTable, String0) = String :-
     string.foldr(replace_special_char_2(SpecialCharTable), String0, [], Chars),
     string.from_char_list(Chars, String).
 
-:- pred replace_special_char_2(pred(char, string)::in(pred(in, out) is semidet),
+:- pred replace_special_char_2(
+    pred(char, string)::in(pred(in, out) is semidet),
     char::in, list(char)::in, list(char)::out) is det.
 
 replace_special_char_2(SpecialCharTable, Char, !Acc) :-

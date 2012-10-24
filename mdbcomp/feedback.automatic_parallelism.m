@@ -146,7 +146,7 @@
     --->    candidate_par_conjunctions_proc(
                 % A variable name table for the variables that have
                 % sensible names.
-                cpcp_var_table  :: var_table,
+                cpcp_var_table  :: var_name_table,
 
                 % Each push represents a program transformation.
                 % Most of the time, we expect the list to be empty,

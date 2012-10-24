@@ -304,8 +304,8 @@ test_procrep_static_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
 
 test_procrep_dynamic_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
     ( Cur =< Max ->
-        try_exec(deep_cmd_dynamic_procrep_coverage(proc_dynamic_ptr(Cur)), Pref,
-            Deep, HTML, !IO),
+        try_exec(deep_cmd_dynamic_procrep_coverage(proc_dynamic_ptr(Cur)),
+            Pref, Deep, HTML, !IO),
         write_test_html(Options, "procrep_static_coverage", Cur, HTML, !IO),
         test_procrep_dynamic_coverages(Cur + 1, Max, Pref, Deep, Options, !IO)
     ;

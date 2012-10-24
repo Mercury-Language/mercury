@@ -65,6 +65,9 @@
     ;       report_module_getter_setters(
                 maybe_error(module_getter_setters_report)
             )
+    ;       report_module_rep(
+                maybe_error(module_rep_report)
+            )
     ;       report_top_procs(
                 maybe_error(top_procs_report)
             )
@@ -134,10 +137,10 @@
                 cr_ancestor_call_sites      :: list(
                                                 perf_row_data(ancestor_desc)),
 
-                % Reports for every procedure in the clique.  The first
+                % Reports for every procedure in the clique. The first
                 % procedure in the list is the entry procedure (if the parent
                 % clique had a valid CSD.) and that CSD was found in the
-                % clique.  TODO: we might want to express this within this
+                % clique. TODO: we might want to express this within this
                 % type.
                 cr_clique_procs             :: list(clique_proc_report)
             ).
@@ -357,10 +360,17 @@
 
 :- type module_getter_setters_report
     --->    module_getter_setters_report(
-                % Summary information about all the procedures in one module
-                % of the program.
+                % Summary information about all the getter/setter procedures
+                % in one module of the program.
                 mgsr_module_name            :: string,
                 mgsr_procs                  :: gs_ds_map
+            ).
+
+:- type module_rep_report
+    --->    module_rep_report(
+                % A representation of one module of the program.
+                mrr_module_name             :: string,
+                mrr_report                  :: string
             ).
 
 :- type top_procs_report

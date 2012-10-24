@@ -13,7 +13,7 @@
 % representing Mercury programs.
 %
 % This data structure specifies basically the same information as is contained
-% in the source code, but in a parse tree rather than a flat file.  This
+% in the source code, but in a parse tree rather than a flat file. This
 % module defines the parts of the parse tree that are needed by the various
 % compiler backends; parts of the parse tree that are not needed by the
 % backends are contained in prog_item.m.
@@ -108,7 +108,7 @@ less_pure(P1, P2) :-
     \+ ( worst_purity(P1, P2) = P2).
 
     % worst_purity/3 could be written more compactly, but this definition
-    % guarantees us a determinism error if we add to type `purity'.  We also
+    % guarantees us a determinism error if we add to type `purity'. We also
     % define less_pure/2 in terms of worst_purity/3 rather than the other way
     % around for the same reason.
     %
@@ -539,9 +539,9 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 
 :- type generic_arg_size_info(ErrorInfo)
     --->    finite(int, list(bool))
-            % The termination constant is a finite integer.  The list of bool
+            % The termination constant is a finite integer. The list of bool
             % has a 1:1 correspondence with the input arguments of the
-            % procedure.  It stores whether the argument contributes to the
+            % procedure. It stores whether the argument contributes to the
             % size of the output arguments.
 
     ;       infinite(ErrorInfo).
@@ -635,7 +635,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 :- type structure_sharing_pair == pair(datastruct).
 
     % A datastructure is a concept that designates a particular subterm of the
-    % term to which a particular variable may be bound.  The selector is
+    % term to which a particular variable may be bound. The selector is
     % normalized.
     %
 :- type datastruct
@@ -1079,7 +1079,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 
     % If thread_safe execution is enabled, then we need to put a mutex
     % around the foreign code for each foreign_proc, unless it is declared
-    % to be thread_safe.  If a piece of foreign code is declared to be
+    % to be thread_safe. If a piece of foreign code is declared to be
     % maybe_thread_safe whether we put the mutex around the foreign code
     % depends upon the `--maybe-thread-safe' compiler flag.
     %
@@ -1167,7 +1167,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 
     ;       default_exception_behaviour.
             % If the foreign_proc is erroneous then mark it as throwing an
-            % exception.  Otherwise mark it as throwing an exception if it
+            % exception. Otherwise mark it as throwing an exception if it
             % makes calls back to Mercury and not throwing an exception
             % otherwise.
 
@@ -1800,10 +1800,10 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       partial_word_shifted(int, int). % shift, mask
 
     % unify_compare gives the user-defined unification and/or comparison
-    % predicates for a noncanonical type, if they are known.  The value
+    % predicates for a noncanonical type, if they are known. The value
     % `abstract_noncanonical_type' represents a type whose definition uses
     % the syntax `where type_is_abstract_noncanonical' and has been read
-    % from a .int2 file.  This means we know that the type has a
+    % from a .int2 file. This means we know that the type has a
     % noncanonical representation, but we don't know what the
     % unification/comparison predicates are.
     %
@@ -1850,7 +1850,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % to initialise solver variables of this type.
 
     % An equality_pred specifies the name of a user-defined predicate
-    % used for equality on a type.  See the chapter on them in the
+    % used for equality on a type. See the chapter on them in the
     % Mercury Language Reference Manual.
     %
 :- type equality_pred   ==  sym_name.
@@ -1864,7 +1864,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- type type_param  ==  tvar.
 
     % Use type_util.type_to_ctor_and_args to convert a type to a qualified
-    % type_ctor and a list of arguments.  Use prog_type.construct_type to
+    % type_ctor and a list of arguments. Use prog_type.construct_type to
     % construct a type from a type_ctor and a list of arguments.
     %
 :- type mer_type
@@ -1896,9 +1896,9 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             )
 
     ;       apply_n_type(tvar, list(mer_type), kind)
-            % An apply/N expression.  `apply_n(V, [T1, ...], K)'
-            % would be the representation of type `V(T1, ...)'
-            % with kind K.  The list must be non-empty.
+            % An apply/N expression. `apply_n(V, [T1, ...], K)'
+            % would be the representation of type `V(T1, ...)' with kind K.
+            % The list must be non-empty.
 
     ;       kinded_type(mer_type, kind).
             % A type expression with an explicit kind annotation.
@@ -2327,9 +2327,9 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     %   `ground(shared, higher_order(PredInstInfo))' or
     %   `any(shared, higher_order(PredInstInfo))'
     % where the PredInstInfo contains the extra modes and the determinism
-    % for the predicate.  The higher-order predicate term itself cannot be
-    % free.  If it contains non-local variables with inst `any' then it
-    % must be in the latter form, otherwise it may be in the former.
+    % for the predicate. The higher-order predicate term itself cannot be free.
+    % If it contains non-local variables with inst `any' then it must be
+    % in the latter form, otherwise it may be in the former.
     %
     % Note that calling/applying a higher-order value that has the `any'
     % inst may bind that variable further, hence these values cannot safely
@@ -2427,7 +2427,7 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     % the unification would be `det').
     % Any inst unification which is associated with some code that
     % will actually examine the contents of the variables in question
-    % must be "real".  Inst unifications that are not associated with
+    % must be "real". Inst unifications that are not associated with
     % some real code that examines the variables' values are "fake".
     % "Fake" inst unifications are used for procedure calls in implied
     % modes, where the final inst of the var must be computed by

@@ -47,18 +47,18 @@
 
 :- func get_proc_name(proc_label) = string.
 
-    % find_initial_version_arg_num(Proc, OutputArgNum, InputArgNum).
+    % find_initial_version_arg_num(Proc, OutputArgNum, InputArgNum):
     %
     % Given a procedure and an output argument number of that procedure,
     % find an input argument which has the same name as the output argument,
-    % expect for a numerical suffix and possibly an underscore.  The output
+    % expect for a numerical suffix and possibly an underscore. The output
     % argument name needn't have a numerical suffix, but if it does, then the
     % input argument's numerical suffix should be less that the numerical
-    % suffix of the output argument.  This procedure is used as a heuristic to
+    % suffix of the output argument. This procedure is used as a heuristic to
     % determine when it is worth checking if a subterm appearing in the output
-    % argument also appears in the same position in the input argument.  The
-    % heuristic is used by the subterm dependency tracking algorithm to help
-    % speed up the search.
+    % argument also appears in the same position in the input argument.
+    % The heuristic is used by the subterm dependency tracking algorithm
+    % to help speed up the search.
     % Argument numbers start at one.
     % This procedure is implemented in C to avoid having to allocate memory
     % to import non-word-aligned strings into Mercury code.
@@ -77,18 +77,20 @@
 :- type string_table
     --->    string_table(
                 string_table_chars,
-                            % The characters of the string table, which
-                            % may include null characters.
-                int         % The number of characters in the string table.
+                % The characters of the string table, which may include
+                % null characters.
+
+                int
+                % The number of characters in the string table.
             ).
 
-:- type module_common_layout.
+:- type module_layout.
 :- type string_table_chars.
 
-:- pred containing_module_common_layout(proc_layout::in,
-    module_common_layout::out) is semidet.
+:- pred containing_module_layout(proc_layout::in, module_layout::out)
+    is semidet.
 
-:- func module_common_string_table(module_common_layout) = string_table.
+:- func module_string_table(module_layout) = string_table.
 
 :- func lookup_string_table(string_table, int) = string.
 
@@ -96,7 +98,7 @@
 
 :- type bytecode
     --->    bytecode(
-                bytecode_bytes,     % The bytes of the bytecode.`
+                bytecode_bytes,     % The bytes of the bytecode.
                 int                 % The number of bytes in the bytecode.
             ).
 
@@ -166,6 +168,27 @@
     %
 :- pred read_string_table(bytecode::in, string_table::out,
     int::in, int::out) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+:- pred encode_byte(int::in, list(int)::out) is semidet.
+:- pred encode_byte_det(int::in, list(int)::out) is det.
+:- func encode_byte_func(int) = list(int).
+
+:- pred encode_short(int::in, list(int)::out) is semidet.
+:- pred encode_short_det(int::in, list(int)::out) is det.
+:- func encode_short_func(int) = list(int).
+
+:- pred encode_int32(int::in, list(int)::out) is semidet.
+:- pred encode_int32_det(int::in, list(int)::out) is det.
+:- func encode_int32_func(int) = list(int).
+
+:- pred encode_num(int::in, list(int)::out) is semidet.
+:- pred encode_num_det(int::in, list(int)::out) is det.
+:- func encode_num_func(int) = list(int).
+
+:- pred encode_len_string(string::in, list(int)::out) is det.
+:- func encode_len_string_func(string) = list(int).
 
 %-----------------------------------------------------------------------------%
 
@@ -584,13 +607,12 @@ proc_bytecode_bytes(_) = dummy_bytecode_bytes.
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_type("C", module_common_layout,
-    "const MR_ModuleCommonLayout *",
+:- pragma foreign_type("C", module_layout, "const MR_ModuleLayout *",
     [can_pass_as_mercury_type, stable]).
     % The following definitions are only stubs.
-:- pragma foreign_type("C#", module_common_layout, "object", []).
-:- pragma foreign_type("Java", module_common_layout, "java.lang.Object", []).
-:- pragma foreign_type("Erlang", module_common_layout, "").
+:- pragma foreign_type("C#", module_layout, "object", []).
+:- pragma foreign_type("Java", module_layout, "java.lang.Object", []).
+:- pragma foreign_type("Erlang", module_layout, "").
 
 :- pragma foreign_type("C", string_table_chars, "MR_ConstString",
     [can_pass_as_mercury_type, stable]).
@@ -600,31 +622,31 @@ proc_bytecode_bytes(_) = dummy_bytecode_bytes.
 :- pragma foreign_type("Erlang", string_table_chars, "").
 
 :- pragma foreign_proc("C",
-    containing_module_common_layout(ProcLayout::in, ModuleCommonLayout::out),
+    containing_module_layout(ProcLayout::in, ModuleLayout::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     if (MR_PROC_LAYOUT_HAS_THIRD_GROUP(ProcLayout)) {
-        ModuleCommonLayout = ProcLayout->MR_sle_module_common_layout;
+        ModuleLayout = ProcLayout->MR_sle_module_layout;
         SUCCESS_INDICATOR = MR_TRUE;
     } else {
         SUCCESS_INDICATOR = MR_FALSE;
     }
 ").
 
-module_common_string_table(ModuleCommonLayout) = StringTable :-
-    module_string_table_components(ModuleCommonLayout, StringTableChars, Size),
+module_string_table(ModuleLayout) = StringTable :-
+    module_string_table_components(ModuleLayout, StringTableChars, Size),
     StringTable = string_table(StringTableChars, Size).
 
-:- pred module_string_table_components(module_common_layout::in,
+:- pred module_string_table_components(module_layout::in,
     string_table_chars::out, int::out) is det.
 
 :- pragma foreign_proc("C",
-    module_string_table_components(ModuleCommonLayout::in,
+    module_string_table_components(ModuleLayout::in,
         StringTableChars::out, Size::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    StringTableChars = ModuleCommonLayout->MR_mlc_string_table;
-    Size = ModuleCommonLayout->MR_mlc_string_table_size;
+    StringTableChars = ModuleLayout->MR_ml_string_table;
+    Size = ModuleLayout->MR_ml_string_table_size;
 ").
 
 lookup_string_table(StringTable, NameCode) = Str :-
@@ -780,6 +802,95 @@ read_string_table(ByteCode, StringTable, !Pos) :-
 
     StringTableChars = (MR_ConstString) buf;
 ").
+
+%-----------------------------------------------------------------------------%
+
+encode_byte(Byte, [Byte]) :-
+    Byte >= 0,
+    Byte < 128.
+
+encode_byte_det(Byte, Bytes) :-
+    ( encode_byte(Byte, BytesPrime) ->
+        Bytes = BytesPrime
+    ;
+        unexpected($module, $pred, "encode_byte failed")
+    ).
+
+encode_byte_func(Byte) = Bytes :-
+    encode_byte_det(Byte, Bytes).
+
+encode_short(Short, [Byte1, Byte2]) :-
+    Short >= 0,
+    Byte2 = Short /\ 255,
+    Byte1 = Short / 256,
+    Byte1 < 128.
+
+encode_short_det(Short, Bytes) :-
+    ( encode_short(Short, BytesPrime) ->
+        Bytes = BytesPrime
+    ;
+        unexpected($module, $pred, "encode_short failed")
+    ).
+
+encode_short_func(Short) = Bytes :-
+    encode_short_det(Short, Bytes).
+
+encode_int32(Int32, [Byte1, Byte2, Byte3, Byte4]) :-
+    Int32 >= 0,
+    Byte4 = Int32 /\ 255,
+    Bytes123 = Int32 / 256,
+    Byte3 = Bytes123 /\ 255,
+    Bytes12 = Bytes123 / 256,
+    Byte2 = Bytes12 /\ 255,
+    Byte1 = Bytes12 / 256,
+    Byte1 < 128.
+
+encode_int32_det(Int32, Bytes) :-
+    ( encode_int32(Int32, BytesPrime) ->
+        Bytes = BytesPrime
+    ;
+        unexpected($module, $pred, "encode_int32 failed")
+    ).
+
+encode_int32_func(Int32) = Bytes :-
+    encode_int32_det(Int32, Bytes).
+
+encode_num(Num, Bytes) :-
+    Num >= 0,
+    LastByte = Num /\ 127,
+    NextNum = Num / 128,
+    encode_num_2(NextNum, [LastByte], Bytes).
+
+:- pred encode_num_2(int::in, list(int)::in, list(int)::out) is det.
+
+encode_num_2(Num, RestBytes, Bytes) :-
+    ( Num = 0 ->
+        Bytes = RestBytes
+    ;
+        CurByte = (Num /\ 127) \/ 128,
+        NextNum = Num / 128,
+        encode_num_2(NextNum, [CurByte | RestBytes], Bytes)
+    ).
+
+encode_num_det(Num, Bytes) :-
+    ( encode_num(Num, BytesPrime) ->
+        Bytes = BytesPrime
+    ;
+        unexpected($module, $pred, "encode_num failed")
+    ).
+
+encode_num_func(Num) = Bytes :-
+    encode_num_det(Num, Bytes).
+
+encode_len_string(String, Bytes) :-
+    string.length(String, Length),
+    encode_num_det(Length, LengthBytes),
+    string.to_char_list(String, Chars),
+    CharBytes = list.map(char.to_int, Chars),
+    Bytes = LengthBytes ++ CharBytes.
+
+encode_len_string_func(String) = Bytes :-
+    encode_len_string(String, Bytes).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.rtti_access.

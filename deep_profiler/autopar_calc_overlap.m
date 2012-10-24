@@ -82,7 +82,8 @@ calculate_parallel_cost(Info, !Parallelisation, CostData) :-
     Overlap0 = peo_empty_conjunct,
 
     SharedVars = ip_calc_sharedvars_set(!.Parallelisation),
-    CostData0 = parallelisation_cost_data(SharedVars, Overlap0, Metrics0, init),
+    CostData0 = parallelisation_cost_data(SharedVars, Overlap0, Metrics0,
+        init),
     NumMiddleGoals = ip_get_num_goals_middle(!.Parallelisation),
     list.foldl3(calculate_parallel_cost_step(Info, NumMiddleGoals), ParConj,
         1, _, 0, _, CostData0, CostData),

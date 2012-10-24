@@ -157,6 +157,10 @@ typedef enum {
 	MR_next_proc
 } MR_MoreProcs;
 
+/*
+** The definition of this type should be kept in sync with the code of
+** the string_proclabel_kind_* functions in compiler/prog_rep.m.
+*/
 typedef enum {
 	MR_proclabel_user_predicate,
 	MR_proclabel_user_function,
@@ -449,7 +453,7 @@ extern	void	MR_write_out_uci_proc_static(FILE *deep_fp, FILE *procrep_fp,
 extern	void	MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
 			const MR_ProcLayout *proc_layout);
 extern	void	MR_write_out_module_proc_reps_start(FILE *procrep_fp,
-			const MR_ModuleCommonLayout *module_common);
+			const MR_ModuleLayout *module_layout);
 extern	void	MR_write_out_module_proc_reps_end(FILE *procrep_fp);
 extern	void	MR_write_out_profiling_tree(void);
 
