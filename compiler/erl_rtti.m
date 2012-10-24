@@ -332,7 +332,8 @@ erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcLabel, WrapperFun,
     erl_gen_arg_list_arg_modes(ModuleInfo, no_opt_dummy_args,
         ExtraVarsWs, ArgTypes, ArgModes,
         WrapperInputVarsPlusExtras, WrapperOutputVars),
-    WrapperInputVars = list.delete_elems(WrapperInputVarsPlusExtras, ExtraVars),
+    WrapperInputVars =
+        list.delete_elems(WrapperInputVarsPlusExtras, ExtraVars),
 
     determinism_to_code_model(Detism, CodeModel),
     WrapperOutputVarsExprs = exprs_from_vars(WrapperOutputVars),
@@ -561,7 +562,8 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
         gen_init_special_pred(ModuleInfo,
             CompareProcLabel, CompareExpr, !VarSet),
 
-        erlang_type_ctor_details(ModuleInfo, Details, ELDSDetails0, RttiDefns0),
+        erlang_type_ctor_details(ModuleInfo, Details, ELDSDetails0,
+            RttiDefns0),
         reduce_list_term_complexity(ELDSDetails0, ELDSDetails,
             [], RevAssignments, !VarSet),
 
@@ -832,7 +834,8 @@ rtti_to_elds_expr(MI, Term, ELDS, !Defns) :-
     ).
 
 :- pred convert_arg_to_elds_expr(module_info::in, T::in, int::in,
-    elds_expr::out, list(elds_rtti_defn)::in, list(elds_rtti_defn)::out) is det.
+    elds_expr::out, list(elds_rtti_defn)::in, list(elds_rtti_defn)::out)
+    is det.
 
 convert_arg_to_elds_expr(MI, Term, Index, ELDS, !Defns) :-
     ( arg(Term, do_not_allow, Index, Arg) ->

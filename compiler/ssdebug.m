@@ -251,7 +251,8 @@ ssdebug_transform_module(!ModuleInfo, !IO) :-
             !ModuleInfo)
     ).
 
-:- pred module_info_ssdb_trace_level(module_info::in, ssdb_trace_level::out) is det.
+:- pred module_info_ssdb_trace_level(module_info::in, ssdb_trace_level::out)
+    is det.
 
 module_info_ssdb_trace_level(ModuleInfo, SSTraceLevel) :-
     module_info_get_globals(ModuleInfo, Globals),

@@ -354,7 +354,7 @@ term_traverse_abstract_goal(Info, Goal, !Polyhedron) :-
         post_process_abstract_goal(Locals, Info, Poly, !Polyhedron)
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred post_process_abstract_goal(size_vars::in, fixpoint_info::in,
     polyhedron::in, polyhedron::in, polyhedron::out) is det.
@@ -368,7 +368,7 @@ post_process_abstract_goal(Locals, Info, GoalPolyhedron0, !Polyhedron) :-
     ),
     polyhedron.intersection(GoalPolyhedron, !Polyhedron).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Predicates for handling disjunctions.
 %
@@ -445,7 +445,7 @@ pairwise_map_2(Op, [X, Y | Rest], !Acc) :-
     !:Acc = [Op(X, Y) | !.Acc],
     pairwise_map_2(Op, Rest, !Acc).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Fixpoint test.
 %

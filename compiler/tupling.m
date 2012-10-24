@@ -1593,9 +1593,9 @@ build_insert_map(CellVar, FieldVars, IntervalInfo, InsertMap) :-
     map.foldl(build_insert_map_2(CellVar, FieldVars, FieldVarsSet),
         IntervalInfo ^ ii_anchor_follow_map, map.init, InsertMap).
 
-:- pred build_insert_map_2(prog_var::in, list(prog_var)::in, set_of_progvar::in,
-    anchor::in, anchor_follow_info::in, insert_map::in, insert_map::out)
-    is det.
+:- pred build_insert_map_2(prog_var::in, list(prog_var)::in,
+    set_of_progvar::in, anchor::in, anchor_follow_info::in,
+    insert_map::in, insert_map::out) is det.
 
 build_insert_map_2(CellVar, FieldVars, FieldVarsSet, Anchor,
         anchor_follow_info(FollowVars, _), !InsertMap) :-

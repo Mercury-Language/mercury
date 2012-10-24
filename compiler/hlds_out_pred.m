@@ -909,7 +909,8 @@ write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
                 (
                     MaybeOldOutermost = yes(OldOutermost),
                     io.write_string(", OldOutermost is ", !IO),
-                    mercury_output_var(VarSet, AppendVarNums, OldOutermost, !IO)
+                    mercury_output_var(VarSet, AppendVarNums, OldOutermost,
+                        !IO)
                 ;
                     MaybeOldOutermost = no
                 ),

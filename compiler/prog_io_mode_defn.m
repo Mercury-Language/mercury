@@ -118,8 +118,8 @@ parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Condition,
                         [always(Pieces)])]),
                 MaybeItem = error1([Spec])
             ;
-                % Check that the inst is a valid user-defined inst, i.e. that it
-                % does not have the form of one of the builtin insts.
+                % Check that the inst is a valid user-defined inst, i.e.
+                % that it does not have the form of one of the builtin insts.
                 \+ (
                     convert_inst(no_allow_constrained_inst_var, HeadTerm,
                         UserInst),

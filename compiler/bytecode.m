@@ -769,14 +769,16 @@ output_cons_id(byte_string_const(StringVal), !IO) :-
 output_cons_id(byte_float_const(FloatVal), !IO) :-
     output_byte(3, !IO),
     output_float(FloatVal, !IO).
-output_cons_id(byte_pred_const(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
+output_cons_id(byte_pred_const(ModuleId, PredId, Arity, IsFunc, ProcId),
+        !IO) :-
     output_byte(4, !IO),
     output_module_id(ModuleId, !IO),
     output_pred_id(PredId, !IO),
     output_length(Arity, !IO),
     output_is_func(IsFunc, !IO),
     output_proc_id(ProcId, !IO).
-output_cons_id(byte_type_ctor_info_const(ModuleId, TypeName, TypeArity), !IO) :-
+output_cons_id(byte_type_ctor_info_const(ModuleId, TypeName, TypeArity),
+        !IO) :-
     output_byte(6, !IO),
     output_module_id(ModuleId, !IO),
     output_string(TypeName, !IO),

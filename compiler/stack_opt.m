@@ -199,7 +199,8 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
     globals.lookup_int_option(Globals, debug_stack_opt, DebugStackOpt),
     pred_id_to_int(PredId, PredIdInt),
     trace [io(!IO)] (
-        maybe_write_progress_message("\nbefore stack opt cell",
+        maybe_write_progress_message(
+            "\nbefore stack opt cell",
             DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO)
     ),
     optimize_live_sets(!.ModuleInfo, OptStackAlloc, !ProcInfo,
@@ -207,18 +208,21 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
     (
         Changed = yes,
         trace [io(!IO)] (
-            maybe_write_progress_message("\nafter stack opt transformation",
+            maybe_write_progress_message(
+                "\nafter stack opt transformation",
                 DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO)
         ),
         requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
         trace [io(!IO)] (
-            maybe_write_progress_message("\nafter stack opt requantify",
+            maybe_write_progress_message(
+                "\nafter stack opt requantify",
                 DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO)
         ),
         recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
             !ProcInfo, !ModuleInfo),
         trace [io(!IO)] (
-            maybe_write_progress_message("\nafter stack opt recompute instmaps",
+            maybe_write_progress_message("
+                \nafter stack opt recompute instmaps",
                 DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO)
         )
     ;

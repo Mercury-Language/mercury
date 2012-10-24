@@ -232,7 +232,8 @@ output_rtti_export_ann(ModuleInfo, ForeignExportDefn, !NeedComma, !IO) :-
 :- pred output_wrapper_init_fn_export_ann(bool::in, list(pred_proc_id)::in,
     list(pred_proc_id)::in, io::di, io::uo) is det.
 
-output_wrapper_init_fn_export_ann(AddMainWrapper, InitPreds, FinalPreds, !IO) :-
+output_wrapper_init_fn_export_ann(AddMainWrapper, InitPreds, FinalPreds,
+        !IO) :-
     (
         AddMainWrapper = yes,
         comma(!IO),

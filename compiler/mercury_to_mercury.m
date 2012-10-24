@@ -82,7 +82,8 @@
 
     % Output the specified item, followed by ".\n".
     %
-:- pred mercury_output_item(merc_out_info::in, item::in, io::di, io::uo) is det.
+:- pred mercury_output_item(merc_out_info::in, item::in, io::di, io::uo)
+    is det.
 
     % Output a `:- pred' declaration, making sure that the variable
     % number appears in variable names if the boolean argument
@@ -3084,8 +3085,8 @@ mercury_output_connected_goal(Goal, VarSet, Indent, !IO) :-
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
     goal::in, prog_varset::in, int::in, string::in, io::di, io::uo) is det.
 
-mercury_output_promise_eqv_solutions_goal(Vars, StateVars, DotSVars, ColonSVars,
-        Goal, VarSet, Indent, Keyword, !IO) :-
+mercury_output_promise_eqv_solutions_goal(Vars, StateVars,
+        DotSVars, ColonSVars, Goal, VarSet, Indent, Keyword, !IO) :-
     (
         Vars = [],
         StateVars = [],
@@ -3687,7 +3688,8 @@ mercury_output_pragma_exceptions(ExceptionsInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 
 mercury_output_pragma_trailing_info(TrailingInfo, !IO) :-
-    TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn, TrailingStatus),
+    TrailingInfo =
+        pragma_info_trailing_info(PredNameArityPFMn, TrailingStatus),
     PredNameArityPFMn = pred_name_arity_pf_mn(SymName, Arity, PredOrFunc,
         ModeNum),
     io.write_string(":- pragma trailing_info(", !IO),

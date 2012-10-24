@@ -290,15 +290,22 @@ proc_arg_vector_init(PredOrFunc, Args0) = ArgVec :-
 
 %-----------------------------------------------------------------------------%
 
-proc_arg_vector_get_instance_type_infos(V)      = V ^ pav_instance_type_infos.
-proc_arg_vector_get_instance_typeclass_infos(V) =
-    V ^ pav_instance_typeclass_infos.
-proc_arg_vector_get_univ_type_infos(V)          = V ^ pav_univ_type_infos.
-proc_arg_vector_get_exist_type_infos(V)         = V ^ pav_exist_type_infos.
-proc_arg_vector_get_univ_typeclass_infos(V)     = V ^ pav_univ_typeclass_infos.
-proc_arg_vector_get_exist_typeclass_infos(V)    = V ^ pav_exist_typeclass_infos.
-proc_arg_vector_get_user_args(V)                = V ^ pav_user_args.
-proc_arg_vector_get_maybe_ret_value(V)          = V ^ pav_maybe_ret_value.
+proc_arg_vector_get_instance_type_infos(V)
+    = V ^ pav_instance_type_infos.
+proc_arg_vector_get_instance_typeclass_infos(V)
+    = V ^ pav_instance_typeclass_infos.
+proc_arg_vector_get_univ_type_infos(V)
+    = V ^ pav_univ_type_infos.
+proc_arg_vector_get_exist_type_infos(V)
+    = V ^ pav_exist_type_infos.
+proc_arg_vector_get_univ_typeclass_infos(V)
+    = V ^ pav_univ_typeclass_infos.
+proc_arg_vector_get_exist_typeclass_infos(V)
+    = V ^ pav_exist_typeclass_infos.
+proc_arg_vector_get_user_args(V)
+    = V ^ pav_user_args.
+proc_arg_vector_get_maybe_ret_value(V)
+    = V ^ pav_maybe_ret_value.
 
 proc_arg_vector_set_instance_type_infos(ITI, !V) :-
     !V ^ pav_instance_type_infos := ITI.

@@ -181,7 +181,8 @@
     %   !PredPCConstraints):
     %
     % Add the constraint given by Constraint to the constraint system in
-    % PredPCConstraints, and associate it specifically with the given procedure.
+    % PredPCConstraints, and associate it specifically with the given
+    % procedure.
     %
 :- pred add_proc_specific_constraint(mc_varset::in, prog_context::in,
     proc_id::in, mc_constraint::in,

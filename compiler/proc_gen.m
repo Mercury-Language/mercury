@@ -1087,13 +1087,15 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 get_next_label(SkipLabel, !CI),
                 get_next_label(SkipLabelCopy, !CI),
                 PruneTraceTicketCode = from_list([
-                    llds_instr(if_val(unop(logical_not, lval(FromFullSlotLval)),
+                    llds_instr(
+                        if_val(unop(logical_not, lval(FromFullSlotLval)),
                         code_label(SkipLabel)), ""),
                     llds_instr(prune_ticket, "prune retry ticket"),
                     llds_instr(label(SkipLabel), "")
                 ]),
                 PruneTraceTicketCodeCopy = from_list([
-                    llds_instr(if_val(unop(logical_not, lval(FromFullSlotLval)),
+                    llds_instr(
+                        if_val(unop(logical_not, lval(FromFullSlotLval)),
                         code_label(SkipLabelCopy)), ""),
                     llds_instr(prune_ticket, "prune retry ticket"),
                     llds_instr(label(SkipLabelCopy), "")

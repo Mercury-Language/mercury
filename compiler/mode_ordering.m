@@ -251,16 +251,19 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
                 MakeVisibleVars = set_of_var.init,
                 NeedVisibleVars = set_of_var.list_to_set([VarA, VarB])
             ),
-            ConsumingVarsList = solutions.solutions((pred(Var::out) is nondet :-
-                inst_graph.same_graph_corresponding_nodes(InstGraph,
-                    VarA, VarB, VarC, VarD),
-                ( set_of_var.contains(ProdVars, VarC) ->
-                    Var = VarD
-                ; set_of_var.contains(ProdVars, VarD) ->
-                    Var = VarC
-                ;
-                    fail
-                ))),
+            ConsumingVarsList = solutions.solutions(
+                (pred(Var::out) is nondet :-
+                    inst_graph.same_graph_corresponding_nodes(InstGraph,
+                        VarA, VarB, VarC, VarD),
+                    ( set_of_var.contains(ProdVars, VarC) ->
+                        Var = VarD
+                    ; set_of_var.contains(ProdVars, VarD) ->
+                        Var = VarC
+                    ;
+                        fail
+                    )
+                )
+            ),
             ConsumingVars = set_of_var.sorted_list_to_set(ConsumingVarsList)
         ;
             RHS0 = rhs_functor(_ConsId, _IsExistConstruct, ArgVars),

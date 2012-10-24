@@ -227,8 +227,8 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
         % Handle requests for "intermediate" reuse versions of procedures
         % and repeat the analyses.
         globals.lookup_int_option(Globals, structure_reuse_repeat, Repeats),
-        handle_structure_reuse_requests(Repeats, SharingTable, InternalRequests,
-            !ReuseTable, !ModuleInfo, DepProcs0, DepProcs,
+        handle_structure_reuse_requests(Repeats, SharingTable,
+            InternalRequests, !ReuseTable, !ModuleInfo, DepProcs0, DepProcs,
             IntermodRequests0, IntermodRequests),
 
         % Create reuse versions of procedures.  Update goals to reuse cells

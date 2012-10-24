@@ -16,7 +16,7 @@
 % which is an abstraction of a Mercury program in terms of linear arithmetic
 % constraints on term sizes.
 %
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % AR Goals.
 %
@@ -37,7 +37,7 @@
 % XXX In order to handle higher-order we need to either modify the
 % exiting AR call goal or add a new AR goal type.
 %
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Mapping the HLDS to the AR
 %

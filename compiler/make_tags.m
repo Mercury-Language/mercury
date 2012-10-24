@@ -480,7 +480,8 @@ convert_direct_arg_functors(ModuleName, DebugTypeRep, MaxTag,
         TypeCtorsDefns, !TypeTable, !Specs).
 
 :- pred convert_direct_arg_functors_if_suitable(module_name::in, bool::in,
-    int::in, type_ctor::in, hlds_type_defn::in, type_table::in, type_table::out,
+    int::in, type_ctor::in, hlds_type_defn::in,
+    type_table::in, type_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 convert_direct_arg_functors_if_suitable(ModuleName, DebugTypeRep, MaxTag,

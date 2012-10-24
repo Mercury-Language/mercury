@@ -63,7 +63,8 @@ write_proc_stats_for_module(OutStream, Msg, ModuleInfo, !IO) :-
 :- pred write_proc_stats_for_pred(io.output_stream::in, string::in,
     module_info::in, pair(pred_id, pred_info)::in, io::di, io::uo) is det.
 
-write_proc_stats_for_pred(OutStream, Msg, ModuleInfo, PredId - PredInfo, !IO) :-
+write_proc_stats_for_pred(OutStream, Msg, ModuleInfo, PredId - PredInfo,
+        !IO) :-
     (
         ( pred_info_is_imported(PredInfo)
         ; is_unify_or_compare_pred(PredInfo)

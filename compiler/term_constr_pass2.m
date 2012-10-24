@@ -372,7 +372,8 @@ find_cycles(SCC, Edges) = Cycles :-
     % Builds a map from `pred_proc_id' to a list of the edges that begin
     % with the `pred_proc_id.
     %
-:- func partition_edges(list(abstract_ppid), edges) = map(abstract_ppid, edges).
+:- func partition_edges(list(abstract_ppid), edges)
+    = map(abstract_ppid, edges).
 
 partition_edges([], _) = map.init.
 partition_edges([ProcId | SCC], Edges0) = Map :-

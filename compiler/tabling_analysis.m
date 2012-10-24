@@ -915,7 +915,8 @@ should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
 
 analysis_name = "mm_tabling_analysis".
 
-:- instance analysis(no_func_info, any_call, mm_tabling_analysis_answer) where [
+:- instance analysis(no_func_info, any_call, mm_tabling_analysis_answer) where
+[
     analysis_name(_, _) = analysis_name,
     analysis_version_number(_, _) = 1,
     preferred_fixpoint_type(_, _) = least_fixpoint,

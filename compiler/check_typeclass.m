@@ -1176,7 +1176,8 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
         constraint_list_to_string(ClassVarSet, UnprovenConstraints,
             ConstraintsString),
         Pieces = [words("In instance declaration for"),
-            words("`" ++ ClassNameString ++ "(" ++ InstanceTypesString ++ ")'"),
+            words("`" ++ ClassNameString ++
+                "(" ++ InstanceTypesString ++ ")'"),
             words(choose_number(UnprovenConstraintsTail,
                 "superclass constraint", "superclass constraints")),
             words("not satisfied:"), words(ConstraintsString), suffix("."),
@@ -2199,16 +2200,14 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
 :- pred report_bogus_instance_methods(class_id::in, instance_methods::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_bogus_instance_methods(ClassId, BogusInstanceMethods, Context, !Specs) :-
+report_bogus_instance_methods(ClassId, BogusInstanceMethods, Context,
+        !Specs) :-
     % There were one or more bogus methods.
     % Construct an appropriate error message.
     ClassId = class_id(ClassName, ClassArity),
-    ErrorMsgStart =  [
-        words("In instance declaration for"),
-        sym_name_and_arity(ClassName / ClassArity),
-        suffix(":"),
-        words("incorrect method name(s):")
-    ],
+    ErrorMsgStart =  [words("In instance declaration for"),
+        sym_name_and_arity(ClassName / ClassArity), suffix(":"),
+        words("incorrect method name(s):")],
     ErrorMsgBody0 = list.map(format_method_name, BogusInstanceMethods),
     ErrorMsgBody1 = list.condense(ErrorMsgBody0),
     ErrorMsgBody = list.append(ErrorMsgBody1, [suffix(".")]),

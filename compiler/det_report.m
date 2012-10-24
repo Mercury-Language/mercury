@@ -1429,7 +1429,8 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
 
 det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
         LHS, RHS, AllPieces) :-
-    unify_context_first_to_pieces(!First, UnifyContext, [], UnifyContextPieces),
+    unify_context_first_to_pieces(!First, UnifyContext, [],
+        UnifyContextPieces),
     det_get_proc_info(DetInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     det_info_get_module_info(DetInfo, ModuleInfo),

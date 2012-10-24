@@ -82,7 +82,8 @@
 :- pred output_quoted_string_lang(literal_language, string, io, io).
 :- mode output_quoted_string_lang(in(bound(literal_c)), in, di, uo) is det.
 :- mode output_quoted_string_lang(in(bound(literal_java)), in, di, uo) is det.
-:- mode output_quoted_string_lang(in(bound(literal_csharp)), in, di, uo) is det.
+:- mode output_quoted_string_lang(in(bound(literal_csharp)), in, di, uo)
+    is det.
 :- mode output_quoted_string_lang(in, in, di, uo) is det.
 
     % output_quoted_multi_string is like list.foldl(output_quoted_string)

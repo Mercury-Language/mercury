@@ -606,7 +606,8 @@
 % Routines to generate code for switches.
 %
 
-:- pred gen_start_switch(gcc.expr::in, gcc.gcc_type::in, io::di, io::uo) is det.
+:- pred gen_start_switch(gcc.expr::in, gcc.gcc_type::in, io::di, io::uo)
+    is det.
 
 :- pred gen_case_label(gcc.expr::in, gcc.label::in, io::di, io::uo) is det.
 

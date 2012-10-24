@@ -74,7 +74,8 @@
 
     % Lookup the type of a variable.
     %
-:- pred erl_variable_type(erl_gen_info::in, prog_var::in, mer_type::out) is det.
+:- pred erl_variable_type(erl_gen_info::in, prog_var::in, mer_type::out)
+    is det.
 
     % Add the given string as the name of an environment variable used by
     % the function being generated.

@@ -1343,14 +1343,14 @@
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_maybe_ctgc(maybe(ctgc_goal_info)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_lfu(set_of_progvar::in, hlds_goal_info::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_lbu(set_of_progvar::in, hlds_goal_info::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_reuse(reuse_description::in, hlds_goal_info::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_maybe_dp_info(maybe(dp_goal_info)::in, hlds_goal_info::in,
-    hlds_goal_info::out) is det.
+:- pred goal_info_set_lfu(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_lbu(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_reuse(reuse_description::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_maybe_dp_info(maybe(dp_goal_info)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
 
     % The following functions produce an 'unexpected' error when the
     % requested values have not been set.
@@ -1366,10 +1366,10 @@
     is det.
 :- pred goal_info_get_consuming_vars(hlds_goal_info::in, set_of_progvar::out)
     is det.
-:- pred goal_info_get_make_visible_vars(hlds_goal_info::in, set_of_progvar::out)
-    is det.
-:- pred goal_info_get_need_visible_vars(hlds_goal_info::in, set_of_progvar::out)
-    is det.
+:- pred goal_info_get_make_visible_vars(hlds_goal_info::in,
+    set_of_progvar::out) is det.
+:- pred goal_info_get_need_visible_vars(hlds_goal_info::in,
+    set_of_progvar::out) is det.
 
 :- pred goal_info_set_occurring_vars(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -2878,7 +2878,8 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
                 MaybeOutputVars = MaybeOutputVars0
             ;
                 MaybeOutputVars0 = yes(OutputVars0),
-                rename_var_list(need_not_rename, Subn, OutputVars0, OutputVars),
+                rename_var_list(need_not_rename, Subn,
+                    OutputVars0, OutputVars),
                 MaybeOutputVars = yes(OutputVars)
             ),
             incremental_rename_vars_in_goal(Subn, SubnUpdates,
@@ -3093,7 +3094,8 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
         MaybeRBMM = no
     ;
         MaybeRBMM0 = yes(RBMM0),
-        RBMM0 = rbmm_goal_info(Created0, Removed0, Carried0, Alloc0, NonAlloc0),
+        RBMM0 = rbmm_goal_info(Created0, Removed0, Carried0, Alloc0,
+            NonAlloc0),
         rename_vars_in_var_set(Must, Subn, Created0, Created),
         rename_vars_in_var_set(Must, Subn, Removed0, Removed),
         rename_vars_in_var_set(Must, Subn, Carried0, Carried),

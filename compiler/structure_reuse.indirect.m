@@ -1,4 +1,4 @@
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
@@ -11,7 +11,7 @@
 %
 % Determine the indirect reuse.  This requires a fixpoint computation.
 %
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module structure_reuse.indirect.
 :- interface.
@@ -23,7 +23,7 @@
 
 :- import_module set.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Represents a request to perform analyses of a procedure with
     % restriction on which arguments may be clobbered.
@@ -64,8 +64,8 @@
     set(ppid_no_clobbers)::out, set(sr_request)::out,
     set(sr_request)::in, set(sr_request)::out) is det.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -97,11 +97,11 @@
 :- import_module solutions.
 :- import_module string.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type dep_procs == set(ppid_no_clobbers).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs,
         Requests, IntermodRequests) :-
@@ -1196,7 +1196,8 @@ sr_fixpoint_table_stable(Table) :-
 sr_fixpoint_table_description(Table) = fixpoint_table.description(Table).
 
 sr_fixpoint_table_new_as(ModuleInfo, ProcInfo, Id, ReuseAs, !Table) :-
-    add_to_fixpoint_table(reuse_as_and_status_subsumed_by(ModuleInfo, ProcInfo),
+    add_to_fixpoint_table(
+        reuse_as_and_status_subsumed_by(ModuleInfo, ProcInfo),
         Id, ReuseAs, !Table).
 
 sr_fixpoint_table_get_as(PPId, ReuseAs, !Table) :-
@@ -1224,6 +1225,6 @@ sr_fixpoint_table_get_final_as(PPId, T) =
 sr_fixpoint_table_get_final_as_semidet(PPId, T, Elem) :-
     get_from_fixpoint_table_final_semidet(PPId, T, Elem).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 :- end_module structure_reuse.indirect.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

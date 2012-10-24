@@ -178,7 +178,8 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
         proc_info_get_argmodes(CallProcInfo, CallArgModes),
         % XXX intermod
         proc_info_get_maybe_arg_size_info(CallProcInfo, CallArgSizeInfo),
-        proc_info_get_maybe_termination_info(CallProcInfo, CallTerminationInfo),
+        proc_info_get_maybe_termination_info(CallProcInfo,
+            CallTerminationInfo),
 
         partition_call_args(!.ModuleInfo, CallArgModes, Args, InVars, OutVars),
 

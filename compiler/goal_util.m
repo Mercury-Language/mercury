@@ -417,13 +417,13 @@
 
     % As above, except that we also compute the instmap during the traversal so
     % that the transformation expressed by the higher order value can use the
-    % instmap at that point within the goal tree. 
+    % instmap at that point within the goal tree.
     %
 :- pred maybe_transform_goal_at_goal_path_with_instmap(
     pred(instmap, hlds_goal, maybe_error(hlds_goal))::
-        in(pred(in, in, out) is det), 
+        in(pred(in, in, out) is det),
     forward_goal_path::in, instmap::in, hlds_goal::in,
-    maybe_transformed_goal::out) is det. 
+    maybe_transformed_goal::out) is det.
 
     % Transform the given goal and all it's children according to the higher
     % order argument.  Children are transformed before their parents, therefore
@@ -1790,7 +1790,7 @@ goal_is_atomic(Goal, GoalIsAtomic) :-
         GoalExpr = shorthand(_),
         unexpected($module, $pred, "shorthand")
     ).
-        
+
 %-----------------------------------------------------------------------------%
 
 foreign_code_uses_variable(Impl, VarName) :-
@@ -1895,15 +1895,15 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
         maybe_error_to_maybe_transformed_goal(MaybeGoal0, MaybeGoal)
     ;
         TargetGoalPath = fgp_cons(FirstStep, LaterPath),
-        GoalExpr0 = Goal0 ^ hlds_goal_expr,  
+        GoalExpr0 = Goal0 ^ hlds_goal_expr,
         (
-            ( GoalExpr0 = unify(_, _, _, _, _) 
+            ( GoalExpr0 = unify(_, _, _, _, _)
             ; GoalExpr0 = plain_call(_, _, _, _, _, _)
             ; GoalExpr0 = generic_call(_, _, _, _, _)
             ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
             ),
             % This search should never reach an atomic goal.
-            MaybeGoal = goal_not_found 
+            MaybeGoal = goal_not_found
         ;
             GoalExpr0 = conj(ConjType, Conjs0),
             (
@@ -1921,10 +1921,10 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ( MaybeConj = error(_)
                     ; MaybeConj = goal_not_found
                     ),
-                    MaybeGoal = MaybeConj 
+                    MaybeGoal = MaybeConj
                 )
             ;
-                MaybeGoal = goal_not_found 
+                MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = disj(Disjs0),
@@ -1946,7 +1946,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeDisj
                 )
             ;
-                MaybeGoal = goal_not_found 
+                MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = switch(Var, CanFail, Cases0),
@@ -1967,10 +1967,10 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ( MaybeCaseGoal = error(_)
                     ; MaybeCaseGoal = goal_not_found
                     ),
-                    MaybeGoal = MaybeCaseGoal 
+                    MaybeGoal = MaybeCaseGoal
                 )
             ;
-                MaybeGoal = goal_not_found 
+                MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = negation(SubGoal0),
@@ -1987,7 +1987,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeSubGoal
                 )
             ;
-                MaybeGoal = goal_not_found 
+                MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
@@ -2005,7 +2005,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeSubGoal
                 )
             ;
-                MaybeGoal = goal_not_found 
+                MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
@@ -2020,7 +2020,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ( MaybeCond = error(_)
                     ; MaybeCond = goal_not_found
                     ),
-                    MaybeGoal = MaybeCond 
+                    MaybeGoal = MaybeCond
                 )
             ; FirstStep = step_ite_then ->
                 maybe_transform_goal_at_goal_path(TransformP, LaterPath,
@@ -2033,7 +2033,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ( MaybeThen = error(_)
                     ; MaybeThen = goal_not_found
                     ),
-                    MaybeGoal = MaybeThen 
+                    MaybeGoal = MaybeThen
                 )
             ; FirstStep = step_ite_else ->
                 maybe_transform_goal_at_goal_path(TransformP, LaterPath,
@@ -2046,7 +2046,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ( MaybeElse = error(_)
                     ; MaybeElse = goal_not_found
                     ),
-                    MaybeGoal = MaybeElse 
+                    MaybeGoal = MaybeElse
                 )
             ;
                 MaybeGoal = goal_not_found
@@ -2065,9 +2065,9 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
         maybe_error_to_maybe_transformed_goal(MaybeGoal0, MaybeGoal)
     ;
         TargetGoalPath = fgp_cons(FirstStep, LaterPath),
-        GoalExpr0 = Goal0 ^ hlds_goal_expr,  
+        GoalExpr0 = Goal0 ^ hlds_goal_expr,
         (
-            ( GoalExpr0 = unify(_, _, _, _, _) 
+            ( GoalExpr0 = unify(_, _, _, _, _)
             ; GoalExpr0 = plain_call(_, _, _, _, _, _)
             ; GoalExpr0 = generic_call(_, _, _, _, _)
             ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
@@ -2082,11 +2082,12 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
             ->
                 list.take_upto(ConjNum - 1, Conjs0, HeadConjs),
                 HeadInstdeltas = map(
-                    (func(G) = goal_info_get_instmap_delta(G ^ hlds_goal_info)),
+                    (func(G) =
+                        goal_info_get_instmap_delta(G ^ hlds_goal_info)),
                     HeadConjs),
-                foldl(apply_instmap_delta_sv, HeadInstdeltas, 
+                foldl(apply_instmap_delta_sv, HeadInstdeltas,
                     Instmap0, Instmap),
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP, 
+                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
                     LaterPath, Instmap, Conj0, MaybeConj),
                 (
                     MaybeConj = ok(Conj),
@@ -2100,7 +2101,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeConj
                 )
             ;
-                MaybeGoal = goal_not_found 
+                MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = disj(Disjs0),
@@ -2145,7 +2146,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeCaseGoal
                 )
             ;
-                MaybeGoal = goal_not_found 
+                MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = negation(SubGoal0),
@@ -2163,7 +2164,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeSubGoal
                 )
             ;
-                MaybeGoal = goal_not_found 
+                MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
@@ -2181,7 +2182,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeSubGoal
                 )
             ;
-                MaybeGoal = goal_not_found 
+                MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
@@ -2228,7 +2229,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeElse
                 )
             ;
-                MaybeGoal = goal_not_found 
+                MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = shorthand(_),
@@ -2243,9 +2244,9 @@ maybe_error_to_maybe_transformed_goal(ok(Goal), ok(Goal)).
 maybe_error_to_maybe_transformed_goal(error(Error), error(Error)).
 
 transform_all_goals(TransformP, Goal0, Goal) :-
-    GoalExpr0 = Goal0 ^ hlds_goal_expr,  
+    GoalExpr0 = Goal0 ^ hlds_goal_expr,
     (
-        ( GoalExpr0 = unify(_, _, _, _, _) 
+        ( GoalExpr0 = unify(_, _, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
@@ -2285,7 +2286,7 @@ transform_all_goals(TransformP, Goal0, Goal) :-
         GoalExpr0 = shorthand(_),
         unexpected($module, $pred, "shorthand")
     ),
-    Goal1 = Goal0 ^ hlds_goal_expr := GoalExpr, 
+    Goal1 = Goal0 ^ hlds_goal_expr := GoalExpr,
     TransformP(Goal1, Goal).
 
 %-----------------------------------------------------------------------------%

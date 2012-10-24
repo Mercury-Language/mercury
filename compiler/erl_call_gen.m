@@ -221,7 +221,8 @@ make_det_call(CallTarget, InputExprs, OutputVars, MaybeSuccessExpr,
 :- pred make_semidet_call(elds_call_target::in, list(elds_expr)::in,
     prog_vars::in, elds_expr::in, elds_expr::out) is det.
 
-make_semidet_call(CallTarget, InputExprs, OutputVars, SuccessExpr, Statement) :-
+make_semidet_call(CallTarget, InputExprs, OutputVars, SuccessExpr,
+        Statement) :-
     CallExpr = elds_call(CallTarget, InputExprs),
     UnpackTerm = elds_tuple(exprs_from_vars(OutputVars)),
     ( if

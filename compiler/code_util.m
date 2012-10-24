@@ -579,7 +579,8 @@ instrs_rvals_and_lvals_acc(llds_instr(Uinstr, _), !Rvals, !Lvals) :-
     list(rval)::out, list(lval)::out) is det.
 
 foreign_proc_components_get_rvals_and_lvals([], [], []).
-foreign_proc_components_get_rvals_and_lvals([Comp | Comps], !:Rvals, !:Lvals) :-
+foreign_proc_components_get_rvals_and_lvals([Comp | Comps],
+        !:Rvals, !:Lvals) :-
     foreign_proc_components_get_rvals_and_lvals(Comps, !:Rvals, !:Lvals),
     foreign_proc_component_get_rvals_and_lvals(Comp, !Rvals, !Lvals).
 

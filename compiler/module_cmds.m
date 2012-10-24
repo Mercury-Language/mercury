@@ -994,7 +994,8 @@ write_erlang_shell_script(Globals, MainModuleName, Stream, !IO) :-
         MainFunc = "main_2_p_0"
     ),
 
-    % Add `-pa <dir>' options to find any other libraries specified by the user.
+    % Add `-pa <dir>' options to find any other libraries specified
+    % by the user.
     globals.lookup_accumulating_option(Globals, mercury_library_directories,
         MercuryLibDirs0),
     MercuryLibDirs = list.map((func(LibDir) = LibDir/"lib"/GradeDir),
@@ -1056,7 +1057,8 @@ write_erlang_batch_file(Globals, MainModuleName, Stream, !IO) :-
         MainFunc = "main_2_p_0"
     ),
 
-    % Add `-pa <dir>' options to find any other libraries specified by the user.
+    % Add `-pa <dir>' options to find any other libraries specified
+    % by the user.
     globals.lookup_accumulating_option(Globals, mercury_library_directories,
         MercuryLibDirs0),
     MercuryLibDirs = list.map((func(LibDir) = LibDir/"lib"/GradeDir),

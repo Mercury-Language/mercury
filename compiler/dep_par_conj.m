@@ -1090,8 +1090,9 @@ insert_wait_in_cases(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
         FirstWaitedOnAllSuccessPaths, Goal0, Goal, !VarSet, !VarTypes),
     Case = case(MainConsId, OtherConsIds, Goal),
     join_branches(FirstWaitedOnAllSuccessPaths, !WaitedOnAllSuccessPaths),
-    insert_wait_in_cases(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
-        !WaitedOnAllSuccessPaths, Cases0, Cases, !VarSet, !VarTypes).
+    insert_wait_in_cases(ModuleInfo, AllowSomePathsOnly, FutureMap,
+        ConsumedVar, !WaitedOnAllSuccessPaths, Cases0, Cases,
+        !VarSet, !VarTypes).
 
 %-----------------------------------------------------------------------------%
 

@@ -470,8 +470,8 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
                 %
                 % NOTE: this needs to be kept consistent with
                 %
-                %     ml_unify_gen.maybe_fixup_type_info_cell_constructor_args/4
-                %     java/runtime/TypeInfo_Struct.java
+                %   ml_unify_gen.maybe_fixup_type_info_cell_constructor_args/4
+                %   java/runtime/TypeInfo_Struct.java
                 %
                 % as well as the code for handling pseudo type-infos below.
                 %

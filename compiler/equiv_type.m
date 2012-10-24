@@ -777,8 +777,9 @@ replace_in_event_attr(Attr0, Attr, EqvMap, _EqvInstMap,
     tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_type_defn(Location, EqvMap, EqvInstMap, TypeCtor, TypeDefn0, TypeDefn,
-        ContainsCirc, !VarSet, !EquivTypeInfo, !UsedModules) :-
+replace_in_type_defn(Location, EqvMap, EqvInstMap, TypeCtor,
+        TypeDefn0, TypeDefn, ContainsCirc, !VarSet,
+        !EquivTypeInfo, !UsedModules) :-
     (
         TypeDefn0 = parse_tree_eqv_type(TypeBody0),
         replace_in_type_location_2(Location, EqvMap, [TypeCtor],

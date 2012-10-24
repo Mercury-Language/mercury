@@ -366,7 +366,8 @@ gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
     determinism_to_code_model(Detism, CodeModel),
     get_module_info(ByteInfo, ModuleInfo),
     list.map(get_var_type(ByteInfo), ArgVars, ArgTypes),
-    make_standard_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
+    make_standard_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo,
+        ArgInfo),
     assoc_list.from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
     arg_info.partition_args(ArgVarsInfos, InVars, OutVars),
@@ -779,7 +780,8 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         sorry($module, $pred, "bytecode doesn't implement type_info_const")
     ;
         ConsId = typeclass_info_const(_),
-        sorry($module, $pred, "bytecode doesn't implement typeclass_info_const")
+        sorry($module, $pred,
+            "bytecode doesn't implement typeclass_info_const")
     ;
         ConsId = ground_term_const(_, _),
         sorry($module, $pred, "bytecode doesn't implement ground_term_const")

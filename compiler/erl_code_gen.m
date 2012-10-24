@@ -662,8 +662,8 @@ erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
             MaybeSuccessExpr, Statement, !Info)
     ;
         GoalExpr = negation(SubGoal),
-        erl_gen_negation(SubGoal, CodeModel, InstMap, Context, MaybeSuccessExpr,
-            Statement, !Info)
+        erl_gen_negation(SubGoal, CodeModel, InstMap, Context,
+            MaybeSuccessExpr, Statement, !Info)
     ;
         GoalExpr = conj(_ConjType, Goals),
         % XXX Currently we treat parallel conjunction the same as

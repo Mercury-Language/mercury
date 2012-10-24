@@ -411,7 +411,8 @@ sharing_as_rename_using_module_info(ModuleInfo, PPId, ActualVars, ActualTypes,
         CallerTypeVarSet, CallerHeadTypeParams),
     sharing_as_rename(VarRenaming, TypeSubst, FormalSharing, ActualSharing).
 
-sharing_as_comb(ModuleInfo, ProcInfo, NewSharing, OldSharing) = ResultSharing :-
+sharing_as_comb(ModuleInfo, ProcInfo, NewSharing, OldSharing) =
+        ResultSharing :-
     (
         NewSharing = sharing_as_real_as(NewSharingSet),
         (
@@ -559,8 +560,8 @@ add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId, N - Arg, !Sharing) :-
         true
     ).
 
-    % When two positions within the constructed term refer to the same variable,
-    % this must be recorded as an extra sharing pair.
+    % When two positions within the constructed term refer to the same
+    % variable, this must be recorded as an extra sharing pair.
     % E.g.: X = f(Y,Y), then the sharing between f/1 and f/2 must be recorded.
     % XXX Different implementation!
     %

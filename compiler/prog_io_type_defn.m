@@ -609,10 +609,12 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
                 MaybeDirectArgCtors),
             (
                 MaybeDirectArgCtors = yes(_),
-                Pieces = [words("Error: solver type definitions cannot have a"),
-                    quote("direct_arg"), words("attribute."), nl],
+                Pieces = [words("Error: solver type definitions"),
+                    words("cannot have a"), quote("direct_arg"),
+                    words("attribute."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+                    [simple_msg(get_term_context(HeadTerm),
+                        [always(Pieces)])]),
                 MaybeItem = error1([Spec])
             ;
                 MaybeDirectArgCtors = no,

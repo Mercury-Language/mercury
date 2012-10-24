@@ -673,7 +673,8 @@ modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue,
     (
         BenchmarkModes = yes,
         globals.lookup_int_option(Globals, benchmark_modes_repeat, Repeats),
-        promise_equivalent_solutions [!:HLDS, SafeToContinue, ModeSpecs, Time] (
+        promise_equivalent_solutions [!:HLDS, SafeToContinue, ModeSpecs, Time]
+        (
             benchmark_det(modecheck_module,
                 !.HLDS, {!:HLDS, SafeToContinue, ModeSpecs}, Repeats, Time)
         ),

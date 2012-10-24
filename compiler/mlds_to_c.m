@@ -271,7 +271,8 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
     list.filter(defn_is_type, PublicDefns, PublicTypeDefns,
         PublicNonTypeDefns),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    mlds_output_defns(Opts, Indent, yes, MLDS_ModuleName, PublicTypeDefns, !IO),
+    mlds_output_defns(Opts, Indent, yes, MLDS_ModuleName, PublicTypeDefns,
+        !IO),
     io.nl(!IO),
     StdOpts = Opts ^ m2co_std_func_decl := yes,
     mlds_output_decls(StdOpts, Indent, MLDS_ModuleName, PublicNonTypeDefns,
@@ -1905,7 +1906,8 @@ mlds_output_defn_body(Opts, Indent, Name, Context, DefnBody, !IO) :-
             MaybeBody, _Attributes, _EnvVarNames),
         mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id(Opts),
             !IO),
-        mlds_output_func(Opts, Indent, Name, Context, Signature, MaybeBody, !IO)
+        mlds_output_func(Opts, Indent, Name, Context, Signature, MaybeBody,
+            !IO)
     ;
         DefnBody = mlds_class(ClassDefn),
         mlds_output_class(Opts, Indent, Name, Context, ClassDefn, !IO)

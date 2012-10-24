@@ -240,8 +240,8 @@
     ;       module_target_xml_doc.
 
 :- type c_header_type
-    --->    header_mh      % For `:- pragma foreign_export' declarations.
-    ;       header_mih.    % Declarations for hlc grades, for compiler use only.
+    --->    header_mh    % For `:- pragma foreign_export' declarations.
+    ;       header_mih.  % Declarations for hlc grades, for compiler use only.
 
 % :- type linked_target_type in compile_target_code.m.
 

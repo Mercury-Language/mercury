@@ -582,7 +582,8 @@ mer_mode_to_xml(InstVarSet, Mode) = Xml :-
         Xml = elem("inst_to_inst", [], [XmlFrom, XmlTo])
     ;
         Mode = user_defined_mode(Name, Args),
-        Ref = attr("ref", sym_name_and_arity_to_id("mode", Name, length(Args))),
+        Ref = attr("ref",
+            sym_name_and_arity_to_id("mode", Name, length(Args))),
         XmlArgs = xml_list("mode_args", mer_inst_to_xml(InstVarSet), Args),
         Xml = elem("user_defined_mode", [Ref], [name_to_xml(Name), XmlArgs])
     ).

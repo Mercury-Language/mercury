@@ -652,8 +652,9 @@ lock_pred_decl(ModuleName, Name, Context) = LockPredDeclItem :-
     Origin = compiler(mutable_decl),
     WithType = no,
     WithInst = no,
-    LockPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
-        pf_predicate, mutable_lock_pred_sym_name(ModuleName, Name), [],
+    LockPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet,
+        ExistQVars, pf_predicate,
+        mutable_lock_pred_sym_name(ModuleName, Name), [],
         WithType, WithInst, yes(detism_det),
         cond_true, purity_impure, Constraints, Context, -1),
     LockPredDeclItem = item_pred_decl(LockPredDecl).
@@ -666,8 +667,9 @@ unlock_pred_decl(ModuleName, Name, Context) = UnlockPredDeclItem :-
     Origin = compiler(mutable_decl),
     WithType = no,
     WithInst = no,
-    UnlockPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet, ExistQVars,
-        pf_predicate, mutable_unlock_pred_sym_name(ModuleName, Name), [],
+    UnlockPredDecl = item_pred_decl_info(Origin, VarSet, InstVarSet,
+        ExistQVars, pf_predicate,
+        mutable_unlock_pred_sym_name(ModuleName, Name), [],
         WithType, WithInst, yes(detism_det),
         cond_true, purity_impure, Constraints, Context, -1),
     UnlockPredDeclItem = item_pred_decl(UnlockPredDecl).

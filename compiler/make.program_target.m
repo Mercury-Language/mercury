@@ -849,12 +849,12 @@ make_misc_target_builder(MainModuleName - TargetType, Globals, _, Succeeded,
         get_target_modules(Globals, ModuleTargetType, AllModules,
             TargetModules, !Info, !IO),
         globals.lookup_bool_option(Globals, keep_going, KeepGoing),
-        ( Succeeded0 = no, KeepGoing = no -> 
+        ( Succeeded0 = no, KeepGoing = no ->
             Succeeded = no
         ;
             % Ensure all interface files are present before continuing.
-            % This prevents a problem when two parallel branches try to generate
-            % the same missing interface file later.
+            % This prevents a problem when two parallel branches
+            % try to generate the same missing interface file later.
             make_all_interface_files(Globals, AllModules, Succeeded1,
                 !Info, !IO),
             ( Succeeded1 = no, KeepGoing = no ->
@@ -862,7 +862,7 @@ make_misc_target_builder(MainModuleName - TargetType, Globals, _, Succeeded,
             ;
                 maybe_with_analysis_cache_dir(Globals,
                     foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
-                        make_module_target, Globals, 
+                        make_module_target, Globals,
                         make_dependency_list(TargetModules, ModuleTargetType)),
                     Succeeded2, !Info, !IO),
                 Succeeded = Succeeded0 `and` Succeeded1 `and` Succeeded2

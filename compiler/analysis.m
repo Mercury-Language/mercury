@@ -488,7 +488,8 @@ lookup_existing_call_patterns(Info, AnalysisName, ModuleName, FuncId, Calls) :-
 
 lookup_results(Info, ModuleName, FuncId, ResultList) :-
     AllowInvalidModules = no,
-    lookup_results_1(Info, ModuleName, FuncId, AllowInvalidModules, ResultList).
+    lookup_results_1(Info, ModuleName, FuncId, AllowInvalidModules,
+        ResultList).
 
 :- pred lookup_results_1(analysis_info::in, module_name::in, func_id::in,
     bool::in, list(analysis_result(Call, Answer))::out) is det
@@ -543,7 +544,8 @@ lookup_results_2(Map, ModuleName, FuncId, ResultList) :-
         ResultList = []
     ).
 
-lookup_matching_results(Info, ModuleName, FuncId, FuncInfo, Call, ResultList) :-
+lookup_matching_results(Info, ModuleName, FuncId, FuncInfo, Call,
+        ResultList) :-
     lookup_results(Info, ModuleName, FuncId, AllResultsList),
     ResultList = list.filter(
         (pred(Result::in) is semidet :-
@@ -553,7 +555,8 @@ lookup_matching_results(Info, ModuleName, FuncId, FuncInfo, Call, ResultList) :-
             )
         ), AllResultsList).
 
-lookup_best_result(Info, ModuleName, FuncId, FuncInfo, Call, MaybeBestResult) :-
+lookup_best_result(Info, ModuleName, FuncId, FuncInfo, Call,
+        MaybeBestResult) :-
     trace [io(!IO)] (
         debug_msg((pred(!.IO::di, !:IO::uo) is det :-
             io.write_string("% Looking up best analysis result for ", !IO),
@@ -855,7 +858,8 @@ update_analysis_registry_2(ModuleInfo, ModuleName, ModuleMap, !Info, !IO) :-
 
 update_analysis_registry_3(ModuleInfo, ModuleName, AnalysisName, FuncMap,
         !Info, !IO) :-
-    map.foldl2(update_analysis_registry_4(ModuleInfo, ModuleName, AnalysisName),
+    map.foldl2(
+        update_analysis_registry_4(ModuleInfo, ModuleName, AnalysisName),
         FuncMap, !Info, !IO).
 
 :- pred update_analysis_registry_4(module_info::in, module_name::in,
@@ -866,8 +870,10 @@ update_analysis_registry_4(ModuleInfo, ModuleName, AnalysisName, FuncId,
         NewResults, !Info, !IO) :-
     % XXX Currently we do not prevent there being more than one recorded result
     % for a given call pattern.
-    list.foldl2(update_analysis_registry_5(ModuleInfo, ModuleName, AnalysisName,
-        FuncId), NewResults, !Info, !IO).
+    list.foldl2(
+        update_analysis_registry_5(ModuleInfo, ModuleName, AnalysisName,
+            FuncId),
+        NewResults, !Info, !IO).
 
 :- pred update_analysis_registry_5(module_info::in, module_name::in,
     analysis_name::in, func_id::in, some_analysis_result::in,

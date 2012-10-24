@@ -227,8 +227,8 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes,
         OutArgsInfosR),
     give_vars_consecutive_arg_infos(OutVarsF, reg_f, FirstOutputF, top_out,
         OutArgsInfosF),
-    ArgInfos = list.condense([SpecifierArgInfos, InVarArgInfosR, InVarArgInfosF,
-        OutArgsInfosR, OutArgsInfosF]),
+    ArgInfos = list.condense([SpecifierArgInfos,
+        InVarArgInfosR, InVarArgInfosF, OutArgsInfosR, OutArgsInfosF]),
 
     % Save the necessary vars on the stack and move the input args defined
     % by variables to their registers.
@@ -427,7 +427,8 @@ generic_call_info(Globals, GenericCall, NumInputArgsR, NumInputArgsF,
     % constants.
     %
 :- pred generic_call_nonvar_setup(generic_call::in, known_call_variant::in,
-    list(prog_var)::in, list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
+    list(prog_var)::in, list(prog_var)::in,
+    list(prog_var)::in, list(prog_var)::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
 generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
@@ -697,13 +698,16 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
             Code = ArgCode ++ TestCode
         ;
             SimpleCode = assign(_, _),
-            unexpected($module, $pred, "malformed model_semi builtin predicate")
+            unexpected($module, $pred,
+                "malformed model_semi builtin predicate")
         ;
             SimpleCode = ref_assign(_, _),
-            unexpected($module, $pred, "malformed model_semi builtin predicate")
+            unexpected($module, $pred,
+                "malformed model_semi builtin predicate")
         ;
             SimpleCode = noop(_),
-            unexpected($module, $pred, "malformed model_semi builtin predicate")
+            unexpected($module, $pred,
+                "malformed model_semi builtin predicate")
         )
     ;
         CodeModel = model_non,

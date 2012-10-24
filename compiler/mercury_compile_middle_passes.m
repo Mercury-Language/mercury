@@ -217,8 +217,8 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_simplify(no, simplify_pass_pre_implicit_parallelism, Verbose, Stats,
         !HLDS, [], _SimplifySpecsPreImpPar, !IO),
-    maybe_dump_hlds(!.HLDS, 172, "pre_implicit_parallelism_simplify", !DumpInfo,
-        !IO),
+    maybe_dump_hlds(!.HLDS, 172, "pre_implicit_parallelism_simplify",
+        !DumpInfo, !IO),
 
     maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 173, "implicit_parallelism", !DumpInfo, !IO),
@@ -865,7 +865,8 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
         ForceDisableSSDB = no
     ->
         maybe_write_string(Verbose,
-            "% Maybe apply source to source debugging transformation ...\n", !IO),
+            "% Maybe apply source to source debugging transformation ...\n",
+            !IO),
         ssdebug_transform_module(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)

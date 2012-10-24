@@ -1208,7 +1208,8 @@ output_enum_value_ordered_table(Info, RttiTypeCtor, FunctorMap,
     map(string, enum_functor)::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
-output_enum_name_ordered_table(Info, RttiTypeCtor, FunctorMap, !DeclSet, !IO) :-
+output_enum_name_ordered_table(Info, RttiTypeCtor, FunctorMap,
+        !DeclSet, !IO) :-
     Functors = map.values(FunctorMap),
     FunctorRttiNames = list.map(enum_functor_rtti_name, Functors),
     output_generic_rtti_data_defn_start(Info,
@@ -1252,7 +1253,8 @@ output_foreign_enum_name_ordered_table(Info, RttiTypeCtor, FunctorMap,
     map(string, map(int, du_functor))::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
-output_du_name_ordered_table(Info, RttiTypeCtor, NameArityMap, !DeclSet, !IO) :-
+output_du_name_ordered_table(Info, RttiTypeCtor, NameArityMap,
+        !DeclSet, !IO) :-
     map.values(NameArityMap, ArityMaps),
     list.map(map.values, ArityMaps, FunctorLists),
     list.condense(FunctorLists, Functors),

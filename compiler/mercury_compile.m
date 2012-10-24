@@ -128,7 +128,8 @@ real_main(!IO) :-
 
     % Expand @File arguments.
     % Each argument in the above form is replaced with a list of arguments
-    % where each arg is each line in the file File which is not just whitespace.
+    % where each arg is each line in the file File which is not just
+    % whitespace.
     %
 :- pred expand_at_file_arguments(list(string)::in, io.res(list(string))::out,
     io::di, io::uo) is det.
@@ -1249,8 +1250,9 @@ apply_process_module(ProcessModule, FileName, ModuleName, MaybeTimestamp,
 
 process_module_2_callback(OptionArgs, FileOrModule, MaybeModulesToRecompile,
         HaveReadModuleMap0, Globals, Result, !IO) :-
-    process_module_2(Globals, OptionArgs, FileOrModule, MaybeModulesToRecompile,
-        HaveReadModuleMap0, ModulesToLink, ExtraObjFiles, !IO),
+    process_module_2(Globals, OptionArgs, FileOrModule,
+        MaybeModulesToRecompile, HaveReadModuleMap0, ModulesToLink,
+        ExtraObjFiles, !IO),
     Result = {ModulesToLink, ExtraObjFiles}.
 
 :- pred process_module_2(globals::in, list(string)::in, file_or_module::in,
@@ -2022,9 +2024,9 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
     bool::out, bool::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-invoke_module_qualify_items(Globals, Items0, Items, EventSpecMap0, EventSpecMap,
-        ModuleName, EventSpecFileName, Verbose, Stats, MQInfo,
-        UndefTypes, UndefModes, !Specs, !IO) :-
+invoke_module_qualify_items(Globals, Items0, Items,
+        EventSpecMap0, EventSpecMap, ModuleName, EventSpecFileName,
+        Verbose, Stats, MQInfo, UndefTypes, UndefModes, !Specs, !IO) :-
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Module qualifying items...\n", !IO),
     maybe_flush_output(Verbose, !IO),

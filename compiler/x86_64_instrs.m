@@ -9,11 +9,11 @@
 % File: x86_64_instrs.m.
 % Main author: fhandoko.
 %
-% This module contains the representations of the x86_64 instructions. 
+% This module contains the representations of the x86_64 instructions.
 %
 % NOTE:
 % 	Instructions that make use of segment registers and string operations
-% 	(such as compare_strings) have not been implemented. 
+% 	(such as compare_strings) have not been implemented.
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.x86_64_instrs.
@@ -57,8 +57,8 @@
                 x86_64_name             :: string,
                                         % Predicate name.
                 x86_64_arity            :: int,
-                                        % Original arity. 
-                x86_64_id               :: pred_proc_id, 
+                                        % Original arity.
+                x86_64_id               :: pred_proc_id,
                                         % The pred_proc_id of this code.
                 x86_64_code_model       :: code_model,
                                         % The code model of the procedure.
@@ -111,11 +111,11 @@
 
     % Conditional direction.
     %
-:- type direction 
+:- type direction
     --->    f                       % Forward.
-    ;       r.                      % Reverse. 
+    ;       r.                      % Reverse.
 
-    % Condition of flags register. 
+    % Condition of flags register.
     %
 :- type condition
     --->    o                       % Overflow (OF = 1).
@@ -164,22 +164,22 @@
     --->    progbits                % section contains data.
     ;       nobits.                 % section does not contain data.
 
-    % type_desc field of .section pseudo-op. 
+    % type_desc field of .section pseudo-op.
     %
 :- type pseudo_section_type_desc
     --->    function
-    ;       object. 
+    ;       object.
 
 %-----------------------------------------------------------------------------%
 %
 % x86_64 pseudo-ops.
 %
 
-    % GNU assembler pseudo-ops for the x86_64. 
-    % Details on GNU assembler 'as' documentation in the section entitled 
+    % GNU assembler pseudo-ops for the x86_64.
+    % Details on GNU assembler 'as' documentation in the section entitled
     % "Pseudo Ops".
     %
-:- type pseudo_op 
+:- type pseudo_op
     --->    abort
             % stop the assembly immediately.
 
@@ -188,11 +188,11 @@
                 align_fill_value    :: maybe(int),
                 align_skip_bytes    :: maybe(int)
             )
-            % Advance the location counter until it is a multiple of 
+            % Advance the location counter until it is a multiple of
             % 'align_bits'. The second and third arguments are optional.
-            % 'align_fill_value': value to be stored in the padding bytes. 
+            % 'align_fill_value': value to be stored in the padding bytes.
             % 'align_skip_bytes': maximum number of bytes to be skipped.
-    
+
     ;       ascii(
                 ascii_literals     :: list(string)
             )
@@ -210,22 +210,22 @@
                 balign_skip_bytes   :: maybe(int)
             )
             % Similar to 'align'.
-    
+
     ;       byte(
-                byte_exprs          :: list(string) 
+                byte_exprs          :: list(string)
             )
-            % 'byte_exprs' contains zero or more expressions. Each expression is
-            % assembled into the next byte.
+            % 'byte_exprs' contains zero or more expressions.
+            % Each expression is assembled into the next byte.
 
     ;       comm(
                 comm_symbol         :: string,
                 comm_length         :: int,
                 comm_align          :: maybe(int)
             )
-            % Declare a common symbol 'comm_symbol'. Allocate 'comm_length' 
-            % bytes if the symbol has not been defined. 
+            % Declare a common symbol 'comm_symbol'. Allocate 'comm_length'
+            % bytes if the symbol has not been defined.
             % (optional) 'comm_align' is the desired alignment of the symbol.
-    
+
     ;       data(
                 data_subsection     :: maybe(int)
             )
@@ -236,28 +236,28 @@
                 desc_symbol         :: string,
                 desc_abs_expr       :: string
             )
-            % Set the descriptor of the symbol to the low 16 bits of 
+            % Set the descriptor of the symbol to the low 16 bits of
             % 'desc_abs_expr'.
 
     ;       def(
                 def_name            :: string
             )
-            % Begin defining debugging information for a symbol 'def_name'. 
+            % Begin defining debugging information for a symbol 'def_name'.
 
     ;       dim
-            % Tell to include auxiliary debugging information in the symbol 
+            % Tell to include auxiliary debugging information in the symbol
             % table.
 
     ;       double(
                 double_nums         :: list(float)
             )
             % 'double_nums' contains zero or more floating point numbers.
-    
+
     ;       eject
             % Force a page break.
 
     ;       x86_64_pseudo_else
-            % As in 'if-then-else' conditional expression. 
+            % As in 'if-then-else' conditional expression.
 
     ;       elseif
             % Shorthand for the beginning a new '.if' block.
@@ -275,7 +275,7 @@
             % End of a block of conditional code.
 
     ;       endm
-            % End of assembly macro. 
+            % End of assembly macro.
 
     ;       equ(
                 equ_symbol          :: string,
@@ -295,35 +295,35 @@
 
     ;       exitm
             % Exit early from the current macro definition.
-            
+
     ;       extern
-            % Ignored. '.extern' is accepted for compatibility only. 
+            % Ignored. '.extern' is accepted for compatibility only.
 
     ;       fail_(
                 fail_expr           :: string
             )
             % Generate an error or a warning. If 'fail_expr' is 500 or more, it
             % prints a warning message. Otherwise, it prints an error message.
-    
+
     ;       file(
                 file_name           :: string
             )
-            % Start a new logical file. 
+            % Start a new logical file.
 
     ;       fill(
                 fill_repeat         :: int,
                 fill_size           :: maybe(int),
                 fill_value          :: maybe(int)
             )
-            % Emits 'fill_repeat' copies of 'fill_size' byte. The contents of 
-            % each 'fil_repeat' bytes is taken from an 8-byte number. The 
-            % highest order 4 bytes are zero. The lowest order 4 bytes are 
+            % Emits 'fill_repeat' copies of 'fill_size' byte. The contents of
+            % each 'fil_repeat' bytes is taken from an 8-byte number. The
+            % highest order 4 bytes are zero. The lowest order 4 bytes are
             % 'fill_value'. The last 2 arguments are optional.
 
     ;       float(
                 float_nums          :: list(float)
             )
-            % 'float_nums' contains zero or more floating point numbers. 
+            % 'float_nums' contains zero or more floating point numbers.
 
     ;       func_(
                 func_name           :: string,
@@ -331,13 +331,13 @@
             )
             % Emits debugging information to denote function 'func_name' and
             % is ignored unless the file is assembled with debugging enabled.
-            % 'func_label' is the entry point of the function. 
+            % 'func_label' is the entry point of the function.
 
     ;       global(
                 global_symbol       :: string
             )
-            % makes the global_symbol' visible to other programs that are linked
-            % with it.
+            % makes the global_symbol' visible to other programs
+            % that are linked with it.
 
     ;       globl(
                 globl_symbol        :: string
@@ -353,7 +353,7 @@
     ;       hword(
                 hword_exprs         :: list(string)
             )
-            % 'hword_exprs' contains zero or more expressions and emit a 16-bit 
+            % 'hword_exprs' contains zero or more expressions and emit a 16-bit
             % number for each. Synonym for '.short'.
 
     ;       ident
@@ -375,7 +375,7 @@
                 ifc_string2         :: string
             )
             % Assemble the following section of code if the two strings are the
-            % same. 
+            % same.
 
     ;       ifeq(
                 ifeq_expr           :: string
@@ -411,13 +411,13 @@
                 ifnc_string2        :: string
             )
             % Assemble the following section of code if the two strings are not
-            % the same. 
+            % the same.
 
     ;       ifndef(
                 ifndef_symbol       :: string
             )
             % Assemble the following section of code if 'ifndef_symbol' has not
-            % been defined. 
+            % been defined.
 
     ;       ifnotdef(
                 ifnotdef_symbol     :: string
@@ -427,7 +427,7 @@
     ;       ifne(
                 ifne_expr           :: string
             )
-            % Assemble the following section of code if the argument is not 
+            % Assemble the following section of code if the argument is not
             % equal to zero.
 
     ;       ifnes(
@@ -445,9 +445,9 @@
     ;       int(
                 int_exprs           :: list(string)
             )
-            % 'int_exprs' contains zero or more expressions. For each 
+            % 'int_exprs' contains zero or more expressions. For each
             % expression, emit a number that, at run time, is the value of that
-            % expression. 
+            % expression.
 
     ;       internal(
                 internal_name       :: string
@@ -458,7 +458,7 @@
                 lcomm_symbol        :: string,
                 lcomm_length        :: int
             )
-            % Reserve 'lcomm_length' bytes for a local common denoted by 
+            % Reserve 'lcomm_length' bytes for a local common denoted by
             % 'lcomm_symbol'.
 
     ;       line(
@@ -467,7 +467,7 @@
             % Change the logical line number.
 
     ;       list
-            % Control whether or not assembly listings are generated. This 
+            % Control whether or not assembly listings are generated. This
             % increments the internal counter.
 
     ;       long(
@@ -476,29 +476,29 @@
             % Same as '.int'.
 
     ;       macro
-            % Define macro to generate assembly output. 
+            % Define macro to generate assembly output.
 
     ;       nolist
-            % Control whether or not assembly listings are generated. It 
-            % decrements an internal counter. 
+            % Control whether or not assembly listings are generated. It
+            % decrements an internal counter.
 
     ;       p2align(
                 p2align_pow_bit     :: int,
                 p2align_fill_value  :: maybe(int),
                 p2align_skip_bytes  :: maybe(int)
             )
-            % Advances the location counter until it is a multiple of 
+            % Advances the location counter until it is a multiple of
             % 2 ^ ('p2align_pow_bit')
-            % p2align_fill_value: value to be stored in padding bytes. 
-            % 'p2align_skip_bytes: maximum bytes to be skipped. 
+            % p2align_fill_value: value to be stored in padding bytes.
+            % 'p2align_skip_bytes: maximum bytes to be skipped.
 
     ;       popsection
-            % Replace the current section (and subsection) with the top section 
-            % (and subsection) on the section stack. 
+            % Replace the current section (and subsection) with the top section
+            % (and subsection) on the section stack.
 
     ;       previous
-            % Swap the current section (and subsection) with most recently 
-            % referenced secction (and subsection) prior to this one. 
+            % Swap the current section (and subsection) with most recently
+            % referenced secction (and subsection) prior to this one.
 
     ;       print(string)
             % print string on the standard output.
@@ -525,26 +525,26 @@
                 pushsection_name    :: string,
                 pushsection_subsect :: int
            )
-            % Push the current section (and subsection) onto the top of the 
+            % Push the current section (and subsection) onto the top of the
             % section stack and then replace the current section and subsection
             % with 'pushsection_name' and 'pushsection_subsect'.
 
     ;       quad(
                 quad_bignums        :: list(string)
             )
-            % 'quad_bignums' contains zero or more bignums. For each bignum, it 
-            % emits an 8-byte-integer. 
+            % 'quad_bignums' contains zero or more bignums. For each bignum, it
+            % emits an 8-byte-integer.
 
     ;       rept(
                 rept_count          :: int
             )
-            % Repeat the sequence of lines between the '.rept' directive and the
-            % next '.endr' directive 'rept_count' times.
+            % Repeat the sequence of lines between the '.rept' directive
+            % and the next '.endr' directive 'rept_count' times.
 
     ;       sbttl(
                 sbttl_subheading   :: string
             )
-            % Use 'subttl_subheading' as the title (immediately after the title 
+            % Use 'subttl_subheading' as the title (immediately after the title
             % line).
 
     ;       scl(
@@ -558,7 +558,7 @@
                 section_type        :: maybe(pseudo_section_type),
                 section_entsize     :: maybe(int)
             )
-            % ELF section stack manipulation directive. 
+            % ELF section stack manipulation directive.
 
     ;       set(
                 set_symbol          :: string,
@@ -587,24 +587,24 @@
                 skip_value          :: maybe(int)
             )
             % Emit 'skip_size' bytes, each of value 'skip_value' (optional).
-    
+
     ;       sleb128(
                 sleb128_exprs       :: list(string)
             )
-            % Stand for "signed little endian base 128". It is a variable length
-            % representation of numbers used by the DWARF symbolic.
+            % Stand for "signed little endian base 128". It is a variable
+            % length representation of numbers used by the DWARF symbolic.
 
     ;       space(
                 space_size          :: int,
                 space_fill          :: maybe(int)
             )
             % Emit 'space_size' bytes, each of value 'space_fill' (optional).
-            
+
     ;       string(
                 string_str          :: list(string)
             )
-            % Copy the characters in each string inside 'string_strs' to the 
-            % object file. 
+            % Copy the characters in each string inside 'string_strs' to the
+            % object file.
 
     ;       struct(
                 struct_expr         :: string
@@ -621,7 +621,7 @@
                 symver_name         :: string,
                 symver_alias        :: string
             )
-            % If 'symver_name' is defined within the file being assembled, it 
+            % If 'symver_name' is defined within the file being assembled, it
             % creates a symbol alias with the name 'symver_alias'
 
     ;       tag(
@@ -632,13 +632,14 @@
     ;       text(
                 text_subsection     :: maybe(int)
             )
-            % Assemble the following statements onto the end of the text 
+            % Assemble the following statements onto the end of the text
             % subsection numbered zero or 'text_subsection' (if present).
 
     ;       title(
                 title_heading       :: string
             )
-            % Use 'title_heading' as the title when generating assembly listing.
+            % Use 'title_heading' as the title when generating
+            % the assembly listing.
 
     ;       x86_64_pseudo_type(
                 type_name           :: string,
@@ -650,7 +651,7 @@
     ;       uleb128(
                 uleb128_exprs       :: list(string)
             )
-            % Stands for "unsigned little endian base 128". It is a variable 
+            % Stands for "unsigned little endian base 128". It is a variable
             % length representation of numbers used by the DWARF symbolic
             % debugging format.
 
@@ -662,19 +663,19 @@
     ;       version(
                 version_note        :: string
             )
-            % Create a '.note' section and places into it an ELF formatted note 
+            % Create a '.note' section and places into it an ELF formatted note
             % of type NT_VERSION>
 
     ;       weak(
                 weak_names          :: list(string)
             )
-            % Set the weak attribute on the list of symbol in 'weak_names'. If 
-            % the symbol has not existed, it will be created. 
+            % Set the weak attribute on the list of symbol in 'weak_names'. If
+            % the symbol has not existed, it will be created.
 
     ;       word(
                 word_exprs          :: list(string)
             ).
-            % 'word_exprs' contains zero or more expressions. 
+            % 'word_exprs' contains zero or more expressions.
 
 %-----------------------------------------------------------------------------%
 %
@@ -716,7 +717,7 @@
     % instructions using RIP can be:
     %   rip_constant(%rip)
     %   rip_expr(%rip)
-    % Details on GNU assembler 'as' documentation in the section entitled 
+    % Details on GNU assembler 'as' documentation in the section entitled
     % "Machine Dependencies: i386-Dependent: i386-Memory".
     %
 :- type instr_ptr
@@ -734,16 +735,16 @@
 %
 
     % Immediate operands for the x86_64 instruction.
-    %   
+    %
 :- type imm_operand
-    --->    imm8(int8)    
+    --->    imm8(int8)
     ;       imm16(int16)
     ;       imm32(int32).
-    
+
     % Memory reference operands for the x86_64 instruction can be an absolute
     % address (given as a displacement from the base address of a data segment)
-    % or an instruction-relative address. 
-    % Details on amd64-prog-man-vol1 p19.  
+    % or an instruction-relative address.
+    % Details on amd64-prog-man-vol1 p19.
     %
 :- type x86_64_mem_ref
     --->    mem_abs(
@@ -754,21 +755,21 @@
                 instr_rel_address       :: instr_ptr
             ).
 
-    % Base address can be relative to the content of a general-purpose register 
-    % or relative value of an expression (such as arithmetic expression 
+    % Base address can be relative to the content of a general-purpose register
+    % or relative value of an expression (such as arithmetic expression
     % containing labels in data segment).
     %
 :- type base_address
     --->    base_reg(
                 base_offset             :: int,
-                base_reg                :: x86_64_reg 
+                base_reg                :: x86_64_reg
             )
 
     ;       base_expr(
                 base_expr               :: string
             ).
-    
-    % All operands for the x86_64 instructions. 
+
+    % All operands for the x86_64 instructions.
     %
 :- type operand
     --->    operand_reg(x86_64_reg)
@@ -781,16 +782,16 @@
 % Subtypes of the operand type.
 % XXX maybe we should use inst-subtyping for these?
 %
-    % x86_64 instruction's operand is an offset relative to the instruction 
-    % pointer. 
+    % x86_64 instruction's operand is an offset relative to the instruction
+    % pointer.
     %
 :- type rel_offset
     --->    ro8(int8)       % Signed 8-bit  offset (in bottom 8 bits).
     ;       ro16(int16)     % Signed 16-bit offset (in bottom 16 bits).
     ;       ro32(int32).    % Signed 32-bit offset (in bottom 32 bits).
 
-    % x86_64 instruction's operand can be a register, memory reference, 
-    % signed relative offset or a label. 
+    % x86_64 instruction's operand can be a register, memory reference,
+    % signed relative offset or a label.
     %
 :- type rmrol
     --->    rmrol_reg(x86_64_reg)
@@ -807,7 +808,7 @@
 
     % We use At&T style instructions where the source comes before the
     % destination.
-    % 
+    %
 :- type x86_64_inst
     --->    adc(
                 adc_src     :: operand,
@@ -816,7 +817,7 @@
                             % register or memory location
             )
             % Add with carry. Add 'adc_src' to 'adc_dst' + carry flag (CF).
-            % Cannot add two memory operands. 
+            % Cannot add two memory operands.
             % Details on amd64-prog-man-vol3 manual p65.
 
     ;       add(
@@ -826,7 +827,7 @@
                             % register or memory location
             )
             % Signed or unsigned add. Add 'adc_src' to 'adc_dst'.
-            % Cannot add two memory operands. 
+            % Cannot add two memory operands.
             % Details on amd64-prog-man-vol3 manual p67.
 
     ;       and(
@@ -836,7 +837,7 @@
                             % register or memory location
             )
             % Performs a bitwise AND operation on both operands.
-            % Cannot and two memory operands. 
+            % Cannot and two memory operands.
             % Details on amd64-prog-man-vol3 manual p69.
 
     ;       bs(
@@ -849,7 +850,7 @@
             )
             % Bit scan. Searches the value in 'bs_src' for the least
             % significant set bit  if 'bs_cond' is "F". Searches
-            % for the most significant set bit if 'bs_cond' is "R". 
+            % for the most significant set bit if 'bs_cond' is "R".
             % Details on amd64-prog-man-vol3 manual p(74-75).
 
     ;       bswap(
@@ -874,7 +875,7 @@
                 btc_idx     :: operand
                             % register or 8-bit immediate value
             )
-            % Bit test and complement. Complements 'btc_src' after performing 
+            % Bit test and complement. Complements 'btc_src' after performing
             % 'bt' operation.
             % Details on amd64-prog-man-vol3 manual p79.
 
@@ -957,7 +958,7 @@
                 cmp_dest        :: operand
                                 % register or memory location
             )
-            % Compares 'cmp_src' with 'cmp_dest'. 
+            % Compares 'cmp_src' with 'cmp_dest'.
             % Details on amd64-prog-man-vol3 manual p105.
 
     ;       cmpxchg(
@@ -988,15 +989,15 @@
                 div_op          :: operand
                                 % register or memory reference
             )
-            % Unsigned divide RDX:RAX by the value in 'div_op'. 
+            % Unsigned divide RDX:RAX by the value in 'div_op'.
             % Details on amd64-prog-man-vol3 manual p122.
 
     ;       enter(
                 enter_stack_size    :: uint16,
                 enter_nesting_level :: uint8
             )
-            % Creates a procedure stack frame with a stack size specified in 
-            % 'enter_stack_size' and nesting level specified in 
+            % Creates a procedure stack frame with a stack size specified in
+            % 'enter_stack_size' and nesting level specified in
             % 'enter_nesting_level'(0 to 31).
             % Details on amd64-prog-man-vol3 manual p124.
 
@@ -1004,12 +1005,13 @@
                 idiv_op             :: operand
                                     % register or memory reference
             )
-            % Signed divide RDX:RAX by the value in 'operand'. 
+            % Signed divide RDX:RAX by the value in 'operand'.
             % Details on amd64-prog-man-vol3 manual p126.
 
     ;       imul(
                 imul_src            :: operand,
-                                    % register, memory location, immediate value
+                                    % register, memory location,
+                                    % immediate value
                 imul_dest           :: maybe(operand),
                                     % register
                 imul_multiplicand   :: maybe(operand)
@@ -1030,14 +1032,14 @@
                                     % relative offset
                 j_condition         :: condition
             )
-            % Conditional jump. 
+            % Conditional jump.
             % Details on amd64-prog-man-vol3 manual p(147-149).
 
     ;       jrcxz(
                 jrcxz_8bit_off  :: operand
             )
             % Jumps to the target instruction located at 'jrcxz_8bit_off'
-            % if RCX is zero. 
+            % if RCX is zero.
             % Details on amd64-prog-man-vol3 manual p150.
 
     ;       jmp(
@@ -1056,7 +1058,7 @@
             % Details on amd64-prog-man-vol3 manual p163.
 
     ;       leave
-            % Sets RSP to the value in RBP and pop RBP. 
+            % Sets RSP to the value in RBP and pop RBP.
             % Details on amd64-prog-man-vol3 manual p164.
 
     ;       loop(
@@ -1091,12 +1093,12 @@
 
     ;       mov(
                 mov_src          :: operand,
-                                 % register, memory location or immediate value 
+                                 % register, memory location or immediate value
                 mov_dest         :: operand
                                  % register or memory location
             )
-            % Copies 'mov_src' to 'mov_dest'. 'mov_dest' cannot be immediate op.
-            % Details on amd64-prog-man-vol3 manual p173.
+            % Copies 'mov_src' to 'mov_dest'. 'mov_dest' cannot be
+            % immediate op. Details on amd64-prog-man-vol3 manual p173.
 
     ;       mul(
                 mul_op          :: operand
@@ -1134,24 +1136,25 @@
 
     ;       pop(
                 pop_op           :: operand
-                                % register or memory location. 
+                                % register or memory location.
             )
             % Pops the stack into 'operand'.
             % Details on amd64-prog-man-vol3 manual p204.
 
     ;       popfq
-            % Pops a quadword from the stack to the RFLAGS register. 
+            % Pops a quadword from the stack to the RFLAGS register.
             % Details on amd64-prog-man-vol3 manual p208.
 
     ;       push(
                 push_op           :: operand
-                                  % register, memory location or immediate value
+                                  % register, memory location
+                                  % or immediate value
             )
-            % Pushes the content of operand onto the stack. 
+            % Pushes the content of operand onto the stack.
             % Details on amd64-prog-man-vol3 manual p215.
 
     ;       pushfq
-            % Pushes the RFLAGS quadword onto the stack. 
+            % Pushes the RFLAGS quadword onto the stack.
             % Details on amd64-prog-man-vol3 manual p218.
 
     ;       rc(
@@ -1162,16 +1165,16 @@
                 rc_cond          :: string
                                 % "R" for right, "L" for left
             )
-            % Rotate bits in 'rc_dest' according to 'rc_cond' direction 
-            % and through the carry flag by the number of bit positions as 
-            % specified in 'rc_amount'. 
+            % Rotate bits in 'rc_dest' according to 'rc_cond' direction
+            % and through the carry flag by the number of bit positions as
+            % specified in 'rc_amount'.
             % Details on amd64-prog-man-vol3 manual p(220-222).
 
     ;       ret(
                 ret_op          :: maybe(uint16)
             )
-            % Near return to the calling procedure, then pop the specified 
-            % number of bytes from stack (if specified). 
+            % Near return to the calling procedure, then pop the specified
+            % number of bytes from stack (if specified).
             % Details on amd64-prog-man-vol3 manual p224.
 
     ;       ro(
@@ -1182,23 +1185,23 @@
                 ro_dir          :: string
                                 % "L" for left, "R" for right
             )
-            % Rotates the bits of 'rol_dest' to the 'ro_dir' direction by 
-            % 'rol_amount' bits. 
+            % Rotates the bits of 'rol_dest' to the 'ro_dir' direction by
+            % 'rol_amount' bits.
             % Details on amd64-prog-man-vol3 manual p(230-232).
 
     ;       sal(
                 sal_amount      :: operand,
                                 % unsigned immediate value or register
-                sal_dest        :: operand 
+                sal_dest        :: operand
                                 % register or memory location
             )
-            % Shift 'sal_dest' left by 'sal_amount'. 
+            % Shift 'sal_dest' left by 'sal_amount'.
             % Details on amd64-prog-man-vol3 manual p235.
 
     ;       shl(
                 shl_amount      :: operand,
                                 % unsigned immediate value or register
-                shl_dest        :: operand 
+                shl_dest        :: operand
                                 % register or memory location
             )
             % Alias to 'sal'.
@@ -1207,16 +1210,16 @@
     ;       sar(
                 sar_amount      :: operand,
                                 % unsigned immediate value or register
-                sar_dest        :: operand 
+                sar_dest        :: operand
                                 % register or memory location
             )
-            % Shift 'sar_dest' right by 'sar_amount'. 
+            % Shift 'sar_dest' right by 'sar_amount'.
             % Details on amd64-prog-man-vol3 manual p238.
 
     ;       sbb(
                 sbb_src         :: operand,
                                 % immediate value, register or memory location
-                sbb_dest        :: operand 
+                sbb_dest        :: operand
                                 % register or memory location
             )
             % Subtracts 'sbb_src' from 'sbb_dest' with borrow.
@@ -1227,9 +1230,9 @@
                                 % register or memory location
                 set_cond        :: condition
             )
-            % Check the status flag in the RFLAGS register. Set the value in 
+            % Check the status flag in the RFLAGS register. Set the value in
             % the specified register/8-bit memory reference in 'set_dest' to 1
-            % according to the 'set_cond'. 
+            % according to the 'set_cond'.
             % Details on amd64-prog-man-vol3 manual p(246-247).
 
     ;       shld(
@@ -1237,20 +1240,20 @@
                                     % register or immediate value
                 shld_dest1          :: operand,
                                     % register or memory location
-                shld_dest2          :: operand  
+                shld_dest2          :: operand
                                     % register
             )
-            % Shift 'shld_dest1' to the left by 'shld_amount' and shift in a bit
-            % pattern in 'shld_dest2' from the right. 
+            % Shift 'shld_dest1' to the left by 'shld_amount' and shift in
+            % a bit pattern in 'shld_dest2' from the right.
             % Details on amd64-prog-man-vol3 manual p251.
 
     ;       shr(
                 shr_amount          :: operand,
                                     % register or immediate value
-                shr_dest            :: operand 
+                shr_dest            :: operand
                                     % register or memory location
             )
-            % Shift 'shr_dest' right by 'shr_amount'. 
+            % Shift 'shr_dest' right by 'shr_amount'.
             % Details on amd64-prog-man-vol3 manual p253.
 
     ;       shrd(
@@ -1258,28 +1261,28 @@
                                     % register or immediate value
                 shrd_dest1          :: operand,
                                     % register or memory location
-                shrd_dest2          :: operand 
+                shrd_dest2          :: operand
                                     % register
             )
             % Shift 'shrd_dest1' to the right by 'shrd_amount' and shift in
-            % a bit pattern in 'shrd_dest2' from the left. 
+            % a bit pattern in 'shrd_dest2' from the left.
             % Details on amd64-prog-man-vol3 manual p255.
 
     ;       stc
-            % Sets the carry flag (CF) in the RFLAGS register to 1. 
+            % Sets the carry flag (CF) in the RFLAGS register to 1.
             % Details on amd64-prog-man-vol3 manual p257.
 
     ;       std
-            % Sets the direction flag (DF) in the rflags register to 1. 
+            % Sets the direction flag (DF) in the rflags register to 1.
             % Details on amd64-prog-man-vol3 manual p258.
 
     ;       sub(
                 sub_src             :: operand,
                                     % imm value, register or memory location
-                sub_dest            :: operand 
+                sub_dest            :: operand
                                     % register or memory location
             )
-            % Subtracts 'sub_src' from 'sub_dest'. 
+            % Subtracts 'sub_src' from 'sub_dest'.
             % Details on amd64-prog-man-vol3 manual p261.
 
     ;       test(
@@ -1295,10 +1298,10 @@
                 xadd_src            :: operand,
                                     % register
                 xadd_dest           :: operand
-                                    % register or memory location 
+                                    % register or memory location
             )
-            % Exchanges the contents of 'xadd_src' with 'xadd_dest', load 
-            % their sum into 'xadd_dest'. 
+            % Exchanges the contents of 'xadd_src' with 'xadd_dest', load
+            % their sum into 'xadd_dest'.
             % Details on amd64-prog-man-vol3 manual p266.
 
     ;       xchg(
@@ -1309,18 +1312,18 @@
             )
             % Exchanges the contents of 'xchg_src1' and 'xchg_src2'.
             % Details on amd64-prog-man-vol3 manual p268.
-        
+
     ;       xor(
                 xor_src :: operand,
-                xor_dest :: operand 
+                xor_dest :: operand
             ).
             % Performs a bitwise XOR on 'xor_src' with 'xor_dest' and stores
-            % the result in xor_dest.  
+            % the result in xor_dest.
             % Details on amd64-prog-man-vol3 manual p272.
 
 %-----------------------------------------------------------------------------%
 
-    % Returns the number of x86_64 general-purpose registers. 
+    % Returns the number of x86_64 general-purpose registers.
     %
 :- func num_x86_64_regs = int.
 
@@ -1329,17 +1332,17 @@
 
 :- implementation.
 
-init_x86_64_module(CModule) = x86_64_module(CModule, []).  
+init_x86_64_module(CModule) = x86_64_module(CModule, []).
 
-init_x86_64_proc(CProc) = 
+init_x86_64_proc(CProc) =
     x86_64_procedure(CProc ^ cproc_name,  CProc ^ cproc_orig_arity,
-        CProc ^ cproc_id, CProc ^ cproc_code_model, [], 
+        CProc ^ cproc_id, CProc ^ cproc_code_model, [],
         CProc ^ cproc_proc_label, CProc ^ cproc_label_nums,
         CProc ^ cproc_may_alter_rtti, CProc ^ cproc_c_global_vars).
 
-init_x86_64_instruction = x86_64_instr([], ""). 
+init_x86_64_instruction = x86_64_instr([], "").
 
-num_x86_64_regs = 16. 
+num_x86_64_regs = 16.
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.x86_64_instrs.

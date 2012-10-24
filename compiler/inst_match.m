@@ -1105,8 +1105,8 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         % We do not yet allow `free' to match `any'.
         % Among other things, changing this would break compare_inst
         % in modecheck_call.m.
-        inst_results_bound_inst_list_is_ground_or_any(InstResultsA, BoundInstsA,
-            !.Info ^ imi_module_info)
+        inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
+            BoundInstsA, !.Info ^ imi_module_info)
     ;
         InstA = bound(UniqA, _InstResultsA, BoundInstsA),
         InstB = bound(UniqB, _InstResultsB, BoundInstsB),

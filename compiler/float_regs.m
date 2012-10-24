@@ -9,8 +9,8 @@
 % File: float_regs.m
 % Author: wangp.
 %
-% In the following we assume that Mercury `float' is wider than a word, and that
-% we are targeting a Mercury abstract machine with float registers.
+% In the following we assume that Mercury `float' is wider than a word,
+% and that we are targeting a Mercury abstract machine with float registers.
 % The module is not used otherwise.
 %
 % Arguments in first-order calls are passed via float registers if the formal
@@ -313,8 +313,8 @@ make_generic_type(PolymorphicContext, Type0, Type) :-
 add_arg_regs_in_mode(ModuleInfo, VarType, ArgMode0, ArgMode) :-
     add_arg_regs_in_mode_2(ModuleInfo, set.init, VarType, ArgMode0, ArgMode).
 
-:- pred add_arg_regs_in_mode_2(module_info::in, set(inst_name)::in, mer_type::in,
-    mer_mode::in, mer_mode::out) is det.
+:- pred add_arg_regs_in_mode_2(module_info::in, set(inst_name)::in,
+    mer_type::in, mer_mode::in, mer_mode::out) is det.
 
 add_arg_regs_in_mode_2(ModuleInfo, Seen, VarType, ArgMode0, ArgMode) :-
     mode_get_insts(ModuleInfo, ArgMode0, InitialInst0, FinalInst0),

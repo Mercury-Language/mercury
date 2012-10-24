@@ -921,7 +921,8 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         Continue = yes
     ).
 
-:- pred do_module_qualify_mutable(item_mutable_info::in, item_mutable_info::out,
+:- pred do_module_qualify_mutable(
+    item_mutable_info::in, item_mutable_info::out,
     mq_info::in, mq_info::out, list(error_spec)::in, list(error_spec)::out)
     is det.
 

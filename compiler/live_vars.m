@@ -884,7 +884,8 @@ par_stack_vars_end_parallel_conjunction(LiveSet, OuterParStackVars,
         % accumulating set.
         OuterAccStackVars = OuterAccStackVars0
             `set_of_var.union` InnerStackVars
-            `set_of_var.union` (LiveSet `set_of_var.difference` OuterNonLocals),
+            `set_of_var.union`
+                (LiveSet `set_of_var.difference` OuterNonLocals),
         ParStackVars = parallel_conjunction(OuterNonLocals,
             OuterLocalStackVars, OuterAccStackVars)
     ;
@@ -894,7 +895,8 @@ par_stack_vars_end_parallel_conjunction(LiveSet, OuterParStackVars,
         % control.  The same is true in the case for
         % after_loop_control_scope/2 below.
         StackVars = StackVars0 `set_of_var.union` InnerStackVars
-            `set_of_var.union` (LiveSet `set_of_var.difference` OuterNonLocals),
+            `set_of_var.union`
+                (LiveSet `set_of_var.difference` OuterNonLocals),
         ParStackVars = loop_control_scope(OuterNonLocals, StackVars)
     ;
         OuterParStackVars = after_loop_control_scope(StackVarsList,
@@ -987,7 +989,8 @@ par_stack_vars_accumulate_stack_vars(NewStackVars,
 par_stack_vars_get_nonlocals(not_in_parallel_context, set_of_var.init).
 par_stack_vars_get_nonlocals(parallel_conjunction(NonLocals, _, _), NonLocals).
 par_stack_vars_get_nonlocals(loop_control_scope(NonLocals, _), NonLocals).
-par_stack_vars_get_nonlocals(after_loop_control_scope(_, _, _), set_of_var.init).
+par_stack_vars_get_nonlocals(after_loop_control_scope(_, _, _),
+    set_of_var.init).
 
 :- pred par_stack_vars_next_par_conjunct(
     parallel_stackvars::in, parallel_stackvars::out) is det.
@@ -1016,8 +1019,8 @@ par_stack_vars_recursive_call(MaybeNeedLC, DelayDeathSet, !ParStackVars) :-
         !.ParStackVars = loop_control_scope(_, _),
         unexpected($module, $pred, "recursive call in loop control scope")
     ;
-        !.ParStackVars = after_loop_control_scope(StackVarsList0, DelayDeathSet,
-            StackVars),
+        !.ParStackVars = after_loop_control_scope(StackVarsList0,
+            DelayDeathSet, StackVars),
         StackVarsList = [StackVars | StackVarsList0],
         cartesian_product_list(StackVarsList, NonoverlapSets),
         MaybeNeedLC = yes(need_for_loop_control(NonoverlapSets)),

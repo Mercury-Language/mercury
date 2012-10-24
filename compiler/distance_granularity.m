@@ -188,8 +188,8 @@ apply_dg_to_preds([], _Distance, !ModuleInfo).
 apply_dg_to_preds([PredId | PredIdList], Distance, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     % We need to know what the pred_id will be for the specified predicate
-    % before we actually clone it (this avoids doing one more pass to update the
-    % pred_id in the recursive plain calls).
+    % before we actually clone it (this avoids doing one more pass to update
+    % the pred_id in the recursive plain calls).
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
     get_next_pred_id(PredicateTable, NewPredId),
 
@@ -267,8 +267,8 @@ apply_dg_to_procs(PredId, [ProcId | ProcIds], Distance, PredIdSpecialized,
 
         proc_info_get_goal(ProcInfo0, Body),
         apply_dg_to_goal(Body, BodyClone, PredId, ProcId, PredIdSpecialized,
-            SymNameSpecialized, ProcInfo0, ProcInfo1, !ModuleInfo, Distance, no,
-            no, MaybeGranularityVar, _),
+            SymNameSpecialized, ProcInfo0, ProcInfo1, !ModuleInfo,
+            Distance, no, no, MaybeGranularityVar, _),
         (
             MaybeGranularityVar = yes(_),
             % The granularity variable has been created while the procedure was
@@ -333,12 +333,11 @@ apply_dg_to_goal(!Goal, CallerPredId, CallerProcId, PredIdSpecialized,
             Type = parallel_conj,
             (
                 ContainRecursiveCalls = yes,
-                create_if_then_else_goal(Goals, GoalInfo, !.MaybeGranularityVar,
-                    PredIdSpecialized, CallerProcId, Distance, !:Goal,
-                    !ProcInfo, !.ModuleInfo)
+                create_if_then_else_goal(Goals, GoalInfo,
+                    !.MaybeGranularityVar, PredIdSpecialized, CallerProcId,
+                    Distance, !:Goal, !ProcInfo, !.ModuleInfo)
             ;
-                ContainRecursiveCalls = no,
-                true
+                ContainRecursiveCalls = no
             )
         ),
         IsRecursiveCallInParallelConj = no
@@ -470,9 +469,9 @@ apply_dg_to_conj([Goal0 | Goals], !GoalsAcc, CallerPredId, CallerProcId,
         PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
         Distance, IsInParallelConj, !MaybeGranularityVar,
         !HasRecursiveCallsInParallelConj) :-
-    apply_dg_to_goal(Goal0, Goal, CallerPredId, CallerProcId, PredIdSpecialized,
-        SymNameSpecialized, !ProcInfo, !ModuleInfo, Distance, IsInParallelConj,
-        !MaybeGranularityVar, IsRecursiveCall),
+    apply_dg_to_goal(Goal0, Goal, CallerPredId, CallerProcId,
+        PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
+        Distance, IsInParallelConj, !MaybeGranularityVar, IsRecursiveCall),
     list.append(!.GoalsAcc, [Goal], !:GoalsAcc),
     (
         IsRecursiveCall = yes,
@@ -484,8 +483,8 @@ apply_dg_to_conj([Goal0 | Goals], !GoalsAcc, CallerPredId, CallerProcId,
         !:HasRecursiveCallsInParallelConj = !.HasRecursiveCallsInParallelConj
     ),
     apply_dg_to_conj(Goals, !GoalsAcc, CallerPredId, CallerProcId,
-        PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo, Distance,
-        IsInParallelConj, !MaybeGranularityVar,
+        PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
+        Distance, IsInParallelConj, !MaybeGranularityVar,
         !HasRecursiveCallsInParallelConj).
 
     % Create the if_then_else goal surrounding the recursive plain call as
@@ -576,8 +575,8 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     list.append(CallArgs0, [Var], CallArgs),
 
                     % If the original predicate is a function then the
-                    % specialized version is a predicate. Therefore, there is no
-                    % need for the unify context anymore.
+                    % specialized version is a predicate. Therefore,
+                    % there is no need for the unify context anymore.
                     CallUnifyContext = no,
 
                     GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs,
@@ -777,13 +776,13 @@ apply_dg_to_disj([], !GoalsAcc, _CallerPredId, _CallerProcId,
 apply_dg_to_disj([Goal0 | Goals], !GoalsAcc, CallerPredId, CallerProcId,
         PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
         Distance, !MaybeGranularityVar) :-
-    apply_dg_to_goal(Goal0, Goal, CallerPredId, CallerProcId, PredIdSpecialized,
-        SymNameSpecialized, !ProcInfo, !ModuleInfo, Distance, no,
-        !MaybeGranularityVar, _),
+    apply_dg_to_goal(Goal0, Goal, CallerPredId, CallerProcId,
+        PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
+        Distance, no, !MaybeGranularityVar, _),
     list.append( !.GoalsAcc, [Goal], !:GoalsAcc),
     apply_dg_to_disj(Goals, !GoalsAcc, CallerPredId, CallerProcId,
-        PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo, Distance,
-        !MaybeGranularityVar).
+        PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
+        Distance, !MaybeGranularityVar).
 
     % Apply the distance granularity transformation to a switch.
     %
@@ -800,13 +799,13 @@ apply_dg_to_switch([Case | Cases], !CasesAcc, CallerPredId, CallerProcId,
         PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
         Distance, !MaybeGranularityVar) :-
     Case = case(MainConsId, OtherConsIds, Goal0),
-    apply_dg_to_goal(Goal0, Goal, CallerPredId, CallerProcId, PredIdSpecialized,
-        SymNameSpecialized, !ProcInfo, !ModuleInfo, Distance, no,
-        !MaybeGranularityVar, _),
+    apply_dg_to_goal(Goal0, Goal, CallerPredId, CallerProcId,
+        PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
+        Distance, no, !MaybeGranularityVar, _),
     !:CasesAcc = [case(MainConsId, OtherConsIds, Goal) | !.CasesAcc],
     apply_dg_to_switch(Cases, !CasesAcc, CallerPredId, CallerProcId,
-        PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo, Distance,
-        !MaybeGranularityVar).
+        PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
+        Distance, !MaybeGranularityVar).
 
     % Create the string name of the specialized predicate (same format as
     % make_pred_name in prog_util) out of the name of the original one.
@@ -835,8 +834,8 @@ granularity_prefix = "DistanceGranularityFor".
     % Update the recursive calls in each procedure in the list so that the
     % pred_id called is the one of the specialized procedure.
     %
-:- pred update_original_predicate_procs(pred_id::in, list(proc_id)::in, int::in,
-    pred_id::in, sym_name::in, pred_info::in, pred_info::out,
+:- pred update_original_predicate_procs(pred_id::in, list(proc_id)::in,
+    int::in, pred_id::in, sym_name::in, pred_info::in, pred_info::out,
     module_info::in, module_info::out) is det.
 
 update_original_predicate_procs(_PredId, [], _Distance, _PredIdSpecialized,
@@ -857,8 +856,8 @@ update_original_predicate_procs(PredId, [ProcId | ProcIds], Distance,
     update_original_predicate_procs(PredId, ProcIds, Distance,
         PredIdSpecialized, SymNameSpecialized, !PredInfo, !ModuleInfo).
 
-    % Update the recursive calls of a goal so that the pred_id called is the one
-    % of the specialized procedure.
+    % Update the recursive calls of a goal so that the pred_id called
+    % is the one of the specialized procedure.
     %
 :- pred update_original_predicate_goal(hlds_goal::in, hlds_goal::out,
     pred_id::in, proc_id::in, pred_id::in, sym_name::in,
@@ -890,8 +889,8 @@ update_original_predicate_goal(!Goal, CallerPredId, CallerProcId,
             flatten_conj(Goals1, Goals)
         ;
             Type = parallel_conj,
-            % No need to flatten parallel conjunctions as the transformation may
-            % only create plain conjunctions
+            % No need to flatten parallel conjunctions as the transformation
+            % may only create plain conjunctions
             % (see update_original_predicate_plain_call).
             Goals = Goals1
         ),

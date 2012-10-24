@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: compile_target_code.m.
 % Main authors: fjh, stayl.
-% 
+%
 % Code to compile the generated `.c', `.s', `.o', etc, files.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.compile_target_code.
@@ -157,7 +157,7 @@
     %
     % Return whether or not shared libraries are supported on the current
     % platform.
-    % 
+    %
 :- pred shared_libraries_supported(globals::in, bool::out) is det.
 
     % get_object_code_type(Globals, TargetType, PIC):
@@ -203,12 +203,12 @@
 %-----------------------------------------------------------------------------%
 %
 % Stuff used for standalone interfaces.
-% 
-    
+%
+
     % make_standalone_interface(Globals, Basename, !IO):
     %
     % Create a standalone interface in the current directory.
-    % 
+    %
 :- pred make_standalone_interface(globals::in, string::in, io::di, io::uo)
     is det.
 
@@ -224,7 +224,7 @@
     %
 :- pred output_grade_defines(globals::in, io.output_stream::in,
     io::di, io::uo) is det.
-    
+
     % Output the C compiler flags that specify where the C compiler should
     % search for header files to the given stream.
     % This predicate is used to implement the `--output-c-include-dir-flags'
@@ -276,7 +276,7 @@ il_assemble(ErrorStream, ModuleName, HasMain, Globals, Succeeded, !IO) :-
 
     do_il_assemble(ErrorStream, IL_File, DllFile, no_main,
         Globals, DllSucceeded, !IO),
-    ( 
+    (
         HasMain = has_main,
         module_name_to_file_name(Globals, ModuleName, ".exe",
             do_create_dirs, ExeFile, !IO),
@@ -320,7 +320,7 @@ do_il_assemble(ErrorStream, IL_File, TargetFile, HasMain, Globals, Succeeded,
         Debug = no,
         DebugOpt = ""
     ),
-    ( 
+    (
         HasMain = has_main,
         TargetOpt = ""
     ;
@@ -419,7 +419,7 @@ do_compile_c_file(ErrorStream, PIC, C_File, O_File, Globals, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, cc, CC),
     gather_c_compiler_flags(Globals, PIC, AllCFlags),
     string.append_list([
-        CC, " ", 
+        CC, " ",
         AllCFlags,
         " -c ", quote_arg(C_File), " ",
         NameObjectFile, quote_arg(O_File)], Command),
@@ -502,7 +502,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         UseTrail = yes,
         % With tagged trail entries function trailing will not work unless the
         % C functions stored on the trail are aligned on word boundaries (or a
-        % multiple thereof).  The assemblers on some systems, and some gcc
+        % multiple thereof). The assemblers on some systems, and some gcc
         % optimisation settings, do not align functions, so we need to
         % explicitly pass -falign-functions in trailing grades to ensure that
         % C functions are appropriately aligned.
@@ -590,7 +590,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     ;
         AppleGCCRegWorkaroundOpt = ""
     ),
-  
+
     % Workaround performance problem(s) with gcc that causes the C files
     % generated in debugging grades to compile very slowly at -O1 and above.
     % (Changes here need to be reflected in scripts/mgnuc.in.)
@@ -602,12 +602,12 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     ;
         OverrideOpts = ""
     ),
- 
+
     % Be careful with the order here!  Some options override others,
     % e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
     % it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
     % Also be careful that each option is separated by spaces.
-    % 
+    %
     % In general, user supplied C compiler flags, i.e. CFLAGS and
     % CC_Specific_CFLAGS below, should be able to override those introduced by
     % the Mercury compiler.
@@ -626,10 +626,10 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         Target_DebugOpt,
         TypeLayoutOpt,
         InlineAllocOpt,
-        AnsiOpt, " ", 
+        AnsiOpt, " ",
         AppleGCCRegWorkaroundOpt,
-        C_FnAlignOpt, 
-        WarningOpt, " ", 
+        C_FnAlignOpt,
+        WarningOpt, " ",
         CFLAGS, " ",
         CC_Specific_CFLAGS, " ",
         OverrideOpts], AllCFlags).
@@ -958,28 +958,28 @@ gather_grade_defines(Globals, PIC, GradeDefines) :-
         UseRegionsOpt = ""
     ),
     string.append_list([
-        HighLevelCodeOpt, 
-        NestedFunctionsOpt, 
+        HighLevelCodeOpt,
+        NestedFunctionsOpt,
         HighLevelDataOpt,
         RegOpt, GotoOpt, AsmOpt,
         ParallelOpt,
         ThreadscopeOpt,
-        GC_Opt, 
-        ProfileCallsOpt, ProfileTimeOpt, 
-        ProfileMemoryOpt, ProfileDeepOpt, 
-        RecordTermSizesOpt, 
-        PIC_Reg_Opt, 
-        TagsOpt, NumTagBitsOpt, 
+        GC_Opt,
+        ProfileCallsOpt, ProfileTimeOpt,
+        ProfileMemoryOpt, ProfileDeepOpt,
+        RecordTermSizesOpt,
+        PIC_Reg_Opt,
+        TagsOpt, NumTagBitsOpt,
         ExtendOpt,
         LL_DebugOpt, DeclDebugOpt,
         SourceDebugOpt,
         ExecTraceOpt,
-        UseTrailOpt, 
+        UseTrailOpt,
         TrailSegOpt,
-        MinimalModelOpt, 
+        MinimalModelOpt,
         SinglePrecFloatOpt,
         UseRegionsOpt], GradeDefines).
-    
+
 %-----------------------------------------------------------------------------%
 
 :- pred gather_c_include_dir_flags(globals::in, string::out) is det.
@@ -1017,7 +1017,7 @@ gather_compiler_specific_flags(Globals, Flags) :-
 
 get_maybe_filtercc_command(Globals, MaybeFilterCmd) :-
     % At this time we only need to filter the compiler output when using
-    % assembler labels with gcc 4.x.  Mercury.config.bootstrap doesn't specify
+    % assembler labels with gcc 4.x. Mercury.config.bootstrap doesn't specify
     % the gcc version so we don't check for it.
     (
         globals.lookup_bool_option(Globals, asm_labels, yes),
@@ -1274,7 +1274,7 @@ make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
         invoke_mkinit(Globals, InitFileStream, cmd_verbose_commands,
             MkInit, " -k ", AllTargetFilesList, MkInitOK, !IO),
 
-        ( 
+        (
             MkInitOK =  yes,
             globals.lookup_maybe_string_option(Globals, extra_init_command,
                 MaybeInitFileCommand),
@@ -1413,7 +1413,7 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
 
     globals.get_target(Globals, Target),
     io.output_stream(OutputStream, !IO),
-    ( 
+    (
         Target = target_asm,
         % For --target asm, we generate everything into a single object file.
         (
@@ -1433,7 +1433,7 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
         ),
         join_module_list(Globals, Modules, Obj, ObjectsList, !IO)
     ),
-    ( 
+    (
         TargetType = executable,
         list.map(
             (pred(ModuleStr::in, ModuleName::out) is det :-
@@ -1597,7 +1597,7 @@ make_init_target_file(Globals, ErrorStream, MkInit, ModuleName, ModuleNames,
         InitFileNamesList0),
     % If we pass the same .init file to mkinit multiple times we will end
     % up with multiple calls to the functions that write out proc statics
-    % in deep profiling grades.  This will cause the runtime code that writes
+    % in deep profiling grades. This will cause the runtime code that writes
     % out the profile to abort.
     list.remove_dups(InitFileNamesList0, InitFileNamesList1),
 
@@ -1731,7 +1731,7 @@ maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile, Compile,
     % file_as_new_as(FileNameA, Rel, FileNameB, !IO)
     %
     % Check if file A has a timestamp at least as new as the timestamp of
-    % file B.  Rel is `missing_timestamp' iff either timestamp could not
+    % file B. Rel is `missing_timestamp' iff either timestamp could not
     % be retrieved.
     %
 :- pred file_as_new_as(file_name::in, is_as_new_as::out, file_name::in,
@@ -1748,7 +1748,7 @@ file_as_new_as(FileNameA, Rel, FileNameB, !IO) :-
         ( MaybeCompare = yes(=)
         ; MaybeCompare = yes(>)
         ),
-        Rel = is_as_new_as 
+        Rel = is_as_new_as
     ;
         MaybeCompare = yes(<),
         Rel = is_not_as_new_as
@@ -1867,7 +1867,7 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
         % These may be shell scripts or batch files.
         globals.get_target_env_type(Globals, TargetEnvType),
         (
-            TargetEnvType = env_type_win_cmd,   
+            TargetEnvType = env_type_win_cmd,
             Ext = ".bat"
         ;
             ( TargetEnvType = env_type_posix
@@ -1993,7 +1993,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
 
     % Find which system libraries are needed.
     get_system_libs(Globals, LinkTargetType, SystemLibs),
-    
+
     % With --restricted-command-line we may need to some additional
     % options to the linker.
     % (See the comment above get_restricted_command_lin_link_opts/3 for
@@ -2015,19 +2015,19 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
 
     % Set up any framework search paths.
     get_framework_directories(Globals, FrameworkDirectories),
-    
+
     % Set up the install name for shared libraries.
     globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
         UseInstallName),
     (
         UseInstallName = yes,
         LinkTargetType = shared_library
-    ->  
+    ->
         % NOTE: `ShLibFileName' must *not* be prefixed with a directory.
         %       get_install_name_option will prefix it with the correct
         %       directory which is the one where the library is going to
-        %       be installed, *not* where it is going to be built. 
-        %        
+        %       be installed, *not* where it is going to be built.
+        %
         BaseFileName = sym_name_to_string(ModuleName),
         globals.lookup_string_option(Globals, shared_library_extension,
             SharedLibExt),
@@ -2074,14 +2074,14 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
             MaybeDeleteTmpArchive = no,
             join_quoted_string_list(ObjectsList, "", "", " ", Objects)
         ),
-        
-        ( 
+
+        (
             ArchiveSucceeded = yes,
 
             % Note that LDFlags may contain `-l' options so it should come
             % after Objects.
             globals.lookup_string_option(Globals, CommandOpt, Command),
-            get_linker_output_option(Globals, LinkTargetType, OutputOpt), 
+            get_linker_output_option(Globals, LinkTargetType, OutputOpt),
             string.append_list([
                     Command, " ",
                     StaticOpts, " ",
@@ -2133,7 +2133,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
         MaybeLinkLibraries = no,
         LinkSucceeded = no
     ).
-    
+
     % Find the standard Mercury libraries, and the system
     % libraries needed by them.
     % Return the empty string if --mercury-standard-library-directory
@@ -2196,7 +2196,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 GCGrade0 = "gc_debug"
             ),
             globals.lookup_bool_option(Globals, low_level_debug, LLDebug),
-            ( 
+            (
                 LLDebug = yes,
                 GCGrade1 = GCGrade0 ++ "_ll_debug"
             ;
@@ -2417,7 +2417,7 @@ get_runtime_library_path_opts(Globals, LinkTargetType,
         globals.lookup_accumulating_option(Globals,
             runtime_link_library_directories, RpathDirs0),
         RpathDirs = list.map(quote_arg, RpathDirs0),
-        ( 
+        (
             RpathDirs = [],
             RpathOpts = ""
         ;
@@ -2493,7 +2493,7 @@ use_thread_libs(Globals, UseThreadLibs) :-
 
     % When using --restricted-command-line with Visual C we add all the object
     % files to a temporary archive before linking an executable.
-    % However, if only .lib files are given on the command line then 
+    % However, if only .lib files are given on the command line then
     % the linker needs to manually told some details that it usually infers
     % from the object files, for example the program entry point and the
     % target machine type.
@@ -2501,7 +2501,8 @@ use_thread_libs(Globals, UseThreadLibs) :-
 :- pred get_restricted_command_line_link_opts(globals::in,
     linked_target_type::in, string::out) is det.
 
-get_restricted_command_line_link_opts(Globals, LinkTargetType, ResCmdLinkOpts) :-
+get_restricted_command_line_link_opts(Globals, LinkTargetType,
+        ResCmdLinkOpts) :-
     globals.lookup_bool_option(Globals, restricted_command_line,
         RestrictedCommandLine),
     (
@@ -2558,7 +2559,7 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
             Globals, NoSubdirGlobals0),
         globals.set_option(use_grade_subdirs, bool(no),
             NoSubdirGlobals0, NoSubdirGlobals),
-        ( 
+        (
             ( LinkTargetType = executable
             ; LinkTargetType = csharp_executable
             ; LinkTargetType = csharp_library
@@ -2588,9 +2589,9 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
             % Remove the target of the symlink/copy in case it already exists.
             io.remove_file_recursively(UserDirFileName, _, !IO),
 
-            % Erlang "archives" are just directories of .beam files, so we need
-            % to copy them as directories rather than files (on systems on which
-            % symbolic links are not available).
+            % Erlang "archives" are just directories of .beam files,
+            % so we need to copy them as directories rather than files
+            % (on systems on which symbolic links are not available).
             ( if LinkTargetType = erlang_archive then
                 make_symlink_or_copy_dir(Globals, OutputFileName,
                     UserDirFileName, Succeeded, !IO)
@@ -2613,7 +2614,7 @@ get_framework_directories(Globals, FrameworkDirs) :-
     globals.lookup_accumulating_option(Globals, framework_directories,
         FrameworkDirs0),
     join_quoted_string_list(FrameworkDirs0, "-F", "", " ", FrameworkDirs).
-        
+
 :- pred get_frameworks(globals::in, string::out) is det.
 
 get_frameworks(Globals, FrameworkOpts) :-
@@ -2799,12 +2800,11 @@ create_archive(Globals, ErrorStream, LibFileName, Quote, ObjectList,
     ).
 
 :- pred create_csharp_exe_or_lib(globals::in, io.output_stream::in,
-    linked_target_type::in, module_name::in, file_name::in, list(file_name)::in,
-    bool::out, io::di, io::uo) is det.
+    linked_target_type::in, module_name::in, file_name::in,
+    list(file_name)::in, bool::out, io::di, io::uo) is det.
 
 create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         OutputFileName0, SourceList0, Succeeded, !IO) :-
-
     get_host_env_type(Globals, EnvType),
     get_csharp_compiler_type(Globals, CSharpCompilerType),
 
@@ -2817,8 +2817,8 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     (
         % If we output line numbers the mono C# compiler outputs lots of
         % spurious warnings about unused variables and unreachable code,
-        % so disable these warnings.  It also confuses #pragma warning
-        % which is why we make the options global
+        % so disable these warnings. It also confuses #pragma warning
+        % which is why we make the options global.
         LineNumbers = yes,
         NoWarnLineNumberOpt = "-nowarn:162,219 "
     ;
@@ -2874,7 +2874,7 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         " ", LinkLibraryDirectories),
 
     get_link_libraries(Globals, MaybeLinkLibraries, !IO),
-    (   
+    (
         MaybeLinkLibraries = yes(LinkLibrariesList0),
         LinkLibrariesList =
             list.map(csharp_file_name(EnvType, CSharpCompilerType),
@@ -2924,7 +2924,8 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     % This is because the MS C# compiler only allows \ as the path separator,
     % so we convert all / into \ when using the MC C# compiler.
     %
-:- func csharp_file_name(env_type, csharp_compiler_type, file_name) = file_name.
+:- func csharp_file_name(env_type, csharp_compiler_type, file_name)
+    = file_name.
 
 csharp_file_name(env_type_posix, csharp_microsoft, _FileName) =
     unexpected($module, $pred, "microsoft c# compiler in posix env").
@@ -2936,7 +2937,7 @@ csharp_file_name(env_type_cygwin, csharp_microsoft, Filename) =
 csharp_file_name(env_type_cygwin, csharp_mono, Filename) = Filename.
 csharp_file_name(env_type_cygwin, csharp_unknown, Filename) = Filename.
 
-csharp_file_name(env_type_msys, csharp_microsoft, Filename) = 
+csharp_file_name(env_type_msys, csharp_microsoft, Filename) =
     convert_to_windows_path_format(Filename).
 csharp_file_name(env_type_msys, csharp_mono, Filename) = Filename.
 csharp_file_name(env_type_msys, csharp_unknown, Filename) = Filename.
@@ -2986,8 +2987,8 @@ create_java_archive(Globals, ErrorStream, JarFileName, ObjectList, Succeeded,
     ),
 
     % Write the list of class files to a temporary file and pass the name of
-    % the temporary file to jar using @syntax.  The list of class files can be
-    % extremely long.  We create the temporary file in the current directory to
+    % the temporary file to jar using @syntax. The list of class files can be
+    % extremely long. We create the temporary file in the current directory to
     % avoid problems under Cygwin, where absolute paths will be interpreted
     % incorrectly when passed to a non-Cygwin jar program.
     io.make_temp(".", "mtmp", TempFileName, !IO),
@@ -3269,8 +3270,8 @@ maybe_pic_object_file_extension(Globals::in, PIC::out, Ext::in) :-
 % Standalone interfaces
 %
 
-% NOTE: the following code is similar to that of make_init_obj/7.  Any
-% changes here may need to be reflected there.
+% NOTE: the following code is similar to that of make_init_obj/7.
+% Any changes here may need to be reflected there.
 
 make_standalone_interface(Globals, Basename, !IO) :-
     make_standalone_int_header(Basename, HdrSucceeded, !IO),
@@ -3285,7 +3286,7 @@ make_standalone_interface(Globals, Basename, !IO) :-
     io::di, io::uo) is det.
 
 make_standalone_int_header(Basename, Succeeded, !IO) :-
-    HdrFileName = Basename ++ ".h", 
+    HdrFileName = Basename ++ ".h",
     io.open_output(HdrFileName, OpenResult, !IO),
     (
         OpenResult = ok(HdrFileStream),
@@ -3494,7 +3495,7 @@ invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             OpenResult = error(_),
             Succeeded = no
         )
-        
+
     ;
         RestrictedCommandLine = no,
         FullCmd = Cmd ++ " " ++ Args,
@@ -3510,8 +3511,8 @@ invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
 output_c_compiler_flags(Globals, Stream, !IO) :-
     get_object_code_type(Globals, executable, PIC),
     gather_c_compiler_flags(Globals, PIC, CFlags),
-    io.write_string(Stream, CFlags, !IO).    
- 
+    io.write_string(Stream, CFlags, !IO).
+
 %-----------------------------------------------------------------------------%
 %
 % Grade defines flags.
@@ -3544,16 +3545,16 @@ output_library_link_flags(Globals, Stream, !IO) :-
     LinkTargetType = executable,
     RpathFlagOpt = linker_rpath_flag,
     RpathSepOpt = linker_rpath_separator,
-    
+
     globals.lookup_accumulating_option(Globals, link_library_directories,
         LinkLibraryDirectoriesList),
     globals.lookup_string_option(Globals, linker_path_flag, LinkerPathFlag),
     join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
         " ", LinkLibraryDirectories),
     get_runtime_library_path_opts(Globals, LinkTargetType,
-        RpathFlagOpt, RpathSepOpt, RpathOpts), 
+        RpathFlagOpt, RpathSepOpt, RpathOpts),
     get_link_libraries(Globals, MaybeLinkLibraries, !IO),
-    (   
+    (
         MaybeLinkLibraries = yes(LinkLibrariesList),
         join_quoted_string_list(LinkLibrariesList, "", "", " ",
             LinkLibraries)

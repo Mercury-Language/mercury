@@ -188,7 +188,8 @@
                 foreign_enum_axioms        :: equality_axioms,
                 foreign_enum_functors      :: list(foreign_enum_functor),
                 foreign_enum_ordinal_table :: map(int, foreign_enum_functor),
-                foreign_enum_name_table    :: map(string, foreign_enum_functor),
+                foreign_enum_name_table    :: map(string,
+                                                foreign_enum_functor),
                 foreign_enum_functor_number_mapping
                                            :: list(int)
             )
@@ -855,8 +856,8 @@
 
     % Analogous to rtti_id_c_type.
     %
-:- pred rtti_id_maybe_element_csharp_type(rtti_id_maybe_element::in, string::out,
-    is_array::out) is det.
+:- pred rtti_id_maybe_element_csharp_type(rtti_id_maybe_element::in,
+    string::out, is_array::out) is det.
 :- pred rtti_id_csharp_type(rtti_id::in, string::out, is_array::out) is det.
 :- pred ctor_rtti_name_csharp_type(ctor_rtti_name::in, string::out,
     is_array::out) is det.

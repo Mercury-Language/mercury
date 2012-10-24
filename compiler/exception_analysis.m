@@ -728,7 +728,8 @@ combine_maybe_analysis_status(MaybeStatusA, MaybeStatusB, MaybeStatus) :-
     proc_result::in, proc_result::out,
     module_info::in, module_info::out) is det.
 
-check_nonrecursive_call(VarTypes, PPId, Args, PredInfo, !Result, !ModuleInfo) :-
+check_nonrecursive_call(VarTypes, PPId, Args, PredInfo, !Result,
+        !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),

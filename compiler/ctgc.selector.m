@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ctgc.selector.m.
 % Main author: nancy.
-% 
+%
 % Definition of predicates and functions for the manipulation of selectors.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.selector.
@@ -202,9 +202,11 @@ selector_subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
                 % of a type variable.  This is probably a hack.
                 Extension = []
             ;
-                % If both selectors begin with term selectors, clearly they must
-                % agree on the node to select for the selectors to be comparable.
-                SubType = det_select_subtype(ModuleInfo, Type, ConsIdA, IndexA),
+                % If both selectors begin with term selectors, clearly
+                % they must agree on the node to select for the selectors
+                % to be comparable.
+                SubType = det_select_subtype(ModuleInfo, Type, ConsIdA,
+                    IndexA),
                 selector_subsumed_by_2(ModuleInfo, AT, BT, SubType, Extension)
             )
         ;

@@ -545,7 +545,8 @@ rename_cond(match_range(RvalA, RvalB))
 
 rename_atomic(comment(S)) = comment(S).
 rename_atomic(assign(L, R)) = assign(rename_lval(L), rename_rval(R)).
-rename_atomic(assign_if_in_heap(L, R)) = assign(rename_lval(L), rename_rval(R)).
+rename_atomic(assign_if_in_heap(L, R)) =
+    assign(rename_lval(L), rename_rval(R)).
 rename_atomic(delete_object(O)) = delete_object(rename_rval(O)).
 rename_atomic(new_object(L, Tag, ExplicitSecTag, Type, MaybeSize, Ctxt, Args,
         Types, MayUseAtomic, AllocId))

@@ -687,7 +687,8 @@ check_dummy_type_2(ModuleInfo, Type, CoveredTypes) = IsDummy :-
             ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)->
                 get_type_defn_body(TypeDefn, TypeBody),
                 (
-                    TypeBody = hlds_du_type(_, _, _, DuTypeKind, _, _, _, _, _),
+                    TypeBody = hlds_du_type(_, _, _, DuTypeKind,
+                        _, _, _, _, _),
                     (
                         DuTypeKind = du_type_kind_direct_dummy,
                         IsDummy = is_dummy_type

@@ -299,7 +299,8 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
                     io.nl(!IO),
                     read_module_analysis_results_2(Compiler, AnalysisFileName,
                         ModuleResults, !IO),
-                    write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
+                    write_analysis_cache_file(CacheFileName, ModuleResults,
+                        !IO)
                 )
             ;
                 read_module_analysis_results_2(Compiler, AnalysisFileName,

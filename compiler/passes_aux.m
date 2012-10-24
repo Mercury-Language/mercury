@@ -141,7 +141,8 @@
     module_info::in, module_info::out) is det.
 
 :- pred process_all_nonimported_procs_update(
-    update_proc_task::update_proc_task, update_proc_task::out(update_proc_task),
+    update_proc_task::update_proc_task,
+    update_proc_task::out(update_proc_task),
     module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%

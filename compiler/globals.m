@@ -220,7 +220,8 @@
 :- pred convert_reuse_strategy(string::in, int::in, reuse_strategy::out)
     is semidet.
 :- pred convert_env_type(string::in, env_type::out) is semidet.
-:- pred convert_ssdb_trace_level(string::in, bool::in, ssdb_trace_level::out) is semidet.
+:- pred convert_ssdb_trace_level(string::in, bool::in, ssdb_trace_level::out)
+    is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -256,7 +257,8 @@
 :- pred get_ssdb_trace_level(globals::in, ssdb_trace_level::out) is det.
 :- pred get_maybe_thread_safe(globals::in, may_be_thread_safe::out) is det.
 :- pred get_c_compiler_type(globals::in, c_compiler_type::out) is det.
-:- pred get_csharp_compiler_type(globals::in, csharp_compiler_type::out) is det.
+:- pred get_csharp_compiler_type(globals::in, csharp_compiler_type::out)
+    is det.
 :- pred get_reuse_strategy(globals::in, reuse_strategy::out) is det.
 :- pred get_maybe_il_version_number(globals::in, maybe(il_version_number)::out)
     is det.
@@ -271,7 +273,8 @@
 :- pred set_tags_method(tags_method::in, globals::in, globals::out) is det.
 :- pred set_trace_level(trace_level::in, globals::in, globals::out) is det.
 :- pred set_trace_level_none(globals::in, globals::out) is det.
-:- pred set_ssdb_trace_level(ssdb_trace_level::in, globals::in, globals::out) is det.
+:- pred set_ssdb_trace_level(ssdb_trace_level::in,
+    globals::in, globals::out) is det.
 :- pred set_maybe_feedback_info(maybe(feedback_info)::in, 
     globals::in, globals::out) is det.
 

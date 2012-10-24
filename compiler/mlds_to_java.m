@@ -1096,7 +1096,8 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
 
     add_to_address_map(ClassName, CodeAddrs, !AddrOfMap).
 
-    % The highest arity for which there is a specialised MethodPtr<n> interface.
+    % The highest arity for which there is a specialised MethodPtr<n>
+    % interface.
     %
 :- func max_specialised_method_ptr_arity = int.
 
@@ -4864,7 +4865,8 @@ output_unboxed_rval(Info, Type, Expr, !IO) :-
         io.write_string(")", !IO)
     ).
 
-    % java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod):
+    % java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType,
+    %   UnboxMethod):
     %
     % For a given Mercury type, check if this corresponds to a Java type
     % which has both unboxed (builtin) and boxed (class) versions, and if so,

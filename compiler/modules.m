@@ -2501,7 +2501,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
     digraph(sym_name)::in, digraph(sym_name)::in,
     io::di, io::uo) is det.
 
-maybe_output_imports_graph(Globals, Module, IntDepsGraph, ImplDepsGraph, !IO) :-
+maybe_output_imports_graph(Globals, Module, IntDepsGraph, ImplDepsGraph,
+        !IO) :-
     globals.lookup_bool_option(Globals, imports_graph, ImportsGraph),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (

@@ -1,6 +1,6 @@
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -12,7 +12,7 @@
 % Provide the functionality to create optimised versions of those procedures
 % for which reuse was detected.
 %
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module structure_reuse.versions.
 :- interface.
@@ -21,7 +21,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 
     % For each of the entries in the reuse table:
@@ -54,8 +54,8 @@
 :- pred create_fake_reuse_procedure(pred_proc_id::in, no_clobber_args::in,
     module_info::in, module_info::out) is det.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -80,7 +80,7 @@
 :- import_module require.
 :- import_module set.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type reuse_name == sym_name.
 
@@ -96,7 +96,7 @@ generate_reuse_name(ModuleInfo, PPId, NoClobbers) = ReuseName :-
     make_pred_name(PredModule, "ctgc", yes(PredOrFunc), PredName,
         newpred_structure_reuse(ProcInt, NoClobbers), ReuseName).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % This process can be split into separate steps:
     % - determine all the pred-proc-ids of procedure with conditional reuse;
@@ -181,7 +181,7 @@ maybe_create_full_reuse_proc_copy(PPId, NewPPId, !ModuleInfo, !ReuseTable) :-
         unexpected($module, $pred, "no reuse information")
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 create_fresh_pred_proc_info_copy(PPId, NoClobbers, NewPPId, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
@@ -231,7 +231,7 @@ create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
         ExistQTVars, ProgConstraints, AssertIds, VarNameRemap,
         ProcInfo, ReuseProcId, ReusePredInfo).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type convert_potential_reuse
     --->    convert_potential_reuse
@@ -495,7 +495,7 @@ process_case(ConvertPotentialReuse, ReuseMap, ModuleInfo, Case0, Case) :-
     process_goal(ConvertPotentialReuse, ReuseMap, ModuleInfo, Goal0, Goal),
     Case = case(MainConsId, OtherConsIds, Goal).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 create_fake_reuse_procedure(PPId, NoClobbers, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
@@ -520,6 +520,6 @@ create_fake_reuse_procedure(PPId, NoClobbers, !ModuleInfo) :-
             !ModuleInfo)
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 :- end_module structure_reuse.versions.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

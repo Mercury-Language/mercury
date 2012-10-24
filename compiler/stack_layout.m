@@ -997,7 +997,8 @@ construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
             find_sequence(RevHeadVarNumVector, RevHeadVarNums0,
                 0, OldHeadVarNumOffset)
         ->
-            HeadVarNumSlot = NextHeadVarNum0 - OldHeadVarNumOffset - NumHeadVars
+            HeadVarNumSlot =
+                NextHeadVarNum0 - OldHeadVarNumOffset - NumHeadVars
         ;
             RevHeadVarNums = RevHeadVarNumVector ++ RevHeadVarNums0,
             !ExecTraceInfo ^ eti_rev_proc_head_var_nums := RevHeadVarNums,

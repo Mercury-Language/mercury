@@ -331,7 +331,8 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         ),
         DisjunctsAndInfos = list.map(ProcessDisjunct, Goals0),
         assoc_list.keys_and_values(DisjunctsAndInfos, Goals, DisjunctsInfo),
-        list.foldl(merge_closure_infos, DisjunctsInfo, map.init, !:ClosureInfo),
+        list.foldl(merge_closure_infos, DisjunctsInfo,
+            map.init, !:ClosureInfo),
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;

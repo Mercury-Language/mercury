@@ -94,7 +94,8 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
                 maybe_flush_output(Statistics, !IO),
                 ( instmap_is_reachable(InstMap) ->
                     instmap_to_assoc_list(InstMap, NewInsts),
-                    mode_info_get_last_checkpoint_insts(!.ModeInfo, OldInstMap),
+                    mode_info_get_last_checkpoint_insts(!.ModeInfo,
+                        OldInstMap),
                     mode_info_get_varset(!.ModeInfo, VarSet),
                     mode_info_get_instvarset(!.ModeInfo, InstVarSet),
                     write_var_insts(NewInsts, OldInstMap, VarSet, InstVarSet,

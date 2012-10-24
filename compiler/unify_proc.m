@@ -791,7 +791,8 @@ generate_user_defined_unify_proc_body(UserEqCompare, X, Y, Context, Clause,
 
             create_pure_atomic_complicated_unification(ResultVar,
                 compare_functor("="), Context, umc_explicit, [], UnifyGoal),
-            Goal0 = hlds_goal(conj(plain_conj, [CallGoal, UnifyGoal]), GoalInfo)
+            Goal0 = hlds_goal(conj(plain_conj, [CallGoal, UnifyGoal]),
+                GoalInfo)
         ;
             MaybeCompare = no,
             unexpected($module, $pred, "MaybeCompare = no")

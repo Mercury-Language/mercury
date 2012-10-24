@@ -161,7 +161,8 @@ get_float_width(Globals) = FloatWidth :-
 
 alloc_at_call_site(NeedAtCall, AllocData, !StackAlloc) :-
     NeedAtCall = need_across_call(ForwardVars, ResumeVars, NondetLiveVars),
-    LiveSet0 = set_of_var.union_list([ForwardVars, ResumeVars, NondetLiveVars]),
+    LiveSet0 = set_of_var.union_list([ForwardVars, ResumeVars,
+        NondetLiveVars]),
     filter_out_dummy_vars(AllocData, LiveSet0, LiveSet),
 
     !.StackAlloc = stack_alloc(LiveSets0),

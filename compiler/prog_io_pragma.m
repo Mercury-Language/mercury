@@ -2145,7 +2145,8 @@ parse_box_policy(term.functor(term.atom("native_if_possible"), [], _),
 parse_box_policy(term.functor(term.atom("always_boxed"), [], _),
     always_boxed).
 
-:- pred parse_affects_liveness(term::in, proc_affects_liveness::out) is semidet.
+:- pred parse_affects_liveness(term::in, proc_affects_liveness::out)
+    is semidet.
 
 parse_affects_liveness(Term, AffectsLiveness) :-
     Term = term.functor(term.atom(Functor), [], _),
@@ -2159,7 +2160,8 @@ parse_affects_liveness(Term, AffectsLiveness) :-
         AffectsLiveness = proc_does_not_affect_liveness
     ).
 
-:- pred parse_allocates_memory(term::in, proc_allocates_memory::out) is semidet.
+:- pred parse_allocates_memory(term::in, proc_allocates_memory::out)
+    is semidet.
 
 parse_allocates_memory(Term, AllocatesMemory) :-
     Term = term.functor(term.atom(Functor), [], _),

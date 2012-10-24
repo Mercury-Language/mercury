@@ -82,7 +82,7 @@
                 termination_error_contexts
             ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 prove_termination_in_scc(SCC, PassInfo, SingleArgs, Termination,
         !ModuleInfo, !IO) :-
@@ -542,7 +542,8 @@ zero_or_positive_weight_cycles(CallWeights, Module, Cycles) :-
     list(termination_error_context)::out) is det.
 
 zero_or_positive_weight_cycles_2([], _, _, []).
-zero_or_positive_weight_cycles_2([PPId | PPIds], CallWeights, Module, Cycles) :-
+zero_or_positive_weight_cycles_2([PPId | PPIds], CallWeights, Module,
+        Cycles) :-
     zero_or_positive_weight_cycles_from(PPId, CallWeights, Module, Cycles1),
     zero_or_positive_weight_cycles_2(PPIds, CallWeights, Module, Cycles2),
     list.append(Cycles1, Cycles2, Cycles).

@@ -1322,7 +1322,8 @@ delay_death_disj([Goal0 | Goals0], [Goal - DelayedDeadGoal | Goals],
         DelayedDead = DelayedDeadGoal
     ).
 
-:- pred delay_death_cases(list(case)::in, assoc_list(case, set_of_progvar)::out,
+:- pred delay_death_cases(list(case)::in,
+    assoc_list(case, set_of_progvar)::out,
     set_of_progvar::in, set_of_progvar::in, prog_varset::in,
     maybe(pair(set_of_progvar))::out) is det.
 

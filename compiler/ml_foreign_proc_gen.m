@@ -201,7 +201,8 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
     ),
 
     % Generate <declaration of one local variable for each arg>
-    ml_gen_pragma_csharp_java_decls(!.Info, MutableSpecial, Args, ArgDeclsList),
+    ml_gen_pragma_csharp_java_decls(!.Info, MutableSpecial, Args,
+        ArgDeclsList),
     expect(unify(ExtraArgs, []), $module, $pred, "extra args"),
 
     % Generate code to set the values of the input variables.

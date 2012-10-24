@@ -1585,8 +1585,8 @@ needs_initialization(init_obj(_)) = yes.
 needs_initialization(init_struct(_, _)) = yes.
 needs_initialization(init_array(_)) = yes.
 
-:- pred output_initializer_alloc_only(csharp_out_info::in, mlds_initializer::in,
-    maybe(mlds_type)::in, io::di, io::uo) is det.
+:- pred output_initializer_alloc_only(csharp_out_info::in,
+    mlds_initializer::in, maybe(mlds_type)::in, io::di, io::uo) is det.
 
 output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
     (
@@ -3348,8 +3348,8 @@ output_call_rval(Info, Rval, !IO) :-
         output_bracketed_rval(Info, Rval, !IO)
     ).
 
-:- pred output_bracketed_rval(csharp_out_info::in, mlds_rval::in, io::di, io::uo)
-    is det.
+:- pred output_bracketed_rval(csharp_out_info::in, mlds_rval::in,
+    io::di, io::uo) is det.
 
 output_bracketed_rval(Info, Rval, !IO) :-
     (
@@ -3694,8 +3694,8 @@ output_vector_common_row_rval(Info, VectorCommon, RowRval, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mlds_output_code_addr(csharp_out_info::in, mlds_code_addr::in, bool::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_code_addr(csharp_out_info::in, mlds_code_addr::in,
+    bool::in, io::di, io::uo) is det.
 
 mlds_output_code_addr(Info, CodeAddr, IsCall, !IO) :-
     ( CodeAddr = code_addr_proc(_, Sig)

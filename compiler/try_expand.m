@@ -587,7 +587,8 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
             umc_implicit("try_expand"), [], UnifyThenInitialIOVar),
         conjoin_goals(UnifyThenInitialIOVar, Then1, Then),
 
-        RenamingExcp = map.from_assoc_list([GoalInitialIOVar - TryIOOutputVar]),
+        RenamingExcp =
+            map.from_assoc_list([GoalInitialIOVar - TryIOOutputVar]),
         rename_some_vars_in_goal(RenamingExcp, ExcpHandling1, ExcpHandling)
     ;
         MaybeIO = no,

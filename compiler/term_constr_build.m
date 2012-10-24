@@ -1,10 +1,10 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % File: term_constr_build.m.
 % Main author: juliensf.
@@ -17,7 +17,7 @@
 % TODO:
 % Make the abstract representations more independent of the HLDS.
 %
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_build.
 :- interface.
@@ -31,7 +31,7 @@
 :- import_module io.
 :- import_module list.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % This structure holds the values of options used to control the build
     % pass.
@@ -55,8 +55,8 @@
     list(pred_proc_id)::in, term_build_options::in, term2_errors::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -253,7 +253,7 @@ term_constr_build_abstract_proc(EntryProcs, Options, SCC, ModuleInfo, PPId,
         io.nl(!DebugIO)
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Predicates for traversing HLDS goals and collecting constraints from them.
 %
@@ -366,7 +366,7 @@ info_update_ho_info(Context, !Info) :-
 set_intermod_status(Status, !TraversalInfo) :-
     !TraversalInfo ^ tti_intermod_status := Status.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Predicates for abstracting goals.
 %
@@ -389,7 +389,8 @@ build_abstract_goal(Goal, AbstractGoal, !Info) :-
         Locals, NonLocals).
 
 :- pred build_abstract_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-    abstract_goal::out, tti_traversal_info::in, tti_traversal_info::out) is det.
+    abstract_goal::out, tti_traversal_info::in, tti_traversal_info::out)
+    is det.
 
 build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
     (
@@ -493,7 +494,7 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
         unexpected($module, $pred, "shorthand")
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Additional predicates for abstracting (parallel) conjunctions.
 %
@@ -506,7 +507,7 @@ build_abstract_conj(Conjuncts, AbstractGoal, !Info) :-
     AbstractGoals = simplify_conjuncts(AbstractGoals0),
     AbstractGoal = term_conj(AbstractGoals, [], []).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Additional predicates for abstracting calls.
 %
@@ -612,7 +613,7 @@ build_non_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
     Polyhedron = polyhedron.from_constraints(Constraints),
     AbstractGoal = term_primitive(Polyhedron, [], []).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Additional predicates for abstracting switches and disjunctions.
 %
@@ -749,7 +750,7 @@ detect_switch_var(hlds_goal(unify(_, _, _, Kind, _), _), SwitchVar, ConsId) :-
 detect_switch_var(hlds_goal(shorthand(_), _), _, _) :-
     unexpected($module, $pred, "shorthand").
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Additional predicates for abstracting from_ground_term scopes,
 % which act like giant construction unifications.
@@ -833,7 +834,7 @@ accumulate_sum([Size | Sizes], !TotalSize) :-
     !:TotalSize = !.TotalSize + Size,
     accumulate_sum(Sizes, !TotalSize).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Additional predicates for abstracting unifications.
 %
@@ -1017,7 +1018,7 @@ build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
         true
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Because quantification returns a conservative estimate of nonlocal
     % vars, this returns a list of local vars that may omit some of the

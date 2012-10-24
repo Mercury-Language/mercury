@@ -480,8 +480,8 @@ unparse_type(apply_n_type(TVar, Args, _), Term) :-
     Context = term.context_init,
     Var = term.coerce_var(TVar),
     unparse_type_list(Args, ArgTerms),
-    Term = term.functor(term.atom(""), [term.variable(Var, Context) | ArgTerms],
-        Context).
+    Term = term.functor(term.atom(""),
+        [term.variable(Var, Context) | ArgTerms], Context).
 unparse_type(kinded_type(_, _), _) :-
     unexpected($module, $pred, "kind annotation").
 

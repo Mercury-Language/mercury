@@ -196,8 +196,8 @@
     maybe(constr_arg_size_info)::in, maybe(constr_arg_size_info)::in,
     maybe(constr_termination_info)::in, size_vars::in, io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -229,7 +229,7 @@
 :- import_module term.
 :- import_module varset.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % The 'termination2_info' structure
 %
@@ -431,7 +431,7 @@ analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
         ArgSizeOnly = yes
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Procedures for storing 'termination2_info' in the HLDS.
 %
@@ -474,7 +474,8 @@ maybe_make_optimization_interface(ModuleInfo, !IO) :-
         MakeOptInt = no
     ).
 
-:- pred make_opt_int(list(pred_id)::in, module_info::in, io::di, io::uo) is det.
+:- pred make_opt_int(list(pred_id)::in, module_info::in, io::di, io::uo)
+    is det.
 
 make_opt_int(PredIds, ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -669,6 +670,6 @@ proc_needs_ar_built(ModuleInfo, PPId) :-
         TermInfo ^ term_status = no
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_main.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

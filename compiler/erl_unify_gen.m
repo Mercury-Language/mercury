@@ -127,7 +127,8 @@ erl_gen_unification(Unification, CodeModel, _Context, MaybeSuccessExpr,
         % end
         %
         Statement = elds_case_expr(Test, [TrueCase, FalseCase]),
-        Test      = elds_binop((=:=), expr_from_var(Var1), expr_from_var(Var2)),
+        Test      = elds_binop((=:=),
+                        expr_from_var(Var1), expr_from_var(Var2)),
         TrueCase  = elds_case(elds_true, expr_or_void(MaybeSuccessExpr)),
         FalseCase = elds_case(elds_false, elds_term(elds_fail))
     ).

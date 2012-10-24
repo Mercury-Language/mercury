@@ -1267,7 +1267,8 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
         UnifyTypeInfoVars = [_ | _],
         list.length(UnifyTypeInfoVars, NumTypeInfoVars),
         list.duplicate(NumTypeInfoVars, ground(shared, none), ExpectedInsts),
-        mode_info_set_call_context(call_context_unify(UnifyContext), !ModeInfo),
+        mode_info_set_call_context(call_context_unify(UnifyContext),
+            !ModeInfo),
         InitialArgNum = 0,
         modecheck_var_has_inst_list_no_exact_match(UnifyTypeInfoVars,
             ExpectedInsts, InitialArgNum, _InstVarSub, !ModeInfo),
@@ -1570,7 +1571,8 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
     ;       ho_arg_not_ground.
 
 :- pred match_modes_by_higher_order_insts(module_info::in, instmap::in,
-    vartypes::in, prog_vars::in, pred_info::in, match_modes_result::out) is det.
+    vartypes::in, prog_vars::in, pred_info::in, match_modes_result::out)
+    is det.
 
 match_modes_by_higher_order_insts(ModuleInfo, InstMap, VarTypes, ArgVars,
         CalleePredInfo, Result) :-

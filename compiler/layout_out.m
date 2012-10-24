@@ -1269,11 +1269,9 @@ output_proc_static_slot(Info, ProcStatic, !Slot, !IO) :-
     io.write_string(",", !IO),
     (
         MaybeCoveragePoints = yes({CoveragePointsSlot, NumCoveragePoints}),
-        /*
-        ** If MR_DEEP_PROFILING_COVERAGE is not defined but
-        ** --deep-profiling-coverage is this generated code will not compile, as
-        ** these fields in this structure will not be present.
-        */
+        % If MR_DEEP_PROFILING_COVERAGE is not defined but
+        % --deep-profiling-coverage is, this generated code will not compile,
+        % as these fields in this structure will not be present.
         io.write_int(NumCoveragePoints, !IO),
         io.write_string(",\n", !IO),
         CoveragePointsStaticSlotName =
