@@ -1,0 +1,121 @@
+Order independent state update (oisu):
+
+Have the user mark a du type as oisu.
+
+Have the compiler verify that
+
+-   the type is abstract; only its name is exported outside its defining module
+    [done]
+
+-   values of the type are not put into any other data structures in the
+    defining module
+    [todo in the feedback tool]
+
+-   all exported predicates that have an argument of this type fall into
+    one of three categories:
+
+    - one output arg of the type                    creator
+    - one input arg of the type                     reader/user
+    - one input and one output arg of the type      writer/updator/mutator
+    [done]
+
+Have the deep profiler record this information for use by the feedback tool.
+[done]
+
+[rest is todo]
+
+Have the feedback tool verify that other modules handle values of this type
+threaded through them in a way that is suitable for replacement by a global
+variable.
+
+The thread is created by calling a creator predicate to create the initial
+variable in the thread. Each noninitial variable in the thread is created
+either by a call to a writer predicate on the previous variable in the thread,
+or by a simple assignment from the previous variable. The thread ends when
+the final variable in the thread goes out of scope.
+
+To verify that the thread is replaceable by a global, the feedback tool
+needs to check that
+
+-   the entire lifetime of the thread consists of det code
+    (maybe allow cc_multi?)
+
+-   after the creation of version i, the program never uses any version < i
+    (this guarantees the thread never branches)
+
+-   the lifetimes of two threads never intersect
+
+-   if the data structure is ever put into another, larger data structure,
+    the same constraints hold for IT as well
+
+The analysis tool can maintain a "current refs set", and a "past refs set".
+After a call to a creator predicate, make the current refs set be a singleton
+set containing the new var. When any var in the current refs set is involved
+in a unification, put the other side of the unification into the current refs
+set as well; this may be in the form of e.g. X@f/3,arg2. Things drop out of the
+sets when their vars go out of scope. When calling a writer, the current refs
+set should contain just the input arg. After the call, the contents of the
+current refs set are moved to the past refs set, and are replaced by the output
+arg. Any reference to anything in the past refs set is a violation of the
+condition. Note that if X@f/3,arg2 is in the past refs set, a reference to
+e.g. X@f/3,arg1 is NOT a violation, nor is unifying X@f/3,arg2 with a void
+variable, since this is needed to get to X@f/3,arg1. We will probably need
+a similar exception for updates of fields other han arg2.
+
+If the feedback tool can verify all that, it can do its analysis of any code
+involving calls to reader/writer predicates in a modified form. The
+modification means that it does not have to pay attention to WHEN the
+input arguments of reader and writer predicates become available.
+It can either assume that they are always available immediately (optimistic),
+or it can estimate the expected waiting time based on the ratio between (a)
+the lifetime of the code from the start of the thread to its end, and (b)
+the amount of time spent in reader and write predicates during the thread's
+lifetime. Statistics should be able to tell us the expected waiting time
+from that ratio and the number of *other* cores.
+
+If the analysis says that parallelizing the program using oisu is worthwhile,
+the feedback tool then puts into the feedback file directives to do the
+following in the defining module:
+
+-   turn variables of the oisu type into dummies
+
+-   put a global variable into the oisu module that is protected by
+    the data structure needed for the standard solution of the readers/writers
+    problem: a main mutex, a writer mutex, and a reader count. Set the initial
+    values to locked, unlocked and zero.
+
+-   turn the code in creator predicates that return values of oisu types
+    into code that puts a value into the global variable, and unlocks the main
+    mutex.
+
+-   turn the code in witer predicates that accept and return values of
+    oisu types into code to execute respectively the pre- and post-
+    critical-region parts of the standard readers/writers solution for writers.
+
+-   turn the code in reader predicates that accept values of oisu types,
+    and the ends of those predicates, into code to execute respectively the
+    pre- and post- critical-region parts of the standard readers/writers
+    solution for readers.
+
+    XXX should not be used for intermediate results, only final ones;
+    if so, we do not need to allow for multiple readers
+
+The feedback should include the names of all the other modules and predicate
+involved in threads' lifetimes.
+
+When the compiler compiles one of these modules, it should verify that
+
+-   the conditions checked by the feedback tool still hold for the current
+    version of the code, and
+
+-   there are no calls involving arguments of oisu types, or other types
+    containing them, to any predicate that is not on the list.
+
+Provided that all the modules on the list are compiled with the feedback file,
+this should ensure that the conditions verified for the benchmarked version
+of the program also hold for this version of the program.
+
+This provision can be taken on faith, or we could mangle the names of the
+predicates on the list in the generated code. Code that calls those predicates
+that wasn't generated with the knowledge of the feedback would then get a link
+error.
