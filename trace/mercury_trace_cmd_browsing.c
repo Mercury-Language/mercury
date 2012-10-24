@@ -92,7 +92,7 @@ MR_trace_cmd_level(char **words, int word_count, MR_TraceCmdInfo *cmd,
 {
     MR_Unsigned n;
     MR_bool     detailed;
-    int         selected_level;
+    MR_Level    selected_level;
 
     detailed = MR_FALSE;
     if (! MR_trace_options_detailed(&detailed, &words, &word_count)) {
