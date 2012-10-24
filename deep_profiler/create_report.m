@@ -582,9 +582,19 @@ module_pair_to_row_data(Deep, ModuleName - ModuleData) = ModuleRowData :-
 
 create_module_report(Deep, ModuleName, MaybeModuleReport) :-
     ( map.search(Deep ^ module_data, ModuleName, ModuleData) ->
+        deep_get_maybe_progrep(Deep, MaybeProgRep),
+        (
+            MaybeProgRep = ok(ProgRep),
+            ProgRep = prog_rep(ModuleMap),
+            map.search(ModuleMap, ModuleName, _)
+        ->
+            HaveModuleRep = have_module_rep
+        ;
+            HaveModuleRep = do_not_have_module_rep
+        ),
         PSPtrs = ModuleData ^ module_procs,
         ProcRowDatas = list.map(proc_to_active_row_data(Deep), PSPtrs),
-        ModuleReport = module_report(ModuleName, ProcRowDatas),
+        ModuleReport = module_report(ModuleName, HaveModuleRep, ProcRowDatas),
         MaybeModuleReport = ok(ModuleReport)
     ;
         Msg = string.format("There is no module named `%s'.\n",

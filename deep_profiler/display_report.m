@@ -1127,7 +1127,7 @@ avoid_sort_self_and_desc(Prefs) = SortPrefs :-
     is det.
 
 display_report_module(Prefs, ModuleReport, Display) :-
-    ModuleReport = module_report(ModuleName, ProcRowDatas0),
+    ModuleReport = module_report(ModuleName, HaveModuleRep, ProcRowDatas0),
     Cmd = deep_cmd_module(ModuleName),
     Title = string.format("The procedures of module %s:", [s(ModuleName)]),
 
@@ -1174,23 +1174,32 @@ display_report_module(Prefs, ModuleReport, Display) :-
     GetterSetterCmd = deep_cmd_module_getter_setters(ModuleName),
     GetterSetterControl = display_link(deep_link(GetterSetterCmd, yes(Prefs),
         attr_str([], "Show field getters and setters"), link_class_link)),
-    RepCmd = deep_cmd_module_rep(ModuleName),
-    RepControl = display_link(deep_link(RepCmd, yes(Prefs),
-        attr_str([], "Show module representation"), link_class_link)),
+    (
+        HaveModuleRep = do_not_have_module_rep,
+        ModuleControls =
+            [display_paragraph_break, GetterSetterControl]
+    ;
+        HaveModuleRep = have_module_rep,
+        RepCmd = deep_cmd_module_rep(ModuleName),
+        RepControl = display_link(deep_link(RepCmd, yes(Prefs),
+            attr_str([], "Show module representation"), link_class_link)),
+        ModuleControls =
+            [display_paragraph_break, GetterSetterControl,
+            display_paragraph_break, RepControl]
+    ),
 
     InactiveControls = inactive_proc_controls(Prefs, Cmd),
     FieldControls = field_controls(Prefs, Cmd),
     FormatControls = format_controls(Prefs, Cmd),
     MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
-
-    Display = display(yes(Title),
-        [DisplayTable,
-        display_paragraph_break, GetterSetterControl,
-        display_paragraph_break, RepControl,
-        display_paragraph_break, InactiveControls,
+    GeneralControls =
+        [display_paragraph_break, InactiveControls,
         display_paragraph_break, FieldControls,
         display_paragraph_break, FormatControls,
-        display_paragraph_break, MenuRestartQuitControls]).
+        display_paragraph_break, MenuRestartQuitControls],
+
+    Display = display(yes(Title),
+        [DisplayTable] ++ ModuleControls ++ GeneralControls).
 
 :- pred active_proc(perf_row_data(proc_active)::in) is semidet.
 

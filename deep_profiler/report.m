@@ -322,8 +322,13 @@
                 % Summary information about all the procedures in one module
                 % of the program.
                 mr_module_name              :: string,
+                mr_have_module_rep          :: maybe_have_module_rep,
                 mr_procs                    :: list(perf_row_data(proc_active))
             ).
+
+:- type maybe_have_module_rep
+    --->    do_not_have_module_rep
+    ;       have_module_rep.
 
 :- type data_struct_name
     --->    data_struct_name(string).
