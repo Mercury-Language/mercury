@@ -1091,7 +1091,7 @@ else
     # it and has no effect other than causing the linker to emit a warning.
     #
     case "$host" in
-        *apple*darwin*9*|*apple*darwin*10*)
+        *apple*darwin*)
             LD_STRIP_FLAG=""
             ;;
     esac
