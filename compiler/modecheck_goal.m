@@ -305,9 +305,12 @@ modecheck_goal_disj(Disjuncts0, GoalInfo0, GoalExpr, !ModeInfo) :-
             InstMaps = InstMaps0,
             Disjuncts2 = Disjuncts1
         ),
-        Disjuncts3 = flatten_disjs(Disjuncts2),
         merge_disj_branches(NonLocals, LargeFlatConstructs,
-            Disjuncts3, Disjuncts, InstMaps, !ModeInfo),
+            Disjuncts2, Disjuncts3, InstMaps, !ModeInfo),
+        % Since merge_disj_branches depends on each disjunct in Disjuncts2
+        % having a corresponding instmap in InstMaps, we can flatten disjuncts
+        % only *after* merge_disj_branches has done its job.
+        Disjuncts = flatten_disjs(Disjuncts3),
         disj_list_to_goal(Disjuncts, GoalInfo0, hlds_goal(GoalExpr, _GoalInfo))
     ),
     mode_checkpoint(exit, "disj", !ModeInfo).
@@ -364,7 +367,8 @@ merge_disj_branches(NonLocals, LargeFlatConstructs, Disjuncts0, Disjuncts,
                 LargeFlatConstructList),
             InstMaps0, InstMaps)
     ),
-    instmap_merge(NonLocals, InstMaps, merge_disj, !ModeInfo).
+    make_arm_instmaps_for_goals(Disjuncts, InstMaps, ArmInstMaps),
+    instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo).
 
     % Ensure that any non-local solver var that is initialised in
     % one disjunct is initialised in all disjuncts.
@@ -468,7 +472,8 @@ merge_switch_branches(NonLocals, LargeFlatConstructs, Cases0, Cases,
                 LargeFlatConstructList),
             InstMaps0, InstMaps)
     ),
-    instmap_merge(NonLocals, InstMaps, merge_disj, !ModeInfo).
+    make_arm_instmaps_for_cases(Cases, InstMaps, ArmInstMaps),
+    instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 %
@@ -692,8 +697,9 @@ modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0, GoalExpr,
         Then1, Then, Else1, Else,
         InstMapThen1, InstMapThen, InstMapElse1, InstMapElse, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    instmap_merge(NonLocals, [InstMapThen, InstMapElse], merge_if_then_else,
-        !ModeInfo),
+    make_arm_instmaps_for_goals([Then, Else], [InstMapThen, InstMapElse],
+        ThenElseArgInfos),
+    instmap_merge(NonLocals, ThenElseArgInfos, merge_if_then_else, !ModeInfo),
     GoalExpr = if_then_else(Vars, Cond, Then, Else),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     mode_info_get_in_promise_purity_scope(!.ModeInfo, InPromisePurityScope),
@@ -1486,7 +1492,8 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         MainGoal = list.det_head(AtomicGoalList),
         OrElseGoals = list.det_tail(AtomicGoalList),
 
-        instmap_merge(NonLocals, InstMapList, merge_stm_atomic, !ModeInfo),
+        make_arm_instmaps_for_goals(AtomicGoalList, InstMapList, ArmInstMaps),
+        instmap_merge(NonLocals, ArmInstMaps, merge_stm_atomic, !ModeInfo),
 
         % Here we determine the type of atomic goal this is. It could be argued
         % that this should have been done in the typechecker, but the type of

@@ -384,7 +384,8 @@ unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % merge the resulting instmaps.
         unique_modes_check_disj(Goals0, Determinism, NonLocals, Goals,
             InstMaps, !ModeInfo),
-        instmap_merge(NonLocals, InstMaps, merge_disj, !ModeInfo)
+        make_arm_instmaps_for_goals(Goals, InstMaps, ArmInstMaps),
+        instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo)
     ),
     GoalExpr = disj(Goals),
     mode_checkpoint(exit, "disj", !ModeInfo).
@@ -457,8 +458,9 @@ unique_modes_check_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
     unique_modes_check_goal(Else0, Else, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMapElse),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    instmap_merge(NonLocals, [InstMapThen, InstMapElse], merge_if_then_else,
-        !ModeInfo),
+    make_arm_instmaps_for_goals([Then, Else], [InstMapThen, InstMapElse],
+        ArmInstMaps),
+    instmap_merge(NonLocals, ArmInstMaps, merge_if_then_else, !ModeInfo),
     GoalExpr = if_then_else(Vars, Cond, Then, Else),
     mode_checkpoint(exit, "if-then-else", !ModeInfo).
 
@@ -664,7 +666,8 @@ unique_modes_check_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr,
         Cases0 = [_ | _],
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         unique_modes_check_case_list(Cases0, Var, Cases, InstMaps, !ModeInfo),
-        instmap_merge(NonLocals, InstMaps, merge_disj, !ModeInfo)
+        make_arm_instmaps_for_cases(Cases, InstMaps, ArmInstMaps),
+        instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo)
     ),
     GoalExpr = switch(Var, CanFail, Cases),
     mode_checkpoint(exit, "switch", !ModeInfo).
@@ -725,14 +728,15 @@ unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
         ),
         Goals0 = [MainGoal0 | OrElseGoals0],
         unique_modes_check_disj(Goals0, Determinism, NonLocals, Goals,
-            InstMapList, !ModeInfo),
+            InstMaps, !ModeInfo),
         (
             Goals = [MainGoal | OrElseGoals]
         ;
             Goals = [],
             unexpected($module, $pred, "Goals = []")
         ),
-        instmap_merge(NonLocals, InstMapList, merge_disj, !ModeInfo)
+        make_arm_instmaps_for_goals(Goals, InstMaps, ArmInstMaps),
+        instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo)
     ),
     ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
         MainGoal, OrElseGoals, OrElseInners),

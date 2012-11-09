@@ -1,0 +1,26 @@
+merge_inst_error.m:059: In clause for `switch1(in, out)':
+merge_inst_error.m:059:   mode mismatch in disjunction.
+merge_inst_error.m:059:   The variable `S' has these instantiation states:
+merge_inst_error.m:059:     line 43: unique("ta")
+merge_inst_error.m:059:     line 46: free
+merge_inst_error.m:059:     line 49: unique("tc")
+merge_inst_error.m:059:     line 52: free
+merge_inst_error.m:059:     line 55: unique
+merge_inst_error.m:059:     line 58: unique
+merge_inst_error.m:092: In clause for `switch2(in, out)':
+merge_inst_error.m:092:   mode mismatch in disjunction.
+merge_inst_error.m:092:   The variable `S' has these instantiation states:
+merge_inst_error.m:092:     line 75: free
+merge_inst_error.m:092:     line 76: free
+merge_inst_error.m:092:     line 80: unique("tc")
+merge_inst_error.m:092:     line 84: unique("td")
+merge_inst_error.m:092:     line 87: unique
+merge_inst_error.m:092:     line 91: unique
+merge_inst_error.m:123: In clause for `switch3(in, out)':
+merge_inst_error.m:123:   mode mismatch in disjunction.
+merge_inst_error.m:123:   The variable `S' has these instantiation states:
+merge_inst_error.m:123:     line 110: unique("tab")
+merge_inst_error.m:123:     line 113: unique("tc")
+merge_inst_error.m:123:     line 117: free
+merge_inst_error.m:123:     line 120: free
+merge_inst_error.m:123:     line 123: free

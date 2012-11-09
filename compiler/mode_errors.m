@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,6 +28,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 
@@ -39,14 +40,14 @@
     ;       merge_stm_atomic.
 
 :- type merge_error
-    --->    merge_error(prog_var, list(mer_inst)).
+    --->    merge_error(prog_var, assoc_list(prog_context, mer_inst)).
 
 :- type merge_errors == list(merge_error).
 
 :- type delayed_goal
     --->    delayed_goal(
-                set_of_progvar,     % The vars it's waiting on.
-                mode_error_info,    % The reason it can't be scheduled.
+                set_of_progvar,     % The vars the goal is waiting on.
+                mode_error_info,    % The reason the goal can't be scheduled.
                 hlds_goal           % The goal itself.
             ).
 
@@ -254,7 +255,6 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module io.            % used only for a typeclass instance
 :- import_module map.
@@ -554,19 +554,62 @@ mode_error_par_conj_to_spec(ModeInfo, ErrorList) = Spec :-
         [simple_msg(Context,
             [always(Preamble ++ Pieces ++ MergePieces)])]).
 
-:- func merge_error_to_pieces(mode_info, merge_error) = list(format_component).
-
-merge_error_to_pieces(ModeInfo, MergeError) = Pieces :-
-    MergeError = merge_error(Var, Insts),
-    mode_info_get_varset(ModeInfo, VarSet),
-    Pieces = [quote(mercury_var_to_string(VarSet, no, Var)), fixed("::"),
-        words(inst_list_to_string(ModeInfo, Insts)), suffix("."), nl].
-
 :- func merge_context_to_string(merge_context) = string.
 
 merge_context_to_string(merge_disj) = "disjunction".
 merge_context_to_string(merge_if_then_else) = "if-then-else".
 merge_context_to_string(merge_stm_atomic) = "atomic".
+
+:- func merge_error_to_pieces(mode_info, merge_error) = list(format_component).
+
+merge_error_to_pieces(ModeInfo, MergeError) = Pieces :-
+    mode_info_get_varset(ModeInfo, VarSet),
+    VarPieces = [words("The variable"),
+        quote(mercury_var_to_string(VarSet, no, Var)),
+        words("has these instantiation states:"), nl_indent_delta(1)],
+    MergeError = merge_error(Var, ContextsInsts0),
+    list.sort(ContextsInsts0, ContextsInsts),
+    (
+        ContextsInsts = [],
+        unexpected($module, $pred, "ContextsInsts0 = []")
+    ;
+        ContextsInsts = [HeadContext - _HeadInst | TailContextInsts],
+        HeadContext = term.context(FileName, _),
+        ( all_in_same_file(FileName, TailContextInsts) ->
+            InclFileName = no
+        ;
+            InclFileName = yes
+        )
+    ),
+    InstPiecesList = list.map(context_inst_to_string(ModeInfo, InclFileName),
+        ContextsInsts),
+    InstPieces = list.condense(InstPiecesList),
+    SuffixPieces = [nl_indent_delta(-1)],
+    Pieces = VarPieces ++ InstPieces ++ SuffixPieces.
+
+:- pred all_in_same_file(string::in, assoc_list(prog_context, mer_inst)::in)
+    is semidet.
+
+all_in_same_file(_, []).
+all_in_same_file(FileName, [Pair | Pairs]) :-
+    Pair = Context - _Inst,
+    Context = term.context(FileName, _),
+    all_in_same_file(FileName, Pairs).
+
+:- func context_inst_to_string(mode_info, bool, pair(prog_context, mer_inst))
+    = list(format_component).
+
+context_inst_to_string(ModeInfo, InclFileName, Context - Inst) = Pieces :-
+    Context = context(FileName, LineNum),
+    LineNumStr = string.int_to_string(LineNum),
+    (
+        InclFileName = no,
+        ContextStr = "line " ++ LineNumStr ++ ":"
+    ;
+        InclFileName = yes,
+        ContextStr = FileName ++ ":" ++ LineNumStr ++ ":"
+    ),
+    Pieces = [fixed(ContextStr), words(inst_to_string(ModeInfo, Inst)), nl].
 
 %-----------------------------------------------------------------------------%
 
@@ -1023,7 +1066,7 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, Args,
         words_quote(inst_to_string(ModeInfo, InstX)), suffix(","), nl,
         words("term"),
         words_quote(FunctorConsIdStr)],
-    ConsIdStr = mercury_cons_id_to_string(ConsId, does_not_need_brackets),
+    ConsIdStr = mercury_cons_id_to_string(does_not_need_brackets, ConsId),
     (
         Args = [_ | _],
         Pieces2 = [words("has instantiatedness"),
@@ -1070,7 +1113,7 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
     mode_info_get_varset(ModeInfo, VarSet),
     Pieces = [words("warning: unification of"),
         quote(mercury_var_to_string(VarSet, no, X)), words("and"),
-        words(mercury_cons_id_to_string(ConsId, does_not_need_brackets)),
+        words(mercury_cons_id_to_string(does_not_need_brackets, ConsId)),
         words("cannot succeed"), nl,
         quote(mercury_var_to_string(VarSet, no, X)),
         words("has instantiatedness"),

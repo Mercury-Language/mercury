@@ -830,7 +830,7 @@ write_const_struct_db(ConstStructDb, !IO) :-
 write_const_struct(N - ConstStruct, !IO) :-
     io.format("\nconst_struct %d:\n", [i(N)], !IO),
     ConstStruct = const_struct(ConsId, ConstArgs, Type, Inst),
-    mercury_output_cons_id(ConsId, does_not_need_brackets, !IO),
+    mercury_output_cons_id(does_not_need_brackets, ConsId, !IO),
     (
         ConstArgs = [],
         io.nl(!IO)
@@ -857,7 +857,7 @@ write_const_struct_args(HeadConstArg, TailConstArgs, !IO) :-
         io.format("cs(%d)", [i(N)], !IO)
     ;
         HeadConstArg = csa_constant(ConsId, Type),
-        mercury_output_cons_id(ConsId, does_not_need_brackets, !IO),
+        mercury_output_cons_id(does_not_need_brackets, ConsId, !IO),
         io.write_string("\n        with type ", !IO),
         mercury_output_type(varset.init, no, Type, !IO)
     ),

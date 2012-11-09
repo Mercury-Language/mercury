@@ -219,10 +219,10 @@
 
     % Output a cons_id, parenthesizing it if necessary.
     %
-:- pred mercury_output_cons_id(cons_id::in, needs_brackets::in,
+:- pred mercury_output_cons_id(needs_brackets::in, cons_id::in,
     io::di, io::uo) is det.
-:- func mercury_cons_id_to_string(cons_id, needs_brackets) = string.
-:- pred mercury_format_cons_id(cons_id::in, needs_brackets::in, U::di, U::uo)
+:- func mercury_cons_id_to_string(needs_brackets, cons_id) = string.
+:- pred mercury_format_cons_id(needs_brackets::in, cons_id::in, U::di, U::uo)
     is det <= output(U).
 
 :- pred mercury_format_constrained_inst_vars(set(inst_var)::in, mer_inst::in,
@@ -1509,10 +1509,10 @@ mercury_format_bound_insts([BoundInst | BoundInsts], InstInfo, !U) :-
     BoundInst = bound_functor(ConsId, Args),
     (
         Args = [],
-        mercury_format_cons_id(ConsId, needs_brackets, !U)
+        mercury_format_cons_id(needs_brackets, ConsId, !U)
     ;
         Args = [_ | _],
-        mercury_format_cons_id(ConsId, does_not_need_brackets, !U),
+        mercury_format_cons_id(does_not_need_brackets, ConsId, !U),
         add_string("(", !U),
         mercury_format_inst_list(Args, InstInfo, !U),
         add_string(")", !U)
@@ -1525,13 +1525,13 @@ mercury_format_bound_insts([BoundInst | BoundInsts], InstInfo, !U) :-
         mercury_format_bound_insts(BoundInsts, InstInfo, !U)
     ).
 
-mercury_output_cons_id(ConsId, NeedsBrackets, !IO) :-
-    mercury_format_cons_id(ConsId, NeedsBrackets, !IO).
+mercury_output_cons_id(NeedsBrackets, ConsId, !IO) :-
+    mercury_format_cons_id(NeedsBrackets, ConsId, !IO).
 
-mercury_cons_id_to_string(ConsId, NeedsBrackets) = String :-
-    mercury_format_cons_id(ConsId, NeedsBrackets, "", String).
+mercury_cons_id_to_string(NeedsBrackets, ConsId) = String :-
+    mercury_format_cons_id(NeedsBrackets, ConsId, "", String).
 
-mercury_format_cons_id(ConsId, NeedsBrackets, !U) :-
+mercury_format_cons_id(NeedsBrackets, ConsId, !U) :-
     (
         ConsId = cons(Name, _, _),
         (
@@ -1608,7 +1608,7 @@ mercury_format_cons_id(ConsId, NeedsBrackets, !U) :-
         ConsId = ground_term_const(ConstNum, SubConsId),
         add_string("<ground_term_cell_constructor " ++
             int_to_string(ConstNum) ++ ", ", !U),
-        mercury_format_cons_id(SubConsId, does_not_need_brackets, !U),
+        mercury_format_cons_id(does_not_need_brackets, SubConsId, !U),
         add_string(">", !U)
     ;
         ConsId = tabling_info_const(_),

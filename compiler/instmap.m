@@ -23,6 +23,7 @@
 
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_info.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
@@ -175,7 +176,7 @@
 :- pred instmap_delta_set_var(prog_var::in, mer_inst::in,
     instmap_delta::in, instmap_delta::out) is det.
 
-:- pred instmap_delta_set_vars_same(mer_inst::in, list(prog_var)::in, 
+:- pred instmap_delta_set_vars_same(mer_inst::in, list(prog_var)::in,
     instmap_delta::in, instmap_delta::out) is det.
 
     % Bind a variable in an instmap to a functor at the beginning
@@ -234,37 +235,39 @@
 :- pred instmap_delta_apply_instmap_delta(instmap_delta::in, instmap_delta::in,
     overlay_how::in, instmap_delta::out) is det.
 
-    % instmap_merge(NonLocalVars, InstMaps, MergeContext, !ModeInfo):
-    %
-    % Merge the `InstMaps' resulting from different branches of a disjunction
-    % or if-then-else, and update the instantiatedness of all the nonlocal
-    % variables, checking that it is the same for every branch.
-    %
-:- pred instmap_merge(set_of_progvar::in, list(instmap)::in, merge_context::in,
-    mode_info::in, mode_info::out) is det.
-
-    % instmap_unify(NonLocalVars, InstMapNonlocalvarPairs, !ModeInfo):
-    %
-    % Unify the `InstMaps' in the list of pairs resulting from different
-    % branches of a parallel conjunction and update the instantiatedness
-    % of all the nonlocal variables. The variable locking that is done
-    % when modechecking the individual conjuncts ensures that variables
-    % have at most one producer.
-    %
-:- pred instmap_unify(set_of_progvar::in,
-    assoc_list(instmap, set_of_progvar)::in,
-    mode_info::in, mode_info::out) is det.
-
-    % instmap_restrict takes an instmap and a set of vars and returns
-    % an instmap with its domain restricted to those vars.
-    %
-:- pred instmap_restrict(set_of_progvar::in, instmap::in, instmap::out) is det.
-
     % instmap_delta_restrict takes an instmap and a set of vars and returns
     % an instmap_delta with its domain restricted to those vars.
     %
 :- pred instmap_delta_restrict(set_of_progvar::in,
     instmap_delta::in, instmap_delta::out) is det.
+
+:- type arm_instmap
+    --->    arm_instmap(
+                % The context of the arm goal.
+                prog_context,
+
+                % The instmap at the point at the end of the arm.
+                instmap
+            ).
+
+:- pred make_arm_instmaps_for_goals(list(hlds_goal)::in, list(instmap)::in,
+    list(arm_instmap)::out) is det.
+:- pred make_arm_instmaps_for_cases(list(case)::in, list(instmap)::in,
+    list(arm_instmap)::out) is det.
+
+    % instmap_merge(NonLocalVars, ArmInstMaps, MergeContext, !ModeInfo):
+    %
+    % Merge the instmaps resulting from different branches of a disjunction
+    % or if-then-else, and update the instantiatedness of all the nonlocal
+    % variables, checking that it is the same for every branch.
+    %
+:- pred instmap_merge(set_of_progvar::in, list(arm_instmap)::in,
+    merge_context::in, mode_info::in, mode_info::out) is det.
+
+    % instmap_restrict takes an instmap and a set of vars and returns
+    % an instmap with its domain restricted to those vars.
+    %
+:- pred instmap_restrict(set_of_progvar::in, instmap::in, instmap::out) is det.
 
     % instmap_delta_delete_vars takes an instmap_delta and a list of vars
     % and returns an instmap_delta with those vars removed from its domain.
@@ -854,19 +857,46 @@ instmap_delta_delete_vars(Vars,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-instmap_merge(NonLocals, InstMapList, MergeContext, !ModeInfo) :-
+make_arm_instmaps_for_goals([], [], []).
+make_arm_instmaps_for_goals([], [_ | _], _) :-
+    unexpected($module, $pred, "mismatched lists").
+make_arm_instmaps_for_goals([_ | _], [], _) :-
+    unexpected($module, $pred, "mismatched lists").
+make_arm_instmaps_for_goals([Goal | Goals], [InstMap | InstMaps],
+        [ArmInfo | ArmInfos]) :-
+    Goal = hlds_goal(_, GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
+    ArmInfo = arm_instmap(Context, InstMap),
+    make_arm_instmaps_for_goals(Goals, InstMaps, ArmInfos).
+
+make_arm_instmaps_for_cases([], [], []).
+make_arm_instmaps_for_cases([], [_ | _], _) :-
+    unexpected($module, $pred, "mismatched lists").
+make_arm_instmaps_for_cases([_ | _], [], _) :-
+    unexpected($module, $pred, "mismatched lists").
+make_arm_instmaps_for_cases([Case | Cases], [InstMap | InstMaps],
+        [ArmInfo | ArmInfos]) :-
+    Case = case(_, _, Goal),
+    Goal = hlds_goal(_, GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
+    ArmInfo = arm_instmap(Context, InstMap),
+    make_arm_instmaps_for_cases(Cases, InstMaps, ArmInfos).
+
+%-----------------------------------------------------------------------------%
+
+instmap_merge(NonLocals, ArmInstMaps, MergeContext, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    get_reachable_instmaps(InstMapList, InstMappingList),
+    get_reachable_instmaps(ArmInstMaps, ReachableInstMappingList),
     (
         % We can reach the code after the branched control structure only if
         % (a) we can reach its start, and (b) some branch can reach the end.
         InstMap0 = reachable(InstMapping0),
-        InstMappingList = [_ | _]
+        ReachableInstMappingList = [_ | _]
     ->
         set_of_var.to_sorted_list(NonLocals, NonLocalsList),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
-        merge_insts_of_vars(NonLocalsList, InstMapList, VarTypes,
+        merge_insts_of_vars(NonLocalsList, ArmInstMaps, VarTypes,
             InstMapping0, InstMapping, ModuleInfo0, ModuleInfo, ErrorList),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
         (
@@ -884,63 +914,68 @@ instmap_merge(NonLocals, InstMapList, MergeContext, !ModeInfo) :-
     ),
     mode_info_set_instmap(InstMap, !ModeInfo).
 
-:- pred get_reachable_instmaps(list(instmap)::in, list(instmapping)::out)
-    is det.
+:- pred get_reachable_instmaps(list(arm_instmap)::in,
+    list(instmapping)::out) is det.
 
 get_reachable_instmaps([], []).
-get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
+get_reachable_instmaps([ArmInstMap | ArmInstMaps], Reachables) :-
+    ArmInstMap = arm_instmap(_, InstMap),
     (
         InstMap = reachable(InstMapping),
-        get_reachable_instmaps(InstMaps, ReachablesTail),
+        get_reachable_instmaps(ArmInstMaps, ReachablesTail),
         Reachables = [InstMapping | ReachablesTail]
     ;
         InstMap = unreachable,
-        get_reachable_instmaps(InstMaps, Reachables)
+        get_reachable_instmaps(ArmInstMaps, Reachables)
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % merge_insts_of_vars(Vars, InstMapList, VarTypes, !InstMapping,
+    % merge_insts_of_vars(Vars, ArmInstMaps, VarTypes, !InstMapping,
     %   !ModuleInfo, Errors):
     %
-    % Given Vars, a list of variables, and InstMapList, a list of instmaps
-    % giving the insts of those variables (and possibly others) at the ends of
-    % a branched control structure such as a disjunction or if-then-else,
-    % update !InstMapping, which initially gives the insts of variables at the
-    % start of the branched control structure, to reflect their insts at its
-    % end.
+    % Given Vars, a list of variables, and ArmInstMaps, a list containing
+    % instmaps giving the insts of those variables (and possibly others)
+    % at the ends of a branched control structure such as a disjunction or
+    % if-then-else, update !InstMapping, which initially gives the insts of
+    % variables at the start of the branched control structure, to reflect
+    % their insts at its end.
     %
     % For variables mentioned in Vars, merge their insts and put the merged
     % inst into !:InstMapping. For variables not in Vars, leave their insts in
     % !.InstMapping alone.
     %
     % If some variables in Vars have incompatible insts in two or more instmaps
-    % in InstMapList, return them in `Errors'.
+    % in InstMapList, return them in Errors.
     %
-:- pred merge_insts_of_vars(list(prog_var)::in, list(instmap)::in,
+:- pred merge_insts_of_vars(list(prog_var)::in, list(arm_instmap)::in,
     vartypes::in, instmapping::in, instmapping::out,
     module_info::in, module_info::out, merge_errors::out) is det.
 
 merge_insts_of_vars([], _, _, !InstMap, !ModuleInfo, []).
-merge_insts_of_vars([Var | Vars], InstMapList, VarTypes, !InstMapping,
+merge_insts_of_vars([Var | Vars], ArmInstMaps, VarTypes, !InstMapping,
         !ModuleInfo, !:ErrorList) :-
-    merge_insts_of_vars(Vars, InstMapList, VarTypes, !InstMapping,
+    merge_insts_of_vars(Vars, ArmInstMaps, VarTypes, !InstMapping,
         !ModuleInfo, !:ErrorList),
     lookup_var_type(VarTypes, Var, VarType),
-    list.map(lookup_var_in_instmap(Var), InstMapList, InstList),
+    list.map(lookup_var_in_arm_instmap(Var), ArmInstMaps, InstList),
     merge_var_insts(InstList, VarType, !ModuleInfo, MaybeInst),
     (
         MaybeInst = no,
-        !:ErrorList = [merge_error(Var, InstList) | !.ErrorList],
+        list.map(arm_instmap_project_context, ArmInstMaps, Contexts),
+        assoc_list.from_corresponding_lists(Contexts, InstList, ContextsInsts),
+        !:ErrorList = [merge_error(Var, ContextsInsts) | !.ErrorList],
         map.set(Var, not_reached, !InstMapping)
     ;
         MaybeInst = yes(Inst),
         map.set(Var, Inst, !InstMapping)
     ).
 
-:- pred lookup_var_in_instmap(prog_var::in, instmap::in, mer_inst::out) is det.
+:- pred lookup_var_in_arm_instmap(prog_var::in, arm_instmap::in,
+    mer_inst::out) is det.
 
-lookup_var_in_instmap(Var, InstMap, Inst) :-
+lookup_var_in_arm_instmap(Var, ArmInstMap, Inst) :-
+    ArmInstMap = arm_instmap(_, InstMap),
     instmap_lookup_var(InstMap, Var, Inst).
 
     % merge_var_insts(Insts, Type, !ModuleInfo, MaybeMergedInst):
@@ -1039,10 +1074,17 @@ merge_var_insts_pass(Insts, MaybeType, !MergedInsts, !ModuleInfo, !Error) :-
 
 %-----------------------------------------------------------------------------%
 
-    % We use the same technique for merge_instmap_deltas as for merge_var,
-    % and for the same reason.
+:- pred arm_instmap_project_context(arm_instmap::in, prog_context::out) is det.
+
+arm_instmap_project_context(ArmErrorInfo, Context) :-
+    ArmErrorInfo = arm_instmap(Context, _InstMap).
+
+%-----------------------------------------------------------------------------%
+
 merge_instmap_deltas(InstMap, NonLocals, VarTypes, Deltas,
         MergedDelta, !ModuleInfo) :-
+    % We use the same technique for merge_instmap_deltas as for merge_var,
+    % and for the same reason.
     merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, Deltas,
         [], MergedDeltas, !ModuleInfo),
     (
@@ -1091,115 +1133,6 @@ merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, Deltas,
         merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, MoreDeltas,
             !MergedDeltas, !ModuleInfo)
     ).
-
-%-----------------------------------------------------------------------------%
-
-instmap_unify(NonLocals, InstMapList, !ModeInfo) :-
-    (
-        % If any of the instmaps is unreachable, then the final instmap
-        % is unreachable.
-        list.member(unreachable - _, InstMapList)
-    ->
-        mode_info_set_instmap(unreachable, !ModeInfo)
-    ;
-        % If there is only one instmap, then we just stick it in the mode_info.
-        InstMapList = [InstMap - _]
-    ->
-        mode_info_set_instmap(InstMap, !ModeInfo)
-    ;
-        InstMapList = [InstMap0 - _|InstMapList1],
-        InstMap0 = reachable(InstMapping0)
-    ->
-        % Having got the first instmapping, to use as an accumulator,
-        % call unify_insts_of_vars which unifies each of the nonlocals from
-        % each instmap with the corresponding inst in the accumulator.
-        mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-        set_of_var.to_sorted_list(NonLocals, NonLocalsList),
-        unify_insts_of_vars(NonLocalsList, InstMap0, InstMapList1,
-            ModuleInfo0, ModuleInfo, InstMapping0, InstMapping, ErrorList),
-        mode_info_set_module_info(ModuleInfo, !ModeInfo),
-
-        % If there were any errors, then add the error to the list
-        % of possible errors in the mode_info.
-        (
-            ErrorList = [FirstError | _],
-            FirstError = merge_error(Var, _),
-            WaitingVars = set_of_var.make_singleton(Var),
-            mode_info_error(WaitingVars,
-                mode_error_par_conj(ErrorList), !ModeInfo)
-        ;
-            ErrorList = []
-        ),
-        mode_info_set_instmap(reachable(InstMapping), !ModeInfo)
-    ;
-        true
-    ).
-
-%-----------------------------------------------------------------------------%
-
-    % unify_insts_of_vars(Vars, InitialInstMap, InstMaps, !ModuleInfo,
-    %   !Instmap, ErrorList):
-    %
-    % Let `ErrorList' be the list of variables in `Vars' for which there are
-    % two instmaps in `InstMaps' for which the insts of the variable is
-    % incompatible.
-    %
-:- pred unify_insts_of_vars(list(prog_var)::in, instmap::in,
-    list(pair(instmap, set_of_progvar))::in, module_info::in, module_info::out,
-    map(prog_var, mer_inst)::in, map(prog_var, mer_inst)::out,
-    merge_errors::out) is det.
-
-unify_insts_of_vars([], _, _, !ModuleInfo, !InstMap, []).
-unify_insts_of_vars([Var | Vars], InitialInstMap, InstMapList,
-        !ModuleInfo, !InstMap, ErrorList) :-
-    unify_insts_of_vars(Vars, InitialInstMap, InstMapList, !ModuleInfo,
-        !InstMap, ErrorListTail),
-    instmap_lookup_var(InitialInstMap, Var, InitialVarInst),
-    unify_var_insts(InstMapList, Var, [], Insts, InitialVarInst, Inst,
-        !ModuleInfo, no, Error),
-    (
-        Error = yes,
-        ErrorList = [merge_error(Var, Insts) | ErrorListTail]
-    ;
-        Error = no,
-        ErrorList = ErrorListTail
-    ),
-    map.set(Var, Inst, !InstMap).
-
-    % unify_var_insts(InstMaps, Var, InitialInstMap, ModuleInfo,
-    %   Insts, Error):
-    %
-    % Let `Insts' be the list of the inst of `Var' in each of the
-    % corresponding `InstMaps'. Let `Error' be yes iff there are two
-    % instmaps for which the inst of `Var' is incompatible.
-    %
-:- pred unify_var_insts(list(pair(instmap, set_of_progvar))::in,
-    prog_var::in, list(mer_inst)::in, list(mer_inst)::out,
-    mer_inst::in, mer_inst::out, module_info::in, module_info::out,
-    bool::in, bool::out) is det.
-
-unify_var_insts([], _, !Insts, !Inst, !ModuleInfo, !Error).
-unify_var_insts([InstMap - Nonlocals| Rest], Var, !InstList, !Inst,
-        !ModuleInfo, !Error) :-
-    ( set_of_var.member(Nonlocals, Var) ->
-        instmap_lookup_var(InstMap, Var, VarInst),
-        (
-            % We can ignore the determinism of the unification:
-            % if it isn't det, then there will be a mode error
-            % or a determinism error in one of the parallel conjuncts.
-            abstractly_unify_inst(is_live, !.Inst, VarInst,
-                fake_unify, !:Inst, _Det, !ModuleInfo)
-        ->
-            true
-        ;
-            !:Error = yes,
-            !:Inst = not_reached
-        )
-    ;
-        VarInst = free
-    ),
-    !:InstList = [VarInst | !.InstList],
-    unify_var_insts(Rest, Var, !InstList, !Inst, !ModuleInfo, !Error).
 
 %-----------------------------------------------------------------------------%
 
@@ -1463,4 +1396,6 @@ var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta, Var) :-
     instmap_delta_search_var(InstMapDelta, Var, VarInst),
     inst_is_bound(ModuleInfo, VarInst).
 
+%-----------------------------------------------------------------------------%
+:- end_module hlds.instmap.
 %-----------------------------------------------------------------------------%

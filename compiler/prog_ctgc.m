@@ -527,7 +527,7 @@ selector_to_string(TVarSet, Selector) = String :-
 
 unit_selector_to_string(_, termsel(ConsId, Index)) =
     string.append_list(["sel(",
-        mercury_cons_id_to_string(ConsId, needs_brackets),
+        mercury_cons_id_to_string(needs_brackets, ConsId),
         ",",
         int_to_string(cons_id_arity(ConsId)),
         ",",

@@ -859,12 +859,12 @@ mercury_format_structured_bound_insts([BoundInst | BoundInsts],
     (
         Args = [],
         mercury_format_tabs(Indent1, !U),
-        mercury_format_cons_id(ConsId, needs_brackets, !U),
+        mercury_format_cons_id(needs_brackets, ConsId, !U),
         add_string("\n", !U)
     ;
         Args = [_ | _],
         mercury_format_tabs(Indent1, !U),
-        mercury_format_cons_id(ConsId, does_not_need_brackets, !U),
+        mercury_format_cons_id(does_not_need_brackets, ConsId, !U),
         add_string("(\n", !U),
         mercury_format_structured_inst_list(Args, Indent2,
             Lang, InclAddr, InstVarSet, !U),
