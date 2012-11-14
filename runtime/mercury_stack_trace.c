@@ -472,7 +472,18 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
         slot = MR_find_proc_in_proc_table(proc_table, proc_table_next,
             proc_layout, &parent, &side);
 
-        has_higher_order_arg = MR_proc_has_higher_order_arg(proc_layout);
+        if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {
+            has_higher_order_arg = MR_proc_has_higher_order_arg(proc_layout);
+        } else {
+            /*
+            ** We don't often encounter calls to procedures without debugging
+            ** info in programs compiled in debug grades. Since we don't know
+            ** whether the procedure has higher order args, the conservative
+            ** thing to say is "yes, it does". It will even be true for
+            ** procedures such as builtin_catch.
+            */
+            has_higher_order_arg = MR_TRUE;
+        }
 
         if (slot < 0 || has_higher_order_arg) {
             /*
