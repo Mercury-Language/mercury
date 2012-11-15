@@ -1,22 +1,22 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999,2002-2007, 2010-2011 The University of Melbourne.
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1995-1999,2002-2007,2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % File: digraph.m
 % Main author: bromage, petdr
 % Stability: medium
 %
-% This module defines a data type representing directed graphs.  A directed
+% This module defines a data type representing directed graphs. A directed
 % graph of type digraph(T) is logically equivalent to a set of vertices of
-% type T, and a set of edges of type pair(T).  The endpoints of each edge
+% type T, and a set of edges of type pair(T). The endpoints of each edge
 % must be included in the set of vertices; cycles and loops are allowed.
 %
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module digraph.
 :- interface.
@@ -29,13 +29,13 @@
 :- import_module set.
 :- import_module sparse_bitset.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % The type of directed graphs with vertices in T.
     %
 :- type digraph(T).
 
-    % The abstract type that indexes vertices in a digraph.  Each key is only
+    % The abstract type that indexes vertices in a digraph. Each key is only
     % valid with the digraph it was created from -- predicates and functions
     % in this module may throw an exception if an invalid key is used.
     %
@@ -51,20 +51,20 @@
 :- pred digraph.init(digraph(T)::out) is det.
 
     % digraph.add_vertex adds a vertex to the domain of a digraph.
-    % Returns the old key if one already exists for this vertex, or
-    % else allocates a new key.
+    % Returns the old key if one already exists for this vertex,
+    % otherwise it allocates a new key.
     %
 :- pred digraph.add_vertex(T::in, digraph_key(T)::out,
     digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.search_key returns the key associated with a vertex.  Fails if
-    % the vertex is not in the graph.
+    % digraph.search_key returns the key associated with a vertex.
+    % Fails if the vertex is not in the graph.
     %
 :- pred digraph.search_key(digraph(T)::in, T::in, digraph_key(T)::out)
     is semidet.
 
-    % digraph.lookup_key returns the key associated with a vertex.  Aborts if
-    % the vertex is not in the graph.
+    % digraph.lookup_key returns the key associated with a vertex.
+    % Aborts if the vertex is not in the graph.
     %
 :- func digraph.lookup_key(digraph(T), T) = digraph_key(T).
 :- pred digraph.lookup_key(digraph(T)::in, T::in, digraph_key(T)::out)
@@ -190,7 +190,7 @@
 %-----------------------------------------------------------------------------%
 
     % digraph.dfs(G, Key, Dfs) is true if Dfs is a depth-first sorting of G
-    % starting at Key.  The set of keys in the list Dfs is equal to the
+    % starting at Key. The set of keys in the list Dfs is equal to the
     % set of keys reachable from Key.
     %
 :- func digraph.dfs(digraph(T), digraph_key(T)) = list(digraph_key(T)).
@@ -198,7 +198,7 @@
     list(digraph_key(T))::out) is det.
 
     % digraph.dfsrev(G, Key, DfsRev) is true if DfsRev is a reverse
-    % depth-first sorting of G starting at Key.  The set of keys in the
+    % depth-first sorting of G starting at Key. The set of keys in the
     % list DfsRev is equal to the set of keys reachable from Key.
     %
 :- func digraph.dfsrev(digraph(T), digraph_key(T)) = list(digraph_key(T)).
@@ -207,7 +207,7 @@
 
     % digraph.dfs(G, Dfs) is true if Dfs is a depth-first sorting of G,
     % i.e. a list of all the keys in G such that all keys for children of
-    % a vertex are placed in the list before the parent key.  If the
+    % a vertex are placed in the list before the parent key. If the
     % digraph is cyclic, the position in which cycles are broken (that is,
     % in which a child is placed *after* its parent) is undefined.
     %
@@ -215,17 +215,17 @@
 :- pred digraph.dfs(digraph(T)::in, list(digraph_key(T))::out) is det.
 
     % digraph.dfsrev(G, DfsRev) is true if DfsRev is a reverse depth-first
-    % sorting of G.  That is, DfsRev is the reverse of Dfs from digraph.dfs/2.
+    % sorting of G. That is, DfsRev is the reverse of Dfs from digraph.dfs/2.
     %
 :- func digraph.dfsrev(digraph(T)) = list(digraph_key(T)).
 :- pred digraph.dfsrev(digraph(T)::in, list(digraph_key(T))::out) is det.
 
     % digraph.dfs(G, Key, !Visit, Dfs) is true if Dfs is a depth-first
     % sorting of G starting at Key, assuming we have already visited !.Visit
-    % vertices.  That is, Dfs is a list of vertices such that all the
+    % vertices. That is, Dfs is a list of vertices such that all the
     % unvisited children of a vertex are placed in the list before the
-    % parent.  !.Visit allows us to initialise a set of previously visited
-    % vertices.  !:Visit is Dfs + !.Visit.
+    % parent. !.Visit allows us to initialise a set of previously visited
+    % vertices. !:Visit is Dfs + !.Visit.
     %
 :- pred digraph.dfs(digraph(T)::in, digraph_key(T)::in, digraph_key_set(T)::in,
     digraph_key_set(T)::out, list(digraph_key(T))::out) is det.
@@ -254,7 +254,7 @@
 :- pred digraph.inverse(digraph(T)::in, digraph(T)::out) is det.
 
     % digraph.compose(G1, G2, G) is true if G is the composition
-    % of the digraphs G1 and G2.  That is, there is an edge (x,y) in G iff
+    % of the digraphs G1 and G2. That is, there is an edge (x,y) in G iff
     % there exists vertex m such that (x,m) is in G1 and (m,y) is in G2.
     %
 :- func digraph.compose(digraph(T), digraph(T)) = digraph(T).
@@ -320,7 +320,7 @@
 
     % digraph.traverse(G, ProcessVertex, ProcessEdge) will traverse a digraph
     % calling ProcessVertex for each vertex in the digraph and ProcessEdge for
-    % each edge in the digraph.  Each vertex is processed followed by all the
+    % each edge in the digraph. Each vertex is processed followed by all the
     % edges originating at that vertex, until all vertices have been processed.
     %
 :- pred digraph.traverse(digraph(T), pred(T, A, A), pred(T, T, A, A), A, A).
@@ -437,7 +437,7 @@ digraph.lookup_key(G, Vertex, Key) :-
     ( digraph.search_key(G, Vertex, Key0) ->
         Key = Key0
     ;
-        error("digraph.lookup_key")
+        unexpected($module, $pred, "search for key failed")
     ).
 
 digraph.lookup_vertex(G, Key) = Vertex :-
@@ -447,7 +447,7 @@ digraph.lookup_vertex(G, Key, Vertex) :-
     ( bimap.search(G ^ vertex_map, Vertex0, Key) ->
         Vertex = Vertex0
     ;
-        error("digraph.lookup_vertex")
+        unexpected($module, $pred, "search for vertex failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -766,12 +766,12 @@ digraph.is_dag(G) :-
     %
     % not is_dag(G) <=> we encounter an ancestor at some stage:
     %
-    % (=>) By assumption there exists a cycle.  Since all vertices are reached
+    % (=>) By assumption there exists a cycle. Since all vertices are reached
     % in the traversal, we reach all vertices in the cycle at some stage.
     % Let x be the vertex in the cycle that is reached first, and let y be
-    % the vertex preceding x in the cycle.  Since x was first, y has not
+    % the vertex preceding x in the cycle. Since x was first, y has not
     % been visited and must therefore be reached at some stage in the depth-
-    % first traversal beneath x.  At this stage we encounter x as both a
+    % first traversal beneath x. At this stage we encounter x as both a
     % child and an ancestor.
     %
     % (<=) If we encounter an ancestor in any traversal, then we have a cycle.
@@ -957,8 +957,8 @@ digraph.atsort(G) = ATsort :-
 digraph.atsort(G, ATsort) :-
     % digraph.atsort returns a topological sorting of the cliques in a digraph.
     %
-    % The algorithm used is described in R. E. Tarjan, "Depth-first search
-    % and linear graph algorithms,"  SIAM Journal on Computing, 1, 2 (1972).
+    % The algorithm used is described in R.E. Tarjan, "Depth-first search
+    % and linear graph algorithms", SIAM Journal on Computing, 1, 2 (1972).
 
     digraph.dfsrev(G, DfsRev),
     digraph.inverse(G, GInv),
