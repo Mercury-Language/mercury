@@ -3,6 +3,7 @@
 .cvsignore
 config.sub
 config.guess
+mercury.snk
 NEWS
 WORK_IN_PROGRESS
 .mode-constraints-sync-tag
