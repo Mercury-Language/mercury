@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 2008, 2010 The University of Melbourne.
+# Copyright (C) 2008, 2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -28,6 +28,7 @@ cp Mercury.* ${installdir}
 cp VERSION ${installdir}
 cp config* ${installdir}
 cp aclocal.m4 ${installdir}
+cp mercury.snk ${installdir}
 mkdir ${installdir}/scripts
 cp scripts/* ${installdir}/scripts
 mkdir ${installdir}/tools

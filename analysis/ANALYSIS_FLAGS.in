@@ -19,6 +19,7 @@
 --c-include-directory ../ssdb
 --c-include-directory ../ssdb/Mercury/mihs
 --c-include-directory ../trace
+--csharp-flag -keyfile:../mercury.snk
 --erlang-include-directory ../library/Mercury/hrls
 --erlang-include-directory ../mdbcomp/Mercury/hrls
 --erlang-include-directory ../ssdb/Mercury/hrls
