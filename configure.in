@@ -4590,10 +4590,10 @@ case "$FULLARCH" in
         # similar treatment for other OSs too.)
         case "$C_COMPILER_TYPE" in
             gcc*)
-                LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
+                LD_STATIC_FLAGS="-static -Wl,-defsym -Wl,_DYNAMIC=0"
                 ;;
             clang*)
-                LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
+                LD_STATIC_FLAGS="-static -Wl,-defsym -Wl,_DYNAMIC=0"
                 ;;
             lcc)
                 # for lcc 4.1, we need to use "-Wl,".
