@@ -1091,7 +1091,7 @@ else
     # it and has no effect other than causing the linker to emit a warning.
     #
     case "$host" in
-        *apple*darwin*9*|*apple*darwin*10*)
+        *apple*darwin*)
             LD_STRIP_FLAG=""
             ;;
     esac
@@ -3739,7 +3739,7 @@ then
     LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.stseg"
     if test "$enable_trail_grades" = "yes"
     then
-        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.tr.stseg"
+        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.trseg.stseg"
     fi
 
     if test "$enable_debug_grades" = "yes"
@@ -4590,10 +4590,10 @@ case "$FULLARCH" in
         # similar treatment for other OSs too.)
         case "$C_COMPILER_TYPE" in
             gcc*)
-                LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
+                LD_STATIC_FLAGS="-static -Wl,-defsym -Wl,_DYNAMIC=0"
                 ;;
             clang*)
-                LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
+                LD_STATIC_FLAGS="-static -Wl,-defsym -Wl,_DYNAMIC=0"
                 ;;
             lcc)
                 # for lcc 4.1, we need to use "-Wl,".

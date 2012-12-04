@@ -20,6 +20,7 @@
 --c-include-directory ../mdbcomp/Mercury/mihs
 --c-include-directory ../browser
 --c-include-directory ../browser/Mercury/mihs
+--csharp-flag -keyfile:../mercury.snk
 --erlang-include-directory ../library/Mercury/hrls
 --erlang-include-directory ../mdbcomp/Mercury/hrls
 --erlang-include-directory ../browser/Mercury/hrls

@@ -477,7 +477,7 @@ then
 	# included in the output files.  The quotes are necessary in order for
 	# --restricted-command-line to work with the Java backend.
 	mercury_cv_javac_flags_for_heap_size_test="-J-Xmx256m"
-	mercury_cv_javac_flags_for_heap_size="-J\"-Xmx256m\""
+	mercury_cv_javac_flags_for_heap_size="-J\"-Xmx1024m\""
 	if "$JAVAC" "$mercury_cv_javac_flags_for_heap_size_test" -version \
                 2> /dev/null
         then

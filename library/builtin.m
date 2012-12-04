@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007, 2010-2011 The University of Melbourne.
+% Copyright (C) 1994-2007, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -363,7 +363,7 @@
 
 %-----------------------------------------------------------------------------%
     
-    % `semidet_succeed' is exactly the same as `true', exception that
+    % `semidet_succeed' is exactly the same as `true', except that
     % the compiler thinks that it is semi-deterministic.  You can use
     % calls to `semidet_succeed' to suppress warnings about determinism
     % declarations that could be stricter.
@@ -406,6 +406,7 @@
     %
 :- pred dynamic_cast(T1::in, T2::out) is semidet.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

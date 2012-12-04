@@ -79,11 +79,6 @@ am__libatomic_ops_a_SOURCES_DIST = atomic_ops.c atomic_ops_sysdeps.S
 @NEED_ASM_TRUE@am_libatomic_ops_a_OBJECTS = atomic_ops.$(OBJEXT) \
 @NEED_ASM_TRUE@	atomic_ops_sysdeps.$(OBJEXT)
 libatomic_ops_a_OBJECTS = $(am_libatomic_ops_a_OBJECTS)
-libatomic_ops_gpl_a_AR = $(AR) $(ARFLAGS)
-libatomic_ops_gpl_a_LIBADD =
-am_libatomic_ops_gpl_a_OBJECTS = atomic_ops_stack.$(OBJEXT) \
-	atomic_ops_malloc.$(OBJEXT)
-libatomic_ops_gpl_a_OBJECTS = $(am_libatomic_ops_gpl_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -94,9 +89,8 @@ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(libatomic_ops_a_SOURCES) $(libatomic_ops_gpl_a_SOURCES)
-DIST_SOURCES = $(am__libatomic_ops_a_SOURCES_DIST) \
-	$(libatomic_ops_gpl_a_SOURCES)
+SOURCES = $(libatomic_ops_a_SOURCES)
+DIST_SOURCES = $(am__libatomic_ops_a_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-dvi-recursive install-exec-recursive \
@@ -246,11 +240,19 @@ top_srcdir = @top_srcdir@
 SUBDIRS = atomic_ops
 AM_CFLAGS = @PICFLAG@
 AM_CPPFLAGS = -I$(top_builddir)/src -I$(top_srcdir)/src
-include_HEADERS = atomic_ops.h atomic_ops_stack.h atomic_ops_malloc.h
-lib_LIBRARIES = libatomic_ops.a libatomic_ops_gpl.a
+
+# Disable the build of libatomic_ops_gpl.a as the Mercury compiler
+# doesn't need it and it doesn't build under Sparc Solaris 10
+#include_HEADERS=atomic_ops.h atomic_ops_stack.h atomic_ops_malloc.h
+#lib_LIBRARIES = libatomic_ops.a libatomic_ops_gpl.a
+include_HEADERS = atomic_ops.h
+lib_LIBRARIES = libatomic_ops.a
 @NEED_ASM_FALSE@libatomic_ops_a_SOURCES = atomic_ops.c
 @NEED_ASM_TRUE@libatomic_ops_a_SOURCES = atomic_ops.c atomic_ops_sysdeps.S
-libatomic_ops_gpl_a_SOURCES = atomic_ops_stack.c atomic_ops_malloc.c
+
+# Disable the build of libatomic_ops_gpl.a as the Mercury compiler
+# doesn't need it and it doesn't build under Sparc Solaris 10
+#libatomic_ops_gpl_a_SOURCES = atomic_ops_stack.c atomic_ops_malloc.c
 EXTRA_DIST = Makefile.msft
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
@@ -340,10 +342,6 @@ libatomic_ops.a: $(libatomic_ops_a_OBJECTS) $(libatomic_ops_a_DEPENDENCIES)
 	-rm -f libatomic_ops.a
 	$(libatomic_ops_a_AR) libatomic_ops.a $(libatomic_ops_a_OBJECTS) $(libatomic_ops_a_LIBADD)
 	$(RANLIB) libatomic_ops.a
-libatomic_ops_gpl.a: $(libatomic_ops_gpl_a_OBJECTS) $(libatomic_ops_gpl_a_DEPENDENCIES) 
-	-rm -f libatomic_ops_gpl.a
-	$(libatomic_ops_gpl_a_AR) libatomic_ops_gpl.a $(libatomic_ops_gpl_a_OBJECTS) $(libatomic_ops_gpl_a_LIBADD)
-	$(RANLIB) libatomic_ops_gpl.a
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -352,8 +350,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/atomic_ops.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/atomic_ops_malloc.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/atomic_ops_stack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/atomic_ops_sysdeps.Po@am__quote@
 
 .S.o:
