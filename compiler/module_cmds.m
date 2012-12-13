@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2011 The University of Melbourne.
+% Copyright (C) 2008-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -612,13 +612,22 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
         MaybeProcessOutput = yes(ProcessOutput)
     ->
         io.make_temp(ProcessedTmpFile, !IO),
-        
+       
+        % XXX we should get rid of use_win32 
         ( use_win32 ->
-            % On windows we can't in general redirect standard
-            % error in the shell.
-            ProcessOutputRedirected = string.append_list(
-                [ProcessOutput, " < ", TmpFile, " > ",
-                    ProcessedTmpFile])
+            get_host_env_type(Globals, HostEnvType),
+            ( HostEnvType = env_type_powershell ->
+                % XXX we should be able to redirect stderr here too.
+                ProcessOutputRedirected = string.append_list(
+                    ["Get-Content ", TmpFile, " | ", ProcessOutput,
+                        " > ", ProcessedTmpFile])
+            ;
+                % On windows we can't in general redirect standard
+                % error in the shell.
+                ProcessOutputRedirected = string.append_list(
+                    [ProcessOutput, " < ", TmpFile, " > ",
+                        ProcessedTmpFile])
+            )
         ;
             ProcessOutputRedirected = string.append_list(
                 [ProcessOutput, " < ", TmpFile, " > ",
@@ -752,7 +761,10 @@ create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
             write_java_shell_script(Globals, MainModuleName),
             Succeeded, !IO)
     ;
-        TargetEnvType = env_type_win_cmd,
+        % XXX should create a .ps1 file on PowerShell.
+        ( TargetEnvType = env_type_win_cmd
+        ; TargetEnvType = env_type_powershell
+        ),
         create_launcher_batch_file(Globals, MainModuleName,
             write_java_batch_file(Globals, MainModuleName),
             Succeeded, !IO)
@@ -959,7 +971,9 @@ create_erlang_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
             write_erlang_shell_script(Globals, MainModuleName),
             Succeeded, !IO)
     ;
-        TargetEnvType = env_type_win_cmd,
+        ( TargetEnvType = env_type_win_cmd
+        ; TargetEnvType = env_type_powershell
+        ),
         create_launcher_batch_file(Globals, MainModuleName,
             write_erlang_batch_file(Globals, MainModuleName),
             Succeeded, !IO)

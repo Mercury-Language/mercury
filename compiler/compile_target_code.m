@@ -1867,7 +1867,10 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
         % These may be shell scripts or batch files.
         globals.get_target_env_type(Globals, TargetEnvType),
         (
-            TargetEnvType = env_type_win_cmd,
+            % XXX we should actually generate a .ps1 file for PowerShell.
+            ( TargetEnvType = env_type_win_cmd
+            ; TargetEnvType = env_type_powershell
+            ),
             Ext = ".bat"
         ;
             ( TargetEnvType = env_type_posix
@@ -2948,6 +2951,12 @@ csharp_file_name(env_type_win_cmd, csharp_mono, Filename) = Filename.
 csharp_file_name(env_type_win_cmd, csharp_unknown, Filename) =
     convert_to_windows_path_format(Filename).
 
+csharp_file_name(env_type_powershell, csharp_microsoft, Filename) =
+    convert_to_windows_path_format(Filename).
+csharp_file_name(env_type_powershell, csharp_mono, Filename) = Filename.
+csharp_file_name(env_type_powershell, csharp_unknown, Filename) =
+    convert_to_windows_path_format(Filename).
+
 :- func convert_to_windows_path_format(file_name) = file_name.
 
 convert_to_windows_path_format(FileName) =
@@ -3428,7 +3437,6 @@ make_standalone_int_body(Globals, Basename, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    %
     % invoke_long_system_command attempts to use the @file style of
     % calling to avoid command line length arguments on various systems.
     % If the underlying tool chain doesn't support this it just calls
@@ -3479,7 +3487,7 @@ invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
                 VeryVerbose = no
             ),
 
-            FullCmd = Cmd ++ " @" ++ TmpFile,
+            FullCmd = Cmd ++ " " ++ at_file_name(Globals, TmpFile),
             invoke_system_command(Globals, ErrorStream, Verbosity, FullCmd,
                 Succeeded0, !IO),
 
@@ -3501,6 +3509,25 @@ invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
         FullCmd = Cmd ++ " " ++ Args,
         invoke_system_command_maybe_filter_output(Globals, ErrorStream,
             Verbosity, FullCmd, MaybeProcessOutput, Succeeded, !IO)
+    ).
+
+    % Form the name of an @file given a file name.
+    % On some systems we need to escape the `@' character.
+    %
+:- func at_file_name(globals, string) = string.
+
+at_file_name(Globals, FileName) = AtFileName :-
+    get_host_env_type(Globals, EnvType),
+    (
+        EnvType = env_type_powershell,
+        AtFileName = "`@" ++ FileName
+    ;
+        ( EnvType = env_type_posix
+        ; EnvType = env_type_cygwin
+        ; EnvType = env_type_msys
+        ; EnvType = env_type_win_cmd
+        ),
+        AtFileName = "@" ++ FileName
     ).
 
 %-----------------------------------------------------------------------------%

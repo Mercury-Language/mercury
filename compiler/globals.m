@@ -184,10 +184,12 @@
     ;       env_type_msys
             % MinGW with the MSYS environment on Windows.
 
-    ;       env_type_win_cmd.
+    ;       env_type_win_cmd
             % The Windows command-line interpreter (cmd.exe). 
-            % XXX there are probably more variants of Windows, but it isn't
-            % clear what they are yet.
+            
+    ;       env_type_powershell.
+            % Windows PowerShell.
+            % (NOTE: COMSPEC must be pointing to powershell.exe not cmd.exe.)            
 
     % The tracing levels to use for a module when doing the source to source
     % debugging tranformation.
@@ -543,6 +545,7 @@ convert_env_type("posix",   env_type_posix).
 convert_env_type("cygwin",  env_type_cygwin).
 convert_env_type("msys",    env_type_msys).
 convert_env_type("windows", env_type_win_cmd).
+convert_env_type("powerhsell", env_type_powershell).
 
 convert_ssdb_trace_level("default", yes, deep).
 convert_ssdb_trace_level("default", no, none).
