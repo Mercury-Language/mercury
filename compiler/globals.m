@@ -545,7 +545,7 @@ convert_env_type("posix",   env_type_posix).
 convert_env_type("cygwin",  env_type_cygwin).
 convert_env_type("msys",    env_type_msys).
 convert_env_type("windows", env_type_win_cmd).
-convert_env_type("powerhsell", env_type_powershell).
+convert_env_type("powershell", env_type_powershell).
 
 convert_ssdb_trace_level("default", yes, deep).
 convert_ssdb_trace_level("default", no, none).
