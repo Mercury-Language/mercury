@@ -3479,7 +3479,8 @@ invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             (
                 VeryVerbose = yes,
-                io.write_string("% Args placed in @" ++ TmpFile ++ ": `", !IO),
+                io.write_string("% Args placed in ", !IO),
+                io.write_string(at_file_name(Globals, TmpFile) ++ ": `", !IO),
                 io.write_string(TmpFileArgs, !IO),
                 io.write_string("'\n", !IO),
                 io.flush_output(!IO)

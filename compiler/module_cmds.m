@@ -617,10 +617,9 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
         ( use_win32 ->
             get_host_env_type(Globals, HostEnvType),
             ( HostEnvType = env_type_powershell ->
-                % XXX we should be able to redirect stderr here too.
                 ProcessOutputRedirected = string.append_list(
                     ["Get-Content ", TmpFile, " | ", ProcessOutput,
-                        " > ", ProcessedTmpFile])
+                        " > ", ProcessedTmpFile, " 2>&1"])
             ;
                 % On windows we can't in general redirect standard
                 % error in the shell.
