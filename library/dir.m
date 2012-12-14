@@ -315,6 +315,13 @@ dir.is_directory_separator(Char) :-
 dir.is_directory_separator_semidet(Char) :-
     dir.is_directory_separator(Char).
 
+:- pred dir.ends_with_directory_separator(string::in, int::in, int::out)
+    is semidet.
+
+dir.ends_with_directory_separator(String, End, PrevIndex) :-
+    string.unsafe_prev_index(String, End, PrevIndex, Char),
+    dir.is_directory_separator(Char).
+
 use_windows_paths :- dir.directory_separator = ('\\').
 
 :- pragma foreign_export("C", (dir.this_directory = out),
@@ -684,9 +691,9 @@ is_dotnet_root_directory(FileName) :-
         % trailing slashes are significant.
         FileNameLen = length(FileName),
         ( FileNameLen > 0 ->
-            is_directory_separator(string.unsafe_index(FileName,
-                FileNameLen - 1)),
-            is_dotnet_root_directory_2(string.left(FileName, FileNameLen - 1))
+            ends_with_directory_separator(FileName, FileNameLen, PrevIndex),
+            string.unsafe_between(FileName, 0, PrevIndex, Prefix),
+            is_dotnet_root_directory_2(Prefix)
         ;
             fail
         )
@@ -822,9 +829,8 @@ DirName0/FileName0 = PathName :-
             % On Windows \\foo (a UNC server specification) is
             % not equivalent to \foo (the directory X:\foo, where
             % X is the current drive).
-            ( DirNameLength \= 0 ->
-                dir.is_directory_separator(string.unsafe_index(DirName,
-                    DirNameLength - 1))
+            ( DirNameLength > 0 ->
+                ends_with_directory_separator(DirName, DirNameLength, _)
             ;
 
                 fail
