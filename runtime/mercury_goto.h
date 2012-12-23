@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001, 2003-2007, 2009, 2011 The University of Melbourne.
+** Copyright (C) 1995-2001, 2003-2007, 2009, 2011-2012 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -489,7 +489,8 @@
 
   #endif /* MR_PIC */
 
-  /* For Linux-ELF shared libraries, we need to declare that the type of labels
+  /*
+  ** For Linux-ELF shared libraries, we need to declare that the type of labels
   ** is @function (i.e. code, not data), otherwise the dynamic linker seems
   ** to get confused, and we end up jumping into the data section.
   ** Hence the `.type' directive below.
