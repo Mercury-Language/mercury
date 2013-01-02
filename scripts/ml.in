@@ -17,7 +17,7 @@
 #
 # *************************************************************************
 # *** IMPORTANT NOTE: any changes to this file may also require similar ***
-# *** changes to compiler/compile_target_code.m and configure.in        ***
+# *** changes to compiler/compile_target_code.m and configure.ac        ***
 # *************************************************************************
 
 Usage="\
