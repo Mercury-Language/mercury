@@ -1,4 +1,7 @@
-README INSTALL TODO WORK_IN_PROGRESS
+README
+INSTALL
+TODO
+WORK_IN_PROGRESS
 mercury-compiler.spec
 configure
 config.cache
@@ -10,6 +13,10 @@ so_locations
 Mmake.common
 Mmake.params
 Mmake.stage.params
-stage1 stage2 stage3
+stage1
+stage2
+stage3
 Mercury.options
 autom4te.cache
+aclocal.m4
+.configured_library_grades

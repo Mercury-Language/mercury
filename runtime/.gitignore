@@ -1,8 +1,10 @@
 *.pic_o
+*.o
 *.dll
 mercury_conf.h
 mer_rt.init
 mercury_conf.h.date
+libmer_rt.a
 libmer_rt.lib
 libmer_rt.dylib
 mercury_profiling_builtin.c
