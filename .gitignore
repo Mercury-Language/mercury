@@ -9,6 +9,7 @@ config.status
 config.log
 configure.log
 configure.help
+confdefs.h
 so_locations
 Mmake.common
 Mmake.params
