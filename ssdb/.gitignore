@@ -17,9 +17,11 @@ SSDB_FLAGS
 *.mh
 *.mih
 *.pic_o
+*.o
 *.opt
 *.optdate
 *.prof
+libmer_ssdb.a
 mer_ssdb.init
 *.module_dep
 Mercury

@@ -18,6 +18,7 @@ mcov
 *.int3
 *.mh
 *.mih
+*.o
 *.opt
 *.optdate
 *.prof

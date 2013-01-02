@@ -1,6 +1,9 @@
 *.pic_o
+*.o
 *.ilk
 *.pdb
+libmer_trace.a
+libmer_eventspec.a
 libmer_trace.lib
 libmer_trace.dylib
 libmer_eventspec.lib

@@ -2563,7 +2563,7 @@ long_usage(!IO) :-
     library.version(Version),
     io.write_strings(["Name: mmc -- Melbourne Mercury Compiler, version ",
         Version, "\n"], !IO),
-    io.write_string("Copyright: Copyright (C) 1993-2012 " ++
+    io.write_string("Copyright: Copyright (C) 1993-2013 " ++
         "The University of Melbourne\n", !IO),
     io.write_string("Usage: mmc [<options>] <arguments>\n", !IO),
     io.write_string("Arguments:\n", !IO),

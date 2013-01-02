@@ -13,6 +13,7 @@
 *.pic_o
 *.dylib
 *.mih
+*.o
 *.opt
 *.optdate
 *.prof
@@ -22,6 +23,7 @@ mer_mdbcomp.mh
 mer_mdbcomp
 mer_mdbcomp.dep
 mer_mdbcomp.jar
+libmer_mdbcomp.a
 Mercury
 Mercury.modules
 MDBCOMP_FLAGS

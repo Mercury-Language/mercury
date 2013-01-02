@@ -21,3 +21,4 @@ Mercury.options
 autom4te.cache
 aclocal.m4
 .configured_library_grades
+main.o

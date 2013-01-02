@@ -15,7 +15,7 @@
 @ifnottex
 This file documents the Mercury programming language, version <VERSION>.
 
-Copyright (C) 1995-2012 The University of Melbourne.
+Copyright (C) 1995-2013 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice

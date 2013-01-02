@@ -1,6 +1,7 @@
 *.il
 *.pdb
 *.dep
+*.a
 *.c
 *.d
 *.ql
@@ -15,6 +16,7 @@
 *.date0
 *.date3
 *.pic_o
+*.o
 *.opt
 *.optdate
 *.trans_opt

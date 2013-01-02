@@ -33,6 +33,7 @@ Mercury
 *.mh
 *.mih
 Mercury.modules
+*.o
 *.opt
 *.optdate
 *.trans_opt

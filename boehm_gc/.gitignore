@@ -9,7 +9,9 @@ libgc_dll.h
 mercury_boehm_gc_conf.h
 gc.lib
 libgc.lib
+*.a
 *.ilk
+*.o
 *.pdb
 gc_cpp.cpp
 libgc.dylib

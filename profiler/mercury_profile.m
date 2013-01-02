@@ -108,7 +108,7 @@ usage(!IO) :-
     library.version(Version),
     io.write_strings(StdErr, [
         "Mercury Profiler, version ", Version, "\n",
-        "Copyright (C) 1995-2012 The University of Melbourne\n",
+        "Copyright (C) 1995-2013 The University of Melbourne\n",
             "Usage: ", ProgName, " [<options>] [<files>]\n",
             "Use `", ProgName, " --help' for more information.\n"
         ], !IO).
@@ -120,7 +120,7 @@ long_usage(!IO) :-
     library.version(Version),
     io.write_strings([
         "Mercury Profiler, version ", Version, "\n",
-        "Copyright (C) 1995-2011 The University of Melbourne\n\n",
+        "Copyright (C) 1995-2013 The University of Melbourne\n\n",
             "Usage: ", ProgName, "[<options>] [<files>]\n",
         "\n",
         "Description:\n",
