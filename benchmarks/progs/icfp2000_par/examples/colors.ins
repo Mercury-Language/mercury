@@ -1,0 +1,25 @@
+/* colors.ins
+ *
+ * This include file defines a bunch of colors
+ */
+
+#ifndef _COLORS_INS_
+#define _COLORS_INS_
+
+%%%%%%%%%% include colors.ins %%%%%%%%%%
+
+0.0  0.0  0.0  point /black
+1.0  1.0  1.0  point /white
+1.0  0.0  0.0  point /red
+0.0  1.0  0.0  point /green
+0.0  0.0  1.0  point /blue
+1.0  0.0  1.0  point /magenta
+1.0  1.0  0.0  point /yellow
+0.0  1.0  1.0  point /cyan
+
+% ... <level>  grey  ==>  <color>
+{ clampf /level level level level point } /grey
+
+%%%%%%%%%% colors.ins %%%%%%%%%%
+
+#endif /* !COLORS_INS_ */

@@ -1,0 +1,12 @@
+MCFLAGS =
+
+-include Mmake.params
+
+MAIN_TARGET = all
+
+all:	qsort_mt
+
+depend: qsort_mt.depend
+
+tags: *.m
+	mtags *.m

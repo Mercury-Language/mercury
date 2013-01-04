@@ -1,0 +1,12 @@
+#!/bin/sh
+
+for variant in 11 34 23 no
+do
+	testrunone proj.osv$variant > SPEED.$variant
+	/home/zs/mer/ws40/tools/sumspeed SPEED.$variant > SPEEDSUM.$variant
+done
+
+for variant in 11 34 23
+do
+	cmp OUT.$variant.ppm OUT.no.ppm
+done

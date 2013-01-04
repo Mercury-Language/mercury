@@ -1,0 +1,5 @@
+#!/bin/sh
+# Here's a small example that I know works and doesn't take too long.  It shows
+# most of the features of the program, including intersecting polygons, phong
+# shading, specular, lambertian and ambient shading.
+./proj -f 100 -S -s 0.4 2 -a 0.1 dodec.scene 200 200 0 0 0 > dodec.ppm

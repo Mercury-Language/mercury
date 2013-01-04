@@ -1,0 +1,19 @@
+#!/bin/sh
+
+for dir in compress icfp2000 icfp2001 nuc
+do
+	cd $dir
+	for grade in asm_fast.gc hlc.gc
+	do
+		echo "GRADE = $grade" > Mmakefile.grade
+		for optlevel in O5
+		do
+			echo "OPTLEVEL = $optlevel" > Mmakefile.optlevel
+			mmake realclean
+			mmake depend
+			mmake
+			mmake times
+		done
+	done
+	cd ..
+done

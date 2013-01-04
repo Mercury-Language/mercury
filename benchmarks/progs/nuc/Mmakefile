@@ -1,0 +1,10 @@
+include Mmakefile.grade
+include Mmakefile.optlevel
+include Mmakefile.flags
+
+PROG_MCFLAGS =
+NAME = nuc
+PROG = nuc5
+ARGS = 
+
+include ../Mmakefile.common

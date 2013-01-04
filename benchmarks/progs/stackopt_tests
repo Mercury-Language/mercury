@@ -1,0 +1,28 @@
+#!/bin/sh
+
+PATH="/home/ender/public/mercury-latest/i686-pc-linux-gnu/bin:$PATH"
+export PATH
+
+set -x
+for dir in compress icfp2000 icfp2001 nuc ray tree234
+do
+	for optlevel in O2 O5
+	do
+		while read enable onr anr
+		do
+			cd $dir
+
+			echo "GRADE = asm_fast.gc" > Mmakefile.grade
+			echo "OPTLEVEL = $optlevel" > Mmakefile.optlevel
+			echo "ENABLE = $enable" > Mmakefile.flags
+			echo "ONR = $onr" >> Mmakefile.flags
+			echo "ANR = $anr" >> Mmakefile.flags
+			mmake realclean
+			mmake depend
+			mmake
+			mmake times
+
+			cd ..
+		done < FLAGS.stackopt
+	done
+done

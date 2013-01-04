@@ -1,0 +1,38 @@
+# MCFLAGS =
+MCFLAGS = -O6 --intermodule-optimization
+CFLAGS = -DML_OMIT_MATH_DOMAIN_CHECKS
+
+-include Mmake.params
+
+# The executable that we ship as our final entry should be
+# statically linked
+# MLFLAGS = --static
+
+MAIN_TARGET = all
+
+all:	main
+# test_trans does not compile
+
+depend : main.depend
+
+tags: *.m
+	mtags *.m
+
+.PHONY: tar
+tar: main
+	-[ -d src ] || mkdir src
+	cp *.m Mmakefile src
+	tar --exclude=CVS -cf - buildme runme main README src tests examples \
+		| gzip -9 > submission.tar.gz
+
+info.txt: tar
+	{ cat info.txt.base; \
+	  echo "md5sum: `md5sum submission.tar.gz | awk '{print $$1;}'`"; \
+	} > info.txt
+
+###
+### uncomment this and run `mmake email-submission' to submit the final entry
+### Don't forget to set MLFLAGS = --static
+###
+#email-submission: tar info.txt
+#	./submit.sh info.txt submission.tar.gz

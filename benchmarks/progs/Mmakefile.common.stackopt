@@ -1,0 +1,60 @@
+
+# WORKSPACE = /home/staff/zs/mer/ws6
+# include $(WORKSPACE)/Mmake.workspace
+# MERCURY_COMPILE=$(WORKSPACE)/compiler/mercury_compile
+
+ifeq ($(ENABLE),yes)
+ENABLE_FLAG = --optimise-saved-vars-cell
+else
+ENABLE_FLAG =
+endif
+
+MMC = lmc6
+MCFLAGS = -$(OPTLEVEL) $(PROG_MCFLAGS) $(ENABLE_FLAG) \
+		--osv-node-ratio $(ONR) --osv-allpath-node-ratio $(ANR)
+#		--intermodule-optimization \
+#		--transitive-intermodule-optimization
+MGNUCFLAGS = --inline-alloc -DML_OMIT_MATH_DOMAIN_CHECKS
+MLFLAGS = --static
+
+MAIN_TARGET = all
+
+.PHONY: all
+all:	$(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR)
+
+.PHONY: depend
+depend: $(PROG).depend
+
+$(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR): $(PROG)
+	cp $(PROG) $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR)
+	mkdir -p cfiles.$(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR)
+	cp *.c cfiles.$(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR)
+
+.PHONY: times
+times:	$(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR)
+	( \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	true ) > TIMES.$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) 2>&1

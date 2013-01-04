@@ -1,0 +1,30 @@
+% loops.ins
+%
+% Some GML looping functions.
+
+#ifndef _LOOPS_INS_
+#define _LOOPS_INS_
+
+%%%%%%%%%% include colors.ins %%%%%%%%%%
+
+% <body> <count> foreach
+% apply <body> to 0..<count>-1.
+{ /n /f
+  { /self /i
+    i n lessi
+    { i f apply i 1 addi self self apply }
+    { }
+    if
+  } /loop
+  0 loop loop apply
+} /foreach
+
+% a function that loops forever
+{ { /self self self apply } /loop
+  loop loop apply
+} /forever
+
+%%%%%%%%%% colors.ins %%%%%%%%%%
+
+#endif /* ! _LOOPS_INS_ */
+

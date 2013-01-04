@@ -1,0 +1,15 @@
+*.c
+*.d
+*.h
+*.ql
+*.pl
+*.prof
+*.err
+*.int
+*.int2
+*.int3
+*.date
+*.date3
+*.ppm
+*.dv
+*.dep
