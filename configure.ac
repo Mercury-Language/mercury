@@ -5352,40 +5352,17 @@ AC_SUBST(CSHPATH)
 
 #-----------------------------------------------------------------------------#
 
-# We should only set up TESTS_FLAGS and the test mdbrc file if the tests
-# directory is accessible.  It can be in one of two places:
-# (a) in the mercury directory
-# (b) a sibling of the mercury directory
-
-if test -e tests/TESTS_FLAGS.in
-then
-    test_flags="tests/TESTS_FLAGS"
-    test_mdbrc="tests/mdbrc"
-else
-    if test -e ../tests/TESTS_FLAGS.in
-    then
-        test_flags="../tests/TESTS_FLAGS"
-        test_mdbrc="../tests/mdbrc"
-    else
-        test_flags=""
-        test_mdbrc=""
-    fi
-fi
-
 # When running the debugger tests we want to use the local mdbrc
 # file, not the installed one, so that we can test changes
 # to this file without having to install first.  We therefore create
 # a copy of the mdbrc.in for use with the test suite.
 
-case $test_mdbrc in
-    "")
-        ;;
-    *)
-        m4 -P -DDEFAULT_MERCURY_DEBUGGER_INIT_DIR=TESTS_MDB_INIT_DIR  \
-            -DDEFAULT_MERCURY_DEBUGGER_DOC=TESTS_MDB_DOC \
-            "`pwd`"/scripts/mdbrc.in > $test_mdbrc.in
-    ;;
-esac
+test_mdbrc=tests/mdbrc
+
+m4 -P -DDEFAULT_MERCURY_DEBUGGER_INIT_DIR=TESTS_MDB_INIT_DIR  \
+    -DDEFAULT_MERCURY_DEBUGGER_DOC=TESTS_MDB_DOC \
+    "`pwd`"/scripts/mdbrc.in > $test_mdbrc.in
+
 TESTS_MDB_INIT_DIR="`pwd`"/scripts
 TESTS_MDB_DOC="`pwd`"/doc/mdb_doc
 AC_SUBST(TESTS_MDB_INIT_DIR)
@@ -5449,6 +5426,7 @@ ssdb/SSDB_FLAGS
 slice/SLICE_FLAGS
 profiler/PROF_FLAGS
 deep_profiler/DEEP_FLAGS
+tests/TESTS_FLAGS
 '
 
 # The order in which we output files matters, because in some cases, one of the
@@ -5467,7 +5445,6 @@ output_files="$nonexecutable_output_files $executable_output_files"
 # scripts/mercury_config.in.
 
 AC_OUTPUT($output_files
-"$test_flags"
 "$test_mdbrc"
 ,
 [
