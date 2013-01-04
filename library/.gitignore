@@ -48,3 +48,4 @@ LIB_FLAGS
 config.log
 erlang_conf.hrl
 jmercury
+tags

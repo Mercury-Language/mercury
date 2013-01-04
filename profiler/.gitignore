@@ -27,3 +27,5 @@ mercury_profile.dv
 Mercury
 PROF_FLAGS
 config.log
+.profiler_tags
+tags

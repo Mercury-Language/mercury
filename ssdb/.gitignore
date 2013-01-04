@@ -26,3 +26,5 @@ mer_ssdb.init
 *.module_dep
 Mercury
 mer_ssdb.jar
+.ssdb_tags
+tags

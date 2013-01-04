@@ -41,3 +41,4 @@ Mercury.modules
 COMP_FLAGS
 config.log
 .compiler_tags
+tags

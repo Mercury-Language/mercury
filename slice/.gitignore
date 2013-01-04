@@ -35,3 +35,5 @@ slice_and_dice.m
 trace_counts.m
 shared_utilities.m
 config.log
+.slice_tags
+tags

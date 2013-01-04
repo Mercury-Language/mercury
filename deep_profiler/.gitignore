@@ -47,3 +47,5 @@ slice_and_dice.m
 trace_counts.m
 mdbcomp.int0
 mdbcomp.date0
+.deep_tags
+tags

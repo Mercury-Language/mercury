@@ -49,3 +49,5 @@ browse_test
 MDB_FLAGS
 config.log
 *.module_dep
+.browser_tags
+tags

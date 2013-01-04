@@ -29,3 +29,5 @@ Mercury.modules
 MDBCOMP_FLAGS
 config.log
 *.module_dep
+.mdbcomp_flags
+tags
