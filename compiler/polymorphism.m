@@ -2659,7 +2659,6 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
     poly_info_get_const_struct_db(!.Info, ConstStructDb0),
     InstanceId = ciid(InstanceNum, Constraint, Seen),
     (
-        ExistQVars = [],
         search_for_constant_instance(ConstStructDb0, InstanceId,
             InstanceIdConstNum)
     ->
