@@ -478,7 +478,7 @@ tar: 	$(GENERATED_DOCS)
 		mv $$ROOTNAME/extras/quickcheck stuff-to-exclude;	\
 		mv $$ROOTNAME/extras	mercury-extras-$(VERSION);	\
 		mv $$ROOTNAME		mercury-compiler-$(VERSION);	\
-		tar -cf - mercury-compiler-$(VERSION) |			\
+		tar --exclude ".git" -cf - mercury-compiler-$(VERSION) | \
 			gzip -9 > mercury-compiler-$(VERSION).tar.gz;	\
 		tar -cf - mercury-extras-$(VERSION) |			\
 			gzip -9 > mercury-extras-$(VERSION).tar.gz;	\
