@@ -75,4 +75,6 @@ and install can be done directly from the tarballs.
 One possible reason to go through a bootstrap (or at least through a quick
 `asm_fast.gc` build followed by a more complete build) is that on 64-bit
 systems in specific, a bootstrapped compiler is very slightly faster than one
-built once from the tarballs.
+built once from the tarballs.  This is because the tarballs must be compatible
+with both 32- and 64-bit systems while a bootstrapped system can take advantage
+of 64-bit specific enhancements.
