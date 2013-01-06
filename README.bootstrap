@@ -1,0 +1,80 @@
+INTRODUCTION
+============
+Michael T. Richter <ttmrichter@gmail.com>
+January 2013: Initial version for comment solicitation.
+
+This document explains the process of bootstrapping a Mercury environment from
+the Git repository.
+
+PREREQUISITES
+-------------
+If you do not have a Mercury environment already set up on your system, you
+cannot build the Mercury compiler from revision control, full stop.  Mercury,
+like almost any self-hosted natively-compiled language, needs itself to compile
+itself.  To accomplish this you will have to build one of the releases: either
+a numbered release (like, say, 11.07.2) or one of the ROTD releases.  For
+purposes of bootstrapping from the master branch of the Git repository it is
+recommended to start with the most recent ROTD release since older versions of
+the Mercury compiler are frequently not able to build the bleeding edge in Git.
+
+The releases can be downloaded from http://mercurylang.org/download.html[the
+downloads page of the web site].
+
+Other prerequisites can be found in relevant README.* files found in the
+distribution's root directory.
+
+BUILDING THE PREREQUISITE RELEASE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+By default the Mercury distribution builds a number and variety of "grades"
+(c.f. the user guide) that is overkill for purposes of bootstrapping.  After
+downloading and expanding the selected prerequisite, the following command
+sequence should be issued:
+
+----
+./configure --enable-libgrades=asm_fast.gc
+make
+sudo make install
+----
+
+This will do the minimal build necessary to have a usable Mercury compiler for
+bootstrapping.  Note that once this prerequisite release is built, there is no
+further need for tarballs when building Mercury from Git.
+
+BOOTSTRAPPING
+-------------
+Once the minimal prerequisite compiler has been built, a reasonably complete
+distribution can be bootstrapped by issuing the following command sequence:
+
+----
+aclocal -I m4
+autoconf
+./configure
+make
+sudo make install
+----
+
+This, however, will take a surprisingly long time by most prospective users'
+standards for no good reason.  (In particular the `make install` phase will
+take a very long time.)  Instead the `--enable-libgrades=grade,grade,grade`
+option should be passed to `./configure` with only the desired grades.  Consult
+http://mercurylang.org/information/doc-release/mercury_user_guide/Grades-and-grade-components.html#Grades-and-grade-components[the
+documentation on grades and grade components] to select the desired grades.
+People wanting to simply experiment with Mercury would be best-served with
+using only the `asm_fast.gc` grade.
+
+ALTERNATIVES TO BOOTSTRAPPING
+-----------------------------
+Unless you are planning to contribute to the Mercury project, bootstrapping
+from the SCM head is likely not a desired approach.  For just experimenting
+with and/or learning the language the best approach is to either download one
+of the stable (numbered, like 11.07.2) releases or, if you want to experiment
+with the latest and greatest features, one of the more recent ROTD releases.
+Doing this eliminates the need to build the compiler twice since a full build
+and install can be done directly from the tarballs.
+
+One possible reason to go through a bootstrap (or at least through a quick
+`asm_fast.gc` build followed by a more complete build) is that on 64-bit
+systems in specific, a bootstrapped compiler is very slightly faster than one
+built once from the tarballs.  This is because the tarballs must be compatible
+with both 32- and 64-bit systems while a bootstrapped system can take advantage
+of 64-bit specific enhancements.
