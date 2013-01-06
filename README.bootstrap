@@ -54,13 +54,13 @@ sudo make install
 ----
 
 This, however, will take a surprisingly long time by most prospective users'
-standards for no good reason.  Instead the
-`--enable-libgrades=grade,grade,grade` option should be passed to `./configure`
-with only the desired grades.  Consult
+standards for no good reason.  (In particular the `make install` phase will
+take a very long time.)  Instead the `--enable-libgrades=grade,grade,grade`
+option should be passed to `./configure` with only the desired grades.  Consult
 http://mercurylang.org/information/doc-release/mercury_user_guide/Grades-and-grade-components.html#Grades-and-grade-components[the
 documentation on grades and grade components] to select the desired grades.
 People wanting to simply experiment with Mercury would be best-served with
-using only the asm_fast.gc grade.
+using only the `asm_fast.gc` grade.
 
 ALTERNATIVES TO BOOTSTRAPPING
 -----------------------------
@@ -71,3 +71,8 @@ of the stable (numbered, like 11.07.2) releases or, if you want to experiment
 with the latest and greatest features, one of the more recent ROTD releases.
 Doing this eliminates the need to build the compiler twice since a full build
 and install can be done directly from the tarballs.
+
+One possible reason to go through a bootstrap (or at least through a quick
+`asm_fast.gc` build followed by a more complete build) is that on 64-bit
+systems in specific, a bootstrapped compiler is very slightly faster than one
+built once from the tarballs.
