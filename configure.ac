@@ -3159,6 +3159,19 @@ fi
 
 #-----------------------------------------------------------------------------#
 
+# On some systems a prefix is attached to exported symbols.  We need to
+# account for this when check object files for namespace cleanliness.
+
+SYMPREFIX=
+
+case "$host" in
+    *apple*darwin*) SYMPREFIX="_"
+esac
+
+AC_SUBST([SYMPREFIX])
+
+#-----------------------------------------------------------------------------#
+
 #
 # Figure out which is the best grade to use for various different purposes.
 # In particular, choose the default grade for compiling applications.

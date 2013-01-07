@@ -322,22 +322,18 @@ OBJ_CHECKS        = $(CHECK_OBJS:%=%.obj_check)
 # XXX The base_typeclass_info prefix is allowed only temporarily; it should
 # be fixed by adding a prefix giving the name of the module defining the
 # typeclass.
-#
-# XXX the pretty_printer_ prefix is allows only tempriarily; it is neccessary
-# because the name of global variables used for mutables in rotd-2007-08-06 and
-# before were not being prefixed with `mercury_' if they were defined in
-# standard library modules.
 
 GEN_MACRO_PREFIX_EXPRS = \
 	-e '^MR_' -e '^MERCURY_' -e '^GC_' -e '^MPS_' -e '^mps_'
 GEN_OBJ_PREFIX_EXPRS = \
-	-e '^MR_' -e '^_entry' -e '^mercury_'  -e '^base_typeclass_info_' -e '^pretty_printer_'
+	-e '^@SYMPREFIX@MR_' -e '^_entry' -e '^@SYMPREFIX@mercury_' \
+	-e '^@SYMPREFIX@base_typeclass_info_'
 
 ifeq ("$(ALLOW_LIB_PREFIX)","yes")
 LIB_MACRO_PREFIX_EXPRS = \
 	-e '^ML_'
 LIB_OBJ_PREFIX_EXPRS = \
-	-e '^ML_'
+	-e '^@SYMPREFIX@ML_'
 else
 LIB_MACRO_PREFIX_EXPRS =
 LIB_OBJ_PREFIX_EXPRS =
@@ -347,7 +343,7 @@ ifeq ("$(ALLOW_BROWSER_PREFIX)","yes")
 BROWSER_MACRO_PREFIX_EXPRS = \
 	-e '^MDB_'
 BROWSER_OBJ_PREFIX_EXPRS = \
-	-e '^MDB_' -e '^mdb_'
+	-e '^@SYMPREFIX@MDB_' -e '^@SYMPREFIX@mdb_'
 else
 BROWSER_MACRO_PREFIX_EXPRS =
 BROWSER_OBJ_PREFIX_EXPRS =
@@ -357,7 +353,7 @@ ifeq ("$(ALLOW_MDBCOMP_PREFIX)","yes")
 MDBCOMP_MACRO_PREFIX_EXPRS = \
 	-e '^MDBCOMP_'
 MDBCOMP_OBJ_PREFIX_EXPRS = \
-	-e '^MDBCOMP_' -e '^mdbcomp_'
+	-e '^@SYMPREFIX@MDBCOMP_' -e '^@SYMPREFIX@mdbcomp_'
 else
 MDBCOMP_MACRO_PREFIX_EXPRS =
 MDBCOMP_OBJ_PREFIX_EXPRS =
@@ -367,7 +363,7 @@ ifeq ("$(ALLOW_SSDB_PREFIX)","yes")
 SSDB_MACRO_PREFIX_EXPRS = \
 	-e '^SSDB_'
 SSDB_OBJ_PREFIX_EXPRS = \
-	-e '^SSDB_' -e '^ssdb_'
+	-e '^@SYMPREFIX@SSDB_' -e '^@SYMPREFIX@ssdb_'
 else
 SSDB_MACRO_PREFIX_EXPRS =
 SSDB_OBJ_PREFIX_EXPRS =
