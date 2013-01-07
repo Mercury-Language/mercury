@@ -97,6 +97,37 @@ Java compiler, but we haven't tried that yet.
 
 -----------------------------------------------------------------------------
 
+BUILDING THE MERCURY COMPILER IN THE JAVA GRADE
+
+Building the Mercury compiler and other related tools in the Java grade
+is NOT generally supported and should be considered experimental.
+In particular, a Mercury compiler built in the Java grade may be slower than
+normal and some features may not be available.
+
+However, if you want to give it a try, the required steps are:
+
+(1) Ensure that you have an existing working Mercury compiler in your PATH
+and a clean version of the Mercury source tree.
+
+(2) Run aclocal -I m4; autoconf; ./configure as normal.
+
+(4) Add the line:
+
+      GRADE=java
+
+    to a file named Mmake.params at the top-level of the source tree.
+
+(5) Begin the build process using the following command:
+
+    $ mmake --use-mmc-make GRADE=java
+
+The Java version of the compiler MUST be built using mmake's --use-mmc-make
+option; the build will not work otherwise.  Setting the variable GRADE in the
+invocation of mmake is currently necesary in order to avoid some variable
+definition ordering problems in Mmake.workspace.
+
+-----------------------------------------------------------------------------
+
 RESOURCES
 
 You might find the following pages useful:
