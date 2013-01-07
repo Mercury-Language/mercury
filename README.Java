@@ -111,19 +111,19 @@ and a clean version of the Mercury source tree.
 
 (2) Run aclocal -I m4; autoconf; ./configure as normal.
 
-(4) Add the line:
+(3) Add the line:
 
       GRADE=java
 
     to a file named Mmake.params at the top-level of the source tree.
 
-(5) Begin the build process using the following command:
+(4) Begin the build process using the following command:
 
     $ mmake --use-mmc-make GRADE=java
 
 The Java version of the compiler MUST be built using mmake's --use-mmc-make
 option; the build will not work otherwise.  Setting the variable GRADE in the
-invocation of mmake is currently necesary in order to avoid some variable
+invocation of mmake is currently necessary in order to avoid some variable
 definition ordering problems in Mmake.workspace.
 
 -----------------------------------------------------------------------------
