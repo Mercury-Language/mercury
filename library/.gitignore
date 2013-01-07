@@ -49,3 +49,5 @@ config.log
 erlang_conf.hrl
 jmercury
 tags
+*.check.mmacros
+*.obj_check
