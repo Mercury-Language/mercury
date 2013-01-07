@@ -49,7 +49,7 @@ autoconf &&
 ./configure &&
 touch Mmake.params &&
 touch Mercury.options &&
-mmake depend $parallel &&
+mmake depend &&
 mmake MMAKEFLAGS=$parallel &&
 tools/bootcheck $parallel &&
 cd stage2 &&
