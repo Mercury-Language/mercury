@@ -69,7 +69,7 @@
     % with force/1 This is useful as it can provide information without
     % incurring (much) cost.
     %
-:- pred read_if_val(lazy(T)::in, T::out) is semidet.
+:- impure pred read_if_val(lazy(T)::in, T::out) is semidet.
 
     % Test lazy values for equality.
     %
@@ -169,9 +169,7 @@ read_if_val(Lazy, Value) :-
     promise_equivalent_solutions [Mutvar] (
         Lazy = lazy(Mutvar)
     ),
-    promise_pure (
-        impure get_mutvar(Mutvar, State),
-        State = value(Value)
-    ).
+    impure get_mutvar(Mutvar, State),
+    State = value(Value).
 
 %-----------------------------------------------------------------------------%

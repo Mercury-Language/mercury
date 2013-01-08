@@ -310,14 +310,16 @@ pard_goal_detail_annon_to_pard_goal_annon(SharedVarsSet, PGD, PG) :-
     assoc_list(var_rep, float)::in, assoc_list(var_rep, float)::out) is det.
 
 build_var_use_list(Map, Var, !List) :-
-    (
-        map.search(Map, Var, LazyUse),
-        read_if_val(LazyUse, Use)
-    ->
-        UseTime = Use ^ vui_cost_until_use,
-        !:List = [Var - UseTime | !.List]
-    ;
-        true
+    promise_pure (
+        (
+            map.search(Map, Var, LazyUse),
+            impure read_if_val(LazyUse, Use)
+        ->
+            UseTime = Use ^ vui_cost_until_use,
+            !:List = [Var - UseTime | !.List]
+        ;
+            true
+        )
     ).
 
 %-----------------------------------------------------------------------------%
