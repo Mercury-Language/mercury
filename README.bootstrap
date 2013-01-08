@@ -30,7 +30,7 @@ bootstrapping.  After downloading and expanding the selected prerequisite, the
 following command sequence should be issued:
 
 ----
-./configure --enable-libgrades=asm_fast.gc
+./configure --enable-minimal-install
 make
 sudo make install
 ----

@@ -111,6 +111,9 @@ make install
 #          An empty list of grades will cause the library to be installed
 #          only in the default grade.
 #
+#          The option --enable-minimal-install will install only the minimal
+#          system that is required in order to bootstrap the Mercury compiler.
+#
 #          The option --disable-most-grades reduces the set of installed grades
 #          to a "minimum" level for developers (just the default grade and the
 #          grades corresponding to the `--debug' and `--high-level-code'

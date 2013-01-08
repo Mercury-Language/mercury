@@ -3486,6 +3486,11 @@ AC_ARG_ENABLE(stseg-grades,
         [install stack segments versions of the library]),
     [enable_stseg_grades="$enableval"],[enable_stseg_grades="no"])
 
+AC_ARG_ENABLE(minimal-install,
+    AC_HELP_STRING([--enable-minimal-install],
+        [install the minimal system required to bootstrap Mercury]),
+    [enable_min_install="$enableval"],[enable_min_install="no"])
+
 AC_ARG_ENABLE(minimal-hlc-trail-install,
     AC_HELP_STRING([--enable-minimal-hlc-trail-install],
         [install the minimal system that supports trailing in a high level C grade]),
@@ -3794,13 +3799,6 @@ then
     LIBGRADES="$LIBGRADES erlang"
 fi
 
-# If this option is enabled then install a minimal system that supports
-# trailing in a high-level C grade.
-if test "$enable_min_hlc_trail" = yes
-then
-    LIBGRADES="$DEFAULT_BASE_GRADE.gc hlc.gc.trseg"
-fi
-
 # Add `.ssdebug' grades.
 if test "$enable_ssdebug_grades" = yes; then
     # LLDS has better debug grades available.
@@ -3813,6 +3811,25 @@ if test "$enable_ssdebug_grades" = yes; then
     case "$LIBGRADES" in
         *java*) LIBGRADES="$LIBGRADES java.ssdebug" ;;
     esac
+fi
+
+# If this option is enabled then install a minimal system that supports
+# trailing in a high-level C grade.
+if test "$enable_min_hlc_trail" = yes
+then
+    LIBGRADES="$DEFAULT_BASE_GRADE.gc hlc.gc.trseg"
+fi
+
+# If this option is enabled then install only the grade that is being
+# used to build the compiler.
+# Also, override the grade that was chosen as the default grade above
+# since it may not match the one that is going to be used to build
+# the compiler.
+#
+if test "$enable_min_install" = yes
+then
+    LIBGRADES="$GRADE"
+    DEFAULT_GRADE="$GRADE"
 fi
 
 # Allow the user to override the default list of library grades
