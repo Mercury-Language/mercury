@@ -2896,8 +2896,8 @@ fi
 
 AC_ARG_WITH([gc-pthreads-win32],
    AC_HELP_STRING([--with-gc-pthreads-win32]
-          [Force the use of the pthreads-win32 library with the Boehm GC.
-           This is the default for MinGW]),
+                          [Force the use of the pthreads-win32 library with
+                          the Boehm GC.  This is the default for MinGW]),
    [with_gc_pthreads_win32="$withval"],[with_gc_pthreads_win32="no"])
 
 case "$with_gc_pthreads_win32" in
