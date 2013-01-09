@@ -262,7 +262,23 @@ AC_PATH_PROGS([CLI_INTERPRETER], [mono])
 # cscc is the DotGNU C# compiler.
 
 AC_CACHE_SAVE
-CSC_COMPILERS="csc mcs dmcs gmcs cscc"
+case "$mercury_cv_with_csharp_compiler" in
+    no)
+        AC_MSG_ERROR(invalid option --without-csharp-compiler)
+        exit 1
+        ;;
+    yes)
+        AC_MSG_ERROR(missing argument to --with-csharp-compiler=... option)
+        exit 1
+        ;;
+    "")
+        CSC_COMPILERS="csc mcs dmcs gmcs cscc"
+        ;;
+    *)
+        CSC_COMPILERS="$mercury_cv_with_csharp_compiler"
+        ;;
+esac
+
 AC_MSG_CHECKING([for a C sharp compiler])
 AC_MSG_RESULT()
 for CANDIDATE_CSC0 in $CSC_COMPILERS; do

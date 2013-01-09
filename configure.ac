@@ -1156,6 +1156,12 @@ AC_SUBST(MATH_LIB)
 # Microsoft.NET configuration
 #
 
+AC_ARG_WITH(csharp-compiler,
+    AC_HELP_STRING([--with-csharp-compiler=<compiler>],
+                   [Specify which C Sharp compiler should be used (default:
+                   autodetect)]),
+    mercury_cv_with_csharp_compiler="$withval",
+    mercury_cv_with_csharp_compiler="")
 MERCURY_CHECK_DOTNET
 
 #-----------------------------------------------------------------------------#
