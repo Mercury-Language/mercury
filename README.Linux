@@ -6,3 +6,34 @@ been attempted, but should not be difficult.)
 
 Linux systems that produce executables in a.out format are not supported by
 the Mercury compiler.
+
+
+BUILDING A 32-BIT MERCURY COMPILER ON 64-BIT LINUX
+==================================================
+
+To build a 32-bit Mercury compiler on 64-bit Linux, follow these steps:
+
+(1) Ensure that the 32-bit (e.g. i686 etc) packages for the C compiler and
+    libraries are available on the build system.
+
+(2) Ensure that you have a working Mercury compiler in your PATH
+    to bootstrap from.
+
+(3) If the Mercury compiler in step (2) is a 64-bit compiler then add
+    the following line to a file named Mmake.params at the top-level
+    of the source tree:
+
+        MCFLAGS=--cross-compiling
+
+    If you are bootstrapping from an existing 32-bit compiler you
+    should not need to do this.
+
+(4) Run aclocal -I m4; autoconf as normal.  Then invoke configure
+    as follows:
+
+        $ ./configure --host=i686-pc-linux-gnu --with-cc="gcc -m32"
+
+    NOTE: Mercury's configure script  does _not_ currently support the
+    --target option; using --host, as above, is the correct way to do it.
+
+(5) Do mmake; mmake install as normal.
