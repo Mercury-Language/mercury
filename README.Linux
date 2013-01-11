@@ -33,7 +33,4 @@ To build a 32-bit Mercury compiler on 64-bit Linux, follow these steps:
 
         $ ./configure --host=i686-pc-linux-gnu --with-cc="gcc -m32"
 
-    NOTE: Mercury's configure script  does _not_ currently support the
-    --target option; using --host, as above, is the correct way to do it.
-
 (5) Do mmake; mmake install as normal.
