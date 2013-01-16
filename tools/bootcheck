@@ -669,7 +669,6 @@ then
         $LN_S $root/compiler/[i-o]*.m .
         $LN_S $root/compiler/[p-s]*.m .
         $LN_S $root/compiler/[t-z]*.m .
-        $LN_S $root/compiler/*.pp .
         $LN_S $root/compiler/notes .
 
         cp $root/compiler/Mmake* $root/compiler/Mercury.options .
@@ -1174,7 +1173,6 @@ then
     $LN_S $root/compiler/[i-o]*.m .
     $LN_S $root/compiler/[p-s]*.m .
     $LN_S $root/compiler/[t-z]*.m .
-    $LN_S $root/compiler/*.pp .
     $LN_S $root/compiler/notes .
 
     cp $root/compiler/Mmake* $root/compiler/Mercury.options .

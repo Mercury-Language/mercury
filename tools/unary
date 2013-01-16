@@ -239,7 +239,6 @@ ln -s $root/compiler/[a-h]*.m .
 ln -s $root/compiler/[i-o]*.m .
 ln -s $root/compiler/[p-s]*.m .
 ln -s $root/compiler/[t-z]*.m .
-ln -s $root/compiler/*.pp .
 cp $root/compiler/Mmake* .
 cp $root/compiler/Mercury* .
 cp $root/compiler/*FLAGS* .
@@ -360,7 +359,6 @@ then
     ln -s $root/compiler/[i-o]*.m .
     ln -s $root/compiler/[p-s]*.m .
     ln -s $root/compiler/[t-z]*.m .
-    ln -s $root/compiler/*.pp .
     cp $root/compiler/Mmake* .
     cp $root/compiler/Mercury* .
     cp $root/compiler/*FLAGS* .
