@@ -270,7 +270,6 @@ ml_gen_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
         ( Target = target_c
         ; Target = target_il
         ; Target = target_csharp
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
@@ -517,7 +516,6 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         ( Target = target_c
         ; Target = target_il
         ; Target = target_csharp
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
@@ -891,7 +889,6 @@ ml_target_uses_constructors(target_c) = no.
 ml_target_uses_constructors(target_il) = yes.
 ml_target_uses_constructors(target_csharp) = yes.
 ml_target_uses_constructors(target_java) = yes.
-ml_target_uses_constructors(target_asm) = no.
 ml_target_uses_constructors(target_x86_64) =
     unexpected($module, $pred, "target_x86_64 and --high-level-code").
 ml_target_uses_constructors(target_erlang) =
@@ -903,7 +900,6 @@ target_uses_empty_base_classes(target_c) = no.
 target_uses_empty_base_classes(target_il) = yes.
 target_uses_empty_base_classes(target_csharp) = no.
 target_uses_empty_base_classes(target_java) = yes.
-target_uses_empty_base_classes(target_asm) = no.
 target_uses_empty_base_classes(target_x86_64) =
     unexpected($module, $pred, "target_x86_64 and --high-level-code").
 target_uses_empty_base_classes(target_erlang) =
@@ -923,7 +919,6 @@ target_requires_module_qualified_params(target_c) = no.
 target_requires_module_qualified_params(target_il) = no.
 target_requires_module_qualified_params(target_csharp) = yes.
 target_requires_module_qualified_params(target_java) = yes.
-target_requires_module_qualified_params(target_asm) = no.
 target_requires_module_qualified_params(target_x86_64) =
     unexpected($module, $pred, "target_x86_64 with --high-level-code").
 target_requires_module_qualified_params(target_erlang) =

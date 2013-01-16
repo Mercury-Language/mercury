@@ -2181,7 +2181,6 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
                 !:EvalAttributes = default_attributes(lang_csharp)
             ;
                 ( Target = target_il
-                ; Target = target_asm
                 ; Target = target_x86_64
                 ),
                 sorry($module, $pred,

@@ -312,7 +312,6 @@ use_double_word_floats(Globals, DoubleWordFloats) :-
         ( Target = target_il
         ; Target = target_csharp
         ; Target = target_java
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
@@ -795,7 +794,6 @@ add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
             WantUnsafeAccessDecls = no
         ;
             ( CompilationTarget = target_il
-            ; CompilationTarget = target_asm
             ; CompilationTarget = target_x86_64
             ),
             % Not supported yet.
@@ -1175,7 +1173,6 @@ add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
             )
         ;
             ( CompilationTarget = target_il
-            ; CompilationTarget = target_asm
             ; CompilationTarget = target_x86_64
             ),
             Pieces = [words("Error: foreign_name mutable attribute not yet"),
@@ -1609,8 +1606,7 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
             MaybeExportLang = yes(lang_erlang)
         ;
             % Untested.
-            ( CompilationTarget = target_asm
-            ; CompilationTarget = target_il
+            ( CompilationTarget = target_il
             ; CompilationTarget = target_x86_64
             ),
             MaybeExportLang = no
@@ -1766,7 +1762,6 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
 target_lang_to_foreign_export_lang(CompilationTarget) = ExportLang :-
     (
         ( CompilationTarget = target_c
-        ; CompilationTarget = target_asm
         ; CompilationTarget = target_x86_64
         ),
         ExportLang = lang_c
@@ -1859,7 +1854,6 @@ add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
                 Status, _, !ModuleInfo, !QualInfo, !Specs)
         ;
             ( CompilationTarget = target_il
-            ; CompilationTarget = target_asm
             ; CompilationTarget = target_x86_64
             )
             % Not supported yet.

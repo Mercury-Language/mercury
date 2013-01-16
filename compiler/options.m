@@ -607,7 +607,6 @@
     ;       num_real_f_regs
     ;       num_real_r_temps
     ;       num_real_f_temps
-    ;       pic
     ;       max_jump_table_size
     ;       max_specialized_do_call_closure
     ;       max_specialized_do_call_class_method
@@ -1458,7 +1457,6 @@ option_defaults_2(code_gen_option, [
                                         % The `mmc' script will override the
                                         % above defaults with values determined
                                         % at configuration time.
-    pic                                 -   bool(no),
     max_jump_table_size                 -   int(0),
                                         % 0 indicates any size.
     max_specialized_do_call_closure     -   int(5),
@@ -2270,7 +2268,6 @@ long_option("use-minimal-model-own-stacks", use_minimal_model_own_stacks).
 long_option("minimal-model-debug",  minimal_model_debug).
 long_option("single-prec-float",    single_prec_float).
 long_option("single-precision-float",   single_prec_float).
-long_option("pic",                  pic).
 long_option("pic-reg",              pic_reg).
 long_option("tags",                 tags).
 long_option("num-tag-bits",         num_tag_bits).
@@ -3792,7 +3789,6 @@ options_help_output -->
         "\tCheck the module for errors, but do not generate any code.",
         "-C, --target-code-only",
         "\tGenerate target code (i.e. C code in `<module>.c',",
-        "\tassembler code in `<module>.s' or `<module>.pic_s',",
         "\tIL code in `<module>.il', or Java code in",
         "\t`<module>.java'), but not object code.",
         "-c, --compile-only",
@@ -4242,21 +4238,15 @@ options_help_compilation_model -->
     write_tabbed_lines([
         "--target c\t\t\t(grades: none, reg, jump, fast,",
         "\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
-        "--target asm\t\t\t(grades: hlc)",
         "--target il\t\t\t(grades: il)",
         "--target csharp\t\t\t(grades: csharp)",
         "--target java\t\t\t(grades: java)",
         "--target erlang\t\t\t(grades: erlang)",
-        "\tSpecify the target language: C, assembler, IL, C#, Java or Erlang.",
+        "\tSpecify the target language: C, IL, C#, Java or Erlang.",
         "\tThe default is C.  ""IL"" (also known as ""CIL"" or ""MSIL"")",
         "\tis the Intermediate Language for the .NET Common Language",
         "\tRuntime.",
         "\tTargets other than C imply `--high-level-code' (see below).",
-        "\tAs an exception to the usual rule for options in this section,",
-        "\twhere different option settings normally correspond to different",
-        "\tABIs, code generated using `--target asm' is binary compatible",
-        "\twith code generated using `--target c --high-level-code', so",
-        "\tthese both use grade `hlc'.",
 
 % IL options are commented out to reduce confusion.
 %       "--il",
@@ -4810,12 +4800,6 @@ options_help_code_generation -->
 %       "--table-debug",
 %       "\tEnables the generation of code that helps to debug tabling",
 %       "\tprimitives.",
-
-        "--pic",
-        "\tGenerate position-independent code.",
-        "\tThis option is only used by the `--target asm' back-end.",
-        "\tThe generated assembler code will be written to",
-        "\t`<module>.pic_s' rather than to `<module>.s'.",
 
         "--no-trad-passes",
         "\tThe default `--trad-passes' completely processes each predicate",

@@ -1424,7 +1424,6 @@
     --->    ml_target_c
     ;       ml_target_gnu_c
 %   ;       ml_target_c_minus_minus
-    ;       ml_target_asm
     ;       ml_target_il
     ;       ml_target_csharp
     ;       ml_target_java.
@@ -1917,7 +1916,6 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                 ( Target = target_c
                 ; Target = target_il
                 ; Target = target_java
-                ; Target = target_asm
                 ; Target = target_x86_64
                 ; Target = target_erlang
                 ),
@@ -2005,18 +2003,6 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
             MaybeJava = no,
             % This is checked by check_foreign_type in make_hlds.
             unexpected($module, $pred, "no Java foreign type")
-        )
-    ;
-        Target = target_asm,
-        (
-            MaybeC = yes(Data),
-            Data = foreign_type_lang_data(CForeignType, _, _),
-            ForeignType = c(CForeignType)
-        ;
-            MaybeC = no,
-            % XXX This ought to be checked by the front-end, e.g.
-            % check_foreign_type in make_hlds.
-            sorry($module, $pred, "no C foreign type")
         )
     ;
         Target = target_x86_64,

@@ -148,7 +148,6 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
             ( Target = target_il
             ; Target = target_csharp
             ; Target = target_java
-            ; Target = target_asm
             ; Target = target_x86_64
             ; Target = target_erlang
             ),

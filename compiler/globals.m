@@ -43,10 +43,6 @@
                             % IL is the Microsoft .NET Intermediate Language.
     ;       target_csharp   % Generate C#.
     ;       target_java     % Generate Java.
-    ;       target_asm      % Compile directly to assembler via the GCC
-                            % back-end. Do not go via C, instead generate GCC's
-                            % internal `tree' data structure.
-                            % (Work in progress.)
     ;       target_x86_64   % Compile directly to x86_64 assembler.
                             % (Work in progress.)
     ;       target_erlang.  % Generate Erlang.
@@ -371,7 +367,6 @@ convert_target(String, Target) :-
 
 convert_target_2("csharp", target_csharp).
 convert_target_2("java", target_java).
-convert_target_2("asm", target_asm).
 convert_target_2("il", target_il).
 convert_target_2("c", target_c).
 convert_target_2("x86_64", target_x86_64).
@@ -561,7 +556,6 @@ compilation_target_string(target_c)    = "C".
 compilation_target_string(target_csharp) = "C#".
 compilation_target_string(target_il)   = "IL".
 compilation_target_string(target_java) = "Java".
-compilation_target_string(target_asm)  = "asm".
 compilation_target_string(target_x86_64) = "x86_64".
 compilation_target_string(target_erlang) = "Erlang".
 
@@ -793,10 +787,7 @@ current_grade_supports_concurrency(Globals, ThreadsSupported) :-
         ThreadsSupported = yes
     ;
         % Threads are not yet supported in the x86_64 backend.
-        % XXX I'm not sure what their status in the gcc backend is.
-        ( Target = target_asm
-        ; Target = target_x86_64
-        ),
+        Target = target_x86_64,
         ThreadsSupported = no
     ).
 

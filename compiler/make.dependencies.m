@@ -441,8 +441,6 @@ target_dependencies(_, module_target_erlang_beam_code) =
         module_target_erlang_header `of` indirect_imports,
         module_target_erlang_header `of` intermod_imports
     ]).
-target_dependencies(Globals, module_target_asm_code(_)) =
-        compiled_code_dependencies(Globals).
 target_dependencies(Globals, module_target_object_code(PIC)) = Deps :-
     globals.get_target(Globals, CompilationTarget),
     TargetCode = target_to_module_target_code(CompilationTarget, PIC),
@@ -522,20 +520,10 @@ get_foreign_deps(Globals, PIC) = Deps :-
 :- func target_to_module_target_code(compilation_target, pic)
     = module_target_type.
 
-target_to_module_target_code(CompilationTarget, PIC) = TargetCode :-
-    (
-        CompilationTarget = target_asm,
-        TargetCode = module_target_asm_code(PIC)
-    ;
-        ( CompilationTarget = target_c
-        ; CompilationTarget = target_il
-        ; CompilationTarget = target_csharp
-        ; CompilationTarget = target_java
-        ; CompilationTarget = target_x86_64
-        ; CompilationTarget = target_erlang
-        ),
-        TargetCode = module_target_c_code
-    ).
+target_to_module_target_code(_CompilationTarget, _PIC) = TargetCode :-
+    % XXX it looks wrong to be returning module_target_c_code for
+    % all compilation targets.
+    TargetCode = module_target_c_code.
 
 :- func interface_file_dependencies =
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.

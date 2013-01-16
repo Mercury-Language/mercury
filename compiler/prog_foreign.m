@@ -300,14 +300,6 @@ prefer_foreign_language(_Globals, target_c, Lang1, Lang2) =
         no
     ).
 
-prefer_foreign_language(_Globals, target_asm, Lang1, Lang2) =
-    % When compiling to asm, C is always preferred over any other language.
-    ( Lang2 = lang_c, not Lang1 = lang_c ->
-        yes
-    ;
-        no
-    ).
-
 prefer_foreign_language(_Globals, target_il, Lang1, Lang2) = Comp :-
     % When compiling to il, first we prefer il, then csharp.
     % After that we don't care.

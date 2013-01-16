@@ -165,10 +165,6 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
             IntermediateTargetType = module_target_c_code,
             ObjectTargetType = module_target_object_code(PIC)
         ;
-            CompilationTarget = target_asm,
-            IntermediateTargetType = module_target_asm_code(PIC),
-            ObjectTargetType = module_target_object_code(PIC)
-        ;
             CompilationTarget = target_il,
             IntermediateTargetType = module_target_il_code,
             ObjectTargetType = module_target_il_asm
@@ -284,18 +280,8 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
 
 get_target_modules(Globals, TargetType, AllModules, TargetModules,
         !Info, !IO) :-
-    globals.get_target(Globals, CompilationTarget),
-    (
-        (
-            TargetType = module_target_errors
-        ;
-            CompilationTarget = target_asm,
-            ( TargetType = module_target_asm_code(_)
-            ; TargetType = module_target_object_code(_)
-            )
-        )
-    ->
-        % `.err' and `.s' files are only produced for the top-level module
+    ( TargetType = module_target_errors ->
+        % `.err' files are only produced for the top-level module
         % in each source file.
         list.foldl3(get_target_modules_2(Globals), AllModules,
             [], TargetModules, !Info, !IO)
@@ -386,14 +372,6 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
         unexpected($module, $pred, "unknown imports")
     ),
     (
-        CompilationTarget = target_asm,
-        Imports ^ mai_has_foreign_code = contains_foreign_code(Langs),
-        set.member(lang_c, Langs)
-    ->
-        ForeignObjectFileType = module_target_foreign_object(PIC, lang_c),
-        ForeignObjectTarget   = target_file(ModuleName, ForeignObjectFileType),
-        ForeignObjectTargets  = [dep_target(ForeignObjectTarget)]
-    ;
         CompilationTarget = target_il,
         Imports ^ mai_has_foreign_code = contains_foreign_code(Langs)
     ->
@@ -408,9 +386,7 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
     % Find out if any externally compiled foreign code files for fact tables
     % exist.
     (
-        ( CompilationTarget = target_c
-        ; CompilationTarget = target_asm
-        ),
+        CompilationTarget = target_c,
         FactObjectTargets = list.map(
             (func(FactFile) =
                 dep_target(target_file(ModuleName,
@@ -609,7 +585,6 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
 
         (
             ( CompilationTarget = target_c
-            ; CompilationTarget = target_asm
             ; CompilationTarget = target_x86_64
             ),
             maybe_pic_object_file_extension(NoLinkObjsGlobals, PIC,
@@ -641,7 +616,6 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         AllObjects = InitObjects ++ ObjList ++ ForeignObjects ++ LinkObjects,
         (
             ( CompilationTarget = target_c
-            ; CompilationTarget = target_asm
             ; CompilationTarget = target_erlang
             ; CompilationTarget = target_java
             ; CompilationTarget = target_csharp
@@ -1238,9 +1212,7 @@ reset_analysis_registry_dependency_status(ModuleName, !Info) :-
 build_library(MainModuleName, AllModules, Globals, Succeeded, !Info, !IO) :-
     globals.get_target(Globals, Target),
     (
-        ( Target = target_c
-        ; Target = target_asm
-        ),
+        Target = target_c,
         build_c_library(Globals, MainModuleName, AllModules, Succeeded,
             !Info, !IO)
     ;
@@ -1414,9 +1386,7 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             % otherwise there is trouble using libraries installed by
             % `mmc --make' with Mmake.
             % XXX If we ever phase out mmake we could revert this behaviour.
-            ( Target = target_c
-            ; Target = target_asm
-            ),
+            Target = target_c,
             % XXX Should we test
             % Imports ^ contains_foreign_export = contains_foreign_export?
             module_name_to_file_name(Globals, ModuleName, ".mh",
@@ -1666,20 +1636,15 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         Succeeded, !Info, !IO) :-
     get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
     (
-        MaybeImports = yes(Imports),
+        MaybeImports = yes(_Imports),
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix/"lib"/"mercury",
 
         globals.get_target(Globals, Target),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
-            (
-                Target = target_c,
-                HighLevelCode = yes
-            ;
-                Target = target_asm,
-                Imports ^ mai_has_foreign_code = contains_foreign_code(_)
-            )
+            Target = target_c,
+            HighLevelCode = yes
         ->
             GradeIncDir = LibDir/"lib"/GradeDir/"inc",
             install_subdir_file(Globals, LinkSucceeded, GradeIncDir,
@@ -2070,8 +2035,6 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         (pred(PIC::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo) is det :-
             make_remove_target_file_by_name(Globals, very_verbose, ModuleName,
                 module_target_object_code(PIC), !Info, !IO),
-            make_remove_target_file_by_name(Globals, very_verbose, ModuleName,
-                module_target_asm_code(PIC), !Info, !IO),
             make_remove_target_file_by_name(Globals, very_verbose, ModuleName,
                 module_target_foreign_object(PIC, lang_c), !Info, !IO),
             list.foldl2(

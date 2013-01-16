@@ -295,15 +295,6 @@ mlds_output_hdr_imports(_Indent, _Imports, !IO).
 mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
     Target = Opts ^ m2co_target,
     (
-        Target = target_asm
-        % For --target asm, we don't create the header files for modules that
-        % don't contain C code, so we'd better not include them, since they
-        % might not exist.
-
-        % XXX This is a hack; it may lead to warnings or errors when compiling
-        % the generated code, since the functions that we call (e.g. for
-        % `pragma foreign_export') may not have been declared.
-    ;
         Target = target_c,
         list.foldl(mlds_output_src_import(Opts, Indent), Imports, !IO)
     ;
@@ -313,7 +304,7 @@ mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
-        unexpected($module, $pred, "expected target asm or target c")
+        unexpected($module, $pred, "expected target c")
     ).
 
 :- pred mlds_output_src_import(mlds_to_c_opts::in, indent::in, mlds_import::in,
@@ -507,7 +498,6 @@ mlds_output_hdr_start(Opts, Indent, ModuleName, !IO) :-
         ( Target = target_il
         ; Target = target_java
         ; Target = target_csharp
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
         )
@@ -620,7 +610,6 @@ mlds_output_hdr_end(Opts, Indent, ModuleName, !IO) :-
         ( Target = target_il
         ; Target = target_csharp
         ; Target = target_java
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
         )
@@ -3876,7 +3865,6 @@ mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Statement, Context, !IO) :-
                 Components, !IO)
         ;
             ( TargetLang = ml_target_gnu_c
-            ; TargetLang = ml_target_asm
             ; TargetLang = ml_target_il
             ; TargetLang = ml_target_csharp
             ; TargetLang = ml_target_java

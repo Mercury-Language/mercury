@@ -1222,7 +1222,6 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
             ( Target = target_il
             ; Target = target_csharp
             ; Target = target_java
-            ; Target = target_asm
             ; Target = target_x86_64
             ; Target = target_erlang
             )
@@ -1270,7 +1269,6 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
             ( Target = target_il
             ; Target = target_csharp
             ; Target = target_java
-            ; Target = target_asm
             ; Target = target_x86_64
             ; Target = target_erlang
             )

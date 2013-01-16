@@ -154,7 +154,6 @@ foreign_type_required_imports(Target, _TypeCtor - TypeDefn) = Imports :-
         ( Target = target_c
         ; Target = target_java
         ; Target = target_csharp
-        ; Target = target_asm
         ),
         Imports = []
     ;
@@ -213,8 +212,7 @@ ml_gen_init_common_data(ModuleInfo, GlobalData) :-
         ),
         UseCommonCells = use_common_cells
     ;
-        ( Target = target_asm
-        ; Target = target_il
+        ( Target = target_il
         ; Target = target_erlang
         ; Target = target_x86_64
         ),

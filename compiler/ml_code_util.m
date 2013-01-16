@@ -1380,7 +1380,6 @@ ml_must_box_field_type(ModuleInfo, Type, Width) :-
         ( Target = target_c
         ; Target = target_csharp
         ; Target = target_il
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
@@ -1454,7 +1453,6 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),
         ( Target = target_c
-        ; Target = target_asm
         ; Target = target_x86_64
         )
     ->

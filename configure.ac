@@ -99,7 +99,6 @@ AC_SUBST(RECONFIGURE_ARGS)
 
 #-----------------------------------------------------------------------------#
 
-remake_dependencies=false
 AC_CONFIG_HEADER(runtime/mercury_conf.h)
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 
@@ -672,90 +671,6 @@ case "$enable_gc_munmap" in
         ;;
 esac
 AC_SUBST(ENABLE_BOEHM_USE_MUNMAP)
-
-#-----------------------------------------------------------------------------#
-#
-# Find the GCC source code
-# and determine whether or not to enable the GCC back-end interface.
-#
-
-AC_ARG_ENABLE(gcc-back-end,
-   AC_HELP_STRING([--enable-gcc-back-end],
-                  [enable the Mercury compiler's GCC back-end interface]),
-   enable_gcc_back_end="$enableval",enable_gcc_back_end=default)
-
-AC_MSG_CHECKING(for GCC source directory)
-gcc_src_dir=not_found
-case "$enable_gcc_back_end" in
-    yes|no|default)
-        # Search for the gcc source code;
-        # first try in a subdirectory of this directory,
-        # then one parallel to this directory,
-        # and finally try one level up.
-        for dir in gcc ../gcc ..; do
-            if test -f $dir/gcc/tree.c; then
-                gcc_src_dir="$dir"
-                break
-            fi
-        done
-        ;;
-    *)
-        # The user has specified the gcc source directory via
-        # `--enable-gcc-back-end=<directory>'.  Check that
-        # they specified it correctly.
-        gcc_src_dir="$enable_gcc_back_end"
-        if test -f "$gcc_src_dir"/gcc/tree.c; then
-            enable_gcc_back_end=yes
-        else
-            AC_MSG_RESULT($gcc_src_dir)
-            AC_MSG_ERROR(
-[--enable-gcc-back-end=$gcc_src_dir specified,
-    but GCC source code not found in $gcc_src_dir])
-        fi
-        ;;
-esac
-AC_MSG_RESULT($gcc_src_dir)
-AC_MSG_CHECKING(whether to enable the GCC back-end interface)
-case "$enable_gcc_back_end" in
-    yes|default)
-        if test "$gcc_src_dir" = not_found; then
-            case $enable_gcc_back_end in
-                yes)
-                    AC_MSG_RESULT(yes)
-                    AC_MSG_ERROR(
-[--enable-gcc-back-end specified, but gcc source
-    code not found])
-                    ;;
-                default)
-                    enable_gcc_back_end=no
-                    ;;
-            esac
-        else
-            enable_gcc_back_end=yes
-        fi
-        ;;
-    no)
-        ;;
-esac
-case $enable_gcc_back_end in
-    yes)
-        if test "$BOOTSTRAP_MC" = ""; then
-            AC_MSG_RESULT(yes)
-            AC_MSG_ERROR(
-[--enable-gcc-back-end requires an already
-    installed Mercury compiler])
-        else
-            # This will regenerate compiler/maybe_mlds_to_gcc.m.
-            remake_dependencies=true
-        fi
-        ;;
-esac
-
-AC_MSG_RESULT($enable_gcc_back_end)
-ENABLE_GCC_BACK_END=$enable_gcc_back_end
-GCC_SRC_DIR=$gcc_src_dir
-AC_SUBST(ENABLE_GCC_BACK_END)
-AC_SUBST(GCC_SRC_DIR)
 
 #-----------------------------------------------------------------------------#
 
@@ -5584,12 +5499,5 @@ MERCURY_MSG("You can make the install faster by installing fewer grades")
 MERCURY_MSG("as shown by the fine-tuning section of the INSTALL file or by")
 MERCURY_MSG("compiling the files of each grade in parallel which you can do")
 MERCURY_MSG("via a command such as make PARALLEL=-j2 install.")
-
-case "$remake_dependencies.$reconfiguring" in
-    "true.no")
-        MERCURY_MSG("regenerating dependencies to enable GCC backend.")
-        MMAKE_DIR="`pwd`"/scripts scripts/mmake depend || exit 1
-        ;;
-esac
 
 #-----------------------------------------------------------------------------#

@@ -587,10 +587,6 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 ForeignImportTargets = [ObjFileName, PicObjFileName],
                 ForeignImportExt = ".mh"
             ;
-                Target = target_asm,
-                ForeignImportTargets = [ObjFileName, PicObjFileName],
-                ForeignImportExt = ".mh"
-            ;
                 % XXX These are just the C ones at the moment.
                 Target = target_x86_64,
                 ForeignImportTargets = [ObjFileName, PicObjFileName],
@@ -1139,7 +1135,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         ( Target = target_c
         ; Target = target_csharp
         ; Target = target_java
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
@@ -1252,85 +1247,35 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         ".$(EXT_FOR_PIC_OBJECTS)", DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
-    IsNested = (pred(Mod::in) is semidet :-
-        get_submodule_kind(Mod, DepsMap) = nested_submodule
-    ),
-    (
-        % For --target asm, we only generate separate object files
-        % for top-level modules and separate sub-modules, not for
-        % nested sub-modules.
-        Target = target_asm,
-        list.filter(IsNested, Modules, NestedModules, MainModules),
-        NestedModules = [_ | _]
-    ->
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".ss = ", !IO),
-        write_dependencies_list(Globals, MainModules, ".s", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".ss = $(", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".all_ss)\n", !IO),
 
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_ss = ", !IO),
-        write_dependencies_list(Globals, MainModules,
-            ".pic_s", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".pic_ss = $(", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".all_pic_ss)\n", !IO),
 
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".s_dates = ", !IO),
-        write_dependencies_list(Globals, MainModules,
-            ".s_date", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".s_dates = $(", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".all_s_dates)\n", !IO),
 
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_s_dates = ", !IO),
-        write_dependencies_list(Globals, MainModules,
-            ".pic_s_date", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".pic_s_dates = $(", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".all_pic_s_dates)\n", !IO),
 
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".os = ", !IO),
-        write_dependencies_list(Globals, MainModules, ".$O", DepStream, !IO),
-        write_extra_link_dependencies_list(Globals, ExtraLinkObjs,
-            ".$O", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".os = $(", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".all_os)\n", !IO),
 
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_os = ", !IO),
-        write_dependencies_list(Globals, MainModules,
-            ".$(EXT_FOR_PIC_OBJECTS)", DepStream, !IO),
-        write_extra_link_dependencies_list(Globals, ExtraLinkObjs,
-            ".$(EXT_FOR_PIC_OBJECTS)", DepStream, !IO),
-        io.write_string(DepStream, "\n", !IO)
-    ;
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".ss = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_ss)\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_ss = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_pic_ss)\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".s_dates = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_s_dates)\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_s_dates = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_pic_s_dates)\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".os = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_os)\n", !IO),
-
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".pic_os = $(", !IO),
-        io.write_string(DepStream, MakeVarName, !IO),
-        io.write_string(DepStream, ".all_pic_os)\n", !IO)
-    ),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".pic_os = $(", !IO),
+    io.write_string(DepStream, MakeVarName, !IO),
+    io.write_string(DepStream, ".all_pic_os)\n", !IO),
 
     % $(foo.cs_or_ss) contains the names of the generated intermediate
     % files between `.m' and `.o' files. This is used in foo.dep
@@ -1462,16 +1407,9 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     (
         HighLevelCode = yes,
         (
-            ( Target = target_c
-            ; Target = target_asm
-            ),
+            Target = target_c,
             % For the `--target c' MLDS back-end, we generate `.mih' files
-            % for every module.  Likewise for the `--target asm' back-end.
-            % (For the `--target asm' back-end, we previously used to do
-            % that only for modules that contain C code, but this caused
-            % trouble when trying to interoperate between compiled with
-            % `--target c' and code compiled with `--target asm', so now we
-            % generate them unconditionally.)
+            % for every module.  
             write_compact_dependencies_list(Globals, Modules,
                 "$(mihs_subdir)", ".mih", Basis, DepStream, !IO)
         ;
@@ -1496,7 +1434,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     io.write_string(DepStream, ".mhs = ", !IO),
     (
         ( Target = target_c
-        ; Target = target_asm
         ; Target = target_x86_64
         ),
         write_compact_dependencies_list(Globals, Modules, "", ".mh", Basis,
@@ -1689,17 +1626,9 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
     assoc_list.from_corresponding_lists(FactDeps, ModuleList, FactTableObjs),
 
     % Handle object files for foreign code.
-    % XXX Currently we only support `C' foreign code.
-    (
-        Target = target_asm,
-        ModuleImports ^ mai_has_foreign_code = contains_foreign_code(Langs),
-        set.member(lang_c, Langs)
-    ->
-        FileName = sym_name_to_string(Module),
-        NewLinkObjs = [(FileName ++ "__c_code") - Module | FactTableObjs]
-    ;
-        NewLinkObjs = FactTableObjs
-    ),
+    % NOTE: currently none of the backends support foreign code in a non
+    % target language.
+    NewLinkObjs = FactTableObjs,
     list.append(NewLinkObjs, !ExtraLinkObjs),
     get_extra_link_objects_2(Modules, DepsMap, Target, !ExtraLinkObjs).
 
@@ -1865,7 +1794,6 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
             Rules = []
         ;
             ( Target = target_c
-            ; Target = target_asm
             ; Target = target_x86_64    % XXX this is only provisional.
             ),
             Rules = MainRule
@@ -1962,7 +1890,6 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
             LibRules = []
         ;
             ( Target = target_c
-            ; Target = target_asm
             ; Target = target_x86_64    % XXX This is only provisional.
             ),
             LibRules = LibRule

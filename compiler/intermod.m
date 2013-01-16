@@ -1118,7 +1118,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
 
     (
         ( Target = target_c
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
@@ -1137,7 +1136,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
             MaybeIL0, MaybeIL, !Info)
     ;
         ( Target = target_c
-        ; Target = target_asm
         ; Target = target_csharp
         ; Target = target_java
         ; Target = target_x86_64
@@ -1151,7 +1149,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
             MaybeCSharp0, MaybeCSharp, !Info)
     ;
         ( Target = target_c
-        ; Target = target_asm
         ; Target = target_il
         ; Target = target_java
         ; Target = target_x86_64
@@ -1165,7 +1162,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
             MaybeJava0, MaybeJava, !Info)
     ;
         ( Target = target_c
-        ; Target = target_asm
         ; Target = target_il
         ; Target = target_csharp
         ; Target = target_x86_64
@@ -1179,7 +1175,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
             MaybeErlang0, MaybeErlang, !Info)
     ;
         ( Target = target_c
-        ; Target = target_asm
         ; Target = target_il
         ; Target = target_csharp
         ; Target = target_x86_64

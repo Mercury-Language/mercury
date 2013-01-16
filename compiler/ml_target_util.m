@@ -68,7 +68,6 @@ globals_target_supports_break_and_continue(Globals) = SupportsBreakContinue :-
 %-----------------------------------------------------------------------------%
 
 target_supports_int_switch(target_c) = yes.
-target_supports_int_switch(target_asm) = yes.
 target_supports_int_switch(target_il) = no.
 target_supports_int_switch(target_csharp) = yes.
 target_supports_int_switch(target_java) = yes.
@@ -78,7 +77,6 @@ target_supports_int_switch(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
 target_supports_string_switch(target_c) = no.
-target_supports_string_switch(target_asm) = no.
 target_supports_string_switch(target_il) = no.
 target_supports_string_switch(target_csharp) = yes.
 target_supports_string_switch(target_java) = no.
@@ -89,9 +87,6 @@ target_supports_string_switch(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
 target_supports_computed_goto(target_c) = yes.
-target_supports_computed_goto(target_asm) = no.
-    % XXX for asm, it should be `yes', but currently
-    % computed gotos are not yet implemented in gcc.m.
 target_supports_computed_goto(target_il) = yes.
 target_supports_computed_goto(target_csharp) = yes.
 target_supports_computed_goto(target_java) = no.
@@ -102,7 +97,6 @@ target_supports_computed_goto(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
 target_supports_goto(target_c) = yes.
-target_supports_goto(target_asm) = yes.
 target_supports_goto(target_il) = yes.
 target_supports_goto(target_csharp) = yes.
 target_supports_goto(target_java) = no.
@@ -112,8 +106,6 @@ target_supports_goto(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
 target_supports_break_and_continue(target_c) = yes.
-target_supports_break_and_continue(target_asm) = no.
-    % asm means via gnu back-end
 target_supports_break_and_continue(target_il) = no.
 target_supports_break_and_continue(target_csharp) = yes.
 target_supports_break_and_continue(target_java) = yes.
@@ -127,7 +119,6 @@ target_supports_inheritence(target_c) = no.
 target_supports_inheritence(target_il) = yes.
 target_supports_inheritence(target_csharp) = yes.
 target_supports_inheritence(target_java) = yes.
-target_supports_inheritence(target_asm) = no.
 target_supports_inheritence(target_x86_64) =
     unexpected($module, $pred, "target_x86_64 and --high-level-code").
 target_supports_inheritence(target_erlang) =

@@ -3150,7 +3150,6 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
         ;
             ( TargetLang = ml_target_c
             ; TargetLang = ml_target_gnu_c
-            ; TargetLang = ml_target_asm
             ; TargetLang = ml_target_il
             ; TargetLang = ml_target_java
             ),

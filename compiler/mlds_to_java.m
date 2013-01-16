@@ -1690,7 +1690,6 @@ rename_class_names_atomic(Renaming, !Statement) :-
         ;
             ( Lang = ml_target_c
             ; Lang = ml_target_gnu_c
-            ; Lang = ml_target_asm
             ; Lang = ml_target_il
             ; Lang = ml_target_csharp
             )
@@ -4532,7 +4531,6 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
         ;
             ( TargetLang = ml_target_c
             ; TargetLang = ml_target_gnu_c
-            ; TargetLang = ml_target_asm
             ; TargetLang = ml_target_il
             ; TargetLang = ml_target_csharp
             ),

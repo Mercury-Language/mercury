@@ -1666,15 +1666,6 @@ and one generates Java.
 
 <p>
 
-The MLDS-&gt;asm backend is logically part of the MLDS back-ends,
-but it is in a module of its own (mlds_to_gcc.m), rather than being
-part of the ml_backend package, so that we can distribute a version
-of the Mercury compiler which does not include it.  There is a wrapper
-module called maybe_mlds_to_gcc.m which is generated at configuration time
-so that mlds_to_gcc.m will be linked in iff the GCC back-end is available.
-
-<p>
-
 The MLDS-&gt;IL backend is broken into several submodules.
 <ul>
 <li> mlds_to_ilasm.m converts MLDS to IL assembler and writes it to a .il file.

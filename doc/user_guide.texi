@@ -7004,7 +7004,6 @@ Check the module for errors, but do not generate any code.
 @findex -C
 @findex --target-code-only
 Generate target code (i.e.@: C in @file{@var{module}.c},
-assembler in @file{@var{module}.s} or @file{@var{module}.pic_s},
 IL in @file{@var{module}.il}, C# in @file{@var{module}.cs},
 Java in @file{@var{module}.java}
 or Erlang in @file{@var{module}.erl}),
@@ -7832,12 +7831,11 @@ and grade modifier; they are followed by descriptions of those options.
 
 @table @asis
 @item @code{--target c} (grades: none, reg, jump, fast, asm_jump, asm_fast, hl, hlc)
-@item @code{--target asm} (grades: hlc)
 @itemx @code{--il}, @code{--target il} (grades: il)
 @itemx @code{--csharp}, @code{--target csharp} (grades: csharp)
 @itemx @code{--java}, @code{--target java} (grades: java)
 @itemx @code{--erlang}, @code{--target erlang} (grades: erlang)
-Specify the target language used for compilation: C, assembler, IL, C#, Java
+Specify the target language used for compilation: C, IL, C#, Java
 or Erlang.
 C means ANSI/ISO C, optionally with GNU C extensions (see below).
 IL means the Intermediate Language of the .NET Common Language Runtime.
@@ -8338,16 +8336,6 @@ used to debug the Mercury compiler's low-level code generation.
 This option is not likely to be useful to anyone except the Mercury
 implementors.  It causes the generated code to become very big and very
 inefficient, and slows down compilation a lot.
-
-@sp 1
-@item --pic
-@findex --pic
-@cindex Position independent code
-@cindex PIC (position independent code)
-Generate position independent code.
-This option is only used by the @samp{--target asm} back-end.
-The generated assembler will be written to @samp{@var{module}.pic_s}
-rather than to @samp{@var{module}.s}.
 
 @sp 1
 @item --no-trad-passes
@@ -10794,9 +10782,8 @@ procedure but there are Mercury clauses, they will be used instead.
 @table @asis
 
 @item @samp{C}
-This is the default foreign language on all backends which compile to C
-or assembler.
-Only available on backends that compile to C or assembler.
+This is the default foreign language on all backends which compile to C.
+Only available on backends that compile to C.
 
 @item @samp{C#}
 Only available on backends that compile to IL or C#.

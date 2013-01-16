@@ -841,7 +841,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ( Target = target_c
         ; Target = target_csharp
         ; Target = target_java
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
         )
@@ -933,7 +932,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         ( Target = target_c
         ; Target = target_il
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
         )
@@ -985,37 +983,16 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         ( Target = target_c
         ; Target = target_il
-        ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_java
         ; Target = target_csharp
         )
     ),
 
-    % Generating assembler via the gcc back-end requires
-    % using high-level code.
-    (
-        Target = target_asm,
-        globals.set_option(highlevel_code, bool(yes), !Globals),
-        globals.set_option(highlevel_data, bool(no), !Globals)
-    ;
-        ( Target = target_c
-        ; Target = target_il
-        ; Target = target_csharp
-        ; Target = target_java
-        ; Target = target_x86_64
-        ; Target = target_erlang
-        )
-    ),
-
-    % Generating high-level C or asm code requires putting each commit
+    % Generating high-level C code requires putting each commit
     % in its own function, to avoid problems with setjmp() and
     % non-volatile local variables.
-    (
-        ( Target = target_c
-        ; Target = target_asm
-        )
-    ->
+    ( Target = target_c ->
         option_implies(highlevel_code, put_commit_in_own_func, bool(yes),
             !Globals)
     ;
@@ -1027,8 +1004,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         Target = target_x86_64,
         globals.set_option(use_local_vars, bool(no), !Globals)
     ;
-        ( Target = target_asm
-        ; Target = target_c
+        ( Target = target_c
         ; Target = target_il
         ; Target = target_csharp
         ; Target = target_java
@@ -1044,14 +1020,10 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %
 
     % Shared libraries always use `--linkage shared'.
-    option_implies(compile_to_shared_lib, pic, bool(yes), !Globals),
     option_implies(compile_to_shared_lib, linkage, string("shared"),
         !Globals),
     option_implies(compile_to_shared_lib, mercury_linkage,
         string("shared"), !Globals),
-
-    % On x86, using PIC takes a register away from us.
-    option_implies(pic, pic_reg, bool(yes), !Globals),
 
     % --high-level-code disables the use of low-level gcc extensions
     option_implies(highlevel_code, gcc_non_local_gotos, bool(no),
@@ -1420,7 +1392,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ( Target = target_csharp
         ; Target = target_java
         ; Target = target_x86_64
-        ; Target = target_asm
         ; Target = target_il
         ; Target = target_erlang
         ),
@@ -1452,7 +1423,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         )
     ;
         ( Target = target_x86_64
-        ; Target = target_asm
         ; Target = target_il
         ; Target = target_erlang
         ),
@@ -1593,7 +1563,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
                 ( Target = target_c
                 ; Target = target_csharp
                 ; Target = target_java
-                ; Target = target_asm
                 ; Target = target_x86_64
                 ; Target = target_erlang
                 )
@@ -2270,10 +2239,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         Target = target_csharp,
         BackendForeignLanguages = ["csharp"]
     ;
-        Target = target_asm,
-        % XXX This is wrong!  It should be asm.
-        BackendForeignLanguages = ["c"]
-    ;
         Target = target_java,
         BackendForeignLanguages = ["java"]
     ;
@@ -2318,9 +2283,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     (
         % In the non-C backends, it may not be possible to cast a value
         % of a non-enum du type to an integer.
-        ( Target = target_c
-        ; Target = target_asm
-        ),
+        Target = target_c,
 
         % To ensure that all constants in general du types are
         % allocated in one word, make_tags.m need to have at least one

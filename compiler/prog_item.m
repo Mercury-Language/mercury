@@ -1176,9 +1176,7 @@ do_get_item_foreign_code(Globals, Pragma, Context, !Info) :-
         (
             % We generate some C code for fact tables, so we need to treat
             % modules containing fact tables as if they contain foreign code.
-            ( Target = target_asm
-            ; Target = target_c
-            )
+            Target = target_c
         ->
             !Info ^ used_foreign_languages :=
                 set.insert(!.Info ^ used_foreign_languages, lang_c)

@@ -459,7 +459,6 @@ post_process_type_defns(!HLDS, Specs) :-
         ; Target = target_csharp
         ; Target = target_java
         ; Target = target_erlang
-        ; Target = target_asm
         ; Target = target_x86_64
         ),
         % Direct arg functors have not (yet) been implemented on these targets.

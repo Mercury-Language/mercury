@@ -654,8 +654,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
                 MLDS_Context),
             CtorDefns = [CtorDefn]
         ;
-            ( Target = target_asm
-            ; Target = target_il
+            ( Target = target_il
             ; Target = target_erlang
             ; Target = target_x86_64
             ),

@@ -459,15 +459,13 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
             Verbose = no
         ),
 
-        % Run compilations to target code in a separate process.  This is
-        % necessary for `--target asm' because the GCC backend can only be
-        % invoked once per process. It's a good idea for other the backends
-        % because it avoids problems with the Boehm GC retaining memory by
-        % scanning too much of the Mercury stacks. If the compilation is run in
-        % a separate process, it is also easier to kill if an interrupt
-        % arrives. We do the same for intermodule-optimization interfaces
-        % because if type checking gets overloaded by ambiguities it can be
-        % difficult to kill the compiler otherwise.
+        % Run compilations to target code in a separate process.  This avoids
+        % problems with the Boehm GC retaining memory by scanning too much of
+        % the Mercury stacks. If the compilation is run in a separate process,
+        % it is also easier to kill if an interrupt arrives. We do the same for
+        % intermodule-optimization interfaces because if type checking gets
+        % overloaded by ambiguities it can be difficult to kill the compiler
+        % otherwise.
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         IsForkable = forkable_module_compilation_task_type(ModuleTask),
         (
@@ -537,9 +535,6 @@ build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, Imports,
     (
         Target = target_c,
         compile_c_file(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO)
-    ;
-        Target = target_asm,
-        assemble(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO)
     ;
         Target = target_java,
         module_name_to_file_name(Globals, ModuleName, ".java", do_create_dirs,
@@ -643,9 +638,6 @@ get_object_extension(Globals, PIC) = Ext :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        maybe_pic_object_file_extension(Globals, PIC, Ext)
-    ;
-        CompilationTarget = target_asm,
         maybe_pic_object_file_extension(Globals, PIC, Ext)
     ;
         CompilationTarget = target_il,
@@ -865,9 +857,6 @@ compilation_task(_, module_target_erlang_code) =
     process_module(task_compile_to_target_code) - ["--erlang-only"].
 compilation_task(_, module_target_erlang_beam_code) =
         target_code_to_object_code(non_pic) - [].
-compilation_task(_, module_target_asm_code(PIC)) =
-    process_module(task_compile_to_target_code) -
-        ( PIC = pic -> ["--pic"] ; [] ).
 compilation_task(_, module_target_object_code(PIC)) =
     target_code_to_object_code(PIC) - get_pic_flags(PIC).
 compilation_task(_, module_target_foreign_il_asm(Lang)) =
@@ -961,16 +950,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
     ),
 
     globals.get_target(Globals, CompilationTarget),
-    (
-        Task = task_compile_to_target_code,
-        CompilationTarget = target_asm
-    ->
-        % For `--target asm' the code for the nested children is placed
-        % in the `.s' file for the top-level module in the source file.
-        TargetModuleNames = [ModuleName]
-    ;
-        TargetModuleNames = SourceFileModuleNames
-    ),
+    TargetModuleNames = SourceFileModuleNames,
 
     % Find out what header files are generated.
     (
@@ -996,18 +976,6 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
                 HeaderTargets0 = []
             )
         ;
-            CompilationTarget = target_asm,
-            % When compiling to assembler, we only generate a header file
-            % if the module contains foreign code.
-            HeaderModuleNames =
-                list.filter_map(
-                    (func(MImports) = MImports ^ mai_module_name is semidet :-
-                        contains_foreign_code(_) =
-                            MImports ^ mai_has_foreign_code
-                    ), ModuleImportsList),
-            HeaderTargets0 = make_target_file_list(HeaderModuleNames,
-                module_target_c_header(header_mih))
-        ;
             ( CompilationTarget = target_il
             ; CompilationTarget = target_csharp
             ; CompilationTarget = target_java
@@ -1025,9 +993,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
         ),
 
         (
-            ( CompilationTarget = target_c
-            ; CompilationTarget = target_asm
-            ),
+            CompilationTarget = target_c,
             Names = SourceFileModuleNames,
             HeaderTargets =
                 make_target_file_list(Names, module_target_c_header(header_mh))
@@ -1089,18 +1055,6 @@ external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
     globals.get_target(Globals, CompilationTarget),
     ModuleName = Imports ^ mai_module_name,
     (
-        CompilationTarget = target_asm,
-        Imports ^ mai_has_foreign_code = contains_foreign_code(Langs),
-        set.member(lang_c, Langs)
-    ->
-        module_name_to_file_name(Globals,
-            foreign_language_module_name(ModuleName, lang_c),
-            ".c", do_not_create_dirs, CCodeFileName, !IO),
-        module_name_to_file_name(Globals,
-            foreign_language_module_name(ModuleName, lang_c),
-            ObjExt, do_not_create_dirs, ObjFileName, !IO),
-        ForeignFiles0 = [foreign_code_file(lang_c, CCodeFileName, ObjFileName)]
-    ;
         CompilationTarget = target_il,
         Imports ^ mai_has_foreign_code = contains_foreign_code(Langs)
     ->
@@ -1113,9 +1067,7 @@ external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
 
     % Find externally compiled foreign code files for fact tables.
     (
-        ( CompilationTarget = target_c
-        ; CompilationTarget = target_asm
-        ),
+        CompilationTarget = target_c,
         list.map_foldl(
             (pred(FactTableFile::in, FactTableForeignFile::out, di, uo)
                     is det -->
@@ -1162,9 +1114,7 @@ external_foreign_code_files_for_il(Globals, ModuleName, Language, ForeignFiles,
 
 target_type_to_pic(TargetType) = Result :-
     (
-        ( TargetType = module_target_asm_code(PIC)
-        ; TargetType = module_target_object_code(PIC)
-        ),
+        TargetType = module_target_object_code(PIC),
         Result = PIC
     ;
         ( TargetType = module_target_source

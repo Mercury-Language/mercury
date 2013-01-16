@@ -1411,28 +1411,8 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
     get_object_code_type(Globals, TargetType, PIC),
     maybe_pic_object_file_extension(Globals, PIC, Obj),
 
-    globals.get_target(Globals, Target),
     io.output_stream(OutputStream, !IO),
-    (
-        Target = target_asm,
-        % For --target asm, we generate everything into a single object file.
-        (
-            Modules = [FirstModule | _],
-            join_module_list(Globals, [FirstModule], Obj, ObjectsList, !IO)
-        ;
-            Modules = [],
-            unexpected($module, $pred, "no modules")
-        )
-    ;
-        ( Target = target_c
-        ; Target = target_java
-        ; Target = target_csharp
-        ; Target = target_il
-        ; Target = target_x86_64
-        ; Target = target_erlang
-        ),
-        join_module_list(Globals, Modules, Obj, ObjectsList, !IO)
-    ),
+    join_module_list(Globals, Modules, Obj, ObjectsList, !IO),
     (
         TargetType = executable,
         list.map(
@@ -2684,7 +2664,6 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
     globals.get_target(Globals, Target),
     (
         ( Target = target_c
-        ; Target = target_asm
         ; Target = target_x86_64
         ),
         globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
@@ -3109,54 +3088,46 @@ get_object_code_type(Globals, FileType, ObjectCodeType) :-
     globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
     globals.lookup_bool_option(Globals, gcc_global_registers, GCCGlobals),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    globals.lookup_bool_option(Globals, pic, PIC),
     globals.get_target(Globals, Target),
     (
-        PIC = yes,
-        % We've been explicitly told to use position independent code.
+        ( FileType = static_library
+        ; FileType = csharp_executable
+        ; FileType = csharp_library
+        ; FileType = java_launcher
+        ; FileType = java_archive
+        ; FileType = erlang_launcher
+        ; FileType = erlang_archive
+        ),
+        ObjectCodeType = non_pic
+    ;
+        FileType = shared_library,
         ObjectCodeType = ( if PicObjExt = ObjExt then non_pic else pic )
     ;
-        PIC = no,
-        (
-            ( FileType = static_library
-            ; FileType = csharp_executable
-            ; FileType = csharp_library
-            ; FileType = java_launcher
-            ; FileType = java_archive
-            ; FileType = erlang_launcher
-            ; FileType = erlang_archive
-            ),
-            ObjectCodeType = non_pic
-        ;
-            FileType = shared_library,
-            ObjectCodeType = ( if PicObjExt = ObjExt then non_pic else pic )
-        ;
-            FileType = executable,
-            ( MercuryLinkage = "shared" ->
-                (
-                    % We only need to create `.lpic' files if `-DMR_PIC_REG'
-                    % has an effect, which is currently nowhere.
-                    ( LinkWithPicObjExt = ObjExt
-                    ; HighLevelCode = yes
-                    ; GCCGlobals = no
-                    ; Target \= target_c
-                    )
-                ->
-                    ObjectCodeType = non_pic
-                ;
-                    LinkWithPicObjExt = PicObjExt
-                ->
-                    ObjectCodeType = pic
-                ;
-                    ObjectCodeType = link_with_pic
+        FileType = executable,
+        ( MercuryLinkage = "shared" ->
+            (
+                % We only need to create `.lpic' files if `-DMR_PIC_REG'
+                % has an effect, which is currently nowhere.
+                ( LinkWithPicObjExt = ObjExt
+                ; HighLevelCode = yes
+                ; GCCGlobals = no
+                ; Target \= target_c
                 )
-            ; MercuryLinkage = "static" ->
+            ->
                 ObjectCodeType = non_pic
             ;
-                % The linkage string is checked by options.m.
-                unexpected($module, $pred,
-                    "unknown linkage " ++ MercuryLinkage)
+                LinkWithPicObjExt = PicObjExt
+            ->
+                ObjectCodeType = pic
+            ;
+                ObjectCodeType = link_with_pic
             )
+        ; MercuryLinkage = "static" ->
+            ObjectCodeType = non_pic
+        ;
+            % The linkage string is checked by options.m.
+            unexpected($module, $pred,
+                "unknown linkage " ++ MercuryLinkage)
         )
     ).
 

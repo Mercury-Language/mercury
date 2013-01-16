@@ -391,8 +391,6 @@ have_foreign_type_for_backend(target_csharp, ForeignTypeBody,
         ( ForeignTypeBody ^ csharp = yes(_) -> yes ; no )).
 have_foreign_type_for_backend(target_erlang, ForeignTypeBody,
         ( ForeignTypeBody ^ erlang = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(target_asm, ForeignTypeBody, Result) :-
-    have_foreign_type_for_backend(target_c, ForeignTypeBody, Result).
 have_foreign_type_for_backend(target_x86_64, ForeignTypeBody, Result) :-
     have_foreign_type_for_backend(target_c, ForeignTypeBody, Result).
 
@@ -499,17 +497,6 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         ;
             MaybeErlang = no,
             unexpected($module, $pred, "no Erlang type")
-        )
-    ;
-        Target = target_asm,
-        (
-            MaybeC = yes(Data),
-            Data = foreign_type_lang_data(c_type(NameStr), MaybeUserEqComp,
-                Assertions),
-            Name = unqualified(NameStr)
-        ;
-            MaybeC = no,
-            unexpected($module, $pred, "no C type")
         )
     ;
         Target = target_x86_64,

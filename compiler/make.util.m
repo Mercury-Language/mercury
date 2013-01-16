@@ -1473,9 +1473,6 @@ target_extension(_, module_target_java_class_code) = yes(".class").
 target_extension(_, module_target_erlang_header) = yes(".hrl").
 target_extension(_, module_target_erlang_code) = yes(".erl").
 target_extension(_, module_target_erlang_beam_code) = yes(".beam").
-target_extension(_, module_target_asm_code(non_pic)) = yes(".s").
-target_extension(_, module_target_asm_code(link_with_pic)) = yes(".s").
-target_extension(_, module_target_asm_code(pic)) = yes(".pic_s").
 target_extension(Globals, module_target_object_code(PIC)) = yes(Ext) :-
     maybe_pic_object_file_extension(Globals, PIC, Ext).
 target_extension(_, module_target_xml_doc) = yes(".xml").
@@ -1598,7 +1595,6 @@ module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
                 FileName, !IO)
         ;
             ( TargetType = module_target_analysis_registry
-            ; TargetType = module_target_asm_code(_)
             ; TargetType = make.module_target_c_code
             ; TargetType = module_target_c_header(_)
             ; TargetType = module_target_erlang_beam_code
@@ -1645,30 +1641,13 @@ timestamp_extension(_, module_target_intermodule_interface) = ".optdate".
 timestamp_extension(_, module_target_analysis_registry) = ".analysis_date".
 timestamp_extension(_, module_target_c_code) = ".c_date".
 timestamp_extension(Globals, module_target_c_header(_)) = Ext :-
-    globals.get_target(Globals, Target),
-    (
-        Target = target_asm,
-        ModuleTargetType = module_target_asm_code(non_pic)
-    ;
-        % XXX Some of these alternatives don't look right.
-        ( Target = target_c
-        ; Target = target_x86_64
-        ; Target = target_il
-        ; Target = target_csharp
-        ; Target = target_java
-        ; Target = target_erlang
-        ),
-        ModuleTargetType = module_target_c_code
-    ),
-    Ext = timestamp_extension(Globals, ModuleTargetType).
+    Ext = timestamp_extension(Globals, module_target_c_code).
 timestamp_extension(_, module_target_il_code) = ".il_date".
 timestamp_extension(_, module_target_csharp_code) = ".cs_date".
 timestamp_extension(_, module_target_java_code) = ".java_date".
 timestamp_extension(_, module_target_erlang_code) = ".erl_date".
 timestamp_extension(Globals, module_target_erlang_header) =
     timestamp_extension(Globals, module_target_erlang_code).
-timestamp_extension(_, module_target_asm_code(non_pic)) = ".s_date".
-timestamp_extension(_, module_target_asm_code(pic)) = ".pic_s_date".
 
 :- func search_for_file_type(module_target_type) = maybe(option).
 
@@ -1697,7 +1676,6 @@ search_for_file_type(module_target_erlang_header) =
         yes(erlang_include_directory).
 search_for_file_type(module_target_erlang_code) = no.
 search_for_file_type(module_target_erlang_beam_code) = no.
-search_for_file_type(module_target_asm_code(_)) = no.
 search_for_file_type(module_target_object_code(_)) = no.
 search_for_file_type(module_target_foreign_object(_, _)) = no.
 search_for_file_type(module_target_foreign_il_asm(_)) = no.
@@ -1735,7 +1713,6 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_erlang_code
         ; Target = module_target_erlang_beam_code
         ; Target = module_target_erlang_header
-        ; Target = module_target_asm_code(_)
         ; Target = module_target_object_code(_)
         ; Target = module_target_foreign_object(_, _)
         ; Target = module_target_foreign_il_asm(_)
@@ -2000,32 +1977,29 @@ module_target_type_to_nonce(Type) = X :-
         Type = module_target_erlang_beam_code,
         X = 17
     ;
-        Type = module_target_asm_code(_PIC),
-        X = 18
-    ;
         Type = module_target_object_code(PIC),
-        X = 19 `mix` pic_to_nonce(PIC)
+        X = 18 `mix` pic_to_nonce(PIC)
     ;
         Type = module_target_foreign_il_asm(_ForeignLang),
-        X = 20
+        X = 19 
     ;
         Type = module_target_foreign_object(_PIC, _ForeignLang),
-        X = 21
+        X = 20
     ;
         Type = module_target_fact_table_object(_PIC, _FileName),
-        X = 22
+        X = 21
     ;
         Type = module_target_xml_doc,
-        X = 23
+        X = 22
     ;
         Type = module_target_track_flags,
-        X = 24
+        X = 23
     ;
         Type = module_target_java_class_code,
-        X = 25
+        X = 24
     ;
         Type = module_target_csharp_code,
-        X = 26
+        X = 25
     ).
 
 :- func pic_to_nonce(pic) = int.

@@ -216,7 +216,6 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         Lang = lang_erlang
     ;
         ( Target = target_il
-        ; Target = target_asm
         ; Target = target_x86_64
         ),
         WhatMsg = "solver type conversion functions for this backend",

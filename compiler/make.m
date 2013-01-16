@@ -232,7 +232,6 @@
     ;       module_target_erlang_header
     ;       module_target_erlang_code
     ;       module_target_erlang_beam_code
-    ;       module_target_asm_code(pic)
     ;       module_target_object_code(pic)
     ;       module_target_foreign_il_asm(foreign_language)
     ;       module_target_foreign_object(pic, foreign_language)
@@ -567,7 +566,6 @@ get_executable_type(Globals) = ExecutableType :-
     (
         ( CompilationTarget = target_c
         ; CompilationTarget = target_il
-        ; CompilationTarget = target_asm
         ; CompilationTarget = target_x86_64
         ),
         ExecutableType = executable

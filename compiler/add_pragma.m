@@ -1192,8 +1192,6 @@ target_lang_to_foreign_enum_lang(target_c) = lang_c.
 target_lang_to_foreign_enum_lang(target_il) = lang_il.
 target_lang_to_foreign_enum_lang(target_csharp) = lang_csharp.
 target_lang_to_foreign_enum_lang(target_java) = lang_java.
-target_lang_to_foreign_enum_lang(target_asm) =
-    sorry($module, $pred, "pragma foreign_enum and --target `asm'.").
 target_lang_to_foreign_enum_lang(target_x86_64) =
     sorry($module, $pred, "pragma foreign_enum and --target `x86_64'.").
 target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.
@@ -2772,7 +2770,6 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         get_target(Globals, TargetLang),
         (
             ( TargetLang = target_c
-            ; TargetLang = target_asm
             ; TargetLang = target_x86_64
             ),
             ForeignLang = lang_c

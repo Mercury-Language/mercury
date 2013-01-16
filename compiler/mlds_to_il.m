@@ -1989,8 +1989,6 @@ atomic_statement_to_il(inline_target_code(ml_target_csharp, _Code), _Instrs,
 atomic_statement_to_il(inline_target_code(ml_target_java, _Code), _Instrs,
         !Info) :-
     unexpected($module, $pred, "ml_target_java").
-atomic_statement_to_il(inline_target_code(ml_target_asm, _), _, !Info) :-
-    unexpected($module, $pred,  "ml_target_asm").
 atomic_statement_to_il(inline_target_code(ml_target_gnu_c, _), _, !Info) :-
     unexpected($module, $pred, "ml_target_gnu_c").
 

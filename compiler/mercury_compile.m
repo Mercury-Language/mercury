@@ -58,7 +58,6 @@
 :- import_module make.util.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.shared_utilities.
-:- import_module ml_backend.maybe_mlds_to_gcc.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
@@ -437,7 +436,6 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
             io.set_exit_status(1, !IO)
         ;
             ( Target = target_c
-            ; Target = target_asm
             ; Target = target_x86_64
             ),
             make_standalone_interface(Globals, StandaloneIntBasename, !IO)
@@ -469,7 +467,6 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
                     ( Target = target_c
                     ; Target = target_csharp
                     ; Target = target_il
-                    ; Target = target_asm
                     ; Target = target_x86_64
                     ; Target = target_erlang
                     ),
@@ -534,161 +531,8 @@ maybe_report_cmd_line(Report, OptionArgs, Args, !IO) :-
 
 process_all_args(Globals, OptionVariables, OptionArgs, Args,
         ModulesToLink, ExtraObjFiles, !IO) :-
-    % Because of limitations in the GCC back-end, we can only call the
-    % GCC back-end once (per process), to generate a single assembler file,
-    % rather than calling it multiple times to generate individual assembler
-    % files for each module. So if we're generating code using the GCC
-    % back-end, we need to call maybe_run_gcc_backend here at the top level.
-    ( compiling_to_asm(Globals) ->
-        (
-            Args = [FirstArg | LaterArgs],
-            globals.lookup_bool_option(Globals, smart_recompilation, Smart),
-            io_get_disable_smart_recompilation(DisableSmart, !IO),
-            (
-                Smart = yes,
-                DisableSmart = no
-            ->
-                (
-                    LaterArgs = [],
-                    % With smart recompilation we need to delay starting
-                    % the gcc backend to avoid overwriting the output assembler
-                    % file even if recompilation is found to be unnecessary.
-                    process_args(Globals, OptionVariables, OptionArgs, Args,
-                        ModulesToLink, ExtraObjFiles, !IO)
-                ;
-                    LaterArgs = [_ | _],
-                    Msg = "Sorry, not implemented: " ++
-                        "`--target asm' with `--smart-recompilation' " ++
-                        "with more than one module to compile.",
-                    write_error_pieces_plain(Globals, [words(Msg)], !IO),
-                    io.set_exit_status(1, !IO),
-                    ModulesToLink = [],
-                    ExtraObjFiles = [],
-                    io_set_disable_smart_recompilation(yes, !IO)
-                )
-            ;
-                compile_using_gcc_backend(Globals,
-                    OptionVariables, OptionArgs,
-                    string_to_file_or_module(FirstArg),
-                    process_args_callback(OptionVariables, OptionArgs, Args,
-                        Globals),
-                    ModulesToLink, ExtraObjFiles, !IO)
-            )
-        ;
-            Args = [],
-            Msg = "Sorry, not implemented: `--target asm' " ++
-                "with `--filenames-from-stdin",
-            write_error_pieces_plain(Globals, [words(Msg)], !IO),
-            io.set_exit_status(1, !IO),
-            ModulesToLink = [],
-            ExtraObjFiles = []
-        )
-    ;
-        % If we're NOT using the GCC back-end, then we can just call
-        % process_args directly, rather than via GCC.
-        process_args(Globals, OptionVariables, OptionArgs, Args,
-            ModulesToLink, ExtraObjFiles, !IO)
-    ).
-
-:- pred compiling_to_asm(globals::in) is semidet.
-
-compiling_to_asm(Globals) :-
-    globals.get_target(Globals, target_asm),
-    % even if --target asm is specified,
-    % it can be overridden by other options:
-    OptionList = [convert_to_mercury, generate_dependencies,
-        generate_dependency_file, make_interface,
-        make_short_interface, make_private_interface,
-        make_optimization_interface, make_transitive_opt_interface,
-        make_analysis_registry,
-        typecheck_only, errorcheck_only],
-    BoolList = list.map((func(Opt) = Bool :-
-        globals.lookup_bool_option(Globals, Opt, Bool)),
-        OptionList),
-    bool.or_list(BoolList) = no.
-
-:- pred compile_using_gcc_backend(globals::in, options_variables::in,
-    list(string)::in, file_or_module::in,
-    frontend_callback({list(string), list(string)})
-        ::in(frontend_callback),
-    list(string)::out, list(string)::out, io::di, io::uo) is det.
-
-compile_using_gcc_backend(Globals, OptionVariables, OptionArgs,
-        FirstFileOrModule, CallBack, ModulesToLink, ExtraObjFiles, !IO) :-
-    % The name of the assembler file that we generate is based on name
-    % of the first module named on the command line. (Mmake requires this.)
-    %
-    % There are two cases:
-    %
-    % (1) If the argument ends in ".m", we assume that the argument is a file
-    % name. To find the corresponding module name, we would need to read in
-    % the file (at least up to the first item); this is needed to handle
-    % the case where the module name does not match the file name, e.g.
-    % file "browse.m" containing ":- module mdb.browse." as its first item.
-    % Rather than reading in the source file here, we just pick a name
-    % for the asm file based on the file name argument, (e.g. "browse.s")
-    % and if necessary rename it later (e.g. to "mdb.browse.s").
-    %
-    % (2) If the argument doesn't end in `.m', then we assume it is
-    % a module name. (Is it worth checking that the name doesn't contain
-    % directory separators, and issuing a warning or error in that case?)
-
-    (
-        FirstFileOrModule = fm_file(FirstFileName),
-        file_name_to_module_name(FirstFileName, FirstModuleName)
-    ;
-        FirstFileOrModule = fm_module(FirstModuleName)
-    ),
-
-    % Invoke maybe_run_gcc_backend. It will call us back, and then we will
-    % continue with the normal work of the compilation, which will be done
-    % by the % callback function (`process_args').
-    %
-    % The CallBack closure should have the current Globals as one of the
-    % presupplied arguments. We cannot easily supply it here, since the
-    % type_info for the type variable T in CallBack's type needs to be passed
-    % first.
-    maybe_run_gcc_backend(FirstModuleName, CallBack,
-        {ModulesToLink, ExtraObjFiles}, !IO),
-
-    % Now we know what the real module name was, so we can rename
-    % the assembler file if needed (see above).
-    (
-        ModulesToLink = [Module | _],
-        file_name_to_module_name(Module, ModuleName),
-        globals.lookup_bool_option(Globals, pic, Pic),
-        AsmExt = (Pic = yes -> ".pic_s" ; ".s"),
-        module_name_to_file_name(Globals, ModuleName, AsmExt,
-            do_create_dirs, AsmFile, !IO),
-        ( ModuleName \= FirstModuleName ->
-            module_name_to_file_name(Globals, FirstModuleName, AsmExt,
-                do_not_create_dirs, FirstAsmFile, !IO),
-            do_rename_file(Globals, FirstAsmFile, AsmFile, Result, !IO)
-        ;
-            Result = ok
-        ),
-
-        % Invoke the assembler to produce an object file, if needed.
-        globals.lookup_bool_option(Globals, target_code_only, TargetCodeOnly),
-        (
-            Result = ok,
-            TargetCodeOnly = no
-        ->
-            io.output_stream(OutputStream, !IO),
-            get_linked_target_type(Globals, TargetType),
-            get_object_code_type(Globals, TargetType, PIC),
-            compile_with_module_options(Globals, ModuleName, OptionVariables,
-                OptionArgs, assemble(OutputStream, PIC, ModuleName),
-                AssembleOK, !IO),
-            maybe_set_exit_status(AssembleOK, !IO)
-        ;
-            true
-        )
-    ;
-        ModulesToLink = []
-        % This can happen if smart recompilation decided
-        % that nothing needed to be compiled.
-    ).
+    process_args(Globals, OptionVariables, OptionArgs, Args, ModulesToLink,
+        ExtraObjFiles, !IO).
 
 :- pred do_rename_file(globals::in, string::in, string::in, io.res::out,
     io::di, io::uo) is det.
@@ -860,7 +704,7 @@ process_arg(Globals, OptionVariables, OptionArgs, Arg,
         build_with_module_options_args(Globals,
             file_or_module_to_module_name(FileOrModule),
             OptionVariables, OptionArgs, [],
-            process_arg_build(FileOrModule, OptionVariables, OptionArgs),
+            process_arg_build(FileOrModule, OptionArgs),
             _, [], MaybeTuple, !IO),
         (
             MaybeTuple = yes(Tuple),
@@ -873,26 +717,26 @@ process_arg(Globals, OptionVariables, OptionArgs, Arg,
     ;
         InvokedByMake = yes,
         % `mmc --make' has already set up the options.
-        process_arg_2(Globals, OptionVariables, OptionArgs, FileOrModule,
-            ModulesToLink, ExtraObjFiles, !IO)
+        process_arg_2(Globals, OptionArgs, FileOrModule, ModulesToLink,
+            ExtraObjFiles, !IO)
     ).
 
-:- pred process_arg_build(file_or_module::in, options_variables::in,
+:- pred process_arg_build(file_or_module::in,
     list(string)::in, globals::in, list(string)::in, bool::out,
     list(string)::in, {list(string), list(string)}::out,
     io::di, io::uo) is det.
 
-process_arg_build(FileOrModule, OptionVariables, OptionArgs, Globals, _, yes,
-        _, {Modules, ExtraObjFiles}, !IO) :-
-    process_arg_2(Globals, OptionVariables, OptionArgs, FileOrModule,
-        Modules, ExtraObjFiles, !IO).
+process_arg_build(FileOrModule, OptionArgs, Globals, _, yes, _,
+        {Modules, ExtraObjFiles}, !IO) :-
+    process_arg_2(Globals, OptionArgs, FileOrModule, Modules, ExtraObjFiles,
+        !IO).
 
-:- pred process_arg_2(globals::in, options_variables::in, list(string)::in,
+:- pred process_arg_2(globals::in, list(string)::in,
     file_or_module::in, list(string)::out, list(string)::out,
     io::di, io::uo) is det.
 
-process_arg_2(Globals, OptionVariables, OptionArgs, FileOrModule,
-        ModulesToLink, ExtraObjFiles, !IO) :-
+process_arg_2(Globals, OptionArgs, FileOrModule, ModulesToLink, ExtraObjFiles,
+        !IO) :-
     globals.lookup_bool_option(Globals, generate_dependencies, GenerateDeps),
     (
         GenerateDeps = yes,
@@ -922,8 +766,8 @@ process_arg_2(Globals, OptionVariables, OptionArgs, FileOrModule,
             )
         ;
             GenerateDepFile = no,
-            process_module(Globals, OptionVariables, OptionArgs, FileOrModule,
-                ModulesToLink, ExtraObjFiles, !IO)
+            process_module(Globals, OptionArgs, FileOrModule, ModulesToLink,
+                ExtraObjFiles, !IO)
         )
     ).
 
@@ -1090,12 +934,11 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
 version_numbers_return_timestamp(no) = do_not_return_timestamp.
 version_numbers_return_timestamp(yes) = do_return_timestamp.
 
-:- pred process_module(globals::in, options_variables::in, list(string)::in,
-    file_or_module::in, list(string)::out, list(string)::out,
-    io::di, io::uo) is det.
+:- pred process_module(globals::in, list(string)::in, file_or_module::in,
+    list(string)::out, list(string)::out, io::di, io::uo) is det.
 
-process_module(Globals0, OptionVariables, OptionArgs, FileOrModule,
-        ModulesToLink, ExtraObjFiles, !IO) :-
+process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
+        ExtraObjFiles, !IO) :-
     globals.lookup_bool_option(Globals0, halt_at_syntax_errors, HaltSyntax),
     globals.lookup_bool_option(Globals0, make_interface, MakeInterface),
     globals.lookup_bool_option(Globals0, make_short_interface,
@@ -1170,7 +1013,6 @@ process_module(Globals0, OptionVariables, OptionArgs, FileOrModule,
             Globals = Globals0,
             Smart = Smart0
         ),
-        globals.get_target(Globals, Target),
         (
             Smart = yes,
             (
@@ -1185,24 +1027,11 @@ process_module(Globals0, OptionVariables, OptionArgs, FileOrModule,
                 % mapping will be explicitly recorded.
                 file_name_to_module_name(FileName, ModuleName)
             ),
-
-            find_smart_recompilation_target_files(ModuleName, Globals,
-                FindTargetFiles),
-            find_timestamp_files(ModuleName, Globals, FindTimestampFiles),
+            find_smart_recompilation_target_files(Globals, FindTargetFiles),
+            find_timestamp_files(Globals, FindTimestampFiles),
             recompilation.check.should_recompile(Globals, ModuleName,
-                FindTargetFiles, FindTimestampFiles, ModulesToRecompile0,
-                HaveReadModuleMap, !IO),
-            (
-                Target = target_asm,
-                ModulesToRecompile0 = some_modules([_ | _])
-            ->
-                % With `--target asm', if one module needs to be recompiled,
-                % all need to be recompiled because they are all compiled
-                % into a single object file.
-                ModulesToRecompile = all_modules
-            ;
-                ModulesToRecompile = ModulesToRecompile0
-            )
+                FindTargetFiles, FindTimestampFiles, ModulesToRecompile,
+                HaveReadModuleMap, !IO)
         ;
             Smart = no,
             map.init(HaveReadModuleMap),
@@ -1215,21 +1044,9 @@ process_module(Globals0, OptionVariables, OptionArgs, FileOrModule,
             ModulesToLink = [],
             ExtraObjFiles = []
         ;
-            (
-                Target = target_asm,
-                Smart = yes
-            ->
-                % See the comment in process_all_args.
-                compile_using_gcc_backend(Globals, OptionVariables,
-                    OptionArgs, FileOrModule,
-                    process_module_2_callback(OptionArgs, FileOrModule,
-                        ModulesToRecompile, HaveReadModuleMap, Globals),
-                    ModulesToLink, ExtraObjFiles, !IO)
-            ;
-                process_module_2(Globals, OptionArgs, FileOrModule,
-                    ModulesToRecompile, HaveReadModuleMap, ModulesToLink,
-                    ExtraObjFiles, !IO)
-            )
+            process_module_2(Globals, OptionArgs, FileOrModule,
+                ModulesToRecompile, HaveReadModuleMap, ModulesToLink,
+                ExtraObjFiles, !IO)
         )
     ).
 
@@ -1310,7 +1127,7 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
         assoc_list.keys(SubModuleList0, NestedSubModules0),
         list.delete_all(NestedSubModules0, ModuleName, NestedSubModules),
 
-        find_timestamp_files(ModuleName, Globals, FindTimestampFiles),
+        find_timestamp_files(Globals, FindTimestampFiles),
 
         globals.lookup_bool_option(Globals, trace_prof, TraceProf),
 
@@ -1442,48 +1259,35 @@ compile_with_module_options(Globals, ModuleName, OptionVariables, OptionArgs,
     % not a sensible thing to do.  handle_options.m will disable smart
     % recompilation if `--target-code-only' is not set.
     %
-:- pred find_smart_recompilation_target_files(module_name::in, globals::in,
+:- pred find_smart_recompilation_target_files(globals::in,
     find_target_file_names::out(find_target_file_names)) is det.
 
-find_smart_recompilation_target_files(TopLevelModuleName,
-        Globals, FindTargetFiles) :-
+find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
     globals.get_target(Globals, CompilationTarget),
     ( CompilationTarget = target_c, TargetSuffix = ".c"
     ; CompilationTarget = target_il, TargetSuffix = ".il"
     ; CompilationTarget = target_csharp, TargetSuffix = ".cs"
     ; CompilationTarget = target_java, TargetSuffix = ".java"
-    ; CompilationTarget = target_asm, TargetSuffix = ".s"
     ; CompilationTarget = target_x86_64, TargetSuffix = ".s"
     ; CompilationTarget = target_erlang, TargetSuffix = ".erl"
     ),
-    FindTargetFiles = usual_find_target_files(Globals, CompilationTarget,
-        TargetSuffix, TopLevelModuleName).
+    FindTargetFiles = usual_find_target_files(Globals, TargetSuffix).
 
-:- pred usual_find_target_files(globals::in, compilation_target::in,
-    string::in, module_name::in, module_name::in, list(file_name)::out,
+:- pred usual_find_target_files(globals::in,
+    string::in, module_name::in, list(file_name)::out,
     io::di, io::uo) is det.
 
-usual_find_target_files(Globals, CompilationTarget, TargetSuffix,
-        TopLevelModuleName, ModuleName, TargetFiles, !IO) :-
+usual_find_target_files(Globals, TargetSuffix, ModuleName, TargetFiles,
+        !IO) :-
     % XXX Should we check the generated header files?
-    (
-        CompilationTarget = target_asm,
-        ModuleName \= TopLevelModuleName
-    ->
-        % With `--target asm' all the nested sub-modules are placed
-        % in the `.s' file of the top-level module.
-        TargetFiles = []
-    ;
-        module_name_to_file_name(Globals, ModuleName, TargetSuffix,
-            do_create_dirs, FileName, !IO),
-        TargetFiles = [FileName]
-    ).
+    module_name_to_file_name(Globals, ModuleName, TargetSuffix,
+        do_create_dirs, FileName, !IO),
+    TargetFiles = [FileName].
 
-:- pred find_timestamp_files(module_name::in, globals::in,
+:- pred find_timestamp_files(globals::in,
     find_timestamp_file_names::out(find_timestamp_file_names)) is det.
 
-find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
-    globals.lookup_bool_option(Globals, pic, Pic),
+find_timestamp_files(Globals, FindTimestampFiles) :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
@@ -1498,42 +1302,22 @@ find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
         CompilationTarget = target_java,
         TimestampSuffix = ".java_date"
     ;
-        CompilationTarget = target_asm,
-        (
-            Pic = yes,
-            TimestampSuffix = ".pic_s_date"
-        ;
-            Pic = no,
-            TimestampSuffix = ".s_date"
-        )
-    ;
         CompilationTarget = target_x86_64,
         TimestampSuffix = ".s_date"
     ;
         CompilationTarget = target_erlang,
         TimestampSuffix = ".erl_date"
     ),
-    FindTimestampFiles = find_timestamp_files_2(Globals, CompilationTarget,
-        TimestampSuffix, TopLevelModuleName).
+    FindTimestampFiles = find_timestamp_files_2(Globals, TimestampSuffix).
 
-:- pred find_timestamp_files_2(globals::in, compilation_target::in, string::in,
-    module_name::in, module_name::in, list(file_name)::out,
-    io::di, io::uo) is det.
+:- pred find_timestamp_files_2(globals::in, string::in, module_name::in,
+    list(file_name)::out, io::di, io::uo) is det.
 
-find_timestamp_files_2(Globals, CompilationTarget, TimestampSuffix,
-        TopLevelModuleName, ModuleName, TimestampFiles, !IO) :-
-    (
-        CompilationTarget = target_asm,
-        ModuleName \= TopLevelModuleName
-    ->
-        % With `--target asm' all the nested sub-modules are placed in
-        % the `.s' file of the top-level module.
-        TimestampFiles = []
-    ;
-        module_name_to_file_name(Globals, ModuleName, TimestampSuffix,
-            do_create_dirs, FileName, !IO),
-        TimestampFiles = [FileName]
-    ).
+find_timestamp_files_2(Globals, TimestampSuffix, ModuleName, TimestampFiles,
+        !IO) :-
+    module_name_to_file_name(Globals, ModuleName, TimestampSuffix,
+        do_create_dirs, FileName, !IO),
+    TimestampFiles = [FileName].
 
 %-----------------------------------------------------------------------------%
 
@@ -1742,7 +1526,6 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     ->
         (
             ( Target = target_c
-            ; Target = target_asm
             ; Target = target_x86_64
             ),
             % Produce the grade independent header file <module>.mh
@@ -1794,32 +1577,6 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 maybe_set_exit_status(Succeeded, !IO)
             ),
             ExtraObjFiles = []
-        ;
-            Target = target_asm,
-            % Compile directly to assembler using the gcc back-end.
-            mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
-            maybe_mlds_to_gcc(Globals, MLDS, ContainsCCode, !IO),
-            (
-                TargetCodeOnly = yes,
-                ExtraObjFiles = []
-            ;
-                TargetCodeOnly = no,
-                % We don't invoke the assembler to produce an object file yet
-                % -- that is done at the top level.
-                %
-                % But if the module contained C foreign code then we will
-                % have compiled that to a separate C file. We need to invoke
-                % the C compiler on that.
-                (
-                    ContainsCCode = yes,
-                    mercury_compile_asm_c_code(Globals, ModuleName,
-                        ExtraObjFile, !IO),
-                    ExtraObjFiles = [ExtraObjFile]
-                ;
-                    ContainsCCode = no,
-                    ExtraObjFiles = []
-                )
-            )
         ;
             Target = target_c,
             (
