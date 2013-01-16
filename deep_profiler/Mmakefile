@@ -241,7 +241,7 @@ cs: $(mdprof_procrep.cs) $(cs_subdir)mdprof_procrep_init.c
 
 realclean_local:
 	rm -f .deep_tags tags DEEP_FLAGS DEEP_FLAGS.date \
-		$(MDBCOMP_MODULES) mdbcomp.*.err
+		.mdbcomp_modules $(MDBCOMP_MODULES) mdbcomp.*.err
 
 #-----------------------------------------------------------------------------#
 
