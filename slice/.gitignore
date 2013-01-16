@@ -37,3 +37,4 @@ shared_utilities.m
 config.log
 .slice_tags
 tags
+.mdbcomp_modules
