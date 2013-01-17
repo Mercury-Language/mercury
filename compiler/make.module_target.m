@@ -872,7 +872,7 @@ compilation_task(_, module_target_xml_doc) =
 
 % `--pic-reg' is harmless for architectures and grades where it is not needed
 % (it's only needed for grades using GCC global register variables on x86).
-get_pic_flags(pic) = ["--pic", "--pic-reg"].
+get_pic_flags(pic) = ["--pic-reg"].
 get_pic_flags(link_with_pic) = ["--pic-reg"].
 get_pic_flags(non_pic) = [].
 
