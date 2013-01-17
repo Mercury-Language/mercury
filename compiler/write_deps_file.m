@@ -406,19 +406,13 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
 
         module_name_to_file_name(Globals, ModuleName, ".c",
             do_not_create_dirs, CFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".s",
-            do_not_create_dirs, AsmFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".mh",
             do_not_create_dirs, HeaderFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".mih",
             do_not_create_dirs, HeaderFileName2, !IO),
         io.write_strings(DepStream, [
             "\n\n",
-            "ifeq ($(TARGET_ASM),yes)\n",
-            HeaderFileName, " ", HeaderFileName2, " : ", AsmFileName, "\n",
-            "else\n",
-            HeaderFileName, " ",  HeaderFileName2, " : ", CFileName, "\n",
-            "endif"
+            HeaderFileName, " ",  HeaderFileName2, " : ", CFileName, "\n"
         ], !IO),
 
         % The `.module_dep' file is made as a side effect of
@@ -433,19 +427,15 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             ModuleDepFileName, !IO),
         io.write_strings(DepStream, [
             "\n\n",
-            "ifeq ($(TARGET_ASM),yes)\n",
-            ModuleDepFileName, " : ", AsmFileName, "\n",
-            "else\n",
-            " ifeq ($(findstring il,$(GRADE)),il)\n",
+            "ifeq ($(findstring il,$(GRADE)),il)\n",
             ModuleDepFileName, " : ", ILFileName, "\n",
-            " else\n",
-            "  ifeq ($(findstring java,$(GRADE)),java)\n",
+            "else\n",
+            " ifeq ($(findstring java,$(GRADE)),java)\n",
             ModuleDepFileName, " : ", JavaFileName, "\n",
-            "  else\n",
+            " else\n",
             ModuleDepFileName, " : ", CFileName, "\n",
-            "  endif\n",
             " endif\n",
-            "endif"
+            "endif\n"
         ], !IO),
 
         % The .date and .date0 files depend on the .int0 files for the parent
@@ -730,18 +720,6 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 CDateFileName, " : ", SourceFileName, "\n",
                 "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
                     ModuleArg, " $(ERR_REDIRECT)\n",
-                "ifeq ($(TARGET_ASM),yes)\n",
-                AsmDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    "--target-code-only ", ModuleArg,
-                    " $(ERR_REDIRECT)\n",
-                PicAsmDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    "--target-code-only --pic ",
-                    "\\\n",
-                "\t\t--cflags ""$(GCCFLAGS_FOR_PIC)"" ",
-                    ModuleArg, " $(ERR_REDIRECT)\n",
-                "endif # TARGET_ASM\n",
                 ILDateFileName, " : ", SourceFileName, "\n",
                 "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
                     "--il-only ", ModuleArg,
@@ -1282,15 +1260,11 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     % to make sure the intermediate files are generated before the
     % object files, so that errors are reported as soon as possible.
     %
-    % If TARGET_ASM=yes, we define $(foo.cs_or_ss) to be $(foo.ss),
-    % otherwise it is defined to be $(foo.cs).
+    % XXX the .cs_or_ss target used to be required for the GCC backend.
+    % We should remove it at some point.
 
     io.write_strings(DepStream, [
-        "ifeq ($(TARGET_ASM),yes)\n",
-        MakeVarName, ".cs_or_ss =$(", MakeVarName, ".ss)\n",
-        "else\n",
-        MakeVarName, ".cs_or_ss =$(", MakeVarName, ".cs)\n",
-        "endif\n\n"
+        MakeVarName, ".cs_or_ss =$(", MakeVarName, ".cs)\n\n"
     ], !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
