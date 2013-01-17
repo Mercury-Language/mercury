@@ -42,8 +42,7 @@ VPATH = \
 MCFLAGS	     += --flags COMP_FLAGS $(CONFIG_OVERRIDE)
 
 ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
-MLOBJS       := ../main.$O \
-		../trace/lib$(EVENTSPEC_LIB_NAME).$A \
+MLOBJS       := ../trace/lib$(EVENTSPEC_LIB_NAME).$A \
 		$(MLOBJS)
 MLLIBS       += $(THREAD_LIBS)
 else
@@ -51,7 +50,7 @@ MLOBJS =
 endif
 
 ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS)
-MLFLAGS      += --no-main --shared
+MLFLAGS      += --shared
 C2INITARGS   += $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
 
 #
@@ -76,34 +75,6 @@ endif
 ifneq ("$(findstring -J\"-Xmx,$(JAVACFLAGS))","")
 JAVACFLAGS   += -J\"-Xmx2048m\"
 endif
-
-#-----------------------------------------------------------------------------#
-
-# Rules for preprocessing `.pp' files.
-# `.pp_date' files are used as timestamps as for interface files.
-
-#
-# Rule to generate foo.m from foo.pp by applying `sed $(PP_SED_EXPR)'
-#
-# Note that we set hash="#" for use in $(PP_SED_EXPR).
-# This seems to be the easiest way to get a "#" character;
-# we can't just use a Make variable since "#" is a comment character
-# in Make and so its hard to create a variable with that value.
-#
-$(dates_subdir)%.pp_date: %.pp
-	-hash="#"; \
-	m_file=$(<:.pp=.m); \
-	[ ! -f $$m_file ] || chmod +w $$m_file; \
-	sed $(PP_SED_EXPR) $< > $$m_file.tmp && \
-	mercury_update_interface -v $$m_file && \
-	touch $@ && \
-	chmod -w $$m_file
-
-#
-# Define $(PP_SED_EXPR) appropriately for each preprocessed module.
-#
-PP_SED_EXPR			= $(PP_SED_EXPR-$*)
-
 
 #-----------------------------------------------------------------------------#
 
@@ -132,9 +103,6 @@ all:		mercury $(TAGS_FILE_EXISTS)
 .PHONY: mercury
 mercury:	mercury_compile
 
-.PHONY: libmmc
-libmmc:		libmercury_compile.a mercury_compile_init.$O
-
 # The executable was previous known as `mercury_compile',
 # but now we generate it as `top_level'.  For compatibility with
 # various existing code, we make links to the old names.
@@ -155,16 +123,6 @@ ifeq ($(findstring il,$(GRADE)),il)
 	-editbin /nologo /stack:100000000 mercury_compile$(EXT_FOR_EXE)
 	cp ../browser/*.dll .
 endif
-
-libmercury_compile.a: lib$(MC_PROG).a
-	rm -f libmercury_compile.a
-	cp lib$(MC_PROG).a libmercury_compile.a
-	ar d libmercury_compile.a main.o
-
-mercury_compile_init.$O: $(MC_PROG)_init.$O
-	rm -f mercury_compile_init.$O
-	$(LN) $(MC_PROG)_init.$O mercury_compile_init.$O || \
-		cp $(MC_PROG)_init.$O mercury_compile_init.$O
 
 #-----------------------------------------------------------------------------#
 
@@ -187,7 +145,6 @@ CSCFLAGS=/lib
 %.il: opts
 else
 ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
-$(MC_PROG): ../main.$O
 $(MC_PROG): $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 $(MC_PROG): $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 $(MC_PROG): $(MDBCOMP_DIR)/lib$(MDBCOMP_LIB_NAME).$A
@@ -199,8 +156,6 @@ $(MC_PROG): $(TRACE_DIR)/lib$(EVENTSPEC_LIB_NAME).$A
 # if in .gc(.prof) grade
 endif
 endif
-
-$(MC_PROG)_init.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
 
@@ -254,13 +209,11 @@ dates:
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(MC_PROG).os)
 cs: $($(MC_PROG).cs)
-ss: $($(MC_PROG).ss)
 ils: $($(MC_PROG).ils)
 opts: $($(MC_PROG).opts)
 else
 os: $(MC_PROG).os
 cs: $(MC_PROG).cs
-ss: $(MC_PROG).ss
 ils: $(MC_PROG).ils
 opts: $(MC_PROG).opts
 endif

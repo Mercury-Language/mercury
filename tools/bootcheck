@@ -658,7 +658,6 @@ then
         set +x
         echo linking stage 2... 1>&2
         cd $stage2dir
-        $LN_S $root/main.c .
         mkdir compiler
         cd compiler
         # Break up the links into several chunks.
@@ -898,7 +897,6 @@ then
         then
             echo "GRADE = $grade" >> Mmake.params
         fi
-        echo 'GCC_SRC_DIR := ../$(GCC_SRC_DIR)' >> Mmake.params
         cd $root
 
         set -x
@@ -1163,7 +1161,6 @@ then
     echo linking stage 3... 1>&2
     set +x
     cd $stage3dir
-    $LN_S $root/main.c .
     mkdir compiler
     cd compiler
     # Break up the links into several chunks.
