@@ -465,7 +465,7 @@ tar: 	$(GENERATED_DOCS)
 	chmod -R a+r *
 	# Package up the mercury directory with some subdirectories
 	# excluded, into a gzipped tar archive that will unpack into
-	# mercury-compiler-$(VERSION).
+	# mercury-srcdist-$(VERSION).
 	DIRNAME="`pwd`";						\
 	ROOTNAME="`basename $$DIRNAME`";				\
 	export ROOTNAME;						\
@@ -474,10 +474,10 @@ tar: 	$(GENERATED_DOCS)
 		test -d $$ROOTNAME/bytecode && 				\
 			mv $$ROOTNAME/bytecode stuff-to-exclude; 	\
 		mv $$ROOTNAME/extras/quickcheck stuff-to-exclude;	\
-		mv $$ROOTNAME		mercury-compiler-$(VERSION);	\
-		tar --exclude ".git" -cf - mercury-compiler-$(VERSION) | \
-			gzip -9 > mercury-compiler-$(VERSION).tar.gz;	\
-		mv mercury-compiler-$(VERSION)	$$ROOTNAME;		\
+		mv $$ROOTNAME		mercury-srcdist-$(VERSION);	\
+		tar --exclude ".git" -cf - mercury-srcdist-$(VERSION) | \
+			gzip -9 > mercury-srcdist-$(VERSION).tar.gz;	\
+		mv mercury-srcdist-$(VERSION)	$$ROOTNAME;		\
 		mv stuff-to-exclude/quickcheck  $$ROOTNAME/extras/quickcheck; \
 		mv stuff-to-exclude/*		$$ROOTNAME;		\
 		rmdir stuff-to-exclude;					\
