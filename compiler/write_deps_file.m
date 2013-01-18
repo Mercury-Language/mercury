@@ -1226,26 +1226,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".ss = $(", !IO),
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_ss)\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".pic_ss = $(", !IO),
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_pic_ss)\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".s_dates = $(", !IO),
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_s_dates)\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".pic_s_dates = $(", !IO),
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_pic_s_dates)\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".os = $(", !IO),
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_os)\n", !IO),
