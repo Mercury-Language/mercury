@@ -2497,7 +2497,7 @@ display_compiler_version(!IO) :-
     library.version(Version),
     io.write_strings([
         "Mercury Compiler, version ", Version, "\n",
-        "Copyright (C) 1993-2012 The University of Melbourne\n"
+        "Copyright (C) 1993-2013 The University of Melbourne\n"
     ], !IO).
 
 :- mutable(already_printed_usage, bool, no, ground,

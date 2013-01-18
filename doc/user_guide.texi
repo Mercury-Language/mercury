@@ -76,7 +76,7 @@ into another language, under the above conditions for modified versions.
 @author Paul Bone
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995--2012 The University of Melbourne.
+Copyright @copyright{} 1995--2013 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
