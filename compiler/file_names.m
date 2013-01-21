@@ -332,8 +332,6 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
             ; Ext = ".check"
             ; Ext = ".ints"
             ; Ext = ".int3s"
-            ; Ext = ".ss"
-            ; Ext = ".pic_ss"
             ; Ext = ".ils"
             ; Ext = ".javas"
             ; Ext = ".classes"
@@ -343,8 +341,6 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
             ; Ext = ".trans_opts"
             ; Ext = ".all_ints"
             ; Ext = ".all_int3s"
-            ; Ext = ".all_ss"
-            ; Ext = ".all_pic_ss"
             ; Ext = ".all_opts"
             ; Ext = ".all_trans_opts"
             )

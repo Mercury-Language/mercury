@@ -1186,30 +1186,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_ss = ", !IO),
-    write_compact_dependencies_list(Globals, Modules,
-        "$(ss_subdir)", ".s", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_pic_ss = ", !IO),
-    write_compact_dependencies_list(Globals, Modules,
-        "$(pic_ss_subdir)", ".pic_s", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_s_dates = ", !IO),
-    write_compact_dependencies_list(Globals, Modules,
-        "$(s_dates_subdir)", ".s_date", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".all_pic_s_dates = ", !IO),
-    write_compact_dependencies_list(Globals, Modules,
-        "$(pic_s_dates_subdir)", ".pic_s_date", Basis, DepStream, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_os = ", !IO),
     write_compact_dependencies_list(Globals, Modules,
         "$(os_subdir)", ".$O", Basis, DepStream, !IO),
@@ -1615,8 +1591,6 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         do_create_dirs, InitFileName, !IO),
     module_name_to_file_name(Globals, ModuleName, "_init.c",
         do_create_dirs, InitCFileName, !IO),
-    module_name_to_file_name(Globals, ModuleName, "_init.s",
-        do_not_create_dirs, InitAsmFileName, !IO),
     module_name_to_file_name(Globals, ModuleName, "_init.$O",
         do_create_dirs, InitObjFileName, !IO),
     module_name_to_file_name(Globals, ModuleName, "_init.pic_o",
@@ -1641,7 +1615,7 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
         MakeVarName, !IO),
     generate_dep_file_clean_targets(Globals, DepStream, ModuleName,
-        MakeVarName, ExeFileName, InitCFileName, InitAsmFileName,
+        MakeVarName, ExeFileName, InitCFileName,
         InitObjFileName, InitPicObjFileName, InitFileName,
         LibFileName, SharedLibFileName, JarFileName, DepFileName, DvFileName,
         !IO).
@@ -2119,12 +2093,6 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
 
 generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
         MakeVarName, !IO) :-
-    % We need to explicitly mention $(foo.pic_ss) somewhere in the Mmakefile,
-    % otherwise it won't build properly with --target asm: GNU Make's pattern
-    % rule algorithm will try to use the .m -> .c_date -> .c -> .pic_o rule
-    % chain rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
-    % So don't remove the pic_ss target here.
-
     list.foldl(
         generate_dep_file_collective_target(Globals, DepStream, ModuleName,
             MakeVarName),
@@ -2134,17 +2102,13 @@ generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
             ".int3s" - ".date3s",
             ".opts" - ".optdates",
             ".trans_opts" - ".trans_opt_dates",
-            ".ss" - ".ss",
-            ".pic_ss" - ".pic_ss",
             ".ils" - ".ils",
             ".javas" - ".javas",
             ".classes" - ".classes",
             ".all_ints" - ".dates",
             ".all_int3s" - ".date3s",
             ".all_opts" - ".optdates",
-            ".all_trans_opts" - ".trans_opt_dates",
-            ".all_ss" - ".ss",
-            ".all_pic_ss" - ".pic_ss"
+            ".all_trans_opts" - ".trans_opt_dates"
         ], !IO).
 
 :- pred generate_dep_file_collective_target(globals::in, io.output_stream::in,
@@ -2161,12 +2125,12 @@ generate_dep_file_collective_target(Globals, DepStream, ModuleName,
     ], !IO).
 
 :- pred generate_dep_file_clean_targets(globals::in, io.output_stream::in,
-    module_name::in, string::in, string::in, string::in, string::in,
+    module_name::in, string::in, string::in, string::in,
     string::in, string::in, string::in, string::in, string::in, string::in,
     string::in, string::in, io::di, io::uo) is det.
 
 generate_dep_file_clean_targets(Globals, DepStream, ModuleName, MakeVarName,
-        ExeFileName, InitCFileName, InitAsmFileName,
+        ExeFileName, InitCFileName,
         InitObjFileName, InitPicObjFileName, InitFileName, LibFileName,
         SharedLibFileName, JarFileName, DepFileName, DvFileName, !IO) :-
     % If you change the clean targets below, please also update the
@@ -2189,10 +2153,6 @@ generate_dep_file_clean_targets(Globals, DepStream, ModuleName, MakeVarName,
         "\t-echo $(", MakeVarName, ".cs) ", InitCFileName,
             " | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".mihs) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_ss) ", InitAsmFileName,
-            " | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_pic_ss) ",
-            InitAsmFileName, " | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".all_os) ", InitObjFileName,
             " | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".all_pic_os) ",
@@ -2200,8 +2160,6 @@ generate_dep_file_clean_targets(Globals, DepStream, ModuleName, MakeVarName,
         "\t-echo $(", MakeVarName, ".c_dates) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".il_dates) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".java_dates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_s_dates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".all_pic_s_dates) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".useds) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".ils) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".javas) | xargs rm -f\n",
