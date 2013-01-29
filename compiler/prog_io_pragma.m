@@ -1614,9 +1614,9 @@ parse_pragma_foreign_decl_pragma(_ModuleName, PragmaName, PragmaTerms,
         MaybeItem = error1([Spec])
     ).
 
-    % This predicate parses both c_code and foreign_code pragmas.
-    % Processing of foreign_proc (or c_code that defines a procedure)
-    % is handled in parse_pragma_foreign_proc_pragma below.
+    % This predicate parses foreign_code pragmas.
+    % Processing of foreign_proc pragmas is handled in
+    % parse_pragma_foreign_proc_pragma below.
     %
 :- pred parse_pragma_foreign_code_pragma(module_name::in, string::in,
     list(term)::in, term::in, varset::in, prog_context::in, int::in,
@@ -1671,7 +1671,7 @@ parse_pragma_foreign_code_pragma(_ModuleName, PragmaName, PragmaTerms,
         MaybeItem = error1([Spec])
     ).
 
-    % This predicate parses both c_code and foreign_proc pragmas.
+    % This predicate parses foreign_proc pragmas.
     %
 :- pred parse_pragma_foreign_proc_pragma(module_name::in, string::in,
     list(term)::in, term::in, varset::in, prog_context::in, int::in,
