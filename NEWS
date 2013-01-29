@@ -1,3 +1,12 @@
+NEWS since Mercury 12.08
+------------------------
+
+Changes to the Mercury standard library:
+
+* We have added predicates to the calendar module for folding over the days
+  in a given range of dates: foldl_days/5, foldl2_days/7 and  foldl3_days/9.
+
+
 NEWS for Mercury 12.08
 ----------------------
 

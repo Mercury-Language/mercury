@@ -109,6 +109,7 @@ ORDINARY_PROGS=	\
 	float_map \
 	float_reg \
 	float_rounding_bug \
+ 	fold_days \
 	follow_code_bug \
 	follow_code_bug_2 \
 	foreign_and_mercury \
