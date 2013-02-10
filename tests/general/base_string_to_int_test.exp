@@ -8,4 +8,8 @@ string.base_string_to_int(10, "123abc", _) failed.
 string.base_string_to_int(10, "abc", _) failed.
 string.base_string_to_int(10, "+abc", _) failed.
 string.base_string_to_int(10, "-abc", _) failed.
+string.base_string_to_int(10, "Σ", _) failed.
+string.base_string_to_int(10, "-Σ", _) failed.
+string.base_string_to_int(10, "+Σ", _) failed.
+string.base_string_to_int(10, "123Σ", _) failed.
 min_int ok.

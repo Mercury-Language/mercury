@@ -36,6 +36,10 @@ main(!IO) :-
     test("abc", !IO),
     test("+abc", !IO),
     test("-abc", !IO),
+    test("Σ", !IO),
+    test("-Σ", !IO),
+    test("+Σ", !IO),
+    test("123Σ", !IO),
     ( int.bits_per_int = 32 ->
         MinIntStr = "-2147483648"
     ; int.bits_per_int = 64 ->

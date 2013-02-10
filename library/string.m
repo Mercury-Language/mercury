@@ -1185,15 +1185,15 @@ string.to_int(String, Int) :-
 
 string.base_string_to_int(Base, String, Int) :-
     string.index(String, 0, Char),
-    Len = string.count_codepoints(String),
+    End = string.count_code_units(String),
     ( Char = ('-') ->
-        Len > 1,
-        foldl_between(accumulate_negative_int(Base), String, 1, Len, 0, Int)
+        End > 1,
+        foldl_between(accumulate_negative_int(Base), String, 1, End, 0, Int)
     ; Char = ('+') ->
-        Len > 1,
-        foldl_between(accumulate_int(Base), String, 1, Len, 0, Int)
+        End > 1,
+        foldl_between(accumulate_int(Base), String, 1, End, 0, Int)
     ;
-        foldl_between(accumulate_int(Base), String, 0, Len, 0, Int)
+        foldl_between(accumulate_int(Base), String, 0, End, 0, Int)
     ).
 
 :- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
