@@ -41,12 +41,12 @@ else
     exit 2
 fi
 
-if test configure -ot configure.in
+if test configure -ot configure.ac
 then
     aclocal -I m4 && autoconf
 fi
 
-if ! test -f configure.in
+if ! test -f configure.ac
 then
     echo "You need to run this script at the top of the Mercury tree."
     exit 3
