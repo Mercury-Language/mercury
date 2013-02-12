@@ -295,6 +295,7 @@ ORDINARY_PROGS=	\
 	sv_record_update \
 	switch_detect \
 	system_sort \
+	tag_switch_dup_label \
 	target_mlobjs \
 	term_io_test \
 	term_to_univ_test \
