@@ -356,6 +356,9 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
     walked_stack_size = 100;
     walked_stack = MR_malloc(walked_stack_size * sizeof(MR_WalkedStackEntry));
 
+    proc_table = NULL;
+    cliques_last = NULL;
+
     stopped = MR_FALSE;
     problem = NULL;
     do {
@@ -419,7 +422,7 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
         MR_dump_stack_record_flush(fp, &params, &dump_info,
             print_stack_record);
 
-        free(walked_stack);
+        MR_free(walked_stack);
         return problem;
     }
 
@@ -660,8 +663,8 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
     }
 
 done:
-    free(walked_stack);
-    free(proc_table);
+    MR_free(walked_stack);
+    MR_free(proc_table);
     cl = cliques_last;
     while (cl != NULL) {
         MR_Clique   *old_cl;
@@ -802,10 +805,10 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
         result = MR_stack_walk_step(cur_proc_layout, &cur_label_layout,
             &stack_trace_sp, &stack_trace_curfr, &reused_frames, &problem);
         if (result == MR_STEP_ERROR_BEFORE) {
-            free(procs_table);
+            MR_free(procs_table);
             return problem;
         } else if (result == MR_STEP_ERROR_AFTER) {
-            free(procs_table);
+            MR_free(procs_table);
             return problem;
         }
 
@@ -910,7 +913,7 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
         }
     }
 
-    free(procs_table);
+    MR_free(procs_table);
     return NULL;
 }
 
