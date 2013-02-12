@@ -2208,6 +2208,7 @@ represent_locn_or_const_as_int_rval(Params, LvalOrConst, Rval, Type,
         ; LvalOrConst = unop(_, _)
         ; LvalOrConst = mem_addr(_)
         ; LvalOrConst = var(_)
+        ; LvalOrConst = mkword_hole(_)
         ),
         unexpected($module, $pred, "bad rval")
     ).

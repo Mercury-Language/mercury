@@ -537,6 +537,7 @@ make_live_in_rval(lval(Lval), !Live) :-
     make_live_in_rvals(AccessRvals, !Live).
 make_live_in_rval(mkword(_, Rval), !Live) :-
     make_live_in_rval(Rval, !Live).
+make_live_in_rval(mkword_hole(_), !Live).
 make_live_in_rval(const(_), !Live).
 make_live_in_rval(unop(_, Rval), !Live) :-
     make_live_in_rval(Rval, !Live).

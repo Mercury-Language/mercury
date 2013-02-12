@@ -338,6 +338,8 @@ dump_rval(_, var(Var)) =
 dump_rval(MaybeProcLabel, mkword(T, N)) =
     "mkword(" ++ int_to_string(T) ++ ", " ++
         dump_rval(MaybeProcLabel, N) ++ ")".
+dump_rval(_, mkword_hole(T)) =
+    "mkword_hole(" ++ int_to_string(T) ++ ")".
 dump_rval(MaybeProcLabel, const(C)) =
     dump_const(MaybeProcLabel, C).
 dump_rval(MaybeProcLabel, unop(O, N)) =

@@ -530,6 +530,7 @@ standardize_rval(Rval0, Rval) :-
         Rval = lval(Lval)
     ;
         ( Rval0 = mkword(_, _)
+        ; Rval0 = mkword_hole(_)
         ; Rval0 = const(_)
         ; Rval0 = mem_addr(_)
         ),

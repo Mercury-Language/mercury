@@ -411,6 +411,9 @@ standardize_rval(Rval, StdRval, DupProcMap) :-
         Rval = mkword(_, _),
         StdRval = Rval
     ;
+        Rval = mkword_hole(_),
+        StdRval = Rval
+    ;
         Rval = const(Const),
         standardize_rval_const(Const, StdConst, DupProcMap),
         StdRval = const(StdConst)

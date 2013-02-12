@@ -692,6 +692,7 @@ replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase, Rval0, Rval) :-
     ;
         ( Rval0 = lval(_)
         ; Rval0 = var(_)
+        ; Rval0 = mkword_hole(_)
         ; Rval0 = const(_)
         ; Rval0 = mem_addr(_)
         ),

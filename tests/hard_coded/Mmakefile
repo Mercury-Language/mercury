@@ -69,6 +69,8 @@ ORDINARY_PROGS=	\
 	direct_arg_cyclic1 \
 	direct_arg_intermod1 \
 	direct_arg_parent \
+	direct_arg_partial_inst \
+	direct_arg_partial_inst2 \
 	direct_arg_tags \
 	disjs_in_switch \
 	division_test \

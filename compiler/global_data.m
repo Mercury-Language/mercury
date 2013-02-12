@@ -1288,6 +1288,9 @@ remap_rval(Remap, Rval0, Rval) :-
         remap_rval(Remap, Ptr0, Ptr),
         Rval = mkword(Tag, Ptr)
     ;
+        Rval0 = mkword_hole(_Tag),
+        Rval = Rval0
+    ;
         Rval0 = const(Const0),
         remap_rval_const(Remap, Const0, Const),
         Rval = const(Const)

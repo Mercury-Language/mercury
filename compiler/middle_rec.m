@@ -673,6 +673,8 @@ find_used_registers_rval(Rval, !Used) :-
         Rval = mkword(_, Rval1),
         find_used_registers_rval(Rval1, !Used)
     ;
+        Rval = mkword_hole(_)
+    ;
         Rval = const(_)
     ;
         Rval = unop(_, Rval1),

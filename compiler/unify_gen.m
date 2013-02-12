@@ -1599,9 +1599,10 @@ generate_direct_arg_construct(Var, Arg, Ptag, Mode, Type, Code, !CI) :-
         LeftMode = top_unused,
         RightMode = top_unused
     ->
-        Code = empty
-        % free-free - ignore
         % XXX I think this will have to change if we start to support aliasing.
+        % Construct a tagged pointer to a pointer value which is unknown yet.
+        assign_const_to_var(Var, mkword_hole(Ptag), !CI),
+        Code = empty
     ;
         unexpected($module, $pred, "some strange unify")
     ).
@@ -1644,7 +1645,7 @@ generate_direct_arg_deconstruct(Var, Arg, Ptag, Mode, Type, Code, !CI) :-
         LeftMode = top_out,
         RightMode = top_in
     ->
-        assign_expr_to_var(Var, mkword(Ptag, var(Arg)), Code, !CI)
+        reassign_mkword_hole_var(Var, Ptag, var(Arg), Code, !CI)
     ;
         LeftMode = top_unused,
         RightMode = top_unused

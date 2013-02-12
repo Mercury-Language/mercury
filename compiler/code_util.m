@@ -382,6 +382,7 @@ lvals_in_lvals([First | Rest]) = FirstLvals ++ RestLvals :-
 lvals_in_rval(lval(Lval)) = [Lval | lvals_in_lval(Lval)].
 lvals_in_rval(var(_)) = [].
 lvals_in_rval(mkword(_, Rval)) = lvals_in_rval(Rval).
+lvals_in_rval(mkword_hole(_)) = [].
 lvals_in_rval(const(_)) = [].
 lvals_in_rval(unop(_, Rval)) = lvals_in_rval(Rval).
 lvals_in_rval(binop(_, Rval1, Rval2)) =

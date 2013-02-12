@@ -686,6 +686,8 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
         output_record_rval_decls_format(Info, SubRval,
             FirstIndent, LaterIndent, !N, !DeclSet, !IO)
     ;
+        Rval = mkword_hole(_)
+    ;
         Rval = const(Const),
         ( Const = llconst_code_addr(CodeAddress) ->
             output_record_code_addr_decls_format(Info, CodeAddress,
@@ -1020,6 +1022,11 @@ output_rval(Info, Rval, !IO) :-
             output_rval_as_type(Info, SubRval, lt_data_ptr, !IO),
             io.write_string(")", !IO)
         )
+    ;
+        Rval = mkword_hole(Tag),
+        io.write_string("MR_tmkword(", !IO),
+        io.write_int(Tag, !IO),
+        io.write_string(", 0)", !IO)
     ;
         Rval = lval(Lval),
         % If a field is used as an rval, then we need to use the

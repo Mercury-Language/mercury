@@ -654,6 +654,8 @@ transform_rval(!RegMap, mkword(Tag, Rval), no, Instrs) :-
     LoadAddr = x86_64_instr(lea(MemRef, TempReg)),
     SetTag = x86_64_instr(add(operand_imm(imm32(int32(Tag))), TempReg)),
     Instrs = yes(Instr0 ++ [LoadAddr] ++ [SetTag]).
+transform_rval(!RegMap, mkword_hole(_), _, _) :-
+    sorry($module, $pred, "mkword_hole").
 transform_rval(!RegMap, const(llconst_true), Op, no) :-
     Op = yes(operand_label("<<llconst_true>>")).
 transform_rval(!RegMap, const(llconst_false), Op, no) :-

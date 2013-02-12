@@ -1179,6 +1179,9 @@
     ;       mkword(tag, rval)
             % Given a pointer and a tag, mkword returns a tagged pointer.
 
+    ;       mkword_hole(tag)
+            % Make a tagged pointer to an address which is not yet known.
+
     ;       const(rval_const)
 
     ;       unop(unary_op, rval)
@@ -1666,6 +1669,7 @@ rval_type(var(_), _) :-
     % it is only the reverse direction we need to avoid.
     %
 rval_type(mkword(_, _), lt_data_ptr).
+rval_type(mkword_hole(_), lt_data_ptr).
 rval_type(const(Const), Type) :-
     const_type(Const, Type).
 rval_type(unop(UnOp, _), Type) :-

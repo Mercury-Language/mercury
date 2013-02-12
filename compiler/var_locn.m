@@ -177,6 +177,16 @@
 :- pred var_locn_assign_expr_to_var(prog_var::in, rval::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
+    % var_locn_reassign_mkword_hole_var(Var, Ptag, Rval, Code, !VarLocnInfo):
+    %
+    % Generates code to execute the assignment Var := mkword(Ptag, Rval), and
+    % updates the state of !VarLocnInfo accordingly.  Var must previously have
+    % been assigned the constant expression mkword_hole(Ptag).
+    %
+:- pred var_locn_reassign_mkword_hole_var(module_info::in, prog_var::in,
+    tag::in, rval::in, llds_code::out, var_locn_info::in, var_locn_info::out)
+    is det.
+
     % var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var,
     %   ReserveWordAtStart, Ptag, MaybeRvals, MaybeSize, FieldAddrs, TypeMsg,
     %   MayUseAtomic, Label, Code, !StaticCellInfo, !VarLocnInfo):
@@ -842,6 +852,41 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
         DeadOrAlive),
     map.det_update(ContainedVar, State, !VarStateMap).
 
+%-----------------------------------------------------------------------------%
+
+var_locn_reassign_mkword_hole_var(ModuleInfo, Var, Ptag, Rval, Code, !VLI) :-
+    var_locn_get_var_state_map(!.VLI, VarStateMap0),
+    map.lookup(VarStateMap0, Var, State0),
+    (
+        State0 = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using0,
+            DeadOrAlive0),
+        (
+            MaybeConstRval = yes(mkword_hole(Ptag))
+        ;
+            MaybeConstRval = no
+            % Already stored value.
+        ),
+        MaybeExprRval = no,
+        set_of_var.is_empty(Using0),
+        DeadOrAlive0 = doa_alive
+    ->
+        set.fold(clobber_old_lval(ModuleInfo, Var), Lvals, !VLI),
+
+        var_locn_get_var_state_map(!.VLI, VarStateMap1),
+        map.det_remove(Var, _State1, VarStateMap1, VarStateMap),
+        var_locn_set_var_state_map(VarStateMap, !VLI),
+
+        var_locn_assign_expr_to_var(Var, Rval, Code, !VLI)
+    ;
+        unexpected($module, $pred, "unexpected var_state")
+    ).
+
+:- pred clobber_old_lval(module_info::in, prog_var::in, lval::in,
+    var_locn_info::in, var_locn_info::out) is det.
+
+clobber_old_lval(ModuleInfo, Var, Lval, !VLI) :-
+    record_clobbering(Lval, [Var], !VLI).
+
 %----------------------------------------------------------------------------%
 
 var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
@@ -1181,6 +1226,9 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
         EvalCode = empty,
         AssignCode = singleton(llds_instr(assign(Target, Rval0), Comment))
     ;
+        Rval0 = mkword_hole(_),
+        unexpected($module, $pred, "mkword_hole")
+    ;
         Rval0 = mem_addr(_),
         unexpected($module, $pred, "unknown rval")
     ),
@@ -1204,6 +1252,7 @@ materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI) :-
     ;
         ( Rval0 = const(_)
         ; Rval0 = mkword(_, _)
+        ; Rval0 = mkword_hole(_)
         ; Rval0 = unop(_, _)
         ; Rval0 = binop(_, _, _)
         ; Rval0 = lval(_)
@@ -2293,6 +2342,7 @@ expr_is_constant(VarStateMap, ExprnOpts,
 expr_is_constant(VarStateMap, ExprnOpts,
         mkword(Tag, Expr0), mkword(Tag, Expr)) :-
     expr_is_constant(VarStateMap, ExprnOpts, Expr0, Expr).
+expr_is_constant(_, _ExprnOpts, mkword_hole(Tag), mkword_hole(Tag)).
 expr_is_constant(VarStateMap, ExprnOpts, var(Var), Rval) :-
     map.search(VarStateMap, Var, State),
     State = var_state(_, yes(Rval), _, _, _),
@@ -2392,6 +2442,10 @@ var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
             Avoid, SubRval, Code, !VLI),
         Rval = mkword(Tag, SubRval)
     ;
+        Rval0 = mkword_hole(_Tag),
+        Rval = Rval0,
+        Code = empty
+    ;
         Rval0 = unop(Unop, SubRval0),
         var_locn_materialize_vars_in_rval_avoid(ModuleInfo, SubRval0, no,
             Avoid, SubRval, Code, !VLI),
@@ -2435,11 +2489,9 @@ var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
 var_locn_materialize_vars_in_mem_ref_avoid(ModuleInfo, MemRef0, MemRef, Avoid,
         Code, !VLI) :-
     (
-        MemRef0 = stackvar_ref(_),
-        MemRef = MemRef0,
-        Code = empty
-    ;
-        MemRef0 = framevar_ref(_),
+        ( MemRef0 = stackvar_ref(_)
+        ; MemRef0 = framevar_ref(_)
+        ),
         MemRef = MemRef0,
         Code = empty
     ;
@@ -2486,8 +2538,8 @@ materialize_var(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code,
         !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap),
     map.lookup(VarStateMap, Var, State),
-    State = var_state(_Lvals, _MaybeConstRval, MaybeExprRval, UsingVars,
-        _DeadOrAlive),
+    State = var_state(_Lvals, _MaybeConstRval, MaybeExprRval,
+        UsingVars, _DeadOrAlive),
     (
         MaybeExprRval = yes(ExprRval)
     ;

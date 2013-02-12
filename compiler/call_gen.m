@@ -766,6 +766,7 @@ generate_builtin_arg(Rval0, Rval, Code, !CI) :-
         ; Rval0 = unop(_, _)
         ; Rval0 = binop(_, _, _)
         ; Rval0 = mkword(_, _)
+        ; Rval0 = mkword_hole(_)
         ; Rval0 = mem_addr(_)
         ; Rval0 = lval(_)
         ),

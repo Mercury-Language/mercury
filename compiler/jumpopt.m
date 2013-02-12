@@ -1123,6 +1123,7 @@ short_labels_rval(_, var(_), _) :-
     unexpected($module, $pred, "var").
 short_labels_rval(InstrMap, mkword(Tag, Rval0), mkword(Tag, Rval)) :-
     short_labels_rval(InstrMap, Rval0, Rval).
+short_labels_rval(_, mkword_hole(Tag), mkword_hole(Tag)).
 short_labels_rval(InstrMap, const(Const0), const(Const)) :-
     short_labels_const(InstrMap, Const0, Const).
 short_labels_rval(InstrMap, unop(Op, Rval0), unop(Op, Rval)) :-

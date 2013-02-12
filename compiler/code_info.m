@@ -3764,6 +3764,9 @@ should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
 :- pred assign_expr_to_var(prog_var::in, rval::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
+:- pred reassign_mkword_hole_var(prog_var::in, tag::in, rval::in,
+    llds_code::out, code_info::in, code_info::out) is det.
+
 :- pred assign_field_lval_expr_to_var(prog_var::in, list(lval)::in, rval::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
@@ -3909,6 +3912,20 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
     (
         Lvals = [],
         var_locn_assign_expr_to_var(Var, Rval, Code,
+            VarLocnInfo0, VarLocnInfo)
+    ;
+        Lvals = [_ | _],
+        unexpected($module, $pred, "non-var lvals")
+    ),
+    set_var_locn_info(VarLocnInfo, !CI).
+
+reassign_mkword_hole_var(Var, Ptag, Rval, Code, !CI) :-
+    get_var_locn_info(!.CI, VarLocnInfo0),
+    Lvals = lvals_in_rval(Rval),
+    (
+        Lvals = [],
+        get_module_info(!.CI, ModuleInfo),
+        var_locn_reassign_mkword_hole_var(ModuleInfo, Var, Ptag, Rval, Code,
             VarLocnInfo0, VarLocnInfo)
     ;
         Lvals = [_ | _],

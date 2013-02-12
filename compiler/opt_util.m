@@ -743,6 +743,7 @@ rval_refers_stackvars(var(_)) = _ :-
     unexpected($module, $pred, "var").
 rval_refers_stackvars(mkword(_, Rval)) =
     rval_refers_stackvars(Rval).
+rval_refers_stackvars(mkword_hole(_)) = no.
 rval_refers_stackvars(const(_)) = no.
 rval_refers_stackvars(unop(_, Rval)) =
     rval_refers_stackvars(Rval).
@@ -1742,6 +1743,8 @@ count_temps_rval(Rval, !R, !F) :-
         Rval = mkword(_Tag, SubRval),
         count_temps_rval(SubRval, !R, !F)
     ;
+        Rval = mkword_hole(_Tag)
+    ;
         Rval = const(_Const)
     ;
         Rval = unop(_Unop, SubRvalA),
@@ -1953,6 +1956,7 @@ touches_nondet_ctrl_rval(lval(Lval)) =
 touches_nondet_ctrl_rval(var(_)) = no.
 touches_nondet_ctrl_rval(mkword(_, Rval)) =
     touches_nondet_ctrl_rval(Rval).
+touches_nondet_ctrl_rval(mkword_hole(_)) = no.
 touches_nondet_ctrl_rval(const(_)) = no.
 touches_nondet_ctrl_rval(unop(_, Rval)) =
     touches_nondet_ctrl_rval(Rval).
@@ -2594,6 +2598,9 @@ replace_labels_rval(Rval0, Rval, ReplMap) :-
         Rval0 = mkword(Tag, SubRval0),
         replace_labels_rval(SubRval0, SubRval, ReplMap),
         Rval = mkword(Tag, SubRval)
+    ;
+        Rval0 = mkword_hole(Tag),
+        Rval = mkword_hole(Tag)
     ;
         Rval0 = const(Const0),
         replace_labels_rval_const(Const0, Const, ReplMap),

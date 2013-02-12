@@ -2108,11 +2108,18 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
         Statement = ml_gen_assign(VarLval, CastRval, Context),
         Statements = [Statement]
     ;
-        % Unused - unused: the unification has no effect.
+        % Unused - unused: it is a partial assignment to the LHS
+        % where the tag is known but the argument isn't.
         LeftMode = top_unused,
         RightMode = top_unused
     ->
-        Statements = []
+        MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
+            native_if_possible, ml_const(mlconst_null(MLDS_ArgType)), ArgRval),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+        CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
+        Statement = ml_gen_assign(VarLval, CastRval, Context),
+        Statements = [Statement]
     ;
         unexpected($module, $pred, "some strange unify")
     ).
