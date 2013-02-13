@@ -35,9 +35,11 @@
     --->    ok
     ;       error(string).
 
-:- type maybe_error(T)
+:- type maybe_error(T) == maybe_error(T, string).
+
+:- type maybe_error(T, E)
     --->    ok(T)
-    ;       error(string).
+    ;       error(E).
 
 :- inst maybe_error(I)
     --->    ok(I)

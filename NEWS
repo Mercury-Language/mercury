@@ -48,6 +48,9 @@ Changes to the Mercury standard library:
   list.all_true_corresponding/3, list.all_false_corresponding/3 and
   list.same_length3/3.
 
+* We have added the type maybe.maybe_error/2 which is also polymorphic in
+  the type of the error.
+
 Changes to the Mercury compiler:
 
 * The option `--warn-non-tail-recursion' no longer requires
