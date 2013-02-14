@@ -446,9 +446,7 @@ output_java_decl(Info, Indent, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, _IsLocal, Code, Context),
     (
         Lang = lang_java,
-        indent_line(Info, mlds_make_context(Context), Indent, !IO),
-        io.write_string(Code, !IO),
-        io.nl(!IO)
+        write_string_with_context_block(Info, Indent, Code, Context, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
@@ -466,9 +464,7 @@ output_java_body_code(Info, Indent, UserForeignCode, !IO) :-
     % Only output Java code.
     (
         Lang = lang_java,
-        indent_line(Info, mlds_make_context(Context), Indent, !IO),
-        io.write_string(Code, !IO),
-        io.nl(!IO)
+        write_string_with_context_block(Info,  Indent, Code, Context, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
@@ -2151,7 +2147,7 @@ output_defns(Info, Indent, OutputAux, Defns, !IO) :-
 
 output_defn(Info, Indent, OutputAux, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
-    indent_line(Info, Context, Indent, !IO),
+    indent_line(Info, marker_comment, Context, Indent, !IO),
     ( DefnBody = mlds_function(_, _, body_external, _, _) ->
         % This is just a function declaration, with no body.
         % Java doesn't support separate declarations and definitions,
@@ -3070,11 +3066,11 @@ output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
         MaybeBody = body_defined_here(Body),
         output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO),
         io.write_string("\n", !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Info, marker_comment, Context, Indent, !IO),
         io.write_string("{\n", !IO),
         FuncInfo = func_info(Signature),
         output_statement(Info, Indent + 1, FuncInfo, Body, _ExitMethods, !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Info, marker_comment, Context, Indent, !IO),
         io.write_string("}\n", !IO)    % end the function
     ;
         MaybeBody = body_external
@@ -3907,7 +3903,7 @@ output_statements(Info, Indent, FuncInfo, [Statement | Statements],
 
 output_statement(Info, Indent, FuncInfo,
         statement(Statement, Context), ExitMethods, !IO) :-
-    output_context(Info, Context, !IO),
+    output_context(Info, marker_comment, Context, !IO),
     output_stmt(Info, Indent, FuncInfo, Statement, Context,
         ExitMethods, !IO).
 
@@ -3928,7 +3924,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         ),
         output_statements(Info, Indent + 1, FuncInfo, Statements,
             ExitMethods, !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Info, marker_comment, Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = ml_stmt_while(Kind, Cond, BodyStatement),
@@ -3956,7 +3952,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         io.write_string("do\n", !IO),
         output_statement(Info, Indent + 1, FuncInfo, BodyStatement,
             StmtExitMethods, !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Info, marker_comment, Context, Indent, !IO),
         io.write_string("while (", !IO),
         output_rval(Info, Cond, !IO),
         io.write_string(");\n", !IO),
@@ -3994,7 +3990,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             ThenExitMethods, !IO),
         (
             MaybeElse = yes(Else),
-            indent_line(Info, Context, Indent, !IO),
+            indent_line(Info, marker_comment, Context, Indent, !IO),
             io.write_string("else\n", !IO),
             output_statement(Info, Indent + 1, FuncInfo, Else,
                 ElseExitMethods, !IO),
@@ -4010,13 +4006,13 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         )
     ;
         Statement = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Info, marker_comment, Context, Indent, !IO),
         io.write_string("switch (", !IO),
         output_rval_maybe_with_enum(Info, Val, !IO),
         io.write_string(") {\n", !IO),
         output_switch_cases(Info, Indent + 1, FuncInfo, Context, Cases,
             Default, ExitMethods, !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Info, marker_comment, Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = ml_stmt_label(_),
@@ -4043,7 +4039,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Info, Context, Indent + 1, !IO),
+        indent_line(Info, marker_comment, Context, Indent + 1, !IO),
         (
             Results = []
         ;
@@ -4312,7 +4308,7 @@ output_boxed_args(Info, [CallArg | CallArgs], [CallArgType | CallArgTypes],
 output_assign_results(_, [], [], _, _, _, !IO).
 output_assign_results(Info, [Lval | Lvals], [Type | Types], ResultIndex,
         Indent, Context, !IO) :-
-    indent_line(Info, Context, Indent, !IO),
+    indent_line(Info, marker_comment, Context, Indent, !IO),
     output_lval(Info, Lval, !IO),
     io.write_string(" = ", !IO),
     output_unboxed_result(Info, Type, ResultIndex, !IO),
@@ -4378,7 +4374,7 @@ output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
     output_statement(Info, Indent + 1, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( set.member(can_fall_through, StmtExitMethods) ->
-        indent_line(Info, Context, Indent + 1, !IO),
+        indent_line(Info, marker_comment, Context, Indent + 1, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = (StmtExitMethods `set.insert` can_break)
             `set.delete` can_fall_through
@@ -4393,7 +4389,7 @@ output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
 output_case_cond(Info, Indent, Context, Match, !IO) :-
     (
         Match = match_value(Val),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Info, marker_comment, Context, Indent, !IO),
         io.write_string("case ", !IO),
         ( Val = ml_const(mlconst_enum(N, _)) ->
             io.write_int(N, !IO)
@@ -4417,15 +4413,15 @@ output_switch_default(Info, Indent, FuncInfo, Context, Default,
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
         Default = default_case(Statement),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Info, marker_comment, Context, Indent, !IO),
         io.write_string("default:\n", !IO),
         output_statement(Info, Indent + 1, FuncInfo, Statement, ExitMethods,
             !IO)
     ;
         Default = default_is_unreachable,
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Info, marker_comment, Context, Indent, !IO),
         io.write_string("default: /*NOTREACHED*/\n", !IO),
-        indent_line(Info, Context, Indent + 1, !IO),
+        indent_line(Info, marker_comment, Context, Indent + 1, !IO),
         io.write_string("throw new jmercury.runtime.UnreachableDefault();\n",
             !IO),
         ExitMethods = set.make_singleton_set(can_throw)
@@ -4474,7 +4470,7 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
 
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Info, Context, Indent + 1, !IO),
+        indent_line(Info, marker_comment, Context, Indent + 1, !IO),
         output_lval(Info, Target, !IO),
         io.write_string(" = new ", !IO),
         % Generate class constructor name.
@@ -4553,11 +4549,12 @@ output_target_code_component(Info, TargetCode, !IO) :-
         TargetCode = user_target_code(CodeString, MaybeUserContext, _Attrs),
         (
             MaybeUserContext = yes(ProgContext),
-            output_context(Info, mlds_make_context(ProgContext), !IO)
+            write_string_with_context_block(Info, 0, CodeString,
+                ProgContext, !IO)
         ;
-            MaybeUserContext = no
-        ),
-        io.write_string(CodeString, !IO)
+            MaybeUserContext = no,
+            io.write_string(CodeString, !IO)
+        )
     ;
         TargetCode = raw_target_code(CodeString, _Attrs),
         io.write_string(CodeString, !IO)
@@ -5155,10 +5152,23 @@ mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
 :- mutable(last_context, prog_context, context_init, ground,
     [untrailed, attach_to_io_state]).
 
-:- pred output_context(java_out_info::in, mlds_context::in,
-    io::di, io::uo) is det.
+:- type context_marker
+    --->    marker_begin_block
+                % The beginning of some Java foreign code whose errors
+                % should be reported with Mercury line numbers.
 
-output_context(Info, Context, !IO) :-
+    ;       marker_end_block
+                % The end of such a block.
+
+    ;       marker_comment.
+                % This marks mercury generated code for which Java's line
+                % numbers should be used, it's just a comment for the
+                % Mercury developers.
+
+:- pred output_context(java_out_info::in, context_marker::in,
+    mlds_context::in, io::di, io::uo) is det.
+
+output_context(Info, Marker, Context, !IO) :-
     LineNumbers = Info ^ joi_line_numbers,
     (
         LineNumbers = yes,
@@ -5167,18 +5177,25 @@ output_context(Info, Context, !IO) :-
         term.context_file(ProgContext, File),
         term.context_line(ProgContext, Line),
         (
-            ProgContext \= LastContext,
-            Line > 0,
-            File \= ""
+            % It is safe to ignore marker comments when the comment isn't
+            % useful.  All other marker types must be emitted in all cases.
+            Marker = marker_comment
+            =>
+            (
+                ProgContext \= LastContext,
+                Line > 0,
+                File \= ""
+            )
         ->
             % Java doesn't have an equivalent of #line directives.
+            % We use the token MER_LINE to allow us to filter these lines out
+            % of the file when mangling javac's output.
             % \u is treated as a Unicode escape even with comments.
-            io.write_string("// ", !IO),
             string.replace_all(File, "\\u", "\\\\u", SafePath),
-            io.write_string(SafePath, !IO),
-            io.write_string(":", !IO),
-            io.write_int(Line, !IO),
-            io.nl(!IO),
+            % Do not modify this format string without modifying
+            % util/mfilterjavac.m
+            io.format("// %s %s:%d\n",
+                [s(marker_string(Marker)), s(SafePath), i(Line)], !IO),
             set_last_context(ProgContext, !IO)
         ;
             true
@@ -5187,11 +5204,19 @@ output_context(Info, Context, !IO) :-
         LineNumbers = no
     ).
 
-:- pred indent_line(java_out_info::in, mlds_context::in, indent::in,
-    io::di, io::uo) is det.
+    % Do not modify these strings without modifying util/mfilterjavac.m
+    %
+:- func marker_string(context_marker) = string.
 
-indent_line(Info, Context, N, !IO) :-
-    output_context(Info, Context, !IO),
+marker_string(marker_begin_block) = "MER_FOREIGN_BEGIN".
+marker_string(marker_end_block) = "MER_FOREIGN_END".
+marker_string(marker_comment) = "".
+
+:- pred indent_line(java_out_info::in, context_marker::in, mlds_context::in,
+    indent::in, io::di, io::uo) is det.
+
+indent_line(Info, Marker, Context, N, !IO) :-
+    output_context(Info, Marker, Context, !IO),
     indent_line(N, !IO).
 
     % A value of type `indent' records the number of levels of indentation
@@ -5209,6 +5234,41 @@ indent_line(N, !IO) :-
         io.write_string("  ", !IO),
         indent_line(N - 1, !IO)
     ).
+
+:- pred write_string_with_context_block(java_out_info::in, indent::in,
+    string::in, prog_context::in, io::di, io::uo) is det.
+
+write_string_with_context_block(Info, Indent, Code, Context, !IO) :-
+    indent_line(Info, marker_begin_block, mlds_make_context(Context),
+        Indent, !IO),
+    io.write_string(Code, !IO),
+    io.nl(!IO),
+    Context = context(File, Lines0),
+    ContextEnd = context(File, Lines0 + num_lines(Code)),
+    indent_line(Info, marker_end_block, mlds_make_context(ContextEnd),
+        Indent, !IO).
+
+:- func num_lines(string) = int.
+
+num_lines(String) = Num :-
+    foldl2((pred(C::in, !.N::in, !:N::out, Prev::in, C::out) is det :-
+        (
+            % CR or LF or CRLF increment the line count, with care to ensure
+            % that CRLF is only counted once.
+            (
+                C = '\r'
+            ;
+                (
+                    C = '\n',
+                    Prev \= '\r'
+                )
+            )
+        ->
+            !:N = !.N + 1
+        ;
+            true
+        )
+        ), String, 1, Num, 'x', _).
 
 %-----------------------------------------------------------------------------%
 
