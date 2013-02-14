@@ -183,9 +183,8 @@
     % updates the state of !VarLocnInfo accordingly.  Var must previously have
     % been assigned the constant expression mkword_hole(Ptag).
     %
-:- pred var_locn_reassign_mkword_hole_var(module_info::in, prog_var::in,
-    tag::in, rval::in, llds_code::out, var_locn_info::in, var_locn_info::out)
-    is det.
+:- pred var_locn_reassign_mkword_hole_var(prog_var::in, tag::in, rval::in,
+    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var,
     %   ReserveWordAtStart, Ptag, MaybeRvals, MaybeSize, FieldAddrs, TypeMsg,
@@ -854,7 +853,7 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 
 %-----------------------------------------------------------------------------%
 
-var_locn_reassign_mkword_hole_var(ModuleInfo, Var, Ptag, Rval, Code, !VLI) :-
+var_locn_reassign_mkword_hole_var(Var, Ptag, Rval, Code, !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     map.lookup(VarStateMap0, Var, State0),
     (
@@ -870,7 +869,7 @@ var_locn_reassign_mkword_hole_var(ModuleInfo, Var, Ptag, Rval, Code, !VLI) :-
         set_of_var.is_empty(Using0),
         DeadOrAlive0 = doa_alive
     ->
-        set.fold(clobber_old_lval(ModuleInfo, Var), Lvals, !VLI),
+        set.fold(clobber_old_lval(Var), Lvals, !VLI),
 
         var_locn_get_var_state_map(!.VLI, VarStateMap1),
         map.det_remove(Var, _State1, VarStateMap1, VarStateMap),
@@ -881,10 +880,10 @@ var_locn_reassign_mkword_hole_var(ModuleInfo, Var, Ptag, Rval, Code, !VLI) :-
         unexpected($module, $pred, "unexpected var_state")
     ).
 
-:- pred clobber_old_lval(module_info::in, prog_var::in, lval::in,
+:- pred clobber_old_lval(prog_var::in, lval::in,
     var_locn_info::in, var_locn_info::out) is det.
 
-clobber_old_lval(ModuleInfo, Var, Lval, !VLI) :-
+clobber_old_lval(Var, Lval, !VLI) :-
     record_clobbering(Lval, [Var], !VLI).
 
 %----------------------------------------------------------------------------%

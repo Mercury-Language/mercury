@@ -3924,8 +3924,7 @@ reassign_mkword_hole_var(Var, Ptag, Rval, Code, !CI) :-
     Lvals = lvals_in_rval(Rval),
     (
         Lvals = [],
-        get_module_info(!.CI, ModuleInfo),
-        var_locn_reassign_mkword_hole_var(ModuleInfo, Var, Ptag, Rval, Code,
+        var_locn_reassign_mkword_hole_var(Var, Ptag, Rval, Code,
             VarLocnInfo0, VarLocnInfo)
     ;
         Lvals = [_ | _],
