@@ -2963,7 +2963,7 @@ case "$host" in
         # Note that for old versions of Linux / glibc,
         # you may also need to make sure that you don't
         # pass -ansi to gcc.
-        CFLAGS_FOR_THREADS="-DLINUX_THREADS -D_THREAD_SAFE -D_REENTRANT"
+        CFLAGS_FOR_THREADS="-DGC_LINUX_THREADS -D_THREAD_SAFE -D_REENTRANT"
         THREAD_LIBS="-lpthread -ldl"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"

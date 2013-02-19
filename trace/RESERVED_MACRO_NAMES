@@ -31,7 +31,6 @@ pid_t
 __GC
 _GC_H
 HIDE_POINTER
-LINUX_THREADS
 REVEAL_POINTER
 #-----------------------------------------------------------------------------#
 # These are defined by boehm_gc/include/gc_pthread_redirects.h
