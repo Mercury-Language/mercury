@@ -94,6 +94,7 @@ CFLAGS= -I$(srcdir)/include -I$(AO_INSTALL_DIR)/include \
 
 ifeq ($(findstring par,$(GRADE)),par)
 CFLAGS += $(BOEHM_CFLAGS_FOR_THREADS)
+MAYBE_THREAD_LIBS = $(THREAD_LIBS)
 endif
 
 # If we are in the gcd grade then don't define -DNO_DEBUGGING
@@ -109,6 +110,8 @@ endif
 # Note that HOSTCFLAGS should include any -D flags that affect thread support.
 #
 # Mercury-specific: we set HOSTCC in Mmake.common
+# CFLAGS_FOR_THREADS is NOT expanded into HOSTCFLAGS but that only affects
+# threadlibs.c; we use our THREAD_LIBS variable instead.
 ifndef HOSTCC
 HOSTCC=$(CC)
 endif
@@ -354,10 +357,11 @@ lib$(GC_GRADE).so: $(OBJS) $(UTILS) # dyn_load_sunos53.o
 	./if_mach SPARC SOLARIS $(MAKE) dyn_load_sunos53.o
 	./if_mach SPARC SOLARIS \
 	$(LINK_SHARED_OBJ) -o lib$(GC_GRADE).so $(OBJS) dyn_load_sunos53.o \
-		-ldl `./threadlibs`
+		-ldl $(MAYBE_THREAD_LIBS)
 	./if_not_there on_sparc_sunos5_so $(MAKE) dyn_load.o
 	./if_not_there on_sparc_sunos5_so \
-	$(LINK_SHARED_OBJ) -o lib$(GC_GRADE).so $(OBJS) dyn_load.o -lc
+	$(LINK_SHARED_OBJ) -o lib$(GC_GRADE).so $(OBJS) dyn_load.o \
+		-lc $(MAYBE_THREAD_LIBS)
 
 # Darwin shared library version of the gc.
 lib$(GC_GRADE).dylib: $(OBJS) $(UTILS)
