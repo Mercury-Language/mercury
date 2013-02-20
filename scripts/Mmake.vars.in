@@ -67,15 +67,6 @@ DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
 GRADE		= $(DEFAULT_GRADE)
 GRADESTRING	= $(shell $(MCOGS) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS))
 
-# This may be overridden on the command line
-TARGET_ASM	= no
-
-ifeq ($(TARGET_ASM),yes)
-ASM_OPT  = --target asm
-else
-ASM_OPT  =
-endif
-
 MERCURY_MAIN_MODULES =
 
 #
@@ -111,7 +102,7 @@ endif
 # Stuff which is not specific to any back-end
 #
 
-ALL_GRADEFLAGS  = $(USUAL_GRADEFLAGS) $(ASM_OPT)
+ALL_GRADEFLAGS  = $(USUAL_GRADEFLAGS)
 USUAL_GRADEFLAGS = $(GRADEFLAGS) $(EXTRA_GRADEFLAGS) $(TARGET_GRADEFLAGS)
 GRADEFLAGS	= --grade $(GRADE)
 EXTRA_GRADEFLAGS =

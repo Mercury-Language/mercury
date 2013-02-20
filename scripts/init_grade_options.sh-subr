@@ -23,7 +23,7 @@
 grade_usage="\
 Grade options:
 	-s <grade>, --grade <grade>
-	--target {il, c, csharp, java, erlang, asm}
+	--target {il, c, csharp, java, erlang}
 	--il
 	--asm-labels
 	--gcc-non-local-gotos

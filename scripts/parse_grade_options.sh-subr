@@ -24,8 +24,6 @@
     --target)
         shift
         case "$1" in
-            asm)
-                target=asm ;;
             c|C)
                 target=c ;;
             il|IL)
