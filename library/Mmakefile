@@ -231,25 +231,15 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-# Note that we need to explicitly mention $($(STD_LIB_NAME).pic_ss) somewhere
-# in the Mmakefile, otherwise it won't build properly with --target asm:
-# GNU Make's pattern rule algorithm will try to use the .m -> .c -> .pic_o
-# rule chain rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
-# So don't remove the pic_ss target here.
-
-.PHONY: os cs ss pic_ss ils javas
+.PHONY: os cs ils javas
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(STD_LIB_NAME).os)
 cs: $($(STD_LIB_NAME).cs)
-ss: $($(STD_LIB_NAME).ss)
-pic_ss: $($(STD_LIB_NAME).pic_ss)
 ils: $($(STD_LIB_NAME).ils)
 javas: $($(STD_LIB_NAME).javas)
 else
 os: $(STD_LIB_NAME).os
 cs: $(STD_LIB_NAME).cs
-ss: $(STD_LIB_NAME).ss
-pic_ss: $(STD_LIB_NAME).pic_ss
 ils: $(STD_LIB_NAME).ils
 javas: $(STD_LIB_NAME).javas
 endif

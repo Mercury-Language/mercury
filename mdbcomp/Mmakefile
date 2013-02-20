@@ -181,16 +181,14 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs ss ils
+.PHONY: os cs ils
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(MDBCOMP_LIB_NAME).os)
 cs: $($(MDBCOMP_LIB_NAME).cs)
-ss: $($(MDBCOMP_LIB_NAME).ss)
 ils: $($(MDBCOMP_LIB_NAME).ils)
 else
 os: $(MDBCOMP_LIB_NAME).os
 cs: $(MDBCOMP_LIB_NAME).cs
-ss: $(MDBCOMP_LIB_NAME).ss
 ils: $(MDBCOMP_LIB_NAME).ils
 endif
 

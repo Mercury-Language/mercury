@@ -188,7 +188,7 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs ss ils
+.PHONY: os cs ls
 os:	$(mslice.os) $(mdice.os) $(mtc_union.os) \
 	$(os_subdir)mslice_init.o $(os_subdir)mdice_init.o \
 	$(os_subdir)mtc_union.o $(os_subdir)mcov.o \
@@ -197,7 +197,6 @@ cs:	$(mslice.cs) $(mdice.cs) $(mtc_union.cs) \
 	$(cs_subdir)mslice_init.c $(cs_subdir)mdice_init.c \
 	$(cs_subdir)mtc_union.c $(cs_subdir)mcov.c \
 	$(cs_subdir)mtc_diff.c
-ss:	$(mslice.ss) $(mdice.ss) $(mtc_union.ss) $(mcov.ss) $(mtc_diff.ss)
 ils:	$(mslice.ils) $(mdice.ils) $(mtc_union.ils) $(mcov.ils) $(mtc_diff.ils)
 
 #-----------------------------------------------------------------------------#
