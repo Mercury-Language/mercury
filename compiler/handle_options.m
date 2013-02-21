@@ -257,7 +257,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         Target = target_c,     % dummy
         % XXX When the x86_64 backend is documented modify the line below.
         add_error("Invalid target option " ++
-            "(must be `c', `asm', `il', `java', 'csharp', or `erlang')",
+            "(must be `c', `il', `java', 'csharp', or `erlang')",
             !Errors)
     ),
 
@@ -483,7 +483,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     ;
         C_CompilerType = cc_unknown,   % dummy
         add_error("Invalid argument to option `--c-compiler-type'\n" ++
-            "\t(must be `gcc', `lcc', `cl', or `unknown').",
+            "\t(must be `gcc', `lcc', `clang', 'msvc', or `unknown').",
             !Errors)
     ),
 
