@@ -273,11 +273,9 @@ layout_du_ctor_args(ModuleInfo, DuKind, Ctor0, Ctor) :-
             Args1 = Args0
         )
     ),
-    globals.lookup_bool_option(Globals, allow_argument_packing, ArgPacking),
-    (
-        ArgPacking = yes,
-        globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
-        pack_du_ctor_args(ModuleInfo, TargetWordBits, 0, Args1, Args2, _),
+    globals.lookup_int_option(Globals, arg_pack_bits, ArgPackBits),
+    ( ArgPackBits > 0 ->
+        pack_du_ctor_args(ModuleInfo, ArgPackBits, 0, Args1, Args2, _),
         WorthPacking = worth_arg_packing(Args1, Args2),
         (
             WorthPacking = yes,
@@ -287,7 +285,6 @@ layout_du_ctor_args(ModuleInfo, DuKind, Ctor0, Ctor) :-
             Args = Args1
         )
     ;
-        ArgPacking = no,
         Args = Args1
     ),
     Ctor = ctor(ExistTVars, Constraints, Name, Args, Context).
@@ -295,26 +292,22 @@ layout_du_ctor_args(ModuleInfo, DuKind, Ctor0, Ctor) :-
 :- pred use_double_word_floats(globals::in, bool::out) is det.
 
 use_double_word_floats(Globals, DoubleWordFloats) :-
-    globals.get_target(Globals, Target),
-    globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
-    globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
+    globals.lookup_bool_option(Globals, allow_double_word_fields,
+        AllowDoubleWords),
     (
-        Target = target_c,
+        AllowDoubleWords = yes,
+        globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
+        globals.lookup_bool_option(Globals, single_prec_float, SinglePrec),
         (
             TargetWordBits = 32,
-            SinglePrecFloat = no
+            SinglePrec = no
         ->
             DoubleWordFloats = yes
         ;
             DoubleWordFloats = no
         )
     ;
-        ( Target = target_il
-        ; Target = target_csharp
-        ; Target = target_java
-        ; Target = target_x86_64
-        ; Target = target_erlang
-        ),
+        AllowDoubleWords = no,
         DoubleWordFloats = no
     ).
 

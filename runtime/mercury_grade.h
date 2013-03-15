@@ -347,6 +347,7 @@
 ** Parts 10-11 (i.e. tag bits, and (un)boxed float) are documented as
 ** "not for general use", and can't be set via the `--grade' option;
 ** we therefore can't make them part of the grade option string.
+**
 ** Single-precision floats do form part of the grade option string
 ** and they imply unboxed floats.
 **
@@ -366,7 +367,9 @@
 #endif
 #define MR_GRADE_OPT_PART_10    MR_GRADE_OPT_PART_9
 
-#if defined(MR_USE_SINGLE_PREC_FLOAT)
+#if defined(MR_PREGENERATED_DIST)
+  #define MR_GRADE_PART_11      MR_PASTE2(MR_GRADE_PART_10, _pregen)
+#elif defined(MR_USE_SINGLE_PREC_FLOAT)
   #if defined(MR_BOXED_FLOAT)
     #error "single-precision floats implies unboxed floats"
   #endif

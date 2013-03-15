@@ -653,6 +653,20 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         true
     ),
 
+    % --pregenerated-dist sets options so that the pre-generated C source
+    % distribution can be compiled equally on 32-bit and 64-bit platforms.
+    globals.lookup_bool_option(!.Globals, pregenerated_dist, PregeneratedDist),
+    (
+        PregeneratedDist = yes,
+        globals.set_option(num_tag_bits, int(2), !Globals),
+        globals.set_option(arg_pack_bits, int(32), !Globals),
+        globals.set_option(unboxed_float, bool(no), !Globals),
+        globals.set_option(single_prec_float, bool(no), !Globals),
+        globals.set_option(allow_double_word_fields, bool(no), !Globals)
+    ;
+        PregeneratedDist = no
+    ),
+
     % --tags none implies --num-tag-bits 0.
     (
         TagsMethod0 = tags_none,
@@ -1385,9 +1399,26 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % In the future, we may want to use C bit-field syntax for high-level data.
     % For other back-ends, any RTTI code will need to be updated to cope with
     % packed arguments.
-    option_implies(highlevel_data, allow_argument_packing, bool(no), !Globals),
+    %
+    % Only C targets may store a constructor argument across two words.
+    option_implies(highlevel_data, arg_pack_bits, int(0), !Globals),
     (
-        Target = target_c
+        Target = target_c,
+        globals.lookup_int_option(!.Globals, arg_pack_bits, ArgPackBits0),
+        globals.lookup_int_option(!.Globals, bits_per_word, BitsPerWord),
+        % If --arg-pack-bits is negative then it means use all word bits.
+        ( ArgPackBits0 < 0 ->
+            ArgPackBits = BitsPerWord
+        ; ArgPackBits0 > BitsPerWord ->
+            io.progname_base("mercury_compile", ProgNameB, !IO),
+            io.format("%s: warning: --arg-pack-bits invalid\n",
+                [s(ProgNameB)], !IO),
+            record_warning(!.Globals, !IO),
+            ArgPackBits = BitsPerWord
+        ;
+            ArgPackBits = ArgPackBits0
+        ),
+        globals.set_option(arg_pack_bits, int(ArgPackBits), !Globals)
     ;
         ( Target = target_csharp
         ; Target = target_java
@@ -1395,7 +1426,8 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ; Target = target_il
         ; Target = target_erlang
         ),
-        globals.set_option(allow_argument_packing, bool(no), !Globals)
+        globals.set_option(arg_pack_bits, int(0), !Globals),
+        globals.set_option(allow_double_word_fields, bool(no), !Globals)
     ),
 
     % We assume that single-precision floats do not need to be boxed.
@@ -2704,9 +2736,10 @@ grade_string_to_comp_strings(GradeString, MaybeGrade, !Errors) :-
     ;       comp_term_size      % whether or not to record term sizes
     ;       comp_trail          % whether or not to use trailing
     ;       comp_minimal_model  % whether we set up for minimal model tabling
-    ;       comp_single_prec_float
-                                % whether or not to use single precision
-                                % floating point values
+    ;       comp_pregen_spf     % whether to assume settings for the
+                                % pregenerated C source distribution;
+                                % and whether or not to use single precision
+                                % floating point values.
     ;       comp_pic            % Do we need to reserve a register for
                                 % PIC (position independent code)?
     ;       comp_lowlevel       % what to do to target code
@@ -3038,7 +3071,11 @@ grade_component_table("dmmos", comp_minimal_model,
     use_minimal_model_own_stacks - bool(yes),
     minimal_model_debug - bool(yes)], no, yes).
 
-grade_component_table("spf", comp_single_prec_float,
+    % Settings for pre-generated source distribution
+    % or single-precision floats.
+grade_component_table("pregen", comp_pregen_spf,
+    [pregenerated_dist - bool(yes)], no, yes).
+grade_component_table("spf", comp_pregen_spf,
     [single_prec_float - bool(yes),
     unboxed_float - bool(yes)], no, yes).
 
@@ -3112,6 +3149,8 @@ grade_start_values(trail_segments - bool(no)).
 grade_start_values(use_minimal_model_stack_copy - bool(no)).
 grade_start_values(use_minimal_model_own_stacks - bool(no)).
 grade_start_values(minimal_model_debug - bool(no)).
+grade_start_values(pregenerated_dist - bool(no)).
+grade_start_values(single_prec_float - bool(no)).
 grade_start_values(pic_reg - bool(no)).
 grade_start_values(exec_trace - bool(no)).
 grade_start_values(decl_debug - bool(no)).

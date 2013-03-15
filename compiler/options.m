@@ -390,6 +390,7 @@
     ;       use_minimal_model_stack_copy
     ;       use_minimal_model_own_stacks
     ;       minimal_model_debug
+    ;       pregenerated_dist
     ;       single_prec_float
     ;       type_layout
     ;       maybe_thread_safe_opt
@@ -421,6 +422,8 @@
     ;       unboxed_float
     ;       unboxed_enums
     ;       unboxed_no_tag_types
+    ;       arg_pack_bits
+    ;       allow_double_word_fields
     ;       sync_term_size % in words
 
     % LLDS back-end compilation model options
@@ -589,8 +592,6 @@
     ;       allow_multi_arm_switches
 
     ;       type_check_constraints
-
-    ;       allow_argument_packing
 
     % Code generation options
     ;       low_level_debug
@@ -1336,6 +1337,7 @@ option_defaults_2(compilation_model_option, [
     use_minimal_model_stack_copy        -   bool(no),
     use_minimal_model_own_stacks        -   bool(no),
     minimal_model_debug                 -   bool(no),
+    pregenerated_dist                   -   bool(no),
     single_prec_float                   -   bool(no),
     type_layout                         -   bool(yes),
     source_to_source_debug              -   bool(no),
@@ -1361,13 +1363,17 @@ option_defaults_2(compilation_model_option, [
                                         % The `mmc' script will override the
                                         % above default with a value determined
                                         % at configuration time.
+    unboxed_float                       -   bool(no),
+    unboxed_enums                       -   bool(yes),
+    unboxed_no_tag_types                -   bool(yes),
+    arg_pack_bits                       -   int(-1),
+                                        % -1 is a special value which means use
+                                        % all word bits for argument packing.
+    allow_double_word_fields            -   bool(yes),
     sync_term_size                      -   int(8),
                                         % 8 is the size on linux (at the time
                                         % of writing) - will usually be
                                         % overridden by a value from configure.
-    unboxed_float                       -   bool(no),
-    unboxed_enums                       -   bool(yes),
-    unboxed_no_tag_types                -   bool(yes),
 
     % LLDS back-end compilation model options
     gcc_non_local_gotos                 -   bool(yes),
@@ -1432,8 +1438,7 @@ option_defaults_2(internal_use_option, [
     size_region_commit_entry            -   int(1),
     solver_type_auto_init               -   bool(no),
     allow_multi_arm_switches            -   bool(yes),
-    type_check_constraints              -   bool(no),
-    allow_argument_packing              -   bool(yes)
+    type_check_constraints              -   bool(no)
 ]).
 option_defaults_2(code_gen_option, [
     % Code Generation Options
@@ -2266,6 +2271,7 @@ long_option("use-regions-profiling",use_regions_profiling).
 long_option("use-minimal-model-stack-copy", use_minimal_model_stack_copy).
 long_option("use-minimal-model-own-stacks", use_minimal_model_own_stacks).
 long_option("minimal-model-debug",  minimal_model_debug).
+long_option("pregenerated-dist",    pregenerated_dist).
 long_option("single-prec-float",    single_prec_float).
 long_option("single-precision-float",   single_prec_float).
 long_option("pic-reg",              pic_reg).
@@ -2276,10 +2282,12 @@ long_option("num-reserved-objects", num_reserved_objects).
 long_option("bits-per-word",        bits_per_word).
 long_option("bytes-per-word",       bytes_per_word).
 long_option("conf-low-tag-bits",    conf_low_tag_bits).
-long_option("sync-term-size",       sync_term_size).
 long_option("unboxed-float",        unboxed_float).
 long_option("unboxed-enums",        unboxed_enums).
 long_option("unboxed-no-tag-types", unboxed_no_tag_types).
+long_option("arg-pack-bits",        arg_pack_bits).
+long_option("allow-double-word-fields", allow_double_word_fields).
+long_option("sync-term-size",       sync_term_size).
 long_option("highlevel-data",       highlevel_data).
 long_option("high-level-data",      highlevel_data).
 % LLDS back-end compilation model options
@@ -2344,7 +2352,6 @@ long_option("size-region-commit-entry",         size_region_commit_entry).
 long_option("solver-type-auto-init",    solver_type_auto_init).
 long_option("allow-multi-arm-switches", allow_multi_arm_switches).
 long_option("type-check-constraints",   type_check_constraints).
-long_option("allow-argument-packing",   allow_argument_packing).
 
 % code generation options
 long_option("low-level-debug",      low_level_debug).
@@ -4658,6 +4665,17 @@ options_help_compilation_model -->
 %       "(This option is not for general use.)",
 %       "\tBox no-tag types.  This option is disabled by default."
 
+        % This is a developer only option.
+%       "--arg-pack-bits <n>",
+%       "(This option is not for general use.)",
+%       "\tThe number of bits in a word in which to pack constructor"
+%       "arguments.",
+
+        % This is a developer only option.
+%       "--no-allow-double-word-fields",
+%       "(This option is not for general use.)",
+%       "\tDisallow storing a single constructor argument in two words"
+%       "(namely, double-precision floats).",
     ]),
     io.write_string("\n      Developer optional features\n"),
     write_tabbed_lines([
@@ -4776,12 +4794,6 @@ options_help_compilation_model -->
 %       "--type-check-constraints",
 %       "(This option is not for general use.)",
 %       Use the constraint based type checker instead of the old one.
-
-        % This is a developer only option.
-%       "--allow-argument-packing",
-%       "(This option is not for general use.)",
-%       Allow the compiler to pack multiple constructor arguments into
-%       a single field.
     ]).
 
 :- pred options_help_code_generation(io::di, io::uo) is det.

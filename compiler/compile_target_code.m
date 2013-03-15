@@ -923,6 +923,15 @@ gather_grade_defines(Globals, PIC, GradeDefines) :-
         MinimalModelDebug = no,
         MinimalModelOpt = MinimalModelBaseOpt
     ),
+
+    globals.lookup_bool_option(Globals, pregenerated_dist, PregeneratedDist),
+    (
+        PregeneratedDist = yes,
+        PregeneratedDistOpt = "-DMR_PREGENERATED_DIST "
+    ;
+        PregeneratedDist = no,
+        PregeneratedDistOpt = ""
+    ),
     globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
     (
         SinglePrecFloat = yes,
@@ -931,6 +940,7 @@ gather_grade_defines(Globals, PIC, GradeDefines) :-
         SinglePrecFloat = no,
         SinglePrecFloatOpt = ""
     ),
+
     globals.lookup_bool_option(Globals, use_regions, UseRegions),
     (
         UseRegions = yes,
@@ -977,6 +987,7 @@ gather_grade_defines(Globals, PIC, GradeDefines) :-
         UseTrailOpt,
         TrailSegOpt,
         MinimalModelOpt,
+        PregeneratedDistOpt,
         SinglePrecFloatOpt,
         UseRegionsOpt], GradeDefines).
 

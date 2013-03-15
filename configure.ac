@@ -1950,14 +1950,6 @@ if test "$mercury_cv_low_tag_bits" -lt 2; then
         exit 1
     fi
 fi
-if test "$mercury_cv_low_tag_bits" -gt 2
-then
-    if test "$BOOTSTRAP_MC" = "" -a "$reconfiguring" = "no"
-    then
-        AC_MSG_WARN(bootstrapping using only 2 low tag bits)
-        mercury_cv_low_tag_bits=2
-    fi
-fi
 AC_DEFINE_UNQUOTED(MR_LOW_TAG_BITS, $mercury_cv_low_tag_bits)
 LOW_TAG_BITS=$mercury_cv_low_tag_bits
 AC_SUBST(LOW_TAG_BITS)
@@ -2067,22 +2059,6 @@ AC_CACHE_VAL(mercury_cv_unboxed_floats,
     [mercury_cv_unboxed_floats=no])
 )
 AC_MSG_RESULT($mercury_cv_unboxed_floats)
-if test "$mercury_cv_unboxed_floats" = yes
-then
-    if test "$BOOTSTRAP_MC" = "" -a "$reconfiguring" = "no"
-    then
-        AC_MSG_WARN(
-[Mercury compiler not yet installed -
-****    cannot use unboxed floats, bootstrapping using boxed floats
-****    after installation is complete you may want to reinstall
-****    from scratch so you can use unboxed floats, which are more
-****    efficient.
-****    NOTE: before reinstalling from scratch, ensure that the
-****    source tree is clean by running \`make realclean'.  Not doing
-****    this may result in a broken Mercury installation.])
-        mercury_cv_unboxed_floats=no
-    fi
-fi
 if test "$mercury_cv_unboxed_floats" = yes; then
     HAVE_BOXED_FLOATS="--unboxed-float"
 else
@@ -3271,56 +3247,45 @@ esac
 # compiler from the source distribution, if there is no installed Mercury
 # compiler.  This grade needs to be one for which the C files are compatible
 # with the C files that we ship in the source distribution.  The C files in the
-# source distribution are generated in either hlc.gc or in asm_fast.gc.  In the
-# former case, we _must_ use the grade hlc.gc, in the latter case we can use any
-# of the base LLDS grades (it's the same C code), except that a couple of them
-# (fast and jump) don't support code addresses in static initalizers.
+# source distribution are generated in hlc.gc.pregen or asm_fast.gc.pregen.
+# In the former case, we _must_ use the grade hlc.gc.pregen, in the latter case
+# we can use any of the base LLDS grades (it's the same C code), except that a
+# couple of them (fast and jump) don't support code addresses in static
+# initalizers.
 
 if test "$BOOTSTRAP_HLC" = "yes"
 then
-    BOOTSTRAP_GRADE=hlc.gc
+    BOOTSTRAP_GRADE=hlc.gc.pregen
 else
     case $BEST_LLDS_BASE_GRADE in
         jump|fast)
             if test $mercury_cv_gcc_model_reg = yes; then
-                BOOTSTRAP_GRADE=reg.gc
+                BOOTSTRAP_GRADE=reg.gc.pregen
             else
-                BOOTSTRAP_GRADE=none.gc
+                BOOTSTRAP_GRADE=none.gc.pregen
             fi
             ;;
         *)
-            BOOTSTRAP_GRADE=$BEST_LLDS_BASE_GRADE.gc
+            BOOTSTRAP_GRADE=$BEST_LLDS_BASE_GRADE.gc.pregen
             ;;
     esac
 fi
 
-# Choose whether to use $BOOTSTRAP_GRADE or $BEST_GRADE_FOR_COMPILER,
-# and if necessary remove the previously built C files.
+# Choose whether to use $BOOTSTRAP_GRADE or $BEST_GRADE_FOR_COMPILER.
+# Previously built C files will be checked for compatibility
+# with these settings, and otherwise removed, later.
 
-if test "$BEST_GRADE_FOR_COMPILER" != "$BOOTSTRAP_GRADE"; then
-    if test "$BOOTSTRAP_MC" = ""; then
-        GRADE="$BOOTSTRAP_GRADE"
-        AC_MSG_WARN(
+if test "$BOOTSTRAP_MC" = ""; then
+    GRADE="$BOOTSTRAP_GRADE"
+    AC_MSG_WARN(
 [Mercury compiler not yet installed -
 ****    cannot use grade \`$BEST_GRADE_FOR_COMPILER'
 ****    using grade \`$GRADE' to compile the compiler
-****    after installation is complete you should reinstall
-****    from scratch so you can use the more efficient
-****    grade \`$BEST_GRADE_FOR_COMPILER'.
+****    after installation is complete you may reinstall
+****    from scratch to have a faster compiler.
 ****    NOTE: before reinstalling from scratch, ensure that the
 ****    source tree is clean by running \`make realclean'.  Not doing
 ****    this may result in a broken Mercury installation.])
-    else
-        GRADE=$BEST_GRADE_FOR_COMPILER
-        MERCURY_MSG(
-"using grade \`$GRADE' to compile the compiler
-    compiler and library will be rebuilt with new grade
-    installation may take a long time")
-        find library compiler browser mdbcomp \
-            profiler deep_profiler ssdb slice \
-            -name \*.c -o -name \*.c_date | \
-            xargs rm > /dev/null 2>&1
-    fi
 else
     GRADE=$BEST_GRADE_FOR_COMPILER
     MERCURY_MSG("using grade \`$GRADE' to compile the compiler")
@@ -3765,8 +3730,8 @@ fi
 #
 if test "$enable_min_install" = yes
 then
-    LIBGRADES="$GRADE"
-    DEFAULT_GRADE="$GRADE"
+    LIBGRADES="$BEST_GRADE_FOR_COMPILER"
+    DEFAULT_GRADE="$BEST_GRADE_FOR_COMPILER"
 fi
 
 # Allow the user to override the default list of library grades
@@ -5224,19 +5189,33 @@ mercury_check_c_files () {
     c_dir=$1
     c_date_dir=$2
 
+    case $GRADE in
+        *.pregen*)
+            need_low_tag_bits=2
+            need_unboxed_floats=no
+            need_pregen_dist=yes
+            ;;
+        *)
+            need_low_tag_bits=$mercury_cv_low_tag_bits
+            need_unboxed_floats=$mercury_cv_unboxed_floats
+            need_pregen_dist=no
+            ;;
+    esac
+
     for c_file in $c_dir/*.c
     do
         case $c_file in
         */'*.c')
             ;;
         */*_init.c)
-            some_kept=true
             ;;
         *)
             sed -e '/END_OF_C_GRADE_INFO/q' < $c_file > confscratch
-            if grep "TAG_BITS=$mercury_cv_low_tag_bits" \
+            if grep "TAG_BITS=$need_low_tag_bits" \
                     confscratch > /dev/null 2>&1 \
-                && grep "UNBOXED_FLOAT=$mercury_cv_unboxed_floats" \
+                && grep "UNBOXED_FLOAT=$need_unboxed_floats" \
+                    confscratch > /dev/null 2>&1 \
+                && grep "PREGENERATED_DIST=$need_pregen_dist" \
                     confscratch > /dev/null 2>&1 \
                 && grep "HIGHLEVEL_CODE=$need_hl_c_files" \
                     confscratch > /dev/null 2>&1

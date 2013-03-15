@@ -85,6 +85,7 @@ trail_segments=false
 use_minimal_model_stack_copy=false
 use_minimal_model_own_stacks=false
 minimal_model_debug=false
+pregenerated_dist=false
 single_prec_float=false
 pic_reg=false
 debug=false

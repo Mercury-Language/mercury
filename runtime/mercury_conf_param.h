@@ -133,6 +133,7 @@
 ** MR_USE_MINIMAL_MODEL_STACK_COPY
 ** MR_USE_MINIMAL_MODEL_OWN_STACKS
 ** MR_MINIMAL_MODEL_DEBUG
+** MR_PREGENERATED_DIST
 ** MR_USE_SINGLE_PREC_FLOAT
 ** MR_EXTEND_STACKS_WHEN_NEEDED
 ** MR_STACK_SEGMENTS
@@ -159,6 +160,7 @@
 **		--reserve-tag
 **		--use-minimal-model
 **		--minimal-model-debug
+**		--pregenerated-dist
 **		--single-prec-float
 **		--extend-stacks-when-needed
 **		--stack-segments
@@ -665,6 +667,22 @@
 ** Settings of configuration parameters which can be passed on
 ** the command line, but which are also implied by other parameters.
 */
+
+/*
+** MR_PREGENERATED_DIST overrides configured values to take values compatible
+** with pre-generated C files in the source distribution.
+** It implies boxed floats so is incompatible with single-precision floats,
+** which imply unboxed floats.
+*/
+#ifdef MR_PREGENERATED_DIST
+  #undef  MR_LOW_TAG_BITS
+  #define MR_LOW_TAG_BITS 2
+  #ifdef MR_USE_SINGLE_PREC_FLOAT
+    #error "MR_PREGENERATED_DIST and MR_USE_SINGLE_PREC_FLOAT both defined"
+  #else
+    #define MR_BOXED_FLOAT 1
+  #endif
+#endif
 
 /*
 ** MR_PIC means that we are generating position independent code,

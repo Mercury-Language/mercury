@@ -145,9 +145,14 @@ case $use_minimal_model_stack_copy,$use_minimal_model_own_stacks,$minimal_model_
 	*)	;;
 esac
 
-case $single_prec_float in
-	true)		GRADE="$GRADE.spf" ;;
-	false)		;;
+case $pregenerated_dist,$single_prec_float in
+	true,false)	GRADE="$GRADE.pregen" ;;
+	false,true)	GRADE="$GRADE.spf" ;;
+	false,false)	;;
+	*)		progname=`basename $0`
+			echo "$progname: error: pregenerated dist incompatible with single-prec float." 1>&2
+			exit 1
+			;;
 esac
 
 # We ignore the value of $picreg in computing the name of the grade

@@ -423,9 +423,13 @@ case $use_minimal_model,$minimal_model_debug in
     *)              MINIMAL_MODEL_OPTS="" ;;
 esac
 
-case $single_prec_float in
-    true)           SINGLE_PREC_FLOAT_OPTS="-DMR_USE_SINGLE_PREC_FLOAT" ;;
-    false)          SINGLE_PREC_FLOAT_OPTS="" ;;
+case $pregenerated_dist,$single_prec_float in
+    true,true)      progname=`basename $0`
+                    echo "$progname: cannot enable both pregenerated dist and single-prec float"
+                    exit 1 ;;
+    true,false)     PREGEN_SPF_OPTS="-DMR_PREGENERATED_DIST" ;;
+    false,true)     PREGEN_SPF_OPTS="-DMR_USE_SINGLE_PREC_FLOAT" ;;
+    false,false)    PREGEN_SPF_OPTS="" ;;
 esac
 
 case $pic_reg in
@@ -712,7 +716,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $TRAIL_OPTS\
     $RECORD_TERM_SIZE_OPTS\
     $MINIMAL_MODEL_OPTS\
-    $SINGLE_PREC_FLOAT_OPTS\
+    $PREGEN_SPF_OPTS\
     $SPLIT_OPTS\
     $THREAD_OPTS\
     $THREADSCOPE_OPTS\

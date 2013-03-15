@@ -881,6 +881,7 @@ case $HOST in $ROTD_HOST)
     rm -f so_locations &&
     rm -f .enable_lib_grades &&
     $ACLOCAL_CMD &&
+    # The cache variable settings can be replaced by --pregenerated-dist.
     autoconf &&
     mercury_cv_low_tag_bits=2 \
     mercury_cv_bits_per_word=32 \
