@@ -613,7 +613,11 @@ install_deep_profiler: deep_profiler
 ifeq ($(CROSS_COMPILING),yes)
 OVERRIDE_MC_FOR_LIBGRADE =
 else
-OVERRIDE_MC_FOR_LIBGRADE = MC=mmc
+	# We must override the paths in the mmc script in case the compiler was
+	# installed to a temporary location, using DESTDIR.
+OVERRIDE_MC_FOR_LIBGRADE = MC=mmc \
+	MERCURY_COMPILER=$(INSTALL_BINDIR)/mercury_compile \
+	MERCURY_CONFIG_DIR=$(INSTALL_LIBDIR)
 endif
 
 .PHONY: install_grades
