@@ -2966,7 +2966,11 @@ case "$host" in
         esac
         ;;
 
-    *mingw*)
+    # NOTE: do *not* attempt to use pthreads if we are cross compiling
+    # with the x86_64-w64-mingw32 GCC.
+    # XXX we we will need to do something different here when we support
+    # threads on 64-bit Windows.
+    i*86-pc-mingw*)
         THREAD_LIBS=""
         case "$mercury_cv_cc_type" in
             msvc)
