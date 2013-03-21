@@ -70,11 +70,7 @@ MDB_STD = MERCURY_OPTIONS="$$MERCURY_OPTIONS -de" $(MDB)
 
 MDB_STD_NOINIT = MERCURY_OPTIONS="$$MERCURY_OPTIONS -de" $(MDB_NOINIT)
 
-ifeq ($(TARGET_ASM),yes)
-PARAMS_MSG = in grade $(GRADE) with --target asm
-else
 PARAMS_MSG = in grade $(GRADE)
-endif
 
 -include $(TESTS_DIR)/Mmake.params
 
