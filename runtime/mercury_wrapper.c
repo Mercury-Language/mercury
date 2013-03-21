@@ -2223,14 +2223,14 @@ MR_process_options(int argc, char **argv)
                 } else if (MR_streq(MR_optarg, "u")) {
                     MR_unbufdebug   = MR_TRUE;
                 } else if (MR_optarg[0] == 'w' || MR_optarg[0] == 'W') {
-                    long    addr;
+                    MR_WORD_TYPE    addr;
 
                     if (MR_optarg[1] == '0' && MR_optarg[2] == 'x') {
-                        if (sscanf(MR_optarg+3, "%lx", &addr) != 1) {
+                        if (sscanf(MR_optarg+3, "%" MR_INTEGER_LENGTH_MODIFIER "x", &addr) != 1) {
                             MR_usage();
                         }
                     } else {
-                        if (sscanf(MR_optarg+1, "%lu", &addr) != 1) {
+                        if (sscanf(MR_optarg+1, "%" MR_INTEGER_LENGTH_MODIFIER "u", &addr) != 1) {
                             MR_usage();
                         }
                     }

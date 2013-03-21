@@ -949,7 +949,7 @@ void
 MR_print_heapptr(FILE *fp, const MR_Word *s)
 {
 #ifdef  MR_CONSERVATIVE_GC
-    fprintf(fp, "heap %ld", (long) s);
+    fprintf(fp, "heap %" MR_INTEGER_LENGTH_MODIFIER "d", (MR_WORD_TYPE) s);
 #else
     fprintf(fp, "heap %3ld",
         (long) (MR_Integer) (s - MR_ENGINE(MR_eng_heap_zone)->MR_zone_min));
