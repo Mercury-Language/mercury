@@ -1284,19 +1284,16 @@ output_proc_static_slot(Info, ProcStatic, !Slot, !IO) :-
         CoveragePointsDynamicSlotName =
             layout_slot(proc_static_cp_dynamic_array, CoveragePointsSlot),
         output_layout_slot_addr(use_layout_macro, MangledModuleName,
-            CoveragePointsDynamicSlotName, !IO),
-        io.write_string("\n#endif\n", !IO),
-        io.write_string("#endif\n", !IO),
-        io.write_string(" },\n", !IO)
+            CoveragePointsDynamicSlotName, !IO)
     ;
         MaybeCoveragePoints = no,
         io.write_string("0,NULL,\n", !IO),
         io.write_string("#ifdef MR_DEEP_PROFILING_COVERAGE_STATIC\n", !IO),
-        io.write_string("NULL\n", !IO),
-        io.write_string("#endif\n", !IO),
-        io.write_string("#endif\n", !IO),
-        io.write_string(" },\n", !IO)
+        io.write_string("NULL", !IO)
     ),
+    io.write_string("\n#endif\n", !IO),
+    io.write_string("#endif\n", !IO),
+    io.write_string(" },\n", !IO),
     !:Slot = !.Slot + 1.
 
 %-----------------------------------------------------------------------------%
