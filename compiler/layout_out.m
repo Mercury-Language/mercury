@@ -1267,6 +1267,7 @@ output_proc_static_slot(Info, ProcStatic, !Slot, !IO) :-
     io.write_string(",", !IO),
     io.write_int(OldOutermostSlot, !IO),
     io.write_string(",", !IO),
+    io.write_string("\n#ifdef MR_DEEP_PROFILING_COVERAGE\n", !IO),
     (
         MaybeCoveragePoints = yes({CoveragePointsSlot, NumCoveragePoints}),
         % If MR_DEEP_PROFILING_COVERAGE is not defined but
@@ -1285,12 +1286,14 @@ output_proc_static_slot(Info, ProcStatic, !Slot, !IO) :-
         output_layout_slot_addr(use_layout_macro, MangledModuleName,
             CoveragePointsDynamicSlotName, !IO),
         io.write_string("\n#endif\n", !IO),
+        io.write_string("#endif\n", !IO),
         io.write_string(" },\n", !IO)
     ;
         MaybeCoveragePoints = no,
         io.write_string("0,NULL,\n", !IO),
         io.write_string("#ifdef MR_DEEP_PROFILING_COVERAGE_STATIC\n", !IO),
         io.write_string("NULL\n", !IO),
+        io.write_string("#endif\n", !IO),
         io.write_string("#endif\n", !IO),
         io.write_string(" },\n", !IO)
     ),
