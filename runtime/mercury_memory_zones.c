@@ -1335,7 +1335,7 @@ MR_debug_memory(FILE *fp)
 
     fprintf(fp, "\n");
     fprintf(fp, "fake_reg       = %p (offset %" MR_INTEGER_LENGTH_MODIFIER "d)\n",
-        (void *) MR_fake_reg, (MR_WORD_TYPE) MR_fake_reg & (MR_unit-1));
+        (void *) MR_fake_reg, (MR_Integer) MR_fake_reg & (MR_unit-1));
     fprintf(fp, "\n");
 
     MR_LOCK(&memory_zones_lock, "MR_debug_memory");

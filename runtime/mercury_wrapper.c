@@ -2223,7 +2223,7 @@ MR_process_options(int argc, char **argv)
                 } else if (MR_streq(MR_optarg, "u")) {
                     MR_unbufdebug   = MR_TRUE;
                 } else if (MR_optarg[0] == 'w' || MR_optarg[0] == 'W') {
-                    MR_WORD_TYPE    addr;
+                    MR_Integer    addr;
 
                     if (MR_optarg[1] == '0' && MR_optarg[2] == 'x') {
                         if (sscanf(MR_optarg+3, "%" MR_INTEGER_LENGTH_MODIFIER "x", &addr) != 1) {

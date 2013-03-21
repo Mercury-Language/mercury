@@ -1240,7 +1240,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         char    buf[500];
                         char    *str;
 
-                        sprintf(buf, "tvar%ld", (long) data_pseudo_type_info);
+                        sprintf(buf, "tvar%" MR_INTEGER_LENGTH_MODIFIER "d",
+                            (MR_Integer) data_pseudo_type_info);
                         MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
                         expand_info->EXPAND_FUNCTOR_FIELD = str;
                     }
