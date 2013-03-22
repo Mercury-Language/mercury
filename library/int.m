@@ -671,6 +671,8 @@ int.max_int = X :-
         Max = INT_MAX;
     } else if (sizeof(MR_Integer) == sizeof(long)) {
         Max = LONG_MAX;
+    } else if (sizeof(MR_Integer) == sizeof(long long)) {
+        Max = LONG_LONG_MAX;
     } else {
         MR_fatal_error(""Unable to figure out max integer size"");
     }
@@ -688,6 +690,8 @@ int.min_int = X :-
         Min = INT_MIN;
     } else if (sizeof(MR_Integer) == sizeof(long)) {
         Min = LONG_MIN;
+    } else if (sizeof(MR_Integer) == sizeof(long long)) {
+        Min = LONG_LONG_MIN;
     } else {
         MR_fatal_error(""Unable to figure out min integer size"");
     }
