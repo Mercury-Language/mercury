@@ -1209,6 +1209,15 @@ case "$host" in
         ;;
 esac
 
+# Do not try to use sleep() on MinGW or MinGW64 as it isn't available
+# *despite* what the standard autoconf tests report.
+#
+case "$host" in
+    *mingw*)
+        ac_cv_func_sleep=no
+        ;;
+esac
+
 mercury_check_for_functions \
         sysconf getpagesize gethostname \
         mprotect memalign posix_memalign memmove \
