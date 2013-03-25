@@ -941,7 +941,11 @@ float.float_to_doc(X) = str(string.float_to_string(X)).
     char buf[64];
 
     u.f = (double) Flt;
-    sprintf(buf, ""%ld"", u.i);
+    #if defined(MR_MINGW64)
+        sprintf(buf, ""%lld"", u.i);
+    #else
+        sprintf(buf, ""%ld"", u.i);
+    #endif 
     MR_make_aligned_string_copy(Str, buf);
 ").
 

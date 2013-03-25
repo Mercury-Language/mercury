@@ -67,8 +67,15 @@
 ** MinGW specific.
 */
 
+/*
+** NOTE: __MINGW32__ is defined on both 32- and 64-bit MinGW.
+*/
 #if defined(__MINGW32__)
    #define MR_MINGW
+#endif
+
+#if defined(__MINGW64__)
+   #define MR_MINGW64
 #endif
 
 /*
