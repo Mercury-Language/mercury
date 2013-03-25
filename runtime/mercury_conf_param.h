@@ -71,6 +71,15 @@
    #define MR_MINGW
 #endif
 
+/*
+** On x86_64-w64-mingw32, we need to define the macro __USE_MINGW_ANSI_STDIO
+** in order to ensure that we get versions of printf, sprintf and friends
+** that work properly with long long format specifiers.
+*/ 
+#if defined(__MINGW64__) && !defined(__USE_MINGW_ANSI_STDIO)
+   #define __USE_MINGW_ANSI_STDIO 1
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 /*
