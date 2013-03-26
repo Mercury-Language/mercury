@@ -390,7 +390,8 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
     ; OutputLibGrades = yes ->
         globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
         io.stdout_stream(Stdout, !IO),
-        io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO)
+        io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO),
+        io.nl(Stdout, !IO)
     ; OutputCC = yes ->
         globals.lookup_string_option(Globals, cc, CC),
         io.stdout_stream(StdOut, !IO),
@@ -401,7 +402,8 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
         io.write_string(StdOut, CC_Type ++ "\n", !IO)
     ; OutputCFlags = yes ->
         io.stdout_stream(StdOut, !IO),
-        output_c_compiler_flags(Globals, StdOut, !IO)
+        output_c_compiler_flags(Globals, StdOut, !IO),
+        io.nl(StdOut, !IO)
     ; OutputCSCType = yes ->
         globals.lookup_string_option(Globals, csharp_compiler_type, CSC_Type),
         io.stdout_stream(StdOut, !IO),
