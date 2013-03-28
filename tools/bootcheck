@@ -1020,7 +1020,7 @@ then
             unset MMAKE_DIR && \
             unset MERCURY_CONFIG_DIR && \
             unset MERCURY_STDLIB_DIR && \
-            mmake $mmake_opts $jfactor depend && \
+            mmake $mmake_opts depend && \
             mmake $mmake_opts $jfactor all)
         then
             echo "building of stage 2 slice successful"
