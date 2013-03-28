@@ -695,7 +695,7 @@ then
         cp $root/mdbcomp/Mmake* $root/mdbcomp/Mercury.options .
         cp $root/mdbcomp/*_FLAGS.in .
         cp $root/mdbcomp/.mgnu* .
-        $LN_S $root/mdbcomp/$MDCOMP_LIB_NAME.init .
+        $LN_S $root/mdbcomp/$MDBCOMP_LIB_NAME.init .
         $LN_S $root/mdbcomp/RESERVED_MACRO_NAMES .
         cd $root/$stage2dir
         mkdir browser
@@ -780,8 +780,6 @@ then
             cp $root/boehm_gc/Makefile.direct .
             cp $root/boehm_gc/NT_MAKEFILE .
             cp $root/boehm_gc/gc_cpp.cc .
-            $LN_S $root/boehm_gc/machdeps .
-            cp $root/boehm_gc/configure_atomic_ops.sh .
             cp $root/boehm_gc/build_atomic_ops.sh* .
             cp -r $root/boehm_gc/libatomic_ops-*[0-9] .
             cp -r $root/boehm_gc/libatomic_ops .
@@ -791,7 +789,6 @@ then
             $LN_S $root/boehm_gc .
         fi
         $LN_S $root/java .
-        $LN_S $root/mps_gc .
         $LN_S $root/bindist .
         $LN_S $root/doc .
         $LN_S $root/scripts .
