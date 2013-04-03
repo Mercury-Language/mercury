@@ -182,6 +182,8 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                 SwitchVarTypeDefn),
             hlds_data.get_type_defn_body(SwitchVarTypeDefn, SwitchVarTypeBody),
             SwitchVarTypeBody ^ du_type_reserved_addr = uses_reserved_address
+        ;
+            is_smart_indexing_disabled_category(Globals, SwitchCategory)
         )
     ->
         % XXX In some cases, we could generate better code if we first checked

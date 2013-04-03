@@ -757,6 +757,11 @@
     ;         switch_single_rec_base_first
     ;         switch_multi_rec_base_first
 
+    ;         smart_atomic_indexing
+    ;         smart_string_indexing
+    ;         smart_tag_indexing
+    ;         smart_float_indexing  
+
     ;       static_ground_cells
     ;       static_ground_floats
     ;       static_code_addresses
@@ -1623,6 +1628,11 @@ option_defaults_2(optimization_option, [
 
     % HLDS -> LLDS
     smart_indexing                      -   bool(no),
+    smart_atomic_indexing               -   bool(yes),
+    smart_string_indexing               -   bool(yes),
+    smart_tag_indexing                  -   bool(yes),
+    smart_float_indexing                -   bool(yes),
+
     dense_switch_req_density            -   int(25),
                                         % Minimum density before using
                                         % a dense switch.
@@ -2573,6 +2583,10 @@ long_option("structure-reuse-free-cells", structure_reuse_free_cells).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",       smart_indexing).
+long_option("smart-atomic-indexing", smart_atomic_indexing).
+long_option("smart-string-indexing", smart_string_indexing).
+long_option("smart-tag-indexing",    smart_tag_indexing).
+long_option("smart-float-indexing",  smart_float_indexing).
 long_option("dense-switch-req-density", dense_switch_req_density).
 long_option("lookup-switch-req-density",lookup_switch_req_density).
 long_option("dense-switch-size",    dense_switch_size).
@@ -5209,6 +5223,9 @@ options_help_hlds_hlds_optimization -->
 %        "\tEnable the analysis for region-based memory management."
     ]).
 
+    % XXX this is out-of-date.  --smart-indxing also affects the
+    % MLDS backend.
+    %
 :- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.
 
 options_help_hlds_llds_optimization -->
@@ -5217,6 +5234,16 @@ options_help_hlds_llds_optimization -->
         "--no-smart-indexing",
         "\tGenerate switches as a simple if-then-else chains;",
         "\tdisable string hashing and integer table-lookup indexing.",
+% The following options are for developers only --they provide finer grained
+% control over smart indexing.
+%       "--no-smart-atomic-indexing",
+%       "\tDo not generate smart switches on atomic types.",
+%       "--no-smart-string-indexing",
+%       "\tDo not generate smart switches on strings."
+%       "--no-smart-tag-indexing",
+%       "\tDo not generate smart switches on discriminated union types.",
+%       "---no-smart-float-indexing",
+%       "\tDo not generate smart switches on floats."
         "--dense-switch-req-density <percentage>",
         "\tThe jump table generated for an atomic switch",
         "\tmust have at least this percentage of full slots (default: 25).",

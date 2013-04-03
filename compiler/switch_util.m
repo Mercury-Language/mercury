@@ -91,6 +91,12 @@
     %
 :- func estimate_switch_tag_test_cost(cons_tag) = int.
 
+    % Succeeds if smart indexing for the given switch category has been
+    % disabled by the user on the command line.
+    %
+:- pred is_smart_indexing_disabled_category(globals::in, switch_category::in)
+    is semidet.
+
 %-----------------------------------------------------------------------------%
 %
 % Stuff for dense switches.
@@ -583,6 +589,21 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         ; Tag = table_io_decl_tag(_, _)
         ),
         unexpected($module, $pred, "non-switch tag")
+    ).
+
+is_smart_indexing_disabled_category(Globals, SwitchCategory) :-
+    (
+        SwitchCategory = atomic_switch,
+        globals.lookup_bool_option(Globals, smart_atomic_indexing, no)
+    ;
+        SwitchCategory = string_switch,
+        globals.lookup_bool_option(Globals, smart_string_indexing, no)
+    ;
+        SwitchCategory = tag_switch,
+        globals.lookup_bool_option(Globals, smart_tag_indexing, no)
+    ;
+        SwitchCategory = float_switch,
+        globals.lookup_bool_option(Globals, smart_float_indexing, no)
     ).
 
 %-----------------------------------------------------------------------------%

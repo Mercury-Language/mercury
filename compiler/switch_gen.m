@@ -151,6 +151,8 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
             search_type_ctor_defn(TypeTable, VarTypeCtor, VarTypeDefn),
             hlds_data.get_type_defn_body(VarTypeDefn, VarTypeBody),
             VarTypeBody ^ du_type_reserved_addr = uses_reserved_address
+        ;
+            is_smart_indexing_disabled_category(Globals, SwitchCategory)
         )
     ->
         order_and_generate_cases(TaggedCases, VarRval, VarType, VarName,
