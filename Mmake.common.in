@@ -218,6 +218,7 @@ PDFTEX=@PDFTEX@
 MAKEINFO=@MAKEINFO@
 LYNX=@LYNX@
 PERL=@PERL@
+NM=@NM@
 
 #-----------------------------------------------------------------------------#
 
@@ -376,7 +377,7 @@ HEADER_CLEAN_FILTER = \
 # do not start with `MR_', `mercury_', or `entry_'.
 
 %.obj_check: %
-	nm -g $< | awk '$$1 != "U" { print $$3; }' | \
+	$(NM) -g $< | awk '$$1 != "U" { print $$3; }' | \
 		grep -v $(OBJ_PREFIX_EXPRS) | sort -u > $@
 	@if cmp -s /dev/null $@; then \
 		true; \
