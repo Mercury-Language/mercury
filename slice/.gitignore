@@ -12,6 +12,7 @@ mcov
 *.dep
 *.dv
 *.err
+*.exe
 *.int
 *.int0
 *.int2

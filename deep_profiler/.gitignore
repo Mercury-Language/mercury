@@ -9,6 +9,7 @@
 *.pl
 *.prof
 *.err
+*.exe
 *.int
 *.int0
 *.int2

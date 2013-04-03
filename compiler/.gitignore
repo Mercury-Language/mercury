@@ -3,6 +3,7 @@
 *.c
 *.d
 *.h
+*.exe
 *.ql
 *.pl
 *.prof

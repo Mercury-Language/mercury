@@ -74,8 +74,11 @@ __i686
 __i686__
 __pentiumpro
 __pentiumpro__
+__GCC_HAVE_DWARF2_CFI_ASM
 #-----------------------------------------------------------------------------#
 # These are defined in when threads are enabled.
 _REENTRANT
 _THREAD_SAFE
 #-----------------------------------------------------------------------------#
+# This is defined on MinGW64 to workaround limitations in the Windows libc.
+__USE_MINGW_ANSI_STDIO
