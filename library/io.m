@@ -7772,7 +7772,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
         does_not_affect_liveness, no_sharing],
 "
     MercuryFilePtr out = mercury_current_text_output();
-    if (ML_fprintf(out, ""%ld"", (long) Val) < 0) {
+    if (ML_fprintf(out, ""%"" MR_INTEGER_LENGTH_MODIFIER ""d"", Val) < 0) {
         mercury_output_error(out);
     }
 ").
@@ -8119,7 +8119,7 @@ io.write_int(output_stream(Stream), Val, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
-    if (ML_fprintf(Stream, ""%ld"", (long) Val) < 0) {
+    if (ML_fprintf(Stream, ""%"" MR_INTEGER_LENGTH_MODIFIER ""d"", Val) < 0) {
         mercury_output_error(Stream);
     }
 ").
