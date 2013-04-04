@@ -1357,9 +1357,11 @@ MR_trace_cmd_trail_details(char **words, int word_count,
 
     saved_regs = event_info->MR_saved_regs;
 
-    fprintf(MR_mdb_out, "trail pointer    : %ld (%lx)\n",
-        (long) MR_saved_trail_ptr(saved_regs),
-        (long) MR_saved_trail_ptr(saved_regs));
+    fprintf(MR_mdb_out, 
+        "trail pointer    : %" MR_INTEGER_LENGTH_MODIFIER
+        "d (%" MR_INTEGER_LENGTH_MODIFIER "x)\n",
+        (MR_Integer) MR_saved_trail_ptr(saved_regs),
+        (MR_Integer) MR_saved_trail_ptr(saved_regs));
     fprintf(MR_mdb_out, "ticket counter   : %lu\n",
         (unsigned long) MR_saved_ticket_counter(saved_regs));
     fprintf(MR_mdb_out, "ticket high water: %lu\n",
