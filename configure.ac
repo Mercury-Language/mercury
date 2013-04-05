@@ -2977,10 +2977,6 @@ case "$host" in
         esac
         ;;
 
-    # NOTE: do *not* attempt to use pthreads if we are cross compiling
-    # with the x86_64-w64-mingw32 GCC.
-    # XXX we we will need to do something different here when we support
-    # threads on 64-bit Windows.
     i*86-pc-mingw*)
         THREAD_LIBS=""
         case "$mercury_cv_cc_type" in
@@ -2997,6 +2993,12 @@ case "$host" in
                 THREAD_LIBS="-lpthread"
                 ;;
         esac
+        ;;
+
+    x86_64*w64*mingw32)
+        THREAD_LIBS=""
+        CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
+        THREAD_LIBS="-lpthread"
         ;;
 
     *apple*darwin*)

@@ -264,11 +264,13 @@ MR_mutex_lock(MercuryLock *lock, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld locking on %p (%s)\n",
+    fprintf(stderr, 
+        "%" MR_INTEGER_LENGTH_MODIFIER "d locking on %p (%s)\n",
         MR_SELF_THREAD_ID, lock, from);
     fflush(stderr);
     err = pthread_mutex_lock(lock);
-    fprintf(stderr, "%ld lock returned %d\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d lock returned %d\n",
         MR_SELF_THREAD_ID, err);
     fflush(stderr);
     assert(err == 0);
@@ -280,11 +282,13 @@ MR_mutex_unlock(MercuryLock *lock, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld unlocking on %p (%s)\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d unlocking on %p (%s)\n",
         MR_SELF_THREAD_ID, lock, from);
     fflush(stderr);
     err = pthread_mutex_unlock(lock);
-    fprintf(stderr, "%ld unlock returned %d\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d unlock returned %d\n",
         MR_SELF_THREAD_ID, err);
     fflush(stderr);
     assert(err == 0);
@@ -296,11 +300,13 @@ MR_cond_signal(MercuryCond *cond, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld signaling %p (%s)\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d signaling %p (%s)\n",
         MR_SELF_THREAD_ID, cond, from);
     fflush(stderr);
     err = pthread_cond_signal(cond);
-    fprintf(stderr, "%ld signal returned %d\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d signal returned %d\n",
         MR_SELF_THREAD_ID, err);
     fflush(stderr);
     assert(err == 0);
@@ -312,11 +318,13 @@ MR_cond_broadcast(MercuryCond *cond, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld broadcasting %p (%s)\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d broadcasting %p (%s)\n",
         MR_SELF_THREAD_ID, cond, from);
     fflush(stderr);
     err = pthread_cond_broadcast(cond);
-    fprintf(stderr, "%ld broadcast returned %d\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d broadcast returned %d\n",
         MR_SELF_THREAD_ID, err);
     fflush(stderr);
     assert(err == 0);
@@ -328,11 +336,13 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld waiting on cond: %p lock: %p (%s)\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d waiting on cond: %p lock: %p (%s)\n",
         MR_SELF_THREAD_ID, cond, lock, from);
     fflush(stderr);
     err = pthread_cond_wait(cond, lock);
-    fprintf(stderr, "%ld wait returned %d\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d wait returned %d\n",
         MR_SELF_THREAD_ID, err);
     fflush(stderr);
     assert(err == 0);
@@ -345,11 +355,13 @@ MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
 {
     int err;
 
-    fprintf(stderr, "%ld timed-waiting on cond: %p lock: %p (%s)\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d timed-waiting on cond: %p lock: %p (%s)\n",
         MR_SELF_THREAD_ID, cond, lock, from);
     fflush(stderr);
     err = pthread_cond_timedwait(cond, lock, abstime);
-    fprintf(stderr, "%ld timed-wait returned %d\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d timed-wait returned %d\n",
         MR_SELF_THREAD_ID, err);
     fflush(stderr);
     return err;
@@ -360,11 +372,13 @@ MR_sem_wait(MercurySem *sem, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld waiting on sem: %p (%s)\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d waiting on sem: %p (%s)\n",
         MR_SELF_THREAD_ID, sem, from);
     fflush(stderr);
     err = sem_wait(sem);
-    fprintf(stderr, "%ld wait returned %d\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d wait returned %d\n",
         MR_SELF_THREAD_ID, err);
     fflush(stderr);
 
@@ -376,11 +390,13 @@ MR_sem_post(MercurySem *sem, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld posting to sem: %p (%s)\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d posting to sem: %p (%s)\n",
         MR_SELF_THREAD_ID, sem, from);
     fflush(stderr);
     err = sem_post(sem);
-    fprintf(stderr, "%ld post returned %d\n",
+    fprintf(stderr,
+        "%" MR_INTEGER_LENGTH_MODIFIER "d post returned %d\n",
         MR_SELF_THREAD_ID, err);
     fflush(stderr);
 

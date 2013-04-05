@@ -63,9 +63,9 @@ MR_null_thread(void);
   #define MR_thread_equal(a, b)       pthread_equal((a), (b))
 
   #if defined(MR_PTHREADS_WIN32)
-    #define MR_SELF_THREAD_ID ((long) pthread_self().p)
+    #define MR_SELF_THREAD_ID ((MR_Integer) pthread_self().p)
   #else
-    #define MR_SELF_THREAD_ID ((long) pthread_self())
+    #define MR_SELF_THREAD_ID ((MR_Integer) pthread_self())
   #endif
 
   extern MR_bool    MR_debug_threads;
