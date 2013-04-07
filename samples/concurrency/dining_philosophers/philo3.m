@@ -41,11 +41,11 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    semaphore.new(Fork0, !IO), semaphore.signal(Fork0, !IO),
-    semaphore.new(Fork1, !IO), semaphore.signal(Fork1, !IO),
-    semaphore.new(Fork2, !IO), semaphore.signal(Fork2, !IO),
-    semaphore.new(Fork3, !IO), semaphore.signal(Fork3, !IO),
-    semaphore.new(Fork4, !IO), semaphore.signal(Fork4, !IO),
+    semaphore.init(Fork0, !IO), semaphore.signal(Fork0, !IO),
+    semaphore.init(Fork1, !IO), semaphore.signal(Fork1, !IO),
+    semaphore.init(Fork2, !IO), semaphore.signal(Fork2, !IO),
+    semaphore.init(Fork3, !IO), semaphore.signal(Fork3, !IO),
+    semaphore.init(Fork4, !IO), semaphore.signal(Fork4, !IO),
     spawn(philosopher("Plato",      0, Fork0, 1, Fork1), !IO),
     spawn(philosopher("Aristotle",  2, Fork2, 1, Fork1), !IO),
     spawn(philosopher("Descartes",  2, Fork2, 3, Fork3), !IO),
@@ -73,7 +73,7 @@ philosopher(Name, A, ForkA, B, ForkB, !IO) :-
     rand_sleep(5, !IO),
 
     io.format("%s relinquishes fork %d\n", [s(Name), i(B)], !IO),
-    semaphore__signal(ForkB, !IO),
+    semaphore.signal(ForkB, !IO),
     io.format("%s relinquishes fork %d\n", [s(Name), i(A)], !IO),
     semaphore.signal(ForkA, !IO),
 

@@ -56,7 +56,7 @@
     ;       sartre.
 
 main(!IO) :-
-    semaphore.new(Lock, !IO),
+    semaphore.init(Lock, !IO),
     semaphore.signal(Lock, !IO),
     spawn(philosopher(plato, Lock), !IO),
     spawn(philosopher(aristotle, Lock), !IO),

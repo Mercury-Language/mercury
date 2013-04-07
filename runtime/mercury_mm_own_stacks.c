@@ -17,6 +17,7 @@
 #include "mercury_tabling.h"
 #include "mercury_mm_own_stacks.h"
 #include "mercury_dlist.h"
+#include "mercury_windows.h"                  /* for Sleep() */
 
 #include <stdio.h>
 #ifdef MR_HAVE_UNISTD_H
@@ -348,20 +349,23 @@ MR_gen_subgoal(MR_Generator *generator)
                 break;
 
         case 1:
-                sprintf(buf, "%s(%d)",
+                sprintf(buf, "%s(%" MR_INTEGER_LENGTH_MODIFIER "d)",
                     generator->MR_gen_pred_id,
                     generator->MR_gen_input_args[0]);
                 break;
 
         case 2:
-                sprintf(buf, "%s(%d,%d)",
+                sprintf(buf, "%s(%" MR_INTEGER_LENGTH_MODIFIER 
+                   "d,%" MR_INTEGER_LENGTH_MODIFIER "d)",
                     generator->MR_gen_pred_id,
                     generator->MR_gen_input_args[0],
                     generator->MR_gen_input_args[1]);
                 break;
 
         case 3:
-                sprintf(buf, "%s(%d,%d,%d)",
+                sprintf(buf, "%s(%" MR_INTEGER_LENGTH_MODIFIER 
+                    "d,%" MR_INTEGER_LENGTH_MODIFIER 
+                    "d,%" MR_INTEGER_LENGTH_MODIFIER "d)",
                     generator->MR_gen_pred_id,
                     generator->MR_gen_input_args[0],
                     generator->MR_gen_input_args[1],
@@ -369,7 +373,10 @@ MR_gen_subgoal(MR_Generator *generator)
                 break;
 
         default:
-                sprintf(buf, "%s(%d,%d,%d,...)",
+                sprintf(buf, "%s(%" MR_INTEGER_LENGTH_MODIFIER
+                    "d,%" MR_INTEGER_LENGTH_MODIFIER
+                    "d,%" MR_INTEGER_LENGTH_MODIFIER
+                    "d,...)",
                     generator->MR_gen_pred_id,
                     generator->MR_gen_input_args[0],
                     generator->MR_gen_input_args[1],
@@ -469,12 +476,13 @@ MR_print_generator(FILE *fp, const MR_ProcLayout *proc,
             fprintf(fp, " in main context");
         }
 
-        fprintf(fp, " (returned %d)\n",
+        fprintf(fp, " (returned %" MR_INTEGER_LENGTH_MODIFIER "d)\n",
             consumer->MR_cons_num_returned_answers);
     }
 
     fprintf(fp, "\n");
-    fprintf(fp, "answers: %d\n", generator->MR_gen_num_answers);
+    fprintf(fp, "answers: %" MR_INTEGER_LENGTH_MODIFIER "d\n",
+        generator->MR_gen_num_answers);
 
     if (proc != NULL) {
         answer_list = generator->MR_gen_answer_list;
@@ -790,7 +798,8 @@ MR_define_label(MR_RETURN_ALL_LABEL(FromTable));
         }
 
         if (MR_tabledebug) {
-            printf("consumer %s returning answer #%d from table\n",
+            printf("consumer %s returning answer #%"
+                MR_INTEGER_LENGTH_MODIFIER "d from table\n",
                 MR_cons_addr_name(consumer),
                 consumer->MR_cons_num_returned_answers);
         }
@@ -825,7 +834,8 @@ MR_define_label(MR_RETURN_ALL_LABEL(FromTable));
             }
 
             if (MR_tabledebug) {
-                printf("consumer %s needs #%d from %s\n",
+                printf("consumer %s needs #%"
+                    MR_INTEGER_LENGTH_MODIFIER "d from %s\n",
                     MR_cons_addr_name(consumer),
                     consumer->MR_cons_num_returned_answers,
                     MR_gen_addr_name(generator));
@@ -833,7 +843,11 @@ MR_define_label(MR_RETURN_ALL_LABEL(FromTable));
                 ** The sleep is to allow the infinite loop that happens here
                 ** to be interrupted from the keyboard.
                 */
-                sleep(1);
+                #if defined(MR_HAVE_SLEEP)
+                    sleep(1);
+                #elif defined(MR_HAVE_CAPITAL_S_SLEEP)
+                    Sleep(1000);
+                #endif
             }
 
             MR_save_context(consumer->MR_cons_context);
