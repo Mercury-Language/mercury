@@ -65,11 +65,11 @@ typedef struct s_prof_time_node {
 */
 
 #define hash_addr_pair(Callee, Caller)                                      \
-        (int) ((( (unsigned long)(Callee) ^ (unsigned long)(Caller) ) >> 2) \
+        (int) ((( (MR_Unsigned)(Callee) ^ (MR_Unsigned)(Caller) ) >> 2) \
                 % CALL_TABLE_SIZE )
 
 #define hash_prof_addr(Addr)                                                \
-        (int) ( (( (unsigned long)(Addr) ) >> 2) % TIME_TABLE_SIZE )
+        (int) ( (( (MR_Unsigned)(Addr) ) >> 2) % TIME_TABLE_SIZE )
 
 /*
 ** Global Variables.
@@ -269,8 +269,9 @@ static void
 print_addr_pair_node(FILE *fptr, prof_call_node *node)
 {
     if (node != NULL) {
-        fprintf(fptr, "%ld %ld %lu\n",
-            (long) node->Caller, (long) node->Callee, node->count);
+        fprintf(fptr, "%" MR_INTEGER_LENGTH_MODIFIER "d %"
+            MR_INTEGER_LENGTH_MODIFIER "d %lu\n",
+            (MR_Integer) node->Caller, (MR_Integer) node->Callee, node->count);
         print_addr_pair_node(fptr, node->left);
         print_addr_pair_node(fptr, node->right);
     }
@@ -295,7 +296,8 @@ MR_prof_output_addr_decl(const char *name, const MR_Code *address)
     if (!MR_prof_decl_fptr) {
         MR_prof_decl_fptr = MR_checked_fopen("Prof.Decl", "create", "w");
     }
-    fprintf(MR_prof_decl_fptr, "%ld\t%s\n", (long) address, name);
+    fprintf(MR_prof_decl_fptr, "%" MR_INTEGER_LENGTH_MODIFIER "d\t%s\n",
+        (MR_Integer) address, name);
 }
 
 #endif /* MR_MPROF_PROFILE_CALLS */
@@ -401,8 +403,10 @@ print_memory_node(FILE *words_fptr, FILE *cells_fptr, MR_memprof_record *node)
         MR_convert_dword_to_double(words, words_double);
         MR_convert_dword_to_double(cells, cells_double);
 
-        fprintf(words_fptr, "%ld %.0f\n", (long) node->proc, words_double);
-        fprintf(cells_fptr, "%ld %.0f\n", (long) node->proc, cells_double);
+        fprintf(words_fptr, "%" MR_INTEGER_LENGTH_MODIFIER "d %.0f\n",
+            (MR_Integer) node->proc, words_double);
+        fprintf(cells_fptr, "%" MR_INTEGER_LENGTH_MODIFIER "d %.0f\n",
+            (MR_Integer) node->proc, cells_double);
 
         print_memory_node(words_fptr, cells_fptr, node->left);
         print_memory_node(words_fptr, cells_fptr, node->right);
