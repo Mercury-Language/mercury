@@ -329,9 +329,13 @@ prof_output_addr_table(void)
     ** The scale factor is the time per profiling interrupt.
     ** The units are seconds.
     */
-    scale = (double) MR_CLOCK_TICKS_PER_PROF_SIG /
-        (double) MR_CLOCK_TICKS_PER_SECOND;
-    fprintf(fptr, "%s %f %s\n", MR_time_method, scale, "seconds");
+    #if defined(MR_CLOCK_TICKS_PER_SECOND)
+        scale = (double) MR_CLOCK_TICKS_PER_PROF_SIG /
+            (double) MR_CLOCK_TICKS_PER_SECOND;
+        fprintf(fptr, "%s %f %s\n", MR_time_method, scale, "seconds");
+    #else
+        #error "Time profiling not supported on this system"
+    #endif
 
     /*
     ** Write out the time profiling data: one one-line entry per node.
@@ -347,7 +351,8 @@ static void
 print_time_node(FILE *fptr, prof_time_node *node)
 {
     if (node != (prof_time_node *) NULL) {
-        fprintf(fptr, "%ld %lu\n", (long) node->Addr, node->count);
+        fprintf(fptr, "%" MR_INTEGER_LENGTH_MODIFIER "d %lu\n",
+            (MR_Integer) node->Addr, node->count);
         print_time_node(fptr, node->left);
         print_time_node(fptr, node->right);
     }
