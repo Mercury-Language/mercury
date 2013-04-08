@@ -6,6 +6,12 @@ Changes to the Mercury standard library:
 * We have added predicates to the calendar module for folding over the days
   in a given range of dates: foldl_days/5, foldl2_days/7 and  foldl3_days/9.
 
+Changes to the Mercury compiler:
+
+* Generation of 64-bit code on Windows using the MinGW64 port of GCC
+  is now supported, i.e. the x86_64-w64-mingw32 architecture is now
+  supported.
+
 
 NEWS for Mercury 12.08
 ----------------------

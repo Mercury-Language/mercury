@@ -1,17 +1,26 @@
+This file documents the port of Mercury to Windows using the either the MinGW
+or MinGW64 ports of GCC, i.e. the i686-pc-mingw32 or x86_64-w64-mingw32
+configurations.
+
 -----------------------------------------------------------------------------
 
 BUILDING WITH MINGW
 
-It is possible to build the Mercury compiler using the MinGW version of GCC.
-The advantage of using MinGW is that the generated executables will run
-natively on Windows without the need for any support environments like Cygwin.
+Using the MinGW port of GCC you can build a Mercury compiler that can generate
+executables that will run natively on Windows without the need for a support
+environment like Cygwin.  Using the standard MinGW version of GCC will result
+in a Mercury compiler that generates 32-bit executables.  To build a Mercury
+compiler that generates 64-bit executables for Windows you will need to
+use the MinGW64 port of GCC.
 
-A Unix like environment is however still required to build the Mercury
-compiler.  MSYS or Cygwin can be used for this purpose.
+NOTE: a Unix like environment is required to build and install the Mercury
+compiler.  MSYS or Cygwin can be used for this purpose.  A Unix like environment
+is only required for installing Mercury, you do *not* require one to use
+Mercury once it is installed.
 
 -----------------------------------------------------------------------------
 
-BUILDING A MINGW COMPILER UNDER MSYS
+BUILDING A MINGW OR MINGW64 COMPILER UNDER MSYS
 
 To build the source distribution under MSYS follow these steps:
 
@@ -28,6 +37,10 @@ To build the source distribution under MSYS follow these steps:
 
     Details of alternative MinGW and MSYS installation methods may be found
     on the MinGW website.
+
+    To build a version of Mercury that generates 64-bit executables you will
+    require the MinGW64 version of GCC (available from
+    <http://mingw-w64.sourceforge.net>).
 
     To build the Erlang grade with MinGW and MSYS you will require the Windows
     version of the Erlang/OTP distribution to be installed on your system.
@@ -58,7 +71,6 @@ To build the source distribution under MSYS follow these steps:
         export PATH=/c/WINDOWS/Microsoft.NET/Framework/v4.0.30319/:$PATH
     
     See README.CSharp for further details.
-	
 
 2.  Unpack the source distribution with a command like:
     
@@ -74,9 +86,13 @@ To build the source distribution under MSYS follow these steps:
     will be interpreted differently by the MSYS shell than by the generated
     executables, resulting in a broken installation.  
 
-    If you get a dialog from the "Microsoft Management Console" with the
-    message "The selected file cannot be found." simply dismiss it.
-    This is because configure looks for a program called "mmc".
+    If you are building a Mercury compiler that targets MinGW64 then you
+    must also invoke configure with the following option:
+
+       --host=x86_64-w64-mingw32
+
+    This will cause mmake to use the MinGW64 tool chain.  Ensure that the
+    MinGW64 tools are in your PATH before running configure.
 
 4.  run: `make' and then `make install'.
 
