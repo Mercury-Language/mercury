@@ -57,6 +57,15 @@ XXX `ui' modes don't work yet
 :-        pred set_mutvar(ui, di) is det.
 */
 
+    % Destructively clear a reference to avoid retaining the value.
+    %
+:- impure pred clear_mutvar(mutvar(T)) is det.
+:-        mode clear_mutvar(in) is det.
+/*
+XXX `ui' modes don't work yet
+:-        pred clear_mutvar(ui) is det.
+*/
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -66,6 +75,7 @@ XXX `ui' modes don't work yet
 :- pragma inline(new_mutvar0/1).
 :- pragma inline(get_mutvar/2).
 :- pragma inline(set_mutvar/2).
+:- pragma inline(clear_mutvar/1).
 
 %-----------------------------------------------------------------------------%
 
@@ -107,6 +117,13 @@ new_mutvar(X, Ref) :-
     *(MR_Word *) Ref = X;
 ").
 
+:- pragma foreign_proc("C",
+    clear_mutvar(Ref::in),
+    [will_not_call_mercury, thread_safe],
+"
+    *(MR_Word *) Ref = 0;
+").
+
 %-----------------------------------------------------------------------------%
 %
 % C# implementation
@@ -133,6 +150,13 @@ new_mutvar(X, Ref) :-
     [will_not_call_mercury, thread_safe],
 "
     Ref[0] = X;
+").
+
+:- pragma foreign_proc("C#",
+    clear_mutvar(Ref::in),
+    [will_not_call_mercury, thread_safe],
+"
+    Ref[0] = null;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -177,6 +201,13 @@ new_mutvar(X, Ref) :-
     Ref.object = X;
 ").
 
+:- pragma foreign_proc("Java",
+    clear_mutvar(Ref::in),
+    [will_not_call_mercury, thread_safe],
+"
+    Ref.object = null;
+").
+
 %-----------------------------------------------------------------------------%
 %
 % Erlang implementation
@@ -205,6 +236,13 @@ new_mutvar(X, Ref) :-
     [will_not_call_mercury, thread_safe],
 "
     ets:insert(Ref, {value, X})
+").
+
+:- pragma foreign_proc("Erlang",
+    clear_mutvar(Ref::in),
+    [will_not_call_mercury, thread_safe],
+"
+    ets:delete(Ref, value)
 ").
 
 %-----------------------------------------------------------------------------%

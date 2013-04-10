@@ -98,6 +98,8 @@ mvar.take(mvar(Full, Empty, Ref), Data, !IO) :-
     promise_pure (
         semaphore.wait(Full, !IO),
         impure get_mutvar(Ref, Data),
+        % Avoid unwanted memory retention.
+        impure clear_mutvar(Ref),
         semaphore.signal(Empty, !IO)
     ).
 
@@ -107,6 +109,8 @@ mvar.try_take(mvar(Full, Empty, Ref), MaybeData, !IO) :-
         (
             Success = yes,
             impure get_mutvar(Ref, Data),
+            % Avoid unwanted memory retention.
+            impure clear_mutvar(Ref),
             semaphore.signal(Empty, !IO),
             MaybeData = yes(Data)
         ;
