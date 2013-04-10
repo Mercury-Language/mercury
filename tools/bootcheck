@@ -450,17 +450,6 @@ case $target in
         target_subdir=$cs_subdir
         target_opt=
         ;;
-    asm)
-        target_ext=s
-        target_subdir=$ss_subdir
-        target_opt="--target asm"
-        # If the stage 1 directory was built without --target asm,
-        # but the stage 2 will be built with `--target asm',
-        # then we need to copy the profiler directories.
-        # So to be safe, we just enable this by default.
-        copy_slice=true
-        copy_profilers=true
-        ;;
 esac
 case $grade in
     il|ilc)
@@ -833,6 +822,7 @@ then
         $LN_S $root/VERSION .
         $LN_S $root/install-sh .
         $LN_S $root/.*.in .
+        $LN_S $root/mercury.snk .
         rm -f config*.log
         cp $root/Mmake* $root/Mercury.options .
         if test -f $root/Mmake.stage.params
