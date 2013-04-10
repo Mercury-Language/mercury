@@ -5683,7 +5683,7 @@ options_help_link -->
         "\twith the C# backend.)",
         
         "--cstack-reserve-size <size>",
-        "\tSet the total size of the C stack in virtual memory for excutables."
+        "\tSet the total size of the C stack in virtual memory for excutables.",
         "\tThe stack size is given in bytes.",
         "\t(Microsoft Windows only.)"
 
