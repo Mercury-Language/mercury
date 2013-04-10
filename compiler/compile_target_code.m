@@ -1909,7 +1909,8 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
             AllowUndef = no,
             globals.lookup_string_option(Globals,
                 linker_error_undefined_flag, UndefOpt)
-        )
+        ),
+        ReserveStackSizeOpt = ""
     ;
         LinkTargetType = executable,
         CommandOpt = link_executable_command,
@@ -1919,7 +1920,8 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
         ThreadFlagsOpt = linker_thread_flags,
         DebugFlagsOpt = linker_debug_flags,
         TraceFlagsOpt = linker_trace_flags,
-        UndefOpt = ""
+        UndefOpt = "",
+        ReserveStackSizeOpt = reserve_stack_size_flags(Globals)
     ),
 
     % Should the executable be stripped?
@@ -2083,6 +2085,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
                     UndefOpt, " ",
                     ThreadOpts, " ",
                     TraceOpts, " ",
+                    ReserveStackSizeOpt, " ",
                     OutputOpt, quote_arg(OutputFileName), " ",
                     Objects, " ",
                     LinkOptSep, " ",
@@ -2663,6 +2666,27 @@ get_linker_output_option(Globals, LinkTargetType, OutputOpt) :-
         ; C_CompilerType = cc_unknown
         ),
         OutputOpt = " -o "
+    ).
+
+:- func reserve_stack_size_flags(globals) = string.
+
+reserve_stack_size_flags(Globals) = Flags :-
+    globals.lookup_int_option(Globals, cstack_reserve_size, ReserveStackSize),
+    ( if ReserveStackSize = -1 then
+        Flags = ""
+    else 
+        get_c_compiler_type(Globals, C_CompilerType),
+        (
+            ( C_CompilerType = cc_gcc(_, _, _)
+            ; C_CompilerType = cc_clang(_)
+            ; C_CompilerType = cc_lcc
+            ; C_CompilerType = cc_unknown
+            ),
+            string.format("-Wl,--stack=%d", [i(ReserveStackSize)], Flags)
+        ;
+            C_CompilerType = cc_cl(_),
+            string.format("-stack:%d", [i(ReserveStackSize)], Flags)
+        )
     ).
 
 %-----------------------------------------------------------------------------%

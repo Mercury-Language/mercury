@@ -10111,6 +10111,14 @@ specified key file.
 (This option is only meaningful when generating library assemblies
 with the C# backend.)
 
+@sp 1
+@item --cstack-reserve-size @var{size}
+@findex --cstack-reserve-size
+Set the total size of the C stack in virtual memory for executables.
+The stack size is given in bytes.
+This option is only supported (and indeed only necessary) on systems running
+Microsoft Windows.
+
 @end table
 
 @c ----------------------------------------------------------------------------

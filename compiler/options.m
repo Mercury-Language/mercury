@@ -915,6 +915,7 @@
     ;       frameworks
     ;       framework_directories
     ;       sign_assembly
+    ;       cstack_reserve_size
 
     % Auto-configured options.
     ;       shared_library_extension
@@ -1817,6 +1818,7 @@ option_defaults_2(link_option, [
     frameworks                          -   accumulating([]),
     framework_directories               -   accumulating([]),
     sign_assembly                       -   string(""),
+    cstack_reserve_size                 -   int(-1),    
 
     shared_library_extension            -   string(".so"),
                                         % The `mmc' script will override the
@@ -2789,6 +2791,7 @@ long_option("extra-inits",      extra_initialization_functions).
 long_option("framework",        frameworks).
 long_option("framework-directory", framework_directories).
 long_option("sign-assembly", sign_assembly).
+long_option("cstack-reserve-size", cstack_reserve_size).
 
 long_option("shared-library-extension", shared_library_extension).
 long_option("library-extension",    library_extension).
@@ -5677,7 +5680,12 @@ options_help_link -->
         "\tSign the current assembly with the strong name contained",
         "\tin the specified key file.",
         "\t(This option is only meaningful when generating library assemblies",
-        "\twith the C# backend.)"
+        "\twith the C# backend.)",
+        
+        "--cstack-reserve-size <size>",
+        "\tSet the total size of the C stack in virtual memory for excutables."
+        "\tThe stack size is given in bytes.",
+        "\t(Microsoft Windows only.)"
 
         % The --shared-library-extension,
         % --library-extension, --executable-file-extension
