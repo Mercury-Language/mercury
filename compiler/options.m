@@ -279,7 +279,7 @@
     ;       prop_mode_constraints
     ;       benchmark_modes
     ;       benchmark_modes_repeat
-    ;       sign_assembly
+    ;       il_sign_assembly
     ;       separate_assemblies
 
     % Language semantics options
@@ -914,6 +914,7 @@
     ;       extra_initialization_functions
     ;       frameworks
     ;       framework_directories
+    ;       sign_assembly
 
     % Auto-configured options.
     ;       shared_library_extension
@@ -1256,7 +1257,7 @@ option_defaults_2(aux_output_option, [
     prop_mode_constraints               -   bool(no),
     benchmark_modes                     -   bool(no),
     benchmark_modes_repeat              -   int(1),
-    sign_assembly                       -   bool(no),
+    il_sign_assembly                    -   bool(no),
     % XXX should default to no but currently broken
     separate_assemblies                 -   bool(yes)
 ]).
@@ -1815,6 +1816,7 @@ option_defaults_2(link_option, [
     extra_initialization_functions      -   bool(no),
     frameworks                          -   accumulating([]),
     framework_directories               -   accumulating([]),
+    sign_assembly                       -   string(""),
 
     shared_library_extension            -   string(".so"),
                                         % The `mmc' script will override the
@@ -2162,7 +2164,7 @@ long_option("dump-mlds",                dump_mlds).
 long_option("mlds-dump",                dump_mlds).
 long_option("verbose-dump-mlds",        verbose_dump_mlds).
 long_option("verbose-mlds-dump",        verbose_dump_mlds).
-long_option("sign-assembly",            sign_assembly).
+long_option("il-sign-assembly",         il_sign_assembly).
 long_option("separate-assemblies",      separate_assemblies).
 long_option("mode-constraints",         mode_constraints).
 long_option("simple-mode-constraints",  simple_mode_constraints).
@@ -2786,6 +2788,7 @@ long_option("extra-initialization-functions",
 long_option("extra-inits",      extra_initialization_functions).
 long_option("framework",        frameworks).
 long_option("framework-directory", framework_directories).
+long_option("sign-assembly", sign_assembly).
 
 long_option("shared-library-extension", shared_library_extension).
 long_option("library-extension",    library_extension).
@@ -4053,7 +4056,7 @@ options_help_aux_output -->
 %       "\tUse the new propagation solver for constraints based",
 %       "\tmode analysis.",
 % IL options are commented out to reduce confusion.
-%       "--sign-assembly",
+%       "--il-sign-assembly",
 %       "\tSign the current assembly with the Mercury strong name.",
 %       "\tTo use assemblies created with this command all the Mercury",
 %       "\tmodules must be compiled with this option enabled.",
@@ -5668,7 +5671,13 @@ options_help_link -->
         "\t(Mac OS X only.)",
         "-F <directory>, --framework-directory <directory>",
         "\tAppend the specified directory to the framework search path.",
-        "\t(Mac OS X only.)"
+        "\t(Mac OS X only.)",
+
+        "--sign-assembly <keyfile>",
+        "\tSign the current assembly with the strong name contained",
+        "\tin the specified key file.",
+        "\t(This option is only meaningful when generating library assemblies",
+        "\twith the C# backend.)"
 
         % The --shared-library-extension,
         % --library-extension, --executable-file-extension

@@ -2841,10 +2841,16 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
     (
         LinkTargetType = csharp_executable,
-        TargetOption = "-target:exe"
+        TargetOption = "-target:exe",
+        SignAssemblyOpt = ""
     ;
         LinkTargetType = csharp_library,
-        TargetOption = "-target:library"
+        TargetOption = "-target:library",
+        globals.lookup_string_option(Globals, sign_assembly, KeyFile),
+        ( if KeyFile = ""
+        then SignAssemblyOpt = ""
+        else SignAssemblyOpt = "-keyfile:" ++ KeyFile ++ " "
+        )
     ;
         ( LinkTargetType = executable
         ; LinkTargetType = static_library
@@ -2888,6 +2894,7 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         DebugOpt,
         TargetOption,
         "-out:" ++ OutputFileName,
+        SignAssemblyOpt,
         LinkLibraryDirectories,
         LinkLibraries,
         MercuryStdLibs] ++

@@ -152,7 +152,7 @@ output_csharp_header_code(Globals, !IO) :-
     % in the C# code anymore.
     io.write_string("using mercury;\n\n", !IO),
 
-    globals.lookup_bool_option(Globals, sign_assembly, SignAssembly),
+    globals.lookup_bool_option(Globals, il_sign_assembly, SignAssembly),
     (
         SignAssembly = yes,
         io.write_string("[assembly:System.Reflection." ++

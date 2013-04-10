@@ -272,7 +272,7 @@ generate_il(Globals, MLDS0, Version, ILAsm, ForeignLangs) :-
     globals.lookup_bool_option(Globals, debug_il_asm, DebugIlAsm),
     globals.lookup_bool_option(Globals, verifiable_code, VerifiableCode),
     globals.lookup_bool_option(Globals, il_byref_tailcalls, ByRefTailCalls),
-    globals.lookup_bool_option(Globals, sign_assembly, SignAssembly),
+    globals.lookup_bool_option(Globals, il_sign_assembly, SignAssembly),
     globals.lookup_bool_option(Globals, separate_assemblies,
         SeparateAssemblies),
     globals.lookup_bool_option(Globals, support_ms_clr, MsCLR),

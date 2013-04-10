@@ -485,7 +485,7 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ),
 
         globals.get_target(Globals, Target),
-        globals.lookup_bool_option(Globals, sign_assembly, SignAssembly),
+        globals.lookup_bool_option(Globals, il_sign_assembly, SignAssembly),
 
         % If we are on the IL backend, add the dependency that the
         % top level dll of a nested module hierachy depends on all

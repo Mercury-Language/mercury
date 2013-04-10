@@ -10103,6 +10103,14 @@ Build and link against the specified framework.
 Append the specified directory to the framework search path.
 (Mac OS X only.)
 
+@sp 1
+@item --sign-assembly @var{keyfile}
+@findex --sign-assembly
+Sign the current assembly with the strong name contained in the
+specified key file.
+(This option is only meaningful when generating library assemblies
+with the C# backend.)
+
 @end table
 
 @c ----------------------------------------------------------------------------
