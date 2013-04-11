@@ -452,22 +452,19 @@ uninstall:
 # a different directory (supplied by the environment variable
 # INSTALL_WEBPAGE_DIR).
 
-#.PHONY: install_webpage
-#install_webpage: library-chapters.texi_pp split_html ps pdf install_dirs
-#	cp *.ps $(INSTALL_WEBPAGE_DIR)
-#	cp *.pdf $(INSTALL_WEBPAGE_DIR)
-#	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
-#		gzip -f -9 $$file ; \
-#	done
-#	cp -r $(TEXINFO_INFO_FILES:%.info=%) $(INSTALL_WEBPAGE_DIR)
-
-# XXX We should use the commented out version above but dvips is not
-# working correctly on earth at the moment - juliensf.
-#
 .PHONY: install_webpage
-install_webpage: library-chapters.texi_pp split_html pdf install_dirs
+install_webpage: library-chapters.texi_pp split_html ps pdf install_dirs
+	cp *.ps $(INSTALL_WEBPAGE_DIR)
 	cp *.pdf $(INSTALL_WEBPAGE_DIR)
+	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
+		gzip -f -9 $$file ; \
+	done
 	cp -r $(TEXINFO_INFO_FILES:%.info=%) $(INSTALL_WEBPAGE_DIR)
+
+webpage.tar.gz:
+	rm -rf webpage
+	mmake INSTALL_WEBPAGE_DIR=webpage install_webpage
+	tar -zcf webpage.tar.gz webpage/
 
 #-----------------------------------------------------------------------------#
 
