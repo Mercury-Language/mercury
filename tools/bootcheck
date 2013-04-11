@@ -1204,7 +1204,6 @@ then
     cd $root/$stage3dir
     $LN_S $root/$stage2dir/boehm_gc .
     $LN_S $root/$stage2dir/java .
-    $LN_S $root/$stage2dir/mps_gc .
     $LN_S $root/bindist .
     $LN_S $root/doc .
     $LN_S $root/$stage2dir/runtime .
