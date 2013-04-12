@@ -2830,6 +2830,17 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     SourceList = list.map(csharp_file_name(EnvType, CSharpCompilerType),
         SourceList0),
 
+    % Suppress the MS C# compiler's banner message.
+    (
+        CSharpCompilerType = csharp_microsoft,
+        NoLogoOpt = "-nologo "
+    ;
+        ( CSharpCompilerType = csharp_mono
+        ; CSharpCompilerType = csharp_unknown
+        ),
+        NoLogoOpt = ""
+    ),
+
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     (
         % If we output line numbers the mono C# compiler outputs lots of
@@ -2913,6 +2924,7 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
 
     Cmd = CSharpCompiler,
     CmdArgs = string.join_list(" ", [
+        NoLogoOpt,
         NoWarnLineNumberOpt,
         HighLevelDataOpt,
         DebugOpt,
