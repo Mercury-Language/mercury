@@ -72,15 +72,15 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-.SUFFIXES: .in .texi_pp .texi .dvi_log .ps .pdf .text
+.SUFFIXES: .in .texi_pp .texi .dvi .dvi_log .ps .pdf .pdf_log .text
 
-%.dvi_log: %.texi_pp
+%.dvi: %.texi_pp
 	-$(TEXI2DVI) $< < /dev/null > $*.dvi_log
 
 %.ps: %.dvi
 	$(DVIPS) -f < $< > $@
 
-%.pdf: %.texi_pp %.dvi_log
+%.pdf: %.texi_pp %.dvi
 	$(PDFTEX) $< < /dev/null > $*.pdf_log
 
 %.text: %.texi_pp
@@ -108,10 +108,10 @@ SED_CMD = sed -e "s/<VERSION>/$(VERSION)/g" < $< > $@
 %.texi_pp: %.texi ../VERSION
 	$(SED_CMD)
 
-mercury.html: mercury.html.in
+mercury.html: mercury.html.in ../VERSION
 	$(SED_CMD)
 
-mercury.info: mercury.info.in
+mercury.info: mercury.info.in ../VERSION
 	$(SED_CMD)
 
 #-----------------------------------------------------------------------------#
@@ -127,7 +127,7 @@ all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC)
 #-----------------------------------------------------------------------------#
 
 .PHONY: dvi
-dvi: $(TEXINFO_FILES:%=%.dvi_log)
+dvi: $(TEXINFO_FILES:%=%.dvi)
 
 .PHONY: warn_no_dvi
 warn_no_dvi: 
@@ -239,7 +239,7 @@ mdb_command_test.inp: generate_mdb_command_test mdb_doc
 # Note that some modules are just implementation details of the library,
 # so they are not documented.
 
-library-menu.texi_pp: $(LIBRARY_DIR)/*.m
+library-menu.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
 	{ 								\
 	echo "";							\
 	for filename in $(LIBRARY_DIR)/*.m; do				\
@@ -283,7 +283,7 @@ library-menu.texi_pp: $(LIBRARY_DIR)/*.m
 	done;								\
 	} > library-menu.texi_pp
 
-library-chapters.texi_pp: $(LIBRARY_DIR)/[a-z]*.m
+library-chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/[a-z]*.m
 	for filename in $(LIBRARY_DIR)/[a-z]*.m; do 			\
 		case $$filename in					\
 			$(LIBRARY_DIR)/mer_std.m)			\
@@ -375,7 +375,6 @@ install_dirs:
 	-[ -d $(INSTALL_MAN_DIR)/man1 ] || \
 		mkdir -p $(INSTALL_MAN_DIR)/man1
 	-[ -d $(INSTALL_MDB_DOC_DIR) ] || mkdir -p $(INSTALL_MDB_DOC_DIR)
-	-[ -d $(INSTALL_WEBPAGE_DIR) ] || mkdir -p $(INSTALL_WEBPAGE_DIR)
 
 .PHONY: install_info
 install_info: $(INFOPAGES) install_dirs
@@ -432,26 +431,31 @@ uninstall:
 # a different directory (supplied by the environment variable
 # INSTALL_WEBPAGE_DIR).
 
-#.PHONY: install_webpage
-#install_webpage: library-chapters.texi_pp split_html ps pdf install_dirs
-#	cp *.ps $(INSTALL_WEBPAGE_DIR)
-#	cp *.pdf $(INSTALL_WEBPAGE_DIR)
-#	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
-#		gzip -f -9 $$file ; \
-#	done
-#	cp -r $(TEXINFO_INFO_FILES:%.info=%) $(INSTALL_WEBPAGE_DIR)
-
-# XXX We should use the commented out version above but dvips is not
-# working correctly on earth at the moment - juliensf.
-#
 .PHONY: install_webpage
-install_webpage: library-chapters.texi_pp split_html pdf install_dirs
+install_webpage: library-chapters.texi_pp split_html ps pdf
+	-[ -d $(INSTALL_WEBPAGE_DIR) ] || mkdir -p $(INSTALL_WEBPAGE_DIR)
+	( \
+		. ../VERSION; \
+        if [ "$$VERSION" = DEV ]; then \
+			echo "Set the version before you build the website"; \
+			exit 1; \
+		fi; \
+    )
+	cp *.ps $(INSTALL_WEBPAGE_DIR)
 	cp *.pdf $(INSTALL_WEBPAGE_DIR)
+	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
+		gzip -f -9 $$file ; \
+	done
 	cp -r $(TEXINFO_INFO_FILES:%.info=%) $(INSTALL_WEBPAGE_DIR)
+
+webpage.tar.gz:
+	rm -rf webpage
+	mmake INSTALL_WEBPAGE_DIR=webpage install_webpage
+	tar -zcf webpage.tar.gz webpage/
 
 #-----------------------------------------------------------------------------#
 
-clean_local: distclean clean_texi
+clean_local: distclean clean_texi clean_webpage
 
 .PHONY: distclean
 distclean:
@@ -460,6 +464,11 @@ distclean:
 .PHONY: clean_texi
 clean_texi:
 	rm -f library-menu.texi library-chapters.texi *.texi_pp
+
+.PHONY: clean_webpage
+clean_webpage:
+	rm -rf webpage
+	rm -f webpage.tar.gz
 
 realclean_local: realclean_texi realclean_manpages
 
