@@ -19,6 +19,7 @@ TRAIL_PROGS= \
 
 TYPECLASS_PROGS= \
 	abstract_typeclass \
+	bug271 \
 	complex_constraint \
 	exists_bug \
 	exists_fundeps \
