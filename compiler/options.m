@@ -932,6 +932,7 @@
     ;       mkinit_erl_command
     ;       demangle_command
     ;       filtercc_command
+    ;       filterjavac_command
     ;       trace_libs
     ;       thread_libs
     ;       hwloc_libs
@@ -1837,6 +1838,7 @@ option_defaults_2(link_option, [
     mkinit_erl_command                  -   string("mkinit_erl"),
     demangle_command                    -   string("mdemangle"),
     filtercc_command                    -   string("mfiltercc"),
+    filterjavac_command                 -   string("mfilterjavac"),
     trace_libs                          -   string(""),
     thread_libs                         -   string(""),
     hwloc_libs                          -   string(""),
@@ -2808,6 +2810,7 @@ long_option("mkinit-command",       mkinit_command).
 long_option("mkinit-erl-command",   mkinit_erl_command).
 long_option("demangle-command",     demangle_command).
 long_option("filtercc-command",     filtercc_command).
+long_option("filterjavac-command",  filterjavac_command).
 long_option("trace-libs",           trace_libs).
 long_option("thread-libs",          thread_libs).
 long_option("hwloc-libs",           hwloc_libs).
@@ -5693,7 +5696,7 @@ options_help_link -->
         % --create-archive-command-output-flag, --ranlib-command,
         % --ranlib-flags,
         % --mkinit-command, --demangle-command, --filtercc-command,
-        % --trace-libs,
+        % --filterjavac-command --trace-libs,
         % --thread-libs, --shared-libs, --math-lib, --readline-libs,
         % --hwloc-libs, --hwloc-static-libs,
         % --linker-opt-separator,

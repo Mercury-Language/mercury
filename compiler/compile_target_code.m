@@ -1125,13 +1125,21 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
         DirOpts = ""
     ),
 
+    globals.lookup_string_option(Globals, filterjavac_command, MFilterJavac),
+    ( MFilterJavac = "" ->
+        MaybeMFilterJavac = no
+    ;
+        MaybeMFilterJavac = yes(MFilterJavac)
+    ),
+
     % Be careful with the order here!  Some options may override others.
     % Also be careful that each option is separated by spaces.
     JoinedJavaFiles = string.join_list(" ", JavaFiles),
     string.append_list([InclOpt, DirOpts,
         Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], CommandArgs),
-    invoke_long_system_command(Globals, ErrorStream, cmd_verbose_commands,
-        JavaCompiler, CommandArgs, Succeeded, !IO).
+    invoke_long_system_command_maybe_filter_output(Globals, ErrorStream,
+        cmd_verbose_commands, JavaCompiler, CommandArgs, MaybeMFilterJavac,
+        Succeeded, !IO).
 
 :- func java_classpath_separator = string.
 
@@ -3514,8 +3522,8 @@ invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             ),
 
             FullCmd = Cmd ++ " " ++ at_file_name(Globals, TmpFile),
-            invoke_system_command(Globals, ErrorStream, Verbosity, FullCmd,
-                Succeeded0, !IO),
+            invoke_system_command_maybe_filter_output(Globals, ErrorStream,
+                Verbosity, FullCmd, MaybeProcessOutput, Succeeded0, !IO),
 
             io.remove_file(TmpFile, RemoveResult, !IO),
             (
