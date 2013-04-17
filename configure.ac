@@ -5390,6 +5390,7 @@ slice/SLICE_FLAGS
 profiler/PROF_FLAGS
 deep_profiler/DEEP_FLAGS
 tests/TESTS_FLAGS
+mfilterjavac/MFILTERJAVAC_FLAGS
 '
 
 # The order in which we output files matters, because in some cases, one of the

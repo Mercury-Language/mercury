@@ -1,0 +1,140 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2013 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# This is the Mmakefile for building the mfilterjavac tool.
+
+MERCURY_DIR=..
+LINK_STATIC=yes
+include $(MERCURY_DIR)/Mmake.common
+
+#----------------------------------------------------------------------------#
+
+-include Mmake.mfilterjavac.params
+
+# Override the default rule in `mmake --use-mmc-make' that asks `mmc' to
+# create a missing optional params file.
+Mmake.mfilterjavac.params:
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.  But this hasn't been used in this directory
+# so it's commented out.
+# include Mercury.options
+
+MAIN_TARGET = all
+
+ALL_MODULES = mfilterjavac
+
+MAIN_TARGET=all
+MERCURY_MAIN_MODULES=$(ALL_MODULES)
+DEPEND=$(patsubst %,%.depend,$(ALL_MODULES))
+
+VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
+
+#-----------------------------------------------------------------------------#
+
+MLFLAGS += --shared
+MCFLAGS += --flags MFILTERJAVAC_FLAGS $(CONFIG_OVERRIDE)
+
+#-----------------------------------------------------------------------------#
+
+# Tell the C# compiler where the stdlib assembly is.
+#
+ifneq ("$(filter csharp%,$(GRADE))","")
+CSCFLAGS=-lib:../library -r:mer_std.dll
+endif
+
+#-----------------------------------------------------------------------------#
+
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+MLOBJS =
+endif
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: nothing
+nothing:
+
+.PHONY: depend
+depend:	$(DEPEND)
+
+$(DEPEND): MFILTERJAVAC_FLAGS
+
+.PHONY: all
+all:	$(ALL_MODULES) $(TAGS_FILE_EXISTS)
+
+#-----------------------------------------------------------------------------#
+
+# Add some additional dependencies, so that Mmake knows to remake the
+# profiler if one of the libraries changes.
+
+ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+mfilterjavac:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mfilterjavac:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+endif
+
+$(cs_subdir)mfilterjavac.c:			$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: check
+check:	DEPEND=$(patsubst %,%.check,$(ALL_MODULES))
+
+.PHONY: ints 
+ints:	DEPEND=$(patsubst %,%.ints,$(ALL_MODULES))
+
+#-----------------------------------------------------------------------------#
+
+# We need the shenanigans with .mfilterjavac_tags to avoid situations in
+# which an "mmake tags" in this directory does nothing even in the absence
+# of a tags file in this directory, because mmake uses VPATH to find
+# ../library/tags and believes it to be the tags file we are asking for.
+
+.PHONY: tags
+tags:	.mfilterjavac_tags
+
+MS = \
+	$(mfilterjavac.ms)
+
+.mfilterjavac_tags: $(MTAGS) $(MS) \
+		$(wildcard $(LIBRARY_DIR)/*.m)
+	$(MTAGS) $(MS) $(LIBRARY_DIR)/*.m
+	@touch .mfilterjavac_tags
+
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags; \
+	$(MTAGS) $(MS) $(LIBRARY_DIR)/*.m; \
+	touch .mfilterjavac_tags; \
+	fi
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates:
+	touch 	$(mfilterjavac.dates)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs
+os: $(mfilterjavac.os) $(os_subdir)mfilterjavac_init.o
+cs: $(mfilterjavac.cs) $(cs_subdir)mfilterjavac_init.c
+
+#-----------------------------------------------------------------------------#
+
+realclean_local:
+	rm -f .mfilterjavac_tags tags MFILTERJAVAC_FLAGS MFILTERJAVAC_FLAGS.date \
+
+#-----------------------------------------------------------------------------#
+
+# Installation target
+
+.PHONY: install
+install: mfilterjavac
+	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mfilterjavac$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mfilterjavac
+
+#-----------------------------------------------------------------------------#

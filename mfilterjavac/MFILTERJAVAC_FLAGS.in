@@ -1,0 +1,26 @@
+@BOOTSTRAP_MC_ARGS@
+--no-infer-all
+--halt-at-warn
+--no-warn-inferred-erroneous
+--no-mercury-stdlib-dir
+-I../library
+-I../browser
+-I../ssdb
+--c-include-directory ../boehm_gc
+--c-include-directory ../boehm_gc/include
+--c-include-directory ../runtime
+--c-include-directory ../library
+--c-include-directory ../library/Mercury/mihs
+--c-include-directory ../browser
+--c-include-directory ../browser/Mercury/mihs
+--c-include-directory ../ssdb
+--c-include-directory ../ssdb/Mercury/mihs
+--c-include-directory ../trace
+--csharp-flag -keyfile:../mercury.snk
+--no-java-classpath
+--java-classpath ../library/mer_rt.jar
+--java-classpath ../library/mer_std.jar
+--java-classpath ../browser/mer_browser.jar
+--java-classpath ../mdbcomp/mer_mdbcomp.jar
+--erlang-include-directory ../library/Mercury/hrls
+--config-file ../scripts/Mercury.config.bootstrap

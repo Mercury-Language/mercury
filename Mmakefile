@@ -45,7 +45,8 @@ SUBDIRS = \
 		slice \
 		profiler \
 		deep_profiler \
-		tools
+		tools \
+		mfilterjavac
 
 MMAKEFLAGS =
 
@@ -86,7 +87,8 @@ dep:	dep_library \
 	dep_compiler \
 	dep_slice \
 	dep_profiler \
-	dep_deep_profiler
+	dep_deep_profiler \
+	dep_mfilterjavac
 
 .PHONY: dep_library
 dep_library: library/$(deps_subdir)$(STD_LIB_NAME).dep
@@ -171,6 +173,13 @@ deep_profiler/$(deps_subdir)mdprof_procrep.dep: \
 		library/$(deps_subdir)$(STD_LIB_NAME).dep
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
 
+.PHONY: dep_mfilterjavac
+dep_mfilterjavac : mfilterjavac/$(deps_subdir)mfilterjavac.dep
+
+mfilterjavac/$(deps_subdir)mfilterjavac.dep: \
+		library/$(deps_subdir)$(STD_LIB_NAME).dep
+	+cd mfilterjavac && $(SUBDIR_MMAKE) depend
+
 # depend_library MUST be done before depend_compiler and depend_profiler
 
 .PHONY: depend
@@ -181,7 +190,8 @@ depend: depend_library \
 	depend_compiler \
 	depend_slice \
 	depend_profiler \
-	depend_deep_profiler
+	depend_deep_profiler \
+	depend_mfilterjavac
 
 .PHONY: depend_library
 depend_library:
@@ -215,6 +225,10 @@ depend_profiler:
 depend_deep_profiler:
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
 
+.PHONY: depend_mfilterjavac
+depend_mfilterjavac:
+	+cd mfilterjavac && $(SUBDIR_MMAKE) depend
+
 #-----------------------------------------------------------------------------#
 
 # NOTE: there are two targets that concern the util directory here.  The first
@@ -233,7 +247,7 @@ util_no_rt: scripts
 	+cd util && $(SUBDIR_MMAKE) mfiltercc$(EXT_FOR_EXE)
 
 .PHONY: util
-util: 	scripts runtime
+util:	scripts runtime
 	+cd util && $(SUBDIR_MMAKE)
 
 .PHONY: scripts
@@ -301,6 +315,11 @@ profiler: dep_profiler scripts util boehm_gc runtime library \
 deep_profiler: dep_deep_profiler scripts util boehm_gc runtime library \
 		mdbcomp browser ssdb trace
 	+cd deep_profiler && $(SUBDIR_MMAKE)
+
+.PHONY: mfilterjavac
+mfilterjavac: dep_mfilterjavac scripts util boehm_gc runtime library \
+		mdbcomp browser ssdb trace
+	+cd mfilterjavac && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
 
