@@ -35,6 +35,7 @@
 :- import_module char.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
@@ -42,7 +43,7 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    filter_lines(MaybeError, !IO),
+    filter_lines(MaybeError, map.init, _, !IO),
     (
         MaybeError = ok
     ;
@@ -51,17 +52,18 @@ main(!IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred filter_lines(maybe_error::out, io::di, io::uo) is det.
+:- pred filter_lines(maybe_error::out,
+    line_info_cache::in, line_info_cache::out, io::di, io::uo) is det.
 
-filter_lines(MaybeError, !IO) :-
+filter_lines(MaybeError, !Cache, !IO) :-
     io.read_line_as_string(Result, !IO),
     (
         Result = ok(Line),
-        filter_line(Line, MaybeOutLine, !IO),
+        filter_line(Line, MaybeOutLine, !Cache, !IO),
         (
             MaybeOutLine = ok(OutLine),
             io.write_string(OutLine, !IO),
-            filter_lines(MaybeError, !IO)
+            filter_lines(MaybeError, !Cache, !IO)
         ;
             MaybeOutLine = error(Error),
             MaybeError = error(Error)
@@ -75,33 +77,47 @@ filter_lines(MaybeError, !IO) :-
         MaybeError = error(ErrorStr)
     ).
 
-:- pred filter_line(string::in, maybe_error(string)::out, io::di, io::uo)
-    is det.
+:- pred filter_line(string::in, maybe_error(string)::out,
+    line_info_cache::in, line_info_cache::out, io::di, io::uo) is det.
 
-filter_line(Line, MaybeOutLine, !IO) :-
+filter_line(Line, MaybeOutLine, !Cache, !IO) :-
     (
         PartsA = split_at_separator(char.is_whitespace, Line),
         PartsA = [PartAA | OtherPartsA],
         PartsAA = split_at_char(':', PartAA),
         PartsAA = [Filename, LineStr, Empty],
-        string.to_int(LineStr, LineNo)
+        string.to_int(LineStr, LineNo),
+        Empty = ""
     ->
-        maybe_get_line_info(Filename, MaybeLineInfo, !IO),
-        (
-            MaybeLineInfo = ok(LineInfo),
-            line_info_translate(LineInfo, Filename, LineNo,
-                MerFileName, MerLineNo),
-            Rest = string.join_list(" ", OtherPartsA),
-            OutLine = string.format("%s:%d:%s %s\n",
-                [s(MerFileName), i(MerLineNo), s(Empty), s(Rest)]),
+        ( map.search(!.Cache, Filename, LineInfo) ->
+            translate_and_outpot_line(LineInfo, Filename, LineNo,
+                OtherPartsA, OutLine),
             MaybeOutLine = ok(OutLine)
         ;
-            MaybeLineInfo = error(Error),
-            MaybeOutLine = error(Error)
+            maybe_get_line_info(Filename, MaybeLineInfoErr, !IO),
+            (
+                MaybeLineInfoErr = ok(LineInfo),
+                map.det_insert(Filename, LineInfo, !Cache),
+                translate_and_outpot_line(LineInfo, Filename, LineNo,
+                    OtherPartsA, OutLine),
+                MaybeOutLine = ok(OutLine)
+            ;
+                MaybeLineInfoErr = error(Error),
+                MaybeOutLine = error(Error)
+            )
         )
     ;
         MaybeOutLine = ok(Line)
     ).
+
+:- pred translate_and_outpot_line(list(line_info)::in, string::in, int::in,
+    list(string)::in, string::out) is det.
+
+translate_and_outpot_line(LineInfo, Filename, LineNo, RestParts, OutLine) :-
+    line_info_translate(LineInfo, Filename, LineNo, MerFileName, MerLineNo),
+    Rest = string.join_list(" ", RestParts),
+    OutLine = string.format("%s:%d: %s\n",
+        [s(MerFileName), i(MerLineNo), s(Rest)]).
 
 %-----------------------------------------------------------------------------%
 
@@ -124,6 +140,8 @@ filter_line(Line, MaybeOutLine, !IO) :-
     --->    lie_end_without_beginning
     ;       lie_beginning_without_end
     ;       lie_duplicate_beginning.
+
+:- type line_info_cache == map(string, list(line_info)).
 
 :- pred line_info_translate(list(line_info)::in, string::in, int::in,
     string::out, int::out) is det.
