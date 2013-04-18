@@ -226,7 +226,7 @@ depend_deep_profiler:
 # it is required.
 
 .PHONY: all
-all: 	$(GENERATED_DOCS) mercury-compiler.spec util_no_rt $(SUBDIRS)
+all: 	$(GENERATED_DOCS) util_no_rt $(SUBDIRS)
 
 .PHONY: util_no_rt
 util_no_rt: scripts
@@ -404,18 +404,6 @@ WORK_IN_PROGRESS: compiler/notes/work_in_progress.html
 
 TODO: compiler/notes/todo.html
 	$(HTML_TO_TEXT) compiler/notes/todo.html > TODO
-
-mercury-compiler.spec: .mercury-compiler.spec.in VERSION
-	version_with_underscores=`echo $(VERSION) | sed 's/-/_/g'`; \
-	beta_dir=`expr "$(VERSION)" : '\(.*beta\).*'`; \
-	maybe_beta=`case $(VERSION) in \
-			rotd*) echo "beta-releases/rotd/" ;; \
-			*beta*) echo "beta-releases/$$beta_dir/" ;; \
-		    esac`; \
-	sed -e "s/@VERSION@/$(VERSION)/g" \
-	    -e "s/@VERSION_WITH_UNDERSCORES@/$$version_with_underscores/g" \
-	    -e "s^@MAYBE_BETA@^$$maybe_beta^g" \
-	    .mercury-compiler.spec.in > mercury-compiler.spec
 
 #-----------------------------------------------------------------------------#
 
