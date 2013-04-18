@@ -1,18 +1,19 @@
 This directory contains the source distribution for the University of Melbourne
 Mercury compiler, version @VERSION@.
 
-	The Mercury implementation is free software, but it is Copyright
-	(C) 1993-2013 The University of Melbourne.  It is distributed
-	under the terms of the GNU General Public License.  See the file
-	COPYING for copying permission.
+	The Mercury implementation is free software.
+	It is Copyright (C) 1993-2013 The University of Melbourne.
+
+	The compiler and tools are distributed under the terms of the GNU
+	General Public License.  See the file COPYING for copying permission.
 
 	The Mercury libraries and runtime (the files in the library, trace,
 	browser, ssdb, mdbcomp and runtime subdirectories) are distributed
 	under the terms of the GNU Library General Public License.  See the
 	file COPYING.LIB for copying permissions for those files.
 
-	If those licencing arrangements are not satisfactory, please
-	contact us!  We are willing to offer alternative arrangements,
+	If those licensing arrangements are not satisfactory, please
+	contact us.  We are willing to offer alternative arrangements,
 	if the need should arise.
 	
 The subdirectory `boehm_gc' contains a slightly modified copy of version 7.2 of
