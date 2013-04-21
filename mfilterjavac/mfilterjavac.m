@@ -43,71 +43,100 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    filter_lines(MaybeError, map.init, _, !IO),
+    filter_lines(Result, map.init, _, !IO),
     (
-        MaybeError = ok
-    ;
-        MaybeError = error(Error),
-        io.write_string(io.stderr_stream, Error, !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
-:- pred filter_lines(maybe_error::out,
-    line_info_cache::in, line_info_cache::out, io::di, io::uo) is det.
-
-filter_lines(MaybeError, !Cache, !IO) :-
-    io.read_line_as_string(Result, !IO),
-    (
-        Result = ok(Line),
-        filter_line(Line, MaybeOutLine, !Cache, !IO),
-        (
-            MaybeOutLine = ok(OutLine),
-            io.write_string(OutLine, !IO),
-            filter_lines(MaybeError, !Cache, !IO)
-        ;
-            MaybeOutLine = error(Error),
-            MaybeError = error(Error)
-        )
-    ;
-        Result = eof,
-        MaybeError = ok
+        Result = ok
     ;
         Result = error(Error),
-        ErrorStr = format("stdin: %s\n", [s(error_message(Error))]),
-        MaybeError = error(ErrorStr)
+        io.write_string(io.stderr_stream, "Error: " ++ Error, !IO),
+        io.set_exit_status(1, !IO)
+    ;
+        Result = warning(Error),
+        io.write_string(io.stderr_stream, "Warning: " ++ Error, !IO)
+        % The exit status is unchanged
     ).
 
-:- pred filter_line(string::in, maybe_error(string)::out,
+:- type filter_result
+    --->    ok
+    ;       error(string)
+    ;       warning(string).
+
+:- pred filter_lines(filter_result::out,
     line_info_cache::in, line_info_cache::out, io::di, io::uo) is det.
 
-filter_line(Line, MaybeOutLine, !Cache, !IO) :-
+filter_lines(Result, !Cache, !IO) :-
+    io.read_line_as_string(IOResult, !IO),
     (
-        PartsA = split_at_separator(char.is_whitespace, Line),
+        IOResult = ok(Line0),
+        filter_line(Result0, Line0, Line, !Cache, !IO),
+        io.write_string(Line, !IO),
+        filter_lines(ResultLines, !Cache, !IO),
+        (
+            Result0 = ok,
+            Result = ResultLines
+        ;
+            Result0 = error(Error),
+            (
+                ( ResultLines = ok
+                ; ResultLines = warning(_)
+                ),
+                % We use our warning even if later on a warning is
+                % generated, ours was first.
+                Result = warning(Error)
+            ;
+                ResultLines = error(ErrorLines),
+                Result = error(ErrorLines)
+            )
+        )
+    ;
+        IOResult = eof,
+        Result = ok
+    ;
+        IOResult = error(Error),
+        ErrorStr = format("stdin: %s\n", [s(error_message(Error))]),
+        Result = error(ErrorStr)
+    ).
+
+:- pred filter_line(maybe_error::out, string::in, string::out,
+    line_info_cache::in, line_info_cache::out, io::di, io::uo) is det.
+
+filter_line(Result, !Line, !Cache, !IO) :-
+    (
+        PartsA = split_at_separator(char.is_whitespace, !.Line),
         PartsA = [PartAA | OtherPartsA],
         PartsAA = split_at_char(':', PartAA),
         PartsAA = [Filename, LineStr, Empty],
         string.to_int(LineStr, LineNo),
         Empty = ""
     ->
-        ( map.search(!.Cache, Filename, LineInfo) ->
-            translate_and_outpot_line(LineInfo, Filename, LineNo,
-                OtherPartsA, OutLine),
-            MaybeOutLine = ok(OutLine)
+        ( map.search(!.Cache, Filename, MaybeLineInfo) ->
+            (
+                MaybeLineInfo = yes(LineInfo),
+                translate_and_outpot_line(LineInfo, Filename, LineNo,
+                    OtherPartsA, !:Line),
+                Result = ok
+            ;
+                MaybeLineInfo = no,
+                % We raised this error on a previous iteration where
+                % map.search failed.
+                Result = ok
+            )
         ;
             maybe_get_line_info(Filename, MaybeLineInfoErr, !IO),
             (
                 MaybeLineInfoErr = ok(LineInfo),
-                map.det_insert(Filename, LineInfo, !Cache),
+                map.det_insert(Filename, yes(LineInfo), !Cache),
                 translate_and_outpot_line(LineInfo, Filename, LineNo,
-                    OtherPartsA, OutLine),
-                MaybeOutLine = ok(OutLine)
+                    OtherPartsA, !:Line),
+                Result = ok
             ;
                 MaybeLineInfoErr = error(Error),
-                MaybeOutLine = error(Error)
+                map.det_insert(Filename, no, !Cache),
+                Result = error(Error)
             )
         )
     ;
-        MaybeOutLine = ok(Line)
+        Result = ok
     ).
 
 :- pred translate_and_outpot_line(list(line_info)::in, string::in, int::in,
@@ -141,7 +170,7 @@ translate_and_outpot_line(LineInfo, Filename, LineNo, RestParts, OutLine) :-
     ;       lie_beginning_without_end
     ;       lie_duplicate_beginning.
 
-:- type line_info_cache == map(string, list(line_info)).
+:- type line_info_cache == map(string, maybe(list(line_info))).
 
 :- pred line_info_translate(list(line_info)::in, string::in, int::in,
     string::out, int::out) is det.
