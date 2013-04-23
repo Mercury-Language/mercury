@@ -705,6 +705,13 @@ then
         $LN_S $root/ssdb/$SSDB_LIB_NAME.init .
         $LN_S $root/ssdb/RESERVED_MACRO_NAMES .
         cd $root/$stage2dir
+        mkdir mfilterjavac
+        cd mfilterjavac
+        $LN_S $root/mfilterjavac/*.m .
+        cp $root/mfilterjavac/Mmake* $root/mfilterjavac/Mercury.options .
+        cp $root/mfilterjavac/*_FLAGS.in .
+        cp $root/mfilterjavac/.mgnu* .
+        cd $root/$stage2dir
 
         cd $root/$stage2dir
         if $copy_runtime
@@ -1215,6 +1222,7 @@ then
     $LN_S $root/$stage2dir/slice .
     $LN_S $root/$stage2dir/profiler .
     $LN_S $root/$stage2dir/deep_profiler .
+    $LN_S $root/$stage2dir/mfilterjavac .
     $LN_S $root/conf* .
     $LN_S $root/aclocal.m4 .
     $LN_S $root/m4 .
