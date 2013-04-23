@@ -174,7 +174,7 @@ deep_profiler/$(deps_subdir)mdprof_procrep.dep: \
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_mfilterjavac
-dep_mfilterjavac : mfilterjavac/$(deps_subdir)mfilterjavac.dep
+dep_mfilterjavac: mfilterjavac/$(deps_subdir)mfilterjavac.dep
 
 mfilterjavac/$(deps_subdir)mfilterjavac.dep: \
 		library/$(deps_subdir)$(STD_LIB_NAME).dep
@@ -453,6 +453,8 @@ tar: 	$(GENERATED_DOCS)
 	+cd profiler && $(SUBDIR_MMAKE) cs tags
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
 	+cd deep_profiler && $(SUBDIR_MMAKE) cs tags
+	+cd mfilterjavac && $(SUBDIR_MMAKE) depend
+	+cd mfilterjavac && $(SUBDIR_MMAKE) cs tags
 	+cd doc && $(SUBDIR_MMAKE) info html dvi mdb_doc
 	# the following commands might fail on Windows?
 	-cd bindist && $(SUBDIR_MMAKE) bindist.Makefile
@@ -754,6 +756,7 @@ touch_files:
 	touch slice/*.c
 	touch profiler/*.c
 	touch deep_profiler/*.c
+	touch mfilterjavac/*.c
 	touch doc/*.info doc/*.dvi doc/*.html config.status
 
 #-----------------------------------------------------------------------------#
