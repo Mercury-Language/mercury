@@ -5193,7 +5193,7 @@ output_context(Info, Marker, Context, !IO) :-
             % \u is treated as a Unicode escape even with comments.
             string.replace_all(File, "\\u", "\\\\u", SafePath),
             % Do not modify this format string without modifying
-            % util/mfilterjavac.m
+            % mfilterjavac/mfilterjavac.m
             io.format("// %s %s:%d\n",
                 [s(marker_string(Marker)), s(SafePath), i(Line)], !IO),
             set_last_context(ProgContext, !IO)
