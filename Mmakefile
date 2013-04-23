@@ -545,6 +545,7 @@ install_main: all \
 	install_ssdb \
 	install_trace \
 	install_compiler \
+	install_mfilterjavac \
 	install_slice \
 	install_profiler \
 	install_deep_profiler \
@@ -597,6 +598,10 @@ install_ssdb: dep_ssdb ssdb
 .PHONY: install_compiler
 install_compiler: dep_compiler compiler
 	+cd compiler && $(SUBDIR_MMAKE) install
+
+.PHONY: install_mfilterjavac
+install_mfilterjavac: dep_mfilterjavac mfilterjavac
+	+cd mfilterjavac && $(SUBDIR_MMAKE) install
 
 .PHONY: install_doc
 install_doc: doc
