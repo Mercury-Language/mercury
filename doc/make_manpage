@@ -100,13 +100,13 @@ $last_half
 .SH AUTHORS
 The Mercury team.
 .P
-See <http://www.mercury.csse.unimelb.edu.au/contact/people.html>.
+See <http://www.mercurylang.org/contact/people.html>.
 .SH COPYRIGHT
 This program and its documentation are copyright by the University of Melbourne.
 They may be copied only under the terms of the GNU General Public License \-
 see the file COPYING in the Mercury distribution.
 .SH "SEE ALSO"
-<http://www.mercury.csse.unimelb.edu.au/information/documentation.html>
+<http://www.mercurylang.org/information/documentation.html>
 .P
 The Mercury User's Guide.
 .P

@@ -87,7 +87,7 @@ implemented using pure mercury code.
 For more information about the foreign language interface, see the Mercury
 Language Reference Manual, which you can find at:
 	
-     <http://www.mercury.csse.unimelb.edu.au/information/documentation.html>
+     <http://www.mercurylang.org/information/documentation.html>
 
 Some short programs may run much more slowly in the Java grade than the C
 grades.  The runtime is probably dominated by Java class loading and running
@@ -131,12 +131,12 @@ definition ordering problems in Mmake.workspace.
 RESOURCES
 
 You might find the following pages useful:
-
-    <http://www.mercury.csse.unimelb.edu.au/backends.html>
+    
+    <http://www.mercurylang.org/backends.html>
 
     <http://java.sun.com/reference/api/index.html>
 
-    <http://www.mercury.csse.unimelb.edu.au/information/documentation.html>
+    <http://www.mercurylang.org/information/documentation.html>>
 
 -----------------------------------------------------------------------------
 

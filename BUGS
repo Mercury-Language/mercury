@@ -1,11 +1,11 @@
 Bugs can be reported via the Mercury bug tracking system at
-<http://bugs.mercury.csse.unimelb.edu.au>.  We use the Mantis bug tracking
-software.  You will need to login in order to access the bug tracking system.
+<https://bugs.mercurylang.org>.  We use the Mantis bug tracking software.  
+You will need to login in order to access the bug tracking system.
 If you do not have an account, you can create one by clicking on the 
 ``Signup for a new account'' link at the bottom of the login page and
 following the instructions.
 
-Alternatively, you may email bug reports to mercury-bugs@csse.unimelb.edu.au.
+Alternatively, you may email bug reports to bugs@mercurylang.org.
 If you are reporting more than one bug, please use separate emails for each
 bug.  (If it's something that only shows up in multi-module programs, send
 a shar archive or uuencoded tar archive including your source files.)
@@ -18,8 +18,8 @@ Please include the following information in your bug report:
   * the command line flags with which the Mercury compiler was invoked;
   * the name and version of the C compiler that you are using;
 
-For bugs that involve the Erlang or Java backends, include the name and version
-of the Erlang or Java implementation that you are using.
+For bugs that involve the Erlang, Java or C# backends, include the name and
+version of the Erlang, Java or C# implementation that you are using.
 
 Please try to ensure that bug report contains all the information that we need to
 be able to reproduce the problem.  Make sure that all bug reports are fully
