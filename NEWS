@@ -60,6 +60,14 @@ Changes to the Mercury compiler:
 * A new option, `--cstack-reserve-size', allows the size of the C
   stack for executables to be changed on Microsoft Windows systems.
 
+* We have improved compilation times for very large programs.  In
+  particular, compilation times for predicates containing the following
+  have been improved:
+      - large ground terms
+      - large disjunctions
+      - large numbers of higher constructs and/or code that uses
+        large hierarchies of type classes
+
 Changes to the Mercury debugger:
 
 * We have added new capabilities to the "level", "retry" and "finish" mdb
