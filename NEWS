@@ -65,7 +65,7 @@ Changes to the Mercury compiler:
   have been improved:
       - large ground terms
       - large disjunctions
-      - large numbers of higher constructs and/or code that uses
+      - large numbers of higher order constructs and/or code that uses
         large hierarchies of type classes
 
 Changes to the Mercury debugger:
