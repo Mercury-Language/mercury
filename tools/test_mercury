@@ -886,8 +886,8 @@ case $HOST in $ROTD_HOST)
     mercury_cv_low_tag_bits=2 \
     mercury_cv_bits_per_word=32 \
     mercury_cv_unboxed_floats=no \
-    sh configure --with-llds-base-grade=asm_fast --prefix=$INSTALL_DIR &&
-    $MMAKE MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling --no-smart-indexing' $PARALLEL" tar &&
+    sh configure --with-llds-base-grade=none --prefix=$INSTALL_DIR &&
+    $MMAKE MMAKEFLAGS="GRADE=hlc.gc.pregen EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling --no-smart-indexing' $PARALLEL" tar &&
     cd .. &&
     rm -f $UNSTABLE/* &&
     cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version-unstable.txt &&
