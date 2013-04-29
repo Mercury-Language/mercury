@@ -69,11 +69,8 @@ main_loop(Database, !IO) :-
 
 main_loop_2(eof, _Database, !IO).
 main_loop_2(error(ErrorMessage, LineNumber), Database, !IO) :-
-    io.write_string("Error reading term at line ", !IO),
-    io.write_int(LineNumber, !IO),
-    io.write_string(" of standard input: ", !IO),
-    io.write_string(ErrorMessage, !IO),
-    io.write_string("\n", !IO),
+    io.format("Error reading term at line %d of standard input: %s\n",
+        [i(LineNumber), s(ErrorMessage)], !IO),
     main_loop(Database, !IO).
 main_loop_2(term(VarSet0, Goal), Database, !IO) :-
     %%% It would be a good idea to add some special commands
@@ -116,9 +113,7 @@ consult_list([File | Files], !Database, !IO) :-
     is det.
 
 consult(File, !Database, !IO) :-
-    io.write_string("Consulting file `", !IO),
-    io.write_string(File, !IO),
-    io.write_string("'...\n", !IO),
+    io.format("Consulting file `%s'...\n", [s(File)], !IO),
     io.see(File, Result, !IO),
     (
         Result = ok,
@@ -127,11 +122,8 @@ consult(File, !Database, !IO) :-
     ;
         Result = error(Error),
         io.error_message(Error, ErrorMessage),
-        io.write_string("Error opening file `", !IO),
-        io.write_string(File, !IO),
-        io.write_string("' for input: ", !IO),
-        io.write_string(ErrorMessage, !IO),
-        io.nl(!IO)
+        io.format("Error opening file `%s' for input: %s\n",
+            [s(File), s(ErrorMessage)], !IO)
     ).
 
 :- pred consult_until_eof(database::in, database::out, io::di, io::uo) is det.
@@ -145,11 +137,8 @@ consult_until_eof(!Database, !IO) :-
 
 consult_until_eof_2(eof, !Database, !IO).
 consult_until_eof_2(error(ErrorMessage, LineNumber), !Database, !IO) :-
-    io.write_string("Error reading term at line ", !IO),
-    io.write_int(LineNumber, !IO),
-    io.write_string(" of standard input: ", !IO),
-    io.write_string(ErrorMessage, !IO),
-    io.write_string("\n", !IO),
+    io.format("Error reading term at line %d of standard input: %s\n",
+        [i(LineNumber), s(ErrorMessage)], !IO),
     consult_until_eof(!Database, !IO).
 consult_until_eof_2(term(VarSet, Term), !Database, !IO) :-
     database_assert_clause(!.Database, VarSet, Term, !:Database),
