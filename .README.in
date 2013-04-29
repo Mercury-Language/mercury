@@ -8,9 +8,9 @@ Mercury compiler, version @VERSION@.
 	General Public License.  See the file COPYING for copying permission.
 
 	The Mercury libraries and runtime (the files in the library, trace,
-	browser, ssdb, mdbcomp and runtime subdirectories) are distributed
-	under the terms of the GNU Library General Public License.  See the
-	file COPYING.LIB for copying permissions for those files.
+	browser, ssdb, mdbcomp, runtime and java/runtime subdirectories) are
+	distributed under the terms of the GNU Library General Public License.
+	See the file COPYING.LIB for copying permissions for those files.
 
 	If those licensing arrangements are not satisfactory, please
 	contact us.  We are willing to offer alternative arrangements,
@@ -60,9 +60,9 @@ THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.
 
 See the file INSTALL for installation instructions.
-But in some cases, additional steps may be needed for particular
-operating systems or particular architectures, so first read the
-README file for your particular platform, if there is one:
+In some cases, additional steps may be needed for particular operating systems
+or particular architectures, so first read the README file for your particular
+platform, if there is one:
 
 	README.AIX		RS/6000 systems running AIX
 	README.FreeBSD		The FreeBSD version of BSD Unix on Intel x86

@@ -13,8 +13,7 @@ Mercury has been tested with the following versions of Windows:
 It should also work with Windows XP SP2 and Windows Vista but we have
 not tested it with those.
 
-In the past Mercury worked with Windows, 95, 98, ME, 2000, and NT but we no
-longer actively maintain support for those versions.
+We no longer actively maintain support for older versions of Windows.
 
 
 ---------------------------

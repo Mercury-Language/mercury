@@ -64,7 +64,7 @@ Mmake.params at the top-level of the source tree:
 
     MCFLAGS = --cross-compiling
 
-Mercury cannot currently be compiled with llvm-gcc on Mac OS X.
+Mercury cannot be compiled with llvm-gcc on Mac OS X.
 
 If, after installing Mercury, you encounter errors about missing .mih files,
 and you have fink installed, then try removing the fink components from your
