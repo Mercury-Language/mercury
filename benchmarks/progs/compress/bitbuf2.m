@@ -1,122 +1,126 @@
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 % bitbuf2.m
 % Ralph Becket <rbeck@microsoft.com>
 % Fri Nov 10 18:03:25 GMT 2000
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- module bitbuf2.
-
 :- interface.
 
-:- import_module io, bool, store, int.
+:- import_module bool.
+:- import_module int.
+:- import_module io.
+:- import_module store.
+
+%-----------------------------------------------------------------------------%
 
 :- type bitbuf(S).
 
-:- some [S] pred new_bitbuf(bitbuf(S), S) => store(S).
-:-          mode new_bitbuf(out, uo) is det.
+:- some [S] pred new_bitbuf(bitbuf(S)::out, S::uo) is det => store(S).
 
-:- pred read_byte(io__result(int), bitbuf(S), S, S,
-            io__state, io__state) <= store(S).
-:- mode read_byte(out, in, di, uo, di, uo) is det.
+:- pred read_byte(io.result(int)::out, bitbuf(S)::in, S::di, S::uo,
+    io::di, io::uo) is det <= store(S).
 
-:- pred write_code(int, int, bitbuf(S), S, S,
-            io__state, io__state) <= store(S).
-:- mode write_code(in, in, in, di, uo, di, uo) is det.
+:- pred write_code(int::in, int::in, bitbuf(S)::in, S::di, S::uo,
+    io::di, io::uo) is det <= store(S).
 
-:- pred compression_ratio_fallen(bitbuf(S), bool, S, S) <= store(S).
-:- mode compression_ratio_fallen(in, out, di, uo) is det.
+:- pred compression_ratio_fallen(bitbuf(S)::in, bool::out, S::di, S::uo)
+    is det <= store(S).
 
-:- pred reset_compression_ratio(bitbuf(S), S, S) <= store(S).
-:- mode reset_compression_ratio(in, di, uo) is det.
+:- pred reset_compression_ratio(bitbuf(S)::in, S::di, S::uo)
+    is det <= store(S).
 
-:- pred flush_buffer(bitbuf(S), S, S, io__state, io__state) <= store(S).
-:- mode flush_buffer(in, di, uo, di, uo) is det.
+:- pred flush_buffer(bitbuf(S)::in, S::di, S::uo, io::di, io::uo)
+    is det <= store(S).
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bmio, util.
+:- import_module bmio.
+:- import_module util.
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- type bitbuf(S)
     --->    bitbuf(
-            bits_in     :: generic_mutvar(int, S), % Number of bits read in.
-            bits_out    :: generic_mutvar(int, S), % Number of bits written out.
-            ratio       :: generic_mutvar(int, S), % Compression ratio guide.
-            data        :: generic_mutvar(int, S), % Buffer contents.
-            size        :: generic_mutvar(int, S)  % Number of bits in buffer.
-        ).
+                bits_in  :: generic_mutvar(int, S), % Number of bits read in.
+                bits_out :: generic_mutvar(int, S), % Number of bits written out.
+                ratio    :: generic_mutvar(int, S), % Compression ratio guide.
+                data     :: generic_mutvar(int, S), % Buffer contents.
+                size     :: generic_mutvar(int, S)  % Number of bits in buffer.
+             ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-new_bitbuf(bitbuf(A,B,C,D,E), S) :-
-    store__init(                            S0),
-    store__new_mutvar(0, A,                 S0, S1),
-    store__new_mutvar(0, B,                 S1, S2),
-    store__new_mutvar(0, C,                 S2, S3),
-    store__new_mutvar(0, D,                 S3, S4),
-    store__new_mutvar(0, E,                 S4, S).
+new_bitbuf(bitbuf(A,B,C,D,E), !:S) :-
+    store.init(!:S),
+    store.new_mutvar(0, A, !S),
+    store.new_mutvar(0, B, !S),
+    store.new_mutvar(0, C, !S),
+    store.new_mutvar(0, D, !S),
+    store.new_mutvar(0, E, !S).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-read_byte(Result, Buf, S0, S) -->
-    { store__get_mutvar(Buf ^ bits_in, BitsIn,      S0, S1) },
-    bmio__read_byte(Result),
-    { store__set_mutvar(Buf ^ bits_in, BitsIn + 8,  S1, S) }.
+read_byte(Result, Buf, !S, !IO) :-
+    store.get_mutvar(Buf ^ bits_in, BitsIn, !S),
+    bmio.read_byte(Result, !IO),
+    store.set_mutvar(Buf ^ bits_in, BitsIn + 8, !S).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-write_code(C, BPC, Buf, S0, S) -->
-    { store__get_mutvar(Buf ^ bits_in, BitsIn,      S0, S1) },
-    { store__get_mutvar(Buf ^ bits_out, BitsOut,    S1, S2) },
-    { store__get_mutvar(Buf ^ data, Data0,          S2, S3) },
-    { store__get_mutvar(Buf ^ size, Size0,          S3, S4) },
+write_code(C, BPC, Buf, !S, !IO) :-
+    store.get_mutvar(Buf ^ bits_in, BitsIn, !S),
+    store.get_mutvar(Buf ^ bits_out, BitsOut, !S),
+    store.get_mutvar(Buf ^ data, Data0, !S),
+    store.get_mutvar(Buf ^ size, Size0, !S),
 
-    write_full_bytes(Data0 \/ (C `lshift` Size0), Data, Size0 + BPC, Size),
+    write_full_bytes(Data0 \/ (C `lshift` Size0), Data,
+        Size0 + BPC, Size, !IO),
 
-    { store__set_mutvar(Buf ^ bits_out, BitsOut + BPC,          S4, S5) },
-    { store__set_mutvar(Buf ^ ratio, ratio(BitsIn, BitsOut),    S5, S6) },
-    { store__set_mutvar(Buf ^ data, Data,                       S6, S7) },
-    { store__set_mutvar(Buf ^ size, Size,                       S7, S ) }.
+    store.set_mutvar(Buf ^ bits_out, BitsOut + BPC, !S),
+    store.set_mutvar(Buf ^ ratio, ratio(BitsIn, BitsOut), !S),
+    store.set_mutvar(Buf ^ data, Data, !S),
+    store.set_mutvar(Buf ^ size, Size, !S).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-:- pred write_full_bytes(int, int, int, int, io__state, io__state).
-:- mode write_full_bytes(in, out, in, out, di, uo) is det.
+:- pred write_full_bytes(int::in, int::out, int::in, int::out,
+    io::di, io::uo) is det.
 
-write_full_bytes(Data0, Data, Size0, Size) -->
-    ( if { Size0 >= 8 } then
-        bmio__write_byte(Data0),
-        write_full_bytes(Data0 `rshift` 8, Data, Size0 - 8, Size)
-      else
-        { Data = Data0 },
-        { Size = Size0 }
+write_full_bytes(!Data, !Size, !IO) :-
+    ( if !.Size >= 8 then
+        bmio.write_byte(!.Data, !IO),
+        write_full_bytes(!.Data `rshift` 8, !:Data, !.Size - 8, !:Size, !IO)
+    else
+        true
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-compression_ratio_fallen(Buf, Result, S0, S) :-
-    store__get_mutvar(Buf ^ bits_in, BitsIn,        S0, S1),
-    store__get_mutvar(Buf ^ bits_out, BitsOut,      S1, S2),
-    store__get_mutvar(Buf ^ ratio, Ratio,           S2, S ),
+compression_ratio_fallen(Buf, Result, !S) :-
+    store.get_mutvar(Buf ^ bits_in, BitsIn, !S),
+    store.get_mutvar(Buf ^ bits_out, BitsOut, !S), 
+    store.get_mutvar(Buf ^ ratio, Ratio, !S),
     Result = ( if ratio(BitsIn, BitsOut) < Ratio then yes else no ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-reset_compression_ratio(Buf, S0, S) :-
-    store__set_mutvar(Buf ^ bits_in, 0,             S0, S1),
-    store__set_mutvar(Buf ^ bits_out, 0,            S1, S2),
-    store__set_mutvar(Buf ^ ratio, 0,               S2, S ).
+reset_compression_ratio(Buf, !S) :-
+    store.set_mutvar(Buf ^ bits_in, 0, !S), 
+    store.set_mutvar(Buf ^ bits_out, 0, !S),
+    store.set_mutvar(Buf ^ ratio, 0, !S).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-flush_buffer(Buf, S0, S) -->
-    { store__get_mutvar(Buf ^ data, Data,           S0, S ) },
-    bmio__write_byte(Data).
+flush_buffer(Buf, !S, !IO) :-
+    store.get_mutvar(Buf ^ data, Data, !S),
+    bmio.write_byte(Data, !IO).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+:- end_module bitbuf2.
+%-----------------------------------------------------------------------------%

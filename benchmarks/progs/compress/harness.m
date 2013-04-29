@@ -1,22 +1,20 @@
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 % harness.m
 % Ralph Becket <rbeck@microsoft.com>
 % Mon Nov 13 13:12:09 GMT 2000
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- module harness.
-
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -27,47 +25,49 @@
 :- func num_iterations = int.
 num_iterations = 10.
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-main -->
-    io__command_line_arguments(ArgV),
-
+main(!IO) :-
+    io.command_line_arguments(ArgV, !IO),
     ( if
-        { ArgV = [FileName, NumBytesStr] },
-        { string__to_int(NumBytesStr, NumBytes) }
-      then
-        bmio__init(FileName, NumBytes),
-        %test("compress1", compress1__go),
-        %test("compress2", compress2__go),
-        %test("compress3", compress3__go),
-        %test("compress4", compress4__go),
-        test("compress5", compress5__go)
-      else
-        { error("usage: compress <infile> <nbytes>") }
+        ArgV = [FileName, NumBytesStr],
+       string.to_int(NumBytesStr, NumBytes)
+    then
+        bmio.init(FileName, NumBytes, !IO),
+        %test("compress1", compress1.go),
+        %test("compress2", compress2.go),
+        %test("compress3", compress3.go),
+        %test("compress4", compress4.go),
+        test("compress5", compress5.go, !IO)
+    else
+        error("usage: compress <infile> <nbytes>")
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-:- pred test(string, pred(io__state, io__state), io__state, io__state).
-:- mode test(in, pred(di, uo) is det, di, uo) is det.
+:- pred test(string::in, pred(io, io)::in(pred(di, uo) is det),
+    io::di, io::uo) is det.
 
-test(_Name, Go) -->
-    % io__format("\n\n******* %s x %d *******\n", [s(Name), i(num_iterations)]),
-    % io__report_stats,
-    test_loop(num_iterations, Go).
-    % io__report_stats.
+test(_Name, Go, !IO) :-
+    % io.format("\n\n******* %s x %d *******\n", [s(Name), i(num_iterations)], !IO),
+    % io.report_stats(!IO),
+    test_loop(num_iterations, Go, !IO).
+    % io.report_stats(!IO).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-:- pred test_loop(int, pred(io__state, io__state), io__state, io__state).
-:- mode test_loop(in, pred(di, uo) is det, di, uo) is det.
+:- pred test_loop(int::in, pred(io, io)::in(pred(di, uo) is det),
+    io::di, io::uo) is det.
 
-test_loop(N, Go) -->
-    ( if { N > 0 } then
-        bmio__use_compression_io,
-        Go,
-        test_loop(N - 1, Go)
-      else []
+test_loop(N, Go, !IO) :-
+    ( if N > 0 then
+        bmio.use_compression_io(!IO),
+        Go(!IO),
+        test_loop(N - 1, Go, !IO)
+    else
+        true
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+:- end_module harness.
+%-----------------------------------------------------------------------------%

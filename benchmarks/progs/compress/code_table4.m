@@ -66,17 +66,17 @@ key(C, B) = (C `lshift` 8) \/ B.
 
 % ---------------------------------------------------------------------------- %
 
-new_code_table = array__init(array_size, empty_code).
+new_code_table = array.init(array_size, empty_code).
 
 % ---------------------------------------------------------------------------- %
 
 lookup(C, B, T, H, K, Code) :-
     H0 = hash(C, B),
     K  = key(C, B),
-    K0 = array__lookup(T, key_idx(H0)),
+    K0 = array.lookup(T, key_idx(H0)),
     ( if (K0 = K ; K0 = empty_code) then
         H = H0,
-        Code = array__lookup(T, code_idx(H0))
+        Code = array.lookup(T, code_idx(H0))
       else
         lookup_0(H0, hash_delta(H0), K, T, H, Code)
     ).
@@ -88,10 +88,10 @@ lookup(C, B, T, H, K, Code) :-
 
 lookup_0(H0, DH, K, T, H, Code) :-
     H1 = H0 - DH + ( if DH =< H0 then 0 else table_size ),
-    K0 = array__lookup(T, key_idx(H1)),
+    K0 = array.lookup(T, key_idx(H1)),
     ( if (K0 = K ; K0 = empty_code) then
         H = H1,
-        Code = array__lookup(T, code_idx(H1))
+        Code = array.lookup(T, code_idx(H1))
       else
         lookup_0(H1, DH, K, T, H, Code)
     ).
@@ -99,7 +99,7 @@ lookup_0(H0, DH, K, T, H, Code) :-
 % ---------------------------------------------------------------------------- %
 
 set(T0, H, K, C) = T :-
-    T1 = array__set(T0, key_idx(H), K),
-    T  = array__set(T1, code_idx(H), C).
+    T1 = array.set(T0, key_idx(H), K),
+    T  = array.set(T1, code_idx(H), C).
 
 % ---------------------------------------------------------------------------- %

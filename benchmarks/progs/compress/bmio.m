@@ -12,31 +12,31 @@
 
 :- import_module io.
 
-:- type bmio__state == io__state.
+:- type bmio.state == io.state.
 
-:- pred bmio__init(string, int, bmio__state, bmio__state).
-:- mode bmio__init(in, in, di, uo) is det.
+:- pred bmio.init(string, int, bmio.state, bmio.state).
+:- mode bmio.init(in, in, di, uo) is det.
 
-:- pred bmio__use_compression_io(bmio__state, bmio__state).
-:- mode bmio__use_compression_io(di, uo) is det.
+:- pred bmio.use_compression_io(bmio.state, bmio.state).
+:- mode bmio.use_compression_io(di, uo) is det.
 
-:- pred bmio__use_decompression_io(bmio__state, bmio__state).
-:- mode bmio__use_decompression_io(di, uo) is det.
+:- pred bmio.use_decompression_io(bmio.state, bmio.state).
+:- mode bmio.use_decompression_io(di, uo) is det.
 
-:- pred bmio__read_byte(io__result(int), bmio__state, bmio__state).
-:- mode bmio__read_byte(out, di, uo) is det.
+:- pred bmio.read_byte(io.result(int), bmio.state, bmio.state).
+:- mode bmio.read_byte(out, di, uo) is det.
 
-:- pred bmio__write_byte(int, bmio__state, bmio__state).
-:- mode bmio__write_byte(in, di, uo) is det.
+:- pred bmio.write_byte(int, bmio.state, bmio.state).
+:- mode bmio.write_byte(in, di, uo) is det.
 
-:- pred bmio__mark_decompression_eof(bmio__state, bmio__state).
-:- mode bmio__mark_decompression_eof(di, uo) is det.
+:- pred bmio.mark_decompression_eof(bmio.state, bmio.state).
+:- mode bmio.mark_decompression_eof(di, uo) is det.
 
-:- pred bmio__write_byte_checked(int, bmio__state, bmio__state).
-:- mode bmio__write_byte_checked(in, di, uo) is det.
+:- pred bmio.write_byte_checked(int, bmio.state, bmio.state).
+:- mode bmio.write_byte_checked(in, di, uo) is det.
 
-:- pred bmio__report_stats(bmio__state, bmio__state).
-:- mode bmio__report_stats(di, uo) is det.
+:- pred bmio.report_stats(bmio.state, bmio.state).
+:- mode bmio.report_stats(di, uo) is det.
 
 :- implementation.
 
@@ -45,7 +45,7 @@
 :- pragma foreign_decl("C", "
 
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <assert.h>
 
 unsigned int	 bmio__buf_size;
@@ -63,10 +63,10 @@ FILE		*bmio__fp;
 
 ").
 
-% :- pragma no_inline(bmio__init/4).
+% :- pragma no_inline(bmio.init/4).
 
 :- pragma foreign_proc("C",
-	bmio__init(FileName::in, NumBytes::in, _IO0::di, _IO::uo),
+	bmio.init(FileName::in, NumBytes::in, _IO0::di, _IO::uo),
 	[promise_pure, will_not_call_mercury],
 "
 
@@ -97,10 +97,10 @@ FILE		*bmio__fp;
 
 ").
 
-% :- pragma no_inline(bmio__use_compression_io/2).
+% :- pragma no_inline(bmio.use_compression_io/2).
 
 :- pragma foreign_proc("C",
-	bmio__use_compression_io(_IO0::di, _IO::uo),
+	bmio.use_compression_io(_IO0::di, _IO::uo),
 	[promise_pure, will_not_call_mercury],
 "
 
@@ -113,10 +113,10 @@ FILE		*bmio__fp;
 	bmio__wr_eof = bmio__zipped_buf_eof;
 ").
 
-% :- pragma no_inline(bmio__use_decompression_io/2).
+% :- pragma no_inline(bmio.use_decompression_io/2).
 
 :- pragma foreign_proc("C",
-	bmio__use_decompression_io(IO0::di, IO::uo),
+	bmio.use_decompression_io(_IO0::di, _IO::uo),
 	[promise_pure, will_not_call_mercury],
 "
 	bmio__rd_buf = bmio__zipped_buf;
@@ -128,30 +128,30 @@ FILE		*bmio__fp;
 	bmio__wr_eof = bmio__plain_buf_eof;
 ").
 
-:- pragma inline(bmio__read_byte/3).
+:- pragma inline(bmio.read_byte/3).
 
-bmio__read_byte(Result) -->
+bmio.read_byte(Result) -->
 	rd(Byte),
 	{ if Byte = -1 then Result = eof else Result = ok(Byte) }.
 
-bmio__write_byte(Byte) -->
+bmio.write_byte(Byte) -->
 	wr(Byte).
 
-% :- pragma no_inline(bmio__mark_decompression_eof/2).
+% :- pragma no_inline(bmio.mark_decompression_eof/2).
 
 :- pragma foreign_proc("C",
-	bmio__mark_decompression_eof(_IO0::di, _IO::uo),
+	bmio.mark_decompression_eof(_IO0::di, _IO::uo),
 	[promise_pure, will_not_call_mercury],
 "
 	bmio__zipped_buf_eof = bmio__wr_ptr;
 ").
 
-bmio__write_byte_checked(Byte) -->
+bmio.write_byte_checked(Byte) -->
 	chk_wr(Byte).
 
 % :- pragma no_inline(rd/3).
 
-:- pred rd(int::out, bmio__state::di, bmio__state::uo) is det.
+:- pred rd(int::out, bmio.state::di, bmio.state::uo) is det.
 
 :- pragma foreign_proc("C",
 	rd(Byte::out, _IO0::di, _IO::uo),
@@ -168,7 +168,7 @@ bmio__write_byte_checked(Byte) -->
 
 % :- pragma no_inline(wr/3).
 
-:- pred wr(Byte::in, bmio__state::di, bmio__state::uo) is det.
+:- pred wr(Byte::in, bmio.state::di, bmio.state::uo) is det.
 
 :- pragma foreign_proc("C",
 	wr(Byte::in, _IO0::di, _IO::uo),
@@ -189,7 +189,7 @@ bmio__write_byte_checked(Byte) -->
 
 % :- pragma no_inline(chk_wr/3).
 
-:- pred chk_wr(Byte::in, bmio__state::di, bmio__state::uo) is det.
+:- pred chk_wr(Byte::in, bmio.state::di, bmio.state::uo) is det.
 
 :- pragma foreign_proc("C",
 	chk_wr(Byte::in, _IO0::di, _IO::uo),
@@ -204,24 +204,24 @@ bmio__write_byte_checked(Byte) -->
 		) == Byte);
 ").
 
-bmio__report_stats -->
+bmio.report_stats -->
     rd_bytes(R),
     wr_bytes(W),
-    io__stderr_stream(E),
-    io__write_many(E, [s("bmio: read    "), i(R), s(" bytes\n")]),
-    io__write_many(E, [s("bmio: written "), i(W), s(" bytes\n")]).
+    io.stderr_stream(E),
+    io.write_many(E, [s("bmio: read    "), i(R), s(" bytes\n")]),
+    io.write_many(E, [s("bmio: written "), i(W), s(" bytes\n")]).
 
-:- pred rd_bytes(int::out, bmio__state::di, bmio__state::uo) is det.
+:- pred rd_bytes(int::out, bmio.state::di, bmio.state::uo) is det.
 
 :- pragma foreign_proc("C",
-	rd_bytes(R::out, IO0::di, IO::uo),
+	rd_bytes(R::out, _IO0::di, _IO::uo),
     	[promise_pure, will_not_call_mercury],
 "
 
     R = bmio__rd_ptr - bmio__rd_buf;
 ").
 
-:- pred wr_bytes(int::out, bmio__state::di, bmio__state::uo) is det.
+:- pred wr_bytes(int::out, bmio.state::di, bmio.state::uo) is det.
 
 :- pragma foreign_proc("C",
 	wr_bytes(W::out, _IO0::di, _IO::uo),

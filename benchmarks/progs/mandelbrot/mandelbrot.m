@@ -23,7 +23,7 @@
 
 main(!IO) :-
     command_line_arguments(Args, !IO),
-    OptionOps = option_ops(short_options, long_options, default_options),
+    OptionOps = option_ops_multi(short_options, long_options, default_options),
     getopt.process_options(OptionOps, Args, NonOptionsArgs, GetoptResult),
     (
         GetoptResult = ok(OptionTable),
@@ -86,7 +86,7 @@ short_options('d', dependent_conjunctions).
 long_options("help", help).
 long_options("dependent_conjunctions", dependent_conjunctions).
 
-:- pred default_options(option::out, option_data::out) is nondet.
+:- pred default_options(option::out, option_data::out) is multi.
 
 default_options(help,                   bool(no)).
 default_options(dim_x,                  maybe_int(no)).

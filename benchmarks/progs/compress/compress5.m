@@ -1,22 +1,20 @@
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 % compress5.m
 % Ralph Becket <rbeck@microsoft.com>
 % Thu Nov  9 16:52:58 GMT 2000
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- module compress5.
-
 :- interface.
 
 :- import_module io.
 
-:- pred go(io__state, io__state).
-:- mode go(di, uo) is det.
+:- pred go(io::di, io::uo) is det.
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -24,66 +22,68 @@
 
 :- import_module bmio. % XXX to get better intermodule optimization
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-go -->
-    { new_bitbuf(Buf, S) },
-    start(Buf, S).
+go(!IO) :-
+    new_bitbuf(Buf, S),
+    start(Buf, S, !IO).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- pragma inline(start/4).
-:- pred start(bitbuf(T), T, io__state, io__state) <= store(T).
-:- mode start(in, di, di, uo) is det.
+:- pred start(bitbuf(T)::in, T::di, io::di, io::uo) is det <= store(T).
 
-start(Buf, S) -->
-
-    read_byte(Result, Buf, S, S0),
-
-    (   { Result = ok(B) },
-        main_loop(B, first_new_code, new_code_table, initial_bpc, Buf, S0)
-
-    ;   { Result = eof }
-
-    ;   { Result = error(ErrNo) },
-        { error(io__error_message(ErrNo)) }
+start(Buf, !.S, !IO) :-
+    read_byte(Result, Buf, !S, !IO),
+    (
+        Result = ok(B),
+        main_loop(B, first_new_code, new_code_table, initial_bpc, Buf,
+            !.S, !IO)
+    ;
+        Result = eof
+    ;
+        Result = error(ErrNo),
+        error(io.error_message(ErrNo))
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-:- pred main_loop(code, code, code_table, int, bitbuf(T), T,
-            io__state, io__state) <= store(T).
-:- mode main_loop(in, in, array_di, in, in, di, di, uo) is det.
+:- pred main_loop(code::in, code::in, code_table::array_di, int::in,
+    bitbuf(T)::in, T::di, io::di, io::uo) is det <= store(T).
 
-main_loop(C, N, T, BPC, Buf, S) -->
-    read_byte(Result, Buf, S, S0),
-    (   { Result = ok(B) },
-        { lookup(C, B, T, H, K, C0) },
-        ( if { C0 \= empty_code } then
-            main_loop(C0, N, T, BPC, Buf, S0)
-          else if { N =< max_code } then
-            write_code(C, BPC, Buf, S0, S1),
-            main_loop(B, N + 1, set(T, H, K, N), update_bpc(N, BPC), Buf, S1)
+main_loop(C, N, T, BPC, Buf, !.S, !IO) :-
+    read_byte(Result, Buf, !S, !IO),
+    (
+        Result = ok(B),
+        lookup(C, B, T, H, K, C0),
+        ( if C0 \= empty_code then
+            main_loop(C0, N, T, BPC, Buf, !.S, !IO)
+          else if N =< max_code then
+            write_code(C, BPC, Buf, !S, !IO),
+            main_loop(B, N + 1, set(T, H, K, N), update_bpc(N, BPC), Buf,
+                !.S, !IO)
           else
-            { compression_ratio_fallen(Buf, Fallen, S0, S1) },
-            ( if { Fallen = no } then
-                write_code(C, BPC, Buf, S1, S2),
-                main_loop(B, N, T, BPC, Buf, S2)
+            compression_ratio_fallen(Buf, Fallen, !S),
+            ( if Fallen = no then
+                write_code(C, BPC, Buf, !S, !IO),
+                main_loop(B, N, T, BPC, Buf, !.S, !IO)
               else
-                write_code(C, BPC,          Buf, S1, S2),
-                write_code(B, BPC,          Buf, S2, S3),
-                write_code(clear_code, BPC, Buf, S3, S4),
-                { reset_compression_ratio(  Buf, S4, S5) },
-                start(Buf, S5)
+                write_code(C, BPC, Buf, !S, !IO),
+                write_code(B, BPC, Buf, !S, !IO),
+                write_code(clear_code, BPC, Buf, !S, !IO),
+                reset_compression_ratio(Buf, !S),
+                start(Buf, !.S, !IO)
             )
         )
 
-    ;   { Result = eof },
-        write_code(C, BPC, Buf, S0, S1),
-        flush_buffer(Buf, S1, _S2)
+    ;   Result = eof,
+        write_code(C, BPC, Buf, !S, !IO),
+        flush_buffer(Buf, !.S, _, !IO)
 
-    ;   { Result = error(ErrNo) },
-        { error(io__error_message(ErrNo)) }
+    ;   Result = error(ErrNo),
+        error(io.error_message(ErrNo))
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+:- end_module compress5.
+%-----------------------------------------------------------------------------%
