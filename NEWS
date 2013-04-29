@@ -68,6 +68,25 @@ Changes to the Mercury compiler:
       - large numbers of higher order constructs and/or code that uses
         large hierarchies of type classes
 
+* We have implemented a type representation optimisation, where a functor
+  with exactly one argument can be represented by a tagged pointer to the
+  argument value, which itself does not require the tag bits.
+
+* In C grades, consecutive enumeration arguments in discriminated
+  union types can now be packed into a single word.
+
+* Double-precision `float' constructor arguments are now stored in
+  unboxed form in high-level C grades.
+
+* Double-precision `float' constructor arguments are now stored in
+  unboxed form on 32-bit architectures in the low-level C grades.
+  This was previously so for 64-bit architectures.
+
+* Double-precision float arguments can now be passed via dedicated Mercury
+  abstract machine registers to avoid boxing, in low-level C grades on
+  32-bit architectures. Float variables can occupy two words on the
+  Mercury stack to avoid boxing.
+
 Changes to the Mercury debugger:
 
 * We have added new capabilities to the "level", "retry" and "finish" mdb
