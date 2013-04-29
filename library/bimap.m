@@ -260,8 +260,8 @@
 :- pred bimap.map_values(pred(K, V, W)::in(pred(in, in, out) is det),
     bimap(K, V)::in, bimap(K, W)::out) is det.
 
-    % Perform a traversal of the bimap, applying an accumulator predicate
-    % for each key-value pair.
+    % Perform an inorder traversal by key of the bimap, applying an
+    % accumulator predicate for each key-value pair.
     %
 :- func bimap.foldl(func(K, V, A) = A, bimap(K, V), A) = A.
 :- pred bimap.foldl(pred(K, V, A, A), bimap(K, V), A, A).

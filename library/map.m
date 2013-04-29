@@ -414,8 +414,8 @@
 :- mode map.foldl4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo, di, uo) is det.
 
-    % Perform an inorder traversal of the map, applying
-    % an accumulator predicate for value.
+    % Perform an inorder traversal by key of the map, applying an accumulator
+    % predicate for value.
     %
 :- pred map.foldl_values(pred(V, A, A), map(K, V), A, A).
 :- mode map.foldl_values(pred(in, in, out) is det, in, in, out) is det.
@@ -513,8 +513,8 @@
 :- mode map.map_values_only(pred(in, out) is det, in, out) is det.
 :- mode map.map_values_only(pred(in, out) is semidet, in, out) is semidet.
 
-    % Apply a transformation predicate to all the values in a map,
-    % while continuously updating an accumulator.
+    % Perform an inorder traversal by key of the map, applying a transformation
+    % predicate to each value while updating an accumulator.
     %
 :- pred map.map_foldl(pred(K, V, W, A, A), map(K, V), map(K, W), A, A).
 :- mode map.map_foldl(pred(in, in, out, in, out) is det, in, out, in, out)
