@@ -11,7 +11,7 @@
 # The source distributions for GNU C, GNU Make, and GNU Readline are
 # available from <ftp://ftp.gnu.org/gnu/>.  Binaries for these are
 # included in almost all Linux distributions, Mac OS X and also in the Cygwin
-# distribution for Windows (see README.MS-Windows).
+# and MinGW distributions for Windows (see README.MS-Windows).
 #
 # Step 0.  Extract the files from the gzipped tar archive.
 #

@@ -3,21 +3,8 @@ Threadscope
 
 This file contains information about threadscope profiling for Mercury.
 
- 1. Contact Info
- 2. Supported Systems.
- 3. Threadscope Profiling Tools
-
-
-Contact Info
-------------
-
-    Paul Bone
-    pbone@csse.unimelb.edu.au
-
-    Mercury Project
-    mercury@mercurylang.org
-    http://www.mercurylang.org
-
+ 1. Supported Systems.
+ 2. Threadscope Profiling Tools
 
 Supported Systems
 -----------------
