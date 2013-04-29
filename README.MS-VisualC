@@ -122,7 +122,9 @@ The MSVC port currently has a number of limitation:
   This is due to it containing a number of Unix dependencies.  (Other
   tools that work with deep profiles should be fine.)
 
-* Mercury has not yet been ported to 64-bit Windows.
+* Generation of 64-bit code using Mercury and MSVC is not yet supported.
+  To generate native 64-bit executables on Windows you will need to use
+  the MinGW64 port (see README.MinGW for details).
 
 * When used directly from the Windows command prompt, mmake will not work.
   You should use `mmc --make' instead.  (mmake requires a POSIX-like shell
