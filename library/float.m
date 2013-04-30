@@ -941,7 +941,7 @@ float.float_to_doc(X) = str(string.float_to_string(X)).
     char buf[64];
 
     u.f = (double) Flt;
-    #if defined(MR_MINGW64)
+    #if defined(MR_MINGW64) || defined(MR_CYGWIN)
         sprintf(buf, ""%lld"", u.i);
     #else
         sprintf(buf, ""%ld"", u.i);
