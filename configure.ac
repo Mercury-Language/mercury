@@ -5251,7 +5251,7 @@ some_kept=false
 to_delete=""
 if test "$BOOTSTRAP_MC" != "" ; then
     MERCURY_MSG("checking whether any C files need to be rebuilt...")
-    for directory in library compiler profiler deep_profiler mdbcomp browser slice ssdb
+    for directory in library compiler profiler deep_profiler mdbcomp browser slice ssdb mfilterjavac
     do
         mercury_check_c_files $directory $directory
         mercury_check_c_files $directory/Mercury/cs $directory/Mercury/c_dates
