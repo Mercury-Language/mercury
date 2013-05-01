@@ -1,9 +1,9 @@
 
 We are pleased to announce the release of version 13.05 of the Mercury system.
 
-Mercury is a modern general-purpose programming language, designed and
-implemented by a small group of researchers at the University of
-Melbourne, Australia.  Mercury is based on the paradigm of purely
+Mercury is a modern general-purpose programming language, originally
+designed and implemented by a small group of researchers at the University
+of Melbourne, Australia.  Mercury is based on the paradigm of purely
 declarative programming, and was designed to be useful for the
 development of large and robust ``real-world'' applications.
 It improves on existing logic programming languages by providing
