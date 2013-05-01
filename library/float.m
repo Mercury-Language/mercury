@@ -943,6 +943,14 @@ float.float_to_doc(X) = str(string.float_to_string(X)).
     u.f = (double) Flt;
     #if defined(MR_MINGW64) || defined(MR_CYGWIN)
         sprintf(buf, ""%lld"", u.i);
+    #elif defined(MR_WIN32)
+        /*
+        ** The I64 size prefix is specific to the Microsoft
+        ** C library -- we use it here since MSVC and (some)
+        ** versions of 32-bit MinGW GCC do not support the
+        ** standard ll size prefix.
+        */
+        sprintf(buf, ""%I64d"", u.i);
     #else
         sprintf(buf, ""%ld"", u.i);
     #endif 
