@@ -3095,7 +3095,8 @@ fi
 SYMPREFIX=
 
 case "$host" in
-    *apple*darwin*) SYMPREFIX="_"
+    *apple*darwin*) SYMPREFIX="_" ;;
+    i*86-*-mingw*)  SYMPREFIX="_" ;;
 esac
 
 AC_SUBST([SYMPREFIX])
