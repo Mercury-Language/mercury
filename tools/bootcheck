@@ -775,9 +775,13 @@ then
             cp $root/boehm_gc/Mmake* .
             cp $root/boehm_gc/Makefile.direct .
             cp $root/boehm_gc/NT_MAKEFILE .
+            cp $root/boehm_gc/gc.mak .
+            cp $root/boehm_gc/ac* .
             cp $root/boehm_gc/gc_cpp.cc .
             cp $root/boehm_gc/gc_cpp.cpp .
             cp $root/boehm_gc/build_atomic_ops.sh* .
+            cp -r $root/boehm_gc/cord .
+            cp -r $root/boehm_gc/Mac_files .
             cp -r $root/boehm_gc/libatomic_ops-*[0-9] .
             cp -r $root/boehm_gc/libatomic_ops .
             cp -r $root/boehm_gc/extra .
