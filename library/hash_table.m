@@ -114,6 +114,14 @@
 :- mode num_occupants(hash_table_ui) = out is det.
 %:- mode num_occupants(in) = out is det.
 
+    % Copy the hash table.
+    %
+    % This is not a deep copy, it copies only enough of the structure to
+    % create a new unique table.
+    %
+:- func copy(hash_table(K, V)) = hash_table(K, V).
+:- mode copy(hash_table_ui) = hash_table_uo is det.
+
     % Insert key-value binding into a hash table; if one is
     % already there then the previous value is overwritten.
     % A predicate version is also provided.
@@ -190,7 +198,17 @@
 :- mode to_assoc_list(hash_table_ui) = out is det.
 %:- mode to_assoc_list(in) = out is det.
 
-    % Convert an association list into a hash table.
+    % from_assoc_list(HashPred, N, MaxOccupancy, AssocList) = Table:
+    %
+    % Convert an association list into a hash table.  The first three
+    % parameters are the same as for init/3 above.
+    %
+:- func from_assoc_list(hash_pred(K), int, float, assoc_list(K, V)) =
+    hash_table(K, V).
+:- mode from_assoc_list(in(hash_pred), in, in, in) = hash_table_uo is det.
+
+    % A simpler version of from_assoc_list/4, the values for N and
+    % MaxOccupancy are configured with defaults such as in init_default/1
     %
 :- func from_assoc_list(hash_pred(K)::in(hash_pred), assoc_list(K, V)::in) =
     (hash_table(K, V)::hash_table_uo) is det.
@@ -317,6 +335,13 @@ find_slot_2(HashPred, K, NumBuckets, H) :-
     HashPred(K, Hash),
     % Since NumBuckets is a power of two we can avoid mod.
     H = Hash /\ (NumBuckets - 1).
+
+%-----------------------------------------------------------------------------%
+
+copy(Orig) = Copy :-
+    Orig = ht(NumOccupants, MaxOccupants, HashPred, Buckets0),
+    array.copy(Buckets0, Buckets),
+    Copy = ht(NumOccupants, MaxOccupants, HashPred, Buckets).
 
 %-----------------------------------------------------------------------------%
 
@@ -527,6 +552,9 @@ to_assoc_list_2(X, AL0, AL) :-
         AL1 = [K - V | AL0],
         to_assoc_list_2(T, AL1, AL)
     ).
+
+from_assoc_list(HashPred, N, MaxOccupants, AList) = HT :-
+    from_assoc_list_2(AList, init(HashPred, N, MaxOccupants), HT).
 
 from_assoc_list(HashPred, AList) = HT :-
     from_assoc_list_2(AList, init_default(HashPred), HT).

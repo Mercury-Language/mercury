@@ -45,6 +45,9 @@ Changes to the Mercury standard library:
 * We have added predicates to the calendar module for folding over the days
   in a given range of dates: foldl_days/5, foldl2_days/7 and  foldl3_days/9.
 
+* We have added two functions to both the hash_table and version_hash_table
+  modules: copy/1 and from_assoc_list/4.
+
 Changes to the Mercury compiler:
 
 * The option `--warn-non-tail-recursion' no longer requires
