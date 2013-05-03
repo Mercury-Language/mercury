@@ -5,7 +5,7 @@ Command echo enabled.
 mdb> step
       E2:     C2 CALL func int.+/2-0 (det)
 mdb> print proc_body
-	proc_defn_rep([head_var_rep(1, var_mode_rep/2), head_var_rep(2, var_mode_rep/2), head_var_rep(3, var_mode_rep/2)], goal_rep(atomic_goal_rep("int.m", NN, [|]/2, builtin_call_rep/3), det_rep, unit), empty, det_rep)
+	proc_defn_rep([head_var_rep(1, var_mode_rep/2), head_var_rep(2, var_mode_rep/2), head_var_rep(3, var_mode_rep/2)], goal_rep(atomic_goal_rep("int.m", NN, [|]/2, builtin_call_rep/3), det_rep, unit), empty, no, det_rep)
 mdb> browse proc_body
 browser> cd 2
 browser> ls

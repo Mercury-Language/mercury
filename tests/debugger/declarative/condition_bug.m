@@ -8,14 +8,14 @@
 
 :- implementation.
 
-:- import_module list, int, string, map, svmap, term_to_xml, assoc_list,
+:- import_module list, int, string, map, term_to_xml, assoc_list,
 	pair.
 
 main(!IO) :-
 	some [!Map] (
 		map.init(!:Map),
-		svmap.set("mission", "missie", !Map),
-		svmap.set("critical", "kritiek", !Map),
+		map.set("mission", "missie", !Map),
+		map.set("critical", "kritiek", !Map),
 		FinalMap = !.Map
 	),
 	write_xml_doc(io.stdout_stream, translation(FinalMap), !IO),
