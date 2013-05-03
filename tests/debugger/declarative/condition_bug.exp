@@ -17,7 +17,7 @@ mdb> continue
 mdb> finish
 english      E3:     C2 EXIT pred stream.put/4-0 (det) (term_to_xml.m:NNNN)
 mdb> dd
-put(stream(1, output, preopen, stdout), "english", _, state(c_pointer(0x1)))
+put(stream(1, output, preopen, stdout), "english", _, '<<foreign>>')
 1 tabled IO action:
 write_string_2(stream(1, output, preopen, stdout), "english")
 Valid? browse 2
