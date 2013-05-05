@@ -6,6 +6,13 @@ This file contains information about threadscope profiling for Mercury.
  1. Supported Systems.
  2. Threadscope Profiling Tools
 
+NOTICE
+------
+
+ThreadScope support is currently broken and therefore unsupported.  We have
+plans to fix it for a future release.
+
+
 Supported Systems
 -----------------
 
