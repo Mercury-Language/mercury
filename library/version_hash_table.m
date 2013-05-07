@@ -15,7 +15,7 @@
 %
 % Version hash tables.  The "latest" version of the hash table provides roughly
 % the same performance as the unique hash table implementation.  "Older"
-% versions of the hash table are still accessible, but will incurr a growing
+% versions of the hash table are still accessible, but will incur a growing
 % performance penalty as more updates are made to the hash table.
 % 
 %-----------------------------------------------------------------------------%
