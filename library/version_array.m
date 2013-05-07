@@ -21,6 +21,10 @@
 % then accesses to An cost O(1) (assuming no further versions of the array
 % have been created from An), but accesses to A0 cost O(n).
 %
+% Updates to older versions of the structure (for example A(n-1)) may have
+% additional costs, for arrays this cost is O(m) where m is the size of the
+% array, as the whole array is copied to make a new version array.
+%
 % Most version data structures come with impure, unsafe means to "rewind"
 % to an earlier version, restoring that version's O(1) access times, but
 % leaving later versions undefined (i.e. only do this if you are discarding
