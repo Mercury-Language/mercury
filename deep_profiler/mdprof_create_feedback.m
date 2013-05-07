@@ -304,8 +304,12 @@ write_version_message(ProgName, !IO) :-
     io::di, io::uo) is det.
 
 read_deep_file(Input, Debug, MaybeDeep, !IO) :-
-    server_name_port(Machine, !IO),
-    script_name(ScriptName, !IO),
+    % XXX the server_name_port and script_name fields of the deep/0
+    % structure are only required by the CGI program.  (They probably
+    % shouldn't be part of that structure since not all tools that operate
+    % on deep profiles require them.)
+    Machine = "DummyServer",
+    ScriptName = "DummyScript",
     (
         Debug = yes,
         io.stdout_stream(Stdout, !IO),

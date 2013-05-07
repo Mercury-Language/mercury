@@ -15,7 +15,7 @@
 %
 % Version hash tables.  The "latest" version of the hash table provides roughly
 % the same performance as the unique hash table implementation.  "Older"
-% versions of the hash table are still accessible, but will incurr a growing
+% versions of the hash table are still accessible, but will incur a growing
 % performance penalty as more updates are made to the hash table.
 % 
 %-----------------------------------------------------------------------------%
@@ -112,6 +112,16 @@
     %
 :- func num_occupants(version_hash_table(K, V)) = int.
 
+    % Copy the hash table explicitly.
+    %
+    % An explicit copy allows programmers to control the cost of copying
+    % the table.  For more information see the comments at the top of the
+    % version_array module.
+    %
+    % This is not a deep copy, it copies only the structure.
+    %
+:- func copy(version_hash_table(K, V)) = version_hash_table(K, V).
+
     % Insert key-value binding into a hash table; if one is
     % already there then the previous value is overwritten.
     % A predicate version is also provided.
@@ -171,7 +181,17 @@
     %
 :- func to_assoc_list(version_hash_table(K, V)) = assoc_list(K, V).
 
-    % Convert an association list into a hash table.
+    % from_assoc_list(HashPred, N, MaxOccupancy, AssocList) = Table:
+    %
+    % Convert an association list into a hash table.  The first three
+    % parameters are the same as for init/3 above.
+    %
+:- func from_assoc_list(hash_pred(K)::in(hash_pred), int::in, float::in,
+        assoc_list(K, V)::in) =
+    (version_hash_table(K, V)::out) is det.
+
+    % A simpler version of from_assoc_list/4, the values for N and
+    % MaxOccupancy are configured with defaults such as in init_default/1
     %
 :- func from_assoc_list(hash_pred(K)::in(hash_pred), assoc_list(K, V)::in) =
     (version_hash_table(K, V)::out) is det.
@@ -320,6 +340,13 @@ find_slot_2(HashPred, K, NumBuckets, H) :-
 "
     HashPred = HashPred0;
 ").
+
+%-----------------------------------------------------------------------------%
+
+copy(HT0) = HT :-
+    HT0 = ht(NumOccupants, MaxOccupants, HashPred, Buckets0),
+    copy(Buckets0, Buckets),
+    HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets).
 
 %-----------------------------------------------------------------------------%
 
@@ -528,6 +555,9 @@ to_assoc_list_2(X, AL0, AL) :-
         AL1 = [K - V | AL0],
         to_assoc_list_2(T, AL1, AL)
     ).
+
+from_assoc_list(HashPred, N, MaxOccupants, AList) = HT :-
+    from_assoc_list_2(AList, init(HashPred, N, MaxOccupants), HT).
 
 from_assoc_list(HashPred, AList) = HT :-
     from_assoc_list_2(AList, init_default(HashPred), HT).
