@@ -247,6 +247,14 @@ AC_MSG_RESULT([$mercury_cv_microsoft_dotnet])
 ILASM=`basename "$ILASM"`
 GACUTIL=`basename "$GACUTIL"`
 
+# Check for the assembly linker.
+# ilalink is the DotGNU assembly linker.
+AC_PATH_PROGS([MS_AL], [al ilalink])
+MS_AL=`basename "$MS_AL"`
+
+# Check for an implementation of the Common Language Infrastructure.
+AC_PATH_PROGS([CLI_INTERPRETER], [mono])
+
 # Check for the C# (C sharp) compiler.
 # mcs is the Mono C# compiler targetting all runtimes
 # dmcs is the Mono C# compiler targeting the 4.0 runtime
@@ -324,7 +332,7 @@ EOF
 	if
 		echo $CSC conftest.cs >&AC_FD_CC 2>&1 && \
 			$CSC conftest.cs  >&AC_FD_CC 2>&1 && \
-			./conftest > conftest.out 2>&1
+			$CLI_INTERPRETER ./conftest.exe > conftest.out 2>&1
 	then
 		mercury_cv_microsoft_dotnet_library_version=`cat conftest.out`
 		AC_MSG_RESULT([$mercury_cv_microsoft_dotnet_library_version])
@@ -340,15 +348,6 @@ EOF
 	fi
 fi
 MS_DOTNET_LIBRARY_VERSION=$mercury_cv_microsoft_dotnet_library_version
-
-# Check for the assembly linker.
-# ilalink is the DotGNU assembly linker.
-AC_PATH_PROGS([MS_AL], [al ilalink])
-MS_AL=`basename "$MS_AL"`
-
-# Check for an implementation of the Common Language Infrastructure.
-AC_PATH_PROGS([CLI_INTERPRETER], [mono])
-MONO=`basename "$CLI_INTERPRETER"`
 
 AC_SUBST([ILASM])
 AC_SUBST([GACUTIL])
