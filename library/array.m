@@ -226,12 +226,6 @@
 :- func array.set(array(T), int, T) = array(T).
 :- mode array.set(array_di, in, in) = array_uo is det.
 
-    % An obsolete synonym for array.set/4.
-    %
-:- pragma obsolete(array.svset/4).
-:- pred array.svset(int, T, array(T), array(T)).
-:- mode array.svset(in, in, array_di, array_uo) is det.
-
     % array.semidet_set sets the nth element of an array, and returns
     % the resulting array. It fails if the index is out of bounds.
     %
@@ -243,12 +237,6 @@
     %
 :- pred array.unsafe_set(int, T, array(T), array(T)).
 :- mode array.unsafe_set(in, in, array_di, array_uo) is det.
-
-    % An obsolete synonym for array.unsafe_set/4.
-    %
-:- pragma obsolete(array.unsafe_svset/4).
-:- pred array.unsafe_svset(int, T, array(T), array(T)).
-:- mode array.unsafe_svset(in, in, array_di, array_uo) is det.
 
     % array.slow_set sets the nth element of an array, and returns the
     % resulting array. The initial array is not required to be unique,
@@ -1581,13 +1569,6 @@ array.set(Index, Item, !Array) :-
         array.unsafe_set(Index, Item, !Array)
     ).
 
-array.svset(Index, Item, !Array) :-
-    ( bounds_checks, \+ array.in_bounds(!.Array, Index) ->
-        out_of_bounds_error(!.Array, Index, "array.set")
-    ;
-        array.unsafe_svset(Index, Item, !Array)
-    ).
-
 'unsafe_elem :='(Index, !.Array, Value) = !:Array :-
     array.unsafe_set(Index, Value, !Array).
 
@@ -1605,30 +1586,8 @@ array.svset(Index, Item, !Array) :-
     Array = Array0;
 ").
 
-:- pragma foreign_proc("C",
-    array.unsafe_svset(Index::in, Item::in, Array0::array_di, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness,
-        sharing(yes(int, T, array(T), array(T)), [
-            cel(Array0, []) - cel(Array, []),
-            cel(Item, [])   - cel(Array, [T])
-        ])
-    ],
-"
-    Array0->elements[Index] = Item; /* destructive update! */
-    Array = Array0;
-").
-
 :- pragma foreign_proc("C#",
     array.unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    Array0.SetValue(Item, Index);   /* destructive update! */
-    Array = Array0;
-}").
-
-:- pragma foreign_proc("C#",
-    array.unsafe_svset(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     Array0.SetValue(Item, Index);   /* destructive update! */
@@ -1642,33 +1601,8 @@ array.svset(Index, Item, !Array) :-
     Array = setelement(Index + 1, Array0, Item)
 ").
 
-:- pragma foreign_proc("Erlang",
-    array.unsafe_svset(Index::in, Item::in, Array0::array_di, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Array = setelement(Index + 1, Array0, Item)
-").
-
 :- pragma foreign_proc("Java",
     array.unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    if (Array0 instanceof int[]) {
-        ((int[]) Array0)[Index] = (Integer) Item;
-    } else if (Array0 instanceof double[]) {
-        ((double[]) Array0)[Index] = (Double) Item;
-    } else if (Array0 instanceof char[]) {
-        ((char[]) Array0)[Index] = (Character) Item;
-    } else if (Array0 instanceof boolean[]) {
-        ((boolean[]) Array0)[Index] = (Boolean) Item;
-    } else {
-        ((Object[]) Array0)[Index] = Item;
-    }
-    Array = Array0;         /* destructive update! */
-").
-
-:- pragma foreign_proc("Java",
-    array.unsafe_svset(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array0 instanceof int[]) {

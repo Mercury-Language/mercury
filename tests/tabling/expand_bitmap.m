@@ -21,8 +21,8 @@ main(!IO) :-
 	random__init(0, RS0),
 	random__permutation(range(0, 1023), Perm, RS0, RS1),
 
-	BM1 = bitmap.new(45, yes) ^ bits(20, 8) := 0b10001001,
-	BM2 = bitmap.new(123, no) ^ bits(10, 8) := 0b10101010,
+	BM1 = bitmap.init(45, yes) ^ bits(20, 8) := 0b10001001,
+	BM2 = bitmap.init(123, no) ^ bits(10, 8) := 0b10101010,
 	choose_signs_and_enter(Perm, BM1, Solns1, RS1, RS2),
 	( test_tables(Solns1, yes) ->
 		io__write_string("First test successful.\n", !IO)

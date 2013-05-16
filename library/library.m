@@ -115,9 +115,6 @@
 :- import_module stream.string_writer.
 :- import_module string.
 :- import_module string.builder.
-:- import_module svlist.
-:- import_module svpqueue.
-:- import_module svstack.
 :- import_module table_statistics.
 :- import_module term.
 :- import_module term_io.
@@ -287,9 +284,6 @@ mercury_std_library_module("stream").
 mercury_std_library_module("stream.string_writer").
 mercury_std_library_module("string").
 mercury_std_library_module("string.builder").
-mercury_std_library_module("svlist").
-mercury_std_library_module("svpqueue").
-mercury_std_library_module("svstack").
 mercury_std_library_module("table_builtin").
 mercury_std_library_module("table_statistics").
 mercury_std_library_module("term").

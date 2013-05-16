@@ -21,7 +21,7 @@
 
 main(!IO) :-
     io.write_string("-- new\n", !IO),
-    A0 = bitmap.new(0, no) : bitmap,
+    A0 = bitmap.init(0, no) : bitmap,
     io.write(A0, !IO),
     io.nl(!IO),
 
@@ -34,7 +34,7 @@ main(!IO) :-
 
     io.write_string("-- resize\n", !IO),
     some [B0, B1, B2, B3] (
-        B0 = bitmap.new(0, no),
+        B0 = bitmap.init(0, no),
         B1 = resize(B0, 0, no),     % no change
         io.write(B1, !IO),
         io.nl(!IO),
@@ -48,7 +48,7 @@ main(!IO) :-
 
     io.write_string("-- shrink_without_copying\n", !IO),
     some [B0, B1] (
-        B0 = bitmap.new(4, no),
+        B0 = bitmap.init(4, no),
         B1 = shrink_without_copying(B0, 0),
         io.write(B1, !IO),
         io.nl(!IO)
@@ -117,7 +117,7 @@ main(!IO) :-
 
     io.write_string("-- ^bits:=\n", !IO),
     some [B0, B1] (
-        B0 = bitmap.new(0, no),
+        B0 = bitmap.init(0, no),
         B1 = B0 ^ bits(0, 0) := 0,
         io.write(B1, !IO),
         io.nl(!IO)
@@ -138,7 +138,7 @@ main(!IO) :-
     io.write_string("-- ^byte:=\n", !IO),
     some [B0, B1] (
         (try [] (
-            B0 = bitmap.new(0, no),
+            B0 = bitmap.init(0, no),
             B1 = B0 ^ byte(0) := 0
         )
         then
@@ -168,7 +168,7 @@ main(!IO) :-
     io.write_string("-- flip\n", !IO),
     some [B0, B1] (
         (try [] (
-            B0 = bitmap.new(0, no),
+            B0 = bitmap.init(0, no),
             B1 = flip(B0, 0)
         )
         then
@@ -180,8 +180,8 @@ main(!IO) :-
         )
     ),
 
-    A1 = bitmap.new(0, no),
-    A2 = bitmap.new(0, no),
+    A1 = bitmap.init(0, no),
+    A2 = bitmap.init(0, no),
 
     io.write_string("-- complement\n", !IO),
     Bcompl = complement(A1),
@@ -210,9 +210,9 @@ main(!IO) :-
 
     io.write_string("-- append_list\n", !IO),
     some [B0, B1, B2, B3] (
-        B0 = bitmap.new(1, yes),
-        B1 = bitmap.new(0, yes),
-        B2 = bitmap.new(1, yes),
+        B0 = bitmap.init(1, yes),
+        B1 = bitmap.init(0, yes),
+        B2 = bitmap.init(1, yes),
         B3 = append_list([B0, B1, B2]),
         io.write(B3, !IO),
         io.nl(!IO)
@@ -220,8 +220,8 @@ main(!IO) :-
 
     io.write_string("-- copy_bits\n", !IO),
     some [B0, B1, B2] (
-        B0 = bitmap.new(1, yes),
-        B1 = bitmap.new(0, yes),
+        B0 = bitmap.init(1, yes),
+        B1 = bitmap.init(0, yes),
         B2 = copy_bits(B0, 0, B1, 0, 0),
         io.write(B2, !IO),
         io.nl(!IO)
@@ -229,7 +229,7 @@ main(!IO) :-
 
     io.write_string("-- copy_bits_in_bitmap\n", !IO),
     some [B0, B1] (
-        B0 = bitmap.new(0, no),
+        B0 = bitmap.init(0, no),
         B1 = copy_bits_in_bitmap(B0, 0, 0, 0),
         io.write(B1, !IO),
         io.nl(!IO)
@@ -237,8 +237,8 @@ main(!IO) :-
 
     io.write_string("-- copy_bytes\n", !IO),
     some [B0, B1, B2] (
-        B0 = bitmap.new(8, yes),
-        B1 = bitmap.new(0, no),
+        B0 = bitmap.init(8, yes),
+        B1 = bitmap.init(0, no),
         B2 = copy_bytes(B0, 0, B1, 0, 0),
         io.write(B2, !IO),
         io.nl(!IO)
@@ -246,7 +246,7 @@ main(!IO) :-
 
     io.write_string("-- copy_bytes_in_bitmap\n", !IO),
     some [B0, B1] (
-        B0 = bitmap.new(0, no),
+        B0 = bitmap.init(0, no),
         B1 = copy_bytes_in_bitmap(B0, 0, 0, 0),
         io.write(B1, !IO),
         io.nl(!IO)
@@ -274,8 +274,8 @@ main(!IO) :-
 
     io.write_string("-- bitmap_equal\n", !IO),
     some [B0, B1] (
-        B0 = bitmap.new(0, no),
-        B1 = bitmap.new(0, no),
+        B0 = bitmap.init(0, no),
+        B1 = bitmap.init(0, no),
         ( B0 = B1 ->
             io.write_string("equal\n", !IO)
         ;
@@ -285,8 +285,8 @@ main(!IO) :-
 
     io.write_string("-- bitmap_compare\n", !IO),
     some [B0, B1] (
-        B0 = bitmap.new(0, no),
-        B1 = bitmap.new(0, no),
+        B0 = bitmap.init(0, no),
+        B1 = bitmap.init(0, no),
         compare(Compare, B0, B1),
         io.write(Compare, !IO),
         io.nl(!IO)

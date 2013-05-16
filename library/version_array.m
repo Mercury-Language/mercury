@@ -79,11 +79,6 @@
     %
 :- func init(int, T) = version_array(T).
 
-    % new(N, X) returns an array of size N with each item initialised to X.
-    %
-:- pragma obsolete(new/2).
-:- func new(int, T) = version_array(T).
-
     % Same as empty/0 except the resulting version_array is not thread safe.
     %
     % That is your program can crash or behave strangely if you attempt to
@@ -94,7 +89,7 @@
     %
 :- func unsafe_empty = version_array(T).
 
-    % Same as new(N, X) except the resulting version_array is not thread safe.
+    % Same as init(N, X) except the resulting version_array is not thread safe.
     %
     % That is your program can crash or behave strangely if you attempt to
     % concurrently access or update the array from different threads, or any
@@ -102,6 +97,11 @@
     % However this version is much quicker if you guarantee that you never
     % concurrently access the version array.
     %
+:- func unsafe_init(int, T) = version_array(T).
+
+    % An obsolete synonym for the above.
+    %
+:- pragma obsolete(unsafe_new/2).
 :- func unsafe_new(int, T) = version_array(T).
 
     % version_array(Xs) returns an array constructed from the items in the list
@@ -246,10 +246,6 @@
 :- import_module int.
 :- import_module exception.
 :- import_module string.
-
-%-----------------------------------------------------------------------------%
-
-new(N, X) = version_array.init(N, X).
 
 %-----------------------------------------------------------------------------%
 
@@ -660,8 +656,10 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA = new ML_sva(ML_uva.init(N, X));
 ").
 
+unsafe_new(N, X) = unsafe_init(N, X).
+
 :- pragma foreign_proc("C",
-    version_array.unsafe_new(N::in, X::in) = (VA::out),
+    version_array.unsafe_init(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -688,7 +686,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 ").
 
 :- pragma foreign_proc("C#",
-    version_array.unsafe_new(N::in, X::in) = (VA::out),
+    version_array.unsafe_init(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -696,7 +694,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 ").
 
 :- pragma foreign_proc("Java",
-    version_array.unsafe_new(N::in, X::in) = (VA::out),
+    version_array.unsafe_init(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "

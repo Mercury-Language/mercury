@@ -49,10 +49,6 @@
 :- func init(hash_pred(K)::in(hash_pred), int::in, float::in) = 
     (version_hash_table(K, V)::out) is det.
 
-:- pragma obsolete(new/3).
-:- func new(hash_pred(K)::in(hash_pred), int::in, float::in) =
-    (version_hash_table(K, V)::out) is det.
-
     % unsafe_init(HashPred, N, MaxOccupancy)
     %
     % Like init/3, but the constructed hash table is backed by a non-thread safe
@@ -66,18 +62,10 @@
 :- func unsafe_init(hash_pred(K)::in(hash_pred), int::in, float::in) =
    (version_hash_table(K, V)::out) is det.
 
-:- pragma obsolete(unsafe_new/3).
-:- func unsafe_new(hash_pred(K)::in(hash_pred), int::in, float::in) =
-   (version_hash_table(K, V)::out) is det.
-
     % init_default(HashFn) constructs a hash table with default size and
     % occupancy arguments.
     %
 :- func init_default(hash_pred(K)::in(hash_pred)) =
-   (version_hash_table(K, V)::out) is det.
-
-:- pragma obsolete(new_default/1).
-:- func new_default(hash_pred(K)::in(hash_pred)) =
    (version_hash_table(K, V)::out) is det.
 
     % unsafe_init_default(HashFn)
@@ -86,10 +74,6 @@
     % non-thread safe version array. See the description of unsafe_init/3 above.
     %
 :- func unsafe_init_default(hash_pred(K)::in(hash_pred)) =
-   (version_hash_table(K, V)::out) is det.
-
-:- pragma obsolete(unsafe_new_default/1).
-:- func unsafe_new_default(hash_pred(K)::in(hash_pred)) =
    (version_hash_table(K, V)::out) is det.
 
     % Retrieve the hash_pred associated with a hash table.
@@ -254,11 +238,7 @@
 
 init(HashPred, N, MaxOccupancy) = init_2(HashPred, N, MaxOccupancy, yes).
 
-new(HashPred, N, MaxOccupancy) = init_2(HashPred, N, MaxOccupancy, yes).
-
 unsafe_init(HashPred, N, MaxOccupancy) = init_2(HashPred, N, MaxOccupancy, no).
-
-unsafe_new(HashPred, N, MaxOccupancy) = init_2(HashPred, N, MaxOccupancy, no).
 
 :- func init_2(hash_pred(K)::in(hash_pred), int::in, float::in, bool::in) =
     (version_hash_table(K, V)::out) is det.
@@ -280,7 +260,7 @@ init_2(HashPred, N, MaxOccupancy, NeedSafety) = HT :-
                 Buckets = version_array.init(NumBuckets, ht_nil)
             ;
                 NeedSafety = no,
-                Buckets = version_array.unsafe_new(NumBuckets, ht_nil)
+                Buckets = version_array.unsafe_init(NumBuckets, ht_nil)
             ),
             HT = ht(0, MaxOccupants, HashPred, Buckets)
     ).
@@ -290,10 +270,8 @@ init_2(HashPred, N, MaxOccupancy, NeedSafety) = HT :-
     % These numbers are picked out of thin air.
     %
 init_default(HashPred) = init(HashPred, 7, 0.9).
-new_default(HashPred) = init(HashPred, 7, 0.9).
 
 unsafe_init_default(HashPred) = unsafe_init(HashPred, 7, 0.9).
-unsafe_new_default(HashPred) = unsafe_init(HashPred, 7, 0.9).
 
 %-----------------------------------------------------------------------------%
 

@@ -45,13 +45,6 @@
 :- func init(int, int, T) = array2d(T).
 :- mode init(in, in, in) = array2d_uo is det.
     
-    % new(M, N, X) = array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]])
-    % where each XIJ = X.  An exception is thrown if M < 0 or N < 0.
-    %
-:- pragma obsolete(new/3).
-:- func new(int, int, T ) = array2d(T).
-:- mode new(in,  in,  in) = array2d_uo is det.
-    
     % array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) constructs a array2d
     % of size M * N, with the special case that bounds(array2d([]), 0, 0).
     %
@@ -154,10 +147,8 @@
 init(M, N, X) =
     ( if    M >= 0, N >= 0
       then  array2d(M, N, array.init(M * N, X))
-      else  func_error("array2d.new: bounds must be non-negative")
+      else  func_error("array2d.init: bounds must be non-negative")
     ).
-
-new(M, N, X) = init(M, N, X).
 
 %-----------------------------------------------------------------------------%
 

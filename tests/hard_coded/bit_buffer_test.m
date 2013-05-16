@@ -432,7 +432,7 @@ do_write(check_buffer_status(_), !Buffer).
 
 requests_to_bitmap(Requests) = !:BM :-
         Size = request_list_length(Requests, 0),
-        !:BM = bitmap.new(Size),
+        !:BM = bitmap.init(Size),
         list.foldl2(request_to_bitmap, Requests, 0, _, !BM).
 
 :- func request_list_length(list(request), int) = int.
@@ -598,7 +598,7 @@ do_read(Desc, ReqIndex, bits(ExpectedWord0, NumBits), !Buffer) :-
 
 do_read(Desc, ReqIndex, bitmap(SourceBM, Index, NumBits), !Buffer) :-
     some [!BM] (
-        !:BM = bitmap.new(SourceBM ^ num_bits),
+        !:BM = bitmap.init(SourceBM ^ num_bits),
         ( Index = 0, NumBits = SourceBM ^ num_bits ->
             get_bitmap(!BM, BitsRead, GetResult, !Buffer)
         ;
@@ -606,7 +606,7 @@ do_read(Desc, ReqIndex, bitmap(SourceBM, Index, NumBits), !Buffer) :-
         ),
         (
             GetResult = ok,
-            ExpectedBM0 = bitmap.new(SourceBM ^ num_bits),
+            ExpectedBM0 = bitmap.init(SourceBM ^ num_bits),
             ExpectedBM = copy_bits(SourceBM, Index,
                             ExpectedBM0, Index, NumBits),
             ( ExpectedBM = !.BM ->

@@ -172,7 +172,7 @@ run_test({}, !IO) :-
     test_binary_io(!IO),
     
     some [!BM] (
-        !:BM = bitmap.new(64, yes),
+        !:BM = bitmap.init(64, yes),
         !:BM = !.BM ^ bits(32, 16) := 0b1011011100100101,
         test_exception(
             ((pred) is semidet :-
@@ -362,9 +362,9 @@ test_binary_op_2(BMStr1, BM1, OpStr, Op, BMStr2, BM2, Writer, !IO) :-
 
 test_binary_io(!IO) :-
     FileName = "bitmap_test_output",
-    BMa0 = bitmap.new(64, yes),
+    BMa0 = bitmap.init(64, yes),
     BMa = BMa0 ^ bits(32, 16) := 0b1011011100100101,
-    BMb0 = bitmap.new(47, yes),
+    BMb0 = bitmap.init(47, yes),
     BMb = BMb0 ^ bits(11, 16) := 0b1011010110100101,
     io.open_binary_output(FileName, OpenRes, !IO),
     (
@@ -375,7 +375,7 @@ test_binary_io(!IO) :-
         io.open_binary_input(FileName, OpenInputRes, !IO),
         (
             OpenInputRes = ok(IStream),
-            InputBMa0 = bitmap.new(64, no),
+            InputBMa0 = bitmap.init(64, no),
             io.read_bitmap(IStream, InputBMa0, InputBMa,
                 BytesReadA, ReadResA, !IO),
             (
@@ -387,7 +387,7 @@ test_binary_io(!IO) :-
             ;
                 io.write_string("First read failed\n", !IO)
             ),
-            InputBMb0 = bitmap.new(32, no),
+            InputBMb0 = bitmap.init(32, no),
             io.read_bitmap(IStream, InputBMb0, InputBMb1,
                 BytesReadB, ReadResB, !IO),
 
@@ -420,9 +420,9 @@ test_binary_io(!IO) :-
 
 test_text_io(!IO) :-
     FileName = "bitmap_test_output2",
-    BMa0 = bitmap.new(64, yes),
+    BMa0 = bitmap.init(64, yes),
     BMa = BMa0 ^ bits(32, 16) := 0b1011011100100101,
-    BMb0 = bitmap.new(47, yes),
+    BMb0 = bitmap.init(47, yes),
     BMb = BMb0 ^ bits(11, 16) := 0b1011010110100101,
     io.write_string("BMa = ", !IO),
     io.write(BMa, !IO),

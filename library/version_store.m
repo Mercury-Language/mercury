@@ -39,11 +39,6 @@
     %
 :- some [S] func init = version_store(S).
 
-    % A synonym for the above.
-    %
-:- pragma obsolete(new/0).
-:- some [S] func new = version_store(S).
-
     % new_mutvar(X, Mutvar, VS0, VS) adds a new mutvar with value reference X
     % to the version store.
     %
@@ -130,8 +125,6 @@ init = version_store(VA) `with_type` version_store(some_version_store_type) :-
         % the version_store holds a counter for allocating new mutvars.
         %
     VA = version_array.init(256, univ(counter.init(1) `with_type` counter)).
-
-new = init.
 
 %-----------------------------------------------------------------------------%
 

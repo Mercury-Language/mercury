@@ -638,14 +638,6 @@
 % strings into static data even when they might be updated.
 %:- mode string.det_set_char(in, in, di, uo) is det.
 
-    % Deperecated synonyms for the above.
-    %
-:- pragma obsolete(string.set_char_det/3).
-:- func string.set_char_det(char, int, string) = string.
-:- pragma obsolete(string.set_char_det/4).
-:- pred string.set_char_det(char, int, string, string).
-:- mode string.set_char_det(in, in, in, out) is det.
-
     % string.unsafe_set_char(Char, Index, String0, String):
     % `String' is `String0', with the code point beginning at code unit
     % `Index' removed and replaced by `Char'.
@@ -1226,9 +1218,6 @@ string.det_index(String, Int, Char) :-
     ).
 
 String ^ elem(Index) = det_index(String, Index).
-
-string.set_char_det(Char, Int, !String) :-
-    string.det_set_char(Char, Int, !String).
 
 string.det_set_char(Char, Int, String0, String) :-
     ( string.set_char(Char, Int, String0, String1) ->
@@ -6134,9 +6123,6 @@ string.det_index(S, N) = C :-
 
 string.unsafe_index(S, N) = C :-
     string.unsafe_index(S, N, C).
-
-string.set_char_det(C, N, S0) =
-    string.det_set_char(C, N, S0).
 
 string.det_set_char(C, N, S0) = S :-
     string.det_set_char(C, N, S0, S).

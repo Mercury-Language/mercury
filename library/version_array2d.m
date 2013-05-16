@@ -45,14 +45,6 @@
     %
 :- func init(int, int, T) = version_array2d(T).
 
-    % new(M, N, X) = version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]])
-    % where each XIJ = X.
-    %
-    % An exception is thrown if M < 0 or N < 0.
-    %
-:- pragma obsolete(new/3).
-:- func new(int, int, T) = version_array2d(T).
-
     % version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) ^ elem(I, J) = X
     % where X is the J+1th element of the I+1th row (i.e. indices start from
     % zero.)
@@ -144,8 +136,6 @@ init(M, N, X) =
       then  version_array2d(M, N, version_array.init(M * N, X))
       else  func_error("version_array2d.new: bounds must be non-negative")
     ).
-
-new(M, N, X) = init(M, N, X).
 
 %-----------------------------------------------------------------------------%
 

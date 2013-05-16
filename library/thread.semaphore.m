@@ -33,19 +33,9 @@
     %
 :- pred semaphore.init(semaphore::out, io::di, io::uo) is det.
 
-    % A synonym for the above.
-    %
-:- pragma obsolete(semaphore.new/3).
-:- pred semaphore.new(semaphore::out, io::di, io::uo) is det.
-
     % Returns a new semaphore `Sem' with its counter initialized to Count.
     %
 :- impure func semaphore.init(int::in) = (semaphore::uo) is det.
-
-    % A synonym for the above.
-    %
-:- pragma obsolete(semaphore.new/1).
-:- impure func semaphore.new(int::in) = (semaphore::uo) is det.
 
     % wait(Sem, !IO) blocks until the counter associated with `Sem'
     % becomes greater than 0, whereupon it wakes, decrements the
@@ -115,12 +105,6 @@ ML_finalize_semaphore(void *obj, void *cd);
 ").
 
 %-----------------------------------------------------------------------------%
-
-new(Semaphore, !IO) :-
-    init(Semaphore, !IO).
-
-new(Count) = Semaphore :-
-    impure Semaphore = init(Count).
 
 init(Semaphore, !IO) :-
     promise_pure (

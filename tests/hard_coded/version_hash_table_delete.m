@@ -20,7 +20,7 @@
 
 main(!IO) :-
     some [!HT] (
-        !:HT = version_hash_table.new_default(generic_hash),
+        !:HT = version_hash_table.init_default(generic_hash),
         list.foldl(fill, keys, !HT),
         list.foldl(version_hash_table.delete, keys, !HT),
         Residue = version_hash_table.to_assoc_list(!.HT),

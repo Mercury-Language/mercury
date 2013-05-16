@@ -51,11 +51,6 @@
     %
 :- some [S] pred store.init(store(S)::uo) is det.
 
-    % A synonym for the above.
-    %
-:- pragma obsolete(store.new/1).
-:- some [S] pred store.new(store(S)::uo) is det.
-
 %-----------------------------------------------------------------------------%
 %
 % Mutvars
@@ -278,9 +273,6 @@ store_compare(_, _, _) :-
     % on the heap.
 :- type generic_mutvar(T, S) ---> mutvar(private_builtin.ref(T)).
 :- type generic_ref(T, S) ---> ref(private_builtin.ref(T)).
-
-store.new(S) :-
-    store.init(S).
 
 store.init(S) :-
     store.do_init(S).

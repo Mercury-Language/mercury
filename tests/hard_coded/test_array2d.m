@@ -52,7 +52,7 @@ main(!IO) :-
     write_array2d("Two_b", Two_b, !IO),
     io.nl(!IO),
 
-    Zeroes = array2d.new(3, 3, 0),
+    Zeroes = array2d.init(3, 3, 0),
     write_array2d("Zeroes", Zeroes, !IO),
     io.nl(!IO),
 

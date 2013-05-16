@@ -15,7 +15,7 @@
 :- import_module thread.semaphore.
 
 main(!IO) :-
-    semaphore.new(S, !IO),
+    semaphore.init(S, !IO),
     semaphore.signal(S, !IO),
     semaphore.signal(S, !IO),
     semaphore.wait(S, !IO),

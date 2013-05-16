@@ -76,23 +76,9 @@
     %
 :- func init(num_bits::in, bool::in) = (bitmap::bitmap_uo) is det.
 
-    % new(N, B) creates a bitmap of size N (indexed 0 .. N-1)
-    % setting each bit if B = yes and clearing each bit if B = no.
-    % An exception is thrown if N is negative.
-    %
-:- pragma obsolete(bitmap.new/2).
-:- func new(num_bits, bool) = bitmap.
-:- mode new(in, in) = bitmap_uo is det.
-
     % A synonym for init(N, no).
     %
 :- func init(num_bits::in) = (bitmap::bitmap_uo) is det.
-
-    % Same as new(N, no).
-    %
-:- pragma obsolete(bitmap.new/1).
-:- func new(num_bits) = bitmap.
-:- mode new(in) = bitmap_uo is det.
 
     % Create a new copy of a bitmap.
     %
@@ -452,16 +438,12 @@ init(N) = init(N, no).
 
 init(N, B) = BM :-
     ( if N < 0 then
-        throw_bitmap_error("bitmap.new: negative size") = _ : int
+        throw_bitmap_error("bitmap.init: negative size") = _ : int
       else
         X    = initializer(B),
         BM0  = initialize_bitmap(allocate_bitmap(N), N, X),
         BM   = clear_filler_bits(BM0)
     ).
-
-new(N, B) = init(N, B).
-
-new(N) = init(N).
 
 %-----------------------------------------------------------------------------%
 

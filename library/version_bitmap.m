@@ -36,13 +36,6 @@
     %
 :- func init(int, bool) = version_bitmap.
 
-    % new(N, B) creates a version_bitmap of size N (indexed 0 .. N-1)
-    % setting each bit if B = yes and clearing each bit if B = no.
-    % An exception is thrown if N is negative.
-    %
-:- pragma obsolete(new/2).
-:- func new(int, bool) = version_bitmap.
-
     % Returns the number of bits in a version_bitmap.
     %
 :- func num_bits(version_bitmap) = int.
@@ -136,8 +129,6 @@
 :- type version_bitmap == version_array(int).
 
 %-----------------------------------------------------------------------------%
-
-new(N, B) = init(N, B).
 
 init(N, B) = BM :-
     ( if N < 0 then

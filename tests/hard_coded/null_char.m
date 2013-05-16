@@ -56,7 +56,7 @@ test2(String) :-
 :- pred test3(string::out) is det.
 
 test3(String) :-
-	String = string.set_char_det(nul, 2, "1234").
+	String = string.det_set_char(nul, 2, "1234").
 
 :- pred test4(string::out) is det.
 
