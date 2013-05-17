@@ -203,6 +203,10 @@
 :- pred bimap.overlay(bimap(K, V)::in, bimap(K, V)::in, bimap(K, V)::out)
     is det.
 
+    % Count the number of key-value pairs in the bimap.
+    %
+:- func bimap.count(bimap(K, V)) = int.
+
     % Convert a bimap to an association list.
     %
 :- func bimap.to_assoc_list(bimap(K, V)) = assoc_list(K, V).
@@ -217,7 +221,7 @@
     is semidet.
 
     % As above but throws an exception instead of failing if the
-    % association list does not implicitly defined a bijection.
+    % association list does not implicitly define a bijection.
     %
 :- func bimap.det_from_assoc_list(assoc_list(K, V)) = bimap(K, V).
 :- pred bimap.det_from_assoc_list(assoc_list(K, V)::in, bimap(K, V)::out)
@@ -562,6 +566,10 @@ bimap.overlay_2([], !BM).
 bimap.overlay_2([Key - Value | KeysValues], !BM) :-
     bimap.set(Key, Value, !BM),
     bimap.overlay_2(KeysValues, !BM).
+
+bimap.count(BM) = Count :-
+    BM = bimap(Forward, _),
+    Count = map.count(Forward).
 
 bimap.to_assoc_list(BM) = AL :-
     bimap.to_assoc_list(BM, AL).
