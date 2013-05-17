@@ -1,3 +1,11 @@
+NEWS for Mercury 13.05.1
+------------------------
+
+Changes to the Mercury standard library:
+
+* We have added the function bimap.count/1.
+
+
 NEWS for Mercury 13.05
 ----------------------
 
