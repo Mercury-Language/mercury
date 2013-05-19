@@ -1,5 +1,7 @@
+.mfilterjavac_tags
 MFILTERJAVAC_FLAGS
 mfilterjavac
+tags
 *.c
 *.c_date
 *.d

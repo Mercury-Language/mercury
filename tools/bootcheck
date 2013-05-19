@@ -940,7 +940,7 @@ then
         if (cd $stage2dir && \
             $MMAKE $mmake_opts dep_library dep_mdbcomp \
             dep_browser dep_ssdb dep_compiler \
-            dep_slice dep_profiler dep_deep_profiler)
+            dep_slice dep_profiler dep_deep_profiler dep_mfilterjavac)
         then
             echo "building of stage 2 dependencies successful"
         else

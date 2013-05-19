@@ -50,13 +50,17 @@ SUBDIRS = \
 
 MMAKEFLAGS =
 
-SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
-		MMAKE_VPATH=. \
-		MMAKE_DIR=../scripts \
-		DESTDIR=$(DESTDIR) \
-		../scripts/mmake $(MMAKEFLAGS)
+# We include ../../mfilterjavac in this path because $SUBDIR_MMAKE is used
+# from the grade install directories, and we need mfilterjavac in our path
+# when executing in install_grade_dir.java/library and others.
+SUBDIR_MMAKE = \
+    PATH=../scripts:../util:../mfilterjavac:../../mfilterjavac:$$PATH \
+    MMAKE_VPATH=. \
+    MMAKE_DIR=../scripts \
+    DESTDIR=$(DESTDIR) \
+    ../scripts/mmake $(MMAKEFLAGS)
 
-SUBSUBDIR_MMAKE = PATH=../../scripts:../../util:$$PATH \
+SUBSUBDIR_MMAKE = PATH=../../scripts:../../util:../../mfilterjavac:$$PATH \
 		MMAKE_VPATH=. \
 		MMAKE_DIR=../../scripts \
 		DESTDIR=$(DESTDIR) \

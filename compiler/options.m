@@ -1840,9 +1840,7 @@ option_defaults_2(link_option, [
     mkinit_erl_command                  -   string("mkinit_erl"),
     demangle_command                    -   string("mdemangle"),
     filtercc_command                    -   string("mfiltercc"),
-    % XXX filterjavac_command is disabled until the addition of
-    % mfilterjavac has bootstrapped.
-    filterjavac_command                 -   string(""),
+    filterjavac_command                 -   string("mfilterjavac"),
     trace_libs                          -   string(""),
     thread_libs                         -   string(""),
     hwloc_libs                          -   string(""),
