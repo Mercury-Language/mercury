@@ -1140,7 +1140,32 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
                 det_info_add_error_spec(SwitchSpec, !DetInfo)
             )
         ;
-            true
+            % Emit a warning if the variable in the head of a
+            % require_complete_switch scope does not occur somewhere in the
+            % body.  Note that since the goal inside the scope does not need to
+            % be a switch, the variable will not necessarily appear in the
+            % non-locals set.  We only emit the  warning when the variable does
+            % not occur at all.
+            % 
+            goal_vars(SubGoal, SubGoalVars),
+            ( if set_of_var.member(SubGoalVars, RequiredVar) then
+                true
+            else
+                det_get_proc_info(!.DetInfo, ProcInfo),
+                proc_info_get_varset(ProcInfo, VarSet),
+                VarStr = mercury_var_to_string(VarSet, no, RequiredVar),
+                MissingRequiredPieces = [
+                    words("Warning: variable "), quote(VarStr),
+                    words("is the subject of a require_complete_switch scope"),
+                    words("but it does not occur in the sub-goal.")
+                ],
+                Context = goal_info_get_context(ScopeGoalInfo),
+                MissingRequiredMsg = simple_msg(Context,
+                    [always(MissingRequiredPieces)]),
+                MissingRequiredSpec = error_spec(severity_warning,
+                    phase_detism_check, [MissingRequiredMsg]),
+                det_info_add_error_spec(MissingRequiredSpec, !DetInfo)
+            )
         )
     ;
         Reason = loop_control(_, _, _),
