@@ -7342,6 +7342,16 @@ static const MercuryFile MR_closed_stream = {
 void
 mercury_close(MercuryFilePtr mf)
 {
+    /*
+    ** On some systems attempting to close a file stream that has been
+    ** previously closed will lead to a segmentation fault.  We check
+    ** that we have not previously closed the file stream here so we
+    ** can give the user some idea about what has happened.
+    */
+    if (MR_file(*mf) == NULL) { 
+        mercury_io_error(mf, ""error closing file: invalid file stream"");
+    }
+
     if (MR_CLOSE(*mf) < 0) {
         mercury_io_error(mf, ""error closing file: %s"", strerror(errno));
     }
