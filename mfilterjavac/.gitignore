@@ -1,0 +1,11 @@
+MFILTERJAVAC_FLAGS
+mfilterjavac
+*.c
+*.c_date
+*.d
+*.dep
+*.dv
+*.mh
+*.o
+*.err
+*.exe

@@ -24,6 +24,8 @@ mer_mdbcomp
 mer_mdbcomp.dep
 mer_mdbcomp.jar
 libmer_mdbcomp.a
+libmer_mdbcomp.lib
+libmer_mdbcomp.so
 Mercury
 Mercury.modules
 MDBCOMP_FLAGS

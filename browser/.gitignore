@@ -43,6 +43,7 @@ mdb.init
 *.pdb
 libmer_browser.lib
 libmer_browser.dylib
+libmer_browser.so
 *.*_date
 Mercury.modules
 browse_test

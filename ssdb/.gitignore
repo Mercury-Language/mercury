@@ -20,6 +20,7 @@ SSDB_FLAGS
 *.o
 *.opt
 *.optdate
+*.so
 *.prof
 libmer_ssdb.a
 mer_ssdb.init
