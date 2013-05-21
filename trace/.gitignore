@@ -5,9 +5,11 @@
 libmer_trace.a
 libmer_eventspec.a
 libmer_trace.lib
-libmer_trace.dylib
 libmer_eventspec.lib
+libmer_trace.dylib
 libmer_eventspec.dylib
+libmer_trace.so
+libmer_eventspec.so
 mercury_event_parser.c
 mercury_event_parser.h
 mercury_event_parser.output
