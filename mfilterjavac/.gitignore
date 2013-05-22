@@ -6,6 +6,7 @@ mfilterjavac
 *.dep
 *.dv
 *.mh
+*.mih
 *.o
 *.err
 *.exe
