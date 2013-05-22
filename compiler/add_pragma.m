@@ -459,8 +459,8 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
         get_procedure_matching_declmodes_with_renaming(ExistingProcs,
             Modes, !.ModuleInfo, ProcId)
     ->
-        map.lookup(Procs, ProcId, ProcInfo),
-        proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
+        map.lookup(Procs, ProcId, ProcInfo0),
+        proc_info_get_declared_determinism(ProcInfo0, MaybeDetism),
         % We cannot catch those multi or nondet procedures that don't have
         % a determinism declaration until after determinism analysis.
         (
@@ -481,6 +481,9 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
         ;
             % Only add the foreign export if the specified language matches
             % one of the foreign languages available for this backend.
+            %
+            
+            
             module_info_get_globals(!.ModuleInfo, Globals),
             globals.get_backend_foreign_languages(Globals, ForeignLanguages),
             ( list.member(Lang, ForeignLanguages) ->
@@ -494,7 +497,19 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
                     !ModuleInfo)
             ;
                 true
-            )
+            ),
+
+            % Record that there was a foreign_export pragma for this procedure,
+            % regardless of the specified language.  We do this so that dead
+            % procedure elimination does not generate incorrect warnings about
+            % dead procedures (e.g.  those that are foreign_exported to
+            % languages other than those languages that are supported by the
+            % current backend.)
+            %
+            proc_info_set_has_any_foreign_exports(has_foreign_exports,
+                ProcInfo0, ProcInfo), 
+            module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
+                !ModuleInfo)
         )
     ;
         % We do not warn about errors in export pragmas created by the

@@ -789,7 +789,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
                 % since they may be automatically generated
                 is_unify_or_compare_pred(PredInfo0)
             ->
-                WarnForThisProc = no
+                WarnForThisPred = no
             ;
                 % Don't warn for procedures introduced from lambda expressions.
                 % The only time those procedures will be unused is if the
@@ -802,24 +802,24 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
                 ; string.prefix(PredName, "TypeSpecOf__")
                 )
             ->
-                WarnForThisProc = no
+                WarnForThisPred = no
             ;
-                WarnForThisProc = yes
+                WarnForThisPred = yes
             )
         ;
             Status = status_pseudo_imported,
             Keep = no,
-            WarnForThisProc = no
+            WarnForThisPred = no
         ;
             Status = status_pseudo_exported,
             hlds_pred.in_in_unification_proc_id(InitProcId),
             Keep = yes(InitProcId),
-            WarnForThisProc = no
+            WarnForThisPred = no
         )
     ->
         ProcIds = pred_info_procids(PredInfo0),
         pred_info_get_procedures(PredInfo0, ProcTable0),
-        list.foldl3(dead_proc_eliminate_proc(PredId, Keep, WarnForThisProc,
+        list.foldl3(dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred,
             !.ProcElimInfo),
             ProcIds, ProcTable0, ProcTable, Changed0, Changed, Specs0, Specs),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
@@ -877,7 +877,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
     proc_elim_info::in, proc_id::in, proc_table::in, proc_table::out,
     bool::in, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-dead_proc_eliminate_proc(PredId, Keep, WarnForThisProc, ProcElimInfo,
+dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred, ProcElimInfo,
         ProcId, !ProcTable, !Changed, !Specs) :-
     Needed = ProcElimInfo ^ proc_elim_needed_map,
     ModuleInfo = ProcElimInfo ^ proc_elim_module_info,
@@ -906,13 +906,16 @@ dead_proc_eliminate_proc(PredId, Keep, WarnForThisProc, ProcElimInfo,
             VeryVerbose = no
         ),
         map.lookup(!.ProcTable, ProcId, ProcInfo0),
+        proc_info_get_has_any_foreign_exports(ProcInfo0, HasForeignExports),
         (
-            WarnForThisProc = yes,
+            WarnForThisPred = yes,
+            HasForeignExports = no_foreign_exports
+        ->
             proc_info_get_context(ProcInfo0, Context),
             Spec = warn_dead_proc(PredId, ProcId, Context, ModuleInfo),
             !:Specs = [Spec | !.Specs]
         ;
-            WarnForThisProc = no
+            true
         ),
         map.delete(ProcId, !ProcTable)
     ).
