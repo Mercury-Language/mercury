@@ -1998,6 +1998,12 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    oisu_creator_for(type_ctor)
     ;       oisu_mutator_for(type_ctor)
     ;       oisu_destructor_for(type_ctor).
+    
+    % Is a procedure the subject of any foreign_export pragmas?
+    %
+:- type proc_foreign_exports
+    --->    no_foreign_exports
+    ;       has_foreign_exports.
 
     % Predicates to get fields of proc_infos.
 
@@ -2055,6 +2061,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     is det.
 :- pred proc_info_get_oisu_kind_fors(proc_info::in,
     list(oisu_pred_kind_for)::out) is det.
+:- pred proc_info_get_has_any_foreign_exports(proc_info::in,
+    proc_foreign_exports::out) is det.
 
     % Predicates to set fields of proc_infos.
 
@@ -2124,6 +2132,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set_statevar_warnings(list(error_spec)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_oisu_kind_fors(list(oisu_pred_kind_for)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_has_any_foreign_exports(proc_foreign_exports::in,
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_get_termination2_info(proc_info::in,
@@ -2475,7 +2485,12 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % Is the procedure mentioned in any order-independent-state-
                 % update pragmas? If yes, list the role of this procedure
                 % for the each of the types in those pragmas.
-                psi_oisu_kind_fors          :: list(oisu_pred_kind_for)
+                psi_oisu_kind_fors          :: list(oisu_pred_kind_for),
+
+                % Is the procedure mentioned in any foreign_export pragma,
+                % regardless of what the current supported foreign languages
+                % are?  
+                psi_has_any_foreign_exports :: proc_foreign_exports
         ).
 
 :- type structure_sharing_info
@@ -2606,7 +2621,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     ProcSubInfo = proc_sub_info(DetismDecl, no, no, Term2Info, IsAddressTaken,
         StackSlots, RegR_HeadVars, ArgInfo, InitialLiveness, no, no,
         no, no_tail_call_events, no, no, no, no, no, no, VarNameRemap, [],
-        SharingInfo, ReuseInfo, []),
+        SharingInfo, ReuseInfo, [], no_foreign_exports),
     ProcInfo = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
         ClauseBody, CanProcess, ModeErrors, RttiVarMaps, eval_normal,
@@ -2640,7 +2655,7 @@ proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
     ProcSubInfo = proc_sub_info(DetismDecl, no, no, Term2Info, IsAddressTaken,
         StackSlots, RegR_HeadVars, no, Liveness, no, no, no,
         no_tail_call_events, no, no, no, no, no, no, VarNameRemap, [],
-        SharingInfo, ReuseInfo, []),
+        SharingInfo, ReuseInfo, [], no_foreign_exports),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, no, HeadModes, no, MaybeHeadLives,
         MaybeDeclaredDetism, Detism, Goal, yes, ModeErrors,
@@ -2694,6 +2709,8 @@ proc_info_get_maybe_untuple_info(PI, PI ^ proc_sub_info ^ maybe_untuple_info).
 proc_info_get_var_name_remap(PI, PI ^ proc_sub_info ^ proc_var_name_remap).
 proc_info_get_statevar_warnings(PI, PI ^ proc_sub_info ^ statevar_warnings).
 proc_info_get_oisu_kind_fors(PI, PI ^ proc_sub_info ^ psi_oisu_kind_fors).
+proc_info_get_has_any_foreign_exports(PI,
+    PI ^ proc_sub_info ^ psi_has_any_foreign_exports).
 
 proc_info_set_varset(VS, !PI) :-
     !PI ^ prog_varset := VS.
@@ -2761,6 +2778,8 @@ proc_info_set_statevar_warnings(SVW, !PI) :-
     !PI ^ proc_sub_info ^ statevar_warnings := SVW.
 proc_info_set_oisu_kind_fors(KFs, !PI) :-
     !PI ^ proc_sub_info ^ psi_oisu_kind_fors := KFs.
+proc_info_set_has_any_foreign_exports(AFE, !PI) :-
+    !PI ^ proc_sub_info ^ psi_has_any_foreign_exports := AFE.
 
 proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
     MaybeHeadModesConstraint = ProcInfo ^ maybe_head_modes_constraint,
