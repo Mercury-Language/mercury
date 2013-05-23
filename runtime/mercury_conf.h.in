@@ -66,6 +66,12 @@
 ** It may be bigger, but any bits beyond 64 are not used.
 */
 #undef	MR_INT_LEAST64_TYPE
+ 
+/*
+** MR_INT_LEAST64_LENGTH_MODIFIER: the print() length modifier for 
+** a MR_int_least64_t.
+*/
+#undef	MR_INT_LEAST64_LENGTH_MODIFIER
 
 /*
 ** MR_INT_LEAST32_TYPE:

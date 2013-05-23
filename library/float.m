@@ -934,27 +934,33 @@ float.float_to_doc(X) = str(string.float_to_string(X)).
     float64_bits_string(Flt::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    union {
-        double f;
-        MR_int_least64_t i;
-    } u;
-    char buf[64];
+    #if defined(MR_INT_LEAST64_TYPE)
+    
+        union {
+            double f;
+            MR_int_least64_t i;
+        } u;
+        char buf[64];
 
-    u.f = (double) Flt;
-    #if defined(MR_MINGW64) || defined(MR_CYGWIN)
-        sprintf(buf, ""%lld"", u.i);
-    #elif defined(MR_WIN32)
-        /*
-        ** The I64 size prefix is specific to the Microsoft
-        ** C library -- we use it here since MSVC and (some)
-        ** versions of 32-bit MinGW GCC do not support the
-        ** standard ll size prefix.
-        */
-        sprintf(buf, ""%I64d"", u.i);
+        u.f = (double) Flt;
+        #if defined(MR_MINGW64) || defined(MR_CYGWIN)
+            sprintf(buf, ""%lld"", u.i);
+        #elif defined(MR_WIN32)
+            /*
+            ** The I64 size prefix is specific to the Microsoft
+            ** C library -- we use it here since MSVC and (some)
+            ** versions of 32-bit MinGW GCC do not support the
+            ** standard ll size prefix.
+            */
+            sprintf(buf, ""%I64d"", u.i);
+        #else
+            sprintf(buf, ""%"" MR_INT_LEAST64_LENGTH_MODIFIER ""d"", u.i);
+        #endif 
+        MR_make_aligned_string_copy(Str, buf);
     #else
-        sprintf(buf, ""%ld"", u.i);
-    #endif 
-    MR_make_aligned_string_copy(Str, buf);
+        MR_fatal_error(
+        ""64-bit integers not supported on this platform"");
+    #endif
 ").
 
 :- pragma foreign_proc("Java",
