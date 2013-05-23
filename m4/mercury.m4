@@ -369,6 +369,13 @@ EOF
     esac
 done
 
+# If the user specified one or more compilers and we couldn't find any
+# then abort configuration.
+if test "$mercury_cv_with_csharp_compiler" != "" -a "$CSC" = ""; then
+    AC_MSG_ERROR([No suitable C sharp compiler could be found.])
+    exit 1
+fi
+
 case "$CSC" in
     csc*)
         CSHARP_COMPILER_TYPE=microsoft
