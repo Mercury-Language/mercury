@@ -1796,7 +1796,21 @@ if test "$mercury_cv_int_least64_type" != unknown; then
     AC_DEFINE_UNQUOTED(MR_INT_LEAST64_TYPE, $mercury_cv_int_least64_type)
     MR_INT_LEAST64_TYPE=$mercury_cv_int_least64_type
     AC_SUBST(MR_INT_LEAST64_TYPE)
+
+    if test "$mercury_cv_int_least64_type" = int; then
+        AC_DEFINE_UNQUOTED(MR_INT_LEAST64_LENGTH_MODIFIER, "")
+    elif test "$mercury_cv_int_least64_type" = long; then
+        AC_DEFINE_UNQUOTED(MR_INT_LEAST64_LENGTH_MODIFIER, "l")
+    elif test "$mercury_cv_int_least64_type" = "long long"; then
+        AC_DEFINE_UNQUOTED(MR_INT_LEAST64_LENGTH_MODIFIER, "ll")
+    elif test "$mercury_cv_int_least64_type" = "__int64"; then
+        AC_DEFINE_UNQUOTED(MR_INT_LEAST64_LENGTH_MODIFIER, "I64")
+    else
+        AC_MSG_ERROR(Cannot determine the length modifier for the MR_int_least64_t type.)
+    fi
+    AC_SUBST(MR_INT_LEAST64_LENGTH_MODIFIER)
 fi
+
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(for an integer type of at least 32 bits)

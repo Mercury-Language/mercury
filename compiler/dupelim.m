@@ -975,6 +975,7 @@ most_specific_lval(LvalA, LvalB, Lval) :-
 :- pred most_specific_rval(rval::in, rval::in, rval::out) is semidet.
 
 most_specific_rval(RvalA, RvalB, Rval) :-
+    require_complete_switch [RvalA]
     (
         RvalA = lval(LvalA),
         RvalB = lval(LvalB),
@@ -985,6 +986,7 @@ most_specific_rval(RvalA, RvalB, Rval) :-
         unexpected($module, $pred, "var")
     ;
         ( RvalA = mkword(_, _)
+        ; RvalA = mkword_hole(_)
         ; RvalA = const(_)
         ; RvalA = mem_addr(_)
         ),

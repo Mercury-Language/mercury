@@ -96,6 +96,7 @@ OTHER_PROGS= \
 	det_string_switch \
 	det_switch \
 	double_vn \
+	dupelim_mkword_hole \
 	easy_nondet_test \
 	easy_nondet_test_2 \
 	empty_bound_inst_list \
