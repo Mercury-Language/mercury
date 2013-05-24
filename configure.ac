@@ -1158,7 +1158,7 @@ AC_SUBST(MATH_LIB)
 
 AC_ARG_WITH(csharp-compiler,
     AC_HELP_STRING([--with-csharp-compiler=<compiler>],
-                   [Specify which C Sharp compiler should be used (default:
+                   [Specify which C Sharp compiler to use (default:
                    autodetect)]),
     mercury_cv_with_csharp_compiler="$withval",
     mercury_cv_with_csharp_compiler="")

@@ -21,11 +21,6 @@ In order to try this system you will need
 
 	  OR any other compatible Java implementation.
 
-WARNING
-
-Please note that the Java backend is still an experimental feature.
-It works quite well now but is not as mature as the C backends.
-
 -----------------------------------------------------------------------------
 
 THE JAVA GRADE
@@ -42,6 +37,9 @@ directory.
 	
 	cd samples
 	mmc --make --java hello
+
+Note that when building programs using the java grade you *must* use
+mmc --make.
 
 Now you can run hello
 

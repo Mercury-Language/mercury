@@ -22,9 +22,23 @@ In order to try this system you will need
 
         - Either Microsoft.NET or Mono 2.8 or above.
 
-WARNING
 
-Please note that the C# backend is still an experimental feature.
+VERSIONS OF THE .NET FRAMEWORK ON MONO
+
+On Mono, the C# compiler has a number of aliases: gmcs, mcs, dmcs.  The alias
+with which the C# compiler is invoked controls which version of the .NET
+frameworks is used by default.  For Mono 2.8, the defaults are:
+
+    gmcs - .NET version 2.0
+    dmcs - .NET version 4.0
+    mcs  - .NET version 2.0
+
+You can specify what C# compiler Mercury should use at configuration time using
+configure's `--with-csharp-compiler' option.  The output from the configure
+script will report which version of the .NET framework is going be used, for
+example:
+
+    checking version of .NET libraries... 4.0.0.0
 
 -----------------------------------------------------------------------------
 
@@ -42,6 +56,9 @@ directory.
 
 	cd samples
 	mmc --make --csharp hello
+
+Note that when building programs using the csharp grade you *must* use
+mmc --make.
 
 -----------------------------------------------------------------------------
 
