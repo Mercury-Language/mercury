@@ -211,6 +211,17 @@
 :- mode fold(in(pred(in, in, di, uo) is semidet), in, di, uo) is semidet.
 
 %-----------------------------------------------------------------------------%
+
+    % Test if two version_hash_tables are equal.  This predicate is used by
+    % unifications on the version_hash_table type.
+    %
+:- pred equals(version_hash_table(K, V)::in, version_hash_table(K, V)::in)
+    is semidet.
+% This pragma is required because termination analysis can't analyse the use
+% of higher order code.
+:- pragma terminates(equals/2).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -226,6 +237,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
+:- import_module unit.
 :- import_module univ.
 :- import_module version_array.
 
@@ -233,11 +245,12 @@
 
 :- type version_hash_table(K, V)
     --->    ht(
-                num_occupants           :: int,
-                max_occupants           :: int,
-                hash_pred               :: hash_pred(K),
-                buckets                 :: buckets(K, V)
-            ).
+                ht_num_occupants        :: int,
+                ht_max_occupants        :: int,
+                ht_hash_pred            :: hash_pred(K),
+                ht_buckets              :: buckets(K, V)
+            )
+    where equality is version_hash_table.equals.
 
 :- type buckets(K, V) == version_array(hash_table_alist(K, V)).
 
@@ -297,7 +310,15 @@ unsafe_new_default(HashPred) = unsafe_init(HashPred, 7, 0.9).
 
 %-----------------------------------------------------------------------------%
 
-num_buckets(HT) = size(HT ^ buckets).
+num_buckets(HT) = NumBuckets :-
+    promise_equivalent_solutions [NumBuckets] (
+        NumBuckets = size(HT ^ ht_buckets)
+    ).
+
+num_occupants(HT) = NumOccupants :-
+    promise_equivalent_solutions [NumOccupants] (
+        NumOccupants = HT ^ ht_num_occupants
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -305,7 +326,10 @@ num_buckets(HT) = size(HT ^ buckets).
 :- pragma inline(find_slot/2).
 
 find_slot(HT, K) = H :-
-    unsafe_hash_pred_cast(HT ^ hash_pred, HashPred),
+    promise_equivalent_solutions [HashPred0] (
+        HashPred0 = HT ^ ht_hash_pred
+    ),
+    unsafe_hash_pred_cast(HashPred0, HashPred),
     find_slot_2(HashPred, K, HT ^ num_buckets, H).
 
 :- pred find_slot_2(hash_pred(K)::in(hash_pred), K::in, int::in, int::out)
@@ -344,15 +368,20 @@ find_slot_2(HashPred, K, NumBuckets, H) :-
 %-----------------------------------------------------------------------------%
 
 copy(HT0) = HT :-
-    HT0 = ht(NumOccupants, MaxOccupants, HashPred, Buckets0),
-    copy(Buckets0, Buckets),
-    HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets).
+    promise_equivalent_solutions [HT] (
+        HT0 = ht(NumOccupants, MaxOccupants, HashPred, Buckets0),
+        copy(Buckets0, Buckets),
+        HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
+    ).
 
 %-----------------------------------------------------------------------------%
 
 set(HT0, K, V) = HT :-
     H = find_slot(HT0, K),
-    HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0),
+    promise_equivalent_solutions [NumOccupants0, MaxOccupants, HashPred,
+            Buckets0] (
+        HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0)
+    ),
     AL0 = Buckets0 ^ elem(H),
     (
         AL0 = ht_nil,
@@ -422,7 +451,10 @@ search(HT, K, search(HT, K)).
 
 search(HT, K) = V :-
     H = find_slot(HT, K),
-    AL = HT ^ buckets ^ elem(H),
+    promise_equivalent_solutions [Buckets] (
+        Buckets = HT ^ ht_buckets
+    ),
+    AL = Buckets ^ elem(H),
     alist_search(AL, K, V).
 
 :- pred alist_search(hash_table_alist(K, V)::in, K::in, V::out) is semidet.
@@ -447,7 +479,10 @@ alist_search(AL, K, V) :-
 
 det_insert(HT0, K, V) = HT :-
     H = find_slot(HT0, K),
-    HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0),
+    promise_equivalent_solutions [NumOccupants0, MaxOccupants, HashPred,
+            Buckets0] (
+        HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0)
+    ),
     AL0 = Buckets0 ^ elem(H),
     (
         AL0 = ht_nil,
@@ -477,13 +512,19 @@ det_insert(K, V, HT, det_insert(HT, K, V)).
 
 det_update(HT0, K, V) = HT :-
     H = find_slot(HT0, K),
-    AL0 = HT0 ^ buckets ^ elem(H),
+    promise_equivalent_solutions [Buckets0] (
+        Buckets0 = HT0 ^ ht_buckets
+    ),
+    AL0 = Buckets0 ^ elem(H),
     ( if alist_replace(AL0, K, V, AL1) then
         AL = AL1
       else
         throw(software_error("version_hash_table.det_update: key not found"))
     ),
-    HT = HT0 ^ buckets ^ elem(H) := AL.
+    Buckets = Buckets0 ^ elem(H) := AL,
+    promise_equivalent_solutions [HT] (
+        HT = HT0 ^ ht_buckets := Buckets
+    ).
 
 det_update(K, V, HT, det_update(HT, K, V)).
 
@@ -501,9 +542,12 @@ elem(K, HT) = lookup(HT, K).
 
 delete(HT0, K) = HT :-
     H = find_slot(HT0, K),
-    AL0 = HT0 ^ buckets ^ elem(H),
+    promise_equivalent_solutions [NumOccupants0, MaxOccupants, HashPred,
+            Buckets0] (
+        HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0)
+    ),
+    AL0 = Buckets0 ^ elem(H),
     ( if alist_remove(AL0, K, AL) then
-        HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0),
         Buckets = Buckets0 ^ elem(H) := AL,
         NumOccupants = NumOccupants0 - 1,
         HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
@@ -538,7 +582,10 @@ alist_remove(AL0, K, AL) :-
 %-----------------------------------------------------------------------------%
 
 to_assoc_list(HT) = AL :-
-    foldl(to_assoc_list_2, HT ^ buckets, [], AL).
+    promise_equivalent_solutions [Buckets] (
+        Buckets = HT ^ ht_buckets
+    ),
+    foldl(to_assoc_list_2, Buckets, [], AL).
 
 :- pred to_assoc_list_2(hash_table_alist(K, V)::in,
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
@@ -760,7 +807,10 @@ munge(N, X) =
 %-----------------------------------------------------------------------------%
 
 fold(F, HT, X0) = X :-
-    foldl(fold_f(F), HT ^ buckets, X0, X).
+    promise_equivalent_solutions [Buckets] (
+        Buckets = HT ^ ht_buckets
+    ),
+    foldl(fold_f(F), Buckets, X0, X).
 
 :- pred fold_f(func(K, V, T) = T, hash_table_alist(K, V), T, T).
 :- mode fold_f(func(in, in, in) = out is det, in, in, out) is det.
@@ -780,7 +830,10 @@ fold_f(F, List, A0, A) :-
     ).
 
 fold(P, HT, !A) :-
-    foldl(fold_p(P), HT ^ buckets, !A).
+    promise_equivalent_solutions [Buckets] (
+        Buckets = HT ^ ht_buckets
+    ),
+    foldl(fold_p(P), Buckets, !A).
 
 :- pred fold_p(pred(K, V, T, T), hash_table_alist(K, V), T, T).
 :- mode fold_p(pred(in, in, in, out) is det, in, in, out) is det.
@@ -801,6 +854,60 @@ fold_p(P, List, !A) :-
         P(K, V, !A),
         fold_p(P, KVs, !A)
     ).
+
+%-----------------------------------------------------------------------------%
+
+equals(A, B) :-
+    promise_pure
+    ( semipure pointer_equals(A, B) ->
+        true
+    ;
+        % We cannot deconstruct a non-cononical type in this all-solutions
+        % context (because the unification and call to fold may fail).
+        % Therefore we call num_occupants.
+        NumA = num_occupants(A),
+        NumB = num_occupants(B),
+        NumA = NumB,
+        % Ensure that each item in A has an item in B, and beause they have
+        % the same number, if this is true then there is not an item in B
+        % that does not match one in A.
+        fold(compare_item(B), A, unit, _)
+    ).
+
+:- pred compare_item(version_hash_table(K, V)::in, K::in, V::in,
+    unit::in, unit::out) is semidet.
+
+compare_item(Table, K, V, unit, unit) :-
+    search(Table, K, V).
+
+:- semipure pred pointer_equals(T::in, T::in) is semidet.
+:- pragma inline(pointer_equals/2).
+
+:- pragma foreign_proc("C", pointer_equals(A::in, B::in),
+    [promise_semipure, thread_safe, will_not_call_mercury,
+        will_not_throw_exception, terminates],
+"
+    SUCCESS_INDICATOR = (A == B);
+").
+
+:- pragma foreign_proc("Java", pointer_equals(A::in, B::in),
+    [promise_semipure, thread_safe, will_not_call_mercury,
+        will_not_throw_exception, terminates],
+"
+    SUCCESS_INDICATOR = (A == B);
+").
+
+:- pragma foreign_proc("C#", pointer_equals(A::in, B::in),
+    [promise_semipure, thread_safe, will_not_call_mercury,
+        will_not_throw_exception, terminates],
+"
+    SUCCESS_INDICATOR = System.Object.ReferenceEquals(A, B);
+").
+
+% Conservative default if a backend does not have pointer equality, such as
+% Erlang.  (Erlang does have erts_debug:same/1 but I don't know if we can
+% rely on that.)
+pointer_equals(_A, _B) :- semidet_false.
 
 %-----------------------------------------------------------------------------%
 :- end_module version_hash_table.
