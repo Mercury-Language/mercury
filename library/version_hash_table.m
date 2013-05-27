@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: version_hash_table.m.
 % Main author: rafe, wangp.
 % Stability: low.
-% 
+%
 % (See the header comments in version_array.m for an explanation of version
 % types.)
 %
@@ -17,7 +17,7 @@
 % the same performance as the unique hash table implementation.  "Older"
 % versions of the hash table are still accessible, but will incur a growing
 % performance penalty as more updates are made to the hash table.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -46,7 +46,7 @@
     % XXX Values too close to the limits may cause bad things
     % to happen.
     %
-:- func init(hash_pred(K)::in(hash_pred), int::in, float::in) = 
+:- func init(hash_pred(K)::in(hash_pred), int::in, float::in) =
     (version_hash_table(K, V)::out) is det.
 
     % unsafe_init(HashPred, N, MaxOccupancy)
