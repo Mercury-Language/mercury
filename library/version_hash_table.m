@@ -858,8 +858,7 @@ fold_p(P, List, !A) :-
 %-----------------------------------------------------------------------------%
 
 equals(A, B) :-
-    promise_pure
-    ( semipure pointer_equals(A, B) ->
+    ( pointer_equals(A, B) ->
         true
     ;
         % We cannot deconstruct a non-cononical type in this all-solutions
@@ -880,25 +879,25 @@ equals(A, B) :-
 compare_item(Table, K, V, unit, unit) :-
     search(Table, K, V).
 
-:- semipure pred pointer_equals(T::in, T::in) is semidet.
+:- pred pointer_equals(T::in, T::in) is semidet.
 :- pragma inline(pointer_equals/2).
 
 :- pragma foreign_proc("C", pointer_equals(A::in, B::in),
-    [promise_semipure, thread_safe, will_not_call_mercury,
+    [promise_pure, thread_safe, will_not_call_mercury,
         will_not_throw_exception, terminates],
 "
     SUCCESS_INDICATOR = (A == B);
 ").
 
 :- pragma foreign_proc("Java", pointer_equals(A::in, B::in),
-    [promise_semipure, thread_safe, will_not_call_mercury,
+    [promise_pure, thread_safe, will_not_call_mercury,
         will_not_throw_exception, terminates],
 "
     SUCCESS_INDICATOR = (A == B);
 ").
 
 :- pragma foreign_proc("C#", pointer_equals(A::in, B::in),
-    [promise_semipure, thread_safe, will_not_call_mercury,
+    [promise_pure, thread_safe, will_not_call_mercury,
         will_not_throw_exception, terminates],
 "
     SUCCESS_INDICATOR = System.Object.ReferenceEquals(A, B);
