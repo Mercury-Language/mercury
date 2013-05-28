@@ -301,7 +301,7 @@ for CANDIDATE_CSC0 in $CSC_COMPILERS; do
              # above check that it is actually the Microsoft C# compiler and if
              # it is not then try to use one of the other instead.
              #
-             $CANDIDATE_CSC 2>&1 | grep -q "^Microsoft"
+             $CANDIDATE_CSC 2>&1 | grep "^Microsoft" >/dev/null
              if test $? -ne 0
              then
                  AC_MSG_WARN([$CANDIDATE_CSC is not the Microsoft C sharp compiler])
@@ -650,7 +650,7 @@ AC_MSG_CHECKING([what the C compiler type really is])
 # MSVC uses different command line options to most other C compilers.
 # Try to determine whether CC is MSVC based on the usage message.
 #
-$CC 2>&1 | grep -q "^Microsoft"
+$CC 2>&1 | grep "^Microsoft" >/dev/null
 if test $? -eq 0
 then
     cc_out_opt="-Fe"
