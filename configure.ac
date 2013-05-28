@@ -3407,7 +3407,7 @@ AC_ARG_ENABLE(hlc-prof-grades,
 
 AC_ARG_ENABLE(hlc-low-level-debug-grades,
    AC_HELP_STRING([--enable-hlc-low-level-debug-grades],
-                  [install a low level debugging version of the high level C grade]),
+                  [install a low-level debugging version of the high level C grade]),
    enable_hlc_ll_debug_grades="$enableval",enable_hlc_ll_debug_grades=no)
 
 AC_ARG_ENABLE(rbmm-grades,
@@ -3612,10 +3612,10 @@ if test "$enable_trail_grades" = yes; then
     # default as they are less useful.
     LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.trseg"
     if test $DEFAULT_BASE_GRADE = hlc; then
-        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.debug.trseg"
+        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.debug.trseg.stseg"
     else
         # $DEFAULT_BASE_GRADE must be an LLDS grade
-        LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.debug.trseg hlc.gc.trseg"
+        LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.debug.trseg.stseg hlc.gc.trseg"
     fi
     if test "$enable_inefficient_grades" = yes; then
         if test "$enable_nogc_grades" = yes; then
@@ -3654,14 +3654,16 @@ if test "$enable_mmos_grades" = yes; then
 fi
 
 # Add `.debug' (--debug) and `.decldebug' (--decl-debug) grades.
+# By default, we also use stack segments in debugging grades.
+#
 if test "$enable_debug_grades" = yes; then
-    LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.debug"
+    LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.debug.stseg"
     if test "$enable_decl_debug_grades" = yes; then
-        LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.decldebug"
+        LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.decldebug.stseg"
     fi
 fi
 
-# Add low level debug grades.
+# Add low-level debug grades.
 if test "$enable_hlc_ll_debug_grades" = yes; then
     LIBGRADES="$LIBGRADES hlc.gcd.ll_debug"
 fi
@@ -3679,6 +3681,8 @@ fi
 
 # Add the .par (thread-safe) grade, if it is supported for this system
 # Only enable it if this system has pthreads installed.
+# For the low-level C backend we also enable stack segments by default.
+#
 if test "$enable_par_grades" = yes -a "$CFLAGS_FOR_THREADS" != "" \
     -a "$MR_HAVE_PTHREAD_H" = 1
 then
@@ -3692,15 +3696,6 @@ then
     if test "$enable_trail_grades" = "yes"
     then
         LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.trseg.stseg"
-    fi
-
-    if test "$enable_debug_grades" = "yes"
-    then
-        LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.debug.stseg"
-        if test "$enable_decl_debug_grades" = "yes"
-        then
-            LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.decldebug.stseg"
-        fi
     fi
 
     if test "$mercury_cv_enable_deep_profiler" = "yes"
