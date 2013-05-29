@@ -557,8 +557,8 @@
 :- pred string.unsafe_prev_index(string::in, int::in, int::out, char::uo)
     is semidet.
 
-    % string.unsafe_index_code_unit(String, Index, CodeList):
-    % `Code' unit is the code unit in `String' at the offset `Index'.
+    % string.unsafe_index_code_unit(String, Index, CodeUnit):
+    % `CodeUnit' is the code unit in `String' at the offset `Index'.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String').
     %
