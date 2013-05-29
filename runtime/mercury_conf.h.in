@@ -274,6 +274,7 @@
 **	MR_HAVE_ISNANF		we have the isnanf() function.
 **	MR_HAVE_ISINF		we have the isinf() function.
 **	MR_HAVE_ISINFF		we have the isinff() function.
+**	MR_HAVE_FINITE		we have the finite() function.
 **	MR_HAVE_OPENDIR		we have the opendir() function.
 **	MR_HAVE_READDIR		we have the readdir() function.
 **	MR_HAVE_CLOSEDIR	we have the closedir() function.
@@ -344,6 +345,7 @@
 #undef	MR_HAVE_ISNANF
 #undef	MR_HAVE_ISINF
 #undef	MR_HAVE_ISINFF
+#undef	MR_HAVE_FINITE
 #undef	MR_HAVE_OPENDIR
 #undef	MR_HAVE_READDIR
 #undef	MR_HAVE_CLOSEDIR

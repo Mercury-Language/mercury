@@ -119,10 +119,17 @@ MR_is_nan(MR_Float Flt)
 MR_bool
 MR_is_inf(MR_Float Flt)
 {
-#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISINFF)
+    /*
+    ** On Solaris, isinf() is detected by configure but we pass -fno-builtin
+    ** for global registers on x86/x86-64, and that causes an undefined
+    ** reference to `isinf' when linking.  finite() works though.
+    */
+#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISINFF) && !defined(MR_SOLARIS)
     return isinff(Flt);
-#elif defined(MR_HAVE_ISINF)
+#elif defined(MR_HAVE_ISINF) && !defined(MR_SOLARIS)
     return isinf(Flt);
+#elif defined(MR_HAVE_FINITE)
+    return !finite(Flt) && (Flt == Flt);
 #else
     return (Flt == Flt / 2.0 && Flt != 0.0);
 #endif
